@@ -8,10 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"net/http"
 )
 
 type Teamserver interface {
+	ClientConnect(username string, socket *websocket.Conn)
+	ClientDisconnect(username string) error
 }
 
 type TsHttpHandler struct {
@@ -50,10 +53,12 @@ func NewTsHttpHandler(ts Teamserver, p profile.TsProfile) (*TsHttpHandler, error
 	httpHandler.Engine.POST(p.Endpoint+"/login", default404Middleware(), httpHandler.login)
 	httpHandler.Engine.POST(p.Endpoint+"/refresh", default404Middleware(), token.RefreshTokenHandler)
 
-	httpHandler.Engine.POST(p.Endpoint+"/check", default404Middleware(), token.ValidateAccessToken(), func(c *gin.Context) {
-		username := c.GetString("username")
-		c.JSON(http.StatusOK, gin.H{"user": username})
-	})
+	//httpHandler.Engine.POST(p.Endpoint+"/check", default404Middleware(), token.ValidateAccessToken(), func(c *gin.Context) {
+	//	username := c.GetString("username")
+	//	c.JSON(http.StatusOK, gin.H{"user": username})
+	//})
+
+	httpHandler.Engine.GET(p.Endpoint+"/connect", default404Middleware(), httpHandler.connect)
 
 	httpHandler.Engine.NoRoute(default404Middleware(), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 
