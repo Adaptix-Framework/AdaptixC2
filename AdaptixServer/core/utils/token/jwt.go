@@ -65,6 +65,19 @@ func GenerateRefreshToken(username string) (string, error) {
 	return tokenString, nil
 }
 
+func GetUsernameFromJWT(token string) (string, error) {
+	claims := &Claims{}
+	jwtToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(accessKey), nil
+	})
+
+	if err != nil || !jwtToken.Valid {
+		return "", errors.New("invalid token")
+	}
+
+	return claims.Username, nil
+}
+
 func ValidateAccessToken() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		tokenString := ctx.GetHeader("Authorization")
@@ -73,17 +86,13 @@ func ValidateAccessToken() gin.HandlerFunc {
 			return
 		}
 
-		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte(accessKey), nil
-		})
-
-		if err != nil || !token.Valid {
-			_ = ctx.Error(errors.New("invalid token"))
+		username, err := GetUsernameFromJWT(tokenString)
+		if err != nil {
+			_ = ctx.Error(err)
 			return
 		}
 
-		ctx.Set("username", claims.Username)
+		ctx.Set("username", username)
 		ctx.Next()
 	}
 }

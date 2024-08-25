@@ -4,6 +4,7 @@ import (
 	"AdaptixServer/core/httphandler"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/logs"
+	"AdaptixServer/core/utils/safe"
 	"encoding/json"
 	"os"
 )
@@ -11,6 +12,7 @@ import (
 func NewTeamserver() *Teamserver {
 	ts := new(Teamserver)
 	ts.Profile = profile.NewProfile()
+	ts.clients = safe.NewMap()
 	return ts
 }
 

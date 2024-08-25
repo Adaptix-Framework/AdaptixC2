@@ -30,7 +30,7 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Printf("\nEither provide options individually or use a JSON config file with -config flag.\n\n")
 		fmt.Printf("Example:\n")
-		fmt.Printf("   AdaptixServer -p port -pw password -e endpoint -sc SslCert -sc SslKey [-debug]\n")
+		fmt.Printf("   AdaptixServer -p port -pw password -e endpoint -sc SslCert -sk SslKey [-debug]\n")
 		fmt.Printf("   AdaptixServer -profile profile.json [-debug] \n")
 	}
 
