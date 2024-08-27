@@ -1,0 +1,11 @@
+<RCC>
+
+    <qresource prefix="/">
+        <file alias="LogoLin">Logo.png</file>
+    </qresource>
+
+    <qresource prefix="/fonts">
+        <file alias="DroidSansMono">fonts/DroidSansMono.ttf</file>
+    </qresource>
+
+</RCC>
