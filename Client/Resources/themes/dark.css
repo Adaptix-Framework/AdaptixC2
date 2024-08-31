@@ -1,0 +1,58 @@
+/* Dark Theme */
+QWidget {
+    background-color: #222222;  /* Dark gray background */
+    color: #E0E0E0;  /* Light gray text */
+}
+
+/* QPushButton */
+QPushButton {
+    background-color: #333333;  /* Dark gray for buttons */
+    border: 1px solid #4A4A4A;  /* Medium gray border */
+    padding: 8px;
+    border-radius: 4px;
+    color: #E0E0E0;  /* Light gray text */
+}
+
+QPushButton:hover {
+    background-color: #4A4A4A;  /* Slightly lighter gray on hover */
+}
+
+/* QLineEdit */
+QLineEdit {
+    background-color: #2A2A2A;  /* Darker gray for input fields */
+    border: 1px solid #4A4A4A;  /* Medium gray border */
+    padding: 8px;
+    color: #E0E0E0;  /* Light gray text */
+}
+
+/* QTableWidget */
+QTableWidget {
+    background-color: #2A2A2A;  /* Darker gray background for table */
+    border: 1px solid #4A4A4A;  /* Medium gray border */
+    gridline-color: #3C3C3C;  /* Slightly lighter gray for grid lines */
+    color: #E0E0E0;  /* Light gray text */
+    border-radius: 4px;
+    padding: 4px;
+}
+
+/* QTableWidget Selected Row */
+QTableWidget::item:selected {
+    background-color: #4A4A4A;  /* Slightly lighter gray for selected row */
+    color: #FFFFFF;  /* White text for contrast */
+}
+
+/* QMenu */
+QMenu {
+    background-color: #1E1E1E;  /* Dark gray background */
+    border: 1px solid #4A4A4A;  /* Medium gray border */
+}
+
+QMenu::item {
+    padding: 5px 10px;
+    color: #E0E0E0;  /* Light gray text */
+}
+
+QMenu::item:selected {
+    background-color: #333333;  /* Dark gray for selected item */
+    color: #FFFFFF;  /* White text for contrast */
+}

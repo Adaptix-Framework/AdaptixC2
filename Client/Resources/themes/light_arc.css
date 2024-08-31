@@ -1,0 +1,55 @@
+/* Arc Theme */
+QWidget {
+    background-color: #ECECEC;
+    color: #2E3440;
+}
+
+/* QPushButton */
+QPushButton {
+    background-color: #5294E2;
+    color: #FFFFFF;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+QPushButton:hover {
+    background-color: #3B75D1;
+}
+
+/* QLineEdit */
+QLineEdit {
+    background-color: #FFFFFF;
+    border: 1px solid #D0D0D0;
+    padding: 8px;
+    color: #2E3440;
+}
+
+/* QTableWidget */
+QTableWidget {
+    background-color: #FFFFFF;
+    border: 1px solid #D0D0D0;
+    gridline-color: #E0E0E0;
+    color: #2E3440;
+}
+
+/* QMenu */
+QMenu {
+    background-color: #ECECEC;
+    border: 1px solid #D0D0D0;
+}
+
+QMenu::item {
+    padding: 5px 10px;
+}
+
+QMenu::item:selected {
+    background-color: #5294E2;
+    color: #FFFFFF;
+}
+
+/* QTableWidget Selected Row */
+QTableWidget::item:selected {
+    background-color: #4A566A;  /* Darker gray for selected row */
+    color: #FFFFFF;  /* White text for selected row */
+}

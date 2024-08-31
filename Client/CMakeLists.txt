@@ -8,6 +8,8 @@ set(CMAKE_AUTOUIC ON)
 
 find_package( OpenSSL REQUIRED )
 
+include_directories( Headers )
+
 find_package(Qt6
         COMPONENTS
         Core
@@ -15,22 +17,44 @@ find_package(Qt6
         Widgets
         Network
         WebSockets
+        Sql
         REQUIRED
+)
+
+SET( HEADERS
+        Headers/main.h
+        Headers/Utils/Logs.h
+        Headers/UI/Dialogs/DialogConnect.h
+        Headers/Utils/Valid.h
+        Headers/MainAdaptix.h
+        Headers/Client/Storage.h
+        Headers/Client/AuthProfile.h
+        Headers/Utils/FileSystem.h
 )
 
 add_executable(AdaptixClient
 
+        ${HEADERS}
+
         Source/main.cpp
 
         Resources/Resources.qrc
+        Source/Utils/Logs.cpp
+        Source/UI/Dialogs/DialogConnect.cpp
+        Source/Utils/Valid.cpp
+        Source/MainAdaptix.cpp
+        Source/Client/Storage.cpp
+        Source/Client/AuthProfile.cpp
+        Source/Utils/FileSystem.cpp
 )
 
 target_link_libraries(AdaptixClient
-        Qt::Core
-        Qt::Gui
-        Qt::Widgets
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
         Qt6::Network
         Qt6::WebSockets
+        Qt6::Sql
         OpenSSL::Crypto
 )
 
