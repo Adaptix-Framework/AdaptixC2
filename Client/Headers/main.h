@@ -17,11 +17,17 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QFontDatabase>
+#include <QNetworkAccessManager>
+#include <QSslConfiguration>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QNetworkReply>
+#include <QMainWindow>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
 #include <Utils/Valid.h>
 
-
+#define FRAMEWORK_VERSION "Adaptix Framework vDEV-0.1"
 
 #endif //ADAPTIXCLIENT_MAIN_H

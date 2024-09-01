@@ -16,3 +16,18 @@ AuthProfile::AuthProfile(QString project, QString username, QString password, QS
 
 AuthProfile::~AuthProfile() {}
 
+QString AuthProfile::GetProject() { return this->project; };
+
+QString AuthProfile::GetUsername() { return this->username; };
+
+QString AuthProfile::GetPassword() { return this->password; };
+
+QString AuthProfile::GetHost() { return this->host; };
+
+QString AuthProfile::GetPort() { return this->port; };
+
+QString AuthProfile::GetEndpoint() { return this->endpoint; };
+
+void AuthProfile::SetAccessToken(QString token) { this->accessToken = token; };
+
+void AuthProfile::SetRefreshToken(QString token) { this->refreshToken = token; };

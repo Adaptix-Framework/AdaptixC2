@@ -14,4 +14,9 @@
         <file alias="Nord">themes/color_nord.css</file>
     </qresource>
 
+    <qresource prefix="/icons">
+        <file alias="listeners">icons/headphones_64dp.png</file>
+        <file alias="format_list">icons/format_list_bulleted_64dp.png</file>
+        <file alias="logs">icons/notes-64dp.png</file>
+    </qresource>
 </RCC>
