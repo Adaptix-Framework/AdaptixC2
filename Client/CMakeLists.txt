@@ -30,6 +30,9 @@ SET( HEADERS
         Headers/Client/Storage.h
         Headers/Client/AuthProfile.h
         Headers/Utils/FileSystem.h
+        Headers/Client/Requestor.h
+        Headers/UI/MainUI.h
+        Headers/UI/Widgets/AdaptixWidget.h
 )
 
 add_executable(AdaptixClient
@@ -46,6 +49,9 @@ add_executable(AdaptixClient
         Source/Client/Storage.cpp
         Source/Client/AuthProfile.cpp
         Source/Utils/FileSystem.cpp
+        Source/Client/Requestor.cpp
+        Source/UI/MainUI.cpp
+        Source/UI/Widgets/AdaptixWidget.cpp
 )
 
 target_link_libraries(AdaptixClient

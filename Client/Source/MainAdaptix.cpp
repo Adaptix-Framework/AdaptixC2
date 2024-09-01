@@ -1,5 +1,6 @@
 #include <MainAdaptix.h>
 #include <UI/Dialogs/DialogConnect.h>
+#include <Client/Requestor.h>
 
 MainAdaptix::MainAdaptix() {
     storage = new Storage();
@@ -18,7 +19,17 @@ void MainAdaptix::Start() {
         return;
     }
 
-   QApplication::exec();
+    bool result = HttpReqLogin( &authProfile );
+    if ( !result ) {
+        MessageError("Login failure");
+        this->Exit();
+        return;
+    }
+
+    this->mainUI = new MainUI;
+    this->mainUI->showMaximized();
+
+    QApplication::exec();
 }
 
 void MainAdaptix::Exit() {

@@ -3,11 +3,13 @@
 
 #include <main.h>
 #include <Client/Storage.h>
+#include <UI/MainUI.h>
 
 class MainAdaptix : public QWidget {
 
 public:
-    Storage* storage = nullptr;
+    Storage* storage   = nullptr;
+    MainUI*  mainUI = nullptr;
 
     explicit MainAdaptix();
     ~MainAdaptix() override;

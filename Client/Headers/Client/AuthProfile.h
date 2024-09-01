@@ -19,12 +19,15 @@ public:
     AuthProfile(QString project, QString username, QString password, QString host, QString port, QString endpoint);
     ~AuthProfile();
 
-    QString GetProject() { return project; };
-    QString GetUsername() { return username; };
-    QString GetPassword() { return password; };
-    QString GetHost() { return host; };
-    QString GetPort() { return port; };
-    QString GetEndpoint() { return endpoint; };
+    QString GetProject();
+    QString GetUsername();
+    QString GetPassword();
+    QString GetHost();
+    QString GetPort();
+    QString GetEndpoint();
+    void    SetAccessToken(QString token);
+    void    SetRefreshToken(QString token);
+
 };
 
 
