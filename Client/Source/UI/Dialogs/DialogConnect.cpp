@@ -2,7 +2,7 @@
 #include <MainAdaptix.h>
 
 DialogConnect::DialogConnect() {
-    this->CreateUI();
+    this->createUI();
 
     connect( tableWidget, &QTableWidget::itemPressed, this, &DialogConnect::itemSelected );
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &DialogConnect::handleContextMenu );
@@ -40,7 +40,7 @@ DialogConnect::~DialogConnect() {
     delete menuContex;
 }
 
-void DialogConnect::CreateUI() {
+void DialogConnect::createUI() {
 
     resize( 740, 340 );
     setMinimumSize( QSize( 740, 340 ) );
@@ -209,7 +209,7 @@ void DialogConnect::handleContextMenu(const QPoint &pos ) const {
     menuContex->exec( globalPos );
 }
 
-bool DialogConnect::CheckValidInput() {
+bool DialogConnect::checkValidInput() {
     if ( lineEdit_Project->text().isEmpty() ) {
         MessageError("Project is empty");
         return false;
@@ -248,7 +248,7 @@ bool DialogConnect::CheckValidInput() {
 }
 
 void DialogConnect::onButton_Connect() {
-    if( this->CheckValidInput() ) {
+    if(this->checkValidInput() ) {
         this->toConnect = true;
         close();
     }
