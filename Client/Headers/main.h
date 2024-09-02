@@ -23,6 +23,9 @@
 #include <QJsonDocument>
 #include <QNetworkReply>
 #include <QMainWindow>
+#include <QSplitter>
+#include <QStackedWidget>
+#include <QTextEdit>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>

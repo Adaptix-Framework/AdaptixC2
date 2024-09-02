@@ -29,8 +29,8 @@ class DialogConnect : public QDialog
     QTableWidget* tableWidget         = nullptr;
     QMenu*        menuContex          = nullptr;
 
-    void CreateUI();
-    bool CheckValidInput();
+    void createUI();
+    bool checkValidInput();
 
 public:
 
