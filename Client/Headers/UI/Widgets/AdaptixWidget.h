@@ -25,13 +25,15 @@ class AdaptixWidget : public QWidget {
     QFrame*      line_4            = nullptr;
     QSplitter*   mainVSplitter     = nullptr;
     QTabWidget*  mainTabWidget     = nullptr;
-    QSpacerItem* horizontalSpacer2 = nullptr;
+    QSpacerItem* horizontalSpacer1 = nullptr;
 
     void createUI();
 
 public:
 
     explicit AdaptixWidget();
+
+    void AddNewTab( QWidget* tab, QString title, QString icon = "" );
 
 };
 
