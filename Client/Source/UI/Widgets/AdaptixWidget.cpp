@@ -2,6 +2,9 @@
 
 AdaptixWidget::AdaptixWidget() {
     this->createUI();
+
+    QTextEdit *textEdit2 = new QTextEdit(this);
+    this->AddNewTab(textEdit2, "TestTab");
 }
 
 void AdaptixWidget::createUI() {
@@ -93,7 +96,7 @@ void AdaptixWidget::createUI() {
     reconnectButton->setFixedSize(37, 28);
     keysButton->setToolTip("Reconnect to C2");
 
-    horizontalSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
 
     topLayout = new QHBoxLayout;
@@ -118,21 +121,24 @@ void AdaptixWidget::createUI() {
     topLayout->addWidget(keysButton);
     topLayout->addWidget(line_4);
     topLayout->addWidget(reconnectButton);
-    topLayout->addItem(horizontalSpacer2);
+    topLayout->addItem(horizontalSpacer1);
 
 
     /// TODO:
     QTextEdit *textEdit1 = new QTextEdit(this);
-    QTextEdit *textEdit2 = new QTextEdit(this);
     ///
 
+    mainTabWidget = new QTabWidget(this);
+    mainTabWidget->setObjectName( QString::fromUtf8( "MainTabWidget" ) );
+    mainTabWidget->setCurrentIndex( 0 );
+    mainTabWidget->setMovable( false );
 
     mainVSplitter = new QSplitter(Qt::Vertical, this);
     mainVSplitter->setContentsMargins(0, 0, 0, 0);
     mainVSplitter->setHandleWidth(3);
     mainVSplitter->setVisible(true);
     mainVSplitter->addWidget(textEdit1);
-    mainVSplitter->addWidget(textEdit2);
+    mainVSplitter->addWidget(mainTabWidget);
     mainVSplitter->setSizes(QList<int>({200, 200}));
 
 
@@ -144,4 +150,22 @@ void AdaptixWidget::createUI() {
     gridLayout_Main->addWidget( mainVSplitter, 1, 0, 1, 1);
 
     this->setLayout( gridLayout_Main );
+}
+
+void AdaptixWidget::AddNewTab(QWidget *tab, QString title, QString icon) {
+    int id = 0;
+    if ( mainTabWidget->count() == 0 ) {
+        mainVSplitter->setSizes(QList<int>() << 100 << 200);
+    }
+    else if ( mainTabWidget->count() == 1 ) {
+        mainTabWidget->setMovable(true);
+    }
+
+    mainTabWidget->setTabsClosable( true );
+
+    id = mainTabWidget->addTab( tab, title );
+
+    mainTabWidget->setIconSize( QSize( 17, 17 ) );
+    mainTabWidget->setTabIcon(id, QIcon(icon));
+    mainTabWidget->setCurrentIndex( id );
 }
