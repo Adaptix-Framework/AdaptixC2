@@ -1,10 +1,15 @@
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/LogsWidget.h>
 
 AdaptixWidget::AdaptixWidget() {
     this->createUI();
 
-    QTextEdit *textEdit2 = new QTextEdit(this);
-    this->AddNewTab(textEdit2, "TestTab");
+    auto logsTab = new LogsWidget;
+    this->AddNewTab( logsTab, "Logs", ":/icons/picture" );
+
+    auto logsTab2 = new LogsWidget;
+    this->AddNewTab( logsTab2, "Logs Tab2", ":/icons/picture" );
+
 }
 
 void AdaptixWidget::createUI() {
@@ -99,29 +104,29 @@ void AdaptixWidget::createUI() {
     horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
 
-    topLayout = new QHBoxLayout;
-    topLayout->setObjectName( QString::fromUtf8( "TopLayout" ) );
-    topLayout->setContentsMargins( 5, 5, 0, 5);
-    topLayout->setSpacing(10);
-    topLayout->setAlignment(Qt::AlignLeft);
+    topHLayout = new QHBoxLayout;
+    topHLayout->setObjectName(QString::fromUtf8("TopLayout" ) );
+    topHLayout->setContentsMargins(5, 5, 0, 5);
+    topHLayout->setSpacing(10);
+    topHLayout->setAlignment(Qt::AlignLeft);
 
-    topLayout->addWidget(listenersButton);
-    topLayout->addWidget(logsButton);
-    topLayout->addWidget(line_1);
-    topLayout->addWidget(sessionsButton);
-    topLayout->addWidget(graphButton);
-    topLayout->addWidget(targetsButton);
-    topLayout->addWidget(line_2);
-    topLayout->addWidget(jobsButton);
-    topLayout->addWidget(proxyButton);
-    topLayout->addWidget(line_3);
-    topLayout->addWidget(downloadsButton);
-    topLayout->addWidget(credsButton);
-    topLayout->addWidget(screensButton);
-    topLayout->addWidget(keysButton);
-    topLayout->addWidget(line_4);
-    topLayout->addWidget(reconnectButton);
-    topLayout->addItem(horizontalSpacer1);
+    topHLayout->addWidget(listenersButton);
+    topHLayout->addWidget(logsButton);
+    topHLayout->addWidget(line_1);
+    topHLayout->addWidget(sessionsButton);
+    topHLayout->addWidget(graphButton);
+    topHLayout->addWidget(targetsButton);
+    topHLayout->addWidget(line_2);
+    topHLayout->addWidget(jobsButton);
+    topHLayout->addWidget(proxyButton);
+    topHLayout->addWidget(line_3);
+    topHLayout->addWidget(downloadsButton);
+    topHLayout->addWidget(credsButton);
+    topHLayout->addWidget(screensButton);
+    topHLayout->addWidget(keysButton);
+    topHLayout->addWidget(line_4);
+    topHLayout->addWidget(reconnectButton);
+    topHLayout->addItem(horizontalSpacer1);
 
 
     /// TODO:
@@ -132,6 +137,7 @@ void AdaptixWidget::createUI() {
     mainTabWidget->setObjectName( QString::fromUtf8( "MainTabWidget" ) );
     mainTabWidget->setCurrentIndex( 0 );
     mainTabWidget->setMovable( false );
+    mainTabWidget->setTabsClosable( true );
 
     mainVSplitter = new QSplitter(Qt::Vertical, this);
     mainVSplitter->setContentsMargins(0, 0, 0, 0);
@@ -141,29 +147,22 @@ void AdaptixWidget::createUI() {
     mainVSplitter->addWidget(mainTabWidget);
     mainVSplitter->setSizes(QList<int>({200, 200}));
 
+    mainGridLayout = new QGridLayout(this );
+    mainGridLayout->setContentsMargins(0, 0, 0, 0);
+    mainGridLayout->setVerticalSpacing(0);
+    mainGridLayout->addLayout(topHLayout, 0, 0, 1, 1);
+    mainGridLayout->addWidget(mainVSplitter, 1, 0, 1, 1);
 
-    gridLayout_Main = new QGridLayout( this );
-    gridLayout_Main->setObjectName( QString::fromUtf8("MainGridLayout" ) );
-    gridLayout_Main->setContentsMargins(0, 0, 0, 0);
-    gridLayout_Main->setVerticalSpacing(0);
-    gridLayout_Main->addLayout( topLayout, 0, 0, 1, 1);
-    gridLayout_Main->addWidget( mainVSplitter, 1, 0, 1, 1);
-
-    this->setLayout( gridLayout_Main );
+    this->setLayout(mainGridLayout );
 }
 
 void AdaptixWidget::AddNewTab(QWidget *tab, QString title, QString icon) {
-    int id = 0;
-    if ( mainTabWidget->count() == 0 ) {
+    if ( mainTabWidget->count() == 0 )
         mainVSplitter->setSizes(QList<int>() << 100 << 200);
-    }
-    else if ( mainTabWidget->count() == 1 ) {
+    else if ( mainTabWidget->count() == 1 )
         mainTabWidget->setMovable(true);
-    }
 
-    mainTabWidget->setTabsClosable( true );
-
-    id = mainTabWidget->addTab( tab, title );
+    int id = mainTabWidget->addTab( tab, title );
 
     mainTabWidget->setIconSize( QSize( 17, 17 ) );
     mainTabWidget->setTabIcon(id, QIcon(icon));

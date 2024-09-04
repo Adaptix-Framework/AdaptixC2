@@ -5,8 +5,8 @@
 
 class AdaptixWidget : public QWidget {
 
-    QGridLayout* gridLayout_Main   = nullptr;
-    QHBoxLayout* topLayout         = nullptr;
+    QGridLayout* mainGridLayout    = nullptr;
+    QHBoxLayout* topHLayout        = nullptr;
     QPushButton* listenersButton   = nullptr;
     QPushButton* logsButton        = nullptr;
     QPushButton* sessionsButton    = nullptr;

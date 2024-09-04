@@ -19,7 +19,6 @@ DialogConnect::DialogConnect() {
 }
 
 DialogConnect::~DialogConnect() {
-    delete ConnectWidget;
     delete gridLayout;
     delete label_UserInfo;
     delete label_User;
@@ -46,54 +45,51 @@ void DialogConnect::createUI() {
     setMinimumSize( QSize( 740, 340 ) );
     setMaximumSize( QSize( 740, 340 ) );
 
+    this->setWindowTitle("Connect");
 
-    ConnectWidget = this ;
-    ConnectWidget->setWindowTitle("Connect");
-
-
-    label_UserInfo = new QLabel( ConnectWidget );
+    label_UserInfo = new QLabel( this );
     label_UserInfo->setAlignment(Qt::AlignCenter);
     label_UserInfo->setText( "User information" );
 
-    label_User = new QLabel( ConnectWidget );
+    label_User = new QLabel( this );
     label_User->setText( "User:" );
 
-    label_Password = new QLabel( ConnectWidget );
+    label_Password = new QLabel( this );
     label_Password->setText( "Password:" );
 
-    label_ServerDetails = new QLabel( ConnectWidget );
+    label_ServerDetails = new QLabel( this );
     label_ServerDetails->setAlignment(Qt::AlignCenter);
     label_ServerDetails->setText( "Server details" );
 
-    label_Project = new QLabel( ConnectWidget );
+    label_Project = new QLabel( this );
     label_Project->setText( "Project:" );
 
-    label_Host = new QLabel( ConnectWidget );
+    label_Host = new QLabel( this );
     label_Host->setText( "Host:" );
 
-    label_Port = new QLabel( ConnectWidget );
+    label_Port = new QLabel( this );
     label_Port->setText( "Port:" );
 
-    label_Endpoint = new QLabel( ConnectWidget );
+    label_Endpoint = new QLabel( this );
     label_Endpoint->setText( "Endpoint:" );
 
 
-    lineEdit_User = new QLineEdit( ConnectWidget );
+    lineEdit_User = new QLineEdit( this );
 
-    lineEdit_Password = new QLineEdit( ConnectWidget );
+    lineEdit_Password = new QLineEdit( this );
     lineEdit_Password->setEchoMode( QLineEdit::Password );
 
-    lineEdit_Project = new QLineEdit( ConnectWidget );
+    lineEdit_Project = new QLineEdit( this );
 
-    lineEdit_Host = new QLineEdit( ConnectWidget );
+    lineEdit_Host = new QLineEdit( this );
 
-    lineEdit_Port = new QLineEdit( ConnectWidget );
+    lineEdit_Port = new QLineEdit( this );
     lineEdit_Port->setValidator( new QRegularExpressionValidator( QRegularExpression( "[0-9]*" ), lineEdit_Port ) );
 
-    lineEdit_Endpoint = new QLineEdit( ConnectWidget );
+    lineEdit_Endpoint = new QLineEdit( this );
 
 
-    ButtonConnect = new QPushButton( ConnectWidget );
+    ButtonConnect = new QPushButton( this );
     ButtonConnect->setText( "Connect" );
     ButtonConnect->setFocus();
 
@@ -102,24 +98,23 @@ void DialogConnect::createUI() {
     menuContex->addAction( "Remove", this, &DialogConnect::itemRemove );
 
 
-    tableWidget = new QTableWidget(ConnectWidget);
+    tableWidget = new QTableWidget(this);
     tableWidget->setColumnCount( 3 );
     tableWidget->setMinimumSize(QSize( 390, 0) );
     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
     tableWidget->addAction( menuContex->menuAction() );
     tableWidget->setAutoFillBackground( false );
-    tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
     tableWidget->setShowGrid( false );
     tableWidget->setSortingEnabled( true );
     tableWidget->setWordWrap( true );
     tableWidget->setCornerButtonEnabled( false );
-    tableWidget->horizontalHeader()->setVisible( true );
+    tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
     tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
     tableWidget->horizontalHeader()->setHighlightSections( false );
     tableWidget->verticalHeader()->setVisible( false );
+    tableWidget->setAlternatingRowColors( true );
     tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
     tableWidget->setSelectionMode( QAbstractItemView::SingleSelection );
-    tableWidget->verticalHeader()->setDefaultSectionSize( 12 );
     tableWidget->setFocusPolicy( Qt::NoFocus );
 
     tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem( "Username" ) );
@@ -127,7 +122,7 @@ void DialogConnect::createUI() {
     tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Host" ) );
 
 
-    gridLayout = new QGridLayout( ConnectWidget );
+    gridLayout = new QGridLayout( this );
     gridLayout->addWidget( tableWidget,         0, 2, 10, 1 );
     gridLayout->addWidget( label_UserInfo,      0, 1, 1, 1 );
     gridLayout->addWidget( label_User,          1, 0, 1, 1 );
