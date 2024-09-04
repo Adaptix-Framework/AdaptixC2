@@ -33,6 +33,7 @@ SET( HEADERS
         Headers/Client/Requestor.h
         Headers/UI/MainUI.h
         Headers/UI/Widgets/AdaptixWidget.h
+        Headers/UI/Widgets/LogsWidget.h
 )
 
 add_executable(AdaptixClient
@@ -52,6 +53,7 @@ add_executable(AdaptixClient
         Source/Client/Requestor.cpp
         Source/UI/MainUI.cpp
         Source/UI/Widgets/AdaptixWidget.cpp
+        Source/UI/Widgets/LogsWidget.cpp
 )
 
 target_link_libraries(AdaptixClient

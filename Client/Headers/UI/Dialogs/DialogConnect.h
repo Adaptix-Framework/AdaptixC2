@@ -9,7 +9,6 @@ class DialogConnect : public QDialog
     bool toConnect    = false;
     bool isNewProject = true;
 
-    QWidget*      ConnectWidget       = nullptr;
     QGridLayout*  gridLayout          = nullptr;
     QLabel*       label_UserInfo      = nullptr;
     QLabel*       label_User          = nullptr;

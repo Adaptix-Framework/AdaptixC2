@@ -1,58 +1,116 @@
 /* Dark Theme */
+
 QWidget {
-    background-color: #222222;  /* Dark gray background */
-    color: #E0E0E0;  /* Light gray text */
+    background-color: #222222;
+    color: #E0E0E0;
 }
 
-/* QPushButton */
 QPushButton {
-    background-color: #333333;  /* Dark gray for buttons */
-    border: 1px solid #4A4A4A;  /* Medium gray border */
+    background-color: #333333;
+    border: 1px solid #4A4A4A;
     padding: 8px;
     border-radius: 4px;
-    color: #E0E0E0;  /* Light gray text */
+    color: #E0E0E0;
 }
 
 QPushButton:hover {
-    background-color: #4A4A4A;  /* Slightly lighter gray on hover */
+    background-color: #4A4A4A;
 }
 
-/* QLineEdit */
 QLineEdit {
-    background-color: #2A2A2A;  /* Darker gray for input fields */
-    border: 1px solid #4A4A4A;  /* Medium gray border */
-    padding: 8px;
-    color: #E0E0E0;  /* Light gray text */
+    background-color: #2A2A2A;
+    border: 1px solid #4A4A4A;
+    padding: 4px;
+    border-radius: 4px;
+    color: #E0E0E0;
 }
 
-/* QTableWidget */
 QTableWidget {
-    background-color: #2A2A2A;  /* Darker gray background for table */
-    border: 1px solid #4A4A4A;  /* Medium gray border */
-    gridline-color: #3C3C3C;  /* Slightly lighter gray for grid lines */
-    color: #E0E0E0;  /* Light gray text */
+    background-color: #2A2A2A;
+    alternate-background-color: #2E2E2E;
+    border: 1px solid #4A4A4A;
+    color: #E0E0E0;
     border-radius: 4px;
+}
+
+QHeaderView::section {
+    background-color: #2A2A2A;
+    color: #E0E0E0;
     padding: 4px;
 }
 
-/* QTableWidget Selected Row */
 QTableWidget::item:selected {
-    background-color: #4A4A4A;  /* Slightly lighter gray for selected row */
-    color: #FFFFFF;  /* White text for contrast */
+    background-color: #4A4A4A;
+    color: #FFFFFF;
 }
 
-/* QMenu */
 QMenu {
-    background-color: #1E1E1E;  /* Dark gray background */
-    border: 1px solid #4A4A4A;  /* Medium gray border */
+    background-color: #1E1E1E;
+    border: 1px solid #4A4A4A;
 }
 
 QMenu::item {
     padding: 5px 10px;
-    color: #E0E0E0;  /* Light gray text */
+    color: #E0E0E0;
 }
 
 QMenu::item:selected {
-    background-color: #333333;  /* Dark gray for selected item */
-    color: #FFFFFF;  /* White text for contrast */
+    background-color: #333333;
+    color: #FFFFFF;
+}
+
+QLabel {
+    padding: 4px;
+    color: #E0E0E0;
+    background-color: transparent;
+}
+
+QTextEdit#console {
+    background-color: #111111;
+    color: #C8C8C8;
+    font-family: "Courier New", monospace;
+    border: 0px;
+    padding: 2px;
+    border-radius: 0px;
+}
+
+QTextEdit {
+    background-color: #2A2A2A;
+    border: 1px solid #4A4A4A;
+    color: #E0E0E0;
+    padding: 2px;
+    border-radius: 4px;
+}
+
+QTabWidget::pane {
+    border: 1px solid #4A4A4A;
+    background-color: #222222;
+}
+
+QTabBar::tab {
+    background-color: #222222;
+    color: #E0E0E0;
+    padding: 4px;
+    border: 1px solid #4A4A4A;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+QTabBar::tab:selected {
+    background-color: #333333;
+    color: #FFFFFF;
+}
+
+QTabBar::tab:hover {
+    background-color: #4A4A4A;
+}
+
+QTabBar::close-button {
+    image: url(:/icons/close);
+    subcontrol-position: right;
+}
+
+QTabBar::close-button:hover {
+    background-color: #333333;
+    border-radius: 2px;
 }
