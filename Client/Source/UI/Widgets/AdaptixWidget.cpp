@@ -1,14 +1,46 @@
 #include <UI/Widgets/AdaptixWidget.h>
-#include <UI/Widgets/LogsWidget.h>
 
-AdaptixWidget::AdaptixWidget() {
+AdaptixWidget::AdaptixWidget(AuthProfile authProfile) {
     this->createUI();
 
-    auto logsTab = new LogsWidget;
-    this->AddNewTab( logsTab, "Logs", ":/icons/picture" );
+    this->LoadLogsUI();
 
+    profile = authProfile;
+
+    ChannelThread = new QThread;
+    ChannelWsWorker = new WebSocketWorker( authProfile );
+    ChannelWsWorker->moveToThread( ChannelThread );
+
+
+    /// For test
     auto logsTab2 = new LogsWidget;
-    this->AddNewTab( logsTab2, "Logs Tab2", ":/icons/picture" );
+    this->AddTab(logsTab2, "Logs Tab2", ":/icons/picture");
+    //
+
+    connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
+    connect( logsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
+
+    connect( ChannelThread, &QThread::started, ChannelWsWorker, &WebSocketWorker::run );
+    connect( ChannelWsWorker, &WebSocketWorker::received_data, this, &AdaptixWidget::DataHandler );
+    connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, &AdaptixWidget::ChannelClose );
+
+    ChannelThread->start();
+
+
+
+    // TODO: Enable menu button
+    listenersButton->setEnabled(false);
+    sessionsButton->setEnabled(false);
+    graphButton->setEnabled(false);
+    targetsButton->setEnabled(false);
+    jobsButton->setEnabled(false);
+    proxyButton->setEnabled(false);
+    downloadsButton->setEnabled(false);
+    credsButton->setEnabled(false);
+    screensButton->setEnabled(false);
+    keysButton->setEnabled(false);
+    reconnectButton->setEnabled(false);
+    //
 
 }
 
@@ -129,9 +161,9 @@ void AdaptixWidget::createUI() {
     topHLayout->addItem(horizontalSpacer1);
 
 
-    /// TODO:
+    // TODO: top widget - Stack ???
     QTextEdit *textEdit1 = new QTextEdit(this);
-    ///
+    //
 
     mainTabWidget = new QTabWidget(this);
     mainTabWidget->setObjectName( QString::fromUtf8( "MainTabWidget" ) );
@@ -156,7 +188,7 @@ void AdaptixWidget::createUI() {
     this->setLayout(mainGridLayout );
 }
 
-void AdaptixWidget::AddNewTab(QWidget *tab, QString title, QString icon) {
+void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon) {
     if ( mainTabWidget->count() == 0 )
         mainVSplitter->setSizes(QList<int>() << 100 << 200);
     else if ( mainTabWidget->count() == 1 )
@@ -168,3 +200,31 @@ void AdaptixWidget::AddNewTab(QWidget *tab, QString title, QString icon) {
     mainTabWidget->setTabIcon(id, QIcon(icon));
     mainTabWidget->setCurrentIndex( id );
 }
+
+void AdaptixWidget::RemoveTab(int index) {
+    if (index == -1)
+        return;
+
+    mainTabWidget->removeTab(index);
+
+    if (mainTabWidget->count() == 0)
+        mainVSplitter->setSizes(QList<int>() << 0);
+    else if (mainTabWidget->count() == 1)
+        mainTabWidget->setMovable(false);
+}
+
+void AdaptixWidget::LoadLogsUI() {
+    if ( LogsTab == nullptr )
+        LogsTab = new LogsWidget;
+
+    this->AddTab(LogsTab, "Logs", ":/icons/logs");
+}
+
+void AdaptixWidget::ChannelClose() {
+    LogInfo("WebSocker closed");
+}
+
+void AdaptixWidget::DataHandler(const QByteArray &data) {
+    LogSuccess("Received data");
+}
+

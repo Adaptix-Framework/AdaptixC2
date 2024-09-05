@@ -26,6 +26,8 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QTextEdit>
+#include <QThread>
+#include <QtWebSockets/QWebSocket>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>

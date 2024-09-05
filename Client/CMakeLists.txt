@@ -34,6 +34,7 @@ SET( HEADERS
         Headers/UI/MainUI.h
         Headers/UI/Widgets/AdaptixWidget.h
         Headers/UI/Widgets/LogsWidget.h
+        Headers/Client/WebSocketWorker.h
 )
 
 add_executable(AdaptixClient
@@ -54,6 +55,7 @@ add_executable(AdaptixClient
         Source/UI/MainUI.cpp
         Source/UI/Widgets/AdaptixWidget.cpp
         Source/UI/Widgets/LogsWidget.cpp
+        Source/Client/WebSocketWorker.cpp
 )
 
 target_link_libraries(AdaptixClient

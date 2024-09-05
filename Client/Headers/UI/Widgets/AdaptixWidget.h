@@ -2,6 +2,8 @@
 #define ADAPTIXCLIENT_ADAPTIXWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/LogsWidget.h>
+#include <Client/WebSocketWorker.h>
 
 class AdaptixWidget : public QWidget {
 
@@ -27,13 +29,25 @@ class AdaptixWidget : public QWidget {
     QTabWidget*  mainTabWidget     = nullptr;
     QSpacerItem* horizontalSpacer1 = nullptr;
 
+    AuthProfile profile;
+
     void createUI();
 
 public:
 
-    explicit AdaptixWidget();
+    QThread*         ChannelThread   = nullptr;
+    WebSocketWorker* ChannelWsWorker = nullptr;
+    LogsWidget*      LogsTab         = nullptr;
 
-    void AddNewTab( QWidget* tab, QString title, QString icon = "" );
+    explicit AdaptixWidget(AuthProfile authProfile);
+
+    void AddTab(QWidget* tab, QString title, QString icon = "" );
+    void RemoveTab(int index);
+
+public slots:
+    void ChannelClose();
+    void DataHandler(const QByteArray& data);
+    void LoadLogsUI();
 
 };
 

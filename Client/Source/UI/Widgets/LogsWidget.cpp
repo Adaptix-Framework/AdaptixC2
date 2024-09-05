@@ -24,8 +24,7 @@ void LogsWidget::createUI() {
     logsWidget->setLayout(logsGridLayout);
 
 
-    /// To Do
-
+    /// ToDo: todo list + sync chat
     todoLabel = new QLabel(this);
     todoLabel->setText("ToDo notes");
     todoLabel->setAlignment(Qt::AlignCenter);
@@ -46,7 +45,7 @@ void LogsWidget::createUI() {
     mainHSplitter->setHandleWidth(3);
     mainHSplitter->addWidget(logsWidget);
     mainHSplitter->addWidget(todoWidget);
-    mainHSplitter->setSizes(QList<int>({200, 200}));
+    mainHSplitter->setSizes(QList<int>({200, 40}));
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins(0, 0, 0, 0);
