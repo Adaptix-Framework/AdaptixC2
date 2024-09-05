@@ -4,7 +4,9 @@ MainUI::MainUI() {
     this->setWindowTitle( FRAMEWORK_VERSION );
     if ( this->objectName().isEmpty() )
         this->setObjectName( QString::fromUtf8( "MainUI" ) );
+}
 
-    mainWidget = new AdaptixWidget;
+void MainUI::addNewProject(AuthProfile profile) {
+    mainWidget = new AdaptixWidget(profile);
     this->setCentralWidget(mainWidget);
 }

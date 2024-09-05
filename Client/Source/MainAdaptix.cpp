@@ -26,8 +26,9 @@ void MainAdaptix::Start() {
         return;
     }
 
-    this->mainUI = new MainUI;
-    this->mainUI->showMaximized();
+    mainUI = new MainUI;
+    mainUI->showMaximized();
+    mainUI->addNewProject( authProfile );
 
     QApplication::exec();
 }

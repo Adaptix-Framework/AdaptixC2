@@ -28,6 +28,8 @@ QString AuthProfile::GetPort() { return this->port; };
 
 QString AuthProfile::GetEndpoint() { return this->endpoint; };
 
+QString AuthProfile::GetAccessToken() { return this->accessToken; };
+
 void AuthProfile::SetAccessToken(QString token) { this->accessToken = token; };
 
 void AuthProfile::SetRefreshToken(QString token) { this->refreshToken = token; };

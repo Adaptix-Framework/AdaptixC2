@@ -17,6 +17,12 @@ QPushButton:hover {
     background-color: #4A4A4A;
 }
 
+QPushButton:disabled {
+    background-color: #222222;
+    color: #4A4A4A;
+    border: 1px solid #4A4A4A;
+}
+
 QLineEdit {
     background-color: #2A2A2A;
     border: 1px solid #4A4A4A;
@@ -83,7 +89,7 @@ QTextEdit {
 }
 
 QTabWidget::pane {
-    border: 1px solid #4A4A4A;
+    /*border: 1px solid #4A4A4A;*/
     background-color: #222222;
 }
 

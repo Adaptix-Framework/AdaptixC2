@@ -25,10 +25,10 @@ public:
     QString GetHost();
     QString GetPort();
     QString GetEndpoint();
+    QString GetAccessToken();
     void    SetAccessToken(QString token);
     void    SetRefreshToken(QString token);
 
 };
-
 
 #endif //ADAPTIXCLIENT_AUTHPROFILE_H
