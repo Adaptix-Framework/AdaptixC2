@@ -22,3 +22,7 @@ cd Client
 cmake .
 make
 ```
+
+### Adaptix client-server interaction diagram
+
+![](./docs/adaptix_scheme.png)
