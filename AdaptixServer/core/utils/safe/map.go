@@ -56,3 +56,23 @@ func (s *Map) Len() int {
 	defer s.mutex.RUnlock()
 	return len(s.m)
 }
+
+func (s *Map) ForEach(f func(key string, value interface{})) {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	for key, value := range s.m {
+		f(key, value)
+	}
+}
+
+func (s *Map) DirectLock() {
+	s.mutex.RLock()
+}
+
+func (s *Map) DirectUnlock() {
+	s.mutex.RUnlock()
+}
+
+func (s *Map) DirectMap() map[string]interface{} {
+	return s.m
+}
