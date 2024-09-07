@@ -13,6 +13,7 @@ func NewTeamserver() *Teamserver {
 	ts := new(Teamserver)
 	ts.Profile = profile.NewProfile()
 	ts.clients = safe.NewMap()
+	ts.syncpackets = safe.NewMap()
 	return ts
 }
 

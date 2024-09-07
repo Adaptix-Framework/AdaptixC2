@@ -14,7 +14,7 @@ import (
 
 type Teamserver interface {
 	ClientConnect(username string, socket *websocket.Conn)
-	ClientDisconnect(username string) error
+	ClientDisconnect(username string)
 }
 
 type TsHttpHandler struct {

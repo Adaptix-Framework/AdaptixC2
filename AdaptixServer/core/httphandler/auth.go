@@ -72,8 +72,6 @@ func (th *TsHttpHandler) connect(ctx *gin.Context) {
 		return
 	}
 
-	//defer wsConn.Close()
-
 	go th.handleWsConnect(wsConn)
 }
 
@@ -91,7 +89,8 @@ func (th *TsHttpHandler) handleWsConnect(wsConn *websocket.Conn) {
 		return
 	}
 
-	if err = json.Unmarshal(body, &structToken); err != nil {
+	err = json.Unmarshal(body, &structToken)
+	if err != nil {
 		logs.Error("JSON Unmarshal error: " + err.Error())
 		return
 	}
@@ -110,6 +109,8 @@ func (th *TsHttpHandler) handleWsConnect(wsConn *websocket.Conn) {
 		}
 
 		logs.Debug("User '%s' disconnected: %s\n", username, err.Error())
+
+		th.teamserver.ClientDisconnect(username)
 
 		break
 	}

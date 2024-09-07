@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"github.com/gorilla/websocket"
 )
 
@@ -9,29 +8,23 @@ func (ts *Teamserver) ClientConnect(username string, socket *websocket.Conn) {
 
 	ts.clients.Put(username, socket)
 
-	//TODO: Sync Data to Client
+	ts.SyncStored(socket)
 
-	//TODO: Broadcast LogEvent - UserConnected
+	packet := CreateSpClientConnect(username)
+	ts.SyncSavePacket(packet.store, packet)
+	ts.SyncAllClients(packet)
 }
 
-func (ts *Teamserver) ClientDisconnect(username string) error {
-	var (
-		val    any
-		ok     bool
-		wsConn *websocket.Conn
-		err    error
-	)
+func (ts *Teamserver) ClientDisconnect(username string) {
 
-	val, ok = ts.clients.GetDelete(username)
+	value, ok := ts.clients.GetDelete(username)
 	if !ok {
-		return errors.New("user not found")
+		return
 	}
 
-	wsConn = val.(*websocket.Conn)
+	value.(*websocket.Conn).Close()
 
-	err = wsConn.Close()
-
-	//TODO: Broadcast LogEvent - UserDisconnected
-
-	return err
+	packet := CreateSpClientDisconnect(username)
+	ts.SyncSavePacket(packet.store, packet)
+	ts.SyncAllClients(packet)
 }
