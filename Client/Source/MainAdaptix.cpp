@@ -9,6 +9,7 @@ MainAdaptix::MainAdaptix() {
 
 MainAdaptix::~MainAdaptix(){
     delete storage;
+    delete mainUI;
 };
 
 void MainAdaptix::Start() {

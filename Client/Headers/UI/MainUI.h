@@ -12,6 +12,7 @@ class MainUI : public QMainWindow {
 public:
 
     explicit MainUI();
+    ~MainUI();
 
     void addNewProject(AuthProfile profile);
 };

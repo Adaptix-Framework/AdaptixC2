@@ -19,31 +19,31 @@ type Teamserver struct {
 // SyncPacket
 
 type SyncPackerStart struct {
-	SpType    string `json:"type"`
-	SpSubType string `json:"subtype"`
+	SpType    int `json:"type"`
+	SpSubType int `json:"subtype"`
 
 	Count int `json:"count"`
 }
 
 type SyncPackerFinish struct {
-	SpType    string `json:"type"`
-	SpSubType string `json:"subtype"`
+	SpType    int `json:"type"`
+	SpSubType int `json:"subtype"`
 }
 
 type SyncPackerClientConnect struct {
 	store        string
-	SpCreateTime int64  `json:"time"`
-	SpType       string `json:"type"`
-	SpSubType    string `json:"subtype"`
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+	SpSubType    int   `json:"subtype"`
 
 	Username string `json:"username"`
 }
 
 type SyncPackerClientDisconnect struct {
 	store        string
-	SpCreateTime int64  `json:"time"`
-	SpType       string `json:"type"`
-	SpSubType    string `json:"subtype"`
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+	SpSubType    int   `json:"subtype"`
 
 	Username string `json:"username"`
 }

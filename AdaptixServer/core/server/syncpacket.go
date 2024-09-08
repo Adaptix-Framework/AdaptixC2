@@ -3,21 +3,21 @@ package server
 import "time"
 
 const (
-	storeLog = "log"
+	STORE_LOG = "log"
 
-	typeSync       = "sync"
-	typeSyncStart  = "start"
-	typeSyncFinish = "finish"
+	TYPE_SYNC        = 10
+	TYPE_SYNC_START  = 11
+	TYPE_SYNC_FINISH = 12
 
-	typeClient           = "client"
-	typeClientConnect    = "connect"
-	typeClientDisconnect = "disconnect"
+	TYPE_CLIENT            = 20
+	TYPE_CLIENT_CONNECT    = 21
+	TYPE_CLIENT_DISCONNECT = 22
 )
 
 func CreateSpSyncStart(count int) SyncPackerStart {
 	return SyncPackerStart{
-		SpType:    typeSync,
-		SpSubType: typeSyncStart,
+		SpType:    TYPE_SYNC,
+		SpSubType: TYPE_SYNC_START,
 
 		Count: count,
 	}
@@ -25,17 +25,17 @@ func CreateSpSyncStart(count int) SyncPackerStart {
 
 func CreateSpSyncFinish() SyncPackerFinish {
 	return SyncPackerFinish{
-		SpType:    typeSync,
-		SpSubType: typeSyncFinish,
+		SpType:    TYPE_SYNC,
+		SpSubType: TYPE_SYNC_FINISH,
 	}
 }
 
 func CreateSpClientConnect(username string) SyncPackerClientConnect {
 	return SyncPackerClientConnect{
-		store:        storeLog,
+		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
-		SpType:       typeClient,
-		SpSubType:    typeClientConnect,
+		SpType:       TYPE_CLIENT,
+		SpSubType:    TYPE_CLIENT_CONNECT,
 
 		Username: username,
 	}
@@ -43,10 +43,10 @@ func CreateSpClientConnect(username string) SyncPackerClientConnect {
 
 func CreateSpClientDisconnect(username string) SyncPackerClientDisconnect {
 	return SyncPackerClientDisconnect{
-		store:        storeLog,
+		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
-		SpType:       typeClient,
-		SpSubType:    typeClientDisconnect,
+		SpType:       TYPE_CLIENT,
+		SpSubType:    TYPE_CLIENT_DISCONNECT,
 
 		Username: username,
 	}

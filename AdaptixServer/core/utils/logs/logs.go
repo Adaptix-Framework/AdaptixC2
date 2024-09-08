@@ -19,10 +19,10 @@ func NewPrintLogger(debug bool) {
 }
 
 func logMessage(symbol string, color string, format string, a ...interface{}) {
-	timestamp := tformat.SetBold(time.Now().Format("2006-01-02 15:04:05"))
+	timestamp := tformat.SetBold(time.Now().Format("02/01 15:04:05"))
 	message := fmt.Sprintf(format, a...)
 	mark := tformat.SetColor(symbol, color)
-	fmt.Printf("%s %s (%s)\n", mark, message, timestamp)
+	fmt.Printf("%s %s [%s]\n", mark, message, timestamp)
 }
 
 func Info(format string, a ...interface{}) {

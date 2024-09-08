@@ -10,3 +10,7 @@ void MainUI::addNewProject(AuthProfile profile) {
     mainWidget = new AdaptixWidget(profile);
     this->setCentralWidget(mainWidget);
 }
+
+MainUI::~MainUI() {
+    delete mainWidget;
+}

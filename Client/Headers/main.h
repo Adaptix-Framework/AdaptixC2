@@ -21,18 +21,28 @@
 #include <QSslConfiguration>
 #include <QJsonObject>
 #include <QJsonDocument>
+#include <QJsonArray>
 #include <QNetworkReply>
 #include <QMainWindow>
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QTextEdit>
 #include <QThread>
+#include <QProgressBar>
 #include <QtWebSockets/QWebSocket>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
-#include <Utils/Valid.h>
+#include <Utils/Convert.h>
 
 #define FRAMEWORK_VERSION "Adaptix Framework vDEV-0.1"
+
+#define TYPE_SYNC        10
+#define TYPE_SYNC_START  11
+#define TYPE_SYNC_FINISH 12
+
+#define TYPE_CLIENT            20
+#define TYPE_CLIENT_CONNECT    21
+#define TYPE_CLIENT_DISCONNECT 22
 
 #endif //ADAPTIXCLIENT_MAIN_H

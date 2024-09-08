@@ -4,6 +4,18 @@ LogsWidget::LogsWidget() {
     this->createUI();
 }
 
+LogsWidget::~LogsWidget() {
+    delete mainGridLayout;
+    delete logsGridLayout;
+    delete todoGridLayout;
+    delete logsConsoleTextEdit;
+    delete logsLabel;
+    delete todoLabel;
+    delete mainHSplitter;
+    delete logsWidget;
+    delete todoWidget;
+}
+
 void LogsWidget::createUI() {
 
     /// Logs
@@ -53,4 +65,10 @@ void LogsWidget::createUI() {
     mainGridLayout->addWidget( mainHSplitter, 0, 0, 1, 1);
 
     this->setLayout( mainGridLayout );
+}
+
+void LogsWidget::AddLogs( int type, qint64 time, QString message ) {
+    QString sTime = UnixTimestampGlobalToStringLocal(time);
+    QString log = QString("[%1] %2").arg(sTime).arg(message);
+    logsConsoleTextEdit->append(log);
 }

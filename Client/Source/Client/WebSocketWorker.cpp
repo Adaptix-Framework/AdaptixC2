@@ -4,7 +4,9 @@ WebSocketWorker::WebSocketWorker(AuthProfile authProfile) {
     profile = authProfile;
 }
 
-WebSocketWorker::~WebSocketWorker() = default;
+WebSocketWorker::~WebSocketWorker(){
+    delete webSocket;
+};
 
 void WebSocketWorker::run() {
     webSocket = new QWebSocket;

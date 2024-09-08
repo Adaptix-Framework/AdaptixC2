@@ -25,7 +25,7 @@ SET( HEADERS
         Headers/main.h
         Headers/Utils/Logs.h
         Headers/UI/Dialogs/DialogConnect.h
-        Headers/Utils/Valid.h
+        Headers/Utils/Convert.h
         Headers/MainAdaptix.h
         Headers/Client/Storage.h
         Headers/Client/AuthProfile.h
@@ -34,7 +34,9 @@ SET( HEADERS
         Headers/UI/MainUI.h
         Headers/UI/Widgets/AdaptixWidget.h
         Headers/UI/Widgets/LogsWidget.h
+        Headers/UI/Сomponents/CustomTabWidget.h
         Headers/Client/WebSocketWorker.h
+        Headers/UI/Dialogs/DialogSyncPacket.h
 )
 
 add_executable(AdaptixClient
@@ -46,7 +48,7 @@ add_executable(AdaptixClient
         Resources/Resources.qrc
         Source/Utils/Logs.cpp
         Source/UI/Dialogs/DialogConnect.cpp
-        Source/Utils/Valid.cpp
+        Source/Utils/Convert.cpp
         Source/MainAdaptix.cpp
         Source/Client/Storage.cpp
         Source/Client/AuthProfile.cpp
@@ -55,7 +57,10 @@ add_executable(AdaptixClient
         Source/UI/MainUI.cpp
         Source/UI/Widgets/AdaptixWidget.cpp
         Source/UI/Widgets/LogsWidget.cpp
+        Source/UI/Сomponents/CustomTabWidget.cpp
         Source/Client/WebSocketWorker.cpp
+        Source/UI/Dialogs/DialogSyncPacket.cpp
+        Source/Client/ProcessSyncPacket.cpp
 )
 
 target_link_libraries(AdaptixClient

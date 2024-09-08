@@ -4,6 +4,7 @@
 #include <main.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <Client/WebSocketWorker.h>
+#include <UI/Dialogs/DialogSyncPacket.h>
 
 class AdaptixWidget : public QWidget {
 
@@ -29,9 +30,12 @@ class AdaptixWidget : public QWidget {
     QTabWidget*  mainTabWidget     = nullptr;
     QSpacerItem* horizontalSpacer1 = nullptr;
 
-    AuthProfile profile;
+    AuthProfile       profile;
+    DialogSyncPacket* dialogSyncPacket = nullptr;
 
     void createUI();
+    bool isValidSyncPacket(QJsonObject jsonObj);
+    void processSyncPacket(QJsonObject jsonObj);
 
 public:
 
@@ -40,6 +44,7 @@ public:
     LogsWidget*      LogsTab         = nullptr;
 
     explicit AdaptixWidget(AuthProfile authProfile);
+    ~AdaptixWidget();
 
     void AddTab(QWidget* tab, QString title, QString icon = "" );
     void RemoveTab(int index);
