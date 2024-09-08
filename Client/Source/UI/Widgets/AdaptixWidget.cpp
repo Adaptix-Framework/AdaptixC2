@@ -11,12 +11,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile) {
     ChannelWsWorker = new WebSocketWorker( authProfile );
     ChannelWsWorker->moveToThread( ChannelThread );
 
-
-    /// For test
-    auto logsTab2 = new LogsWidget;
-    this->AddTab(logsTab2, "Logs Tab2", ":/icons/picture");
-    //
-
     connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
     connect( logsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
 
@@ -42,6 +36,30 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile) {
     reconnectButton->setEnabled(false);
     //
 
+}
+
+AdaptixWidget::~AdaptixWidget() {
+    delete mainGridLayout;
+    delete topHLayout;
+    delete listenersButton;
+    delete logsButton;
+    delete sessionsButton;
+    delete graphButton;
+    delete targetsButton;
+    delete jobsButton;
+    delete proxyButton;
+    delete downloadsButton;
+    delete credsButton;
+    delete screensButton;
+    delete keysButton;
+    delete reconnectButton;
+    delete line_1;
+    delete line_2;
+    delete line_3;
+    delete line_4;
+    delete mainVSplitter;
+    delete mainTabWidget;
+    delete horizontalSpacer1;
 }
 
 void AdaptixWidget::createUI() {
@@ -188,6 +206,8 @@ void AdaptixWidget::createUI() {
     this->setLayout(mainGridLayout );
 }
 
+
+
 void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon) {
     if ( mainTabWidget->count() == 0 )
         mainVSplitter->setSizes(QList<int>() << 100 << 200);
@@ -220,11 +240,28 @@ void AdaptixWidget::LoadLogsUI() {
     this->AddTab(LogsTab, "Logs", ":/icons/logs");
 }
 
+
+
 void AdaptixWidget::ChannelClose() {
     LogInfo("WebSocker closed");
 }
 
 void AdaptixWidget::DataHandler(const QByteArray &data) {
-    LogSuccess("Received data");
-}
+//    LogSuccess("Received data %s", data.toStdString().data());
 
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
+
+    if ( parseError.error != QJsonParseError::NoError || !jsonDoc.isObject() ) {
+        LogError("Error parsing JSON data: %s", parseError.errorString());
+        return;
+    }
+
+    QJsonObject jsonObj = jsonDoc.object();
+    if( !this->isValidSyncPacket(jsonObj) ) {
+        LogError("Invalid SyncPacket");
+        return;
+    }
+
+    this->processSyncPacket(jsonObj);
+}

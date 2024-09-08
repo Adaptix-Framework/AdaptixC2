@@ -19,6 +19,9 @@ class LogsWidget : public QWidget {
 public:
 
     explicit LogsWidget();
+    ~LogsWidget();
+
+     void AddLogs( int type, qint64 time, QString Message);
 
 };
 
