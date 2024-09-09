@@ -10,6 +10,7 @@
 #include <QTableWidget>
 #include <QPushButton>
 #include <QMenu>
+#include <QMenuBar>
 #include <QDir>
 #include <QMessageBox>
 #include <QHeaderView>
@@ -29,6 +30,8 @@
 #include <QTextEdit>
 #include <QThread>
 #include <QProgressBar>
+#include <QComboBox>
+#include <QGroupBox>
 #include <QtWebSockets/QWebSocket>
 
 #include <Utils/Logs.h>

@@ -37,6 +37,8 @@ SET( HEADERS
         Headers/UI/Сomponents/CustomTabWidget.h
         Headers/Client/WebSocketWorker.h
         Headers/UI/Dialogs/DialogSyncPacket.h
+        Headers/UI/Widgets/ListenersWidget.h
+        Headers/UI/Dialogs/DialogListener.h
 )
 
 add_executable(AdaptixClient
@@ -61,6 +63,8 @@ add_executable(AdaptixClient
         Source/Client/WebSocketWorker.cpp
         Source/UI/Dialogs/DialogSyncPacket.cpp
         Source/Client/ProcessSyncPacket.cpp
+        Source/UI/Widgets/ListenersWidget.cpp
+        Source/UI/Dialogs/DialogListener.cpp
 )
 
 target_link_libraries(AdaptixClient

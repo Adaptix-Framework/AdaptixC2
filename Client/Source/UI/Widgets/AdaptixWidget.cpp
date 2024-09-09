@@ -13,6 +13,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile) {
 
     connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
     connect( logsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
+    connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
 
     connect( ChannelThread, &QThread::started, ChannelWsWorker, &WebSocketWorker::run );
     connect( ChannelWsWorker, &WebSocketWorker::received_data, this, &AdaptixWidget::DataHandler );
@@ -23,17 +24,19 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile) {
 
 
     // TODO: Enable menu button
-    listenersButton->setEnabled(false);
-    sessionsButton->setEnabled(false);
-    graphButton->setEnabled(false);
-    targetsButton->setEnabled(false);
-    jobsButton->setEnabled(false);
-    proxyButton->setEnabled(false);
-    downloadsButton->setEnabled(false);
-    credsButton->setEnabled(false);
-    screensButton->setEnabled(false);
-    keysButton->setEnabled(false);
-    reconnectButton->setEnabled(false);
+    sessionsButton->setVisible(false);
+    graphButton->setVisible(false);
+    targetsButton->setVisible(false);
+    line_2->setVisible(false);
+    jobsButton->setVisible(false);
+    proxyButton->setVisible(false);
+    line_3->setVisible(false);
+    downloadsButton->setVisible(false);
+    credsButton->setVisible(false);
+    screensButton->setVisible(false);
+    keysButton->setVisible(false);
+    line_4->setVisible(false);
+    reconnectButton->setVisible(false);
     //
 
 }
@@ -64,13 +67,13 @@ AdaptixWidget::~AdaptixWidget() {
 
 void AdaptixWidget::createUI() {
     listenersButton = new QPushButton( QIcon(":/icons/listeners"), "", this );
-    listenersButton->setObjectName( QString::fromUtf8( "ListenersButton" ) );
+    listenersButton->setObjectName( QString::fromUtf8( "ListenersButtonAdaptix" ) );
     listenersButton->setIconSize( QSize( 24,24 ));
     listenersButton->setFixedSize(37, 28);
     listenersButton->setToolTip("Listeners & Sites");
 
     logsButton = new QPushButton(QIcon(":/icons/logs"), "", this );
-    logsButton->setObjectName( QString::fromUtf8( "LogsButton" ) );
+    logsButton->setObjectName( QString::fromUtf8( "LogsButtonAdaptix" ) );
     logsButton->setIconSize( QSize( 24,24 ));
     logsButton->setFixedSize(37, 28);
     logsButton->setToolTip("Logs");
@@ -80,19 +83,19 @@ void AdaptixWidget::createUI() {
     line_1->setMinimumHeight(25);
 
     sessionsButton = new QPushButton( QIcon(":/icons/format_list"), "", this );
-    sessionsButton->setObjectName( QString::fromUtf8( "SessionsButton" ) );
+    sessionsButton->setObjectName( QString::fromUtf8( "SessionsButtonAdaptix" ) );
     sessionsButton->setIconSize( QSize( 24,24 ));
     sessionsButton->setFixedSize(37, 28);
     sessionsButton->setToolTip("Session table");
 
     graphButton = new QPushButton( QIcon(":/icons/graph"), "", this );
-    graphButton->setObjectName( QString::fromUtf8( "GraphButton" ) );
+    graphButton->setObjectName( QString::fromUtf8( "GraphButtonAdaptix" ) );
     graphButton->setIconSize( QSize( 24,24 ));
     graphButton->setFixedSize(37, 28);
     graphButton->setToolTip("Session graph");
 
     targetsButton = new QPushButton( QIcon(":/icons/devices"), "", this );
-    targetsButton->setObjectName( QString::fromUtf8( "TargetsButton" ) );
+    targetsButton->setObjectName( QString::fromUtf8( "TargetsButtonAdaptix" ) );
     targetsButton->setIconSize( QSize( 24,24 ));
     targetsButton->setFixedSize(37, 28);
     targetsButton->setToolTip("Targets table");
@@ -102,13 +105,13 @@ void AdaptixWidget::createUI() {
     line_2->setMinimumHeight(25);
 
     jobsButton = new QPushButton( QIcon(":/icons/job"), "", this );
-    jobsButton->setObjectName( QString::fromUtf8( "JobsButton" ) );
+    jobsButton->setObjectName( QString::fromUtf8( "JobsButtonAdaptix" ) );
     jobsButton->setIconSize( QSize( 24,24 ));
     jobsButton->setFixedSize(37, 28);
     jobsButton->setToolTip("Jobs & Tasks");
 
     proxyButton = new QPushButton( QIcon(":/icons/vpn"), "", this );
-    proxyButton->setObjectName( QString::fromUtf8( "ProxyButton" ) );
+    proxyButton->setObjectName( QString::fromUtf8( "ProxyButtonAdaptix" ) );
     proxyButton->setIconSize( QSize( 24,24 ));
     proxyButton->setFixedSize(37, 28);
     proxyButton->setToolTip("Proxy tables");
@@ -118,25 +121,25 @@ void AdaptixWidget::createUI() {
     line_3->setMinimumHeight(25);
 
     downloadsButton = new QPushButton( QIcon(":/icons/downloads"), "", this );
-    downloadsButton->setObjectName( QString::fromUtf8( "DownloadsButton" ) );
+    downloadsButton->setObjectName( QString::fromUtf8( "DownloadsButtonAdaptix" ) );
     downloadsButton->setIconSize( QSize( 24,24 ));
     downloadsButton->setFixedSize(37, 28);
     downloadsButton->setToolTip("Downloads");
 
     credsButton = new QPushButton( QIcon(":/icons/key"), "", this );
-    credsButton->setObjectName( QString::fromUtf8( "CredentialsButton" ) );
+    credsButton->setObjectName( QString::fromUtf8( "CredentialsButtonAdaptix" ) );
     credsButton->setIconSize( QSize( 24,24 ));
     credsButton->setFixedSize(37, 28);
     credsButton->setToolTip("Credentials");
 
     screensButton = new QPushButton( QIcon(":/icons/picture"), "", this );
-    screensButton->setObjectName( QString::fromUtf8( "ScreensButton" ) );
+    screensButton->setObjectName( QString::fromUtf8( "ScreensButtonAdaptix" ) );
     screensButton->setIconSize( QSize( 24,24 ));
     screensButton->setFixedSize(37, 28);
     screensButton->setToolTip("Screens");
 
     keysButton = new QPushButton( QIcon(":/icons/keyboard"), "", this );
-    keysButton->setObjectName( QString::fromUtf8( "KeystrokesButton" ) );
+    keysButton->setObjectName( QString::fromUtf8( "KeystrokesButtonAdaptix" ) );
     keysButton->setIconSize( QSize( 24,24 ));
     keysButton->setFixedSize(37, 28);
     keysButton->setToolTip("Keystrokes");
@@ -146,7 +149,7 @@ void AdaptixWidget::createUI() {
     line_4->setMinimumHeight(25);
 
     reconnectButton = new QPushButton(QIcon(":/icons/link"), "");
-    reconnectButton->setObjectName("ReconnectButton");
+    reconnectButton->setObjectName("ReconnectButtonAdaptix");
     reconnectButton->setIconSize( QSize( 24,24 ));
     reconnectButton->setFixedSize(37, 28);
     keysButton->setToolTip("Reconnect to C2");
@@ -155,7 +158,7 @@ void AdaptixWidget::createUI() {
 
 
     topHLayout = new QHBoxLayout;
-    topHLayout->setObjectName(QString::fromUtf8("TopLayout" ) );
+    topHLayout->setObjectName(QString::fromUtf8("TopLayoutAdaptix" ) );
     topHLayout->setContentsMargins(5, 5, 0, 5);
     topHLayout->setSpacing(10);
     topHLayout->setAlignment(Qt::AlignLeft);
@@ -184,7 +187,7 @@ void AdaptixWidget::createUI() {
     //
 
     mainTabWidget = new QTabWidget(this);
-    mainTabWidget->setObjectName( QString::fromUtf8( "MainTabWidget" ) );
+    mainTabWidget->setObjectName( QString::fromUtf8( "MainTabAdaptix" ) );
     mainTabWidget->setCurrentIndex( 0 );
     mainTabWidget->setMovable( false );
     mainTabWidget->setTabsClosable( true );
@@ -238,6 +241,13 @@ void AdaptixWidget::LoadLogsUI() {
         LogsTab = new LogsWidget;
 
     this->AddTab(LogsTab, "Logs", ":/icons/logs");
+}
+
+void AdaptixWidget::LoadListenersUI() {
+    if ( ListenersTab == nullptr )
+        ListenersTab = new ListenersWidget;
+
+    this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
 }
 
 

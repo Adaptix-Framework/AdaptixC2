@@ -69,6 +69,6 @@ void LogsWidget::createUI() {
 
 void LogsWidget::AddLogs( int type, qint64 time, QString message ) {
     QString sTime = UnixTimestampGlobalToStringLocal(time);
-    QString log = QString("[%1] %2").arg(sTime).arg(message);
+    QString log = QString("[%1] -> %2").arg(sTime).arg(message);
     logsConsoleTextEdit->append(log);
 }

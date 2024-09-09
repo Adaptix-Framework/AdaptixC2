@@ -2,9 +2,10 @@
 #define ADAPTIXCLIENT_ADAPTIXWIDGET_H
 
 #include <main.h>
-#include <UI/Widgets/LogsWidget.h>
 #include <Client/WebSocketWorker.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
+#include <UI/Widgets/LogsWidget.h>
+#include <UI/Widgets/ListenersWidget.h>
 
 class AdaptixWidget : public QWidget {
 
@@ -42,6 +43,7 @@ public:
     QThread*         ChannelThread   = nullptr;
     WebSocketWorker* ChannelWsWorker = nullptr;
     LogsWidget*      LogsTab         = nullptr;
+    ListenersWidget* ListenersTab    = nullptr;
 
     explicit AdaptixWidget(AuthProfile authProfile);
     ~AdaptixWidget();
@@ -52,7 +54,9 @@ public:
 public slots:
     void ChannelClose();
     void DataHandler(const QByteArray& data);
+
     void LoadLogsUI();
+    void LoadListenersUI();
 
 };
 
