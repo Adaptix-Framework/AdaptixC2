@@ -179,6 +179,9 @@ AuthProfile DialogConnect::StartDialog() {
 }
 
 void DialogConnect::itemRemove() const {
+    if( tableWidget->selectedItems().count() == 0 )
+        return;
+
     QString Project = tableWidget->item(tableWidget->currentRow(), 1)->text();
     GlobalClient->storage->RemoveProject(Project);
     tableWidget->removeRow(tableWidget->currentRow());

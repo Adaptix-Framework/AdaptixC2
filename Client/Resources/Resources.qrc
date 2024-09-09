@@ -17,6 +17,7 @@
     <qresource prefix="/icons">
         <file alias="close">icons/close_dp64.png</file>
         <file alias="listeners">icons/headphones_64dp.png</file>
+        <file alias="double_arrow_down">icons/double_arrow_down_64dp.png</file>
         <file alias="format_list">icons/format_list_bulleted_64dp.png</file>
         <file alias="logs">icons/notes_64dp.png</file>
         <file alias="graph">icons/hub_64dp.png</file>

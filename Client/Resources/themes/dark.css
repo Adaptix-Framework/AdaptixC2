@@ -39,7 +39,6 @@ QLineEdit {
 
 
 
-
 QTableWidget {
     background-color: #2A2A2A;
     alternate-background-color: #2E2E2E;
@@ -64,6 +63,7 @@ QTableWidget::item:selected {
 QMenu {
     background-color: #1E1E1E;
     border: 1px solid #4A4A4A;
+    border-radius: 4px;
 }
 
 QMenu::item {
@@ -201,4 +201,61 @@ QScrollBar::add-line:vertical:hover, QScrollBar::sub-line:vertical:hover {
 
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
     background: none;
+}
+
+
+QComboBox {
+    background-color: #2A2A2A;
+    color: #E0E0E0;
+    border: 1px solid #4A4A4A;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+QComboBox::drop-down {
+    background-color: #333333;
+    border-left: 1px solid #4A4A4A;
+}
+
+QComboBox::down-arrow {
+    image: url(:/icons/double_arrow_down);
+    width: 20px;
+    height: 20px;
+}
+
+QComboBox QAbstractItemView::item {
+    background-color: #2A2A2A;
+    color: #E0E0E0;
+    padding: 2px;
+    border-radius: 4px;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #4A4A4A;
+    color: #FFFFFF;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #4A4A4A;
+    color: #FFFFFF;
+}
+
+
+
+QGroupBox {
+    border: 2px solid #4A4A4A;
+    border-radius: 6px;
+    margin-top: 20px;
+    background-color: #2A2A2A;
+    padding: 10px;
+    color: #E0E0E0;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top center;
+    padding: 0 3px;
+    background-color: #2A2A2A;
+    color: #E0E0E0;
+    border-radius: 3px;
 }

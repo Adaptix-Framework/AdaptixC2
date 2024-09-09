@@ -5,10 +5,10 @@
 
 class DialogSyncPacket : public QDialog
 {
-    QLabel       *logNameLabel     = nullptr;
-    QLabel       *logProgressLabel = nullptr;
-    QProgressBar *progressBar      = nullptr;
-    QVBoxLayout  *layout           = nullptr;
+    QLabel*       logNameLabel     = nullptr;
+    QLabel*       logProgressLabel = nullptr;
+    QProgressBar* progressBar      = nullptr;
+    QVBoxLayout*  layout           = nullptr;
 
 public:
     int totalLogs;
