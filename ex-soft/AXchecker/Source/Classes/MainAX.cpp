@@ -16,6 +16,9 @@ MainAX::~MainAX() {
 };
 
 void MainAX::createUI() {
+    this->setWindowTitle("AX Checker");
+//    this->resize(600, 400);
+
     mainLayout = new QVBoxLayout(this);
 
     configTextarea = new QTextEdit(this);
@@ -86,4 +89,9 @@ void MainAX::BuildForm() {
             }
         }
     }
+}
+
+void MainAX::Start() {
+    this->show();
+    QApplication::exec();
 }

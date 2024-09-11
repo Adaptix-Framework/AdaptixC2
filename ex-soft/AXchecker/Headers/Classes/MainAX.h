@@ -24,6 +24,8 @@ public:
     explicit MainAX();
     ~MainAX() override;
 
+    void Start();
+
 public slots:
     void SelectFile();
     void BuildForm();
