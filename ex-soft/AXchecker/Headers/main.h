@@ -14,5 +14,10 @@
 #include <QJsonParseError>
 #include <QDialogButtonBox>
 #include <QLabel>
+#include <QComboBox>
+#include <QPlainTextEdit>
+#include <QCheckBox>
+#include <QTableWidget>
+#include <QHeaderView>
 
 #endif //AXCHECKER_MAIN_H
