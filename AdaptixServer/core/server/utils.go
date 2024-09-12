@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/extender"
 	"AdaptixServer/core/httphandler"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
@@ -11,6 +12,7 @@ import (
 type Teamserver struct {
 	Profile       *profile.AdaptixProfile
 	AdaptixServer *httphandler.TsHttpHandler
+	Extender      *extender.AdaptixExtender
 
 	clients     safe.Map
 	syncpackets safe.Map

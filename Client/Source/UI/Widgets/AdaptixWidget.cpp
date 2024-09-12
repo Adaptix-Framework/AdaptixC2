@@ -42,26 +42,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile) {
 }
 
 AdaptixWidget::~AdaptixWidget() {
-    delete mainGridLayout;
-    delete topHLayout;
-    delete listenersButton;
-    delete logsButton;
-    delete sessionsButton;
-    delete graphButton;
-    delete targetsButton;
-    delete jobsButton;
-    delete proxyButton;
-    delete downloadsButton;
-    delete credsButton;
-    delete screensButton;
-    delete keysButton;
-    delete reconnectButton;
-    delete line_1;
-    delete line_2;
-    delete line_3;
-    delete line_4;
-    delete mainVSplitter;
-    delete mainTabWidget;
     delete horizontalSpacer1;
 }
 
@@ -157,7 +137,7 @@ void AdaptixWidget::createUI() {
     horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
 
-    topHLayout = new QHBoxLayout;
+    topHLayout = new QHBoxLayout(this);
     topHLayout->setObjectName(QString::fromUtf8("TopLayoutAdaptix" ) );
     topHLayout->setContentsMargins(5, 5, 0, 5);
     topHLayout->setSpacing(10);

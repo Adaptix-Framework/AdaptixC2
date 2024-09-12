@@ -9,19 +9,20 @@ import (
 	"os"
 )
 
-const VERSION = 0.1
+const VERSION = "0.1-DEV"
 
 func main() {
-	fmt.Printf("\n[===== Adaptix Framework v%v by HackerRalf =====]\n\n", VERSION)
+	fmt.Printf("\n[===== Adaptix Framework v%v by RalfHacker =====]\n\n", VERSION)
 
 	var (
-		port        = flag.Int("p", 0, "Teamserver handler port")
-		endpoint    = flag.String("e", "", "Teamserver URI endpoint")
-		password    = flag.String("pw", "", "Teamserver password")
-		certPath    = flag.String("sc", "", "Path to the SSL certificate")
-		keyPath     = flag.String("sk", "", "Path to the SSL key")
-		debug       = flag.Bool("debug", false, "Enable debug mode")
-		profilePath = flag.String("profile", "", "Path to JSON profile file")
+		port         = flag.Int("p", 0, "Teamserver handler port")
+		endpoint     = flag.String("e", "", "Teamserver URI endpoint")
+		password     = flag.String("pw", "", "Teamserver password")
+		certPath     = flag.String("sc", "", "Path to the SSL certificate")
+		keyPath      = flag.String("sk", "", "Path to the SSL key")
+		extenderPath = flag.String("ex", "", "Path to the extender file")
+		debug        = flag.Bool("debug", false, "Enable debug mode")
+		profilePath  = flag.String("profile", "", "Path to JSON profile file")
 	)
 
 	flag.Usage = func() {
@@ -30,7 +31,7 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Printf("\nEither provide options individually or use a JSON config file with -config flag.\n\n")
 		fmt.Printf("Example:\n")
-		fmt.Printf("   AdaptixServer -p port -pw password -e endpoint -sc SslCert -sk SslKey [-debug]\n")
+		fmt.Printf("   AdaptixServer -p port -pw password -e endpoint -sc SslCert -sk SslKey [-ex extender_file] [-debug]\n")
 		fmt.Printf("   AdaptixServer -profile profile.json [-debug] \n")
 	}
 
@@ -49,7 +50,7 @@ func main() {
 			os.Exit(1)
 		}
 	} else if *port > 1 && *port < 65535 && *endpoint != "" && *password != "" {
-		ts.SetSettings(*port, *endpoint, *password, *certPath, *keyPath)
+		ts.SetSettings(*port, *endpoint, *password, *certPath, *keyPath, *extenderPath)
 	} else {
 		flag.Usage()
 		os.Exit(0)
@@ -61,5 +62,6 @@ func main() {
 		os.Exit(0)
 	}
 
+	ts.Extender.InitPlugins(ts.Profile.Server.Ext)
 	ts.Start()
 }
