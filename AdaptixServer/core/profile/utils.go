@@ -10,4 +10,5 @@ type TsProfile struct {
 	Password string `json:"password"`
 	Cert     string `json:"cert"`
 	Key      string `json:"key"`
+	Ext      string `json:"extender"`
 }

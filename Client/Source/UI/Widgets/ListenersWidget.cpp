@@ -6,11 +6,7 @@ ListenersWidget::ListenersWidget() {
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &ListenersWidget::handleListenersMenu );
 }
 
-ListenersWidget::~ListenersWidget() {
-    delete mainGridLayout;
-    delete tableWidget;
-    delete menuListeners;
-}
+ListenersWidget::~ListenersWidget() = default;
 
 void ListenersWidget::createUI() {
 
@@ -22,9 +18,8 @@ void ListenersWidget::createUI() {
     menuListeners->addAction( "Create", this, &ListenersWidget::CreateListener );
 
     tableWidget = new QTableWidget( this );
-    if ( tableWidget->columnCount() < 6 )
-        tableWidget->setColumnCount( 6 );
 
+    tableWidget->setColumnCount( 6 );
     tableWidget->setObjectName( QString::fromUtf8( "ListenersTableListeners" ) );
     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
     tableWidget->addAction( menuListeners->menuAction() );
@@ -36,6 +31,7 @@ void ListenersWidget::createUI() {
     tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
     tableWidget->setSelectionMode( QAbstractItemView::SingleSelection );
     tableWidget->setFocusPolicy( Qt::NoFocus );
+    tableWidget->setAlternatingRowColors( true );
     tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
     tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
     tableWidget->horizontalHeader()->setHighlightSections( false );

@@ -55,6 +55,16 @@ func (p *AdaptixProfile) IsVaid() error {
 		}
 	}
 
+	if p.Server.Ext != "" {
+		_, err := os.Stat(p.Server.Ext)
+		if err != nil {
+			if os.IsNotExist(err) {
+				logs.Error("'Teamserver.extender': file does not exists")
+				valid = false
+			}
+		}
+	}
+
 	if valid {
 		return nil
 	} else {

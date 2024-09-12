@@ -4,17 +4,7 @@ LogsWidget::LogsWidget() {
     this->createUI();
 }
 
-LogsWidget::~LogsWidget() {
-    delete mainGridLayout;
-    delete logsGridLayout;
-    delete todoGridLayout;
-    delete logsConsoleTextEdit;
-    delete logsLabel;
-    delete todoLabel;
-    delete mainHSplitter;
-    delete logsWidget;
-    delete todoWidget;
-}
+LogsWidget::~LogsWidget() = default;
 
 void LogsWidget::createUI() {
 

@@ -4,6 +4,7 @@
     "endpoint": "/endpoint",
     "password": "pass",
     "cert": "server.rsa.crt",
-    "key": "server.rsa.key"
+    "key": "server.rsa.key",
+    "extender": "extender.txt"
   }
 }

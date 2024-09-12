@@ -4,9 +4,7 @@ DialogListener::DialogListener() {
     this->createUI();
 }
 
-DialogListener::~DialogListener() {
-
-}
+DialogListener::~DialogListener() = default;
 
 void DialogListener::createUI() {
     this->resize( 650, 650 );

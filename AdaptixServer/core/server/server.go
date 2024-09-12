@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/extender"
 	"AdaptixServer/core/httphandler"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/logs"
@@ -12,18 +13,20 @@ import (
 func NewTeamserver() *Teamserver {
 	ts := new(Teamserver)
 	ts.Profile = profile.NewProfile()
+	ts.Extender = extender.NewExtender(ts)
 	ts.clients = safe.NewMap()
 	ts.syncpackets = safe.NewMap()
 	return ts
 }
 
-func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string) {
+func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, ext string) {
 	ts.Profile.Server = &profile.TsProfile{
 		Port:     port,
 		Endpoint: endpoint,
 		Password: password,
 		Cert:     cert,
 		Key:      key,
+		Ext:      ext,
 	}
 }
 

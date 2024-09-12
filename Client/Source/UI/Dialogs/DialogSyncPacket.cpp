@@ -24,12 +24,7 @@ DialogSyncPacket::DialogSyncPacket(int total) {
     this->show();
 }
 
-DialogSyncPacket::~DialogSyncPacket() {
-    delete logNameLabel;
-    delete logProgressLabel;
-    delete progressBar;
-    delete layout;
-}
+DialogSyncPacket::~DialogSyncPacket() = default;
 
 void DialogSyncPacket::upgrade() {
     QString progress = QString("Received: %1 / %2").arg(receivedLogs).arg(totalLogs);

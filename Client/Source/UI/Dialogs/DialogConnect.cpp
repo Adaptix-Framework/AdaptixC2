@@ -18,26 +18,7 @@ DialogConnect::DialogConnect() {
     tableWidget->show();
 }
 
-DialogConnect::~DialogConnect() {
-    delete gridLayout;
-    delete label_UserInfo;
-    delete label_User;
-    delete label_Password;
-    delete label_ServerDetails;
-    delete label_Project;
-    delete label_Host;
-    delete label_Port;
-    delete label_Endpoint;
-    delete lineEdit_User;
-    delete lineEdit_Password;
-    delete lineEdit_Project;
-    delete lineEdit_Host;
-    delete lineEdit_Port;
-    delete lineEdit_Endpoint;
-    delete ButtonConnect;
-    delete tableWidget;
-    delete menuContex;
-}
+DialogConnect::~DialogConnect() = default;
 
 void DialogConnect::createUI() {
 
