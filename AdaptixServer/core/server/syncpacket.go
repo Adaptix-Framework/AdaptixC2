@@ -3,7 +3,8 @@ package server
 import "time"
 
 const (
-	STORE_LOG = "log"
+	STORE_LOG  = "log"
+	STORE_INIT = "init"
 
 	TYPE_SYNC        = 10
 	TYPE_SYNC_START  = 11
@@ -12,7 +13,12 @@ const (
 	TYPE_CLIENT            = 20
 	TYPE_CLIENT_CONNECT    = 21
 	TYPE_CLIENT_DISCONNECT = 22
+
+	TYPE_LISTENER     = 31
+	TYPE_LISTENER_NEW = 32
 )
+
+/// SYNC
 
 func CreateSpSyncStart(count int) SyncPackerStart {
 	return SyncPackerStart{
@@ -29,6 +35,8 @@ func CreateSpSyncFinish() SyncPackerFinish {
 		SpSubType: TYPE_SYNC_FINISH,
 	}
 }
+
+/// CLIENT
 
 func CreateSpClientConnect(username string) SyncPackerClientConnect {
 	return SyncPackerClientConnect{
@@ -49,5 +57,18 @@ func CreateSpClientDisconnect(username string) SyncPackerClientDisconnect {
 		SpSubType:    TYPE_CLIENT_DISCONNECT,
 
 		Username: username,
+	}
+}
+
+/// LISTENER
+
+func CreateSpListenerNew(fn string, ui string) SyncPackerListenerNew {
+	return SyncPackerListenerNew{
+		store:     STORE_INIT,
+		SpType:    TYPE_LISTENER,
+		SpSubType: TYPE_LISTENER_NEW,
+
+		ListenerFN: fn,
+		ListenerUI: ui,
 	}
 }

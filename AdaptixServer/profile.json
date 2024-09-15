@@ -5,6 +5,6 @@
     "password": "pass",
     "cert": "server.rsa.crt",
     "key": "server.rsa.key",
-    "extender": "extender.txt"
+    "extender": "extenders/extender.txt"
   }
 }

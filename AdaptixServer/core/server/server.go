@@ -16,6 +16,7 @@ func NewTeamserver() *Teamserver {
 	ts.Extender = extender.NewExtender(ts)
 	ts.clients = safe.NewMap()
 	ts.syncpackets = safe.NewMap()
+	ts.ex_listeners = safe.NewMap()
 	return ts
 }
 

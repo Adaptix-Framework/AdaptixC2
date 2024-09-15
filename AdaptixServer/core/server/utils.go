@@ -14,8 +14,9 @@ type Teamserver struct {
 	AdaptixServer *httphandler.TsHttpHandler
 	Extender      *extender.AdaptixExtender
 
-	clients     safe.Map
-	syncpackets safe.Map
+	clients      safe.Map
+	syncpackets  safe.Map
+	ex_listeners safe.Map
 }
 
 // SyncPacket
@@ -48,4 +49,13 @@ type SyncPackerClientDisconnect struct {
 	SpSubType    int   `json:"subtype"`
 
 	Username string `json:"username"`
+}
+
+type SyncPackerListenerNew struct {
+	store     string
+	SpType    int `json:"type"`
+	SpSubType int `json:"subtype"`
+
+	ListenerFN string `json:"fn"`
+	ListenerUI string `json:"ui"`
 }
