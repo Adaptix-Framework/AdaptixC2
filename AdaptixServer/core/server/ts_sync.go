@@ -82,15 +82,25 @@ func (ts *Teamserver) SyncStored(clientWS *websocket.Conn) {
 		_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 		buffer.Reset()
 
-		sliceLog := mapPackets[STORE_LOG].(*safe.Slice)
-		for value := range sliceLog.Iterator() {
-			_ = json.NewEncoder(&buffer).Encode(value)
-			_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-			buffer.Reset()
+		if ts.syncpackets.Contains(STORE_INIT) {
+			sliceInit := mapPackets[STORE_INIT].(*safe.Slice)
+			for value := range sliceInit.Iterator() {
+				_ = json.NewEncoder(&buffer).Encode(value)
+				_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+				buffer.Reset()
+			}
 		}
 
+		if ts.syncpackets.Contains(STORE_LOG) {
+			sliceLog := mapPackets[STORE_LOG].(*safe.Slice)
+			for value := range sliceLog.Iterator() {
+				_ = json.NewEncoder(&buffer).Encode(value)
+				_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+				buffer.Reset()
+			}
+		}
 		for mKey, mValue := range mapPackets {
-			if mKey != STORE_LOG {
+			if mKey != STORE_LOG && mKey != STORE_INIT {
 				sliceVal := mValue.(*safe.Slice)
 				for value := range sliceVal.Iterator() {
 					_ = json.NewEncoder(&buffer).Encode(value)

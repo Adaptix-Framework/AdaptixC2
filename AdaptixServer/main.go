@@ -62,6 +62,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	ts.Extender.InitPlugins(ts.Profile.Server.Ext)
+	ts.Extender.LoadPlugins(ts.Profile.Server.Ext)
 	ts.Start()
 }

@@ -137,7 +137,7 @@ void AdaptixWidget::createUI() {
     horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
 
-    topHLayout = new QHBoxLayout(this);
+    topHLayout = new QHBoxLayout();
     topHLayout->setObjectName(QString::fromUtf8("TopLayoutAdaptix" ) );
     topHLayout->setContentsMargins(5, 5, 0, 5);
     topHLayout->setSpacing(10);

@@ -1,0 +1,42 @@
+{
+  "layout": "glayout",
+  "elements": [
+    {
+      "type": "label",
+      "text": "Host:",
+      "position": [0, 0, 1, 1]
+    },
+    {
+      "type": "input",
+      "id": "host",
+      "position": [0, 1, 1, 2]
+    },
+    {
+      "type": "label",
+      "text": "Port:",
+      "position": [1, 0, 1, 1]
+    },
+    {
+      "type": "input",
+      "id": "port",
+      "position": [1, 1, 1, 1]
+    },
+    {
+      "type": "checkbox",
+      "text": "Set SSL",
+      "id": "ssl",
+      "position": [2, 1, 1, 1]
+    },
+    {
+      "type": "label",
+      "text": "URI:",
+      "position": [3, 0, 1, 1]
+    },
+    {
+      "type": "input",
+      "id": "uri",
+      "placeholder": "/uri",
+      "position": [3, 1, 1, 1]
+    }
+  ]
+}
