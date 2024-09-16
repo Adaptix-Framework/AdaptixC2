@@ -2,6 +2,8 @@
 
 DialogListener::DialogListener() {
     this->createUI();
+
+    connect(listenerTypeCombobox, &QComboBox::currentTextChanged, this, &DialogListener::changeConfig);
 }
 
 DialogListener::~DialogListener() = default;
@@ -69,4 +71,22 @@ void DialogListener::createUI() {
 
 void DialogListener::Start( ) {
     this->exec();
+}
+
+void DialogListener::AddExListeners(QMap<QString, WidgetBuilder*> listeners) {
+    listenersUI = listeners;
+
+    for (auto w : listenersUI.values()) {
+        configStackWidget->addWidget( w->GetWidget() );
+    }
+
+    listenerTypeCombobox->clear();
+    listenerTypeCombobox->addItems( listenersUI.keys() );
+}
+
+void DialogListener::changeConfig(QString fn) {
+    if (listenersUI[fn]) {
+        auto w = listenersUI[fn]->GetWidget();
+        configStackWidget->setCurrentWidget(w);
+    }
 }
