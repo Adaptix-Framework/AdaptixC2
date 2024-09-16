@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_MAIN_H
 
 #include <QApplication>
+#include <QMap>
 #include <QGridLayout>
 #include <QWidget>
 #include <QDialog>
@@ -28,10 +29,12 @@
 #include <QSplitter>
 #include <QStackedWidget>
 #include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QThread>
 #include <QProgressBar>
 #include <QComboBox>
 #include <QGroupBox>
+#include <QCheckBox>
 #include <QtWebSockets/QWebSocket>
 
 #include <Utils/Logs.h>

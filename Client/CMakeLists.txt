@@ -34,11 +34,11 @@ SET( HEADERS
         Headers/UI/MainUI.h
         Headers/UI/Widgets/AdaptixWidget.h
         Headers/UI/Widgets/LogsWidget.h
-        Headers/UI/Сomponents/CustomTabWidget.h
         Headers/Client/WebSocketWorker.h
         Headers/UI/Dialogs/DialogSyncPacket.h
         Headers/UI/Widgets/ListenersWidget.h
         Headers/UI/Dialogs/DialogListener.h
+        Headers/Client/WidgetBuilder.h
 )
 
 add_executable(AdaptixClient
@@ -59,12 +59,12 @@ add_executable(AdaptixClient
         Source/UI/MainUI.cpp
         Source/UI/Widgets/AdaptixWidget.cpp
         Source/UI/Widgets/LogsWidget.cpp
-        Source/UI/Сomponents/CustomTabWidget.cpp
         Source/Client/WebSocketWorker.cpp
         Source/UI/Dialogs/DialogSyncPacket.cpp
         Source/Client/ProcessSyncPacket.cpp
         Source/UI/Widgets/ListenersWidget.cpp
         Source/UI/Dialogs/DialogListener.cpp
+        Source/Client/WidgetBuilder.cpp
 )
 
 target_link_libraries(AdaptixClient

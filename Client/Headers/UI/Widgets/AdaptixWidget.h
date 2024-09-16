@@ -6,8 +6,10 @@
 #include <UI/Dialogs/DialogSyncPacket.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
+#include <Client/WidgetBuilder.h>
 
 class AdaptixWidget : public QWidget {
+Q_OBJECT
 
     QGridLayout* mainGridLayout    = nullptr;
     QHBoxLayout* topHLayout        = nullptr;
@@ -44,6 +46,8 @@ public:
     WebSocketWorker* ChannelWsWorker = nullptr;
     LogsWidget*      LogsTab         = nullptr;
     ListenersWidget* ListenersTab    = nullptr;
+
+    QMap<QString, WidgetBuilder*> RegisterListeners;
 
     explicit AdaptixWidget(AuthProfile authProfile);
     ~AdaptixWidget();

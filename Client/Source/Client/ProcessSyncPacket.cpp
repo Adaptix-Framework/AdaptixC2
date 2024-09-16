@@ -12,8 +12,8 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj) {
             if ( !jsonObj.contains("count") || !jsonObj["count"].isDouble() ) {
                 return false;
             }
-            return true;
         }
+        return true;
     }
 
     if( spType == TYPE_LISTENER ) {
@@ -92,7 +92,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj){
                 QString fn = jsonObj["fn"].toString();
                 QString ui = jsonObj["ui"].toString();
 
-
+                RegisterListeners[fn] = new WidgetBuilder(ui.toLocal8Bit() );
             }
             break;
     }

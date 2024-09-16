@@ -39,7 +39,6 @@ void MainAdaptix::Exit() {
 }
 
 void MainAdaptix::SetApplicationTheme() {
-
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
 
     int FontID = QFontDatabase::addApplicationFont( ":/fonts/DroidSansMono" );

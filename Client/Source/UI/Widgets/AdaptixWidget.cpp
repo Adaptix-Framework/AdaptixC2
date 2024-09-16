@@ -225,7 +225,7 @@ void AdaptixWidget::LoadLogsUI() {
 
 void AdaptixWidget::LoadListenersUI() {
     if ( ListenersTab == nullptr )
-        ListenersTab = new ListenersWidget;
+        ListenersTab = new ListenersWidget(this);
 
     this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
 }

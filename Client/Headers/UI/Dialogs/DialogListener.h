@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_DIALOGLISTENER_H
 
 #include <main.h>
+#include <Client/WidgetBuilder.h>
 
 class DialogListener : public QDialog {
 
@@ -21,14 +22,19 @@ class DialogListener : public QDialog {
     QGroupBox*      listenerConfigGroupbox;
     QStackedWidget* configStackWidget;
 
+    QMap<QString, WidgetBuilder*> listenersUI;
+
     void createUI();
 
 public:
     explicit DialogListener();
     ~DialogListener();
 
+    void AddExListeners(QMap<QString, WidgetBuilder*> listeners);
     void Start();
 
+protected slots:
+    void changeConfig(QString fn);
 };
 
 #endif //ADAPTIXCLIENT_DIALOGLISTENER_H

@@ -1,6 +1,9 @@
 #include <UI/Widgets/ListenersWidget.h>
+#include <UI/Widgets/AdaptixWidget.h>
 
-ListenersWidget::ListenersWidget() {
+ListenersWidget::ListenersWidget(QWidget* w) {
+    this->mainWidget = w;
+
     this->createUI();
 
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &ListenersWidget::handleListenersMenu );
@@ -63,6 +66,10 @@ void ListenersWidget::handleListenersMenu(const QPoint &pos ) const {
 
 void ListenersWidget::CreateListener() {
     dialogListener = new DialogListener;
-    dialogListener->exec();
-}
 
+    auto aw = qobject_cast<AdaptixWidget*>( this->mainWidget );
+    if ( aw ) {
+        dialogListener->AddExListeners( aw->RegisterListeners );
+        dialogListener->Start();
+    }
+}

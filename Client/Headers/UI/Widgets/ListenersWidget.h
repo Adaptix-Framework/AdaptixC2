@@ -6,16 +6,17 @@
 
 class ListenersWidget : public QWidget {
 
-    QGridLayout*  mainGridLayout = nullptr;
-    QTableWidget* tableWidget    = nullptr;
-    QMenu*        menuListeners  = nullptr;
+    QWidget*       mainWidget     = nullptr;
+    QGridLayout*   mainGridLayout = nullptr;
+    QTableWidget*  tableWidget    = nullptr;
+    QMenu*         menuListeners  = nullptr;
 
     DialogListener* dialogListener = nullptr;
 
     void createUI();
 
 public:
-    explicit ListenersWidget();
+    explicit ListenersWidget( QWidget* w );
     ~ListenersWidget();
 
 public slots:
