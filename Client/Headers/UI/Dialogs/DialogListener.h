@@ -3,9 +3,9 @@
 
 #include <main.h>
 #include <Client/WidgetBuilder.h>
+#include <Client/AuthProfile.h>
 
 class DialogListener : public QDialog {
-
     QGridLayout*    mainGridLayout;
     QGridLayout*    stackGridLayout;
     QSpacerItem*    horizontalSpacer;
@@ -23,6 +23,7 @@ class DialogListener : public QDialog {
     QStackedWidget* configStackWidget;
 
     QMap<QString, WidgetBuilder*> listenersUI;
+    AuthProfile                   authProfile;
 
     void createUI();
 
@@ -31,10 +32,14 @@ public:
     ~DialogListener();
 
     void AddExListeners(QMap<QString, WidgetBuilder*> listeners);
+    void SetProfile(AuthProfile profile);
     void Start();
 
 protected slots:
     void changeConfig(QString fn);
+    void onButtonSave();
+    void onButtonClose();
+
 };
 
 #endif //ADAPTIXCLIENT_DIALOGLISTENER_H

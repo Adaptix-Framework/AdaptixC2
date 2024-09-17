@@ -10,7 +10,6 @@
 
 class AdaptixWidget : public QWidget {
 Q_OBJECT
-
     QGridLayout* mainGridLayout    = nullptr;
     QHBoxLayout* topHLayout        = nullptr;
     QPushButton* listenersButton   = nullptr;
@@ -41,7 +40,6 @@ Q_OBJECT
     void processSyncPacket(QJsonObject jsonObj);
 
 public:
-
     QThread*         ChannelThread   = nullptr;
     WebSocketWorker* ChannelWsWorker = nullptr;
     LogsWidget*      LogsTab         = nullptr;
@@ -52,8 +50,9 @@ public:
     explicit AdaptixWidget(AuthProfile authProfile);
     ~AdaptixWidget();
 
-    void AddTab(QWidget* tab, QString title, QString icon = "" );
-    void RemoveTab(int index);
+    AuthProfile GetProfile();
+    void        AddTab(QWidget* tab, QString title, QString icon = "" );
+    void        RemoveTab(int index);
 
 public slots:
     void ChannelClose();
@@ -61,7 +60,6 @@ public slots:
 
     void LoadLogsUI();
     void LoadListenersUI();
-
 };
 
 #endif //ADAPTIXCLIENT_ADAPTIXWIDGET_H

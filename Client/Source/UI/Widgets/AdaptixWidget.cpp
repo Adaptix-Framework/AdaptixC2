@@ -189,6 +189,10 @@ void AdaptixWidget::createUI() {
     this->setLayout(mainGridLayout );
 }
 
+AuthProfile AdaptixWidget::GetProfile() {
+    return this->profile;
+}
+
 
 
 void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon) {

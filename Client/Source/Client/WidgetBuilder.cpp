@@ -262,6 +262,6 @@ QString WidgetBuilder::CollectData() {
     }
 
     QJsonDocument jsonDocument(collectedData);
-    QByteArray doc = jsonDocument.toJson(QJsonDocument::Indented);
+    QByteArray doc = jsonDocument.toJson(QJsonDocument::Compact);
     return QString::fromUtf8(doc);
 }
