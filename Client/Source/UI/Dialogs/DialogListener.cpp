@@ -1,9 +1,12 @@
 #include <UI/Dialogs/DialogListener.h>
+#include <Client/Requestor.h>
 
 DialogListener::DialogListener() {
     this->createUI();
 
     connect(listenerTypeCombobox, &QComboBox::currentTextChanged, this, &DialogListener::changeConfig);
+    connect( buttonSave, &QPushButton::clicked, this, &DialogListener::onButtonSave );
+    connect( buttonClose, &QPushButton::clicked, this, &DialogListener::onButtonClose );
 }
 
 DialogListener::~DialogListener() = default;
@@ -69,7 +72,7 @@ void DialogListener::createUI() {
     this->setLayout(mainGridLayout);
 }
 
-void DialogListener::Start( ) {
+void DialogListener::Start() {
     this->exec();
 }
 
@@ -89,4 +92,23 @@ void DialogListener::changeConfig(QString fn) {
         auto w = listenersUI[fn]->GetWidget();
         configStackWidget->setCurrentWidget(w);
     }
+}
+
+void DialogListener::onButtonSave() {
+    auto configName= listenerNameInput->text();
+    auto configType= listenerTypeCombobox->currentText();
+    auto configData = QString();
+    if (listenersUI[configType]) {
+        configData = listenersUI[configType]->CollectData();
+    }
+
+    HttpReqListenerStart(configName, configType, configData, authProfile);
+}
+
+void DialogListener::onButtonClose() {
+    this->close();
+}
+
+void DialogListener::SetProfile(AuthProfile profile) {
+    this->authProfile = profile;
 }

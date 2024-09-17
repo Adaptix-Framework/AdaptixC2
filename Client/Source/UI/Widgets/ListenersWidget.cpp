@@ -21,7 +21,6 @@ void ListenersWidget::createUI() {
     menuListeners->addAction( "Create", this, &ListenersWidget::CreateListener );
 
     tableWidget = new QTableWidget( this );
-
     tableWidget->setColumnCount( 6 );
     tableWidget->setObjectName( QString::fromUtf8( "ListenersTableListeners" ) );
     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
@@ -67,9 +66,10 @@ void ListenersWidget::handleListenersMenu(const QPoint &pos ) const {
 void ListenersWidget::CreateListener() {
     dialogListener = new DialogListener;
 
-    auto aw = qobject_cast<AdaptixWidget*>( this->mainWidget );
-    if ( aw ) {
-        dialogListener->AddExListeners( aw->RegisterListeners );
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( this->mainWidget );
+    if ( adaptixWidget ) {
+        dialogListener->AddExListeners( adaptixWidget->RegisterListeners );
+        dialogListener->SetProfile( adaptixWidget->GetProfile() );
         dialogListener->Start();
     }
 }
