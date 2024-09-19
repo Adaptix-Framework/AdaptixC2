@@ -1,11 +1,11 @@
 package extender
 
 import (
-	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"plugin"
 	"reflect"
@@ -14,8 +14,8 @@ import (
 
 func NewExtender(teamserver Teamserver) *AdaptixExtender {
 	return &AdaptixExtender{
-		ts:      teamserver,
-		modules: safe.NewMap(),
+		ts:              teamserver,
+		listenerModules: safe.NewMap(),
 	}
 }
 
@@ -84,9 +84,6 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFile string) {
 			logs.Error("InitPlugin %s failed: %s", path, err.Error())
 			continue
 		}
-
-		uid, _ := krypt.GenerateUID(8)
-		ex.modules.Put(uid, module)
 	}
 }
 
@@ -96,6 +93,16 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 		_, ok := reflect.TypeOf(object).MethodByName("ListenerInit")
 		if !ok {
 			return errors.New("method ListenerInit not found")
+		}
+
+		_, ok = reflect.TypeOf(object).MethodByName("ListenerStart")
+		if !ok {
+			return errors.New("method ListenerStart not found")
+		}
+
+		_, ok = reflect.TypeOf(object).MethodByName("ListenerValid")
+		if !ok {
+			return errors.New("method ListenerValid not found")
 		}
 
 		return nil
@@ -122,6 +129,11 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 		if err != nil {
 			return err
 		}
+
+		module.ListenerFunctions = object.(ListenerFunctions)
+
+		listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.ListenerType, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
+		ex.listenerModules.Put(listenerFN, module)
 
 		return nil
 	}

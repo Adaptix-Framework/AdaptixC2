@@ -28,6 +28,8 @@ type CommonFunctions interface {
 
 type ListenerFunctions interface {
 	ListenerInit() ([]byte, error)
+	ListenerValid(config string) error
+	ListenerStart() ([]byte, error)
 }
 
 type ModuleExtender struct {
@@ -37,6 +39,6 @@ type ModuleExtender struct {
 }
 
 type AdaptixExtender struct {
-	ts      Teamserver
-	modules safe.Map
+	ts              Teamserver
+	listenerModules safe.Map
 }

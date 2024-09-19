@@ -14,9 +14,10 @@ type Teamserver struct {
 	AdaptixServer *httphandler.TsHttpHandler
 	Extender      *extender.AdaptixExtender
 
-	clients      safe.Map
-	syncpackets  safe.Map
-	ex_listeners safe.Map
+	clients          safe.Map
+	syncpackets      safe.Map
+	listener_configs safe.Map
+	listeners        safe.Map
 }
 
 // SyncPacket

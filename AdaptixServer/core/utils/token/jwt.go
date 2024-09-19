@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -82,6 +83,13 @@ func ValidateAccessToken() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		tokenString := ctx.GetHeader("Authorization")
 		if tokenString == "" {
+			_ = ctx.Error(errors.New("authorization token required"))
+			return
+		}
+
+		if strings.HasPrefix(tokenString, "Bearer ") {
+			tokenString = tokenString[7:]
+		} else {
 			_ = ctx.Error(errors.New("authorization token required"))
 			return
 		}

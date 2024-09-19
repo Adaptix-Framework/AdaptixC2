@@ -83,7 +83,7 @@ bool HttpReqListenerStart( QString configName, QString configType, QString confi
             QJsonObject jsonObject = jsonResponse.object();
 
             if ( jsonObject.contains("answer") ) {
-//                jsonObject["answer"].toString();
+                auto answer = jsonObject["answer"].toString();
                 result = true;
             }
         }

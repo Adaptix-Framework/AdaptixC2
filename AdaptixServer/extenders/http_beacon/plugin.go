@@ -3,9 +3,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 )
 
 const (
@@ -67,8 +70,6 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-////////////////////////////
-
 func (m *ModuleExtender) ListenerInit() ([]byte, error) {
 	var (
 		buffer bytes.Buffer
@@ -96,4 +97,49 @@ func (m *ModuleExtender) ListenerInit() ([]byte, error) {
 	}
 
 	return buffer.Bytes(), nil
+}
+
+////////////////////////////
+
+type Config struct {
+	Host string `json:"host"`
+	Port string `json:"port"`
+	Ssl  bool   `json:"ssl"`
+	Uri  string `json:"uri"`
+}
+
+func (m *ModuleExtender) ListenerValid(data string) error {
+	var (
+		err  error
+		conf Config
+	)
+
+	err = json.Unmarshal([]byte(data), &conf)
+	if err != nil {
+		return err
+	}
+
+	if conf.Host == "" {
+		return errors.New("host is required")
+	}
+
+	portInt, err := strconv.Atoi(conf.Port)
+	if err != nil {
+		return errors.New("port must be an integer")
+	}
+
+	if portInt < 1 || portInt > 65535 {
+		return errors.New("port must be in the range 1-65535")
+	}
+
+	matched, err := regexp.MatchString(`^/[a-zA-Z0-9]+(/[a-zA-Z0-9]+)*$`, conf.Uri)
+	if err != nil || !matched {
+		return errors.New("uri invalid")
+	}
+
+	return nil
+}
+
+func (m *ModuleExtender) ListenerStart() ([]byte, error) {
+	return nil, nil
 }
