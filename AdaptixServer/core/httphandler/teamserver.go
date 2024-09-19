@@ -15,6 +15,8 @@ import (
 type Teamserver interface {
 	ClientConnect(username string, socket *websocket.Conn)
 	ClientDisconnect(username string)
+
+	ListenerStart(listenerName string, configType string, config string) error
 }
 
 type TsHttpHandler struct {
@@ -30,6 +32,12 @@ type TsHttpHandler struct {
 
 func default404Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if len(c.Errors) > 0 && !c.Writer.Written() {
+			c.String(http.StatusNotFound, "Default - Resource not found")
+			c.Abort()
+			return
+		}
+
 		c.Next()
 
 		if len(c.Errors) > 0 && !c.Writer.Written() {
@@ -53,12 +61,7 @@ func NewTsHttpHandler(ts Teamserver, p profile.TsProfile) (*TsHttpHandler, error
 	httpHandler.Engine.POST(p.Endpoint+"/login", default404Middleware(), httpHandler.login)
 	httpHandler.Engine.POST(p.Endpoint+"/refresh", default404Middleware(), token.RefreshTokenHandler)
 
-	httpHandler.Engine.POST(p.Endpoint+"/listener/start", default404Middleware(), token.ValidateAccessToken(), httpHandler.ListenerStart)
-
-	//httpHandler.Engine.POST(p.Endpoint+"/check", default404Middleware(), token.ValidateAccessToken(), func(c *gin.Context) {
-	//	username := c.GetString("username")
-	//	c.JSON(http.StatusOK, gin.H{"user": username})
-	//})
+	httpHandler.Engine.POST(p.Endpoint+"/listener/start", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerStart)
 
 	httpHandler.Engine.GET(p.Endpoint+"/connect", default404Middleware(), httpHandler.connect)
 
