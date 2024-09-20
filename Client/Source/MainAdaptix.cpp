@@ -13,19 +13,24 @@ MainAdaptix::~MainAdaptix(){
 };
 
 void MainAdaptix::Start() {
+    AuthProfile authProfile;
+    bool        result;
     auto dialogConnect = new DialogConnect();
-    auto authProfile = dialogConnect->StartDialog();
-    if ( ! authProfile.valid ) {
-        this->Exit();
-        return;
-    }
 
-    bool result = HttpReqLogin( &authProfile );
-    if ( !result ) {
-        MessageError("Login failure");
-        this->Exit();
-        return;
-    }
+    do {
+        authProfile = dialogConnect->StartDialog();
+        if (!authProfile.valid) {
+            this->Exit();
+            return;
+        }
+
+        result = HttpReqLogin(&authProfile);
+        if (!result) {
+            MessageError("Login failure");
+            continue;
+        }
+
+    } while( !result );
 
     mainUI = new MainUI;
     mainUI->showMaximized();

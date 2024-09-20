@@ -102,7 +102,20 @@ void DialogListener::onButtonSave() {
         configData = listenersUI[configType]->CollectData();
     }
 
-    HttpReqListenerStart(configName, configType, configData, authProfile);
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
+    if( !result ){
+        MessageError("Authentication error");
+        return;
+    }
+    if ( ok ) {
+        MessageSuccess(message);
+        this->close();
+    }
+    else {
+        MessageError(message);
+    }
 }
 
 void DialogListener::onButtonClose() {

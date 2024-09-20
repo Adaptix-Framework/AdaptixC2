@@ -45,7 +45,7 @@ bool HttpReqLogin(AuthProfile* profile) {
     return result;
 }
 
-bool HttpReqListenerStart( QString configName, QString configType, QString configData, AuthProfile profile ) {
+bool HttpReqListenerStart( QString configName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok ) {
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
     QSslConfiguration::setDefaultConfiguration(sslConfig);
@@ -82,8 +82,9 @@ bool HttpReqListenerStart( QString configName, QString configType, QString confi
         if (parseError.error == QJsonParseError::NoError && jsonResponse.isObject()) {
             QJsonObject jsonObject = jsonResponse.object();
 
-            if ( jsonObject.contains("answer") ) {
-                auto answer = jsonObject["answer"].toString();
+            if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+                *message = jsonObject["message"].toString();
+                *ok = jsonObject["ok"].toBool();
                 result = true;
             }
         }
