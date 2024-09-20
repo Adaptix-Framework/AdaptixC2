@@ -30,6 +30,7 @@ class DialogConnect : public QDialog
 
     void createUI();
     bool checkValidInput();
+    void loadProjects();
 
 public:
 

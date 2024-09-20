@@ -4,6 +4,8 @@
 DialogConnect::DialogConnect() {
     this->createUI();
 
+    this->loadProjects();
+
     connect( tableWidget, &QTableWidget::itemPressed, this, &DialogConnect::itemSelected );
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &DialogConnect::handleContextMenu );
 
@@ -14,8 +16,6 @@ DialogConnect::DialogConnect() {
     connect( lineEdit_User,     &QLineEdit::returnPressed, this, [&](){onButton_Connect();} );
     connect( lineEdit_Password, &QLineEdit::returnPressed, this, [&](){onButton_Connect();} );
     connect( ButtonConnect,     &QPushButton::clicked,     this, [&](){onButton_Connect();} );
-
-    tableWidget->show();
 }
 
 DialogConnect::~DialogConnect() = default;
@@ -122,7 +122,7 @@ void DialogConnect::createUI() {
     gridLayout->addWidget( ButtonConnect,       9, 1, 1, 1 );
 }
 
-AuthProfile DialogConnect::StartDialog() {
+void DialogConnect::loadProjects() {
     this->listProjects = GlobalClient->storage->ListProjects();
     for ( auto profile : this->listProjects ) {
         tableWidget->setRowCount( tableWidget->rowCount() + 1 );
@@ -144,7 +144,9 @@ AuthProfile DialogConnect::StartDialog() {
         tableWidget->setItem( tableWidget->rowCount() - 1, 1, item_Project );
         tableWidget->setItem( tableWidget->rowCount() - 1, 2, item_Host );
     }
+}
 
+AuthProfile DialogConnect::StartDialog() {
     this->exec();
 
     AuthProfile authProfile;
@@ -232,4 +234,3 @@ void DialogConnect::onButton_Connect() {
         close();
     }
 }
-

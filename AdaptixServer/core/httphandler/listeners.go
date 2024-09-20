@@ -26,9 +26,9 @@ func (th *TsHttpHandler) ListenerStart(ctx *gin.Context) {
 
 	err = th.teamserver.ListenerStart(listener.ListenerName, listener.ConfigType, listener.Config)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"answer": err.Error()})
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"answer": "Listener started"})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Listener started", "ok": true})
 }

@@ -34,3 +34,11 @@ void MessageError( QString message ) {
     box.setIcon( QMessageBox::Critical );
     box.exec();
 }
+
+void MessageSuccess( QString message ) {
+    auto box = QMessageBox();
+    box.setWindowTitle( "Success" );
+    box.setText( message );
+    box.setIcon( QMessageBox::Information );
+    box.exec();
+}

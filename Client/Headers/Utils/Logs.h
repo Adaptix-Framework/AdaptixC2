@@ -14,5 +14,6 @@ void LogError(const char* format, ...);
 
 void MessageError( QString message );
 
+void MessageSuccess( QString message );
 
 #endif //ADAPTIXCLIENT_LOGS_H
