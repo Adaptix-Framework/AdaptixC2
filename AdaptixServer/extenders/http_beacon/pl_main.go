@@ -101,17 +101,10 @@ func (m *ModuleExtender) ListenerInit() ([]byte, error) {
 
 ////////////////////////////
 
-type Config struct {
-	Host string `json:"host"`
-	Port string `json:"port"`
-	Ssl  bool   `json:"ssl"`
-	Uri  string `json:"uri"`
-}
-
 func (m *ModuleExtender) ListenerValid(data string) error {
 	var (
 		err  error
-		conf Config
+		conf HTTPConfig
 	)
 
 	err = json.Unmarshal([]byte(data), &conf)
@@ -140,6 +133,21 @@ func (m *ModuleExtender) ListenerValid(data string) error {
 	return nil
 }
 
-func (m *ModuleExtender) ListenerStart() ([]byte, error) {
+func (m *ModuleExtender) ListenerStart(data string) ([]byte, error) {
+	var (
+		err  error
+		conf HTTPConfig
+	)
+
+	err = json.Unmarshal([]byte(data), &conf)
+	if err != nil {
+		return nil, err
+	}
+
+	listener := NewConfigHttp()
+	listener.Config = conf
+
+	listener.Start()
+
 	return nil, nil
 }

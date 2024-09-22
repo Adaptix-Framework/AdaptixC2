@@ -16,6 +16,12 @@ func (ex *AdaptixExtender) ListenerStart(listenerName string, configType string,
 			if err != nil {
 				return err
 			}
+
+			_, err = module.ListenerStart(config)
+			if err != nil {
+				return err
+			}
+
 		}
 	} else {
 		return errors.New("module not found")
