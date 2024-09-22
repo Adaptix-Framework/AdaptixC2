@@ -10,7 +10,6 @@ class MainUI : public QMainWindow {
     QWidget* mainWidget = nullptr;
 
 public:
-
     explicit MainUI();
     ~MainUI();
 

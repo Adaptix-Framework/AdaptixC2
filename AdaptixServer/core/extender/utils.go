@@ -29,7 +29,7 @@ type CommonFunctions interface {
 type ListenerFunctions interface {
 	ListenerInit() ([]byte, error)
 	ListenerValid(config string) error
-	ListenerStart() ([]byte, error)
+	ListenerStart(data string) ([]byte, error)
 }
 
 type ModuleExtender struct {
