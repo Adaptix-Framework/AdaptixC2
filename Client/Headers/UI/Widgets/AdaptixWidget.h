@@ -46,6 +46,7 @@ public:
     ListenersWidget* ListenersTab    = nullptr;
 
     QMap<QString, WidgetBuilder*> RegisterListeners;
+    QVector<ListenerData>         Listeners;
 
     explicit AdaptixWidget(AuthProfile authProfile);
     ~AdaptixWidget();

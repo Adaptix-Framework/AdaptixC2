@@ -89,14 +89,14 @@ void DialogConnect::createUI() {
     tableWidget->setSortingEnabled( true );
     tableWidget->setWordWrap( true );
     tableWidget->setCornerButtonEnabled( false );
+    tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
+    tableWidget->setSelectionMode( QAbstractItemView::SingleSelection );
+    tableWidget->setFocusPolicy( Qt::NoFocus );
+    tableWidget->setAlternatingRowColors( true );
     tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
     tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
     tableWidget->horizontalHeader()->setHighlightSections( false );
     tableWidget->verticalHeader()->setVisible( false );
-    tableWidget->setAlternatingRowColors( true );
-    tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
-    tableWidget->setSelectionMode( QAbstractItemView::SingleSelection );
-    tableWidget->setFocusPolicy( Qt::NoFocus );
 
     tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem( "Username" ) );
     tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Project" ) );

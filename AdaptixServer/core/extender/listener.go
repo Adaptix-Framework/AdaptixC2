@@ -2,9 +2,10 @@ package extender
 
 import "errors"
 
-func (ex *AdaptixExtender) ListenerStart(listenerName string, configType string, config string) error {
+func (ex *AdaptixExtender) ListenerStart(listenerName string, configType string, config string) ([]byte, error) {
 	var (
 		err    error
+		data   []byte
 		module *ModuleExtender
 	)
 
@@ -14,18 +15,17 @@ func (ex *AdaptixExtender) ListenerStart(listenerName string, configType string,
 			module = value.(*ModuleExtender)
 			err = module.ListenerValid(config)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			_, err = module.ListenerStart(config)
+			data, err = module.ListenerStart(config)
 			if err != nil {
-				return err
+				return nil, err
 			}
-
 		}
 	} else {
-		return errors.New("module not found")
+		return nil, errors.New("module not found")
 	}
 
-	return nil
+	return data, nil
 }

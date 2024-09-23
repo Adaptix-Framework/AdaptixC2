@@ -26,6 +26,31 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj) {
             }
             return true;
         }
+
+        if( spSubType == TYPE_LISTENER_START ) {
+            if ( !jsonObj.contains("l_name") || !jsonObj["l_name"].isString() ) {
+                return false;
+            }
+            if ( !jsonObj.contains("l_type") || !jsonObj["l_type"].isString() ) {
+                return false;
+            }
+            if ( !jsonObj.contains("l_bind_host") || !jsonObj["l_bind_host"].isString() ) {
+                return false;
+            }
+            if ( !jsonObj.contains("l_bind_port") || !jsonObj["l_bind_port"].isString() ) {
+                return false;
+            }
+            if ( !jsonObj.contains("l_agent_host") || !jsonObj["l_agent_host"].isString() ) {
+                return false;
+            }
+            if ( !jsonObj.contains("l_agent_port") || !jsonObj["l_agent_port"].isString() ) {
+                return false;
+            }
+            if ( !jsonObj.contains("l_status") || !jsonObj["l_status"].isString() ) {
+                return false;
+            }
+            return true;
+        }
     }
 
     if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() )
@@ -71,14 +96,16 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj){
 
         case TYPE_CLIENT:
 
-            if( spSubType == TYPE_CLIENT_CONNECT ) {
+            if( spSubType == TYPE_CLIENT_CONNECT )
+            {
                 qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
                 QString username = jsonObj["username"].toString();
                 QString message = QString("Client '%1' connected to teamserver").arg(username);
 
                 LogsTab->AddLogs(spSubType, time, message);
             }
-            else if ( spSubType == TYPE_CLIENT_DISCONNECT ) {
+            else if ( spSubType == TYPE_CLIENT_DISCONNECT )
+            {
                 qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
                 QString username = jsonObj["username"].toString();
                 QString message = QString("Client '%1' disconnected from teamserver").arg(username);
@@ -88,11 +115,30 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj){
             break;
 
         case TYPE_LISTENER:
-            if( spSubType == TYPE_LISTENER_NEW ) {
+            if( spSubType == TYPE_LISTENER_NEW )
+            {
                 QString fn = jsonObj["fn"].toString();
                 QString ui = jsonObj["ui"].toString();
 
                 RegisterListeners[fn] = new WidgetBuilder(ui.toLocal8Bit() );
+            }
+            else if ( spSubType == TYPE_LISTENER_START )
+            {
+                ListenerData newListener = {0};
+                newListener.ListenerName = jsonObj["l_name"].toString();
+                newListener.ListenerType = jsonObj["l_type"].toString();
+                newListener.BindHost     = jsonObj["l_bind_host"].toString();
+                newListener.BindPort     = jsonObj["l_bind_port"].toString();
+                newListener.AgentPort    = jsonObj["l_agent_port"].toString();
+                newListener.AgentHost    = jsonObj["l_agent_host"].toString();
+                newListener.Status       = jsonObj["l_status"].toString();
+
+                qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
+                QString message = QString("Listener '%1' (%2) started").arg(newListener.ListenerName).arg(newListener.ListenerType);
+
+                LogsTab->AddLogs(spSubType, time, message);
+
+                ListenersTab->AddListener(newListener);
             }
             break;
     }

@@ -28,11 +28,10 @@ type HTTPConfig struct {
 }
 
 type HTTP struct {
-	Config    HTTPConfig
 	GinEngine *gin.Engine
 	Server    *http.Server
-
-	Active bool
+	Config    HTTPConfig
+	Active    bool
 }
 
 func NewConfigHttp() *HTTP {
@@ -41,8 +40,8 @@ func NewConfigHttp() *HTTP {
 	}
 }
 
-func (h *HTTP) Start() {
-	fmt.Println("Setup HTTP/S Server...")
+func (h *HTTP) Start() error {
+	var err error = nil
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
@@ -63,21 +62,27 @@ func (h *HTTP) Start() {
 		h.Config.SslKeyPath = "listener.key"
 
 		if h.Config.SslCert == "" || h.Config.SslKey == "" {
-			err := h.generateSelfSignedCert(h.Config.SslCertPath, h.Config.SslKeyPath)
+			err = h.generateSelfSignedCert(h.Config.SslCertPath, h.Config.SslKeyPath)
 			if err != nil {
 				h.Active = false
 				fmt.Println("Error generating self-signed certificate:", err)
-				return
+				return err
 			}
 		} else {
-			os.WriteFile(h.Config.SslCertPath, []byte(h.Config.SslCert), 0600)
-			os.WriteFile(h.Config.SslKeyPath, []byte(h.Config.SslKey), 0600)
+			err = os.WriteFile(h.Config.SslCertPath, []byte(h.Config.SslCert), 0600)
+			if err != nil {
+				return err
+			}
+			err = os.WriteFile(h.Config.SslKeyPath, []byte(h.Config.SslKey), 0600)
+			if err != nil {
+				return err
+			}
 		}
 
 		go func() {
-			err := h.Server.ListenAndServeTLS(h.Config.SslCertPath, h.Config.SslKeyPath)
+			err = h.Server.ListenAndServeTLS(h.Config.SslCertPath, h.Config.SslKeyPath)
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				fmt.Printf("Error starting HTTP server: %v\n", err)
+				fmt.Printf("Error starting HTTPS server: %v\n", err)
 				return
 			}
 			h.Active = true
@@ -87,7 +92,7 @@ func (h *HTTP) Start() {
 		fmt.Println("Started listener: http://" + h.Config.Host + ":" + h.Config.Port)
 
 		go func() {
-			err := h.Server.ListenAndServe()
+			err = h.Server.ListenAndServe()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				fmt.Printf("Error starting HTTP server: %v\n", err)
 				return
@@ -95,6 +100,9 @@ func (h *HTTP) Start() {
 			h.Active = true
 		}()
 	}
+
+	time.Sleep(300 * time.Millisecond)
+	return err
 }
 
 func (h *HTTP) Stop() error {
