@@ -3,6 +3,7 @@
 
 #include <QApplication>
 #include <QMap>
+#include <QVector>
 #include <QGridLayout>
 #include <QWidget>
 #include <QDialog>
@@ -51,7 +52,19 @@
 #define TYPE_CLIENT_CONNECT    21
 #define TYPE_CLIENT_DISCONNECT 22
 
-#define TYPE_LISTENER     30
-#define TYPE_LISTENER_NEW 31
+#define TYPE_LISTENER       30
+#define TYPE_LISTENER_NEW   31
+#define TYPE_LISTENER_START 32
+
+typedef struct ListenerData
+{
+    QString ListenerName;
+    QString ListenerType;
+    QString BindHost;
+    QString BindPort;
+    QString AgentHost;
+    QString AgentPort;
+    QString Status;
+} ListenerData;
 
 #endif //ADAPTIXCLIENT_MAIN_H

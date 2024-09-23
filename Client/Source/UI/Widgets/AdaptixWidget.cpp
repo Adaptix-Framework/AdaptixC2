@@ -3,6 +3,9 @@
 AdaptixWidget::AdaptixWidget(AuthProfile authProfile) {
     this->createUI();
 
+    LogsTab      = new LogsWidget();
+    ListenersTab = new ListenersWidget(this);
+
     this->LoadLogsUI();
 
     profile = authProfile;
@@ -221,16 +224,10 @@ void AdaptixWidget::RemoveTab(int index) {
 }
 
 void AdaptixWidget::LoadLogsUI() {
-    if ( LogsTab == nullptr )
-        LogsTab = new LogsWidget;
-
     this->AddTab(LogsTab, "Logs", ":/icons/logs");
 }
 
 void AdaptixWidget::LoadListenersUI() {
-    if ( ListenersTab == nullptr )
-        ListenersTab = new ListenersWidget(this);
-
     this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
 }
 

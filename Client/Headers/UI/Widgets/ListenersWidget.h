@@ -22,6 +22,7 @@ public:
 public slots:
     void handleListenersMenu( const QPoint &pos ) const;
     void CreateListener();
+    void AddListener(ListenerData listenerData);
 
 };
 

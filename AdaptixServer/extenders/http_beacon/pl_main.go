@@ -36,12 +36,22 @@ type ListenerInfo struct {
 	ListenerUI       string
 }
 
+type ListenerData struct {
+	Name      string `json:"l_name"`
+	Type      string `json:"l_type"`
+	BindHost  string `json:"l_bind_host"`
+	BindPort  string `json:"l_bind_port"`
+	AgentHost string `json:"l_agent_host"`
+	AgentPort string `json:"l_agent_port"`
+	Status    string `json:"l_status"`
+}
+
 var ModuleObject ModuleExtender
 
 ////////////////////////////
 
 const (
-	SetType     = "external"
+	SetType     = TYPE_EXTERNAL
 	SetProtocol = "http"
 	SetName     = "BeaconHTTP"
 	SetUiPath   = "ui_listener.json"
@@ -135,8 +145,11 @@ func (m *ModuleExtender) ListenerValid(data string) error {
 
 func (m *ModuleExtender) ListenerStart(data string) ([]byte, error) {
 	var (
-		err  error
-		conf HTTPConfig
+		err          error
+		conf         HTTPConfig
+		listener     *HTTP
+		listenerData ListenerData
+		buffer       bytes.Buffer
 	)
 
 	err = json.Unmarshal([]byte(data), &conf)
@@ -144,10 +157,30 @@ func (m *ModuleExtender) ListenerStart(data string) ([]byte, error) {
 		return nil, err
 	}
 
-	listener := NewConfigHttp()
+	listener = NewConfigHttp()
 	listener.Config = conf
 
-	listener.Start()
+	err = listener.Start()
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	listenerData = ListenerData{
+		BindHost:  listener.Config.Host,
+		BindPort:  listener.Config.Port,
+		AgentHost: listener.Config.Host,
+		AgentPort: listener.Config.Port,
+		Status:    "Listen",
+	}
+
+	if !listener.Active {
+		listenerData.Status = "Closed"
+	}
+
+	err = json.NewEncoder(&buffer).Encode(listenerData)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
 }

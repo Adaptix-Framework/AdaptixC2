@@ -20,6 +20,18 @@ type Teamserver struct {
 	listeners        safe.Map
 }
 
+// Data
+
+type ListenerData struct {
+	Name      string `json:"l_name"`
+	Type      string `json:"l_type"`
+	BindHost  string `json:"l_bind_host"`
+	BindPort  string `json:"l_bind_port"`
+	AgentHost string `json:"l_agent_host"`
+	AgentPort string `json:"l_agent_port"`
+	Status    string `json:"l_status"`
+}
+
 // SyncPacket
 
 type SyncPackerStart struct {
@@ -59,4 +71,19 @@ type SyncPackerListenerNew struct {
 
 	ListenerFN string `json:"fn"`
 	ListenerUI string `json:"ui"`
+}
+
+type SyncPackerListenerCreate struct {
+	store        string
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+	SpSubType    int   `json:"subtype"`
+
+	ListenerName   string `json:"l_name"`
+	ListenerType   string `json:"l_type"`
+	BindHost       string `json:"l_bind_host"`
+	BindPort       string `json:"l_bind_port"`
+	AgentHost      string `json:"l_agent_host"`
+	AgentPort      string `json:"l_agent_port"`
+	ListenerStatus string `json:"l_status"`
 }
