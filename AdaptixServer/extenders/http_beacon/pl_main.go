@@ -59,6 +59,8 @@ const (
 
 ////////////////////////////
 
+var ListenersObject []*HTTP
+
 func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	var (
 		buffer bytes.Buffer
@@ -143,7 +145,7 @@ func (m *ModuleExtender) ListenerValid(data string) error {
 	return nil
 }
 
-func (m *ModuleExtender) ListenerStart(data string) ([]byte, error) {
+func (m *ModuleExtender) ListenerStart(name string, data string) ([]byte, error) {
 	var (
 		err          error
 		conf         HTTPConfig
@@ -157,7 +159,7 @@ func (m *ModuleExtender) ListenerStart(data string) ([]byte, error) {
 		return nil, err
 	}
 
-	listener = NewConfigHttp()
+	listener = NewConfigHttp(name)
 	listener.Config = conf
 
 	err = listener.Start()
@@ -182,5 +184,37 @@ func (m *ModuleExtender) ListenerStart(data string) ([]byte, error) {
 		return nil, err
 	}
 
+	ListenersObject = append(ListenersObject, listener)
+
 	return buffer.Bytes(), nil
+}
+
+func (m *ModuleExtender) ListenerStop(name string) error {
+	var (
+		found bool
+		index int
+		err   error
+	)
+
+	found = false
+	for ind, listener := range ListenersObject {
+		if listener.Name == name {
+			err = listener.Stop()
+			found = true
+			index = ind
+			break
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if found {
+		ListenersObject = append(ListenersObject[:index], ListenersObject[index+1:]...)
+	} else {
+		return errors.New("listener not found")
+	}
+
+	return nil
 }

@@ -18,7 +18,7 @@ func (ex *AdaptixExtender) ListenerStart(listenerName string, configType string,
 				return nil, err
 			}
 
-			data, err = module.ListenerStart(config)
+			data, err = module.ListenerStart(listenerName, config)
 			if err != nil {
 				return nil, err
 			}
@@ -28,4 +28,24 @@ func (ex *AdaptixExtender) ListenerStart(listenerName string, configType string,
 	}
 
 	return data, nil
+}
+
+func (ex *AdaptixExtender) ListenerStop(listenerName string, configType string) error {
+	var (
+		err    error
+		module *ModuleExtender
+	)
+
+	if ex.listenerModules.Contains(configType) {
+		value, ok := ex.listenerModules.Get(configType)
+		if ok {
+			module = value.(*ModuleExtender)
+			err = module.ListenerStop(listenerName)
+			return err
+		}
+	} else {
+		return errors.New("module not found")
+	}
+
+	return nil
 }

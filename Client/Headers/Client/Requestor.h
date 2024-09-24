@@ -6,6 +6,9 @@
 
 bool HttpReqLogin(AuthProfile* profile);
 
-bool HttpReqListenerStart( QString configName, QString configType, QString configData, AuthProfile profile, QString* answer, bool* ok );
+bool HttpReqListenerStart(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok );
+
+bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfile profile, QString* message, bool* ok );
+
 
 #endif //ADAPTIXCLIENT_REQUESTOR_H

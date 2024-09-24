@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -31,12 +32,14 @@ type HTTP struct {
 	GinEngine *gin.Engine
 	Server    *http.Server
 	Config    HTTPConfig
+	Name      string
 	Active    bool
 }
 
-func NewConfigHttp() *HTTP {
+func NewConfigHttp(Name string) *HTTP {
 	return &HTTP{
 		GinEngine: gin.New(),
+		Name:      Name,
 	}
 }
 
@@ -106,7 +109,11 @@ func (h *HTTP) Start() error {
 }
 
 func (h *HTTP) Stop() error {
-	return nil
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := h.Server.Shutdown(ctx)
+	return err
 }
 
 func (h *HTTP) processRequest(ctx *gin.Context) {

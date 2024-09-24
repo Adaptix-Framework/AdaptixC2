@@ -1,6 +1,7 @@
 #include <UI/Widgets/AdaptixWidget.h>
 
-bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj) {
+bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
+{
     if ( !jsonObj.contains("type") || !jsonObj["type"].isDouble() || !jsonObj.contains("subtype") || !jsonObj["subtype"].isDouble() )
         return false;
 
@@ -51,6 +52,13 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj) {
             }
             return true;
         }
+
+        if( spSubType == TYPE_LISTENER_STOP ) {
+            if ( !jsonObj.contains("l_name") || !jsonObj["l_name"].isString() ) {
+                return false;
+            }
+            return true;
+        }
     }
 
     if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() )
@@ -66,7 +74,8 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj) {
     return false;
 }
 
-void AdaptixWidget::processSyncPacket(QJsonObject jsonObj){
+void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
+{
     int spType    = jsonObj["type"].toDouble();
     int spSubType = jsonObj["subtype"].toDouble();
 
@@ -138,7 +147,18 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj){
 
                 LogsTab->AddLogs(spSubType, time, message);
 
-                ListenersTab->AddListener(newListener);
+                ListenersTab->AddListenerItem(newListener);
+            }
+            else if ( spSubType == TYPE_LISTENER_STOP )
+            {
+                auto listenerName = jsonObj["l_name"].toString();
+
+                qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
+                QString message = QString("Listener '%1' stopped").arg(listenerName);
+
+                LogsTab->AddLogs(spSubType, time, message);
+
+                ListenersTab->RemoveListenerItem(listenerName);
             }
             break;
     }

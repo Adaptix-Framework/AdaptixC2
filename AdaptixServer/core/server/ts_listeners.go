@@ -63,3 +63,30 @@ func (ts *Teamserver) ListenerStart(name string, configType string, config strin
 
 	return nil
 }
+
+func (ts *Teamserver) ListenerStop(listenerName string, configType string) error {
+
+	if ts.listener_configs.Contains(configType) {
+
+		if ts.listeners.Contains(listenerName) {
+
+			err := ts.Extender.ListenerStop(listenerName, configType)
+			if err != nil {
+				return err
+			}
+
+			ts.listeners.Delete(listenerName)
+
+			packet := CreateSpListenerStop(listenerName)
+			//ts.SyncSavePacket(packet.store, packet)
+			ts.SyncAllClients(packet)
+
+		} else {
+			return fmt.Errorf("listener '%v' does not exist", listenerName)
+		}
+	} else {
+		return fmt.Errorf("listener %v does not exist", configType)
+	}
+
+	return nil
+}
