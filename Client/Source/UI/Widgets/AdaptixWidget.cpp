@@ -1,6 +1,7 @@
 #include <UI/Widgets/AdaptixWidget.h>
 
-AdaptixWidget::AdaptixWidget(AuthProfile authProfile) {
+AdaptixWidget::AdaptixWidget(AuthProfile authProfile)
+{
     this->createUI();
 
     LogsTab      = new LogsWidget();
@@ -44,11 +45,13 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile) {
 
 }
 
-AdaptixWidget::~AdaptixWidget() {
+AdaptixWidget::~AdaptixWidget()
+{
     delete horizontalSpacer1;
 }
 
-void AdaptixWidget::createUI() {
+void AdaptixWidget::createUI()
+{
     listenersButton = new QPushButton( QIcon(":/icons/listeners"), "", this );
     listenersButton->setObjectName( QString::fromUtf8( "ListenersButtonAdaptix" ) );
     listenersButton->setIconSize( QSize( 24,24 ));
@@ -192,13 +195,15 @@ void AdaptixWidget::createUI() {
     this->setLayout(mainGridLayout );
 }
 
-AuthProfile AdaptixWidget::GetProfile() {
+AuthProfile AdaptixWidget::GetProfile()
+{
     return this->profile;
 }
 
 
 
-void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon) {
+void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon)
+{
     if ( mainTabWidget->count() == 0 )
         mainVSplitter->setSizes(QList<int>() << 100 << 200);
     else if ( mainTabWidget->count() == 1 )
@@ -211,7 +216,8 @@ void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon) {
     mainTabWidget->setCurrentIndex( id );
 }
 
-void AdaptixWidget::RemoveTab(int index) {
+void AdaptixWidget::RemoveTab(int index)
+{
     if (index == -1)
         return;
 
@@ -223,21 +229,25 @@ void AdaptixWidget::RemoveTab(int index) {
         mainTabWidget->setMovable(false);
 }
 
-void AdaptixWidget::LoadLogsUI() {
+void AdaptixWidget::LoadLogsUI()
+{
     this->AddTab(LogsTab, "Logs", ":/icons/logs");
 }
 
-void AdaptixWidget::LoadListenersUI() {
+void AdaptixWidget::LoadListenersUI()
+{
     this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
 }
 
 
 
-void AdaptixWidget::ChannelClose() {
+void AdaptixWidget::ChannelClose()
+{
     LogInfo("WebSocker closed");
 }
 
-void AdaptixWidget::DataHandler(const QByteArray &data) {
+void AdaptixWidget::DataHandler(const QByteArray &data)
+{
 //    LogSuccess("Received data %s", data.toStdString().data());
 
     QJsonParseError parseError;

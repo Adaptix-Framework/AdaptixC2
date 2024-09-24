@@ -2,17 +2,20 @@
 #include <UI/Dialogs/DialogConnect.h>
 #include <Client/Requestor.h>
 
-MainAdaptix::MainAdaptix() {
+MainAdaptix::MainAdaptix()
+{
     storage = new Storage();
     this->SetApplicationTheme();
 }
 
-MainAdaptix::~MainAdaptix(){
+MainAdaptix::~MainAdaptix()
+{
     delete storage;
     delete mainUI;
 };
 
-void MainAdaptix::Start() {
+void MainAdaptix::Start()
+{
     AuthProfile authProfile;
     bool        result;
     auto dialogConnect = new DialogConnect();
@@ -39,11 +42,13 @@ void MainAdaptix::Start() {
     QApplication::exec();
 }
 
-void MainAdaptix::Exit() {
+void MainAdaptix::Exit()
+{
     QApplication::exit(0);
 }
 
-void MainAdaptix::SetApplicationTheme() {
+void MainAdaptix::SetApplicationTheme()
+{
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
 
     int FontID = QFontDatabase::addApplicationFont( ":/fonts/DroidSansMono" );

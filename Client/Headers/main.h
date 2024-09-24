@@ -55,6 +55,7 @@
 #define TYPE_LISTENER       30
 #define TYPE_LISTENER_NEW   31
 #define TYPE_LISTENER_START 32
+#define TYPE_LISTENER_STOP  33
 
 typedef struct ListenerData
 {

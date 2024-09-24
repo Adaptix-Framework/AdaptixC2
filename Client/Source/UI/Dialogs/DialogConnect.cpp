@@ -1,7 +1,8 @@
 #include <UI/Dialogs/DialogConnect.h>
 #include <MainAdaptix.h>
 
-DialogConnect::DialogConnect() {
+DialogConnect::DialogConnect()
+{
     this->createUI();
 
     this->loadProjects();
@@ -20,8 +21,8 @@ DialogConnect::DialogConnect() {
 
 DialogConnect::~DialogConnect() = default;
 
-void DialogConnect::createUI() {
-
+void DialogConnect::createUI()
+{
     resize( 740, 340 );
     setMinimumSize( QSize( 740, 340 ) );
     setMaximumSize( QSize( 740, 340 ) );
@@ -122,7 +123,8 @@ void DialogConnect::createUI() {
     gridLayout->addWidget( ButtonConnect,       9, 1, 1, 1 );
 }
 
-void DialogConnect::loadProjects() {
+void DialogConnect::loadProjects()
+{
     this->listProjects = GlobalClient->storage->ListProjects();
     for ( auto profile : this->listProjects ) {
         tableWidget->setRowCount( tableWidget->rowCount() + 1 );
@@ -146,7 +148,8 @@ void DialogConnect::loadProjects() {
     }
 }
 
-AuthProfile DialogConnect::StartDialog() {
+AuthProfile DialogConnect::StartDialog()
+{
     this->exec();
 
     AuthProfile authProfile;
@@ -161,7 +164,8 @@ AuthProfile DialogConnect::StartDialog() {
     return authProfile;
 }
 
-void DialogConnect::itemRemove() const {
+void DialogConnect::itemRemove() const
+{
     if( tableWidget->selectedItems().count() == 0 )
         return;
 
@@ -170,7 +174,8 @@ void DialogConnect::itemRemove() const {
     tableWidget->removeRow(tableWidget->currentRow());
 }
 
-void DialogConnect::itemSelected() {
+void DialogConnect::itemSelected()
+{
     QString project = tableWidget->item(tableWidget->currentRow(), 1)->text();
     this->isNewProject = false;
     for ( auto profile : this->listProjects ) {
@@ -185,12 +190,14 @@ void DialogConnect::itemSelected() {
     }
 }
 
-void DialogConnect::handleContextMenu(const QPoint &pos ) const {
+void DialogConnect::handleContextMenu(const QPoint &pos ) const
+{
     QPoint globalPos = tableWidget->mapToGlobal( pos );
     menuContex->exec( globalPos );
 }
 
-bool DialogConnect::checkValidInput() {
+bool DialogConnect::checkValidInput()
+{
     if ( lineEdit_Project->text().isEmpty() ) {
         MessageError("Project is empty");
         return false;
@@ -228,7 +235,8 @@ bool DialogConnect::checkValidInput() {
     return true;
 }
 
-void DialogConnect::onButton_Connect() {
+void DialogConnect::onButton_Connect()
+{
     if(this->checkValidInput() ) {
         this->toConnect = true;
         close();

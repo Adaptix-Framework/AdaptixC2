@@ -105,6 +105,11 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 			return errors.New("method ListenerValid not found")
 		}
 
+		_, ok = reflect.TypeOf(object).MethodByName("ListenerStop")
+		if !ok {
+			return errors.New("method ListenerStop not found")
+		}
+
 		return nil
 	}
 

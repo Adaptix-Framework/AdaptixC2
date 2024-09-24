@@ -1,12 +1,14 @@
 #include <UI/Widgets/LogsWidget.h>
 
-LogsWidget::LogsWidget() {
+LogsWidget::LogsWidget()
+{
     this->createUI();
 }
 
 LogsWidget::~LogsWidget() = default;
 
-void LogsWidget::createUI() {
+void LogsWidget::createUI()
+{
 
     /// Logs
     logsLabel = new QLabel(this);
@@ -57,7 +59,8 @@ void LogsWidget::createUI() {
     this->setLayout( mainGridLayout );
 }
 
-void LogsWidget::AddLogs( int type, qint64 time, QString message ) {
+void LogsWidget::AddLogs( int type, qint64 time, QString message )
+{
     QString sTime = UnixTimestampGlobalToStringLocal(time);
     QString log = QString("[%1] -> %2").arg(sTime).arg(message);
     logsConsoleTextEdit->append(log);

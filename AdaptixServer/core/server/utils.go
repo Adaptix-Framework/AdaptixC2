@@ -73,7 +73,7 @@ type SyncPackerListenerNew struct {
 	ListenerUI string `json:"ui"`
 }
 
-type SyncPackerListenerCreate struct {
+type SyncPackerListenerStart struct {
 	store        string
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`
@@ -86,4 +86,13 @@ type SyncPackerListenerCreate struct {
 	AgentHost      string `json:"l_agent_host"`
 	AgentPort      string `json:"l_agent_port"`
 	ListenerStatus string `json:"l_status"`
+}
+
+type SyncPackerListenerStop struct {
+	store        string
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+	SpSubType    int   `json:"subtype"`
+
+	ListenerName string `json:"l_name"`
 }

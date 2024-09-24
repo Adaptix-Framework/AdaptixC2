@@ -1,7 +1,9 @@
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Client/Requestor.h>
 
-ListenersWidget::ListenersWidget(QWidget* w) {
+ListenersWidget::ListenersWidget(QWidget* w)
+{
     this->mainWidget = w;
 
     this->createUI();
@@ -11,14 +13,15 @@ ListenersWidget::ListenersWidget(QWidget* w) {
 
 ListenersWidget::~ListenersWidget() = default;
 
-void ListenersWidget::createUI() {
-
+void ListenersWidget::createUI()
+{
     if ( this->objectName().isEmpty() )
         this->setObjectName( QString::fromUtf8( "ListenersWidget" ) );
 
     menuListeners = new QMenu( this );
     menuListeners->setObjectName( QString::fromUtf8( "ListenersMenuListeners" ) );
-    menuListeners->addAction( "Create", this, &ListenersWidget::CreateListener );
+    menuListeners->addAction( "Create", this, &ListenersWidget::createListener );
+    menuListeners->addAction( "Remove", this, &ListenersWidget::removeListener );
 
     tableWidget = new QTableWidget( this );
     tableWidget->setColumnCount( 7 );
@@ -53,24 +56,8 @@ void ListenersWidget::createUI() {
     mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
 }
 
-void ListenersWidget::handleListenersMenu(const QPoint &pos ) const {
-    QPoint globalPos = tableWidget->mapToGlobal( pos );
-    menuListeners->exec( globalPos );
-}
-
-void ListenersWidget::CreateListener() {
-    dialogListener = new DialogListener;
-
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( adaptixWidget ) {
-        dialogListener->AddExListeners( adaptixWidget->RegisterListeners );
-        dialogListener->SetProfile( adaptixWidget->GetProfile() );
-        dialogListener->Start();
-    }
-}
-
-void ListenersWidget::AddListener( ListenerData newListener ) {
-
+void ListenersWidget::AddListenerItem(ListenerData newListener )
+{
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( auto listener : adaptixWidget->Listeners ) {
         if( listener.ListenerName == newListener.ListenerName ) {
@@ -126,4 +113,67 @@ void ListenersWidget::AddListener( ListenerData newListener ) {
     tableWidget->horizontalHeader()->setSectionResizeMode( 6, QHeaderView::ResizeToContents );
 
     adaptixWidget->Listeners.push_back(newListener);
+}
+
+void ListenersWidget::RemoveListenerItem(QString listenerName)
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for ( int i = 0; i < adaptixWidget->Listeners.size(); i++ ) {
+        if( adaptixWidget->Listeners[i].ListenerName == listenerName ) {
+            adaptixWidget->Listeners.erase( adaptixWidget->Listeners.begin() + i );
+        }
+    }
+
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *item = tableWidget->item(row, 0);
+        if ( item && item->text() == listenerName ) {
+            tableWidget->removeRow(row);
+            break;
+        }
+    }
+}
+
+/// Slots
+
+void ListenersWidget::handleListenersMenu(const QPoint &pos ) const
+{
+    QPoint globalPos = tableWidget->mapToGlobal( pos );
+    menuListeners->exec( globalPos );
+}
+
+void ListenersWidget::createListener()
+{
+    dialogListener = new DialogListener;
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if ( !adaptixWidget )
+        return;
+
+    dialogListener->AddExListeners( adaptixWidget->RegisterListeners );
+    dialogListener->SetProfile( adaptixWidget->GetProfile() );
+    dialogListener->Start();
+}
+
+void ListenersWidget::removeListener()
+{
+    if (tableWidget->selectionModel()->selectedRows().empty())
+        return;
+
+    auto listenerName = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    auto listenerType = tableWidget->item( tableWidget->currentRow(), 1 )->text();
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if ( !adaptixWidget )
+        return;
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqListenerStop( listenerName, listenerType, adaptixWidget->GetProfile(), &message, &ok );
+    if( !result ){
+        MessageError("Authentication error");
+        return;
+    }
+
+    if ( ok )
+        MessageSuccess(message);
+    else
+        MessageError(message);
 }

@@ -17,6 +17,7 @@ const (
 	TYPE_LISTENER       = 30
 	TYPE_LISTENER_NEW   = 31
 	TYPE_LISTENER_START = 32
+	TYPE_LISTENER_STOP  = 33
 )
 
 /// SYNC
@@ -74,8 +75,8 @@ func CreateSpListenerNew(fn string, ui string) SyncPackerListenerNew {
 	}
 }
 
-func CreateSpListenerStart(listenerData ListenerData) SyncPackerListenerCreate {
-	return SyncPackerListenerCreate{
+func CreateSpListenerStart(listenerData ListenerData) SyncPackerListenerStart {
+	return SyncPackerListenerStart{
 		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
 		SpType:       TYPE_LISTENER,
@@ -88,5 +89,16 @@ func CreateSpListenerStart(listenerData ListenerData) SyncPackerListenerCreate {
 		AgentHost:      listenerData.AgentHost,
 		AgentPort:      listenerData.AgentPort,
 		ListenerStatus: listenerData.Status,
+	}
+}
+
+func CreateSpListenerStop(name string) SyncPackerListenerStop {
+	return SyncPackerListenerStop{
+		store:        STORE_LOG,
+		SpCreateTime: time.Now().UTC().Unix(),
+		SpType:       TYPE_LISTENER,
+		SpSubType:    TYPE_LISTENER_STOP,
+
+		ListenerName: name,
 	}
 }
