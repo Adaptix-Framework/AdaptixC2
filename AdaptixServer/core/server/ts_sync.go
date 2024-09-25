@@ -62,6 +62,25 @@ func (ts *Teamserver) SyncSavePacket(store string, packet interface{}) {
 	}
 }
 
+func (ts *Teamserver) SyncXorPacket(store string, packet interface{}) {
+	if ts.syncpackets.Contains(store) {
+		value, found := ts.syncpackets.Get(store)
+		if found {
+			slice := value.(*safe.Slice)
+			for value := range slice.Iterator() {
+
+				storedValue, storedOk := value.Item.(SyncPackerListenerStart)
+				packetValue, packetOk := packet.(SyncPackerListenerStop)
+				if storedOk && packetOk {
+					if storedValue.ListenerName == packetValue.ListenerName {
+						slice.Delete(value.Index)
+					}
+				}
+			}
+		}
+	}
+}
+
 func (ts *Teamserver) SyncStored(clientWS *websocket.Conn) {
 	var (
 		buffer bytes.Buffer
@@ -85,7 +104,7 @@ func (ts *Teamserver) SyncStored(clientWS *websocket.Conn) {
 		if ts.syncpackets.Contains(STORE_INIT) {
 			sliceInit := mapPackets[STORE_INIT].(*safe.Slice)
 			for value := range sliceInit.Iterator() {
-				_ = json.NewEncoder(&buffer).Encode(value)
+				_ = json.NewEncoder(&buffer).Encode(value.Item)
 				_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 				buffer.Reset()
 			}
@@ -94,7 +113,7 @@ func (ts *Teamserver) SyncStored(clientWS *websocket.Conn) {
 		if ts.syncpackets.Contains(STORE_LOG) {
 			sliceLog := mapPackets[STORE_LOG].(*safe.Slice)
 			for value := range sliceLog.Iterator() {
-				_ = json.NewEncoder(&buffer).Encode(value)
+				_ = json.NewEncoder(&buffer).Encode(value.Item)
 				_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 				buffer.Reset()
 			}
@@ -103,7 +122,7 @@ func (ts *Teamserver) SyncStored(clientWS *websocket.Conn) {
 			if mKey != STORE_LOG && mKey != STORE_INIT {
 				sliceVal := mValue.(*safe.Slice)
 				for value := range sliceVal.Iterator() {
-					_ = json.NewEncoder(&buffer).Encode(value)
+					_ = json.NewEncoder(&buffer).Encode(value.Item)
 					_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 					buffer.Reset()
 				}

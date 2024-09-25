@@ -118,7 +118,7 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 
 func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.Symbol) error {
 	if module.Info.ModuleType == TYPE_LISTENER {
-		buffer, err := object.(ListenerFunctions).ListenerInit()
+		buffer, err := object.(ListenerFunctions).ListenerInit(logs.RepoLogsInstance.ListenerPath)
 		if err != nil {
 			return err
 		}

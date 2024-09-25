@@ -9,6 +9,11 @@ type Slice struct {
 	items []interface{}
 }
 
+type SliceItem struct {
+	Index int
+	Item  interface{}
+}
+
 func NewSlice() *Slice {
 	return &Slice{}
 }
@@ -46,15 +51,15 @@ func (sl *Slice) Len() int {
 	return len(sl.items)
 }
 
-func (sl *Slice) Iterator() <-chan interface{} {
+func (sl *Slice) Iterator() <-chan SliceItem {
 	sl.mutex.RLock()
 	defer sl.mutex.RUnlock()
 
-	ch := make(chan interface{})
+	ch := make(chan SliceItem)
 	go func() {
 		defer close(ch)
-		for _, item := range sl.items {
-			ch <- item
+		for i, item := range sl.items {
+			ch <- SliceItem{Index: i, Item: item}
 		}
 	}()
 	return ch

@@ -4,7 +4,7 @@
 #include <main.h>
 #include <UI/Dialogs/DialogListener.h>
 
-class ListenersWidget : public QWidget {
+class ListenersWidget : public QWidget{
 
     QWidget*       mainWidget     = nullptr;
     QGridLayout*   mainGridLayout = nullptr;

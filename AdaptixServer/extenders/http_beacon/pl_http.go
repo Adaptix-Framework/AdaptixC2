@@ -60,9 +60,17 @@ func (h *HTTP) Start() error {
 	if h.Config.Ssl {
 		fmt.Println("Started listener: https://" + h.Config.Host + ":" + h.Config.Port)
 
-		/// TODO: Generate cert path
-		h.Config.SslCertPath = "listener.crt"
-		h.Config.SslKeyPath = "listener.key"
+		listenerPath := ModulePath + "/" + h.Name
+		_, err = os.Stat(listenerPath)
+		if os.IsNotExist(err) {
+			err = os.Mkdir(listenerPath, os.ModePerm)
+			if err != nil {
+				return fmt.Errorf("failed to create %s folder: %s", listenerPath, err.Error())
+			}
+		}
+
+		h.Config.SslCertPath = listenerPath + "/listener.crt"
+		h.Config.SslKeyPath = listenerPath + "/listener.key"
 
 		if h.Config.SslCert == "" || h.Config.SslKey == "" {
 			err = h.generateSelfSignedCert(h.Config.SslCertPath, h.Config.SslKeyPath)
