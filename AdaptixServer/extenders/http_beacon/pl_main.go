@@ -47,6 +47,7 @@ type ListenerData struct {
 }
 
 var ModuleObject ModuleExtender
+var ModulePath string
 
 ////////////////////////////
 
@@ -82,11 +83,13 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) ListenerInit() ([]byte, error) {
+func (m *ModuleExtender) ListenerInit(path string) ([]byte, error) {
 	var (
 		buffer bytes.Buffer
 		err    error
 	)
+
+	ModulePath = path
 
 	_, file, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(file)

@@ -11,13 +11,14 @@ import (
 )
 
 func NewTeamserver() *Teamserver {
-	ts := new(Teamserver)
-	ts.Profile = profile.NewProfile()
+	ts := &Teamserver{
+		Profile:          profile.NewProfile(),
+		clients:          safe.NewMap(),
+		syncpackets:      safe.NewMap(),
+		listener_configs: safe.NewMap(),
+		listeners:        safe.NewMap(),
+	}
 	ts.Extender = extender.NewExtender(ts)
-	ts.clients = safe.NewMap()
-	ts.syncpackets = safe.NewMap()
-	ts.listener_configs = safe.NewMap()
-	ts.listeners = safe.NewMap()
 	return ts
 }
 

@@ -27,7 +27,7 @@ type CommonFunctions interface {
 }
 
 type ListenerFunctions interface {
-	ListenerInit() ([]byte, error)
+	ListenerInit(path string) ([]byte, error)
 	ListenerValid(config string) error
 	ListenerStart(name string, data string) ([]byte, error)
 	ListenerStop(name string) error

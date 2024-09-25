@@ -78,8 +78,8 @@ func (ts *Teamserver) ListenerStop(listenerName string, configType string) error
 			ts.listeners.Delete(listenerName)
 
 			packet := CreateSpListenerStop(listenerName)
-			//ts.SyncSavePacket(packet.store, packet)
 			ts.SyncAllClients(packet)
+			ts.SyncXorPacket(packet.store, packet)
 
 		} else {
 			return fmt.Errorf("listener '%v' does not exist", listenerName)

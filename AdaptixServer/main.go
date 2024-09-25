@@ -15,6 +15,7 @@ func main() {
 	fmt.Printf("\n[===== Adaptix Framework v%v by RalfHacker =====]\n\n", VERSION)
 
 	var (
+		err          error
 		port         = flag.Int("p", 0, "Teamserver handler port")
 		endpoint     = flag.String("e", "", "Teamserver URI endpoint")
 		password     = flag.String("pw", "", "Teamserver password")
@@ -34,10 +35,14 @@ func main() {
 		fmt.Printf("   AdaptixServer -p port -pw password -e endpoint -sc SslCert -sk SslKey [-ex extender_file] [-debug]\n")
 		fmt.Printf("   AdaptixServer -profile profile.json [-debug] \n")
 	}
-
 	flag.Parse()
 
 	logs.NewPrintLogger(*debug)
+	logs.RepoLogsInstance, err = logs.NewRepoLogs()
+	if err != nil {
+		logs.Error(err.Error())
+		os.Exit(0)
+	}
 
 	token.InitJWT()
 
@@ -56,7 +61,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	err := ts.Profile.IsVaid()
+	err = ts.Profile.IsVaid()
 	if err != nil {
 		logs.Error(err.Error())
 		os.Exit(0)
