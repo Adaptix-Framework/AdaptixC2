@@ -1,13 +1,12 @@
 #include <Client/WidgetBuilder.h>
 
-WidgetBuilder::WidgetBuilder(const QByteArray& jsonData) {
+WidgetBuilder::WidgetBuilder(const QByteArray& jsonData)
+{
     QJsonParseError parseError;
     QJsonDocument document = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error == QJsonParseError::NoError && document.isObject()) {
         qJsonObject = document.object();
-        widget = new QWidget;
-        this->BuildWidget();
     } else {
         error = QString("JSON parse error: %1").arg(parseError.errorString());
     }
@@ -15,11 +14,13 @@ WidgetBuilder::WidgetBuilder(const QByteArray& jsonData) {
 
 WidgetBuilder::~WidgetBuilder() = default;
 
-QString WidgetBuilder::GetError() {
+QString WidgetBuilder::GetError()
+{
     return error;
 }
 
-QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj) {
+QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
+{
     QLayout* layout = nullptr;
 
     if (layoutType.isEmpty())
@@ -209,20 +210,24 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj) {
     return layout;
 }
 
-void WidgetBuilder::BuildWidget() {
+void WidgetBuilder::BuildWidget()
+{
     if (qJsonObject.isEmpty())
         return;
 
+    widget = new QWidget;
     auto layout = BuildLayout("", qJsonObject);
     widget->setLayout(layout);
     valid = true;
 }
 
-QWidget *WidgetBuilder::GetWidget() {
+QWidget *WidgetBuilder::GetWidget()
+{
     return widget;
 }
 
-QString WidgetBuilder::CollectData() {
+QString WidgetBuilder::CollectData()
+{
     QJsonObject collectedData;
     QWidget* widget = nullptr;
     for (auto it = widgetMap.begin(); it != widgetMap.end(); ++it) {
@@ -264,4 +269,9 @@ QString WidgetBuilder::CollectData() {
     QJsonDocument jsonDocument(collectedData);
     QByteArray doc = jsonDocument.toJson(QJsonDocument::Compact);
     return QString::fromUtf8(doc);
+}
+
+void WidgetBuilder::ClearWidget()
+{
+    delete widget;
 }

@@ -5,7 +5,8 @@
 #include <Client/WidgetBuilder.h>
 #include <Client/AuthProfile.h>
 
-class DialogListener : public QDialog {
+class DialogListener : public QDialog
+{
     QGridLayout*    mainGridLayout;
     QGridLayout*    stackGridLayout;
     QSpacerItem*    horizontalSpacer;

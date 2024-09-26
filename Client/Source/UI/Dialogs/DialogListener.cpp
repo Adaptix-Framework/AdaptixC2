@@ -1,7 +1,8 @@
 #include <UI/Dialogs/DialogListener.h>
 #include <Client/Requestor.h>
 
-DialogListener::DialogListener() {
+DialogListener::DialogListener()
+{
     this->createUI();
 
     connect(listenerTypeCombobox, &QComboBox::currentTextChanged, this, &DialogListener::changeConfig);
@@ -11,7 +12,8 @@ DialogListener::DialogListener() {
 
 DialogListener::~DialogListener() = default;
 
-void DialogListener::createUI() {
+void DialogListener::createUI()
+{
     this->resize( 650, 650 );
     this->setWindowTitle( "Create Listener" );
     if ( this->objectName().isEmpty() )
@@ -72,11 +74,13 @@ void DialogListener::createUI() {
     this->setLayout(mainGridLayout);
 }
 
-void DialogListener::Start() {
+void DialogListener::Start()
+{
     this->exec();
 }
 
-void DialogListener::AddExListeners(QMap<QString, WidgetBuilder*> listeners) {
+void DialogListener::AddExListeners(QMap<QString, WidgetBuilder*> listeners)
+{
     listenersUI = listeners;
 
     for (auto w : listenersUI.values()) {
@@ -87,14 +91,16 @@ void DialogListener::AddExListeners(QMap<QString, WidgetBuilder*> listeners) {
     listenerTypeCombobox->addItems( listenersUI.keys() );
 }
 
-void DialogListener::changeConfig(QString fn) {
+void DialogListener::changeConfig(QString fn)
+{
     if (listenersUI[fn]) {
         auto w = listenersUI[fn]->GetWidget();
         configStackWidget->setCurrentWidget(w);
     }
 }
 
-void DialogListener::onButtonSave() {
+void DialogListener::onButtonSave()
+{
     auto configName= listenerNameInput->text();
     auto configType= listenerTypeCombobox->currentText();
     auto configData = QString();
@@ -110,7 +116,7 @@ void DialogListener::onButtonSave() {
         return;
     }
     if ( ok ) {
-        MessageSuccess(message);
+//        MessageSuccess(message);
         this->close();
     }
     else {
@@ -118,10 +124,12 @@ void DialogListener::onButtonSave() {
     }
 }
 
-void DialogListener::onButtonClose() {
+void DialogListener::onButtonClose()
+{
     this->close();
 }
 
-void DialogListener::SetProfile(AuthProfile profile) {
+void DialogListener::SetProfile(AuthProfile profile)
+{
     this->authProfile = profile;
 }

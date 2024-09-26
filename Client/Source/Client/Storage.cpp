@@ -1,6 +1,7 @@
 #include <Client/Storage.h>
 
-Storage::Storage() {
+Storage::Storage()
+{
     QString homeDirPath = QDir::homePath();
     bool appDirExists = false;
     appDirPath = QDir(homeDirPath).filePath(".adaptix");
@@ -31,14 +32,15 @@ Storage::Storage() {
     }
 }
 
-Storage::~Storage() {
+Storage::~Storage()
+{
     if (db.isOpen()) {
         db.close();
     }
 }
 
-void Storage::checkDatabase() {
-
+void Storage::checkDatabase()
+{
     auto query = QSqlQuery();
     query.prepare("CREATE TABLE IF NOT EXISTS Projects ( "
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -55,7 +57,8 @@ void Storage::checkDatabase() {
     }
 }
 
-void Storage::AddProject(AuthProfile profile) {
+void Storage::AddProject(AuthProfile profile)
+{
     QSqlQuery query;
     query.prepare( "INSERT INTO Projects (project, host, port, endpoint, username, password) VALUES (:Project, :Host, :Port, :Endpoint, :Username, :Password);");
 
@@ -71,7 +74,8 @@ void Storage::AddProject(AuthProfile profile) {
     }
 }
 
-QVector<AuthProfile> Storage::ListProjects() {
+QVector<AuthProfile> Storage::ListProjects()
+{
     auto list = QVector<AuthProfile>();
     QSqlQuery query;
 
@@ -94,7 +98,8 @@ QVector<AuthProfile> Storage::ListProjects() {
     return list;
 }
 
-bool Storage::ExistsProject(QString project) {
+bool Storage::ExistsProject(QString project)
+{
     QSqlQuery query;
 
     query.prepare("SELECT 1 FROM Projects WHERE project = :Project LIMIT 1;");
@@ -107,7 +112,8 @@ bool Storage::ExistsProject(QString project) {
     return query.next();
 }
 
-void Storage::RemoveProject(QString project) {
+void Storage::RemoveProject(QString project)
+{
     QSqlQuery query;
     query.prepare("DELETE FROM Projects WHERE project = :Project");
     query.bindValue(":Project", project);

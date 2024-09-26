@@ -3,7 +3,8 @@
 
 #include <main.h>
 
-class WidgetBuilder {
+class WidgetBuilder
+{
     QWidget* widget = nullptr;
 
     QMap<QString, QWidget*> widgetMap;
@@ -21,6 +22,7 @@ public:
     QLayout* BuildLayout(QString layoutType, QJsonObject rootObj);
     QString  GetError();
     QWidget* GetWidget();
+    void     ClearWidget();
     QString  CollectData();
 };
 

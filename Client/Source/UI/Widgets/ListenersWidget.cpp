@@ -148,13 +148,22 @@ void ListenersWidget::createListener()
     if ( !adaptixWidget )
         return;
 
+    for( auto regLst : adaptixWidget->RegisterListeners ) {
+        regLst->BuildWidget();
+    }
+
     dialogListener->AddExListeners( adaptixWidget->RegisterListeners );
     dialogListener->SetProfile( adaptixWidget->GetProfile() );
     dialogListener->Start();
+
+    for( auto regLst : adaptixWidget->RegisterListeners ) {
+        regLst->ClearWidget();
+    }
 }
 
 void ListenersWidget::removeListener()
 {
+
     if (tableWidget->selectionModel()->selectedRows().empty())
         return;
 

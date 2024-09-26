@@ -35,22 +35,19 @@ type ListenerData struct {
 // SyncPacket
 
 type SyncPackerStart struct {
-	SpType    int `json:"type"`
-	SpSubType int `json:"subtype"`
+	SpType int `json:"type"`
 
 	Count int `json:"count"`
 }
 
 type SyncPackerFinish struct {
-	SpType    int `json:"type"`
-	SpSubType int `json:"subtype"`
+	SpType int `json:"type"`
 }
 
 type SyncPackerClientConnect struct {
 	store        string
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`
-	SpSubType    int   `json:"subtype"`
 
 	Username string `json:"username"`
 }
@@ -59,15 +56,13 @@ type SyncPackerClientDisconnect struct {
 	store        string
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`
-	SpSubType    int   `json:"subtype"`
 
 	Username string `json:"username"`
 }
 
 type SyncPackerListenerNew struct {
-	store     string
-	SpType    int `json:"type"`
-	SpSubType int `json:"subtype"`
+	store  string
+	SpType int `json:"type"`
 
 	ListenerFN string `json:"fn"`
 	ListenerUI string `json:"ui"`
@@ -77,7 +72,6 @@ type SyncPackerListenerStart struct {
 	store        string
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`
-	SpSubType    int   `json:"subtype"`
 
 	ListenerName   string `json:"l_name"`
 	ListenerType   string `json:"l_type"`
@@ -92,7 +86,6 @@ type SyncPackerListenerStop struct {
 	store        string
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`
-	SpSubType    int   `json:"subtype"`
 
 	ListenerName string `json:"l_name"`
 }

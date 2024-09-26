@@ -5,8 +5,8 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
 
-class MainUI : public QMainWindow {
-
+class MainUI : public QMainWindow
+{
     QWidget* mainWidget = nullptr;
 
 public:

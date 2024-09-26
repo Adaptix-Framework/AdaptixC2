@@ -33,7 +33,6 @@ class DialogConnect : public QDialog
     void loadProjects();
 
 public:
-
     QVector<AuthProfile> listProjects;
 
     ~DialogConnect() override;

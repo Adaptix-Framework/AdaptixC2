@@ -44,15 +44,12 @@
 
 #define FRAMEWORK_VERSION "Adaptix Framework v.0.1-DEV"
 
-#define TYPE_SYNC        10
 #define TYPE_SYNC_START  11
 #define TYPE_SYNC_FINISH 12
 
-#define TYPE_CLIENT            20
 #define TYPE_CLIENT_CONNECT    21
 #define TYPE_CLIENT_DISCONNECT 22
 
-#define TYPE_LISTENER       30
 #define TYPE_LISTENER_NEW   31
 #define TYPE_LISTENER_START 32
 #define TYPE_LISTENER_STOP  33
