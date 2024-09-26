@@ -4,14 +4,13 @@
 #include <main.h>
 #include <Client/AuthProfile.h>
 
-class WebSocketWorker : public QThread {
-    Q_OBJECT
-
+class WebSocketWorker : public QThread
+{
+Q_OBJECT
     QWebSocket* webSocket = nullptr;
     AuthProfile profile;
 
 public:
-
     explicit WebSocketWorker(AuthProfile authProfile);
     ~WebSocketWorker();
 

@@ -1,6 +1,7 @@
 #include <UI/Dialogs/DialogSyncPacket.h>
 
-DialogSyncPacket::DialogSyncPacket(int total) {
+DialogSyncPacket::DialogSyncPacket(int total)
+{
     this->setWindowTitle("Sync data");
     this->setFixedSize(300, 150);
 
@@ -26,7 +27,8 @@ DialogSyncPacket::DialogSyncPacket(int total) {
 
 DialogSyncPacket::~DialogSyncPacket() = default;
 
-void DialogSyncPacket::upgrade() {
+void DialogSyncPacket::upgrade()
+{
     QString progress = QString("Received: %1 / %2").arg(receivedLogs).arg(totalLogs);
     logProgressLabel->setText(progress);
 
@@ -39,7 +41,8 @@ void DialogSyncPacket::upgrade() {
     }
 }
 
-void DialogSyncPacket::finish() {
+void DialogSyncPacket::finish()
+{
     logProgressLabel->setText("Synchronization complete!");
     this->close();
 }

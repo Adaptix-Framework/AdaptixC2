@@ -8,7 +8,8 @@
 #include <UI/Widgets/ListenersWidget.h>
 #include <Client/WidgetBuilder.h>
 
-class AdaptixWidget : public QWidget {
+class AdaptixWidget : public QWidget
+{
 Q_OBJECT
     QGridLayout* mainGridLayout    = nullptr;
     QHBoxLayout* topHLayout        = nullptr;

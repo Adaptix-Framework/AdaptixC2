@@ -2,7 +2,8 @@
 #define ADAPTIXCLIENT_AUTHPROFILE_H
 #include <main.h>
 
-class AuthProfile {
+class AuthProfile
+{
     QString project;
     QString username;
     QString password;
@@ -28,7 +29,6 @@ public:
     QString GetAccessToken();
     void    SetAccessToken(QString token);
     void    SetRefreshToken(QString token);
-
 };
 
 #endif //ADAPTIXCLIENT_AUTHPROFILE_H

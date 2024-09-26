@@ -1,6 +1,7 @@
 #include <Utils/Logs.h>
 
-void LogInfo(const char* format, ...) {
+void LogInfo(const char* format, ...)
+{
     va_list args;
     va_start(args, format);
     QString message = QString::vasprintf(format, args);
@@ -9,7 +10,8 @@ void LogInfo(const char* format, ...) {
     qInfo().nospace() << message;
 }
 
-void LogSuccess(const char* format, ...) {
+void LogSuccess(const char* format, ...)
+{
     va_list args;
     va_start(args, format);
     QString message = QString::vasprintf(format, args);
@@ -18,7 +20,8 @@ void LogSuccess(const char* format, ...) {
     qDebug().nospace() << "\033[1;32m[+]\033[0m " << message;
 }
 
-void LogError(const char* format, ...) {
+void LogError(const char* format, ...)
+{
     va_list args;
     va_start(args, format);
     QString message = QString::vasprintf(format, args);
@@ -27,7 +30,8 @@ void LogError(const char* format, ...) {
     qCritical().nospace() << "\033[1;31m[-]\033[0m " << message;
 }
 
-void MessageError( QString message ) {
+void MessageError( QString message )
+{
     auto box = QMessageBox();
     box.setWindowTitle( "Error" );
     box.setText( message );
@@ -35,7 +39,8 @@ void MessageError( QString message ) {
     box.exec();
 }
 
-void MessageSuccess( QString message ) {
+void MessageSuccess( QString message )
+{
     auto box = QMessageBox();
     box.setWindowTitle( "Success" );
     box.setText( message );

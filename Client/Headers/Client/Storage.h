@@ -4,9 +4,8 @@
 #include <main.h>
 #include <Client/AuthProfile.h>
 
-class Storage {
-
-private:
+class Storage
+{
     QSqlDatabase db;
     QString      appDirPath;
 

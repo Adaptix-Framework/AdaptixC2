@@ -4,8 +4,8 @@
 #include <main.h>
 #include <UI/Dialogs/DialogListener.h>
 
-class ListenersWidget : public QWidget{
-
+class ListenersWidget : public QWidget
+{
     QWidget*       mainWidget     = nullptr;
     QGridLayout*   mainGridLayout = nullptr;
     QTableWidget*  tableWidget    = nullptr;
@@ -26,7 +26,6 @@ public slots:
     void handleListenersMenu( const QPoint &pos ) const;
     void createListener();
     void removeListener();
-
 };
 
 #endif //ADAPTIXCLIENT_LISTENERSWIDGET_H

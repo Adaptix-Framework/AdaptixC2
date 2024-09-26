@@ -3,7 +3,8 @@
 
 #include <main.h>
 
-class LogsWidget : public QWidget {
+class LogsWidget : public QWidget
+{
     QGridLayout* mainGridLayout      = nullptr;
     QGridLayout* logsGridLayout      = nullptr;
     QGridLayout* todoGridLayout      = nullptr;
@@ -17,12 +18,10 @@ class LogsWidget : public QWidget {
     void createUI();
 
 public:
-
     explicit LogsWidget();
     ~LogsWidget();
 
      void AddLogs( int type, qint64 time, QString Message);
-
 };
 
 #endif //ADAPTIXCLIENT_LOGSWIDGET_H

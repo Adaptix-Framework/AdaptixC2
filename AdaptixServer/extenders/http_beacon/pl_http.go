@@ -117,10 +117,25 @@ func (h *HTTP) Start() error {
 }
 
 func (h *HTTP) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	var (
+		ctx          context.Context
+		cancel       context.CancelFunc
+		err          error = nil
+		listenerPath       = ModulePath + "/" + h.Name
+	)
+
+	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	err := h.Server.Shutdown(ctx)
+	_, err = os.Stat(listenerPath)
+	if os.IsExist(err) {
+		err = os.RemoveAll(listenerPath)
+		if err != nil {
+			return fmt.Errorf("failed to remove %s folder: %s", listenerPath, err.Error())
+		}
+	}
+
+	err = h.Server.Shutdown(ctx)
 	return err
 }
 

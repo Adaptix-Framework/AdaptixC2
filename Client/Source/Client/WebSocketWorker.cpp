@@ -1,14 +1,17 @@
 #include <Client/WebSocketWorker.h>
 
-WebSocketWorker::WebSocketWorker(AuthProfile authProfile) {
+WebSocketWorker::WebSocketWorker(AuthProfile authProfile)
+{
     profile = authProfile;
 }
 
-WebSocketWorker::~WebSocketWorker(){
+WebSocketWorker::~WebSocketWorker()
+{
     delete webSocket;
 };
 
-void WebSocketWorker::run() {
+void WebSocketWorker::run()
+{
     webSocket = new QWebSocket;
     auto SslConf = webSocket->sslConfiguration();
     SslConf.setPeerVerifyMode( QSslSocket::VerifyNone );
@@ -24,7 +27,8 @@ void WebSocketWorker::run() {
     webSocket->open( sUrl );
 }
 
-void WebSocketWorker::is_connected() {
+void WebSocketWorker::is_connected()
+{
     QJsonObject dataJson;
     dataJson["access_token"] = profile.GetAccessToken();
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
@@ -32,10 +36,12 @@ void WebSocketWorker::is_connected() {
     webSocket->sendBinaryMessage( jsonData );
 }
 
-void WebSocketWorker::is_disconnected() {
+void WebSocketWorker::is_disconnected()
+{
     emit this->websocket_closed();
 }
 
-void WebSocketWorker::is_binaryMessageReceived(const QByteArray &data) {
+void WebSocketWorker::is_binaryMessageReceived(const QByteArray &data)
+{
     emit this->received_data( data );
 }
