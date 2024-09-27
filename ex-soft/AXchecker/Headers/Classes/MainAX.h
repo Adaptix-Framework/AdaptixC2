@@ -6,12 +6,14 @@
 #include <Classes/WidgetBuilder.h>
 #include <Classes/DialogView.h>
 
-class MainAX : public QWidget {
+class MainAX : public QWidget
+{
     QVBoxLayout* mainLayout     = nullptr;
     QHBoxLayout* controlLayout  = nullptr;
     QTextEdit*   configTextarea = nullptr;
     QPushButton* selectButton   = nullptr;
     QPushButton* buildButton    = nullptr;
+    QPushButton* editButton     = nullptr;
     QLineEdit*   pathInput      = nullptr;
 
     WidgetBuilder* widgetBuilder = nullptr;
@@ -29,7 +31,7 @@ public:
 public slots:
     void SelectFile();
     void BuildForm();
-
+    void EditForm();
 };
 
 #endif //AXCHECKER_MAINAX_H

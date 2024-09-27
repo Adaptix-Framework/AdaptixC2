@@ -30,6 +30,7 @@ type ListenerData struct {
 	AgentHost string `json:"l_agent_host"`
 	AgentPort string `json:"l_agent_port"`
 	Status    string `json:"l_status"`
+	Data      string `json:"l_data"`
 }
 
 // SyncPacket
@@ -80,6 +81,7 @@ type SyncPackerListenerStart struct {
 	AgentHost      string `json:"l_agent_host"`
 	AgentPort      string `json:"l_agent_port"`
 	ListenerStatus string `json:"l_status"`
+	Data           string `json:"l_data"`
 }
 
 type SyncPackerListenerStop struct {

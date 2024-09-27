@@ -1,6 +1,7 @@
 #include <Classes/WidgetBuilder.h>
 
-WidgetBuilder::WidgetBuilder(const QByteArray& jsonData) {
+WidgetBuilder::WidgetBuilder(const QByteArray& jsonData)
+{
     QJsonParseError parseError;
     QJsonDocument document = QJsonDocument::fromJson(jsonData, &parseError);
 
@@ -15,11 +16,13 @@ WidgetBuilder::WidgetBuilder(const QByteArray& jsonData) {
 
 WidgetBuilder::~WidgetBuilder() = default;
 
-QString WidgetBuilder::GetError() {
+QString WidgetBuilder::GetError()
+{
     return error;
 }
 
-QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj) {
+QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
+{
     QLayout* layout = nullptr;
 
     if (layoutType.isEmpty())
@@ -135,7 +138,7 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj) {
             int rowCount = elementObj["rowCount"].toInt(0);
             int columnCount = elementObj["columnCount"].toInt(0);
 
-            QTableWidget* tableWidget = new QTableWidget(rowCount, columnCount, widget);
+            auto tableWidget = new QTableWidget(rowCount, columnCount, widget);
             tableWidget->setAutoFillBackground( false );
             tableWidget->setShowGrid( false );
             tableWidget->setSortingEnabled( true );
@@ -183,7 +186,7 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj) {
                 QJsonObject tabObj = tabValue.toObject();
                 QString title = tabObj["title"].toString();
 
-                QWidget* tabContent = new QWidget();
+                auto tabContent = new QWidget();
                 QLayout* tabLayout = BuildLayout("", tabObj);
                 tabContent->setLayout(tabLayout);
                 tabWidget->addTab(tabContent, title);
@@ -210,7 +213,8 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj) {
 }
 
 
-void WidgetBuilder::BuildWidget() {
+void WidgetBuilder::BuildWidget()
+{
     if (qJsonObject.isEmpty())
         return;
 
@@ -219,11 +223,13 @@ void WidgetBuilder::BuildWidget() {
     valid = true;
 }
 
-QWidget *WidgetBuilder::GetWidget() {
+QWidget *WidgetBuilder::GetWidget()
+{
     return widget;
 }
 
-QString WidgetBuilder::CollectData() {
+QString WidgetBuilder::CollectData()
+{
     QJsonObject collectedData;
     QWidget* widget = nullptr;
     for (auto it = widgetMap.begin(); it != widgetMap.end(); ++it) {
@@ -270,4 +276,55 @@ QString WidgetBuilder::CollectData() {
     return QString::fromUtf8(doc);
 }
 
+void WidgetBuilder::FillData(QString jsonString)
+{
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonString.toUtf8());
+    if (!jsonDoc.isObject()) {
+        return;
+    }
 
+    QJsonObject data = jsonDoc.object();
+
+    for (auto it = data.begin(); it != data.end(); ++it) {
+        QString id = it.key();
+        QJsonValue value = it.value();
+
+        if (!widgetMap.contains(id)) {
+            continue;
+        }
+
+        QWidget* widget = widgetMap[id];
+
+        if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(widget)) {
+            lineEdit->setText(value.toString());
+        }
+        else if (QComboBox* comboBox = qobject_cast<QComboBox*>(widget)) {
+            int index = comboBox->findText(value.toString());
+            if (index != -1) {
+                comboBox->setCurrentIndex(index);
+            }
+        }
+        else if (QCheckBox* checkBox = qobject_cast<QCheckBox*>(widget)) {
+            checkBox->setChecked(value.toBool());
+        }
+        else if (QTextEdit* textEdit = qobject_cast<QTextEdit*>(widget)) {
+            textEdit->setPlainText(value.toString());
+        }
+        else if (QTableWidget* tableWidget = qobject_cast<QTableWidget*>(widget)) {
+            QJsonArray tableData = value.toArray();
+
+            for (int row = 0; row < tableData.size(); ++row) {
+                QJsonArray rowArray = tableData[row].toArray();
+                for (int col = 0; col < rowArray.size(); ++col) {
+                    QString cellText = rowArray[col].toString();
+                    QTableWidgetItem* item = tableWidget->item(row, col);
+                    if (!item) {
+                        item = new QTableWidgetItem();
+                        tableWidget->setItem(row, col, item);
+                    }
+                    item->setText(cellText);
+                }
+            }
+        }
+    }
+}

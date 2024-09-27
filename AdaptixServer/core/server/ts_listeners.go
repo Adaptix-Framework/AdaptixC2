@@ -19,13 +19,11 @@ func (ts *Teamserver) ListenerNew(listenerInfo extender.ListenerInfo) error {
 
 	packet := CreateSpListenerNew(listenerFN, listenerInfo.ListenerUI)
 	ts.SyncSavePacket(packet.store, packet)
-	//ts.SyncAllClients(packet)
 
 	return nil
 }
 
 func (ts *Teamserver) ListenerStart(name string, configType string, config string) error {
-
 	var (
 		err          error
 		data         []byte
@@ -50,12 +48,13 @@ func (ts *Teamserver) ListenerStart(name string, configType string, config strin
 
 		listenerData.Name = name
 		listenerData.Type = configType
+		listenerData.Data = config
 
 		ts.listeners.Put(name, listenerData)
 
 		packet := CreateSpListenerStart(listenerData)
-		ts.SyncSavePacket(packet.store, packet)
 		ts.SyncAllClients(packet)
+		ts.SyncSavePacket(packet.store, packet)
 
 	} else {
 		return fmt.Errorf("listener %v does not exist", configType)
@@ -80,7 +79,46 @@ func (ts *Teamserver) ListenerStop(listenerName string, configType string) error
 			packet := CreateSpListenerStop(listenerName)
 			ts.SyncAllClients(packet)
 			ts.SyncXorPacket(packet.store, packet)
+		} else {
+			return fmt.Errorf("listener '%v' does not exist", listenerName)
+		}
+	} else {
+		return fmt.Errorf("listener %v does not exist", configType)
+	}
 
+	return nil
+}
+
+func (ts *Teamserver) ListenerEdit(listenerName string, configType string, config string) error {
+	var (
+		err          error
+		data         []byte
+		listenerData ListenerData
+	)
+
+	if ts.listener_configs.Contains(configType) {
+
+		if ts.listeners.Contains(listenerName) {
+
+			data, err = ts.Extender.ListenerEdit(listenerName, configType, config)
+			if err != nil {
+				return err
+			}
+
+			err = json.Unmarshal(data, &listenerData)
+			if err != nil {
+				return err
+			}
+
+			listenerData.Name = listenerName
+			listenerData.Type = configType
+			listenerData.Data = config
+
+			ts.listeners.Put(listenerName, listenerData)
+
+			packet := CreateSpListenerEdit(listenerData)
+			ts.SyncAllClients(packet)
+			ts.SyncSavePacket(packet.store, packet)
 		} else {
 			return fmt.Errorf("listener '%v' does not exist", listenerName)
 		}

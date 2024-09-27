@@ -28,7 +28,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
-    if( spType == TYPE_LISTENER_START ) {
+    if( spType == TYPE_LISTENER_START || spType == TYPE_LISTENER_EDIT ) {
         if ( !jsonObj.contains("l_name") || !jsonObj["l_name"].isString() ) {
             return false;
         }
@@ -48,6 +48,9 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
             return false;
         }
         if ( !jsonObj.contains("l_status") || !jsonObj["l_status"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("l_data") || !jsonObj["l_data"].isString() ) {
             return false;
         }
         return true;
@@ -138,6 +141,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newListener.AgentPort    = jsonObj["l_agent_port"].toString();
         newListener.AgentHost    = jsonObj["l_agent_host"].toString();
         newListener.Status       = jsonObj["l_status"].toString();
+        newListener.Data         = jsonObj["l_data"].toString();
 
         qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
         QString message = QString("Listener '%1' (%2) started").arg(newListener.ListenerName).arg(newListener.ListenerType);
@@ -145,6 +149,26 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         LogsTab->AddLogs(spType, time, message);
 
         ListenersTab->AddListenerItem(newListener);
+        return;
+    }
+    if ( spType == TYPE_LISTENER_EDIT )
+    {
+        ListenerData newListener = {0};
+        newListener.ListenerName = jsonObj["l_name"].toString();
+        newListener.ListenerType = jsonObj["l_type"].toString();
+        newListener.BindHost     = jsonObj["l_bind_host"].toString();
+        newListener.BindPort     = jsonObj["l_bind_port"].toString();
+        newListener.AgentPort    = jsonObj["l_agent_port"].toString();
+        newListener.AgentHost    = jsonObj["l_agent_host"].toString();
+        newListener.Status       = jsonObj["l_status"].toString();
+        newListener.Data         = jsonObj["l_data"].toString();
+
+        qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
+        QString message = QString("Listener '%1' reconfigured").arg(newListener.ListenerName);
+
+        LogsTab->AddLogs(spType, time, message);
+
+        ListenersTab->EditListenerItem(newListener);
         return;
     }
     if ( spType == TYPE_LISTENER_STOP )

@@ -15,6 +15,7 @@ const (
 	TYPE_LISTENER_NEW   = 31
 	TYPE_LISTENER_START = 32
 	TYPE_LISTENER_STOP  = 33
+	TYPE_LISTENER_EDIT  = 34
 )
 
 /// SYNC
@@ -80,7 +81,14 @@ func CreateSpListenerStart(listenerData ListenerData) SyncPackerListenerStart {
 		AgentHost:      listenerData.AgentHost,
 		AgentPort:      listenerData.AgentPort,
 		ListenerStatus: listenerData.Status,
+		Data:           listenerData.Data,
 	}
+}
+
+func CreateSpListenerEdit(listenerData ListenerData) SyncPackerListenerStart {
+	packet := CreateSpListenerStart(listenerData)
+	packet.SpType = TYPE_LISTENER_EDIT
+	return packet
 }
 
 func CreateSpListenerStop(name string) SyncPackerListenerStop {

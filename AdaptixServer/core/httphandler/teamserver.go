@@ -17,6 +17,7 @@ type Teamserver interface {
 	ClientDisconnect(username string)
 
 	ListenerStart(listenerName string, configType string, config string) error
+	ListenerEdit(listenerName string, configType string, config string) error
 	ListenerStop(listenerName string, configType string) error
 }
 
@@ -64,6 +65,7 @@ func NewTsHttpHandler(ts Teamserver, p profile.TsProfile) (*TsHttpHandler, error
 
 	httpHandler.Engine.POST(p.Endpoint+"/listener/start", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerStart)
 	httpHandler.Engine.POST(p.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerStop)
+	httpHandler.Engine.POST(p.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerEdit)
 
 	httpHandler.Engine.GET(p.Endpoint+"/connect", default404Middleware(), httpHandler.connect)
 

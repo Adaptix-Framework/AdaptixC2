@@ -18,11 +18,12 @@ public:
     explicit WidgetBuilder(const QByteArray& jsonData);
     ~WidgetBuilder();
 
-    void     BuildWidget();
-    QLayout* BuildLayout(QString layoutType, QJsonObject rootObj);
+    void     BuildWidget(bool editable);
+    QLayout* BuildLayout(QString layoutType, QJsonObject rootObj, bool editable);
     QString  GetError();
     QWidget* GetWidget();
     void     ClearWidget();
+    void     FillData(QString jsonString);
     QString  CollectData();
 };
 

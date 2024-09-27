@@ -4,7 +4,8 @@
 #include <main.h>
 #include <Classes/WidgetBuilder.h>
 
-class DialogView : public QDialog {
+class DialogView : public QDialog
+{
     WidgetBuilder*    widgetBuilder = nullptr;
     QVBoxLayout*      layout        = nullptr;
     QDialogButtonBox* buttonBox     = nullptr;

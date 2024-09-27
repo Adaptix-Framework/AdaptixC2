@@ -49,3 +49,26 @@ func (ex *AdaptixExtender) ListenerStop(listenerName string, configType string) 
 
 	return nil
 }
+
+func (ex *AdaptixExtender) ListenerEdit(listenerName string, configType string, config string) ([]byte, error) {
+	var (
+		err    error
+		data   []byte
+		module *ModuleExtender
+	)
+
+	if ex.listenerModules.Contains(configType) {
+		value, ok := ex.listenerModules.Get(configType)
+		if ok {
+			module = value.(*ModuleExtender)
+			data, err = module.ListenerEdit(listenerName, config)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		return nil, errors.New("module not found")
+	}
+
+	return data, nil
+}
