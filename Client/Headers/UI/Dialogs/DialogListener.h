@@ -25,6 +25,7 @@ class DialogListener : public QDialog
 
     QMap<QString, WidgetBuilder*> listenersUI;
     AuthProfile                   authProfile;
+    bool                          editMode = false;
 
     void createUI();
 
@@ -35,12 +36,12 @@ public:
     void AddExListeners(QMap<QString, WidgetBuilder*> listeners);
     void SetProfile(AuthProfile profile);
     void Start();
+    void SetEditMode(QString name);
 
 protected slots:
     void changeConfig(QString fn);
     void onButtonSave();
     void onButtonClose();
-
 };
 
 #endif //ADAPTIXCLIENT_DIALOGLISTENER_H

@@ -44,6 +44,7 @@ type ListenerData struct {
 	AgentHost string `json:"l_agent_host"`
 	AgentPort string `json:"l_agent_port"`
 	Status    string `json:"l_status"`
+	Data      string `json:"l_data"`
 }
 
 var ModuleObject ModuleExtender
@@ -190,6 +191,46 @@ func (m *ModuleExtender) ListenerStart(name string, data string) ([]byte, error)
 	ListenersObject = append(ListenersObject, listener)
 
 	return buffer.Bytes(), nil
+}
+
+func (m *ModuleExtender) ListenerEdit(name string, data string) ([]byte, error) {
+	var (
+		err          error
+		conf         HTTPConfig
+		buffer       bytes.Buffer
+		listenerData ListenerData
+	)
+
+	err = json.Unmarshal([]byte(data), &conf)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, listener := range ListenersObject {
+		if listener.Name == name {
+
+			listener.Config.Uri = conf.Uri
+
+			listenerData = ListenerData{
+				BindHost:  listener.Config.Host,
+				BindPort:  listener.Config.Port,
+				AgentHost: listener.Config.Host,
+				AgentPort: listener.Config.Port,
+				Status:    "Listen",
+			}
+			if !listener.Active {
+				listenerData.Status = "Closed"
+			}
+
+			err = json.NewEncoder(&buffer).Encode(listenerData)
+			if err != nil {
+				return nil, err
+			}
+
+			return buffer.Bytes(), nil
+		}
+	}
+	return nil, errors.New("listener not found")
 }
 
 func (m *ModuleExtender) ListenerStop(name string) error {

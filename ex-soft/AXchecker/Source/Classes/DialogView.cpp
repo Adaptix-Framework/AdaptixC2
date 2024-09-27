@@ -1,6 +1,7 @@
 #include <Classes/DialogView.h>
 
-DialogView::DialogView(WidgetBuilder *builder) {
+DialogView::DialogView(WidgetBuilder *builder)
+{
     layout = new QVBoxLayout(this);
 
     if(builder && builder->valid) {
@@ -19,7 +20,8 @@ DialogView::DialogView(WidgetBuilder *builder) {
 
 DialogView::~DialogView()= default;
 
-QString DialogView::GetData() {
+QString DialogView::GetData()
+{
     if(widgetBuilder && widgetBuilder->valid) {
         return widgetBuilder->CollectData();
     }

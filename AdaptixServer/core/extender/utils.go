@@ -30,6 +30,7 @@ type ListenerFunctions interface {
 	ListenerInit(path string) ([]byte, error)
 	ListenerValid(config string) error
 	ListenerStart(name string, data string) ([]byte, error)
+	ListenerEdit(name string, data string) ([]byte, error)
 	ListenerStop(name string) error
 }
 

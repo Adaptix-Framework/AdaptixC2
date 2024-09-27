@@ -109,19 +109,24 @@ void DialogListener::onButtonSave()
     }
 
     QString message = QString();
-    bool ok = false;
-    bool result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
+    bool result, ok = false;
+    if ( editMode ) {
+        result = HttpReqListenerEdit(configName, configType, configData, authProfile, &message, &ok);
+    }
+    else {
+        result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
+    }
+
     if( !result ){
         MessageError("Authentication error");
         return;
     }
-    if ( ok ) {
-//        MessageSuccess(message);
-        this->close();
-    }
-    else {
+    if ( !ok ) {
         MessageError(message);
+        return;
     }
+
+    this->close();
 }
 
 void DialogListener::onButtonClose()
@@ -132,4 +137,13 @@ void DialogListener::onButtonClose()
 void DialogListener::SetProfile(AuthProfile profile)
 {
     this->authProfile = profile;
+}
+
+void DialogListener::SetEditMode(QString name)
+{
+    this->setWindowTitle( "Edit Listener" );
+    listenerNameInput->setText(name);
+    listenerNameInput->setDisabled(true);
+    listenerTypeCombobox->setDisabled(true);
+    editMode = true;
 }

@@ -53,6 +53,7 @@
 #define TYPE_LISTENER_NEW   31
 #define TYPE_LISTENER_START 32
 #define TYPE_LISTENER_STOP  33
+#define TYPE_LISTENER_EDIT  34
 
 typedef struct ListenerData
 {
@@ -63,6 +64,7 @@ typedef struct ListenerData
     QString AgentHost;
     QString AgentPort;
     QString Status;
+    QString Data;
 } ListenerData;
 
 #endif //ADAPTIXCLIENT_MAIN_H

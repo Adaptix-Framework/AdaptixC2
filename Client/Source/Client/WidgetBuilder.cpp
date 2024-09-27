@@ -19,7 +19,7 @@ QString WidgetBuilder::GetError()
     return error;
 }
 
-QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
+QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj, bool editable)
 {
     QLayout* layout = nullptr;
 
@@ -46,6 +46,7 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
         QJsonObject elementObj = elementValue.toObject();
         QString type = elementObj["type"].toString();
         QString id = elementObj["id"].toString();
+        bool editMode = elementObj.contains("editable") ? elementObj["editable"].toBool() : true;
 
         QJsonArray positionArray = elementObj["position"].toArray();
         int row = positionArray.size() > 0 ? positionArray[0].toInt() : 0;
@@ -185,7 +186,7 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
                 QString title = tabObj["title"].toString();
 
                 auto tabContent = new QWidget();
-                QLayout* tabLayout = BuildLayout("", tabObj);
+                QLayout* tabLayout = BuildLayout("", tabObj, editable);
                 tabContent->setLayout(tabLayout);
                 tabWidget->addTab(tabContent, title);
             }
@@ -197,7 +198,7 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
             }
         }
         else if (type == "vlayout" || type == "hlayout" || type == "glayout") {
-            QLayout* nestedLayout = BuildLayout(type, elementObj);
+            QLayout* nestedLayout = BuildLayout(type, elementObj, editable);
 
             if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
                 gridLayout->addLayout(nestedLayout, row, col, rowSpan, colSpan);
@@ -205,18 +206,21 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
                 boxLayout->addLayout(nestedLayout);
             }
         }
+
+        if(editable && widgetMap[id])
+            widgetMap[id]->setDisabled(!editMode);
     }
 
     return layout;
 }
 
-void WidgetBuilder::BuildWidget()
+void WidgetBuilder::BuildWidget(bool editable)
 {
     if (qJsonObject.isEmpty())
         return;
 
     widget = new QWidget;
-    auto layout = BuildLayout("", qJsonObject);
+    auto layout = BuildLayout("", qJsonObject, editable);
     widget->setLayout(layout);
     valid = true;
 }
@@ -269,6 +273,58 @@ QString WidgetBuilder::CollectData()
     QJsonDocument jsonDocument(collectedData);
     QByteArray doc = jsonDocument.toJson(QJsonDocument::Compact);
     return QString::fromUtf8(doc);
+}
+
+void WidgetBuilder::FillData(QString jsonString)
+{
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonString.toUtf8());
+    if (!jsonDoc.isObject()) {
+        return;
+    }
+
+    QJsonObject data = jsonDoc.object();
+
+    for (auto it = data.begin(); it != data.end(); ++it) {
+        QString id = it.key();
+        QJsonValue value = it.value();
+
+        if (!widgetMap.contains(id)) {
+            continue;
+        }
+        auto widget = widgetMap[id];
+
+        if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(widget)) {
+            lineEdit->setText(value.toString());
+        }
+        else if (QComboBox* comboBox = qobject_cast<QComboBox*>(widget)) {
+            int index = comboBox->findText(value.toString());
+            if (index != -1) {
+                comboBox->setCurrentIndex(index);
+            }
+        }
+        else if (QCheckBox* checkBox = qobject_cast<QCheckBox*>(widget)) {
+            checkBox->setChecked(value.toBool());
+        }
+        else if (QTextEdit* textEdit = qobject_cast<QTextEdit*>(widget)) {
+            textEdit->setPlainText(value.toString());
+        }
+        else if (QTableWidget* tableWidget = qobject_cast<QTableWidget*>(widget)) {
+            QJsonArray tableData = value.toArray();
+
+            for (int row = 0; row < tableData.size(); ++row) {
+                QJsonArray rowArray = tableData[row].toArray();
+                for (int col = 0; col < rowArray.size(); ++col) {
+                    QString cellText = rowArray[col].toString();
+                    QTableWidgetItem* item = tableWidget->item(row, col);
+                    if (!item) {
+                        item = new QTableWidgetItem();
+                        tableWidget->setItem(row, col, item);
+                    }
+                    item->setText(cellText);
+                }
+            }
+        }
+    }
 }
 
 void WidgetBuilder::ClearWidget()

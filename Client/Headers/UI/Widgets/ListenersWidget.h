@@ -20,11 +20,13 @@ public:
     ~ListenersWidget();
 
     void AddListenerItem(ListenerData newListener);
+    void EditListenerItem(ListenerData newListener);
     void RemoveListenerItem(QString listenerName);
 
 public slots:
     void handleListenersMenu( const QPoint &pos ) const;
     void createListener();
+    void editListener();
     void removeListener();
 };
 

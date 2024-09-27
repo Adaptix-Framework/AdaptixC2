@@ -1,28 +1,30 @@
 #include <Classes/MainAX.h>
 
-MainAX::MainAX() {
-
+MainAX::MainAX()
+{
     this->setStyle();
 
     this->createUI();
 
     connect(selectButton, &QPushButton::clicked, this, [&](){SelectFile();});
     connect(buildButton, &QPushButton::clicked, this, [&](){BuildForm();});
+    connect(editButton, &QPushButton::clicked, this, [&](){EditForm();});
 }
 
-MainAX::~MainAX() {
+MainAX::~MainAX()
+{
     delete controlLayout;
     delete widgetBuilder;
 };
 
-void MainAX::createUI() {
+void MainAX::createUI()
+{
     this->setWindowTitle("AX Checker");
 //    this->resize(600, 400);
 
     mainLayout = new QVBoxLayout(this);
 
     configTextarea = new QTextEdit(this);
-    configTextarea->setReadOnly(true);
 
     pathInput = new QLineEdit(this);
     pathInput->setReadOnly(true);
@@ -30,17 +32,21 @@ void MainAX::createUI() {
     selectButton = new QPushButton("Select", this);
     buildButton = new QPushButton("Build", this);
     buildButton->setEnabled(false);
+    editButton = new QPushButton("Edit", this);
+    editButton->setEnabled(false);
 
     controlLayout = new QHBoxLayout();
     controlLayout->addWidget(pathInput);
     controlLayout->addWidget(selectButton);
     controlLayout->addWidget(buildButton);
+    controlLayout->addWidget(editButton);
 
     mainLayout->addWidget(configTextarea);
     mainLayout->addLayout(controlLayout);
 }
 
-void MainAX::setStyle() {
+void MainAX::setStyle()
+{
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
 
     int FontID = QFontDatabase::addApplicationFont( ":/fonts/DroidSansMono" );
@@ -62,7 +68,8 @@ void MainAX::setStyle() {
     }
 }
 
-void MainAX::SelectFile() {
+void MainAX::SelectFile()
+{
     QString filePath = QFileDialog::getOpenFileName(this, "Select JSON file", "", "JSON Files (*.json)");
     if (!filePath.isEmpty()) {
         pathInput->setText(filePath);
@@ -70,7 +77,8 @@ void MainAX::SelectFile() {
     }
 }
 
-void MainAX::BuildForm() {
+void MainAX::BuildForm()
+{
     QString filePath = pathInput->text();
     if (!filePath.isEmpty()) {
         bool result = false;
@@ -82,6 +90,7 @@ void MainAX::BuildForm() {
                 if (dialogView->exec() == QDialog::Accepted) {
                     QString resultData = dialogView->GetData();
                     configTextarea->setText(resultData);
+                    editButton->setEnabled(true);
                 }
             }
             else {
@@ -91,7 +100,20 @@ void MainAX::BuildForm() {
     }
 }
 
-void MainAX::Start() {
+void MainAX::EditForm()
+{
+    QString jsonString = configTextarea->toPlainText();
+    widgetBuilder->FillData(jsonString);
+    dialogView = new DialogView(widgetBuilder);
+    if (dialogView->exec() == QDialog::Accepted) {
+        QString resultData = dialogView->GetData();
+        configTextarea->setText(resultData);
+        editButton->setEnabled(true);
+    }
+}
+
+void MainAX::Start()
+{
     this->show();
     QApplication::exec();
 }

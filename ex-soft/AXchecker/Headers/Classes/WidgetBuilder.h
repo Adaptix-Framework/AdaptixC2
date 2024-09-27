@@ -3,7 +3,8 @@
 
 #include <main.h>
 
-class WidgetBuilder {
+class WidgetBuilder
+{
     QWidget* widget = nullptr;
 
     QMap<QString, QWidget*> widgetMap;
@@ -22,6 +23,7 @@ public:
     QString  GetError();
     QWidget* GetWidget();
     QString  CollectData();
+    void     FillData(QString jsonString);
 };
 
 #endif //AXCHECKER_WIDGETBUILDER_H

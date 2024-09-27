@@ -1,6 +1,7 @@
 #include <Classes/Utils.h>
 
-QString ReadFileString(const QString &filePath, bool* result) {
+QString ReadFileString(const QString &filePath, bool* result)
+{
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         *result = false;
@@ -15,7 +16,8 @@ QString ReadFileString(const QString &filePath, bool* result) {
     return content;
 }
 
-QByteArray ReadFileBytearray(const QString &filePath, bool* result) {
+QByteArray ReadFileBytearray(const QString &filePath, bool* result)
+{
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         *result = false;
