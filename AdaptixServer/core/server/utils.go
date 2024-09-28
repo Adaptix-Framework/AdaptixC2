@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/database"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/httphandler"
 	"AdaptixServer/core/profile"
@@ -11,6 +12,7 @@ import (
 
 type Teamserver struct {
 	Profile       *profile.AdaptixProfile
+	DBMS          *database.DBMS
 	AdaptixServer *httphandler.TsHttpHandler
 	Extender      *extender.AdaptixExtender
 

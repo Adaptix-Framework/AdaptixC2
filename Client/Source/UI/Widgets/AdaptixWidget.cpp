@@ -25,8 +25,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile)
 
     ChannelThread->start();
 
-
-
     // TODO: Enable menu button
     sessionsButton->setVisible(false);
     graphButton->setVisible(false);
@@ -41,8 +39,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile)
     keysButton->setVisible(false);
     line_4->setVisible(false);
     reconnectButton->setVisible(false);
-    //
-
 }
 
 AdaptixWidget::~AdaptixWidget()
@@ -248,8 +244,6 @@ void AdaptixWidget::ChannelClose()
 
 void AdaptixWidget::DataHandler(const QByteArray &data)
 {
-//    LogSuccess("Received data %s", data.toStdString().data());
-
     QJsonParseError parseError;
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
 

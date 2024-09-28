@@ -1,4 +1,5 @@
 #include <UI/Widgets/LogsWidget.h>
+#include <Utils/Convert.h>
 
 LogsWidget::LogsWidget()
 {
@@ -9,7 +10,6 @@ LogsWidget::~LogsWidget() = default;
 
 void LogsWidget::createUI()
 {
-
     /// Logs
     logsLabel = new QLabel(this);
     logsLabel->setText("Logs");
@@ -62,6 +62,18 @@ void LogsWidget::createUI()
 void LogsWidget::AddLogs( int type, qint64 time, QString message )
 {
     QString sTime = UnixTimestampGlobalToStringLocal(time);
-    QString log = QString("[%1] -> %2").arg(sTime).arg(message);
-    logsConsoleTextEdit->append(log);
+    QString log = QString("[%1] -> ").arg(sTime);
+
+    if( type == TYPE_CLIENT_CONNECT ) {
+        log += TextColorHtml(message, COLOR_ChiliPepper);
+    }
+    else if( type == TYPE_CLIENT_DISCONNECT ) {
+        log += TextColorHtml(message, COLOR_Berry);
+    }
+    else if( type == TYPE_LISTENER_START || TYPE_LISTENER_STOP )
+        log += TextColorHtml(message, COLOR_BrightOrange);
+    else
+        log += message;
+
+    logsConsoleTextEdit->append( log );
 }
