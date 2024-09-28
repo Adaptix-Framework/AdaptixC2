@@ -14,3 +14,8 @@ QString UnixTimestampGlobalToStringLocal(qint64 timestamp)
     QString formattedTime = localDateTime.toString("dd/MM hh:mm:ss");
     return formattedTime;
 }
+
+QString TextColorHtml(QString text, QString color)
+{
+    return R"(<font color=")" + color + R"(">)" + text.toHtmlEscaped() + R"(</font>)";
+}

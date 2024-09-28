@@ -8,6 +8,7 @@ import (
 type RepoLogs struct {
 	Path         string
 	DataPath     string
+	DbPath       string
 	ListenerPath string
 }
 
@@ -24,6 +25,7 @@ func NewRepoLogs() (*RepoLogs, error) {
 	repologs := &RepoLogs{
 		Path:         path,
 		DataPath:     path + "/data",
+		DbPath:       path + "/data/adaptixserver.db",
 		ListenerPath: path + "/data/listener",
 	}
 

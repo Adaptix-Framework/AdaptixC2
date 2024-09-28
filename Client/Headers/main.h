@@ -44,6 +44,8 @@
 
 #define FRAMEWORK_VERSION "Adaptix Framework v.0.1-DEV"
 
+//////////
+
 #define TYPE_SYNC_START  11
 #define TYPE_SYNC_FINISH 12
 
@@ -54,6 +56,15 @@
 #define TYPE_LISTENER_START 32
 #define TYPE_LISTENER_STOP  33
 #define TYPE_LISTENER_EDIT  34
+
+//////////
+
+#define COLOR_NeonGreen    "#39FF14"     // green
+#define COLOR_Berry        "#A01641"     // red
+#define COLOR_ChiliPepper  "#E32227"     // red
+#define COLOR_BrightOrange "#FFA500"     // orange
+
+//////////
 
 typedef struct ListenerData
 {

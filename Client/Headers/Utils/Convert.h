@@ -9,4 +9,6 @@ bool IsValidURI(const QString &uri);
 
 QString UnixTimestampGlobalToStringLocal(qint64 timestamp);
 
+QString TextColorHtml(QString text, QString color);
+
 #endif //ADAPTIXCLIENT_CONVERT_H

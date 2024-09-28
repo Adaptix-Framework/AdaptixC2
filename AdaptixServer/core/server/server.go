@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/database"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/httphandler"
 	"AdaptixServer/core/profile"
@@ -11,8 +12,16 @@ import (
 )
 
 func NewTeamserver() *Teamserver {
+
+	dbms, err := database.NewDatabase(logs.RepoLogsInstance.DbPath)
+	if err != nil {
+		logs.Error("Failed to create a DBMS: " + err.Error())
+		return nil
+	}
+
 	ts := &Teamserver{
 		Profile:          profile.NewProfile(),
+		DBMS:             dbms,
 		clients:          safe.NewMap(),
 		syncpackets:      safe.NewMap(),
 		listener_configs: safe.NewMap(),
@@ -65,11 +74,9 @@ func (ts *Teamserver) Start() {
 	}
 
 	go ts.AdaptixServer.Start(&stoped)
-
 	logs.Success("Starting server -> https://%s:%v%s", "0.0.0.0", ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
 
 	<-stoped
-
 	logs.Warn("Teamserver finished")
 	os.Exit(0)
 }

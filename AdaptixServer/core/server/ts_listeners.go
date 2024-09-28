@@ -23,20 +23,20 @@ func (ts *Teamserver) ListenerNew(listenerInfo extender.ListenerInfo) error {
 	return nil
 }
 
-func (ts *Teamserver) ListenerStart(name string, configType string, config string) error {
+func (ts *Teamserver) ListenerStart(listenerName string, listenerType string, listenerConfig string) error {
 	var (
 		err          error
 		data         []byte
 		listenerData ListenerData
 	)
 
-	if ts.listener_configs.Contains(configType) {
+	if ts.listener_configs.Contains(listenerType) {
 
-		if ts.listeners.Contains(name) {
+		if ts.listeners.Contains(listenerName) {
 			return errors.New("listener already exists")
 		}
 
-		data, err = ts.Extender.ListenerStart(name, configType, config)
+		data, err = ts.Extender.ListenerStart(listenerName, listenerType, listenerConfig)
 		if err != nil {
 			return err
 		}
@@ -46,30 +46,31 @@ func (ts *Teamserver) ListenerStart(name string, configType string, config strin
 			return err
 		}
 
-		listenerData.Name = name
-		listenerData.Type = configType
-		listenerData.Data = config
+		listenerData.Name = listenerName
+		listenerData.Type = listenerType
+		listenerData.Data = listenerConfig
 
-		ts.listeners.Put(name, listenerData)
+		ts.listeners.Put(listenerName, listenerData)
 
 		packet := CreateSpListenerStart(listenerData)
 		ts.SyncAllClients(packet)
 		ts.SyncSavePacket(packet.store, packet)
 
+		_ = ts.DBMS.ListenerInsert(listenerName, listenerType, listenerConfig)
 	} else {
-		return fmt.Errorf("listener %v does not exist", configType)
+		return fmt.Errorf("listener %v does not exist", listenerType)
 	}
 
 	return nil
 }
 
-func (ts *Teamserver) ListenerStop(listenerName string, configType string) error {
+func (ts *Teamserver) ListenerStop(listenerName string, listenerType string) error {
 
-	if ts.listener_configs.Contains(configType) {
+	if ts.listener_configs.Contains(listenerType) {
 
 		if ts.listeners.Contains(listenerName) {
 
-			err := ts.Extender.ListenerStop(listenerName, configType)
+			err := ts.Extender.ListenerStop(listenerName, listenerType)
 			if err != nil {
 				return err
 			}
@@ -79,28 +80,30 @@ func (ts *Teamserver) ListenerStop(listenerName string, configType string) error
 			packet := CreateSpListenerStop(listenerName)
 			ts.SyncAllClients(packet)
 			ts.SyncXorPacket(packet.store, packet)
+
+			_ = ts.DBMS.ListenerDelete(listenerName)
 		} else {
 			return fmt.Errorf("listener '%v' does not exist", listenerName)
 		}
 	} else {
-		return fmt.Errorf("listener %v does not exist", configType)
+		return fmt.Errorf("listener %v does not exist", listenerType)
 	}
 
 	return nil
 }
 
-func (ts *Teamserver) ListenerEdit(listenerName string, configType string, config string) error {
+func (ts *Teamserver) ListenerEdit(listenerName string, listenerType string, listenerConfig string) error {
 	var (
 		err          error
 		data         []byte
 		listenerData ListenerData
 	)
 
-	if ts.listener_configs.Contains(configType) {
+	if ts.listener_configs.Contains(listenerType) {
 
 		if ts.listeners.Contains(listenerName) {
 
-			data, err = ts.Extender.ListenerEdit(listenerName, configType, config)
+			data, err = ts.Extender.ListenerEdit(listenerName, listenerType, listenerConfig)
 			if err != nil {
 				return err
 			}
@@ -111,19 +114,21 @@ func (ts *Teamserver) ListenerEdit(listenerName string, configType string, confi
 			}
 
 			listenerData.Name = listenerName
-			listenerData.Type = configType
-			listenerData.Data = config
+			listenerData.Type = listenerType
+			listenerData.Data = listenerConfig
 
 			ts.listeners.Put(listenerName, listenerData)
 
 			packet := CreateSpListenerEdit(listenerData)
 			ts.SyncAllClients(packet)
 			ts.SyncSavePacket(packet.store, packet)
+
+			_ = ts.DBMS.ListenerUpdate(listenerName, listenerConfig)
 		} else {
 			return fmt.Errorf("listener '%v' does not exist", listenerName)
 		}
 	} else {
-		return fmt.Errorf("listener %v does not exist", configType)
+		return fmt.Errorf("listener %v does not exist", listenerType)
 	}
 
 	return nil
