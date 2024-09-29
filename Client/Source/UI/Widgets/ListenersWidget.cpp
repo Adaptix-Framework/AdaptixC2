@@ -52,7 +52,7 @@ void ListenersWidget::createUI()
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setObjectName( QString::fromUtf8( "MainLayoutListeners" ) );
-    mainGridLayout->setContentsMargins( 1, 3,  1, 3);
+    mainGridLayout->setContentsMargins( 0, 0,  0, 0);
     mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
 }
 
@@ -152,7 +152,6 @@ void ListenersWidget::EditListenerItem(ListenerData newListener )
             else {
                 tableWidget->item(row, 6)->setForeground( QColor(COLOR_ChiliPepper) );
             }
-
             break;
         }
     }
@@ -256,8 +255,9 @@ void ListenersWidget::removeListener()
         return;
     }
 
-    if ( ok )
-        MessageSuccess(message);
-    else
+    if ( !ok ) {
+//        MessageSuccess(message);
+//    else
         MessageError(message);
+    }
 }

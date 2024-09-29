@@ -97,3 +97,36 @@ func (dbms *DBMS) ListenerUpdate(listenerName string, listenerConfig string) err
 	}
 	return nil
 }
+
+type ListenerRow struct {
+	ListenerName   string
+	ListenerType   string
+	ListenerConfig string
+}
+
+func (dbms *DBMS) ListenerAll() []ListenerRow {
+	var (
+		listeners   []ListenerRow
+		ok          bool
+		selectQuery string
+	)
+
+	ok = dbms.DatabaseExists()
+	if ok {
+		selectQuery = `SELECT ListenerName, ListenerType, ListenerConfig FROM Listeners;`
+		query, err := dbms.database.Query(selectQuery)
+		if err == nil {
+
+			for query.Next() {
+				listenerRow := ListenerRow{}
+				err = query.Scan(&listenerRow.ListenerName, &listenerRow.ListenerType, &listenerRow.ListenerConfig)
+				if err != nil {
+					continue
+				}
+				listeners = append(listeners, listenerRow)
+			}
+		}
+		defer query.Close()
+	}
+	return listeners
+}

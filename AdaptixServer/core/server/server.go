@@ -61,6 +61,33 @@ func (ts *Teamserver) SetProfile(path string) error {
 	return nil
 }
 
+func (ts *Teamserver) RestoreData() {
+	var (
+		ok  bool
+		err error
+	)
+
+	ok = ts.DBMS.DatabaseExists()
+	if !ok {
+		return
+	}
+
+	logs.Info("Restore data from Database...")
+
+	countListeners := 0
+	restoreListeners := ts.DBMS.ListenerAll()
+	for _, restoreListener := range restoreListeners {
+		err = ts.ListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig)
+		if err != nil {
+			logs.Error("Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
+		} else {
+			countListeners++
+		}
+	}
+
+	logs.Success("Restored %v listeners", countListeners)
+}
+
 func (ts *Teamserver) Start() {
 	var (
 		stoped chan bool
@@ -75,6 +102,8 @@ func (ts *Teamserver) Start() {
 
 	go ts.AdaptixServer.Start(&stoped)
 	logs.Success("Starting server -> https://%s:%v%s", "0.0.0.0", ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
+
+	ts.RestoreData()
 
 	<-stoped
 	logs.Warn("Teamserver finished")

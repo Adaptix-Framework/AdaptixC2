@@ -17,10 +17,12 @@ import (
 )
 
 type HTTPConfig struct {
-	Ssl  bool   `json:"ssl"`
-	Host string `json:"host"`
-	Port string `json:"port"`
-	Uri  string `json:"uri"`
+	Ssl       bool   `json:"ssl"`
+	HostBind  string `json:"host_bind"`
+	PortBind  string `json:"port_bind"`
+	HostAgent string `json:"host_agent"`
+	PortAgent string `json:"port_agent"`
+	Uri       string `json:"uri"`
 
 	SslCert     string `json:"ssl_cert"`
 	SslKey      string `json:"ssl_key"`
@@ -53,12 +55,12 @@ func (h *HTTP) Start() error {
 	h.Active = true
 
 	h.Server = &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", h.Config.Host, h.Config.Port),
+		Addr:    fmt.Sprintf("%s:%s", h.Config.HostBind, h.Config.PortBind),
 		Handler: router,
 	}
 
 	if h.Config.Ssl {
-		fmt.Println("Started listener: https://" + h.Config.Host + ":" + h.Config.Port)
+		fmt.Println("Started listener: https://" + h.Config.HostBind + ":" + h.Config.PortBind)
 
 		listenerPath := ModulePath + "/" + h.Name
 		_, err = os.Stat(listenerPath)
@@ -100,7 +102,7 @@ func (h *HTTP) Start() error {
 		}()
 
 	} else {
-		fmt.Println("Started listener: http://" + h.Config.Host + ":" + h.Config.Port)
+		fmt.Println("Started listener: http://" + h.Config.HostBind + ":" + h.Config.PortBind)
 
 		go func() {
 			err = h.Server.ListenAndServe()
