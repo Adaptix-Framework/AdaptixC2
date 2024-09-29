@@ -128,11 +128,11 @@ func (m *ModuleExtender) ListenerValid(data string) error {
 		return err
 	}
 
-	if conf.Host == "" {
+	if conf.HostBind == "" {
 		return errors.New("host is required")
 	}
 
-	portInt, err := strconv.Atoi(conf.Port)
+	portInt, err := strconv.Atoi(conf.PortBind)
 	if err != nil {
 		return errors.New("port must be an integer")
 	}
@@ -172,10 +172,10 @@ func (m *ModuleExtender) ListenerStart(name string, data string) ([]byte, error)
 	}
 
 	listenerData = ListenerData{
-		BindHost:  listener.Config.Host,
-		BindPort:  listener.Config.Port,
-		AgentHost: listener.Config.Host,
-		AgentPort: listener.Config.Port,
+		BindHost:  listener.Config.HostBind,
+		BindPort:  listener.Config.PortBind,
+		AgentHost: listener.Config.HostAgent,
+		AgentPort: listener.Config.PortAgent,
 		Status:    "Listen",
 	}
 
@@ -212,10 +212,10 @@ func (m *ModuleExtender) ListenerEdit(name string, data string) ([]byte, error) 
 			listener.Config.Uri = conf.Uri
 
 			listenerData = ListenerData{
-				BindHost:  listener.Config.Host,
-				BindPort:  listener.Config.Port,
-				AgentHost: listener.Config.Host,
-				AgentPort: listener.Config.Port,
+				BindHost:  listener.Config.HostBind,
+				BindPort:  listener.Config.PortBind,
+				AgentHost: listener.Config.HostAgent,
+				AgentPort: listener.Config.PortAgent,
 				Status:    "Listen",
 			}
 			if !listener.Active {

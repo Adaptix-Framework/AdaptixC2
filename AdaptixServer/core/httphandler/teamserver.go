@@ -63,11 +63,11 @@ func NewTsHttpHandler(ts Teamserver, p profile.TsProfile) (*TsHttpHandler, error
 	httpHandler.Engine.POST(p.Endpoint+"/login", default404Middleware(), httpHandler.login)
 	httpHandler.Engine.POST(p.Endpoint+"/refresh", default404Middleware(), token.RefreshTokenHandler)
 
-	httpHandler.Engine.POST(p.Endpoint+"/listener/start", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerStart)
-	httpHandler.Engine.POST(p.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerStop)
-	httpHandler.Engine.POST(p.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerEdit)
-
 	httpHandler.Engine.GET(p.Endpoint+"/connect", default404Middleware(), httpHandler.connect)
+
+	httpHandler.Engine.POST(p.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerStart)
+	httpHandler.Engine.POST(p.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerEdit)
+	httpHandler.Engine.POST(p.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerStop)
 
 	httpHandler.Engine.NoRoute(default404Middleware(), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 

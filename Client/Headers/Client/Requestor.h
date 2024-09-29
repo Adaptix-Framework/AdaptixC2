@@ -4,6 +4,8 @@
 #include <main.h>
 #include <Client/AuthProfile.h>
 
+QJsonObject HttpReq( QString sUrl, QByteArray jsonData, QString token );
+
 bool HttpReqLogin(AuthProfile* profile);
 
 bool HttpReqListenerStart(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok );

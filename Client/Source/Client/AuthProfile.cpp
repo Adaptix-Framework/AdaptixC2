@@ -32,6 +32,11 @@ QString AuthProfile::GetEndpoint() { return this->endpoint; };
 
 QString AuthProfile::GetAccessToken() { return this->accessToken; };
 
+QString AuthProfile::GetURL()
+{
+    return "https://" + host + ":" + port + endpoint;
+};
+
 void AuthProfile::SetAccessToken(QString token) { this->accessToken = token; };
 
-void AuthProfile::SetRefreshToken(QString token) { this->refreshToken = token; };
+void AuthProfile::SetRefreshToken(QString token) { this->refreshToken = token; }
