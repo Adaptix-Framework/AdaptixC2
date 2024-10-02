@@ -6,32 +6,34 @@
 #include <UI/Dialogs/DialogSyncPacket.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
+#include <UI/Widgets/SessionsTableWidget.h>
 #include <Client/WidgetBuilder.h>
 
 class AdaptixWidget : public QWidget
 {
 Q_OBJECT
-    QGridLayout* mainGridLayout    = nullptr;
-    QHBoxLayout* topHLayout        = nullptr;
-    QPushButton* listenersButton   = nullptr;
-    QPushButton* logsButton        = nullptr;
-    QPushButton* sessionsButton    = nullptr;
-    QPushButton* graphButton       = nullptr;
-    QPushButton* targetsButton     = nullptr;
-    QPushButton* jobsButton        = nullptr;
-    QPushButton* proxyButton       = nullptr;
-    QPushButton* downloadsButton   = nullptr;
-    QPushButton* credsButton       = nullptr;
-    QPushButton* screensButton     = nullptr;
-    QPushButton* keysButton        = nullptr;
-    QPushButton* reconnectButton   = nullptr;
-    QFrame*      line_1            = nullptr;
-    QFrame*      line_2            = nullptr;
-    QFrame*      line_3            = nullptr;
-    QFrame*      line_4            = nullptr;
-    QSplitter*   mainVSplitter     = nullptr;
-    QTabWidget*  mainTabWidget     = nullptr;
-    QSpacerItem* horizontalSpacer1 = nullptr;
+    QGridLayout*    mainGridLayout    = nullptr;
+    QHBoxLayout*    topHLayout        = nullptr;
+    QPushButton*    listenersButton   = nullptr;
+    QPushButton*    logsButton        = nullptr;
+    QPushButton*    sessionsButton    = nullptr;
+    QPushButton*    graphButton       = nullptr;
+    QPushButton*    targetsButton     = nullptr;
+    QPushButton*    jobsButton        = nullptr;
+    QPushButton*    proxyButton       = nullptr;
+    QPushButton*    downloadsButton   = nullptr;
+    QPushButton*    credsButton       = nullptr;
+    QPushButton*    screensButton     = nullptr;
+    QPushButton*    keysButton        = nullptr;
+    QPushButton*    reconnectButton   = nullptr;
+    QFrame*         line_1            = nullptr;
+    QFrame*         line_2            = nullptr;
+    QFrame*         line_3            = nullptr;
+    QFrame*         line_4            = nullptr;
+    QSplitter*      mainVSplitter     = nullptr;
+    QTabWidget*     mainTabWidget     = nullptr;
+    QSpacerItem*    horizontalSpacer1 = nullptr;
+    QStackedWidget* mainStackedWidget = nullptr;
 
     AuthProfile       profile;
     DialogSyncPacket* dialogSyncPacket = nullptr;
@@ -41,10 +43,11 @@ Q_OBJECT
     void processSyncPacket(QJsonObject jsonObj);
 
 public:
-    QThread*         ChannelThread   = nullptr;
-    WebSocketWorker* ChannelWsWorker = nullptr;
-    LogsWidget*      LogsTab         = nullptr;
-    ListenersWidget* ListenersTab    = nullptr;
+    QThread*             ChannelThread     = nullptr;
+    WebSocketWorker*     ChannelWsWorker   = nullptr;
+    LogsWidget*          LogsTab           = nullptr;
+    ListenersWidget*     ListenersTab      = nullptr;
+    SessionsTableWidget* SessionsTablePage = nullptr;
 
     QMap<QString, WidgetBuilder*> RegisterListeners;
     QVector<ListenerData>         Listeners;

@@ -39,6 +39,7 @@ SET( HEADERS
         Headers/UI/Widgets/ListenersWidget.h
         Headers/UI/Dialogs/DialogListener.h
         Headers/Client/WidgetBuilder.h
+        Headers/UI/Widgets/SessionsTableWidget.h
 )
 
 add_executable(AdaptixClient
@@ -65,6 +66,7 @@ add_executable(AdaptixClient
         Source/UI/Widgets/ListenersWidget.cpp
         Source/UI/Dialogs/DialogListener.cpp
         Source/Client/WidgetBuilder.cpp
+        Source/UI/Widgets/SessionsTableWidget.cpp
 )
 
 target_link_libraries(AdaptixClient

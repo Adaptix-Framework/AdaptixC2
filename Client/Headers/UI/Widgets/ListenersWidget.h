@@ -9,7 +9,6 @@ class ListenersWidget : public QWidget
     QWidget*       mainWidget     = nullptr;
     QGridLayout*   mainGridLayout = nullptr;
     QTableWidget*  tableWidget    = nullptr;
-    QMenu*         menuListeners  = nullptr;
 
     DialogListener* dialogListener = nullptr;
 
