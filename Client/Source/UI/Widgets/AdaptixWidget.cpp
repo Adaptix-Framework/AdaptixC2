@@ -4,8 +4,12 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile)
 {
     this->createUI();
 
-    LogsTab      = new LogsWidget();
-    ListenersTab = new ListenersWidget(this);
+    LogsTab           = new LogsWidget();
+    ListenersTab      = new ListenersWidget(this);
+    SessionsTablePage = new SessionsTableWidget(this);
+
+    mainStackedWidget->addWidget(SessionsTablePage);
+    mainStackedWidget->setCurrentIndex(0);
 
     this->LoadLogsUI();
 
@@ -26,7 +30,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile)
     ChannelThread->start();
 
     // TODO: Enable menu button
-    sessionsButton->setVisible(false);
     graphButton->setVisible(false);
     targetsButton->setVisible(false);
     line_2->setVisible(false);
@@ -163,10 +166,7 @@ void AdaptixWidget::createUI()
     topHLayout->addWidget(reconnectButton);
     topHLayout->addItem(horizontalSpacer1);
 
-
-    // TODO: top widget - Stack ???
-    QTextEdit *textEdit1 = new QTextEdit(this);
-    //
+    mainStackedWidget = new QStackedWidget(this);
 
     mainTabWidget = new QTabWidget(this);
     mainTabWidget->setObjectName( QString::fromUtf8( "MainTabAdaptix" ) );
@@ -178,7 +178,7 @@ void AdaptixWidget::createUI()
     mainVSplitter->setContentsMargins(0, 0, 0, 0);
     mainVSplitter->setHandleWidth(3);
     mainVSplitter->setVisible(true);
-    mainVSplitter->addWidget(textEdit1);
+    mainVSplitter->addWidget(mainStackedWidget);
     mainVSplitter->addWidget(mainTabWidget);
     mainVSplitter->setSizes(QList<int>({200, 200}));
 

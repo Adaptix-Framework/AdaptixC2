@@ -18,16 +18,10 @@ void ListenersWidget::createUI()
     if ( this->objectName().isEmpty() )
         this->setObjectName( QString::fromUtf8( "ListenersWidget" ) );
 
-    menuListeners = new QMenu( this );
-    menuListeners->setObjectName( QString::fromUtf8( "ListenersMenuListeners" ) );
-    menuListeners->addAction( "Create", this, &ListenersWidget::createListener );
-    menuListeners->addAction( "Edit", this, &ListenersWidget::editListener );
-    menuListeners->addAction( "Remove", this, &ListenersWidget::removeListener );
-
     tableWidget = new QTableWidget( this );
     tableWidget->setColumnCount( 7 );
     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
-    tableWidget->addAction( menuListeners->menuAction() );
+//    tableWidget->addAction( menuListeners->menuAction() );
     tableWidget->setAutoFillBackground( false );
     tableWidget->setShowGrid( false );
     tableWidget->setSortingEnabled( true );
@@ -180,8 +174,14 @@ void ListenersWidget::RemoveListenerItem(QString listenerName)
 
 void ListenersWidget::handleListenersMenu(const QPoint &pos ) const
 {
+    QMenu ListenerMenu = QMenu();
+
+    ListenerMenu.addAction( "Create", this, &ListenersWidget::createListener );
+    ListenerMenu.addAction( "Edit",   this, &ListenersWidget::editListener );
+    ListenerMenu.addAction( "Remove", this, &ListenersWidget::removeListener );
+
     QPoint globalPos = tableWidget->mapToGlobal( pos );
-    menuListeners->exec( globalPos );
+    ListenerMenu.exec( globalPos );
 }
 
 void ListenersWidget::createListener()
@@ -256,8 +256,6 @@ void ListenersWidget::removeListener()
     }
 
     if ( !ok ) {
-//        MessageSuccess(message);
-//    else
         MessageError(message);
     }
 }
