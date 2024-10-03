@@ -19,6 +19,7 @@ type Teamserver struct {
 	clients          safe.Map
 	syncpackets      safe.Map
 	listener_configs safe.Map
+	agent_configs    safe.Map
 	listeners        safe.Map
 }
 
@@ -63,6 +64,8 @@ type SyncPackerClientDisconnect struct {
 	Username string `json:"username"`
 }
 
+/// LISTENER
+
 type SyncPackerListenerNew struct {
 	store  string
 	SpType int `json:"type"`
@@ -92,4 +95,15 @@ type SyncPackerListenerStop struct {
 	SpType       int   `json:"type"`
 
 	ListenerName string `json:"l_name"`
+}
+
+/// AGENT
+
+type SyncPackerAgentNew struct {
+	store  string
+	SpType int `json:"type"`
+
+	Agent    string `json:"agent"`
+	Listener string `json:"listener"`
+	AgentUI  string `json:"ui"`
 }

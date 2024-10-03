@@ -16,6 +16,8 @@ const (
 	TYPE_LISTENER_START = 32
 	TYPE_LISTENER_STOP  = 33
 	TYPE_LISTENER_EDIT  = 34
+
+	TYPE_AGENT_NEW = 41
 )
 
 /// SYNC
@@ -98,5 +100,18 @@ func CreateSpListenerStop(name string) SyncPackerListenerStop {
 		SpType:       TYPE_LISTENER_STOP,
 
 		ListenerName: name,
+	}
+}
+
+/// AGENT
+
+func CreateSpAgentNew(agent string, listener string, ui string) SyncPackerAgentNew {
+	return SyncPackerAgentNew{
+		store:  STORE_INIT,
+		SpType: TYPE_AGENT_NEW,
+
+		Agent:    agent,
+		Listener: listener,
+		AgentUI:  ui,
 	}
 }
