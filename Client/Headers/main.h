@@ -57,6 +57,8 @@
 #define TYPE_LISTENER_STOP  33
 #define TYPE_LISTENER_EDIT  34
 
+#define TYPE_AGENT_NEW 41
+
 //////////
 
 #define COLOR_NeonGreen    "#39FF14"     // green

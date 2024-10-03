@@ -72,7 +72,7 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	ModuleObject.ts = ts.(Teamserver)
 
 	info := ModuleInfo{
-		ModuleName: "BeaconHTTP",
+		ModuleName: SetName,
 		ModuleType: TYPE_LISTENER,
 	}
 
@@ -129,16 +129,29 @@ func (m *ModuleExtender) ListenerValid(data string) error {
 	}
 
 	if conf.HostBind == "" {
-		return errors.New("host is required")
+		return errors.New("HostBind is required")
 	}
 
-	portInt, err := strconv.Atoi(conf.PortBind)
+	if conf.HostAgent == "" {
+		return errors.New("HostAgent is required")
+	}
+
+	portBind, err := strconv.Atoi(conf.PortBind)
 	if err != nil {
-		return errors.New("port must be an integer")
+		return errors.New("PortBind must be an integer")
 	}
 
-	if portInt < 1 || portInt > 65535 {
-		return errors.New("port must be in the range 1-65535")
+	if portBind < 1 || portBind > 65535 {
+		return errors.New("PortBind must be in the range 1-65535")
+	}
+
+	portAgent, err := strconv.Atoi(conf.PortBind)
+	if err != nil {
+		return errors.New("PortAgent must be an integer")
+	}
+
+	if portAgent < 1 || portAgent > 65535 {
+		return errors.New("PortAgent must be in the range 1-65535")
 	}
 
 	matched, err := regexp.MatchString(`^/[a-zA-Z0-9]+(/[a-zA-Z0-9]+)*$`, conf.Uri)

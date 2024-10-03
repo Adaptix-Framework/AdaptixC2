@@ -49,7 +49,9 @@ public:
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
 
+    QMap<QString, WidgetBuilder*> RegisterAgents;
     QMap<QString, WidgetBuilder*> RegisterListeners;
+    QMap<QString, QStringList>    LinkListenerAgent;
     QVector<ListenerData>         Listeners;
 
     explicit AdaptixWidget(AuthProfile authProfile);

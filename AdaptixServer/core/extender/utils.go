@@ -4,6 +4,7 @@ import "AdaptixServer/core/utils/safe"
 
 const (
 	TYPE_LISTENER = "listener"
+	TYPE_AGENT    = "agent"
 )
 
 type ModuleInfo struct {
@@ -18,8 +19,15 @@ type ListenerInfo struct {
 	ListenerUI       string
 }
 
+type AgentInfo struct {
+	AgentName    string
+	ListenerName string
+	AgentUI      string
+}
+
 type Teamserver interface {
 	ListenerNew(listenerInfo ListenerInfo) error
+	AgentNew(agentInfo AgentInfo) error
 }
 
 type CommonFunctions interface {
@@ -34,13 +42,20 @@ type ListenerFunctions interface {
 	ListenerStop(name string) error
 }
 
+type AgentFunctions interface {
+	AgentInit() ([]byte, error)
+	AgentValid(config string) error
+}
+
 type ModuleExtender struct {
 	Info ModuleInfo
 	CommonFunctions
 	ListenerFunctions
+	AgentFunctions
 }
 
 type AdaptixExtender struct {
 	ts              Teamserver
 	listenerModules safe.Map
+	agentModules    safe.Map
 }

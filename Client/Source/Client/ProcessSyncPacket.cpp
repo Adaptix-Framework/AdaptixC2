@@ -18,6 +18,16 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
+    if( spType == TYPE_CLIENT_CONNECT || spType == TYPE_CLIENT_DISCONNECT ) {
+        if ( !jsonObj.contains("username") || !jsonObj["username"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() ) {
+            return false;
+        }
+        return true;
+    }
+
 
     if( spType == TYPE_LISTENER_NEW ) {
         if ( !jsonObj.contains("fn") || !jsonObj["fn"].isString() ) {
@@ -29,6 +39,11 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if( spType == TYPE_LISTENER_START || spType == TYPE_LISTENER_EDIT ) {
+        if( spType == TYPE_LISTENER_START ) {
+            if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() ) {
+                return false;
+            }
+        }
         if ( !jsonObj.contains("l_name") || !jsonObj["l_name"].isString() ) {
             return false;
         }
@@ -53,21 +68,28 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("l_data") || !jsonObj["l_data"].isString() ) {
             return false;
         }
+
         return true;
     }
     if( spType == TYPE_LISTENER_STOP ) {
         if ( !jsonObj.contains("l_name") || !jsonObj["l_name"].isString() ) {
             return false;
         }
+        if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() ) {
+            return false;
+        }
+
         return true;
     }
 
-
-    if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() )
-        return false;
-
-    if( spType == TYPE_CLIENT_CONNECT || spType == TYPE_CLIENT_DISCONNECT ) {
-        if ( !jsonObj.contains("username") || !jsonObj["username"].isString() ) {
+    if( spType == TYPE_AGENT_NEW ) {
+        if ( !jsonObj.contains("agent") || !jsonObj["agent"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("listener") || !jsonObj["listener"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("ui") || !jsonObj["ui"].isString() ) {
             return false;
         }
         return true;
@@ -181,6 +203,17 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         LogsTab->AddLogs(spType, time, message);
 
         ListenersTab->RemoveListenerItem(listenerName);
+        return;
+    }
+
+    if( spType == TYPE_AGENT_NEW ) {
+        QString agentName = jsonObj["agent"].toString();
+        QString listenerName = jsonObj["listener"].toString();
+        QString ui = jsonObj["ui"].toString();
+
+        RegisterAgents[agentName] = new WidgetBuilder(ui.toLocal8Bit() );
+        LinkListenerAgent[listenerName].push_back(agentName);
+
         return;
     }
 }

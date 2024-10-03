@@ -174,14 +174,16 @@ void ListenersWidget::RemoveListenerItem(QString listenerName)
 
 void ListenersWidget::handleListenersMenu(const QPoint &pos ) const
 {
-    QMenu ListenerMenu = QMenu();
+    QMenu listenerMenu = QMenu();
 
-    ListenerMenu.addAction( "Create", this, &ListenersWidget::createListener );
-    ListenerMenu.addAction( "Edit",   this, &ListenersWidget::editListener );
-    ListenerMenu.addAction( "Remove", this, &ListenersWidget::removeListener );
+    listenerMenu.addAction("Create", this, &ListenersWidget::createListener );
+    listenerMenu.addAction("Edit", this, &ListenersWidget::editListener );
+    listenerMenu.addAction("Remove", this, &ListenersWidget::removeListener );
+    listenerMenu.addSeparator();
+    listenerMenu.addAction("Generate agent", this, &ListenersWidget::generateAgent );
 
     QPoint globalPos = tableWidget->mapToGlobal( pos );
-    ListenerMenu.exec( globalPos );
+    listenerMenu.exec(globalPos );
 }
 
 void ListenersWidget::createListener()
@@ -194,10 +196,10 @@ void ListenersWidget::createListener()
         regLst->BuildWidget(false);
     }
 
-    dialogListener = new DialogListener;
-    dialogListener->AddExListeners( adaptixWidget->RegisterListeners );
-    dialogListener->SetProfile( adaptixWidget->GetProfile() );
-    dialogListener->Start();
+    DialogListener dialogListener;
+    dialogListener.AddExListeners( adaptixWidget->RegisterListeners );
+    dialogListener.SetProfile( adaptixWidget->GetProfile() );
+    dialogListener.Start();
 
     for( auto regLst : adaptixWidget->RegisterListeners ) {
         regLst->ClearWidget();
@@ -227,11 +229,11 @@ void ListenersWidget::editListener()
     tmpRegisterListeners[listenerType]->BuildWidget(true);
     tmpRegisterListeners[listenerType]->FillData(listenerData);
 
-    dialogListener = new DialogListener;
-    dialogListener->SetEditMode(listenerName);
-    dialogListener->AddExListeners( tmpRegisterListeners );
-    dialogListener->SetProfile( adaptixWidget->GetProfile() );
-    dialogListener->Start();
+    DialogListener dialogListener;
+    dialogListener.SetEditMode(listenerName);
+    dialogListener.AddExListeners( tmpRegisterListeners );
+    dialogListener.SetProfile( adaptixWidget->GetProfile() );
+    dialogListener.Start();
 
     tmpRegisterListeners[listenerType]->ClearWidget();
 }
@@ -257,5 +259,38 @@ void ListenersWidget::removeListener()
 
     if ( !ok ) {
         MessageError(message);
+    }
+}
+
+void ListenersWidget::generateAgent()
+{
+    if (tableWidget->selectionModel()->selectedRows().empty())
+        return;
+
+    auto listenerName = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    auto listenerType = tableWidget->item( tableWidget->currentRow(), 1 )->text();
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if ( !adaptixWidget )
+        return;
+
+    QStringList parts = listenerType.split("/");
+    if (parts.size() != 3) {
+        return;
+    }
+
+    QMap<QString, WidgetBuilder*> tmpRegisterAgents;
+    auto agents= adaptixWidget->LinkListenerAgent[parts[2]];
+    for( auto agent : agents ) {
+        tmpRegisterAgents[agent] = adaptixWidget->RegisterAgents[agent];
+        tmpRegisterAgents[agent]->BuildWidget( false );
+    }
+
+    DialogAgent dialogAgent;
+    dialogAgent.AddExAgents(tmpRegisterAgents);
+    dialogAgent.SetProfile( adaptixWidget->GetProfile() );
+    dialogAgent.Start();
+
+    for( auto regAgent: tmpRegisterAgents ) {
+        regAgent->ClearWidget();
     }
 }

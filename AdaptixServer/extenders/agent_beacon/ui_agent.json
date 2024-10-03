@@ -1,0 +1,27 @@
+{
+  "layout": "glayout",
+  "elements": [
+    {
+      "type": "label",
+      "text": "OS:",
+      "position": [0, 0, 1, 1]
+    },
+    {
+      "type": "combo",
+      "items": ["Windows"],
+      "id": "os",
+      "position": [0, 1, 1, 1]
+    },
+    {
+      "type": "label",
+      "text": "Arch",
+      "position": [1, 0, 1, 1]
+    },
+    {
+      "type": "combo",
+      "items": ["x64", "x86"],
+      "id": "arch",
+      "position": [1, 1, 1, 1]
+    }
+  ]
+}
