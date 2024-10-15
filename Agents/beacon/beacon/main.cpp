@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+﻿#include "main.h"
 
 #if defined(BUILD_SVC)
 
@@ -20,7 +20,7 @@ void ServiceMain(int argc, char** argv) {
     ServiceStatus.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(hStatus, &ServiceStatus);
 
-    /// Main
+    MainAgent();
 
     ServiceStatus.dwCurrentState = SERVICE_STOPPED;
     SetServiceStatus(hStatus, &ServiceStatus);
@@ -60,7 +60,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
 {
     switch (ul_reason_for_call) {
     case DLL_PROCESS_ATTACH:
-        /// MAIN
+        MainAgent();
         break;
     case DLL_PROCESS_DETACH:
         break;
@@ -76,7 +76,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
 
 int MainExe()
 {
-    /// MAIN
+    AgentMain();
 	return 0;
 }
 

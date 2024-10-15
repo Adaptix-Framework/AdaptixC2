@@ -13,10 +13,72 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source\Agent">
+      <UniqueIdentifier>{1d5785ed-7177-4edd-b33c-a1ca0256fef5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\Agent">
+      <UniqueIdentifier>{9388f9a8-ed9f-4534-95b0-df703ef01a75}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="beacon.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="MainAgent.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Packer.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="ApiLoader.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Encoders.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Agent.cpp">
+      <Filter>Source\Agent</Filter>
+    </ClCompile>
+    <ClCompile Include="AgentConfig.cpp">
+      <Filter>Source\Agent</Filter>
+    </ClCompile>
+    <ClCompile Include="AgentInfo.cpp">
+      <Filter>Source\Agent</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="main.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="defines.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Packer.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ApiLoader.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ntdll.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Encoders.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Agent.h">
+      <Filter>Headers\Agent</Filter>
+    </ClInclude>
+    <ClInclude Include="AgentConfig.h">
+      <Filter>Headers\Agent</Filter>
+    </ClInclude>
+    <ClInclude Include="AgentInfo.h">
+      <Filter>Headers\Agent</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

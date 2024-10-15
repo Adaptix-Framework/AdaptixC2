@@ -283,7 +283,27 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="beacon.cpp" />
+    <ClCompile Include="Agent.cpp" />
+    <ClCompile Include="AgentConfig.cpp" />
+    <ClCompile Include="AgentInfo.cpp" />
+    <ClCompile Include="ApiLoader.cpp" />
+    <ClCompile Include="Encoders.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="MainAgent.cpp" />
+    <ClCompile Include="Packer.cpp" />
+    <ClCompile Include="utils.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Agent.h" />
+    <ClInclude Include="AgentConfig.h" />
+    <ClInclude Include="AgentInfo.h" />
+    <ClInclude Include="ApiLoader.h" />
+    <ClInclude Include="defines.h" />
+    <ClInclude Include="Encoders.h" />
+    <ClInclude Include="main.h" />
+    <ClInclude Include="ntdll.h" />
+    <ClInclude Include="Packer.h" />
+    <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
