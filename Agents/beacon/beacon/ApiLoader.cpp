@@ -16,6 +16,19 @@ void* __cdecl memset(void* Destination, int Value, size_t Size)
 	return Destination;
 }
 
+#pragma intrinsic(memcpy)
+#pragma function(memcpy)
+extern void* __cdecl memcpy(void* Dst, const void* Src, size_t Size)
+{
+	unsigned char* p = (unsigned char*) Dst;
+	unsigned char* q = (unsigned char*) Src;
+	while (Size > 0) {
+		*p++ = *q++;
+		Size--;
+	}
+	return Dst;
+}
+
 BOOL ApiLoad()
 {
 	decltype(LocalAlloc)* alloc = LocalAlloc;
@@ -37,6 +50,7 @@ BOOL ApiLoad()
 		ApiWin->GetUserNameA = GetUserNameA;
 		ApiWin->LocalAlloc = alloc;
 		ApiWin->LocalFree = LocalFree;
+		ApiWin->LocalReAlloc = LocalReAlloc;
 
 		// iphlpapi
 		HMODULE hIphlpapiModule = LoadLibraryW(L"Iphlpapi.dll");

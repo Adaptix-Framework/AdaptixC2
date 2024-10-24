@@ -4,26 +4,25 @@
 
 class AgentInfo
 {
-	DWORD AgentId;
-	WORD  Acp;
-	WORD  Oemcp;
-	BYTE  GmtOffest;
-	WORD  Pid;
-	WORD  Tid;
-	BOOL  Arch64;
-	BOOL  Sys64;
-	BOOL  Elevated;
-	BOOL  IsServer;
-	WORD  MajorVersion;
-	WORD  MinorVersion;
-	WORD  BuildNumber;
-	ULONG InternalIP;
-	CHAR* Process;
-	CHAR* Domain;
-	CHAR* Hostname;
-	CHAR* Username;
-
 public:
+	DWORD agent_id;
+	WORD  acp;
+	WORD  oemcp;
+	BYTE  gmt_offest;
+	WORD  pid;
+	WORD  tid;
+	BOOL  arch64;
+	BOOL  sys64;
+	BOOL  elevated;
+	BOOL  is_server;
+	WORD  major_version;
+	WORD  minor_version;
+	WORD  build_number;
+	ULONG internal_ip;
+	CHAR* process_name;
+	CHAR* domain_name;
+	CHAR* computer_name;
+	CHAR* username;
+
 	AgentInfo();
-	~AgentInfo();
 };

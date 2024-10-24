@@ -11,30 +11,22 @@ AgentInfo::AgentInfo()
 	ApiNt->NtQuerySystemInformation(SystemProcessorInformation, &SystemInfo, sizeof(SYSTEM_PROCESSOR_INFORMATION), 0);
 	ApiNt->RtlGetVersion((PRTL_OSVERSIONINFOW) &OSVersion);
 
-	this->AgentId      = GenerateRandom32();
-	this->Acp          = ApiWin->GetACP();
-	this->Oemcp        = ApiWin->GetOEMCP();
-	this->GmtOffest    = GetGmtOffset();
-	this->Pid          = (WORD) NtCurrentTeb()->ClientId.UniqueProcess;
-	this->Tid          = (WORD)NtCurrentTeb()->ClientId.UniqueThread;
-	this->Elevated     = IsElevate();
-	this->Arch64       = (sizeof(void*) != 4);
-	this->Sys64        = (SystemInfo.ProcessorArchitecture == 9);
-	this->BuildNumber  = OSVersion.dwBuildNumber;
-	this->MajorVersion = OSVersion.dwMajorVersion;
-	this->MinorVersion = OSVersion.dwMinorVersion;
-	this->IsServer     = OSVersion.wProductType != VER_NT_WORKSTATION;
-	this->InternalIP   = GetInternalIpLong();
-	this->Username     = _GetUserName();
-	this->Domain       = _GetDomainName();
-	this->Hostname     = _GetHostName();
-	this->Process      = _GetProcessName();
-}
-
-AgentInfo::~AgentInfo()
-{
-	MemFreeLocal((LPVOID*) &this->Username, StrLenA(this->Username));
-	MemFreeLocal((LPVOID*)&this->Domain, StrLenA(this->Domain));
-	MemFreeLocal((LPVOID*)&this->Hostname, StrLenA(this->Hostname));
-	MemFreeLocal((LPVOID*)&this->Process, StrLenA(this->Process));
+	this->agent_id      = GenerateRandom32();
+	this->acp          = ApiWin->GetACP();
+	this->oemcp        = ApiWin->GetOEMCP();
+	this->gmt_offest    = GetGmtOffset();
+	this->pid          = (WORD) NtCurrentTeb()->ClientId.UniqueProcess;
+	this->tid          = (WORD)NtCurrentTeb()->ClientId.UniqueThread;
+	this->elevated     = IsElevate();
+	this->arch64       = (sizeof(void*) != 4);
+	this->sys64        = (SystemInfo.ProcessorArchitecture == 9);
+	this->build_number  = OSVersion.dwBuildNumber;
+	this->major_version = OSVersion.dwMajorVersion;
+	this->minor_version = OSVersion.dwMinorVersion;
+	this->is_server     = OSVersion.wProductType != VER_NT_WORKSTATION;
+	this->internal_ip   = GetInternalIpLong();
+	this->username     = _GetUserName();
+	this->domain_name       = _GetDomainName();
+	this->computer_name     = _GetHostName();
+	this->process_name      = _GetProcessName();
 }

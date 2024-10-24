@@ -5,9 +5,10 @@
 #include <psapi.h>
 #include "ntdll.h"
 
-extern void* __cdecl memset(void*, int, size_t);
 
-#define MemCopy __builtin_memcpy
+extern void* __cdecl memset(void*, int, size_t);
+extern void* __cdecl memcpy(void*, const void*, size_t);
+
 #define DECL_API(x) decltype(x) * x
 
 struct WINAPIFUNC
@@ -25,6 +26,7 @@ struct WINAPIFUNC
 	DECL_API(GetUserNameA);
 	DECL_API(LocalAlloc);
 	DECL_API(LocalFree);
+	DECL_API(LocalReAlloc);
 	// iphlpapi
 	DECL_API(GetAdaptersInfo);
 };

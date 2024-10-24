@@ -6,9 +6,12 @@
 class Agent
 {
 	AgentInfo*   info;
-	AgentConfig* config;
 
 public:
+	AgentConfig* config;
+
 	Agent();
 	~Agent();
+
+	LPSTR BuildBeat();
 };
