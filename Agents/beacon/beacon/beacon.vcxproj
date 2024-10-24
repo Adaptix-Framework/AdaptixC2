@@ -287,6 +287,7 @@
     <ClCompile Include="AgentConfig.cpp" />
     <ClCompile Include="AgentInfo.cpp" />
     <ClCompile Include="ApiLoader.cpp" />
+    <ClCompile Include="ConnectorHTTP.cpp" />
     <ClCompile Include="Encoders.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainAgent.cpp" />
@@ -298,6 +299,7 @@
     <ClInclude Include="AgentConfig.h" />
     <ClInclude Include="AgentInfo.h" />
     <ClInclude Include="ApiLoader.h" />
+    <ClInclude Include="ConnectorHTTP.h" />
     <ClInclude Include="defines.h" />
     <ClInclude Include="Encoders.h" />
     <ClInclude Include="main.h" />
