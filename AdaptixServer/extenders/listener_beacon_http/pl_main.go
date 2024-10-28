@@ -18,7 +18,9 @@ const (
 	TYPE_EXTERNAL = "external"
 )
 
-type Teamserver interface{}
+type Teamserver interface {
+	AgentRequest(agentType string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) error
+}
 
 type ModuleExtender struct {
 	ts Teamserver

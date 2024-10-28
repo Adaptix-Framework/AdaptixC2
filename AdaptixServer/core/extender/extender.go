@@ -124,6 +124,21 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 			return errors.New("method AgentValid not found")
 		}
 
+		_, ok = reflect.TypeOf(object).MethodByName("AgentExists")
+		if !ok {
+			return errors.New("method AgentExists not found")
+		}
+
+		_, ok = reflect.TypeOf(object).MethodByName("AgentCreate")
+		if !ok {
+			return errors.New("method AgentCreate not found")
+		}
+
+		_, ok = reflect.TypeOf(object).MethodByName("AgentProcess")
+		if !ok {
+			return errors.New("method AgentProcess not found")
+		}
+
 		return nil
 	}
 
@@ -188,7 +203,7 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 		module.AgentFunctions = object.(AgentFunctions)
 
 		//listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.ListenerType, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
-		ex.listenerModules.Put(agentInfo.AgentName, module)
+		ex.agentModules.Put(agentInfo.AgentName, module)
 
 		return nil
 	}

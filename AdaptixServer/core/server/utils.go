@@ -16,11 +16,14 @@ type Teamserver struct {
 	AdaptixServer *httphandler.TsHttpHandler
 	Extender      *extender.AdaptixExtender
 
-	clients          safe.Map
-	syncpackets      safe.Map
 	listener_configs safe.Map
 	agent_configs    safe.Map
-	listeners        safe.Map
+
+	clients     safe.Map
+	syncpackets safe.Map
+	listeners   safe.Map
+
+	agent_types safe.Map
 }
 
 // Data
@@ -34,6 +37,34 @@ type ListenerData struct {
 	AgentPort string `json:"l_agent_port"`
 	Status    string `json:"l_status"`
 	Data      string `json:"l_data"`
+}
+
+type AgentData struct {
+	Type       string   `json:"a_type"`
+	Id         string   `json:"a_id"`
+	Name       string   `json:"a_name"`
+	SessionKey []byte   `json:"a_session_key"`
+	Listener   string   `json:"a_listener"`
+	Async      bool     `json:"a_async"`
+	ExternalIP string   `json:"a_external_ip"`
+	InternalIP string   `json:"a_internal_ip"`
+	GmtOffset  int      `json:"a_gmt_offset"`
+	Sleep      string   `json:"a_sleep"`
+	Jitter     string   `json:"a_jitter"`
+	Pid        string   `json:"a_pid"`
+	Tid        string   `json:"a_tid"`
+	Arch       string   `json:"a_arch"`
+	Elevated   bool     `json:"a_elevated"`
+	Process    string   `json:"a_process"`
+	Os         int      `json:"a_os"`
+	OsDesc     string   `json:"a_os_desc"`
+	Domain     string   `json:"a_domain"`
+	Computer   string   `json:"a_computer"`
+	Username   string   `json:"a_username"`
+	OemCP      int      `json:"a_oemcp"`
+	ACP        int      `json:"a_acp"`
+	CreateTime int64    `json:"a_create_time"`
+	Tags       []string `json:"a_tags"`
 }
 
 // SyncPacket

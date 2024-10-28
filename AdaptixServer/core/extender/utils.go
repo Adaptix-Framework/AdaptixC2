@@ -45,6 +45,9 @@ type ListenerFunctions interface {
 type AgentFunctions interface {
 	AgentInit() ([]byte, error)
 	AgentValid(config string) error
+	AgentExists(agentId string) bool
+	AgentCreate(beat []byte) ([]byte, error)
+	AgentProcess(agentID string, beat []byte) ([]byte, error)
 }
 
 type ModuleExtender struct {
