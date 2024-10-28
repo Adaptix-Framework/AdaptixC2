@@ -45,7 +45,7 @@ LPSTR Agent::BuildBeat()
 	packer->Add32(this->info->build_number);
 	packer->Add8(this->info->major_version);
 	packer->Add8(this->info->minor_version);
-	packer->Add16(this->info->internal_ip);
+	packer->Add32(this->info->internal_ip);
 	packer->Add8( flag );
 	packer->AddBytes(this->config->session_key, 16);
 	packer->AddStringA(this->info->domain_name);
