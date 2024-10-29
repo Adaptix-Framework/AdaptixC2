@@ -12,12 +12,13 @@ const (
 	TYPE_CLIENT_CONNECT    = 21
 	TYPE_CLIENT_DISCONNECT = 22
 
-	TYPE_LISTENER_NEW   = 31
+	TYPE_LISTENER_REG   = 31
 	TYPE_LISTENER_START = 32
 	TYPE_LISTENER_STOP  = 33
 	TYPE_LISTENER_EDIT  = 34
 
-	TYPE_AGENT_NEW = 41
+	TYPE_AGENT_REG = 41
+	TYPE_AGENT_NEW = 42
 )
 
 /// SYNC
@@ -60,10 +61,10 @@ func CreateSpClientDisconnect(username string) SyncPackerClientDisconnect {
 
 /// LISTENER
 
-func CreateSpListenerNew(fn string, ui string) SyncPackerListenerNew {
-	return SyncPackerListenerNew{
+func CreateSpListenerReg(fn string, ui string) SyncPackerListenerReg {
+	return SyncPackerListenerReg{
 		store:  STORE_INIT,
-		SpType: TYPE_LISTENER_NEW,
+		SpType: TYPE_LISTENER_REG,
 
 		ListenerFN: fn,
 		ListenerUI: ui,
@@ -105,13 +106,42 @@ func CreateSpListenerStop(name string) SyncPackerListenerStop {
 
 /// AGENT
 
-func CreateSpAgentNew(agent string, listener string, ui string) SyncPackerAgentNew {
-	return SyncPackerAgentNew{
+func CreateSpAgentReg(agent string, listener string, ui string) SyncPackerAgentReg {
+	return SyncPackerAgentReg{
 		store:  STORE_INIT,
-		SpType: TYPE_AGENT_NEW,
+		SpType: TYPE_AGENT_REG,
 
 		Agent:    agent,
 		Listener: listener,
 		AgentUI:  ui,
+	}
+}
+
+func CreateSpAgentNew(agentData AgentData) SyncPackerAgentNew {
+	return SyncPackerAgentNew{
+		store:        STORE_LOG,
+		SpCreateTime: time.Now().UTC().Unix(),
+		SpType:       TYPE_AGENT_NEW,
+
+		Id:         agentData.Id,
+		Name:       agentData.Name,
+		Listener:   agentData.Listener,
+		Async:      agentData.Async,
+		ExternalIP: agentData.ExternalIP,
+		InternalIP: agentData.InternalIP,
+		GmtOffset:  agentData.GmtOffset,
+		Sleep:      agentData.Sleep,
+		Jitter:     agentData.Jitter,
+		Pid:        agentData.Pid,
+		Tid:        agentData.Tid,
+		Arch:       agentData.Arch,
+		Elevated:   agentData.Elevated,
+		Process:    agentData.Process,
+		Os:         agentData.Os,
+		OsDesc:     agentData.OsDesc,
+		Domain:     agentData.Domain,
+		Computer:   agentData.Computer,
+		Username:   agentData.Username,
+		Tags:       agentData.Tags,
 	}
 }

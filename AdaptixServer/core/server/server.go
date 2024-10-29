@@ -28,6 +28,7 @@ func NewTeamserver() *Teamserver {
 		agent_configs:    safe.NewMap(),
 		agent_types:      safe.NewMap(),
 		listeners:        safe.NewMap(),
+		agents:           safe.NewMap(),
 	}
 	ts.Extender = extender.NewExtender(ts)
 	return ts

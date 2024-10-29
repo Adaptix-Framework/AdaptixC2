@@ -26,7 +26,7 @@ type AgentInfo struct {
 }
 
 type Teamserver interface {
-	ListenerNew(listenerInfo ListenerInfo) error
+	ListenerReg(listenerInfo ListenerInfo) error
 	AgentNew(agentInfo AgentInfo) error
 }
 
@@ -46,7 +46,7 @@ type AgentFunctions interface {
 	AgentInit() ([]byte, error)
 	AgentValid(config string) error
 	AgentExists(agentId string) bool
-	AgentCreate(beat []byte) ([]byte, error)
+	AgentCreateData(beat []byte) ([]byte, error)
 	AgentProcess(agentID string, beat []byte) ([]byte, error)
 }
 

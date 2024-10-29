@@ -9,6 +9,8 @@
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <Client/WidgetBuilder.h>
 
+class SessionsTableWidget;
+
 class AdaptixWidget : public QWidget
 {
 Q_OBJECT
@@ -53,6 +55,8 @@ public:
     QMap<QString, WidgetBuilder*> RegisterListeners;
     QMap<QString, QStringList>    LinkListenerAgent;
     QVector<ListenerData>         Listeners;
+    QVector<AgentData>            Agents;
+
 
     explicit AdaptixWidget(AuthProfile authProfile);
     ~AdaptixWidget();

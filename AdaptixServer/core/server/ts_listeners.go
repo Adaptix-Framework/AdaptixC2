@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-func (ts *Teamserver) ListenerNew(listenerInfo extender.ListenerInfo) error {
+func (ts *Teamserver) ListenerReg(listenerInfo extender.ListenerInfo) error {
 
 	listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.ListenerType, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
 
@@ -17,7 +17,7 @@ func (ts *Teamserver) ListenerNew(listenerInfo extender.ListenerInfo) error {
 
 	ts.listener_configs.Put(listenerFN, listenerInfo)
 
-	packet := CreateSpListenerNew(listenerFN, listenerInfo.ListenerUI)
+	packet := CreateSpListenerReg(listenerFN, listenerInfo.ListenerUI)
 	ts.SyncSavePacket(packet.store, packet)
 
 	return nil

@@ -32,6 +32,8 @@ type HTTPConfig struct {
 	SslKey      string `json:"ssl_key"`
 	SslCertPath string `json:"ssl_cert_path"`
 	SslKeyPath  string `json:"ssl_key_path"`
+
+	ParameterName string `json:"parameter_name"`
 }
 
 type HTTP struct {

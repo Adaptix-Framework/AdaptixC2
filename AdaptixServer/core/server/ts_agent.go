@@ -18,7 +18,7 @@ func (ts *Teamserver) AgentNew(agentInfo extender.AgentInfo) error {
 	ts.agent_types.Put(agentType, agentInfo.AgentName)
 	ts.agent_configs.Put(agentInfo.AgentName, agentInfo)
 
-	packet := CreateSpAgentNew(agentInfo.AgentName, agentInfo.ListenerName, agentInfo.AgentUI)
+	packet := CreateSpAgentReg(agentInfo.AgentName, agentInfo.ListenerName, agentInfo.AgentUI)
 	ts.SyncSavePacket(packet.store, packet)
 
 	return nil
@@ -38,7 +38,7 @@ func (ts *Teamserver) AgentRequest(agentType string, beat []byte, bodyData []byt
 	}
 	agentName = value.(string)
 
-	data, err = ts.Extender.AgentCreate(agentName, beat)
+	data, err = ts.Extender.AgentCreateData(agentName, beat)
 	if err != nil {
 		return err
 	}
@@ -53,6 +53,21 @@ func (ts *Teamserver) AgentRequest(agentType string, beat []byte, bodyData []byt
 	agentData.Name = agentName
 	agentData.Listener = listenerName
 	agentData.CreateTime = time.Now().Unix()
+	if len(agentData.Tags) == 0 {
+		agentData.Tags = []string{}
+	}
+
+	//if !agent_exists {
+	// AgentAdd
+	packet := CreateSpAgentNew(agentData)
+	ts.SyncAllClients(packet)
+	ts.SyncSavePacket(packet.store, packet)
+
+	//}
+
+	// AgentProcess
+
+	// AgentResponse
 
 	return nil
 }

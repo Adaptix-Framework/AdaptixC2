@@ -129,9 +129,9 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 			return errors.New("method AgentExists not found")
 		}
 
-		_, ok = reflect.TypeOf(object).MethodByName("AgentCreate")
+		_, ok = reflect.TypeOf(object).MethodByName("AgentCreateData")
 		if !ok {
-			return errors.New("method AgentCreate not found")
+			return errors.New("method AgentCreateData not found")
 		}
 
 		_, ok = reflect.TypeOf(object).MethodByName("AgentProcess")
@@ -159,7 +159,7 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 			return err
 		}
 
-		err = ex.ts.ListenerNew(listenerInfo)
+		err = ex.ts.ListenerReg(listenerInfo)
 		if err != nil {
 			return err
 		}

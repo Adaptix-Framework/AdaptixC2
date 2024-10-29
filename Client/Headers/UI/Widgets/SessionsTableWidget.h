@@ -2,14 +2,14 @@
 #define ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AdaptixWidget.h>
 
 class SessionsTableWidget : public QWidget
 {
-    QWidget*       mainWidget     = nullptr;
-    QGridLayout*   mainGridLayout = nullptr;
-    QTableWidget*  tableWidget    = nullptr;
-    QMenu*         menuSessions   = nullptr;
-
+    QWidget*          mainWidget     = nullptr;
+    QGridLayout*      mainGridLayout = nullptr;
+    QTableWidget*     tableWidget    = nullptr;
+    QMenu*            menuSessions   = nullptr;
     QTableWidgetItem* titleAgentID   = nullptr;
     QTableWidgetItem* titleAgentType = nullptr;
     QTableWidgetItem* titleListener  = nullptr;
@@ -31,8 +31,8 @@ class SessionsTableWidget : public QWidget
 public:
     int ColumnAgentID   = 0;
     int ColumnAgentType = 1;
-    int ColumnListener  = 2;
-    int ColumnExternal  = 3;
+    int ColumnExternal  = 2;
+    int ColumnListener  = 3;
     int ColumnInternal  = 4;
     int ColumnDomain    = 5;
     int ColumnComputer  = 6;
@@ -48,6 +48,8 @@ public:
 
     explicit SessionsTableWidget( QWidget* w );
     ~SessionsTableWidget();
+
+    void AddAgentItem(AgentData newAgent);
 };
 
 #endif //ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H

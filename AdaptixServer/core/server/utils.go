@@ -22,6 +22,7 @@ type Teamserver struct {
 	clients     safe.Map
 	syncpackets safe.Map
 	listeners   safe.Map
+	agents      safe.Map
 
 	agent_types safe.Map
 }
@@ -49,8 +50,8 @@ type AgentData struct {
 	ExternalIP string   `json:"a_external_ip"`
 	InternalIP string   `json:"a_internal_ip"`
 	GmtOffset  int      `json:"a_gmt_offset"`
-	Sleep      string   `json:"a_sleep"`
-	Jitter     string   `json:"a_jitter"`
+	Sleep      uint     `json:"a_sleep"`
+	Jitter     uint     `json:"a_jitter"`
 	Pid        string   `json:"a_pid"`
 	Tid        string   `json:"a_tid"`
 	Arch       string   `json:"a_arch"`
@@ -97,7 +98,7 @@ type SyncPackerClientDisconnect struct {
 
 /// LISTENER
 
-type SyncPackerListenerNew struct {
+type SyncPackerListenerReg struct {
 	store  string
 	SpType int `json:"type"`
 
@@ -130,11 +131,38 @@ type SyncPackerListenerStop struct {
 
 /// AGENT
 
-type SyncPackerAgentNew struct {
+type SyncPackerAgentReg struct {
 	store  string
 	SpType int `json:"type"`
 
 	Agent    string `json:"agent"`
 	Listener string `json:"listener"`
 	AgentUI  string `json:"ui"`
+}
+
+type SyncPackerAgentNew struct {
+	store        string
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+
+	Id         string   `json:"a_id"`
+	Name       string   `json:"a_name"`
+	Listener   string   `json:"a_listener"`
+	Async      bool     `json:"a_async"`
+	ExternalIP string   `json:"a_external_ip"`
+	InternalIP string   `json:"a_internal_ip"`
+	GmtOffset  int      `json:"a_gmt_offset"`
+	Sleep      uint     `json:"a_sleep"`
+	Jitter     uint     `json:"a_jitter"`
+	Pid        string   `json:"a_pid"`
+	Tid        string   `json:"a_tid"`
+	Arch       string   `json:"a_arch"`
+	Elevated   bool     `json:"a_elevated"`
+	Process    string   `json:"a_process"`
+	Os         int      `json:"a_os"`
+	OsDesc     string   `json:"a_os_desc"`
+	Domain     string   `json:"a_domain"`
+	Computer   string   `json:"a_computer"`
+	Username   string   `json:"a_username"`
+	Tags       []string `json:"a_tags"`
 }
