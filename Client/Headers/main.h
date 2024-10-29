@@ -52,12 +52,13 @@
 #define TYPE_CLIENT_CONNECT    21
 #define TYPE_CLIENT_DISCONNECT 22
 
-#define TYPE_LISTENER_NEW   31
+#define TYPE_LISTENER_REG   31
 #define TYPE_LISTENER_START 32
 #define TYPE_LISTENER_STOP  33
 #define TYPE_LISTENER_EDIT  34
 
-#define TYPE_AGENT_NEW 41
+#define TYPE_AGENT_REG 41
+#define TYPE_AGENT_NEW 42
 
 //////////
 
@@ -79,5 +80,29 @@ typedef struct ListenerData
     QString Status;
     QString Data;
 } ListenerData;
+
+typedef struct AgentData
+{
+    QString     Id;
+    QString     Name;
+    QString     Listener;
+    bool        Async;
+    QString     ExternalIP;
+    QString     InternalIP;
+    int         GmtOffset;
+    int         Sleep;
+    int         Jitter;
+    QString     Pid;
+    QString     Tid;
+    QString     Arch;
+    bool        Elevated;
+    QString     Process;
+    int         Os;
+    QString     OsDesc;
+    QString     Domain;
+    QString     Computer;
+    QString     Username;
+    QStringList Tags;
+} AgentData;
 
 #endif //ADAPTIXCLIENT_MAIN_H

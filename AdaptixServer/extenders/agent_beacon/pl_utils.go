@@ -82,11 +82,11 @@ func GetOsVersion(majorVersion uint8, minorVersion uint8, buildNumber uint, isSe
 	)
 
 	osVersion := "unknown"
-	if majorVersion == 10 && minorVersion == 0 && isServer && buildNumber == 20348 {
+	if majorVersion == 10 && minorVersion == 0 && isServer && buildNumber >= 19045 {
 		osVersion = "Win 2022 Serv"
-	} else if majorVersion == 10 && minorVersion == 0 && isServer && buildNumber == 17763 {
+	} else if majorVersion == 10 && minorVersion == 0 && isServer && buildNumber >= 17763 {
 		osVersion = "Win 2019 Serv"
-	} else if majorVersion == 10 && minorVersion == 0 && !isServer && (buildNumber >= 22000 && buildNumber <= 22621) {
+	} else if majorVersion == 10 && minorVersion == 0 && !isServer && buildNumber >= 22000 {
 		osVersion = "Win 11"
 	} else if majorVersion == 10 && minorVersion == 0 && isServer {
 		osVersion = "Win 2016 Serv"

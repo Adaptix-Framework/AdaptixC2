@@ -42,8 +42,8 @@ type AgentData struct {
 	ExternalIP string   `json:"a_external_ip"`
 	InternalIP string   `json:"a_internal_ip"`
 	GmtOffset  int      `json:"a_gmt_offset"`
-	Sleep      string   `json:"a_sleep"`
-	Jitter     string   `json:"a_jitter"`
+	Sleep      uint     `json:"a_sleep"`
+	Jitter     uint     `json:"a_jitter"`
 	Pid        string   `json:"a_pid"`
 	Tid        string   `json:"a_tid"`
 	Arch       string   `json:"a_arch"`
@@ -132,7 +132,7 @@ func (m *ModuleExtender) AgentExists(agentId string) bool {
 	return true
 }
 
-func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
+func (m *ModuleExtender) AgentCreateData(beat []byte) ([]byte, error) {
 	var (
 		buffer bytes.Buffer
 		err    error
@@ -140,8 +140,8 @@ func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
 	)
 
 	packer := CreatePacker(beat)
-	agent.Sleep = fmt.Sprintf("%v", packer.ParseInt32())
-	agent.Jitter = fmt.Sprintf("%v", packer.ParseInt32())
+	agent.Sleep = packer.ParseInt32()
+	agent.Jitter = packer.ParseInt32()
 	agent.Id = fmt.Sprintf("%08x", packer.ParseInt32())
 	agent.ACP = int(packer.ParseInt16())
 	agent.OemCP = int(packer.ParseInt16())

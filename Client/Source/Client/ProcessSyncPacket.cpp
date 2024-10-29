@@ -29,7 +29,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
 
 
-    if( spType == TYPE_LISTENER_NEW ) {
+    if( spType == TYPE_LISTENER_REG ) {
         if ( !jsonObj.contains("fn") || !jsonObj["fn"].isString() ) {
             return false;
         }
@@ -82,7 +82,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
-    if( spType == TYPE_AGENT_NEW ) {
+    if( spType == TYPE_AGENT_REG ) {
         if ( !jsonObj.contains("agent") || !jsonObj["agent"].isString() ) {
             return false;
         }
@@ -92,6 +92,74 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("ui") || !jsonObj["ui"].isString() ) {
             return false;
         }
+        return true;
+    }
+
+    if(spType == TYPE_AGENT_NEW ) {
+        if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_id") || !jsonObj["a_id"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_name") || !jsonObj["a_name"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_listener") || !jsonObj["a_listener"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_async") || !jsonObj["a_async"].isBool() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_external_ip") || !jsonObj["a_external_ip"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_internal_ip") || !jsonObj["a_internal_ip"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_gmt_offset") || !jsonObj["a_gmt_offset"].isDouble() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_sleep") || !jsonObj["a_sleep"].isDouble() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_jitter") || !jsonObj["a_jitter"].isDouble() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_pid") || !jsonObj["a_pid"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_tid") || !jsonObj["a_tid"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_arch") || !jsonObj["a_arch"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_elevated") || !jsonObj["a_elevated"].isBool() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_process") || !jsonObj["a_process"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_os") || !jsonObj["a_os"].isDouble() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_os_desc") || !jsonObj["a_os_desc"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_domain") || !jsonObj["a_domain"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_computer") || !jsonObj["a_computer"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_username") || !jsonObj["a_username"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_tags") || !jsonObj["a_tags"].isArray() ) {
+            return false;
+        }
+
         return true;
     }
 
@@ -145,7 +213,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
 
 
-    if( spType == TYPE_LISTENER_NEW )
+    if(spType == TYPE_LISTENER_REG )
     {
         QString fn = jsonObj["fn"].toString();
         QString ui = jsonObj["ui"].toString();
@@ -206,13 +274,55 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
 
-    if( spType == TYPE_AGENT_NEW ) {
+    if(spType == TYPE_AGENT_REG ) {
         QString agentName = jsonObj["agent"].toString();
         QString listenerName = jsonObj["listener"].toString();
         QString ui = jsonObj["ui"].toString();
 
         RegisterAgents[agentName] = new WidgetBuilder(ui.toLocal8Bit() );
         LinkListenerAgent[listenerName].push_back(agentName);
+
+        return;
+    }
+    if(spType == TYPE_AGENT_NEW ) {
+        AgentData newAgent = {0};
+        newAgent.Id = jsonObj["a_id"].toString();
+        newAgent.Name = jsonObj["a_name"].toString();
+        newAgent.Listener = jsonObj["a_listener"].toString();
+        newAgent.Async = jsonObj["a_async"].toBool();
+        newAgent.ExternalIP = jsonObj["a_external_ip"].toString();
+        newAgent.InternalIP = jsonObj["a_internal_ip"].toString();
+        newAgent.GmtOffset = jsonObj["a_gmt_offset"].toDouble();
+        newAgent.Sleep = jsonObj["a_sleep"].toDouble();
+        newAgent.Jitter = jsonObj["a_jitter"].toDouble();
+        newAgent.Pid = jsonObj["a_pid"].toString();
+        newAgent.Tid = jsonObj["a_tid"].toString();
+        newAgent.Arch = jsonObj["a_arch"].toString();
+        newAgent.Elevated = jsonObj["a_elevated"].toBool();
+        newAgent.Process = jsonObj["a_process"].toString();
+        newAgent.Os = jsonObj["a_os"].toDouble();
+        newAgent.OsDesc = jsonObj["a_os_desc"].toString();
+        newAgent.Domain = jsonObj["a_domain"].toString();
+        newAgent.Computer = jsonObj["a_computer"].toString();
+        newAgent.Username = jsonObj["a_username"].toString();
+
+        QJsonArray tagsArray = jsonObj["a_tags"].toArray();
+        QStringList tags;
+        for (const QJsonValue &value : tagsArray) {
+            if (value.isString()) {
+                newAgent.Tags.append(value.toString());
+            }
+        }
+
+        qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
+
+        QString message = QString("New '%1' (%2) executed on '%3@%4.%5' (%6)").arg(
+                newAgent.Name, newAgent.Id, newAgent.Username, newAgent.Computer, newAgent.Domain, newAgent.InternalIP
+        );
+
+        LogsTab->AddLogs(spType, time, message);
+
+        SessionsTablePage->AddAgentItem( newAgent );
 
         return;
     }

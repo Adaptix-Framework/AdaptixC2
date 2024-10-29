@@ -70,10 +70,15 @@ void LogsWidget::AddLogs( int type, qint64 time, QString message )
     else if( type == TYPE_CLIENT_DISCONNECT ) {
         log += TextColorHtml(message, COLOR_Berry);
     }
-    else if( type == TYPE_LISTENER_START || TYPE_LISTENER_STOP )
+    else if( type == TYPE_LISTENER_START || TYPE_LISTENER_STOP ) {
         log += TextColorHtml(message, COLOR_BrightOrange);
-    else
+    }
+    else if( type == TYPE_AGENT_NEW ) {
+        log += TextColorHtml(message, COLOR_NeonGreen);
+    }
+    else {
         log += message;
+    }
 
     logsConsoleTextEdit->append( log );
 }

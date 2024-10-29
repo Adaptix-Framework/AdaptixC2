@@ -11,4 +11,6 @@ QString UnixTimestampGlobalToStringLocal(qint64 timestamp);
 
 QString TextColorHtml(QString text, QString color);
 
+QString FormatSecToStr(int seconds);
+
 #endif //ADAPTIXCLIENT_CONVERT_H
