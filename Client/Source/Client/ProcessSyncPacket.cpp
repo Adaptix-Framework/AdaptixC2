@@ -195,18 +195,18 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_CLIENT_CONNECT )
     {
-        qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
         QString username = jsonObj["username"].toString();
-        QString message = QString("Client '%1' connected to teamserver").arg(username);
+        qint64 time      = static_cast<qint64>(jsonObj["time"].toDouble());
+        QString message  = QString("Client '%1' connected to teamserver").arg(username);
 
         LogsTab->AddLogs(spType, time, message);
         return;
     }
     if ( spType == TYPE_CLIENT_DISCONNECT )
     {
-        qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
         QString username = jsonObj["username"].toString();
-        QString message = QString("Client '%1' disconnected from teamserver").arg(username);
+        qint64  time     = static_cast<qint64>(jsonObj["time"].toDouble());
+        QString message  = QString("Client '%1' disconnected from teamserver").arg(username);
 
         LogsTab->AddLogs(spType, time, message);
         return;
@@ -233,7 +233,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newListener.Status       = jsonObj["l_status"].toString();
         newListener.Data         = jsonObj["l_data"].toString();
 
-        qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
+        qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
         QString message = QString("Listener '%1' (%2) started").arg(newListener.ListenerName).arg(newListener.ListenerType);
 
         LogsTab->AddLogs(spType, time, message);
@@ -253,7 +253,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newListener.Status       = jsonObj["l_status"].toString();
         newListener.Data         = jsonObj["l_data"].toString();
 
-        qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
+        qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
         QString message = QString("Listener '%1' reconfigured").arg(newListener.ListenerName);
 
         LogsTab->AddLogs(spType, time, message);
@@ -263,10 +263,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
     if ( spType == TYPE_LISTENER_STOP )
     {
-        auto listenerName = jsonObj["l_name"].toString();
-
-        qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString message = QString("Listener '%1' stopped").arg(listenerName);
+        QString listenerName = jsonObj["l_name"].toString();
+        qint64  time         = static_cast<qint64>(jsonObj["time"].toDouble());
+        QString message      = QString("Listener '%1' stopped").arg(listenerName);
 
         LogsTab->AddLogs(spType, time, message);
 
@@ -275,55 +274,25 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
 
     if(spType == TYPE_AGENT_REG ) {
-        QString agentName = jsonObj["agent"].toString();
+        QString agentName    = jsonObj["agent"].toString();
         QString listenerName = jsonObj["listener"].toString();
-        QString ui = jsonObj["ui"].toString();
+        QString ui           = jsonObj["ui"].toString();
 
         RegisterAgents[agentName] = new WidgetBuilder(ui.toLocal8Bit() );
         LinkListenerAgent[listenerName].push_back(agentName);
-
         return;
     }
     if(spType == TYPE_AGENT_NEW ) {
-        AgentData newAgent = {0};
-        newAgent.Id = jsonObj["a_id"].toString();
-        newAgent.Name = jsonObj["a_name"].toString();
-        newAgent.Listener = jsonObj["a_listener"].toString();
-        newAgent.Async = jsonObj["a_async"].toBool();
-        newAgent.ExternalIP = jsonObj["a_external_ip"].toString();
-        newAgent.InternalIP = jsonObj["a_internal_ip"].toString();
-        newAgent.GmtOffset = jsonObj["a_gmt_offset"].toDouble();
-        newAgent.Sleep = jsonObj["a_sleep"].toDouble();
-        newAgent.Jitter = jsonObj["a_jitter"].toDouble();
-        newAgent.Pid = jsonObj["a_pid"].toString();
-        newAgent.Tid = jsonObj["a_tid"].toString();
-        newAgent.Arch = jsonObj["a_arch"].toString();
-        newAgent.Elevated = jsonObj["a_elevated"].toBool();
-        newAgent.Process = jsonObj["a_process"].toString();
-        newAgent.Os = jsonObj["a_os"].toDouble();
-        newAgent.OsDesc = jsonObj["a_os_desc"].toString();
-        newAgent.Domain = jsonObj["a_domain"].toString();
-        newAgent.Computer = jsonObj["a_computer"].toString();
-        newAgent.Username = jsonObj["a_username"].toString();
+        Agent* newAgent = new Agent(jsonObj);
 
-        QJsonArray tagsArray = jsonObj["a_tags"].toArray();
-        QStringList tags;
-        for (const QJsonValue &value : tagsArray) {
-            if (value.isString()) {
-                newAgent.Tags.append(value.toString());
-            }
-        }
-
-        qint64 time = static_cast<qint64>(jsonObj["time"].toDouble());
-
+        qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
         QString message = QString("New '%1' (%2) executed on '%3@%4.%5' (%6)").arg(
-                newAgent.Name, newAgent.Id, newAgent.Username, newAgent.Computer, newAgent.Domain, newAgent.InternalIP
-        );
+                newAgent->data.Name, newAgent->data.Id, newAgent->data.Username, newAgent->data.Computer, newAgent->data.Domain, newAgent->data.InternalIP
+                );
 
         LogsTab->AddLogs(spType, time, message);
 
         SessionsTablePage->AddAgentItem( newAgent );
-
         return;
     }
 }

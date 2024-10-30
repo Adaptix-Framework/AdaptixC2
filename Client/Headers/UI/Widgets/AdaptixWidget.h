@@ -8,6 +8,7 @@
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <Client/WidgetBuilder.h>
+#include <Agent/Agent.h>
 
 class SessionsTableWidget;
 
@@ -55,8 +56,7 @@ public:
     QMap<QString, WidgetBuilder*> RegisterListeners;
     QMap<QString, QStringList>    LinkListenerAgent;
     QVector<ListenerData>         Listeners;
-    QVector<AgentData>            Agents;
-
+    QMap<QString, Agent*>         Agents;
 
     explicit AdaptixWidget(AuthProfile authProfile);
     ~AdaptixWidget();

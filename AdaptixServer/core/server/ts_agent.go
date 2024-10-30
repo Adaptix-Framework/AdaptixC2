@@ -57,15 +57,17 @@ func (ts *Teamserver) AgentRequest(agentType string, beat []byte, bodyData []byt
 		agentData.Tags = []string{}
 	}
 
-	//if !agent_exists {
-	// AgentAdd
-	packet := CreateSpAgentNew(agentData)
-	ts.SyncAllClients(packet)
-	ts.SyncSavePacket(packet.store, packet)
+	if !ts.agents.Contains(agentData.Id) {
+		ts.agents.Put(agentData.Id, agentData)
 
-	//}
+		packet := CreateSpAgentNew(agentData)
+		ts.SyncAllClients(packet)
+		ts.SyncSavePacket(packet.store, packet)
+	}
 
-	// AgentProcess
+	if len(bodyData) > 4 {
+		ts.Extender.AgentProcess(agentData.Type, agentData.Id, bodyData)
+	}
 
 	// AgentResponse
 
