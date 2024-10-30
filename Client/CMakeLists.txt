@@ -41,6 +41,8 @@ SET( HEADERS
         Headers/Client/WidgetBuilder.h
         Headers/UI/Widgets/SessionsTableWidget.h
         Headers/UI/Dialogs/DialogAgent.h
+        Headers/Agent/Agent.h
+        Headers/Agent/TableWidgetItemAgent.h
 )
 
 add_executable(AdaptixClient
@@ -69,6 +71,8 @@ add_executable(AdaptixClient
         Source/Client/WidgetBuilder.cpp
         Source/UI/Widgets/SessionsTableWidget.cpp
         Source/UI/Dialogs/DialogAgent.cpp
+        Source/Agent/Agent.cpp
+        Source/Agent/TableWidgetItemAgent.cpp
 )
 
 target_link_libraries(AdaptixClient

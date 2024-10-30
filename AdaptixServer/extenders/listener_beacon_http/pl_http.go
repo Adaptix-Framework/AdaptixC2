@@ -180,6 +180,17 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 	}
 
 	err = ModuleObject.ts.AgentRequest(fmt.Sprintf("%08x", agentType), beat, bodyData, h.Name, ExternalIP)
+	if err != nil {
+		h.pageFake(ctx)
+		return
+	} else {
+		_, err = ctx.Writer.Write([]byte(""))
+		if err != nil {
+			fmt.Println("Failed to write to request: " + err.Error())
+			h.pageFake(ctx)
+			return
+		}
+	}
 
 	ctx.AbortWithStatus(http.StatusOK)
 	return

@@ -3,6 +3,7 @@
 
 #include <main.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Agent/Agent.h>
 
 class SessionsTableWidget : public QWidget
 {
@@ -49,7 +50,7 @@ public:
     explicit SessionsTableWidget( QWidget* w );
     ~SessionsTableWidget();
 
-    void AddAgentItem(AgentData newAgent);
+    void AddAgentItem(Agent* newAgent);
 };
 
 #endif //ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H

@@ -182,7 +182,7 @@ func (m *ModuleExtender) AgentCreateData(beat []byte) ([]byte, error) {
 	agent.SessionKey = packer.ParseBytes()
 	agent.Domain = string(packer.ParseBytes())
 	agent.Computer = string(packer.ParseBytes())
-	agent.Username = string(packer.ParseBytes())
+	agent.Username = ConvertCpToUTF8(string(packer.ParseBytes()), agent.ACP)
 	agent.Process = ConvertCpToUTF8(string(packer.ParseBytes()), agent.ACP)
 
 	err = json.NewEncoder(&buffer).Encode(agent)

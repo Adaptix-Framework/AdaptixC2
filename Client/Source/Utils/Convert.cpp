@@ -22,10 +22,10 @@ QString TextColorHtml(QString text, QString color)
 
 QString FormatSecToStr(int seconds)
 {
+    QString result  = "";
     int     hours   = seconds / 3600;
     int     minutes = (seconds % 3600) / 60;
     int     secs    = seconds % 60;
-    QString result;
 
     if (hours > 0)
         result += QString::number(hours) + "h ";

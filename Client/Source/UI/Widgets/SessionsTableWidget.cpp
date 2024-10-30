@@ -4,7 +4,6 @@
 SessionsTableWidget::SessionsTableWidget( QWidget* w )
 {
     this->mainWidget = w;
-
     this->createUI();
 }
 
@@ -12,9 +11,6 @@ SessionsTableWidget::~SessionsTableWidget() = default;
 
 void SessionsTableWidget::createUI()
 {
-    if ( this->objectName().isEmpty() )
-        this->setObjectName( QString::fromUtf8( "SessionsTableWidget" ) );
-
     titleAgentID   = new QTableWidgetItem( "Agent ID" );
     titleAgentType = new QTableWidgetItem( "Agent Type" );
     titleListener  = new QTableWidgetItem( "Listener" );
@@ -69,81 +65,14 @@ void SessionsTableWidget::createUI()
     mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
 }
 
-void SessionsTableWidget::AddAgentItem(AgentData newAgent )
+void SessionsTableWidget::AddAgentItem( Agent* newAgent )
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    for( auto agent : adaptixWidget->Agents ) {
-        if( agent.Id == newAgent.Id ) {
-            return;
-        }
-    }
 
-    auto username = newAgent.Username;
-    if (newAgent.Elevated)
-        username = "* " + username;
+    if ( adaptixWidget->Agents.contains(newAgent->data.Id) )
+        return;
 
-    auto sleep = QString("%1 (%2%)").arg( FormatSecToStr(newAgent.Sleep) ).arg(newAgent.Jitter);
-
-    auto item_Id       = new QTableWidgetItem( newAgent.Id );
-    auto item_Type     = new QTableWidgetItem( newAgent.Name );
-    auto item_Listener = new QTableWidgetItem( newAgent.Listener );
-    auto item_External = new QTableWidgetItem( newAgent.ExternalIP );
-    auto item_Internal = new QTableWidgetItem( newAgent.InternalIP );
-    auto item_Domain   = new QTableWidgetItem( newAgent.Domain );
-    auto item_Computer = new QTableWidgetItem( newAgent.Computer );
-    auto item_Username = new QTableWidgetItem( username );
-    auto item_Os       = new QTableWidgetItem( newAgent.OsDesc );
-    auto item_Process  = new QTableWidgetItem( newAgent.Process );
-    auto item_Pid      = new QTableWidgetItem( newAgent.Pid );
-    auto item_Tid      = new QTableWidgetItem( newAgent.Tid );
-    auto item_Tags     = new QTableWidgetItem(  );
-    auto item_Last     = new QTableWidgetItem(  );
-    auto item_Sleep    = new QTableWidgetItem( sleep );
-
-    item_Id->setFlags( item_Id->flags() ^ Qt::ItemIsEditable );
-    item_Id->setTextAlignment( Qt::AlignCenter );
-
-    item_Type->setFlags( item_Type->flags() ^ Qt::ItemIsEditable );
-    item_Type->setTextAlignment( Qt::AlignCenter );
-
-    item_Listener->setFlags( item_Listener->flags() ^ Qt::ItemIsEditable );
-    item_Listener->setTextAlignment( Qt::AlignCenter );
-
-    item_External->setFlags( item_External->flags() ^ Qt::ItemIsEditable );
-    item_External->setTextAlignment( Qt::AlignCenter );
-
-    item_Internal->setFlags( item_Internal->flags() ^ Qt::ItemIsEditable );
-    item_Internal->setTextAlignment( Qt::AlignCenter );
-
-    item_Domain->setFlags( item_Domain->flags() ^ Qt::ItemIsEditable );
-    item_Domain->setTextAlignment( Qt::AlignCenter );
-
-    item_Computer->setFlags( item_Computer->flags() ^ Qt::ItemIsEditable );
-    item_Computer->setTextAlignment( Qt::AlignCenter );
-
-    item_Username->setFlags( item_Username->flags() ^ Qt::ItemIsEditable );
-    item_Username->setTextAlignment( Qt::AlignCenter );
-
-    item_Os->setFlags( item_Os->flags() ^ Qt::ItemIsEditable );
-    item_Os->setTextAlignment( Qt::AlignCenter );
-
-    item_Process->setFlags( item_Process->flags() ^ Qt::ItemIsEditable );
-    item_Process->setTextAlignment( Qt::AlignCenter );
-
-    item_Pid->setFlags( item_Pid->flags() ^ Qt::ItemIsEditable );
-    item_Pid->setTextAlignment( Qt::AlignCenter );
-
-    item_Tid->setFlags( item_Tid->flags() ^ Qt::ItemIsEditable );
-    item_Tid->setTextAlignment( Qt::AlignCenter );
-
-    item_Tags->setFlags( item_Tags->flags() ^ Qt::ItemIsEditable );
-    item_Tags->setTextAlignment( Qt::AlignCenter );
-
-    item_Last->setFlags( item_Last->flags() ^ Qt::ItemIsEditable );
-    item_Last->setTextAlignment( Qt::AlignCenter );
-
-    item_Sleep->setFlags( item_Sleep->flags() ^ Qt::ItemIsEditable );
-    item_Sleep->setTextAlignment( Qt::AlignCenter );
+    adaptixWidget->Agents[ newAgent->data.Id ] = newAgent;
 
     if( tableWidget->rowCount() < 1 )
         tableWidget->setRowCount( 1 );
@@ -152,31 +81,29 @@ void SessionsTableWidget::AddAgentItem(AgentData newAgent )
 
     bool isSortingEnabled = tableWidget->isSortingEnabled();
     tableWidget->setSortingEnabled( false );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnAgentID,   item_Id );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnAgentType, item_Type );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnListener,  item_Listener );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnExternal,  item_External );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnInternal,  item_Internal );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnDomain,    item_Domain );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnComputer,  item_Computer );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnUser,      item_Username );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnOs,        item_Os );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnProcess,   item_Process );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnProcessId, item_Pid );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnThreadId,  item_Tid );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnTags,      item_Tags );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnLast,      item_Last );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnSleep,     item_Sleep );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnAgentID,   newAgent->item_Id );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnAgentType, newAgent->item_Type );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnListener,  newAgent->item_Listener );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnExternal,  newAgent->item_External );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnInternal,  newAgent->item_Internal );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnDomain,    newAgent->item_Domain );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnComputer,  newAgent->item_Computer );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnUser,      newAgent->item_Username );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnOs,        newAgent->item_Os );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnProcess,   newAgent->item_Process );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnProcessId, newAgent->item_Pid );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnThreadId,  newAgent->item_Tid );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnTags,      newAgent->item_Tags );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnLast,      newAgent->item_Last );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnSleep,     newAgent->item_Sleep );
     tableWidget->setSortingEnabled( isSortingEnabled );
 
-    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnAgentID, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnAgentID,   QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnAgentType, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnListener, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnExternal, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnInternal, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnListener,  QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnExternal,  QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnInternal,  QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnProcessId, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnThreadId, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnSleep, QHeaderView::ResizeToContents );
-
-    adaptixWidget->Agents.push_back(newAgent);
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnThreadId,  QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnSleep,     QHeaderView::ResizeToContents );
 }
