@@ -5,6 +5,8 @@ SessionsTableWidget::SessionsTableWidget( QWidget* w )
 {
     this->mainWidget = w;
     this->createUI();
+
+    connect( tableWidget, &QTableWidget::doubleClicked, this, &SessionsTableWidget::handleTableDoubleClicked );
 }
 
 SessionsTableWidget::~SessionsTableWidget() = default;
@@ -106,4 +108,12 @@ void SessionsTableWidget::AddAgentItem( Agent* newAgent )
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnProcessId, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnThreadId,  QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnSleep,     QHeaderView::ResizeToContents );
+}
+
+void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index)
+{
+    QString AgentId = tableWidget->item(index.row(),0)->text();
+
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    adaptixWidget->LoadConsoleUI(AgentId);
 }
