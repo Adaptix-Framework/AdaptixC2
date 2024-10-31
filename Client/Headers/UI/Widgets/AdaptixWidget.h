@@ -71,6 +71,7 @@ public slots:
 
     void LoadLogsUI();
     void LoadListenersUI();
+    void LoadConsoleUI(QString AgentId);
 };
 
 #endif //ADAPTIXCLIENT_ADAPTIXWIDGET_H

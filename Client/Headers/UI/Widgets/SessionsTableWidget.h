@@ -51,6 +51,10 @@ public:
     ~SessionsTableWidget();
 
     void AddAgentItem(Agent* newAgent);
+
+public slots:
+    void handleTableDoubleClicked( const QModelIndex &index );
+
 };
 
 #endif //ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H

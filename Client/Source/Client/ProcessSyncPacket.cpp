@@ -95,7 +95,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
-    if(spType == TYPE_AGENT_NEW ) {
+    if( spType == TYPE_AGENT_NEW ) {
         if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() ) {
             return false;
         }
@@ -213,7 +213,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
 
 
-    if(spType == TYPE_LISTENER_REG )
+    if( spType == TYPE_LISTENER_REG )
     {
         QString fn = jsonObj["fn"].toString();
         QString ui = jsonObj["ui"].toString();
@@ -273,7 +273,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
 
-    if(spType == TYPE_AGENT_REG ) {
+    if( spType == TYPE_AGENT_REG ) {
         QString agentName    = jsonObj["agent"].toString();
         QString listenerName = jsonObj["listener"].toString();
         QString ui           = jsonObj["ui"].toString();
@@ -282,7 +282,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         LinkListenerAgent[listenerName].push_back(agentName);
         return;
     }
-    if(spType == TYPE_AGENT_NEW ) {
+    if( spType == TYPE_AGENT_NEW ) {
         Agent* newAgent = new Agent(jsonObj);
 
         qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());

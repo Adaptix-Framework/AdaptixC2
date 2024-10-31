@@ -235,6 +235,14 @@ void AdaptixWidget::LoadListenersUI()
     this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
 }
 
+void AdaptixWidget::LoadConsoleUI(QString AgentId)
+{
+    if( !Agents.contains(AgentId) )
+        return;
+
+    auto text = QString("Console [%1]").arg( AgentId );
+    this->AddTab(Agents[AgentId]->Console, text);
+}
 
 
 void AdaptixWidget::ChannelClose()

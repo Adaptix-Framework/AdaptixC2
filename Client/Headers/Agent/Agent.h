@@ -3,6 +3,9 @@
 
 #include <main.h>
 #include <Agent/TableWidgetItemAgent.h>
+#include <UI/Widgets/ConsoleWidget.h>
+
+class ConsoleWidget;
 
 class Agent
 {
@@ -24,6 +27,8 @@ public:
     TableWidgetItemAgent* item_Tags;
     TableWidgetItemAgent* item_Last;
     TableWidgetItemAgent* item_Sleep;
+
+    ConsoleWidget* Console = nullptr;
 
     explicit Agent(QJsonObject jsonObj);
     ~Agent();

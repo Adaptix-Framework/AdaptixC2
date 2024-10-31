@@ -52,6 +52,8 @@ Agent::Agent(QJsonObject jsonObj)
     item_Last     = new TableWidgetItemAgent( "", this );
     item_Sleep    = new TableWidgetItemAgent( sleep, this );
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
+
+    Console = new ConsoleWidget( this );
 }
 
 Agent::~Agent()
