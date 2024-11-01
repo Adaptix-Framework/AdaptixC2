@@ -19,14 +19,21 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile)
     ChannelWsWorker = new WebSocketWorker( authProfile );
     ChannelWsWorker->moveToThread( ChannelThread );
 
+    TickThread = new QThread;
+    TickWorker = new LastTickWorker( this );
+    TickWorker->moveToThread( TickThread );
+
     connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
     connect( logsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
+
+    connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
 
     connect( ChannelThread, &QThread::started, ChannelWsWorker, &WebSocketWorker::run );
     connect( ChannelWsWorker, &WebSocketWorker::received_data, this, &AdaptixWidget::DataHandler );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, &AdaptixWidget::ChannelClose );
 
+    TickThread->start();
     ChannelThread->start();
 
     // TODO: Enable menu button

@@ -37,6 +37,7 @@
 #include <QGroupBox>
 #include <QCheckBox>
 #include <QtWebSockets/QWebSocket>
+#include <QTimer>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
@@ -57,8 +58,9 @@
 #define TYPE_LISTENER_STOP  0x33
 #define TYPE_LISTENER_EDIT  0x34
 
-#define TYPE_AGENT_REG 0x41
-#define TYPE_AGENT_NEW 0x42
+#define TYPE_AGENT_REG  0x41
+#define TYPE_AGENT_NEW  0x42
+#define TYPE_AGENT_TICK 0x43
 
 //////////
 
@@ -103,6 +105,7 @@ typedef struct AgentData
     QString     Computer;
     QString     Username;
     QStringList Tags;
+    int         LastTick;
 } AgentData;
 
 #endif //ADAPTIXCLIENT_MAIN_H

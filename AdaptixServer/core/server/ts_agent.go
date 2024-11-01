@@ -53,6 +53,7 @@ func (ts *Teamserver) AgentRequest(agentType string, beat []byte, bodyData []byt
 	agentData.Name = agentName
 	agentData.Listener = listenerName
 	agentData.CreateTime = time.Now().Unix()
+	agentData.LastTick = int(time.Now().Unix())
 	if len(agentData.Tags) == 0 {
 		agentData.Tags = []string{}
 	}
@@ -60,14 +61,17 @@ func (ts *Teamserver) AgentRequest(agentType string, beat []byte, bodyData []byt
 	if !ts.agents.Contains(agentData.Id) {
 		ts.agents.Put(agentData.Id, agentData)
 
-		packet := CreateSpAgentNew(agentData)
-		ts.SyncAllClients(packet)
-		ts.SyncSavePacket(packet.store, packet)
+		packetNew := CreateSpAgentNew(agentData)
+		ts.SyncAllClients(packetNew)
+		ts.SyncSavePacket(packetNew.store, packetNew)
 	}
 
 	if len(bodyData) > 4 {
 		ts.Extender.AgentProcess(agentData.Type, agentData.Id, bodyData)
 	}
+
+	packetTick := CreateSpAgentTick(agentData.Id)
+	ts.SyncAllClients(packetTick)
 
 	// AgentResponse
 

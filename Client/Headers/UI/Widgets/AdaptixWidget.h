@@ -3,6 +3,7 @@
 
 #include <main.h>
 #include <Client/WebSocketWorker.h>
+#include <Client/LastTickWorker.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
@@ -11,6 +12,7 @@
 #include <Agent/Agent.h>
 
 class SessionsTableWidget;
+class LastTickWorker;
 
 class AdaptixWidget : public QWidget
 {
@@ -48,6 +50,8 @@ Q_OBJECT
 public:
     QThread*             ChannelThread     = nullptr;
     WebSocketWorker*     ChannelWsWorker   = nullptr;
+    QThread*             TickThread        = nullptr;
+    LastTickWorker*      TickWorker        = nullptr;
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;

@@ -116,7 +116,7 @@ BYTE* ConnectorHTTP::SendData(PBYTE data, ULONG data_size, ULONG* recv_size)
 							DWORD dwNumberOfBytesAvailable = 0;
 							result = this->functions->InternetQueryDataAvailable(hRequest, &dwNumberOfBytesAvailable, 0, 0);
 							
-							if ( result && answerSize >= 0 ) {
+							if ( result && answerSize > 0 ) {
 								ULONG numberReadedBytes = 0;
 								DWORD readedBytes = 0;
 								BYTE* buffer = (BYTE*)this->functions->LocalAlloc( LPTR, answerSize );

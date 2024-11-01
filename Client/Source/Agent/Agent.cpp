@@ -21,6 +21,7 @@ Agent::Agent(QJsonObject jsonObj)
     data.Domain     = jsonObj["a_domain"].toString();
     data.Computer   = jsonObj["a_computer"].toString();
     data.Username   = jsonObj["a_username"].toString();
+    data.LastTick   = jsonObj["a_last_tick"].toDouble();
 
     QJsonArray tagsArray = jsonObj["a_tags"].toArray();
     QStringList tags;
@@ -36,6 +37,10 @@ Agent::Agent(QJsonObject jsonObj)
 
     auto sleep = QString("%1 (%2%)").arg( FormatSecToStr(data.Sleep) ).arg(data.Jitter);
 
+    QString last = "";
+    if ( !data.Async )
+        last = QString::fromUtf8("\u221E");
+
     item_Id       = new TableWidgetItemAgent( data.Id, this );
     item_Type     = new TableWidgetItemAgent( data.Name, this );
     item_Listener = new TableWidgetItemAgent( data.Listener, this );
@@ -49,7 +54,7 @@ Agent::Agent(QJsonObject jsonObj)
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
     item_Tid      = new TableWidgetItemAgent( data.Tid, this );
     item_Tags     = new TableWidgetItemAgent( "", this );
-    item_Last     = new TableWidgetItemAgent( "", this );
+    item_Last     = new TableWidgetItemAgent( last, this );
     item_Sleep    = new TableWidgetItemAgent( sleep, this );
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
 

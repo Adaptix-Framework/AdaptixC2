@@ -4,6 +4,7 @@ import "time"
 
 const (
 	STORE_LOG  = "log"
+	STORE_TICK = "tick"
 	STORE_INIT = "init"
 
 	TYPE_SYNC_START  = 0x11
@@ -17,8 +18,9 @@ const (
 	TYPE_LISTENER_STOP  = 0x33
 	TYPE_LISTENER_EDIT  = 0x34
 
-	TYPE_AGENT_REG = 0x41
-	TYPE_AGENT_NEW = 0x42
+	TYPE_AGENT_REG  = 0x41
+	TYPE_AGENT_NEW  = 0x42
+	TYPE_AGENT_TICK = 0x43
 )
 
 /// SYNC
@@ -142,6 +144,16 @@ func CreateSpAgentNew(agentData AgentData) SyncPackerAgentNew {
 		Domain:     agentData.Domain,
 		Computer:   agentData.Computer,
 		Username:   agentData.Username,
+		LastTick:   agentData.LastTick,
 		Tags:       agentData.Tags,
+	}
+}
+
+func CreateSpAgentTick(AgentID string) SyncPackerAgentTick {
+	return SyncPackerAgentTick{
+		store:  STORE_TICK,
+		SpType: TYPE_AGENT_TICK,
+
+		Id: AgentID,
 	}
 }
