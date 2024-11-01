@@ -159,7 +159,16 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("a_tags") || !jsonObj["a_tags"].isArray() ) {
             return false;
         }
+        if ( !jsonObj.contains("a_last_tick") || !jsonObj["a_last_tick"].isDouble() ) {
+            return false;
+        }
+        return true;
+    }
 
+    if( spType == TYPE_AGENT_TICK ) {
+        if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
+            return false;
+        }
         return true;
     }
 
@@ -169,7 +178,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 {
     int spType = jsonObj["type"].toDouble();
-
     if( dialogSyncPacket != nullptr ) {
         dialogSyncPacket->receivedLogs++;
         dialogSyncPacket->upgrade();
@@ -273,7 +281,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
 
-    if( spType == TYPE_AGENT_REG ) {
+    if( spType == TYPE_AGENT_REG )
+    {
         QString agentName    = jsonObj["agent"].toString();
         QString listenerName = jsonObj["listener"].toString();
         QString ui           = jsonObj["ui"].toString();
@@ -282,7 +291,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         LinkListenerAgent[listenerName].push_back(agentName);
         return;
     }
-    if( spType == TYPE_AGENT_NEW ) {
+    if( spType == TYPE_AGENT_NEW )
+    {
         Agent* newAgent = new Agent(jsonObj);
 
         qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
@@ -294,5 +304,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         SessionsTablePage->AddAgentItem( newAgent );
         return;
+    }
+    if( spType == TYPE_AGENT_TICK )
+    {
+        QString id = jsonObj["a_id"].toString();
+        if (Agents.contains(id))
+            Agents[id]->data.LastTick = QDateTime::currentSecsSinceEpoch();
     }
 }

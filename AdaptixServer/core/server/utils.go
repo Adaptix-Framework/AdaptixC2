@@ -65,6 +65,7 @@ type AgentData struct {
 	OemCP      int      `json:"a_oemcp"`
 	ACP        int      `json:"a_acp"`
 	CreateTime int64    `json:"a_create_time"`
+	LastTick   int      `json:"a_last_tick"`
 	Tags       []string `json:"a_tags"`
 }
 
@@ -164,5 +165,13 @@ type SyncPackerAgentNew struct {
 	Domain     string   `json:"a_domain"`
 	Computer   string   `json:"a_computer"`
 	Username   string   `json:"a_username"`
+	LastTick   int      `json:"a_last_tick"`
 	Tags       []string `json:"a_tags"`
+}
+
+type SyncPackerAgentTick struct {
+	store  string
+	SpType int `json:"type"`
+
+	Id string `json:"a_id"`
 }
