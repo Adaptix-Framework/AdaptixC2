@@ -1,0 +1,17 @@
+<RCC>
+
+    <qresource prefix="/">
+        <file alias="LogoLin">Logo.png</file>
+    </qresource>
+
+    <qresource prefix="/fonts">
+        <file alias="DroidSansMono">fonts/DroidSansMono.ttf</file>
+    </qresource>
+
+    <qresource prefix="/themes">
+        <file alias="Dark">themes/dark.css</file>
+    </qresource>
+
+    <qresource prefix="/icons">
+    </qresource>
+</RCC>
