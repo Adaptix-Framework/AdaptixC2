@@ -177,6 +177,9 @@ QString Commander::createJson(Command command, QStringList args)
         }
     }
     else {
+        if ( args.isEmpty() )
+            return "Subcommand must be set";
+
         QString subCommandName = args[0];
 
         for (Command subcommand : command.subcommands) {
@@ -251,87 +254,129 @@ QString Commander::help(QStringList commandParts)
     QString result;
     QTextStream output(&result);
     if (commandParts.isEmpty()) {
-        output << "Available commands:\n";
-        for (Command cmd : commands) {
-            output << "- " << cmd.name << ": " << cmd.description << "\n";
+        int TotalWidth = 20;
+        output << QString("  Command                   Description\n");
+        output << QString("  -------                   -----------\n");
+
+        for ( auto command : commands ) {
+            QString commandName = command.name;
+            if (!command.subcommands.isEmpty())
+                commandName += '*';
+
+            QString tab = QString(TotalWidth - commandName.size(), ' ');
+            output << "  " + commandName + tab + "      " + command.description + "\n";
         }
-        return output.readAll();
+        return result;
     }
     else {
-        const Command* foundCommand = nullptr;
-        const Command* foundSubcommand = nullptr;
+        Command foundCommand;
+        Command foundSubCommand;
+        QString commandName = commandParts[0];
 
-        if (commandParts.size() == 2) {
-            QString mainCommandName = commandParts[0];
-            QString subCommandName = commandParts[1];
-
-            for (const Command& cmd : commands) {
-                if (cmd.name == mainCommandName) {
-                    for (Command subcmd : cmd.subcommands) {
-                        if (subcmd.name == subCommandName) {
-                            foundCommand = &cmd;
-                            foundSubcommand = &subcmd;
-                            break;
-                        }
-                    }
-                }
-                if (foundSubcommand) break;
+        for (Command cmd : commands) {
+            if (cmd.name == commandName) {
+                foundCommand = cmd;
+                break;
             }
         }
-        else {
-            QString mainCommandName = commandParts[0];
-            for (Command cmd : commands) {
-                if (cmd.name == mainCommandName) {
-                    foundCommand = &cmd;
+
+        if ( foundCommand.name.isEmpty() )
+            return "Unknown command";
+
+        if (commandParts.size() == 1) {
+            output << "  Command               : " + foundCommand.name + "\n";
+            if(!foundCommand.description.isEmpty())
+                output << "  Description           : " + foundCommand.description + "\n";
+            if(!foundCommand.example.isEmpty())
+                output << "  Example               : " + foundCommand.example + "\n";
+            if( !foundCommand.subcommands.isEmpty() ) {
+                int TotalWidth = 20;
+                output << "\n";
+                output << "  SubCommand                Description\n";
+                output << "  ----------                -----------\n";
+                for ( auto subcmd : foundCommand.subcommands ) {
+                    int cmdWidth = subcmd.name.size();
+                    if (cmdWidth > TotalWidth)
+                        cmdWidth = TotalWidth;
+
+                    QString tab = QString(TotalWidth - cmdWidth, ' ');
+                    output << "  " + subcmd.name + tab + "      " + subcmd.description + "\n";
+                }
+            }
+            else if ( !foundCommand.args.isEmpty() ) {
+                QString argsHelp;
+                QTextStream argsStream(&argsHelp);
+                QString usageHelp;
+                QTextStream usageStream(&usageHelp);
+
+                usageStream << foundCommand.name;
+                for ( auto arg : foundCommand.args ) {
+                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + ( arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " " ) + arg.name + (arg.required ? ">" : "]");
+                    usageStream << " " + fullarg;
+                    argsStream << "    " + fullarg + "  : " + arg.type + ". " + arg.description + "\n";
+                }
+                output << "  Usage                 : " + usageHelp;
+                output << "\n";
+                output << "  Arguments:\n";
+                output << argsHelp;
+            }
+        }
+        else if (commandParts.size() == 2) {
+            QString subCommandName = commandParts[0];
+            for (Command subcmd : foundCommand.subcommands) {
+                if (subcmd.name == subCommandName) {
+                    foundSubCommand = subcmd;
                     break;
                 }
             }
-        }
 
-        if (!foundCommand) {
-            return QString("Command '%1' not found.\n").arg(commandParts[0]);
-        }
+            if ( foundSubCommand.name.isEmpty() )
+                return "Unknown subcommand";
 
-        if (foundSubcommand) {
-            output << "Subcommand: " << foundSubcommand->name << "\n";
-            output << foundSubcommand->description << "\n";
-            output << "Usage: " << foundSubcommand->example << "\n";
-            output << "Arguments:\n";
-            for (Argument arg : foundSubcommand->args) {
-                output << "  " << (arg.required ? "<" : "[") << arg.name << (arg.required ? ">" : "]");
-                if (!arg.mark.isEmpty()) output << " (" << arg.mark << ")";
-                output << " - Type: " << arg.type << "\n";
-            }
-        } else {
-            output << "Command: " << foundCommand->name << "\n";
-            output << foundCommand->description << "\n";
-            output << "Usage: " << foundCommand->example << "\n";
-            if (!foundCommand->args.isEmpty()) {
-                output << "Arguments:\n";
-                for (Argument arg : foundCommand->args) {
-                    output << "  " << (arg.required ? "<" : "[") << arg.name << (arg.required ? ">" : "]");
-                    if (!arg.mark.isEmpty()) output << " (" << arg.mark << ")";
-                    output << " - Type: " << arg.type << "\n";
+            output << "  Command               : " + foundCommand.name + "\n";
+            output << "  SubCommand            : " + foundSubCommand.name + "\n";
+            if(!foundSubCommand.description.isEmpty())
+                output << "  Description           : " + foundSubCommand.description + "\n";
+            if(!foundSubCommand.example.isEmpty())
+                output << "  Example               : " + foundSubCommand.example + "\n";
+            if ( !foundSubCommand.args.isEmpty() ) {
+                QString argsHelp;
+                QTextStream argsStream(&argsHelp);
+                QString usageHelp;
+                QTextStream usageStream(&usageHelp);
+
+                usageStream << foundCommand.name + " " + foundSubCommand.name;
+                for ( auto arg : foundCommand.args ) {
+                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + ( arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " " ) + arg.name + (arg.required ? ">" : "]");
+                    usageStream << " " + fullarg;
+                    argsStream << "    " + fullarg + "  : " + arg.type + ". " + arg.description + "\n";
                 }
+                output << "  Usage                 : " + usageHelp;
+                output << "\n";
+                output << "  Arguments:\n";
+                output << argsHelp;
             }
-            if (!foundCommand->subcommands.isEmpty()) {
-                output << "Subcommands:\n";
-                for ( Command subcmd : foundCommand->subcommands) {
-                    output << "  " << subcmd.name << ": " << subcmd.description << "\n";
-                }
-            }
+        }
+        else {
+            return "Error Help format: 'help [command [subcommand]]";
         }
         return output.readAll();
     }
 }
 
-QStringList Commander::getCommandList() {
+QStringList Commander::getCommandList()
+{
     QStringList commandList;
-    for (const Command& cmd : commands) {
+    for (Command cmd : commands) {
         commandList << cmd.name;
-        for (const Command& subcmd : cmd.subcommands) {
+        for (Command subcmd : cmd.subcommands) {
             commandList << cmd.name + " " + subcmd.name;
         }
     }
+    QStringList copyCommandList = commandList;
+    for( auto cmd : copyCommandList) {
+        commandList << "help " + cmd;
+    }
+
     return commandList;
 }
