@@ -1,6 +1,14 @@
+/* Dark Theme */
+
 QWidget {
     background-color: #222222;
     color: #E0E0E0;
+}
+
+QLabel[LabelStyle="console"] {
+    padding: 2px;
+    color: #E0E0E0;
+    background-color: transparent;
 }
 
 QLabel {
@@ -12,7 +20,7 @@ QLabel {
 QPushButton {
     background-color: #333333;
     border: 1px solid #4A4A4A;
-    padding: 4px;
+    padding: 8px;
     border-radius: 4px;
     color: #E0E0E0;
 }
@@ -27,12 +35,21 @@ QPushButton:disabled {
     border: 1px solid #4A4A4A;
 }
 
+QLineEdit[LineEditStyle="console"] {
+    background-color: #111111;
+    color: #e8e8e8;
+    font-family: "monospace";
+    border: 1px #4A4A4A;
+    padding: 2px;
+    border-radius: 4px;
+}
+
 QLineEdit {
     background-color: #2A2A2A;
+    color: #E0E0E0;
     border: 1px solid #4A4A4A;
     padding: 4px;
     border-radius: 4px;
-    color: #E0E0E0;
 }
 
 
@@ -76,10 +93,10 @@ QMenu::item:selected {
 
 
 
-QTextEdit#console {
+QTextEdit[TextEditStyle="console"] {
     background-color: #111111;
-    color: #C8C8C8;
-    font-family: "Courier New", monospace;
+    color: #e8e8e8;
+    font-family: "monospace";
     border: 0px;
     padding: 2px;
     border-radius: 0px;
@@ -96,7 +113,7 @@ QTextEdit {
 
 
 QTabWidget::pane {
-    /*border: 1px solid #4A4A4A;*/
+    border: 1px solid #4A4A4A;
     background-color: #222222;
 }
 

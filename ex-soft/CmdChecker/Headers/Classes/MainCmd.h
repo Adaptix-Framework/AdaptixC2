@@ -9,7 +9,7 @@
 class MainCmd : public QWidget
 {
     QGridLayout* mainLayout     = nullptr;
-    QTextEdit*   configTextarea = nullptr;
+    QTextEdit*   consoleTextEdit = nullptr;
     QPushButton* selectButton   = nullptr;
     QPushButton* loadButton     = nullptr;
     QPushButton* execButton     = nullptr;

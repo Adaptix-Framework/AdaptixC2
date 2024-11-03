@@ -26,7 +26,8 @@ void MainCmd::createUI()
     commandInput = new QLineEdit(this);
     commandInput->setEnabled(false);
 
-    configTextarea = new QTextEdit(this);
+    consoleTextEdit = new QTextEdit(this);
+    consoleTextEdit->setProperty( "TextEditStyle", "console" );
 
     selectButton = new QPushButton("Select", this);
     loadButton   = new QPushButton("Load", this);
@@ -36,7 +37,7 @@ void MainCmd::createUI()
     mainLayout->addWidget(pathInput,      0,0,1,1);
     mainLayout->addWidget(selectButton,   0,1,1,1);
     mainLayout->addWidget(loadButton,     0,2,1,1);
-    mainLayout->addWidget(configTextarea, 1,0,1,3);
+    mainLayout->addWidget(consoleTextEdit, 1, 0, 1, 3);
     mainLayout->addWidget(commandInput,   2,0,1,2);
     mainLayout->addWidget(execButton,     2,2,1,1);
 }
@@ -92,7 +93,7 @@ void MainCmd::LoadFile()
 
             }
             else {
-                configTextarea->setText(commander->GetError());
+                consoleTextEdit->setText(commander->GetError());
             }
         }
     }
@@ -101,18 +102,18 @@ void MainCmd::LoadFile()
 void MainCmd::ExecuteCommand()
 {
     if ( !commander || !commander->IsValid() ) {
-        configTextarea->setText("Error: Commands no loaded");
+        consoleTextEdit->setText("Error: Commands no loaded");
         return;
     }
 
     QString command = commandInput->text().trimmed();
     if (command.isEmpty()) {
-        configTextarea->setText("Enter command");
+        consoleTextEdit->setText("Enter command");
         return;
     }
 
     QString result = commander->parseInput(command);
-    configTextarea->setText(result);
+    consoleTextEdit->setText(result);
 }
 
 void MainCmd::Start()
