@@ -86,7 +86,7 @@ void MainCmd::LoadFile()
                 commandInput->setEnabled(true);
                 execButton->setEnabled(true);
 
-                QStringList commandList = commander->getCommandList();
+                QStringList commandList = commander->GetCommands();
                 completer = new QCompleter(commandList, this);
                 completer->setCaseSensitivity(Qt::CaseInsensitive);
                 commandInput->setCompleter(completer);
@@ -112,8 +112,8 @@ void MainCmd::ExecuteCommand()
         return;
     }
 
-    QString result = commander->parseInput(command);
-    consoleTextEdit->setText(result);
+    CommanderResult result = commander->ProcessInput( command );
+    consoleTextEdit->setText(result.message);
 }
 
 void MainCmd::Start()
