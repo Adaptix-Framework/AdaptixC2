@@ -21,7 +21,7 @@ Commander::Commander(QByteArray data)
         if (obj.contains("args")) {
             QJsonArray argsArray = obj["args"].toArray();
             for (QJsonValue argVal : argsArray) {
-                Argument arg = parseArgument(argVal.toString());
+                Argument arg = ParseArgument(argVal.toString());
                 if (arg.valid)
                     cmd.args.append(arg);
             }
@@ -30,13 +30,13 @@ Commander::Commander(QByteArray data)
             for (QJsonValue subCmdVal : subcommandArray) {
                 QJsonObject subCmdObj = subCmdVal.toObject();
                 Command subCmd;
-                subCmd.name = subCmdObj["name"].toString();
+                subCmd.name        = subCmdObj["name"].toString();
                 subCmd.description = subCmdObj["description"].toString();
-                subCmd.example = subCmdObj["example"].toString();
+                subCmd.example     = subCmdObj["example"].toString();
 
                 QJsonArray subArgsArray = subCmdObj["args"].toArray();
                 for (QJsonValue subArgVal : subArgsArray) {
-                    Argument subArg = parseArgument(subArgVal.toString());
+                    Argument subArg = ParseArgument(subArgVal.toString());
                     if (subArg.valid)
                         subCmd.args.append(subArg);
                 }
@@ -50,7 +50,7 @@ Commander::Commander(QByteArray data)
 
 Commander::~Commander() = default;
 
-QString Commander::parseInput(QString input)
+CommanderResult Commander::ProcessInput(QString input)
 {
     QStringList parts;
     QRegularExpression regex(R"((?:\"((?:\\.|[^\"\\])*)\"|(\S+)))");
@@ -66,25 +66,25 @@ QString Commander::parseInput(QString input)
     }
 
     if (parts.isEmpty())
-        return "";
+        return CommanderResult{false, ""};
 
     QString commandName = parts[0];
     parts.removeAt(0);
 
     if( commandName == "help") {
-        return this->help(parts);
+        return this->ProcessHelp(parts);
     }
 
     for (Command command : commands) {
         if (command.name == commandName) {
-            return createJson(command, parts);
+            return ProcessCommand(command, parts);
         }
     }
 
-    return "Command not found.";
+    return CommanderResult{true, "Command not found"};
 }
 
-Argument Commander::parseArgument(QString argString)
+Argument Commander::ParseArgument(QString argString)
 {
     Argument arg = {0};
     QRegularExpression regex(R"((\w+)\s+([\[\<][^\s\]]+[\s\w-]*[\>\]])(?:\s+\{(.+)\})?)");
@@ -124,7 +124,7 @@ Argument Commander::parseArgument(QString argString)
     return arg;
 }
 
-QString Commander::createJson(Command command, QStringList args)
+CommanderResult Commander::ProcessCommand(Command command, QStringList args)
 {
     QJsonObject jsonObj;
     jsonObj["command"] = command.name;
@@ -162,23 +162,24 @@ QString Commander::createJson(Command command, QStringList args)
                 } else if (commandArg.type == "BOOL") {
                     jsonObj[commandArg.mark] = parsedArgsMap[commandArg.mark] == "true";
                 } else if (commandArg.type == "FILE") {
-                    QFile file(parsedArgsMap[commandArg.name]);
+                    QString path = parsedArgsMap[commandArg.name];
+                    QFile file(path);
                     if (file.open(QIODevice::ReadOnly)) {
                         QByteArray fileData = file.readAll();
                         jsonObj[commandArg.name] = QString::fromLatin1(fileData.toBase64());
                         file.close();
                     } else {
-                        return QString("Failed to open file: %1").arg(parsedArgsMap[commandArg.name]);
+                        return CommanderResult{true, "Failed to open file: " + path };
                     }
                 }
             } else if (commandArg.required) {
-                return "Missing required argument: " + commandArg.name;
+                return CommanderResult{true, "Missing required argument: " + commandArg.name };
             }
         }
     }
     else {
         if ( args.isEmpty() )
-            return "Subcommand must be set";
+            return CommanderResult{true, "Subcommand must be set" };
 
         QString subCommandName = args[0];
 
@@ -217,17 +218,18 @@ QString Commander::createJson(Command command, QStringList args)
                         } else if (subArg.type == "BOOL") {
                             jsonObj[subArg.mark] = parsedArgsMap[subArg.mark] == "true";
                         } else if (subArg.type == "FILE") {
-                            QFile file(parsedArgsMap[subArg.name]);
+                            QString path = parsedArgsMap[subArg.name];
+                            QFile file(path);
                             if (file.open(QIODevice::ReadOnly)) {
                                 QByteArray fileData = file.readAll();
                                 jsonObj[subArg.name] = QString::fromLatin1(fileData.toBase64());
                                 file.close();
                             } else {
-                                return QString("Failed to open file: %1").arg(parsedArgsMap[subArg.name]);
+                                return CommanderResult{true, "Failed to open file: " + path };
                             }
                         }
                     } else if (subArg.required) {
-                        return "Missing required argument for subcommand: " + subArg.name;
+                        return CommanderResult{true, "Missing required argument for subcommand: " + subArg.name };
                     }
                 }
                 break;
@@ -236,7 +238,7 @@ QString Commander::createJson(Command command, QStringList args)
     }
 
     QJsonDocument jsonDoc(jsonObj);
-    return jsonDoc.toJson();
+    return CommanderResult{false, jsonDoc.toJson() };
 }
 
 bool Commander::IsValid()
@@ -249,7 +251,7 @@ QString Commander::GetError()
     return error;
 }
 
-QString Commander::help(QStringList commandParts)
+CommanderResult Commander::ProcessHelp(QStringList commandParts)
 {
     QString result;
     QTextStream output(&result);
@@ -266,7 +268,7 @@ QString Commander::help(QStringList commandParts)
             QString tab = QString(TotalWidth - commandName.size(), ' ');
             output << "  " + commandName + tab + "      " + command.description + "\n";
         }
-        return result;
+        return CommanderResult{true, result};
     }
     else {
         Command foundCommand;
@@ -281,7 +283,7 @@ QString Commander::help(QStringList commandParts)
         }
 
         if ( foundCommand.name.isEmpty() )
-            return "Unknown command";
+            return CommanderResult{true, "Unknown command"};
 
         if (commandParts.size() == 1) {
             output << "  Command               : " + foundCommand.name + "\n";
@@ -331,7 +333,7 @@ QString Commander::help(QStringList commandParts)
             }
 
             if ( foundSubCommand.name.isEmpty() )
-                return "Unknown subcommand";
+                return CommanderResult{true, "Unknown subcommand"};
 
             output << "  Command               : " + foundCommand.name + "\n";
             output << "  SubCommand            : " + foundSubCommand.name + "\n";
@@ -358,13 +360,13 @@ QString Commander::help(QStringList commandParts)
             }
         }
         else {
-            return "Error Help format: 'help [command [subcommand]]";
+            return CommanderResult{true, "Error Help format: 'help [command [subcommand]]'"};
         }
-        return output.readAll();
+        return CommanderResult{true, output.readAll()};
     }
 }
 
-QStringList Commander::getCommandList()
+QStringList Commander::GetCommands()
 {
     QStringList commandList;
     for (Command cmd : commands) {

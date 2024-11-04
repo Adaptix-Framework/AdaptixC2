@@ -16,11 +16,17 @@ struct Argument
 
 struct Command
 {
-    QString name;
-    QString description;
-    QString example;
+    QString         name;
+    QString         description;
+    QString         example;
     QList<Argument> args;
-    QList<Command> subcommands;
+    QList<Command>  subcommands;
+};
+
+struct CommanderResult
+{
+    bool    output;
+    QString message;
 };
 
 class Commander
@@ -29,18 +35,18 @@ class Commander
     QString        error;
     bool           valid = false;
 
+    Argument        ParseArgument(QString argString);
+    CommanderResult ProcessCommand(Command command, QStringList args);
+    CommanderResult ProcessHelp(QStringList commandParts);
+
 public:
     Commander(QByteArray data);
     ~Commander();
 
-    bool     IsValid();
-    QString  GetError();
-    Argument parseArgument(QString argString);
-
-    QString parseInput(QString input);
-    QString createJson(Command command, QStringList args);
-    QString help(QStringList commandParts);
-    QStringList getCommandList();
+    bool            IsValid();
+    QString         GetError();
+    QStringList     GetCommands();
+    CommanderResult ProcessInput(QString input);
 };
 
 #endif // COMMANDER_H
