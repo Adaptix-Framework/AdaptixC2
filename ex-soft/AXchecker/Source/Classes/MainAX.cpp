@@ -2,6 +2,7 @@
 
 MainAX::MainAX()
 {
+
     this->setStyle();
 
     this->createUI();
@@ -112,8 +113,7 @@ void MainAX::EditForm()
     }
 }
 
-void MainAX::Start()
-{
+void MainAX::Start() {
     this->show();
     QApplication::exec();
 }

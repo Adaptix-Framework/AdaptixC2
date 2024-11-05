@@ -56,8 +56,9 @@ public:
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
 
-    QMap<QString, WidgetBuilder*> RegisterAgents;
-    QMap<QString, WidgetBuilder*> RegisterListeners;
+    QMap<QString, QString>        RegisterAgentsCmd;
+    QMap<QString, WidgetBuilder*> RegisterAgentsUI;
+    QMap<QString, WidgetBuilder*> RegisterListenersUI;
     QMap<QString, QStringList>    LinkListenerAgent;
     QVector<ListenerData>         Listeners;
     QMap<QString, Agent*>         Agents;

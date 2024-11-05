@@ -3,8 +3,8 @@
 
 #include <main.h>
 
-class WidgetBuilder
-{
+class WidgetBuilder {
+
     QWidget* widget = nullptr;
 
     QMap<QString, QWidget*> widgetMap;

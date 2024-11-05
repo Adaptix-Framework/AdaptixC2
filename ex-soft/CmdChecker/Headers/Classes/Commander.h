@@ -40,7 +40,7 @@ class Commander
     CommanderResult ProcessHelp(QStringList commandParts);
 
 public:
-    Commander(QByteArray data);
+    explicit Commander(const QByteArray& data);
     ~Commander();
 
     bool            IsValid();

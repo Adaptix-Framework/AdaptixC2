@@ -139,6 +139,7 @@ type SyncPackerAgentReg struct {
 	Agent    string `json:"agent"`
 	Listener string `json:"listener"`
 	AgentUI  string `json:"ui"`
+	AgentCmd string `json:"cmd"`
 }
 
 type SyncPackerAgentNew struct {
