@@ -58,7 +58,7 @@ const (
 	SetType     = TYPE_EXTERNAL
 	SetProtocol = "http"
 	SetName     = "BeaconHTTP"
-	SetUiPath   = "ui_listener.json"
+	SetUiPath   = "_ui_listener.json"
 )
 
 ////////////////////////////

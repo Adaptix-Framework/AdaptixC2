@@ -1,15 +1,23 @@
 #include <Classes/Commander.h>
 
-Commander::Commander(QByteArray data)
+Commander::Commander(const QByteArray& data)
 {
-    QJsonDocument doc = QJsonDocument::fromJson(data);
-    if (!doc.isArray()) {
-        error = "Error JSON file";
+    QJsonParseError parseError;
+    QJsonDocument document = QJsonDocument::fromJson(data, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError && document.isObject()) {
+        error = QString("JSON parse error: %1").arg(parseError.errorString());
         valid = false;
         return;
     }
 
-    QJsonArray commandArray = doc.array();
+    if(!document.isArray()) {
+        error = "Error Commander Json Format";
+        valid = false;
+        return;
+    }
+
+    QJsonArray commandArray = document.array();
     for (QJsonValue value : commandArray) {
         QJsonObject obj = value.toObject();
 

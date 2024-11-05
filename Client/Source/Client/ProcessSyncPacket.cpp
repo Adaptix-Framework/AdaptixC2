@@ -92,6 +92,9 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("ui") || !jsonObj["ui"].isString() ) {
             return false;
         }
+        if ( !jsonObj.contains("cmd") || !jsonObj["cmd"].isString() ) {
+            return false;
+        }
         return true;
     }
 
@@ -226,7 +229,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString fn = jsonObj["fn"].toString();
         QString ui = jsonObj["ui"].toString();
 
-        RegisterListeners[fn] = new WidgetBuilder(ui.toLocal8Bit() );
+        RegisterListenersUI[fn] = new WidgetBuilder(ui.toLocal8Bit() );
         return;
     }
     if ( spType == TYPE_LISTENER_START )
@@ -286,8 +289,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentName    = jsonObj["agent"].toString();
         QString listenerName = jsonObj["listener"].toString();
         QString ui           = jsonObj["ui"].toString();
+        QString cmd          = jsonObj["cmd"].toString();
 
-        RegisterAgents[agentName] = new WidgetBuilder(ui.toLocal8Bit() );
+        RegisterAgentsUI[agentName]  = new WidgetBuilder(ui.toLocal8Bit() );
+        RegisterAgentsCmd[agentName] = cmd.toLocal8Bit();
         LinkListenerAgent[listenerName].push_back(agentName);
         return;
     }

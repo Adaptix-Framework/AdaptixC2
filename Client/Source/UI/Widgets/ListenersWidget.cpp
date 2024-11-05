@@ -192,16 +192,16 @@ void ListenersWidget::createListener()
     if ( !adaptixWidget )
         return;
 
-    for( auto regLst : adaptixWidget->RegisterListeners ) {
+    for( auto regLst : adaptixWidget->RegisterListenersUI ) {
         regLst->BuildWidget(false);
     }
 
     DialogListener dialogListener;
-    dialogListener.AddExListeners( adaptixWidget->RegisterListeners );
+    dialogListener.AddExListeners( adaptixWidget->RegisterListenersUI );
     dialogListener.SetProfile( adaptixWidget->GetProfile() );
     dialogListener.Start();
 
-    for( auto regLst : adaptixWidget->RegisterListeners ) {
+    for( auto regLst : adaptixWidget->RegisterListenersUI ) {
         regLst->ClearWidget();
     }
 }
@@ -224,18 +224,18 @@ void ListenersWidget::editListener()
         }
     }
 
-    QMap<QString, WidgetBuilder*> tmpRegisterListeners;
-    tmpRegisterListeners[listenerType] = adaptixWidget->RegisterListeners[listenerType];
-    tmpRegisterListeners[listenerType]->BuildWidget(true);
-    tmpRegisterListeners[listenerType]->FillData(listenerData);
+    QMap<QString, WidgetBuilder*> tmpRegisterListenersUI;
+    tmpRegisterListenersUI[listenerType] = adaptixWidget->RegisterListenersUI[listenerType];
+    tmpRegisterListenersUI[listenerType]->BuildWidget(true);
+    tmpRegisterListenersUI[listenerType]->FillData(listenerData);
 
     DialogListener dialogListener;
     dialogListener.SetEditMode(listenerName);
-    dialogListener.AddExListeners( tmpRegisterListeners );
+    dialogListener.AddExListeners(tmpRegisterListenersUI );
     dialogListener.SetProfile( adaptixWidget->GetProfile() );
     dialogListener.Start();
 
-    tmpRegisterListeners[listenerType]->ClearWidget();
+    tmpRegisterListenersUI[listenerType]->ClearWidget();
 }
 
 void ListenersWidget::removeListener()
@@ -278,19 +278,19 @@ void ListenersWidget::generateAgent()
         return;
     }
 
-    QMap<QString, WidgetBuilder*> tmpRegisterAgents;
+    QMap<QString, WidgetBuilder*> tmpRegisterAgentsUI;
     auto agents= adaptixWidget->LinkListenerAgent[parts[2]];
     for( auto agent : agents ) {
-        tmpRegisterAgents[agent] = adaptixWidget->RegisterAgents[agent];
-        tmpRegisterAgents[agent]->BuildWidget( false );
+        tmpRegisterAgentsUI[agent] = adaptixWidget->RegisterAgentsUI[agent];
+        tmpRegisterAgentsUI[agent]->BuildWidget(false );
     }
 
     DialogAgent dialogAgent;
-    dialogAgent.AddExAgents(tmpRegisterAgents);
+    dialogAgent.AddExAgents(tmpRegisterAgentsUI);
     dialogAgent.SetProfile( adaptixWidget->GetProfile() );
     dialogAgent.Start();
 
-    for( auto regAgent: tmpRegisterAgents ) {
+    for( auto regAgent: tmpRegisterAgentsUI ) {
         regAgent->ClearWidget();
     }
 }

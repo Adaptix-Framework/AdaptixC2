@@ -30,6 +30,7 @@ type AgentInfo struct {
 	AgentName    string
 	ListenerName string
 	AgentUI      string
+	AgentCmd     string
 }
 
 type AgentData struct {
@@ -69,7 +70,8 @@ var ModulePath string
 const (
 	SetName     = "beacon"
 	SetListener = "BeaconHTTP"
-	SetUiPath   = "ui_agent.json"
+	SetUiPath   = "_ui_agent.json"
+	SetCmdPath  = "_cmd_agent.json"
 )
 
 ////////////////////////////
@@ -108,11 +110,17 @@ func (m *ModuleExtender) AgentInit() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	cmdPath := filepath.Join(dir, SetCmdPath)
+	agentCmd, err := os.ReadFile(cmdPath)
+	if err != nil {
+		return nil, err
+	}
 
 	info := AgentInfo{
 		AgentName:    SetName,
 		ListenerName: SetListener,
 		AgentUI:      string(agentUI),
+		AgentCmd:     string(agentCmd),
 	}
 
 	err = json.NewEncoder(&buffer).Encode(info)

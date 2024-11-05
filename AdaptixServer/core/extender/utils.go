@@ -23,6 +23,7 @@ type AgentInfo struct {
 	AgentName    string
 	ListenerName string
 	AgentUI      string
+	AgentCmd     string
 }
 
 type Teamserver interface {

@@ -18,7 +18,7 @@ func (ts *Teamserver) AgentNew(agentInfo extender.AgentInfo) error {
 	ts.agent_types.Put(agentType, agentInfo.AgentName)
 	ts.agent_configs.Put(agentInfo.AgentName, agentInfo)
 
-	packet := CreateSpAgentReg(agentInfo.AgentName, agentInfo.ListenerName, agentInfo.AgentUI)
+	packet := CreateSpAgentReg(agentInfo.AgentName, agentInfo.ListenerName, agentInfo.AgentUI, agentInfo.AgentCmd)
 	ts.SyncSavePacket(packet.store, packet)
 
 	return nil
