@@ -45,6 +45,7 @@ SET( HEADERS
         Headers/Agent/Agent.h
         Headers/Agent/TableWidgetItemAgent.h
         Headers/Client/LastTickWorker.h
+        Headers/Agent/Commander.h
 )
 
 add_executable(AdaptixClient
@@ -77,6 +78,7 @@ add_executable(AdaptixClient
         Source/Agent/Agent.cpp
         Source/Agent/TableWidgetItemAgent.cpp
         Source/Client/LastTickWorker.cpp
+        Source/Agent/Commander.cpp
 )
 
 target_link_libraries(AdaptixClient

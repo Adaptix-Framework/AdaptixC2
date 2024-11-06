@@ -229,7 +229,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString fn = jsonObj["fn"].toString();
         QString ui = jsonObj["ui"].toString();
 
-        RegisterListenersUI[fn] = new WidgetBuilder(ui.toLocal8Bit() );
+        auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
+        if(widgetBuilder->GetError().isEmpty())
+            RegisterListenersUI[fn] = widgetBuilder;
+
         return;
     }
     if ( spType == TYPE_LISTENER_START )
@@ -291,14 +294,22 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString ui           = jsonObj["ui"].toString();
         QString cmd          = jsonObj["cmd"].toString();
 
-        RegisterAgentsUI[agentName]  = new WidgetBuilder(ui.toLocal8Bit() );
-        RegisterAgentsCmd[agentName] = cmd.toLocal8Bit();
+        auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
+        if(widgetBuilder->GetError().isEmpty())
+            RegisterAgentsUI[agentName] = widgetBuilder;
+
+        auto commander = new Commander(cmd.toLocal8Bit());
+        if ( commander->IsValid())
+            RegisterAgentsCmd[agentName] = commander;
+
         LinkListenerAgent[listenerName].push_back(agentName);
         return;
     }
     if( spType == TYPE_AGENT_NEW )
     {
-        Agent* newAgent = new Agent(jsonObj);
+        QString agentName = jsonObj["a_name"].toString();
+
+        Agent* newAgent = new Agent(jsonObj, RegisterAgentsCmd[agentName]);
 
         qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
         QString message = QString("New '%1' (%2) executed on '%3@%4.%5' (%6)").arg(

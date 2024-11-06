@@ -1,6 +1,6 @@
-#include <Classes/Commander.h>
+#include <Agent/Commander.h>
 
-Commander::Commander(const QByteArray& data)
+Commander::Commander(const QByteArray&  data)
 {
     QJsonParseError parseError;
     QJsonDocument document = QJsonDocument::fromJson(data, &parseError);

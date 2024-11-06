@@ -1,5 +1,5 @@
-#ifndef COMMANDER_H
-#define COMMANDER_H
+#ifndef ADAPTIXCLIENT_COMMANDER_H
+#define ADAPTIXCLIENT_COMMANDER_H
 
 #include <main.h>
 
@@ -50,4 +50,4 @@ public:
     CommanderResult ProcessInput(QString input);
 };
 
-#endif // COMMANDER_H
+#endif //ADAPTIXCLIENT_COMMANDER_H

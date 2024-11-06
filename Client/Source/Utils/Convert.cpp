@@ -9,6 +9,9 @@ bool IsValidURI(const QString &uri)
 
 QString UnixTimestampGlobalToStringLocal(qint64 timestamp)
 {
+    if ( timestamp == 0 )
+        return "";
+
     QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, Qt::UTC);
     QDateTime localDateTime = epochDateTime.toLocalTime();
     QString formattedTime = localDateTime.toString("dd/MM hh:mm:ss");
@@ -17,7 +20,32 @@ QString UnixTimestampGlobalToStringLocal(qint64 timestamp)
 
 QString TextColorHtml(QString text, QString color)
 {
+    if (text.isEmpty())
+        return "";
+
     return R"(<font color=")" + color + R"(">)" + text.toHtmlEscaped() + R"(</font>)";
+}
+
+QString TextUnderlineColorHtml(QString text, QString color)
+{
+    if (text.isEmpty())
+        return "";
+
+    if (color.isEmpty())
+        return R"(<u>)" + text.toHtmlEscaped() + R"(</u>)";
+
+    return R"(<font color=")" + color + R"("><u>)" + text.toHtmlEscaped() + R"(</u></font>)";
+}
+
+QString TextBoltColorHtml(QString text, QString color )
+{
+    if (text.isEmpty())
+        return "";
+
+    if (color.isEmpty())
+        return R"(<b>)" + text.toHtmlEscaped() + R"(</b>)";
+
+    return R"(<font color=")" + color + R"("><b>)" + text.toHtmlEscaped() + R"(</b></font>)";
 }
 
 QString FormatSecToStr(int seconds)

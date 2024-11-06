@@ -10,13 +10,13 @@ DialogConnect::DialogConnect()
     connect( tableWidget, &QTableWidget::itemPressed, this, &DialogConnect::itemSelected );
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &DialogConnect::handleContextMenu );
 
-    connect( lineEdit_Project,  &QLineEdit::returnPressed, this, [&](){onButton_Connect();} );
-    connect( lineEdit_Host,     &QLineEdit::returnPressed, this, [&](){onButton_Connect();} );
-    connect( lineEdit_Port,     &QLineEdit::returnPressed, this, [&](){onButton_Connect();} );
-    connect( lineEdit_Endpoint, &QLineEdit::returnPressed, this, [&](){onButton_Connect();} );
-    connect( lineEdit_User,     &QLineEdit::returnPressed, this, [&](){onButton_Connect();} );
-    connect( lineEdit_Password, &QLineEdit::returnPressed, this, [&](){onButton_Connect();} );
-    connect( ButtonConnect,     &QPushButton::clicked,     this, [&](){onButton_Connect();} );
+    connect( lineEdit_Project,  &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect );
+    connect( lineEdit_Host,     &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect );
+    connect( lineEdit_Port,     &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect );
+    connect( lineEdit_Endpoint, &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect );
+    connect( lineEdit_User,     &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect );
+    connect( lineEdit_Password, &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect );
+    connect( ButtonConnect,     &QPushButton::clicked,     this, &DialogConnect::onButton_Connect );
 }
 
 DialogConnect::~DialogConnect() = default;
