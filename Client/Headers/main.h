@@ -38,6 +38,7 @@
 #include <QCheckBox>
 #include <QtWebSockets/QWebSocket>
 #include <QTimer>
+#include <QCompleter>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
@@ -68,6 +69,12 @@
 #define COLOR_Berry        "#A01641"     // red
 #define COLOR_ChiliPepper  "#E32227"     // red
 #define COLOR_BrightOrange "#FFA500"     // orange
+#define COLOR_PastelYellow "#FDFD96"     // yellow
+#define COLOR_Yellow       "#FFFF00"     // yellow
+#define COLOR_BabyBlue     "#89CFF0"     // blue
+#define COLOR_Gray         "#808080"     // gray
+#define COLOR_SaturGray    "#606060"     // gray
+
 
 //////////
 

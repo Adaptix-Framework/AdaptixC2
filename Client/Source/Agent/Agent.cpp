@@ -1,29 +1,29 @@
 #include <Agent/Agent.h>
 
-Agent::Agent(QJsonObject jsonObj)
+Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander)
 {
-    data.Id         = jsonObj["a_id"].toString();
-    data.Name       = jsonObj["a_name"].toString();
-    data.Listener   = jsonObj["a_listener"].toString();
-    data.Async      = jsonObj["a_async"].toBool();
-    data.ExternalIP = jsonObj["a_external_ip"].toString();
-    data.InternalIP = jsonObj["a_internal_ip"].toString();
-    data.GmtOffset  = jsonObj["a_gmt_offset"].toDouble();
-    data.Sleep      = jsonObj["a_sleep"].toDouble();
-    data.Jitter     = jsonObj["a_jitter"].toDouble();
-    data.Pid        = jsonObj["a_pid"].toString();
-    data.Tid        = jsonObj["a_tid"].toString();
-    data.Arch       = jsonObj["a_arch"].toString();
-    data.Elevated   = jsonObj["a_elevated"].toBool();
-    data.Process    = jsonObj["a_process"].toString();
-    data.Os         = jsonObj["a_os"].toDouble();
-    data.OsDesc     = jsonObj["a_os_desc"].toString();
-    data.Domain     = jsonObj["a_domain"].toString();
-    data.Computer   = jsonObj["a_computer"].toString();
-    data.Username   = jsonObj["a_username"].toString();
-    data.LastTick   = jsonObj["a_last_tick"].toDouble();
+    data.Id         = jsonObjAgentData["a_id"].toString();
+    data.Name       = jsonObjAgentData["a_name"].toString();
+    data.Listener   = jsonObjAgentData["a_listener"].toString();
+    data.Async      = jsonObjAgentData["a_async"].toBool();
+    data.ExternalIP = jsonObjAgentData["a_external_ip"].toString();
+    data.InternalIP = jsonObjAgentData["a_internal_ip"].toString();
+    data.GmtOffset  = jsonObjAgentData["a_gmt_offset"].toDouble();
+    data.Sleep      = jsonObjAgentData["a_sleep"].toDouble();
+    data.Jitter     = jsonObjAgentData["a_jitter"].toDouble();
+    data.Pid        = jsonObjAgentData["a_pid"].toString();
+    data.Tid        = jsonObjAgentData["a_tid"].toString();
+    data.Arch       = jsonObjAgentData["a_arch"].toString();
+    data.Elevated   = jsonObjAgentData["a_elevated"].toBool();
+    data.Process    = jsonObjAgentData["a_process"].toString();
+    data.Os         = jsonObjAgentData["a_os"].toDouble();
+    data.OsDesc     = jsonObjAgentData["a_os_desc"].toString();
+    data.Domain     = jsonObjAgentData["a_domain"].toString();
+    data.Computer   = jsonObjAgentData["a_computer"].toString();
+    data.Username   = jsonObjAgentData["a_username"].toString();
+    data.LastTick   = jsonObjAgentData["a_last_tick"].toDouble();
 
-    QJsonArray tagsArray = jsonObj["a_tags"].toArray();
+    QJsonArray tagsArray = jsonObjAgentData["a_tags"].toArray();
     QStringList tags;
     for (const QJsonValue &value : tagsArray) {
         if (value.isString()) {
@@ -58,10 +58,7 @@ Agent::Agent(QJsonObject jsonObj)
     item_Sleep    = new TableWidgetItemAgent( sleep, this );
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
 
-    Console = new ConsoleWidget( this );
+    Console   = new ConsoleWidget(this, commander );
 }
 
-Agent::~Agent()
-{
-
-}
+Agent::~Agent() = default;

@@ -3,6 +3,7 @@
 
 #include <main.h>
 #include <Agent/TableWidgetItemAgent.h>
+#include <Agent/Commander.h>
 #include <UI/Widgets/ConsoleWidget.h>
 
 class ConsoleWidget;
@@ -30,8 +31,10 @@ public:
 
     ConsoleWidget* Console = nullptr;
 
-    explicit Agent(QJsonObject jsonObj);
+    explicit Agent(QJsonObject jsonObjAgentData, Commander* commander );
     ~Agent();
+
+    Commander* GetCommander();
 };
 
 #endif //ADAPTIXCLIENT_AGENT_H
