@@ -253,7 +253,7 @@ void ListenersWidget::removeListener()
     bool ok = false;
     bool result = HttpReqListenerStop( listenerName, listenerType, adaptixWidget->GetProfile(), &message, &ok );
     if( !result ){
-        MessageError("Authentication error");
+        MessageError("JWT error");
         return;
     }
 

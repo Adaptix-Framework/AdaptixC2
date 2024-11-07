@@ -14,5 +14,7 @@ bool HttpReqListenerEdit(QString listenerName, QString configType, QString confi
 
 bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfile profile, QString* message, bool* ok );
 
+bool HttpReqAgentCommand( QString agentName, QString agentId, QString cmdLine, QString data, AuthProfile profile, QString* message, bool* ok );
+
 
 #endif //ADAPTIXCLIENT_REQUESTOR_H

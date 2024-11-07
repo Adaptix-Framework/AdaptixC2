@@ -18,9 +18,11 @@ const (
 	TYPE_LISTENER_STOP  = 0x33
 	TYPE_LISTENER_EDIT  = 0x34
 
-	TYPE_AGENT_REG  = 0x41
-	TYPE_AGENT_NEW  = 0x42
-	TYPE_AGENT_TICK = 0x43
+	TYPE_AGENT_REG     = 0x41
+	TYPE_AGENT_NEW     = 0x42
+	TYPE_AGENT_TICK    = 0x43
+	TYPE_AGENT_COMMAND = 0x44
+	TYPE_AGENT_OUTPUT  = 0x45
 )
 
 /// SYNC
@@ -156,5 +158,33 @@ func CreateSpAgentTick(AgentID string) SyncPackerAgentTick {
 		SpType: TYPE_AGENT_TICK,
 
 		Id: AgentID,
+	}
+}
+
+func CreateSpAgentCommand(AgentID string, TaskID string, Username string, CmdLine string) SyncPackerAgentCommand {
+	return SyncPackerAgentCommand{
+		store:        STORE_LOG,
+		SpCreateTime: time.Now().UTC().Unix(),
+		SpType:       TYPE_AGENT_COMMAND,
+
+		Id:      AgentID,
+		User:    Username,
+		TaskId:  TaskID,
+		CmdLine: CmdLine,
+	}
+}
+
+func CreateSpAgentOutput(AgentID string, TaskID string, MsgType int, Message string, Text string, Finished bool) SyncPackerAgentOutput {
+	return SyncPackerAgentOutput{
+		store:        STORE_LOG,
+		SpCreateTime: time.Now().UTC().Unix(),
+		SpType:       TYPE_AGENT_OUTPUT,
+
+		Id:       AgentID,
+		TaskId:   TaskID,
+		MsgType:  MsgType,
+		Message:  Message,
+		Text:     Text,
+		Finished: Finished,
 	}
 }

@@ -54,8 +54,8 @@ bool HttpReqLogin(AuthProfile* profile)
 bool HttpReqListenerStart(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
-    dataJson["name"] = listenerName;
-    dataJson["type"] = configType;
+    dataJson["name"]   = listenerName;
+    dataJson["type"]   = configType;
     dataJson["config"] = configData;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
@@ -72,8 +72,8 @@ bool HttpReqListenerStart(QString listenerName, QString configType, QString conf
 bool HttpReqListenerEdit(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
-    dataJson["name"] = listenerName;
-    dataJson["type"] = configType;
+    dataJson["name"]   = listenerName;
+    dataJson["type"]   = configType;
     dataJson["config"] = configData;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
     QString sUrl = profile.GetURL() + "/listener/edit";
@@ -94,6 +94,25 @@ bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfil
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/listener/stop";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqAgentCommand( QString agentName, QString agentId, QString cmdLine, QString data, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["name"]    = agentName;
+    dataJson["id"]      = agentId;
+    dataJson["cmdline"] = cmdLine;
+    dataJson["data"]    = data;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/agent/command";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();

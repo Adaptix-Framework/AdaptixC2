@@ -132,7 +132,7 @@ void DialogListener::onButtonSave()
     }
 
     if( !result ){
-        MessageError("Authentication error");
+        MessageError("JWT error");
         return;
     }
     if ( !ok ) {

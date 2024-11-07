@@ -13,9 +13,9 @@ func (ts *Teamserver) AgentNew(agentInfo extender.AgentInfo) error {
 		return fmt.Errorf("agent %v already exists", agentInfo.AgentName)
 	}
 	agentCrc := krypt.CRC32([]byte(agentInfo.AgentName))
-	agentType := fmt.Sprintf("%08x", agentCrc)
+	agentMark := fmt.Sprintf("%08x", agentCrc)
 
-	ts.agent_types.Put(agentType, agentInfo.AgentName)
+	ts.agent_types.Put(agentMark, agentInfo.AgentName)
 	ts.agent_configs.Put(agentInfo.AgentName, agentInfo)
 
 	packet := CreateSpAgentReg(agentInfo.AgentName, agentInfo.ListenerName, agentInfo.AgentUI, agentInfo.AgentCmd)
