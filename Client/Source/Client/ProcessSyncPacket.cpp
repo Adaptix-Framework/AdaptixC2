@@ -175,6 +175,50 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
+    if( spType == TYPE_AGENT_COMMAND ) {
+        if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_cmdline") || !jsonObj["a_cmdline"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_user") || !jsonObj["a_user"].isString()) {
+            return false;
+        }
+        return true;
+    }
+
+    if( spType == TYPE_AGENT_OUTPUT ) {
+        if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_msg_type") || !jsonObj["a_msg_type"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_message") || !jsonObj["a_message"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_text") || !jsonObj["a_text"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_finished") || !jsonObj["a_finished"].isBool()) {
+            return false;
+        }
+        return true;
+    }
+
     return false;
 }
 
@@ -309,7 +353,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         QString agentName = jsonObj["a_name"].toString();
 
-        Agent* newAgent = new Agent(jsonObj, RegisterAgentsCmd[agentName]);
+        Agent* newAgent = new Agent(jsonObj, RegisterAgentsCmd[agentName], this);
 
         qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
         QString message = QString("New '%1' (%2) executed on '%3@%4.%5' (%6)").arg(
@@ -326,5 +370,36 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString id = jsonObj["a_id"].toString();
         if (Agents.contains(id))
             Agents[id]->data.LastTick = QDateTime::currentSecsSinceEpoch();
+
+        return;
     }
+    if( spType == TYPE_AGENT_COMMAND )
+    {
+        qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
+        QString agentId = jsonObj["a_id"].toString();
+        QString taskId  = jsonObj["a_task_id"].toString();
+        QString user    = jsonObj["a_user"].toString();
+        QString cmdLine = jsonObj["a_cmdline"].toString();
+
+        if (Agents.contains(agentId))
+            Agents[agentId]->Console->OutputConsole(CONSOLE_OUT_INFO, time, taskId, user, cmdLine, "", "", false );
+
+        return;
+    }
+    if( spType == TYPE_AGENT_OUTPUT )
+    {
+        qint64  time     = static_cast<qint64>(jsonObj["time"].toDouble());
+        QString agentId  = jsonObj["a_id"].toString();
+        QString taskId   = jsonObj["a_task_id"].toString();
+        int     msgType  = jsonObj["a_msg_type"].toDouble();
+        QString message  = jsonObj["a_message"].toString();
+        QString text     = jsonObj["a_text"].toString();
+        bool    finished = jsonObj["a_finished"].toBool();
+
+        if (Agents.contains(agentId))
+            Agents[agentId]->Console->OutputConsole(msgType, time, taskId, "", "", message, text, finished );
+
+        return;
+    }
+
 }

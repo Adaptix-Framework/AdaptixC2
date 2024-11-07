@@ -1,7 +1,9 @@
 #include <Agent/Agent.h>
 
-Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander)
+Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w)
 {
+    mainWidget = w;
+
     data.Id         = jsonObjAgentData["a_id"].toString();
     data.Name       = jsonObjAgentData["a_name"].toString();
     data.Listener   = jsonObjAgentData["a_listener"].toString();

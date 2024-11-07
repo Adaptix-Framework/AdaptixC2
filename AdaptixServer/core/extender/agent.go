@@ -25,3 +25,15 @@ func (ex *AdaptixExtender) AgentProcess(agentName string, agentId string, data [
 		return nil, errors.New("module not found")
 	}
 }
+
+func (ex *AdaptixExtender) AgentCommand(agentName string, data any) ([]byte, error) {
+	var module *ModuleExtender
+
+	value, ok := ex.agentModules.Get(agentName)
+	if ok {
+		module = value.(*ModuleExtender)
+		return module.AgentCommand(data)
+	} else {
+		return nil, errors.New("module not found")
+	}
+}

@@ -19,6 +19,8 @@ type Teamserver interface {
 	ListenerStart(listenerName string, configType string, config string) error
 	ListenerEdit(listenerName string, configType string, config string) error
 	ListenerStop(listenerName string, configType string) error
+
+	AgentCommand(agentName string, agentId string, username string, cmdline string, command any) error
 }
 
 type TsHttpHandler struct {
@@ -68,6 +70,8 @@ func NewTsHttpHandler(ts Teamserver, p profile.TsProfile) (*TsHttpHandler, error
 	httpHandler.Engine.POST(p.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerStart)
 	httpHandler.Engine.POST(p.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerEdit)
 	httpHandler.Engine.POST(p.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(), httpHandler.ListenerStop)
+
+	httpHandler.Engine.POST(p.Endpoint+"/agent/command", token.ValidateAccessToken(), default404Middleware(), httpHandler.AgentCommand)
 
 	httpHandler.Engine.NoRoute(default404Middleware(), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 

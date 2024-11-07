@@ -205,3 +205,8 @@ func (m *ModuleExtender) AgentCreateData(beat []byte) ([]byte, error) {
 func (m *ModuleExtender) AgentProcess(agentId string, beat []byte) ([]byte, error) {
 	return nil, nil
 }
+
+func (m *ModuleExtender) AgentCommand(data any) ([]byte, error) {
+
+	return nil, nil
+}

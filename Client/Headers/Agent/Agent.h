@@ -5,12 +5,16 @@
 #include <Agent/TableWidgetItemAgent.h>
 #include <Agent/Commander.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/AdaptixWidget.h>
 
 class ConsoleWidget;
+class AdaptixWidget;
 
 class Agent
 {
 public:
+    AdaptixWidget* mainWidget = nullptr;
+
     AgentData data = {0};
 
     TableWidgetItemAgent* item_Id;
@@ -31,7 +35,7 @@ public:
 
     ConsoleWidget* Console = nullptr;
 
-    explicit Agent(QJsonObject jsonObjAgentData, Commander* commander );
+    explicit Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w );
     ~Agent();
 
     Commander* GetCommander();

@@ -246,7 +246,7 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
     }
 
     QJsonDocument jsonDoc(jsonObj);
-    return CommanderResult{false, jsonDoc.toJson(), false };
+    return CommanderResult{false, QString(jsonDoc.toJson(QJsonDocument::Compact)), false };
 }
 
 bool Commander::IsValid()

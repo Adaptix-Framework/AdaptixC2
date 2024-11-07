@@ -49,6 +49,7 @@ type AgentFunctions interface {
 	AgentExists(agentId string) bool
 	AgentCreateData(beat []byte) ([]byte, error)
 	AgentProcess(agentID string, beat []byte) ([]byte, error)
+	AgentCommand(data any) ([]byte, error)
 }
 
 type ModuleExtender struct {

@@ -8,6 +8,12 @@ import (
 	"AdaptixServer/core/utils/safe"
 )
 
+const (
+	CONSOLE_OUT_INFO    = 4
+	CONSOLE_OUT_ERROR   = 5
+	CONSOLE_OUT_SUCCESS = 6
+)
+
 // TeamServer
 
 type Teamserver struct {
@@ -175,4 +181,28 @@ type SyncPackerAgentTick struct {
 	SpType int `json:"type"`
 
 	Id string `json:"a_id"`
+}
+
+type SyncPackerAgentCommand struct {
+	store        string
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+
+	Id      string `json:"a_id"`
+	TaskId  string `json:"a_task_id"`
+	CmdLine string `json:"a_cmdline"`
+	User    string `json:"a_user"`
+}
+
+type SyncPackerAgentOutput struct {
+	store        string
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+
+	Id       string `json:"a_id"`
+	TaskId   string `json:"a_task_id"`
+	MsgType  int    `json:"a_msg_type"`
+	Message  string `json:"a_message"`
+	Text     string `json:"a_text"`
+	Finished bool   `json:"a_finished"`
 }
