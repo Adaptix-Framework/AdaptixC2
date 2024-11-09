@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
+	"strings"
 )
 
 type Packer struct {
@@ -53,10 +55,6 @@ func (p *Packer) ParseInt16() uint16 {
 func (p *Packer) ParseInt32() uint {
 	var value = make([]byte, 4)
 
-	for i := range value {
-		value[i] = 0
-	}
-
 	if p.Size() >= 4 {
 		if p.Size() == 4 {
 			copy(value, p.buffer[:p.Size()])
@@ -92,4 +90,42 @@ func (p *Packer) ParseString() string {
 		p.buffer = p.buffer[size:]
 		return string(bytes.Trim(b, "\x00"))
 	}
+}
+
+func PackArray(array []interface{}) ([]byte, error) {
+	var packData []byte
+
+	for i := range array {
+
+		switch array[i].(type) {
+
+		case []byte:
+			val := array[i].([]byte)
+			packData = append(packData, val...)
+			break
+
+		case string:
+			size := make([]byte, 4)
+			val := array[i].(string)
+			if strings.HasSuffix(val, "\x00") == false {
+				val += "\x00"
+			}
+			binary.LittleEndian.PutUint32(size, uint32(len(val)))
+			packData = append(packData, size...)
+			packData = append(packData, []byte(val)...)
+			break
+
+		case int:
+			num := make([]byte, 4)
+			val := array[i].(int)
+			binary.LittleEndian.PutUint32(num, uint32(val))
+			packData = append(packData, num...)
+			break
+
+		default:
+			return nil, errors.New("PackArray unknown type")
+		}
+	}
+
+	return packData, nil
 }

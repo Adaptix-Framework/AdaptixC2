@@ -20,7 +20,7 @@ type Teamserver interface {
 	ListenerEdit(listenerName string, configType string, config string) error
 	ListenerStop(listenerName string, configType string) error
 
-	AgentCommand(agentName string, agentId string, username string, cmdline string, command any) error
+	AgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
 }
 
 type TsHttpHandler struct {

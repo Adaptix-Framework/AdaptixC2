@@ -2,19 +2,25 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 )
 
 const (
 	TYPE_AGENT = "agent"
+
+	TYPE_TASK = 1
+	TYPE_JOB  = 2
 )
 
 type Teamserver interface {
-	AgentRequest(agentType string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) error
+	AgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 }
 
 type ModuleExtender struct {
@@ -34,7 +40,7 @@ type AgentInfo struct {
 }
 
 type AgentData struct {
-	Type       string   `json:"a_type"`
+	Crc        string   `json:"a_crc"`
 	Id         string   `json:"a_id"`
 	Name       string   `json:"a_name"`
 	SessionKey []byte   `json:"a_session_key"`
@@ -60,6 +66,15 @@ type AgentData struct {
 	CreateTime int64    `json:"a_create_time"`
 	LastTick   int      `json:"a_last_tick"`
 	Tags       []string `json:"a_tags"`
+}
+
+type TaskData struct {
+	TaskType    int    `json:"t_type"`
+	TaskId      string `json:"t_task_id"`
+	AgentId     string `json:"t_agent_id"`
+	TaskData    []byte `json:"t_data"`
+	CommandLine string `json:"t_command_line"`
+	Sync        bool   `json:"t_sync"`
 }
 
 var ModuleObject ModuleExtender
@@ -133,15 +148,7 @@ func (m *ModuleExtender) AgentInit() ([]byte, error) {
 
 ////////////////////////////
 
-func (m *ModuleExtender) AgentValid(data string) error {
-	return nil
-}
-
-func (m *ModuleExtender) AgentExists(agentId string) bool {
-	return true
-}
-
-func (m *ModuleExtender) AgentCreateData(beat []byte) ([]byte, error) {
+func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
 	var (
 		buffer bytes.Buffer
 		err    error
@@ -151,7 +158,6 @@ func (m *ModuleExtender) AgentCreateData(beat []byte) ([]byte, error) {
 	packer := CreatePacker(beat)
 	agent.Sleep = packer.ParseInt32()
 	agent.Jitter = packer.ParseInt32()
-	agent.Id = fmt.Sprintf("%08x", packer.ParseInt32())
 	agent.ACP = int(packer.ParseInt16())
 	agent.OemCP = int(packer.ParseInt16())
 	agent.GmtOffset = int(packer.ParseInt8())
@@ -202,11 +208,111 @@ func (m *ModuleExtender) AgentCreateData(beat []byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) AgentProcess(agentId string, beat []byte) ([]byte, error) {
+func (m *ModuleExtender) AgentProcessData(agentId string, beat []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func (m *ModuleExtender) AgentCommand(data any) ([]byte, error) {
+func (m *ModuleExtender) AgentPackData(dataAgent []byte, dataTasks [][]byte) ([]byte, error) {
+	var (
+		agentData  AgentData
+		tasksArray []TaskData
+		array      []interface{}
+		packData   []byte
+		err        error
+	)
+	err = json.Unmarshal(dataAgent, &agentData)
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	for _, value := range dataTasks {
+		var taskData TaskData
+		err = json.Unmarshal(value, &taskData)
+		if err != nil {
+			return nil, err
+		}
+		tasksArray = append(tasksArray, taskData)
+	}
+
+	for _, taskData := range tasksArray {
+		taskId, err := strconv.ParseInt(taskData.TaskId, 16, 32)
+		if err != nil {
+			return nil, err
+		}
+		array = append(array, int(taskId))
+		array = append(array, taskData.TaskData)
+	}
+
+	packData, err = PackArray(array)
+	if err != nil {
+		return nil, err
+	}
+
+	size := make([]byte, 4)
+	binary.LittleEndian.PutUint32(size, uint32(len(packData)))
+	packData = append(size, packData...)
+
+	return packData, nil
+}
+
+func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) ([]byte, error) {
+	var (
+		agent    AgentData
+		err      error
+		array    []interface{}
+		packData []byte
+		buffer   bytes.Buffer
+		taskType int = TYPE_TASK
+	)
+
+	err = json.Unmarshal(agentObject, &agent)
+	if err != nil {
+		return nil, err
+	}
+
+	command, ok := args["command"].(string)
+	if !ok {
+		return nil, errors.New("'command' must be set")
+	}
+
+	// Parse Command
+
+	switch command {
+
+	case "cp":
+		src, ok := args["src"].(string)
+		if !ok {
+			return nil, errors.New("parameter 'src' must be set")
+		}
+		dst, ok := args["dst"].(string)
+		if !ok {
+			return nil, errors.New("parameter 'dst' must be set")
+		}
+
+		array = []interface{}{12, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
+		break
+
+	default:
+		return nil, errors.New(fmt.Sprintf("Command '%v' not found", command))
+	}
+
+	// Pack Command
+
+	packData, err = PackArray(array)
+	if err != nil {
+		return nil, err
+	}
+
+	taskInfo := TaskData{
+		TaskType: taskType,
+		TaskData: packData,
+		Sync:     true,
+	}
+
+	err = json.NewEncoder(&buffer).Encode(taskInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
 }

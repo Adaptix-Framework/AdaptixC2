@@ -99,8 +99,9 @@ void ConsoleWidget::OutputConsole( int type, qint64 timestamp, QString taskId, Q
 
     if ( !data.isEmpty() ) {
         OutputTextEdit->append( data.trimmed().toHtmlEscaped() );
-        OutputTextEdit->append( "");
     }
+
+    OutputTextEdit->append( "");
 
     if (taskFinished) {
         QString deleter = TextBoltColorHtml( "+-------------------------------------------------------------+", COLOR_Gray) + "<br>";

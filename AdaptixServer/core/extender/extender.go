@@ -119,24 +119,19 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 			return errors.New("method AgentInit not found")
 		}
 
-		_, ok = reflect.TypeOf(object).MethodByName("AgentValid")
+		_, ok = reflect.TypeOf(object).MethodByName("AgentCreate")
 		if !ok {
-			return errors.New("method AgentValid not found")
+			return errors.New("method AgentCreate not found")
 		}
 
-		_, ok = reflect.TypeOf(object).MethodByName("AgentExists")
+		_, ok = reflect.TypeOf(object).MethodByName("AgentProcessData")
 		if !ok {
-			return errors.New("method AgentExists not found")
+			return errors.New("method AgentProcessData not found")
 		}
 
-		_, ok = reflect.TypeOf(object).MethodByName("AgentCreateData")
+		_, ok = reflect.TypeOf(object).MethodByName("AgentPackData")
 		if !ok {
-			return errors.New("method AgentCreateData not found")
-		}
-
-		_, ok = reflect.TypeOf(object).MethodByName("AgentProcess")
-		if !ok {
-			return errors.New("method AgentProcess not found")
+			return errors.New("method AgentPackData not found")
 		}
 		_, ok = reflect.TypeOf(object).MethodByName("AgentCommand")
 		if !ok {

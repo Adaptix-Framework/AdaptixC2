@@ -1,7 +1,6 @@
 package server
 
 import (
-	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"bytes"
 	"encoding/json"
@@ -19,8 +18,6 @@ func (ts *Teamserver) SyncClient(username string, packet interface{}) {
 	if err != nil {
 		return
 	}
-
-	logs.Debug("SyncClient to '%v': %v\n", username, buffer.String())
 
 	value, found := ts.clients.Get(username)
 	if found {
@@ -42,8 +39,6 @@ func (ts *Teamserver) SyncAllClients(packet interface{}) {
 	if err != nil {
 		return
 	}
-
-	logs.Debug("SyncAllClients: %v\n", buffer.String())
 
 	ts.clients.ForEach(func(key string, value interface{}) {
 		clientWS := value.(*websocket.Conn)

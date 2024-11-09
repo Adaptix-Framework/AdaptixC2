@@ -25,6 +25,12 @@
     <Filter Include="Headers\Encrypt">
       <UniqueIdentifier>{7ee86ebc-a959-4493-9bc2-a2b1597f1337}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\utils">
+      <UniqueIdentifier>{f0007444-cc35-49e8-afb3-0d7e04ab2fe3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\utils">
+      <UniqueIdentifier>{31592d34-a5db-4b5b-99e6-86789fd5c5bc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -34,9 +40,6 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Packer.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="utils.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="ApiLoader.cpp">
@@ -57,6 +60,9 @@
     <ClCompile Include="ConnectorHTTP.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>Source\utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -66,9 +72,6 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Packer.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="utils.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="ApiLoader.h">
@@ -91,6 +94,9 @@
     </ClInclude>
     <ClInclude Include="ConnectorHTTP.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>Headers\utils</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

