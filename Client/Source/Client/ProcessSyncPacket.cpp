@@ -175,7 +175,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
-    if( spType == TYPE_AGENT_COMMAND ) {
+    if(spType == TYPE_AGENT_TASK ) {
         if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
             return false;
         }
@@ -189,6 +189,12 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
             return false;
         }
         if (!jsonObj.contains("a_user") || !jsonObj["a_user"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_task_type") || !jsonObj["a_task_type"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_sync") || !jsonObj["a_sync"].isBool()) {
             return false;
         }
         return true;
@@ -373,13 +379,15 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
-    if( spType == TYPE_AGENT_COMMAND )
+    if(spType == TYPE_AGENT_TASK )
     {
-        qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString agentId = jsonObj["a_id"].toString();
-        QString taskId  = jsonObj["a_task_id"].toString();
-        QString user    = jsonObj["a_user"].toString();
-        QString cmdLine = jsonObj["a_cmdline"].toString();
+        qint64  time     = static_cast<qint64>(jsonObj["time"].toDouble());
+        QString agentId  = jsonObj["a_id"].toString();
+        QString taskId   = jsonObj["a_task_id"].toString();
+        QString user     = jsonObj["a_user"].toString();
+        QString cmdLine  = jsonObj["a_cmdline"].toString();
+        int     taskType = jsonObj["a_task_type"].toDouble();
+        bool    sync     = jsonObj["a_sync"].toBool();
 
         if (Agents.contains(agentId))
             Agents[agentId]->Console->OutputConsole(CONSOLE_OUT_INFO, time, taskId, user, cmdLine, "", "", false );

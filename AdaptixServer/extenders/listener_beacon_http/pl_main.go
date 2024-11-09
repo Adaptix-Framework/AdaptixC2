@@ -19,7 +19,7 @@ const (
 )
 
 type Teamserver interface {
-	AgentRequest(agentType string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) error
+	AgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 }
 
 type ModuleExtender struct {

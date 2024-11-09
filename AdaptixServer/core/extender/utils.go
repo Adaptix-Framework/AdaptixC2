@@ -45,11 +45,10 @@ type ListenerFunctions interface {
 
 type AgentFunctions interface {
 	AgentInit() ([]byte, error)
-	AgentValid(config string) error
-	AgentExists(agentId string) bool
-	AgentCreateData(beat []byte) ([]byte, error)
-	AgentProcess(agentID string, beat []byte) ([]byte, error)
-	AgentCommand(data any) ([]byte, error)
+	AgentCreate(beat []byte) ([]byte, error)
+	AgentProcessData(agentID string, beat []byte) ([]byte, error)
+	AgentPackData(dataAgent []byte, dataTasks [][]byte) ([]byte, error)
+	AgentCommand(agentObject []byte, args map[string]any) ([]byte, error)
 }
 
 type ModuleExtender struct {

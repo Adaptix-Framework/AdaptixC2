@@ -265,7 +265,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
     QTextStream output(&result);
     if (commandParts.isEmpty()) {
         int TotalWidth = 20;
-        output << QString("  Command                   Description\n");
+        output << QString("- Command                   Description\n");
         output << QString("  -------                   -----------\n");
 
         for ( auto command : commands ) {

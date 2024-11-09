@@ -62,7 +62,7 @@
 #define TYPE_AGENT_REG     0x41
 #define TYPE_AGENT_NEW     0x42
 #define TYPE_AGENT_TICK    0x43
-#define TYPE_AGENT_COMMAND 0x44
+#define TYPE_AGENT_TASK 0x44
 #define TYPE_AGENT_OUTPUT  0x45
 
 //////////

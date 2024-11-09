@@ -33,6 +33,13 @@ type Teamserver struct {
 	agent_types safe.Map
 }
 
+type Agent struct {
+	Data        AgentData
+	TasksQueue  *safe.Slice
+	Tasks       safe.Map
+	ClosedTasks safe.Map
+}
+
 // Data
 
 type ListenerData struct {
@@ -47,7 +54,7 @@ type ListenerData struct {
 }
 
 type AgentData struct {
-	Type       string   `json:"a_type"`
+	Crc        string   `json:"a_crc"`
 	Id         string   `json:"a_id"`
 	Name       string   `json:"a_name"`
 	SessionKey []byte   `json:"a_session_key"`
@@ -73,6 +80,15 @@ type AgentData struct {
 	CreateTime int64    `json:"a_create_time"`
 	LastTick   int      `json:"a_last_tick"`
 	Tags       []string `json:"a_tags"`
+}
+
+type TaskData struct {
+	TaskType    int    `json:"t_type"`
+	TaskId      string `json:"t_task_id"`
+	AgentId     string `json:"t_agent_id"`
+	TaskData    []byte `json:"t_data"`
+	CommandLine string `json:"t_command_line"`
+	Sync        bool   `json:"t_sync"`
 }
 
 // SyncPacket
@@ -183,15 +199,17 @@ type SyncPackerAgentTick struct {
 	Id string `json:"a_id"`
 }
 
-type SyncPackerAgentCommand struct {
+type SyncPackerAgentTask struct {
 	store        string
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`
 
-	Id      string `json:"a_id"`
-	TaskId  string `json:"a_task_id"`
-	CmdLine string `json:"a_cmdline"`
-	User    string `json:"a_user"`
+	AgentId  string `json:"a_id"`
+	TaskId   string `json:"a_task_id"`
+	TaskType int    `json:"a_task_type"`
+	CmdLine  string `json:"a_cmdline"`
+	Sync     bool   `json:"a_sync"`
+	User     string `json:"a_user"`
 }
 
 type SyncPackerAgentOutput struct {

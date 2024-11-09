@@ -65,12 +65,12 @@ BOOL ApiLoad()
 	if (ApiNt) {
 		HMODULE hNtdllModule = ApiWin->GetModuleHandleW(L"ntdll.dll");
 		if ( hNtdllModule ) {
-			ApiNt->NtClose = (decltype(NtClose)*) ApiWin->GetProcAddress(hNtdllModule, "NtClose");
+			ApiNt->NtClose                  = (decltype(NtClose)*) ApiWin->GetProcAddress(hNtdllModule, "NtClose");
 			ApiNt->NtQuerySystemInformation = (decltype(NtQuerySystemInformation)*) ApiWin->GetProcAddress(hNtdllModule, "NtQuerySystemInformation");
-			ApiNt->NtOpenProcessToken = (decltype(NtOpenProcessToken)*) ApiWin->GetProcAddress(hNtdllModule, "NtOpenProcessToken");
-			ApiNt->RtlGetVersion = (decltype(RtlGetVersion)*) ApiWin->GetProcAddress(hNtdllModule, "RtlGetVersion");
-			ApiNt->RtlIpv4StringToAddressA = (decltype(RtlIpv4StringToAddressA)*) ApiWin->GetProcAddress(hNtdllModule, "RtlIpv4StringToAddressA");
-			ApiNt->RtlRandomEx = (decltype(RtlRandomEx)*) ApiWin->GetProcAddress(hNtdllModule, "RtlRandomEx");
+			ApiNt->NtOpenProcessToken       = (decltype(NtOpenProcessToken)*) ApiWin->GetProcAddress(hNtdllModule, "NtOpenProcessToken");
+			ApiNt->RtlGetVersion            = (decltype(RtlGetVersion)*) ApiWin->GetProcAddress(hNtdllModule, "RtlGetVersion");
+			ApiNt->RtlIpv4StringToAddressA  = (decltype(RtlIpv4StringToAddressA)*) ApiWin->GetProcAddress(hNtdllModule, "RtlIpv4StringToAddressA");
+			ApiNt->RtlRandomEx              = (decltype(RtlRandomEx)*) ApiWin->GetProcAddress(hNtdllModule, "RtlRandomEx");
 		}
 		else {
 			return FALSE;

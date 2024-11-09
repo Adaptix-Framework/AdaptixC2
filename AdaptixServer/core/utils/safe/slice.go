@@ -45,6 +45,15 @@ func (sl *Slice) Delete(index int) {
 	sl.items = append(sl.items[:index], sl.items[index+1:]...)
 }
 
+func (sl *Slice) CutArray() []interface{} {
+	sl.mutex.RLock()
+	defer sl.mutex.RUnlock()
+
+	array := sl.items
+	sl.items = sl.items[:0]
+	return array
+}
+
 func (sl *Slice) Len() int {
 	sl.mutex.RLock()
 	defer sl.mutex.RUnlock()

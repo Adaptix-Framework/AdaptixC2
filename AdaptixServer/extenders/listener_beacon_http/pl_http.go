@@ -149,11 +149,13 @@ func (h *HTTP) Stop() error {
 
 func (h *HTTP) processRequest(ctx *gin.Context) {
 	var (
-		ExternalIP string
-		err        error
-		agentType  uint
-		beat       []byte
-		bodyData   []byte
+		ExternalIP   string
+		err          error
+		agentType    uint
+		agentId      uint
+		beat         []byte
+		bodyData     []byte
+		responseData []byte
 	)
 
 	h.Config.ParameterName = "X-Beacon-Id"
@@ -172,19 +174,19 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 
 	ExternalIP = strings.Split(ctx.Request.RemoteAddr, ":")[0]
 
-	agentType, beat, bodyData, err = parseBeatAndData(ctx, h)
+	agentType, agentId, beat, bodyData, err = parseBeatAndData(ctx, h)
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
 		h.pageFake(ctx)
 		return
 	}
 
-	err = ModuleObject.ts.AgentRequest(fmt.Sprintf("%08x", agentType), beat, bodyData, h.Name, ExternalIP)
+	responseData, err = ModuleObject.ts.AgentRequest(fmt.Sprintf("%08x", agentType), fmt.Sprintf("%08x", agentId), beat, bodyData, h.Name, ExternalIP)
 	if err != nil {
 		h.pageFake(ctx)
 		return
 	} else {
-		_, err = ctx.Writer.Write([]byte(""))
+		_, err = ctx.Writer.Write(responseData)
 		if err != nil {
 			fmt.Println("Failed to write to request: " + err.Error())
 			h.pageFake(ctx)
@@ -196,10 +198,11 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 	return
 }
 
-func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, []byte, []byte, error) {
+func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, uint, []byte, []byte, error) {
 	var (
 		beat      string
 		agentType uint
+		agentId   uint
 		agentInfo []byte
 		bodyData  []byte
 		err       error
@@ -209,25 +212,27 @@ func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, []byte, []byte, error) {
 	if len(params) > 0 {
 		beat = params[0]
 	} else {
-		return 0, nil, nil, errors.New("missing beat from Headers")
+		return 0, 0, nil, nil, errors.New("missing beat from Headers")
 	}
 
 	agentInfo, err = base64.StdEncoding.DecodeString(beat)
 	if len(agentInfo) < 5 || err != nil {
-		return 0, nil, nil, errors.New("failed decrypt beat")
+		return 0, 0, nil, nil, errors.New("failed decrypt beat")
 	}
 
 	//decrypt data
 
 	agentType = uint(binary.BigEndian.Uint32(agentInfo[:4]))
 	agentInfo = agentInfo[4:]
+	agentId = uint(binary.BigEndian.Uint32(agentInfo[:4]))
+	agentInfo = agentInfo[4:]
 
 	bodyData, err = io.ReadAll(ctx.Request.Body)
 	if err != nil {
-		return 0, nil, nil, errors.New("missing agent data")
+		return 0, 0, nil, nil, errors.New("missing agent data")
 	}
 
-	return agentType, agentInfo, bodyData, nil
+	return agentType, agentId, agentInfo, bodyData, nil
 }
 
 func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
