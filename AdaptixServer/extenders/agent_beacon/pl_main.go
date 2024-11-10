@@ -2,14 +2,11 @@ package main
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 )
 
 const (
@@ -80,17 +77,6 @@ type TaskData struct {
 var ModuleObject ModuleExtender
 var ModulePath string
 
-////////////////////////////
-
-const (
-	SetName     = "beacon"
-	SetListener = "BeaconHTTP"
-	SetUiPath   = "_ui_agent.json"
-	SetCmdPath  = "_cmd_agent.json"
-)
-
-////////////////////////////
-
 func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	var (
 		buffer bytes.Buffer
@@ -146,8 +132,6 @@ func (m *ModuleExtender) AgentInit() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-////////////////////////////
-
 func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
 	var (
 		buffer bytes.Buffer
@@ -155,50 +139,10 @@ func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
 		agent  AgentData
 	)
 
-	packer := CreatePacker(beat)
-	agent.Sleep = packer.ParseInt32()
-	agent.Jitter = packer.ParseInt32()
-	agent.ACP = int(packer.ParseInt16())
-	agent.OemCP = int(packer.ParseInt16())
-	agent.GmtOffset = int(packer.ParseInt8())
-	agent.Pid = fmt.Sprintf("%v", packer.ParseInt16())
-	agent.Tid = fmt.Sprintf("%v", packer.ParseInt16())
-
-	buildNumber := packer.ParseInt32()
-	majorVersion := packer.ParseInt8()
-	minorVersion := packer.ParseInt8()
-	internalIp := packer.ParseInt32()
-	flag := packer.ParseInt8()
-
-	agent.Arch = "x32"
-	if (flag & 0b00000001) > 0 {
-		agent.Arch = "x64"
+	agent, err = CreateAgent(beat)
+	if err != nil {
+		return nil, err
 	}
-
-	systemArch := "x32"
-	if (flag & 0b00000010) > 0 {
-		systemArch = "x64"
-	}
-
-	agent.Elevated = false
-	if (flag & 0b00000100) > 0 {
-		agent.Elevated = true
-	}
-
-	IsServer := false
-	if (flag & 0b00001000) > 0 {
-		IsServer = true
-	}
-
-	agent.InternalIP = int32ToIPv4(internalIp)
-	agent.Os, agent.OsDesc = GetOsVersion(majorVersion, minorVersion, buildNumber, IsServer, systemArch)
-
-	agent.Async = true
-	agent.SessionKey = packer.ParseBytes()
-	agent.Domain = string(packer.ParseBytes())
-	agent.Computer = string(packer.ParseBytes())
-	agent.Username = ConvertCpToUTF8(string(packer.ParseBytes()), agent.ACP)
-	agent.Process = ConvertCpToUTF8(string(packer.ParseBytes()), agent.ACP)
 
 	err = json.NewEncoder(&buffer).Encode(agent)
 	if err != nil {
@@ -208,16 +152,41 @@ func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) AgentProcessData(agentId string, beat []byte) ([]byte, error) {
-	return nil, nil
+func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) ([]byte, error) {
+	var (
+		taskData TaskData
+		agent    AgentData
+		err      error
+		buffer   bytes.Buffer
+	)
+
+	err = json.Unmarshal(agentObject, &agent)
+	if err != nil {
+		return nil, err
+	}
+
+	command, ok := args["command"].(string)
+	if !ok {
+		return nil, errors.New("'command' must be set")
+	}
+
+	taskData, err = CreateTask(agent, command, args)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.NewEncoder(&buffer).Encode(taskData)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
 }
 
 func (m *ModuleExtender) AgentPackData(dataAgent []byte, dataTasks [][]byte) ([]byte, error) {
 	var (
 		agentData  AgentData
 		tasksArray []TaskData
-		array      []interface{}
-		packData   []byte
 		err        error
 	)
 	err = json.Unmarshal(dataAgent, &agentData)
@@ -234,85 +203,9 @@ func (m *ModuleExtender) AgentPackData(dataAgent []byte, dataTasks [][]byte) ([]
 		tasksArray = append(tasksArray, taskData)
 	}
 
-	for _, taskData := range tasksArray {
-		taskId, err := strconv.ParseInt(taskData.TaskId, 16, 32)
-		if err != nil {
-			return nil, err
-		}
-		array = append(array, int(taskId))
-		array = append(array, taskData.TaskData)
-	}
-
-	packData, err = PackArray(array)
-	if err != nil {
-		return nil, err
-	}
-
-	size := make([]byte, 4)
-	binary.LittleEndian.PutUint32(size, uint32(len(packData)))
-	packData = append(size, packData...)
-
-	return packData, nil
+	return PackTasks(agentData, tasksArray)
 }
 
-func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) ([]byte, error) {
-	var (
-		agent    AgentData
-		err      error
-		array    []interface{}
-		packData []byte
-		buffer   bytes.Buffer
-		taskType int = TYPE_TASK
-	)
-
-	err = json.Unmarshal(agentObject, &agent)
-	if err != nil {
-		return nil, err
-	}
-
-	command, ok := args["command"].(string)
-	if !ok {
-		return nil, errors.New("'command' must be set")
-	}
-
-	// Parse Command
-
-	switch command {
-
-	case "cp":
-		src, ok := args["src"].(string)
-		if !ok {
-			return nil, errors.New("parameter 'src' must be set")
-		}
-		dst, ok := args["dst"].(string)
-		if !ok {
-			return nil, errors.New("parameter 'dst' must be set")
-		}
-
-		array = []interface{}{12, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
-		break
-
-	default:
-		return nil, errors.New(fmt.Sprintf("Command '%v' not found", command))
-	}
-
-	// Pack Command
-
-	packData, err = PackArray(array)
-	if err != nil {
-		return nil, err
-	}
-
-	taskInfo := TaskData{
-		TaskType: taskType,
-		TaskData: packData,
-		Sync:     true,
-	}
-
-	err = json.NewEncoder(&buffer).Encode(taskInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	return buffer.Bytes(), nil
+func (m *ModuleExtender) AgentProcessData(agentId string, beat []byte) ([]byte, error) {
+	return nil, nil
 }
