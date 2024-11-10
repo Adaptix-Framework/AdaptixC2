@@ -6,9 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"strconv"
 )
 
 const (
@@ -51,19 +49,6 @@ type ListenerData struct {
 
 var ModuleObject ModuleExtender
 var ModulePath string
-
-////////////////////////////
-
-const (
-	SetType     = TYPE_EXTERNAL
-	SetProtocol = "http"
-	SetName     = "BeaconHTTP"
-	SetUiPath   = "_ui_listener.json"
-)
-
-////////////////////////////
-
-var ListenersObject []*HTTP
 
 func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	var (
@@ -117,86 +102,19 @@ func (m *ModuleExtender) ListenerInit(path string) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-////////////////////////////
-
 func (m *ModuleExtender) ListenerValid(data string) error {
-	var (
-		err  error
-		conf HTTPConfig
-	)
-
-	err = json.Unmarshal([]byte(data), &conf)
-	if err != nil {
-		return err
-	}
-
-	if conf.HostBind == "" {
-		return errors.New("HostBind is required")
-	}
-
-	if conf.HostAgent == "" {
-		return errors.New("HostAgent is required")
-	}
-
-	portBind, err := strconv.Atoi(conf.PortBind)
-	if err != nil {
-		return errors.New("PortBind must be an integer")
-	}
-
-	if portBind < 1 || portBind > 65535 {
-		return errors.New("PortBind must be in the range 1-65535")
-	}
-
-	portAgent, err := strconv.Atoi(conf.PortBind)
-	if err != nil {
-		return errors.New("PortAgent must be an integer")
-	}
-
-	if portAgent < 1 || portAgent > 65535 {
-		return errors.New("PortAgent must be in the range 1-65535")
-	}
-
-	matched, err := regexp.MatchString(`^/[a-zA-Z0-9]+(/[a-zA-Z0-9]+)*$`, conf.Uri)
-	if err != nil || !matched {
-		return errors.New("uri invalid")
-	}
-
-	return nil
+	return ValidateListenerConfig(data)
 }
 
 func (m *ModuleExtender) ListenerStart(name string, data string) ([]byte, error) {
 	var (
 		err          error
-		conf         HTTPConfig
-		listener     *HTTP
 		listenerData ListenerData
 		buffer       bytes.Buffer
+		listener     any
 	)
 
-	err = json.Unmarshal([]byte(data), &conf)
-	if err != nil {
-		return nil, err
-	}
-
-	listener = NewConfigHttp(name)
-	listener.Config = conf
-
-	err = listener.Start()
-	if err != nil {
-		return nil, err
-	}
-
-	listenerData = ListenerData{
-		BindHost:  listener.Config.HostBind,
-		BindPort:  listener.Config.PortBind,
-		AgentHost: listener.Config.HostAgent,
-		AgentPort: listener.Config.PortAgent,
-		Status:    "Listen",
-	}
-
-	if !listener.Active {
-		listenerData.Status = "Closed"
-	}
+	listenerData, listener, err = CreateListenerDataAndStart(name, data)
 
 	err = json.NewEncoder(&buffer).Encode(listenerData)
 	if err != nil {
@@ -211,37 +129,19 @@ func (m *ModuleExtender) ListenerStart(name string, data string) ([]byte, error)
 func (m *ModuleExtender) ListenerEdit(name string, data string) ([]byte, error) {
 	var (
 		err          error
-		conf         HTTPConfig
 		buffer       bytes.Buffer
 		listenerData ListenerData
+		ok           bool
 	)
 
-	err = json.Unmarshal([]byte(data), &conf)
-	if err != nil {
-		return nil, err
-	}
+	for _, value := range ListenersObject {
 
-	for _, listener := range ListenersObject {
-		if listener.Name == name {
-
-			listener.Config.Uri = conf.Uri
-
-			listenerData = ListenerData{
-				BindHost:  listener.Config.HostBind,
-				BindPort:  listener.Config.PortBind,
-				AgentHost: listener.Config.HostAgent,
-				AgentPort: listener.Config.PortAgent,
-				Status:    "Listen",
-			}
-			if !listener.Active {
-				listenerData.Status = "Closed"
-			}
-
+		listenerData, ok = EditListenerData(name, value, data)
+		if ok {
 			err = json.NewEncoder(&buffer).Encode(listenerData)
 			if err != nil {
 				return nil, err
 			}
-
 			return buffer.Bytes(), nil
 		}
 	}
@@ -250,30 +150,24 @@ func (m *ModuleExtender) ListenerEdit(name string, data string) ([]byte, error) 
 
 func (m *ModuleExtender) ListenerStop(name string) error {
 	var (
-		found bool
 		index int
 		err   error
+		ok    bool
 	)
 
-	found = false
-	for ind, listener := range ListenersObject {
-		if listener.Name == name {
-			err = listener.Stop()
-			found = true
+	for ind, value := range ListenersObject {
+		ok, err = StopListener(name, value)
+		if ok {
 			index = ind
 			break
 		}
 	}
 
-	if err != nil {
-		return err
-	}
-
-	if found {
+	if ok {
 		ListenersObject = append(ListenersObject[:index], ListenersObject[index+1:]...)
 	} else {
 		return errors.New("listener not found")
 	}
 
-	return nil
+	return err
 }
