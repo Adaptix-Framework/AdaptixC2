@@ -86,9 +86,11 @@
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug EXE|x64'">
     <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug EXE|Win32'">
     <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -132,6 +134,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release DLL|x64'">
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug EXE|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug EXE|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release EXE|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -150,7 +158,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <EntryPointSymbol>MainExe</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
@@ -216,7 +224,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <EntryPointSymbol>MainExe</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
@@ -268,18 +276,28 @@
     <Link>
       <EntryPointSymbol>MainExe</EntryPointSymbol>
       <SubSystem>Console</SubSystem>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <ClCompile>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SDLCheck>false</SDLCheck>
+      <Optimization>Disabled</Optimization>
+      <ConformanceMode>true</ConformanceMode>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug EXE|x64'">
     <Link>
       <EntryPointSymbol>MainExe</EntryPointSymbol>
       <SubSystem>Console</SubSystem>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <ClCompile>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SDLCheck>false</SDLCheck>
+      <Optimization>Disabled</Optimization>
+      <ConformanceMode>true</ConformanceMode>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -287,11 +305,13 @@
     <ClCompile Include="AgentConfig.cpp" />
     <ClCompile Include="AgentInfo.cpp" />
     <ClCompile Include="ApiLoader.cpp" />
+    <ClCompile Include="Commander.cpp" />
     <ClCompile Include="ConnectorHTTP.cpp" />
     <ClCompile Include="Encoders.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainAgent.cpp" />
     <ClCompile Include="Packer.cpp" />
+    <ClCompile Include="Tasks.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -299,12 +319,14 @@
     <ClInclude Include="AgentConfig.h" />
     <ClInclude Include="AgentInfo.h" />
     <ClInclude Include="ApiLoader.h" />
+    <ClInclude Include="Commander.h" />
     <ClInclude Include="ConnectorHTTP.h" />
     <ClInclude Include="defines.h" />
     <ClInclude Include="Encoders.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="ntdll.h" />
     <ClInclude Include="Packer.h" />
+    <ClInclude Include="Tasks.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -13,7 +13,7 @@ type ModuleInfo struct {
 }
 
 type ListenerInfo struct {
-	ListenerType     string
+	Type             string
 	ListenerProtocol string
 	ListenerName     string
 	ListenerUI       string
@@ -46,8 +46,8 @@ type ListenerFunctions interface {
 type AgentFunctions interface {
 	AgentInit() ([]byte, error)
 	AgentCreate(beat []byte) ([]byte, error)
-	AgentProcessData(agentID string, beat []byte) ([]byte, error)
-	AgentPackData(dataAgent []byte, dataTasks [][]byte) ([]byte, error)
+	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)
+	AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error)
 	AgentCommand(agentObject []byte, args map[string]any) ([]byte, error)
 }
 

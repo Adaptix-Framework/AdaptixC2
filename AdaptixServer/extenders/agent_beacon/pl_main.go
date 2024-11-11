@@ -9,15 +9,26 @@ import (
 	"runtime"
 )
 
-const (
-	TYPE_AGENT = "agent"
+type (
+	PluginType  string
+	TaskType    int
+	MessageType int
+)
 
-	TYPE_TASK = 1
-	TYPE_JOB  = 2
+const (
+	AGENT PluginType = "agent"
+
+	TASK TaskType = 1
+	JOB  TaskType = 2
+
+	INFO    MessageType = 5
+	ERROR   MessageType = 6
+	SUCCESS MessageType = 7
 )
 
 type Teamserver interface {
 	AgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
+	AgentTaskComplete(agentId string, cTaskObject []byte, sync bool)
 }
 
 type ModuleExtender struct {
@@ -26,7 +37,7 @@ type ModuleExtender struct {
 
 type ModuleInfo struct {
 	ModuleName string
-	ModuleType string
+	ModuleType PluginType
 }
 
 type AgentInfo struct {
@@ -66,12 +77,23 @@ type AgentData struct {
 }
 
 type TaskData struct {
-	TaskType    int    `json:"t_type"`
-	TaskId      string `json:"t_task_id"`
-	AgentId     string `json:"t_agent_id"`
-	TaskData    []byte `json:"t_data"`
-	CommandLine string `json:"t_command_line"`
-	Sync        bool   `json:"t_sync"`
+	Type        TaskType `json:"t_type"`
+	TaskId      string   `json:"t_task_id"`
+	AgentId     string   `json:"t_agent_id"`
+	TaskData    []byte   `json:"t_data"`
+	CommandLine string   `json:"t_command_line"`
+	Sync        bool     `json:"t_sync"`
+}
+
+type ComplitedTaskData struct {
+	Type        TaskType    `json:"t_type"`
+	TaskId      string      `json:"t_task_id"`
+	AgentId     string      `json:"t_agent_id"`
+	CommandLine string      `json:"t_command_line"`
+	MessageType MessageType `json:"t_message_type"`
+	Message     string      `json:"t_message"`
+	ClearText   string      `json:"t_clear_text"`
+	Finished    bool        `json:"t_finished"`
 }
 
 var ModuleObject ModuleExtender
@@ -87,7 +109,7 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 
 	info := ModuleInfo{
 		ModuleName: SetName,
-		ModuleType: TYPE_AGENT,
+		ModuleType: AGENT,
 	}
 
 	err = json.NewEncoder(&buffer).Encode(info)
@@ -183,13 +205,13 @@ func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) (
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) AgentPackData(dataAgent []byte, dataTasks [][]byte) ([]byte, error) {
+func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error) {
 	var (
 		agentData  AgentData
 		tasksArray []TaskData
 		err        error
 	)
-	err = json.Unmarshal(dataAgent, &agentData)
+	err = json.Unmarshal(agentObject, &agentData)
 	if err != nil {
 		return nil, err
 	}
@@ -206,6 +228,25 @@ func (m *ModuleExtender) AgentPackData(dataAgent []byte, dataTasks [][]byte) ([]
 	return PackTasks(agentData, tasksArray)
 }
 
-func (m *ModuleExtender) AgentProcessData(agentId string, beat []byte) ([]byte, error) {
+func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error) {
+	var (
+		agentData AgentData
+		cTaskData ComplitedTaskData
+		err       error
+	)
+	err = json.Unmarshal(agentObject, &agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	cTaskData = ComplitedTaskData{
+		Type:        TASK,
+		AgentId:     agentData.Id,
+		MessageType: SUCCESS,
+		Finished:    true,
+	}
+
+	ProcessTasksResult(m.ts, agentData, cTaskData, packedData)
+
 	return nil, nil
 }

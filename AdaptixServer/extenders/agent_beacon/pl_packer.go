@@ -32,7 +32,10 @@ func (p *Packer) ParseInt8() uint8 {
 			copy(value, p.buffer[:1])
 			p.buffer = p.buffer[1:]
 		}
+	} else {
+		return 0
 	}
+
 	return uint8(value[0])
 }
 
@@ -47,6 +50,8 @@ func (p *Packer) ParseInt16() uint16 {
 			copy(value, p.buffer[:2])
 			p.buffer = p.buffer[2:]
 		}
+	} else {
+		return 0
 	}
 
 	return uint16(binary.BigEndian.Uint16(value))
@@ -63,6 +68,8 @@ func (p *Packer) ParseInt32() uint {
 			copy(value, p.buffer[:4])
 			p.buffer = p.buffer[4:]
 		}
+	} else {
+		return 0
 	}
 
 	return uint(binary.BigEndian.Uint32(value))

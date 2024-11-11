@@ -9,11 +9,16 @@ import (
 	"runtime"
 )
 
-const (
-	TYPE_LISTENER = "listener"
+type (
+	PluginType   string
+	ListenerType string
+)
 
-	TYPE_INTERNAL = "internal"
-	TYPE_EXTERNAL = "external"
+const (
+	LISTENER PluginType = "listener"
+
+	INTERNAL ListenerType = "internal"
+	EXTERNAL ListenerType = "external"
 )
 
 type Teamserver interface {
@@ -26,11 +31,11 @@ type ModuleExtender struct {
 
 type ModuleInfo struct {
 	ModuleName string
-	ModuleType string
+	ModuleType PluginType
 }
 
 type ListenerInfo struct {
-	ListenerType     string
+	Type             ListenerType
 	ListenerProtocol string
 	ListenerName     string
 	ListenerUI       string
@@ -60,7 +65,7 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 
 	info := ModuleInfo{
 		ModuleName: SetName,
-		ModuleType: TYPE_LISTENER,
+		ModuleType: LISTENER,
 	}
 
 	err = json.NewEncoder(&buffer).Encode(info)
@@ -88,7 +93,7 @@ func (m *ModuleExtender) ListenerInit(path string) ([]byte, error) {
 	}
 
 	info := ListenerInfo{
-		ListenerType:     SetType,
+		Type:             SetType,
 		ListenerProtocol: SetProtocol,
 		ListenerName:     SetName,
 		ListenerUI:       string(listenerUI),

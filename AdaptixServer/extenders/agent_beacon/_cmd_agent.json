@@ -1,5 +1,13 @@
 [
   {
+    "command": "cd",
+    "description": "Change current working directory",
+    "example": "cd C:\\Windows",
+    "args": [
+      "STRING <path>"
+    ]
+  },
+  {
     "command": "cp",
     "description": "Copy file",
     "example": "cp src.txt dst.txt",

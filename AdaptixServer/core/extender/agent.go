@@ -14,25 +14,25 @@ func (ex *AdaptixExtender) AgentCreate(agentName string, beat []byte) ([]byte, e
 	}
 }
 
-func (ex *AdaptixExtender) AgentProcessData(agentName string, agentId string, data []byte) ([]byte, error) {
+func (ex *AdaptixExtender) AgentProcessData(agentName string, agentObject []byte, packedData []byte) ([]byte, error) {
 	var module *ModuleExtender
 
 	value, ok := ex.agentModules.Get(agentName)
 	if ok {
 		module = value.(*ModuleExtender)
-		return module.AgentProcessData(agentId, data)
+		return module.AgentProcessData(agentObject, packedData)
 	} else {
 		return nil, errors.New("module not found")
 	}
 }
 
-func (ex *AdaptixExtender) AgentPackData(agentName string, dataAgent []byte, dataTasks [][]byte) ([]byte, error) {
+func (ex *AdaptixExtender) AgentPackData(agentName string, agentObject []byte, dataTasks [][]byte) ([]byte, error) {
 	var module *ModuleExtender
 
 	value, ok := ex.agentModules.Get(agentName)
 	if ok {
 		module = value.(*ModuleExtender)
-		return module.AgentPackData(dataAgent, dataTasks)
+		return module.AgentPackData(agentObject, dataTasks)
 	} else {
 		return nil, errors.New("module not found")
 	}
