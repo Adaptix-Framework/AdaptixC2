@@ -37,5 +37,5 @@ public:
 	ConnectorHTTP();
 
 	void  SetConfig(BOOL Ssl, CHAR* UserAgent, CHAR* Method, CHAR* Address, WORD Port, CHAR* Uri, CHAR* Headers);
-	PBYTE SendData(PBYTE data, ULONG data_size, ULONG* recv_size);
+	BYTE* SendData(BYTE* data, ULONG data_size, ULONG* recv_size);
 };

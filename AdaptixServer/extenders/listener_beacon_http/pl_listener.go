@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	SetType     = TYPE_EXTERNAL
+	SetType     = EXTERNAL
 	SetProtocol = "http"
 	SetName     = "BeaconHTTP"
 	SetUiPath   = "_ui_listener.json"

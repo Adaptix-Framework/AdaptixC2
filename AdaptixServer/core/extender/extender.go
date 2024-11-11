@@ -165,17 +165,17 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 
 		module.ListenerFunctions = object.(ListenerFunctions)
 
-		if !isvalid.ValidSBString(listenerInfo.ListenerType) {
-			return errors.New("invalid listener type (must only contain letters): " + listenerInfo.ListenerType)
+		if !isvalid.ValidSBString(listenerInfo.Type) {
+			return errors.New("invalid listener type (must only contain letters): " + listenerInfo.Type)
 		}
 		if !isvalid.ValidSBNString(listenerInfo.ListenerProtocol) {
 			return errors.New("invalid listener protocol (must only contain letters and numbers): " + listenerInfo.ListenerProtocol)
 		}
 		if !isvalid.ValidSBNString(listenerInfo.ListenerName) {
-			return errors.New("invalid listener name (must only contain letters and numbers): " + listenerInfo.ListenerType)
+			return errors.New("invalid listener name (must only contain letters and numbers): " + listenerInfo.Type)
 		}
 
-		listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.ListenerType, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
+		listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.Type, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
 		ex.listenerModules.Put(listenerFN, module)
 
 		return nil

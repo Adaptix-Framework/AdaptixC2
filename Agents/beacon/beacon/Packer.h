@@ -4,20 +4,26 @@
 
 class Packer
 {
-	LPVOID original;
 	DWORD  size;
-	LPVOID buffer;
+	BYTE*  buffer;
 	DWORD  index;
 
 public:
 	Packer();
+	Packer(BYTE* buffer, ULONG size);
+	~Packer();
 
-	VOID Add64(ULONG64 value);
-	VOID Add32(ULONG value);
-	VOID Add16(WORD value);
-	VOID Add8(BYTE value);
-	VOID AddBytes(PBYTE data, ULONG data_size);
-	VOID AddStringA(LPSTR str);
+	VOID Set32(ULONG index, ULONG value);
+
+	VOID Pack64(ULONG64 value);
+	VOID Pack32(ULONG value);
+	VOID Pack16(WORD value);
+	VOID Pack8(BYTE value);
+	VOID PackBytes(PBYTE data, ULONG data_size);
+	VOID PackStringA(LPSTR str);
+
+	ULONG Unpack32();
+	LPSTR UnpackStringA(ULONG* size);
 
 	PBYTE GetData();
 	ULONG GetDataSize();

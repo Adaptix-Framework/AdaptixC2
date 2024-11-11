@@ -18,11 +18,11 @@ const (
 	TYPE_LISTENER_STOP  = 0x33
 	TYPE_LISTENER_EDIT  = 0x34
 
-	TYPE_AGENT_REG    = 0x41
-	TYPE_AGENT_NEW    = 0x42
-	TYPE_AGENT_TICK   = 0x43
-	TYPE_AGENT_TASK   = 0x44
-	TYPE_AGENT_OUTPUT = 0x45
+	TYPE_AGENT_REG   = 0x41
+	TYPE_AGENT_NEW   = 0x42
+	TYPE_AGENT_TICK  = 0x43
+	TYPE_AGENT_TASK  = 0x44
+	TYPE_AGENT_CTASK = 0x45
 )
 
 /// SYNC
@@ -170,23 +170,38 @@ func CreateSpAgentTask(taskData TaskData, Username string) SyncPackerAgentTask {
 		AgentId:  taskData.AgentId,
 		TaskId:   taskData.TaskId,
 		CmdLine:  taskData.CommandLine,
-		TaskType: taskData.TaskType,
+		TaskType: taskData.Type,
 		Sync:     taskData.Sync,
 		User:     Username,
 	}
 }
 
-func CreateSpAgentOutput(AgentID string, TaskID string, MsgType int, Message string, Text string, Finished bool) SyncPackerAgentOutput {
+func CreateSpAgentTaskInfo(AgentId string, Message string) SyncPackerAgentOutput {
 	return SyncPackerAgentOutput{
 		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
-		SpType:       TYPE_AGENT_OUTPUT,
+		SpType:       TYPE_AGENT_CTASK,
 
-		Id:       AgentID,
-		TaskId:   TaskID,
-		MsgType:  MsgType,
+		Id:       AgentId,
+		TaskId:   "",
+		MsgType:  5,
 		Message:  Message,
-		Text:     Text,
-		Finished: Finished,
+		Text:     "",
+		Finished: false,
+	}
+}
+
+func CreateSpAgentTaskComplite(cTaskData ComplitedTaskData) SyncPackerAgentOutput {
+	return SyncPackerAgentOutput{
+		store:        STORE_LOG,
+		SpCreateTime: time.Now().UTC().Unix(),
+		SpType:       TYPE_AGENT_CTASK,
+
+		Id:       cTaskData.AgentId,
+		TaskId:   cTaskData.TaskId,
+		MsgType:  cTaskData.MessageType,
+		Message:  cTaskData.Message,
+		Text:     cTaskData.ClearText,
+		Finished: cTaskData.Finished,
 	}
 }

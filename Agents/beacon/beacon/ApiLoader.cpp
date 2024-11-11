@@ -40,6 +40,7 @@ BOOL ApiLoad()
 		// kernel32
 		ApiWin->GetACP = GetACP;
 		ApiWin->GetComputerNameExA = GetComputerNameExA;
+		ApiWin->GetCurrentDirectoryA = GetCurrentDirectoryA;
 		ApiWin->GetOEMCP = GetOEMCP;
 		ApiWin->GetModuleBaseNameA = GetModuleBaseNameA;
 		ApiWin->GetModuleHandleW = GetModuleHandleW;
@@ -48,6 +49,9 @@ BOOL ApiLoad()
 		ApiWin->GetTokenInformation = GetTokenInformation;
 		ApiWin->GetTimeZoneInformation = GetTimeZoneInformation;
 		ApiWin->GetUserNameA = GetUserNameA;
+		ApiWin->HeapAlloc = HeapAlloc;
+		ApiWin->HeapReAlloc = HeapReAlloc;
+		ApiWin->HeapFree = HeapFree;
 		ApiWin->LocalAlloc = alloc;
 		ApiWin->LocalFree = LocalFree;
 		ApiWin->LocalReAlloc = LocalReAlloc;

@@ -83,12 +83,23 @@ type AgentData struct {
 }
 
 type TaskData struct {
-	TaskType    int    `json:"t_type"`
+	Type        int    `json:"t_type"`
 	TaskId      string `json:"t_task_id"`
 	AgentId     string `json:"t_agent_id"`
 	TaskData    []byte `json:"t_data"`
 	CommandLine string `json:"t_command_line"`
 	Sync        bool   `json:"t_sync"`
+}
+
+type ComplitedTaskData struct {
+	Type        int    `json:"t_type"`
+	TaskId      string `json:"t_task_id"`
+	AgentId     string `json:"t_agent_id"`
+	CommandLine string `json:"t_command_line"`
+	MessageType int    `json:"t_message_type"`
+	Message     string `json:"t_message"`
+	ClearText   string `json:"t_clear_text"`
+	Finished    bool   `json:"t_finished"`
 }
 
 // SyncPacket

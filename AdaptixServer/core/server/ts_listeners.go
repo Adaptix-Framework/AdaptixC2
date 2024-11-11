@@ -9,7 +9,7 @@ import (
 
 func (ts *Teamserver) ListenerReg(listenerInfo extender.ListenerInfo) error {
 
-	listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.ListenerType, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
+	listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.Type, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
 
 	if ts.listener_configs.Contains(listenerFN) {
 		return fmt.Errorf("listener %v already exists", listenerFN)

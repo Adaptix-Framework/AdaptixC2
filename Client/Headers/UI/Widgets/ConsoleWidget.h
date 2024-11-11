@@ -4,13 +4,13 @@
 #include <main.h>
 #include <Agent/Agent.h>
 
-#define CONSOLE_OUT_LOCAL         0
-#define CONSOLE_OUT_LOCAL_INFO    1
-#define CONSOLE_OUT_LOCAL_ERROR   2
-#define CONSOLE_OUT_LOCAL_SUCCESS 3
-#define CONSOLE_OUT_INFO          4
-#define CONSOLE_OUT_ERROR         5
-#define CONSOLE_OUT_SUCCESS       6
+#define CONSOLE_OUT_LOCAL         1
+#define CONSOLE_OUT_LOCAL_INFO    2
+#define CONSOLE_OUT_LOCAL_ERROR   3
+#define CONSOLE_OUT_LOCAL_SUCCESS 4
+#define CONSOLE_OUT_INFO          5
+#define CONSOLE_OUT_ERROR         6
+#define CONSOLE_OUT_SUCCESS       7
 
 class ConsoleWidget : public QWidget
 {

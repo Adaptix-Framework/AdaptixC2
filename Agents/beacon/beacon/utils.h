@@ -4,6 +4,8 @@
 
 LPVOID MemAllocLocal(DWORD bufferSize);
 
+LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize);
+
 void MemFreeLocal(LPVOID* buffer, DWORD bufferSize);
 
 ULONG GenerateRandom32();

@@ -87,6 +87,12 @@ func (ts *Teamserver) AgentRequest(agentCrc string, agentId string, beat []byte,
 	packetTick := CreateSpAgentTick(agent.Data.Id)
 	ts.SyncAllClients(packetTick)
 
+	_ = json.NewEncoder(&agentBuffer).Encode(agent.Data)
+
+	if len(bodyData) > 4 {
+		_, _ = ts.Extender.AgentProcessData(agentName, agentBuffer.Bytes(), bodyData)
+	}
+
 	if agent.TasksQueue.Len() > 0 {
 		tasksArray := agent.TasksQueue.CutArray()
 		for _, value := range tasksArray {
@@ -99,12 +105,15 @@ func (ts *Teamserver) AgentRequest(agentCrc string, agentId string, beat []byte,
 			}
 		}
 
-		_ = json.NewEncoder(&agentBuffer).Encode(agent.Data)
-
 		respData, err = ts.Extender.AgentPackData(agentName, agentBuffer.Bytes(), agentTasksData)
 		if err != nil {
 			return nil, err
 		}
+
+		message := fmt.Sprintf("Agent called server, sent [%v] bytes", len(respData))
+		packet := CreateSpAgentTaskInfo(agentId, message)
+		ts.SyncAllClients(packet)
+		ts.SyncSavePacket(packet.store, packet)
 	}
 
 	return respData, nil
@@ -157,4 +166,23 @@ func (ts *Teamserver) AgentCommand(agentName string, agentId string, username st
 	}
 
 	return nil
+}
+
+func (ts *Teamserver) AgentTaskComplete(agentId string, cTaskObject []byte, sync bool) {
+	var (
+		cTaskData ComplitedTaskData
+		err       error
+	)
+	err = json.Unmarshal(cTaskObject, &cTaskData)
+	if err != nil {
+		return
+	}
+
+	if sync {
+		packet := CreateSpAgentTaskComplite(cTaskData)
+		ts.SyncAllClients(packet)
+		ts.SyncSavePacket(packet.store, packet)
+	}
+
+	return
 }
