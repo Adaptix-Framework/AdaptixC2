@@ -48,7 +48,7 @@ type AgentFunctions interface {
 	AgentCreate(beat []byte) ([]byte, error)
 	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)
 	AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error)
-	AgentCommand(agentObject []byte, args map[string]any) ([]byte, error)
+	AgentCommand(agentObject []byte, args map[string]any) ([]byte, string, error)
 }
 
 type ModuleExtender struct {

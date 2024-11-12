@@ -9,9 +9,13 @@ import (
 )
 
 const (
-	CONSOLE_OUT_INFO    = 4
-	CONSOLE_OUT_ERROR   = 5
-	CONSOLE_OUT_SUCCESS = 6
+	CONSOLE_OUT_LOCAL         = 1
+	CONSOLE_OUT_LOCAL_INFO    = 2
+	CONSOLE_OUT_LOCAL_ERROR   = 3
+	CONSOLE_OUT_LOCAL_SUCCESS = 4
+	CONSOLE_OUT_INFO          = 5
+	CONSOLE_OUT_ERROR         = 6
+	CONSOLE_OUT_SUCCESS       = 7
 )
 
 // TeamServer
@@ -86,20 +90,16 @@ type TaskData struct {
 	Type        int    `json:"t_type"`
 	TaskId      string `json:"t_task_id"`
 	AgentId     string `json:"t_agent_id"`
-	TaskData    []byte `json:"t_data"`
-	CommandLine string `json:"t_command_line"`
-	Sync        bool   `json:"t_sync"`
-}
-
-type ComplitedTaskData struct {
-	Type        int    `json:"t_type"`
-	TaskId      string `json:"t_task_id"`
-	AgentId     string `json:"t_agent_id"`
+	User        string `json:"t_user"`
+	StartDate   int64  `json:"t_start_date"`
+	FinishDate  int64  `json:"t_finish_date"`
+	Data        []byte `json:"t_data"`
 	CommandLine string `json:"t_command_line"`
 	MessageType int    `json:"t_message_type"`
 	Message     string `json:"t_message"`
 	ClearText   string `json:"t_clear_text"`
-	Finished    bool   `json:"t_finished"`
+	Completed   bool   `json:"t_completed"`
+	Sync        bool   `json:"t_sync"`
 }
 
 // SyncPacket
@@ -210,28 +210,41 @@ type SyncPackerAgentTick struct {
 	Id string `json:"a_id"`
 }
 
-type SyncPackerAgentTask struct {
+type SyncPackerAgentConsoleOutput struct {
 	store        string
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`
 
-	AgentId  string `json:"a_id"`
-	TaskId   string `json:"a_task_id"`
-	TaskType int    `json:"a_task_type"`
-	CmdLine  string `json:"a_cmdline"`
-	Sync     bool   `json:"a_sync"`
-	User     string `json:"a_user"`
+	AgentId     string `json:"a_id"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	ClearText   string `json:"a_text"`
 }
 
-type SyncPackerAgentOutput struct {
+type SyncPackerAgentTaskCreate struct {
 	store        string
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`
 
-	Id       string `json:"a_id"`
-	TaskId   string `json:"a_task_id"`
-	MsgType  int    `json:"a_msg_type"`
-	Message  string `json:"a_message"`
-	Text     string `json:"a_text"`
-	Finished bool   `json:"a_finished"`
+	AgentId   string `json:"a_id"`
+	TaskId    string `json:"a_task_id"`
+	TaskType  int    `json:"a_task_type"`
+	StartTime int64  `json:"a_start_time"`
+	CmdLine   string `json:"a_cmdline"`
+	User      string `json:"a_user"`
+}
+
+type SyncPackerAgentTaskUpdate struct {
+	store        string
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+
+	AgentId     string `json:"a_id"`
+	TaskId      string `json:"a_task_id"`
+	TaskType    int    `json:"a_task_type"`
+	FinishTime  int64  `json:"a_finish_time"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	Text        string `json:"a_text"`
+	Completed   bool   `json:"a_completed"`
 }

@@ -31,6 +31,12 @@
     <Filter Include="Headers\utils">
       <UniqueIdentifier>{31592d34-a5db-4b5b-99e6-86789fd5c5bc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Commander">
+      <UniqueIdentifier>{174c2aaf-8976-4bee-a901-e812ceb3adfb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\Commander">
+      <UniqueIdentifier>{aab2f128-c956-4338-8112-eb6add9224a0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -62,6 +68,12 @@
     </ClCompile>
     <ClCompile Include="utils.cpp">
       <Filter>Source\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Commander.cpp">
+      <Filter>Source\Commander</Filter>
+    </ClCompile>
+    <ClCompile Include="Tasks.cpp">
+      <Filter>Source\Commander</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -97,6 +109,12 @@
     </ClInclude>
     <ClInclude Include="utils.h">
       <Filter>Headers\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Commander.h">
+      <Filter>Headers\Commander</Filter>
+    </ClInclude>
+    <ClInclude Include="Tasks.h">
+      <Filter>Headers\Commander</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -3,6 +3,7 @@ package server
 import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
+	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"bytes"
 	"encoding/json"
@@ -111,9 +112,7 @@ func (ts *Teamserver) AgentRequest(agentCrc string, agentId string, beat []byte,
 		}
 
 		message := fmt.Sprintf("Agent called server, sent [%v] bytes", len(respData))
-		packet := CreateSpAgentTaskInfo(agentId, message)
-		ts.SyncAllClients(packet)
-		ts.SyncSavePacket(packet.store, packet)
+		ts.AgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "")
 	}
 
 	return respData, nil
@@ -123,6 +122,7 @@ func (ts *Teamserver) AgentCommand(agentName string, agentId string, username st
 	var (
 		err         error
 		agentObject bytes.Buffer
+		messageInfo string
 		agent       *Agent
 		taskData    TaskData
 		data        []byte
@@ -136,7 +136,7 @@ func (ts *Teamserver) AgentCommand(agentName string, agentId string, username st
 			agent, _ = value.(*Agent)
 			_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
-			data, err = ts.Extender.AgentCommand(agentName, agentObject.Bytes(), args)
+			data, messageInfo, err = ts.Extender.AgentCommand(agentName, agentObject.Bytes(), args)
 			if err != nil {
 				return err
 			}
@@ -146,17 +146,23 @@ func (ts *Teamserver) AgentCommand(agentName string, agentId string, username st
 				return err
 			}
 
-			taskData.CommandLine = cmdline
-			taskData.AgentId = agentId
 			if taskData.TaskId == "" {
 				taskData.TaskId, _ = krypt.GenerateUID(8)
 			}
+			taskData.CommandLine = cmdline
+			taskData.AgentId = agentId
+			taskData.User = username
+			taskData.StartDate = time.Now().Unix()
 
 			agent.TasksQueue.Put(taskData)
 
-			packet := CreateSpAgentTask(taskData, username)
+			packet := CreateSpAgentTaskCreate(taskData)
 			ts.SyncAllClients(packet)
 			ts.SyncSavePacket(packet.store, packet)
+
+			if len(messageInfo) > 0 {
+				ts.AgentConsoleOutput(agentId, CONSOLE_OUT_INFO, messageInfo, "")
+			}
 
 		} else {
 			return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -168,21 +174,59 @@ func (ts *Teamserver) AgentCommand(agentName string, agentId string, username st
 	return nil
 }
 
-func (ts *Teamserver) AgentTaskComplete(agentId string, cTaskObject []byte, sync bool) {
+func (ts *Teamserver) AgentTaskUpdate(agentId string, taskObject []byte) {
 	var (
-		cTaskData ComplitedTaskData
-		err       error
+		agent    *Agent
+		task     TaskData
+		taskData TaskData
+		value    any
+		ok       bool
+		err      error
 	)
-	err = json.Unmarshal(cTaskObject, &cTaskData)
+	err = json.Unmarshal(taskObject, &taskData)
 	if err != nil {
 		return
 	}
 
-	if sync {
-		packet := CreateSpAgentTaskComplite(cTaskData)
+	value, ok = ts.agents.Get(agentId)
+	if ok {
+		agent = value.(*Agent)
+	} else {
+		logs.Error("AgentTaskUpdate: agent %v not found", agentId)
+		return
+	}
+
+	value, ok = agent.Tasks.GetDelete(taskData.TaskId)
+	if ok {
+		task = value.(TaskData)
+		task.Data = []byte("")
+		task.FinishDate = taskData.FinishDate
+		task.MessageType = taskData.MessageType
+		task.Message = taskData.Message
+		task.ClearText = taskData.ClearText
+		task.Completed = taskData.Completed
+	} else {
+		task = taskData
+		logs.Error("AgentTaskUpdate: task %v not found", taskData.TaskId)
+	}
+
+	if task.Completed {
+		agent.ClosedTasks.Put(task.TaskId, task)
+	} else {
+		agent.Tasks.Put(task.TaskId, task)
+	}
+
+	if task.Sync {
+		packet := CreateSpAgentTaskUpdate(task)
 		ts.SyncAllClients(packet)
 		ts.SyncSavePacket(packet.store, packet)
 	}
 
 	return
+}
+
+func (ts *Teamserver) AgentConsoleOutput(agentId string, messageType int, message string, clearText string) {
+	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
+	ts.SyncAllClients(packet)
+	ts.SyncSavePacket(packet.store, packet)
 }

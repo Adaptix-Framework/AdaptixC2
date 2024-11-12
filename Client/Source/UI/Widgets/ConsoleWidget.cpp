@@ -49,36 +49,17 @@ void ConsoleWidget::createUI()
     connect( InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput );
 }
 
-void ConsoleWidget::OutputConsole( int type, qint64 timestamp, QString taskId, QString user, QString commandLine, QString message, QString data, bool taskFinished )
+void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, QString taskId, int type, QString message, QString text )
 {
-    QString prompt      = "";
-    QString promptTime  = "";
-    QString promptUser  = "";
-    QString promptTask  = "";
-    QString promptAgent = "";
-    QString promptCmd   = "";
+    QString deleter = "<br>" + TextColorHtml( "+-------------------------------------------------------------------------------------+", COLOR_Gray) + "<br>";
 
-    promptTime = UnixTimestampGlobalToStringLocal(timestamp);
-    if ( !promptTime.isEmpty() ) {
+    QString promptTime = UnixTimestampGlobalToStringLocal(timestamp);
+    if ( !promptTime.isEmpty() )
         promptTime = TextColorHtml("[" + promptTime + "]", COLOR_SaturGray) + " ";
-    }
 
     if( !taskId.isEmpty() ) {
-        promptTask = TextColorHtml("[" + taskId + "]", COLOR_SaturGray) + " ";
-    }
-
-    if ( !commandLine.isEmpty() ) {
-        promptAgent = TextUnderlineColorHtml( agent->data.Name, COLOR_Gray) + " " + TextColorHtml( ">", COLOR_Gray) + " ";
-        promptCmd   = TextBoltColorHtml(commandLine);
-
-        if(type == CONSOLE_OUT_INFO || type == CONSOLE_OUT_SUCCESS || type == CONSOLE_OUT_ERROR ) {
-            if ( !user.isEmpty() ) {
-                promptUser = TextColorHtml(user, COLOR_Gray) + " ";
-            }
-        }
-        prompt = promptTime + promptUser + promptTask + promptAgent + promptCmd;
-        OutputTextEdit->append( prompt );
-        OutputTextEdit->append("");
+        deleter = QString("+--- Task [%1] closed ----------------------------------------------------------+").arg(taskId );
+        deleter = "<br>" + TextColorHtml( deleter, COLOR_Gray) + "<br>";
     }
 
     if( !message.isEmpty() ) {
@@ -93,19 +74,47 @@ void ConsoleWidget::OutputConsole( int type, qint64 timestamp, QString taskId, Q
             mark = TextBoltColorHtml("[-]", COLOR_ChiliPepper);
         }
 
-        QString printMessage = promptTime + mark + " " + message.trimmed().toHtmlEscaped() + " " + promptTask;
+        QString printMessage = promptTime + mark + " " + TrimmedEnds(message).toHtmlEscaped(); // + promptTask;
+
+        if ( type == CONSOLE_OUT_LOCAL_SUCCESS || type == CONSOLE_OUT_LOCAL_ERROR || type == CONSOLE_OUT_LOCAL_INFO ){
+            printMessage += "<br>";
+        }
+
         OutputTextEdit->append( printMessage );
-    }
 
     if ( !data.isEmpty() ) {
         OutputTextEdit->append( data.trimmed().toHtmlEscaped() );
     }
 
-    OutputTextEdit->append( "");
-
-    if (taskFinished) {
-        QString deleter = TextBoltColorHtml( "+-------------------------------------------------------------+", COLOR_Gray) + "<br>";
+    if ( !text.isEmpty() ) {
+        OutputTextEdit->append( TrimmedEnds(text) );
         OutputTextEdit->append( deleter );
+    }
+
+
+}
+
+void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, QString taskId, QString user, QString commandLine )
+{
+    QString promptAgent = TextUnderlineColorHtml( agent->data.Name, COLOR_Gray) + " " + TextColorHtml( ">", COLOR_Gray) + " ";
+
+    QString promptTime = UnixTimestampGlobalToStringLocal(timestamp);
+    if ( !promptTime.isEmpty() )
+        promptTime = TextColorHtml("[" + promptTime + "]", COLOR_SaturGray) + " ";
+
+    QString promptTask  = "";
+    if( !taskId.isEmpty() )
+        promptTask = TextColorHtml("[" + taskId + "]", COLOR_SaturGray) + " ";
+
+    QString promptUser = "";
+    if ( !user.isEmpty() )
+        promptUser = TextColorHtml(user, COLOR_Gray) + " ";
+
+    if ( !commandLine.isEmpty() ) {
+        QString promptCmd = TextBoltColorHtml(commandLine);
+
+        QString prompt = promptTime + promptUser + promptTask + promptAgent + promptCmd;
+        OutputTextEdit->append( prompt );
     }
 }
 
@@ -113,28 +122,40 @@ void ConsoleWidget::OutputConsole( int type, qint64 timestamp, QString taskId, Q
 
 void ConsoleWidget::processInput()
 {
-    auto cmd = InputLineEdit->text().trimmed();
+    QString commandLine = TrimmedEnds(InputLineEdit->text());
     InputLineEdit->clear();
-    if (cmd.isEmpty())
+    if (commandLine.isEmpty())
         return;
 
-    auto cmdResult = commander->ProcessInput(cmd );
-    if ( cmdResult.output ){
-        if(cmdResult.error)
-            this->OutputConsole(CONSOLE_OUT_LOCAL_ERROR, 0, "", "", cmd, cmdResult.message, "", true);
-        else
-            this->OutputConsole(CONSOLE_OUT_LOCAL, 0, "", "", cmd, "", cmdResult.message, true);
+    auto cmdResult = commander->ProcessInput(commandLine );
+    if ( cmdResult.output ) {
+        QString message = "";
+        QString text    = "";
+        int     type    = 0;
+
+        if (cmdResult.error) {
+            type    = CONSOLE_OUT_LOCAL_ERROR;
+            message = cmdResult.message;
+        }
+        else {
+            type = CONSOLE_OUT_LOCAL;
+            text = cmdResult.message;
+        }
+
+        this->ConsoleOutputPrompt(0, "", "", commandLine);
+        this->ConsoleOutputMessage(0, "", type, message, text);
     }
     else {
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqAgentCommand(agent->data.Name, agent->data.Id, cmd, cmdResult.message, agent->mainWidget->GetProfile(), &message, &ok);
+        bool result = HttpReqAgentCommand(agent->data.Name, agent->data.Id, commandLine, cmdResult.message, agent->mainWidget->GetProfile(), &message, &ok);
         if( !result ) {
             MessageError("JWT error");
             return;
         }
         if (!ok) {
-            this->OutputConsole(CONSOLE_OUT_LOCAL_ERROR, 0, "", "", cmd, message, "", true);
+            this->ConsoleOutputPrompt(0, "", "", commandLine);
+            this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, message, "");
         }
     }
 }

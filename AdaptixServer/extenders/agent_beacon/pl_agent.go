@@ -87,7 +87,7 @@ func PackTasks(agentData AgentData, tasksArray []TaskData) ([]byte, error) {
 			return nil, err
 		}
 		array = append(array, int(taskId))
-		array = append(array, taskData.TaskData)
+		array = append(array, taskData.Data)
 	}
 
 	packData, err = PackArray(array)
@@ -104,8 +104,12 @@ func PackTasks(agentData AgentData, tasksArray []TaskData) ([]byte, error) {
 	return packData, nil
 }
 
-func CreateTask(agent AgentData, command string, args map[string]any) (TaskData, error) {
-	var taskData TaskData
+func CreateTask(agent AgentData, command string, args map[string]any) (TaskData, string, error) {
+	var (
+		taskData    TaskData
+		messageInfo string
+		err         error
+	)
 
 	subcommand, _ := args["subcommand"].(string)
 
@@ -114,7 +118,6 @@ func CreateTask(agent AgentData, command string, args map[string]any) (TaskData,
 	var (
 		array    []interface{}
 		packData []byte
-		err      error
 		taskType TaskType = TASK
 	)
 
@@ -123,57 +126,67 @@ func CreateTask(agent AgentData, command string, args map[string]any) (TaskData,
 	case "cd":
 		path, ok := args["path"].(string)
 		if !ok {
-			return taskData, errors.New("parameter 'path' must be set")
+			err = errors.New("parameter 'path' must be set")
+			goto ERROR
 		}
 		array = []interface{}{8, ConvertUTF8toCp(path, agent.ACP)}
 		break
 
 	case "cp":
+		messageInfo = "Task: copy file"
 		src, ok := args["src"].(string)
 		if !ok {
-			return taskData, errors.New("parameter 'src' must be set")
+			err = errors.New("parameter 'src' must be set")
+			goto ERROR
 		}
 		dst, ok := args["dst"].(string)
 		if !ok {
-			return taskData, errors.New("parameter 'dst' must be set")
+			err = errors.New("parameter 'dst' must be set")
+			goto ERROR
 		}
 		array = []interface{}{12, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
 		break
 
 	case "pwd":
+		messageInfo = "Task: print working directory"
 		array = []interface{}{4}
 		break
 
 	case "terminate":
+		messageInfo = "Task: terminate agent session"
 		if subcommand == "thread" {
 			array = []interface{}{10, 1}
 		} else if subcommand == "process" {
 			array = []interface{}{10, 2}
 		} else {
-			return taskData, errors.New("subcommand must be 'thread' or 'process'")
+			err = errors.New("subcommand must be 'thread' or 'process'")
+			goto ERROR
 		}
 
 	default:
-		return taskData, errors.New(fmt.Sprintf("Command '%v' not found", command))
+		err = errors.New(fmt.Sprintf("Command '%v' not found", command))
+		goto ERROR
 	}
 
 	packData, err = PackArray(array)
 	if err != nil {
-		return taskData, err
+		goto ERROR
 	}
 
 	taskData = TaskData{
-		Type:     taskType,
-		TaskData: packData,
-		Sync:     true,
+		Type: taskType,
+		Data: packData,
+		Sync: true,
 	}
 
 	/// END CODE
 
-	return taskData, nil
+ERROR:
+	return taskData, messageInfo, err
+
 }
 
-func ProcessTasksResult(ts Teamserver, agentData AgentData, cTaskData ComplitedTaskData, packedData []byte) {
+func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, packedData []byte) {
 
 	packer := CreatePacker(packedData)
 	size := packer.ParseInt32()
@@ -187,14 +200,14 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, cTaskData ComplitedT
 		TaskId := packer.ParseInt32()
 		commandId := packer.ParseInt32()
 
-		task := cTaskData
+		task := taskData
 		task.TaskId = fmt.Sprintf("%08x", TaskId)
 
 		switch commandId {
 
 		case 4:
 			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
-			task.Message = "Task completed"
+			task.Message = "Curren working directory:"
 			task.ClearText = path
 
 		default:
@@ -202,7 +215,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, cTaskData ComplitedT
 		}
 
 		_ = json.NewEncoder(&taskObject).Encode(task)
-		ts.AgentTaskComplete(agentData.Id, taskObject.Bytes(), true)
+		ts.AgentTaskUpdate(agentData.Id, taskObject.Bytes())
 	}
 
 }

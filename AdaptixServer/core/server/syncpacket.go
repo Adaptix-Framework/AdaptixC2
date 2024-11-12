@@ -18,11 +18,12 @@ const (
 	TYPE_LISTENER_STOP  = 0x33
 	TYPE_LISTENER_EDIT  = 0x34
 
-	TYPE_AGENT_REG   = 0x41
-	TYPE_AGENT_NEW   = 0x42
-	TYPE_AGENT_TICK  = 0x43
-	TYPE_AGENT_TASK  = 0x44
-	TYPE_AGENT_CTASK = 0x45
+	TYPE_AGENT_REG         = 0x41
+	TYPE_AGENT_NEW         = 0x42
+	TYPE_AGENT_TICK        = 0x43
+	TYPE_AGENT_TASK_CREATE = 0x44
+	TYPE_AGENT_TASK_UPDATE = 0x45
+	TYPE_AGENT_CONSOLE_OUT = 0x46
 )
 
 /// SYNC
@@ -161,47 +162,47 @@ func CreateSpAgentTick(AgentID string) SyncPackerAgentTick {
 	}
 }
 
-func CreateSpAgentTask(taskData TaskData, Username string) SyncPackerAgentTask {
-	return SyncPackerAgentTask{
+func CreateSpAgentConsoleOutput(agentId string, messageType int, message string, text string) SyncPackerAgentConsoleOutput {
+	return SyncPackerAgentConsoleOutput{
 		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
-		SpType:       TYPE_AGENT_TASK,
+		SpType:       TYPE_AGENT_CONSOLE_OUT,
 
-		AgentId:  taskData.AgentId,
-		TaskId:   taskData.TaskId,
-		CmdLine:  taskData.CommandLine,
-		TaskType: taskData.Type,
-		Sync:     taskData.Sync,
-		User:     Username,
+		AgentId:     agentId,
+		MessageType: messageType,
+		Message:     message,
+		ClearText:   text,
 	}
 }
 
-func CreateSpAgentTaskInfo(AgentId string, Message string) SyncPackerAgentOutput {
-	return SyncPackerAgentOutput{
+func CreateSpAgentTaskCreate(taskData TaskData) SyncPackerAgentTaskCreate {
+	return SyncPackerAgentTaskCreate{
 		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
-		SpType:       TYPE_AGENT_CTASK,
+		SpType:       TYPE_AGENT_TASK_CREATE,
 
-		Id:       AgentId,
-		TaskId:   "",
-		MsgType:  5,
-		Message:  Message,
-		Text:     "",
-		Finished: false,
+		AgentId:   taskData.AgentId,
+		TaskId:    taskData.TaskId,
+		StartTime: taskData.StartDate,
+		CmdLine:   taskData.CommandLine,
+		TaskType:  taskData.Type,
+		User:      taskData.User,
 	}
 }
 
-func CreateSpAgentTaskComplite(cTaskData ComplitedTaskData) SyncPackerAgentOutput {
-	return SyncPackerAgentOutput{
+func CreateSpAgentTaskUpdate(taskData TaskData) SyncPackerAgentTaskUpdate {
+	return SyncPackerAgentTaskUpdate{
 		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
-		SpType:       TYPE_AGENT_CTASK,
+		SpType:       TYPE_AGENT_TASK_UPDATE,
 
-		Id:       cTaskData.AgentId,
-		TaskId:   cTaskData.TaskId,
-		MsgType:  cTaskData.MessageType,
-		Message:  cTaskData.Message,
-		Text:     cTaskData.ClearText,
-		Finished: cTaskData.Finished,
+		AgentId:     taskData.AgentId,
+		TaskId:      taskData.TaskId,
+		TaskType:    taskData.Type,
+		FinishTime:  taskData.FinishDate,
+		MessageType: taskData.MessageType,
+		Message:     taskData.Message,
+		Text:        taskData.ClearText,
+		Completed:   taskData.Completed,
 	}
 }

@@ -17,4 +17,6 @@ QString TextBoltColorHtml(QString text, QString color = "");
 
 QString FormatSecToStr(int seconds);
 
+QString TrimmedEnds(QString str);
+
 #endif //ADAPTIXCLIENT_CONVERT_H

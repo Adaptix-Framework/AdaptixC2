@@ -12,6 +12,7 @@
 #include <QTableWidget>
 #include <QPushButton>
 #include <QMenu>
+#include <QRegularExpression>
 #include <QMenuBar>
 #include <QDir>
 #include <QMessageBox>
@@ -59,11 +60,12 @@
 #define TYPE_LISTENER_STOP  0x33
 #define TYPE_LISTENER_EDIT  0x34
 
-#define TYPE_AGENT_REG     0x41
-#define TYPE_AGENT_NEW     0x42
-#define TYPE_AGENT_TICK    0x43
-#define TYPE_AGENT_TASK 0x44
-#define TYPE_AGENT_OUTPUT  0x45
+#define TYPE_AGENT_REG         0x41
+#define TYPE_AGENT_NEW         0x42
+#define TYPE_AGENT_TICK        0x43
+#define TYPE_AGENT_TASK_CREATE 0x44
+#define TYPE_AGENT_TASK_UPDATE 0x45
+#define TYPE_AGENT_CONSOLE_OUT 0x46
 
 //////////
 
@@ -76,7 +78,7 @@
 #define COLOR_BabyBlue     "#89CFF0"     // blue
 #define COLOR_Gray         "#808080"     // gray
 #define COLOR_SaturGray    "#606060"     // gray
-
+#define COLOR_White        "#ffffff"     // white
 
 //////////
 

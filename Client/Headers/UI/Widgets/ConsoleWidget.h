@@ -30,7 +30,8 @@ public:
     explicit ConsoleWidget(Agent* a, Commander* c);
     ~ConsoleWidget();
 
-    void OutputConsole( int type, qint64 timestamp, QString taskId, QString user, QString commandLine, QString message, QString data, bool taskFinished  );
+    void ConsoleOutputMessage( qint64 timestamp, QString taskId, int type, QString message, QString text );
+    void ConsoleOutputPrompt( qint64 timestamp, QString taskId, QString user, QString commandLine );
 
 public slots:
     void processInput();
