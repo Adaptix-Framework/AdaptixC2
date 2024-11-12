@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 type (
@@ -28,7 +29,8 @@ const (
 
 type Teamserver interface {
 	AgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
-	AgentTaskComplete(agentId string, cTaskObject []byte, sync bool)
+	AgentTaskUpdate(agentId string, cTaskObject []byte)
+	AgentConsoleOutput(agentId string, messageType int, message string, clearText string)
 }
 
 type ModuleExtender struct {
@@ -77,23 +79,18 @@ type AgentData struct {
 }
 
 type TaskData struct {
-	Type        TaskType `json:"t_type"`
-	TaskId      string   `json:"t_task_id"`
-	AgentId     string   `json:"t_agent_id"`
-	TaskData    []byte   `json:"t_data"`
-	CommandLine string   `json:"t_command_line"`
-	Sync        bool     `json:"t_sync"`
-}
-
-type ComplitedTaskData struct {
 	Type        TaskType    `json:"t_type"`
 	TaskId      string      `json:"t_task_id"`
 	AgentId     string      `json:"t_agent_id"`
+	StartDate   int64       `json:"t_start_date"`
+	FinishDate  int64       `json:"t_finish_date"`
+	Data        []byte      `json:"t_data"`
 	CommandLine string      `json:"t_command_line"`
 	MessageType MessageType `json:"t_message_type"`
 	Message     string      `json:"t_message"`
 	ClearText   string      `json:"t_clear_text"`
-	Finished    bool        `json:"t_finished"`
+	Completed   bool        `json:"t_completed"`
+	Sync        bool        `json:"t_sync"`
 }
 
 var ModuleObject ModuleExtender
@@ -174,35 +171,36 @@ func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) ([]byte, error) {
+func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) ([]byte, string, error) {
 	var (
 		taskData TaskData
 		agent    AgentData
+		message  string
 		err      error
 		buffer   bytes.Buffer
 	)
 
 	err = json.Unmarshal(agentObject, &agent)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	command, ok := args["command"].(string)
 	if !ok {
-		return nil, errors.New("'command' must be set")
+		return nil, "", errors.New("'command' must be set")
 	}
 
-	taskData, err = CreateTask(agent, command, args)
+	taskData, message, err = CreateTask(agent, command, args)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	err = json.NewEncoder(&buffer).Encode(taskData)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return buffer.Bytes(), nil
+	return buffer.Bytes(), message, nil
 }
 
 func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error) {
@@ -231,7 +229,7 @@ func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) (
 func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error) {
 	var (
 		agentData AgentData
-		cTaskData ComplitedTaskData
+		taskData  TaskData
 		err       error
 	)
 	err = json.Unmarshal(agentObject, &agentData)
@@ -239,14 +237,16 @@ func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte)
 		return nil, err
 	}
 
-	cTaskData = ComplitedTaskData{
+	taskData = TaskData{
 		Type:        TASK,
 		AgentId:     agentData.Id,
+		FinishDate:  time.Now().Unix(),
 		MessageType: SUCCESS,
-		Finished:    true,
+		Completed:   true,
+		Sync:        true,
 	}
 
-	ProcessTasksResult(m.ts, agentData, cTaskData, packedData)
+	ProcessTasksResult(m.ts, agentData, taskData, packedData)
 
 	return nil, nil
 }

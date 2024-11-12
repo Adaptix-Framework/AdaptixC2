@@ -265,6 +265,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
     QTextStream output(&result);
     if (commandParts.isEmpty()) {
         int TotalWidth = 20;
+        output << QString("\n");
         output << QString("  Command                   Description\n");
         output << QString("  -------                   -----------\n");
 
@@ -294,6 +295,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             return CommanderResult{true, "Unknown command: " + commandName, true};
 
         if (commandParts.size() == 1) {
+            output << QString("\n");
             output << "  Command               : " + foundCommand.name + "\n";
             if(!foundCommand.description.isEmpty())
                 output << "  Description           : " + foundCommand.description + "\n";
@@ -342,7 +344,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
 
             if ( foundSubCommand.name.isEmpty() )
                 return CommanderResult{true, "Unknown subcommand: " + subCommandName, true};
-
+            output << QString("\n");
             output << "  Command               : " + foundCommand.name + "\n";
             output << "  SubCommand            : " + foundSubCommand.name + "\n";
             if(!foundSubCommand.description.isEmpty())

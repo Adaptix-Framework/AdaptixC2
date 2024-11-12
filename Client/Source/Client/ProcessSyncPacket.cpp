@@ -175,7 +175,27 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
-    if(spType == TYPE_AGENT_TASK ) {
+    if(spType == TYPE_AGENT_CONSOLE_OUT)
+    {
+        if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_text") || !jsonObj["a_text"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_message") || !jsonObj["a_message"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_msg_type") || !jsonObj["a_msg_type"].isDouble()) {
+            return false;
+        }
+        return true;
+    }
+
+    if(spType == TYPE_AGENT_TASK_CREATE ) {
         if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
             return false;
         }
@@ -183,6 +203,12 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
             return false;
         }
         if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_task_type") || !jsonObj["a_task_type"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_start_time") || !jsonObj["a_start_time"].isDouble()) {
             return false;
         }
         if (!jsonObj.contains("a_cmdline") || !jsonObj["a_cmdline"].isString()) {
@@ -191,16 +217,10 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("a_user") || !jsonObj["a_user"].isString()) {
             return false;
         }
-        if (!jsonObj.contains("a_task_type") || !jsonObj["a_task_type"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_sync") || !jsonObj["a_sync"].isBool()) {
-            return false;
-        }
         return true;
     }
 
-    if( spType == TYPE_AGENT_OUTPUT ) {
+    if(spType == TYPE_AGENT_TASK_UPDATE ) {
         if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
             return false;
         }
@@ -208,6 +228,12 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
             return false;
         }
         if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_task_type") || !jsonObj["a_task_type"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_finish_time") || !jsonObj["a_finish_time"].isDouble()) {
             return false;
         }
         if (!jsonObj.contains("a_msg_type") || !jsonObj["a_msg_type"].isDouble()) {
@@ -219,7 +245,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("a_text") || !jsonObj["a_text"].isString()) {
             return false;
         }
-        if (!jsonObj.contains("a_finished") || !jsonObj["a_finished"].isBool()) {
+        if (!jsonObj.contains("a_completed") || !jsonObj["a_completed"].isBool()) {
             return false;
         }
         return true;
@@ -379,35 +405,49 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
-    if(spType == TYPE_AGENT_TASK )
+    if(spType == TYPE_AGENT_CONSOLE_OUT)
     {
-        qint64  time     = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString agentId  = jsonObj["a_id"].toString();
-        QString taskId   = jsonObj["a_task_id"].toString();
-        QString user     = jsonObj["a_user"].toString();
-        QString cmdLine  = jsonObj["a_cmdline"].toString();
-        int     taskType = jsonObj["a_task_type"].toDouble();
-        bool    sync     = jsonObj["a_sync"].toBool();
+        qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
+        QString agentId = jsonObj["a_id"].toString();
+        QString text    = jsonObj["a_text"].toString();
+        QString message = jsonObj["a_message"].toString();
+        int     msgType = jsonObj["a_msg_type"].toDouble();
 
         if (Agents.contains(agentId))
-            Agents[agentId]->Console->OutputConsole(CONSOLE_OUT_INFO, time, taskId, user, cmdLine, "", "", false );
+            Agents[agentId]->Console->ConsoleOutputMessage(time, "", msgType, message, text);
 
         return;
     }
-    if( spType == TYPE_AGENT_OUTPUT )
+    if(spType == TYPE_AGENT_TASK_CREATE )
     {
-        qint64  time     = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString agentId  = jsonObj["a_id"].toString();
-        QString taskId   = jsonObj["a_task_id"].toString();
-        int     msgType  = jsonObj["a_msg_type"].toDouble();
-        QString message  = jsonObj["a_message"].toString();
-        QString text     = jsonObj["a_text"].toString();
-        bool    finished = jsonObj["a_finished"].toBool();
+        qint64  time      = static_cast<qint64>(jsonObj["time"].toDouble());
+        QString agentId   = jsonObj["a_id"].toString();
+        QString taskId    = jsonObj["a_task_id"].toString();
+        int     taskType  = jsonObj["a_task_type"].toDouble();
+        qint64  startTime = jsonObj["a_start_time"].toDouble();
+        QString cmdLine   = jsonObj["a_cmdline"].toString();
+        QString user      = jsonObj["a_user"].toString();
 
         if (Agents.contains(agentId))
-            Agents[agentId]->Console->OutputConsole(msgType, time, taskId, "", "", message, text, finished );
+            Agents[agentId]->Console->ConsoleOutputPrompt( time, taskId, user, cmdLine);
 
         return;
     }
+    if(spType == TYPE_AGENT_TASK_UPDATE )
+    {
+        qint64  time       = static_cast<qint64>(jsonObj["time"].toDouble());
+        QString agentId    = jsonObj["a_id"].toString();
+        QString taskId     = jsonObj["a_task_id"].toString();
+        int     taskType   = jsonObj["a_task_type"].toDouble();
+        qint64  finishTime = jsonObj["a_finish_time"].toDouble();
+        int     msgType    = jsonObj["a_msg_type"].toDouble();
+        QString message    = jsonObj["a_message"].toString();
+        QString text       = jsonObj["a_text"].toString();
+        bool    completed  = jsonObj["a_completed"].toBool();
 
+        if (Agents.contains(agentId))
+            Agents[agentId]->Console->ConsoleOutputMessage( time, taskId, msgType, message, text );
+
+        return;
+    }
 }

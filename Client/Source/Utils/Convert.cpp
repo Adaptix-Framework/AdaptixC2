@@ -64,3 +64,8 @@ QString FormatSecToStr(int seconds)
 
     return result.trimmed();
 }
+
+QString TrimmedEnds(QString str)
+{
+    return str.remove(QRegularExpression("\\s+$"));
+}
