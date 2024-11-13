@@ -414,7 +414,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         int     msgType = jsonObj["a_msg_type"].toDouble();
 
         if (Agents.contains(agentId))
-            Agents[agentId]->Console->ConsoleOutputMessage(time, "", msgType, message, text);
+            Agents[agentId]->Console->ConsoleOutputMessage(time, "", msgType, message, text, false );
 
         return;
     }
@@ -446,7 +446,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         bool    completed  = jsonObj["a_completed"].toBool();
 
         if (Agents.contains(agentId))
-            Agents[agentId]->Console->ConsoleOutputMessage( time, taskId, msgType, message, text );
+            Agents[agentId]->Console->ConsoleOutputMessage( time, taskId, msgType, message, text, completed );
 
         return;
     }
