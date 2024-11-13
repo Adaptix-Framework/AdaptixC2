@@ -111,7 +111,6 @@ func (th *TsHttpHandler) handleWsConnect(wsConn *websocket.Conn) {
 		logs.Debug("User '%s' disconnected: %s\n", username, err.Error())
 
 		th.teamserver.ClientDisconnect(username)
-
 		break
 	}
 }

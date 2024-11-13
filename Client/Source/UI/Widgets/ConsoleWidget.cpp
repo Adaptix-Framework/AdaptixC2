@@ -3,7 +3,7 @@
 
 ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
 {
-    agent = a;
+    agent     = a;
     commander = c;
     this->createUI();
 }
@@ -49,7 +49,7 @@ void ConsoleWidget::createUI()
     connect( InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput );
 }
 
-void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, QString taskId, int type, QString message, QString text )
+void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, QString taskId, int type, QString message, QString text, bool completed )
 {
     QString deleter = "<br>" + TextColorHtml( "+-------------------------------------------------------------------------------------+", COLOR_Gray) + "<br>";
 
@@ -81,17 +81,13 @@ void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, QString taskId, int 
         }
 
         OutputTextEdit->append( printMessage );
-
-    if ( !data.isEmpty() ) {
-        OutputTextEdit->append( data.trimmed().toHtmlEscaped() );
     }
 
-    if ( !text.isEmpty() ) {
+    if ( !text.isEmpty() )
         OutputTextEdit->append( TrimmedEnds(text) );
+
+    if (completed)
         OutputTextEdit->append( deleter );
-    }
-
-
 }
 
 void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, QString taskId, QString user, QString commandLine )
@@ -143,7 +139,7 @@ void ConsoleWidget::processInput()
         }
 
         this->ConsoleOutputPrompt(0, "", "", commandLine);
-        this->ConsoleOutputMessage(0, "", type, message, text);
+        this->ConsoleOutputMessage(0, "", type, message, text, true);
     }
     else {
         QString message = QString();
@@ -155,7 +151,7 @@ void ConsoleWidget::processInput()
         }
         if (!ok) {
             this->ConsoleOutputPrompt(0, "", "", commandLine);
-            this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, message, "");
+            this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, message, "", true);
         }
     }
 }
