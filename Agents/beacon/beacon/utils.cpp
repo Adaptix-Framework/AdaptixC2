@@ -1,16 +1,21 @@
 #include "ApiLoader.h"
 
 LPVOID MemAllocLocal(DWORD bufferSize) {
+	//return ApiWin->LocalAlloc(LPTR, bufferSize);
 	return ApiWin->HeapAlloc(GetProcessHeap(), 0, bufferSize);
 }
 
 LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize) 
 {
+    //LPVOID mem = ApiWin->LocalReAlloc( buffer, bufferSize, LMEM_MOVEABLE);
     LPVOID mem = ApiWin->HeapReAlloc(GetProcessHeap(), 0, buffer, bufferSize);
     return mem;
 }
 
 void MemFreeLocal(LPVOID* buffer, DWORD bufferSize) {
+ //   memset((PBYTE)*buffer, 0, bufferSize);
+	//ApiWin->LocalFree(*buffer);
+	//*buffer = NULL;
     ApiWin->HeapFree(GetProcessHeap(), 0, *buffer);
     *buffer = NULL;
 }

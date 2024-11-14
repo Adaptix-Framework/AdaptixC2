@@ -38,23 +38,30 @@ BOOL ApiLoad()
 
 	if (ApiWin) {
 		// kernel32
+		ApiWin->CreateFile = CreateFile;
 		ApiWin->GetACP = GetACP;
-		ApiWin->GetComputerNameExA = GetComputerNameExA;
-		ApiWin->GetCurrentDirectoryA = GetCurrentDirectoryA;
+		ApiWin->GetComputerNameEx = GetComputerNameEx;
+		ApiWin->GetCurrentDirectory = GetCurrentDirectory;
+		ApiWin->GetFileSize = GetFileSize;
+		ApiWin->GetFullPathName = GetFullPathName;
 		ApiWin->GetOEMCP = GetOEMCP;
-		ApiWin->GetModuleBaseNameA = GetModuleBaseNameA;
+		ApiWin->GetModuleBaseName = GetModuleBaseNameA;
 		ApiWin->GetModuleHandleW = GetModuleHandleW;
 		ApiWin->GetProcAddress = GetProcAddress;
 		ApiWin->GetTickCount = GetTickCount;
 		ApiWin->GetTokenInformation = GetTokenInformation;
 		ApiWin->GetTimeZoneInformation = GetTimeZoneInformation;
-		ApiWin->GetUserNameA = GetUserNameA;
+		ApiWin->GetUserName = GetUserName;
 		ApiWin->HeapAlloc = HeapAlloc;
+		ApiWin->HeapCreate = HeapCreate;
+		ApiWin->HeapDestroy = HeapDestroy;
 		ApiWin->HeapReAlloc = HeapReAlloc;
 		ApiWin->HeapFree = HeapFree;
 		ApiWin->LocalAlloc = alloc;
 		ApiWin->LocalFree = LocalFree;
 		ApiWin->LocalReAlloc = LocalReAlloc;
+		ApiWin->ReadFile = ReadFile;
+		ApiWin->SetCurrentDirectory = SetCurrentDirectory;
 
 		// iphlpapi
 		HMODULE hIphlpapiModule = LoadLibraryW(L"Iphlpapi.dll");

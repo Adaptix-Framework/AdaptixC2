@@ -38,33 +38,22 @@ ConnectorHTTP::ConnectorHTTP()
 	this->functions = (HTTPFUNC*) alloc(LPTR, sizeof(HTTPFUNC) );
 	
 	this->functions->LocalAlloc     = alloc;
-	//this->functions->GetProcAddress = GetProcAddress;
-	//this->functions->LoadLibraryA   = LoadLibraryA;
+	this->functions->GetProcAddress = GetProcAddress;
+	this->functions->LoadLibraryA   = LoadLibraryA;
 
-	//HMODULE hWininetModule = this->functions->LoadLibraryA("wininet.dll");
-	//if (hWininetModule) {
-		//this->functions->InternetOpenA              = (decltype(InternetOpenA)*) this->functions->GetProcAddress(hWininetModule, "InternetOpenA");
-		//this->functions->InternetConnectA           = (decltype(InternetConnectA)*)this->functions->GetProcAddress(hWininetModule, "InternetConnectA");
-		//this->functions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)this->functions->GetProcAddress(hWininetModule, "HttpOpenRequestA");
-		//this->functions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)this->functions->GetProcAddress(hWininetModule, "HttpSendRequestA");
-		//this->functions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)this->functions->GetProcAddress(hWininetModule, "InternetSetOptionA");
-		//this->functions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)this->functions->GetProcAddress(hWininetModule, "InternetQueryOptionA");
-		//this->functions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)this->functions->GetProcAddress(hWininetModule, "HttpQueryInfoA");
-		//this->functions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*)this->functions->GetProcAddress(hWininetModule, "InternetQueryDataAvailable");
-		//this->functions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)this->functions->GetProcAddress(hWininetModule, "InternetCloseHandle");
-		//this->functions->InternetReadFile           = (decltype(InternetReadFile)*)this->functions->GetProcAddress(hWininetModule, "InternetReadFile");
-	//}
-
-		this->functions->InternetOpenA              = InternetOpenA;
-		this->functions->InternetConnectA = InternetConnectA;
-		this->functions->HttpOpenRequestA           = HttpOpenRequestA;
-		this->functions->HttpSendRequestA           = HttpSendRequestA;
-		this->functions->InternetSetOptionA         = InternetSetOptionA;
-		this->functions->InternetQueryOptionA       = InternetQueryOptionA;
-		this->functions->HttpQueryInfoA             = HttpQueryInfoA;
-		this->functions->InternetQueryDataAvailable = InternetQueryDataAvailable;
-		this->functions->InternetCloseHandle        = InternetCloseHandle;
-		this->functions->InternetReadFile           = InternetReadFile;
+	HMODULE hWininetModule = this->functions->LoadLibraryA("wininet.dll");
+	if (hWininetModule) {
+		this->functions->InternetOpenA              = (decltype(InternetOpenA)*) this->functions->GetProcAddress(hWininetModule, "InternetOpenA");
+		this->functions->InternetConnectA           = (decltype(InternetConnectA)*)this->functions->GetProcAddress(hWininetModule, "InternetConnectA");
+		this->functions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)this->functions->GetProcAddress(hWininetModule, "HttpOpenRequestA");
+		this->functions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)this->functions->GetProcAddress(hWininetModule, "HttpSendRequestA");
+		this->functions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)this->functions->GetProcAddress(hWininetModule, "InternetSetOptionA");
+		this->functions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)this->functions->GetProcAddress(hWininetModule, "InternetQueryOptionA");
+		this->functions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)this->functions->GetProcAddress(hWininetModule, "HttpQueryInfoA");
+		this->functions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*)this->functions->GetProcAddress(hWininetModule, "InternetQueryDataAvailable");
+		this->functions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)this->functions->GetProcAddress(hWininetModule, "InternetCloseHandle");
+		this->functions->InternetReadFile           = (decltype(InternetReadFile)*)this->functions->GetProcAddress(hWininetModule, "InternetReadFile");
+	}
 }
 
 void ConnectorHTTP::SetConfig( BOOL Ssl, CHAR* UserAgent, CHAR* Method, CHAR* Address, WORD Port, CHAR* Uri, CHAR* Headers)

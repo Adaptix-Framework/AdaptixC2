@@ -72,7 +72,7 @@
     <ClCompile Include="Commander.cpp">
       <Filter>Source\Commander</Filter>
     </ClCompile>
-    <ClCompile Include="Tasks.cpp">
+    <ClCompile Include="Downloader.cpp">
       <Filter>Source\Commander</Filter>
     </ClCompile>
   </ItemGroup>
@@ -113,8 +113,11 @@
     <ClInclude Include="Commander.h">
       <Filter>Headers\Commander</Filter>
     </ClInclude>
-    <ClInclude Include="Tasks.h">
+    <ClInclude Include="Downloader.h">
       <Filter>Headers\Commander</Filter>
+    </ClInclude>
+    <ClInclude Include="std.h">
+      <Filter>Headers\utils</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

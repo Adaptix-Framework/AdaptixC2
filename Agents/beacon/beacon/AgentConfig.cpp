@@ -23,11 +23,6 @@ AgentConfig::AgentConfig()
 	headers         = NULL;
 }
 
-AgentConfig::~AgentConfig()
-{
-
-}
-
 void LoadConfig(BYTE* config)
 {
 

