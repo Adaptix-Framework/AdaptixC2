@@ -25,7 +25,6 @@ public:
 	PBYTE headers;
 
 	AgentConfig();
-	~AgentConfig();
 
 	void LoadConfig(BYTE* config);
 };

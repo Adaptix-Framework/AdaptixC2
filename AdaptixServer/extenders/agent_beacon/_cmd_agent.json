@@ -17,6 +17,14 @@
     ]
   },
   {
+    "command": "download",
+    "description": "Download a file",
+    "example": "download C:\\file.txt",
+    "args": [
+      "STRING <file>"
+    ]
+  },
+  {
     "command": "pwd",
     "description": "Print current working directory",
     "example": "pwd"

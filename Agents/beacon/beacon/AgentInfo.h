@@ -25,5 +25,4 @@ public:
 	CHAR* username;
 
 	AgentInfo();
-	~AgentInfo();
 };

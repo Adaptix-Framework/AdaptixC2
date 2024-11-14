@@ -15,23 +15,30 @@ extern void* __cdecl memcpy(void*, const void*, size_t);
 struct WINAPIFUNC
 {
 	// kernel32
+	DECL_API(CreateFile);
 	DECL_API(GetACP);
-	DECL_API(GetComputerNameExA);
-	DECL_API(GetCurrentDirectoryA);
+	DECL_API(GetComputerNameEx);
+	DECL_API(GetCurrentDirectory);
+	DECL_API(GetFileSize);
+	DECL_API(GetFullPathName);
 	DECL_API(GetOEMCP);
-	DECL_API(GetModuleBaseNameA);
+	DECL_API(GetModuleBaseName);
 	DECL_API(GetModuleHandleW);
 	DECL_API(GetProcAddress);
 	DECL_API(GetTickCount);
 	DECL_API(GetTokenInformation);
 	DECL_API(GetTimeZoneInformation);
-	DECL_API(GetUserNameA);
+	DECL_API(GetUserName);
 	DECL_API(HeapAlloc);
+	DECL_API(HeapCreate);
+	DECL_API(HeapDestroy);
 	DECL_API(HeapReAlloc);
 	DECL_API(HeapFree);
 	DECL_API(LocalAlloc);
 	DECL_API(LocalFree);
 	DECL_API(LocalReAlloc);
+	DECL_API(ReadFile);
+	DECL_API(SetCurrentDirectory);
 	// iphlpapi
 	DECL_API(GetAdaptersInfo);
 };

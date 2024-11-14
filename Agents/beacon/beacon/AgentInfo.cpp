@@ -12,21 +12,21 @@ AgentInfo::AgentInfo()
 	ApiNt->RtlGetVersion((PRTL_OSVERSIONINFOW) &OSVersion);
 
 	this->agent_id      = GenerateRandom32();
-	this->acp          = ApiWin->GetACP();
-	this->oemcp        = ApiWin->GetOEMCP();
+	this->acp           = ApiWin->GetACP();
+	this->oemcp         = ApiWin->GetOEMCP();
 	this->gmt_offest    = GetGmtOffset();
-	this->pid          = (WORD) NtCurrentTeb()->ClientId.UniqueProcess;
-	this->tid          = (WORD)NtCurrentTeb()->ClientId.UniqueThread;
-	this->elevated     = IsElevate();
-	this->arch64       = (sizeof(void*) != 4);
-	this->sys64        = (SystemInfo.ProcessorArchitecture == 9);
+	this->pid           = (WORD) NtCurrentTeb()->ClientId.UniqueProcess;
+	this->tid           = (WORD)NtCurrentTeb()->ClientId.UniqueThread;
+	this->elevated      = IsElevate();
+	this->arch64        = (sizeof(void*) != 4);
+	this->sys64         = (SystemInfo.ProcessorArchitecture == 9);
 	this->build_number  = OSVersion.dwBuildNumber;
 	this->major_version = OSVersion.dwMajorVersion;
 	this->minor_version = OSVersion.dwMinorVersion;
 	this->is_server     = OSVersion.wProductType != VER_NT_WORKSTATION;
 	this->internal_ip   = GetInternalIpLong();
-	this->username     = _GetUserName();
-	this->domain_name       = _GetDomainName();
-	this->computer_name     = _GetHostName();
-	this->process_name      = _GetProcessName();
+	this->username      = _GetUserName();
+	this->domain_name   = _GetDomainName();
+	this->computer_name = _GetHostName();
+	this->process_name  = _GetProcessName();
 }
