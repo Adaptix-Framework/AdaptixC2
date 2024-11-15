@@ -1,4 +1,4 @@
-package httphandler
+package connector
 
 import (
 	"errors"
@@ -12,7 +12,7 @@ type ListenerConfig struct {
 	Config       string `json:"config"`
 }
 
-func (th *TsHttpHandler) ListenerStart(ctx *gin.Context) {
+func (tc *TsConnector) TcListenerStart(ctx *gin.Context) {
 	var (
 		listener ListenerConfig
 		err      error
@@ -24,7 +24,7 @@ func (th *TsHttpHandler) ListenerStart(ctx *gin.Context) {
 		return
 	}
 
-	err = th.teamserver.ListenerStart(listener.ListenerName, listener.ConfigType, listener.Config)
+	err = tc.teamserver.TsListenerStart(listener.ListenerName, listener.ConfigType, listener.Config)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -33,7 +33,7 @@ func (th *TsHttpHandler) ListenerStart(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Listener started", "ok": true})
 }
 
-func (th *TsHttpHandler) ListenerStop(ctx *gin.Context) {
+func (tc *TsConnector) TcListenerStop(ctx *gin.Context) {
 	var (
 		listener ListenerConfig
 		err      error
@@ -45,7 +45,7 @@ func (th *TsHttpHandler) ListenerStop(ctx *gin.Context) {
 		return
 	}
 
-	err = th.teamserver.ListenerStop(listener.ListenerName, listener.ConfigType)
+	err = tc.teamserver.TsListenerStop(listener.ListenerName, listener.ConfigType)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -54,7 +54,7 @@ func (th *TsHttpHandler) ListenerStop(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Listener stopped", "ok": true})
 }
 
-func (th *TsHttpHandler) ListenerEdit(ctx *gin.Context) {
+func (tc *TsConnector) TcListenerEdit(ctx *gin.Context) {
 	var (
 		listener ListenerConfig
 		err      error
@@ -66,7 +66,7 @@ func (th *TsHttpHandler) ListenerEdit(ctx *gin.Context) {
 		return
 	}
 
-	err = th.teamserver.ListenerEdit(listener.ListenerName, listener.ConfigType, listener.Config)
+	err = tc.teamserver.TsListenerEdit(listener.ListenerName, listener.ConfigType, listener.Config)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

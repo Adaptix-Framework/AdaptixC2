@@ -1,9 +1,9 @@
 package server
 
 import (
+	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
 	"AdaptixServer/core/extender"
-	"AdaptixServer/core/httphandler"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
 )
@@ -23,7 +23,7 @@ const (
 type Teamserver struct {
 	Profile       *profile.AdaptixProfile
 	DBMS          *database.DBMS
-	AdaptixServer *httphandler.TsHttpHandler
+	AdaptixServer *connector.TsConnector
 	Extender      *extender.AdaptixExtender
 
 	listener_configs safe.Map

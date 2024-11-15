@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (ts *Teamserver) SyncClient(username string, packet interface{}) {
+func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	var (
 		buffer   bytes.Buffer
 		err      error
@@ -29,7 +29,7 @@ func (ts *Teamserver) SyncClient(username string, packet interface{}) {
 	}
 }
 
-func (ts *Teamserver) SyncAllClients(packet interface{}) {
+func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 	var (
 		buffer bytes.Buffer
 		err    error
@@ -46,7 +46,7 @@ func (ts *Teamserver) SyncAllClients(packet interface{}) {
 	})
 }
 
-func (ts *Teamserver) SyncSavePacket(store string, packet interface{}) {
+func (ts *Teamserver) TsSyncSavePacket(store string, packet interface{}) {
 	if ts.syncpackets.Contains(store) == false {
 		ts.syncpackets.Put(store, safe.NewSlice())
 	}
@@ -57,7 +57,7 @@ func (ts *Teamserver) SyncSavePacket(store string, packet interface{}) {
 	}
 }
 
-func (ts *Teamserver) SyncXorPacket(store string, packet interface{}) {
+func (ts *Teamserver) TsSyncXorPacket(store string, packet interface{}) {
 	if ts.syncpackets.Contains(store) {
 		value, found := ts.syncpackets.Get(store)
 		if found {
@@ -76,7 +76,7 @@ func (ts *Teamserver) SyncXorPacket(store string, packet interface{}) {
 	}
 }
 
-func (ts *Teamserver) SyncStored(clientWS *websocket.Conn) {
+func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	var (
 		buffer bytes.Buffer
 		packet interface{}

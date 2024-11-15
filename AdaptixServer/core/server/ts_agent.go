@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func (ts *Teamserver) AgentNew(agentInfo extender.AgentInfo) error {
+func (ts *Teamserver) TsAgentNew(agentInfo extender.AgentInfo) error {
 	if ts.agent_configs.Contains(agentInfo.AgentName) {
 		return fmt.Errorf("agent %v already exists", agentInfo.AgentName)
 	}
@@ -22,12 +22,12 @@ func (ts *Teamserver) AgentNew(agentInfo extender.AgentInfo) error {
 	ts.agent_configs.Put(agentInfo.AgentName, agentInfo)
 
 	packet := CreateSpAgentReg(agentInfo.AgentName, agentInfo.ListenerName, agentInfo.AgentUI, agentInfo.AgentCmd)
-	ts.SyncSavePacket(packet.store, packet)
+	ts.TsSyncSavePacket(packet.store, packet)
 
 	return nil
 }
 
-func (ts *Teamserver) AgentRequest(agentCrc string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error) {
+func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error) {
 	var (
 		agentName      string
 		data           []byte
@@ -48,7 +48,7 @@ func (ts *Teamserver) AgentRequest(agentCrc string, agentId string, beat []byte,
 	value, ok = ts.agents.Get(agentId)
 	if !ok {
 
-		data, err = ts.Extender.AgentCreate(agentName, beat)
+		data, err = ts.Extender.ExAgentCreate(agentName, beat)
 		if err != nil {
 			return nil, err
 		}
@@ -78,20 +78,20 @@ func (ts *Teamserver) AgentRequest(agentCrc string, agentId string, beat []byte,
 		ts.agents.Put(agentData.Id, agent)
 
 		packetNew := CreateSpAgentNew(agentData)
-		ts.SyncAllClients(packetNew)
-		ts.SyncSavePacket(packetNew.store, packetNew)
+		ts.TsSyncAllClients(packetNew)
+		ts.TsSyncSavePacket(packetNew.store, packetNew)
 
 	} else {
 		agent, _ = value.(*Agent)
 	}
 
 	packetTick := CreateSpAgentTick(agent.Data.Id)
-	ts.SyncAllClients(packetTick)
+	ts.TsSyncAllClients(packetTick)
 
 	_ = json.NewEncoder(&agentBuffer).Encode(agent.Data)
 
 	if len(bodyData) > 4 {
-		_, _ = ts.Extender.AgentProcessData(agentName, agentBuffer.Bytes(), bodyData)
+		_, _ = ts.Extender.ExAgentProcessData(agentName, agentBuffer.Bytes(), bodyData)
 	}
 
 	if agent.TasksQueue.Len() > 0 {
@@ -106,19 +106,19 @@ func (ts *Teamserver) AgentRequest(agentCrc string, agentId string, beat []byte,
 			}
 		}
 
-		respData, err = ts.Extender.AgentPackData(agentName, agentBuffer.Bytes(), agentTasksData)
+		respData, err = ts.Extender.ExAgentPackData(agentName, agentBuffer.Bytes(), agentTasksData)
 		if err != nil {
 			return nil, err
 		}
 
 		message := fmt.Sprintf("Agent called server, sent [%v] bytes", len(respData))
-		ts.AgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "")
+		ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "")
 	}
 
 	return respData, nil
 }
 
-func (ts *Teamserver) AgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error {
+func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -136,7 +136,7 @@ func (ts *Teamserver) AgentCommand(agentName string, agentId string, username st
 			agent, _ = value.(*Agent)
 			_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
-			data, messageInfo, err = ts.Extender.AgentCommand(agentName, agentObject.Bytes(), args)
+			data, messageInfo, err = ts.Extender.ExAgentCommand(agentName, agentObject.Bytes(), args)
 			if err != nil {
 				return err
 			}
@@ -157,11 +157,11 @@ func (ts *Teamserver) AgentCommand(agentName string, agentId string, username st
 			agent.TasksQueue.Put(taskData)
 
 			packet := CreateSpAgentTaskCreate(taskData)
-			ts.SyncAllClients(packet)
-			ts.SyncSavePacket(packet.store, packet)
+			ts.TsSyncAllClients(packet)
+			ts.TsSyncSavePacket(packet.store, packet)
 
 			if len(messageInfo) > 0 {
-				ts.AgentConsoleOutput(agentId, CONSOLE_OUT_INFO, messageInfo, "")
+				ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, messageInfo, "")
 			}
 
 		} else {
@@ -174,7 +174,7 @@ func (ts *Teamserver) AgentCommand(agentName string, agentId string, username st
 	return nil
 }
 
-func (ts *Teamserver) AgentTaskUpdate(agentId string, taskObject []byte) {
+func (ts *Teamserver) TsAgentTaskUpdate(agentId string, taskObject []byte) {
 	var (
 		agent    *Agent
 		task     TaskData
@@ -192,7 +192,7 @@ func (ts *Teamserver) AgentTaskUpdate(agentId string, taskObject []byte) {
 	if ok {
 		agent = value.(*Agent)
 	} else {
-		logs.Error("AgentTaskUpdate: agent %v not found", agentId)
+		logs.Error("TsAgentTaskUpdate: agent %v not found", agentId)
 		return
 	}
 
@@ -207,7 +207,7 @@ func (ts *Teamserver) AgentTaskUpdate(agentId string, taskObject []byte) {
 		task.Completed = taskData.Completed
 	} else {
 		task = taskData
-		logs.Error("AgentTaskUpdate: task %v not found", taskData.TaskId)
+		logs.Error("TsAgentTaskUpdate: task %v not found", taskData.TaskId)
 	}
 
 	if task.Completed {
@@ -218,15 +218,15 @@ func (ts *Teamserver) AgentTaskUpdate(agentId string, taskObject []byte) {
 
 	if task.Sync {
 		packet := CreateSpAgentTaskUpdate(task)
-		ts.SyncAllClients(packet)
-		ts.SyncSavePacket(packet.store, packet)
+		ts.TsSyncAllClients(packet)
+		ts.TsSyncSavePacket(packet.store, packet)
 	}
 
 	return
 }
 
-func (ts *Teamserver) AgentConsoleOutput(agentId string, messageType int, message string, clearText string) {
+func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string) {
 	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
-	ts.SyncAllClients(packet)
-	ts.SyncSavePacket(packet.store, packet)
+	ts.TsSyncAllClients(packet)
+	ts.TsSyncSavePacket(packet.store, packet)
 }

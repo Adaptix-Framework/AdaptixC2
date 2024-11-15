@@ -1,4 +1,4 @@
-package httphandler
+package connector
 
 import (
 	"AdaptixServer/core/utils/krypt"
@@ -20,7 +20,7 @@ type AccessJWT struct {
 	AccessToken string `json:"access_token"`
 }
 
-func (th *TsHttpHandler) login(ctx *gin.Context) {
+func (tc *TsConnector) tcLogin(ctx *gin.Context) {
 	var (
 		creds Credentials
 		err   error
@@ -34,7 +34,7 @@ func (th *TsHttpHandler) login(ctx *gin.Context) {
 
 	recvHash := krypt.SHA256([]byte(creds.Password))
 
-	if recvHash != th.Hash {
+	if recvHash != tc.Hash {
 		_ = ctx.Error(errors.New("incorrect password"))
 		return
 	}
@@ -54,7 +54,7 @@ func (th *TsHttpHandler) login(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"access_token": accessToken, "refresh_token": refreshToken})
 }
 
-func (th *TsHttpHandler) connect(ctx *gin.Context) {
+func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 	var (
 		wsUpgrader websocket.Upgrader
 		wsConn     *websocket.Conn
@@ -72,10 +72,10 @@ func (th *TsHttpHandler) connect(ctx *gin.Context) {
 		return
 	}
 
-	go th.handleWsConnect(wsConn)
+	go tc.tcWebsocketConnect(wsConn)
 }
 
-func (th *TsHttpHandler) handleWsConnect(wsConn *websocket.Conn) {
+func (tc *TsConnector) tcWebsocketConnect(wsConn *websocket.Conn) {
 	var (
 		body        []byte
 		err         error
@@ -101,7 +101,7 @@ func (th *TsHttpHandler) handleWsConnect(wsConn *websocket.Conn) {
 		return
 	}
 
-	th.teamserver.ClientConnect(username, wsConn)
+	tc.teamserver.TsClientConnect(username, wsConn)
 
 	for {
 		if _, _, err = wsConn.ReadMessage(); err == nil {
@@ -110,7 +110,7 @@ func (th *TsHttpHandler) handleWsConnect(wsConn *websocket.Conn) {
 
 		logs.Debug("User '%s' disconnected: %s\n", username, err.Error())
 
-		th.teamserver.ClientDisconnect(username)
+		tc.teamserver.TsClientDisconnect(username)
 		break
 	}
 }

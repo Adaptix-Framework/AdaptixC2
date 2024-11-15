@@ -28,9 +28,9 @@ const (
 )
 
 type Teamserver interface {
-	AgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
-	AgentTaskUpdate(agentId string, cTaskObject []byte)
-	AgentConsoleOutput(agentId string, messageType int, message string, clearText string)
+	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
+	TsAgentTaskUpdate(agentId string, cTaskObject []byte)
+	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
 }
 
 type ModuleExtender struct {

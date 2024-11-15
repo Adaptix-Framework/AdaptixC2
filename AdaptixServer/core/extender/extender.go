@@ -158,7 +158,7 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 			return err
 		}
 
-		err = ex.ts.ListenerReg(listenerInfo)
+		err = ex.ts.TsListenerReg(listenerInfo)
 		if err != nil {
 			return err
 		}
@@ -194,14 +194,13 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 			return err
 		}
 
-		err = ex.ts.AgentNew(agentInfo)
+		err = ex.ts.TsAgentNew(agentInfo)
 		if err != nil {
 			return err
 		}
 
 		module.AgentFunctions = object.(AgentFunctions)
 
-		//listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.ListenerType, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
 		ex.agentModules.Put(agentInfo.AgentName, module)
 
 		return nil

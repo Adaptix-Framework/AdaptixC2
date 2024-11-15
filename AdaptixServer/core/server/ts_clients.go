@@ -4,18 +4,18 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (ts *Teamserver) ClientConnect(username string, socket *websocket.Conn) {
+func (ts *Teamserver) TsClientConnect(username string, socket *websocket.Conn) {
 
 	ts.clients.Put(username, socket)
 
-	ts.SyncStored(socket)
+	ts.TsSyncStored(socket)
 
 	packet := CreateSpClientConnect(username)
-	ts.SyncSavePacket(packet.store, packet)
-	ts.SyncAllClients(packet)
+	ts.TsSyncSavePacket(packet.store, packet)
+	ts.TsSyncAllClients(packet)
 }
 
-func (ts *Teamserver) ClientDisconnect(username string) {
+func (ts *Teamserver) TsClientDisconnect(username string) {
 
 	value, ok := ts.clients.GetDelete(username)
 	if !ok {
@@ -25,6 +25,6 @@ func (ts *Teamserver) ClientDisconnect(username string) {
 	value.(*websocket.Conn).Close()
 
 	packet := CreateSpClientDisconnect(username)
-	ts.SyncSavePacket(packet.store, packet)
-	ts.SyncAllClients(packet)
+	ts.TsSyncSavePacket(packet.store, packet)
+	ts.TsSyncAllClients(packet)
 }
