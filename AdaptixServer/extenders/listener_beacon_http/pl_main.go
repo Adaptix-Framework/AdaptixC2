@@ -22,7 +22,7 @@ const (
 )
 
 type Teamserver interface {
-	AgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
+	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 }
 
 type ModuleExtender struct {

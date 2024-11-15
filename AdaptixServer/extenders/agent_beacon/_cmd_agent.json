@@ -2,7 +2,7 @@
   {
     "command": "cd",
     "description": "Change current working directory",
-    "example": "cd C:\\Windows",
+    "example": "cd C:\\Windows\\Temp",
     "args": [
       "STRING <path>"
     ]

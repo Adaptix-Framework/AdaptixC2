@@ -43,11 +43,8 @@ func (dbms *DBMS) DatabaseInit() error {
     	"ListenerConfig" TEXT NOT NULL
     );`
 	_, err = dbms.database.Exec(createTableQuery)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }
 
 func (dbms *DBMS) DatabaseExists() bool {

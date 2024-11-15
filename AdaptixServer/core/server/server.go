@@ -1,9 +1,9 @@
 package server
 
 import (
+	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
 	"AdaptixServer/core/extender"
-	"AdaptixServer/core/httphandler"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
@@ -78,9 +78,9 @@ func (ts *Teamserver) RestoreData() {
 	logs.Info("Restore data from Database...")
 
 	countListeners := 0
-	restoreListeners := ts.DBMS.ListenerAll()
+	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
-		err = ts.ListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig)
+		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig)
 		if err != nil {
 			logs.Error("Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {
@@ -93,22 +93,22 @@ func (ts *Teamserver) RestoreData() {
 
 func (ts *Teamserver) Start() {
 	var (
-		stoped chan bool
-		err    error
+		stopped chan bool
+		err     error
 	)
 
-	ts.AdaptixServer, err = httphandler.NewTsHttpHandler(ts, *ts.Profile.Server)
+	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server)
 	if err != nil {
 		logs.Error("Failed to init HTTP handler: " + err.Error())
 		return
 	}
 
-	go ts.AdaptixServer.Start(&stoped)
+	go ts.AdaptixServer.Start(&stopped)
 	logs.Success("Starting server -> https://%s:%v%s", "0.0.0.0", ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
 
 	ts.RestoreData()
 
-	<-stoped
+	<-stopped
 	logs.Warn("Teamserver finished")
 	os.Exit(0)
 }

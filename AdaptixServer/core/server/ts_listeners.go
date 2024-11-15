@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-func (ts *Teamserver) ListenerReg(listenerInfo extender.ListenerInfo) error {
+func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
 
 	listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.Type, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
 
@@ -18,12 +18,12 @@ func (ts *Teamserver) ListenerReg(listenerInfo extender.ListenerInfo) error {
 	ts.listener_configs.Put(listenerFN, listenerInfo)
 
 	packet := CreateSpListenerReg(listenerFN, listenerInfo.ListenerUI)
-	ts.SyncSavePacket(packet.store, packet)
+	ts.TsSyncSavePacket(packet.store, packet)
 
 	return nil
 }
 
-func (ts *Teamserver) ListenerStart(listenerName string, listenerType string, listenerConfig string) error {
+func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, listenerConfig string) error {
 	var (
 		err          error
 		data         []byte
@@ -36,7 +36,7 @@ func (ts *Teamserver) ListenerStart(listenerName string, listenerType string, li
 			return errors.New("listener already exists")
 		}
 
-		data, err = ts.Extender.ListenerStart(listenerName, listenerType, listenerConfig)
+		data, err = ts.Extender.ExListenerStart(listenerName, listenerType, listenerConfig)
 		if err != nil {
 			return err
 		}
@@ -53,10 +53,10 @@ func (ts *Teamserver) ListenerStart(listenerName string, listenerType string, li
 		ts.listeners.Put(listenerName, listenerData)
 
 		packet := CreateSpListenerStart(listenerData)
-		ts.SyncAllClients(packet)
-		ts.SyncSavePacket(packet.store, packet)
+		ts.TsSyncAllClients(packet)
+		ts.TsSyncSavePacket(packet.store, packet)
 
-		_ = ts.DBMS.ListenerInsert(listenerName, listenerType, listenerConfig)
+		_ = ts.DBMS.DbListenerInsert(listenerName, listenerType, listenerConfig)
 	} else {
 		return fmt.Errorf("listener %v does not exist", listenerType)
 	}
@@ -64,13 +64,13 @@ func (ts *Teamserver) ListenerStart(listenerName string, listenerType string, li
 	return nil
 }
 
-func (ts *Teamserver) ListenerStop(listenerName string, listenerType string) error {
+func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) error {
 
 	if ts.listener_configs.Contains(listenerType) {
 
 		if ts.listeners.Contains(listenerName) {
 
-			err := ts.Extender.ListenerStop(listenerName, listenerType)
+			err := ts.Extender.ExListenerStop(listenerName, listenerType)
 			if err != nil {
 				return err
 			}
@@ -78,10 +78,10 @@ func (ts *Teamserver) ListenerStop(listenerName string, listenerType string) err
 			ts.listeners.Delete(listenerName)
 
 			packet := CreateSpListenerStop(listenerName)
-			ts.SyncAllClients(packet)
-			ts.SyncXorPacket(packet.store, packet)
+			ts.TsSyncAllClients(packet)
+			ts.TsSyncXorPacket(packet.store, packet)
 
-			_ = ts.DBMS.ListenerDelete(listenerName)
+			_ = ts.DBMS.DbListenerDelete(listenerName)
 		} else {
 			return fmt.Errorf("listener '%v' does not exist", listenerName)
 		}
@@ -92,7 +92,7 @@ func (ts *Teamserver) ListenerStop(listenerName string, listenerType string) err
 	return nil
 }
 
-func (ts *Teamserver) ListenerEdit(listenerName string, listenerType string, listenerConfig string) error {
+func (ts *Teamserver) TsListenerEdit(listenerName string, listenerType string, listenerConfig string) error {
 	var (
 		err          error
 		data         []byte
@@ -103,7 +103,7 @@ func (ts *Teamserver) ListenerEdit(listenerName string, listenerType string, lis
 
 		if ts.listeners.Contains(listenerName) {
 
-			data, err = ts.Extender.ListenerEdit(listenerName, listenerType, listenerConfig)
+			data, err = ts.Extender.ExListenerEdit(listenerName, listenerType, listenerConfig)
 			if err != nil {
 				return err
 			}
@@ -120,10 +120,10 @@ func (ts *Teamserver) ListenerEdit(listenerName string, listenerType string, lis
 			ts.listeners.Put(listenerName, listenerData)
 
 			packet := CreateSpListenerEdit(listenerData)
-			ts.SyncAllClients(packet)
-			ts.SyncSavePacket(packet.store, packet)
+			ts.TsSyncAllClients(packet)
+			ts.TsSyncSavePacket(packet.store, packet)
 
-			_ = ts.DBMS.ListenerUpdate(listenerName, listenerConfig)
+			_ = ts.DBMS.DbListenerUpdate(listenerName, listenerConfig)
 		} else {
 			return fmt.Errorf("listener '%v' does not exist", listenerName)
 		}

@@ -1,4 +1,4 @@
-package httphandler
+package connector
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ type CommandData struct {
 	Data      string `json:"data"`
 }
 
-func (th *TsHttpHandler) AgentCommand(ctx *gin.Context) {
+func (tc *TsConnector) TcAgentCommand(ctx *gin.Context) {
 	var (
 		username    string
 		commandData CommandData
@@ -46,7 +46,7 @@ func (th *TsHttpHandler) AgentCommand(ctx *gin.Context) {
 		log.Fatalf("Error parsing commands JSON: %v", err)
 	}
 
-	err = th.teamserver.AgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.CmdLine, args)
+	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.CmdLine, args)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

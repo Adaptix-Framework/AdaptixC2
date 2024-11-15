@@ -27,8 +27,8 @@ type AgentInfo struct {
 }
 
 type Teamserver interface {
-	ListenerReg(listenerInfo ListenerInfo) error
-	AgentNew(agentInfo AgentInfo) error
+	TsListenerReg(listenerInfo ListenerInfo) error
+	TsAgentNew(agentInfo AgentInfo) error
 }
 
 type CommonFunctions interface {

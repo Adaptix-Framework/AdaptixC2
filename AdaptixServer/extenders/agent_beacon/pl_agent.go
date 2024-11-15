@@ -222,6 +222,32 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			task.ClearText = path
 			break
 
+		case COMMAND_CP:
+			break
+
+		case COMMAND_DOWNLOAD:
+			fileId := packer.ParseInt32()
+			downloadCommand := packer.ParseInt8()
+			if downloadCommand == DOWNLOAD_START {
+				fileSize := packer.ParseInt32()
+				fileName := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+				task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %08x]", fileName, fileSize, fileId)
+				task.Completed = false
+			} else if downloadCommand == DOWNLOAD_CONTINUE {
+				/*fileContent*/ _ = packer.ParseBytes()
+				task.Completed = false
+				continue
+			} else if downloadCommand == DOWNLOAD_FINISH {
+				state := packer.ParseInt8()
+				if state == DOWNLOAD_STATE_FINISHED {
+					task.Message = fmt.Sprintf("File download complete: [fid %08x]", fileId)
+				} else {
+					task.Message = fmt.Sprintf("File download canceled: [fid %08x]", fileId)
+					task.MessageType = ERROR
+				}
+			}
+			break
+
 		case COMMAND_PWD:
 			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 			task.Message = "Curren working directory:"
@@ -238,7 +264,6 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 		}
 
 		_ = json.NewEncoder(&taskObject).Encode(task)
-		ts.AgentTaskUpdate(agentData.Id, taskObject.Bytes())
+		ts.TsAgentTaskUpdate(agentData.Id, taskObject.Bytes())
 	}
-
 }

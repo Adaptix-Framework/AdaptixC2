@@ -181,7 +181,7 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 		return
 	}
 
-	responseData, err = ModuleObject.ts.AgentRequest(fmt.Sprintf("%08x", agentType), fmt.Sprintf("%08x", agentId), beat, bodyData, h.Name, ExternalIP)
+	responseData, err = ModuleObject.ts.TsAgentRequest(fmt.Sprintf("%08x", agentType), fmt.Sprintf("%08x", agentId), beat, bodyData, h.Name, ExternalIP)
 	if err != nil {
 		h.pageFake(ctx)
 		return
