@@ -21,6 +21,13 @@ type Teamserver interface {
 	TsListenerStop(listenerName string, configType string) error
 
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
+	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
+	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
+	TsAgentTaskUpdate(agentId string, cTaskObject []byte)
+
+	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
+	TsDownloadUpdate(fileId string, state int, data []byte) error
+	TsDownloadFinish(fileId string, state int) error
 }
 
 type TsConnector struct {

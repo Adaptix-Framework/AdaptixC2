@@ -6,6 +6,7 @@ import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
+	"os"
 )
 
 const (
@@ -26,22 +27,23 @@ type Teamserver struct {
 	AdaptixServer *connector.TsConnector
 	Extender      *extender.AdaptixExtender
 
-	listener_configs safe.Map
-	agent_configs    safe.Map
+	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
+	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
 
-	clients     safe.Map
-	syncpackets safe.Map
-	listeners   safe.Map
-	agents      safe.Map
+	clients     safe.Map // username string,    : socket *websocket.Conn
+	syncpackets safe.Map // store string        : sync_packet interface{}
+	listeners   safe.Map // listenerName string : listenerData ListenerData
+	agents      safe.Map // agentId string      : agent *Agent
+	downloads   safe.Map // dileId string       : downloadData DownloadData
 
-	agent_types safe.Map
+	agent_types safe.Map // agentMark string : agentName string
 }
 
 type Agent struct {
 	Data        AgentData
-	TasksQueue  *safe.Slice
-	Tasks       safe.Map
-	ClosedTasks safe.Map
+	TasksQueue  *safe.Slice // taskData TaskData
+	Tasks       safe.Map    // taskId string, taskData TaskData
+	ClosedTasks safe.Map    // taskId string, taskData TaskData
 }
 
 // Data
@@ -100,6 +102,20 @@ type TaskData struct {
 	ClearText   string `json:"t_clear_text"`
 	Completed   bool   `json:"t_completed"`
 	Sync        bool   `json:"t_sync"`
+}
+
+type DownloadData struct {
+	FileId     string `json:"d_file_id"`
+	AgentId    string `json:"d_agent_id"`
+	AgentName  string `json:"d_agent_name"`
+	Computer   string `json:"d_computer"`
+	RemotePath string `json:"d_remote_path"`
+	LocalPath  string `json:"d_local_path"`
+	TotalSize  int    `json:"d_total_size"`
+	RecvSize   int    `json:"d_recv_size"`
+	Date       int64  `json:"d_date"`
+	State      int    `json:"d_state"`
+	File       *os.File
 }
 
 // SyncPacket
@@ -247,4 +263,28 @@ type SyncPackerAgentTaskUpdate struct {
 	Message     string `json:"a_message"`
 	Text        string `json:"a_text"`
 	Completed   bool   `json:"a_completed"`
+}
+
+/// DOWNLOAD
+
+type SyncPackerDownloadCreate struct {
+	store  string
+	SpType int `json:"type"`
+
+	FileId    string `json:"d_file_id"`
+	AgentId   string `json:"d_agent_id"`
+	AgentName string `json:"d_agent_name"`
+	Computer  string `json:"d_computer"`
+	File      string `json:"d_file"`
+	Size      int    `json:"d_size"`
+	Date      int64  `json:"d_date"`
+}
+
+type SyncPackerDownloadUpdate struct {
+	store  string
+	SpType int `json:"type"`
+
+	FileId   string `json:"d_file_id"`
+	RecvSize int    `json:"d_recv_size"`
+	State    int    `json:"d_state"`
 }
