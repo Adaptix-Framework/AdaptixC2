@@ -226,25 +226,30 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_DOWNLOAD:
-			fileId := packer.ParseInt32()
+			fileId := fmt.Sprintf("%08x", packer.ParseInt32())
 			downloadCommand := packer.ParseInt8()
 			if downloadCommand == DOWNLOAD_START {
 				fileSize := packer.ParseInt32()
 				fileName := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 				task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %08x]", fileName, fileSize, fileId)
 				task.Completed = false
+				ts.TsDownloadAdd(agentData.Id, fileId, fileName, int(fileSize))
+
 			} else if downloadCommand == DOWNLOAD_CONTINUE {
-				/*fileContent*/ _ = packer.ParseBytes()
+				fileContent := packer.ParseBytes()
 				task.Completed = false
+				ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, fileContent)
 				continue
+
 			} else if downloadCommand == DOWNLOAD_FINISH {
 				state := packer.ParseInt8()
 				if state == DOWNLOAD_STATE_FINISHED {
 					task.Message = fmt.Sprintf("File download complete: [fid %08x]", fileId)
 				} else {
 					task.Message = fmt.Sprintf("File download canceled: [fid %08x]", fileId)
-					task.MessageType = ERROR
+					task.MessageType = MESSAGE_ERROR
 				}
+				ts.TsDownloadFinish(fileId, int(state))
 			}
 			break
 
@@ -257,7 +262,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 		case COMMAND_ERROR:
 			errorCode := packer.ParseInt32()
 			task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
-			task.MessageType = ERROR
+			task.MessageType = MESSAGE_ERROR
 
 		default:
 			continue

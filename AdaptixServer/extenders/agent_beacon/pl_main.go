@@ -22,15 +22,24 @@ const (
 	TASK TaskType = 1
 	JOB  TaskType = 2
 
-	INFO    MessageType = 5
-	ERROR   MessageType = 6
-	SUCCESS MessageType = 7
+	MESSAGE_INFO    MessageType = 5
+	MESSAGE_ERROR   MessageType = 6
+	MESSAGE_SUCCESS MessageType = 7
+
+	DOWNLOAD_STATE_RUNNING  = 0x1
+	DOWNLOAD_STATE_STOPPED  = 0x2
+	DOWNLOAD_STATE_FINISHED = 0x3
+	DOWNLOAD_STATE_CANCELED = 0x4
 )
 
 type Teamserver interface {
 	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 	TsAgentTaskUpdate(agentId string, cTaskObject []byte)
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
+
+	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
+	TsDownloadUpdate(fileId string, state int, data []byte) error
+	TsDownloadFinish(fileId string, state int) error
 }
 
 type ModuleExtender struct {
@@ -241,7 +250,7 @@ func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte)
 		Type:        TASK,
 		AgentId:     agentData.Id,
 		FinishDate:  time.Now().Unix(),
-		MessageType: SUCCESS,
+		MessageType: MESSAGE_SUCCESS,
 		Completed:   true,
 		Sync:        true,
 	}

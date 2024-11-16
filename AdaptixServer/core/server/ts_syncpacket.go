@@ -1,6 +1,8 @@
 package server
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	STORE_LOG  = "log"
@@ -24,6 +26,9 @@ const (
 	TYPE_AGENT_TASK_CREATE = 0x44
 	TYPE_AGENT_TASK_UPDATE = 0x45
 	TYPE_AGENT_CONSOLE_OUT = 0x46
+
+	TYPE_DOWNLOAD_CREATE = 0x51
+	TYPE_DOWNLOAD_UPDATE = 0x52
 )
 
 /// SYNC
@@ -204,5 +209,32 @@ func CreateSpAgentTaskUpdate(taskData TaskData) SyncPackerAgentTaskUpdate {
 		Message:     taskData.Message,
 		Text:        taskData.ClearText,
 		Completed:   taskData.Completed,
+	}
+}
+
+/// DOWNLOAD
+
+func CreateSpDownloadCreate(downloadData DownloadData) SyncPackerDownloadCreate {
+	return SyncPackerDownloadCreate{
+		store:  STORE_LOG,
+		SpType: TYPE_DOWNLOAD_CREATE,
+
+		AgentId:  downloadData.AgentId,
+		FileId:   downloadData.FileId,
+		Computer: downloadData.Computer,
+		File:     downloadData.RemotePath,
+		Size:     downloadData.TotalSize,
+		Date:     downloadData.Date,
+	}
+}
+
+func CreateSpDownloadUpdate(downloadData DownloadData) SyncPackerDownloadUpdate {
+	return SyncPackerDownloadUpdate{
+		store:  STORE_LOG,
+		SpType: TYPE_DOWNLOAD_UPDATE,
+
+		FileId:   downloadData.FileId,
+		RecvSize: downloadData.RecvSize,
+		State:    downloadData.State,
 	}
 }
