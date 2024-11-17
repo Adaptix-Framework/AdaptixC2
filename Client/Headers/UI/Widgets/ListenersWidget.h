@@ -7,9 +7,9 @@
 
 class ListenersWidget : public QWidget
 {
-    QWidget*       mainWidget     = nullptr;
-    QGridLayout*   mainGridLayout = nullptr;
-    QTableWidget*  tableWidget    = nullptr;
+    QWidget*      mainWidget     = nullptr;
+    QGridLayout*  mainGridLayout = nullptr;
+    QTableWidget* tableWidget    = nullptr;
 
     void createUI();
 

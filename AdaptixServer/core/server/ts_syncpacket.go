@@ -219,12 +219,13 @@ func CreateSpDownloadCreate(downloadData DownloadData) SyncPackerDownloadCreate 
 		store:  STORE_LOG,
 		SpType: TYPE_DOWNLOAD_CREATE,
 
-		AgentId:  downloadData.AgentId,
-		FileId:   downloadData.FileId,
-		Computer: downloadData.Computer,
-		File:     downloadData.RemotePath,
-		Size:     downloadData.TotalSize,
-		Date:     downloadData.Date,
+		AgentId:   downloadData.AgentId,
+		AgentName: downloadData.AgentName,
+		FileId:    downloadData.FileId,
+		Computer:  downloadData.Computer,
+		File:      downloadData.RemotePath,
+		Size:      downloadData.TotalSize,
+		Date:      downloadData.Date,
 	}
 }
 

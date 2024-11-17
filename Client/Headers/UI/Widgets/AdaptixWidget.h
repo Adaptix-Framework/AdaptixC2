@@ -8,6 +8,7 @@
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
+#include <UI/Widgets/DownloadsWidget.h>
 #include <Client/WidgetBuilder.h>
 #include <Agent/Agent.h>
 
@@ -55,12 +56,14 @@ public:
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
+    DownloadsWidget*     DownloadsTab       = nullptr;
 
     QMap<QString, Commander*>     RegisterAgentsCmd;
     QMap<QString, WidgetBuilder*> RegisterAgentsUI;
     QMap<QString, WidgetBuilder*> RegisterListenersUI;
     QMap<QString, QStringList>    LinkListenerAgent;
     QVector<ListenerData>         Listeners;
+    QMap<QString, DownloadData>   Downloads;
     QMap<QString, Agent*>         Agents;
 
     explicit AdaptixWidget(AuthProfile authProfile);
@@ -76,6 +79,7 @@ public slots:
 
     void LoadLogsUI();
     void LoadListenersUI();
+    void LoadDownloadsUI();
     void LoadConsoleUI(QString AgentId);
 };
 

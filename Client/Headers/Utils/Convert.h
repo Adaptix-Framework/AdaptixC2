@@ -19,4 +19,6 @@ QString FormatSecToStr(int seconds);
 
 QString TrimmedEnds(QString str);
 
+QString BytesToFormat(int bytes);
+
 #endif //ADAPTIXCLIENT_CONVERT_H
