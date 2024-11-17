@@ -67,7 +67,17 @@
 #define TYPE_AGENT_TASK_UPDATE 0x45
 #define TYPE_AGENT_CONSOLE_OUT 0x46
 
+#define TYPE_DOWNLOAD_CREATE 0x51
+#define TYPE_DOWNLOAD_UPDATE 0x52
+
 //////////
+
+#define DOWNLOAD_STATE_RUNNING  0x1
+#define DOWNLOAD_STATE_STOPPED  0x2
+#define DOWNLOAD_STATE_FINISHED 0x3
+#define DOWNLOAD_STATE_CANCELED 0x4
+
+/////////
 
 #define COLOR_NeonGreen    "#39FF14"     // green
 #define COLOR_Berry        "#A01641"     // red
@@ -118,5 +128,18 @@ typedef struct AgentData
     QStringList Tags;
     int         LastTick;
 } AgentData;
+
+typedef struct DownloadData
+{
+    QString FileId;
+    QString AgentId;
+    QString AgentName;
+    QString Computer;
+    QString Filename;
+    int     TotalSize;
+    int     RecvSize;
+    int     State;
+    QString Date;
+} DownloadData;
 
 #endif //ADAPTIXCLIENT_MAIN_H

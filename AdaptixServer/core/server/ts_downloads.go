@@ -80,7 +80,7 @@ func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) er
 
 	downloadData.State = state
 
-	if len(data) == 0 {
+	if len(data) > 0 {
 		_, err := downloadData.File.Write(data)
 		if err != nil {
 			downloadData.File, err = os.Create(downloadData.LocalPath)
@@ -126,7 +126,8 @@ func (ts *Teamserver) TsDownloadFinish(fileId string, state int) error {
 	if downloadData.State == DOWNLOAD_STATE_CANCELED {
 		os.Remove(downloadData.LocalPath)
 		ts.downloads.Delete(fileId)
-	} else if downloadData.State == DOWNLOAD_STATE_FINISHED {
+	} else {
+		downloadData.State = DOWNLOAD_STATE_FINISHED
 		ts.downloads.Put(downloadData.FileId, downloadData)
 	}
 

@@ -69,3 +69,19 @@ QString TrimmedEnds(QString str)
 {
     return str.remove(QRegularExpression("\\s+$"));
 }
+
+QString BytesToFormat(int bytes)
+{
+    const double KB = 1024.0;
+    const double MB = KB * 1024;
+    const double GB = MB * 1024;
+
+    if (bytes >= GB) {
+        return QString::number(bytes / GB, 'f', 2) + " Gb";
+    } else if (bytes >= MB) {
+        return QString::number(bytes / MB, 'f', 2) + " Mb";
+    } else {
+        return QString::number(bytes / KB, 'f', 2) + " Kb";
+    }
+}
+

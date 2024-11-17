@@ -7,6 +7,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile)
     LogsTab           = new LogsWidget();
     ListenersTab      = new ListenersWidget(this);
     SessionsTablePage = new SessionsTableWidget(this);
+    DownloadsTab      = new DownloadsWidget(this);
 
     mainStackedWidget->addWidget(SessionsTablePage);
     mainStackedWidget->setCurrentIndex(0);
@@ -26,6 +27,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile)
     connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
     connect( logsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
+    connect( downloadsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
 
     connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
 
@@ -42,8 +44,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile authProfile)
     line_2->setVisible(false);
     jobsButton->setVisible(false);
     proxyButton->setVisible(false);
-    line_3->setVisible(false);
-    downloadsButton->setVisible(false);
     credsButton->setVisible(false);
     screensButton->setVisible(false);
     keysButton->setVisible(false);
@@ -242,6 +242,12 @@ void AdaptixWidget::LoadListenersUI()
     this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
 }
 
+void AdaptixWidget::LoadDownloadsUI()
+{
+    this->AddTab(DownloadsTab, "Downloads", ":/icons/downloads");
+}
+
+
 void AdaptixWidget::LoadConsoleUI(QString AgentId)
 {
     if( !Agents.contains(AgentId) )
@@ -250,7 +256,6 @@ void AdaptixWidget::LoadConsoleUI(QString AgentId)
     auto text = QString("Console [%1]").arg( AgentId );
     this->AddTab(Agents[AgentId]->Console, text);
 }
-
 
 void AdaptixWidget::ChannelClose()
 {
