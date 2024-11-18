@@ -17,9 +17,15 @@ public:
 
     void AddDownloadItem(DownloadData newDownload);
     void EditDownloadItem(QString fileId, int recvSize, int state);
+    void RemoveDownloadItem(QString fileId);
 
 public slots:
     void handleDownloadsMenu(const QPoint &pos );
+    void actionSync();
+    void actionDelete();
+    void actionStart();
+    void actionStop();
+    void actionCancel();
 };
 
 #endif //ADAPTIXCLIENT_DOWNLOADSWIDGET_H

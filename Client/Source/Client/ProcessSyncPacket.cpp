@@ -287,6 +287,12 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
+    if(spType == TYPE_DOWNLOAD_DELETE ) {
+        if (!jsonObj.contains("d_file_id") || !jsonObj["d_file_id"].isString()) {
+            return false;
+        }
+        return true;
+    }
 
     return false;
 }
@@ -491,26 +497,35 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if(spType == TYPE_DOWNLOAD_CREATE )
     {
         DownloadData newDownload = {0};
-        newDownload.AgentId    = jsonObj["d_agent_id"].toString();
-        newDownload.FileId     = jsonObj["d_file_id"].toString();
-        newDownload.AgentName  = jsonObj["d_agent_name"].toString();
-        newDownload.Computer   = jsonObj["d_computer"].toString();
-        newDownload.Filename = jsonObj["d_file"].toString();
-        newDownload.TotalSize  = jsonObj["d_size"].toDouble();
-        newDownload.Date       = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["d_date"].toDouble()));
-        newDownload.RecvSize   = 0;
-        newDownload.State      = DOWNLOAD_STATE_RUNNING;
+        newDownload.AgentId   = jsonObj["d_agent_id"].toString();
+        newDownload.FileId    = jsonObj["d_file_id"].toString();
+        newDownload.AgentName = jsonObj["d_agent_name"].toString();
+        newDownload.Computer  = jsonObj["d_computer"].toString();
+        newDownload.Filename  = jsonObj["d_file"].toString();
+        newDownload.TotalSize = jsonObj["d_size"].toDouble();
+        newDownload.Date      = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["d_date"].toDouble()));
+        newDownload.RecvSize  = 0;
+        newDownload.State     = DOWNLOAD_STATE_RUNNING;
 
         DownloadsTab->AddDownloadItem(newDownload);
 
         return;
     }
-    if(spType == TYPE_DOWNLOAD_UPDATE ) {
+    if(spType == TYPE_DOWNLOAD_UPDATE )
+    {
         QString fileId = jsonObj["d_file_id"].toString();
         int recvSize   = jsonObj["d_recv_size"].toDouble();
         int state      = jsonObj["d_state"].toDouble();
 
         DownloadsTab->EditDownloadItem(fileId, recvSize, state);
+
+        return;
+    }
+    if(spType == TYPE_DOWNLOAD_DELETE )
+    {
+        QString fileId = jsonObj["d_file_id"].toString();
+
+        DownloadsTab->RemoveDownloadItem(fileId);
 
         return;
     }

@@ -3,11 +3,14 @@ package server
 import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -45,7 +48,7 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 	}
 
 	dirPath := logs.RepoLogsInstance.DownloadPath
-	baseName = filepath.Base(filepath.FromSlash(filepath.Clean(fileName)))
+	baseName = filepath.Base(filepath.Clean(strings.ReplaceAll(fileName, `\`, `/`)))
 	saveName = krypt.MD5([]byte(strconv.FormatInt(downloadData.Date, 10))) + "_" + baseName
 
 	if _, err = os.Stat(dirPath); os.IsNotExist(err) {
@@ -136,4 +139,93 @@ func (ts *Teamserver) TsDownloadFinish(fileId string, state int) error {
 	ts.TsSyncSavePacket(packet.store, packet)
 
 	return nil
+}
+
+func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
+	var (
+		downloadData DownloadData
+		filename     string
+		content      []byte
+		err          error
+	)
+
+	value, ok := ts.downloads.Get(fileId)
+	if ok {
+		downloadData = value.(DownloadData)
+	} else {
+		return "", nil, errors.New("File not found: " + fileId)
+	}
+
+	if downloadData.State != DOWNLOAD_STATE_FINISHED {
+		return "", nil, errors.New("Download not finished")
+	}
+
+	filename = filepath.Base(filepath.FromSlash(filepath.Clean(downloadData.LocalPath)))
+	content, err = os.ReadFile(downloadData.LocalPath)
+	return filename, content, err
+}
+
+func (ts *Teamserver) TsDownloadDelete(fileId string) error {
+	var (
+		downloadData DownloadData
+		err          error
+	)
+
+	value, ok := ts.downloads.Get(fileId)
+	if ok {
+		downloadData = value.(DownloadData)
+	} else {
+		return errors.New("File not found: " + fileId)
+	}
+
+	if downloadData.State != DOWNLOAD_STATE_FINISHED {
+		return errors.New("Download not finished")
+	}
+
+	err = os.Remove(downloadData.LocalPath)
+	if err != nil {
+		return err
+	}
+
+	packet := CreateSpDownloadDelete(downloadData.FileId)
+	ts.TsSyncAllClients(packet)
+	ts.TsSyncSavePacket(packet.store, packet)
+
+	ts.downloads.Delete(fileId)
+
+	return nil
+}
+
+func (ts *Teamserver) TsDownloadChangeState(fileId string, command string) error {
+	var (
+		downloadData DownloadData
+		agentData    AgentData
+		agentObject  bytes.Buffer
+		newState     int
+	)
+
+	value, ok := ts.downloads.Get(fileId)
+	if ok {
+		downloadData = value.(DownloadData)
+	} else {
+		return errors.New("File not found: " + fileId)
+	}
+
+	if command == "cancel" {
+		newState = DOWNLOAD_STATE_CANCELED
+	} else if command == "stop" {
+		newState = DOWNLOAD_STATE_STOPPED
+	} else {
+		newState = DOWNLOAD_STATE_RUNNING
+	}
+
+	value, ok = ts.agents.Get(downloadData.AgentId)
+	if ok {
+		agentData = value.(*Agent).Data
+	} else {
+		return errors.New("Agent not found: " + downloadData.AgentId)
+	}
+	_ = json.NewEncoder(&agentObject).Encode(agentData)
+
+	return ts.Extender.ExAgentDownloadChangeState(agentData.Name, agentObject.Bytes(), newState, fileId)
 }

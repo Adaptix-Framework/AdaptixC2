@@ -28,6 +28,9 @@ type Teamserver interface {
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadFinish(fileId string, state int) error
+	TsDownloadSync(fileId string) (string, []byte, error)
+	TsDownloadDelete(fileId string) error
+	TsDownloadChangeState(fileId string, command string) error
 }
 
 type TsConnector struct {
@@ -79,6 +82,8 @@ func NewTsConnector(ts Teamserver, p profile.TsProfile) (*TsConnector, error) {
 	connector.Engine.POST(p.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(), connector.TcListenerStop)
 
 	connector.Engine.POST(p.Endpoint+"/agent/command", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentCommand)
+
+	connector.Engine.POST(p.Endpoint+"/browser/download", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDownload)
 
 	connector.Engine.NoRoute(default404Middleware(), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 

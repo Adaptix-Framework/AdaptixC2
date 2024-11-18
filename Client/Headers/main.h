@@ -40,6 +40,8 @@
 #include <QtWebSockets/QWebSocket>
 #include <QTimer>
 #include <QCompleter>
+#include <QFileDialog>
+#include <QInputDialog>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
@@ -69,6 +71,7 @@
 
 #define TYPE_DOWNLOAD_CREATE 0x51
 #define TYPE_DOWNLOAD_UPDATE 0x52
+#define TYPE_DOWNLOAD_DELETE 0x53
 
 //////////
 

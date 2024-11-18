@@ -15,13 +15,9 @@ ListenersWidget::~ListenersWidget() = default;
 
 void ListenersWidget::createUI()
 {
-    if ( this->objectName().isEmpty() )
-        this->setObjectName( QString::fromUtf8( "ListenersWidget" ) );
-
     tableWidget = new QTableWidget( this );
     tableWidget->setColumnCount( 7 );
     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
-//    tableWidget->addAction( menuListeners->menuAction() );
     tableWidget->setAutoFillBackground( false );
     tableWidget->setShowGrid( false );
     tableWidget->setSortingEnabled( true );
@@ -85,12 +81,10 @@ void ListenersWidget::AddListenerItem(ListenerData newListener )
 
     item_Status->setFlags( item_Status->flags() ^ Qt::ItemIsEditable );
     item_Status->setTextAlignment( Qt::AlignCenter );
-    if ( newListener.Status == "Listen"  ) {
+    if ( newListener.Status == "Listen"  )
         item_Status->setForeground(QColor(COLOR_NeonGreen));
-    }
-    else {
+    else
         item_Status->setForeground( QColor( COLOR_ChiliPepper ) );
-    }
 
     if( tableWidget->rowCount() < 1 )
         tableWidget->setRowCount( 1 );
@@ -140,12 +134,10 @@ void ListenersWidget::EditListenerItem(ListenerData newListener )
             tableWidget->item(row, 5)->setText(newListener.AgentHost);
             tableWidget->item(row, 6)->setText(newListener.Status);
 
-            if ( newListener.Status == "Listen"  ) {
+            if ( newListener.Status == "Listen"  )
                 tableWidget->item(row, 6)->setForeground(QColor(COLOR_NeonGreen) );
-            }
-            else {
+            else
                 tableWidget->item(row, 6)->setForeground( QColor(COLOR_ChiliPepper) );
-            }
             break;
         }
     }
