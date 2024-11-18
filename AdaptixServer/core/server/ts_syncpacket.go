@@ -29,6 +29,7 @@ const (
 
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
+	TYPE_DOWNLOAD_DELETE = 0x53
 )
 
 /// SYNC
@@ -237,5 +238,14 @@ func CreateSpDownloadUpdate(downloadData DownloadData) SyncPackerDownloadUpdate 
 		FileId:   downloadData.FileId,
 		RecvSize: downloadData.RecvSize,
 		State:    downloadData.State,
+	}
+}
+
+func CreateSpDownloadDelete(fileId string) SyncPackerDownloadDelete {
+	return SyncPackerDownloadDelete{
+		store:  STORE_LOG,
+		SpType: TYPE_DOWNLOAD_DELETE,
+
+		FileId: fileId,
 	}
 }

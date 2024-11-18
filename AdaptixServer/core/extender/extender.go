@@ -137,6 +137,10 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 		if !ok {
 			return errors.New("method AgentCommand not found")
 		}
+		_, ok = reflect.TypeOf(object).MethodByName("AgentDownloadChangeState")
+		if !ok {
+			return errors.New("method AgentDownloadChangeState not found")
+		}
 
 		return nil
 	}

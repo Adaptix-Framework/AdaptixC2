@@ -288,3 +288,10 @@ type SyncPackerDownloadUpdate struct {
 	RecvSize int    `json:"d_recv_size"`
 	State    int    `json:"d_state"`
 }
+
+type SyncPackerDownloadDelete struct {
+	store  string
+	SpType int `json:"type"`
+
+	FileId string `json:"d_file_id"`
+}

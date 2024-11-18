@@ -1,5 +1,6 @@
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Client/Requestor.h>
 
 DownloadsWidget::DownloadsWidget(QWidget* w)
 {
@@ -164,6 +165,21 @@ void DownloadsWidget::EditDownloadItem(QString fileId, int recvSize, int state)
     }
 }
 
+void DownloadsWidget::RemoveDownloadItem(QString fileId)
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    adaptixWidget->Downloads.remove(fileId);
+
+    for ( int row = 0; row < tableWidget->rowCount(); row++ ) {
+        if ( tableWidget->item( row, 0 )->text() == fileId ) {
+            tableWidget->removeRow( row );
+            break;
+        }
+    }
+}
+
+/// SLOTS
+
 void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
 {
     if ( ! tableWidget->itemAt( pos ) )
@@ -174,18 +190,156 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
 
     auto MenuFile     = QMenu();
     if(Received.compare("") == 0) {
-        MenuFile.addAction( "Sync file to client" );
-        MenuFile.addAction( "Delete file" );
+        MenuFile.addAction( "Sync file to client", this, &DownloadsWidget::actionSync);
+        MenuFile.addAction( "Delete file", this, &DownloadsWidget::actionDelete );
     }
     else {
         if( tableWidget->cellWidget( tableWidget->currentRow(), 8)->isEnabled() )
-            MenuFile.addAction( "Stop" );
+            MenuFile.addAction( "Stop", this, &DownloadsWidget::actionStop );
         else
-            MenuFile.addAction( "Start" );
-        MenuFile.addAction( "Cancel" );
+            MenuFile.addAction( "Start", this, &DownloadsWidget::actionStart );
+        MenuFile.addAction( "Cancel", this, &DownloadsWidget::actionCancel );
     }
 
-    auto *action = MenuFile.exec( tableWidget->horizontalHeader()->viewport()->mapToGlobal( pos ) );
+    MenuFile.exec( tableWidget->horizontalHeader()->viewport()->mapToGlobal( pos ) );
 }
 
+void DownloadsWidget::actionSync()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
+    if( tableWidget->item( tableWidget->currentRow(), 7 )->text() == "" ) {
+        QString fileId  = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+
+        QJsonObject dataJson;
+        dataJson["action"] = "sync";
+        dataJson["file"] = fileId;
+        QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+        QString sUrl = adaptixWidget->GetProfile().GetURL() + "/browser/download";
+        QJsonObject jsonObject = HttpReq(sUrl, jsonData, adaptixWidget->GetProfile().GetAccessToken());
+        if ( jsonObject.contains("message") && jsonObject.contains("ok") || jsonObject.contains("content") && jsonObject.contains("filename") && jsonObject.contains("ok") ) {
+        }
+        else {
+            MessageError("JWT error");
+            return;
+        }
+
+        bool ok = jsonObject["ok"].toBool();
+        if ( !ok ) {
+            QString message = jsonObject["message"].toString();
+            MessageError(message);
+        }
+        else {
+            QString fileName = jsonObject["filename"].toString();
+            QByteArray encodedContent = jsonObject["content"].toString().toUtf8();
+            QByteArray fileContent = QByteArray::fromBase64(encodedContent);
+
+            QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", fileName, "All Files (*.*)" );
+            if ( filePath.isEmpty())
+                return;
+
+            QFile file(filePath);
+            if (!file.open(QIODevice::WriteOnly)) {
+                MessageError("Failed to open file for writing");
+                return;
+            }
+
+            file.write( fileContent );
+            file.close();
+
+            QInputDialog inputDialog;
+            inputDialog.setWindowTitle("Sync file");
+            inputDialog.setLabelText("File saved to:");
+            inputDialog.setTextEchoMode(QLineEdit::Normal);
+            inputDialog.setTextValue(filePath);
+            inputDialog.adjustSize();
+            inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+            inputDialog.exec();
+        }
+    }
+}
+
+void DownloadsWidget::actionDelete()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+
+    if( tableWidget->item( tableWidget->currentRow(), 7 )->text() == "" ) {
+
+        QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqBrowserDownload("delete", fileId, adaptixWidget->GetProfile(), &message, &ok);
+        if (!result) {
+            MessageError("JWT error");
+            return;
+        }
+
+        if (!ok) {
+            MessageError(message);
+        }
+    }
+}
+
+void DownloadsWidget::actionStart()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+
+    if( tableWidget->item( tableWidget->currentRow(), 7 )->text() != "" ) {
+
+        QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqBrowserDownload("start", fileId, adaptixWidget->GetProfile(), &message, &ok);
+        if (!result) {
+            MessageError("JWT error");
+            return;
+        }
+
+        if (!ok) {
+            MessageError(message);
+        }
+    }
+}
+
+void DownloadsWidget::actionStop()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+
+    if( tableWidget->item( tableWidget->currentRow(), 7 )->text() != "" ) {
+
+        QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqBrowserDownload("stop", fileId, adaptixWidget->GetProfile(), &message, &ok);
+        if (!result) {
+            MessageError("JWT error");
+            return;
+        }
+
+        if (!ok) {
+            MessageError(message);
+        }
+    }
+}
+
+void DownloadsWidget::actionCancel()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+
+    if( tableWidget->item( tableWidget->currentRow(), 7 )->text() != "" ) {
+
+        QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqBrowserDownload("cancel", fileId, adaptixWidget->GetProfile(), &message, &ok);
+        if (!result) {
+            MessageError("JWT error");
+            return;
+        }
+
+        if (!ok) {
+            MessageError(message);
+        }
+    }
+}

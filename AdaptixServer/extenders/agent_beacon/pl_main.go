@@ -259,3 +259,16 @@ func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte)
 
 	return nil, nil
 }
+
+func (m *ModuleExtender) AgentDownloadChangeState(agentObject []byte, newState int, fileId string) error {
+	var (
+		agentData AgentData
+		err       error
+	)
+	err = json.Unmarshal(agentObject, &agentData)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

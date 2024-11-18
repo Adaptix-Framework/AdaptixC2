@@ -51,6 +51,8 @@ bool HttpReqLogin(AuthProfile* profile)
     return false;
 }
 
+/// LISTENER
+
 bool HttpReqListenerStart(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
@@ -103,6 +105,8 @@ bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfil
     return false;
 }
 
+/// AGENT
+
 bool HttpReqAgentCommand( QString agentName, QString agentId, QString cmdLine, QString data, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
@@ -113,6 +117,25 @@ bool HttpReqAgentCommand( QString agentName, QString agentId, QString cmdLine, Q
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/agent/command";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+/// BROWSER
+
+bool HttpReqBrowserDownload( QString action, QString fileId, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["action"] = action;
+    dataJson["file"] = fileId;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/browser/download";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();

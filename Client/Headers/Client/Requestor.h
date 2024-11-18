@@ -8,13 +8,21 @@ QJsonObject HttpReq( QString sUrl, QByteArray jsonData, QString token );
 
 bool HttpReqLogin(AuthProfile* profile);
 
+/// LISTENER
+
 bool HttpReqListenerStart(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqListenerEdit(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfile profile, QString* message, bool* ok );
 
+/// AGENT
+
 bool HttpReqAgentCommand( QString agentName, QString agentId, QString cmdLine, QString data, AuthProfile profile, QString* message, bool* ok );
+
+///DOWNLOAD
+
+bool HttpReqBrowserDownload( QString action, QString fileId, AuthProfile profile, QString* message, bool* ok );
 
 
 #endif //ADAPTIXCLIENT_REQUESTOR_H
