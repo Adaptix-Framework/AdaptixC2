@@ -108,7 +108,7 @@ func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) er
 	return nil
 }
 
-func (ts *Teamserver) TsDownloadFinish(fileId string, state int) error {
+func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 	var (
 		downloadData DownloadData
 		err          error
@@ -120,19 +120,21 @@ func (ts *Teamserver) TsDownloadFinish(fileId string, state int) error {
 		return errors.New("File not found: " + fileId)
 	}
 
-	downloadData.State = state
 	err = downloadData.File.Close()
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Failed to finish download [%x] file: %v", downloadData.FileId, err))
 	}
 
-	if downloadData.State == DOWNLOAD_STATE_CANCELED {
-		os.Remove(downloadData.LocalPath)
-		ts.downloads.Delete(fileId)
-	} else {
+	if reason == DOWNLOAD_STATE_FINISHED {
 		downloadData.State = DOWNLOAD_STATE_FINISHED
 		ts.downloads.Put(downloadData.FileId, downloadData)
+	} else {
+		downloadData.State = DOWNLOAD_STATE_CANCELED
+		os.Remove(downloadData.LocalPath)
+		ts.downloads.Delete(fileId)
 	}
+
+	ts.downloads.Put(downloadData.FileId, downloadData)
 
 	packet := CreateSpDownloadUpdate(downloadData)
 	ts.TsSyncAllClients(packet)
@@ -178,8 +180,12 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 		return errors.New("File not found: " + fileId)
 	}
 
-	if downloadData.State != DOWNLOAD_STATE_FINISHED {
+	if downloadData.State != DOWNLOAD_STATE_FINISHED && downloadData.State != DOWNLOAD_STATE_CANCELED {
 		return errors.New("Download not finished")
+	}
+
+	if downloadData.State == DOWNLOAD_STATE_CANCELED {
+		downloadData.File.Close()
 	}
 
 	err = os.Remove(downloadData.LocalPath)
@@ -196,12 +202,15 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 	return nil
 }
 
-func (ts *Teamserver) TsDownloadChangeState(fileId string, command string) error {
+func (ts *Teamserver) TsDownloadChangeState(fileId string, username string, command string) error {
 	var (
 		downloadData DownloadData
-		agentData    AgentData
+		agent        *Agent
+		taskData     TaskData
 		agentObject  bytes.Buffer
 		newState     int
+		data         []byte
+		err          error
 	)
 
 	value, ok := ts.downloads.Get(fileId)
@@ -221,11 +230,32 @@ func (ts *Teamserver) TsDownloadChangeState(fileId string, command string) error
 
 	value, ok = ts.agents.Get(downloadData.AgentId)
 	if ok {
-		agentData = value.(*Agent).Data
+		agent = value.(*Agent)
 	} else {
 		return errors.New("Agent not found: " + downloadData.AgentId)
 	}
-	_ = json.NewEncoder(&agentObject).Encode(agentData)
+	_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
-	return ts.Extender.ExAgentDownloadChangeState(agentData.Name, agentObject.Bytes(), newState, fileId)
+	data, err = ts.Extender.ExAgentDownloadChangeState(agent.Data.Name, agentObject.Bytes(), newState, fileId)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(data, &taskData)
+	if err != nil {
+		return err
+	}
+
+	if taskData.TaskId == "" {
+		taskData.TaskId, _ = krypt.GenerateUID(8)
+	}
+	taskData.Type = TYPE_BROWSER
+	taskData.CommandLine = ""
+	taskData.AgentId = agent.Data.Id
+	taskData.User = username
+	taskData.StartDate = time.Now().Unix()
+
+	agent.TasksQueue.Put(taskData)
+
+	return nil
 }

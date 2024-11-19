@@ -24,5 +24,6 @@ public:
 
 	void CmdCd(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdDownload(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker);
 };

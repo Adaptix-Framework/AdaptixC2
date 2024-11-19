@@ -27,10 +27,10 @@ type Teamserver interface {
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
-	TsDownloadFinish(fileId string, state int) error
+	TsDownloadClose(fileId string, reason int) error
 	TsDownloadSync(fileId string) (string, []byte, error)
 	TsDownloadDelete(fileId string) error
-	TsDownloadChangeState(fileId string, command string) error
+	TsDownloadChangeState(fileId string, username string, command string) error
 }
 
 type TsConnector struct {

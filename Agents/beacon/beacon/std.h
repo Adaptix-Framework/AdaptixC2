@@ -85,16 +85,6 @@ public:
     T* end() { return v_data + v_size; }
 };
 
-//Vector<int> vec;
-//vec.push_back(10);
-//vec.push_back(20);
-//vec.push_back(30);
-//
-//for (auto& elem : vec) {
-//    std::cout << elem << " ";
-//}
-
-
 template<typename K, typename V>
 class Map {
 

