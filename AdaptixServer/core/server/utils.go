@@ -19,6 +19,12 @@ const (
 	CONSOLE_OUT_SUCCESS       = 7
 )
 
+const (
+	TYPE_TASK    = 1
+	TYPE_BROWSER = 2
+	TYPE_JOB     = 3
+)
+
 // TeamServer
 
 type Teamserver struct {

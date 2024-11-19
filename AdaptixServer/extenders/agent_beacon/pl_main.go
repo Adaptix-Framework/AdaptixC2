@@ -19,8 +19,9 @@ type (
 const (
 	AGENT PluginType = "agent"
 
-	TASK TaskType = 1
-	JOB  TaskType = 2
+	TASK    TaskType = 1
+	BROWSER TaskType = 2
+	JOB     TaskType = 3
 
 	MESSAGE_INFO    MessageType = 5
 	MESSAGE_ERROR   MessageType = 6
@@ -39,7 +40,7 @@ type Teamserver interface {
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
-	TsDownloadFinish(fileId string, state int) error
+	TsDownloadClose(fileId string, reason int) error
 }
 
 type ModuleExtender struct {
@@ -260,15 +261,34 @@ func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte)
 	return nil, nil
 }
 
-func (m *ModuleExtender) AgentDownloadChangeState(agentObject []byte, newState int, fileId string) error {
+func (m *ModuleExtender) AgentDownloadChangeState(agentObject []byte, newState int, fileId string) ([]byte, error) {
 	var (
+		packData  []byte
 		agentData AgentData
+		taskData  TaskData
+		buffer    bytes.Buffer
 		err       error
 	)
 	err = json.Unmarshal(agentObject, &agentData)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	packData, err = BrowserDownloadChangeState(fileId, newState)
+	if err != nil {
+		return nil, err
+	}
+
+	taskData = TaskData{
+		Type: JOB,
+		Data: packData,
+		Sync: false,
+	}
+
+	err = json.NewEncoder(&buffer).Encode(taskData)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
 }

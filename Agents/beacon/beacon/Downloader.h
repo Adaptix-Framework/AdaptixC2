@@ -4,6 +4,7 @@
 #include "Packer.h"
 
 #define COMMAND_DOWNLOAD  32
+#define COMMAND_DOWNLOAD_STATE     35
 
 #define DOWNLOAD_START    0x1
 #define DOWNLOAD_CONTINUE 0x2
@@ -36,5 +37,5 @@ public:
 
 	DownloadData CreateDownloadData(ULONG taskId, HANDLE hFile, ULONG size);
 	void         ProcessDownloadTasks(Packer* packer);
-	bool		 IsEmpty();
+	bool		 IsTasks();
 };

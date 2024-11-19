@@ -17,12 +17,26 @@ func (tc *TsConnector) TcBrowserDownload(ctx *gin.Context) {
 	var (
 		downloadAction DownloadAction
 		answer         gin.H
+		username       string
+		ok             bool
 		err            error
 	)
 
 	err = ctx.ShouldBindJSON(&downloadAction)
 	if err != nil {
 		_ = ctx.Error(errors.New("invalid action"))
+		return
+	}
+
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+
+	username, ok = value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
 		return
 	}
 
@@ -49,7 +63,7 @@ func (tc *TsConnector) TcBrowserDownload(ctx *gin.Context) {
 
 	} else if downloadAction.Action == "cancel" || downloadAction.Action == "stop" || downloadAction.Action == "start" {
 
-		err = tc.teamserver.TsDownloadChangeState(downloadAction.File, downloadAction.Action)
+		err = tc.teamserver.TsDownloadChangeState(downloadAction.File, username, downloadAction.Action)
 		if err != nil {
 			answer = gin.H{"message": err.Error(), "ok": false}
 		} else {

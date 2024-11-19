@@ -25,6 +25,37 @@
     ]
   },
   {
+    "command": "exfil",
+    "description": "Manage current downloads",
+    "subcommands":
+    [
+      {
+        "name": "cancel",
+        "description": "Cancels a download",
+        "example": "exfil cancel 1a2b3c4d",
+        "args": [
+          "STRING <file_id>"
+        ]
+      },
+      {
+        "name": "start",
+        "description": "Resumes a download that's has been stoped",
+        "example": "exfil start 1a2b3c4d",
+        "args": [
+          "STRING <file_id>"
+        ]
+      },
+      {
+        "name": "stop",
+        "description": "Stops a download that's in-progress",
+        "example": "exfil stop 1a2b3c4d",
+        "args": [
+          "STRING <file_id>"
+        ]
+      }
+    ]
+  },
+  {
     "command": "pwd",
     "description": "Print current working directory",
     "example": "pwd"
