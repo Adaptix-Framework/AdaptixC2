@@ -7,6 +7,7 @@ import (
 	"AdaptixServer/core/utils/safe"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -229,4 +230,35 @@ func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, mess
 	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
 	ts.TsSyncAllClients(packet)
 	ts.TsSyncSavePacket(packet.store, packet)
+}
+
+func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
+	var (
+		agent        *Agent
+		err          error
+		newAgentData AgentData
+	)
+
+	err = json.Unmarshal(newAgentObject, &newAgentData)
+	if err != nil {
+		return err
+	}
+
+	value, ok := ts.agents.Get(newAgentData.Id)
+	if !ok {
+		return errors.New("Agent does not exist")
+	}
+
+	agent, _ = value.(*Agent)
+	agent.Data.Sleep = newAgentData.Sleep
+	agent.Data.Jitter = newAgentData.Jitter
+	agent.Data.Elevated = newAgentData.Elevated
+	agent.Data.Username = newAgentData.Username
+	agent.Data.Tags = newAgentData.Tags
+
+	packetNew := CreateSpAgentUpdate(agent.Data)
+	ts.TsSyncAllClients(packetNew)
+	ts.TsSyncSavePacket(packetNew.store, packetNew)
+
+	return nil
 }

@@ -26,6 +26,7 @@ const (
 	TYPE_AGENT_TASK_CREATE = 0x44
 	TYPE_AGENT_TASK_UPDATE = 0x45
 	TYPE_AGENT_CONSOLE_OUT = 0x46
+	TYPE_AGENT_UPDATE      = 0x47
 
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
@@ -156,6 +157,20 @@ func CreateSpAgentNew(agentData AgentData) SyncPackerAgentNew {
 		Username:   agentData.Username,
 		LastTick:   agentData.LastTick,
 		Tags:       agentData.Tags,
+	}
+}
+
+func CreateSpAgentUpdate(agentData AgentData) SyncPackerAgentUpdate {
+	return SyncPackerAgentUpdate{
+		store:  STORE_LOG,
+		SpType: TYPE_AGENT_UPDATE,
+
+		Id:       agentData.Id,
+		Sleep:    agentData.Sleep,
+		Jitter:   agentData.Jitter,
+		Elevated: agentData.Elevated,
+		Username: agentData.Username,
+		Tags:     agentData.Tags,
 	}
 }
 

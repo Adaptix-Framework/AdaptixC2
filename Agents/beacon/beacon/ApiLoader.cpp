@@ -38,6 +38,7 @@ BOOL ApiLoad()
 
 	if (ApiWin) {
 		// kernel32
+		ApiWin->CopyFile = CopyFile;
 		ApiWin->CreateFile = CreateFile;
 		ApiWin->GetACP = GetACP;
 		ApiWin->GetComputerNameEx = GetComputerNameEx;

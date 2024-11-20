@@ -225,6 +225,18 @@ type SyncPackerAgentNew struct {
 	Tags       []string `json:"a_tags"`
 }
 
+type SyncPackerAgentUpdate struct {
+	store  string
+	SpType int `json:"type"`
+
+	Id       string   `json:"a_id"`
+	Sleep    uint     `json:"a_sleep"`
+	Jitter   uint     `json:"a_jitter"`
+	Elevated bool     `json:"a_elevated"`
+	Username string   `json:"a_username"`
+	Tags     []string `json:"a_tags"`
+}
+
 type SyncPackerAgentTick struct {
 	store  string
 	SpType int `json:"type"`

@@ -9,10 +9,12 @@ import (
 )
 
 const (
+	COMMAND_COPY      = 12
 	COMMAND_CD        = 8
-	COMMAND_CP        = 12
 	COMMAND_DOWNLOAD  = 32
+	COMMAND_EXFIL     = 35
 	COMMAND_PWD       = 4
+	COMMAND_PROFILE   = 21
 	COMMAND_TERMINATE = 10
 
 	COMMAND_ERROR = 0x1111ffff
