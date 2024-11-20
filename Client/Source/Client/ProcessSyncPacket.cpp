@@ -195,6 +195,28 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
+    if( spType == TYPE_AGENT_UPDATE ) {
+        if ( !jsonObj.contains("a_id") || !jsonObj["a_id"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_sleep") || !jsonObj["a_sleep"].isDouble() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_jitter") || !jsonObj["a_jitter"].isDouble() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_elevated") || !jsonObj["a_elevated"].isBool() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_username") || !jsonObj["a_username"].isString() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("a_tags") || !jsonObj["a_tags"].isArray() ) {
+            return false;
+        }
+        return true;
+    }
+
     if(spType == TYPE_AGENT_TASK_CREATE ) {
         if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
             return false;
@@ -439,6 +461,15 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         SessionsTablePage->AddAgentItem( newAgent );
         return;
+    }
+    if( spType == TYPE_AGENT_UPDATE )
+    {
+        QString agentId = jsonObj["a_id"].toString();
+
+        if(Agents.contains(agentId)) {
+            Agent* agent = Agents[agentId];
+            agent->Update(jsonObj);
+        }
     }
     if( spType == TYPE_AGENT_TICK )
     {

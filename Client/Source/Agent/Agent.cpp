@@ -50,7 +50,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     item_Internal = new TableWidgetItemAgent( data.InternalIP, this );
     item_Domain   = new TableWidgetItemAgent( data.Domain, this );
     item_Computer = new TableWidgetItemAgent( data.Computer, this );
-    item_Username = new TableWidgetItemAgent( data.Username, this );
+    item_Username = new TableWidgetItemAgent( username, this );
     item_Os       = new TableWidgetItemAgent( data.OsDesc, this );
     item_Process  = new TableWidgetItemAgent( data.Process, this );
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
@@ -61,6 +61,32 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
 
     Console   = new ConsoleWidget(this, commander );
+}
+
+void Agent::Update(QJsonObject jsonObjAgentData)
+{
+    data.Sleep    = jsonObjAgentData["a_sleep"].toDouble();
+    data.Jitter   = jsonObjAgentData["a_jitter"].toDouble();
+    data.Elevated = jsonObjAgentData["a_elevated"].toBool();
+    data.Username = jsonObjAgentData["a_username"].toString();
+
+    QJsonArray tagsArray = jsonObjAgentData["a_tags"].toArray();
+    QStringList tags;
+    for (const QJsonValue &value : tagsArray) {
+        if (value.isString()) {
+            data.Tags.append(value.toString());
+        }
+    }
+
+    auto username = data.Username;
+    if ( data.Elevated )
+        username = "* " + username;
+
+    auto sleep = QString("%1 (%2%)").arg( FormatSecToStr(data.Sleep) ).arg(data.Jitter);
+
+    item_Username->setText(username);
+    item_Tags->setText("");
+    item_Sleep->setText(sleep);
 }
 
 Agent::~Agent() = default;

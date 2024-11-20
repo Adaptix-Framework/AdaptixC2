@@ -38,7 +38,7 @@ public:
     explicit Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w );
     ~Agent();
 
-    Commander* GetCommander();
+    void Update(QJsonObject jsonObjAgentData);
 };
 
 #endif //ADAPTIXCLIENT_AGENT_H

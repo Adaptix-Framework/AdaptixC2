@@ -56,9 +56,33 @@
     ]
   },
   {
+    "command": "profile",
+    "description": "Configure the payloads profile for current session",
+    "subcommands":
+    [
+      {
+        "name": "download.chunksize",
+        "description": "Change the exfiltrate data size for download request (default 128000)",
+        "example": "profile download.chunksize 512000",
+        "args": [
+          "INT <size>"
+        ]
+      }
+    ]
+  },
+  {
     "command": "pwd",
     "description": "Print current working directory",
     "example": "pwd"
+  },
+  {
+    "command": "sleep",
+    "description": "Sets sleep time",
+    "example": "sleep 30m5s 10",
+    "args": [
+      "STRING <sleep> {Time in '%h%m%s' format or number of seconds}",
+      "INT [jitter] {Max random amount of time in % added to sleep}"
+    ]
   },
   {
     "command": "terminate",

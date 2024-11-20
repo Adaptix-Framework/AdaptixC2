@@ -15,6 +15,7 @@ extern void* __cdecl memcpy(void*, const void*, size_t);
 struct WINAPIFUNC
 {
 	// kernel32
+	DECL_API(CopyFile);
 	DECL_API(CreateFile);
 	DECL_API(GetACP);
 	DECL_API(GetComputerNameEx);

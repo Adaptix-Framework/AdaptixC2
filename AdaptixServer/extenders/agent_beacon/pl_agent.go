@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 )
 
 const (
@@ -145,7 +146,7 @@ func CreateTask(agent AgentData, command string, args map[string]any) (TaskData,
 			err = errors.New("parameter 'dst' must be set")
 			goto RET
 		}
-		array = []interface{}{COMMAND_CP, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
+		array = []interface{}{COMMAND_COPY, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
 
 		break
 
@@ -183,9 +184,67 @@ func CreateTask(agent AgentData, command string, args map[string]any) (TaskData,
 		}
 		break
 
+	case "profile":
+		if subcommand == "download.chunksize" {
+
+			messageInfo = "Task: set download chunk size"
+			size, ok := args["size"].(float64)
+			if !ok {
+				err = errors.New("parameter 'size' must be set")
+				goto RET
+			}
+			array = []interface{}{COMMAND_PROFILE, 2, int(size)}
+
+		} else {
+			err = errors.New("subcommand for 'profile' not found")
+			goto RET
+		}
+		break
+
 	case "pwd":
 		messageInfo = "Task: print working directory"
 		array = []interface{}{COMMAND_PWD}
+		break
+
+	case "sleep":
+		var (
+			sleepTime  int
+			jitter     float64
+			jitterTime int = 0
+			jitterOk   bool
+		)
+		sleep, sleepOk := args["sleep"].(string)
+		if !sleepOk {
+			err = errors.New("parameter 'sleep' must be set")
+			goto RET
+		}
+		jitter, jitterOk = args["jitter"].(float64)
+		jitterTime = int(jitter)
+
+		sleepInt, err := strconv.Atoi(sleep)
+		if err == nil {
+			sleepTime = sleepInt
+		} else {
+			t, err := time.ParseDuration(sleep)
+			if err == nil {
+				sleepTime = int(t.Seconds())
+			} else {
+				err = errors.New("sleep must be in '%h%m%s' format or number of seconds")
+				goto RET
+			}
+		}
+		messageInfo = fmt.Sprintf("Task: sleep to %v", sleep)
+
+		if jitterOk {
+			if jitterTime < 0 || jitterTime > 100 {
+				err = errors.New("jitterTime must be from 0 to 100")
+				goto RET
+			}
+			messageInfo = fmt.Sprintf("Task: sleep to %v with %v%% jitter", sleep, jitterTime)
+		}
+
+		array = []interface{}{COMMAND_PROFILE, 1, sleepTime, jitterTime}
+
 		break
 
 	case "terminate":
@@ -246,7 +305,8 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			task.ClearText = path
 			break
 
-		case COMMAND_CP:
+		case COMMAND_COPY:
+			task.Message = "File copied successfully"
 			break
 
 		case COMMAND_DOWNLOAD:
@@ -286,6 +346,28 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			} else if downloadState == DOWNLOAD_STATE_CANCELED {
 				task.Message = fmt.Sprintf("Download '%v' successful canceled", fileId)
 				ts.TsDownloadClose(fileId, DOWNLOAD_STATE_CANCELED)
+			}
+			break
+
+		case COMMAND_PROFILE:
+			subcommand := packer.ParseInt32()
+			if subcommand == 1 {
+				sleep := packer.ParseInt32()
+				jitter := packer.ParseInt32()
+
+				agentData.Sleep = sleep
+				agentData.Jitter = jitter
+
+				task.Message = "Sleep time has been changed"
+
+				var buffer bytes.Buffer
+				json.NewEncoder(&buffer).Encode(agentData)
+
+				ts.TsAgentUpdateData(buffer.Bytes())
+
+			} else if subcommand == 2 {
+				size := packer.ParseInt32()
+				task.Message = fmt.Sprintf("Download chunk size set to %v bytes", size)
 			}
 			break
 
