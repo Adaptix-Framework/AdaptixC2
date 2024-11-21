@@ -7,6 +7,8 @@
 
 struct HTTPFUNC {
 	DECL_API(LocalAlloc);
+	DECL_API(LocalReAlloc);
+	DECL_API(LocalFree);
 	DECL_API(LoadLibraryA);
 	DECL_API(GetProcAddress);
 

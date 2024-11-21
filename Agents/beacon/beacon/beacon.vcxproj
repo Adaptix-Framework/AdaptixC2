@@ -311,6 +311,7 @@
     <ClCompile Include="Encoders.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainAgent.cpp" />
+    <ClCompile Include="MemorySaver.cpp" />
     <ClCompile Include="Packer.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
@@ -325,6 +326,7 @@
     <ClInclude Include="Downloader.h" />
     <ClInclude Include="Encoders.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="MemorySaver.h" />
     <ClInclude Include="ntdll.h" />
     <ClInclude Include="Packer.h" />
     <ClInclude Include="std.h" />

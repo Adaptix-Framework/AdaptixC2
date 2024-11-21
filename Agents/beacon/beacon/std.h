@@ -148,7 +148,6 @@ public:
 
     Iterator end() { return Iterator(m_data + m_size); }
 
-
     bool insert(const K& key, const V& value) {
         int index = find_index(key);
         if (index != -1) {
@@ -170,6 +169,14 @@ public:
             return true;
         }
         return false;
+    }
+
+    bool contains(const K& key) const {
+        int index = find_index(key);
+        if (index == -1) {
+            return false;
+        }
+        return true;
     }
 
     V& operator[](const K& key) {

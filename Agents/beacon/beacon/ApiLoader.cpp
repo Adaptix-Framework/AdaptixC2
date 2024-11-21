@@ -63,6 +63,7 @@ BOOL ApiLoad()
 		ApiWin->LocalReAlloc = LocalReAlloc;
 		ApiWin->ReadFile = ReadFile;
 		ApiWin->SetCurrentDirectory = SetCurrentDirectory;
+		ApiWin->WriteFile = WriteFile;
 
 		// iphlpapi
 		HMODULE hIphlpapiModule = LoadLibraryW(L"Iphlpapi.dll");

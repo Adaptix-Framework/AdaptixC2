@@ -35,9 +35,12 @@ const (
 
 type Teamserver interface {
 	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
-	TsAgentTaskUpdate(agentId string, cTaskObject []byte)
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
 	TsAgentUpdateData(newAgentObject []byte) error
+
+	TsTaskQueueAddQuite(agentId string, taskObject []byte)
+	TsTaskUpdate(agentId string, cTaskObject []byte)
+	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
@@ -106,6 +109,7 @@ type TaskData struct {
 
 var ModuleObject ModuleExtender
 var ModulePath string
+var MaxTaskDataSize int
 
 func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	var (
@@ -115,6 +119,7 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 
 	ModuleObject.ts = ts.(Teamserver)
 
+	MaxTaskDataSize = SetMaxTaskDataSize
 	info := ModuleInfo{
 		ModuleName: SetName,
 		ModuleType: AGENT,
@@ -201,7 +206,7 @@ func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) (
 		return nil, "", errors.New("'command' must be set")
 	}
 
-	taskData, message, err = CreateTask(agent, command, args)
+	taskData, message, err = CreateTask(m.ts, agent, command, args)
 	if err != nil {
 		return nil, "", err
 	}
@@ -221,6 +226,11 @@ func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) (
 		err        error
 	)
 	err = json.Unmarshal(agentObject, &agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	dataTasks, err = m.ts.TsTaskQueueGetAvailable(agentData.Id, MaxTaskDataSize)
 	if err != nil {
 		return nil, err
 	}

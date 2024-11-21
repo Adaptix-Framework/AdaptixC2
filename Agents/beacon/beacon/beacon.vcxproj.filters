@@ -75,6 +75,9 @@
     <ClCompile Include="Downloader.cpp">
       <Filter>Source\Commander</Filter>
     </ClCompile>
+    <ClCompile Include="MemorySaver.cpp">
+      <Filter>Source\Commander</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -118,6 +121,9 @@
     </ClInclude>
     <ClInclude Include="std.h">
       <Filter>Headers\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="MemorySaver.h">
+      <Filter>Headers\Commander</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

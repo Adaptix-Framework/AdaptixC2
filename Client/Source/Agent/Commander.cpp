@@ -171,6 +171,9 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
                     jsonObj[commandArg.mark] = parsedArgsMap[commandArg.mark] == "true";
                 } else if (commandArg.type == "FILE") {
                     QString path = parsedArgsMap[commandArg.name];
+                    if (path.startsWith("~/"))
+                        path = QDir::home().filePath(path.mid(2));
+
                     QFile file(path);
                     if (file.open(QIODevice::ReadOnly)) {
                         QByteArray fileData = file.readAll();

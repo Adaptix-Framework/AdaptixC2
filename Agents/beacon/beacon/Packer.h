@@ -23,7 +23,7 @@ public:
 	VOID PackStringA(LPSTR str);
 
 	ULONG Unpack32();
-	LPSTR UnpackStringA(ULONG* size);
+	BYTE* UnpackBytes(ULONG* size);
 
 	PBYTE GetData();
 	ULONG GetDataSize();

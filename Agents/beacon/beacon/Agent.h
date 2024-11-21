@@ -3,6 +3,7 @@
 #include "AgentInfo.h"
 #include "AgentConfig.h"
 #include "Downloader.h"
+#include "MemorySaver.h"
 #include "Commander.h"
 
 class Commander;
@@ -17,6 +18,7 @@ public:
 	AgentConfig* config;
 	Commander*   commander;
 	Downloader*  downloader;
+	MemorySaver* memorysaver;
 
 	Agent();
 
