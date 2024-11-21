@@ -113,6 +113,13 @@ func RefreshTokenHandler(ctx *gin.Context) {
 		return
 	}
 
+	if strings.HasPrefix(refreshToken, "Bearer ") {
+		refreshToken = refreshToken[7:]
+	} else {
+		_ = ctx.Error(errors.New("refresh token required"))
+		return
+	}
+
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(refreshKey), nil

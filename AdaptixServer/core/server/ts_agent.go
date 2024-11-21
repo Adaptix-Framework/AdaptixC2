@@ -3,7 +3,6 @@ package server
 import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
-	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"bytes"
 	"encoding/json"
@@ -28,95 +27,41 @@ func (ts *Teamserver) TsAgentNew(agentInfo extender.AgentInfo) error {
 	return nil
 }
 
-func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error) {
+func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 	var (
-		agentName      string
-		data           []byte
-		respData       []byte
-		err            error
-		agent          *Agent
-		agentData      AgentData
-		agentTasksData [][]byte
-		agentBuffer    bytes.Buffer
+		agent        *Agent
+		err          error
+		newAgentData AgentData
 	)
 
-	value, ok := ts.agent_types.Get(agentCrc)
+	err = json.Unmarshal(newAgentObject, &newAgentData)
+	if err != nil {
+		return err
+	}
+
+	value, ok := ts.agents.Get(newAgentData.Id)
 	if !ok {
-		return nil, fmt.Errorf("agent type %v does not exists", agentCrc)
-	}
-	agentName = value.(string)
-
-	value, ok = ts.agents.Get(agentId)
-	if !ok {
-
-		data, err = ts.Extender.ExAgentCreate(agentName, beat)
-		if err != nil {
-			return nil, err
-		}
-		err = json.Unmarshal(data, &agentData)
-		if err != nil {
-			return nil, err
-		}
-
-		agentData.Crc = agentCrc
-		agentData.Name = agentName
-		agentData.Id = agentId
-		agentData.Listener = listenerName
-		agentData.ExternalIP = ExternalIP
-		agentData.CreateTime = time.Now().Unix()
-		agentData.LastTick = int(time.Now().Unix())
-		if len(agentData.Tags) == 0 {
-			agentData.Tags = []string{}
-		}
-
-		agent = &Agent{
-			Data:        agentData,
-			TasksQueue:  safe.NewSlice(),
-			Tasks:       safe.NewMap(),
-			ClosedTasks: safe.NewMap(),
-		}
-
-		ts.agents.Put(agentData.Id, agent)
-
-		packetNew := CreateSpAgentNew(agentData)
-		ts.TsSyncAllClients(packetNew)
-		ts.TsSyncSavePacket(packetNew.store, packetNew)
-
-	} else {
-		agent, _ = value.(*Agent)
+		return errors.New("Agent does not exist")
 	}
 
-	packetTick := CreateSpAgentTick(agent.Data.Id)
-	ts.TsSyncAllClients(packetTick)
+	agent, _ = value.(*Agent)
+	agent.Data.Sleep = newAgentData.Sleep
+	agent.Data.Jitter = newAgentData.Jitter
+	agent.Data.Elevated = newAgentData.Elevated
+	agent.Data.Username = newAgentData.Username
+	agent.Data.Tags = newAgentData.Tags
 
-	_ = json.NewEncoder(&agentBuffer).Encode(agent.Data)
+	packetNew := CreateSpAgentUpdate(agent.Data)
+	ts.TsSyncAllClients(packetNew)
+	ts.TsSyncSavePacket(packetNew.store, packetNew)
 
-	if len(bodyData) > 4 {
-		_, _ = ts.Extender.ExAgentProcessData(agentName, agentBuffer.Bytes(), bodyData)
-	}
+	return nil
+}
 
-	if agent.TasksQueue.Len() > 0 {
-		tasksArray := agent.TasksQueue.CutArray()
-		for _, value := range tasksArray {
-			task, ok := value.(TaskData)
-			if ok {
-				var taskBuffer bytes.Buffer
-				_ = json.NewEncoder(&taskBuffer).Encode(task)
-				agentTasksData = append(agentTasksData, taskBuffer.Bytes())
-				agent.Tasks.Put(task.TaskId, task)
-			}
-		}
-
-		respData, err = ts.Extender.ExAgentPackData(agentName, agentBuffer.Bytes(), agentTasksData)
-		if err != nil {
-			return nil, err
-		}
-
-		message := fmt.Sprintf("Agent called server, sent [%v] bytes", len(respData))
-		ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "")
-	}
-
-	return respData, nil
+func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string) {
+	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
+	ts.TsSyncAllClients(packet)
+	ts.TsSyncSavePacket(packet.store, packet)
 }
 
 func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error {
@@ -175,90 +120,86 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username 
 	return nil
 }
 
-func (ts *Teamserver) TsAgentTaskUpdate(agentId string, taskObject []byte) {
+func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error) {
 	var (
-		agent    *Agent
-		task     TaskData
-		taskData TaskData
-		value    any
-		ok       bool
-		err      error
+		agentName      string
+		data           []byte
+		respData       []byte
+		err            error
+		agent          *Agent
+		agentData      AgentData
+		agentTasksData [][]byte
+		agentBuffer    bytes.Buffer
 	)
-	err = json.Unmarshal(taskObject, &taskData)
-	if err != nil {
-		return
+
+	value, ok := ts.agent_types.Get(agentCrc)
+	if !ok {
+		return nil, fmt.Errorf("agent type %v does not exists", agentCrc)
 	}
+	agentName = value.(string)
+
+	/// CREATE OR GET AGENT
 
 	value, ok = ts.agents.Get(agentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
-		logs.Error("TsAgentTaskUpdate: agent %v not found", agentId)
-		return
-	}
-
-	value, ok = agent.Tasks.GetDelete(taskData.TaskId)
-	if ok {
-		task = value.(TaskData)
-		task.Data = []byte("")
-		task.FinishDate = taskData.FinishDate
-		task.MessageType = taskData.MessageType
-		task.Message = taskData.Message
-		task.ClearText = taskData.ClearText
-		task.Completed = taskData.Completed
-	} else {
-		task = taskData
-		logs.Error("TsAgentTaskUpdate: task %v not found", taskData.TaskId)
-	}
-
-	if task.Completed {
-		agent.ClosedTasks.Put(task.TaskId, task)
-	} else {
-		agent.Tasks.Put(task.TaskId, task)
-	}
-
-	if task.Sync {
-		packet := CreateSpAgentTaskUpdate(task)
-		ts.TsSyncAllClients(packet)
-		ts.TsSyncSavePacket(packet.store, packet)
-	}
-
-	return
-}
-
-func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string) {
-	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
-	ts.TsSyncAllClients(packet)
-	ts.TsSyncSavePacket(packet.store, packet)
-}
-
-func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
-	var (
-		agent        *Agent
-		err          error
-		newAgentData AgentData
-	)
-
-	err = json.Unmarshal(newAgentObject, &newAgentData)
-	if err != nil {
-		return err
-	}
-
-	value, ok := ts.agents.Get(newAgentData.Id)
 	if !ok {
-		return errors.New("Agent does not exist")
+		data, err = ts.Extender.ExAgentCreate(agentName, beat)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(data, &agentData)
+		if err != nil {
+			return nil, err
+		}
+
+		agentData.Crc = agentCrc
+		agentData.Name = agentName
+		agentData.Id = agentId
+		agentData.Listener = listenerName
+		agentData.ExternalIP = ExternalIP
+		agentData.CreateTime = time.Now().Unix()
+		agentData.LastTick = int(time.Now().Unix())
+		if len(agentData.Tags) == 0 {
+			agentData.Tags = []string{}
+		}
+
+		agent = &Agent{
+			Data:        agentData,
+			TasksQueue:  safe.NewSlice(),
+			Tasks:       safe.NewMap(),
+			ClosedTasks: safe.NewMap(),
+		}
+
+		ts.agents.Put(agentData.Id, agent)
+
+		packetNew := CreateSpAgentNew(agentData)
+		ts.TsSyncAllClients(packetNew)
+		ts.TsSyncSavePacket(packetNew.store, packetNew)
+
+	} else {
+		agent, _ = value.(*Agent)
 	}
 
-	agent, _ = value.(*Agent)
-	agent.Data.Sleep = newAgentData.Sleep
-	agent.Data.Jitter = newAgentData.Jitter
-	agent.Data.Elevated = newAgentData.Elevated
-	agent.Data.Username = newAgentData.Username
-	agent.Data.Tags = newAgentData.Tags
+	packetTick := CreateSpAgentTick(agent.Data.Id)
+	ts.TsSyncAllClients(packetTick)
 
-	packetNew := CreateSpAgentUpdate(agent.Data)
-	ts.TsSyncAllClients(packetNew)
-	ts.TsSyncSavePacket(packetNew.store, packetNew)
+	/// PROCESS RECEIVED DATA FROM AGENT
 
-	return nil
+	_ = json.NewEncoder(&agentBuffer).Encode(agent.Data)
+	if len(bodyData) > 4 {
+		_, _ = ts.Extender.ExAgentProcessData(agentName, agentBuffer.Bytes(), bodyData)
+	}
+
+	/// SEND NEW DATA TO AGENT
+
+	if agent.TasksQueue.Len() > 0 {
+		respData, err = ts.Extender.ExAgentPackData(agentName, agentBuffer.Bytes(), agentTasksData)
+		if err != nil {
+			return nil, err
+		}
+
+		message := fmt.Sprintf("Agent called server, sent [%v] bytes", len(respData))
+		ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "")
+	}
+
+	return respData, nil
 }

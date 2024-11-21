@@ -23,8 +23,11 @@ type Teamserver interface {
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
 	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
-	TsAgentTaskUpdate(agentId string, cTaskObject []byte)
 	TsAgentUpdateData(newAgentObject []byte) error
+
+	TsTaskQueueAddQuite(agentId string, taskObject []byte)
+	TsTaskUpdate(agentId string, cTaskObject []byte)
+	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error

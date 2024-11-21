@@ -446,6 +446,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         LinkListenerAgent[listenerName].push_back(agentName);
         return;
     }
+
     if( spType == TYPE_AGENT_NEW )
     {
         QString agentName = jsonObj["a_name"].toString();

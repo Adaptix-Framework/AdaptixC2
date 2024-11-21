@@ -123,7 +123,7 @@ ULONG Packer::Unpack32()
     return value;
 }
 
-LPSTR Packer::UnpackStringA(ULONG* str_size)
+BYTE* Packer::UnpackBytes(ULONG* str_size)
 {
     *str_size = this->Unpack32();
 
@@ -133,5 +133,5 @@ LPSTR Packer::UnpackStringA(ULONG* str_size)
     BYTE* out = this->buffer + this->index;
     this->index += *str_size;
 
-    return (LPSTR) out;
+    return out;
 }

@@ -40,6 +40,8 @@ struct WINAPIFUNC
 	DECL_API(LocalReAlloc);
 	DECL_API(ReadFile);
 	DECL_API(SetCurrentDirectory);
+	DECL_API(WriteFile);
+	
 	// iphlpapi
 	DECL_API(GetAdaptersInfo);
 };
