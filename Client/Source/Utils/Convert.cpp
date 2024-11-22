@@ -85,3 +85,18 @@ QString BytesToFormat(int bytes)
     }
 }
 
+QIcon RecolorIcon(QIcon originalIcon, QString colorString)
+{
+    QColor color = QColor(colorString);
+    if ( !color.isValid() )
+        return originalIcon;
+
+    QPixmap pixmap = originalIcon.pixmap(originalIcon.actualSize(QSize(128, 128)));
+
+    QPainter painter(&pixmap);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceIn); // Recoloring only pixels with content
+    painter.fillRect(pixmap.rect(), color);
+    painter.end();
+
+    return QIcon(pixmap);
+}

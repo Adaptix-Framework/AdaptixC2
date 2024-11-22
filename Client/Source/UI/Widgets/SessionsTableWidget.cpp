@@ -7,6 +7,7 @@ SessionsTableWidget::SessionsTableWidget( QWidget* w )
     this->createUI();
 
     connect( tableWidget, &QTableWidget::doubleClicked, this, &SessionsTableWidget::handleTableDoubleClicked );
+    connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
 }
 
 SessionsTableWidget::~SessionsTableWidget() = default;
@@ -62,15 +63,28 @@ void SessionsTableWidget::createUI()
     tableWidget->setHorizontalHeaderItem( ColumnSleep,     titleSleep );
 
     mainGridLayout = new QGridLayout( this );
-    mainGridLayout->setObjectName( QString::fromUtf8( "MainLayoutSessionsTable" ) );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
     mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
+}
+
+void SessionsTableWidget::Clear()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+
+    for (auto agentId : adaptixWidget->Agents.keys()) {
+        Agent* agent = adaptixWidget->Agents[agentId];
+        adaptixWidget->Agents.remove(agentId);
+        delete agent->Console;
+        delete agent;
+    }
+
+    for (int index = tableWidget->rowCount(); index > 0; index-- )
+        tableWidget->removeRow(index -1 );
 }
 
 void SessionsTableWidget::AddAgentItem( Agent* newAgent )
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-
     if ( adaptixWidget->Agents.contains(newAgent->data.Id) )
         return;
 
@@ -110,10 +124,84 @@ void SessionsTableWidget::AddAgentItem( Agent* newAgent )
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnSleep,     QHeaderView::ResizeToContents );
 }
 
+void SessionsTableWidget::RemoveAgentItem(QString agentId)
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    Agent* agent = adaptixWidget->Agents[agentId];
+    adaptixWidget->Agents.remove(agentId);
+    delete agent->Console;
+    delete agent;
+
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if (agentId == tableWidget->item( rowIndex, ColumnAgentID )->text()) {
+            tableWidget->removeRow(rowIndex);
+            break;
+        }
+    }
+}
+
+
+/// SLOTS
+
 void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index)
 {
     QString AgentId = tableWidget->item(index.row(),0)->text();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     adaptixWidget->LoadConsoleUI(AgentId);
+}
+
+void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos )
+{
+    if ( ! tableWidget->itemAt(pos) )
+        return;
+
+    auto sep1 = new QAction();
+    sep1->setSeparator( true );
+
+    auto ctxMenu = QMenu();
+    ctxMenu.addAction( "Console", this, &SessionsTableWidget::actionConsoleOpen);
+    ctxMenu.addAction( sep1 );
+    ctxMenu.addAction( "Tag", this, &SessionsTableWidget::actionAgentTag);
+    ctxMenu.addAction( "Hide", this, &SessionsTableWidget::actionAgentHide);
+    ctxMenu.addAction( "Remove", this, &SessionsTableWidget::actionAgentRemove);
+
+    ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
+}
+
+void SessionsTableWidget::actionConsoleOpen()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            adaptixWidget->LoadConsoleUI(agentId);
+        }
+    }
+}
+
+void SessionsTableWidget::actionAgentTag()
+{
+
+}
+
+void SessionsTableWidget::actionAgentHide()
+{
+    QList<QString> listId;
+
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            listId.append(agentId);
+        }
+    }
+
+    for (auto id : listId)
+        this->RemoveAgentItem(id);
+}
+
+void SessionsTableWidget::actionAgentRemove()
+{
+
 }

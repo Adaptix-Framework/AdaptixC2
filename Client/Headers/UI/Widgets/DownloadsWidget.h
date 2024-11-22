@@ -15,6 +15,7 @@ public:
     DownloadsWidget(QWidget* w);
     ~DownloadsWidget();
 
+    void Clear();
     void AddDownloadItem(DownloadData newDownload);
     void EditDownloadItem(QString fileId, int recvSize, int state);
     void RemoveDownloadItem(QString fileId);

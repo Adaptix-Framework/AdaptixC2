@@ -148,20 +148,18 @@ void DialogConnect::loadProjects()
     }
 }
 
-AuthProfile DialogConnect::StartDialog()
+AuthProfile* DialogConnect::StartDialog()
 {
     this->exec();
-
-    AuthProfile authProfile;
     if(  this->toConnect ) {
-        AuthProfile newProfile(lineEdit_Project->text(), lineEdit_User->text(),lineEdit_Password->text(),lineEdit_Host->text(),lineEdit_Port->text(), lineEdit_Endpoint->text());
+        AuthProfile* newProfile = new AuthProfile(lineEdit_Project->text(), lineEdit_User->text(),lineEdit_Password->text(),lineEdit_Host->text(),lineEdit_Port->text(), lineEdit_Endpoint->text());
 
         if( ! GlobalClient->storage->ExistsProject(lineEdit_Project->text()) )
-            GlobalClient->storage->AddProject(newProfile);
+            GlobalClient->storage->AddProject(*newProfile);
 
         return newProfile;
     }
-    return authProfile;
+    return NULL;
 }
 
 void DialogConnect::itemRemove() const

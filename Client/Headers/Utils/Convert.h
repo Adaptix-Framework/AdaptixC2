@@ -4,6 +4,9 @@
 #include <QString>
 #include <QRegularExpression>
 #include <QDateTime>
+#include <QPixmap>
+#include <QIcon>
+#include <QPainter>
 
 bool IsValidURI(const QString &uri);
 
@@ -20,5 +23,7 @@ QString FormatSecToStr(int seconds);
 QString TrimmedEnds(QString str);
 
 QString BytesToFormat(int bytes);
+
+QIcon RecolorIcon(QIcon originalIcon, QString colorString);
 
 #endif //ADAPTIXCLIENT_CONVERT_H

@@ -27,6 +27,7 @@ public:
     QString GetPort();
     QString GetEndpoint();
     QString GetAccessToken();
+    QString GetRefreshToken();
     QString GetURL();
     void    SetAccessToken(QString token);
     void    SetRefreshToken(QString token);

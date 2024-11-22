@@ -7,14 +7,15 @@
 class WebSocketWorker : public QThread
 {
 Q_OBJECT
-    QWebSocket* webSocket = nullptr;
-    AuthProfile profile;
+    QWebSocket*  webSocket = nullptr;
+    AuthProfile* profile;
 
 public:
-    explicit WebSocketWorker(AuthProfile authProfile);
+    explicit WebSocketWorker(AuthProfile* authProfile);
     ~WebSocketWorker();
 
     void run();
+    void SetProfile(AuthProfile* authProfile);
 
 public slots:
     void is_connected();

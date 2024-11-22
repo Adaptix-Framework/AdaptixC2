@@ -144,7 +144,7 @@ void ConsoleWidget::processInput()
     else {
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqAgentCommand(agent->data.Name, agent->data.Id, commandLine, cmdResult.message, agent->mainWidget->GetProfile(), &message, &ok);
+        bool result = HttpReqAgentCommand(agent->data.Name, agent->data.Id, commandLine, cmdResult.message, *(agent->mainWidget->GetProfile()), &message, &ok);
         if( !result ) {
             MessageError("JWT error");
             return;

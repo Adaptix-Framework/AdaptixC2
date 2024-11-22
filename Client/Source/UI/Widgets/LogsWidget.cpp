@@ -82,3 +82,8 @@ void LogsWidget::AddLogs( int type, qint64 time, QString message )
 
     logsConsoleTextEdit->append( log );
 }
+
+void LogsWidget::Clear()
+{
+    logsConsoleTextEdit->clear();
+}

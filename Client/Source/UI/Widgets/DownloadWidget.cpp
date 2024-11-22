@@ -19,7 +19,7 @@ void DownloadsWidget::createUI()
     tableWidget->setShowGrid( false );
     tableWidget->setSortingEnabled( true );
     tableWidget->setWordWrap( true );
-    tableWidget->setCornerButtonEnabled( true ); // true
+    tableWidget->setCornerButtonEnabled( true );
     tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
     tableWidget->setFocusPolicy( Qt::NoFocus );
     tableWidget->setAlternatingRowColors( true );
@@ -45,6 +45,14 @@ void DownloadsWidget::createUI()
 }
 
 DownloadsWidget::~DownloadsWidget() = default;
+
+void DownloadsWidget::Clear()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    adaptixWidget->Downloads.clear();
+    for (int index = tableWidget->rowCount(); index > 0; index-- )
+        tableWidget->removeRow(index -1 );
+}
 
 void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
 {
@@ -86,7 +94,7 @@ void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
     item_Received->setTextAlignment( Qt::AlignCenter );
     item_Received->setFlags( item_Received->flags() ^ Qt::ItemIsEditable );
 
-    QProgressBar *pgbar = new QProgressBar();
+    QProgressBar *pgbar = new QProgressBar(this);
     pgbar->setMinimum(0);
     pgbar->setMaximum(newDownload.TotalSize);
     pgbar->setValue(newDownload.RecvSize);
@@ -188,20 +196,20 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
     auto FileID   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
     auto Received = tableWidget->item( tableWidget->currentRow(), 7 )->text();
 
-    auto MenuFile     = QMenu();
+    auto ctxMenu = QMenu();
     if(Received.compare("") == 0) {
-        MenuFile.addAction( "Sync file to client", this, &DownloadsWidget::actionSync);
-        MenuFile.addAction( "Delete file", this, &DownloadsWidget::actionDelete );
+        ctxMenu.addAction("Sync file to client", this, &DownloadsWidget::actionSync);
+        ctxMenu.addAction("Delete file", this, &DownloadsWidget::actionDelete );
     }
     else {
         if( tableWidget->cellWidget( tableWidget->currentRow(), 8)->isEnabled() )
-            MenuFile.addAction( "Stop", this, &DownloadsWidget::actionStop );
+            ctxMenu.addAction("Stop", this, &DownloadsWidget::actionStop );
         else
-            MenuFile.addAction( "Start", this, &DownloadsWidget::actionStart );
-        MenuFile.addAction( "Cancel", this, &DownloadsWidget::actionCancel );
+            ctxMenu.addAction("Start", this, &DownloadsWidget::actionStart );
+            ctxMenu.addAction("Cancel", this, &DownloadsWidget::actionCancel );
     }
 
-    MenuFile.exec( tableWidget->horizontalHeader()->viewport()->mapToGlobal( pos ) );
+    ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos ) );
 }
 
 void DownloadsWidget::actionSync()
@@ -216,8 +224,8 @@ void DownloadsWidget::actionSync()
         dataJson["file"] = fileId;
         QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-        QString sUrl = adaptixWidget->GetProfile().GetURL() + "/browser/download";
-        QJsonObject jsonObject = HttpReq(sUrl, jsonData, adaptixWidget->GetProfile().GetAccessToken());
+        QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/browser/download";
+        QJsonObject jsonObject = HttpReq(sUrl, jsonData, adaptixWidget->GetProfile()->GetAccessToken());
         if ( jsonObject.contains("message") && jsonObject.contains("ok") || jsonObject.contains("content") && jsonObject.contains("filename") && jsonObject.contains("ok") ) {
         }
         else {
@@ -269,7 +277,7 @@ void DownloadsWidget::actionDelete()
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqBrowserDownload("delete", fileId, adaptixWidget->GetProfile(), &message, &ok);
+        bool result = HttpReqBrowserDownload("delete", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
             MessageError("JWT error");
             return;
@@ -290,7 +298,7 @@ void DownloadsWidget::actionStart()
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqBrowserDownload("start", fileId, adaptixWidget->GetProfile(), &message, &ok);
+        bool result = HttpReqBrowserDownload("start", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
             MessageError("JWT error");
             return;
@@ -311,7 +319,7 @@ void DownloadsWidget::actionStop()
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqBrowserDownload("stop", fileId, adaptixWidget->GetProfile(), &message, &ok);
+        bool result = HttpReqBrowserDownload("stop", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
             MessageError("JWT error");
             return;
@@ -332,7 +340,7 @@ void DownloadsWidget::actionCancel()
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqBrowserDownload("cancel", fileId, adaptixWidget->GetProfile(), &message, &ok);
+        bool result = HttpReqBrowserDownload("cancel", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
             MessageError("JWT error");
             return;

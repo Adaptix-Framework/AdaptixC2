@@ -46,6 +46,14 @@ void ListenersWidget::createUI()
     mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
 }
 
+void ListenersWidget::Clear()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    adaptixWidget->Listeners.clear();
+    for (int index = tableWidget->rowCount(); index > 0; index-- )
+        tableWidget->removeRow(index -1 );
+}
+
 void ListenersWidget::AddListenerItem(ListenerData newListener )
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
@@ -190,7 +198,7 @@ void ListenersWidget::createListener()
 
     DialogListener dialogListener;
     dialogListener.AddExListeners( adaptixWidget->RegisterListenersUI );
-    dialogListener.SetProfile( adaptixWidget->GetProfile() );
+    dialogListener.SetProfile( *(adaptixWidget->GetProfile()) );
     dialogListener.Start();
 
     for( auto regLst : adaptixWidget->RegisterListenersUI ) {
@@ -224,7 +232,7 @@ void ListenersWidget::editListener()
     DialogListener dialogListener;
     dialogListener.SetEditMode(listenerName);
     dialogListener.AddExListeners(tmpRegisterListenersUI );
-    dialogListener.SetProfile( adaptixWidget->GetProfile() );
+    dialogListener.SetProfile( *(adaptixWidget->GetProfile()) );
     dialogListener.Start();
 
     tmpRegisterListenersUI[listenerType]->ClearWidget();
@@ -243,7 +251,7 @@ void ListenersWidget::removeListener()
 
     QString message = QString();
     bool ok = false;
-    bool result = HttpReqListenerStop( listenerName, listenerType, adaptixWidget->GetProfile(), &message, &ok );
+    bool result = HttpReqListenerStop( listenerName, listenerType, *(adaptixWidget->GetProfile()), &message, &ok );
     if( !result ){
         MessageError("JWT error");
         return;
@@ -279,7 +287,7 @@ void ListenersWidget::generateAgent()
 
     DialogAgent dialogAgent;
     dialogAgent.AddExAgents(tmpRegisterAgentsUI);
-    dialogAgent.SetProfile( adaptixWidget->GetProfile() );
+    dialogAgent.SetProfile( *(adaptixWidget->GetProfile()) );
     dialogAgent.Start();
 
     for( auto regAgent: tmpRegisterAgentsUI ) {
