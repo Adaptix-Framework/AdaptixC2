@@ -1,6 +1,6 @@
 #include <Client/WebSocketWorker.h>
 
-WebSocketWorker::WebSocketWorker(AuthProfile authProfile)
+WebSocketWorker::WebSocketWorker(AuthProfile* authProfile)
 {
     profile = authProfile;
 }
@@ -23,14 +23,20 @@ void WebSocketWorker::run()
     QObject::connect( webSocket, &QWebSocket::binaryMessageReceived, this, &WebSocketWorker::is_binaryMessageReceived );
 
     QString urlTemplate = "wss://%1:%2%3/connect";
-    QString sUrl = urlTemplate.arg( profile.GetHost() ).arg( profile.GetPort() ).arg( profile.GetEndpoint() );
+    QString sUrl = urlTemplate.arg( profile->GetHost() ).arg( profile->GetPort() ).arg( profile->GetEndpoint() );
     webSocket->open( sUrl );
 }
+
+void WebSocketWorker::SetProfile(AuthProfile* authProfile)
+{
+    profile = authProfile;
+}
+
 
 void WebSocketWorker::is_connected()
 {
     QJsonObject dataJson;
-    dataJson["access_token"] = profile.GetAccessToken();
+    dataJson["access_token"] = profile->GetAccessToken();
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     webSocket->sendBinaryMessage( jsonData );

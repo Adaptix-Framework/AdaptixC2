@@ -7,7 +7,7 @@ MainUI::MainUI()
         this->setObjectName( QString::fromUtf8( "MainUI" ) );
 }
 
-void MainUI::addNewProject(AuthProfile profile)
+void MainUI::addNewProject(AuthProfile* profile)
 {
     mainWidget = new AdaptixWidget(profile);
     this->setCentralWidget(mainWidget);

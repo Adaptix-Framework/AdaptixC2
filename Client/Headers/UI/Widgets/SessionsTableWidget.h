@@ -50,11 +50,18 @@ public:
     explicit SessionsTableWidget( QWidget* w );
     ~SessionsTableWidget();
 
+    void Clear();
     void AddAgentItem(Agent* newAgent);
+    void RemoveAgentItem(QString agentId);
 
 public slots:
     void handleTableDoubleClicked( const QModelIndex &index );
+    void handleSessionsTableMenu(const QPoint &pos );
 
+    void actionConsoleOpen();
+    void actionAgentTag();
+    void actionAgentHide();
+    void actionAgentRemove();
 };
 
 #endif //ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H

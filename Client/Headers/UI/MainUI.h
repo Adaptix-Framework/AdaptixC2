@@ -13,7 +13,7 @@ public:
     explicit MainUI();
     ~MainUI();
 
-    void addNewProject(AuthProfile profile);
+    void addNewProject(AuthProfile* profile);
 };
 
 #endif //ADAPTIXCLIENT_MAINUI_H

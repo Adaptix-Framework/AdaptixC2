@@ -22,6 +22,7 @@ public:
     ~LogsWidget();
 
      void AddLogs( int type, qint64 time, QString Message);
+     void Clear();
 };
 
 #endif //ADAPTIXCLIENT_LOGSWIDGET_H

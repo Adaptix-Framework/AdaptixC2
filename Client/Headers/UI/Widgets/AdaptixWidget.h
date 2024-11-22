@@ -41,7 +41,7 @@ Q_OBJECT
     QSpacerItem*    horizontalSpacer1 = nullptr;
     QStackedWidget* mainStackedWidget = nullptr;
 
-    AuthProfile       profile;
+    AuthProfile*      profile;
     DialogSyncPacket* dialogSyncPacket = nullptr;
 
     void createUI();
@@ -56,7 +56,7 @@ public:
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
-    DownloadsWidget*     DownloadsTab       = nullptr;
+    DownloadsWidget*     DownloadsTab      = nullptr;
 
     QMap<QString, Commander*>     RegisterAgentsCmd;
     QMap<QString, WidgetBuilder*> RegisterAgentsUI;
@@ -66,12 +66,13 @@ public:
     QMap<QString, DownloadData>   Downloads;
     QMap<QString, Agent*>         Agents;
 
-    explicit AdaptixWidget(AuthProfile authProfile);
+    explicit AdaptixWidget(AuthProfile* authProfile);
     ~AdaptixWidget();
 
-    AuthProfile GetProfile();
-    void        AddTab(QWidget* tab, QString title, QString icon = "" );
-    void        RemoveTab(int index);
+    AuthProfile* GetProfile();
+    void         ClearAdaptix();
+    void         AddTab(QWidget* tab, QString title, QString icon = "" );
+    void         RemoveTab(int index);
 
 public slots:
     void ChannelClose();
@@ -80,6 +81,7 @@ public slots:
     void LoadLogsUI();
     void LoadListenersUI();
     void LoadDownloadsUI();
+    void OnReconnect();
     void LoadConsoleUI(QString AgentId);
 };
 

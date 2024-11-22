@@ -16,18 +16,18 @@ MainAdaptix::~MainAdaptix()
 
 void MainAdaptix::Start()
 {
-    AuthProfile authProfile;
+    AuthProfile* authProfile;
     bool        result;
     auto dialogConnect = new DialogConnect();
 
     do {
         authProfile = dialogConnect->StartDialog();
-        if (!authProfile.valid) {
+        if ( !authProfile || !authProfile->valid) {
             this->Exit();
             return;
         }
 
-        result = HttpReqLogin(&authProfile);
+        result = HttpReqLogin( authProfile );
         if (!result) {
             MessageError("Login failure");
             continue;

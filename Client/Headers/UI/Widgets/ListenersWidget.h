@@ -17,6 +17,7 @@ public:
     explicit ListenersWidget( QWidget* w );
     ~ListenersWidget();
 
+    void Clear();
     void AddListenerItem(ListenerData newListener);
     void EditListenerItem(ListenerData newListener);
     void RemoveListenerItem(QString listenerName);

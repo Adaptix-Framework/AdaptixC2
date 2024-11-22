@@ -51,6 +51,20 @@ bool HttpReqLogin(AuthProfile* profile)
     return false;
 }
 
+bool HttpReqJwtUpdate(AuthProfile* profile)
+{
+    QJsonObject dataJson;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile->GetURL() + "/refresh";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile->GetRefreshToken());
+    if ( jsonObject.contains("access_token") ) {
+        profile->SetAccessToken( jsonObject["access_token"].toString() );
+        return true;
+    }
+    return false;
+}
+
 /// LISTENER
 
 bool HttpReqListenerStart(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok )

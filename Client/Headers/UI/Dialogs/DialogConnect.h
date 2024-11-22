@@ -38,7 +38,7 @@ public:
     ~DialogConnect() override;
     explicit DialogConnect();
 
-    AuthProfile StartDialog();
+    AuthProfile* StartDialog();
 
 private slots:
     void onButton_Connect();
