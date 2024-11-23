@@ -7,7 +7,7 @@ AgentConfig::AgentConfig()
 	exit_method         = 1;
 	download_chunk_size = 128000;
 	session_key         = (PBYTE)"\x0c\xff\x01\xb5\xfc\x46\x90\x57\x61\x98\x25\xe1\x87\x57\x21\x2e";
-	sleep_delay         = 5;
+	sleep_delay         = 2;
 	jitter_delay        = 0;
 
 	// HTTP Config

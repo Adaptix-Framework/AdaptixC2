@@ -206,7 +206,7 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
             ctxMenu.addAction("Stop", this, &DownloadsWidget::actionStop );
         else
             ctxMenu.addAction("Start", this, &DownloadsWidget::actionStart );
-            ctxMenu.addAction("Cancel", this, &DownloadsWidget::actionCancel );
+        ctxMenu.addAction("Cancel", this, &DownloadsWidget::actionCancel );
     }
 
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos ) );

@@ -436,6 +436,15 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			task.ClearText = path
 			break
 
+		case COMMAND_TERMINATE:
+			exitMethod := packer.ParseInt32()
+			if exitMethod == 1 {
+				task.Message = "The agent has completed its work (kill thread)"
+			} else if exitMethod == 2 {
+				task.Message = "The agent has completed its work (kill process)"
+			}
+			break
+
 		case COMMAND_UPLOAD:
 			task.Message = "File successfully uploaded"
 			break

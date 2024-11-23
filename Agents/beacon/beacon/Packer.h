@@ -25,6 +25,7 @@ public:
 	ULONG Unpack32();
 	BYTE* UnpackBytes(ULONG* size);
 
+	VOID  Clear();
 	PBYTE GetData();
 	ULONG GetDataSize();
 };

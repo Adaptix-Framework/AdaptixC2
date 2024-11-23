@@ -38,21 +38,21 @@ BOOL ApiLoad()
 
 	if (ApiWin) {
 		// kernel32
-		ApiWin->CopyFile = CopyFile;
-		ApiWin->CreateFile = CreateFile;
+		ApiWin->CopyFileA = CopyFileA;
+		ApiWin->CreateFileA = CreateFileA;
 		ApiWin->GetACP = GetACP;
-		ApiWin->GetComputerNameEx = GetComputerNameEx;
-		ApiWin->GetCurrentDirectory = GetCurrentDirectory;
+		ApiWin->GetComputerNameExA = GetComputerNameExA;
+		ApiWin->GetCurrentDirectoryA = GetCurrentDirectoryA;
 		ApiWin->GetFileSize = GetFileSize;
-		ApiWin->GetFullPathName = GetFullPathName;
+		ApiWin->GetFullPathNameA = GetFullPathNameA;
 		ApiWin->GetOEMCP = GetOEMCP;
-		ApiWin->GetModuleBaseName = GetModuleBaseNameA;
+		ApiWin->GetModuleBaseNameA = GetModuleBaseNameA;
 		ApiWin->GetModuleHandleW = GetModuleHandleW;
 		ApiWin->GetProcAddress = GetProcAddress;
 		ApiWin->GetTickCount = GetTickCount;
 		ApiWin->GetTokenInformation = GetTokenInformation;
 		ApiWin->GetTimeZoneInformation = GetTimeZoneInformation;
-		ApiWin->GetUserName = GetUserName;
+		ApiWin->GetUserNameA = GetUserNameA;
 		ApiWin->HeapAlloc = HeapAlloc;
 		ApiWin->HeapCreate = HeapCreate;
 		ApiWin->HeapDestroy = HeapDestroy;
@@ -62,7 +62,7 @@ BOOL ApiLoad()
 		ApiWin->LocalFree = LocalFree;
 		ApiWin->LocalReAlloc = LocalReAlloc;
 		ApiWin->ReadFile = ReadFile;
-		ApiWin->SetCurrentDirectory = SetCurrentDirectory;
+		ApiWin->SetCurrentDirectoryA = SetCurrentDirectoryA;
 		ApiWin->WriteFile = WriteFile;
 
 		// iphlpapi

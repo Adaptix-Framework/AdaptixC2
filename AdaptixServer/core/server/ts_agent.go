@@ -64,62 +64,6 @@ func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, mess
 	ts.TsSyncSavePacket(packet.store, packet)
 }
 
-func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error {
-	var (
-		err         error
-		agentObject bytes.Buffer
-		messageInfo string
-		agent       *Agent
-		taskData    TaskData
-		data        []byte
-	)
-
-	if ts.agent_configs.Contains(agentName) {
-
-		value, ok := ts.agents.Get(agentId)
-		if ok {
-
-			agent, _ = value.(*Agent)
-			_ = json.NewEncoder(&agentObject).Encode(agent.Data)
-
-			data, messageInfo, err = ts.Extender.ExAgentCommand(agentName, agentObject.Bytes(), args)
-			if err != nil {
-				return err
-			}
-
-			err = json.Unmarshal(data, &taskData)
-			if err != nil {
-				return err
-			}
-
-			if taskData.TaskId == "" {
-				taskData.TaskId, _ = krypt.GenerateUID(8)
-			}
-			taskData.CommandLine = cmdline
-			taskData.AgentId = agentId
-			taskData.User = username
-			taskData.StartDate = time.Now().Unix()
-
-			agent.TasksQueue.Put(taskData)
-
-			packet := CreateSpAgentTaskCreate(taskData)
-			ts.TsSyncAllClients(packet)
-			ts.TsSyncSavePacket(packet.store, packet)
-
-			if len(messageInfo) > 0 {
-				ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, messageInfo, "")
-			}
-
-		} else {
-			return fmt.Errorf("agent '%v' does not exist", agentId)
-		}
-	} else {
-		return fmt.Errorf("agent %v not registered", agentName)
-	}
-
-	return nil
-}
-
 func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error) {
 	var (
 		agentName      string
@@ -202,4 +146,73 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 	}
 
 	return respData, nil
+}
+
+func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error {
+	var (
+		err         error
+		agentObject bytes.Buffer
+		messageInfo string
+		agent       *Agent
+		taskData    TaskData
+		data        []byte
+	)
+
+	if ts.agent_configs.Contains(agentName) {
+
+		value, ok := ts.agents.Get(agentId)
+		if ok {
+
+			agent, _ = value.(*Agent)
+			_ = json.NewEncoder(&agentObject).Encode(agent.Data)
+
+			data, messageInfo, err = ts.Extender.ExAgentCommand(agentName, agentObject.Bytes(), args)
+			if err != nil {
+				return err
+			}
+
+			err = json.Unmarshal(data, &taskData)
+			if err != nil {
+				return err
+			}
+
+			if taskData.TaskId == "" {
+				taskData.TaskId, _ = krypt.GenerateUID(8)
+			}
+			taskData.CommandLine = cmdline
+			taskData.AgentId = agentId
+			taskData.User = username
+			taskData.StartDate = time.Now().Unix()
+
+			agent.TasksQueue.Put(taskData)
+
+			packet := CreateSpAgentTaskCreate(taskData)
+			ts.TsSyncAllClients(packet)
+			ts.TsSyncSavePacket(packet.store, packet)
+
+			if len(messageInfo) > 0 {
+				ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, messageInfo, "")
+			}
+
+		} else {
+			return fmt.Errorf("agent '%v' does not exist", agentId)
+		}
+	} else {
+		return fmt.Errorf("agent %v not registered", agentName)
+	}
+
+	return nil
+}
+
+func (ts *Teamserver) TsAgentRemove(agentId string) error {
+	_, ok := ts.agents.GetDelete(agentId)
+	if !ok {
+		return fmt.Errorf("agent '%v' does not exist", agentId)
+	}
+
+	packet := CreateSpAgentRemove(agentId)
+	ts.TsSyncAllClients(packet)
+	ts.TsSyncSavePacket(packet.store, packet)
+
+	return nil
 }

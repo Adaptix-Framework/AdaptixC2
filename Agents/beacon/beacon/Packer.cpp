@@ -110,6 +110,14 @@ ULONG Packer::GetDataSize()
     return this->index;
 }
 
+VOID Packer::Clear()
+{
+    MemFreeLocal((LPVOID*)&this->buffer, this->size);
+    this->index = 0;
+    this->size  = 4;
+    this->buffer = (BYTE*) MemAllocLocal(4);
+}
+
 ULONG Packer::Unpack32()
 {
     ULONG value = 0;
