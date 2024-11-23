@@ -78,6 +78,7 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 	BOOL  result  = FALSE;
 	DWORD context = 0;
 	BYTE* recv    = NULL;
+	*recv_size    = 0;
 
 
 	if(!hInternet)

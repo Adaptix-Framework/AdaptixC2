@@ -41,7 +41,6 @@ void ListenersWidget::createUI()
     tableWidget->setHorizontalHeaderItem( 6, new QTableWidgetItem( "Status" ) );
 
     mainGridLayout = new QGridLayout( this );
-    mainGridLayout->setObjectName( QString::fromUtf8( "MainLayoutListeners" ) );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
     mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
 }

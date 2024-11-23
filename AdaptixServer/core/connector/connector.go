@@ -20,10 +20,10 @@ type Teamserver interface {
 	TsListenerEdit(listenerName string, configType string, config string) error
 	TsListenerStop(listenerName string, configType string) error
 
-	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
 	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
 	TsAgentUpdateData(newAgentObject []byte) error
+	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
 
 	TsTaskQueueAddQuite(agentId string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)

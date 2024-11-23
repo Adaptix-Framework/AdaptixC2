@@ -100,5 +100,14 @@
         "example": "terminate process"
       }
     ]
+  },
+  {
+    "command": "upload",
+    "description": "Upload a file",
+    "example": "upload /tmp/file.txt c:\\\\file.txt",
+    "args": [
+      "FILE <local_file>",
+      "STRING <remote_path>"
+    ]
   }
 ]

