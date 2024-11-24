@@ -69,6 +69,7 @@
 #define TYPE_AGENT_TASK_UPDATE 0x45
 #define TYPE_AGENT_CONSOLE_OUT 0x46
 #define TYPE_AGENT_UPDATE      0x47
+#define TYPE_AGENT_REMOVE      0x48
 
 #define TYPE_DOWNLOAD_CREATE 0x51
 #define TYPE_DOWNLOAD_UPDATE 0x52
@@ -129,7 +130,7 @@ typedef struct AgentData
     QString     Domain;
     QString     Computer;
     QString     Username;
-    QStringList Tags;
+    QString     Tags;
     int         LastTick;
 } AgentData;
 

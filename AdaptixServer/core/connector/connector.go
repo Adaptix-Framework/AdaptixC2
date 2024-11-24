@@ -24,6 +24,8 @@ type Teamserver interface {
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
+	TsAgentRemove(agentId string) error
+	TsAgentSetTag(agentId string, tag string) error
 
 	TsTaskQueueAddQuite(agentId string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
@@ -86,6 +88,8 @@ func NewTsConnector(ts Teamserver, p profile.TsProfile) (*TsConnector, error) {
 	connector.Engine.POST(p.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(), connector.TcListenerStop)
 
 	connector.Engine.POST(p.Endpoint+"/agent/command", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentCommand)
+	connector.Engine.POST(p.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentRemove)
+	connector.Engine.POST(p.Endpoint+"/agent/settag", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentSetTag)
 
 	connector.Engine.POST(p.Endpoint+"/browser/download", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDownload)
 

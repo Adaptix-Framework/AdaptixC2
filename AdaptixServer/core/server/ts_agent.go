@@ -49,7 +49,6 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 	agent.Data.Jitter = newAgentData.Jitter
 	agent.Data.Elevated = newAgentData.Elevated
 	agent.Data.Username = newAgentData.Username
-	agent.Data.Tags = newAgentData.Tags
 
 	packetNew := CreateSpAgentUpdate(agent.Data)
 	ts.TsSyncAllClients(packetNew)
@@ -102,9 +101,7 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 		agentData.ExternalIP = ExternalIP
 		agentData.CreateTime = time.Now().Unix()
 		agentData.LastTick = int(time.Now().Unix())
-		if len(agentData.Tags) == 0 {
-			agentData.Tags = []string{}
-		}
+		agentData.Tags = ""
 
 		agent = &Agent{
 			Data:        agentData,
@@ -213,6 +210,22 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	packet := CreateSpAgentRemove(agentId)
 	ts.TsSyncAllClients(packet)
 	ts.TsSyncSavePacket(packet.store, packet)
+
+	return nil
+}
+
+func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return errors.New("Agent does not exist")
+	}
+
+	agent, _ := value.(*Agent)
+	agent.Data.Tags = tag
+
+	packetNew := CreateSpAgentUpdate(agent.Data)
+	ts.TsSyncAllClients(packetNew)
+	ts.TsSyncSavePacket(packetNew.store, packetNew)
 
 	return nil
 }

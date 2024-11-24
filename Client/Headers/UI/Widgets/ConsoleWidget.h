@@ -24,7 +24,13 @@ class ConsoleWidget : public QWidget
     Agent*     agent     = nullptr;
     Commander* commander = nullptr;
 
+    QStringList history = QStringList();
+    int historyIndex = -1;
+
     void createUI();
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 public:
     explicit ConsoleWidget(Agent* a, Commander* c);

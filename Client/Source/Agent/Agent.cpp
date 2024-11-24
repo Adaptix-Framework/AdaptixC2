@@ -24,14 +24,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     data.Computer   = jsonObjAgentData["a_computer"].toString();
     data.Username   = jsonObjAgentData["a_username"].toString();
     data.LastTick   = jsonObjAgentData["a_last_tick"].toDouble();
-
-    QJsonArray tagsArray = jsonObjAgentData["a_tags"].toArray();
-    QStringList tags;
-    for (const QJsonValue &value : tagsArray) {
-        if (value.isString()) {
-            data.Tags.append(value.toString());
-        }
-    }
+    data.Tags       = jsonObjAgentData["a_tags"].toString();
 
     auto username = data.Username;
     if ( data.Elevated )
@@ -55,7 +48,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     item_Process  = new TableWidgetItemAgent( data.Process, this );
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
     item_Tid      = new TableWidgetItemAgent( data.Tid, this );
-    item_Tags     = new TableWidgetItemAgent( "", this );
+    item_Tags     = new TableWidgetItemAgent( data.Tags, this );
     item_Last     = new TableWidgetItemAgent( last, this );
     item_Sleep    = new TableWidgetItemAgent( sleep, this );
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
@@ -69,14 +62,7 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     data.Jitter   = jsonObjAgentData["a_jitter"].toDouble();
     data.Elevated = jsonObjAgentData["a_elevated"].toBool();
     data.Username = jsonObjAgentData["a_username"].toString();
-
-    QJsonArray tagsArray = jsonObjAgentData["a_tags"].toArray();
-    QStringList tags;
-    for (const QJsonValue &value : tagsArray) {
-        if (value.isString()) {
-            data.Tags.append(value.toString());
-        }
-    }
+    data.Tags     = jsonObjAgentData["a_tags"].toString();
 
     auto username = data.Username;
     if ( data.Elevated )
@@ -85,7 +71,7 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     auto sleep = QString("%1 (%2%)").arg( FormatSecToStr(data.Sleep) ).arg(data.Jitter);
 
     item_Username->setText(username);
-    item_Tags->setText("");
+    item_Tags->setText(data.Tags);
     item_Sleep->setText(sleep);
 }
 
