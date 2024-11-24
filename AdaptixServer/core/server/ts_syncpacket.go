@@ -27,6 +27,7 @@ const (
 	TYPE_AGENT_TASK_UPDATE = 0x45
 	TYPE_AGENT_CONSOLE_OUT = 0x46
 	TYPE_AGENT_UPDATE      = 0x47
+	TYPE_AGENT_REMOVE      = 0x48
 
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
@@ -225,6 +226,15 @@ func CreateSpAgentTaskUpdate(taskData TaskData) SyncPackerAgentTaskUpdate {
 		Message:     taskData.Message,
 		Text:        taskData.ClearText,
 		Completed:   taskData.Completed,
+	}
+}
+
+func CreateSpAgentRemove(agentId string) SyncPackerAgentRemove {
+	return SyncPackerAgentRemove{
+		store:  STORE_LOG,
+		SpType: TYPE_AGENT_REMOVE,
+
+		AgentId: agentId,
 	}
 }
 

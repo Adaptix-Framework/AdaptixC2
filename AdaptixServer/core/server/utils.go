@@ -66,32 +66,32 @@ type ListenerData struct {
 }
 
 type AgentData struct {
-	Crc        string   `json:"a_crc"`
-	Id         string   `json:"a_id"`
-	Name       string   `json:"a_name"`
-	SessionKey []byte   `json:"a_session_key"`
-	Listener   string   `json:"a_listener"`
-	Async      bool     `json:"a_async"`
-	ExternalIP string   `json:"a_external_ip"`
-	InternalIP string   `json:"a_internal_ip"`
-	GmtOffset  int      `json:"a_gmt_offset"`
-	Sleep      uint     `json:"a_sleep"`
-	Jitter     uint     `json:"a_jitter"`
-	Pid        string   `json:"a_pid"`
-	Tid        string   `json:"a_tid"`
-	Arch       string   `json:"a_arch"`
-	Elevated   bool     `json:"a_elevated"`
-	Process    string   `json:"a_process"`
-	Os         int      `json:"a_os"`
-	OsDesc     string   `json:"a_os_desc"`
-	Domain     string   `json:"a_domain"`
-	Computer   string   `json:"a_computer"`
-	Username   string   `json:"a_username"`
-	OemCP      int      `json:"a_oemcp"`
-	ACP        int      `json:"a_acp"`
-	CreateTime int64    `json:"a_create_time"`
-	LastTick   int      `json:"a_last_tick"`
-	Tags       []string `json:"a_tags"`
+	Crc        string `json:"a_crc"`
+	Id         string `json:"a_id"`
+	Name       string `json:"a_name"`
+	SessionKey []byte `json:"a_session_key"`
+	Listener   string `json:"a_listener"`
+	Async      bool   `json:"a_async"`
+	ExternalIP string `json:"a_external_ip"`
+	InternalIP string `json:"a_internal_ip"`
+	GmtOffset  int    `json:"a_gmt_offset"`
+	Sleep      uint   `json:"a_sleep"`
+	Jitter     uint   `json:"a_jitter"`
+	Pid        string `json:"a_pid"`
+	Tid        string `json:"a_tid"`
+	Arch       string `json:"a_arch"`
+	Elevated   bool   `json:"a_elevated"`
+	Process    string `json:"a_process"`
+	Os         int    `json:"a_os"`
+	OsDesc     string `json:"a_os_desc"`
+	Domain     string `json:"a_domain"`
+	Computer   string `json:"a_computer"`
+	Username   string `json:"a_username"`
+	OemCP      int    `json:"a_oemcp"`
+	ACP        int    `json:"a_acp"`
+	CreateTime int64  `json:"a_create_time"`
+	LastTick   int    `json:"a_last_tick"`
+	Tags       string `json:"a_tags"`
 }
 
 type TaskData struct {
@@ -202,39 +202,39 @@ type SyncPackerAgentNew struct {
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`
 
-	Id         string   `json:"a_id"`
-	Name       string   `json:"a_name"`
-	Listener   string   `json:"a_listener"`
-	Async      bool     `json:"a_async"`
-	ExternalIP string   `json:"a_external_ip"`
-	InternalIP string   `json:"a_internal_ip"`
-	GmtOffset  int      `json:"a_gmt_offset"`
-	Sleep      uint     `json:"a_sleep"`
-	Jitter     uint     `json:"a_jitter"`
-	Pid        string   `json:"a_pid"`
-	Tid        string   `json:"a_tid"`
-	Arch       string   `json:"a_arch"`
-	Elevated   bool     `json:"a_elevated"`
-	Process    string   `json:"a_process"`
-	Os         int      `json:"a_os"`
-	OsDesc     string   `json:"a_os_desc"`
-	Domain     string   `json:"a_domain"`
-	Computer   string   `json:"a_computer"`
-	Username   string   `json:"a_username"`
-	LastTick   int      `json:"a_last_tick"`
-	Tags       []string `json:"a_tags"`
+	Id         string `json:"a_id"`
+	Name       string `json:"a_name"`
+	Listener   string `json:"a_listener"`
+	Async      bool   `json:"a_async"`
+	ExternalIP string `json:"a_external_ip"`
+	InternalIP string `json:"a_internal_ip"`
+	GmtOffset  int    `json:"a_gmt_offset"`
+	Sleep      uint   `json:"a_sleep"`
+	Jitter     uint   `json:"a_jitter"`
+	Pid        string `json:"a_pid"`
+	Tid        string `json:"a_tid"`
+	Arch       string `json:"a_arch"`
+	Elevated   bool   `json:"a_elevated"`
+	Process    string `json:"a_process"`
+	Os         int    `json:"a_os"`
+	OsDesc     string `json:"a_os_desc"`
+	Domain     string `json:"a_domain"`
+	Computer   string `json:"a_computer"`
+	Username   string `json:"a_username"`
+	LastTick   int    `json:"a_last_tick"`
+	Tags       string `json:"a_tags"`
 }
 
 type SyncPackerAgentUpdate struct {
 	store  string
 	SpType int `json:"type"`
 
-	Id       string   `json:"a_id"`
-	Sleep    uint     `json:"a_sleep"`
-	Jitter   uint     `json:"a_jitter"`
-	Elevated bool     `json:"a_elevated"`
-	Username string   `json:"a_username"`
-	Tags     []string `json:"a_tags"`
+	Id       string `json:"a_id"`
+	Sleep    uint   `json:"a_sleep"`
+	Jitter   uint   `json:"a_jitter"`
+	Elevated bool   `json:"a_elevated"`
+	Username string `json:"a_username"`
+	Tags     string `json:"a_tags"`
 }
 
 type SyncPackerAgentTick struct {
@@ -281,6 +281,13 @@ type SyncPackerAgentTaskUpdate struct {
 	Message     string `json:"a_message"`
 	Text        string `json:"a_text"`
 	Completed   bool   `json:"a_completed"`
+}
+
+type SyncPackerAgentRemove struct {
+	store  string
+	SpType int `json:"type"`
+
+	AgentId string `json:"a_id"`
 }
 
 /// DOWNLOAD

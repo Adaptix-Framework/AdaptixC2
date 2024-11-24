@@ -1,5 +1,6 @@
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <Utils/Convert.h>
+#include <Client/Requestor.h>
 
 SessionsTableWidget::SessionsTableWidget( QWidget* w )
 {
@@ -182,14 +183,28 @@ void SessionsTableWidget::actionConsoleOpen()
 
 void SessionsTableWidget::actionAgentTag()
 {
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
+    QString agentId = tableWidget->item( tableWidget->currentRow(), ColumnAgentID )->text();
+    QString tag = tableWidget->item( tableWidget->currentRow(), ColumnTags )->text();
+
+    bool inputOk;
+    QString newTag = QInputDialog::getText(nullptr, "Set tags", "Tag for " + agentId, QLineEdit::Normal,tag, &inputOk);
+    if (inputOk && !newTag.isEmpty()) {
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqAgentSetTag(agentId, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            MessageError("JWT error");
+            return;
+        }
+    }
 }
 
 void SessionsTableWidget::actionAgentHide()
 {
     QList<QString> listId;
 
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -203,5 +218,23 @@ void SessionsTableWidget::actionAgentHide()
 
 void SessionsTableWidget::actionAgentRemove()
 {
+    QList<QString> listId;
 
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            listId.append(agentId);
+        }
+    }
+
+    for (auto id : listId) {
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqAgentRemove(id, *(adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            MessageError("JWT error");
+            return;
+        }
+    }
 }

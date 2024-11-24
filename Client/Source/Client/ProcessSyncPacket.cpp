@@ -159,7 +159,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("a_username") || !jsonObj["a_username"].isString() ) {
             return false;
         }
-        if ( !jsonObj.contains("a_tags") || !jsonObj["a_tags"].isArray() ) {
+        if ( !jsonObj.contains("a_tags") || !jsonObj["a_tags"].isString() ) {
             return false;
         }
         if ( !jsonObj.contains("a_last_tick") || !jsonObj["a_last_tick"].isDouble() ) {
@@ -211,7 +211,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("a_username") || !jsonObj["a_username"].isString() ) {
             return false;
         }
-        if ( !jsonObj.contains("a_tags") || !jsonObj["a_tags"].isArray() ) {
+        if ( !jsonObj.contains("a_tags") || !jsonObj["a_tags"].isString() ) {
             return false;
         }
         return true;
@@ -268,6 +268,13 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
             return false;
         }
         if (!jsonObj.contains("a_completed") || !jsonObj["a_completed"].isBool()) {
+            return false;
+        }
+        return true;
+    }
+
+    if(spType == TYPE_AGENT_REMOVE ) {
+        if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
             return false;
         }
         return true;
@@ -524,6 +531,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             Agents[agentId]->Console->ConsoleOutputMessage( time, taskId, msgType, message, text, completed );
 
         return;
+    }
+    if( spType == TYPE_AGENT_REMOVE )
+    {
+        QString agentId = jsonObj["a_id"].toString();
+
+        SessionsTablePage->RemoveAgentItem(agentId);
     }
 
     if(spType == TYPE_DOWNLOAD_CREATE )
