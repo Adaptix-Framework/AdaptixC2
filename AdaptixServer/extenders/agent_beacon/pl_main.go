@@ -107,6 +107,13 @@ type TaskData struct {
 	Sync        bool        `json:"t_sync"`
 }
 
+type ListingFileData struct {
+	IsDir    bool   `json:"l_is_dir"`
+	Size     uint64 `json:"l_size"`
+	Date     uint64 `json:"l_date"`
+	Filename string `json:"l_filename"`
+}
+
 var ModuleObject ModuleExtender
 var ModulePath string
 var MaxTaskDataSize int

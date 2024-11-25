@@ -1,5 +1,7 @@
 package tformat
 
+import "fmt"
+
 const (
 	Reset = "\033[0m"
 
@@ -19,4 +21,25 @@ func SetColor(color string, text string) string {
 
 func SetBold(text string) string {
 	return Bold + text + Reset
+}
+
+func SizeBytesToFormat(bytes uint64) string {
+	const (
+		KB = 1024.0
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+
+	size := float64(bytes)
+
+	if size >= GB {
+		return fmt.Sprintf("%.2f Gb", size/GB)
+	} else if size >= MB {
+		return fmt.Sprintf("%.2f Mb", size/MB)
+	} else if size >= 1000 {
+		return fmt.Sprintf("%.2f Kb", size/KB)
+	} else {
+		return fmt.Sprintf("%v bytes", size)
+
+	}
 }

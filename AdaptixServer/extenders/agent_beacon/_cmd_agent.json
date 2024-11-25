@@ -56,6 +56,14 @@
     ]
   },
   {
+    "command": "ls",
+    "description": "Lists files in a folder",
+    "example": "ls c:\\users",
+    "args": [
+      "STRING [directory]"
+    ]
+  },
+  {
     "command": "profile",
     "description": "Configure the payloads profile for current session",
     "subcommands":

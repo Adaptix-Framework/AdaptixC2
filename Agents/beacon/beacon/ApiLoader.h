@@ -17,6 +17,9 @@ struct WINAPIFUNC
 	// kernel32
 	DECL_API(CopyFileA);
 	DECL_API(CreateFileA);
+	DECL_API(FindClose);
+	DECL_API(FindFirstFileA);
+	DECL_API(FindNextFileA);
 	DECL_API(GetACP);
 	DECL_API(GetComputerNameExA);
 	DECL_API(GetCurrentDirectoryA);

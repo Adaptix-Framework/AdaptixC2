@@ -75,6 +75,24 @@ func (p *Packer) ParseInt32() uint {
 	return uint(binary.BigEndian.Uint32(value))
 }
 
+func (p *Packer) ParseInt64() uint64 {
+	var value = make([]byte, 8)
+
+	if p.Size() >= 8 {
+		if p.Size() == 8 {
+			copy(value, p.buffer[:p.Size()])
+			p.buffer = []byte{}
+		} else {
+			copy(value, p.buffer[:8])
+			p.buffer = p.buffer[8:]
+		}
+	} else {
+		return 0
+	}
+
+	return binary.BigEndian.Uint64(value)
+}
+
 func (p *Packer) ParseBytes() []byte {
 	size := p.ParseInt32()
 
@@ -127,6 +145,16 @@ func PackArray(array []interface{}) ([]byte, error) {
 			val := array[i].(int)
 			binary.LittleEndian.PutUint32(num, uint32(val))
 			packData = append(packData, num...)
+			break
+
+		case bool:
+			b := array[i].(bool)
+			var bt = make([]byte, 1)
+			bt[0] = 0
+			if b {
+				bt[0] = 1
+			}
+			packData = append(packData, bt...)
 			break
 
 		default:
