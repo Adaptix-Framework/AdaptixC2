@@ -138,3 +138,14 @@ DWORD StrLenA(CHAR* str)
         for (; str[i]; i++);
     return i;
 }
+
+ULONG FileTimeToUnixTimestamp(FILETIME ft) 
+{
+    ULARGE_INTEGER uli;
+    uli.LowPart = ft.dwLowDateTime;
+    uli.HighPart = ft.dwHighDateTime;
+
+    const ULONG64 EPOCH_DIFFERENCE = 11644473600ULL;
+
+    return (uli.QuadPart / 10000000ULL) - EPOCH_DIFFERENCE;
+}

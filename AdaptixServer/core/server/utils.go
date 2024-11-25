@@ -124,6 +124,13 @@ type DownloadData struct {
 	File       *os.File
 }
 
+type ListingFileData struct {
+	IsDir    bool   `json:"l_is_dir"`
+	Size     int64  `json:"l_size"`
+	Date     int64  `json:"l_date"`
+	Filename string `json:"l_filename"`
+}
+
 // SyncPacket
 
 type SyncPackerStart struct {

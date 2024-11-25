@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/transform"
 	"io"
@@ -13,8 +14,10 @@ const (
 	COMMAND_CD        = 8
 	COMMAND_DOWNLOAD  = 32
 	COMMAND_EXFIL     = 35
-	COMMAND_PWD       = 4
+	COMMAND_LS        = 14
+	COMMAND_PS        = 41
 	COMMAND_PROFILE   = 21
+	COMMAND_PWD       = 4
 	COMMAND_TERMINATE = 10
 	COMMAND_UPLOAD    = 33
 
@@ -1003,4 +1006,22 @@ func int32ToIPv4(ip uint) string {
 		byte(ip >> 24),
 	}
 	return net.IP(bytes).String()
+}
+
+func SizeBytesToFormat(bytes uint64) string {
+	const (
+		KB = 1024.0
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+
+	size := float64(bytes)
+
+	if size >= GB {
+		return fmt.Sprintf("%.2f Gb", size/GB)
+	} else if size >= MB {
+		return fmt.Sprintf("%.2f Mb", size/MB)
+	} else {
+		return fmt.Sprintf("%.2f Kb", size/KB)
+	}
 }

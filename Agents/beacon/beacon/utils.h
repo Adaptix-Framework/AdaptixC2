@@ -25,3 +25,5 @@ CHAR* _GetDomainName();
 CHAR* _GetProcessName();
 
 DWORD StrLenA(CHAR* str);
+
+ULONG FileTimeToUnixTimestamp(FILETIME ft);

@@ -4,6 +4,7 @@ import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/safe"
+	"AdaptixServer/core/utils/tformat"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -138,7 +139,7 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 			return nil, err
 		}
 
-		message := fmt.Sprintf("Agent called server, sent [%v] bytes", len(respData))
+		message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
 		ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "")
 	}
 

@@ -40,6 +40,9 @@ BOOL ApiLoad()
 		// kernel32
 		ApiWin->CopyFileA = CopyFileA;
 		ApiWin->CreateFileA = CreateFileA;
+		ApiWin->FindClose = FindClose;
+		ApiWin->FindFirstFileA = FindFirstFileA;
+		ApiWin->FindNextFileA = FindNextFileA;
 		ApiWin->GetACP = GetACP;
 		ApiWin->GetComputerNameExA = GetComputerNameExA;
 		ApiWin->GetCurrentDirectoryA = GetCurrentDirectoryA;
