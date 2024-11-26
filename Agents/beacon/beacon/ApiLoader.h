@@ -30,7 +30,7 @@ struct WINAPIFUNC
 	DECL_API(GetModuleHandleW);
 	DECL_API(GetProcAddress);
 	DECL_API(GetTickCount);
-	DECL_API(GetTokenInformation);
+	//DECL_API(GetTokenInformation);
 	DECL_API(GetTimeZoneInformation);
 	DECL_API(GetUserNameA);
 	DECL_API(HeapAlloc);
@@ -43,16 +43,24 @@ struct WINAPIFUNC
 	DECL_API(LocalReAlloc);
 	DECL_API(ReadFile);
 	DECL_API(SetCurrentDirectoryA);
+	DECL_API(WideCharToMultiByte);
 	DECL_API(WriteFile);
 	
 	// iphlpapi
 	DECL_API(GetAdaptersInfo);
+
+	// advapi32
+	DECL_API(GetTokenInformation);
+	DECL_API(LookupAccountSidA);
+
 };
 
 struct NTAPIFUNC
 {
 	DECL_API(NtClose);
+	DECL_API(NtQueryInformationProcess);
 	DECL_API(NtQuerySystemInformation);
+	DECL_API(NtOpenProcess);
 	DECL_API(NtOpenProcessToken);
 	DECL_API(RtlGetVersion);
 	DECL_API(RtlIpv4StringToAddressA);

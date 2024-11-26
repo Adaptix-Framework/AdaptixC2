@@ -114,6 +114,15 @@ type ListingFileData struct {
 	Filename string `json:"l_filename"`
 }
 
+type ListingProcessData struct {
+	Pid         uint   `json:"l_pid"`
+	Ppid        uint   `json:"l_ppid"`
+	SessionId   uint   `json:"l_session_id"`
+	Arch        string `json:"l_arch"`
+	Context     string `json:"l_context"`
+	ProcessName string `json:"l_process_name"`
+}
+
 var ModuleObject ModuleExtender
 var ModulePath string
 var MaxTaskDataSize int

@@ -9,6 +9,7 @@
 #define COMMAND_PWD       4
 #define COMMAND_LS		  14
 #define COMMAND_PROFILE   21
+#define COMMAND_PS_LIST   41
 #define COMMAND_TERMINATE 10
 #define COMMAND_UPLOAD    33
 
@@ -33,6 +34,7 @@ public:
 	void CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker);
 

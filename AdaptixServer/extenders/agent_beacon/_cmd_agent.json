@@ -79,6 +79,18 @@
     ]
   },
   {
+    "command": "ps",
+    "description": "Process manager",
+    "subcommands":
+    [
+      {
+        "name": "list",
+        "description": "Show process list",
+        "example": "ps list"
+      }
+    ]
+  },
+  {
     "command": "pwd",
     "description": "Print current working directory",
     "example": "pwd"

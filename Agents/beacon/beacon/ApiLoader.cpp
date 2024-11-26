@@ -53,7 +53,7 @@ BOOL ApiLoad()
 		ApiWin->GetModuleHandleW = GetModuleHandleW;
 		ApiWin->GetProcAddress = GetProcAddress;
 		ApiWin->GetTickCount = GetTickCount;
-		ApiWin->GetTokenInformation = GetTokenInformation;
+		//ApiWin->GetTokenInformation = GetTokenInformation;
 		ApiWin->GetTimeZoneInformation = GetTimeZoneInformation;
 		ApiWin->GetUserNameA = GetUserNameA;
 		ApiWin->HeapAlloc = HeapAlloc;
@@ -66,12 +66,20 @@ BOOL ApiLoad()
 		ApiWin->LocalReAlloc = LocalReAlloc;
 		ApiWin->ReadFile = ReadFile;
 		ApiWin->SetCurrentDirectoryA = SetCurrentDirectoryA;
+		ApiWin->WideCharToMultiByte = WideCharToMultiByte;
 		ApiWin->WriteFile = WriteFile;
 
 		// iphlpapi
 		HMODULE hIphlpapiModule = LoadLibraryW(L"Iphlpapi.dll");
 		if (hIphlpapiModule) {
 			ApiWin->GetAdaptersInfo = (decltype(GetAdaptersInfo)*)ApiWin->GetProcAddress(hIphlpapiModule, "GetAdaptersInfo");
+		}
+
+		// advapi32
+		HMODULE hAdvapiModule = LoadLibraryW(L"Advapi32.dll");
+		if (hAdvapiModule) {
+			ApiWin->GetTokenInformation = (decltype(GetTokenInformation)*)ApiWin->GetProcAddress(hAdvapiModule, "GetTokenInformation");
+			ApiWin->LookupAccountSidA   = (decltype(LookupAccountSidA)*)ApiWin->GetProcAddress(hAdvapiModule, "LookupAccountSidA");
 		}
 	}
 	else {
@@ -81,12 +89,14 @@ BOOL ApiLoad()
 	if (ApiNt) {
 		HMODULE hNtdllModule = ApiWin->GetModuleHandleW(L"ntdll.dll");
 		if ( hNtdllModule ) {
-			ApiNt->NtClose                  = (decltype(NtClose)*) ApiWin->GetProcAddress(hNtdllModule, "NtClose");
-			ApiNt->NtQuerySystemInformation = (decltype(NtQuerySystemInformation)*) ApiWin->GetProcAddress(hNtdllModule, "NtQuerySystemInformation");
-			ApiNt->NtOpenProcessToken       = (decltype(NtOpenProcessToken)*) ApiWin->GetProcAddress(hNtdllModule, "NtOpenProcessToken");
-			ApiNt->RtlGetVersion            = (decltype(RtlGetVersion)*) ApiWin->GetProcAddress(hNtdllModule, "RtlGetVersion");
-			ApiNt->RtlIpv4StringToAddressA  = (decltype(RtlIpv4StringToAddressA)*) ApiWin->GetProcAddress(hNtdllModule, "RtlIpv4StringToAddressA");
-			ApiNt->RtlRandomEx              = (decltype(RtlRandomEx)*) ApiWin->GetProcAddress(hNtdllModule, "RtlRandomEx");
+			ApiNt->NtClose                   = (decltype(NtClose)*) ApiWin->GetProcAddress(hNtdllModule, "NtClose");
+			ApiNt->NtQueryInformationProcess = (decltype(NtQueryInformationProcess)*) ApiWin->GetProcAddress(hNtdllModule, "NtQueryInformationProcess");
+			ApiNt->NtQuerySystemInformation  = (decltype(NtQuerySystemInformation)*) ApiWin->GetProcAddress(hNtdllModule, "NtQuerySystemInformation");
+			ApiNt->NtOpenProcess             = (decltype(NtOpenProcess)*) ApiWin->GetProcAddress(hNtdllModule, "NtOpenProcess");
+			ApiNt->NtOpenProcessToken        = (decltype(NtOpenProcessToken)*) ApiWin->GetProcAddress(hNtdllModule, "NtOpenProcessToken");
+			ApiNt->RtlGetVersion             = (decltype(RtlGetVersion)*) ApiWin->GetProcAddress(hNtdllModule, "RtlGetVersion");
+			ApiNt->RtlIpv4StringToAddressA   = (decltype(RtlIpv4StringToAddressA)*) ApiWin->GetProcAddress(hNtdllModule, "RtlIpv4StringToAddressA");
+			ApiNt->RtlRandomEx               = (decltype(RtlRandomEx)*) ApiWin->GetProcAddress(hNtdllModule, "RtlRandomEx");
 		}
 		else {
 			return FALSE;

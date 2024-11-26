@@ -246,6 +246,13 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		}
 		break
 
+	case "ps":
+		if subcommand == "list" {
+			messageInfo = "Task: show process list"
+			array = []interface{}{COMMAND_PS_LIST}
+		}
+		break
+
 	case "pwd":
 		messageInfo = "Task: print working directory"
 		array = []interface{}{COMMAND_PWD}
@@ -496,6 +503,77 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				size := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Download chunk size set to %v bytes", size)
 			}
+			break
+
+		case COMMAND_PS_LIST:
+			result := packer.ParseInt8()
+
+			if result == 0 {
+				errorCode := packer.ParseInt32()
+				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
+				task.MessageType = MESSAGE_ERROR
+
+			} else {
+				processCount := int(packer.ParseInt32())
+
+				if processCount == 0 {
+					task.Message = "Failed to get process list"
+					task.MessageType = MESSAGE_ERROR
+					break
+				}
+
+				var proclist []ListingProcessData
+				contextMaxSize := 10
+
+				for i := 0; i < processCount; i++ {
+					procData := ListingProcessData{
+						Pid:       uint(packer.ParseInt16()),
+						Ppid:      uint(packer.ParseInt16()),
+						SessionId: uint(packer.ParseInt16()),
+						Arch:      "",
+					}
+
+					isArch64 := packer.ParseInt8()
+					if isArch64 == 0 {
+						procData.Arch = "x32"
+					} else if isArch64 == 1 {
+						procData.Arch = "x64"
+					}
+
+					elevated := packer.ParseInt8()
+					domain := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+					username := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+
+					if username != "" {
+						procData.Context = username
+						if domain != "" {
+							procData.Context = domain + "\\" + username
+						}
+						if elevated > 0 {
+							procData.Context += " *"
+						}
+
+						if len(procData.Context) > contextMaxSize {
+							contextMaxSize = len(procData.Context)
+						}
+					}
+
+					procData.ProcessName = ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+
+					proclist = append(proclist, procData)
+				}
+
+				format := fmt.Sprintf(" %%-5v   %%-5v   %%-7v   %%-5v   %%-%vv   %%-7v", contextMaxSize)
+				OutputText := fmt.Sprintf(format, "PID", "PPID", "Session", "Arch", "Context", "Process")
+				OutputText += fmt.Sprintf("\n"+format, "---", "----", "-------", "----", "-------", "-------")
+
+				for _, item := range proclist {
+					OutputText += fmt.Sprintf("\n"+format, item.Pid, item.Ppid, item.SessionId, item.Arch, item.Context, item.ProcessName)
+				}
+				task.Message = "Process list:"
+				task.ClearText = OutputText
+			}
+
 			break
 
 		case COMMAND_PWD:
