@@ -149,3 +149,8 @@ ULONG FileTimeToUnixTimestamp(FILETIME ft)
 
     return (uli.QuadPart / 10000000ULL) - EPOCH_DIFFERENCE;
 }
+
+void ConvertUnicodeStringToChar(wchar_t* src, size_t srcSize, char* dst, size_t dstSize){
+    ApiWin->WideCharToMultiByte(CP_ACP, 0, src, (int)srcSize / sizeof(wchar_t), dst, (int)dstSize, NULL, NULL);
+    dst[dstSize - 1] = '\0';
+ }

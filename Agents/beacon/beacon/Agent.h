@@ -10,9 +10,8 @@ class Commander;
 
 class Agent
 {
-	AgentInfo* info;
-
 public:
+	AgentInfo*   info;
 	AgentConfig* config;
 	Commander*   commander;
 	Downloader*  downloader;

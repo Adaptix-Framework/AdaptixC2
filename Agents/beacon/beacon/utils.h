@@ -27,3 +27,5 @@ CHAR* _GetProcessName();
 DWORD StrLenA(CHAR* str);
 
 ULONG FileTimeToUnixTimestamp(FILETIME ft);
+
+void ConvertUnicodeStringToChar( wchar_t* src, size_t srcSize, char* dst, size_t dstSize);
