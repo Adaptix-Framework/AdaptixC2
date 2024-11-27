@@ -140,6 +140,11 @@ type ListingProcessData struct {
 	ProcessName string `json:"l_process_name"`
 }
 
+type ListingDrivesData struct {
+	Name string `json:"l_name"`
+	Type string `json:"l_type"`
+}
+
 // SyncPacket
 
 type SyncPackerStart struct {

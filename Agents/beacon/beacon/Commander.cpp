@@ -25,7 +25,10 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 	
 		case COMMAND_CP:   
 			this->CmdCp(CommandId, inPacker, outPacker); break;
-		
+
+		case COMMAND_DISKS:
+			this->CmdDisks(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_DOWNLOAD:
 			this->CmdDownload(CommandId, inPacker, outPacker); break;
 
@@ -98,6 +101,39 @@ void Commander::CmdCp(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	else {
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
+	}
+}
+
+void Commander::CmdDisks(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG taskId = inPacker->Unpack32();
+	outPacker->Pack32(taskId);
+	outPacker->Pack32(commandId);
+
+	ULONG drives = ApiWin->GetLogicalDrives();
+	if (drives == 0) {
+		outPacker->Pack8(FALSE);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
+	else {
+		outPacker->Pack8(TRUE);
+		
+		ULONG count = 0;
+		ULONG indexCount = outPacker->GetDataSize();
+		outPacker->Pack32(0);
+
+		for (char drive = 'A'; drive <= 'Z'; ++drive) {
+			if (drives & (1 << (drive - 'A'))) {
+				char drivePath[] = { drive, ':', '\\', '\0' };
+				ULONG driveType = ApiWin->GetDriveTypeA(drivePath);
+
+				outPacker->Pack8(drive);
+				outPacker->Pack32(driveType);
+
+				count++;
+			}
+		}
+		outPacker->Set32(indexCount, count);
 	}
 }
 

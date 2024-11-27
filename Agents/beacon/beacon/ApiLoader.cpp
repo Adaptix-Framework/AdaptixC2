@@ -46,8 +46,10 @@ BOOL ApiLoad()
 		ApiWin->GetACP = GetACP;
 		ApiWin->GetComputerNameExA = GetComputerNameExA;
 		ApiWin->GetCurrentDirectoryA = GetCurrentDirectoryA;
+		ApiWin->GetDriveTypeA = GetDriveTypeA;
 		ApiWin->GetFileSize = GetFileSize;
 		ApiWin->GetFullPathNameA = GetFullPathNameA;
+		ApiWin->GetLogicalDrives = GetLogicalDrives;
 		ApiWin->GetOEMCP = GetOEMCP;
 		ApiWin->GetModuleBaseNameA = GetModuleBaseNameA;
 		ApiWin->GetModuleHandleW = GetModuleHandleW;
