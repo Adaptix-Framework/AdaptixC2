@@ -185,6 +185,11 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 		break
 
+	case "disks":
+		messageInfo = "Task: show mounted disks"
+		array = []interface{}{COMMAND_DISKS}
+		break
+
 	case "download":
 		messageInfo = "Task: download file to teamserver"
 		path, ok := args["file"].(string)
@@ -384,6 +389,50 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_COPY:
 			task.Message = "File copied successfully"
+			break
+
+		case COMMAND_DISKS:
+			result := packer.ParseInt8()
+
+			if result == 0 {
+				errorCode := packer.ParseInt32()
+				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
+				task.MessageType = MESSAGE_ERROR
+
+			} else {
+
+				drivesCount := int(packer.ParseInt32())
+				var drives []ListingDrivesData
+
+				for i := 0; i < drivesCount; i++ {
+					var driveData ListingDrivesData
+					driveCode := packer.ParseInt8()
+					driveType := packer.ParseInt32()
+
+					driveData.Name = fmt.Sprintf("%c:", driveCode)
+					if driveType == 2 {
+						driveData.Type = "USB"
+					} else if driveType == 3 {
+						driveData.Type = "Hard Drive"
+					} else if driveType == 4 {
+						driveData.Type = "Network Drive"
+					} else if driveType == 5 {
+						driveData.Type = "CD-ROM"
+					} else {
+						driveData.Type = "Unknown"
+					}
+
+					drives = append(drives, driveData)
+				}
+
+				OutputText := fmt.Sprintf(" %-5s  %s\n", "Drive", "Type")
+				OutputText += fmt.Sprintf(" %-5s  %s", "-----", "-----")
+				for _, item := range drives {
+					OutputText += fmt.Sprintf("\n %-5s  %s", item.Name, item.Type)
+				}
+				task.Message = "List of mounted drives:"
+				task.ClearText = OutputText
+			}
 			break
 
 		case COMMAND_DOWNLOAD:

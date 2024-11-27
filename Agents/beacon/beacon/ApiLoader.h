@@ -23,8 +23,10 @@ struct WINAPIFUNC
 	DECL_API(GetACP);
 	DECL_API(GetComputerNameExA);
 	DECL_API(GetCurrentDirectoryA);
+	DECL_API(GetDriveTypeA);
 	DECL_API(GetFileSize);
 	DECL_API(GetFullPathNameA);
+	DECL_API(GetLogicalDrives);
 	DECL_API(GetOEMCP);
 	DECL_API(GetModuleBaseNameA);
 	DECL_API(GetModuleHandleW);

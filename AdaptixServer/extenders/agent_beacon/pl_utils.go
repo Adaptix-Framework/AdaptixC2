@@ -12,6 +12,7 @@ import (
 const (
 	COMMAND_COPY      = 12
 	COMMAND_CD        = 8
+	COMMAND_DISKS     = 15
 	COMMAND_DOWNLOAD  = 32
 	COMMAND_EXFIL     = 35
 	COMMAND_LS        = 14

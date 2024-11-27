@@ -17,6 +17,11 @@
     ]
   },
   {
+    "command": "disks",
+    "description": "Lists mounted drives on current system",
+    "example": "disks"
+  },
+  {
     "command": "download",
     "description": "Download a file",
     "example": "download C:\\file.txt",
