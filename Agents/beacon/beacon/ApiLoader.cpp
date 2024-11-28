@@ -40,6 +40,7 @@ BOOL ApiLoad()
 		// kernel32
 		ApiWin->CopyFileA = CopyFileA;
 		ApiWin->CreateFileA = CreateFileA;
+		ApiWin->DeleteFileA = DeleteFileA;
 		ApiWin->FindClose = FindClose;
 		ApiWin->FindFirstFileA = FindFirstFileA;
 		ApiWin->FindNextFileA = FindNextFileA;
@@ -48,6 +49,7 @@ BOOL ApiLoad()
 		ApiWin->GetCurrentDirectoryA = GetCurrentDirectoryA;
 		ApiWin->GetDriveTypeA = GetDriveTypeA;
 		ApiWin->GetFileSize = GetFileSize;
+		ApiWin->GetFileAttributesA = GetFileAttributesA;
 		ApiWin->GetFullPathNameA = GetFullPathNameA;
 		ApiWin->GetLogicalDrives = GetLogicalDrives;
 		ApiWin->GetOEMCP = GetOEMCP;
@@ -67,6 +69,8 @@ BOOL ApiLoad()
 		ApiWin->LocalFree = LocalFree;
 		ApiWin->LocalReAlloc = LocalReAlloc;
 		ApiWin->ReadFile = ReadFile;
+		ApiWin->RemoveDirectoryA = RemoveDirectoryA;
+		ApiWin->RtlCaptureContext = RtlCaptureContext;
 		ApiWin->SetCurrentDirectoryA = SetCurrentDirectoryA;
 		ApiWin->WideCharToMultiByte = WideCharToMultiByte;
 		ApiWin->WriteFile = WriteFile;
@@ -92,13 +96,19 @@ BOOL ApiLoad()
 		HMODULE hNtdllModule = ApiWin->GetModuleHandleW(L"ntdll.dll");
 		if ( hNtdllModule ) {
 			ApiNt->NtClose                   = (decltype(NtClose)*) ApiWin->GetProcAddress(hNtdllModule, "NtClose");
+			ApiNt->NtContinue                = (decltype(NtContinue)*) ApiWin->GetProcAddress(hNtdllModule, "NtContinue");
+			ApiNt->NtFreeVirtualMemory       = (decltype(NtFreeVirtualMemory)*) ApiWin->GetProcAddress(hNtdllModule, "NtFreeVirtualMemory");
 			ApiNt->NtQueryInformationProcess = (decltype(NtQueryInformationProcess)*) ApiWin->GetProcAddress(hNtdllModule, "NtQueryInformationProcess");
 			ApiNt->NtQuerySystemInformation  = (decltype(NtQuerySystemInformation)*) ApiWin->GetProcAddress(hNtdllModule, "NtQuerySystemInformation");
 			ApiNt->NtOpenProcess             = (decltype(NtOpenProcess)*) ApiWin->GetProcAddress(hNtdllModule, "NtOpenProcess");
 			ApiNt->NtOpenProcessToken        = (decltype(NtOpenProcessToken)*) ApiWin->GetProcAddress(hNtdllModule, "NtOpenProcessToken");
+			ApiNt->NtTerminateProcess        = (decltype(NtTerminateProcess)*) ApiWin->GetProcAddress(hNtdllModule, "NtTerminateProcess");
 			ApiNt->RtlGetVersion             = (decltype(RtlGetVersion)*) ApiWin->GetProcAddress(hNtdllModule, "RtlGetVersion");
+			ApiNt->RtlExitUserThread         = (decltype(RtlExitUserThread)*) ApiWin->GetProcAddress(hNtdllModule, "RtlExitUserThread");
+			ApiNt->RtlExitUserProcess        = (decltype(RtlExitUserProcess)*) ApiWin->GetProcAddress(hNtdllModule, "RtlExitUserProcess");
 			ApiNt->RtlIpv4StringToAddressA   = (decltype(RtlIpv4StringToAddressA)*) ApiWin->GetProcAddress(hNtdllModule, "RtlIpv4StringToAddressA");
 			ApiNt->RtlRandomEx               = (decltype(RtlRandomEx)*) ApiWin->GetProcAddress(hNtdllModule, "RtlRandomEx");
+			ApiNt->RtlNtStatusToDosError     = (decltype(RtlNtStatusToDosError)*) ApiWin->GetProcAddress(hNtdllModule, "RtlNtStatusToDosError");
 		}
 		else {
 			return FALSE;

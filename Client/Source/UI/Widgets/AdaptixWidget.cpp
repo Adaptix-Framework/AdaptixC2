@@ -180,7 +180,7 @@ void AdaptixWidget::createUI()
     mainGridLayout->addLayout(topHLayout, 0, 0, 1, 1);
     mainGridLayout->addWidget(mainVSplitter, 1, 0, 1, 1);
 
-    this->setLayout(mainGridLayout );
+    this->setLayout(mainGridLayout);
 }
 
 AuthProfile* AdaptixWidget::GetProfile()

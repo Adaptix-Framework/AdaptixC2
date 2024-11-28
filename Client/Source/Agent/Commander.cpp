@@ -205,19 +205,17 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
                 for (int i = 1; i < args.size(); ++i) {
                     QString arg = args[i];
 
-                    for (Argument commandArg : command.args) {
-                        if (commandArg.flag){
-                            if (commandArg.type == "BOOL" && commandArg.mark == arg ) {
+                    for (Argument commandArg : subcommand.args) {
+                        if (commandArg.flag && commandArg.mark == arg && args.size() > i+1 ) {
+                            if( commandArg.type == "BOOL" ) {
                                 parsedArgsMap[commandArg.mark] = "true";
-                                break;
                             }
-                            else if ( commandArg.mark == arg && args.size() > i+1 ) {
+                            else {
                                 ++i;
                                 parsedArgsMap[commandArg.name] = args[i];
-                                break;
                             }
-                        }
-                        else if (!parsedArgsMap.contains(commandArg.name)) {
+                            break;
+                        } else if (!commandArg.flag && !parsedArgsMap.contains(commandArg.name)) {
                             parsedArgsMap[commandArg.name] = arg;
                             break;
                         }
@@ -234,6 +232,9 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
                             jsonObj[subArg.mark] = parsedArgsMap[subArg.mark] == "true";
                         } else if (subArg.type == "FILE") {
                             QString path = parsedArgsMap[subArg.name];
+                            if (path.startsWith("~/"))
+                                path = QDir::home().filePath(path.mid(2));
+
                             QFile file(path);
                             if (file.open(QIODevice::ReadOnly)) {
                                 QByteArray fileData = file.readAll();

