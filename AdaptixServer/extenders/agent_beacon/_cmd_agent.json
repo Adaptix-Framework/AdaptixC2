@@ -92,6 +92,14 @@
         "name": "list",
         "description": "Show process list",
         "example": "ps list"
+      },
+      {
+        "name": "kill",
+        "description": "Kill a process with a given PID",
+        "example": "ps kill 7865",
+        "args": [
+          "INT <pid>"
+        ]
       }
     ]
   },
@@ -99,6 +107,14 @@
     "command": "pwd",
     "description": "Print current working directory",
     "example": "pwd"
+  },
+  {
+    "command": "rm",
+    "description": "Remove a file or folder",
+    "example": "rm C:\\file.txt",
+    "args": [
+      "STRING <path>"
+    ]
   },
   {
     "command": "sleep",

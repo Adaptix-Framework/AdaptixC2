@@ -145,16 +145,18 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
             QString arg = args[i];
 
             for (Argument commandArg : command.args) {
-                if (commandArg.flag && commandArg.mark == arg && args.size() > i+1 ) {
-                    if( commandArg.type == "BOOL" ) {
+                if (commandArg.flag){
+                    if (commandArg.type == "BOOL" && commandArg.mark == arg ) {
                         parsedArgsMap[commandArg.mark] = "true";
+                        break;
                     }
-                    else {
+                    else if ( commandArg.mark == arg && args.size() > i+1 ) {
                         ++i;
                         parsedArgsMap[commandArg.name] = args[i];
+                        break;
                     }
-                    break;
-                } else if (!commandArg.flag && !parsedArgsMap.contains(commandArg.name)) {
+                }
+                else if (!parsedArgsMap.contains(commandArg.name)) {
                     parsedArgsMap[commandArg.name] = arg;
                     break;
                 }
@@ -162,7 +164,7 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
         }
 
         for (Argument commandArg : command.args) {
-            if (parsedArgsMap.contains(commandArg.name)) {
+            if (parsedArgsMap.contains(commandArg.name) || parsedArgsMap.contains(commandArg.mark)) {
                 if (commandArg.type == "STRING") {
                     jsonObj[commandArg.name] = parsedArgsMap[commandArg.name];
                 } else if (commandArg.type == "INT") {
@@ -171,6 +173,9 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
                     jsonObj[commandArg.mark] = parsedArgsMap[commandArg.mark] == "true";
                 } else if (commandArg.type == "FILE") {
                     QString path = parsedArgsMap[commandArg.name];
+                    if (path.startsWith("~/"))
+                        path = QDir::home().filePath(path.mid(2));
+
                     QFile file(path);
                     if (file.open(QIODevice::ReadOnly)) {
                         QByteArray fileData = file.readAll();
@@ -218,7 +223,7 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
                 }
 
                 for (Argument subArg : subcommand.args) {
-                    if (parsedArgsMap.contains(subArg.name)) {
+                    if (parsedArgsMap.contains(subArg.name) || parsedArgsMap.contains(subArg.mark)) {
                         if (subArg.type == "STRING") {
                             jsonObj[subArg.name] = parsedArgsMap[subArg.name];
                         } else if (subArg.type == "INT") {
@@ -227,6 +232,9 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
                             jsonObj[subArg.mark] = parsedArgsMap[subArg.mark] == "true";
                         } else if (subArg.type == "FILE") {
                             QString path = parsedArgsMap[subArg.name];
+                            if (path.startsWith("~/"))
+                                path = QDir::home().filePath(path.mid(2));
+
                             QFile file(path);
                             if (file.open(QIODevice::ReadOnly)) {
                                 QByteArray fileData = file.readAll();

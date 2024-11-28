@@ -7,3 +7,5 @@ extern Agent*         g_Agent;
 extern ConnectorHTTP* g_Connector;
 
 void AgentMain(); 
+
+void AgentClear(int method);

