@@ -45,6 +45,8 @@ type Teamserver interface {
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
+
+	TsClientBrowserDisks(jsonTask string, jsonDrives string)
 }
 
 type ModuleExtender struct {
@@ -108,24 +110,24 @@ type TaskData struct {
 }
 
 type ListingFileData struct {
-	IsDir    bool   `json:"l_is_dir"`
-	Size     uint64 `json:"l_size"`
-	Date     uint64 `json:"l_date"`
-	Filename string `json:"l_filename"`
+	IsDir    bool   `json:"b_is_dir"`
+	Size     uint64 `json:"b_size"`
+	Date     uint64 `json:"b_date"`
+	Filename string `json:"b_filename"`
 }
 
 type ListingProcessData struct {
-	Pid         uint   `json:"l_pid"`
-	Ppid        uint   `json:"l_ppid"`
-	SessionId   uint   `json:"l_session_id"`
-	Arch        string `json:"l_arch"`
-	Context     string `json:"l_context"`
-	ProcessName string `json:"l_process_name"`
+	Pid         uint   `json:"b_pid"`
+	Ppid        uint   `json:"b_ppid"`
+	SessionId   uint   `json:"b_session_id"`
+	Arch        string `json:"b_arch"`
+	Context     string `json:"b_context"`
+	ProcessName string `json:"b_process_name"`
 }
 
 type ListingDrivesData struct {
-	Name string `json:"l_name"`
-	Type string `json:"l_type"`
+	Name string `json:"b_name"`
+	Type string `json:"b_type"`
 }
 
 var ModuleObject ModuleExtender
@@ -312,7 +314,7 @@ func (m *ModuleExtender) AgentDownloadChangeState(agentObject []byte, newState i
 	}
 
 	taskData = TaskData{
-		Type: JOB,
+		Type: BROWSER,
 		Data: packData,
 		Sync: false,
 	}
@@ -323,4 +325,61 @@ func (m *ModuleExtender) AgentDownloadChangeState(agentObject []byte, newState i
 	}
 
 	return buffer.Bytes(), nil
+}
+
+func (m *ModuleExtender) AgentBrowserDisks(agentObject []byte) ([]byte, error) {
+	var (
+		packData  []byte
+		agentData AgentData
+		taskData  TaskData
+		buffer    bytes.Buffer
+		err       error
+	)
+	err = json.Unmarshal(agentObject, &agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	packData, err = BrowserDisks()
+	if err != nil {
+		return nil, err
+	}
+
+	taskData = TaskData{
+		Type: BROWSER,
+		Data: packData,
+		Sync: false,
+	}
+
+	err = json.NewEncoder(&buffer).Encode(taskData)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
+/// SYNC
+
+func SyncBrowserDisks(ts Teamserver, task TaskData, drivesSlice []ListingDrivesData) {
+	var (
+		jsonDrives string
+		jsonTask   string
+		jsonData   []byte
+		err        error
+	)
+
+	jsonData, err = json.Marshal(drivesSlice)
+	if err != nil {
+		return
+	}
+	jsonDrives = string(jsonData)
+
+	jsonData, err = json.Marshal(task)
+	if err != nil {
+		return
+	}
+	jsonTask = string(jsonData)
+
+	ts.TsClientBrowserDisks(jsonTask, jsonDrives)
 }

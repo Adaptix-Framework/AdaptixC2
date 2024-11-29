@@ -15,3 +15,20 @@ QString ReadFileString(const QString &filePath, bool* result)
     *result = true;
     return content;
 }
+
+QString GetRootPathWindows(const QString& path)
+{
+    if (path.startsWith("\\\\")) {
+        int secondSlash = path.indexOf('\\', 2);
+        if (secondSlash != -1) {
+            return path.left(secondSlash);
+        }
+    }
+
+    int firstSlash = path.indexOf('\\');
+    if (firstSlash != -1) {
+        return path.left(firstSlash);
+    }
+
+    return path;
+}

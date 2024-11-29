@@ -1,8 +1,9 @@
 #include <Agent/Agent.h>
+#include <Client/Requestor.h>
 
 Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w)
 {
-    mainWidget = w;
+    adaptixWidget = w;
 
     data.Id         = jsonObjAgentData["a_id"].toString();
     data.Name       = jsonObjAgentData["a_name"].toString();
@@ -53,8 +54,11 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     item_Sleep    = new TableWidgetItemAgent( sleep, this );
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
 
-    Console   = new ConsoleWidget(this, commander );
+    Console     = new ConsoleWidget(this, commander );
+    FileBrowser = new BrowserFilesWidget(this);
 }
+
+Agent::~Agent() = default;
 
 void Agent::Update(QJsonObject jsonObjAgentData)
 {
@@ -75,4 +79,14 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     item_Sleep->setText(sleep);
 }
 
-Agent::~Agent() = default;
+QString Agent::BrowserDisks()
+{
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqBrowserDisks( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
+    if (!result)
+        return "JWT error";
+
+    return message;
+}
+

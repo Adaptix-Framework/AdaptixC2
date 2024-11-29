@@ -414,6 +414,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_DISKS:
 			result := packer.ParseInt8()
+			var drives []ListingDrivesData
 
 			if result == 0 {
 				errorCode := packer.ParseInt32()
@@ -421,10 +422,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.MessageType = MESSAGE_ERROR
 
 			} else {
-
 				drivesCount := int(packer.ParseInt32())
-				var drives []ListingDrivesData
-
 				for i := 0; i < drivesCount; i++ {
 					var driveData ListingDrivesData
 					driveCode := packer.ParseInt8()
@@ -454,6 +452,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.Message = "List of mounted drives:"
 				task.ClearText = OutputText
 			}
+
+			SyncBrowserDisks(ts, task, drives)
+
 			break
 
 		case COMMAND_DOWNLOAD:
@@ -693,6 +694,8 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 	}
 }
 
+/// BROWSERS
+
 func BrowserDownloadChangeState(fid string, newState int) ([]byte, error) {
 	fileId, err := strconv.ParseInt(fid, 16, 64)
 	if err != nil {
@@ -701,5 +704,10 @@ func BrowserDownloadChangeState(fid string, newState int) ([]byte, error) {
 
 	array := []interface{}{COMMAND_EXFIL, newState, int(fileId)}
 
+	return PackArray(array)
+}
+
+func BrowserDisks() ([]byte, error) {
+	array := []interface{}{COMMAND_DISKS}
 	return PackArray(array)
 }

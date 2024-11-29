@@ -125,24 +125,24 @@ type DownloadData struct {
 }
 
 type ListingFileData struct {
-	IsDir    bool   `json:"l_is_dir"`
-	Size     int64  `json:"l_size"`
-	Date     int64  `json:"l_date"`
-	Filename string `json:"l_filename"`
+	IsDir    bool   `json:"b_is_dir"`
+	Size     int64  `json:"b_size"`
+	Date     int64  `json:"b_date"`
+	Filename string `json:"b_filename"`
 }
 
 type ListingProcessData struct {
-	Pid         uint   `json:"l_pid"`
-	Ppid        uint   `json:"l_ppid"`
-	SessionId   uint   `json:"l_session_id"`
-	Arch        string `json:"l_arch"`
-	Context     string `json:"l_context"`
-	ProcessName string `json:"l_process_name"`
+	Pid         uint   `json:"b_pid"`
+	Ppid        uint   `json:"b_ppid"`
+	SessionId   uint   `json:"b_session_id"`
+	Arch        string `json:"b_arch"`
+	Context     string `json:"b_context"`
+	ProcessName string `json:"b_process_name"`
 }
 
 type ListingDrivesData struct {
-	Name string `json:"l_name"`
-	Type string `json:"l_type"`
+	Name string `json:"b_name"`
+	Type string `json:"b_type"`
 }
 
 // SyncPacket
@@ -340,4 +340,17 @@ type SyncPackerDownloadDelete struct {
 	SpType int `json:"type"`
 
 	FileId string `json:"d_file_id"`
+}
+
+/// BROWSER
+
+type SyncPacketBrowserDisks struct {
+	store  string
+	SpType int `json:"type"`
+
+	AgentId     string `json:"b_agent_id"`
+	Time        int64  `json:"b_time"`
+	MessageType int    `json:"b_msg_type"`
+	Message     string `json:"b_message"`
+	Data        string `json:"b_data"`
 }

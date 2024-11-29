@@ -93,18 +93,17 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 	}
 
 	value, ok = agent.Tasks.GetDelete(taskData.TaskId)
-	if ok {
-		task = value.(TaskData)
-		task.Data = []byte("")
-		task.FinishDate = taskData.FinishDate
-		task.MessageType = taskData.MessageType
-		task.Message = taskData.Message
-		task.ClearText = taskData.ClearText
-		task.Completed = taskData.Completed
-	} else {
-		task = taskData
-		logs.Error("TsTaskUpdate: task %v not found", taskData.TaskId)
+	if !ok {
+		return
 	}
+
+	task = value.(TaskData)
+	task.Data = []byte("")
+	task.FinishDate = taskData.FinishDate
+	task.MessageType = taskData.MessageType
+	task.Message = taskData.Message
+	task.ClearText = taskData.ClearText
+	task.Completed = taskData.Completed
 
 	if task.Completed {
 		agent.ClosedTasks.Put(task.TaskId, task)

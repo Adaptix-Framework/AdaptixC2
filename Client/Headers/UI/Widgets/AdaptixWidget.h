@@ -83,6 +83,7 @@ public slots:
     void LoadDownloadsUI();
     void OnReconnect();
     void LoadConsoleUI(QString AgentId);
+    void LoadFileBrowserUI(QString AgentId);
 };
 
 #endif //ADAPTIXCLIENT_ADAPTIXWIDGET_H

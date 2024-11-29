@@ -76,6 +76,7 @@ void SessionsTableWidget::Clear()
         Agent* agent = adaptixWidget->Agents[agentId];
         adaptixWidget->Agents.remove(agentId);
         delete agent->Console;
+        delete agent->FileBrowser;
         delete agent;
     }
 
@@ -131,6 +132,7 @@ void SessionsTableWidget::RemoveAgentItem(QString agentId)
     Agent* agent = adaptixWidget->Agents[agentId];
     adaptixWidget->Agents.remove(agentId);
     delete agent->Console;
+    delete agent->FileBrowser;
     delete agent;
 
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
@@ -140,6 +142,7 @@ void SessionsTableWidget::RemoveAgentItem(QString agentId)
         }
     }
 }
+
 
 
 /// SLOTS
@@ -157,12 +160,24 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos )
     if ( ! tableWidget->itemAt(pos) )
         return;
 
+    auto ctxMenu = QMenu();
+
+    auto agentMenu = new QMenu("Agent", &ctxMenu);
+    agentMenu->addAction("Command");
+    agentMenu->addAction("File Browser", this, &SessionsTableWidget::actionFileBrowserOpen);
+    agentMenu->addAction("Process Browser");
+    agentMenu->addAction("Exit");
+
     auto sep1 = new QAction();
     sep1->setSeparator( true );
 
-    auto ctxMenu = QMenu();
+    auto sep2 = new QAction();
+    sep2->setSeparator( true );
+
     ctxMenu.addAction( "Console", this, &SessionsTableWidget::actionConsoleOpen);
     ctxMenu.addAction( sep1 );
+    ctxMenu.addMenu(agentMenu);
+    ctxMenu.addAction( sep2 );
     ctxMenu.addAction( "Tag", this, &SessionsTableWidget::actionAgentTag);
     ctxMenu.addAction( "Hide", this, &SessionsTableWidget::actionAgentHide);
     ctxMenu.addAction( "Remove", this, &SessionsTableWidget::actionAgentRemove);
@@ -177,6 +192,17 @@ void SessionsTableWidget::actionConsoleOpen()
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
             adaptixWidget->LoadConsoleUI(agentId);
+        }
+    }
+}
+
+void SessionsTableWidget::actionFileBrowserOpen()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            adaptixWidget->LoadFileBrowserUI(agentId);
         }
     }
 }

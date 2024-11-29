@@ -8,4 +8,6 @@
 
 QString ReadFileString(const QString &filePath, bool* result);
 
+QString GetRootPathWindows(const QString& path);
+
 #endif //ADAPTIXCLIENT_FILESYSTEM_H
