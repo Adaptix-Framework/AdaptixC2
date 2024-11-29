@@ -294,6 +294,15 @@ void AdaptixWidget::LoadConsoleUI(QString AgentId)
     this->AddTab(Agents[AgentId]->Console, text);
 }
 
+void AdaptixWidget::LoadFileBrowserUI(QString AgentId)
+{
+    if( !Agents.contains(AgentId) )
+        return;
+
+    auto text = QString("Files [%1]").arg( AgentId );
+    this->AddTab(Agents[AgentId]->FileBrowser, text);
+}
+
 void AdaptixWidget::ChannelClose()
 {
     QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/unlink"), COLOR_ChiliPepper);

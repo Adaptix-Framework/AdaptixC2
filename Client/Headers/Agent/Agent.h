@@ -5,15 +5,17 @@
 #include <Agent/TableWidgetItemAgent.h>
 #include <Agent/Commander.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 
 class ConsoleWidget;
+class BrowserFilesWidget;
 class AdaptixWidget;
 
 class Agent
 {
 public:
-    AdaptixWidget* mainWidget = nullptr;
+    AdaptixWidget* adaptixWidget = nullptr;
 
     AgentData data = {0};
 
@@ -33,12 +35,15 @@ public:
     TableWidgetItemAgent* item_Last;
     TableWidgetItemAgent* item_Sleep;
 
-    ConsoleWidget* Console = nullptr;
+    ConsoleWidget*      Console     = nullptr;
+    BrowserFilesWidget* FileBrowser = nullptr;
 
     explicit Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w );
     ~Agent();
 
     void Update(QJsonObject jsonObjAgentData);
+
+    QString BrowserDisks();
 };
 
 #endif //ADAPTIXCLIENT_AGENT_H

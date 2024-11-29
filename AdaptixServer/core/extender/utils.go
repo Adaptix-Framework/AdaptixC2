@@ -49,7 +49,9 @@ type AgentFunctions interface {
 	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)
 	AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error)
 	AgentCommand(agentObject []byte, args map[string]any) ([]byte, string, error)
+
 	AgentDownloadChangeState(agentObject []byte, newState int, fileId string) ([]byte, error)
+	AgentBrowserDisks(agentObject []byte) ([]byte, error)
 }
 
 type ModuleExtender struct {

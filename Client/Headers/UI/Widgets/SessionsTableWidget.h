@@ -59,6 +59,7 @@ public slots:
     void handleSessionsTableMenu(const QPoint &pos );
 
     void actionConsoleOpen();
+    void actionFileBrowserOpen();
     void actionAgentTag();
     void actionAgentHide();
     void actionAgentRemove();
