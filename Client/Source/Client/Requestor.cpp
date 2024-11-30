@@ -207,3 +207,20 @@ bool HttpReqBrowserDisks( QString agentId, AuthProfile profile, QString* message
     }
     return false;
 }
+
+bool HttpReqBrowserList( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["agent_id"] = agentId;
+    dataJson["path"]     = path;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/browser/files";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}

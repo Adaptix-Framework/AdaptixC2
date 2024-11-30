@@ -12,6 +12,8 @@ bool IsValidURI(const QString &uri);
 
 QString UnixTimestampGlobalToStringLocal(qint64 timestamp);
 
+QString UnixTimestampGlobalToStringLocalFull(qint64 timestamp);
+
 QString TextColorHtml(QString text, QString color);
 
 QString TextUnderlineColorHtml(QString text, QString color = "");
@@ -22,7 +24,7 @@ QString FormatSecToStr(int seconds);
 
 QString TrimmedEnds(QString str);
 
-QString BytesToFormat(int bytes);
+QString BytesToFormat(qint64 bytes);
 
 QIcon RecolorIcon(QIcon originalIcon, QString colorString);
 

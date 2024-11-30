@@ -52,6 +52,7 @@ type AgentFunctions interface {
 
 	AgentDownloadChangeState(agentObject []byte, newState int, fileId string) ([]byte, error)
 	AgentBrowserDisks(agentObject []byte) ([]byte, error)
+	AgentBrowserFiles(path string, agentObject []byte) ([]byte, error)
 }
 
 type ModuleExtender struct {
