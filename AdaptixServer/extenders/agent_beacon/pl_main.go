@@ -47,6 +47,7 @@ type Teamserver interface {
 	TsDownloadClose(fileId string, reason int) error
 
 	TsClientBrowserDisks(jsonTask string, jsonDrives string)
+	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
 }
 
 type ModuleExtender struct {
@@ -295,6 +296,8 @@ func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte)
 	return nil, nil
 }
 
+/// BROWSERS
+
 func (m *ModuleExtender) AgentDownloadChangeState(agentObject []byte, newState int, fileId string) ([]byte, error) {
 	var (
 		packData  []byte
@@ -340,7 +343,39 @@ func (m *ModuleExtender) AgentBrowserDisks(agentObject []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	packData, err = BrowserDisks()
+	packData, err = BrowserDisks(agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	taskData = TaskData{
+		Type: BROWSER,
+		Data: packData,
+		Sync: false,
+	}
+
+	err = json.NewEncoder(&buffer).Encode(taskData)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
+func (m *ModuleExtender) AgentBrowserFiles(path string, agentObject []byte) ([]byte, error) {
+	var (
+		packData  []byte
+		agentData AgentData
+		taskData  TaskData
+		buffer    bytes.Buffer
+		err       error
+	)
+	err = json.Unmarshal(agentObject, &agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	packData, err = BrowserFiles(path, agentData)
 	if err != nil {
 		return nil, err
 	}
@@ -382,4 +417,27 @@ func SyncBrowserDisks(ts Teamserver, task TaskData, drivesSlice []ListingDrivesD
 	jsonTask = string(jsonData)
 
 	ts.TsClientBrowserDisks(jsonTask, jsonDrives)
+}
+
+func SyncBrowserFiles(ts Teamserver, task TaskData, path string, filesSlice []ListingFileData) {
+	var (
+		jsonDrives string
+		jsonTask   string
+		jsonData   []byte
+		err        error
+	)
+
+	jsonData, err = json.Marshal(filesSlice)
+	if err != nil {
+		return
+	}
+	jsonDrives = string(jsonData)
+
+	jsonData, err = json.Marshal(task)
+	if err != nil {
+		return
+	}
+	jsonTask = string(jsonData)
+
+	ts.TsClientBrowserFiles(jsonTask, path, jsonDrives)
 }

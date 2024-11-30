@@ -41,9 +41,9 @@ public:
     explicit Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w );
     ~Agent();
 
-    void Update(QJsonObject jsonObjAgentData);
-
+    void    Update(QJsonObject jsonObjAgentData);
     QString BrowserDisks();
+    QString BrowserList(QString path);
 };
 
 #endif //ADAPTIXCLIENT_AGENT_H

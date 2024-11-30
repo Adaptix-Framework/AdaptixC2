@@ -73,3 +73,15 @@ func (ex *AdaptixExtender) ExAgentBrowserDisks(agentName string, agentObject []b
 		return nil, errors.New("module not found")
 	}
 }
+
+func (ex *AdaptixExtender) ExAgentBrowserFiles(agentName string, path string, agentObject []byte) ([]byte, error) {
+	var module *ModuleExtender
+
+	value, ok := ex.agentModules.Get(agentName)
+	if ok {
+		module = value.(*ModuleExtender)
+		return module.AgentBrowserFiles(path, agentObject)
+	} else {
+		return nil, errors.New("module not found")
+	}
+}

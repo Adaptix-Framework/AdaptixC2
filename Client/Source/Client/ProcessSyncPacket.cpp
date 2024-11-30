@@ -97,7 +97,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
-
     if( spType == TYPE_AGENT_NEW ) {
         if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() ) {
             return false;
@@ -167,15 +166,13 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
-
     if( spType == TYPE_AGENT_TICK ) {
         if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
             return false;
         }
         return true;
     }
-
-    if(spType == TYPE_AGENT_CONSOLE_OUT)
+    if( spType == TYPE_AGENT_CONSOLE_OUT)
     {
         if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
             return false;
@@ -194,7 +191,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
-
     if( spType == TYPE_AGENT_UPDATE ) {
         if ( !jsonObj.contains("a_id") || !jsonObj["a_id"].isString() ) {
             return false;
@@ -216,8 +212,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
-
-    if(spType == TYPE_AGENT_TASK_CREATE ) {
+    if( spType == TYPE_AGENT_TASK_CREATE ) {
         if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
             return false;
         }
@@ -241,8 +236,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
-
-    if(spType == TYPE_AGENT_TASK_UPDATE ) {
+    if( spType == TYPE_AGENT_TASK_UPDATE ) {
         if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
             return false;
         }
@@ -272,15 +266,14 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
-
-    if(spType == TYPE_AGENT_REMOVE ) {
+    if( spType == TYPE_AGENT_REMOVE ) {
         if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
             return false;
         }
         return true;
     }
 
-    if(spType == TYPE_DOWNLOAD_CREATE ) {
+    if( spType == TYPE_DOWNLOAD_CREATE ) {
         if (!jsonObj.contains("d_agent_id") || !jsonObj["d_agent_id"].isString()) {
             return false;
         }
@@ -304,7 +297,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
-    if(spType == TYPE_DOWNLOAD_UPDATE ) {
+    if( spType == TYPE_DOWNLOAD_UPDATE ) {
         if (!jsonObj.contains("d_file_id") || !jsonObj["d_file_id"].isString()) {
             return false;
         }
@@ -323,7 +316,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
-    if( spType == TYPE_BROWSER_DISK ) {
+    if( spType == TYPE_BROWSER_DISKS ) {
         if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) {
             return false;
         }
@@ -334,6 +327,30 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
             return false;
         }
         if (!jsonObj.contains("b_message") || !jsonObj["b_message"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("b_data") || !jsonObj["b_data"].isString()) {
+            return false;
+        }
+        return true;
+    }
+    if( spType == TYPE_BROWSER_FILES ) {
+        if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("b_time") || !jsonObj["b_time"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("b_msg_type") || !jsonObj["b_msg_type"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("b_message") || !jsonObj["b_message"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("b_message") || !jsonObj["b_message"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("b_path") || !jsonObj["b_path"].isString()) {
             return false;
         }
         if (!jsonObj.contains("b_data") || !jsonObj["b_data"].isString()) {
@@ -354,13 +371,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
 
 
-    if( spType == TYPE_SYNC_START)
+    if( spType == TYPE_SYNC_START )
     {
         int count = jsonObj["count"].toDouble();
         dialogSyncPacket = new DialogSyncPacket(count);
         return;
     }
-    if ( spType == TYPE_SYNC_FINISH)
+    if( spType == TYPE_SYNC_FINISH )
     {
         if (dialogSyncPacket != nullptr ) {
             dialogSyncPacket->finish();
@@ -380,7 +397,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         LogsTab->AddLogs(spType, time, message);
         return;
     }
-    if ( spType == TYPE_CLIENT_DISCONNECT )
+    if( spType == TYPE_CLIENT_DISCONNECT )
     {
         QString username = jsonObj["username"].toString();
         qint64  time     = static_cast<qint64>(jsonObj["time"].toDouble());
@@ -402,7 +419,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
-    if ( spType == TYPE_LISTENER_START )
+    if( spType == TYPE_LISTENER_START )
     {
         ListenerData newListener = {0};
         newListener.ListenerName = jsonObj["l_name"].toString();
@@ -422,7 +439,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         ListenersTab->AddListenerItem(newListener);
         return;
     }
-    if ( spType == TYPE_LISTENER_EDIT )
+    if( spType == TYPE_LISTENER_EDIT )
     {
         ListenerData newListener = {0};
         newListener.ListenerName = jsonObj["l_name"].toString();
@@ -442,7 +459,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         ListenersTab->EditListenerItem(newListener);
         return;
     }
-    if ( spType == TYPE_LISTENER_STOP )
+    if( spType == TYPE_LISTENER_STOP )
     {
         QString listenerName = jsonObj["l_name"].toString();
         qint64  time         = static_cast<qint64>(jsonObj["time"].toDouble());
@@ -453,6 +470,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         ListenersTab->RemoveListenerItem(listenerName);
         return;
     }
+
 
     if( spType == TYPE_AGENT_REG )
     {
@@ -472,7 +490,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         LinkListenerAgent[listenerName].push_back(agentName);
         return;
     }
-
     if( spType == TYPE_AGENT_NEW )
     {
         QString agentName = jsonObj["a_name"].toString();
@@ -506,7 +523,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
-    if(spType == TYPE_AGENT_CONSOLE_OUT)
+    if( spType == TYPE_AGENT_CONSOLE_OUT )
     {
         qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
         QString agentId = jsonObj["a_id"].toString();
@@ -519,7 +536,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
-    if(spType == TYPE_AGENT_TASK_CREATE )
+    if( spType == TYPE_AGENT_TASK_CREATE )
     {
         qint64  time      = static_cast<qint64>(jsonObj["time"].toDouble());
         QString agentId   = jsonObj["a_id"].toString();
@@ -534,7 +551,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
-    if(spType == TYPE_AGENT_TASK_UPDATE )
+    if( spType == TYPE_AGENT_TASK_UPDATE )
     {
         qint64  time       = static_cast<qint64>(jsonObj["time"].toDouble());
         QString agentId    = jsonObj["a_id"].toString();
@@ -558,7 +575,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         SessionsTablePage->RemoveAgentItem(agentId);
     }
 
-    if(spType == TYPE_DOWNLOAD_CREATE )
+    if( spType == TYPE_DOWNLOAD_CREATE )
     {
         DownloadData newDownload = {0};
         newDownload.AgentId   = jsonObj["d_agent_id"].toString();
@@ -575,7 +592,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
-    if(spType == TYPE_DOWNLOAD_UPDATE )
+    if( spType == TYPE_DOWNLOAD_UPDATE )
     {
         QString fileId = jsonObj["d_file_id"].toString();
         int recvSize   = jsonObj["d_recv_size"].toDouble();
@@ -585,7 +602,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
-    if(spType == TYPE_DOWNLOAD_DELETE )
+    if( spType == TYPE_DOWNLOAD_DELETE )
     {
         QString fileId = jsonObj["d_file_id"].toString();
 
@@ -594,7 +611,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
 
-    if( spType == TYPE_BROWSER_DISK )
+    if( spType == TYPE_BROWSER_DISKS )
     {
         QString agentId = jsonObj["b_agent_id"].toString();
         qint64  time    = jsonObj["b_time"].toDouble();
@@ -604,6 +621,20 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (Agents.contains(agentId))
             Agents[agentId]->FileBrowser->SetDisks(time, msgType, message, data);
+
+        return;
+    }
+    if( spType == TYPE_BROWSER_FILES )
+    {
+        QString agentId = jsonObj["b_agent_id"].toString();
+        qint64  time    = jsonObj["b_time"].toDouble();
+        int     msgType = jsonObj["b_msg_type"].toDouble();
+        QString message = jsonObj["b_message"].toString();
+        QString path    = jsonObj["b_path"].toString();
+        QString data    = jsonObj["b_data"].toString();
+
+        if (Agents.contains(agentId))
+            Agents[agentId]->FileBrowser->AddFiles(time, msgType, message, path, data);
 
         return;
     }

@@ -39,6 +39,7 @@ type Teamserver interface {
 
 	TsDownloadChangeState(fileId string, username string, command string) error
 	TsAgentBrowserDisks(agentId string, username string) error
+	TsAgentBrowserFiles(agentId string, path string, username string) error
 }
 
 type TsConnector struct {
@@ -95,6 +96,7 @@ func NewTsConnector(ts Teamserver, p profile.TsProfile) (*TsConnector, error) {
 
 	connector.Engine.POST(p.Endpoint+"/browser/download", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDownload)
 	connector.Engine.POST(p.Endpoint+"/browser/disks", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDisks)
+	connector.Engine.POST(p.Endpoint+"/browser/files", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserFiles)
 
 	connector.Engine.NoRoute(default404Middleware(), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 

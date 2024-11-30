@@ -90,3 +90,13 @@ QString Agent::BrowserDisks()
     return message;
 }
 
+QString Agent::BrowserList(QString path)
+{
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqBrowserList( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
+    if (!result)
+        return "JWT error";
+
+    return message;
+}

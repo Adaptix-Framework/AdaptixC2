@@ -354,3 +354,15 @@ type SyncPacketBrowserDisks struct {
 	Message     string `json:"b_message"`
 	Data        string `json:"b_data"`
 }
+
+type SyncPacketBrowserFiles struct {
+	store  string
+	SpType int `json:"type"`
+
+	AgentId     string `json:"b_agent_id"`
+	Time        int64  `json:"b_time"`
+	MessageType int    `json:"b_msg_type"`
+	Message     string `json:"b_message"`
+	Path        string `json:"b_path"`
+	Data        string `json:"b_data"`
+}

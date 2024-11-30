@@ -500,57 +500,64 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 		case COMMAND_LS:
 			result := packer.ParseInt8()
 
+			var items []ListingFileData
+			var rootPath string
+
 			if result == 0 {
 				errorCode := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
 				task.MessageType = MESSAGE_ERROR
 
 			} else {
-				rootPath := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+				rootPath = ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 				rootPath, _ = strings.CutSuffix(rootPath, "\\*")
 
 				filesCount := int(packer.ParseInt32())
 
 				if filesCount == 0 {
 					task.Message = fmt.Sprintf("The '%s' directory is EMPTY", rootPath)
-					break
-				}
+				} else {
 
-				var folders []ListingFileData
-				var files []ListingFileData
+					var folders []ListingFileData
+					var files []ListingFileData
 
-				for i := 0; i < filesCount; i++ {
-					isDir := packer.ParseInt8()
-					fileData := ListingFileData{
-						IsDir:    false,
-						Size:     packer.ParseInt64(),
-						Date:     uint64(packer.ParseInt32()),
-						Filename: ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP),
+					for i := 0; i < filesCount; i++ {
+						isDir := packer.ParseInt8()
+						fileData := ListingFileData{
+							IsDir:    false,
+							Size:     packer.ParseInt64(),
+							Date:     uint64(packer.ParseInt32()),
+							Filename: ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP),
+						}
+						if isDir > 0 {
+							fileData.IsDir = true
+							folders = append(folders, fileData)
+						} else {
+							files = append(files, fileData)
+						}
 					}
-					if isDir > 0 {
-						fileData.IsDir = true
-						folders = append(folders, fileData)
-					} else {
-						files = append(files, fileData)
-					}
-				}
-				items := append(folders, files...)
-				OutputText := fmt.Sprintf(" %-8s %-14s %-20s  %s\n", "Type", "Size", "Last Modified      ", "Name")
-				OutputText += fmt.Sprintf(" %-8s %-14s %-20s  %s", "----", "---------", "----------------   ", "----")
 
-				for _, item := range items {
-					t := time.Unix(int64(item.Date), 0).UTC()
-					lastWrite := fmt.Sprintf("%02d/%02d/%d %02d:%02d", t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute())
+					items = append(folders, files...)
 
-					if item.IsDir {
-						OutputText += fmt.Sprintf("\n %-8s %-14s %-20s  %-8v", "dir", "", lastWrite, item.Filename)
-					} else {
-						OutputText += fmt.Sprintf("\n %-8s %-14s %-20s  %-8v", "", SizeBytesToFormat(item.Size), lastWrite, item.Filename)
+					OutputText := fmt.Sprintf(" %-8s %-14s %-20s  %s\n", "Type", "Size", "Last Modified      ", "Name")
+					OutputText += fmt.Sprintf(" %-8s %-14s %-20s  %s", "----", "---------", "----------------   ", "----")
+
+					for _, item := range items {
+						t := time.Unix(int64(item.Date), 0).UTC()
+						lastWrite := fmt.Sprintf("%02d/%02d/%d %02d:%02d", t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute())
+
+						if item.IsDir {
+							OutputText += fmt.Sprintf("\n %-8s %-14s %-20s  %-8v", "dir", "", lastWrite, item.Filename)
+						} else {
+							OutputText += fmt.Sprintf("\n %-8s %-14s %-20s  %-8v", "", SizeBytesToFormat(item.Size), lastWrite, item.Filename)
+						}
 					}
+					task.Message = fmt.Sprintf("List of files in the '%s' directory", rootPath)
+					task.ClearText = OutputText
 				}
-				task.Message = fmt.Sprintf("List of files in the '%s' directory", rootPath)
-				task.ClearText = OutputText
 			}
+
+			SyncBrowserFiles(ts, task, rootPath, items)
 
 			break
 
@@ -707,7 +714,13 @@ func BrowserDownloadChangeState(fid string, newState int) ([]byte, error) {
 	return PackArray(array)
 }
 
-func BrowserDisks() ([]byte, error) {
+func BrowserDisks(agentData AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DISKS}
+	return PackArray(array)
+}
+
+func BrowserFiles(path string, agentData AgentData) ([]byte, error) {
+	dir := ConvertUTF8toCp(path, agentData.ACP)
+	array := []interface{}{COMMAND_LS, dir}
 	return PackArray(array)
 }

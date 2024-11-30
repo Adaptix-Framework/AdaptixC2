@@ -32,5 +32,6 @@ bool HttpReqBrowserDownload( QString action, QString fileId, AuthProfile profile
 
 bool HttpReqBrowserDisks( QString agentId, AuthProfile profile, QString* message, bool* ok );
 
+bool HttpReqBrowserList( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok );
 
 #endif //ADAPTIXCLIENT_REQUESTOR_H

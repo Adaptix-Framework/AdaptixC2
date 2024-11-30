@@ -18,6 +18,17 @@ QString UnixTimestampGlobalToStringLocal(qint64 timestamp)
     return formattedTime;
 }
 
+QString UnixTimestampGlobalToStringLocalFull(qint64 timestamp)
+{
+    if ( timestamp == 0 )
+        return "";
+
+    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, Qt::UTC);
+    QDateTime localDateTime = epochDateTime.toLocalTime();
+    QString formattedTime = localDateTime.toString("hh:mm dd/MM/yyyy");
+    return formattedTime;
+}
+
 QString TextColorHtml(QString text, QString color)
 {
     if (text.isEmpty())
@@ -70,7 +81,7 @@ QString TrimmedEnds(QString str)
     return str.remove(QRegularExpression("\\s+$"));
 }
 
-QString BytesToFormat(int bytes)
+QString BytesToFormat(qint64 bytes)
 {
     const double KB = 1024.0;
     const double MB = KB * 1024;
