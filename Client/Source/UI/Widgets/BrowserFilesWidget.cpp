@@ -1,6 +1,5 @@
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <Utils/FileSystem.h>
-#include <QFileIconProvider>
 
 void BrowserFileData::CreateBrowserFileData(QString path, int type )
 {
@@ -9,31 +8,33 @@ void BrowserFileData::CreateBrowserFileData(QString path, int type )
     Name     = GetBasenameWindows(path);
 
     TreeItem = new FileBrowserTreeItem(this);
-
-    QFileIconProvider iconProvider;
-    if ( type == TYPE_FILE ) {
-        TreeItem->setIcon(0, iconProvider.icon(QFileIconProvider::File));
-    }
-    else if ( type == TYPE_DISK) {
-        TreeItem->setIcon(0, iconProvider.icon(QFileIconProvider::Drive));
-    }
-    else {
-        TreeItem->setIcon(0, iconProvider.icon(QFileIconProvider::Folder));
-    }
+    TreeItem->setIcon(0, GetFileSystemIcon(type, false));
 }
 
 void BrowserFileData::SetType(int type)
 {
     this->Type = type;
-
-    QFileIconProvider iconProvider;
-    if (type == TYPE_FILE)
-        this->TreeItem->setIcon(0, iconProvider.icon(QFileIconProvider::File));
-    else if (type == TYPE_DISK)
-        this->TreeItem->setIcon(0, iconProvider.icon(QFileIconProvider::Drive));
-    else
-        this->TreeItem->setIcon(0, iconProvider.icon(QFileIconProvider::Folder));
+    this->TreeItem->setIcon(0, GetFileSystemIcon(type, this->Stored));
 }
+
+void BrowserFileData::SetStored(bool stored)
+{
+    this->Stored = stored;
+    this->TreeItem->setIcon(0, GetFileSystemIcon(this->Type, this->Stored));
+}
+
+BrowserFileData* BrowserFilesWidget::getBrowserStore(QString path)
+{
+    path = path.toLower();
+    return &browserStore[path];
+}
+
+void BrowserFilesWidget::setBrowserStore(QString path, BrowserFileData fileData)
+{
+    path = path.toLower();
+    browserStore[path] = fileData;
+}
+
 
 
 
@@ -111,22 +112,23 @@ void BrowserFilesWidget::createUI()
     tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem( "Name" ) );
     tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Size" ) );
     tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Last Modified" ) );
+    tableWidget->setIconSize(QSize(25, 25));
 
     listGridLayout = new QGridLayout(this);
     listGridLayout->setContentsMargins(5, 4, 1, 1);
     listGridLayout->setVerticalSpacing(4);
     listGridLayout->setHorizontalSpacing(8);
 
-    listGridLayout->addWidget( buttonReload,  0, 0,  1, 1  );
-    listGridLayout->addWidget(buttonParent, 0, 1, 1, 1  );
-    listGridLayout->addWidget(inputPath, 0, 2, 1, 5  );
-    listGridLayout->addWidget(buttonList, 0, 7, 1, 1  );
-    listGridLayout->addWidget( line_1,        0, 8,  1, 1  );
-    listGridLayout->addWidget( buttonUpload,  0, 9,  1, 1  );
-    listGridLayout->addWidget( buttonDisks,   0, 10, 1, 1  );
-    listGridLayout->addWidget( line_2,        0, 11, 1, 1  );
-    listGridLayout->addWidget( statusLabel,   0, 12, 1, 1  );
-    listGridLayout->addWidget( tableWidget,   1, 0,  1, 13 );
+    listGridLayout->addWidget( buttonReload, 0, 0,  1, 1  );
+    listGridLayout->addWidget( buttonParent, 0, 1,  1, 1  );
+    listGridLayout->addWidget( inputPath,    0, 2,  1, 5  );
+    listGridLayout->addWidget( buttonList,   0, 7,  1, 1  );
+    listGridLayout->addWidget( line_1,       0, 8,  1, 1  );
+    listGridLayout->addWidget( buttonUpload, 0, 9,  1, 1  );
+    listGridLayout->addWidget( buttonDisks,  0, 10, 1, 1  );
+    listGridLayout->addWidget( line_2,       0, 11, 1, 1  );
+    listGridLayout->addWidget( statusLabel,  0, 12, 1, 1  );
+    listGridLayout->addWidget( tableWidget,  1, 0,  1, 13 );
 
     listBrowserWidget = new QWidget(this);
     listBrowserWidget->setLayout(listGridLayout);
@@ -134,12 +136,13 @@ void BrowserFilesWidget::createUI()
     treeBrowserWidget = new QTreeWidget();
     treeBrowserWidget->setSortingEnabled(false);
     treeBrowserWidget->headerItem()->setText( 0, "Directory Tree" );
+    treeBrowserWidget->setIconSize(QSize(25, 25));
 
     splitter = new QSplitter( this );
     splitter->setOrientation( Qt::Horizontal );
     splitter->addWidget( treeBrowserWidget );
     splitter->addWidget( listBrowserWidget );
-    splitter->setSizes( QList<int>() << 1 << 250 );
+    splitter->setSizes( QList<int>() << 100 << 200 );
 
     mainGridLayout = new QGridLayout(this );
     mainGridLayout->setContentsMargins(0, 0, 0, 0 );
@@ -165,17 +168,16 @@ void BrowserFilesWidget::SetDisks(qint64 time, int msgType, QString message, QSt
     if (!jsonDoc.isArray())
         return;
 
-    QVector<BrowserFileData> disks;
+    QVector<BrowserFileData*> disks;
 
     QJsonArray jsonArray = jsonDoc.array();
     for (const QJsonValue& value : jsonArray) {
         QJsonObject jsonObject = value.toObject();
         QString path = jsonObject["b_name"].toString();
-        path = path.toLower();
 
         BrowserFileData* diskData = getFileData(path);
         diskData->Size = jsonObject["b_type"].toString();
-        disks.push_back(*diskData);
+        disks.push_back(diskData);
     }
     this->tableShowItems(disks);
 
@@ -197,22 +199,21 @@ void BrowserFilesWidget::AddFiles(qint64 time, int msgType, QString message, QSt
         statusLabel->setText(status);
     }
 
-    path = path.toLower();
-
-    BrowserFileData* currenFileData = this->getFileData(path);
-    currenFileData->Stored = true;
-    currenFileData->Status = status;
+    BrowserFileData* currentFileData = this->getFileData(path);
+    currentFileData->SetStored(true);
+    currentFileData->Status = status;
 
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data.toUtf8());
-    if (!jsonDoc.isArray())
-        return;
+    if ( jsonDoc.isArray() )
+    {
+        QJsonArray jsonArray = jsonDoc.array();
+        this->updateFileData(currentFileData, path, jsonArray);
+    }
 
-    QJsonArray jsonArray = jsonDoc.array();
-    this->updateFileData(currenFileData, path, jsonArray);
-    this->tableShowItems(currenFileData->Files);
+    this->tableShowItems(currentFileData->Files);
 
-    treeBrowserWidget->setCurrentItem(currenFileData->TreeItem);
-    currenFileData->TreeItem->setExpanded(true);
+    treeBrowserWidget->setCurrentItem(currentFileData->TreeItem);
+    currentFileData->TreeItem->setExpanded(true);
 
     curentPath = path;
     inputPath->setText(curentPath);
@@ -238,30 +239,30 @@ BrowserFileData BrowserFilesWidget::createFileData(QString path)
 
 BrowserFileData* BrowserFilesWidget::getFileData(QString path)
 {
-    if( browserStore.contains(path) ) {
-        return &browserStore[path];
+    if( browserStore.contains(path.toLower()) ) {
+        return this->getBrowserStore(path);
     }
     else {
         QString rootPath = GetRootPathWindows(path);
         BrowserFileData fileData = this->createFileData(path);
-        browserStore[path] = fileData;
+        this->setBrowserStore(path, fileData);
         if ( rootPath == path )
-            return &browserStore[path];
+            return this->getBrowserStore(path);
 
         QString parentPath = GetParentPathWindows(path);
         BrowserFileData* parentFileData = this->getFileData(parentPath);
 
         parentFileData->TreeItem->addChild(fileData.TreeItem);
 
-        return &browserStore[path];
+        return this->getBrowserStore(path);
     }
 }
 
 void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, QString path, QJsonArray jsonArray)
 {
     QMap<QString, BrowserFileData> oldFiles;
-    for (BrowserFileData oldData : currenFileData->Files)
-        oldFiles[oldData.Name] = oldData;
+    for (BrowserFileData* oldData : currenFileData->Files)
+        oldFiles[oldData->Name.toLower()] = *oldData;
 
     currenFileData->TreeItem->takeChildren();
     currenFileData->Files.clear();
@@ -269,7 +270,6 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, QString
     for ( QJsonValue value : jsonArray ) {
         QJsonObject jsonObject = value.toObject();
         QString filename = jsonObject["b_filename"].toString();
-        filename = filename.toLower();
 
         qint64  b_size = jsonObject["b_size"].toDouble();
         qint64  b_date = jsonObject["b_date"].toDouble();
@@ -286,17 +286,17 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, QString
             childData->SetType(b_type);
         }
 
-        if( oldFiles.contains(filename) ) {
-            oldFiles.remove(filename);
+        if( oldFiles.contains(filename.toLower()) ) {
+            oldFiles.remove(filename.toLower());
         }
         else {
             childData->SetType(b_type);
             if ( b_type != TYPE_FILE )
-                browserStore[fullname] = *childData;
+                this->setBrowserStore(fullname, *childData);
         }
 
         currenFileData->TreeItem->addChild(childData->TreeItem);
-        currenFileData->Files.push_back(*childData);
+        currenFileData->Files.push_back(childData);
     }
 
     for( QString oldPath : oldFiles.keys() ) {
@@ -327,28 +327,22 @@ void BrowserFilesWidget::setStoredFileData(QString path, BrowserFileData currenF
     inputPath->setText(curentPath);
 }
 
-void BrowserFilesWidget::tableShowItems(QVector<BrowserFileData> files )
+void BrowserFilesWidget::tableShowItems(QVector<BrowserFileData*> files )
 {
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
 
     tableWidget->setRowCount(files.size());
     for (int row = 0; row < files.size(); ++row) {
-        QTableWidgetItem* item_Name = new QTableWidgetItem(files[row].Name);
-        QTableWidgetItem* item_Size = new QTableWidgetItem(files[row].Size);
-        QTableWidgetItem* item_Date = new QTableWidgetItem(files[row].Modified);
 
+        QTableWidgetItem* item_Name = new QTableWidgetItem(files[row]->Name);
+        QTableWidgetItem* item_Size = new QTableWidgetItem(files[row]->Size);
+        QTableWidgetItem* item_Date = new QTableWidgetItem(files[row]->Modified);
+
+        item_Name->setIcon(GetFileSystemIcon( files[row]->Type, files[row]->Stored) );
         item_Name->setFlags( item_Name->flags() ^ Qt::ItemIsEditable );
         item_Size->setFlags( item_Size->flags() ^ Qt::ItemIsEditable );
         item_Date->setFlags( item_Date->flags() ^ Qt::ItemIsEditable );
-
-        QFileIconProvider iconProvider;
-        if ( files[row].Type == TYPE_FILE )
-            item_Name->setIcon(iconProvider.icon(QFileIconProvider::File));
-        else if ( files[row].Type == TYPE_DISK)
-            item_Name->setIcon(iconProvider.icon(QFileIconProvider::Drive));
-        else
-            item_Name->setIcon(iconProvider.icon(QFileIconProvider::Folder));
 
         tableWidget->setItem(row, 0, item_Name);
         tableWidget->setItem(row, 1, item_Size);
@@ -358,10 +352,10 @@ void BrowserFilesWidget::tableShowItems(QVector<BrowserFileData> files )
 
 void BrowserFilesWidget::cdBroser(QString path)
 {
-    if ( !browserStore.contains(path) )
+    if ( !browserStore.contains(path.toLower()) )
         return;
 
-    BrowserFileData fileData = browserStore[path];
+    BrowserFileData fileData = * this->getBrowserStore(path);
     if (fileData.Type == TYPE_FILE)
         return;
 

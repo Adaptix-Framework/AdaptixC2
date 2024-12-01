@@ -3,11 +3,6 @@
 
 #include <main.h>
 #include <Agent/Agent.h>
-#include <QFileIconProvider>
-
-#define TYPE_FILE 0
-#define TYPE_DIR  1
-#define TYPE_DISK 2
 
 class FileBrowserTreeItem;
 
@@ -21,7 +16,7 @@ public:
     QString Size;
     QString Modified;
     QString Status;
-    QVector<BrowserFileData> Files;
+    QVector<BrowserFileData*> Files;
 
     FileBrowserTreeItem* TreeItem = nullptr;
 
@@ -29,6 +24,7 @@ public:
     ~BrowserFileData() = default;
 
     void SetType(int type);
+    void SetStored(bool stored);
     void CreateBrowserFileData(QString path, int type );
 };
 
@@ -65,11 +61,15 @@ class BrowserFilesWidget : public QWidget
     QString curentPath;
     QMap<QString, BrowserFileData> browserStore;
 
+    BrowserFileData* getBrowserStore(QString path);
+    void setBrowserStore(QString path, BrowserFileData fileData);
+
     void createUI();
     void setStoredFileData(QString path, BrowserFileData currenFileData);
     void updateFileData(BrowserFileData* currenFileData, QString path, QJsonArray jsonArray);
-    void tableShowItems(QVector<BrowserFileData> files );
+    void tableShowItems(QVector<BrowserFileData*> files );
     void cdBroser(QString path);
+
     BrowserFileData createFileData(QString path);
     BrowserFileData* getFileData(QString path);
 
