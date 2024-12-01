@@ -37,7 +37,11 @@
         <file alias="arrow_right">icons/arrow_right_alt_64dp.png</file>
         <file alias="storage">icons/storage_64dp.png</file>
 
-        <file alias="ssd">icons/filesystem/ssd_64dp.png</file>
+        <file alias="fs_ssd">icons/filesystem/ssd_64dp.png</file>
+        <file alias="fs_document">icons/filesystem/document_64dp.png</file>
+        <file alias="fs_folder">icons/filesystem/folder_64dp.png</file>
+        <file alias="fs_open_folder">icons/filesystem/open_folder_64dp.png</file>
+        <file alias="fs_unknown">icons/filesystem/fs_unknown_64dp.png</file>
 
     </qresource>
 </RCC>

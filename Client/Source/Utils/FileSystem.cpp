@@ -61,3 +61,21 @@ QString GetParentPathWindows(const QString& path)
 
     return path;
 }
+
+QIcon GetFileSystemIcon(int type, bool used)
+{
+    if ( type == TYPE_FILE )
+        return QIcon(":/icons/fs_document");
+
+    if ( type == TYPE_DISK )
+        return QIcon(":/icons/fs_ssd");
+
+    if ( type == TYPE_DIR ) {
+        if (used)
+            return QIcon(":/icons/fs_open_folder");
+        else
+            return QIcon(":/icons/fs_folder");
+    }
+
+    return QIcon(":/icons/fs_unknown");
+}
