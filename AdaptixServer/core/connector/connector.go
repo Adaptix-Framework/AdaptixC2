@@ -40,6 +40,8 @@ type Teamserver interface {
 	TsDownloadChangeState(fileId string, username string, command string) error
 	TsAgentBrowserDisks(agentId string, username string) error
 	TsAgentBrowserFiles(agentId string, path string, username string) error
+	TsAgentBrowserUpload(agentId string, path string, content []byte, username string) error
+	TsAgentBrowserDownload(agentId string, path string, username string) error
 }
 
 type TsConnector struct {
@@ -94,9 +96,11 @@ func NewTsConnector(ts Teamserver, p profile.TsProfile) (*TsConnector, error) {
 	connector.Engine.POST(p.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentRemove)
 	connector.Engine.POST(p.Endpoint+"/agent/settag", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentSetTag)
 
-	connector.Engine.POST(p.Endpoint+"/browser/download", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDownload)
+	connector.Engine.POST(p.Endpoint+"/browser/download/state", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDownloadState)
+	connector.Engine.POST(p.Endpoint+"/browser/download/start", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDownload)
 	connector.Engine.POST(p.Endpoint+"/browser/disks", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDisks)
 	connector.Engine.POST(p.Endpoint+"/browser/files", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserFiles)
+	connector.Engine.POST(p.Endpoint+"/browser/upload", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserUpload)
 
 	connector.Engine.NoRoute(default404Middleware(), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 

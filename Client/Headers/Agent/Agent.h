@@ -44,6 +44,8 @@ public:
     void    Update(QJsonObject jsonObjAgentData);
     QString BrowserDisks();
     QString BrowserList(QString path);
+    QString BrowserUpload(QString path, QString content);
+    QString BrowserDownload(QString path);
 };
 
 #endif //ADAPTIXCLIENT_AGENT_H

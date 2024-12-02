@@ -224,7 +224,7 @@ void DownloadsWidget::actionSync()
         dataJson["file"] = fileId;
         QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-        QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/browser/download";
+        QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/browser/download/state";
         QJsonObject jsonObject = HttpReq(sUrl, jsonData, adaptixWidget->GetProfile()->GetAccessToken());
         if ( jsonObject.contains("message") && jsonObject.contains("ok") || jsonObject.contains("content") && jsonObject.contains("filename") && jsonObject.contains("ok") ) {
         }

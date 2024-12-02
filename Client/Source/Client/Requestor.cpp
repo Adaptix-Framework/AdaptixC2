@@ -182,7 +182,24 @@ bool HttpReqBrowserDownload( QString action, QString fileId, AuthProfile profile
     dataJson["file"] = fileId;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString sUrl = profile.GetURL() + "/browser/download";
+    QString sUrl = profile.GetURL() + "/browser/download/state";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqBrowserDownloadStart( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["agent_id"] = agentId;
+    dataJson["path"] = path;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/browser/download/start";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
@@ -216,6 +233,24 @@ bool HttpReqBrowserList( QString agentId, QString path, AuthProfile profile, QSt
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/browser/files";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqBrowserUpload( QString agentId, QString path, QString content, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["agent_id"]    = agentId;
+    dataJson["remote_path"] = path;
+    dataJson["content"]     = content;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/browser/upload";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();

@@ -100,3 +100,24 @@ QString Agent::BrowserList(QString path)
 
     return message;
 }
+
+QString Agent::BrowserUpload(QString path, QString content)
+{
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqBrowserUpload( data.Id, path, content, *(adaptixWidget->GetProfile()), &message, &ok);
+    if (!result)
+        return "JWT error";
+
+    return message;
+}
+
+QString Agent::BrowserDownload(QString path)
+{
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqBrowserDownloadStart( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
+    if (!result)
+        return "JWT error";
+
+    return message;}

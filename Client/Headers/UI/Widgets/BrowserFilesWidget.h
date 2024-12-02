@@ -58,7 +58,7 @@ class BrowserFilesWidget : public QWidget
     QFrame*       line_2            = nullptr;
 
     Agent*  agent;
-    QString curentPath;
+    QString currentPath;
     QMap<QString, BrowserFileData> browserStore;
 
     BrowserFileData* getBrowserStore(QString path);
@@ -70,7 +70,7 @@ class BrowserFilesWidget : public QWidget
     void tableShowItems(QVector<BrowserFileData*> files );
     void cdBroser(QString path);
 
-    BrowserFileData createFileData(QString path);
+    BrowserFileData  createFileData(QString path);
     BrowserFileData* getFileData(QString path);
 
 public:
@@ -79,15 +79,18 @@ public:
 
     void SetDisks(qint64 time, int msgType, QString message, QString data);
     void AddFiles(qint64 time, int msgType, QString message, QString path, QString data);
+    void SetStatus(qint64 time, int msgType, QString message);
 
 public slots:
     void onDisks();
     void onList();
     void onParent();
     void onReload();
-
+    void onUpload();
+    void actionDownload();
     void handleTableDoubleClicked(const QModelIndex &index);
     void handleTreeDoubleClicked(QTreeWidgetItem* item, int column);
+    void handleTableMenu(const QPoint &pos);
 };
 
 #endif //ADAPTIXCLIENT_BROWSERFILESWIDGET_H
