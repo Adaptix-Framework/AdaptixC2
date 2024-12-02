@@ -30,8 +30,12 @@ bool HttpReqAgentSetTag( QString agentId, QString tag, AuthProfile profile, QStr
 
 bool HttpReqBrowserDownload( QString action, QString fileId, AuthProfile profile, QString* message, bool* ok );
 
+bool HttpReqBrowserDownloadStart( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok );
+
 bool HttpReqBrowserDisks( QString agentId, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqBrowserList( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok );
+
+bool HttpReqBrowserUpload( QString agentId, QString path, QString content, AuthProfile profile, QString* message, bool* ok );
 
 #endif //ADAPTIXCLIENT_REQUESTOR_H

@@ -33,8 +33,9 @@ const (
 	TYPE_DOWNLOAD_UPDATE = 0x52
 	TYPE_DOWNLOAD_DELETE = 0x53
 
-	TYPE_BROWSER_DISKS = 0x61
-	TYPE_BROWSER_FILES = 0x62
+	TYPE_BROWSER_DISKS  = 0x61
+	TYPE_BROWSER_FILES  = 0x62
+	TYPE_BROWSER_STATUS = 0x63
 )
 
 /// SYNC
@@ -304,5 +305,17 @@ func CreateSpBrowserFiles(taskData TaskData, path string, data string) SyncPacke
 		Message:     taskData.Message,
 		Path:        path,
 		Data:        data,
+	}
+}
+
+func CreateSpBrowserStatus(taskData TaskData) SyncPacketBrowserStatus {
+	return SyncPacketBrowserStatus{
+		store:  STORE_LOG,
+		SpType: TYPE_BROWSER_STATUS,
+
+		AgentId:     taskData.AgentId,
+		Time:        time.Now().UTC().Unix(),
+		MessageType: taskData.MessageType,
+		Message:     taskData.Message,
 	}
 }

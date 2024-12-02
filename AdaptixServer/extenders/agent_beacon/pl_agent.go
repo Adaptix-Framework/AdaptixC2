@@ -685,6 +685,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_UPLOAD:
 			task.Message = "File successfully uploaded"
+			SyncBrowserStatus(ts, task)
 			break
 
 		case COMMAND_ERROR:
@@ -722,5 +723,17 @@ func BrowserDisks(agentData AgentData) ([]byte, error) {
 func BrowserFiles(path string, agentData AgentData) ([]byte, error) {
 	dir := ConvertUTF8toCp(path, agentData.ACP)
 	array := []interface{}{COMMAND_LS, dir}
+	return PackArray(array)
+}
+
+func BrowserUpload(ts Teamserver, path string, content []byte, agentData AgentData) ([]byte, error) {
+	memoryId := CreateTaskCommandSaveMemory(ts, agentData.Id, content)
+	fileName := ConvertUTF8toCp(path, agentData.ACP)
+	array := []interface{}{COMMAND_UPLOAD, memoryId, fileName}
+	return PackArray(array)
+}
+
+func BrowserDownload(ts Teamserver, path string, agentData AgentData) ([]byte, error) {
+	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
 	return PackArray(array)
 }

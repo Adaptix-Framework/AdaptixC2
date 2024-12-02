@@ -48,6 +48,7 @@ type Teamserver interface {
 
 	TsClientBrowserDisks(jsonTask string, jsonDrives string)
 	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
+	TsClientBrowserStatus(jsonTask string)
 }
 
 type ModuleExtender struct {
@@ -394,6 +395,70 @@ func (m *ModuleExtender) AgentBrowserFiles(path string, agentObject []byte) ([]b
 	return buffer.Bytes(), nil
 }
 
+func (m *ModuleExtender) AgentBrowserUpload(path string, content []byte, agentObject []byte) ([]byte, error) {
+	var (
+		packData  []byte
+		agentData AgentData
+		taskData  TaskData
+		buffer    bytes.Buffer
+		err       error
+	)
+	err = json.Unmarshal(agentObject, &agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	packData, err = BrowserUpload(m.ts, path, content, agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	taskData = TaskData{
+		Type: BROWSER,
+		Data: packData,
+		Sync: false,
+	}
+
+	err = json.NewEncoder(&buffer).Encode(taskData)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
+func (m *ModuleExtender) AgentBrowserDownload(path string, agentObject []byte) ([]byte, error) {
+	var (
+		packData  []byte
+		agentData AgentData
+		taskData  TaskData
+		buffer    bytes.Buffer
+		err       error
+	)
+	err = json.Unmarshal(agentObject, &agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	packData, err = BrowserDownload(m.ts, path, agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	taskData = TaskData{
+		Type: TASK,
+		Data: packData,
+		Sync: true,
+	}
+
+	err = json.NewEncoder(&buffer).Encode(taskData)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
 /// SYNC
 
 func SyncBrowserDisks(ts Teamserver, task TaskData, drivesSlice []ListingDrivesData) {
@@ -440,4 +505,20 @@ func SyncBrowserFiles(ts Teamserver, task TaskData, path string, filesSlice []Li
 	jsonTask = string(jsonData)
 
 	ts.TsClientBrowserFiles(jsonTask, path, jsonDrives)
+}
+
+func SyncBrowserStatus(ts Teamserver, task TaskData) {
+	var (
+		jsonTask string
+		jsonData []byte
+		err      error
+	)
+
+	jsonData, err = json.Marshal(task)
+	if err != nil {
+		return
+	}
+	jsonTask = string(jsonData)
+
+	ts.TsClientBrowserStatus(jsonTask)
 }

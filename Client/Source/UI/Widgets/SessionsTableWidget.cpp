@@ -155,7 +155,7 @@ void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index)
     adaptixWidget->LoadConsoleUI(AgentId);
 }
 
-void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos )
+void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 {
     if ( ! tableWidget->itemAt(pos) )
         return;

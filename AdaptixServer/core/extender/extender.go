@@ -149,6 +149,14 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 		if !ok {
 			return errors.New("method AgentBrowserFiles not found")
 		}
+		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserUpload")
+		if !ok {
+			return errors.New("method AgentBrowserUpload not found")
+		}
+		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserDownload")
+		if !ok {
+			return errors.New("method AgentBrowserDownload not found")
+		}
 
 		return nil
 	}
