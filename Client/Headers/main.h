@@ -43,6 +43,7 @@
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QTreeWidget>
+#include <QClipboard>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
@@ -76,9 +77,10 @@
 #define TYPE_DOWNLOAD_UPDATE 0x52
 #define TYPE_DOWNLOAD_DELETE 0x53
 
-#define TYPE_BROWSER_DISKS  0x61
-#define TYPE_BROWSER_FILES  0x62
-#define TYPE_BROWSER_STATUS 0x63
+#define TYPE_BROWSER_DISKS   0x61
+#define TYPE_BROWSER_FILES   0x62
+#define TYPE_BROWSER_STATUS  0x63
+#define TYPE_BROWSER_PROCESS 0x64
 
 //////////
 

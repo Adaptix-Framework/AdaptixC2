@@ -37,7 +37,6 @@ void BrowserFilesWidget::setBrowserStore(QString path, BrowserFileData fileData)
 
 
 
-
 BrowserFilesWidget::BrowserFilesWidget(Agent* a)
 {
     agent = a;
@@ -49,9 +48,9 @@ BrowserFilesWidget::BrowserFilesWidget(Agent* a)
     connect(buttonReload, &QPushButton::clicked,     this, &BrowserFilesWidget::onReload);
     connect(buttonUpload, &QPushButton::clicked,     this, &BrowserFilesWidget::onUpload);
     connect(inputPath,    &QLineEdit::returnPressed, this, &BrowserFilesWidget::onList);
-    connect(tableWidget,       &QTableWidget::doubleClicked,    this, &BrowserFilesWidget::handleTableDoubleClicked);
-    connect(treeBrowserWidget, &QTreeWidget::itemDoubleClicked, this, &BrowserFilesWidget::handleTreeDoubleClicked);
-    connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &BrowserFilesWidget::handleTableMenu );
+    connect(tableWidget,       &QTableWidget::doubleClicked,              this, &BrowserFilesWidget::handleTableDoubleClicked);
+    connect(treeBrowserWidget, &QTreeWidget::itemDoubleClicked,           this, &BrowserFilesWidget::handleTreeDoubleClicked);
+    connect(tableWidget,       &QTableWidget::customContextMenuRequested, this, &BrowserFilesWidget::handleTableMenu );
 
 }
 
@@ -332,7 +331,6 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, QString
 
 void BrowserFilesWidget::setStoredFileData(QString path, BrowserFileData currenFileData)
 {
-
     treeBrowserWidget->setCurrentItem(currenFileData.TreeItem);
     currenFileData.TreeItem->setExpanded(true);
 
@@ -403,6 +401,9 @@ void BrowserFilesWidget::onList()
 
 void BrowserFilesWidget::onParent()
 {
+    if ( currentPath.isEmpty() )
+        return;
+
     QString path = GetParentPathWindows(currentPath);
     if (path == currentPath)
         return;
@@ -412,10 +413,11 @@ void BrowserFilesWidget::onParent()
 
 void BrowserFilesWidget::onReload()
 {
-    if ( !currentPath.isEmpty() ){
-        QString status = agent->BrowserList(currentPath);
-        statusLabel->setText(status);
-    }
+    if ( currentPath.isEmpty() )
+        return;
+
+    QString status = agent->BrowserList(currentPath);
+    statusLabel->setText(status);
 }
 
 void BrowserFilesWidget::onUpload()

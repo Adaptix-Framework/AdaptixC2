@@ -34,6 +34,8 @@ bool HttpReqBrowserDownloadStart( QString agentId, QString path, AuthProfile pro
 
 bool HttpReqBrowserDisks( QString agentId, AuthProfile profile, QString* message, bool* ok );
 
+bool HttpReqBrowserProcess( QString agentId, AuthProfile profile, QString* message, bool* ok );
+
 bool HttpReqBrowserList( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqBrowserUpload( QString agentId, QString path, QString content, AuthProfile profile, QString* message, bool* ok );

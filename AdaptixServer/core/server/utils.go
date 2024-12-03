@@ -367,7 +367,7 @@ type SyncPacketBrowserFiles struct {
 	Data        string `json:"b_data"`
 }
 
-type SyncPacketBrowserStatus struct {
+type SyncPacketBrowserFilesStatus struct {
 	store  string
 	SpType int `json:"type"`
 
@@ -375,4 +375,15 @@ type SyncPacketBrowserStatus struct {
 	Time        int64  `json:"b_time"`
 	MessageType int    `json:"b_msg_type"`
 	Message     string `json:"b_message"`
+}
+
+type SyncPacketBrowserProcess struct {
+	store  string
+	SpType int `json:"type"`
+
+	AgentId     string `json:"b_agent_id"`
+	Time        int64  `json:"b_time"`
+	MessageType int    `json:"b_msg_type"`
+	Message     string `json:"b_message"`
+	Data        string `json:"b_data"`
 }

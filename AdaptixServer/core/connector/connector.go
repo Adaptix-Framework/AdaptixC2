@@ -39,6 +39,7 @@ type Teamserver interface {
 
 	TsDownloadChangeState(fileId string, username string, command string) error
 	TsAgentBrowserDisks(agentId string, username string) error
+	TsAgentBrowserProcess(agentId string, username string) error
 	TsAgentBrowserFiles(agentId string, path string, username string) error
 	TsAgentBrowserUpload(agentId string, path string, content []byte, username string) error
 	TsAgentBrowserDownload(agentId string, path string, username string) error

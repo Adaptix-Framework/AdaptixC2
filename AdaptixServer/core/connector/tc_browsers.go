@@ -250,3 +250,45 @@ func (tc *TsConnector) TcBrowserUpload(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, answer)
 }
+
+///
+
+type ProcessAction struct {
+	AgentId string `json:"agent_id"`
+}
+
+func (tc *TsConnector) TcBrowserProcess(ctx *gin.Context) {
+	var (
+		processAction ProcessAction
+		username      string
+		ok            bool
+		err           error
+		answer        gin.H
+	)
+
+	err = ctx.ShouldBindJSON(&processAction)
+	if err != nil {
+		_ = ctx.Error(errors.New("invalid action"))
+		return
+	}
+
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+
+	username, ok = value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
+
+	err = tc.teamserver.TsAgentBrowserProcess(processAction.AgentId, username)
+	if err != nil {
+		answer = gin.H{"message": err.Error(), "ok": false}
+	} else {
+		answer = gin.H{"message": "Wait...", "ok": true}
+	}
+	ctx.JSON(http.StatusOK, answer)
+}
