@@ -145,6 +145,10 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 		if !ok {
 			return errors.New("method AgentBrowserDisks not found")
 		}
+		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserProcess")
+		if !ok {
+			return errors.New("method AgentBrowserProcess not found")
+		}
 		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserFiles")
 		if !ok {
 			return errors.New("method AgentBrowserFiles not found")

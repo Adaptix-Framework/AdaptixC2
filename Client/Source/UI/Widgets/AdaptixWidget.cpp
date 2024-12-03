@@ -303,6 +303,15 @@ void AdaptixWidget::LoadFileBrowserUI(QString AgentId)
     this->AddTab(Agents[AgentId]->FileBrowser, text);
 }
 
+void AdaptixWidget::LoadProcessBrowserUI(QString AgentId)
+{
+    if( !Agents.contains(AgentId) )
+        return;
+
+    auto text = QString("Processes [%1]").arg( AgentId );
+    this->AddTab(Agents[AgentId]->ProcessBrowser, text);
+}
+
 void AdaptixWidget::ChannelClose()
 {
     QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/unlink"), COLOR_ChiliPepper);

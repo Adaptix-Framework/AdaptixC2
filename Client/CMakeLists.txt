@@ -48,6 +48,7 @@ SET( HEADERS
         Headers/Agent/Commander.h
         Headers/UI/Widgets/DownloadsWidget.h
         Headers/UI/Widgets/BrowserFilesWidget.h
+        Headers/UI/Widgets/BrowserProcessWidget.h
 )
 
 add_executable(AdaptixClient
@@ -83,6 +84,7 @@ add_executable(AdaptixClient
         Source/Agent/Commander.cpp
         Source/UI/Widgets/DownloadWidget.cpp
         Source/UI/Widgets/BrowserFilesWidget.cpp
+        Source/UI/Widgets/BrowserProcessWidget.cpp
 )
 
 target_link_libraries(AdaptixClient

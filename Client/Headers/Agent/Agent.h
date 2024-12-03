@@ -6,10 +6,12 @@
 #include <Agent/Commander.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
+#include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 
 class ConsoleWidget;
 class BrowserFilesWidget;
+class BrowserProcessWidget;
 class AdaptixWidget;
 
 class Agent
@@ -35,14 +37,16 @@ public:
     TableWidgetItemAgent* item_Last;
     TableWidgetItemAgent* item_Sleep;
 
-    ConsoleWidget*      Console     = nullptr;
-    BrowserFilesWidget* FileBrowser = nullptr;
+    ConsoleWidget*        Console        = nullptr;
+    BrowserFilesWidget*   FileBrowser    = nullptr;
+    BrowserProcessWidget* ProcessBrowser = nullptr;
 
     explicit Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w );
     ~Agent();
 
     void    Update(QJsonObject jsonObjAgentData);
     QString BrowserDisks();
+    QString BrowserProcess();
     QString BrowserList(QString path);
     QString BrowserUpload(QString path, QString content);
     QString BrowserDownload(QString path);

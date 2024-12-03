@@ -60,6 +60,7 @@ public slots:
 
     void actionConsoleOpen();
     void actionFileBrowserOpen();
+    void actionProcessBrowserOpen();
     void actionAgentTag();
     void actionAgentHide();
     void actionAgentRemove();

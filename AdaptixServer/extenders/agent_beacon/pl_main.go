@@ -48,7 +48,8 @@ type Teamserver interface {
 
 	TsClientBrowserDisks(jsonTask string, jsonDrives string)
 	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
-	TsClientBrowserStatus(jsonTask string)
+	TsClientBrowserFilesStatus(jsonTask string)
+	TsClientBrowserProcess(jsonTask string, jsonFiles string)
 }
 
 type ModuleExtender struct {
@@ -363,6 +364,38 @@ func (m *ModuleExtender) AgentBrowserDisks(agentObject []byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+func (m *ModuleExtender) AgentBrowserProcess(agentObject []byte) ([]byte, error) {
+	var (
+		packData  []byte
+		agentData AgentData
+		taskData  TaskData
+		buffer    bytes.Buffer
+		err       error
+	)
+	err = json.Unmarshal(agentObject, &agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	packData, err = BrowserProcess(agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	taskData = TaskData{
+		Type: BROWSER,
+		Data: packData,
+		Sync: false,
+	}
+
+	err = json.NewEncoder(&buffer).Encode(taskData)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
 func (m *ModuleExtender) AgentBrowserFiles(path string, agentObject []byte) ([]byte, error) {
 	var (
 		packData  []byte
@@ -440,7 +473,7 @@ func (m *ModuleExtender) AgentBrowserDownload(path string, agentObject []byte) (
 		return nil, err
 	}
 
-	packData, err = BrowserDownload(m.ts, path, agentData)
+	packData, err = BrowserDownload(path, agentData)
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +540,7 @@ func SyncBrowserFiles(ts Teamserver, task TaskData, path string, filesSlice []Li
 	ts.TsClientBrowserFiles(jsonTask, path, jsonDrives)
 }
 
-func SyncBrowserStatus(ts Teamserver, task TaskData) {
+func SyncBrowserFilesStatus(ts Teamserver, task TaskData) {
 	var (
 		jsonTask string
 		jsonData []byte
@@ -520,5 +553,28 @@ func SyncBrowserStatus(ts Teamserver, task TaskData) {
 	}
 	jsonTask = string(jsonData)
 
-	ts.TsClientBrowserStatus(jsonTask)
+	ts.TsClientBrowserFilesStatus(jsonTask)
+}
+
+func SyncBrowserProcess(ts Teamserver, task TaskData, processlist []ListingProcessData) {
+	var (
+		jsonProcess string
+		jsonTask    string
+		jsonData    []byte
+		err         error
+	)
+
+	jsonData, err = json.Marshal(processlist)
+	if err != nil {
+		return
+	}
+	jsonProcess = string(jsonData)
+
+	jsonData, err = json.Marshal(task)
+	if err != nil {
+		return
+	}
+	jsonTask = string(jsonData)
+
+	ts.TsClientBrowserProcess(jsonTask, jsonProcess)
 }

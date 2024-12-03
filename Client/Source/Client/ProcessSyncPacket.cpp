@@ -370,6 +370,24 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
+    if( spType == TYPE_BROWSER_PROCESS ) {
+        if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("b_time") || !jsonObj["b_time"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("b_msg_type") || !jsonObj["b_msg_type"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("b_message") || !jsonObj["b_message"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("b_data") || !jsonObj["b_data"].isString()) {
+            return false;
+        }
+        return true;
+    }
 
     return false;
 }
@@ -647,6 +665,21 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (Agents.contains(agentId))
             Agents[agentId]->FileBrowser->AddFiles(time, msgType, message, path, data);
+
+        return;
+    }
+    if( spType == TYPE_BROWSER_PROCESS )
+    {
+        QString agentId = jsonObj["b_agent_id"].toString();
+        qint64  time    = jsonObj["b_time"].toDouble();
+        int     msgType = jsonObj["b_msg_type"].toDouble();
+        QString message = jsonObj["b_message"].toString();
+        QString data    = jsonObj["b_data"].toString();
+
+        if (Agents.contains(agentId)) {
+            Agents[agentId]->ProcessBrowser->SetStatus(time, msgType, message);
+            Agents[agentId]->ProcessBrowser->SetProcess(data);
+        }
 
         return;
     }

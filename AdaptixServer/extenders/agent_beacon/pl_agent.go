@@ -586,6 +586,8 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 		case COMMAND_PS_LIST:
 			result := packer.ParseInt8()
 
+			var proclist []ListingProcessData
+
 			if result == 0 {
 				errorCode := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
@@ -600,7 +602,6 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 					break
 				}
 
-				var proclist []ListingProcessData
 				contextMaxSize := 10
 
 				for i := 0; i < processCount; i++ {
@@ -652,6 +653,8 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.ClearText = OutputText
 			}
 
+			SyncBrowserProcess(ts, task, proclist)
+
 			break
 
 		case COMMAND_PS_KILL:
@@ -685,7 +688,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_UPLOAD:
 			task.Message = "File successfully uploaded"
-			SyncBrowserStatus(ts, task)
+			SyncBrowserFilesStatus(ts, task)
 			break
 
 		case COMMAND_ERROR:
@@ -720,6 +723,11 @@ func BrowserDisks(agentData AgentData) ([]byte, error) {
 	return PackArray(array)
 }
 
+func BrowserProcess(agentData AgentData) ([]byte, error) {
+	array := []interface{}{COMMAND_PS_LIST}
+	return PackArray(array)
+}
+
 func BrowserFiles(path string, agentData AgentData) ([]byte, error) {
 	dir := ConvertUTF8toCp(path, agentData.ACP)
 	array := []interface{}{COMMAND_LS, dir}
@@ -733,7 +741,7 @@ func BrowserUpload(ts Teamserver, path string, content []byte, agentData AgentDa
 	return PackArray(array)
 }
 
-func BrowserDownload(ts Teamserver, path string, agentData AgentData) ([]byte, error) {
+func BrowserDownload(path string, agentData AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
 	return PackArray(array)
 }

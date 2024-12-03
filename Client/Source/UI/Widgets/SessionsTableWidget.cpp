@@ -164,8 +164,8 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 
     auto agentMenu = new QMenu("Agent", &ctxMenu);
     agentMenu->addAction("Command");
-    agentMenu->addAction("File Browser", this, &SessionsTableWidget::actionFileBrowserOpen);
-    agentMenu->addAction("Process Browser");
+    agentMenu->addAction("File Browser",    this, &SessionsTableWidget::actionFileBrowserOpen);
+    agentMenu->addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
     agentMenu->addAction("Exit");
 
     auto sep1 = new QAction();
@@ -203,6 +203,17 @@ void SessionsTableWidget::actionFileBrowserOpen()
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
             adaptixWidget->LoadFileBrowserUI(agentId);
+        }
+    }
+}
+
+void SessionsTableWidget::actionProcessBrowserOpen()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            adaptixWidget->LoadProcessBrowserUI(agentId);
         }
     }
 }

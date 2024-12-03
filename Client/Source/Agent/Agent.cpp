@@ -54,8 +54,9 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     item_Sleep    = new TableWidgetItemAgent( sleep, this );
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
 
-    Console     = new ConsoleWidget(this, commander );
-    FileBrowser = new BrowserFilesWidget(this);
+    Console        = new ConsoleWidget(this, commander );
+    FileBrowser    = new BrowserFilesWidget(this);
+    ProcessBrowser = new BrowserProcessWidget(this);
 }
 
 Agent::~Agent() = default;
@@ -84,6 +85,17 @@ QString Agent::BrowserDisks()
     QString message = QString();
     bool ok = false;
     bool result = HttpReqBrowserDisks( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
+    if (!result)
+        return "JWT error";
+
+    return message;
+}
+
+QString Agent::BrowserProcess()
+{
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqBrowserProcess( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
         return "JWT error";
 
