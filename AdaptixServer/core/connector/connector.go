@@ -24,6 +24,7 @@ type Teamserver interface {
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
+	TsAgentCtxExit(agentId string, username string) error
 	TsAgentRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
 

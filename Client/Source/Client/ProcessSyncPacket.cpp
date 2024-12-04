@@ -678,7 +678,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (Agents.contains(agentId)) {
             Agents[agentId]->ProcessBrowser->SetStatus(time, msgType, message);
-            Agents[agentId]->ProcessBrowser->SetProcess(data);
+            Agents[agentId]->ProcessBrowser->SetProcess(msgType, data);
         }
 
         return;

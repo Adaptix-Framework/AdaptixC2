@@ -745,3 +745,8 @@ func BrowserDownload(path string, agentData AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
 	return PackArray(array)
 }
+
+func BrowserExit(agentData AgentData) ([]byte, error) {
+	array := []interface{}{COMMAND_TERMINATE, 2}
+	return PackArray(array)
+}

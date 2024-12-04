@@ -309,14 +309,27 @@ func CreateSpBrowserFiles(taskData TaskData, path string, data string) SyncPacke
 	}
 }
 
-func CreateSpBrowserStatus(taskData TaskData) SyncPacketBrowserStatus {
-	return SyncPacketBrowserStatus{
+func CreateSpBrowserFilesStatus(taskData TaskData) SyncPacketBrowserFilesStatus {
+	return SyncPacketBrowserFilesStatus{
 		store:  STORE_LOG,
-		SpType: TYPE_BROWSER_STATUS,
+		SpType: TYPE_BROWSER_FILES_STATUS,
 
 		AgentId:     taskData.AgentId,
 		Time:        time.Now().UTC().Unix(),
 		MessageType: taskData.MessageType,
 		Message:     taskData.Message,
+	}
+}
+
+func CreateSpBrowserProcess(taskData TaskData, data string) SyncPacketBrowserProcess {
+	return SyncPacketBrowserProcess{
+		store:  STORE_LOG,
+		SpType: TYPE_BROWSER_PROCESS,
+
+		AgentId:     taskData.AgentId,
+		Time:        time.Now().UTC().Unix(),
+		MessageType: taskData.MessageType,
+		Message:     taskData.Message,
+		Data:        data,
 	}
 }
