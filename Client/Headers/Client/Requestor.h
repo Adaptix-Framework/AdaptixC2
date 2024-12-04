@@ -22,9 +22,11 @@ bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfil
 
 bool HttpReqAgentCommand( QString agentName, QString agentId, QString cmdLine, QString data, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqAgentRemove( QString agentId, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqAgentExit( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqAgentSetTag( QString agentId, QString tag, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqAgentRemove( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
+
+bool HttpReqAgentSetTag( QStringList agentsId, QString tag, AuthProfile profile, QString* message, bool* ok );
 
 ///DOWNLOAD
 

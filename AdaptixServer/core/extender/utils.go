@@ -56,6 +56,7 @@ type AgentFunctions interface {
 	AgentBrowserFiles(path string, agentObject []byte) ([]byte, error)
 	AgentBrowserUpload(path string, content []byte, agentObject []byte) ([]byte, error)
 	AgentBrowserDownload(path string, agentObject []byte) ([]byte, error)
+	AgentBrowserExit(agentObject []byte) ([]byte, error)
 }
 
 type ModuleExtender struct {

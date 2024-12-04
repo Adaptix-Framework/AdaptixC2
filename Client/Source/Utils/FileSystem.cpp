@@ -25,6 +25,9 @@ QString GetBasenameWindows(const QString& path)
 
 QString GetRootPathWindows(const QString& path)
 {
+    if (path.startsWith("\\\\") && path.count("\\") == 2)
+        return path;
+
     if (path.startsWith("\\\\")) {
         int secondSlash = path.indexOf('\\', 2);
         if (secondSlash != -1) {
@@ -45,7 +48,7 @@ QString GetParentPathWindows(const QString& path)
     if (path.length() == 2 && path[1] == ':')
         return path;
 
-    if (path.startsWith("\\\\") && !path.contains('\\'))
+    if (path.startsWith("\\\\") && path.count("\\") == 2)
         return path;
 
     QString parentPath = path;

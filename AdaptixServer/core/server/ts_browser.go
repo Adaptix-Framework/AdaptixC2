@@ -216,6 +216,49 @@ func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, userna
 	return nil
 }
 
+func (ts *Teamserver) TsAgentCtxExit(agentId string, username string) error {
+	var (
+		err         error
+		agentObject bytes.Buffer
+		agent       *Agent
+		taskData    TaskData
+		data        []byte
+	)
+
+	value, ok := ts.agents.Get(agentId)
+	if ok {
+
+		agent, _ = value.(*Agent)
+		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
+
+		data, err = ts.Extender.ExAgentCtxExit(agent.Data.Name, agentObject.Bytes())
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal(data, &taskData)
+		if err != nil {
+			return err
+		}
+
+		if taskData.TaskId == "" {
+			taskData.TaskId, _ = krypt.GenerateUID(8)
+		}
+		taskData.AgentId = agentId
+		taskData.User = username
+		taskData.CommandLine = "agent terminate"
+		taskData.StartDate = time.Now().Unix()
+		taskData.Sync = true
+
+		agent.TasksQueue.Put(taskData)
+
+	} else {
+		return fmt.Errorf("agent '%v' does not exist", agentId)
+	}
+
+	return nil
+}
+
 /// SYNC
 
 func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
