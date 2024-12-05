@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/adaptix"
 	"time"
 )
 
@@ -89,7 +90,7 @@ func CreateSpListenerReg(fn string, ui string) SyncPackerListenerReg {
 	}
 }
 
-func CreateSpListenerStart(listenerData ListenerData) SyncPackerListenerStart {
+func CreateSpListenerStart(listenerData adaptix.ListenerData) SyncPackerListenerStart {
 	return SyncPackerListenerStart{
 		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
@@ -106,7 +107,7 @@ func CreateSpListenerStart(listenerData ListenerData) SyncPackerListenerStart {
 	}
 }
 
-func CreateSpListenerEdit(listenerData ListenerData) SyncPackerListenerStart {
+func CreateSpListenerEdit(listenerData adaptix.ListenerData) SyncPackerListenerStart {
 	packet := CreateSpListenerStart(listenerData)
 	packet.SpType = TYPE_LISTENER_EDIT
 	return packet
@@ -136,7 +137,7 @@ func CreateSpAgentReg(agent string, listener string, ui string, cmd string) Sync
 	}
 }
 
-func CreateSpAgentNew(agentData AgentData) SyncPackerAgentNew {
+func CreateSpAgentNew(agentData adaptix.AgentData) SyncPackerAgentNew {
 	return SyncPackerAgentNew{
 		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
@@ -166,7 +167,7 @@ func CreateSpAgentNew(agentData AgentData) SyncPackerAgentNew {
 	}
 }
 
-func CreateSpAgentUpdate(agentData AgentData) SyncPackerAgentUpdate {
+func CreateSpAgentUpdate(agentData adaptix.AgentData) SyncPackerAgentUpdate {
 	return SyncPackerAgentUpdate{
 		store:  STORE_LOG,
 		SpType: TYPE_AGENT_UPDATE,
@@ -202,7 +203,7 @@ func CreateSpAgentConsoleOutput(agentId string, messageType int, message string,
 	}
 }
 
-func CreateSpAgentTaskCreate(taskData TaskData) SyncPackerAgentTaskCreate {
+func CreateSpAgentTaskCreate(taskData adaptix.TaskData) SyncPackerAgentTaskCreate {
 	return SyncPackerAgentTaskCreate{
 		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
@@ -217,7 +218,7 @@ func CreateSpAgentTaskCreate(taskData TaskData) SyncPackerAgentTaskCreate {
 	}
 }
 
-func CreateSpAgentTaskUpdate(taskData TaskData) SyncPackerAgentTaskUpdate {
+func CreateSpAgentTaskUpdate(taskData adaptix.TaskData) SyncPackerAgentTaskUpdate {
 	return SyncPackerAgentTaskUpdate{
 		store:        STORE_LOG,
 		SpCreateTime: time.Now().UTC().Unix(),
@@ -245,7 +246,7 @@ func CreateSpAgentRemove(agentId string) SyncPackerAgentRemove {
 
 /// DOWNLOAD
 
-func CreateSpDownloadCreate(downloadData DownloadData) SyncPackerDownloadCreate {
+func CreateSpDownloadCreate(downloadData adaptix.DownloadData) SyncPackerDownloadCreate {
 	return SyncPackerDownloadCreate{
 		store:  STORE_LOG,
 		SpType: TYPE_DOWNLOAD_CREATE,
@@ -260,7 +261,7 @@ func CreateSpDownloadCreate(downloadData DownloadData) SyncPackerDownloadCreate 
 	}
 }
 
-func CreateSpDownloadUpdate(downloadData DownloadData) SyncPackerDownloadUpdate {
+func CreateSpDownloadUpdate(downloadData adaptix.DownloadData) SyncPackerDownloadUpdate {
 	return SyncPackerDownloadUpdate{
 		store:  STORE_LOG,
 		SpType: TYPE_DOWNLOAD_UPDATE,
@@ -282,7 +283,7 @@ func CreateSpDownloadDelete(fileId string) SyncPackerDownloadDelete {
 
 /// BROWSER
 
-func CreateSpBrowserDisks(taskData TaskData, data string) SyncPacketBrowserDisks {
+func CreateSpBrowserDisks(taskData adaptix.TaskData, data string) SyncPacketBrowserDisks {
 	return SyncPacketBrowserDisks{
 		store:  STORE_LOG,
 		SpType: TYPE_BROWSER_DISKS,
@@ -295,7 +296,7 @@ func CreateSpBrowserDisks(taskData TaskData, data string) SyncPacketBrowserDisks
 	}
 }
 
-func CreateSpBrowserFiles(taskData TaskData, path string, data string) SyncPacketBrowserFiles {
+func CreateSpBrowserFiles(taskData adaptix.TaskData, path string, data string) SyncPacketBrowserFiles {
 	return SyncPacketBrowserFiles{
 		store:  STORE_LOG,
 		SpType: TYPE_BROWSER_FILES,
@@ -309,7 +310,7 @@ func CreateSpBrowserFiles(taskData TaskData, path string, data string) SyncPacke
 	}
 }
 
-func CreateSpBrowserFilesStatus(taskData TaskData) SyncPacketBrowserFilesStatus {
+func CreateSpBrowserFilesStatus(taskData adaptix.TaskData) SyncPacketBrowserFilesStatus {
 	return SyncPacketBrowserFilesStatus{
 		store:  STORE_LOG,
 		SpType: TYPE_BROWSER_FILES_STATUS,
@@ -321,7 +322,7 @@ func CreateSpBrowserFilesStatus(taskData TaskData) SyncPacketBrowserFilesStatus 
 	}
 }
 
-func CreateSpBrowserProcess(taskData TaskData, data string) SyncPacketBrowserProcess {
+func CreateSpBrowserProcess(taskData adaptix.TaskData, data string) SyncPacketBrowserProcess {
 	return SyncPacketBrowserProcess{
 		store:  STORE_LOG,
 		SpType: TYPE_BROWSER_PROCESS,

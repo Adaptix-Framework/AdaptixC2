@@ -88,8 +88,29 @@ func (ts *Teamserver) RestoreData() {
 			countListeners++
 		}
 	}
-
 	logs.Success("Restored %v listeners", countListeners)
+
+	countDownloads := 0
+	restoreDownloads := ts.DBMS.DbDownloadAll()
+	for _, restoreDownload := range restoreDownloads {
+		ts.downloads.Put(restoreDownload.FileId, restoreDownload)
+
+		packet := CreateSpDownloadCreate(restoreDownload)
+		ts.TsSyncAllClients(packet)
+		ts.TsSyncSavePacket(packet.store, packet)
+
+		packetRes1 := CreateSpDownloadCreate(restoreDownload)
+		ts.TsSyncAllClients(packetRes1)
+		ts.TsSyncSavePacket(packetRes1.store, packetRes1)
+
+		packetRes2 := CreateSpDownloadUpdate(restoreDownload)
+		ts.TsSyncAllClients(packetRes2)
+		ts.TsSyncSavePacket(packetRes2.store, packetRes2)
+
+		countDownloads++
+	}
+	logs.Success("Restored %v downloads", countDownloads)
+
 }
 
 func (ts *Teamserver) Start() {

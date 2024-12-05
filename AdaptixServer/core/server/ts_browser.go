@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/utils/krypt"
 	"bytes"
 	"encoding/json"
@@ -16,7 +17,7 @@ func (ts *Teamserver) TsAgentBrowserDisks(agentId string, username string) error
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    TaskData
+		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -57,7 +58,7 @@ func (ts *Teamserver) TsAgentBrowserProcess(agentId string, username string) err
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    TaskData
+		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -98,7 +99,7 @@ func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, username 
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    TaskData
+		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -139,7 +140,7 @@ func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content 
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    TaskData
+		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -180,7 +181,7 @@ func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, userna
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    TaskData
+		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -221,7 +222,7 @@ func (ts *Teamserver) TsAgentCtxExit(agentId string, username string) error {
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    TaskData
+		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -264,8 +265,8 @@ func (ts *Teamserver) TsAgentCtxExit(agentId string, username string) error {
 func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
 	var (
 		agent    *Agent
-		task     TaskData
-		taskData TaskData
+		task     adaptix.TaskData
+		taskData adaptix.TaskData
 		value    any
 		ok       bool
 		err      error
@@ -285,7 +286,7 @@ func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
 
 	value, ok = agent.Tasks.Get(taskData.TaskId)
 	if ok {
-		task = value.(TaskData)
+		task = value.(adaptix.TaskData)
 	} else {
 		return
 	}
@@ -307,8 +308,8 @@ func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
 func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFiles string) {
 	var (
 		agent    *Agent
-		task     TaskData
-		taskData TaskData
+		task     adaptix.TaskData
+		taskData adaptix.TaskData
 		value    any
 		ok       bool
 		err      error
@@ -328,7 +329,7 @@ func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFil
 
 	value, ok = agent.Tasks.Get(taskData.TaskId)
 	if ok {
-		task = value.(TaskData)
+		task = value.(adaptix.TaskData)
 	} else {
 		return
 	}
@@ -354,8 +355,8 @@ func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFil
 func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
 	var (
 		agent    *Agent
-		task     TaskData
-		taskData TaskData
+		task     adaptix.TaskData
+		taskData adaptix.TaskData
 		value    any
 		ok       bool
 		err      error
@@ -375,7 +376,7 @@ func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
 
 	value, ok = agent.Tasks.Get(taskData.TaskId)
 	if ok {
-		task = value.(TaskData)
+		task = value.(adaptix.TaskData)
 	} else {
 		return
 	}
@@ -393,8 +394,8 @@ func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
 func (ts *Teamserver) TsClientBrowserProcess(jsonTask string, jsonFiles string) {
 	var (
 		agent    *Agent
-		task     TaskData
-		taskData TaskData
+		task     adaptix.TaskData
+		taskData adaptix.TaskData
 		value    any
 		ok       bool
 		err      error
@@ -414,7 +415,7 @@ func (ts *Teamserver) TsClientBrowserProcess(jsonTask string, jsonFiles string) 
 
 	value, ok = agent.Tasks.Get(taskData.TaskId)
 	if ok {
-		task = value.(TaskData)
+		task = value.(adaptix.TaskData)
 	} else {
 		return
 	}

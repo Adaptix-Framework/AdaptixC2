@@ -492,6 +492,37 @@ func (m *ModuleExtender) AgentBrowserDownload(path string, agentObject []byte) (
 	return buffer.Bytes(), nil
 }
 
+func (m *ModuleExtender) AgentBrowserExit(agentObject []byte) ([]byte, error) {
+	var (
+		packData  []byte
+		agentData AgentData
+		taskData  TaskData
+		buffer    bytes.Buffer
+		err       error
+	)
+	err = json.Unmarshal(agentObject, &agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	packData, err = BrowserExit(agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	taskData = TaskData{
+		Type: TASK,
+		Data: packData,
+	}
+
+	err = json.NewEncoder(&buffer).Encode(taskData)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
 /// SYNC
 
 func SyncBrowserDisks(ts Teamserver, task TaskData, drivesSlice []ListingDrivesData) {

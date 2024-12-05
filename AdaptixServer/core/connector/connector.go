@@ -96,6 +96,7 @@ func NewTsConnector(ts Teamserver, p profile.TsProfile) (*TsConnector, error) {
 
 	connector.Engine.POST(p.Endpoint+"/agent/command", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentCommand)
 	connector.Engine.POST(p.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentRemove)
+	connector.Engine.POST(p.Endpoint+"/agent/exit", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentExit)
 	connector.Engine.POST(p.Endpoint+"/agent/settag", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentSetTag)
 
 	connector.Engine.POST(p.Endpoint+"/browser/download/state", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDownloadState)

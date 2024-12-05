@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"bytes"
@@ -23,13 +24,13 @@ const (
 
 func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error {
 	var (
-		downloadData DownloadData
+		downloadData adaptix.DownloadData
 		baseName     string
 		saveName     string
 		err          error
 	)
 
-	downloadData = DownloadData{
+	downloadData = adaptix.DownloadData{
 		AgentId:    agentId,
 		FileId:     fileId,
 		RemotePath: fileName,
@@ -73,10 +74,10 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 }
 
 func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) error {
-	var downloadData DownloadData
+	var downloadData adaptix.DownloadData
 	value, ok := ts.downloads.Get(fileId)
 	if ok {
-		downloadData = value.(DownloadData)
+		downloadData = value.(adaptix.DownloadData)
 	} else {
 		return errors.New("File not found: " + fileId)
 	}
@@ -110,12 +111,12 @@ func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) er
 
 func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 	var (
-		downloadData DownloadData
+		downloadData adaptix.DownloadData
 		err          error
 	)
 	value, ok := ts.downloads.Get(fileId)
 	if ok {
-		downloadData = value.(DownloadData)
+		downloadData = value.(adaptix.DownloadData)
 	} else {
 		return errors.New("File not found: " + fileId)
 	}
@@ -128,13 +129,15 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 	if reason == DOWNLOAD_STATE_FINISHED {
 		downloadData.State = DOWNLOAD_STATE_FINISHED
 		ts.downloads.Put(downloadData.FileId, downloadData)
+		err = ts.DBMS.DbDownloadInsert(downloadData)
+		if err != nil {
+			logs.Error(err.Error())
+		}
 	} else {
 		downloadData.State = DOWNLOAD_STATE_CANCELED
 		os.Remove(downloadData.LocalPath)
 		ts.downloads.Delete(fileId)
 	}
-
-	ts.downloads.Put(downloadData.FileId, downloadData)
 
 	packet := CreateSpDownloadUpdate(downloadData)
 	ts.TsSyncAllClients(packet)
@@ -145,7 +148,7 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 
 func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 	var (
-		downloadData DownloadData
+		downloadData adaptix.DownloadData
 		filename     string
 		content      []byte
 		err          error
@@ -153,7 +156,7 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 
 	value, ok := ts.downloads.Get(fileId)
 	if ok {
-		downloadData = value.(DownloadData)
+		downloadData = value.(adaptix.DownloadData)
 	} else {
 		return "", nil, errors.New("File not found: " + fileId)
 	}
@@ -169,13 +172,13 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 
 func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 	var (
-		downloadData DownloadData
+		downloadData adaptix.DownloadData
 		err          error
 	)
 
 	value, ok := ts.downloads.Get(fileId)
 	if ok {
-		downloadData = value.(DownloadData)
+		downloadData = value.(adaptix.DownloadData)
 	} else {
 		return errors.New("File not found: " + fileId)
 	}
@@ -193,6 +196,10 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 		return err
 	}
 
+	if downloadData.State == DOWNLOAD_STATE_FINISHED {
+		ts.DBMS.DbDownloadDelete(fileId)
+	}
+
 	packet := CreateSpDownloadDelete(downloadData.FileId)
 	ts.TsSyncAllClients(packet)
 	ts.TsSyncSavePacket(packet.store, packet)
@@ -204,9 +211,9 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 
 func (ts *Teamserver) TsDownloadChangeState(fileId string, username string, command string) error {
 	var (
-		downloadData DownloadData
+		downloadData adaptix.DownloadData
 		agent        *Agent
-		taskData     TaskData
+		taskData     adaptix.TaskData
 		agentObject  bytes.Buffer
 		newState     int
 		data         []byte
@@ -215,7 +222,7 @@ func (ts *Teamserver) TsDownloadChangeState(fileId string, username string, comm
 
 	value, ok := ts.downloads.Get(fileId)
 	if ok {
-		downloadData = value.(DownloadData)
+		downloadData = value.(adaptix.DownloadData)
 	} else {
 		return errors.New("File not found: " + fileId)
 	}
