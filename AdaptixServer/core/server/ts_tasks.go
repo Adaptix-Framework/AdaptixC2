@@ -10,7 +10,7 @@ import (
 func (ts *Teamserver) TsTaskQueueAddQuite(agentId string, taskObject []byte) {
 	var (
 		agent    *Agent
-		taskData TaskData
+		taskData adaptix.TaskData
 		value    any
 		ok       bool
 		err      error
@@ -37,7 +37,7 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 	var (
 		tasksArray [][]byte
 		agent      *Agent
-		task       TaskData
+		task       adaptix.TaskData
 		value      any
 		ok         bool
 	)
@@ -52,7 +52,7 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 	for i := 0; i < agent.TasksQueue.Len(); i++ {
 		value, ok = agent.TasksQueue.Get(i)
 		if ok {
-			task = value.(TaskData)
+			task = value.(adaptix.TaskData)
 			if len(tasksArray)+len(task.Data) < availableSize {
 				var taskBuffer bytes.Buffer
 				_ = json.NewEncoder(&taskBuffer).Encode(task)
@@ -73,8 +73,8 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 	var (
 		agent    *Agent
-		task     TaskData
-		taskData TaskData
+		task     adaptix.TaskData
+		taskData adaptix.TaskData
 		value    any
 		ok       bool
 		err      error
@@ -97,7 +97,7 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 		return
 	}
 
-	task = value.(TaskData)
+	task = value.(adaptix.TaskData)
 	task.Data = []byte("")
 	task.FinishDate = taskData.FinishDate
 	task.MessageType = taskData.MessageType

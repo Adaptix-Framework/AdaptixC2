@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/safe"
@@ -32,7 +33,7 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 	var (
 		agent        *Agent
 		err          error
-		newAgentData AgentData
+		newAgentData adaptix.AgentData
 	)
 
 	err = json.Unmarshal(newAgentObject, &newAgentData)
@@ -71,7 +72,7 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 		respData       []byte
 		err            error
 		agent          *Agent
-		agentData      AgentData
+		agentData      adaptix.AgentData
 		agentTasksData [][]byte
 		agentBuffer    bytes.Buffer
 	)
@@ -152,7 +153,7 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username 
 		agentObject bytes.Buffer
 		messageInfo string
 		agent       *Agent
-		taskData    TaskData
+		taskData    adaptix.TaskData
 		data        []byte
 	)
 

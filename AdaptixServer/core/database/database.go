@@ -44,6 +44,20 @@ func (dbms *DBMS) DatabaseInit() error {
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Downloads" (
+    	"FileId" TEXT NOT NULL UNIQUE, 
+    	"AgentId" TEXT NOT NULL,
+    	"AgentName" TEXT NOT NULL,
+    	"Computer" TEXT NOT NULL,
+    	"RemotePath" TEXT NOT NULL,
+    	"LocalPath" TEXT NOT NULL,
+    	"TotalSize" INTEGER,
+    	"RecvSize" INTEGER,
+    	"Date" BIGINT,
+    	"State" INTEGER
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
 	return err
 }
 

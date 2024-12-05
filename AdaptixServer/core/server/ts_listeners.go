@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/extender"
 	"encoding/json"
 	"errors"
@@ -27,7 +28,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, 
 	var (
 		err          error
 		data         []byte
-		listenerData ListenerData
+		listenerData adaptix.ListenerData
 	)
 
 	if ts.listener_configs.Contains(listenerType) {
@@ -96,7 +97,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerType string, l
 	var (
 		err          error
 		data         []byte
-		listenerData ListenerData
+		listenerData adaptix.ListenerData
 	)
 
 	if ts.listener_configs.Contains(listenerType) {
