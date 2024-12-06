@@ -78,26 +78,31 @@ func (ts *Teamserver) RestoreData() {
 
 	logs.Info("Restore data from Database...")
 
-	countListeners := 0
-	restoreListeners := ts.DBMS.DbListenerAll()
-	for _, restoreListener := range restoreListeners {
-		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig)
-		if err != nil {
-			logs.Error("Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
-		} else {
-			countListeners++
+	countAgents := 0
+	restoreAgents := ts.DBMS.DbAgentAll()
+	for _, agentData := range restoreAgents {
+
+		agent := &Agent{
+			Data:        agentData,
+			TasksQueue:  safe.NewSlice(),
+			Tasks:       safe.NewMap(),
+			ClosedTasks: safe.NewMap(),
 		}
+
+		ts.agents.Put(agentData.Id, agent)
+
+		packet := CreateSpAgentNew(agentData)
+		ts.TsSyncAllClients(packet)
+		ts.TsSyncSavePacket(packet.store, packet)
+
+		countAgents++
 	}
-	logs.Success("Restored %v listeners", countListeners)
+	logs.Success("Restored %v agents", countAgents)
 
 	countDownloads := 0
 	restoreDownloads := ts.DBMS.DbDownloadAll()
 	for _, restoreDownload := range restoreDownloads {
 		ts.downloads.Put(restoreDownload.FileId, restoreDownload)
-
-		packet := CreateSpDownloadCreate(restoreDownload)
-		ts.TsSyncAllClients(packet)
-		ts.TsSyncSavePacket(packet.store, packet)
 
 		packetRes1 := CreateSpDownloadCreate(restoreDownload)
 		ts.TsSyncAllClients(packetRes1)
@@ -110,6 +115,18 @@ func (ts *Teamserver) RestoreData() {
 		countDownloads++
 	}
 	logs.Success("Restored %v downloads", countDownloads)
+
+	countListeners := 0
+	restoreListeners := ts.DBMS.DbListenerAll()
+	for _, restoreListener := range restoreListeners {
+		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig)
+		if err != nil {
+			logs.Error("Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
+		} else {
+			countListeners++
+		}
+	}
+	logs.Success("Restored %v listeners", countListeners)
 
 }
 

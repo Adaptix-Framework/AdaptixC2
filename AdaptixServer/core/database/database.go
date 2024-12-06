@@ -58,6 +58,36 @@ func (dbms *DBMS) DatabaseInit() error {
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Agents" (
+    	"Id" TEXT NOT NULL UNIQUE, 
+    	"Crc" TEXT NOT NULL,
+    	"Name" TEXT NOT NULL,
+    	"SessionKey" BLOB NOT NULL,
+    	"Listener" TEXT NOT NULL,
+    	"Async" INTEGER,
+    	"ExternalIP" TEXT,
+    	"InternalIP" TEXT,
+    	"GmtOffset" INTEGER,
+    	"Sleep" INTEGER,
+    	"Jitter" INTEGER,
+    	"Pid" TEXT,
+    	"Tid" TEXT,
+    	"Arch" TEXT,
+    	"Elevated" INTEGER,
+    	"Process" TEXT,
+    	"Os" INTEGER,
+    	"OsDesc" TEXT,
+    	"Domain" TEXT,
+    	"Computer" TEXT,
+    	"Username" TEXT,
+    	"OemCP" INTEGER,
+    	"ACP" INTEGER,
+    	"CreateTime" BIGINT,
+    	"LastTick" INTEGER,
+    	"Tags" TEXT
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
 	return err
 }
 

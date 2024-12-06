@@ -4,6 +4,7 @@ import (
 	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
+	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"AdaptixServer/core/utils/tformat"
 	"bytes"
@@ -51,6 +52,11 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 	agent.Data.Jitter = newAgentData.Jitter
 	agent.Data.Elevated = newAgentData.Elevated
 	agent.Data.Username = newAgentData.Username
+
+	err = ts.DBMS.DbAgentUpdate(agent.Data)
+	if err != nil {
+		logs.Error(err.Error())
+	}
 
 	packetNew := CreateSpAgentUpdate(agent.Data)
 	ts.TsSyncAllClients(packetNew)
@@ -113,6 +119,11 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 		}
 
 		ts.agents.Put(agentData.Id, agent)
+
+		err = ts.DBMS.DbAgentInsert(agentData)
+		if err != nil {
+			logs.Error(err.Error())
+		}
 
 		packetNew := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packetNew)
@@ -209,6 +220,11 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
 
+	err := ts.DBMS.DbAgentDelete(agentId)
+	if err != nil {
+		logs.Error(err.Error())
+	}
+
 	packet := CreateSpAgentRemove(agentId)
 	ts.TsSyncAllClients(packet)
 	ts.TsSyncSavePacket(packet.store, packet)
@@ -224,6 +240,11 @@ func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 
 	agent, _ := value.(*Agent)
 	agent.Data.Tags = tag
+
+	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	if err != nil {
+		logs.Error(err.Error())
+	}
 
 	packetNew := CreateSpAgentUpdate(agent.Data)
 	ts.TsSyncAllClients(packetNew)
