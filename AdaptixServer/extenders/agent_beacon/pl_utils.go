@@ -10,12 +10,15 @@ import (
 )
 
 const (
+	COMMAND_CAT       = 24
 	COMMAND_COPY      = 12
 	COMMAND_CD        = 8
 	COMMAND_DISKS     = 15
 	COMMAND_DOWNLOAD  = 32
 	COMMAND_EXFIL     = 35
 	COMMAND_LS        = 14
+	COMMAND_MV        = 18
+	COMMAND_MKDIR     = 27
 	COMMAND_PS_LIST   = 41
 	COMMAND_PS_KILL   = 42
 	COMMAND_PROFILE   = 21

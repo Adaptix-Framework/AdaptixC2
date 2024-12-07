@@ -16,6 +16,7 @@ struct WINAPIFUNC
 {
 	// kernel32
 	DECL_API(CopyFileA);
+	DECL_API(CreateDirectoryA);
 	DECL_API(CreateFileA);
 	DECL_API(DeleteFileA);
 	DECL_API(FindClose);
@@ -45,6 +46,7 @@ struct WINAPIFUNC
 	DECL_API(LocalAlloc);
 	DECL_API(LocalFree);
 	DECL_API(LocalReAlloc);
+	DECL_API(MoveFileA);
 	DECL_API(ReadFile);
 	DECL_API(RemoveDirectoryA);
 	DECL_API(RtlCaptureContext);

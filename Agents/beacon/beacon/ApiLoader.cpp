@@ -39,6 +39,7 @@ BOOL ApiLoad()
 	if (ApiWin) {
 		// kernel32
 		ApiWin->CopyFileA = CopyFileA;
+		ApiWin->CreateDirectoryA = CreateDirectoryA;
 		ApiWin->CreateFileA = CreateFileA;
 		ApiWin->DeleteFileA = DeleteFileA;
 		ApiWin->FindClose = FindClose;
@@ -68,6 +69,7 @@ BOOL ApiLoad()
 		ApiWin->LocalAlloc = alloc;
 		ApiWin->LocalFree = LocalFree;
 		ApiWin->LocalReAlloc = LocalReAlloc;
+		ApiWin->MoveFileA = MoveFileA;
 		ApiWin->ReadFile = ReadFile;
 		ApiWin->RemoveDirectoryA = RemoveDirectoryA;
 		ApiWin->RtlCaptureContext = RtlCaptureContext;

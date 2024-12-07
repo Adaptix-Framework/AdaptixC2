@@ -159,6 +159,16 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 	switch command {
 
+	case "cat":
+		messageInfo = "Task: read file"
+		path, ok := args["path"].(string)
+		if !ok {
+			err = errors.New("parameter 'path' must be set")
+			goto RET
+		}
+		array = []interface{}{COMMAND_CAT, ConvertUTF8toCp(path, agent.ACP)}
+		break
+
 	case "cd":
 		messageInfo = "Task: change working directory"
 		path, ok := args["path"].(string)
@@ -233,6 +243,32 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		dir = ConvertUTF8toCp(dir, agent.ACP)
 
 		array = []interface{}{COMMAND_LS, dir}
+
+	case "mv":
+		messageInfo = "Task: move file"
+		src, ok := args["src"].(string)
+		if !ok {
+			err = errors.New("parameter 'src' must be set")
+			goto RET
+		}
+		dst, ok := args["dst"].(string)
+		if !ok {
+			err = errors.New("parameter 'dst' must be set")
+			goto RET
+		}
+		array = []interface{}{COMMAND_MV, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
+
+		break
+
+	case "mkdir":
+		messageInfo = "Task: make directory"
+		path, ok := args["path"].(string)
+		if !ok {
+			err = errors.New("parameter 'path' must be set")
+			goto RET
+		}
+		array = []interface{}{COMMAND_MKDIR, ConvertUTF8toCp(path, agent.ACP)}
+		break
 
 	case "profile":
 		if subcommand == "download.chunksize" {
@@ -402,6 +438,13 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		switch commandId {
 
+		case COMMAND_CAT:
+			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+			fileContent := packer.ParseBytes()
+			task.Message = fmt.Sprintf("'%v' file content:", path)
+			task.ClearText = string(fileContent)
+			break
+
 		case COMMAND_CD:
 			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 			task.Message = "Curren working directory:"
@@ -559,6 +602,15 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			SyncBrowserFiles(ts, task, rootPath, items)
 
+			break
+
+		case COMMAND_MKDIR:
+			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+			task.Message = fmt.Sprintf("Directory '%v' created successfully", path)
+			break
+
+		case COMMAND_MV:
+			task.Message = "File moved successfully"
 			break
 
 		case COMMAND_PROFILE:
