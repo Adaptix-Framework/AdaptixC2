@@ -1,5 +1,13 @@
 [
   {
+    "command": "cat",
+    "description": "Read first 2048 bytes of the specified file",
+    "example": "cat c:\\\\file.txt",
+    "args": [
+      "STRING <path>"
+    ]
+  },
+  {
     "command": "cd",
     "description": "Change current working directory",
     "example": "cd C:\\Windows\\Temp",
@@ -66,6 +74,23 @@
     "example": "ls c:\\users",
     "args": [
       "STRING [directory]"
+    ]
+  },
+  {
+    "command": "mv",
+    "description": "Move file",
+    "example": "mv src.txt dst.txt",
+    "args": [
+      "STRING <src>",
+      "STRING <dst>"
+    ]
+  },
+  {
+    "command": "mkdir",
+    "description": "Make a directory",
+    "example": "mkdir C:\\dir",
+    "args": [
+      "STRING <path>"
     ]
   },
   {

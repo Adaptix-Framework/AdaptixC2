@@ -4,11 +4,14 @@
 #include "Packer.h"
 #include "Agent.h"
 
+#define COMMAND_CAT		  24
 #define COMMAND_CD		  8
 #define COMMAND_CP        12
 #define COMMAND_DISKS     15
 #define COMMAND_PWD       4
 #define COMMAND_LS		  14
+#define COMMAND_MV		  18
+#define COMMAND_MKDIR	  27
 #define COMMAND_PROFILE   21
 #define COMMAND_PS_LIST   41
 #define COMMAND_PS_KILL   42
@@ -30,12 +33,15 @@ public:
 
 	void ProcessCommandTasks(BYTE* recv, ULONG recv_size, Packer* outPacker);
 
+	void CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdCd(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdCp(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdDisks(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdDownload(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdMkdir(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdMv(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker);

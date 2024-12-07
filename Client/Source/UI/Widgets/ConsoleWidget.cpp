@@ -174,6 +174,9 @@ bool ConsoleWidget::eventFilter(QObject *watched, QEvent *event)
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
 
         if (keyEvent->key() == Qt::Key_Up) {
+            if ( history.size() == 0 )
+                return true;
+
             if (historyIndex < history.size() - 1) {
                 historyIndex++;
                 InputLineEdit->setText(history[historyIndex]);
@@ -184,6 +187,9 @@ bool ConsoleWidget::eventFilter(QObject *watched, QEvent *event)
             return true;
         }
         if (keyEvent->key() == Qt::Key_Down) {
+            if ( history.size() == 0 )
+                return true;
+
             if (historyIndex > 0) {
                 historyIndex--;
                 InputLineEdit->setText(history[historyIndex]);
