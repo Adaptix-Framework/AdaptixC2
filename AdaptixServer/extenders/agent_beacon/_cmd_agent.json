@@ -125,6 +125,17 @@
         "args": [
           "INT <pid>"
         ]
+      },
+      {
+        "name": "run",
+        "description": "Run a program",
+        "example": "run -s cmd.exe \"whoami /all\"",
+        "args": [
+          "BOOL [-s] {Suspend process}",
+          "BOOL [-o] {Output to console}",
+          "STRING <program>",
+          "STRING [args]"
+        ]
       }
     ]
   },

@@ -132,8 +132,10 @@ func PackArray(array []interface{}) ([]byte, error) {
 		case string:
 			size := make([]byte, 4)
 			val := array[i].(string)
-			if strings.HasSuffix(val, "\x00") == false {
-				val += "\x00"
+			if len(val) != 0 {
+				if strings.HasSuffix(val, "\x00") == false {
+					val += "\x00"
+				}
 			}
 			binary.LittleEndian.PutUint32(size, uint32(len(val)))
 			packData = append(packData, size...)

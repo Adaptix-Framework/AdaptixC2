@@ -8,7 +8,7 @@ class Vector {
     size_t v_size;
     HANDLE v_heapHandle;
 
-    bool resize(size_t new_capacity) {
+    BOOL resize(size_t new_capacity) {
         T* new_data = static_cast<T*>(ApiWin->HeapAlloc(v_heapHandle, 0, new_capacity * sizeof(T)));
         if (!new_data) return false;
 
@@ -46,7 +46,7 @@ public:
         ApiWin->HeapDestroy(v_heapHandle);
     }
 
-    bool push_back(const T& value) {
+    BOOL push_back(const T& value) {
         if (v_size >= v_capacity) {
             resize(v_capacity == 0 ? 1 : v_capacity * 2);
         }
@@ -57,7 +57,7 @@ public:
         return false;
     }
 
-    bool remove(size_t index) {
+    BOOL remove(size_t index) {
         if (index >= v_size) return false;
 
         for (size_t i = index; i < v_size - 1; ++i) {
@@ -98,7 +98,7 @@ class Map {
     size_t m_size;
     HANDLE m_heapHandle;
 
-    bool resize(size_t new_capacity) {
+    BOOL resize(size_t new_capacity) {
         Pair* new_data = static_cast<Pair*>(ApiWin->HeapAlloc(m_heapHandle, 0, new_capacity * sizeof(Pair)));
         if (!new_data) return false;
 
@@ -140,7 +140,7 @@ public:
         Iterator(Pair* p) : ptr(p) {}
 
         Iterator& operator++() { ++ptr; return *this; }
-        bool operator!=(const Iterator& other) const { return ptr != other.ptr; }
+        BOOL operator!=(const Iterator& other) const { return ptr != other.ptr; }
         Pair& operator*() { return *ptr; }
     };
 
@@ -148,7 +148,7 @@ public:
 
     Iterator end() { return Iterator(m_data + m_size); }
 
-    bool insert(const K& key, const V& value) {
+    BOOL insert(const K& key, const V& value) {
         int index = find_index(key);
         if (index != -1) {
             m_data[index].value = value;
@@ -162,7 +162,7 @@ public:
         return true;
     }
 
-    bool get(const K& key, V& value) const {
+    BOOL get(const K& key, V& value) const {
         int index = find_index(key);
         if (index != -1) {
             value = m_data[index].value;
@@ -171,7 +171,7 @@ public:
         return false;
     }
 
-    bool contains(const K& key) const {
+    BOOL contains(const K& key) const {
         int index = find_index(key);
         if (index == -1) {
             return false;
@@ -188,7 +188,7 @@ public:
         return m_data[index].value;
     }
 
-    bool remove(const K& key) {
+    BOOL remove(const K& key) {
         int index = find_index(key);
         if (index == -1) return false;
 

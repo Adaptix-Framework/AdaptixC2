@@ -118,6 +118,19 @@ VOID Packer::Clear()
     this->buffer = (BYTE*) MemAllocLocal(4);
 }
 
+BYTE Packer::Unpack8()
+{
+    ULONG value = 0;
+    if (this->size - this->index < 1)
+        return 0;
+
+    memcpy(&value, this->buffer + this->index, 1);
+
+    this->index += 1;
+
+    return value;
+}
+
 ULONG Packer::Unpack32()
 {
     ULONG value = 0;
@@ -136,6 +149,9 @@ BYTE* Packer::UnpackBytes(ULONG* str_size)
     *str_size = this->Unpack32();
 
     if ( this->size - this->index < *str_size )
+        return NULL;
+
+    if (*str_size == 0)
         return NULL;
 
     BYTE* out = this->buffer + this->index;

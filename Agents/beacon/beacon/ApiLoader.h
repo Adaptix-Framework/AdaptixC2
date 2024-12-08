@@ -18,6 +18,8 @@ struct WINAPIFUNC
 	DECL_API(CopyFileA);
 	DECL_API(CreateDirectoryA);
 	DECL_API(CreateFileA);
+	DECL_API(CreatePipe);
+	DECL_API(CreateProcessA);
 	DECL_API(DeleteFileA);
 	DECL_API(FindClose);
 	DECL_API(FindFirstFileA);
@@ -26,6 +28,8 @@ struct WINAPIFUNC
 	DECL_API(GetComputerNameExA);
 	DECL_API(GetCurrentDirectoryA);
 	DECL_API(GetDriveTypeA);
+	DECL_API(GetExitCodeProcess);
+	DECL_API(GetExitCodeThread);
 	DECL_API(GetFileSize);
 	DECL_API(GetFileAttributesA);
 	DECL_API(GetFullPathNameA);
@@ -47,10 +51,12 @@ struct WINAPIFUNC
 	DECL_API(LocalFree);
 	DECL_API(LocalReAlloc);
 	DECL_API(MoveFileA);
+	DECL_API(PeekNamedPipe);
 	DECL_API(ReadFile);
 	DECL_API(RemoveDirectoryA);
 	DECL_API(RtlCaptureContext);
 	DECL_API(SetCurrentDirectoryA);
+	DECL_API(SetNamedPipeHandleState);
 	DECL_API(WideCharToMultiByte);
 	DECL_API(WriteFile);
 	
@@ -72,6 +78,7 @@ struct NTAPIFUNC
 	DECL_API(NtQuerySystemInformation);
 	DECL_API(NtOpenProcess);
 	DECL_API(NtOpenProcessToken);
+	DECL_API(NtTerminateThread);
 	DECL_API(NtTerminateProcess);
 	DECL_API(RtlGetVersion);
 	DECL_API(RtlExitUserThread);

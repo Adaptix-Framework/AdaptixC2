@@ -21,12 +21,14 @@ const (
 	COMMAND_MKDIR     = 27
 	COMMAND_PS_LIST   = 41
 	COMMAND_PS_KILL   = 42
+	COMMAND_PS_RUN    = 43
 	COMMAND_PROFILE   = 21
 	COMMAND_PWD       = 4
 	COMMAND_RM        = 17
 	COMMAND_TERMINATE = 10
 	COMMAND_UPLOAD    = 33
 
+	COMMAND_JOB        = 0x8437
 	COMMAND_SAVEMEMORY = 0x2321
 	COMMAND_ERROR      = 0x1111ffff
 )
@@ -35,6 +37,12 @@ const (
 	DOWNLOAD_START    = 0x1
 	DOWNLOAD_CONTINUE = 0x2
 	DOWNLOAD_FINISH   = 0x3
+)
+
+const (
+	JOB_STATE_RUNNING  = 0x1
+	JOB_STATE_FINISHED = 0x2
+	JOB_STATE_KILLED   = 0x3
 )
 
 var codePageMapping = map[int]*charmap.Charmap{
