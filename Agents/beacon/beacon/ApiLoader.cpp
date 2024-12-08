@@ -41,7 +41,11 @@ BOOL ApiLoad()
 		ApiWin->CopyFileA = CopyFileA;
 		ApiWin->CreateDirectoryA = CreateDirectoryA;
 		ApiWin->CreateFileA = CreateFileA;
+		ApiWin->CreatePipe = CreatePipe;
+		ApiWin->CreateProcessA = CreateProcessA;
 		ApiWin->DeleteFileA = DeleteFileA;
+		ApiWin->GetExitCodeProcess = GetExitCodeProcess;
+		ApiWin->GetExitCodeThread = GetExitCodeThread;
 		ApiWin->FindClose = FindClose;
 		ApiWin->FindFirstFileA = FindFirstFileA;
 		ApiWin->FindNextFileA = FindNextFileA;
@@ -70,10 +74,12 @@ BOOL ApiLoad()
 		ApiWin->LocalFree = LocalFree;
 		ApiWin->LocalReAlloc = LocalReAlloc;
 		ApiWin->MoveFileA = MoveFileA;
+		ApiWin->PeekNamedPipe = PeekNamedPipe;
 		ApiWin->ReadFile = ReadFile;
 		ApiWin->RemoveDirectoryA = RemoveDirectoryA;
 		ApiWin->RtlCaptureContext = RtlCaptureContext;
 		ApiWin->SetCurrentDirectoryA = SetCurrentDirectoryA;
+		ApiWin->SetNamedPipeHandleState = SetNamedPipeHandleState;
 		ApiWin->WideCharToMultiByte = WideCharToMultiByte;
 		ApiWin->WriteFile = WriteFile;
 
@@ -104,6 +110,7 @@ BOOL ApiLoad()
 			ApiNt->NtQuerySystemInformation  = (decltype(NtQuerySystemInformation)*) ApiWin->GetProcAddress(hNtdllModule, "NtQuerySystemInformation");
 			ApiNt->NtOpenProcess             = (decltype(NtOpenProcess)*) ApiWin->GetProcAddress(hNtdllModule, "NtOpenProcess");
 			ApiNt->NtOpenProcessToken        = (decltype(NtOpenProcessToken)*) ApiWin->GetProcAddress(hNtdllModule, "NtOpenProcessToken");
+			ApiNt->NtTerminateThread         = (decltype(NtTerminateThread)*) ApiWin->GetProcAddress(hNtdllModule, "NtTerminateThread");
 			ApiNt->NtTerminateProcess        = (decltype(NtTerminateProcess)*) ApiWin->GetProcAddress(hNtdllModule, "NtTerminateProcess");
 			ApiNt->RtlGetVersion             = (decltype(RtlGetVersion)*) ApiWin->GetProcAddress(hNtdllModule, "RtlGetVersion");
 			ApiNt->RtlExitUserThread         = (decltype(RtlExitUserThread)*) ApiWin->GetProcAddress(hNtdllModule, "RtlExitUserThread");

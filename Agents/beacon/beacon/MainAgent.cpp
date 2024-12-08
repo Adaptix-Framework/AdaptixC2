@@ -42,6 +42,7 @@ void AgentMain()
 			Sleep( g_Agent->config->sleep_delay * 1000 );
 
 		g_Agent->downloader->ProcessDownloadTasks(packerOut);			
+		g_Agent->jober->ProcessJobs(packerOut);
 
 	} while ( g_Agent->IsActive() );
 

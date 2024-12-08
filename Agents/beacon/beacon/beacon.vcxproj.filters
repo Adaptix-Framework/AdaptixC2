@@ -78,6 +78,9 @@
     <ClCompile Include="MemorySaver.cpp">
       <Filter>Source\Commander</Filter>
     </ClCompile>
+    <ClCompile Include="JobsController.cpp">
+      <Filter>Source\Commander</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -123,6 +126,9 @@
       <Filter>Headers\utils</Filter>
     </ClInclude>
     <ClInclude Include="MemorySaver.h">
+      <Filter>Headers\Commander</Filter>
+    </ClInclude>
+    <ClInclude Include="JobsController.h">
       <Filter>Headers\Commander</Filter>
     </ClInclude>
   </ItemGroup>

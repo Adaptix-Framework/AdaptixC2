@@ -5,7 +5,7 @@
 class AgentConfig
 {
 public:
-	bool active;
+	BOOL active;
 
 	DWORD agent_type;
 	BYTE  exit_method;

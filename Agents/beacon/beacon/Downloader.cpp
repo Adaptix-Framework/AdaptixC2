@@ -6,7 +6,7 @@ Downloader::Downloader(ULONG chunk_size)
 	this->chunkSize = chunk_size;
 }
 
-bool Downloader::IsTasks()
+BOOL Downloader::IsTasks()
 {
 	if (this->downloads.size()) {
 		for (int i = 0; i < this->downloads.size(); i++) {
@@ -40,7 +40,7 @@ void Downloader::ProcessDownloadTasks(Packer* packer)
 	LPVOID buffer = MemAllocLocal(this->chunkSize);
 	
 	for (int i = 0; i < downloads.size(); i++) {
-		bool close = false;
+		BOOL close = false;
 		if (downloads[i].state == DOWNLOAD_STATE_RUNNING) {
 			ULONG readedBytes = 0;
 			ApiWin->ReadFile(downloads[i].hFile, buffer, this->chunkSize, &readedBytes, NULL);

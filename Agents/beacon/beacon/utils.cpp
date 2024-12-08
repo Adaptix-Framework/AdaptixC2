@@ -20,6 +20,35 @@ void MemFreeLocal(LPVOID* buffer, DWORD bufferSize) {
     *buffer = NULL;
 }
 
+//////////
+
+BYTE* ReadFromPipe(HANDLE hPipe, ULONG* bufferSize) 
+{
+    BOOL  result = FALSE;
+    ULONG read = 0;
+    BYTE* buf[2048] = { 0 };
+
+    LPVOID buffer = MemAllocLocal(0);
+    do {
+        DWORD available = 0;
+        ApiWin->PeekNamedPipe(hPipe, NULL, 2048, NULL, &available, NULL);
+        if (available > 0) {
+            result = ApiWin->ReadFile(hPipe, buf, 2048, &read, NULL);
+            if (read == 0)
+                break;
+            *bufferSize += read;
+
+            buffer = MemReallocLocal(buffer, *bufferSize);
+            memcpy((BYTE*)buffer + (*bufferSize - read), buf, read);
+            memset(buf, 0, read);
+        }
+        else {
+            result = FALSE;
+        }
+    } while (result);
+
+    return (BYTE*)buffer;
+}
 
 //////////
 

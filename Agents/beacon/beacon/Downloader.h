@@ -26,16 +26,13 @@ struct DownloadData {
 
 class Downloader
 {
-
 public:
-
 	Vector<DownloadData> downloads;
-
 	ULONG chunkSize;
 
 	Downloader( ULONG chunk_size );
 
 	DownloadData CreateDownloadData(ULONG taskId, HANDLE hFile, ULONG size);
 	void         ProcessDownloadTasks(Packer* packer);
-	bool		 IsTasks();
+	BOOL		 IsTasks();
 };

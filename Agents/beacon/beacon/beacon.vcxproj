@@ -311,6 +311,7 @@
     <ClCompile Include="ConnectorHTTP.cpp" />
     <ClCompile Include="Downloader.cpp" />
     <ClCompile Include="Encoders.cpp" />
+    <ClCompile Include="JobsController.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainAgent.cpp" />
     <ClCompile Include="MemorySaver.cpp" />
@@ -327,6 +328,7 @@
     <ClInclude Include="defines.h" />
     <ClInclude Include="Downloader.h" />
     <ClInclude Include="Encoders.h" />
+    <ClInclude Include="JobsController.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="MemorySaver.h" />
     <ClInclude Include="ntdll.h" />

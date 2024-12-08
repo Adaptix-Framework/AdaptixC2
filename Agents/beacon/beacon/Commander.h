@@ -15,6 +15,7 @@
 #define COMMAND_PROFILE   21
 #define COMMAND_PS_LIST   41
 #define COMMAND_PS_KILL   42
+#define COMMAND_PS_RUN    43
 #define COMMAND_TERMINATE 10
 #define COMMAND_RM        17
 #define COMMAND_UPLOAD    33
@@ -45,6 +46,7 @@ public:
 	void CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdRm(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacker);

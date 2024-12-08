@@ -102,19 +102,47 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 	task.Data = []byte("")
 	task.FinishDate = taskData.FinishDate
 	task.MessageType = taskData.MessageType
-	task.Message = taskData.Message
-	task.ClearText = taskData.ClearText
 	task.Completed = taskData.Completed
 
-	if task.Completed {
-		agent.ClosedTasks.Put(task.TaskId, task)
-	} else {
-		agent.Tasks.Put(task.TaskId, task)
-	}
+	if task.Type == TYPE_JOB {
 
-	if task.Sync {
+		oldMessage := task.Message
+		oldText := task.ClearText
+
+		task.Message = taskData.Message
+		task.ClearText = taskData.ClearText
+
 		packet := CreateSpAgentTaskUpdate(task)
-		ts.TsSyncAllClients(packet)
-		ts.TsSyncSavePacket(packet.store, packet)
+
+		task.Message = oldMessage
+		task.ClearText = oldText + task.ClearText
+
+		if task.Completed {
+			agent.ClosedTasks.Put(task.TaskId, task)
+		} else {
+			agent.Tasks.Put(task.TaskId, task)
+		}
+
+		if task.Sync {
+			ts.TsSyncAllClients(packet)
+			ts.TsSyncSavePacket(packet.store, packet)
+		}
+
+	} else {
+
+		task.Message = taskData.Message
+		task.ClearText = taskData.ClearText
+
+		if task.Completed {
+			agent.ClosedTasks.Put(task.TaskId, task)
+		} else {
+			agent.Tasks.Put(task.TaskId, task)
+		}
+
+		if task.Sync {
+			packet := CreateSpAgentTaskUpdate(task)
+			ts.TsSyncAllClients(packet)
+			ts.TsSyncSavePacket(packet.store, packet)
+		}
 	}
 }

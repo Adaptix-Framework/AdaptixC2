@@ -8,7 +8,7 @@ struct MemoryData {
 	ULONG totalSize;
 	ULONG currentSize;
 	PBYTE buffer;
-	bool  complete;
+	BOOL  complete;
 };
 
 class MemorySaver

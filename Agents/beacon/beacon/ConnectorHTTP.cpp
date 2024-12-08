@@ -1,7 +1,7 @@
 #include "ConnectorHTTP.h"
 #include "utils.h"
 
-bool _isdigest(char c) 
+BOOL _isdigest(char c)
 {
 	return c >= '0' && c <= '9';
 }
@@ -79,7 +79,6 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 	DWORD context = 0;
 	BYTE* recv    = NULL;
 	*recv_size    = 0;
-
 
 	if(!hInternet)
 		hInternet = this->functions->InternetOpenA(this->user_agent, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
