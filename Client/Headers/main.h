@@ -154,4 +154,20 @@ typedef struct DownloadData
     QString Date;
 } DownloadData;
 
+typedef struct TaskData
+{
+    QString TaskId;
+    int     TaskType;
+    QString AgentId;
+    QString Client;
+    qint64  StartTime;
+    qint64  FinishTime;
+    QString CommandLine;
+    int     MessageType;
+    QString Message;
+    QString Output;
+    bool    Completed;
+} TaskData;
+
+
 #endif //ADAPTIXCLIENT_MAIN_H

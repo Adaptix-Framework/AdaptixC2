@@ -184,9 +184,8 @@ type SyncPackerAgentConsoleOutput struct {
 }
 
 type SyncPackerAgentTaskCreate struct {
-	store        string
-	SpCreateTime int64 `json:"time"`
-	SpType       int   `json:"type"`
+	store  string
+	SpType int `json:"type"`
 
 	AgentId   string `json:"a_id"`
 	TaskId    string `json:"a_task_id"`
@@ -197,9 +196,8 @@ type SyncPackerAgentTaskCreate struct {
 }
 
 type SyncPackerAgentTaskUpdate struct {
-	store        string
-	SpCreateTime int64 `json:"time"`
-	SpType       int   `json:"type"`
+	store  string
+	SpType int `json:"type"`
 
 	AgentId     string `json:"a_id"`
 	TaskId      string `json:"a_task_id"`

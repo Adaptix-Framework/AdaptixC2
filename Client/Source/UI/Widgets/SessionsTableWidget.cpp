@@ -37,7 +37,7 @@ void SessionsTableWidget::createUI()
     tableWidget->setAutoFillBackground( false );
     tableWidget->setShowGrid( false );
     tableWidget->setSortingEnabled( true );
-    tableWidget->setWordWrap( true );
+    tableWidget->setWordWrap( false );
     tableWidget->setCornerButtonEnabled( false );
     tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
     tableWidget->setFocusPolicy( Qt::NoFocus );

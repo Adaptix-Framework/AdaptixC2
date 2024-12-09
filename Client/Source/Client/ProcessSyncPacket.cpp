@@ -28,7 +28,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
-
     if( spType == TYPE_LISTENER_REG ) {
         if ( !jsonObj.contains("fn") || !jsonObj["fn"].isString() ) {
             return false;
@@ -213,9 +212,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if( spType == TYPE_AGENT_TASK_CREATE ) {
-        if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
-            return false;
-        }
         if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
             return false;
         }
@@ -237,9 +233,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if( spType == TYPE_AGENT_TASK_UPDATE ) {
-        if (!jsonObj.contains("time") || !jsonObj["time"].isDouble()) {
-            return false;
-        }
         if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
             return false;
         }
@@ -568,33 +561,37 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
     if( spType == TYPE_AGENT_TASK_CREATE )
     {
-        qint64  time      = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString agentId   = jsonObj["a_id"].toString();
-        QString taskId    = jsonObj["a_task_id"].toString();
-        int     taskType  = jsonObj["a_task_type"].toDouble();
-        qint64  startTime = jsonObj["a_start_time"].toDouble();
-        QString cmdLine   = jsonObj["a_cmdline"].toString();
-        QString user      = jsonObj["a_user"].toString();
+        TaskData taskData = { 0 };
+        taskData.AgentId     = jsonObj["a_id"].toString();
+        taskData.TaskId      = jsonObj["a_task_id"].toString();
+        taskData.TaskType    = jsonObj["a_task_type"].toDouble();
+        taskData.StartTime   = jsonObj["a_start_time"].toDouble();
+        taskData.CommandLine = jsonObj["a_cmdline"].toString();
+        taskData.Client      = jsonObj["a_user"].toString();
 
-        if (Agents.contains(agentId))
-            Agents[agentId]->Console->ConsoleOutputPrompt( time, taskId, user, cmdLine);
+        if (Agents.contains(taskData.AgentId))
+            Agents[taskData.AgentId]->Console->ConsoleOutputPrompt( taskData.StartTime, taskData.TaskId, taskData.Client, taskData.CommandLine);
+
+        TasksTab->AddTaskItem(taskData);
 
         return;
     }
     if( spType == TYPE_AGENT_TASK_UPDATE )
     {
-        qint64  time       = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString agentId    = jsonObj["a_id"].toString();
-        QString taskId     = jsonObj["a_task_id"].toString();
-        int     taskType   = jsonObj["a_task_type"].toDouble();
-        qint64  finishTime = jsonObj["a_finish_time"].toDouble();
-        int     msgType    = jsonObj["a_msg_type"].toDouble();
-        QString message    = jsonObj["a_message"].toString();
-        QString text       = jsonObj["a_text"].toString();
-        bool    completed  = jsonObj["a_completed"].toBool();
+        TaskData taskData = { 0 };
+        taskData.AgentId     = jsonObj["a_id"].toString();
+        taskData.TaskId      = jsonObj["a_task_id"].toString();
+        taskData.TaskType    = jsonObj["a_task_type"].toDouble();
+        taskData.FinishTime  = jsonObj["a_finish_time"].toDouble();
+        taskData.MessageType = jsonObj["a_msg_type"].toDouble();
+        taskData.Message     = jsonObj["a_message"].toString();
+        taskData.Output      = jsonObj["a_text"].toString();
+        taskData.Completed   = jsonObj["a_completed"].toBool();
 
-        if (Agents.contains(agentId))
-            Agents[agentId]->Console->ConsoleOutputMessage( time, taskId, msgType, message, text, completed );
+        if (Agents.contains(taskData.AgentId))
+            Agents[taskData.AgentId]->Console->ConsoleOutputMessage( taskData.FinishTime, taskData.TaskId, taskData.MessageType, taskData.Message, taskData.Output , taskData.Completed );
+
+        TasksTab->EditTaskItem(taskData);
 
         return;
     }
@@ -604,6 +601,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         SessionsTablePage->RemoveAgentItem(agentId);
     }
+
+
 
     if( spType == TYPE_DOWNLOAD_CREATE )
     {
@@ -640,6 +639,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
+
+
 
     if( spType == TYPE_BROWSER_DISKS )
     {
