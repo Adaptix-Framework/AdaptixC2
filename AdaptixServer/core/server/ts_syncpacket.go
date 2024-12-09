@@ -205,9 +205,8 @@ func CreateSpAgentConsoleOutput(agentId string, messageType int, message string,
 
 func CreateSpAgentTaskCreate(taskData adaptix.TaskData) SyncPackerAgentTaskCreate {
 	return SyncPackerAgentTaskCreate{
-		store:        STORE_LOG,
-		SpCreateTime: time.Now().UTC().Unix(),
-		SpType:       TYPE_AGENT_TASK_CREATE,
+		store:  STORE_LOG,
+		SpType: TYPE_AGENT_TASK_CREATE,
 
 		AgentId:   taskData.AgentId,
 		TaskId:    taskData.TaskId,
@@ -220,9 +219,8 @@ func CreateSpAgentTaskCreate(taskData adaptix.TaskData) SyncPackerAgentTaskCreat
 
 func CreateSpAgentTaskUpdate(taskData adaptix.TaskData) SyncPackerAgentTaskUpdate {
 	return SyncPackerAgentTaskUpdate{
-		store:        STORE_LOG,
-		SpCreateTime: time.Now().UTC().Unix(),
-		SpType:       TYPE_AGENT_TASK_UPDATE,
+		store:  STORE_LOG,
+		SpType: TYPE_AGENT_TASK_UPDATE,
 
 		AgentId:     taskData.AgentId,
 		TaskId:      taskData.TaskId,

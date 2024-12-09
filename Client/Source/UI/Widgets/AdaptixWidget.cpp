@@ -9,10 +9,12 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     ListenersTab      = new ListenersWidget(this);
     SessionsTablePage = new SessionsTableWidget(this);
     DownloadsTab      = new DownloadsWidget(this);
+    TasksTab          = new TasksWidget(this);
 
     mainStackedWidget->addWidget(SessionsTablePage);
-    mainStackedWidget->setCurrentIndex(0);
+    mainStackedWidget->addWidget(TasksTab);
 
+    this->SetSessionsTableUI();
     this->LoadLogsUI();
 
     profile = authProfile;
@@ -25,11 +27,14 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     TickWorker = new LastTickWorker( this );
     TickWorker->moveToThread( TickThread );
 
-    connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
-    connect( logsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
+    connect( logsButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
+    connect( sessionsButton,  &QPushButton::clicked, this, &AdaptixWidget::SetSessionsTableUI);
+    connect( tasksButton,     &QPushButton::clicked, this, &AdaptixWidget::SetTasksUI);
     connect( downloadsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
     connect( reconnectButton, &QPushButton::clicked, this, &AdaptixWidget::OnReconnect);
+
+    connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
 
     connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
 
@@ -42,9 +47,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
 
     // TODO: Enable menu button
     graphButton->setVisible(false);
-    targetsButton->setVisible(false);
     line_2->setVisible(false);
-    jobsButton->setVisible(false);
+    targetsButton->setVisible(false);
     proxyButton->setVisible(false);
     credsButton->setVisible(false);
     screensButton->setVisible(false);
@@ -88,10 +92,10 @@ void AdaptixWidget::createUI()
     line_2->setFrameShape(QFrame::VLine);
     line_2->setMinimumHeight(25);
 
-    jobsButton = new QPushButton( QIcon(":/icons/job"), "", this );
-    jobsButton->setIconSize( QSize( 24,24 ));
-    jobsButton->setFixedSize(37, 28);
-    jobsButton->setToolTip("Jobs & Tasks");
+    tasksButton = new QPushButton(QIcon(":/icons/job"), "", this );
+    tasksButton->setIconSize(QSize(24, 24 ));
+    tasksButton->setFixedSize(37, 28);
+    tasksButton->setToolTip("Jobs & Tasks");
 
     proxyButton = new QPushButton( QIcon(":/icons/vpn"), "", this );
     proxyButton->setIconSize( QSize( 24,24 ));
@@ -148,7 +152,7 @@ void AdaptixWidget::createUI()
     topHLayout->addWidget(graphButton);
     topHLayout->addWidget(targetsButton);
     topHLayout->addWidget(line_2);
-    topHLayout->addWidget(jobsButton);
+    topHLayout->addWidget(tasksButton);
     topHLayout->addWidget(proxyButton);
     topHLayout->addWidget(line_3);
     topHLayout->addWidget(downloadsButton);
@@ -245,6 +249,17 @@ void AdaptixWidget::RemoveTab(int index)
         mainTabWidget->setMovable(false);
 }
 
+void AdaptixWidget::SetSessionsTableUI()
+{
+    mainStackedWidget->setCurrentIndex(0);
+}
+
+void AdaptixWidget::SetTasksUI()
+{
+    mainStackedWidget->setCurrentIndex(1);
+    this->AddTab(TasksTab->taskOutputConsole, "Tasks Output", ":/icons/job");
+}
+
 void AdaptixWidget::LoadLogsUI()
 {
     this->AddTab(LogsTab, "Logs", ":/icons/logs");
@@ -258,6 +273,11 @@ void AdaptixWidget::LoadListenersUI()
 void AdaptixWidget::LoadDownloadsUI()
 {
     this->AddTab(DownloadsTab, "Downloads", ":/icons/downloads");
+}
+
+void AdaptixWidget::LoadTasksOutput()
+{
+    this->AddTab(TasksTab->taskOutputConsole, "Tasks Output", ":/icons/job");
 }
 
 void AdaptixWidget::OnReconnect() {

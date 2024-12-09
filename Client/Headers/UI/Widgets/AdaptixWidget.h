@@ -9,6 +9,7 @@
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/DownloadsWidget.h>
+#include <UI/Widgets/TasksWidget.h>
 #include <Client/WidgetBuilder.h>
 #include <Agent/Agent.h>
 
@@ -25,7 +26,7 @@ Q_OBJECT
     QPushButton*    sessionsButton    = nullptr;
     QPushButton*    graphButton       = nullptr;
     QPushButton*    targetsButton     = nullptr;
-    QPushButton*    jobsButton        = nullptr;
+    QPushButton*    tasksButton        = nullptr;
     QPushButton*    proxyButton       = nullptr;
     QPushButton*    downloadsButton   = nullptr;
     QPushButton*    credsButton       = nullptr;
@@ -57,6 +58,7 @@ public:
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
     DownloadsWidget*     DownloadsTab      = nullptr;
+    TasksWidget*         TasksTab          = nullptr;
 
     QMap<QString, Commander*>     RegisterAgentsCmd;
     QMap<QString, WidgetBuilder*> RegisterAgentsUI;
@@ -64,6 +66,7 @@ public:
     QMap<QString, QStringList>    LinkListenerAgent;
     QVector<ListenerData>         Listeners;
     QMap<QString, DownloadData>   Downloads;
+    QMap<QString, TaskData>       Tasks;
     QMap<QString, Agent*>         Agents;
 
     explicit AdaptixWidget(AuthProfile* authProfile);
@@ -78,9 +81,12 @@ public slots:
     void ChannelClose();
     void DataHandler(const QByteArray& data);
 
+    void SetSessionsTableUI();
+    void SetTasksUI();
     void LoadLogsUI();
     void LoadListenersUI();
     void LoadDownloadsUI();
+    void LoadTasksOutput();
     void OnReconnect();
     void LoadConsoleUI(QString AgentId);
     void LoadFileBrowserUI(QString AgentId);

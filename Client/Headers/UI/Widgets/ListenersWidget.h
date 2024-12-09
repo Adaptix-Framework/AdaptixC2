@@ -22,7 +22,6 @@ public:
     void EditListenerItem(ListenerData newListener);
     void RemoveListenerItem(QString listenerName);
 
-
 public slots:
     void handleListenersMenu( const QPoint &pos ) const;
     void createListener();

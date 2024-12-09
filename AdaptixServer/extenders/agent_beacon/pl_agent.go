@@ -291,6 +291,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		if subcommand == "list" {
 			messageInfo = "Task: show process list"
 			array = []interface{}{COMMAND_PS_LIST}
+
 		} else if subcommand == "kill" {
 			messageInfo = "Task: kill process"
 			pid, ok := args["pid"].(float64)
@@ -302,7 +303,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 		} else if subcommand == "run" {
 			messageInfo = "Task: create new process"
-			taskData.Type = JOB
+			taskType = JOB
 
 			output, _ := args["-o"].(bool)
 			suspend, _ := args["-s"].(bool)
