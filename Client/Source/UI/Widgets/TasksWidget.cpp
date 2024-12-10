@@ -96,7 +96,10 @@ void TasksWidget::createUI()
 
 void TasksWidget::Clear()
 {
-
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    adaptixWidget->Tasks.clear();
+    for (int index = tableWidget->rowCount(); index > 0; index-- )
+        tableWidget->removeRow(index -1 );
 }
 
 void TasksWidget::AddTaskItem(TaskData newTask)
@@ -208,6 +211,10 @@ void TasksWidget::EditTaskItem(TaskData newTask)
                     tableWidget->item(row, 7)->setText("Error");
                     tableWidget->item(row, 7)->setForeground(QColor(COLOR_ChiliPepper) );
                 }
+                else if ( taskData.MessageType == CONSOLE_OUT_INFO || taskData.MessageType == CONSOLE_OUT_LOCAL_INFO ){
+                    tableWidget->item(row, 7)->setText("Canceled");
+                    tableWidget->item(row, 7)->setForeground(QColor(COLOR_BabyBlue) );
+                }
                 else {
                     tableWidget->item(row, 7)->setText("Success");
                     tableWidget->item(row, 7)->setForeground(QColor(COLOR_NeonGreen) );
@@ -224,14 +231,38 @@ void TasksWidget::EditTaskItem(TaskData newTask)
 
 void TasksWidget::RemoveTaskItem(QString taskId)
 {
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    adaptixWidget->Tasks.remove(taskId);
 
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *item = tableWidget->item(row, 0);
+        if ( item && item->text() == taskId ) {
+            tableWidget->removeRow(row);
+            break;
+        }
+    }
 }
 
 /// SLOTS
 
 void TasksWidget::handleTasksMenu( const QPoint &pos )
 {
+    if ( ! tableWidget->itemAt(pos) )
+        return;
 
+    auto ctxMenu = QMenu();
+
+    auto ctxSep1 = new QAction();
+    ctxSep1->setSeparator(true);
+
+    ctxMenu.addAction( "Copy TaskID", this, &TasksWidget::actionCopyTaskId);
+    ctxMenu.addAction( "Copy CommandLine", this, &TasksWidget::actionCopyCmd);
+    ctxMenu.addAction( "Agent Console", this, &TasksWidget::actionOpenConsole);
+    ctxMenu.addAction(ctxSep1);
+    ctxMenu.addAction( "Stop Task", this, &TasksWidget::actionStop);
+    ctxMenu.addAction( "Delete Task", this, &TasksWidget::actionDelete);
+
+    ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }
 
 void TasksWidget::onTableItemSelection()
@@ -250,4 +281,64 @@ void TasksWidget::onTableItemSelection()
     TaskData taskData = adaptixWidget->Tasks[taskId];
     taskOutputConsole->SetConten(taskData.Message, taskData.Output);
     adaptixWidget->LoadTasksOutput();
+}
+
+void TasksWidget::actionCopyTaskId()
+{
+    int row = tableWidget->currentRow();
+    if( row >= 0) {
+        QString taskId = tableWidget->item( row, 0 )->text();
+        QApplication::clipboard()->setText( taskId );
+    }
+}
+
+void TasksWidget::actionCopyCmd()
+{
+    int row = tableWidget->currentRow();
+    if( row >= 0) {
+        QString cmdLine = tableWidget->item( row, 6 )->text();
+        QApplication::clipboard()->setText( cmdLine );
+    }
+}
+
+void TasksWidget::actionOpenConsole()
+{
+    int row = tableWidget->currentRow();
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    auto agentId = tableWidget->item( row, 2 )->text();
+    adaptixWidget->LoadConsoleUI(agentId);
+}
+
+void TasksWidget::actionStop()
+{
+    QMap<QString, QStringList> agentTasks;
+
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, 2 )->text();
+            auto taskId = tableWidget->item( rowIndex, 0 )->text();
+            agentTasks[agentId].append(taskId);
+        }
+    }
+
+    for( QString agentId : agentTasks.keys())
+        adaptixWidget->Agents[agentId]->TasksStop(agentTasks[agentId]);
+}
+
+void TasksWidget::actionDelete()
+{
+    QMap<QString, QStringList> agentTasks;
+
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, 2 )->text();
+            auto taskId = tableWidget->item( rowIndex, 0 )->text();
+            agentTasks[agentId].append(taskId);
+        }
+    }
+
+    for( QString agentId : agentTasks.keys())
+        adaptixWidget->Agents[agentId]->TasksDelete(agentTasks[agentId]);
 }

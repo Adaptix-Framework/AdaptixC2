@@ -26,9 +26,10 @@ const (
 	TYPE_AGENT_TICK        = 0x43
 	TYPE_AGENT_TASK_CREATE = 0x44
 	TYPE_AGENT_TASK_UPDATE = 0x45
-	TYPE_AGENT_CONSOLE_OUT = 0x46
-	TYPE_AGENT_UPDATE      = 0x47
-	TYPE_AGENT_REMOVE      = 0x48
+	TYPE_AGENT_TASK_REMOVE = 0x46
+	TYPE_AGENT_CONSOLE_OUT = 0x47
+	TYPE_AGENT_UPDATE      = 0x48
+	TYPE_AGENT_REMOVE      = 0x49
 
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
@@ -230,6 +231,15 @@ func CreateSpAgentTaskUpdate(taskData adaptix.TaskData) SyncPackerAgentTaskUpdat
 		Message:     taskData.Message,
 		Text:        taskData.ClearText,
 		Completed:   taskData.Completed,
+	}
+}
+
+func CreateSpAgentTaskRemove(taskData adaptix.TaskData) SyncPackerAgentTaskRemove {
+	return SyncPackerAgentTaskRemove{
+		store:  STORE_LOG,
+		SpType: TYPE_AGENT_TASK_REMOVE,
+
+		TaskId: taskData.TaskId,
 	}
 }
 

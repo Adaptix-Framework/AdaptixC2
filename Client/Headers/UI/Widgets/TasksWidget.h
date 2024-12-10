@@ -63,6 +63,11 @@ public:
 public slots:
     void handleTasksMenu( const QPoint &pos );
     void onTableItemSelection();
+    void actionCopyTaskId();
+    void actionCopyCmd();
+    void actionOpenConsole();
+    void actionStop();
+    void actionDelete();
 };
 
 #endif //ADAPTIXCLIENT_TASKSWIDGET_H

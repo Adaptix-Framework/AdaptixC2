@@ -80,6 +80,28 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     item_Sleep->setText(sleep);
 }
 
+QString Agent::TasksStop(QStringList tasks)
+{
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqTaskStop( data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
+    if (!result)
+        return "JWT error";
+
+    return message;
+}
+
+QString Agent::TasksDelete(QStringList tasks)
+{
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqTasksDelete(data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
+    if (!result)
+        return "JWT error";
+
+    return message;
+}
+
 QString Agent::BrowserDisks()
 {
     QString message = QString();
@@ -132,4 +154,5 @@ QString Agent::BrowserDownload(QString path)
     if (!result)
         return "JWT error";
 
-    return message;}
+    return message;
+}

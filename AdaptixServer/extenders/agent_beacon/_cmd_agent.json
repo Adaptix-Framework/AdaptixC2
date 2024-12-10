@@ -69,6 +69,26 @@
     ]
   },
   {
+    "command": "jobs",
+    "description": "Long-running tasks manager",
+    "subcommands":
+    [
+      {
+        "name": "list",
+        "description": "List of jobs",
+        "example": "jobs list"
+      },
+      {
+        "name": "kill",
+        "description": "Kill a specified job",
+        "example": "jobs kill 1a2b3c4d",
+        "args": [
+          "STRING <task_id>"
+        ]
+      }
+    ]
+  },
+  {
     "command": "ls",
     "description": "Lists files in a folder",
     "example": "ls c:\\users",

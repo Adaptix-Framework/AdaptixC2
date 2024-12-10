@@ -8,6 +8,8 @@
 #define COMMAND_CD		  8
 #define COMMAND_CP        12
 #define COMMAND_DISKS     15
+#define COMMAND_JOBS_LIST 46
+#define COMMAND_JOBS_KILL 47
 #define COMMAND_PWD       4
 #define COMMAND_LS		  14
 #define COMMAND_MV		  18
@@ -40,6 +42,8 @@ public:
 	void CmdDisks(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdDownload(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdJobsList(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdJobsKill(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdMkdir(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdMv(ULONG commandId, Packer* inPacker, Packer* outPacker);

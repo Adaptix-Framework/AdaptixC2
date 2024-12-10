@@ -31,6 +31,8 @@ type Teamserver interface {
 	TsTaskQueueAddQuite(agentId string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
 	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
+	TsTaskStop(agentId string, taskId string) error
+	TsTaskDelete(agentId string, taskId string) error
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
@@ -98,6 +100,8 @@ func NewTsConnector(ts Teamserver, p profile.TsProfile) (*TsConnector, error) {
 	connector.Engine.POST(p.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentRemove)
 	connector.Engine.POST(p.Endpoint+"/agent/exit", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentExit)
 	connector.Engine.POST(p.Endpoint+"/agent/settag", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentSetTag)
+	connector.Engine.POST(p.Endpoint+"/agent/task/stop", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentTaskStop)
+	connector.Engine.POST(p.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentTaskDelete)
 
 	connector.Engine.POST(p.Endpoint+"/browser/download/state", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDownloadState)
 	connector.Engine.POST(p.Endpoint+"/browser/download/start", token.ValidateAccessToken(), default404Middleware(), connector.TcBrowserDownload)

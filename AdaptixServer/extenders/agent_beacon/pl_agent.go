@@ -234,6 +234,31 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		}
 		break
 
+	case "jobs":
+		if subcommand == "list" {
+			messageInfo = "Task: show jobs"
+			array = []interface{}{COMMAND_JOBS_LIST}
+
+		} else if subcommand == "kill" {
+			messageInfo = "Task: kill job"
+			job, ok := args["task_id"].(string)
+			if !ok {
+				err = errors.New("parameter 'task_id' must be set")
+				goto RET
+			}
+
+			jobId, err := strconv.ParseInt(job, 16, 64)
+			if err != nil {
+				goto RET
+			}
+
+			array = []interface{}{COMMAND_JOBS_KILL, int(jobId)}
+		} else {
+			err = errors.New("subcommand must be 'list' or 'kill'")
+			goto RET
+		}
+		break
+
 	case "ls":
 		messageInfo = "Task: list of files in a folder"
 		dir, ok := args["directory"].(string)
@@ -575,11 +600,54 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.ClearText = jobOutput
 			} else if state == JOB_STATE_KILLED {
 				task.Completed = true
+				task.MessageType = MESSAGE_INFO
 				task.Message = fmt.Sprintf("Job [%v] canceled", task.TaskId)
 			} else if state == JOB_STATE_FINISHED {
 				task.Completed = true
 				task.Message = fmt.Sprintf("Job [%v] finished", task.TaskId)
 			}
+			break
+
+		case COMMAND_JOBS_LIST:
+			var Output string
+			count := packer.ParseInt32()
+
+			if count > 0 {
+				Output += fmt.Sprintf(" %-10s  %-5s  %-13s\n", "JobID", "PID", "Type")
+				Output += fmt.Sprintf(" %-10s  %-5s  %-13s", "--------", "-----", "-------")
+				for i := 0; i < int(count); i++ {
+					jobId := fmt.Sprintf("%08x", packer.ParseInt32())
+					jobType := packer.ParseInt16()
+					pid := packer.ParseInt16()
+
+					stringType := "Unknown"
+					if jobType == 0x1 {
+						stringType = "Local"
+					} else if jobType == 0x2 {
+						stringType = "Remote"
+					} else if jobType == 0x3 {
+						stringType = "Process"
+					}
+					Output += fmt.Sprintf("\n %-10v  %-5v  %-13s", jobId, pid, stringType)
+				}
+				task.Message = "Job list:"
+				task.ClearText = Output
+			} else {
+				task.Message = "No active jobs"
+			}
+			break
+
+		case COMMAND_JOBS_KILL:
+			result := packer.ParseInt8()
+			jobId := packer.ParseInt32()
+
+			if result == 0 {
+				task.MessageType = MESSAGE_ERROR
+				task.Message = fmt.Sprintf("Job %v not found", jobId)
+			} else {
+				task.Message = fmt.Sprintf("Job %v mark as Killed", jobId)
+			}
+
 			break
 
 		case COMMAND_LS:
