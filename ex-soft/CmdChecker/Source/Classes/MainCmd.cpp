@@ -90,7 +90,6 @@ void MainCmd::LoadFile()
                 completer = new QCompleter(commandList, this);
                 completer->setCaseSensitivity(Qt::CaseInsensitive);
                 commandInput->setCompleter(completer);
-
             }
             else {
                 consoleTextEdit->setText(commander->GetError());

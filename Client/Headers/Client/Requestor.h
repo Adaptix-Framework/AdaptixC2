@@ -28,6 +28,10 @@ bool HttpReqAgentRemove( QStringList agentsId, AuthProfile profile, QString* mes
 
 bool HttpReqAgentSetTag( QStringList agentsId, QString tag, AuthProfile profile, QString* message, bool* ok );
 
+bool HttpReqTaskStop(QString agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
+
+bool HttpReqTasksDelete(QString agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
+
 ///DOWNLOAD
 
 bool HttpReqBrowserDownload( QString action, QString fileId, AuthProfile profile, QString* message, bool* ok );

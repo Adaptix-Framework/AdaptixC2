@@ -209,6 +209,13 @@ type SyncPackerAgentTaskUpdate struct {
 	Completed   bool   `json:"a_completed"`
 }
 
+type SyncPackerAgentTaskRemove struct {
+	store  string
+	SpType int `json:"type"`
+
+	TaskId string `json:"a_task_id"`
+}
+
 type SyncPackerAgentRemove struct {
 	store  string
 	SpType int `json:"type"`

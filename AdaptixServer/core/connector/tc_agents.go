@@ -181,3 +181,74 @@ func (tc *TsConnector) TcAgentSetTag(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }
+
+type AgentTaskDelete struct {
+	AgentId string   `json:"agent_id"`
+	TasksId []string `json:"tasks_array"`
+}
+
+func (tc *TsConnector) TcAgentTaskStop(ctx *gin.Context) {
+	var (
+		agentTasks AgentTaskDelete
+		err        error
+	)
+
+	err = ctx.ShouldBindJSON(&agentTasks)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		return
+	}
+
+	var errorsSlice []string
+	for _, taskId := range agentTasks.TasksId {
+		err = tc.teamserver.TsTaskStop(agentTasks.AgentId, taskId)
+		if err != nil {
+			errorsSlice = append(errorsSlice, err.Error())
+		}
+	}
+
+	if len(errorsSlice) > 0 {
+		message := ""
+		for i, errorMessage := range errorsSlice {
+			message += fmt.Sprintf("%d. %s\n", i+1, errorMessage)
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": false})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}
+
+func (tc *TsConnector) TcAgentTaskDelete(ctx *gin.Context) {
+	var (
+		agentTasks AgentTaskDelete
+		err        error
+	)
+
+	err = ctx.ShouldBindJSON(&agentTasks)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		return
+	}
+
+	var errorsSlice []string
+	for _, taskId := range agentTasks.TasksId {
+		err = tc.teamserver.TsTaskDelete(agentTasks.AgentId, taskId)
+		if err != nil {
+			errorsSlice = append(errorsSlice, err.Error())
+		}
+	}
+
+	if len(errorsSlice) > 0 {
+		message := ""
+		for i, errorMessage := range errorsSlice {
+			message += fmt.Sprintf("%d. %s\n", i+1, errorMessage)
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": false})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}

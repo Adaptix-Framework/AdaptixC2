@@ -45,6 +45,9 @@ public:
     ~Agent();
 
     void    Update(QJsonObject jsonObjAgentData);
+    QString TasksStop(QStringList tasks);
+    QString TasksDelete(QStringList tasks);
+
     QString BrowserDisks();
     QString BrowserProcess();
     QString BrowserList(QString path);

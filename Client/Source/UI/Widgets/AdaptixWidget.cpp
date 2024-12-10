@@ -196,6 +196,7 @@ void AdaptixWidget::ClearAdaptix()
 {
     LogsTab->Clear();
     DownloadsTab->Clear();
+    TasksTab->Clear();
     ListenersTab->Clear();
     SessionsTablePage->Clear();
 
@@ -252,6 +253,11 @@ void AdaptixWidget::RemoveTab(int index)
 void AdaptixWidget::SetSessionsTableUI()
 {
     mainStackedWidget->setCurrentIndex(0);
+    int index = mainTabWidget->indexOf(TasksTab->taskOutputConsole);
+    if (index < 0)
+        return;
+
+    mainTabWidget->removeTab(index);
 }
 
 void AdaptixWidget::SetTasksUI()

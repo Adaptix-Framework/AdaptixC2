@@ -444,7 +444,6 @@ void BrowserFilesWidget::onUpload()
     statusLabel->setText(status);
 }
 
-
 void BrowserFilesWidget::actionDownload()
 {
     QString path = inputPath->text();

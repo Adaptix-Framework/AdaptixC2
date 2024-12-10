@@ -146,3 +146,92 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 		}
 	}
 }
+
+func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
+	var (
+		agent *Agent
+		task  adaptix.TaskData
+		value any
+		ok    bool
+		found bool
+	)
+
+	value, ok = ts.agents.Get(agentId)
+	if ok {
+		agent = value.(*Agent)
+	} else {
+		return fmt.Errorf("agent %v not found", agentId)
+	}
+
+	found = false
+	for i := 0; i < agent.TasksQueue.Len(); i++ {
+		if value, ok = agent.TasksQueue.Get(i); ok {
+			task = value.(adaptix.TaskData)
+			if task.TaskId == taskId {
+				agent.TasksQueue.Delete(i)
+				found = true
+				break
+			}
+		}
+	}
+
+	if found {
+		packet := CreateSpAgentTaskRemove(task)
+		ts.TsSyncAllClients(packet)
+		ts.TsSyncSavePacket(packet.store, packet)
+		return nil
+	}
+
+	value, ok = agent.Tasks.Get(taskId)
+	if ok {
+		task = value.(adaptix.TaskData)
+		if task.Type == TYPE_JOB {
+			// close JOB
+			return nil
+		} else {
+			return fmt.Errorf("taski %v in process", taskId)
+		}
+	}
+	return nil
+}
+
+func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
+	var (
+		agent *Agent
+		task  adaptix.TaskData
+		value any
+		ok    bool
+	)
+
+	value, ok = ts.agents.Get(agentId)
+	if ok {
+		agent = value.(*Agent)
+	} else {
+		return fmt.Errorf("agent %v not found", agentId)
+	}
+
+	for i := 0; i < agent.TasksQueue.Len(); i++ {
+		if value, ok = agent.TasksQueue.Get(i); ok {
+			task = value.(adaptix.TaskData)
+			if task.TaskId == taskId {
+				return fmt.Errorf("task %v in process", taskId)
+			}
+		}
+	}
+
+	value, ok = agent.Tasks.Get(taskId)
+	if ok {
+		return fmt.Errorf("task %v in process", taskId)
+	}
+
+	value, ok = agent.ClosedTasks.GetDelete(taskId)
+	if ok {
+		task = value.(adaptix.TaskData)
+		packet := CreateSpAgentTaskRemove(task)
+		ts.TsSyncAllClients(packet)
+		ts.TsSyncSavePacket(packet.store, packet)
+		return nil
+	}
+
+	return fmt.Errorf("task %v not found", taskId)
+}

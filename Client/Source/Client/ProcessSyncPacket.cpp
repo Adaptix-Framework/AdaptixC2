@@ -259,6 +259,12 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
+    if( spType == TYPE_AGENT_TASK_REMOVE ) {
+        if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isString()) {
+            return false;
+        }
+        return true;
+    }
     if( spType == TYPE_AGENT_REMOVE ) {
         if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
             return false;
@@ -593,6 +599,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         TasksTab->EditTaskItem(taskData);
 
+        return;
+    }
+    if( spType == TYPE_AGENT_TASK_REMOVE )
+    {
+        QString TaskId = jsonObj["a_task_id"].toString();
+        TasksTab->RemoveTaskItem(TaskId);
         return;
     }
     if( spType == TYPE_AGENT_REMOVE )

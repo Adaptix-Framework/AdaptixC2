@@ -273,6 +273,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
     QTextStream output(&result);
     if (commandParts.isEmpty()) {
         int TotalWidth = 20;
+        output << QString("\n");
         output << QString("  Command                   Description\n");
         output << QString("  -------                   -----------\n");
 
@@ -302,6 +303,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             return CommanderResult{true, "Unknown command: " + commandName, true};
 
         if (commandParts.size() == 1) {
+            output << QString("\n");
             output << "  Command               : " + foundCommand.name + "\n";
             if(!foundCommand.description.isEmpty())
                 output << "  Description           : " + foundCommand.description + "\n";
@@ -351,8 +353,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             if ( foundSubCommand.name.isEmpty() )
                 return CommanderResult{true, "Unknown subcommand: " + subCommandName, true};
 
-            output << "  Command               : " + foundCommand.name + "\n";
-            output << "  SubCommand            : " + foundSubCommand.name + "\n";
+            output << "  Command               : " + foundCommand.name + " " + foundSubCommand.name +"\n";
             if(!foundSubCommand.description.isEmpty())
                 output << "  Description           : " + foundSubCommand.description + "\n";
             if(!foundSubCommand.example.isEmpty())
@@ -364,7 +365,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 QTextStream usageStream(&usageHelp);
 
                 usageStream << foundCommand.name + " " + foundSubCommand.name;
-                for ( auto arg : foundCommand.args ) {
+                for ( auto arg : foundSubCommand.args ) {
                     QString fullarg = (arg.required ? "<" : "[") + arg.mark + ( arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " " ) + arg.name + (arg.required ? ">" : "]");
                     usageStream << " " + fullarg;
                     argsStream << "    " + fullarg + "  : " + arg.type + ". " + arg.description + "\n";
