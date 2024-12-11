@@ -237,7 +237,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 	case "jobs":
 		if subcommand == "list" {
 			messageInfo = "Task: show jobs"
-			array = []interface{}{COMMAND_JOBS_LIST}
+			array = []interface{}{COMMAND_JOB_LIST}
 
 		} else if subcommand == "kill" {
 			messageInfo = "Task: kill job"
@@ -608,7 +608,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			}
 			break
 
-		case COMMAND_JOBS_LIST:
+		case COMMAND_JOB_LIST:
 			var Output string
 			count := packer.ParseInt32()
 
@@ -919,6 +919,16 @@ func BrowserUpload(ts Teamserver, path string, content []byte, agentData AgentDa
 
 func BrowserDownload(path string, agentData AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
+	return PackArray(array)
+}
+
+func BrowserJobKill(jobId string) ([]byte, error) {
+	jobIdstr, err := strconv.ParseInt(jobId, 16, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	array := []interface{}{COMMAND_JOBS_KILL, int(jobIdstr)}
 	return PackArray(array)
 }
 

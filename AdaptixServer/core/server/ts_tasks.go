@@ -2,10 +2,12 @@ package server
 
 import (
 	"AdaptixServer/core/adaptix"
+	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 func (ts *Teamserver) TsTaskQueueAddQuite(agentId string, taskObject []byte) {
@@ -149,11 +151,12 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 
 func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 	var (
-		agent *Agent
-		task  adaptix.TaskData
-		value any
-		ok    bool
-		found bool
+		agent    *Agent
+		task     adaptix.TaskData
+		taskData adaptix.TaskData
+		value    any
+		ok       bool
+		found    bool
 	)
 
 	value, ok = ts.agents.Get(agentId)
@@ -186,7 +189,23 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 	if ok {
 		task = value.(adaptix.TaskData)
 		if task.Type == TYPE_JOB {
-			// close JOB
+			data, err := ts.Extender.ExAgentBrowserJobKill(agent.Data.Name, taskId)
+			if err != nil {
+				return err
+			}
+
+			err = json.Unmarshal(data, &taskData)
+			if err != nil {
+				return err
+			}
+
+			if taskData.TaskId == "" {
+				taskData.TaskId, _ = krypt.GenerateUID(8)
+			}
+			taskData.AgentId = agentId
+			taskData.CommandLine = "job kill " + taskId
+			taskData.StartDate = time.Now().Unix()
+			agent.TasksQueue.Put(taskData)
 			return nil
 		} else {
 			return fmt.Errorf("taski %v in process", taskId)

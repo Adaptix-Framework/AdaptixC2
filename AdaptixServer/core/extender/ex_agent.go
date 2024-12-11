@@ -122,6 +122,18 @@ func (ex *AdaptixExtender) ExAgentBrowserDownload(agentName string, path string,
 	}
 }
 
+func (ex *AdaptixExtender) ExAgentBrowserJobKill(agentName string, jobId string) ([]byte, error) {
+	var module *ModuleExtender
+
+	value, ok := ex.agentModules.Get(agentName)
+	if ok {
+		module = value.(*ModuleExtender)
+		return module.AgentBrowserJobKill(jobId)
+	} else {
+		return nil, errors.New("module not found")
+	}
+}
+
 func (ex *AdaptixExtender) ExAgentCtxExit(agentName string, agentObject []byte) ([]byte, error) {
 	var module *ModuleExtender
 
