@@ -161,6 +161,10 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 		if !ok {
 			return errors.New("method AgentBrowserDownload not found")
 		}
+		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserJobKill")
+		if !ok {
+			return errors.New("method AgentBrowserJobKill not found")
+		}
 		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserExit")
 		if !ok {
 			return errors.New("method AgentBrowserExit not found")

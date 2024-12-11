@@ -492,6 +492,32 @@ func (m *ModuleExtender) AgentBrowserDownload(path string, agentObject []byte) (
 	return buffer.Bytes(), nil
 }
 
+func (m *ModuleExtender) AgentBrowserJobKill(jobId string) ([]byte, error) {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+		err      error
+	)
+
+	packData, err = BrowserJobKill(jobId)
+	if err != nil {
+		return nil, err
+	}
+
+	taskData = TaskData{
+		Type: TASK,
+		Data: packData,
+		Sync: false,
+	}
+
+	err = json.NewEncoder(&buffer).Encode(taskData)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
 func (m *ModuleExtender) AgentBrowserExit(agentObject []byte) ([]byte, error) {
 	var (
 		packData  []byte
