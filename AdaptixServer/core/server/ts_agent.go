@@ -223,6 +223,8 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	err := ts.DBMS.DbAgentDelete(agentId)
 	if err != nil {
 		logs.Error(err.Error())
+	} else {
+		ts.DBMS.DbTaskDelete("", agentId)
 	}
 
 	packet := CreateSpAgentRemove(agentId)

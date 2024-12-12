@@ -95,6 +95,19 @@ func (ts *Teamserver) RestoreData() {
 		ts.TsSyncAllClients(packet)
 		ts.TsSyncSavePacket(packet.store, packet)
 
+		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)
+		for _, taskData := range restoreTasks {
+			agent.ClosedTasks.Put(taskData.TaskId, taskData)
+
+			packet1 := CreateSpAgentTaskCreate(taskData)
+			ts.TsSyncAllClients(packet1)
+			ts.TsSyncSavePacket(packet1.store, packet1)
+
+			packet2 := CreateSpAgentTaskUpdate(taskData)
+			ts.TsSyncAllClients(packet2)
+			ts.TsSyncSavePacket(packet2.store, packet2)
+		}
+
 		countAgents++
 	}
 	logs.Success("Restored %v agents", countAgents)

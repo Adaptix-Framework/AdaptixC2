@@ -171,10 +171,7 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 }
 
 func (ts *Teamserver) TsDownloadDelete(fileId string) error {
-	var (
-		downloadData adaptix.DownloadData
-		err          error
-	)
+	var downloadData adaptix.DownloadData
 
 	value, ok := ts.downloads.Get(fileId)
 	if ok {
@@ -191,10 +188,7 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 		downloadData.File.Close()
 	}
 
-	err = os.Remove(downloadData.LocalPath)
-	if err != nil {
-		return err
-	}
+	os.Remove(downloadData.LocalPath)
 
 	if downloadData.State == DOWNLOAD_STATE_FINISHED {
 		ts.DBMS.DbDownloadDelete(fileId)
