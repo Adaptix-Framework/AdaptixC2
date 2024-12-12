@@ -126,6 +126,10 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 		}
 
 		if task.Sync {
+			if task.Completed {
+				ts.DBMS.DbTaskInsert(task)
+			}
+
 			ts.TsSyncAllClients(packet)
 			ts.TsSyncSavePacket(packet.store, packet)
 		}
@@ -142,6 +146,10 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 		}
 
 		if task.Sync {
+			if task.Completed {
+				ts.DBMS.DbTaskInsert(task)
+			}
+
 			packet := CreateSpAgentTaskUpdate(task)
 			ts.TsSyncAllClients(packet)
 			ts.TsSyncSavePacket(packet.store, packet)
@@ -246,6 +254,8 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 	value, ok = agent.ClosedTasks.GetDelete(taskId)
 	if ok {
 		task = value.(adaptix.TaskData)
+		ts.DBMS.DbTaskDelete(task.TaskId, "")
+
 		packet := CreateSpAgentTaskRemove(task)
 		ts.TsSyncAllClients(packet)
 		ts.TsSyncSavePacket(packet.store, packet)

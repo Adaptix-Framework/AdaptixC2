@@ -88,6 +88,21 @@ func (dbms *DBMS) DatabaseInit() error {
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Tasks" (
+    	"TaskId" TEXT NOT NULL UNIQUE, 
+    	"AgentId" TEXT NOT NULL,
+    	"TaskType" INTEGER,
+    	"User" TEXT,
+    	"StartDate" BIGINT,
+    	"FinishDate" BIGINT,
+    	"CommandLine" TEXT NOT NULL,
+    	"MessageType" INTEGER,
+    	"Message" TEXT,
+    	"ClearText" TEXT,
+    	"Completed" INTEGER
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
 	return err
 }
 
