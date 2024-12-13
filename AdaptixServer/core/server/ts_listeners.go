@@ -2,27 +2,10 @@ package server
 
 import (
 	"AdaptixServer/core/adaptix"
-	"AdaptixServer/core/extender"
 	"encoding/json"
 	"errors"
 	"fmt"
 )
-
-func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
-
-	listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.Type, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
-
-	if ts.listener_configs.Contains(listenerFN) {
-		return fmt.Errorf("listener %v already exists", listenerFN)
-	}
-
-	ts.listener_configs.Put(listenerFN, listenerInfo)
-
-	packet := CreateSpListenerReg(listenerFN, listenerInfo.ListenerUI)
-	ts.TsSyncSavePacket(packet.store, packet)
-
-	return nil
-}
 
 func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, listenerConfig string) error {
 	var (
@@ -55,7 +38,11 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, 
 
 		packet := CreateSpListenerStart(listenerData)
 		ts.TsSyncAllClients(packet)
-		ts.TsSyncSavePacket(packet.store, packet)
+
+		message := fmt.Sprintf("Listener '%v' (%v) started", listenerName, listenerType)
+		packet2 := CreateSpEvent(EVENT_LISTENER_START, message)
+		ts.TsSyncAllClients(packet2)
+		ts.events.Put(packet2)
 
 		_ = ts.DBMS.DbListenerInsert(listenerName, listenerType, listenerConfig)
 	} else {
@@ -80,7 +67,11 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 
 			packet := CreateSpListenerStop(listenerName)
 			ts.TsSyncAllClients(packet)
-			ts.TsSyncXorPacket(packet.store, packet)
+
+			message := fmt.Sprintf("Listener '%v' stopped", listenerName)
+			packet2 := CreateSpEvent(EVENT_LISTENER_STOP, message)
+			ts.TsSyncAllClients(packet2)
+			ts.events.Put(packet2)
 
 			_ = ts.DBMS.DbListenerDelete(listenerName)
 		} else {
@@ -122,7 +113,11 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerType string, l
 
 			packet := CreateSpListenerEdit(listenerData)
 			ts.TsSyncAllClients(packet)
-			ts.TsSyncSavePacket(packet.store, packet)
+
+			message := fmt.Sprintf("Listener '%v' reconfigured", listenerName)
+			packet2 := CreateSpEvent(EVENT_LISTENER_START, message)
+			ts.TsSyncAllClients(packet2)
+			ts.events.Put(packet2)
 
 			_ = ts.DBMS.DbListenerUpdate(listenerName, listenerConfig)
 		} else {

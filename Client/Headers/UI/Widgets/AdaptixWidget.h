@@ -66,7 +66,8 @@ public:
     QMap<QString, QStringList>    LinkListenerAgent;
     QVector<ListenerData>         Listeners;
     QMap<QString, DownloadData>   Downloads;
-    QMap<QString, TaskData>       Tasks;
+    QVector<QString>              TasksVector;
+    QMap<QString, TaskData>       TasksMap;
     QMap<QString, Agent*>         Agents;
 
     explicit AdaptixWidget(AuthProfile* authProfile);

@@ -2,7 +2,6 @@ package server
 
 import (
 	"AdaptixServer/core/adaptix"
-	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
@@ -13,22 +12,6 @@ import (
 	"fmt"
 	"time"
 )
-
-func (ts *Teamserver) TsAgentNew(agentInfo extender.AgentInfo) error {
-	if ts.agent_configs.Contains(agentInfo.AgentName) {
-		return fmt.Errorf("agent %v already exists", agentInfo.AgentName)
-	}
-	agentCrc := krypt.CRC32([]byte(agentInfo.AgentName))
-	agentMark := fmt.Sprintf("%08x", agentCrc)
-
-	ts.agent_types.Put(agentMark, agentInfo.AgentName)
-	ts.agent_configs.Put(agentInfo.AgentName, agentInfo)
-
-	packet := CreateSpAgentReg(agentInfo.AgentName, agentInfo.ListenerName, agentInfo.AgentUI, agentInfo.AgentCmd)
-	ts.TsSyncSavePacket(packet.store, packet)
-
-	return nil
-}
 
 func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 	var (
@@ -60,15 +43,8 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 
 	packetNew := CreateSpAgentUpdate(agent.Data)
 	ts.TsSyncAllClients(packetNew)
-	ts.TsSyncSavePacket(packetNew.store, packetNew)
 
 	return nil
-}
-
-func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string) {
-	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
-	ts.TsSyncAllClients(packet)
-	ts.TsSyncSavePacket(packet.store, packet)
 }
 
 func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error) {
@@ -127,7 +103,11 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 
 		packetNew := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packetNew)
-		ts.TsSyncSavePacket(packetNew.store, packetNew)
+
+		message := fmt.Sprintf("New '%v' (%v) executed on '%v @ %v.%v' (%v)", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP)
+		packet2 := CreateSpEvent(EVENT_AGENT_NEW, message)
+		ts.TsSyncAllClients(packet2)
+		ts.events.Put(packet2)
 
 	} else {
 		agent, _ = value.(*Agent)
@@ -198,7 +178,6 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username 
 
 			packet := CreateSpAgentTaskCreate(taskData)
 			ts.TsSyncAllClients(packet)
-			ts.TsSyncSavePacket(packet.store, packet)
 
 			if len(messageInfo) > 0 {
 				ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, messageInfo, "")
@@ -212,6 +191,11 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username 
 	}
 
 	return nil
+}
+
+func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string) {
+	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
+	ts.TsSyncAllClients(packet)
 }
 
 func (ts *Teamserver) TsAgentRemove(agentId string) error {
@@ -229,7 +213,6 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 
 	packet := CreateSpAgentRemove(agentId)
 	ts.TsSyncAllClients(packet)
-	ts.TsSyncSavePacket(packet.store, packet)
 
 	return nil
 }
@@ -250,7 +233,6 @@ func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 
 	packetNew := CreateSpAgentUpdate(agent.Data)
 	ts.TsSyncAllClients(packetNew)
-	ts.TsSyncSavePacket(packetNew.store, packetNew)
 
 	return nil
 }

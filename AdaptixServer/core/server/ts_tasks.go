@@ -131,7 +131,6 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 			}
 
 			ts.TsSyncAllClients(packet)
-			ts.TsSyncSavePacket(packet.store, packet)
 		}
 
 	} else {
@@ -152,7 +151,6 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 
 			packet := CreateSpAgentTaskUpdate(task)
 			ts.TsSyncAllClients(packet)
-			ts.TsSyncSavePacket(packet.store, packet)
 		}
 	}
 }
@@ -189,7 +187,6 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 	if found {
 		packet := CreateSpAgentTaskRemove(task)
 		ts.TsSyncAllClients(packet)
-		ts.TsSyncSavePacket(packet.store, packet)
 		return nil
 	}
 
@@ -258,7 +255,6 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 
 		packet := CreateSpAgentTaskRemove(task)
 		ts.TsSyncAllClients(packet)
-		ts.TsSyncSavePacket(packet.store, packet)
 		return nil
 	}
 

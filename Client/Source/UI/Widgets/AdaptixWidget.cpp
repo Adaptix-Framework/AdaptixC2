@@ -263,7 +263,7 @@ void AdaptixWidget::SetSessionsTableUI()
 void AdaptixWidget::SetTasksUI()
 {
     mainStackedWidget->setCurrentIndex(1);
-    this->AddTab(TasksTab->taskOutputConsole, "Tasks Output", ":/icons/job");
+    this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
 }
 
 void AdaptixWidget::LoadLogsUI()
@@ -283,7 +283,7 @@ void AdaptixWidget::LoadDownloadsUI()
 
 void AdaptixWidget::LoadTasksOutput()
 {
-    this->AddTab(TasksTab->taskOutputConsole, "Tasks Output", ":/icons/job");
+    this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
 }
 
 void AdaptixWidget::OnReconnect() {

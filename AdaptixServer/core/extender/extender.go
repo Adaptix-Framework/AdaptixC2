@@ -226,7 +226,7 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 			return err
 		}
 
-		err = ex.ts.TsAgentNew(agentInfo)
+		err = ex.ts.TsAgentReg(agentInfo)
 		if err != nil {
 			return err
 		}
