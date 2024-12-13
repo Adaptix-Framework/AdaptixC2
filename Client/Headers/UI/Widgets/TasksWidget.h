@@ -43,11 +43,16 @@ public:
 
 class TasksWidget : public QWidget
 {
-    QWidget*      mainWidget        = nullptr;
-    QGridLayout*  mainGridLayout    = nullptr;
-    QTableWidget* tableWidget       = nullptr;
+    QWidget*      mainWidget     = nullptr;
+    QGridLayout*  mainGridLayout = nullptr;
+    QTableWidget* tableWidget    = nullptr;
+    QComboBox*    comboAgent     = nullptr;
+    QComboBox*    comboStatus    = nullptr;
+    QLineEdit*    inputFilter    = nullptr;
 
     void createUI();
+    bool filterItem(TaskData task);
+    void addTableItem(TaskData task);
 
 public:
     TaskOutputWidget* taskOutputConsole = nullptr;
@@ -59,10 +64,13 @@ public:
     void AddTaskItem(TaskData newTask);
     void EditTaskItem(TaskData newTask);
     void RemoveTaskItem(QString taskId);
+    void SetData();
+    void SetAgentFilter(QString agentId);
 
 public slots:
     void handleTasksMenu( const QPoint &pos );
     void onTableItemSelection();
+    void onAgentChange(QString agentId);
     void actionCopyTaskId();
     void actionCopyCmd();
     void actionOpenConsole();

@@ -30,12 +30,10 @@ void TaskOutputWidget::createUI()
 
 void TaskOutputWidget::SetConten(QString message, QString text)
 {
-    if( message.isEmpty() ) {
+    if( message.isEmpty() )
         inputMessage->clear();
-    }
-    else {
+    else
         inputMessage->setText(message.toHtmlEscaped());
-    }
 
     if ( text.isEmpty() )
         outputTextEdit->clear();
@@ -52,14 +50,31 @@ TasksWidget::TasksWidget( QWidget* w )
 
     taskOutputConsole = new TaskOutputWidget();
 
-    connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu );
-    connect( tableWidget, &QTableWidget::itemSelectionChanged,       this, &TasksWidget::onTableItemSelection );
+    connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
+    connect(tableWidget, &QTableWidget::itemSelectionChanged,       this, &TasksWidget::onTableItemSelection);
+    connect(comboAgent,  &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
+    connect(comboStatus, &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
+    connect(inputFilter, &QLineEdit::textChanged,                   this, &TasksWidget::onAgentChange);
 }
 
 TasksWidget::~TasksWidget() = default;
 
 void TasksWidget::createUI()
 {
+    auto horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    auto horizontalSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+    comboAgent = new QComboBox(this);
+    comboAgent->addItem( "All agents" );
+    comboAgent->setCurrentIndex(0);
+
+    comboStatus = new QComboBox(this);
+    comboStatus->addItems( QStringList() << "Any status" << "Running" << "Success" << "Error" << "Canceled" );
+    comboStatus->setCurrentIndex(0);
+
+    inputFilter = new QLineEdit(this);
+    inputFilter->setPlaceholderText("filter");
+
     tableWidget = new QTableWidget(this );
     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
     tableWidget->setAutoFillBackground( false );
@@ -89,25 +104,41 @@ void TasksWidget::createUI()
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
     mainGridLayout->setVerticalSpacing(4);
     mainGridLayout->setHorizontalSpacing(8);
-    mainGridLayout->addWidget( tableWidget,  1, 0,  1, 13 );
+
+    mainGridLayout->addItem( horizontalSpacer1, 0, 0,  1, 1  );
+    mainGridLayout->addWidget( comboAgent, 0, 1, 1, 1  );
+    mainGridLayout->addWidget( comboStatus, 0, 2, 1, 1  );
+    mainGridLayout->addWidget( inputFilter, 0, 3, 1, 1  );
+    mainGridLayout->addItem( horizontalSpacer2, 0, 4,  1, 1  );
+    mainGridLayout->addWidget( tableWidget,  1, 0,  1, 5 );
 
     this->setLayout(mainGridLayout);
 }
 
-void TasksWidget::Clear()
+bool TasksWidget::filterItem(TaskData task)
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    adaptixWidget->Tasks.clear();
-    for (int index = tableWidget->rowCount(); index > 0; index-- )
-        tableWidget->removeRow(index -1 );
+    if( comboAgent->currentIndex() > 0 ) {
+        if (comboAgent->currentText() != task.AgentId)
+            return false;
+    }
+
+    if( comboStatus->currentIndex() > 0 ) {
+        if( comboStatus->currentText() != task.Status )
+            return false;
+    }
+
+    if( !inputFilter->text().isEmpty() ) {
+        if ( !task.Message.contains(inputFilter->text(), Qt::CaseInsensitive) &&
+             !task.CommandLine.contains(inputFilter->text(), Qt::CaseInsensitive)
+           )
+            return false;
+    }
+
+    return true;
 }
 
-void TasksWidget::AddTaskItem(TaskData newTask)
+void TasksWidget::addTableItem(TaskData newTask)
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( adaptixWidget->Tasks.contains(newTask.TaskId) )
-        return;
-
     QString taskType = "";
     if ( newTask.TaskType == 1 )
         taskType = "TASK";
@@ -123,10 +154,22 @@ void TasksWidget::AddTaskItem(TaskData newTask)
     auto item_AgentId     = new QTableWidgetItem( newTask.AgentId );
     auto item_Client      = new QTableWidgetItem( newTask.Client );
     auto item_StartTime   = new QTableWidgetItem( startTime );
-    auto item_FinishTime  = new QTableWidgetItem( startTime );
+    auto item_FinishTime  = new QTableWidgetItem( "" );
     auto item_CommandLine = new QTableWidgetItem( newTask.CommandLine );
-    auto item_Result      = new QTableWidgetItem( "Running" );
-    auto item_Message     = new QTableWidgetItem( "" );
+    auto item_Result      = new QTableWidgetItem( newTask.Status );
+    auto item_Message     = new QTableWidgetItem( newTask.Message );
+
+    if (newTask.Completed) {
+        if ( newTask.Status =="Error")
+            item_Result->setForeground(QColor(COLOR_ChiliPepper));
+        else if ( newTask.Status == "Canceled")
+            item_Result->setForeground(QColor(COLOR_BabyBlue) );
+        else
+            item_Result->setForeground(QColor(COLOR_NeonGreen) );
+
+        QString finishTime = UnixTimestampGlobalToStringLocal(newTask.FinishTime);
+        item_FinishTime->setText(finishTime);
+    }
 
     item_TaskId->setFlags( item_TaskId->flags() ^ Qt::ItemIsEditable );
     item_TaskId->setTextAlignment( Qt::AlignCenter );
@@ -180,48 +223,99 @@ void TasksWidget::AddTaskItem(TaskData newTask)
 
     tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
+}
 
-    adaptixWidget->Tasks[newTask.TaskId] = newTask;
+
+
+void TasksWidget::Clear()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    adaptixWidget->TasksMap.clear();
+    adaptixWidget->TasksVector.clear();
+    for (int index = tableWidget->rowCount(); index > 0; index-- )
+        tableWidget->removeRow(index -1 );
+
+    taskOutputConsole->SetConten("", "");
+
+    comboAgent->clear();
+    comboAgent->addItem( "All agents" );
+    comboAgent->setCurrentIndex(0);
+    comboStatus->setCurrentIndex(0);
+    inputFilter->clear();
+}
+
+void TasksWidget::AddTaskItem(TaskData newTask)
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if ( adaptixWidget->TasksMap.contains(newTask.TaskId) )
+        return;
+
+    newTask.Status = "Running";
+    if (newTask.Completed) {
+        if ( newTask.MessageType == CONSOLE_OUT_ERROR || newTask.MessageType == CONSOLE_OUT_LOCAL_ERROR )
+            newTask.Status = "Error";
+        else if ( newTask.MessageType == CONSOLE_OUT_INFO || newTask.MessageType == CONSOLE_OUT_LOCAL_INFO )
+            newTask.Status = "Canceled";
+        else
+            newTask.Status = "Success";
+    }
+
+    adaptixWidget->TasksMap[newTask.TaskId] = newTask;
+    adaptixWidget->TasksVector.push_back(newTask.TaskId);
+
+    if( comboAgent->findText(newTask.AgentId) == -1 )
+        comboAgent->addItem(newTask.AgentId);
+
+    if( !this->filterItem(newTask) )
+        return;
+
+    this->addTableItem(newTask);
 }
 
 void TasksWidget::EditTaskItem(TaskData newTask)
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget->Tasks.contains(newTask.TaskId) )
+    if ( !adaptixWidget->TasksMap.contains(newTask.TaskId) )
         return;
 
-    adaptixWidget->Tasks[newTask.TaskId].Completed  = newTask.Completed;
+    adaptixWidget->TasksMap[newTask.TaskId].Completed  = newTask.Completed;
     if (newTask.Completed) {
-        adaptixWidget->Tasks[newTask.TaskId].FinishTime  = newTask.FinishTime;
-        adaptixWidget->Tasks[newTask.TaskId].MessageType = newTask.MessageType;
+        adaptixWidget->TasksMap[newTask.TaskId].FinishTime  = newTask.FinishTime;
+        adaptixWidget->TasksMap[newTask.TaskId].MessageType = newTask.MessageType;
+
+        if ( newTask.MessageType == CONSOLE_OUT_ERROR || newTask.MessageType == CONSOLE_OUT_LOCAL_ERROR )
+            adaptixWidget->TasksMap[newTask.TaskId].Status = "Error";
+        else if ( newTask.MessageType == CONSOLE_OUT_INFO || newTask.MessageType == CONSOLE_OUT_LOCAL_INFO )
+            adaptixWidget->TasksMap[newTask.TaskId].Status = "Canceled";
+        else
+            adaptixWidget->TasksMap[newTask.TaskId].Status = "Success";
     }
 
-    if (adaptixWidget->Tasks[newTask.TaskId].Message.isEmpty())
-        adaptixWidget->Tasks[newTask.TaskId].Message = newTask.Message;
+    if (adaptixWidget->TasksMap[newTask.TaskId].Message.isEmpty())
+        adaptixWidget->TasksMap[newTask.TaskId].Message = newTask.Message;
 
-    adaptixWidget->Tasks[newTask.TaskId].Output += newTask.Output;
+    adaptixWidget->TasksMap[newTask.TaskId].Output += newTask.Output;
 
-    TaskData taskData = adaptixWidget->Tasks[newTask.TaskId];
+    TaskData taskData = adaptixWidget->TasksMap[newTask.TaskId];
 
     for (int row = 0; row < tableWidget->rowCount(); ++row) {
         QTableWidgetItem *item = tableWidget->item(row, 0);
         if ( item && item->text() == taskData.TaskId ) {
-            if (newTask.Completed) {
-                if ( taskData.MessageType == CONSOLE_OUT_ERROR || taskData.MessageType == CONSOLE_OUT_LOCAL_ERROR ){
-                    tableWidget->item(row, 7)->setText("Error");
+
+            if (taskData.Completed) {
+                if ( taskData.Status =="Error")
                     tableWidget->item(row, 7)->setForeground(QColor(COLOR_ChiliPepper) );
-                }
-                else if ( taskData.MessageType == CONSOLE_OUT_INFO || taskData.MessageType == CONSOLE_OUT_LOCAL_INFO ){
-                    tableWidget->item(row, 7)->setText("Canceled");
+                else if ( taskData.Status == "Canceled")
                     tableWidget->item(row, 7)->setForeground(QColor(COLOR_BabyBlue) );
-                }
-                else {
-                    tableWidget->item(row, 7)->setText("Success");
+                else
                     tableWidget->item(row, 7)->setForeground(QColor(COLOR_NeonGreen) );
-                }
-                QString finishTime = UnixTimestampGlobalToStringLocal(newTask.FinishTime);
+
+                tableWidget->item(row, 7)->setText( taskData.Status );
+
+                QString finishTime = UnixTimestampGlobalToStringLocal(taskData.FinishTime);
                 tableWidget->item(row, 5)->setText(finishTime);
             }
+
             tableWidget->item(row, 8)->setText(taskData.Message);
 
             break;
@@ -232,7 +326,10 @@ void TasksWidget::EditTaskItem(TaskData newTask)
 void TasksWidget::RemoveTaskItem(QString taskId)
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    adaptixWidget->Tasks.remove(taskId);
+    auto agentId = adaptixWidget->TasksMap[taskId].AgentId;
+
+    adaptixWidget->TasksMap.remove(taskId);
+    adaptixWidget->TasksVector.removeOne(taskId);
 
     for (int row = 0; row < tableWidget->rowCount(); ++row) {
         QTableWidgetItem *item = tableWidget->item(row, 0);
@@ -241,6 +338,43 @@ void TasksWidget::RemoveTaskItem(QString taskId)
             break;
         }
     }
+
+    bool found = false;
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *item = tableWidget->item(row, 2);
+        if ( item && item->text() == agentId ) {
+            found = true;
+            break;
+        }
+    }
+
+    if ( !found ) {
+        int index = comboAgent->findText(agentId);
+        if (index != -1)
+            comboAgent->removeItem(index);
+    }
+}
+
+void TasksWidget::SetData()
+{
+    taskOutputConsole->SetConten("", "");
+
+    for (int index = tableWidget->rowCount(); index > 0; index-- )
+        tableWidget->removeRow(index -1 );
+
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+
+    for (int i = 0; i < adaptixWidget->TasksVector.size(); i++ ) {
+        QString taskId = adaptixWidget->TasksVector[i];
+        TaskData taskData = adaptixWidget->TasksMap[taskId];
+        if ( this->filterItem(taskData) )
+            this->addTableItem(taskData);
+    }
+}
+
+void TasksWidget::SetAgentFilter(QString agentId)
+{
+    comboAgent->setCurrentText(agentId);
 }
 
 /// SLOTS
@@ -254,11 +388,14 @@ void TasksWidget::handleTasksMenu( const QPoint &pos )
 
     auto ctxSep1 = new QAction();
     ctxSep1->setSeparator(true);
+    auto ctxSep2 = new QAction();
+    ctxSep2->setSeparator(true);
 
     ctxMenu.addAction( "Copy TaskID", this, &TasksWidget::actionCopyTaskId);
     ctxMenu.addAction( "Copy CommandLine", this, &TasksWidget::actionCopyCmd);
-    ctxMenu.addAction( "Agent Console", this, &TasksWidget::actionOpenConsole);
     ctxMenu.addAction(ctxSep1);
+    ctxMenu.addAction( "Agent Console", this, &TasksWidget::actionOpenConsole);
+    ctxMenu.addAction(ctxSep2);
     ctxMenu.addAction( "Stop Task", this, &TasksWidget::actionStop);
     ctxMenu.addAction( "Delete Task", this, &TasksWidget::actionDelete);
 
@@ -275,12 +412,17 @@ void TasksWidget::onTableItemSelection()
     QString taskId = tableWidget->item(row,0)->text();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if( !adaptixWidget->Tasks.contains(taskId) )
+    if( !adaptixWidget->TasksMap.contains(taskId) )
         return;
 
-    TaskData taskData = adaptixWidget->Tasks[taskId];
+    TaskData taskData = adaptixWidget->TasksMap[taskId];
     taskOutputConsole->SetConten(taskData.Message, taskData.Output);
     adaptixWidget->LoadTasksOutput();
+}
+
+void TasksWidget::onAgentChange(QString agentId)
+{
+    this->SetData();
 }
 
 void TasksWidget::actionCopyTaskId()

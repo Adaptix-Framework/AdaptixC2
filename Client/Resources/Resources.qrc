@@ -2,6 +2,7 @@
 
     <qresource prefix="/">
         <file alias="LogoLin">Logo.png</file>
+        <file alias="SyncLogo">SyncLogo.png</file>
     </qresource>
 
     <qresource prefix="/fonts">

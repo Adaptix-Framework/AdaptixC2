@@ -168,7 +168,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     agentSep2->setSeparator(true);
 
     auto agentMenu = new QMenu("Agent", &ctxMenu);
-    agentMenu->addAction("Command");
+    agentMenu->addAction("Tasks", this, &SessionsTableWidget::actionTasksBrowserOpen);
     agentMenu->addAction(agentSep1);
     agentMenu->addAction("File Browser",    this, &SessionsTableWidget::actionFileBrowserOpen);
     agentMenu->addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
@@ -200,6 +200,14 @@ void SessionsTableWidget::actionConsoleOpen()
             adaptixWidget->LoadConsoleUI(agentId);
         }
     }
+}
+
+void SessionsTableWidget::actionTasksBrowserOpen()
+{
+    QString agentId = tableWidget->item( tableWidget->currentRow(), ColumnAgentID )->text();
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    adaptixWidget->TasksTab->SetAgentFilter(agentId);
+    adaptixWidget->SetTasksUI();
 }
 
 void SessionsTableWidget::actionFileBrowserOpen()

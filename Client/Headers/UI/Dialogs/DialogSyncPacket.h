@@ -3,12 +3,26 @@
 
 #include <main.h>
 
-class DialogSyncPacket : public QDialog
+class CustomSplashScreen : public QSplashScreen {
+Q_OBJECT
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override {
+        event->ignore();
+    }
+
+    void keyPressEvent(QKeyEvent *event) override {
+        event->ignore();
+    }
+};
+
+class DialogSyncPacket
 {
-    QLabel*       logNameLabel     = nullptr;
-    QLabel*       logProgressLabel = nullptr;
-    QProgressBar* progressBar      = nullptr;
-    QVBoxLayout*  layout           = nullptr;
+    QLabel*       logNameLabel       = nullptr;
+    QLabel*       logProgressLabel   = nullptr;
+    QProgressBar* progressBar        = nullptr;
+    QVBoxLayout*  layout             = nullptr;
+    CustomSplashScreen* splashScreen = nullptr;
 
 public:
     int totalLogs;

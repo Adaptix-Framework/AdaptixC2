@@ -68,7 +68,6 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 
 	packet := CreateSpDownloadCreate(downloadData)
 	ts.TsSyncAllClients(packet)
-	ts.TsSyncSavePacket(packet.store, packet)
 
 	return nil
 }
@@ -104,7 +103,6 @@ func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) er
 
 	packet := CreateSpDownloadUpdate(downloadData)
 	ts.TsSyncAllClients(packet)
-	ts.TsSyncSavePacket(packet.store, packet)
 
 	return nil
 }
@@ -141,7 +139,6 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 
 	packet := CreateSpDownloadUpdate(downloadData)
 	ts.TsSyncAllClients(packet)
-	ts.TsSyncSavePacket(packet.store, packet)
 
 	return nil
 }
@@ -196,7 +193,6 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 
 	packet := CreateSpDownloadDelete(downloadData.FileId)
 	ts.TsSyncAllClients(packet)
-	ts.TsSyncSavePacket(packet.store, packet)
 
 	ts.downloads.Delete(fileId)
 

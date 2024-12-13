@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QMap>
 #include <QVector>
+#include <QShortcut>
 #include <QGridLayout>
 #include <QWidget>
 #include <QDialog>
@@ -44,6 +45,7 @@
 #include <QInputDialog>
 #include <QTreeWidget>
 #include <QClipboard>
+#include <QSplashScreen>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
@@ -53,11 +55,18 @@
 
 //////////
 
+#define EVENT_CLIENT_CONNECT    1
+#define EVENT_CLIENT_DISCONNECT 2
+#define EVENT_LISTENER_START    3
+#define EVENT_LISTENER_STOP     4
+#define EVENT_AGENT_NEW         5
+
+/////////
+
 #define TYPE_SYNC_START  0x11
 #define TYPE_SYNC_FINISH 0x12
 
-#define TYPE_CLIENT_CONNECT    0x21
-#define TYPE_CLIENT_DISCONNECT 0x22
+#define SP_TYPE_EVENT  0x13
 
 #define TYPE_LISTENER_REG   0x31
 #define TYPE_LISTENER_START 0x32
@@ -165,6 +174,7 @@ typedef struct TaskData
     qint64  FinishTime;
     QString CommandLine;
     int     MessageType;
+    QString Status;
     QString Message;
     QString Output;
     bool    Completed;

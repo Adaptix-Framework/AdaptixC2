@@ -7,7 +7,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 
     int spType = jsonObj["type"].toDouble();
 
-
     if( spType == TYPE_SYNC_START ) {
         if ( !jsonObj.contains("count") || !jsonObj["count"].isDouble() ) {
             return false;
@@ -18,11 +17,14 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
-    if( spType == TYPE_CLIENT_CONNECT || spType == TYPE_CLIENT_DISCONNECT ) {
-        if ( !jsonObj.contains("username") || !jsonObj["username"].isString() ) {
+    if(spType == SP_TYPE_EVENT) {
+        if ( !jsonObj.contains("event_type") || !jsonObj["event_type"].isDouble() ) {
             return false;
         }
-        if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() ) {
+        if ( !jsonObj.contains("date") || !jsonObj["date"].isDouble() ) {
+            return false;
+        }
+        if ( !jsonObj.contains("message") || !jsonObj["message"].isString() ) {
             return false;
         }
         return true;
@@ -38,11 +40,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if( spType == TYPE_LISTENER_START || spType == TYPE_LISTENER_EDIT ) {
-        if( spType == TYPE_LISTENER_START ) {
-            if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() ) {
-                return false;
-            }
-        }
         if ( !jsonObj.contains("l_name") || !jsonObj["l_name"].isString() ) {
             return false;
         }
@@ -74,9 +71,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("l_name") || !jsonObj["l_name"].isString() ) {
             return false;
         }
-        if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() ) {
-            return false;
-        }
 
         return true;
     }
@@ -97,9 +91,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if( spType == TYPE_AGENT_NEW ) {
-        if ( !jsonObj.contains("time") || !jsonObj["time"].isDouble() ) {
-            return false;
-        }
         if ( !jsonObj.contains("a_id") || !jsonObj["a_id"].isString() ) {
             return false;
         }
@@ -404,6 +395,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         int count = jsonObj["count"].toDouble();
         dialogSyncPacket = new DialogSyncPacket(count);
+
+        this->setEnabled(false);
         return;
     }
     if( spType == TYPE_SYNC_FINISH )
@@ -412,42 +405,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             dialogSyncPacket->finish();
             delete dialogSyncPacket;
             dialogSyncPacket = nullptr;
+
+            this->setEnabled(true);
         }
         return;
     }
 
 
-    if( spType == TYPE_CLIENT_CONNECT )
-    {
-        QString username = jsonObj["username"].toString();
-        qint64 time      = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString message  = QString("Client '%1' connected to teamserver").arg(username);
-
-        LogsTab->AddLogs(spType, time, message);
-        return;
-    }
-    if( spType == TYPE_CLIENT_DISCONNECT )
-    {
-        QString username = jsonObj["username"].toString();
-        qint64  time     = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString message  = QString("Client '%1' disconnected from teamserver").arg(username);
-
-        LogsTab->AddLogs(spType, time, message);
-        return;
-    }
-
-
-    if( spType == TYPE_LISTENER_REG )
-    {
-        QString fn = jsonObj["fn"].toString();
-        QString ui = jsonObj["ui"].toString();
-
-        auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
-        if(widgetBuilder->GetError().isEmpty())
-            RegisterListenersUI[fn] = widgetBuilder;
-
-        return;
-    }
     if( spType == TYPE_LISTENER_START )
     {
         ListenerData newListener = {0};
@@ -459,11 +423,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newListener.AgentHost    = jsonObj["l_agent_host"].toString();
         newListener.Status       = jsonObj["l_status"].toString();
         newListener.Data         = jsonObj["l_data"].toString();
-
-        qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString message = QString("Listener '%1' (%2) started").arg(newListener.ListenerName).arg(newListener.ListenerType);
-
-        LogsTab->AddLogs(spType, time, message);
 
         ListenersTab->AddListenerItem(newListener);
         return;
@@ -480,57 +439,23 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newListener.Status       = jsonObj["l_status"].toString();
         newListener.Data         = jsonObj["l_data"].toString();
 
-        qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString message = QString("Listener '%1' reconfigured").arg(newListener.ListenerName);
-
-        LogsTab->AddLogs(spType, time, message);
-
         ListenersTab->EditListenerItem(newListener);
         return;
     }
     if( spType == TYPE_LISTENER_STOP )
     {
         QString listenerName = jsonObj["l_name"].toString();
-        qint64  time         = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString message      = QString("Listener '%1' stopped").arg(listenerName);
-
-        LogsTab->AddLogs(spType, time, message);
 
         ListenersTab->RemoveListenerItem(listenerName);
         return;
     }
 
 
-    if( spType == TYPE_AGENT_REG )
-    {
-        QString agentName    = jsonObj["agent"].toString();
-        QString listenerName = jsonObj["listener"].toString();
-        QString ui           = jsonObj["ui"].toString();
-        QString cmd          = jsonObj["cmd"].toString();
-
-        auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
-        if(widgetBuilder->GetError().isEmpty())
-            RegisterAgentsUI[agentName] = widgetBuilder;
-
-        auto commander = new Commander(cmd.toLocal8Bit());
-        if ( commander->IsValid())
-            RegisterAgentsCmd[agentName] = commander;
-
-        LinkListenerAgent[listenerName].push_back(agentName);
-        return;
-    }
     if( spType == TYPE_AGENT_NEW )
     {
         QString agentName = jsonObj["a_name"].toString();
 
         Agent* newAgent = new Agent(jsonObj, RegisterAgentsCmd[agentName], this);
-
-        qint64  time    = static_cast<qint64>(jsonObj["time"].toDouble());
-        QString message = QString("New '%1' (%2) executed on '%3@%4.%5' (%6)").arg(
-                newAgent->data.Name, newAgent->data.Id, newAgent->data.Username, newAgent->data.Computer, newAgent->data.Domain, newAgent->data.InternalIP
-                );
-
-        LogsTab->AddLogs(spType, time, message);
 
         SessionsTablePage->AddAgentItem( newAgent );
         return;
@@ -565,6 +490,15 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
+    if( spType == TYPE_AGENT_REMOVE )
+    {
+        QString agentId = jsonObj["a_id"].toString();
+
+        SessionsTablePage->RemoveAgentItem(agentId);
+    }
+
+
+
     if( spType == TYPE_AGENT_TASK_CREATE )
     {
         TaskData taskData = { 0 };
@@ -606,12 +540,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString TaskId = jsonObj["a_task_id"].toString();
         TasksTab->RemoveTaskItem(TaskId);
         return;
-    }
-    if( spType == TYPE_AGENT_REMOVE )
-    {
-        QString agentId = jsonObj["a_id"].toString();
-
-        SessionsTablePage->RemoveAgentItem(agentId);
     }
 
 
@@ -706,6 +634,47 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         if (Agents.contains(agentId))
             Agents[agentId]->FileBrowser->SetStatus( time, msgType, message );
 
+        return;
+    }
+
+
+    if(spType == SP_TYPE_EVENT)
+    {
+        int     type    = jsonObj["event_type"].toDouble();
+        qint64  time    = jsonObj["date"].toDouble();
+        QString message = jsonObj["message"].toString();
+
+        LogsTab->AddLogs(type, time, message);
+    }
+
+
+    if( spType == TYPE_LISTENER_REG )
+    {
+        QString fn = jsonObj["fn"].toString();
+        QString ui = jsonObj["ui"].toString();
+
+        auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
+        if(widgetBuilder->GetError().isEmpty())
+            RegisterListenersUI[fn] = widgetBuilder;
+
+        return;
+    }
+    if( spType == TYPE_AGENT_REG )
+    {
+        QString agentName    = jsonObj["agent"].toString();
+        QString listenerName = jsonObj["listener"].toString();
+        QString ui           = jsonObj["ui"].toString();
+        QString cmd          = jsonObj["cmd"].toString();
+
+        auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
+        if(widgetBuilder->GetError().isEmpty())
+            RegisterAgentsUI[agentName] = widgetBuilder;
+
+        auto commander = new Commander(cmd.toLocal8Bit());
+        if ( commander->IsValid())
+            RegisterAgentsCmd[agentName] = commander;
+
+        LinkListenerAgent[listenerName].push_back(agentName);
         return;
     }
 }

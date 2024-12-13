@@ -7,6 +7,7 @@ import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -27,6 +28,13 @@ const (
 
 // TeamServer
 
+type Client struct {
+	username  string
+	synced    bool
+	socket    *websocket.Conn
+	tmp_store *safe.Slice
+}
+
 type Teamserver struct {
 	Profile       *profile.AdaptixProfile
 	DBMS          *database.DBMS
@@ -36,11 +44,11 @@ type Teamserver struct {
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
 
-	clients     safe.Map // username string,    : socket *websocket.Conn
-	syncpackets safe.Map // store string        : sync_packet interface{}
-	listeners   safe.Map // listenerName string : listenerData ListenerData
-	agents      safe.Map // agentId string      : agent *Agent
-	downloads   safe.Map // dileId string       : downloadData DownloadData
+	clients   safe.Map    // username string,    : socket *websocket.Conn
+	events    *safe.Slice // 			           : sync_packet interface{}
+	listeners safe.Map    // listenerName string : listenerData ListenerData
+	agents    safe.Map    // agentId string      : agent *Agent
+	downloads safe.Map    // dileId string       : downloadData DownloadData
 
 	agent_types safe.Map // agentMark string : agentName string
 }
@@ -64,26 +72,17 @@ type SyncPackerFinish struct {
 	SpType int `json:"type"`
 }
 
-type SyncPackerClientConnect struct {
-	store        string
-	SpCreateTime int64 `json:"time"`
-	SpType       int   `json:"type"`
+type SpEvent struct {
+	Type int `json:"type"`
 
-	Username string `json:"username"`
-}
-
-type SyncPackerClientDisconnect struct {
-	store        string
-	SpCreateTime int64 `json:"time"`
-	SpType       int   `json:"type"`
-
-	Username string `json:"username"`
+	EventType int    `json:"event_type"`
+	Date      int64  `json:"date"`
+	Message   string `json:"message"`
 }
 
 /// LISTENER
 
 type SyncPackerListenerReg struct {
-	store  string
 	SpType int `json:"type"`
 
 	ListenerFN string `json:"fn"`
@@ -91,9 +90,7 @@ type SyncPackerListenerReg struct {
 }
 
 type SyncPackerListenerStart struct {
-	store        string
-	SpCreateTime int64 `json:"time"`
-	SpType       int   `json:"type"`
+	SpType int `json:"type"`
 
 	ListenerName   string `json:"l_name"`
 	ListenerType   string `json:"l_type"`
@@ -106,9 +103,7 @@ type SyncPackerListenerStart struct {
 }
 
 type SyncPackerListenerStop struct {
-	store        string
-	SpCreateTime int64 `json:"time"`
-	SpType       int   `json:"type"`
+	SpType int `json:"type"`
 
 	ListenerName string `json:"l_name"`
 }
@@ -116,7 +111,6 @@ type SyncPackerListenerStop struct {
 /// AGENT
 
 type SyncPackerAgentReg struct {
-	store  string
 	SpType int `json:"type"`
 
 	Agent    string `json:"agent"`
@@ -126,9 +120,7 @@ type SyncPackerAgentReg struct {
 }
 
 type SyncPackerAgentNew struct {
-	store        string
-	SpCreateTime int64 `json:"time"`
-	SpType       int   `json:"type"`
+	SpType int `json:"type"`
 
 	Id         string `json:"a_id"`
 	Name       string `json:"a_name"`
@@ -154,7 +146,6 @@ type SyncPackerAgentNew struct {
 }
 
 type SyncPackerAgentUpdate struct {
-	store  string
 	SpType int `json:"type"`
 
 	Id       string `json:"a_id"`
@@ -166,14 +157,12 @@ type SyncPackerAgentUpdate struct {
 }
 
 type SyncPackerAgentTick struct {
-	store  string
 	SpType int `json:"type"`
 
 	Id string `json:"a_id"`
 }
 
 type SyncPackerAgentConsoleOutput struct {
-	store        string
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`
 
@@ -184,7 +173,6 @@ type SyncPackerAgentConsoleOutput struct {
 }
 
 type SyncPackerAgentTaskCreate struct {
-	store  string
 	SpType int `json:"type"`
 
 	AgentId   string `json:"a_id"`
@@ -196,7 +184,6 @@ type SyncPackerAgentTaskCreate struct {
 }
 
 type SyncPackerAgentTaskUpdate struct {
-	store  string
 	SpType int `json:"type"`
 
 	AgentId     string `json:"a_id"`
@@ -210,14 +197,12 @@ type SyncPackerAgentTaskUpdate struct {
 }
 
 type SyncPackerAgentTaskRemove struct {
-	store  string
 	SpType int `json:"type"`
 
 	TaskId string `json:"a_task_id"`
 }
 
 type SyncPackerAgentRemove struct {
-	store  string
 	SpType int `json:"type"`
 
 	AgentId string `json:"a_id"`
@@ -226,7 +211,6 @@ type SyncPackerAgentRemove struct {
 /// DOWNLOAD
 
 type SyncPackerDownloadCreate struct {
-	store  string
 	SpType int `json:"type"`
 
 	FileId    string `json:"d_file_id"`
@@ -239,7 +223,6 @@ type SyncPackerDownloadCreate struct {
 }
 
 type SyncPackerDownloadUpdate struct {
-	store  string
 	SpType int `json:"type"`
 
 	FileId   string `json:"d_file_id"`
@@ -248,7 +231,6 @@ type SyncPackerDownloadUpdate struct {
 }
 
 type SyncPackerDownloadDelete struct {
-	store  string
 	SpType int `json:"type"`
 
 	FileId string `json:"d_file_id"`
@@ -257,7 +239,6 @@ type SyncPackerDownloadDelete struct {
 /// BROWSER
 
 type SyncPacketBrowserDisks struct {
-	store  string
 	SpType int `json:"type"`
 
 	AgentId     string `json:"b_agent_id"`
@@ -268,7 +249,6 @@ type SyncPacketBrowserDisks struct {
 }
 
 type SyncPacketBrowserFiles struct {
-	store  string
 	SpType int `json:"type"`
 
 	AgentId     string `json:"b_agent_id"`
@@ -280,7 +260,6 @@ type SyncPacketBrowserFiles struct {
 }
 
 type SyncPacketBrowserFilesStatus struct {
-	store  string
 	SpType int `json:"type"`
 
 	AgentId     string `json:"b_agent_id"`
@@ -290,7 +269,6 @@ type SyncPacketBrowserFilesStatus struct {
 }
 
 type SyncPacketBrowserProcess struct {
-	store  string
 	SpType int `json:"type"`
 
 	AgentId     string `json:"b_agent_id"`

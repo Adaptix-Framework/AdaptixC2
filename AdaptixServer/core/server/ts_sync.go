@@ -1,7 +1,8 @@
 package server
 
 import (
-	"AdaptixServer/core/utils/safe"
+	"AdaptixServer/core/adaptix"
+	"AdaptixServer/core/extender"
 	"bytes"
 	"encoding/json"
 	"github.com/gorilla/websocket"
@@ -21,7 +22,8 @@ func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 
 	value, found := ts.clients.Get(username)
 	if found {
-		clientWS = value.(*websocket.Conn)
+		client := value.(*Client)
+		clientWS = client.socket
 		err = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 		if err != nil {
 			return
@@ -35,100 +37,110 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 		err    error
 	)
 
-	err = json.NewEncoder(&buffer).Encode(packet)
-	if err != nil {
-		return
-	}
-
 	ts.clients.ForEach(func(key string, value interface{}) {
-		clientWS := value.(*websocket.Conn)
-		_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-	})
-}
-
-func (ts *Teamserver) TsSyncSavePacket(store string, packet interface{}) {
-	if ts.syncpackets.Contains(store) == false {
-		ts.syncpackets.Put(store, safe.NewSlice())
-	}
-
-	value, found := ts.syncpackets.Get(store)
-	if found {
-		value.(*safe.Slice).Put(packet)
-	}
-}
-
-func (ts *Teamserver) TsSyncXorPacket(store string, packet interface{}) {
-	if ts.syncpackets.Contains(store) {
-		value, found := ts.syncpackets.Get(store)
-		if found {
-			slice := value.(*safe.Slice)
-			for value := range slice.Iterator() {
-
-				storedValue, storedOk := value.Item.(SyncPackerListenerStart)
-				packetValue, packetOk := packet.(SyncPackerListenerStop)
-				if storedOk && packetOk {
-					if storedValue.ListenerName == packetValue.ListenerName {
-						slice.Delete(value.Index)
-					}
-				}
+		client := value.(*Client)
+		if client.synced {
+			err = json.NewEncoder(&buffer).Encode(packet)
+			if err != nil {
+				return
 			}
+
+			clientWS := client.socket
+			_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+		} else {
+			client.tmp_store.Put(packet)
 		}
-	}
+	})
 }
 
 func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	var (
-		buffer bytes.Buffer
-		packet interface{}
+		buffer  bytes.Buffer
+		packets []interface{}
 	)
 
-	ts.syncpackets.DirectLock()
-	mapPackets := ts.syncpackets.DirectMap()
+	packets = append(packets, ts.TsPresyncExtenders()...)
+	packets = append(packets, ts.TsPresyncListeners()...)
+	packets = append(packets, ts.TsPresyncAgentsAndTasks()...)
+	packets = append(packets, ts.TsPresyncDownloads()...)
+	packets = append(packets, ts.TsPresyncEvents()...)
 
-	sumLen := 0
-	for _, value := range mapPackets {
-		sumLen += value.(*safe.Slice).Len()
+	startPacket := CreateSpSyncStart(len(packets))
+	_ = json.NewEncoder(&buffer).Encode(startPacket)
+	_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+	buffer.Reset()
+
+	for _, p := range packets {
+		var pBuffer bytes.Buffer
+		_ = json.NewEncoder(&pBuffer).Encode(p)
+		_ = clientWS.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
 	}
 
-	if sumLen != 0 {
-		packet = CreateSpSyncStart(sumLen)
-		_ = json.NewEncoder(&buffer).Encode(packet)
-		_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-		buffer.Reset()
+	finishPacket := CreateSpSyncFinish()
+	_ = json.NewEncoder(&buffer).Encode(finishPacket)
+	_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+	buffer.Reset()
+}
 
-		if ts.syncpackets.Contains(STORE_INIT) {
-			sliceInit := mapPackets[STORE_INIT].(*safe.Slice)
-			for value := range sliceInit.Iterator() {
-				_ = json.NewEncoder(&buffer).Encode(value.Item)
-				_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-				buffer.Reset()
-			}
-		}
+///////////////
 
-		if ts.syncpackets.Contains(STORE_LOG) {
-			sliceLog := mapPackets[STORE_LOG].(*safe.Slice)
-			for value := range sliceLog.Iterator() {
-				_ = json.NewEncoder(&buffer).Encode(value.Item)
-				_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-				buffer.Reset()
-			}
-		}
-		for mKey, mValue := range mapPackets {
-			if mKey != STORE_LOG && mKey != STORE_INIT {
-				sliceVal := mValue.(*safe.Slice)
-				for value := range sliceVal.Iterator() {
-					_ = json.NewEncoder(&buffer).Encode(value.Item)
-					_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-					buffer.Reset()
-				}
-			}
-		}
+func (ts *Teamserver) TsPresyncExtenders() []interface{} {
+	var packets []interface{}
+	ts.listener_configs.ForEach(func(key string, value interface{}) {
+		listenerInfo := value.(extender.ListenerInfo)
+		p := CreateSpListenerReg(key, listenerInfo.ListenerUI)
+		packets = append(packets, p)
+	})
+	ts.agent_configs.ForEach(func(key string, value interface{}) {
+		agentInfo := value.(extender.AgentInfo)
+		p := CreateSpAgentReg(key, agentInfo.ListenerName, agentInfo.AgentUI, agentInfo.AgentCmd)
+		packets = append(packets, p)
+	})
+	return packets
+}
 
-		packet = CreateSpSyncFinish()
-		_ = json.NewEncoder(&buffer).Encode(packet)
-		_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-		buffer.Reset()
+func (ts *Teamserver) TsPresyncListeners() []interface{} {
+	var packets []interface{}
+	ts.listeners.ForEach(func(key string, value interface{}) {
+		listenerData := value.(adaptix.ListenerData)
+		p := CreateSpListenerStart(listenerData)
+		packets = append(packets, p)
+	})
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncAgentsAndTasks() []interface{} {
+	var packets []interface{}
+	ts.agents.ForEach(func(key string, value interface{}) {
+		agent := value.(*Agent)
+		p := CreateSpAgentNew(agent.Data)
+		packets = append(packets, p)
+
+		agent.ClosedTasks.ForEach(func(key2 string, value2 interface{}) {
+			taskData := value2.(adaptix.TaskData)
+			t1 := CreateSpAgentTaskCreate(taskData)
+			t2 := CreateSpAgentTaskUpdate(taskData)
+			packets = append(packets, t1, t2)
+		})
+	})
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncDownloads() []interface{} {
+	var packets []interface{}
+	ts.downloads.ForEach(func(key string, value interface{}) {
+		downloadData := value.(adaptix.DownloadData)
+		d1 := CreateSpDownloadCreate(downloadData)
+		d2 := CreateSpDownloadUpdate(downloadData)
+		packets = append(packets, d1, d2)
+	})
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncEvents() []interface{} {
+	var packets []interface{}
+	for value := range ts.events.Iterator() {
+		packets = append(packets, value.Item)
 	}
-
-	ts.syncpackets.DirectUnlock()
+	return packets
 }

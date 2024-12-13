@@ -8,6 +8,7 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"encoding/json"
+	"fmt"
 	"os"
 )
 
@@ -23,7 +24,7 @@ func NewTeamserver() *Teamserver {
 		Profile:          profile.NewProfile(),
 		DBMS:             dbms,
 		clients:          safe.NewMap(),
-		syncpackets:      safe.NewMap(),
+		events:           safe.NewSlice(),
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
 		agent_types:      safe.NewMap(),
@@ -93,7 +94,11 @@ func (ts *Teamserver) RestoreData() {
 
 		packet := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packet)
-		ts.TsSyncSavePacket(packet.store, packet)
+
+		message := fmt.Sprintf("Restore '%v' (%v) executed on '%v @ %v.%v' (%v)", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP)
+		packet2 := CreateSpEvent(EVENT_AGENT_NEW, message)
+		ts.TsSyncAllClients(packet2)
+		ts.events.Put(packet2)
 
 		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)
 		for _, taskData := range restoreTasks {
@@ -101,11 +106,9 @@ func (ts *Teamserver) RestoreData() {
 
 			packet1 := CreateSpAgentTaskCreate(taskData)
 			ts.TsSyncAllClients(packet1)
-			ts.TsSyncSavePacket(packet1.store, packet1)
 
 			packet2 := CreateSpAgentTaskUpdate(taskData)
 			ts.TsSyncAllClients(packet2)
-			ts.TsSyncSavePacket(packet2.store, packet2)
 		}
 
 		countAgents++
@@ -119,11 +122,9 @@ func (ts *Teamserver) RestoreData() {
 
 		packetRes1 := CreateSpDownloadCreate(restoreDownload)
 		ts.TsSyncAllClients(packetRes1)
-		ts.TsSyncSavePacket(packetRes1.store, packetRes1)
 
 		packetRes2 := CreateSpDownloadUpdate(restoreDownload)
 		ts.TsSyncAllClients(packetRes2)
-		ts.TsSyncSavePacket(packetRes2.store, packetRes2)
 
 		countDownloads++
 	}
