@@ -210,6 +210,37 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		array = []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agent.ACP)}
 		break
 
+	case "execute":
+		if subcommand == "bof" {
+			messageInfo = "Task: execute object file"
+
+			bofFile, ok := args["bof"].(string)
+			if !ok {
+				err = errors.New("parameter 'bof' must be set")
+				goto RET
+			}
+			bofContent, err := base64.StdEncoding.DecodeString(bofFile)
+			if err != nil {
+				goto RET
+			}
+
+			var params []byte
+			paramData, ok := args["param_data"].(string)
+			if ok {
+				params, err = base64.StdEncoding.DecodeString(paramData)
+				if err != nil {
+					params = []byte(paramData)
+				}
+			}
+
+			array = []interface{}{COMMAND_EXEC_BOF, "go", len(bofContent), bofContent, len(params), params}
+
+		} else {
+			err = errors.New("subcommand must be 'bof'")
+			goto RET
+		}
+		break
+
 	case "exfil":
 		fid, ok := args["file_id"].(string)
 		if !ok {
@@ -589,6 +620,12 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.Message = fmt.Sprintf("Download '%v' successful canceled", fileId)
 				ts.TsDownloadClose(fileId, DOWNLOAD_STATE_CANCELED)
 			}
+			break
+
+		case COMMAND_EXEC_BOF:
+			output := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+			task.Message = "Object file output:"
+			task.ClearText = output
 			break
 
 		case COMMAND_JOB:

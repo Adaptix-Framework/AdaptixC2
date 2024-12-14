@@ -37,6 +37,12 @@
     <Filter Include="Headers\Commander">
       <UniqueIdentifier>{aab2f128-c956-4338-8112-eb6add9224a0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Headers\Commander\BOF">
+      <UniqueIdentifier>{b0e0adee-9aa6-42f6-ab51-45c63118e2e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Commander\BOF">
+      <UniqueIdentifier>{d5a9b678-296c-452a-aa31-c4262d91d985}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -80,6 +86,12 @@
     </ClCompile>
     <ClCompile Include="JobsController.cpp">
       <Filter>Source\Commander</Filter>
+    </ClCompile>
+    <ClCompile Include="Boffer.cpp">
+      <Filter>Source\Commander\BOF</Filter>
+    </ClCompile>
+    <ClCompile Include="beacon_functions.cpp">
+      <Filter>Source\Commander\BOF</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -130,6 +142,12 @@
     </ClInclude>
     <ClInclude Include="JobsController.h">
       <Filter>Headers\Commander</Filter>
+    </ClInclude>
+    <ClInclude Include="Boffer.h">
+      <Filter>Headers\Commander\BOF</Filter>
+    </ClInclude>
+    <ClInclude Include="beacon.h">
+      <Filter>Headers\Commander\BOF</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

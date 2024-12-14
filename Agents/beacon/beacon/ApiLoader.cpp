@@ -74,12 +74,15 @@ BOOL ApiLoad()
 		ApiWin->LocalFree = LocalFree;
 		ApiWin->LocalReAlloc = LocalReAlloc;
 		ApiWin->MoveFileA = MoveFileA;
+		ApiWin->MultiByteToWideChar = MultiByteToWideChar;
 		ApiWin->PeekNamedPipe = PeekNamedPipe;
 		ApiWin->ReadFile = ReadFile;
 		ApiWin->RemoveDirectoryA = RemoveDirectoryA;
 		ApiWin->RtlCaptureContext = RtlCaptureContext;
 		ApiWin->SetCurrentDirectoryA = SetCurrentDirectoryA;
 		ApiWin->SetNamedPipeHandleState = SetNamedPipeHandleState;
+		ApiWin->VirtualAlloc = VirtualAlloc;
+		ApiWin->VirtualFree = VirtualFree;
 		ApiWin->WideCharToMultiByte = WideCharToMultiByte;
 		ApiWin->WriteFile = WriteFile;
 
@@ -95,6 +98,13 @@ BOOL ApiLoad()
 			ApiWin->GetTokenInformation = (decltype(GetTokenInformation)*)ApiWin->GetProcAddress(hAdvapiModule, "GetTokenInformation");
 			ApiWin->LookupAccountSidA   = (decltype(LookupAccountSidA)*)ApiWin->GetProcAddress(hAdvapiModule, "LookupAccountSidA");
 		}
+
+		// msvcrt
+		HMODULE hMsvcrtModule = LoadLibraryA("msvcrt.dll");
+		if (hMsvcrtModule) {
+			ApiWin->vsnprintf = (vsnprintf_t) (GetProcAddress(hMsvcrtModule, "vsnprintf"));
+		}
+
 	}
 	else {
 		return FALSE;
