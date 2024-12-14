@@ -163,6 +163,68 @@ CHAR* _GetProcessName()
 
 ///////////
 
+CHAR* StrChrA(CHAR* str, CHAR c) 
+{
+    while (*str) {
+        if (*str == c)
+            return (char*)str;
+        str++;
+    }
+
+    return NULL;
+}
+
+CHAR* StrTokA(CHAR* str, CHAR* delim)
+{
+    static char* context = nullptr;
+    if (str != nullptr)
+        context = str;
+
+    if (context == nullptr)
+        return nullptr;
+
+    while (*context && StrChrA(delim, *context))
+        ++context;
+
+    if (*context == '\0')
+        return nullptr;
+
+    char* token_start = context;
+    while (*context && !StrChrA(delim, *context))
+        ++context;
+
+    if (*context) {
+        *context = '\0';
+        ++context;
+    }
+
+    return token_start;
+}
+
+DWORD StrCmpA(CHAR* str1, CHAR* str2)
+{
+    while (*str1 && (*str1 == *str2)) {
+        str1++;
+        str2++;
+    }
+
+    return (unsigned char)*str1 - (unsigned char)*str2;
+}
+
+DWORD StrNCmpA(CHAR* str1, CHAR* str2, SIZE_T n)
+{
+    while (n > 0 && *str1 && (*str1 == *str2)) {
+        str1++;
+        str2++;
+        n--;
+    }
+
+    if (n == 0)
+        return 0;
+ 
+    return (unsigned char)*str1 - (unsigned char)*str2;
+}
+
 DWORD StrLenA(CHAR* str)
 {
     int i = 0;
