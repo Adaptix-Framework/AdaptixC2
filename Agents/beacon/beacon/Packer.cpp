@@ -100,6 +100,20 @@ VOID Packer::PackStringA(LPSTR str)
     this->PackBytes( (BYTE*) str, length);
 }
 
+VOID Packer::PackFlatBytes(PBYTE data, ULONG data_size)
+{
+    if (data_size) {
+
+        this->buffer = (BYTE*)MemReallocLocal(this->buffer, this->size + data_size);
+
+        memcpy(this->buffer + this->index, data, data_size);
+
+        this->size += data_size;
+        this->index += data_size;
+    }
+}
+
+
 PBYTE Packer::GetData()
 {
     return this->buffer;

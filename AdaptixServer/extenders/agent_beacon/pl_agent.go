@@ -212,7 +212,8 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 	case "execute":
 		if subcommand == "bof" {
-			messageInfo = "Task: execute object file"
+			taskType = JOB
+			messageInfo = "Task: execute BOF"
 
 			bofFile, ok := args["bof"].(string)
 			if !ok {
@@ -234,7 +235,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			}
 
 			array = []interface{}{COMMAND_EXEC_BOF, "go", len(bofContent), bofContent, len(params), params}
-
 		} else {
 			err = errors.New("subcommand must be 'bof'")
 			goto RET
@@ -623,9 +623,55 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_EXEC_BOF:
-			output := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
-			task.Message = "Object file output:"
-			task.ClearText = output
+			task.Message = "BOF finished"
+			task.Completed = true
+			break
+
+		case COMMAND_EXEC_BOF_OUT:
+
+			outputType := packer.ParseInt32()
+			output := packer.ParseString()
+
+			if outputType == BOF_ERROR_PARSE {
+				task.MessageType = MESSAGE_ERROR
+				task.Message = "BOF error"
+				task.ClearText = "Parse BOF error"
+			} else if outputType == BOF_ERROR_MAX_FUNCS {
+				task.MessageType = MESSAGE_ERROR
+				task.Message = "BOF error"
+				task.ClearText = "The number of functions in the BOF file exceeds 512"
+			} else if outputType == BOF_ERROR_ENTRY {
+				task.MessageType = MESSAGE_ERROR
+				task.Message = "BOF error"
+				task.ClearText = "Entry function not found"
+
+			} else if outputType == BOF_ERROR_ALLOC {
+				task.MessageType = MESSAGE_ERROR
+				task.Message = "BOF error"
+				task.ClearText = "Error allocation of BOF memory"
+
+			} else if outputType == BOF_ERROR_SYMBOL {
+				task.MessageType = MESSAGE_ERROR
+				task.Message = "BOF error"
+				task.ClearText = "Symbol not found: " + output + "\n"
+
+			} else if outputType == CALLBACK_ERROR {
+				task.MessageType = MESSAGE_ERROR
+				task.Message = "BOF output"
+				task.ClearText = ConvertCpToUTF8(output, agentData.ACP)
+
+			} else if outputType == CALLBACK_OUTPUT_OEM {
+				task.MessageType = MESSAGE_SUCCESS
+				task.Message = "BOF output"
+				task.ClearText = ConvertCpToUTF8(output, agentData.OemCP)
+
+			} else {
+				task.MessageType = MESSAGE_SUCCESS
+				task.Message = "BOF output"
+				task.ClearText = ConvertCpToUTF8(output, agentData.ACP)
+			}
+
+			task.Completed = false
 			break
 
 		case COMMAND_JOB:

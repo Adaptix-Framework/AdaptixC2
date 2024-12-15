@@ -103,12 +103,20 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 	task = value.(adaptix.TaskData)
 	task.Data = []byte("")
 	task.FinishDate = taskData.FinishDate
-	task.MessageType = taskData.MessageType
 	task.Completed = taskData.Completed
 
 	if task.Type == TYPE_JOB {
+		if task.MessageType != 6 {
+			task.MessageType = taskData.MessageType
+		}
 
-		oldMessage := task.Message
+		var oldMessage string
+		if task.Message == "" {
+			oldMessage = taskData.Message
+		} else {
+			oldMessage = task.Message
+		}
+
 		oldText := task.ClearText
 
 		task.Message = taskData.Message
@@ -135,6 +143,7 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 
 	} else {
 
+		task.MessageType = taskData.MessageType
 		task.Message = taskData.Message
 		task.ClearText = taskData.ClearText
 

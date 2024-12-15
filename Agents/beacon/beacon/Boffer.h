@@ -1,6 +1,7 @@
 #pragma once
 #include "beacon.h"
 #include "ApiLoader.h"
+#include "Packer.h"
 
 #define MAX_SECTIONS	   25
 #define MAP_FUNCTIONS_SIZE 4096
@@ -10,12 +11,18 @@
 #define IMAGE_REL_AMD64_REL32    0x0004
 #define HASH_KEY 13
 
-extern unsigned char* BeaconFunctions[27][2];
+#define BOF_ERROR_PARSE	    0x101
+#define BOF_ERROR_SYMBOL    0x102
+#define BOF_ERROR_MAX_FUNCS 0x103
+#define BOF_ERROR_ENTRY     0x104
+#define BOF_ERROR_ALLOC     0x105
+
+extern unsigned char* BeaconFunctions[32][2];
 extern int BeaconFunctionsCount;
 
-extern char* beacon_output;
-extern int   output_size;
-extern int   output_offset;
+extern Packer* bofOutputPacker;
+extern int     bofOutputCount;
+extern ULONG   bofTaskId;
 
 typedef struct COF_HEADER {
 	short Machine;
@@ -62,10 +69,6 @@ typedef struct COF_SYMBOL {
 
 #pragma pack(pop)
 
-class Boffer 
-{
-public:
-	Boffer();
-};
+void InitBofOutputData();
 
-char* ObjectExecute(int* retSize, char* targetFuncName, unsigned char* coffFile, unsigned int cofFileSize, unsigned char* args, int argsSize);
+Packer* ObjectExecute(ULONG taskId, char* targetFuncName, unsigned char* coffFile, unsigned int cofFileSize, unsigned char* args, int argsSize);
