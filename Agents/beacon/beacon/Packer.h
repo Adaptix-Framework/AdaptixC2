@@ -20,6 +20,7 @@ public:
 	VOID Pack16(WORD value);
 	VOID Pack8(BYTE value);
 	VOID PackBytes(PBYTE data, ULONG data_size);
+	VOID PackFlatBytes(PBYTE data, ULONG data_size);
 	VOID PackStringA(LPSTR str);
 
 	BYTE  Unpack8();

