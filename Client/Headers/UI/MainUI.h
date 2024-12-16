@@ -14,6 +14,7 @@ public:
     ~MainUI();
 
     void addNewProject(AuthProfile* profile);
+    void onExtender();
 };
 
 #endif //ADAPTIXCLIENT_MAINUI_H

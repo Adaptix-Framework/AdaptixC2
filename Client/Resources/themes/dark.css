@@ -162,6 +162,36 @@ QMenu::separator {
 
 
 
+QMenuBar {
+    background-color: #2A2A2A;
+    color: #E0E0E0;
+    padding: 4px;
+    border-bottom: 1px solid #4A4A4A;
+}
+
+QMenuBar::item {
+    background-color: transparent;
+    padding: 4px 4px;
+    margin: 0px 4px;
+    color: #E0E0E0;
+    border-radius: 4px;
+}
+
+QMenuBar::item:selected {
+    background-color: #4A4A4A;
+    color: #FFFFFF;
+}
+
+QMenuBar::item:pressed {
+    background-color: #333333;
+    color: #FFFFFF;
+    border: 1px solid #555555;
+}
+
+
+
+
+
 QTextEdit[TextEditStyle="console"] {
     background-color: #111111;
     color: #e8e8e8;
@@ -380,4 +410,36 @@ QGroupBox::title {
     background-color: #2A2A2A;
     color: #E0E0E0;
     border-radius: 3px;
+}
+
+
+
+
+QListWidget {
+    background-color: #2A2A2A;
+    border: 1px solid #4A4A4A;
+    color: #E0E0E0;
+    border-radius: 4px;
+    padding: 5px;
+}
+
+QListWidget::item {
+    padding: 4px;
+    border-radius: 4px;
+    color: #E0E0E0;
+}
+
+QListWidget::item:hover {
+    background-color: #3A3A3A;
+    color: #FFFFFF;
+}
+
+QListWidget::item:selected {
+    background-color: #4A4A4A;
+    color: #FFFFFF;
+    border: 1px solid #5A5A5A;
+}
+
+QListWidget:focus {
+    outline: none;
 }

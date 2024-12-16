@@ -4,8 +4,11 @@
 
 MainAdaptix::MainAdaptix()
 {
-    storage = new Storage();
+    storage  = new Storage();
+
     this->SetApplicationTheme();
+
+    extender = new Extender();
 }
 
 MainAdaptix::~MainAdaptix()
@@ -17,8 +20,8 @@ MainAdaptix::~MainAdaptix()
 void MainAdaptix::Start()
 {
     AuthProfile* authProfile;
-    bool        result;
     auto dialogConnect = new DialogConnect();
+    bool result;
 
     do {
         authProfile = dialogConnect->StartDialog();
