@@ -17,16 +17,17 @@
 
     <qresource prefix="/icons">
         <file alias="listeners">icons/headphones_64dp.png</file>
-        <file alias="format_list">icons/format_list_bulleted_64dp.png</file>
         <file alias="logs">icons/notes_64dp.png</file>
+        <file alias="format_list">icons/format_list_bulleted_64dp.png</file>
         <file alias="graph">icons/hub_64dp.png</file>
         <file alias="job">icons/job_64dp.png</file>
         <file alias="devices">icons/devices_64dp.png</file>
+        <file alias="vpn">icons/vpn_64dp.png</file>
         <file alias="downloads">icons/downloads_64.png</file>
         <file alias="key">icons/key_64dp.png</file>
-        <file alias="keyboard">icons/keyboard_64dp.png</file>
         <file alias="picture">icons/picture_64dp.png</file>
-        <file alias="vpn">icons/vpn_64dp.png</file>
+        <file alias="keyboard">icons/keyboard_64dp.png</file>
+        <file alias="settings">icons/settings_64dp.png</file>
         <file alias="link">icons/link_64dp.png</file>
         <file alias="unlink">icons/link_off_64dp.png</file>
 

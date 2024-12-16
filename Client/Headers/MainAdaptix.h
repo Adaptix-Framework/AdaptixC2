@@ -2,14 +2,16 @@
 #define ADAPTIXCLIENT_MAINADAPTIX_H
 
 #include <main.h>
-#include <Client/Storage.h>
 #include <UI/MainUI.h>
+#include <Client/Storage.h>
+#include <Client/Extender.h>
 
 class MainAdaptix : public QWidget {
 
 public:
-    Storage* storage   = nullptr;
-    MainUI*  mainUI = nullptr;
+    MainUI*   mainUI   = nullptr;
+    Storage*  storage  = nullptr;
+    Extender* extender = nullptr;
 
     explicit MainAdaptix();
     ~MainAdaptix() override;

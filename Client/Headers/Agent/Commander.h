@@ -23,6 +23,11 @@ struct Command
     QList<Command>  subcommands;
 };
 
+struct ExtenderCommand
+{
+
+};
+
 struct CommanderResult
 {
     bool    output;

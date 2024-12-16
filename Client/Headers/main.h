@@ -36,6 +36,7 @@
 #include <QThread>
 #include <QProgressBar>
 #include <QComboBox>
+#include <QListWidget>
 #include <QGroupBox>
 #include <QCheckBox>
 #include <QtWebSockets/QWebSocket>

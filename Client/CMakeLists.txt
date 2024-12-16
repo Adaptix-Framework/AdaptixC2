@@ -50,6 +50,9 @@ SET( HEADERS
         Headers/UI/Widgets/BrowserFilesWidget.h
         Headers/UI/Widgets/BrowserProcessWidget.h
         Headers/UI/Widgets/TasksWidget.h
+        Headers/UI/Dialogs/DialogSettings.h
+        Headers/Client/Extender.h
+        Headers/UI/Dialogs/DialogExtender.h
 )
 
 add_executable(AdaptixClient
@@ -87,6 +90,9 @@ add_executable(AdaptixClient
         Source/UI/Widgets/BrowserFilesWidget.cpp
         Source/UI/Widgets/BrowserProcessWidget.cpp
         Source/UI/Widgets/TasksWidget.cpp
+        Source/UI/Dialogs/DialogSettings.cpp
+        Source/Client/Extender.cpp
+        Source/UI/Dialogs/DialogExtender.cpp
 )
 
 target_link_libraries(AdaptixClient
