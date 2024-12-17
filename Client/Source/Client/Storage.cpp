@@ -124,5 +124,5 @@ void Storage::RemoveProject(QString project)
     }
 }
 
-/// EXTENTIONS
+/// EXTENSIONS
 

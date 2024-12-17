@@ -182,4 +182,18 @@ typedef struct TaskData
 } TaskData;
 
 
+typedef struct ExtensionData
+{
+    QString       Type;
+    QJsonDocument JsonObject;
+} ExtensionData;
+
+typedef struct ExtensionFile
+{
+    QString FilePath;
+    QString Description;
+    bool    Enabled;
+    QVector<ExtensionData> Data;
+} ExtensionFile;
+
 #endif //ADAPTIXCLIENT_MAIN_H

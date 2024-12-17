@@ -2,21 +2,23 @@
 #define ADAPTIXCLIENT_DIALOGEXTENDER_H
 
 #include <main.h>
+#include <Client/Extender.h>
+
+class Extender;
 
 class DialogExtender : public QWidget
 {
 Q_OBJECT
 
+    Extender*     extender    = nullptr;
     QGridLayout*  layout      = nullptr;
     QTableWidget* table       = nullptr;
-    QSpacerItem*  hSpacer     = nullptr;
     QPushButton*  buttonClose = nullptr;
-
 
     void createUI();
 
 public:
-    DialogExtender();
+    DialogExtender(Extender* e);
     ~DialogExtender();
 
 public slots:

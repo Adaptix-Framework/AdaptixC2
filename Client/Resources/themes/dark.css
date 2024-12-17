@@ -5,6 +5,10 @@ QWidget {
     color: #E0E0E0;
 }
 
+QWidget:disabled {
+    background-color: #1A1A1A;
+    color: #5A5A5A;
+}
 
 
 
@@ -21,6 +25,9 @@ QLabel {
     background-color: transparent;
 }
 
+QLabel:disabled {
+    color: #4A4A4A;
+}
 
 
 
@@ -38,12 +45,10 @@ QPushButton:hover {
 }
 
 QPushButton:disabled {
-    background-color: #222222;
+    background-color: #2A2A2A;
     color: #4A4A4A;
-    border: 1px solid #4A4A4A;
+    border: 1px solid #3A3A3A;
 }
-
-
 
 
 
@@ -64,6 +69,11 @@ QLineEdit {
     border-radius: 4px;
 }
 
+QLineEdit:disabled {
+    background-color: #1A1A1A;
+    color: #5A5A5A;
+    border: 1px solid #3A3A3A;
+}
 
 
 
@@ -96,6 +106,12 @@ QTableWidget::item:selected {
     color: #FFFFFF;
 }
 
+QTableWidget:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
+    border: 1px solid #3A3A3A;
+}
+
 
 
 
@@ -122,6 +138,11 @@ QTreeWidget::item:selected {
 QTreeWidget::item:hover {
     background-color: #3A3A3A;
     color: #FFFFFF;
+}
+
+QTreeWidget:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
 }
 
 
@@ -158,6 +179,11 @@ QMenu::separator {
     margin: 3px 5px;
 }
 
+QMenu:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
+}
+
 
 
 
@@ -188,6 +214,11 @@ QMenuBar::item:pressed {
     border: 1px solid #555555;
 }
 
+QMenuBar:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
+}
+
 
 
 
@@ -207,6 +238,11 @@ QTextEdit {
     color: #E0E0E0;
     padding: 2px;
     border-radius: 4px;
+}
+
+QTextEdit:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
 }
 
 
@@ -263,7 +299,11 @@ QProgressBar::chunk {
     border-radius: 3px;
 }
 
-
+QProgressBar:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
+    border: 1px solid #3A3A3A;
+}
 
 
 
@@ -359,6 +399,12 @@ QComboBox QAbstractItemView::item:hover {
 QComboBox QAbstractItemView::item:selected {
     background-color: #4A4A4A;
     color: #FFFFFF;
+}
+
+QComboBox:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
+    border: 1px solid #3A3A3A;
 }
 
 

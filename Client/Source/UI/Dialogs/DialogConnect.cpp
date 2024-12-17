@@ -150,8 +150,9 @@ void DialogConnect::loadProjects()
 
 AuthProfile* DialogConnect::StartDialog()
 {
+    this->toConnect = false;
     this->exec();
-    if(  this->toConnect ) {
+    if( this->toConnect ) {
         AuthProfile* newProfile = new AuthProfile(lineEdit_Project->text(), lineEdit_User->text(),lineEdit_Password->text(),lineEdit_Host->text(),lineEdit_Port->text(), lineEdit_Endpoint->text());
 
         if( ! GlobalClient->storage->ExistsProject(lineEdit_Project->text()) )
