@@ -1,10 +1,12 @@
 #include <UI/Dialogs/DialogExtender.h>
 
-DialogExtender::DialogExtender()
+DialogExtender::DialogExtender(Extender* e)
 {
+    extender = e;
+
     this->createUI();
 
-    connect( buttonClose,  &QPushButton::clicked, this, &DialogExtender::close);
+    connect( buttonClose, &QPushButton::clicked, this, &DialogExtender::close);
     connect( table, &QTableWidget::customContextMenuRequested, this, &DialogExtender::handleMenu );
 }
 
@@ -16,7 +18,7 @@ void DialogExtender::createUI()
     this->resize(1200, 600);
 
     table = new QTableWidget( this );
-    table->setColumnCount( 4 );
+    table->setColumnCount( 3 );
     table->setContextMenuPolicy( Qt::CustomContextMenu );
     table->setAutoFillBackground( false );
     table->setShowGrid( false );
@@ -32,19 +34,23 @@ void DialogExtender::createUI()
     table->horizontalHeader()->setHighlightSections( false );
     table->verticalHeader()->setVisible( false );
 
-    table->setHorizontalHeaderItem( 0, new QTableWidgetItem( "Type" ) );
-    table->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Path" ) );
-    table->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Description" ) );
-    table->setHorizontalHeaderItem( 3, new QTableWidgetItem( "Status" ) );
+    table->setHorizontalHeaderItem( 0, new QTableWidgetItem( "Path" ) );
+    table->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Description" ) );
+    table->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Status" ) );
+    table->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
 
-    hSpacer     = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    auto hSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    auto hSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
     buttonClose = new QPushButton("Close", this);
+    buttonClose->setFixedWidth(180);
 
     layout = new QGridLayout(this);
-    layout->setContentsMargins( 0, 0,  0, 0);
-    layout->addWidget( table, 0, 0, 1, 2);
-    layout->addItem( hSpacer, 1, 0, 1, 1);
+    layout->setContentsMargins( 4, 4,  4, 4);
+    layout->addWidget( table, 0, 0, 1, 3);
+    layout->addItem( hSpacer1, 1, 0, 1, 1);
     layout->addWidget( buttonClose, 1, 1, 1, 1);
+    layout->addItem( hSpacer2, 1, 2, 1, 1);
 
     this->setLayout(layout);
 }
@@ -66,9 +72,11 @@ void DialogExtender::handleMenu(const QPoint &pos ) const
 
 void DialogExtender::onActionAdd()
 {
-    QString filePath = QFileDialog::getOpenFileName( nullptr, "Select file", QDir::homePath());
+    QString filePath = QFileDialog::getOpenFileName( nullptr, "Select file", QDir::homePath(), "*.json");
     if ( filePath.isEmpty())
         return;
+
+    extender->LoadFromFile(filePath);
 }
 
 void DialogExtender::onActionEnable()

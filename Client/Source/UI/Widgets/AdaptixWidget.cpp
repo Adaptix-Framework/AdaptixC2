@@ -38,7 +38,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
 
     connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
 
-    connect( ChannelThread, &QThread::started, ChannelWsWorker, &WebSocketWorker::run );
+    connect( ChannelThread,   &QThread::started, ChannelWsWorker, &WebSocketWorker::run );
     connect( ChannelWsWorker, &WebSocketWorker::received_data, this, &AdaptixWidget::DataHandler );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, &AdaptixWidget::ChannelClose );
 
@@ -138,7 +138,6 @@ void AdaptixWidget::createUI()
     reconnectButton->setIcon(onReconnectButton);
 
     horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-
 
     topHLayout = new QHBoxLayout();
     topHLayout->setContentsMargins(5, 5, 0, 5);

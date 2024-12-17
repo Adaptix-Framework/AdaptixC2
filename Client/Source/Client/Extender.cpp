@@ -2,12 +2,12 @@
 
 Extender::Extender()
 {
-    dialogExtender = new DialogExtender();
+    dialogExtender = new DialogExtender(this);
 }
 
 Extender::~Extender() = default;
 
-void Extender::LoadExtention(QString path)
+void Extender::LoadFromFile(QString path)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -15,4 +15,24 @@ void Extender::LoadExtention(QString path)
     }
     QString content = QString(file.readAll());
     file.close();
+}
+
+void Extender::NewExtension(ExtensionFile extFile)
+{
+
+}
+
+void Extender::EnableExtension(QString path)
+{
+
+}
+
+void Extender::DisableExtension(QString path)
+{
+
+}
+
+void Extender::DeleteExtension(QString path)
+{
+
 }
