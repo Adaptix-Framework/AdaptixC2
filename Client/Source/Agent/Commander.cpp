@@ -1,6 +1,6 @@
 #include <Agent/Commander.h>
 
-Commander::Commander(const QByteArray&  data)
+Commander::Commander(const QByteArray& data)
 {
     QJsonParseError parseError;
     QJsonDocument document = QJsonDocument::fromJson(data, &parseError);
@@ -19,34 +19,60 @@ Commander::Commander(const QByteArray&  data)
 
     QJsonArray commandArray = document.array();
     for (QJsonValue value : commandArray) {
-        QJsonObject obj = value.toObject();
+        QJsonObject jsonObject = value.toObject();
+
+        if( !jsonObject.contains("command") ) {
+            error = "The Command block does not contain a 'command' parameter";
+            valid = false;
+            return;
+        }
 
         Command cmd;
-        cmd.name        = obj["command"].toString();
-        cmd.description = obj["description"].toString();
-        cmd.example     = obj["example"].toString();
+        cmd.name        = jsonObject["command"].toString();
+        cmd.message     = jsonObject["message"].toString();
+        cmd.description = jsonObject["description"].toString();
+        cmd.example     = jsonObject["example"].toString();
 
-        if (obj.contains("args")) {
-            QJsonArray argsArray = obj["args"].toArray();
+        if (jsonObject.contains("args")) {
+            QJsonArray argsArray = jsonObject["args"].toArray();
             for (QJsonValue argVal : argsArray) {
                 Argument arg = ParseArgument(argVal.toString());
-                if (arg.valid)
+                if (arg.valid) {
                     cmd.args.append(arg);
+                } else {
+                    error = QString("Error parsing arguments for '%1': %3").arg(cmd.name).arg(error);
+                    valid = false;
+                    return;
+                }
             }
-        } else if (obj.contains("subcommands")) {
-            QJsonArray subcommandArray = obj["subcommands"].toArray();
+        } else if (jsonObject.contains("subcommands")) {
+            QJsonArray subcommandArray = jsonObject["subcommands"].toArray();
             for (QJsonValue subCmdVal : subcommandArray) {
                 QJsonObject subCmdObj = subCmdVal.toObject();
+
+                if( !subCmdObj.contains("name") ) {
+                    error = QString("The command '%1' does not contain a 'name' parameter in Subcommand block").arg(cmd.name);
+                    valid = false;
+                    return;
+                }
+
                 Command subCmd;
                 subCmd.name        = subCmdObj["name"].toString();
+                subCmd.message     = subCmdObj["message"].toString();
                 subCmd.description = subCmdObj["description"].toString();
                 subCmd.example     = subCmdObj["example"].toString();
 
                 QJsonArray subArgsArray = subCmdObj["args"].toArray();
                 for (QJsonValue subArgVal : subArgsArray) {
                     Argument subArg = ParseArgument(subArgVal.toString());
-                    if (subArg.valid)
+                    if (subArg.valid) {
                         subCmd.args.append(subArg);
+                    }
+                    else {
+                        error = QString("Error parsing arguments for '%1 %2': %3").arg(cmd.name).arg(subCmd.name).arg(error);
+                        valid = false;
+                        return;
+                    }
                 }
                 cmd.subcommands.append(subCmd);
             }
@@ -57,6 +83,59 @@ Commander::Commander(const QByteArray&  data)
 }
 
 Commander::~Commander() = default;
+
+Argument Commander::ParseArgument(QString argString)
+{
+    Argument arg = {0};
+    QRegularExpression regex(R"((\w+)\s+([\[\<][^\s\]]+[\s\w-]*[\>\]])(\s*\([^\)]*\))?(?:\s+\{(.+)\})?)");
+    QRegularExpressionMatch match = regex.match(argString);
+
+    if ( !match.hasMatch()) {
+        error = "arguments not parsed";
+        arg.valid = false;
+        return arg;
+    }
+
+    arg.type             = match.captured(1);
+    QString flagAndValue = match.captured(2).trimmed();
+    QString defaultValue = match.captured(3).trimmed();
+    arg.description      = match.captured(4).trimmed();
+
+    if( !defaultValue.isEmpty() ) {
+        arg.defaultValue = defaultValue.mid(1, defaultValue.size() - 2).trimmed();
+    }
+
+    if (flagAndValue.startsWith("<") && flagAndValue.endsWith(">")) {
+        arg.required = true;
+    }
+    else if (flagAndValue.startsWith("[") && flagAndValue.endsWith("]")) {
+        arg.required = false;
+    }
+    else {
+        error = "argument must be in <> or []";
+        arg.valid = false;
+        return arg;
+    }
+
+    int spaceIndex = flagAndValue.indexOf(' ');
+    if (spaceIndex != -1) {
+        arg.mark = flagAndValue.mid(1, spaceIndex - 1).trimmed();
+        arg.name = flagAndValue.mid(spaceIndex + 1, flagAndValue.size() - spaceIndex - 2).trimmed();
+        arg.flag = true;
+    }
+    else {
+        QString value = flagAndValue.mid(1, flagAndValue.size() - 2).trimmed();
+        if( value.startsWith("-") || value.startsWith("/") ) {
+            arg.mark = value;
+            arg.flag = true;
+        }
+        else {
+            arg.name = value;
+        }
+    }
+    arg.valid = true;
+    return arg;
+}
 
 CommanderResult Commander::ProcessInput(QString input)
 {
@@ -92,46 +171,6 @@ CommanderResult Commander::ProcessInput(QString input)
     return CommanderResult{true, "Command not found", true};
 }
 
-Argument Commander::ParseArgument(QString argString)
-{
-    Argument arg = {0};
-    QRegularExpression regex(R"((\w+)\s+([\[\<][^\s\]]+[\s\w-]*[\>\]])(?:\s+\{(.+)\})?)");
-    QRegularExpressionMatch match = regex.match(argString);
-
-    if ( !match.hasMatch())
-        return arg;
-
-    arg.type             = match.captured(1);
-    arg.description      = match.captured(3).trimmed();
-    QString flagAndValue = match.captured(2).trimmed();
-
-    if (flagAndValue.startsWith("<") && flagAndValue.endsWith(">"))
-        arg.required = true;
-    else if (flagAndValue.startsWith("[") && flagAndValue.endsWith("]"))
-        arg.required = false;
-    else
-        arg.valid = false;
-
-    int spaceIndex = flagAndValue.indexOf(' ');
-    if (spaceIndex != -1) {
-        arg.mark = flagAndValue.mid(1, spaceIndex - 1).trimmed();
-        arg.name = flagAndValue.mid(spaceIndex + 1, flagAndValue.size() - spaceIndex - 2).trimmed();
-        arg.flag = true;
-    }
-    else {
-        QString value = flagAndValue.mid(1, flagAndValue.size() - 2).trimmed();
-        if( value.startsWith("-") ) {
-            arg.mark = value;
-            arg.flag = true;
-        }
-        else {
-            arg.name = value;
-        }
-    }
-    arg.valid = true;
-    return arg;
-}
-
 CommanderResult Commander::ProcessCommand(Command command, QStringList args)
 {
     QJsonObject jsonObj;
@@ -141,25 +180,43 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
 
         QMap<QString, QString> parsedArgsMap;
 
+        QString wideKey;
         for (int i = 0; i < args.size(); ++i) {
             QString arg = args[i];
 
+            bool isWideArgs = true;
+
             for (Argument commandArg : command.args) {
-                if (commandArg.flag){
+                if (commandArg.flag) {
                     if (commandArg.type == "BOOL" && commandArg.mark == arg ) {
                         parsedArgsMap[commandArg.mark] = "true";
+                        wideKey = commandArg.mark;
+                        isWideArgs = false;
                         break;
                     }
                     else if ( commandArg.mark == arg && args.size() > i+1 ) {
                         ++i;
                         parsedArgsMap[commandArg.name] = args[i];
+                        wideKey = commandArg.name;
+                        isWideArgs = false;
                         break;
                     }
                 }
                 else if (!parsedArgsMap.contains(commandArg.name)) {
                     parsedArgsMap[commandArg.name] = arg;
+                    wideKey = commandArg.name;
+                    isWideArgs = false;
                     break;
                 }
+            }
+
+            if( isWideArgs ) {
+                QString wideStr;
+                for(int j = i; j < args.size(); ++j) {
+                    wideStr += " " + args[j];
+                }
+                parsedArgsMap[wideKey] += wideStr;
+                break;
             }
         }
 
@@ -186,8 +243,41 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
                     }
                 }
             } else if (commandArg.required) {
-                return CommanderResult{true, "Missing required argument: " + commandArg.name, true };
+                if (commandArg.defaultValue.isEmpty()) {
+                    return CommanderResult{true, "Missing required argument: " + commandArg.name, true };
+                } else {
+                    if (commandArg.type == "STRING") {
+                        jsonObj[commandArg.name] = commandArg.defaultValue;
+                    } else if (commandArg.type == "INT") {
+                        jsonObj[commandArg.name] = commandArg.defaultValue.toInt();
+                    } else if (commandArg.type == "BOOL") {
+                        jsonObj[commandArg.mark] = commandArg.defaultValue == "true";
+                    } else if (commandArg.type == "FILE") {
+                        QString path = commandArg.defaultValue;
+                        if (path.startsWith("~/"))
+                            path = QDir::home().filePath(path.mid(2));
+
+                        QFile file(path);
+                        if (file.open(QIODevice::ReadOnly)) {
+                            QByteArray fileData = file.readAll();
+                            jsonObj[commandArg.name] = QString::fromLatin1(fileData.toBase64());
+                            file.close();
+                        } else {
+                            return CommanderResult{true, "Failed to open file: " + path, true };
+                        }
+                    }
+                }
             }
+        }
+
+        QString msg = command.message;
+        if( !msg.isEmpty() ) {
+            for ( QString k : parsedArgsMap.keys() ) {
+                QString param = "<" + k + ">";
+                if( msg.contains(param) )
+                    msg = msg.replace(param, parsedArgsMap[k]);
+            }
+            jsonObj["message"] = msg;
         }
     }
     else {
@@ -202,23 +292,41 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
 
                 QMap<QString, QString> parsedArgsMap;
 
+                QString wideKey;
                 for (int i = 1; i < args.size(); ++i) {
                     QString arg = args[i];
+
+                    bool isWideArgs = true;
 
                     for (Argument commandArg : subcommand.args) {
                         if (commandArg.flag && commandArg.mark == arg && args.size() > i+1 ) {
                             if( commandArg.type == "BOOL" ) {
                                 parsedArgsMap[commandArg.mark] = "true";
+                                wideKey = commandArg.mark;
+                                isWideArgs = false;
                             }
                             else {
                                 ++i;
                                 parsedArgsMap[commandArg.name] = args[i];
+                                wideKey = commandArg.name;
+                                isWideArgs = false;
                             }
                             break;
                         } else if (!commandArg.flag && !parsedArgsMap.contains(commandArg.name)) {
                             parsedArgsMap[commandArg.name] = arg;
+                            wideKey = commandArg.name;
+                            isWideArgs = false;
                             break;
                         }
+                    }
+
+                    if( isWideArgs ) {
+                        QString wideStr;
+                        for(int j = i; j < args.size(); ++j) {
+                            wideStr += " " + args[j];
+                        }
+                        parsedArgsMap[wideKey] += wideStr;
+                        break;
                     }
                 }
 
@@ -245,16 +353,50 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
                             }
                         }
                     } else if (subArg.required) {
-                        return CommanderResult{true, "Missing required argument for subcommand: " + subArg.name, true };
+                        if (subArg.defaultValue.isEmpty()) {
+                            return CommanderResult{true, "Missing required argument for subcommand: " + subArg.name, true };
+                        } else {
+                            if (subArg.type == "STRING") {
+                                jsonObj[subArg.name] = subArg.defaultValue;
+                            } else if (subArg.type == "INT") {
+                                jsonObj[subArg.name] = subArg.defaultValue.toInt();
+                            } else if (subArg.type == "BOOL") {
+                                jsonObj[subArg.mark] = subArg.defaultValue == "true";
+                            } else if (subArg.type == "FILE") {
+                                QString path = subArg.defaultValue;
+                                if (path.startsWith("~/"))
+                                    path = QDir::home().filePath(path.mid(2));
+
+                                QFile file(path);
+                                if (file.open(QIODevice::ReadOnly)) {
+                                    QByteArray fileData = file.readAll();
+                                    jsonObj[subArg.name] = QString::fromLatin1(fileData.toBase64());
+                                    file.close();
+                                } else {
+                                    return CommanderResult{true, "Failed to open file: " + path, true };
+                                }
+                            }
+                        }
                     }
                 }
+
+                QString msg = subcommand.message;
+                if( !msg.isEmpty() ) {
+                    for ( QString k : parsedArgsMap.keys() ) {
+                        QString param = "<" + k + ">";
+                        if( msg.contains(param) )
+                            msg = msg.replace(param, parsedArgsMap[k]);
+                    }
+                    jsonObj["message"] = msg;
+                }
+
                 break;
             }
         }
     }
 
     QJsonDocument jsonDoc(jsonObj);
-    return CommanderResult{false, QString(jsonDoc.toJson(QJsonDocument::Compact)), false };
+    return CommanderResult{false, jsonDoc.toJson(), false };
 }
 
 bool Commander::IsValid()
@@ -333,7 +475,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 for ( auto arg : foundCommand.args ) {
                     QString fullarg = (arg.required ? "<" : "[") + arg.mark + ( arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " " ) + arg.name + (arg.required ? ">" : "]");
                     usageStream << " " + fullarg;
-                    argsStream << "    " + fullarg + "  : " + arg.type + ". " + arg.description + "\n";
+                    argsStream << "    " + fullarg + "  : " + arg.type + ( arg.defaultValue.isEmpty() ? ". " : " (default: '" + arg.defaultValue + "'). " ) + arg.description + "\n";
                 }
                 output << "  Usage                 : " + usageHelp;
                 output << "\n";
@@ -352,7 +494,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
 
             if ( foundSubCommand.name.isEmpty() )
                 return CommanderResult{true, "Unknown subcommand: " + subCommandName, true};
-            output << QString("\n");
+
             output << "  Command               : " + foundCommand.name + " " + foundSubCommand.name +"\n";
             if(!foundSubCommand.description.isEmpty())
                 output << "  Description           : " + foundSubCommand.description + "\n";
@@ -379,7 +521,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
         else {
             return CommanderResult{true, "Error Help format: 'help [command [subcommand]]'", true};
         }
-        return CommanderResult{true, result, false};
+        return CommanderResult{true, output.readAll(), false};
     }
 }
 
@@ -393,9 +535,8 @@ QStringList Commander::GetCommands()
         }
     }
     QStringList copyCommandList = commandList;
-    for( auto cmd : copyCommandList) {
+    for( QString cmd : copyCommandList)
         commandList << "help " + cmd;
-    }
 
     return commandList;
 }

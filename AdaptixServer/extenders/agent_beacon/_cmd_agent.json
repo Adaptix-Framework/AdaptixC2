@@ -1,6 +1,7 @@
 [
   {
     "command": "cat",
+    "message": "Task: read file",
     "description": "Read first 2048 bytes of the specified file",
     "example": "cat c:\\\\file.txt",
     "args": [
@@ -9,6 +10,7 @@
   },
   {
     "command": "cd",
+    "message": "Task: change working directory",
     "description": "Change current working directory",
     "example": "cd C:\\Windows\\Temp",
     "args": [
@@ -17,6 +19,7 @@
   },
   {
     "command": "cp",
+    "message": "Task: copy file",
     "description": "Copy file",
     "example": "cp src.txt dst.txt",
     "args": [
@@ -26,11 +29,13 @@
   },
   {
     "command": "disks",
+    "message": "Task: show mounted disks",
     "description": "Lists mounted drives on current system",
     "example": "disks"
   },
   {
     "command": "download",
+    "message": "Task: download file to teamserver",
     "description": "Download a file",
     "example": "download C:\\file.txt",
     "args": [
@@ -44,6 +49,7 @@
     [
       {
         "name": "bof",
+        "message": "Task: execute BOF",
         "description": "Execute Beacon Object File",
         "example": "execute bof /home/user/whoami.o",
         "args": [
@@ -91,11 +97,13 @@
     [
       {
         "name": "list",
+        "message": "Task: show jobs",
         "description": "List of jobs",
         "example": "jobs list"
       },
       {
         "name": "kill",
+        "message": "Task: kill job",
         "description": "Kill a specified job",
         "example": "jobs kill 1a2b3c4d",
         "args": [
@@ -106,14 +114,16 @@
   },
   {
     "command": "ls",
+    "message": "Task: list of files in a folder",
     "description": "Lists files in a folder",
     "example": "ls c:\\users",
     "args": [
-      "STRING [directory]"
+      "STRING <directory> (.)"
     ]
   },
   {
     "command": "mv",
+    "message": "Task: move file",
     "description": "Move file",
     "example": "mv src.txt dst.txt",
     "args": [
@@ -123,6 +133,7 @@
   },
   {
     "command": "mkdir",
+    "message": "Task: make directory",
     "description": "Make a directory",
     "example": "mkdir C:\\dir",
     "args": [
@@ -136,6 +147,7 @@
     [
       {
         "name": "download.chunksize",
+        "message": "Task: set download chunk size",
         "description": "Change the exfiltrate data size for download request (default 128000)",
         "example": "profile download.chunksize 512000",
         "args": [
@@ -151,11 +163,13 @@
     [
       {
         "name": "list",
+        "message": "Task: show process list",
         "description": "Show process list",
         "example": "ps list"
       },
       {
         "name": "kill",
+        "message": "Task: kill process",
         "description": "Kill a process with a given PID",
         "example": "ps kill 7865",
         "args": [
@@ -164,6 +178,7 @@
       },
       {
         "name": "run",
+        "message": "Task: create new process",
         "description": "Run a program",
         "example": "run -s cmd.exe \"whoami /all\"",
         "args": [
@@ -177,11 +192,13 @@
   },
   {
     "command": "pwd",
+    "message": "Task: print working directory",
     "description": "Print current working directory",
     "example": "pwd"
   },
   {
     "command": "rm",
+    "message": "Task: remove file or directory",
     "description": "Remove a file or folder",
     "example": "rm C:\\file.txt",
     "args": [
@@ -204,11 +221,13 @@
     [
       {
         "name": "thread",
+        "message": "Task: terminate agent thread",
         "description": "Terminate the main beacon thread (without terminating the process)",
         "example": "terminate thread"
       },
       {
         "name": "process",
+        "message": "Task: terminate agent process",
         "description": "Terminate the beacon process",
         "example": "terminate process"
       }
@@ -216,6 +235,7 @@
   },
   {
     "command": "upload",
+    "message": "Task: upload file",
     "description": "Upload a file",
     "example": "upload /tmp/file.txt c:\\\\file.txt",
     "args": [

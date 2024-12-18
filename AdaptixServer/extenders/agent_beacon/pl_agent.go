@@ -142,12 +142,12 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 
 func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]any) (TaskData, string, error) {
 	var (
-		taskData    TaskData
-		messageInfo string
-		err         error
+		taskData TaskData
+		err      error
 	)
 
 	subcommand, _ := args["subcommand"].(string)
+	messageInfo, _ := args["message"].(string)
 
 	/// START CODE HERE
 
@@ -160,7 +160,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 	switch command {
 
 	case "cat":
-		messageInfo = "Task: read file"
 		path, ok := args["path"].(string)
 		if !ok {
 			err = errors.New("parameter 'path' must be set")
@@ -170,7 +169,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		break
 
 	case "cd":
-		messageInfo = "Task: change working directory"
 		path, ok := args["path"].(string)
 		if !ok {
 			err = errors.New("parameter 'path' must be set")
@@ -180,7 +178,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		break
 
 	case "cp":
-		messageInfo = "Task: copy file"
 		src, ok := args["src"].(string)
 		if !ok {
 			err = errors.New("parameter 'src' must be set")
@@ -196,12 +193,10 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		break
 
 	case "disks":
-		messageInfo = "Task: show mounted disks"
 		array = []interface{}{COMMAND_DISKS}
 		break
 
 	case "download":
-		messageInfo = "Task: download file to teamserver"
 		path, ok := args["file"].(string)
 		if !ok {
 			err = errors.New("parameter 'file' must be set")
@@ -213,7 +208,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 	case "execute":
 		if subcommand == "bof" {
 			taskType = JOB
-			messageInfo = "Task: execute BOF"
 
 			bofFile, ok := args["bof"].(string)
 			if !ok {
@@ -267,11 +261,9 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 	case "jobs":
 		if subcommand == "list" {
-			messageInfo = "Task: show jobs"
 			array = []interface{}{COMMAND_JOB_LIST}
 
 		} else if subcommand == "kill" {
-			messageInfo = "Task: kill job"
 			job, ok := args["task_id"].(string)
 			if !ok {
 				err = errors.New("parameter 'task_id' must be set")
@@ -291,17 +283,16 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		break
 
 	case "ls":
-		messageInfo = "Task: list of files in a folder"
 		dir, ok := args["directory"].(string)
 		if !ok {
-			dir = "."
+			err = errors.New("parameter 'directory' must be set")
+			goto RET
 		}
 		dir = ConvertUTF8toCp(dir, agent.ACP)
 
 		array = []interface{}{COMMAND_LS, dir}
 
 	case "mv":
-		messageInfo = "Task: move file"
 		src, ok := args["src"].(string)
 		if !ok {
 			err = errors.New("parameter 'src' must be set")
@@ -317,7 +308,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		break
 
 	case "mkdir":
-		messageInfo = "Task: make directory"
 		path, ok := args["path"].(string)
 		if !ok {
 			err = errors.New("parameter 'path' must be set")
@@ -329,7 +319,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 	case "profile":
 		if subcommand == "download.chunksize" {
 
-			messageInfo = "Task: set download chunk size"
 			size, ok := args["size"].(float64)
 			if !ok {
 				err = errors.New("parameter 'size' must be set")
@@ -345,11 +334,9 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 	case "ps":
 		if subcommand == "list" {
-			messageInfo = "Task: show process list"
 			array = []interface{}{COMMAND_PS_LIST}
 
 		} else if subcommand == "kill" {
-			messageInfo = "Task: kill process"
 			pid, ok := args["pid"].(float64)
 			if !ok {
 				err = errors.New("parameter 'pid' must be set")
@@ -358,7 +345,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			array = []interface{}{COMMAND_PS_KILL, int(pid)}
 
 		} else if subcommand == "run" {
-			messageInfo = "Task: create new process"
 			taskType = JOB
 
 			output, _ := args["-o"].(bool)
@@ -388,12 +374,10 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		break
 
 	case "pwd":
-		messageInfo = "Task: print working directory"
 		array = []interface{}{COMMAND_PWD}
 		break
 
 	case "rm":
-		messageInfo = "Task: remove file or directory"
 		path, ok := args["path"].(string)
 		if !ok {
 			err = errors.New("parameter 'path' must be set")
@@ -444,7 +428,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		break
 
 	case "terminate":
-		messageInfo = "Task: terminate agent session"
 		if subcommand == "thread" {
 			array = []interface{}{COMMAND_TERMINATE, 1}
 		} else if subcommand == "process" {
@@ -456,8 +439,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		break
 
 	case "upload":
-		messageInfo = "Task: upload file"
-
 		fileName, ok := args["remote_path"].(string)
 		if !ok {
 			err = errors.New("parameter 'remote_path' must be set")
