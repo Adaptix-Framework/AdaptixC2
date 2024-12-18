@@ -11,12 +11,14 @@ struct Argument
     bool    flag;
     QString mark;
     QString description;
+    QString defaultValue;
     bool    valid;
 };
 
 struct Command
 {
     QString         name;
+    QString         message;
     QString         description;
     QString         example;
     QList<Argument> args;
