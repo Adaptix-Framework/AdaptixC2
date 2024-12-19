@@ -43,6 +43,8 @@ void TaskOutputWidget::SetConten(QString message, QString text)
 
 
 
+
+
 TasksWidget::TasksWidget( QWidget* w )
 {
     this->mainWidget = w;

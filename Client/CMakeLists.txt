@@ -53,6 +53,7 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogSettings.h
         Headers/Client/Extender.h
         Headers/UI/Dialogs/DialogExtender.h
+        Headers/Utils/CustomElements.h
 )
 
 add_executable(AdaptixClient
@@ -93,6 +94,7 @@ add_executable(AdaptixClient
         Source/UI/Dialogs/DialogSettings.cpp
         Source/Client/Extender.cpp
         Source/UI/Dialogs/DialogExtender.cpp
+        Source/Utils/CustomElements.cpp
 )
 
 target_link_libraries(AdaptixClient
