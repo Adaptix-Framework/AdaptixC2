@@ -47,6 +47,7 @@
 #include <QTreeWidget>
 #include <QClipboard>
 #include <QSplashScreen>
+#include <QStyledItemDelegate>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
@@ -181,19 +182,15 @@ typedef struct TaskData
     bool    Completed;
 } TaskData;
 
-
-typedef struct ExtensionData
-{
-    QString       Type;
-    QJsonDocument JsonObject;
-} ExtensionData;
-
 typedef struct ExtensionFile
 {
+    QString Name;
     QString FilePath;
     QString Description;
+    QString Comment;
     bool    Enabled;
-    QVector<ExtensionData> Data;
+
+    QMap<QString, QVector<QJsonObject> > ExCommands;
 } ExtensionFile;
 
 #endif //ADAPTIXCLIENT_MAIN_H

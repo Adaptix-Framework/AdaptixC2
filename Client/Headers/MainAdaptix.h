@@ -6,6 +6,8 @@
 #include <Client/Storage.h>
 #include <Client/Extender.h>
 
+class Extender;
+
 class MainAdaptix : public QWidget {
 
 public:

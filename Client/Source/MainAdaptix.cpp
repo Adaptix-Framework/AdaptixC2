@@ -8,7 +8,7 @@ MainAdaptix::MainAdaptix()
 
     this->SetApplicationTheme();
 
-    extender = new Extender();
+    extender = new Extender(this);
 }
 
 MainAdaptix::~MainAdaptix()

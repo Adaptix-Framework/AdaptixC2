@@ -8,7 +8,9 @@ MainUI::MainUI()
         this->setObjectName( QString::fromUtf8( "MainUI" ) );
 
     auto newProjectAction = new QAction("New Project", this);
+//    connect(newProjectAction, &QAction::triggered, this, &MainUI::onNewProject);
     auto closeProjectAction = new QAction("Close Project", this);
+//    connect(newProjectAction, &QAction::triggered, this, &MainUI::onCloseProject);
 
     auto menuProject = new QMenu("Project", this);
     menuProject->addAction(newProjectAction);
@@ -18,6 +20,7 @@ MainUI::MainUI()
     connect(extenderAction, &QAction::triggered, this, &MainUI::onExtender);
 
     auto settingsAction = new QAction("Settings", this);
+//    connect(settingsAction, &QAction::triggered, this, &MainUI::onSettings);
 
     menuProject->setEnabled(false);
     settingsAction->setEnabled(false);
