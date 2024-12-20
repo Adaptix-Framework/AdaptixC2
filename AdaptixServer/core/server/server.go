@@ -16,7 +16,7 @@ func NewTeamserver() *Teamserver {
 
 	dbms, err := database.NewDatabase(logs.RepoLogsInstance.DbPath)
 	if err != nil {
-		logs.Error("Failed to create a DBMS: " + err.Error())
+		logs.Error("", "Failed to create a DBMS: "+err.Error())
 		return nil
 	}
 
@@ -77,7 +77,7 @@ func (ts *Teamserver) RestoreData() {
 		return
 	}
 
-	logs.Info("Restore data from Database...")
+	logs.Info("", "Restore data from Database...")
 
 	countAgents := 0
 	restoreAgents := ts.DBMS.DbAgentAll()
@@ -113,7 +113,7 @@ func (ts *Teamserver) RestoreData() {
 
 		countAgents++
 	}
-	logs.Success("Restored %v agents", countAgents)
+	logs.Success("   ", "Restored %v agents", countAgents)
 
 	countDownloads := 0
 	restoreDownloads := ts.DBMS.DbDownloadAll()
@@ -128,19 +128,19 @@ func (ts *Teamserver) RestoreData() {
 
 		countDownloads++
 	}
-	logs.Success("Restored %v downloads", countDownloads)
+	logs.Success("   ", "Restored %v downloads", countDownloads)
 
 	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
 		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig)
 		if err != nil {
-			logs.Error("Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
+			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {
 			countListeners++
 		}
 	}
-	logs.Success("Restored %v listeners", countListeners)
+	logs.Success("   ", "Restored %v listeners", countListeners)
 
 }
 
@@ -152,7 +152,7 @@ func (ts *Teamserver) Start() {
 
 	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server)
 	if err != nil {
-		logs.Error("Failed to init HTTP handler: " + err.Error())
+		logs.Error("", "Failed to init HTTP handler: "+err.Error())
 		return
 	}
 
@@ -162,6 +162,6 @@ func (ts *Teamserver) Start() {
 	ts.RestoreData()
 
 	<-stopped
-	logs.Warn("Teamserver finished")
+	logs.Warn("", "Teamserver finished")
 	os.Exit(0)
 }

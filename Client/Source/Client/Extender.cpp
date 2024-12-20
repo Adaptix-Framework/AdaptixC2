@@ -25,6 +25,7 @@ void Extender::LoadFromFile(QString path)
     if (!file.open(QIODevice::ReadOnly)) {
         extensionFile.Comment = "File not readed";
         extensionFile.Enabled = false;
+        extensionFile.Valid = false;
         goto END;
     }
     fileContent = QString(file.readAll());
@@ -34,6 +35,7 @@ void Extender::LoadFromFile(QString path)
     if ( jsonDocument.isNull() || !jsonDocument.isObject()) {
         extensionFile.Comment = "Invalid JSON document!";
         extensionFile.Enabled = false;
+        extensionFile.Valid = false;
         goto END;
     }
 
@@ -41,12 +43,14 @@ void Extender::LoadFromFile(QString path)
     if( !rootObj.contains("name") && rootObj["name"].isString() ) {
         extensionFile.Comment = "JSON document must include a required 'name' parameter";
         extensionFile.Enabled = false;
+        extensionFile.Valid = false;
         goto END;
     }
 
     if( !rootObj.contains("extensions") && rootObj["extensions"].isArray() ) {
         extensionFile.Comment = "JSON document must include a required 'extensions' parameter";
         extensionFile.Enabled = false;
+        extensionFile.Valid = false;
         goto END;
     }
 
@@ -60,6 +64,7 @@ void Extender::LoadFromFile(QString path)
         if( !extJsonObject.contains("type") && extJsonObject["type"].isString() ) {
             extensionFile.Comment = "Extension must include a required 'type' parameter";
             extensionFile.Enabled = false;
+            extensionFile.Valid = false;
             goto END;
         }
 
@@ -69,6 +74,7 @@ void Extender::LoadFromFile(QString path)
             if( !extJsonObject.contains("agents") && extJsonObject["agents"].isArray() ) {
                 extensionFile.Comment = "Extension must include a required 'agents' parameter";
                 extensionFile.Enabled = false;
+                extensionFile.Valid = false;
                 goto END;
             }
 
@@ -86,6 +92,7 @@ void Extender::LoadFromFile(QString path)
         } else {
             extensionFile.Comment = "Unknown extension type";
             extensionFile.Enabled = false;
+            extensionFile.Valid = false;
             goto END;
         }
     }
@@ -93,6 +100,7 @@ void Extender::LoadFromFile(QString path)
     extensionFile.Comment    = fileContent;
     extensionFile.ExCommands = exCommands;
     extensionFile.Enabled    = true;
+    extensionFile.Valid      = true;
 
 END:
     this->SetExtension(extensionFile);
@@ -101,27 +109,49 @@ END:
 void Extender::SetExtension(ExtensionFile extFile)
 {
     if(extenderFiles.contains(extFile.FilePath)) {
+        if( extFile.Valid ) {
+///        mainAdaptix->mainUI-> //  remove extension + add extension
+        }
         dialogExtender->UpdateExtenderItem(extFile);
     }
     else {
         extenderFiles[extFile.FilePath] = extFile;
+        if(extFile.Valid) {
+///        mainAdaptix->mainUI-> //  add extension to commander
+        }
         dialogExtender->AddExtenderItem(extFile);
-//        mainAdaptix->mainUI->
-
     }
 }
 
 void Extender::EnableExtension(QString path)
 {
+    if( !extenderFiles.contains(path) )
+        return;
 
+    if( extenderFiles[path].Valid && !extenderFiles[path].Enabled ) {
+        extenderFiles[path].Enabled = true;
+///        mainAdaptix->mainUI-> //  add extension to commander
+        dialogExtender->UpdateExtenderItem(extenderFiles[path]);
+    }
 }
 
 void Extender::DisableExtension(QString path)
 {
+    if( !extenderFiles.contains(path) )
+        return;
 
+    if( extenderFiles[path].Valid && extenderFiles[path].Enabled ) {
+        extenderFiles[path].Enabled = false;
+        ///        mainAdaptix->mainUI-> //  remove extension
+        dialogExtender->UpdateExtenderItem(extenderFiles[path]);
+    }
 }
 
-void Extender::DeleteExtension(QString path)
+void Extender::RemoveExtension(QString path)
 {
+    if( !extenderFiles.contains(path) )
+        return;
 
+    ///        mainAdaptix->mainUI-> //  remove extension
+    dialogExtender->RemoveExtenderItem(extenderFiles[path]);
 }

@@ -63,12 +63,12 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 
 	wsConn, err = wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		logs.Error("WebSocket upgrade error: " + err.Error())
+		logs.Error("", "WebSocket upgrade error: "+err.Error())
 		return
 	}
 
 	if wsConn == nil {
-		logs.Error("WebSocket is nil")
+		logs.Error("", "WebSocket is nil")
 		return
 	}
 
@@ -85,19 +85,19 @@ func (tc *TsConnector) tcWebsocketConnect(wsConn *websocket.Conn) {
 
 	_, body, err = wsConn.ReadMessage()
 	if err != nil {
-		logs.Error("Failed ReadMessage from WebSocket: " + err.Error())
+		logs.Error("", "Failed ReadMessage from WebSocket: "+err.Error())
 		return
 	}
 
 	err = json.Unmarshal(body, &structToken)
 	if err != nil {
-		logs.Error("JSON Unmarshal error: " + err.Error())
+		logs.Error("", "JSON Unmarshal error: "+err.Error())
 		return
 	}
 
 	username, err = token.GetUsernameFromJWT(structToken.AccessToken)
 	if err != nil {
-		logs.Error("Invalid JWT error: " + err.Error())
+		logs.Error("", "Invalid JWT error: "+err.Error())
 		return
 	}
 

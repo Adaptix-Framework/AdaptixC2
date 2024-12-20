@@ -110,7 +110,36 @@ void DialogExtender::AddExtenderItem(ExtensionFile extenderItem)
 
 void DialogExtender::UpdateExtenderItem(ExtensionFile extenderItem)
 {
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *item = tableWidget->item(row, 1);
+        if ( item && item->text() == extenderItem.FilePath ) {
+            tableWidget->item(row, 0)->setText(extenderItem.Name);
+            tableWidget->item(row, 2)->setText(extenderItem.Description);
+            tableWidget->item(row, 4)->setText(extenderItem.Comment);
 
+            if ( extenderItem.Enabled ) {
+                tableWidget->item(row, 3)->setText("On");
+                tableWidget->item(row, 3)->setForeground(QColor(COLOR_NeonGreen));
+            }
+            else {
+                tableWidget->item(row, 3)->setText("Off");
+                tableWidget->item(row, 3)->setForeground(QColor(COLOR_ChiliPepper));
+            }
+
+            break;
+        }
+    }
+}
+
+void DialogExtender::RemoveExtenderItem(ExtensionFile extenderItem)
+{
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *item = tableWidget->item(row, 1);
+        if ( item && item->text() == extenderItem.FilePath ) {
+            tableWidget->removeRow(row);
+            break;
+        }
+    }
 }
 
 /// SLOTS
@@ -119,7 +148,8 @@ void DialogExtender::handleMenu(const QPoint &pos ) const
 {
     QMenu menu = QMenu();
 
-    menu.addAction("Add new", this, &DialogExtender::onActionAdd );
+    menu.addAction("Load new", this, &DialogExtender::onActionLoad );
+    menu.addAction("Reload", this, &DialogExtender::onActionReload );
     menu.addSeparator();
     menu.addAction("Enable", this, &DialogExtender::onActionEnable );
     menu.addAction("Disable", this, &DialogExtender::onActionDisable );
@@ -130,7 +160,7 @@ void DialogExtender::handleMenu(const QPoint &pos ) const
     menu.exec(globalPos );
 }
 
-void DialogExtender::onActionAdd()
+void DialogExtender::onActionLoad()
 {
     QString filePath = QFileDialog::getOpenFileName( nullptr, "Select file", QDir::homePath(), "*.json");
     if ( filePath.isEmpty())
@@ -139,19 +169,50 @@ void DialogExtender::onActionAdd()
     extender->LoadFromFile(filePath);
 }
 
+void DialogExtender::onActionReload()
+{
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
+            auto filePath = tableWidget->item( rowIndex, 1 )->text();
+            extender->LoadFromFile(filePath);
+        }
+    }
+}
+
 void DialogExtender::onActionEnable()
 {
-
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
+            auto filePath = tableWidget->item( rowIndex, 1 )->text();
+            extender->EnableExtension(filePath);
+        }
+    }
 }
 
 void DialogExtender::onActionDisable()
 {
-
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
+            auto filePath = tableWidget->item( rowIndex, 1 )->text();
+            extender->DisableExtension(filePath);
+        }
+    }
 }
 
 void DialogExtender::onActionRemove()
 {
+    QStringList FilesList;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
+            auto filePath = tableWidget->item( rowIndex, 1 )->text();
+            FilesList.append(filePath);
+        }
+    }
 
+    for(auto filePath : FilesList)
+        extender->RemoveExtension(filePath);
+
+    textComment->clear();
 }
 
 void DialogExtender::onRowSelect(int row, int column)

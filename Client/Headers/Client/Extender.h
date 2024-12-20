@@ -24,7 +24,7 @@ public:
     void SetExtension(ExtensionFile extFile );
     void EnableExtension(QString path);
     void DisableExtension(QString path);
-    void DeleteExtension(QString path);
+    void RemoveExtension(QString path);
 };
 
 #endif //ADAPTIXCLIENT_EXTENDER_H
