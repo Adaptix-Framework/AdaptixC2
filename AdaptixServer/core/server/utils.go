@@ -60,6 +60,8 @@ type Agent struct {
 	ClosedTasks safe.Map    // taskId string, taskData TaskData
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+
 // SyncPacket
 
 type SyncPackerStart struct {

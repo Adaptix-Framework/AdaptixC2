@@ -129,7 +129,7 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 		ts.downloads.Put(downloadData.FileId, downloadData)
 		err = ts.DBMS.DbDownloadInsert(downloadData)
 		if err != nil {
-			logs.Error(err.Error())
+			logs.Error("", err.Error())
 		}
 	} else {
 		downloadData.State = DOWNLOAD_STATE_CANCELED

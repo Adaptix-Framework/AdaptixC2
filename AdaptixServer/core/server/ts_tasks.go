@@ -29,7 +29,7 @@ func (ts *Teamserver) TsTaskQueueAddQuite(agentId string, taskObject []byte) {
 	if ok {
 		agent = value.(*Agent)
 	} else {
-		logs.Error("TsTaskQueueAdd: agent %v not found", agentId)
+		logs.Error("", "TsTaskQueueAdd: agent %v not found", agentId)
 		return
 	}
 
@@ -91,7 +91,7 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 	if ok {
 		agent = value.(*Agent)
 	} else {
-		logs.Error("TsTaskUpdate: agent %v not found", agentId)
+		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
 		return
 	}
 

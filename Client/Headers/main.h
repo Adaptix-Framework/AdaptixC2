@@ -189,6 +189,7 @@ typedef struct ExtensionFile
     QString Description;
     QString Comment;
     bool    Enabled;
+    bool    Valid;
 
     QMap<QString, QVector<QJsonObject> > ExCommands;
 } ExtensionFile;

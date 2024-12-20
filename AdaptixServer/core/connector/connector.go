@@ -119,7 +119,7 @@ func (tc *TsConnector) Start(finished *chan bool) {
 	host := fmt.Sprintf(":%d", tc.Port)
 	err := tc.Engine.RunTLS(host, tc.Cert, tc.Key)
 	if err != nil {
-		logs.Error("Failed to start HTTP Server: " + err.Error())
+		logs.Error("", "Failed to start HTTP Server: "+err.Error())
 		return
 	}
 	*finished <- true

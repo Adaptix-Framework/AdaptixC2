@@ -18,31 +18,31 @@ func NewPrintLogger(debug bool) {
 	}
 }
 
-func logMessage(symbol string, color string, format string, a ...interface{}) {
+func logMessage(indent string, symbol string, color string, format string, a ...interface{}) {
 	timestamp := tformat.SetBold(time.Now().Format("02/01 15:04:05"))
 	message := fmt.Sprintf(format, a...)
 	mark := tformat.SetColor(symbol, color)
-	fmt.Printf("%s %s [%s]\n", mark, message, timestamp)
+	fmt.Printf("%s%s %s [%s]\n", indent, mark, message, timestamp)
 }
 
-func Info(format string, a ...interface{}) {
-	logMessage("[*]", tformat.Green, format, a...)
+func Info(indent string, format string, a ...interface{}) {
+	logMessage(indent, "[*]", tformat.Green, format, a...)
 }
 
-func Success(format string, a ...interface{}) {
-	logMessage("[+]", tformat.Blue, format, a...)
+func Success(indent string, format string, a ...interface{}) {
+	logMessage(indent, "[+]", tformat.Blue, format, a...)
 }
 
-func Warn(format string, a ...interface{}) {
-	logMessage("[!]", tformat.Yellow, format, a...)
+func Warn(indent string, format string, a ...interface{}) {
+	logMessage(indent, "[!]", tformat.Yellow, format, a...)
 }
 
-func Error(format string, a ...interface{}) {
-	logMessage("[-]", tformat.Red, format, a...)
+func Error(indent string, format string, a ...interface{}) {
+	logMessage(indent, "[-]", tformat.Red, format, a...)
 }
 
-func Debug(format string, a ...interface{}) {
+func Debug(indent string, format string, a ...interface{}) {
 	if PrintLog.debug {
-		logMessage("[#]", tformat.Cyan, format, a...)
+		logMessage(indent, "[#]", tformat.Cyan, format, a...)
 	}
 }

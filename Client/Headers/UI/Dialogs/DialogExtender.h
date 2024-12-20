@@ -25,10 +25,12 @@ public:
 
     void AddExtenderItem(ExtensionFile extenderItem);
     void UpdateExtenderItem(ExtensionFile extenderItem);
+    void RemoveExtenderItem(ExtensionFile extenderItem);
 
 public slots:
     void handleMenu(const QPoint &pos ) const;
-    void onActionAdd();
+    void onActionLoad();
+    void onActionReload();
     void onActionEnable();
     void onActionDisable();
     void onActionRemove();

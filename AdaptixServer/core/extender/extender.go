@@ -32,7 +32,7 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFile string) {
 
 	extenderContent, err := os.ReadFile(extenderFile)
 	if err != nil {
-		logs.Error("File %s not read", extenderFile)
+		logs.Error("", "File %s not read", extenderFile)
 		return
 	}
 
@@ -41,49 +41,49 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFile string) {
 
 		_, err = os.Stat(path)
 		if err != nil {
-			logs.Error("Plugin %s not found", path)
+			logs.Error("", "Plugin %s not found", path)
 			continue
 		}
 
 		pl, err = plugin.Open(path)
 		if err != nil {
-			logs.Error("Plugin %s did not load", path)
+			logs.Error("", "Plugin %s did not load", path)
 			continue
 		}
 
 		object, err = pl.Lookup("ModuleObject")
 		if err != nil {
-			logs.Error("Object %s not found in %s", "ModuleObject", path)
+			logs.Error("", "Object %s not found in %s", "ModuleObject", path)
 			continue
 		}
 
 		_, ok := reflect.TypeOf(object).MethodByName("InitPlugin")
 		if !ok {
-			logs.Error("Method %s not found in %s", "InitPlugin", path)
+			logs.Error("", "Method %s not found in %s", "InitPlugin", path)
 			continue
 		}
 
 		buffer, err := object.(CommonFunctions).InitPlugin(ex.ts)
 		if err != nil {
-			logs.Error("InitPlugin %s failed: %s", path, err.Error())
+			logs.Error("", "InitPlugin %s failed: %s", path, err.Error())
 			continue
 		}
 
 		err = json.Unmarshal(buffer, &module.Info)
 		if err != nil {
-			logs.Error("InitPlugin JSON Unmarshal error: " + err.Error())
+			logs.Error("", "InitPlugin JSON Unmarshal error: "+err.Error())
 			continue
 		}
 
 		err = ex.ValidPlugin(module.Info, object)
 		if err != nil {
-			logs.Error("InitPlugin %s failed: %s", path, err.Error())
+			logs.Error("", "InitPlugin %s failed: %s", path, err.Error())
 			continue
 		}
 
 		err = ex.ProcessPlugin(module, object)
 		if err != nil {
-			logs.Error("InitPlugin %s failed: %s", path, err.Error())
+			logs.Error("", "InitPlugin %s failed: %s", path, err.Error())
 			continue
 		}
 	}
@@ -186,7 +186,7 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 		var listenerInfo ListenerInfo
 		err = json.Unmarshal(buffer, &listenerInfo)
 		if err != nil {
-			logs.Error("ProcessPlugin JSON Unmarshal error: " + err.Error())
+			logs.Error("", "ProcessPlugin JSON Unmarshal error: "+err.Error())
 			return err
 		}
 
@@ -222,7 +222,7 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 		var agentInfo AgentInfo
 		err = json.Unmarshal(buffer, &agentInfo)
 		if err != nil {
-			logs.Error("ProcessPlugin JSON Unmarshal error: " + err.Error())
+			logs.Error("", "ProcessPlugin JSON Unmarshal error: "+err.Error())
 			return err
 		}
 

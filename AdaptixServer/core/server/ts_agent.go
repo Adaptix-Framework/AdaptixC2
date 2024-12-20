@@ -38,7 +38,7 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 
 	err = ts.DBMS.DbAgentUpdate(agent.Data)
 	if err != nil {
-		logs.Error(err.Error())
+		logs.Error("", err.Error())
 	}
 
 	packetNew := CreateSpAgentUpdate(agent.Data)
@@ -98,7 +98,7 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 
 		err = ts.DBMS.DbAgentInsert(agentData)
 		if err != nil {
-			logs.Error(err.Error())
+			logs.Error("", err.Error())
 		}
 
 		packetNew := CreateSpAgentNew(agentData)
@@ -206,7 +206,7 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 
 	err := ts.DBMS.DbAgentDelete(agentId)
 	if err != nil {
-		logs.Error(err.Error())
+		logs.Error("", err.Error())
 	} else {
 		ts.DBMS.DbTaskDelete("", agentId)
 	}
@@ -228,7 +228,7 @@ func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 
 	err := ts.DBMS.DbAgentUpdate(agent.Data)
 	if err != nil {
-		logs.Error(err.Error())
+		logs.Error("", err.Error())
 	}
 
 	packetNew := CreateSpAgentUpdate(agent.Data)
