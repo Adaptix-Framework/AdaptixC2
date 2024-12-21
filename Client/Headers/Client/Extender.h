@@ -15,12 +15,13 @@ class Extender
     QMap<QString, ExtensionFile> extenderFiles;
 
 public:
-    Extender(MainAdaptix* mainAdaptix);
+    Extender(MainAdaptix* m);
     ~Extender();
 
     DialogExtender* dialogExtender = nullptr;
 
-    void LoadFromFile(QString path);
+    void LoadFromDB();
+    void LoadFromFile(QString path, bool enabled);
     void SetExtension(ExtensionFile extFile );
     void EnableExtension(QString path);
     void DisableExtension(QString path);

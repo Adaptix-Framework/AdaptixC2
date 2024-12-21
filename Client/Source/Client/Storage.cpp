@@ -41,10 +41,9 @@ Storage::~Storage()
 
 void Storage::checkDatabase()
 {
-    auto query = QSqlQuery();
-    query.prepare("CREATE TABLE IF NOT EXISTS Projects ( "
-            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-            "project TEXT UNIQUE, "
+    auto queryProjects = QSqlQuery();
+    queryProjects.prepare("CREATE TABLE IF NOT EXISTS Projects ( "
+            "project TEXT UNIQUE PRIMARY KEY, "
             "host TEXT, "
             "port INTEGER, "
             "endpoint TEXT, "
@@ -52,9 +51,18 @@ void Storage::checkDatabase()
             "password TEXT );"
     );
 
-    if ( !query.exec() ) {
-        LogError("Table PROJECTS not created: %s\n", query.lastError().text().toStdString().c_str());
-    }
+    if ( !queryProjects.exec() )
+        LogError("Table PROJECTS not created: %s\n", queryProjects.lastError().text().toStdString().c_str());
+
+    auto queryExtensions = QSqlQuery();
+    queryExtensions.prepare("CREATE TABLE IF NOT EXISTS Extensions ( "
+                          "filepath TEXT UNIQUE PRIMARY KEY, "
+                          "enabled BOOLEAN );"
+    );
+
+    if ( !queryExtensions.exec() )
+        LogError("Table EXTENSIONS not created: %s\n", queryExtensions.lastError().text().toStdString().c_str());
+
 }
 
 /// PROJECTS
@@ -110,7 +118,7 @@ void Storage::AddProject(AuthProfile profile)
     query.bindValue(":Password", profile.GetPassword().toStdString().c_str());
 
     if ( !query.exec() ) {
-        LogError("The project has not been added to the database.: %s\n", query.lastError().text().toStdString().c_str());
+        LogError("The project has not been added to the database: %s\n", query.lastError().text().toStdString().c_str());
     }
 }
 
@@ -126,3 +134,72 @@ void Storage::RemoveProject(QString project)
 
 /// EXTENSIONS
 
+QVector<ExtensionFile> Storage::ListExtensions()
+{
+    auto list = QVector<ExtensionFile>();
+    QSqlQuery query;
+
+    query.prepare( "SELECT * FROM Extensions;" );
+    if ( query.exec() ) {
+        while ( query.next() ) {
+            ExtensionFile ext;
+            ext.FilePath = query.value("filepath").toString();
+            ext.Enabled  = query.value("enabled").toBool();
+            list.push_back(ext);
+        }
+    }
+    else {
+        LogError("Failed to query extensions from database: %s\n", query.lastError().text().toStdString().c_str());
+    }
+
+    return list;
+}
+
+bool Storage::ExistsExtension(QString path)
+{
+    QSqlQuery query;
+    query.prepare("SELECT 1 FROM Extensions WHERE filepath = :Filepath LIMIT 1;");
+    query.bindValue(":Filepath", path);
+    if (!query.exec()) {
+        LogError("Failed to query extension from database: %s\n", query.lastError().text().toStdString().c_str());
+        return false;
+    }
+
+    return query.next();
+}
+
+void Storage::AddExtension(ExtensionFile extFile)
+{
+    QSqlQuery query;
+    query.prepare( "INSERT INTO Extensions (filepath, enabled) VALUES (:Filepath, :Enabled);");
+
+    query.bindValue(":Filepath", extFile.FilePath.toStdString().c_str());
+    query.bindValue(":Enabled", extFile.Enabled);
+
+    if ( !query.exec() ) {
+        LogError("The extension has not been added to the database: %s\n", query.lastError().text().toStdString().c_str());
+    }
+}
+
+void Storage::UpdateExtension(ExtensionFile extFile)
+{
+    QSqlQuery query;
+    query.prepare( "UPDATE Extensions SET enabled = :Enabled WHERE filepath = :Filepath;");
+
+    query.bindValue(":Filepath", extFile.FilePath.toStdString().c_str());
+    query.bindValue(":Enabled", extFile.Enabled);
+
+    if ( !query.exec() ) {
+        LogError("Extension not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+    }
+}
+
+void Storage::RemoveExtension(QString filepath)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM Extensions WHERE filepath = :Filepath");
+    query.bindValue(":Filepath", filepath);
+    if (!query.exec()) {
+        LogError("Failed to delete extension from database: %s\n", query.lastError().text().toStdString().c_str());
+    }
+}

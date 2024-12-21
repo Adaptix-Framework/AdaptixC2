@@ -17,10 +17,16 @@ public:
     Storage();
     ~Storage();
 
-    void                 AddProject(AuthProfile profile);
-    void                 RemoveProject(QString project);
-    bool                 ExistsProject(QString project);
     QVector<AuthProfile> ListProjects();
+    void AddProject(AuthProfile profile);
+    void RemoveProject(QString project);
+    bool ExistsProject(QString project);
+
+    QVector<ExtensionFile> ListExtensions();
+    bool ExistsExtension(QString path);
+    void AddExtension(ExtensionFile extFile);
+    void UpdateExtension(ExtensionFile extFile);
+    void RemoveExtension(QString filepath);
 };
 
 #endif //ADAPTIXCLIENT_STORAGE_H

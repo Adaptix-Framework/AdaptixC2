@@ -81,11 +81,11 @@ void DialogExtender::AddExtenderItem(ExtensionFile extenderItem)
     item_Status->setFlags( item_Status->flags() ^ Qt::ItemIsEditable );
     item_Status->setTextAlignment( Qt::AlignCenter );
     if ( extenderItem.Enabled ) {
-        item_Status->setText("On");
+        item_Status->setText("Enable");
         item_Status->setForeground(QColor(COLOR_NeonGreen));
     }
     else {
-        item_Status->setText("Off");
+        item_Status->setText("Disable");
         item_Status->setForeground(QColor(COLOR_ChiliPepper));
     }
 
@@ -118,11 +118,11 @@ void DialogExtender::UpdateExtenderItem(ExtensionFile extenderItem)
             tableWidget->item(row, 4)->setText(extenderItem.Comment);
 
             if ( extenderItem.Enabled ) {
-                tableWidget->item(row, 3)->setText("On");
+                tableWidget->item(row, 3)->setText("Enable");
                 tableWidget->item(row, 3)->setForeground(QColor(COLOR_NeonGreen));
             }
             else {
-                tableWidget->item(row, 3)->setText("Off");
+                tableWidget->item(row, 3)->setText("Disable");
                 tableWidget->item(row, 3)->setForeground(QColor(COLOR_ChiliPepper));
             }
 
@@ -166,7 +166,7 @@ void DialogExtender::onActionLoad()
     if ( filePath.isEmpty())
         return;
 
-    extender->LoadFromFile(filePath);
+    extender->LoadFromFile(filePath, true);
 }
 
 void DialogExtender::onActionReload()
@@ -174,7 +174,7 @@ void DialogExtender::onActionReload()
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
             auto filePath = tableWidget->item( rowIndex, 1 )->text();
-            extender->LoadFromFile(filePath);
+            extender->LoadFromFile(filePath, true);
         }
     }
 }
