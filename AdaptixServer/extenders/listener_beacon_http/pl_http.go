@@ -66,7 +66,7 @@ func (h *HTTP) Start() error {
 	}
 
 	if h.Config.Ssl {
-		fmt.Println("Started listener: https://" + h.Config.HostBind + ":" + h.Config.PortBind)
+		fmt.Println("   ", "Started listener: https://"+h.Config.HostBind+":"+h.Config.PortBind)
 
 		listenerPath := ModulePath + "/" + h.Name
 		_, err = os.Stat(listenerPath)
@@ -108,7 +108,7 @@ func (h *HTTP) Start() error {
 		}()
 
 	} else {
-		fmt.Println("Started listener: http://" + h.Config.HostBind + ":" + h.Config.PortBind)
+		fmt.Println("   ", "Started listener: http://"+h.Config.HostBind+":"+h.Config.PortBind)
 
 		go func() {
 			err = h.Server.ListenAndServe()
