@@ -7,4 +7,6 @@ QString ReadFileString(const QString &filePath, bool* result);
 
 QByteArray ReadFileBytearray(const QString &filePath, bool* result);
 
+QString ValidExtCommand(QJsonObject extJsonObject, bool* result);
+
 #endif //AXCHECKER_UTILS_H

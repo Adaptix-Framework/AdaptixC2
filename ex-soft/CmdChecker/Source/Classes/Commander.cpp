@@ -1,20 +1,24 @@
 #include <Classes/Commander.h>
 
-Commander::Commander(const QByteArray& data)
+Commander::Commander(){}
+
+Commander::~Commander() = default;
+
+bool Commander::AddRegCommands(QByteArray jsonData)
 {
+    QList<Command> commandsList;
+
     QJsonParseError parseError;
-    QJsonDocument document = QJsonDocument::fromJson(data, &parseError);
+    QJsonDocument document = QJsonDocument::fromJson(jsonData, &parseError);
 
     if (parseError.error != QJsonParseError::NoError && document.isObject()) {
         error = QString("JSON parse error: %1").arg(parseError.errorString());
-        valid = false;
-        return;
+        return false;
     }
 
     if(!document.isArray()) {
         error = "Error Commander Json Format";
-        valid = false;
-        return;
+        return false;
     }
 
     QJsonArray commandArray = document.array();
@@ -23,8 +27,7 @@ Commander::Commander(const QByteArray& data)
 
         if( !jsonObject.contains("command") ) {
             error = "The Command block does not contain a 'command' parameter";
-            valid = false;
-            return;
+            return false;
         }
 
         Command cmd;
@@ -41,8 +44,7 @@ Commander::Commander(const QByteArray& data)
                     cmd.args.append(arg);
                 } else {                                                                                                        // added error args parsing
                     error = QString("Error parsing arguments for '%1': %3").arg(cmd.name).arg(error);
-                    valid = false;
-                    return;
+                    return false;
                 }
             }
         } else if (jsonObject.contains("subcommands")) {
@@ -52,8 +54,7 @@ Commander::Commander(const QByteArray& data)
 
                 if( !subCmdObj.contains("name") ) {
                     error = QString("The command '%1' does not contain a 'name' parameter in Subcommand block").arg(cmd.name);
-                    valid = false;
-                    return;
+                    return false;
                 }
 
                 Command subCmd;
@@ -70,19 +71,18 @@ Commander::Commander(const QByteArray& data)
                     }
                     else {                                                                                                              // added error args parsing
                         error = QString("Error parsing arguments for '%1 %2': %3").arg(cmd.name).arg(subCmd.name).arg(error);
-                        valid = false;
-                        return;
+                        return false;
                     }
                 }
                 cmd.subcommands.append(subCmd);
             }
         }
-        commands.append(cmd);
+        commandsList.append(cmd);
     }
-    valid = true;
-}
 
-Commander::~Commander() = default;
+    commands = commandsList;
+    return true;
+}
 
 Argument Commander::ParseArgument(QString argString)
 {
@@ -135,6 +135,66 @@ Argument Commander::ParseArgument(QString argString)
     }
     arg.valid = true;
     return arg;
+}
+
+bool Commander::AddExtCommands(QString filepath, QString extName, QList<QJsonObject> extCommands)
+{
+    QList<ExtCommand> commandsList;
+
+    for (QJsonObject jsonObject : extCommands) {
+
+        ExtCommand extCmd;
+        extCmd.name        = jsonObject["command"].toString();
+        extCmd.message     = jsonObject["message"].toString();
+        extCmd.description = jsonObject["description"].toString();
+        extCmd.example     = jsonObject["example"].toString();
+        extCmd.exec        = jsonObject["exec"].toString();
+
+        if (jsonObject.contains("subcommands")) {
+            QJsonArray subcommandArray = jsonObject["subcommands"].toArray();
+            for (QJsonValue subCmdVal : subcommandArray) {
+                QJsonObject subCmdObj = subCmdVal.toObject();
+
+                ExtCommand extSubCmd;
+                extSubCmd.name        = subCmdObj["name"].toString();
+                extSubCmd.message     = subCmdObj["message"].toString();
+                extSubCmd.description = subCmdObj["description"].toString();
+                extSubCmd.example     = subCmdObj["example"].toString();
+
+                QJsonArray subArgsArray = subCmdObj["args"].toArray();
+                for (QJsonValue subArgVal : subArgsArray) {
+                    Argument subArg = ParseArgument(subArgVal.toString());
+                    if (subArg.valid) {
+                        extSubCmd.args.append(subArg);
+                    }
+                    else {
+                        error = QString("Error parsing arguments for '%1 %2': %3").arg(extCmd.name).arg(extSubCmd.name).arg(error);
+                        return false;
+                    }
+                }
+                extCmd.subcommands.append(extSubCmd);
+            }
+        } else if (jsonObject.contains("args")) {
+
+            extCmd.exec = jsonObject["exec"].toString();
+            QJsonArray argsArray = jsonObject["args"].toArray();
+            for (QJsonValue argVal : argsArray) {
+                Argument arg = ParseArgument(argVal.toString());
+                if (arg.valid) {
+                    extCmd.args.append(arg);
+                } else {
+                    error = QString("Error parsing arguments for '%1': %3").arg(extCmd.name).arg(error);
+                    return false;
+                }
+            }
+        }
+        commandsList.append(extCmd);
+    }
+
+    extModules[filepath].extName = extName;
+    extModules[filepath].extCommands = commandsList;
+
+    return true;
 }
 
 CommanderResult Commander::ProcessInput(QString input)
@@ -399,11 +459,6 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
     return CommanderResult{false, jsonDoc.toJson(), false };
 }
 
-bool Commander::IsValid()
-{
-    return valid;
-}
-
 QString Commander::GetError()
 {
     return error;
@@ -539,4 +594,9 @@ QStringList Commander::GetCommands()
         commandList << "help " + cmd;
 
     return commandList;
+}
+
+QStringList Commander::GetExtCommands()
+{
+
 }

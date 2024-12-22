@@ -8,14 +8,17 @@
 
 class MainCmd : public QWidget
 {
-    QGridLayout* mainLayout     = nullptr;
+    QGridLayout* mainLayout      = nullptr;
     QTextEdit*   consoleTextEdit = nullptr;
-    QPushButton* selectButton   = nullptr;
-    QPushButton* loadButton     = nullptr;
-    QPushButton* execButton     = nullptr;
-    QLineEdit*   pathInput      = nullptr;
-    QLineEdit*   commandInput   = nullptr;
-    QCompleter*  completer      = nullptr;
+    QPushButton* selectRegButton = nullptr;
+    QPushButton* selectExtButton = nullptr;
+    QPushButton* loadRegButton   = nullptr;
+    QPushButton* loadExtButton   = nullptr;
+    QPushButton* execButton      = nullptr;
+    QLineEdit*   pathRegInput    = nullptr;
+    QLineEdit*   pathExtInput    = nullptr;
+    QLineEdit*   commandInput    = nullptr;
+    QCompleter*  completer       = nullptr;
 
     Commander* commander = nullptr;
 
@@ -29,8 +32,10 @@ public:
     void Start();
 
 public slots:
-    void SelectFile();
-    void LoadFile();
+    void SelectRegFile();
+    void SelectExtFile();
+    void LoadRegFile();
+    void LoadExtFile();
     void ExecuteCommand();
 };
 

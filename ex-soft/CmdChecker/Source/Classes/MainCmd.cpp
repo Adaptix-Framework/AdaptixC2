@@ -6,8 +6,12 @@ MainCmd::MainCmd()
 
     this->createUI();
 
-    connect(selectButton, &QPushButton::clicked, this, [&](){SelectFile();});
-    connect(loadButton, &QPushButton::clicked, this, [&](){LoadFile();});
+    commander = new Commander();
+
+    connect(selectRegButton, &QPushButton::clicked, this, [&](){ SelectRegFile();});
+    connect(selectExtButton, &QPushButton::clicked, this, [&](){ SelectExtFile();});
+    connect(loadRegButton, &QPushButton::clicked, this, [&](){ LoadRegFile();});
+    connect(loadExtButton, &QPushButton::clicked, this, [&](){ LoadExtFile();});
     connect(execButton, &QPushButton::clicked, this, [&](){ExecuteCommand();});
 }
 
@@ -16,12 +20,15 @@ MainCmd::~MainCmd() = default;
 void MainCmd::createUI()
 {
     this->setWindowTitle("CmdChecker");
-//    this->resize(600, 400);
+    this->resize(1000, 800);
 
     mainLayout = new QGridLayout(this);
 
-    pathInput = new QLineEdit(this);
-    pathInput->setReadOnly(true);
+    pathRegInput = new QLineEdit(this);
+    pathRegInput->setReadOnly(true);
+
+    pathExtInput = new QLineEdit(this);
+    pathExtInput->setReadOnly(true);
 
     commandInput = new QLineEdit(this);
     commandInput->setEnabled(false);
@@ -29,17 +36,22 @@ void MainCmd::createUI()
     consoleTextEdit = new QTextEdit(this);
     consoleTextEdit->setProperty( "TextEditStyle", "console" );
 
-    selectButton = new QPushButton("Select", this);
-    loadButton   = new QPushButton("Load", this);
-    execButton   = new QPushButton("Execute", this);
+    selectRegButton = new QPushButton("Select Reg", this);
+    selectExtButton = new QPushButton("Select Ext", this);
+    loadRegButton   = new QPushButton("Load Reg", this);
+    loadExtButton   = new QPushButton("Load Ext", this);
+    execButton      = new QPushButton("Execute", this);
     execButton->setEnabled(false);
 
-    mainLayout->addWidget(pathInput,      0,0,1,1);
-    mainLayout->addWidget(selectButton,   0,1,1,1);
-    mainLayout->addWidget(loadButton,     0,2,1,1);
-    mainLayout->addWidget(consoleTextEdit, 1, 0, 1, 3);
-    mainLayout->addWidget(commandInput,   2,0,1,2);
-    mainLayout->addWidget(execButton,     2,2,1,1);
+    mainLayout->addWidget(pathRegInput,    0, 0, 1, 1);
+    mainLayout->addWidget(selectRegButton, 0, 1, 1, 1);
+    mainLayout->addWidget(loadRegButton,   0, 2, 1, 1);
+    mainLayout->addWidget(pathExtInput,    1, 0, 1, 1);
+    mainLayout->addWidget(selectExtButton, 1, 1, 1, 1);
+    mainLayout->addWidget(loadExtButton,   1, 2, 1, 1);
+    mainLayout->addWidget(consoleTextEdit, 2, 0, 1, 3);
+    mainLayout->addWidget(commandInput,    3, 0, 1, 2);
+    mainLayout->addWidget(execButton,      3, 2, 1, 1);
 }
 
 void MainCmd::setStyle()
@@ -54,8 +66,6 @@ void MainCmd::setStyle()
     QApplication::setFont( Font );
 
     QString theme = ":/themes/Dark";
-//    QString themes = ":/themes/Arc (Light)";
-//    QString themes = ":/themes/Nord";
 
     bool result = false;
     QString style = ReadFileString(theme, &result);
@@ -65,24 +75,24 @@ void MainCmd::setStyle()
     }
 }
 
-void MainCmd::SelectFile()
+void MainCmd::SelectRegFile()
 {
     QString filePath = QFileDialog::getOpenFileName(this, "Select JSON file", "", "JSON Files (*.json)");
     if (!filePath.isEmpty()) {
-        pathInput->setText(filePath);
-        loadButton->setEnabled(true);
+        pathRegInput->setText(filePath);
+        loadRegButton->setEnabled(true);
     }
 }
 
-void MainCmd::LoadFile()
+void MainCmd::LoadRegFile()
 {
-    QString filePath = pathInput->text();
+    QString filePath = pathRegInput->text();
     if (!filePath.isEmpty()) {
         bool result = false;
         QByteArray jsonData = ReadFileBytearray(filePath, &result);
         if (result) {
-            commander = new Commander(jsonData);
-            if ( commander->IsValid() ) {
+            result = commander->AddRegCommands(jsonData);
+            if ( result ) {
                 commandInput->setEnabled(true);
                 execButton->setEnabled(true);
 
@@ -98,9 +108,86 @@ void MainCmd::LoadFile()
     }
 }
 
+void MainCmd::SelectExtFile()
+{
+    QString filePath = QFileDialog::getOpenFileName(this, "Select JSON file", "", "JSON Files (*.json)");
+    if (!filePath.isEmpty()) {
+        pathExtInput->setText(filePath);
+        loadExtButton->setEnabled(true);
+    }
+}
+
+void MainCmd::LoadExtFile()
+{
+    QString filePath = pathExtInput->text();
+    if (!filePath.isEmpty()) {
+        bool result = false;
+        QByteArray jsonData = ReadFileBytearray(filePath, &result);
+        if (result) {
+
+            QJsonParseError parseError;
+            QJsonDocument jsonDocument = QJsonDocument::fromJson(jsonData, &parseError);
+            if ( jsonDocument.isNull() || !jsonDocument.isObject()) {
+                consoleTextEdit->setText("Invalid JSON document!");
+                return;
+            }
+
+            QJsonObject rootObj = jsonDocument.object();
+            if( !rootObj.contains("name") || !rootObj["name"].isString() ) {
+                consoleTextEdit->setText("JSON document must include a required 'name' parameter");
+                return;
+            }
+
+            QString extName = rootObj["name"].toString();
+
+            if(; !rootObj.contains("extensions") || !rootObj["extensions"].isArray() ) {
+                consoleTextEdit->setText("JSON document must include a required 'extensions' parameter");
+                return;
+            }
+
+            QList<QJsonObject> exCommands;
+
+            QJsonArray extensionsArray = rootObj.value("extensions").toArray();
+            for (QJsonValue extensionValue : extensionsArray) {
+                QJsonObject extJsonObject = extensionValue.toObject();
+
+                if( !extJsonObject.contains("type") || !extJsonObject["type"].isString() ) {
+                    consoleTextEdit->setText("Extension must include a required 'type' parameter");
+                    return;
+                }
+
+                QString type = extJsonObject.value("type").toString();
+                if(type == "command") {
+
+                    if( !extJsonObject.contains("agents") || !extJsonObject["agents"].isArray() ) {
+                        consoleTextEdit->setText("Extension must include a required 'agents' parameter");
+                        return;
+                    }
+                    bool result2 = true;
+                    QString msg = ValidExtCommand(extJsonObject, &result2);
+                    if (!result2) {
+                        consoleTextEdit->setText(msg);
+                        return;
+                    }
+
+                    exCommands.push_back(extJsonObject);
+                }
+            }
+
+            result = commander->AddExtCommands(filePath, extName, exCommands);
+            if ( result ) {
+
+            }
+            else {
+                consoleTextEdit->setText(commander->GetError());
+            }
+        }
+    }
+}
+
 void MainCmd::ExecuteCommand()
 {
-    if ( !commander || !commander->IsValid() ) {
+    if ( !commander ) {
         consoleTextEdit->setText("Error: Commands no loaded");
         return;
     }

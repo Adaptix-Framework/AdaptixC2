@@ -25,6 +25,24 @@ struct Command
     QList<Command>  subcommands;
 };
 
+struct ExtCommand
+{
+    QString           name;
+    QString           exec;
+    QString           message;
+    QString           description;
+    QString           example;
+    QList<Argument>   args;
+    QList<ExtCommand> subcommands;
+};
+
+struct ExtModule
+{
+    QString extName;
+    QList<ExtCommand> extCommands;
+};
+
+
 struct CommanderResult
 {
     bool    output;
@@ -35,20 +53,22 @@ struct CommanderResult
 class Commander
 {
     QList<Command> commands;
-    QString        error;
-    bool           valid = false;
+    QMap<QString, ExtModule> extModules;
+    QString error;
 
     Argument        ParseArgument(QString argString);
     CommanderResult ProcessCommand(Command command, QStringList args);
     CommanderResult ProcessHelp(QStringList commandParts);
 
 public:
-    explicit Commander(const QByteArray& data);
+    explicit Commander();
     ~Commander();
 
-    bool            IsValid();
-    QString         GetError();
-    QStringList     GetCommands();
+    bool AddRegCommands(QByteArray jsonData);
+    bool AddExtCommands(QString filepath, QString extName, QList<QJsonObject> extCommands);
+    QString     GetError();
+    QStringList GetCommands();
+    QStringList GetExtCommands();
     CommanderResult ProcessInput(QString input);
 };
 
