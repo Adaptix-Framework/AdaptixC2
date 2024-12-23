@@ -43,6 +43,11 @@ void MainCmd::createUI()
     execButton      = new QPushButton("Execute", this);
     execButton->setEnabled(false);
 
+    model = new QStringListModel();
+    completer = new QCompleter(model, this);
+    completer->setCaseSensitivity(Qt::CaseInsensitive);
+    commandInput->setCompleter(completer);
+
     mainLayout->addWidget(pathRegInput,    0, 0, 1, 1);
     mainLayout->addWidget(selectRegButton, 0, 1, 1, 1);
     mainLayout->addWidget(loadRegButton,   0, 2, 1, 1);
@@ -91,18 +96,17 @@ void MainCmd::LoadRegFile()
         bool result = false;
         QByteArray jsonData = ReadFileBytearray(filePath, &result);
         if (result) {
-            result = commander->AddRegCommands(jsonData);
-            if ( result ) {
+            bool result2 = true;
+            QString msg = ValidCommandsFile(jsonData, &result2);
+            if ( result2 ) {
+                commander->AddRegCommands(jsonData);
                 commandInput->setEnabled(true);
                 execButton->setEnabled(true);
 
-                QStringList commandList = commander->GetCommands();
-                completer = new QCompleter(commandList, this);
-                completer->setCaseSensitivity(Qt::CaseInsensitive);
-                commandInput->setCompleter(completer);
+                model->setStringList(commander->GetCommands());
             }
             else {
-                consoleTextEdit->setText(commander->GetError());
+                consoleTextEdit->setText(msg);
             }
         }
     }
@@ -176,7 +180,7 @@ void MainCmd::LoadExtFile()
 
             result = commander->AddExtCommands(filePath, extName, exCommands);
             if ( result ) {
-
+                model->setStringList(commander->GetCommands());
             }
             else {
                 consoleTextEdit->setText(commander->GetError());

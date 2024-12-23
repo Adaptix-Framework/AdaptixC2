@@ -23,23 +23,13 @@ struct Command
     QString         example;
     QList<Argument> args;
     QList<Command>  subcommands;
-};
-
-struct ExtCommand
-{
-    QString           name;
-    QString           exec;
-    QString           message;
-    QString           description;
-    QString           example;
-    QList<Argument>   args;
-    QList<ExtCommand> subcommands;
+    QString         exec;
 };
 
 struct ExtModule
 {
     QString extName;
-    QList<ExtCommand> extCommands;
+    QList<Command> extCommands;
 };
 
 
@@ -56,6 +46,7 @@ class Commander
     QMap<QString, ExtModule> extModules;
     QString error;
 
+    Command         ParseCommand(QJsonObject jsonObject);
     Argument        ParseArgument(QString argString);
     CommanderResult ProcessCommand(Command command, QStringList args);
     CommanderResult ProcessHelp(QStringList commandParts);
