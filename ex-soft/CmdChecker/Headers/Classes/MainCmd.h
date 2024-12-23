@@ -19,6 +19,7 @@ class MainCmd : public QWidget
     QLineEdit*   pathExtInput    = nullptr;
     QLineEdit*   commandInput    = nullptr;
     QCompleter*  completer       = nullptr;
+    QStringListModel *model      = nullptr;
 
     Commander* commander = nullptr;
 
