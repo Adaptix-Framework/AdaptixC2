@@ -24,6 +24,7 @@ struct Command
     QList<Argument> args;
     QList<Command>  subcommands;
     QString         exec;
+    QString         extPath;
 };
 
 struct ExtModule
@@ -40,6 +41,15 @@ struct CommanderResult
     bool    error;
 };
 
+class BofPacker
+{
+public:
+    QByteArray data;
+    void Pack(QJsonValue jsonValue);
+    void Pack(QString str);
+    QString Build();
+};
+
 class Commander
 {
     QList<Command> commands;
@@ -49,6 +59,7 @@ class Commander
     Command         ParseCommand(QJsonObject jsonObject);
     Argument        ParseArgument(QString argString);
     CommanderResult ProcessCommand(Command command, QStringList args);
+    QString         ProcessExecExtension(QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj);
     CommanderResult ProcessHelp(QStringList commandParts);
 
 public:
@@ -59,7 +70,6 @@ public:
     bool AddExtCommands(QString filepath, QString extName, QList<QJsonObject> extCommands);
     QString     GetError();
     QStringList GetCommands();
-    QStringList GetExtCommands();
     CommanderResult ProcessInput(QString input);
 };
 

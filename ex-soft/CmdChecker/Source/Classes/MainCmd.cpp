@@ -10,9 +10,9 @@ MainCmd::MainCmd()
 
     connect(selectRegButton, &QPushButton::clicked, this, [&](){ SelectRegFile();});
     connect(selectExtButton, &QPushButton::clicked, this, [&](){ SelectExtFile();});
-    connect(loadRegButton, &QPushButton::clicked, this, [&](){ LoadRegFile();});
-    connect(loadExtButton, &QPushButton::clicked, this, [&](){ LoadExtFile();});
-    connect(execButton, &QPushButton::clicked, this, [&](){ExecuteCommand();});
+    connect(loadRegButton,   &QPushButton::clicked, this, [&](){ LoadRegFile();});
+    connect(loadExtButton,   &QPushButton::clicked, this, [&](){ LoadExtFile();});
+    connect(execButton,      &QPushButton::clicked, this, [&](){ExecuteCommand();});
 }
 
 MainCmd::~MainCmd() = default;
@@ -38,9 +38,9 @@ void MainCmd::createUI()
 
     selectRegButton = new QPushButton("Select Reg", this);
     selectExtButton = new QPushButton("Select Ext", this);
-    loadRegButton   = new QPushButton("Load Reg", this);
-    loadExtButton   = new QPushButton("Load Ext", this);
-    execButton      = new QPushButton("Execute", this);
+    loadRegButton   = new QPushButton("Load Reg",   this);
+    loadExtButton   = new QPushButton("Load Ext",   this);
+    execButton      = new QPushButton("Execute",    this);
     execButton->setEnabled(false);
 
     model = new QStringListModel();
@@ -91,6 +91,7 @@ void MainCmd::SelectRegFile()
 
 void MainCmd::LoadRegFile()
 {
+    consoleTextEdit->clear();
     QString filePath = pathRegInput->text();
     if (!filePath.isEmpty()) {
         bool result = false;
@@ -123,6 +124,7 @@ void MainCmd::SelectExtFile()
 
 void MainCmd::LoadExtFile()
 {
+    consoleTextEdit->clear();
     QString filePath = pathExtInput->text();
     if (!filePath.isEmpty()) {
         bool result = false;
@@ -144,7 +146,7 @@ void MainCmd::LoadExtFile()
 
             QString extName = rootObj["name"].toString();
 
-            if(; !rootObj.contains("extensions") || !rootObj["extensions"].isArray() ) {
+            if( !rootObj.contains("extensions") || !rootObj["extensions"].isArray() ) {
                 consoleTextEdit->setText("JSON document must include a required 'extensions' parameter");
                 return;
             }

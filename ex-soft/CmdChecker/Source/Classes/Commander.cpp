@@ -1,5 +1,52 @@
 #include <Classes/Commander.h>
 
+#define AGENT_ARCH "x64"
+#define EXT_PATH   "/home/test"
+
+void BofPacker::Pack(QJsonValue jsonValue)
+{
+    if(jsonValue.isString()) {
+
+        QString str = jsonValue.toString();
+
+        QByteArray strLengthData;
+        int strLength = str.length() + 1;
+        strLengthData.append(reinterpret_cast<const char*>(&strLength), sizeof(strLength));
+
+        data.append(strLengthData);
+        data.append(str.toUtf8());
+    }
+    else if(jsonValue.isDouble()) {
+        int num = jsonValue.toDouble();
+        QByteArray numData;
+        numData.append(reinterpret_cast<const char*>(&num), sizeof(num));
+
+        data.append(numData);
+    }
+}
+
+void BofPacker::Pack(QString str)
+{
+    QByteArray strLengthData;
+    int strLength = str.size() + 1;
+    strLengthData.append(reinterpret_cast<const char*>(&strLength), sizeof(strLength));
+
+    data.append(strLengthData);
+    data.append(str.toUtf8());
+}
+
+QString BofPacker::Build()
+{
+    QByteArray strLengthData;
+    int strLength = data.size();
+    strLengthData.append(reinterpret_cast<const char*>(&strLength), sizeof(strLength));
+
+    strLengthData.append(data);
+    return strLengthData.toBase64();
+}
+
+
+
 Commander::Commander(){}
 
 Commander::~Commander() = default;
@@ -25,11 +72,14 @@ bool Commander::AddRegCommands(QByteArray jsonData)
 
 bool Commander::AddExtCommands(QString filepath, QString extName, QList<QJsonObject> extCommands)
 {
+    QFileInfo fi(filepath);
+    QString dirPath = fi.absolutePath();
+
     QList<Command> commandsList;
 
     for (QJsonObject jsonObject : extCommands) {
-
         Command extCmd = this->ParseCommand(jsonObject);
+        extCmd.extPath = dirPath;
         commandsList.append(extCmd);
     }
 
@@ -57,7 +107,7 @@ Command Commander::ParseCommand(QJsonObject jsonObject)
             subCmd.message     = subCmdObj["message"].toString();
             subCmd.description = subCmdObj["description"].toString();
             subCmd.example     = subCmdObj["example"].toString();
-            subCmd.exec        = jsonObject["exec"].toString();
+            subCmd.exec        = subCmdObj["exec"].toString();
 
             QJsonArray subArgsArray = subCmdObj["args"].toArray();
             for (QJsonValue subArgVal : subArgsArray) {
@@ -165,11 +215,22 @@ CommanderResult Commander::ProcessInput(QString input)
         }
     }
 
+    for ( auto extMod : extModules ) {
+        for (Command command : extMod.extCommands) {
+            if (command.name == commandName) {
+                return ProcessCommand(command, parts);
+            }
+        }
+    }
+
     return CommanderResult{true, "Command not found", true};
 }
 
 CommanderResult Commander::ProcessCommand(Command command, QStringList args)
 {
+    QString execStr = "";
+    QList<Argument> execArgs;
+
     QJsonObject jsonObj;
     jsonObj["command"] = command.name;
 
@@ -242,7 +303,7 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
             } else if (commandArg.required) {
                 if (commandArg.defaultValue.isEmpty()) {
                     return CommanderResult{true, "Missing required argument: " + commandArg.name, true };
-                } else {                                                                                                            // added default args
+                } else {
                     if (commandArg.type == "STRING") {
                         jsonObj[commandArg.name] = commandArg.defaultValue;
                     } else if (commandArg.type == "INT") {
@@ -276,6 +337,9 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
             }
             jsonObj["message"] = msg;
         }
+
+        execStr = command.exec;
+        execArgs = command.args;
     }
     else {
         if ( args.isEmpty() )
@@ -352,7 +416,7 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
                     } else if (subArg.required) {
                         if (subArg.defaultValue.isEmpty()) {
                             return CommanderResult{true, "Missing required argument for subcommand: " + subArg.name, true };
-                        } else {                                                                                                            // added default args
+                        } else {
                             if (subArg.type == "STRING") {
                                 jsonObj[subArg.name] = subArg.defaultValue;
                             } else if (subArg.type == "INT") {
@@ -387,14 +451,92 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
                     jsonObj["message"] = msg;
                 }
 
+                execStr  = subcommand.exec;
+                execArgs = subcommand.args;
+
                 break;
             }
         }
     }
 
+    if( !execStr.isEmpty() ) {
+        QString newInput = this->ProcessExecExtension(command.extPath, execStr, execArgs, jsonObj);
+        CommanderResult execCommandResult = this->ProcessInput(newInput);
+        if( !execCommandResult.error ) {
+            QJsonParseError parseError;
+            QJsonDocument document = QJsonDocument::fromJson(execCommandResult.message.toUtf8(), &parseError);
+            QJsonObject jsonObject = document.object();
+            jsonObject["message"] = jsonObj["message"];
+            QJsonDocument jsonDoc(jsonObject);
+            execCommandResult.message = jsonDoc.toJson();
+        }
+        return execCommandResult;
+    }
+
     QJsonDocument jsonDoc(jsonObj);
     return CommanderResult{false, jsonDoc.toJson(), false };
 }
+
+QString Commander::ProcessExecExtension(QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
+{
+    // ARCH
+
+    ExecString = ExecString.replace("$ARCH()", AGENT_ARCH, Qt::CaseSensitive);
+
+    // $EXT_DIR
+
+    ExecString = ExecString.replace("$EXT_DIR()", filepath, Qt::CaseSensitive);
+
+    // BOF_PACK
+
+    int offset = 0;
+    QRegularExpression packRegex(R"(\$PACK_BOF\s*\(([^)]*)\))");
+    QRegularExpressionMatchIterator iter = packRegex.globalMatch(ExecString);
+
+    while (iter.hasNext()) {
+        QRegularExpressionMatch match = iter.next();
+        QString packContent = match.captured(1); // Содержимое внутри скобок $PACK(...)
+
+        QRegularExpression paramRegex(R"(\{\s*([^}]*)\s*\}|([^,\s][^,]*[^,\s]))");
+        QRegularExpressionMatchIterator it = paramRegex.globalMatch(packContent);
+
+        BofPacker packer;
+        while (it.hasNext()) {
+            QRegularExpressionMatch paramMatch = it.next();
+            if (!paramMatch.captured(1).isEmpty()) {
+                QString str = paramMatch.captured(1);
+                if( jsonObj.contains(str) )
+                    packer.Pack(jsonObj[str]);
+            } else if (!paramMatch.captured(2).isEmpty()) {
+                QString str = paramMatch.captured(2);
+                packer.Pack(str);
+            }
+        }
+        QString bofParam = packer.Build();
+
+        ExecString.replace(match.capturedStart() + offset, match.capturedLength(), bofParam);
+        offset += bofParam.length() - match.capturedLength();
+    }
+
+    // Arguments
+
+    offset = 0;
+    QRegularExpression remainingArgsRegex(R"(\{\s*([^}]*)\s*\})");
+    QRegularExpressionMatchIterator remainingIt = remainingArgsRegex.globalMatch(ExecString);
+
+    while (remainingIt.hasNext()) {
+        QRegularExpressionMatch remainingMatch = remainingIt.next();
+        QString paramName = remainingMatch.captured(1).trimmed();
+        if( jsonObj.contains(paramName) && jsonObj[paramName].isString() ){
+            QString paramValue = jsonObj[paramName].toString();
+            ExecString.replace(remainingMatch.capturedStart() + offset, remainingMatch.capturedLength(), paramValue);
+            offset += paramValue.length() - remainingMatch.capturedLength();
+        }
+    }
+
+    return ExecString;
+}
+
 
 QString Commander::GetError()
 {
