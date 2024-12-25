@@ -39,12 +39,15 @@ void ConsoleWidget::createUI()
     MainGridLayout->addWidget( OutputTextEdit, 0, 0, 1, 2);
     MainGridLayout->addWidget( InfoLabel, 2, 0, 1, 2);
 
+    completerModel = new QStringListModel();
+    CommandCompleter = new QCompleter(completerModel, this);
+    CommandCompleter->popup()->setObjectName("Completer");
+    CommandCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+    InputLineEdit->setCompleter(CommandCompleter);
+
     if (commander) {
         QStringList commandList = commander->GetCommands();
-        CommandCompleter = new QCompleter(commandList, this);
-        CommandCompleter->popup()->setObjectName("Completer");
-        CommandCompleter->setCaseSensitivity(Qt::CaseInsensitive);
-        InputLineEdit->setCompleter(CommandCompleter);
+        completerModel->setStringList(commander->GetCommands());
     }
 
     connect( InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput );

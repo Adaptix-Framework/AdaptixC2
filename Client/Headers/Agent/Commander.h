@@ -23,12 +23,16 @@ struct Command
     QString         example;
     QList<Argument> args;
     QList<Command>  subcommands;
+    QString         exec;
+    QString         extPath;
 };
 
-struct ExtenderCommand
+struct ExtModule
 {
-
+    QString extName;
+    QList<Command> extCommands;
 };
+
 
 struct CommanderResult
 {
@@ -37,23 +41,35 @@ struct CommanderResult
     bool    error;
 };
 
+class BofPacker
+{
+public:
+    QByteArray data;
+    void Pack(QJsonValue jsonValue);
+    void Pack(QString str);
+    QString Build();
+};
+
 class Commander
 {
     QList<Command> commands;
-    QString        error;
-    bool           valid = false;
+    QMap<QString, ExtModule> extModules;
+    QString error;
 
+    Command         ParseCommand(QJsonObject jsonObject);
     Argument        ParseArgument(QString argString);
     CommanderResult ProcessCommand(Command command, QStringList args);
+    QString         ProcessExecExtension(QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj);
     CommanderResult ProcessHelp(QStringList commandParts);
 
 public:
-    explicit Commander(const QByteArray& data);
+    explicit Commander();
     ~Commander();
 
-    bool            IsValid();
-    QString         GetError();
-    QStringList     GetCommands();
+    bool AddRegCommands(QByteArray jsonData);
+    bool AddExtCommands(QString filepath, QString extName, QList<QJsonObject> extCommands);
+    QString GetError();
+    QStringList GetCommands();
     CommanderResult ProcessInput(QString input);
 };
 

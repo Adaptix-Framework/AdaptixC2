@@ -14,12 +14,13 @@
 
 class ConsoleWidget : public QWidget
 {
-    QGridLayout* MainGridLayout   = nullptr;
-    QLabel*      CmdLabel         = nullptr;
-    QLabel*      InfoLabel        = nullptr;
-    QLineEdit*   InputLineEdit    = nullptr;
-    QTextEdit*   OutputTextEdit   = nullptr;
-    QCompleter*  CommandCompleter = nullptr;
+    QGridLayout* MainGridLayout      = nullptr;
+    QLabel*      CmdLabel            = nullptr;
+    QLabel*      InfoLabel           = nullptr;
+    QLineEdit*   InputLineEdit       = nullptr;
+    QTextEdit*   OutputTextEdit      = nullptr;
+    QCompleter*  CommandCompleter    = nullptr;
+    QStringListModel* completerModel = nullptr;
 
     Agent*     agent     = nullptr;
     Commander* commander = nullptr;

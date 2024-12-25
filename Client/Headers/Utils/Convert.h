@@ -8,7 +8,15 @@
 #include <QIcon>
 #include <QPainter>
 
+#include <main.h>
+
 bool IsValidURI(const QString &uri);
+
+QString ValidCommandsFile(QByteArray jsonData, bool* result);
+
+QString ValidCommand(QJsonObject extJsonObject, bool* result);
+
+QString ValidExtCommand(QJsonObject extJsonObject, bool* result);
 
 QString UnixTimestampGlobalToStringLocal(qint64 timestamp);
 
