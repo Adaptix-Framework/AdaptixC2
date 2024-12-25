@@ -34,7 +34,7 @@ void Extender::LoadFromFile(QString path, bool enabled)
     if (!file.open(QIODevice::ReadOnly)) {
         extensionFile.Comment = "File not readed";
         extensionFile.Enabled = false;
-        extensionFile.Valid = false;
+        extensionFile.Valid   = false;
         goto END;
     }
     fileContent = QString(file.readAll());
@@ -44,7 +44,7 @@ void Extender::LoadFromFile(QString path, bool enabled)
     if ( jsonDocument.isNull() || !jsonDocument.isObject()) {
         extensionFile.Comment = "Invalid JSON document!";
         extensionFile.Enabled = false;
-        extensionFile.Valid = false;
+        extensionFile.Valid   = false;
         goto END;
     }
 
@@ -52,14 +52,14 @@ void Extender::LoadFromFile(QString path, bool enabled)
     if( !rootObj.contains("name") && rootObj["name"].isString() ) {
         extensionFile.Comment = "JSON document must include a required 'name' parameter";
         extensionFile.Enabled = false;
-        extensionFile.Valid = false;
+        extensionFile.Valid   = false;
         goto END;
     }
 
     if( !rootObj.contains("extensions") && rootObj["extensions"].isArray() ) {
         extensionFile.Comment = "JSON document must include a required 'extensions' parameter";
         extensionFile.Enabled = false;
-        extensionFile.Valid = false;
+        extensionFile.Valid   = false;
         goto END;
     }
 
@@ -73,7 +73,7 @@ void Extender::LoadFromFile(QString path, bool enabled)
         if( !extJsonObject.contains("type") && extJsonObject["type"].isString() ) {
             extensionFile.Comment = "Extension must include a required 'type' parameter";
             extensionFile.Enabled = false;
-            extensionFile.Valid = false;
+            extensionFile.Valid   = false;
             goto END;
         }
 
@@ -83,7 +83,7 @@ void Extender::LoadFromFile(QString path, bool enabled)
             if( !extJsonObject.contains("agents") && extJsonObject["agents"].isArray() ) {
                 extensionFile.Comment = "Extension must include a required 'agents' parameter";
                 extensionFile.Enabled = false;
-                extensionFile.Valid = false;
+                extensionFile.Valid   = false;
                 goto END;
             }
 
@@ -92,15 +92,23 @@ void Extender::LoadFromFile(QString path, bool enabled)
                 agentsList.push_back(agentStr.toString());
             }
 
-            // Commander validate
+            bool result = true;
+            QString msg = ValidExtCommand(extJsonObject, &result);
+            if (!result) {
+                extensionFile.Comment = msg;
+                extensionFile.Enabled = false;
+                extensionFile.Valid   = false;
+                goto END;
+            }
 
             for(QString key : agentsList) {
                 exCommands[key].push_back(extJsonObject);
             }
+
         } else {
             extensionFile.Comment = "Unknown extension type";
             extensionFile.Enabled = false;
-            extensionFile.Valid = false;
+            extensionFile.Valid   = false;
             goto END;
         }
     }

@@ -62,8 +62,6 @@ void MainAdaptix::SetApplicationTheme()
     QApplication::setFont( Font );
 
     QString theme = ":/themes/Dark";
-//    QString theme = ":/themes/Arc (Light)";
-//    QString theme = ":/themes/Nord";
 
     bool result = false;
     QString style = ReadFileString(theme, &result);

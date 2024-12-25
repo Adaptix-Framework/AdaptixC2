@@ -670,10 +670,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         if(widgetBuilder->GetError().isEmpty())
             RegisterAgentsUI[agentName] = widgetBuilder;
 
-        auto commander = new Commander(cmd.toLocal8Bit());
-        if ( commander->IsValid())
-            RegisterAgentsCmd[agentName] = commander;
+        auto commander = new Commander();
+        bool result = true;
+        QString msg = ValidCommandsFile(cmd.toLocal8Bit(), &result);
+        if ( result )
+            commander->AddRegCommands(cmd.toLocal8Bit());
 
+        RegisterAgentsCmd[agentName] = commander;
         LinkListenerAgent[listenerName].push_back(agentName);
         return;
     }

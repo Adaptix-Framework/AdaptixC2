@@ -48,6 +48,7 @@
 #include <QClipboard>
 #include <QSplashScreen>
 #include <QStyledItemDelegate>
+#include <QStringListModel>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>

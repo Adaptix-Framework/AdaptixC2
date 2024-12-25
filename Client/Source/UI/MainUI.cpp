@@ -37,13 +37,20 @@ MainUI::~MainUI()
     delete mainWidget;
 }
 
-void MainUI::addNewProject(AuthProfile* profile)
-{
-    mainWidget = new AdaptixWidget(profile);
-    this->setCentralWidget(mainWidget);
-}
-
 void MainUI::onExtender()
 {
     GlobalClient->extender->dialogExtender->show();
+}
+
+void MainUI::addNewProject(AuthProfile* profile)
+{
+    mainWidget = new AdaptixWidget(profile);
+
+    this->setCentralWidget(mainWidget);
+}
+
+
+
+void MainUI::addNewExtension(ExtensionFile extFile) {
+
 }

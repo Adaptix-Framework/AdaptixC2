@@ -13,8 +13,10 @@ public:
     explicit MainUI();
     ~MainUI();
 
-    void addNewProject(AuthProfile* profile);
     void onExtender();
+
+    void addNewProject(AuthProfile* profile);
+    void addNewExtension(ExtensionFile extFile);
 };
 
 #endif //ADAPTIXCLIENT_MAINUI_H
