@@ -5,7 +5,13 @@ ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
 {
     agent     = a;
     commander = c;
+
     this->createUI();
+    this->UpgradeCompleter();
+
+    connect( InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput );
+
+    InputLineEdit->installEventFilter(this);
 }
 
 ConsoleWidget::~ConsoleWidget() {}
@@ -44,15 +50,6 @@ void ConsoleWidget::createUI()
     CommandCompleter->popup()->setObjectName("Completer");
     CommandCompleter->setCaseSensitivity(Qt::CaseInsensitive);
     InputLineEdit->setCompleter(CommandCompleter);
-
-    if (commander) {
-        QStringList commandList = commander->GetCommands();
-        completerModel->setStringList(commander->GetCommands());
-    }
-
-    connect( InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput );
-
-    InputLineEdit->installEventFilter(this);
 }
 
 void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, QString taskId, int type, QString message, QString text, bool completed )
@@ -138,7 +135,7 @@ void ConsoleWidget::processInput()
     history.prepend(commandLine);
     historyIndex = -1;
 
-    auto cmdResult = commander->ProcessInput(commandLine );
+    auto cmdResult = commander->ProcessInput( agent->data, commandLine );
     if ( cmdResult.output ) {
         QString message = "";
         QString text    = "";
@@ -205,5 +202,12 @@ bool ConsoleWidget::eventFilter(QObject *watched, QEvent *event)
     }
 
     return QWidget::eventFilter(watched, event);
+}
+
+void ConsoleWidget::UpgradeCompleter()
+{
+    if (commander) {
+        completerModel->setStringList(commander->GetCommands());
+    }
 }
 

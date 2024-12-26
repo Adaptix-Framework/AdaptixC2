@@ -43,7 +43,8 @@ Q_OBJECT
     QSpacerItem*    horizontalSpacer1 = nullptr;
     QStackedWidget* mainStackedWidget = nullptr;
 
-    AuthProfile*      profile;
+    bool              synchronized     = false;
+    AuthProfile*      profile          = nullptr;
     DialogSyncPacket* dialogSyncPacket = nullptr;
 
     void createUI();
@@ -70,19 +71,26 @@ public:
     QVector<QString>              TasksVector;
     QMap<QString, TaskData>       TasksMap;
     QMap<QString, Agent*>         Agents;
+    QMap<QString, ExtensionFile>  Extensions;
 
     explicit AdaptixWidget(AuthProfile* authProfile);
     ~AdaptixWidget();
 
     AuthProfile* GetProfile();
-    void         ClearAdaptix();
-    void         AddTab(QWidget* tab, QString title, QString icon = "" );
-    void         RemoveTab(int index);
+    void ClearAdaptix();
+    void AddTab(QWidget* tab, QString title, QString icon = "" );
+    void RemoveTab(int index);
+    void AddExtension(ExtensionFile ext);
+    void RemoveExtension(ExtensionFile ext);
+
+signals:
+    void SyncedSignal();
 
 public slots:
     void ChannelClose();
     void DataHandler(const QByteArray& data);
 
+    void OnSynced();
     void SetSessionsTableUI();
     void SetTasksUI();
     void LoadLogsUI();

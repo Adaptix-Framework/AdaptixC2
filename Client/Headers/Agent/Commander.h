@@ -58,8 +58,8 @@ class Commander
 
     Command         ParseCommand(QJsonObject jsonObject);
     Argument        ParseArgument(QString argString);
-    CommanderResult ProcessCommand(Command command, QStringList args);
-    QString         ProcessExecExtension(QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj);
+    CommanderResult ProcessCommand(AgentData agentData, Command command, QStringList args);
+    QString         ProcessExecExtension(AgentData agentData, QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj);
     CommanderResult ProcessHelp(QStringList commandParts);
 
 public:
@@ -68,9 +68,10 @@ public:
 
     bool AddRegCommands(QByteArray jsonData);
     bool AddExtCommands(QString filepath, QString extName, QList<QJsonObject> extCommands);
+    void RemoveExtCommands(QString filepath);
     QString GetError();
     QStringList GetCommands();
-    CommanderResult ProcessInput(QString input);
+    CommanderResult ProcessInput(AgentData agentData, QString input);
 };
 
 #endif //ADAPTIXCLIENT_COMMANDER_H

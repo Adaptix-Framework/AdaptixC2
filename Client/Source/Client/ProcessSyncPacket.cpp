@@ -390,7 +390,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         dialogSyncPacket->upgrade();
     }
 
-
     if( spType == TYPE_SYNC_START )
     {
         int count = jsonObj["count"].toDouble();
@@ -407,6 +406,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             dialogSyncPacket = nullptr;
 
             this->setEnabled(true);
+
+            emit this->SyncedSignal();
         }
         return;
     }

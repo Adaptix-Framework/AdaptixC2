@@ -1,7 +1,6 @@
 #include <Classes/Commander.h>
 
 #define AGENT_ARCH "x64"
-#define EXT_PATH   "/home/test"
 
 void BofPacker::Pack(QJsonValue jsonValue)
 {
@@ -96,6 +95,7 @@ Command Commander::ParseCommand(QJsonObject jsonObject)
     cmd.message     = jsonObject["message"].toString();
     cmd.description = jsonObject["description"].toString();
     cmd.example     = jsonObject["example"].toString();
+    cmd.exec        = jsonObject["exec"].toString();
 
     if (jsonObject.contains("subcommands")) {
         QJsonArray subcommandArray = jsonObject["subcommands"].toArray();
@@ -118,8 +118,6 @@ Command Commander::ParseCommand(QJsonObject jsonObject)
             cmd.subcommands.append(subCmd);
         }
     } else if (jsonObject.contains("args")) {
-
-        cmd.exec = jsonObject["exec"].toString();
         QJsonArray argsArray = jsonObject["args"].toArray();
         for (QJsonValue argVal : argsArray) {
             Argument arg = ParseArgument(argVal.toString());

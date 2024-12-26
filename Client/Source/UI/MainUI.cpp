@@ -42,15 +42,30 @@ void MainUI::onExtender()
     GlobalClient->extender->dialogExtender->show();
 }
 
-void MainUI::addNewProject(AuthProfile* profile)
+void MainUI::AddNewProject(AuthProfile* profile)
 {
     mainWidget = new AdaptixWidget(profile);
+
+    for (auto extFile : GlobalClient->extender->extenderFiles){
+        if(extFile.Valid && extFile.Enabled)
+            this->AddNewExtension(extFile);
+    }
 
     this->setCentralWidget(mainWidget);
 }
 
+void MainUI::AddNewExtension(ExtensionFile extFile)
+{
+    if (mainWidget) {
+        auto adaptixWidget = qobject_cast<AdaptixWidget *>(mainWidget);
+        adaptixWidget->AddExtension(extFile);
+    }
+}
 
-
-void MainUI::addNewExtension(ExtensionFile extFile) {
-
+void MainUI::RemoveExtension(ExtensionFile extFile)
+{
+    if (mainWidget) {
+        auto adaptixWidget = qobject_cast<AdaptixWidget *>(mainWidget);
+        adaptixWidget->RemoveExtension(extFile);
+    }
 }

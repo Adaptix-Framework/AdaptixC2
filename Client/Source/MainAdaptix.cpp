@@ -8,6 +8,7 @@ MainAdaptix::MainAdaptix()
 
     this->SetApplicationTheme();
 
+    mainUI   = new MainUI;
     extender = new Extender(this);
 }
 
@@ -38,9 +39,8 @@ void MainAdaptix::Start()
 
     } while( !result );
 
-    mainUI = new MainUI;
     mainUI->showMaximized();
-    mainUI->addNewProject( authProfile );
+    mainUI->AddNewProject(authProfile);
 
     QApplication::exec();
 }
