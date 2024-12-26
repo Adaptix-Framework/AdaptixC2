@@ -24,7 +24,6 @@ void Extender::LoadFromFile(QString path, bool enabled)
     QJsonDocument jsonDocument;
     QJsonArray    extensionsArray;
     QJsonArray    agentsArray;
-    QStringList   agentsList;
     QMap<QString, QVector<QJsonObject> > exCommands;
 
     ExtensionFile extensionFile = {0};
@@ -79,6 +78,7 @@ void Extender::LoadFromFile(QString path, bool enabled)
 
         QString type = extJsonObject.value("type").toString();
         if(type == "command") {
+            QStringList agentsList;
 
             if( !extJsonObject.contains("agents") && extJsonObject["agents"].isArray() ) {
                 extensionFile.Comment = "Extension must include a required 'agents' parameter";
@@ -126,21 +126,20 @@ void Extender::SetExtension(ExtensionFile extFile)
 {
     if(extenderFiles.contains(extFile.FilePath)) {
         if( extFile.Valid && extFile.Enabled ) {
-///        mainAdaptix->mainUI-> //  remove extension + add extension
+            mainAdaptix->mainUI->RemoveExtension(extFile);
+            mainAdaptix->mainUI->AddNewExtension(extFile);
         }
         dialogExtender->UpdateExtenderItem(extFile);
         mainAdaptix->storage->UpdateExtension(extFile);
     }
     else {
         extenderFiles[extFile.FilePath] = extFile;
-        if( extFile.Valid && extFile.Enabled ) {
-///        mainAdaptix->mainUI-> //  add extension to commander
-        }
+        if( extFile.Valid && extFile.Enabled )
+            mainAdaptix->mainUI->AddNewExtension(extFile);
 
         dialogExtender->AddExtenderItem(extFile);
-        if( !mainAdaptix->storage->ExistsExtension(extFile.FilePath)) {
+        if( !mainAdaptix->storage->ExistsExtension(extFile.FilePath))
             mainAdaptix->storage->AddExtension(extFile);
-        }
     }
 }
 
@@ -151,7 +150,7 @@ void Extender::EnableExtension(QString path)
 
     if( extenderFiles[path].Valid && !extenderFiles[path].Enabled ) {
         extenderFiles[path].Enabled = true;
-///        mainAdaptix->mainUI-> //  add extension to commander
+        mainAdaptix->mainUI->AddNewExtension(extenderFiles[path]);
         dialogExtender->UpdateExtenderItem(extenderFiles[path]);
         mainAdaptix->storage->UpdateExtension(extenderFiles[path]);
     }
@@ -164,7 +163,7 @@ void Extender::DisableExtension(QString path)
 
     if( extenderFiles[path].Valid && extenderFiles[path].Enabled ) {
         extenderFiles[path].Enabled = false;
-        ///        mainAdaptix->mainUI-> //  remove extension
+        mainAdaptix->mainUI->RemoveExtension(extenderFiles[path]);
         dialogExtender->UpdateExtenderItem(extenderFiles[path]);
         mainAdaptix->storage->UpdateExtension(extenderFiles[path]);
     }
@@ -175,7 +174,7 @@ void Extender::RemoveExtension(QString path)
     if( !extenderFiles.contains(path) )
         return;
 
-    ///        mainAdaptix->mainUI-> //  remove extension
+    mainAdaptix->mainUI->RemoveExtension(extenderFiles[path]);
     dialogExtender->RemoveExtenderItem(extenderFiles[path]);
     mainAdaptix->storage->RemoveExtension(path);
 }

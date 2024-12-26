@@ -86,6 +86,12 @@ bool Commander::AddExtCommands(QString filepath, QString extName, QList<QJsonObj
     return true;
 }
 
+void Commander::RemoveExtCommands(QString filepath)
+{
+    extModules.remove(filepath);
+}
+
+
 Command Commander::ParseCommand(QJsonObject jsonObject)
 {
     Command cmd;
@@ -93,6 +99,7 @@ Command Commander::ParseCommand(QJsonObject jsonObject)
     cmd.message     = jsonObject["message"].toString();
     cmd.description = jsonObject["description"].toString();
     cmd.example     = jsonObject["example"].toString();
+    cmd.exec        = jsonObject["exec"].toString();
 
     if (jsonObject.contains("subcommands")) {
         QJsonArray subcommandArray = jsonObject["subcommands"].toArray();
@@ -116,7 +123,6 @@ Command Commander::ParseCommand(QJsonObject jsonObject)
         }
     } else if (jsonObject.contains("args")) {
 
-        cmd.exec = jsonObject["exec"].toString();
         QJsonArray argsArray = jsonObject["args"].toArray();
         for (QJsonValue argVal : argsArray) {
             Argument arg = ParseArgument(argVal.toString());
@@ -181,7 +187,7 @@ Argument Commander::ParseArgument(QString argString)
     return arg;
 }
 
-CommanderResult Commander::ProcessInput(QString input)
+CommanderResult Commander::ProcessInput(AgentData agentData, QString input)
 {
     QStringList parts;
     QRegularExpression regex(R"((?:\"((?:\\.|[^\"\\])*)\"|(\S+)))");
@@ -208,14 +214,14 @@ CommanderResult Commander::ProcessInput(QString input)
 
     for (Command command : commands) {
         if (command.name == commandName) {
-            return ProcessCommand(command, parts);
+            return ProcessCommand(agentData, command, parts);
         }
     }
 
     for ( auto extMod : extModules ) {
         for (Command command : extMod.extCommands) {
             if (command.name == commandName) {
-                return ProcessCommand(command, parts);
+                return ProcessCommand(agentData, command, parts);
             }
         }
     }
@@ -223,7 +229,7 @@ CommanderResult Commander::ProcessInput(QString input)
     return CommanderResult{true, "Command not found", true};
 }
 
-CommanderResult Commander::ProcessCommand(Command command, QStringList args)
+CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, QStringList args)
 {
     QString execStr = "";
     QList<Argument> execArgs;
@@ -457,8 +463,8 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
     }
 
     if( !execStr.isEmpty() ) {
-        QString newInput = this->ProcessExecExtension(command.extPath, execStr, execArgs, jsonObj);
-        CommanderResult execCommandResult = this->ProcessInput(newInput);
+        QString newInput = this->ProcessExecExtension( agentData, command.extPath, execStr, execArgs, jsonObj);
+        CommanderResult execCommandResult = this->ProcessInput(agentData, newInput);
         if( !execCommandResult.error ) {
             QJsonParseError parseError;
             QJsonDocument document = QJsonDocument::fromJson(execCommandResult.message.toUtf8(), &parseError);
@@ -474,11 +480,11 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
     return CommanderResult{false, jsonDoc.toJson(), false };
 }
 
-QString Commander::ProcessExecExtension(QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
+QString Commander::ProcessExecExtension(AgentData agentData, QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
 {
     // ARCH
 
-//    ExecString = ExecString.replace("$ARCH()", AGENT_ARCH, Qt::CaseSensitive);
+    ExecString = ExecString.replace("$ARCH()", agentData.Arch, Qt::CaseSensitive);
 
     // $EXT_DIR
 

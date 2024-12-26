@@ -37,6 +37,8 @@ public:
     explicit ConsoleWidget(Agent* a, Commander* c);
     ~ConsoleWidget();
 
+    void UpgradeCompleter();
+
     void ConsoleOutputMessage( qint64 timestamp, QString taskId, int type, QString message, QString text, bool completed );
     void ConsoleOutputPrompt( qint64 timestamp, QString taskId, QString user, QString commandLine );
 

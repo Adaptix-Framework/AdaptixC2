@@ -27,6 +27,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     TickWorker = new LastTickWorker( this );
     TickWorker->moveToThread( TickThread );
 
+    connect( this, &AdaptixWidget::SyncedSignal, this, &AdaptixWidget::OnSynced);
+
     connect( logsButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
     connect( sessionsButton,  &QPushButton::clicked, this, &AdaptixWidget::SetSessionsTableUI);
@@ -247,6 +249,70 @@ void AdaptixWidget::RemoveTab(int index)
         mainVSplitter->setSizes(QList<int>() << 0);
     else if (mainTabWidget->count() == 1)
         mainTabWidget->setMovable(false);
+}
+
+void AdaptixWidget::AddExtension(ExtensionFile ext)
+{
+    if( Extensions.contains(ext.FilePath) )
+        return;
+
+    Extensions[ext.FilePath] = ext;
+
+    if( !synchronized )
+        return;
+
+    for (QString agentName : ext.ExCommands.keys()) {
+        if ( RegisterAgentsCmd.contains(agentName) ) {
+            Commander* commander = RegisterAgentsCmd[agentName];
+            bool result = commander->AddExtCommands(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
+            if (result) {
+                for( auto agent : Agents ){
+                    if( agent && agent->Console )
+                        agent->Console->UpgradeCompleter();
+                }
+            }
+        }
+    }
+}
+
+void AdaptixWidget::RemoveExtension(ExtensionFile ext)
+{
+    Extensions.remove(ext.FilePath);
+
+    for (QString agentName : ext.ExCommands.keys()) {
+        if ( RegisterAgentsCmd.contains(agentName) ) {
+            Commander* commander = RegisterAgentsCmd[agentName];
+            commander->RemoveExtCommands(ext.FilePath);
+            for( auto agent : Agents ){
+                if( agent && agent->Console )
+                    agent->Console->UpgradeCompleter();
+            }
+        }
+    }
+}
+
+
+
+/// SLOTS
+
+void AdaptixWidget::OnSynced()
+{
+    synchronized = true;
+
+    for (auto ext : Extensions) {
+        for (QString agentName : ext.ExCommands.keys()) {
+            if ( RegisterAgentsCmd.contains(agentName) ) {
+                Commander* commander = RegisterAgentsCmd[agentName];
+                bool result = commander->AddExtCommands(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
+                if (result) {
+                    for( auto agent : Agents ){
+                        if( agent && agent->Console )
+                            agent->Console->UpgradeCompleter();
+                    }
+                }
+            }
+        }
+    }
 }
 
 void AdaptixWidget::SetSessionsTableUI()

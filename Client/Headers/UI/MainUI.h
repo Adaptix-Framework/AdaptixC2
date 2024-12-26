@@ -15,8 +15,9 @@ public:
 
     void onExtender();
 
-    void addNewProject(AuthProfile* profile);
-    void addNewExtension(ExtensionFile extFile);
+    void AddNewProject(AuthProfile* profile);
+    void AddNewExtension(ExtensionFile extFile);
+    void RemoveExtension(ExtensionFile extFile);
 };
 
 #endif //ADAPTIXCLIENT_MAINUI_H

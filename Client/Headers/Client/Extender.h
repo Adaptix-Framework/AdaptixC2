@@ -12,13 +12,12 @@ class Extender
 {
     MainAdaptix* mainAdaptix = nullptr;
 
-    QMap<QString, ExtensionFile> extenderFiles;
-
 public:
     Extender(MainAdaptix* m);
     ~Extender();
 
     DialogExtender* dialogExtender = nullptr;
+    QMap<QString, ExtensionFile> extenderFiles;
 
     void LoadFromDB();
     void LoadFromFile(QString path, bool enabled);
