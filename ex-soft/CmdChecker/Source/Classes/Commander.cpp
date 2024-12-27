@@ -1,37 +1,94 @@
 #include <Classes/Commander.h>
 
-#define AGENT_ARCH "x64"
-
-void BofPacker::Pack(QJsonValue jsonValue)
+void BofPacker::Pack(QString type, QJsonValue jsonValue)
 {
-    if(jsonValue.isString()) {
+    if (type == "CSTR") {
+        if (!jsonValue.isString())
+            return;
+
+        QByteArray valueData = jsonValue.toString().toUtf8();
+        valueData.append('\0');
+
+        QByteArray valueLengthData;
+        int strLength = valueData.size();
+        valueLengthData.append(reinterpret_cast<const char*>(&strLength), sizeof(strLength));
+
+        data.append(valueLengthData);
+        data.append(valueData);
+    }
+    else if (type == "WSTR") {
+        if (!jsonValue.isString())
+            return;
 
         QString str = jsonValue.toString();
+        const char16_t* utf16Data = reinterpret_cast<const char16_t*>(str.utf16());
+        int utf16Length = str.size() + 1;
+
+        QByteArray strData;
+        strData.append(reinterpret_cast<const char*>(utf16Data), utf16Length * sizeof(char16_t));
 
         QByteArray strLengthData;
-        int strLength = str.length() + 1;
+        int strLength = utf16Length * sizeof(char16_t);
         strLengthData.append(reinterpret_cast<const char*>(&strLength), sizeof(strLength));
 
         data.append(strLengthData);
-        data.append(str.toUtf8());
+        data.append(strData);
     }
-    else if(jsonValue.isDouble()) {
-        int num = jsonValue.toDouble();
-        QByteArray numData;
-        numData.append(reinterpret_cast<const char*>(&num), sizeof(num));
+    else if (type == "INT") {
+        if (jsonValue.isString()) {
+            bool ok;
+            int num = jsonValue.toString().toInt(&ok);
+            if (!ok)
+                return;
 
-        data.append(numData);
+            QByteArray numData;
+            numData.append(reinterpret_cast<const char*>(&num), sizeof(num));
+            data.append(numData);
+        }
+        else if (jsonValue.isDouble()) {
+            int num = jsonValue.toDouble();
+            QByteArray numData;
+            numData.append(reinterpret_cast<const char*>(&num), sizeof(num));
+            data.append(numData);
+        }
+        else if (jsonValue.isBool()) {
+            int num = jsonValue.toBool();
+            QByteArray numData;
+            numData.append(reinterpret_cast<const char*>(&num), sizeof(num));
+            data.append(numData);
+        }
     }
-}
+    else if (type == "SHORT") {
+        if (jsonValue.isString()) {
+            bool ok;
+            short num = jsonValue.toString().toShort(&ok);
+            if (!ok)
+                return;
 
-void BofPacker::Pack(QString str)
-{
-    QByteArray strLengthData;
-    int strLength = str.size() + 1;
-    strLengthData.append(reinterpret_cast<const char*>(&strLength), sizeof(strLength));
+            QByteArray numData;
+            numData.append(reinterpret_cast<const char*>(&num), sizeof(num));
+            data.append(numData);
+        }
+        else if (jsonValue.isDouble()) {
+            short num = jsonValue.toDouble();
+            QByteArray numData;
+            numData.append(reinterpret_cast<const char*>(&num), sizeof(num));
+            data.append(numData);
+        }
+        else if (jsonValue.isBool()) {
+            short num = jsonValue.toBool();
+            QByteArray numData;
+            numData.append(reinterpret_cast<const char*>(&num), sizeof(num));
+            data.append(numData);
+        }
+    }
+    else if (type == "BYTES") {
+        if (!jsonValue.isString())
+            return;
 
-    data.append(strLengthData);
-    data.append(str.toUtf8());
+        QByteArray bytes = QByteArray::fromBase64(jsonValue.toString().toUtf8());
+        data.append(bytes);
+    }
 }
 
 QString BofPacker::Build()
@@ -88,6 +145,12 @@ bool Commander::AddExtCommands(QString filepath, QString extName, QList<QJsonObj
     return true;
 }
 
+void Commander::RemoveExtCommands(QString filepath)
+{
+    extModules.remove(filepath);
+}
+
+
 Command Commander::ParseCommand(QJsonObject jsonObject)
 {
     Command cmd;
@@ -118,6 +181,7 @@ Command Commander::ParseCommand(QJsonObject jsonObject)
             cmd.subcommands.append(subCmd);
         }
     } else if (jsonObject.contains("args")) {
+
         QJsonArray argsArray = jsonObject["args"].toArray();
         for (QJsonValue argVal : argsArray) {
             Argument arg = ParseArgument(argVal.toString());
@@ -127,7 +191,6 @@ Command Commander::ParseCommand(QJsonObject jsonObject)
     }
     return cmd;
 }
-
 
 Argument Commander::ParseArgument(QString argString)
 {
@@ -182,7 +245,7 @@ Argument Commander::ParseArgument(QString argString)
     return arg;
 }
 
-CommanderResult Commander::ProcessInput(QString input)
+CommanderResult Commander::ProcessInput(AgentData agentData, QString input)
 {
     QStringList parts;
     QRegularExpression regex(R"((?:\"((?:\\.|[^\"\\])*)\"|(\S+)))");
@@ -209,14 +272,14 @@ CommanderResult Commander::ProcessInput(QString input)
 
     for (Command command : commands) {
         if (command.name == commandName) {
-            return ProcessCommand(command, parts);
+            return ProcessCommand(agentData, command, parts);
         }
     }
 
     for ( auto extMod : extModules ) {
         for (Command command : extMod.extCommands) {
             if (command.name == commandName) {
-                return ProcessCommand(command, parts);
+                return ProcessCommand(agentData, command, parts);
             }
         }
     }
@@ -224,7 +287,7 @@ CommanderResult Commander::ProcessInput(QString input)
     return CommanderResult{true, "Command not found", true};
 }
 
-CommanderResult Commander::ProcessCommand(Command command, QStringList args)
+CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, QStringList args)
 {
     QString execStr = "";
     QList<Argument> execArgs;
@@ -458,8 +521,8 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
     }
 
     if( !execStr.isEmpty() ) {
-        QString newInput = this->ProcessExecExtension(command.extPath, execStr, execArgs, jsonObj);
-        CommanderResult execCommandResult = this->ProcessInput(newInput);
+        QString newInput = this->ProcessExecExtension( agentData, command.extPath, execStr, execArgs, jsonObj);
+        CommanderResult execCommandResult = this->ProcessInput(agentData, newInput);
         if( !execCommandResult.error ) {
             QJsonParseError parseError;
             QJsonDocument document = QJsonDocument::fromJson(execCommandResult.message.toUtf8(), &parseError);
@@ -475,11 +538,11 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args)
     return CommanderResult{false, jsonDoc.toJson(), false };
 }
 
-QString Commander::ProcessExecExtension(QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
+QString Commander::ProcessExecExtension(AgentData agentData, QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
 {
     // ARCH
 
-    ExecString = ExecString.replace("$ARCH()", AGENT_ARCH, Qt::CaseSensitive);
+    ExecString = ExecString.replace("$ARCH()", agentData.Arch, Qt::CaseSensitive);
 
     // $EXT_DIR
 
@@ -493,21 +556,27 @@ QString Commander::ProcessExecExtension(QString filepath, QString ExecString, QL
 
     while (iter.hasNext()) {
         QRegularExpressionMatch match = iter.next();
-        QString packContent = match.captured(1); // Содержимое внутри скобок $PACK(...)
+        QString packContent = match.captured(1); // $PACK(...)
 
-        QRegularExpression paramRegex(R"(\{\s*([^}]*)\s*\}|([^,\s][^,]*[^,\s]))");
+        QRegularExpression paramRegex(R"((\s*([A-Z]+)\s+)?(?:\{\s*([^}]*)\s*\}|([^,\s][^,]*[^,\s])))");
         QRegularExpressionMatchIterator it = paramRegex.globalMatch(packContent);
 
         BofPacker packer;
         while (it.hasNext()) {
             QRegularExpressionMatch paramMatch = it.next();
-            if (!paramMatch.captured(1).isEmpty()) {
-                QString str = paramMatch.captured(1);
-                if( jsonObj.contains(str) )
-                    packer.Pack(jsonObj[str]);
-            } else if (!paramMatch.captured(2).isEmpty()) {
-                QString str = paramMatch.captured(2);
-                packer.Pack(str);
+
+            QString type = paramMatch.captured(2);
+            if (type.isEmpty())
+                type = "CSTR";
+
+            if (!paramMatch.captured(3).isEmpty()) {
+                QString value = paramMatch.captured(3); // {param}
+                if( jsonObj.contains(value) )
+                    packer.Pack( type, jsonObj[value] );
+            }
+            else if (!paramMatch.captured(4).isEmpty()) {
+                QString value = paramMatch.captured(4); // param
+                packer.Pack( type, QJsonValue(value) );
             }
         }
         QString bofParam = packer.Build();

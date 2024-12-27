@@ -99,7 +99,7 @@ func (dbms *DBMS) DbTasksAll(agentId string) []adaptix.TaskData {
 
 	ok = dbms.DatabaseExists()
 	if ok {
-		selectQuery = `SELECT TaskId, AgentId, TaskType, User, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed FROM Tasks WHERE AgentId = ?;`
+		selectQuery = `SELECT TaskId, AgentId, TaskType, User, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed FROM Tasks WHERE AgentId = ? ORDER BY StartDate ASC;`
 		query, err := dbms.database.Query(selectQuery, agentId)
 		if err == nil {
 

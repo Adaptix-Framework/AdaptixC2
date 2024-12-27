@@ -177,4 +177,6 @@ void Extender::RemoveExtension(QString path)
     mainAdaptix->mainUI->RemoveExtension(extenderFiles[path]);
     dialogExtender->RemoveExtenderItem(extenderFiles[path]);
     mainAdaptix->storage->RemoveExtension(path);
+
+    extenderFiles.remove(path);
 }

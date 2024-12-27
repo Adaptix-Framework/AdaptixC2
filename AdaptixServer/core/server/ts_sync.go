@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/gorilla/websocket"
+	"sort"
 )
 
 func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
@@ -116,12 +117,22 @@ func (ts *Teamserver) TsPresyncAgentsAndTasks() []interface{} {
 		p := CreateSpAgentNew(agent.Data)
 		packets = append(packets, p)
 
+		var sortedTasks []adaptix.TaskData
+
 		agent.ClosedTasks.ForEach(func(key2 string, value2 interface{}) {
 			taskData := value2.(adaptix.TaskData)
+			index := sort.Search(len(sortedTasks), func(i int) bool {
+				return sortedTasks[i].StartDate > taskData.StartDate
+			})
+			sortedTasks = append(sortedTasks[:index], append([]adaptix.TaskData{taskData}, sortedTasks[index:]...)...)
+		})
+
+		for _, taskData := range sortedTasks {
 			t1 := CreateSpAgentTaskCreate(taskData)
 			t2 := CreateSpAgentTaskUpdate(taskData)
 			packets = append(packets, t1, t2)
-		})
+		}
+
 	})
 	return packets
 }
