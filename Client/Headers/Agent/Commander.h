@@ -33,7 +33,6 @@ struct ExtModule
     QList<Command> extCommands;
 };
 
-
 struct CommanderResult
 {
     bool    output;
@@ -45,8 +44,7 @@ class BofPacker
 {
 public:
     QByteArray data;
-    void Pack(QJsonValue jsonValue);
-    void Pack(QString str);
+    void Pack(QString type, QJsonValue jsonValue);
     QString Build();
 };
 

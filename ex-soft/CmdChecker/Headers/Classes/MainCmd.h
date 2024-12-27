@@ -30,6 +30,8 @@ public:
     explicit MainCmd();
     ~MainCmd() override;
 
+    AgentData agentData;
+
     void Start();
 
 public slots:

@@ -12,7 +12,7 @@ MainUI::MainUI()
     auto closeProjectAction = new QAction("Close Project", this);
 //    connect(newProjectAction, &QAction::triggered, this, &MainUI::onCloseProject);
 
-    auto menuProject = new QMenu("Project", this);
+    auto menuProject = new QMenu("Projects", this);
     menuProject->addAction(newProjectAction);
     menuProject->addAction(closeProjectAction);
 

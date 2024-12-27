@@ -2,6 +2,8 @@
 
 MainCmd::MainCmd()
 {
+    agentData.Arch = "x64";
+
     this->setStyle();
 
     this->createUI();
@@ -204,7 +206,7 @@ void MainCmd::ExecuteCommand()
         return;
     }
 
-    CommanderResult result = commander->ProcessInput( command );
+    CommanderResult result = commander->ProcessInput( this->agentData, command );
     consoleTextEdit->setText(result.message);
 }
 
