@@ -311,6 +311,7 @@
     <ClCompile Include="Boffer.cpp" />
     <ClCompile Include="Commander.cpp" />
     <ClCompile Include="ConnectorHTTP.cpp" />
+    <ClCompile Include="Crypt.cpp" />
     <ClCompile Include="Downloader.cpp" />
     <ClCompile Include="Encoders.cpp" />
     <ClCompile Include="JobsController.cpp" />
@@ -329,6 +330,7 @@
     <ClInclude Include="Boffer.h" />
     <ClInclude Include="Commander.h" />
     <ClInclude Include="ConnectorHTTP.h" />
+    <ClInclude Include="Crypt.h" />
     <ClInclude Include="defines.h" />
     <ClInclude Include="Downloader.h" />
     <ClInclude Include="Encoders.h" />

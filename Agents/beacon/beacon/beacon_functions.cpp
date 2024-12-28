@@ -5,7 +5,7 @@
 
 Packer* bofOutputPacker = NULL;
 int     bofOutputCount  = 0;
-ULONG   bofTaskId          = 0;
+ULONG   bofTaskId       = 0;
 
 void BofOutputToTask(int type, PBYTE data, int dataSize)
 {

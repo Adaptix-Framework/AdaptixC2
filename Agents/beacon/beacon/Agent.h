@@ -12,12 +12,14 @@ class Commander;
 class Agent
 {
 public:
-	AgentInfo*      info;
-	AgentConfig*    config;
-	Commander*      commander;
-	Downloader*     downloader;
-	JobsController* jober;
-	MemorySaver*    memorysaver;
+	AgentInfo*		info        = NULL;
+	AgentConfig*    config		= NULL;
+	Commander*      commander	= NULL;
+	Downloader*     downloader	= NULL;
+	JobsController* jober		= NULL;
+	MemorySaver*    memorysaver = NULL;
+
+	BYTE* SessionKey = NULL;
 
 	Agent();
 

