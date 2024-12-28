@@ -93,6 +93,9 @@
     <ClCompile Include="beacon_functions.cpp">
       <Filter>Source\Commander\BOF</Filter>
     </ClCompile>
+    <ClCompile Include="Crypt.cpp">
+      <Filter>Source\Encrypt</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -148,6 +151,9 @@
     </ClInclude>
     <ClInclude Include="beacon.h">
       <Filter>Headers\Commander\BOF</Filter>
+    </ClInclude>
+    <ClInclude Include="Crypt.h">
+      <Filter>Headers\Encrypt</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/rc4"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
@@ -36,10 +37,15 @@ type HTTPConfig struct {
 	ParameterName string `json:"parameter_name"`
 }
 
+type ListenerParams struct {
+	EncryptKey []byte
+}
+
 type HTTP struct {
 	GinEngine *gin.Engine
 	Server    *http.Server
 	Config    HTTPConfig
+	Params    ListenerParams
 	Name      string
 	Active    bool
 }
@@ -200,12 +206,13 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 
 func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, uint, []byte, []byte, error) {
 	var (
-		beat      string
-		agentType uint
-		agentId   uint
-		agentInfo []byte
-		bodyData  []byte
-		err       error
+		beat           string
+		agentType      uint
+		agentId        uint
+		agentInfoCrypt []byte
+		agentInfo      []byte
+		bodyData       []byte
+		err            error
 	)
 
 	params := ctx.Request.Header[h.Config.ParameterName]
@@ -215,12 +222,18 @@ func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, uint, []byte, []byte, er
 		return 0, 0, nil, nil, errors.New("missing beat from Headers")
 	}
 
-	agentInfo, err = base64.StdEncoding.DecodeString(beat)
-	if len(agentInfo) < 5 || err != nil {
+	agentInfoCrypt, err = base64.StdEncoding.DecodeString(beat)
+	if len(agentInfoCrypt) < 5 || err != nil {
 		return 0, 0, nil, nil, errors.New("failed decrypt beat")
 	}
 
-	//decrypt data
+	h.Params.EncryptKey = []byte("\x0c\xff\x01\xb5\xfc\x46\x90\x57\x61\x98\x25\xe1\x87\x57\x21\x2e")
+	rc4crypt, errcrypt := rc4.NewCipher([]byte(h.Params.EncryptKey))
+	if errcrypt != nil {
+		return 0, 0, nil, nil, errors.New("rc4 decrypt error")
+	}
+	agentInfo = make([]byte, len(agentInfoCrypt))
+	rc4crypt.XORKeyStream(agentInfo, agentInfoCrypt)
 
 	agentType = uint(binary.BigEndian.Uint32(agentInfo[:4]))
 	agentInfo = agentInfo[4:]

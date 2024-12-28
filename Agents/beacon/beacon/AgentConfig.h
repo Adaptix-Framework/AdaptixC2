@@ -11,7 +11,7 @@ public:
 	BYTE  exit_method;
 	ULONG exit_task_id;
 	DWORD download_chunk_size;
-	PBYTE session_key;
+	PBYTE encrypt_key;
 	DWORD sleep_delay;
 	DWORD jitter_delay;
 

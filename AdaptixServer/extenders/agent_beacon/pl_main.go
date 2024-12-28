@@ -249,6 +249,7 @@ func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) (
 	var (
 		agentData  AgentData
 		tasksArray []TaskData
+		packedData []byte
 		err        error
 	)
 	err = json.Unmarshal(agentObject, &agentData)
@@ -270,16 +271,27 @@ func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) (
 		tasksArray = append(tasksArray, taskData)
 	}
 
-	return PackTasks(agentData, tasksArray)
+	packedData, err = PackTasks(agentData, tasksArray)
+	if err != nil {
+		return nil, err
+	}
+
+	return RC4Crypt(packedData, agentData.SessionKey)
 }
 
 func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error) {
 	var (
-		agentData AgentData
-		taskData  TaskData
-		err       error
+		agentData   AgentData
+		taskData    TaskData
+		decryptData []byte
+		err         error
 	)
 	err = json.Unmarshal(agentObject, &agentData)
+	if err != nil {
+		return nil, err
+	}
+
+	decryptData, err = RC4Crypt(packedData, agentData.SessionKey)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +305,7 @@ func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte)
 		Sync:        true,
 	}
 
-	ProcessTasksResult(m.ts, agentData, taskData, packedData)
+	ProcessTasksResult(m.ts, agentData, taskData, decryptData)
 
 	return nil, nil
 }
