@@ -81,6 +81,7 @@ BOOL ApiLoad()
 		ApiWin->RtlCaptureContext = RtlCaptureContext;
 		ApiWin->SetCurrentDirectoryA = SetCurrentDirectoryA;
 		ApiWin->SetNamedPipeHandleState = SetNamedPipeHandleState;
+		ApiWin->Sleep = Sleep;
 		ApiWin->VirtualAlloc = VirtualAlloc;
 		ApiWin->VirtualFree = VirtualFree;
 		ApiWin->WideCharToMultiByte = WideCharToMultiByte;

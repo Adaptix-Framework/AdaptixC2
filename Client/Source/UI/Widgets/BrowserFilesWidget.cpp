@@ -413,11 +413,14 @@ void BrowserFilesWidget::onParent()
 
 void BrowserFilesWidget::onReload()
 {
-    if ( currentPath.isEmpty() )
-        return;
-
-    QString status = agent->BrowserList(currentPath);
-    statusLabel->setText(status);
+    if ( currentPath.isEmpty() ) {
+        QString status = agent->BrowserList(".\\");
+        statusLabel->setText(status);
+    }
+    else {
+        QString status = agent->BrowserList(currentPath);
+        statusLabel->setText(status);
+    }
 }
 
 void BrowserFilesWidget::onUpload()
