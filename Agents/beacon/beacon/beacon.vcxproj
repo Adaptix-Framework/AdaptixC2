@@ -320,6 +320,7 @@
     <ClCompile Include="MemorySaver.cpp" />
     <ClCompile Include="Packer.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="WaitMask.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Agent.h" />
@@ -341,6 +342,7 @@
     <ClInclude Include="Packer.h" />
     <ClInclude Include="std.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="WaitMask.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

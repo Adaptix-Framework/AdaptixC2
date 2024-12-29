@@ -157,7 +157,7 @@ func (ts *Teamserver) Start() {
 	}
 
 	go ts.AdaptixServer.Start(&stopped)
-	logs.Success("Starting server -> https://%s:%v%s", "0.0.0.0", ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
+	logs.Success("", "Starting server -> https://%s:%v%s", "0.0.0.0", ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
 
 	ts.RestoreData()
 

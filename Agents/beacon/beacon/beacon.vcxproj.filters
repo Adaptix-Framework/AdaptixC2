@@ -96,6 +96,9 @@
     <ClCompile Include="Crypt.cpp">
       <Filter>Source\Encrypt</Filter>
     </ClCompile>
+    <ClCompile Include="WaitMask.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -154,6 +157,9 @@
     </ClInclude>
     <ClInclude Include="Crypt.h">
       <Filter>Headers\Encrypt</Filter>
+    </ClInclude>
+    <ClInclude Include="WaitMask.h">
+      <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

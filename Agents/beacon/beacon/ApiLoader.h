@@ -59,6 +59,7 @@ struct WINAPIFUNC
 	DECL_API(RtlCaptureContext);
 	DECL_API(SetCurrentDirectoryA);
 	DECL_API(SetNamedPipeHandleState);
+	DECL_API(Sleep);
 	DECL_API(VirtualAlloc);
 	DECL_API(VirtualFree);
 	DECL_API(WideCharToMultiByte);

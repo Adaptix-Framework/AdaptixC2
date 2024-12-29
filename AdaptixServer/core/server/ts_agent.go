@@ -113,8 +113,14 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 		agent, _ = value.(*Agent)
 	}
 
-	packetTick := CreateSpAgentTick(agent.Data.Id)
-	ts.TsSyncAllClients(packetTick)
+	/// AGENT TICK
+
+	if agent.Data.Async {
+		agent.Data.LastTick = int(time.Now().Unix())
+		ts.DBMS.DbAgentUpdate(agent.Data)
+		packetTick := CreateSpAgentTick(agent.Data.Id)
+		ts.TsSyncAllClients(packetTick)
+	}
 
 	/// PROCESS RECEIVED DATA FROM AGENT
 
