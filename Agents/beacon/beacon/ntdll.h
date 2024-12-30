@@ -22365,7 +22365,7 @@ IMPORT_FN int __cdecl _wcsicmp(const wchar_t *, const wchar_t *);
 IMPORT_FN int __cdecl _wcsnicmp(const wchar_t *, const wchar_t *, size_t);
 IMPORT_FN wchar_t * __cdecl _wcslwr(wchar_t *);
 IMPORT_FN wchar_t * __cdecl _wcsupr(wchar_t *);
-IMPORT_FN wchar_t * __cdecl wcschr(const wchar_t *string, wchar_t ch);
+//IMPORT_FN wchar_t * __cdecl wcschr(const wchar_t *string, wchar_t ch);
 IMPORT_FN wchar_t * __cdecl wcscpy(wchar_t *dst, const wchar_t *src);
 IMPORT_FN wchar_t * __cdecl wcsncat(wchar_t *front, const wchar_t *back, size_t count);
 IMPORT_FN wchar_t * __cdecl wcsncpy(wchar_t *dest, const wchar_t *source, size_t count);

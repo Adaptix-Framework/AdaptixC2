@@ -263,7 +263,7 @@ extern "C" {
 	PDATA_STORE_OBJECT BeaconDataStoreGetItem(size_t index);
 	void BeaconDataStoreProtectItem(size_t index);
 	void BeaconDataStoreUnprotectItem(size_t index);
-	size_t BeaconDataStoreMaxEntries();
+	ULONG BeaconDataStoreMaxEntries();
 
 	/* Beacon User Data functions */
 	char* BeaconGetCustomUserData();

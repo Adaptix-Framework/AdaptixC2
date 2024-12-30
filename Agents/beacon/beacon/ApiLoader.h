@@ -48,6 +48,7 @@ struct WINAPIFUNC
 	DECL_API(HeapDestroy);
 	DECL_API(HeapReAlloc);
 	DECL_API(HeapFree);
+	DECL_API(IsWow64Process);
 	DECL_API(LocalAlloc);
 	DECL_API(LocalFree);
 	DECL_API(LocalReAlloc);

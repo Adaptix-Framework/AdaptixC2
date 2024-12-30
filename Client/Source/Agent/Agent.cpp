@@ -32,6 +32,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
         username = "* " + username;
 
     auto sleep = QString("%1 (%2%)").arg( FormatSecToStr(data.Sleep) ).arg(data.Jitter);
+    auto process = QString("%1 (%2)").arg( data.Process ).arg(data.Arch );
 
     QString last = "";
     if ( !data.Async )
@@ -46,7 +47,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     item_Computer = new TableWidgetItemAgent( data.Computer, this );
     item_Username = new TableWidgetItemAgent( username, this );
     item_Os       = new TableWidgetItemAgent( data.OsDesc, this );
-    item_Process  = new TableWidgetItemAgent( data.Process, this );
+    item_Process  = new TableWidgetItemAgent( process, this );
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
     item_Tid      = new TableWidgetItemAgent( data.Tid, this );
     item_Tags     = new TableWidgetItemAgent( data.Tags, this );

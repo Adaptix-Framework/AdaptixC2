@@ -60,7 +60,7 @@ char* PrepareEntryName(char* targetFuncName)
 void FreeFunctionName(char* targetFuncName)
 {
 #if !defined(__x86_64__) && !defined(_WIN64)
-	MemFreeLocal(&targetFuncName, StrLenA(targetFuncName));
+	MemFreeLocal((LPVOID*) & targetFuncName, StrLenA(targetFuncName));
 #endif
 }
 

