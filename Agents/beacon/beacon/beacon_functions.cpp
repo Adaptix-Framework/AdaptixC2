@@ -310,7 +310,7 @@ VOID BeaconDataStoreProtectItem(SIZE_T index) {}
 
 VOID BeaconDataStoreUnprotectItem(SIZE_T index){}
 
-SIZE_T BeaconDataStoreMaxEntries() 
+ULONG BeaconDataStoreMaxEntries() 
 {
 	return NULL;
 }

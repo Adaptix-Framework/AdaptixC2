@@ -70,6 +70,7 @@ BOOL ApiLoad()
 		ApiWin->HeapDestroy = HeapDestroy;
 		ApiWin->HeapReAlloc = HeapReAlloc;
 		ApiWin->HeapFree = HeapFree;
+		ApiWin->IsWow64Process = IsWow64Process;
 		ApiWin->LocalAlloc = alloc;
 		ApiWin->LocalFree = LocalFree;
 		ApiWin->LocalReAlloc = LocalReAlloc;
