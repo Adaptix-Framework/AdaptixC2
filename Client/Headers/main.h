@@ -49,6 +49,7 @@
 #include <QSplashScreen>
 #include <QStyledItemDelegate>
 #include <QStringListModel>
+#include <QSpinBox>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>

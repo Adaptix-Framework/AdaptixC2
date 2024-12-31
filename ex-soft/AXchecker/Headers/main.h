@@ -19,5 +19,6 @@
 #include <QCheckBox>
 #include <QTableWidget>
 #include <QHeaderView>
+#include <QSpinBox>
 
 #endif //AXCHECKER_MAIN_H
