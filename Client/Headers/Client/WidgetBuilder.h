@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_WIDGETBUILDER_H
 
 #include <main.h>
+#include <Utils/CustomElements.h>
 
 class WidgetBuilder
 {

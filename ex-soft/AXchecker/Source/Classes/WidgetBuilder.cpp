@@ -1,5 +1,53 @@
 #include <Classes/WidgetBuilder.h>
 
+SpinTable::SpinTable(int rows, int columns, QWidget* parent)
+{
+    this->setParent(parent);
+
+    buttonAdd   = new QPushButton("Add");
+    buttonClear = new QPushButton("Clear");
+
+    table = new QTableWidget(rows, columns, this);
+    table->setAutoFillBackground( false );
+    table->setShowGrid( false );
+    table->setSortingEnabled( true );
+    table->setWordWrap( true );
+    table->setCornerButtonEnabled( false );
+    table->setSelectionBehavior( QAbstractItemView::SelectRows );
+    table->setSelectionMode( QAbstractItemView::SingleSelection );
+    table->setFocusPolicy( Qt::NoFocus );
+    table->setAlternatingRowColors( true );
+    table->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
+    table->horizontalHeader()->setCascadingSectionResizes( true );
+    table->horizontalHeader()->setHighlightSections( false );
+    table->verticalHeader()->setVisible( false );
+
+    layout = new QGridLayout( this );
+    layout->addWidget(table, 0, 0, 1, 2);
+    layout->addWidget(buttonAdd, 1, 0, 1, 1);
+    layout->addWidget(buttonClear, 1, 1, 1, 1);
+
+    this->setLayout(layout);
+
+    QObject::connect(buttonAdd, &QPushButton::clicked, this, [&]()
+    {
+        if (table->rowCount() < 1 )
+            table->setRowCount(1 );
+        else
+            table->setRowCount(table->rowCount() + 1 );
+
+        table->setItem(table->rowCount() - 1, 0, new QTableWidgetItem() );
+        table->selectRow(table->rowCount() - 1 );
+    } );
+
+    QObject::connect(buttonClear, &QPushButton::clicked, this, [&]()
+    {
+        table->setRowCount(0);
+    } );
+}
+
+/// MAIN CLASS
+
 WidgetBuilder::WidgetBuilder(const QByteArray& jsonData)
 {
     QJsonParseError parseError;
@@ -66,10 +114,29 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
                 boxLayout->addWidget(label);
             }
         }
+        else if (type == "vline" || type == "hline") {
+            auto line = new QFrame(widget);
+
+            if (type == "vline"){
+                line->setFrameShape(QFrame::VLine);
+                line->setMinimumHeight(25);
+            }
+            else {
+                line->setFrameShape(QFrame::HLine);
+                line->setMinimumWidth(25);
+            }
+
+            if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
+                gridLayout->addWidget(line, row, col, rowSpan, colSpan);
+            } else if (auto boxLayout = qobject_cast<QBoxLayout*>(layout)) {
+                boxLayout->addWidget(line);
+            }
+        }
         else if (type == "input") {
             auto lineEdit = new QLineEdit(widget);
 
             lineEdit->setPlaceholderText(elementObj["placeholder"].toString());
+            lineEdit->setText(elementObj["text"].toString());
 
             if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
                 gridLayout->addWidget(lineEdit, row, col, rowSpan, colSpan);
@@ -99,6 +166,28 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
 
             if (!id.isEmpty()) {
                 widgetMap[id] = comboBox;
+            }
+        }
+        else if (type == "spinbox") {
+            auto spinBox = new QSpinBox(widget);
+
+            if( elementObj.contains("min") && elementObj["min"].toDouble() )
+                spinBox->setMinimum( elementObj["min"].toDouble() );
+
+            if( elementObj.contains("max") && elementObj["max"].toDouble() )
+                spinBox->setMaximum( elementObj["max"].toDouble() );
+
+            if( elementObj.contains("value") && elementObj["value"].toDouble() )
+                spinBox->setValue( elementObj["value"].toDouble() );
+
+            if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
+                gridLayout->addWidget(spinBox, row, col, rowSpan, colSpan);
+            } else if (auto boxLayout = qobject_cast<QBoxLayout*>(layout)) {
+                boxLayout->addWidget(spinBox);
+            }
+
+            if (!id.isEmpty()) {
+                widgetMap[id] = spinBox;
             }
         }
         else if (type == "textedit") {
@@ -134,9 +223,9 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
                 widgetMap[id] = checkBox;
             }
         }
-        if (type == "table") {
-            int rowCount = elementObj["rowCount"].toInt(0);
-            int columnCount = elementObj["columnCount"].toInt(0);
+        else if (type == "table") {
+            int rowCount = elementObj["row_count"].toInt(0);
+            int columnCount = elementObj["column_count"].toInt(0);
 
             auto tableWidget = new QTableWidget(rowCount, columnCount, widget);
             tableWidget->setAutoFillBackground( false );
@@ -152,7 +241,6 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
             tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
             tableWidget->horizontalHeader()->setHighlightSections( false );
             tableWidget->verticalHeader()->setVisible( false );
-            tableWidget->verticalHeader()->setDefaultSectionSize( 12 );
 
             QJsonArray headersArray = elementObj["headers"].toArray();
             for (int i = 0; i < headersArray.size(); ++i) {
@@ -176,6 +264,37 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
 
             if (!id.isEmpty()) {
                 widgetMap[id] = tableWidget;
+            }
+        }
+        else if (type == "spin_table") {
+            int rowCount = elementObj["row_count"].toInt(0);
+            int columnCount = elementObj["column_count"].toInt(0);
+
+            auto spinTable = new SpinTable(rowCount, columnCount, widget);
+
+            QJsonArray headersArray = elementObj["headers"].toArray();
+            for (int i = 0; i < headersArray.size(); ++i) {
+                spinTable->table->setHorizontalHeaderItem(i, new QTableWidgetItem(headersArray[i].toString()));
+            }
+
+            QJsonArray dataArray = elementObj["data"].toArray();
+            for (int i = 0; i < dataArray.size(); ++i) {
+                QJsonArray rowArray = dataArray[i].toArray();
+                for (int j = 0; j < rowArray.size(); ++j) {
+                    QTableWidgetItem* item = new QTableWidgetItem(rowArray[j].toString());
+                    spinTable->table->setItem(i, j, item);
+                }
+            }
+
+            if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
+                gridLayout->addWidget(spinTable->table, row, col, rowSpan, colSpan);
+            }
+            else if (auto boxLayout = qobject_cast<QBoxLayout*>(layout)) {
+                boxLayout->addWidget(spinTable);
+            }
+
+            if (!id.isEmpty()) {
+                widgetMap[id] = spinTable;
             }
         }
         else if (type == "tab") {
@@ -244,14 +363,19 @@ QString WidgetBuilder::CollectData()
             collectedData[id] = comboBox->currentText();
         }
 
+        else if (auto spinBox = qobject_cast<QSpinBox*>(widget)) {
+            collectedData[id] = spinBox->value();
+        }
+
         else if (auto textEdit = qobject_cast<QPlainTextEdit*>(widget)) {
             collectedData[id] = textEdit->toPlainText();
         }
 
-        else if (QCheckBox* checkBox = qobject_cast<QCheckBox*>(widget)) {
+        else if (auto checkBox = qobject_cast<QCheckBox*>(widget)) {
             collectedData[id] = checkBox->isChecked();
         }
-        else if (QTableWidget* tableWidget = qobject_cast<QTableWidget*>(widget)) {
+
+        else if (auto tableWidget = qobject_cast<QTableWidget*>(widget)) {
             QJsonArray tableData;
 
             for (int row = 0; row < tableWidget->rowCount(); ++row) {
@@ -260,13 +384,31 @@ QString WidgetBuilder::CollectData()
                     QTableWidgetItem* item = tableWidget->item(row, col);
                     if (item) {
                         rowData.append(item->text());
+                        qDebug() << item->text();
                     } else {
                         rowData.append("");
                     }
                 }
                 tableData.append(rowData);
             }
+            collectedData[id] = tableData;
+        }
 
+        else if (auto spinTable = qobject_cast<SpinTable*>(widget)) {
+            QJsonArray tableData;
+
+            for (int row = 0; row < spinTable->table->rowCount(); ++row) {
+                QJsonArray rowData;
+                for (int col = 0; col < spinTable->table->columnCount(); ++col) {
+                    QTableWidgetItem *item = spinTable->table->item(row, col);
+                    if (item) {
+                        rowData.append(item->text());
+                    } else {
+                        rowData.append("");
+                    }
+                    tableData.append(rowData);
+                }
+            }
             collectedData[id] = tableData;
         }
     }
@@ -295,22 +437,30 @@ void WidgetBuilder::FillData(QString jsonString)
 
         QWidget* widget = widgetMap[id];
 
-        if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(widget)) {
+        if (auto lineEdit = qobject_cast<QLineEdit*>(widget)) {
             lineEdit->setText(value.toString());
         }
-        else if (QComboBox* comboBox = qobject_cast<QComboBox*>(widget)) {
+
+        else if (auto comboBox = qobject_cast<QComboBox*>(widget)) {
             int index = comboBox->findText(value.toString());
             if (index != -1) {
                 comboBox->setCurrentIndex(index);
             }
         }
-        else if (QCheckBox* checkBox = qobject_cast<QCheckBox*>(widget)) {
-            checkBox->setChecked(value.toBool());
+
+        else if (auto spinBox = qobject_cast<QSpinBox*>(widget)) {
+            spinBox->setValue(value.toDouble());
         }
-        else if (QTextEdit* textEdit = qobject_cast<QTextEdit*>(widget)) {
+
+        else if (auto textEdit = qobject_cast<QTextEdit*>(widget)) {
             textEdit->setPlainText(value.toString());
         }
-        else if (QTableWidget* tableWidget = qobject_cast<QTableWidget*>(widget)) {
+
+        else if (auto checkBox = qobject_cast<QCheckBox*>(widget)) {
+            checkBox->setChecked(value.toBool());
+        }
+
+        else if (auto tableWidget = qobject_cast<QTableWidget*>(widget)) {
             QJsonArray tableData = value.toArray();
 
             for (int row = 0; row < tableData.size(); ++row) {
@@ -321,6 +471,23 @@ void WidgetBuilder::FillData(QString jsonString)
                     if (!item) {
                         item = new QTableWidgetItem();
                         tableWidget->setItem(row, col, item);
+                    }
+                    item->setText(cellText);
+                }
+            }
+        }
+
+        else if (auto spinTable = qobject_cast<SpinTable*>(widget)) {
+            QJsonArray tableData = value.toArray();
+
+            for (int row = 0; row < tableData.size(); ++row) {
+                QJsonArray rowArray = tableData[row].toArray();
+                for (int col = 0; col < rowArray.size(); ++col) {
+                    QString cellText = rowArray[col].toString();
+                    QTableWidgetItem* item = spinTable->table->item(row, col);
+                    if (!item) {
+                        item = new QTableWidgetItem();
+                        spinTable->table->setItem(row, col, item);
                     }
                     item->setText(cellText);
                 }

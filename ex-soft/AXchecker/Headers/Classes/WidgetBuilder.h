@@ -3,6 +3,19 @@
 
 #include <main.h>
 
+class SpinTable : public QWidget {
+Q_OBJECT
+public:
+    QGridLayout*  layout      = nullptr;
+    QTableWidget* table       = nullptr;
+    QPushButton*  buttonAdd   = nullptr;
+    QPushButton*  buttonClear = nullptr;
+
+    SpinTable(int rows, int clomuns, QWidget* parent);
+    SpinTable(QWidget* parent = nullptr) { SpinTable(0,0,parent); }
+    ~SpinTable() = default;
+};
+
 class WidgetBuilder {
 
     QWidget* widget = nullptr;

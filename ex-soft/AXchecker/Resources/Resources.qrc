@@ -1,4 +1,5 @@
 <RCC>
+
     <qresource prefix="/">
         <file alias="LogoLin">Logo.png</file>
     </qresource>
@@ -9,10 +10,10 @@
 
     <qresource prefix="/themes">
         <file alias="Dark">themes/dark.css</file>
-<!--        <file alias="Arc (Light)">themes/light_arc.css</file>-->
-<!--        <file alias="Nord">themes/color_nord.css</file>-->
     </qresource>
 
     <qresource prefix="/icons">
+        <file alias="close">icons/close_dp64.png</file>
+        <file alias="double_arrow_down">icons/double_arrow_down_64dp.png</file>
     </qresource>
 </RCC>
