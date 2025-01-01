@@ -8,9 +8,9 @@
     },
     {
       "type": "combo",
-      "items": ["Windows"],
+      "items": ["windows"],
       "id": "os",
-      "position": [0, 1, 1, 1]
+      "position": [0, 1, 1, 2]
     },
     {
       "type": "label",
@@ -21,7 +21,52 @@
       "type": "combo",
       "items": ["x64", "x86"],
       "id": "arch",
-      "position": [1, 1, 1, 1]
+      "position": [1, 1, 1, 2]
+    },
+    {
+      "type": "label",
+      "text": "Format:",
+      "position": [2, 0, 1, 1]
+    },
+    {
+      "type": "combo",
+      "items": ["Exe", "Service Exe", "DLL", "Shellcode" ],
+      "id": "format",
+      "position": [2, 1, 1, 2]
+    },
+    {
+      "type": "hline",
+      "position": [3, 0, 1, 3]
+    },
+    {
+      "type": "label",
+      "text": "Sleep (Jitter %):",
+      "position": [4, 0, 1, 1]
+    },
+    {
+      "type": "input",
+      "id": "sleep",
+      "placeholder": "1h 2m 5s",
+      "text": "4s",
+      "position": [4, 1, 1, 1]
+    },
+    {
+      "type": "spinbox",
+      "id": "jitter",
+      "min": 0,
+      "max": 100,
+      "position": [4, 2, 1, 1]
+    },
+    {
+      "type": "label",
+      "text": "Service Name:",
+      "position": [5, 0, 1, 1]
+    },
+    {
+      "type": "input",
+      "id": "svcname",
+      "text": "AgentService",
+      "position": [5, 1, 1, 2]
     }
   ]
 }

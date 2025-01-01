@@ -193,6 +193,10 @@ func (m *ModuleExtender) AgentInit() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+func (m *ModuleExtender) AgentGenerate(config string, listenerProfile []byte) ([]byte, error) {
+	return CreateAgentProfile(config, listenerProfile)
+}
+
 func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
 	var (
 		buffer bytes.Buffer
@@ -530,6 +534,7 @@ func (m *ModuleExtender) AgentBrowserJobKill(jobId string) ([]byte, error) {
 
 	return buffer.Bytes(), nil
 }
+
 func (m *ModuleExtender) AgentBrowserExit(agentObject []byte) ([]byte, error) {
 	var (
 		packData  []byte

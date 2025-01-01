@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"regexp"
@@ -166,4 +167,23 @@ func StopListener(name string, listenerObject any) (bool, error) {
 	/// END CODE
 
 	return ok, err
+}
+
+func GetProfile(name string, listenerObject any) ([]byte, bool) {
+	var (
+		object bytes.Buffer
+		ok     bool = false
+	)
+
+	/// START CODE HERE
+
+	listener := listenerObject.(*HTTP)
+	if listener.Name == name {
+		_ = json.NewEncoder(&object).Encode(listener.Config)
+		ok = true
+	}
+
+	/// END CODE
+
+	return object.Bytes(), ok
 }

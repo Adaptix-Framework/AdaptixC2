@@ -47,6 +47,10 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 	return nil
 }
 
+func (ts *Teamserver) TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, error) {
+	return ts.Extender.ExAgentGenerate(agentName, config, listenerProfile)
+}
+
 func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error) {
 	var (
 		agentName      string

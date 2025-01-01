@@ -19,7 +19,9 @@ type Teamserver interface {
 	TsListenerStart(listenerName string, configType string, config string) error
 	TsListenerEdit(listenerName string, configType string, config string) error
 	TsListenerStop(listenerName string, configType string) error
+	TsListenerGetProfile(listenerName string, listenerType string) ([]byte, error)
 
+	TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, error)
 	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
 	TsAgentUpdateData(newAgentObject []byte) error
@@ -96,6 +98,7 @@ func NewTsConnector(ts Teamserver, p profile.TsProfile) (*TsConnector, error) {
 	connector.Engine.POST(p.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(), connector.TcListenerEdit)
 	connector.Engine.POST(p.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(), connector.TcListenerStop)
 
+	connector.Engine.POST(p.Endpoint+"/agent/generate", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentGenerate)
 	connector.Engine.POST(p.Endpoint+"/agent/command", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentCommand)
 	connector.Engine.POST(p.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentRemove)
 	connector.Engine.POST(p.Endpoint+"/agent/exit", token.ValidateAccessToken(), default404Middleware(), connector.TcAgentExit)

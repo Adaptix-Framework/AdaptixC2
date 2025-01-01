@@ -176,3 +176,20 @@ func (m *ModuleExtender) ListenerStop(name string) error {
 
 	return err
 }
+
+func (m *ModuleExtender) ListenerGetProfile(name string) ([]byte, error) {
+	var (
+		profile []byte
+		ok      bool
+	)
+
+	for _, value := range ListenersObject {
+
+		profile, ok = GetProfile(name, value)
+		if ok {
+			return profile, nil
+		}
+
+	}
+	return nil, errors.New("listener not found")
+}

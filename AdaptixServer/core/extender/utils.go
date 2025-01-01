@@ -41,10 +41,12 @@ type ListenerFunctions interface {
 	ListenerStart(name string, data string) ([]byte, error)
 	ListenerEdit(name string, data string) ([]byte, error)
 	ListenerStop(name string) error
+	ListenerGetProfile(name string) ([]byte, error)
 }
 
 type AgentFunctions interface {
 	AgentInit() ([]byte, error)
+	AgentGenerate(config string, listenerProfile []byte) ([]byte, error)
 	AgentCreate(beat []byte) ([]byte, error)
 	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)
 	AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error)

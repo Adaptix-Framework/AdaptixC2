@@ -129,3 +129,19 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerType string, l
 
 	return nil
 }
+
+func (ts *Teamserver) TsListenerGetProfile(listenerName string, listenerType string) ([]byte, error) {
+
+	if ts.listener_configs.Contains(listenerType) {
+
+		if ts.listeners.Contains(listenerName) {
+
+			return ts.Extender.ExListenerGetProfile(listenerName, listenerType)
+
+		} else {
+			return nil, fmt.Errorf("listener '%v' does not exist", listenerName)
+		}
+	} else {
+		return nil, fmt.Errorf("listener %v does not exist", listenerType)
+	}
+}

@@ -20,6 +20,8 @@ bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfil
 
 /// AGENT
 
+bool HttpReqAgentGenerate( QString listenerName, QString listenerType, QString agentName, QString configData, AuthProfile profile, QString* message, bool* ok );
+
 bool HttpReqAgentCommand( QString agentName, QString agentId, QString cmdLine, QString data, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqAgentExit( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );

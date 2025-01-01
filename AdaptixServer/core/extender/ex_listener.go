@@ -47,3 +47,16 @@ func (ex *AdaptixExtender) ExListenerEdit(listenerName string, configType string
 		return nil, errors.New("module not found")
 	}
 }
+
+func (ex *AdaptixExtender) ExListenerGetProfile(listenerName string, configType string) ([]byte, error) {
+	var module *ModuleExtender
+
+	value, ok := ex.listenerModules.Get(configType)
+	if ok {
+		module = value.(*ModuleExtender)
+		return module.ListenerGetProfile(listenerName)
+
+	} else {
+		return nil, errors.New("module not found")
+	}
+}

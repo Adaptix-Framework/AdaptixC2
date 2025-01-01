@@ -2,11 +2,45 @@ package connector
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 )
+
+type AgentConfig struct {
+	ListenerName string `json:"listener_name"`
+	ListenerType string `json:"listener_type"`
+	AgentName    string `json:"agent"`
+	Config       string `json:"config"`
+}
+
+func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
+	var (
+		agentConfig     AgentConfig
+		err             error
+		listenerProfile []byte
+	)
+
+	err = ctx.ShouldBindJSON(&agentConfig)
+	if err != nil {
+		_ = ctx.Error(errors.New("invalid agent config"))
+		return
+	}
+
+	listenerProfile, err = tc.teamserver.TsListenerGetProfile(agentConfig.ListenerName, agentConfig.ListenerType)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	_, err = tc.teamserver.TsAgentGenetate(agentConfig.AgentName, agentConfig.Config, listenerProfile)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+}
 
 type CommandData struct {
 	AgentName string `json:"name"`

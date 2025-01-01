@@ -16,8 +16,6 @@ void DialogListener::createUI()
 {
     this->resize( 650, 650 );
     this->setWindowTitle( "Create Listener" );
-    if ( this->objectName().isEmpty() )
-        this->setObjectName( QString::fromUtf8( "DialogListener" ) );
 
     listenerNameLabel = new QLabel(this);
     listenerNameLabel->setText(QString::fromUtf8("Listener name:"));
@@ -28,19 +26,15 @@ void DialogListener::createUI()
     listenerTypeLabel->setText(QString::fromUtf8("Listener type: "));
 
     listenerTypeCombobox = new QComboBox(this);
-    listenerTypeCombobox->setObjectName(QString::fromUtf8("TypeComboboxDialogListener" ) );
 
     configStackWidget = new QStackedWidget(this );
-    configStackWidget->setObjectName(QString::fromUtf8("ConfigStackDialogListener" ));
 
     stackGridLayout = new QGridLayout(this );
-    stackGridLayout->setObjectName(QString::fromUtf8("ConfigLayoutDialogListener" ));
     stackGridLayout->setHorizontalSpacing(0);
     stackGridLayout->setContentsMargins(0, 0, 0, 0 );
     stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1 );
 
     listenerConfigGroupbox = new QGroupBox( this );
-    listenerConfigGroupbox->setObjectName(QString::fromUtf8("ConfigGroupboxDialogListener"));
     listenerConfigGroupbox->setTitle(QString::fromUtf8("Listener config") );
     listenerConfigGroupbox->setLayout(stackGridLayout);
 
@@ -57,7 +51,6 @@ void DialogListener::createUI()
     horizontalSpacer_5 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     mainGridLayout = new QGridLayout( this );
-    mainGridLayout->setObjectName(QString::fromUtf8("MainLayoutDialogListener"));
     mainGridLayout->addWidget( listenerNameLabel, 0, 0, 1, 1);
     mainGridLayout->addWidget( listenerNameInput, 0, 1, 1, 5);
     mainGridLayout->addWidget( listenerTypeLabel, 1, 0, 1, 1);

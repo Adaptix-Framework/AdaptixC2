@@ -21,6 +21,11 @@ const (
 	SetMaxTaskDataSize = 0x1900000 // 25 Mb
 )
 
+func CreateAgentProfile(agentConfig string, listenerProfile []byte) ([]byte, error) {
+
+	return nil, errors.New("protocol unknown")
+}
+
 func CreateAgent(initialData []byte) (AgentData, error) {
 	var agent AgentData
 
