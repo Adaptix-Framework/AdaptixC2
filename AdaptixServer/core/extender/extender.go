@@ -110,6 +110,11 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 		if !ok {
 			return errors.New("method ListenerStop not found")
 		}
+
+		_, ok = reflect.TypeOf(object).MethodByName("ListenerGetProfile")
+		if !ok {
+			return errors.New("method ListenerGetProfile not found")
+		}
 		return nil
 	}
 
@@ -117,6 +122,11 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 		_, ok := reflect.TypeOf(object).MethodByName("AgentInit")
 		if !ok {
 			return errors.New("method AgentInit not found")
+		}
+
+		_, ok = reflect.TypeOf(object).MethodByName("AgentGenerate")
+		if !ok {
+			return errors.New("method AgentGenerate not found")
 		}
 
 		_, ok = reflect.TypeOf(object).MethodByName("AgentCreate")

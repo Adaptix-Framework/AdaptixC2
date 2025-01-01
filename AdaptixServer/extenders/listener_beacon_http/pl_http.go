@@ -22,6 +22,9 @@ import (
 )
 
 type HTTPConfig struct {
+	Protocol   string `json:"protocol"`
+	EncryptKey []byte `json:"encrypt_key"`
+
 	Ssl       bool   `json:"ssl"`
 	HostBind  string `json:"host_bind"`
 	PortBind  string `json:"port_bind"`
@@ -65,6 +68,9 @@ func (h *HTTP) Start() error {
 	router.NoRoute(h.pageFake)
 	router.POST("/*endpoint", h.processRequest)
 	h.Active = true
+	h.Config.Protocol = "http"
+	h.Params.EncryptKey = []byte("\x0c\xff\x01\xb5\xfc\x46\x90\x57\x61\x98\x25\xe1\x87\x57\x21\x2e")
+	h.Config.EncryptKey = h.Params.EncryptKey
 
 	h.Server = &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", h.Config.HostBind, h.Config.PortBind),
@@ -227,7 +233,7 @@ func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, uint, []byte, []byte, er
 		return 0, 0, nil, nil, errors.New("failed decrypt beat")
 	}
 
-	h.Params.EncryptKey = []byte("\x0c\xff\x01\xb5\xfc\x46\x90\x57\x61\x98\x25\xe1\x87\x57\x21\x2e")
+	// decrypt data
 	rc4crypt, errcrypt := rc4.NewCipher([]byte(h.Params.EncryptKey))
 	if errcrypt != nil {
 		return 0, 0, nil, nil, errors.New("rc4 decrypt error")

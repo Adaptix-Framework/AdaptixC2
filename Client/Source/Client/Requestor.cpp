@@ -121,6 +121,25 @@ bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfil
 
 /// AGENT
 
+bool HttpReqAgentGenerate( QString listenerName, QString listenerType, QString agentName, QString configData, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["listener_name"] = listenerName;
+    dataJson["listener_type"] = listenerType;
+    dataJson["agent"]   = agentName;
+    dataJson["config"] = configData;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/agent/generate";
+    QJsonObject jsonObject = HttpReq( sUrl, jsonData, profile.GetAccessToken() );
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
 bool HttpReqAgentCommand( QString agentName, QString agentId, QString cmdLine, QString data, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;

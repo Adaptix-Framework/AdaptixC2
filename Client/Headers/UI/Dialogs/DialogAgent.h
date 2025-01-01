@@ -24,12 +24,15 @@ class DialogAgent : public QDialog
     QStackedWidget* configStackWidget;
 
     QMap<QString, WidgetBuilder*> agentsUI;
-    AuthProfile                   authProfile;
+
+    AuthProfile authProfile;
+    QString     listenerName;
+    QString     listenerType;
 
     void createUI();
 
 public:
-    explicit DialogAgent();
+    explicit DialogAgent(QString listenerName, QString listenerType);
     ~DialogAgent();
 
     void AddExAgents(QMap<QString, WidgetBuilder*> agents);

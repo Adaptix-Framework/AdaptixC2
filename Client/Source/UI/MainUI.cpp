@@ -4,8 +4,6 @@
 MainUI::MainUI()
 {
     this->setWindowTitle( FRAMEWORK_VERSION );
-    if ( this->objectName().isEmpty() )
-        this->setObjectName( QString::fromUtf8( "MainUI" ) );
 
     auto newProjectAction = new QAction("New Project", this);
 //    connect(newProjectAction, &QAction::triggered, this, &MainUI::onNewProject);

@@ -284,7 +284,7 @@ void ListenersWidget::generateAgent()
         tmpRegisterAgentsUI[agent]->BuildWidget(false );
     }
 
-    DialogAgent dialogAgent;
+    DialogAgent dialogAgent(listenerName, listenerType);
     dialogAgent.AddExAgents(tmpRegisterAgentsUI);
     dialogAgent.SetProfile( *(adaptixWidget->GetProfile()) );
     dialogAgent.Start();
