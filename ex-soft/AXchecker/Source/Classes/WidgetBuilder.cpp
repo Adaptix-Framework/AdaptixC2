@@ -1,12 +1,7 @@
 #include <Classes/WidgetBuilder.h>
 
-SpinTable::SpinTable(int rows, int columns, QWidget* parent)
+SpinTable::SpinTable(int rows, int columns, QWidget* parent) : QWidget(parent)
 {
-    this->setParent(parent);
-
-    buttonAdd   = new QPushButton("Add");
-    buttonClear = new QPushButton("Clear");
-
     table = new QTableWidget(rows, columns, this);
     table->setAutoFillBackground( false );
     table->setShowGrid( false );
@@ -21,6 +16,9 @@ SpinTable::SpinTable(int rows, int columns, QWidget* parent)
     table->horizontalHeader()->setCascadingSectionResizes( true );
     table->horizontalHeader()->setHighlightSections( false );
     table->verticalHeader()->setVisible( false );
+
+    buttonAdd   = new QPushButton("Add", this);
+    buttonClear = new QPushButton("Clear", this);
 
     layout = new QGridLayout( this );
     layout->addWidget(table, 0, 0, 1, 2);
@@ -43,6 +41,40 @@ SpinTable::SpinTable(int rows, int columns, QWidget* parent)
     QObject::connect(buttonClear, &QPushButton::clicked, this, [&]()
     {
         table->setRowCount(0);
+    } );
+}
+
+FileSelector::FileSelector(QWidget* parent) : QWidget(parent)
+{
+    input = new QLineEdit(this);
+    input->setReadOnly(true);
+
+    button = new QPushButton(this);
+    button->setIcon(QIcon::fromTheme("folder"));
+
+    QHBoxLayout* layout = new QHBoxLayout(this);
+    layout->addWidget(input);
+    layout->addWidget(button);
+    layout->setContentsMargins(0, 0, 0, 0);
+    this->setLayout(layout);
+
+    connect(button, &QPushButton::clicked, this, [&]()
+    {
+        QString selectedFile = QFileDialog::getOpenFileName(this, "Select a file");
+        if (selectedFile.isEmpty())
+            return;
+
+        QString filePath = selectedFile;
+        input->setText(filePath);
+
+        QFile file(filePath);
+        if (!file.open(QIODevice::ReadOnly))
+            return;
+
+        QByteArray fileData = file.readAll();
+        file.close();
+
+        content = QString::fromUtf8(fileData.toBase64());
     } );
 }
 
@@ -146,6 +178,21 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj)
 
             if (!id.isEmpty()) {
                 widgetMap[id] = lineEdit;
+            }
+        }
+        else if (type == "file_selector") {
+            auto selector = new FileSelector(widget);
+
+            selector->input->setPlaceholderText(elementObj["placeholder"].toString());
+
+            if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
+                gridLayout->addWidget(selector, row, col, rowSpan, colSpan);
+            } else if (auto boxLayout = qobject_cast<QBoxLayout*>(layout)) {
+                boxLayout->addWidget(selector);
+            }
+
+            if (!id.isEmpty()) {
+                widgetMap[id] = selector;
             }
         }
         else if (type == "combo") {
@@ -355,7 +402,15 @@ QString WidgetBuilder::CollectData()
         const QString& id = it.key();
         widget = it.value();
 
-        if (auto lineEdit = qobject_cast<QLineEdit *>(widget)) {
+        if (auto lineEdit = qobject_cast<QLineEdit*>(widget)) {
+            collectedData[id] = lineEdit->text();
+        }
+
+        else if (auto fileSelector = qobject_cast<FileSelector*>(widget)) {
+            collectedData[id] = fileSelector->content;
+        }
+
+        else if (auto lineEdit = qobject_cast<QLineEdit*>(widget)) {
             collectedData[id] = lineEdit->text();
         }
 
@@ -452,9 +507,9 @@ void WidgetBuilder::FillData(QString jsonString)
             spinBox->setValue(value.toDouble());
         }
 
-        else if (auto textEdit = qobject_cast<QTextEdit*>(widget)) {
-            textEdit->setPlainText(value.toString());
-        }
+//        else if (auto fileSelector = qobject_cast<FileSelector*>(widget)) {
+//
+//        }
 
         else if (auto checkBox = qobject_cast<QCheckBox*>(widget)) {
             checkBox->setChecked(value.toBool());

@@ -245,6 +245,19 @@ QTextEdit:disabled {
     color: #4A4A4A;
 }
 
+QPlainTextEdit {
+    background-color: #2A2A2A;
+    border: 1px solid #4A4A4A;
+    color: #E0E0E0;
+    padding: 2px;
+    border-radius: 4px;
+}
+
+QPlainTextEdit:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
+}
+
 
 
 

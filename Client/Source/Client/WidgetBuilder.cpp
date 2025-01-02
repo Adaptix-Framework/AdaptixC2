@@ -98,6 +98,21 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj, boo
                 widgetMap[id] = lineEdit;
             }
         }
+        else if (type == "file_selector") {
+            auto selector = new FileSelector(widget);
+
+            selector->input->setPlaceholderText(elementObj["placeholder"].toString());
+
+            if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
+                gridLayout->addWidget(selector, row, col, rowSpan, colSpan);
+            } else if (auto boxLayout = qobject_cast<QBoxLayout*>(layout)) {
+                boxLayout->addWidget(selector);
+            }
+
+            if (!id.isEmpty()) {
+                widgetMap[id] = selector;
+            }
+        }
         else if (type == "combo") {
             auto comboBox = new QComboBox(widget);
 
@@ -310,6 +325,10 @@ QString WidgetBuilder::CollectData()
 
         if (auto lineEdit = qobject_cast<QLineEdit *>(widget)) {
             collectedData[id] = lineEdit->text();
+        }
+
+        else if (auto fileSelector = qobject_cast<FileSelector*>(widget)) {
+            collectedData[id] = fileSelector->content;
         }
 
         else if (auto comboBox = qobject_cast<QComboBox*>(widget)) {

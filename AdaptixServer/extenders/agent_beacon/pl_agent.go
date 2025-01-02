@@ -21,7 +21,36 @@ const (
 	SetMaxTaskDataSize = 0x1900000 // 25 Mb
 )
 
+type GenerateConfig struct {
+	Os      string `json:"os"`
+	Arch    string `json:"arch"`
+	Format  string `json:"format"`
+	Sleep   string `json:"sleep"`
+	Jitter  int    `json:"jitter"`
+	SvcName string `json:"svcname"`
+}
+
 func CreateAgentProfile(agentConfig string, listenerProfile []byte) ([]byte, error) {
+	var (
+		listenerMap map[string]any
+		err         error
+		params      []interface{}
+	)
+
+	err = json.Unmarshal(listenerProfile, &listenerMap)
+	if err != nil {
+		return nil, err
+	}
+
+	protocol, _ := listenerMap["protocol"].(string)
+	if protocol == "http" {
+		var generateConfig GenerateConfig
+		err = json.Unmarshal([]byte(agentConfig), &generateConfig)
+		if err != nil {
+			return nil, err
+		}
+
+	}
 
 	return nil, errors.New("protocol unknown")
 }
