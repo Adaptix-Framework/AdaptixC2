@@ -45,3 +45,39 @@ SpinTable::SpinTable(int rows, int columns, QWidget* parent)
         table->setRowCount(0);
     } );
 }
+
+
+
+FileSelector::FileSelector(QWidget* parent) : QWidget(parent)
+{
+    input = new QLineEdit(this);
+    input->setReadOnly(true);
+
+    button = new QPushButton(this);
+    button->setIcon(QIcon::fromTheme("folder"));
+
+    QHBoxLayout* layout = new QHBoxLayout(this);
+    layout->addWidget(input);
+    layout->addWidget(button);
+    layout->setContentsMargins(0, 0, 0, 0);
+    this->setLayout(layout);
+
+    connect(button, &QPushButton::clicked, this, [&]()
+    {
+        QString selectedFile = QFileDialog::getOpenFileName(this, "Select a file");
+        if (selectedFile.isEmpty())
+            return;
+
+        QString filePath = selectedFile;
+        input->setText(filePath);
+
+        QFile file(filePath);
+        if (!file.open(QIODevice::ReadOnly))
+            return;
+
+        QByteArray fileData = file.readAll();
+        file.close();
+
+        content = QString::fromUtf8(fileData.toBase64());
+    } );
+}

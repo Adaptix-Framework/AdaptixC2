@@ -3,7 +3,8 @@
 
 #include <main.h>
 
-class SpinTable : public QWidget {
+class SpinTable : public QWidget
+{
 Q_OBJECT
 public:
     QGridLayout*  layout      = nullptr;
@@ -12,12 +13,27 @@ public:
     QPushButton*  buttonClear = nullptr;
 
     SpinTable(int rows, int clomuns, QWidget* parent);
-    SpinTable(QWidget* parent = nullptr) { SpinTable(0,0,parent); }
+    explicit SpinTable(QWidget* parent = nullptr) { SpinTable(0,0,parent); }
     ~SpinTable() = default;
 };
 
-class WidgetBuilder {
+class FileSelector : public QWidget
+{
+Q_OBJECT
 
+public:
+    QVBoxLayout* layout = nullptr;
+    QLineEdit*   input  = nullptr;
+    QPushButton* button = nullptr;
+
+    QString content;
+
+    explicit FileSelector(QWidget* parent = nullptr);
+    ~FileSelector() = default;
+};
+
+class WidgetBuilder
+{
     QWidget* widget = nullptr;
 
     QMap<QString, QWidget*> widgetMap;

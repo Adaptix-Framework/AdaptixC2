@@ -36,4 +36,21 @@ public:
     ~SpinTable() = default;
 };
 
+
+
+class FileSelector : public QWidget
+{
+Q_OBJECT
+
+public:
+    QVBoxLayout* layout = nullptr;
+    QLineEdit*   input  = nullptr;
+    QPushButton* button = nullptr;
+
+    QString content;
+
+    explicit FileSelector(QWidget* parent = nullptr);
+    ~FileSelector() = default;
+};
+
 #endif //ADAPTIXCLIENT_CUSTOMELEMENTS_H
