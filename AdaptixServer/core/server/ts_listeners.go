@@ -7,10 +7,11 @@ import (
 	"fmt"
 )
 
-func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, listenerConfig string) error {
+func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, listenerConfig string, listenerCustomData []byte) error {
 	var (
 		err          error
 		data         []byte
+		customData   []byte
 		listenerData adaptix.ListenerData
 	)
 
@@ -20,7 +21,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, 
 			return errors.New("listener already exists")
 		}
 
-		data, err = ts.Extender.ExListenerStart(listenerName, listenerType, listenerConfig)
+		data, customData, err = ts.Extender.ExListenerStart(listenerName, listenerType, listenerConfig, listenerCustomData)
 		if err != nil {
 			return err
 		}
@@ -44,7 +45,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, 
 		ts.TsSyncAllClients(packet2)
 		ts.events.Put(packet2)
 
-		_ = ts.DBMS.DbListenerInsert(listenerName, listenerType, listenerConfig)
+		_ = ts.DBMS.DbListenerInsert(listenerName, listenerType, listenerConfig, customData)
 	} else {
 		return fmt.Errorf("listener %v does not exist", listenerType)
 	}

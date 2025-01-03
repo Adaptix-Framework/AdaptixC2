@@ -22,7 +22,7 @@ func (dbms *DBMS) DbListenerExist(listenerName string) bool {
 	return false
 }
 
-func (dbms *DBMS) DbListenerInsert(listenerName string, listenerType string, listenerConfig string) error {
+func (dbms *DBMS) DbListenerInsert(listenerName string, listenerType string, listenerConfig string, customData []byte) error {
 	var (
 		ok          bool
 		err         error
@@ -39,8 +39,8 @@ func (dbms *DBMS) DbListenerInsert(listenerName string, listenerType string, lis
 		return fmt.Errorf("listener %s alredy exists", listenerName)
 	}
 
-	insertQuery = `INSERT INTO Listeners (ListenerName, ListenerType, ListenerConfig) values(?,?,?);`
-	_, err = dbms.database.Exec(insertQuery, listenerName, listenerType, listenerConfig)
+	insertQuery = `INSERT INTO Listeners (ListenerName, ListenerType, ListenerConfig, CustomData) values(?,?,?,?);`
+	_, err = dbms.database.Exec(insertQuery, listenerName, listenerType, listenerConfig, customData)
 
 	return err
 }
@@ -95,6 +95,7 @@ type ListenerRow struct {
 	ListenerName   string
 	ListenerType   string
 	ListenerConfig string
+	CustomData     []byte
 }
 
 func (dbms *DBMS) DbListenerAll() []ListenerRow {
@@ -106,13 +107,13 @@ func (dbms *DBMS) DbListenerAll() []ListenerRow {
 
 	ok = dbms.DatabaseExists()
 	if ok {
-		selectQuery = `SELECT ListenerName, ListenerType, ListenerConfig FROM Listeners;`
+		selectQuery = `SELECT ListenerName, ListenerType, ListenerConfig, CustomData FROM Listeners;`
 		query, err := dbms.database.Query(selectQuery)
 		if err == nil {
 
 			for query.Next() {
 				listenerRow := ListenerRow{}
-				err = query.Scan(&listenerRow.ListenerName, &listenerRow.ListenerType, &listenerRow.ListenerConfig)
+				err = query.Scan(&listenerRow.ListenerName, &listenerRow.ListenerType, &listenerRow.ListenerConfig, &listenerRow.CustomData)
 				if err != nil {
 					continue
 				}

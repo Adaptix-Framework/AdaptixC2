@@ -15,7 +15,7 @@
             },
             {
               "type": "combo",
-              "id": "method",
+              "id": "http_method",
               "items": ["POST", "GET"],
               "position": [0, 1, 1, 1]
             },
