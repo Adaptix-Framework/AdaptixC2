@@ -111,24 +111,25 @@ func (m *ModuleExtender) ListenerValid(data string) error {
 	return ValidateListenerConfig(data)
 }
 
-func (m *ModuleExtender) ListenerStart(name string, data string) ([]byte, error) {
+func (m *ModuleExtender) ListenerStart(name string, data string, listenerCustomData []byte) ([]byte, []byte, error) {
 	var (
 		err          error
 		listenerData ListenerData
+		customData   []byte
 		buffer       bytes.Buffer
 		listener     any
 	)
 
-	listenerData, listener, err = CreateListenerDataAndStart(name, data)
+	listenerData, customData, listener, err = CreateListenerDataAndStart(name, data, listenerCustomData)
 
 	err = json.NewEncoder(&buffer).Encode(listenerData)
 	if err != nil {
-		return nil, err
+		return nil, customData, err
 	}
 
 	ListenersObject = append(ListenersObject, listener)
 
-	return buffer.Bytes(), nil
+	return buffer.Bytes(), customData, nil
 }
 
 func (m *ModuleExtender) ListenerEdit(name string, data string) ([]byte, error) {

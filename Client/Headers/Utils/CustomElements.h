@@ -23,6 +23,7 @@ public:
 };
 
 
+
 class SpinTable : public QWidget {
 Q_OBJECT
 public:

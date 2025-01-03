@@ -40,7 +40,8 @@ func (dbms *DBMS) DatabaseInit() error {
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Listeners" (
     	"ListenerName" TEXT NOT NULL UNIQUE, 
     	"ListenerType" TEXT NOT NULL,
-    	"ListenerConfig" TEXT NOT NULL
+    	"ListenerConfig" TEXT NOT NULL,
+    	"CustomData" BLOB
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 

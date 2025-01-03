@@ -22,33 +22,41 @@ import (
 )
 
 type HTTPConfig struct {
-	Protocol   string `json:"protocol"`
-	EncryptKey []byte `json:"encrypt_key"`
+	Ssl        bool     `json:"ssl"`
+	HostBind   string   `json:"host_bind"`
+	PortBind   string   `json:"port_bind"`
+	PortAgent  string   `json:"callback_port"`
+	HostsAgent []string `json:"hosts_agent"`
 
-	Ssl       bool   `json:"ssl"`
-	HostBind  string `json:"host_bind"`
-	PortBind  string `json:"port_bind"`
-	HostAgent string `json:"host_agent"`
-	PortAgent string `json:"port_agent"`
-	Uri       string `json:"uri"`
-
-	SslCert     string `json:"ssl_cert"`
-	SslKey      string `json:"ssl_key"`
+	SslCert     []byte `json:"ssl_cert"`
+	SslKey      []byte `json:"ssl_key"`
 	SslCertPath string `json:"ssl_cert_path"`
 	SslKeyPath  string `json:"ssl_key_path"`
 
-	ParameterName string `json:"parameter_name"`
-}
+	// Agent
+	HttpMethod     string `json:"http_method"`
+	Uri            string `json:"urn"`
+	ParameterName  string `json:"hb_header"`
+	UserAgent      string `json:"user_agent"`
+	HostHeader     string `json:"host_header"`
+	RequestHeaders string `json:"request_headers"`
 
-type ListenerParams struct {
-	EncryptKey []byte
+	// Server
+	ResponseHeaders    map[string]string `json:"response_headers"`
+	TrustXForwardedFor bool              `json:"x-forwarded-for"`
+	WebPageError       string            `json:"page-error"`
+	WebPageOutput      string            `json:"page-payload"`
+
+	Callback_servers string `json:"callback_servers"`
+	Server_headers   string `json:"server_headers"`
+	Protocol         string `json:"protocol"`
+	EncryptKey       []byte `json:"encrypt_key"`
 }
 
 type HTTP struct {
 	GinEngine *gin.Engine
 	Server    *http.Server
 	Config    HTTPConfig
-	Params    ListenerParams
 	Name      string
 	Active    bool
 }
@@ -65,12 +73,22 @@ func (h *HTTP) Start() error {
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
-	router.NoRoute(h.pageFake)
-	router.POST("/*endpoint", h.processRequest)
+	router.NoRoute(h.pageError)
+
+	router.Use(func(c *gin.Context) {
+		for header, value := range h.Config.ResponseHeaders {
+			c.Header(header, value)
+		}
+		c.Next()
+	})
+
+	if h.Config.HttpMethod == "POST" {
+		router.POST("/*endpoint", h.processRequest)
+	} else if h.Config.HttpMethod == "GET" {
+		router.GET("/*endpoint", h.processRequest)
+	}
+
 	h.Active = true
-	h.Config.Protocol = "http"
-	h.Params.EncryptKey = []byte("\x0c\xff\x01\xb5\xfc\x46\x90\x57\x61\x98\x25\xe1\x87\x57\x21\x2e")
-	h.Config.EncryptKey = h.Params.EncryptKey
 
 	h.Server = &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", h.Config.HostBind, h.Config.PortBind),
@@ -92,7 +110,7 @@ func (h *HTTP) Start() error {
 		h.Config.SslCertPath = listenerPath + "/listener.crt"
 		h.Config.SslKeyPath = listenerPath + "/listener.key"
 
-		if h.Config.SslCert == "" || h.Config.SslKey == "" {
+		if len(h.Config.SslCert) == 0 || len(h.Config.SslKey) == 0 {
 			err = h.generateSelfSignedCert(h.Config.SslCertPath, h.Config.SslKeyPath)
 			if err != nil {
 				h.Active = false
@@ -100,11 +118,11 @@ func (h *HTTP) Start() error {
 				return err
 			}
 		} else {
-			err = os.WriteFile(h.Config.SslCertPath, []byte(h.Config.SslCert), 0600)
+			err = os.WriteFile(h.Config.SslCertPath, h.Config.SslCert, 0600)
 			if err != nil {
 				return err
 			}
-			err = os.WriteFile(h.Config.SslKeyPath, []byte(h.Config.SslKey), 0600)
+			err = os.WriteFile(h.Config.SslKeyPath, h.Config.SslKey, 0600)
 			if err != nil {
 				return err
 			}
@@ -132,7 +150,7 @@ func (h *HTTP) Start() error {
 		}()
 	}
 
-	time.Sleep(300 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	return err
 }
 
@@ -180,28 +198,31 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 		}
 	}
 	if valid == false {
-		h.pageFake(ctx)
+		h.pageError(ctx)
 		return
 	}
 
 	ExternalIP = strings.Split(ctx.Request.RemoteAddr, ":")[0]
+	if h.Config.TrustXForwardedFor {
+		ExternalIP = ctx.Request.Header.Get("X-Forwarded-For")
+	}
 
 	agentType, agentId, beat, bodyData, err = parseBeatAndData(ctx, h)
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
-		h.pageFake(ctx)
+		h.pageError(ctx)
 		return
 	}
 
 	responseData, err = ModuleObject.ts.TsAgentRequest(fmt.Sprintf("%08x", agentType), fmt.Sprintf("%08x", agentId), beat, bodyData, h.Name, ExternalIP)
 	if err != nil {
-		h.pageFake(ctx)
+		h.pageError(ctx)
 		return
 	} else {
 		_, err = ctx.Writer.Write(responseData)
 		if err != nil {
 			fmt.Println("Failed to write to request: " + err.Error())
-			h.pageFake(ctx)
+			h.pageError(ctx)
 			return
 		}
 	}
@@ -234,7 +255,7 @@ func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, uint, []byte, []byte, er
 	}
 
 	// decrypt data
-	rc4crypt, errcrypt := rc4.NewCipher([]byte(h.Params.EncryptKey))
+	rc4crypt, errcrypt := rc4.NewCipher([]byte(h.Config.EncryptKey))
 	if errcrypt != nil {
 		return 0, 0, nil, nil, errors.New("rc4 decrypt error")
 	}
@@ -278,7 +299,7 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 
 	template.DNSNames = []string{h.Config.HostBind}
 
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	h.Config.SslCert, err = x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
 	if err != nil {
 		return fmt.Errorf("failed to create certificate: %v", err)
 	}
@@ -288,7 +309,7 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 		return fmt.Errorf("failed to create certificate file: %v", err)
 	}
 	defer certOut.Close()
-	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes}); err != nil {
+	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: h.Config.SslCert}); err != nil {
 		return fmt.Errorf("failed to write certificate: %v", err)
 	}
 
@@ -297,19 +318,22 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 		return fmt.Errorf("failed to create key file: %v", err)
 	}
 	defer keyOut.Close()
-	privBytes := x509.MarshalPKCS1PrivateKey(priv)
-	if err := pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes}); err != nil {
+	h.Config.SslKey = x509.MarshalPKCS1PrivateKey(priv)
+	if err := pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: h.Config.SslKey}); err != nil {
 		return fmt.Errorf("failed to write private key: %v", err)
 	}
-
-	h.Config.SslCert = string(derBytes)
-	h.Config.SslKey = string(privBytes)
 
 	return nil
 }
 
-func (h *HTTP) pageFake(ctx *gin.Context) {
+func (h *HTTP) pageError(ctx *gin.Context) {
 	ctx.Writer.WriteHeader(http.StatusNotFound)
-	html := []byte("Blank page")
+	html := []byte(h.Config.WebPageError)
+	ctx.Writer.Write(html)
+}
+
+func (h *HTTP) pageDefault(ctx *gin.Context) {
+	ctx.Writer.WriteHeader(http.StatusOK)
+	html := []byte(strings.ReplaceAll(string(h.Config.WebPageOutput), "<<<PAYLOAD_DATA>>>", ""))
 	ctx.Writer.Write(html)
 }

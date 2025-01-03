@@ -6,6 +6,7 @@ import (
 	"errors"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -35,8 +36,8 @@ func ValidateListenerConfig(data string) error {
 		return errors.New("HostBind is required")
 	}
 
-	if conf.HostAgent == "" {
-		return errors.New("HostAgent is required")
+	if conf.Callback_servers == "" {
+		return errors.New("callback_servers is required")
 	}
 
 	portBind, err := strconv.Atoi(conf.PortBind)
@@ -57,9 +58,25 @@ func ValidateListenerConfig(data string) error {
 		return errors.New("PortAgent must be in the range 1-65535")
 	}
 
-	matched, err := regexp.MatchString(`^/[a-zA-Z0-9]+(/[a-zA-Z0-9]+)*$`, conf.Uri)
+	matched, err := regexp.MatchString(`^/[a-zA-Z0-9\.\=\-]+(/[a-zA-Z0-9\.\=\-]+)*$`, conf.Uri)
 	if err != nil || !matched {
 		return errors.New("uri invalid")
+	}
+
+	if conf.HttpMethod == "" {
+		return errors.New("http_method is required")
+	}
+
+	if conf.ParameterName == "" {
+		return errors.New("hb_header is required")
+	}
+
+	if conf.UserAgent == "" {
+		return errors.New("user_agent is required")
+	}
+
+	if !strings.Contains(conf.WebPageOutput, "<<<PAYLOAD_DATA>>>") {
+		return errors.New("page-payload must contain '<<<PAYLOAD_DATA>>>' template")
 	}
 
 	/// END CODE
@@ -67,9 +84,11 @@ func ValidateListenerConfig(data string) error {
 	return nil
 }
 
-func CreateListenerDataAndStart(name string, configData string) (ListenerData, any, error) {
-	var listenerData ListenerData
-	//var listener any
+func CreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (ListenerData, []byte, any, error) {
+	var (
+		listenerData ListenerData
+		customdData  []byte
+	)
 
 	/// START CODE HERE
 
@@ -79,9 +98,47 @@ func CreateListenerDataAndStart(name string, configData string) (ListenerData, a
 		err      error
 	)
 
-	err = json.Unmarshal([]byte(configData), &conf)
-	if err != nil {
-		return listenerData, listener, err
+	if listenerCustomData == nil {
+		err = json.Unmarshal([]byte(configData), &conf)
+		if err != nil {
+			return listenerData, customdData, listener, err
+		}
+
+		conf.Callback_servers = strings.ReplaceAll(conf.Callback_servers, " ", "")
+		conf.Callback_servers = strings.ReplaceAll(conf.Callback_servers, "\n", ", ")
+		conf.Callback_servers = strings.TrimSuffix(conf.Callback_servers, ", ")
+
+		conf.HostsAgent = strings.Split(conf.Callback_servers, ", ")
+
+		conf.RequestHeaders = strings.TrimRight(conf.RequestHeaders, " \n\t\r") + "\n"
+		conf.RequestHeaders = strings.ReplaceAll(conf.RequestHeaders, "\n", "\r\n")
+
+		conf.ResponseHeaders = make(map[string]string)
+		headerLine := strings.Split(conf.Server_headers, "\n")
+		for _, line := range headerLine {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+
+			conf.ResponseHeaders[key] = value
+		}
+
+		conf.Protocol = "http"
+		conf.EncryptKey = []byte("\x0c\xff\x01\xb5\xfc\x46\x90\x57\x61\x98\x25\xe1\x87\x57\x21\x2e")
+
+	} else {
+		err = json.Unmarshal([]byte(listenerCustomData), &conf)
+		if err != nil {
+			return listenerData, customdData, listener, err
+		}
 	}
 
 	listener = NewConfigHttp(name)
@@ -89,13 +146,13 @@ func CreateListenerDataAndStart(name string, configData string) (ListenerData, a
 
 	err = listener.Start()
 	if err != nil {
-		return listenerData, listener, err
+		return listenerData, customdData, listener, err
 	}
 
 	listenerData = ListenerData{
 		BindHost:  listener.Config.HostBind,
 		BindPort:  listener.Config.PortBind,
-		AgentHost: listener.Config.HostAgent,
+		AgentHost: conf.Callback_servers,
 		AgentPort: listener.Config.PortAgent,
 		Status:    "Listen",
 	}
@@ -104,9 +161,16 @@ func CreateListenerDataAndStart(name string, configData string) (ListenerData, a
 		listenerData.Status = "Closed"
 	}
 
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(listener.Config)
+	if err != nil {
+		return listenerData, customdData, listener, nil
+	}
+	customdData = buffer.Bytes()
+
 	/// END CODE
 
-	return listenerData, listener, nil
+	return listenerData, customdData, listener, nil
 }
 
 func EditListenerData(name string, listenerObject any, configData string) (ListenerData, bool) {
