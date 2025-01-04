@@ -132,26 +132,27 @@ func (m *ModuleExtender) ListenerStart(name string, data string, listenerCustomD
 	return buffer.Bytes(), customData, nil
 }
 
-func (m *ModuleExtender) ListenerEdit(name string, data string) ([]byte, error) {
+func (m *ModuleExtender) ListenerEdit(name string, data string) ([]byte, []byte, error) {
 	var (
 		err          error
 		buffer       bytes.Buffer
 		listenerData ListenerData
+		customData   []byte
 		ok           bool
 	)
 
 	for _, value := range ListenersObject {
 
-		listenerData, ok = EditListenerData(name, value, data)
+		listenerData, customData, ok = EditListenerData(name, value, data)
 		if ok {
 			err = json.NewEncoder(&buffer).Encode(listenerData)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
-			return buffer.Bytes(), nil
+			return buffer.Bytes(), customData, nil
 		}
 	}
-	return nil, errors.New("listener not found")
+	return nil, nil, errors.New("listener not found")
 }
 
 func (m *ModuleExtender) ListenerStop(name string) error {
