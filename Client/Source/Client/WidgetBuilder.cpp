@@ -423,8 +423,13 @@ void WidgetBuilder::FillData(QString jsonString)
             spinBox->setValue(value.toDouble());
         }
 
-        else if (auto textEdit = qobject_cast<QTextEdit*>(widget)) {
-            textEdit->setPlainText(value.toString());
+        else if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(widget)) {
+            plainTextEdit->setPlainText(value.toString());
+        }
+
+        else if (auto fileSelector = qobject_cast<FileSelector*>(widget)) {
+            fileSelector->input->setText("selected...");
+            fileSelector->button->setEnabled(false);
         }
 
         else if (auto checkBox = qobject_cast<QCheckBox*>(widget)) {

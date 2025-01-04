@@ -173,9 +173,10 @@ func CreateListenerDataAndStart(name string, configData string, listenerCustomDa
 	return listenerData, customdData, listener, nil
 }
 
-func EditListenerData(name string, listenerObject any, configData string) (ListenerData, bool) {
+func EditListenerData(name string, listenerObject any, configData string) (ListenerData, []byte, bool) {
 	var (
 		listenerData ListenerData
+		customdData  []byte
 		ok           bool = false
 	)
 
@@ -191,27 +192,50 @@ func EditListenerData(name string, listenerObject any, configData string) (Liste
 
 		err = json.Unmarshal([]byte(configData), &conf)
 		if err != nil {
-			return listenerData, false
+			return listenerData, customdData, false
 		}
 
+		conf.Callback_servers = strings.ReplaceAll(conf.Callback_servers, " ", "")
+		conf.Callback_servers = strings.ReplaceAll(conf.Callback_servers, "\n", ", ")
+		conf.Callback_servers = strings.TrimSuffix(conf.Callback_servers, ", ")
+		conf.HostsAgent = strings.Split(conf.Callback_servers, ", ")
+
+		listener.Config.PortAgent = conf.PortAgent
+		listener.Config.Callback_servers = conf.Callback_servers
+
+		listener.Config.HostsAgent = conf.HostsAgent
+		listener.Config.UserAgent = conf.UserAgent
 		listener.Config.Uri = conf.Uri
+		listener.Config.ParameterName = conf.ParameterName
+		listener.Config.TrustXForwardedFor = conf.TrustXForwardedFor
+		listener.Config.HostHeader = conf.HostHeader
+		listener.Config.WebPageError = conf.WebPageError
+		listener.Config.WebPageOutput = conf.WebPageOutput
 
 		listenerData = ListenerData{
 			BindHost:  listener.Config.HostBind,
 			BindPort:  listener.Config.PortBind,
-			AgentHost: listener.Config.HostAgent,
+			AgentHost: listener.Config.Callback_servers,
 			AgentPort: listener.Config.PortAgent,
 			Status:    "Listen",
 		}
 		if !listener.Active {
 			listenerData.Status = "Closed"
 		}
+
+		var buffer bytes.Buffer
+		err = json.NewEncoder(&buffer).Encode(listener.Config)
+		if err != nil {
+			return listenerData, customdData, false
+		}
+		customdData = buffer.Bytes()
+
 		ok = true
 	}
 
 	/// END CODE
 
-	return listenerData, ok
+	return listenerData, customdData, ok
 }
 
 func StopListener(name string, listenerObject any) (bool, error) {

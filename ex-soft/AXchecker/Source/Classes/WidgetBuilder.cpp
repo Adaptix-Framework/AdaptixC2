@@ -422,8 +422,8 @@ QString WidgetBuilder::CollectData()
             collectedData[id] = spinBox->value();
         }
 
-        else if (auto textEdit = qobject_cast<QPlainTextEdit*>(widget)) {
-            collectedData[id] = textEdit->toPlainText();
+        else if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(widget)) {
+            collectedData[id] = plainTextEdit->toPlainText();
         }
 
         else if (auto checkBox = qobject_cast<QCheckBox*>(widget)) {
@@ -507,9 +507,14 @@ void WidgetBuilder::FillData(QString jsonString)
             spinBox->setValue(value.toDouble());
         }
 
-//        else if (auto fileSelector = qobject_cast<FileSelector*>(widget)) {
-//
-//        }
+        else if (auto plainTextEdit = qobject_cast<QPlainTextEdit*>(widget)) {
+            plainTextEdit->setPlainText(value.toString());
+        }
+
+        else if (auto fileSelector = qobject_cast<FileSelector*>(widget)) {
+            fileSelector->input->setText("selected...");
+            fileSelector->button->setEnabled(false);
+        }
 
         else if (auto checkBox = qobject_cast<QCheckBox*>(widget)) {
             checkBox->setChecked(value.toBool());

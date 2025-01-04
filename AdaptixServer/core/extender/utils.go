@@ -39,7 +39,7 @@ type ListenerFunctions interface {
 	ListenerInit(path string) ([]byte, error)
 	ListenerValid(config string) error
 	ListenerStart(name string, data string, listenerCustomData []byte) ([]byte, []byte, error)
-	ListenerEdit(name string, data string) ([]byte, error)
+	ListenerEdit(name string, data string) ([]byte, []byte, error)
 	ListenerStop(name string) error
 	ListenerGetProfile(name string) ([]byte, error)
 }

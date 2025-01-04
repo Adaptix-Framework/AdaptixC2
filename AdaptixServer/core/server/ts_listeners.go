@@ -89,6 +89,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerType string, l
 	var (
 		err          error
 		data         []byte
+		customData   []byte
 		listenerData adaptix.ListenerData
 	)
 
@@ -96,7 +97,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerType string, l
 
 		if ts.listeners.Contains(listenerName) {
 
-			data, err = ts.Extender.ExListenerEdit(listenerName, listenerType, listenerConfig)
+			data, customData, err = ts.Extender.ExListenerEdit(listenerName, listenerType, listenerConfig)
 			if err != nil {
 				return err
 			}
@@ -120,7 +121,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerType string, l
 			ts.TsSyncAllClients(packet2)
 			ts.events.Put(packet2)
 
-			_ = ts.DBMS.DbListenerUpdate(listenerName, listenerConfig)
+			_ = ts.DBMS.DbListenerUpdate(listenerName, listenerConfig, customData)
 		} else {
 			return fmt.Errorf("listener '%v' does not exist", listenerName)
 		}

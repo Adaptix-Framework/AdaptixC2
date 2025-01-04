@@ -17,6 +17,7 @@
               "type": "combo",
               "id": "http_method",
               "items": ["POST", "GET"],
+              "editable": "false",
               "position": [0, 1, 1, 1]
             },
             {
@@ -49,7 +50,6 @@
             {
               "type": "input",
               "id": "callback_port",
-              "editable": "false",
               "position": [3, 1, 1, 1]
             },
             {
@@ -72,7 +72,6 @@
               "type": "input",
               "id": "user_agent",
               "text": "Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0",
-              "editable": "false",
               "position": [5, 1, 1, 1]
             },
             {
@@ -84,7 +83,6 @@
               "type": "input",
               "id": "urn",
               "placeholder": "/uri.php",
-              "editable": "false",
               "position": [6, 1, 1, 1]
             },
             {
@@ -96,7 +94,6 @@
               "type": "input",
               "id": "hb_header",
               "text": "X-Beacon-Id",
-              "editable": "false",
               "position": [7, 1, 1, 1]
             },
             {
@@ -110,12 +107,14 @@
               "type": "file_selector",
               "id": "ssl_cert",
               "placeholder": "SSL certificate",
+              "editable": "false",
               "position": [9, 0, 1, 2]
             },
             {
               "type": "file_selector",
               "id": "ssl_key",
               "placeholder": "SSL key",
+              "editable": "false",
               "position": [10, 0, 1, 2]
             }
           ]
@@ -128,7 +127,6 @@
               "type": "checkbox",
               "text": "Trust X-Forwarded-For",
               "id": "x-forwarded-for",
-              "editable": "false",
               "position": [0, 0, 1, 2]
             },
             {
@@ -139,7 +137,6 @@
             {
               "type": "input",
               "id": "host_header",
-              "editable": "false",
               "position": [1, 1, 1, 1]
             },
             {
@@ -160,6 +157,7 @@
             {
               "type": "textedit",
               "id": "server_headers",
+              "editable": "false",
               "position": [3, 1, 1, 1]
             }
           ]

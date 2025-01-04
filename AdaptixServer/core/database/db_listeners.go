@@ -68,7 +68,7 @@ func (dbms *DBMS) DbListenerDelete(listenerName string) error {
 	return err
 }
 
-func (dbms *DBMS) DbListenerUpdate(listenerName string, listenerConfig string) error {
+func (dbms *DBMS) DbListenerUpdate(listenerName string, listenerConfig string, customData []byte) error {
 	var (
 		ok          bool
 		err         error
@@ -85,8 +85,8 @@ func (dbms *DBMS) DbListenerUpdate(listenerName string, listenerConfig string) e
 		return fmt.Errorf("listener %s not exists", listenerName)
 	}
 
-	updateQuery = `UPDATE Listeners SET ListenerConfig = ? WHERE ListenerName = ?;`
-	_, err = dbms.database.Exec(updateQuery, listenerName, listenerConfig)
+	updateQuery = `UPDATE Listeners SET ListenerConfig = ?, CustomData = ? WHERE ListenerName = ?;`
+	_, err = dbms.database.Exec(updateQuery, listenerConfig, customData, listenerName)
 
 	return err
 }

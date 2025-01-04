@@ -35,7 +35,7 @@ func (ex *AdaptixExtender) ExListenerStop(listenerName string, configType string
 	}
 }
 
-func (ex *AdaptixExtender) ExListenerEdit(listenerName string, configType string, config string) ([]byte, error) {
+func (ex *AdaptixExtender) ExListenerEdit(listenerName string, configType string, config string) ([]byte, []byte, error) {
 	var module *ModuleExtender
 
 	value, ok := ex.listenerModules.Get(configType)
@@ -44,7 +44,7 @@ func (ex *AdaptixExtender) ExListenerEdit(listenerName string, configType string
 		return module.ListenerEdit(listenerName, config)
 
 	} else {
-		return nil, errors.New("module not found")
+		return nil, nil, errors.New("module not found")
 	}
 }
 
