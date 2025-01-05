@@ -173,3 +173,21 @@ BYTE* Packer::UnpackBytes(ULONG* str_size)
 
     return out;
 }
+
+BYTE* Packer::UnpackBytesCopy(ULONG* str_size)
+{
+    *str_size = this->Unpack32();
+
+    if (this->size - this->index < *str_size)
+        return NULL;
+
+    if (*str_size == 0)
+        return NULL;
+
+    BYTE* out = (PBYTE) MemAllocLocal(*str_size);
+    memcpy(out, this->buffer + this->index, *str_size);
+
+    this->index += *str_size;
+
+    return out;
+}

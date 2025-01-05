@@ -24,5 +24,4 @@ func MD5(data []byte) string {
 func CRC32(data []byte) uint32 {
 	table := crc32.MakeTable(crc32.IEEE)
 	return crc32.Checksum(data, table)
-
 }

