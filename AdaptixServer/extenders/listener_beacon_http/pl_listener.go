@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -112,6 +114,9 @@ func CreateListenerDataAndStart(name string, configData string, listenerCustomDa
 
 		conf.RequestHeaders = strings.TrimRight(conf.RequestHeaders, " \n\t\r") + "\n"
 		conf.RequestHeaders = strings.ReplaceAll(conf.RequestHeaders, "\n", "\r\n")
+		if len(conf.HostHeader) > 0 {
+			conf.RequestHeaders = fmt.Sprintf("Host: %s\r\n%s", conf.HostHeader, conf.RequestHeaders)
+		}
 
 		conf.ResponseHeaders = make(map[string]string)
 		headerLine := strings.Split(conf.Server_headers, "\n")
@@ -131,8 +136,10 @@ func CreateListenerDataAndStart(name string, configData string, listenerCustomDa
 			conf.ResponseHeaders[key] = value
 		}
 
+		randSlice := make([]byte, 16)
+		rand.Read(randSlice)
+		conf.EncryptKey = randSlice[:16]
 		conf.Protocol = "http"
-		conf.EncryptKey = []byte("\x0c\xff\x01\xb5\xfc\x46\x90\x57\x61\x98\x25\xe1\x87\x57\x21\x2e")
 
 	} else {
 		err = json.Unmarshal([]byte(listenerCustomData), &conf)
@@ -200,6 +207,12 @@ func EditListenerData(name string, listenerObject any, configData string) (Liste
 		conf.Callback_servers = strings.TrimSuffix(conf.Callback_servers, ", ")
 		conf.HostsAgent = strings.Split(conf.Callback_servers, ", ")
 
+		conf.RequestHeaders = strings.TrimRight(conf.RequestHeaders, " \n\t\r") + "\n"
+		conf.RequestHeaders = strings.ReplaceAll(conf.RequestHeaders, "\n", "\r\n")
+		if len(conf.HostHeader) > 0 {
+			conf.RequestHeaders = fmt.Sprintf("Host: %s\r\n%s", conf.HostHeader, conf.RequestHeaders)
+		}
+
 		listener.Config.PortAgent = conf.PortAgent
 		listener.Config.Callback_servers = conf.Callback_servers
 
@@ -209,6 +222,7 @@ func EditListenerData(name string, listenerObject any, configData string) (Liste
 		listener.Config.ParameterName = conf.ParameterName
 		listener.Config.TrustXForwardedFor = conf.TrustXForwardedFor
 		listener.Config.HostHeader = conf.HostHeader
+		listener.Config.RequestHeaders = conf.RequestHeaders
 		listener.Config.WebPageError = conf.WebPageError
 		listener.Config.WebPageOutput = conf.WebPageOutput
 

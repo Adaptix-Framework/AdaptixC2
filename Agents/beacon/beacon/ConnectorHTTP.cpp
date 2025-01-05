@@ -60,13 +60,13 @@ ConnectorHTTP::ConnectorHTTP()
 
 void ConnectorHTTP::SetConfig( BOOL Ssl, CHAR* UserAgent, CHAR* Method, CHAR* Address, WORD Port, CHAR* Uri, CHAR* Headers)
 {
-	this->ssl            = Ssl;
-	this->user_agent     = UserAgent;
-	this->http_method    = Method;
 	this->server_address = Address;
 	this->server_port    = Port;
-	this->uri			 = Uri;
+	this->ssl            = Ssl;
+	this->http_method    = Method;
+	this->uri            = Uri;
 	this->headers        = Headers;
+	this->user_agent     = UserAgent;
 }
 
 HINTERNET hInternet = NULL;

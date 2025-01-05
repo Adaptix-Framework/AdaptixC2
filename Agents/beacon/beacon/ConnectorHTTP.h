@@ -27,6 +27,7 @@ struct HTTPFUNC {
 class ConnectorHTTP
 {
 	CHAR*     user_agent;
+	CHAR*     host_header;
 	BOOL      ssl;
 	CHAR*     http_method;
 	CHAR*     server_address;

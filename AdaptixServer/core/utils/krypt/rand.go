@@ -24,3 +24,17 @@ func GenerateUID(length int) (string, error) {
 
 	return hex.EncodeToString(randomBytes)[:length], nil
 }
+
+func GenerateSlice(length int) []byte {
+	if length <= 0 {
+		return nil
+	}
+
+	randomBytes := make([]byte, length)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return nil
+	}
+
+	return randomBytes[:length]
+}
