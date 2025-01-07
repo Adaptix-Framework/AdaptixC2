@@ -319,6 +319,7 @@
     <ClCompile Include="MainAgent.cpp" />
     <ClCompile Include="MemorySaver.cpp" />
     <ClCompile Include="Packer.cpp" />
+    <ClCompile Include="std.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="WaitMask.cpp" />
   </ItemGroup>
@@ -340,7 +341,6 @@
     <ClInclude Include="MemorySaver.h" />
     <ClInclude Include="ntdll.h" />
     <ClInclude Include="Packer.h" />
-    <ClInclude Include="std.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="WaitMask.h" />
   </ItemGroup>

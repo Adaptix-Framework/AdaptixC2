@@ -99,6 +99,9 @@
     <ClCompile Include="WaitMask.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="std.cpp">
+      <Filter>Source\utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -139,9 +142,6 @@
     </ClInclude>
     <ClInclude Include="Downloader.h">
       <Filter>Headers\Commander</Filter>
-    </ClInclude>
-    <ClInclude Include="std.h">
-      <Filter>Headers\utils</Filter>
     </ClInclude>
     <ClInclude Include="MemorySaver.h">
       <Filter>Headers\Commander</Filter>

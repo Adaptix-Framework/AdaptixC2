@@ -1,6 +1,6 @@
 #pragma once
 
-#include "std.h"
+#include "std.cpp"
 #include "Packer.h"
 
 #define COMMAND_JOB 0x8437

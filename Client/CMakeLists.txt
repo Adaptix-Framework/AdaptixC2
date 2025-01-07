@@ -106,4 +106,3 @@ target_link_libraries(AdaptixClient
         Qt6::Sql
         OpenSSL::Crypto
 )
-
