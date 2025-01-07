@@ -27,7 +27,7 @@ public:
 	BYTE*  user_agent;
 	BYTE*  http_headers;
 	ULONG  ans_pre_size;
-	ULONG  ans_post_size;
+	ULONG  ans_size;
 
 	AgentConfig();
 };

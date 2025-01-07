@@ -1,6 +1,7 @@
 #include "ApiLoader.h"
 
-LPVOID MemAllocLocal(DWORD bufferSize) {
+LPVOID MemAllocLocal(DWORD bufferSize) 
+{
 	//return ApiWin->LocalAlloc(LPTR, bufferSize);
 	return ApiWin->HeapAlloc(GetProcessHeap(), 0, bufferSize);
 }
@@ -12,7 +13,8 @@ LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize)
     return mem;
 }
 
-void MemFreeLocal(LPVOID* buffer, DWORD bufferSize) {
+void MemFreeLocal(LPVOID* buffer, DWORD bufferSize) 
+{
  //   memset((PBYTE)*buffer, 0, bufferSize);
 	//ApiWin->LocalFree(*buffer);
 	//*buffer = NULL;
@@ -26,7 +28,7 @@ BYTE* ReadFromPipe(HANDLE hPipe, ULONG* bufferSize)
 {
     BOOL  result = FALSE;
     ULONG read = 0;
-    BYTE* buf[0x1000] = { 0 };
+    static BYTE* buf[0x1000] = { 0 };
 
     LPVOID buffer = MemAllocLocal(0);
     do {
@@ -244,7 +246,8 @@ ULONG FileTimeToUnixTimestamp(FILETIME ft)
     return (uli.QuadPart / 10000000ULL) - EPOCH_DIFFERENCE;
 }
 
-void ConvertUnicodeStringToChar(wchar_t* src, size_t srcSize, char* dst, size_t dstSize){
+void ConvertUnicodeStringToChar(wchar_t* src, size_t srcSize, char* dst, size_t dstSize)
+{
     ApiWin->WideCharToMultiByte(CP_ACP, 0, src, (int)srcSize / sizeof(wchar_t), dst, (int)dstSize, NULL, NULL);
     dst[dstSize - 1] = '\0';
  }

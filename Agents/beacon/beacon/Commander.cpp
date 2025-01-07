@@ -86,8 +86,6 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		default: break;
 		}
 	}
-
-	MemFreeLocal((LPVOID*)&recv, recvSize);
 }
 
 void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)
