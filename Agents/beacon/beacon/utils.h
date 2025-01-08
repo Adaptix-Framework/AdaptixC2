@@ -36,6 +36,10 @@ DWORD StrCmpA(CHAR* str1, CHAR* str2);
 
 DWORD StrNCmpA(CHAR* str1, CHAR* str2, SIZE_T n);
 
+DWORD StrCmpLowA(CHAR* str1, CHAR* str2);
+
+DWORD StrCmpLowW(WCHAR* str1, WCHAR* str2);
+
 ULONG FileTimeToUnixTimestamp(FILETIME ft);
 
 void ConvertUnicodeStringToChar( wchar_t* src, size_t srcSize, char* dst, size_t dstSize);

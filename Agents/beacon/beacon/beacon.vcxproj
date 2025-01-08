@@ -227,7 +227,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
-      <EntryPointSymbol>MainExe</EntryPointSymbol>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release SVC|x64'">
@@ -290,8 +291,9 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug EXE|x64'">
     <Link>
-      <EntryPointSymbol>MainExe</EntryPointSymbol>
-      <SubSystem>Console</SubSystem>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <SubSystem>Windows</SubSystem>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <ClCompile>
@@ -319,6 +321,7 @@
     <ClCompile Include="MainAgent.cpp" />
     <ClCompile Include="MemorySaver.cpp" />
     <ClCompile Include="Packer.cpp" />
+    <ClCompile Include="ProcLoader.cpp" />
     <ClCompile Include="std.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="WaitMask.cpp" />
@@ -327,6 +330,7 @@
     <ClInclude Include="Agent.h" />
     <ClInclude Include="AgentConfig.h" />
     <ClInclude Include="AgentInfo.h" />
+    <ClInclude Include="ApiDefines.h" />
     <ClInclude Include="ApiLoader.h" />
     <ClInclude Include="beacon.h" />
     <ClInclude Include="Boffer.h" />
@@ -341,6 +345,7 @@
     <ClInclude Include="MemorySaver.h" />
     <ClInclude Include="ntdll.h" />
     <ClInclude Include="Packer.h" />
+    <ClInclude Include="ProcLoader.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="WaitMask.h" />
   </ItemGroup>
