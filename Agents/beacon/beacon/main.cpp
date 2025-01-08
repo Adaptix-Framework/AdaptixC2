@@ -41,7 +41,7 @@ void ControlHandler(DWORD request) {
     SetServiceStatus(hStatus, &ServiceStatus);
 }
 
-int MainSvc() {
+int main() {
     SERVICE_TABLE_ENTRY ServiceTable[2];
     ServiceTable[0].lpServiceName = (LPWSTR)SERVICE_NAME;
     ServiceTable[0].lpServiceProc = (LPSERVICE_MAIN_FUNCTION)ServiceMain;
@@ -74,7 +74,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
 
 #else
 
-int MainExe()
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     AgentMain();
 	return 0;

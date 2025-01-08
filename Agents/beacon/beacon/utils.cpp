@@ -2,24 +2,24 @@
 
 LPVOID MemAllocLocal(DWORD bufferSize) 
 {
-	//return ApiWin->LocalAlloc(LPTR, bufferSize);
-	return ApiWin->HeapAlloc(GetProcessHeap(), 0, bufferSize);
+	return ApiWin->LocalAlloc(LPTR, bufferSize);
+	//return ApiWin->HeapAlloc(GetProcessHeap(), 0, bufferSize);
 }
 
 LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize) 
 {
-    //LPVOID mem = ApiWin->LocalReAlloc( buffer, bufferSize, LMEM_MOVEABLE);
-    LPVOID mem = ApiWin->HeapReAlloc(GetProcessHeap(), 0, buffer, bufferSize);
+    LPVOID mem = ApiWin->LocalReAlloc( buffer, bufferSize, LMEM_MOVEABLE);
+    //LPVOID mem = ApiWin->HeapReAlloc(GetProcessHeap(), 0, buffer, bufferSize);
     return mem;
 }
 
 void MemFreeLocal(LPVOID* buffer, DWORD bufferSize) 
 {
- //   memset((PBYTE)*buffer, 0, bufferSize);
-	//ApiWin->LocalFree(*buffer);
-	//*buffer = NULL;
-    ApiWin->HeapFree(GetProcessHeap(), 0, *buffer);
-    *buffer = NULL;
+    memset((PBYTE)*buffer, 0, bufferSize);
+	ApiWin->LocalFree(*buffer);
+	*buffer = NULL;
+    //ApiWin->HeapFree(GetProcessHeap(), 0, *buffer);
+    //*buffer = NULL;
 }
 
 //////////
@@ -159,7 +159,7 @@ CHAR* _GetProcessName()
     int i = 0;
     for (; tmpName[length - i] != L'\\' && (length - i) >= 0; i++);
     CHAR* processName = (CHAR*)MemAllocLocal(i);
-    ApiWin->GetModuleBaseNameA(GetCurrentProcess(), NULL, processName, i);
+    ApiWin->GetModuleBaseNameA((HANDLE) -1, NULL, processName, i);
     return processName;
 }
 
@@ -226,6 +226,55 @@ DWORD StrNCmpA(CHAR* str1, CHAR* str2, SIZE_T n)
  
     return (unsigned char)*str1 - (unsigned char)*str2;
 }
+
+DWORD StrCmpLowA(CHAR* str1, CHAR* str2)
+{
+    while (*str1 && *str2) {
+        char ch1 = *str1;
+        char ch2 = *str2;
+
+        if (ch1 >= 'A' && ch1 <= 'Z')
+            ch1 += 0x20;
+        if (ch2 >= 'A' && ch2 <= 'Z') 
+            ch2 += 0x20;
+
+        if (ch1 != ch2)
+            return (unsigned char)*str1 - (unsigned char)*str2;
+
+        ++str1;
+        ++str2;
+    }
+
+    if(*str1 == 0 && *str2 == 0)
+        return 0;
+
+    return (unsigned char)*str1 - (unsigned char)*str2;
+}
+
+DWORD StrCmpLowW(WCHAR* str1, WCHAR* str2)
+{
+    while (*str1 && *str2) {
+        char ch1 = *str1;
+        char ch2 = *str2;
+
+        if (ch1 >= L'A' && ch1 <= L'Z')
+            ch1 += 0x20;
+        if (ch2 >= L'A' && ch2 <= L'Z')
+            ch2 += 0x20;
+
+        if (ch1 != ch2)
+            return *str1 - *str2;
+
+        ++str1;
+        ++str2;
+    }
+
+    if (*str1 == L'0' && *str2 == L'0')
+        return 0;
+
+    return *str1 - *str2;
+}
+
 
 DWORD StrLenA(CHAR* str)
 {

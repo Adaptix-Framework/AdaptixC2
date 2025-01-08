@@ -42,13 +42,13 @@ struct WINAPIFUNC
 	DECL_API(GetTickCount);
 	//DECL_API(GetTokenInformation);
 	DECL_API(GetTimeZoneInformation);
-	DECL_API(GetUserNameA);
 	DECL_API(HeapAlloc);
 	DECL_API(HeapCreate);
 	DECL_API(HeapDestroy);
 	DECL_API(HeapReAlloc);
 	DECL_API(HeapFree);
 	DECL_API(IsWow64Process);
+	DECL_API(LoadLibraryA);
 	DECL_API(LocalAlloc);
 	DECL_API(LocalFree);
 	DECL_API(LocalReAlloc);
@@ -71,6 +71,7 @@ struct WINAPIFUNC
 
 	// advapi32
 	DECL_API(GetTokenInformation);
+	DECL_API(GetUserNameA);
 	DECL_API(LookupAccountSidA);
 
 	// msvcrt

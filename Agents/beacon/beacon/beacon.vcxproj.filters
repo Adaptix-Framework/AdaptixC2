@@ -43,6 +43,12 @@
     <Filter Include="Source\Commander\BOF">
       <UniqueIdentifier>{d5a9b678-296c-452a-aa31-c4262d91d985}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Headers\ApiLoader">
+      <UniqueIdentifier>{105ed7ee-3bc4-4b29-bad4-30dac5b9460a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\ApiLoader">
+      <UniqueIdentifier>{75ea1e98-244a-4ba6-861a-9c877f9e4133}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -52,9 +58,6 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Packer.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="ApiLoader.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Agent.cpp">
@@ -102,6 +105,12 @@
     <ClCompile Include="std.cpp">
       <Filter>Source\utils</Filter>
     </ClCompile>
+    <ClCompile Include="ApiLoader.cpp">
+      <Filter>Source\ApiLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="ProcLoader.cpp">
+      <Filter>Source\ApiLoader</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -111,9 +120,6 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Packer.h">
-      <Filter>Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="ApiLoader.h">
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="ntdll.h">
@@ -160,6 +166,15 @@
     </ClInclude>
     <ClInclude Include="WaitMask.h">
       <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="ApiLoader.h">
+      <Filter>Headers\ApiLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="ProcLoader.h">
+      <Filter>Headers\ApiLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="ApiDefines.h">
+      <Filter>Headers\ApiLoader</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
