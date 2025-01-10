@@ -254,8 +254,8 @@ DWORD StrCmpLowA(CHAR* str1, CHAR* str2)
 DWORD StrCmpLowW(WCHAR* str1, WCHAR* str2)
 {
     while (*str1 && *str2) {
-        char ch1 = *str1;
-        char ch2 = *str2;
+        wchar_t ch1 = *str1;
+        wchar_t ch2 = *str2;
 
         if (ch1 >= L'A' && ch1 <= L'Z')
             ch1 += 0x20;
@@ -275,7 +275,6 @@ DWORD StrCmpLowW(WCHAR* str1, WCHAR* str2)
     return *str1 - *str2;
 }
 
-
 DWORD StrLenA(CHAR* str)
 {
     int i = 0;
@@ -284,15 +283,38 @@ DWORD StrLenA(CHAR* str)
     return i;
 }
 
+DWORD StrIndexA(CHAR* str, CHAR target)
+{
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (str[i] == target)
+            return i;
+    }
+    return -1;
+}
+
 ULONG FileTimeToUnixTimestamp(FILETIME ft) 
 {
     ULARGE_INTEGER uli;
     uli.LowPart = ft.dwLowDateTime;
     uli.HighPart = ft.dwHighDateTime;
 
-    const ULONG64 EPOCH_DIFFERENCE = 11644473600ULL;
+    //const ULONG64 EPOCH_DIFFERENCE = 11644473600ULL;
+    //return (uli.QuadPart / 10000000ULL) - EPOCH_DIFFERENCE;
 
-    return (uli.QuadPart / 10000000ULL) - EPOCH_DIFFERENCE;
+    const DWORD EPOCH_DIFFERENCE_LOW  = 0xD53E8000; 
+    const DWORD EPOCH_DIFFERENCE_HIGH = 0x019DB1DE; 
+
+    if (uli.LowPart < EPOCH_DIFFERENCE_LOW) {
+        uli.LowPart -= EPOCH_DIFFERENCE_LOW;
+        uli.HighPart -= EPOCH_DIFFERENCE_HIGH + 1;
+    }
+    else {
+        uli.LowPart -= EPOCH_DIFFERENCE_LOW;
+        uli.HighPart -= EPOCH_DIFFERENCE_HIGH;
+    }
+
+    ULONG seconds = (uli.HighPart * (10000000 / (1ULL << 32))) + (uli.LowPart / 10000000);
+    return seconds;
 }
 
 void ConvertUnicodeStringToChar(wchar_t* src, size_t srcSize, char* dst, size_t dstSize)

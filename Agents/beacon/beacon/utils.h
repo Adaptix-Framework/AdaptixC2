@@ -30,6 +30,8 @@ CHAR* StrChrA(CHAR* str, CHAR c);
 
 CHAR* StrTokA(CHAR* str, CHAR* delim);
 
+DWORD StrIndexA(CHAR* str, CHAR target);
+
 DWORD StrLenA(CHAR* str);
 
 DWORD StrCmpA(CHAR* str1, CHAR* str2);

