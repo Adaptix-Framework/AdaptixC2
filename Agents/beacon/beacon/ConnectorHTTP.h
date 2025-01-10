@@ -11,6 +11,7 @@ struct HTTPFUNC {
 	DECL_API(LocalFree);
 	DECL_API(LoadLibraryA);
 	DECL_API(GetProcAddress);
+	DECL_API(GetLastError);
 
 	DECL_API(InternetOpenA);
 	DECL_API(InternetConnectA);
@@ -36,9 +37,13 @@ class ConnectorHTTP
 	CHAR*     headers;
 	HTTPFUNC* functions;
 
+	HINTERNET hInternet = NULL;
+	HINTERNET hConnect  = NULL;
+
 public:
 	ConnectorHTTP();
 
 	void  SetConfig(BOOL Ssl, CHAR* UserAgent, CHAR* Method, CHAR* Address, WORD Port, CHAR* Uri, CHAR* Headers);
 	BYTE* SendData(BYTE* data, ULONG data_size, ULONG* recv_size);
+	void  CloseConnector();
 };

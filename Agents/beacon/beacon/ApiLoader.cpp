@@ -1,12 +1,9 @@
 #include "ApiLoader.h"
 #include "ProcLoader.h"
 
-WINAPIFUNC* ApiWin = NULL;
-NTAPIFUNC*  ApiNt = NULL;
-
 #pragma intrinsic(memset)
 #pragma function(memset)
-void* __cdecl memset(void* Destination, int Value, size_t Size) 
+void* __cdecl memset(void* Destination, int Value, size_t Size)
 {
 	unsigned char* p = (unsigned char*)Destination;
 	while (Size > 0) {
@@ -19,16 +16,19 @@ void* __cdecl memset(void* Destination, int Value, size_t Size)
 
 #pragma intrinsic(memcpy)
 #pragma function(memcpy)
-extern void* __cdecl memcpy(void* Dst, const void* Src, size_t Size)
+void* __cdecl memcpy(void* Dst, const void* Src, size_t Size)
 {
-	unsigned char* p = (unsigned char*) Dst;
-	unsigned char* q = (unsigned char*) Src;
+	unsigned char* p = (unsigned char*)Dst;
+	unsigned char* q = (unsigned char*)Src;
 	while (Size > 0) {
 		*p++ = *q++;
 		Size--;
 	}
 	return Dst;
 }
+
+WINAPIFUNC* ApiWin = NULL;
+NTAPIFUNC*  ApiNt = NULL;
 
 BOOL ApiLoad()
 {
@@ -41,6 +41,8 @@ BOOL ApiLoad()
 
 	if ( ApiWin && hKernel32Module) {
 		// kernel32
+		ApiWin->LoadLibraryA = (decltype(LoadLibraryA)*)GetSymbolAddress(hKernel32Module, HASH_FUNC_LOADLIBRARYA);
+
 		ApiWin->CopyFileA				= (decltype(CopyFileA)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_COPYFILEA);
 		ApiWin->CreateDirectoryA		= (decltype(CreateDirectoryA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATEDIRECTORYA);
 		ApiWin->CreateFileA				= (decltype(CreateFileA)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATEFILEA);
@@ -52,6 +54,7 @@ BOOL ApiLoad()
 		ApiWin->FindClose				= (decltype(FindClose)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_FINDCLOSE);
 		ApiWin->FindFirstFileA			= (decltype(FindFirstFileA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_FINDFIRSTFILEA);
 		ApiWin->FindNextFileA			= (decltype(FindNextFileA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_FINDNEXTFILEA);
+		ApiWin->FreeLibrary				= (decltype(FreeLibrary)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_FREELIBRARY);
 		ApiWin->GetACP					= (decltype(GetACP)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETACP);
 		ApiWin->GetComputerNameExA		= (decltype(GetComputerNameExA)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETCOMPUTERNAMEEXA);
 		ApiWin->GetCurrentDirectoryA	= (decltype(GetCurrentDirectoryA)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETCURRENTDIRECTORYA);
@@ -59,10 +62,11 @@ BOOL ApiLoad()
 		ApiWin->GetFileSize				= (decltype(GetFileSize)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETFILESIZE);
 		ApiWin->GetFileAttributesA		= (decltype(GetFileAttributesA)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETFILEATTRIBUTESA);
 		ApiWin->GetFullPathNameA		= (decltype(GetFullPathNameA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETFULLPATHNAMEA);
+		ApiWin->GetLastError			= (decltype(GetLastError)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETLASTERROR);
 		ApiWin->GetLogicalDrives		= (decltype(GetLogicalDrives)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETLOGICALDRIVES);
 		ApiWin->GetOEMCP				= (decltype(GetOEMCP)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETOEMCP);
 		ApiWin->GetModuleBaseNameA		= (decltype(GetModuleBaseNameA)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_K32GETMODULEBASENAMEA);
-		ApiWin->GetModuleHandleW		= (decltype(GetModuleHandleW)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETMODULEHANDLEW);
+		ApiWin->GetModuleHandleA		= (decltype(GetModuleHandleA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETMODULEHANDLEA);
 		ApiWin->GetProcAddress			= (decltype(GetProcAddress)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETPROCADDRESS);
 		ApiWin->GetTickCount			= (decltype(GetTickCount)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETTICKCOUNT);
 		ApiWin->GetTimeZoneInformation	= (decltype(GetTimeZoneInformation)*)  GetSymbolAddress(hKernel32Module, HASH_FUNC_GETTIMEZONEINFORMATION);
@@ -72,7 +76,6 @@ BOOL ApiLoad()
 		ApiWin->HeapReAlloc				= (decltype(HeapReAlloc)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_HEAPREALLOC);
 		ApiWin->HeapFree				= (decltype(HeapFree)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_HEAPFREE);
 		ApiWin->IsWow64Process			= (decltype(IsWow64Process)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_ISWOW64PROCESS);
-		ApiWin->LoadLibraryA			= (decltype(LoadLibraryA)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_LOADLIBRARYA);
 		ApiWin->LocalAlloc				= allocProc;
 		ApiWin->LocalFree				= (decltype(LocalFree)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_LOCALFREE);
 		ApiWin->LocalReAlloc			= (decltype(LocalReAlloc)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_LOCALREALLOC);

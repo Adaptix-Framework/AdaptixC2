@@ -1,6 +1,7 @@
 #pragma once
 #include "beacon.h"
 #include "ApiLoader.h"
+#include "ApiDefines.h"
 #include "Packer.h"
 
 #define MAX_SECTIONS	   25
@@ -17,8 +18,10 @@
 #define BOF_ERROR_ENTRY     0x104
 #define BOF_ERROR_ALLOC     0x105
 
-extern unsigned char* BeaconFunctions[32][2];
-extern int BeaconFunctionsCount;
+typedef struct {
+	ULONG  hash;
+	LPVOID proc;
+} BOF_API;
 
 extern Packer* bofOutputPacker;
 extern int     bofOutputCount;

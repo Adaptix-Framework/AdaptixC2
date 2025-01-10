@@ -1,4 +1,5 @@
 #include "ProcLoader.h"
+#include "ApiLoader.h"
 #include "utils.h"
 #include "ntdll.h"
 
@@ -63,18 +64,50 @@ LPVOID GetSymbolAddress(HANDLE hModule, ULONG symbHash)
     uintptr_t namePointerTable     = dllAddress + exportDirectory->AddressOfNames;
     uintptr_t ordinalTable         = dllAddress + exportDirectory->AddressOfNameOrdinals;
     uintptr_t symbolAddress        = 0;
+    DWORD     procAddress          = 0;
 
-        DWORD dwCounter = exportDirectory->NumberOfNames;
-        while (dwCounter--) {
-            PUCHAR cpExportedFunctionName = (PUCHAR)(dllAddress + *(DWORD*)namePointerTable);
-            if ( Djb2A(cpExportedFunctionName) == symbHash ) {
-                exportedAddressTable += (*(WORD*)ordinalTable * sizeof(DWORD));
-                symbolAddress         = dllAddress + *(DWORD*)exportedAddressTable;
+    DWORD dwCounter = exportDirectory->NumberOfNames;
+    while (dwCounter--) {
+        PUCHAR cpExportedFunctionName = (PUCHAR)(dllAddress + *(DWORD*)namePointerTable);
+        if ( Djb2A(cpExportedFunctionName) == symbHash ) {
+            exportedAddressTable += (*(WORD*)ordinalTable * sizeof(DWORD));
+            procAddress           = *(DWORD*)exportedAddressTable;
+            symbolAddress         = dllAddress + procAddress;
+
+            if ( dataDirectory->VirtualAddress < procAddress && procAddress < dataDirectory->VirtualAddress + dataDirectory->Size ) {
+                char* symbol = (char*)(symbolAddress);
+                char  moduleName[64] = { 0 };
+                char  funcName[64]   = { 0 };
+
+                int index = StrIndexA(symbol, '.');
+                if (index >= 0) {
+                    memcpy(moduleName, symbol, ++index);
+                    moduleName[index    ] = 'd';
+                    moduleName[index + 1] = 'l';
+                    moduleName[index + 2] = 'l';
+                    moduleName[index + 3] = 0;
+
+                    memcpy(funcName, symbol + index, StrLenA(symbol) - index + 1);
+
+                    HMODULE hModule  = ApiWin->LoadLibraryA(moduleName);
+                    ULONG   hashFunc = Djb2A((PUCHAR)funcName);
+
+                    memset(moduleName, 0, StrLenA(moduleName));
+                    memset(funcName, 0, StrLenA(funcName));
+
+                    if (hModule) {
+                        return GetSymbolAddress(hModule, hashFunc);
+                    }
+                }
                 break;
             }
-            namePointerTable += sizeof(DWORD);
-            ordinalTable     += sizeof(WORD);
+            else {
+                return (LPVOID) symbolAddress;
+            }
         }
+        namePointerTable += sizeof(DWORD);
+        ordinalTable     += sizeof(WORD);
+    }
 
-    return (LPVOID) symbolAddress;
+    return NULL;
 }

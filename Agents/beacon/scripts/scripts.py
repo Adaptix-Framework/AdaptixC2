@@ -61,6 +61,7 @@ DeleteFileA
 FindClose
 FindFirstFileA
 FindNextFileA
+FreeLibrary
 GetACP
 GetComputerNameExA
 GetCurrentDirectoryA
@@ -70,11 +71,12 @@ GetExitCodeThread
 GetFileSize
 GetFileAttributesA
 GetFullPathNameA
+GetLastError
 GetLogicalDrives
 GetOEMCP
 K32GetModuleBaseNameA
 GetModuleBaseNameA
-GetModuleHandleW
+GetModuleHandleA
 GetProcAddress
 GetTickCount
 GetTimeZoneInformation
@@ -112,6 +114,52 @@ LookupAccountSidA
 
 // msvcrt
 vsnprintf
+
+// BOF
+BeaconDataParse
+BeaconDataInt
+BeaconDataShort
+BeaconDataLength
+BeaconDataExtract
+BeaconFormatAlloc
+BeaconFormatReset
+BeaconFormatAppend
+BeaconFormatPrintf
+BeaconFormatToString
+BeaconFormatFree
+BeaconFormatInt
+BeaconOutput
+BeaconPrintf
+BeaconUseToken
+BeaconRevertToken
+BeaconIsAdmin
+BeaconGetSpawnTo
+BeaconInjectProcess
+BeaconInjectTemporaryProcess
+BeaconSpawnTemporaryProcess
+BeaconCleanupProcess
+toWideChar
+BeaconInformation
+BeaconAddValue
+BeaconGetValue
+BeaconRemoveValue
+LoadLibraryA
+GetProcAddress
+GetModuleHandleA
+FreeLibrary
+__C_specific_handler
+
+// wininet
+InternetOpenA
+InternetConnectA
+HttpOpenRequestA
+HttpSendRequestA
+InternetSetOptionA
+InternetQueryOptionA
+HttpQueryInfoA
+InternetQueryDataAvailable
+InternetCloseHandle
+InternetReadFile
 """
 
 ##############################################
