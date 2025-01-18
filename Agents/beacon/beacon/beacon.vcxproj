@@ -311,6 +311,7 @@
     <ClCompile Include="beacon_functions.cpp" />
     <ClCompile Include="Boffer.cpp" />
     <ClCompile Include="Commander.cpp" />
+    <ClCompile Include="config.cpp" />
     <ClCompile Include="ConnectorHTTP.cpp" />
     <ClCompile Include="Crypt.cpp" />
     <ClCompile Include="Downloader.cpp" />
@@ -334,6 +335,7 @@
     <ClInclude Include="beacon.h" />
     <ClInclude Include="Boffer.h" />
     <ClInclude Include="Commander.h" />
+    <ClInclude Include="config.h" />
     <ClInclude Include="ConnectorHTTP.h" />
     <ClInclude Include="Crypt.h" />
     <ClInclude Include="defines.h" />

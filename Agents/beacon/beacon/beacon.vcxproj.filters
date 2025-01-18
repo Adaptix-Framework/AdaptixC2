@@ -111,6 +111,9 @@
     <ClCompile Include="ProcLoader.cpp">
       <Filter>Source\ApiLoader</Filter>
     </ClCompile>
+    <ClCompile Include="config.cpp">
+      <Filter>Source\Agent</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -175,6 +178,9 @@
     </ClInclude>
     <ClInclude Include="ApiDefines.h">
       <Filter>Headers\ApiLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>Headers\Agent</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
