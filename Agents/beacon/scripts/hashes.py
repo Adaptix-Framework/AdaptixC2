@@ -50,6 +50,7 @@ RtlExitUserProcess
 RtlIpv4StringToAddressA
 RtlRandomEx
 RtlNtStatusToDosError
+NtFlushInstructionCache
 
 //kernel32
 CopyFileA
