@@ -193,8 +193,17 @@ func (m *ModuleExtender) AgentInit() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) AgentGenerate(config string, listenerProfile []byte) ([]byte, error) {
-	return CreateAgentProfile(config, listenerProfile)
+func (m *ModuleExtender) AgentGenerate(config string, listenerProfile []byte) ([]byte, string, error) {
+	var (
+		agentProfile []byte
+		err          error
+	)
+	agentProfile, err = AgentGenerateProfile(config, listenerProfile)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return AgentGenerateBuild(config, agentProfile)
 }
 
 func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {

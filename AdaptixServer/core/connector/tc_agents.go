@@ -1,6 +1,7 @@
 package connector
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,6 +22,8 @@ func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
 		agentConfig     AgentConfig
 		err             error
 		listenerProfile []byte
+		fileContent     []byte
+		fileName        string
 	)
 
 	err = ctx.ShouldBindJSON(&agentConfig)
@@ -35,11 +38,15 @@ func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
 		return
 	}
 
-	_, err = tc.teamserver.TsAgentGenetate(agentConfig.AgentName, agentConfig.Config, listenerProfile)
+	fileContent, fileName, err = tc.teamserver.TsAgentGenetate(agentConfig.AgentName, agentConfig.Config, listenerProfile)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
 	}
+
+	encodedContent := base64.StdEncoding.EncodeToString([]byte(fileName)) + ":" + base64.StdEncoding.EncodeToString(fileContent)
+
+	ctx.JSON(http.StatusOK, gin.H{"message": encodedContent, "ok": true})
 }
 
 type CommandData struct {
