@@ -46,7 +46,7 @@ type ListenerFunctions interface {
 
 type AgentFunctions interface {
 	AgentInit() ([]byte, error)
-	AgentGenerate(config string, listenerProfile []byte) ([]byte, error)
+	AgentGenerate(config string, listenerProfile []byte) ([]byte, string, error)
 	AgentCreate(beat []byte) ([]byte, error)
 	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)
 	AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error)

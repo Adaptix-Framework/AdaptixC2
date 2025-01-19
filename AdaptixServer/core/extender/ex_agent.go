@@ -2,7 +2,7 @@ package extender
 
 import "errors"
 
-func (ex *AdaptixExtender) ExAgentGenerate(agentName string, config string, listenerProfile []byte) ([]byte, error) {
+func (ex *AdaptixExtender) ExAgentGenerate(agentName string, config string, listenerProfile []byte) ([]byte, string, error) {
 	var module *ModuleExtender
 
 	value, ok := ex.agentModules.Get(agentName)
@@ -10,7 +10,7 @@ func (ex *AdaptixExtender) ExAgentGenerate(agentName string, config string, list
 		module = value.(*ModuleExtender)
 		return module.AgentGenerate(config, listenerProfile)
 	} else {
-		return nil, errors.New("module not found")
+		return nil, "", errors.New("module not found")
 	}
 }
 

