@@ -4,7 +4,7 @@ Server build
 
 ```bash
 # Pre Build
-sudo apt install golang
+sudo apt install golang mingw-w64
 
 # Build
 cd AdaptixServer
@@ -22,7 +22,3 @@ cd Client
 cmake .
 make
 ```
-
-### Adaptix client-server interaction diagram
-
-![](./docs/adaptix_scheme.png)
