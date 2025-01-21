@@ -385,7 +385,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 {
     int spType = jsonObj["type"].toDouble();
-    if( dialogSyncPacket != nullptr ) {
+    if( this->sync && dialogSyncPacket != nullptr ) {
         dialogSyncPacket->receivedLogs++;
         dialogSyncPacket->upgrade();
     }
@@ -393,8 +393,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_SYNC_START )
     {
         int count = jsonObj["count"].toDouble();
-        dialogSyncPacket = new DialogSyncPacket(count);
-
+        dialogSyncPacket->init(count);
+        this->sync = true;
         this->setEnabled(false);
         return;
     }
@@ -402,9 +402,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         if (dialogSyncPacket != nullptr ) {
             dialogSyncPacket->finish();
-            delete dialogSyncPacket;
-            dialogSyncPacket = nullptr;
-
+            this->sync = false;
             this->setEnabled(true);
 
             emit this->SyncedSignal();

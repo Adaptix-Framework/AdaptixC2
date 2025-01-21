@@ -22,15 +22,16 @@ class DialogSyncPacket
     QLabel*       logProgressLabel   = nullptr;
     QProgressBar* progressBar        = nullptr;
     QVBoxLayout*  layout             = nullptr;
-    CustomSplashScreen* splashScreen = nullptr;
 
 public:
+    CustomSplashScreen* splashScreen = nullptr;
     int totalLogs;
     int receivedLogs;
 
-    explicit DialogSyncPacket(int total);
+    explicit DialogSyncPacket();
     ~DialogSyncPacket();
 
+    void init(int count);
     void upgrade();
     void finish();
 };
