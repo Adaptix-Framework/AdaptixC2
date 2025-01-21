@@ -44,6 +44,7 @@ Q_OBJECT
     QStackedWidget* mainStackedWidget = nullptr;
 
     bool              synchronized     = false;
+    bool              sync             = false;
     AuthProfile*      profile          = nullptr;
     DialogSyncPacket* dialogSyncPacket = nullptr;
 

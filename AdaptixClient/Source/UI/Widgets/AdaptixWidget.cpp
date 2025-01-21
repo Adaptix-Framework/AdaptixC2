@@ -44,6 +44,9 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     connect( ChannelWsWorker, &WebSocketWorker::received_data, this, &AdaptixWidget::DataHandler );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, &AdaptixWidget::ChannelClose );
 
+    dialogSyncPacket = new DialogSyncPacket();
+    dialogSyncPacket->splashScreen->show();
+
     TickThread->start();
     ChannelThread->start();
 

