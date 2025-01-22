@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rc4"
@@ -98,7 +99,7 @@ func (h *HTTP) Start() error {
 	if h.Config.Ssl {
 		fmt.Println("   ", "Started listener: https://"+h.Config.HostBind+":"+h.Config.PortBind)
 
-		listenerPath := ModulePath + "/" + h.Name
+		listenerPath := ListenerDataPath + "/" + h.Name
 		_, err = os.Stat(listenerPath)
 		if os.IsNotExist(err) {
 			err = os.Mkdir(listenerPath, os.ModePerm)
@@ -159,14 +160,14 @@ func (h *HTTP) Stop() error {
 		ctx          context.Context
 		cancel       context.CancelFunc
 		err          error = nil
-		listenerPath       = ModulePath + "/" + h.Name
+		listenerPath       = ListenerDataPath + "/" + h.Name
 	)
 
 	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	_, err = os.Stat(listenerPath)
-	if os.IsExist(err) {
+	if err == nil {
 		err = os.RemoveAll(listenerPath)
 		if err != nil {
 			return fmt.Errorf("failed to remove %s folder: %s", listenerPath, err.Error())
@@ -287,7 +288,16 @@ func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, uint, []byte, []byte, er
 }
 
 func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	var (
+		сertData   []byte
+		keyData    []byte
+		certBuffer bytes.Buffer
+		keyBuffer  bytes.Buffer
+		privateKey *rsa.PrivateKey
+		err        error
+	)
+
+	privateKey, err = rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return fmt.Errorf("failed to generate private key: %v", err)
 	}
@@ -310,28 +320,32 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 
 	template.DNSNames = []string{h.Config.HostBind}
 
-	h.Config.SslCert, err = x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	сertData, err = x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {
 		return fmt.Errorf("failed to create certificate: %v", err)
 	}
 
-	certOut, err := os.Create(certFile)
+	err = pem.Encode(&certBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: сertData})
 	if err != nil {
-		return fmt.Errorf("failed to create certificate file: %v", err)
-	}
-	defer certOut.Close()
-	if err := pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: h.Config.SslCert}); err != nil {
 		return fmt.Errorf("failed to write certificate: %v", err)
 	}
 
-	keyOut, err := os.Create(keyFile)
+	h.Config.SslCert = certBuffer.Bytes()
+	err = os.WriteFile(certFile, h.Config.SslCert, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create certificate file: %v", err)
+	}
+
+	keyData = x509.MarshalPKCS1PrivateKey(privateKey)
+	err = pem.Encode(&keyBuffer, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: keyData})
+	if err != nil {
+		return fmt.Errorf("failed to write private key: %v", err)
+	}
+
+	h.Config.SslKey = keyBuffer.Bytes()
+	err = os.WriteFile(keyFile, h.Config.SslKey, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create key file: %v", err)
-	}
-	defer keyOut.Close()
-	h.Config.SslKey = x509.MarshalPKCS1PrivateKey(priv)
-	if err := pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: h.Config.SslKey}); err != nil {
-		return fmt.Errorf("failed to write private key: %v", err)
 	}
 
 	return nil

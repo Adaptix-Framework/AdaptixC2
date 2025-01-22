@@ -36,7 +36,7 @@ type CommonFunctions interface {
 }
 
 type ListenerFunctions interface {
-	ListenerInit(path string) ([]byte, error)
+	ListenerInit(pluginPath string, listenerDataPath string) ([]byte, error)
 	ListenerValid(config string) error
 	ListenerStart(name string, data string, listenerCustomData []byte) ([]byte, []byte, error)
 	ListenerEdit(name string, data string) ([]byte, []byte, error)
@@ -45,7 +45,7 @@ type ListenerFunctions interface {
 }
 
 type AgentFunctions interface {
-	AgentInit() ([]byte, error)
+	AgentInit(pluginPath string) ([]byte, error)
 	AgentGenerate(config string, listenerProfile []byte) ([]byte, string, error)
 	AgentCreate(beat []byte) ([]byte, error)
 	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)

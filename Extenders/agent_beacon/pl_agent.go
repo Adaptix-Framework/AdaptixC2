@@ -11,8 +11,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -165,9 +163,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string
 		return nil, "", err
 	}
 
-	_, file, _, _ := runtime.Caller(0)
-	currentDir = filepath.Dir(file)
-
+	currentDir = PluginPath
 	tempDir, err = os.MkdirTemp("", "ax-*")
 	if err != nil {
 		return nil, "", err
@@ -194,7 +190,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string
 	err = runnerCmdConfig.Run()
 	if err != nil {
 		os.RemoveAll(tempDir)
-		return nil, "", err
+		return nil, "", errors.New(string(stderr.Bytes()))
 	}
 
 	Files = tempDir + "/config.o "

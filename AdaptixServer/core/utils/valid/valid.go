@@ -2,8 +2,13 @@ package isvalid
 
 import "regexp"
 
+func ValidListenerName(s string) bool {
+	re := regexp.MustCompile("^[a-zA-Z0-9-_]+$")
+	return re.MatchString(s)
+}
+
 func ValidUriString(s string) bool {
-	re := regexp.MustCompile(`^/(?:[a-zA-Z0-9]+(?:/[a-zA-Z0-9]+)*)?$`)
+	re := regexp.MustCompile(`^/(?:[a-zA-Z0-9-_]+(?:/[a-zA-Z0-9-_]+)*)?$`)
 	return re.MatchString(s)
 }
 

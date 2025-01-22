@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 )
 
@@ -134,7 +133,7 @@ type ListingDrivesData struct {
 }
 
 var ModuleObject ModuleExtender
-var ModulePath string
+var PluginPath string
 var MaxTaskDataSize int
 
 func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
@@ -159,20 +158,20 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) AgentInit() ([]byte, error) {
+func (m *ModuleExtender) AgentInit(pluginPath string) ([]byte, error) {
 	var (
 		buffer bytes.Buffer
 		err    error
 	)
 
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	uiPath := filepath.Join(dir, SetUiPath)
+	PluginPath = pluginPath
+
+	uiPath := filepath.Join(PluginPath, SetUiPath)
 	agentUI, err := os.ReadFile(uiPath)
 	if err != nil {
 		return nil, err
 	}
-	cmdPath := filepath.Join(dir, SetCmdPath)
+	cmdPath := filepath.Join(PluginPath, SetCmdPath)
 	agentCmd, err := os.ReadFile(cmdPath)
 	if err != nil {
 		return nil, err

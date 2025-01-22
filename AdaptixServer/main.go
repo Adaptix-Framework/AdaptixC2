@@ -9,10 +9,10 @@ import (
 	"os"
 )
 
-const VERSION = "0.1-DEV"
+const VERSION = "0.1"
 
 func main() {
-	fmt.Printf("\n[===== Adaptix Framework v%v by RalfHacker =====]\n\n", VERSION)
+	fmt.Printf("\n[===== Adaptix Framework v%v =====]\n\n", VERSION)
 
 	var (
 		err          error

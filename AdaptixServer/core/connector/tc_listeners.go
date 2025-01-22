@@ -1,6 +1,7 @@
 package connector
 
 import (
+	isvalid "AdaptixServer/core/utils/valid"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -21,6 +22,11 @@ func (tc *TsConnector) TcListenerStart(ctx *gin.Context) {
 	err = ctx.ShouldBindJSON(&listener)
 	if err != nil {
 		_ = ctx.Error(errors.New("invalid listener"))
+		return
+	}
+
+	if isvalid.ValidListenerName(listener.ListenerName) == false {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Invalid listener name", "ok": false})
 		return
 	}
 

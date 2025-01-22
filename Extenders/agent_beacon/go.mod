@@ -1,4 +1,4 @@
-module AdaptixServer
+module adaptix_agent_beacon
 
 go 1.22
 
