@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 )
 
 type (
@@ -53,7 +52,8 @@ type ListenerData struct {
 }
 
 var ModuleObject ModuleExtender
-var ModulePath string
+var ListenerDataPath string
+var PluginPath string
 
 func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	var (
@@ -76,17 +76,16 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) ListenerInit(path string) ([]byte, error) {
+func (m *ModuleExtender) ListenerInit(pluginPath string, listenerDataPath string) ([]byte, error) {
 	var (
 		buffer bytes.Buffer
 		err    error
 	)
 
-	ModulePath = path
+	ListenerDataPath = listenerDataPath
+	PluginPath = pluginPath
 
-	_, file, _, _ := runtime.Caller(0)
-	dir := filepath.Dir(file)
-	uiPath := filepath.Join(dir, SetUiPath)
+	uiPath := filepath.Join(PluginPath, SetUiPath)
 	listenerUI, err := os.ReadFile(uiPath)
 	if err != nil {
 		return nil, err

@@ -26,11 +26,12 @@ EXTENDER_DIRS := $(shell find Extenders -maxdepth 1 -type d -not -path "." -exec
 extenders:
 	@ echo "[*] Building default extenders"
 	@ mkdir -p dist/extenders
-	@for dir in $(EXTENDER_DIRS); do \
+	@ for dir in $(EXTENDER_DIRS); do \
 		(cd $$dir && $(MAKE) --no-print-directory); \
 		plugin_name=$$(basename $$dir); \
 		mv $$dir/dist dist/extenders/$$plugin_name; \
 	done
+	@ cp Extenders/extender.txt dist/extenders/extender.txt
 	@ echo "[+] done"
 
 clean:

@@ -90,7 +90,6 @@ void DialogAgent::AddExAgents(QMap<QString, WidgetBuilder *> agents)
     agentCombobox->addItems( agentsUI.keys() );
 }
 
-
 void DialogAgent::SetProfile(AuthProfile profile)
 {
     this->authProfile = profile;

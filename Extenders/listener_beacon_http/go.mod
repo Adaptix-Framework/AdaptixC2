@@ -1,4 +1,4 @@
-module AdaptixServer
+module adaptix_listener_beacon_http
 
 go 1.22
 

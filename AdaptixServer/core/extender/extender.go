@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"plugin"
 	"reflect"
 	"strings"
@@ -47,7 +48,7 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFile string) {
 
 		pl, err = plugin.Open(path)
 		if err != nil {
-			logs.Error("", "Plugin %s did not load", path)
+			logs.Error("", "Plugin %s did not load: %s", path, err.Error())
 			continue
 		}
 
@@ -81,7 +82,10 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFile string) {
 			continue
 		}
 
-		err = ex.ProcessPlugin(module, object)
+		absPluginPath, err := filepath.Abs(path)
+		pluginDir := filepath.Dir(absPluginPath)
+
+		err = ex.ProcessPlugin(module, object, pluginDir)
 		if err != nil {
 			logs.Error("", "InitPlugin %s failed: %s", path, err.Error())
 			continue
@@ -186,9 +190,10 @@ func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) er
 	return errors.New("unknown modules type: " + info.ModuleType)
 }
 
-func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.Symbol) error {
+func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.Symbol, pluginPath string) error {
+
 	if module.Info.ModuleType == TYPE_LISTENER {
-		buffer, err := object.(ListenerFunctions).ListenerInit(logs.RepoLogsInstance.ListenerPath)
+		buffer, err := object.(ListenerFunctions).ListenerInit(pluginPath, logs.RepoLogsInstance.ListenerPath)
 		if err != nil {
 			return err
 		}
@@ -224,7 +229,7 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 	}
 
 	if module.Info.ModuleType == TYPE_AGENT {
-		buffer, err := object.(AgentFunctions).AgentInit()
+		buffer, err := object.(AgentFunctions).AgentInit(pluginPath)
 		if err != nil {
 			return err
 		}
