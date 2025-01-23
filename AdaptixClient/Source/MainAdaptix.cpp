@@ -54,7 +54,9 @@ void MainAdaptix::SetApplicationTheme()
 {
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
 
-    int FontID = QFontDatabase::addApplicationFont( ":/fonts/DroidSansMono" );
+    QFontDatabase::addApplicationFont( ":/fonts/DroidSansMono" );
+    QFontDatabase::addApplicationFont( ":/fonts/Hack" );
+    int FontID = QFontDatabase::addApplicationFont( ":/fonts/DejavuSansMono" );
     QString FontFamily = QFontDatabase::applicationFontFamilies( FontID ).at( 0 );
     auto Font = QFont( FontFamily );
 

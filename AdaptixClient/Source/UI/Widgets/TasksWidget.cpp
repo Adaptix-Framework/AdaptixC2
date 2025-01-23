@@ -13,6 +13,7 @@ void TaskOutputWidget::createUI()
     inputMessage = new QLineEdit(this);
     inputMessage->setReadOnly(true);
     inputMessage->setProperty("LineEditStyle", "console");
+    inputMessage->setFont( QFont( "Hack" ));
 
     outputTextEdit = new QTextEdit(this);
     outputTextEdit->setReadOnly(true);

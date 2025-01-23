@@ -55,7 +55,7 @@ QPushButton:disabled {
 QLineEdit[LineEditStyle="console"] {
     background-color: #111111;
     color: #e8e8e8;
-    font-family: "monospace";
+    /*font-family: "monospace";*/
     border: 1px #4A4A4A;
     padding: 2px;
     border-radius: 4px;
@@ -226,7 +226,7 @@ QMenuBar:disabled {
 QTextEdit[TextEditStyle="console"] {
     background-color: #111111;
     color: #e8e8e8;
-    font-family: "monospace";
+    /*font-family: "monospace";*/
     border: 0px;
     padding: 2px;
     border-radius: 0px;
