@@ -25,6 +25,7 @@ void ConsoleWidget::createUI()
 
     InputLineEdit = new QLineEdit(this);
     InputLineEdit->setProperty( "LineEditStyle", "console" );
+    InputLineEdit->setFont( QFont( "Hack" ));
 
     QString info = QString("[%1] %2 @ %3.%4").arg( agent->data.Id ).arg( agent->data.Username ).arg( agent->data.Computer ).arg( agent->data.Domain );
     InfoLabel = new QLabel(this);
@@ -36,6 +37,8 @@ void ConsoleWidget::createUI()
     OutputTextEdit->setReadOnly(true);
     OutputTextEdit->setLineWrapMode( QTextEdit::LineWrapMode::NoWrap );
     OutputTextEdit->setProperty( "TextEditStyle", "console" );
+    OutputTextEdit->setFont( QFont( "Hack" ));
+
 
     MainGridLayout = new QGridLayout(this );
     MainGridLayout->setVerticalSpacing(4 );

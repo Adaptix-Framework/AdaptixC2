@@ -73,7 +73,8 @@ func (h *HTTP) Start() error {
 	var err error = nil
 
 	gin.SetMode(gin.ReleaseMode)
-	router := gin.Default()
+	router := gin.New()
+	//router := gin.Default()
 	router.NoRoute(h.pageError)
 
 	router.Use(func(c *gin.Context) {
