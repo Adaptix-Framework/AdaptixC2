@@ -6,7 +6,12 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package( OpenSSL REQUIRED )
+
+if(UNIX)
+    find_package( OpenSSL REQUIRED )
+elseif(APPLE)
+    find_package( OpenSSL REQUIRED )
+endif()
 
 include_directories( Headers )
 
@@ -97,12 +102,33 @@ add_executable(AdaptixClient
         Source/Utils/CustomElements.cpp
 )
 
-target_link_libraries(AdaptixClient
-        Qt6::Core
-        Qt6::Gui
-        Qt6::Widgets
-        Qt6::Network
-        Qt6::WebSockets
-        Qt6::Sql
-        OpenSSL::Crypto
-)
+if(UNIX)
+    target_link_libraries( AdaptixClient
+            Qt6::Core
+            Qt6::Gui
+            Qt6::Widgets
+            Qt6::Network
+            Qt6::WebSockets
+            Qt6::Sql
+            OpenSSL::Crypto
+    )
+elseif(APPLE)
+    target_link_libraries( AdaptixClient
+            Qt6::Core
+            Qt6::Gui
+            Qt6::Widgets
+            Qt6::Network
+            Qt6::WebSockets
+            Qt6::Sql
+            OpenSSL::Crypto
+    )
+else()
+    target_link_libraries( AdaptixClient
+            Qt6::Core
+            Qt6::Gui
+            Qt6::Widgets
+            Qt6::Network
+            Qt6::WebSockets
+            Qt6::Sql
+    )
+endif()

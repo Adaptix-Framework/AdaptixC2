@@ -60,6 +60,11 @@ void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
     if(adaptixWidget->Downloads.contains(newDownload.FileId))
         return;
 
+    if( tableWidget->rowCount() < 1 )
+        tableWidget->setRowCount( 1 );
+    else
+        tableWidget->setRowCount( tableWidget->rowCount() + 1 );
+
     auto item_FileID    = new QTableWidgetItem( newDownload.FileId );
     auto item_AgentName = new QTableWidgetItem( newDownload.AgentName );
     auto item_AgentID   = new QTableWidgetItem( newDownload.AgentId );
@@ -98,13 +103,9 @@ void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
     pgbar->setMinimum(0);
     pgbar->setMaximum(newDownload.TotalSize);
     pgbar->setValue(newDownload.RecvSize);
-    pgbar->setMinimumSize(QSize(200,24));
-    pgbar->setMaximumSize(QSize(200,24));
-
-    if( tableWidget->rowCount() < 1 )
-        tableWidget->setRowCount( 1 );
-    else
-        tableWidget->setRowCount( tableWidget->rowCount() + 1 );
+    int hSize = tableWidget->rowHeight(tableWidget->rowCount()-1);
+    pgbar->setMinimumSize(QSize(200,hSize));
+    pgbar->setMaximumSize(QSize(200,hSize));
 
     bool isSortingEnabled = tableWidget->isSortingEnabled();
     tableWidget->setSortingEnabled( false );

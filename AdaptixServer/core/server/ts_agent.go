@@ -246,3 +246,25 @@ func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 
 	return nil
 }
+
+func (ts *Teamserver) TsAgentTickUpdate() {
+	for {
+		var agentSlize []string
+		ts.agents.ForEach(func(key string, value interface{}) {
+			agent := value.(*Agent)
+			if agent.Data.Async {
+				if agent.Tick {
+					agent.Tick = false
+					agentSlize = append(agentSlize, agent.Data.Id)
+				}
+			}
+		})
+
+		if len(agentSlize) > 0 {
+			packetTick := CreateSpAgentTick(agentSlize)
+			ts.TsSyncAllClients(packetTick)
+		}
+
+		time.Sleep(800 * time.Millisecond)
+	}
+}
