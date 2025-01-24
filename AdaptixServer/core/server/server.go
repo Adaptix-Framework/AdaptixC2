@@ -88,6 +88,7 @@ func (ts *Teamserver) RestoreData() {
 			TasksQueue:  safe.NewSlice(),
 			Tasks:       safe.NewMap(),
 			ClosedTasks: safe.NewMap(),
+			Tick:        false,
 		}
 
 		ts.agents.Put(agentData.Id, agent)
@@ -160,6 +161,8 @@ func (ts *Teamserver) Start() {
 	logs.Success("", "Starting server -> https://%s:%v%s", "0.0.0.0", ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
 
 	ts.RestoreData()
+
+	go ts.TsAgentTickUpdate()
 
 	<-stopped
 	logs.Warn("", "Teamserver finished")

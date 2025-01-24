@@ -96,6 +96,7 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 			TasksQueue:  safe.NewSlice(),
 			Tasks:       safe.NewMap(),
 			ClosedTasks: safe.NewMap(),
+			Tick:        false,
 		}
 
 		ts.agents.Put(agentData.Id, agent)
@@ -122,8 +123,7 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 	if agent.Data.Async {
 		agent.Data.LastTick = int(time.Now().Unix())
 		ts.DBMS.DbAgentUpdate(agent.Data)
-		packetTick := CreateSpAgentTick(agent.Data.Id)
-		ts.TsSyncAllClients(packetTick)
+		agent.Tick = true
 	}
 
 	/// PROCESS RECEIVED DATA FROM AGENT

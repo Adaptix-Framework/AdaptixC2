@@ -38,16 +38,16 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 		err    error
 	)
 
+	err = json.NewEncoder(&buffer).Encode(packet)
+	if err != nil {
+		return
+	}
+	data := buffer.Bytes()
+
 	ts.clients.ForEach(func(key string, value interface{}) {
 		client := value.(*Client)
 		if client.synced {
-			err = json.NewEncoder(&buffer).Encode(packet)
-			if err != nil {
-				return
-			}
-
-			clientWS := client.socket
-			_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+			_ = client.socket.WriteMessage(websocket.BinaryMessage, data)
 		} else {
 			client.tmp_store.Put(packet)
 		}

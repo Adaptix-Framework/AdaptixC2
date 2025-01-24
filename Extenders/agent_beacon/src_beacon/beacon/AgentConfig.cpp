@@ -39,6 +39,8 @@ AgentConfig::AgentConfig()
 	sleep_delay  = packer->Unpack32();
 	jitter_delay = packer->Unpack32();
 
+	download_chunk_size = 0x19000;
+
 	MemFreeLocal((LPVOID*)&packer, sizeof(Packer));
 	for (int i = 0; i < size; i++)
 		profile[i] = GenerateRandom32();
