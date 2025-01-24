@@ -47,7 +47,9 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 	ts.clients.ForEach(func(key string, value interface{}) {
 		client := value.(*Client)
 		if client.synced {
+			client.lockSocket.Lock()
 			_ = client.socket.WriteMessage(websocket.BinaryMessage, data)
+			client.lockSocket.Unlock()
 		} else {
 			client.tmp_store.Put(packet)
 		}

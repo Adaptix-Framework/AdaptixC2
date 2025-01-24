@@ -6,32 +6,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"time"
+	"sync"
 )
-
-func (ts *Teamserver) TsAgentTickUpdate() {
-	for {
-		ts.agents.ForEach(func(key string, value interface{}) {
-			agent := value.(*Agent)
-			if agent.Data.Async {
-				if agent.Tick {
-					agent.Tick = false
-					packetTick := CreateSpAgentTick(agent.Data.Id)
-					ts.TsSyncAllClients(packetTick)
-				}
-			}
-		})
-		time.Sleep(800 * time.Millisecond)
-	}
-}
 
 func (ts *Teamserver) TsClientConnect(username string, socket *websocket.Conn) {
 
 	client := &Client{
-		username:  username,
-		synced:    false,
-		socket:    socket,
-		tmp_store: safe.NewSlice(),
+		username:   username,
+		synced:     false,
+		lockSocket: &sync.Mutex{},
+		socket:     socket,
+		tmp_store:  safe.NewSlice(),
 	}
 
 	ts.clients.Put(username, client)

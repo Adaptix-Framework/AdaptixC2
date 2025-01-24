@@ -8,6 +8,7 @@ import (
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
 	"github.com/gorilla/websocket"
+	"sync"
 )
 
 const (
@@ -29,10 +30,11 @@ const (
 // TeamServer
 
 type Client struct {
-	username  string
-	synced    bool
-	socket    *websocket.Conn
-	tmp_store *safe.Slice
+	username   string
+	synced     bool
+	lockSocket *sync.Mutex
+	socket     *websocket.Conn
+	tmp_store  *safe.Slice
 }
 
 type Teamserver struct {
@@ -162,7 +164,7 @@ type SyncPackerAgentUpdate struct {
 type SyncPackerAgentTick struct {
 	SpType int `json:"type"`
 
-	Id string `json:"a_id"`
+	Id []string `json:"a_id"`
 }
 
 type SyncPackerAgentConsoleOutput struct {

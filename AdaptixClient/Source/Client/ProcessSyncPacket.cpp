@@ -157,7 +157,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if( spType == TYPE_AGENT_TICK ) {
-        if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
+        if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isArray()) {
             return false;
         }
         return true;
@@ -470,9 +470,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
     if( spType == TYPE_AGENT_TICK )
     {
-        QString id = jsonObj["a_id"].toString();
-        if (Agents.contains(id))
-            Agents[id]->data.LastTick = QDateTime::currentSecsSinceEpoch();
+        QJsonArray agentIDs = jsonObj["a_id"].toArray();
+        for (QJsonValue idValue : agentIDs) {
+            QString id = idValue.toString();
+            if (Agents.contains(id))
+                Agents[id]->data.LastTick = QDateTime::currentSecsSinceEpoch();
+        }
 
         return;
     }

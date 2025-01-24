@@ -168,11 +168,11 @@ func CreateSpAgentUpdate(agentData adaptix.AgentData) SyncPackerAgentUpdate {
 	}
 }
 
-func CreateSpAgentTick(AgentID string) SyncPackerAgentTick {
+func CreateSpAgentTick(agents []string) SyncPackerAgentTick {
 	return SyncPackerAgentTick{
 		SpType: TYPE_AGENT_TICK,
 
-		Id: AgentID,
+		Id: agents,
 	}
 }
 
