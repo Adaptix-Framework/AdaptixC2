@@ -278,7 +278,7 @@ void SessionsTableWidget::actionAgentTag()
 
     bool inputOk;
     QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
-    if (inputOk && !newTag.isEmpty()) {
+    if ( inputOk ) {
         QString message = QString();
         bool ok = false;
         bool result = HttpReqAgentSetTag(listId, newTag, *(adaptixWidget->GetProfile()), &message, &ok);

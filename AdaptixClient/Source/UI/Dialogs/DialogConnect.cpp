@@ -23,9 +23,9 @@ DialogConnect::~DialogConnect() = default;
 
 void DialogConnect::createUI()
 {
-    resize( 740, 340 );
-    setMinimumSize( QSize( 740, 340 ) );
-    setMaximumSize( QSize( 740, 340 ) );
+    resize( 740, 370 );
+    setMinimumSize( QSize( 740, 370 ) );
+    setMaximumSize( QSize( 740, 370 ) );
 
     this->setWindowTitle("Connect");
 
@@ -102,7 +102,6 @@ void DialogConnect::createUI()
     tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem( "Username" ) );
     tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Project" ) );
     tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Host" ) );
-
 
     gridLayout = new QGridLayout( this );
     gridLayout->addWidget( tableWidget,         0, 2, 10, 1 );

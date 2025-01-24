@@ -58,6 +58,7 @@ type Agent struct {
 	TasksQueue  *safe.Slice // taskData TaskData
 	Tasks       safe.Map    // taskId string, taskData TaskData
 	ClosedTasks safe.Map    // taskId string, taskData TaskData
+	Tick        bool
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
