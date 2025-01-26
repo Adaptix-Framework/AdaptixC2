@@ -1,0 +1,58 @@
+/* Nord Theme */
+QWidget {
+    background-color: #2E3440;  /* Polar Night background */
+    color: #D8DEE9;  /* Snow Storm text */
+}
+
+/* QPushButton */
+QPushButton {
+    background-color: #3B4252;  /* Darker Polar Night for buttons */
+    border: 1px solid #4C566A;  /* Frost border */
+    padding: 8px;
+    border-radius: 4px;
+    color: #D8DEE9;
+}
+
+QPushButton:hover {
+    background-color: #4C566A;  /* Frost on hover */
+}
+
+/* QLineEdit */
+QLineEdit {
+    background-color: #3B4252;
+    border: 1px solid #4C566A;
+    padding: 8px;
+    color: #D8DEE9;
+}
+
+/* QTableWidget */
+QTableWidget {
+    background-color: #3B4252;
+    border: 1px solid #4C566A;
+    gridline-color: #434C5E;  /* Grid lines */
+    color: #D8DEE9;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+/* QTableWidget Selected Row */
+QTableWidget::item:selected {
+    background-color: #88C0D0;  /* Frost for selected row */
+    color: #2E3440;  /* Polar Night for contrast */
+}
+
+/* QMenu */
+QMenu {
+    background-color: #2E3440;
+    border: 1px solid #4C566A;
+}
+
+QMenu::item {
+    padding: 5px 10px;
+    color: #D8DEE9;
+}
+
+QMenu::item:selected {
+    background-color: #88C0D0;
+    color: #2E3440;
+}
