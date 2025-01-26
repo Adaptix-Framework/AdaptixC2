@@ -1,0 +1,10 @@
+{
+  "Teamserver": {
+    "port": 4321,
+    "endpoint": "/endpoint",
+    "password": "pass",
+    "cert": "server.rsa.crt",
+    "key": "server.rsa.key",
+    "extender": "extenders/extender.txt"
+  }
+}

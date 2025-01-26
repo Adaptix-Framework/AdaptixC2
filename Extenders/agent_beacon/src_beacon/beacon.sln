@@ -1,0 +1,88 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35312.102
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "beacon", "beacon\beacon.vcxproj", "{99A5F42E-60A8-4F1E-9DFF-35443B972707}"
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "scripts", "scripts\scripts.pyproj", "{6897F9CC-8CA9-4603-9779-3052B43BD6FA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug EXE|Any CPU = Debug EXE|Any CPU
+		Debug EXE|x64 = Debug EXE|x64
+		Debug EXE|x86 = Debug EXE|x86
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release DLL|Any CPU = Release DLL|Any CPU
+		Release DLL|x64 = Release DLL|x64
+		Release DLL|x86 = Release DLL|x86
+		Release EXE|Any CPU = Release EXE|Any CPU
+		Release EXE|x64 = Release EXE|x64
+		Release EXE|x86 = Release EXE|x86
+		Release SVC|Any CPU = Release SVC|Any CPU
+		Release SVC|x64 = Release SVC|x64
+		Release SVC|x86 = Release SVC|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug EXE|Any CPU.ActiveCfg = Debug EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug EXE|Any CPU.Build.0 = Debug EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug EXE|x64.ActiveCfg = Debug EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug EXE|x64.Build.0 = Debug EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug EXE|x86.ActiveCfg = Debug EXE|Win32
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug EXE|x86.Build.0 = Debug EXE|Win32
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug|Any CPU.ActiveCfg = Debug EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug|Any CPU.Build.0 = Debug EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug|x64.ActiveCfg = Debug EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug|x64.Build.0 = Debug EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug|x86.ActiveCfg = Debug EXE|Win32
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Debug|x86.Build.0 = Debug EXE|Win32
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release DLL|Any CPU.ActiveCfg = Release DLL|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release DLL|Any CPU.Build.0 = Release DLL|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release DLL|x64.ActiveCfg = Release DLL|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release DLL|x86.ActiveCfg = Release DLL|Win32
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release EXE|Any CPU.ActiveCfg = Release EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release EXE|Any CPU.Build.0 = Release EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release EXE|x64.ActiveCfg = Release EXE|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release EXE|x86.ActiveCfg = Release EXE|Win32
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release EXE|x86.Build.0 = Release EXE|Win32
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release SVC|Any CPU.ActiveCfg = Release SVC|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release SVC|Any CPU.Build.0 = Release SVC|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release SVC|x64.ActiveCfg = Release SVC|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release SVC|x86.ActiveCfg = Release SVC|Win32
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release|Any CPU.ActiveCfg = Release SVC|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release|Any CPU.Build.0 = Release SVC|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release|x64.ActiveCfg = Release SVC|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release|x64.Build.0 = Release SVC|x64
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release|x86.ActiveCfg = Release SVC|Win32
+		{99A5F42E-60A8-4F1E-9DFF-35443B972707}.Release|x86.Build.0 = Release SVC|Win32
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Debug EXE|Any CPU.ActiveCfg = Debug|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Debug EXE|x64.ActiveCfg = Debug|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Debug EXE|x86.ActiveCfg = Debug|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release DLL|Any CPU.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release DLL|x64.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release DLL|x86.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release EXE|Any CPU.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release EXE|x64.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release EXE|x86.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release SVC|Any CPU.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release SVC|x64.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release SVC|x86.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release|x64.ActiveCfg = Release|Any CPU
+		{6897F9CC-8CA9-4603-9779-3052B43BD6FA}.Release|x86.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {94F166C1-6F3E-4F16-9407-83745A6E0C2D}
+	EndGlobalSection
+EndGlobal
