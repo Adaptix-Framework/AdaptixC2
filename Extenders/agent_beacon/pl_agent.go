@@ -181,8 +181,13 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string
 		Filename = "agent.x64"
 	}
 
+	svcName := ""
+	for _, char := range generateConfig.SvcName {
+		svcName += fmt.Sprintf("\\x%02x", char)
+	}
+	
 	agentProfileSize := len(agentProfile) / 4
-	cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DSERVICE_NAME='\"%s\"' -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, CFlag, ObjectDir, generateConfig.SvcName, string(agentProfile), agentProfileSize, tempDir)
+	cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DSERVICE_NAME='\"%s\"' -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, CFlag, ObjectDir, svcName, string(agentProfile), agentProfileSize, tempDir)
 	runnerCmdConfig := exec.Command("sh", "-c", cmdConfig)
 	runnerCmdConfig.Dir = currentDir
 	runnerCmdConfig.Stdout = &stdout
