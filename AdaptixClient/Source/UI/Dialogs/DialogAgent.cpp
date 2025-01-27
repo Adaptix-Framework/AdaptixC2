@@ -145,6 +145,15 @@ void DialogAgent::onButtonGenerate()
     file.write( content );
     file.close();
 
+    QInputDialog inputDialog;
+    inputDialog.setWindowTitle("Save agent");
+    inputDialog.setLabelText("File saved to:");
+    inputDialog.setTextEchoMode(QLineEdit::Normal);
+    inputDialog.setTextValue(filePath);
+    inputDialog.adjustSize();
+    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+    inputDialog.exec();
+
     this->close();
 }
 

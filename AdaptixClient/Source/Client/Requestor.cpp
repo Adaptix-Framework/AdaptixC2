@@ -9,7 +9,7 @@ QJsonObject HttpReq( QString sUrl, QByteArray jsonData, QString token )
     QUrl url(sUrl);
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    if( !token.isEmpty() ){
+    if( !token.isEmpty() ) {
         QString bearerToken = "Bearer " + token;
         request.setRawHeader("Authorization", bearerToken.toUtf8());
     }
