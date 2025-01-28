@@ -76,12 +76,7 @@ void DialogListener::createUI()
     mainGridLayout->addWidget( listenerTypeCombobox, 1, 1, 1, 5);
     mainGridLayout->addItem(horizontalSpacer, 2, 0, 1, 6);
     mainGridLayout->addWidget( listenerConfigGroupbox, 3, 0, 1, 6 );
-    mainGridLayout->addItem( horizontalSpacer_2, 4, 0, 1, 1);
-    mainGridLayout->addItem( horizontalSpacer_4, 4, 1, 1, 1);
-    mainGridLayout->addWidget( buttonSave, 4, 2, 1, 1);
-    mainGridLayout->addWidget( buttonClose, 4, 3, 1, 1);
-    mainGridLayout->addItem( horizontalSpacer_5, 4, 4, 1, 1);
-    mainGridLayout->addItem( horizontalSpacer_3, 4, 5, 1, 1);
+    mainGridLayout->addLayout(hLayoutBottom, 4, 0, 1, 6);
 
     this->setLayout(mainGridLayout);
 }
