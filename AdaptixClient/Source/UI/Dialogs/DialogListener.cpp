@@ -6,8 +6,10 @@ DialogListener::DialogListener()
     this->createUI();
 
     connect(listenerTypeCombobox, &QComboBox::currentTextChanged, this, &DialogListener::changeConfig);
-    connect( buttonSave, &QPushButton::clicked, this, &DialogListener::onButtonSave );
-    connect( buttonClose, &QPushButton::clicked, this, &DialogListener::onButtonClose );
+    connect(buttonLoad, &QPushButton::clicked, this, &DialogListener::onButtonLoad );
+    connect(buttonSave, &QPushButton::clicked, this, &DialogListener::onButtonSave );
+    connect(buttonCreate, &QPushButton::clicked, this, &DialogListener::onButtonCreate );
+    connect(buttonCancel, &QPushButton::clicked, this, &DialogListener::onButtonCancel );
 }
 
 DialogListener::~DialogListener() = default;
@@ -18,12 +20,12 @@ void DialogListener::createUI()
     this->setWindowTitle( "Create Listener" );
 
     listenerNameLabel = new QLabel(this);
-    listenerNameLabel->setText(QString::fromUtf8("Listener name:"));
+    listenerNameLabel->setText("Listener name:");
 
-    listenerNameInput = new QLineEdit(this);
+    inputListenerName = new QLineEdit(this);
 
     listenerTypeLabel = new QLabel(this);
-    listenerTypeLabel->setText(QString::fromUtf8("Listener type: "));
+    listenerTypeLabel->setText("Listener type: ");
 
     listenerTypeCombobox = new QComboBox(this);
 
@@ -35,24 +37,41 @@ void DialogListener::createUI()
     stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1 );
 
     listenerConfigGroupbox = new QGroupBox( this );
-    listenerConfigGroupbox->setTitle(QString::fromUtf8("Listener config") );
+    listenerConfigGroupbox->setTitle("Listener config");
     listenerConfigGroupbox->setLayout(stackGridLayout);
 
-    buttonSave = new QPushButton(this);
-    buttonSave->setText(QString::fromUtf8("Save"));
+    buttonLoad = new QPushButton(this);
+    buttonLoad->setText("Load");
 
-    buttonClose = new QPushButton(this);
-    buttonClose->setText(QString::fromUtf8("Close"));
+    buttonSave = new QPushButton(this);
+    buttonSave->setText("Save");
+
+    line_1 = new QFrame(this);
+    line_1->setFrameShape(QFrame::VLine);
+    line_1->setMinimumHeight(20);
+
+    buttonCreate = new QPushButton(this);
+    buttonCreate->setText("Create");
+
+    buttonCancel = new QPushButton(this);
+    buttonCancel->setText("Cancel");
 
     horizontalSpacer   = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalSpacer_3 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    horizontalSpacer_4 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    horizontalSpacer_5 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+    hLayoutBottom = new QHBoxLayout();
+    hLayoutBottom->addItem(horizontalSpacer_2);
+    hLayoutBottom->addWidget(buttonLoad);
+    hLayoutBottom->addWidget(buttonSave);
+    hLayoutBottom->addWidget(line_1);
+    hLayoutBottom->addWidget(buttonCreate);
+    hLayoutBottom->addWidget(buttonCancel);
+    hLayoutBottom->addItem(horizontalSpacer_3);
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->addWidget( listenerNameLabel, 0, 0, 1, 1);
-    mainGridLayout->addWidget( listenerNameInput, 0, 1, 1, 5);
+    mainGridLayout->addWidget(inputListenerName, 0, 1, 1, 5);
     mainGridLayout->addWidget( listenerTypeLabel, 1, 0, 1, 1);
     mainGridLayout->addWidget( listenerTypeCombobox, 1, 1, 1, 5);
     mainGridLayout->addItem(horizontalSpacer, 2, 0, 1, 6);
@@ -92,8 +111,8 @@ void DialogListener::SetProfile(AuthProfile profile)
 void DialogListener::SetEditMode(QString name)
 {
     this->setWindowTitle( "Edit Listener" );
-    listenerNameInput->setText(name);
-    listenerNameInput->setDisabled(true);
+    inputListenerName->setText(name);
+    inputListenerName->setDisabled(true);
     listenerTypeCombobox->setDisabled(true);
     editMode = true;
 }
@@ -106,25 +125,22 @@ void DialogListener::changeConfig(QString fn)
     }
 }
 
-void DialogListener::onButtonSave()
+void DialogListener::onButtonCreate()
 {
-    auto configName= listenerNameInput->text();
+    auto configName= inputListenerName->text();
     auto configType= listenerTypeCombobox->currentText();
     auto configData = QString();
-    if (listenersUI[configType]) {
+    if (listenersUI[configType])
         configData = listenersUI[configType]->CollectData();
-    }
 
     QString message = QString();
     bool result, ok = false;
-    if ( editMode ) {
+    if ( editMode )
         result = HttpReqListenerEdit(configName, configType, configData, authProfile, &message, &ok);
-    }
-    else {
+    else
         result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
-    }
 
-    if( !result ){
+    if( !result ) {
         MessageError("JWT error");
         return;
     }
@@ -136,7 +152,90 @@ void DialogListener::onButtonSave()
     this->close();
 }
 
-void DialogListener::onButtonClose()
+void DialogListener::onButtonLoad()
+{
+    QString filePath = QFileDialog::getOpenFileName( nullptr, "Select file", QDir::homePath(), "JSON files (*.json)" );
+    if ( filePath.isEmpty())
+        return;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+
+    QByteArray fileContent = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument document = QJsonDocument::fromJson(fileContent, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        MessageError("Error JSON parse");
+        return;
+    }
+    QJsonObject jsonObject = document.object();
+
+    if ( !jsonObject.contains("type") || !jsonObject["type"].isString() ) {
+        MessageError("Required parameter 'type' is missing");
+        return;
+    }
+    if ( !jsonObject.contains("config") || !jsonObject["config"].isString() ) {
+        MessageError("Required parameter 'type' is missing");
+        return;
+    }
+
+    if( jsonObject.contains("name") && jsonObject["name"].isString())
+        inputListenerName->setText( jsonObject["name"].toString() );
+
+    QString configType = jsonObject["type"].toString();
+    int typeIndex = listenerTypeCombobox->findText( configType );
+    if(typeIndex == -1 || !listenersUI.contains(configType)) {
+        MessageError("No such listener exists");
+        return;
+    }
+
+    QString configData = jsonObject["config"].toString();
+    listenerTypeCombobox->setCurrentIndex(typeIndex);
+    listenersUI[configType]->FillData(configData);
+}
+
+void DialogListener::onButtonSave()
+{
+    auto configName= inputListenerName->text();
+    auto configType= listenerTypeCombobox->currentText();
+    auto configData = QString();
+    if (listenersUI[configType])
+        configData = listenersUI[configType]->CollectData();
+
+    QJsonObject dataJson;
+    dataJson["name"]   = configName;
+    dataJson["type"]   = configType;
+    dataJson["config"] = configData;
+    QByteArray fileContent = QJsonDocument(dataJson).toJson();
+
+    QString tmpFilename = configName + "_listener_config.json";
+    QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", tmpFilename, "JSON files (*.json)" );
+    if ( filePath.isEmpty())
+        return;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        MessageError("Failed to open file for writing");
+        return;
+    }
+
+    file.write( fileContent );
+    file.close();
+
+    QInputDialog inputDialog;
+    inputDialog.setWindowTitle("Save config");
+    inputDialog.setLabelText("File saved to:");
+    inputDialog.setTextEchoMode(QLineEdit::Normal);
+    inputDialog.setTextValue(filePath);
+    inputDialog.adjustSize();
+    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+    inputDialog.exec();
+}
+
+void DialogListener::onButtonCancel()
 {
     this->close();
 }
