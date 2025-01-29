@@ -79,6 +79,12 @@ void DialogListener::createUI()
     mainGridLayout->addLayout(hLayoutBottom, 4, 0, 1, 6);
 
     this->setLayout(mainGridLayout);
+
+    int buttonWidth = buttonCancel->width();
+    buttonCreate->setFixedWidth(buttonWidth);
+    buttonSave->setFixedWidth(buttonWidth);
+    buttonLoad->setFixedWidth(buttonWidth);
+    buttonCancel->setFixedWidth(buttonWidth);
 }
 
 void DialogListener::Start()
@@ -173,7 +179,7 @@ void DialogListener::onButtonLoad()
         return;
     }
     if ( !jsonObject.contains("config") || !jsonObject["config"].isString() ) {
-        MessageError("Required parameter 'type' is missing");
+        MessageError("Required parameter 'config' is missing");
         return;
     }
 

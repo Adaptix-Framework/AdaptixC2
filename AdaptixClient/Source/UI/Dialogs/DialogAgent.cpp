@@ -10,6 +10,8 @@ DialogAgent::DialogAgent(QString listenerName, QString listenerType)
     this->listenerName = listenerName;
     this->listenerType = listenerType;
 
+    connect(buttonLoad, &QPushButton::clicked, this, &DialogAgent::onButtonLoad );
+    connect(buttonSave, &QPushButton::clicked, this, &DialogAgent::onButtonSave );
     connect( agentCombobox, &QComboBox::currentTextChanged, this, &DialogAgent::changeConfig);
     connect( generateButton, &QPushButton::clicked, this, &DialogAgent::onButtonGenerate );
     connect( closeButton, &QPushButton::clicked, this, &DialogAgent::onButtonClose );
@@ -23,13 +25,13 @@ void DialogAgent::createUI()
     this->setWindowTitle( "Generate Agent" );
 
     listenerLabel = new QLabel(this);
-    listenerLabel->setText(QString::fromUtf8("Listener:"));
+    listenerLabel->setText("Listener:");
 
     listenerInput = new QLineEdit(this);
     listenerInput->setReadOnly(true);
 
     agentLabel = new QLabel(this);
-    agentLabel->setText(QString::fromUtf8("Agent: "));
+    agentLabel->setText("Agent: ");
 
     agentCombobox = new QComboBox(this);
 
@@ -41,20 +43,37 @@ void DialogAgent::createUI()
     stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1 );
 
     agentConfigGroupbox = new QGroupBox( this );
-    agentConfigGroupbox->setTitle(QString::fromUtf8("Agent config") );
+    agentConfigGroupbox->setTitle("Agent config");
     agentConfigGroupbox->setLayout(stackGridLayout);
 
+    line_1 = new QFrame(this);
+    line_1->setFrameShape(QFrame::VLine);
+    line_1->setMinimumHeight(20);
+
     generateButton = new QPushButton(this);
-    generateButton->setText(QString::fromUtf8("Generate"));
+    generateButton->setText("Generate");
+
+    buttonLoad = new QPushButton(this);
+    buttonLoad->setText("Load");
+
+    buttonSave = new QPushButton(this);
+    buttonSave->setText("Save");
 
     closeButton = new QPushButton(this);
-    closeButton->setText(QString::fromUtf8("Close"));
+    closeButton->setText("Close");
 
     horizontalSpacer   = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalSpacer_3 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    horizontalSpacer_4 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    horizontalSpacer_5 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+    hLayoutBottom = new QHBoxLayout();
+    hLayoutBottom->addItem(horizontalSpacer_2);
+    hLayoutBottom->addWidget(buttonLoad);
+    hLayoutBottom->addWidget(buttonSave);
+    hLayoutBottom->addWidget(line_1);
+    hLayoutBottom->addWidget(generateButton);
+    hLayoutBottom->addWidget(closeButton);
+    hLayoutBottom->addItem(horizontalSpacer_3);
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->addWidget( listenerLabel, 0, 0, 1, 1);
@@ -63,14 +82,16 @@ void DialogAgent::createUI()
     mainGridLayout->addWidget( agentCombobox, 1, 1, 1, 5);
     mainGridLayout->addItem(horizontalSpacer, 2, 0, 1, 6);
     mainGridLayout->addWidget( agentConfigGroupbox, 3, 0, 1, 6 );
-    mainGridLayout->addItem( horizontalSpacer_2, 4, 0, 1, 1);
-    mainGridLayout->addItem( horizontalSpacer_4, 4, 1, 1, 1);
-    mainGridLayout->addWidget( generateButton, 4, 2, 1, 1);
-    mainGridLayout->addWidget( closeButton, 4, 3, 1, 1);
-    mainGridLayout->addItem( horizontalSpacer_5, 4, 4, 1, 1);
-    mainGridLayout->addItem( horizontalSpacer_3, 4, 5, 1, 1);
+    mainGridLayout->addLayout(hLayoutBottom, 4, 0, 1, 6);
 
     this->setLayout(mainGridLayout);
+
+    int buttonWidth = generateButton->width();
+    closeButton->setFixedWidth(buttonWidth);
+    buttonSave->setFixedWidth(buttonWidth);
+    buttonLoad->setFixedWidth(buttonWidth);
+    generateButton->setFixedWidth(buttonWidth);
+
 }
 
 void DialogAgent::Start()
@@ -155,6 +176,95 @@ void DialogAgent::onButtonGenerate()
     inputDialog.exec();
 
     this->close();
+}
+
+void DialogAgent::onButtonLoad()
+{
+    QString filePath = QFileDialog::getOpenFileName( nullptr, "Select file", QDir::homePath(), "JSON files (*.json)" );
+    if ( filePath.isEmpty())
+        return;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+
+    QByteArray fileContent = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument document = QJsonDocument::fromJson(fileContent, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        MessageError("Error JSON parse");
+        return;
+    }
+    QJsonObject jsonObject = document.object();
+
+    if ( !jsonObject.contains("listener_type") || !jsonObject["listener_type"].isString() ) {
+        MessageError("Required parameter 'listener_type' is missing");
+        return;
+    }
+    if ( !jsonObject.contains("agent") || !jsonObject["agent"].isString() ) {
+        MessageError("Required parameter 'agent' is missing");
+        return;
+    }
+    if ( !jsonObject.contains("config") || !jsonObject["config"].isString() ) {
+        MessageError("Required parameter 'config' is missing");
+        return;
+    }
+
+    if(listenerType != jsonObject["listener_type"].toString()) {
+        MessageError("Listener type mismatch");
+        return;
+    }
+
+    QString agentType = jsonObject["agent"].toString();
+    int typeIndex = agentCombobox->findText( agentType );
+    if(typeIndex == -1 || !agentsUI.contains(agentType)) {
+        MessageError("No such agent exists");
+        return;
+    }
+
+    QString configData = jsonObject["config"].toString();
+    agentCombobox->setCurrentIndex(typeIndex);
+    agentsUI[agentType]->FillData(configData);
+}
+
+void DialogAgent::onButtonSave()
+{
+    QString agentName    = agentCombobox->currentText();
+    QString configData   = "";
+    if (agentsUI[agentName]) {
+        configData = agentsUI[agentName]->CollectData();
+    }
+
+    QJsonObject dataJson;
+    dataJson["listener_type"] = listenerType;
+    dataJson["agent"]   = agentName;
+    dataJson["config"] = configData;
+    QByteArray fileContent = QJsonDocument(dataJson).toJson();
+
+    QString tmpFilename = agentName + "_agent_config.json";
+    QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", tmpFilename, "JSON files (*.json)" );
+    if ( filePath.isEmpty())
+        return;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        MessageError("Failed to open file for writing");
+        return;
+    }
+
+    file.write( fileContent );
+    file.close();
+
+    QInputDialog inputDialog;
+    inputDialog.setWindowTitle("Save config");
+    inputDialog.setLabelText("File saved to:");
+    inputDialog.setTextEchoMode(QLineEdit::Normal);
+    inputDialog.setTextValue(filePath);
+    inputDialog.adjustSize();
+    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+    inputDialog.exec();
 }
 
 void DialogAgent::onButtonClose()
