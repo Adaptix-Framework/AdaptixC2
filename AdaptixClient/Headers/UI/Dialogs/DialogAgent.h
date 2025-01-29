@@ -9,15 +9,17 @@ class DialogAgent : public QDialog
 {
     QGridLayout*    mainGridLayout;
     QGridLayout*    stackGridLayout;
+    QHBoxLayout*    hLayoutBottom;
+    QFrame*         line_1;
     QSpacerItem*    horizontalSpacer;
     QSpacerItem*    horizontalSpacer_2;
     QSpacerItem*    horizontalSpacer_3;
-    QSpacerItem*    horizontalSpacer_4;
-    QSpacerItem*    horizontalSpacer_5;
     QLabel*         listenerLabel;
     QLineEdit*      listenerInput;
     QLabel*         agentLabel;
     QComboBox*      agentCombobox;
+    QPushButton*    buttonLoad;
+    QPushButton*    buttonSave;
     QPushButton*    closeButton;
     QPushButton*    generateButton;
     QGroupBox*      agentConfigGroupbox;
@@ -41,6 +43,8 @@ public:
 
 protected slots:
     void changeConfig(QString fn);
+    void onButtonLoad();
+    void onButtonSave();
     void onButtonGenerate();
     void onButtonClose();
 };
