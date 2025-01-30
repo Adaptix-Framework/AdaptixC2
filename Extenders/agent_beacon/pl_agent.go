@@ -262,6 +262,11 @@ func CreateAgent(initialData []byte) (AgentData, error) {
 	/// START CODE HERE
 
 	packer := CreatePacker(initialData)
+
+	if false == packer.CheckPacker([]string{"int", "int", "word", "word", "byte", "word", "word", "int", "byte", "byte", "int", "byte", "array", "array", "array", "array", "array"}) {
+		return agent, errors.New("Error agent data")
+	}
+
 	agent.Sleep = packer.ParseInt32()
 	agent.Jitter = packer.ParseInt32()
 	agent.ACP = int(packer.ParseInt16())
@@ -721,13 +726,23 @@ RET:
 func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, packedData []byte) {
 
 	packer := CreatePacker(packedData)
+
+	if false == packer.CheckPacker([]string{"int"}) {
+		return
+	}
+
 	size := packer.ParseInt32()
 	if size-4 != packer.Size() {
-		fmt.Println("Invalid tasks data")
+		//fmt.Println("Invalid tasks data")
+		return
 	}
 
 	for packer.Size() >= 8 {
 		var taskObject bytes.Buffer
+
+		if false == packer.CheckPacker([]string{"int", "int"}) {
+			return
+		}
 
 		TaskId := packer.ParseInt32()
 		commandId := packer.ParseInt32()
@@ -737,6 +752,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 		switch commandId {
 
 		case COMMAND_CAT:
+			if false == packer.CheckPacker([]string{"array", "array"}) {
+				return
+			}
 			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 			fileContent := packer.ParseBytes()
 			task.Message = fmt.Sprintf("'%v' file content:", path)
@@ -744,6 +762,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_CD:
+			if false == packer.CheckPacker([]string{"array"}) {
+				return
+			}
 			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 			task.Message = "Current working directory:"
 			task.ClearText = path
@@ -754,6 +775,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_DISKS:
+			if false == packer.CheckPacker([]string{"byte", "int"}) {
+				return
+			}
 			result := packer.ParseInt8()
 			var drives []ListingDrivesData
 
@@ -764,7 +788,11 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			} else {
 				drivesCount := int(packer.ParseInt32())
+
 				for i := 0; i < drivesCount; i++ {
+					if false == packer.CheckPacker([]string{"byte", "int"}) {
+						return
+					}
 					var driveData ListingDrivesData
 					driveCode := packer.ParseInt8()
 					driveType := packer.ParseInt32()
@@ -799,9 +827,15 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_DOWNLOAD:
+			if false == packer.CheckPacker([]string{"int", "byte"}) {
+				return
+			}
 			fileId := fmt.Sprintf("%08x", packer.ParseInt32())
 			downloadCommand := packer.ParseInt8()
 			if downloadCommand == DOWNLOAD_START {
+				if false == packer.CheckPacker([]string{"int", "array"}) {
+					return
+				}
 				fileSize := packer.ParseInt32()
 				fileName := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 				task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %v]", fileName, fileSize, fileId)
@@ -809,6 +843,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				ts.TsDownloadAdd(agentData.Id, fileId, fileName, int(fileSize))
 
 			} else if downloadCommand == DOWNLOAD_CONTINUE {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return
+				}
 				fileContent := packer.ParseBytes()
 				task.Completed = false
 				ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, fileContent)
@@ -821,6 +858,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_EXFIL:
+			if false == packer.CheckPacker([]string{"int", "byte"}) {
+				return
+			}
 			fileId := fmt.Sprintf("%08x", packer.ParseInt32())
 			downloadState := packer.ParseInt8()
 
@@ -844,6 +884,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_EXEC_BOF_OUT:
+			if false == packer.CheckPacker([]string{"int", "array"}) {
+				return
+			}
 
 			outputType := packer.ParseInt32()
 			output := packer.ParseString()
@@ -891,8 +934,15 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_JOB:
+			if false == packer.CheckPacker([]string{"byte"}) {
+				return
+			}
+
 			state := packer.ParseInt8()
 			if state == JOB_STATE_RUNNING {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return
+				}
 				task.Completed = false
 				jobOutput := ConvertCpToUTF8(string(packer.ParseString()), agentData.OemCP)
 				task.Message = fmt.Sprintf("Job [%v] output:", task.TaskId)
@@ -909,12 +959,18 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_JOB_LIST:
 			var Output string
+			if false == packer.CheckPacker([]string{"int"}) {
+				return
+			}
 			count := packer.ParseInt32()
 
 			if count > 0 {
 				Output += fmt.Sprintf(" %-10s  %-5s  %-13s\n", "JobID", "PID", "Type")
 				Output += fmt.Sprintf(" %-10s  %-5s  %-13s", "--------", "-----", "-------")
 				for i := 0; i < int(count); i++ {
+					if false == packer.CheckPacker([]string{"int", "word", "word"}) {
+						return
+					}
 					jobId := fmt.Sprintf("%08x", packer.ParseInt32())
 					jobType := packer.ParseInt16()
 					pid := packer.ParseInt16()
@@ -937,6 +993,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_JOBS_KILL:
+			if false == packer.CheckPacker([]string{"byte", "int"}) {
+				return
+			}
 			result := packer.ParseInt8()
 			jobId := packer.ParseInt32()
 
@@ -950,17 +1009,26 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_LS:
+			if false == packer.CheckPacker([]string{"byte"}) {
+				return
+			}
 			result := packer.ParseInt8()
 
 			var items []ListingFileData
 			var rootPath string
 
 			if result == 0 {
+				if false == packer.CheckPacker([]string{"int"}) {
+					return
+				}
 				errorCode := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
 				task.MessageType = MESSAGE_ERROR
 
 			} else {
+				if false == packer.CheckPacker([]string{"array", "int"}) {
+					return
+				}
 				rootPath = ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 				rootPath, _ = strings.CutSuffix(rootPath, "\\*")
 
@@ -974,6 +1042,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 					var files []ListingFileData
 
 					for i := 0; i < filesCount; i++ {
+						if false == packer.CheckPacker([]string{"byte", "long", "int", "array"}) {
+							return
+						}
 						isDir := packer.ParseInt8()
 						fileData := ListingFileData{
 							IsDir:    false,
@@ -1014,6 +1085,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_MKDIR:
+			if false == packer.CheckPacker([]string{"array"}) {
+				return
+			}
 			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 			task.Message = fmt.Sprintf("Directory '%v' created successfully", path)
 			break
@@ -1023,8 +1097,15 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_PROFILE:
+			if false == packer.CheckPacker([]string{"int"}) {
+				return
+			}
 			subcommand := packer.ParseInt32()
+
 			if subcommand == 1 {
+				if false == packer.CheckPacker([]string{"int", "int"}) {
+					return
+				}
 				sleep := packer.ParseInt32()
 				jitter := packer.ParseInt32()
 
@@ -1039,12 +1120,19 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				ts.TsAgentUpdateData(buffer.Bytes())
 
 			} else if subcommand == 2 {
+				if false == packer.CheckPacker([]string{"int"}) {
+					return
+				}
 				size := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Download chunk size set to %v bytes", size)
 			}
 			break
 
 		case COMMAND_PS_LIST:
+			if false == packer.CheckPacker([]string{"byte", "int"}) {
+				return
+			}
+
 			result := packer.ParseInt8()
 
 			var proclist []ListingProcessData
@@ -1066,6 +1154,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				contextMaxSize := 10
 
 				for i := 0; i < processCount; i++ {
+					if false == packer.CheckPacker([]string{"word", "word", "word", "byte", "byte", "array", "array", "array"}) {
+						return
+					}
 					procData := ListingProcessData{
 						Pid:       uint(packer.ParseInt16()),
 						Ppid:      uint(packer.ParseInt16()),
@@ -1119,11 +1210,17 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_PS_KILL:
+			if false == packer.CheckPacker([]string{"int"}) {
+				return
+			}
 			pid := packer.ParseInt32()
 			task.Message = fmt.Sprintf("Process %d killed", pid)
 			break
 
 		case COMMAND_PS_RUN:
+			if false == packer.CheckPacker([]string{"int", "byte", "array"}) {
+				return
+			}
 			pid := packer.ParseInt32()
 			isOutput := packer.ParseInt8()
 			prog := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
@@ -1138,12 +1235,18 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_PWD:
+			if false == packer.CheckPacker([]string{"array"}) {
+				return
+			}
 			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
 			task.Message = "Current working directory:"
 			task.ClearText = path
 			break
 
 		case COMMAND_RM:
+			if false == packer.CheckPacker([]string{"byte"}) {
+				return
+			}
 			result := packer.ParseInt8()
 			if result == 0 {
 				task.Message = "File deleted successfully"
@@ -1153,6 +1256,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_TERMINATE:
+			if false == packer.CheckPacker([]string{"int"}) {
+				return
+			}
 			exitMethod := packer.ParseInt32()
 			if exitMethod == 1 {
 				task.Message = "The agent has completed its work (kill thread)"
@@ -1167,6 +1273,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			break
 
 		case COMMAND_ERROR:
+			if false == packer.CheckPacker([]string{"int"}) {
+				return
+			}
 			errorCode := packer.ParseInt32()
 			task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
 			task.MessageType = MESSAGE_ERROR
