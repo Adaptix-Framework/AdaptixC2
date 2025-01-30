@@ -21,6 +21,57 @@ func (p *Packer) Size() uint {
 	return uint(len(p.buffer))
 }
 
+func (p *Packer) CheckPacker(types []string) bool {
+
+	packerSize := p.Size()
+
+	for _, t := range types {
+		switch t {
+
+		case "byte":
+			if packerSize < 1 {
+				return false
+			}
+			packerSize -= 1
+
+		case "word":
+			if packerSize < 2 {
+				return false
+			}
+			packerSize -= 2
+
+		case "int":
+			if packerSize < 4 {
+				return false
+			}
+			packerSize -= 4
+
+		case "long":
+			if packerSize < 8 {
+				return false
+			}
+			packerSize -= 8
+
+		case "array":
+			if packerSize < 4 {
+				return false
+			}
+
+			index := p.Size() - packerSize
+			value := make([]byte, 4)
+			copy(value, p.buffer[index:index+4])
+			length := uint(binary.BigEndian.Uint32(value))
+			packerSize -= 4
+
+			if packerSize < length {
+				return false
+			}
+			packerSize -= length
+		}
+	}
+	return true
+}
+
 func (p *Packer) ParseInt8() uint8 {
 	var value = make([]byte, 1)
 
