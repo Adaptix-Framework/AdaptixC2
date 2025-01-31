@@ -17,6 +17,7 @@ void LogsWidget::createUI()
 
     logsConsoleTextEdit = new QTextEdit(this);
     logsConsoleTextEdit->setReadOnly(true);
+    logsConsoleTextEdit->setProperty("TextEditStyle", "console" );
 
     logsGridLayout = new QGridLayout(this);
     logsGridLayout->setContentsMargins(1, 1, 1, 1);
