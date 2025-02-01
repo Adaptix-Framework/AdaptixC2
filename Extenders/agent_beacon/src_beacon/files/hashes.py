@@ -161,6 +161,16 @@ HttpQueryInfoA
 InternetQueryDataAvailable
 InternetCloseHandle
 InternetReadFile
+
+// ws2_32
+WSAStartup
+WSACleanup
+socket
+gethostbyname
+ioctlsocket
+connect
+WSAGetLastError
+closesocket
 """
 
 ##############################################
