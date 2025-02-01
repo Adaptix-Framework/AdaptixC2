@@ -132,3 +132,13 @@
 #define HASH_FUNC_INTERNETQUERYDATAAVAILABLE         0x9ed7669e
 #define HASH_FUNC_INTERNETCLOSEHANDLE                0xc0d1320f
 #define HASH_FUNC_INTERNETREADFILE                   0xe64c229
+
+// ws2_32
+#define HASH_FUNC_WSASTARTUP                         0x512662e2
+#define HASH_FUNC_WSACLEANUP                         0x6f1847d7
+#define HASH_FUNC_SOCKET                             0xc4ef0f8d
+#define HASH_FUNC_GETHOSTBYNAME                      0x9a3fe8fe
+#define HASH_FUNC_IOCTLSOCKET                        0xb1dc75c8
+#define HASH_FUNC_CONNECT                            0x93f5e60e
+#define HASH_FUNC_WSAGETLASTERROR                    0x58a1e4d
+#define HASH_FUNC_CLOSESOCKET                        0xf44c50c3

