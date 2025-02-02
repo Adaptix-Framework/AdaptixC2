@@ -147,6 +147,8 @@ void TasksWidget::addTableItem(TaskData newTask)
         taskType = "TASK";
     else if ( newTask.TaskType == 3 )
         taskType = "JOB";
+    else if ( newTask.TaskType == 4 )
+        taskType = "TUNNEL";
     else
         return;
 

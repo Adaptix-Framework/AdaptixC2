@@ -25,6 +25,7 @@ const (
 	TYPE_TASK    = 1
 	TYPE_BROWSER = 2
 	TYPE_JOB     = 3
+	TYPE_PROXY   = 4
 )
 
 // TeamServer

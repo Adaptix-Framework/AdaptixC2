@@ -40,7 +40,6 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 	var (
 		tasksArray [][]byte
 		agent      *Agent
-		task       adaptix.TaskData
 		value      any
 		ok         bool
 	)
@@ -55,12 +54,12 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 	for i := 0; i < agent.TasksQueue.Len(); i++ {
 		value, ok = agent.TasksQueue.Get(i)
 		if ok {
-			task = value.(adaptix.TaskData)
-			if len(tasksArray)+len(task.Data) < availableSize {
+			taskData := value.(adaptix.TaskData)
+			if len(tasksArray)+len(taskData.Data) < availableSize {
 				var taskBuffer bytes.Buffer
-				_ = json.NewEncoder(&taskBuffer).Encode(task)
+				_ = json.NewEncoder(&taskBuffer).Encode(taskData)
 				tasksArray = append(tasksArray, taskBuffer.Bytes())
-				agent.Tasks.Put(task.TaskId, task)
+				agent.Tasks.Put(taskData.TaskId, taskData)
 				agent.TasksQueue.Delete(i)
 				i--
 			} else {

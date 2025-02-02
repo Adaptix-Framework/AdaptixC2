@@ -135,14 +135,17 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 
 	/// SEND NEW DATA TO AGENT
 
-	if agent.TasksQueue.Len() > 0 {
+	tasksCount := agent.TasksQueue.Len()
+	if tasksCount > 0 {
 		respData, err = ts.Extender.ExAgentPackData(agentName, agentBuffer.Bytes(), agentTasksData)
 		if err != nil {
 			return nil, err
 		}
 
-		message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
-		ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "")
+		if tasksCount > 0 {
+			message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
+			ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "")
+		}
 	}
 
 	return respData, nil
@@ -152,10 +155,11 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username 
 	var (
 		err         error
 		agentObject bytes.Buffer
-		messageInfo string
 		agent       *Agent
 		taskData    adaptix.TaskData
-		data        []byte
+		messageData adaptix.ConsoleMessageData
+		dataTask    []byte
+		dataMessage []byte
 	)
 
 	if ts.agent_configs.Contains(agentName) {
@@ -166,12 +170,17 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username 
 			agent, _ = value.(*Agent)
 			_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
-			data, messageInfo, err = ts.Extender.ExAgentCommand(agentName, agentObject.Bytes(), args)
+			dataTask, dataMessage, err = ts.Extender.ExAgentCommand(agentName, agentObject.Bytes(), args)
 			if err != nil {
 				return err
 			}
 
-			err = json.Unmarshal(data, &taskData)
+			err = json.Unmarshal(dataTask, &taskData)
+			if err != nil {
+				return err
+			}
+
+			err = json.Unmarshal(dataMessage, &messageData)
 			if err != nil {
 				return err
 			}
@@ -184,13 +193,15 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username 
 			taskData.User = username
 			taskData.StartDate = time.Now().Unix()
 
-			agent.TasksQueue.Put(taskData)
-
 			packet := CreateSpAgentTaskCreate(taskData)
 			ts.TsSyncAllClients(packet)
 
-			if len(messageInfo) > 0 {
-				ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, messageInfo, "")
+			if len(messageData.Message) > 0 || len(messageData.Text) > 0 {
+				ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text)
+			}
+
+			if taskData.Type == TYPE_TASK || taskData.Type == TYPE_BROWSER || taskData.Type == TYPE_JOB {
+				agent.TasksQueue.Put(taskData)
 			}
 
 		} else {

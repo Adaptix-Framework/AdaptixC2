@@ -58,6 +58,12 @@ type TaskData struct {
 	Sync        bool   `json:"t_sync"`
 }
 
+type ConsoleMessageData struct {
+	Message string `json:"m_message"`
+	Status  int    `json:"m_status"`
+	Text    string `json:"m_text"`
+}
+
 type DownloadData struct {
 	FileId     string `json:"d_file_id"`
 	AgentId    string `json:"d_agent_id"`
