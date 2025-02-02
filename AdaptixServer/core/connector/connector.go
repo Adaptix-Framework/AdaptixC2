@@ -48,6 +48,11 @@ type Teamserver interface {
 	TsAgentBrowserFiles(agentId string, path string, username string) error
 	TsAgentBrowserUpload(agentId string, path string, content []byte, username string) error
 	TsAgentBrowserDownload(agentId string, path string, username string) error
+
+	TsClientBrowserDisks(jsonTask string, jsonDrives string)
+	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
+	TsClientBrowserFilesStatus(jsonTask string)
+	TsClientBrowserProcess(jsonTask string, jsonFiles string)
 }
 
 type TsConnector struct {
