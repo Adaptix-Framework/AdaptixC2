@@ -18,10 +18,9 @@ MainUI::MainUI()
     connect(extenderAction, &QAction::triggered, this, &MainUI::onExtender);
 
     auto settingsAction = new QAction("Settings", this);
-//    connect(settingsAction, &QAction::triggered, this, &MainUI::onSettings);
+    connect(settingsAction, &QAction::triggered, this, &MainUI::onSettings);
 
     menuProject->setEnabled(false);
-    settingsAction->setEnabled(false);
 
     auto mainMenuBar = new QMenuBar(this);
     mainMenuBar->addMenu(menuProject);
@@ -38,6 +37,11 @@ MainUI::~MainUI()
 void MainUI::onExtender()
 {
     GlobalClient->extender->dialogExtender->show();
+}
+
+void MainUI::onSettings()
+{
+    GlobalClient->settings->dialogSettings->show();
 }
 
 void MainUI::AddNewProject(AuthProfile* profile)

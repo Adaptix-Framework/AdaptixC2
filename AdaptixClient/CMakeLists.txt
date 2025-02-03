@@ -59,6 +59,7 @@ SET( HEADERS
         Headers/Client/Extender.h
         Headers/UI/Dialogs/DialogExtender.h
         Headers/Utils/CustomElements.h
+        Headers/Client/Settings.h
 )
 
 add_executable(AdaptixClient
@@ -100,6 +101,7 @@ add_executable(AdaptixClient
         Source/Client/Extender.cpp
         Source/UI/Dialogs/DialogExtender.cpp
         Source/Utils/CustomElements.cpp
+        Source/Client/Settings.cpp
 )
 
 if(UNIX)

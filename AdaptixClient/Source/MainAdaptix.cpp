@@ -10,13 +10,14 @@ MainAdaptix::MainAdaptix()
 
     mainUI   = new MainUI;
     extender = new Extender(this);
+    settings = new Settings(this);
 }
 
 MainAdaptix::~MainAdaptix()
 {
     delete storage;
     delete mainUI;
-};
+}
 
 void MainAdaptix::Start()
 {

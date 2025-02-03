@@ -195,7 +195,7 @@ Command Commander::ParseCommand(QJsonObject jsonObject)
 Argument Commander::ParseArgument(QString argString)
 {
     Argument arg = {0};
-    QRegularExpression regex(R"((\w+)\s+([\[\<][^\s\]]+[\s\w-]*[\>\]])(\s*\([^\)]*\))?(?:\s+\{(.+)\})?)");
+    QRegularExpression regex(R"((\w+)\s+([\[\<][^\s\]]+[\s\w-]*[\>\]])(\s*\([^\)]*\))?(?:\s+\{([\s\S]+)\})?)");
     QRegularExpressionMatch match = regex.match(argString);
 
     if ( !match.hasMatch()) {
