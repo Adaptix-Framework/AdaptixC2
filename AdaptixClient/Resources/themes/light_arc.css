@@ -520,24 +520,25 @@ QCheckBox::indicator:disabled {
 QListWidget {
     background-color: #FFFFFF; 
     border: 1px solid #D0D0D0; 
-    color: #2E3440; 
+    color: #2E3440;
     border-radius: 4px;
     padding: 5px;
 }
 
 QListWidget::item {
     padding: 4px;
-    border-radius: 4px;
-    color: #2E3440; 
+    /*border-radius: 4px;*/
+    background-color: #FFFFFF;
+    color: #2E3440;
 }
 
 QListWidget::item:hover {
-    background-color: #D0D0D0; 
+    background-color: #17A2B8;
     color: #FFFFFF;
 }
 
 QListWidget::item:selected {
-    background-color: #17A2B8; 
+    background-color: #4A566A;
     color: #FFFFFF;
     border: 1px solid #D0D0D0; 
 }

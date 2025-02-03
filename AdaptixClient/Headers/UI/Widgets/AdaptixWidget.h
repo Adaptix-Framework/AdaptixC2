@@ -5,7 +5,6 @@
 #include <Client/WebSocketWorker.h>
 #include <Client/LastTickWorker.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
-#include <UI/Dialogs/DialogSettings.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
