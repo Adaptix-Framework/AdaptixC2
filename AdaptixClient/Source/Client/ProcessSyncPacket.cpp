@@ -218,7 +218,10 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("a_cmdline") || !jsonObj["a_cmdline"].isString()) {
             return false;
         }
-        if (!jsonObj.contains("a_user") || !jsonObj["a_user"].isString()) {
+        if (!jsonObj.contains("a_client") || !jsonObj["a_client"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_computer") || !jsonObj["a_computer"].isString()) {
             return false;
         }
         return true;
@@ -509,7 +512,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         taskData.TaskType    = jsonObj["a_task_type"].toDouble();
         taskData.StartTime   = jsonObj["a_start_time"].toDouble();
         taskData.CommandLine = jsonObj["a_cmdline"].toString();
-        taskData.Client      = jsonObj["a_user"].toString();
+        taskData.Client      = jsonObj["a_client"].toString();
+        taskData.Computer      = jsonObj["a_computer"].toString();
 
         if (Agents.contains(taskData.AgentId))
             Agents[taskData.AgentId]->Console->ConsoleOutputPrompt( taskData.StartTime, taskData.TaskId, taskData.Client, taskData.CommandLine);

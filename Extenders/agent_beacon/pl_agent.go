@@ -380,10 +380,11 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 	return memoryId
 }
 
-func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]any) (TaskData, string, error) {
+func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]any) (TaskData, ConsoleMessageData, error) {
 	var (
-		taskData TaskData
-		err      error
+		taskData    TaskData
+		messageData ConsoleMessageData
+		err         error
 	)
 
 	subcommand, _ := args["subcommand"].(string)
@@ -391,11 +392,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 	/// START CODE HERE
 
-	var (
-		array    []interface{}
-		packData []byte
-		taskType TaskType = TASK
-	)
+	var array []interface{}
 
 	switch command {
 
@@ -447,7 +444,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 	case "execute":
 		if subcommand == "bof" {
-			taskType = JOB
+			taskData.Type = JOB
 
 			bofFile, ok := args["bof"].(string)
 			if !ok {
@@ -585,7 +582,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			array = []interface{}{COMMAND_PS_KILL, int(pid)}
 
 		} else if subcommand == "run" {
-			taskType = JOB
+			taskData.Type = JOB
 
 			output, _ := args["-o"].(bool)
 			suspend, _ := args["-s"].(bool)
@@ -653,14 +650,14 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 				goto RET
 			}
 		}
-		messageInfo = fmt.Sprintf("Task: sleep to %v", sleep)
+		messageData.Message = fmt.Sprintf("Task: sleep to %v", sleep)
 
 		if jitterOk {
 			if jitterTime < 0 || jitterTime > 100 {
 				err = errors.New("jitterTime must be from 0 to 100")
 				goto RET
 			}
-			messageInfo = fmt.Sprintf("Task: sleep to %v with %v%% jitter", sleep, jitterTime)
+			messageData.Message = fmt.Sprintf("Task: sleep to %v with %v%% jitter", sleep, jitterTime)
 		}
 
 		array = []interface{}{COMMAND_PROFILE, 1, sleepTime, jitterTime}
@@ -706,21 +703,15 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		goto RET
 	}
 
-	packData, err = PackArray(array)
+	taskData.Data, err = PackArray(array)
 	if err != nil {
 		goto RET
-	}
-
-	taskData = TaskData{
-		Type: taskType,
-		Data: packData,
-		Sync: true,
 	}
 
 	/// END CODE
 
 RET:
-	return taskData, messageInfo, err
+	return taskData, messageData, err
 }
 
 func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, packedData []byte) {

@@ -199,7 +199,7 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 	return nil
 }
 
-func (ts *Teamserver) TsDownloadChangeState(fileId string, username string, command string) error {
+func (ts *Teamserver) TsDownloadChangeState(fileId string, clientName string, command string) error {
 	var (
 		downloadData adaptix.DownloadData
 		agent        *Agent
@@ -249,7 +249,8 @@ func (ts *Teamserver) TsDownloadChangeState(fileId string, username string, comm
 	taskData.Type = TYPE_BROWSER
 	taskData.CommandLine = ""
 	taskData.AgentId = agent.Data.Id
-	taskData.User = username
+	taskData.Client = clientName
+	taskData.Computer = agent.Data.Computer
 	taskData.StartDate = time.Now().Unix()
 
 	agent.TasksQueue.Put(taskData)

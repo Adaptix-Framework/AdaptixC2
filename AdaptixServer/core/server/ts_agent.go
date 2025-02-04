@@ -151,7 +151,7 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 	return respData, nil
 }
 
-func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error {
+func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -190,7 +190,8 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, username 
 			}
 			taskData.CommandLine = cmdline
 			taskData.AgentId = agentId
-			taskData.User = username
+			taskData.Client = clientName
+			taskData.Computer = agent.Data.Computer
 			taskData.StartDate = time.Now().Unix()
 
 			packet := CreateSpAgentTaskCreate(taskData)
