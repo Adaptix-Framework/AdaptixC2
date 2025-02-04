@@ -186,7 +186,8 @@ type SyncPackerAgentTaskCreate struct {
 	TaskType  int    `json:"a_task_type"`
 	StartTime int64  `json:"a_start_time"`
 	CmdLine   string `json:"a_cmdline"`
-	User      string `json:"a_user"`
+	Client    string `json:"a_client"`
+	Computer  string `json:"a_computer"`
 }
 
 type SyncPackerAgentTaskUpdate struct {

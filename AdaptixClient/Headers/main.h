@@ -174,6 +174,7 @@ typedef struct TaskData
     int     TaskType;
     QString AgentId;
     QString Client;
+    QString Computer;
     qint64  StartTime;
     qint64  FinishTime;
     QString CommandLine;

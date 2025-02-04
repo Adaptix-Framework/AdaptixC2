@@ -46,7 +46,8 @@ type TaskData struct {
 	Type        int    `json:"t_type"`
 	TaskId      string `json:"t_task_id"`
 	AgentId     string `json:"t_agent_id"`
-	User        string `json:"t_user"`
+	Client      string `json:"t_client"`
+	Computer    string `json:"t_computer"`
 	StartDate   int64  `json:"t_start_date"`
 	FinishDate  int64  `json:"t_finish_date"`
 	Data        []byte `json:"t_data"`

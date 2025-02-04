@@ -21,7 +21,46 @@ const (
 )
 
 type Teamserver interface {
+	//TsClientConnect(username string, socket *websocket.Conn)
+	TsClientDisconnect(username string)
+
+	TsListenerStart(listenerName string, configType string, config string, customData []byte) error
+	TsListenerEdit(listenerName string, configType string, config string) error
+	TsListenerStop(listenerName string, configType string) error
+	TsListenerGetProfile(listenerName string, listenerType string) ([]byte, error)
+
+	TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
 	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
+	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
+	TsAgentUpdateData(newAgentObject []byte) error
+	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
+	TsAgentCtxExit(agentId string, username string) error
+	TsAgentRemove(agentId string) error
+	TsAgentSetTag(agentId string, tag string) error
+
+	TsTaskQueueAddQuite(agentId string, taskObject []byte)
+	TsTaskUpdate(agentId string, cTaskObject []byte)
+	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
+	TsTaskStop(agentId string, taskId string) error
+	TsTaskDelete(agentId string, taskId string) error
+
+	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
+	TsDownloadUpdate(fileId string, state int, data []byte) error
+	TsDownloadClose(fileId string, reason int) error
+	TsDownloadSync(fileId string) (string, []byte, error)
+	TsDownloadDelete(fileId string) error
+
+	TsDownloadChangeState(fileId string, username string, command string) error
+	TsAgentBrowserDisks(agentId string, username string) error
+	TsAgentBrowserProcess(agentId string, username string) error
+	TsAgentBrowserFiles(agentId string, path string, username string) error
+	TsAgentBrowserUpload(agentId string, path string, content []byte, username string) error
+	TsAgentBrowserDownload(agentId string, path string, username string) error
+
+	TsClientBrowserDisks(jsonTask string, jsonDrives string)
+	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
+	TsClientBrowserFilesStatus(jsonTask string)
+	TsClientBrowserProcess(jsonTask string, jsonFiles string)
 }
 
 type ModuleExtender struct {

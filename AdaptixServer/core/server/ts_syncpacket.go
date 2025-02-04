@@ -197,7 +197,8 @@ func CreateSpAgentTaskCreate(taskData adaptix.TaskData) SyncPackerAgentTaskCreat
 		StartTime: taskData.StartDate,
 		CmdLine:   taskData.CommandLine,
 		TaskType:  taskData.Type,
-		User:      taskData.User,
+		Client:    taskData.Client,
+		Computer:  taskData.Computer,
 	}
 }
 
