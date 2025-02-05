@@ -17,7 +17,11 @@ public:
     ~Settings();
 
     DialogSettings* dialogSettings = nullptr;
-    QMap<QString, ExtensionFile> extenderFiles;
+    SettingsData    data;
+
+    void SetDefault();
+    void LoadFromDB();
+    void SaveToDB();
 };
 
 #endif //ADAPTIXCLIENT_SETTINGS_H

@@ -387,8 +387,14 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		err         error
 	)
 
+	taskData.Type = TASK
+	taskData.Sync = true
+
+	messageData.Message, _ = args["message"].(string)
+	messageData.Status = MESSAGE_INFO
+	messageData.Text = ""
+
 	subcommand, _ := args["subcommand"].(string)
-	messageInfo, _ := args["message"].(string)
 
 	/// START CODE HERE
 

@@ -24,6 +24,9 @@ Q_OBJECT
     QPushButton*    buttonApply   = nullptr;
     QPushButton*    buttonClose   = nullptr;
 
+    QComboBox* themeCombo       = nullptr;
+    QCheckBox* consoleTimeCheckbox = nullptr;
+
     void createUI();
 
 public:
@@ -32,6 +35,7 @@ public:
 public slots:
     void onStackChange(int index);
     void onApply();
+    void onClose();
 };
 
 #endif //ADAPTIXCLIENT_DIALOGSETTINGS_H

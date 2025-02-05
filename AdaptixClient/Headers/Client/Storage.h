@@ -27,6 +27,9 @@ public:
     void AddExtension(ExtensionFile extFile);
     void UpdateExtension(ExtensionFile extFile);
     void RemoveExtension(QString filepath);
+
+    void SelectSettingsMain(SettingsData* settingsData);
+    void UpdateSettingsMain(SettingsData settingsData);
 };
 
 #endif //ADAPTIXCLIENT_STORAGE_H

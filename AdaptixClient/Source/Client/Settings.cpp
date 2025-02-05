@@ -3,7 +3,27 @@
 Settings::Settings(MainAdaptix* m)
 {
     mainAdaptix = m;
+
+    this->SetDefault();
+    this->LoadFromDB();
+
     dialogSettings = new DialogSettings(this);
 }
 
 Settings::~Settings() = default;
+
+void Settings::SetDefault()
+{
+    this->data.MainTheme   = "Dark";
+    this->data.ConsoleTime = true;
+}
+
+void Settings::LoadFromDB()
+{
+    mainAdaptix->storage->SelectSettingsMain( &data );
+}
+
+void Settings::SaveToDB()
+{
+    mainAdaptix->storage->UpdateSettingsMain( data );
+}
