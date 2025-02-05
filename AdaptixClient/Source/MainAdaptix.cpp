@@ -6,11 +6,12 @@ MainAdaptix::MainAdaptix()
 {
     storage  = new Storage();
 
+    settings = new Settings(this);
+
     this->SetApplicationTheme();
 
     mainUI   = new MainUI;
     extender = new Extender(this);
-    settings = new Settings(this);
 }
 
 MainAdaptix::~MainAdaptix()
@@ -64,8 +65,7 @@ void MainAdaptix::SetApplicationTheme()
     Font.setPointSize( 10 );
     QApplication::setFont( Font );
 
-//    QString theme = ":/themes/Dark";
-    QString theme = ":/themes/Light_Arc";
+    QString theme = ":/themes/" + settings->data.MainTheme;
 
     bool result = false;
     QString style = ReadFileString(theme, &result);

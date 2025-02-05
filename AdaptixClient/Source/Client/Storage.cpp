@@ -50,19 +50,30 @@ void Storage::checkDatabase()
             "username TEXT, "
             "password TEXT );"
     );
-
     if ( !queryProjects.exec() )
         LogError("Table PROJECTS not created: %s\n", queryProjects.lastError().text().toStdString().c_str());
+
+
 
     auto queryExtensions = QSqlQuery();
     queryExtensions.prepare("CREATE TABLE IF NOT EXISTS Extensions ( "
                           "filepath TEXT UNIQUE PRIMARY KEY, "
                           "enabled BOOLEAN );"
     );
-
     if ( !queryExtensions.exec() )
         LogError("Table EXTENSIONS not created: %s\n", queryExtensions.lastError().text().toStdString().c_str());
 
+
+
+    auto querySettingsMain = QSqlQuery();
+    querySettingsMain.prepare("CREATE TABLE IF NOT EXISTS SettingsMain ( "
+                            "id INTEGER, "
+                            "theme TEXT, "
+                            "consoleTime BOOLEAN );"
+    );
+
+    if ( !querySettingsMain.exec() )
+        LogError("Table SettingsMAIN not created: %s\n", querySettingsMain.lastError().text().toStdString().c_str());
 }
 
 /// PROJECTS
@@ -201,5 +212,65 @@ void Storage::RemoveExtension(QString filepath)
     query.bindValue(":Filepath", filepath);
     if (!query.exec()) {
         LogError("Failed to delete extension from database: %s\n", query.lastError().text().toStdString().c_str());
+    }
+}
+
+/// SETTINGS
+
+void Storage::SelectSettingsMain(SettingsData* settingsData)
+{
+    QSqlQuery existsQuery;
+    existsQuery.prepare("SELECT 1 FROM SettingsMain WHERE Id = 1 LIMIT 1;");
+    if (!existsQuery.exec()) {
+        LogError("Failed to existsQuery main setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
+        return;
+    }
+    bool exists = existsQuery.next();
+
+    if(exists) {
+        QSqlQuery selectQuery;
+        selectQuery.prepare("SELECT * FROM SettingsMain WHERE Id = 1;" );
+        if ( selectQuery.exec() && selectQuery.next()) {
+            settingsData->MainTheme   = selectQuery.value("theme").toString();
+            settingsData->ConsoleTime = selectQuery.value("consoleTime").toBool();
+        }
+        else {
+            LogError("Failed to selectQuery main settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
+        }
+    }
+}
+
+void Storage::UpdateSettingsMain(SettingsData settingsData)
+{
+    QSqlQuery existsQuery;
+    existsQuery.prepare("SELECT 1 FROM SettingsMain WHERE Id = 1 LIMIT 1;");
+    if (!existsQuery.exec()) {
+        LogError("Failed to existsQuery main setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
+        return;
+    }
+    bool exists = existsQuery.next();
+
+    if(exists) {
+        QSqlQuery updateQuery;
+        updateQuery.prepare("UPDATE SettingsMain SET theme = :Theme, consoleTime = :ConsoleTime WHERE Id = 1;");
+
+        updateQuery.bindValue(":Theme", settingsData.MainTheme.toStdString().c_str());
+        updateQuery.bindValue(":ConsoleTime", settingsData.ConsoleTime);
+
+        if ( !updateQuery.exec() ) {
+            LogError("SettingsMain not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
+        }
+    }
+    else {
+        QSqlQuery insertQuery;
+        insertQuery.prepare("INSERT INTO SettingsMain (id, theme, consoleTime) VALUES (:Id, :Theme, :ConsoleTime);");
+
+        insertQuery.bindValue(":Id", 1);
+        insertQuery.bindValue(":Theme", settingsData.MainTheme.toStdString().c_str());
+        insertQuery.bindValue(":ConsoleTime", settingsData.ConsoleTime);
+
+        if ( !insertQuery.exec() ) {
+            LogError("The main theme has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
+        }
     }
 }

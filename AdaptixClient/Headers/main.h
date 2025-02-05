@@ -118,6 +118,12 @@
 
 //////////
 
+typedef struct SettingsData {
+    bool    ConsoleTime;
+    QString MainTheme;
+//    bool TableSession[];
+} SettingsData;
+
 typedef struct ListenerData
 {
     QString ListenerName;

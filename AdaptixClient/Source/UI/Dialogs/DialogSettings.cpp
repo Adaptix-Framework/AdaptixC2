@@ -6,9 +6,15 @@ DialogSettings::DialogSettings(Settings* s)
 
     this->createUI();
 
+    themeCombo->setCurrentText(s->data.MainTheme);
+    consoleTimeCheckbox->setChecked(s->data.ConsoleTime);
+
+    connect(themeCombo, &QComboBox::currentTextChanged, buttonApply,    [=, this](const QString &text){buttonApply->setEnabled(true);} );
+    connect(consoleTimeCheckbox, &QCheckBox::stateChanged, buttonApply, [=, this](int ){buttonApply->setEnabled(true);});
+
     connect(listSettings, &QListWidget::currentRowChanged, this, &DialogSettings::onStackChange);
     connect(buttonApply, &QPushButton::clicked, this, &DialogSettings::onApply);
-
+    connect(buttonClose, &QPushButton::clicked, this, &DialogSettings::onClose);
 }
 
 void DialogSettings::createUI()
@@ -24,17 +30,17 @@ void DialogSettings::createUI()
     QLabel* themeLabel = new QLabel(mainSettingWidget);
     themeLabel->setText("Main theme: ");
 
-    QComboBox*   themeCombo = new QComboBox(mainSettingWidget);
+    themeCombo = new QComboBox(mainSettingWidget);
     themeCombo->addItem("Light_Arc");
     themeCombo->addItem("Dark");
 
-    QCheckBox* consoleTimeCheck = new QCheckBox(mainSettingWidget);
-    consoleTimeCheck->setText("Print date and time in agent console");
-    consoleTimeCheck->setChecked(true);
+    consoleTimeCheckbox = new QCheckBox(mainSettingWidget);
+    consoleTimeCheckbox->setText("Print date and time in agent console");
+    consoleTimeCheckbox->setChecked(true);
 
     mainSettingLayout->addWidget(themeLabel, 0, 0, 1, 1);
     mainSettingLayout->addWidget(themeCombo, 0, 1, 1, 1);
-    mainSettingLayout->addWidget(consoleTimeCheck, 1, 0, 1, 1);
+    mainSettingLayout->addWidget(consoleTimeCheckbox, 1, 0, 1, 1);
 
     mainSettingWidget->setLayout(mainSettingLayout);
 
@@ -75,9 +81,10 @@ void DialogSettings::createUI()
     headerLayout->addWidget(lineFrame);
     headerLayout->setSpacing(0);
 
-    hSpacer      = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    buttonApply     = new QPushButton("Apply ", this);
-    buttonClose = new QPushButton("Cancel", this);
+    hSpacer     = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    buttonApply = new QPushButton("Apply ", this);
+    buttonApply->setEnabled(false);
+    buttonClose = new QPushButton("Close", this);
 
     stackSettings = new QStackedWidget(this);
     stackSettings->addWidget(mainSettingWidget);
@@ -104,5 +111,15 @@ void DialogSettings::onStackChange(int index)
 
 void DialogSettings::onApply()
 {
+    buttonApply->setEnabled(false);
 
+    settings->data.MainTheme   = themeCombo->currentText();
+    settings->data.ConsoleTime = consoleTimeCheckbox->isChecked();
+
+    settings->SaveToDB();
+}
+
+void DialogSettings::onClose()
+{
+    this->close();
 }
