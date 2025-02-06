@@ -1,5 +1,6 @@
 #include <UI/Widgets/ConsoleWidget.h>
 #include <Client/Requestor.h>
+#include <MainAdaptix.h>
 
 ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
 {
@@ -59,9 +60,12 @@ void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, QString taskId, int 
 {
     QString deleter = "<br>" + TextColorHtml( "+-------------------------------------------------------------------------------------+", COLOR_Gray) + "<br>";
 
-    QString promptTime = UnixTimestampGlobalToStringLocal(timestamp);
-    if ( !promptTime.isEmpty() )
-        promptTime = TextColorHtml("[" + promptTime + "]", COLOR_SaturGray) + " ";
+    QString promptTime = "";
+    if (GlobalClient->settings->data.ConsoleTime) {
+        promptTime = UnixTimestampGlobalToStringLocal(timestamp);
+        if ( !promptTime.isEmpty())
+            promptTime = TextColorHtml("[" + promptTime + "]", COLOR_SaturGray) + " ";
+    }
 
     if( !taskId.isEmpty() ) {
         deleter = QString("+--- Task [%1] closed ----------------------------------------------------------+").arg(taskId );
@@ -100,9 +104,12 @@ void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, QString taskId, QStri
 {
     QString promptAgent = TextUnderlineColorHtml( agent->data.Name, COLOR_Gray) + " " + TextColorHtml( ">", COLOR_Gray) + " ";
 
-    QString promptTime = UnixTimestampGlobalToStringLocal(timestamp);
-    if ( !promptTime.isEmpty() )
-        promptTime = TextColorHtml("[" + promptTime + "]", COLOR_SaturGray) + " ";
+    QString promptTime = "";
+    if (GlobalClient->settings->data.ConsoleTime) {
+        promptTime = UnixTimestampGlobalToStringLocal(timestamp);
+        if ( !promptTime.isEmpty())
+            promptTime = TextColorHtml("[" + promptTime + "]", COLOR_SaturGray) + " ";
+    }
 
     QString promptTask  = "";
     if( !taskId.isEmpty() )
