@@ -121,7 +121,10 @@
 typedef struct SettingsData {
     bool    ConsoleTime;
     QString MainTheme;
-//    bool TableSession[];
+    QString FontFamily;
+    int     FontSize;
+
+    //    bool TableSession[];
 } SettingsData;
 
 typedef struct ListenerData

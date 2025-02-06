@@ -69,6 +69,8 @@ void Storage::checkDatabase()
     querySettingsMain.prepare("CREATE TABLE IF NOT EXISTS SettingsMain ( "
                             "id INTEGER, "
                             "theme TEXT, "
+                            "fontFamily TEXT, "
+                            "fontSize INTEGER, "
                             "consoleTime BOOLEAN );"
     );
 
@@ -232,6 +234,8 @@ void Storage::SelectSettingsMain(SettingsData* settingsData)
         selectQuery.prepare("SELECT * FROM SettingsMain WHERE Id = 1;" );
         if ( selectQuery.exec() && selectQuery.next()) {
             settingsData->MainTheme   = selectQuery.value("theme").toString();
+            settingsData->FontFamily  = selectQuery.value("fontFamily").toString();
+            settingsData->FontSize    = selectQuery.value("fontSize").toInt();
             settingsData->ConsoleTime = selectQuery.value("consoleTime").toBool();
         }
         else {
@@ -252,9 +256,16 @@ void Storage::UpdateSettingsMain(SettingsData settingsData)
 
     if(exists) {
         QSqlQuery updateQuery;
-        updateQuery.prepare("UPDATE SettingsMain SET theme = :Theme, consoleTime = :ConsoleTime WHERE Id = 1;");
+        updateQuery.prepare("UPDATE SettingsMain SET "
+                            "theme = :Theme, "
+                            "fontFamily = :FontFamily, "
+                            "fontSize = :FontSize, "
+                            "consoleTime = :ConsoleTime "
+                            "WHERE Id = 1;");
 
         updateQuery.bindValue(":Theme", settingsData.MainTheme.toStdString().c_str());
+        updateQuery.bindValue(":FontFamily", settingsData.FontFamily.toStdString().c_str());
+        updateQuery.bindValue(":FontSize", settingsData.FontSize);
         updateQuery.bindValue(":ConsoleTime", settingsData.ConsoleTime);
 
         if ( !updateQuery.exec() ) {
@@ -263,10 +274,12 @@ void Storage::UpdateSettingsMain(SettingsData settingsData)
     }
     else {
         QSqlQuery insertQuery;
-        insertQuery.prepare("INSERT INTO SettingsMain (id, theme, consoleTime) VALUES (:Id, :Theme, :ConsoleTime);");
+        insertQuery.prepare("INSERT INTO SettingsMain (id, theme, fontFamily, fontSize, consoleTime) VALUES (:Id, :Theme, :FontFamily, :FontSize, :ConsoleTime);");
 
         insertQuery.bindValue(":Id", 1);
         insertQuery.bindValue(":Theme", settingsData.MainTheme.toStdString().c_str());
+        insertQuery.bindValue(":FontFamily", settingsData.FontFamily.toStdString().c_str());
+        insertQuery.bindValue(":FontSize", settingsData.FontSize);
         insertQuery.bindValue(":ConsoleTime", settingsData.ConsoleTime);
 
         if ( !insertQuery.exec() ) {

@@ -7,10 +7,14 @@ DialogSettings::DialogSettings(Settings* s)
     this->createUI();
 
     themeCombo->setCurrentText(s->data.MainTheme);
+    fontFamilyCombo->setCurrentText(s->data.FontFamily);
+    fontSizeSpin->setValue(s->data.FontSize);
     consoleTimeCheckbox->setChecked(s->data.ConsoleTime);
 
-    connect(themeCombo, &QComboBox::currentTextChanged, buttonApply,    [=, this](const QString &text){buttonApply->setEnabled(true);} );
-    connect(consoleTimeCheckbox, &QCheckBox::stateChanged, buttonApply, [=, this](int ){buttonApply->setEnabled(true);});
+    connect(themeCombo,          &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
+    connect(fontFamilyCombo,     &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
+    connect(fontSizeSpin,        &QSpinBox::valueChanged,        buttonApply, [=, this](int ){buttonApply->setEnabled(true);} );
+    connect(consoleTimeCheckbox, &QCheckBox::stateChanged,       buttonApply, [=, this](int ){buttonApply->setEnabled(true);} );
 
     connect(listSettings, &QListWidget::currentRowChanged, this, &DialogSettings::onStackChange);
     connect(buttonApply, &QPushButton::clicked, this, &DialogSettings::onApply);
@@ -20,19 +24,34 @@ DialogSettings::DialogSettings(Settings* s)
 void DialogSettings::createUI()
 {
     this->setWindowTitle("Adaptix Settings");
-    this->resize(1200, 600);
+    this->resize(600, 300);
 
     /////////////// Main setting
 
-    QWidget*     mainSettingWidget = new QWidget(this);
-    QGridLayout* mainSettingLayout = new QGridLayout(mainSettingWidget);
+    mainSettingWidget = new QWidget(this);
+    mainSettingLayout = new QGridLayout(mainSettingWidget);
 
-    QLabel* themeLabel = new QLabel(mainSettingWidget);
+    themeLabel = new QLabel(mainSettingWidget);
     themeLabel->setText("Main theme: ");
 
     themeCombo = new QComboBox(mainSettingWidget);
     themeCombo->addItem("Light_Arc");
     themeCombo->addItem("Dark");
+
+    fontSizeLabel = new QLabel(mainSettingWidget);
+    fontSizeLabel->setText("Font size: ");
+
+    fontSizeSpin = new QSpinBox(mainSettingWidget);
+    fontSizeSpin->setMinimum(7);
+    fontSizeSpin->setMaximum(30);
+
+    fontFamilyLabel = new QLabel(mainSettingWidget);
+    fontFamilyLabel->setText("Font family: ");
+
+    fontFamilyCombo = new QComboBox(mainSettingWidget);
+    fontFamilyCombo->addItem("Adaptix - DejaVu Sans Mono");
+    fontFamilyCombo->addItem("Adaptix - Droid Sans Mono");
+    fontFamilyCombo->addItem("Adaptix - Hack");
 
     consoleTimeCheckbox = new QCheckBox(mainSettingWidget);
     consoleTimeCheckbox->setText("Print date and time in agent console");
@@ -40,7 +59,11 @@ void DialogSettings::createUI()
 
     mainSettingLayout->addWidget(themeLabel, 0, 0, 1, 1);
     mainSettingLayout->addWidget(themeCombo, 0, 1, 1, 1);
-    mainSettingLayout->addWidget(consoleTimeCheckbox, 1, 0, 1, 1);
+    mainSettingLayout->addWidget(fontFamilyLabel, 1,0, 1, 1);
+    mainSettingLayout->addWidget(fontFamilyCombo, 1, 1, 1, 1);
+    mainSettingLayout->addWidget(fontSizeLabel, 2, 0, 1, 1);
+    mainSettingLayout->addWidget(fontSizeSpin, 2, 1, 1, 1);
+    mainSettingLayout->addWidget(consoleTimeCheckbox, 3, 0, 1, 2);
 
     mainSettingWidget->setLayout(mainSettingLayout);
 
@@ -64,9 +87,9 @@ void DialogSettings::createUI()
 
     listSettings = new QListWidget(this);
     listSettings->setFixedWidth(150);
-    listSettings->setAlternatingRowColors(true);
     listSettings->addItem("Main settings");
     listSettings->addItem("Tables");
+    listSettings->setCurrentRow(0);
 
     labelHeader = new QLabel(this);
     labelHeader->setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;");
@@ -114,9 +137,13 @@ void DialogSettings::onApply()
     buttonApply->setEnabled(false);
 
     settings->data.MainTheme   = themeCombo->currentText();
+    settings->data.FontSize    = fontSizeSpin->value();
+    settings->data.FontFamily  = fontFamilyCombo->currentText();
     settings->data.ConsoleTime = consoleTimeCheckbox->isChecked();
 
     settings->SaveToDB();
+
+    MessageSuccess("Settings saved. Please restart Adaptix.");
 }
 
 void DialogSettings::onClose()

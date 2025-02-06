@@ -56,19 +56,22 @@ void MainAdaptix::SetApplicationTheme()
 {
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
 
-    QFontDatabase::addApplicationFont( ":/fonts/DroidSansMono" );
-    QFontDatabase::addApplicationFont( ":/fonts/Hack" );
-    int FontID = QFontDatabase::addApplicationFont( ":/fonts/DejavuSansMono" );
-    QString FontFamily = QFontDatabase::applicationFontFamilies( FontID ).at( 0 );
-    auto Font = QFont( FontFamily );
+    QFontDatabase::addApplicationFont(":/fonts/DroidSansMono");
+    QFontDatabase::addApplicationFont(":/fonts/Hack");
+    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono");
 
-    Font.setPointSize( 10 );
-    QApplication::setFont( Font );
+    QString appFontFamily = settings->data.FontFamily;
+    if (appFontFamily.startsWith("Adaptix")) {
+        appFontFamily = appFontFamily.split("-")[1].trimmed();
+    }
 
-    QString theme = ":/themes/" + settings->data.MainTheme;
+    auto appFont = QFont( appFontFamily );
+    appFont.setPointSize( settings->data.FontSize );
+    QApplication::setFont( appFont );
 
+    QString appTheme = ":/themes/" + settings->data.MainTheme;
     bool result = false;
-    QString style = ReadFileString(theme, &result);
+    QString style = ReadFileString(appTheme, &result);
     if (result) {
         QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
         app->setStyleSheet(style);

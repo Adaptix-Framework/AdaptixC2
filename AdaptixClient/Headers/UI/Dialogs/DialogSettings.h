@@ -24,8 +24,15 @@ Q_OBJECT
     QPushButton*    buttonApply   = nullptr;
     QPushButton*    buttonClose   = nullptr;
 
-    QComboBox* themeCombo       = nullptr;
-    QCheckBox* consoleTimeCheckbox = nullptr;
+    QWidget*     mainSettingWidget   = nullptr;
+    QGridLayout* mainSettingLayout   = nullptr;
+    QLabel*      themeLabel          = nullptr;
+    QComboBox*   themeCombo          = nullptr;
+    QLabel*      fontSizeLabel       = nullptr;
+    QSpinBox*    fontSizeSpin        = nullptr;
+    QLabel*      fontFamilyLabel     = nullptr;
+    QComboBox*   fontFamilyCombo     = nullptr;
+    QCheckBox*   consoleTimeCheckbox = nullptr;
 
     void createUI();
 
