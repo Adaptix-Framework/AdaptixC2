@@ -124,7 +124,7 @@ typedef struct SettingsData {
     QString FontFamily;
     int     FontSize;
 
-    //    bool TableSession[];
+    bool SessionsTableColumns[15];
 } SettingsData;
 
 typedef struct ListenerData

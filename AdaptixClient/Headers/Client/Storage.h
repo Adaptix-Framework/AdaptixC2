@@ -30,6 +30,9 @@ public:
 
     void SelectSettingsMain(SettingsData* settingsData);
     void UpdateSettingsMain(SettingsData settingsData);
+
+    void SelectSettingsSessions(SettingsData* settingsData);
+    void UpdateSettingsSessions(SettingsData settingsData);
 };
 
 #endif //ADAPTIXCLIENT_STORAGE_H

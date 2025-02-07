@@ -34,7 +34,13 @@ Q_OBJECT
     QComboBox*   fontFamilyCombo     = nullptr;
     QCheckBox*   consoleTimeCheckbox = nullptr;
 
-    void createUI();
+    QWidget*     sessionsWidget      = nullptr;
+    QGridLayout* sessionsLayout      = nullptr;
+    QGroupBox*   sessionsGroup       = nullptr;
+    QGridLayout* groupLayout         = nullptr;
+    QCheckBox*   sessionsCheck[15];
+
+void createUI();
 
 public:
     DialogSettings(Settings* s);
