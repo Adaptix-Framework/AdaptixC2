@@ -6,5 +6,15 @@
     "cert": "server.rsa.crt",
     "key": "server.rsa.key",
     "extender": "extenders/extender.txt"
+  },
+
+  "ServerResponse": {
+    "status": 404,
+    "headers": {
+      "Content-Type": "text/html; charset=UTF-8",
+      "Server": "AdaptixC2",
+      "Adaptix Version": "v0.2-DEV"
+    },
+    "page": "404page.html"
   }
 }

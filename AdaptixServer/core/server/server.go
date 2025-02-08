@@ -45,6 +45,12 @@ func (ts *Teamserver) SetSettings(port int, endpoint string, password string, ce
 		Key:      key,
 		Ext:      ext,
 	}
+	ts.Profile.ServerResponse = &profile.TsResponse{
+		Status:      404,
+		Headers:     map[string]string{},
+		PagePath:    "",
+		PageContent: "",
+	}
 }
 
 func (ts *Teamserver) SetProfile(path string) error {
@@ -151,7 +157,7 @@ func (ts *Teamserver) Start() {
 		err     error
 	)
 
-	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server)
+	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server, *ts.Profile.ServerResponse)
 	if err != nil {
 		logs.Error("", "Failed to init HTTP handler: "+err.Error())
 		return

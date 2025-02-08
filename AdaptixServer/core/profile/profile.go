@@ -65,6 +65,16 @@ func (p *AdaptixProfile) IsVaid() error {
 		}
 	}
 
+	if p.ServerResponse.PagePath != "" {
+		_, err := os.Stat(p.ServerResponse.PagePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				logs.Error("", "'ServerResponse.page': file does not exists")
+				valid = false
+			}
+		}
+	}
+
 	if valid {
 		return nil
 	} else {
