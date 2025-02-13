@@ -6,6 +6,7 @@
 #define HASH_LIB_ADVAPI32           0x721421e8
 #define HASH_LIB_MSVCRT             0xb707534d
 
+
 //ntdll
 #define HASH_FUNC_NTCLOSE                            0xed9853bc
 #define HASH_FUNC_NTCONTINUE                         0x3932454b
@@ -22,6 +23,7 @@
 #define HASH_FUNC_RTLIPV4STRINGTOADDRESSA            0x87cc3a9a
 #define HASH_FUNC_RTLRANDOMEX                        0x5b052214
 #define HASH_FUNC_RTLNTSTATUSTODOSERROR              0x7701adaf
+#define HASH_FUNC_NTFLUSHINSTRUCTIONCACHE            0x91a1659e
 
 //kernel32
 #define HASH_FUNC_COPYFILEA                          0x1cba2820
@@ -85,6 +87,9 @@
 #define HASH_FUNC_LOOKUPACCOUNTSIDA                  0x4be434ac
 
 // msvcrt
+#if defined(DEBUG)
+#define HASH_FUNC_PRINTF                             0xbe293817
+#endif
 #define HASH_FUNC_VSNPRINTF                          0xc4e4280e
 
 // BOF
@@ -142,3 +147,9 @@
 #define HASH_FUNC_CONNECT                            0x93f5e60e
 #define HASH_FUNC_WSAGETLASTERROR                    0x58a1e4d
 #define HASH_FUNC_CLOSESOCKET                        0xf44c50c3
+#define HASH_FUNC_SELECT                             0xc43ef024
+#define HASH_FUNC___WSAFDISSET                       0x61b4503f
+#define HASH_FUNC_SHUTDOWN                           0xccb8a380
+#define HASH_FUNC_RECV                               0x6f5eb634
+#define HASH_FUNC_SEND                               0x6f5f43ee
+#define HASH_FUNC_ACCEPT                             0x9a18f614

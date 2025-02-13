@@ -316,6 +316,8 @@ func CreateAgent(initialData []byte) (AgentData, error) {
 	return agent, nil
 }
 
+/// TASKS
+
 func PackTasks(agentData AgentData, tasksArray []TaskData) ([]byte, error) {
 	var packData []byte
 

@@ -16,7 +16,7 @@ server: prepare
 	@ cd AdaptixServer && go build -ldflags="-s -w" -o adaptixserver > /dev/null 2>&1       # for static build use CGO_ENABLED=0
 	@ sudo setcap 'cap_net_bind_service=+ep' AdaptixServer/adaptixserver
 	@ mv AdaptixServer/adaptixserver ./$(DIST_DIR)/
-	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.json ./$(DIST_DIR)/
+	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.json AdaptixServer/404page.html ./$(DIST_DIR)/
 	@ echo "[+] done"
 
 client: prepare

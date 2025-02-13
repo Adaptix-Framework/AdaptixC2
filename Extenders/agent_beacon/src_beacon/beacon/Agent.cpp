@@ -25,6 +25,9 @@ Agent::Agent()
 	memorysaver  = (MemorySaver*)MemAllocLocal(sizeof(MemorySaver));
 	*memorysaver = MemorySaver();
 
+	proxyfire = (Proxyfire*)MemAllocLocal(sizeof(Proxyfire));
+	*proxyfire = Proxyfire();
+
 	SessionKey = (PBYTE) MemAllocLocal(16);
 	for (int i = 0; i < 16; i++)
 		SessionKey[i] = GenerateRandom32() % 0x100;

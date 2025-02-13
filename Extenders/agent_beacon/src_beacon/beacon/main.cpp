@@ -1,7 +1,15 @@
-﻿#include "main.h"
+#include "main.h"
 #include "config.h"
 
-#if defined(BUILD_SVC)
+#if defined(DEBUG)
+
+int main()
+{
+    AgentMain();
+    return 0;
+}
+
+#elif defined(BUILD_SVC)
 
 SERVICE_STATUS        ServiceStatus = {0};
 SERVICE_STATUS_HANDLE hStatus;
@@ -9,7 +17,8 @@ SERVICE_STATUS_HANDLE hStatus;
 void ServiceMain(int argc, char** argv);
 void ControlHandler(DWORD request);
 
-void ServiceMain(int argc, char** argv) {
+void ServiceMain(int argc, char** argv) 
+{
     CHAR* SvcName = getServiceName();
     hStatus = RegisterServiceCtrlHandlerA(SvcName, (LPHANDLER_FUNCTION)ControlHandler);
     if( !hStatus )
@@ -28,7 +37,8 @@ void ServiceMain(int argc, char** argv) {
     SetServiceStatus(hStatus, &ServiceStatus);
 }
 
-void ControlHandler(DWORD request) {
+void ControlHandler(DWORD request) 
+{
     switch (request) {
     case SERVICE_CONTROL_STOP:
         ServiceStatus.dwCurrentState = SERVICE_STOPPED;
@@ -43,7 +53,8 @@ void ControlHandler(DWORD request) {
     SetServiceStatus(hStatus, &ServiceStatus);
 }
 
-int main() {
+int main() 
+{
     SERVICE_TABLE_ENTRYA ServiceTable[2];
     CHAR* SvcName = getServiceName();
     ServiceTable[0].lpServiceName = (LPSTR) SvcName;
