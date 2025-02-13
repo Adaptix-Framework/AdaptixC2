@@ -58,6 +58,7 @@ type Teamserver struct {
 
 type Agent struct {
 	Data        adaptix.AgentData
+	ProxyQueue  *safe.Slice // taskData TaskData
 	TasksQueue  *safe.Slice // taskData TaskData
 	Tasks       safe.Map    // taskId string, taskData TaskData
 	ClosedTasks safe.Map    // taskId string, taskData TaskData

@@ -114,6 +114,7 @@ GetTokenInformation
 LookupAccountSidA
 
 // msvcrt
+printf
 vsnprintf
 
 // BOF
@@ -171,6 +172,12 @@ ioctlsocket
 connect
 WSAGetLastError
 closesocket
+select
+__WSAFDIsSet
+shutdown
+recv
+send
+accept
 """
 
 ##############################################

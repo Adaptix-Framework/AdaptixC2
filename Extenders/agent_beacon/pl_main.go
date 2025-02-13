@@ -21,6 +21,7 @@ const (
 	TASK    TaskType = 1
 	BROWSER TaskType = 2
 	JOB     TaskType = 3
+	PROXY   TaskType = 4
 
 	MESSAGE_INFO    MessageType = 5
 	MESSAGE_ERROR   MessageType = 6

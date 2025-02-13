@@ -17,7 +17,7 @@ void InitBofOutputData()
 	}
 }
 
-BOF_API BeaconFunctions[32] = {
+BOF_API BeaconFunctions[33] = {
 	{ HASH_FUNC_BEACONDATAPARSE,              BeaconDataParse },
 	{ HASH_FUNC_BEACONDATAINT,                BeaconDataInt },
 	{ HASH_FUNC_BEACONDATASHORT,              BeaconDataShort },
@@ -48,6 +48,7 @@ BOF_API BeaconFunctions[32] = {
 	{ HASH_FUNC_LOADLIBRARYA,                 proxy_LoadLibraryA },
 	{ HASH_FUNC_GETMODULEHANDLEA,             proxy_GetModuleHandleA },
 	{ HASH_FUNC_FREELIBRARY,                  proxy_FreeLibrary },
+	{ HASH_FUNC_GETPROCADDRESS,				  proxy_GetProcAddress },
 	{ HASH_FUNC___C_SPECIFIC_HANDLER,         NULL },
 };
 
@@ -55,7 +56,7 @@ void* FindProcBySymbol(char* symbol)
 {
 	if ( StrLenA(symbol) > IMP_LENGTH) {
 		ULONG funcHash = Djb2A((PUCHAR) symbol + IMP_LENGTH);
-		for (int i = 0; i < 32; i++) { // BeaconFunctionsCount
+		for (int i = 0; i < 33; i++) { // BeaconFunctionsCount
 			if (funcHash == BeaconFunctions[i].hash) {
 				if ( BeaconFunctions[i].proc != NULL ) 
 					return BeaconFunctions[i].proc;

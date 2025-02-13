@@ -215,6 +215,26 @@
     ]
   },
   {
+    "command": "socks",
+    "description": "Managing socks tunnels",
+    "subcommands":
+    [
+      {
+        "name": "start",
+        "description": "Start a SOCKS5 proxy server and listen on a specified port",
+        "example": "socks start 1080",
+        "args": [
+          "INT <port>"
+        ]
+      },
+      {
+        "name": "stop",
+        "description": "Start a SOCKS5 proxy server",
+        "example": "socks stop"
+      }
+    ]
+  },
+  {
     "command": "terminate",
     "description": "Terminate the session",
     "subcommands":

