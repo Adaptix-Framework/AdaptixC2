@@ -61,6 +61,10 @@ type Teamserver interface {
 	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
 	TsClientBrowserFilesStatus(jsonTask string)
 	TsClientBrowserProcess(jsonTask string, jsonFiles string)
+
+	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionResume(AgentId string, channelId int)
+	TsTunnelConnectionData(AgentId string, channelId int, data []byte)
 }
 
 type ModuleExtender struct {

@@ -70,15 +70,15 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 		}
 	}
 
-	for i := 0; i < agent.ProxyQueue.Len(); i++ {
-		value, ok = agent.ProxyQueue.Get(i)
+	for i := 0; i < agent.TunnelQueue.Len(); i++ {
+		value, ok = agent.TunnelQueue.Get(i)
 		if ok {
-			proxyData := value.(adaptix.TaskData)
-			if len(tasksArray)+len(proxyData.Data) < availableSize {
+			tunnelTaskData := value.(adaptix.TaskData)
+			if len(tasksArray)+len(tunnelTaskData.Data) < availableSize {
 				var taskBuffer bytes.Buffer
-				_ = json.NewEncoder(&taskBuffer).Encode(proxyData)
+				_ = json.NewEncoder(&taskBuffer).Encode(tunnelTaskData)
 				tasksArray = append(tasksArray, taskBuffer.Bytes())
-				agent.ProxyQueue.Delete(i)
+				agent.TunnelQueue.Delete(i)
 				i--
 			} else {
 				break

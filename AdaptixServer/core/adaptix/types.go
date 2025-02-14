@@ -65,20 +65,6 @@ type ConsoleMessageData struct {
 	Text    string `json:"m_text"`
 }
 
-type DownloadData struct {
-	FileId     string `json:"d_file_id"`
-	AgentId    string `json:"d_agent_id"`
-	AgentName  string `json:"d_agent_name"`
-	Computer   string `json:"d_computer"`
-	RemotePath string `json:"d_remote_path"`
-	LocalPath  string `json:"d_local_path"`
-	TotalSize  int    `json:"d_total_size"`
-	RecvSize   int    `json:"d_recv_size"`
-	Date       int64  `json:"d_date"`
-	State      int    `json:"d_state"`
-	File       *os.File
-}
-
 type ListingFileData struct {
 	IsDir    bool   `json:"b_is_dir"`
 	Size     int64  `json:"b_size"`
@@ -98,4 +84,32 @@ type ListingProcessData struct {
 type ListingDrivesData struct {
 	Name string `json:"b_name"`
 	Type string `json:"b_type"`
+}
+
+type DownloadData struct {
+	FileId     string `json:"d_file_id"`
+	AgentId    string `json:"d_agent_id"`
+	AgentName  string `json:"d_agent_name"`
+	Computer   string `json:"d_computer"`
+	RemotePath string `json:"d_remote_path"`
+	LocalPath  string `json:"d_local_path"`
+	TotalSize  int    `json:"d_total_size"`
+	RecvSize   int    `json:"d_recv_size"`
+	Date       int64  `json:"d_date"`
+	State      int    `json:"d_state"`
+	File       *os.File
+}
+
+type TunnelData struct {
+	TunnelId string `json:"p_tunnel_id"`
+	AgentId  string `json:"p_agent_id"`
+	Computer string `json:"p_computer"`
+	Username string `json:"p_username"`
+	Process  string `json:"p_process"`
+	Type     int    `json:"p_type"`
+	Info     string `json:"p_info"`
+	Lport    int    `json:"p_lport"`
+	Lhost    string `json:"p_lhost"`
+	Rport    int    `json:"p_rport"`
+	Rhost    string `json:"p_rhost"`
 }

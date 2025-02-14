@@ -25,7 +25,7 @@ const (
 	TYPE_TASK    = 1
 	TYPE_BROWSER = 2
 	TYPE_JOB     = 3
-	TYPE_PROXY   = 4
+	TYPE_TUNNEL  = 4
 )
 
 // TeamServer
@@ -47,22 +47,24 @@ type Teamserver struct {
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
 
-	clients   safe.Map    // username string,    : socket *websocket.Conn
-	events    *safe.Slice // 			           : sync_packet interface{}
-	listeners safe.Map    // listenerName string : listenerData ListenerData
-	agents    safe.Map    // agentId string      : agent *Agent
-	downloads safe.Map    // dileId string       : downloadData DownloadData
-
 	agent_types safe.Map // agentMark string : agentName string
+
+	events    *safe.Slice // 			         : sync_packet interface{}
+	clients   safe.Map    // username string,    : socket *websocket.Conn
+	agents    safe.Map    // agentId string      : agent *Agent
+	listeners safe.Map    // listenerName string : listenerData ListenerData
+	downloads safe.Map    // dileId string       : downloadData DownloadData
 }
 
 type Agent struct {
-	Data        adaptix.AgentData
-	ProxyQueue  *safe.Slice // taskData TaskData
+	Data adaptix.AgentData
+	Tick bool
+
+	TunnelQueue *safe.Slice // taskData TaskData
 	TasksQueue  *safe.Slice // taskData TaskData
-	Tasks       safe.Map    // taskId string, taskData TaskData
-	ClosedTasks safe.Map    // taskId string, taskData TaskData
-	Tick        bool
+
+	Tasks       safe.Map // taskId string, taskData TaskData
+	ClosedTasks safe.Map // taskId string, taskData TaskData
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

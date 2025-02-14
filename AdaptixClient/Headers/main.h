@@ -177,6 +177,11 @@ typedef struct DownloadData
     QString Date;
 } DownloadData;
 
+typedef struct TunnelData
+{
+
+} TunnelData;
+
 typedef struct TaskData
 {
     QString TaskId;

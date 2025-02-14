@@ -1343,3 +1343,20 @@ func BrowserExit(agentData AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_TERMINATE, 2}
 	return PackArray(array)
 }
+
+/// TUNNELS
+
+func TunnelCreate(channelId int, address string, port int) ([]byte, error) {
+	array := []interface{}{COMMAND_TUNNEL_START, channelId, address, port}
+	return PackArray(array)
+}
+
+func TunnelWrite(channelId int, data []byte) ([]byte, error) {
+	array := []interface{}{COMMAND_TUNNEL_WRITE, channelId, len(data), data}
+	return PackArray(array)
+}
+
+func TunnelClose(channelId int) ([]byte, error) {
+	array := []interface{}{COMMAND_TUNNEL_CLOSE, channelId}
+	return PackArray(array)
+}
