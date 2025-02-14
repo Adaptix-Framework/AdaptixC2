@@ -93,7 +93,7 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 
 		agent = &Agent{
 			Data:        agentData,
-			ProxyQueue:  safe.NewSlice(),
+			TunnelQueue: safe.NewSlice(),
 			TasksQueue:  safe.NewSlice(),
 			Tasks:       safe.NewMap(),
 			ClosedTasks: safe.NewMap(),
@@ -137,8 +137,8 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 	/// SEND NEW DATA TO AGENT
 
 	tasksCount := agent.TasksQueue.Len()
-	proxyCount := agent.ProxyQueue.Len()
-	if tasksCount > 0 || proxyCount > 0 {
+	tunnelTasksCount := agent.TunnelQueue.Len()
+	if tasksCount > 0 || tunnelTasksCount > 0 {
 		respData, err = ts.Extender.ExAgentPackData(agentName, agentBuffer.Bytes(), agentTasksData)
 		if err != nil {
 			return nil, err
