@@ -21,7 +21,7 @@ const (
 	TASK    TaskType = 1
 	BROWSER TaskType = 2
 	JOB     TaskType = 3
-	PROXY   TaskType = 4
+	TUNNEL  TaskType = 4
 
 	MESSAGE_INFO    MessageType = 5
 	MESSAGE_ERROR   MessageType = 6
@@ -77,7 +77,7 @@ type Teamserver interface {
 
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionResume(AgentId string, channelId int)
-	TsTunnelConnectionData(AgentId string, channelId int, data []byte)
+	TsTunnelConnectionData(channelId int, data []byte)
 }
 
 type ModuleExtender struct {
@@ -706,4 +706,63 @@ func SyncBrowserProcess(ts Teamserver, task TaskData, processlist []ListingProce
 	jsonTask = string(jsonData)
 
 	ts.TsClientBrowserProcess(jsonTask, jsonProcess)
+}
+
+/// TUNNEL
+
+func TunnelMessageConnect(channelId int, address string, port int) []byte {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+	)
+
+	packData, _ = TunnelCreate(channelId, address, port)
+
+	taskData = TaskData{
+		Type: TUNNEL,
+		Data: packData,
+		Sync: false,
+	}
+
+	json.NewEncoder(&buffer).Encode(taskData)
+	return buffer.Bytes()
+}
+
+func TunnelMessageWrite(channelId int, data []byte) []byte {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+	)
+
+	packData, _ = TunnelWrite(channelId, data)
+
+	taskData = TaskData{
+		Type: TUNNEL,
+		Data: packData,
+		Sync: false,
+	}
+
+	json.NewEncoder(&buffer).Encode(taskData)
+	return buffer.Bytes()
+}
+
+func TunnelMessageClose(channelId int) []byte {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+	)
+
+	packData, _ = TunnelClose(channelId)
+
+	taskData = TaskData{
+		Type: TUNNEL,
+		Data: packData,
+		Sync: false,
+	}
+
+	json.NewEncoder(&buffer).Encode(taskData)
+	return buffer.Bytes()
 }

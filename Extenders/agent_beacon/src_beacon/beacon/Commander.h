@@ -57,9 +57,11 @@ public:
 	void CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdRm(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdTunnelMsgConnectTCP(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdTunnelMsgWrite(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdTunnelMsgClose(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker);
 
 	void CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void Exit(Packer* outPacker);
-
 };

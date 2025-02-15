@@ -56,7 +56,7 @@ type Teamserver interface {
 
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionResume(AgentId string, channelId int)
-	TsTunnelConnectionData(AgentId string, channelId int, data []byte)
+	TsTunnelConnectionData(channelId int, data []byte)
 }
 
 type TsConnector struct {

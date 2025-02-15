@@ -3,9 +3,9 @@ package server
 import (
 	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/utils/krypt"
+	"AdaptixServer/core/utils/proxy"
 	"AdaptixServer/core/utils/safe"
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,115 +16,90 @@ import (
 	"time"
 )
 
-type TunnelConnection struct {
-	channelId    int
-	conn         net.Conn
-	ctx          context.Context
-	handleCancel context.CancelFunc
-}
-
-type Tunnel struct {
-	Data adaptix.TunnelData
-
-	listener    net.Listener
-	connections safe.Map
-
-	handlerConnect func(channelId int, addr string, port int) []byte
-	handlerWrite   func(channelId int, data []byte) []byte
-	handlerClose   func(channelId int) []byte
-}
-
-/// socket
-
-func socketToTunnelData(agent *Agent, channelId int) {
-	value, ok := connections.Get(strconv.Itoa(channelId))
+func (ts *Teamserver) TsTunnelStop(TunnelId string) {
+	value, ok := ts.tunnels.Get(TunnelId)
 	if !ok {
 		return
 	}
-	tunnelConnection := value.(*TunnelConnection)
+	tunnel, _ := value.(*Tunnel)
 
-	buffer := make([]byte, 0x10000)
-	for {
-		n, err := tunnelConnection.conn.Read(buffer)
-		if err != nil {
-			if err == io.EOF {
-				rawTaskData := handlerClose(tunnelConnection.channelId)
+	tunnel.listener.Close()
+}
 
-				var taskData adaptix.TaskData
-				err = json.Unmarshal(rawTaskData, &taskData)
-				if err != nil {
-					return
-				}
+/// Connection
 
-				if taskData.TaskId == "" {
-					taskData.TaskId, _ = krypt.GenerateUID(8)
-				}
-				taskData.AgentId = agent.Data.Id
-				agent.TunnelQueue.Put(taskData)
-			} else {
-				fmt.Printf("Error read data: %v\n", err)
-			}
-			break
+func (ts *Teamserver) TsTunnelConnectionData(channelId int, data []byte) {
+	var (
+		valueConn        interface{}
+		tunnelConnection *TunnelConnection
+		ok               bool
+	)
+
+	ts.tunnels.ForEach(func(key string, valueTun interface{}) bool {
+		tunnel, _ := valueTun.(*Tunnel)
+		valueConn, ok = tunnel.connections.Get(strconv.Itoa(channelId))
+		if ok {
+			tunnelConnection, _ = valueConn.(*TunnelConnection)
+			return false
 		}
+		return true
+	})
 
-		rawTaskData := handlerWrite(tunnelConnection.channelId, buffer[:n])
-
-		var taskData adaptix.TaskData
-		err = json.Unmarshal(rawTaskData, &taskData)
-		if err != nil {
-			return
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agent.Data.Id
-		agent.TunnelQueue.Put(taskData)
+	if ok {
+		go tunnelDataToSocket(tunnelConnection, data)
 	}
-}
-
-func tunnelDataToSocket(agent *Agent, channelId int, data []byte) {
-	value, ok := connections.Get(strconv.Itoa(channelId))
-	if !ok {
-		return
-	}
-	tunnelConnection, ok := value.(*TunnelConnection)
-	if !ok {
-		return
-	}
-	tunnelConnection.conn.Write(data)
-}
-
-//////////
-
-func (ts *Teamserver) TsTunnelConnectionData(AgentId string, channelId int, data []byte) {
-	value, ok := ts.agents.Get(AgentId)
-	if !ok {
-		return
-	}
-	agent, _ := value.(*Agent)
-
-	go tunnelDataToSocket(agent, channelId, data)
 }
 
 func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int) {
+	var (
+		valueConn        interface{}
+		tunnel           *Tunnel
+		tunnelConnection *TunnelConnection
+		ok               bool
+	)
+
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return
 	}
 	agent, _ := value.(*Agent)
 
-	go socketToTunnelData(agent, channelId)
+	ts.tunnels.ForEach(func(key string, valueTun interface{}) bool {
+		tunnel, _ = valueTun.(*Tunnel)
+		valueConn, ok = tunnel.connections.Get(strconv.Itoa(channelId))
+		if ok {
+			tunnelConnection, _ = valueConn.(*TunnelConnection)
+			return false
+		}
+		return true
+	})
+
+	if ok {
+		go socketToTunnelData(agent, tunnel, tunnelConnection)
+	}
 }
 
 func (ts *Teamserver) TsTunnelConnectionClose(channelId int) {
-	value, ok := connections.Get(strconv.Itoa(channelId))
-	if !ok {
-		return
-	}
+	var (
+		valueConn        interface{}
+		tunnel           *Tunnel
+		tunnelConnection *TunnelConnection
+		ok               bool
+	)
 
-	tunnelConnection := value.(*TunnelConnection)
-	tunnelConnection.handleCancel()
-	tunnelConnection.conn.Close()
-	connections.Delete(strconv.Itoa(channelId))
+	ts.tunnels.ForEach(func(key string, valueTun interface{}) bool {
+		tunnel, _ = valueTun.(*Tunnel)
+		valueConn, ok = tunnel.connections.Get(strconv.Itoa(channelId))
+		if ok {
+			tunnelConnection, _ = valueConn.(*TunnelConnection)
+			return false
+		}
+		return true
+	})
+
+	if ok {
+		tunnelConnection.handleCancel()
+		tunnelConnection.conn.Close()
+		tunnel.connections.Delete(strconv.Itoa(channelId))
+	}
 }
