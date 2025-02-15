@@ -29,4 +29,10 @@ class Proxyfire
 {
 public:
 	Vector<TunnelData> tunnels;
+
+	void ProcessTunnels(Packer* packer);
+
+	void ConnectMessageTCP(ULONG channelId, CHAR* address, WORD port, Packer* outPacker);
+	void ConnectWrite(ULONG channelId, CHAR* data, ULONG dataSize);
+	void ConnectClose(ULONG channelId);
 };

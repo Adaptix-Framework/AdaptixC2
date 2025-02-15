@@ -55,6 +55,7 @@ void AgentMain()
 
 		g_Agent->downloader->ProcessDownloadTasks(packerOut);			
 		g_Agent->jober->ProcessJobs(packerOut);
+		g_Agent->proxyfire->ProcessTunnels(packerOut);
 
 	} while ( g_Agent->IsActive() );
 

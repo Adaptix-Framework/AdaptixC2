@@ -264,7 +264,7 @@ func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 func (ts *Teamserver) TsAgentTickUpdate() {
 	for {
 		var agentSlize []string
-		ts.agents.ForEach(func(key string, value interface{}) {
+		ts.agents.ForEach(func(key string, value interface{}) bool {
 			agent := value.(*Agent)
 			if agent.Data.Async {
 				if agent.Tick {
@@ -272,6 +272,7 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 					agentSlize = append(agentSlize, agent.Data.Id)
 				}
 			}
+			return true
 		})
 
 		if len(agentSlize) > 0 {

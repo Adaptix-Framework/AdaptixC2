@@ -39,10 +39,10 @@ void TunnelsWidget::createUI()
      tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem("Process"));
      tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem("Type"));
      tableWidget->setHorizontalHeaderItem( 6, new QTableWidgetItem("Info"));
-     tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem("Lport"));
+     tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem("Port"));
      tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem("Client"));
-     tableWidget->setHorizontalHeaderItem( 9, new QTableWidgetItem("Rhost"));
-     tableWidget->setHorizontalHeaderItem( 10, new QTableWidgetItem("Rport"));
+     tableWidget->setHorizontalHeaderItem( 9, new QTableWidgetItem("Fwd host"));
+     tableWidget->setHorizontalHeaderItem( 10, new QTableWidgetItem("Fwd port"));
      tableWidget->hideColumn( 0 );
 
      mainGridLayout = new QGridLayout( this );

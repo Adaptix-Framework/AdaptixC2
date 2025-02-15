@@ -57,11 +57,13 @@ func (s *Map) Len() int {
 	return len(s.m)
 }
 
-func (s *Map) ForEach(f func(key string, value interface{})) {
+func (s *Map) ForEach(f func(key string, value interface{}) bool) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	for key, value := range s.m {
-		f(key, value)
+		if !f(key, value) {
+			break
+		}
 	}
 }
 

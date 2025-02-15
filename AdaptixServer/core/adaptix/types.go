@@ -106,10 +106,10 @@ type TunnelData struct {
 	Computer string `json:"p_computer"`
 	Username string `json:"p_username"`
 	Process  string `json:"p_process"`
-	Type     int    `json:"p_type"`
+	Type     string `json:"p_type"`
 	Info     string `json:"p_info"`
-	Lport    int    `json:"p_lport"`
-	Lhost    string `json:"p_lhost"`
-	Rport    int    `json:"p_rport"`
-	Rhost    string `json:"p_rhost"`
+	Port     string `json:"p_lport"`
+	Client   string `json:"p_lhost"`
+	Fport    string `json:"p_rport"`
+	Fhost    string `json:"p_rhost"`
 }

@@ -1,4 +1,4 @@
-#include "main.h"
+﻿#include "main.h"
 #include "config.h"
 
 #if defined(DEBUG)

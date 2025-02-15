@@ -7,7 +7,9 @@ import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
+	"context"
 	"github.com/gorilla/websocket"
+	"net"
 	"sync"
 )
 
@@ -54,6 +56,7 @@ type Teamserver struct {
 	agents    safe.Map    // agentId string      : agent *Agent
 	listeners safe.Map    // listenerName string : listenerData ListenerData
 	downloads safe.Map    // dileId string       : downloadData DownloadData
+	tunnels   safe.Map    // 					 : tunnel Tunnel
 }
 
 type Agent struct {
@@ -65,6 +68,24 @@ type Agent struct {
 
 	Tasks       safe.Map // taskId string, taskData TaskData
 	ClosedTasks safe.Map // taskId string, taskData TaskData
+}
+
+type TunnelConnection struct {
+	channelId    int
+	conn         net.Conn
+	ctx          context.Context
+	handleCancel context.CancelFunc
+}
+
+type Tunnel struct {
+	Data adaptix.TunnelData
+
+	listener    net.Listener
+	connections safe.Map
+
+	handlerConnect func(channelId int, addr string, port int) []byte
+	handlerWrite   func(channelId int, data []byte) []byte
+	handlerClose   func(channelId int) []byte
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
