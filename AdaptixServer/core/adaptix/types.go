@@ -108,8 +108,8 @@ type TunnelData struct {
 	Process  string `json:"p_process"`
 	Type     string `json:"p_type"`
 	Info     string `json:"p_info"`
-	Port     string `json:"p_lport"`
-	Client   string `json:"p_lhost"`
-	Fport    string `json:"p_rport"`
-	Fhost    string `json:"p_rhost"`
+	Port     string `json:"p_port"`
+	Client   string `json:"p_client"`
+	Fport    string `json:"p_fport"`
+	Fhost    string `json:"p_fhost"`
 }

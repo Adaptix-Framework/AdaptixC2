@@ -62,6 +62,8 @@ type Teamserver interface {
 	TsClientBrowserFilesStatus(jsonTask string)
 	TsClientBrowserProcess(jsonTask string, jsonFiles string)
 
+	TsTunnelStartSocks5(AgentId string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error
+	TsTunnelStopSocks(AgentId string, Port int)
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionResume(AgentId string, channelId int)
 	TsTunnelConnectionData(channelId int, data []byte)

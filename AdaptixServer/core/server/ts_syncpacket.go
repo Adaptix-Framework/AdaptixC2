@@ -316,3 +316,31 @@ func CreateSpBrowserProcess(taskData adaptix.TaskData, data string) SyncPacketBr
 		Data:        data,
 	}
 }
+
+/// TUNNEL
+
+func CreateSpTunnelCreate(tunnelData adaptix.TunnelData) SyncPackerTunnelCreate {
+	return SyncPackerTunnelCreate{
+		SpType: TYPE_TUNNEL_CREATE,
+
+		TunnelId: tunnelData.TunnelId,
+		AgentId:  tunnelData.AgentId,
+		Username: tunnelData.Username,
+		Computer: tunnelData.Computer,
+		Process:  tunnelData.Process,
+		Type:     tunnelData.Type,
+		Info:     tunnelData.Info,
+		Port:     tunnelData.Port,
+		Client:   tunnelData.Client,
+		Fport:    tunnelData.Fport,
+		Fhost:    tunnelData.Fhost,
+	}
+}
+
+func CreateSpTunnelDelete(tunnelData adaptix.TunnelData) SyncPackerTunnelDelete {
+	return SyncPackerTunnelDelete{
+		SpType: TYPE_TUNNEL_DELETE,
+
+		TunnelId: tunnelData.TunnelId,
+	}
+}
