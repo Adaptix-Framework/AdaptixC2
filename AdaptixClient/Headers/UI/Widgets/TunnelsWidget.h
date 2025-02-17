@@ -16,6 +16,8 @@ public:
      ~TunnelsWidget();
 
      void Clear();
+     void AddTunnelItem(TunnelData newTunnel);
+     void RemoveTunnelItem(QString tunnelId);
 
 public slots:
      void handleTunnelsMenu( const QPoint &pos ) const;

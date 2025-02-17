@@ -40,6 +40,9 @@ const (
 	TYPE_DOWNLOAD_UPDATE = 0x52
 	TYPE_DOWNLOAD_DELETE = 0x53
 
+	TYPE_TUNNEL_CREATE = 0x57
+	TYPE_TUNNEL_DELETE = 0x58
+
 	TYPE_BROWSER_DISKS        = 0x61
 	TYPE_BROWSER_FILES        = 0x62
 	TYPE_BROWSER_FILES_STATUS = 0x63
@@ -323,17 +326,18 @@ func CreateSpTunnelCreate(tunnelData adaptix.TunnelData) SyncPackerTunnelCreate 
 	return SyncPackerTunnelCreate{
 		SpType: TYPE_TUNNEL_CREATE,
 
-		TunnelId: tunnelData.TunnelId,
-		AgentId:  tunnelData.AgentId,
-		Username: tunnelData.Username,
-		Computer: tunnelData.Computer,
-		Process:  tunnelData.Process,
-		Type:     tunnelData.Type,
-		Info:     tunnelData.Info,
-		Port:     tunnelData.Port,
-		Client:   tunnelData.Client,
-		Fport:    tunnelData.Fport,
-		Fhost:    tunnelData.Fhost,
+		TunnelId:  tunnelData.TunnelId,
+		AgentId:   tunnelData.AgentId,
+		Username:  tunnelData.Username,
+		Computer:  tunnelData.Computer,
+		Process:   tunnelData.Process,
+		Type:      tunnelData.Type,
+		Info:      tunnelData.Info,
+		Interface: tunnelData.Interface,
+		Port:      tunnelData.Port,
+		Client:    tunnelData.Client,
+		Fport:     tunnelData.Fport,
+		Fhost:     tunnelData.Fhost,
 	}
 }
 

@@ -91,6 +91,9 @@
 #define TYPE_DOWNLOAD_UPDATE 0x52
 #define TYPE_DOWNLOAD_DELETE 0x53
 
+#define TYPE_TUNNEL_CREATE 0x57
+#define TYPE_TUNNEL_DELETE 0x58
+
 #define TYPE_BROWSER_DISKS   0x61
 #define TYPE_BROWSER_FILES   0x62
 #define TYPE_BROWSER_STATUS  0x63
@@ -179,7 +182,18 @@ typedef struct DownloadData
 
 typedef struct TunnelData
 {
-
+    QString TunnelId;
+    QString AgentId;
+    QString Computer;
+    QString Username;
+    QString Process;
+    QString Type;
+    QString Info;
+    QString Interface;
+    QString Port;
+    QString Client;
+    QString Fport;
+    QString Fhost;
 } TunnelData;
 
 typedef struct TaskData
