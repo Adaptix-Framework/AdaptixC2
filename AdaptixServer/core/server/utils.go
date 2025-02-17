@@ -314,17 +314,18 @@ type SyncPacketBrowserProcess struct {
 type SyncPackerTunnelCreate struct {
 	SpType int `json:"type"`
 
-	TunnelId string `json:"p_tunnel_id"`
-	AgentId  string `json:"p_agent_id"`
-	Computer string `json:"p_computer"`
-	Username string `json:"p_username"`
-	Process  string `json:"p_process"`
-	Type     string `json:"p_type"`
-	Info     string `json:"p_info"`
-	Port     string `json:"p_port"`
-	Client   string `json:"p_client"`
-	Fport    string `json:"p_fport"`
-	Fhost    string `json:"p_fhost"`
+	TunnelId  string `json:"p_tunnel_id"`
+	AgentId   string `json:"p_agent_id"`
+	Computer  string `json:"p_computer"`
+	Username  string `json:"p_username"`
+	Process   string `json:"p_process"`
+	Type      string `json:"p_type"`
+	Info      string `json:"p_info"`
+	Interface string `json:"p_interface"`
+	Port      string `json:"p_port"`
+	Client    string `json:"p_client"`
+	Fhost     string `json:"p_fhost"`
+	Fport     string `json:"p_fport"`
 }
 
 type SyncPackerTunnelDelete struct {

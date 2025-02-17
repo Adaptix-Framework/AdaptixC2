@@ -54,7 +54,8 @@ type Teamserver interface {
 	TsClientBrowserFilesStatus(jsonTask string)
 	TsClientBrowserProcess(jsonTask string, jsonFiles string)
 
-	TsTunnelStartSocks5(AgentId string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error
+	TsTunnelStop(TunnelId string) error
+	TsTunnelStartSocks5(AgentId string, Address string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error
 	TsTunnelStopSocks(AgentId string, Port int)
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionResume(AgentId string, channelId int)
@@ -134,6 +135,8 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponce profi
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/files", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcBrowserFiles)
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/upload", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcBrowserUpload)
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/process", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcBrowserProcess)
+
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/stop", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcTunnelStop)
 
 	connector.Engine.NoRoute(default404Middleware(tsResponce), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 

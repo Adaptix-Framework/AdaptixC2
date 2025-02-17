@@ -224,13 +224,17 @@
         "description": "Start a SOCKS5 proxy server and listen on a specified port",
         "example": "socks start 1080",
         "args": [
-          "INT <port>"
+          "STRING [-h address] (0.0.0.0) {Listen address}",
+          "INT <port> {Listen port}"
         ]
       },
       {
         "name": "stop",
-        "description": "Start a SOCKS5 proxy server",
-        "example": "socks stop"
+        "description": "Stop a SOCKS5 proxy server",
+        "example": "socks stop",
+        "args": [
+          "INT <port>"
+        ]
       }
     ]
   },

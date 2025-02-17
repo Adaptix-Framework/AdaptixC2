@@ -16,10 +16,10 @@ import (
 	"time"
 )
 
-func (ts *Teamserver) TsTunnelStop(TunnelId string) {
+func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 	value, ok := ts.tunnels.GetDelete(TunnelId)
 	if !ok {
-		return
+		return errors.New("Tunnel Not Found")
 	}
 	tunnel, _ := value.(*Tunnel)
 
@@ -28,11 +28,13 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) {
 	packet := CreateSpTunnelDelete(tunnel.Data)
 	ts.TsSyncAllClients(packet)
 	ts.events.Put(packet)
+
+	return nil
 }
 
 /// Socks5
 
-func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error {
+func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Address string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error {
 	var (
 		agent       *Agent
 		socksTunnel *Tunnel
@@ -45,7 +47,7 @@ func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Port int, FuncMsgConne
 	agent, _ = value.(*Agent)
 
 	port := strconv.Itoa(Port)
-	addr := "0.0.0.0:" + port
+	addr := Address + ":" + port
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
@@ -82,23 +84,25 @@ func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Port int, FuncMsgConne
 	tunnelId := fmt.Sprintf("%08x", id)
 
 	socksTunnel.Data = adaptix.TunnelData{
-		TunnelId: tunnelId,
-		AgentId:  agent.Data.Id,
-		Computer: agent.Data.Computer,
-		Username: agent.Data.Username,
-		Process:  agent.Data.Process,
-		Type:     "SOCKS5 proxy",
-		Info:     "",
-		Port:     port,
-		Client:   "",
-		Fport:    "",
-		Fhost:    "",
+		TunnelId:  tunnelId,
+		AgentId:   agent.Data.Id,
+		Computer:  agent.Data.Computer,
+		Username:  agent.Data.Username,
+		Process:   agent.Data.Process,
+		Type:      "SOCKS5 proxy",
+		Info:      "",
+		Interface: Address,
+		Port:      port,
+		Client:    "",
+		Fport:     "",
+		Fhost:     "",
 	}
 
 	ts.tunnels.Put(tunnelId, socksTunnel)
 
 	packet := CreateSpTunnelCreate(socksTunnel.Data)
 	ts.TsSyncAllClients(packet)
+	ts.events.Put(packet)
 
 	return nil
 }
@@ -187,4 +191,76 @@ func (ts *Teamserver) TsTunnelConnectionClose(channelId int) {
 		tunnelConnection.conn.Close()
 		tunnel.connections.Delete(strconv.Itoa(channelId))
 	}
+}
+
+/// handlers
+
+func handleRequestSocks5(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
+
+	targetAddress, targetPort, err := proxy.CheckSocks5(socksConn)
+	if err != nil {
+		fmt.Println("Socks5 proxy error: ", err)
+		return
+	}
+
+	channelId := int(rand.Uint32())
+	rawTaskData := tunnel.handlerConnect(channelId, targetAddress, targetPort)
+
+	var taskData adaptix.TaskData
+	err = json.Unmarshal(rawTaskData, &taskData)
+	if err != nil {
+		return
+	}
+
+	if taskData.TaskId == "" {
+		taskData.TaskId, _ = krypt.GenerateUID(8)
+	}
+	taskData.AgentId = agent.Data.Id
+	agent.TunnelQueue.Put(taskData)
+
+	tunnelConnection := &TunnelConnection{
+		channelId: channelId,
+		conn:      socksConn,
+	}
+	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
+
+	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
+}
+
+/// process socket
+
+func socketToTunnelData(agent *Agent, tunnel *Tunnel, tunnelConnection *TunnelConnection) {
+	var rawTaskData []byte
+
+	buffer := make([]byte, 0x10000)
+	for {
+		n, err := tunnelConnection.conn.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				rawTaskData = tunnel.handlerClose(tunnelConnection.channelId)
+			} else {
+				fmt.Printf("Error read data: %v\n", err)
+				continue
+			}
+			break
+		} else {
+			rawTaskData = tunnel.handlerWrite(tunnelConnection.channelId, buffer[:n])
+		}
+
+		var taskData adaptix.TaskData
+		err = json.Unmarshal(rawTaskData, &taskData)
+		if err != nil {
+			return
+		}
+
+		if taskData.TaskId == "" {
+			taskData.TaskId, _ = krypt.GenerateUID(8)
+		}
+		taskData.AgentId = agent.Data.Id
+		agent.TunnelQueue.Put(taskData)
+	}
+}
+
+func tunnelDataToSocket(tunnelConnection *TunnelConnection, data []byte) {
+	tunnelConnection.conn.Write(data)
 }

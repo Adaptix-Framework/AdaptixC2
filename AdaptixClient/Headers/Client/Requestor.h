@@ -40,6 +40,8 @@ bool HttpReqBrowserDownload( QString action, QString fileId, AuthProfile profile
 
 bool HttpReqBrowserDownloadStart( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok );
 
+///BROWSER
+
 bool HttpReqBrowserDisks( QString agentId, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqBrowserProcess( QString agentId, AuthProfile profile, QString* message, bool* ok );
@@ -47,5 +49,9 @@ bool HttpReqBrowserProcess( QString agentId, AuthProfile profile, QString* messa
 bool HttpReqBrowserList( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqBrowserUpload( QString agentId, QString path, QString content, AuthProfile profile, QString* message, bool* ok );
+
+///TUNNEL
+
+bool HttpReqTunnelStop( QString tunnelId, AuthProfile profile, QString* message, bool* ok );
 
 #endif //ADAPTIXCLIENT_REQUESTOR_H

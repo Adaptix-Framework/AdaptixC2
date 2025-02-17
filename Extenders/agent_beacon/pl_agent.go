@@ -669,6 +669,39 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		}
 
 		array = []interface{}{COMMAND_PROFILE, 1, sleepTime, jitterTime}
+		break
+
+	case "socks":
+		taskData.Type = TUNNEL
+		portNumber, ok := args["port"].(float64)
+		port := int(portNumber)
+		if ok {
+			if port < 1 || port > 65535 {
+				err = errors.New("port must be from 1 to 65535")
+				goto RET
+			}
+		}
+		if subcommand == "start" {
+			err = ts.TsTunnelStartSocks5(agent.Id, "0.0.0.0", port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+			if err != nil {
+				goto RET
+			}
+
+			messageData.Status = MESSAGE_SUCCESS
+			messageData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
+			messageData.Text = "\n"
+
+		} else if subcommand == "stop" {
+			ts.TsTunnelStopSocks(agent.Id, port)
+
+			messageData.Status = MESSAGE_SUCCESS
+			messageData.Message = "Socks5 server has been stopped"
+			messageData.Text = "\n"
+
+		} else {
+			err = errors.New("subcommand must be 'start' or 'stop'")
+			goto RET
+		}
 
 		break
 
@@ -1253,6 +1286,29 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.Message = "Directory deleted successfully"
 			}
 			break
+
+		case COMMAND_TUNNEL_START:
+			if false == packer.CheckPacker([]string{"byte"}) {
+				return
+			}
+
+			channelId := int(TaskId)
+			result := packer.ParseInt8()
+			if result == 0 {
+				ts.TsTunnelConnectionClose(channelId)
+			} else {
+				ts.TsTunnelConnectionResume(agentData.Id, channelId)
+			}
+			break
+
+		case COMMAND_TUNNEL_WRITE:
+			if false == packer.CheckPacker([]string{"array"}) {
+				return
+			}
+
+			channelId := int(TaskId)
+			data := packer.ParseBytes()
+			ts.TsTunnelConnectionData(channelId, data)
 
 		case COMMAND_TERMINATE:
 			if false == packer.CheckPacker([]string{"int"}) {
