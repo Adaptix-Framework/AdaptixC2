@@ -16,7 +16,7 @@ TunnelsWidget::~TunnelsWidget() = default;
 void TunnelsWidget::createUI()
 {
      tableWidget = new QTableWidget( this );
-     tableWidget->setColumnCount( 11 );
+     tableWidget->setColumnCount( 12 );
      tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
      tableWidget->setAutoFillBackground( false );
      tableWidget->setShowGrid( false );
@@ -39,10 +39,11 @@ void TunnelsWidget::createUI()
      tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem("Process"));
      tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem("Type"));
      tableWidget->setHorizontalHeaderItem( 6, new QTableWidgetItem("Info"));
-     tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem("Port"));
-     tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem("Client"));
-     tableWidget->setHorizontalHeaderItem( 9, new QTableWidgetItem("Fwd host"));
-     tableWidget->setHorizontalHeaderItem( 10, new QTableWidgetItem("Fwd port"));
+     tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem("Interface"));
+     tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem("Listen port"));
+     tableWidget->setHorizontalHeaderItem( 9, new QTableWidgetItem("Client"));
+     tableWidget->setHorizontalHeaderItem( 10, new QTableWidgetItem("Forward host"));
+     tableWidget->setHorizontalHeaderItem( 11, new QTableWidgetItem("Forward port"));
      tableWidget->hideColumn( 0 );
 
      mainGridLayout = new QGridLayout( this );
@@ -64,7 +65,8 @@ void TunnelsWidget::handleTunnelsMenu(const QPoint &pos ) const
 {
      QMenu tunnelsMenu = QMenu();
 
-     tunnelsMenu.addAction("Stop", this, &TunnelsWidget::stopTunnel );
+     tunnelsMenu.addAction( "Set info", this, &TunnelsWidget::actionSetInfo);
+     tunnelsMenu.addAction("Stop", this, &TunnelsWidget::actionStopTunnel );
 
      QPoint globalPos = tableWidget->mapToGlobal( pos );
      tunnelsMenu.exec(globalPos);

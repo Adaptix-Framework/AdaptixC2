@@ -3,6 +3,7 @@
 
 #include <main.h>
 #include <Agent/Agent.h>
+#include <Utils/KeyPressHandler.h>
 
 #define CONSOLE_OUT_LOCAL         1
 #define CONSOLE_OUT_LOCAL_INFO    2
@@ -11,6 +12,7 @@
 #define CONSOLE_OUT_INFO          5
 #define CONSOLE_OUT_ERROR         6
 #define CONSOLE_OUT_SUCCESS       7
+
 
 class ConsoleWidget : public QWidget
 {
@@ -24,20 +26,16 @@ class ConsoleWidget : public QWidget
 
     Agent*     agent     = nullptr;
     Commander* commander = nullptr;
-
-    QStringList history = QStringList();
-    int historyIndex = -1;
+    KPH_ConsoleInput * kphInputLineEdit = nullptr;
 
     void createUI();
-
-protected:
-    bool eventFilter(QObject *watched, QEvent *event) override;
 
 public:
     explicit ConsoleWidget(Agent* a, Commander* c);
     ~ConsoleWidget();
 
     void UpgradeCompleter();
+    void InputFocus();
 
     void ConsoleOutputMessage( qint64 timestamp, QString taskId, int type, QString message, QString text, bool completed );
     void ConsoleOutputPrompt( qint64 timestamp, QString taskId, QString user, QString commandLine );

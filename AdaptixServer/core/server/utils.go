@@ -247,6 +247,7 @@ type SyncPackerDownloadCreate struct {
 	FileId    string `json:"d_file_id"`
 	AgentId   string `json:"d_agent_id"`
 	AgentName string `json:"d_agent_name"`
+	User      string `json:"d_user"`
 	Computer  string `json:"d_computer"`
 	File      string `json:"d_file"`
 	Size      int    `json:"d_size"`
@@ -326,6 +327,13 @@ type SyncPackerTunnelCreate struct {
 	Client    string `json:"p_client"`
 	Fhost     string `json:"p_fhost"`
 	Fport     string `json:"p_fport"`
+}
+
+type SyncPackerTunnelEdit struct {
+	SpType int `json:"type"`
+
+	TunnelId string `json:"p_tunnel_id"`
+	Info     string `json:"p_info"`
 }
 
 type SyncPackerTunnelDelete struct {

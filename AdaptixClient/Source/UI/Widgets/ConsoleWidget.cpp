@@ -12,7 +12,7 @@ ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
 
     connect( InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput );
 
-    InputLineEdit->installEventFilter(this);
+    kphInputLineEdit = new KPH_ConsoleInput(InputLineEdit, OutputTextEdit, this);
 }
 
 ConsoleWidget::~ConsoleWidget() {}
@@ -55,6 +55,12 @@ void ConsoleWidget::createUI()
     CommandCompleter->setCaseSensitivity(Qt::CaseInsensitive);
     InputLineEdit->setCompleter(CommandCompleter);
 }
+
+void ConsoleWidget::InputFocus()
+{
+    InputLineEdit->setFocus();
+}
+
 
 void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, QString taskId, int type, QString message, QString text, bool completed )
 {
@@ -142,8 +148,7 @@ void ConsoleWidget::processInput()
     if (commandLine.isEmpty())
         return;
 
-    history.prepend(commandLine);
-    historyIndex = -1;
+    kphInputLineEdit->AddToHistory(commandLine);
 
     auto cmdResult = commander->ProcessInput( agent->data, commandLine );
     if ( cmdResult.output ) {
@@ -176,42 +181,6 @@ void ConsoleWidget::processInput()
             this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, message, "", true);
         }
     }
-}
-
-bool ConsoleWidget::eventFilter(QObject *watched, QEvent *event)
-{
-    if (watched == InputLineEdit && event->type() == QEvent::KeyPress) {
-        QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
-
-        if (keyEvent->key() == Qt::Key_Up) {
-            if ( history.size() == 0 )
-                return true;
-
-            if (historyIndex < history.size() - 1) {
-                historyIndex++;
-                InputLineEdit->setText(history[historyIndex]);
-            } else {
-                historyIndex = history.size() - 1;
-                InputLineEdit->setText(history[history.size() - 1]);
-            }
-            return true;
-        }
-        if (keyEvent->key() == Qt::Key_Down) {
-            if ( history.size() == 0 )
-                return true;
-
-            if (historyIndex > 0) {
-                historyIndex--;
-                InputLineEdit->setText(history[historyIndex]);
-            } else {
-                historyIndex = -1;
-                InputLineEdit->clear();
-            }
-            return true;
-        }
-    }
-
-    return QWidget::eventFilter(watched, event);
 }
 
 void ConsoleWidget::UpgradeCompleter()

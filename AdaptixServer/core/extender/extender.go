@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"plugin"
 	"reflect"
-	"strings"
 )
 
 func NewExtender(teamserver Teamserver) *AdaptixExtender {
@@ -22,7 +21,7 @@ func NewExtender(teamserver Teamserver) *AdaptixExtender {
 	}
 }
 
-func (ex *AdaptixExtender) LoadPlugins(extenderFile string) {
+func (ex *AdaptixExtender) LoadPlugins(extenderFiles []string) {
 	var (
 		pl     *plugin.Plugin
 		object plugin.Symbol
@@ -31,14 +30,7 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFile string) {
 		module = new(ModuleExtender)
 	)
 
-	extenderContent, err := os.ReadFile(extenderFile)
-	if err != nil {
-		logs.Error("", "File %s not read", extenderFile)
-		return
-	}
-
-	files := strings.Split(string(extenderContent), "\n")
-	for _, path := range files {
+	for _, path := range extenderFiles {
 
 		_, err = os.Stat(path)
 		if err != nil {

@@ -92,7 +92,8 @@
 #define TYPE_DOWNLOAD_DELETE 0x53
 
 #define TYPE_TUNNEL_CREATE 0x57
-#define TYPE_TUNNEL_DELETE 0x58
+#define TYPE_TUNNEL_EDIT   0x58
+#define TYPE_TUNNEL_DELETE 0x59
 
 #define TYPE_BROWSER_DISKS   0x61
 #define TYPE_BROWSER_FILES   0x62
@@ -172,6 +173,7 @@ typedef struct DownloadData
     QString FileId;
     QString AgentId;
     QString AgentName;
+    QString User;
     QString Computer;
     QString Filename;
     int     TotalSize;

@@ -276,6 +276,9 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("d_agent_name") || !jsonObj["d_agent_name"].isString()) {
             return false;
         }
+        if (!jsonObj.contains("d_user") || !jsonObj["d_user"].isString()) {
+            return false;
+        }
         if (!jsonObj.contains("d_computer") || !jsonObj["d_computer"].isString()) {
             return false;
         }
@@ -304,6 +307,62 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
     if( spType == TYPE_DOWNLOAD_DELETE ) {
         if (!jsonObj.contains("d_file_id") || !jsonObj["d_file_id"].isString()) {
+            return false;
+        }
+        return true;
+    }
+
+    if( spType == TYPE_TUNNEL_CREATE ) {
+        if (!jsonObj.contains("p_tunnel_id") || !jsonObj["p_tunnel_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_agent_id") || !jsonObj["p_agent_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_computer") || !jsonObj["p_computer"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_username") || !jsonObj["p_username"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_process") || !jsonObj["p_process"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_type") || !jsonObj["p_type"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_info") || !jsonObj["p_info"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_interface") || !jsonObj["p_interface"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_port") || !jsonObj["p_port"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_client") || !jsonObj["p_client"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_fport") || !jsonObj["p_fport"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_fhost") || !jsonObj["p_fhost"].isString()) {
+            return false;
+        }
+
+        return true;
+    }
+    if( spType == TYPE_TUNNEL_EDIT ) {
+        if (!jsonObj.contains("p_tunnel_id") || !jsonObj["p_tunnel_id"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("p_info") || !jsonObj["p_info"].isString()) {
+            return false;
+        }
+        return true;
+    }
+    if( spType == TYPE_TUNNEL_DELETE ) {
+        if (!jsonObj.contains("p_tunnel_id") || !jsonObj["p_tunnel_id"].isString()) {
             return false;
         }
         return true;
@@ -556,6 +615,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newDownload.AgentId   = jsonObj["d_agent_id"].toString();
         newDownload.FileId    = jsonObj["d_file_id"].toString();
         newDownload.AgentName = jsonObj["d_agent_name"].toString();
+        newDownload.User      = jsonObj["d_user"].toString();
         newDownload.Computer  = jsonObj["d_computer"].toString();
         newDownload.Filename  = jsonObj["d_file"].toString();
         newDownload.TotalSize = jsonObj["d_size"].toDouble();
@@ -582,6 +642,46 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString fileId = jsonObj["d_file_id"].toString();
 
         DownloadsTab->RemoveDownloadItem(fileId);
+
+        return;
+    }
+
+
+
+    if( spType == TYPE_TUNNEL_CREATE )
+    {
+        TunnelData newTunnel = {0};
+        newTunnel.TunnelId  = jsonObj["p_tunnel_id"].toString();
+        newTunnel.AgentId   = jsonObj["p_agent_id"].toString();
+        newTunnel.Computer  = jsonObj["p_computer"].toString();
+        newTunnel.Username  = jsonObj["p_username"].toString();
+        newTunnel.Process   = jsonObj["p_process"].toString();
+        newTunnel.Type      = jsonObj["p_type"].toString();
+        newTunnel.Info      = jsonObj["p_info"].toString();
+        newTunnel.Interface = jsonObj["p_interface"].toString();
+        newTunnel.Port      = jsonObj["p_port"].toString();
+        newTunnel.Client    = jsonObj["p_client"].toString();
+        newTunnel.Fhost     = jsonObj["p_fhost"].toString();
+        newTunnel.Fport     = jsonObj["p_fport"].toString();
+
+        TunnelsTab->AddTunnelItem(newTunnel);
+
+        return;
+    }
+    if( spType == TYPE_TUNNEL_EDIT )
+    {
+        QString TunnelId = jsonObj["p_tunnel_id"].toString();
+        QString Info     = jsonObj["p_info"].toString();
+
+        TunnelsTab->EditTunnelItem(TunnelId, Info);
+
+        return;
+    }
+    if( spType == TYPE_TUNNEL_DELETE )
+    {
+        QString TunnelId = jsonObj["p_tunnel_id"].toString();
+
+        TunnelsTab->RemoveTunnelItem(TunnelId);
 
         return;
     }

@@ -49,6 +49,7 @@ func (dbms *DBMS) DatabaseInit() error {
     	"FileId" TEXT NOT NULL UNIQUE, 
     	"AgentId" TEXT NOT NULL,
     	"AgentName" TEXT NOT NULL,
+    	"User" TEXT NOT NULL,
     	"Computer" TEXT NOT NULL,
     	"RemotePath" TEXT NOT NULL,
     	"LocalPath" TEXT NOT NULL,

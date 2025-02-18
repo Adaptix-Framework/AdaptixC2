@@ -9,8 +9,9 @@ SessionsTableWidget::SessionsTableWidget( QWidget* w )
     this->mainWidget = w;
     this->createUI();
 
-    connect( tableWidget, &QTableWidget::doubleClicked, this, &SessionsTableWidget::handleTableDoubleClicked );
+    connect( tableWidget, &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
+    connect( tableWidget, &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
 }
 
 SessionsTableWidget::~SessionsTableWidget() = default;

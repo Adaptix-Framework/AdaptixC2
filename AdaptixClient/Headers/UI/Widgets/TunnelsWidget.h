@@ -17,11 +17,13 @@ public:
 
      void Clear();
      void AddTunnelItem(TunnelData newTunnel);
+     void EditTunnelItem(QString tunnelId, QString info);
      void RemoveTunnelItem(QString tunnelId);
 
 public slots:
      void handleTunnelsMenu( const QPoint &pos ) const;
-     void stopTunnel();
+     void actionSetInfo();
+     void actionStopTunnel();
 };
 
 #endif //TUNNELSWIDGET_H

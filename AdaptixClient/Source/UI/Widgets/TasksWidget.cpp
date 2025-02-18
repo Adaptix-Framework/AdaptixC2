@@ -55,6 +55,7 @@ TasksWidget::TasksWidget( QWidget* w )
 
     connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
     connect(tableWidget, &QTableWidget::itemSelectionChanged,       this, &TasksWidget::onTableItemSelection);
+    connect(tableWidget, &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
     connect(comboAgent,  &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
     connect(comboStatus, &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
     connect(inputFilter, &QLineEdit::textChanged,                   this, &TasksWidget::onAgentChange);
