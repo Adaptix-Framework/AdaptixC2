@@ -37,14 +37,14 @@ func NewTeamserver() *Teamserver {
 	return ts
 }
 
-func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, ext string) {
+func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, exts []string) {
 	ts.Profile.Server = &profile.TsProfile{
-		Port:     port,
-		Endpoint: endpoint,
-		Password: password,
-		Cert:     cert,
-		Key:      key,
-		Ext:      ext,
+		Port:      port,
+		Endpoint:  endpoint,
+		Password:  password,
+		Cert:      cert,
+		Key:       key,
+		Extenders: exts,
 	}
 	ts.Profile.ServerResponse = &profile.TsResponse{
 		Status:      404,

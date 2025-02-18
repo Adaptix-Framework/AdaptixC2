@@ -204,6 +204,7 @@ void AdaptixWidget::ClearAdaptix()
     TasksTab->Clear();
     ListenersTab->Clear();
     SessionsTablePage->Clear();
+    TunnelsTab->Clear();
 
     LinkListenerAgent.clear();
 
@@ -392,6 +393,7 @@ void AdaptixWidget::LoadConsoleUI(QString AgentId)
 
     auto text = QString("Console [%1]").arg( AgentId );
     this->AddTab(Agents[AgentId]->Console, text);
+    Agents[AgentId]->Console->InputFocus();
 }
 
 void AdaptixWidget::LoadFileBrowserUI(QString AgentId)

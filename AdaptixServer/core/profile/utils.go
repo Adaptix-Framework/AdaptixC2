@@ -6,12 +6,12 @@ type AdaptixProfile struct {
 }
 
 type TsProfile struct {
-	Port     int    `json:"port"`
-	Endpoint string `json:"endpoint"`
-	Password string `json:"password"`
-	Cert     string `json:"cert"`
-	Key      string `json:"key"`
-	Ext      string `json:"extender"`
+	Port      int      `json:"port"`
+	Endpoint  string   `json:"endpoint"`
+	Password  string   `json:"password"`
+	Cert      string   `json:"cert"`
+	Key       string   `json:"key"`
+	Extenders []string `json:"extenders"`
 }
 
 type TsResponse struct {

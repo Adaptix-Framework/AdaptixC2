@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
 
 const VERSION = "0.2-DEV"
@@ -32,7 +33,7 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Printf("\nEither provide options individually or use a JSON config file with -config flag.\n\n")
 		fmt.Printf("Example:\n")
-		fmt.Printf("   AdaptixServer -p port -pw password -e endpoint -sc SslCert -sk SslKey [-ex extender_file] [-debug]\n")
+		fmt.Printf("   AdaptixServer -p port -pw password -e endpoint -sc SslCert -sk SslKey [-ex ext1,ext2,...] [-debug]\n")
 		fmt.Printf("   AdaptixServer -profile profile.json [-debug]\n")
 	}
 	flag.Parse()
@@ -55,7 +56,8 @@ func main() {
 			os.Exit(1)
 		}
 	} else if *port > 1 && *port < 65535 && *endpoint != "" && *password != "" {
-		ts.SetSettings(*port, *endpoint, *password, *certPath, *keyPath, *extenderPath)
+		extenders := strings.Split(*extenderPath, ",")
+		ts.SetSettings(*port, *endpoint, *password, *certPath, *keyPath, extenders)
 	} else {
 		flag.Usage()
 		os.Exit(0)
@@ -67,6 +69,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	ts.Extender.LoadPlugins(ts.Profile.Server.Ext)
+	ts.Extender.LoadPlugins(ts.Profile.Server.Extenders)
 	ts.Start()
 }

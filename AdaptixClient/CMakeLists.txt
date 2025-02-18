@@ -61,6 +61,7 @@ SET( HEADERS
         Headers/Utils/CustomElements.h
         Headers/Client/Settings.h
         Headers/UI/Widgets/TunnelsWidget.h
+        Headers/Utils/KeyPressHandler.h
 )
 
 add_executable(AdaptixClient

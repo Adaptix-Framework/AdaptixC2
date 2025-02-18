@@ -42,6 +42,7 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 
 	value, ok := ts.agents.Get(agentId)
 	if ok {
+		downloadData.User = value.(*Agent).Data.Username
 		downloadData.Computer = value.(*Agent).Data.Computer
 		downloadData.AgentName = value.(*Agent).Data.Name
 	} else {

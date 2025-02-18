@@ -1,6 +1,8 @@
 package adaptix
 
-import "os"
+import (
+	"os"
+)
 
 type ListenerData struct {
 	Name      string `json:"l_name"`
@@ -90,6 +92,7 @@ type DownloadData struct {
 	FileId     string `json:"d_file_id"`
 	AgentId    string `json:"d_agent_id"`
 	AgentName  string `json:"d_agent_name"`
+	User       string `json:"d_user"`
 	Computer   string `json:"d_computer"`
 	RemotePath string `json:"d_remote_path"`
 	LocalPath  string `json:"d_local_path"`
