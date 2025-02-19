@@ -67,6 +67,7 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	packets = append(packets, ts.TsPresyncListeners()...)
 	packets = append(packets, ts.TsPresyncAgentsAndTasks()...)
 	packets = append(packets, ts.TsPresyncDownloads()...)
+	packets = append(packets, ts.TsPresyncTunnels()...)
 	packets = append(packets, ts.TsPresyncEvents()...)
 
 	startPacket := CreateSpSyncStart(len(packets))
@@ -151,6 +152,17 @@ func (ts *Teamserver) TsPresyncDownloads() []interface{} {
 		d1 := CreateSpDownloadCreate(downloadData)
 		d2 := CreateSpDownloadUpdate(downloadData)
 		packets = append(packets, d1, d2)
+		return true
+	})
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncTunnels() []interface{} {
+	var packets []interface{}
+	ts.tunnels.ForEach(func(key string, value interface{}) bool {
+		tunnel := value.(*Tunnel)
+		t := CreateSpTunnelCreate(tunnel.Data)
+		packets = append(packets, t)
 		return true
 	})
 	return packets

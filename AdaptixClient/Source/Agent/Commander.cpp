@@ -421,20 +421,22 @@ CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, 
                     bool isWideArgs = true;
 
                     for (Argument commandArg : subcommand.args) {
-                        if (commandArg.flag && commandArg.mark == arg && args.size() > i+1 ) {
-                            if( commandArg.type == "BOOL" ) {
+                        if (commandArg.flag) {
+                            if (commandArg.type == "BOOL" && commandArg.mark == arg ) {
                                 parsedArgsMap[commandArg.mark] = "true";
                                 wideKey = commandArg.mark;
                                 isWideArgs = false;
+                                break;
                             }
-                            else {
+                            else if ( commandArg.mark == arg && args.size() > i+1 ) {
                                 ++i;
                                 parsedArgsMap[commandArg.name] = args[i];
                                 wideKey = commandArg.name;
                                 isWideArgs = false;
+                                break;
                             }
-                            break;
-                        } else if (!commandArg.flag && !parsedArgsMap.contains(commandArg.name)) {
+                        }
+                        else if (!parsedArgsMap.contains(commandArg.name)) {
                             parsedArgsMap[commandArg.name] = arg;
                             wideKey = commandArg.name;
                             isWideArgs = false;

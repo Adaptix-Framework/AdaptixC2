@@ -682,7 +682,12 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			}
 		}
 		if subcommand == "start" {
-			err = ts.TsTunnelStartSocks5(agent.Id, "0.0.0.0", port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+			address, ok := args["address"].(string)
+			if !ok {
+				err = errors.New("parameter 'address' must be set")
+				goto RET
+			}
+			err = ts.TsTunnelStartSocks5(agent.Id, address, port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
 			if err != nil {
 				goto RET
 			}

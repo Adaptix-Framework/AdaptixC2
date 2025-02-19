@@ -24,6 +24,10 @@ func CheckSocks5(conn net.Conn) (string, int, error) {
 		err = errors.New("invalid version of socks proxy")
 		goto RET
 	}
+	if buf[1] != 0x01 && buf[2] != 0x00 {
+		err = errors.New("invalid version of socks proxy")
+		goto RET
+	}
 	conn.Write([]byte{0x05, 0x00}) // version 5, without auth
 
 	buf = make([]byte, 4)

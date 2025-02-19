@@ -64,6 +64,8 @@
 #define EVENT_LISTENER_START    3
 #define EVENT_LISTENER_STOP     4
 #define EVENT_AGENT_NEW         5
+#define EVENT_TUNNEL_START      6
+#define EVENT_TUNNEL_STOP       7
 
 /////////
 
@@ -118,6 +120,7 @@
 #define COLOR_BabyBlue     "#89CFF0"     // blue
 #define COLOR_Gray         "#808080"     // gray
 #define COLOR_SaturGray    "#606060"     // gray
+#define COLOR_ConsoleWhite "#e0e0e0"     // white
 #define COLOR_White        "#ffffff"     // white
 
 //////////
