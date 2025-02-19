@@ -15,6 +15,8 @@ const (
 	EVENT_LISTENER_START    = 3
 	EVENT_LISTENER_STOP     = 4
 	EVENT_AGENT_NEW         = 5
+	EVENT_TUNNEL_START      = 6
+	EVENT_TUNNEL_STOP       = 7
 )
 
 const (

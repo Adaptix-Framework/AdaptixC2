@@ -221,17 +221,21 @@
     [
       {
         "name": "start",
-        "description": "Start a SOCKS5 proxy server and listen on a specified port",
-        "example": "socks start 1080",
+        "description": "Start a SOCKS(4a/5) proxy server and listen on a specified port",
+        "example": "socks start 1080 -auth user pass",
         "args": [
-          "STRING [-h address] (0.0.0.0) {Listen address}",
-          "INT <port> {Listen port}"
+          "STRING <-h address> (0.0.0.0) {Listening interface address}",
+          "INT <port> {Listen port}",
+          "BOOL [-socks4] {Use SOCKS4 proxy (Default SOCKS5)}",
+          "BOOL [-auth] {Enable User/Password authentication for SOCKS5}",
+          "STRING [username] {Username for SOCKS5 proxy}",
+          "STRING [password] {Password for SOCKS5 proxy}"
         ]
       },
       {
         "name": "stop",
-        "description": "Stop a SOCKS5 proxy server",
-        "example": "socks stop",
+        "description": "Stop a SOCKS proxy server",
+        "example": "socks stop 1080",
         "args": [
           "INT <port>"
         ]

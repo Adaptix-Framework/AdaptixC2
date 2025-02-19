@@ -54,4 +54,6 @@ bool HttpReqBrowserUpload( QString agentId, QString path, QString content, AuthP
 
 bool HttpReqTunnelStop( QString tunnelId, AuthProfile profile, QString* message, bool* ok );
 
+bool HttpReqTunnelSetInfo( QString tunnelId, QString info, AuthProfile profile, QString* message, bool* ok );
+
 #endif //ADAPTIXCLIENT_REQUESTOR_H
