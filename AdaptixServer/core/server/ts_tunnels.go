@@ -90,6 +90,75 @@ func (ts *Teamserver) TsTunnelSetInfo(TunnelId string, Info string) error {
 
 /// Socks5
 
+func (ts *Teamserver) TsTunnelStartSocks4(AgentId string, Address string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error {
+	var (
+		agent       *Agent
+		socksTunnel *Tunnel
+	)
+
+	value, ok := ts.agents.Get(AgentId)
+	if !ok {
+		return errors.New("agent not found")
+	}
+	agent, _ = value.(*Agent)
+
+	port := strconv.Itoa(Port)
+	addr := Address + ":" + port
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	socksTunnel = &Tunnel{
+		listener:    listener,
+		connections: safe.NewMap(),
+
+		handlerConnect: FuncMsgConnect,
+		handlerWrite:   FuncMsgWrite,
+		handlerClose:   FuncMsgClose,
+	}
+
+	go func() {
+		for {
+			var conn net.Conn
+			conn, err = socksTunnel.listener.Accept()
+			if err != nil {
+				fmt.Printf("Error socks connect: %v\n", err)
+				return
+			}
+			go handleRequestSocks4(agent, socksTunnel, conn)
+		}
+	}()
+
+	time.Sleep(300 * time.Millisecond)
+
+	if err != nil {
+		return err
+	}
+
+	id := krypt.CRC32([]byte(agent.Data.Id + "socks" + port))
+	tunnelId := fmt.Sprintf("%08x", id)
+
+	socksTunnel.Data = adaptix.TunnelData{
+		TunnelId:  tunnelId,
+		AgentId:   agent.Data.Id,
+		Computer:  agent.Data.Computer,
+		Username:  agent.Data.Username,
+		Process:   agent.Data.Process,
+		Type:      "SOCKS4 proxy",
+		Info:      "",
+		Interface: Address,
+		Port:      port,
+		Client:    "",
+		Fport:     "",
+		Fhost:     "",
+	}
+
+	ts.TsTunnelCreate(socksTunnel)
+
+	return nil
+}
+
 func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Address string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error {
 	var (
 		agent       *Agent
@@ -147,6 +216,75 @@ func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Address string, Port i
 		Process:   agent.Data.Process,
 		Type:      "SOCKS5 proxy",
 		Info:      "",
+		Interface: Address,
+		Port:      port,
+		Client:    "",
+		Fport:     "",
+		Fhost:     "",
+	}
+
+	ts.TsTunnelCreate(socksTunnel)
+
+	return nil
+}
+
+func (ts *Teamserver) TsTunnelStartSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error {
+	var (
+		agent       *Agent
+		socksTunnel *Tunnel
+	)
+
+	value, ok := ts.agents.Get(AgentId)
+	if !ok {
+		return errors.New("agent not found")
+	}
+	agent, _ = value.(*Agent)
+
+	port := strconv.Itoa(Port)
+	addr := Address + ":" + port
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+
+	socksTunnel = &Tunnel{
+		listener:    listener,
+		connections: safe.NewMap(),
+
+		handlerConnect: FuncMsgConnect,
+		handlerWrite:   FuncMsgWrite,
+		handlerClose:   FuncMsgClose,
+	}
+
+	go func() {
+		for {
+			var conn net.Conn
+			conn, err = socksTunnel.listener.Accept()
+			if err != nil {
+				fmt.Printf("Error socks connect: %v\n", err)
+				return
+			}
+			go handleRequestSocks5Auth(agent, socksTunnel, conn, Username, Password)
+		}
+	}()
+
+	time.Sleep(300 * time.Millisecond)
+
+	if err != nil {
+		return err
+	}
+
+	id := krypt.CRC32([]byte(agent.Data.Id + "socks" + port))
+	tunnelId := fmt.Sprintf("%08x", id)
+
+	socksTunnel.Data = adaptix.TunnelData{
+		TunnelId:  tunnelId,
+		AgentId:   agent.Data.Id,
+		Computer:  agent.Data.Computer,
+		Username:  agent.Data.Username,
+		Process:   agent.Data.Process,
+		Type:      "SOCKS5 Auth proxy",
+		Info:      fmt.Sprintf("%s : %s", Username, Password),
 		Interface: Address,
 		Port:      port,
 		Client:    "",
@@ -247,6 +385,38 @@ func (ts *Teamserver) TsTunnelConnectionClose(channelId int) {
 
 /// handlers
 
+func handleRequestSocks4(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
+
+	targetAddress, targetPort, err := proxy.CheckSocks4(socksConn)
+	if err != nil {
+		fmt.Println("Socks4 proxy error: ", err)
+		return
+	}
+
+	channelId := int(rand.Uint32())
+	rawTaskData := tunnel.handlerConnect(channelId, targetAddress, targetPort)
+
+	var taskData adaptix.TaskData
+	err = json.Unmarshal(rawTaskData, &taskData)
+	if err != nil {
+		return
+	}
+
+	if taskData.TaskId == "" {
+		taskData.TaskId, _ = krypt.GenerateUID(8)
+	}
+	taskData.AgentId = agent.Data.Id
+	agent.TunnelQueue.Put(taskData)
+
+	tunnelConnection := &TunnelConnection{
+		channelId: channelId,
+		conn:      socksConn,
+	}
+	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
+
+	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
+}
+
 func handleRequestSocks5(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
 
 	targetAddress, targetPort, err := proxy.CheckSocks5(socksConn)
@@ -278,6 +448,39 @@ func handleRequestSocks5(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
 
 	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
 }
+
+func handleRequestSocks5Auth(agent *Agent, tunnel *Tunnel, socksConn net.Conn, username string, password string) {
+
+	targetAddress, targetPort, err := proxy.CheckSocks5Auth(socksConn, username, password)
+	if err != nil {
+		fmt.Println("Socks5 proxy error: ", err)
+		return
+	}
+
+	channelId := int(rand.Uint32())
+	rawTaskData := tunnel.handlerConnect(channelId, targetAddress, targetPort)
+
+	var taskData adaptix.TaskData
+	err = json.Unmarshal(rawTaskData, &taskData)
+	if err != nil {
+		return
+	}
+
+	if taskData.TaskId == "" {
+		taskData.TaskId, _ = krypt.GenerateUID(8)
+	}
+	taskData.AgentId = agent.Data.Id
+	agent.TunnelQueue.Put(taskData)
+
+	tunnelConnection := &TunnelConnection{
+		channelId: channelId,
+		conn:      socksConn,
+	}
+	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
+
+	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
+}
+
 
 /// process socket
 
