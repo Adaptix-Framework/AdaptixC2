@@ -687,13 +687,43 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 				err = errors.New("parameter 'address' must be set")
 				goto RET
 			}
-			err = ts.TsTunnelStartSocks5(agent.Id, address, port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
-			if err != nil {
-				goto RET
-			}
 
+			version4, _ := args["-socks4"].(bool)
+			if version4 {
+				err = ts.TsTunnelStartSocks4(agent.Id, address, port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+				if err != nil {
+					goto RET
+				}
+				messageData.Message = fmt.Sprintf("Socks4 server running on port %d", port)
+
+			} else {
+				auth, _ := args["-auth"].(bool)
+				if auth {
+					username, ok := args["username"].(string)
+					if !ok {
+						err = errors.New("parameter 'username' must be set")
+						goto RET
+					}
+					password, ok := args["password"].(string)
+					if !ok {
+						err = errors.New("parameter 'password' must be set")
+						goto RET
+					}
+					err = ts.TsTunnelStartSocks5Auth(agent.Id, address, port, username, password, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+					if err != nil {
+						goto RET
+					}
+					messageData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
+
+				} else {
+					err = ts.TsTunnelStartSocks5(agent.Id, address, port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+					if err != nil {
+						goto RET
+					}
+					messageData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
+				}
+			}
 			messageData.Status = MESSAGE_SUCCESS
-			messageData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
 			messageData.Text = "\n"
 
 		} else if subcommand == "stop" {
