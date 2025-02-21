@@ -78,7 +78,8 @@ type TunnelConnection struct {
 }
 
 type Tunnel struct {
-	Data adaptix.TunnelData
+	TaskId string
+	Data   adaptix.TunnelData
 
 	listener    net.Listener
 	connections safe.Map

@@ -196,15 +196,19 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 			taskData.Computer = agent.Data.Computer
 			taskData.StartDate = time.Now().Unix()
 
-			packet := CreateSpAgentTaskCreate(taskData)
-			ts.TsSyncAllClients(packet)
+			if taskData.Sync {
+				packet := CreateSpAgentTaskCreate(taskData)
+				ts.TsSyncAllClients(packet)
+			}
+			
+			if taskData.Type == TYPE_TASK || taskData.Type == TYPE_BROWSER || taskData.Type == TYPE_JOB {
+				agent.TasksQueue.Put(taskData)
+			} else if taskData.Type == TYPE_TUNNEL {
+				agent.Tasks.Put(taskData.TaskId, taskData)
+			}
 
 			if len(messageData.Message) > 0 || len(messageData.Text) > 0 {
 				ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text)
-			}
-
-			if taskData.Type == TYPE_TASK || taskData.Type == TYPE_BROWSER || taskData.Type == TYPE_JOB {
-				agent.TasksQueue.Put(taskData)
 			}
 
 		} else {

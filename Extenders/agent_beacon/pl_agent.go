@@ -389,12 +389,16 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		err         error
 	)
 
-	taskData.Type = TASK
-	taskData.Sync = true
+	taskData = TaskData{
+		Type: TASK,
+		Sync: true,
+	}
 
+	messageData = ConsoleMessageData{
+		Status: MESSAGE_INFO,
+		Text:   "",
+	}
 	messageData.Message, _ = args["message"].(string)
-	messageData.Status = MESSAGE_INFO
-	messageData.Text = ""
 
 	subcommand, _ := args["subcommand"].(string)
 
@@ -673,6 +677,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 	case "socks":
 		taskData.Type = TUNNEL
+
 		portNumber, ok := args["port"].(float64)
 		port := int(portNumber)
 		if ok {
@@ -690,7 +695,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 			version4, _ := args["-socks4"].(bool)
 			if version4 {
-				err = ts.TsTunnelStartSocks4(agent.Id, address, port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+				taskData.TaskId, err = ts.TsTunnelCreateSocks4(agent.Id, address, port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
 				if err != nil {
 					goto RET
 				}
@@ -709,14 +714,14 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 						err = errors.New("parameter 'password' must be set")
 						goto RET
 					}
-					err = ts.TsTunnelStartSocks5Auth(agent.Id, address, port, username, password, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+					taskData.TaskId, err = ts.TsTunnelCreateSocks5Auth(agent.Id, address, port, username, password, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
 					if err != nil {
 						goto RET
 					}
 					messageData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
 
 				} else {
-					err = ts.TsTunnelStartSocks5(agent.Id, address, port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+					taskData.TaskId, err = ts.TsTunnelCreateSocks5(agent.Id, address, port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
 					if err != nil {
 						goto RET
 					}
@@ -727,6 +732,8 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			messageData.Text = "\n"
 
 		} else if subcommand == "stop" {
+			taskData.Sync = false
+
 			ts.TsTunnelStopSocks(agent.Id, port)
 
 			messageData.Status = MESSAGE_SUCCESS
@@ -1334,7 +1341,6 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			} else {
 				ts.TsTunnelConnectionResume(agentData.Id, channelId)
 			}
-			break
 
 		case COMMAND_TUNNEL_WRITE:
 			if false == packer.CheckPacker([]string{"array"}) {
