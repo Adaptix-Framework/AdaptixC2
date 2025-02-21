@@ -5,6 +5,7 @@ import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/proxy"
 	"AdaptixServer/core/utils/safe"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,12 +17,7 @@ import (
 	"time"
 )
 
-func (ts *Teamserver) TsTunnelCreate(tunnel *Tunnel) {
-
-	ts.tunnels.Put(tunnel.Data.TunnelId, tunnel)
-
-	packet := CreateSpTunnelCreate(tunnel.Data)
-	ts.TsSyncAllClients(packet)
+func (ts *Teamserver) TsTunnelAdd(tunnel *Tunnel) {
 
 	message := ""
 	if tunnel.Data.Type == "SOCKS5 proxy" {
@@ -32,9 +28,14 @@ func (ts *Teamserver) TsTunnelCreate(tunnel *Tunnel) {
 		message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
 	} else if tunnel.Data.Type == "Local port forward" {
 		message = fmt.Sprintf("Local port forward started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-	} else if tunnel.Data.Type == "Remote port forward" {
-		message = fmt.Sprintf("Remote port forward to '%s:%s'", tunnel.Data.Fhost, tunnel.Data.Fport)
 	}
+
+	tunnel.TaskId, _ = krypt.GenerateUID(8)
+
+	ts.tunnels.Put(tunnel.Data.TunnelId, tunnel)
+
+	packet := CreateSpTunnelCreate(tunnel.Data)
+	ts.TsSyncAllClients(packet)
 
 	packet2 := CreateSpEvent(EVENT_TUNNEL_START, message)
 	ts.TsSyncAllClients(packet2)
@@ -52,6 +53,15 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 
 	packet := CreateSpTunnelDelete(tunnel.Data)
 	ts.TsSyncAllClients(packet)
+
+	taskData := adaptix.TaskData{
+		TaskId:     tunnel.TaskId,
+		Completed:  true,
+		FinishDate: time.Now().Unix(),
+	}
+	var taskBuffer bytes.Buffer
+	_ = json.NewEncoder(&taskBuffer).Encode(taskData)
+	ts.TsTaskUpdate(tunnel.Data.AgentId, taskBuffer.Bytes())
 
 	message := ""
 	if tunnel.Data.Type == "SOCKS5 proxy" {
@@ -90,7 +100,7 @@ func (ts *Teamserver) TsTunnelSetInfo(TunnelId string, Info string) error {
 
 /// Socks5
 
-func (ts *Teamserver) TsTunnelStartSocks4(AgentId string, Address string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error {
+func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
 	var (
 		agent       *Agent
 		socksTunnel *Tunnel
@@ -98,7 +108,7 @@ func (ts *Teamserver) TsTunnelStartSocks4(AgentId string, Address string, Port i
 
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
-		return errors.New("agent not found")
+		return "", errors.New("agent not found")
 	}
 	agent, _ = value.(*Agent)
 
@@ -106,7 +116,7 @@ func (ts *Teamserver) TsTunnelStartSocks4(AgentId string, Address string, Port i
 	addr := Address + ":" + port
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	socksTunnel = &Tunnel{
@@ -123,7 +133,6 @@ func (ts *Teamserver) TsTunnelStartSocks4(AgentId string, Address string, Port i
 			var conn net.Conn
 			conn, err = socksTunnel.listener.Accept()
 			if err != nil {
-				fmt.Printf("Error socks connect: %v\n", err)
 				return
 			}
 			go handleRequestSocks4(agent, socksTunnel, conn)
@@ -133,7 +142,7 @@ func (ts *Teamserver) TsTunnelStartSocks4(AgentId string, Address string, Port i
 	time.Sleep(300 * time.Millisecond)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	id := krypt.CRC32([]byte(agent.Data.Id + "socks" + port))
@@ -154,12 +163,12 @@ func (ts *Teamserver) TsTunnelStartSocks4(AgentId string, Address string, Port i
 		Fhost:     "",
 	}
 
-	ts.TsTunnelCreate(socksTunnel)
+	ts.TsTunnelAdd(socksTunnel)
 
-	return nil
+	return socksTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Address string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error {
+func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
 	var (
 		agent       *Agent
 		socksTunnel *Tunnel
@@ -167,7 +176,7 @@ func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Address string, Port i
 
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
-		return errors.New("agent not found")
+		return "", errors.New("agent not found")
 	}
 	agent, _ = value.(*Agent)
 
@@ -175,7 +184,7 @@ func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Address string, Port i
 	addr := Address + ":" + port
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	socksTunnel = &Tunnel{
@@ -192,7 +201,6 @@ func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Address string, Port i
 			var conn net.Conn
 			conn, err = socksTunnel.listener.Accept()
 			if err != nil {
-				fmt.Printf("Error socks connect: %v\n", err)
 				return
 			}
 			go handleRequestSocks5(agent, socksTunnel, conn)
@@ -202,7 +210,7 @@ func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Address string, Port i
 	time.Sleep(300 * time.Millisecond)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	id := krypt.CRC32([]byte(agent.Data.Id + "socks" + port))
@@ -223,12 +231,12 @@ func (ts *Teamserver) TsTunnelStartSocks5(AgentId string, Address string, Port i
 		Fhost:     "",
 	}
 
-	ts.TsTunnelCreate(socksTunnel)
+	ts.TsTunnelAdd(socksTunnel)
 
-	return nil
+	return socksTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelStartSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) error {
+func (ts *Teamserver) TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
 	var (
 		agent       *Agent
 		socksTunnel *Tunnel
@@ -236,7 +244,7 @@ func (ts *Teamserver) TsTunnelStartSocks5Auth(AgentId string, Address string, Po
 
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
-		return errors.New("agent not found")
+		return "", errors.New("agent not found")
 	}
 	agent, _ = value.(*Agent)
 
@@ -244,7 +252,7 @@ func (ts *Teamserver) TsTunnelStartSocks5Auth(AgentId string, Address string, Po
 	addr := Address + ":" + port
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	socksTunnel = &Tunnel{
@@ -261,7 +269,6 @@ func (ts *Teamserver) TsTunnelStartSocks5Auth(AgentId string, Address string, Po
 			var conn net.Conn
 			conn, err = socksTunnel.listener.Accept()
 			if err != nil {
-				fmt.Printf("Error socks connect: %v\n", err)
 				return
 			}
 			go handleRequestSocks5Auth(agent, socksTunnel, conn, Username, Password)
@@ -271,7 +278,7 @@ func (ts *Teamserver) TsTunnelStartSocks5Auth(AgentId string, Address string, Po
 	time.Sleep(300 * time.Millisecond)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	id := krypt.CRC32([]byte(agent.Data.Id + "socks" + port))
@@ -292,9 +299,9 @@ func (ts *Teamserver) TsTunnelStartSocks5Auth(AgentId string, Address string, Po
 		Fhost:     "",
 	}
 
-	ts.TsTunnelCreate(socksTunnel)
+	ts.TsTunnelAdd(socksTunnel)
 
-	return nil
+	return socksTunnel.TaskId, nil
 }
 
 func (ts *Teamserver) TsTunnelStopSocks(AgentId string, Port int) {

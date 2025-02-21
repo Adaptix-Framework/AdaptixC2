@@ -51,6 +51,8 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
 	}
 
+	/// TASKS QUEUE
+
 	for i := 0; i < agent.TasksQueue.Len(); i++ {
 		value, ok = agent.TasksQueue.Get(i)
 		if ok {
@@ -69,6 +71,8 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 			break
 		}
 	}
+
+	/// TUNNELS QUEUE
 
 	for i := 0; i < agent.TunnelQueue.Len(); i++ {
 		value, ok = agent.TunnelQueue.Get(i)
@@ -159,8 +163,21 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 			ts.TsSyncAllClients(packet)
 		}
 
-	} else {
+	} else if task.Type == TYPE_TUNNEL {
+		if task.Completed {
+			task.Message = taskData.Message
+			task.MessageType = taskData.MessageType
+			
+			agent.ClosedTasks.Put(task.TaskId, task)
 
+			if task.Sync {
+				ts.DBMS.DbTaskInsert(task)
+				packet := CreateSpAgentTaskUpdate(task)
+				ts.TsSyncAllClients(packet)
+			}
+		}
+
+	} else if task.Type == TYPE_TASK || task.Type == TYPE_BROWSER {
 		task.MessageType = taskData.MessageType
 		task.Message = taskData.Message
 		task.ClearText = taskData.ClearText
