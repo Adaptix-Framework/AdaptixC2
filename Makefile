@@ -38,5 +38,4 @@ extenders: prepare
 		plugin_name=$$(basename $$dir); \
 		mv $$dir/dist $(DIST_DIR)/extenders/$$plugin_name; \
 	done
-	@ cp Extenders/extender.txt $(DIST_DIR)/extenders/extender.txt
 	@ echo "[+] done"

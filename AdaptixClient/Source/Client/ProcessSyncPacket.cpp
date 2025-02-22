@@ -572,7 +572,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         taskData.StartTime   = jsonObj["a_start_time"].toDouble();
         taskData.CommandLine = jsonObj["a_cmdline"].toString();
         taskData.Client      = jsonObj["a_client"].toString();
-        taskData.Computer      = jsonObj["a_computer"].toString();
+        taskData.Computer    = jsonObj["a_computer"].toString();
 
         if (Agents.contains(taskData.AgentId))
             Agents[taskData.AgentId]->Console->ConsoleOutputPrompt( taskData.StartTime, taskData.TaskId, taskData.Client, taskData.CommandLine);

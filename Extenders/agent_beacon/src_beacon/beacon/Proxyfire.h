@@ -32,7 +32,13 @@ public:
 
 	void ProcessTunnels(Packer* packer);
 
+	void CheckProxy(Packer* packer);
+	ULONG RecvProxy(Packer* packer);
+	void CloseProxy();
+
 	void ConnectMessageTCP(ULONG channelId, CHAR* address, WORD port, Packer* outPacker);
 	void ConnectWrite(ULONG channelId, CHAR* data, ULONG dataSize);
 	void ConnectClose(ULONG channelId);
+
+	void AddProxyData(ULONG channelId, SOCKET sock, ULONG waitTime, ULONG mode, ULONG state);
 };
