@@ -34,7 +34,7 @@ type GenerateConfig struct {
 }
 
 var ObjectDir = "objects"
-var ObjectFiles = [...]string{"AgentConfig", "Agent", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "ConnectorHTTP", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "ProcLoader", "std", "utils", "WaitMask"}
+var ObjectFiles = [...]string{"AgentConfig", "AgentInfo", "Agent", "ApiLoader", "beacon_functions", "Boffer", "Commander", "ConnectorHTTP", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
 var CFlag = "-c -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 var LFlags = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 
@@ -732,7 +732,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			messageData.Text = "\n"
 
 		} else if subcommand == "stop" {
-			taskData.Sync = false
+			taskData.Completed = true
 
 			ts.TsTunnelStopSocks(agent.Id, port)
 

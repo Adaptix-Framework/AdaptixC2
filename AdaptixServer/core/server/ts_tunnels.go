@@ -49,7 +49,18 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 	}
 	tunnel, _ := value.(*Tunnel)
 
-	tunnel.listener.Close()
+	if tunnel.listener != nil {
+		tunnel.listener.Close()
+	}
+
+	tunnel.connections.ForEach(func(key string, valueConn interface{}) bool {
+		tunnelConnection, _ := valueConn.(*TunnelConnection)
+		if tunnelConnection.conn != nil {
+			tunnelConnection.handleCancel()
+			tunnelConnection.conn.Close()
+		}
+		return true
+	})
 
 	packet := CreateSpTunnelDelete(tunnel.Data)
 	ts.TsSyncAllClients(packet)
@@ -390,6 +401,30 @@ func (ts *Teamserver) TsTunnelConnectionClose(channelId int) {
 	}
 }
 
+func (ts *Teamserver) TsTunnelConnectionAccept(tunnelId int, channelId int) {
+	var (
+		value  interface{}
+		tunnel *Tunnel
+		agent  *Agent
+		ok     bool
+	)
+
+	tunId := fmt.Sprintf("%08x", tunnelId)
+	value, ok = ts.tunnels.Get(tunId)
+	if !ok {
+		return
+	}
+	tunnel, _ = value.(*Tunnel)
+
+	value, ok = ts.agents.Get(tunnel.Data.AgentId)
+	if !ok {
+		return
+	}
+	agent, _ = value.(*Agent)
+
+	handlerReverseAccept(agent, tunnel, channelId)
+}
+
 /// handlers
 
 func handleRequestSocks4(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
@@ -402,18 +437,7 @@ func handleRequestSocks4(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
 
 	channelId := int(rand.Uint32())
 	rawTaskData := tunnel.handlerConnect(channelId, targetAddress, targetPort)
-
-	var taskData adaptix.TaskData
-	err = json.Unmarshal(rawTaskData, &taskData)
-	if err != nil {
-		return
-	}
-
-	if taskData.TaskId == "" {
-		taskData.TaskId, _ = krypt.GenerateUID(8)
-	}
-	taskData.AgentId = agent.Data.Id
-	agent.TunnelQueue.Put(taskData)
+	sendTunnelTaskData(agent, rawTaskData)
 
 	tunnelConnection := &TunnelConnection{
 		channelId: channelId,
@@ -434,18 +458,7 @@ func handleRequestSocks5(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
 
 	channelId := int(rand.Uint32())
 	rawTaskData := tunnel.handlerConnect(channelId, targetAddress, targetPort)
-
-	var taskData adaptix.TaskData
-	err = json.Unmarshal(rawTaskData, &taskData)
-	if err != nil {
-		return
-	}
-
-	if taskData.TaskId == "" {
-		taskData.TaskId, _ = krypt.GenerateUID(8)
-	}
-	taskData.AgentId = agent.Data.Id
-	agent.TunnelQueue.Put(taskData)
+	sendTunnelTaskData(agent, rawTaskData)
 
 	tunnelConnection := &TunnelConnection{
 		channelId: channelId,
@@ -466,18 +479,7 @@ func handleRequestSocks5Auth(agent *Agent, tunnel *Tunnel, socksConn net.Conn, u
 
 	channelId := int(rand.Uint32())
 	rawTaskData := tunnel.handlerConnect(channelId, targetAddress, targetPort)
-
-	var taskData adaptix.TaskData
-	err = json.Unmarshal(rawTaskData, &taskData)
-	if err != nil {
-		return
-	}
-
-	if taskData.TaskId == "" {
-		taskData.TaskId, _ = krypt.GenerateUID(8)
-	}
-	taskData.AgentId = agent.Data.Id
-	agent.TunnelQueue.Put(taskData)
+	sendTunnelTaskData(agent, rawTaskData)
 
 	tunnelConnection := &TunnelConnection{
 		channelId: channelId,
@@ -489,37 +491,70 @@ func handleRequestSocks5Auth(agent *Agent, tunnel *Tunnel, socksConn net.Conn, u
 }
 
 
+func handlerReverseAccept(agent *Agent, tunnel *Tunnel, channelId int) {
+	target := tunnel.Data.Fhost + ":" + tunnel.Data.Fport
+	fwdConn, err := net.Dial("tcp", target)
+	if err != nil {
+		rawTaskData := tunnel.handlerClose(channelId)
+		sendTunnelTaskData(agent, rawTaskData)
+		return
+	}
+
+	tunnelConnection := &TunnelConnection{
+		channelId: channelId,
+		conn:      fwdConn,
+	}
+	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
+
+	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
+
+	go socketToTunnelData(agent, tunnel, tunnelConnection)
+}
+
 /// process socket
+
+func sendTunnelTaskData(agent *Agent, rawTaskData []byte) {
+	var (
+		taskData adaptix.TaskData
+		err      error
+	)
+
+	err = json.Unmarshal(rawTaskData, &taskData)
+	if err != nil {
+		return
+	}
+
+	if taskData.TaskId == "" {
+		taskData.TaskId, _ = krypt.GenerateUID(8)
+	}
+	taskData.AgentId = agent.Data.Id
+	agent.TunnelQueue.Put(taskData)
+}
 
 func socketToTunnelData(agent *Agent, tunnel *Tunnel, tunnelConnection *TunnelConnection) {
 	var rawTaskData []byte
 
 	buffer := make([]byte, 0x10000)
 	for {
-		n, err := tunnelConnection.conn.Read(buffer)
-		if err != nil {
-			if err == io.EOF {
-				rawTaskData = tunnel.handlerClose(tunnelConnection.channelId)
-			} else {
-				fmt.Printf("Error read data: %v\n", err)
-				continue
-			}
-			break
-		} else {
-			rawTaskData = tunnel.handlerWrite(tunnelConnection.channelId, buffer[:n])
-		}
-
-		var taskData adaptix.TaskData
-		err = json.Unmarshal(rawTaskData, &taskData)
-		if err != nil {
+		select {
+		case <-tunnelConnection.ctx.Done():
 			return
-		}
+		default:
+			n, err := tunnelConnection.conn.Read(buffer)
+			if err != nil {
+				if err == io.EOF {
+					rawTaskData = tunnel.handlerClose(tunnelConnection.channelId)
+				} else {
+					fmt.Printf("Error read data: %v\n", err)
+					continue
+				}
+				break
+			} else {
+				rawTaskData = tunnel.handlerWrite(tunnelConnection.channelId, buffer[:n])
+			}
 
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
+			sendTunnelTaskData(agent, rawTaskData)
 		}
-		taskData.AgentId = agent.Data.Id
-		agent.TunnelQueue.Put(taskData)
 	}
 }
 

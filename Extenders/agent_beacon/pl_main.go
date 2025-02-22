@@ -82,6 +82,7 @@ type Teamserver interface {
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionResume(AgentId string, channelId int)
 	TsTunnelConnectionData(channelId int, data []byte)
+	TsTunnelConnectionAccept(tunnelId int, channelId int)
 }
 
 type ModuleExtender struct {
@@ -760,6 +761,25 @@ func TunnelMessageClose(channelId int) []byte {
 	)
 
 	packData, _ = TunnelClose(channelId)
+
+	taskData = TaskData{
+		Type: TUNNEL,
+		Data: packData,
+		Sync: false,
+	}
+
+	json.NewEncoder(&buffer).Encode(taskData)
+	return buffer.Bytes()
+}
+
+func TunnelMessageReverse(tunnelId int, port int) []byte {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+	)
+
+	packData, _ = TunnelReverse(tunnelId, port)
 
 	taskData = TaskData{
 		Type: TUNNEL,
