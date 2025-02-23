@@ -137,6 +137,8 @@ BOOL ApiLoad()
 			ApiWin->recv     		= (decltype(recv)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_RECV);
 			ApiWin->send     		= (decltype(send)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_SEND);
 			ApiWin->accept     		= (decltype(accept)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_ACCEPT);
+			ApiWin->listen     		= (decltype(listen)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_LISTEN);
+			ApiWin->bind     		= (decltype(bind)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_BIND);
 		}
 	}
 	else {

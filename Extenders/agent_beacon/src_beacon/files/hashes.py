@@ -178,6 +178,8 @@ shutdown
 recv
 send
 accept
+bind
+listen
 """
 
 ##############################################

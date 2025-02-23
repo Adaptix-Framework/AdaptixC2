@@ -131,6 +131,7 @@ void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
 
     tableWidget->horizontalHeader()->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 6, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 7, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 8, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 9, QHeaderView::ResizeToContents );

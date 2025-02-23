@@ -11,6 +11,8 @@ if(UNIX)
     find_package( OpenSSL REQUIRED )
 elseif(APPLE)
     find_package( OpenSSL REQUIRED )
+elseif(WIN32)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-subsystem,windows")
 endif()
 
 include_directories( Headers )
