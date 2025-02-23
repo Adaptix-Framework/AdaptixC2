@@ -98,6 +98,8 @@ struct WINAPIFUNC
 	DECL_API(recv);
 	DECL_API(send);
 	DECL_API(accept);
+	DECL_API(listen);
+	DECL_API(bind);
 
 };
 

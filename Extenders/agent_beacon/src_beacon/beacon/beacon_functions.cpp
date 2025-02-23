@@ -226,9 +226,15 @@ void BeaconGetSpawnTo(BOOL x86, char* buffer, int length)
 		return;
 }
 
-VOID BeaconInjectProcess(HANDLE hProc, int pid, char* payload, int p_len, int p_offset, char* arg, int a_len){}
+VOID BeaconInjectProcess(HANDLE hProc, int pid, char* payload, int p_len, int p_offset, char* arg, int a_len)
+{
 
-VOID BeaconInjectTemporaryProcess(PROCESS_INFORMATION* pInfo, char* payload, int p_len, int p_offset, char* arg, int a_len){}
+}
+
+VOID BeaconInjectTemporaryProcess(PROCESS_INFORMATION* pInfo, char* payload, int p_len, int p_offset, char* arg, int a_len)
+{
+
+}
 
 BOOL BeaconSpawnTemporaryProcess(BOOL x86, BOOL ignoreToken, STARTUPINFO* sInfo, PROCESS_INFORMATION* pInfo)
 {
@@ -236,7 +242,10 @@ BOOL BeaconSpawnTemporaryProcess(BOOL x86, BOOL ignoreToken, STARTUPINFO* sInfo,
 	return bSuccess;
 }
 
-VOID BeaconCleanupProcess(PROCESS_INFORMATION* pInfo){}
+VOID BeaconCleanupProcess(PROCESS_INFORMATION* pInfo)
+{
+
+}
 
 BOOL toWideChar(char* src, wchar_t* dst, int max)
 {
