@@ -323,6 +323,209 @@ func (ts *Teamserver) TsTunnelStopSocks(AgentId string, Port int) {
 	ts.TsTunnelStop(TunnelId)
 }
 
+/// Port Forward
+
+func (ts *Teamserver) TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
+	var (
+		agent     *Agent
+		fwdTunnel *Tunnel
+	)
+
+	value, ok := ts.agents.Get(AgentId)
+	if !ok {
+		return "", errors.New("agent not found")
+	}
+	agent, _ = value.(*Agent)
+
+	port := strconv.Itoa(Port)
+	addr := Address + ":" + port
+	listener, err := net.Listen("tcp", addr)
+	if err != nil {
+		return "", err
+	}
+
+	fwdTunnel = &Tunnel{
+		listener:    listener,
+		connections: safe.NewMap(),
+
+		handlerConnect: FuncMsgConnect,
+		handlerWrite:   FuncMsgWrite,
+		handlerClose:   FuncMsgClose,
+	}
+
+	go func() {
+		for {
+			var conn net.Conn
+			conn, err = fwdTunnel.listener.Accept()
+			if err != nil {
+				return
+			}
+			go handleLocalPortFwd(agent, fwdTunnel, conn, FwdAddress, FwdPort)
+		}
+	}()
+
+	time.Sleep(300 * time.Millisecond)
+
+	if err != nil {
+		return "", err
+	}
+
+	id := krypt.CRC32([]byte(agent.Data.Id + "lportfwd" + port))
+	tunnelId := fmt.Sprintf("%08x", id)
+
+	fwdTunnel.Data = adaptix.TunnelData{
+		TunnelId:  tunnelId,
+		AgentId:   agent.Data.Id,
+		Computer:  agent.Data.Computer,
+		Username:  agent.Data.Username,
+		Process:   agent.Data.Process,
+		Type:      "Local port forward",
+		Info:      "",
+		Interface: Address,
+		Port:      port,
+		Client:    "",
+		Fport:     FwdAddress,
+		Fhost:     strconv.Itoa(FwdPort),
+	}
+
+	ts.TsTunnelAdd(fwdTunnel)
+
+	return fwdTunnel.TaskId, nil
+}
+
+func (ts *Teamserver) TsTunnelStopLocalPortFwd(AgentId string, Port int) {
+	port := strconv.Itoa(Port)
+	id := krypt.CRC32([]byte(AgentId + "lportfwd" + port))
+	TunnelId := fmt.Sprintf("%08x", id)
+
+	ts.TsTunnelStop(TunnelId)
+}
+
+func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
+	var (
+		agent     *Agent
+		fwdTunnel *Tunnel
+	)
+
+	value, ok := ts.agents.Get(AgentId)
+	if !ok {
+		return "", errors.New("agent not found")
+	}
+	agent, _ = value.(*Agent)
+
+	port := strconv.Itoa(Port)
+	fport := strconv.Itoa(FwdPort)
+
+	fwdTunnel = &Tunnel{
+		connections: safe.NewMap(),
+
+		handlerWrite: FuncMsgWrite,
+		handlerClose: FuncMsgClose,
+	}
+	fwdTunnel.TaskId, _ = krypt.GenerateUID(8)
+
+	id := krypt.CRC32([]byte(agent.Data.Id + "rportfwd" + port))
+	tunnelId := fmt.Sprintf("%08x", id)
+
+	fwdTunnel.Data = adaptix.TunnelData{
+		TunnelId:  tunnelId,
+		AgentId:   agent.Data.Id,
+		Computer:  agent.Data.Computer,
+		Username:  agent.Data.Username,
+		Process:   agent.Data.Process,
+		Type:      "Reverse port forward",
+		Info:      "",
+		Interface: "",
+		Port:      port,
+		Client:    "",
+		Fport:     fport,
+		Fhost:     FwdAddress,
+	}
+
+	rawTaskData := FuncMsgReverse(int(id), Port)
+	sendTunnelTaskData(agent, rawTaskData)
+
+	ts.tunnels.Put(fwdTunnel.Data.TunnelId, fwdTunnel)
+
+	return fwdTunnel.TaskId, nil
+}
+
+func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, error) {
+	var (
+		tunnel     *Tunnel
+		value      interface{}
+		ok         bool
+		taskBuffer bytes.Buffer
+	)
+
+	tunId := fmt.Sprintf("%08x", tunnelId)
+
+	if result == true {
+		value, ok = ts.tunnels.Get(tunId)
+		if ok {
+			tunnel, _ = value.(*Tunnel)
+
+			message := fmt.Sprintf("Reverse port forward '%s' to '%s:%s'", tunnel.Data.Port, tunnel.Data.Fhost, tunnel.Data.Fport)
+
+			packet := CreateSpTunnelCreate(tunnel.Data)
+			ts.TsSyncAllClients(packet)
+
+			packet2 := CreateSpEvent(EVENT_TUNNEL_START, message)
+			ts.TsSyncAllClients(packet2)
+			ts.events.Put(packet2)
+
+			return message, nil
+		}
+	} else {
+		value, ok = ts.tunnels.GetDelete(tunId)
+		if ok {
+			tunnel, _ = value.(*Tunnel)
+
+			taskData := adaptix.TaskData{
+				TaskId:      tunnel.TaskId,
+				MessageType: CONSOLE_OUT_ERROR,
+				Message:     "This port is already in use",
+				FinishDate:  time.Now().Unix(),
+				Completed:   true,
+			}
+			_ = json.NewEncoder(&taskBuffer).Encode(taskData)
+			ts.TsTaskUpdate(tunnel.Data.AgentId, taskBuffer.Bytes())
+			return "", errors.New("This port is already in use")
+		}
+	}
+	return "", errors.New("Tunnel not found")
+}
+
+func (ts *Teamserver) TsTunnelStopRemotePortFwd(AgentId string, Port int) {
+	var (
+		tunnel *Tunnel
+		agent  *Agent
+		value  interface{}
+		ok     bool
+	)
+
+	port := strconv.Itoa(Port)
+	id := krypt.CRC32([]byte(AgentId + "rportfwd" + port))
+	TunnelId := fmt.Sprintf("%08x", id)
+
+	value, ok = ts.tunnels.Get(TunnelId)
+	if !ok {
+		return
+	}
+	tunnel, _ = value.(*Tunnel)
+
+	value, ok = ts.agents.Get(tunnel.Data.AgentId)
+	if !ok {
+		return
+	}
+	agent, _ = value.(*Agent)
+
+	rawTaskData := tunnel.handlerClose(int(id))
+	sendTunnelTaskData(agent, rawTaskData)
+
+	ts.TsTunnelStop(TunnelId)
+}
+
 /// Connection
 
 func (ts *Teamserver) TsTunnelConnectionData(channelId int, data []byte) {

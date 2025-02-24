@@ -541,6 +541,59 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 		array = []interface{}{COMMAND_LS, dir}
 
+	case "lportfwd":
+		taskData.Type = TUNNEL
+
+		lportNumber, ok := args["lport"].(float64)
+		lport := int(lportNumber)
+		if ok {
+			if lport < 1 || lport > 65535 {
+				err = errors.New("port must be from 1 to 65535")
+				goto RET
+			}
+		}
+
+		if subcommand == "start" {
+			lhost, ok := args["lhost"].(string)
+			if !ok {
+				err = errors.New("parameter 'lhost' must be set")
+				goto RET
+			}
+			fhost, ok := args["fwdhost"].(string)
+			if !ok {
+				err = errors.New("parameter 'fwdhost' must be set")
+				goto RET
+			}
+			fportNumber, ok := args["fwdport"].(float64)
+			fport := int(fportNumber)
+			if ok {
+				if fport < 1 || fport > 65535 {
+					err = errors.New("port must be from 1 to 65535")
+					goto RET
+				}
+			}
+			taskData.TaskId, err = ts.TsTunnelCreateLocalPortFwd(agent.Id, lhost, lport, fhost, fport, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+			if err != nil {
+				goto RET
+			}
+			messageData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, fhost, fport)
+			messageData.Status = MESSAGE_SUCCESS
+			messageData.Text = "\n"
+
+		} else if subcommand == "stop" {
+			taskData.Sync = false
+			ts.TsTunnelStopLocalPortFwd(agent.Id, lport)
+
+			messageData.Message = fmt.Sprintf("Local port forwarding on %d stopped", lport)
+			messageData.Status = MESSAGE_SUCCESS
+			messageData.Text = "\n"
+
+		} else {
+			err = errors.New("subcommand must be 'start' or 'stop'")
+			goto RET
+		}
+		break
+
 	case "mv":
 		src, ok := args["src"].(string)
 		if !ok {
@@ -633,6 +686,53 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_RM, ConvertUTF8toCp(path, agent.ACP)}
+		break
+
+	case "rportfwd":
+		taskData.Type = TUNNEL
+
+		lportNumber, ok := args["lport"].(float64)
+		lport := int(lportNumber)
+		if ok {
+			if lport < 1 || lport > 65535 {
+				err = errors.New("port must be from 1 to 65535")
+				goto RET
+			}
+		}
+
+		if subcommand == "start" {
+			fhost, ok := args["fwdhost"].(string)
+			if !ok {
+				err = errors.New("parameter 'fwdhost' must be set")
+				goto RET
+			}
+			fportNumber, ok := args["fwdport"].(float64)
+			fport := int(fportNumber)
+			if ok {
+				if fport < 1 || fport > 65535 {
+					err = errors.New("port must be from 1 to 65535")
+					goto RET
+				}
+			}
+
+			taskData.TaskId, err = ts.TsTunnelCreateRemotePortFwd(agent.Id, lport, fhost, fport, TunnelMessageReverse, TunnelMessageWrite, TunnelMessageClose)
+			if err != nil {
+				goto RET
+			}
+			messageData.Message = fmt.Sprintf("Starting reverse port forwarding %d to %s:%d", lport, fhost, fport)
+			messageData.Status = MESSAGE_INFO
+			messageData.Text = "\n"
+
+		} else if subcommand == "stop" {
+			ts.TsTunnelStopRemotePortFwd(agent.Id, lport)
+			messageData.Status = MESSAGE_SUCCESS
+			messageData.Message = "Reverse port forwarding has been stopped"
+			messageData.Text = "\n"
+
+		} else {
+			err = errors.New("subcommand must be 'start' or 'stop'")
+			goto RET
+		}
 		break
 
 	case "sleep":
@@ -1351,6 +1451,34 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			data := packer.ParseBytes()
 			ts.TsTunnelConnectionData(channelId, data)
 
+		case COMMAND_TUNNEL_REVERSE:
+			if false == packer.CheckPacker([]string{"byte"}) {
+				return
+			}
+			var err error
+			tunnelId := int(TaskId)
+			result := packer.ParseInt8()
+			if result == 0 {
+				task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, false)
+			} else {
+				task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, true)
+			}
+
+			if err != nil {
+				task.MessageType = MESSAGE_ERROR
+			} else {
+				task.MessageType = MESSAGE_SUCCESS
+				ts.TsAgentConsoleOutput(agentData.Id, int(MESSAGE_SUCCESS), task.Message, "")
+			}
+
+		case COMMAND_TUNNEL_ACCEPT:
+			if false == packer.CheckPacker([]string{"int"}) {
+				return
+			}
+			tunnelId := int(TaskId)
+			channelId := int(packer.ParseInt32())
+			ts.TsTunnelConnectionAccept(tunnelId, channelId)
+
 		case COMMAND_TERMINATE:
 			if false == packer.CheckPacker([]string{"int"}) {
 				return
@@ -1455,5 +1583,10 @@ func TunnelWrite(channelId int, data []byte) ([]byte, error) {
 
 func TunnelClose(channelId int) ([]byte, error) {
 	array := []interface{}{COMMAND_TUNNEL_CLOSE, channelId}
+	return PackArray(array)
+}
+
+func TunnelReverse(tunnelId int, port int) ([]byte, error) {
+	array := []interface{}{COMMAND_TUNNEL_REVERSE, tunnelId, port}
 	return PackArray(array)
 }
