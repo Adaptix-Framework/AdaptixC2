@@ -122,6 +122,32 @@
     ]
   },
   {
+    "command": "lportfwd",
+    "description": "Managing local port forwarding",
+    "subcommands":
+    [
+      {
+        "name": "start",
+        "description": "Start local port forwarding from server via agent",
+        "example": "lportfwd start 127.0.0.1 8080 192.168.1.1 8080",
+        "args": [
+          "STRING <lhost> (0.0.0.0) {Listening interface address on server}",
+          "INT <lport> {Listen port on server}",
+          "STRING <fwdhost> {Remote forwarding address}",
+          "INT <fwdport> {Remote forwarding port}"
+        ]
+      },
+      {
+        "name": "stop",
+        "description": "Stop local port forwarding",
+        "example": "lportfwd stop 8080",
+        "args": [
+          "INT <lport>"
+        ]
+      }
+    ]
+  },
+  {
     "command": "mv",
     "message": "Task: move file",
     "description": "Move file",
@@ -203,6 +229,31 @@
     "example": "rm C:\\file.txt",
     "args": [
       "STRING <path>"
+    ]
+  },
+  {
+    "command": "rportfwd",
+    "description": "Managing remote port forwarding",
+    "subcommands":
+    [
+      {
+        "name": "start",
+        "description": "Start remote port forwarding from agent via server",
+        "example": "rportfwd start 8080 10.10.10.14 8080",
+        "args": [
+          "INT <lport> {Listen port on agent}",
+          "STRING <fwdhost> {Remote forwarding address}",
+          "INT <fwdport> {Remote forwarding port}"
+        ]
+      },
+      {
+        "name": "stop",
+        "description": "Stop local remote forwarding",
+        "example": "rportfwd stop 8080",
+        "args": [
+          "INT <lport>"
+        ]
+      }
     ]
   },
   {

