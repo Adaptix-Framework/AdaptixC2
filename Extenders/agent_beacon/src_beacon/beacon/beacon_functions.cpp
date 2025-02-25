@@ -30,6 +30,11 @@ unsigned int swap_endianess(unsigned int indata)
 	return outint;
 }
 
+
+/// Data Parser API
+
+//char* BeaconDataPtr(datap* parser, int size);
+
 void BeaconDataParse(datap* parser, char* buffer, int size)
 {
 	if (parser == NULL) {
@@ -94,6 +99,37 @@ char* BeaconDataExtract(datap* parser, int* size)
 	}
 	return outdata;
 }
+
+
+/// Output API
+
+void BeaconOutput(int type, const char* data, int len)
+{
+	BofOutputToTask(type, (PBYTE)data, len);
+}
+
+void BeaconPrintf(int type, const char* fmt, ...)
+{
+	int length = 0;
+	va_list args;
+
+	va_start(args, fmt);
+	length = ApiWin->vsnprintf(NULL, 0, fmt, args) + 1;
+	va_end(args);
+
+	char* tmp_output = (char*)MemAllocLocal(length);
+
+	va_start(args, fmt);
+	length = ApiWin->vsnprintf(tmp_output, length, fmt, args);
+	va_end(args);
+
+	BofOutputToTask(type, (PBYTE)tmp_output, length);
+
+	MemFreeLocal((LPVOID*)&tmp_output, length);
+}
+
+
+/// Format API
 
 void BeaconFormatAlloc(formatp* format, int maxsz)
 {
@@ -177,38 +213,22 @@ void BeaconFormatInt(formatp* format, int value)
 	return;
 }
 
-void BeaconOutput(int type, const char* data, int len)
-{
-	BofOutputToTask(type, (PBYTE)data, len);
-}
 
-void BeaconPrintf(int type, const char* fmt, ...)
-{
-	int length = 0;
-	va_list args;
-
-	va_start(args, fmt);
-	length = ApiWin->vsnprintf(NULL, 0, fmt, args) + 1;
-	va_end(args);
-
-	char* tmp_output = (char*)MemAllocLocal(length);
-
-	va_start(args, fmt);
-	length = ApiWin->vsnprintf(tmp_output, length, fmt, args);
-	va_end(args);
-
-	BofOutputToTask(type, (PBYTE)tmp_output, length);
-
-	MemFreeLocal((LPVOID*)&tmp_output, length);
-}
+/// Internal APIs
 
 BOOL BeaconUseToken(HANDLE token)
 {
-	return TRUE;
+	if (ApiWin->ImpersonateLoggedOnUser(token))
+		return TRUE;
+	else if (ApiWin->SetThreadToken(NULL, token))
+		return TRUE;
+	else
+		return FALSE;
 }
 
 void BeaconRevertToken(void)
 {
+	ApiWin->RevertToSelf();
 	return;
 }
 
@@ -226,6 +246,12 @@ void BeaconGetSpawnTo(BOOL x86, char* buffer, int length)
 		return;
 }
 
+BOOL BeaconSpawnTemporaryProcess(BOOL x86, BOOL ignoreToken, STARTUPINFO* sInfo, PROCESS_INFORMATION* pInfo)
+{
+	BOOL bSuccess = FALSE;
+	return bSuccess;
+}
+
 VOID BeaconInjectProcess(HANDLE hProc, int pid, char* payload, int p_len, int p_offset, char* arg, int a_len)
 {
 
@@ -236,15 +262,29 @@ VOID BeaconInjectTemporaryProcess(PROCESS_INFORMATION* pInfo, char* payload, int
 
 }
 
-BOOL BeaconSpawnTemporaryProcess(BOOL x86, BOOL ignoreToken, STARTUPINFO* sInfo, PROCESS_INFORMATION* pInfo)
-{
-	BOOL bSuccess = FALSE;
-	return bSuccess;
-}
-
 VOID BeaconCleanupProcess(PROCESS_INFORMATION* pInfo)
 {
 
+}
+
+PDATA_STORE_OBJECT BeaconDataStoreGetItem(SIZE_T index)
+{
+	return NULL;
+}
+
+VOID BeaconDataStoreProtectItem(SIZE_T index)
+{
+
+}
+
+VOID BeaconDataStoreUnprotectItem(SIZE_T index)
+{
+
+}
+
+ULONG BeaconDataStoreMaxEntries()
+{
+	return NULL;
 }
 
 BOOL toWideChar(char* src, wchar_t* dst, int max)
@@ -274,24 +314,34 @@ BOOL BeaconRemoveValue(const char* key)
 	return FALSE;
 }
 
-PDATA_STORE_OBJECT BeaconDataStoreGetItem(SIZE_T index)
-{
-    return NULL;
-}
-
-VOID BeaconDataStoreProtectItem(SIZE_T index) {}
-
-VOID BeaconDataStoreUnprotectItem(SIZE_T index){}
-
-ULONG BeaconDataStoreMaxEntries() 
-{
-	return NULL;
-}
-
 PCHAR BeaconGetCustomUserData() 
 {
 	return NULL;
 }
+
+/// System Call API
+
+BOOL BeaconGetSyscallInformation(PBEACON_SYSCALLS info, BOOL resolveIfNotInitialized)
+{
+	return FALSE;
+}
+
+//LPVOID BeaconVirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+//LPVOID BeaconVirtualAllocEx(HANDLE processHandle, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+//BOOL BeaconVirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
+//BOOL BeaconVirtualProtectEx(HANDLE processHandle, LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, PDWORD lpflOldProtect);
+//BOOL BeaconVirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
+//BOOL BeaconGetThreadContext(HANDLE threadHandle, PCONTEXT threadContext);
+//BOOL BeaconSetThreadContext(HANDLE threadHandle, PCONTEXT threadContext);
+//DWORD BeaconResumeThread(HANDLE threadHandle);
+//HANDLE BeaconOpenProcess(DWORD desiredAccess, BOOL inheritHandle, DWORD processId);
+//HANDLE BeaconOpenThread(DWORD desiredAccess, BOOL inheritHandle, DWORD threadId);
+//BOOL BeaconCloseHandle(HANDLE object);
+//BOOL BeaconUnmapViewOfFile(LPCVOID baseAddress);
+//SIZE_T BeaconVirtualQuery(LPCVOID address, PMEMORY_BASIC_INFORMATION buffer, SIZE_T length);
+//BOOL BeaconDuplicateHandle(HANDLE hSourceProcessHandle, HANDLE hSourceHandle, HANDLE hTargetProcessHandle, LPHANDLE lpTargetHandle, DWORD dwDesiredAccess, BOOL bInheritHandle, DWORD dwOptions);
+//BOOL BeaconReadProcessMemory(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead);
+//BOOL BeaconWriteProcessMemory(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten);
 
 HMODULE proxy_LoadLibraryA(LPCSTR lpLibFileName)
 {

@@ -7,10 +7,11 @@
 class WebSocketWorker : public QThread
 {
 Q_OBJECT
-    QWebSocket*  webSocket = nullptr;
     AuthProfile* profile;
 
 public:
+    QWebSocket* webSocket = nullptr;
+
     explicit WebSocketWorker(AuthProfile* authProfile);
     ~WebSocketWorker();
 

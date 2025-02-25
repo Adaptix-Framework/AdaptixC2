@@ -18,13 +18,14 @@ public:
     Extender* extender = nullptr;
     Settings* settings = nullptr;
 
-
     explicit MainAdaptix();
     ~MainAdaptix() override;
 
-    void Start();
-    void Exit();
-    void SetApplicationTheme();
+    void         Start();
+    void         Exit();
+    void         NewProject();
+    void         SetApplicationTheme();
+    AuthProfile* Login();
 };
 
 extern MainAdaptix* GlobalClient;
