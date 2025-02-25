@@ -4,6 +4,7 @@
 LogsWidget::LogsWidget()
 {
     this->createUI();
+    logsConsoleTextEdit->setContextMenuPolicy(Qt::CustomContextMenu);
 }
 
 LogsWidget::~LogsWidget() = default;
@@ -17,6 +18,7 @@ void LogsWidget::createUI()
 
     logsConsoleTextEdit = new QTextEdit(this);
     logsConsoleTextEdit->setReadOnly(true);
+    logsConsoleTextEdit->setProperty("TextEditStyle", "console" );
 
     logsGridLayout = new QGridLayout(this);
     logsGridLayout->setContentsMargins(1, 1, 1, 1);
@@ -64,12 +66,14 @@ void LogsWidget::AddLogs( int type, qint64 time, QString message )
     QString sTime = UnixTimestampGlobalToStringLocal(time);
     QString log = QString("[%1] -> ").arg(sTime);
 
-    if( type == EVENT_CLIENT_CONNECT )           log += TextColorHtml(message, COLOR_ChiliPepper);
-    else if( type == EVENT_CLIENT_DISCONNECT )   log += TextColorHtml(message, COLOR_Berry);
+    if( type == EVENT_CLIENT_CONNECT )           log += TextColorHtml(message, COLOR_ConsoleWhite);
+    else if( type == EVENT_CLIENT_DISCONNECT )   log += TextColorHtml(message, COLOR_Gray);
     else if( type == EVENT_LISTENER_START )      log += TextColorHtml(message, COLOR_BrightOrange);
     else if( type == EVENT_LISTENER_STOP )       log += TextColorHtml(message, COLOR_BrightOrange);
     else if( type == EVENT_AGENT_NEW )           log += TextColorHtml(message, COLOR_NeonGreen);
-    else                                        log += message;
+    else if( type == EVENT_TUNNEL_START )        log += TextColorHtml(message, COLOR_PastelYellow);
+    else if( type == EVENT_TUNNEL_STOP )         log += TextColorHtml(message, COLOR_PastelYellow);
+    else                                         log += message;
 
     logsConsoleTextEdit->append( log );
 }

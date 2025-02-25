@@ -5,6 +5,19 @@
     "password": "pass",
     "cert": "server.rsa.crt",
     "key": "server.rsa.key",
-    "extender": "extenders/extender.txt"
+    "extenders": [
+      "extenders/listener_beacon_http/listener_beacon_http.so",
+      "extenders/agent_beacon/agent_beacon.so"
+    ]
+  },
+
+  "ServerResponse": {
+    "status": 404,
+    "headers": {
+      "Content-Type": "text/html; charset=UTF-8",
+      "Server": "AdaptixC2",
+      "Adaptix Version": "v0.2-DEV"
+    },
+    "page": "404page.html"
   }
 }

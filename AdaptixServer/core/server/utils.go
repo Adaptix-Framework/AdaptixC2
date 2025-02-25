@@ -7,7 +7,9 @@ import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
+	"context"
 	"github.com/gorilla/websocket"
+	"net"
 	"sync"
 )
 
@@ -25,6 +27,7 @@ const (
 	TYPE_TASK    = 1
 	TYPE_BROWSER = 2
 	TYPE_JOB     = 3
+	TYPE_TUNNEL  = 4
 )
 
 // TeamServer
@@ -46,21 +49,47 @@ type Teamserver struct {
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
 
-	clients   safe.Map    // username string,    : socket *websocket.Conn
-	events    *safe.Slice // 			           : sync_packet interface{}
-	listeners safe.Map    // listenerName string : listenerData ListenerData
-	agents    safe.Map    // agentId string      : agent *Agent
-	downloads safe.Map    // dileId string       : downloadData DownloadData
-
 	agent_types safe.Map // agentMark string : agentName string
+
+	events    *safe.Slice // 			         : sync_packet interface{}
+	clients   safe.Map    // username string,    : socket *websocket.Conn
+	agents    safe.Map    // agentId string      : agent *Agent
+	listeners safe.Map    // listenerName string : listenerData ListenerData
+	downloads safe.Map    // dileId string       : downloadData DownloadData
+	tunnels   safe.Map    // 					 : tunnel Tunnel
 }
 
 type Agent struct {
-	Data        adaptix.AgentData
+	Data adaptix.AgentData
+	Tick bool
+
+	TunnelQueue *safe.Slice // taskData TaskData
 	TasksQueue  *safe.Slice // taskData TaskData
-	Tasks       safe.Map    // taskId string, taskData TaskData
-	ClosedTasks safe.Map    // taskId string, taskData TaskData
-	Tick        bool
+
+	Tasks       safe.Map // taskId string, taskData TaskData
+	ClosedTasks safe.Map // taskId string, taskData TaskData
+}
+
+type TunnelConnection struct {
+	channelId    int
+	protocol     string
+	conn         net.Conn
+	ctx          context.Context
+	handleCancel context.CancelFunc
+}
+
+type Tunnel struct {
+	TaskId string
+	Data   adaptix.TunnelData
+
+	listener    net.Listener
+	connections safe.Map
+
+	handlerConnectTCP func(channelId int, addr string, port int) []byte
+	handlerConnectUDP func(channelId int, addr string, port int) []byte
+	handlerWriteTCP   func(channelId int, data []byte) []byte
+	handlerWriteUDP   func(channelId int, data []byte) []byte
+	handlerClose      func(channelId int) []byte
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +214,8 @@ type SyncPackerAgentTaskCreate struct {
 	TaskType  int    `json:"a_task_type"`
 	StartTime int64  `json:"a_start_time"`
 	CmdLine   string `json:"a_cmdline"`
-	User      string `json:"a_user"`
+	Client    string `json:"a_client"`
+	Computer  string `json:"a_computer"`
 }
 
 type SyncPackerAgentTaskUpdate struct {
@@ -221,6 +251,7 @@ type SyncPackerDownloadCreate struct {
 	FileId    string `json:"d_file_id"`
 	AgentId   string `json:"d_agent_id"`
 	AgentName string `json:"d_agent_name"`
+	User      string `json:"d_user"`
 	Computer  string `json:"d_computer"`
 	File      string `json:"d_file"`
 	Size      int    `json:"d_size"`
@@ -281,4 +312,36 @@ type SyncPacketBrowserProcess struct {
 	MessageType int    `json:"b_msg_type"`
 	Message     string `json:"b_message"`
 	Data        string `json:"b_data"`
+}
+
+/// TUNNEL
+
+type SyncPackerTunnelCreate struct {
+	SpType int `json:"type"`
+
+	TunnelId  string `json:"p_tunnel_id"`
+	AgentId   string `json:"p_agent_id"`
+	Computer  string `json:"p_computer"`
+	Username  string `json:"p_username"`
+	Process   string `json:"p_process"`
+	Type      string `json:"p_type"`
+	Info      string `json:"p_info"`
+	Interface string `json:"p_interface"`
+	Port      string `json:"p_port"`
+	Client    string `json:"p_client"`
+	Fhost     string `json:"p_fhost"`
+	Fport     string `json:"p_fport"`
+}
+
+type SyncPackerTunnelEdit struct {
+	SpType int `json:"type"`
+
+	TunnelId string `json:"p_tunnel_id"`
+	Info     string `json:"p_info"`
+}
+
+type SyncPackerTunnelDelete struct {
+	SpType int `json:"type"`
+
+	TunnelId string `json:"p_tunnel_id"`
 }

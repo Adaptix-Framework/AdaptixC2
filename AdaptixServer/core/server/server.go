@@ -31,19 +31,26 @@ func NewTeamserver() *Teamserver {
 		listeners:        safe.NewMap(),
 		agents:           safe.NewMap(),
 		downloads:        safe.NewMap(),
+		tunnels:          safe.NewMap(),
 	}
 	ts.Extender = extender.NewExtender(ts)
 	return ts
 }
 
-func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, ext string) {
+func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, exts []string) {
 	ts.Profile.Server = &profile.TsProfile{
-		Port:     port,
-		Endpoint: endpoint,
-		Password: password,
-		Cert:     cert,
-		Key:      key,
-		Ext:      ext,
+		Port:      port,
+		Endpoint:  endpoint,
+		Password:  password,
+		Cert:      cert,
+		Key:       key,
+		Extenders: exts,
+	}
+	ts.Profile.ServerResponse = &profile.TsResponse{
+		Status:      404,
+		Headers:     map[string]string{},
+		PagePath:    "",
+		PageContent: "",
 	}
 }
 
@@ -85,6 +92,7 @@ func (ts *Teamserver) RestoreData() {
 
 		agent := &Agent{
 			Data:        agentData,
+			TunnelQueue: safe.NewSlice(),
 			TasksQueue:  safe.NewSlice(),
 			Tasks:       safe.NewMap(),
 			ClosedTasks: safe.NewMap(),
@@ -151,7 +159,7 @@ func (ts *Teamserver) Start() {
 		err     error
 	)
 
-	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server)
+	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server, *ts.Profile.ServerResponse)
 	if err != nil {
 		logs.Error("", "Failed to init HTTP handler: "+err.Error())
 		return

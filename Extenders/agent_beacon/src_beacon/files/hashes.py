@@ -114,6 +114,7 @@ GetTokenInformation
 LookupAccountSidA
 
 // msvcrt
+printf
 vsnprintf
 
 // BOF
@@ -161,6 +162,24 @@ HttpQueryInfoA
 InternetQueryDataAvailable
 InternetCloseHandle
 InternetReadFile
+
+// ws2_32
+WSAStartup
+WSACleanup
+socket
+gethostbyname
+ioctlsocket
+connect
+WSAGetLastError
+closesocket
+select
+__WSAFDIsSet
+shutdown
+recv
+send
+accept
+bind
+listen
 """
 
 ##############################################

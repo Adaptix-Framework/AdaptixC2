@@ -15,6 +15,8 @@ const (
 	EVENT_LISTENER_START    = 3
 	EVENT_LISTENER_STOP     = 4
 	EVENT_AGENT_NEW         = 5
+	EVENT_TUNNEL_START      = 6
+	EVENT_TUNNEL_STOP       = 7
 )
 
 const (
@@ -39,6 +41,10 @@ const (
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
 	TYPE_DOWNLOAD_DELETE = 0x53
+
+	TYPE_TUNNEL_CREATE = 0x57
+	TYPE_TUNNEL_EDIT   = 0x58
+	TYPE_TUNNEL_DELETE = 0x59
 
 	TYPE_BROWSER_DISKS        = 0x61
 	TYPE_BROWSER_FILES        = 0x62
@@ -197,7 +203,8 @@ func CreateSpAgentTaskCreate(taskData adaptix.TaskData) SyncPackerAgentTaskCreat
 		StartTime: taskData.StartDate,
 		CmdLine:   taskData.CommandLine,
 		TaskType:  taskData.Type,
-		User:      taskData.User,
+		Client:    taskData.Client,
+		Computer:  taskData.Computer,
 	}
 }
 
@@ -241,6 +248,7 @@ func CreateSpDownloadCreate(downloadData adaptix.DownloadData) SyncPackerDownloa
 		AgentId:   downloadData.AgentId,
 		AgentName: downloadData.AgentName,
 		FileId:    downloadData.FileId,
+		User:      downloadData.User,
 		Computer:  downloadData.Computer,
 		File:      downloadData.RemotePath,
 		Size:      downloadData.TotalSize,
@@ -313,5 +321,43 @@ func CreateSpBrowserProcess(taskData adaptix.TaskData, data string) SyncPacketBr
 		MessageType: taskData.MessageType,
 		Message:     taskData.Message,
 		Data:        data,
+	}
+}
+
+/// TUNNEL
+
+func CreateSpTunnelCreate(tunnelData adaptix.TunnelData) SyncPackerTunnelCreate {
+	return SyncPackerTunnelCreate{
+		SpType: TYPE_TUNNEL_CREATE,
+
+		TunnelId:  tunnelData.TunnelId,
+		AgentId:   tunnelData.AgentId,
+		Username:  tunnelData.Username,
+		Computer:  tunnelData.Computer,
+		Process:   tunnelData.Process,
+		Type:      tunnelData.Type,
+		Info:      tunnelData.Info,
+		Interface: tunnelData.Interface,
+		Port:      tunnelData.Port,
+		Client:    tunnelData.Client,
+		Fport:     tunnelData.Fport,
+		Fhost:     tunnelData.Fhost,
+	}
+}
+
+func CreateSpTunnelEdit(tunnelData adaptix.TunnelData) SyncPackerTunnelEdit {
+	return SyncPackerTunnelEdit{
+		SpType: TYPE_TUNNEL_EDIT,
+
+		TunnelId: tunnelData.TunnelId,
+		Info:     tunnelData.Info,
+	}
+}
+
+func CreateSpTunnelDelete(tunnelData adaptix.TunnelData) SyncPackerTunnelDelete {
+	return SyncPackerTunnelDelete{
+		SpType: TYPE_TUNNEL_DELETE,
+
+		TunnelId: tunnelData.TunnelId,
 	}
 }

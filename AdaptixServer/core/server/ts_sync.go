@@ -44,7 +44,7 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 	}
 	data := buffer.Bytes()
 
-	ts.clients.ForEach(func(key string, value interface{}) {
+	ts.clients.ForEach(func(key string, value interface{}) bool {
 		client := value.(*Client)
 		if client.synced {
 			client.lockSocket.Lock()
@@ -53,6 +53,7 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 		} else {
 			client.tmp_store.Put(packet)
 		}
+		return true
 	})
 }
 
@@ -66,6 +67,7 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	packets = append(packets, ts.TsPresyncListeners()...)
 	packets = append(packets, ts.TsPresyncAgentsAndTasks()...)
 	packets = append(packets, ts.TsPresyncDownloads()...)
+	packets = append(packets, ts.TsPresyncTunnels()...)
 	packets = append(packets, ts.TsPresyncEvents()...)
 
 	startPacket := CreateSpSyncStart(len(packets))
@@ -89,44 +91,48 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 
 func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 	var packets []interface{}
-	ts.listener_configs.ForEach(func(key string, value interface{}) {
+	ts.listener_configs.ForEach(func(key string, value interface{}) bool {
 		listenerInfo := value.(extender.ListenerInfo)
 		p := CreateSpListenerReg(key, listenerInfo.ListenerUI)
 		packets = append(packets, p)
+		return true
 	})
-	ts.agent_configs.ForEach(func(key string, value interface{}) {
+	ts.agent_configs.ForEach(func(key string, value interface{}) bool {
 		agentInfo := value.(extender.AgentInfo)
 		p := CreateSpAgentReg(key, agentInfo.ListenerName, agentInfo.AgentUI, agentInfo.AgentCmd)
 		packets = append(packets, p)
+		return true
 	})
 	return packets
 }
 
 func (ts *Teamserver) TsPresyncListeners() []interface{} {
 	var packets []interface{}
-	ts.listeners.ForEach(func(key string, value interface{}) {
+	ts.listeners.ForEach(func(key string, value interface{}) bool {
 		listenerData := value.(adaptix.ListenerData)
 		p := CreateSpListenerStart(listenerData)
 		packets = append(packets, p)
+		return true
 	})
 	return packets
 }
 
 func (ts *Teamserver) TsPresyncAgentsAndTasks() []interface{} {
 	var packets []interface{}
-	ts.agents.ForEach(func(key string, value interface{}) {
+	ts.agents.ForEach(func(key string, value interface{}) bool {
 		agent := value.(*Agent)
 		p := CreateSpAgentNew(agent.Data)
 		packets = append(packets, p)
 
 		var sortedTasks []adaptix.TaskData
 
-		agent.ClosedTasks.ForEach(func(key2 string, value2 interface{}) {
+		agent.ClosedTasks.ForEach(func(key2 string, value2 interface{}) bool {
 			taskData := value2.(adaptix.TaskData)
 			index := sort.Search(len(sortedTasks), func(i int) bool {
 				return sortedTasks[i].StartDate > taskData.StartDate
 			})
 			sortedTasks = append(sortedTasks[:index], append([]adaptix.TaskData{taskData}, sortedTasks[index:]...)...)
+			return true
 		})
 
 		for _, taskData := range sortedTasks {
@@ -134,18 +140,30 @@ func (ts *Teamserver) TsPresyncAgentsAndTasks() []interface{} {
 			t2 := CreateSpAgentTaskUpdate(taskData)
 			packets = append(packets, t1, t2)
 		}
-
+		return true
 	})
 	return packets
 }
 
 func (ts *Teamserver) TsPresyncDownloads() []interface{} {
 	var packets []interface{}
-	ts.downloads.ForEach(func(key string, value interface{}) {
+	ts.downloads.ForEach(func(key string, value interface{}) bool {
 		downloadData := value.(adaptix.DownloadData)
 		d1 := CreateSpDownloadCreate(downloadData)
 		d2 := CreateSpDownloadUpdate(downloadData)
 		packets = append(packets, d1, d2)
+		return true
+	})
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncTunnels() []interface{} {
+	var packets []interface{}
+	ts.tunnels.ForEach(func(key string, value interface{}) bool {
+		tunnel := value.(*Tunnel)
+		t := CreateSpTunnelCreate(tunnel.Data)
+		packets = append(packets, t)
+		return true
 	})
 	return packets
 }

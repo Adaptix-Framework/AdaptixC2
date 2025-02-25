@@ -40,7 +40,6 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 	var (
 		tasksArray [][]byte
 		agent      *Agent
-		task       adaptix.TaskData
 		value      any
 		ok         bool
 	)
@@ -52,15 +51,17 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
 	}
 
+	/// TASKS QUEUE
+
 	for i := 0; i < agent.TasksQueue.Len(); i++ {
 		value, ok = agent.TasksQueue.Get(i)
 		if ok {
-			task = value.(adaptix.TaskData)
-			if len(tasksArray)+len(task.Data) < availableSize {
+			taskData := value.(adaptix.TaskData)
+			if len(tasksArray)+len(taskData.Data) < availableSize {
 				var taskBuffer bytes.Buffer
-				_ = json.NewEncoder(&taskBuffer).Encode(task)
+				_ = json.NewEncoder(&taskBuffer).Encode(taskData)
 				tasksArray = append(tasksArray, taskBuffer.Bytes())
-				agent.Tasks.Put(task.TaskId, task)
+				agent.Tasks.Put(taskData.TaskId, taskData)
 				agent.TasksQueue.Delete(i)
 				i--
 			} else {
@@ -70,6 +71,27 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 			break
 		}
 	}
+
+	/// TUNNELS QUEUE
+
+	for i := 0; i < agent.TunnelQueue.Len(); i++ {
+		value, ok = agent.TunnelQueue.Get(i)
+		if ok {
+			tunnelTaskData := value.(adaptix.TaskData)
+			if len(tasksArray)+len(tunnelTaskData.Data) < availableSize {
+				var taskBuffer bytes.Buffer
+				_ = json.NewEncoder(&taskBuffer).Encode(tunnelTaskData)
+				tasksArray = append(tasksArray, taskBuffer.Bytes())
+				agent.TunnelQueue.Delete(i)
+				i--
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+
 	return tasksArray, nil
 }
 
@@ -141,8 +163,21 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 			ts.TsSyncAllClients(packet)
 		}
 
-	} else {
+	} else if task.Type == TYPE_TUNNEL {
+		if task.Completed {
+			task.Message = taskData.Message
+			task.MessageType = taskData.MessageType
+			
+			agent.ClosedTasks.Put(task.TaskId, task)
 
+			if task.Sync {
+				ts.DBMS.DbTaskInsert(task)
+				packet := CreateSpAgentTaskUpdate(task)
+				ts.TsSyncAllClients(packet)
+			}
+		}
+
+	} else if task.Type == TYPE_TASK || task.Type == TYPE_BROWSER {
 		task.MessageType = taskData.MessageType
 		task.Message = taskData.Message
 		task.ClearText = taskData.ClearText

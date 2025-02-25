@@ -12,14 +12,16 @@ class DialogListener : public QDialog
     QSpacerItem*    horizontalSpacer;
     QSpacerItem*    horizontalSpacer_2;
     QSpacerItem*    horizontalSpacer_3;
-    QSpacerItem*    horizontalSpacer_4;
-    QSpacerItem*    horizontalSpacer_5;
+    QHBoxLayout*    hLayoutBottom;
+    QFrame*         line_1;
     QLabel*         listenerNameLabel;
-    QLineEdit*      listenerNameInput;
+    QLineEdit*      inputListenerName;
     QLabel*         listenerTypeLabel;
     QComboBox*      listenerTypeCombobox;
-    QPushButton*    buttonClose;
+    QPushButton*    buttonLoad;
     QPushButton*    buttonSave;
+    QPushButton*    buttonCreate;
+    QPushButton*    buttonCancel;
     QGroupBox*      listenerConfigGroupbox;
     QStackedWidget* configStackWidget;
 
@@ -40,8 +42,10 @@ public:
 
 protected slots:
     void changeConfig(QString fn);
+    void onButtonLoad();
     void onButtonSave();
-    void onButtonClose();
+    void onButtonCreate();
+    void onButtonCancel();
 };
 
 #endif //ADAPTIXCLIENT_DIALOGLISTENER_H

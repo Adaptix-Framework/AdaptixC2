@@ -9,7 +9,7 @@ QJsonObject HttpReq( QString sUrl, QByteArray jsonData, QString token )
     QUrl url(sUrl);
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    if( !token.isEmpty() ){
+    if( !token.isEmpty() ) {
         QString bearerToken = "Bearer " + token;
         request.setRawHeader("Authorization", bearerToken.toUtf8());
     }
@@ -19,6 +19,14 @@ QJsonObject HttpReq( QString sUrl, QByteArray jsonData, QString token )
 
     QEventLoop eventLoop;
     QObject::connect(reply, &QNetworkReply::finished, &eventLoop, &QEventLoop::quit);
+
+    QTimer timeoutTimer;
+    QObject::connect(&timeoutTimer, &QTimer::timeout, [&]() {
+        reply->abort();
+        eventLoop.quit();
+    });
+    timeoutTimer.start(3000);
+
     eventLoop.exec();
 
     QJsonObject jsonObject;
@@ -356,6 +364,39 @@ bool HttpReqBrowserUpload( QString agentId, QString path, QString content, AuthP
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/browser/upload";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqTunnelStop( QString tunnelId, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["p_tunnel_id"] = tunnelId;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/tunnel/stop";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqTunnelSetInfo( QString tunnelId, QString info, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["p_tunnel_id"] = tunnelId;
+    dataJson["p_info"] = info;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/tunnel/setinfo";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();

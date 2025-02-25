@@ -122,6 +122,32 @@
     ]
   },
   {
+    "command": "lportfwd",
+    "description": "Managing local port forwarding",
+    "subcommands":
+    [
+      {
+        "name": "start",
+        "description": "Start local port forwarding from server via agent",
+        "example": "lportfwd start 127.0.0.1 8080 192.168.1.1 8080",
+        "args": [
+          "STRING <lhost> (0.0.0.0) {Listening interface address on server}",
+          "INT <lport> {Listen port on server}",
+          "STRING <fwdhost> {Remote forwarding address}",
+          "INT <fwdport> {Remote forwarding port}"
+        ]
+      },
+      {
+        "name": "stop",
+        "description": "Stop local port forwarding",
+        "example": "lportfwd stop 8080",
+        "args": [
+          "INT <lport>"
+        ]
+      }
+    ]
+  },
+  {
     "command": "mv",
     "message": "Task: move file",
     "description": "Move file",
@@ -206,12 +232,65 @@
     ]
   },
   {
+    "command": "rportfwd",
+    "description": "Managing remote port forwarding",
+    "subcommands":
+    [
+      {
+        "name": "start",
+        "description": "Start remote port forwarding from agent via server",
+        "example": "rportfwd start 8080 10.10.10.14 8080",
+        "args": [
+          "INT <lport> {Listen port on agent}",
+          "STRING <fwdhost> {Remote forwarding address}",
+          "INT <fwdport> {Remote forwarding port}"
+        ]
+      },
+      {
+        "name": "stop",
+        "description": "Stop local remote forwarding",
+        "example": "rportfwd stop 8080",
+        "args": [
+          "INT <lport>"
+        ]
+      }
+    ]
+  },
+  {
     "command": "sleep",
     "description": "Sets sleep time",
     "example": "sleep 30m5s 10",
     "args": [
       "STRING <sleep> {Time in '%h%m%s' format or number of seconds}",
       "INT [jitter] {Max random amount of time in % added to sleep}"
+    ]
+  },
+  {
+    "command": "socks",
+    "description": "Managing socks tunnels",
+    "subcommands":
+    [
+      {
+        "name": "start",
+        "description": "Start a SOCKS(4a/5) proxy server and listen on a specified port",
+        "example": "socks start 1080 -auth user pass",
+        "args": [
+          "STRING <-h address> (0.0.0.0) {Listening interface address}",
+          "INT <port> {Listen port}",
+          "BOOL [-socks4] {Use SOCKS4 proxy (Default SOCKS5)}",
+          "BOOL [-auth] {Enable User/Password authentication for SOCKS5}",
+          "STRING [username] {Username for SOCKS5 proxy}",
+          "STRING [password] {Password for SOCKS5 proxy}"
+        ]
+      },
+      {
+        "name": "stop",
+        "description": "Stop a SOCKS proxy server",
+        "example": "socks stop 1080",
+        "args": [
+          "INT <port>"
+        ]
+      }
     ]
   },
   {

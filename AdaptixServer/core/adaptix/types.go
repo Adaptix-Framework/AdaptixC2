@@ -1,6 +1,8 @@
 package adaptix
 
-import "os"
+import (
+	"os"
+)
 
 type ListenerData struct {
 	Name      string `json:"l_name"`
@@ -46,7 +48,8 @@ type TaskData struct {
 	Type        int    `json:"t_type"`
 	TaskId      string `json:"t_task_id"`
 	AgentId     string `json:"t_agent_id"`
-	User        string `json:"t_user"`
+	Client      string `json:"t_client"`
+	Computer    string `json:"t_computer"`
 	StartDate   int64  `json:"t_start_date"`
 	FinishDate  int64  `json:"t_finish_date"`
 	Data        []byte `json:"t_data"`
@@ -58,18 +61,10 @@ type TaskData struct {
 	Sync        bool   `json:"t_sync"`
 }
 
-type DownloadData struct {
-	FileId     string `json:"d_file_id"`
-	AgentId    string `json:"d_agent_id"`
-	AgentName  string `json:"d_agent_name"`
-	Computer   string `json:"d_computer"`
-	RemotePath string `json:"d_remote_path"`
-	LocalPath  string `json:"d_local_path"`
-	TotalSize  int    `json:"d_total_size"`
-	RecvSize   int    `json:"d_recv_size"`
-	Date       int64  `json:"d_date"`
-	State      int    `json:"d_state"`
-	File       *os.File
+type ConsoleMessageData struct {
+	Message string `json:"m_message"`
+	Status  int    `json:"m_status"`
+	Text    string `json:"m_text"`
 }
 
 type ListingFileData struct {
@@ -91,4 +86,34 @@ type ListingProcessData struct {
 type ListingDrivesData struct {
 	Name string `json:"b_name"`
 	Type string `json:"b_type"`
+}
+
+type DownloadData struct {
+	FileId     string `json:"d_file_id"`
+	AgentId    string `json:"d_agent_id"`
+	AgentName  string `json:"d_agent_name"`
+	User       string `json:"d_user"`
+	Computer   string `json:"d_computer"`
+	RemotePath string `json:"d_remote_path"`
+	LocalPath  string `json:"d_local_path"`
+	TotalSize  int    `json:"d_total_size"`
+	RecvSize   int    `json:"d_recv_size"`
+	Date       int64  `json:"d_date"`
+	State      int    `json:"d_state"`
+	File       *os.File
+}
+
+type TunnelData struct {
+	TunnelId  string `json:"p_tunnel_id"`
+	AgentId   string `json:"p_agent_id"`
+	Computer  string `json:"p_computer"`
+	Username  string `json:"p_username"`
+	Process   string `json:"p_process"`
+	Type      string `json:"p_type"`
+	Info      string `json:"p_info"`
+	Interface string `json:"p_interface"`
+	Port      string `json:"p_port"`
+	Client    string `json:"p_client"`
+	Fhost     string `json:"p_fhost"`
+	Fport     string `json:"p_fport"`
 }

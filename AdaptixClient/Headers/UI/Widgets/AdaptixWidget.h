@@ -5,12 +5,12 @@
 #include <Client/WebSocketWorker.h>
 #include <Client/LastTickWorker.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
-#include <UI/Dialogs/DialogSettings.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/TasksWidget.h>
+#include <UI/Widgets/TunnelsWidget.h>
 #include <Client/WidgetBuilder.h>
 #include <Agent/Agent.h>
 
@@ -28,7 +28,7 @@ Q_OBJECT
     QPushButton*    graphButton       = nullptr;
     QPushButton*    tasksButton        = nullptr;
     QPushButton*    targetsButton     = nullptr;
-    QPushButton*    proxyButton       = nullptr;
+    QPushButton*    tunnelButton       = nullptr;
     QPushButton*    downloadsButton   = nullptr;
     QPushButton*    credsButton       = nullptr;
     QPushButton*    screensButton     = nullptr;
@@ -60,6 +60,7 @@ public:
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
+    TunnelsWidget*       TunnelsTab        = nullptr;
     DownloadsWidget*     DownloadsTab      = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
@@ -68,6 +69,7 @@ public:
     QMap<QString, WidgetBuilder*> RegisterListenersUI;
     QMap<QString, QStringList>    LinkListenerAgent;
     QVector<ListenerData>         Listeners;
+    QVector<TunnelData>           Tunnels;
     QMap<QString, DownloadData>   Downloads;
     QVector<QString>              TasksVector;
     QMap<QString, TaskData>       TasksMap;
@@ -83,6 +85,7 @@ public:
     void RemoveTab(int index);
     void AddExtension(ExtensionFile ext);
     void RemoveExtension(ExtensionFile ext);
+    void Close();
 
 signals:
     void SyncedSignal();
@@ -96,6 +99,7 @@ public slots:
     void SetTasksUI();
     void LoadLogsUI();
     void LoadListenersUI();
+    void LoadTunnelsUI();
     void LoadDownloadsUI();
     void LoadTasksOutput();
     void OnReconnect();

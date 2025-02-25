@@ -55,6 +55,7 @@ TasksWidget::TasksWidget( QWidget* w )
 
     connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
     connect(tableWidget, &QTableWidget::itemSelectionChanged,       this, &TasksWidget::onTableItemSelection);
+    connect(tableWidget, &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
     connect(comboAgent,  &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
     connect(comboStatus, &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
     connect(inputFilter, &QLineEdit::textChanged,                   this, &TasksWidget::onAgentChange);
@@ -92,16 +93,17 @@ void TasksWidget::createUI()
     tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
     tableWidget->horizontalHeader()->setHighlightSections( false );
     tableWidget->verticalHeader()->setVisible( false );
-    tableWidget->setColumnCount(9);
+    tableWidget->setColumnCount(10);
     tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem("Task ID"));
     tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem("Task Type"));
     tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem("Agent ID"));
     tableWidget->setHorizontalHeaderItem( 3, new QTableWidgetItem("Client"));
-    tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem("Start Time"));
-    tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem("Finish Time"));
-    tableWidget->setHorizontalHeaderItem( 6, new QTableWidgetItem("Commandline"));
-    tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem("Result"));
-    tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem("Output"));
+    tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem("Computer"));
+    tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem("Start Time"));
+    tableWidget->setHorizontalHeaderItem( 6, new QTableWidgetItem("Finish Time"));
+    tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem("Commandline"));
+    tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem("Result"));
+    tableWidget->setHorizontalHeaderItem( 9, new QTableWidgetItem("Output"));
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
@@ -147,6 +149,8 @@ void TasksWidget::addTableItem(TaskData newTask)
         taskType = "TASK";
     else if ( newTask.TaskType == 3 )
         taskType = "JOB";
+    else if ( newTask.TaskType == 4 )
+        taskType = "TUNNEL";
     else
         return;
 
@@ -156,6 +160,7 @@ void TasksWidget::addTableItem(TaskData newTask)
     auto item_TaskType    = new QTableWidgetItem( taskType );
     auto item_AgentId     = new QTableWidgetItem( newTask.AgentId );
     auto item_Client      = new QTableWidgetItem( newTask.Client );
+    auto item_Computer    = new QTableWidgetItem( newTask.Computer );
     auto item_StartTime   = new QTableWidgetItem( startTime );
     auto item_FinishTime  = new QTableWidgetItem( "" );
     auto item_CommandLine = new QTableWidgetItem( newTask.CommandLine );
@@ -192,6 +197,9 @@ void TasksWidget::addTableItem(TaskData newTask)
     item_Client->setFlags( item_Client->flags() ^ Qt::ItemIsEditable );
     item_Client->setTextAlignment( Qt::AlignCenter );
 
+    item_Computer->setFlags( item_Computer->flags() ^ Qt::ItemIsEditable );
+    item_Computer->setTextAlignment( Qt::AlignCenter );
+
     item_Result->setFlags( item_Result->flags() ^ Qt::ItemIsEditable );
     item_Result->setTextAlignment( Qt::AlignCenter );
 
@@ -209,11 +217,12 @@ void TasksWidget::addTableItem(TaskData newTask)
     tableWidget->setItem( tableWidget->rowCount() - 1, 1, item_TaskType );
     tableWidget->setItem( tableWidget->rowCount() - 1, 2, item_AgentId );
     tableWidget->setItem( tableWidget->rowCount() - 1, 3, item_Client );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 4, item_StartTime );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 5, item_FinishTime );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 6, item_CommandLine );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 7, item_Result );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 8, item_Message );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 4, item_Computer );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 5, item_StartTime );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 6, item_FinishTime );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 7, item_CommandLine );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 8, item_Result );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 9, item_Message );
     tableWidget->setSortingEnabled( isSortingEnabled );
 
     tableWidget->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::ResizeToContents );
@@ -222,7 +231,8 @@ void TasksWidget::addTableItem(TaskData newTask)
     tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 4, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 5, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 7, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 6, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 8, QHeaderView::ResizeToContents );
 
     tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
@@ -307,19 +317,19 @@ void TasksWidget::EditTaskItem(TaskData newTask)
 
             if (taskData.Completed) {
                 if ( taskData.Status =="Error")
-                    tableWidget->item(row, 7)->setForeground(QColor(COLOR_ChiliPepper) );
+                    tableWidget->item(row, 8)->setForeground(QColor(COLOR_ChiliPepper) );
                 else if ( taskData.Status == "Canceled")
-                    tableWidget->item(row, 7)->setForeground(QColor(COLOR_BabyBlue) );
+                    tableWidget->item(row, 8)->setForeground(QColor(COLOR_BabyBlue) );
                 else
-                    tableWidget->item(row, 7)->setForeground(QColor(COLOR_NeonGreen) );
+                    tableWidget->item(row, 8)->setForeground(QColor(COLOR_NeonGreen) );
 
-                tableWidget->item(row, 7)->setText( taskData.Status );
+                tableWidget->item(row, 8)->setText( taskData.Status );
 
                 QString finishTime = UnixTimestampGlobalToStringLocal(taskData.FinishTime);
-                tableWidget->item(row, 5)->setText(finishTime);
+                tableWidget->item(row, 6)->setText(finishTime);
             }
 
-            tableWidget->item(row, 8)->setText(taskData.Message);
+            tableWidget->item(row, 9)->setText(taskData.Message);
 
             break;
         }
@@ -441,7 +451,7 @@ void TasksWidget::actionCopyCmd()
 {
     int row = tableWidget->currentRow();
     if( row >= 0) {
-        QString cmdLine = tableWidget->item( row, 6 )->text();
+        QString cmdLine = tableWidget->item( row, 7 )->text();
         QApplication::clipboard()->setText( cmdLine );
     }
 }
