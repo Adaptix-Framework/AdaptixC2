@@ -572,7 +572,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 					goto RET
 				}
 			}
-			taskData.TaskId, err = ts.TsTunnelCreateLocalPortFwd(agent.Id, lhost, lport, fhost, fport, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+			taskData.TaskId, err = ts.TsTunnelCreateLocalPortFwd(agent.Id, lhost, lport, fhost, fport, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
 			if err != nil {
 				goto RET
 			}
@@ -715,7 +715,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 				}
 			}
 
-			taskData.TaskId, err = ts.TsTunnelCreateRemotePortFwd(agent.Id, lport, fhost, fport, TunnelMessageReverse, TunnelMessageWrite, TunnelMessageClose)
+			taskData.TaskId, err = ts.TsTunnelCreateRemotePortFwd(agent.Id, lport, fhost, fport, TunnelMessageReverse, TunnelMessageWriteTCP, TunnelMessageClose)
 			if err != nil {
 				goto RET
 			}
@@ -795,7 +795,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 			version4, _ := args["-socks4"].(bool)
 			if version4 {
-				taskData.TaskId, err = ts.TsTunnelCreateSocks4(agent.Id, address, port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+				taskData.TaskId, err = ts.TsTunnelCreateSocks4(agent.Id, address, port, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
 				if err != nil {
 					goto RET
 				}
@@ -814,14 +814,14 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 						err = errors.New("parameter 'password' must be set")
 						goto RET
 					}
-					taskData.TaskId, err = ts.TsTunnelCreateSocks5Auth(agent.Id, address, port, username, password, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+					taskData.TaskId, err = ts.TsTunnelCreateSocks5Auth(agent.Id, address, port, username, password, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
 					if err != nil {
 						goto RET
 					}
 					messageData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
 
 				} else {
-					taskData.TaskId, err = ts.TsTunnelCreateSocks5(agent.Id, address, port, TunnelMessageConnect, TunnelMessageWrite, TunnelMessageClose)
+					taskData.TaskId, err = ts.TsTunnelCreateSocks5(agent.Id, address, port, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
 					if err != nil {
 						goto RET
 					}
@@ -1429,7 +1429,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			}
 			break
 
-		case COMMAND_TUNNEL_START:
+		case COMMAND_TUNNEL_START_TCP:
 			if false == packer.CheckPacker([]string{"byte"}) {
 				return
 			}
@@ -1442,7 +1442,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				ts.TsTunnelConnectionResume(agentData.Id, channelId)
 			}
 
-		case COMMAND_TUNNEL_WRITE:
+		case COMMAND_TUNNEL_WRITE_TCP:
 			if false == packer.CheckPacker([]string{"array"}) {
 				return
 			}
@@ -1571,13 +1571,23 @@ func BrowserExit(agentData AgentData) ([]byte, error) {
 
 /// TUNNELS
 
-func TunnelCreate(channelId int, address string, port int) ([]byte, error) {
-	array := []interface{}{COMMAND_TUNNEL_START, channelId, address, port}
+func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {
+	array := []interface{}{COMMAND_TUNNEL_START_TCP, channelId, address, port}
 	return PackArray(array)
 }
 
-func TunnelWrite(channelId int, data []byte) ([]byte, error) {
-	array := []interface{}{COMMAND_TUNNEL_WRITE, channelId, len(data), data}
+func TunnelCreateUDP(channelId int, address string, port int) ([]byte, error) {
+	array := []interface{}{COMMAND_TUNNEL_START_UDP, channelId, address, port}
+	return PackArray(array)
+}
+
+func TunnelWriteTCP(channelId int, data []byte) ([]byte, error) {
+	array := []interface{}{COMMAND_TUNNEL_WRITE_TCP, channelId, len(data), data}
+	return PackArray(array)
+}
+
+func TunnelWriteUDP(channelId int, data []byte) ([]byte, error) {
+	array := []interface{}{COMMAND_TUNNEL_WRITE_UDP, channelId, len(data), data}
 	return PackArray(array)
 }
 

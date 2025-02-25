@@ -151,5 +151,9 @@
 #define HASH_FUNC___WSAFDISSET                       0x61b4503f
 #define HASH_FUNC_SHUTDOWN                           0xccb8a380
 #define HASH_FUNC_RECV                               0x6f5eb634
+#define HASH_FUNC_RECVFROM                           0xcfb09288
 #define HASH_FUNC_SEND                               0x6f5f43ee
 #define HASH_FUNC_ACCEPT                             0x9a18f614
+#define HASH_FUNC_BIND                               0x6f560281
+#define HASH_FUNC_LISTEN                             0xb4374c73
+#define HASH_FUNC_SENDTO                             0xc44006d1

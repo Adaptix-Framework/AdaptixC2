@@ -123,22 +123,24 @@ BOOL ApiLoad()
 		CHAR ws2_32_c[] = { 'W', 's', '2', '_', '3', '2', '.', 'd', 'l', 'l', 0 };
 		HMODULE hWs2_32Module = ApiWin->LoadLibraryA(ws2_32_c);
 		if (hWs2_32Module) {
-			ApiWin->WSAStartup      = (decltype(WSAStartup)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_WSASTARTUP);
-			ApiWin->WSACleanup      = (decltype(WSACleanup)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_WSACLEANUP);
+			ApiWin->WSAStartup      = (decltype(WSAStartup)*)      GetSymbolAddress(hWs2_32Module, HASH_FUNC_WSASTARTUP);
+			ApiWin->WSACleanup      = (decltype(WSACleanup)*)      GetSymbolAddress(hWs2_32Module, HASH_FUNC_WSACLEANUP);
 			ApiWin->WSAGetLastError = (decltype(WSAGetLastError)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_WSAGETLASTERROR);
-			ApiWin->gethostbyname   = (decltype(gethostbyname)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_GETHOSTBYNAME);
-			ApiWin->socket			= (decltype(socket)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_SOCKET);
-			ApiWin->ioctlsocket		= (decltype(ioctlsocket)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_IOCTLSOCKET);
-			ApiWin->connect			= (decltype(connect)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_CONNECT);
-			ApiWin->closesocket		= (decltype(closesocket)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_CLOSESOCKET);
-			ApiWin->select			= (decltype(select)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_SELECT);
-			ApiWin->__WSAFDIsSet    = (decltype(__WSAFDIsSet)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC___WSAFDISSET);
-			ApiWin->shutdown		= (decltype(shutdown)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_SHUTDOWN);
-			ApiWin->recv     		= (decltype(recv)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_RECV);
-			ApiWin->send     		= (decltype(send)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_SEND);
-			ApiWin->accept     		= (decltype(accept)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_ACCEPT);
-			ApiWin->listen     		= (decltype(listen)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_LISTEN);
-			ApiWin->bind     		= (decltype(bind)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_BIND);
+			ApiWin->gethostbyname   = (decltype(gethostbyname)*)   GetSymbolAddress(hWs2_32Module, HASH_FUNC_GETHOSTBYNAME);
+			ApiWin->socket			= (decltype(socket)*)          GetSymbolAddress(hWs2_32Module, HASH_FUNC_SOCKET);
+			ApiWin->ioctlsocket		= (decltype(ioctlsocket)*)     GetSymbolAddress(hWs2_32Module, HASH_FUNC_IOCTLSOCKET);
+			ApiWin->connect			= (decltype(connect)*)         GetSymbolAddress(hWs2_32Module, HASH_FUNC_CONNECT);
+			ApiWin->closesocket		= (decltype(closesocket)*)     GetSymbolAddress(hWs2_32Module, HASH_FUNC_CLOSESOCKET);
+			ApiWin->select			= (decltype(select)*)          GetSymbolAddress(hWs2_32Module, HASH_FUNC_SELECT);
+			ApiWin->__WSAFDIsSet    = (decltype(__WSAFDIsSet)*)    GetSymbolAddress(hWs2_32Module, HASH_FUNC___WSAFDISSET);
+			ApiWin->shutdown		= (decltype(shutdown)*)        GetSymbolAddress(hWs2_32Module, HASH_FUNC_SHUTDOWN);
+			ApiWin->recv     		= (decltype(recv)*)            GetSymbolAddress(hWs2_32Module, HASH_FUNC_RECV);
+			ApiWin->recvfrom        = (decltype(recvfrom)*)        GetSymbolAddress(hWs2_32Module, HASH_FUNC_RECVFROM);
+			ApiWin->send     		= (decltype(send)*)            GetSymbolAddress(hWs2_32Module, HASH_FUNC_SEND);
+			ApiWin->sendto     		= (decltype(sendto)*)          GetSymbolAddress(hWs2_32Module, HASH_FUNC_SENDTO);
+			ApiWin->accept     		= (decltype(accept)*)          GetSymbolAddress(hWs2_32Module, HASH_FUNC_ACCEPT);
+			ApiWin->listen     		= (decltype(listen)*)          GetSymbolAddress(hWs2_32Module, HASH_FUNC_LISTEN);
+			ApiWin->bind     		= (decltype(bind)*)            GetSymbolAddress(hWs2_32Module, HASH_FUNC_BIND);
 		}
 	}
 	else {
