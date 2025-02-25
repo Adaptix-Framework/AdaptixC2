@@ -72,6 +72,7 @@ type Agent struct {
 
 type TunnelConnection struct {
 	channelId    int
+	protocol     string
 	conn         net.Conn
 	ctx          context.Context
 	handleCancel context.CancelFunc
@@ -84,9 +85,11 @@ type Tunnel struct {
 	listener    net.Listener
 	connections safe.Map
 
-	handlerConnect func(channelId int, addr string, port int) []byte
-	handlerWrite   func(channelId int, data []byte) []byte
-	handlerClose   func(channelId int) []byte
+	handlerConnectTCP func(channelId int, addr string, port int) []byte
+	handlerConnectUDP func(channelId int, addr string, port int) []byte
+	handlerWriteTCP   func(channelId int, data []byte) []byte
+	handlerWriteUDP   func(channelId int, data []byte) []byte
+	handlerClose      func(channelId int) []byte
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

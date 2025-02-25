@@ -96,7 +96,9 @@ struct WINAPIFUNC
 	DECL_API(__WSAFDIsSet);
 	DECL_API(shutdown);
 	DECL_API(recv);
+	DECL_API(recvfrom);
 	DECL_API(send);
+	DECL_API(sendto);
 	DECL_API(accept);
 	DECL_API(listen);
 	DECL_API(bind);

@@ -42,6 +42,16 @@ func (ts *Teamserver) TsTunnelAdd(tunnel *Tunnel) {
 	ts.events.Put(packet2)
 }
 
+func (ts *Teamserver) TsReverseAdd(tunnel *Tunnel) {
+	packet := CreateSpTunnelCreate(tunnel.Data)
+	ts.TsSyncAllClients(packet)
+
+	message := fmt.Sprintf("Reverse port forward to '%s:%s'", tunnel.Data.Fhost, tunnel.Data.Fport)
+	packet2 := CreateSpEvent(EVENT_TUNNEL_START, message)
+	ts.TsSyncAllClients(packet2)
+	ts.events.Put(packet2)
+}
+
 func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 	value, ok := ts.tunnels.GetDelete(TunnelId)
 	if !ok {
@@ -111,7 +121,7 @@ func (ts *Teamserver) TsTunnelSetInfo(TunnelId string, Info string) error {
 
 /// Socks5
 
-func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
+func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
 	var (
 		agent       *Agent
 		socksTunnel *Tunnel
@@ -134,9 +144,9 @@ func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port 
 		listener:    listener,
 		connections: safe.NewMap(),
 
-		handlerConnect: FuncMsgConnect,
-		handlerWrite:   FuncMsgWrite,
-		handlerClose:   FuncMsgClose,
+		handlerConnectTCP: FuncMsgConnectTCP,
+		handlerWriteTCP:   FuncMsgWriteTCP,
+		handlerClose:      FuncMsgClose,
 	}
 
 	go func() {
@@ -179,7 +189,7 @@ func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port 
 	return socksTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
+func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
 	var (
 		agent       *Agent
 		socksTunnel *Tunnel
@@ -202,9 +212,11 @@ func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port 
 		listener:    listener,
 		connections: safe.NewMap(),
 
-		handlerConnect: FuncMsgConnect,
-		handlerWrite:   FuncMsgWrite,
-		handlerClose:   FuncMsgClose,
+		handlerConnectTCP: FuncMsgConnectTCP,
+		handlerConnectUDP: FuncMsgConnectUDP,
+		handlerWriteTCP:   FuncMsgWriteTCP,
+		handlerWriteUDP:   FuncMsgWriteUDP,
+		handlerClose:      FuncMsgClose,
 	}
 
 	go func() {
@@ -247,7 +259,7 @@ func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port 
 	return socksTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
+func (ts *Teamserver) TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
 	var (
 		agent       *Agent
 		socksTunnel *Tunnel
@@ -270,9 +282,11 @@ func (ts *Teamserver) TsTunnelCreateSocks5Auth(AgentId string, Address string, P
 		listener:    listener,
 		connections: safe.NewMap(),
 
-		handlerConnect: FuncMsgConnect,
-		handlerWrite:   FuncMsgWrite,
-		handlerClose:   FuncMsgClose,
+		handlerConnectTCP: FuncMsgConnectTCP,
+		handlerConnectUDP: FuncMsgConnectUDP,
+		handlerWriteTCP:   FuncMsgWriteTCP,
+		handlerWriteUDP:   FuncMsgWriteUDP,
+		handlerClose:      FuncMsgClose,
 	}
 
 	go func() {
@@ -348,9 +362,9 @@ func (ts *Teamserver) TsTunnelCreateLocalPortFwd(AgentId string, Address string,
 		listener:    listener,
 		connections: safe.NewMap(),
 
-		handlerConnect: FuncMsgConnect,
-		handlerWrite:   FuncMsgWrite,
-		handlerClose:   FuncMsgClose,
+		handlerConnectTCP: FuncMsgConnect,
+		handlerWriteTCP:   FuncMsgWrite,
+		handlerClose:      FuncMsgClose,
 	}
 
 	go func() {
@@ -384,8 +398,8 @@ func (ts *Teamserver) TsTunnelCreateLocalPortFwd(AgentId string, Address string,
 		Interface: Address,
 		Port:      port,
 		Client:    "",
-		Fport:     FwdAddress,
-		Fhost:     strconv.Itoa(FwdPort),
+		Fport:     strconv.Itoa(FwdPort),
+		Fhost:     FwdAddress,
 	}
 
 	ts.TsTunnelAdd(fwdTunnel)
@@ -419,8 +433,8 @@ func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdA
 	fwdTunnel = &Tunnel{
 		connections: safe.NewMap(),
 
-		handlerWrite: FuncMsgWrite,
-		handlerClose: FuncMsgClose,
+		handlerWriteTCP: FuncMsgWrite,
+		handlerClose:    FuncMsgClose,
 	}
 	fwdTunnel.TaskId, _ = krypt.GenerateUID(8)
 
@@ -639,12 +653,13 @@ func handleRequestSocks4(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
 	}
 
 	channelId := int(rand.Uint32())
-	rawTaskData := tunnel.handlerConnect(channelId, targetAddress, targetPort)
+	rawTaskData := tunnel.handlerConnectTCP(channelId, targetAddress, targetPort)
 	sendTunnelTaskData(agent, rawTaskData)
 
 	tunnelConnection := &TunnelConnection{
 		channelId: channelId,
 		conn:      socksConn,
+		protocol:  "TCP",
 	}
 	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
 
@@ -653,19 +668,27 @@ func handleRequestSocks4(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
 
 func handleRequestSocks5(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
 
-	targetAddress, targetPort, err := proxy.CheckSocks5(socksConn)
+	targetAddress, targetPort, socksCommand, err := proxy.CheckSocks5(socksConn)
 	if err != nil {
 		fmt.Println("Socks5 proxy error: ", err)
 		return
 	}
 
 	channelId := int(rand.Uint32())
-	rawTaskData := tunnel.handlerConnect(channelId, targetAddress, targetPort)
+	protocol := "TCP"
+	var rawTaskData []byte
+	if socksCommand == 3 {
+		rawTaskData = tunnel.handlerConnectUDP(channelId, targetAddress, targetPort)
+		protocol = "UDP"
+	} else {
+		rawTaskData = tunnel.handlerConnectTCP(channelId, targetAddress, targetPort)
+	}
 	sendTunnelTaskData(agent, rawTaskData)
 
 	tunnelConnection := &TunnelConnection{
 		channelId: channelId,
 		conn:      socksConn,
+		protocol:  protocol,
 	}
 	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
 
@@ -674,25 +697,47 @@ func handleRequestSocks5(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
 
 func handleRequestSocks5Auth(agent *Agent, tunnel *Tunnel, socksConn net.Conn, username string, password string) {
 
-	targetAddress, targetPort, err := proxy.CheckSocks5Auth(socksConn, username, password)
+	targetAddress, targetPort, socksCommand, err := proxy.CheckSocks5Auth(socksConn, username, password)
 	if err != nil {
 		fmt.Println("Socks5 proxy error: ", err)
 		return
 	}
 
 	channelId := int(rand.Uint32())
-	rawTaskData := tunnel.handlerConnect(channelId, targetAddress, targetPort)
+	protocol := "TCP"
+	var rawTaskData []byte
+	if socksCommand == 3 {
+		rawTaskData = tunnel.handlerConnectUDP(channelId, targetAddress, targetPort)
+		protocol = "UDP"
+	} else {
+		rawTaskData = tunnel.handlerConnectTCP(channelId, targetAddress, targetPort)
+	}
 	sendTunnelTaskData(agent, rawTaskData)
 
 	tunnelConnection := &TunnelConnection{
 		channelId: channelId,
 		conn:      socksConn,
+		protocol:  protocol,
 	}
 	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
 
 	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
 }
 
+func handleLocalPortFwd(agent *Agent, tunnel *Tunnel, fwdConn net.Conn, fhost string, fport int) {
+	channelId := int(rand.Uint32())
+	rawTaskData := tunnel.handlerConnectTCP(channelId, fhost, fport)
+	sendTunnelTaskData(agent, rawTaskData)
+
+	tunnelConnection := &TunnelConnection{
+		channelId: channelId,
+		conn:      fwdConn,
+		protocol:  "TCP",
+	}
+	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
+
+	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
+}
 
 func handlerReverseAccept(agent *Agent, tunnel *Tunnel, channelId int) {
 	target := tunnel.Data.Fhost + ":" + tunnel.Data.Fport
@@ -706,6 +751,7 @@ func handlerReverseAccept(agent *Agent, tunnel *Tunnel, channelId int) {
 	tunnelConnection := &TunnelConnection{
 		channelId: channelId,
 		conn:      fwdConn,
+		protocol:  "TCP",
 	}
 	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
 
@@ -753,7 +799,11 @@ func socketToTunnelData(agent *Agent, tunnel *Tunnel, tunnelConnection *TunnelCo
 				}
 				break
 			} else {
-				rawTaskData = tunnel.handlerWrite(tunnelConnection.channelId, buffer[:n])
+				if tunnelConnection.protocol == "UDP" {
+					rawTaskData = tunnel.handlerWriteUDP(tunnelConnection.channelId, buffer[:n])
+				} else {
+					rawTaskData = tunnel.handlerWriteTCP(tunnelConnection.channelId, buffer[:n])
+				}
 			}
 
 			sendTunnelTaskData(agent, rawTaskData)

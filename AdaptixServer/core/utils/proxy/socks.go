@@ -54,12 +54,13 @@ RET:
 	return address, port, err
 }
 
-func CheckSocks5(conn net.Conn) (string, int, error) {
+func CheckSocks5(conn net.Conn) (string, int, int, error) {
 	var (
 		buf     []byte
 		err     error
 		address string
 		port    int
+		command int
 	)
 
 	buf = make([]byte, 3)
@@ -82,6 +83,9 @@ func CheckSocks5(conn net.Conn) (string, int, error) {
 	if err != nil {
 		goto RET
 	}
+
+	command = int(buf[1])
+
 	switch buf[3] {
 
 	case 0x01: // IPv4
@@ -149,15 +153,16 @@ RET:
 		conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // success
 	}
 
-	return address, port, err
+	return address, port, command, err
 }
 
-func CheckSocks5Auth(conn net.Conn, username string, password string) (string, int, error) {
+func CheckSocks5Auth(conn net.Conn, username string, password string) (string, int, int, error) {
 	var (
 		buf          []byte
 		err          error
 		address      string
 		port         int
+		command      int
 		size         int
 		authRequired bool
 		reqUsername  string
@@ -214,13 +219,13 @@ func CheckSocks5Auth(conn net.Conn, username string, password string) (string, i
 	buf = make([]byte, 1) // password
 	_, err = io.ReadFull(conn, buf)
 	if err != nil {
-		return "", 0, err
+		goto RET
 	}
 	size = int(buf[0])
 	buf = make([]byte, size)
 	_, err = io.ReadFull(conn, buf)
 	if err != nil {
-		return "", 0, err
+		goto RET
 	}
 	reqPassword = string(buf)
 
@@ -236,6 +241,9 @@ func CheckSocks5Auth(conn net.Conn, username string, password string) (string, i
 	if err != nil {
 		goto RET
 	}
+
+	command = int(buf[1])
+
 	switch buf[3] {
 
 	case 0x01: // IPv4
@@ -303,5 +311,5 @@ RET:
 		conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // success
 	}
 
-	return address, port, err
+	return address, port, command, err
 }
