@@ -85,6 +85,9 @@
 // advapi32
 #define HASH_FUNC_GETTOKENINFORMATION                0x49639a4b
 #define HASH_FUNC_LOOKUPACCOUNTSIDA                  0x4be434ac
+#define HASH_FUNC_REVERTTOSELF                       0xcce516a9
+#define HASH_FUNC_SETTHREADTOKEN                     0x373ff89
+#define HASH_FUNC_IMPERSONATELOGGEDONUSER            0x77243019
 
 // msvcrt
 #if defined(DEBUG)

@@ -19,6 +19,14 @@ QJsonObject HttpReq( QString sUrl, QByteArray jsonData, QString token )
 
     QEventLoop eventLoop;
     QObject::connect(reply, &QNetworkReply::finished, &eventLoop, &QEventLoop::quit);
+
+    QTimer timeoutTimer;
+    QObject::connect(&timeoutTimer, &QTimer::timeout, [&]() {
+        reply->abort();
+        eventLoop.quit();
+    });
+    timeoutTimer.start(3000);
+
     eventLoop.exec();
 
     QJsonObject jsonObject;

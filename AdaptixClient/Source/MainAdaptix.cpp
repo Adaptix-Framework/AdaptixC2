@@ -5,12 +5,11 @@
 MainAdaptix::MainAdaptix()
 {
     storage  = new Storage();
-
     settings = new Settings(this);
 
     this->SetApplicationTheme();
 
-    mainUI   = new MainUI;
+    mainUI   = new MainUI();
     extender = new Extender(this);
 }
 
@@ -18,28 +17,16 @@ MainAdaptix::~MainAdaptix()
 {
     delete storage;
     delete mainUI;
+    delete extender;
 }
 
 void MainAdaptix::Start()
 {
-    AuthProfile* authProfile;
-    auto dialogConnect = new DialogConnect();
-    bool result;
-
-    do {
-        authProfile = dialogConnect->StartDialog();
-        if ( !authProfile || !authProfile->valid) {
-            this->Exit();
-            return;
-        }
-
-        result = HttpReqLogin( authProfile );
-        if (!result) {
-            MessageError("Login failure");
-            continue;
-        }
-
-    } while( !result );
+    AuthProfile* authProfile = this->Login();
+    if (!authProfile) {
+        this->Exit();
+        return;
+    }
 
     mainUI->showMaximized();
     mainUI->AddNewProject(authProfile);
@@ -50,6 +37,33 @@ void MainAdaptix::Start()
 void MainAdaptix::Exit()
 {
     QApplication::exit(0);
+}
+
+void MainAdaptix::NewProject()
+{
+    AuthProfile* authProfile = this->Login();
+    if (authProfile)
+        mainUI->AddNewProject(authProfile);
+}
+
+AuthProfile* MainAdaptix::Login()
+{
+    AuthProfile* authProfile;
+    auto dialogConnect = new DialogConnect();
+    bool result;
+
+    do {
+        authProfile = dialogConnect->StartDialog();
+        if ( !authProfile || !authProfile->valid)
+            return NULL;
+
+        result = HttpReqLogin( authProfile );
+        if (!result)
+            MessageError("Login failure");
+
+    } while( !result );
+
+    return authProfile;
 }
 
 void MainAdaptix::SetApplicationTheme()

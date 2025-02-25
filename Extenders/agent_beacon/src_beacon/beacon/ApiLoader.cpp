@@ -104,9 +104,12 @@ BOOL ApiLoad()
 		CHAR advapi32_c[] = { 'A', 'd', 'v', 'a', 'p', 'i', '3', '2', '.', 'd', 'l', 'l', 0 };
 		HMODULE hAdvapi32Module = ApiWin->LoadLibraryA(advapi32_c);
 		if (hAdvapi32Module) {
-			ApiWin->GetTokenInformation = (decltype(GetTokenInformation)*) GetSymbolAddress(hAdvapi32Module, HASH_FUNC_GETTOKENINFORMATION);
-			ApiWin->GetUserNameA		= (decltype(GetUserNameA)*)		   GetSymbolAddress(hAdvapi32Module, HASH_FUNC_GETUSERNAMEA);
-			ApiWin->LookupAccountSidA   = (decltype(LookupAccountSidA)*)   GetSymbolAddress(hAdvapi32Module, HASH_FUNC_LOOKUPACCOUNTSIDA);
+			ApiWin->GetTokenInformation		= (decltype(GetTokenInformation)*)     GetSymbolAddress(hAdvapi32Module, HASH_FUNC_GETTOKENINFORMATION);
+			ApiWin->GetUserNameA			= (decltype(GetUserNameA)*)		       GetSymbolAddress(hAdvapi32Module, HASH_FUNC_GETUSERNAMEA);
+			ApiWin->LookupAccountSidA		= (decltype(LookupAccountSidA)*)       GetSymbolAddress(hAdvapi32Module, HASH_FUNC_LOOKUPACCOUNTSIDA);
+			ApiWin->RevertToSelf			= (decltype(RevertToSelf)*)		       GetSymbolAddress(hAdvapi32Module, HASH_FUNC_REVERTTOSELF );
+			ApiWin->SetThreadToken			= (decltype(SetThreadToken)*)		   GetSymbolAddress(hAdvapi32Module, HASH_FUNC_SETTHREADTOKEN);
+			ApiWin->ImpersonateLoggedOnUser = (decltype(ImpersonateLoggedOnUser)*) GetSymbolAddress(hAdvapi32Module, HASH_FUNC_IMPERSONATELOGGEDONUSER);
 		}
 
 		// msvcrt

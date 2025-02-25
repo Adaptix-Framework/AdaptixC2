@@ -85,6 +85,7 @@ public:
     void RemoveTab(int index);
     void AddExtension(ExtensionFile ext);
     void RemoveExtension(ExtensionFile ext);
+    void Close();
 
 signals:
     void SyncedSignal();

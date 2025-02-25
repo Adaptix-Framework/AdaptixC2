@@ -227,6 +227,21 @@ void AdaptixWidget::ClearAdaptix()
     }
 }
 
+void AdaptixWidget::Close()
+{
+    TickThread->quit();
+    TickThread->wait();
+    delete TickThread;
+
+    ChannelThread->quit();
+    ChannelThread->wait();
+    delete ChannelThread;
+
+    ChannelWsWorker->webSocket->close();
+
+    this->ClearAdaptix();
+}
+
 
 
 void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon)

@@ -76,6 +76,9 @@ struct WINAPIFUNC
 	DECL_API(GetTokenInformation);
 	DECL_API(GetUserNameA);
 	DECL_API(LookupAccountSidA);
+	DECL_API(RevertToSelf);
+	DECL_API(ImpersonateLoggedOnUser);
+	DECL_API(SetThreadToken);
 
 	// msvcrt
 #if defined(DEBUG)

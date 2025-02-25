@@ -7,12 +7,17 @@
 
 class MainUI : public QMainWindow
 {
-    QWidget* mainWidget = nullptr;
+    QTabWidget*    mainuiTabWidget   = nullptr;
+    // AdaptixWidget* mainAdaptixWidget = nullptr;
+
+    QMap<QString, AdaptixWidget*> AdaptixProjects;
 
 public:
     explicit MainUI();
     ~MainUI();
 
+    void onNewProject();
+    void onCloseProject();
     void onExtender();
     void onSettings();
 
