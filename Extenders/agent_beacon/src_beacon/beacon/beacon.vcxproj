@@ -292,7 +292,7 @@
     <Link>
       <EntryPointSymbol>
       </EntryPointSymbol>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
     <ClCompile>
@@ -301,6 +301,7 @@
       <SDLCheck>false</SDLCheck>
       <Optimization>Disabled</Optimization>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/D DEBUG %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -322,6 +323,7 @@
     <ClCompile Include="MemorySaver.cpp" />
     <ClCompile Include="Packer.cpp" />
     <ClCompile Include="ProcLoader.cpp" />
+    <ClCompile Include="Proxyfire.cpp" />
     <ClCompile Include="std.cpp" />
     <ClCompile Include="utils.cpp" />
     <ClCompile Include="WaitMask.cpp" />
@@ -347,6 +349,7 @@
     <ClInclude Include="ntdll.h" />
     <ClInclude Include="Packer.h" />
     <ClInclude Include="ProcLoader.h" />
+    <ClInclude Include="Proxyfire.h" />
     <ClInclude Include="utils.h" />
     <ClInclude Include="WaitMask.h" />
   </ItemGroup>

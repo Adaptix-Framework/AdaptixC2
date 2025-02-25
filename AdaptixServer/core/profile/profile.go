@@ -55,11 +55,25 @@ func (p *AdaptixProfile) IsVaid() error {
 		}
 	}
 
-	if p.Server.Ext != "" {
-		_, err := os.Stat(p.Server.Ext)
+	if p.Server.Extenders != nil {
+		for _, ext := range p.Server.Extenders {
+			if ext != "" {
+				_, err := os.Stat(ext)
+				if err != nil {
+					if os.IsNotExist(err) {
+						logs.Error("", "Extender %s: file does not exists", ext)
+						valid = false
+					}
+				}
+			}
+		}
+	}
+
+	if p.ServerResponse.PagePath != "" {
+		_, err := os.Stat(p.ServerResponse.PagePath)
 		if err != nil {
 			if os.IsNotExist(err) {
-				logs.Error("", "'Teamserver.extender': file does not exists")
+				logs.Error("", "'ServerResponse.page': file does not exists")
 				valid = false
 			}
 		}

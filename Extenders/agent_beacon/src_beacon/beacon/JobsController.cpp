@@ -4,9 +4,7 @@
 JobData JobsController::CreateJobData(ULONG taskId, WORD Type, WORD State, HANDLE object, WORD pid, HANDLE input, HANDLE output)
 {
     JobData jobData = { taskId, Type, State, object, pid, input, output };
-	
 	jobs.push_back(jobData);
-
 	return jobData;
 }
 

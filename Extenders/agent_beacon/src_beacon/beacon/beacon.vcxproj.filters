@@ -114,6 +114,9 @@
     <ClCompile Include="config.cpp">
       <Filter>Source\Agent</Filter>
     </ClCompile>
+    <ClCompile Include="Proxyfire.cpp">
+      <Filter>Source\Commander</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -181,6 +184,9 @@
     </ClInclude>
     <ClInclude Include="config.h">
       <Filter>Headers\Agent</Filter>
+    </ClInclude>
+    <ClInclude Include="Proxyfire.h">
+      <Filter>Headers\Commander</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

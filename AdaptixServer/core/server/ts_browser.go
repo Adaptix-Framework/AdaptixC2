@@ -12,7 +12,7 @@ import (
 
 /// AGENT
 
-func (ts *Teamserver) TsAgentBrowserDisks(agentId string, username string) error {
+func (ts *Teamserver) TsAgentBrowserDisks(agentId string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -41,7 +41,8 @@ func (ts *Teamserver) TsAgentBrowserDisks(agentId string, username string) error
 			taskData.TaskId, _ = krypt.GenerateUID(8)
 		}
 		taskData.AgentId = agentId
-		taskData.User = username
+		taskData.Client = clientName
+		taskData.Computer = agent.Data.Computer
 		taskData.StartDate = time.Now().Unix()
 
 		agent.TasksQueue.Put(taskData)
@@ -53,7 +54,7 @@ func (ts *Teamserver) TsAgentBrowserDisks(agentId string, username string) error
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserProcess(agentId string, username string) error {
+func (ts *Teamserver) TsAgentBrowserProcess(agentId string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -82,7 +83,8 @@ func (ts *Teamserver) TsAgentBrowserProcess(agentId string, username string) err
 			taskData.TaskId, _ = krypt.GenerateUID(8)
 		}
 		taskData.AgentId = agentId
-		taskData.User = username
+		taskData.Client = clientName
+		taskData.Computer = agent.Data.Computer
 		taskData.StartDate = time.Now().Unix()
 
 		agent.TasksQueue.Put(taskData)
@@ -94,7 +96,7 @@ func (ts *Teamserver) TsAgentBrowserProcess(agentId string, username string) err
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, username string) error {
+func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -123,7 +125,8 @@ func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, username 
 			taskData.TaskId, _ = krypt.GenerateUID(8)
 		}
 		taskData.AgentId = agentId
-		taskData.User = username
+		taskData.Client = clientName
+		taskData.Computer = agent.Data.Computer
 		taskData.StartDate = time.Now().Unix()
 
 		agent.TasksQueue.Put(taskData)
@@ -135,7 +138,7 @@ func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, username 
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content []byte, username string) error {
+func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content []byte, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -164,7 +167,8 @@ func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content 
 			taskData.TaskId, _ = krypt.GenerateUID(8)
 		}
 		taskData.AgentId = agentId
-		taskData.User = username
+		taskData.Client = clientName
+		taskData.Computer = agent.Data.Computer
 		taskData.StartDate = time.Now().Unix()
 
 		agent.TasksQueue.Put(taskData)
@@ -176,7 +180,7 @@ func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content 
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, username string) error {
+func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -205,7 +209,8 @@ func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, userna
 			taskData.TaskId, _ = krypt.GenerateUID(8)
 		}
 		taskData.AgentId = agentId
-		taskData.User = username
+		taskData.Client = clientName
+		taskData.Computer = agent.Data.Computer
 		taskData.StartDate = time.Now().Unix()
 
 		agent.TasksQueue.Put(taskData)
@@ -217,7 +222,7 @@ func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, userna
 	return nil
 }
 
-func (ts *Teamserver) TsAgentCtxExit(agentId string, username string) error {
+func (ts *Teamserver) TsAgentCtxExit(agentId string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -246,7 +251,8 @@ func (ts *Teamserver) TsAgentCtxExit(agentId string, username string) error {
 			taskData.TaskId, _ = krypt.GenerateUID(8)
 		}
 		taskData.AgentId = agentId
-		taskData.User = username
+		taskData.Client = clientName
+		taskData.Computer = agent.Data.Computer
 		taskData.CommandLine = "agent terminate"
 		taskData.StartDate = time.Now().Unix()
 		taskData.Sync = true
@@ -302,7 +308,7 @@ func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
 	}
 
 	packet := CreateSpBrowserDisks(taskData, jsonDrives)
-	ts.TsSyncClient(task.User, packet)
+	ts.TsSyncClient(task.Client, packet)
 }
 
 func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFiles string) {
@@ -349,7 +355,7 @@ func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFil
 	}
 
 	packet := CreateSpBrowserFiles(taskData, path, jsonFiles)
-	ts.TsSyncClient(task.User, packet)
+	ts.TsSyncClient(task.Client, packet)
 }
 
 func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
@@ -388,7 +394,7 @@ func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
 	agent.Tasks.Delete(taskData.TaskId)
 
 	packet := CreateSpBrowserFilesStatus(taskData)
-	ts.TsSyncClient(task.User, packet)
+	ts.TsSyncClient(task.Client, packet)
 }
 
 func (ts *Teamserver) TsClientBrowserProcess(jsonTask string, jsonFiles string) {
@@ -431,5 +437,5 @@ func (ts *Teamserver) TsClientBrowserProcess(jsonTask string, jsonFiles string) 
 	}
 
 	packet := CreateSpBrowserProcess(taskData, jsonFiles)
-	ts.TsSyncClient(task.User, packet)
+	ts.TsSyncClient(task.Client, packet)
 }

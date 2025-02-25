@@ -8,6 +8,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     LogsTab           = new LogsWidget();
     ListenersTab      = new ListenersWidget(this);
     SessionsTablePage = new SessionsTableWidget(this);
+    TunnelsTab        = new TunnelsWidget(this);
     DownloadsTab      = new DownloadsWidget(this);
     TasksTab          = new TasksWidget(this);
 
@@ -33,6 +34,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
     connect( sessionsButton,  &QPushButton::clicked, this, &AdaptixWidget::SetSessionsTableUI);
     connect( tasksButton,     &QPushButton::clicked, this, &AdaptixWidget::SetTasksUI);
+    connect( tunnelButton,    &QPushButton::clicked, this, &AdaptixWidget::LoadTunnelsUI);
     connect( downloadsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
     connect( reconnectButton, &QPushButton::clicked, this, &AdaptixWidget::OnReconnect);
 
@@ -54,7 +56,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     graphButton->setVisible(false);
     line_2->setVisible(false);
     targetsButton->setVisible(false);
-    proxyButton->setVisible(false);
     credsButton->setVisible(false);
     screensButton->setVisible(false);
     keysButton->setVisible(false);
@@ -102,10 +103,10 @@ void AdaptixWidget::createUI()
     tasksButton->setFixedSize(37, 28);
     tasksButton->setToolTip("Jobs & Tasks");
 
-    proxyButton = new QPushButton( QIcon(":/icons/vpn"), "", this );
-    proxyButton->setIconSize( QSize( 24,24 ));
-    proxyButton->setFixedSize(37, 28);
-    proxyButton->setToolTip("Proxy tables");
+    tunnelButton = new QPushButton( QIcon(":/icons/vpn"), "", this );
+    tunnelButton->setIconSize( QSize( 24,24 ));
+    tunnelButton->setFixedSize(37, 28);
+    tunnelButton->setToolTip("Tunnels table");
 
     line_3 = new QFrame(this);
     line_3->setFrameShape(QFrame::VLine);
@@ -157,8 +158,8 @@ void AdaptixWidget::createUI()
     topHLayout->addWidget(targetsButton);
     topHLayout->addWidget(line_2);
     topHLayout->addWidget(tasksButton);
-    topHLayout->addWidget(proxyButton);
     topHLayout->addWidget(line_3);
+    topHLayout->addWidget(tunnelButton);
     topHLayout->addWidget(downloadsButton);
     topHLayout->addWidget(credsButton);
     topHLayout->addWidget(screensButton);
@@ -203,6 +204,7 @@ void AdaptixWidget::ClearAdaptix()
     TasksTab->Clear();
     ListenersTab->Clear();
     SessionsTablePage->Clear();
+    TunnelsTab->Clear();
 
     LinkListenerAgent.clear();
 
@@ -223,6 +225,21 @@ void AdaptixWidget::ClearAdaptix()
         RegisterListenersUI.remove(listenerName);
         delete builder;
     }
+}
+
+void AdaptixWidget::Close()
+{
+    TickThread->quit();
+    TickThread->wait();
+    delete TickThread;
+
+    ChannelThread->quit();
+    ChannelThread->wait();
+    delete ChannelThread;
+
+    ChannelWsWorker->webSocket->close();
+
+    this->ClearAdaptix();
 }
 
 
@@ -344,6 +361,11 @@ void AdaptixWidget::LoadListenersUI()
     this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
 }
 
+void AdaptixWidget::LoadTunnelsUI()
+{
+    this->AddTab(TunnelsTab, "Tunnels", ":/icons/vpn");
+}
+
 void AdaptixWidget::LoadDownloadsUI()
 {
     this->AddTab(DownloadsTab, "Downloads", ":/icons/downloads");
@@ -386,6 +408,7 @@ void AdaptixWidget::LoadConsoleUI(QString AgentId)
 
     auto text = QString("Console [%1]").arg( AgentId );
     this->AddTab(Agents[AgentId]->Console, text);
+    Agents[AgentId]->Console->InputFocus();
 }
 
 void AdaptixWidget::LoadFileBrowserUI(QString AgentId)

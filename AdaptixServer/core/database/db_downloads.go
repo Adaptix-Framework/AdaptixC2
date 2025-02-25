@@ -40,9 +40,9 @@ func (dbms *DBMS) DbDownloadInsert(downloadData adaptix.DownloadData) error {
 		return fmt.Errorf("download %s alredy exists", downloadData.FileId)
 	}
 
-	insertQuery = `INSERT INTO Downloads (FileId, AgentId, AgentName, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State) values(?,?,?,?,?,?,?,?,?,?);`
+	insertQuery = `INSERT INTO Downloads (FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State) values(?,?,?,?,?,?,?,?,?,?,?);`
 	_, err = dbms.database.Exec(insertQuery,
-		downloadData.FileId, downloadData.AgentId, downloadData.AgentName, downloadData.Computer, downloadData.RemotePath,
+		downloadData.FileId, downloadData.AgentId, downloadData.AgentName, downloadData.User, downloadData.Computer, downloadData.RemotePath,
 		downloadData.LocalPath, downloadData.TotalSize, downloadData.RecvSize, downloadData.Date, downloadData.State,
 	)
 	return err
@@ -80,13 +80,13 @@ func (dbms *DBMS) DbDownloadAll() []adaptix.DownloadData {
 
 	ok = dbms.DatabaseExists()
 	if ok {
-		selectQuery = `SELECT FileId, AgentId, AgentName, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State FROM Downloads;`
+		selectQuery = `SELECT FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State FROM Downloads;`
 		query, err := dbms.database.Query(selectQuery)
 		if err == nil {
 
 			for query.Next() {
 				downloadData := adaptix.DownloadData{}
-				err = query.Scan(&downloadData.FileId, &downloadData.AgentId, &downloadData.AgentName, &downloadData.Computer, &downloadData.RemotePath,
+				err = query.Scan(&downloadData.FileId, &downloadData.AgentId, &downloadData.AgentName, &downloadData.User, &downloadData.Computer, &downloadData.RemotePath,
 					&downloadData.LocalPath, &downloadData.TotalSize, &downloadData.RecvSize, &downloadData.Date, &downloadData.State,
 				)
 				if err != nil {

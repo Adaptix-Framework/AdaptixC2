@@ -50,7 +50,7 @@ func (ex *AdaptixExtender) ExAgentPackData(agentName string, agentObject []byte,
 	}
 }
 
-func (ex *AdaptixExtender) ExAgentCommand(agentName string, agentObject []byte, args map[string]any) ([]byte, string, error) {
+func (ex *AdaptixExtender) ExAgentCommand(agentName string, agentObject []byte, args map[string]any) ([]byte, []byte, error) {
 	var module *ModuleExtender
 
 	value, ok := ex.agentModules.Get(agentName)
@@ -58,7 +58,7 @@ func (ex *AdaptixExtender) ExAgentCommand(agentName string, agentObject []byte, 
 		module = value.(*ModuleExtender)
 		return module.AgentCommand(agentObject, args)
 	} else {
-		return nil, "", errors.New("module not found")
+		return nil, nil, errors.New("module not found")
 	}
 }
 

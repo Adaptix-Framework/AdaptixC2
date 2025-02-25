@@ -13,7 +13,7 @@ DownloadsWidget::DownloadsWidget(QWidget* w)
 void DownloadsWidget::createUI()
 {
     tableWidget = new QTableWidget(this );
-    tableWidget->setColumnCount(9 );
+    tableWidget->setColumnCount(10 );
     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
     tableWidget->setAutoFillBackground( false );
     tableWidget->setShowGrid( false );
@@ -31,12 +31,13 @@ void DownloadsWidget::createUI()
     tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem( "File ID" ) );
     tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Agent Type" ) );
     tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Agent ID" ) );
-    tableWidget->setHorizontalHeaderItem( 3, new QTableWidgetItem( "Computer" ) );
-    tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem( "File" ) );
-    tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem( "Date" ) );
-    tableWidget->setHorizontalHeaderItem( 6, new QTableWidgetItem( "Size" ) );
-    tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem( "Received" ) );
-    tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem( "Progress" ) );
+    tableWidget->setHorizontalHeaderItem( 3, new QTableWidgetItem( "User" ) );
+    tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem( "Computer" ) );
+    tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem( "File" ) );
+    tableWidget->setHorizontalHeaderItem( 6, new QTableWidgetItem( "Date" ) );
+    tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem( "Size" ) );
+    tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem( "Received" ) );
+    tableWidget->setHorizontalHeaderItem( 9, new QTableWidgetItem( "Progress" ) );
     tableWidget->hideColumn( 0 );
 
     mainGridLayout = new QGridLayout(this );
@@ -68,6 +69,7 @@ void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
     auto item_FileID    = new QTableWidgetItem( newDownload.FileId );
     auto item_AgentName = new QTableWidgetItem( newDownload.AgentName );
     auto item_AgentID   = new QTableWidgetItem( newDownload.AgentId );
+    auto item_User      = new QTableWidgetItem( newDownload.User );
     auto item_Computer  = new QTableWidgetItem( newDownload.Computer );
     auto item_File      = new QTableWidgetItem( newDownload.Filename );
     auto item_Date      = new QTableWidgetItem( newDownload.Date );
@@ -82,6 +84,9 @@ void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
 
     item_AgentID->setTextAlignment( Qt::AlignCenter );
     item_AgentID->setFlags( item_AgentID->flags() ^ Qt::ItemIsEditable );
+
+    item_User->setTextAlignment( Qt::AlignCenter );
+    item_User->setFlags( item_User->flags() ^ Qt::ItemIsEditable );
 
     item_Computer->setTextAlignment( Qt::AlignCenter );
     item_Computer->setFlags( item_Computer->flags() ^ Qt::ItemIsEditable );
@@ -112,12 +117,13 @@ void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
     tableWidget->setItem( tableWidget->rowCount() - 1, 0, item_FileID );
     tableWidget->setItem( tableWidget->rowCount() - 1, 1, item_AgentName );
     tableWidget->setItem( tableWidget->rowCount() - 1, 2, item_AgentID );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 3, item_Computer );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 4, item_File );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 5, item_Date );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 6, item_Size );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 7, item_Received );
-    tableWidget->setCellWidget( tableWidget->rowCount() - 1, 8, pgbar );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 3, item_User );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 4, item_Computer );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 5, item_File );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 6, item_Date );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 7, item_Size );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 8, item_Received );
+    tableWidget->setCellWidget( tableWidget->rowCount() - 1, 9, pgbar );
     tableWidget->setSortingEnabled( isSortingEnabled );
 
     if( newDownload.State == DOWNLOAD_STATE_STOPPED )
@@ -128,6 +134,7 @@ void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
     tableWidget->horizontalHeader()->setSectionResizeMode( 6, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 7, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 8, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 9, QHeaderView::ResizeToContents );
 
     adaptixWidget->Downloads[newDownload.FileId] = newDownload;
 }
@@ -141,9 +148,9 @@ void DownloadsWidget::EditDownloadItem(QString fileId, int recvSize, int state)
     for (int row = 0; row < tableWidget->rowCount(); ++row) {
         QTableWidgetItem *item = tableWidget->item(row, 0);
         if ( item && item->text() == fileId ) {
-            tableWidget->item(row, 7)->setText(BytesToFormat(recvSize) );
+            tableWidget->item(row, 8)->setText(BytesToFormat(recvSize) );
 
-            QProgressBar *pgbar = (QProgressBar*) tableWidget->cellWidget(row,8);
+            QProgressBar *pgbar = (QProgressBar*) tableWidget->cellWidget(row,9);
             pgbar->setValue(recvSize);
 
             if( state == DOWNLOAD_STATE_STOPPED) {
@@ -155,16 +162,16 @@ void DownloadsWidget::EditDownloadItem(QString fileId, int recvSize, int state)
             else if (state == DOWNLOAD_STATE_FINISHED) {
                 adaptixWidget->Downloads[fileId].RecvSize = adaptixWidget->Downloads[fileId].TotalSize;
 
-                tableWidget->item( row, 7 )->setText("");
+                tableWidget->item( row, 8 )->setText("");
 
                 auto item_Status = new QTableWidgetItem( "Finished" );
                 item_Status->setTextAlignment( Qt::AlignCenter );
-                tableWidget->removeCellWidget(row,8);
-                tableWidget->setItem( row, 8, item_Status );
-                tableWidget->item( row, 8 )->setForeground(QColor(COLOR_NeonGreen));
+                tableWidget->removeCellWidget(row,9);
+                tableWidget->setItem(row, 9, item_Status);
+                tableWidget->item(row, 9)->setForeground(QColor(COLOR_NeonGreen));
             }
             else if (state == DOWNLOAD_STATE_CANCELED) {
-                tableWidget->removeCellWidget(row,8);
+                tableWidget->removeCellWidget(row,9);
                 tableWidget->removeRow( row );
                 adaptixWidget->Downloads.remove(fileId);
             }
@@ -203,7 +210,7 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
         ctxMenu.addAction("Delete file", this, &DownloadsWidget::actionDelete );
     }
     else {
-        if( tableWidget->cellWidget( tableWidget->currentRow(), 8)->isEnabled() )
+        if( tableWidget->cellWidget( tableWidget->currentRow(), 9)->isEnabled() )
             ctxMenu.addAction("Stop", this, &DownloadsWidget::actionStop );
         else
             ctxMenu.addAction("Start", this, &DownloadsWidget::actionStart );
@@ -217,7 +224,7 @@ void DownloadsWidget::actionSync()
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
-    if( tableWidget->item( tableWidget->currentRow(), 7 )->text() == "" ) {
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() == "" ) {
         QString fileId  = tableWidget->item( tableWidget->currentRow(), 0 )->text();
 
         QJsonObject dataJson;
@@ -273,7 +280,7 @@ void DownloadsWidget::actionDelete()
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
-    if( tableWidget->item( tableWidget->currentRow(), 7 )->text() == "" ) {
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() == "" ) {
 
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
@@ -294,7 +301,7 @@ void DownloadsWidget::actionStart()
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
-    if( tableWidget->item( tableWidget->currentRow(), 7 )->text() != "" ) {
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
 
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
@@ -315,7 +322,7 @@ void DownloadsWidget::actionStop()
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
-    if( tableWidget->item( tableWidget->currentRow(), 7 )->text() != "" ) {
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
 
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
@@ -336,7 +343,7 @@ void DownloadsWidget::actionCancel()
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
-    if( tableWidget->item( tableWidget->currentRow(), 7 )->text() != "" ) {
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
 
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();

@@ -2,13 +2,16 @@
 #include <Utils/Convert.h>
 #include <Client/Requestor.h>
 
+#include <MainAdaptix.h>
+
 SessionsTableWidget::SessionsTableWidget( QWidget* w )
 {
     this->mainWidget = w;
     this->createUI();
 
-    connect( tableWidget, &QTableWidget::doubleClicked, this, &SessionsTableWidget::handleTableDoubleClicked );
+    connect( tableWidget, &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
+    connect( tableWidget, &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
 }
 
 SessionsTableWidget::~SessionsTableWidget() = default;
@@ -17,8 +20,8 @@ void SessionsTableWidget::createUI()
 {
     titleAgentID   = new QTableWidgetItem( "Agent ID" );
     titleAgentType = new QTableWidgetItem( "Agent Type" );
-    titleListener  = new QTableWidgetItem( "Listener" );
     titleExternal  = new QTableWidgetItem( "External" );
+    titleListener  = new QTableWidgetItem( "Listener" );
     titleInternal  = new QTableWidgetItem( "Internal" );
     titleDomain    = new QTableWidgetItem( "Domain" );
     titleComputer  = new QTableWidgetItem( "Computer" );
@@ -62,6 +65,11 @@ void SessionsTableWidget::createUI()
     tableWidget->setHorizontalHeaderItem( ColumnTags,      titleTag );
     tableWidget->setHorizontalHeaderItem( ColumnLast,      titleLast );
     tableWidget->setHorizontalHeaderItem( ColumnSleep,     titleSleep );
+
+    for(int i = 0; i < 15; i++) {
+        if (GlobalClient->settings->data.SessionsTableColumns[i] == false)
+            tableWidget->hideColumn(i);
+    }
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);

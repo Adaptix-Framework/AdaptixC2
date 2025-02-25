@@ -55,7 +55,7 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v.0.1"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.2"
 
 //////////
 
@@ -64,6 +64,8 @@
 #define EVENT_LISTENER_START    3
 #define EVENT_LISTENER_STOP     4
 #define EVENT_AGENT_NEW         5
+#define EVENT_TUNNEL_START      6
+#define EVENT_TUNNEL_STOP       7
 
 /////////
 
@@ -91,6 +93,10 @@
 #define TYPE_DOWNLOAD_UPDATE 0x52
 #define TYPE_DOWNLOAD_DELETE 0x53
 
+#define TYPE_TUNNEL_CREATE 0x57
+#define TYPE_TUNNEL_EDIT   0x58
+#define TYPE_TUNNEL_DELETE 0x59
+
 #define TYPE_BROWSER_DISKS   0x61
 #define TYPE_BROWSER_FILES   0x62
 #define TYPE_BROWSER_STATUS  0x63
@@ -114,9 +120,19 @@
 #define COLOR_BabyBlue     "#89CFF0"     // blue
 #define COLOR_Gray         "#808080"     // gray
 #define COLOR_SaturGray    "#606060"     // gray
+#define COLOR_ConsoleWhite "#e0e0e0"     // white
 #define COLOR_White        "#ffffff"     // white
 
 //////////
+
+typedef struct SettingsData {
+    bool    ConsoleTime;
+    QString MainTheme;
+    QString FontFamily;
+    int     FontSize;
+
+    bool SessionsTableColumns[15];
+} SettingsData;
 
 typedef struct ListenerData
 {
@@ -160,6 +176,7 @@ typedef struct DownloadData
     QString FileId;
     QString AgentId;
     QString AgentName;
+    QString User;
     QString Computer;
     QString Filename;
     int     TotalSize;
@@ -168,12 +185,29 @@ typedef struct DownloadData
     QString Date;
 } DownloadData;
 
+typedef struct TunnelData
+{
+    QString TunnelId;
+    QString AgentId;
+    QString Computer;
+    QString Username;
+    QString Process;
+    QString Type;
+    QString Info;
+    QString Interface;
+    QString Port;
+    QString Client;
+    QString Fport;
+    QString Fhost;
+} TunnelData;
+
 typedef struct TaskData
 {
     QString TaskId;
     int     TaskType;
     QString AgentId;
     QString Client;
+    QString Computer;
     qint64  StartTime;
     qint64  FinishTime;
     QString CommandLine;

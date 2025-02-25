@@ -21,6 +21,7 @@ const (
 	TASK    TaskType = 1
 	BROWSER TaskType = 2
 	JOB     TaskType = 3
+	TUNNEL  TaskType = 4
 
 	MESSAGE_INFO    MessageType = 5
 	MESSAGE_ERROR   MessageType = 6
@@ -33,22 +34,60 @@ const (
 )
 
 type Teamserver interface {
+	//TsClientConnect(username string, socket *websocket.Conn)
+	TsClientDisconnect(username string)
+
+	TsListenerStart(listenerName string, configType string, config string, customData []byte) error
+	TsListenerEdit(listenerName string, configType string, config string) error
+	TsListenerStop(listenerName string, configType string) error
+	TsListenerGetProfile(listenerName string, listenerType string) ([]byte, error)
+
+	TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
 	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
 	TsAgentUpdateData(newAgentObject []byte) error
+	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
+	TsAgentCtxExit(agentId string, username string) error
+	TsAgentRemove(agentId string) error
+	TsAgentSetTag(agentId string, tag string) error
 
 	TsTaskQueueAddQuite(agentId string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
 	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
+	TsTaskStop(agentId string, taskId string) error
+	TsTaskDelete(agentId string, taskId string) error
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
+	TsDownloadSync(fileId string) (string, []byte, error)
+	TsDownloadDelete(fileId string) error
+
+	TsDownloadChangeState(fileId string, username string, command string) error
+	TsAgentBrowserDisks(agentId string, username string) error
+	TsAgentBrowserProcess(agentId string, username string) error
+	TsAgentBrowserFiles(agentId string, path string, username string) error
+	TsAgentBrowserUpload(agentId string, path string, content []byte, username string) error
+	TsAgentBrowserDownload(agentId string, path string, username string) error
 
 	TsClientBrowserDisks(jsonTask string, jsonDrives string)
 	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
 	TsClientBrowserFilesStatus(jsonTask string)
 	TsClientBrowserProcess(jsonTask string, jsonFiles string)
+
+	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
+	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
+	TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
+	TsTunnelStopSocks(AgentId string, Port int)
+	TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
+	TsTunnelStopLocalPortFwd(AgentId string, Port int)
+	TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
+	TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, error)
+	TsTunnelStopRemotePortFwd(AgentId string, Port int)
+	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionResume(AgentId string, channelId int)
+	TsTunnelConnectionData(channelId int, data []byte)
+	TsTunnelConnectionAccept(tunnelId int, channelId int)
 }
 
 type ModuleExtender struct {
@@ -109,6 +148,12 @@ type TaskData struct {
 	ClearText   string      `json:"t_clear_text"`
 	Completed   bool        `json:"t_completed"`
 	Sync        bool        `json:"t_sync"`
+}
+
+type ConsoleMessageData struct {
+	Message string      `json:"m_message"`
+	Status  MessageType `json:"m_status"`
+	Text    string      `json:"m_text"`
 }
 
 type ListingFileData struct {
@@ -225,36 +270,48 @@ func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) ([]byte, string, error) {
+func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) ([]byte, []byte, error) {
 	var (
-		taskData TaskData
-		agent    AgentData
-		message  string
-		err      error
-		buffer   bytes.Buffer
+		taskData      TaskData
+		agentData     AgentData
+		messageData   ConsoleMessageData
+		command       string
+		err           error
+		ok            bool
+		bufferTask    bytes.Buffer
+		bufferMessage bytes.Buffer
 	)
 
-	err = json.Unmarshal(agentObject, &agent)
+	err = json.Unmarshal(agentObject, &agentData)
 	if err != nil {
-		return nil, "", err
+		goto ERR
 	}
 
-	command, ok := args["command"].(string)
+	command, ok = args["command"].(string)
 	if !ok {
-		return nil, "", errors.New("'command' must be set")
+		err = errors.New("'command' must be set")
+		goto ERR
 	}
 
-	taskData, message, err = CreateTask(m.ts, agent, command, args)
+	taskData, messageData, err = CreateTask(m.ts, agentData, command, args)
 	if err != nil {
-		return nil, "", err
+		goto ERR
 	}
 
-	err = json.NewEncoder(&buffer).Encode(taskData)
+	err = json.NewEncoder(&bufferTask).Encode(taskData)
 	if err != nil {
-		return nil, "", err
+		goto ERR
 	}
 
-	return buffer.Bytes(), message, nil
+	err = json.NewEncoder(&bufferMessage).Encode(messageData)
+	if err != nil {
+		goto ERR
+	}
+
+	return bufferTask.Bytes(), bufferMessage.Bytes(), nil
+
+ERR:
+	return nil, nil, err
 }
 
 func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error) {
@@ -659,4 +716,120 @@ func SyncBrowserProcess(ts Teamserver, task TaskData, processlist []ListingProce
 	jsonTask = string(jsonData)
 
 	ts.TsClientBrowserProcess(jsonTask, jsonProcess)
+}
+
+/// TUNNEL
+
+func TunnelMessageConnectTCP(channelId int, address string, port int) []byte {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+	)
+
+	packData, _ = TunnelCreateTCP(channelId, address, port)
+
+	taskData = TaskData{
+		Type: TUNNEL,
+		Data: packData,
+		Sync: false,
+	}
+
+	json.NewEncoder(&buffer).Encode(taskData)
+	return buffer.Bytes()
+}
+
+func TunnelMessageConnectUDP(channelId int, address string, port int) []byte {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+	)
+
+	packData, _ = TunnelCreateUDP(channelId, address, port)
+
+	taskData = TaskData{
+		Type: TUNNEL,
+		Data: packData,
+		Sync: false,
+	}
+
+	json.NewEncoder(&buffer).Encode(taskData)
+	return buffer.Bytes()
+}
+
+func TunnelMessageWriteTCP(channelId int, data []byte) []byte {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+	)
+
+	packData, _ = TunnelWriteTCP(channelId, data)
+
+	taskData = TaskData{
+		Type: TUNNEL,
+		Data: packData,
+		Sync: false,
+	}
+
+	json.NewEncoder(&buffer).Encode(taskData)
+	return buffer.Bytes()
+}
+
+func TunnelMessageWriteUDP(channelId int, data []byte) []byte {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+	)
+
+	packData, _ = TunnelWriteUDP(channelId, data)
+
+	taskData = TaskData{
+		Type: TUNNEL,
+		Data: packData,
+		Sync: false,
+	}
+
+	json.NewEncoder(&buffer).Encode(taskData)
+	return buffer.Bytes()
+}
+
+func TunnelMessageClose(channelId int) []byte {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+	)
+
+	packData, _ = TunnelClose(channelId)
+
+	taskData = TaskData{
+		Type: TUNNEL,
+		Data: packData,
+		Sync: false,
+	}
+
+	json.NewEncoder(&buffer).Encode(taskData)
+	return buffer.Bytes()
+}
+
+func TunnelMessageReverse(tunnelId int, port int) []byte {
+	var (
+		packData []byte
+		taskData TaskData
+		buffer   bytes.Buffer
+	)
+
+	packData, _ = TunnelReverse(tunnelId, port)
+
+	taskData = TaskData{
+		Type: TUNNEL,
+		Data: packData,
+		Sync: false,
+	}
+
+	json.NewEncoder(&buffer).Encode(taskData)
+	return buffer.Bytes()
 }

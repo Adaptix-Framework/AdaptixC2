@@ -108,7 +108,7 @@ func (tc *TsConnector) tcWebsocketConnect(wsConn *websocket.Conn) {
 			continue
 		}
 
-		logs.Debug("User '%s' disconnected: %s\n", username, err.Error())
+		logs.Debug("Client '%s' disconnected: %s\n", username, err.Error())
 
 		tc.teamserver.TsClientDisconnect(username)
 		break
