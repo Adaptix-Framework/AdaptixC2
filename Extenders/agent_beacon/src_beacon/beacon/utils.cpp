@@ -297,24 +297,18 @@ ULONG FileTimeToUnixTimestamp(FILETIME ft)
     ULARGE_INTEGER uli;
     uli.LowPart = ft.dwLowDateTime;
     uli.HighPart = ft.dwHighDateTime;
+    ULONG64 fileTime = uli.QuadPart;
 
-    //const ULONG64 EPOCH_DIFFERENCE = 11644473600ULL;
-    //return (uli.QuadPart / 10000000ULL) - EPOCH_DIFFERENCE;
+    const ULONG64 EPOCH_OFFSET = 116444736000000000ULL
 
-    const DWORD EPOCH_DIFFERENCE_LOW  = 0xD53E8000; 
-    const DWORD EPOCH_DIFFERENCE_HIGH = 0x019DB1DE; 
-
-    if (uli.LowPart < EPOCH_DIFFERENCE_LOW) {
-        uli.LowPart -= EPOCH_DIFFERENCE_LOW;
-        uli.HighPart -= EPOCH_DIFFERENCE_HIGH + 1;
-    }
-    else {
-        uli.LowPart -= EPOCH_DIFFERENCE_LOW;
-        uli.HighPart -= EPOCH_DIFFERENCE_HIGH;
+    if (fileTime < EPOCH_OFFSET)
+    {
+        return 0;
     }
 
-    ULONG seconds = (uli.HighPart * (10000000 / (1ULL << 32))) + (uli.LowPart / 10000000);
-    return seconds;
+    ULONG64 unixTimestamp = (fileTime - EPOCH_OFFSET) / 10000000;
+
+    return static_cast<ULONG>(unixTimestamp);
 }
 
 void ConvertUnicodeStringToChar(wchar_t* src, size_t srcSize, char* dst, size_t dstSize)
