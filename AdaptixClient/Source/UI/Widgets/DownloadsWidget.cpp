@@ -202,7 +202,7 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
         return;
 
     auto FileID   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
-    auto Received = tableWidget->item( tableWidget->currentRow(), 7 )->text();
+    auto Received = tableWidget->item( tableWidget->currentRow(), 8 )->text();
 
     auto ctxMenu = QMenu();
     if(Received.compare("") == 0) {
