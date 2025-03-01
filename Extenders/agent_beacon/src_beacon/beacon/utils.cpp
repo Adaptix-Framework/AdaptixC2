@@ -299,7 +299,7 @@ ULONG FileTimeToUnixTimestamp(FILETIME ft)
     uli.HighPart = ft.dwHighDateTime;
     ULONG64 fileTime = uli.QuadPart;
 
-    const ULONG64 EPOCH_OFFSET = 116444736000000000ULL
+    const ULONG64 EPOCH_OFFSET = 116444736000000000ULL;
 
     if (fileTime < EPOCH_OFFSET)
     {
