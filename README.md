@@ -23,3 +23,7 @@ Please checkout the [wiki](https://adaptix-framework.gitbook.io/adaptix-framewor
 ## Current Extenders
 * HTTP/S Beacon Listener 
 * Beacon Agent
+
+# CONTRIBUTING
+
+Please pushing сhanges to **dev** braach. Otherwise, changes will be made manually in the dev branch.
