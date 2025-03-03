@@ -7,7 +7,7 @@ int IMP_LENGTH = 6;
 #else
 int IMP_LENGTH = 7;
 #endif
-char IMP_FUNC[] = { '_', '_', 'i', 'm', 'p', '_', '_', 0 };
+//char IMP_FUNC[] = { '_', '_', 'i', 'm', 'p', '_', '_', 0 };
 
 void InitBofOutputData()
 {

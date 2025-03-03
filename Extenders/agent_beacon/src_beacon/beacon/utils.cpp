@@ -1,5 +1,7 @@
 #include "ApiLoader.h"
 
+//////////
+
 LPVOID MemAllocLocal(DWORD bufferSize) 
 {
 	return ApiWin->LocalAlloc(LPTR, bufferSize);
@@ -313,7 +315,7 @@ ULONG FileTimeToUnixTimestamp(FILETIME ft)
         uli.HighPart -= EPOCH_DIFFERENCE_HIGH;
     }
 
-    ULONG seconds = (uli.HighPart * (10000000 / (1ULL << 32))) + (uli.LowPart / 10000000);
+    ULONG seconds = (uli.HighPart * ((1ULL << 32) / 10000000)) + (uli.LowPart / 10000000);
     return seconds;
 }
 
