@@ -27,6 +27,9 @@ void* __cdecl memcpy(void* Dst, const void* Src, size_t Size)
 	return Dst;
 }
 
+CHAR HdChrA(CHAR c) { return c; }
+WCHAR HdChrW(WCHAR c) { return c; }
+
 WINAPIFUNC* ApiWin = NULL;
 NTAPIFUNC*  ApiNt = NULL;
 
@@ -94,14 +97,42 @@ BOOL ApiLoad()
 		ApiWin->WriteFile				= (decltype(WriteFile)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_WRITEFILE);
 
 		// iphlpapi
-		CHAR iphlpapi_c[] = {'I', 'p', 'h', 'l', 'p', 'a', 'p', 'i', '.', 'd', 'l', 'l', 0};
+		CHAR iphlpapi_c[13];
+		iphlpapi_c[0] = HdChrA('I');
+		iphlpapi_c[1] = HdChrA('p');
+		iphlpapi_c[2] = HdChrA('h');
+		iphlpapi_c[3] = HdChrA('l');
+		iphlpapi_c[4] = HdChrA('p');
+		iphlpapi_c[5] = HdChrA('a');
+		iphlpapi_c[6] = HdChrA('p');
+		iphlpapi_c[7] = HdChrA('i');
+		iphlpapi_c[8] = HdChrA('.');
+		iphlpapi_c[9] = HdChrA('d');
+		iphlpapi_c[10] = HdChrA('l');
+		iphlpapi_c[11] = HdChrA('l');
+		iphlpapi_c[12] = HdChrA(0);
+
 		HMODULE hIphlpapiModule = ApiWin->LoadLibraryA(iphlpapi_c);
 		if (hIphlpapiModule) {
 			ApiWin->GetAdaptersInfo = (decltype(GetAdaptersInfo)*) GetSymbolAddress(hIphlpapiModule, HASH_FUNC_GETADAPTERSINFO);
 		}
 
 		// advapi32
-		CHAR advapi32_c[] = { 'A', 'd', 'v', 'a', 'p', 'i', '3', '2', '.', 'd', 'l', 'l', 0 };
+		CHAR advapi32_c[13];
+		advapi32_c[0] = HdChrA('A');
+		advapi32_c[1] = HdChrA('d');
+		advapi32_c[2] = HdChrA('v');
+		advapi32_c[3] = HdChrA('a');
+		advapi32_c[4] = HdChrA('p');
+		advapi32_c[5] = HdChrA('i');
+		advapi32_c[6] = HdChrA('3');
+		advapi32_c[7] = HdChrA('2');
+		advapi32_c[8] = HdChrA('.');
+		advapi32_c[9] = HdChrA('d');
+		advapi32_c[10] = HdChrA('l');
+		advapi32_c[11] = HdChrA('l');
+		advapi32_c[12] = HdChrA(0);
+
 		HMODULE hAdvapi32Module = ApiWin->LoadLibraryA(advapi32_c);
 		if (hAdvapi32Module) {
 			ApiWin->GetTokenInformation		= (decltype(GetTokenInformation)*)     GetSymbolAddress(hAdvapi32Module, HASH_FUNC_GETTOKENINFORMATION);
@@ -113,7 +144,19 @@ BOOL ApiLoad()
 		}
 
 		// msvcrt
-		CHAR msvcrt_c[] = { 'm', 's', 'v', 'c', 'r', 't', '.', 'd', 'l', 'l', 0 };
+		CHAR msvcrt_c[11];
+		msvcrt_c[0] = HdChrA('m');
+		msvcrt_c[1] = HdChrA('s');
+		msvcrt_c[2] = HdChrA('v');
+		msvcrt_c[3] = HdChrA('c');
+		msvcrt_c[4] = HdChrA('r');
+		msvcrt_c[5] = HdChrA('t');
+		msvcrt_c[6] = HdChrA('.');
+		msvcrt_c[7] = HdChrA('d');
+		msvcrt_c[8] = HdChrA('l');
+		msvcrt_c[9] = HdChrA('l');
+		msvcrt_c[10] = HdChrA(0);
+
 		HMODULE hMsvcrtModule = ApiWin->LoadLibraryA(msvcrt_c);
 		if (hMsvcrtModule) {
 #if defined(DEBUG)
@@ -123,7 +166,19 @@ BOOL ApiLoad()
 		}
 
 		// Ws2_32
-		CHAR ws2_32_c[] = { 'W', 's', '2', '_', '3', '2', '.', 'd', 'l', 'l', 0 };
+		CHAR ws2_32_c[11];
+		ws2_32_c[0] = HdChrA('W');
+		ws2_32_c[1] = HdChrA('s');
+		ws2_32_c[2] = HdChrA('2');
+		ws2_32_c[3] = HdChrA('_');
+		ws2_32_c[4] = HdChrA('3');
+		ws2_32_c[5] = HdChrA('2');
+		ws2_32_c[6] = HdChrA('.');
+		ws2_32_c[7] = HdChrA('d');
+		ws2_32_c[8] = HdChrA('l');
+		ws2_32_c[9] = HdChrA('l');
+		ws2_32_c[10] = HdChrA(0);
+
 		HMODULE hWs2_32Module = ApiWin->LoadLibraryA(ws2_32_c);
 		if (hWs2_32Module) {
 			ApiWin->WSAStartup      = (decltype(WSAStartup)*)      GetSymbolAddress(hWs2_32Module, HASH_FUNC_WSASTARTUP);

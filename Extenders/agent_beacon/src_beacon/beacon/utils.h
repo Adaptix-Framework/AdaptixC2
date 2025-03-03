@@ -2,13 +2,19 @@
 
 #include <windows.h>
 
+//////////
+
 LPVOID MemAllocLocal(DWORD bufferSize);
 
 LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize);
 
 void MemFreeLocal(LPVOID* buffer, DWORD bufferSize);
 
+//////////
+
 BYTE* ReadFromPipe(HANDLE hPipe, ULONG* bufferSize);
+
+//////////
 
 ULONG GenerateRandom32();
 
@@ -25,6 +31,8 @@ CHAR* _GetHostName();
 CHAR* _GetDomainName();
 
 CHAR* _GetProcessName();
+
+//////////
 
 CHAR* StrChrA(CHAR* str, CHAR c);
 

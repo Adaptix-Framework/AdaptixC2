@@ -14,6 +14,9 @@ typedef int (*vsnprintf_t)(char* str, size_t size, const char* format, va_list a
 extern void* __cdecl memset(void*, int, size_t);
 extern void* __cdecl memcpy(void*, const void*, size_t);
 
+CHAR HdChrA(CHAR c);
+WCHAR HdChrW(WCHAR c);
+
 struct WINAPIFUNC
 {
 	// kernel32
