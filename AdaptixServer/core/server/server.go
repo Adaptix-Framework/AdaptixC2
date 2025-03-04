@@ -91,12 +91,12 @@ func (ts *Teamserver) RestoreData() {
 	for _, agentData := range restoreAgents {
 
 		agent := &Agent{
-			Data:        agentData,
-			TunnelQueue: safe.NewSlice(),
-			TasksQueue:  safe.NewSlice(),
-			Tasks:       safe.NewMap(),
-			ClosedTasks: safe.NewMap(),
-			Tick:        false,
+			Data:           agentData,
+			TunnelQueue:    safe.NewSlice(),
+			TasksQueue:     safe.NewSlice(),
+			RunningTasks:   safe.NewMap(),
+			CompletedTasks: safe.NewMap(),
+			Tick:           false,
 		}
 
 		ts.agents.Put(agentData.Id, agent)
@@ -111,13 +111,10 @@ func (ts *Teamserver) RestoreData() {
 
 		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)
 		for _, taskData := range restoreTasks {
-			agent.ClosedTasks.Put(taskData.TaskId, taskData)
+			agent.CompletedTasks.Put(taskData.TaskId, taskData)
 
-			packet1 := CreateSpAgentTaskCreate(taskData)
-			ts.TsSyncAllClients(packet1)
-
-			packet2 := CreateSpAgentTaskUpdate(taskData)
-			ts.TsSyncAllClients(packet2)
+			packet := CreateSpAgentTaskSync(taskData)
+			ts.TsSyncAllClients(packet)
 		}
 
 		countAgents++

@@ -61,7 +61,7 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 				var taskBuffer bytes.Buffer
 				_ = json.NewEncoder(&taskBuffer).Encode(taskData)
 				tasksArray = append(tasksArray, taskBuffer.Bytes())
-				agent.Tasks.Put(taskData.TaskId, taskData)
+				agent.RunningTasks.Put(taskData.TaskId, taskData)
 				agent.TasksQueue.Delete(i)
 				i--
 			} else {
@@ -117,7 +117,7 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 		return
 	}
 
-	value, ok = agent.Tasks.GetDelete(taskData.TaskId)
+	value, ok = agent.RunningTasks.GetDelete(taskData.TaskId)
 	if !ok {
 		return
 	}
@@ -150,9 +150,9 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 		task.ClearText = oldText + task.ClearText
 
 		if task.Completed {
-			agent.ClosedTasks.Put(task.TaskId, task)
+			agent.CompletedTasks.Put(task.TaskId, task)
 		} else {
-			agent.Tasks.Put(task.TaskId, task)
+			agent.RunningTasks.Put(task.TaskId, task)
 		}
 
 		if task.Sync {
@@ -167,8 +167,8 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 		if task.Completed {
 			task.Message = taskData.Message
 			task.MessageType = taskData.MessageType
-			
-			agent.ClosedTasks.Put(task.TaskId, task)
+
+			agent.CompletedTasks.Put(task.TaskId, task)
 
 			if task.Sync {
 				ts.DBMS.DbTaskInsert(task)
@@ -183,9 +183,9 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 		task.ClearText = taskData.ClearText
 
 		if task.Completed {
-			agent.ClosedTasks.Put(task.TaskId, task)
+			agent.CompletedTasks.Put(task.TaskId, task)
 		} else {
-			agent.Tasks.Put(task.TaskId, task)
+			agent.RunningTasks.Put(task.TaskId, task)
 		}
 
 		if task.Sync {
@@ -234,7 +234,7 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 		return nil
 	}
 
-	value, ok = agent.Tasks.Get(taskId)
+	value, ok = agent.RunningTasks.Get(taskId)
 	if ok {
 		task = value.(adaptix.TaskData)
 		if task.Type == TYPE_JOB {
@@ -287,12 +287,12 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 		}
 	}
 
-	value, ok = agent.Tasks.Get(taskId)
+	value, ok = agent.RunningTasks.Get(taskId)
 	if ok {
 		return fmt.Errorf("task %v in process", taskId)
 	}
 
-	value, ok = agent.ClosedTasks.GetDelete(taskId)
+	value, ok = agent.CompletedTasks.GetDelete(taskId)
 	if ok {
 		task = value.(adaptix.TaskData)
 		ts.DBMS.DbTaskDelete(task.TaskId, "")

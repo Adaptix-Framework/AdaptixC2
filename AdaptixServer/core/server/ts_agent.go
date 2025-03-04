@@ -92,12 +92,12 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 		agentData.Tags = ""
 
 		agent = &Agent{
-			Data:        agentData,
-			TunnelQueue: safe.NewSlice(),
-			TasksQueue:  safe.NewSlice(),
-			Tasks:       safe.NewMap(),
-			ClosedTasks: safe.NewMap(),
-			Tick:        false,
+			Data:           agentData,
+			TunnelQueue:    safe.NewSlice(),
+			TasksQueue:     safe.NewSlice(),
+			RunningTasks:   safe.NewMap(),
+			CompletedTasks: safe.NewMap(),
+			Tick:           false,
 		}
 
 		ts.agents.Put(agentData.Id, agent)
@@ -197,14 +197,14 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 			taskData.StartDate = time.Now().Unix()
 
 			if taskData.Sync {
-				packet := CreateSpAgentTaskCreate(taskData)
+				packet := CreateSpAgentTaskSync(taskData)
 				ts.TsSyncAllClients(packet)
 			}
-			
+
 			if taskData.Type == TYPE_TASK || taskData.Type == TYPE_BROWSER || taskData.Type == TYPE_JOB {
 				agent.TasksQueue.Put(taskData)
 			} else if taskData.Type == TYPE_TUNNEL {
-				agent.Tasks.Put(taskData.TaskId, taskData)
+				agent.RunningTasks.Put(taskData.TaskId, taskData)
 			}
 
 			if len(messageData.Message) > 0 || len(messageData.Text) > 0 {
@@ -219,11 +219,6 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 	}
 
 	return nil
-}
-
-func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string) {
-	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
-	ts.TsSyncAllClients(packet)
 }
 
 func (ts *Teamserver) TsAgentRemove(agentId string) error {
@@ -286,4 +281,11 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 
 		time.Sleep(800 * time.Millisecond)
 	}
+}
+
+/// Console
+
+func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string) {
+	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
+	ts.TsSyncAllClients(packet)
 }

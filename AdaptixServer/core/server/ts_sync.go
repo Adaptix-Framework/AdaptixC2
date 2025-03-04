@@ -118,15 +118,17 @@ func (ts *Teamserver) TsPresyncListeners() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncAgentsAndTasks() []interface{} {
-	var packets []interface{}
+	var (
+		packets     []interface{}
+		sortedTasks []adaptix.TaskData
+	)
+
 	ts.agents.ForEach(func(key string, value interface{}) bool {
 		agent := value.(*Agent)
 		p := CreateSpAgentNew(agent.Data)
 		packets = append(packets, p)
 
-		var sortedTasks []adaptix.TaskData
-
-		agent.ClosedTasks.ForEach(func(key2 string, value2 interface{}) bool {
+		agent.CompletedTasks.ForEach(func(key2 string, value2 interface{}) bool {
 			taskData := value2.(adaptix.TaskData)
 			index := sort.Search(len(sortedTasks), func(i int) bool {
 				return sortedTasks[i].StartDate > taskData.StartDate
@@ -135,13 +137,14 @@ func (ts *Teamserver) TsPresyncAgentsAndTasks() []interface{} {
 			return true
 		})
 
-		for _, taskData := range sortedTasks {
-			t1 := CreateSpAgentTaskCreate(taskData)
-			t2 := CreateSpAgentTaskUpdate(taskData)
-			packets = append(packets, t1, t2)
-		}
 		return true
 	})
+
+	for _, taskData := range sortedTasks {
+		t1 := CreateSpAgentTaskSync(taskData)
+		packets = append(packets, t1)
+	}
+
 	return packets
 }
 

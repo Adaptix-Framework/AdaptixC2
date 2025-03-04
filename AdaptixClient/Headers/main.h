@@ -55,7 +55,14 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.2"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.3-dev"
+
+///////////
+
+#define OS_UNKNOWN 0
+#define OS_WINDOWS 1
+#define OS_LINUX   2
+#define OS_MAC     3
 
 //////////
 
@@ -82,7 +89,7 @@
 #define TYPE_AGENT_REG         0x41
 #define TYPE_AGENT_NEW         0x42
 #define TYPE_AGENT_TICK        0x43
-#define TYPE_AGENT_TASK_CREATE 0x44
+#define TYPE_AGENT_TASK_SYNC   0x44
 #define TYPE_AGENT_TASK_UPDATE 0x45
 #define TYPE_AGENT_TASK_REMOVE 0x46
 #define TYPE_AGENT_CONSOLE_OUT 0x47

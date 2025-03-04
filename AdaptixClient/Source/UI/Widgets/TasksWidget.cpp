@@ -154,7 +154,8 @@ void TasksWidget::addTableItem(TaskData newTask)
     else
         return;
 
-    QString startTime = UnixTimestampGlobalToStringLocal(newTask.StartTime);
+    QString startTime  = UnixTimestampGlobalToStringLocal(newTask.StartTime);
+    QString finishTime = UnixTimestampGlobalToStringLocal(newTask.FinishTime);
 
     auto item_TaskId      = new QTableWidgetItem( newTask.TaskId );
     auto item_TaskType    = new QTableWidgetItem( taskType );
@@ -162,7 +163,7 @@ void TasksWidget::addTableItem(TaskData newTask)
     auto item_Client      = new QTableWidgetItem( newTask.Client );
     auto item_Computer    = new QTableWidgetItem( newTask.Computer );
     auto item_StartTime   = new QTableWidgetItem( startTime );
-    auto item_FinishTime  = new QTableWidgetItem( "" );
+    auto item_FinishTime  = new QTableWidgetItem( finishTime );
     auto item_CommandLine = new QTableWidgetItem( newTask.CommandLine );
     auto item_Result      = new QTableWidgetItem( newTask.Status );
     auto item_Message     = new QTableWidgetItem( newTask.Message );

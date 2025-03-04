@@ -55,6 +55,25 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     item_Sleep    = new TableWidgetItemAgent( sleep, this );
     item_Pid      = new TableWidgetItemAgent( data.Pid, this );
 
+    if (data.Os == OS_WINDOWS) {
+        if (data.Elevated)
+            item_Os->setIcon(QIcon(":/icons/os_win_red"));
+        else
+            item_Os->setIcon(QIcon(":/icons/os_win_blue"));
+    }
+    else if (data.Os == OS_LINUX) {
+        if (data.Elevated)
+            item_Os->setIcon(QIcon(":/icons/os_linux_red"));
+        else
+            item_Os->setIcon(QIcon(":/icons/os_linux_blue"));
+    }
+    else if (data.Os == OS_MAC) {
+        if (data.Elevated)
+            item_Os->setIcon(QIcon(":/icons/os_mac_red"));
+        else
+            item_Os->setIcon(QIcon(":/icons/os_mac_blue"));
+    }
+
     Console        = new ConsoleWidget(this, commander );
     FileBrowser    = new BrowserFilesWidget(this);
     ProcessBrowser = new BrowserProcessWidget(this);

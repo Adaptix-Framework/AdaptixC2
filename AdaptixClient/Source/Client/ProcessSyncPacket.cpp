@@ -202,7 +202,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         }
         return true;
     }
-    if( spType == TYPE_AGENT_TASK_CREATE ) {
+    if( spType == TYPE_AGENT_TASK_SYNC ) {
         if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
             return false;
         }
@@ -222,6 +222,21 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
             return false;
         }
         if (!jsonObj.contains("a_computer") || !jsonObj["a_computer"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_finish_time") || !jsonObj["a_finish_time"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_msg_type") || !jsonObj["a_msg_type"].isDouble()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_message") || !jsonObj["a_message"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_text") || !jsonObj["a_text"].isString()) {
+            return false;
+        }
+        if (!jsonObj.contains("a_completed") || !jsonObj["a_completed"].isBool()) {
             return false;
         }
         return true;
@@ -563,7 +578,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
 
 
-    if( spType == TYPE_AGENT_TASK_CREATE )
+    if( spType == TYPE_AGENT_TASK_SYNC )
     {
         TaskData taskData = { 0 };
         taskData.AgentId     = jsonObj["a_id"].toString();
@@ -573,10 +588,16 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         taskData.CommandLine = jsonObj["a_cmdline"].toString();
         taskData.Client      = jsonObj["a_client"].toString();
         taskData.Computer    = jsonObj["a_computer"].toString();
+        taskData.FinishTime  = jsonObj["a_finish_time"].toDouble();
+        taskData.MessageType = jsonObj["a_msg_type"].toDouble();
+        taskData.Message     = jsonObj["a_message"].toString();
+        taskData.Output      = jsonObj["a_text"].toString();
+        taskData.Completed   = jsonObj["a_completed"].toBool();
 
-        if (Agents.contains(taskData.AgentId))
+        if (Agents.contains(taskData.AgentId)) {
             Agents[taskData.AgentId]->Console->ConsoleOutputPrompt( taskData.StartTime, taskData.TaskId, taskData.Client, taskData.CommandLine);
-
+            Agents[taskData.AgentId]->Console->ConsoleOutputMessage( taskData.FinishTime, taskData.TaskId, taskData.MessageType, taskData.Message, taskData.Output , taskData.Completed );
+        }
         TasksTab->AddTaskItem(taskData);
 
         return;

@@ -31,7 +31,7 @@ const (
 	TYPE_AGENT_REG         = 0x41
 	TYPE_AGENT_NEW         = 0x42
 	TYPE_AGENT_TICK        = 0x43
-	TYPE_AGENT_TASK_CREATE = 0x44
+	TYPE_AGENT_TASK_SYNC   = 0x44
 	TYPE_AGENT_TASK_UPDATE = 0x45
 	TYPE_AGENT_TASK_REMOVE = 0x46
 	TYPE_AGENT_CONSOLE_OUT = 0x47
@@ -194,17 +194,22 @@ func CreateSpAgentConsoleOutput(agentId string, messageType int, message string,
 	}
 }
 
-func CreateSpAgentTaskCreate(taskData adaptix.TaskData) SyncPackerAgentTaskCreate {
-	return SyncPackerAgentTaskCreate{
-		SpType: TYPE_AGENT_TASK_CREATE,
+func CreateSpAgentTaskSync(taskData adaptix.TaskData) SyncPackerAgentTaskSync {
+	return SyncPackerAgentTaskSync{
+		SpType: TYPE_AGENT_TASK_SYNC,
 
-		AgentId:   taskData.AgentId,
-		TaskId:    taskData.TaskId,
-		StartTime: taskData.StartDate,
-		CmdLine:   taskData.CommandLine,
-		TaskType:  taskData.Type,
-		Client:    taskData.Client,
-		Computer:  taskData.Computer,
+		AgentId:     taskData.AgentId,
+		TaskId:      taskData.TaskId,
+		StartTime:   taskData.StartDate,
+		CmdLine:     taskData.CommandLine,
+		TaskType:    taskData.Type,
+		Client:      taskData.Client,
+		Computer:    taskData.Computer,
+		FinishTime:  taskData.FinishDate,
+		MessageType: taskData.MessageType,
+		Message:     taskData.Message,
+		Text:        taskData.ClearText,
+		Completed:   taskData.Completed,
 	}
 }
 

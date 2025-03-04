@@ -66,8 +66,8 @@ type Agent struct {
 	TunnelQueue *safe.Slice // taskData TaskData
 	TasksQueue  *safe.Slice // taskData TaskData
 
-	Tasks       safe.Map // taskId string, taskData TaskData
-	ClosedTasks safe.Map // taskId string, taskData TaskData
+	RunningTasks   safe.Map // taskId string, taskData TaskData
+	CompletedTasks safe.Map // taskId string, taskData TaskData
 }
 
 type TunnelConnection struct {
@@ -206,16 +206,21 @@ type SyncPackerAgentConsoleOutput struct {
 	ClearText   string `json:"a_text"`
 }
 
-type SyncPackerAgentTaskCreate struct {
+type SyncPackerAgentTaskSync struct {
 	SpType int `json:"type"`
 
-	AgentId   string `json:"a_id"`
-	TaskId    string `json:"a_task_id"`
-	TaskType  int    `json:"a_task_type"`
-	StartTime int64  `json:"a_start_time"`
-	CmdLine   string `json:"a_cmdline"`
-	Client    string `json:"a_client"`
-	Computer  string `json:"a_computer"`
+	TaskType    int    `json:"a_task_type"`
+	TaskId      string `json:"a_task_id"`
+	AgentId     string `json:"a_id"`
+	Client      string `json:"a_client"`
+	Computer    string `json:"a_computer"`
+	CmdLine     string `json:"a_cmdline"`
+	StartTime   int64  `json:"a_start_time"`
+	FinishTime  int64  `json:"a_finish_time"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	Text        string `json:"a_text"`
+	Completed   bool   `json:"a_completed"`
 }
 
 type SyncPackerAgentTaskUpdate struct {
