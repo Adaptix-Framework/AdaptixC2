@@ -47,5 +47,15 @@
         <file alias="fs_open_folder">icons/filesystem/open_folder_64dp.png</file>
         <file alias="fs_unknown">icons/filesystem/fs_unknown_64dp.png</file>
 
+        <file alias="os_win_blue">icons/os/icon-windows-blue.png</file>
+        <file alias="os_win_grey">icons/os/icon-windows-grey.png</file>
+        <file alias="os_win_red">icons/os/icon-windows-red.png</file>
+        <file alias="os_linux_blue">icons/os/icon-linux-blue.png</file>
+        <file alias="os_linux_grey">icons/os/icon-linux-grey.png</file>
+        <file alias="os_linux_red">icons/os/icon-linux-red.png</file>
+        <file alias="os_mac_blue">icons/os/icon-mac-blue.png</file>
+        <file alias="os_mac_grey">icons/os/icon-mac-grey.png</file>
+        <file alias="os_mac_red">icons/os/icon-mac-red.png</file>
     </qresource>
+
 </RCC>

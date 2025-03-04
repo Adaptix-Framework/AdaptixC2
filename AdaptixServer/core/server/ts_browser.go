@@ -290,7 +290,7 @@ func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
 		return
 	}
 
-	value, ok = agent.Tasks.Get(taskData.TaskId)
+	value, ok = agent.RunningTasks.Get(taskData.TaskId)
 	if ok {
 		task = value.(adaptix.TaskData)
 	} else {
@@ -301,7 +301,7 @@ func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
 		return
 	}
 
-	agent.Tasks.Delete(taskData.TaskId)
+	agent.RunningTasks.Delete(taskData.TaskId)
 
 	if taskData.MessageType != CONSOLE_OUT_ERROR && taskData.MessageType != CONSOLE_OUT_LOCAL_ERROR {
 		taskData.Message = "Status: OK"
@@ -333,7 +333,7 @@ func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFil
 		return
 	}
 
-	value, ok = agent.Tasks.Get(taskData.TaskId)
+	value, ok = agent.RunningTasks.Get(taskData.TaskId)
 	if ok {
 		task = value.(adaptix.TaskData)
 	} else {
@@ -344,7 +344,7 @@ func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFil
 		return
 	}
 
-	agent.Tasks.Delete(taskData.TaskId)
+	agent.RunningTasks.Delete(taskData.TaskId)
 
 	if taskData.MessageType != CONSOLE_OUT_ERROR && taskData.MessageType != CONSOLE_OUT_LOCAL_ERROR {
 		taskData.Message = "Status: OK"
@@ -380,7 +380,7 @@ func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
 		return
 	}
 
-	value, ok = agent.Tasks.Get(taskData.TaskId)
+	value, ok = agent.RunningTasks.Get(taskData.TaskId)
 	if ok {
 		task = value.(adaptix.TaskData)
 	} else {
@@ -391,7 +391,7 @@ func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
 		return
 	}
 
-	agent.Tasks.Delete(taskData.TaskId)
+	agent.RunningTasks.Delete(taskData.TaskId)
 
 	packet := CreateSpBrowserFilesStatus(taskData)
 	ts.TsSyncClient(task.Client, packet)
@@ -419,7 +419,7 @@ func (ts *Teamserver) TsClientBrowserProcess(jsonTask string, jsonFiles string) 
 		return
 	}
 
-	value, ok = agent.Tasks.Get(taskData.TaskId)
+	value, ok = agent.RunningTasks.Get(taskData.TaskId)
 	if ok {
 		task = value.(adaptix.TaskData)
 	} else {
@@ -430,7 +430,7 @@ func (ts *Teamserver) TsClientBrowserProcess(jsonTask string, jsonFiles string) 
 		return
 	}
 
-	agent.Tasks.Delete(taskData.TaskId)
+	agent.RunningTasks.Delete(taskData.TaskId)
 
 	if taskData.MessageType != CONSOLE_OUT_ERROR && taskData.MessageType != CONSOLE_OUT_LOCAL_ERROR {
 		taskData.Message = "Status: OK"
