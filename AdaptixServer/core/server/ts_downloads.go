@@ -204,7 +204,6 @@ func (ts *Teamserver) TsDownloadChangeState(fileId string, clientName string, co
 	var (
 		downloadData adaptix.DownloadData
 		agent        *Agent
-		taskData     adaptix.TaskData
 		agentObject  bytes.Buffer
 		newState     int
 		data         []byte
@@ -239,22 +238,7 @@ func (ts *Teamserver) TsDownloadChangeState(fileId string, clientName string, co
 		return err
 	}
 
-	err = json.Unmarshal(data, &taskData)
-	if err != nil {
-		return err
-	}
-
-	if taskData.TaskId == "" {
-		taskData.TaskId, _ = krypt.GenerateUID(8)
-	}
-	taskData.Type = TYPE_BROWSER
-	taskData.CommandLine = ""
-	taskData.AgentId = agent.Data.Id
-	taskData.Client = clientName
-	taskData.Computer = agent.Data.Computer
-	taskData.StartDate = time.Now().Unix()
-
-	agent.TasksQueue.Put(taskData)
+	ts.TsTaskCreate(agent.Data.Id, "", clientName, data)
 
 	return nil
 }

@@ -30,6 +30,7 @@ type Teamserver interface {
 	TsAgentRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
 
+	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
 	TsTaskQueueAddQuite(agentId string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
 	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)

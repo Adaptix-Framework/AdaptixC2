@@ -2,12 +2,10 @@ package server
 
 import (
 	"AdaptixServer/core/adaptix"
-	"AdaptixServer/core/utils/krypt"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 )
 
 /// AGENT
@@ -17,7 +15,6 @@ func (ts *Teamserver) TsAgentBrowserDisks(agentId string, clientName string) err
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -32,20 +29,7 @@ func (ts *Teamserver) TsAgentBrowserDisks(agentId string, clientName string) err
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.StartDate = time.Now().Unix()
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -59,7 +43,6 @@ func (ts *Teamserver) TsAgentBrowserProcess(agentId string, clientName string) e
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -74,20 +57,7 @@ func (ts *Teamserver) TsAgentBrowserProcess(agentId string, clientName string) e
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.StartDate = time.Now().Unix()
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -101,7 +71,6 @@ func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, clientNam
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -116,20 +85,7 @@ func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, clientNam
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.StartDate = time.Now().Unix()
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -143,7 +99,6 @@ func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content 
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -158,20 +113,7 @@ func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content 
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.StartDate = time.Now().Unix()
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -185,7 +127,6 @@ func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, client
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -200,20 +141,7 @@ func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, client
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.StartDate = time.Now().Unix()
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -227,7 +155,6 @@ func (ts *Teamserver) TsAgentCtxExit(agentId string, clientName string) error {
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -242,22 +169,7 @@ func (ts *Teamserver) TsAgentCtxExit(agentId string, clientName string) error {
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.CommandLine = "agent terminate"
-		taskData.StartDate = time.Now().Unix()
-		taskData.Sync = true
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "agent terminate", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)

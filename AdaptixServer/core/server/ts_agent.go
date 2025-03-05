@@ -2,7 +2,6 @@ package server
 
 import (
 	"AdaptixServer/core/adaptix"
-	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"AdaptixServer/core/utils/tformat"
@@ -158,7 +157,7 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
+		//taskData    adaptix.TaskData
 		messageData adaptix.ConsoleMessageData
 		dataTask    []byte
 		dataMessage []byte
@@ -177,35 +176,12 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 				return err
 			}
 
-			err = json.Unmarshal(dataTask, &taskData)
-			if err != nil {
-				return err
-			}
-
 			err = json.Unmarshal(dataMessage, &messageData)
 			if err != nil {
 				return err
 			}
 
-			if taskData.TaskId == "" {
-				taskData.TaskId, _ = krypt.GenerateUID(8)
-			}
-			taskData.CommandLine = cmdline
-			taskData.AgentId = agentId
-			taskData.Client = clientName
-			taskData.Computer = agent.Data.Computer
-			taskData.StartDate = time.Now().Unix()
-
-			if taskData.Sync {
-				packet := CreateSpAgentTaskSync(taskData)
-				ts.TsSyncAllClients(packet)
-			}
-
-			if taskData.Type == TYPE_TASK || taskData.Type == TYPE_BROWSER || taskData.Type == TYPE_JOB {
-				agent.TasksQueue.Put(taskData)
-			} else if taskData.Type == TYPE_TUNNEL {
-				agent.RunningTasks.Put(taskData.TaskId, taskData)
-			}
+			ts.TsTaskCreate(agentId, cmdline, clientName, dataTask)
 
 			if len(messageData.Message) > 0 || len(messageData.Text) > 0 {
 				ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text)

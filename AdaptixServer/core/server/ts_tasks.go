@@ -10,6 +10,81 @@ import (
 	"time"
 )
 
+func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte) {
+	var (
+		agent    *Agent
+		taskData adaptix.TaskData
+		value    any
+		ok       bool
+		err      error
+	)
+	err = json.Unmarshal(taskObject, &taskData)
+	if err != nil {
+		logs.Error("", "TsTaskCreate: %v", err.Error())
+		return
+	}
+
+	value, ok = ts.agents.Get(agentId)
+	if !ok {
+		logs.Error("", "TsTaskCreate: agent %v not found", agentId)
+		return
+	}
+	agent = value.(*Agent)
+
+	//err = json.Unmarshal(dataMessage, &messageData)
+	//if err != nil {
+	//	return err
+	//}
+
+	if taskData.TaskId == "" {
+		taskData.TaskId, _ = krypt.GenerateUID(8)
+	}
+	taskData.AgentId = agentId
+	taskData.CommandLine = cmdline
+	taskData.Client = client
+	taskData.Computer = agent.Data.Computer
+	taskData.StartDate = time.Now().Unix()
+	if taskData.Completed {
+		taskData.FinishDate = taskData.StartDate
+	}
+
+	switch taskData.Type {
+
+	case TYPE_TASK:
+		if taskData.Sync {
+			packet := CreateSpAgentTaskSync(taskData)
+			ts.TsSyncAllClients(packet)
+		}
+		agent.TasksQueue.Put(taskData)
+
+	case TYPE_BROWSER:
+		agent.TasksQueue.Put(taskData)
+
+	case TYPE_JOB:
+		if taskData.Sync {
+			packet := CreateSpAgentTaskSync(taskData)
+			ts.TsSyncAllClients(packet)
+		}
+		agent.TasksQueue.Put(taskData)
+
+	case TYPE_TUNNEL:
+		if taskData.Sync {
+			agent.RunningTasks.Put(taskData.TaskId, taskData)
+		} else {
+			agent.TunnelQueue.Put(taskData)
+		}
+
+	default:
+		break
+	}
+
+	//if len(messageData.Message) > 0 || len(messageData.Text) > 0 {
+	//	ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text)
+	//}
+}
+
+/////
+
 func (ts *Teamserver) TsTaskQueueAddQuite(agentId string, taskObject []byte) {
 	var (
 		agent    *Agent
@@ -201,12 +276,11 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 
 func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 	var (
-		agent    *Agent
-		task     adaptix.TaskData
-		taskData adaptix.TaskData
-		value    any
-		ok       bool
-		found    bool
+		agent *Agent
+		task  adaptix.TaskData
+		value any
+		ok    bool
+		found bool
 	)
 
 	value, ok = ts.agents.Get(agentId)
@@ -243,18 +317,8 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 				return err
 			}
 
-			err = json.Unmarshal(data, &taskData)
-			if err != nil {
-				return err
-			}
+			ts.TsTaskCreate(agent.Data.Id, "job kill "+taskId, "", data)
 
-			if taskData.TaskId == "" {
-				taskData.TaskId, _ = krypt.GenerateUID(8)
-			}
-			taskData.AgentId = agentId
-			taskData.CommandLine = "job kill " + taskId
-			taskData.StartDate = time.Now().Unix()
-			agent.TasksQueue.Put(taskData)
 			return nil
 		} else {
 			return fmt.Errorf("taski %v in process", taskId)
