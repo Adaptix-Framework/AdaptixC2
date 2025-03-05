@@ -141,8 +141,8 @@ func (ts *Teamserver) TsPresyncAgentsAndTasks() []interface{} {
 	})
 
 	for _, taskData := range sortedTasks {
-		t1 := CreateSpAgentTaskSync(taskData)
-		packets = append(packets, t1)
+		t := CreateSpAgentTaskSync(taskData)
+		packets = append(packets, t)
 	}
 
 	return packets
