@@ -87,6 +87,12 @@ void BofPacker::Pack(QString type, QJsonValue jsonValue)
             return;
 
         QByteArray bytes = QByteArray::fromBase64(jsonValue.toString().toUtf8());
+
+        QByteArray bytesLengthData;
+        int bytesLength = bytes.size();
+        bytesLengthData.append(reinterpret_cast<const char*>(&bytesLength), sizeof(bytesLength));
+
+        data.append(bytesLengthData);
         data.append(bytes);
     }
 }
