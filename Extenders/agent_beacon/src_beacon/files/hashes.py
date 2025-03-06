@@ -112,6 +112,10 @@ GetAdaptersInfo
 // advapi32
 GetTokenInformation
 LookupAccountSidA
+RevertToSelf
+SetThreadToken
+ImpersonateLoggedOnUser
+
 
 // msvcrt
 printf
@@ -180,6 +184,8 @@ send
 accept
 bind
 listen
+recvfrom
+sendto
 """
 
 ##############################################
