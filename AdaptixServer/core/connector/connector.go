@@ -23,7 +23,7 @@ type Teamserver interface {
 
 	TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
 	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
-	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
+	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
 	TsAgentCtxExit(agentId string, username string) error
@@ -31,7 +31,6 @@ type Teamserver interface {
 	TsAgentSetTag(agentId string, tag string) error
 
 	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
-	TsTaskQueueAddQuite(agentId string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
 	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
 	TsTaskStop(agentId string, taskId string) error

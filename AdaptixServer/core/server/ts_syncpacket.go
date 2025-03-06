@@ -28,15 +28,15 @@ const (
 	TYPE_LISTENER_STOP  = 0x33
 	TYPE_LISTENER_EDIT  = 0x34
 
-	TYPE_AGENT_REG         = 0x41
-	TYPE_AGENT_NEW         = 0x42
-	TYPE_AGENT_TICK        = 0x43
-	TYPE_AGENT_TASK_SYNC   = 0x44
-	TYPE_AGENT_TASK_UPDATE = 0x45
-	TYPE_AGENT_TASK_REMOVE = 0x46
-	TYPE_AGENT_CONSOLE_OUT = 0x47
-	TYPE_AGENT_UPDATE      = 0x48
-	TYPE_AGENT_REMOVE      = 0x49
+	TYPE_AGENT_REG    = 0x41
+	TYPE_AGENT_NEW    = 0x42
+	TYPE_AGENT_TICK   = 0x43
+	TYPE_AGENT_UPDATE = 0x44
+	TYPE_AGENT_REMOVE = 0x45
+
+	TYPE_AGENT_TASK_SYNC   = 0x49
+	TYPE_AGENT_TASK_UPDATE = 0x4a
+	TYPE_AGENT_TASK_REMOVE = 0x4b
 
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
@@ -50,6 +50,10 @@ const (
 	TYPE_BROWSER_FILES        = 0x62
 	TYPE_BROWSER_FILES_STATUS = 0x63
 	TYPE_BROWSER_PROCESS      = 0x64
+
+	TYPE_AGENT_CONSOLE_OUT       = 0x69
+	TYPE_AGENT_CONSOLE_TASK_SYNC = 0x70
+	TYPE_AGENT_CONSOLE_TASK_UPD  = 0x71
 )
 
 func CreateSpEvent(event int, message string) SpEvent {
@@ -182,15 +186,11 @@ func CreateSpAgentTick(agents []string) SyncPackerAgentTick {
 	}
 }
 
-func CreateSpAgentConsoleOutput(agentId string, messageType int, message string, text string) SyncPackerAgentConsoleOutput {
-	return SyncPackerAgentConsoleOutput{
-		SpCreateTime: time.Now().UTC().Unix(),
-		SpType:       TYPE_AGENT_CONSOLE_OUT,
+func CreateSpAgentRemove(agentId string) SyncPackerAgentRemove {
+	return SyncPackerAgentRemove{
+		SpType: TYPE_AGENT_REMOVE,
 
-		AgentId:     agentId,
-		MessageType: messageType,
-		Message:     message,
-		ClearText:   text,
+		AgentId: agentId,
 	}
 }
 
@@ -236,11 +236,46 @@ func CreateSpAgentTaskRemove(taskData adaptix.TaskData) SyncPackerAgentTaskRemov
 	}
 }
 
-func CreateSpAgentRemove(agentId string) SyncPackerAgentRemove {
-	return SyncPackerAgentRemove{
-		SpType: TYPE_AGENT_REMOVE,
+func CreateSpAgentConsoleOutput(agentId string, messageType int, message string, text string) SyncPackerAgentConsoleOutput {
+	return SyncPackerAgentConsoleOutput{
+		SpCreateTime: time.Now().UTC().Unix(),
+		SpType:       TYPE_AGENT_CONSOLE_OUT,
 
-		AgentId: agentId,
+		AgentId:     agentId,
+		MessageType: messageType,
+		Message:     message,
+		ClearText:   text,
+	}
+}
+
+func CreateSpAgentConsoleTaskSync(taskData adaptix.TaskData) SyncPackerAgentConsoleTaskSync {
+	return SyncPackerAgentConsoleTaskSync{
+		SpType: TYPE_AGENT_CONSOLE_TASK_SYNC,
+
+		AgentId:     taskData.AgentId,
+		TaskId:      taskData.TaskId,
+		StartTime:   taskData.StartDate,
+		CmdLine:     taskData.CommandLine,
+		Client:      taskData.Client,
+		FinishTime:  taskData.FinishDate,
+		MessageType: taskData.MessageType,
+		Message:     taskData.Message,
+		Text:        taskData.ClearText,
+		Completed:   taskData.Completed,
+	}
+}
+
+func CreateSpAgentConsoleTaskUpd(taskData adaptix.TaskData) SyncPackerAgentConsoleTaskUpd {
+	return SyncPackerAgentConsoleTaskUpd{
+		SpType: TYPE_AGENT_CONSOLE_TASK_UPD,
+
+		AgentId:     taskData.AgentId,
+		TaskId:      taskData.TaskId,
+		FinishTime:  taskData.FinishDate,
+		MessageType: taskData.MessageType,
+		Message:     taskData.Message,
+		Text:        taskData.ClearText,
+		Completed:   taskData.Completed,
 	}
 }
 

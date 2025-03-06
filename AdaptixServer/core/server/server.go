@@ -92,6 +92,7 @@ func (ts *Teamserver) RestoreData() {
 
 		agent := &Agent{
 			Data:           agentData,
+			OutConsole:     safe.NewSlice(),
 			TunnelQueue:    safe.NewSlice(),
 			TasksQueue:     safe.NewSlice(),
 			RunningTasks:   safe.NewMap(),

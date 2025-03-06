@@ -106,6 +106,13 @@ func (dbms *DBMS) DatabaseInit() error {
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Consoles" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"AgentId" TEXT NOT NULL,
+    	"Packet" BLOB
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
 	return err
 }
 

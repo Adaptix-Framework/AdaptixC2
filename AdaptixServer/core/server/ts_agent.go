@@ -12,40 +12,6 @@ import (
 	"time"
 )
 
-func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
-	var (
-		agent        *Agent
-		err          error
-		newAgentData adaptix.AgentData
-	)
-
-	err = json.Unmarshal(newAgentObject, &newAgentData)
-	if err != nil {
-		return err
-	}
-
-	value, ok := ts.agents.Get(newAgentData.Id)
-	if !ok {
-		return errors.New("Agent does not exist")
-	}
-
-	agent, _ = value.(*Agent)
-	agent.Data.Sleep = newAgentData.Sleep
-	agent.Data.Jitter = newAgentData.Jitter
-	agent.Data.Elevated = newAgentData.Elevated
-	agent.Data.Username = newAgentData.Username
-
-	err = ts.DBMS.DbAgentUpdate(agent.Data)
-	if err != nil {
-		logs.Error("", err.Error())
-	}
-
-	packetNew := CreateSpAgentUpdate(agent.Data)
-	ts.TsSyncAllClients(packetNew)
-
-	return nil
-}
-
 func (ts *Teamserver) TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error) {
 	return ts.Extender.ExAgentGenerate(agentName, config, listenerProfile)
 }
@@ -92,6 +58,7 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 
 		agent = &Agent{
 			Data:           agentData,
+			OutConsole:     safe.NewSlice(),
 			TunnelQueue:    safe.NewSlice(),
 			TasksQueue:     safe.NewSlice(),
 			RunningTasks:   safe.NewMap(),
@@ -145,7 +112,7 @@ func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byt
 
 		if tasksCount > 0 {
 			message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
-			ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "")
+			ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "", false)
 		}
 	}
 
@@ -157,10 +124,6 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		//taskData    adaptix.TaskData
-		messageData adaptix.ConsoleMessageData
-		dataTask    []byte
-		dataMessage []byte
 	)
 
 	if ts.agent_configs.Contains(agentName) {
@@ -171,20 +134,9 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 			agent, _ = value.(*Agent)
 			_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
-			dataTask, dataMessage, err = ts.Extender.ExAgentCommand(agentName, agentObject.Bytes(), args)
+			err = ts.Extender.ExAgentCommand(clientName, cmdline, agentName, agentObject.Bytes(), args)
 			if err != nil {
 				return err
-			}
-
-			err = json.Unmarshal(dataMessage, &messageData)
-			if err != nil {
-				return err
-			}
-
-			ts.TsTaskCreate(agentId, cmdline, clientName, dataTask)
-
-			if len(messageData.Message) > 0 || len(messageData.Text) > 0 {
-				ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text)
 			}
 
 		} else {
@@ -193,6 +145,42 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 	} else {
 		return fmt.Errorf("agent %v not registered", agentName)
 	}
+
+	return nil
+}
+
+/// Data
+
+func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
+	var (
+		agent        *Agent
+		err          error
+		newAgentData adaptix.AgentData
+	)
+
+	err = json.Unmarshal(newAgentObject, &newAgentData)
+	if err != nil {
+		return err
+	}
+
+	value, ok := ts.agents.Get(newAgentData.Id)
+	if !ok {
+		return errors.New("Agent does not exist")
+	}
+
+	agent, _ = value.(*Agent)
+	agent.Data.Sleep = newAgentData.Sleep
+	agent.Data.Jitter = newAgentData.Jitter
+	agent.Data.Elevated = newAgentData.Elevated
+	agent.Data.Username = newAgentData.Username
+
+	err = ts.DBMS.DbAgentUpdate(agent.Data)
+	if err != nil {
+		logs.Error("", err.Error())
+	}
+
+	packetNew := CreateSpAgentUpdate(agent.Data)
+	ts.TsSyncAllClients(packetNew)
 
 	return nil
 }
@@ -261,7 +249,16 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 
 /// Console
 
-func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string) {
+func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool) {
 	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
 	ts.TsSyncAllClients(packet)
+
+	if store {
+		_ = ts.DBMS.DbConsoleInsert(agentId, packet)
+	}
+}
+
+func (ts *Teamserver) TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string) {
+	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
+	ts.TsSyncClient(client, packet)
 }

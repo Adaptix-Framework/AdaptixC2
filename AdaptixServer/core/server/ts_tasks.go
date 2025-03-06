@@ -54,6 +54,12 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 		if taskData.Sync {
 			packet := CreateSpAgentTaskSync(taskData)
 			ts.TsSyncAllClients(packet)
+
+			packet2 := CreateSpAgentConsoleTaskSync(taskData)
+			ts.TsSyncAllClients(packet2)
+
+			agent.OutConsole.Put(packet2)
+			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
 		}
 		agent.TasksQueue.Put(taskData)
 
@@ -64,6 +70,12 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 		if taskData.Sync {
 			packet := CreateSpAgentTaskSync(taskData)
 			ts.TsSyncAllClients(packet)
+
+			packet2 := CreateSpAgentConsoleTaskSync(taskData)
+			ts.TsSyncAllClients(packet2)
+
+			agent.OutConsole.Put(packet2)
+			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
 		}
 		agent.TasksQueue.Put(taskData)
 
@@ -83,11 +95,10 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 	//}
 }
 
-/////
-
-func (ts *Teamserver) TsTaskQueueAddQuite(agentId string, taskObject []byte) {
+func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 	var (
 		agent    *Agent
+		task     adaptix.TaskData
 		taskData adaptix.TaskData
 		value    any
 		ok       bool
@@ -98,18 +109,114 @@ func (ts *Teamserver) TsTaskQueueAddQuite(agentId string, taskObject []byte) {
 		return
 	}
 
-	taskData.Sync = false
-
 	value, ok = ts.agents.Get(agentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
-		logs.Error("", "TsTaskQueueAdd: agent %v not found", agentId)
+	if !ok {
+		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
 		return
 	}
+	agent = value.(*Agent)
 
-	agent.TasksQueue.Put(taskData)
+	value, ok = agent.RunningTasks.GetDelete(taskData.TaskId)
+	if !ok {
+		return
+	}
+	task = value.(adaptix.TaskData)
+
+	task.Data = []byte("")
+	task.FinishDate = taskData.FinishDate
+	task.Completed = taskData.Completed
+
+	if task.Type == TYPE_JOB {
+		if task.MessageType != CONSOLE_OUT_ERROR {
+			task.MessageType = taskData.MessageType
+		}
+
+		var oldMessage string
+		if task.Message == "" {
+			oldMessage = taskData.Message
+		} else {
+			oldMessage = task.Message
+		}
+
+		oldText := task.ClearText
+
+		task.Message = taskData.Message
+		task.ClearText = taskData.ClearText
+
+		packet := CreateSpAgentTaskUpdate(task)
+		packet2 := CreateSpAgentConsoleTaskUpd(task)
+
+		task.Message = oldMessage
+		task.ClearText = oldText + task.ClearText
+
+		if task.Completed {
+			agent.CompletedTasks.Put(task.TaskId, task)
+		} else {
+			agent.RunningTasks.Put(task.TaskId, task)
+		}
+
+		if task.Sync {
+			if task.Completed {
+				_ = ts.DBMS.DbTaskInsert(task)
+			}
+
+			ts.TsSyncAllClients(packet)
+			ts.TsSyncAllClients(packet2)
+
+			agent.OutConsole.Put(packet2)
+			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
+		}
+
+	} else if task.Type == TYPE_TUNNEL {
+		if task.Completed {
+			task.Message = taskData.Message
+			task.MessageType = taskData.MessageType
+
+			agent.CompletedTasks.Put(task.TaskId, task)
+
+			if task.Sync {
+				_ = ts.DBMS.DbTaskInsert(task)
+
+				packet := CreateSpAgentTaskUpdate(task)
+				ts.TsSyncAllClients(packet)
+
+				packet2 := CreateSpAgentConsoleTaskUpd(task)
+				ts.TsSyncAllClients(packet2)
+
+				agent.OutConsole.Put(packet2)
+				_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
+			}
+		}
+
+	} else if task.Type == TYPE_TASK || task.Type == TYPE_BROWSER {
+		task.MessageType = taskData.MessageType
+		task.Message = taskData.Message
+		task.ClearText = taskData.ClearText
+
+		if task.Completed {
+			agent.CompletedTasks.Put(task.TaskId, task)
+		} else {
+			agent.RunningTasks.Put(task.TaskId, task)
+		}
+
+		if task.Sync {
+			if task.Completed {
+				_ = ts.DBMS.DbTaskInsert(task)
+			}
+
+			packet := CreateSpAgentTaskUpdate(task)
+			ts.TsSyncAllClients(packet)
+
+			packet2 := CreateSpAgentConsoleTaskUpd(task)
+			ts.TsSyncAllClients(packet2)
+
+			agent.OutConsole.Put(packet2)
+			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
+		}
+	}
 }
+
+/////
 
 func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error) {
 	var (
@@ -168,110 +275,6 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 	}
 
 	return tasksArray, nil
-}
-
-func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
-	var (
-		agent    *Agent
-		task     adaptix.TaskData
-		taskData adaptix.TaskData
-		value    any
-		ok       bool
-		err      error
-	)
-	err = json.Unmarshal(taskObject, &taskData)
-	if err != nil {
-		return
-	}
-
-	value, ok = ts.agents.Get(agentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
-		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
-		return
-	}
-
-	value, ok = agent.RunningTasks.GetDelete(taskData.TaskId)
-	if !ok {
-		return
-	}
-
-	task = value.(adaptix.TaskData)
-	task.Data = []byte("")
-	task.FinishDate = taskData.FinishDate
-	task.Completed = taskData.Completed
-
-	if task.Type == TYPE_JOB {
-		if task.MessageType != 6 {
-			task.MessageType = taskData.MessageType
-		}
-
-		var oldMessage string
-		if task.Message == "" {
-			oldMessage = taskData.Message
-		} else {
-			oldMessage = task.Message
-		}
-
-		oldText := task.ClearText
-
-		task.Message = taskData.Message
-		task.ClearText = taskData.ClearText
-
-		packet := CreateSpAgentTaskUpdate(task)
-
-		task.Message = oldMessage
-		task.ClearText = oldText + task.ClearText
-
-		if task.Completed {
-			agent.CompletedTasks.Put(task.TaskId, task)
-		} else {
-			agent.RunningTasks.Put(task.TaskId, task)
-		}
-
-		if task.Sync {
-			if task.Completed {
-				ts.DBMS.DbTaskInsert(task)
-			}
-
-			ts.TsSyncAllClients(packet)
-		}
-
-	} else if task.Type == TYPE_TUNNEL {
-		if task.Completed {
-			task.Message = taskData.Message
-			task.MessageType = taskData.MessageType
-
-			agent.CompletedTasks.Put(task.TaskId, task)
-
-			if task.Sync {
-				ts.DBMS.DbTaskInsert(task)
-				packet := CreateSpAgentTaskUpdate(task)
-				ts.TsSyncAllClients(packet)
-			}
-		}
-
-	} else if task.Type == TYPE_TASK || task.Type == TYPE_BROWSER {
-		task.MessageType = taskData.MessageType
-		task.Message = taskData.Message
-		task.ClearText = taskData.ClearText
-
-		if task.Completed {
-			agent.CompletedTasks.Put(task.TaskId, task)
-		} else {
-			agent.RunningTasks.Put(task.TaskId, task)
-		}
-
-		if task.Sync {
-			if task.Completed {
-				ts.DBMS.DbTaskInsert(task)
-			}
-
-			packet := CreateSpAgentTaskUpdate(task)
-			ts.TsSyncAllClients(packet)
-		}
-	}
 }
 
 func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {

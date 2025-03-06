@@ -10,27 +10,30 @@ import (
 )
 
 type (
-	PluginType  string
-	TaskType    int
-	MessageType int
+	PluginType string
 )
 
 const (
 	AGENT PluginType = "agent"
 
-	TASK    TaskType = 1
-	BROWSER TaskType = 2
-	JOB     TaskType = 3
-	TUNNEL  TaskType = 4
+	OS_UNKNOWN = 0
+	OS_WINDOWS = 1
+	OS_LINUX   = 2
+	OS_MAC     = 3
 
-	MESSAGE_INFO    MessageType = 5
-	MESSAGE_ERROR   MessageType = 6
-	MESSAGE_SUCCESS MessageType = 7
+	TYPE_TASK    = 1
+	TYPE_BROWSER = 2
+	TYPE_JOB     = 3
+	TYPE_TUNNEL  = 4
 
-	DOWNLOAD_STATE_RUNNING  = 0x1
-	DOWNLOAD_STATE_STOPPED  = 0x2
-	DOWNLOAD_STATE_FINISHED = 0x3
-	DOWNLOAD_STATE_CANCELED = 0x4
+	MESSAGE_INFO    = 5
+	MESSAGE_ERROR   = 6
+	MESSAGE_SUCCESS = 7
+
+	DOWNLOAD_STATE_RUNNING  = 1
+	DOWNLOAD_STATE_STOPPED  = 2
+	DOWNLOAD_STATE_FINISHED = 3
+	DOWNLOAD_STATE_CANCELED = 4
 )
 
 type Teamserver interface {
@@ -44,14 +47,14 @@ type Teamserver interface {
 
 	TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
 	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
-	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
+	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
 	TsAgentCtxExit(agentId string, username string) error
 	TsAgentRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
 
-	TsTaskQueueAddQuite(agentId string, taskObject []byte)
+	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
 	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
 	TsTaskStop(agentId string, taskId string) error
@@ -94,7 +97,15 @@ type ModuleExtender struct {
 	ts Teamserver
 }
 
-type ModuleInfo struct {
+var (
+	ModuleObject    ModuleExtender
+	PluginPath      string
+	MaxTaskDataSize int
+)
+
+///// Struct
+
+type ExtenderInfo struct {
 	ModuleName string
 	ModuleType PluginType
 }
@@ -136,30 +147,32 @@ type AgentData struct {
 }
 
 type TaskData struct {
-	Type        TaskType    `json:"t_type"`
-	TaskId      string      `json:"t_task_id"`
-	AgentId     string      `json:"t_agent_id"`
-	StartDate   int64       `json:"t_start_date"`
-	FinishDate  int64       `json:"t_finish_date"`
-	Data        []byte      `json:"t_data"`
-	CommandLine string      `json:"t_command_line"`
-	MessageType MessageType `json:"t_message_type"`
-	Message     string      `json:"t_message"`
-	ClearText   string      `json:"t_clear_text"`
-	Completed   bool        `json:"t_completed"`
-	Sync        bool        `json:"t_sync"`
+	Type        int    `json:"t_type"`
+	TaskId      string `json:"t_task_id"`
+	AgentId     string `json:"t_agent_id"`
+	Client      string `json:"t_client"`
+	Computer    string `json:"t_computer"`
+	StartDate   int64  `json:"t_start_date"`
+	FinishDate  int64  `json:"t_finish_date"`
+	Data        []byte `json:"t_data"`
+	CommandLine string `json:"t_command_line"`
+	MessageType int    `json:"t_message_type"`
+	Message     string `json:"t_message"`
+	ClearText   string `json:"t_clear_text"`
+	Completed   bool   `json:"t_completed"`
+	Sync        bool   `json:"t_sync"`
 }
 
 type ConsoleMessageData struct {
-	Message string      `json:"m_message"`
-	Status  MessageType `json:"m_status"`
-	Text    string      `json:"m_text"`
+	Message string `json:"m_message"`
+	Status  int    `json:"m_status"`
+	Text    string `json:"m_text"`
 }
 
 type ListingFileData struct {
 	IsDir    bool   `json:"b_is_dir"`
-	Size     uint64 `json:"b_size"`
-	Date     uint64 `json:"b_date"`
+	Size     int64  `json:"b_size"`
+	Date     int64  `json:"b_date"`
 	Filename string `json:"b_filename"`
 }
 
@@ -177,9 +190,7 @@ type ListingDrivesData struct {
 	Type string `json:"b_type"`
 }
 
-var ModuleObject ModuleExtender
-var PluginPath string
-var MaxTaskDataSize int
+///// Module
 
 func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	var (
@@ -190,7 +201,7 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	ModuleObject.ts = ts.(Teamserver)
 
 	MaxTaskDataSize = SetMaxTaskDataSize
-	info := ModuleInfo{
+	info := ExtenderInfo{
 		ModuleName: SetName,
 		ModuleType: AGENT,
 	}
@@ -270,16 +281,15 @@ func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) ([]byte, []byte, error) {
+func (m *ModuleExtender) AgentCommand(client string, cmdline string, agentObject []byte, args map[string]any) error {
 	var (
-		taskData      TaskData
-		agentData     AgentData
-		messageData   ConsoleMessageData
-		command       string
-		err           error
-		ok            bool
-		bufferTask    bytes.Buffer
-		bufferMessage bytes.Buffer
+		taskData    TaskData
+		agentData   AgentData
+		messageData ConsoleMessageData
+		command     string
+		err         error
+		ok          bool
+		bufferTask  bytes.Buffer
 	)
 
 	err = json.Unmarshal(agentObject, &agentData)
@@ -303,15 +313,14 @@ func (m *ModuleExtender) AgentCommand(agentObject []byte, args map[string]any) (
 		goto ERR
 	}
 
-	err = json.NewEncoder(&bufferMessage).Encode(messageData)
-	if err != nil {
-		goto ERR
+	m.ts.TsTaskCreate(agentData.Id, cmdline, client, bufferTask.Bytes())
+
+	if len(messageData.Message) > 0 || len(messageData.Text) > 0 {
+		m.ts.TsAgentConsoleOutput(agentData.Id, messageData.Status, messageData.Message, messageData.Text, false)
 	}
 
-	return bufferTask.Bytes(), bufferMessage.Bytes(), nil
-
 ERR:
-	return nil, nil, err
+	return err
 }
 
 func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error) {
@@ -366,7 +375,7 @@ func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte)
 	}
 
 	taskData = TaskData{
-		Type:        TASK,
+		Type:        TYPE_TASK,
 		AgentId:     agentData.Id,
 		FinishDate:  time.Now().Unix(),
 		MessageType: MESSAGE_SUCCESS,
@@ -374,7 +383,13 @@ func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte)
 		Sync:        true,
 	}
 
-	ProcessTasksResult(m.ts, agentData, taskData, decryptData)
+	resultTasks := ProcessTasksResult(m.ts, agentData, taskData, decryptData)
+
+	for _, task := range resultTasks {
+		var taskObject bytes.Buffer
+		_ = json.NewEncoder(&taskObject).Encode(task)
+		m.ts.TsTaskUpdate(agentData.Id, taskObject.Bytes())
+	}
 
 	return nil, nil
 }
@@ -400,7 +415,7 @@ func (m *ModuleExtender) AgentDownloadChangeState(agentObject []byte, newState i
 	}
 
 	taskData = TaskData{
-		Type: BROWSER,
+		Type: TYPE_BROWSER,
 		Data: packData,
 		Sync: false,
 	}
@@ -432,7 +447,7 @@ func (m *ModuleExtender) AgentBrowserDisks(agentObject []byte) ([]byte, error) {
 	}
 
 	taskData = TaskData{
-		Type: BROWSER,
+		Type: TYPE_BROWSER,
 		Data: packData,
 		Sync: false,
 	}
@@ -464,7 +479,7 @@ func (m *ModuleExtender) AgentBrowserProcess(agentObject []byte) ([]byte, error)
 	}
 
 	taskData = TaskData{
-		Type: BROWSER,
+		Type: TYPE_BROWSER,
 		Data: packData,
 		Sync: false,
 	}
@@ -496,7 +511,7 @@ func (m *ModuleExtender) AgentBrowserFiles(path string, agentObject []byte) ([]b
 	}
 
 	taskData = TaskData{
-		Type: BROWSER,
+		Type: TYPE_BROWSER,
 		Data: packData,
 		Sync: false,
 	}
@@ -528,7 +543,7 @@ func (m *ModuleExtender) AgentBrowserUpload(path string, content []byte, agentOb
 	}
 
 	taskData = TaskData{
-		Type: BROWSER,
+		Type: TYPE_BROWSER,
 		Data: packData,
 		Sync: false,
 	}
@@ -560,7 +575,7 @@ func (m *ModuleExtender) AgentBrowserDownload(path string, agentObject []byte) (
 	}
 
 	taskData = TaskData{
-		Type: TASK,
+		Type: TYPE_TASK,
 		Data: packData,
 		Sync: true,
 	}
@@ -587,7 +602,7 @@ func (m *ModuleExtender) AgentBrowserJobKill(jobId string) ([]byte, error) {
 	}
 
 	taskData = TaskData{
-		Type: TASK,
+		Type: TYPE_TASK,
 		Data: packData,
 		Sync: false,
 	}
@@ -619,7 +634,7 @@ func (m *ModuleExtender) AgentBrowserExit(agentObject []byte) ([]byte, error) {
 	}
 
 	taskData = TaskData{
-		Type: TASK,
+		Type: TYPE_TASK,
 		Data: packData,
 	}
 
@@ -718,7 +733,7 @@ func SyncBrowserProcess(ts Teamserver, task TaskData, processlist []ListingProce
 	ts.TsClientBrowserProcess(jsonTask, jsonProcess)
 }
 
-/// TUNNEL
+/// TYPE_TUNNEL
 
 func TunnelMessageConnectTCP(channelId int, address string, port int) []byte {
 	var (
@@ -730,7 +745,7 @@ func TunnelMessageConnectTCP(channelId int, address string, port int) []byte {
 	packData, _ = TunnelCreateTCP(channelId, address, port)
 
 	taskData = TaskData{
-		Type: TUNNEL,
+		Type: TYPE_TUNNEL,
 		Data: packData,
 		Sync: false,
 	}
@@ -749,7 +764,7 @@ func TunnelMessageConnectUDP(channelId int, address string, port int) []byte {
 	packData, _ = TunnelCreateUDP(channelId, address, port)
 
 	taskData = TaskData{
-		Type: TUNNEL,
+		Type: TYPE_TUNNEL,
 		Data: packData,
 		Sync: false,
 	}
@@ -768,7 +783,7 @@ func TunnelMessageWriteTCP(channelId int, data []byte) []byte {
 	packData, _ = TunnelWriteTCP(channelId, data)
 
 	taskData = TaskData{
-		Type: TUNNEL,
+		Type: TYPE_TUNNEL,
 		Data: packData,
 		Sync: false,
 	}
@@ -787,7 +802,7 @@ func TunnelMessageWriteUDP(channelId int, data []byte) []byte {
 	packData, _ = TunnelWriteUDP(channelId, data)
 
 	taskData = TaskData{
-		Type: TUNNEL,
+		Type: TYPE_TUNNEL,
 		Data: packData,
 		Sync: false,
 	}
@@ -806,7 +821,7 @@ func TunnelMessageClose(channelId int) []byte {
 	packData, _ = TunnelClose(channelId)
 
 	taskData = TaskData{
-		Type: TUNNEL,
+		Type: TYPE_TUNNEL,
 		Data: packData,
 		Sync: false,
 	}
@@ -825,7 +840,7 @@ func TunnelMessageReverse(tunnelId int, port int) []byte {
 	packData, _ = TunnelReverse(tunnelId, port)
 
 	taskData = TaskData{
-		Type: TUNNEL,
+		Type: TYPE_TUNNEL,
 		Data: packData,
 		Sync: false,
 	}

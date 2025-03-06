@@ -50,7 +50,7 @@ type AgentFunctions interface {
 	AgentCreate(beat []byte) ([]byte, error)
 	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)
 	AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error)
-	AgentCommand(agentObject []byte, args map[string]any) ([]byte, []byte, error)
+	AgentCommand(client string, cmdline string, agentObject []byte, args map[string]any) error
 
 	AgentDownloadChangeState(agentObject []byte, newState int, fileId string) ([]byte, error)
 	AgentBrowserDisks(agentObject []byte) ([]byte, error)
