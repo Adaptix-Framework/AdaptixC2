@@ -16,15 +16,73 @@ void* __cdecl memset(void* Destination, int Value, size_t Size)
 
 #pragma intrinsic(memcpy)
 #pragma function(memcpy)
-void* __cdecl memcpy(void* Dst, const void* Src, size_t Size)
-{
-	unsigned char* p = (unsigned char*)Dst;
-	unsigned char* q = (unsigned char*)Src;
-	while (Size > 0) {
-		*p++ = *q++;
-		Size--;
+//void* __cdecl memcpy(void* Dst, const void* Src, size_t Size)
+//{
+//	unsigned char* p = (unsigned char*)Dst;
+//	unsigned char* q = (unsigned char*)Src;
+//	while (Size > 0) {
+//		*p++ = *q++;
+//		Size--;
+//	}
+//	return Dst;
+//}
+
+#define IS_ALIGNED(ptr, align) (((ULONG_PTR)(ptr) & ((align) - 1)) == 0)
+void* __cdecl memcpy(void* Dst, const void* Src, size_t Size) {
+	// Validate input parameters
+	if (!Dst || !Src || Size == 0) {
+		return;  // Return if invalid input
 	}
-	return Dst;
+
+	// Check for overlapping memory regions
+	if ((ULONG_PTR)Dst <= (ULONG_PTR)Src &&
+		(ULONG_PTR)Src < (ULONG_PTR)Dst + Size) {
+		// Handle overlapping memory (copy backward)
+		PBYTE pDest = (PBYTE)Dst + Size;
+		PBYTE pSrc = (PBYTE)Src + Size;
+		while (Size--) {
+			*--pDest = *--pSrc;
+		}
+		return;
+	}
+
+	PBYTE pDest = (PBYTE)Dst;
+	PBYTE pSrc = (PBYTE)Src;
+
+	// Optimize with 8-byte alignment copy
+	if (IS_ALIGNED(pDest, 8) && IS_ALIGNED(pSrc, 8)) {
+		while (Size >= 8) {
+			*(UINT64*)pDest = *(UINT64*)pSrc;
+			pDest += 8;
+			pSrc += 8;
+			Size -= 8;
+		}
+	}
+
+	// Optimize with 4-byte alignment copy
+	if (IS_ALIGNED(pDest, 4) && IS_ALIGNED(pSrc, 4)) {
+		while (Size >= 4) {
+			*(UINT32*)pDest = *(UINT32*)pSrc;
+			pDest += 4;
+			pSrc += 4;
+			Size -= 4;
+		}
+	}
+
+	// Optimize with 2-byte alignment copy
+	if (IS_ALIGNED(pDest, 2) && IS_ALIGNED(pSrc, 2)) {
+		while (Size >= 2) {
+			*(UINT16*)pDest = *(UINT16*)pSrc;
+			pDest += 2;
+			pSrc += 2;
+			Size -= 2;
+		}
+	}
+
+	// Byte-by-byte copy for remaining data
+	while (Size--) {
+		*pDest++ = *pSrc++;
+	}
 }
 
 CHAR HdChrA(CHAR c) { return c; }
