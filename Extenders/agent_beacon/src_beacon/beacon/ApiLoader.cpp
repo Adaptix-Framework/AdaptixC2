@@ -31,7 +31,7 @@ void* __cdecl memset(void* Destination, int Value, size_t Size)
 void* __cdecl memcpy(void* Dst, const void* Src, size_t Size) {
 	// Validate input parameters
 	if (!Dst || !Src || Size == 0) {
-		return;  // Return if invalid input
+		return NULL;  // Return if invalid input
 	}
 
 	// Check for overlapping memory regions
@@ -43,7 +43,7 @@ void* __cdecl memcpy(void* Dst, const void* Src, size_t Size) {
 		while (Size--) {
 			*--pDest = *--pSrc;
 		}
-		return;
+		return Dst;
 	}
 
 	PBYTE pDest = (PBYTE)Dst;
@@ -83,6 +83,7 @@ void* __cdecl memcpy(void* Dst, const void* Src, size_t Size) {
 	while (Size--) {
 		*pDest++ = *pSrc++;
 	}
+	return Dst;
 }
 
 CHAR HdChrA(CHAR c) { return c; }
