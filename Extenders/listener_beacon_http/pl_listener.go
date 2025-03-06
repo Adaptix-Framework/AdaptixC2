@@ -18,8 +18,6 @@ const (
 	SetUiPath   = "_ui_listener.json"
 )
 
-var ListenersObject []any //*HTTP
-
 func ValidateListenerConfig(data string) error {
 
 	/// START CODE HERE

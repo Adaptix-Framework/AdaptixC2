@@ -1008,7 +1008,7 @@ func ConvertUTF8toCp(input string, codePage int) string {
 func GetOsVersion(majorVersion uint8, minorVersion uint8, buildNumber uint, isServer bool, systemArch string) (int, string) {
 	var (
 		desc string
-		os   = 0
+		os   = OS_UNKNOWN
 	)
 
 	osVersion := "unknown"
@@ -1037,8 +1037,8 @@ func GetOsVersion(majorVersion uint8, minorVersion uint8, buildNumber uint, isSe
 	}
 
 	desc = osVersion + " " + systemArch
-	if strings.HasSuffix(osVersion, "Win") {
-		os = 1
+	if strings.Contains(osVersion, "Win") {
+		os = OS_WINDOWS
 	}
 	return os, desc
 }
@@ -1053,7 +1053,7 @@ func int32ToIPv4(ip uint) string {
 	return net.IP(bytes).String()
 }
 
-func SizeBytesToFormat(bytes uint64) string {
+func SizeBytesToFormat(bytes int64) string {
 	const (
 		KB = 1024.0
 		MB = KB * 1024

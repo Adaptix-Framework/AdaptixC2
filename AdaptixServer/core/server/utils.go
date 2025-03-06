@@ -63,6 +63,8 @@ type Agent struct {
 	Data adaptix.AgentData
 	Tick bool
 
+	OutConsole *safe.Slice //  sync_packet interface{}
+
 	TunnelQueue *safe.Slice // taskData TaskData
 	TasksQueue  *safe.Slice // taskData TaskData
 
@@ -196,14 +198,16 @@ type SyncPackerAgentTick struct {
 	Id []string `json:"a_id"`
 }
 
-type SyncPackerAgentConsoleOutput struct {
-	SpCreateTime int64 `json:"time"`
-	SpType       int   `json:"type"`
+type SyncPackerAgentTaskRemove struct {
+	SpType int `json:"type"`
 
-	AgentId     string `json:"a_id"`
-	MessageType int    `json:"a_msg_type"`
-	Message     string `json:"a_message"`
-	ClearText   string `json:"a_text"`
+	TaskId string `json:"a_task_id"`
+}
+
+type SyncPackerAgentRemove struct {
+	SpType int `json:"type"`
+
+	AgentId string `json:"a_id"`
 }
 
 type SyncPackerAgentTaskSync struct {
@@ -236,16 +240,41 @@ type SyncPackerAgentTaskUpdate struct {
 	Completed   bool   `json:"a_completed"`
 }
 
-type SyncPackerAgentTaskRemove struct {
-	SpType int `json:"type"`
+type SyncPackerAgentConsoleOutput struct {
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
 
-	TaskId string `json:"a_task_id"`
+	AgentId     string `json:"a_id"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	ClearText   string `json:"a_text"`
 }
 
-type SyncPackerAgentRemove struct {
+type SyncPackerAgentConsoleTaskSync struct {
 	SpType int `json:"type"`
 
-	AgentId string `json:"a_id"`
+	TaskId      string `json:"a_task_id"`
+	AgentId     string `json:"a_id"`
+	Client      string `json:"a_client"`
+	CmdLine     string `json:"a_cmdline"`
+	StartTime   int64  `json:"a_start_time"`
+	FinishTime  int64  `json:"a_finish_time"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	Text        string `json:"a_text"`
+	Completed   bool   `json:"a_completed"`
+}
+
+type SyncPackerAgentConsoleTaskUpd struct {
+	SpType int `json:"type"`
+
+	AgentId     string `json:"a_id"`
+	TaskId      string `json:"a_task_id"`
+	FinishTime  int64  `json:"a_finish_time"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	Text        string `json:"a_text"`
+	Completed   bool   `json:"a_completed"`
 }
 
 /// DOWNLOAD

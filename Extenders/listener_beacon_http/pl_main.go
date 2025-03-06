@@ -8,16 +8,11 @@ import (
 	"path/filepath"
 )
 
-type (
-	PluginType   string
-	ListenerType string
-)
-
 const (
-	LISTENER PluginType = "listener"
+	LISTENER = "listener"
 
-	INTERNAL ListenerType = "internal"
-	EXTERNAL ListenerType = "external"
+	INTERNAL = "internal"
+	EXTERNAL = "external"
 )
 
 type Teamserver interface {
@@ -31,14 +26,14 @@ type Teamserver interface {
 
 	TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
 	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
-	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
+	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
 	TsAgentCtxExit(agentId string, username string) error
 	TsAgentRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
 
-	TsTaskQueueAddQuite(agentId string, taskObject []byte)
+	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
 	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
 	TsTaskStop(agentId string, taskId string) error
@@ -77,13 +72,22 @@ type ModuleExtender struct {
 	ts Teamserver
 }
 
-type ModuleInfo struct {
+var (
+	ModuleObject     ModuleExtender
+	ListenerDataPath string
+	PluginPath       string
+	ListenersObject  []any //*HTTP
+)
+
+///// Struct
+
+type ExtenderInfo struct {
 	ModuleName string
-	ModuleType PluginType
+	ModuleType string
 }
 
 type ListenerInfo struct {
-	Type             ListenerType
+	Type             string
 	ListenerProtocol string
 	ListenerName     string
 	ListenerUI       string
@@ -100,9 +104,7 @@ type ListenerData struct {
 	Data      string `json:"l_data"`
 }
 
-var ModuleObject ModuleExtender
-var ListenerDataPath string
-var PluginPath string
+///// Module
 
 func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	var (
@@ -112,7 +114,7 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 
 	ModuleObject.ts = ts.(Teamserver)
 
-	info := ModuleInfo{
+	info := ExtenderInfo{
 		ModuleName: SetName,
 		ModuleType: LISTENER,
 	}
