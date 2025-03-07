@@ -21,8 +21,8 @@ type Teamserver interface {
 	TsListenerStop(listenerName string, configType string) error
 	TsListenerGetProfile(listenerName string, listenerType string) ([]byte, error)
 
-	TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
-	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
+	TsAgentGenerate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
+	TsAgentRequestHandler(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error

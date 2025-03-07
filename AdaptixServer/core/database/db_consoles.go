@@ -53,7 +53,7 @@ func (dbms *DBMS) DbConsoleAll(agentId string) [][]byte {
 
 	ok = dbms.DatabaseExists()
 	if ok {
-		selectQuery = `SELECT Packets FROM Consoles WHERE AgentId = ? ORDER BY Id ASC;`
+		selectQuery = `SELECT Packet FROM Consoles WHERE AgentId = ? ORDER BY Id ASC;`
 		query, err := dbms.database.Query(selectQuery, agentId)
 		if err == nil {
 

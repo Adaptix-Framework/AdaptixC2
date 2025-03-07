@@ -12,11 +12,7 @@ import (
 	"time"
 )
 
-func (ts *Teamserver) TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error) {
-	return ts.Extender.ExAgentGenerate(agentName, config, listenerProfile)
-}
-
-func (ts *Teamserver) TsAgentRequest(agentCrc string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error) {
+func (ts *Teamserver) TsAgentRequestHandler(agentCrc string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error) {
 	var (
 		agentName      string
 		data           []byte
@@ -149,6 +145,10 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 	return nil
 }
 
+func (ts *Teamserver) TsAgentGenerate(agentName string, config string, listenerProfile []byte) ([]byte, string, error) {
+	return ts.Extender.ExAgentGenerate(agentName, config, listenerProfile)
+}
+
 /// Data
 
 func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
@@ -195,7 +195,8 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	if err != nil {
 		logs.Error("", err.Error())
 	} else {
-		ts.DBMS.DbTaskDelete("", agentId)
+		_ = ts.DBMS.DbTaskDelete("", agentId)
+		_ = ts.DBMS.DbConsoleDelete(agentId)
 	}
 
 	packet := CreateSpAgentRemove(agentId)

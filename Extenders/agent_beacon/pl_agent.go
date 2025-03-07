@@ -415,7 +415,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_CAT, ConvertUTF8toCp(path, agent.ACP)}
-		break
 
 	case "cd":
 		path, ok := args["path"].(string)
@@ -424,7 +423,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_CD, ConvertUTF8toCp(path, agent.ACP)}
-		break
 
 	case "cp":
 		src, ok := args["src"].(string)
@@ -439,11 +437,8 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		}
 		array = []interface{}{COMMAND_COPY, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
 
-		break
-
 	case "disks":
 		array = []interface{}{COMMAND_DISKS}
-		break
 
 	case "download":
 		path, ok := args["file"].(string)
@@ -452,7 +447,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agent.ACP)}
-		break
 
 	case "execute":
 		if subcommand == "bof" {
@@ -482,7 +476,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'bof'")
 			goto RET
 		}
-		break
 
 	case "exfil":
 		fid, ok := args["file_id"].(string)
@@ -506,7 +499,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'cancel', 'start' or 'stop'")
 			goto RET
 		}
-		break
 
 	case "jobs":
 		if subcommand == "list" {
@@ -529,7 +521,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'list' or 'kill'")
 			goto RET
 		}
-		break
 
 	case "ls":
 		dir, ok := args["directory"].(string)
@@ -576,23 +567,23 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			if err != nil {
 				goto RET
 			}
-			messageData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, fhost, fport)
-			messageData.Status = MESSAGE_SUCCESS
-			messageData.Text = "\n"
+			taskData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, fhost, fport)
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.ClearText = "\n"
 
 		} else if subcommand == "stop" {
-			taskData.Sync = false
+			taskData.Completed = true
+
 			ts.TsTunnelStopLocalPortFwd(agent.Id, lport)
 
-			messageData.Message = fmt.Sprintf("Local port forwarding on %d stopped", lport)
-			messageData.Status = MESSAGE_SUCCESS
-			messageData.Text = "\n"
+			taskData.Message = fmt.Sprintf("Local port forwarding on %d stopped", lport)
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.ClearText = "\n"
 
 		} else {
 			err = errors.New("subcommand must be 'start' or 'stop'")
 			goto RET
 		}
-		break
 
 	case "mv":
 		src, ok := args["src"].(string)
@@ -607,8 +598,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		}
 		array = []interface{}{COMMAND_MV, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
 
-		break
-
 	case "mkdir":
 		path, ok := args["path"].(string)
 		if !ok {
@@ -616,7 +605,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_MKDIR, ConvertUTF8toCp(path, agent.ACP)}
-		break
 
 	case "profile":
 		if subcommand == "download.chunksize" {
@@ -632,7 +620,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand for 'profile' not found")
 			goto RET
 		}
-		break
 
 	case "ps":
 		if subcommand == "list" {
@@ -673,11 +660,9 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'list', 'kill' or 'run'")
 			goto RET
 		}
-		break
 
 	case "pwd":
 		array = []interface{}{COMMAND_PWD}
-		break
 
 	case "rm":
 		path, ok := args["path"].(string)
@@ -686,7 +671,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_RM, ConvertUTF8toCp(path, agent.ACP)}
-		break
 
 	case "rportfwd":
 		taskData.Type = TYPE_TUNNEL
@@ -724,16 +708,18 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			messageData.Text = "\n"
 
 		} else if subcommand == "stop" {
+			taskData.Completed = true
+
 			ts.TsTunnelStopRemotePortFwd(agent.Id, lport)
-			messageData.Status = MESSAGE_SUCCESS
-			messageData.Message = "Reverse port forwarding has been stopped"
-			messageData.Text = "\n"
+
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.Message = "Reverse port forwarding has been stopped"
+			taskData.ClearText = "\n"
 
 		} else {
 			err = errors.New("subcommand must be 'start' or 'stop'")
 			goto RET
 		}
-		break
 
 	case "sleep":
 		var (
@@ -773,7 +759,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		}
 
 		array = []interface{}{COMMAND_PROFILE, 1, sleepTime, jitterTime}
-		break
 
 	case "socks":
 		taskData.Type = TYPE_TUNNEL
@@ -799,7 +784,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 				if err != nil {
 					goto RET
 				}
-				messageData.Message = fmt.Sprintf("Socks4 server running on port %d", port)
+				taskData.Message = fmt.Sprintf("Socks4 server running on port %d", port)
 
 			} else {
 				auth, _ := args["-auth"].(bool)
@@ -818,35 +803,32 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 					if err != nil {
 						goto RET
 					}
-					messageData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
+					taskData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
 
 				} else {
 					taskData.TaskId, err = ts.TsTunnelCreateSocks5(agent.Id, address, port, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
 					if err != nil {
 						goto RET
 					}
-					messageData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
-
+					taskData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
 				}
 			}
-			messageData.Status = MESSAGE_SUCCESS
-			messageData.Text = "\n"
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.ClearText = "\n"
 
 		} else if subcommand == "stop" {
 			taskData.Completed = true
 
 			ts.TsTunnelStopSocks(agent.Id, port)
 
-			messageData.Status = MESSAGE_SUCCESS
-			messageData.Message = "Socks5 server has been stopped"
-			messageData.Text = "\n"
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.Message = "Socks5 server has been stopped"
+			taskData.ClearText = "\n"
 
 		} else {
 			err = errors.New("subcommand must be 'start' or 'stop'")
 			goto RET
 		}
-
-		break
 
 	case "terminate":
 		if subcommand == "thread" {
@@ -857,7 +839,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'thread' or 'process'")
 			goto RET
 		}
-		break
 
 	case "upload":
 		fileName, ok := args["remote_path"].(string)
@@ -879,8 +860,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		memoryId := CreateTaskCommandSaveMemory(ts, agent.Id, fileContent)
 
 		array = []interface{}{COMMAND_UPLOAD, memoryId, ConvertUTF8toCp(fileName, agent.ACP)}
-
-		break
 
 	default:
 		err = errors.New(fmt.Sprintf("Command '%v' not found", command))
@@ -1438,16 +1417,16 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			tunnelId := int(TaskId)
 			result := packer.ParseInt8()
 			if result == 0 {
-				task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, false)
+				task.TaskId, task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, false)
 			} else {
-				task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, true)
+				task.TaskId, task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, true)
 			}
 
 			if err != nil {
 				task.MessageType = MESSAGE_ERROR
 			} else {
 				task.MessageType = MESSAGE_SUCCESS
-				ts.TsAgentConsoleOutput(agentData.Id, int(MESSAGE_SUCCESS), task.Message, "", false)
+				//ts.TsAgentConsoleOutput(agentData.Id, int(MESSAGE_SUCCESS), task.Message, "", false)
 			}
 
 		case COMMAND_TUNNEL_ACCEPT:

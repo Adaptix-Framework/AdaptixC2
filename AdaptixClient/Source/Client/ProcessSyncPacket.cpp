@@ -546,7 +546,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (Agents.contains(AgentId)) {
             Agents[AgentId]->Console->ConsoleOutputPrompt( StartTime, TaskId, Client, CommandLine);
-            Agents[AgentId]->Console->ConsoleOutputMessage( FinishTime, TaskId, MessageType, Message, Output , Completed );
+
+            qint64 ConsoleTime = StartTime;
+            if (Completed)
+                ConsoleTime = FinishTime;
+
+            Agents[AgentId]->Console->ConsoleOutputMessage( ConsoleTime, TaskId, MessageType, Message, Output , Completed );
         }
 
         return;

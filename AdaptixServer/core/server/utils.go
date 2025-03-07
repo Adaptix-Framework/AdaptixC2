@@ -24,10 +24,11 @@ const (
 )
 
 const (
-	TYPE_TASK    = 1
-	TYPE_BROWSER = 2
-	TYPE_JOB     = 3
-	TYPE_TUNNEL  = 4
+	TYPE_TASK       = 1
+	TYPE_BROWSER    = 2
+	TYPE_JOB        = 3
+	TYPE_TUNNEL     = 4
+	TYPE_PROXY_DATA = 5
 )
 
 // TeamServer
@@ -179,6 +180,8 @@ type SyncPackerAgentNew struct {
 	Username   string `json:"a_username"`
 	LastTick   int    `json:"a_last_tick"`
 	Tags       string `json:"a_tags"`
+	Mark       string `json:"a_mark"`
+	Color      string `json:"a_color"`
 }
 
 type SyncPackerAgentUpdate struct {
@@ -190,6 +193,8 @@ type SyncPackerAgentUpdate struct {
 	Elevated bool   `json:"a_elevated"`
 	Username string `json:"a_username"`
 	Tags     string `json:"a_tags"`
+	Mark     string `json:"a_mark"`
+	Color    string `json:"a_color"`
 }
 
 type SyncPackerAgentTick struct {
