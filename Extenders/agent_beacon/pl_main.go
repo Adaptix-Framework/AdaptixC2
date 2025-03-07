@@ -21,10 +21,11 @@ const (
 	OS_LINUX   = 2
 	OS_MAC     = 3
 
-	TYPE_TASK    = 1
-	TYPE_BROWSER = 2
-	TYPE_JOB     = 3
-	TYPE_TUNNEL  = 4
+	TYPE_TASK       = 1
+	TYPE_BROWSER    = 2
+	TYPE_JOB        = 3
+	TYPE_TUNNEL     = 4
+	TYPE_PROXY_DATA = 5
 
 	MESSAGE_INFO    = 5
 	MESSAGE_ERROR   = 6
@@ -45,8 +46,8 @@ type Teamserver interface {
 	TsListenerStop(listenerName string, configType string) error
 	TsListenerGetProfile(listenerName string, listenerType string) ([]byte, error)
 
-	TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
-	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
+	TsAgentGenerate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
+	TsAgentRequestHandler(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
@@ -85,7 +86,7 @@ type Teamserver interface {
 	TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
 	TsTunnelStopLocalPortFwd(AgentId string, Port int)
 	TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
-	TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, error)
+	TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, string, error)
 	TsTunnelStopRemotePortFwd(AgentId string, Port int)
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionResume(AgentId string, channelId int)
@@ -745,7 +746,7 @@ func TunnelMessageConnectTCP(channelId int, address string, port int) []byte {
 	packData, _ = TunnelCreateTCP(channelId, address, port)
 
 	taskData = TaskData{
-		Type: TYPE_TUNNEL,
+		Type: TYPE_PROXY_DATA,
 		Data: packData,
 		Sync: false,
 	}
@@ -764,7 +765,7 @@ func TunnelMessageConnectUDP(channelId int, address string, port int) []byte {
 	packData, _ = TunnelCreateUDP(channelId, address, port)
 
 	taskData = TaskData{
-		Type: TYPE_TUNNEL,
+		Type: TYPE_PROXY_DATA,
 		Data: packData,
 		Sync: false,
 	}
@@ -783,7 +784,7 @@ func TunnelMessageWriteTCP(channelId int, data []byte) []byte {
 	packData, _ = TunnelWriteTCP(channelId, data)
 
 	taskData = TaskData{
-		Type: TYPE_TUNNEL,
+		Type: TYPE_PROXY_DATA,
 		Data: packData,
 		Sync: false,
 	}
@@ -802,7 +803,7 @@ func TunnelMessageWriteUDP(channelId int, data []byte) []byte {
 	packData, _ = TunnelWriteUDP(channelId, data)
 
 	taskData = TaskData{
-		Type: TYPE_TUNNEL,
+		Type: TYPE_PROXY_DATA,
 		Data: packData,
 		Sync: false,
 	}
@@ -821,7 +822,7 @@ func TunnelMessageClose(channelId int) []byte {
 	packData, _ = TunnelClose(channelId)
 
 	taskData = TaskData{
-		Type: TYPE_TUNNEL,
+		Type: TYPE_PROXY_DATA,
 		Data: packData,
 		Sync: false,
 	}
@@ -840,7 +841,7 @@ func TunnelMessageReverse(tunnelId int, port int) []byte {
 	packData, _ = TunnelReverse(tunnelId, port)
 
 	taskData = TaskData{
-		Type: TYPE_TUNNEL,
+		Type: TYPE_PROXY_DATA,
 		Data: packData,
 		Sync: false,
 	}

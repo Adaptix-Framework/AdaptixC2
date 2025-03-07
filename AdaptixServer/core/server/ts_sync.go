@@ -65,7 +65,7 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 
 	packets = append(packets, ts.TsPresyncExtenders()...)
 	packets = append(packets, ts.TsPresyncListeners()...)
-	packets = append(packets, ts.TsPresyncAgentsAndTasks()...)
+	packets = append(packets, ts.TsPresyncAgents()...)
 	packets = append(packets, ts.TsPresyncDownloads()...)
 	packets = append(packets, ts.TsPresyncTunnels()...)
 	packets = append(packets, ts.TsPresyncEvents()...)
@@ -117,28 +117,46 @@ func (ts *Teamserver) TsPresyncListeners() []interface{} {
 	return packets
 }
 
-func (ts *Teamserver) TsPresyncAgentsAndTasks() []interface{} {
+func (ts *Teamserver) TsPresyncAgents() []interface{} {
 	var (
-		packets     []interface{}
-		sortedTasks []adaptix.TaskData
+		packets      []interface{}
+		sortedTasks  []adaptix.TaskData
+		sortedAgents []*Agent
 	)
 
 	ts.agents.ForEach(func(key string, value interface{}) bool {
 		agent := value.(*Agent)
-		p := CreateSpAgentNew(agent.Data)
-		packets = append(packets, p)
-
-		agent.CompletedTasks.ForEach(func(key2 string, value2 interface{}) bool {
-			taskData := value2.(adaptix.TaskData)
-			index := sort.Search(len(sortedTasks), func(i int) bool {
-				return sortedTasks[i].StartDate > taskData.StartDate
-			})
-			sortedTasks = append(sortedTasks[:index], append([]adaptix.TaskData{taskData}, sortedTasks[index:]...)...)
-			return true
+		index := sort.Search(len(sortedAgents), func(i int) bool {
+			return sortedAgents[i].Data.CreateTime > agent.Data.CreateTime
 		})
-
+		sortedAgents = append(sortedAgents[:index], append([]*Agent{agent}, sortedAgents[index:]...)...)
 		return true
 	})
+
+	ts.agents.DirectLock()
+	for _, agent := range sortedAgents {
+		if agent != nil {
+			/// Agent
+			p := CreateSpAgentNew(agent.Data)
+			packets = append(packets, p)
+
+			/// Tasks
+			agent.CompletedTasks.ForEach(func(key2 string, value2 interface{}) bool {
+				taskData := value2.(adaptix.TaskData)
+				index := sort.Search(len(sortedTasks), func(i int) bool {
+					return sortedTasks[i].StartDate > taskData.StartDate
+				})
+				sortedTasks = append(sortedTasks[:index], append([]adaptix.TaskData{taskData}, sortedTasks[index:]...)...)
+				return true
+			})
+
+			/// Consoles
+			for value := range agent.OutConsole.Iterator() {
+				packets = append(packets, value.Item)
+			}
+		}
+	}
+	ts.agents.DirectUnlock()
 
 	for _, taskData := range sortedTasks {
 		t := CreateSpAgentTaskSync(taskData)

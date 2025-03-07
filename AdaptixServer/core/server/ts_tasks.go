@@ -31,11 +31,6 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 	}
 	agent = value.(*Agent)
 
-	//err = json.Unmarshal(dataMessage, &messageData)
-	//if err != nil {
-	//	return err
-	//}
-
 	if taskData.TaskId == "" {
 		taskData.TaskId, _ = krypt.GenerateUID(8)
 	}
@@ -80,19 +75,33 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 		agent.TasksQueue.Put(taskData)
 
 	case TYPE_TUNNEL:
-		if taskData.Sync {
-			agent.RunningTasks.Put(taskData.TaskId, taskData)
+		if taskData.Completed {
+			agent.CompletedTasks.Put(taskData.TaskId, taskData)
 		} else {
-			agent.TunnelQueue.Put(taskData)
+			agent.RunningTasks.Put(taskData.TaskId, taskData)
 		}
+
+		if taskData.Sync {
+			packet := CreateSpAgentTaskSync(taskData)
+			ts.TsSyncAllClients(packet)
+
+			packet2 := CreateSpAgentConsoleTaskSync(taskData)
+			ts.TsSyncAllClients(packet2)
+
+			agent.OutConsole.Put(packet2)
+			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
+
+			if taskData.Completed {
+				_ = ts.DBMS.DbTaskInsert(taskData)
+			}
+		}
+
+	case TYPE_PROXY_DATA:
+		agent.TunnelQueue.Put(taskData)
 
 	default:
 		break
 	}
-
-	//if len(messageData.Message) > 0 || len(messageData.Text) > 0 {
-	//	ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text)
-	//}
 }
 
 func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
@@ -168,24 +177,40 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 		}
 
 	} else if task.Type == TYPE_TUNNEL {
+		var oldMessage string
+		if task.Message == "" {
+			oldMessage = taskData.Message
+		} else {
+			oldMessage = task.Message
+		}
+		oldText := task.ClearText
+		
+		task.MessageType = taskData.MessageType
+		task.Message = taskData.Message
+		task.ClearText = taskData.ClearText
+
+		packet := CreateSpAgentTaskUpdate(task)
+		packet2 := CreateSpAgentConsoleTaskUpd(task)
+
+		task.Message = oldMessage
+		task.ClearText = oldText + task.ClearText
+
 		if task.Completed {
-			task.Message = taskData.Message
-			task.MessageType = taskData.MessageType
-
 			agent.CompletedTasks.Put(task.TaskId, task)
+		} else {
+			agent.RunningTasks.Put(task.TaskId, task)
+		}
 
-			if task.Sync {
+		if task.Sync {
+			if task.Completed {
 				_ = ts.DBMS.DbTaskInsert(task)
-
-				packet := CreateSpAgentTaskUpdate(task)
-				ts.TsSyncAllClients(packet)
-
-				packet2 := CreateSpAgentConsoleTaskUpd(task)
-				ts.TsSyncAllClients(packet2)
-
-				agent.OutConsole.Put(packet2)
-				_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
 			}
+
+			ts.TsSyncAllClients(packet)
+			ts.TsSyncAllClients(packet2)
+
+			agent.OutConsole.Put(packet2)
+			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
 		}
 
 	} else if task.Type == TYPE_TASK || task.Type == TYPE_BROWSER {
@@ -214,6 +239,48 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
 		}
 	}
+}
+
+func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
+	var (
+		agent *Agent
+		task  adaptix.TaskData
+		value any
+		ok    bool
+	)
+
+	value, ok = ts.agents.Get(agentId)
+	if ok {
+		agent = value.(*Agent)
+	} else {
+		return fmt.Errorf("agent %v not found", agentId)
+	}
+
+	for i := 0; i < agent.TasksQueue.Len(); i++ {
+		if value, ok = agent.TasksQueue.Get(i); ok {
+			task = value.(adaptix.TaskData)
+			if task.TaskId == taskId {
+				return fmt.Errorf("task %v in process", taskId)
+			}
+		}
+	}
+
+	value, ok = agent.RunningTasks.Get(taskId)
+	if ok {
+		return fmt.Errorf("task %v in process", taskId)
+	}
+
+	value, ok = agent.CompletedTasks.GetDelete(taskId)
+	if ok {
+		task = value.(adaptix.TaskData)
+		_ = ts.DBMS.DbTaskDelete(task.TaskId, "")
+
+		packet := CreateSpAgentTaskRemove(task)
+		ts.TsSyncAllClients(packet)
+		return nil
+	}
+
+	return fmt.Errorf("task %v not found", taskId)
 }
 
 /////
@@ -328,46 +395,4 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 		}
 	}
 	return nil
-}
-
-func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
-	var (
-		agent *Agent
-		task  adaptix.TaskData
-		value any
-		ok    bool
-	)
-
-	value, ok = ts.agents.Get(agentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
-		return fmt.Errorf("agent %v not found", agentId)
-	}
-
-	for i := 0; i < agent.TasksQueue.Len(); i++ {
-		if value, ok = agent.TasksQueue.Get(i); ok {
-			task = value.(adaptix.TaskData)
-			if task.TaskId == taskId {
-				return fmt.Errorf("task %v in process", taskId)
-			}
-		}
-	}
-
-	value, ok = agent.RunningTasks.Get(taskId)
-	if ok {
-		return fmt.Errorf("task %v in process", taskId)
-	}
-
-	value, ok = agent.CompletedTasks.GetDelete(taskId)
-	if ok {
-		task = value.(adaptix.TaskData)
-		ts.DBMS.DbTaskDelete(task.TaskId, "")
-
-		packet := CreateSpAgentTaskRemove(task)
-		ts.TsSyncAllClients(packet)
-		return nil
-	}
-
-	return fmt.Errorf("task %v not found", taskId)
 }

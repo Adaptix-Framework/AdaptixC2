@@ -464,7 +464,7 @@ func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdA
 	return fwdTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, error) {
+func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, string, error) {
 	var (
 		tunnel     *Tunnel
 		value      interface{}
@@ -488,7 +488,7 @@ func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (str
 			ts.TsSyncAllClients(packet2)
 			ts.events.Put(packet2)
 
-			return message, nil
+			return tunnel.TaskId, message, nil
 		}
 	} else {
 		value, ok = ts.tunnels.GetDelete(tunId)
@@ -504,10 +504,10 @@ func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (str
 			}
 			_ = json.NewEncoder(&taskBuffer).Encode(taskData)
 			ts.TsTaskUpdate(tunnel.Data.AgentId, taskBuffer.Bytes())
-			return "", errors.New("This port is already in use")
+			return tunnel.TaskId, "", errors.New("This port is already in use")
 		}
 	}
-	return "", errors.New("Tunnel not found")
+	return "", "", errors.New("Tunnel not found")
 }
 
 func (ts *Teamserver) TsTunnelStopRemotePortFwd(AgentId string, Port int) {

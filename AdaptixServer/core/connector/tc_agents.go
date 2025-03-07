@@ -38,7 +38,7 @@ func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
 		return
 	}
 
-	fileContent, fileName, err = tc.teamserver.TsAgentGenetate(agentConfig.AgentName, agentConfig.Config, listenerProfile)
+	fileContent, fileName, err = tc.teamserver.TsAgentGenerate(agentConfig.AgentName, agentConfig.Config, listenerProfile)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

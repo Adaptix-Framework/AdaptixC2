@@ -79,6 +79,7 @@ func (ts *Teamserver) RestoreData() {
 		err error
 	)
 
+	/// DATABASE
 	ok = ts.DBMS.DatabaseExists()
 	if !ok {
 		return
@@ -86,6 +87,7 @@ func (ts *Teamserver) RestoreData() {
 
 	logs.Info("", "Restore data from Database...")
 
+	/// AGENTS
 	countAgents := 0
 	restoreAgents := ts.DBMS.DbAgentAll()
 	for _, agentData := range restoreAgents {
@@ -110,18 +112,34 @@ func (ts *Teamserver) RestoreData() {
 		ts.TsSyncAllClients(packet2)
 		ts.events.Put(packet2)
 
+		/// Tasks
 		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)
 		for _, taskData := range restoreTasks {
 			agent.CompletedTasks.Put(taskData.TaskId, taskData)
 
-			packet := CreateSpAgentTaskSync(taskData)
-			ts.TsSyncAllClients(packet)
+			packet2 := CreateSpAgentTaskSync(taskData)
+			ts.TsSyncAllClients(packet2)
+		}
+
+		/// Consoles
+		restoreConsoles := ts.DBMS.DbConsoleAll(agentData.Id)
+		for _, message := range restoreConsoles {
+			var packet3 map[string]any
+			err = json.Unmarshal(message, &packet3)
+			if err != nil {
+				continue
+			}
+			
+			agent.OutConsole.Put(packet3)
+
+			ts.TsSyncAllClients(packet3)
 		}
 
 		countAgents++
 	}
 	logs.Success("   ", "Restored %v agents", countAgents)
 
+	/// DOWNLOADS
 	countDownloads := 0
 	restoreDownloads := ts.DBMS.DbDownloadAll()
 	for _, restoreDownload := range restoreDownloads {
@@ -137,6 +155,7 @@ func (ts *Teamserver) RestoreData() {
 	}
 	logs.Success("   ", "Restored %v downloads", countDownloads)
 
+	/// LISTENERS
 	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
