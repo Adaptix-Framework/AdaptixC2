@@ -29,7 +29,7 @@ type Teamserver interface {
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
-	TsAgentCtxExit(agentId string, username string) error
+	TsAgentGuiExit(agentId string, username string) error
 	TsAgentRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
 
@@ -46,16 +46,16 @@ type Teamserver interface {
 	TsDownloadDelete(fileId string) error
 
 	TsDownloadChangeState(fileId string, username string, command string) error
-	TsAgentBrowserDisks(agentId string, username string) error
-	TsAgentBrowserProcess(agentId string, username string) error
-	TsAgentBrowserFiles(agentId string, path string, username string) error
-	TsAgentBrowserUpload(agentId string, path string, content []byte, username string) error
-	TsAgentBrowserDownload(agentId string, path string, username string) error
+	TsAgentGuiDisks(agentId string, username string) error
+	TsAgentGuiProcess(agentId string, username string) error
+	TsAgentGuiFiles(agentId string, path string, username string) error
+	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
+	TsAgentGuiDownload(agentId string, path string, username string) error
 
-	TsClientBrowserDisks(jsonTask string, jsonDrives string)
-	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
-	TsClientBrowserFilesStatus(jsonTask string)
-	TsClientBrowserProcess(jsonTask string, jsonFiles string)
+	TsClientGuiDisks(jsonTask string, jsonDrives string)
+	TsClientGuiFiles(jsonTask string, path string, jsonFiles string)
+	TsClientGuiFilesStatus(jsonTask string)
+	TsClientGuiProcess(jsonTask string, jsonFiles string)
 
 	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
 	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)

@@ -129,7 +129,7 @@ func (tc *TsConnector) TcAgentExit(ctx *gin.Context) {
 
 	var errorsSlice []string
 	for _, agentId := range agentExit.AgentIdArray {
-		err = tc.teamserver.TsAgentCtxExit(agentId, username)
+		err = tc.teamserver.TsAgentGuiExit(agentId, username)
 		if err != nil {
 			errorsSlice = append(errorsSlice, err.Error())
 		}

@@ -10,7 +10,7 @@ import (
 
 /// AGENT
 
-func (ts *Teamserver) TsAgentBrowserDisks(agentId string, clientName string) error {
+func (ts *Teamserver) TsAgentGuiDisks(agentId string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -38,7 +38,7 @@ func (ts *Teamserver) TsAgentBrowserDisks(agentId string, clientName string) err
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserProcess(agentId string, clientName string) error {
+func (ts *Teamserver) TsAgentGuiProcess(agentId string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -66,7 +66,7 @@ func (ts *Teamserver) TsAgentBrowserProcess(agentId string, clientName string) e
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, clientName string) error {
+func (ts *Teamserver) TsAgentGuiFiles(agentId string, path string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -94,7 +94,7 @@ func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, clientNam
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content []byte, clientName string) error {
+func (ts *Teamserver) TsAgentGuiUpload(agentId string, path string, content []byte, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -122,7 +122,7 @@ func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content 
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, clientName string) error {
+func (ts *Teamserver) TsAgentGuiDownload(agentId string, path string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -150,7 +150,7 @@ func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, client
 	return nil
 }
 
-func (ts *Teamserver) TsAgentCtxExit(agentId string, clientName string) error {
+func (ts *Teamserver) TsAgentGuiExit(agentId string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
@@ -180,7 +180,7 @@ func (ts *Teamserver) TsAgentCtxExit(agentId string, clientName string) error {
 
 /// SYNC
 
-func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
+func (ts *Teamserver) TsClientGuiDisks(jsonTask string, jsonDrives string) {
 	var (
 		agent    *Agent
 		task     adaptix.TaskData
@@ -223,7 +223,7 @@ func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
 	ts.TsSyncClient(task.Client, packet)
 }
 
-func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFiles string) {
+func (ts *Teamserver) TsClientGuiFiles(jsonTask string, path string, jsonFiles string) {
 	var (
 		agent    *Agent
 		task     adaptix.TaskData
@@ -270,7 +270,7 @@ func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFil
 	ts.TsSyncClient(task.Client, packet)
 }
 
-func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
+func (ts *Teamserver) TsClientGuiFilesStatus(jsonTask string) {
 	var (
 		agent    *Agent
 		task     adaptix.TaskData
@@ -309,7 +309,7 @@ func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
 	ts.TsSyncClient(task.Client, packet)
 }
 
-func (ts *Teamserver) TsClientBrowserProcess(jsonTask string, jsonFiles string) {
+func (ts *Teamserver) TsClientGuiProcess(jsonTask string, jsonFiles string) {
 	var (
 		agent    *Agent
 		task     adaptix.TaskData

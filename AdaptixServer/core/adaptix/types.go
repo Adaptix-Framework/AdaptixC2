@@ -42,6 +42,8 @@ type AgentData struct {
 	CreateTime int64  `json:"a_create_time"`
 	LastTick   int    `json:"a_last_tick"`
 	Tags       string `json:"a_tags"`
+	Mark       string `json:"a_mark"`
+	Color      string `json:"a_color"`
 }
 
 type TaskData struct {

@@ -179,6 +179,8 @@ typedef struct AgentData
     QString     Computer;
     QString     Username;
     QString     Tags;
+    QString     Mark;
+    QString     Color;
     int         LastTick;
 } AgentData;
 

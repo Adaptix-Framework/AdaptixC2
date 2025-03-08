@@ -51,7 +51,7 @@ type Teamserver interface {
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
-	TsAgentCtxExit(agentId string, username string) error
+	TsAgentGuiExit(agentId string, username string) error
 	TsAgentRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
 
@@ -68,16 +68,16 @@ type Teamserver interface {
 	TsDownloadDelete(fileId string) error
 
 	TsDownloadChangeState(fileId string, username string, command string) error
-	TsAgentBrowserDisks(agentId string, username string) error
-	TsAgentBrowserProcess(agentId string, username string) error
-	TsAgentBrowserFiles(agentId string, path string, username string) error
-	TsAgentBrowserUpload(agentId string, path string, content []byte, username string) error
-	TsAgentBrowserDownload(agentId string, path string, username string) error
+	TsAgentGuiDisks(agentId string, username string) error
+	TsAgentGuiProcess(agentId string, username string) error
+	TsAgentGuiFiles(agentId string, path string, username string) error
+	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
+	TsAgentGuiDownload(agentId string, path string, username string) error
 
-	TsClientBrowserDisks(jsonTask string, jsonDrives string)
-	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
-	TsClientBrowserFilesStatus(jsonTask string)
-	TsClientBrowserProcess(jsonTask string, jsonFiles string)
+	TsClientGuiDisks(jsonTask string, jsonDrives string)
+	TsClientGuiFiles(jsonTask string, path string, jsonFiles string)
+	TsClientGuiFilesStatus(jsonTask string)
+	TsClientGuiProcess(jsonTask string, jsonFiles string)
 
 	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
 	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
@@ -145,6 +145,8 @@ type AgentData struct {
 	CreateTime int64  `json:"a_create_time"`
 	LastTick   int    `json:"a_last_tick"`
 	Tags       string `json:"a_tags"`
+	Mark       string `json:"a_mark"`
+	Color      string `json:"a_color"`
 }
 
 type TaskData struct {
@@ -669,7 +671,7 @@ func SyncBrowserDisks(ts Teamserver, task TaskData, drivesSlice []ListingDrivesD
 	}
 	jsonTask = string(jsonData)
 
-	ts.TsClientBrowserDisks(jsonTask, jsonDrives)
+	ts.TsClientGuiDisks(jsonTask, jsonDrives)
 }
 
 func SyncBrowserFiles(ts Teamserver, task TaskData, path string, filesSlice []ListingFileData) {
@@ -692,7 +694,7 @@ func SyncBrowserFiles(ts Teamserver, task TaskData, path string, filesSlice []Li
 	}
 	jsonTask = string(jsonData)
 
-	ts.TsClientBrowserFiles(jsonTask, path, jsonDrives)
+	ts.TsClientGuiFiles(jsonTask, path, jsonDrives)
 }
 
 func SyncBrowserFilesStatus(ts Teamserver, task TaskData) {
@@ -708,7 +710,7 @@ func SyncBrowserFilesStatus(ts Teamserver, task TaskData) {
 	}
 	jsonTask = string(jsonData)
 
-	ts.TsClientBrowserFilesStatus(jsonTask)
+	ts.TsClientGuiFilesStatus(jsonTask)
 }
 
 func SyncBrowserProcess(ts Teamserver, task TaskData, processlist []ListingProcessData) {
@@ -731,7 +733,7 @@ func SyncBrowserProcess(ts Teamserver, task TaskData, processlist []ListingProce
 	}
 	jsonTask = string(jsonData)
 
-	ts.TsClientBrowserProcess(jsonTask, jsonProcess)
+	ts.TsClientGuiProcess(jsonTask, jsonProcess)
 }
 
 /// TYPE_TUNNEL
