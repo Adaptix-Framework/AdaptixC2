@@ -1,9 +1,11 @@
 #include "config.h"
 
+#if defined(BUILD_SVC)
 char* getServiceName()
 {
 	return (char*) "ServiceName";
 }
+#endif
 
 char* getProfile()
 {

@@ -51,6 +51,8 @@ func (ts *Teamserver) TsAgentRequestHandler(agentCrc string, agentId string, bea
 		agentData.CreateTime = time.Now().Unix()
 		agentData.LastTick = int(time.Now().Unix())
 		agentData.Tags = ""
+		agentData.Mark = ""
+		agentData.Color = ""
 
 		agent = &Agent{
 			Data:           agentData,

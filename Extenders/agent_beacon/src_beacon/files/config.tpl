@@ -1,7 +1,9 @@
+#if defined(BUILD_SVC)
 char* getServiceName()
 {
 	return (char*) SERVICE_NAME;
 }
+#endif
 
 char* getProfile()
 {

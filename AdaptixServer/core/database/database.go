@@ -86,7 +86,9 @@ func (dbms *DBMS) DatabaseInit() error {
     	"ACP" INTEGER,
     	"CreateTime" BIGINT,
     	"LastTick" INTEGER,
-    	"Tags" TEXT
+    	"Tags" TEXT,
+    	"Mark" TEXT,
+    	"Color" TEXT
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 

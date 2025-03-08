@@ -26,6 +26,8 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     data.Username   = jsonObjAgentData["a_username"].toString();
     data.LastTick   = jsonObjAgentData["a_last_tick"].toDouble();
     data.Tags       = jsonObjAgentData["a_tags"].toString();
+    data.Mark       = jsonObjAgentData["a_mark"].toString();
+    data.Color      = jsonObjAgentData["a_color"].toString();
 
     auto username = data.Username;
     if ( data.Elevated )
@@ -88,6 +90,8 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     data.Elevated = jsonObjAgentData["a_elevated"].toBool();
     data.Username = jsonObjAgentData["a_username"].toString();
     data.Tags     = jsonObjAgentData["a_tags"].toString();
+    data.Mark     = jsonObjAgentData["a_mark"].toString();
+    data.Color    = jsonObjAgentData["a_color"].toString();
 
     auto username = data.Username;
     if ( data.Elevated )

@@ -162,6 +162,8 @@ func CreateSpAgentNew(agentData adaptix.AgentData) SyncPackerAgentNew {
 		Username:   agentData.Username,
 		LastTick:   agentData.LastTick,
 		Tags:       agentData.Tags,
+		Mark:       agentData.Mark,
+		Color:      agentData.Color,
 	}
 }
 
@@ -175,6 +177,8 @@ func CreateSpAgentUpdate(agentData adaptix.AgentData) SyncPackerAgentUpdate {
 		Elevated: agentData.Elevated,
 		Username: agentData.Username,
 		Tags:     agentData.Tags,
+		Mark:     agentData.Mark,
+		Color:    agentData.Color,
 	}
 }
 

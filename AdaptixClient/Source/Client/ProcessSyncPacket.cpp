@@ -71,6 +71,8 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("a_computer")    || !jsonObj["a_computer"].isString() )    return false;
         if ( !jsonObj.contains("a_username")    || !jsonObj["a_username"].isString() )    return false;
         if ( !jsonObj.contains("a_tags")        || !jsonObj["a_tags"].isString() )        return false;
+        if ( !jsonObj.contains("a_mark")        || !jsonObj["a_mark"].isString() )        return false;
+        if ( !jsonObj.contains("a_color")       || !jsonObj["a_color"].isString() )       return false;
         if ( !jsonObj.contains("a_last_tick")   || !jsonObj["a_last_tick"].isDouble() )   return false;
         return true;
     }
@@ -85,6 +87,8 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("a_elevated") || !jsonObj["a_elevated"].isBool() )   return false;
         if ( !jsonObj.contains("a_username") || !jsonObj["a_username"].isString() ) return false;
         if ( !jsonObj.contains("a_tags")     || !jsonObj["a_tags"].isString() )     return false;
+        if ( !jsonObj.contains("a_mark")     || !jsonObj["a_mark"].isString() )     return false;
+        if ( !jsonObj.contains("a_color")    || !jsonObj["a_color"].isString() )    return false;
         return true;
     }
     if( spType == TYPE_AGENT_REMOVE ) {
@@ -132,235 +136,106 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if( spType == TYPE_AGENT_CONSOLE_TASK_SYNC ) {
-        if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_start_time") || !jsonObj["a_start_time"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_cmdline") || !jsonObj["a_cmdline"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_client") || !jsonObj["a_client"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_finish_time") || !jsonObj["a_finish_time"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_msg_type") || !jsonObj["a_msg_type"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_message") || !jsonObj["a_message"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_text") || !jsonObj["a_text"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_completed") || !jsonObj["a_completed"].isBool()) {
-            return false;
-        }
+        if (!jsonObj.contains("a_id")          || !jsonObj["a_id"].isString())          return false;
+        if (!jsonObj.contains("a_task_id")     || !jsonObj["a_task_id"].isString())     return false;
+        if (!jsonObj.contains("a_start_time")  || !jsonObj["a_start_time"].isDouble())  return false;
+        if (!jsonObj.contains("a_cmdline")     || !jsonObj["a_cmdline"].isString())     return false;
+        if (!jsonObj.contains("a_client")      || !jsonObj["a_client"].isString())      return false;
+        if (!jsonObj.contains("a_finish_time") || !jsonObj["a_finish_time"].isDouble()) return false;
+        if (!jsonObj.contains("a_msg_type")    || !jsonObj["a_msg_type"].isDouble())    return false;
+        if (!jsonObj.contains("a_message")     || !jsonObj["a_message"].isString())     return false;
+        if (!jsonObj.contains("a_text")        || !jsonObj["a_text"].isString())        return false;
+        if (!jsonObj.contains("a_completed")   || !jsonObj["a_completed"].isBool())     return false;
         return true;
     }
     if( spType == TYPE_AGENT_CONSOLE_TASK_UPD ) {
-        if (!jsonObj.contains("a_id") || !jsonObj["a_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_finish_time") || !jsonObj["a_finish_time"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_msg_type") || !jsonObj["a_msg_type"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_message") || !jsonObj["a_message"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_text") || !jsonObj["a_text"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("a_completed") || !jsonObj["a_completed"].isBool()) {
-            return false;
-        }
+        if (!jsonObj.contains("a_id")          || !jsonObj["a_id"].isString())          return false;
+        if (!jsonObj.contains("a_task_id")     || !jsonObj["a_task_id"].isString())     return false;
+        if (!jsonObj.contains("a_finish_time") || !jsonObj["a_finish_time"].isDouble()) return false;
+        if (!jsonObj.contains("a_msg_type")    || !jsonObj["a_msg_type"].isDouble())    return false;
+        if (!jsonObj.contains("a_message")     || !jsonObj["a_message"].isString())     return false;
+        if (!jsonObj.contains("a_text")        || !jsonObj["a_text"].isString())        return false;
+        if (!jsonObj.contains("a_completed")   || !jsonObj["a_completed"].isBool())     return false;
         return true;
     }
 
     if( spType == TYPE_DOWNLOAD_CREATE ) {
-        if (!jsonObj.contains("d_agent_id") || !jsonObj["d_agent_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("d_file_id") || !jsonObj["d_file_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("d_agent_name") || !jsonObj["d_agent_name"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("d_user") || !jsonObj["d_user"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("d_computer") || !jsonObj["d_computer"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("d_file") || !jsonObj["d_file"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("d_size") || !jsonObj["d_size"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("d_date") || !jsonObj["d_date"].isDouble()) {
-            return false;
-        }
+        if (!jsonObj.contains("d_agent_id")   || !jsonObj["d_agent_id"].isString())   return false;
+        if (!jsonObj.contains("d_file_id")    || !jsonObj["d_file_id"].isString())    return false;
+        if (!jsonObj.contains("d_agent_name") || !jsonObj["d_agent_name"].isString()) return false;
+        if (!jsonObj.contains("d_user")       || !jsonObj["d_user"].isString())       return false;
+        if (!jsonObj.contains("d_computer")   || !jsonObj["d_computer"].isString())   return false;
+        if (!jsonObj.contains("d_file")       || !jsonObj["d_file"].isString())       return false;
+        if (!jsonObj.contains("d_size")       || !jsonObj["d_size"].isDouble())       return false;
+        if (!jsonObj.contains("d_date")       || !jsonObj["d_date"].isDouble())       return false;
         return true;
     }
     if( spType == TYPE_DOWNLOAD_UPDATE ) {
-        if (!jsonObj.contains("d_file_id") || !jsonObj["d_file_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("d_recv_size") || !jsonObj["d_recv_size"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("d_state") || !jsonObj["d_state"].isDouble()) {
-            return false;
-        }
+        if (!jsonObj.contains("d_file_id")   || !jsonObj["d_file_id"].isString())   return false;
+        if (!jsonObj.contains("d_recv_size") || !jsonObj["d_recv_size"].isDouble()) return false;
+        if (!jsonObj.contains("d_state")     || !jsonObj["d_state"].isDouble())     return false;
         return true;
     }
     if( spType == TYPE_DOWNLOAD_DELETE ) {
-        if (!jsonObj.contains("d_file_id") || !jsonObj["d_file_id"].isString()) {
-            return false;
-        }
+        if (!jsonObj.contains("d_file_id") || !jsonObj["d_file_id"].isString()) return false;
         return true;
     }
 
     if( spType == TYPE_TUNNEL_CREATE ) {
-        if (!jsonObj.contains("p_tunnel_id") || !jsonObj["p_tunnel_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_agent_id") || !jsonObj["p_agent_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_computer") || !jsonObj["p_computer"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_username") || !jsonObj["p_username"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_process") || !jsonObj["p_process"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_type") || !jsonObj["p_type"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_info") || !jsonObj["p_info"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_interface") || !jsonObj["p_interface"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_port") || !jsonObj["p_port"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_client") || !jsonObj["p_client"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_fport") || !jsonObj["p_fport"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_fhost") || !jsonObj["p_fhost"].isString()) {
-            return false;
-        }
-
+        if (!jsonObj.contains("p_tunnel_id") || !jsonObj["p_tunnel_id"].isString()) return false;
+        if (!jsonObj.contains("p_agent_id")  || !jsonObj["p_agent_id"].isString())  return false;
+        if (!jsonObj.contains("p_computer")  || !jsonObj["p_computer"].isString())  return false;
+        if (!jsonObj.contains("p_username")  || !jsonObj["p_username"].isString())  return false;
+        if (!jsonObj.contains("p_process")   || !jsonObj["p_process"].isString())   return false;
+        if (!jsonObj.contains("p_type")      || !jsonObj["p_type"].isString())      return false;
+        if (!jsonObj.contains("p_info")      || !jsonObj["p_info"].isString())      return false;
+        if (!jsonObj.contains("p_interface") || !jsonObj["p_interface"].isString()) return false;
+        if (!jsonObj.contains("p_port")      || !jsonObj["p_port"].isString())      return false;
+        if (!jsonObj.contains("p_client")    || !jsonObj["p_client"].isString())    return false;
+        if (!jsonObj.contains("p_fport")     || !jsonObj["p_fport"].isString())     return false;
+        if (!jsonObj.contains("p_fhost")     || !jsonObj["p_fhost"].isString())     return false;
         return true;
     }
     if( spType == TYPE_TUNNEL_EDIT ) {
-        if (!jsonObj.contains("p_tunnel_id") || !jsonObj["p_tunnel_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("p_info") || !jsonObj["p_info"].isString()) {
-            return false;
-        }
+        if (!jsonObj.contains("p_tunnel_id") || !jsonObj["p_tunnel_id"].isString()) return false;
+        if (!jsonObj.contains("p_info")      || !jsonObj["p_info"].isString())      return false;
         return true;
     }
     if( spType == TYPE_TUNNEL_DELETE ) {
-        if (!jsonObj.contains("p_tunnel_id") || !jsonObj["p_tunnel_id"].isString()) {
-            return false;
-        }
+        if (!jsonObj.contains("p_tunnel_id") || !jsonObj["p_tunnel_id"].isString()) return false;
         return true;
     }
 
     if( spType == TYPE_BROWSER_DISKS ) {
-        if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_time") || !jsonObj["b_time"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_msg_type") || !jsonObj["b_msg_type"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_message") || !jsonObj["b_message"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_data") || !jsonObj["b_data"].isString()) {
-            return false;
-        }
+        if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) return false;
+        if (!jsonObj.contains("b_time")     || !jsonObj["b_time"].isDouble())     return false;
+        if (!jsonObj.contains("b_msg_type") || !jsonObj["b_msg_type"].isDouble()) return false;
+        if (!jsonObj.contains("b_message")  || !jsonObj["b_message"].isString())  return false;
+        if (!jsonObj.contains("b_data")     || !jsonObj["b_data"].isString())     return false;
         return true;
     }
     if( spType == TYPE_BROWSER_FILES ) {
-        if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_time") || !jsonObj["b_time"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_msg_type") || !jsonObj["b_msg_type"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_message") || !jsonObj["b_message"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_path") || !jsonObj["b_path"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_data") || !jsonObj["b_data"].isString()) {
-            return false;
-        }
+        if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) return false;
+        if (!jsonObj.contains("b_time")     || !jsonObj["b_time"].isDouble())     return false;
+        if (!jsonObj.contains("b_msg_type") || !jsonObj["b_msg_type"].isDouble()) return false;
+        if (!jsonObj.contains("b_message")  || !jsonObj["b_message"].isString())  return false;
+        if (!jsonObj.contains("b_path")     || !jsonObj["b_path"].isString())     return false;
+        if (!jsonObj.contains("b_data")     || !jsonObj["b_data"].isString())     return false;
         return true;
     }
     if( spType == TYPE_BROWSER_STATUS ) {
-        if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_time") || !jsonObj["b_time"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_msg_type") || !jsonObj["b_msg_type"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_message") || !jsonObj["b_message"].isString()) {
-            return false;
-        }
+        if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) return false;
+        if (!jsonObj.contains("b_time")     || !jsonObj["b_time"].isDouble())     return false;
+        if (!jsonObj.contains("b_msg_type") || !jsonObj["b_msg_type"].isDouble()) return false;
+        if (!jsonObj.contains("b_message")  || !jsonObj["b_message"].isString())  return false;
         return true;
     }
     if( spType == TYPE_BROWSER_PROCESS ) {
-        if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_time") || !jsonObj["b_time"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_msg_type") || !jsonObj["b_msg_type"].isDouble()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_message") || !jsonObj["b_message"].isString()) {
-            return false;
-        }
-        if (!jsonObj.contains("b_data") || !jsonObj["b_data"].isString()) {
-            return false;
-        }
+        if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) return false;
+        if (!jsonObj.contains("b_time")     || !jsonObj["b_time"].isDouble())     return false;
+        if (!jsonObj.contains("b_msg_type") || !jsonObj["b_msg_type"].isDouble()) return false;
+        if (!jsonObj.contains("b_message")  || !jsonObj["b_message"].isString())  return false;
+        if (!jsonObj.contains("b_data")     || !jsonObj["b_data"].isString())     return false;
         return true;
     }
 

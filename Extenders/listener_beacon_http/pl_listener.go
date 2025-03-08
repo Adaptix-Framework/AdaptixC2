@@ -49,7 +49,7 @@ func ValidateListenerConfig(data string) error {
 		return errors.New("PortBind must be in the range 1-65535")
 	}
 
-	portAgent, err := strconv.Atoi(conf.PortBind)
+	portAgent, err := strconv.Atoi(conf.PortAgent)
 	if err != nil {
 		return errors.New("PortAgent must be an integer")
 	}
