@@ -6,8 +6,8 @@ import (
 )
 
 func RC4Crypt(data []byte, key []byte) ([]byte, error) {
-	rc4crypt, errcrypt := rc4.NewCipher([]byte(key))
-	if errcrypt != nil {
+	rc4crypt, err := rc4.NewCipher(key)
+	if err != nil {
 		return nil, errors.New("rc4 decrypt error")
 	}
 	decryptData := make([]byte, len(data))

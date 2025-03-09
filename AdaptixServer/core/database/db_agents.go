@@ -2,6 +2,7 @@ package database
 
 import (
 	"AdaptixServer/core/adaptix"
+	"database/sql"
 	"errors"
 	"fmt"
 )
@@ -11,7 +12,9 @@ func (dbms *DBMS) DbAgentExist(agentId string) bool {
 	if err != nil {
 		return false
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
 
 	for rows.Next() {
 		rowAgentId := ""
@@ -126,7 +129,9 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 				agents = append(agents, agentData)
 			}
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 	}
 	return agents
 }

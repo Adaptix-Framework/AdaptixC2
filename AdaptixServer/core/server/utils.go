@@ -61,8 +61,9 @@ type Teamserver struct {
 }
 
 type Agent struct {
-	Data adaptix.AgentData
-	Tick bool
+	Data   adaptix.AgentData
+	Tick   bool
+	Active bool
 
 	OutConsole *safe.Slice //  sync_packet interface{}
 

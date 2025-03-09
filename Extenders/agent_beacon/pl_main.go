@@ -38,7 +38,6 @@ const (
 )
 
 type Teamserver interface {
-	//TsClientConnect(username string, socket *websocket.Conn)
 	TsClientDisconnect(username string)
 
 	TsListenerStart(listenerName string, configType string, config string, customData []byte) error
@@ -753,7 +752,7 @@ func TunnelMessageConnectTCP(channelId int, address string, port int) []byte {
 		Sync: false,
 	}
 
-	json.NewEncoder(&buffer).Encode(taskData)
+	_ = json.NewEncoder(&buffer).Encode(taskData)
 	return buffer.Bytes()
 }
 
@@ -772,7 +771,7 @@ func TunnelMessageConnectUDP(channelId int, address string, port int) []byte {
 		Sync: false,
 	}
 
-	json.NewEncoder(&buffer).Encode(taskData)
+	_ = json.NewEncoder(&buffer).Encode(taskData)
 	return buffer.Bytes()
 }
 
@@ -791,7 +790,7 @@ func TunnelMessageWriteTCP(channelId int, data []byte) []byte {
 		Sync: false,
 	}
 
-	json.NewEncoder(&buffer).Encode(taskData)
+	_ = json.NewEncoder(&buffer).Encode(taskData)
 	return buffer.Bytes()
 }
 
@@ -810,7 +809,7 @@ func TunnelMessageWriteUDP(channelId int, data []byte) []byte {
 		Sync: false,
 	}
 
-	json.NewEncoder(&buffer).Encode(taskData)
+	_ = json.NewEncoder(&buffer).Encode(taskData)
 	return buffer.Bytes()
 }
 
@@ -829,7 +828,7 @@ func TunnelMessageClose(channelId int) []byte {
 		Sync: false,
 	}
 
-	json.NewEncoder(&buffer).Encode(taskData)
+	_ = json.NewEncoder(&buffer).Encode(taskData)
 	return buffer.Bytes()
 }
 
@@ -848,6 +847,6 @@ func TunnelMessageReverse(tunnelId int, port int) []byte {
 		Sync: false,
 	}
 
-	json.NewEncoder(&buffer).Encode(taskData)
+	_ = json.NewEncoder(&buffer).Encode(taskData)
 	return buffer.Bytes()
 }

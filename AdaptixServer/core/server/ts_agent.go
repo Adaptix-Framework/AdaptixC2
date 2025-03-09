@@ -62,6 +62,7 @@ func (ts *Teamserver) TsAgentRequestHandler(agentCrc string, agentId string, bea
 			RunningTasks:   safe.NewMap(),
 			CompletedTasks: safe.NewMap(),
 			Tick:           false,
+			Active:         true,
 		}
 
 		ts.agents.Put(agentData.Id, agent)
@@ -87,7 +88,7 @@ func (ts *Teamserver) TsAgentRequestHandler(agentCrc string, agentId string, bea
 
 	if agent.Data.Async {
 		agent.Data.LastTick = int(time.Now().Unix())
-		ts.DBMS.DbAgentUpdate(agent.Data)
+		_ = ts.DBMS.DbAgentUpdate(agent.Data)
 		agent.Tick = true
 	}
 
@@ -130,6 +131,10 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 		if ok {
 
 			agent, _ = value.(*Agent)
+			if agent.Active == false {
+				return fmt.Errorf("agent '%v' not active", agentId)
+			}
+
 			_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 			err = ts.Extender.ExAgentCommand(clientName, cmdline, agentName, agentObject.Bytes(), args)
@@ -167,7 +172,7 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 
 	value, ok := ts.agents.Get(newAgentData.Id)
 	if !ok {
-		return errors.New("Agent does not exist")
+		return errors.New("agent does not exist")
 	}
 
 	agent, _ = value.(*Agent)
@@ -177,6 +182,79 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 	agent.Data.Username = newAgentData.Username
 
 	err = ts.DBMS.DbAgentUpdate(agent.Data)
+	if err != nil {
+		logs.Error("", err.Error())
+	}
+
+	packetNew := CreateSpAgentUpdate(agent.Data)
+	ts.TsSyncAllClients(packetNew)
+
+	return nil
+}
+
+func (ts *Teamserver) TsAgentTerminate(agentId string) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return errors.New("agent does not exist")
+	}
+
+	agent, _ := value.(*Agent)
+	agent.Active = false
+	agent.Data.Mark = "Terminated"
+
+	/// Clear Downloads
+
+	var downloads []string
+	ts.downloads.ForEach(func(key string, value interface{}) bool {
+		downloadData := value.(adaptix.DownloadData)
+		if downloadData.AgentId == agentId {
+			downloads = append(downloads, downloadData.FileId)
+		}
+		return true
+	})
+	for _, id := range downloads {
+		_ = ts.TsDownloadClose(id, DOWNLOAD_STATE_FINISHED)
+	}
+
+	/// Clear Tunnels
+
+	var tunnels []string
+	ts.tunnels.ForEach(func(key string, value interface{}) bool {
+		tunnel := value.(*Tunnel)
+		if tunnel.Data.AgentId == agentId {
+			tunnels = append(tunnels, tunnel.Data.TunnelId)
+		}
+		return true
+	})
+	for _, id := range tunnels {
+		_ = ts.TsTunnelStop(id)
+	}
+
+	/// Clear TunnelQueue
+
+	_ = agent.TunnelQueue.CutArray()
+
+	/// Clear TasksQueue
+
+	tasksQueue := agent.TasksQueue.CutArray()
+	for _, value = range tasksQueue {
+		task := value.(adaptix.TaskData)
+		packet := CreateSpAgentTaskRemove(task)
+		ts.TsSyncAllClients(packet)
+	}
+
+	/// Clear TasksRunning
+
+	tasksRunning := agent.RunningTasks.CutMap()
+	for _, value = range tasksRunning {
+		task := value.(adaptix.TaskData)
+		packet := CreateSpAgentTaskRemove(task)
+		ts.TsSyncAllClients(packet)
+	}
+
+	/// Update
+
+	err := ts.DBMS.DbAgentUpdate(agent.Data)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
@@ -210,7 +288,7 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
-		return errors.New("Agent does not exist")
+		return errors.New("agent does not exist")
 	}
 
 	agent, _ := value.(*Agent)
@@ -229,20 +307,20 @@ func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 
 func (ts *Teamserver) TsAgentTickUpdate() {
 	for {
-		var agentSlize []string
+		var agentSlice []string
 		ts.agents.ForEach(func(key string, value interface{}) bool {
 			agent := value.(*Agent)
 			if agent.Data.Async {
 				if agent.Tick {
 					agent.Tick = false
-					agentSlize = append(agentSlize, agent.Data.Id)
+					agentSlice = append(agentSlice, agent.Data.Id)
 				}
 			}
 			return true
 		})
 
-		if len(agentSlize) > 0 {
-			packetTick := CreateSpAgentTick(agentSlize)
+		if len(agentSlice) > 0 {
+			packetTick := CreateSpAgentTick(agentSlice)
 			ts.TsSyncAllClients(packetTick)
 		}
 

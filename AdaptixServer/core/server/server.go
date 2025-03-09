@@ -37,14 +37,14 @@ func NewTeamserver() *Teamserver {
 	return ts
 }
 
-func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, exts []string) {
+func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, extenders []string) {
 	ts.Profile.Server = &profile.TsProfile{
 		Port:      port,
 		Endpoint:  endpoint,
 		Password:  password,
 		Cert:      cert,
 		Key:       key,
-		Extenders: exts,
+		Extenders: extenders,
 	}
 	ts.Profile.ServerResponse = &profile.TsResponse{
 		Status:      404,
@@ -56,16 +56,16 @@ func (ts *Teamserver) SetSettings(port int, endpoint string, password string, ce
 
 func (ts *Teamserver) SetProfile(path string) error {
 	var (
-		err        error
-		fileConten []byte
+		err         error
+		fileContent []byte
 	)
 
-	fileConten, err = os.ReadFile(path)
+	fileContent, err = os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal(fileConten, &ts.Profile)
+	err = json.Unmarshal(fileContent, &ts.Profile)
 	if err != nil {
 		return err
 	}
@@ -100,6 +100,11 @@ func (ts *Teamserver) RestoreData() {
 			RunningTasks:   safe.NewMap(),
 			CompletedTasks: safe.NewMap(),
 			Tick:           false,
+			Active:         true,
+		}
+
+		if agent.Data.Mark == "Terminated" {
+			agent.Active = false
 		}
 
 		ts.agents.Put(agentData.Id, agent)
@@ -129,7 +134,7 @@ func (ts *Teamserver) RestoreData() {
 			if err != nil {
 				continue
 			}
-			
+
 			agent.OutConsole.Put(packet3)
 
 			ts.TsSyncAllClients(packet3)

@@ -2,6 +2,7 @@ package database
 
 import (
 	"AdaptixServer/core/adaptix"
+	"database/sql"
 	"errors"
 	"fmt"
 )
@@ -11,7 +12,9 @@ func (dbms *DBMS) DbTaskExist(taskId string) bool {
 	if err != nil {
 		return false
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
 
 	for rows.Next() {
 		rowTaskId := ""
@@ -99,7 +102,7 @@ func (dbms *DBMS) DbTasksAll(agentId string) []adaptix.TaskData {
 
 	ok = dbms.DatabaseExists()
 	if ok {
-		selectQuery = `SELECT TaskId, AgentId, TaskType, Client, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed FROM Tasks WHERE AgentId = ? ORDER BY StartDate ASC;`
+		selectQuery = `SELECT TaskId, AgentId, TaskType, Client, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed FROM Tasks WHERE AgentId = ? ORDER BY StartDate;`
 		query, err := dbms.database.Query(selectQuery, agentId)
 		if err == nil {
 
@@ -112,7 +115,9 @@ func (dbms *DBMS) DbTasksAll(agentId string) []adaptix.TaskData {
 				tasks = append(tasks, taskData)
 			}
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 	}
 	return tasks
 }

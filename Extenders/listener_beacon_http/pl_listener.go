@@ -135,12 +135,12 @@ func CreateListenerDataAndStart(name string, configData string, listenerCustomDa
 		}
 
 		randSlice := make([]byte, 16)
-		rand.Read(randSlice)
+		_, _ = rand.Read(randSlice)
 		conf.EncryptKey = randSlice[:16]
 		conf.Protocol = "http"
 
 	} else {
-		err = json.Unmarshal([]byte(listenerCustomData), &conf)
+		err = json.Unmarshal(listenerCustomData, &conf)
 		if err != nil {
 			return listenerData, customdData, listener, err
 		}

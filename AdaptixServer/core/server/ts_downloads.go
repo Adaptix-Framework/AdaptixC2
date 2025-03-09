@@ -134,7 +134,7 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 		}
 	} else {
 		downloadData.State = DOWNLOAD_STATE_CANCELED
-		os.Remove(downloadData.LocalPath)
+		_ = os.Remove(downloadData.LocalPath)
 		ts.downloads.Delete(fileId)
 	}
 
@@ -160,7 +160,7 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 	}
 
 	if downloadData.State != DOWNLOAD_STATE_FINISHED {
-		return "", nil, errors.New("Download not finished")
+		return "", nil, errors.New("download not finished")
 	}
 
 	filename = filepath.Base(filepath.FromSlash(filepath.Clean(downloadData.LocalPath)))
@@ -179,17 +179,17 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 	}
 
 	if downloadData.State != DOWNLOAD_STATE_FINISHED && downloadData.State != DOWNLOAD_STATE_CANCELED {
-		return errors.New("Download not finished")
+		return errors.New("download not finished")
 	}
 
 	if downloadData.State == DOWNLOAD_STATE_CANCELED {
-		downloadData.File.Close()
+		_ = downloadData.File.Close()
 	}
 
-	os.Remove(downloadData.LocalPath)
+	_ = os.Remove(downloadData.LocalPath)
 
 	if downloadData.State == DOWNLOAD_STATE_FINISHED {
-		ts.DBMS.DbDownloadDelete(fileId)
+		_ = ts.DBMS.DbDownloadDelete(fileId)
 	}
 
 	packet := CreateSpDownloadDelete(downloadData.FileId)

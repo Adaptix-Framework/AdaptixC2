@@ -30,6 +30,9 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 		return
 	}
 	agent = value.(*Agent)
+	if agent.Active == false {
+		return
+	}
 
 	if taskData.TaskId == "" {
 		taskData.TaskId, _ = krypt.GenerateUID(8)
@@ -184,7 +187,7 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 			oldMessage = task.Message
 		}
 		oldText := task.ClearText
-		
+
 		task.MessageType = taskData.MessageType
 		task.Message = taskData.Message
 		task.ClearText = taskData.ClearText

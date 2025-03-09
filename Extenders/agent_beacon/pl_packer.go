@@ -87,7 +87,7 @@ func (p *Packer) ParseInt8() uint8 {
 		return 0
 	}
 
-	return uint8(value[0])
+	return value[0]
 }
 
 func (p *Packer) ParseInt16() uint16 {
@@ -105,7 +105,7 @@ func (p *Packer) ParseInt16() uint16 {
 		return 0
 	}
 
-	return uint16(binary.BigEndian.Uint16(value))
+	return binary.BigEndian.Uint16(value)
 }
 
 func (p *Packer) ParseInt32() uint {

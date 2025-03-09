@@ -46,9 +46,9 @@ func CheckSocks4(conn net.Conn) (string, int, error) {
 
 RET:
 	if err != nil {
-		conn.Write([]byte{0x00, 0x5b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // failed
+		_, _ = conn.Write([]byte{0x00, 0x5b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // failed
 	} else {
-		conn.Write([]byte{0x00, 0x5a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // success
+		_, _ = conn.Write([]byte{0x00, 0x5a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // success
 	}
 
 	return address, port, err
@@ -76,7 +76,7 @@ func CheckSocks5(conn net.Conn) (string, int, int, error) {
 		err = errors.New("invalid version of socks proxy")
 		goto RET
 	}
-	conn.Write([]byte{0x05, 0x00}) // version 5, without auth
+	_, _ = conn.Write([]byte{0x05, 0x00}) // version 5, without auth
 
 	buf = make([]byte, 4)
 	_, err = io.ReadFull(conn, buf)
@@ -148,9 +148,9 @@ func CheckSocks5(conn net.Conn) (string, int, int, error) {
 
 RET:
 	if err != nil {
-		conn.Write([]byte{0x05, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // failed
+		_, _ = conn.Write([]byte{0x05, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // failed
 	} else {
-		conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // success
+		_, _ = conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // success
 	}
 
 	return address, port, command, err
@@ -193,11 +193,11 @@ func CheckSocks5Auth(conn net.Conn, username string, password string) (string, i
 		}
 	}
 	if !authRequired {
-		conn.Write([]byte{0x05, 0xFF}) // failed method
+		_, _ = conn.Write([]byte{0x05, 0xFF}) // failed method
 		err = errors.New("no supported authentication method")
 		goto RET
 	}
-	conn.Write([]byte{0x05, 0x02}) // success method
+	_, _ = conn.Write([]byte{0x05, 0x02}) // success method
 
 	buf = make([]byte, 2) // username
 	_, err = io.ReadFull(conn, buf)
@@ -230,11 +230,11 @@ func CheckSocks5Auth(conn net.Conn, username string, password string) (string, i
 	reqPassword = string(buf)
 
 	if reqUsername != username || reqPassword != password {
-		conn.Write([]byte{0x01, 0x01}) // auth failed
+		_, _ = conn.Write([]byte{0x01, 0x01}) // auth failed
 		err = errors.New("authentication failed")
 		goto RET
 	}
-	conn.Write([]byte{0x01, 0x00}) // auth success
+	_, _ = conn.Write([]byte{0x01, 0x00}) // auth success
 
 	buf = make([]byte, 4)
 	_, err = io.ReadFull(conn, buf)
@@ -306,9 +306,9 @@ func CheckSocks5Auth(conn net.Conn, username string, password string) (string, i
 
 RET:
 	if err != nil {
-		conn.Write([]byte{0x05, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // failed
+		_, _ = conn.Write([]byte{0x05, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // failed
 	} else {
-		conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // success
+		_, _ = conn.Write([]byte{0x05, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}) // success
 	}
 
 	return address, port, command, err
