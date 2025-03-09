@@ -2,6 +2,7 @@ package database
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
 )
@@ -53,7 +54,7 @@ func (dbms *DBMS) DbConsoleAll(agentId string) [][]byte {
 
 	ok = dbms.DatabaseExists()
 	if ok {
-		selectQuery = `SELECT Packet FROM Consoles WHERE AgentId = ? ORDER BY Id ASC;`
+		selectQuery = `SELECT Packet FROM Consoles WHERE AgentId = ? ORDER BY Id;`
 		query, err := dbms.database.Query(selectQuery, agentId)
 		if err == nil {
 
@@ -66,7 +67,9 @@ func (dbms *DBMS) DbConsoleAll(agentId string) [][]byte {
 				consoles = append(consoles, message)
 			}
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 	}
 	return consoles
 }

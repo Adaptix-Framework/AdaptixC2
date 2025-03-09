@@ -1072,7 +1072,7 @@ func SizeBytesToFormat(bytes int64) string {
 }
 
 func RC4Crypt(data []byte, key []byte) ([]byte, error) {
-	rc4crypt, errcrypt := rc4.NewCipher([]byte(key))
+	rc4crypt, errcrypt := rc4.NewCipher(key)
 	if errcrypt != nil {
 		return nil, errors.New("rc4 crypt error")
 	}

@@ -232,7 +232,7 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 		h.pageError(ctx)
 		return
 	} else {
-		html := []byte(strings.ReplaceAll(string(h.Config.WebPageOutput), "<<<PAYLOAD_DATA>>>", string(responseData)))
+		html := []byte(strings.ReplaceAll(h.Config.WebPageOutput, "<<<PAYLOAD_DATA>>>", string(responseData)))
 		_, err = ctx.Writer.Write(html)
 		if err != nil {
 			fmt.Println("Failed to write to request: " + err.Error())
@@ -268,7 +268,7 @@ func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, uint, []byte, []byte, er
 		return 0, 0, nil, nil, errors.New("failed decrypt beat")
 	}
 
-	rc4crypt, errcrypt := rc4.NewCipher([]byte(h.Config.EncryptKey))
+	rc4crypt, errcrypt := rc4.NewCipher(h.Config.EncryptKey)
 	if errcrypt != nil {
 		return 0, 0, nil, nil, errors.New("rc4 decrypt error")
 	}
@@ -290,7 +290,7 @@ func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, uint, []byte, []byte, er
 
 func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 	var (
-		сertData   []byte
+		certData   []byte
 		keyData    []byte
 		certBuffer bytes.Buffer
 		keyBuffer  bytes.Buffer
@@ -321,12 +321,12 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 
 	template.DNSNames = []string{h.Config.HostBind}
 
-	сertData, err = x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+	certData, err = x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {
 		return fmt.Errorf("failed to create certificate: %v", err)
 	}
 
-	err = pem.Encode(&certBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: сertData})
+	err = pem.Encode(&certBuffer, &pem.Block{Type: "CERTIFICATE", Bytes: certData})
 	if err != nil {
 		return fmt.Errorf("failed to write certificate: %v", err)
 	}
@@ -355,5 +355,5 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 func (h *HTTP) pageError(ctx *gin.Context) {
 	ctx.Writer.WriteHeader(http.StatusNotFound)
 	html := []byte(h.Config.WebPageError)
-	ctx.Writer.Write(html)
+	_, _ = ctx.Writer.Write(html)
 }

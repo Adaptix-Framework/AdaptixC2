@@ -22,6 +22,10 @@ func (ts *Teamserver) TsAgentGuiDisks(agentId string, clientName string) error {
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserDisks(agent.Data.Name, agentObject.Bytes())
@@ -50,6 +54,10 @@ func (ts *Teamserver) TsAgentGuiProcess(agentId string, clientName string) error
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+		
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserProcess(agent.Data.Name, agentObject.Bytes())
@@ -78,6 +86,10 @@ func (ts *Teamserver) TsAgentGuiFiles(agentId string, path string, clientName st
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserFiles(agent.Data.Name, path, agentObject.Bytes())
@@ -106,6 +118,10 @@ func (ts *Teamserver) TsAgentGuiUpload(agentId string, path string, content []by
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserUpload(agent.Data.Name, path, content, agentObject.Bytes())
@@ -134,6 +150,10 @@ func (ts *Teamserver) TsAgentGuiDownload(agentId string, path string, clientName
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserDownload(agent.Data.Name, path, agentObject.Bytes())
@@ -162,6 +182,10 @@ func (ts *Teamserver) TsAgentGuiExit(agentId string, clientName string) error {
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentCtxExit(agent.Data.Name, agentObject.Bytes())

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 )
@@ -10,7 +11,9 @@ func (dbms *DBMS) DbListenerExist(listenerName string) bool {
 	if err != nil {
 		return false
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
 
 	for rows.Next() {
 		rowListenerName := ""
@@ -120,7 +123,9 @@ func (dbms *DBMS) DbListenerAll() []ListenerRow {
 				listeners = append(listeners, listenerRow)
 			}
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 	}
 	return listeners
 }

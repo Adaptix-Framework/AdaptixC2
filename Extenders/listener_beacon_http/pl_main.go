@@ -16,7 +16,6 @@ const (
 )
 
 type Teamserver interface {
-	//TsClientConnect(username string, socket *websocket.Conn)
 	TsClientDisconnect(username string)
 
 	TsListenerStart(listenerName string, configType string, config string, customData []byte) error
