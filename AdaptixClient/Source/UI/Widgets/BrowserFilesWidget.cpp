@@ -1,7 +1,7 @@
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <Utils/FileSystem.h>
 
-void BrowserFileData::CreateBrowserFileData(QString path, int type )
+void BrowserFileData::CreateBrowserFileData(const QString &path, int type )
 {
     Fullpath = path;
     Type     = type;
@@ -29,7 +29,7 @@ BrowserFileData* BrowserFilesWidget::getBrowserStore(QString path)
     return &browserStore[path];
 }
 
-void BrowserFilesWidget::setBrowserStore(QString path, BrowserFileData fileData)
+void BrowserFilesWidget::setBrowserStore(QString path, const BrowserFileData &fileData)
 {
     path = path.toLower();
     browserStore[path] = fileData;
@@ -152,7 +152,7 @@ void BrowserFilesWidget::createUI()
     this->setLayout(mainGridLayout);
 }
 
-void BrowserFilesWidget::SetDisks(qint64 time, int msgType, QString message, QString data)
+void BrowserFilesWidget::SetDisks(qint64 time, int msgType, const QString &message, const QString &data)
 {
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
@@ -186,7 +186,7 @@ void BrowserFilesWidget::SetDisks(qint64 time, int msgType, QString message, QSt
     inputPath->setText(currentPath);
 }
 
-void BrowserFilesWidget::AddFiles(qint64 time, int msgType, QString message, QString path, QString data)
+void BrowserFilesWidget::AddFiles(qint64 time, int msgType, const QString &message, const QString &path, const QString &data)
 {
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
@@ -220,7 +220,7 @@ void BrowserFilesWidget::AddFiles(qint64 time, int msgType, QString message, QSt
     inputPath->setText(currentPath);
 }
 
-void BrowserFilesWidget::SetStatus( qint64 time, int msgType, QString message )
+void BrowserFilesWidget::SetStatus( qint64 time, int msgType, const QString &message ) const
 {
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
@@ -237,7 +237,7 @@ void BrowserFilesWidget::SetStatus( qint64 time, int msgType, QString message )
 
 /// PRIVATE
 
-BrowserFileData BrowserFilesWidget::createFileData(QString path)
+BrowserFileData BrowserFilesWidget::createFileData(const QString &path) const
 {
     int type = TYPE_DIR;
     QString rootPath = GetRootPathWindows(path);
@@ -253,7 +253,7 @@ BrowserFileData BrowserFilesWidget::createFileData(QString path)
     return fileData;
 }
 
-BrowserFileData* BrowserFilesWidget::getFileData(QString path)
+BrowserFileData* BrowserFilesWidget::getFileData(const QString &path)
 {
     if( browserStore.contains(path.toLower()) ) {
         return this->getBrowserStore(path);
@@ -274,7 +274,7 @@ BrowserFileData* BrowserFilesWidget::getFileData(QString path)
     }
 }
 
-void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, QString path, QJsonArray jsonArray)
+void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const QString &path, QJsonArray jsonArray)
 {
     QMap<QString, BrowserFileData> oldFiles;
     for (BrowserFileData* oldData : currenFileData->Files)
@@ -329,7 +329,7 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, QString
     }
 }
 
-void BrowserFilesWidget::setStoredFileData(QString path, BrowserFileData currenFileData)
+void BrowserFilesWidget::setStoredFileData(const QString &path, const BrowserFileData &currenFileData)
 {
     treeBrowserWidget->setCurrentItem(currenFileData.TreeItem);
     currenFileData.TreeItem->setExpanded(true);
@@ -342,7 +342,7 @@ void BrowserFilesWidget::setStoredFileData(QString path, BrowserFileData currenF
     inputPath->setText(currentPath);
 }
 
-void BrowserFilesWidget::tableShowItems(QVector<BrowserFileData*> files )
+void BrowserFilesWidget::tableShowItems(QVector<BrowserFileData*> files ) const
 {
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
@@ -365,7 +365,7 @@ void BrowserFilesWidget::tableShowItems(QVector<BrowserFileData*> files )
     }
 }
 
-void BrowserFilesWidget::cdBroser(QString path)
+void BrowserFilesWidget::cdBroser(const QString &path)
 {
     if ( !browserStore.contains(path.toLower()) )
         return;
@@ -386,13 +386,13 @@ void BrowserFilesWidget::cdBroser(QString path)
 
 /// SLOTS
 
-void BrowserFilesWidget::onDisks()
+void BrowserFilesWidget::onDisks() const
 {
     QString status = agent->BrowserDisks();
     statusLabel->setText(status);
 }
 
-void BrowserFilesWidget::onList()
+void BrowserFilesWidget::onList() const
 {
     QString path = inputPath->text();
     QString status = agent->BrowserList(path);
@@ -411,7 +411,7 @@ void BrowserFilesWidget::onParent()
     this->cdBroser(path);
 }
 
-void BrowserFilesWidget::onReload()
+void BrowserFilesWidget::onReload() const
 {
     if ( currentPath.isEmpty() ) {
         QString status = agent->BrowserList(".\\");
@@ -423,7 +423,7 @@ void BrowserFilesWidget::onReload()
     }
 }
 
-void BrowserFilesWidget::onUpload()
+void BrowserFilesWidget::onUpload() const
 {
     QString path = inputPath->text();
     if ( path.isEmpty() )
@@ -447,7 +447,7 @@ void BrowserFilesWidget::onUpload()
     statusLabel->setText(status);
 }
 
-void BrowserFilesWidget::actionDownload()
+void BrowserFilesWidget::actionDownload() const
 {
     QString path = inputPath->text();
     if ( path.isEmpty() )
@@ -479,7 +479,7 @@ void BrowserFilesWidget::handleTableDoubleClicked(const QModelIndex &index)
 
 void BrowserFilesWidget::handleTreeDoubleClicked(QTreeWidgetItem* item, int column)
 {
-    FileBrowserTreeItem* treeItem = (FileBrowserTreeItem*) item;
+    FileBrowserTreeItem* treeItem = static_cast<FileBrowserTreeItem *>(item);
 
     QString path = treeItem->Data.Fullpath;
     if (path == currentPath )

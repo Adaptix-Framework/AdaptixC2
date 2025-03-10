@@ -1,7 +1,7 @@
 #include <UI/Dialogs/DialogAgent.h>
 #include <Client/Requestor.h>
 
-DialogAgent::DialogAgent(QString listenerName, QString listenerType)
+DialogAgent::DialogAgent(const QString &listenerName, const QString &listenerType)
 {
     this->createUI();
 
@@ -99,7 +99,7 @@ void DialogAgent::Start()
     this->exec();
 }
 
-void DialogAgent::AddExAgents(QMap<QString, WidgetBuilder *> agents)
+void DialogAgent::AddExAgents(const QMap<QString, WidgetBuilder*> &agents)
 {
     agentsUI = agents;
 
@@ -111,12 +111,12 @@ void DialogAgent::AddExAgents(QMap<QString, WidgetBuilder *> agents)
     agentCombobox->addItems( agentsUI.keys() );
 }
 
-void DialogAgent::SetProfile(AuthProfile profile)
+void DialogAgent::SetProfile(const AuthProfile &profile)
 {
     this->authProfile = profile;
 }
 
-void DialogAgent::changeConfig(QString fn)
+void DialogAgent::changeConfig(const QString &fn)
 {
     if (agentsUI.contains(fn) && agentsUI[fn]) {
         auto w = agentsUI[fn]->GetWidget();

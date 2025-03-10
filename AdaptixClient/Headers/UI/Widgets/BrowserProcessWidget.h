@@ -29,26 +29,27 @@ class BrowserProcessWidget : public QWidget
     Agent*  agent;
 
     void createUI();
-    void setTableProcessData(QMap<int, BrowserProcessData> processMap);
-    void setTreeProcessData(QMap<int, BrowserProcessData> processMap);
-    void addProcessToTree(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessData> processMap, QMap<int, QTreeWidgetItem*> *nodeMap);
-    void filterTreeWidget(QString filterText);
-    void filterTableWidget(QString filterText);
+    void setTableProcessData(QMap<int, BrowserProcessData> processMap) const;
+    void setTreeProcessData(QMap<int, BrowserProcessData> processMap) const;
+
+    static void addProcessToTree(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessData> processMap, QMap<int, QTreeWidgetItem*> *nodeMap);
+    void filterTreeWidget(const QString &filterText) const;
+    void filterTableWidget(const QString &filterText) const;
 
 public:
     BrowserProcessWidget(Agent* a);
-    ~BrowserProcessWidget();
+    ~BrowserProcessWidget() override;
 
-    void SetProcess(int msgType, QString data);
-    void SetStatus(qint64 time, int msgType, QString message);
+    void SetProcess(int msgType, const QString &data) const;
+    void SetStatus(qint64 time, int msgType, const QString &message) const;
 
 public slots:
-    void onReload();
-    void onFilter(QString text);
-    void actionCopyPid();
+    void onReload() const;
+    void onFilter(const QString &text) const;
+    void actionCopyPid() const;
     void handleTableMenu(const QPoint &pos);
-    void onTableSelect();
-    void onTreeSelect();
+    void onTableSelect() const;
+    void onTreeSelect() const;
 };
 
 #endif //ADAPTIXCLIENT_BROWSERPROCESSWIDGET_H

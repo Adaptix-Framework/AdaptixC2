@@ -25,7 +25,7 @@ public:
 
     void SetType(int type);
     void SetStored(bool stored);
-    void CreateBrowserFileData(QString path, int type );
+    void CreateBrowserFileData(const QString &path, int type );
 };
 
 class FileBrowserTreeItem : public QTreeWidgetItem
@@ -33,7 +33,7 @@ class FileBrowserTreeItem : public QTreeWidgetItem
 public:
     BrowserFileData Data;
 
-    explicit FileBrowserTreeItem(BrowserFileData* d) {
+    explicit FileBrowserTreeItem(const BrowserFileData* d) {
         Data = *d;
         setText(0, Data.Name);
     }
@@ -62,32 +62,32 @@ class BrowserFilesWidget : public QWidget
     QMap<QString, BrowserFileData> browserStore;
 
     BrowserFileData* getBrowserStore(QString path);
-    void setBrowserStore(QString path, BrowserFileData fileData);
+    void setBrowserStore(QString path, const BrowserFileData &fileData);
 
     void createUI();
-    void setStoredFileData(QString path, BrowserFileData currenFileData);
-    void updateFileData(BrowserFileData* currenFileData, QString path, QJsonArray jsonArray);
-    void tableShowItems(QVector<BrowserFileData*> files );
-    void cdBroser(QString path);
+    void setStoredFileData(const QString &path, const BrowserFileData &currenFileData);
+    void updateFileData(BrowserFileData* currenFileData, const QString &path, QJsonArray jsonArray);
+    void tableShowItems(QVector<BrowserFileData*> files ) const;
+    void cdBroser(const QString &path);
 
-    BrowserFileData  createFileData(QString path);
-    BrowserFileData* getFileData(QString path);
+    BrowserFileData  createFileData(const QString &path) const;
+    BrowserFileData* getFileData(const QString &path);
 
 public:
     BrowserFilesWidget(Agent* a);
-    ~BrowserFilesWidget();
+    ~BrowserFilesWidget() override;
 
-    void SetDisks(qint64 time, int msgType, QString message, QString data);
-    void AddFiles(qint64 time, int msgType, QString message, QString path, QString data);
-    void SetStatus(qint64 time, int msgType, QString message);
+    void SetDisks(qint64 time, int msgType, const QString &message, const QString &data);
+    void AddFiles(qint64 time, int msgType, const QString &message, const QString &path, const QString &data);
+    void SetStatus(qint64 time, int msgType, const QString &message) const;
 
 public slots:
-    void onDisks();
-    void onList();
+    void onDisks() const;
+    void onList() const;
     void onParent();
-    void onReload();
-    void onUpload();
-    void actionDownload();
+    void onReload() const;
+    void onUpload() const;
+    void actionDownload() const;
     void handleTableDoubleClicked(const QModelIndex &index);
     void handleTreeDoubleClicked(QTreeWidgetItem* item, int column);
     void handleTableMenu(const QPoint &pos);

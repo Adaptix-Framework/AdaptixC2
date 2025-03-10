@@ -1,5 +1,5 @@
 #include <UI/Widgets/AdaptixWidget.h>
-#include "Client/Requestor.h"
+#include <Client/Requestor.h>
 
 AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
 {
@@ -192,7 +192,7 @@ void AdaptixWidget::createUI()
     this->setLayout(mainGridLayout);
 }
 
-AuthProfile* AdaptixWidget::GetProfile()
+AuthProfile* AdaptixWidget::GetProfile() const
 {
     return this->profile;
 }
@@ -244,7 +244,7 @@ void AdaptixWidget::Close()
 
 
 
-void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon)
+void AdaptixWidget::AddTab(QWidget *tab, const QString &title, const QString &icon) const
 {
     if ( mainTabWidget->count() == 0 )
         mainVSplitter->setSizes(QList<int>() << 100 << 200);
@@ -258,7 +258,7 @@ void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon)
     mainTabWidget->setCurrentIndex( id );
 }
 
-void AdaptixWidget::RemoveTab(int index)
+void AdaptixWidget::RemoveTab(int index) const
 {
     if (index == -1)
         return;
@@ -295,7 +295,7 @@ void AdaptixWidget::AddExtension(ExtensionFile ext)
     }
 }
 
-void AdaptixWidget::RemoveExtension(ExtensionFile ext)
+void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
 {
     Extensions.remove(ext.FilePath);
 
@@ -335,7 +335,7 @@ void AdaptixWidget::OnSynced()
     }
 }
 
-void AdaptixWidget::SetSessionsTableUI()
+void AdaptixWidget::SetSessionsTableUI() const
 {
     mainStackedWidget->setCurrentIndex(0);
     int index = mainTabWidget->indexOf(TasksTab->taskOutputConsole);
@@ -345,33 +345,33 @@ void AdaptixWidget::SetSessionsTableUI()
     mainTabWidget->removeTab(index);
 }
 
-void AdaptixWidget::SetTasksUI()
+void AdaptixWidget::SetTasksUI() const
 {
     mainStackedWidget->setCurrentIndex(1);
     this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
 }
 
-void AdaptixWidget::LoadLogsUI()
+void AdaptixWidget::LoadLogsUI() const
 {
     this->AddTab(LogsTab, "Logs", ":/icons/logs");
 }
 
-void AdaptixWidget::LoadListenersUI()
+void AdaptixWidget::LoadListenersUI() const
 {
     this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
 }
 
-void AdaptixWidget::LoadTunnelsUI()
+void AdaptixWidget::LoadTunnelsUI() const
 {
     this->AddTab(TunnelsTab, "Tunnels", ":/icons/vpn");
 }
 
-void AdaptixWidget::LoadDownloadsUI()
+void AdaptixWidget::LoadDownloadsUI() const
 {
     this->AddTab(DownloadsTab, "Downloads", ":/icons/downloads");
 }
 
-void AdaptixWidget::LoadTasksOutput()
+void AdaptixWidget::LoadTasksOutput() const
 {
     this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
 }
@@ -401,7 +401,7 @@ void AdaptixWidget::OnReconnect() {
     }
 }
 
-void AdaptixWidget::LoadConsoleUI(QString AgentId)
+void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
 {
     if( !Agents.contains(AgentId) )
         return;
@@ -411,7 +411,7 @@ void AdaptixWidget::LoadConsoleUI(QString AgentId)
     Agents[AgentId]->Console->InputFocus();
 }
 
-void AdaptixWidget::LoadFileBrowserUI(QString AgentId)
+void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
 {
     if( !Agents.contains(AgentId) )
         return;
@@ -420,7 +420,7 @@ void AdaptixWidget::LoadFileBrowserUI(QString AgentId)
     this->AddTab(Agents[AgentId]->FileBrowser, text);
 }
 
-void AdaptixWidget::LoadProcessBrowserUI(QString AgentId)
+void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
 {
     if( !Agents.contains(AgentId) )
         return;
@@ -429,7 +429,7 @@ void AdaptixWidget::LoadProcessBrowserUI(QString AgentId)
     this->AddTab(Agents[AgentId]->ProcessBrowser, text);
 }
 
-void AdaptixWidget::ChannelClose()
+void AdaptixWidget::ChannelClose() const
 {
     QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/unlink"), COLOR_ChiliPepper);
     reconnectButton->setIcon(onReconnectButton);

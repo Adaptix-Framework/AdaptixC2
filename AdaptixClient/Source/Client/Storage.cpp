@@ -126,7 +126,7 @@ QVector<AuthProfile> Storage::ListProjects()
     return list;
 }
 
-bool Storage::ExistsProject(QString project)
+bool Storage::ExistsProject(const QString &project)
 {
     QSqlQuery query;
 
@@ -157,7 +157,7 @@ void Storage::AddProject(AuthProfile profile)
     }
 }
 
-void Storage::RemoveProject(QString project)
+void Storage::RemoveProject(const QString &project)
 {
     QSqlQuery query;
     query.prepare("DELETE FROM Projects WHERE project = :Project");
@@ -190,7 +190,7 @@ QVector<ExtensionFile> Storage::ListExtensions()
     return list;
 }
 
-bool Storage::ExistsExtension(QString path)
+bool Storage::ExistsExtension(const QString &path)
 {
     QSqlQuery query;
     query.prepare("SELECT 1 FROM Extensions WHERE filepath = :Filepath LIMIT 1;");
@@ -203,7 +203,7 @@ bool Storage::ExistsExtension(QString path)
     return query.next();
 }
 
-void Storage::AddExtension(ExtensionFile extFile)
+void Storage::AddExtension(const ExtensionFile &extFile)
 {
     QSqlQuery query;
     query.prepare( "INSERT INTO Extensions (filepath, enabled) VALUES (:Filepath, :Enabled);");
@@ -216,7 +216,7 @@ void Storage::AddExtension(ExtensionFile extFile)
     }
 }
 
-void Storage::UpdateExtension(ExtensionFile extFile)
+void Storage::UpdateExtension(const ExtensionFile &extFile)
 {
     QSqlQuery query;
     query.prepare( "UPDATE Extensions SET enabled = :Enabled WHERE filepath = :Filepath;");
@@ -229,7 +229,7 @@ void Storage::UpdateExtension(ExtensionFile extFile)
     }
 }
 
-void Storage::RemoveExtension(QString filepath)
+void Storage::RemoveExtension(const QString &filepath)
 {
     QSqlQuery query;
     query.prepare("DELETE FROM Extensions WHERE filepath = :Filepath");
@@ -266,7 +266,7 @@ void Storage::SelectSettingsMain(SettingsData* settingsData)
     }
 }
 
-void Storage::UpdateSettingsMain(SettingsData settingsData)
+void Storage::UpdateSettingsMain(const SettingsData &settingsData)
 {
     QSqlQuery existsQuery;
     existsQuery.prepare("SELECT 1 FROM SettingsMain WHERE Id = 1 LIMIT 1;");
@@ -336,7 +336,7 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
     }
 }
 
-void Storage::UpdateSettingsSessions(SettingsData settingsData)
+void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
 {
     QSqlQuery existsQuery;
     existsQuery.prepare("SELECT 1 FROM SettingsSessions WHERE Id = 1 LIMIT 1;");

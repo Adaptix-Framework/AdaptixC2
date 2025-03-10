@@ -2,7 +2,6 @@
 #define ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H
 
 #include <main.h>
-#include <UI/Widgets/AdaptixWidget.h>
 #include <Agent/Agent.h>
 
 class SessionsTableWidget : public QWidget
@@ -48,24 +47,24 @@ public:
     int ColumnCount     = 15;
 
     explicit SessionsTableWidget( QWidget* w );
-    ~SessionsTableWidget();
+    ~SessionsTableWidget() override;
 
-    void Clear();
-    void AddAgentItem(Agent* newAgent);
-    void RemoveAgentItem(QString agentId);
+    void Clear() const;
+    void AddAgentItem(Agent* newAgent) const;
+    void RemoveAgentItem(const QString &agentId) const;
 
 public slots:
-    void handleTableDoubleClicked( const QModelIndex &index );
+    void handleTableDoubleClicked( const QModelIndex &index ) const;
     void handleSessionsTableMenu(const QPoint &pos );
 
-    void actionConsoleOpen();
-    void actionTasksBrowserOpen();
-    void actionFileBrowserOpen();
-    void actionProcessBrowserOpen();
-    void actionAgentExit();
-    void actionAgentTag();
-    void actionAgentHide();
-    void actionAgentRemove();
+    void actionConsoleOpen() const;
+    void actionTasksBrowserOpen() const;
+    void actionFileBrowserOpen() const;
+    void actionProcessBrowserOpen() const;
+    void actionAgentExit() const;
+    void actionAgentTag() const;
+    void actionAgentHide() const;
+    void actionAgentRemove() const;
 };
 
 #endif //ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H

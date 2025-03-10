@@ -1,7 +1,6 @@
 #include <UI/Widgets/SessionsTableWidget.h>
-#include <Utils/Convert.h>
+#include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
-
 #include <MainAdaptix.h>
 
 SessionsTableWidget::SessionsTableWidget( QWidget* w )
@@ -76,7 +75,7 @@ void SessionsTableWidget::createUI()
     mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
 }
 
-void SessionsTableWidget::Clear()
+void SessionsTableWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
@@ -92,7 +91,7 @@ void SessionsTableWidget::Clear()
         tableWidget->removeRow(index -1 );
 }
 
-void SessionsTableWidget::AddAgentItem( Agent* newAgent )
+void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     if ( adaptixWidget->Agents.contains(newAgent->data.Id) )
@@ -134,7 +133,7 @@ void SessionsTableWidget::AddAgentItem( Agent* newAgent )
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnSleep,     QHeaderView::ResizeToContents );
 }
 
-void SessionsTableWidget::RemoveAgentItem(QString agentId)
+void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     Agent* agent = adaptixWidget->Agents[agentId];
@@ -155,7 +154,7 @@ void SessionsTableWidget::RemoveAgentItem(QString agentId)
 
 /// SLOTS
 
-void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index)
+void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index) const
 {
     QString AgentId = tableWidget->item(index.row(),0)->text();
 
@@ -199,7 +198,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }
 
-void SessionsTableWidget::actionConsoleOpen()
+void SessionsTableWidget::actionConsoleOpen() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
@@ -210,7 +209,7 @@ void SessionsTableWidget::actionConsoleOpen()
     }
 }
 
-void SessionsTableWidget::actionTasksBrowserOpen()
+void SessionsTableWidget::actionTasksBrowserOpen() const
 {
     QString agentId = tableWidget->item( tableWidget->currentRow(), ColumnAgentID )->text();
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
@@ -218,7 +217,7 @@ void SessionsTableWidget::actionTasksBrowserOpen()
     adaptixWidget->SetTasksUI();
 }
 
-void SessionsTableWidget::actionFileBrowserOpen()
+void SessionsTableWidget::actionFileBrowserOpen() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
@@ -229,7 +228,7 @@ void SessionsTableWidget::actionFileBrowserOpen()
     }
 }
 
-void SessionsTableWidget::actionProcessBrowserOpen()
+void SessionsTableWidget::actionProcessBrowserOpen() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
@@ -240,7 +239,7 @@ void SessionsTableWidget::actionProcessBrowserOpen()
     }
 }
 
-void SessionsTableWidget::actionAgentExit()
+void SessionsTableWidget::actionAgentExit() const
 {
     QStringList listId;
 
@@ -264,7 +263,7 @@ void SessionsTableWidget::actionAgentExit()
     }
 }
 
-void SessionsTableWidget::actionAgentTag()
+void SessionsTableWidget::actionAgentTag() const
 {
     QStringList listId;
 
@@ -297,7 +296,7 @@ void SessionsTableWidget::actionAgentTag()
     }
 }
 
-void SessionsTableWidget::actionAgentHide()
+void SessionsTableWidget::actionAgentHide() const
 {
     QList<QString> listId;
 
@@ -312,7 +311,7 @@ void SessionsTableWidget::actionAgentHide()
         this->RemoveAgentItem(id);
 }
 
-void SessionsTableWidget::actionAgentRemove()
+void SessionsTableWidget::actionAgentRemove() const
 {
     QStringList listId;
 

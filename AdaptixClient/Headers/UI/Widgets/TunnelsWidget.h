@@ -13,17 +13,17 @@ class TunnelsWidget : public QWidget
 
 public:
      explicit TunnelsWidget( QWidget* w );
-     ~TunnelsWidget();
+     ~TunnelsWidget() override;
 
-     void Clear();
-     void AddTunnelItem(TunnelData newTunnel);
-     void EditTunnelItem(QString tunnelId, QString info);
-     void RemoveTunnelItem(QString tunnelId);
+     void Clear() const;
+     void AddTunnelItem(TunnelData newTunnel) const;
+     void EditTunnelItem(const QString &tunnelId, const QString &info) const;
+     void RemoveTunnelItem(const QString &tunnelId) const;
 
 public slots:
      void handleTunnelsMenu( const QPoint &pos ) const;
-     void actionSetInfo();
-     void actionStopTunnel();
+     void actionSetInfo() const;
+     void actionStopTunnel() const;
 };
 
 #endif //TUNNELSWIDGET_H

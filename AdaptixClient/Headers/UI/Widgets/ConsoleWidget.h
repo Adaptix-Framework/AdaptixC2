@@ -32,16 +32,16 @@ class ConsoleWidget : public QWidget
 
 public:
     explicit ConsoleWidget(Agent* a, Commander* c);
-    ~ConsoleWidget();
+    ~ConsoleWidget() override;
 
-    void UpgradeCompleter();
-    void InputFocus();
+    void UpgradeCompleter() const;
+    void InputFocus() const;
 
-    void ConsoleOutputMessage( qint64 timestamp, QString taskId, int type, QString message, QString text, bool completed );
-    void ConsoleOutputPrompt( qint64 timestamp, QString taskId, QString user, QString commandLine );
+    void ConsoleOutputMessage( qint64 timestamp, const QString &taskId, int type, const QString &message, const QString &text, bool completed ) const;
+    void ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const;
 
 public slots:
-    void processInput();
+    void processInput() const;
 };
 
 #endif //ADAPTIXCLIENT_CONSOLEWIDGET_H

@@ -45,14 +45,14 @@ public:
     ~Agent();
 
     void    Update(QJsonObject jsonObjAgentData);
-    QString TasksStop(QStringList tasks);
-    QString TasksDelete(QStringList tasks);
+    QString TasksStop(const QStringList &tasks) const;
+    QString TasksDelete(const QStringList &tasks) const;
 
-    QString BrowserDisks();
-    QString BrowserProcess();
-    QString BrowserList(QString path);
-    QString BrowserUpload(QString path, QString content);
-    QString BrowserDownload(QString path);
+    QString BrowserDisks() const;
+    QString BrowserProcess() const;
+    QString BrowserList(const QString &path) const;
+    QString BrowserUpload(const QString &path, const QString &content) const;
+    QString BrowserDownload(const QString &path) const;
 };
 
 #endif //ADAPTIXCLIENT_AGENT_H

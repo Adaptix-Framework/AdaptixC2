@@ -92,7 +92,7 @@ void DialogListener::Start()
     this->exec();
 }
 
-void DialogListener::AddExListeners(QMap<QString, WidgetBuilder*> listeners)
+void DialogListener::AddExListeners(const QMap<QString, WidgetBuilder*> &listeners)
 {
     listenersUI = listeners;
 
@@ -104,12 +104,12 @@ void DialogListener::AddExListeners(QMap<QString, WidgetBuilder*> listeners)
     listenerTypeCombobox->addItems( listenersUI.keys() );
 }
 
-void DialogListener::SetProfile(AuthProfile profile)
+void DialogListener::SetProfile(const AuthProfile &profile)
 {
     this->authProfile = profile;
 }
 
-void DialogListener::SetEditMode(QString name)
+void DialogListener::SetEditMode(const QString &name)
 {
     this->setWindowTitle( "Edit Listener" );
     inputListenerName->setText(name);
@@ -118,7 +118,7 @@ void DialogListener::SetEditMode(QString name)
     editMode = true;
 }
 
-void DialogListener::changeConfig(QString fn)
+void DialogListener::changeConfig(const QString &fn)
 {
     if (listenersUI[fn]) {
         auto w = listenersUI[fn]->GetWidget();
