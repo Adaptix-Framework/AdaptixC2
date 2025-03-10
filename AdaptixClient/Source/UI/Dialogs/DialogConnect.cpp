@@ -194,7 +194,7 @@ void DialogConnect::handleContextMenu(const QPoint &pos ) const
     menuContex->exec( globalPos );
 }
 
-bool DialogConnect::checkValidInput()
+bool DialogConnect::checkValidInput() const
 {
     if ( lineEdit_Project->text().isEmpty() ) {
         MessageError("Project is empty");

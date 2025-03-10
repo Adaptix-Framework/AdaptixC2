@@ -11,7 +11,7 @@ public:
     Agent* agent  = nullptr;
 
     explicit TableWidgetItemAgent( const QString& text, Agent* agent );
-    ~TableWidgetItemAgent();
+    ~TableWidgetItemAgent() override;
 };
 
 #endif //ADAPTIXCLIENT_TABLEWIDGETITEMAGENT_H

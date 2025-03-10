@@ -1,5 +1,6 @@
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Utils/CustomElements.h>
 
 TaskOutputWidget::TaskOutputWidget( )
 {
@@ -29,7 +30,7 @@ void TaskOutputWidget::createUI()
     this->setLayout(mainGridLayout);
 }
 
-void TaskOutputWidget::SetConten(QString message, QString text)
+void TaskOutputWidget::SetConten(const QString &message, const QString &text) const
 {
     if( message.isEmpty() )
         inputMessage->clear();
@@ -120,7 +121,7 @@ void TasksWidget::createUI()
     this->setLayout(mainGridLayout);
 }
 
-bool TasksWidget::filterItem(TaskData task)
+bool TasksWidget::filterItem(const TaskData &task) const
 {
     if( comboAgent->currentIndex() > 0 ) {
         if (comboAgent->currentText() != task.AgentId)
@@ -142,7 +143,7 @@ bool TasksWidget::filterItem(TaskData task)
     return true;
 }
 
-void TasksWidget::addTableItem(TaskData newTask)
+void TasksWidget::addTableItem(const TaskData &newTask) const
 {
     QString taskType = "";
     if ( newTask.TaskType == 1 )
@@ -176,8 +177,8 @@ void TasksWidget::addTableItem(TaskData newTask)
         else
             item_Result->setForeground(QColor(COLOR_NeonGreen) );
 
-        QString finishTime = UnixTimestampGlobalToStringLocal(newTask.FinishTime);
-        item_FinishTime->setText(finishTime);
+        QString finish_time = UnixTimestampGlobalToStringLocal(newTask.FinishTime);
+        item_FinishTime->setText(finish_time);
     }
 
     item_TaskId->setFlags( item_TaskId->flags() ^ Qt::ItemIsEditable );
@@ -241,7 +242,7 @@ void TasksWidget::addTableItem(TaskData newTask)
 
 
 
-void TasksWidget::Clear()
+void TasksWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     adaptixWidget->TasksMap.clear();
@@ -258,7 +259,7 @@ void TasksWidget::Clear()
     inputFilter->clear();
 }
 
-void TasksWidget::AddTaskItem(TaskData newTask)
+void TasksWidget::AddTaskItem(TaskData newTask) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     if ( adaptixWidget->TasksMap.contains(newTask.TaskId) )
@@ -286,7 +287,7 @@ void TasksWidget::AddTaskItem(TaskData newTask)
     this->addTableItem(newTask);
 }
 
-void TasksWidget::EditTaskItem(TaskData newTask)
+void TasksWidget::EditTaskItem(TaskData newTask) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     if ( !adaptixWidget->TasksMap.contains(newTask.TaskId) )
@@ -337,7 +338,7 @@ void TasksWidget::EditTaskItem(TaskData newTask)
     }
 }
 
-void TasksWidget::RemoveTaskItem(QString taskId)
+void TasksWidget::RemoveTaskItem(const QString &taskId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     auto agentId = adaptixWidget->TasksMap[taskId].AgentId;
@@ -369,7 +370,7 @@ void TasksWidget::RemoveTaskItem(QString taskId)
     }
 }
 
-void TasksWidget::SetData()
+void TasksWidget::SetData() const
 {
     taskOutputConsole->SetConten("", "");
 
@@ -386,7 +387,7 @@ void TasksWidget::SetData()
     }
 }
 
-void TasksWidget::SetAgentFilter(QString agentId)
+void TasksWidget::SetAgentFilter(const QString &agentId) const
 {
     comboAgent->setCurrentText(agentId);
 }
@@ -416,7 +417,7 @@ void TasksWidget::handleTasksMenu( const QPoint &pos )
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }
 
-void TasksWidget::onTableItemSelection()
+void TasksWidget::onTableItemSelection() const
 {
     int count = tableWidget->selectedItems().size() / tableWidget->columnCount();
     if ( count != 1 )
@@ -434,12 +435,12 @@ void TasksWidget::onTableItemSelection()
     adaptixWidget->LoadTasksOutput();
 }
 
-void TasksWidget::onAgentChange(QString agentId)
+void TasksWidget::onAgentChange(QString agentId) const
 {
     this->SetData();
 }
 
-void TasksWidget::actionCopyTaskId()
+void TasksWidget::actionCopyTaskId() const
 {
     int row = tableWidget->currentRow();
     if( row >= 0) {
@@ -448,7 +449,7 @@ void TasksWidget::actionCopyTaskId()
     }
 }
 
-void TasksWidget::actionCopyCmd()
+void TasksWidget::actionCopyCmd() const
 {
     int row = tableWidget->currentRow();
     if( row >= 0) {
@@ -457,7 +458,7 @@ void TasksWidget::actionCopyCmd()
     }
 }
 
-void TasksWidget::actionOpenConsole()
+void TasksWidget::actionOpenConsole() const
 {
     int row = tableWidget->currentRow();
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
@@ -465,7 +466,7 @@ void TasksWidget::actionOpenConsole()
     adaptixWidget->LoadConsoleUI(agentId);
 }
 
-void TasksWidget::actionStop()
+void TasksWidget::actionStop() const
 {
     QMap<QString, QStringList> agentTasks;
 
@@ -482,7 +483,7 @@ void TasksWidget::actionStop()
         adaptixWidget->Agents[agentId]->TasksStop(agentTasks[agentId]);
 }
 
-void TasksWidget::actionDelete()
+void TasksWidget::actionDelete() const
 {
     QMap<QString, QStringList> agentTasks;
 

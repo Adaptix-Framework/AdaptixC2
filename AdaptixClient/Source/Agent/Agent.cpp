@@ -104,7 +104,7 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     item_Sleep->setText(sleep);
 }
 
-QString Agent::TasksStop(QStringList tasks)
+QString Agent::TasksStop(const QStringList &tasks) const
 {
     QString message = QString();
     bool ok = false;
@@ -115,7 +115,7 @@ QString Agent::TasksStop(QStringList tasks)
     return message;
 }
 
-QString Agent::TasksDelete(QStringList tasks)
+QString Agent::TasksDelete(const QStringList &tasks) const
 {
     QString message = QString();
     bool ok = false;
@@ -126,7 +126,7 @@ QString Agent::TasksDelete(QStringList tasks)
     return message;
 }
 
-QString Agent::BrowserDisks()
+QString Agent::BrowserDisks() const
 {
     QString message = QString();
     bool ok = false;
@@ -137,7 +137,7 @@ QString Agent::BrowserDisks()
     return message;
 }
 
-QString Agent::BrowserProcess()
+QString Agent::BrowserProcess() const
 {
     QString message = QString();
     bool ok = false;
@@ -148,7 +148,7 @@ QString Agent::BrowserProcess()
     return message;
 }
 
-QString Agent::BrowserList(QString path)
+QString Agent::BrowserList(const QString &path) const
 {
     QString message = QString();
     bool ok = false;
@@ -159,7 +159,7 @@ QString Agent::BrowserList(QString path)
     return message;
 }
 
-QString Agent::BrowserUpload(QString path, QString content)
+QString Agent::BrowserUpload(const QString &path, const QString &content) const
 {
     QString message = QString();
     bool ok = false;
@@ -170,7 +170,7 @@ QString Agent::BrowserUpload(QString path, QString content)
     return message;
 }
 
-QString Agent::BrowserDownload(QString path)
+QString Agent::BrowserDownload(const QString &path) const
 {
     QString message = QString();
     bool ok = false;

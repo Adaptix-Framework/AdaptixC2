@@ -33,7 +33,7 @@ void WebSocketWorker::SetProfile(AuthProfile* authProfile)
 }
 
 
-void WebSocketWorker::is_connected()
+void WebSocketWorker::is_connected() const
 {
     QJsonObject dataJson;
     dataJson["access_token"] = profile->GetAccessToken();

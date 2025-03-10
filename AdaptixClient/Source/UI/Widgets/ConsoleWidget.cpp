@@ -56,13 +56,13 @@ void ConsoleWidget::createUI()
     InputLineEdit->setCompleter(CommandCompleter);
 }
 
-void ConsoleWidget::InputFocus()
+void ConsoleWidget::InputFocus() const
 {
     InputLineEdit->setFocus();
 }
 
 
-void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, QString taskId, int type, QString message, QString text, bool completed )
+void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, const QString &taskId, int type, const QString &message, const QString &text, bool completed ) const
 {
     QString deleter = "<br>" + TextColorHtml( "+-------------------------------------------------------------------------------------+", COLOR_Gray) + "<br>";
 
@@ -106,7 +106,7 @@ void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, QString taskId, int 
         OutputTextEdit->append( deleter );
 }
 
-void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, QString taskId, QString user, QString commandLine )
+void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const
 {
     QString promptAgent = TextUnderlineColorHtml( agent->data.Name, COLOR_Gray) + " " + TextColorHtml( ">", COLOR_Gray) + " ";
 
@@ -135,7 +135,7 @@ void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, QString taskId, QStri
 
 /// SLOTS
 
-void ConsoleWidget::processInput()
+void ConsoleWidget::processInput() const
 {
     QString commandLine = TrimmedEnds(InputLineEdit->text());
 
@@ -183,7 +183,7 @@ void ConsoleWidget::processInput()
     }
 }
 
-void ConsoleWidget::UpgradeCompleter()
+void ConsoleWidget::UpgradeCompleter() const
 {
     if (commander) {
         completerModel->setStringList(commander->GetCommands());

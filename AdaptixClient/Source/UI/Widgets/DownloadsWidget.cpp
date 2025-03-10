@@ -47,7 +47,7 @@ void DownloadsWidget::createUI()
 
 DownloadsWidget::~DownloadsWidget() = default;
 
-void DownloadsWidget::Clear()
+void DownloadsWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     adaptixWidget->Downloads.clear();
@@ -55,7 +55,7 @@ void DownloadsWidget::Clear()
         tableWidget->removeRow(index -1 );
 }
 
-void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
+void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload )
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     if(adaptixWidget->Downloads.contains(newDownload.FileId))
@@ -139,7 +139,7 @@ void DownloadsWidget::AddDownloadItem(DownloadData newDownload )
     adaptixWidget->Downloads[newDownload.FileId] = newDownload;
 }
 
-void DownloadsWidget::EditDownloadItem(QString fileId, int recvSize, int state)
+void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int state) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     adaptixWidget->Downloads[fileId].RecvSize = recvSize;
@@ -150,7 +150,7 @@ void DownloadsWidget::EditDownloadItem(QString fileId, int recvSize, int state)
         if ( item && item->text() == fileId ) {
             tableWidget->item(row, 8)->setText(BytesToFormat(recvSize) );
 
-            QProgressBar *pgbar = (QProgressBar*) tableWidget->cellWidget(row,9);
+            QProgressBar *pgbar = static_cast<QProgressBar *>(tableWidget->cellWidget(row, 9));
             pgbar->setValue(recvSize);
 
             if( state == DOWNLOAD_STATE_STOPPED) {
@@ -181,7 +181,7 @@ void DownloadsWidget::EditDownloadItem(QString fileId, int recvSize, int state)
     }
 }
 
-void DownloadsWidget::RemoveDownloadItem(QString fileId)
+void DownloadsWidget::RemoveDownloadItem(const QString &fileId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     adaptixWidget->Downloads.remove(fileId);
@@ -220,7 +220,7 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos ) );
 }
 
-void DownloadsWidget::actionSync()
+void DownloadsWidget::actionSync() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
@@ -276,7 +276,7 @@ void DownloadsWidget::actionSync()
     }
 }
 
-void DownloadsWidget::actionDelete()
+void DownloadsWidget::actionDelete() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
@@ -297,7 +297,7 @@ void DownloadsWidget::actionDelete()
     }
 }
 
-void DownloadsWidget::actionStart()
+void DownloadsWidget::actionStart() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
@@ -318,7 +318,7 @@ void DownloadsWidget::actionStart()
     }
 }
 
-void DownloadsWidget::actionStop()
+void DownloadsWidget::actionStop() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
@@ -339,7 +339,7 @@ void DownloadsWidget::actionStop()
     }
 }
 
-void DownloadsWidget::actionCancel()
+void DownloadsWidget::actionCancel() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 

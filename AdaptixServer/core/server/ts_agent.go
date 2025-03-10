@@ -192,7 +192,7 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 	return nil
 }
 
-func (ts *Teamserver) TsAgentTerminate(agentId string) error {
+func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) error {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
 		return errors.New("agent does not exist")
@@ -213,7 +213,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string) error {
 		return true
 	})
 	for _, id := range downloads {
-		_ = ts.TsDownloadClose(id, DOWNLOAD_STATE_FINISHED)
+		_ = ts.TsDownloadClose(id, DOWNLOAD_STATE_CANCELED)
 	}
 
 	/// Clear Tunnels
@@ -248,8 +248,12 @@ func (ts *Teamserver) TsAgentTerminate(agentId string) error {
 	tasksRunning := agent.RunningTasks.CutMap()
 	for _, value = range tasksRunning {
 		task := value.(adaptix.TaskData)
-		packet := CreateSpAgentTaskRemove(task)
-		ts.TsSyncAllClients(packet)
+		if task.TaskId == terminateTaskId {
+			agent.RunningTasks.Put(task.TaskId, task)
+		} else {
+			packet := CreateSpAgentTaskRemove(task)
+			ts.TsSyncAllClients(packet)
+		}
 	}
 
 	/// Update

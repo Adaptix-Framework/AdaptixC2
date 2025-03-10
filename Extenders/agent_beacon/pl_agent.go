@@ -1451,6 +1451,8 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.Message = "The agent has completed its work (kill process)"
 			}
 
+			_ = ts.TsAgentTerminate(agentData.Id, task.TaskId)
+
 		case COMMAND_UPLOAD:
 			task.Message = "File successfully uploaded"
 			SyncBrowserFilesStatus(ts, task)

@@ -19,10 +19,10 @@ class LogsWidget : public QWidget
 
 public:
     explicit LogsWidget();
-    ~LogsWidget();
+    ~LogsWidget() override;
 
-     void AddLogs( int type, qint64 time, QString Message);
-     void Clear();
+     void AddLogs( int type, qint64 time, const QString &Message) const;
+     void Clear() const;
 };
 
 #endif //ADAPTIXCLIENT_LOGSWIDGET_H

@@ -1,4 +1,5 @@
 #include <Client/WidgetBuilder.h>
+#include <Utils/CustomElements.h>
 
 WidgetBuilder::WidgetBuilder(const QByteArray& jsonData)
 {
@@ -310,7 +311,7 @@ void WidgetBuilder::BuildWidget(bool editable)
     valid = true;
 }
 
-QWidget *WidgetBuilder::GetWidget()
+QWidget *WidgetBuilder::GetWidget() const
 {
     return widget;
 }
@@ -390,7 +391,7 @@ QString WidgetBuilder::CollectData()
     return QString::fromUtf8(doc);
 }
 
-void WidgetBuilder::FillData(QString jsonString)
+void WidgetBuilder::FillData(const QString &jsonString)
 {
     QJsonDocument jsonDoc = QJsonDocument::fromJson(jsonString.toUtf8());
     if (!jsonDoc.isObject()) {
@@ -472,7 +473,7 @@ void WidgetBuilder::FillData(QString jsonString)
     }
 }
 
-void WidgetBuilder::ClearWidget()
+void WidgetBuilder::ClearWidget() const
 {
     delete widget;
 }

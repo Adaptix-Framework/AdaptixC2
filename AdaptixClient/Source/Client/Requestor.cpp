@@ -1,6 +1,6 @@
 #include <Client/Requestor.h>
 
-QJsonObject HttpReq( QString sUrl, QByteArray jsonData, QString token )
+QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token )
 {
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
@@ -75,7 +75,7 @@ bool HttpReqJwtUpdate(AuthProfile* profile)
 
 /// LISTENER
 
-bool HttpReqListenerStart(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqListenerStart(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["name"]   = listenerName;
@@ -93,7 +93,7 @@ bool HttpReqListenerStart(QString listenerName, QString configType, QString conf
     return false;
 }
 
-bool HttpReqListenerEdit(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqListenerEdit(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["name"]   = listenerName;
@@ -110,7 +110,7 @@ bool HttpReqListenerEdit(QString listenerName, QString configType, QString confi
     return false;
 }
 
-bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqListenerStop(const QString &listenerName, const QString &listenerType, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["name"] = listenerName;
@@ -129,7 +129,7 @@ bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfil
 
 /// AGENT
 
-bool HttpReqAgentGenerate( QString listenerName, QString listenerType, QString agentName, QString configData, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &configData, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["listener_name"] = listenerName;
@@ -148,7 +148,7 @@ bool HttpReqAgentGenerate( QString listenerName, QString listenerType, QString a
     return false;
 }
 
-bool HttpReqAgentCommand( QString agentName, QString agentId, QString cmdLine, QString data, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqAgentCommand(const QString &agentName, const QString &agentId, const QString &cmdLine, const QString &data, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["name"]    = agentName;
@@ -207,7 +207,7 @@ bool HttpReqAgentRemove( QStringList agentsId, AuthProfile profile, QString* mes
     return false;
 }
 
-bool HttpReqAgentSetTag( QStringList agentsId, QString tag, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqAgentSetTag( QStringList agentsId, const QString &tag, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonArray arrayId;
     for (QString item : agentsId)
@@ -228,7 +228,7 @@ bool HttpReqAgentSetTag( QStringList agentsId, QString tag, AuthProfile profile,
     return false;
 }
 
-bool HttpReqTaskStop(QString agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqTaskStop(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonArray arrayId;
     for (QString item : tasksId)
@@ -249,7 +249,7 @@ bool HttpReqTaskStop(QString agentId, QStringList tasksId, AuthProfile profile, 
     return false;
 }
 
-bool HttpReqTasksDelete(QString agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonArray arrayId;
     for (QString item : tasksId)
@@ -272,7 +272,7 @@ bool HttpReqTasksDelete(QString agentId, QStringList tasksId, AuthProfile profil
 
 /// BROWSER
 
-bool HttpReqBrowserDownload( QString action, QString fileId, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqBrowserDownload(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["action"] = action;
@@ -289,7 +289,7 @@ bool HttpReqBrowserDownload( QString action, QString fileId, AuthProfile profile
     return false;
 }
 
-bool HttpReqBrowserDownloadStart( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqBrowserDownloadStart(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["agent_id"] = agentId;
@@ -306,7 +306,7 @@ bool HttpReqBrowserDownloadStart( QString agentId, QString path, AuthProfile pro
     return false;
 }
 
-bool HttpReqBrowserDisks( QString agentId, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqBrowserDisks(const QString &agentId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["agent_id"] = agentId;
@@ -322,7 +322,7 @@ bool HttpReqBrowserDisks( QString agentId, AuthProfile profile, QString* message
     return false;
 }
 
-bool HttpReqBrowserProcess( QString agentId, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqBrowserProcess(const QString &agentId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["agent_id"] = agentId;
@@ -338,7 +338,7 @@ bool HttpReqBrowserProcess( QString agentId, AuthProfile profile, QString* messa
     return false;
 }
 
-bool HttpReqBrowserList( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqBrowserList(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["agent_id"] = agentId;
@@ -355,7 +355,7 @@ bool HttpReqBrowserList( QString agentId, QString path, AuthProfile profile, QSt
     return false;
 }
 
-bool HttpReqBrowserUpload( QString agentId, QString path, QString content, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqBrowserUpload(const QString &agentId, const QString &path, const QString &content, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["agent_id"]    = agentId;
@@ -373,7 +373,7 @@ bool HttpReqBrowserUpload( QString agentId, QString path, QString content, AuthP
     return false;
 }
 
-bool HttpReqTunnelStop( QString tunnelId, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqTunnelStop(const QString &tunnelId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["p_tunnel_id"] = tunnelId;
@@ -389,7 +389,7 @@ bool HttpReqTunnelStop( QString tunnelId, AuthProfile profile, QString* message,
     return false;
 }
 
-bool HttpReqTunnelSetInfo( QString tunnelId, QString info, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqTunnelSetInfo(const QString &tunnelId, const QString &info, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["p_tunnel_id"] = tunnelId;

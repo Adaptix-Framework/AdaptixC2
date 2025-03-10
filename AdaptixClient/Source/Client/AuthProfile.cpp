@@ -5,7 +5,7 @@ AuthProfile::AuthProfile()
     this->valid = false;
 }
 
-AuthProfile::AuthProfile(QString project, QString username, QString password, QString host, QString port, QString endpoint)
+AuthProfile::AuthProfile(const QString &project, const QString &username, const QString &password, const QString &host, const QString &port, const QString &endpoint)
 {
     this->project = project;
     this->username = username;
@@ -34,11 +34,11 @@ QString AuthProfile::GetAccessToken() { return this->accessToken; };
 
 QString AuthProfile::GetRefreshToken() { return this->refreshToken; };
 
-QString AuthProfile::GetURL()
+QString AuthProfile::GetURL() const
 {
     return "https://" + host + ":" + port + endpoint;
 };
 
-void AuthProfile::SetAccessToken(QString token) { this->accessToken = token; };
+void AuthProfile::SetAccessToken(const QString &token) { this->accessToken = token; };
 
-void AuthProfile::SetRefreshToken(QString token) { this->refreshToken = token; }
+void AuthProfile::SetRefreshToken(const QString &token) { this->refreshToken = token; }

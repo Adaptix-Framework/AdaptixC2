@@ -44,8 +44,8 @@ class BofPacker
 {
 public:
     QByteArray data;
-    void Pack(QString type, QJsonValue jsonValue);
-    QString Build();
+    void Pack(const QString &type, const QJsonValue &jsonValue);
+    QString Build() const;
 };
 
 class Commander
@@ -55,18 +55,19 @@ class Commander
     QString error;
 
     Command         ParseCommand(QJsonObject jsonObject);
-    Argument        ParseArgument(QString argString);
+    Argument        ParseArgument(const QString &argString);
     CommanderResult ProcessCommand(AgentData agentData, Command command, QStringList args);
-    QString         ProcessExecExtension(AgentData agentData, QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj);
+
+    static QString  ProcessExecExtension(const AgentData &agentData, const QString &filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj);
     CommanderResult ProcessHelp(QStringList commandParts);
 
 public:
     explicit Commander();
     ~Commander();
 
-    bool AddRegCommands(QByteArray jsonData);
-    bool AddExtCommands(QString filepath, QString extName, QList<QJsonObject> extCommands);
-    void RemoveExtCommands(QString filepath);
+    bool AddRegCommands(const QByteArray &jsonData);
+    bool AddExtCommands(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands);
+    void RemoveExtCommands(const QString &filepath);
     QString GetError();
     QStringList GetCommands();
     CommanderResult ProcessInput(AgentData agentData, QString input);

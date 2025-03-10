@@ -33,8 +33,9 @@ public:
     QPushButton*  buttonClear = nullptr;
 
     SpinTable(int rows, int clomuns, QWidget* parent);
-    SpinTable(QWidget* parent = nullptr) { SpinTable(0,0,parent); }
-    ~SpinTable() = default;
+
+    explicit SpinTable(QWidget* parent = nullptr) { SpinTable(0,0,parent); }
+    ~SpinTable() override = default;
 };
 
 
@@ -51,7 +52,7 @@ public:
     QString content;
 
     explicit FileSelector(QWidget* parent = nullptr);
-    ~FileSelector() = default;
+    ~FileSelector() override = default;
 };
 
 #endif //ADAPTIXCLIENT_CUSTOMELEMENTS_H

@@ -2,7 +2,6 @@
 #define ADAPTIXCLIENT_WIDGETBUILDER_H
 
 #include <main.h>
-#include <Utils/CustomElements.h>
 
 class WidgetBuilder
 {
@@ -22,9 +21,9 @@ public:
     void     BuildWidget(bool editable);
     QLayout* BuildLayout(QString layoutType, QJsonObject rootObj, bool editable);
     QString  GetError();
-    QWidget* GetWidget();
-    void     ClearWidget();
-    void     FillData(QString jsonString);
+    QWidget* GetWidget() const;
+    void     ClearWidget() const;
+    void     FillData(const QString &jsonString);
     QString  CollectData();
 };
 

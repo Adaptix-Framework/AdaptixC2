@@ -7,23 +7,23 @@
 
 class DialogListener : public QDialog
 {
-    QGridLayout*    mainGridLayout;
-    QGridLayout*    stackGridLayout;
-    QSpacerItem*    horizontalSpacer;
-    QSpacerItem*    horizontalSpacer_2;
-    QSpacerItem*    horizontalSpacer_3;
-    QHBoxLayout*    hLayoutBottom;
-    QFrame*         line_1;
-    QLabel*         listenerNameLabel;
-    QLineEdit*      inputListenerName;
-    QLabel*         listenerTypeLabel;
-    QComboBox*      listenerTypeCombobox;
-    QPushButton*    buttonLoad;
-    QPushButton*    buttonSave;
-    QPushButton*    buttonCreate;
-    QPushButton*    buttonCancel;
-    QGroupBox*      listenerConfigGroupbox;
-    QStackedWidget* configStackWidget;
+    QGridLayout*    mainGridLayout         = nullptr;
+    QGridLayout*    stackGridLayout        = nullptr;
+    QSpacerItem*    horizontalSpacer       = nullptr;
+    QSpacerItem*    horizontalSpacer_2     = nullptr;
+    QSpacerItem*    horizontalSpacer_3     = nullptr;
+    QHBoxLayout*    hLayoutBottom          = nullptr;
+    QFrame*         line_1                 = nullptr;
+    QLabel*         listenerNameLabel      = nullptr;
+    QLineEdit*      inputListenerName      = nullptr;
+    QLabel*         listenerTypeLabel      = nullptr;
+    QComboBox*      listenerTypeCombobox   = nullptr;
+    QPushButton*    buttonLoad             = nullptr;
+    QPushButton*    buttonSave             = nullptr;
+    QPushButton*    buttonCreate           = nullptr;
+    QPushButton*    buttonCancel           = nullptr;
+    QGroupBox*      listenerConfigGroupbox = nullptr;
+    QStackedWidget* configStackWidget      = nullptr;
 
     QMap<QString, WidgetBuilder*> listenersUI;
     AuthProfile                   authProfile;
@@ -33,15 +33,15 @@ class DialogListener : public QDialog
 
 public:
     explicit DialogListener();
-    ~DialogListener();
+    ~DialogListener() override;
 
-    void AddExListeners(QMap<QString, WidgetBuilder*> listeners);
-    void SetProfile(AuthProfile profile);
+    void AddExListeners(const QMap<QString, WidgetBuilder*> &listeners);
+    void SetProfile(const AuthProfile &profile);
     void Start();
-    void SetEditMode(QString name);
+    void SetEditMode(const QString &name);
 
 protected slots:
-    void changeConfig(QString fn);
+    void changeConfig(const QString &fn);
     void onButtonLoad();
     void onButtonSave();
     void onButtonCreate();

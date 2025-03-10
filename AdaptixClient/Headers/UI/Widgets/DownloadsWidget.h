@@ -13,20 +13,20 @@ class DownloadsWidget : public QWidget
 
 public:
     DownloadsWidget(QWidget* w);
-    ~DownloadsWidget();
+    ~DownloadsWidget() override;
 
-    void Clear();
-    void AddDownloadItem(DownloadData newDownload);
-    void EditDownloadItem(QString fileId, int recvSize, int state);
-    void RemoveDownloadItem(QString fileId);
+    void Clear() const;
+    void AddDownloadItem(const DownloadData &newDownload);
+    void EditDownloadItem(const QString &fileId, int recvSize, int state) const;
+    void RemoveDownloadItem(const QString &fileId) const;
 
 public slots:
     void handleDownloadsMenu(const QPoint &pos );
-    void actionSync();
-    void actionDelete();
-    void actionStart();
-    void actionStop();
-    void actionCancel();
+    void actionSync() const;
+    void actionDelete() const;
+    void actionStart() const;
+    void actionStop() const;
+    void actionCancel() const;
 };
 
 #endif //ADAPTIXCLIENT_DOWNLOADSWIDGET_H

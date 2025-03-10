@@ -1,4 +1,5 @@
 #include <UI/Dialogs/DialogSettings.h>
+#include <Utils/CustomElements.h>
 
 DialogSettings::DialogSettings(Settings* s)
 {
@@ -149,14 +150,14 @@ void DialogSettings::createUI()
     this->setLayout(layoutMain);
 }
 
-void DialogSettings::onStackChange(int index)
+void DialogSettings::onStackChange(int index) const
 {
     QString text = listSettings->item(index)->text();
     labelHeader->setText(text);
     stackSettings->setCurrentIndex(index);
 }
 
-void DialogSettings::onApply()
+void DialogSettings::onApply() const
 {
     buttonApply->setEnabled(false);
 

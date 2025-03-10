@@ -29,7 +29,7 @@ void Settings::LoadFromDB()
     mainAdaptix->storage->SelectSettingsSessions( &data );
 }
 
-void Settings::SaveToDB()
+void Settings::SaveToDB() const
 {
     mainAdaptix->storage->UpdateSettingsMain( data );
     mainAdaptix->storage->UpdateSettingsSessions( data );

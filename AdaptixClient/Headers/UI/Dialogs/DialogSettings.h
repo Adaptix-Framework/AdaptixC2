@@ -3,7 +3,6 @@
 
 #include <main.h>
 #include <Client/Settings.h>
-#include <Utils/CustomElements.h>
 
 class Settings;
 
@@ -46,8 +45,8 @@ public:
     DialogSettings(Settings* s);
 
 public slots:
-    void onStackChange(int index);
-    void onApply();
+    void onStackChange(int index) const;
+    void onApply() const;
     void onClose();
 };
 

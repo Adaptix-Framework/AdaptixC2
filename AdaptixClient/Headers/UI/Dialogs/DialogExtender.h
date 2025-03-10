@@ -3,7 +3,6 @@
 
 #include <main.h>
 #include <Client/Extender.h>
-#include <Utils/CustomElements.h>
 
 class Extender;
 
@@ -21,20 +20,20 @@ Q_OBJECT
 
 public:
     DialogExtender(Extender* e);
-    ~DialogExtender();
+    ~DialogExtender() override;
 
-    void AddExtenderItem(ExtensionFile extenderItem);
-    void UpdateExtenderItem(ExtensionFile extenderItem);
-    void RemoveExtenderItem(ExtensionFile extenderItem);
+    void AddExtenderItem(const ExtensionFile &extenderItem) const;
+    void UpdateExtenderItem(const ExtensionFile &extenderItem) const;
+    void RemoveExtenderItem(const ExtensionFile &extenderItem) const;
 
 public slots:
     void handleMenu(const QPoint &pos ) const;
-    void onActionLoad();
-    void onActionReload();
-    void onActionEnable();
-    void onActionDisable();
-    void onActionRemove();
-    void onRowSelect(int row, int column);
+    void onActionLoad() const;
+    void onActionReload() const;
+    void onActionEnable() const;
+    void onActionDisable() const;
+    void onActionRemove() const;
+    void onRowSelect(int row, int column) const;
 };
 
 #endif //ADAPTIXCLIENT_DIALOGEXTENDER_H

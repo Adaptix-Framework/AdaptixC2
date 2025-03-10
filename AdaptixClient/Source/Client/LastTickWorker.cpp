@@ -15,7 +15,7 @@ void LastTickWorker::run()
     timer->start( 1000 );
 }
 
-auto LastTickWorker::updateLastItems() -> void
+void LastTickWorker::updateLastItems() const
 {
     for ( auto agent : mainWidget->Agents ) {
         if ( agent->data.Async ) {

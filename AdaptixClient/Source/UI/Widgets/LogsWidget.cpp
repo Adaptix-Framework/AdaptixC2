@@ -61,7 +61,7 @@ void LogsWidget::createUI()
     this->setLayout( mainGridLayout );
 }
 
-void LogsWidget::AddLogs( int type, qint64 time, QString message )
+void LogsWidget::AddLogs( int type, qint64 time, const QString &message ) const
 {
     QString sTime = UnixTimestampGlobalToStringLocal(time);
     QString log = QString("[%1] -> ").arg(sTime);
@@ -78,7 +78,7 @@ void LogsWidget::AddLogs( int type, qint64 time, QString message )
     logsConsoleTextEdit->append( log );
 }
 
-void LogsWidget::Clear()
+void LogsWidget::Clear() const
 {
     logsConsoleTextEdit->clear();
 }
