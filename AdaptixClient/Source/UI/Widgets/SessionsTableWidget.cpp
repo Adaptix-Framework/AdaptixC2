@@ -174,6 +174,8 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     auto agentSep2 = new QAction();
     agentSep2->setSeparator(true);
 
+    /// AGENT MENU
+
     auto agentMenu = new QMenu("Agent", &ctxMenu);
     agentMenu->addAction("Tasks", this, &SessionsTableWidget::actionTasksBrowserOpen);
     agentMenu->addAction(agentSep1);
@@ -181,6 +183,18 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     agentMenu->addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
     agentMenu->addAction(agentSep2);
     agentMenu->addAction("Exit", this, &SessionsTableWidget::actionAgentExit);
+
+    /// ITEM MENU
+
+    auto itemMenu = new QMenu("Item", &ctxMenu);
+    itemMenu->addAction("Mark as Active",   this, &SessionsTableWidget::actionMarkActive);
+    itemMenu->addAction("Mark as Inactive", this, &SessionsTableWidget::actionMarkInctive);
+    itemMenu->addSeparator();
+    itemMenu->addAction("Set items color", this, &SessionsTableWidget::actionItemColor);
+    itemMenu->addAction("Set text color",  this, &SessionsTableWidget::actionTextColor);
+    itemMenu->addAction("Reset color",     this, &SessionsTableWidget::actionColorReset);
+    itemMenu->addSeparator();
+    itemMenu->addAction( "Hide on client", this, &SessionsTableWidget::actionItemHide);
 
     auto ctxSep1 = new QAction();
     ctxSep1->setSeparator(true);
@@ -190,9 +204,9 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     ctxMenu.addAction( "Console", this, &SessionsTableWidget::actionConsoleOpen);
     ctxMenu.addAction(ctxSep1);
     ctxMenu.addMenu(agentMenu);
+    ctxMenu.addMenu(itemMenu);
     ctxMenu.addAction(ctxSep2);
-    ctxMenu.addAction( "Set tag", this, &SessionsTableWidget::actionAgentTag);
-    ctxMenu.addAction( "Hide on client", this, &SessionsTableWidget::actionAgentHide);
+    ctxMenu.addAction( "Set tag", this, &SessionsTableWidget::actionItemTag);
     ctxMenu.addAction( "Remove from server", this, &SessionsTableWidget::actionAgentRemove);
 
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
@@ -263,7 +277,163 @@ void SessionsTableWidget::actionAgentExit() const
     }
 }
 
-void SessionsTableWidget::actionAgentTag() const
+void SessionsTableWidget::actionMarkActive() const
+{
+    QStringList listId;
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            listId.append(agentId);
+        }
+    }
+
+    if(listId.empty())
+        return;
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqAgentSetMark(listId, "", *(adaptixWidget->GetProfile()), &message, &ok);
+    if( !result ) {
+        MessageError("JWT error");
+        return;
+    }
+}
+
+void SessionsTableWidget::actionMarkInctive() const
+{
+    QStringList listId;
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            listId.append(agentId);
+        }
+    }
+
+    if(listId.empty())
+        return;
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqAgentSetMark(listId, "Inactive", *(adaptixWidget->GetProfile()), &message, &ok);
+    if( !result ) {
+        MessageError("JWT error");
+        return;
+    }
+}
+
+void SessionsTableWidget::actionItemColor() const
+{
+    QStringList listId;
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            listId.append(agentId);
+        }
+    }
+
+    if(listId.empty())
+        return;
+
+    QColor itemColor = QColorDialog::getColor(Qt::white, nullptr, "Select items color");
+    if (itemColor.isValid()) {
+        QString itemColorHex = itemColor.name();
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqAgentSetColor(listId, itemColorHex, "", false, *(adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            MessageError("JWT error");
+            return;
+        }
+    }
+}
+
+void SessionsTableWidget::actionTextColor() const
+{
+    QStringList listId;
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            listId.append(agentId);
+        }
+    }
+
+    if(listId.empty())
+        return;
+
+    QColor textColor = QColorDialog::getColor(Qt::white, nullptr, "Select text color");
+    if (textColor.isValid()) {
+        QString textColorHex = textColor.name();
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqAgentSetColor(listId, "",  textColorHex, false, *(adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            MessageError("JWT error");
+            return;
+        }
+    }
+}
+
+void SessionsTableWidget::actionColorReset() const
+{
+    QStringList listId;
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            listId.append(agentId);
+        }
+    }
+
+    if(listId.empty())
+        return;
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqAgentSetColor(listId, "",  "", true, *(adaptixWidget->GetProfile()), &message, &ok);
+    if( !result ) {
+        MessageError("JWT error");
+        return;
+    }
+}
+
+void SessionsTableWidget::actionAgentRemove()
+{
+    QMessageBox::StandardButton reply = QMessageBox::question(this, "Delete Confirmation",
+                                      "Are you sure you want to delete all information about the selected agents from the server?\n\n"
+                                      "If you want to hide the record, simply choose: 'Item -> Hide on Client'.",
+                                      QMessageBox::Yes | QMessageBox::No,
+                                      QMessageBox::No);
+
+    if (reply != QMessageBox::Yes)
+        return;
+
+    QStringList listId;
+
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            listId.append(agentId);
+        }
+    }
+
+    if(listId.empty())
+        return;
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqAgentRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
+    if( !result ) {
+        MessageError("JWT error");
+        return;
+    }
+}
+
+void SessionsTableWidget::actionItemTag() const
 {
     QStringList listId;
 
@@ -296,7 +466,7 @@ void SessionsTableWidget::actionAgentTag() const
     }
 }
 
-void SessionsTableWidget::actionAgentHide() const
+void SessionsTableWidget::actionItemHide() const
 {
     QList<QString> listId;
 
@@ -310,28 +480,3 @@ void SessionsTableWidget::actionAgentHide() const
     for (auto id : listId)
         this->RemoveAgentItem(id);
 }
-
-void SessionsTableWidget::actionAgentRemove() const
-{
-    QStringList listId;
-
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
-            listId.append(agentId);
-        }
-    }
-
-    if(listId.empty())
-        return;
-
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("JWT error");
-        return;
-    }
-}
-

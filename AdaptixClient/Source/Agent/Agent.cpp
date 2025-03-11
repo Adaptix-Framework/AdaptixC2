@@ -3,59 +3,72 @@
 
 Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w)
 {
-    adaptixWidget = w;
+    this->adaptixWidget = w;
 
-    data.Id         = jsonObjAgentData["a_id"].toString();
-    data.Name       = jsonObjAgentData["a_name"].toString();
-    data.Listener   = jsonObjAgentData["a_listener"].toString();
-    data.Async      = jsonObjAgentData["a_async"].toBool();
-    data.ExternalIP = jsonObjAgentData["a_external_ip"].toString();
-    data.InternalIP = jsonObjAgentData["a_internal_ip"].toString();
-    data.GmtOffset  = jsonObjAgentData["a_gmt_offset"].toDouble();
-    data.Sleep      = jsonObjAgentData["a_sleep"].toDouble();
-    data.Jitter     = jsonObjAgentData["a_jitter"].toDouble();
-    data.Pid        = jsonObjAgentData["a_pid"].toString();
-    data.Tid        = jsonObjAgentData["a_tid"].toString();
-    data.Arch       = jsonObjAgentData["a_arch"].toString();
-    data.Elevated   = jsonObjAgentData["a_elevated"].toBool();
-    data.Process    = jsonObjAgentData["a_process"].toString();
-    data.Os         = jsonObjAgentData["a_os"].toDouble();
-    data.OsDesc     = jsonObjAgentData["a_os_desc"].toString();
-    data.Domain     = jsonObjAgentData["a_domain"].toString();
-    data.Computer   = jsonObjAgentData["a_computer"].toString();
-    data.Username   = jsonObjAgentData["a_username"].toString();
-    data.LastTick   = jsonObjAgentData["a_last_tick"].toDouble();
-    data.Tags       = jsonObjAgentData["a_tags"].toString();
-    data.Mark       = jsonObjAgentData["a_mark"].toString();
-    data.Color      = jsonObjAgentData["a_color"].toString();
+    this->data.Id         = jsonObjAgentData["a_id"].toString();
+    this->data.Name       = jsonObjAgentData["a_name"].toString();
+    this->data.Listener   = jsonObjAgentData["a_listener"].toString();
+    this->data.Async      = jsonObjAgentData["a_async"].toBool();
+    this->data.ExternalIP = jsonObjAgentData["a_external_ip"].toString();
+    this->data.InternalIP = jsonObjAgentData["a_internal_ip"].toString();
+    this->data.GmtOffset  = jsonObjAgentData["a_gmt_offset"].toDouble();
+    this->data.Sleep      = jsonObjAgentData["a_sleep"].toDouble();
+    this->data.Jitter     = jsonObjAgentData["a_jitter"].toDouble();
+    this->data.Pid        = jsonObjAgentData["a_pid"].toString();
+    this->data.Tid        = jsonObjAgentData["a_tid"].toString();
+    this->data.Arch       = jsonObjAgentData["a_arch"].toString();
+    this->data.Elevated   = jsonObjAgentData["a_elevated"].toBool();
+    this->data.Process    = jsonObjAgentData["a_process"].toString();
+    this->data.Os         = jsonObjAgentData["a_os"].toDouble();
+    this->data.OsDesc     = jsonObjAgentData["a_os_desc"].toString();
+    this->data.Domain     = jsonObjAgentData["a_domain"].toString();
+    this->data.Computer   = jsonObjAgentData["a_computer"].toString();
+    this->data.Username   = jsonObjAgentData["a_username"].toString();
+    this->data.LastTick   = jsonObjAgentData["a_last_tick"].toDouble();
+    this->data.Tags       = jsonObjAgentData["a_tags"].toString();
+    this->data.Mark       = jsonObjAgentData["a_mark"].toString();
+    this->data.Color      = jsonObjAgentData["a_color"].toString();
 
-    auto username = data.Username;
-    if ( data.Elevated )
+    QString process  = QString("%1 (%2)").arg(this->data.Process).arg(this->data.Arch);
+    QString username = this->data.Username;
+    if ( this->data.Elevated )
         username = "* " + username;
 
-    auto sleep = QString("%1 (%2%)").arg( FormatSecToStr(data.Sleep) ).arg(data.Jitter);
-    auto process = QString("%1 (%2)").arg( data.Process ).arg(data.Arch );
+    QString sleep, last;
+    if ( this->data.Mark.isEmpty()) {
+        sleep = QString("%1 (%2%)").arg( FormatSecToStr(this->data.Sleep) ).arg(this->data.Jitter);
+        if ( !this->data.Async )
+            last = QString::fromUtf8("\u221E");
+    }
+    else {
+        QDateTime dateTime = QDateTime::fromSecsSinceEpoch(this->data.LastTick, Qt::UTC);
+        last  = dateTime.toString("MM/dd hh:mm");
+        sleep = this->data.Mark;
+    }
 
-    QString last = "";
-    if ( !data.Async )
-        last = QString::fromUtf8("\u221E");
+    this->item_Id       = new TableWidgetItemAgent( this->data.Id, this );
+    this->item_Type     = new TableWidgetItemAgent( this->data.Name, this );
+    this->item_Listener = new TableWidgetItemAgent( this->data.Listener, this );
+    this->item_External = new TableWidgetItemAgent( this->data.ExternalIP, this );
+    this->item_Internal = new TableWidgetItemAgent( this->data.InternalIP, this );
+    this->item_Domain   = new TableWidgetItemAgent( this->data.Domain, this );
+    this->item_Computer = new TableWidgetItemAgent( this->data.Computer, this );
+    this->item_Username = new TableWidgetItemAgent( username, this );
+    this->item_Os       = new TableWidgetItemAgent( this->data.OsDesc, this );
+    this->item_Process  = new TableWidgetItemAgent( process, this );
+    this->item_Pid      = new TableWidgetItemAgent( this->data.Pid, this );
+    this->item_Tid      = new TableWidgetItemAgent( this->data.Tid, this );
+    this->item_Tags     = new TableWidgetItemAgent( this->data.Tags, this );
+    this->item_Last     = new TableWidgetItemAgent( last, this );
+    this->item_Sleep    = new TableWidgetItemAgent( sleep, this );
+    this->item_Pid      = new TableWidgetItemAgent( this->data.Pid, this );
 
-    item_Id       = new TableWidgetItemAgent( data.Id, this );
-    item_Type     = new TableWidgetItemAgent( data.Name, this );
-    item_Listener = new TableWidgetItemAgent( data.Listener, this );
-    item_External = new TableWidgetItemAgent( data.ExternalIP, this );
-    item_Internal = new TableWidgetItemAgent( data.InternalIP, this );
-    item_Domain   = new TableWidgetItemAgent( data.Domain, this );
-    item_Computer = new TableWidgetItemAgent( data.Computer, this );
-    item_Username = new TableWidgetItemAgent( username, this );
-    item_Os       = new TableWidgetItemAgent( data.OsDesc, this );
-    item_Process  = new TableWidgetItemAgent( process, this );
-    item_Pid      = new TableWidgetItemAgent( data.Pid, this );
-    item_Tid      = new TableWidgetItemAgent( data.Tid, this );
-    item_Tags     = new TableWidgetItemAgent( data.Tags, this );
-    item_Last     = new TableWidgetItemAgent( last, this );
-    item_Sleep    = new TableWidgetItemAgent( sleep, this );
-    item_Pid      = new TableWidgetItemAgent( data.Pid, this );
+    if ( data.Mark.isEmpty() ) {
+        if ( !this->data.Color.isEmpty() )
+            this->SetColor(this->data.Color);
+    } else {
+        this->MarkItem(data.Mark);
+    }
 
     if (data.Os == OS_WINDOWS) {
         if (data.Elevated)
@@ -76,33 +89,125 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
             item_Os->setIcon(QIcon(":/icons/os_mac_blue"));
     }
 
-    Console        = new ConsoleWidget(this, commander );
-    FileBrowser    = new BrowserFilesWidget(this);
-    ProcessBrowser = new BrowserProcessWidget(this);
+    this->Console        = new ConsoleWidget(this, commander);
+    this->FileBrowser    = new BrowserFilesWidget(this);
+    this->ProcessBrowser = new BrowserProcessWidget(this);
 }
 
 Agent::~Agent() = default;
 
 void Agent::Update(QJsonObject jsonObjAgentData)
 {
-    data.Sleep    = jsonObjAgentData["a_sleep"].toDouble();
-    data.Jitter   = jsonObjAgentData["a_jitter"].toDouble();
-    data.Elevated = jsonObjAgentData["a_elevated"].toBool();
-    data.Username = jsonObjAgentData["a_username"].toString();
-    data.Tags     = jsonObjAgentData["a_tags"].toString();
-    data.Mark     = jsonObjAgentData["a_mark"].toString();
-    data.Color    = jsonObjAgentData["a_color"].toString();
+    int old_Sleep     = this->data.Sleep;
+    int old_Jitter    = this->data.Jitter;
+    QString old_Color = this->data.Color;
 
-    auto username = data.Username;
-    if ( data.Elevated )
+    this->data.Sleep    = jsonObjAgentData["a_sleep"].toDouble();
+    this->data.Jitter   = jsonObjAgentData["a_jitter"].toDouble();
+    this->data.Elevated = jsonObjAgentData["a_elevated"].toBool();
+    this->data.Username = jsonObjAgentData["a_username"].toString();
+    this->data.Tags     = jsonObjAgentData["a_tags"].toString();
+    this->data.Color    = jsonObjAgentData["a_color"].toString();
+    QString mark        = jsonObjAgentData["a_mark"].toString();
+
+    QString username = this->data.Username;
+    if ( this->data.Elevated )
         username = "* " + username;
 
-    auto sleep = QString("%1 (%2%)").arg( FormatSecToStr(data.Sleep) ).arg(data.Jitter);
+    this->item_Username->setText(username);
+    this->item_Tags->setText(this->data.Tags);
 
-    item_Username->setText(username);
-    item_Tags->setText(data.Tags);
-    item_Sleep->setText(sleep);
+    if (this->data.Mark == mark) {
+        if (old_Sleep != this->data.Sleep || old_Jitter != this->data.Jitter) {
+            QString status = QString("%1 (%2%)").arg( FormatSecToStr(this->data.Sleep) ).arg(this->data.Jitter);
+            item_Last->setText(status);
+        }
+        if (this->data.Color != old_Color) {
+            if (this->data.Mark == "") {
+                this->SetColor(this->data.Color);
+            }
+        }
+    }
+    else {
+        this->MarkItem(mark);
+
+        if (mark == "Terminated" || mark == "Inactive") {
+            QDateTime dateTime      = QDateTime::fromSecsSinceEpoch(data.LastTick, Qt::UTC);
+            QString   formattedTime = dateTime.toString("dd/MM hh:mm");
+
+            item_Last->setText(formattedTime);
+        }
+        // if( Reason == "Unlinked" || Reason == "Link" )
+        // {
+        //     AmonApp->AmonAppUI.MarkSessionAs(&session, Marked, Reason);
+        //     GlobalAmon::Teamserver.TabSession->SessionTableWidget->ChangeSessionValue(session.Id, GlobalAmon::Teamserver.TabSession->SessionTableWidget->NumberLast, Reason);
+        // }
+        // else if ( Reason == "Work time" ) {
+        //     session.WorkingTime  = (uint32_t) strtoul(Package->Body.Info["String"].c_str(), NULL, 0);
+        // }
+    }
 }
+
+void Agent::MarkItem(const QString &mark)
+{
+    this->data.Mark = mark;
+    QString color;
+    QString status;
+    if ( mark == "" ) {
+        color = this->data.Color;
+        status = QString("%1 (%2%)").arg( FormatSecToStr(this->data.Sleep) ).arg(this->data.Jitter);
+        this->active = true;
+    }
+    else {
+        this->active = false;
+        status = mark;
+        color = QString(COLOR_DarkBrownishRed) + "-" + QString(COLOR_LightGray);
+    }
+
+    this->SetColor(color);
+    this->item_Sleep->setText(status);
+}
+
+void Agent::SetColor(const QString &color) const {
+    if (color.isEmpty()) {
+        this->item_Id->RevertColor();
+        this->item_Type->RevertColor();
+        this->item_Listener->RevertColor();
+        this->item_External->RevertColor();
+        this->item_Internal->RevertColor();
+        this->item_Domain->RevertColor();
+        this->item_Computer->RevertColor();
+        this->item_Username->RevertColor();
+        this->item_Os->RevertColor();
+        this->item_Process->RevertColor();
+        this->item_Pid->RevertColor();
+        this->item_Tid->RevertColor();
+        this->item_Tags->RevertColor();
+        this->item_Last->RevertColor();
+        this->item_Sleep->RevertColor();
+    } else {
+        QStringList colors = color.split('-');
+        if (colors.size() == 2) {
+            this->item_Id->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Type->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Listener->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_External->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Internal->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Domain->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Computer->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Username->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Os->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Process->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Pid->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Tid->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Tags->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Last->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Sleep->SetColor(QColor(colors[0]), QColor(colors[1]));
+        }
+    }
+}
+
+/// TASK
 
 QString Agent::TasksStop(const QStringList &tasks) const
 {
@@ -125,6 +230,8 @@ QString Agent::TasksDelete(const QStringList &tasks) const
 
     return message;
 }
+
+/// BROWSER
 
 QString Agent::BrowserDisks() const
 {

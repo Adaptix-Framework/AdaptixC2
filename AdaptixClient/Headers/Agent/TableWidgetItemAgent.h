@@ -8,10 +8,13 @@ class Agent;
 class TableWidgetItemAgent final : public QTableWidgetItem
 {
 public:
-    Agent* agent  = nullptr;
+    Agent* agent = nullptr;
 
     explicit TableWidgetItemAgent( const QString& text, Agent* agent );
     ~TableWidgetItemAgent() override;
+
+    void RevertColor();
+    void SetColor(QColor bg, QColor fg);
 };
 
 #endif //ADAPTIXCLIENT_TABLEWIDGETITEMAGENT_H

@@ -5,10 +5,12 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"AdaptixServer/core/utils/tformat"
+	isvalid "AdaptixServer/core/utils/valid"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -297,6 +299,67 @@ func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 
 	agent, _ := value.(*Agent)
 	agent.Data.Tags = tag
+
+	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	if err != nil {
+		logs.Error("", err.Error())
+	}
+
+	packetNew := CreateSpAgentUpdate(agent.Data)
+	ts.TsSyncAllClients(packetNew)
+
+	return nil
+}
+
+func (ts *Teamserver) TsAgentSetMark(agentId string, makr string) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return errors.New("agent does not exist")
+	}
+	agent, _ := value.(*Agent)
+
+	if agent.Data.Mark == makr || agent.Data.Mark == "Terminated" {
+		return nil
+	}
+
+	agent.Data.Mark = makr
+
+	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	if err != nil {
+		logs.Error("", err.Error())
+	}
+
+	packetNew := CreateSpAgentUpdate(agent.Data)
+	ts.TsSyncAllClients(packetNew)
+
+	return nil
+}
+
+func (ts *Teamserver) TsAgentSetColor(agentId string, background string, foreground string, reset bool) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return errors.New("agent does not exist")
+	}
+	agent, _ := value.(*Agent)
+
+	if reset {
+		agent.Data.Color = ""
+	} else {
+		bcolor := ""
+		fcolor := ""
+		colors := strings.Split(agent.Data.Color, "-")
+		if len(colors) == 2 {
+			bcolor = colors[0]
+			fcolor = colors[1]
+		}
+		if isvalid.ValidColorRGB(background) {
+			bcolor = background
+		}
+		if isvalid.ValidColorRGB(foreground) {
+			fcolor = foreground
+		}
+		agent.Data.Color = bcolor + "-" + fcolor
+	}
 
 	err := ts.DBMS.DbAgentUpdate(agent.Data)
 	if err != nil {

@@ -19,23 +19,26 @@ class Agent
 public:
     AdaptixWidget* adaptixWidget = nullptr;
 
-    AgentData data = {0};
+    bool    active = true;
+    QString original_item_color;
 
-    TableWidgetItemAgent* item_Id;
-    TableWidgetItemAgent* item_Type;
-    TableWidgetItemAgent* item_Listener;
-    TableWidgetItemAgent* item_External;
-    TableWidgetItemAgent* item_Internal;
-    TableWidgetItemAgent* item_Domain;
-    TableWidgetItemAgent* item_Computer;
-    TableWidgetItemAgent* item_Username;
-    TableWidgetItemAgent* item_Os;
-    TableWidgetItemAgent* item_Process;
-    TableWidgetItemAgent* item_Pid;
-    TableWidgetItemAgent* item_Tid;
-    TableWidgetItemAgent* item_Tags;
-    TableWidgetItemAgent* item_Last;
-    TableWidgetItemAgent* item_Sleep;
+    AgentData data   = {};
+
+    TableWidgetItemAgent* item_Id       = nullptr;
+    TableWidgetItemAgent* item_Type     = nullptr;
+    TableWidgetItemAgent* item_Listener = nullptr;
+    TableWidgetItemAgent* item_External = nullptr;
+    TableWidgetItemAgent* item_Internal = nullptr;
+    TableWidgetItemAgent* item_Domain   = nullptr;
+    TableWidgetItemAgent* item_Computer = nullptr;
+    TableWidgetItemAgent* item_Username = nullptr;
+    TableWidgetItemAgent* item_Os       = nullptr;
+    TableWidgetItemAgent* item_Process  = nullptr;
+    TableWidgetItemAgent* item_Pid      = nullptr;
+    TableWidgetItemAgent* item_Tid      = nullptr;
+    TableWidgetItemAgent* item_Tags     = nullptr;
+    TableWidgetItemAgent* item_Last     = nullptr;
+    TableWidgetItemAgent* item_Sleep    = nullptr;
 
     ConsoleWidget*        Console        = nullptr;
     BrowserFilesWidget*   FileBrowser    = nullptr;
@@ -45,6 +48,8 @@ public:
     ~Agent();
 
     void    Update(QJsonObject jsonObjAgentData);
+    void    MarkItem(const QString &mark);
+    void    SetColor(const QString &color) const;
     QString TasksStop(const QStringList &tasks) const;
     QString TasksDelete(const QStringList &tasks) const;
 

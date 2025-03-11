@@ -62,9 +62,14 @@ public slots:
     void actionFileBrowserOpen() const;
     void actionProcessBrowserOpen() const;
     void actionAgentExit() const;
-    void actionAgentTag() const;
-    void actionAgentHide() const;
-    void actionAgentRemove() const;
+    void actionMarkActive() const;
+    void actionMarkInctive() const;
+    void actionItemColor() const;
+    void actionTextColor() const;
+    void actionColorReset() const;
+    void actionAgentRemove();
+    void actionItemTag() const;
+    void actionItemHide() const;
 };
 
 #endif //ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H
