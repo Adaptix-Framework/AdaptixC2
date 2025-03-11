@@ -223,6 +223,84 @@ func (tc *TsConnector) TcAgentSetTag(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }
 
+type AgentMark struct {
+	AgentIdArray []string `json:"agent_id_array"`
+	Mark         string   `json:"mark"`
+}
+
+func (tc *TsConnector) TcAgentSetMark(ctx *gin.Context) {
+	var (
+		agentMark AgentMark
+		err       error
+	)
+
+	err = ctx.ShouldBindJSON(&agentMark)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		return
+	}
+
+	var errorsSlice []string
+	for _, agentId := range agentMark.AgentIdArray {
+		err = tc.teamserver.TsAgentSetMark(agentId, agentMark.Mark)
+		if err != nil {
+			errorsSlice = append(errorsSlice, err.Error())
+		}
+	}
+
+	if len(errorsSlice) > 0 {
+		message := ""
+		for i, errorMessage := range errorsSlice {
+			message += fmt.Sprintf("%d. %s\n", i+1, errorMessage)
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": false})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}
+
+type AgentColor struct {
+	AgentIdArray []string `json:"agent_id_array"`
+	Background   string   `json:"bc"`
+	Foreground   string   `json:"fc"`
+	Reset        bool     `json:"reset"`
+}
+
+func (tc *TsConnector) TcAgentSetColor(ctx *gin.Context) {
+	var (
+		agentColor AgentColor
+		err        error
+	)
+
+	err = ctx.ShouldBindJSON(&agentColor)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		return
+	}
+
+	var errorsSlice []string
+	for _, agentId := range agentColor.AgentIdArray {
+		err = tc.teamserver.TsAgentSetColor(agentId, agentColor.Background, agentColor.Foreground, agentColor.Reset)
+		if err != nil {
+			errorsSlice = append(errorsSlice, err.Error())
+		}
+	}
+
+	if len(errorsSlice) > 0 {
+		message := ""
+		for i, errorMessage := range errorsSlice {
+			message += fmt.Sprintf("%d. %s\n", i+1, errorMessage)
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": false})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}
+
 type AgentTaskDelete struct {
 	AgentId string   `json:"agent_id"`
 	TasksId []string `json:"tasks_array"`

@@ -50,6 +50,7 @@
 #include <QStyledItemDelegate>
 #include <QStringListModel>
 #include <QSpinBox>
+#include <QColorDialog>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
@@ -122,17 +123,19 @@
 
 /////////
 
-#define COLOR_NeonGreen    "#39FF14"     // green
-#define COLOR_Berry        "#A01641"     // red
-#define COLOR_ChiliPepper  "#E32227"     // red
-#define COLOR_BrightOrange "#FFA500"     // orange
-#define COLOR_PastelYellow "#FDFD96"     // yellow
-#define COLOR_Yellow       "#FFFF00"     // yellow
-#define COLOR_BabyBlue     "#89CFF0"     // blue
-#define COLOR_Gray         "#808080"     // gray
-#define COLOR_SaturGray    "#606060"     // gray
-#define COLOR_ConsoleWhite "#e0e0e0"     // white
-#define COLOR_White        "#ffffff"     // white
+#define COLOR_NeonGreen       "#39FF14"     // green
+#define COLOR_Berry           "#A01641"     // red
+#define COLOR_ChiliPepper     "#E32227"     // red
+#define COLOR_BrightOrange    "#FFA500"     // orange
+#define COLOR_PastelYellow    "#FDFD96"     // yellow
+#define COLOR_Yellow          "#FFFF00"     // yellow
+#define COLOR_BabyBlue        "#89CFF0"     // blue
+#define COLOR_DarkBrownishRed "#4A403D"     // gray-red
+#define COLOR_LightGray       "#A0A0A0"     // gray
+#define COLOR_Gray            "#808080"     // gray
+#define COLOR_SaturGray       "#606060"     // gray
+#define COLOR_ConsoleWhite    "#E0E0E0"     // white
+#define COLOR_White           "#FFFFFF"     // white
 
 //////////
 

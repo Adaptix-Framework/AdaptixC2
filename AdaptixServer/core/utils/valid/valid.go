@@ -21,3 +21,8 @@ func ValidSBNString(s string) bool {
 	re := regexp.MustCompile(`^[a-zA-Z0-9-_]+$`)
 	return re.MatchString(s)
 }
+
+func ValidColorRGB(color string) bool {
+	re := regexp.MustCompile("^#[0-9A-Fa-f]{6}$")
+	return re.MatchString(color)
+}
