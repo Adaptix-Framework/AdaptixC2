@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_TASKSWIDGET_H
 
 #include <main.h>
+#include <Agent/Task.h>
 
 class TaskOutputWidget : public QWidget
 {
@@ -32,7 +33,7 @@ class TasksWidget : public QWidget
 
     void createUI();
     bool filterItem(const TaskData &task) const;
-    void addTableItem(const TaskData &task) const;
+    void addTableItem(const Task* newTask) const;
 
 public:
     TaskOutputWidget* taskOutputConsole = nullptr;
@@ -41,11 +42,12 @@ public:
     ~TasksWidget() override;
 
     void Clear() const;
-    void AddTaskItem(TaskData newTask) const;
-    void EditTaskItem(TaskData newTask) const;
+    void AddTaskItem(Task* newTask) const;
+    void EditTaskSend(TaskData newTask) const;
     void RemoveTaskItem(const QString &taskId) const;
     void SetData() const;
     void SetAgentFilter(const QString &agentId) const;
+    void ClearTableContent() const;
 
 public slots:
     void handleTasksMenu( const QPoint &pos );

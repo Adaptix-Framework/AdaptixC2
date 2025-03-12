@@ -246,6 +246,12 @@ type SyncPackerAgentTaskUpdate struct {
 	Completed   bool   `json:"a_completed"`
 }
 
+type SyncPackerAgentTaskSend struct {
+	SpType int `json:"type"`
+
+	TaskId []string `json:"a_task_id"`
+}
+
 type SyncPackerAgentConsoleOutput struct {
 	SpCreateTime int64 `json:"time"`
 	SpType       int   `json:"type"`

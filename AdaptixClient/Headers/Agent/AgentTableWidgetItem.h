@@ -5,13 +5,13 @@
 
 class Agent;
 
-class TableWidgetItemAgent final : public QTableWidgetItem
+class AgentTableWidgetItem final : public QTableWidgetItem
 {
 public:
     Agent* agent = nullptr;
 
-    explicit TableWidgetItemAgent( const QString& text, Agent* agent );
-    ~TableWidgetItemAgent() override;
+    explicit AgentTableWidgetItem( const QString& text, Agent* agent );
+    ~AgentTableWidgetItem() override;
 
     void RevertColor();
     void SetColor(QColor bg, QColor fg);

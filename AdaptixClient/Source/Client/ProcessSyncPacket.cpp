@@ -122,6 +122,10 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("a_completed")   || !jsonObj["a_completed"].isBool())     return false;
         return true;
     }
+    if ( spType == TYPE_AGENT_TASK_SEND ) {
+        if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isArray()) return false;
+        return true;
+    }
     if( spType == TYPE_AGENT_TASK_REMOVE ) {
         if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isString()) return false;
         return true;
@@ -315,7 +319,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentName = jsonObj["a_name"].toString();
 
         Agent* newAgent = new Agent(jsonObj, RegisterAgentsCmd[agentName], this);
-
         SessionsTablePage->AddAgentItem( newAgent );
         return;
     }
@@ -350,37 +353,30 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_AGENT_TASK_SYNC )
     {
-        TaskData taskData = { 0 };
-        taskData.AgentId     = jsonObj["a_id"].toString();
-        taskData.TaskId      = jsonObj["a_task_id"].toString();
-        taskData.TaskType    = jsonObj["a_task_type"].toDouble();
-        taskData.StartTime   = jsonObj["a_start_time"].toDouble();
-        taskData.CommandLine = jsonObj["a_cmdline"].toString();
-        taskData.Client      = jsonObj["a_client"].toString();
-        taskData.Computer    = jsonObj["a_computer"].toString();
-        taskData.FinishTime  = jsonObj["a_finish_time"].toDouble();
-        taskData.MessageType = jsonObj["a_msg_type"].toDouble();
-        taskData.Message     = jsonObj["a_message"].toString();
-        taskData.Output      = jsonObj["a_text"].toString();
-        taskData.Completed   = jsonObj["a_completed"].toBool();
-
-        TasksTab->AddTaskItem(taskData);
-
+        Task* newTask = new Task(jsonObj);
+        TasksTab->AddTaskItem(newTask);
         return;
     }
     if( spType == TYPE_AGENT_TASK_UPDATE )
     {
-        TaskData taskData = { 0 };
-        taskData.AgentId     = jsonObj["a_id"].toString();
-        taskData.TaskId      = jsonObj["a_task_id"].toString();
-        taskData.TaskType    = jsonObj["a_task_type"].toDouble();
-        taskData.FinishTime  = jsonObj["a_finish_time"].toDouble();
-        taskData.MessageType = jsonObj["a_msg_type"].toDouble();
-        taskData.Message     = jsonObj["a_message"].toString();
-        taskData.Output      = jsonObj["a_text"].toString();
-        taskData.Completed   = jsonObj["a_completed"].toBool();
+        QString taskId = jsonObj["a_task_id"].toString();
 
-        TasksTab->EditTaskItem(taskData);
+        if(TasksMap.contains(taskId)) {
+            Task* task = TasksMap[taskId];
+            task->Update(jsonObj);
+        }
+        return;
+    }
+    if( spType == TYPE_AGENT_TASK_SEND )
+    {
+        QJsonArray taskIDs = jsonObj["a_task_id"].toArray();
+        for (QJsonValue idValue : taskIDs) {
+            QString id = idValue.toString();
+            if (TasksMap.contains(id)) {
+                Task* task = TasksMap[id];
+                task->item_Result->setText("Running");
+            }
+        }
 
         return;
     }

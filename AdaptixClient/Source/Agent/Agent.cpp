@@ -46,22 +46,22 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
         sleep = this->data.Mark;
     }
 
-    this->item_Id       = new TableWidgetItemAgent( this->data.Id, this );
-    this->item_Type     = new TableWidgetItemAgent( this->data.Name, this );
-    this->item_Listener = new TableWidgetItemAgent( this->data.Listener, this );
-    this->item_External = new TableWidgetItemAgent( this->data.ExternalIP, this );
-    this->item_Internal = new TableWidgetItemAgent( this->data.InternalIP, this );
-    this->item_Domain   = new TableWidgetItemAgent( this->data.Domain, this );
-    this->item_Computer = new TableWidgetItemAgent( this->data.Computer, this );
-    this->item_Username = new TableWidgetItemAgent( username, this );
-    this->item_Os       = new TableWidgetItemAgent( this->data.OsDesc, this );
-    this->item_Process  = new TableWidgetItemAgent( process, this );
-    this->item_Pid      = new TableWidgetItemAgent( this->data.Pid, this );
-    this->item_Tid      = new TableWidgetItemAgent( this->data.Tid, this );
-    this->item_Tags     = new TableWidgetItemAgent( this->data.Tags, this );
-    this->item_Last     = new TableWidgetItemAgent( last, this );
-    this->item_Sleep    = new TableWidgetItemAgent( sleep, this );
-    this->item_Pid      = new TableWidgetItemAgent( this->data.Pid, this );
+    this->item_Id       = new AgentTableWidgetItem( this->data.Id, this );
+    this->item_Type     = new AgentTableWidgetItem( this->data.Name, this );
+    this->item_Listener = new AgentTableWidgetItem( this->data.Listener, this );
+    this->item_External = new AgentTableWidgetItem( this->data.ExternalIP, this );
+    this->item_Internal = new AgentTableWidgetItem( this->data.InternalIP, this );
+    this->item_Domain   = new AgentTableWidgetItem( this->data.Domain, this );
+    this->item_Computer = new AgentTableWidgetItem( this->data.Computer, this );
+    this->item_Username = new AgentTableWidgetItem( username, this );
+    this->item_Os       = new AgentTableWidgetItem( this->data.OsDesc, this );
+    this->item_Process  = new AgentTableWidgetItem( process, this );
+    this->item_Pid      = new AgentTableWidgetItem( this->data.Pid, this );
+    this->item_Tid      = new AgentTableWidgetItem( this->data.Tid, this );
+    this->item_Tags     = new AgentTableWidgetItem( this->data.Tags, this );
+    this->item_Last     = new AgentTableWidgetItem( last, this );
+    this->item_Sleep    = new AgentTableWidgetItem( sleep, this );
+    this->item_Pid      = new AgentTableWidgetItem( this->data.Pid, this );
 
     if ( data.Mark.isEmpty() ) {
         if ( !this->data.Color.isEmpty() )

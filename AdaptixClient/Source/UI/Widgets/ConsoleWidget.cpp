@@ -10,7 +10,8 @@ ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
     this->createUI();
     this->UpgradeCompleter();
 
-    connect( InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput );
+    connect(CommandCompleter, QOverload<const QString &>::of(&QCompleter::activated), this, &ConsoleWidget::onCompletionSelected, Qt::DirectConnection);
+    connect( InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput, Qt::QueuedConnection );
 
     kphInputLineEdit = new KPH_ConsoleInput(InputLineEdit, OutputTextEdit, this);
 }
@@ -53,6 +54,8 @@ void ConsoleWidget::createUI()
     CommandCompleter = new QCompleter(completerModel, this);
     CommandCompleter->popup()->setObjectName("Completer");
     CommandCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+    CommandCompleter->setCompletionMode(QCompleter::PopupCompletion);
+
     InputLineEdit->setCompleter(CommandCompleter);
 }
 
@@ -135,13 +138,12 @@ void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, const QString &taskId
 
 /// SLOTS
 
-void ConsoleWidget::processInput() const
-{
+void ConsoleWidget::processInput() {
     QString commandLine = TrimmedEnds(InputLineEdit->text());
 
-    if ( CommandCompleter->popup()->isVisible() ) {
-        CommandCompleter->popup()->hide();
-        return;
+    if ( this->userSelectedCompletion ) {
+        this->userSelectedCompletion = false;
+            return;
     }
 
     InputLineEdit->clear();
@@ -190,3 +192,7 @@ void ConsoleWidget::UpgradeCompleter() const
     }
 }
 
+void ConsoleWidget::onCompletionSelected(const QString &selectedText)
+{
+    userSelectedCompletion = true;
+}

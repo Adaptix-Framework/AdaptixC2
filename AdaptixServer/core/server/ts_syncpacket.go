@@ -36,7 +36,8 @@ const (
 
 	TYPE_AGENT_TASK_SYNC   = 0x49
 	TYPE_AGENT_TASK_UPDATE = 0x4a
-	TYPE_AGENT_TASK_REMOVE = 0x4b
+	TYPE_AGENT_TASK_SEND   = 0x4b
+	TYPE_AGENT_TASK_REMOVE = 0x4c
 
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
@@ -229,6 +230,14 @@ func CreateSpAgentTaskUpdate(taskData adaptix.TaskData) SyncPackerAgentTaskUpdat
 		Message:     taskData.Message,
 		Text:        taskData.ClearText,
 		Completed:   taskData.Completed,
+	}
+}
+
+func CreateSpAgentTaskSend(tasksId []string) SyncPackerAgentTaskSend {
+	return SyncPackerAgentTaskSend{
+		SpType: TYPE_AGENT_TASK_SEND,
+
+		TaskId: tasksId,
 	}
 }
 

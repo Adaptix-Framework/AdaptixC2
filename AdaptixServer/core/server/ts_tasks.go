@@ -305,6 +305,8 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 
 	/// TASKS QUEUE
 
+	var sendTasks []string
+
 	for i := 0; i < agent.TasksQueue.Len(); i++ {
 		value, ok = agent.TasksQueue.Get(i)
 		if ok {
@@ -316,6 +318,7 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 				agent.RunningTasks.Put(taskData.TaskId, taskData)
 				agent.TasksQueue.Delete(i)
 				i--
+				sendTasks = append(sendTasks, taskData.TaskId)
 			} else {
 				break
 			}
@@ -323,6 +326,9 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 			break
 		}
 	}
+
+	packet := CreateSpAgentTaskSend(sendTasks)
+	ts.TsSyncAllClients(packet)
 
 	/// TUNNELS QUEUE
 
