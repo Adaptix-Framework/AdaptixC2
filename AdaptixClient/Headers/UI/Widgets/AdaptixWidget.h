@@ -13,6 +13,7 @@
 #include <UI/Widgets/TunnelsWidget.h>
 #include <Client/WidgetBuilder.h>
 #include <Agent/Agent.h>
+#include <Agent/Task.h>
 
 class SessionsTableWidget;
 class LastTickWorker;
@@ -73,7 +74,7 @@ public:
     QVector<TunnelData>           Tunnels;
     QMap<QString, DownloadData>   Downloads;
     QVector<QString>              TasksVector;
-    QMap<QString, TaskData>       TasksMap;
+    QMap<QString, Task*>          TasksMap;
     QMap<QString, Agent*>         Agents;
     QMap<QString, ExtensionFile>  Extensions;
 

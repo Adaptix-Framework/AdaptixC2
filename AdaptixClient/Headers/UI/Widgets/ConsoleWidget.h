@@ -24,6 +24,8 @@ class ConsoleWidget : public QWidget
     QCompleter*  CommandCompleter    = nullptr;
     QStringListModel* completerModel = nullptr;
 
+    bool userSelectedCompletion      = false;
+
     Agent*     agent     = nullptr;
     Commander* commander = nullptr;
     KPH_ConsoleInput * kphInputLineEdit = nullptr;
@@ -41,7 +43,8 @@ public:
     void ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const;
 
 public slots:
-    void processInput() const;
+    void processInput();
+    void onCompletionSelected(const QString &selectedText);
 };
 
 #endif //ADAPTIXCLIENT_CONSOLEWIDGET_H
