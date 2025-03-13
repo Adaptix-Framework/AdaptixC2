@@ -36,7 +36,7 @@ Q_OBJECT
     QWidget*     sessionsWidget      = nullptr;
     QGridLayout* sessionsLayout      = nullptr;
     QGroupBox*   sessionsGroup       = nullptr;
-    QGridLayout* groupLayout         = nullptr;
+    QGridLayout* sessionsGroupLayout = nullptr;
     QCheckBox*   sessionsCheck[15];
 
 void createUI();

@@ -1,6 +1,6 @@
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <Utils/CustomElements.h>
+#include <MainAdaptix.h>
 
 TaskOutputWidget::TaskOutputWidget( )
 {
@@ -44,9 +44,6 @@ void TaskOutputWidget::SetConten(const QString &message, const QString &text) co
 }
 
 
-
-
-
 TasksWidget::TasksWidget( QWidget* w )
 {
     this->mainWidget = w;
@@ -54,12 +51,17 @@ TasksWidget::TasksWidget( QWidget* w )
 
     taskOutputConsole = new TaskOutputWidget();
 
-    connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
-    connect(tableWidget, &QTableWidget::itemSelectionChanged,       this, &TasksWidget::onTableItemSelection);
-    connect(tableWidget, &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
-    connect(comboAgent,  &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
-    connect(comboStatus, &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
-    connect(inputFilter, &QLineEdit::textChanged,                   this, &TasksWidget::onAgentChange);
+    connect(tableWidget,  &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
+    connect(tableWidget,  &QTableWidget::itemSelectionChanged,       this, &TasksWidget::onTableItemSelection);
+    connect(tableWidget,  &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
+    connect(comboAgent,   &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
+    connect(comboStatus,  &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
+    connect(inputFilter,  &QLineEdit::textChanged,                   this, &TasksWidget::onAgentChange);
+    connect(hideButton,   &ClickableLabel::clicked,                  this, &TasksWidget::toggleSearchPanel);
+
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
+    shortcutSearch->setContext(Qt::WidgetShortcut);
+    connect(shortcutSearch, &QShortcut::activated, this, &TasksWidget::toggleSearchPanel);
 }
 
 TasksWidget::~TasksWidget() = default;
@@ -69,16 +71,37 @@ void TasksWidget::createUI()
     auto horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     auto horizontalSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-    comboAgent = new QComboBox(this);
+    searchWidget = new QWidget(this);
+    searchWidget->setVisible(false);
+
+    comboAgent = new QComboBox(searchWidget);
     comboAgent->addItem( "All agents" );
     comboAgent->setCurrentIndex(0);
+    comboAgent->setMaximumWidth(200);
+    comboAgent->setFixedWidth(200);
 
-    comboStatus = new QComboBox(this);
+    comboStatus = new QComboBox(searchWidget);
     comboStatus->addItems( QStringList() << "Any status" << "Hosted" << "Running" << "Success" << "Error" << "Canceled" );
     comboStatus->setCurrentIndex(0);
+    comboStatus->setMaximumWidth(200);
+    comboStatus->setFixedWidth(200);
 
-    inputFilter = new QLineEdit(this);
+    inputFilter = new QLineEdit(searchWidget);
     inputFilter->setPlaceholderText("filter");
+    inputFilter->setMaximumWidth(200);
+
+    hideButton = new ClickableLabel("X");
+    hideButton->setCursor( Qt::PointingHandCursor );
+
+    searchLayout = new QHBoxLayout(searchWidget);
+    searchLayout->setContentsMargins(0, 0, 0, 0);
+    searchLayout->setSpacing(4);
+    searchLayout->addSpacerItem(horizontalSpacer1);
+    searchLayout->addWidget(comboAgent);
+    searchLayout->addWidget(comboStatus);
+    searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(hideButton);
+    searchLayout->addSpacerItem(horizontalSpacer2);
 
     tableWidget = new QTableWidget(this );
     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
@@ -111,18 +134,17 @@ void TasksWidget::createUI()
     mainGridLayout->setVerticalSpacing(4);
     mainGridLayout->setHorizontalSpacing(8);
 
-    mainGridLayout->addItem( horizontalSpacer1, 0, 0,  1, 1  );
-    mainGridLayout->addWidget( comboAgent, 0, 1, 1, 1  );
-    mainGridLayout->addWidget( comboStatus, 0, 2, 1, 1  );
-    mainGridLayout->addWidget( inputFilter, 0, 3, 1, 1  );
-    mainGridLayout->addItem( horizontalSpacer2, 0, 4,  1, 1  );
-    mainGridLayout->addWidget( tableWidget,  1, 0,  1, 5 );
+    mainGridLayout->addWidget( searchWidget,  0, 0,  1, 1 );
+    mainGridLayout->addWidget( tableWidget,   1, 0,  1, 1 );
 
     this->setLayout(mainGridLayout);
 }
 
 bool TasksWidget::filterItem(const TaskData &task) const
 {
+    if ( !this->searchWidget->isVisible() )
+        return true;
+
     if( comboAgent->currentIndex() > 0 ) {
         if (comboAgent->currentText() != task.AgentId)
             return false;
@@ -139,15 +161,6 @@ bool TasksWidget::filterItem(const TaskData &task) const
     }
 
     return true;
-}
-
-void TasksWidget::ClearTableContent() const {
-    for (int row = tableWidget->rowCount() - 1; row >= 0; row--) {
-        for (int col = 0; col < tableWidget->columnCount(); ++col)
-            tableWidget->takeItem(row, col);
-
-        tableWidget->removeRow(row);
-    }
 }
 
 void TasksWidget::addTableItem(const Task* newTask) const
@@ -185,28 +198,7 @@ void TasksWidget::addTableItem(const Task* newTask) const
 }
 
 
-
-void TasksWidget::Clear() const
-{
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    adaptixWidget->TasksVector.clear();
-
-    for (auto taskId : adaptixWidget->TasksMap.keys()) {
-        Task* task = adaptixWidget->TasksMap[taskId];
-        adaptixWidget->TasksMap.remove(taskId);
-        delete task;
-    }
-
-    this->ClearTableContent();
-
-    taskOutputConsole->SetConten("", "");
-
-    comboAgent->clear();
-    comboAgent->addItem( "All agents" );
-    comboAgent->setCurrentIndex(0);
-    comboStatus->setCurrentIndex(0);
-    inputFilter->clear();
-}
+/// PUBLIC
 
 void TasksWidget::AddTaskItem(Task* newTask) const
 {
@@ -225,12 +217,6 @@ void TasksWidget::AddTaskItem(Task* newTask) const
 
     this->addTableItem(newTask);
 }
-
-void TasksWidget::EditTaskSend(TaskData newTask) const
-{
-
-}
-
 
 void TasksWidget::RemoveTaskItem(const QString &taskId) const
 {
@@ -264,6 +250,11 @@ void TasksWidget::RemoveTaskItem(const QString &taskId) const
     }
 }
 
+void TasksWidget::SetAgentFilter(const QString &agentId) const
+{
+    comboAgent->setCurrentText(agentId);
+}
+
 void TasksWidget::SetData() const
 {
     taskOutputConsole->SetConten("", "");
@@ -275,17 +266,56 @@ void TasksWidget::SetData() const
     for (int i = 0; i < adaptixWidget->TasksVector.size(); i++ ) {
         QString taskId = adaptixWidget->TasksVector[i];
         Task* task = adaptixWidget->TasksMap[taskId];
-        if ( this->filterItem(task->data) )
+        if ( task && this->filterItem(task->data) )
             this->addTableItem(task);
     }
 }
 
-void TasksWidget::SetAgentFilter(const QString &agentId) const
+void TasksWidget::ClearTableContent() const
 {
-    comboAgent->setCurrentText(agentId);
+    for (int row = tableWidget->rowCount() - 1; row >= 0; row--) {
+        for (int col = 0; col < tableWidget->columnCount(); ++col)
+            tableWidget->takeItem(row, col);
+
+        tableWidget->removeRow(row);
+    }
 }
 
+void TasksWidget::Clear() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    adaptixWidget->TasksVector.clear();
+
+    for (auto taskId : adaptixWidget->TasksMap.keys()) {
+        Task* task = adaptixWidget->TasksMap[taskId];
+        adaptixWidget->TasksMap.remove(taskId);
+        delete task;
+    }
+
+    this->ClearTableContent();
+
+    taskOutputConsole->SetConten("", "");
+
+    comboAgent->clear();
+    comboAgent->addItem( "All agents" );
+    comboAgent->setCurrentIndex(0);
+    comboStatus->setCurrentIndex(0);
+    inputFilter->clear();
+}
+
+
+
 /// SLOTS
+
+void TasksWidget::toggleSearchPanel() const
+{
+    if (this->searchWidget->isVisible())
+        this->searchWidget->setVisible(false);
+    else
+        this->searchWidget->setVisible(true);
+
+    this->SetData();
+}
 
 void TasksWidget::handleTasksMenu( const QPoint &pos )
 {
@@ -373,7 +403,7 @@ void TasksWidget::actionStop() const
     }
 
     for( QString agentId : agentTasks.keys())
-        adaptixWidget->Agents[agentId]->TasksStop(agentTasks[agentId]);
+        adaptixWidget->AgentsMap[agentId]->TasksStop(agentTasks[agentId]);
 }
 
 void TasksWidget::actionDelete() const
@@ -390,5 +420,5 @@ void TasksWidget::actionDelete() const
     }
 
     for( QString agentId : agentTasks.keys())
-        adaptixWidget->Agents[agentId]->TasksDelete(agentTasks[agentId]);
+        adaptixWidget->AgentsMap[agentId]->TasksDelete(agentTasks[agentId]);
 }

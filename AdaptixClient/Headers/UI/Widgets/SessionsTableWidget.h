@@ -3,6 +3,7 @@
 
 #include <main.h>
 #include <Agent/Agent.h>
+#include <Utils/CustomElements.h>
 
 class SessionsTableWidget : public QWidget
 {
@@ -10,23 +11,19 @@ class SessionsTableWidget : public QWidget
     QGridLayout*      mainGridLayout = nullptr;
     QTableWidget*     tableWidget    = nullptr;
     QMenu*            menuSessions   = nullptr;
-    QTableWidgetItem* titleAgentID   = nullptr;
-    QTableWidgetItem* titleAgentType = nullptr;
-    QTableWidgetItem* titleListener  = nullptr;
-    QTableWidgetItem* titleExternal  = nullptr;
-    QTableWidgetItem* titleInternal  = nullptr;
-    QTableWidgetItem* titleDomain    = nullptr;
-    QTableWidgetItem* titleComputer  = nullptr;
-    QTableWidgetItem* titleUser      = nullptr;
-    QTableWidgetItem* titleOs        = nullptr;
-    QTableWidgetItem* titleProcess   = nullptr;
-    QTableWidgetItem* titleProcessId = nullptr;
-    QTableWidgetItem* titleThreadId  = nullptr;
-    QTableWidgetItem* titleTag       = nullptr;
-    QTableWidgetItem* titleLast      = nullptr;
-    QTableWidgetItem* titleSleep     = nullptr;
+    QShortcut*        shortcutSearch = nullptr;
+
+    QWidget*        searchWidget    = nullptr;
+    QHBoxLayout*    searchLayout    = nullptr;
+    QCheckBox*      checkOnlyActive = nullptr;
+    QLineEdit*      inputFilter1    = nullptr;
+    QLineEdit*      inputFilter2    = nullptr;
+    QLineEdit*      inputFilter3    = nullptr;
+    ClickableLabel* hideButton      = nullptr;
 
     void createUI();
+    bool filterItem(const AgentData &agent) const;
+    void addTableItem(const Agent* newAgent) const;
 
 public:
     int ColumnAgentID   = 0;
@@ -49,13 +46,18 @@ public:
     explicit SessionsTableWidget( QWidget* w );
     ~SessionsTableWidget() override;
 
-    void Clear() const;
     void AddAgentItem(Agent* newAgent) const;
     void RemoveAgentItem(const QString &agentId) const;
 
+    void SetData() const;
+    void ClearTableContent() const;
+    void Clear() const;
+
 public slots:
+    void toggleSearchPanel() const;
     void handleTableDoubleClicked( const QModelIndex &index ) const;
     void handleSessionsTableMenu(const QPoint &pos );
+    void onFilterUpdate() const;
 
     void actionConsoleOpen() const;
     void actionTasksBrowserOpen() const;

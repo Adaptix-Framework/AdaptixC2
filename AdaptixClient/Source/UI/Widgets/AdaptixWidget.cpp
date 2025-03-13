@@ -286,7 +286,7 @@ void AdaptixWidget::AddExtension(ExtensionFile ext)
             Commander* commander = RegisterAgentsCmd[agentName];
             bool result = commander->AddExtCommands(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
             if (result) {
-                for( auto agent : Agents ){
+                for( auto agent : AgentsMap ){
                     if( agent && agent->Console )
                         agent->Console->UpgradeCompleter();
                 }
@@ -303,7 +303,7 @@ void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
         if ( RegisterAgentsCmd.contains(agentName) ) {
             Commander* commander = RegisterAgentsCmd[agentName];
             commander->RemoveExtCommands(ext.FilePath);
-            for( auto agent : Agents ){
+            for( auto agent : AgentsMap ){
                 if( agent && agent->Console )
                     agent->Console->UpgradeCompleter();
             }
@@ -325,7 +325,7 @@ void AdaptixWidget::OnSynced()
                 Commander* commander = RegisterAgentsCmd[agentName];
                 bool result = commander->AddExtCommands(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
                 if (result) {
-                    for( auto agent : Agents ){
+                    for( auto agent : AgentsMap ){
                         if( agent && agent->Console )
                             agent->Console->UpgradeCompleter();
                     }
@@ -403,30 +403,30 @@ void AdaptixWidget::OnReconnect() {
 
 void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
 {
-    if( !Agents.contains(AgentId) )
+    if( !AgentsMap.contains(AgentId) )
         return;
 
     auto text = QString("Console [%1]").arg( AgentId );
-    this->AddTab(Agents[AgentId]->Console, text);
-    Agents[AgentId]->Console->InputFocus();
+    this->AddTab(AgentsMap[AgentId]->Console, text);
+    AgentsMap[AgentId]->Console->InputFocus();
 }
 
 void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
 {
-    if( !Agents.contains(AgentId) )
+    if( !AgentsMap.contains(AgentId) )
         return;
 
     auto text = QString("Files [%1]").arg( AgentId );
-    this->AddTab(Agents[AgentId]->FileBrowser, text);
+    this->AddTab(AgentsMap[AgentId]->FileBrowser, text);
 }
 
 void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
 {
-    if( !Agents.contains(AgentId) )
+    if( !AgentsMap.contains(AgentId) )
         return;
 
     auto text = QString("Processes [%1]").arg( AgentId );
-    this->AddTab(Agents[AgentId]->ProcessBrowser, text);
+    this->AddTab(AgentsMap[AgentId]->ProcessBrowser, text);
 }
 
 void AdaptixWidget::ChannelClose() const

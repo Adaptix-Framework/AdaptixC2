@@ -326,8 +326,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         QString agentId = jsonObj["a_id"].toString();
 
-        if(Agents.contains(agentId)) {
-            Agent* agent = Agents[agentId];
+        if(AgentsMap.contains(agentId)) {
+            Agent* agent = AgentsMap[agentId];
             agent->Update(jsonObj);
         }
     }
@@ -336,8 +336,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QJsonArray agentIDs = jsonObj["a_id"].toArray();
         for (QJsonValue idValue : agentIDs) {
             QString id = idValue.toString();
-            if (Agents.contains(id))
-                Agents[id]->data.LastTick = QDateTime::currentSecsSinceEpoch();
+            if (AgentsMap.contains(id))
+                AgentsMap[id]->data.LastTick = QDateTime::currentSecsSinceEpoch();
         }
 
         return;
@@ -397,8 +397,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString message = jsonObj["a_message"].toString();
         int     msgType = jsonObj["a_msg_type"].toDouble();
 
-        if (Agents.contains(agentId))
-            Agents[agentId]->Console->ConsoleOutputMessage(time, "", msgType, message, text, false );
+        if (AgentsMap.contains(agentId))
+            AgentsMap[agentId]->Console->ConsoleOutputMessage(time, "", msgType, message, text, false );
 
         return;
     }
@@ -415,14 +415,14 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString Output      = jsonObj["a_text"].toString();
         bool    Completed   = jsonObj["a_completed"].toBool();
 
-        if (Agents.contains(AgentId)) {
-            Agents[AgentId]->Console->ConsoleOutputPrompt( StartTime, TaskId, Client, CommandLine);
+        if (AgentsMap.contains(AgentId)) {
+            AgentsMap[AgentId]->Console->ConsoleOutputPrompt( StartTime, TaskId, Client, CommandLine);
 
             qint64 ConsoleTime = StartTime;
             if (Completed)
                 ConsoleTime = FinishTime;
 
-            Agents[AgentId]->Console->ConsoleOutputMessage( ConsoleTime, TaskId, MessageType, Message, Output , Completed );
+            AgentsMap[AgentId]->Console->ConsoleOutputMessage( ConsoleTime, TaskId, MessageType, Message, Output , Completed );
         }
 
         return;
@@ -437,8 +437,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString Output      = jsonObj["a_text"].toString();
         bool    Completed   = jsonObj["a_completed"].toBool();
 
-        if (Agents.contains(AgentId))
-            Agents[AgentId]->Console->ConsoleOutputMessage( FinishTime, TaskId, MessageType, Message, Output , Completed );
+        if (AgentsMap.contains(AgentId))
+            AgentsMap[AgentId]->Console->ConsoleOutputMessage( FinishTime, TaskId, MessageType, Message, Output , Completed );
 
         return;
     }
@@ -532,8 +532,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString message = jsonObj["b_message"].toString();
         QString data    = jsonObj["b_data"].toString();
 
-        if (Agents.contains(agentId))
-            Agents[agentId]->FileBrowser->SetDisks(time, msgType, message, data);
+        if (AgentsMap.contains(agentId))
+            AgentsMap[agentId]->FileBrowser->SetDisks(time, msgType, message, data);
 
         return;
     }
@@ -546,8 +546,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString path    = jsonObj["b_path"].toString();
         QString data    = jsonObj["b_data"].toString();
 
-        if (Agents.contains(agentId))
-            Agents[agentId]->FileBrowser->AddFiles(time, msgType, message, path, data);
+        if (AgentsMap.contains(agentId))
+            AgentsMap[agentId]->FileBrowser->AddFiles(time, msgType, message, path, data);
 
         return;
     }
@@ -559,9 +559,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString message = jsonObj["b_message"].toString();
         QString data    = jsonObj["b_data"].toString();
 
-        if (Agents.contains(agentId)) {
-            Agents[agentId]->ProcessBrowser->SetStatus(time, msgType, message);
-            Agents[agentId]->ProcessBrowser->SetProcess(msgType, data);
+        if (AgentsMap.contains(agentId)) {
+            AgentsMap[agentId]->ProcessBrowser->SetStatus(time, msgType, message);
+            AgentsMap[agentId]->ProcessBrowser->SetProcess(msgType, data);
         }
 
         return;
@@ -573,8 +573,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         int     msgType = jsonObj["b_msg_type"].toDouble();
         QString message = jsonObj["b_message"].toString();
 
-        if (Agents.contains(agentId))
-            Agents[agentId]->FileBrowser->SetStatus( time, msgType, message );
+        if (AgentsMap.contains(agentId))
+            AgentsMap[agentId]->FileBrowser->SetStatus( time, msgType, message );
 
         return;
     }

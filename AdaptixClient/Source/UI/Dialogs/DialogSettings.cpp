@@ -78,33 +78,33 @@ void DialogSettings::createUI()
     sessionsLayout = new QGridLayout(sessionsWidget);
     sessionsGroup  = new QGroupBox("Columns", sessionsWidget);
 
-    QStringList checkboxLabels = {
+    QStringList sessionsCheckboxLabels = {
         "Agent ID", "Agent Type", "External", "Listener", "Internal",
         "Domain", "Computer", "User", "OS", "Process",
         "PID", "TID", "Tags", "Last", "Sleep"
     };
 
     for (int i = 0; i < 15; ++i)
-        sessionsCheck[i] = new QCheckBox(checkboxLabels[i], sessionsGroup);
+        sessionsCheck[i] = new QCheckBox(sessionsCheckboxLabels[i], sessionsGroup);
 
-    groupLayout = new QGridLayout(sessionsGroup);
-    groupLayout->addWidget(sessionsCheck[0], 0, 0, 1, 1);
-    groupLayout->addWidget(sessionsCheck[1], 0, 1, 1, 1);
-    groupLayout->addWidget(sessionsCheck[2], 1, 0, 1, 1);
-    groupLayout->addWidget(sessionsCheck[3], 1, 1, 1, 1);
-    groupLayout->addWidget(sessionsCheck[4], 2, 0, 1, 1);
-    groupLayout->addWidget(sessionsCheck[5], 2, 1, 1, 1);
-    groupLayout->addWidget(sessionsCheck[6], 3, 0, 1, 1);
-    groupLayout->addWidget(sessionsCheck[7], 3, 1, 1, 1);
-    groupLayout->addWidget(sessionsCheck[8], 4, 0, 1, 1);
-    groupLayout->addWidget(sessionsCheck[9], 4, 1, 1, 1);
-    groupLayout->addWidget(sessionsCheck[10], 5, 0, 1, 1);
-    groupLayout->addWidget(sessionsCheck[11], 5, 1, 1, 1);
-    groupLayout->addWidget(sessionsCheck[12], 6, 0, 1, 1);
-    groupLayout->addWidget(sessionsCheck[13], 6, 1, 1, 1);
-    groupLayout->addWidget(sessionsCheck[14], 7, 0, 1, 1);
+    sessionsGroupLayout = new QGridLayout(sessionsGroup);
+    sessionsGroupLayout->addWidget(sessionsCheck[0], 0, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[1], 0, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[2], 1, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[3], 1, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[4], 2, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[5], 2, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[6], 3, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[7], 3, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[8], 4, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[9], 4, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[10], 5, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[11], 5, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[12], 6, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[13], 6, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[14], 7, 0, 1, 1);
 
-    sessionsGroup->setLayout(groupLayout);
+    sessionsGroup->setLayout(sessionsGroupLayout);
     sessionsLayout->addWidget(sessionsGroup, 0, 0, 1, 1);
     sessionsWidget->setLayout(sessionsLayout);
 
