@@ -3,6 +3,7 @@
 
 #include <main.h>
 #include <Agent/Task.h>
+#include <Utils/CustomElements.h>
 
 class TaskOutputWidget : public QWidget
 {
@@ -27,9 +28,14 @@ class TasksWidget : public QWidget
     QWidget*      mainWidget     = nullptr;
     QGridLayout*  mainGridLayout = nullptr;
     QTableWidget* tableWidget    = nullptr;
-    QComboBox*    comboAgent     = nullptr;
-    QComboBox*    comboStatus    = nullptr;
-    QLineEdit*    inputFilter    = nullptr;
+    QShortcut*    shortcutSearch = nullptr;
+
+    QWidget*        searchWidget = nullptr;
+    QHBoxLayout*    searchLayout = nullptr;
+    QComboBox*      comboAgent   = nullptr;
+    QComboBox*      comboStatus  = nullptr;
+    QLineEdit*      inputFilter  = nullptr;
+    ClickableLabel* hideButton   = nullptr;
 
     void createUI();
     bool filterItem(const TaskData &task) const;
@@ -41,15 +47,16 @@ public:
     explicit TasksWidget( QWidget* w );
     ~TasksWidget() override;
 
-    void Clear() const;
     void AddTaskItem(Task* newTask) const;
-    void EditTaskSend(TaskData newTask) const;
     void RemoveTaskItem(const QString &taskId) const;
-    void SetData() const;
+
     void SetAgentFilter(const QString &agentId) const;
+    void SetData() const;
     void ClearTableContent() const;
+    void Clear() const;
 
 public slots:
+    void toggleSearchPanel() const;
     void handleTasksMenu( const QPoint &pos );
     void onTableItemSelection() const;
     void onAgentChange(QString agentId) const;

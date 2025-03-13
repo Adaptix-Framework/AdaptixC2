@@ -20,27 +20,20 @@ public:
     static QVector<AuthProfile> ListProjects();
 
     static void AddProject(AuthProfile profile);
-
     static void RemoveProject(const QString &project);
-
     static bool ExistsProject(const QString &project);
 
     static QVector<ExtensionFile> ListExtensions();
 
     static bool ExistsExtension(const QString &path);
-
     static void AddExtension(const ExtensionFile &extFile);
-
     static void UpdateExtension(const ExtensionFile &extFile);
-
     static void RemoveExtension(const QString &filepath);
 
     static void SelectSettingsMain(SettingsData* settingsData);
-
     static void UpdateSettingsMain(const SettingsData &settingsData);
 
     static void SelectSettingsSessions(SettingsData* settingsData);
-
     static void UpdateSettingsSessions(const SettingsData &settingsData);
 };
 

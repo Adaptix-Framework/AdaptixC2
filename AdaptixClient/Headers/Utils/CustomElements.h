@@ -55,4 +55,25 @@ public:
     ~FileSelector() override = default;
 };
 
+
+
+
+class ClickableLabel : public QLabel {
+    Q_OBJECT
+
+public:
+    explicit ClickableLabel(const QString &label, QWidget *parent = nullptr) : QLabel(label, parent) {}
+
+    signals:
+        void clicked();
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override {
+        if (event->button() == Qt::LeftButton) {
+            emit clicked();
+        }
+        QLabel::mousePressEvent(event);
+    }
+};
+
 #endif //ADAPTIXCLIENT_CUSTOMELEMENTS_H

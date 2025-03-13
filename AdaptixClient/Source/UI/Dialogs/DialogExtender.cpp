@@ -20,7 +20,7 @@ void DialogExtender::createUI()
     this->resize(1200, 600);
 
     tableWidget = new QTableWidget(this );
-    tableWidget->setColumnCount(5 );
+    tableWidget->setColumnCount(5);
     tableWidget->setContextMenuPolicy(Qt::CustomContextMenu );
     tableWidget->setAutoFillBackground(false );
     tableWidget->setShowGrid(false );

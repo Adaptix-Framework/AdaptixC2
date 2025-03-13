@@ -75,7 +75,8 @@ public:
     QMap<QString, DownloadData>   Downloads;
     QVector<QString>              TasksVector;
     QMap<QString, Task*>          TasksMap;
-    QMap<QString, Agent*>         Agents;
+    QVector<QString>              AgentsVector;
+    QMap<QString, Agent*>         AgentsMap;
     QMap<QString, ExtensionFile>  Extensions;
 
     explicit AdaptixWidget(AuthProfile* authProfile);

@@ -17,7 +17,7 @@ void LastTickWorker::run()
 
 void LastTickWorker::updateLastItems() const
 {
-    for ( auto agent : mainWidget->Agents ) {
+    for ( auto agent : mainWidget->AgentsMap ) {
         if ( agent->data.Async && agent->active ) {
             int current = QDateTime::currentSecsSinceEpoch();
             int diff    = current - agent->data.LastTick;

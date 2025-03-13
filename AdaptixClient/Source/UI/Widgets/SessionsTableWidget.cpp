@@ -8,30 +8,57 @@ SessionsTableWidget::SessionsTableWidget( QWidget* w )
     this->mainWidget = w;
     this->createUI();
 
-    connect( tableWidget, &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
-    connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
-    connect( tableWidget, &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
+    connect( tableWidget,  &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
+    connect( tableWidget,  &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
+    connect( tableWidget,  &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
+    connect( checkOnlyActive, &QCheckBox::stateChanged,               this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter1, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter2, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter3, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( hideButton,   &ClickableLabel::clicked,                  this, &SessionsTableWidget::toggleSearchPanel);
+
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
+    shortcutSearch->setContext(Qt::WidgetShortcut);
+    connect(shortcutSearch, &QShortcut::activated, this, &SessionsTableWidget::toggleSearchPanel);
 }
 
 SessionsTableWidget::~SessionsTableWidget() = default;
 
 void SessionsTableWidget::createUI()
 {
-    titleAgentID   = new QTableWidgetItem( "Agent ID" );
-    titleAgentType = new QTableWidgetItem( "Agent Type" );
-    titleExternal  = new QTableWidgetItem( "External" );
-    titleListener  = new QTableWidgetItem( "Listener" );
-    titleInternal  = new QTableWidgetItem( "Internal" );
-    titleDomain    = new QTableWidgetItem( "Domain" );
-    titleComputer  = new QTableWidgetItem( "Computer" );
-    titleUser      = new QTableWidgetItem( "User" );
-    titleOs        = new QTableWidgetItem( "OS" );
-    titleProcess   = new QTableWidgetItem( "Process" );
-    titleProcessId = new QTableWidgetItem( "PID" );
-    titleThreadId  = new QTableWidgetItem( "TID" );
-    titleTag       = new QTableWidgetItem( "Tags" );
-    titleLast      = new QTableWidgetItem( "Last" );
-    titleSleep     = new QTableWidgetItem( "Sleep" );
+    auto horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    auto horizontalSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+    searchWidget = new QWidget(this);
+    searchWidget->setVisible(false);
+
+    checkOnlyActive = new QCheckBox("Only active");
+
+    inputFilter1 = new QLineEdit(searchWidget);
+    inputFilter1->setPlaceholderText("filter1");
+    inputFilter1->setMaximumWidth(200);
+
+    inputFilter2 = new QLineEdit(searchWidget);
+    inputFilter2->setPlaceholderText("or filter2");
+    inputFilter2->setMaximumWidth(200);
+
+    inputFilter3 = new QLineEdit(searchWidget);
+    inputFilter3->setPlaceholderText("or filter3");
+    inputFilter3->setMaximumWidth(200);
+
+    hideButton = new ClickableLabel("X");
+    hideButton->setCursor( Qt::PointingHandCursor );
+
+    searchLayout = new QHBoxLayout(searchWidget);
+    searchLayout->setContentsMargins(0, 0, 0, 0);
+    searchLayout->setSpacing(4);
+    searchLayout->addSpacerItem(horizontalSpacer1);
+    searchLayout->addWidget(checkOnlyActive);
+    searchLayout->addWidget(inputFilter1);
+    searchLayout->addWidget(inputFilter2);
+    searchLayout->addWidget(inputFilter3);
+    searchLayout->addWidget(hideButton);
+    searchLayout->addSpacerItem(horizontalSpacer2);
 
     tableWidget = new QTableWidget( this );
     tableWidget->setColumnCount( ColumnCount );
@@ -49,21 +76,21 @@ void SessionsTableWidget::createUI()
     tableWidget->horizontalHeader()->setHighlightSections( false );
     tableWidget->verticalHeader()->setVisible( false );
 
-    tableWidget->setHorizontalHeaderItem( ColumnAgentID,   titleAgentID );
-    tableWidget->setHorizontalHeaderItem( ColumnAgentType, titleAgentType );
-    tableWidget->setHorizontalHeaderItem( ColumnListener,  titleListener );
-    tableWidget->setHorizontalHeaderItem( ColumnExternal,  titleExternal );
-    tableWidget->setHorizontalHeaderItem( ColumnInternal,  titleInternal );
-    tableWidget->setHorizontalHeaderItem( ColumnDomain,    titleDomain );
-    tableWidget->setHorizontalHeaderItem( ColumnComputer,  titleComputer );
-    tableWidget->setHorizontalHeaderItem( ColumnUser,      titleUser );
-    tableWidget->setHorizontalHeaderItem( ColumnOs,        titleOs );
-    tableWidget->setHorizontalHeaderItem( ColumnProcess,   titleProcess );
-    tableWidget->setHorizontalHeaderItem( ColumnProcessId, titleProcessId );
-    tableWidget->setHorizontalHeaderItem( ColumnThreadId,  titleThreadId );
-    tableWidget->setHorizontalHeaderItem( ColumnTags,      titleTag );
-    tableWidget->setHorizontalHeaderItem( ColumnLast,      titleLast );
-    tableWidget->setHorizontalHeaderItem( ColumnSleep,     titleSleep );
+    tableWidget->setHorizontalHeaderItem( ColumnAgentID,   new QTableWidgetItem( "Agent ID" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnAgentType, new QTableWidgetItem( "Agent Type" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnListener,  new QTableWidgetItem( "Listener" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnExternal,  new QTableWidgetItem( "External" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnInternal,  new QTableWidgetItem( "Internal" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnDomain,    new QTableWidgetItem( "Domain" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnComputer,  new QTableWidgetItem( "Computer" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnUser,      new QTableWidgetItem( "User" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnOs,        new QTableWidgetItem( "OS" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnProcess,   new QTableWidgetItem( "Process" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnProcessId, new QTableWidgetItem( "PID" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnThreadId,  new QTableWidgetItem( "TID" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnTags,      new QTableWidgetItem( "Tags" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnLast,      new QTableWidgetItem( "Last" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnSleep,     new QTableWidgetItem( "Sleep" ) );
 
     for(int i = 0; i < 15; i++) {
         if (GlobalClient->settings->data.SessionsTableColumns[i] == false)
@@ -72,33 +99,89 @@ void SessionsTableWidget::createUI()
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
-    mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
+    mainGridLayout->addWidget( searchWidget, 0, 0, 1, 1);
+    mainGridLayout->addWidget( tableWidget,  1, 0, 1, 1);
 }
 
-void SessionsTableWidget::Clear() const
-{
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
-    for (auto agentId : adaptixWidget->Agents.keys()) {
-        Agent* agent = adaptixWidget->Agents[agentId];
-        adaptixWidget->Agents.remove(agentId);
-        delete agent->Console;
-        delete agent->FileBrowser;
-        delete agent;
+bool SessionsTableWidget::filterItem(const AgentData &agent) const
+{
+    if ( !this->searchWidget->isVisible() )
+        return true;
+
+    if (this->checkOnlyActive->isChecked()) {
+        if ( agent.Mark == "Terminated" || agent.Mark == "Inactive" )
+            return false;
     }
 
-    for (int index = tableWidget->rowCount(); index > 0; index-- )
-        tableWidget->removeRow(index -1 );
+    QString username = agent.Username;
+    if ( agent.Elevated )
+        username = "* " + username;
+
+    bool found = true;
+
+    QString filter1 = this->inputFilter1->text();
+    if( !filter1.isEmpty() ) {
+        if ( agent.Id.contains(filter1, Qt::CaseInsensitive) ||
+             agent.Name.contains(filter1, Qt::CaseInsensitive) ||
+             agent.Listener.contains(filter1, Qt::CaseInsensitive) ||
+             agent.ExternalIP.contains(filter1, Qt::CaseInsensitive) ||
+             agent.InternalIP.contains(filter1, Qt::CaseInsensitive) ||
+             agent.Process.contains(filter1, Qt::CaseInsensitive) ||
+             agent.OsDesc.contains(filter1, Qt::CaseInsensitive) ||
+             agent.Domain.contains(filter1, Qt::CaseInsensitive) ||
+             agent.Computer.contains(filter1, Qt::CaseInsensitive) ||
+             username.contains(filter1, Qt::CaseInsensitive) ||
+             agent.Tags.contains(filter1, Qt::CaseInsensitive)
+        )
+            return true;
+        else
+            found = false;
+    }
+
+    QString filter2 = this->inputFilter2->text();
+    if( !filter2.isEmpty() ) {
+        if ( agent.Id.contains(filter2, Qt::CaseInsensitive) ||
+             agent.Name.contains(filter2, Qt::CaseInsensitive) ||
+             agent.Listener.contains(filter2, Qt::CaseInsensitive) ||
+             agent.ExternalIP.contains(filter2, Qt::CaseInsensitive) ||
+             agent.InternalIP.contains(filter2, Qt::CaseInsensitive) ||
+             agent.Process.contains(filter2, Qt::CaseInsensitive) ||
+             agent.OsDesc.contains(filter2, Qt::CaseInsensitive) ||
+             agent.Domain.contains(filter2, Qt::CaseInsensitive) ||
+             agent.Computer.contains(filter2, Qt::CaseInsensitive) ||
+             username.contains(filter2, Qt::CaseInsensitive) ||
+             agent.Tags.contains(filter2, Qt::CaseInsensitive)
+        )
+            return true;
+        else
+            found = false;
+    }
+
+    QString filter3 = this->inputFilter3->text();
+    if( !filter3.isEmpty() ) {
+        if ( agent.Id.contains(filter3, Qt::CaseInsensitive) ||
+             agent.Name.contains(filter3, Qt::CaseInsensitive) ||
+             agent.Listener.contains(filter3, Qt::CaseInsensitive) ||
+             agent.ExternalIP.contains(filter3, Qt::CaseInsensitive) ||
+             agent.InternalIP.contains(filter3, Qt::CaseInsensitive) ||
+             agent.Process.contains(filter3, Qt::CaseInsensitive) ||
+             agent.OsDesc.contains(filter3, Qt::CaseInsensitive) ||
+             agent.Domain.contains(filter3, Qt::CaseInsensitive) ||
+             agent.Computer.contains(filter3, Qt::CaseInsensitive) ||
+             username.contains(filter3, Qt::CaseInsensitive) ||
+             agent.Tags.contains(filter3, Qt::CaseInsensitive)
+        )
+            return true;
+        else
+            found = false;
+    }
+
+    return found;
 }
 
-void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
+void SessionsTableWidget::addTableItem(const Agent* newAgent) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( adaptixWidget->Agents.contains(newAgent->data.Id) )
-        return;
-
-    adaptixWidget->Agents[ newAgent->data.Id ] = newAgent;
-
     if( tableWidget->rowCount() < 1 )
         tableWidget->setRowCount( 1 );
     else
@@ -133,11 +216,30 @@ void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnSleep,     QHeaderView::ResizeToContents );
 }
 
+/// PUBLIC
+
+void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if ( adaptixWidget->AgentsMap.contains(newAgent->data.Id) )
+        return;
+
+    adaptixWidget->AgentsMap[ newAgent->data.Id ] = newAgent;
+    adaptixWidget->AgentsVector.push_back(newAgent->data.Id);
+
+    if( !this->filterItem(newAgent->data) )
+        return;
+
+    this->addTableItem(newAgent);
+}
+
 void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    Agent* agent = adaptixWidget->Agents[agentId];
-    adaptixWidget->Agents.remove(agentId);
+    Agent* agent = adaptixWidget->AgentsMap[agentId];
+    adaptixWidget->AgentsMap.remove(agentId);
+    adaptixWidget->AgentsVector.removeOne(agentId);
+
     delete agent->Console;
     delete agent->FileBrowser;
     delete agent;
@@ -150,9 +252,62 @@ void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
     }
 }
 
+void SessionsTableWidget::SetData() const
+{
+     this->ClearTableContent();
 
+     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+
+     for (int i = 0; i < adaptixWidget->AgentsVector.size(); i++ ) {
+         QString agentId = adaptixWidget->AgentsVector[i];
+         Agent* agent = adaptixWidget->AgentsMap[agentId];
+         if ( agent && this->filterItem(agent->data) )
+             this->addTableItem(agent);
+     }
+}
+
+void SessionsTableWidget::ClearTableContent() const
+{
+    for (int row = tableWidget->rowCount() - 1; row >= 0; row--) {
+        for (int col = 0; col < tableWidget->columnCount(); ++col)
+            tableWidget->takeItem(row, col);
+
+        tableWidget->removeRow(row);
+    }
+}
+
+void SessionsTableWidget::Clear() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    adaptixWidget->AgentsVector.clear();
+
+    for (auto agentId : adaptixWidget->AgentsMap.keys()) {
+        Agent* agent = adaptixWidget->AgentsMap[agentId];
+        adaptixWidget->AgentsMap.remove(agentId);
+        delete agent->Console;
+        delete agent->FileBrowser;
+        delete agent;
+    }
+
+    this->ClearTableContent();
+
+    checkOnlyActive->setChecked(false);
+    inputFilter1->clear();
+    inputFilter2->clear();
+    inputFilter3->clear();
+}
 
 /// SLOTS
+
+void SessionsTableWidget::toggleSearchPanel() const
+{
+    if (this->searchWidget->isVisible())
+        this->searchWidget->setVisible(false);
+    else
+        this->searchWidget->setVisible(true);
+
+    this->SetData();
+}
 
 void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index) const
 {
@@ -210,6 +365,11 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     ctxMenu.addAction( "Remove from server", this, &SessionsTableWidget::actionAgentRemove);
 
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
+}
+
+void SessionsTableWidget::onFilterUpdate() const
+{
+    this->SetData();
 }
 
 void SessionsTableWidget::actionConsoleOpen() const
