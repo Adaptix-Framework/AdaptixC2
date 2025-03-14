@@ -91,7 +91,8 @@
 #define TYPE_AGENT_NEW         0x42
 #define TYPE_AGENT_TICK        0x43
 #define TYPE_AGENT_UPDATE      0x44
-#define TYPE_AGENT_REMOVE      0x45
+#define TYPE_AGENT_LINK        0x45
+#define TYPE_AGENT_REMOVE      0x46
 
 #define TYPE_AGENT_TASK_SYNC   0x49
 #define TYPE_AGENT_TASK_UPDATE 0x4a
@@ -147,6 +148,7 @@ typedef struct SettingsData {
     int     FontSize;
 
     bool SessionsTableColumns[15];
+    bool TasksTableColumns[11];
 } SettingsData;
 
 typedef struct ListenerData
@@ -224,6 +226,7 @@ typedef struct TaskData
     int     TaskType;
     QString AgentId;
     QString Client;
+    QString User;
     QString Computer;
     qint64  StartTime;
     qint64  FinishTime;

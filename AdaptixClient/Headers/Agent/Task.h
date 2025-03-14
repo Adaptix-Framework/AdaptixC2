@@ -13,6 +13,7 @@ public:
      TaskTableWidgetItem* item_TaskType    = nullptr;
      TaskTableWidgetItem* item_AgentId     = nullptr;
      TaskTableWidgetItem* item_Client      = nullptr;
+     TaskTableWidgetItem* item_User        = nullptr;
      TaskTableWidgetItem* item_Computer    = nullptr;
      TaskTableWidgetItem* item_StartTime   = nullptr;
      TaskTableWidgetItem* item_FinishTime  = nullptr;

@@ -117,17 +117,23 @@ void TasksWidget::createUI()
     tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
     tableWidget->horizontalHeader()->setHighlightSections( false );
     tableWidget->verticalHeader()->setVisible( false );
-    tableWidget->setColumnCount(10);
-    tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem("Task ID"));
-    tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem("Task Type"));
-    tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem("Agent ID"));
-    tableWidget->setHorizontalHeaderItem( 3, new QTableWidgetItem("Client"));
-    tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem("Computer"));
-    tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem("Start Time"));
-    tableWidget->setHorizontalHeaderItem( 6, new QTableWidgetItem("Finish Time"));
-    tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem("Commandline"));
-    tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem("Result"));
-    tableWidget->setHorizontalHeaderItem( 9, new QTableWidgetItem("Output"));
+    tableWidget->setColumnCount(11);
+    tableWidget->setHorizontalHeaderItem( this->ColumnTaskId,      new QTableWidgetItem("Task ID"));
+    tableWidget->setHorizontalHeaderItem( this->ColumnTaskType,    new QTableWidgetItem("Task Type"));
+    tableWidget->setHorizontalHeaderItem( this->ColumnAgentId,     new QTableWidgetItem("Agent ID"));
+    tableWidget->setHorizontalHeaderItem( this->ColumnClient,      new QTableWidgetItem("Client"));
+    tableWidget->setHorizontalHeaderItem( this->ColumnUser,        new QTableWidgetItem("User"));
+    tableWidget->setHorizontalHeaderItem( this->ColumnComputer,    new QTableWidgetItem("Computer"));
+    tableWidget->setHorizontalHeaderItem( this->ColumnStartTime,   new QTableWidgetItem("Start Time"));
+    tableWidget->setHorizontalHeaderItem( this->ColumnFinishTime,  new QTableWidgetItem("Finish Time"));
+    tableWidget->setHorizontalHeaderItem( this->ColumnCommandLine, new QTableWidgetItem("Commandline"));
+    tableWidget->setHorizontalHeaderItem( this->ColumnResult,      new QTableWidgetItem("Result"));
+    tableWidget->setHorizontalHeaderItem( this->ColumnOutput,      new QTableWidgetItem("Output"));
+
+    for(int i = 0; i < 11; i++) {
+        if (GlobalClient->settings->data.TasksTableColumns[i] == false)
+            tableWidget->hideColumn(i);
+    }
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
@@ -172,26 +178,28 @@ void TasksWidget::addTableItem(const Task* newTask) const
 
     bool isSortingEnabled = tableWidget->isSortingEnabled();
     tableWidget->setSortingEnabled( false );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 0, newTask->item_TaskId );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 1, newTask->item_TaskType );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 2, newTask->item_AgentId );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 3, newTask->item_Client );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 4, newTask->item_Computer );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 5, newTask->item_StartTime );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 6, newTask->item_FinishTime );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 7, newTask->item_CommandLine );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 8, newTask->item_Result );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 9, newTask->item_Message );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnTaskId,      newTask->item_TaskId );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnTaskType,    newTask->item_TaskType );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnAgentId,     newTask->item_AgentId );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnClient,      newTask->item_Client );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnUser,        newTask->item_User );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnComputer,    newTask->item_Computer );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnStartTime,   newTask->item_StartTime );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnFinishTime,  newTask->item_FinishTime );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnCommandLine, newTask->item_CommandLine );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnResult,      newTask->item_Result );
+    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnOutput,      newTask->item_Message );
     tableWidget->setSortingEnabled( isSortingEnabled );
 
-    tableWidget->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 4, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 5, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 6, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 8, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnTaskId, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnTaskType, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnAgentId, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnClient, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnUser, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnComputer, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnStartTime, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnFinishTime, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnResult, QHeaderView::ResizeToContents );
 
     tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
@@ -358,8 +366,7 @@ void TasksWidget::onTableItemSelection() const
     adaptixWidget->LoadTasksOutput();
 }
 
-void TasksWidget::onAgentChange(QString agentId) const
-{
+void TasksWidget::onAgentChange(QString agentId) const {
     this->SetData();
 }
 

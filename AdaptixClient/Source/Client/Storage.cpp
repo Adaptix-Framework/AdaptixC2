@@ -98,6 +98,25 @@ void Storage::checkDatabase()
 
     if ( !querySettingsSessions.exec() )
         LogError("Table SettingsSessions not created: %s\n", querySettingsSessions.lastError().text().toStdString().c_str());
+
+    auto querySettingsTasks = QSqlQuery();
+    querySettingsTasks.prepare("CREATE TABLE IF NOT EXISTS SettingsTasks ( "
+                            "id INTEGER, "
+                            "column0 BOOLEAN, "
+                            "column1 BOOLEAN, "
+                            "column2 BOOLEAN, "
+                            "column3 BOOLEAN, "
+                            "column4 BOOLEAN, "
+                            "column5 BOOLEAN, "
+                            "column6 BOOLEAN, "
+                            "column7 BOOLEAN, "
+                            "column8 BOOLEAN, "
+                            "column9 BOOLEAN, "
+                            "column10 BOOLEAN );"
+    );
+
+    if ( !querySettingsTasks.exec() )
+        LogError("Table SettingsTasks not created: %s\n", querySettingsTasks.lastError().text().toStdString().c_str());
 }
 
 /// PROJECTS
@@ -377,6 +396,81 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
         for (int i = 0 ; i < 15; i++) {
             QString column = ":Column" + QString::number(i);
             insertQuery.bindValue(column, settingsData.SessionsTableColumns[i]);
+        }
+
+        if ( !insertQuery.exec() ) {
+            LogError("The sessions settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
+        }
+    }
+}
+
+void Storage::SelectSettingsTasks(SettingsData* settingsData)
+{
+    QSqlQuery existsQuery;
+    existsQuery.prepare("SELECT 1 FROM SettingsTasks WHERE Id = 1 LIMIT 1;");
+    if (!existsQuery.exec()) {
+        LogError("Failed to existsQuery sessions setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
+        return;
+    }
+    bool exists = existsQuery.next();
+
+    if(exists) {
+        QSqlQuery selectQuery;
+        selectQuery.prepare("SELECT * FROM SettingsTasks WHERE Id = 1;" );
+        if ( selectQuery.exec() && selectQuery.next()) {
+
+            for (int i = 0; i < 11; i++) {
+                QString columnName = "column" + QString::number(i);
+                settingsData->TasksTableColumns[i] = selectQuery.value(columnName).toBool();
+            }
+        }
+        else {
+            LogError("Failed to selectQuery sessions settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
+        }
+    }
+}
+
+void Storage::UpdateSettingsTasks(const SettingsData &settingsData)
+{
+    QSqlQuery existsQuery;
+    existsQuery.prepare("SELECT 1 FROM SettingsTasks WHERE Id = 1 LIMIT 1;");
+    if (!existsQuery.exec()) {
+        LogError("Failed to existsQuery sessions setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
+        return;
+    }
+    bool exists = existsQuery.next();
+
+    if(exists) {
+        QString strQuery = "UPDATE SettingsTasks SET column0 = :Column0";
+        for (int i = 1 ; i < 11; i++)
+            strQuery += QString(", column%1 = :Column%2").arg(i).arg(i);
+        strQuery += " WHERE Id = 1;";
+
+        QSqlQuery updateQuery;
+        updateQuery.prepare(strQuery);
+        for (int i = 0 ; i < 11; i++) {
+            QString column = ":Column" + QString::number(i);
+            updateQuery.bindValue(column, settingsData.TasksTableColumns[i]);
+        }
+        if ( !updateQuery.exec() ) {
+            LogError("SettingsTasks not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
+        }
+    }
+    else {
+        QString strQuery = "INSERT INTO SettingsTasks (id, column0";
+        for (int i = 1 ; i < 11; i++)
+            strQuery += QString(", column%1").arg(i);
+        strQuery += ") VALUES (:Id, :Column0";
+        for (int i = 1 ; i < 11; i++)
+            strQuery += QString(", :Column%1").arg(i);
+        strQuery += ");";
+
+        QSqlQuery insertQuery;
+        insertQuery.prepare(strQuery);
+        insertQuery.bindValue(":Id", 1);
+        for (int i = 0 ; i < 11; i++) {
+            QString column = ":Column" + QString::number(i);
+            insertQuery.bindValue(column, settingsData.TasksTableColumns[i]);
         }
 
         if ( !insertQuery.exec() ) {

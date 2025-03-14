@@ -21,16 +21,21 @@ void Settings::SetDefault()
 
     for ( int i = 0; i < 15; i++)
         data.SessionsTableColumns[i] = true;
+
+    for ( int i = 0; i < 11; i++)
+        data.TasksTableColumns[i] = true;
 }
 
 void Settings::LoadFromDB()
 {
     mainAdaptix->storage->SelectSettingsMain( &data );
     mainAdaptix->storage->SelectSettingsSessions( &data );
+    mainAdaptix->storage->SelectSettingsTasks( &data );
 }
 
 void Settings::SaveToDB() const
 {
     mainAdaptix->storage->UpdateSettingsMain( data );
     mainAdaptix->storage->UpdateSettingsSessions( data );
+    mainAdaptix->storage->UpdateSettingsTasks( data );
 }

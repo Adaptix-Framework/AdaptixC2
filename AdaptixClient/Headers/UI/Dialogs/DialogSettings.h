@@ -39,6 +39,12 @@ Q_OBJECT
     QGridLayout* sessionsGroupLayout = nullptr;
     QCheckBox*   sessionsCheck[15];
 
+    QWidget*     tasksWidget      = nullptr;
+    QGridLayout* tasksLayout      = nullptr;
+    QGroupBox*   tasksGroup       = nullptr;
+    QGridLayout* tasksGroupLayout = nullptr;
+    QCheckBox*   tasksCheck[11];
+
 void createUI();
 
 public:
