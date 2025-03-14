@@ -9,6 +9,7 @@ Task::Task(QJsonObject jsonObjTaskData)
     this->data.StartTime   = jsonObjTaskData["a_start_time"].toDouble();
     this->data.CommandLine = jsonObjTaskData["a_cmdline"].toString();
     this->data.Client      = jsonObjTaskData["a_client"].toString();
+    this->data.User        = jsonObjTaskData["a_user"].toString();
     this->data.Computer    = jsonObjTaskData["a_computer"].toString();
     this->data.FinishTime  = jsonObjTaskData["a_finish_time"].toDouble();
     this->data.MessageType = jsonObjTaskData["a_msg_type"].toDouble();
@@ -33,6 +34,7 @@ Task::Task(QJsonObject jsonObjTaskData)
     this->item_TaskType    = new TaskTableWidgetItem( taskType, this );
     this->item_AgentId     = new TaskTableWidgetItem( this->data.AgentId, this );
     this->item_Client      = new TaskTableWidgetItem( this->data.Client, this );
+    this->item_User        = new TaskTableWidgetItem( this->data.User, this );
     this->item_Computer    = new TaskTableWidgetItem( this->data.Computer, this );
     this->item_StartTime   = new TaskTableWidgetItem( startTime, this );
     this->item_FinishTime  = new TaskTableWidgetItem( finishTime, this );

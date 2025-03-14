@@ -223,6 +223,7 @@ type SyncPackerAgentTaskSync struct {
 	TaskId      string `json:"a_task_id"`
 	AgentId     string `json:"a_id"`
 	Client      string `json:"a_client"`
+	User        string `json:"a_user"`
 	Computer    string `json:"a_computer"`
 	CmdLine     string `json:"a_cmdline"`
 	StartTime   int64  `json:"a_start_time"`

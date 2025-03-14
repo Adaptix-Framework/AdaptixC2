@@ -35,6 +35,9 @@ public:
 
     static void SelectSettingsSessions(SettingsData* settingsData);
     static void UpdateSettingsSessions(const SettingsData &settingsData);
+
+    static void SelectSettingsTasks(SettingsData* settingsData);
+    static void UpdateSettingsTasks(const SettingsData &settingsData);
 };
 
 #endif //ADAPTIXCLIENT_STORAGE_H

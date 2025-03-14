@@ -97,6 +97,7 @@ func (dbms *DBMS) DatabaseInit() error {
     	"AgentId" TEXT NOT NULL,
     	"TaskType" INTEGER,
     	"Client" TEXT,
+    	"User" TEXT,
     	"Computer" TEXT,
     	"StartDate" BIGINT,
     	"FinishDate" BIGINT,

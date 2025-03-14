@@ -103,6 +103,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("a_start_time")  || !jsonObj["a_start_time"].isDouble())  return false;
         if (!jsonObj.contains("a_cmdline")     || !jsonObj["a_cmdline"].isString())     return false;
         if (!jsonObj.contains("a_client")      || !jsonObj["a_client"].isString())      return false;
+        if (!jsonObj.contains("a_user")        || !jsonObj["a_user"].isString())        return false;
         if (!jsonObj.contains("a_computer")    || !jsonObj["a_computer"].isString())    return false;
         if (!jsonObj.contains("a_finish_time") || !jsonObj["a_finish_time"].isDouble()) return false;
         if (!jsonObj.contains("a_msg_type")    || !jsonObj["a_msg_type"].isDouble())    return false;

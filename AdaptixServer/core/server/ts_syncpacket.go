@@ -32,7 +32,8 @@ const (
 	TYPE_AGENT_NEW    = 0x42
 	TYPE_AGENT_TICK   = 0x43
 	TYPE_AGENT_UPDATE = 0x44
-	TYPE_AGENT_REMOVE = 0x45
+	TYPE_AGENT_LINK   = 0x45
+	TYPE_AGENT_REMOVE = 0x46
 
 	TYPE_AGENT_TASK_SYNC   = 0x49
 	TYPE_AGENT_TASK_UPDATE = 0x4a
@@ -209,6 +210,7 @@ func CreateSpAgentTaskSync(taskData adaptix.TaskData) SyncPackerAgentTaskSync {
 		CmdLine:     taskData.CommandLine,
 		TaskType:    taskData.Type,
 		Client:      taskData.Client,
+		User:        taskData.User,
 		Computer:    taskData.Computer,
 		FinishTime:  taskData.FinishDate,
 		MessageType: taskData.MessageType,

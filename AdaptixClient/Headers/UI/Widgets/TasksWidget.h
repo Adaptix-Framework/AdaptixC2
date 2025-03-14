@@ -42,6 +42,18 @@ class TasksWidget : public QWidget
     void addTableItem(const Task* newTask) const;
 
 public:
+    int ColumnTaskId      = 0;
+    int ColumnTaskType    = 1;
+    int ColumnAgentId     = 2;
+    int ColumnClient      = 3;
+    int ColumnUser        = 4;
+    int ColumnComputer    = 5;
+    int ColumnStartTime   = 6;
+    int ColumnFinishTime  = 7;
+    int ColumnCommandLine = 8;
+    int ColumnResult      = 9;
+    int ColumnOutput      = 10;
+
     TaskOutputWidget* taskOutputConsole = nullptr;
 
     explicit TasksWidget( QWidget* w );
