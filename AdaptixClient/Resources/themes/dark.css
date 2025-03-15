@@ -423,6 +423,117 @@ QComboBox:disabled {
 
 
 
+QSpinBox {
+    background-color: #2A2A2A;
+    color: #E0E0E0;
+    border: 1px solid #4A4A4A;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+QSpinBox:focus {
+    border: 1px solid #666666;
+}
+
+QSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 16px;
+    background-color: #333333;
+    border-left: 1px solid #4A4A4A;
+    border-bottom: 1px solid #4A4A4A;
+}
+
+QSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 16px;
+    background-color: #333333;
+    border-left: 1px solid #4A4A4A;
+    border-top: 1px solid #4A4A4A;
+}
+
+QSpinBox::up-arrow {
+    image: url(:/icons/arrow_drop_up);
+    width: 10px;
+    height: 10px;
+}
+
+QSpinBox::down-arrow {
+    image: url(:/icons/arrow_drop_down);
+    width: 10px;
+    height: 10px;
+}
+
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+    background-color: #4A4A4A;
+}
+
+QSpinBox:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
+    border: 1px solid #3A3A3A;
+}
+
+
+
+
+
+QDoubleSpinBox {
+    background-color: #2A2A2A;
+    color: #E0E0E0;
+    border: 1px solid #4A4A4A;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+QDoubleSpinBox:focus {
+    border: 1px solid #666666;
+}
+
+QDoubleSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 16px;
+    background-color: #333333;
+    border-left: 1px solid #4A4A4A;
+    border-bottom: 1px solid #4A4A4A;
+}
+
+QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 16px;
+    background-color: #333333;
+    border-left: 1px solid #4A4A4A;
+    border-top: 1px solid #4A4A4A;
+}
+
+QDoubleSpinBox::up-arrow {
+    image: url(:/icons/arrow_drop_up);
+    width: 10px;
+    height: 10px;
+}
+
+QDoubleSpinBox::down-arrow {
+    image: url(:/icons/arrow_drop_down);
+    width: 10px;
+    height: 10px;
+}
+
+QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
+    background-color: #4A4A4A;
+}
+
+QDoubleSpinBox:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
+    border: 1px solid #3A3A3A;
+}
+
+
+
+
 
 QAbstractItemView#Completer {
     background-color: #2A2A2A;

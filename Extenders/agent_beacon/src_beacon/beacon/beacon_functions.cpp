@@ -181,7 +181,12 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 
 char* BeaconFormatToString(formatp* format, int* size)
 {
-	*size = format->length;
+	if(size != NULL)
+		*size = format->length;
+
+	format->buffer[0] = '\0';
+	format->buffer += 1;
+	format->length += 1;
 	return format->original;
 }
 
@@ -234,9 +239,8 @@ void BeaconRevertToken(void)
 
 BOOL BeaconIsAdmin(void)
 {
-	HANDLE Token = { 0 };
-	BOOL   Admin = FALSE;
-	return Admin;
+	BOOL high = IsElevate();
+	return high;
 }
 
 void BeaconGetSpawnTo(BOOL x86, char* buffer, int length)

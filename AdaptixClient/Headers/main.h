@@ -184,6 +184,7 @@ typedef struct AgentData
     QString     Domain;
     QString     Computer;
     QString     Username;
+    QString     Impersonated;
     QString     Tags;
     QString     Mark;
     QString     Color;

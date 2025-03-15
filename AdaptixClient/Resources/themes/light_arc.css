@@ -372,51 +372,6 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
 
 
 
-QComboBox {
-    background-color: #FFFFFF; 
-    color: #2E3440; 
-    border: 1px solid #D0D0D0; 
-    padding: 5px;
-    border-radius: 4px;
-}
-
-QComboBox::drop-down {
-    background-color: #F0F0F0; 
-    border-left: 1px solid #D0D0D0;
-}
-
-QComboBox::down-arrow {
-    image: url(:/icons/double_arrow_down);
-    width: 20px;
-    height: 20px;
-}
-
-QComboBox QAbstractItemView::item {
-    background-color: #FFFFFF; 
-    color: #2E3440; 
-    padding: 2px;
-    border-radius: 4px;
-}
-
-QComboBox QAbstractItemView::item:hover {
-    background-color: #D0D0D0; 
-    color: #FFFFFF;
-}
-
-QComboBox QAbstractItemView::item:selected {
-    background-color: #17A2B8; 
-    color: #FFFFFF;
-}
-
-QComboBox:disabled {
-    background-color: #F0F0F0;
-    color: #A0A0A0;
-    border: 1px solid #D0D0D0; 
-}
-
-
-
-
 
 QAbstractItemView#Completer {
     background-color: #FFFFFF; 

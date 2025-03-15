@@ -51,29 +51,30 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if( spType == TYPE_AGENT_NEW ) {
-        if ( !jsonObj.contains("a_id")          || !jsonObj["a_id"].isString() )          return false;
-        if ( !jsonObj.contains("a_name")        || !jsonObj["a_name"].isString() )        return false;
-        if ( !jsonObj.contains("a_listener")    || !jsonObj["a_listener"].isString() )    return false;
-        if ( !jsonObj.contains("a_async")       || !jsonObj["a_async"].isBool() )         return false;
-        if ( !jsonObj.contains("a_external_ip") || !jsonObj["a_external_ip"].isString() ) return false;
-        if ( !jsonObj.contains("a_internal_ip") || !jsonObj["a_internal_ip"].isString() ) return false;
-        if ( !jsonObj.contains("a_gmt_offset")  || !jsonObj["a_gmt_offset"].isDouble() )  return false;
-        if ( !jsonObj.contains("a_sleep")       || !jsonObj["a_sleep"].isDouble() )       return false;
-        if ( !jsonObj.contains("a_jitter")      || !jsonObj["a_jitter"].isDouble() )      return false;
-        if ( !jsonObj.contains("a_pid")         || !jsonObj["a_pid"].isString() )         return false;
-        if ( !jsonObj.contains("a_tid")         || !jsonObj["a_tid"].isString() )         return false;
-        if ( !jsonObj.contains("a_arch")        || !jsonObj["a_arch"].isString() )        return false;
-        if ( !jsonObj.contains("a_elevated")    || !jsonObj["a_elevated"].isBool() )      return false;
-        if ( !jsonObj.contains("a_process")     || !jsonObj["a_process"].isString() )     return false;
-        if ( !jsonObj.contains("a_os")          || !jsonObj["a_os"].isDouble() )          return false;
-        if ( !jsonObj.contains("a_os_desc")     || !jsonObj["a_os_desc"].isString() )     return false;
-        if ( !jsonObj.contains("a_domain")      || !jsonObj["a_domain"].isString() )      return false;
-        if ( !jsonObj.contains("a_computer")    || !jsonObj["a_computer"].isString() )    return false;
-        if ( !jsonObj.contains("a_username")    || !jsonObj["a_username"].isString() )    return false;
-        if ( !jsonObj.contains("a_tags")        || !jsonObj["a_tags"].isString() )        return false;
-        if ( !jsonObj.contains("a_mark")        || !jsonObj["a_mark"].isString() )        return false;
-        if ( !jsonObj.contains("a_color")       || !jsonObj["a_color"].isString() )       return false;
-        if ( !jsonObj.contains("a_last_tick")   || !jsonObj["a_last_tick"].isDouble() )   return false;
+        if ( !jsonObj.contains("a_id")           || !jsonObj["a_id"].isString() )           return false;
+        if ( !jsonObj.contains("a_name")         || !jsonObj["a_name"].isString() )         return false;
+        if ( !jsonObj.contains("a_listener")     || !jsonObj["a_listener"].isString() )     return false;
+        if ( !jsonObj.contains("a_async")        || !jsonObj["a_async"].isBool() )          return false;
+        if ( !jsonObj.contains("a_external_ip")  || !jsonObj["a_external_ip"].isString() )  return false;
+        if ( !jsonObj.contains("a_internal_ip")  || !jsonObj["a_internal_ip"].isString() )  return false;
+        if ( !jsonObj.contains("a_gmt_offset")   || !jsonObj["a_gmt_offset"].isDouble() )   return false;
+        if ( !jsonObj.contains("a_sleep")        || !jsonObj["a_sleep"].isDouble() )        return false;
+        if ( !jsonObj.contains("a_jitter")       || !jsonObj["a_jitter"].isDouble() )       return false;
+        if ( !jsonObj.contains("a_pid")          || !jsonObj["a_pid"].isString() )          return false;
+        if ( !jsonObj.contains("a_tid")          || !jsonObj["a_tid"].isString() )          return false;
+        if ( !jsonObj.contains("a_arch")         || !jsonObj["a_arch"].isString() )         return false;
+        if ( !jsonObj.contains("a_elevated")     || !jsonObj["a_elevated"].isBool() )       return false;
+        if ( !jsonObj.contains("a_process")      || !jsonObj["a_process"].isString() )      return false;
+        if ( !jsonObj.contains("a_os")           || !jsonObj["a_os"].isDouble() )           return false;
+        if ( !jsonObj.contains("a_os_desc")      || !jsonObj["a_os_desc"].isString() )      return false;
+        if ( !jsonObj.contains("a_domain")       || !jsonObj["a_domain"].isString() )       return false;
+        if ( !jsonObj.contains("a_computer")     || !jsonObj["a_computer"].isString() )     return false;
+        if ( !jsonObj.contains("a_username")     || !jsonObj["a_username"].isString() )     return false;
+        if ( !jsonObj.contains("a_impersonated") || !jsonObj["a_impersonated"].isString() ) return false;
+        if ( !jsonObj.contains("a_tags")         || !jsonObj["a_tags"].isString() )         return false;
+        if ( !jsonObj.contains("a_mark")         || !jsonObj["a_mark"].isString() )         return false;
+        if ( !jsonObj.contains("a_color")        || !jsonObj["a_color"].isString() )        return false;
+        if ( !jsonObj.contains("a_last_tick")    || !jsonObj["a_last_tick"].isDouble() )    return false;
         return true;
     }
     if( spType == TYPE_AGENT_TICK ) {
@@ -81,14 +82,13 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if( spType == TYPE_AGENT_UPDATE ) {
-        if ( !jsonObj.contains("a_id")       || !jsonObj["a_id"].isString() )       return false;
-        if ( !jsonObj.contains("a_sleep")    || !jsonObj["a_sleep"].isDouble() )    return false;
-        if ( !jsonObj.contains("a_jitter")   || !jsonObj["a_jitter"].isDouble() )   return false;
-        if ( !jsonObj.contains("a_elevated") || !jsonObj["a_elevated"].isBool() )   return false;
-        if ( !jsonObj.contains("a_username") || !jsonObj["a_username"].isString() ) return false;
-        if ( !jsonObj.contains("a_tags")     || !jsonObj["a_tags"].isString() )     return false;
-        if ( !jsonObj.contains("a_mark")     || !jsonObj["a_mark"].isString() )     return false;
-        if ( !jsonObj.contains("a_color")    || !jsonObj["a_color"].isString() )    return false;
+        if ( !jsonObj.contains("a_id")           || !jsonObj["a_id"].isString() )           return false;
+        if ( !jsonObj.contains("a_sleep")        || !jsonObj["a_sleep"].isDouble() )        return false;
+        if ( !jsonObj.contains("a_jitter")       || !jsonObj["a_jitter"].isDouble() )       return false;
+        if ( !jsonObj.contains("a_impersonated") || !jsonObj["a_impersonated"].isString() ) return false;
+        if ( !jsonObj.contains("a_tags")         || !jsonObj["a_tags"].isString() )         return false;
+        if ( !jsonObj.contains("a_mark")         || !jsonObj["a_mark"].isString() )         return false;
+        if ( !jsonObj.contains("a_color")        || !jsonObj["a_color"].isString() )        return false;
         return true;
     }
     if( spType == TYPE_AGENT_REMOVE ) {

@@ -35,6 +35,8 @@
         <file alias="close">icons/close_dp64.png</file>
         <file alias="check">icons/check_dp64.png</file>
         <file alias="double_arrow_down">icons/double_arrow_down_64dp.png</file>
+        <file alias="arrow_drop_down">icons/arrow_drop_down_64dp.png</file>
+        <file alias="arrow_drop_up">icons/arrow_drop_up_64dp.png</file>
         <file alias="reload">icons/autorenew_64dp.png</file>
         <file alias="folder">icons/folder_64dp.png</file>
         <file alias="upload">icons/upload_file_64dp.png</file>
