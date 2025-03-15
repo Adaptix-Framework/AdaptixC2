@@ -46,6 +46,11 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 		taskData.FinishDate = taskData.StartDate
 	}
 
+	taskData.User = agent.Data.Username
+	if agent.Data.Impersonated != "" {
+		taskData.User += fmt.Sprintf(" [%s]", agent.Data.Impersonated)
+	}
+
 	switch taskData.Type {
 
 	case TYPE_TASK:

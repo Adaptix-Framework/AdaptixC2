@@ -5,6 +5,9 @@
 
 ULONG Djb2A(PUCHAR str)
 {
+    if (str == NULL)
+        return 0;
+
     ULONG hash = 1572;
     int c;
     while (c = *str++) {
@@ -17,6 +20,9 @@ ULONG Djb2A(PUCHAR str)
 
 ULONG Djb2W(PWCHAR str) 
 {
+    if (str == NULL)
+        return 0;
+
     ULONG hash = 1572;
     int c;
     while (c = *str++) {

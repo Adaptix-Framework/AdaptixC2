@@ -82,6 +82,7 @@ func (dbms *DBMS) DatabaseInit() error {
     	"Domain" TEXT,
     	"Computer" TEXT,
     	"Username" TEXT,
+    	"Impersonated" TEXT,
     	"OemCP" INTEGER,
     	"ACP" INTEGER,
     	"CreateTime" BIGINT,

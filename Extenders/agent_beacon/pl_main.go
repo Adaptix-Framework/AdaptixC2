@@ -49,6 +49,7 @@ type Teamserver interface {
 	TsAgentRequestHandler(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentUpdateData(newAgentObject []byte) error
+	TsAgentImpersonate(agentId string, impersonated string, elevated bool) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
 	TsAgentGuiExit(agentId string, username string) error
@@ -119,34 +120,35 @@ type AgentInfo struct {
 }
 
 type AgentData struct {
-	Crc        string `json:"a_crc"`
-	Id         string `json:"a_id"`
-	Name       string `json:"a_name"`
-	SessionKey []byte `json:"a_session_key"`
-	Listener   string `json:"a_listener"`
-	Async      bool   `json:"a_async"`
-	ExternalIP string `json:"a_external_ip"`
-	InternalIP string `json:"a_internal_ip"`
-	GmtOffset  int    `json:"a_gmt_offset"`
-	Sleep      uint   `json:"a_sleep"`
-	Jitter     uint   `json:"a_jitter"`
-	Pid        string `json:"a_pid"`
-	Tid        string `json:"a_tid"`
-	Arch       string `json:"a_arch"`
-	Elevated   bool   `json:"a_elevated"`
-	Process    string `json:"a_process"`
-	Os         int    `json:"a_os"`
-	OsDesc     string `json:"a_os_desc"`
-	Domain     string `json:"a_domain"`
-	Computer   string `json:"a_computer"`
-	Username   string `json:"a_username"`
-	OemCP      int    `json:"a_oemcp"`
-	ACP        int    `json:"a_acp"`
-	CreateTime int64  `json:"a_create_time"`
-	LastTick   int    `json:"a_last_tick"`
-	Tags       string `json:"a_tags"`
-	Mark       string `json:"a_mark"`
-	Color      string `json:"a_color"`
+	Crc          string `json:"a_crc"`
+	Id           string `json:"a_id"`
+	Name         string `json:"a_name"`
+	SessionKey   []byte `json:"a_session_key"`
+	Listener     string `json:"a_listener"`
+	Async        bool   `json:"a_async"`
+	ExternalIP   string `json:"a_external_ip"`
+	InternalIP   string `json:"a_internal_ip"`
+	GmtOffset    int    `json:"a_gmt_offset"`
+	Sleep        uint   `json:"a_sleep"`
+	Jitter       uint   `json:"a_jitter"`
+	Pid          string `json:"a_pid"`
+	Tid          string `json:"a_tid"`
+	Arch         string `json:"a_arch"`
+	Elevated     bool   `json:"a_elevated"`
+	Process      string `json:"a_process"`
+	Os           int    `json:"a_os"`
+	OsDesc       string `json:"a_os_desc"`
+	Domain       string `json:"a_domain"`
+	Computer     string `json:"a_computer"`
+	Username     string `json:"a_username"`
+	Impersonated string `json:"a_impersonated"`
+	OemCP        int    `json:"a_oemcp"`
+	ACP          int    `json:"a_acp"`
+	CreateTime   int64  `json:"a_create_time"`
+	LastTick     int    `json:"a_last_tick"`
+	Tags         string `json:"a_tags"`
+	Mark         string `json:"a_mark"`
+	Color        string `json:"a_color"`
 }
 
 type TaskData struct {

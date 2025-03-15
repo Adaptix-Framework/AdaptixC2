@@ -90,7 +90,7 @@ func (ts *Teamserver) TsAgentRequestHandler(agentCrc string, agentId string, bea
 
 	if agent.Data.Async {
 		agent.Data.LastTick = int(time.Now().Unix())
-		_ = ts.DBMS.DbAgentUpdate(agent.Data)
+		_ = ts.DBMS.DbAgentTick(agent.Data)
 		agent.Tick = true
 	}
 
@@ -180,8 +180,34 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentObject []byte) error {
 	agent, _ = value.(*Agent)
 	agent.Data.Sleep = newAgentData.Sleep
 	agent.Data.Jitter = newAgentData.Jitter
-	agent.Data.Elevated = newAgentData.Elevated
-	agent.Data.Username = newAgentData.Username
+
+	err = ts.DBMS.DbAgentUpdate(agent.Data)
+	if err != nil {
+		logs.Error("", err.Error())
+	}
+
+	packetNew := CreateSpAgentUpdate(agent.Data)
+	ts.TsSyncAllClients(packetNew)
+
+	return nil
+}
+
+func (ts *Teamserver) TsAgentImpersonate(agentId string, impersonated string, elevated bool) error {
+	var (
+		agent *Agent
+		err   error
+	)
+
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return errors.New("agent does not exist")
+	}
+	agent, _ = value.(*Agent)
+
+	agent.Data.Impersonated = impersonated
+	if impersonated != "" && elevated {
+		agent.Data.Impersonated += " *"
+	}
 
 	err = ts.DBMS.DbAgentUpdate(agent.Data)
 	if err != nil {
