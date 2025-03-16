@@ -26,8 +26,6 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFiles []string) {
 		pl     *plugin.Plugin
 		object plugin.Symbol
 		err    error
-
-		module = new(ModuleExtender)
 	)
 
 	for _, path := range extenderFiles {
@@ -61,6 +59,8 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFiles []string) {
 			logs.Error("", "InitPlugin %s failed: %s", path, err.Error())
 			continue
 		}
+
+		var module = new(ModuleExtender)
 
 		err = json.Unmarshal(buffer, &module.Info)
 		if err != nil {

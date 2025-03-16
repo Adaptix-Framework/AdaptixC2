@@ -172,7 +172,6 @@ func (ts *Teamserver) RestoreData() {
 		}
 	}
 	logs.Success("   ", "Restored %v listeners", countListeners)
-
 }
 
 func (ts *Teamserver) Start() {

@@ -38,7 +38,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
         username += " [" + this->data.Impersonated + "]";
 
     QString sleep, last;
-    if ( this->data.Mark.isEmpty()) {
+    if ( mark.isEmpty()) {
         sleep = QString("%1 (%2%)").arg( FormatSecToStr(this->data.Sleep) ).arg(this->data.Jitter);
         if ( !this->data.Async )
             last = QString::fromUtf8("\u221E");
@@ -46,7 +46,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     else {
         QDateTime dateTime = QDateTime::fromSecsSinceEpoch(this->data.LastTick, Qt::UTC);
         last  = dateTime.toString("MM/dd hh:mm");
-        sleep = this->data.Mark;
+        sleep = mark;
     }
 
     this->item_Id       = new AgentTableWidgetItem( this->data.Id, this );
@@ -66,11 +66,11 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     this->item_Sleep    = new AgentTableWidgetItem( sleep, this );
     this->item_Pid      = new AgentTableWidgetItem( this->data.Pid, this );
 
-    if ( data.Mark.isEmpty() ) {
+    if ( mark.isEmpty() ) {
         if ( !this->data.Color.isEmpty() )
             this->SetColor(this->data.Color);
     } else {
-        this->MarkItem(data.Mark);
+        this->MarkItem(mark);
     }
 
     if (data.Os == OS_WINDOWS) {
@@ -155,6 +155,9 @@ void Agent::Update(QJsonObject jsonObjAgentData)
 
 void Agent::MarkItem(const QString &mark)
 {
+    if (this->data.Mark == mark)
+        return;
+
     this->data.Mark = mark;
     QString color;
     QString status;
@@ -164,7 +167,9 @@ void Agent::MarkItem(const QString &mark)
         this->active = true;
     }
     else {
-        this->active = false;
+        if ( mark == "Terminated" || mark == "Inactive")
+            this->active = false;
+
         status = mark;
         color = QString(COLOR_DarkBrownishRed) + "-" + QString(COLOR_LightGray);
     }
