@@ -65,7 +65,7 @@ public slots:
     void actionProcessBrowserOpen() const;
     void actionAgentExit() const;
     void actionMarkActive() const;
-    void actionMarkInctive() const;
+    void actionMarkInactive() const;
     void actionItemColor() const;
     void actionTextColor() const;
     void actionColorReset() const;

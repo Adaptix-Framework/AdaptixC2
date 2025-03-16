@@ -22,6 +22,10 @@ void Settings::SetDefault()
     for ( int i = 0; i < 15; i++)
         data.SessionsTableColumns[i] = true;
 
+    this->data.CheckHealth = true;
+    this->data.HealthCoaf = 2.0;
+    this->data.HealthOffset = 6;
+
     for ( int i = 0; i < 11; i++)
         data.TasksTableColumns[i] = true;
 }

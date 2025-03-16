@@ -147,7 +147,11 @@ typedef struct SettingsData {
     QString FontFamily;
     int     FontSize;
 
-    bool SessionsTableColumns[15];
+    bool   SessionsTableColumns[15];
+    bool   CheckHealth;
+    double HealthCoaf;
+    int    HealthOffset;
+
     bool TasksTableColumns[11];
 } SettingsData;
 

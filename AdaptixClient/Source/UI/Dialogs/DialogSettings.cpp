@@ -1,5 +1,4 @@
 #include <UI/Dialogs/DialogSettings.h>
-#include <Utils/CustomElements.h>
 
 DialogSettings::DialogSettings(Settings* s)
 {
@@ -15,19 +14,26 @@ DialogSettings::DialogSettings(Settings* s)
     for ( int i = 0; i < 15; i++)
         sessionsCheck[i]->setChecked(s->data.SessionsTableColumns[i]);
 
+    sessionsHealthCheck->setChecked(s->data.CheckHealth);
+    sessionsCoafSpin->setValue(s->data.HealthCoaf);
+    sessionsOffsetSpin->setValue(s->data.HealthOffset);
+
     for ( int i = 0; i < 11; i++)
         tasksCheck[i]->setChecked(s->data.TasksTableColumns[i]);
 
     connect(themeCombo,          &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
     connect(fontFamilyCombo,     &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
-    connect(fontSizeSpin,        &QSpinBox::valueChanged,        buttonApply, [=, this](int ){buttonApply->setEnabled(true);} );
-    connect(consoleTimeCheckbox, &QCheckBox::stateChanged,       buttonApply, [=, this](int ){buttonApply->setEnabled(true);} );
+    connect(fontSizeSpin,        &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(consoleTimeCheckbox, &QCheckBox::stateChanged,       buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(sessionsHealthCheck, &QCheckBox::stateChanged,       this, &DialogSettings::onHealthChange );
+    connect(sessionsCoafSpin,    &QDoubleSpinBox::valueChanged,  buttonApply, [=, this](double){buttonApply->setEnabled(true);} );
+    connect(sessionsOffsetSpin,  &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
 
     for ( int i = 0; i < 15; i++)
-        connect(sessionsCheck[i],  &QCheckBox::stateChanged, buttonApply, [=, this](int ){buttonApply->setEnabled(true);} );
+        connect(sessionsCheck[i],  &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
 
     for ( int i = 0; i < 11; i++)
-        connect(tasksCheck[i],  &QCheckBox::stateChanged, buttonApply, [=, this](int ){buttonApply->setEnabled(true);} );
+        connect(tasksCheck[i],  &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
 
     connect(listSettings, &QListWidget::currentRowChanged, this, &DialogSettings::onStackChange);
     connect(buttonApply, &QPushButton::clicked, this, &DialogSettings::onApply);
@@ -109,9 +115,39 @@ void DialogSettings::createUI()
     sessionsGroupLayout->addWidget(sessionsCheck[12], 6, 0, 1, 1);
     sessionsGroupLayout->addWidget(sessionsCheck[13], 6, 1, 1, 1);
     sessionsGroupLayout->addWidget(sessionsCheck[14], 7, 0, 1, 1);
-
     sessionsGroup->setLayout(sessionsGroupLayout);
-    sessionsLayout->addWidget(sessionsGroup, 0, 0, 1, 1);
+
+    sessionsHealthCheck = new QCheckBox("Check Health", sessionsWidget);
+
+    QSpacerItem* horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+    sessionsLabel1 = new QLabel(sessionsWidget);
+    sessionsLabel1->setText("Sleeptime *");
+
+    sessionsLabel2 = new QLabel(sessionsWidget);
+    sessionsLabel2->setText("+");
+
+    sessionsLabel3 = new QLabel(sessionsWidget);
+    sessionsLabel3->setText("sec");
+
+    sessionsCoafSpin = new QDoubleSpinBox(sessionsWidget);
+    sessionsCoafSpin->setMinimum(1.0);
+    sessionsCoafSpin->setMaximum(5.0);
+    sessionsCoafSpin->setSingleStep(0.1);
+
+    sessionsOffsetSpin = new QSpinBox(sessionsWidget);
+    sessionsOffsetSpin->setMinimum(1);
+    sessionsOffsetSpin->setMaximum(10000);
+
+    sessionsLayout->addWidget(sessionsGroup, 0, 0, 1, 7);
+    sessionsLayout->addWidget(sessionsHealthCheck, 1, 0, 1, 1);
+    sessionsLayout->addItem(horizontalSpacer, 1, 1, 1, 1);
+    sessionsLayout->addWidget(sessionsLabel1, 1, 2, 1, 1);
+    sessionsLayout->addWidget(sessionsCoafSpin, 1, 3, 1, 1);
+    sessionsLayout->addWidget(sessionsLabel2, 1, 4, 1, 1);
+    sessionsLayout->addWidget(sessionsOffsetSpin, 1, 5, 1, 1);
+    sessionsLayout->addWidget(sessionsLabel3, 1, 6, 1, 1);
+
     sessionsWidget->setLayout(sessionsLayout);
 
     /////////////// Tasks Table
@@ -197,6 +233,16 @@ void DialogSettings::onStackChange(int index) const
     stackSettings->setCurrentIndex(index);
 }
 
+void DialogSettings::onHealthChange() const {
+    buttonApply->setEnabled(true);
+    bool active = sessionsHealthCheck->isChecked();
+    sessionsLabel1->setEnabled(active);
+    sessionsLabel2->setEnabled(active);
+    sessionsLabel3->setEnabled(active);
+    sessionsCoafSpin->setEnabled(active);
+    sessionsOffsetSpin->setEnabled(active);
+}
+
 void DialogSettings::onApply() const
 {
     buttonApply->setEnabled(false);
@@ -208,6 +254,10 @@ void DialogSettings::onApply() const
 
     for ( int i = 0; i < 15; i++)
         settings->data.SessionsTableColumns[i] = sessionsCheck[i]->isChecked();
+
+    settings->data.CheckHealth = sessionsHealthCheck->isChecked();
+    settings->data.HealthCoaf = sessionsCoafSpin->value();
+    settings->data.HealthOffset = sessionsOffsetSpin->value();
 
     for ( int i = 0; i < 11; i++)
         settings->data.TasksTableColumns[i] = tasksCheck[i]->isChecked();

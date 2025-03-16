@@ -1,6 +1,8 @@
 #include <Client/LastTickWorker.h>
 #include <Agent/Agent.h>
 
+#include <MainAdaptix.h>
+
 LastTickWorker::LastTickWorker(AdaptixWidget *w)
 {
     mainWidget = w;
@@ -23,6 +25,18 @@ void LastTickWorker::updateLastItems() const
             int diff    = current - agent->data.LastTick;
 
             agent->item_Last->setText( FormatSecToStr(diff) );
+
+            if ( GlobalClient->settings->data.CheckHealth ) {
+                if (diff > agent->data.Sleep * GlobalClient->settings->data.HealthCoaf + GlobalClient->settings->data.HealthOffset) {
+                    QString mark = QString("No response (%1)").arg(FormatSecToStr(agent->data.Sleep));
+                    agent->MarkItem(mark);
+                }
+                else {
+                    agent->MarkItem("");
+                }
+            }
+
+
         }
     }
 }

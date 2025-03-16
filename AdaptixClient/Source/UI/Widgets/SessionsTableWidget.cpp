@@ -343,7 +343,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 
     auto itemMenu = new QMenu("Item", &ctxMenu);
     itemMenu->addAction("Mark as Active",   this, &SessionsTableWidget::actionMarkActive);
-    itemMenu->addAction("Mark as Inactive", this, &SessionsTableWidget::actionMarkInctive);
+    itemMenu->addAction("Mark as Inactive", this, &SessionsTableWidget::actionMarkInactive);
     itemMenu->addSeparator();
     itemMenu->addAction("Set items color", this, &SessionsTableWidget::actionItemColor);
     itemMenu->addAction("Set text color",  this, &SessionsTableWidget::actionTextColor);
@@ -460,7 +460,7 @@ void SessionsTableWidget::actionMarkActive() const
     }
 }
 
-void SessionsTableWidget::actionMarkInctive() const
+void SessionsTableWidget::actionMarkInactive() const
 {
     QStringList listId;
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );

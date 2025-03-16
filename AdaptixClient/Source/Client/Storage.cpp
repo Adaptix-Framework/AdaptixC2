@@ -74,11 +74,14 @@ void Storage::checkDatabase()
                             "consoleTime BOOLEAN );"
     );
     if ( !querySettingsMain.exec() )
-        LogError("Table SettingsMAIN not created: %s\n", querySettingsMain.lastError().text().toStdString().c_str());
+        LogError("Table SettingsMain not created: %s\n", querySettingsMain.lastError().text().toStdString().c_str());
 
     auto querySettingsSessions = QSqlQuery();
     querySettingsSessions.prepare("CREATE TABLE IF NOT EXISTS SettingsSessions ( "
                             "id INTEGER, "
+                            "healthCheck BOOLEAN, "
+                            "healthCoaf REAL, "
+                            "healthOffset INTEGER, "
                             "column0 BOOLEAN, "
                             "column1 BOOLEAN, "
                             "column2 BOOLEAN, "
@@ -344,6 +347,10 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
         selectQuery.prepare("SELECT * FROM SettingsSessions WHERE Id = 1;" );
         if ( selectQuery.exec() && selectQuery.next()) {
 
+            settingsData->CheckHealth = selectQuery.value("healthCheck").toBool();
+            settingsData->HealthCoaf = selectQuery.value("healthCoaf").toDouble();
+            settingsData->HealthOffset = selectQuery.value("healthOffset").toInt();
+
             for (int i = 0; i < 15; i++) {
                 QString columnName = "column" + QString::number(i);
                 settingsData->SessionsTableColumns[i] = selectQuery.value(columnName).toBool();
@@ -366,13 +373,16 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
     bool exists = existsQuery.next();
 
     if(exists) {
-        QString strQuery = "UPDATE SettingsSessions SET column0 = :Column0";
+        QString strQuery = "UPDATE SettingsSessions SET healthCheck = :HealthCheck, healthCoaf = :HealthCoaf, healthOffset = :HealthOffset, column0 = :Column0";
         for (int i = 1 ; i < 15; i++)
             strQuery += QString(", column%1 = :Column%2").arg(i).arg(i);
         strQuery += " WHERE Id = 1;";
 
         QSqlQuery updateQuery;
         updateQuery.prepare(strQuery);
+        updateQuery.bindValue(":HealthCheck", settingsData.CheckHealth);
+        updateQuery.bindValue(":HealthCoaf", settingsData.HealthCoaf);
+        updateQuery.bindValue(":HealthOffset", settingsData.HealthOffset);
         for (int i = 0 ; i < 15; i++) {
             QString column = ":Column" + QString::number(i);
             updateQuery.bindValue(column, settingsData.SessionsTableColumns[i]);
@@ -382,10 +392,10 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
         }
     }
     else {
-        QString strQuery = "INSERT INTO SettingsSessions (id, column0";
+        QString strQuery = "INSERT INTO SettingsSessions (id, healthCheck, healthCoaf, healthOffset, column0";
         for (int i = 1 ; i < 15; i++)
             strQuery += QString(", column%1").arg(i);
-        strQuery += ") VALUES (:Id, :Column0";
+        strQuery += ") VALUES (:Id, :HealthCheck, :HealthCoaf, :HealthOffset, :Column0";
         for (int i = 1 ; i < 15; i++)
             strQuery += QString(", :Column%1").arg(i);
         strQuery += ");";
@@ -393,6 +403,9 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
         QSqlQuery insertQuery;
         insertQuery.prepare(strQuery);
         insertQuery.bindValue(":Id", 1);
+        insertQuery.bindValue(":HealthCheck", settingsData.CheckHealth);
+        insertQuery.bindValue(":HealthCoaf", settingsData.HealthCoaf);
+        insertQuery.bindValue(":HealthOffset", settingsData.HealthOffset);
         for (int i = 0 ; i < 15; i++) {
             QString column = ":Column" + QString::number(i);
             insertQuery.bindValue(column, settingsData.SessionsTableColumns[i]);
