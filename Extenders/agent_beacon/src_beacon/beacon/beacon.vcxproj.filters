@@ -49,6 +49,12 @@
     <Filter Include="Source\ApiLoader">
       <UniqueIdentifier>{75ea1e98-244a-4ba6-861a-9c877f9e4133}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Connectors">
+      <UniqueIdentifier>{794a84d3-d343-4aa1-9c08-cab08b06fd1d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\Connectors">
+      <UniqueIdentifier>{c7e8b0b0-37fd-4e3d-8561-9569fda4fa5b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -71,9 +77,6 @@
     </ClCompile>
     <ClCompile Include="Encoders.cpp">
       <Filter>Source\Encrypt</Filter>
-    </ClCompile>
-    <ClCompile Include="ConnectorHTTP.cpp">
-      <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="utils.cpp">
       <Filter>Source\utils</Filter>
@@ -117,6 +120,9 @@
     <ClCompile Include="Proxyfire.cpp">
       <Filter>Source\Commander</Filter>
     </ClCompile>
+    <ClCompile Include="ConnectorHTTP.cpp">
+      <Filter>Source\Connectors</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -142,9 +148,6 @@
     </ClInclude>
     <ClInclude Include="Encoders.h">
       <Filter>Headers\Encrypt</Filter>
-    </ClInclude>
-    <ClInclude Include="ConnectorHTTP.h">
-      <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="utils.h">
       <Filter>Headers\utils</Filter>
@@ -187,6 +190,9 @@
     </ClInclude>
     <ClInclude Include="Proxyfire.h">
       <Filter>Headers\Commander</Filter>
+    </ClInclude>
+    <ClInclude Include="ConnectorHTTP.h">
+      <Filter>Headers\Connectors</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

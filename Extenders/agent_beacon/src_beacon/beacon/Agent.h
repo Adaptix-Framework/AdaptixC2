@@ -28,5 +28,4 @@ public:
 	void  SetActive(BOOL state);
 	BOOL  IsActive();
 	LPSTR BuildBeat();
-	LPSTR CreateHeaders();
 };
