@@ -42,6 +42,7 @@ NtQueryInformationProcess
 NtQuerySystemInformation
 NtOpenProcess
 NtOpenProcessToken
+NtOpenThreadToken
 NtTerminateThread
 NtTerminateProcess
 RtlGetVersion

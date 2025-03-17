@@ -114,7 +114,7 @@ type ExtenderInfo struct {
 
 type AgentInfo struct {
 	AgentName    string
-	ListenerName string
+	ListenerName []string
 	AgentUI      string
 	AgentCmd     string
 }
@@ -241,7 +241,7 @@ func (m *ModuleExtender) AgentInit(pluginPath string) ([]byte, error) {
 
 	info := AgentInfo{
 		AgentName:    SetName,
-		ListenerName: SetListener,
+		ListenerName: SetListeners,
 		AgentUI:      string(agentUI),
 		AgentCmd:     string(agentCmd),
 	}

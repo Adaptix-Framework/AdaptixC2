@@ -16,9 +16,10 @@ import (
 	"time"
 )
 
+var SetListeners = []string{"BeaconHTTP", "BeaconSMB"}
+
 const (
 	SetName            = "beacon"
-	SetListener        = "BeaconHTTP"
 	SetUiPath          = "_ui_agent.json"
 	SetCmdPath         = "_cmd_agent.json"
 	SetMaxTaskDataSize = 0x1900000 // 25 Mb
@@ -504,6 +505,9 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 
+	case "getuid":
+		array = []interface{}{COMMAND_GETUID}
+
 	case "jobs":
 		if subcommand == "list" {
 			array = []interface{}{COMMAND_JOB_LIST}
@@ -667,6 +671,9 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 	case "pwd":
 		array = []interface{}{COMMAND_PWD}
+
+	case "rev2self":
+		array = []interface{}{COMMAND_REV2SELF}
 
 	case "rm":
 		path, ok := args["path"].(string)
@@ -1084,6 +1091,34 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			task.Completed = false
 
+		case COMMAND_GETUID:
+			if false == packer.CheckPacker([]string{"byte", "byte", "array", "array"}) {
+				return outTasks
+			}
+
+			gui := packer.ParseInt8()
+			high := packer.ParseInt8()
+			domain := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			username := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			message := ""
+			elevated := false
+
+			if username != "" {
+				if domain != "" {
+					username = domain + "\\" + username
+				}
+				message = fmt.Sprintf("You are '%v'", username)
+				if high > 0 {
+					message += " (elevated)"
+					elevated = true
+				}
+			}
+			task.Message = message
+
+			if gui > 0 {
+				_ = ts.TsAgentImpersonate(agentData.Id, username, elevated)
+			}
+
 		case COMMAND_JOB:
 			if false == packer.CheckPacker([]string{"byte"}) {
 				return outTasks
@@ -1379,6 +1414,17 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			path := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			task.Message = "Current working directory:"
 			task.ClearText = path
+
+		case COMMAND_REV2SELF:
+			if false == packer.CheckPacker([]string{"byte"}) {
+				return outTasks
+			}
+
+			gui := packer.ParseInt8()
+			if gui == 1 {
+				task.Message = "Token reverted successfully"
+			}
+			_ = ts.TsAgentImpersonate(agentData.Id, "", agentData.Elevated)
 
 		case COMMAND_RM:
 			if false == packer.CheckPacker([]string{"byte"}) {

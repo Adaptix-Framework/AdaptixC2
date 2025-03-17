@@ -32,6 +32,10 @@ CHAR* _GetDomainName();
 
 CHAR* _GetProcessName();
 
+HANDLE TokenCurrentHandle();
+
+BOOL TokenToUser(HANDLE hToken, CHAR* username, DWORD* usernameSize, CHAR* domain, DWORD* domainSize, BOOL* elevated);
+
 //////////
 
 CHAR* StrChrA(CHAR* str, CHAR c);

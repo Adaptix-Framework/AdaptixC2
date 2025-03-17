@@ -15,6 +15,7 @@
 #define HASH_FUNC_NTQUERYSYSTEMINFORMATION           0x91ef8a47
 #define HASH_FUNC_NTOPENPROCESS                      0xf029bc37
 #define HASH_FUNC_NTOPENPROCESSTOKEN                 0x845cc3b8
+#define HASH_FUNC_NTOPENTHREADTOKEN                  0xf6f79cf1
 #define HASH_FUNC_NTTERMINATETHREAD                  0x43b9dd27
 #define HASH_FUNC_NTTERMINATEPROCESS                 0x9e28d66e
 #define HASH_FUNC_RTLGETVERSION                      0xb28521fc

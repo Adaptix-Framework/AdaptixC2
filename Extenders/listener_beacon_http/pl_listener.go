@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"regexp"
 	"strconv"
 	"strings"
@@ -18,7 +19,7 @@ const (
 	SetUiPath   = "_ui_listener.json"
 )
 
-func ValidateListenerConfig(data string) error {
+func (m *ModuleExtender) HandlerListenerValid(data string) error {
 
 	/// START CODE HERE
 
@@ -84,7 +85,7 @@ func ValidateListenerConfig(data string) error {
 	return nil
 }
 
-func CreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (ListenerData, []byte, any, error) {
+func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (ListenerData, []byte, any, error) {
 	var (
 		listenerData ListenerData
 		customdData  []byte
@@ -146,8 +147,11 @@ func CreateListenerDataAndStart(name string, configData string, listenerCustomDa
 		}
 	}
 
-	listener = NewConfigHttp(name)
-	listener.Config = conf
+	listener = &HTTP{
+		GinEngine: gin.New(),
+		Name:      name,
+		Config:    conf,
+	}
 
 	err = listener.Start()
 	if err != nil {
@@ -178,7 +182,7 @@ func CreateListenerDataAndStart(name string, configData string, listenerCustomDa
 	return listenerData, customdData, listener, nil
 }
 
-func EditListenerData(name string, listenerObject any, configData string) (ListenerData, []byte, bool) {
+func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any, configData string) (ListenerData, []byte, bool) {
 	var (
 		listenerData ListenerData
 		customdData  []byte
@@ -250,7 +254,7 @@ func EditListenerData(name string, listenerObject any, configData string) (Liste
 	return listenerData, customdData, ok
 }
 
-func StopListener(name string, listenerObject any) (bool, error) {
+func (m *ModuleExtender) HandlerListenerStop(name string, listenerObject any) (bool, error) {
 	var (
 		err error = nil
 		ok  bool  = false
@@ -269,7 +273,7 @@ func StopListener(name string, listenerObject any) (bool, error) {
 	return ok, err
 }
 
-func GetProfile(name string, listenerObject any) ([]byte, bool) {
+func (m *ModuleExtender) HandlerListenerGetProfile(name string, listenerObject any) ([]byte, bool) {
 	var (
 		object bytes.Buffer
 		ok     bool = false

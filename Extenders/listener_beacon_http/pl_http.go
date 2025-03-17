@@ -62,13 +62,6 @@ type HTTP struct {
 	Active    bool
 }
 
-func NewConfigHttp(Name string) *HTTP {
-	return &HTTP{
-		GinEngine: gin.New(),
-		Name:      Name,
-	}
-}
-
 func (h *HTTP) Start() error {
 	var err error = nil
 
@@ -220,7 +213,7 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 		ExternalIP = ctx.Request.Header.Get("X-Forwarded-For")
 	}
 
-	agentType, agentId, beat, bodyData, err = parseBeatAndData(ctx, h)
+	agentType, agentId, beat, bodyData, err = h.parseBeatAndData(ctx)
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
 		h.pageError(ctx)
@@ -245,7 +238,7 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 	return
 }
 
-func parseBeatAndData(ctx *gin.Context, h *HTTP) (uint, uint, []byte, []byte, error) {
+func (h *HTTP) parseBeatAndData(ctx *gin.Context) (uint, uint, []byte, []byte, error) {
 	var (
 		beat           string
 		agentType      uint

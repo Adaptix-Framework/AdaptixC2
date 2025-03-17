@@ -91,6 +91,12 @@
     ]
   },
   {
+    "command": "getuid",
+    "message": "Task: get username of current token",
+    "description": "Prints the User ID associated with the current token",
+    "example": "getuid"
+  },
+  {
     "command": "jobs",
     "description": "Long-running tasks manager",
     "subcommands":
@@ -221,6 +227,12 @@
     "message": "Task: print working directory",
     "description": "Print current working directory",
     "example": "pwd"
+  },
+  {
+    "command": "rev2self",
+    "message": "Task: revert token",
+    "description": "Revert to your original access token",
+    "example": "rev2self"
   },
   {
     "command": "rm",

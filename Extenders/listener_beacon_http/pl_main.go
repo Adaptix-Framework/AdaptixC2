@@ -159,7 +159,7 @@ func (m *ModuleExtender) ListenerInit(pluginPath string, listenerDataPath string
 }
 
 func (m *ModuleExtender) ListenerValid(data string) error {
-	return ValidateListenerConfig(data)
+	return m.HandlerListenerValid(data)
 }
 
 func (m *ModuleExtender) ListenerStart(name string, data string, listenerCustomData []byte) ([]byte, []byte, error) {
@@ -171,7 +171,7 @@ func (m *ModuleExtender) ListenerStart(name string, data string, listenerCustomD
 		listener     any
 	)
 
-	listenerData, customData, listener, err = CreateListenerDataAndStart(name, data, listenerCustomData)
+	listenerData, customData, listener, err = m.HandlerCreateListenerDataAndStart(name, data, listenerCustomData)
 
 	err = json.NewEncoder(&buffer).Encode(listenerData)
 	if err != nil {
@@ -194,7 +194,7 @@ func (m *ModuleExtender) ListenerEdit(name string, data string) ([]byte, []byte,
 
 	for _, value := range ListenersObject {
 
-		listenerData, customData, ok = EditListenerData(name, value, data)
+		listenerData, customData, ok = m.HandlerEditListenerData(name, value, data)
 		if ok {
 			err = json.NewEncoder(&buffer).Encode(listenerData)
 			if err != nil {
@@ -214,7 +214,7 @@ func (m *ModuleExtender) ListenerStop(name string) error {
 	)
 
 	for ind, value := range ListenersObject {
-		ok, err = StopListener(name, value)
+		ok, err = m.HandlerListenerStop(name, value)
 		if ok {
 			index = ind
 			break
@@ -238,7 +238,7 @@ func (m *ModuleExtender) ListenerGetProfile(name string) ([]byte, error) {
 
 	for _, value := range ListenersObject {
 
-		profile, ok = GetProfile(name, value)
+		profile, ok = m.HandlerListenerGetProfile(name, value)
 		if ok {
 			return profile, nil
 		}

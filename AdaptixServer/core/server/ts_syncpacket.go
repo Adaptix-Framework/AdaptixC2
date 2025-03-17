@@ -128,14 +128,14 @@ func CreateSpListenerStop(name string) SyncPackerListenerStop {
 
 /// AGENT
 
-func CreateSpAgentReg(agent string, listener string, ui string, cmd string) SyncPackerAgentReg {
+func CreateSpAgentReg(agent string, listeners []string, ui string, cmd string) SyncPackerAgentReg {
 	return SyncPackerAgentReg{
 		SpType: TYPE_AGENT_REG,
 
-		Agent:    agent,
-		Listener: listener,
-		AgentUI:  ui,
-		AgentCmd: cmd,
+		Agent:     agent,
+		Listeners: listeners,
+		AgentUI:   ui,
+		AgentCmd:  cmd,
 	}
 }
 
