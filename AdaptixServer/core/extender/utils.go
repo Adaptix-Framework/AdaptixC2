@@ -21,7 +21,7 @@ type ListenerInfo struct {
 
 type AgentInfo struct {
 	AgentName    string
-	ListenerName string
+	ListenerName []string
 	AgentUI      string
 	AgentCmd     string
 }

@@ -120,6 +120,7 @@ struct NTAPIFUNC
 	DECL_API(NtQuerySystemInformation);
 	DECL_API(NtOpenProcess);
 	DECL_API(NtOpenProcessToken);
+	DECL_API(NtOpenThreadToken);
 	DECL_API(NtTerminateThread);
 	DECL_API(NtTerminateProcess);
 	DECL_API(RtlGetVersion);

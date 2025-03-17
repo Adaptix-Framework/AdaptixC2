@@ -215,6 +215,7 @@ BOOL ApiLoad()
 			ApiNt->NtQuerySystemInformation  = (decltype(NtQuerySystemInformation)*)  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTQUERYSYSTEMINFORMATION);
 			ApiNt->NtOpenProcess             = (decltype(NtOpenProcess)*)			  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTOPENPROCESS);
 			ApiNt->NtOpenProcessToken        = (decltype(NtOpenProcessToken)*)		  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTOPENPROCESSTOKEN);
+			ApiNt->NtOpenThreadToken         = (decltype(NtOpenThreadToken)*)		  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTOPENTHREADTOKEN);
 			ApiNt->NtTerminateThread         = (decltype(NtTerminateThread)*)		  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTTERMINATETHREAD);
 			ApiNt->NtTerminateProcess        = (decltype(NtTerminateProcess)*)		  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTTERMINATEPROCESS);
 			ApiNt->RtlGetVersion             = (decltype(RtlGetVersion)*)			  GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLGETVERSION);

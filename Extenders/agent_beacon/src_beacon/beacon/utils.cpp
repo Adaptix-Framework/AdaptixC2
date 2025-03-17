@@ -165,6 +165,48 @@ CHAR* _GetProcessName()
     return processName;
 }
 
+HANDLE TokenCurrentHandle()
+{
+    HANDLE TokenHandle = NULL;
+
+    if (!NT_SUCCESS(ApiNt->NtOpenThreadToken(NtCurrentThread(), TOKEN_QUERY, FALSE, &TokenHandle))) {
+        if (!NT_SUCCESS(ApiNt->NtOpenThreadToken(NtCurrentThread(), TOKEN_QUERY, TRUE, &TokenHandle))) {
+            if (!NT_SUCCESS(ApiNt->NtOpenProcessToken(NtCurrentProcess(), TOKEN_QUERY, &TokenHandle)))
+                return NULL;
+        }
+    }
+    return TokenHandle;
+}
+
+BOOL TokenToUser(HANDLE hToken, CHAR* username, DWORD* usernameSize, CHAR* domain, DWORD* domainSize, BOOL* elevated) 
+{
+    BOOL result = false;
+    if (hToken) {
+        LPVOID tokenInfo = NULL;
+        DWORD  tokenInfoSize = 0;
+        
+        result = ApiWin->GetTokenInformation(hToken, TokenUser, tokenInfo, 0, &tokenInfoSize);
+        if (!result) {
+            tokenInfo = MemAllocLocal(tokenInfoSize);
+            if (tokenInfo)
+                result = ApiWin->GetTokenInformation(hToken, TokenUser, tokenInfo, tokenInfoSize, &tokenInfoSize);
+        }
+
+        TOKEN_ELEVATION Elevation = { 0 };
+        DWORD eleavationSize = sizeof(TOKEN_ELEVATION);
+        ApiWin->GetTokenInformation(hToken, TokenElevation, &Elevation, sizeof(Elevation), &eleavationSize);
+
+        if (result) {
+            SID_NAME_USE SidType;
+            result = ApiWin->LookupAccountSidA(NULL, ((PTOKEN_USER)tokenInfo)->User.Sid, username, usernameSize, domain, domainSize, &SidType);
+            if (result) {
+                *elevated = Elevation.TokenIsElevated;
+            }
+        }
+    }
+    return result;
+}
+
 ///////////
 
 CHAR* StrChrA(CHAR* str, CHAR c) 

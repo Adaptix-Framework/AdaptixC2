@@ -45,7 +45,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_AGENT_REG ) {
         if ( !jsonObj.contains("agent")    || !jsonObj["agent"].isString() )    return false;
-        if ( !jsonObj.contains("listener") || !jsonObj["listener"].isString() ) return false;
+        if ( !jsonObj.contains("listener") || !jsonObj["listener"].isArray() ) return false;
         if ( !jsonObj.contains("ui")       || !jsonObj["ui"].isString() )       return false;
         if ( !jsonObj.contains("cmd")      || !jsonObj["cmd"].isString() )      return false;
         return true;
@@ -604,10 +604,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
     if( spType == TYPE_AGENT_REG )
     {
-        QString agentName    = jsonObj["agent"].toString();
-        QString listenerName = jsonObj["listener"].toString();
-        QString ui           = jsonObj["ui"].toString();
-        QString cmd          = jsonObj["cmd"].toString();
+        QString agentName = jsonObj["agent"].toString();
+        QString ui        = jsonObj["ui"].toString();
+        QString cmd       = jsonObj["cmd"].toString();
+        QJsonArray listenerNames = jsonObj["listener"].toArray();
 
         auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
         if(widgetBuilder->GetError().isEmpty())
@@ -620,7 +620,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             commander->AddRegCommands(cmd.toLocal8Bit());
 
         RegisterAgentsCmd[agentName] = commander;
-        LinkListenerAgent[listenerName].push_back(agentName);
+
+        for (QJsonValue listener : listenerNames) {
+            QString name = listener.toString();
+            LinkListenerAgent[name].push_back(agentName);
+        }
+
         return;
     }
 }
