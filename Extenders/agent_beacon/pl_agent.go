@@ -57,12 +57,24 @@ func AgentGenerateProfile(agentConfig string, listenerProfile []byte) ([]byte, e
 		return nil, err
 	}
 
+	table := crc32.MakeTable(crc32.IEEE)
+	agentCrc := int(crc32.Checksum([]byte(SetName), table))
+
+	encrypt_key, _ := listenerMap["encrypt_key"].(string)
+	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
+	if err != nil {
+		return nil, err
+	}
+
+	seconds, err := parseDurationToSeconds(generateConfig.Sleep)
+	if err != nil {
+		return nil, err
+	}
+
 	protocol, _ := listenerMap["protocol"].(string)
+	switch protocol {
 
-	if protocol == "http" {
-
-		table := crc32.MakeTable(crc32.IEEE)
-		agentCrc := int(crc32.Checksum([]byte(SetName), table))
+	case "http":
 
 		portAgentStr, _ := listenerMap["callback_port"].(string)
 		PortAgent, _ := strconv.Atoi(portAgentStr)
@@ -84,12 +96,6 @@ func AgentGenerateProfile(agentConfig string, listenerProfile []byte) ([]byte, e
 		WebPageOutput, _ := listenerMap["page-payload"].(string)
 		ansOffset1 := strings.Index(WebPageOutput, "<<<PAYLOAD_DATA>>>")
 		ansOffset2 := len(WebPageOutput[ansOffset1+len("<<<PAYLOAD_DATA>>>"):])
-
-		encrypt_key, _ := listenerMap["encrypt_key"].(string)
-		encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
-		if err != nil {
-			return nil, err
-		}
 
 		seconds, err := parseDurationToSeconds(generateConfig.Sleep)
 		if err != nil {
@@ -113,31 +119,49 @@ func AgentGenerateProfile(agentConfig string, listenerProfile []byte) ([]byte, e
 		params = append(params, seconds)
 		params = append(params, generateConfig.Jitter)
 
-		packedParams, err := PackArray(params)
-		if err != nil {
-			return nil, err
-		}
+	case "smb":
 
-		cryptParams, err := RC4Crypt(packedParams, encryptKey)
-		if err != nil {
-			return nil, err
-		}
+		pipename, _ := listenerMap["pipename"].(string)
+		pipename = "\\\\.\\pipe\\" + pipename
 
-		profileArray := []interface{}{len(cryptParams), cryptParams, encryptKey}
-		packedProfile, err := PackArray(profileArray)
-		if err != nil {
-			return nil, err
-		}
+		params = append(params, agentCrc)
+		params = append(params, pipename)
+		params = append(params, seconds)
+		params = append(params, generateConfig.Jitter)
 
-		profileString := ""
-		for _, b := range packedProfile {
-			profileString += fmt.Sprintf("\\x%02x", b)
-		}
-
-		return []byte(profileString), nil
+	default:
+		return nil, errors.New("protocol unknown")
 	}
 
-	return nil, errors.New("protocol unknown")
+	packedParams, err := PackArray(params)
+	if err != nil {
+		return nil, err
+	}
+
+	cryptParams, err := RC4Crypt(packedParams, encryptKey)
+	if err != nil {
+		return nil, err
+	}
+
+	profileArray := []interface{}{len(cryptParams), cryptParams, encryptKey}
+	packedProfile, err := PackArray(profileArray)
+	if err != nil {
+		return nil, err
+	}
+
+	profileString := ""
+	for _, b := range packedProfile {
+		profileString += fmt.Sprintf("\\x%02x", b)
+	}
+
+	k := ""
+	for _, b := range encryptKey {
+		k += fmt.Sprintf("\\x%02x", b)
+	}
+	fmt.Println(k)
+	fmt.Println(profileString)
+
+	return []byte(profileString), nil
 }
 
 func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string, error) {
