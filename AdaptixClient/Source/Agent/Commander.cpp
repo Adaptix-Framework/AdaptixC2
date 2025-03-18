@@ -701,22 +701,26 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                     output << "  " + subcmd.name + tab + "      " + subcmd.description + "\n";
                 }
             }
-            else if ( !foundCommand.args.isEmpty() ) {
-                QString argsHelp;
-                QTextStream argsStream(&argsHelp);
+            else if (!foundCommand.args.isEmpty()) {
                 QString usageHelp;
                 QTextStream usageStream(&usageHelp);
-
                 usageStream << foundCommand.name;
-                for ( auto arg : foundCommand.args ) {
-                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + ( arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " " ) + arg.name + (arg.required ? ">" : "]");
+
+                int maxArgLength = 0;
+                for (const auto &arg : foundCommand.args) {
+                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    maxArgLength = qMax(maxArgLength, fullarg.size());
                     usageStream << " " + fullarg;
-                    argsStream << "    " + fullarg + "  : " + arg.type + ( arg.defaultValue.isEmpty() ? ". " : " (default: '" + arg.defaultValue + "'). " ) + arg.description + "\n";
                 }
-                output << "  Usage                 : " + usageHelp;
-                output << "\n";
+
+                output << "  Usage                 : " + usageHelp + "\n\n";
                 output << "  Arguments:\n";
-                output << argsHelp;
+
+                for (const auto &arg : foundCommand.args) {
+                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    QString padding = QString(maxArgLength - fullarg.size(), ' ');
+                    output << "    " + fullarg + padding + "  : " + arg.type + (arg.defaultValue.isEmpty() ? ". " : " (default: '" + arg.defaultValue + "'). ") + arg.description + "\n";
+                }
             }
         }
         else if (commandParts.size() == 2) {
@@ -737,22 +741,26 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 output << "  Description           : " + foundSubCommand.description + "\n";
             if(!foundSubCommand.example.isEmpty())
                 output << "  Example               : " + foundSubCommand.example + "\n";
-            if ( !foundSubCommand.args.isEmpty() ) {
-                QString argsHelp;
-                QTextStream argsStream(&argsHelp);
+            if (!foundSubCommand.args.isEmpty()) {
                 QString usageHelp;
                 QTextStream usageStream(&usageHelp);
-
                 usageStream << foundCommand.name + " " + foundSubCommand.name;
-                for ( auto arg : foundSubCommand.args ) {
-                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + ( arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " " ) + arg.name + (arg.required ? ">" : "]");
+
+                int maxArgLength = 0;
+                for (const auto &arg : foundSubCommand.args) {
+                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    maxArgLength = qMax(maxArgLength, fullarg.size());
                     usageStream << " " + fullarg;
-                    argsStream << "    " + fullarg + "  : " + arg.type + ". " + arg.description + "\n";
                 }
-                output << "  Usage                 : " + usageHelp;
-                output << "\n";
+
+                output << "  Usage                 : " + usageHelp + "\n\n";
                 output << "  Arguments:\n";
-                output << argsHelp;
+
+                for (const auto &arg : foundSubCommand.args) {
+                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    QString padding = QString(maxArgLength - fullarg.size(), ' ');
+                    output << "    " + fullarg + padding + "  : " + arg.type + (arg.defaultValue.isEmpty() ? ". " : " (default: '" + arg.defaultValue + "'). ") + arg.description + "\n";
+                }
             }
         }
         else {
@@ -765,25 +773,36 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
 QStringList Commander::GetCommands()
 {
     QStringList commandList;
+    QStringList helpCommandList;
+
     for (Command cmd : commands) {
-        commandList << cmd.name;
+
+        helpCommandList << "help " + cmd.name;
+        if (cmd.subcommands.isEmpty())
+            commandList << cmd.name;
+
         for (Command subcmd : cmd.subcommands) {
             commandList << cmd.name + " " + subcmd.name;
+            helpCommandList << "help " + cmd.name + " " + subcmd.name;
         }
     }
 
     for( auto extMod : extModules.values()) {
         for (Command cmd : extMod.extCommands) {
-            commandList << cmd.name;
+
+            helpCommandList << "help " + cmd.name;
+            if (cmd.subcommands.isEmpty())
+                commandList << cmd.name;
+
             for (Command subcmd : cmd.subcommands) {
                 commandList << cmd.name + " " + subcmd.name;
+                helpCommandList << "help " + cmd.name + " " + subcmd.name;
             }
         }
     }
 
-    QStringList copyCommandList = commandList;
-    for( QString cmd : copyCommandList)
-        commandList << "help " + cmd;
+    for( QString cmd : helpCommandList)
+        commandList << cmd;
 
     return commandList;
 }
