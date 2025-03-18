@@ -85,4 +85,8 @@ void Downloader::ProcessDownloadTasks(Packer* packer)
 			--i;
 		}
 	}
+	// Free Allocated Buffer
+	if (buffer) {
+		ApiWin->LocalFree(buffer);
+	}
 }
