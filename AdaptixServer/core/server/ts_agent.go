@@ -14,77 +14,85 @@ import (
 	"time"
 )
 
-func (ts *Teamserver) TsAgentRequestHandler(agentCrc string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error) {
-	var (
-		agentName      string
-		data           []byte
-		respData       []byte
-		err            error
-		agent          *Agent
-		agentData      adaptix.AgentData
-		agentTasksData [][]byte
-		agentBuffer    bytes.Buffer
-	)
+func (ts *Teamserver) TsAgentIsExists(agentId string) bool {
+	return ts.agents.Contains(agentId)
+}
 
-	value, ok := ts.agent_types.Get(agentCrc)
-	if !ok {
-		return nil, fmt.Errorf("agent type %v does not exists", agentCrc)
+func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error {
+
+	if beat == nil {
+		return fmt.Errorf("agent %v does not register", agentId)
 	}
-	agentName = value.(string)
 
-	/// CREATE OR GET AGENT
-
-	value, ok = ts.agents.Get(agentId)
+	agentName, ok := ts.wm_agent_types[agentCrc]
 	if !ok {
-		data, err = ts.Extender.ExAgentCreate(agentName, beat)
-		if err != nil {
-			return nil, err
-		}
-		err = json.Unmarshal(data, &agentData)
-		if err != nil {
-			return nil, err
-		}
-
-		agentData.Crc = agentCrc
-		agentData.Name = agentName
-		agentData.Id = agentId
-		agentData.Listener = listenerName
-		agentData.ExternalIP = ExternalIP
-		agentData.CreateTime = time.Now().Unix()
-		agentData.LastTick = int(time.Now().Unix())
-		agentData.Tags = ""
-		agentData.Mark = ""
-		agentData.Color = ""
-
-		agent = &Agent{
-			Data:           agentData,
-			OutConsole:     safe.NewSlice(),
-			TunnelQueue:    safe.NewSlice(),
-			TasksQueue:     safe.NewSlice(),
-			RunningTasks:   safe.NewMap(),
-			CompletedTasks: safe.NewMap(),
-			Tick:           false,
-			Active:         true,
-		}
-
-		ts.agents.Put(agentData.Id, agent)
-
-		err = ts.DBMS.DbAgentInsert(agentData)
-		if err != nil {
-			logs.Error("", err.Error())
-		}
-
-		packetNew := CreateSpAgentNew(agentData)
-		ts.TsSyncAllClients(packetNew)
-
-		message := fmt.Sprintf("New '%v' (%v) executed on '%v @ %v.%v' (%v)", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP)
-		packet2 := CreateSpEvent(EVENT_AGENT_NEW, message)
-		ts.TsSyncAllClients(packet2)
-		ts.events.Put(packet2)
-
-	} else {
-		agent, _ = value.(*Agent)
+		return fmt.Errorf("agent type %v does not exists", agentCrc)
 	}
+
+	_, ok = ts.agents.Get(agentId)
+	if ok {
+		return fmt.Errorf("agent %v already exists", agentId)
+	}
+
+	data, err := ts.Extender.ExAgentCreate(agentName, beat)
+	if err != nil {
+		return err
+	}
+
+	var agentData adaptix.AgentData
+	err = json.Unmarshal(data, &agentData)
+	if err != nil {
+		return err
+	}
+
+	agentData.Crc = agentCrc
+	agentData.Name = agentName
+	agentData.Id = agentId
+	agentData.Listener = listenerName
+	agentData.ExternalIP = ExternalIP
+	agentData.CreateTime = time.Now().Unix()
+	agentData.LastTick = int(time.Now().Unix())
+	agentData.Async = Async
+	agentData.Tags = ""
+	agentData.Mark = ""
+	agentData.Color = ""
+
+	agent := &Agent{
+		Data:           agentData,
+		OutConsole:     safe.NewSlice(),
+		TunnelQueue:    safe.NewSlice(),
+		TasksQueue:     safe.NewSlice(),
+		RunningTasks:   safe.NewMap(),
+		CompletedTasks: safe.NewMap(),
+		Tick:           false,
+		Active:         true,
+	}
+
+	ts.agents.Put(agentData.Id, agent)
+
+	err = ts.DBMS.DbAgentInsert(agentData)
+	if err != nil {
+		logs.Error("", err.Error())
+	}
+
+	packetNew := CreateSpAgentNew(agentData)
+	ts.TsSyncAllClients(packetNew)
+
+	message := fmt.Sprintf("New '%v' (%v) executed on '%v @ %v.%v' (%v)", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP)
+	packet2 := CreateSpEvent(EVENT_AGENT_NEW, message)
+	ts.TsSyncAllClients(packet2)
+	ts.events.Put(packet2)
+
+	return nil
+}
+
+func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error {
+
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent type %v does not exists", agentId)
+	}
+	agent, _ := value.(*Agent)
 
 	/// AGENT TICK
 
@@ -94,19 +102,36 @@ func (ts *Teamserver) TsAgentRequestHandler(agentCrc string, agentId string, bea
 		agent.Tick = true
 	}
 
-	/// PROCESS RECEIVED DATA FROM AGENT
-
+	var agentBuffer bytes.Buffer
 	_ = json.NewEncoder(&agentBuffer).Encode(agent.Data)
 	if len(bodyData) > 4 {
-		_, _ = ts.Extender.ExAgentProcessData(agentName, agentBuffer.Bytes(), bodyData)
+		_, err := ts.Extender.ExAgentProcessData(agent.Data.Name, agentBuffer.Bytes(), bodyData)
+		return err
 	}
 
-	/// SEND NEW DATA TO AGENT
+	return nil
+}
+
+func (ts *Teamserver) TsAgentGetHostedTasks(agentId string) ([]byte, error) {
+	var (
+		respData       []byte
+		err            error
+		agentTasksData [][]byte
+		agentBuffer    bytes.Buffer
+	)
+
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return nil, fmt.Errorf("agent type %v does not exists", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	_ = json.NewEncoder(&agentBuffer).Encode(agent.Data)
 
 	tasksCount := agent.TasksQueue.Len()
 	tunnelTasksCount := agent.TunnelQueue.Len()
 	if tasksCount > 0 || tunnelTasksCount > 0 {
-		respData, err = ts.Extender.ExAgentPackData(agentName, agentBuffer.Bytes(), agentTasksData)
+		respData, err = ts.Extender.ExAgentPackData(agent.Data.Name, agentBuffer.Bytes(), agentTasksData)
 		if err != nil {
 			return nil, err
 		}
@@ -154,8 +179,8 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 	return nil
 }
 
-func (ts *Teamserver) TsAgentGenerate(agentName string, config string, listenerProfile []byte) ([]byte, string, error) {
-	return ts.Extender.ExAgentGenerate(agentName, config, listenerProfile)
+func (ts *Teamserver) TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
+	return ts.Extender.ExAgentGenerate(agentName, config, listenerWM, listenerProfile)
 }
 
 /// Data
@@ -397,6 +422,8 @@ func (ts *Teamserver) TsAgentSetColor(agentId string, background string, foregro
 
 	return nil
 }
+
+/// Sync
 
 func (ts *Teamserver) TsAgentTickUpdate() {
 	for {

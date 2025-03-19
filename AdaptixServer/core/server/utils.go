@@ -50,10 +50,11 @@ type Teamserver struct {
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
 
-	agent_types safe.Map // agentMark string : agentName string
+	wm_agent_types map[string]string   // agentMark string : agentName string
+	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
 	events    *safe.Slice // 			         : sync_packet interface{}
-	clients   safe.Map    // username string,    : socket *websocket.Conn
+	clients   safe.Map    // username string     : socket *websocket.Conn
 	agents    safe.Map    // agentId string      : agent *Agent
 	listeners safe.Map    // listenerName string : listenerData ListenerData
 	downloads safe.Map    // dileId string       : downloadData DownloadData

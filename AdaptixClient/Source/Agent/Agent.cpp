@@ -41,7 +41,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     if ( mark.isEmpty()) {
         sleep = QString("%1 (%2%)").arg( FormatSecToStr(this->data.Sleep) ).arg(this->data.Jitter);
         if ( !this->data.Async )
-            last = QString::fromUtf8("\u221E");
+            last = QString::fromUtf8("\u221E\u221E\u221E");
     }
     else {
         QDateTime dateTime = QDateTime::fromSecsSinceEpoch(this->data.LastTick, Qt::UTC);

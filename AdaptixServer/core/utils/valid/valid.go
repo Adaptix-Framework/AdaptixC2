@@ -26,3 +26,8 @@ func ValidColorRGB(color string) bool {
 	re := regexp.MustCompile("^#[0-9A-Fa-f]{6}$")
 	return re.MatchString(color)
 }
+
+func ValidHex8(s string) bool {
+	match, _ := regexp.MatchString("^[0-9a-f]{8}$", s)
+	return match
+}
