@@ -176,8 +176,8 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 	var (
 		ExternalIP   string
 		err          error
-		agentType    uint
-		agentId      uint
+		agentType    string
+		agentId      string
 		beat         []byte
 		bodyData     []byte
 		responseData []byte
@@ -215,15 +215,21 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 
 	agentType, agentId, beat, bodyData, err = h.parseBeatAndData(ctx)
 	if err != nil {
-		fmt.Println("Error: " + err.Error())
-		h.pageError(ctx)
-		return
+		goto ERR
 	}
 
-	responseData, err = ModuleObject.ts.TsAgentRequestHandler(fmt.Sprintf("%08x", agentType), fmt.Sprintf("%08x", agentId), beat, bodyData, h.Name, ExternalIP)
+	if !ModuleObject.ts.TsAgentIsExists(agentId) {
+		err = ModuleObject.ts.TsAgentCreate(agentType, agentId, beat, h.Name, ExternalIP, true)
+		if err != nil {
+			goto ERR
+		}
+	}
+
+	_ = ModuleObject.ts.TsAgentProcessData(agentId, bodyData)
+
+	responseData, err = ModuleObject.ts.TsAgentGetHostedTasks(agentId)
 	if err != nil {
-		h.pageError(ctx)
-		return
+		goto ERR
 	} else {
 		html := []byte(strings.ReplaceAll(h.Config.WebPageOutput, "<<<PAYLOAD_DATA>>>", string(responseData)))
 		_, err = ctx.Writer.Write(html)
@@ -236,9 +242,13 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 
 	ctx.AbortWithStatus(http.StatusOK)
 	return
+
+ERR:
+	fmt.Println("Error: " + err.Error())
+	h.pageError(ctx)
 }
 
-func (h *HTTP) parseBeatAndData(ctx *gin.Context) (uint, uint, []byte, []byte, error) {
+func (h *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte, []byte, error) {
 	var (
 		beat           string
 		agentType      uint
@@ -253,17 +263,17 @@ func (h *HTTP) parseBeatAndData(ctx *gin.Context) (uint, uint, []byte, []byte, e
 	if len(params) > 0 {
 		beat = params[0]
 	} else {
-		return 0, 0, nil, nil, errors.New("missing beat from Headers")
+		return "", "", nil, nil, errors.New("missing beat from Headers")
 	}
 
 	agentInfoCrypt, err = base64.StdEncoding.DecodeString(beat)
 	if len(agentInfoCrypt) < 5 || err != nil {
-		return 0, 0, nil, nil, errors.New("failed decrypt beat")
+		return "", "", nil, nil, errors.New("failed decrypt beat")
 	}
 
 	rc4crypt, errcrypt := rc4.NewCipher(h.Config.EncryptKey)
 	if errcrypt != nil {
-		return 0, 0, nil, nil, errors.New("rc4 decrypt error")
+		return "", "", nil, nil, errors.New("rc4 decrypt error")
 	}
 	agentInfo = make([]byte, len(agentInfoCrypt))
 	rc4crypt.XORKeyStream(agentInfo, agentInfoCrypt)
@@ -275,10 +285,10 @@ func (h *HTTP) parseBeatAndData(ctx *gin.Context) (uint, uint, []byte, []byte, e
 
 	bodyData, err = io.ReadAll(ctx.Request.Body)
 	if err != nil {
-		return 0, 0, nil, nil, errors.New("missing agent data")
+		return "", "", nil, nil, errors.New("missing agent data")
 	}
 
-	return agentType, agentId, agentInfo, bodyData, nil
+	return fmt.Sprintf("%08x", agentType), fmt.Sprintf("%08x", agentId), agentInfo, bodyData, nil
 }
 
 func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {

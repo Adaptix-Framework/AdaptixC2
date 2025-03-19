@@ -26,7 +26,7 @@ func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {
 	agentCrc := krypt.CRC32([]byte(agentInfo.AgentName))
 	agentMark := fmt.Sprintf("%08x", agentCrc)
 
-	ts.agent_types.Put(agentMark, agentInfo.AgentName)
+	ts.wm_agent_types[agentMark] = agentInfo.AgentName
 	ts.agent_configs.Put(agentInfo.AgentName, agentInfo)
 
 	return nil

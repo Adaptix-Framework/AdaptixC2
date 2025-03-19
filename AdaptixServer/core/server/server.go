@@ -27,7 +27,8 @@ func NewTeamserver() *Teamserver {
 		events:           safe.NewSlice(),
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
-		agent_types:      safe.NewMap(),
+		wm_agent_types:   make(map[string]string),
+		wm_listeners:     make(map[string][]string),
 		listeners:        safe.NewMap(),
 		agents:           safe.NewMap(),
 		downloads:        safe.NewMap(),
@@ -164,7 +165,7 @@ func (ts *Teamserver) RestoreData() {
 	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
-		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig, restoreListener.CustomData)
+		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig, restoreListener.Watermark, restoreListener.CustomData)
 		if err != nil {
 			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {

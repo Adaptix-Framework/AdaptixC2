@@ -40,21 +40,29 @@ const (
 type Teamserver interface {
 	TsClientDisconnect(username string)
 
-	TsListenerStart(listenerName string, configType string, config string, customData []byte) error
+	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error
 	TsListenerEdit(listenerName string, configType string, config string) error
 	TsListenerStop(listenerName string, configType string) error
-	TsListenerGetProfile(listenerName string, listenerType string) ([]byte, error)
+	TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error)
+	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
-	TsAgentGenerate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
-	TsAgentRequestHandler(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
-	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
+	TsAgentIsExists(agentId string) bool
+	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
+	TsAgentProcessData(agentId string, bodyData []byte) error
+	TsAgentGetHostedTasks(agentId string) ([]byte, error)
+	TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error
+	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
+
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentImpersonate(agentId string, impersonated string, elevated bool) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
-	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
-	TsAgentGuiExit(agentId string, username string) error
 	TsAgentRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
+	TsAgentSetMark(agentId string, makr string) error
+	TsAgentSetColor(agentId string, background string, foreground string, reset bool) error
+	TsAgentTickUpdate()
+	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
+	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
 
 	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
@@ -74,6 +82,7 @@ type Teamserver interface {
 	TsAgentGuiFiles(agentId string, path string, username string) error
 	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
 	TsAgentGuiDownload(agentId string, path string, username string) error
+	TsAgentGuiExit(agentId string, username string) error
 
 	TsClientGuiDisks(jsonTask string, jsonDrives string)
 	TsClientGuiFiles(jsonTask string, path string, jsonFiles string)
@@ -254,12 +263,12 @@ func (m *ModuleExtender) AgentInit(pluginPath string) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (m *ModuleExtender) AgentGenerate(config string, listenerProfile []byte) ([]byte, string, error) {
+func (m *ModuleExtender) AgentGenerate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
 	var (
 		agentProfile []byte
 		err          error
 	)
-	agentProfile, err = AgentGenerateProfile(config, listenerProfile)
+	agentProfile, err = AgentGenerateProfile(config, listenerWM, listenerProfile)
 	if err != nil {
 		return nil, "", err
 	}

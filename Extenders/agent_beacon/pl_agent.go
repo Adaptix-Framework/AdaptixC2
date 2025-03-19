@@ -39,7 +39,7 @@ var ObjectFiles = [...]string{"AgentConfig", "AgentInfo", "Agent", "ApiLoader", 
 var CFlag = "-c -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 var LFlags = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 
-func AgentGenerateProfile(agentConfig string, listenerProfile []byte) ([]byte, error) {
+func AgentGenerateProfile(agentConfig string, listenerWM string, listenerProfile []byte) ([]byte, error) {
 	var (
 		listenerMap    map[string]any
 		generateConfig GenerateConfig
@@ -124,8 +124,11 @@ func AgentGenerateProfile(agentConfig string, listenerProfile []byte) ([]byte, e
 		pipename, _ := listenerMap["pipename"].(string)
 		pipename = "\\\\.\\pipe\\" + pipename
 
+		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
+
 		params = append(params, agentCrc)
 		params = append(params, pipename)
+		params = append(params, int(lWatermark))
 		params = append(params, seconds)
 		params = append(params, generateConfig.Jitter)
 
@@ -154,11 +157,6 @@ func AgentGenerateProfile(agentConfig string, listenerProfile []byte) ([]byte, e
 		profileString += fmt.Sprintf("\\x%02x", b)
 	}
 
-	k := ""
-	for _, b := range encryptKey {
-		k += fmt.Sprintf("\\x%02x", b)
-	}
-	fmt.Println(k)
 	fmt.Println(profileString)
 
 	return []byte(profileString), nil
@@ -333,7 +331,6 @@ func CreateAgent(initialData []byte) (AgentData, error) {
 	agent.InternalIP = int32ToIPv4(internalIp)
 	agent.Os, agent.OsDesc = GetOsVersion(majorVersion, minorVersion, buildNumber, IsServer, systemArch)
 
-	agent.Async = true
 	agent.SessionKey = packer.ParseBytes()
 	agent.Domain = string(packer.ParseBytes())
 	agent.Computer = string(packer.ParseBytes())

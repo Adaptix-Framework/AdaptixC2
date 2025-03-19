@@ -30,7 +30,7 @@ func (tc *TsConnector) TcListenerStart(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsListenerStart(listener.ListenerName, listener.ConfigType, listener.Config, nil)
+	err = tc.teamserver.TsListenerStart(listener.ListenerName, listener.ConfigType, listener.Config, "", nil)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

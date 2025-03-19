@@ -2,13 +2,13 @@ package extender
 
 import "errors"
 
-func (ex *AdaptixExtender) ExAgentGenerate(agentName string, config string, listenerProfile []byte) ([]byte, string, error) {
+func (ex *AdaptixExtender) ExAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
 	var module *ModuleExtender
 
 	value, ok := ex.agentModules.Get(agentName)
 	if ok {
 		module = value.(*ModuleExtender)
-		return module.AgentGenerate(config, listenerProfile)
+		return module.AgentGenerate(config, listenerWM, listenerProfile)
 	} else {
 		return nil, "", errors.New("module not found")
 	}
