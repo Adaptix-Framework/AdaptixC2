@@ -64,6 +64,8 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 		TasksQueue:     safe.NewSlice(),
 		RunningTasks:   safe.NewMap(),
 		CompletedTasks: safe.NewMap(),
+		PivotParent:    nil,
+		PivotChilds:    safe.NewSlice(),
 		Tick:           false,
 		Active:         true,
 	}

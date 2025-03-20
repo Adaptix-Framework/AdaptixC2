@@ -45,14 +45,19 @@ func (sl *Slice) Delete(index int) {
 	sl.items = append(sl.items[:index], sl.items[index+1:]...)
 }
 
-func (sl *Slice) CutArray() []interface{} {
-	//sl.mutex.RLock()
-	//defer sl.mutex.RUnlock()
-	//
-	//array := sl.items
-	//sl.items = sl.items[:0]
-	//return array
+func (sl *Slice) DirectLock() {
+	sl.mutex.RLock()
+}
 
+func (sl *Slice) DirectUnlock() {
+	sl.mutex.RUnlock()
+}
+
+func (sl *Slice) DirectSlice() []interface{} {
+	return sl.items
+}
+
+func (sl *Slice) CutArray() []interface{} {
 	sl.mutex.Lock()
 	defer sl.mutex.Unlock()
 
@@ -68,17 +73,6 @@ func (sl *Slice) Len() int {
 }
 
 func (sl *Slice) Iterator() <-chan SliceItem {
-	//sl.mutex.RLock()
-	//defer sl.mutex.RUnlock()
-	//
-	//ch := make(chan SliceItem)
-	//go func() {
-	//	defer close(ch)
-	//	for i, item := range sl.items {
-	//		ch <- SliceItem{Index: i, Item: item}
-	//	}
-	//}()
-	//return ch
 
 	ch := make(chan SliceItem)
 

@@ -13,6 +13,7 @@ type ListenerData struct {
 	AgentPort string `json:"l_agent_port"`
 	Status    string `json:"l_status"`
 	Data      string `json:"l_data"`
+	Watermark string `json:"l_watermark"`
 }
 
 type AgentData struct {
@@ -120,4 +121,11 @@ type TunnelData struct {
 	Client    string `json:"p_client"`
 	Fhost     string `json:"p_fhost"`
 	Fport     string `json:"p_fport"`
+}
+
+type PivotData struct {
+	PivotId       string `json:"p_pivot_id"`
+	PivotName     string `json:"p_pivot_name"`
+	ParentAgentId string `json:"p_parent_agent_id"`
+	ChildAgentId  string `json:"p_child_agent_id"`
 }

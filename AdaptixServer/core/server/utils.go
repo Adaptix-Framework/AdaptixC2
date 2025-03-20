@@ -58,7 +58,8 @@ type Teamserver struct {
 	agents    safe.Map    // agentId string      : agent *Agent
 	listeners safe.Map    // listenerName string : listenerData ListenerData
 	downloads safe.Map    // dileId string       : downloadData DownloadData
-	tunnels   safe.Map    // 					 : tunnel Tunnel
+	tunnels   safe.Map    // tunnelId string     : tunnel Tunnel
+	pivots    *safe.Slice // 			         : PivotData
 }
 
 type Agent struct {
@@ -73,6 +74,9 @@ type Agent struct {
 
 	RunningTasks   safe.Map // taskId string, taskData TaskData
 	CompletedTasks safe.Map // taskId string, taskData TaskData
+
+	PivotParent *adaptix.PivotData
+	PivotChilds *safe.Slice
 }
 
 type TunnelConnection struct {
@@ -289,6 +293,17 @@ type SyncPackerAgentConsoleTaskUpd struct {
 	Message     string `json:"a_message"`
 	Text        string `json:"a_text"`
 	Completed   bool   `json:"a_completed"`
+}
+
+/// PIVOT
+
+type SyncPackerPivot struct {
+	SpType int `json:"type"`
+
+	PivotId       string `json:"p_pivot_id"`
+	PivotName     string `json:"p_pivot_name"`
+	ParentAgentId string `json:"p_parent_agent_id"`
+	ChildAgentId  string `json:"p_child_agent_id"`
 }
 
 /// DOWNLOAD

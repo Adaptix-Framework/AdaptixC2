@@ -119,7 +119,7 @@ func (dbms *DBMS) DbAgentTick(agentData adaptix.AgentData) error {
 		return fmt.Errorf("agent %s does not exists", agentData.Id)
 	}
 
-	updateQuery = `UPDATE Agents SET LastTick = ?, WHERE Id = ?;`
+	updateQuery = `UPDATE Agents SET LastTick = ? WHERE Id = ?;`
 	_, err = dbms.database.Exec(updateQuery, agentData.LastTick, agentData.Id)
 	return err
 }

@@ -64,6 +64,10 @@ type Teamserver interface {
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
 
+	TsPivotCreate(pivotId string, pAgentId string, chAgentId string, pivotName string, isRestore bool) error
+	TsGetPivotInfoByName(pivotName string) (string, string, string)
+	TsPivotDelete(pivotId string) error
+
 	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
 	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)

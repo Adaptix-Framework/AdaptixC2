@@ -21,18 +21,22 @@ func NewTeamserver() *Teamserver {
 	}
 
 	ts := &Teamserver{
-		Profile:          profile.NewProfile(),
-		DBMS:             dbms,
-		clients:          safe.NewMap(),
-		events:           safe.NewSlice(),
+		Profile: profile.NewProfile(),
+		DBMS:    dbms,
+
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
-		wm_agent_types:   make(map[string]string),
-		wm_listeners:     make(map[string][]string),
-		listeners:        safe.NewMap(),
-		agents:           safe.NewMap(),
-		downloads:        safe.NewMap(),
-		tunnels:          safe.NewMap(),
+
+		wm_agent_types: make(map[string]string),
+		wm_listeners:   make(map[string][]string),
+
+		events:    safe.NewSlice(),
+		clients:   safe.NewMap(),
+		agents:    safe.NewMap(),
+		listeners: safe.NewMap(),
+		downloads: safe.NewMap(),
+		tunnels:   safe.NewMap(),
+		pivots:    safe.NewSlice(),
 	}
 	ts.Extender = extender.NewExtender(ts)
 	return ts
@@ -100,6 +104,8 @@ func (ts *Teamserver) RestoreData() {
 			TasksQueue:     safe.NewSlice(),
 			RunningTasks:   safe.NewMap(),
 			CompletedTasks: safe.NewMap(),
+			PivotParent:    nil,
+			PivotChilds:    safe.NewSlice(),
 			Tick:           false,
 			Active:         true,
 		}
@@ -144,6 +150,15 @@ func (ts *Teamserver) RestoreData() {
 		countAgents++
 	}
 	logs.Success("   ", "Restored %v agents", countAgents)
+
+	/// PIVOT
+	countPivots := 0
+	restorePivots := ts.DBMS.DbPivotAll()
+	for _, restorePivot := range restorePivots {
+		_ = ts.TsPivotCreate(restorePivot.PivotId, restorePivot.ParentAgentId, restorePivot.ChildAgentId, restorePivot.PivotName, true)
+		countPivots++
+	}
+	logs.Success("   ", "Restored %v pivots", countPivots)
 
 	/// DOWNLOADS
 	countDownloads := 0

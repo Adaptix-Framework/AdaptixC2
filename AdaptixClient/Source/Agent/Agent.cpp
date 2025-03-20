@@ -41,7 +41,8 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     if ( mark.isEmpty()) {
         sleep = QString("%1 (%2%)").arg( FormatSecToStr(this->data.Sleep) ).arg(this->data.Jitter);
         if ( !this->data.Async )
-            last = QString::fromUtf8("\u221E\u221E\u221E");
+            // last = QString::fromUtf8("\u221E\u221E\u221E");
+            last = QString::fromUtf8("\u221E  \u221E");
     }
     else {
         QDateTime dateTime = QDateTime::fromSecsSinceEpoch(this->data.LastTick, Qt::UTC);
@@ -178,7 +179,8 @@ void Agent::MarkItem(const QString &mark)
     this->item_Sleep->setText(status);
 }
 
-void Agent::SetColor(const QString &color) const {
+void Agent::SetColor(const QString &color) const
+{
     if (color.isEmpty()) {
         this->item_Id->RevertColor();
         this->item_Type->RevertColor();
@@ -239,6 +241,22 @@ QString Agent::TasksDelete(const QStringList &tasks) const
         return "JWT error";
 
     return message;
+}
+
+/// PIVOT
+
+void Agent::SetParent(const QString &parentAgentId, const QString &pivotName)
+{
+    this->parentId = parentAgentId;
+    this->data.ExternalIP = QString("%1 : %2").arg(parentAgentId).arg(pivotName);
+    this->item_External->setText(this->data.ExternalIP);
+    this->item_Last->setText( QString::fromUtf8("\u221E\u221E\u221E") );
+
+}
+
+void Agent::AddChild(const QString &childAgentId)
+{
+    this->childsId.push_back(childAgentId);
 }
 
 /// BROWSER

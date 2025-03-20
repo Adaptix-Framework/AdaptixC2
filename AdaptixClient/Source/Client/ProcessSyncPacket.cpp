@@ -244,6 +244,14 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
+    if( spType == TYPE_PIVOT_CREATE ) {
+        if (!jsonObj.contains("p_pivot_id")        || !jsonObj["p_pivot_id"].isString())        return false;
+        if (!jsonObj.contains("p_pivot_name")      || !jsonObj["p_pivot_name"].isString())      return false;
+        if (!jsonObj.contains("p_parent_agent_id") || !jsonObj["p_parent_agent_id"].isString()) return false;
+        if (!jsonObj.contains("p_child_agent_id")  || !jsonObj["p_child_agent_id"].isString())  return false;
+        return true;
+    }
+
     return false;
 }
 
@@ -579,6 +587,26 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
+
+
+
+    if( spType == TYPE_PIVOT_CREATE ) {
+        QString pivotId       = jsonObj["p_pivot_id"].toString();
+        QString pivotName     = jsonObj["p_pivot_name"].toString();
+        QString parentAgentId = jsonObj["p_parent_agent_id"].toString();
+        QString childAgentId  = jsonObj["p_child_agent_id"].toString();
+
+        if( AgentsMap.contains(parentAgentId) && AgentsMap.contains(childAgentId) ) {
+            Agent* parentAgent = AgentsMap[parentAgentId];
+            Agent* childAgent  = AgentsMap[childAgentId];
+
+            parentAgent->AddChild(childAgentId);
+            childAgent->SetParent(parentAgentId, pivotName);
+        }
+
+        return;
+    }
+
 
 
     if(spType == SP_TYPE_EVENT)

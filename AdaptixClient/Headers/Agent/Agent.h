@@ -22,7 +22,10 @@ public:
     bool    active = true;
     QString original_item_color;
 
-    AgentData data   = {};
+    AgentData data = {};
+
+    QString parentId = QString();
+    QVector<QString> childsId;
 
     AgentTableWidgetItem* item_Id       = nullptr;
     AgentTableWidgetItem* item_Type     = nullptr;
@@ -53,6 +56,7 @@ public:
     QString TasksStop(const QStringList &tasks) const;
     QString TasksDelete(const QStringList &tasks) const;
 
+    // QString BrowserFiles(const QString &path) const;
     QString BrowserDisks() const;
     QString BrowserProcess() const;
     QString BrowserList(const QString &path) const;

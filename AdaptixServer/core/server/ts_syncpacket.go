@@ -54,8 +54,11 @@ const (
 	TYPE_BROWSER_PROCESS      = 0x64
 
 	TYPE_AGENT_CONSOLE_OUT       = 0x69
-	TYPE_AGENT_CONSOLE_TASK_SYNC = 0x70
-	TYPE_AGENT_CONSOLE_TASK_UPD  = 0x71
+	TYPE_AGENT_CONSOLE_TASK_SYNC = 0x6a
+	TYPE_AGENT_CONSOLE_TASK_UPD  = 0x6b
+
+	TYPE_PIVOT_CREATE = 0x71
+	TYPE_PIVOT_DELETE = 0x72
 )
 
 func CreateSpEvent(event int, message string) SpEvent {
@@ -291,6 +294,30 @@ func CreateSpAgentConsoleTaskUpd(taskData adaptix.TaskData) SyncPackerAgentConso
 		Message:     taskData.Message,
 		Text:        taskData.ClearText,
 		Completed:   taskData.Completed,
+	}
+}
+
+/// PIVOT
+
+func CreateSpPivotCreate(pivotData adaptix.PivotData) SyncPackerPivot {
+	return SyncPackerPivot{
+		SpType: TYPE_PIVOT_CREATE,
+
+		PivotId:       pivotData.PivotId,
+		PivotName:     pivotData.PivotName,
+		ParentAgentId: pivotData.ParentAgentId,
+		ChildAgentId:  pivotData.ChildAgentId,
+	}
+}
+
+func CreateSpPivotDelete(pivotData adaptix.PivotData) SyncPackerPivot {
+	return SyncPackerPivot{
+		SpType: TYPE_PIVOT_DELETE,
+
+		PivotId:       pivotData.PivotId,
+		PivotName:     pivotData.PivotName,
+		ParentAgentId: pivotData.ParentAgentId,
+		ChildAgentId:  pivotData.ChildAgentId,
 	}
 }
 
