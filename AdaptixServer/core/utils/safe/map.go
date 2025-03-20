@@ -42,14 +42,6 @@ func (s *Map) Delete(key string) {
 }
 
 func (s *Map) GetDelete(key string) (interface{}, bool) {
-	//s.mutex.Lock()
-	//defer s.mutex.Unlock()
-	//value, exists := s.m[key]
-	//if exists {
-	//	delete(s.m, key)
-	//}
-	//return value, exists
-
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -67,14 +59,6 @@ func (s *Map) Len() int {
 }
 
 func (s *Map) ForEach(f func(key string, value interface{}) bool) {
-	//s.mutex.RLock()
-	//defer s.mutex.RUnlock()
-	//for key, value := range s.m {
-	//	if !f(key, value) {
-	//		break
-	//	}
-	//}
-
 	s.mutex.RLock()
 	copyMap := make(map[string]interface{}, len(s.m))
 	for k, v := range s.m {

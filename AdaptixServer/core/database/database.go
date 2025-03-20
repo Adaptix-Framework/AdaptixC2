@@ -117,6 +117,15 @@ func (dbms *DBMS) DatabaseInit() error {
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Pivots" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"PivotId" TEXT NOT NULL,
+    	"PivotName" TEXT NOT NULL,
+    	"ParentAgentId" TEXT NOT NULL,
+    	"ChildAgentId" TEXT NOT NULL
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
 	return err
 }
 

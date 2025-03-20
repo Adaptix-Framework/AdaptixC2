@@ -69,6 +69,7 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	packets = append(packets, ts.TsPresyncDownloads()...)
 	packets = append(packets, ts.TsPresyncTunnels()...)
 	packets = append(packets, ts.TsPresyncEvents()...)
+	packets = append(packets, ts.TsPresyncPivots()...)
 
 	startPacket := CreateSpSyncStart(len(packets))
 	_ = json.NewEncoder(&buffer).Encode(startPacket)
@@ -163,6 +164,16 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 		packets = append(packets, t)
 	}
 
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncPivots() []interface{} {
+	var packets []interface{}
+	for value := range ts.pivots.Iterator() {
+		pivot := value.Item.(*adaptix.PivotData)
+		p := CreateSpPivotCreate(*pivot)
+		packets = append(packets, p)
+	}
 	return packets
 }
 
