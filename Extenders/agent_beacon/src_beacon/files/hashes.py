@@ -54,16 +54,20 @@ RtlNtStatusToDosError
 NtFlushInstructionCache
 
 //kernel32
+ConnectNamedPipe
 CopyFileA
 CreateDirectoryA
 CreateFileA
+CreateNamedPipeA
 CreatePipe
 CreateProcessA
 DeleteFileA
+DisconnectNamedPipe
 FindClose
 FindFirstFileA
 FindNextFileA
 FreeLibrary
+FlushFileBuffers
 GetACP
 GetComputerNameExA
 GetCurrentDirectoryA
@@ -104,6 +108,7 @@ SetNamedPipeHandleState
 Sleep
 VirtualAlloc
 VirtualFree
+WaitNamedPipeA
 WideCharToMultiByte
 WriteFile
 
@@ -111,11 +116,16 @@ WriteFile
 GetAdaptersInfo
 
 // advapi32
+AllocateAndInitializeSid
 GetTokenInformation
+InitializeSecurityDescriptor
+ImpersonateLoggedOnUser
+FreeSid
 LookupAccountSidA
 RevertToSelf
 SetThreadToken
-ImpersonateLoggedOnUser
+SetEntriesInAclA
+SetSecurityDescriptorDacl
 
 // msvcrt
 printf

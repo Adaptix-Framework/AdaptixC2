@@ -12,8 +12,6 @@ void MemFreeLocal(LPVOID* buffer, DWORD bufferSize);
 
 //////////
 
-BYTE* ReadFromPipe(HANDLE hPipe, ULONG* bufferSize);
-
 //////////
 
 ULONG GenerateRandom32();

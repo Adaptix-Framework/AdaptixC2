@@ -123,6 +123,12 @@
     <ClCompile Include="ConnectorHTTP.cpp">
       <Filter>Source\Connectors</Filter>
     </ClCompile>
+    <ClCompile Include="ConnectorSMB.cpp">
+      <Filter>Source\Connectors</Filter>
+    </ClCompile>
+    <ClCompile Include="Pivotter.cpp">
+      <Filter>Source\Commander</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -193,6 +199,12 @@
     </ClInclude>
     <ClInclude Include="ConnectorHTTP.h">
       <Filter>Headers\Connectors</Filter>
+    </ClInclude>
+    <ClInclude Include="ConnectorSMB.h">
+      <Filter>Headers\Connectors</Filter>
+    </ClInclude>
+    <ClInclude Include="Pivotter.h">
+      <Filter>Headers\Commander</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

