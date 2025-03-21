@@ -28,7 +28,7 @@ class Downloader
 {
 public:
 	Vector<DownloadData> downloads;
-	ULONG chunkSize;
+	ULONG chunkSize = 0;
 
 	Downloader( ULONG chunk_size );
 

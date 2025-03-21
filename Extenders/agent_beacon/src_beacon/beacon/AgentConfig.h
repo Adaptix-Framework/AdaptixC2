@@ -17,8 +17,11 @@ typedef struct {
 	ULONG  ans_pre_size;
 	ULONG  ans_size;
 } ProfileHTTP;
-#endif
 
+typedef struct {
+	BYTE* pipename;
+} ProfileSMB;
+#endif
 
 
 
@@ -28,6 +31,7 @@ public:
 	BOOL active;
 
 	ULONG agent_type;
+	ULONG listener_type;
 	BYTE* encrypt_key;
 	ULONG sleep_delay;
 	ULONG jitter_delay;
@@ -36,8 +40,12 @@ public:
 	ULONG exit_task_id;
 	ULONG download_chunk_size;
 
-	// HTTP Config
+#if defined(BEACON_HTTP)
 	ProfileHTTP profile;
+
+#elif defined(BEACON_SMB)
+	ProfileSMB profile;
+#endif
 
 	AgentConfig();
 };

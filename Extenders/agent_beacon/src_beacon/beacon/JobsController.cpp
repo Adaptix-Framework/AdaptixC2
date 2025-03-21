@@ -16,7 +16,8 @@ void JobsController::ProcessJobs(Packer* packer)
 	for (int i = 0; i < this->jobs.size(); i++) {
 
         ULONG  available = 0;
-		LPVOID buffer = ReadFromPipe(this->jobs[i].pipeRead, &available);
+		LPVOID buffer = ReadDataFromAnonPipe(this->jobs[i].pipeRead, &available);
+
         if (available > 0) {
 			packer->Pack32(jobs[i].jobId);
 			packer->Pack32(COMMAND_JOB);

