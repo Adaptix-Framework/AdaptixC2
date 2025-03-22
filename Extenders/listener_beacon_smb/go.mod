@@ -1,13 +1,8 @@
-module AdaptixServer
+module adaptix_listener_beacon_smb
 
 go 1.23.7
 
-require (
-	github.com/gin-gonic/gin v1.10.0
-	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/gorilla/websocket v1.5.3
-	github.com/mattn/go-sqlite3 v1.14.24
-)
+require github.com/gin-gonic/gin v1.10.0
 
 require (
 	github.com/bytedance/sonic v1.13.1 // indirect

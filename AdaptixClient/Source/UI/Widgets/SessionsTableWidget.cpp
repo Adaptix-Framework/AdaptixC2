@@ -387,6 +387,7 @@ void SessionsTableWidget::actionTasksBrowserOpen() const
 {
     QString agentId = tableWidget->item( tableWidget->currentRow(), ColumnAgentID )->text();
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+
     adaptixWidget->TasksTab->SetAgentFilter(agentId);
     adaptixWidget->SetTasksUI();
 }

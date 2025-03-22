@@ -73,6 +73,7 @@ public:
     QVector<ListenerData>         Listeners;
     QVector<TunnelData>           Tunnels;
     QMap<QString, DownloadData>   Downloads;
+    QMap<QString, PivotData>      Pivots;
     QVector<QString>              TasksVector;
     QMap<QString, Task*>          TasksMap;
     QVector<QString>              AgentsVector;

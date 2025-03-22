@@ -56,7 +56,11 @@ public:
     QString TasksStop(const QStringList &tasks) const;
     QString TasksDelete(const QStringList &tasks) const;
 
-    // QString BrowserFiles(const QString &path) const;
+    void SetParent(const PivotData &pivotData);
+    void UnsetParent(const PivotData &pivotData);
+    void AddChild(const PivotData &pivotData);
+    void RemoveChild(const PivotData &pivotData);
+
     QString BrowserDisks() const;
     QString BrowserProcess() const;
     QString BrowserList(const QString &path) const;

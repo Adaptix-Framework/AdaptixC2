@@ -113,8 +113,11 @@
 #define TYPE_BROWSER_PROCESS 0x64
 
 #define TYPE_AGENT_CONSOLE_OUT       0x69
-#define TYPE_AGENT_CONSOLE_TASK_SYNC 0x70
-#define TYPE_AGENT_CONSOLE_TASK_UPD  0x71
+#define TYPE_AGENT_CONSOLE_TASK_SYNC 0x6a
+#define TYPE_AGENT_CONSOLE_TASK_UPD  0x6b
+
+#define TYPE_PIVOT_CREATE 0x71
+#define TYPE_PIVOT_DELETE 0x72
 
 //////////
 
@@ -243,6 +246,14 @@ typedef struct TaskData
     bool    Completed;
 } TaskData;
 
+typedef struct PivotData
+{
+    QString PivotId;
+    QString PivotName;
+    QString ParentAgentId;
+    QString ChildAgentId;
+} PivotData;
+
 typedef struct ExtensionFile
 {
     QString Name;
@@ -252,6 +263,7 @@ typedef struct ExtensionFile
     bool    Enabled;
     bool    Valid;
 
+    QVector<QJsonObject> ExConstants;
     QMap<QString, QVector<QJsonObject> > ExCommands;
 } ExtensionFile;
 
