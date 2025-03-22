@@ -251,6 +251,10 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("p_child_agent_id")  || !jsonObj["p_child_agent_id"].isString())  return false;
         return true;
     }
+    if( spType == TYPE_PIVOT_DELETE ) {
+        if (!jsonObj.contains("p_pivot_id") || !jsonObj["p_pivot_id"].isString()) return false;
+        return true;
+    }
 
     return false;
 }
@@ -356,6 +360,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentId = jsonObj["a_id"].toString();
 
         SessionsTablePage->RemoveAgentItem(agentId);
+        TasksTab->RemoveAgentTasksItem(agentId);
     }
 
 
@@ -590,21 +595,41 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
 
 
-    if( spType == TYPE_PIVOT_CREATE ) {
-        QString pivotId       = jsonObj["p_pivot_id"].toString();
-        QString pivotName     = jsonObj["p_pivot_name"].toString();
-        QString parentAgentId = jsonObj["p_parent_agent_id"].toString();
-        QString childAgentId  = jsonObj["p_child_agent_id"].toString();
+    if( spType == TYPE_PIVOT_CREATE )
+    {
+        PivotData pivotData = {};
+        pivotData.PivotId       = jsonObj["p_pivot_id"].toString();
+        pivotData.PivotName     = jsonObj["p_pivot_name"].toString();
+        pivotData.ParentAgentId = jsonObj["p_parent_agent_id"].toString();
+        pivotData.ChildAgentId  = jsonObj["p_child_agent_id"].toString();
 
-        if( AgentsMap.contains(parentAgentId) && AgentsMap.contains(childAgentId) ) {
-            Agent* parentAgent = AgentsMap[parentAgentId];
-            Agent* childAgent  = AgentsMap[childAgentId];
+        if( AgentsMap.contains(pivotData.ParentAgentId) && AgentsMap.contains(pivotData.ChildAgentId) ) {
+            Agent* parentAgent = AgentsMap[pivotData.ParentAgentId];
+            Agent* childAgent  = AgentsMap[pivotData.ChildAgentId];
 
-            parentAgent->AddChild(childAgentId);
-            childAgent->SetParent(parentAgentId, pivotName);
+            parentAgent->AddChild(pivotData);
+            childAgent->SetParent(pivotData);
+
+            Pivots[pivotData.PivotId] = pivotData;
         }
-
         return;
+    }
+    if (spType == TYPE_PIVOT_DELETE)
+    {
+        QString pivotId = jsonObj["p_pivot_id"].toString();
+
+        if (Pivots.contains(pivotId)) {
+            PivotData pivotData = Pivots[pivotId];
+            Pivots.remove(pivotId);
+
+            if( AgentsMap.contains(pivotData.ParentAgentId) && AgentsMap.contains(pivotData.ChildAgentId) ) {
+                Agent* parentAgent = AgentsMap[pivotData.ParentAgentId];
+                Agent* childAgent  = AgentsMap[pivotData.ChildAgentId];
+
+                parentAgent->RemoveChild(pivotData);
+                childAgent->UnsetParent(pivotData);
+            }
+        }
     }
 
 

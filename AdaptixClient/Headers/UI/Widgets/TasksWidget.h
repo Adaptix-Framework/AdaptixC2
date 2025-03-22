@@ -61,6 +61,7 @@ public:
 
     void AddTaskItem(Task* newTask) const;
     void RemoveTaskItem(const QString &taskId) const;
+    void RemoveAgentTasksItem(const QString &agentId) const;
 
     void SetAgentFilter(const QString &agentId) const;
     void SetData() const;

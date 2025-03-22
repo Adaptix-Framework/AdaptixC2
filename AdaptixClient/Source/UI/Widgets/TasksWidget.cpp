@@ -233,7 +233,7 @@ void TasksWidget::RemoveTaskItem(const QString &taskId) const
     QString agentId = task->data.AgentId;
 
     adaptixWidget->TasksMap.remove(taskId);
-    adaptixWidget->TasksVector.removeOne(agentId);
+    adaptixWidget->TasksVector.removeOne(taskId);
     delete task;
 
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
@@ -258,8 +258,28 @@ void TasksWidget::RemoveTaskItem(const QString &taskId) const
     }
 }
 
+void TasksWidget::RemoveAgentTasksItem(const QString &agentId) const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for (auto key : adaptixWidget->TasksMap.keys()) {
+        Task* task = adaptixWidget->TasksMap[key];
+        if (task->data.AgentId == agentId) {
+            adaptixWidget->TasksMap.remove(key);
+            adaptixWidget->TasksVector.removeOne(key);
+            delete task;
+        }
+    }
+
+    int index = comboAgent->findText(agentId);
+    if (index != -1)
+        comboAgent->removeItem(index);
+
+    this->SetData();
+}
+
 void TasksWidget::SetAgentFilter(const QString &agentId) const
 {
+    this->searchWidget->setVisible(true);
     comboAgent->setCurrentText(agentId);
 }
 

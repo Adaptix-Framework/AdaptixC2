@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	SetType     = EXTERNAL
-	SetProtocol = "http"
-	SetName     = "BeaconHTTP"
-	SetUiPath   = "_ui_listener.json"
+	SetType            = EXTERNAL
+	SetProtocol        = "http"
+	SetName            = "BeaconHTTP"
+	SetUiPath          = "_ui_listener.json"
+	SetMaxTaskDataSize = 0x1900000 // 25 Mb
 )
 
 func (m *ModuleExtender) HandlerListenerValid(data string) error {

@@ -120,7 +120,6 @@ void Agent::Update(QJsonObject jsonObjAgentData)
         username = "* " + username;
     if ( !this->data.Impersonated.isEmpty() )
         username += " [" + this->data.Impersonated + "]";
-
     this->item_Username->setText(username);
 
     if (this->data.Mark == mark) {
@@ -245,18 +244,35 @@ QString Agent::TasksDelete(const QStringList &tasks) const
 
 /// PIVOT
 
-void Agent::SetParent(const QString &parentAgentId, const QString &pivotName)
+void Agent::SetParent(const PivotData &pivotData)
 {
-    this->parentId = parentAgentId;
-    this->data.ExternalIP = QString("%1 : %2").arg(parentAgentId).arg(pivotName);
+    this->parentId = pivotData.ParentAgentId;
+    this->data.ExternalIP = QString::fromUtf8("%1 \u221E %2").arg(pivotData.ParentAgentId).arg(pivotData.PivotName);
     this->item_External->setText(this->data.ExternalIP);
     this->item_Last->setText( QString::fromUtf8("\u221E\u221E\u221E") );
-
 }
 
-void Agent::AddChild(const QString &childAgentId)
+void Agent::UnsetParent(const PivotData &pivotData)
 {
-    this->childsId.push_back(childAgentId);
+    this->parentId = "";
+    this->data.ExternalIP = ""; // QString::fromUtf8("%1 \u221E %2").arg(pivotData.ParentAgentId).arg(pivotData.PivotName);
+    this->item_External->setText(this->data.ExternalIP);
+    this->item_Last->setText( QString::fromUtf8("\u221E  \u221E") );
+}
+
+void Agent::AddChild(const PivotData &pivotData)
+{
+    this->childsId.push_back(pivotData.ChildAgentId);
+}
+
+void Agent::RemoveChild(const PivotData &pivotData)
+{
+    for (int i = 0; i < this->childsId.size(); i++) {
+        if (this->childsId[i] == pivotData.ChildAgentId) {
+            this->childsId.removeAt(i);
+            break;
+        }
+    }
 }
 
 /// BROWSER
