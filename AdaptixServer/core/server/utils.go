@@ -297,13 +297,19 @@ type SyncPackerAgentConsoleTaskUpd struct {
 
 /// PIVOT
 
-type SyncPackerPivot struct {
+type SyncPackerPivotCreate struct {
 	SpType int `json:"type"`
 
 	PivotId       string `json:"p_pivot_id"`
 	PivotName     string `json:"p_pivot_name"`
 	ParentAgentId string `json:"p_parent_agent_id"`
 	ChildAgentId  string `json:"p_child_agent_id"`
+}
+
+type SyncPackerPivotDelete struct {
+	SpType int `json:"type"`
+
+	PivotId string `json:"p_pivot_id"`
 }
 
 /// DOWNLOAD

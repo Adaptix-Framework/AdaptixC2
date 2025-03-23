@@ -293,6 +293,31 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 
 /////
 
+func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return false
+	}
+	agent := value.(*Agent)
+
+	if !first {
+		if agent.TasksQueue.Len() > 0 || agent.TunnelQueue.Len() > 0 {
+			return true
+		}
+	}
+
+	for i := 0; i < agent.PivotChilds.Len(); i++ {
+		value, ok = agent.PivotChilds.Get(i)
+		if ok {
+			pivotData := value.(*adaptix.PivotData)
+			if ts.TsTasksPivotExists(pivotData.ChildAgentId, false) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error) {
 	var (
 		tasksArray [][]byte
@@ -302,11 +327,10 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 	)
 
 	value, ok = ts.agents.Get(agentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
+	if !ok {
 		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
 	}
+	agent = value.(*Agent)
 
 	/// TASKS QUEUE
 
@@ -332,8 +356,10 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 		}
 	}
 
-	packet := CreateSpAgentTaskSend(sendTasks)
-	ts.TsSyncAllClients(packet)
+	if len(sendTasks) > 0 {
+		packet := CreateSpAgentTaskSend(sendTasks)
+		ts.TsSyncAllClients(packet)
+	}
 
 	/// TUNNELS QUEUE
 
@@ -352,6 +378,27 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 			}
 		} else {
 			break
+		}
+	}
+
+	/// PIVOTS QUEUE
+
+	for i := 0; i < agent.PivotChilds.Len(); i++ {
+		value, ok = agent.PivotChilds.Get(i)
+		if ok {
+			lostSize := availableSize - len(tasksArray)
+			pivotData := value.(*adaptix.PivotData)
+			if availableSize > 0 {
+				data, err := ts.TsAgentGetHostedTasks(pivotData.ChildAgentId, lostSize)
+				if err != nil {
+					continue
+				}
+				pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.Data.Name, pivotData.PivotId, data)
+				if err != nil {
+					continue
+				}
+				tasksArray = append(tasksArray, pivotTaskData)
+			}
 		}
 	}
 

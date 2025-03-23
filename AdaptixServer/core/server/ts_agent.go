@@ -114,12 +114,11 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 	return nil
 }
 
-func (ts *Teamserver) TsAgentGetHostedTasks(agentId string) ([]byte, error) {
+func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error) {
 	var (
-		respData       []byte
-		err            error
-		agentTasksData [][]byte
-		agentBuffer    bytes.Buffer
+		respData    []byte
+		err         error
+		agentBuffer bytes.Buffer
 	)
 
 	value, ok := ts.agents.Get(agentId)
@@ -132,8 +131,13 @@ func (ts *Teamserver) TsAgentGetHostedTasks(agentId string) ([]byte, error) {
 
 	tasksCount := agent.TasksQueue.Len()
 	tunnelTasksCount := agent.TunnelQueue.Len()
-	if tasksCount > 0 || tunnelTasksCount > 0 {
-		respData, err = ts.Extender.ExAgentPackData(agent.Data.Name, agentBuffer.Bytes(), agentTasksData)
+	pivotTasksExists := false
+	if agent.PivotChilds.Len() > 0 {
+		pivotTasksExists = ts.TsTasksPivotExists(agent.Data.Id, true)
+	}
+
+	if tasksCount > 0 || tunnelTasksCount > 0 || pivotTasksExists {
+		respData, err = ts.Extender.ExAgentPackData(agent.Data.Name, agentBuffer.Bytes(), maxDataSize)
 		if err != nil {
 			return nil, err
 		}
@@ -179,10 +183,6 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 	}
 
 	return nil
-}
-
-func (ts *Teamserver) TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
-	return ts.Extender.ExAgentGenerate(agentName, config, listenerWM, listenerProfile)
 }
 
 /// Data
@@ -262,7 +262,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 	var downloads []string
 	ts.downloads.ForEach(func(key string, value interface{}) bool {
 		downloadData := value.(adaptix.DownloadData)
-		if downloadData.AgentId == agentId {
+		if downloadData.AgentId == agentId && downloadData.State != DOWNLOAD_STATE_FINISHED {
 			downloads = append(downloads, downloadData.FileId)
 		}
 		return true
@@ -311,6 +311,21 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 		}
 	}
 
+	/// Clear Pivots
+
+	if agent.PivotParent != nil {
+		_ = ts.TsPivotDelete(agent.PivotParent.PivotId)
+	}
+
+	var pivots []string
+	for value := range agent.PivotChilds.Iterator() {
+		pivotId := value.Item.(*adaptix.PivotData).PivotId
+		pivots = append(pivots, pivotId)
+	}
+	for _, pivotId := range pivots {
+		_ = ts.TsPivotDelete(pivotId)
+	}
+
 	/// Update
 
 	err := ts.DBMS.DbAgentUpdate(agent.Data)
@@ -325,9 +340,51 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 }
 
 func (ts *Teamserver) TsAgentRemove(agentId string) error {
-	_, ok := ts.agents.GetDelete(agentId)
+	value, ok := ts.agents.GetDelete(agentId)
 	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
+	}
+	agent := value.(*Agent)
+
+	/// Clear Downloads
+
+	var downloads []string
+	ts.downloads.ForEach(func(key string, value interface{}) bool {
+		downloadData := value.(adaptix.DownloadData)
+		if downloadData.AgentId == agentId && downloadData.State != DOWNLOAD_STATE_FINISHED {
+			downloads = append(downloads, downloadData.FileId)
+		}
+		return true
+	})
+	for _, id := range downloads {
+		_ = ts.TsDownloadClose(id, DOWNLOAD_STATE_CANCELED)
+	}
+
+	/// Clear Tunnels
+
+	var tunnels []string
+	ts.tunnels.ForEach(func(key string, value interface{}) bool {
+		tunnel := value.(*Tunnel)
+		if tunnel.Data.AgentId == agentId {
+			tunnels = append(tunnels, tunnel.Data.TunnelId)
+		}
+		return true
+	})
+	for _, id := range tunnels {
+		_ = ts.TsTunnelStop(id)
+	}
+
+	if agent.PivotParent != nil {
+		_ = ts.TsPivotDelete(agent.PivotParent.PivotId)
+	}
+
+	var pivots []string
+	for value := range agent.PivotChilds.Iterator() {
+		pivotId := value.Item.(*adaptix.PivotData).PivotId
+		pivots = append(pivots, pivotId)
+	}
+	for _, pivotId := range pivots {
+		_ = ts.TsPivotDelete(pivotId)
 	}
 
 	err := ts.DBMS.DbAgentDelete(agentId)
@@ -448,6 +505,10 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 
 		time.Sleep(800 * time.Millisecond)
 	}
+}
+
+func (ts *Teamserver) TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
+	return ts.Extender.ExAgentGenerate(agentName, config, listenerWM, listenerProfile)
 }
 
 /// Console

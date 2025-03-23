@@ -299,8 +299,8 @@ func CreateSpAgentConsoleTaskUpd(taskData adaptix.TaskData) SyncPackerAgentConso
 
 /// PIVOT
 
-func CreateSpPivotCreate(pivotData adaptix.PivotData) SyncPackerPivot {
-	return SyncPackerPivot{
+func CreateSpPivotCreate(pivotData adaptix.PivotData) SyncPackerPivotCreate {
+	return SyncPackerPivotCreate{
 		SpType: TYPE_PIVOT_CREATE,
 
 		PivotId:       pivotData.PivotId,
@@ -310,14 +310,11 @@ func CreateSpPivotCreate(pivotData adaptix.PivotData) SyncPackerPivot {
 	}
 }
 
-func CreateSpPivotDelete(pivotData adaptix.PivotData) SyncPackerPivot {
-	return SyncPackerPivot{
+func CreateSpPivotDelete(pivotId string) SyncPackerPivotDelete {
+	return SyncPackerPivotDelete{
 		SpType: TYPE_PIVOT_DELETE,
 
-		PivotId:       pivotData.PivotId,
-		PivotName:     pivotData.PivotName,
-		ParentAgentId: pivotData.ParentAgentId,
-		ChildAgentId:  pivotData.ChildAgentId,
+		PivotId: pivotId,
 	}
 }
 

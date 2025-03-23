@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -49,7 +51,7 @@ type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentGetHostedTasks(agentId string) ([]byte, error)
+	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error
 	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
@@ -66,6 +68,7 @@ type Teamserver interface {
 
 	TsPivotCreate(pivotId string, pAgentId string, chAgentId string, pivotName string, isRestore bool) error
 	TsGetPivotInfoByName(pivotName string) (string, string, string)
+	TsGetPivotInfoById(pivotId string) (string, string, string)
 	TsPivotDelete(pivotId string) error
 
 	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
@@ -113,9 +116,8 @@ type ModuleExtender struct {
 }
 
 var (
-	ModuleObject    ModuleExtender
-	PluginPath      string
-	MaxTaskDataSize int
+	ModuleObject ModuleExtender
+	PluginPath   string
 )
 
 ///// Struct
@@ -219,7 +221,6 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 
 	ModuleObject.ts = ts.(Teamserver)
 
-	MaxTaskDataSize = SetMaxTaskDataSize
 	info := ExtenderInfo{
 		ModuleName: SetName,
 		ModuleType: AGENT,
@@ -342,11 +343,12 @@ ERR:
 	return err
 }
 
-func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error) {
+func (m *ModuleExtender) AgentPackData(agentObject []byte, maxDataSize int) ([]byte, error) {
 	var (
 		agentData  AgentData
 		tasksArray []TaskData
 		packedData []byte
+		dataTasks  [][]byte
 		err        error
 	)
 	err = json.Unmarshal(agentObject, &agentData)
@@ -354,7 +356,7 @@ func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) (
 		return nil, err
 	}
 
-	dataTasks, err = m.ts.TsTaskQueueGetAvailable(agentData.Id, MaxTaskDataSize)
+	dataTasks, err = m.ts.TsTaskQueueGetAvailable(agentData.Id, maxDataSize)
 	if err != nil {
 		return nil, err
 	}
@@ -374,6 +376,30 @@ func (m *ModuleExtender) AgentPackData(agentObject []byte, dataTasks [][]byte) (
 	}
 
 	return RC4Crypt(packedData, agentData.SessionKey)
+}
+
+func (m *ModuleExtender) AgentPivotPackData(pivotId string, data []byte) ([]byte, error) {
+
+	packData, err := PackPivotTasks(pivotId, data)
+	if err != nil {
+		return nil, err
+	}
+
+	randomBytes := make([]byte, 16)
+	rand.Read(randomBytes)
+	uid := hex.EncodeToString(randomBytes)[:8]
+
+	taskData := TaskData{
+		TaskId: uid,
+		Type:   TYPE_PROXY_DATA,
+		Data:   packData,
+		Sync:   false,
+	}
+
+	var taskObject bytes.Buffer
+	_ = json.NewEncoder(&taskObject).Encode(taskData)
+
+	return taskObject.Bytes(), nil
 }
 
 func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error) {

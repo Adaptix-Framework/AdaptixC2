@@ -377,6 +377,12 @@ func PackTasks(agentData AgentData, tasksArray []TaskData) ([]byte, error) {
 	return packData, nil
 }
 
+func PackPivotTasks(pivotId string, data []byte) ([]byte, error) {
+	id, _ := strconv.ParseInt(pivotId, 16, 64)
+	array := []interface{}{COMMAND_PIVOT_EXEC, int(id), len(data), data}
+	return PackArray(array)
+}
+
 func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) int {
 	chunkSize := 0x100000 // 1Mb
 	memoryId := int(rand.Uint32())

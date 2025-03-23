@@ -33,6 +33,6 @@ public:
 	Downloader( ULONG chunk_size );
 
 	DownloadData CreateDownloadData(ULONG taskId, HANDLE hFile, ULONG size);
-	void         ProcessDownloadTasks(Packer* packer);
+	void         ProcessDownloader(Packer* packer);
 	BOOL		 IsTasks();
 };
