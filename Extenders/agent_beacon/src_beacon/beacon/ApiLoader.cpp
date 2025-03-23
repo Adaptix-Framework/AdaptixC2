@@ -118,7 +118,7 @@ BOOL ApiLoad()
 		iphlpapi_c[10] = HdChrA('l');
 		iphlpapi_c[11] = HdChrA('l');
 		iphlpapi_c[12] = HdChrA(0);
-
+	
 		HMODULE hIphlpapiModule = ApiWin->LoadLibraryA(iphlpapi_c);
 		SysModules->Iphlpapi = hIphlpapiModule;
 		if (hIphlpapiModule) {

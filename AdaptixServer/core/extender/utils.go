@@ -50,7 +50,8 @@ type AgentFunctions interface {
 	AgentGenerate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 	AgentCreate(beat []byte) ([]byte, error)
 	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)
-	AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error)
+	AgentPackData(agentObject []byte, maxDataSize int) ([]byte, error)
+	AgentPivotPackData(pivotId string, data []byte) ([]byte, error)
 	AgentCommand(client string, cmdline string, agentObject []byte, args map[string]any) error
 
 	AgentDownloadChangeState(agentObject []byte, newState int, fileId string) ([]byte, error)

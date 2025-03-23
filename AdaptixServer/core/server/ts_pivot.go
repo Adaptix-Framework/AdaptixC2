@@ -16,6 +16,16 @@ func (ts *Teamserver) TsGetPivotInfoByName(pivotName string) (string, string, st
 	return "", "", ""
 }
 
+func (ts *Teamserver) TsGetPivotInfoById(pivotId string) (string, string, string) {
+	for value := range ts.pivots.Iterator() {
+		pivot := value.Item.(*adaptix.PivotData)
+		if pivot.PivotId == pivotId {
+			return pivot.PivotName, pivot.ParentAgentId, pivot.ChildAgentId
+		}
+	}
+	return "", "", ""
+}
+
 func (ts *Teamserver) TsGetPivotByName(pivotName string) *adaptix.PivotData {
 	for value := range ts.pivots.Iterator() {
 		pivot := value.Item.(*adaptix.PivotData)
@@ -121,12 +131,12 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 		}
 	}
 
-	err := ts.DBMS.DbPivotDelete(pivotData.PivotId)
+	err := ts.DBMS.DbPivotDelete(pivotId)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	packet := CreateSpPivotDelete(*pivotData)
+	packet := CreateSpPivotDelete(pivotId)
 	ts.TsSyncAllClients(packet)
 
 	return nil

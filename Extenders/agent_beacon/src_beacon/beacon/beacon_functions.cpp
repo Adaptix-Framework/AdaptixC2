@@ -225,7 +225,7 @@ void BeaconFormatInt(formatp* format, int value)
 
 BOOL BeaconUseToken(HANDLE token)
 {
-	if ( ApiWin->ImpersonateLoggedOnUser(token) || ApiWin->SetThreadToken(NULL, token) ) {
+	if (ApiWin->SetThreadToken(NULL, token) || ApiWin->ImpersonateLoggedOnUser(token) ) {
 		bofImpersonate = 2;
 		return TRUE;
 	}

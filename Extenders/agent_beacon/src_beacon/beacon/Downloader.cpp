@@ -32,7 +32,7 @@ DownloadData Downloader::CreateDownloadData(ULONG taskId, HANDLE hFile, ULONG si
     return downloadData;
 }
 
-void Downloader::ProcessDownloadTasks(Packer* packer)
+void Downloader::ProcessDownloader(Packer* packer)
 {
 	if ( !this->downloads.size() )
 		return;

@@ -227,7 +227,7 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 
 	_ = ModuleObject.ts.TsAgentProcessData(agentId, bodyData)
 
-	responseData, err = ModuleObject.ts.TsAgentGetHostedTasks(agentId)
+	responseData, err = ModuleObject.ts.TsAgentGetHostedTasks(agentId, SetMaxTaskDataSize)
 	if err != nil {
 		goto ERR
 	} else {
