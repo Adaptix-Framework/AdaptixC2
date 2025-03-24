@@ -119,6 +119,23 @@
     ]
   },
   {
+    "command": "link",
+    "description": "Connect to an pivot agents",
+    "subcommands":
+    [
+      {
+        "name": "smb",
+        "message": "Task: Connect to an SMB agent",
+        "description": "Connect to an SMB agent and re-establish control of it",
+        "example": "link smb 192.168.1.2 pipe_a1b2",
+        "args": [
+          "STRING <target>",
+          "STRING <pipename>"
+        ]
+      }
+    ]
+  },
+  {
     "command": "ls",
     "message": "Task: list of files in a folder",
     "description": "Lists files in a folder",
@@ -322,6 +339,15 @@
         "description": "Terminate the beacon process",
         "example": "terminate process"
       }
+    ]
+  },
+  {
+    "command": "unlink",
+    "message": "Task: disconnect from an pivot agent",
+    "description": "Disconnect from an pivot agent",
+    "example": "unlink 1a2b3c4d",
+    "args": [
+      "STRING <id>"
     ]
   },
   {

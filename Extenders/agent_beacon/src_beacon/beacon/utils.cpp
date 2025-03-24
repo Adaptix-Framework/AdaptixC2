@@ -17,6 +17,9 @@ LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize)
 
 void MemFreeLocal(LPVOID* buffer, DWORD bufferSize) 
 {
+    if (bufferSize < 0)
+        bufferSize = 0;
+
     memset((PBYTE)*buffer, 0, bufferSize);
 	ApiWin->LocalFree(*buffer);
 	*buffer = NULL;
@@ -35,7 +38,7 @@ BYTE* ReadDataFromAnonPipe(HANDLE hPipe, ULONG* bufferSize)
     do {
         DWORD available = 0;
         ApiWin->PeekNamedPipe(hPipe, NULL, 0x1000, NULL, &available, NULL);
-
+        
         if (available > 0) {
             result = ApiWin->ReadFile(hPipe, buf, 0x1000, &read, NULL);
             if (read == 0)

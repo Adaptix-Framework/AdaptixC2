@@ -50,9 +50,11 @@ public:
 	void CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdJobsList(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdJobsKill(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdLink(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdMkdir(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdMv(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdPivotExec(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker);
@@ -67,6 +69,7 @@ public:
 	void CmdTunnelMsgWriteUDP(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTunnelMsgClose(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTunnelMsgReverse(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdUnlink(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker);
 
 	void AlertImpersonated(Packer* outPacker);

