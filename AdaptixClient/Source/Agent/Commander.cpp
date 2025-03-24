@@ -623,10 +623,10 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
     QString result;
     QTextStream output(&result);
     if (commandParts.isEmpty()) {
-        int TotalWidth = 20;
+        int TotalWidth = 24;
         output << QString("\n");
-        output << QString("  Command                   Description\n");
-        output << QString("  -------                   -----------\n");
+        output << QString("  Command                       Description\n");
+        output << QString("  -------                       -----------\n");
 
         for ( auto command : commands ) {
             QString commandName = command.name;
@@ -643,12 +643,26 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             output << QString("  =====================================\n");
 
             for ( auto command : extMod.extCommands ) {
-                QString commandName = command.name;
-                if (!command.subcommands.isEmpty())
-                    commandName += '*';
+                // QString commandName = command.name;
+                // if (!command.subcommands.isEmpty())
+                //     commandName += '*';
+                //
+                // QString tab = QString(TotalWidth - commandName.size(), ' ');
+                // output << "  " + commandName + tab + "      " + command.description + "\n";
 
-                QString tab = QString(TotalWidth - commandName.size(), ' ');
-                output << "  " + commandName + tab + "      " + command.description + "\n";
+                QString commandName = command.name;
+                if ( command.subcommands.isEmpty() ) {
+                    QString tab = QString(TotalWidth - commandName.size(), ' ');
+                    output << "  " + commandName + tab + "      " + command.description + "\n";
+                }
+                else {
+                    for ( auto subcmd : command.subcommands ) {
+                        QString subcmdName = commandName + " " + subcmd.name;
+                        QString tab = QString(TotalWidth - subcmdName.size(), ' ');
+                        output << "  " + subcmdName + tab + "      " + subcmd.description + "\n";
+                    }
+                }
+
             }
         }
 

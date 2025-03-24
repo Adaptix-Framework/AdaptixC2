@@ -557,6 +557,30 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 
+	case "link":
+		if subcommand == "list" {
+			//array = []interface{}{COMMAND_PS_LIST}
+
+		} else if subcommand == "smb" {
+			target, ok := args["target"].(string)
+			if !ok {
+				err = errors.New("parameter 'target' must be set")
+				goto RET
+			}
+			pipename, ok := args["pipename"].(string)
+			if !ok {
+				err = errors.New("parameter 'pipename' must be set")
+				goto RET
+			}
+			pipe := fmt.Sprintf("\\\\%s\\pipe\\%s", target, pipename)
+
+			array = []interface{}{COMMAND_LINK, 1, pipe}
+
+		} else {
+			err = errors.New("subcommand must be 'list' or 'smb'")
+			goto RET
+		}
+
 	case "ls":
 		dir, ok := args["directory"].(string)
 		if !ok {
@@ -877,6 +901,22 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'thread' or 'process'")
 			goto RET
 		}
+
+	case "unlink":
+		pivotName, ok := args["id"].(string)
+		if !ok {
+			err = errors.New("parameter 'id' must be set")
+			goto RET
+		}
+
+		pivotId, _, _ := ts.TsGetPivotInfoByName(pivotName)
+		if pivotId == "" {
+			err = fmt.Errorf("pivot %s does not exist", pivotName)
+			goto RET
+		}
+		id, _ := strconv.ParseInt(pivotId, 16, 64)
+
+		array = []interface{}{COMMAND_UNLINK, int(id)}
 
 	case "upload":
 		fileName, ok := args["remote_path"].(string)
@@ -1217,6 +1257,23 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.Message = fmt.Sprintf("Job %v mark as Killed", jobId)
 			}
 
+		case COMMAND_LINK:
+			if false == packer.CheckPacker([]string{"byte", "int", "array"}) {
+				return outTasks
+			}
+
+			linkType := packer.ParseInt8()
+			watermark := fmt.Sprintf("%08x", packer.ParseInt32())
+			beat := packer.ParseBytes()
+
+			childAgentId, _ := ts.TsListenerInteralHandler(watermark, beat)
+			_ = ts.TsPivotCreate(task.TaskId, agentData.Id, childAgentId, "", false)
+
+			if linkType == 1 {
+				task.Message = fmt.Sprintf("----- New SMB pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
+				ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, task.Message, "\n", true)
+			}
+
 		case COMMAND_LS:
 			if false == packer.CheckPacker([]string{"byte"}) {
 				return outTasks
@@ -1301,6 +1358,18 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 		case COMMAND_MV:
 			task.Message = "File moved successfully"
 
+		case COMMAND_PIVOT_EXEC:
+			if false == packer.CheckPacker([]string{"int", "array"}) {
+				return outTasks
+			}
+
+			pivotId := fmt.Sprintf("%08x", packer.ParseInt32())
+			pivotData := packer.ParseBytes()
+
+			_, _, childAgentId := ts.TsGetPivotInfoById(pivotId)
+
+			_ = ts.TsAgentProcessData(childAgentId, pivotData)
+			
 		case COMMAND_PROFILE:
 			if false == packer.CheckPacker([]string{"int"}) {
 				return outTasks
@@ -1525,6 +1594,36 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			}
 
 			_ = ts.TsAgentTerminate(agentData.Id, task.TaskId)
+
+		case COMMAND_UNLINK:
+			if false == packer.CheckPacker([]string{"int", "byte"}) {
+				return outTasks
+			}
+
+			pivotId := fmt.Sprintf("%08x", packer.ParseInt32())
+			pivotType := packer.ParseInt8()
+
+			messageParent := ""
+			messageChild := ""
+			_, parentAgentId, childAgentId := ts.TsGetPivotInfoById(pivotId)
+
+			if pivotType == 1 {
+				messageParent = fmt.Sprintf("SMB agent disconnected %s", childAgentId)
+				messageChild = fmt.Sprintf(" ----- SMB agent disconnected from [%s] ----- ", parentAgentId)
+			} else if pivotType == 10 {
+				messageParent = fmt.Sprintf("Pivot agent %s connection reset", childAgentId)
+				messageChild = fmt.Sprintf(" ----- Pivot agent connection reset ----- ")
+			}
+
+			if pivotType != 0 {
+				_ = ts.TsPivotDelete(pivotId)
+				if TaskId == 0 {
+					ts.TsAgentConsoleOutput(parentAgentId, MESSAGE_SUCCESS, messageParent, "\n", true)
+				} else {
+					task.Message = messageParent
+				}
+				ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, messageChild, "\n", true)
+			}
 
 		case COMMAND_UPLOAD:
 			task.Message = "File successfully uploaded"
