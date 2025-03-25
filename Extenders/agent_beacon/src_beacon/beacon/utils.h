@@ -12,6 +12,18 @@ void MemFreeLocal(LPVOID* buffer, DWORD bufferSize);
 
 //////////
 
+BYTE* ReadDataFromAnonPipe(HANDLE hPipe, ULONG* bufferSize);
+
+BOOL PeekNamedPipeTime(HANDLE hNamedPipe, int waitTime);
+
+int ReadFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+
+int ReadDataFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+
+BOOL WriteToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+
+BOOL WriteDataToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+
 //////////
 
 ULONG GenerateRandom32();

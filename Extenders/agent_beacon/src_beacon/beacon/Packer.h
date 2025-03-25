@@ -28,7 +28,7 @@ public:
 	BYTE* UnpackBytes(ULONG* size);
 	BYTE* UnpackBytesCopy(ULONG* size);
 
-	VOID  Clear();
+	VOID  Clear(BOOL renew);
 	PBYTE data();
 	ULONG datasize();
 };

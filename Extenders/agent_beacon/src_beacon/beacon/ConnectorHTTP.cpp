@@ -276,6 +276,11 @@ void ConnectorHTTP::RecvClear()
 
 void ConnectorHTTP::CloseConnector()
 {
+	DWORD l = _strlen(this->headers);
+	memset(this->headers, 0, l);
+	this->functions->LocalFree(this->headers);
+	this->headers = NULL;
+
 	this->functions->InternetCloseHandle(this->hInternet);
 	this->functions->InternetCloseHandle(this->hConnect);
 }

