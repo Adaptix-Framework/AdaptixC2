@@ -24,7 +24,7 @@ void Settings::SetDefault()
 
     this->data.CheckHealth = true;
     this->data.HealthCoaf = 2.0;
-    this->data.HealthOffset = 6;
+    this->data.HealthOffset = 40;
 
     for ( int i = 0; i < 11; i++)
         data.TasksTableColumns[i] = true;
