@@ -54,6 +54,8 @@ public:
     int ColumnResult      = 9;
     int ColumnOutput      = 10;
 
+    bool showPanel = false;
+
     TaskOutputWidget* taskOutputConsole = nullptr;
 
     explicit TasksWidget( QWidget* w );
@@ -63,15 +65,15 @@ public:
     void RemoveTaskItem(const QString &taskId) const;
     void RemoveAgentTasksItem(const QString &agentId) const;
 
-    void SetAgentFilter(const QString &agentId) const;
+    void SetAgentFilter(const QString &agentId);
     void SetData() const;
     void ClearTableContent() const;
     void Clear() const;
 
 public slots:
-    void toggleSearchPanel() const;
+    void toggleSearchPanel();
     void handleTasksMenu( const QPoint &pos );
-    void onTableItemSelection() const;
+    void onTableItemSelection(const QModelIndex &current, const QModelIndex &previous) const;
     void onAgentChange(QString agentId) const;
     void actionCopyTaskId() const;
     void actionCopyCmd() const;

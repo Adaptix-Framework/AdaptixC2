@@ -349,8 +349,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QJsonArray agentIDs = jsonObj["a_id"].toArray();
         for (QJsonValue idValue : agentIDs) {
             QString id = idValue.toString();
-            if (AgentsMap.contains(id))
-                AgentsMap[id]->data.LastTick = QDateTime::currentSecsSinceEpoch();
+            if (AgentsMap.contains(id)) {
+                Agent* agent = AgentsMap[id];
+                agent->data.LastTick = QDateTime::currentSecsSinceEpoch();
+                if (agent->data.Mark != "Terminated")
+                    agent->MarkItem("");
+            }
         }
 
         return;

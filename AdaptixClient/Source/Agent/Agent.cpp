@@ -8,6 +8,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     this->data.Id           = jsonObjAgentData["a_id"].toString();
     this->data.Name         = jsonObjAgentData["a_name"].toString();
     this->data.Listener     = jsonObjAgentData["a_listener"].toString();
+
     this->data.Async        = jsonObjAgentData["a_async"].toBool();
     this->data.ExternalIP   = jsonObjAgentData["a_external_ip"].toString();
     this->data.InternalIP   = jsonObjAgentData["a_internal_ip"].toString();
@@ -31,23 +32,19 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     QString mark            = jsonObjAgentData["a_mark"].toString();
 
     QString process  = QString("%1 (%2)").arg(this->data.Process).arg(this->data.Arch);
+
     QString username = this->data.Username;
     if ( this->data.Elevated )
         username = "* " + username;
     if ( !this->data.Impersonated.isEmpty() )
         username += " [" + this->data.Impersonated + "]";
 
-    QString sleep, last;
+    QString sleep;
+    QString last;
     if ( mark.isEmpty()) {
         sleep = QString("%1 (%2%)").arg( FormatSecToStr(this->data.Sleep) ).arg(this->data.Jitter);
         if ( !this->data.Async )
-            // last = QString::fromUtf8("\u221E\u221E\u221E");
             last = QString::fromUtf8("\u221E  \u221E");
-    }
-    else {
-        QDateTime dateTime = QDateTime::fromSecsSinceEpoch(this->data.LastTick, Qt::UTC);
-        last  = dateTime.toString("MM/dd hh:mm");
-        sleep = mark;
     }
 
     this->item_Id       = new AgentTableWidgetItem( this->data.Id, this );
@@ -67,30 +64,25 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
     this->item_Sleep    = new AgentTableWidgetItem( sleep, this );
     this->item_Pid      = new AgentTableWidgetItem( this->data.Pid, this );
 
+    for ( auto listenerData : this->adaptixWidget->Listeners) {
+        if ( listenerData.ListenerName == this->data.Listener ) {
+            QString listenerType = listenerData.ListenerType.split("/")[0];
+            if (listenerType == "internal")
+                this->connType = "internal";
+            else
+                this->connType = "external";
+            break;
+        }
+    }
+
+    this->SetImage();
+    this->graphImage = this->imageActive;
+
     if ( mark.isEmpty() ) {
         if ( !this->data.Color.isEmpty() )
             this->SetColor(this->data.Color);
     } else {
         this->MarkItem(mark);
-    }
-
-    if (data.Os == OS_WINDOWS) {
-        if (data.Elevated)
-            item_Os->setIcon(QIcon(":/icons/os_win_red"));
-        else
-            item_Os->setIcon(QIcon(":/icons/os_win_blue"));
-    }
-    else if (data.Os == OS_LINUX) {
-        if (data.Elevated)
-            item_Os->setIcon(QIcon(":/icons/os_linux_red"));
-        else
-            item_Os->setIcon(QIcon(":/icons/os_linux_blue"));
-    }
-    else if (data.Os == OS_MAC) {
-        if (data.Elevated)
-            item_Os->setIcon(QIcon(":/icons/os_mac_red"));
-        else
-            item_Os->setIcon(QIcon(":/icons/os_mac_blue"));
     }
 
     this->Console        = new ConsoleWidget(this, commander);
@@ -136,17 +128,10 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     else {
         this->MarkItem(mark);
 
-        if (mark == "Terminated" || mark == "Inactive") {
-            QDateTime dateTime      = QDateTime::fromSecsSinceEpoch(data.LastTick, Qt::UTC);
-            QString   formattedTime = dateTime.toString("dd/MM hh:mm");
-
-            item_Last->setText(formattedTime);
+        if (mark == "Terminated") {
+            adaptixWidget->SessionsGraphPage->RemoveAgent(this, true);
         }
-        // if( Reason == "Unlinked" || Reason == "Link" )
-        // {
-        //     AmonApp->AmonAppUI.MarkSessionAs(&session, Marked, Reason);
-        //     GlobalAmon::Teamserver.TabSession->SessionTableWidget->ChangeSessionValue(session.Id, GlobalAmon::Teamserver.TabSession->SessionTableWidget->NumberLast, Reason);
-        // }
+
         // else if ( Reason == "Work time" ) {
         //     session.WorkingTime  = (uint32_t) strtoul(Package->Body.Info["String"].c_str(), NULL, 0);
         // }
@@ -162,17 +147,31 @@ void Agent::MarkItem(const QString &mark)
     QString color;
     QString status;
     if ( mark == "" ) {
-        color = this->data.Color;
-        status = QString("%1 (%2%)").arg( FormatSecToStr(this->data.Sleep) ).arg(this->data.Jitter);
         this->active = true;
+        status = QString("%1 (%2%)").arg( FormatSecToStr(this->data.Sleep) ).arg(this->data.Jitter);
+        color = this->data.Color;
+        this->graphImage = this->imageActive;
     }
     else {
-        if ( mark == "Terminated" || mark == "Inactive")
+        if ( mark == "Terminated" ) {
             this->active = false;
-
+            item_Last->setText(UnixTimestampGlobalToStringLocalSmall(data.LastTick));
+        }
+        else if ( mark == "Inactive" ) {
+            this->active = false;
+            item_Last->setText(UnixTimestampGlobalToStringLocalSmall(data.LastTick));
+        }
+        else if ( mark == "Unlink" ) {
+            this->active = false;
+            item_Last->setText(UnixTimestampGlobalToStringLocalSmall(data.LastTick));
+        }
+        this->graphImage = this->imageInactive;
         status = mark;
         color = QString(COLOR_DarkBrownishRed) + "-" + QString(COLOR_LightGray);
     }
+
+    if (this->graphItem)
+        this->graphItem->update();
 
     this->SetColor(color);
     this->item_Sleep->setText(status);
@@ -218,6 +217,52 @@ void Agent::SetColor(const QString &color) const
     }
 }
 
+void Agent::SetImage()
+{
+    if (data.Os == OS_WINDOWS) {
+        if (data.Elevated) {
+            this->item_Os->setIcon(QIcon(":/icons/os_win_red"));
+            this->imageActive = QImage(":/graph/win_red");
+        }
+        else {
+            this->item_Os->setIcon(QIcon(":/icons/os_win_blue"));
+            this->imageActive = QImage(":/graph/win_blue");
+        }
+        this->imageInactive = QImage(":/graph/win_grey");
+    }
+    else if (data.Os == OS_LINUX) {
+        if (data.Elevated) {
+            this->item_Os->setIcon(QIcon(":/icons/os_linux_red"));
+            this->imageActive = QImage(":/graph/linux_red");
+        } else {
+            this->item_Os->setIcon(QIcon(":/icons/os_linux_blue"));
+            this->imageActive = QImage(":/graph/linux_blue");
+        }
+        this->imageInactive = QImage(":/graph/linux_grey");
+    }
+    else if (data.Os == OS_MAC) {
+        if (data.Elevated) {
+            this->item_Os->setIcon(QIcon(":/icons/os_mac_red"));
+            this->imageActive = QImage(":/graph/mac_red");
+        } else {
+            this->item_Os->setIcon(QIcon(":/icons/os_mac_blue"));
+            this->imageActive = QImage(":/graph/mac_blue");
+        }
+        this->imageInactive = QImage(":/graph/mac_grey");
+    }
+    else {
+        if (data.Elevated) {
+            // this->item_Os->setIcon(QIcon(":/icons/unknown_red"));
+            this->imageActive = QImage(":/graph/unknown_red");
+        }
+        else {
+            // this->item_Os->setIcon(QIcon(":/icons/unknown_blue"));
+            this->imageActive = QImage(":/graph/unknown_blue");
+        }
+        this->imageInactive = QImage(":/graph/unknown_grey");
+    }
+}
+
 /// TASK
 
 QString Agent::TasksStop(const QStringList &tasks) const
@@ -255,7 +300,7 @@ void Agent::SetParent(const PivotData &pivotData)
 void Agent::UnsetParent(const PivotData &pivotData)
 {
     this->parentId = "";
-    this->data.ExternalIP = ""; // QString::fromUtf8("%1 \u221E %2").arg(pivotData.ParentAgentId).arg(pivotData.PivotName);
+    this->data.ExternalIP = "";
     this->item_External->setText(this->data.ExternalIP);
     this->item_Last->setText( QString::fromUtf8("\u221E  \u221E") );
 }

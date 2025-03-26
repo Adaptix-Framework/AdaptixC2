@@ -52,7 +52,9 @@ TasksWidget::TasksWidget( QWidget* w )
     taskOutputConsole = new TaskOutputWidget();
 
     connect(tableWidget,  &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
-    connect(tableWidget,  &QTableWidget::itemSelectionChanged,       this, &TasksWidget::onTableItemSelection);
+
+    connect(tableWidget->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &TasksWidget::onTableItemSelection);
+    // connect(tableWidget,  &QTableWidget::itemSelectionChanged,       this, &TasksWidget::onTableItemSelection);
     connect(tableWidget,  &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
     connect(comboAgent,   &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
     connect(comboStatus,  &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
@@ -148,10 +150,10 @@ void TasksWidget::createUI()
 
 bool TasksWidget::filterItem(const TaskData &task) const
 {
-    if ( !this->searchWidget->isVisible() )
+    if ( !this->showPanel )
         return true;
 
-    if( comboAgent->currentIndex() > 0 ) {
+    if( comboAgent->currentText() != "All agents" ) {
         if (comboAgent->currentText() != task.AgentId)
             return false;
     }
@@ -277,10 +279,13 @@ void TasksWidget::RemoveAgentTasksItem(const QString &agentId) const
     this->SetData();
 }
 
-void TasksWidget::SetAgentFilter(const QString &agentId) const
+void TasksWidget::SetAgentFilter(const QString &agentId)
 {
     this->searchWidget->setVisible(true);
+    this->showPanel = true;
     comboAgent->setCurrentText(agentId);
+
+    this->SetData();
 }
 
 void TasksWidget::SetData() const
@@ -301,6 +306,7 @@ void TasksWidget::SetData() const
 
 void TasksWidget::ClearTableContent() const
 {
+    QSignalBlocker blocker(tableWidget->selectionModel());
     for (int row = tableWidget->rowCount() - 1; row >= 0; row--) {
         for (int col = 0; col < tableWidget->columnCount(); ++col)
             tableWidget->takeItem(row, col);
@@ -335,12 +341,17 @@ void TasksWidget::Clear() const
 
 /// SLOTS
 
-void TasksWidget::toggleSearchPanel() const
+void TasksWidget::toggleSearchPanel()
 {
-    if (this->searchWidget->isVisible())
+    if (this->showPanel) {
+        this->showPanel = false;
         this->searchWidget->setVisible(false);
-    else
+    }
+    else {
+        this->showPanel = true;
         this->searchWidget->setVisible(true);
+
+    }
 
     this->SetData();
 }
@@ -368,13 +379,9 @@ void TasksWidget::handleTasksMenu( const QPoint &pos )
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }
 
-void TasksWidget::onTableItemSelection() const
+void TasksWidget::onTableItemSelection(const QModelIndex &current, const QModelIndex &previous) const
 {
-    int count = tableWidget->selectedItems().size() / tableWidget->columnCount();
-    if ( count != 1 )
-        return;
-
-    int row = tableWidget->selectedItems().first()->row();
+    int row = current.row();
     QString taskId = tableWidget->item(row,0)->text();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );

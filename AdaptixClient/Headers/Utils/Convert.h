@@ -20,6 +20,8 @@ QString ValidExtCommand(QJsonObject extJsonObject, bool* result);
 
 QString UnixTimestampGlobalToStringLocal(qint64 timestamp);
 
+QString UnixTimestampGlobalToStringLocalSmall(qint64 timestamp);
+
 QString UnixTimestampGlobalToStringLocalFull(qint64 timestamp);
 
 QString TextColorHtml(const QString &text, const QString &color);

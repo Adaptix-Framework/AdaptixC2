@@ -24,19 +24,17 @@ void LastTickWorker::updateLastItems() const
             int current = QDateTime::currentSecsSinceEpoch();
             int diff    = current - agent->data.LastTick;
 
-            agent->item_Last->setText( FormatSecToStr(diff) );
-
             if ( GlobalClient->settings->data.CheckHealth ) {
                 if (diff > agent->data.Sleep * GlobalClient->settings->data.HealthCoaf + GlobalClient->settings->data.HealthOffset) {
-                    QString mark = QString("No response (%1)").arg(FormatSecToStr(agent->data.Sleep));
-                    agent->MarkItem(mark);
+                    agent->item_Last->setText( FormatSecToStr(diff) + " / " + FormatSecToStr(agent->data.Sleep));
+                    agent->MarkItem("No response");
+                    continue;
                 }
                 else {
                     agent->MarkItem("");
                 }
             }
-
-
+            agent->item_Last->setText( FormatSecToStr(diff) );
         }
     }
 }

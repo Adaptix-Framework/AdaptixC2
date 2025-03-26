@@ -103,7 +103,6 @@ void SessionsTableWidget::createUI()
     mainGridLayout->addWidget( tableWidget,  1, 0, 1, 1);
 }
 
-
 bool SessionsTableWidget::filterItem(const AgentData &agent) const
 {
     if ( !this->searchWidget->isVisible() )
@@ -261,7 +260,7 @@ void SessionsTableWidget::SetData() const
      for (int i = 0; i < adaptixWidget->AgentsVector.size(); i++ ) {
          QString agentId = adaptixWidget->AgentsVector[i];
          Agent* agent = adaptixWidget->AgentsMap[agentId];
-         if ( agent && this->filterItem(agent->data) )
+         if ( agent && agent->show && this->filterItem(agent->data) )
              this->addTableItem(agent);
      }
 }
@@ -317,6 +316,13 @@ void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index) con
     adaptixWidget->LoadConsoleUI(AgentId);
 }
 
+void SessionsTableWidget::onFilterUpdate() const
+{
+    this->SetData();
+}
+
+/// Menu
+
 void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 {
     if ( ! tableWidget->itemAt(pos) )
@@ -350,6 +356,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     itemMenu->addAction("Reset color",     this, &SessionsTableWidget::actionColorReset);
     itemMenu->addSeparator();
     itemMenu->addAction( "Hide on client", this, &SessionsTableWidget::actionItemHide);
+    itemMenu->addAction( "Show all items", this, &SessionsTableWidget::actionItemsShowAll);
 
     auto ctxSep1 = new QAction();
     ctxSep1->setSeparator(true);
@@ -365,11 +372,6 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     ctxMenu.addAction( "Remove from server", this, &SessionsTableWidget::actionAgentRemove);
 
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
-}
-
-void SessionsTableWidget::onFilterUpdate() const
-{
-    this->SetData();
 }
 
 void SessionsTableWidget::actionConsoleOpen() const
@@ -629,15 +631,32 @@ void SessionsTableWidget::actionItemTag() const
 
 void SessionsTableWidget::actionItemHide() const
 {
-    QList<QString> listId;
-
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
-            listId.append(agentId);
+
+            if (adaptixWidget->AgentsMap.contains(agentId))
+                adaptixWidget->AgentsMap[agentId]->show = false;
+
         }
     }
 
-    for (auto id : listId)
-        this->RemoveAgentItem(id);
+    this->SetData();
+}
+
+void SessionsTableWidget::actionItemsShowAll() const
+{
+    bool refact = false;
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for (auto agent : adaptixWidget->AgentsMap) {
+        if (agent->show == false) {
+            agent->show = true;
+            refact = true;
+        }
+    }
+
+    if (refact)
+        this->SetData();
 }

@@ -3,10 +3,24 @@ package server
 import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
+	isvalid "AdaptixServer/core/utils/valid"
+	"errors"
 	"fmt"
 )
 
 func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
+
+	if listenerInfo.Type != "internal" && listenerInfo.Type != "external" {
+		return errors.New("invalid listener type: must be internal or external")
+	}
+
+	if !isvalid.ValidSBNString(listenerInfo.ListenerProtocol) {
+		return errors.New("invalid listener protocol (must only contain letters and numbers): " + listenerInfo.ListenerProtocol)
+	}
+
+	if !isvalid.ValidSBNString(listenerInfo.ListenerName) {
+		return errors.New("invalid listener name (must only contain letters and numbers): " + listenerInfo.Type)
+	}
 
 	listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.Type, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
 

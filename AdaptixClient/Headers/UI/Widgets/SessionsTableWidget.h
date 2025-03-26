@@ -72,6 +72,7 @@ public slots:
     void actionAgentRemove();
     void actionItemTag() const;
     void actionItemHide() const;
+    void actionItemsShowAll() const;
 };
 
 #endif //ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H

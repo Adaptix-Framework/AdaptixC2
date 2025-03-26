@@ -66,6 +66,11 @@ SET( HEADERS
         Headers/Utils/KeyPressHandler.h
         Headers/Agent/Task.h
         Headers/Agent/TaskTableWidgetItem.h
+        Headers/UI/Graph/SessionsGraph.h
+        Headers/UI/Graph/GraphItem.h
+        Headers/UI/Graph/GraphItemLink.h
+        Headers/UI/Graph/GraphScene.h
+        Headers/UI/Graph/LayoutTreeLeft.h
 )
 
 add_executable(AdaptixClient
@@ -111,6 +116,11 @@ add_executable(AdaptixClient
         Source/UI/Widgets/TunnelsWidget.cpp
         Source/Agent/Task.cpp
         Source/Agent/TaskTableWidgetItem.cpp
+        Source/UI/Graph/SessionsGraph.cpp
+        Source/UI/Graph/GraphItem.cpp
+        Source/UI/Graph/GraphItemLink.cpp
+        Source/UI/Graph/GraphScene.cpp
+        Source/UI/Graph/LayoutTreeLeft.cpp
 )
 
 if(UNIX)

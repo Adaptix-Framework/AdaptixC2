@@ -169,6 +169,17 @@ QString UnixTimestampGlobalToStringLocal(qint64 timestamp)
     return formattedTime;
 }
 
+QString UnixTimestampGlobalToStringLocalSmall(qint64 timestamp)
+{
+    if ( timestamp == 0 )
+        return "";
+
+    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, Qt::UTC);
+    QDateTime localDateTime = epochDateTime.toLocalTime();
+    QString formattedTime = localDateTime.toString("dd/MM hh:mm");
+    return formattedTime;
+}
+
 QString UnixTimestampGlobalToStringLocalFull(qint64 timestamp)
 {
     if ( timestamp == 0 )

@@ -27,10 +27,17 @@ struct Command
     QString         extPath;
 };
 
+struct Constant
+{
+    QString Name;
+    QMap<QString,QString> Map;
+};
+
 struct ExtModule
 {
-    QString extName;
-    QList<Command> extCommands;
+    QString Name;
+    QList<Command> Commands;
+    QMap<QString, Constant> Constants;
 };
 
 struct CommanderResult
@@ -66,8 +73,8 @@ public:
     ~Commander();
 
     bool AddRegCommands(const QByteArray &jsonData);
-    bool AddExtCommands(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands);
-    void RemoveExtCommands(const QString &filepath);
+    bool AddExtModule(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands);
+    void RemoveExtModule(const QString &filepath);
     QString GetError();
     QStringList GetCommands();
     CommanderResult ProcessInput(AgentData agentData, QString input);
