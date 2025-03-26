@@ -284,7 +284,7 @@ void AdaptixWidget::AddExtension(ExtensionFile ext)
     for (QString agentName : ext.ExCommands.keys()) {
         if ( RegisterAgentsCmd.contains(agentName) ) {
             Commander* commander = RegisterAgentsCmd[agentName];
-            bool result = commander->AddExtCommands(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
+            bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
             if (result) {
                 for( auto agent : AgentsMap ){
                     if( agent && agent->Console )
@@ -302,7 +302,7 @@ void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
     for (QString agentName : ext.ExCommands.keys()) {
         if ( RegisterAgentsCmd.contains(agentName) ) {
             Commander* commander = RegisterAgentsCmd[agentName];
-            commander->RemoveExtCommands(ext.FilePath);
+            commander->RemoveExtModule(ext.FilePath);
             for( auto agent : AgentsMap ){
                 if( agent && agent->Console )
                     agent->Console->UpgradeCompleter();
@@ -323,7 +323,7 @@ void AdaptixWidget::OnSynced()
         for (QString agentName : ext.ExCommands.keys()) {
             if ( RegisterAgentsCmd.contains(agentName) ) {
                 Commander* commander = RegisterAgentsCmd[agentName];
-                bool result = commander->AddExtCommands(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
+                bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
                 if (result) {
                     for( auto agent : AgentsMap ){
                         if( agent && agent->Console )

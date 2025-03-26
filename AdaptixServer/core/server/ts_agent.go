@@ -57,6 +57,11 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	agentData.Mark = ""
 	agentData.Color = ""
 
+	value, _ := ts.listeners.Get(listenerName)
+	if value.(adaptix.ListenerData).Type == "internal" {
+		agentData.Mark = "Unlink"
+	}
+
 	agent := &Agent{
 		Data:           agentData,
 		OutConsole:     safe.NewSlice(),
@@ -102,6 +107,13 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 		agent.Data.LastTick = int(time.Now().Unix())
 		_ = ts.DBMS.DbAgentTick(agent.Data)
 		agent.Tick = true
+	}
+	if agent.Data.Mark == "Inactive" {
+		agent.Data.Mark = ""
+		err := ts.DBMS.DbAgentUpdate(agent.Data)
+		if err != nil {
+			logs.Error("", err.Error())
+		}
 	}
 
 	var agentBuffer bytes.Buffer
@@ -421,18 +433,18 @@ func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 	return nil
 }
 
-func (ts *Teamserver) TsAgentSetMark(agentId string, makr string) error {
+func (ts *Teamserver) TsAgentSetMark(agentId string, mark string) error {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
 		return errors.New("agent does not exist")
 	}
 	agent, _ := value.(*Agent)
 
-	if agent.Data.Mark == makr || agent.Data.Mark == "Terminated" {
+	if agent.Data.Mark == mark || agent.Data.Mark == "Terminated" {
 		return nil
 	}
 
-	agent.Data.Mark = makr
+	agent.Data.Mark = mark
 
 	err := ts.DBMS.DbAgentUpdate(agent.Data)
 	if err != nil {

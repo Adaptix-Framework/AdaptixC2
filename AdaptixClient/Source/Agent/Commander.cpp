@@ -132,7 +132,7 @@ bool Commander::AddRegCommands(const QByteArray &jsonData)
     return true;
 }
 
-bool Commander::AddExtCommands(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands)
+bool Commander::AddExtModule(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands)
 {
     QFileInfo fi(filepath);
     QString dirPath = fi.absolutePath();
@@ -145,16 +145,17 @@ bool Commander::AddExtCommands(const QString &filepath, const QString &extName, 
         commandsList.append(extCmd);
     }
 
-    extModules[filepath].extName = extName;
-    extModules[filepath].extCommands = commandsList;
+    extModules[filepath].Name = extName;
+    extModules[filepath].Commands = commandsList;
 
     return true;
 }
 
-void Commander::RemoveExtCommands(const QString &filepath)
+void Commander::RemoveExtModule(const QString &filepath)
 {
     extModules.remove(filepath);
 }
+
 
 
 Command Commander::ParseCommand(QJsonObject jsonObject)
@@ -283,7 +284,7 @@ CommanderResult Commander::ProcessInput(AgentData agentData, QString input)
     }
 
     for ( auto extMod : extModules ) {
-        for (Command command : extMod.extCommands) {
+        for (Command command : extMod.Commands) {
             if (command.name == commandName) {
                 return ProcessCommand(agentData, command, parts);
             }
@@ -639,10 +640,10 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
 
         for ( auto extMod : extModules.values() ){
             output << QString("\n");
-            output << QString("  Extension - " + extMod.extName + "\n");
+            output << QString("  Extension - " + extMod.Name + "\n");
             output << QString("  =====================================\n");
 
-            for ( auto command : extMod.extCommands ) {
+            for ( auto command : extMod.Commands ) {
                 // QString commandName = command.name;
                 // if (!command.subcommands.isEmpty())
                 //     commandName += '*';
@@ -662,7 +663,6 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                         output << "  " + subcmdName + tab + "      " + subcmd.description + "\n";
                     }
                 }
-
             }
         }
 
@@ -683,7 +683,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             if ( !foundCommand.name.isEmpty() )
                 break;
 
-            for (Command cmd : extMod.extCommands) {
+            for (Command cmd : extMod.Commands) {
                 if (cmd.name == commandName) {
                     foundCommand = cmd;
                     break;
@@ -802,7 +802,7 @@ QStringList Commander::GetCommands()
     }
 
     for( auto extMod : extModules.values()) {
-        for (Command cmd : extMod.extCommands) {
+        for (Command cmd : extMod.Commands) {
 
             helpCommandList << "help " + cmd.name;
             if (cmd.subcommands.isEmpty())

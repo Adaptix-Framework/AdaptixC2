@@ -80,6 +80,8 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId s
 		valueAgent.(*Agent).PivotParent = pivotData
 	}
 
+	_ = ts.TsAgentSetMark(pivotData.ChildAgentId, "")
+
 	ts.pivots.Put(pivotData)
 
 	if !isRestore {
@@ -120,6 +122,8 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 	if ok {
 		valueAgent.(*Agent).PivotParent = nil
 	}
+
+	_ = ts.TsAgentSetMark(pivotData.ChildAgentId, "Unlink")
 
 	for i := 0; i < ts.pivots.Len(); i++ {
 		valuePivot, ok := ts.pivots.Get(i)
