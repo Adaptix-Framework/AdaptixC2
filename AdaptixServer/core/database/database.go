@@ -41,6 +41,7 @@ func (dbms *DBMS) DatabaseInit() error {
     	"ListenerName" TEXT NOT NULL UNIQUE, 
     	"ListenerType" TEXT NOT NULL,
     	"ListenerConfig" TEXT NOT NULL,
+    	"Watermark" TEXT NOT NULL,
     	"CustomData" BLOB
     );`
 	_, err = dbms.database.Exec(createTableQuery)
@@ -82,11 +83,14 @@ func (dbms *DBMS) DatabaseInit() error {
     	"Domain" TEXT,
     	"Computer" TEXT,
     	"Username" TEXT,
+    	"Impersonated" TEXT,
     	"OemCP" INTEGER,
     	"ACP" INTEGER,
     	"CreateTime" BIGINT,
     	"LastTick" INTEGER,
-    	"Tags" TEXT
+    	"Tags" TEXT,
+    	"Mark" TEXT,
+    	"Color" TEXT
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
@@ -95,6 +99,7 @@ func (dbms *DBMS) DatabaseInit() error {
     	"AgentId" TEXT NOT NULL,
     	"TaskType" INTEGER,
     	"Client" TEXT,
+    	"User" TEXT,
     	"Computer" TEXT,
     	"StartDate" BIGINT,
     	"FinishDate" BIGINT,
@@ -103,6 +108,22 @@ func (dbms *DBMS) DatabaseInit() error {
     	"Message" TEXT,
     	"ClearText" TEXT,
     	"Completed" INTEGER
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Consoles" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"AgentId" TEXT NOT NULL,
+    	"Packet" BLOB
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Pivots" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"PivotId" TEXT NOT NULL,
+    	"PivotName" TEXT NOT NULL,
+    	"ParentAgentId" TEXT NOT NULL,
+    	"ChildAgentId" TEXT NOT NULL
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 

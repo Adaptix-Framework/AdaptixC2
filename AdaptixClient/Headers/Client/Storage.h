@@ -9,7 +9,7 @@ class Storage
     QSqlDatabase db;
     QString      appDirPath;
 
-    void checkDatabase();
+    static void checkDatabase();
 
 public:
     QString dbFilePath;
@@ -17,22 +17,27 @@ public:
     Storage();
     ~Storage();
 
-    QVector<AuthProfile> ListProjects();
-    void AddProject(AuthProfile profile);
-    void RemoveProject(QString project);
-    bool ExistsProject(QString project);
+    static QVector<AuthProfile> ListProjects();
 
-    QVector<ExtensionFile> ListExtensions();
-    bool ExistsExtension(QString path);
-    void AddExtension(ExtensionFile extFile);
-    void UpdateExtension(ExtensionFile extFile);
-    void RemoveExtension(QString filepath);
+    static void AddProject(AuthProfile profile);
+    static void RemoveProject(const QString &project);
+    static bool ExistsProject(const QString &project);
 
-    void SelectSettingsMain(SettingsData* settingsData);
-    void UpdateSettingsMain(SettingsData settingsData);
+    static QVector<ExtensionFile> ListExtensions();
 
-    void SelectSettingsSessions(SettingsData* settingsData);
-    void UpdateSettingsSessions(SettingsData settingsData);
+    static bool ExistsExtension(const QString &path);
+    static void AddExtension(const ExtensionFile &extFile);
+    static void UpdateExtension(const ExtensionFile &extFile);
+    static void RemoveExtension(const QString &filepath);
+
+    static void SelectSettingsMain(SettingsData* settingsData);
+    static void UpdateSettingsMain(const SettingsData &settingsData);
+
+    static void SelectSettingsSessions(SettingsData* settingsData);
+    static void UpdateSettingsSessions(const SettingsData &settingsData);
+
+    static void SelectSettingsTasks(SettingsData* settingsData);
+    static void UpdateSettingsTasks(const SettingsData &settingsData);
 };
 
 #endif //ADAPTIXCLIENT_STORAGE_H

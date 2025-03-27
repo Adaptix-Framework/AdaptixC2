@@ -1,7 +1,7 @@
 #include <UI/Dialogs/DialogAgent.h>
 #include <Client/Requestor.h>
 
-DialogAgent::DialogAgent(QString listenerName, QString listenerType)
+DialogAgent::DialogAgent(const QString &listenerName, const QString &listenerType)
 {
     this->createUI();
 
@@ -35,6 +35,18 @@ void DialogAgent::createUI()
 
     agentCombobox = new QComboBox(this);
 
+    buttonLoad = new QPushButton(QIcon(":/icons/unarchive"), "", this);
+    buttonLoad->setIconSize( QSize( 25,25 ));
+    buttonLoad->setToolTip("Load profile from file");
+
+    buttonSave = new QPushButton(QIcon(":/icons/archive"), "", this);
+    buttonSave->setIconSize( QSize( 25,25 ));
+    buttonSave->setToolTip("Save profile to file");
+
+    line_1 = new QFrame(this);
+    line_1->setFrameShape(QFrame::VLine);
+    line_1->setMinimumHeight(20);
+
     configStackWidget = new QStackedWidget(this );
 
     stackGridLayout = new QGridLayout(this );
@@ -46,18 +58,8 @@ void DialogAgent::createUI()
     agentConfigGroupbox->setTitle("Agent config");
     agentConfigGroupbox->setLayout(stackGridLayout);
 
-    line_1 = new QFrame(this);
-    line_1->setFrameShape(QFrame::VLine);
-    line_1->setMinimumHeight(20);
-
     generateButton = new QPushButton(this);
     generateButton->setText("Generate");
-
-    buttonLoad = new QPushButton(this);
-    buttonLoad->setText("Load");
-
-    buttonSave = new QPushButton(this);
-    buttonSave->setText("Save");
 
     closeButton = new QPushButton(this);
     closeButton->setText("Close");
@@ -68,30 +70,35 @@ void DialogAgent::createUI()
 
     hLayoutBottom = new QHBoxLayout();
     hLayoutBottom->addItem(horizontalSpacer_2);
-    hLayoutBottom->addWidget(buttonLoad);
-    hLayoutBottom->addWidget(buttonSave);
-    hLayoutBottom->addWidget(line_1);
     hLayoutBottom->addWidget(generateButton);
     hLayoutBottom->addWidget(closeButton);
     hLayoutBottom->addItem(horizontalSpacer_3);
 
     mainGridLayout = new QGridLayout( this );
-    mainGridLayout->addWidget( listenerLabel, 0, 0, 1, 1);
-    mainGridLayout->addWidget( listenerInput, 0, 1, 1, 5);
-    mainGridLayout->addWidget( agentLabel, 1, 0, 1, 1);
-    mainGridLayout->addWidget( agentCombobox, 1, 1, 1, 5);
-    mainGridLayout->addItem(horizontalSpacer, 2, 0, 1, 6);
-    mainGridLayout->addWidget( agentConfigGroupbox, 3, 0, 1, 6 );
-    mainGridLayout->addLayout(hLayoutBottom, 4, 0, 1, 6);
+    mainGridLayout->addWidget( listenerLabel,       0, 0, 1, 1);
+    mainGridLayout->addWidget( listenerInput,       0, 1, 1, 1);
+    mainGridLayout->addWidget( line_1,              0, 2, 2, 1);
+    mainGridLayout->addWidget( buttonLoad,          0, 3, 1, 1);
+    mainGridLayout->addWidget( agentLabel,          1, 0, 1, 1);
+    mainGridLayout->addWidget( agentCombobox,       1, 1, 1, 1);
+    mainGridLayout->addWidget( buttonSave,          1, 3, 1, 1);
+    mainGridLayout->addItem(   horizontalSpacer,    2, 0, 1, 4);
+    mainGridLayout->addWidget( agentConfigGroupbox, 3, 0, 1, 4);
+    mainGridLayout->addLayout( hLayoutBottom,       4, 0, 1, 4);
 
     this->setLayout(mainGridLayout);
 
     int buttonWidth = generateButton->width();
+    buttonLoad->setFixedWidth(buttonWidth/2);
+    buttonSave->setFixedWidth(buttonWidth/2);
     closeButton->setFixedWidth(buttonWidth);
-    buttonSave->setFixedWidth(buttonWidth);
-    buttonLoad->setFixedWidth(buttonWidth);
     generateButton->setFixedWidth(buttonWidth);
 
+    int buttonHeight = generateButton->height();
+    buttonLoad->setFixedHeight(buttonHeight);
+    buttonSave->setFixedHeight(buttonHeight);
+    closeButton->setFixedHeight(buttonHeight);
+    generateButton->setFixedHeight(buttonHeight);
 }
 
 void DialogAgent::Start()
@@ -99,7 +106,7 @@ void DialogAgent::Start()
     this->exec();
 }
 
-void DialogAgent::AddExAgents(QMap<QString, WidgetBuilder *> agents)
+void DialogAgent::AddExAgents(const QMap<QString, WidgetBuilder*> &agents)
 {
     agentsUI = agents;
 
@@ -111,12 +118,12 @@ void DialogAgent::AddExAgents(QMap<QString, WidgetBuilder *> agents)
     agentCombobox->addItems( agentsUI.keys() );
 }
 
-void DialogAgent::SetProfile(AuthProfile profile)
+void DialogAgent::SetProfile(const AuthProfile &profile)
 {
     this->authProfile = profile;
 }
 
-void DialogAgent::changeConfig(QString fn)
+void DialogAgent::changeConfig(const QString &fn)
 {
     if (agentsUI.contains(fn) && agentsUI[fn]) {
         auto w = agentsUI[fn]->GetWidget();

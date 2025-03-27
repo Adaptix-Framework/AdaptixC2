@@ -7,23 +7,23 @@
 
 class DialogAgent : public QDialog
 {
-    QGridLayout*    mainGridLayout;
-    QGridLayout*    stackGridLayout;
-    QHBoxLayout*    hLayoutBottom;
-    QFrame*         line_1;
-    QSpacerItem*    horizontalSpacer;
-    QSpacerItem*    horizontalSpacer_2;
-    QSpacerItem*    horizontalSpacer_3;
-    QLabel*         listenerLabel;
-    QLineEdit*      listenerInput;
-    QLabel*         agentLabel;
-    QComboBox*      agentCombobox;
-    QPushButton*    buttonLoad;
-    QPushButton*    buttonSave;
-    QPushButton*    closeButton;
-    QPushButton*    generateButton;
-    QGroupBox*      agentConfigGroupbox;
-    QStackedWidget* configStackWidget;
+    QGridLayout*    mainGridLayout      = nullptr;
+    QGridLayout*    stackGridLayout     = nullptr;
+    QHBoxLayout*    hLayoutBottom       = nullptr;
+    QFrame*         line_1              = nullptr;
+    QSpacerItem*    horizontalSpacer    = nullptr;
+    QSpacerItem*    horizontalSpacer_2  = nullptr;
+    QSpacerItem*    horizontalSpacer_3  = nullptr;
+    QLabel*         listenerLabel       = nullptr;
+    QLineEdit*      listenerInput       = nullptr;
+    QLabel*         agentLabel          = nullptr;
+    QComboBox*      agentCombobox       = nullptr;
+    QPushButton*    buttonLoad          = nullptr;
+    QPushButton*    buttonSave          = nullptr;
+    QPushButton*    closeButton         = nullptr;
+    QPushButton*    generateButton      = nullptr;
+    QGroupBox*      agentConfigGroupbox = nullptr;
+    QStackedWidget* configStackWidget   = nullptr;
 
     QMap<QString, WidgetBuilder*> agentsUI;
 
@@ -34,15 +34,15 @@ class DialogAgent : public QDialog
     void createUI();
 
 public:
-    explicit DialogAgent(QString listenerName, QString listenerType);
-    ~DialogAgent();
+    explicit DialogAgent(const QString &listenerName, const QString &listenerType);
+    ~DialogAgent() override;
 
-    void AddExAgents(QMap<QString, WidgetBuilder*> agents);
-    void SetProfile(AuthProfile profile);
+    void AddExAgents(const QMap<QString, WidgetBuilder*> &agents);
+    void SetProfile(const AuthProfile &profile);
     void Start();
 
 protected slots:
-    void changeConfig(QString fn);
+    void changeConfig(const QString &fn);
     void onButtonLoad();
     void onButtonSave();
     void onButtonGenerate();

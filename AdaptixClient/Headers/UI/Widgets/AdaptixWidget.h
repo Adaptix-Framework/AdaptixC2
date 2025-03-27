@@ -8,13 +8,16 @@
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
+#include <UI/Graph/SessionsGraph.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
 #include <Client/WidgetBuilder.h>
 #include <Agent/Agent.h>
+#include <Agent/Task.h>
 
 class SessionsTableWidget;
+class SessionsGraph;
 class LastTickWorker;
 
 class AdaptixWidget : public QWidget
@@ -49,7 +52,8 @@ Q_OBJECT
     DialogSyncPacket* dialogSyncPacket = nullptr;
 
     void createUI();
-    bool isValidSyncPacket(QJsonObject jsonObj);
+
+static bool isValidSyncPacket(QJsonObject jsonObj);
     void processSyncPacket(QJsonObject jsonObj);
 
 public:
@@ -60,6 +64,7 @@ public:
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
+    SessionsGraph*       SessionsGraphPage = nullptr;
     TunnelsWidget*       TunnelsTab        = nullptr;
     DownloadsWidget*     DownloadsTab      = nullptr;
     TasksWidget*         TasksTab          = nullptr;
@@ -71,41 +76,44 @@ public:
     QVector<ListenerData>         Listeners;
     QVector<TunnelData>           Tunnels;
     QMap<QString, DownloadData>   Downloads;
+    QMap<QString, PivotData>      Pivots;
     QVector<QString>              TasksVector;
-    QMap<QString, TaskData>       TasksMap;
-    QMap<QString, Agent*>         Agents;
+    QMap<QString, Task*>          TasksMap;
+    QVector<QString>              AgentsVector;
+    QMap<QString, Agent*>         AgentsMap;
     QMap<QString, ExtensionFile>  Extensions;
 
     explicit AdaptixWidget(AuthProfile* authProfile);
-    ~AdaptixWidget();
+    ~AdaptixWidget() override;
 
-    AuthProfile* GetProfile();
+    AuthProfile* GetProfile() const;
     void ClearAdaptix();
-    void AddTab(QWidget* tab, QString title, QString icon = "" );
-    void RemoveTab(int index);
+    void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
+    void RemoveTab(int index) const;
     void AddExtension(ExtensionFile ext);
-    void RemoveExtension(ExtensionFile ext);
+    void RemoveExtension(const ExtensionFile &ext);
     void Close();
 
 signals:
     void SyncedSignal();
 
 public slots:
-    void ChannelClose();
+    void ChannelClose() const;
     void DataHandler(const QByteArray& data);
 
     void OnSynced();
-    void SetSessionsTableUI();
-    void SetTasksUI();
-    void LoadLogsUI();
-    void LoadListenersUI();
-    void LoadTunnelsUI();
-    void LoadDownloadsUI();
-    void LoadTasksOutput();
+    void SetSessionsTableUI() const;
+    void SetGraphUI() const;
+    void SetTasksUI() const;
+    void LoadLogsUI() const;
+    void LoadListenersUI() const;
+    void LoadTunnelsUI() const;
+    void LoadDownloadsUI() const;
+    void LoadTasksOutput() const;
     void OnReconnect();
-    void LoadConsoleUI(QString AgentId);
-    void LoadFileBrowserUI(QString AgentId);
-    void LoadProcessBrowserUI(QString AgentId);
+    void LoadConsoleUI(const QString &AgentId);
+    void LoadFileBrowserUI(const QString &AgentId);
+    void LoadProcessBrowserUI(const QString &AgentId);
 };
 
 #endif //ADAPTIXCLIENT_ADAPTIXWIDGET_H

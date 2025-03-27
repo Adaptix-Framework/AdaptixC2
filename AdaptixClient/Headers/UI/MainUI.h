@@ -7,23 +7,28 @@
 
 class MainUI : public QMainWindow
 {
-    QTabWidget*    mainuiTabWidget   = nullptr;
+    QTabWidget* mainuiTabWidget   = nullptr;
     // AdaptixWidget* mainAdaptixWidget = nullptr;
 
     QMap<QString, AdaptixWidget*> AdaptixProjects;
 
 public:
     explicit MainUI();
-    ~MainUI();
+    ~MainUI() override;
 
-    void onNewProject();
+    static void onNewProject();
     void onCloseProject();
-    void onExtender();
-    void onSettings();
+
+    static void onExtender();
+
+    static void onSettings();
 
     void AddNewProject(AuthProfile* profile);
-    void AddNewExtension(ExtensionFile extFile);
-    void RemoveExtension(ExtensionFile extFile);
+    void AddNewExtension(const ExtensionFile &extFile);
+    void RemoveExtension(const ExtensionFile &extFile);
+
+protected:
+    void closeEvent(QCloseEvent *event) override;
 };
 
 #endif //ADAPTIXCLIENT_MAINUI_H

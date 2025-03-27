@@ -65,10 +65,11 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 
 	packets = append(packets, ts.TsPresyncExtenders()...)
 	packets = append(packets, ts.TsPresyncListeners()...)
-	packets = append(packets, ts.TsPresyncAgentsAndTasks()...)
+	packets = append(packets, ts.TsPresyncAgents()...)
 	packets = append(packets, ts.TsPresyncDownloads()...)
 	packets = append(packets, ts.TsPresyncTunnels()...)
 	packets = append(packets, ts.TsPresyncEvents()...)
+	packets = append(packets, ts.TsPresyncPivots()...)
 
 	startPacket := CreateSpSyncStart(len(packets))
 	_ = json.NewEncoder(&buffer).Encode(startPacket)
@@ -117,31 +118,62 @@ func (ts *Teamserver) TsPresyncListeners() []interface{} {
 	return packets
 }
 
-func (ts *Teamserver) TsPresyncAgentsAndTasks() []interface{} {
-	var packets []interface{}
+func (ts *Teamserver) TsPresyncAgents() []interface{} {
+	var (
+		packets      []interface{}
+		sortedTasks  []adaptix.TaskData
+		sortedAgents []*Agent
+	)
+
 	ts.agents.ForEach(func(key string, value interface{}) bool {
 		agent := value.(*Agent)
-		p := CreateSpAgentNew(agent.Data)
-		packets = append(packets, p)
-
-		var sortedTasks []adaptix.TaskData
-
-		agent.ClosedTasks.ForEach(func(key2 string, value2 interface{}) bool {
-			taskData := value2.(adaptix.TaskData)
-			index := sort.Search(len(sortedTasks), func(i int) bool {
-				return sortedTasks[i].StartDate > taskData.StartDate
-			})
-			sortedTasks = append(sortedTasks[:index], append([]adaptix.TaskData{taskData}, sortedTasks[index:]...)...)
-			return true
+		index := sort.Search(len(sortedAgents), func(i int) bool {
+			return sortedAgents[i].Data.CreateTime > agent.Data.CreateTime
 		})
-
-		for _, taskData := range sortedTasks {
-			t1 := CreateSpAgentTaskCreate(taskData)
-			t2 := CreateSpAgentTaskUpdate(taskData)
-			packets = append(packets, t1, t2)
-		}
+		sortedAgents = append(sortedAgents[:index], append([]*Agent{agent}, sortedAgents[index:]...)...)
 		return true
 	})
+
+	ts.agents.DirectLock()
+	for _, agent := range sortedAgents {
+		if agent != nil {
+			/// Agent
+			p := CreateSpAgentNew(agent.Data)
+			packets = append(packets, p)
+
+			/// Tasks
+			agent.CompletedTasks.ForEach(func(key2 string, value2 interface{}) bool {
+				taskData := value2.(adaptix.TaskData)
+				index := sort.Search(len(sortedTasks), func(i int) bool {
+					return sortedTasks[i].StartDate > taskData.StartDate
+				})
+				sortedTasks = append(sortedTasks[:index], append([]adaptix.TaskData{taskData}, sortedTasks[index:]...)...)
+				return true
+			})
+
+			/// Consoles
+			for value := range agent.OutConsole.Iterator() {
+				packets = append(packets, value.Item)
+			}
+		}
+	}
+	ts.agents.DirectUnlock()
+
+	for _, taskData := range sortedTasks {
+		t := CreateSpAgentTaskSync(taskData)
+		packets = append(packets, t)
+	}
+
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncPivots() []interface{} {
+	var packets []interface{}
+	for value := range ts.pivots.Iterator() {
+		pivot := value.Item.(*adaptix.PivotData)
+		p := CreateSpPivotCreate(*pivot)
+		packets = append(packets, p)
+	}
 	return packets
 }
 

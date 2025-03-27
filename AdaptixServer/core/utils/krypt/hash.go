@@ -9,7 +9,7 @@ import (
 
 func SHA256(data []byte) string {
 	hash := sha256.New()
-	hash.Write([]byte(data))
+	hash.Write(data)
 	hashBytes := hash.Sum(nil)
 	return hex.EncodeToString(hashBytes)
 }

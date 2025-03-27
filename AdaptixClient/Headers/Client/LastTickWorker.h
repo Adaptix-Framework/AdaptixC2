@@ -14,12 +14,12 @@ Q_OBJECT
 
 public:
     explicit LastTickWorker(AdaptixWidget* w);
-    ~LastTickWorker();
+    ~LastTickWorker() override;
 
-    void run();
+    void run() override;
 
 public slots:
-    void updateLastItems();
+    void updateLastItems() const;
 };
 
 #endif //ADAPTIXCLIENT_LASTTICKWORKER_H

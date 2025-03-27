@@ -33,7 +33,7 @@ void DialogSyncPacket::init(int count)
     progressBar->setValue(receivedLogs);
 }
 
-void DialogSyncPacket::upgrade()
+void DialogSyncPacket::upgrade() const
 {
     QString progress = QString("Received: %1 / %2").arg(receivedLogs).arg(totalLogs);
     logProgressLabel->setText(progress);
@@ -47,7 +47,7 @@ void DialogSyncPacket::upgrade()
     }
 }
 
-void DialogSyncPacket::finish()
+void DialogSyncPacket::finish() const
 {
     logProgressLabel->setText("Synchronization complete!");
     splashScreen->close();

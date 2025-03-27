@@ -114,22 +114,25 @@ VOID Packer::PackFlatBytes(PBYTE data, ULONG data_size)
 }
 
 
-PBYTE Packer::GetData()
+PBYTE Packer::data()
 {
     return this->buffer;
 }
 
-ULONG Packer::GetDataSize()
+ULONG Packer::datasize()
 {
     return this->index;
 }
 
-VOID Packer::Clear()
+VOID Packer::Clear(BOOL renew)
 {
     MemFreeLocal((LPVOID*)&this->buffer, this->size);
     this->index = 0;
-    this->size  = 4;
-    this->buffer = (BYTE*) MemAllocLocal(4);
+    this->size = 0;
+    if (renew) {
+        this->size = 4;
+        this->buffer = (BYTE*)MemAllocLocal(4);
+    }
 }
 
 BYTE Packer::Unpack8()

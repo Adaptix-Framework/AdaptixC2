@@ -12,8 +12,8 @@ void LogSuccess(const char* format, ...);
 
 void LogError(const char* format, ...);
 
-void MessageError( QString message );
+void MessageError(const QString &message );
 
-void MessageSuccess( QString message );
+void MessageSuccess(const QString &message );
 
 #endif //ADAPTIXCLIENT_LOGS_H

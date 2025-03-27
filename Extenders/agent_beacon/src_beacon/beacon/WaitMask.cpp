@@ -3,7 +3,7 @@
 void WaitMask(ULONG sleepTime, ULONG jitter) 
 {
     ULONG deltaTime = 0;
-    ULONG maxTime   = sleepTime;
+    ULONG maxTime   = sleepTime * 1000;
     ULONG minTime   = sleepTime * jitter / 100;
     
     if (minTime)

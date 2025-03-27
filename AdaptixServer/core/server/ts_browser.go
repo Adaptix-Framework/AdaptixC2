@@ -2,22 +2,19 @@ package server
 
 import (
 	"AdaptixServer/core/adaptix"
-	"AdaptixServer/core/utils/krypt"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 )
 
 /// AGENT
 
-func (ts *Teamserver) TsAgentBrowserDisks(agentId string, clientName string) error {
+func (ts *Teamserver) TsAgentGuiDisks(agentId string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -25,6 +22,10 @@ func (ts *Teamserver) TsAgentBrowserDisks(agentId string, clientName string) err
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserDisks(agent.Data.Name, agentObject.Bytes())
@@ -32,20 +33,7 @@ func (ts *Teamserver) TsAgentBrowserDisks(agentId string, clientName string) err
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.StartDate = time.Now().Unix()
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -54,12 +42,11 @@ func (ts *Teamserver) TsAgentBrowserDisks(agentId string, clientName string) err
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserProcess(agentId string, clientName string) error {
+func (ts *Teamserver) TsAgentGuiProcess(agentId string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -67,6 +54,10 @@ func (ts *Teamserver) TsAgentBrowserProcess(agentId string, clientName string) e
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+		
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserProcess(agent.Data.Name, agentObject.Bytes())
@@ -74,20 +65,7 @@ func (ts *Teamserver) TsAgentBrowserProcess(agentId string, clientName string) e
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.StartDate = time.Now().Unix()
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -96,12 +74,11 @@ func (ts *Teamserver) TsAgentBrowserProcess(agentId string, clientName string) e
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, clientName string) error {
+func (ts *Teamserver) TsAgentGuiFiles(agentId string, path string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -109,6 +86,10 @@ func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, clientNam
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserFiles(agent.Data.Name, path, agentObject.Bytes())
@@ -116,20 +97,7 @@ func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, clientNam
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.StartDate = time.Now().Unix()
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -138,12 +106,11 @@ func (ts *Teamserver) TsAgentBrowserFiles(agentId string, path string, clientNam
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content []byte, clientName string) error {
+func (ts *Teamserver) TsAgentGuiUpload(agentId string, path string, content []byte, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -151,6 +118,10 @@ func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content 
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserUpload(agent.Data.Name, path, content, agentObject.Bytes())
@@ -158,20 +129,7 @@ func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content 
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.StartDate = time.Now().Unix()
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -180,12 +138,11 @@ func (ts *Teamserver) TsAgentBrowserUpload(agentId string, path string, content 
 	return nil
 }
 
-func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, clientName string) error {
+func (ts *Teamserver) TsAgentGuiDownload(agentId string, path string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -193,6 +150,10 @@ func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, client
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserDownload(agent.Data.Name, path, agentObject.Bytes())
@@ -200,20 +161,7 @@ func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, client
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.StartDate = time.Now().Unix()
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -222,12 +170,11 @@ func (ts *Teamserver) TsAgentBrowserDownload(agentId string, path string, client
 	return nil
 }
 
-func (ts *Teamserver) TsAgentCtxExit(agentId string, clientName string) error {
+func (ts *Teamserver) TsAgentGuiExit(agentId string, clientName string) error {
 	var (
 		err         error
 		agentObject bytes.Buffer
 		agent       *Agent
-		taskData    adaptix.TaskData
 		data        []byte
 	)
 
@@ -235,6 +182,10 @@ func (ts *Teamserver) TsAgentCtxExit(agentId string, clientName string) error {
 	if ok {
 
 		agent, _ = value.(*Agent)
+		if agent.Active == false {
+			return fmt.Errorf("agent '%v' not active", agentId)
+		}
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentCtxExit(agent.Data.Name, agentObject.Bytes())
@@ -242,22 +193,7 @@ func (ts *Teamserver) TsAgentCtxExit(agentId string, clientName string) error {
 			return err
 		}
 
-		err = json.Unmarshal(data, &taskData)
-		if err != nil {
-			return err
-		}
-
-		if taskData.TaskId == "" {
-			taskData.TaskId, _ = krypt.GenerateUID(8)
-		}
-		taskData.AgentId = agentId
-		taskData.Client = clientName
-		taskData.Computer = agent.Data.Computer
-		taskData.CommandLine = "agent terminate"
-		taskData.StartDate = time.Now().Unix()
-		taskData.Sync = true
-
-		agent.TasksQueue.Put(taskData)
+		ts.TsTaskCreate(agentId, "agent terminate", clientName, data)
 
 	} else {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -268,7 +204,7 @@ func (ts *Teamserver) TsAgentCtxExit(agentId string, clientName string) error {
 
 /// SYNC
 
-func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
+func (ts *Teamserver) TsClientGuiDisks(jsonTask string, jsonDrives string) {
 	var (
 		agent    *Agent
 		task     adaptix.TaskData
@@ -290,7 +226,7 @@ func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
 		return
 	}
 
-	value, ok = agent.Tasks.Get(taskData.TaskId)
+	value, ok = agent.RunningTasks.Get(taskData.TaskId)
 	if ok {
 		task = value.(adaptix.TaskData)
 	} else {
@@ -301,7 +237,7 @@ func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
 		return
 	}
 
-	agent.Tasks.Delete(taskData.TaskId)
+	agent.RunningTasks.Delete(taskData.TaskId)
 
 	if taskData.MessageType != CONSOLE_OUT_ERROR && taskData.MessageType != CONSOLE_OUT_LOCAL_ERROR {
 		taskData.Message = "Status: OK"
@@ -311,7 +247,7 @@ func (ts *Teamserver) TsClientBrowserDisks(jsonTask string, jsonDrives string) {
 	ts.TsSyncClient(task.Client, packet)
 }
 
-func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFiles string) {
+func (ts *Teamserver) TsClientGuiFiles(jsonTask string, path string, jsonFiles string) {
 	var (
 		agent    *Agent
 		task     adaptix.TaskData
@@ -333,7 +269,7 @@ func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFil
 		return
 	}
 
-	value, ok = agent.Tasks.Get(taskData.TaskId)
+	value, ok = agent.RunningTasks.Get(taskData.TaskId)
 	if ok {
 		task = value.(adaptix.TaskData)
 	} else {
@@ -344,7 +280,7 @@ func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFil
 		return
 	}
 
-	agent.Tasks.Delete(taskData.TaskId)
+	agent.RunningTasks.Delete(taskData.TaskId)
 
 	if taskData.MessageType != CONSOLE_OUT_ERROR && taskData.MessageType != CONSOLE_OUT_LOCAL_ERROR {
 		taskData.Message = "Status: OK"
@@ -358,7 +294,7 @@ func (ts *Teamserver) TsClientBrowserFiles(jsonTask string, path string, jsonFil
 	ts.TsSyncClient(task.Client, packet)
 }
 
-func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
+func (ts *Teamserver) TsClientGuiFilesStatus(jsonTask string) {
 	var (
 		agent    *Agent
 		task     adaptix.TaskData
@@ -380,7 +316,7 @@ func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
 		return
 	}
 
-	value, ok = agent.Tasks.Get(taskData.TaskId)
+	value, ok = agent.RunningTasks.Get(taskData.TaskId)
 	if ok {
 		task = value.(adaptix.TaskData)
 	} else {
@@ -391,13 +327,13 @@ func (ts *Teamserver) TsClientBrowserFilesStatus(jsonTask string) {
 		return
 	}
 
-	agent.Tasks.Delete(taskData.TaskId)
+	agent.RunningTasks.Delete(taskData.TaskId)
 
 	packet := CreateSpBrowserFilesStatus(taskData)
 	ts.TsSyncClient(task.Client, packet)
 }
 
-func (ts *Teamserver) TsClientBrowserProcess(jsonTask string, jsonFiles string) {
+func (ts *Teamserver) TsClientGuiProcess(jsonTask string, jsonFiles string) {
 	var (
 		agent    *Agent
 		task     adaptix.TaskData
@@ -419,7 +355,7 @@ func (ts *Teamserver) TsClientBrowserProcess(jsonTask string, jsonFiles string) 
 		return
 	}
 
-	value, ok = agent.Tasks.Get(taskData.TaskId)
+	value, ok = agent.RunningTasks.Get(taskData.TaskId)
 	if ok {
 		task = value.(adaptix.TaskData)
 	} else {
@@ -430,7 +366,7 @@ func (ts *Teamserver) TsClientBrowserProcess(jsonTask string, jsonFiles string) 
 		return
 	}
 
-	agent.Tasks.Delete(taskData.TaskId)
+	agent.RunningTasks.Delete(taskData.TaskId)
 
 	if taskData.MessageType != CONSOLE_OUT_ERROR && taskData.MessageType != CONSOLE_OUT_LOCAL_ERROR {
 		taskData.Message = "Status: OK"

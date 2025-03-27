@@ -8,7 +8,7 @@ bool IsValidURI(const QString &uri)
 }
 
 
-QString ValidCommandsFile(QByteArray jsonData, bool* result)
+QString ValidCommandsFile(const QByteArray &jsonData, bool* result)
 {
     QJsonParseError parseError;
     QJsonDocument document = QJsonDocument::fromJson(jsonData, &parseError);
@@ -169,6 +169,17 @@ QString UnixTimestampGlobalToStringLocal(qint64 timestamp)
     return formattedTime;
 }
 
+QString UnixTimestampGlobalToStringLocalSmall(qint64 timestamp)
+{
+    if ( timestamp == 0 )
+        return "";
+
+    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, Qt::UTC);
+    QDateTime localDateTime = epochDateTime.toLocalTime();
+    QString formattedTime = localDateTime.toString("dd/MM hh:mm");
+    return formattedTime;
+}
+
 QString UnixTimestampGlobalToStringLocalFull(qint64 timestamp)
 {
     if ( timestamp == 0 )
@@ -180,7 +191,7 @@ QString UnixTimestampGlobalToStringLocalFull(qint64 timestamp)
     return formattedTime;
 }
 
-QString TextColorHtml(QString text, QString color)
+QString TextColorHtml(const QString &text, const QString &color)
 {
     if (text.isEmpty())
         return "";
@@ -188,7 +199,7 @@ QString TextColorHtml(QString text, QString color)
     return R"(<font color=")" + color + R"(">)" + text.toHtmlEscaped() + R"(</font>)";
 }
 
-QString TextUnderlineColorHtml(QString text, QString color)
+QString TextUnderlineColorHtml(const QString &text, const QString &color)
 {
     if (text.isEmpty())
         return "";
@@ -199,7 +210,7 @@ QString TextUnderlineColorHtml(QString text, QString color)
     return R"(<font color=")" + color + R"("><u>)" + text.toHtmlEscaped() + R"(</u></font>)";
 }
 
-QString TextBoltColorHtml(QString text, QString color )
+QString TextBoltColorHtml(const QString &text, const QString &color )
 {
     if (text.isEmpty())
         return "";
@@ -234,9 +245,9 @@ QString TrimmedEnds(QString str)
 
 QString BytesToFormat(qint64 bytes)
 {
-    const double KB = 1024.0;
-    const double MB = KB * 1024;
-    const double GB = MB * 1024;
+    constexpr double KB = 1024.0;
+    constexpr double MB = KB * 1024;
+    constexpr double GB = MB * 1024;
 
     if (bytes >= GB) {
         return QString::number(bytes / GB, 'f', 2) + " Gb";
@@ -247,7 +258,7 @@ QString BytesToFormat(qint64 bytes)
     }
 }
 
-QIcon RecolorIcon(QIcon originalIcon, QString colorString)
+QIcon RecolorIcon(QIcon originalIcon, const QString &colorString)
 {
     QColor color = QColor(colorString);
     if ( !color.isValid() )

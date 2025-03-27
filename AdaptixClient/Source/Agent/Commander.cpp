@@ -1,6 +1,6 @@
 #include <Agent/Commander.h>
 
-void BofPacker::Pack(QString type, QJsonValue jsonValue)
+void BofPacker::Pack(const QString &type, const QJsonValue &jsonValue)
 {
     if (type == "CSTR") {
         if (!jsonValue.isString())
@@ -97,7 +97,7 @@ void BofPacker::Pack(QString type, QJsonValue jsonValue)
     }
 }
 
-QString BofPacker::Build()
+QString BofPacker::Build() const
 {
     QByteArray strLengthData;
     int strLength = data.size();
@@ -113,7 +113,7 @@ Commander::Commander(){}
 
 Commander::~Commander() = default;
 
-bool Commander::AddRegCommands(QByteArray jsonData)
+bool Commander::AddRegCommands(const QByteArray &jsonData)
 {
     QList<Command> commandsList;
 
@@ -132,7 +132,7 @@ bool Commander::AddRegCommands(QByteArray jsonData)
     return true;
 }
 
-bool Commander::AddExtCommands(QString filepath, QString extName, QList<QJsonObject> extCommands)
+bool Commander::AddExtModule(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands)
 {
     QFileInfo fi(filepath);
     QString dirPath = fi.absolutePath();
@@ -145,16 +145,17 @@ bool Commander::AddExtCommands(QString filepath, QString extName, QList<QJsonObj
         commandsList.append(extCmd);
     }
 
-    extModules[filepath].extName = extName;
-    extModules[filepath].extCommands = commandsList;
+    extModules[filepath].Name = extName;
+    extModules[filepath].Commands = commandsList;
 
     return true;
 }
 
-void Commander::RemoveExtCommands(QString filepath)
+void Commander::RemoveExtModule(const QString &filepath)
 {
     extModules.remove(filepath);
 }
+
 
 
 Command Commander::ParseCommand(QJsonObject jsonObject)
@@ -198,7 +199,7 @@ Command Commander::ParseCommand(QJsonObject jsonObject)
     return cmd;
 }
 
-Argument Commander::ParseArgument(QString argString)
+Argument Commander::ParseArgument(const QString &argString)
 {
     Argument arg = {0};
     QRegularExpression regex(R"((\w+)\s+([\[\<][^\s\]]+[\s\w-]*[\>\]])(\s*\([^\)]*\))?(?:\s+\{([\s\S]+)\})?)");
@@ -283,7 +284,7 @@ CommanderResult Commander::ProcessInput(AgentData agentData, QString input)
     }
 
     for ( auto extMod : extModules ) {
-        for (Command command : extMod.extCommands) {
+        for (Command command : extMod.Commands) {
             if (command.name == commandName) {
                 return ProcessCommand(agentData, command, parts);
             }
@@ -546,7 +547,7 @@ CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, 
     return CommanderResult{false, jsonDoc.toJson(), false };
 }
 
-QString Commander::ProcessExecExtension(AgentData agentData, QString filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
+QString Commander::ProcessExecExtension(const AgentData &agentData, const QString &filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
 {
     // ARCH
 
@@ -623,10 +624,10 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
     QString result;
     QTextStream output(&result);
     if (commandParts.isEmpty()) {
-        int TotalWidth = 20;
+        int TotalWidth = 24;
         output << QString("\n");
-        output << QString("  Command                   Description\n");
-        output << QString("  -------                   -----------\n");
+        output << QString("  Command                       Description\n");
+        output << QString("  -------                       -----------\n");
 
         for ( auto command : commands ) {
             QString commandName = command.name;
@@ -639,16 +640,29 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
 
         for ( auto extMod : extModules.values() ){
             output << QString("\n");
-            output << QString("  Extension - " + extMod.extName + "\n");
+            output << QString("  Extension - " + extMod.Name + "\n");
             output << QString("  =====================================\n");
 
-            for ( auto command : extMod.extCommands ) {
-                QString commandName = command.name;
-                if (!command.subcommands.isEmpty())
-                    commandName += '*';
+            for ( auto command : extMod.Commands ) {
+                // QString commandName = command.name;
+                // if (!command.subcommands.isEmpty())
+                //     commandName += '*';
+                //
+                // QString tab = QString(TotalWidth - commandName.size(), ' ');
+                // output << "  " + commandName + tab + "      " + command.description + "\n";
 
-                QString tab = QString(TotalWidth - commandName.size(), ' ');
-                output << "  " + commandName + tab + "      " + command.description + "\n";
+                QString commandName = command.name;
+                if ( command.subcommands.isEmpty() ) {
+                    QString tab = QString(TotalWidth - commandName.size(), ' ');
+                    output << "  " + commandName + tab + "      " + command.description + "\n";
+                }
+                else {
+                    for ( auto subcmd : command.subcommands ) {
+                        QString subcmdName = commandName + " " + subcmd.name;
+                        QString tab = QString(TotalWidth - subcmdName.size(), ' ');
+                        output << "  " + subcmdName + tab + "      " + subcmd.description + "\n";
+                    }
+                }
             }
         }
 
@@ -656,7 +670,6 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
     }
     else {
         Command foundCommand;
-        Command foundSubCommand;
         QString commandName = commandParts[0];
 
         for (Command cmd : commands) {
@@ -670,7 +683,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             if ( !foundCommand.name.isEmpty() )
                 break;
 
-            for (Command cmd : extMod.extCommands) {
+            for (Command cmd : extMod.Commands) {
                 if (cmd.name == commandName) {
                     foundCommand = cmd;
                     break;
@@ -689,11 +702,11 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             if(!foundCommand.example.isEmpty())
                 output << "  Example               : " + foundCommand.example + "\n";
             if( !foundCommand.subcommands.isEmpty() ) {
-                int TotalWidth = 20;
                 output << "\n";
                 output << "  SubCommand                Description\n";
                 output << "  ----------                -----------\n";
                 for ( auto subcmd : foundCommand.subcommands ) {
+                    int TotalWidth = 20;
                     int cmdWidth = subcmd.name.size();
                     if (cmdWidth > TotalWidth)
                         cmdWidth = TotalWidth;
@@ -702,25 +715,30 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                     output << "  " + subcmd.name + tab + "      " + subcmd.description + "\n";
                 }
             }
-            else if ( !foundCommand.args.isEmpty() ) {
-                QString argsHelp;
-                QTextStream argsStream(&argsHelp);
+            else if (!foundCommand.args.isEmpty()) {
                 QString usageHelp;
                 QTextStream usageStream(&usageHelp);
-
                 usageStream << foundCommand.name;
-                for ( auto arg : foundCommand.args ) {
-                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + ( arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " " ) + arg.name + (arg.required ? ">" : "]");
+
+                int maxArgLength = 0;
+                for (const auto &arg : foundCommand.args) {
+                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    maxArgLength = qMax(maxArgLength, fullarg.size());
                     usageStream << " " + fullarg;
-                    argsStream << "    " + fullarg + "  : " + arg.type + ( arg.defaultValue.isEmpty() ? ". " : " (default: '" + arg.defaultValue + "'). " ) + arg.description + "\n";
                 }
-                output << "  Usage                 : " + usageHelp;
-                output << "\n";
+
+                output << "  Usage                 : " + usageHelp + "\n\n";
                 output << "  Arguments:\n";
-                output << argsHelp;
+
+                for (const auto &arg : foundCommand.args) {
+                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    QString padding = QString(maxArgLength - fullarg.size(), ' ');
+                    output << "    " + fullarg + padding + "  : " + arg.type + (arg.defaultValue.isEmpty() ? ". " : " (default: '" + arg.defaultValue + "'). ") + arg.description + "\n";
+                }
             }
         }
         else if (commandParts.size() == 2) {
+            Command foundSubCommand;
             QString subCommandName = commandParts[1];
             for (Command subcmd : foundCommand.subcommands) {
                 if (subcmd.name == subCommandName) {
@@ -737,22 +755,26 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 output << "  Description           : " + foundSubCommand.description + "\n";
             if(!foundSubCommand.example.isEmpty())
                 output << "  Example               : " + foundSubCommand.example + "\n";
-            if ( !foundSubCommand.args.isEmpty() ) {
-                QString argsHelp;
-                QTextStream argsStream(&argsHelp);
+            if (!foundSubCommand.args.isEmpty()) {
                 QString usageHelp;
                 QTextStream usageStream(&usageHelp);
-
                 usageStream << foundCommand.name + " " + foundSubCommand.name;
-                for ( auto arg : foundSubCommand.args ) {
-                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + ( arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " " ) + arg.name + (arg.required ? ">" : "]");
+
+                int maxArgLength = 0;
+                for (const auto &arg : foundSubCommand.args) {
+                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    maxArgLength = qMax(maxArgLength, fullarg.size());
                     usageStream << " " + fullarg;
-                    argsStream << "    " + fullarg + "  : " + arg.type + ". " + arg.description + "\n";
                 }
-                output << "  Usage                 : " + usageHelp;
-                output << "\n";
+
+                output << "  Usage                 : " + usageHelp + "\n\n";
                 output << "  Arguments:\n";
-                output << argsHelp;
+
+                for (const auto &arg : foundSubCommand.args) {
+                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    QString padding = QString(maxArgLength - fullarg.size(), ' ');
+                    output << "    " + fullarg + padding + "  : " + arg.type + (arg.defaultValue.isEmpty() ? ". " : " (default: '" + arg.defaultValue + "'). ") + arg.description + "\n";
+                }
             }
         }
         else {
@@ -765,25 +787,36 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
 QStringList Commander::GetCommands()
 {
     QStringList commandList;
+    QStringList helpCommandList;
+
     for (Command cmd : commands) {
-        commandList << cmd.name;
+
+        helpCommandList << "help " + cmd.name;
+        if (cmd.subcommands.isEmpty())
+            commandList << cmd.name;
+
         for (Command subcmd : cmd.subcommands) {
             commandList << cmd.name + " " + subcmd.name;
+            helpCommandList << "help " + cmd.name + " " + subcmd.name;
         }
     }
 
     for( auto extMod : extModules.values()) {
-        for (Command cmd : extMod.extCommands) {
-            commandList << cmd.name;
+        for (Command cmd : extMod.Commands) {
+
+            helpCommandList << "help " + cmd.name;
+            if (cmd.subcommands.isEmpty())
+                commandList << cmd.name;
+
             for (Command subcmd : cmd.subcommands) {
                 commandList << cmd.name + " " + subcmd.name;
+                helpCommandList << "help " + cmd.name + " " + subcmd.name;
             }
         }
     }
 
-    QStringList copyCommandList = commandList;
-    for( QString cmd : copyCommandList)
-        commandList << "help " + cmd;
+    for( QString cmd : helpCommandList)
+        commandList << cmd;
 
     return commandList;
 }

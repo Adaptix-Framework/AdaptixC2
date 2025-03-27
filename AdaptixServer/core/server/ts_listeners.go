@@ -2,12 +2,15 @@ package server
 
 import (
 	"AdaptixServer/core/adaptix"
+	"AdaptixServer/core/utils/krypt"
+	"AdaptixServer/core/utils/logs"
+	isvalid "AdaptixServer/core/utils/valid"
 	"encoding/json"
 	"errors"
 	"fmt"
 )
 
-func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, listenerConfig string, listenerCustomData []byte) error {
+func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, listenerConfig string, listenerWatermark string, listenerCustomData []byte) error {
 	var (
 		err          error
 		data         []byte
@@ -34,8 +37,20 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, 
 		listenerData.Name = listenerName
 		listenerData.Type = listenerType
 		listenerData.Data = listenerConfig
+		if listenerData.Watermark == "" {
+			listenerData.Watermark = listenerWatermark
+		}
+
+		if !isvalid.ValidHex8(listenerData.Watermark) {
+			if listenerData.Watermark != "" {
+				logs.Error("", "Listener %s is invalid watermark. Set random...", listenerName)
+			}
+			listenerData.Watermark, _ = krypt.GenerateUID(8)
+		}
 
 		ts.listeners.Put(listenerName, listenerData)
+
+		ts.wm_listeners[listenerData.Watermark] = []string{listenerName, listenerType}
 
 		packet := CreateSpListenerStart(listenerData)
 		ts.TsSyncAllClients(packet)
@@ -45,7 +60,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, 
 		ts.TsSyncAllClients(packet2)
 		ts.events.Put(packet2)
 
-		_ = ts.DBMS.DbListenerInsert(listenerName, listenerType, listenerConfig, customData)
+		_ = ts.DBMS.DbListenerInsert(listenerData, customData)
 	} else {
 		return fmt.Errorf("listener %v does not exist", listenerType)
 	}
@@ -132,18 +147,46 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerType string, l
 	return nil
 }
 
-func (ts *Teamserver) TsListenerGetProfile(listenerName string, listenerType string) ([]byte, error) {
+func (ts *Teamserver) TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error) {
 
 	if ts.listener_configs.Contains(listenerType) {
 
 		if ts.listeners.Contains(listenerName) {
 
-			return ts.Extender.ExListenerGetProfile(listenerName, listenerType)
+			value, _ := ts.listeners.Get(listenerName)
+			watermark := value.(adaptix.ListenerData).Watermark
+			data, err := ts.Extender.ExListenerGetProfile(listenerName, listenerType)
+			return watermark, data, err
 
 		} else {
-			return nil, fmt.Errorf("listener '%v' does not exist", listenerName)
+			return "", nil, fmt.Errorf("listener '%v' does not exist", listenerName)
 		}
 	} else {
-		return nil, fmt.Errorf("listener %v does not exist", listenerType)
+		return "", nil, fmt.Errorf("listener %v does not exist", listenerType)
+	}
+}
+
+func (ts *Teamserver) TsListenerInteralHandler(watermark string, data []byte) (string, error) {
+
+	pair, ok := ts.wm_listeners[watermark]
+	if ok {
+		listenerName := pair[0]
+		listenerType := pair[1]
+
+		if ts.listener_configs.Contains(listenerType) {
+
+			if ts.listeners.Contains(listenerName) {
+
+				return ts.Extender.ExListenerInteralHandler(listenerName, listenerType, data)
+
+			} else {
+				return "", fmt.Errorf("listener '%v' does not exist", listenerName)
+			}
+		} else {
+			return "", fmt.Errorf("listener %v does not exist", listenerType)
+		}
+
+	} else {
+		return "", fmt.Errorf("listener %v does not exist", watermark)
 	}
 }

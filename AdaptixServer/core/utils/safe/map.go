@@ -44,11 +44,12 @@ func (s *Map) Delete(key string) {
 func (s *Map) GetDelete(key string) (interface{}, bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	value, exists := s.m[key]
-	if exists {
+
+	if value, exists := s.m[key]; exists {
 		delete(s.m, key)
+		return value, true
 	}
-	return value, exists
+	return nil, false
 }
 
 func (s *Map) Len() int {
@@ -59,8 +60,13 @@ func (s *Map) Len() int {
 
 func (s *Map) ForEach(f func(key string, value interface{}) bool) {
 	s.mutex.RLock()
-	defer s.mutex.RUnlock()
-	for key, value := range s.m {
+	copyMap := make(map[string]interface{}, len(s.m))
+	for k, v := range s.m {
+		copyMap[k] = v
+	}
+	s.mutex.RUnlock()
+
+	for key, value := range copyMap {
 		if !f(key, value) {
 			break
 		}
@@ -77,4 +83,14 @@ func (s *Map) DirectUnlock() {
 
 func (s *Map) DirectMap() map[string]interface{} {
 	return s.m
+}
+
+func (s *Map) CutMap() map[string]interface{} {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	oldMap := s.m
+	s.m = make(map[string]interface{})
+
+	return oldMap
 }

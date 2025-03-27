@@ -50,12 +50,27 @@
 #include <QStyledItemDelegate>
 #include <QStringListModel>
 #include <QSpinBox>
+#include <QColorDialog>
+#include <QGraphicsView>
+#include <QGraphicsScene>
+#include <QGraphicsItem>
+#include <QGraphicsSceneContextMenuEvent>
+#include <QPainter>
+#include <QScrollBar>
+
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.2"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.3"
+
+///////////
+
+#define OS_UNKNOWN 0
+#define OS_WINDOWS 1
+#define OS_LINUX   2
+#define OS_MAC     3
 
 //////////
 
@@ -82,12 +97,14 @@
 #define TYPE_AGENT_REG         0x41
 #define TYPE_AGENT_NEW         0x42
 #define TYPE_AGENT_TICK        0x43
-#define TYPE_AGENT_TASK_CREATE 0x44
-#define TYPE_AGENT_TASK_UPDATE 0x45
-#define TYPE_AGENT_TASK_REMOVE 0x46
-#define TYPE_AGENT_CONSOLE_OUT 0x47
-#define TYPE_AGENT_UPDATE      0x48
-#define TYPE_AGENT_REMOVE      0x49
+#define TYPE_AGENT_UPDATE      0x44
+#define TYPE_AGENT_LINK        0x45
+#define TYPE_AGENT_REMOVE      0x46
+
+#define TYPE_AGENT_TASK_SYNC   0x49
+#define TYPE_AGENT_TASK_UPDATE 0x4a
+#define TYPE_AGENT_TASK_SEND   0x4b
+#define TYPE_AGENT_TASK_REMOVE 0x4c
 
 #define TYPE_DOWNLOAD_CREATE 0x51
 #define TYPE_DOWNLOAD_UPDATE 0x52
@@ -102,6 +119,13 @@
 #define TYPE_BROWSER_STATUS  0x63
 #define TYPE_BROWSER_PROCESS 0x64
 
+#define TYPE_AGENT_CONSOLE_OUT       0x69
+#define TYPE_AGENT_CONSOLE_TASK_SYNC 0x6a
+#define TYPE_AGENT_CONSOLE_TASK_UPD  0x6b
+
+#define TYPE_PIVOT_CREATE 0x71
+#define TYPE_PIVOT_DELETE 0x72
+
 //////////
 
 #define DOWNLOAD_STATE_RUNNING  0x1
@@ -111,17 +135,23 @@
 
 /////////
 
-#define COLOR_NeonGreen    "#39FF14"     // green
-#define COLOR_Berry        "#A01641"     // red
-#define COLOR_ChiliPepper  "#E32227"     // red
-#define COLOR_BrightOrange "#FFA500"     // orange
-#define COLOR_PastelYellow "#FDFD96"     // yellow
-#define COLOR_Yellow       "#FFFF00"     // yellow
-#define COLOR_BabyBlue     "#89CFF0"     // blue
-#define COLOR_Gray         "#808080"     // gray
-#define COLOR_SaturGray    "#606060"     // gray
-#define COLOR_ConsoleWhite "#e0e0e0"     // white
-#define COLOR_White        "#ffffff"     // white
+#define COLOR_Black           "#000000"     // black
+#define COLOR_NeonGreen       "#39FF14"     // green
+#define COLOR_KellyGreen      "#4CBB17"     // green
+#define COLOR_Green           "#008000"     // green
+#define COLOR_Berry           "#A01641"     // red
+#define COLOR_ChiliPepper     "#E32227"     // red
+#define COLOR_BrightOrange    "#FFA500"     // orange
+#define COLOR_PastelYellow    "#FDFD96"     // yellow
+#define COLOR_Yellow          "#FFFF00"     // yellow
+#define COLOR_BabyBlue        "#89CFF0"     // blue
+#define COLOR_Purple          "#800080"     // purple
+#define COLOR_DarkBrownishRed "#4A403D"     // gray-red
+#define COLOR_LightGray       "#A0A0A0"     // gray
+#define COLOR_Gray            "#808080"     // gray
+#define COLOR_SaturGray       "#606060"     // gray
+#define COLOR_ConsoleWhite    "#E0E0E0"     // white
+#define COLOR_White           "#FFFFFF"     // white
 
 //////////
 
@@ -131,7 +161,12 @@ typedef struct SettingsData {
     QString FontFamily;
     int     FontSize;
 
-    bool SessionsTableColumns[15];
+    bool   SessionsTableColumns[15];
+    bool   CheckHealth;
+    double HealthCoaf;
+    int    HealthOffset;
+
+    bool TasksTableColumns[11];
 } SettingsData;
 
 typedef struct ListenerData
@@ -167,7 +202,10 @@ typedef struct AgentData
     QString     Domain;
     QString     Computer;
     QString     Username;
+    QString     Impersonated;
     QString     Tags;
+    QString     Mark;
+    QString     Color;
     int         LastTick;
 } AgentData;
 
@@ -207,6 +245,7 @@ typedef struct TaskData
     int     TaskType;
     QString AgentId;
     QString Client;
+    QString User;
     QString Computer;
     qint64  StartTime;
     qint64  FinishTime;
@@ -218,6 +257,14 @@ typedef struct TaskData
     bool    Completed;
 } TaskData;
 
+typedef struct PivotData
+{
+    QString PivotId;
+    QString PivotName;
+    QString ParentAgentId;
+    QString ChildAgentId;
+} PivotData;
+
 typedef struct ExtensionFile
 {
     QString Name;
@@ -227,6 +274,7 @@ typedef struct ExtensionFile
     bool    Enabled;
     bool    Valid;
 
+    QVector<QJsonObject> ExConstants;
     QMap<QString, QVector<QJsonObject> > ExCommands;
 } ExtensionFile;
 

@@ -2,6 +2,7 @@ package database
 
 import (
 	"AdaptixServer/core/adaptix"
+	"database/sql"
 	"errors"
 	"fmt"
 )
@@ -11,7 +12,9 @@ func (dbms *DBMS) DbDownloadExist(fileId string) bool {
 	if err != nil {
 		return false
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
 
 	for rows.Next() {
 		rowFileId := ""
@@ -94,8 +97,12 @@ func (dbms *DBMS) DbDownloadAll() []adaptix.DownloadData {
 				}
 				downloads = append(downloads, downloadData)
 			}
+		} else {
+			fmt.Println(err.Error() + " --- Clear database file!")
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 	}
 	return downloads
 }

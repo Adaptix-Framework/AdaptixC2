@@ -21,11 +21,13 @@ public:
     explicit MainAdaptix();
     ~MainAdaptix() override;
 
-    void         Start();
-    void         Exit();
-    void         NewProject();
-    void         SetApplicationTheme();
-    AuthProfile* Login();
+    void         Start() const;
+
+    static void         Exit();
+    void         NewProject() const;
+    void         SetApplicationTheme() const;
+
+    static AuthProfile* Login();
 };
 
 extern MainAdaptix* GlobalClient;

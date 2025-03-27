@@ -1,4 +1,6 @@
 #include <UI/Widgets/ListenersWidget.h>
+#include <UI/Dialogs/DialogListener.h>
+#include <UI/Dialogs/DialogAgent.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
 
@@ -45,7 +47,7 @@ void ListenersWidget::createUI()
     mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
 }
 
-void ListenersWidget::Clear()
+void ListenersWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     adaptixWidget->Listeners.clear();
@@ -53,7 +55,7 @@ void ListenersWidget::Clear()
         tableWidget->removeRow(index -1 );
 }
 
-void ListenersWidget::AddListenerItem(ListenerData newListener )
+void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( auto listener : adaptixWidget->Listeners ) {
@@ -116,7 +118,7 @@ void ListenersWidget::AddListenerItem(ListenerData newListener )
     adaptixWidget->Listeners.push_back(newListener);
 }
 
-void ListenersWidget::EditListenerItem(ListenerData newListener )
+void ListenersWidget::EditListenerItem(const ListenerData &newListener) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
@@ -150,7 +152,7 @@ void ListenersWidget::EditListenerItem(ListenerData newListener )
     }
 }
 
-void ListenersWidget::RemoveListenerItem(QString listenerName)
+void ListenersWidget::RemoveListenerItem(const QString &listenerName) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for ( int i = 0; i < adaptixWidget->Listeners.size(); i++ ) {
@@ -185,7 +187,7 @@ void ListenersWidget::handleListenersMenu(const QPoint &pos ) const
     listenerMenu.exec(globalPos );
 }
 
-void ListenersWidget::createListener()
+void ListenersWidget::createListener() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     if ( !adaptixWidget )
@@ -205,7 +207,7 @@ void ListenersWidget::createListener()
     }
 }
 
-void ListenersWidget::editListener()
+void ListenersWidget::editListener() const
 {
     if (tableWidget->selectionModel()->selectedRows().empty())
         return;
@@ -237,7 +239,7 @@ void ListenersWidget::editListener()
     tmpRegisterListenersUI[listenerType]->ClearWidget();
 }
 
-void ListenersWidget::removeListener()
+void ListenersWidget::removeListener() const
 {
     if (tableWidget->selectionModel()->selectedRows().empty())
         return;
@@ -261,7 +263,7 @@ void ListenersWidget::removeListener()
     }
 }
 
-void ListenersWidget::generateAgent()
+void ListenersWidget::generateAgent() const
 {
     if (tableWidget->selectionModel()->selectedRows().empty())
         return;

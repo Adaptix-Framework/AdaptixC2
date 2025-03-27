@@ -3,7 +3,6 @@
 
 #include <main.h>
 #include <Client/Settings.h>
-#include <Utils/CustomElements.h>
 
 class Settings;
 
@@ -34,11 +33,23 @@ Q_OBJECT
     QComboBox*   fontFamilyCombo     = nullptr;
     QCheckBox*   consoleTimeCheckbox = nullptr;
 
-    QWidget*     sessionsWidget      = nullptr;
-    QGridLayout* sessionsLayout      = nullptr;
-    QGroupBox*   sessionsGroup       = nullptr;
-    QGridLayout* groupLayout         = nullptr;
+    QWidget*     sessionsWidget       = nullptr;
+    QGridLayout* sessionsLayout       = nullptr;
+    QGroupBox*   sessionsGroup        = nullptr;
+    QGridLayout* sessionsGroupLayout  = nullptr;
     QCheckBox*   sessionsCheck[15];
+    QCheckBox*   sessionsHealthCheck  = nullptr;
+    QLabel*      sessionsLabel1       = nullptr;
+    QLabel*      sessionsLabel2       = nullptr;
+    QLabel*      sessionsLabel3       = nullptr;
+    QDoubleSpinBox* sessionsCoafSpin  = nullptr;
+    QSpinBox*    sessionsOffsetSpin   = nullptr;
+
+    QWidget*     tasksWidget      = nullptr;
+    QGridLayout* tasksLayout      = nullptr;
+    QGroupBox*   tasksGroup       = nullptr;
+    QGridLayout* tasksGroupLayout = nullptr;
+    QCheckBox*   tasksCheck[11];
 
 void createUI();
 
@@ -46,8 +57,9 @@ public:
     DialogSettings(Settings* s);
 
 public slots:
-    void onStackChange(int index);
-    void onApply();
+    void onStackChange(int index) const;
+    void onHealthChange() const;
+    void onApply() const;
     void onClose();
 };
 

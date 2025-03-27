@@ -29,14 +29,14 @@ class DialogConnect : public QDialog
     QMenu*        menuContex          = nullptr;
 
     void createUI();
-    bool checkValidInput();
+    bool checkValidInput() const;
     void loadProjects();
 
 public:
     QVector<AuthProfile> listProjects;
 
-    ~DialogConnect() override;
     explicit DialogConnect();
+    ~DialogConnect() override;
 
     AuthProfile* StartDialog();
 

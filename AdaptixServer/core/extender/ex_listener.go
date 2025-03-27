@@ -60,3 +60,15 @@ func (ex *AdaptixExtender) ExListenerGetProfile(listenerName string, configType 
 		return nil, errors.New("module not found")
 	}
 }
+
+func (ex *AdaptixExtender) ExListenerInteralHandler(listenerName string, configType string, data []byte) (string, error) {
+	var module *ModuleExtender
+
+	value, ok := ex.listenerModules.Get(configType)
+	if ok {
+		module = value.(*ModuleExtender)
+		return module.ListenerInteralHandler(listenerName, data)
+	} else {
+		return "", errors.New("module not found")
+	}
+}

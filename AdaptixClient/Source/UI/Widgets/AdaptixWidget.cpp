@@ -1,5 +1,5 @@
 #include <UI/Widgets/AdaptixWidget.h>
-#include "Client/Requestor.h"
+#include <Client/Requestor.h>
 
 AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
 {
@@ -8,11 +8,13 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     LogsTab           = new LogsWidget();
     ListenersTab      = new ListenersWidget(this);
     SessionsTablePage = new SessionsTableWidget(this);
+    SessionsGraphPage = new SessionsGraph(this);
     TunnelsTab        = new TunnelsWidget(this);
     DownloadsTab      = new DownloadsWidget(this);
     TasksTab          = new TasksWidget(this);
 
     mainStackedWidget->addWidget(SessionsTablePage);
+    mainStackedWidget->addWidget(SessionsGraphPage);
     mainStackedWidget->addWidget(TasksTab);
 
     this->SetSessionsTableUI();
@@ -33,6 +35,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     connect( logsButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
     connect( sessionsButton,  &QPushButton::clicked, this, &AdaptixWidget::SetSessionsTableUI);
+    connect( graphButton,     &QPushButton::clicked, this, &AdaptixWidget::SetGraphUI);
     connect( tasksButton,     &QPushButton::clicked, this, &AdaptixWidget::SetTasksUI);
     connect( tunnelButton,    &QPushButton::clicked, this, &AdaptixWidget::LoadTunnelsUI);
     connect( downloadsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
@@ -53,7 +56,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     ChannelThread->start();
 
     // TODO: Enable menu button
-    graphButton->setVisible(false);
     line_2->setVisible(false);
     targetsButton->setVisible(false);
     credsButton->setVisible(false);
@@ -192,7 +194,7 @@ void AdaptixWidget::createUI()
     this->setLayout(mainGridLayout);
 }
 
-AuthProfile* AdaptixWidget::GetProfile()
+AuthProfile* AdaptixWidget::GetProfile() const
 {
     return this->profile;
 }
@@ -203,6 +205,7 @@ void AdaptixWidget::ClearAdaptix()
     DownloadsTab->Clear();
     TasksTab->Clear();
     ListenersTab->Clear();
+    SessionsGraphPage->Clear();
     SessionsTablePage->Clear();
     TunnelsTab->Clear();
 
@@ -244,7 +247,7 @@ void AdaptixWidget::Close()
 
 
 
-void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon)
+void AdaptixWidget::AddTab(QWidget *tab, const QString &title, const QString &icon) const
 {
     if ( mainTabWidget->count() == 0 )
         mainVSplitter->setSizes(QList<int>() << 100 << 200);
@@ -258,7 +261,7 @@ void AdaptixWidget::AddTab(QWidget *tab, QString title, QString icon)
     mainTabWidget->setCurrentIndex( id );
 }
 
-void AdaptixWidget::RemoveTab(int index)
+void AdaptixWidget::RemoveTab(int index) const
 {
     if (index == -1)
         return;
@@ -284,9 +287,9 @@ void AdaptixWidget::AddExtension(ExtensionFile ext)
     for (QString agentName : ext.ExCommands.keys()) {
         if ( RegisterAgentsCmd.contains(agentName) ) {
             Commander* commander = RegisterAgentsCmd[agentName];
-            bool result = commander->AddExtCommands(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
+            bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
             if (result) {
-                for( auto agent : Agents ){
+                for( auto agent : AgentsMap ){
                     if( agent && agent->Console )
                         agent->Console->UpgradeCompleter();
                 }
@@ -295,15 +298,15 @@ void AdaptixWidget::AddExtension(ExtensionFile ext)
     }
 }
 
-void AdaptixWidget::RemoveExtension(ExtensionFile ext)
+void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
 {
     Extensions.remove(ext.FilePath);
 
     for (QString agentName : ext.ExCommands.keys()) {
         if ( RegisterAgentsCmd.contains(agentName) ) {
             Commander* commander = RegisterAgentsCmd[agentName];
-            commander->RemoveExtCommands(ext.FilePath);
-            for( auto agent : Agents ){
+            commander->RemoveExtModule(ext.FilePath);
+            for( auto agent : AgentsMap ){
                 if( agent && agent->Console )
                     agent->Console->UpgradeCompleter();
             }
@@ -319,13 +322,15 @@ void AdaptixWidget::OnSynced()
 {
     synchronized = true;
 
+    this->SessionsGraphPage->TreeDraw();
+
     for (auto ext : Extensions) {
         for (QString agentName : ext.ExCommands.keys()) {
             if ( RegisterAgentsCmd.contains(agentName) ) {
                 Commander* commander = RegisterAgentsCmd[agentName];
-                bool result = commander->AddExtCommands(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
+                bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName]);
                 if (result) {
-                    for( auto agent : Agents ){
+                    for( auto agent : AgentsMap ){
                         if( agent && agent->Console )
                             agent->Console->UpgradeCompleter();
                     }
@@ -335,7 +340,7 @@ void AdaptixWidget::OnSynced()
     }
 }
 
-void AdaptixWidget::SetSessionsTableUI()
+void AdaptixWidget::SetSessionsTableUI() const
 {
     mainStackedWidget->setCurrentIndex(0);
     int index = mainTabWidget->indexOf(TasksTab->taskOutputConsole);
@@ -345,33 +350,43 @@ void AdaptixWidget::SetSessionsTableUI()
     mainTabWidget->removeTab(index);
 }
 
-void AdaptixWidget::SetTasksUI()
+void AdaptixWidget::SetGraphUI() const
 {
     mainStackedWidget->setCurrentIndex(1);
+    int index = mainTabWidget->indexOf(TasksTab->taskOutputConsole);
+    if (index < 0)
+        return;
+
+    mainTabWidget->removeTab(index);
+}
+
+void AdaptixWidget::SetTasksUI() const
+{
+    mainStackedWidget->setCurrentIndex(2);
     this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
 }
 
-void AdaptixWidget::LoadLogsUI()
+void AdaptixWidget::LoadLogsUI() const
 {
     this->AddTab(LogsTab, "Logs", ":/icons/logs");
 }
 
-void AdaptixWidget::LoadListenersUI()
+void AdaptixWidget::LoadListenersUI() const
 {
     this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
 }
 
-void AdaptixWidget::LoadTunnelsUI()
+void AdaptixWidget::LoadTunnelsUI() const
 {
     this->AddTab(TunnelsTab, "Tunnels", ":/icons/vpn");
 }
 
-void AdaptixWidget::LoadDownloadsUI()
+void AdaptixWidget::LoadDownloadsUI() const
 {
     this->AddTab(DownloadsTab, "Downloads", ":/icons/downloads");
 }
 
-void AdaptixWidget::LoadTasksOutput()
+void AdaptixWidget::LoadTasksOutput() const
 {
     this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
 }
@@ -401,35 +416,35 @@ void AdaptixWidget::OnReconnect() {
     }
 }
 
-void AdaptixWidget::LoadConsoleUI(QString AgentId)
+void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
 {
-    if( !Agents.contains(AgentId) )
+    if( !AgentsMap.contains(AgentId) )
         return;
 
     auto text = QString("Console [%1]").arg( AgentId );
-    this->AddTab(Agents[AgentId]->Console, text);
-    Agents[AgentId]->Console->InputFocus();
+    this->AddTab(AgentsMap[AgentId]->Console, text);
+    AgentsMap[AgentId]->Console->InputFocus();
 }
 
-void AdaptixWidget::LoadFileBrowserUI(QString AgentId)
+void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
 {
-    if( !Agents.contains(AgentId) )
+    if( !AgentsMap.contains(AgentId) )
         return;
 
     auto text = QString("Files [%1]").arg( AgentId );
-    this->AddTab(Agents[AgentId]->FileBrowser, text);
+    this->AddTab(AgentsMap[AgentId]->FileBrowser, text);
 }
 
-void AdaptixWidget::LoadProcessBrowserUI(QString AgentId)
+void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
 {
-    if( !Agents.contains(AgentId) )
+    if( !AgentsMap.contains(AgentId) )
         return;
 
     auto text = QString("Processes [%1]").arg( AgentId );
-    this->AddTab(Agents[AgentId]->ProcessBrowser, text);
+    this->AddTab(AgentsMap[AgentId]->ProcessBrowser, text);
 }
 
-void AdaptixWidget::ChannelClose()
+void AdaptixWidget::ChannelClose() const
 {
     QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/unlink"), COLOR_ChiliPepper);
     reconnectButton->setIcon(onReconnectButton);

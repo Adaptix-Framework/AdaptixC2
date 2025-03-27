@@ -1,0 +1,16 @@
+{
+  "layout": "glayout",
+  "elements": [
+    {
+      "type": "label",
+      "text": "Pipename (C2):",
+      "position": [0, 0, 1, 1]
+    },
+    {
+      "type": "input",
+      "id": "pipename",
+      "editable": "false",
+      "position": [0, 1, 1, 1]
+    }
+  ]
+}

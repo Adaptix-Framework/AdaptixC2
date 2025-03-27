@@ -15,6 +15,7 @@
 #define HASH_FUNC_NTQUERYSYSTEMINFORMATION           0x91ef8a47
 #define HASH_FUNC_NTOPENPROCESS                      0xf029bc37
 #define HASH_FUNC_NTOPENPROCESSTOKEN                 0x845cc3b8
+#define HASH_FUNC_NTOPENTHREADTOKEN                  0xf6f79cf1
 #define HASH_FUNC_NTTERMINATETHREAD                  0x43b9dd27
 #define HASH_FUNC_NTTERMINATEPROCESS                 0x9e28d66e
 #define HASH_FUNC_RTLGETVERSION                      0xb28521fc
@@ -26,16 +27,20 @@
 #define HASH_FUNC_NTFLUSHINSTRUCTIONCACHE            0x91a1659e
 
 //kernel32
+#define HASH_FUNC_CONNECTNAMEDPIPE                   0xda6c7d81
 #define HASH_FUNC_COPYFILEA                          0x1cba2820
 #define HASH_FUNC_CREATEDIRECTORYA                   0x4e15ef6e
 #define HASH_FUNC_CREATEFILEA                        0x44701e19
+#define HASH_FUNC_CREATENAMEDPIPEA                   0x375c5b8c
 #define HASH_FUNC_CREATEPIPE                         0xd38cc306
 #define HASH_FUNC_CREATEPROCESSA                     0x352ef9d8
 #define HASH_FUNC_DELETEFILEA                        0x75b1df38
+#define HASH_FUNC_DISCONNECTNAMEDPIPE                0x6d59f261
 #define HASH_FUNC_FINDCLOSE                          0x257f195b
 #define HASH_FUNC_FINDFIRSTFILEA                     0x2ffa9aae
 #define HASH_FUNC_FINDNEXTFILEA                      0xdacd2845
 #define HASH_FUNC_FREELIBRARY                        0x26ccae3b
+#define HASH_FUNC_FLUSHFILEBUFFERS                   0xd60d6813
 #define HASH_FUNC_GETACP                             0xa8455a98
 #define HASH_FUNC_GETCOMPUTERNAMEEXA                 0x3bc15572
 #define HASH_FUNC_GETCURRENTDIRECTORYA               0x9c466afd
@@ -76,6 +81,7 @@
 #define HASH_FUNC_SLEEP                              0x5b4b729d
 #define HASH_FUNC_VIRTUALALLOC                       0x63ce6376
 #define HASH_FUNC_VIRTUALFREE                        0xbd37a32d
+#define HASH_FUNC_WAITNAMEDPIPEA                     0x8a2ba58d
 #define HASH_FUNC_WIDECHARTOMULTIBYTE                0x12d4f52d
 #define HASH_FUNC_WRITEFILE                          0xd4a33cef
 
@@ -83,12 +89,16 @@
 #define HASH_FUNC_GETADAPTERSINFO                    0xa1376764
 
 // advapi32
+#define HASH_FUNC_ALLOCATEANDINITIALIZESID           0xbf449b6e
 #define HASH_FUNC_GETTOKENINFORMATION                0x49639a4b
+#define HASH_FUNC_INITIALIZESECURITYDESCRIPTOR       0x529256ed
+#define HASH_FUNC_IMPERSONATELOGGEDONUSER            0x77243019
+#define HASH_FUNC_FREESID                            0x813c8686
 #define HASH_FUNC_LOOKUPACCOUNTSIDA                  0x4be434ac
 #define HASH_FUNC_REVERTTOSELF                       0xcce516a9
 #define HASH_FUNC_SETTHREADTOKEN                     0x373ff89
-#define HASH_FUNC_IMPERSONATELOGGEDONUSER            0x77243019
-
+#define HASH_FUNC_SETENTRIESINACLA                   0xa4379492
+#define HASH_FUNC_SETSECURITYDESCRIPTORDACL          0x37dc047b
 // msvcrt
 #if defined(DEBUG)
 #define HASH_FUNC_PRINTF                             0xbe293817

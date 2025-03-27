@@ -134,7 +134,7 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 		}
 	} else {
 		downloadData.State = DOWNLOAD_STATE_CANCELED
-		os.Remove(downloadData.LocalPath)
+		_ = os.Remove(downloadData.LocalPath)
 		ts.downloads.Delete(fileId)
 	}
 
@@ -160,7 +160,7 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 	}
 
 	if downloadData.State != DOWNLOAD_STATE_FINISHED {
-		return "", nil, errors.New("Download not finished")
+		return "", nil, errors.New("download not finished")
 	}
 
 	filename = filepath.Base(filepath.FromSlash(filepath.Clean(downloadData.LocalPath)))
@@ -179,17 +179,17 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 	}
 
 	if downloadData.State != DOWNLOAD_STATE_FINISHED && downloadData.State != DOWNLOAD_STATE_CANCELED {
-		return errors.New("Download not finished")
+		return errors.New("download not finished")
 	}
 
 	if downloadData.State == DOWNLOAD_STATE_CANCELED {
-		downloadData.File.Close()
+		_ = downloadData.File.Close()
 	}
 
-	os.Remove(downloadData.LocalPath)
+	_ = os.Remove(downloadData.LocalPath)
 
 	if downloadData.State == DOWNLOAD_STATE_FINISHED {
-		ts.DBMS.DbDownloadDelete(fileId)
+		_ = ts.DBMS.DbDownloadDelete(fileId)
 	}
 
 	packet := CreateSpDownloadDelete(downloadData.FileId)
@@ -204,7 +204,6 @@ func (ts *Teamserver) TsDownloadChangeState(fileId string, clientName string, co
 	var (
 		downloadData adaptix.DownloadData
 		agent        *Agent
-		taskData     adaptix.TaskData
 		agentObject  bytes.Buffer
 		newState     int
 		data         []byte
@@ -239,22 +238,7 @@ func (ts *Teamserver) TsDownloadChangeState(fileId string, clientName string, co
 		return err
 	}
 
-	err = json.Unmarshal(data, &taskData)
-	if err != nil {
-		return err
-	}
-
-	if taskData.TaskId == "" {
-		taskData.TaskId, _ = krypt.GenerateUID(8)
-	}
-	taskData.Type = TYPE_BROWSER
-	taskData.CommandLine = ""
-	taskData.AgentId = agent.Data.Id
-	taskData.Client = clientName
-	taskData.Computer = agent.Data.Computer
-	taskData.StartDate = time.Now().Unix()
-
-	agent.TasksQueue.Put(taskData)
+	ts.TsTaskCreate(agent.Data.Id, "", clientName, data)
 
 	return nil
 }

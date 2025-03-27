@@ -3,7 +3,6 @@ package extender
 import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
-	isvalid "AdaptixServer/core/utils/valid"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,8 +25,6 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFiles []string) {
 		pl     *plugin.Plugin
 		object plugin.Symbol
 		err    error
-
-		module = new(ModuleExtender)
 	)
 
 	for _, path := range extenderFiles {
@@ -61,6 +58,8 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFiles []string) {
 			logs.Error("", "InitPlugin %s failed: %s", path, err.Error())
 			continue
 		}
+
+		var module = new(ModuleExtender)
 
 		err = json.Unmarshal(buffer, &module.Info)
 		if err != nil {
@@ -203,16 +202,6 @@ func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.S
 		}
 
 		module.ListenerFunctions = object.(ListenerFunctions)
-
-		if !isvalid.ValidSBString(listenerInfo.Type) {
-			return errors.New("invalid listener type (must only contain letters): " + listenerInfo.Type)
-		}
-		if !isvalid.ValidSBNString(listenerInfo.ListenerProtocol) {
-			return errors.New("invalid listener protocol (must only contain letters and numbers): " + listenerInfo.ListenerProtocol)
-		}
-		if !isvalid.ValidSBNString(listenerInfo.ListenerName) {
-			return errors.New("invalid listener name (must only contain letters and numbers): " + listenerInfo.Type)
-		}
 
 		listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.Type, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
 		ex.listenerModules.Put(listenerFN, module)
