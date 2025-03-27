@@ -333,6 +333,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         Agent* newAgent = new Agent(jsonObj, RegisterAgentsCmd[agentName], this);
         SessionsTablePage->AddAgentItem( newAgent );
+        SessionsGraphPage->AddAgent(newAgent, this->synchronized);
         return;
     }
     if( spType == TYPE_AGENT_UPDATE )
@@ -362,9 +363,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_AGENT_REMOVE )
     {
         QString agentId = jsonObj["a_id"].toString();
+        if (this->AgentsMap.contains(agentId)) {
+            SessionsGraphPage->RemoveAgent(this->AgentsMap[agentId], this->synchronized);
+            SessionsTablePage->RemoveAgentItem(agentId);
+            TasksTab->RemoveAgentTasksItem(agentId);
 
-        SessionsTablePage->RemoveAgentItem(agentId);
-        TasksTab->RemoveAgentTasksItem(agentId);
+        }
     }
 
 
@@ -615,6 +619,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             childAgent->SetParent(pivotData);
 
             Pivots[pivotData.PivotId] = pivotData;
+
+            SessionsGraphPage->RelinkAgent(parentAgent, childAgent, pivotData.PivotName, this->synchronized);
         }
         return;
     }
@@ -632,6 +638,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
                 parentAgent->RemoveChild(pivotData);
                 childAgent->UnsetParent(pivotData);
+
+                SessionsGraphPage->UnlinkAgent(parentAgent, childAgent, this->synchronized);
             }
         }
     }
