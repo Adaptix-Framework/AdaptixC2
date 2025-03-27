@@ -34,23 +34,20 @@ type GenerateConfig struct {
 	SvcName string `json:"svcname"`
 }
 
-var ObjectDir = "objects"
-var ObjectFiles = [...]string{"AgentConfig", "AgentInfo", "Agent", "ApiLoader", "beacon_functions", "Boffer", "Commander", "ConnectorHTTP", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
-var CFlag = "-c -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
-var LFlags = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
+var (
+	ObjectDir_http = "objects_http"
+	ObjectDir_smb  = "objects_smb"
+	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
+	CFlag          = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
+	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
+)
 
-func AgentGenerateProfile(agentConfig string, listenerWM string, listenerProfile []byte) ([]byte, error) {
+func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
 	var (
-		listenerMap    map[string]any
 		generateConfig GenerateConfig
 		err            error
 		params         []interface{}
 	)
-
-	err = json.Unmarshal(listenerProfile, &listenerMap)
-	if err != nil {
-		return nil, err
-	}
 
 	err = json.Unmarshal([]byte(agentConfig), &generateConfig)
 	if err != nil {
@@ -157,39 +154,44 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerProfile
 		profileString += fmt.Sprintf("\\x%02x", b)
 	}
 
-	fmt.Println(profileString)
-
 	return []byte(profileString), nil
 }
 
-func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string, error) {
+func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
 	var (
-		tempDir        string
-		currentDir     string
 		generateConfig GenerateConfig
+		ConnectorFile  string
+		ObjectDir      string
 		Compiler       string
 		Ext            string
-		Files          string
-		cmdConfig      string
-		cmdBuild       string
 		stubPath       string
-		buildPath      string
-		buildContent   []byte
 		Filename       string
-		err            error
+		buildPath      string
+		cmdConfig      string
 		stdout         bytes.Buffer
 		stderr         bytes.Buffer
 	)
 
-	err = json.Unmarshal([]byte(agentConfig), &generateConfig)
+	err := json.Unmarshal([]byte(agentConfig), &generateConfig)
 	if err != nil {
 		return nil, "", err
 	}
 
-	currentDir = PluginPath
-	tempDir, err = os.MkdirTemp("", "ax-*")
+	currentDir := PluginPath
+	tempDir, err := os.MkdirTemp("", "ax-*")
 	if err != nil {
 		return nil, "", err
+	}
+
+	protocol, _ := listenerMap["protocol"].(string)
+	if protocol == "http" {
+		ObjectDir = ObjectDir_http
+		ConnectorFile = "ConnectorHTTP"
+	} else if protocol == "smb" {
+		ObjectDir = ObjectDir_smb
+		ConnectorFile = "ConnectorSMB"
+	} else {
+		return nil, "", errors.New("protocol unknown")
 	}
 
 	if generateConfig.Arch == "x86" {
@@ -225,7 +227,8 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string
 		return nil, "", errors.New(string(stderr.Bytes()))
 	}
 
-	Files = tempDir + "/config.o "
+	Files := tempDir + "/config.o "
+	Files += ObjectDir + "/" + ConnectorFile + Ext + " "
 	for _, ofile := range ObjectFiles {
 		Files += ObjectDir + "/" + ofile + Ext + " "
 	}
@@ -253,7 +256,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string
 		return nil, "", errors.New("unknown file format")
 	}
 
-	cmdBuild = fmt.Sprintf("%s %s %s -o %s", Compiler, LFlags, Files, buildPath)
+	cmdBuild := fmt.Sprintf("%s %s %s -o %s", Compiler, LFlags, Files, buildPath)
 	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
 	runnerCmdBuild.Dir = currentDir
 	runnerCmdBuild.Stdout = &stdout
@@ -264,7 +267,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte) ([]byte, string
 		return nil, "", err
 	}
 
-	buildContent, err = os.ReadFile(buildPath)
+	buildContent, err := os.ReadFile(buildPath)
 	if err != nil {
 		return nil, "", err
 	}
@@ -1369,7 +1372,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			_, _, childAgentId := ts.TsGetPivotInfoById(pivotId)
 
 			_ = ts.TsAgentProcessData(childAgentId, pivotData)
-			
+
 		case COMMAND_PROFILE:
 			if false == packer.CheckPacker([]string{"int"}) {
 				return outTasks

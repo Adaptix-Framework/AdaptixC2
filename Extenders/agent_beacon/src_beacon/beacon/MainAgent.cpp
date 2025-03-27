@@ -112,8 +112,6 @@ void AgentMain()
 
 		g_Connector->SendData(beat, beatSize);
 
-		MemFreeLocal((LPVOID*)&beat, beatSize);
-
 		for (int i = (g_Connector->RecvSize() <= 0); g_Connector->RecvSize() >= 0 && g_Agent->IsActive(); i = (g_Connector->RecvSize() <= 0) ) {
 
     		if (g_Connector->RecvSize() && g_Connector->RecvData()) {
@@ -161,6 +159,8 @@ void AgentMain()
 		g_Connector->Disconnect();
 
 	} while (g_Agent->IsActive());
+
+	MemFreeLocal((LPVOID*)&beat, beatSize);
 
 	g_Connector->CloseConnector();
 	AgentClear(g_Agent->config->exit_method);

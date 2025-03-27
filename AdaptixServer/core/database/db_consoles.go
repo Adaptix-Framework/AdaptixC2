@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 func (dbms *DBMS) DbConsoleInsert(agentId string, packet interface{}) error {
@@ -66,6 +67,8 @@ func (dbms *DBMS) DbConsoleAll(agentId string) [][]byte {
 				}
 				consoles = append(consoles, message)
 			}
+		} else {
+			fmt.Println(err.Error() + " --- Clear database file!")
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()

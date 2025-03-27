@@ -1,4 +1,4 @@
-FROM golang:1.22.12-bookworm AS builder
+FROM golang:1.23.7-bookworm AS builder
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y mingw-w64 make libssl-dev qt6-base-dev qt6-websockets-dev sudo libcap2-bin build-essential checkinstall zlib1g-dev libssl-dev
 # client requires cmake version 3.28+

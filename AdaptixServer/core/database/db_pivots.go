@@ -93,6 +93,8 @@ func (dbms *DBMS) DbPivotAll() []*adaptix.PivotData {
 				}
 				pivots = append(pivots, pivotData)
 			}
+		} else {
+			fmt.Println(err.Error() + " --- Clear database file!")
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()

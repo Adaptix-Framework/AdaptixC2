@@ -152,7 +152,10 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 				}
 				agents = append(agents, agentData)
 			}
+		} else {
+			fmt.Println(err.Error() + " --- Clear database file!")
 		}
+
 		defer func(query *sql.Rows) {
 			_ = query.Close()
 		}(query)

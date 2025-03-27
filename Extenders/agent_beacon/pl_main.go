@@ -270,15 +270,22 @@ func (m *ModuleExtender) AgentInit(pluginPath string) ([]byte, error) {
 
 func (m *ModuleExtender) AgentGenerate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
 	var (
+		listenerMap  map[string]any
 		agentProfile []byte
 		err          error
 	)
-	agentProfile, err = AgentGenerateProfile(config, listenerWM, listenerProfile)
+
+	err = json.Unmarshal(listenerProfile, &listenerMap)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return AgentGenerateBuild(config, agentProfile)
+	agentProfile, err = AgentGenerateProfile(config, listenerWM, listenerMap)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return AgentGenerateBuild(config, agentProfile, listenerMap)
 }
 
 func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
