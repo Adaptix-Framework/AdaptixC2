@@ -8,11 +8,13 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     LogsTab           = new LogsWidget();
     ListenersTab      = new ListenersWidget(this);
     SessionsTablePage = new SessionsTableWidget(this);
+    SessionsGraphPage = new SessionsGraph(this);
     TunnelsTab        = new TunnelsWidget(this);
     DownloadsTab      = new DownloadsWidget(this);
     TasksTab          = new TasksWidget(this);
 
     mainStackedWidget->addWidget(SessionsTablePage);
+    mainStackedWidget->addWidget(SessionsGraphPage);
     mainStackedWidget->addWidget(TasksTab);
 
     this->SetSessionsTableUI();
@@ -33,6 +35,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     connect( logsButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
     connect( sessionsButton,  &QPushButton::clicked, this, &AdaptixWidget::SetSessionsTableUI);
+    connect( graphButton,     &QPushButton::clicked, this, &AdaptixWidget::SetGraphUI);
     connect( tasksButton,     &QPushButton::clicked, this, &AdaptixWidget::SetTasksUI);
     connect( tunnelButton,    &QPushButton::clicked, this, &AdaptixWidget::LoadTunnelsUI);
     connect( downloadsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
@@ -53,7 +56,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     ChannelThread->start();
 
     // TODO: Enable menu button
-    graphButton->setVisible(false);
     line_2->setVisible(false);
     targetsButton->setVisible(false);
     credsButton->setVisible(false);
@@ -203,6 +205,7 @@ void AdaptixWidget::ClearAdaptix()
     DownloadsTab->Clear();
     TasksTab->Clear();
     ListenersTab->Clear();
+    SessionsGraphPage->Clear();
     SessionsTablePage->Clear();
     TunnelsTab->Clear();
 
@@ -319,6 +322,8 @@ void AdaptixWidget::OnSynced()
 {
     synchronized = true;
 
+    this->SessionsGraphPage->TreeDraw();
+
     for (auto ext : Extensions) {
         for (QString agentName : ext.ExCommands.keys()) {
             if ( RegisterAgentsCmd.contains(agentName) ) {
@@ -345,9 +350,19 @@ void AdaptixWidget::SetSessionsTableUI() const
     mainTabWidget->removeTab(index);
 }
 
-void AdaptixWidget::SetTasksUI() const
+void AdaptixWidget::SetGraphUI() const
 {
     mainStackedWidget->setCurrentIndex(1);
+    int index = mainTabWidget->indexOf(TasksTab->taskOutputConsole);
+    if (index < 0)
+        return;
+
+    mainTabWidget->removeTab(index);
+}
+
+void AdaptixWidget::SetTasksUI() const
+{
+    mainStackedWidget->setCurrentIndex(2);
     this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
 }
 

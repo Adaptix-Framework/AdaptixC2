@@ -8,6 +8,7 @@
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
+#include <UI/Graph/SessionsGraph.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
@@ -16,6 +17,7 @@
 #include <Agent/Task.h>
 
 class SessionsTableWidget;
+class SessionsGraph;
 class LastTickWorker;
 
 class AdaptixWidget : public QWidget
@@ -62,6 +64,7 @@ public:
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
+    SessionsGraph*       SessionsGraphPage = nullptr;
     TunnelsWidget*       TunnelsTab        = nullptr;
     DownloadsWidget*     DownloadsTab      = nullptr;
     TasksWidget*         TasksTab          = nullptr;
@@ -100,6 +103,7 @@ public slots:
 
     void OnSynced();
     void SetSessionsTableUI() const;
+    void SetGraphUI() const;
     void SetTasksUI() const;
     void LoadLogsUI() const;
     void LoadListenersUI() const;

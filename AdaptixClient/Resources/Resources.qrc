@@ -43,6 +43,9 @@
         <file alias="arrow_right">icons/arrow_right_alt_64dp.png</file>
         <file alias="storage">icons/storage_64dp.png</file>
 
+        <file alias="archive">icons/archive_64dp.png</file>
+        <file alias="unarchive">icons/unarchive_64dp.png</file>
+
         <file alias="fs_ssd">icons/filesystem/ssd_64dp.png</file>
         <file alias="fs_document">icons/filesystem/document_64dp.png</file>
         <file alias="fs_folder">icons/filesystem/folder_64dp.png</file>
@@ -59,5 +62,23 @@
         <file alias="os_mac_grey">icons/os/icon-mac-grey.png</file>
         <file alias="os_mac_red">icons/os/icon-mac-red.png</file>
     </qresource>
+
+    <qresource prefix="/graph">
+        <file alias="cloud">icons/graph/cloud-100.png</file>
+        <file alias="firewall">icons/graph/firewall-100.png</file>
+        <file alias="win_blue">icons/graph/windows-100-blue.png</file>
+        <file alias="win_grey">icons/graph/windows-100-grey.png</file>
+        <file alias="win_red">icons/graph/windows-100-red.png</file>
+        <file alias="linux_blue">icons/graph/linux-100-blue.png</file>
+        <file alias="linux_grey">icons/graph/linux-100-grey.png</file>
+        <file alias="linux_red">icons/graph/linux-100-red.png</file>
+        <file alias="mac_blue">icons/graph/mac-100-blue.png</file>
+        <file alias="mac_grey">icons/graph/mac-100-grey.png</file>
+        <file alias="mac_red">icons/graph/mac-100-red.png</file>
+        <file alias="unknown_blue">icons/graph/unknown-100-blue.png</file>
+        <file alias="unknown_grey">icons/graph/unknown-100-grey.png</file>
+        <file alias="unknown_red">icons/graph/unknown-100-red.png</file>
+    </qresource>
+
 
 </RCC>
