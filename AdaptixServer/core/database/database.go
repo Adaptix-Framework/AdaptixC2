@@ -41,6 +41,7 @@ func (dbms *DBMS) DatabaseInit() error {
     	"ListenerName" TEXT NOT NULL UNIQUE, 
     	"ListenerType" TEXT NOT NULL,
     	"ListenerConfig" TEXT NOT NULL,
+    	"Watermark" TEXT NOT NULL,
     	"CustomData" BLOB
     );`
 	_, err = dbms.database.Exec(createTableQuery)

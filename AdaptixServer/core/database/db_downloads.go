@@ -97,6 +97,8 @@ func (dbms *DBMS) DbDownloadAll() []adaptix.DownloadData {
 				}
 				downloads = append(downloads, downloadData)
 			}
+		} else {
+			fmt.Println(err.Error() + " --- Clear database file!")
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()

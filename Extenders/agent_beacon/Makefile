@@ -7,7 +7,8 @@ all: clean
 
 	@ echo "    * Building agent"
 	@ (cd src_beacon && $(MAKE) --no-print-directory)
-	@ mv src_beacon/objects ./dist/objects
+	@ mv src_beacon/objects_http ./dist/objects_http
+	@ mv src_beacon/objects_smb ./dist/objects_smb
 	@ echo "      done..."
 
 clean:

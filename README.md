@@ -1,4 +1,4 @@
-# AdaptixC2 v0.2
+# AdaptixC2 v0.3
 
 Adaptix is an extensible post-exploitation and adversarial emulation framework made for penetration testers. The Adaptix server is written in Golang and to allow operator flexibility. The GUI Client is written in C++ QT, allowing it to be used on Linux, Windows, and MacOS operating systems. [Full documentation is available here](https://adaptix-framework.gitbook.io/adaptix-framework).
 
@@ -19,9 +19,12 @@ Please checkout the [wiki](https://adaptix-framework.gitbook.io/adaptix-framewor
 * Socks4 / Socks5 / Socks5 Auth support
 * Local and Reverse port forwarding support
 * BOF support
+* Pivots Agents support (eg SMB)
+* Agents Health Checker
 
 ## Current Extenders
 * HTTP/S Beacon Listener 
+* SMB Beacon Listener
 * Beacon Agent
 
 # CONTRIBUTING

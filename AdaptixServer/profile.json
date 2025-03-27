@@ -7,6 +7,7 @@
     "key": "server.rsa.key",
     "extenders": [
       "extenders/listener_beacon_http/listener_beacon_http.so",
+      "extenders/listener_beacon_smb/listener_beacon_smb.so",
       "extenders/agent_beacon/agent_beacon.so"
     ]
   },
@@ -16,7 +17,7 @@
     "headers": {
       "Content-Type": "text/html; charset=UTF-8",
       "Server": "AdaptixC2",
-      "Adaptix Version": "v0.2-DEV"
+      "Adaptix Version": "v0.3"
     },
     "page": "404page.html"
   }

@@ -13,7 +13,7 @@ clean:
 
 server: prepare
 	@ echo "[*] Building adaptixserver..."
-	@ cd AdaptixServer && go build -ldflags="-s -w" -o adaptixserver > /dev/null 2>&1       # for static build use CGO_ENABLED=0
+	@ cd AdaptixServer && go build -ldflags="-s -w" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
 	@ sudo setcap 'cap_net_bind_service=+ep' AdaptixServer/adaptixserver
 	@ mv AdaptixServer/adaptixserver ./$(DIST_DIR)/
 	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.json AdaptixServer/404page.html ./$(DIST_DIR)/
@@ -21,7 +21,7 @@ server: prepare
 
 client: prepare
 	@ echo "[*] Building AdaptixClient..."
-	@ cd AdaptixClient && cmake . > /dev/null 2>&1
+	@ cd AdaptixClient && cmake . > /dev/null 2>cmake_error.log || { echo "[ERROR] CMake failed:"; cat cmake_error.log >&2; exit 1; }
 	@ cd AdaptixClient && make --no-print-directory
 	@ mv ./AdaptixClient/AdaptixClient ./$(DIST_DIR)/
 	@ echo "[+] done"
