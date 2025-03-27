@@ -21,7 +21,7 @@ type ListenerInfo struct {
 
 type AgentInfo struct {
 	AgentName    string
-	ListenerName string
+	ListenerName []string
 	AgentUI      string
 	AgentCmd     string
 }
@@ -42,15 +42,17 @@ type ListenerFunctions interface {
 	ListenerEdit(name string, data string) ([]byte, []byte, error)
 	ListenerStop(name string) error
 	ListenerGetProfile(name string) ([]byte, error)
+	ListenerInteralHandler(name string, data []byte) (string, error)
 }
 
 type AgentFunctions interface {
 	AgentInit(pluginPath string) ([]byte, error)
-	AgentGenerate(config string, listenerProfile []byte) ([]byte, string, error)
+	AgentGenerate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 	AgentCreate(beat []byte) ([]byte, error)
 	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)
-	AgentPackData(agentObject []byte, dataTasks [][]byte) ([]byte, error)
-	AgentCommand(agentObject []byte, args map[string]any) ([]byte, []byte, error)
+	AgentPackData(agentObject []byte, maxDataSize int) ([]byte, error)
+	AgentPivotPackData(pivotId string, data []byte) ([]byte, error)
+	AgentCommand(client string, cmdline string, agentObject []byte, args map[string]any) error
 
 	AgentDownloadChangeState(agentObject []byte, newState int, fileId string) ([]byte, error)
 	AgentBrowserDisks(agentObject []byte) ([]byte, error)

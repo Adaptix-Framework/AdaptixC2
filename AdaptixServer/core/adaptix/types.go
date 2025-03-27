@@ -13,35 +13,39 @@ type ListenerData struct {
 	AgentPort string `json:"l_agent_port"`
 	Status    string `json:"l_status"`
 	Data      string `json:"l_data"`
+	Watermark string `json:"l_watermark"`
 }
 
 type AgentData struct {
-	Crc        string `json:"a_crc"`
-	Id         string `json:"a_id"`
-	Name       string `json:"a_name"`
-	SessionKey []byte `json:"a_session_key"`
-	Listener   string `json:"a_listener"`
-	Async      bool   `json:"a_async"`
-	ExternalIP string `json:"a_external_ip"`
-	InternalIP string `json:"a_internal_ip"`
-	GmtOffset  int    `json:"a_gmt_offset"`
-	Sleep      uint   `json:"a_sleep"`
-	Jitter     uint   `json:"a_jitter"`
-	Pid        string `json:"a_pid"`
-	Tid        string `json:"a_tid"`
-	Arch       string `json:"a_arch"`
-	Elevated   bool   `json:"a_elevated"`
-	Process    string `json:"a_process"`
-	Os         int    `json:"a_os"`
-	OsDesc     string `json:"a_os_desc"`
-	Domain     string `json:"a_domain"`
-	Computer   string `json:"a_computer"`
-	Username   string `json:"a_username"`
-	OemCP      int    `json:"a_oemcp"`
-	ACP        int    `json:"a_acp"`
-	CreateTime int64  `json:"a_create_time"`
-	LastTick   int    `json:"a_last_tick"`
-	Tags       string `json:"a_tags"`
+	Crc          string `json:"a_crc"`
+	Id           string `json:"a_id"`
+	Name         string `json:"a_name"`
+	SessionKey   []byte `json:"a_session_key"`
+	Listener     string `json:"a_listener"`
+	Async        bool   `json:"a_async"`
+	ExternalIP   string `json:"a_external_ip"`
+	InternalIP   string `json:"a_internal_ip"`
+	GmtOffset    int    `json:"a_gmt_offset"`
+	Sleep        uint   `json:"a_sleep"`
+	Jitter       uint   `json:"a_jitter"`
+	Pid          string `json:"a_pid"`
+	Tid          string `json:"a_tid"`
+	Arch         string `json:"a_arch"`
+	Elevated     bool   `json:"a_elevated"`
+	Process      string `json:"a_process"`
+	Os           int    `json:"a_os"`
+	OsDesc       string `json:"a_os_desc"`
+	Domain       string `json:"a_domain"`
+	Computer     string `json:"a_computer"`
+	Username     string `json:"a_username"`
+	Impersonated string `json:"a_impersonated"`
+	OemCP        int    `json:"a_oemcp"`
+	ACP          int    `json:"a_acp"`
+	CreateTime   int64  `json:"a_create_time"`
+	LastTick     int    `json:"a_last_tick"`
+	Tags         string `json:"a_tags"`
+	Mark         string `json:"a_mark"`
+	Color        string `json:"a_color"`
 }
 
 type TaskData struct {
@@ -49,6 +53,7 @@ type TaskData struct {
 	TaskId      string `json:"t_task_id"`
 	AgentId     string `json:"t_agent_id"`
 	Client      string `json:"t_client"`
+	User        string `json:"t_user"`
 	Computer    string `json:"t_computer"`
 	StartDate   int64  `json:"t_start_date"`
 	FinishDate  int64  `json:"t_finish_date"`
@@ -116,4 +121,11 @@ type TunnelData struct {
 	Client    string `json:"p_client"`
 	Fhost     string `json:"p_fhost"`
 	Fport     string `json:"p_fport"`
+}
+
+type PivotData struct {
+	PivotId       string `json:"p_pivot_id"`
+	PivotName     string `json:"p_pivot_name"`
+	ParentAgentId string `json:"p_parent_agent_id"`
+	ChildAgentId  string `json:"p_child_agent_id"`
 }

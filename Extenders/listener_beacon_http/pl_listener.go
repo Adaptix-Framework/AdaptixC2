@@ -6,21 +6,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
 const (
-	SetType     = EXTERNAL
-	SetProtocol = "http"
-	SetName     = "BeaconHTTP"
-	SetUiPath   = "_ui_listener.json"
+	SetType            = EXTERNAL
+	SetProtocol        = "http"
+	SetName            = "BeaconHTTP"
+	SetUiPath          = "_ui_listener.json"
+	SetMaxTaskDataSize = 0x1900000 // 25 Mb
 )
 
-var ListenersObject []any //*HTTP
-
-func ValidateListenerConfig(data string) error {
+func (m *ModuleExtender) HandlerListenerValid(data string) error {
 
 	/// START CODE HERE
 
@@ -51,7 +51,7 @@ func ValidateListenerConfig(data string) error {
 		return errors.New("PortBind must be in the range 1-65535")
 	}
 
-	portAgent, err := strconv.Atoi(conf.PortBind)
+	portAgent, err := strconv.Atoi(conf.PortAgent)
 	if err != nil {
 		return errors.New("PortAgent must be an integer")
 	}
@@ -86,7 +86,7 @@ func ValidateListenerConfig(data string) error {
 	return nil
 }
 
-func CreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (ListenerData, []byte, any, error) {
+func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (ListenerData, []byte, any, error) {
 	var (
 		listenerData ListenerData
 		customdData  []byte
@@ -137,19 +137,22 @@ func CreateListenerDataAndStart(name string, configData string, listenerCustomDa
 		}
 
 		randSlice := make([]byte, 16)
-		rand.Read(randSlice)
+		_, _ = rand.Read(randSlice)
 		conf.EncryptKey = randSlice[:16]
 		conf.Protocol = "http"
 
 	} else {
-		err = json.Unmarshal([]byte(listenerCustomData), &conf)
+		err = json.Unmarshal(listenerCustomData, &conf)
 		if err != nil {
 			return listenerData, customdData, listener, err
 		}
 	}
 
-	listener = NewConfigHttp(name)
-	listener.Config = conf
+	listener = &HTTP{
+		GinEngine: gin.New(),
+		Name:      name,
+		Config:    conf,
+	}
 
 	err = listener.Start()
 	if err != nil {
@@ -180,7 +183,7 @@ func CreateListenerDataAndStart(name string, configData string, listenerCustomDa
 	return listenerData, customdData, listener, nil
 }
 
-func EditListenerData(name string, listenerObject any, configData string) (ListenerData, []byte, bool) {
+func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any, configData string) (ListenerData, []byte, bool) {
 	var (
 		listenerData ListenerData
 		customdData  []byte
@@ -252,7 +255,7 @@ func EditListenerData(name string, listenerObject any, configData string) (Liste
 	return listenerData, customdData, ok
 }
 
-func StopListener(name string, listenerObject any) (bool, error) {
+func (m *ModuleExtender) HandlerListenerStop(name string, listenerObject any) (bool, error) {
 	var (
 		err error = nil
 		ok  bool  = false
@@ -271,7 +274,7 @@ func StopListener(name string, listenerObject any) (bool, error) {
 	return ok, err
 }
 
-func GetProfile(name string, listenerObject any) ([]byte, bool) {
+func (m *ModuleExtender) HandlerListenerGetProfile(name string, listenerObject any) ([]byte, bool) {
 	var (
 		object bytes.Buffer
 		ok     bool = false

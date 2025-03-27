@@ -30,7 +30,7 @@ void LogError(const char* format, ...)
     qCritical().nospace() << "\033[1;31m[-]\033[0m " << message;
 }
 
-void MessageError( QString message )
+void MessageError(const QString &message )
 {
     auto box = QMessageBox();
     box.setWindowTitle( "Error" );
@@ -39,7 +39,7 @@ void MessageError( QString message )
     box.exec();
 }
 
-void MessageSuccess( QString message )
+void MessageSuccess(const QString &message )
 {
     auto box = QMessageBox();
     box.setWindowTitle( "Success" );

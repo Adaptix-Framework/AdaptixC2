@@ -11,7 +11,7 @@ func NewProfile() *AdaptixProfile {
 	return new(AdaptixProfile)
 }
 
-func (p *AdaptixProfile) IsVaid() error {
+func (p *AdaptixProfile) IsValid() error {
 	valid := true
 
 	if p.Server.Port < 1 || 65535 < p.Server.Port {

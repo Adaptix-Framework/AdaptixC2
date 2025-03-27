@@ -24,10 +24,11 @@ const (
 )
 
 const (
-	TYPE_TASK    = 1
-	TYPE_BROWSER = 2
-	TYPE_JOB     = 3
-	TYPE_TUNNEL  = 4
+	TYPE_TASK       = 1
+	TYPE_BROWSER    = 2
+	TYPE_JOB        = 3
+	TYPE_TUNNEL     = 4
+	TYPE_PROXY_DATA = 5
 )
 
 // TeamServer
@@ -49,25 +50,33 @@ type Teamserver struct {
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
 
-	agent_types safe.Map // agentMark string : agentName string
+	wm_agent_types map[string]string   // agentMark string : agentName string
+	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
 	events    *safe.Slice // 			         : sync_packet interface{}
-	clients   safe.Map    // username string,    : socket *websocket.Conn
+	clients   safe.Map    // username string     : socket *websocket.Conn
 	agents    safe.Map    // agentId string      : agent *Agent
 	listeners safe.Map    // listenerName string : listenerData ListenerData
 	downloads safe.Map    // dileId string       : downloadData DownloadData
-	tunnels   safe.Map    // 					 : tunnel Tunnel
+	tunnels   safe.Map    // tunnelId string     : tunnel Tunnel
+	pivots    *safe.Slice // 			         : PivotData
 }
 
 type Agent struct {
-	Data adaptix.AgentData
-	Tick bool
+	Data   adaptix.AgentData
+	Tick   bool
+	Active bool
+
+	OutConsole *safe.Slice //  sync_packet interface{}
 
 	TunnelQueue *safe.Slice // taskData TaskData
 	TasksQueue  *safe.Slice // taskData TaskData
 
-	Tasks       safe.Map // taskId string, taskData TaskData
-	ClosedTasks safe.Map // taskId string, taskData TaskData
+	RunningTasks   safe.Map // taskId string, taskData TaskData
+	CompletedTasks safe.Map // taskId string, taskData TaskData
+
+	PivotParent *adaptix.PivotData
+	PivotChilds *safe.Slice
 }
 
 type TunnelConnection struct {
@@ -147,47 +156,51 @@ type SyncPackerListenerStop struct {
 type SyncPackerAgentReg struct {
 	SpType int `json:"type"`
 
-	Agent    string `json:"agent"`
-	Listener string `json:"listener"`
-	AgentUI  string `json:"ui"`
-	AgentCmd string `json:"cmd"`
+	Agent     string   `json:"agent"`
+	Listeners []string `json:"listener"`
+	AgentUI   string   `json:"ui"`
+	AgentCmd  string   `json:"cmd"`
 }
 
 type SyncPackerAgentNew struct {
 	SpType int `json:"type"`
 
-	Id         string `json:"a_id"`
-	Name       string `json:"a_name"`
-	Listener   string `json:"a_listener"`
-	Async      bool   `json:"a_async"`
-	ExternalIP string `json:"a_external_ip"`
-	InternalIP string `json:"a_internal_ip"`
-	GmtOffset  int    `json:"a_gmt_offset"`
-	Sleep      uint   `json:"a_sleep"`
-	Jitter     uint   `json:"a_jitter"`
-	Pid        string `json:"a_pid"`
-	Tid        string `json:"a_tid"`
-	Arch       string `json:"a_arch"`
-	Elevated   bool   `json:"a_elevated"`
-	Process    string `json:"a_process"`
-	Os         int    `json:"a_os"`
-	OsDesc     string `json:"a_os_desc"`
-	Domain     string `json:"a_domain"`
-	Computer   string `json:"a_computer"`
-	Username   string `json:"a_username"`
-	LastTick   int    `json:"a_last_tick"`
-	Tags       string `json:"a_tags"`
+	Id           string `json:"a_id"`
+	Name         string `json:"a_name"`
+	Listener     string `json:"a_listener"`
+	Async        bool   `json:"a_async"`
+	ExternalIP   string `json:"a_external_ip"`
+	InternalIP   string `json:"a_internal_ip"`
+	GmtOffset    int    `json:"a_gmt_offset"`
+	Sleep        uint   `json:"a_sleep"`
+	Jitter       uint   `json:"a_jitter"`
+	Pid          string `json:"a_pid"`
+	Tid          string `json:"a_tid"`
+	Arch         string `json:"a_arch"`
+	Elevated     bool   `json:"a_elevated"`
+	Process      string `json:"a_process"`
+	Os           int    `json:"a_os"`
+	OsDesc       string `json:"a_os_desc"`
+	Domain       string `json:"a_domain"`
+	Computer     string `json:"a_computer"`
+	Username     string `json:"a_username"`
+	Impersonated string `json:"a_impersonated"`
+	LastTick     int    `json:"a_last_tick"`
+	Tags         string `json:"a_tags"`
+	Mark         string `json:"a_mark"`
+	Color        string `json:"a_color"`
 }
 
 type SyncPackerAgentUpdate struct {
 	SpType int `json:"type"`
 
-	Id       string `json:"a_id"`
-	Sleep    uint   `json:"a_sleep"`
-	Jitter   uint   `json:"a_jitter"`
-	Elevated bool   `json:"a_elevated"`
-	Username string `json:"a_username"`
-	Tags     string `json:"a_tags"`
+	Id           string `json:"a_id"`
+	Sleep        uint   `json:"a_sleep"`
+	Jitter       uint   `json:"a_jitter"`
+	Impersonated string `json:"a_impersonated"`
+	Tags         string `json:"a_tags"`
+	Mark         string `json:"a_mark"`
+	Color        string `json:"a_color"`
 }
 
 type SyncPackerAgentTick struct {
@@ -196,26 +209,34 @@ type SyncPackerAgentTick struct {
 	Id []string `json:"a_id"`
 }
 
-type SyncPackerAgentConsoleOutput struct {
-	SpCreateTime int64 `json:"time"`
-	SpType       int   `json:"type"`
-
-	AgentId     string `json:"a_id"`
-	MessageType int    `json:"a_msg_type"`
-	Message     string `json:"a_message"`
-	ClearText   string `json:"a_text"`
-}
-
-type SyncPackerAgentTaskCreate struct {
+type SyncPackerAgentTaskRemove struct {
 	SpType int `json:"type"`
 
-	AgentId   string `json:"a_id"`
-	TaskId    string `json:"a_task_id"`
-	TaskType  int    `json:"a_task_type"`
-	StartTime int64  `json:"a_start_time"`
-	CmdLine   string `json:"a_cmdline"`
-	Client    string `json:"a_client"`
-	Computer  string `json:"a_computer"`
+	TaskId string `json:"a_task_id"`
+}
+
+type SyncPackerAgentRemove struct {
+	SpType int `json:"type"`
+
+	AgentId string `json:"a_id"`
+}
+
+type SyncPackerAgentTaskSync struct {
+	SpType int `json:"type"`
+
+	TaskType    int    `json:"a_task_type"`
+	TaskId      string `json:"a_task_id"`
+	AgentId     string `json:"a_id"`
+	Client      string `json:"a_client"`
+	User        string `json:"a_user"`
+	Computer    string `json:"a_computer"`
+	CmdLine     string `json:"a_cmdline"`
+	StartTime   int64  `json:"a_start_time"`
+	FinishTime  int64  `json:"a_finish_time"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	Text        string `json:"a_text"`
+	Completed   bool   `json:"a_completed"`
 }
 
 type SyncPackerAgentTaskUpdate struct {
@@ -231,16 +252,64 @@ type SyncPackerAgentTaskUpdate struct {
 	Completed   bool   `json:"a_completed"`
 }
 
-type SyncPackerAgentTaskRemove struct {
+type SyncPackerAgentTaskSend struct {
 	SpType int `json:"type"`
 
-	TaskId string `json:"a_task_id"`
+	TaskId []string `json:"a_task_id"`
 }
 
-type SyncPackerAgentRemove struct {
+type SyncPackerAgentConsoleOutput struct {
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+
+	AgentId     string `json:"a_id"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	ClearText   string `json:"a_text"`
+}
+
+type SyncPackerAgentConsoleTaskSync struct {
 	SpType int `json:"type"`
 
-	AgentId string `json:"a_id"`
+	TaskId      string `json:"a_task_id"`
+	AgentId     string `json:"a_id"`
+	Client      string `json:"a_client"`
+	CmdLine     string `json:"a_cmdline"`
+	StartTime   int64  `json:"a_start_time"`
+	FinishTime  int64  `json:"a_finish_time"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	Text        string `json:"a_text"`
+	Completed   bool   `json:"a_completed"`
+}
+
+type SyncPackerAgentConsoleTaskUpd struct {
+	SpType int `json:"type"`
+
+	AgentId     string `json:"a_id"`
+	TaskId      string `json:"a_task_id"`
+	FinishTime  int64  `json:"a_finish_time"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	Text        string `json:"a_text"`
+	Completed   bool   `json:"a_completed"`
+}
+
+/// PIVOT
+
+type SyncPackerPivotCreate struct {
+	SpType int `json:"type"`
+
+	PivotId       string `json:"p_pivot_id"`
+	PivotName     string `json:"p_pivot_name"`
+	ParentAgentId string `json:"p_parent_agent_id"`
+	ChildAgentId  string `json:"p_child_agent_id"`
+}
+
+type SyncPackerPivotDelete struct {
+	SpType int `json:"type"`
+
+	PivotId string `json:"p_pivot_id"`
 }
 
 /// DOWNLOAD

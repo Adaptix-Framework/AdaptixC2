@@ -1,4 +1,5 @@
 #include <UI/Dialogs/DialogExtender.h>
+#include <Utils/CustomElements.h>
 
 DialogExtender::DialogExtender(Extender* e)
 {
@@ -19,7 +20,7 @@ void DialogExtender::createUI()
     this->resize(1200, 600);
 
     tableWidget = new QTableWidget(this );
-    tableWidget->setColumnCount(5 );
+    tableWidget->setColumnCount(5);
     tableWidget->setContextMenuPolicy(Qt::CustomContextMenu );
     tableWidget->setAutoFillBackground(false );
     tableWidget->setShowGrid(false );
@@ -64,7 +65,7 @@ void DialogExtender::createUI()
     this->setLayout(layout);
 }
 
-void DialogExtender::AddExtenderItem(ExtensionFile extenderItem)
+void DialogExtender::AddExtenderItem(const ExtensionFile &extenderItem) const
 {
     auto item_Name        = new QTableWidgetItem( extenderItem.Name );
     auto item_Path        = new QTableWidgetItem( extenderItem.FilePath );
@@ -108,7 +109,7 @@ void DialogExtender::AddExtenderItem(ExtensionFile extenderItem)
     tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
 }
 
-void DialogExtender::UpdateExtenderItem(ExtensionFile extenderItem)
+void DialogExtender::UpdateExtenderItem(const ExtensionFile &extenderItem) const
 {
     for (int row = 0; row < tableWidget->rowCount(); ++row) {
         QTableWidgetItem *item = tableWidget->item(row, 1);
@@ -131,7 +132,7 @@ void DialogExtender::UpdateExtenderItem(ExtensionFile extenderItem)
     }
 }
 
-void DialogExtender::RemoveExtenderItem(ExtensionFile extenderItem)
+void DialogExtender::RemoveExtenderItem(const ExtensionFile &extenderItem) const
 {
     for (int row = 0; row < tableWidget->rowCount(); ++row) {
         QTableWidgetItem *item = tableWidget->item(row, 1);
@@ -160,7 +161,7 @@ void DialogExtender::handleMenu(const QPoint &pos ) const
     menu.exec(globalPos );
 }
 
-void DialogExtender::onActionLoad()
+void DialogExtender::onActionLoad() const
 {
     QString filePath = QFileDialog::getOpenFileName( nullptr, "Select file", QDir::homePath(), "*.json");
     if ( filePath.isEmpty())
@@ -169,7 +170,7 @@ void DialogExtender::onActionLoad()
     extender->LoadFromFile(filePath, true);
 }
 
-void DialogExtender::onActionReload()
+void DialogExtender::onActionReload() const
 {
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
@@ -179,7 +180,7 @@ void DialogExtender::onActionReload()
     }
 }
 
-void DialogExtender::onActionEnable()
+void DialogExtender::onActionEnable() const
 {
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
@@ -189,7 +190,7 @@ void DialogExtender::onActionEnable()
     }
 }
 
-void DialogExtender::onActionDisable()
+void DialogExtender::onActionDisable() const
 {
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
@@ -199,7 +200,7 @@ void DialogExtender::onActionDisable()
     }
 }
 
-void DialogExtender::onActionRemove()
+void DialogExtender::onActionRemove() const
 {
     QStringList FilesList;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
@@ -215,7 +216,7 @@ void DialogExtender::onActionRemove()
     textComment->clear();
 }
 
-void DialogExtender::onRowSelect(int row, int column)
+void DialogExtender::onRowSelect(int row, int column) const
 {
     textComment->setText(tableWidget->item(row,4)->text());
 }

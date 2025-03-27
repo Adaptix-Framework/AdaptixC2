@@ -14,14 +14,29 @@ typedef int (*vsnprintf_t)(char* str, size_t size, const char* format, va_list a
 extern void* __cdecl memset(void*, int, size_t);
 extern void* __cdecl memcpy(void*, const void*, size_t);
 
+CHAR HdChrA(CHAR c);
+WCHAR HdChrW(WCHAR c);
+
+struct SYSMODULES 
+{
+	HMODULE Kernel32;
+	HMODULE Ntdll;
+	HMODULE Iphlpapi;
+	HMODULE Advapi32;
+	HMODULE Msvcrt;
+	HMODULE Ws2_32;
+};
+
 struct WINAPIFUNC
 {
 	// kernel32
 	DECL_API(CopyFileA);
 	DECL_API(CreateDirectoryA);
 	DECL_API(CreateFileA);
+	DECL_API(CreateNamedPipeA);
 	DECL_API(CreatePipe);
 	DECL_API(CreateProcessA);
+	DECL_API(DisconnectNamedPipe);
 	DECL_API(DeleteFileA);
 	DECL_API(FindClose);
 	DECL_API(FindFirstFileA);
@@ -66,6 +81,7 @@ struct WINAPIFUNC
 	DECL_API(Sleep);
 	DECL_API(VirtualAlloc);
 	DECL_API(VirtualFree);
+	DECL_API(WaitNamedPipeA);
 	DECL_API(WideCharToMultiByte);
 	DECL_API(WriteFile);
 	
@@ -117,6 +133,7 @@ struct NTAPIFUNC
 	DECL_API(NtQuerySystemInformation);
 	DECL_API(NtOpenProcess);
 	DECL_API(NtOpenProcessToken);
+	DECL_API(NtOpenThreadToken);
 	DECL_API(NtTerminateThread);
 	DECL_API(NtTerminateProcess);
 	DECL_API(RtlGetVersion);
@@ -127,6 +144,7 @@ struct NTAPIFUNC
 	DECL_API(RtlNtStatusToDosError);
 };
 
+extern SYSMODULES* SysModules;
 extern WINAPIFUNC* ApiWin;
 extern NTAPIFUNC*  ApiNt;
 

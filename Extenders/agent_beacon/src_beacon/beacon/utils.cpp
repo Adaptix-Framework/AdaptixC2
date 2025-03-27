@@ -1,5 +1,7 @@
 #include "ApiLoader.h"
 
+//////////
+
 LPVOID MemAllocLocal(DWORD bufferSize) 
 {
 	return ApiWin->LocalAlloc(LPTR, bufferSize);
@@ -15,6 +17,9 @@ LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize)
 
 void MemFreeLocal(LPVOID* buffer, DWORD bufferSize) 
 {
+    if (bufferSize < 0)
+        bufferSize = 0;
+
     memset((PBYTE)*buffer, 0, bufferSize);
 	ApiWin->LocalFree(*buffer);
 	*buffer = NULL;
@@ -24,20 +29,21 @@ void MemFreeLocal(LPVOID* buffer, DWORD bufferSize)
 
 //////////
 
-BYTE* ReadFromPipe(HANDLE hPipe, ULONG* bufferSize) 
+BYTE* ReadDataFromAnonPipe(HANDLE hPipe, ULONG* bufferSize)
 {
     BOOL  result = FALSE;
     ULONG read = 0;
-    static BYTE* buf[0x1000] = { 0 };
-
+    static BYTE* buf[0x2000] = { 0 };
     LPVOID buffer = MemAllocLocal(0);
     do {
         DWORD available = 0;
         ApiWin->PeekNamedPipe(hPipe, NULL, 0x1000, NULL, &available, NULL);
+        
         if (available > 0) {
             result = ApiWin->ReadFile(hPipe, buf, 0x1000, &read, NULL);
             if (read == 0)
                 break;
+
             *bufferSize += read;
 
             buffer = MemReallocLocal(buffer, *bufferSize);
@@ -47,12 +53,87 @@ BYTE* ReadFromPipe(HANDLE hPipe, ULONG* bufferSize)
         else {
             result = FALSE;
         }
+
         if (*bufferSize > 0x100000)
             break;
 
     } while (result);
 
     return (BYTE*)buffer;
+}
+
+BOOL PeekNamedPipeTime(HANDLE hNamedPipe, int waitTime)
+{
+    DWORD startTickCount = ApiWin->GetTickCount() + waitTime;
+    DWORD totalBytesAvail = 0;
+    while (1) {
+        if (!ApiWin->PeekNamedPipe(hNamedPipe, 0, 0, 0, &totalBytesAvail, 0))
+            return 0;
+
+        if (totalBytesAvail)
+            break;
+
+        if (ApiWin->GetTickCount() >= startTickCount)
+            return 0;
+
+        ApiWin->Sleep(10);
+    }
+    return 1;
+}
+
+int ReadFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize) 
+{
+    DWORD NumberOfBytesRead = 0;
+    int index = 0;
+    while (ApiWin->ReadFile(hPipe, buffer + index, bufferSize - index, &NumberOfBytesRead, 0) && NumberOfBytesRead) {
+        index += NumberOfBytesRead;
+        if (index > bufferSize)
+            return -1;
+        
+        if (index == bufferSize)
+            break;
+    }
+    return index;
+}
+
+int ReadDataFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize)
+{
+    int dataLength = 0;
+    int dataSize = ReadFromPipe(hPipe, (BYTE*)&dataLength, 4);
+    if (dataSize == -1 || dataSize != 4)
+        return -1;
+
+    if (dataLength > bufferSize)
+        buffer = (BYTE*) ApiWin->LocalReAlloc(buffer, dataLength, 0);
+
+    return ReadFromPipe(hPipe, buffer, dataLength);
+}
+
+BOOL WriteToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize) 
+{
+    int index = 0;
+    int size;
+    DWORD NumberOfBytesWritten = 0;
+    while (1) {
+        size = bufferSize - index;
+        if (bufferSize - index > 0x2000)
+            size = 0x2000;
+
+        if (!ApiWin->WriteFile(hPipe, buffer + index, size, &NumberOfBytesWritten, 0))
+            return 0;
+        
+        index += NumberOfBytesWritten;
+        if (index >= bufferSize)
+            break;
+    }
+    return TRUE;
+}
+
+BOOL WriteDataToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize)
+{
+    if (WriteToPipe(hPipe, (BYTE*) &bufferSize, 4))
+        return WriteToPipe(hPipe, buffer, bufferSize);
+    return FALSE;
 }
 
 //////////
@@ -161,6 +242,52 @@ CHAR* _GetProcessName()
     CHAR* processName = (CHAR*)MemAllocLocal(i);
     ApiWin->GetModuleBaseNameA((HANDLE) -1, NULL, processName, i);
     return processName;
+}
+
+HANDLE TokenCurrentHandle()
+{
+    HANDLE TokenHandle = NULL;
+
+    if (!NT_SUCCESS(ApiNt->NtOpenThreadToken(NtCurrentThread(), TOKEN_QUERY, FALSE, &TokenHandle))) {
+        if (!NT_SUCCESS(ApiNt->NtOpenThreadToken(NtCurrentThread(), TOKEN_QUERY, TRUE, &TokenHandle))) {
+            if (!NT_SUCCESS(ApiNt->NtOpenProcessToken(NtCurrentProcess(), TOKEN_QUERY, &TokenHandle)))
+                return NULL;
+        }
+    }
+    return TokenHandle;
+}
+
+BOOL TokenToUser(HANDLE hToken, CHAR* username, DWORD* usernameSize, CHAR* domain, DWORD* domainSize, BOOL* elevated) 
+{
+    BOOL result = false;
+    if (hToken) {
+        LPVOID tokenInfo = NULL;
+        DWORD  tokenInfoSize = 0;
+        
+        result = ApiWin->GetTokenInformation(hToken, TokenUser, tokenInfo, 0, &tokenInfoSize);
+        if (!result) {
+            tokenInfo = MemAllocLocal(tokenInfoSize);
+            if (tokenInfo)
+                result = ApiWin->GetTokenInformation(hToken, TokenUser, tokenInfo, tokenInfoSize, &tokenInfoSize);
+        }
+
+        TOKEN_ELEVATION Elevation = { 0 };
+        DWORD eleavationSize = sizeof(TOKEN_ELEVATION);
+        ApiWin->GetTokenInformation(hToken, TokenElevation, &Elevation, sizeof(Elevation), &eleavationSize);
+
+        if (result) {
+            SID_NAME_USE SidType;
+            result = ApiWin->LookupAccountSidA(NULL, ((PTOKEN_USER)tokenInfo)->User.Sid, username, usernameSize, domain, domainSize, &SidType);
+            if (result) {
+                *elevated = Elevation.TokenIsElevated;
+            }
+        }
+
+        if (tokenInfo)
+            MemFreeLocal(&tokenInfo, tokenInfoSize);
+
+    }
+    return result;
 }
 
 ///////////
@@ -313,7 +440,7 @@ ULONG FileTimeToUnixTimestamp(FILETIME ft)
         uli.HighPart -= EPOCH_DIFFERENCE_HIGH;
     }
 
-    ULONG seconds = (uli.HighPart * (10000000 / (1ULL << 32))) + (uli.LowPart / 10000000);
+    ULONG seconds = (uli.HighPart * ((1ULL << 32) / 10000000)) + (uli.LowPart / 10000000);
     return seconds;
 }
 

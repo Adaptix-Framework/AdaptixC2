@@ -91,6 +91,12 @@
     ]
   },
   {
+    "command": "getuid",
+    "message": "Task: get username of current token",
+    "description": "Prints the User ID associated with the current token",
+    "example": "getuid"
+  },
+  {
     "command": "jobs",
     "description": "Long-running tasks manager",
     "subcommands":
@@ -108,6 +114,23 @@
         "example": "jobs kill 1a2b3c4d",
         "args": [
           "STRING <task_id>"
+        ]
+      }
+    ]
+  },
+  {
+    "command": "link",
+    "description": "Connect to an pivot agents",
+    "subcommands":
+    [
+      {
+        "name": "smb",
+        "message": "Task: Connect to an SMB agent",
+        "description": "Connect to an SMB agent and re-establish control of it",
+        "example": "link smb 192.168.1.2 pipe_a1b2",
+        "args": [
+          "STRING <target>",
+          "STRING <pipename>"
         ]
       }
     ]
@@ -223,6 +246,12 @@
     "example": "pwd"
   },
   {
+    "command": "rev2self",
+    "message": "Task: revert token",
+    "description": "Revert to your original access token",
+    "example": "rev2self"
+  },
+  {
     "command": "rm",
     "message": "Task: remove file or directory",
     "description": "Remove a file or folder",
@@ -310,6 +339,15 @@
         "description": "Terminate the beacon process",
         "example": "terminate process"
       }
+    ]
+  },
+  {
+    "command": "unlink",
+    "message": "Task: disconnect from an pivot agent",
+    "description": "Disconnect from an pivot agent",
+    "example": "unlink 1a2b3c4d",
+    "args": [
+      "STRING <id>"
     ]
   },
   {

@@ -85,7 +85,7 @@ void BrowserProcessWidget::createUI()
     this->setLayout(mainGridLayout);
 }
 
-void BrowserProcessWidget::SetStatus(qint64 time, int msgType, QString message)
+void BrowserProcessWidget::SetStatus(qint64 time, int msgType, const QString &message) const
 {
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
@@ -99,7 +99,7 @@ void BrowserProcessWidget::SetStatus(qint64 time, int msgType, QString message)
     }
 }
 
-void BrowserProcessWidget::SetProcess(int msgType, QString data)
+void BrowserProcessWidget::SetProcess(int msgType, const QString &data) const
 {
     if( msgType == CONSOLE_OUT_LOCAL_ERROR || msgType == CONSOLE_OUT_ERROR )
         return;
@@ -133,7 +133,7 @@ void BrowserProcessWidget::SetProcess(int msgType, QString data)
 
 /// PRIVATE
 
-void BrowserProcessWidget::setTableProcessData(QMap<int, BrowserProcessData> processMap)
+void BrowserProcessWidget::setTableProcessData(QMap<int, BrowserProcessData> processMap) const
 {
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
@@ -192,7 +192,7 @@ void BrowserProcessWidget::setTableProcessData(QMap<int, BrowserProcessData> pro
     tableWidget->setSortingEnabled( true );
 }
 
-void BrowserProcessWidget::setTreeProcessData(QMap<int, BrowserProcessData> processMap)
+void BrowserProcessWidget::setTreeProcessData(QMap<int, BrowserProcessData> processMap) const
 {
     treeBrowserWidget->clear();
 
@@ -236,7 +236,7 @@ void BrowserProcessWidget::addProcessToTree(QTreeWidgetItem* parent, int parentP
     }
 }
 
-void BrowserProcessWidget::filterTreeWidget(QString filterText)
+void BrowserProcessWidget::filterTreeWidget(const QString &filterText) const
 {
     std::function<bool(QTreeWidgetItem*)> filterItem = [&](QTreeWidgetItem* item) -> bool {
         bool match = item->text(0).contains(filterText, Qt::CaseInsensitive);
@@ -254,7 +254,7 @@ void BrowserProcessWidget::filterTreeWidget(QString filterText)
     }
 }
 
-void BrowserProcessWidget::filterTableWidget(QString filterText)
+void BrowserProcessWidget::filterTableWidget(const QString &filterText) const
 {
     for (int row = 0; row < tableWidget->rowCount(); ++row) {
         bool match = false;
@@ -272,19 +272,19 @@ void BrowserProcessWidget::filterTableWidget(QString filterText)
 
 /// SLOTS
 
-void BrowserProcessWidget::onReload()
+void BrowserProcessWidget::onReload() const
 {
     QString status = agent->BrowserProcess();
     statusLabel->setText(status);
 }
 
-void BrowserProcessWidget::onFilter(QString text)
+void BrowserProcessWidget::onFilter(const QString &text) const
 {
     this->filterTreeWidget(text);
     this->filterTableWidget(text);
 }
 
-void BrowserProcessWidget::actionCopyPid()
+void BrowserProcessWidget::actionCopyPid() const
 {
     int row = tableWidget->currentRow();
     if( row >= 0) {
@@ -305,7 +305,7 @@ void BrowserProcessWidget::handleTableMenu(const QPoint &pos)
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }
 
-void BrowserProcessWidget::onTableSelect()
+void BrowserProcessWidget::onTableSelect() const
 {
     QString pid = tableWidget->item( tableWidget->currentRow(), 0 )->text();
     auto item = QTreeWidgetItemIterator ( treeBrowserWidget );
@@ -318,7 +318,7 @@ void BrowserProcessWidget::onTableSelect()
     }
 }
 
-void BrowserProcessWidget::onTreeSelect()
+void BrowserProcessWidget::onTreeSelect() const
 {
     QString pid = treeBrowserWidget->currentItem()->text( 1 );
     for ( int i = 0; i < tableWidget->rowCount(); i++ ) {

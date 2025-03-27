@@ -13,7 +13,7 @@ class Extender
     MainAdaptix* mainAdaptix = nullptr;
 
 public:
-    Extender(MainAdaptix* m);
+    explicit Extender(MainAdaptix* m);
     ~Extender();
 
     DialogExtender* dialogExtender = nullptr;
@@ -21,10 +21,10 @@ public:
 
     void LoadFromDB();
     void LoadFromFile(QString path, bool enabled);
-    void SetExtension(ExtensionFile extFile );
-    void EnableExtension(QString path);
-    void DisableExtension(QString path);
-    void RemoveExtension(QString path);
+    void SetExtension(const ExtensionFile &extFile );
+    void EnableExtension(const QString &path);
+    void DisableExtension(const QString &path);
+    void RemoveExtension(const QString &path);
 };
 
 #endif //ADAPTIXCLIENT_EXTENDER_H

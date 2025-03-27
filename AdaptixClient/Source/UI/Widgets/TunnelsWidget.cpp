@@ -51,7 +51,7 @@ void TunnelsWidget::createUI()
      mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
 }
 
-void TunnelsWidget::Clear()
+void TunnelsWidget::Clear() const
 {
      auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
      adaptixWidget->Tunnels.clear();
@@ -59,7 +59,7 @@ void TunnelsWidget::Clear()
          tableWidget->removeRow(index -1 );
 }
 
-void TunnelsWidget::AddTunnelItem(TunnelData newTunnel)
+void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
 {
      auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
      for( auto tunnel : adaptixWidget->Tunnels ) {
@@ -148,7 +148,7 @@ void TunnelsWidget::AddTunnelItem(TunnelData newTunnel)
     adaptixWidget->Tunnels.push_back(newTunnel);
 }
 
-void TunnelsWidget::EditTunnelItem(QString tunnelId, QString info)
+void TunnelsWidget::EditTunnelItem(const QString &tunnelId, const QString &info) const
 {
      auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
      for ( int i = 0; i < adaptixWidget->Tunnels.size(); i++ ) {
@@ -167,7 +167,7 @@ void TunnelsWidget::EditTunnelItem(QString tunnelId, QString info)
      }
 }
 
-void TunnelsWidget::RemoveTunnelItem(QString tunnelId)
+void TunnelsWidget::RemoveTunnelItem(const QString &tunnelId) const
 {
      auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
      for ( int i = 0; i < adaptixWidget->Tunnels.size(); i++ ) {
@@ -199,7 +199,7 @@ void TunnelsWidget::handleTunnelsMenu(const QPoint &pos ) const
      tunnelsMenu.exec(globalPos);
 }
 
-void TunnelsWidget::actionSetInfo()
+void TunnelsWidget::actionSetInfo() const
 {
      if (tableWidget->selectionModel()->selectedRows().empty())
           return;
@@ -223,7 +223,7 @@ void TunnelsWidget::actionSetInfo()
      }
 }
 
-void TunnelsWidget::actionStopTunnel()
+void TunnelsWidget::actionStopTunnel() const
 {
      if (tableWidget->selectionModel()->selectedRows().empty())
           return;

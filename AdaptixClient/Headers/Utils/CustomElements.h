@@ -33,8 +33,9 @@ public:
     QPushButton*  buttonClear = nullptr;
 
     SpinTable(int rows, int clomuns, QWidget* parent);
-    SpinTable(QWidget* parent = nullptr) { SpinTable(0,0,parent); }
-    ~SpinTable() = default;
+
+    explicit SpinTable(QWidget* parent = nullptr) { SpinTable(0,0,parent); }
+    ~SpinTable() override = default;
 };
 
 
@@ -51,7 +52,28 @@ public:
     QString content;
 
     explicit FileSelector(QWidget* parent = nullptr);
-    ~FileSelector() = default;
+    ~FileSelector() override = default;
+};
+
+
+
+
+class ClickableLabel : public QLabel {
+    Q_OBJECT
+
+public:
+    explicit ClickableLabel(const QString &label, QWidget *parent = nullptr) : QLabel(label, parent) {}
+
+    signals:
+        void clicked();
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override {
+        if (event->button() == Qt::LeftButton) {
+            emit clicked();
+        }
+        QLabel::mousePressEvent(event);
+    }
 };
 
 #endif //ADAPTIXCLIENT_CUSTOMELEMENTS_H

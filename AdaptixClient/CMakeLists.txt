@@ -50,7 +50,7 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogAgent.h
         Headers/UI/Widgets/ConsoleWidget.h
         Headers/Agent/Agent.h
-        Headers/Agent/TableWidgetItemAgent.h
+        Headers/Agent/AgentTableWidgetItem.h
         Headers/Client/LastTickWorker.h
         Headers/Agent/Commander.h
         Headers/UI/Widgets/DownloadsWidget.h
@@ -64,6 +64,13 @@ SET( HEADERS
         Headers/Client/Settings.h
         Headers/UI/Widgets/TunnelsWidget.h
         Headers/Utils/KeyPressHandler.h
+        Headers/Agent/Task.h
+        Headers/Agent/TaskTableWidgetItem.h
+        Headers/UI/Graph/SessionsGraph.h
+        Headers/UI/Graph/GraphItem.h
+        Headers/UI/Graph/GraphItemLink.h
+        Headers/UI/Graph/GraphScene.h
+        Headers/UI/Graph/LayoutTreeLeft.h
 )
 
 add_executable(AdaptixClient
@@ -94,7 +101,7 @@ add_executable(AdaptixClient
         Source/UI/Dialogs/DialogAgent.cpp
         Source/UI/Widgets/ConsoleWidget.cpp
         Source/Agent/Agent.cpp
-        Source/Agent/TableWidgetItemAgent.cpp
+        Source/Agent/AgentTableWidgetItem.cpp
         Source/Client/LastTickWorker.cpp
         Source/Agent/Commander.cpp
         Source/UI/Widgets/DownloadsWidget.cpp
@@ -107,6 +114,13 @@ add_executable(AdaptixClient
         Source/Utils/CustomElements.cpp
         Source/Client/Settings.cpp
         Source/UI/Widgets/TunnelsWidget.cpp
+        Source/Agent/Task.cpp
+        Source/Agent/TaskTableWidgetItem.cpp
+        Source/UI/Graph/SessionsGraph.cpp
+        Source/UI/Graph/GraphItem.cpp
+        Source/UI/Graph/GraphItemLink.cpp
+        Source/UI/Graph/GraphScene.cpp
+        Source/UI/Graph/LayoutTreeLeft.cpp
 )
 
 if(UNIX)

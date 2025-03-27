@@ -27,7 +27,7 @@ char* b64_encode(const unsigned char* in, int len)
         return NULL;
 
     elen = b64_encoded_size(len);
-    char* out = (char* ) MemAllocLocal(elen + 1);
+    char* out = (char* ) ApiWin->LocalAlloc(LPTR, elen + 1);
     out[elen] = '\0';
 
     for (i = 0, j = 0; i < len; i += 3, j += 4) {

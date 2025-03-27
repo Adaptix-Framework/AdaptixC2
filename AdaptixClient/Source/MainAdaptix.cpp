@@ -20,7 +20,7 @@ MainAdaptix::~MainAdaptix()
     delete extender;
 }
 
-void MainAdaptix::Start()
+void MainAdaptix::Start() const
 {
     AuthProfile* authProfile = this->Login();
     if (!authProfile) {
@@ -36,10 +36,10 @@ void MainAdaptix::Start()
 
 void MainAdaptix::Exit()
 {
-    QApplication::exit(0);
+    QCoreApplication::quit();
 }
 
-void MainAdaptix::NewProject()
+void MainAdaptix::NewProject() const
 {
     AuthProfile* authProfile = this->Login();
     if (authProfile)
@@ -66,7 +66,7 @@ AuthProfile* MainAdaptix::Login()
     return authProfile;
 }
 
-void MainAdaptix::SetApplicationTheme()
+void MainAdaptix::SetApplicationTheme() const
 {
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
 

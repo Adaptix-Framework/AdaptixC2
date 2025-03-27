@@ -29,6 +29,18 @@ void DialogListener::createUI()
 
     listenerTypeCombobox = new QComboBox(this);
 
+    buttonLoad = new QPushButton(QIcon(":/icons/unarchive"), "", this);
+    buttonLoad->setIconSize( QSize( 25,25 ));
+    buttonLoad->setToolTip("Load profile from file");
+
+    buttonSave = new QPushButton(QIcon(":/icons/archive"), "", this);
+    buttonSave->setIconSize( QSize( 25,25 ));
+    buttonSave->setToolTip("Save profile to file");
+
+    line_1 = new QFrame(this);
+    line_1->setFrameShape(QFrame::VLine);
+    line_1->setMinimumHeight(20);
+
     configStackWidget = new QStackedWidget(this );
 
     stackGridLayout = new QGridLayout(this );
@@ -39,16 +51,6 @@ void DialogListener::createUI()
     listenerConfigGroupbox = new QGroupBox( this );
     listenerConfigGroupbox->setTitle("Listener config");
     listenerConfigGroupbox->setLayout(stackGridLayout);
-
-    buttonLoad = new QPushButton(this);
-    buttonLoad->setText("Load");
-
-    buttonSave = new QPushButton(this);
-    buttonSave->setText("Save");
-
-    line_1 = new QFrame(this);
-    line_1->setFrameShape(QFrame::VLine);
-    line_1->setMinimumHeight(20);
 
     buttonCreate = new QPushButton(this);
     buttonCreate->setText("Create");
@@ -62,29 +64,35 @@ void DialogListener::createUI()
 
     hLayoutBottom = new QHBoxLayout();
     hLayoutBottom->addItem(horizontalSpacer_2);
-    hLayoutBottom->addWidget(buttonLoad);
-    hLayoutBottom->addWidget(buttonSave);
-    hLayoutBottom->addWidget(line_1);
     hLayoutBottom->addWidget(buttonCreate);
     hLayoutBottom->addWidget(buttonCancel);
     hLayoutBottom->addItem(horizontalSpacer_3);
 
     mainGridLayout = new QGridLayout( this );
-    mainGridLayout->addWidget( listenerNameLabel, 0, 0, 1, 1);
-    mainGridLayout->addWidget(inputListenerName, 0, 1, 1, 5);
-    mainGridLayout->addWidget( listenerTypeLabel, 1, 0, 1, 1);
-    mainGridLayout->addWidget( listenerTypeCombobox, 1, 1, 1, 5);
-    mainGridLayout->addItem(horizontalSpacer, 2, 0, 1, 6);
-    mainGridLayout->addWidget( listenerConfigGroupbox, 3, 0, 1, 6 );
-    mainGridLayout->addLayout(hLayoutBottom, 4, 0, 1, 6);
+    mainGridLayout->addWidget( listenerNameLabel,      0, 0, 1, 1);
+    mainGridLayout->addWidget( inputListenerName,      0, 1, 1, 1);
+    mainGridLayout->addWidget( line_1,                 0, 2, 2, 1);
+    mainGridLayout->addWidget( buttonLoad,             0, 3, 1, 1);
+    mainGridLayout->addWidget( listenerTypeLabel,      1, 0, 1, 1);
+    mainGridLayout->addWidget( listenerTypeCombobox,   1, 1, 1, 1);
+    mainGridLayout->addWidget( buttonSave,             1, 3, 1, 1);
+    mainGridLayout->addItem(   horizontalSpacer,       2, 0, 1, 4);
+    mainGridLayout->addWidget( listenerConfigGroupbox, 3, 0, 1, 4);
+    mainGridLayout->addLayout( hLayoutBottom,          4, 0, 1, 4);
 
     this->setLayout(mainGridLayout);
 
-    int buttonWidth = buttonCancel->width();
+    int buttonWidth  = buttonCancel->width();
+    buttonLoad->setFixedWidth(buttonWidth/2);
+    buttonSave->setFixedWidth(buttonWidth/2);
     buttonCreate->setFixedWidth(buttonWidth);
-    buttonSave->setFixedWidth(buttonWidth);
-    buttonLoad->setFixedWidth(buttonWidth);
     buttonCancel->setFixedWidth(buttonWidth);
+
+    int buttonHeight = buttonCancel->height();
+    buttonLoad->setFixedHeight(buttonHeight);
+    buttonSave->setFixedHeight(buttonHeight);
+    buttonCreate->setFixedHeight(buttonHeight);
+    buttonCancel->setFixedHeight(buttonHeight);
 }
 
 void DialogListener::Start()
@@ -92,7 +100,7 @@ void DialogListener::Start()
     this->exec();
 }
 
-void DialogListener::AddExListeners(QMap<QString, WidgetBuilder*> listeners)
+void DialogListener::AddExListeners(const QMap<QString, WidgetBuilder*> &listeners)
 {
     listenersUI = listeners;
 
@@ -104,21 +112,22 @@ void DialogListener::AddExListeners(QMap<QString, WidgetBuilder*> listeners)
     listenerTypeCombobox->addItems( listenersUI.keys() );
 }
 
-void DialogListener::SetProfile(AuthProfile profile)
+void DialogListener::SetProfile(const AuthProfile &profile)
 {
     this->authProfile = profile;
 }
 
-void DialogListener::SetEditMode(QString name)
+void DialogListener::SetEditMode(const QString &name)
 {
     this->setWindowTitle( "Edit Listener" );
     inputListenerName->setText(name);
     inputListenerName->setDisabled(true);
     listenerTypeCombobox->setDisabled(true);
+    buttonCreate->setText("Edit");
     editMode = true;
 }
 
-void DialogListener::changeConfig(QString fn)
+void DialogListener::changeConfig(const QString &fn)
 {
     if (listenersUI[fn]) {
         auto w = listenersUI[fn]->GetWidget();

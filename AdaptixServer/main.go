@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const VERSION = "0.2"
+const VERSION = "0.3"
 
 func main() {
 	fmt.Printf("\n[===== Adaptix Framework v%v =====]\n\n", VERSION)
@@ -63,7 +63,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	err = ts.Profile.IsVaid()
+	err = ts.Profile.IsValid()
 	if err != nil {
 		logs.Error("", err.Error())
 		os.Exit(0)

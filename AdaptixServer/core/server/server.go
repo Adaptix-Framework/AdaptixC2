@@ -21,30 +21,35 @@ func NewTeamserver() *Teamserver {
 	}
 
 	ts := &Teamserver{
-		Profile:          profile.NewProfile(),
-		DBMS:             dbms,
-		clients:          safe.NewMap(),
-		events:           safe.NewSlice(),
+		Profile: profile.NewProfile(),
+		DBMS:    dbms,
+
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
-		agent_types:      safe.NewMap(),
-		listeners:        safe.NewMap(),
-		agents:           safe.NewMap(),
-		downloads:        safe.NewMap(),
-		tunnels:          safe.NewMap(),
+
+		wm_agent_types: make(map[string]string),
+		wm_listeners:   make(map[string][]string),
+
+		events:    safe.NewSlice(),
+		clients:   safe.NewMap(),
+		agents:    safe.NewMap(),
+		listeners: safe.NewMap(),
+		downloads: safe.NewMap(),
+		tunnels:   safe.NewMap(),
+		pivots:    safe.NewSlice(),
 	}
 	ts.Extender = extender.NewExtender(ts)
 	return ts
 }
 
-func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, exts []string) {
+func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, extenders []string) {
 	ts.Profile.Server = &profile.TsProfile{
 		Port:      port,
 		Endpoint:  endpoint,
 		Password:  password,
 		Cert:      cert,
 		Key:       key,
-		Extenders: exts,
+		Extenders: extenders,
 	}
 	ts.Profile.ServerResponse = &profile.TsResponse{
 		Status:      404,
@@ -56,16 +61,16 @@ func (ts *Teamserver) SetSettings(port int, endpoint string, password string, ce
 
 func (ts *Teamserver) SetProfile(path string) error {
 	var (
-		err        error
-		fileConten []byte
+		err         error
+		fileContent []byte
 	)
 
-	fileConten, err = os.ReadFile(path)
+	fileContent, err = os.ReadFile(path)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal(fileConten, &ts.Profile)
+	err = json.Unmarshal(fileContent, &ts.Profile)
 	if err != nil {
 		return err
 	}
@@ -79,6 +84,7 @@ func (ts *Teamserver) RestoreData() {
 		err error
 	)
 
+	/// DATABASE
 	ok = ts.DBMS.DatabaseExists()
 	if !ok {
 		return
@@ -86,17 +92,26 @@ func (ts *Teamserver) RestoreData() {
 
 	logs.Info("", "Restore data from Database...")
 
+	/// AGENTS
 	countAgents := 0
 	restoreAgents := ts.DBMS.DbAgentAll()
 	for _, agentData := range restoreAgents {
 
 		agent := &Agent{
-			Data:        agentData,
-			TunnelQueue: safe.NewSlice(),
-			TasksQueue:  safe.NewSlice(),
-			Tasks:       safe.NewMap(),
-			ClosedTasks: safe.NewMap(),
-			Tick:        false,
+			Data:           agentData,
+			OutConsole:     safe.NewSlice(),
+			TunnelQueue:    safe.NewSlice(),
+			TasksQueue:     safe.NewSlice(),
+			RunningTasks:   safe.NewMap(),
+			CompletedTasks: safe.NewMap(),
+			PivotParent:    nil,
+			PivotChilds:    safe.NewSlice(),
+			Tick:           false,
+			Active:         true,
+		}
+
+		if agent.Data.Mark == "Terminated" {
+			agent.Active = false
 		}
 
 		ts.agents.Put(agentData.Id, agent)
@@ -109,21 +124,43 @@ func (ts *Teamserver) RestoreData() {
 		ts.TsSyncAllClients(packet2)
 		ts.events.Put(packet2)
 
+		/// Tasks
 		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)
 		for _, taskData := range restoreTasks {
-			agent.ClosedTasks.Put(taskData.TaskId, taskData)
+			agent.CompletedTasks.Put(taskData.TaskId, taskData)
 
-			packet1 := CreateSpAgentTaskCreate(taskData)
-			ts.TsSyncAllClients(packet1)
-
-			packet2 := CreateSpAgentTaskUpdate(taskData)
+			packet2 := CreateSpAgentTaskSync(taskData)
 			ts.TsSyncAllClients(packet2)
+		}
+
+		/// Consoles
+		restoreConsoles := ts.DBMS.DbConsoleAll(agentData.Id)
+		for _, message := range restoreConsoles {
+			var packet3 map[string]any
+			err = json.Unmarshal(message, &packet3)
+			if err != nil {
+				continue
+			}
+
+			agent.OutConsole.Put(packet3)
+
+			ts.TsSyncAllClients(packet3)
 		}
 
 		countAgents++
 	}
 	logs.Success("   ", "Restored %v agents", countAgents)
 
+	/// PIVOT
+	countPivots := 0
+	restorePivots := ts.DBMS.DbPivotAll()
+	for _, restorePivot := range restorePivots {
+		_ = ts.TsPivotCreate(restorePivot.PivotId, restorePivot.ParentAgentId, restorePivot.ChildAgentId, restorePivot.PivotName, true)
+		countPivots++
+	}
+	logs.Success("   ", "Restored %v pivots", countPivots)
+
+	/// DOWNLOADS
 	countDownloads := 0
 	restoreDownloads := ts.DBMS.DbDownloadAll()
 	for _, restoreDownload := range restoreDownloads {
@@ -139,10 +176,11 @@ func (ts *Teamserver) RestoreData() {
 	}
 	logs.Success("   ", "Restored %v downloads", countDownloads)
 
+	/// LISTENERS
 	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
-		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig, restoreListener.CustomData)
+		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig, restoreListener.Watermark, restoreListener.CustomData)
 		if err != nil {
 			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {
@@ -150,7 +188,6 @@ func (ts *Teamserver) RestoreData() {
 		}
 	}
 	logs.Success("   ", "Restored %v listeners", countListeners)
-
 }
 
 func (ts *Teamserver) Start() {

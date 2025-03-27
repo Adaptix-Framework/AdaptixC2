@@ -32,16 +32,15 @@ DownloadData Downloader::CreateDownloadData(ULONG taskId, HANDLE hFile, ULONG si
     return downloadData;
 }
 
-void Downloader::ProcessDownloadTasks(Packer* packer)
+void Downloader::ProcessDownloader(Packer* packer)
 {
 	if ( !this->downloads.size() )
 		return;
-
-	LPVOID buffer = MemAllocLocal(this->chunkSize);
 	
 	for (int i = 0; i < downloads.size(); i++) {
 		BOOL close = false;
 		if (downloads[i].state == DOWNLOAD_STATE_RUNNING) {
+			LPVOID buffer = MemAllocLocal(this->chunkSize);
 			ULONG readedBytes = 0;
 			ApiWin->ReadFile(downloads[i].hFile, buffer, this->chunkSize, &readedBytes, NULL);
 			if (readedBytes > 0) {
@@ -55,8 +54,6 @@ void Downloader::ProcessDownloadTasks(Packer* packer)
 
 				if (downloads[i].fileSize == downloads[i].index)
 					downloads[i].state = DOWNLOAD_STATE_FINISHED;
-					
-				memset(buffer, 0, readedBytes);
 			}
 			else {
 				downloads[i].state = DOWNLOAD_STATE_CANCELED;
@@ -66,6 +63,8 @@ void Downloader::ProcessDownloadTasks(Packer* packer)
 				packer->Pack32(downloads[i].fileId);
 				packer->Pack8(downloads[i].state);
 			}
+			if(buffer)
+				MemFreeLocal(&buffer, this->chunkSize);
 		}
 
 		if ( downloads[i].state == DOWNLOAD_STATE_FINISHED ) {

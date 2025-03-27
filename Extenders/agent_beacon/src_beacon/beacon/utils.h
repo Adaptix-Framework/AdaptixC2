@@ -2,13 +2,29 @@
 
 #include <windows.h>
 
+//////////
+
 LPVOID MemAllocLocal(DWORD bufferSize);
 
 LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize);
 
 void MemFreeLocal(LPVOID* buffer, DWORD bufferSize);
 
-BYTE* ReadFromPipe(HANDLE hPipe, ULONG* bufferSize);
+//////////
+
+BYTE* ReadDataFromAnonPipe(HANDLE hPipe, ULONG* bufferSize);
+
+BOOL PeekNamedPipeTime(HANDLE hNamedPipe, int waitTime);
+
+int ReadFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+
+int ReadDataFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+
+BOOL WriteToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+
+BOOL WriteDataToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+
+//////////
 
 ULONG GenerateRandom32();
 
@@ -25,6 +41,12 @@ CHAR* _GetHostName();
 CHAR* _GetDomainName();
 
 CHAR* _GetProcessName();
+
+HANDLE TokenCurrentHandle();
+
+BOOL TokenToUser(HANDLE hToken, CHAR* username, DWORD* usernameSize, CHAR* domain, DWORD* domainSize, BOOL* elevated);
+
+//////////
 
 CHAR* StrChrA(CHAR* str, CHAR c);
 

@@ -12,7 +12,7 @@
 
 bool IsValidURI(const QString &uri);
 
-QString ValidCommandsFile(QByteArray jsonData, bool* result);
+QString ValidCommandsFile(const QByteArray &jsonData, bool* result);
 
 QString ValidCommand(QJsonObject extJsonObject, bool* result);
 
@@ -20,13 +20,15 @@ QString ValidExtCommand(QJsonObject extJsonObject, bool* result);
 
 QString UnixTimestampGlobalToStringLocal(qint64 timestamp);
 
+QString UnixTimestampGlobalToStringLocalSmall(qint64 timestamp);
+
 QString UnixTimestampGlobalToStringLocalFull(qint64 timestamp);
 
-QString TextColorHtml(QString text, QString color);
+QString TextColorHtml(const QString &text, const QString &color);
 
-QString TextUnderlineColorHtml(QString text, QString color = "");
+QString TextUnderlineColorHtml(const QString &text, const QString &color = "");
 
-QString TextBoltColorHtml(QString text, QString color = "");
+QString TextBoltColorHtml(const QString &text, const QString &color = "");
 
 QString FormatSecToStr(int seconds);
 
@@ -34,6 +36,6 @@ QString TrimmedEnds(QString str);
 
 QString BytesToFormat(qint64 bytes);
 
-QIcon RecolorIcon(QIcon originalIcon, QString colorString);
+QIcon RecolorIcon(QIcon originalIcon, const QString &colorString);
 
 #endif //ADAPTIXCLIENT_CONVERT_H

@@ -4,7 +4,7 @@
 #include <main.h>
 #include <Client/AuthProfile.h>
 
-QJsonObject HttpReq( QString sUrl, QByteArray jsonData, QString token );
+QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token );
 
 bool HttpReqLogin(AuthProfile* profile);
 
@@ -12,48 +12,52 @@ bool HttpReqJwtUpdate(AuthProfile* profile);
 
 /// LISTENER
 
-bool HttpReqListenerStart(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqListenerStart(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqListenerEdit(QString listenerName, QString configType, QString configData, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqListenerEdit(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqListenerStop( QString listenerName, QString listenerType, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqListenerStop(const QString &listenerName, const QString &listenerType, AuthProfile profile, QString* message, bool* ok );
 
 /// AGENT
 
-bool HttpReqAgentGenerate( QString listenerName, QString listenerType, QString agentName, QString configData, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &configData, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqAgentCommand( QString agentName, QString agentId, QString cmdLine, QString data, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqAgentCommand(const QString &agentName, const QString &agentId, const QString &cmdLine, const QString &data, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqAgentExit( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqAgentRemove( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqAgentSetTag( QStringList agentsId, QString tag, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqAgentSetTag( QStringList agentsId, const QString &tag, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqTaskStop(QString agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqAgentSetMark( QStringList agentsId, const QString &mark, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqTasksDelete(QString agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqAgentSetColor( QStringList agentsId, const QString &background, const QString &foreground, bool reset, AuthProfile profile, QString* message, bool* ok );
+
+bool HttpReqTaskStop(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
+
+bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
 
 ///DOWNLOAD
 
-bool HttpReqBrowserDownload( QString action, QString fileId, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqBrowserDownload(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqBrowserDownloadStart( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqBrowserDownloadStart(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok );
 
 ///BROWSER
 
-bool HttpReqBrowserDisks( QString agentId, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqBrowserDisks(const QString &agentId, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqBrowserProcess( QString agentId, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqBrowserProcess(const QString &agentId, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqBrowserList( QString agentId, QString path, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqBrowserList(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqBrowserUpload( QString agentId, QString path, QString content, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqBrowserUpload(const QString &agentId, const QString &path, const QString &content, AuthProfile profile, QString* message, bool* ok );
 
 ///TUNNEL
 
-bool HttpReqTunnelStop( QString tunnelId, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqTunnelStop(const QString &tunnelId, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqTunnelSetInfo( QString tunnelId, QString info, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqTunnelSetInfo(const QString &tunnelId, const QString &info, AuthProfile profile, QString* message, bool* ok );
 
 #endif //ADAPTIXCLIENT_REQUESTOR_H

@@ -13,7 +13,7 @@ class Settings
     MainAdaptix* mainAdaptix = nullptr;
 
 public:
-    Settings(MainAdaptix* m);
+    explicit Settings(MainAdaptix* m);
     ~Settings();
 
     DialogSettings* dialogSettings = nullptr;
@@ -21,7 +21,7 @@ public:
 
     void SetDefault();
     void LoadFromDB();
-    void SaveToDB();
+    void SaveToDB() const;
 };
 
 #endif //ADAPTIXCLIENT_SETTINGS_H

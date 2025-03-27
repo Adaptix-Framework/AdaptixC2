@@ -55,19 +55,19 @@ func (ts *Teamserver) TsReverseAdd(tunnel *Tunnel) {
 func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 	value, ok := ts.tunnels.GetDelete(TunnelId)
 	if !ok {
-		return errors.New("Tunnel Not Found")
+		return errors.New("tunnel Not Found")
 	}
 	tunnel, _ := value.(*Tunnel)
 
 	if tunnel.listener != nil {
-		tunnel.listener.Close()
+		_ = tunnel.listener.Close()
 	}
 
 	tunnel.connections.ForEach(func(key string, valueConn interface{}) bool {
 		tunnelConnection, _ := valueConn.(*TunnelConnection)
 		if tunnelConnection.conn != nil {
 			tunnelConnection.handleCancel()
-			tunnelConnection.conn.Close()
+			_ = tunnelConnection.conn.Close()
 		}
 		return true
 	})
@@ -107,7 +107,7 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 func (ts *Teamserver) TsTunnelSetInfo(TunnelId string, Info string) error {
 	value, ok := ts.tunnels.Get(TunnelId)
 	if !ok {
-		return errors.New("Tunnel Not Found")
+		return errors.New("tunnel not found")
 	}
 	tunnel, _ := value.(*Tunnel)
 
@@ -334,7 +334,7 @@ func (ts *Teamserver) TsTunnelStopSocks(AgentId string, Port int) {
 	id := krypt.CRC32([]byte(AgentId + "socks" + port))
 	TunnelId := fmt.Sprintf("%08x", id)
 
-	ts.TsTunnelStop(TunnelId)
+	_ = ts.TsTunnelStop(TunnelId)
 }
 
 /// Port Forward
@@ -412,7 +412,7 @@ func (ts *Teamserver) TsTunnelStopLocalPortFwd(AgentId string, Port int) {
 	id := krypt.CRC32([]byte(AgentId + "lportfwd" + port))
 	TunnelId := fmt.Sprintf("%08x", id)
 
-	ts.TsTunnelStop(TunnelId)
+	_ = ts.TsTunnelStop(TunnelId)
 }
 
 func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
@@ -464,7 +464,7 @@ func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdA
 	return fwdTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, error) {
+func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, string, error) {
 	var (
 		tunnel     *Tunnel
 		value      interface{}
@@ -488,7 +488,7 @@ func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (str
 			ts.TsSyncAllClients(packet2)
 			ts.events.Put(packet2)
 
-			return message, nil
+			return tunnel.TaskId, message, nil
 		}
 	} else {
 		value, ok = ts.tunnels.GetDelete(tunId)
@@ -504,10 +504,10 @@ func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (str
 			}
 			_ = json.NewEncoder(&taskBuffer).Encode(taskData)
 			ts.TsTaskUpdate(tunnel.Data.AgentId, taskBuffer.Bytes())
-			return "", errors.New("This port is already in use")
+			return tunnel.TaskId, "", errors.New("this port is already in use")
 		}
 	}
-	return "", errors.New("Tunnel not found")
+	return "", "", errors.New("tunnel not found")
 }
 
 func (ts *Teamserver) TsTunnelStopRemotePortFwd(AgentId string, Port int) {
@@ -537,7 +537,7 @@ func (ts *Teamserver) TsTunnelStopRemotePortFwd(AgentId string, Port int) {
 	rawTaskData := tunnel.handlerClose(int(id))
 	sendTunnelTaskData(agent, rawTaskData)
 
-	ts.TsTunnelStop(TunnelId)
+	_ = ts.TsTunnelStop(TunnelId)
 }
 
 /// Connection
@@ -613,7 +613,7 @@ func (ts *Teamserver) TsTunnelConnectionClose(channelId int) {
 
 	if ok {
 		tunnelConnection.handleCancel()
-		tunnelConnection.conn.Close()
+		_ = tunnelConnection.conn.Close()
 		tunnel.connections.Delete(strconv.Itoa(channelId))
 	}
 }
@@ -812,5 +812,5 @@ func socketToTunnelData(agent *Agent, tunnel *Tunnel, tunnelConnection *TunnelCo
 }
 
 func tunnelDataToSocket(tunnelConnection *TunnelConnection, data []byte) {
-	tunnelConnection.conn.Write(data)
+	_, _ = tunnelConnection.conn.Write(data)
 }

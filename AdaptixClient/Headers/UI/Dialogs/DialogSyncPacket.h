@@ -3,7 +3,8 @@
 
 #include <main.h>
 
-class CustomSplashScreen : public QSplashScreen {
+class CustomSplashScreen : public QSplashScreen
+{
 Q_OBJECT
 
 protected:
@@ -25,15 +26,15 @@ class DialogSyncPacket
 
 public:
     CustomSplashScreen* splashScreen = nullptr;
-    int totalLogs;
-    int receivedLogs;
+    int totalLogs    = 0;
+    int receivedLogs = 0;
 
     explicit DialogSyncPacket();
     ~DialogSyncPacket();
 
     void init(int count);
-    void upgrade();
-    void finish();
+    void upgrade() const;
+    void finish() const;
 };
 
 #endif //ADAPTIXCLIENT_DIALOGSYNCPACKET_H

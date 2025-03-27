@@ -7,7 +7,6 @@ int IMP_LENGTH = 6;
 #else
 int IMP_LENGTH = 7;
 #endif
-char IMP_FUNC[] = { '_', '_', 'i', 'm', 'p', '_', '_', 0 };
 
 void InitBofOutputData()
 {
@@ -17,7 +16,7 @@ void InitBofOutputData()
 	}
 }
 
-#define BEACON_FUNCTIONS_COUNT 22
+#define BEACON_FUNCTIONS_COUNT 23
 
 BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 
@@ -48,7 +47,7 @@ BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 
 	{ HASH_FUNC_BEACONUSETOKEN,               BeaconUseToken },
 	{ HASH_FUNC_BEACONREVERTTOKEN,            BeaconRevertToken },
-	//{ HASH_FUNC_BEACONISADMIN,                BeaconIsAdmin },
+	{ HASH_FUNC_BEACONISADMIN,                BeaconIsAdmin },
 	//{ HASH_FUNC_BEACONGETSPAWNTO,             BeaconGetSpawnTo },
 	//{ HASH_FUNC_BEACONSPAWNTEMPORARYPROCESS,  BeaconSpawnTemporaryProcess },
 	//{ HASH_FUNC_BEACONINJECTPROCESS,          BeaconInjectProcess },

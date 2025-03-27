@@ -122,7 +122,7 @@ END:
     this->SetExtension(extensionFile);
 }
 
-void Extender::SetExtension(ExtensionFile extFile)
+void Extender::SetExtension(const ExtensionFile &extFile)
 {
     if(extenderFiles.contains(extFile.FilePath)) {
         if( extFile.Valid && extFile.Enabled ) {
@@ -143,7 +143,7 @@ void Extender::SetExtension(ExtensionFile extFile)
     }
 }
 
-void Extender::EnableExtension(QString path)
+void Extender::EnableExtension(const QString &path)
 {
     if( !extenderFiles.contains(path) )
         return;
@@ -156,7 +156,7 @@ void Extender::EnableExtension(QString path)
     }
 }
 
-void Extender::DisableExtension(QString path)
+void Extender::DisableExtension(const QString &path)
 {
     if( !extenderFiles.contains(path) )
         return;
@@ -169,7 +169,7 @@ void Extender::DisableExtension(QString path)
     }
 }
 
-void Extender::RemoveExtension(QString path)
+void Extender::RemoveExtension(const QString &path)
 {
     if( !extenderFiles.contains(path) )
         return;

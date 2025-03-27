@@ -14,16 +14,21 @@ MainUI::MainUI()
     menuProject->addAction(newProjectAction);
     menuProject->addAction(closeProjectAction);
 
-    auto extenderAction = new QAction("Extender", this);
+    auto menuExtender = new QMenu("Extender", this);
+    auto extenderAction = new QAction("Open extender", this);
     connect(extenderAction, &QAction::triggered, this, &MainUI::onExtender);
+    menuExtender->addAction(extenderAction);
 
-    auto settingsAction = new QAction("Settings", this);
+    auto menuSettings = new QMenu("Settings", this);
+    auto settingsAction = new QAction("Open settings", this);
     connect(settingsAction, &QAction::triggered, this, &MainUI::onSettings);
+    menuSettings->addAction(settingsAction);
 
     auto mainMenuBar = new QMenuBar(this);
     mainMenuBar->addMenu(menuProject);
-    mainMenuBar->addAction(extenderAction);
-    mainMenuBar->addAction(settingsAction);
+    mainMenuBar->addMenu(menuExtender);
+    mainMenuBar->addMenu(menuSettings);
+
     this->setMenuBar(mainMenuBar);
 
     mainuiTabWidget = new QTabWidget();
@@ -42,6 +47,12 @@ MainUI::~MainUI()
     }
 }
 
+void MainUI::closeEvent(QCloseEvent* event)
+{
+    QCoreApplication::quit();
+    event->accept();
+}
+
 void MainUI::AddNewProject(AuthProfile* profile)
 {
     auto adaptixWidget = new AdaptixWidget(profile);
@@ -58,7 +69,7 @@ void MainUI::AddNewProject(AuthProfile* profile)
     AdaptixProjects[profile->GetProject()] = adaptixWidget;
 }
 
-void MainUI::AddNewExtension(ExtensionFile extFile)
+void MainUI::AddNewExtension(const ExtensionFile &extFile)
 {
     for (auto adaptixWidget : AdaptixProjects) {
         if (adaptixWidget)
@@ -66,7 +77,7 @@ void MainUI::AddNewExtension(ExtensionFile extFile)
     }
 }
 
-void MainUI::RemoveExtension(ExtensionFile extFile)
+void MainUI::RemoveExtension(const ExtensionFile &extFile)
 {
     for (auto adaptixWidget : AdaptixProjects) {
         if (adaptixWidget)

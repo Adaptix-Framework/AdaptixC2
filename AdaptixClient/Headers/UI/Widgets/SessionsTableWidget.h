@@ -2,8 +2,8 @@
 #define ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H
 
 #include <main.h>
-#include <UI/Widgets/AdaptixWidget.h>
 #include <Agent/Agent.h>
+#include <Utils/CustomElements.h>
 
 class SessionsTableWidget : public QWidget
 {
@@ -11,23 +11,19 @@ class SessionsTableWidget : public QWidget
     QGridLayout*      mainGridLayout = nullptr;
     QTableWidget*     tableWidget    = nullptr;
     QMenu*            menuSessions   = nullptr;
-    QTableWidgetItem* titleAgentID   = nullptr;
-    QTableWidgetItem* titleAgentType = nullptr;
-    QTableWidgetItem* titleListener  = nullptr;
-    QTableWidgetItem* titleExternal  = nullptr;
-    QTableWidgetItem* titleInternal  = nullptr;
-    QTableWidgetItem* titleDomain    = nullptr;
-    QTableWidgetItem* titleComputer  = nullptr;
-    QTableWidgetItem* titleUser      = nullptr;
-    QTableWidgetItem* titleOs        = nullptr;
-    QTableWidgetItem* titleProcess   = nullptr;
-    QTableWidgetItem* titleProcessId = nullptr;
-    QTableWidgetItem* titleThreadId  = nullptr;
-    QTableWidgetItem* titleTag       = nullptr;
-    QTableWidgetItem* titleLast      = nullptr;
-    QTableWidgetItem* titleSleep     = nullptr;
+    QShortcut*        shortcutSearch = nullptr;
+
+    QWidget*        searchWidget    = nullptr;
+    QHBoxLayout*    searchLayout    = nullptr;
+    QCheckBox*      checkOnlyActive = nullptr;
+    QLineEdit*      inputFilter1    = nullptr;
+    QLineEdit*      inputFilter2    = nullptr;
+    QLineEdit*      inputFilter3    = nullptr;
+    ClickableLabel* hideButton      = nullptr;
 
     void createUI();
+    bool filterItem(const AgentData &agent) const;
+    void addTableItem(const Agent* newAgent) const;
 
 public:
     int ColumnAgentID   = 0;
@@ -48,24 +44,35 @@ public:
     int ColumnCount     = 15;
 
     explicit SessionsTableWidget( QWidget* w );
-    ~SessionsTableWidget();
+    ~SessionsTableWidget() override;
 
-    void Clear();
-    void AddAgentItem(Agent* newAgent);
-    void RemoveAgentItem(QString agentId);
+    void AddAgentItem(Agent* newAgent) const;
+    void RemoveAgentItem(const QString &agentId) const;
+
+    void SetData() const;
+    void ClearTableContent() const;
+    void Clear() const;
 
 public slots:
-    void handleTableDoubleClicked( const QModelIndex &index );
+    void toggleSearchPanel() const;
+    void handleTableDoubleClicked( const QModelIndex &index ) const;
     void handleSessionsTableMenu(const QPoint &pos );
+    void onFilterUpdate() const;
 
-    void actionConsoleOpen();
-    void actionTasksBrowserOpen();
-    void actionFileBrowserOpen();
-    void actionProcessBrowserOpen();
-    void actionAgentExit();
-    void actionAgentTag();
-    void actionAgentHide();
+    void actionConsoleOpen() const;
+    void actionTasksBrowserOpen() const;
+    void actionFileBrowserOpen() const;
+    void actionProcessBrowserOpen() const;
+    void actionAgentExit() const;
+    void actionMarkActive() const;
+    void actionMarkInactive() const;
+    void actionItemColor() const;
+    void actionTextColor() const;
+    void actionColorReset() const;
     void actionAgentRemove();
+    void actionItemTag() const;
+    void actionItemHide() const;
+    void actionItemsShowAll() const;
 };
 
 #endif //ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H

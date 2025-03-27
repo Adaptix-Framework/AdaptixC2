@@ -2,13 +2,13 @@ package extender
 
 import "errors"
 
-func (ex *AdaptixExtender) ExAgentGenerate(agentName string, config string, listenerProfile []byte) ([]byte, string, error) {
+func (ex *AdaptixExtender) ExAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
 	var module *ModuleExtender
 
 	value, ok := ex.agentModules.Get(agentName)
 	if ok {
 		module = value.(*ModuleExtender)
-		return module.AgentGenerate(config, listenerProfile)
+		return module.AgentGenerate(config, listenerWM, listenerProfile)
 	} else {
 		return nil, "", errors.New("module not found")
 	}
@@ -38,27 +38,39 @@ func (ex *AdaptixExtender) ExAgentProcessData(agentName string, agentObject []by
 	}
 }
 
-func (ex *AdaptixExtender) ExAgentPackData(agentName string, agentObject []byte, dataTasks [][]byte) ([]byte, error) {
+func (ex *AdaptixExtender) ExAgentPackData(agentName string, agentObject []byte, maxDataSize int) ([]byte, error) {
 	var module *ModuleExtender
 
 	value, ok := ex.agentModules.Get(agentName)
 	if ok {
 		module = value.(*ModuleExtender)
-		return module.AgentPackData(agentObject, dataTasks)
+		return module.AgentPackData(agentObject, maxDataSize)
 	} else {
 		return nil, errors.New("module not found")
 	}
 }
 
-func (ex *AdaptixExtender) ExAgentCommand(agentName string, agentObject []byte, args map[string]any) ([]byte, []byte, error) {
+func (ex *AdaptixExtender) ExAgentPivotPackData(agentName string, pivotId string, data []byte) ([]byte, error) {
 	var module *ModuleExtender
 
 	value, ok := ex.agentModules.Get(agentName)
 	if ok {
 		module = value.(*ModuleExtender)
-		return module.AgentCommand(agentObject, args)
+		return module.AgentPivotPackData(pivotId, data)
 	} else {
-		return nil, nil, errors.New("module not found")
+		return nil, errors.New("module not found")
+	}
+}
+
+func (ex *AdaptixExtender) ExAgentCommand(client string, cmdline string, agentName string, agentObject []byte, args map[string]any) error {
+	var module *ModuleExtender
+
+	value, ok := ex.agentModules.Get(agentName)
+	if ok {
+		module = value.(*ModuleExtender)
+		return module.AgentCommand(client, cmdline, agentObject, args)
+	} else {
+		return errors.New("module not found")
 	}
 }
 

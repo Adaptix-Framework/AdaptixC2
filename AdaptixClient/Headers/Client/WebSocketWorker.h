@@ -13,13 +13,13 @@ public:
     QWebSocket* webSocket = nullptr;
 
     explicit WebSocketWorker(AuthProfile* authProfile);
-    ~WebSocketWorker();
+    ~WebSocketWorker() override;
 
-    void run();
+    void run() override;
     void SetProfile(AuthProfile* authProfile);
 
 public slots:
-    void is_connected();
+    void is_connected() const;
     void is_disconnected();
     void is_binaryMessageReceived( const QByteArray &data );
 

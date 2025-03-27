@@ -15,7 +15,7 @@ type DownloadAction struct {
 	File   string `json:"file"`
 }
 
-func (tc *TsConnector) TcBrowserDownloadState(ctx *gin.Context) {
+func (tc *TsConnector) TcGuiDownloadState(ctx *gin.Context) {
 	var (
 		downloadAction DownloadAction
 		answer         gin.H
@@ -86,7 +86,7 @@ type DownloadStartAction struct {
 	Path    string `json:"path"`
 }
 
-func (tc *TsConnector) TcBrowserDownload(ctx *gin.Context) {
+func (tc *TsConnector) TcGuiDownload(ctx *gin.Context) {
 	var (
 		downloadAction DownloadStartAction
 		username       string
@@ -113,7 +113,7 @@ func (tc *TsConnector) TcBrowserDownload(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsAgentBrowserDownload(downloadAction.AgentId, downloadAction.Path, username)
+	err = tc.teamserver.TsAgentGuiDownload(downloadAction.AgentId, downloadAction.Path, username)
 	if err != nil {
 		answer = gin.H{"message": err.Error(), "ok": false}
 	} else {
@@ -128,7 +128,7 @@ type DisksAction struct {
 	AgentId string `json:"agent_id"`
 }
 
-func (tc *TsConnector) TcBrowserDisks(ctx *gin.Context) {
+func (tc *TsConnector) TcGuiDisks(ctx *gin.Context) {
 	var (
 		disksAction DisksAction
 		username    string
@@ -155,7 +155,7 @@ func (tc *TsConnector) TcBrowserDisks(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsAgentBrowserDisks(disksAction.AgentId, username)
+	err = tc.teamserver.TsAgentGuiDisks(disksAction.AgentId, username)
 	if err != nil {
 		answer = gin.H{"message": err.Error(), "ok": false}
 	} else {
@@ -171,7 +171,7 @@ type FilesAction struct {
 	Path    string `json:"path"`
 }
 
-func (tc *TsConnector) TcBrowserFiles(ctx *gin.Context) {
+func (tc *TsConnector) TcGuiFiles(ctx *gin.Context) {
 	var (
 		filesAction FilesAction
 		username    string
@@ -198,7 +198,7 @@ func (tc *TsConnector) TcBrowserFiles(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsAgentBrowserFiles(filesAction.AgentId, filesAction.Path, username)
+	err = tc.teamserver.TsAgentGuiFiles(filesAction.AgentId, filesAction.Path, username)
 	if err != nil {
 		answer = gin.H{"message": err.Error(), "ok": false}
 	} else {
@@ -215,7 +215,7 @@ type UploadAction struct {
 	Content    []byte `json:"content"`
 }
 
-func (tc *TsConnector) TcBrowserUpload(ctx *gin.Context) {
+func (tc *TsConnector) TcGuiUpload(ctx *gin.Context) {
 	var (
 		uploadAction UploadAction
 		username     string
@@ -242,7 +242,7 @@ func (tc *TsConnector) TcBrowserUpload(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsAgentBrowserUpload(uploadAction.AgentId, uploadAction.RemotePath, uploadAction.Content, username)
+	err = tc.teamserver.TsAgentGuiUpload(uploadAction.AgentId, uploadAction.RemotePath, uploadAction.Content, username)
 	if err != nil {
 		answer = gin.H{"message": err.Error(), "ok": false}
 	} else {
@@ -257,7 +257,7 @@ type ProcessAction struct {
 	AgentId string `json:"agent_id"`
 }
 
-func (tc *TsConnector) TcBrowserProcess(ctx *gin.Context) {
+func (tc *TsConnector) TcGuiProcess(ctx *gin.Context) {
 	var (
 		processAction ProcessAction
 		username      string
@@ -284,7 +284,7 @@ func (tc *TsConnector) TcBrowserProcess(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsAgentBrowserProcess(processAction.AgentId, username)
+	err = tc.teamserver.TsAgentGuiProcess(processAction.AgentId, username)
 	if err != nil {
 		answer = gin.H{"message": err.Error(), "ok": false}
 	} else {

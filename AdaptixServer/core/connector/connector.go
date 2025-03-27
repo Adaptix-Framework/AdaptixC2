@@ -16,21 +16,31 @@ type Teamserver interface {
 	TsClientConnect(username string, socket *websocket.Conn)
 	TsClientDisconnect(username string)
 
-	TsListenerStart(listenerName string, configType string, config string, customData []byte) error
+	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error
 	TsListenerEdit(listenerName string, configType string, config string) error
 	TsListenerStop(listenerName string, configType string) error
-	TsListenerGetProfile(listenerName string, listenerType string) ([]byte, error)
+	TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error)
+	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
-	TsAgentGenetate(agentName string, config string, listenerProfile []byte) ([]byte, string, error)
-	TsAgentRequest(agentType string, agentId string, beat []byte, bodyData []byte, listenerName string, ExternalIP string) ([]byte, error)
-	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string)
+	TsAgentIsExists(agentId string) bool
+	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
+	TsAgentProcessData(agentId string, bodyData []byte) error
+	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
+	TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error
+	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
+
 	TsAgentUpdateData(newAgentObject []byte) error
-	TsAgentCommand(agentName string, agentId string, username string, cmdline string, args map[string]any) error
-	TsAgentCtxExit(agentId string, username string) error
+	TsAgentImpersonate(agentId string, impersonated string, elevated bool) error
+	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
+	TsAgentSetMark(agentId string, makr string) error
+	TsAgentSetColor(agentId string, background string, foreground string, reset bool) error
+	TsAgentTickUpdate()
+	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
+	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
 
-	TsTaskQueueAddQuite(agentId string, taskObject []byte)
+	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
 	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
 	TsTaskStop(agentId string, taskId string) error
@@ -43,16 +53,17 @@ type Teamserver interface {
 	TsDownloadDelete(fileId string) error
 
 	TsDownloadChangeState(fileId string, username string, command string) error
-	TsAgentBrowserDisks(agentId string, username string) error
-	TsAgentBrowserProcess(agentId string, username string) error
-	TsAgentBrowserFiles(agentId string, path string, username string) error
-	TsAgentBrowserUpload(agentId string, path string, content []byte, username string) error
-	TsAgentBrowserDownload(agentId string, path string, username string) error
+	TsAgentGuiDisks(agentId string, username string) error
+	TsAgentGuiProcess(agentId string, username string) error
+	TsAgentGuiFiles(agentId string, path string, username string) error
+	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
+	TsAgentGuiDownload(agentId string, path string, username string) error
+	TsAgentGuiExit(agentId string, username string) error
 
-	TsClientBrowserDisks(jsonTask string, jsonDrives string)
-	TsClientBrowserFiles(jsonTask string, path string, jsonFiles string)
-	TsClientBrowserFilesStatus(jsonTask string)
-	TsClientBrowserProcess(jsonTask string, jsonFiles string)
+	TsClientGuiDisks(jsonTask string, jsonDrives string)
+	TsClientGuiFiles(jsonTask string, path string, jsonFiles string)
+	TsClientGuiFilesStatus(jsonTask string)
+	TsClientGuiProcess(jsonTask string, jsonFiles string)
 
 	TsTunnelStop(TunnelId string) error
 	TsTunnelSetInfo(TunnelId string, Info string) error
@@ -78,13 +89,13 @@ type TsConnector struct {
 	teamserver Teamserver
 }
 
-func default404Middleware(tsResponce profile.TsResponse) gin.HandlerFunc {
+func default404Middleware(tsResponse profile.TsResponse) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if len(c.Errors) > 0 && !c.Writer.Written() {
-			for header, value := range tsResponce.Headers {
+			for header, value := range tsResponse.Headers {
 				c.Header(header, value)
 			}
-			c.String(tsResponce.Status, tsResponce.PageContent)
+			c.String(tsResponse.Status, tsResponse.PageContent)
 			c.Abort()
 			return
 		}
@@ -92,20 +103,20 @@ func default404Middleware(tsResponce profile.TsResponse) gin.HandlerFunc {
 		c.Next()
 
 		if len(c.Errors) > 0 && !c.Writer.Written() {
-			for header, value := range tsResponce.Headers {
+			for header, value := range tsResponse.Headers {
 				c.Header(header, value)
 			}
-			c.String(tsResponce.Status, tsResponce.PageContent)
+			c.String(tsResponse.Status, tsResponse.PageContent)
 		}
 	}
 }
 
-func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponce profile.TsResponse) (*TsConnector, error) {
+func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profile.TsResponse) (*TsConnector, error) {
 	gin.SetMode(gin.ReleaseMode)
 
-	if tsResponce.PagePath != "" {
-		fileContent, _ := os.ReadFile(tsResponce.PagePath)
-		tsResponce.PageContent = string(fileContent)
+	if tsResponse.PagePath != "" {
+		fileContent, _ := os.ReadFile(tsResponse.PagePath)
+		tsResponse.PageContent = string(fileContent)
 	}
 
 	var connector = new(TsConnector)
@@ -117,34 +128,37 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponce profi
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
 
-	connector.Engine.POST(tsProfile.Endpoint+"/login", default404Middleware(tsResponce), connector.tcLogin)
-	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponce), token.RefreshTokenHandler)
+	connector.Engine.POST(tsProfile.Endpoint+"/login", default404Middleware(tsResponse), connector.tcLogin)
+	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponse), token.RefreshTokenHandler)
 
-	connector.Engine.GET(tsProfile.Endpoint+"/connect", default404Middleware(tsResponce), connector.tcConnect)
+	connector.Engine.GET(tsProfile.Endpoint+"/connect", default404Middleware(tsResponse), connector.tcConnect)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcListenerStart)
-	connector.Engine.POST(tsProfile.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcListenerEdit)
-	connector.Engine.POST(tsProfile.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcListenerStop)
+	connector.Engine.POST(tsProfile.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStart)
+	connector.Engine.POST(tsProfile.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerEdit)
+	connector.Engine.POST(tsProfile.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStop)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/generate", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcAgentGenerate)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/command", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcAgentCommand)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcAgentRemove)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/exit", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcAgentExit)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/settag", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcAgentSetTag)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/stop", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcAgentTaskStop)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcAgentTaskDelete)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/generate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentGenerate)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/command", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommand)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentRemove)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/exit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentExit)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/settag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetTag)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/setmark", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetMark)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/setcolor", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetColor)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/download/state", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcBrowserDownloadState)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/download/start", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcBrowserDownload)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/disks", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcBrowserDisks)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/files", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcBrowserFiles)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/upload", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcBrowserUpload)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/process", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcBrowserProcess)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskStop)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskDelete)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/stop", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcTunnelStop)
-	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/setinfo", token.ValidateAccessToken(), default404Middleware(tsResponce), connector.TcTunnelSetIno)
+	connector.Engine.POST(tsProfile.Endpoint+"/browser/download/state", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadState)
+	connector.Engine.POST(tsProfile.Endpoint+"/browser/download/start", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownload)
+	connector.Engine.POST(tsProfile.Endpoint+"/browser/disks", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDisks)
+	connector.Engine.POST(tsProfile.Endpoint+"/browser/files", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiFiles)
+	connector.Engine.POST(tsProfile.Endpoint+"/browser/upload", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiUpload)
+	connector.Engine.POST(tsProfile.Endpoint+"/browser/process", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiProcess)
 
-	connector.Engine.NoRoute(default404Middleware(tsResponce), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStop)
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/setinfo", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelSetIno)
+
+	connector.Engine.NoRoute(default404Middleware(tsResponse), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 
 	return connector, nil
 }

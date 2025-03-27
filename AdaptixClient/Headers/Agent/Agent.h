@@ -2,7 +2,8 @@
 #define ADAPTIXCLIENT_AGENT_H
 
 #include <main.h>
-#include <Agent/TableWidgetItemAgent.h>
+#include <Agent/AgentTableWidgetItem.h>
+#include <UI/Graph/GraphItem.h>
 #include <Agent/Commander.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
@@ -19,40 +20,61 @@ class Agent
 public:
     AdaptixWidget* adaptixWidget = nullptr;
 
-    AgentData data = {0};
+    AgentData data = {};
 
-    TableWidgetItemAgent* item_Id;
-    TableWidgetItemAgent* item_Type;
-    TableWidgetItemAgent* item_Listener;
-    TableWidgetItemAgent* item_External;
-    TableWidgetItemAgent* item_Internal;
-    TableWidgetItemAgent* item_Domain;
-    TableWidgetItemAgent* item_Computer;
-    TableWidgetItemAgent* item_Username;
-    TableWidgetItemAgent* item_Os;
-    TableWidgetItemAgent* item_Process;
-    TableWidgetItemAgent* item_Pid;
-    TableWidgetItemAgent* item_Tid;
-    TableWidgetItemAgent* item_Tags;
-    TableWidgetItemAgent* item_Last;
-    TableWidgetItemAgent* item_Sleep;
+    QImage imageActive   = QImage();
+    QImage imageInactive = QImage();
+
+    QString connType = QString();
+    QString parentId = QString();
+    QVector<QString> childsId;
+
+    AgentTableWidgetItem* item_Id       = nullptr;
+    AgentTableWidgetItem* item_Type     = nullptr;
+    AgentTableWidgetItem* item_Listener = nullptr;
+    AgentTableWidgetItem* item_External = nullptr;
+    AgentTableWidgetItem* item_Internal = nullptr;
+    AgentTableWidgetItem* item_Domain   = nullptr;
+    AgentTableWidgetItem* item_Computer = nullptr;
+    AgentTableWidgetItem* item_Username = nullptr;
+    AgentTableWidgetItem* item_Os       = nullptr;
+    AgentTableWidgetItem* item_Process  = nullptr;
+    AgentTableWidgetItem* item_Pid      = nullptr;
+    AgentTableWidgetItem* item_Tid      = nullptr;
+    AgentTableWidgetItem* item_Tags     = nullptr;
+    AgentTableWidgetItem* item_Last     = nullptr;
+    AgentTableWidgetItem* item_Sleep    = nullptr;
+    GraphItem*            graphItem     = nullptr;
+    QImage                graphImage    = QImage();
 
     ConsoleWidget*        Console        = nullptr;
     BrowserFilesWidget*   FileBrowser    = nullptr;
     BrowserProcessWidget* ProcessBrowser = nullptr;
 
+    bool active = true;
+    bool show   = true;
+    QString original_item_color;
+
     explicit Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w );
     ~Agent();
 
     void    Update(QJsonObject jsonObjAgentData);
-    QString TasksStop(QStringList tasks);
-    QString TasksDelete(QStringList tasks);
+    void    MarkItem(const QString &mark);
+    void    SetColor(const QString &color) const;
+    void    SetImage();
+    QString TasksStop(const QStringList &tasks) const;
+    QString TasksDelete(const QStringList &tasks) const;
 
-    QString BrowserDisks();
-    QString BrowserProcess();
-    QString BrowserList(QString path);
-    QString BrowserUpload(QString path, QString content);
-    QString BrowserDownload(QString path);
+    void SetParent(const PivotData &pivotData);
+    void UnsetParent(const PivotData &pivotData);
+    void AddChild(const PivotData &pivotData);
+    void RemoveChild(const PivotData &pivotData);
+
+    QString BrowserDisks() const;
+    QString BrowserProcess() const;
+    QString BrowserList(const QString &path) const;
+    QString BrowserUpload(const QString &path, const QString &content) const;
+    QString BrowserDownload(const QString &path) const;
 };
 
 #endif //ADAPTIXCLIENT_AGENT_H
