@@ -11,13 +11,6 @@ import (
 	"regexp"
 )
 
-const (
-	SetType     = INTERNAL
-	SetProtocol = "smb"
-	SetName     = "BeaconSMB"
-	SetUiPath   = "_ui_listener.json"
-)
-
 func (m *ModuleExtender) HandlerListenerValid(data string) error {
 
 	/// START CODE HERE
@@ -207,7 +200,7 @@ func (m *ModuleExtender) HandlerListenerInteralHandler(name string, data []byte,
 		agentInfo = agentInfo[4:]
 		agentId = fmt.Sprintf("%08x", uint(binary.BigEndian.Uint32(agentInfo[:4])))
 		agentInfo = agentInfo[4:]
-		
+
 		if !ModuleObject.ts.TsAgentIsExists(agentId) {
 			err = ModuleObject.ts.TsAgentCreate(agentType, agentId, agentInfo, listener.Name, "", false)
 			if err != nil {

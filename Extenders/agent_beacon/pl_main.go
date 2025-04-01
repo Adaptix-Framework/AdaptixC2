@@ -6,18 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"time"
 )
 
-type (
-	PluginType string
-)
-
 const (
-	AGENT PluginType = "agent"
-
 	OS_UNKNOWN = 0
 	OS_WINDOWS = 1
 	OS_LINUX   = 2
@@ -40,29 +32,14 @@ const (
 )
 
 type Teamserver interface {
-	TsClientDisconnect(username string)
-
-	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error
-	TsListenerEdit(listenerName string, configType string, config string) error
-	TsListenerStop(listenerName string, configType string) error
-	TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error)
 	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
-	TsAgentIsExists(agentId string) bool
-	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
-	TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error
-	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
 	TsAgentUpdateData(newAgentObject []byte) error
 	TsAgentImpersonate(agentId string, impersonated string, elevated bool) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
-	TsAgentRemove(agentId string) error
-	TsAgentSetTag(agentId string, tag string) error
-	TsAgentSetMark(agentId string, makr string) error
-	TsAgentSetColor(agentId string, background string, foreground string, reset bool) error
-	TsAgentTickUpdate()
+
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
 
@@ -74,22 +51,10 @@ type Teamserver interface {
 	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
 	TsTaskUpdate(agentId string, cTaskObject []byte)
 	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
-	TsTaskStop(agentId string, taskId string) error
-	TsTaskDelete(agentId string, taskId string) error
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
-	TsDownloadSync(fileId string) (string, []byte, error)
-	TsDownloadDelete(fileId string) error
-
-	TsDownloadChangeState(fileId string, username string, command string) error
-	TsAgentGuiDisks(agentId string, username string) error
-	TsAgentGuiProcess(agentId string, username string) error
-	TsAgentGuiFiles(agentId string, path string, username string) error
-	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
-	TsAgentGuiDownload(agentId string, path string, username string) error
-	TsAgentGuiExit(agentId string, username string) error
 
 	TsClientGuiDisks(jsonTask string, jsonDrives string)
 	TsClientGuiFiles(jsonTask string, path string, jsonFiles string)
@@ -115,24 +80,7 @@ type ModuleExtender struct {
 	ts Teamserver
 }
 
-var (
-	ModuleObject ModuleExtender
-	PluginPath   string
-)
-
 ///// Struct
-
-type ExtenderInfo struct {
-	ModuleName string
-	ModuleType PluginType
-}
-
-type AgentInfo struct {
-	AgentName    string
-	ListenerName []string
-	AgentUI      string
-	AgentCmd     string
-}
 
 type AgentData struct {
 	Crc          string `json:"a_crc"`
@@ -213,62 +161,23 @@ type ListingDrivesData struct {
 
 ///// Module
 
-func (m *ModuleExtender) InitPlugin(ts any) ([]byte, error) {
-	var (
-		buffer bytes.Buffer
-		err    error
-	)
+var (
+	ModuleObject   *ModuleExtender
+	ModuleDir      string
+	AgentWatermark string
+)
 
-	ModuleObject.ts = ts.(Teamserver)
+func InitPlugin(ts any, moduleDir string, watermark string) any {
+	ModuleDir = moduleDir
+	AgentWatermark = watermark
 
-	info := ExtenderInfo{
-		ModuleName: SetName,
-		ModuleType: AGENT,
+	ModuleObject = &ModuleExtender{
+		ts: ts.(Teamserver),
 	}
-
-	err = json.NewEncoder(&buffer).Encode(info)
-	if err != nil {
-		return nil, err
-	}
-
-	return buffer.Bytes(), nil
+	return ModuleObject
 }
 
-func (m *ModuleExtender) AgentInit(pluginPath string) ([]byte, error) {
-	var (
-		buffer bytes.Buffer
-		err    error
-	)
-
-	PluginPath = pluginPath
-
-	uiPath := filepath.Join(PluginPath, SetUiPath)
-	agentUI, err := os.ReadFile(uiPath)
-	if err != nil {
-		return nil, err
-	}
-	cmdPath := filepath.Join(PluginPath, SetCmdPath)
-	agentCmd, err := os.ReadFile(cmdPath)
-	if err != nil {
-		return nil, err
-	}
-
-	info := AgentInfo{
-		AgentName:    SetName,
-		ListenerName: SetListeners,
-		AgentUI:      string(agentUI),
-		AgentCmd:     string(agentCmd),
-	}
-
-	err = json.NewEncoder(&buffer).Encode(info)
-	if err != nil {
-		return nil, err
-	}
-
-	return buffer.Bytes(), nil
-}
-
-func (m *ModuleExtender) AgentGenerate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
+func (m *ModuleExtender) AgentGenerate(config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
 	var (
 		listenerMap  map[string]any
 		agentProfile []byte
@@ -280,12 +189,12 @@ func (m *ModuleExtender) AgentGenerate(config string, listenerWM string, listene
 		return nil, "", err
 	}
 
-	agentProfile, err = AgentGenerateProfile(config, listenerWM, listenerMap)
+	agentProfile, err = AgentGenerateProfile(config, operatingSystem, listenerWM, listenerMap)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return AgentGenerateBuild(config, agentProfile, listenerMap)
+	return AgentGenerateBuild(config, operatingSystem, agentProfile, listenerMap)
 }
 
 func (m *ModuleExtender) AgentCreate(beat []byte) ([]byte, error) {
