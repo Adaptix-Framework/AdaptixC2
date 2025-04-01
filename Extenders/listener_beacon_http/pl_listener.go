@@ -12,14 +12,6 @@ import (
 	"strings"
 )
 
-const (
-	SetType            = EXTERNAL
-	SetProtocol        = "http"
-	SetName            = "BeaconHTTP"
-	SetUiPath          = "_ui_listener.json"
-	SetMaxTaskDataSize = 0x1900000 // 25 Mb
-)
-
 func (m *ModuleExtender) HandlerListenerValid(data string) error {
 
 	/// START CODE HERE
@@ -152,6 +144,7 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		GinEngine: gin.New(),
 		Name:      name,
 		Config:    conf,
+		Active:    false,
 	}
 
 	err = listener.Start()
