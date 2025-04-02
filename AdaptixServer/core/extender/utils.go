@@ -1,29 +1,51 @@
 package extender
 
-import "AdaptixServer/core/utils/safe"
+/// ExConfig Listener
 
-const (
-	TYPE_LISTENER = "listener"
-	TYPE_AGENT    = "agent"
-)
-
-type ModuleInfo struct {
-	ModuleName string
-	ModuleType string
+type ExConfigListener struct {
+	ExtenderType string `json:"extender_type"`
+	ExtenderFile string `json:"extender_file"`
+	ListenerName string `json:"listener_name"`
+	ListenerType string `json:"listener_type"`
+	Protocol     string `json:"protocol"`
+	UI           any    `json:"ui"`
 }
 
+/// ExConfig Agent
+
+type ExConfAgentOsConfigs struct {
+	Os string `json:"operating_system"`
+	Ui any    `json:"ui"`
+}
+
+type ExConfAgentUI struct {
+	ListenerName string                 `json:"listener_name"`
+	OsConfigs    []ExConfAgentOsConfigs `json:"os_configs"`
+}
+
+type ExConfigAgent struct {
+	ExtenderType   string          `json:"extender_type"`
+	ExtenderFile   string          `json:"extender_file"`
+	AgentName      string          `json:"agent_name"`
+	AgentWatermark string          `json:"agent_watermark"`
+	Listeners      []ExConfAgentUI `json:"listeners"`
+	Commands       any             `json:"commands"`
+}
+
+/// Info
+
 type ListenerInfo struct {
-	Type             string
-	ListenerProtocol string
-	ListenerName     string
-	ListenerUI       string
+	Name     string
+	Protocol string
+	Type     string
+	UI       string
 }
 
 type AgentInfo struct {
-	AgentName    string
-	ListenerName []string
-	AgentUI      string
-	AgentCmd     string
+	Name          string
+	Watermark     string
+	ListenersJson string
+	CommandsJson  string
 }
 
 type Teamserver interface {
@@ -31,12 +53,7 @@ type Teamserver interface {
 	TsAgentReg(agentInfo AgentInfo) error
 }
 
-type CommonFunctions interface {
-	InitPlugin(ts any) ([]byte, error)
-}
-
-type ListenerFunctions interface {
-	ListenerInit(pluginPath string, listenerDataPath string) ([]byte, error)
+type ExtListener interface {
 	ListenerValid(config string) error
 	ListenerStart(name string, data string, listenerCustomData []byte) ([]byte, []byte, error)
 	ListenerEdit(name string, data string) ([]byte, []byte, error)
@@ -45,9 +62,8 @@ type ListenerFunctions interface {
 	ListenerInteralHandler(name string, data []byte) (string, error)
 }
 
-type AgentFunctions interface {
-	AgentInit(pluginPath string) ([]byte, error)
-	AgentGenerate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
+type ExtAgent interface {
+	AgentGenerate(config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 	AgentCreate(beat []byte) ([]byte, error)
 	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)
 	AgentPackData(agentObject []byte, maxDataSize int) ([]byte, error)
@@ -64,15 +80,8 @@ type AgentFunctions interface {
 	AgentBrowserExit(agentObject []byte) ([]byte, error)
 }
 
-type ModuleExtender struct {
-	Info ModuleInfo
-	CommonFunctions
-	ListenerFunctions
-	AgentFunctions
-}
-
 type AdaptixExtender struct {
 	ts              Teamserver
-	listenerModules safe.Map
-	agentModules    safe.Map
+	listenerModules map[string]ExtListener
+	agentModules    map[string]ExtAgent
 }
