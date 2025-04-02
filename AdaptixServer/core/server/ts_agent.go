@@ -519,8 +519,8 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 	}
 }
 
-func (ts *Teamserver) TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
-	return ts.Extender.ExAgentGenerate(agentName, config, listenerWM, listenerProfile)
+func (ts *Teamserver) TsAgentGenerate(agentName string, config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
+	return ts.Extender.ExAgentGenerate(agentName, config, operatingSystem, listenerWM, listenerProfile)
 }
 
 /// Console

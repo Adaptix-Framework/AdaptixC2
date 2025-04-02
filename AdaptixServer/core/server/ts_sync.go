@@ -94,16 +94,18 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 	var packets []interface{}
 	ts.listener_configs.ForEach(func(key string, value interface{}) bool {
 		listenerInfo := value.(extender.ListenerInfo)
-		p := CreateSpListenerReg(key, listenerInfo.ListenerUI)
+		p := CreateSpListenerReg(key, listenerInfo.UI)
 		packets = append(packets, p)
 		return true
 	})
+
 	ts.agent_configs.ForEach(func(key string, value interface{}) bool {
 		agentInfo := value.(extender.AgentInfo)
-		p := CreateSpAgentReg(key, agentInfo.ListenerName, agentInfo.AgentUI, agentInfo.AgentCmd)
+		p := CreateSpAgentReg(agentInfo.Name, agentInfo.Watermark, agentInfo.ListenersJson, agentInfo.CommandsJson)
 		packets = append(packets, p)
 		return true
 	})
+
 	return packets
 }
 

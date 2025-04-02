@@ -156,10 +156,10 @@ type SyncPackerListenerStop struct {
 type SyncPackerAgentReg struct {
 	SpType int `json:"type"`
 
-	Agent     string   `json:"agent"`
-	Listeners []string `json:"listener"`
-	AgentUI   string   `json:"ui"`
-	AgentCmd  string   `json:"cmd"`
+	Agent         string `json:"agent"`
+	Watermark     string `json:"watermark"`
+	ListenersJson string `json:"listeners_json"`
+	CommandsJson  string `json:"commands_json"`
 }
 
 type SyncPackerAgentNew struct {

@@ -2,237 +2,171 @@ package extender
 
 import (
 	"AdaptixServer/core/utils/logs"
-	"AdaptixServer/core/utils/safe"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"plugin"
-	"reflect"
 )
 
 func NewExtender(teamserver Teamserver) *AdaptixExtender {
 	return &AdaptixExtender{
 		ts:              teamserver,
-		listenerModules: safe.NewMap(),
-		agentModules:    safe.NewMap(),
+		listenerModules: make(map[string]ExtListener),
+		agentModules:    make(map[string]ExtAgent),
 	}
 }
 
 func (ex *AdaptixExtender) LoadPlugins(extenderFiles []string) {
-	var (
-		pl     *plugin.Plugin
-		object plugin.Symbol
-		err    error
-	)
 
 	for _, path := range extenderFiles {
 
-		_, err = os.Stat(path)
+		_, err := os.Stat(path)
 		if err != nil {
-			logs.Error("", "Plugin %s not found", path)
+			logs.Error("", "Config %s not found", path)
+			continue
+		}
+		config_data, err := os.ReadFile(path)
+		if err != nil {
+			logs.Error("", "Read file %s error: %s", path, err.Error())
 			continue
 		}
 
-		pl, err = plugin.Open(path)
+		var config_map map[string]any
+		err = json.Unmarshal(config_data, &config_map)
 		if err != nil {
-			logs.Error("", "Plugin %s did not load: %s", path, err.Error())
+			logs.Error("", "Error config %s parse: %s", path, err.Error())
+			continue
+		}
+		extender_type, ok_type := config_map["extender_type"].(string)
+		if !ok_type {
+			logs.Error("", "Error config %s parse: extender_type not found", path)
 			continue
 		}
 
-		object, err = pl.Lookup("ModuleObject")
-		if err != nil {
-			logs.Error("", "Object %s not found in %s", "ModuleObject", path)
-			continue
-		}
-
-		_, ok := reflect.TypeOf(object).MethodByName("InitPlugin")
-		if !ok {
-			logs.Error("", "Method %s not found in %s", "InitPlugin", path)
-			continue
-		}
-
-		buffer, err := object.(CommonFunctions).InitPlugin(ex.ts)
-		if err != nil {
-			logs.Error("", "InitPlugin %s failed: %s", path, err.Error())
-			continue
-		}
-
-		var module = new(ModuleExtender)
-
-		err = json.Unmarshal(buffer, &module.Info)
-		if err != nil {
-			logs.Error("", "InitPlugin JSON Unmarshal error: "+err.Error())
-			continue
-		}
-
-		err = ex.ValidPlugin(module.Info, object)
-		if err != nil {
-			logs.Error("", "InitPlugin %s failed: %s", path, err.Error())
-			continue
-		}
-
-		absPluginPath, err := filepath.Abs(path)
-		pluginDir := filepath.Dir(absPluginPath)
-
-		err = ex.ProcessPlugin(module, object, pluginDir)
-		if err != nil {
-			logs.Error("", "InitPlugin %s failed: %s", path, err.Error())
-			continue
+		if extender_type == "listener" {
+			ex.LoadPluginListener(path, config_data)
+		} else if extender_type == "agent" {
+			ex.LoadPluginAgent(path, config_data)
+		} else {
+			logs.Error("", "Unknown extender_type in %s", path)
 		}
 	}
 }
 
-func (ex *AdaptixExtender) ValidPlugin(info ModuleInfo, object plugin.Symbol) error {
-	if info.ModuleType == TYPE_LISTENER {
-		_, ok := reflect.TypeOf(object).MethodByName("ListenerInit")
-		if !ok {
-			return errors.New("method ListenerInit not found")
-		}
-
-		_, ok = reflect.TypeOf(object).MethodByName("ListenerStart")
-		if !ok {
-			return errors.New("method ListenerStart not found")
-		}
-
-		_, ok = reflect.TypeOf(object).MethodByName("ListenerValid")
-		if !ok {
-			return errors.New("method ListenerValid not found")
-		}
-
-		_, ok = reflect.TypeOf(object).MethodByName("ListenerStop")
-		if !ok {
-			return errors.New("method ListenerStop not found")
-		}
-
-		_, ok = reflect.TypeOf(object).MethodByName("ListenerGetProfile")
-		if !ok {
-			return errors.New("method ListenerGetProfile not found")
-		}
-		return nil
+func (ex *AdaptixExtender) LoadPluginListener(config_path string, config_data []byte) {
+	var configListener ExConfigListener
+	err := json.Unmarshal(config_data, &configListener)
+	if err != nil {
+		logs.Error("", "Error config parse: %s", err.Error())
+		return
 	}
 
-	if info.ModuleType == TYPE_AGENT {
-		_, ok := reflect.TypeOf(object).MethodByName("AgentInit")
-		if !ok {
-			return errors.New("method AgentInit not found")
-		}
-
-		_, ok = reflect.TypeOf(object).MethodByName("AgentGenerate")
-		if !ok {
-			return errors.New("method AgentGenerate not found")
-		}
-
-		_, ok = reflect.TypeOf(object).MethodByName("AgentCreate")
-		if !ok {
-			return errors.New("method AgentCreate not found")
-		}
-
-		_, ok = reflect.TypeOf(object).MethodByName("AgentProcessData")
-		if !ok {
-			return errors.New("method AgentProcessData not found")
-		}
-
-		_, ok = reflect.TypeOf(object).MethodByName("AgentPackData")
-		if !ok {
-			return errors.New("method AgentPackData not found")
-		}
-		_, ok = reflect.TypeOf(object).MethodByName("AgentCommand")
-		if !ok {
-			return errors.New("method AgentCommand not found")
-		}
-		_, ok = reflect.TypeOf(object).MethodByName("AgentDownloadChangeState")
-		if !ok {
-			return errors.New("method AgentDownloadChangeState not found")
-		}
-		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserDisks")
-		if !ok {
-			return errors.New("method AgentBrowserDisks not found")
-		}
-		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserProcess")
-		if !ok {
-			return errors.New("method AgentBrowserProcess not found")
-		}
-		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserFiles")
-		if !ok {
-			return errors.New("method AgentBrowserFiles not found")
-		}
-		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserUpload")
-		if !ok {
-			return errors.New("method AgentBrowserUpload not found")
-		}
-		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserDownload")
-		if !ok {
-			return errors.New("method AgentBrowserDownload not found")
-		}
-		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserJobKill")
-		if !ok {
-			return errors.New("method AgentBrowserJobKill not found")
-		}
-		_, ok = reflect.TypeOf(object).MethodByName("AgentBrowserExit")
-		if !ok {
-			return errors.New("method AgentBrowserExit not found")
-		}
-
-		return nil
+	listenerUI, err := json.Marshal(configListener.UI)
+	if err != nil {
+		logs.Error("", "Error %s converting info to JSON: %s", config_path, err.Error())
+		return
 	}
 
-	return errors.New("unknown modules type: " + info.ModuleType)
+	listenerInfo := ListenerInfo{
+		Name:     configListener.ListenerName,
+		Type:     configListener.ListenerType,
+		Protocol: configListener.Protocol,
+		UI:       string(listenerUI),
+	}
+
+	plugin_path := filepath.Dir(config_path) + "/" + configListener.ExtenderFile
+	plug, err := plugin.Open(plugin_path)
+	if err != nil {
+		logs.Error("", "failed to open plugin %s: %s", plugin_path, err.Error())
+		return
+	}
+
+	sym, err := plug.Lookup("InitPlugin")
+	if err != nil {
+		logs.Error("", "failed to find InitPlugin in %s: %s", plugin_path, err.Error())
+		return
+	}
+
+	pl_InitPlugin, ok := sym.(func(ts any, moduleDir string, listenerDir string) any)
+	if !ok {
+		logs.Error("", "unexpected signature from InitPlugin in %s", plugin_path)
+		return
+	}
+
+	module, ok := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), logs.RepoLogsInstance.ListenerPath).(ExtListener)
+	if !ok {
+		logs.Error("", "plugin %s does not implement the ExtListener interface", plugin_path)
+		return
+	}
+
+	err = ex.ts.TsListenerReg(listenerInfo)
+	if err != nil {
+		logs.Error("", "plugin %s does not registered: %s", plugin_path, err.Error())
+		return
+	}
+
+	listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.Type, listenerInfo.Protocol, listenerInfo.Name)
+	ex.listenerModules[listenerFN] = module
 }
 
-func (ex *AdaptixExtender) ProcessPlugin(module *ModuleExtender, object plugin.Symbol, pluginPath string) error {
-
-	if module.Info.ModuleType == TYPE_LISTENER {
-		buffer, err := object.(ListenerFunctions).ListenerInit(pluginPath, logs.RepoLogsInstance.ListenerPath)
-		if err != nil {
-			return err
-		}
-
-		var listenerInfo ListenerInfo
-		err = json.Unmarshal(buffer, &listenerInfo)
-		if err != nil {
-			logs.Error("", "ProcessPlugin JSON Unmarshal error: "+err.Error())
-			return err
-		}
-
-		err = ex.ts.TsListenerReg(listenerInfo)
-		if err != nil {
-			return err
-		}
-
-		module.ListenerFunctions = object.(ListenerFunctions)
-
-		listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.Type, listenerInfo.ListenerProtocol, listenerInfo.ListenerName)
-		ex.listenerModules.Put(listenerFN, module)
-
-		return nil
+func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byte) {
+	var configAgent ExConfigAgent
+	err := json.Unmarshal(config_data, &configAgent)
+	if err != nil {
+		logs.Error("", "Error config parse: %s", err.Error())
+		return
 	}
 
-	if module.Info.ModuleType == TYPE_AGENT {
-		buffer, err := object.(AgentFunctions).AgentInit(pluginPath)
-		if err != nil {
-			return err
-		}
-
-		var agentInfo AgentInfo
-		err = json.Unmarshal(buffer, &agentInfo)
-		if err != nil {
-			logs.Error("", "ProcessPlugin JSON Unmarshal error: "+err.Error())
-			return err
-		}
-
-		err = ex.ts.TsAgentReg(agentInfo)
-		if err != nil {
-			return err
-		}
-
-		module.AgentFunctions = object.(AgentFunctions)
-
-		ex.agentModules.Put(agentInfo.AgentName, module)
-
-		return nil
+	commandsJson, err := json.Marshal(configAgent.Commands)
+	if err != nil {
+		logs.Error("", "Error %s converting info to JSON: %s", config_path, err.Error())
+		return
 	}
 
-	return errors.New("unknown modules type: " + module.Info.ModuleType)
+	listenersJson, err := json.Marshal(configAgent.Listeners)
+	if err != nil {
+		logs.Error("", "Error %s converting info to JSON: %s", config_path, err.Error())
+		return
+	}
+
+	agentInfo := AgentInfo{
+		Name:          configAgent.AgentName,
+		Watermark:     configAgent.AgentWatermark,
+		ListenersJson: string(listenersJson),
+		CommandsJson:  string(commandsJson),
+	}
+
+	plugin_path := filepath.Dir(config_path) + "/" + configAgent.ExtenderFile
+	plug, err := plugin.Open(plugin_path)
+	if err != nil {
+		logs.Error("", "failed to open plugin %s: %s", plugin_path, err.Error())
+		return
+	}
+
+	sym, err := plug.Lookup("InitPlugin")
+	if err != nil {
+		logs.Error("", "failed to find InitPlugin in %s: %s", plugin_path, err.Error())
+		return
+	}
+
+	pl_InitPlugin, ok := sym.(func(ts any, moduleDir string, watermark string) any)
+	if !ok {
+		logs.Error("", "unexpected signature from InitPlugin in %s", plugin_path)
+		return
+	}
+
+	module, ok := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), agentInfo.Watermark).(ExtAgent)
+	if !ok {
+		logs.Error("", "plugin %s does not implement the ExtAgent interface", plugin_path)
+		return
+	}
+
+	err = ex.ts.TsAgentReg(agentInfo)
+	if err != nil {
+		logs.Error("", "plugin %s does not registered: %s", plugin_path, err.Error())
+		return
+	}
+
+	ex.agentModules[agentInfo.Name] = module
 }
