@@ -20,6 +20,16 @@ class SessionsTableWidget;
 class SessionsGraph;
 class LastTickWorker;
 
+typedef struct RegAgentConfig {
+    QString        agentName;
+    QString        watermark;
+    QString        listenerName;
+    QString        operatingSystem;
+    WidgetBuilder* builder;
+} RegAgentConfig;
+
+
+
 class AdaptixWidget : public QWidget
 {
 Q_OBJECT
@@ -29,9 +39,9 @@ Q_OBJECT
     QPushButton*    logsButton        = nullptr;
     QPushButton*    sessionsButton    = nullptr;
     QPushButton*    graphButton       = nullptr;
-    QPushButton*    tasksButton        = nullptr;
+    QPushButton*    tasksButton       = nullptr;
     QPushButton*    targetsButton     = nullptr;
-    QPushButton*    tunnelButton       = nullptr;
+    QPushButton*    tunnelButton      = nullptr;
     QPushButton*    downloadsButton   = nullptr;
     QPushButton*    credsButton       = nullptr;
     QPushButton*    screensButton     = nullptr;
@@ -69,10 +79,9 @@ public:
     DownloadsWidget*     DownloadsTab      = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
-    QMap<QString, Commander*>     RegisterAgentsCmd;
-    QMap<QString, WidgetBuilder*> RegisterAgentsUI;
-    QMap<QString, WidgetBuilder*> RegisterListenersUI;
-    QMap<QString, QStringList>    LinkListenerAgent;
+    QMap<QString, Commander*>     RegisterAgentsCmd;    // agentName -> commander
+    QVector<RegAgentConfig>       RegisterAgentsUI;
+    QMap<QString, WidgetBuilder*> RegisterListenersUI;  // listenerName -> builder
     QVector<ListenerData>         Listeners;
     QVector<TunnelData>           Tunnels;
     QMap<QString, DownloadData>   Downloads;
@@ -87,6 +96,9 @@ public:
     ~AdaptixWidget() override;
 
     AuthProfile* GetProfile() const;
+
+    void RegisterListenerConfig(const QString &fn, const QString &ui);
+    void RegisterAgentConfig(const QString &name, const QString &watermark, const QString &commandsJson, const QString &listenersJson);
     void ClearAdaptix();
     void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
     void RemoveTab(int index) const;

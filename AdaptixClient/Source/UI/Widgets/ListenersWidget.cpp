@@ -278,12 +278,14 @@ void ListenersWidget::generateAgent() const
     if (parts.size() != 3) {
         return;
     }
+    QString targetListener = parts[2];
 
-    QMap<QString, WidgetBuilder*> tmpRegisterAgentsUI;
-    auto agents= adaptixWidget->LinkListenerAgent[parts[2]];
-    for( auto agent : agents ) {
-        tmpRegisterAgentsUI[agent] = adaptixWidget->RegisterAgentsUI[agent];
-        tmpRegisterAgentsUI[agent]->BuildWidget(false );
+    QVector<RegAgentConfig> tmpRegisterAgentsUI;
+    for( auto regAgent : adaptixWidget->RegisterAgentsUI ) {
+        if (targetListener == regAgent.listenerName) {
+            tmpRegisterAgentsUI.push_back(regAgent);
+            tmpRegisterAgentsUI.last().builder->BuildWidget(false);
+        }
     }
 
     DialogAgent dialogAgent(listenerName, listenerType);
@@ -292,6 +294,6 @@ void ListenersWidget::generateAgent() const
     dialogAgent.Start();
 
     for( auto regAgent: tmpRegisterAgentsUI ) {
-        regAgent->ClearWidget();
+        regAgent.builder->ClearWidget();
     }
 }

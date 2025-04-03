@@ -44,10 +44,10 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
 
     if( spType == TYPE_AGENT_REG ) {
-        if ( !jsonObj.contains("agent")    || !jsonObj["agent"].isString() )    return false;
-        if ( !jsonObj.contains("listener") || !jsonObj["listener"].isArray() ) return false;
-        if ( !jsonObj.contains("ui")       || !jsonObj["ui"].isString() )       return false;
-        if ( !jsonObj.contains("cmd")      || !jsonObj["cmd"].isString() )      return false;
+        if ( !jsonObj.contains("agent")          || !jsonObj["agent"].isString() )          return false;
+        if ( !jsonObj.contains("watermark")      || !jsonObj["watermark"].isString() )      return false;
+        if ( !jsonObj.contains("listeners_json") || !jsonObj["listeners_json"].isString() ) return false;
+        if ( !jsonObj.contains("commands_json")  || !jsonObj["commands_json"].isString() )  return false;
         return true;
     }
     if( spType == TYPE_AGENT_NEW ) {
@@ -661,36 +661,17 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString fn = jsonObj["fn"].toString();
         QString ui = jsonObj["ui"].toString();
 
-        auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
-        if(widgetBuilder->GetError().isEmpty())
-            RegisterListenersUI[fn] = widgetBuilder;
-
+        this->RegisterListenerConfig(fn, ui);
         return;
     }
     if( spType == TYPE_AGENT_REG )
     {
-        QString agentName = jsonObj["agent"].toString();
-        QString ui        = jsonObj["ui"].toString();
-        QString cmd       = jsonObj["cmd"].toString();
-        QJsonArray listenerNames = jsonObj["listener"].toArray();
+        QString agentName      = jsonObj["agent"].toString();
+        QString agentwatermark = jsonObj["watermark"].toString();
+        QString commandsJson   = jsonObj["commands_json"].toString();
+        QString listenersJson  = jsonObj["listeners_json"].toString();
 
-        auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
-        if(widgetBuilder->GetError().isEmpty())
-            RegisterAgentsUI[agentName] = widgetBuilder;
-
-        auto commander = new Commander();
-        bool result = true;
-        QString msg = ValidCommandsFile(cmd.toLocal8Bit(), &result);
-        if ( result )
-            commander->AddRegCommands(cmd.toLocal8Bit());
-
-        RegisterAgentsCmd[agentName] = commander;
-
-        for (QJsonValue listener : listenerNames) {
-            QString name = listener.toString();
-            LinkListenerAgent[name].push_back(agentName);
-        }
-
+        this->RegisterAgentConfig(agentName, agentwatermark, commandsJson, listenersJson);
         return;
     }
 }
