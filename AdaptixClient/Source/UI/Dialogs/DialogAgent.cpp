@@ -1,5 +1,6 @@
 #include <UI/Dialogs/DialogAgent.h>
 #include <Client/Requestor.h>
+#include <UI/Widgets/AdaptixWidget.h>
 
 DialogAgent::DialogAgent(const QString &listenerName, const QString &listenerType)
 {
@@ -10,11 +11,12 @@ DialogAgent::DialogAgent(const QString &listenerName, const QString &listenerTyp
     this->listenerName = listenerName;
     this->listenerType = listenerType;
 
-    connect(buttonLoad, &QPushButton::clicked, this, &DialogAgent::onButtonLoad );
-    connect(buttonSave, &QPushButton::clicked, this, &DialogAgent::onButtonSave );
-    connect( agentCombobox, &QComboBox::currentTextChanged, this, &DialogAgent::changeConfig);
-    connect( generateButton, &QPushButton::clicked, this, &DialogAgent::onButtonGenerate );
-    connect( closeButton, &QPushButton::clicked, this, &DialogAgent::onButtonClose );
+    connect( buttonLoad,     &QPushButton::clicked,          this, &DialogAgent::onButtonLoad );
+    connect( buttonSave,     &QPushButton::clicked,          this, &DialogAgent::onButtonSave );
+    connect( agentCombobox,  &QComboBox::currentTextChanged, this, &DialogAgent::changeConfig) ;
+    connect( osCombobox,     &QComboBox::currentTextChanged, this, &DialogAgent::changeOs) ;
+    connect( generateButton, &QPushButton::clicked,          this, &DialogAgent::onButtonGenerate );
+    connect( closeButton,    &QPushButton::clicked,          this, &DialogAgent::onButtonClose );
 }
 
 DialogAgent::~DialogAgent() = default;
@@ -24,16 +26,15 @@ void DialogAgent::createUI()
     this->resize( 450, 450 );
     this->setWindowTitle( "Generate Agent" );
 
-    listenerLabel = new QLabel(this);
-    listenerLabel->setText("Listener:");
-
+    listenerLabel = new QLabel("Listener:", this);
     listenerInput = new QLineEdit(this);
     listenerInput->setReadOnly(true);
 
-    agentLabel = new QLabel(this);
-    agentLabel->setText("Agent: ");
-
+    agentLabel    = new QLabel("Agent: ", this);
     agentCombobox = new QComboBox(this);
+
+    osLabel    = new QLabel("OS: ", this);
+    osCombobox = new QComboBox(this);
 
     buttonLoad = new QPushButton(QIcon(":/icons/unarchive"), "", this);
     buttonLoad->setIconSize( QSize( 25,25 ));
@@ -54,15 +55,11 @@ void DialogAgent::createUI()
     stackGridLayout->setContentsMargins(0, 0, 0, 0 );
     stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1 );
 
-    agentConfigGroupbox = new QGroupBox( this );
-    agentConfigGroupbox->setTitle("Agent config");
+    agentConfigGroupbox = new QGroupBox( "Agent config", this );
     agentConfigGroupbox->setLayout(stackGridLayout);
 
-    generateButton = new QPushButton(this);
-    generateButton->setText("Generate");
-
-    closeButton = new QPushButton(this);
-    closeButton->setText("Close");
+    generateButton = new QPushButton( "Generate", this);
+    closeButton    = new QPushButton( "Close", this);
 
     horizontalSpacer   = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
@@ -77,14 +74,16 @@ void DialogAgent::createUI()
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->addWidget( listenerLabel,       0, 0, 1, 1);
     mainGridLayout->addWidget( listenerInput,       0, 1, 1, 1);
-    mainGridLayout->addWidget( line_1,              0, 2, 2, 1);
+    mainGridLayout->addWidget( line_1,              0, 2, 3, 1);
     mainGridLayout->addWidget( buttonLoad,          0, 3, 1, 1);
     mainGridLayout->addWidget( agentLabel,          1, 0, 1, 1);
     mainGridLayout->addWidget( agentCombobox,       1, 1, 1, 1);
     mainGridLayout->addWidget( buttonSave,          1, 3, 1, 1);
-    mainGridLayout->addItem(   horizontalSpacer,    2, 0, 1, 4);
-    mainGridLayout->addWidget( agentConfigGroupbox, 3, 0, 1, 4);
-    mainGridLayout->addLayout( hLayoutBottom,       4, 0, 1, 4);
+    mainGridLayout->addWidget( osLabel,             2, 0, 1, 1);
+    mainGridLayout->addWidget( osCombobox,          2, 1, 1, 1);
+    mainGridLayout->addItem(   horizontalSpacer,    3, 0, 1, 4);
+    mainGridLayout->addWidget( agentConfigGroupbox, 4, 0, 1, 4);
+    mainGridLayout->addLayout( hLayoutBottom,       5, 0, 1, 4);
 
     this->setLayout(mainGridLayout);
 
@@ -106,16 +105,25 @@ void DialogAgent::Start()
     this->exec();
 }
 
-void DialogAgent::AddExAgents(const QMap<QString, WidgetBuilder*> &agents)
+void DialogAgent::AddExAgents(const QVector<RegAgentConfig> &regAgents)
 {
-    agentsUI = agents;
+    agentCombobox->clear();
+    osCombobox->clear();
+    agentsOs.clear();
 
-    for (auto w : agentsUI.values()) {
-        configStackWidget->addWidget( w->GetWidget() );
+    this->regAgents = regAgents;
+
+    QSet<QString> agents;
+    for (auto regAgent : this->regAgents ) {
+        agents.insert(regAgent.agentName);
+
+        agentsOs[regAgent.agentName].insert(regAgent.operatingSystem);
+
+        configStackWidget->addWidget(regAgent.builder->GetWidget());
     }
 
-    agentCombobox->clear();
-    agentCombobox->addItems( agentsUI.keys() );
+    for (QString v : agents)
+        agentCombobox->addItem(v);
 }
 
 void DialogAgent::SetProfile(const AuthProfile &profile)
@@ -123,25 +131,43 @@ void DialogAgent::SetProfile(const AuthProfile &profile)
     this->authProfile = profile;
 }
 
-void DialogAgent::changeConfig(const QString &fn)
+void DialogAgent::changeConfig(const QString &agentName)
 {
-    if (agentsUI.contains(fn) && agentsUI[fn]) {
-        auto w = agentsUI[fn]->GetWidget();
-        configStackWidget->setCurrentWidget(w);
+    if (this->agentsOs.contains(agentName)) {
+        osCombobox->clear();
+        for (auto os : this->agentsOs[agentName])
+            osCombobox->addItem(os);
+    }
+}
+
+void DialogAgent::changeOs(const QString &os)
+{
+    QString agentName = agentCombobox->currentText();
+    for (auto regAgent : this->regAgents ) {
+        if (regAgent.agentName == agentName && regAgent.operatingSystem == os && regAgent.builder) {
+            auto w = regAgent.builder->GetWidget();
+            configStackWidget->setCurrentWidget(w);
+            break;
+        }
     }
 }
 
 void DialogAgent::onButtonGenerate()
 {
-    auto agentName  = agentCombobox->currentText();
-    auto configData = QString();
-    if (agentsUI[agentName]) {
-        configData = agentsUI[agentName]->CollectData();
+    QString agentName = agentCombobox->currentText();
+    QString operatingSystem = osCombobox->currentText();
+    QString configData = "";
+
+    for (auto regAgent : this->regAgents ) {
+        if (regAgent.agentName == agentName && regAgent.operatingSystem == operatingSystem && regAgent.builder) {
+            configData = regAgent.builder->CollectData();
+            break;
+        }
     }
 
     QString message = QString();
     bool ok = false;
-    bool result = HttpReqAgentGenerate( listenerName, listenerType, agentName, configData, authProfile, &message, &ok);
+    bool result = HttpReqAgentGenerate( listenerName, listenerType, agentName, operatingSystem, configData, authProfile, &message, &ok);
     if( !result ){
         MessageError("JWT error");
         return;
@@ -214,6 +240,10 @@ void DialogAgent::onButtonLoad()
         MessageError("Required parameter 'agent' is missing");
         return;
     }
+    if ( !jsonObject.contains("operating_system") || !jsonObject["operating_system"].isString() ) {
+        MessageError("Required parameter 'operating_system' is missing");
+        return;
+    }
     if ( !jsonObject.contains("config") || !jsonObject["config"].isString() ) {
         MessageError("Required parameter 'config' is missing");
         return;
@@ -225,32 +255,59 @@ void DialogAgent::onButtonLoad()
     }
 
     QString agentType = jsonObject["agent"].toString();
+
     int typeIndex = agentCombobox->findText( agentType );
-    if(typeIndex == -1 || !agentsUI.contains(agentType)) {
+    if ( typeIndex == -1 || !this->agentsOs.contains(agentType)) {
         MessageError("No such agent exists");
         return;
     }
+    agentCombobox->setCurrentIndex(typeIndex);
+
+    this->changeConfig(agentType);
+
+    QString operatingSystem = jsonObject["operating_system"].toString();
+    typeIndex = osCombobox->findText( operatingSystem );
+
+    QStringList items;
+    for (auto os : this->agentsOs[agentType])
+        items.push_back(os);
+
+    if(typeIndex == -1 || !items.contains(operatingSystem)) {
+        MessageError("No such agent exists");
+        return;
+    }
+    agentCombobox->setCurrentIndex(typeIndex);
 
     QString configData = jsonObject["config"].toString();
-    agentCombobox->setCurrentIndex(typeIndex);
-    agentsUI[agentType]->FillData(configData);
+    for (auto regAgent : this->regAgents ) {
+        if (regAgent.agentName == agentType && regAgent.operatingSystem == operatingSystem && regAgent.builder) {
+            regAgent.builder->FillData(configData);
+            break;
+        }
+    }
 }
 
 void DialogAgent::onButtonSave()
 {
-    QString agentName    = agentCombobox->currentText();
-    QString configData   = "";
-    if (agentsUI[agentName]) {
-        configData = agentsUI[agentName]->CollectData();
+    QString agentName       = agentCombobox->currentText();
+    QString operatingSystem = osCombobox->currentText();
+
+    QString configData = "";
+    for (auto regAgent : this->regAgents ) {
+        if (regAgent.agentName == agentName && regAgent.operatingSystem == operatingSystem && regAgent.builder) {
+            configData = regAgent.builder->CollectData();
+            break;
+        }
     }
 
     QJsonObject dataJson;
-    dataJson["listener_type"] = listenerType;
-    dataJson["agent"]   = agentName;
-    dataJson["config"] = configData;
+    dataJson["listener_type"]    = listenerType;
+    dataJson["agent"]            = agentName;
+    dataJson["operating_system"] = operatingSystem;
+    dataJson["config"]           = configData;
     QByteArray fileContent = QJsonDocument(dataJson).toJson();
 
-    QString tmpFilename = agentName + "_agent_config.json";
+    QString tmpFilename = QString("%1_%2_config.json").arg(agentName).arg(operatingSystem) ;
     QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", tmpFilename, "JSON files (*.json)" );
     if ( filePath.isEmpty())
         return;

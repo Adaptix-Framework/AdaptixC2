@@ -384,7 +384,7 @@ void TasksWidget::onTableItemSelection(const QModelIndex &current, const QModelI
     int row = current.row();
     if (row < 0)
         return;
-    
+
     QString taskId = tableWidget->item(row,0)->text();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );

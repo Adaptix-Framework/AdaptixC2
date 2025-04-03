@@ -20,7 +20,7 @@ bool HttpReqListenerStop(const QString &listenerName, const QString &listenerTyp
 
 /// AGENT
 
-bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &configData, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &os, const QString &configData, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqAgentCommand(const QString &agentName, const QString &agentId, const QString &cmdLine, const QString &data, AuthProfile profile, QString* message, bool* ok );
 

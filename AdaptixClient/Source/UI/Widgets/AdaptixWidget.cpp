@@ -199,6 +199,63 @@ AuthProfile* AdaptixWidget::GetProfile() const
     return this->profile;
 }
 
+void AdaptixWidget::RegisterListenerConfig(const QString &fn, const QString &ui)
+{
+    auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
+    if(widgetBuilder->GetError().isEmpty())
+        RegisterListenersUI[fn] = widgetBuilder;
+}
+
+void AdaptixWidget::RegisterAgentConfig(const QString &name, const QString &watermark, const QString &commandsJson, const QString &listenersJson)
+{
+    QJsonParseError parseError;
+    QJsonDocument document = QJsonDocument::fromJson(listenersJson.toLocal8Bit(), &parseError);
+
+    if (parseError.error != QJsonParseError::NoError && document.isObject()) {
+        LogError("JSON parse error: %s", parseError.errorString().toStdString().c_str());
+        return;
+    }
+    if(!document.isArray()) {
+        LogError("Error Listener %s Json Format", name.toStdString().c_str());
+        return;
+    }
+
+    QJsonArray listenersArray = document.array();
+    for (QJsonValue listenerValue : listenersArray) {
+        QJsonObject listenerObj = listenerValue.toObject();
+        if (!listenerObj.contains("listener_name") || !listenerObj["listener_name"].isString()) continue;
+        if (!listenerObj.contains("os_configs")    || !listenerObj["os_configs"].isArray())     continue;
+
+        QString    listenerName   = listenerObj["listener_name"].toString();
+        QJsonArray osConfigsArray = listenerObj["os_configs"].toArray();
+
+        for (QJsonValue osConfigValue : osConfigsArray) {
+            QJsonObject osConfigObj = osConfigValue.toObject();
+            if (!osConfigObj.contains("operating_system") || !osConfigObj["operating_system"].isString()) continue;
+            if (!osConfigObj.contains("ui")               || !osConfigObj["ui"].isObject())               continue;
+
+            QString     operatingSystem = osConfigObj["operating_system"].toString();
+            QJsonObject uiObj           = osConfigObj["ui"].toObject();
+
+            QByteArray uiData = QJsonDocument(uiObj).toJson();
+
+            auto widgetBuilder = new WidgetBuilder( uiData );
+            if(widgetBuilder->GetError().isEmpty()) {
+                RegAgentConfig config = {name, watermark, listenerName, operatingSystem, widgetBuilder};
+                RegisterAgentsUI.push_back(config);
+            }
+        }
+    }
+
+    auto commander = new Commander();
+    bool result = true;
+    QString msg = ValidCommandsFile(commandsJson.toLocal8Bit(), &result);
+    if (result) {
+        commander->AddRegCommands(commandsJson.toLocal8Bit());
+    }
+    RegisterAgentsCmd[name] = commander;
+}
+
 void AdaptixWidget::ClearAdaptix()
 {
     LogsTab->Clear();
@@ -209,17 +266,16 @@ void AdaptixWidget::ClearAdaptix()
     SessionsTablePage->Clear();
     TunnelsTab->Clear();
 
-    LinkListenerAgent.clear();
-
     for (auto agentType : RegisterAgentsCmd.keys()){
         Commander* commander = RegisterAgentsCmd[agentType];
         RegisterAgentsCmd.remove(agentType);
         delete commander;
     }
 
-    for (auto agentType : RegisterAgentsUI.keys()){
-        WidgetBuilder* builder = RegisterAgentsUI[agentType];
-        RegisterAgentsUI.remove(agentType);
+    for (int i = 0; i < RegisterAgentsUI.size(); i++) {
+        WidgetBuilder* builder = RegisterAgentsUI[i].builder;
+        RegisterAgentsUI.remove(i);
+        i--;
         delete builder;
     }
 
