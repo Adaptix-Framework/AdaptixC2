@@ -1,13 +1,13 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	isvalid "AdaptixServer/core/utils/valid"
 	"encoding/json"
 	"errors"
 	"fmt"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, listenerConfig string, listenerWatermark string, listenerCustomData []byte) error {

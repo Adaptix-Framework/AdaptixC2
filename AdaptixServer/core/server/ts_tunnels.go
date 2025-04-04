@@ -1,7 +1,6 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/proxy"
 	"AdaptixServer/core/utils/safe"
@@ -10,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"io"
 	"math/rand"
 	"net"

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"AdaptixServer/core/utils/tformat"
@@ -10,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"strings"
 	"time"
 )
@@ -445,6 +445,10 @@ func (ts *Teamserver) TsAgentSetMark(agentId string, mark string) error {
 	}
 
 	agent.Data.Mark = mark
+
+	if mark == "Disconnect" {
+		agent.Data.LastTick = int(time.Now().Unix())
+	}
 
 	err := ts.DBMS.DbAgentUpdate(agent.Data)
 	if err != nil {

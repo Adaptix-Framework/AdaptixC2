@@ -109,7 +109,7 @@ bool SessionsTableWidget::filterItem(const AgentData &agent) const
         return true;
 
     if (this->checkOnlyActive->isChecked()) {
-        if ( agent.Mark == "Terminated" || agent.Mark == "Inactive" )
+        if ( agent.Mark == "Terminated" || agent.Mark == "Inactive" || agent.Mark == "Disconnect" )
             return false;
     }
 

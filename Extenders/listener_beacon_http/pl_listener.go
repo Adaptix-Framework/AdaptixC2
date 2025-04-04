@@ -147,7 +147,7 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		Active:    false,
 	}
 
-	err = listener.Start()
+	err = listener.Start(m.ts)
 	if err != nil {
 		return listenerData, customdData, listener, err
 	}

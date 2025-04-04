@@ -1,12 +1,12 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"time"
 )
 

@@ -29,7 +29,13 @@ void ConsoleWidget::createUI()
     InputLineEdit->setProperty( "LineEditStyle", "console" );
     InputLineEdit->setFont( QFont( "Hack" ));
 
-    QString info = QString("[%1] %2 @ %3.%4").arg( agent->data.Id ).arg( agent->data.Username ).arg( agent->data.Computer ).arg( agent->data.Domain );
+    QString info = "";
+    if ( agent->data.Domain == "" || agent->data.Computer == agent->data.Domain )
+        info = QString("[%1] %2 @ %3").arg( agent->data.Id ).arg( agent->data.Username ).arg( agent->data.Computer );
+    else
+        info = QString("[%1] %2 @ %3.%4").arg( agent->data.Id ).arg( agent->data.Username ).arg( agent->data.Computer ).arg( agent->data.Domain );
+
+
     InfoLabel = new QLabel(this);
     InfoLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     InfoLabel->setProperty( "LabelStyle", "console" );

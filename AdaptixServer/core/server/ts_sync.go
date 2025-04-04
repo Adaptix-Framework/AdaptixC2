@@ -1,10 +1,10 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/extender"
 	"bytes"
 	"encoding/json"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 	"sort"
 )

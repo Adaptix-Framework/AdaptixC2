@@ -81,10 +81,13 @@ void GraphItemLink::paint( QPainter* painter, const QStyleOptionGraphicsItem* op
     auto destArrowP1   = this->dstPoint + QPointF( sin( angle - M_PI / 3 ) * arrowSize, cos( angle - M_PI / 3 ) * arrowSize );
     auto destArrowP2   = this->dstPoint + QPointF( sin( angle - M_PI + M_PI / 3 ) * arrowSize, cos( angle - M_PI + M_PI / 3 ) * arrowSize );
 
-    if ( (this->src->agent == nullptr) && this->dst->agent )
+    if ( this->src->agent == nullptr && this->dst->agent )
     {
         if (this->listenerType == "external") {
-            painter->setPen( QPen( this->color, 3, Qt::DotLine, Qt::RoundCap, Qt::RoundJoin ) );
+            if (this->dst->agent->data.Async)
+                painter->setPen( QPen( this->color, 3, Qt::DotLine, Qt::RoundCap, Qt::RoundJoin ) );
+            else
+                painter->setPen( QPen( this->color, 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin ) );
             painter->setBrush( this->color );
             painter->drawPolygon( QPolygonF() << line.p1() << sourceArrowP1 << sourceArrowP2 );
 

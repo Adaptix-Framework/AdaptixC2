@@ -1,7 +1,7 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"time"
 )
 
