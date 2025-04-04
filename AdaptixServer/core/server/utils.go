@@ -1,13 +1,13 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
 	"context"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 	"net"
 	"sync"

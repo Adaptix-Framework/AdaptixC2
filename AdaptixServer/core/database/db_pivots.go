@@ -1,10 +1,10 @@
 package database
 
 import (
-	"AdaptixServer/core/adaptix"
 	"database/sql"
 	"errors"
 	"fmt"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (dbms *DBMS) DbPivotExist(pivotId string) bool {

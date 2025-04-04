@@ -1,10 +1,10 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"strings"
 )
 
@@ -57,7 +57,7 @@ func (ts *Teamserver) TsAgentGuiProcess(agentId string, clientName string) error
 		if agent.Active == false {
 			return fmt.Errorf("agent '%v' not active", agentId)
 		}
-		
+
 		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
 
 		data, err = ts.Extender.ExAgentBrowserProcess(agent.Data.Name, agentObject.Bytes())

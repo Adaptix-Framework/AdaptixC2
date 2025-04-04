@@ -145,7 +145,7 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 	for _, b := range packedProfile {
 		profileString += fmt.Sprintf("\\x%02x", b)
 	}
-
+	
 	return []byte(profileString), nil
 }
 
@@ -335,6 +335,18 @@ func CreateAgent(initialData []byte) (AgentData, error) {
 	/// END CODE
 
 	return agent, nil
+}
+
+func AgentEncryptData(data []byte, key []byte) ([]byte, error) {
+	/// START CODE
+	return RC4Crypt(data, key)
+	/// END CODE
+}
+
+func AgentDecryptData(data []byte, key []byte) ([]byte, error) {
+	/// START CODE
+	return RC4Crypt(data, key)
+	/// END CODE
 }
 
 /// TASKS

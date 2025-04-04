@@ -62,7 +62,7 @@ type HTTP struct {
 	Active    bool
 }
 
-func (handler *HTTP) Start() error {
+func (handler *HTTP) Start(ts Teamserver) error {
 	var err error = nil
 
 	gin.SetMode(gin.ReleaseMode)

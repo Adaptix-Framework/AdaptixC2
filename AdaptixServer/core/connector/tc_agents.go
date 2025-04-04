@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 )
 
@@ -87,7 +86,7 @@ func (tc *TsConnector) TcAgentCommand(ctx *gin.Context) {
 
 	err = json.Unmarshal([]byte(commandData.Data), &args)
 	if err != nil {
-		log.Fatalf("Error parsing commands JSON: %v", err)
+		fmt.Printf("Error parsing commands JSON: %s\n", err.Error())
 	}
 
 	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.CmdLine, args)

@@ -291,7 +291,7 @@ func (m *ModuleExtender) AgentPackData(agentObject []byte, maxDataSize int) ([]b
 		return nil, err
 	}
 
-	return RC4Crypt(packedData, agentData.SessionKey)
+	return AgentEncryptData(packedData, agentData.SessionKey)
 }
 
 func (m *ModuleExtender) AgentPivotPackData(pivotId string, data []byte) ([]byte, error) {
@@ -330,7 +330,7 @@ func (m *ModuleExtender) AgentProcessData(agentObject []byte, packedData []byte)
 		return nil, err
 	}
 
-	decryptData, err = RC4Crypt(packedData, agentData.SessionKey)
+	decryptData, err = AgentDecryptData(packedData, agentData.SessionKey)
 	if err != nil {
 		return nil, err
 	}
