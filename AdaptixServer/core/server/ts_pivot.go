@@ -3,7 +3,7 @@ package server
 import (
 	"AdaptixServer/core/utils/logs"
 	"fmt"
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsGetPivotInfoByName(pivotName string) (string, string, string) {

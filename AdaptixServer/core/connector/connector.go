@@ -7,6 +7,7 @@ import (
 	"AdaptixServer/core/utils/token"
 	"errors"
 	"fmt"
+	"github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"os"
@@ -29,7 +30,7 @@ type Teamserver interface {
 	TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error
 	TsAgentGenerate(agentName string, config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
-	TsAgentUpdateData(newAgentObject []byte) error
+	TsAgentUpdateData(newAgentData adaptix.AgentData) error
 	TsAgentImpersonate(agentId string, impersonated string, elevated bool) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentRemove(agentId string) error
@@ -40,9 +41,9 @@ type Teamserver interface {
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
 
-	TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte)
-	TsTaskUpdate(agentId string, cTaskObject []byte)
-	TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error)
+	TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData)
+	TsTaskUpdate(agentId string, data adaptix.TaskData)
+	TsTaskQueueGetAvailable(agentId string, availableSize int) ([]adaptix.TaskData, error)
 	TsTaskStop(agentId string, taskId string) error
 	TsTaskDelete(agentId string, taskId string) error
 
@@ -60,18 +61,18 @@ type Teamserver interface {
 	TsAgentGuiDownload(agentId string, path string, username string) error
 	TsAgentGuiExit(agentId string, username string) error
 
-	TsClientGuiDisks(jsonTask string, jsonDrives string)
-	TsClientGuiFiles(jsonTask string, path string, jsonFiles string)
-	TsClientGuiFilesStatus(jsonTask string)
-	TsClientGuiProcess(jsonTask string, jsonFiles string)
+	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
+	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
+	TsClientGuiFilesStatus(taskData adaptix.TaskData)
+	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
 
 	TsTunnelStop(TunnelId string) error
 	TsTunnelSetInfo(TunnelId string, Info string) error
-	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
-	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
-	TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
+	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
 	TsTunnelStopSocks(AgentId string, Port int)
-	TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error)
+	TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
 	TsTunnelStopLocalPortFwd(AgentId string, Port int)
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionResume(AgentId string, channelId int)

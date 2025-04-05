@@ -1,5 +1,7 @@
 package extender
 
+import "github.com/Adaptix-Framework/axc2"
+
 /// ExConfig Listener
 
 type ExConfigListener struct {
@@ -55,8 +57,8 @@ type Teamserver interface {
 
 type ExtListener interface {
 	ListenerValid(config string) error
-	ListenerStart(name string, data string, listenerCustomData []byte) ([]byte, []byte, error)
-	ListenerEdit(name string, data string) ([]byte, []byte, error)
+	ListenerStart(name string, data string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error)
+	ListenerEdit(name string, data string) (adaptix.ListenerData, []byte, error)
 	ListenerStop(name string) error
 	ListenerGetProfile(name string) ([]byte, error)
 	ListenerInteralHandler(name string, data []byte) (string, error)
@@ -64,20 +66,20 @@ type ExtListener interface {
 
 type ExtAgent interface {
 	AgentGenerate(config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
-	AgentCreate(beat []byte) ([]byte, error)
-	AgentProcessData(agentObject []byte, packedData []byte) ([]byte, error)
-	AgentPackData(agentObject []byte, maxDataSize int) ([]byte, error)
-	AgentPivotPackData(pivotId string, data []byte) ([]byte, error)
-	AgentCommand(client string, cmdline string, agentObject []byte, args map[string]any) error
+	AgentCreate(beat []byte) (adaptix.AgentData, error)
+	AgentCommand(client string, cmdline string, agentData adaptix.AgentData, args map[string]any) error
+	AgentProcessData(agentData adaptix.AgentData, packedData []byte) ([]byte, error)
+	AgentPackData(agentData adaptix.AgentData, maxDataSize int) ([]byte, error)
+	AgentPivotPackData(pivotId string, data []byte) (adaptix.TaskData, error)
 
-	AgentDownloadChangeState(agentObject []byte, newState int, fileId string) ([]byte, error)
-	AgentBrowserDisks(agentObject []byte) ([]byte, error)
-	AgentBrowserProcess(agentObject []byte) ([]byte, error)
-	AgentBrowserFiles(path string, agentObject []byte) ([]byte, error)
-	AgentBrowserUpload(path string, content []byte, agentObject []byte) ([]byte, error)
-	AgentBrowserDownload(path string, agentObject []byte) ([]byte, error)
-	AgentBrowserJobKill(jobId string) ([]byte, error)
-	AgentBrowserExit(agentObject []byte) ([]byte, error)
+	AgentDownloadChangeState(agentData adaptix.AgentData, newState int, fileId string) (adaptix.TaskData, error)
+	AgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentBrowserProcess(agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentBrowserFiles(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentBrowserUpload(path string, content []byte, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentBrowserDownload(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentBrowserJobKill(jobId string) (adaptix.TaskData, error)
 }
 
 type AdaptixExtender struct {
