@@ -7,7 +7,7 @@ import (
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
 	"context"
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 	"net"
 	"sync"
@@ -94,11 +94,11 @@ type Tunnel struct {
 	listener    net.Listener
 	connections safe.Map
 
-	handlerConnectTCP func(channelId int, addr string, port int) []byte
-	handlerConnectUDP func(channelId int, addr string, port int) []byte
-	handlerWriteTCP   func(channelId int, data []byte) []byte
-	handlerWriteUDP   func(channelId int, data []byte) []byte
-	handlerClose      func(channelId int) []byte
+	handlerConnectTCP func(channelId int, addr string, port int) adaptix.TaskData
+	handlerConnectUDP func(channelId int, addr string, port int) adaptix.TaskData
+	handlerWriteTCP   func(channelId int, data []byte) adaptix.TaskData
+	handlerWriteUDP   func(channelId int, data []byte) adaptix.TaskData
+	handlerClose      func(channelId int) adaptix.TaskData
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

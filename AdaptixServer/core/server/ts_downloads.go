@@ -3,11 +3,9 @@ package server
 import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -23,14 +21,7 @@ const (
 )
 
 func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error {
-	var (
-		downloadData adaptix.DownloadData
-		baseName     string
-		saveName     string
-		err          error
-	)
-
-	downloadData = adaptix.DownloadData{
+	downloadData := adaptix.DownloadData{
 		AgentId:    agentId,
 		FileId:     fileId,
 		RemotePath: fileName,
@@ -50,11 +41,13 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 	}
 
 	dirPath := logs.RepoLogsInstance.DownloadPath
-	baseName = filepath.Base(filepath.Clean(strings.ReplaceAll(fileName, `\`, `/`)))
-	saveName = krypt.MD5([]byte(strconv.FormatInt(downloadData.Date, 10))) + "_" + baseName
+	baseName := filepath.Base(filepath.Clean(strings.ReplaceAll(fileName, `\`, `/`)))
+	saveName := krypt.MD5([]byte(strconv.FormatInt(downloadData.Date, 10))) + "_" + baseName
 
-	if _, err = os.Stat(dirPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(dirPath, os.ModePerm); err != nil {
+	_, err := os.Stat(dirPath)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(dirPath, os.ModePerm)
+		if err != nil {
 			return errors.New("Failed to create download path: " + err.Error())
 		}
 	}
@@ -74,14 +67,11 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 }
 
 func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) error {
-	var downloadData adaptix.DownloadData
 	value, ok := ts.downloads.Get(fileId)
-	if ok {
-		downloadData = value.(adaptix.DownloadData)
-	} else {
+	if !ok {
 		return errors.New("File not found: " + fileId)
 	}
-
+	downloadData := value.(adaptix.DownloadData)
 	downloadData.State = state
 
 	if len(data) > 0 {
@@ -109,18 +99,13 @@ func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) er
 }
 
 func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
-	var (
-		downloadData adaptix.DownloadData
-		err          error
-	)
 	value, ok := ts.downloads.Get(fileId)
-	if ok {
-		downloadData = value.(adaptix.DownloadData)
-	} else {
+	if !ok {
 		return errors.New("File not found: " + fileId)
 	}
+	downloadData := value.(adaptix.DownloadData)
 
-	err = downloadData.File.Close()
+	err := downloadData.File.Close()
 	if err != nil {
 		fmt.Println(fmt.Sprintf("Failed to finish download [%x] file: %v", downloadData.FileId, err))
 	}
@@ -145,38 +130,27 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 }
 
 func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
-	var (
-		downloadData adaptix.DownloadData
-		filename     string
-		content      []byte
-		err          error
-	)
-
 	value, ok := ts.downloads.Get(fileId)
-	if ok {
-		downloadData = value.(adaptix.DownloadData)
-	} else {
+	if !ok {
 		return "", nil, errors.New("File not found: " + fileId)
 	}
+	downloadData := value.(adaptix.DownloadData)
 
 	if downloadData.State != DOWNLOAD_STATE_FINISHED {
 		return "", nil, errors.New("download not finished")
 	}
 
-	filename = filepath.Base(filepath.FromSlash(filepath.Clean(downloadData.LocalPath)))
-	content, err = os.ReadFile(downloadData.LocalPath)
+	filename := filepath.Base(filepath.FromSlash(filepath.Clean(downloadData.LocalPath)))
+	content, err := os.ReadFile(downloadData.LocalPath)
 	return filename, content, err
 }
 
 func (ts *Teamserver) TsDownloadDelete(fileId string) error {
-	var downloadData adaptix.DownloadData
-
 	value, ok := ts.downloads.Get(fileId)
-	if ok {
-		downloadData = value.(adaptix.DownloadData)
-	} else {
+	if !ok {
 		return errors.New("File not found: " + fileId)
 	}
+	downloadData := value.(adaptix.DownloadData)
 
 	if downloadData.State != DOWNLOAD_STATE_FINISHED && downloadData.State != DOWNLOAD_STATE_CANCELED {
 		return errors.New("download not finished")
@@ -201,44 +175,30 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 }
 
 func (ts *Teamserver) TsDownloadChangeState(fileId string, clientName string, command string) error {
-	var (
-		downloadData adaptix.DownloadData
-		agent        *Agent
-		agentObject  bytes.Buffer
-		newState     int
-		data         []byte
-		err          error
-	)
-
 	value, ok := ts.downloads.Get(fileId)
-	if ok {
-		downloadData = value.(adaptix.DownloadData)
-	} else {
+	if !ok {
 		return errors.New("File not found: " + fileId)
 	}
+	downloadData := value.(adaptix.DownloadData)
 
+	newState := DOWNLOAD_STATE_RUNNING
 	if command == "cancel" {
 		newState = DOWNLOAD_STATE_CANCELED
 	} else if command == "stop" {
 		newState = DOWNLOAD_STATE_STOPPED
-	} else {
-		newState = DOWNLOAD_STATE_RUNNING
 	}
 
 	value, ok = ts.agents.Get(downloadData.AgentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
+	if !ok {
 		return errors.New("Agent not found: " + downloadData.AgentId)
 	}
-	_ = json.NewEncoder(&agentObject).Encode(agent.Data)
+	agent := value.(*Agent)
 
-	data, err = ts.Extender.ExAgentDownloadChangeState(agent.Data.Name, agentObject.Bytes(), newState, fileId)
+	taskData, err := ts.Extender.ExAgentDownloadChangeState(agent.Data, newState, fileId)
 	if err != nil {
 		return err
 	}
 
-	ts.TsTaskCreate(agent.Data.Id, "", clientName, data)
-
+	ts.TsTaskCreate(agent.Data.Id, "", clientName, taskData)
 	return nil
 }

@@ -1,237 +1,147 @@
 package server
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 	"strings"
 )
 
 /// AGENT
 
 func (ts *Teamserver) TsAgentGuiDisks(agentId string, clientName string) error {
-	var (
-		err         error
-		agentObject bytes.Buffer
-		agent       *Agent
-		data        []byte
-	)
-
 	value, ok := ts.agents.Get(agentId)
-	if ok {
-
-		agent, _ = value.(*Agent)
-		if agent.Active == false {
-			return fmt.Errorf("agent '%v' not active", agentId)
-		}
-
-		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
-
-		data, err = ts.Extender.ExAgentBrowserDisks(agent.Data.Name, agentObject.Bytes())
-		if err != nil {
-			return err
-		}
-
-		ts.TsTaskCreate(agentId, "", clientName, data)
-
-	} else {
+	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
 
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return fmt.Errorf("agent '%v' not active", agentId)
+	}
+
+	taskData, err := ts.Extender.ExAgentBrowserDisks(agent.Data)
+	if err != nil {
+		return err
+	}
+
+	ts.TsTaskCreate(agentId, "", clientName, taskData)
 	return nil
 }
 
 func (ts *Teamserver) TsAgentGuiProcess(agentId string, clientName string) error {
-	var (
-		err         error
-		agentObject bytes.Buffer
-		agent       *Agent
-		data        []byte
-	)
-
 	value, ok := ts.agents.Get(agentId)
-	if ok {
-
-		agent, _ = value.(*Agent)
-		if agent.Active == false {
-			return fmt.Errorf("agent '%v' not active", agentId)
-		}
-
-		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
-
-		data, err = ts.Extender.ExAgentBrowserProcess(agent.Data.Name, agentObject.Bytes())
-		if err != nil {
-			return err
-		}
-
-		ts.TsTaskCreate(agentId, "", clientName, data)
-
-	} else {
+	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
 
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return fmt.Errorf("agent '%v' not active", agentId)
+	}
+
+	taskData, err := ts.Extender.ExAgentBrowserProcess(agent.Data)
+	if err != nil {
+		return err
+	}
+
+	ts.TsTaskCreate(agentId, "", clientName, taskData)
 	return nil
 }
 
 func (ts *Teamserver) TsAgentGuiFiles(agentId string, path string, clientName string) error {
-	var (
-		err         error
-		agentObject bytes.Buffer
-		agent       *Agent
-		data        []byte
-	)
-
 	value, ok := ts.agents.Get(agentId)
-	if ok {
-
-		agent, _ = value.(*Agent)
-		if agent.Active == false {
-			return fmt.Errorf("agent '%v' not active", agentId)
-		}
-
-		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
-
-		data, err = ts.Extender.ExAgentBrowserFiles(agent.Data.Name, path, agentObject.Bytes())
-		if err != nil {
-			return err
-		}
-
-		ts.TsTaskCreate(agentId, "", clientName, data)
-
-	} else {
+	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
 
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return fmt.Errorf("agent '%v' not active", agentId)
+	}
+
+	taskData, err := ts.Extender.ExAgentBrowserFiles(agent.Data, path)
+	if err != nil {
+		return err
+	}
+
+	ts.TsTaskCreate(agentId, "", clientName, taskData)
 	return nil
 }
 
 func (ts *Teamserver) TsAgentGuiUpload(agentId string, path string, content []byte, clientName string) error {
-	var (
-		err         error
-		agentObject bytes.Buffer
-		agent       *Agent
-		data        []byte
-	)
-
 	value, ok := ts.agents.Get(agentId)
-	if ok {
-
-		agent, _ = value.(*Agent)
-		if agent.Active == false {
-			return fmt.Errorf("agent '%v' not active", agentId)
-		}
-
-		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
-
-		data, err = ts.Extender.ExAgentBrowserUpload(agent.Data.Name, path, content, agentObject.Bytes())
-		if err != nil {
-			return err
-		}
-
-		ts.TsTaskCreate(agentId, "", clientName, data)
-
-	} else {
+	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
 
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return fmt.Errorf("agent '%v' not active", agentId)
+	}
+
+	taskData, err := ts.Extender.ExAgentBrowserUpload(agent.Data, path, content)
+	if err != nil {
+		return err
+	}
+
+	ts.TsTaskCreate(agentId, "", clientName, taskData)
 	return nil
 }
 
 func (ts *Teamserver) TsAgentGuiDownload(agentId string, path string, clientName string) error {
-	var (
-		err         error
-		agentObject bytes.Buffer
-		agent       *Agent
-		data        []byte
-	)
-
 	value, ok := ts.agents.Get(agentId)
-	if ok {
-
-		agent, _ = value.(*Agent)
-		if agent.Active == false {
-			return fmt.Errorf("agent '%v' not active", agentId)
-		}
-
-		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
-
-		data, err = ts.Extender.ExAgentBrowserDownload(agent.Data.Name, path, agentObject.Bytes())
-		if err != nil {
-			return err
-		}
-
-		ts.TsTaskCreate(agentId, "", clientName, data)
-
-	} else {
+	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
 
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return fmt.Errorf("agent '%v' not active", agentId)
+	}
+
+	taskData, err := ts.Extender.ExAgentBrowserDownload(agent.Data, path)
+	if err != nil {
+		return err
+	}
+
+	ts.TsTaskCreate(agentId, "", clientName, taskData)
 	return nil
 }
 
 func (ts *Teamserver) TsAgentGuiExit(agentId string, clientName string) error {
-	var (
-		err         error
-		agentObject bytes.Buffer
-		agent       *Agent
-		data        []byte
-	)
-
 	value, ok := ts.agents.Get(agentId)
-	if ok {
-
-		agent, _ = value.(*Agent)
-		if agent.Active == false {
-			return fmt.Errorf("agent '%v' not active", agentId)
-		}
-
-		_ = json.NewEncoder(&agentObject).Encode(agent.Data)
-
-		data, err = ts.Extender.ExAgentCtxExit(agent.Data.Name, agentObject.Bytes())
-		if err != nil {
-			return err
-		}
-
-		ts.TsTaskCreate(agentId, "agent terminate", clientName, data)
-
-	} else {
+	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
 
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return fmt.Errorf("agent '%v' not active", agentId)
+	}
+
+	taskData, err := ts.Extender.ExAgentCtxExit(agent.Data)
+	if err != nil {
+		return err
+	}
+
+	ts.TsTaskCreate(agentId, "agent terminate", clientName, taskData)
 	return nil
 }
 
 /// SYNC
 
-func (ts *Teamserver) TsClientGuiDisks(jsonTask string, jsonDrives string) {
-	var (
-		agent    *Agent
-		task     adaptix.TaskData
-		taskData adaptix.TaskData
-		value    any
-		ok       bool
-		err      error
-	)
-
-	err = json.Unmarshal([]byte(jsonTask), &taskData)
-	if err != nil {
+func (ts *Teamserver) TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string) {
+	value, ok := ts.agents.Get(taskData.AgentId)
+	if !ok {
 		return
 	}
-
-	value, ok = ts.agents.Get(taskData.AgentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
-		return
-	}
+	agent := value.(*Agent)
 
 	value, ok = agent.RunningTasks.Get(taskData.TaskId)
-	if ok {
-		task = value.(adaptix.TaskData)
-	} else {
+	if !ok {
 		return
 	}
+	task := value.(adaptix.TaskData)
 
 	if task.Type != TYPE_BROWSER {
 		return
@@ -247,34 +157,18 @@ func (ts *Teamserver) TsClientGuiDisks(jsonTask string, jsonDrives string) {
 	ts.TsSyncClient(task.Client, packet)
 }
 
-func (ts *Teamserver) TsClientGuiFiles(jsonTask string, path string, jsonFiles string) {
-	var (
-		agent    *Agent
-		task     adaptix.TaskData
-		taskData adaptix.TaskData
-		value    any
-		ok       bool
-		err      error
-	)
-
-	err = json.Unmarshal([]byte(jsonTask), &taskData)
-	if err != nil {
+func (ts *Teamserver) TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string) {
+	value, ok := ts.agents.Get(taskData.AgentId)
+	if !ok {
 		return
 	}
-
-	value, ok = ts.agents.Get(taskData.AgentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
-		return
-	}
+	agent := value.(*Agent)
 
 	value, ok = agent.RunningTasks.Get(taskData.TaskId)
-	if ok {
-		task = value.(adaptix.TaskData)
-	} else {
+	if !ok {
 		return
 	}
+	task := value.(adaptix.TaskData)
 
 	if task.Type != TYPE_BROWSER {
 		return
@@ -294,34 +188,18 @@ func (ts *Teamserver) TsClientGuiFiles(jsonTask string, path string, jsonFiles s
 	ts.TsSyncClient(task.Client, packet)
 }
 
-func (ts *Teamserver) TsClientGuiFilesStatus(jsonTask string) {
-	var (
-		agent    *Agent
-		task     adaptix.TaskData
-		taskData adaptix.TaskData
-		value    any
-		ok       bool
-		err      error
-	)
-
-	err = json.Unmarshal([]byte(jsonTask), &taskData)
-	if err != nil {
+func (ts *Teamserver) TsClientGuiFilesStatus(taskData adaptix.TaskData) {
+	value, ok := ts.agents.Get(taskData.AgentId)
+	if !ok {
 		return
 	}
-
-	value, ok = ts.agents.Get(taskData.AgentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
-		return
-	}
+	agent := value.(*Agent)
 
 	value, ok = agent.RunningTasks.Get(taskData.TaskId)
-	if ok {
-		task = value.(adaptix.TaskData)
-	} else {
+	if !ok {
 		return
 	}
+	task := value.(adaptix.TaskData)
 
 	if task.Type != TYPE_BROWSER {
 		return
@@ -333,34 +211,18 @@ func (ts *Teamserver) TsClientGuiFilesStatus(jsonTask string) {
 	ts.TsSyncClient(task.Client, packet)
 }
 
-func (ts *Teamserver) TsClientGuiProcess(jsonTask string, jsonFiles string) {
-	var (
-		agent    *Agent
-		task     adaptix.TaskData
-		taskData adaptix.TaskData
-		value    any
-		ok       bool
-		err      error
-	)
-
-	err = json.Unmarshal([]byte(jsonTask), &taskData)
-	if err != nil {
+func (ts *Teamserver) TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string) {
+	value, ok := ts.agents.Get(taskData.AgentId)
+	if !ok {
 		return
 	}
-
-	value, ok = ts.agents.Get(taskData.AgentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
-		return
-	}
+	agent := value.(*Agent)
 
 	value, ok = agent.RunningTasks.Get(taskData.TaskId)
-	if ok {
-		task = value.(adaptix.TaskData)
-	} else {
+	if !ok {
 		return
 	}
+	task := value.(adaptix.TaskData)
 
 	if task.Type != TYPE_BROWSER {
 		return
