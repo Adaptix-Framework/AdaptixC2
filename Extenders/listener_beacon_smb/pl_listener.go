@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Adaptix-Framework/axc2"
 	"regexp"
 )
 
@@ -35,9 +36,9 @@ func (m *ModuleExtender) HandlerListenerValid(data string) error {
 	return nil
 }
 
-func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (ListenerData, []byte, any, error) {
+func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (adaptix.ListenerData, []byte, any, error) {
 	var (
-		listenerData ListenerData
+		listenerData adaptix.ListenerData
 		customdData  []byte
 	)
 
@@ -72,7 +73,7 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		Active: true,
 	}
 
-	listenerData = ListenerData{
+	listenerData = adaptix.ListenerData{
 		BindHost:  "",
 		BindPort:  "",
 		AgentHost: "",
@@ -92,9 +93,9 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 	return listenerData, customdData, listener, nil
 }
 
-func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any, configData string) (ListenerData, []byte, bool) {
+func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any, configData string) (adaptix.ListenerData, []byte, bool) {
 	var (
-		listenerData ListenerData
+		listenerData adaptix.ListenerData
 		customdData  []byte
 		ok           bool = false
 	)
@@ -114,7 +115,7 @@ func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any
 			return listenerData, customdData, false
 		}
 
-		listenerData = ListenerData{
+		listenerData = adaptix.ListenerData{
 			BindHost:  "",
 			BindPort:  "",
 			AgentHost: "",

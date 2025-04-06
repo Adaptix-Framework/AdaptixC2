@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Adaptix-Framework/axc2"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -145,7 +146,7 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 	for _, b := range packedProfile {
 		profileString += fmt.Sprintf("\\x%02x", b)
 	}
-	
+
 	return []byte(profileString), nil
 }
 
@@ -278,8 +279,8 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 	}
 }
 
-func CreateAgent(initialData []byte) (AgentData, error) {
-	var agent AgentData
+func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
+	var agent adaptix.AgentData
 
 	/// START CODE HERE
 
@@ -351,7 +352,7 @@ func AgentDecryptData(data []byte, key []byte) ([]byte, error) {
 
 /// TASKS
 
-func PackTasks(agentData AgentData, tasksArray []TaskData) ([]byte, error) {
+func PackTasks(agentData adaptix.AgentData, tasksArray []adaptix.TaskData) ([]byte, error) {
 	var packData []byte
 
 	/// START CODE HERE
@@ -396,7 +397,7 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 
 	bufferSize := len(buffer)
 
-	taskData := TaskData{
+	taskData := adaptix.TaskData{
 		Type:    TYPE_TASK,
 		AgentId: agentId,
 		Sync:    false,
@@ -409,31 +410,27 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 		}
 
 		array := []interface{}{COMMAND_SAVEMEMORY, memoryId, bufferSize, fin - start, buffer[start:fin]}
-
-		taskData.TaskId = fmt.Sprintf("%08x", rand.Uint32())
 		taskData.Data, _ = PackArray(array)
+		taskData.TaskId = fmt.Sprintf("%08x", rand.Uint32())
 
-		var taskBuffer bytes.Buffer
-		_ = json.NewEncoder(&taskBuffer).Encode(taskData)
-
-		ts.TsTaskCreate(agentId, "", "", taskBuffer.Bytes())
+		ts.TsTaskCreate(agentId, "", "", taskData)
 	}
 	return memoryId
 }
 
-func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]any) (TaskData, ConsoleMessageData, error) {
+func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
 	var (
-		taskData    TaskData
-		messageData ConsoleMessageData
+		taskData    adaptix.TaskData
+		messageData adaptix.ConsoleMessageData
 		err         error
 	)
 
-	taskData = TaskData{
+	taskData = adaptix.TaskData{
 		Type: TYPE_TASK,
 		Sync: true,
 	}
 
-	messageData = ConsoleMessageData{
+	messageData = adaptix.ConsoleMessageData{
 		Status: MESSAGE_INFO,
 		Text:   "",
 	}
@@ -962,8 +959,8 @@ RET:
 	return taskData, messageData, err
 }
 
-func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, packedData []byte) []TaskData {
-	var outTasks []TaskData
+func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData adaptix.TaskData, packedData []byte) []adaptix.TaskData {
+	var outTasks []adaptix.TaskData
 
 	/// START CODE
 
@@ -1017,7 +1014,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				return outTasks
 			}
 			result := packer.ParseInt8()
-			var drives []ListingDrivesData
+			var drives []adaptix.ListingDrivesData
 
 			if result == 0 {
 				errorCode := packer.ParseInt32()
@@ -1031,7 +1028,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 					if false == packer.CheckPacker([]string{"byte", "int"}) {
 						return outTasks
 					}
-					var driveData ListingDrivesData
+					var driveData adaptix.ListingDrivesData
 					driveCode := packer.ParseInt8()
 					driveType := packer.ParseInt32()
 
@@ -1287,7 +1284,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			}
 			result := packer.ParseInt8()
 
-			var items []ListingFileData
+			var items []adaptix.ListingFileData
 			var rootPath string
 
 			if result == 0 {
@@ -1311,15 +1308,15 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 					task.Message = fmt.Sprintf("The '%s' directory is EMPTY", rootPath)
 				} else {
 
-					var folders []ListingFileData
-					var files []ListingFileData
+					var folders []adaptix.ListingFileData
+					var files []adaptix.ListingFileData
 
 					for i := 0; i < filesCount; i++ {
 						if false == packer.CheckPacker([]string{"byte", "long", "int", "array"}) {
 							return outTasks
 						}
 						isDir := packer.ParseInt8()
-						fileData := ListingFileData{
+						fileData := adaptix.ListingFileData{
 							IsDir:    false,
 							Size:     int64(packer.ParseInt64()),
 							Date:     int64(packer.ParseInt32()),
@@ -1395,10 +1392,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 				task.Message = "Sleep time has been changed"
 
-				var buffer bytes.Buffer
-				_ = json.NewEncoder(&buffer).Encode(agentData)
-
-				_ = ts.TsAgentUpdateData(buffer.Bytes())
+				_ = ts.TsAgentUpdateData(agentData)
 
 			} else if subcommand == 2 {
 				if false == packer.CheckPacker([]string{"int"}) {
@@ -1415,7 +1409,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			result := packer.ParseInt8()
 
-			var proclist []ListingProcessData
+			var proclist []adaptix.ListingProcessData
 
 			if result == 0 {
 				errorCode := packer.ParseInt32()
@@ -1437,7 +1431,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 					if false == packer.CheckPacker([]string{"word", "word", "word", "byte", "byte", "array", "array", "array"}) {
 						return outTasks
 					}
-					procData := ListingProcessData{
+					procData := adaptix.ListingProcessData{
 						Pid:       uint(packer.ParseInt16()),
 						Ppid:      uint(packer.ParseInt16()),
 						SessionId: uint(packer.ParseInt16()),
@@ -1666,30 +1660,30 @@ func BrowserDownloadChangeState(fid string, newState int) ([]byte, error) {
 	return PackArray(array)
 }
 
-func BrowserDisks(agentData AgentData) ([]byte, error) {
+func BrowserDisks(agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DISKS}
 	return PackArray(array)
 }
 
-func BrowserProcess(agentData AgentData) ([]byte, error) {
+func BrowserProcess(agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_PS_LIST}
 	return PackArray(array)
 }
 
-func BrowserFiles(path string, agentData AgentData) ([]byte, error) {
+func BrowserFiles(path string, agentData adaptix.AgentData) ([]byte, error) {
 	dir := ConvertUTF8toCp(path, agentData.ACP)
 	array := []interface{}{COMMAND_LS, dir}
 	return PackArray(array)
 }
 
-func BrowserUpload(ts Teamserver, path string, content []byte, agentData AgentData) ([]byte, error) {
+func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix.AgentData) ([]byte, error) {
 	memoryId := CreateTaskCommandSaveMemory(ts, agentData.Id, content)
 	fileName := ConvertUTF8toCp(path, agentData.ACP)
 	array := []interface{}{COMMAND_UPLOAD, memoryId, fileName}
 	return PackArray(array)
 }
 
-func BrowserDownload(path string, agentData AgentData) ([]byte, error) {
+func BrowserDownload(path string, agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
 	return PackArray(array)
 }
@@ -1704,7 +1698,7 @@ func BrowserJobKill(jobId string) ([]byte, error) {
 	return PackArray(array)
 }
 
-func BrowserExit(agentData AgentData) ([]byte, error) {
+func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_TERMINATE, 2}
 	return PackArray(array)
 }
