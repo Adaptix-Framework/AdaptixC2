@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
 	"regexp"
 	"strconv"
@@ -78,9 +79,9 @@ func (m *ModuleExtender) HandlerListenerValid(data string) error {
 	return nil
 }
 
-func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (ListenerData, []byte, any, error) {
+func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (adaptix.ListenerData, []byte, any, error) {
 	var (
-		listenerData ListenerData
+		listenerData adaptix.ListenerData
 		customdData  []byte
 	)
 
@@ -152,7 +153,7 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		return listenerData, customdData, listener, err
 	}
 
-	listenerData = ListenerData{
+	listenerData = adaptix.ListenerData{
 		BindHost:  listener.Config.HostBind,
 		BindPort:  listener.Config.PortBind,
 		AgentHost: conf.Callback_servers,
@@ -176,9 +177,9 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 	return listenerData, customdData, listener, nil
 }
 
-func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any, configData string) (ListenerData, []byte, bool) {
+func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any, configData string) (adaptix.ListenerData, []byte, bool) {
 	var (
-		listenerData ListenerData
+		listenerData adaptix.ListenerData
 		customdData  []byte
 		ok           bool = false
 	)
@@ -222,7 +223,7 @@ func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any
 		listener.Config.WebPageError = conf.WebPageError
 		listener.Config.WebPageOutput = conf.WebPageOutput
 
-		listenerData = ListenerData{
+		listenerData = adaptix.ListenerData{
 			BindHost:  listener.Config.HostBind,
 			BindPort:  listener.Config.PortBind,
 			AgentHost: listener.Config.Callback_servers,
