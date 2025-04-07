@@ -92,7 +92,7 @@ public:
     QMap<QString, Agent*>         AgentsMap;
     QMap<QString, ExtensionFile>  Extensions;
 
-    explicit AdaptixWidget(AuthProfile* authProfile);
+    explicit AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker);
     ~AdaptixWidget() override;
 
     AuthProfile* GetProfile() const;

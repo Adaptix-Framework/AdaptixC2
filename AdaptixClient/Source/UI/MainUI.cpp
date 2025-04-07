@@ -53,9 +53,9 @@ void MainUI::closeEvent(QCloseEvent* event)
     event->accept();
 }
 
-void MainUI::AddNewProject(AuthProfile* profile)
+void MainUI::AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
-    auto adaptixWidget = new AdaptixWidget(profile);
+    auto adaptixWidget = new AdaptixWidget(profile, channelThread, channelWsWorker);
 
     for (auto extFile : GlobalClient->extender->extenderFiles){
         if(extFile.Valid && extFile.Enabled)

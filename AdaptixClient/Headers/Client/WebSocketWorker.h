@@ -11,6 +11,8 @@ Q_OBJECT
 
 public:
     QWebSocket* webSocket = nullptr;
+    QString message = "";
+    bool ok = false;
 
     explicit WebSocketWorker(AuthProfile* authProfile);
     ~WebSocketWorker() override;
@@ -19,11 +21,14 @@ public:
     void SetProfile(AuthProfile* authProfile);
 
 public slots:
-    void is_connected() const;
+    void is_connected();
     void is_disconnected();
     void is_binaryMessageReceived( const QByteArray &data );
+    void is_error(QAbstractSocket::SocketError error);
 
 signals:
+    void connected();
+    void ws_error();
     void received_data( QByteArray data );
     void websocket_closed();
 };

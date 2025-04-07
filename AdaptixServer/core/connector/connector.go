@@ -14,7 +14,9 @@ import (
 )
 
 type Teamserver interface {
+	TsClientExists(username string) bool
 	TsClientConnect(username string, socket *websocket.Conn)
+	TsClientSync(username string)
 	TsClientDisconnect(username string)
 
 	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error
@@ -131,8 +133,9 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 
 	connector.Engine.POST(tsProfile.Endpoint+"/login", default404Middleware(tsResponse), connector.tcLogin)
 	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponse), token.RefreshTokenHandler)
+	connector.Engine.POST(tsProfile.Endpoint+"/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcSync)
 
-	connector.Engine.GET(tsProfile.Endpoint+"/connect", default404Middleware(tsResponse), connector.tcConnect)
+	connector.Engine.GET(tsProfile.Endpoint+"/connect", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcConnect)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStart)
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerEdit)

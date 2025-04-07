@@ -59,6 +59,16 @@ bool HttpReqLogin(AuthProfile* profile)
     return false;
 }
 
+bool HttpReqSync(AuthProfile profile)
+{
+    QJsonObject dataJson;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/sync";
+    HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    return false;
+}
+
 bool HttpReqJwtUpdate(AuthProfile* profile)
 {
     QJsonObject dataJson;

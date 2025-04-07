@@ -8,6 +8,8 @@ QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QStri
 
 bool HttpReqLogin(AuthProfile* profile);
 
+bool HttpReqSync(AuthProfile profile);
+
 bool HttpReqJwtUpdate(AuthProfile* profile);
 
 /// LISTENER
