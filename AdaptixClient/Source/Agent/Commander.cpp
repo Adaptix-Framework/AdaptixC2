@@ -1,5 +1,79 @@
 #include <Agent/Commander.h>
 
+QString serializeParam(const QString &token)
+{
+    QString result = token;
+    result.replace("\\", "\\\\");
+    result.replace("\"", "\\\"");
+    if (result.contains(' ')) {
+        result = "\"" + result + "\"";
+    }
+    return result;
+}
+
+QStringList unserializeParams(const QString &commandline)
+{
+    QStringList tokens;
+    QString token;
+    bool inQuotes = false;
+    int len = commandline.length();
+
+    for (int i = 0; i < len; ) {
+        QChar c = commandline[i];
+
+        if (c.isSpace() && !inQuotes) {
+            if (!token.isEmpty()) {
+                tokens << token;
+                token.clear();
+            }
+            ++i;
+            continue;
+        }
+
+        // If we encounter a double quote
+        if (c == '"') {
+            inQuotes = !inQuotes;
+            ++i;
+            continue;
+        }
+
+        // If we encounter a backslash, handle escape sequences
+        if (c == '\\') {
+            int numBS = 0;
+            // Count the number of consecutive backslashes
+            while (i < len && commandline[i] == '\\') {
+                ++numBS;
+                ++i;
+            }
+            // Check if the next character is a double quote
+            if (i < len && commandline[i] == '"') {
+                // Append half the number of backslashes (integer division)
+                token.append(QString(numBS / 2, '\\'));
+                if (numBS % 2 == 0) {
+                    // Even number of backslashes: the quote is not escaped, so it toggles the quote state
+                    inQuotes = !inQuotes;
+                } else {
+                    // Odd number of backslashes: the quote is escaped, add it to the token
+                    token.append('"');
+                }
+                ++i;
+            } else {
+                // No double quote after backslashes: all backslashes are literal
+                token.append(QString(numBS, '\\'));
+            }
+            continue;
+        }
+
+        token.append(c);
+        ++i;
+    }
+
+    if (!token.isEmpty())
+        tokens << token;
+
+    return tokens;
+}
+
 void BofPacker::Pack(const QString &type, const QJsonValue &jsonValue)
 {
     if (type == "CSTR") {
@@ -254,19 +328,7 @@ Argument Commander::ParseArgument(const QString &argString)
 
 CommanderResult Commander::ProcessInput(AgentData agentData, QString input)
 {
-    QStringList parts;
-    QRegularExpression regex(R"((?:\"((?:\\.|[^\"\\])*)\"|(\S+)))");
-    QRegularExpressionMatchIterator it = regex.globalMatch(input);
-
-    while (it.hasNext()) {
-        QRegularExpressionMatch match = it.next();
-        if (match.captured(1).isEmpty()) {
-            parts.append(match.captured(2));
-        } else {
-            parts.append(match.captured(1));
-        }
-    }
-
+    QStringList parts = unserializeParams(input);
     if (parts.isEmpty())
         return CommanderResult{true, "", false};
 
@@ -549,7 +611,7 @@ CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, 
 
 QString Commander::ProcessExecExtension(const AgentData &agentData, const QString &filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
 {
-    // ARCH
+    // $ARCH
 
     ExecString = ExecString.replace("$ARCH()", agentData.Arch, Qt::CaseSensitive);
 
@@ -604,7 +666,7 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, const QStrin
         QRegularExpressionMatch remainingMatch = remainingIt.next();
         QString paramName = remainingMatch.captured(1).trimmed();
         if( jsonObj.contains(paramName) && jsonObj[paramName].isString() ){
-            QString paramValue = jsonObj[paramName].toString();
+            QString paramValue = serializeParam(jsonObj[paramName].toString());
             ExecString.replace(remainingMatch.capturedStart() + offset, remainingMatch.capturedLength(), paramValue);
             offset += paramValue.length() - remainingMatch.capturedLength();
         }

@@ -7,7 +7,7 @@
 
 class MainUI : public QMainWindow
 {
-    QTabWidget* mainuiTabWidget   = nullptr;
+    QTabWidget* mainuiTabWidget = nullptr;
     // AdaptixWidget* mainAdaptixWidget = nullptr;
 
     QMap<QString, AdaptixWidget*> AdaptixProjects;
@@ -20,10 +20,9 @@ public:
     void onCloseProject();
 
     static void onExtender();
-
     static void onSettings();
 
-    void AddNewProject(AuthProfile* profile);
+    void AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker);
     void AddNewExtension(const ExtensionFile &extFile);
     void RemoveExtension(const ExtensionFile &extFile);
 

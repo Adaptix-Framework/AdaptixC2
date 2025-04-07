@@ -1,9 +1,11 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
 
-AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
+AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
     this->createUI();
+    this->ChannelThread = channelThread;
+    this->ChannelWsWorker = channelWsWorker;
 
     LogsTab           = new LogsWidget();
     ListenersTab      = new ListenersWidget(this);
@@ -22,9 +24,9 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
 
     profile = authProfile;
 
-    ChannelThread = new QThread;
-    ChannelWsWorker = new WebSocketWorker( authProfile );
-    ChannelWsWorker->moveToThread( ChannelThread );
+    // ChannelThread = new QThread;
+    // ChannelWsWorker = new WebSocketWorker( authProfile );
+    // ChannelWsWorker->moveToThread( ChannelThread );
 
     TickThread = new QThread;
     TickWorker = new LastTickWorker( this );
@@ -45,8 +47,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
 
     connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
 
-    connect( ChannelThread,   &QThread::started, ChannelWsWorker, &WebSocketWorker::run );
-    connect( ChannelWsWorker, &WebSocketWorker::received_data, this, &AdaptixWidget::DataHandler );
+    // connect( ChannelThread,   &QThread::started,              ChannelWsWorker, &WebSocketWorker::run );
+    connect( ChannelWsWorker, &WebSocketWorker::received_data,    this, &AdaptixWidget::DataHandler );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, &AdaptixWidget::ChannelClose );
 
     dialogSyncPacket = new DialogSyncPacket();
@@ -61,6 +63,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile)
     credsButton->setVisible(false);
     screensButton->setVisible(false);
     keysButton->setVisible(false);
+
+    HttpReqSync( *profile );
 }
 
 AdaptixWidget::~AdaptixWidget() = default;
@@ -469,6 +473,8 @@ void AdaptixWidget::OnReconnect() {
 
         QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/link"), COLOR_NeonGreen);
         reconnectButton->setIcon(onReconnectButton);
+
+        HttpReqSync( *profile );
     }
 }
 

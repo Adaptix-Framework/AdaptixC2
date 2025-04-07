@@ -25,7 +25,7 @@ void TaskOutputWidget::createUI()
     mainGridLayout->setVerticalSpacing(4 );
     mainGridLayout->setContentsMargins(0, 0, 0, 4 );
     mainGridLayout->addWidget( inputMessage, 0, 0, 1, 1 );
-    mainGridLayout->addWidget( outputTextEdit, 1, 0, 1, 1);
+    mainGridLayout->addWidget( outputTextEdit, 1, 0, 1, 1 );
 
     this->setLayout(mainGridLayout);
 }

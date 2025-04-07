@@ -63,7 +63,7 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.3"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.4"
 
 ///////////
 
