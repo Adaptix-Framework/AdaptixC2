@@ -76,8 +76,7 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 	listenerData = adaptix.ListenerData{
 		BindHost:  "",
 		BindPort:  "",
-		AgentHost: "",
-		AgentPort: listener.Config.Pipename,
+		AgentAddr: listener.Config.Pipename,
 		Status:    "Listen",
 	}
 
@@ -118,8 +117,7 @@ func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any
 		listenerData = adaptix.ListenerData{
 			BindHost:  "",
 			BindPort:  "",
-			AgentHost: "",
-			AgentPort: listener.Config.Pipename,
+			AgentAddr: listener.Config.Pipename,
 			Status:    "Listen",
 		}
 

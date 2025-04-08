@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/Adaptix-Framework/axc2"
 	"math/rand"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -66,19 +67,27 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 
 	case "http":
 
-		portAgentStr, _ := listenerMap["callback_port"].(string)
-		PortAgent, _ := strconv.Atoi(portAgentStr)
+		var Hosts []string
+		var Ports []int
+		hosts_agent, _ := listenerMap["callback_addresses"].(string)
+		lines := strings.Split(strings.TrimSpace(hosts_agent), ", ")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
 
-		var HostsAgent []string
-		hosts_agent, _ := listenerMap["hosts_agent"].([]any)
-		for _, value := range hosts_agent {
-			HostsAgent = append(HostsAgent, value.(string))
+			host, portStr, _ := net.SplitHostPort(line)
+			port, _ := strconv.Atoi(portStr)
+
+			Hosts = append(Hosts, host)
+			Ports = append(Ports, port)
 		}
-		c2Count := len(HostsAgent)
+		c2Count := len(Hosts)
 
 		HttpMethod, _ := listenerMap["http_method"].(string)
 		Ssl, _ := listenerMap["ssl"].(bool)
-		Uri, _ := listenerMap["urn"].(string)
+		Uri, _ := listenerMap["uri"].(string)
 		ParameterName, _ := listenerMap["hb_header"].(string)
 		UserAgent, _ := listenerMap["user_agent"].(string)
 		RequestHeaders, _ := listenerMap["request_headers"].(string)
@@ -94,10 +103,10 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 
 		params = append(params, int(agentWatermark))
 		params = append(params, Ssl)
-		params = append(params, PortAgent)
 		params = append(params, c2Count)
 		for i := 0; i < c2Count; i++ {
-			params = append(params, HostsAgent[i])
+			params = append(params, Hosts[i])
+			params = append(params, Ports[i])
 		}
 		params = append(params, HttpMethod)
 		params = append(params, Uri)
@@ -146,6 +155,7 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 	for _, b := range packedProfile {
 		profileString += fmt.Sprintf("\\x%02x", b)
 	}
+	fmt.Println(profileString)
 
 	return []byte(profileString), nil
 }

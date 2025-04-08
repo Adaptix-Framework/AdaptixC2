@@ -7,9 +7,9 @@
 #ifndef PROFILE_STRUCT
 #define PROFILE_STRUCT
 typedef struct {
-	WORD   port;
 	ULONG  servers_count;
 	BYTE** servers;
+	WORD*  ports;
 	BOOL   use_ssl;
 	BYTE*  http_method;
 	BYTE*  uri;

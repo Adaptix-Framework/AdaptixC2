@@ -175,8 +175,7 @@ typedef struct ListenerData
     QString ListenerType;
     QString BindHost;
     QString BindPort;
-    QString AgentHost;
-    QString AgentPort;
+    QString AgentAddresses;
     QString Status;
     QString Data;
 } ListenerData;

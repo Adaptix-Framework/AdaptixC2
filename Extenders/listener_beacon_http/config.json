@@ -18,8 +18,39 @@
             "elements": [
               {
                 "type": "label",
-                "text": "Method:",
+                "text": "Host & port (Bind):",
                 "position": [ 0, 0, 1, 1 ]
+              },
+              {
+                "type": "input",
+                "id": "host_bind",
+                "editable": "false",
+                "position": [ 0, 1, 1, 1 ]
+              },
+              {
+                "type": "spinbox",
+                "id": "port_bind",
+                "editable": "false",
+                "min": 1,
+                "max": 65535,
+                "value": 443,
+                "position": [0, 2, 1, 1]
+              },
+              {
+                "type": "label",
+                "text": "Callback addresses:",
+                "position": [ 1, 0, 1, 1 ]
+              },
+              {
+                "type": "textedit",
+                "id": "callback_addresses",
+                "placeholder": "192.168.1.1:443\nserver2.com:8080",
+                "position": [ 1, 1, 1, 2 ]
+              },
+              {
+                "type": "label",
+                "text": "Method:",
+                "position": [ 2, 0, 1, 1 ]
               },
               {
                 "type": "combo",
@@ -29,104 +60,62 @@
                   "GET"
                 ],
                 "editable": "false",
-                "position": [ 0, 1, 1, 1 ]
+                "position": [ 2, 1, 1, 2 ]
               },
               {
                 "type": "label",
-                "text": "Host (Bind):",
-                "position": [ 1, 0, 1, 1 ]
-              },
-              {
-                "type": "input",
-                "id": "host_bind",
-                "editable": "false",
-                "position": [ 1, 1, 1, 1 ]
-              },
-              {
-                "type": "label",
-                "text": "Port (Bind):",
-                "position": [ 2, 0, 1, 1 ]
-              },
-              {
-                "type": "input",
-                "id": "port_bind",
-                "editable": "false",
-                "position": [ 2, 1, 1, 1 ]
-              },
-              {
-                "type": "label",
-                "text": "Callback port:",
+                "text": "URI:",
                 "position": [ 3, 0, 1, 1 ]
               },
               {
                 "type": "input",
-                "id": "callback_port",
-                "position": [ 3, 1, 1, 1 ]
-              },
-              {
-                "type": "label",
-                "text": "Callback servers:",
-                "position": [ 4, 0, 1, 1 ]
-              },
-              {
-                "type": "textedit",
-                "id": "callback_servers",
-                "placeholder": "server1.com\nserver2.com",
-                "position": [ 4, 1, 1, 1 ]
+                "id": "uri",
+                "placeholder": "/uri.php",
+                "position": [ 3, 1, 1, 2 ]
               },
               {
                 "type": "label",
                 "text": "User-Agent:",
-                "position": [ 5, 0, 1, 1 ]
+                "position": [ 4, 0, 1, 1 ]
               },
               {
                 "type": "input",
                 "id": "user_agent",
                 "text": "Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0",
-                "position": [ 5, 1, 1, 1 ]
-              },
-              {
-                "type": "label",
-                "text": "URN:",
-                "position": [ 6, 0, 1, 1 ]
-              },
-              {
-                "type": "input",
-                "id": "urn",
-                "placeholder": "/uri.php",
-                "position": [ 6, 1, 1, 1 ]
+                "position": [ 4, 1, 1, 2 ]
               },
               {
                 "type": "label",
                 "text": "Heartbeat Header:",
-                "position": [ 7, 0, 1, 1 ]
+                "position": [ 5, 0, 1, 1 ]
               },
               {
                 "type": "input",
                 "id": "hb_header",
                 "text": "X-Beacon-Id",
-                "position": [ 7, 1, 1, 1 ]
+                "position": [ 5, 1, 1, 2 ]
               },
               {
                 "type": "checkbox",
                 "text": "Use SSL (HTTPS)",
                 "id": "ssl",
                 "editable": "false",
-                "position": [ 8, 0, 1, 2 ]
+                "checked": true,
+                "position": [ 6, 0, 1, 3 ]
               },
               {
                 "type": "file_selector",
                 "id": "ssl_cert",
                 "placeholder": "SSL certificate",
                 "editable": "false",
-                "position": [ 9, 0, 1, 2 ]
+                "position": [ 7, 0, 1, 3 ]
               },
               {
                 "type": "file_selector",
                 "id": "ssl_key",
                 "placeholder": "SSL key",
                 "editable": "false",
-                "position": [ 10, 0, 1, 2 ]
+                "position": [ 8, 0, 1, 3 ]
               }
             ]
           },

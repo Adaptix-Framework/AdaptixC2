@@ -5,15 +5,15 @@
 #ifndef PROFILE_STRUCT
 #define PROFILE_STRUCT
 typedef struct {
-	WORD   port;
 	ULONG  servers_count;
 	BYTE** servers;
+	WORD*  ports;
 	BOOL   use_ssl;
-	BYTE* http_method;
-	BYTE* uri;
-	BYTE* parameter;
-	BYTE* user_agent;
-	BYTE* http_headers;
+	BYTE*  http_method;
+	BYTE*  uri;
+	BYTE*  parameter;
+	BYTE*  user_agent;
+	BYTE*  http_headers;
 	ULONG  ans_pre_size;
 	ULONG  ans_size;
 } ProfileHTTP;

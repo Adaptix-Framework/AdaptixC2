@@ -2,6 +2,8 @@
 #include "utils.h"
 #include "ApiLoader.h"
 #include "Packer.h"
+#include "Agent.h"
+#include "main.h"
 
 Packer* bofOutputPacker = NULL;
 int     bofOutputCount  = 0;
@@ -306,17 +308,51 @@ BOOL BeaconInformation(BEACON_INFO* info)
 
 BOOL BeaconAddValue(const char* key, void* ptr)
 {
+	if (!key)
+		return FALSE;
+
+	DWORD keyLength = StrLenA((CHAR*)key);
+	if(keyLength < 1)
+		return FALSE;
+
+	if( g_Agent->Values.contains((CHAR*)key) )
+		return FALSE;
+
+	g_Agent->Values[(CHAR*)key] = ptr;
+
 	return TRUE;
 }
 
 PVOID BeaconGetValue(const char* key)
 {
+	if (!key)
+		return NULL;
+
+	DWORD keyLength = StrLenA((CHAR*)key);
+	if (keyLength < 1)
+		return NULL;
+
+	if (g_Agent->Values.contains((CHAR*)key))
+		return g_Agent->Values[(CHAR*)key];
+
 	return NULL;
 }
 
 BOOL BeaconRemoveValue(const char* key)
 {
-	return FALSE;
+	if (!key)
+		return FALSE;
+
+	DWORD keyLength = StrLenA((CHAR*)key);
+	if (keyLength < 1)
+		return FALSE;
+
+	if (!g_Agent->Values.contains((CHAR*)key))
+		return FALSE;
+
+	g_Agent->Values.remove((CHAR*)key);
+
+	return TRUE;
 }
 
 PCHAR BeaconGetCustomUserData() 

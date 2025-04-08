@@ -32,8 +32,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("l_type")       || !jsonObj["l_type"].isString() )       return false;
         if ( !jsonObj.contains("l_bind_host")  || !jsonObj["l_bind_host"].isString() )  return false;
         if ( !jsonObj.contains("l_bind_port")  || !jsonObj["l_bind_port"].isString() )  return false;
-        if ( !jsonObj.contains("l_agent_host") || !jsonObj["l_agent_host"].isString() ) return false;
-        if ( !jsonObj.contains("l_agent_port") || !jsonObj["l_agent_port"].isString() ) return false;
+        if ( !jsonObj.contains("l_agent_addr") || !jsonObj["l_agent_addr"].isString() ) return false;
         if ( !jsonObj.contains("l_status")     || !jsonObj["l_status"].isString() )     return false;
         if ( !jsonObj.contains("l_data")       || !jsonObj["l_data"].isString() )       return false;
         return true;
@@ -290,30 +289,28 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_LISTENER_START )
     {
-        ListenerData newListener = {0};
-        newListener.ListenerName = jsonObj["l_name"].toString();
-        newListener.ListenerType = jsonObj["l_type"].toString();
-        newListener.BindHost     = jsonObj["l_bind_host"].toString();
-        newListener.BindPort     = jsonObj["l_bind_port"].toString();
-        newListener.AgentPort    = jsonObj["l_agent_port"].toString();
-        newListener.AgentHost    = jsonObj["l_agent_host"].toString();
-        newListener.Status       = jsonObj["l_status"].toString();
-        newListener.Data         = jsonObj["l_data"].toString();
+        ListenerData newListener = {};
+        newListener.ListenerName   = jsonObj["l_name"].toString();
+        newListener.ListenerType   = jsonObj["l_type"].toString();
+        newListener.BindHost       = jsonObj["l_bind_host"].toString();
+        newListener.BindPort       = jsonObj["l_bind_port"].toString();
+        newListener.AgentAddresses = jsonObj["l_agent_addr"].toString();
+        newListener.Status         = jsonObj["l_status"].toString();
+        newListener.Data           = jsonObj["l_data"].toString();
 
         ListenersTab->AddListenerItem(newListener);
         return;
     }
     if( spType == TYPE_LISTENER_EDIT )
     {
-        ListenerData newListener = {0};
-        newListener.ListenerName = jsonObj["l_name"].toString();
-        newListener.ListenerType = jsonObj["l_type"].toString();
-        newListener.BindHost     = jsonObj["l_bind_host"].toString();
-        newListener.BindPort     = jsonObj["l_bind_port"].toString();
-        newListener.AgentPort    = jsonObj["l_agent_port"].toString();
-        newListener.AgentHost    = jsonObj["l_agent_host"].toString();
-        newListener.Status       = jsonObj["l_status"].toString();
-        newListener.Data         = jsonObj["l_data"].toString();
+        ListenerData newListener = {};
+        newListener.ListenerName   = jsonObj["l_name"].toString();
+        newListener.ListenerType   = jsonObj["l_type"].toString();
+        newListener.BindHost       = jsonObj["l_bind_host"].toString();
+        newListener.BindPort       = jsonObj["l_bind_port"].toString();
+        newListener.AgentAddresses = jsonObj["l_agent_addr"].toString();
+        newListener.Status         = jsonObj["l_status"].toString();
+        newListener.Data           = jsonObj["l_data"].toString();
 
         ListenersTab->EditListenerItem(newListener);
         return;

@@ -3,7 +3,7 @@ module adaptix_listener_beacon_http
 go 1.23.0
 
 require (
-	github.com/Adaptix-Framework/axc2 v0.0.0-20250403204745-da9b5bcae139
+	github.com/Adaptix-Framework/axc2 v0.0.0-20250406142007-91fcd99269f6
 	github.com/gin-gonic/gin v1.10.0
 )
 
