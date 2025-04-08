@@ -23,12 +23,11 @@ import (
 )
 
 type HTTPConfig struct {
-	Ssl        bool     `json:"ssl"`
-	HostBind   string   `json:"host_bind"`
-	PortBind   string   `json:"port_bind"`
-	PortAgent  string   `json:"callback_port"`
-	HostsAgent []string `json:"hosts_agent"`
+	HostBind           string `json:"host_bind"`
+	PortBind           int    `json:"port_bind"`
+	Callback_addresses string `json:"callback_addresses"`
 
+	Ssl         bool   `json:"ssl"`
 	SslCert     []byte `json:"ssl_cert"`
 	SslKey      []byte `json:"ssl_key"`
 	SslCertPath string `json:"ssl_cert_path"`
@@ -36,7 +35,7 @@ type HTTPConfig struct {
 
 	// Agent
 	HttpMethod     string `json:"http_method"`
-	Uri            string `json:"urn"`
+	Uri            string `json:"uri"`
 	ParameterName  string `json:"hb_header"`
 	UserAgent      string `json:"user_agent"`
 	HostHeader     string `json:"host_header"`
@@ -48,10 +47,9 @@ type HTTPConfig struct {
 	WebPageError       string            `json:"page-error"`
 	WebPageOutput      string            `json:"page-payload"`
 
-	Callback_servers string `json:"callback_servers"`
-	Server_headers   string `json:"server_headers"`
-	Protocol         string `json:"protocol"`
-	EncryptKey       []byte `json:"encrypt_key"`
+	Server_headers string `json:"server_headers"`
+	Protocol       string `json:"protocol"`
+	EncryptKey     []byte `json:"encrypt_key"`
 }
 
 type HTTP struct {
@@ -85,12 +83,12 @@ func (handler *HTTP) Start(ts Teamserver) error {
 	handler.Active = true
 
 	handler.Server = &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", handler.Config.HostBind, handler.Config.PortBind),
+		Addr:    fmt.Sprintf("%s:%d", handler.Config.HostBind, handler.Config.PortBind),
 		Handler: router,
 	}
 
 	if handler.Config.Ssl {
-		fmt.Println("   ", "Started listener: https://"+handler.Config.HostBind+":"+handler.Config.PortBind)
+		fmt.Printf("   Started listener: https://%s:%d\n", handler.Config.HostBind, handler.Config.PortBind)
 
 		listenerPath := ListenerDataDir + "/" + handler.Name
 		_, err = os.Stat(listenerPath)
@@ -132,7 +130,7 @@ func (handler *HTTP) Start(ts Teamserver) error {
 		}()
 
 	} else {
-		fmt.Println("   ", "Started listener: http://"+handler.Config.HostBind+":"+handler.Config.PortBind)
+		fmt.Printf("   Started listener: http://%s:%d\n", handler.Config.HostBind, handler.Config.PortBind)
 
 		go func() {
 			err = handler.Server.ListenAndServe()

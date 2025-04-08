@@ -139,8 +139,7 @@ type SyncPackerListenerStart struct {
 	ListenerType   string `json:"l_type"`
 	BindHost       string `json:"l_bind_host"`
 	BindPort       string `json:"l_bind_port"`
-	AgentHost      string `json:"l_agent_host"`
-	AgentPort      string `json:"l_agent_port"`
+	AgentAddrs     string `json:"l_agent_addr"`
 	ListenerStatus string `json:"l_status"`
 	Data           string `json:"l_data"`
 }

@@ -108,8 +108,7 @@ func CreateSpListenerStart(listenerData adaptix.ListenerData) SyncPackerListener
 		ListenerType:   listenerData.Type,
 		BindHost:       listenerData.BindHost,
 		BindPort:       listenerData.BindPort,
-		AgentHost:      listenerData.AgentHost,
-		AgentPort:      listenerData.AgentPort,
+		AgentAddrs:     listenerData.AgentAddr,
 		ListenerStatus: listenerData.Status,
 		Data:           listenerData.Data,
 	}

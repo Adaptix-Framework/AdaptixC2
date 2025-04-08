@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
+	"net"
 	"regexp"
 	"strconv"
 	"strings"
@@ -31,26 +32,42 @@ func (m *ModuleExtender) HandlerListenerValid(data string) error {
 		return errors.New("HostBind is required")
 	}
 
-	if conf.Callback_servers == "" {
-		return errors.New("callback_servers is required")
-	}
-
-	portBind, err := strconv.Atoi(conf.PortBind)
-	if err != nil {
-		return errors.New("PortBind must be an integer")
-	}
-
-	if portBind < 1 || portBind > 65535 {
+	if conf.PortBind < 1 || conf.PortBind > 65535 {
 		return errors.New("PortBind must be in the range 1-65535")
 	}
 
-	portAgent, err := strconv.Atoi(conf.PortAgent)
-	if err != nil {
-		return errors.New("PortAgent must be an integer")
+	if conf.Callback_addresses == "" {
+		return errors.New("callback_servers is required")
 	}
+	lines := strings.Split(strings.TrimSpace(conf.Callback_addresses), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
 
-	if portAgent < 1 || portAgent > 65535 {
-		return errors.New("PortAgent must be in the range 1-65535")
+		host, portStr, err := net.SplitHostPort(line)
+		if err != nil {
+			return fmt.Errorf("Invalid address (cannot split host:port): %s\n", line)
+		}
+
+		port, err := strconv.Atoi(portStr)
+		if err != nil || port < 1 || port > 65535 {
+			return fmt.Errorf("Invalid port: %s\n", line)
+		}
+
+		ip := net.ParseIP(host)
+		if ip == nil {
+			if len(host) == 0 || len(host) > 253 {
+				return fmt.Errorf("Invalid host: %s\n", line)
+			}
+			parts := strings.Split(host, ".")
+			for _, part := range parts {
+				if len(part) == 0 || len(part) > 63 {
+					return fmt.Errorf("Invalid host: %s\n", line)
+				}
+			}
+		}
 	}
 
 	matched, err := regexp.MatchString(`^/[a-zA-Z0-9\.\=\-]+(/[a-zA-Z0-9\.\=\-]+)*$`, conf.Uri)
@@ -99,11 +116,9 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 			return listenerData, customdData, listener, err
 		}
 
-		conf.Callback_servers = strings.ReplaceAll(conf.Callback_servers, " ", "")
-		conf.Callback_servers = strings.ReplaceAll(conf.Callback_servers, "\n", ", ")
-		conf.Callback_servers = strings.TrimSuffix(conf.Callback_servers, ", ")
-
-		conf.HostsAgent = strings.Split(conf.Callback_servers, ", ")
+		conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, " ", "")
+		conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, "\n", ", ")
+		conf.Callback_addresses = strings.TrimSuffix(conf.Callback_addresses, ", ")
 
 		conf.RequestHeaders = strings.TrimRight(conf.RequestHeaders, " \n\t\r") + "\n"
 		conf.RequestHeaders = strings.ReplaceAll(conf.RequestHeaders, "\n", "\r\n")
@@ -155,9 +170,8 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 
 	listenerData = adaptix.ListenerData{
 		BindHost:  listener.Config.HostBind,
-		BindPort:  listener.Config.PortBind,
-		AgentHost: conf.Callback_servers,
-		AgentPort: listener.Config.PortAgent,
+		BindPort:  strconv.Itoa(listener.Config.PortBind),
+		AgentAddr: conf.Callback_addresses,
 		Status:    "Listen",
 	}
 
@@ -199,10 +213,9 @@ func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any
 			return listenerData, customdData, false
 		}
 
-		conf.Callback_servers = strings.ReplaceAll(conf.Callback_servers, " ", "")
-		conf.Callback_servers = strings.ReplaceAll(conf.Callback_servers, "\n", ", ")
-		conf.Callback_servers = strings.TrimSuffix(conf.Callback_servers, ", ")
-		conf.HostsAgent = strings.Split(conf.Callback_servers, ", ")
+		conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, " ", "")
+		conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, "\n", ", ")
+		conf.Callback_addresses = strings.TrimSuffix(conf.Callback_addresses, ", ")
 
 		conf.RequestHeaders = strings.TrimRight(conf.RequestHeaders, " \n\t\r") + "\n"
 		conf.RequestHeaders = strings.ReplaceAll(conf.RequestHeaders, "\n", "\r\n")
@@ -210,10 +223,8 @@ func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any
 			conf.RequestHeaders = fmt.Sprintf("Host: %s\r\n%s", conf.HostHeader, conf.RequestHeaders)
 		}
 
-		listener.Config.PortAgent = conf.PortAgent
-		listener.Config.Callback_servers = conf.Callback_servers
+		listener.Config.Callback_addresses = conf.Callback_addresses
 
-		listener.Config.HostsAgent = conf.HostsAgent
 		listener.Config.UserAgent = conf.UserAgent
 		listener.Config.Uri = conf.Uri
 		listener.Config.ParameterName = conf.ParameterName
@@ -225,9 +236,8 @@ func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any
 
 		listenerData = adaptix.ListenerData{
 			BindHost:  listener.Config.HostBind,
-			BindPort:  listener.Config.PortBind,
-			AgentHost: listener.Config.Callback_servers,
-			AgentPort: listener.Config.PortAgent,
+			BindPort:  strconv.Itoa(listener.Config.PortBind),
+			AgentAddr: listener.Config.Callback_addresses,
 			Status:    "Listen",
 		}
 		if !listener.Active {

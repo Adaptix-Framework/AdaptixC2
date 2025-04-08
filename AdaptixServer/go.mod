@@ -3,7 +3,7 @@ module AdaptixServer
 go 1.23.0
 
 require (
-	github.com/Adaptix-Framework/axc2 v0.0.0-20250403204745-da9b5bcae139
+	github.com/Adaptix-Framework/axc2 v0.0.0-20250406142007-91fcd99269f6
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gorilla/websocket v1.5.3
