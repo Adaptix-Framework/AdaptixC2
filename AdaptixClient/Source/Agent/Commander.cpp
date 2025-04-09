@@ -619,9 +619,49 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, const QStrin
 
     ExecString = ExecString.replace("$EXT_DIR()", filepath, Qt::CaseSensitive);
 
+    // $RAND
+
+    QRegularExpression re(R"(\$RAND\(\s*(\d+)\s*,\s*(\w+)\s*\))");
+    QRegularExpressionMatchIterator i = re.globalMatch(ExecString);
+
+    while (i.hasNext()) {
+        QRegularExpressionMatch match = i.next();
+        int length = match.captured(1).toInt();
+        QString setName = match.captured(2);
+        QString randomString = GenerateRandomString(length, setName);
+
+        if (!randomString.isEmpty())
+            ExecString = ExecString.replace(match.captured(0), randomString);
+    }
+
+    // $HASH
+
+    QRegularExpression hashRe(R"(\$HASH\(\s*(\w+)\s*,\s*(\d+)\s*,\s*([^)]+)\s*\))");
+    QRegularExpressionMatchIterator hashIt = hashRe.globalMatch(ExecString);
+    while (hashIt.hasNext()) {
+        QRegularExpressionMatch match = hashIt.next();
+        QString algorithm = match.captured(1);
+        int length = match.captured(2).toInt();
+        QString inputString = match.captured(3).trimmed();
+        //If arguments
+        QRegularExpression remainingArgsRegex(R"(\{\s*([^}]*)\s*\})");
+        QRegularExpressionMatchIterator remainingIt = remainingArgsRegex.globalMatch(inputString);
+        while (remainingIt.hasNext()) {
+            QRegularExpressionMatch remainingMatch = remainingIt.next();
+            QString paramName = remainingMatch.captured(1).trimmed();
+            if( jsonObj.contains(paramName) && jsonObj[paramName].isString() ){
+                QString paramValue = serializeParam(jsonObj[paramName].toString());
+                inputString = inputString.replace(remainingMatch.captured(0), paramValue);
+            }
+        }
+        // endif
+        QString hashString = GenerateHash(algorithm, length, inputString);
+        if (!hashString.isEmpty())
+            ExecString = ExecString.replace(match.captured(0), hashString);
+    }
+
     // BOF_PACK
 
-    int offset = 0;
     QRegularExpression packRegex(R"(\$PACK_BOF\s*\(([^)]*)\))");
     QRegularExpressionMatchIterator iter = packRegex.globalMatch(ExecString);
 
@@ -651,14 +691,11 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, const QStrin
             }
         }
         QString bofParam = packer.Build();
-
-        ExecString.replace(match.capturedStart() + offset, match.capturedLength(), bofParam);
-        offset += bofParam.length() - match.capturedLength();
+        ExecString = ExecString.replace(match.captured(0), bofParam);
     }
 
     // Arguments
 
-    offset = 0;
     QRegularExpression remainingArgsRegex(R"(\{\s*([^}]*)\s*\})");
     QRegularExpressionMatchIterator remainingIt = remainingArgsRegex.globalMatch(ExecString);
 
@@ -667,8 +704,7 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, const QStrin
         QString paramName = remainingMatch.captured(1).trimmed();
         if( jsonObj.contains(paramName) && jsonObj[paramName].isString() ){
             QString paramValue = serializeParam(jsonObj[paramName].toString());
-            ExecString.replace(remainingMatch.capturedStart() + offset, remainingMatch.capturedLength(), paramValue);
-            offset += paramValue.length() - remainingMatch.capturedLength();
+            ExecString = ExecString.replace(remainingMatch.captured(0), paramValue);
         }
     }
 
