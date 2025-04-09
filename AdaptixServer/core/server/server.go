@@ -114,6 +114,12 @@ func (ts *Teamserver) RestoreData() {
 			agent.Active = false
 		}
 
+		if agent.Data.Mark == "" {
+			if !agent.Data.Async {
+				agent.Data.Mark = "Disconnect"
+			}
+		}
+
 		ts.agents.Put(agentData.Id, agent)
 
 		packet := CreateSpAgentNew(agentData)
