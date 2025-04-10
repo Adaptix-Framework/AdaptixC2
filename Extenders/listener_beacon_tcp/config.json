@@ -1,0 +1,40 @@
+{
+  "extender_type": "listener",
+  "extender_file": "listener_beacon_tcp.so",
+
+  "listener_name": "BeaconTCP",
+  "listener_type": "internal",
+  "protocol": "tcp",
+
+  "ui": {
+    "layout": "glayout",
+    "elements": [
+      {
+        "type": "label",
+        "text": "Bind port:",
+        "position": [ 0, 0, 1, 1 ]
+      },
+      {
+        "type": "spinbox",
+        "id": "port_bind",
+        "editable": "false",
+        "min": 1,
+        "max": 65535,
+        "value": 9000,
+        "position": [0, 1, 1, 1]
+      },
+      {
+        "type": "label",
+        "text": "Prepend data:",
+        "position": [1, 0, 1, 1]
+      },
+      {
+        "type": "input",
+        "id": "prepend_data",
+        "editable": "false",
+        "placeholder": "\\x12\\xabSimple\\x20word\\xa",
+        "position": [1, 1, 1, 1]
+      }
+    ]
+  }
+}

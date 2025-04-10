@@ -206,22 +206,26 @@ bool Commander::AddRegCommands(const QByteArray &jsonData)
     return true;
 }
 
-bool Commander::AddExtModule(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands)
+bool Commander::AddExtModule(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands, QList<QJsonObject> extConstants)
 {
-    QFileInfo fi(filepath);
-    QString dirPath = fi.absolutePath();
-
     QList<Command> commandsList;
 
     for (QJsonObject jsonObject : extCommands) {
         Command extCmd = this->ParseCommand(jsonObject);
-        extCmd.extPath = dirPath;
         commandsList.append(extCmd);
     }
 
-    extModules[filepath].Name = extName;
-    extModules[filepath].Commands = commandsList;
+    ExtModule extMod = {};
+    extMod.FilePath = filepath;
 
+    for (QJsonObject jsonObject : extConstants) {
+        Constant constant = this->ParseConstant(jsonObject);
+        extMod.Constants[constant.Name] = constant;
+    }
+    extMod.Name = extName;
+    extMod.Commands = commandsList;
+
+    extModules[filepath] = extMod;
     return true;
 }
 
@@ -231,6 +235,19 @@ void Commander::RemoveExtModule(const QString &filepath)
 }
 
 
+
+Constant Commander::ParseConstant(QJsonObject jsonObject)
+{
+    Constant constant;
+    constant.Name = jsonObject["name"].toString();
+
+    if (jsonObject.contains("map")) {
+        QJsonObject mapObject = jsonObject["map"].toObject();
+        for ( auto it = mapObject.begin(); it != mapObject.end(); ++it )
+            constant.Map[it.key()] = it.value().toString();
+    }
+    return constant;
+}
 
 Command Commander::ParseCommand(QJsonObject jsonObject)
 {
@@ -341,14 +358,14 @@ CommanderResult Commander::ProcessInput(AgentData agentData, QString input)
 
     for (Command command : commands) {
         if (command.name == commandName) {
-            return ProcessCommand(agentData, command, parts);
+            return ProcessCommand(agentData, command, parts, {});
         }
     }
 
     for ( auto extMod : extModules ) {
         for (Command command : extMod.Commands) {
             if (command.name == commandName) {
-                return ProcessCommand(agentData, command, parts);
+                return ProcessCommand(agentData, command, parts, extMod);
             }
         }
     }
@@ -356,7 +373,7 @@ CommanderResult Commander::ProcessInput(AgentData agentData, QString input)
     return CommanderResult{true, "Command not found", true};
 }
 
-CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, QStringList args)
+CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, QStringList args, ExtModule extMod)
 {
     QString execStr = "";
     QList<Argument> execArgs;
@@ -592,7 +609,7 @@ CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, 
     }
 
     if( !execStr.isEmpty() ) {
-        QString newInput = this->ProcessExecExtension( agentData, command.extPath, execStr, execArgs, jsonObj);
+        QString newInput = this->ProcessExecExtension( agentData, extMod, execStr, execArgs, jsonObj);
         CommanderResult execCommandResult = this->ProcessInput(agentData, newInput);
         if( !execCommandResult.error ) {
             QJsonParseError parseError;
@@ -609,7 +626,7 @@ CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, 
     return CommanderResult{false, jsonDoc.toJson(), false };
 }
 
-QString Commander::ProcessExecExtension(const AgentData &agentData, const QString &filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
+QString Commander::ProcessExecExtension(const AgentData &agentData, ExtModule extMod, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
 {
     // $ARCH
 
@@ -617,19 +634,39 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, const QStrin
 
     // $EXT_DIR
 
-    ExecString = ExecString.replace("$EXT_DIR()", filepath, Qt::CaseSensitive);
+    QFileInfo fi(extMod.FilePath);
+    QString dirPath = fi.absolutePath();
+    ExecString = ExecString.replace("$EXT_DIR()", dirPath, Qt::CaseSensitive);
+
+    // $MAP()
+
+    QRegularExpression mapRe(R"(\$MAP\(\s*(\w+)\s*,\s*(\w+)\s*\))");
+    QRegularExpressionMatchIterator mapReIt = mapRe.globalMatch(ExecString);
+    while (mapReIt.hasNext()) {
+        QRegularExpressionMatch match = mapReIt.next();
+        QString mapName = match.captured(1);
+        QString key = match.captured(2);
+
+        QString value = "";
+        if (extMod.Constants.contains(mapName)) {
+            if (extMod.Constants[mapName].Map.contains(key))
+                value = extMod.Constants[mapName].Map[key];
+
+        }
+
+        if (!value.isEmpty())
+            ExecString = ExecString.replace(match.captured(0), value);
+    }
 
     // $RAND
 
     QRegularExpression re(R"(\$RAND\(\s*(\d+)\s*,\s*(\w+)\s*\))");
     QRegularExpressionMatchIterator i = re.globalMatch(ExecString);
-
     while (i.hasNext()) {
         QRegularExpressionMatch match = i.next();
         int length = match.captured(1).toInt();
         QString setName = match.captured(2);
         QString randomString = GenerateRandomString(length, setName);
-
         if (!randomString.isEmpty())
             ExecString = ExecString.replace(match.captured(0), randomString);
     }
@@ -710,6 +747,7 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, const QStrin
 
     return ExecString;
 }
+
 
 
 QString Commander::GetError()

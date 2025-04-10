@@ -18,6 +18,8 @@ QString ValidCommand(QJsonObject extJsonObject, bool* result);
 
 QString ValidExtCommand(QJsonObject extJsonObject, bool* result);
 
+QString ValidExtConstant(QJsonObject extJsonObject, bool* result);
+
 QString UnixTimestampGlobalToStringLocal(qint64 timestamp);
 
 QString UnixTimestampGlobalToStringLocalSmall(qint64 timestamp);
