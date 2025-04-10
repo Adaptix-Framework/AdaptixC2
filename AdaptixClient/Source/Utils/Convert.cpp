@@ -159,6 +159,21 @@ QString ValidExtCommand(QJsonObject extJsonObject, bool* result)
     return "";
 }
 
+QString ValidExtConstant(QJsonObject extJsonObject, bool* result)
+{
+    if( !extJsonObject.contains("name") || !extJsonObject["name"].isString() ) {
+        *result = false;
+        return "Extension must include a required 'name' parameter";
+    }
+    QString mapName = extJsonObject["name"].toString();
+
+    if ( !extJsonObject.contains("map") || !extJsonObject["map"].isObject() ) {
+        *result = false;
+        return "Extension must include a required 'map' parameter";
+    }
+    return "";
+}
+
 QString UnixTimestampGlobalToStringLocal(qint64 timestamp)
 {
     if ( timestamp == 0 )
