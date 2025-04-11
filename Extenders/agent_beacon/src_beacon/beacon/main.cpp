@@ -70,7 +70,7 @@ int main()
 
 #elif defined(BUILD_DLL)
 
-__declspec(dllexport) void GetVersions()
+extern "C" __declspec(dllexport) void GetVersions()
 {
     HANDLE hThread = CreateThread(NULL, 0, AgentMain, NULL, 0, NULL);
     if (hThread)
