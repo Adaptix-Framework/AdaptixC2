@@ -46,7 +46,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("agent")          || !jsonObj["agent"].isString() )          return false;
         if ( !jsonObj.contains("watermark")      || !jsonObj["watermark"].isString() )      return false;
         if ( !jsonObj.contains("listeners_json") || !jsonObj["listeners_json"].isString() ) return false;
-        if ( !jsonObj.contains("commands_json")  || !jsonObj["commands_json"].isString() )  return false;
+        if ( !jsonObj.contains("handlers_json")  || !jsonObj["handlers_json"].isString() )  return false;
         return true;
     }
     if( spType == TYPE_AGENT_NEW ) {
@@ -328,7 +328,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         QString agentName = jsonObj["a_name"].toString();
 
-        Agent* newAgent = new Agent(jsonObj, RegisterAgentsCmd[agentName], this);
+        Agent* newAgent = new Agent(jsonObj, this);
         SessionsTablePage->AddAgentItem( newAgent );
         SessionsGraphPage->AddAgent(newAgent, this->synchronized);
         return;
@@ -639,6 +639,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 SessionsGraphPage->UnlinkAgent(parentAgent, childAgent, this->synchronized);
             }
         }
+        return;
     }
 
 
@@ -650,7 +651,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString message = jsonObj["message"].toString();
 
         LogsTab->AddLogs(type, time, message);
+        return;
     }
+
 
 
     if( spType == TYPE_LISTENER_REG )
@@ -665,10 +668,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         QString agentName      = jsonObj["agent"].toString();
         QString agentwatermark = jsonObj["watermark"].toString();
-        QString commandsJson   = jsonObj["commands_json"].toString();
         QString listenersJson  = jsonObj["listeners_json"].toString();
+        QString handlersJson   = jsonObj["handlers_json"].toString();
 
-        this->RegisterAgentConfig(agentName, agentwatermark, commandsJson, listenersJson);
+        this->RegisterAgentConfig(agentName, agentwatermark, handlersJson, listenersJson);
         return;
     }
 }

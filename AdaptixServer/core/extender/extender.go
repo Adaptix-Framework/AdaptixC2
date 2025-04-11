@@ -118,7 +118,28 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 		return
 	}
 
-	commandsJson, err := json.Marshal(configAgent.Commands)
+	for _, listener := range configAgent.Listeners {
+		for _, config := range listener.OsConfigs {
+			if config.Os != "linux" && config.Os != "windows" && config.Os != "mac" {
+				logs.Error("", "Error OS for listener: %s. Must be linux, windows, or mac.", listener.ListenerName)
+				return
+			}
+
+			found := false
+			for _, handler := range configAgent.Handlers {
+				if config.Handler == handler.Id {
+					found = true
+					break
+				}
+			}
+			if !found {
+				logs.Error("", "Handler %s for listener %s not found.", config.Handler, listener.ListenerName)
+				return
+			}
+		}
+	}
+
+	handlersJson, err := json.Marshal(configAgent.Handlers)
 	if err != nil {
 		logs.Error("", "Error %s converting info to JSON: %s", config_path, err.Error())
 		return
@@ -134,7 +155,7 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 		Name:          configAgent.AgentName,
 		Watermark:     configAgent.AgentWatermark,
 		ListenersJson: string(listenersJson),
-		CommandsJson:  string(commandsJson),
+		HandlersJson:  string(handlersJson),
 	}
 
 	plugin_path := filepath.Dir(config_path) + "/" + configAgent.ExtenderFile

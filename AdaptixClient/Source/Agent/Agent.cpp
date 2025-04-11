@@ -1,7 +1,7 @@
 #include <Agent/Agent.h>
 #include <Client/Requestor.h>
 
-Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w)
+Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 {
     this->adaptixWidget = w;
 
@@ -91,7 +91,9 @@ Agent::Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* 
         this->MarkItem(mark);
     }
 
-    this->Console        = new ConsoleWidget(this, commander);
+    auto regAgnet = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
+
+    this->Console        = new ConsoleWidget(this, regAgnet.commander);
     this->FileBrowser    = new BrowserFilesWidget(this);
     this->ProcessBrowser = new BrowserProcessWidget(this);
 }

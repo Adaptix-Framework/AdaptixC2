@@ -16,22 +16,29 @@ type ExConfigListener struct {
 /// ExConfig Agent
 
 type ExConfAgentOsConfigs struct {
-	Os string `json:"operating_system"`
-	Ui any    `json:"ui"`
+	Os      string `json:"operating_system"`
+	Handler string `json:"handler"`
+	Ui      any    `json:"generate_ui"`
 }
 
-type ExConfAgentUI struct {
+type ExConfAgentListeners struct {
 	ListenerName string                 `json:"listener_name"`
-	OsConfigs    []ExConfAgentOsConfigs `json:"os_configs"`
+	OsConfigs    []ExConfAgentOsConfigs `json:"configs"`
+}
+
+type ExConfAgentHandlers struct {
+	Id       string `json:"id"`
+	Commands any    `json:"commands"`
+	Browsers any    `json:"browsers"`
 }
 
 type ExConfigAgent struct {
-	ExtenderType   string          `json:"extender_type"`
-	ExtenderFile   string          `json:"extender_file"`
-	AgentName      string          `json:"agent_name"`
-	AgentWatermark string          `json:"agent_watermark"`
-	Listeners      []ExConfAgentUI `json:"listeners"`
-	Commands       any             `json:"commands"`
+	ExtenderType   string                 `json:"extender_type"`
+	ExtenderFile   string                 `json:"extender_file"`
+	AgentName      string                 `json:"agent_name"`
+	AgentWatermark string                 `json:"agent_watermark"`
+	Listeners      []ExConfAgentListeners `json:"listeners"`
+	Handlers       []ExConfAgentHandlers  `json:"handlers"`
 }
 
 /// Info
@@ -47,7 +54,7 @@ type AgentInfo struct {
 	Name          string
 	Watermark     string
 	ListenersJson string
-	CommandsJson  string
+	HandlersJson  string
 }
 
 type Teamserver interface {

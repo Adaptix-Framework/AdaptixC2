@@ -189,16 +189,16 @@ void ListenersWidget::createListener() const
     if ( !adaptixWidget )
         return;
 
-    for( auto regLst : adaptixWidget->RegisterListenersUI ) {
+    for( auto regLst : adaptixWidget->RegisterListeners ) {
         regLst->BuildWidget(false);
     }
 
     DialogListener dialogListener;
-    dialogListener.AddExListeners( adaptixWidget->RegisterListenersUI );
+    dialogListener.AddExListeners( adaptixWidget->RegisterListeners );
     dialogListener.SetProfile( *(adaptixWidget->GetProfile()) );
     dialogListener.Start();
 
-    for( auto regLst : adaptixWidget->RegisterListenersUI ) {
+    for( auto regLst : adaptixWidget->RegisterListeners ) {
         regLst->ClearWidget();
     }
 }
@@ -222,7 +222,7 @@ void ListenersWidget::editListener() const
     }
 
     QMap<QString, WidgetBuilder*> tmpRegisterListenersUI;
-    tmpRegisterListenersUI[listenerType] = adaptixWidget->RegisterListenersUI[listenerType];
+    tmpRegisterListenersUI[listenerType] = adaptixWidget->RegisterListeners[listenerType];
     tmpRegisterListenersUI[listenerType]->BuildWidget(true);
     tmpRegisterListenersUI[listenerType]->FillData(listenerData);
 
@@ -277,7 +277,7 @@ void ListenersWidget::generateAgent() const
     QString targetListener = parts[2];
 
     QVector<RegAgentConfig> tmpRegisterAgentsUI;
-    for( auto regAgent : adaptixWidget->RegisterAgentsUI ) {
+    for( auto regAgent : adaptixWidget->RegisterAgents ) {
         if (targetListener == regAgent.listenerName) {
             tmpRegisterAgentsUI.push_back(regAgent);
             tmpRegisterAgentsUI.last().builder->BuildWidget(false);
