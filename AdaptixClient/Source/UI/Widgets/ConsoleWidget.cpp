@@ -11,7 +11,7 @@ ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
     this->UpgradeCompleter();
 
     connect(CommandCompleter, QOverload<const QString &>::of(&QCompleter::activated), this, &ConsoleWidget::onCompletionSelected, Qt::DirectConnection);
-    connect( InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput, Qt::QueuedConnection );
+    connect(InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput, Qt::QueuedConnection );
 
     kphInputLineEdit = new KPH_ConsoleInput(InputLineEdit, OutputTextEdit, this);
 }
@@ -145,6 +145,9 @@ void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, const QString &taskId
 /// SLOTS
 
 void ConsoleWidget::processInput() {
+    if (!commander)
+        return;
+
     QString commandLine = TrimmedEnds(InputLineEdit->text());
 
     if ( this->userSelectedCompletion ) {

@@ -25,7 +25,10 @@ typedef struct RegAgentConfig {
     QString        watermark;
     QString        listenerName;
     QString        operatingSystem;
+    QString        handlerId;
     WidgetBuilder* builder;
+    Commander*     commander;
+    bool           valid;
 } RegAgentConfig;
 
 
@@ -79,9 +82,9 @@ public:
     DownloadsWidget*     DownloadsTab      = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
-    QMap<QString, Commander*>     RegisterAgentsCmd;    // agentName -> commander
-    QVector<RegAgentConfig>       RegisterAgentsUI;
-    QMap<QString, WidgetBuilder*> RegisterListenersUI;  // listenerName -> builder
+    QMap<QString, Commander*>     Commanders;    // handlerId -> commander
+    QVector<RegAgentConfig>       RegisterAgents;
+    QMap<QString, WidgetBuilder*> RegisterListeners;  // listenerName -> builder
     QVector<ListenerData>         Listeners;
     QVector<TunnelData>           Tunnels;
     QMap<QString, DownloadData>   Downloads;
@@ -98,8 +101,9 @@ public:
     AuthProfile* GetProfile() const;
 
     void RegisterListenerConfig(const QString &fn, const QString &ui);
-    void RegisterAgentConfig(const QString &name, const QString &watermark, const QString &commandsJson, const QString &listenersJson);
+    void RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &handlersJson, const QString &listenersJson);
     void ClearAdaptix();
+    RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
     void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
     void RemoveTab(int index) const;
     void AddExtension(ExtensionFile ext);

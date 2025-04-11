@@ -55,7 +55,7 @@ public:
     bool show   = true;
     QString original_item_color;
 
-    explicit Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w );
+    explicit Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w );
     ~Agent();
 
     void    Update(QJsonObject jsonObjAgentData);
