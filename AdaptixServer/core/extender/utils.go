@@ -26,6 +26,17 @@ type ExConfAgentListeners struct {
 	OsConfigs    []ExConfAgentOsConfigs `json:"configs"`
 }
 
+type ExConfAgentSupportedBrowsers struct {
+	FileBrowser         bool `json:"file_browser"`
+	FileBrowserDisks    bool `json:"file_browser_disks"`
+	FileBrowserDownload bool `json:"file_browser_download"`
+	FileBrowserUpload   bool `json:"file_browser_upload"`
+	ProcessBrowser      bool `json:"process_browser"`
+	DownloadsState      bool `json:"downloads_state"`
+	TasksJobKill        bool `json:"tasks_job_kill"`
+	SessionsMenuExit    bool `json:"sessions_menu_exit"`
+}
+
 type ExConfAgentHandlers struct {
 	Id       string `json:"id"`
 	Commands any    `json:"commands"`
@@ -59,6 +70,7 @@ type AgentInfo struct {
 
 type Teamserver interface {
 	TsListenerReg(listenerInfo ListenerInfo) error
+	TsListenerTypeByName(listenerName string) (string, error)
 	TsAgentReg(agentInfo AgentInfo) error
 }
 
@@ -71,7 +83,7 @@ type ExtListener interface {
 	ListenerInteralHandler(name string, data []byte) (string, error)
 }
 
-type ExtAgent interface {
+type ExtAgentFunc interface {
 	AgentGenerate(config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 	AgentCreate(beat []byte) (adaptix.AgentData, error)
 	AgentCommand(client string, cmdline string, agentData adaptix.AgentData, args map[string]any) error
@@ -87,6 +99,11 @@ type ExtAgent interface {
 	AgentBrowserDownload(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserJobKill(jobId string) (adaptix.TaskData, error)
+}
+
+type ExtAgent struct {
+	Supports map[string]map[int]ExConfAgentSupportedBrowsers
+	F        ExtAgentFunc
 }
 
 type AdaptixExtender struct {

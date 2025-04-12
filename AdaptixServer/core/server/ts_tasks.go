@@ -399,7 +399,7 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 		return fmt.Errorf("task %v in process", taskId)
 	}
 
-	taskData, err := ts.Extender.ExAgentBrowserJobKill(agent.Data.Name, taskId)
+	taskData, err := ts.Extender.ExAgentBrowserJobKill(agent.Data, taskId)
 	if err != nil {
 		return err
 	}

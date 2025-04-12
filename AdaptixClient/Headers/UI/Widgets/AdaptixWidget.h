@@ -82,7 +82,7 @@ public:
     DownloadsWidget*     DownloadsTab      = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
-    QMap<QString, Commander*>     Commanders;    // handlerId -> commander
+    QMap<QString, QMap<QString, Commander*>> Commanders;    // agentName -> ( handlerId -> commander)
     QVector<RegAgentConfig>       RegisterAgents;
     QMap<QString, WidgetBuilder*> RegisterListeners;  // listenerName -> builder
     QVector<ListenerData>         Listeners;

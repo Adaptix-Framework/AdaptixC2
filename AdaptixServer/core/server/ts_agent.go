@@ -48,7 +48,8 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	agentData.Color = ""
 
 	value, _ := ts.listeners.Get(listenerName)
-	if value.(adaptix.ListenerData).Type == "internal" {
+	lType := strings.Split(value.(adaptix.ListenerData).Type, "/")[0]
+	if lType == "internal" {
 		agentData.Mark = "Unlink"
 	}
 

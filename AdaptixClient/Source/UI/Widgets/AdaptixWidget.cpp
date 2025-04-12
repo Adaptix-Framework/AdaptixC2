@@ -222,9 +222,9 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
     QJsonArray handlersArray = handlersDocument.array();
     for (QJsonValue handlerValue : handlersArray) {
         QJsonObject handlerObj = handlerValue.toObject();
-        if (!handlerObj.contains("id")       || !handlerObj["id"].isString())       continue;
+        if (!handlerObj.contains("id")       || !handlerObj["id"].isString())      continue;
         if (!handlerObj.contains("commands") || !handlerObj["commands"].isArray()) continue;
-        if (!handlerObj.contains("browsers") || !handlerObj["browsers"].isArray())  continue;
+        if (!handlerObj.contains("browsers") || !handlerObj["browsers"].isArray()) continue;
 
         QString    handlerId     = handlerObj["id"].toString();
         QJsonArray commandsArray = handlerObj["commands"].toArray();
@@ -237,8 +237,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
         if (result) {
             commander->AddRegCommands(commandsData);
         }
-        Commanders[handlerId] = commander;
-
+        Commanders[agentName][handlerId] = commander;
     }
 
 
@@ -278,7 +277,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
                 widgetBuilder = nullptr;
             }
 
-            RegAgentConfig config = {agentName, watermark, listenerName, operatingSystem, handler, widgetBuilder, Commanders[handler], true};
+            RegAgentConfig config = {agentName, watermark, listenerName, operatingSystem, handler, widgetBuilder, Commanders[agentName][handler], true};
             RegisterAgents.push_back(config);
         }
     }
@@ -301,11 +300,14 @@ void AdaptixWidget::ClearAdaptix()
         delete builder;
     }
 
-    for (auto handlerId : Commanders.keys()){
-        Commander* commander = Commanders[handlerId];
-        Commanders.remove(handlerId);
-        delete commander;
+    for (auto commanderMap : Commanders ) {
+        for (auto k : commanderMap.keys()) {
+            Commander* commander = commanderMap[k];
+            commanderMap.remove(k);
+            delete commander;
+        }
     }
+    Commanders.clear();
 
     for (auto listenerName : RegisterListeners.keys()){
         WidgetBuilder* builder = RegisterListeners[listenerName];
@@ -394,23 +396,17 @@ void AdaptixWidget::AddExtension(ExtensionFile ext)
     if( !synchronized )
         return;
 
-
-    QSet<QString> handlers;
     for (QString agentName : ext.ExCommands.keys()) {
-        for (auto regAgent : RegisterAgents ) {
-            if ( regAgent.agentName == agentName )
-                handlers.insert(regAgent.handlerId);
-        }
-    }
-
-    for (QString handler : handlers) {
-        if ( Commanders.contains(handler) ) {
-            Commander* commander = Commanders[handler];
-            bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[handler], ext.ExConstants);
-            if (result) {
-                for( auto agent : AgentsMap ){
-                    if( agent && agent->Console )
-                        agent->Console->UpgradeCompleter();
+        if (Commanders.contains(agentName)) {
+            for (auto commander : Commanders[agentName] ) {
+                if (commander) {
+                    bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName], ext.ExConstants);
+                    if (result) {
+                        for( auto agent : AgentsMap ){
+                            if( agent && agent->Console )
+                                agent->Console->UpgradeCompleter();
+                        }
+                    }
                 }
             }
         }
@@ -421,21 +417,16 @@ void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
 {
     Extensions.remove(ext.FilePath);
 
-    QSet<QString> handlers;
     for (QString agentName : ext.ExCommands.keys()) {
-        for (auto regAgent : RegisterAgents ) {
-            if ( regAgent.agentName == agentName )
-                handlers.insert(regAgent.handlerId);
-        }
-    }
-
-    for (QString handler : handlers) {
-        if ( Commanders.contains(handler) ) {
-            Commander* commander = Commanders[handler];
-            commander->RemoveExtModule(ext.FilePath);
-            for( auto agent : AgentsMap ){
-                if( agent && agent->Console )
-                    agent->Console->UpgradeCompleter();
+        if (Commanders.contains(agentName)) {
+            for (auto commander : Commanders[agentName] ) {
+                if (commander) {
+                    commander->RemoveExtModule(ext.FilePath);
+                    for( auto agent : AgentsMap ){
+                        if( agent && agent->Console )
+                            agent->Console->UpgradeCompleter();
+                    }
+                }
             }
         }
     }
@@ -453,22 +444,19 @@ void AdaptixWidget::OnSynced()
 
     for (auto ext : Extensions) {
 
-        QSet<QString> handlers;
         for (QString agentName : ext.ExCommands.keys()) {
-            for (auto regAgent : RegisterAgents ) {
-                if ( regAgent.agentName == agentName )
-                    handlers.insert(regAgent.handlerId);
-            }
-        }
 
-        for (QString handler : handlers) {
-            if ( Commanders.contains(handler) ) {
-                Commander* commander = Commanders[handler];
-                bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[handler], ext.ExConstants);
-                if (result) {
-                    for( auto agent : AgentsMap ){
-                        if( agent && agent->Console )
-                            agent->Console->UpgradeCompleter();
+            if (Commanders.contains(agentName)) {
+                for (auto commander : Commanders[agentName] ) {
+
+                    if (commander) {
+                        bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName], ext.ExConstants);
+                        if (result) {
+                            for( auto agent : AgentsMap ){
+                                if( agent && agent->Console )
+                                    agent->Console->UpgradeCompleter();
+                            }
+                        }
                     }
                 }
             }

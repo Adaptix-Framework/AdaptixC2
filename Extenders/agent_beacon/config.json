@@ -548,9 +548,20 @@
         }
       ],
 
-      "browsers": [
+      "browsers": {
+        "file_browser": true,
+        "file_browser_disks": true,
+        "file_browser_download": true,
+        "file_browser_upload": true,
 
-      ]
+        "process_browser": true,
+
+        "downloads_state": true,
+        "tasks_job_kill": true,
+
+        "sessions_menu_exit": true
+      }
+
     },
     {
       "id": "handler_internal",
@@ -910,9 +921,21 @@
         }
       ],
 
-      "browsers": [
 
-      ]
+      "browsers": {
+        "file_browser": false,
+        "file_browser_disks": false,
+        "file_browser_download": false,
+        "file_browser_upload": false,
+
+        "process_browser": false,
+
+        "downloads_state": false,
+        "tasks_job_kill": false,
+
+        "sessions_menu_exit": false
+      }
+
     }
   ]
 }
