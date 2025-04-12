@@ -118,9 +118,18 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 		return
 	}
 
+	browsersFunc := make(map[string]map[int]ExConfAgentSupportedBrowsers)
+
 	for _, listener := range configAgent.Listeners {
 		for _, config := range listener.OsConfigs {
-			if config.Os != "linux" && config.Os != "windows" && config.Os != "mac" {
+			OStype := 0
+			if config.Os == "windows" {
+				OStype = 1
+			} else if config.Os == "linux" {
+				OStype = 2
+			} else if config.Os == "mac" {
+				OStype = 3
+			} else {
 				logs.Error("", "Error OS for listener: %s. Must be linux, windows, or mac.", listener.ListenerName)
 				return
 			}
@@ -128,6 +137,25 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 			found := false
 			for _, handler := range configAgent.Handlers {
 				if config.Handler == handler.Id {
+
+					var supportsFunc ExConfAgentSupportedBrowsers
+					hb, err := json.Marshal(handler.Browsers)
+					if err != nil {
+						logs.Error("", "Error %s converting info to JSON: %s", config_path, err.Error())
+						return
+					}
+					err = json.Unmarshal(hb, &supportsFunc)
+					if err != nil {
+						logs.Error("", "Error config parse: %s", err.Error())
+						return
+					}
+
+					_, ok := browsersFunc[listener.ListenerName]
+					if !ok {
+						browsersFunc[listener.ListenerName] = make(map[int]ExConfAgentSupportedBrowsers)
+					}
+					browsersFunc[listener.ListenerName][OStype] = supportsFunc
+
 					found = true
 					break
 				}
@@ -177,9 +205,9 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 		return
 	}
 
-	module, ok := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), agentInfo.Watermark).(ExtAgent)
+	module, ok := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), agentInfo.Watermark).(ExtAgentFunc)
 	if !ok {
-		logs.Error("", "plugin %s does not implement the ExtAgent interface", plugin_path)
+		logs.Error("", "plugin %s does not implement the ExtAgentFunc interface", plugin_path)
 		return
 	}
 
@@ -189,5 +217,8 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 		return
 	}
 
-	ex.agentModules[agentInfo.Name] = module
+	ex.agentModules[agentInfo.Name] = ExtAgent{
+		F:        module,
+		Supports: browsersFunc,
+	}
 }

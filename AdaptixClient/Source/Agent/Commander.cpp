@@ -215,16 +215,13 @@ bool Commander::AddExtModule(const QString &filepath, const QString &extName, QL
         commandsList.append(extCmd);
     }
 
-    ExtModule extMod = {};
-    extMod.FilePath = filepath;
-
+    QMap<QString, Constant> constantList;
     for (QJsonObject jsonObject : extConstants) {
         Constant constant = this->ParseConstant(jsonObject);
-        extMod.Constants[constant.Name] = constant;
+        constantList[constant.Name] = constant;
     }
-    extMod.Name = extName;
-    extMod.Commands = commandsList;
 
+    ExtModule extMod = {extName, filepath, commandsList, constantList};
     extModules[filepath] = extMod;
     return true;
 }

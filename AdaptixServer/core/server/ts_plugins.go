@@ -5,6 +5,8 @@ import (
 	isvalid "AdaptixServer/core/utils/valid"
 	"errors"
 	"fmt"
+	adaptix "github.com/Adaptix-Framework/axc2"
+	"strings"
 )
 
 func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
@@ -30,6 +32,17 @@ func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
 	ts.listener_configs.Put(listenerFN, listenerInfo)
 
 	return nil
+}
+
+func (ts *Teamserver) TsListenerTypeByName(listenerName string) (string, error) {
+
+	value, ok := ts.listeners.Get(listenerName)
+	if !ok {
+		return "", errors.New("listener not found: " + listenerName)
+	}
+
+	lName := strings.Split(value.(adaptix.ListenerData).Type, "/")[2]
+	return lName, nil
 }
 
 func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {
