@@ -28,6 +28,7 @@ typedef struct RegAgentConfig {
     QString        handlerId;
     WidgetBuilder* builder;
     Commander*     commander;
+    BrowsersConfig browsers;
     bool           valid;
 } RegAgentConfig;
 
@@ -83,6 +84,7 @@ public:
     TasksWidget*         TasksTab          = nullptr;
 
     QMap<QString, QMap<QString, Commander*>> Commanders;    // agentName -> ( handlerId -> commander)
+    QMap<QString, QMap<QString, BrowsersConfig>> AgentBrowserConfigs;    // agentName -> ( handlerId -> BrowserConfigs)
     QVector<RegAgentConfig>       RegisterAgents;
     QMap<QString, WidgetBuilder*> RegisterListeners;  // listenerName -> builder
     QVector<ListenerData>         Listeners;

@@ -325,8 +325,27 @@ void SessionsTableWidget::onFilterUpdate() const
 
 void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 {
-    if ( ! tableWidget->itemAt(pos) )
+    if ( !tableWidget->itemAt(pos) )
         return;
+
+    bool menuProcessBrowser = false;
+    bool menuFileBrowser = false;
+    bool menuExit = false;
+
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            QString agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            if (adaptixWidget->AgentsMap[agentId]) {
+                auto agent = adaptixWidget->AgentsMap[agentId];
+                if (agent) {
+                    if (agent->browsers.FileBrowser)      menuFileBrowser = true;
+                    if (agent->browsers.ProcessBrowser)   menuProcessBrowser = true;
+                    if (agent->browsers.SessionsMenuExit) menuExit = true;
+                }
+            }
+        }
+    }
 
     auto ctxMenu = QMenu();
 
@@ -339,11 +358,17 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 
     auto agentMenu = new QMenu("Agent", &ctxMenu);
     agentMenu->addAction("Tasks", this, &SessionsTableWidget::actionTasksBrowserOpen);
-    agentMenu->addAction(agentSep1);
-    agentMenu->addAction("File Browser",    this, &SessionsTableWidget::actionFileBrowserOpen);
-    agentMenu->addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
-    agentMenu->addAction(agentSep2);
-    agentMenu->addAction("Exit", this, &SessionsTableWidget::actionAgentExit);
+    if (menuFileBrowser || menuProcessBrowser) {
+        agentMenu->addAction(agentSep1);
+        if (menuFileBrowser)
+            agentMenu->addAction("File Browser", this, &SessionsTableWidget::actionFileBrowserOpen);
+        if (menuProcessBrowser)
+            agentMenu->addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
+    }
+    if (menuExit) {
+        agentMenu->addAction(agentSep2);
+        agentMenu->addAction("Exit", this, &SessionsTableWidget::actionAgentExit);
+    }
 
     /// ITEM MENU
 

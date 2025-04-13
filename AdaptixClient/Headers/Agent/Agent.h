@@ -21,6 +21,7 @@ public:
     AdaptixWidget* adaptixWidget = nullptr;
 
     AgentData data = {};
+    BrowsersConfig browsers = {};
 
     QImage imageActive   = QImage();
     QImage imageInactive = QImage();

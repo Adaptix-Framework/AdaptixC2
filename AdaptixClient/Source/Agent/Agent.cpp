@@ -92,10 +92,15 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     }
 
     auto regAgnet = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
+    this->browsers = regAgnet.browsers;
 
-    this->Console        = new ConsoleWidget(this, regAgnet.commander);
-    this->FileBrowser    = new BrowserFilesWidget(this);
-    this->ProcessBrowser = new BrowserProcessWidget(this);
+    this->Console = new ConsoleWidget(this, regAgnet.commander);
+
+    if (this->browsers.FileBrowser)
+        this->FileBrowser = new BrowserFilesWidget(this);
+
+    if (this->browsers.ProcessBrowser)
+        this->ProcessBrowser = new BrowserProcessWidget(this);
 }
 
 Agent::~Agent() = default;
