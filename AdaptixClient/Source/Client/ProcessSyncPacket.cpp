@@ -551,9 +551,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString message = jsonObj["b_message"].toString();
         QString data    = jsonObj["b_data"].toString();
 
-        if (AgentsMap.contains(agentId))
-            AgentsMap[agentId]->FileBrowser->SetDisks(time, msgType, message, data);
-
+        if (AgentsMap.contains(agentId) ) {
+            auto agent = AgentsMap[agentId];
+            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+                agent->FileBrowser->SetDisks(time, msgType, message, data);
+        }
         return;
     }
     if( spType == TYPE_BROWSER_FILES )
@@ -565,9 +567,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString path    = jsonObj["b_path"].toString();
         QString data    = jsonObj["b_data"].toString();
 
-        if (AgentsMap.contains(agentId))
-            AgentsMap[agentId]->FileBrowser->AddFiles(time, msgType, message, path, data);
-
+        if (AgentsMap.contains(agentId) ) {
+            auto agent = AgentsMap[agentId];
+            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+                agent->FileBrowser->AddFiles(time, msgType, message, path, data);
+        }
         return;
     }
     if( spType == TYPE_BROWSER_PROCESS )
@@ -579,10 +583,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString data    = jsonObj["b_data"].toString();
 
         if (AgentsMap.contains(agentId)) {
-            AgentsMap[agentId]->ProcessBrowser->SetStatus(time, msgType, message);
-            AgentsMap[agentId]->ProcessBrowser->SetProcess(msgType, data);
+            auto agent = AgentsMap[agentId];
+            if (agent && agent->browsers.ProcessBrowser && agent->ProcessBrowser) {
+                agent->ProcessBrowser->SetStatus(time, msgType, message);
+                agent->ProcessBrowser->SetProcess(msgType, data);
+            }
         }
-
         return;
     }
     if( spType == TYPE_BROWSER_STATUS )
@@ -592,9 +598,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         int     msgType = jsonObj["b_msg_type"].toDouble();
         QString message = jsonObj["b_message"].toString();
 
-        if (AgentsMap.contains(agentId))
-            AgentsMap[agentId]->FileBrowser->SetStatus( time, msgType, message );
-
+        if (AgentsMap.contains(agentId) ) {
+            auto agent = AgentsMap[agentId];
+            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+                agent->FileBrowser->SetStatus(time, msgType, message);
+        }
         return;
     }
 

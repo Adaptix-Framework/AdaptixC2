@@ -222,13 +222,13 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
     QJsonArray handlersArray = handlersDocument.array();
     for (QJsonValue handlerValue : handlersArray) {
         QJsonObject handlerObj = handlerValue.toObject();
-        if (!handlerObj.contains("id")       || !handlerObj["id"].isString())      continue;
-        if (!handlerObj.contains("commands") || !handlerObj["commands"].isArray()) continue;
-        if (!handlerObj.contains("browsers") || !handlerObj["browsers"].isArray()) continue;
+        if (!handlerObj.contains("id")       || !handlerObj["id"].isString())       continue;
+        if (!handlerObj.contains("commands") || !handlerObj["commands"].isArray())  continue;
+        if (!handlerObj.contains("browsers") || !handlerObj["browsers"].isObject()) continue;
 
-        QString    handlerId     = handlerObj["id"].toString();
-        QJsonArray commandsArray = handlerObj["commands"].toArray();
-        QJsonArray browsersArray = handlerObj["browsers"].toArray();
+        QString     handlerId      = handlerObj["id"].toString();
+        QJsonArray  commandsArray  = handlerObj["commands"].toArray();
+        QJsonObject browsersObject = handlerObj["browsers"].toObject();
 
         QByteArray commandsData = QJsonDocument(commandsArray).toJson();
         auto commander = new Commander();
@@ -238,9 +238,27 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             commander->AddRegCommands(commandsData);
         }
         Commanders[agentName][handlerId] = commander;
+
+        BrowsersConfig browsersConfig = {};
+        if (browsersObject.contains("file_browser") && browsersObject["file_browser"].isBool())
+            browsersConfig.FileBrowser = browsersObject["file_browser"].toBool();
+        if (browsersObject.contains("file_browser_disks") && browsersObject["file_browser_disks"].isBool())
+            browsersConfig.FileBrowserDisks = browsersObject["file_browser_disks"].toBool();
+        if (browsersObject.contains("file_browser_download") && browsersObject["file_browser_download"].isBool())
+            browsersConfig.FileBrowserDownload = browsersObject["file_browser_download"].toBool();
+        if (browsersObject.contains("file_browser_upload") && browsersObject["file_browser_upload"].isBool())
+            browsersConfig.FileBrowserUpload = browsersObject["file_browser_upload"].toBool();
+        if (browsersObject.contains("process_browser") && browsersObject["process_browser"].isBool())
+            browsersConfig.ProcessBrowser = browsersObject["process_browser"].toBool();
+        if (browsersObject.contains("downloads_state") && browsersObject["downloads_state"].isBool())
+            browsersConfig.DownloadState = browsersObject["downloads_state"].toBool();
+        if (browsersObject.contains("tasks_job_kill") && browsersObject["tasks_job_kill"].isBool())
+            browsersConfig.TasksJobKill = browsersObject["tasks_job_kill"].toBool();
+        if (browsersObject.contains("sessions_menu_exit") && browsersObject["sessions_menu_exit"].isBool())
+            browsersConfig.SessionsMenuExit = browsersObject["sessions_menu_exit"].toBool();
+
+        AgentBrowserConfigs[agentName][handlerId] = browsersConfig;
     }
-
-
 
     QJsonDocument listenersDocument = QJsonDocument::fromJson(listenersJson.toLocal8Bit(), &parseError);
     if (parseError.error != QJsonParseError::NoError && listenersDocument.isObject()) {
@@ -277,7 +295,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
                 widgetBuilder = nullptr;
             }
 
-            RegAgentConfig config = {agentName, watermark, listenerName, operatingSystem, handler, widgetBuilder, Commanders[agentName][handler], true};
+            RegAgentConfig config = {agentName, watermark, listenerName, operatingSystem, handler, widgetBuilder, Commanders[agentName][handler], AgentBrowserConfigs[agentName][handler], true};
             RegisterAgents.push_back(config);
         }
     }
@@ -308,6 +326,8 @@ void AdaptixWidget::ClearAdaptix()
         }
     }
     Commanders.clear();
+
+    AgentBrowserConfigs.clear();
 
     for (auto listenerName : RegisterListeners.keys()){
         WidgetBuilder* builder = RegisterListeners[listenerName];
@@ -547,9 +567,13 @@ void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
     if( !AgentsMap.contains(AgentId) )
         return;
 
-    auto text = QString("Console [%1]").arg( AgentId );
-    this->AddTab(AgentsMap[AgentId]->Console, text);
-    AgentsMap[AgentId]->Console->InputFocus();
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->Console) {
+        auto text = QString("Console [%1]").arg( AgentId );
+        this->AddTab(AgentsMap[AgentId]->Console, text);
+        AgentsMap[AgentId]->Console->InputFocus();
+    }
+
 }
 
 void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
@@ -557,8 +581,11 @@ void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
     if( !AgentsMap.contains(AgentId) )
         return;
 
-    auto text = QString("Files [%1]").arg( AgentId );
-    this->AddTab(AgentsMap[AgentId]->FileBrowser, text);
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->browsers.FileBrowser && agent->FileBrowser) {
+        auto text = QString("Files [%1]").arg( AgentId );
+        this->AddTab(AgentsMap[AgentId]->FileBrowser, text);
+    }
 }
 
 void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
@@ -566,8 +593,11 @@ void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
     if( !AgentsMap.contains(AgentId) )
         return;
 
-    auto text = QString("Processes [%1]").arg( AgentId );
-    this->AddTab(AgentsMap[AgentId]->ProcessBrowser, text);
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->browsers.ProcessBrowser && agent->ProcessBrowser) {
+        auto text = QString("Processes [%1]").arg( AgentId );
+        this->AddTab(AgentsMap[AgentId]->ProcessBrowser, text);
+    }
 }
 
 void AdaptixWidget::ChannelClose() const

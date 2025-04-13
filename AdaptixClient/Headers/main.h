@@ -155,6 +155,17 @@
 
 //////////
 
+typedef struct BrowsersConfig {
+    bool FileBrowser;
+    bool FileBrowserDisks;
+    bool FileBrowserDownload;
+    bool FileBrowserUpload;
+    bool ProcessBrowser;
+    bool DownloadState;
+    bool TasksJobKill;
+    bool SessionsMenuExit;
+} BrowsersConfig;
+
 typedef struct SettingsData {
     bool    ConsoleTime;
     QString MainTheme;
