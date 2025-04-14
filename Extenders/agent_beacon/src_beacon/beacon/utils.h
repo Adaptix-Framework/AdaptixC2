@@ -18,11 +18,28 @@ BOOL PeekNamedPipeTime(HANDLE hNamedPipe, int waitTime);
 
 int ReadFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
 
-int ReadDataFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+int ReadDataFromPipe(HANDLE hPipe, LPVOID* buffer, ULONG* bufferSize);
 
 BOOL WriteToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
 
 BOOL WriteDataToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+
+
+//////////
+
+WORD _htons(WORD hostshort);
+
+ULONG _inet_addr(const char* ip);
+
+BOOL PeekSocketTime(SOCKET sock, int waitTime);
+
+int ReadFromSocket(SOCKET sock, char* buffer, int bufferSize);
+
+int ReadDataFromSocket(SOCKET sock, LPVOID* buffer, ULONG* bufferSize);
+
+BOOL WriteToSocket(SOCKET sock, BYTE* buffer, ULONG bufferSize);
+
+BOOL WriteDataToSocket(SOCKET sock, BYTE* buffer, ULONG bufferSize);
 
 //////////
 

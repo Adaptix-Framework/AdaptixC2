@@ -131,6 +131,19 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 		params = append(params, seconds)
 		params = append(params, generateConfig.Jitter)
 
+	case "tcp":
+		prepend, _ := listenerMap["prepend"].(string)
+		port, _ := listenerMap["port_bind"].(float64)
+
+		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
+
+		params = append(params, int(agentWatermark))
+		params = append(params, prepend)
+		params = append(params, int(port))
+		params = append(params, int(lWatermark))
+		params = append(params, seconds)
+		params = append(params, generateConfig.Jitter)
+
 	default:
 		return nil, errors.New("protocol unknown")
 	}
@@ -572,10 +585,10 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		}
 
 	case "link":
-		if subcommand == "list" {
-			//array = []interface{}{COMMAND_PS_LIST}
-
-		} else if subcommand == "smb" {
+		//if subcommand == "list" {
+		//	//array = []interface{}{COMMAND_PS_LIST}
+		//} else
+		if subcommand == "smb" {
 			target, ok := args["target"].(string)
 			if !ok {
 				err = errors.New("parameter 'target' must be set")
@@ -590,8 +603,21 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 
 			array = []interface{}{COMMAND_LINK, 1, pipe}
 
+		} else if subcommand == "tcp" {
+			target, ok := args["target"].(string)
+			if !ok {
+				err = errors.New("parameter 'target' must be set")
+				goto RET
+			}
+			port, ok := args["port"].(float64)
+			if !ok {
+				err = errors.New("parameter 'port' must be set")
+				goto RET
+			}
+			array = []interface{}{COMMAND_LINK, 2, target, int(port)}
+
 		} else {
-			err = errors.New("subcommand must be 'list' or 'smb'")
+			err = errors.New("subcommand must be 'smb' or 'tcp'")
 			goto RET
 		}
 

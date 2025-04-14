@@ -121,7 +121,6 @@ struct WINAPIFUNC
 	DECL_API(accept);
 	DECL_API(listen);
 	DECL_API(bind);
-
 };
 
 struct NTAPIFUNC

@@ -280,7 +280,8 @@ void ListenersWidget::generateAgent() const
     for( auto regAgent : adaptixWidget->RegisterAgents ) {
         if (targetListener == regAgent.listenerName) {
             tmpRegisterAgentsUI.push_back(regAgent);
-            tmpRegisterAgentsUI.last().builder->BuildWidget(false);
+            if (tmpRegisterAgentsUI.last().builder)
+                tmpRegisterAgentsUI.last().builder->BuildWidget(false);
         }
     }
 

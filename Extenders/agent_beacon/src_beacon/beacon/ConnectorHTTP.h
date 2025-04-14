@@ -18,6 +18,15 @@ typedef struct {
 	ULONG  ans_pre_size;
 	ULONG  ans_size;
 } ProfileHTTP;
+
+typedef struct {
+	BYTE* pipename;
+} ProfileSMB;
+
+typedef struct {
+	BYTE* prepend;
+	WORD  port;
+} ProfileTCP;
 #endif
 
 #define DECL_API(x) decltype(x) * x

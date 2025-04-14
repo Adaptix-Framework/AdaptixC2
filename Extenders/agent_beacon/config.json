@@ -318,6 +318,16 @@
                 "STRING <target>",
                 "STRING <pipename>"
               ]
+            },
+            {
+              "name": "tcp",
+              "message": "Task: Connect to an TCP agent",
+              "description": "Connect to an TCP agent and re-establish control of it",
+              "example": "link tcp 192.168.1.2 8888",
+              "args": [
+                "STRING <target>",
+                "INT <port>"
+              ]
             }
           ]
         },
@@ -699,6 +709,16 @@
               "args": [
                 "STRING <target>",
                 "STRING <pipename>"
+              ]
+            },
+            {
+              "name": "tcp",
+              "message": "Task: Connect to an TCP agent",
+              "description": "Connect to an TCP agent and re-establish control of it",
+              "example": "link tcp 192.168.1.2 8888",
+              "args": [
+                "STRING <target>",
+                "INT <port>"
               ]
             }
           ]

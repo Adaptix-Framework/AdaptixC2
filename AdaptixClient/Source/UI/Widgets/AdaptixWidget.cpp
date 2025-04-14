@@ -290,7 +290,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
 
             QByteArray uiData = QJsonDocument(uiObj).toJson();
             auto widgetBuilder = new WidgetBuilder( uiData );
-            if(widgetBuilder->GetError().isEmpty()) {
+            if( ! widgetBuilder->GetError().isEmpty() ) {
                 delete widgetBuilder;
                 widgetBuilder = nullptr;
             }

@@ -129,6 +129,9 @@
     <ClCompile Include="Pivotter.cpp">
       <Filter>Source\Commander</Filter>
     </ClCompile>
+    <ClCompile Include="ConnectorTCP.cpp">
+      <Filter>Source\Connectors</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -205,6 +208,9 @@
     </ClInclude>
     <ClInclude Include="Pivotter.h">
       <Filter>Headers\Commander</Filter>
+    </ClInclude>
+    <ClInclude Include="ConnectorTCP.h">
+      <Filter>Headers\Connectors</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
