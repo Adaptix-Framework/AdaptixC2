@@ -30,45 +30,6 @@ void Proxyfire::AddProxyData(ULONG channelId, SOCKET sock, ULONG waitTime, ULONG
 
 //////////
 
-WORD _htons(WORD hostshort) 
-{
-	return ((hostshort >> 8) & 0x00FF) | ((hostshort << 8) & 0xFF00);
-}
-
-ULONG _inet_addr(const char* ip) {
-	if (!ip) 
-		return 0xFFFFFFFF;
-
-	ULONG result = 0;
-	BYTE  octet  = 0;
-	ULONG dots   = 0;
-
-	while (*ip) {
-		if (*ip >= '0' && *ip <= '9') {
-			octet = octet * 10 + (*ip - '0');
-			if (octet > 255) 
-				return 0xFFFFFFFF;
-		}
-		else if (*ip == '.') {
-			result = (result << 8) | octet;
-			octet = 0;
-			dots++;
-			if (dots > 3) 
-				return 0xFFFFFFFF;
-		}
-		else {
-			return 0xFFFFFFFF;
-		}
-		ip++;
-	}
-
-	if (dots != 3) 
-		return 0xFFFFFFFF;
-
-	result = (result << 8) | octet;
-	return result;
-}
-
 SOCKET listenSocket(u_short port, int stream)
 {
 	WSAData WSAData;
@@ -348,27 +309,6 @@ void Proxyfire::CheckProxy(Packer* packer)
 	tunnelData = NULL;
 }
 
-ULONG RecvSocketData(SOCKET sock, char* buffer, int bufferSize)
-{
-	ULONG recvSize;
-	ULONG dwReaded = 0;
-	if (bufferSize <= 0)
-		return dwReaded;
-
-	while (1) {
-		recvSize = ApiWin->recv(sock, buffer, bufferSize - dwReaded, 0);
-		buffer += recvSize;
-		dwReaded += recvSize;
-		if (recvSize == -1)
-			break;
-		if ((int)dwReaded >= bufferSize)
-			return dwReaded;
-	}
-	ApiWin->shutdown(sock, 2);
-	ApiWin->closesocket(sock);
-	return 0xFFFFFFFF;
-}
-
 ULONG Proxyfire::RecvProxy(Packer* packer)
 {
 	ULONG count = 0;
@@ -407,7 +347,7 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 				else {
 					if (dataLength) {
 						LPVOID buffer = MemAllocLocal(dataLength);
-						ULONG readed = RecvSocketData(tunnelData->sock, (PCHAR)buffer, dataLength);
+						ULONG readed = ReadFromSocket(tunnelData->sock, (PCHAR)buffer, dataLength);
 						if (readed == -1) {
 							tunnelData->state = TUNNEL_STATE_CLOSE;
 							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, FALSE);

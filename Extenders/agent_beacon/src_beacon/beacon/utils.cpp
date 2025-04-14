@@ -96,17 +96,20 @@ int ReadFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize)
     return index;
 }
 
-int ReadDataFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize)
+int ReadDataFromPipe(HANDLE hPipe, LPVOID* buffer, ULONG* bufferSize)
 {
-    int dataLength = 0;
-    int dataSize = ReadFromPipe(hPipe, (BYTE*)&dataLength, 4);
+    ULONG dataLength = 0;
+    int dataSize = ReadFromPipe(hPipe, (PBYTE)&dataLength, 4);
     if (dataSize == -1 || dataSize != 4)
         return -1;
 
-    if (dataLength > bufferSize)
-        buffer = (BYTE*) ApiWin->LocalReAlloc(buffer, dataLength, 0);
+    if (dataLength == 0)
+        return 0;
 
-    return ReadFromPipe(hPipe, buffer, dataLength);
+    *bufferSize = dataLength;
+    *buffer = MemAllocLocal(dataLength);
+
+    return ReadFromPipe(hPipe, (PBYTE)*buffer, dataLength);
 }
 
 BOOL WriteToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize) 
@@ -133,6 +136,135 @@ BOOL WriteDataToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize)
 {
     if (WriteToPipe(hPipe, (BYTE*) &bufferSize, 4))
         return WriteToPipe(hPipe, buffer, bufferSize);
+    return FALSE;
+}
+
+
+//////////
+
+WORD _htons(WORD hostshort)
+{
+    return ((hostshort >> 8) & 0x00FF) | ((hostshort << 8) & 0xFF00);
+}
+
+ULONG _inet_addr(const char* ip)
+{
+    if (!ip)
+        return 0xFFFFFFFF;
+
+    ULONG result = 0;
+    BYTE  octet = 0;
+    ULONG dots = 0;
+
+    while (*ip) {
+        if (*ip >= '0' && *ip <= '9') {
+            octet = octet * 10 + (*ip - '0');
+            if (octet > 255)
+                return 0xFFFFFFFF;
+        }
+        else if (*ip == '.') {
+            result = (result << 8) | octet;
+            octet = 0;
+            dots++;
+            if (dots > 3)
+                return 0xFFFFFFFF;
+        }
+        else {
+            return 0xFFFFFFFF;
+        }
+        ip++;
+    }
+
+    if (dots != 3)
+        return 0xFFFFFFFF;
+
+    result = (result << 8) | octet;
+    return result;
+}
+
+BOOL PeekSocketTime(SOCKET sock, int waitTime)
+{
+    DWORD startTickCount = ApiWin->GetTickCount() + waitTime;
+    DWORD totalBytesAvail = 0;
+    while (1) {
+        if (ApiWin->ioctlsocket(sock, FIONREAD, &totalBytesAvail) == -1)
+            return 0;
+
+        if (totalBytesAvail)
+            break;
+
+        if (ApiWin->GetTickCount() >= startTickCount)
+            return 0;
+
+        ApiWin->Sleep(10);
+    }
+    return 1;
+}
+
+int ReadFromSocket(SOCKET sock, char* buffer, int bufferSize)
+{
+    ULONG recvSize;
+    ULONG dwReaded = 0;
+    if (bufferSize <= 0)
+        return dwReaded;
+
+    while (1) {
+        recvSize = ApiWin->recv(sock, buffer, bufferSize - dwReaded, 0);
+        if (recvSize == 0 || recvSize == -1)
+            break;
+
+        buffer += recvSize;
+        dwReaded += recvSize;
+
+        if ((int)dwReaded >= bufferSize)
+            return dwReaded;
+    }
+    ApiWin->shutdown(sock, 2);
+    ApiWin->closesocket(sock);
+    return 0xFFFFFFFF;
+}
+
+int ReadDataFromSocket(SOCKET sock, LPVOID* buffer, ULONG* bufferSize)
+{
+    ULONG dataLength = 0;
+    int dataSize = ReadFromSocket(sock, (PCHAR)&dataLength, 4);
+    if (dataSize == -1 || dataSize != 4)
+        return -1;
+
+    if (dataLength == 0)
+        return 0;
+    
+    *bufferSize = dataLength;
+    *buffer = MemAllocLocal(dataLength);
+
+    return ReadFromSocket(sock, (PCHAR)*buffer, dataLength);
+}
+
+BOOL WriteToSocket(SOCKET sock, BYTE* buffer, ULONG bufferSize)
+{
+    int index = 0;
+    int size;
+    DWORD NumberOfBytesWritten = 0;
+    while (1) {
+        size = bufferSize - index;
+        if (bufferSize - index > 0x1000)
+            size = 0x1000;
+
+        NumberOfBytesWritten = ApiWin->send(sock, (const char*)(buffer + index), size, 0);
+        if (NumberOfBytesWritten == -1) 
+            return FALSE;
+        
+        index += NumberOfBytesWritten;
+        if (index >= bufferSize)
+            break;
+    }
+    return TRUE;
+}
+
+BOOL WriteDataToSocket(SOCKET sock, BYTE* buffer, ULONG bufferSize)
+{
+    if (WriteToSocket(sock, (BYTE*)&bufferSize, 4))
+        return WriteToSocket(sock, buffer, bufferSize);
     return FALSE;
 }
 

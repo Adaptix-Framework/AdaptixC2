@@ -23,6 +23,11 @@ typedef struct {
 typedef struct {
 	BYTE* pipename;
 } ProfileSMB;
+
+typedef struct {
+	BYTE* prepend;
+	WORD  port;
+} ProfileTCP;
 #endif
 
 #define DECL_API(x) decltype(x) * x
