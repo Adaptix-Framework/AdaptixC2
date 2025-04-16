@@ -4,7 +4,7 @@
 
   "listener_name": "BeaconSMB",
   "listener_type": "internal",
-  "protocol": "smb",
+  "protocol": "bind_smb",
 
   "ui": {
     "layout": "glayout",

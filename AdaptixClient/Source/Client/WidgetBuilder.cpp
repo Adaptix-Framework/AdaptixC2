@@ -83,6 +83,19 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj, boo
                 boxLayout->addWidget(line);
             }
         }
+        else if (type == "vspacer" || type == "hspacer") {
+            auto spacer = new QSpacerItem(40, 20);
+            if (type == "vspacer")
+                spacer->changeSize(40, 20, QSizePolicy::Minimum, QSizePolicy::Expanding);
+            else
+                spacer->changeSize(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+            if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
+                gridLayout->addItem(spacer, row, col, rowSpan, colSpan);
+            } else if (auto boxLayout = qobject_cast<QBoxLayout*>(layout)) {
+                boxLayout->addItem(spacer);
+            }
+        }
         else if (type == "input") {
             auto lineEdit = new QLineEdit(widget);
 
