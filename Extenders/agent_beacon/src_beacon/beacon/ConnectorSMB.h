@@ -64,7 +64,7 @@ class ConnectorSMB
 	CHAR* pipename = NULL;
 
 	BYTE* recvData   = NULL;
-	DWORD recvSize   = 0;
+	int   recvSize   = 0;
 	ULONG allocaSize = 0;
 
 	SMBFUNC* functions = NULL;
@@ -82,6 +82,6 @@ public:
 
 	void  SendData(BYTE* data, ULONG data_size);
 	BYTE* RecvData();
-	DWORD RecvSize();
+	int RecvSize();
 	void  RecvClear();
 };

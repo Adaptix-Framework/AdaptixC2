@@ -257,7 +257,7 @@ BYTE* ConnectorHTTP::RecvData()
 		return NULL;
 }
 
-DWORD ConnectorHTTP::RecvSize()
+int ConnectorHTTP::RecvSize()
 {
 	if (this->recvSize < this->ans_size)
 		return 0;

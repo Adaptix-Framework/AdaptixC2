@@ -1312,6 +1312,9 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			if linkType == 1 {
 				task.Message = fmt.Sprintf("----- New SMB pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
 				ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, task.Message, "\n", true)
+			} else if linkType == 2 {
+				task.Message = fmt.Sprintf("----- New TCP pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
+				ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, task.Message, "\n", true)
 			}
 
 		case COMMAND_LS:
@@ -1647,6 +1650,9 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			if pivotType == 1 {
 				messageParent = fmt.Sprintf("SMB agent disconnected %s", childAgentId)
 				messageChild = fmt.Sprintf(" ----- SMB agent disconnected from [%s] ----- ", parentAgentId)
+			} else if pivotType == 2 {
+				messageParent = fmt.Sprintf("TCP agent %s connection reset", childAgentId)
+				messageChild = fmt.Sprintf(" ----- TCP agent connection reset ----- ")
 			} else if pivotType == 10 {
 				messageParent = fmt.Sprintf("Pivot agent %s connection reset", childAgentId)
 				messageChild = fmt.Sprintf(" ----- Pivot agent connection reset ----- ")

@@ -66,7 +66,7 @@ class ConnectorHTTP
 	ULONG  ans_pre_size   = 0;
 
 	BYTE* recvData = NULL;
-	DWORD recvSize = 0;
+	int   recvSize = 0;
 
 	HTTPFUNC* functions = NULL;
 
@@ -83,6 +83,6 @@ public:
 
 	void  SendData(BYTE* data, ULONG data_size);
 	BYTE* RecvData();
-	DWORD RecvSize();
+	int   RecvSize();
 	void  RecvClear();
 };

