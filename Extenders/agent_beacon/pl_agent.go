@@ -309,12 +309,14 @@ func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
 
 	packer := CreatePacker(initialData)
 
-	if false == packer.CheckPacker([]string{"int", "int", "word", "word", "byte", "word", "word", "int", "byte", "byte", "int", "byte", "array", "array", "array", "array", "array"}) {
+	if false == packer.CheckPacker([]string{"int", "int", "int", "int", "word", "word", "byte", "word", "word", "int", "byte", "byte", "int", "byte", "array", "array", "array", "array", "array"}) {
 		return agent, errors.New("error agent data")
 	}
 
 	agent.Sleep = packer.ParseInt32()
 	agent.Jitter = packer.ParseInt32()
+	agent.KillDate = int(packer.ParseInt32())
+	agent.WorkingTime = int(packer.ParseInt32())
 	agent.ACP = int(packer.ParseInt16())
 	agent.OemCP = int(packer.ParseInt16())
 	agent.GmtOffset = int(packer.ParseInt8())
@@ -707,13 +709,48 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 
 	case "profile":
 		if subcommand == "download.chunksize" {
-
 			size, ok := args["size"].(float64)
 			if !ok {
 				err = errors.New("parameter 'size' must be set")
 				goto RET
 			}
 			array = []interface{}{COMMAND_PROFILE, 2, int(size)}
+
+		} else if subcommand == "killdate" {
+			dt, ok := args["datetime"].(string)
+			if !ok {
+				err = errors.New("parameter 'datetime' must be set")
+				goto RET
+			}
+
+			killDate := 0
+			if dt != "0" {
+				t, err := time.Parse("02.01.2006 15:04:05", dt)
+				if err != nil {
+					err = errors.New("Invalid date format, use: 'DD.MM.YYYY hh:mm:ss'")
+					goto RET
+				} else {
+					killDate = int(t.Unix())
+					// KillDate = utils.EpochTimeToSystemTime(KillDate)
+				}
+			}
+			array = []interface{}{COMMAND_PROFILE, 3, killDate}
+
+		} else if subcommand == "workingtime" {
+			t, ok := args["time"].(string)
+			if !ok {
+				err = errors.New("parameter 'time' must be set")
+				goto RET
+			}
+
+			workingTime := 0
+			if t != "0" {
+				workingTime, err = parseStringToWorkingTime(t)
+				if err != nil {
+					goto RET
+				}
+			}
+			array = []interface{}{COMMAND_PROFILE, 4, workingTime}
 
 		} else {
 			err = errors.New("subcommand for 'profile' not found")
@@ -1423,11 +1460,8 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				if false == packer.CheckPacker([]string{"int", "int"}) {
 					return outTasks
 				}
-				sleep := packer.ParseInt32()
-				jitter := packer.ParseInt32()
-
-				agentData.Sleep = sleep
-				agentData.Jitter = jitter
+				agentData.Sleep = packer.ParseInt32()
+				agentData.Jitter = packer.ParseInt32()
 
 				task.Message = "Sleep time has been changed"
 
@@ -1439,6 +1473,32 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 				size := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Download chunk size set to %v bytes", size)
+
+			} else if subcommand == 3 {
+				if false == packer.CheckPacker([]string{"int"}) {
+					return outTasks
+				}
+				agentData.KillDate = int(packer.ParseInt32())
+
+				task.Message = "Option 'killdate' is set"
+				if agentData.KillDate == 0 {
+					task.Message = "The 'killdate' option is disabled"
+				}
+
+				_ = ts.TsAgentUpdateData(agentData)
+
+			} else if subcommand == 4 {
+				if false == packer.CheckPacker([]string{"int"}) {
+					return outTasks
+				}
+				agentData.WorkingTime = int(packer.ParseInt32())
+
+				task.Message = "Option 'workingtime' is set"
+				if agentData.WorkingTime == 0 {
+					task.Message = "The 'workingtime' option is disabled"
+				}
+
+				_ = ts.TsAgentUpdateData(agentData)
 			}
 
 		case COMMAND_PS_LIST:

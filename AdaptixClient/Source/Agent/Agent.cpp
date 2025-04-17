@@ -13,6 +13,8 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->data.ExternalIP   = jsonObjAgentData["a_external_ip"].toString();
     this->data.InternalIP   = jsonObjAgentData["a_internal_ip"].toString();
     this->data.GmtOffset    = jsonObjAgentData["a_gmt_offset"].toDouble();
+    this->data.WorkingTime  = jsonObjAgentData["a_workingtime"].toDouble();
+    this->data.KillDate     = jsonObjAgentData["a_killdate"].toDouble();
     this->data.Sleep        = jsonObjAgentData["a_sleep"].toDouble();
     this->data.Jitter       = jsonObjAgentData["a_jitter"].toDouble();
     this->data.Pid          = jsonObjAgentData["a_pid"].toString();
@@ -81,6 +83,24 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->item_Sleep    = new AgentTableWidgetItem( sleep, this );
     this->item_Pid      = new AgentTableWidgetItem( this->data.Pid, this );
 
+    if (this->data.WorkingTime || this->data.KillDate) {
+        QString toolTip = "";
+        if (this->data.WorkingTime) {
+            uint startH = ( this->data.WorkingTime >> 24 ) % 64;
+            uint startM = ( this->data.WorkingTime >> 16 ) % 64;
+            uint endH   = ( this->data.WorkingTime >>  8 ) % 64;
+            uint endM   = ( this->data.WorkingTime >>  0 ) % 64;
+
+            QChar c = QLatin1Char('0');
+            toolTip = QString("Work time: %1:%2 - %3:%4\n").arg(startH, 2, 10, c).arg(startM, 2, 10, c).arg(endH, 2, 10, c).arg(endM, 2, 10, c);
+        }
+        if (this->data.KillDate) {
+            QDateTime dateTime = QDateTime::fromSecsSinceEpoch(this->data.KillDate);
+            toolTip += QString("Kill date: %1").arg(dateTime.toString("dd.MM.yyyy hh:mm:ss"));
+        }
+        this->item_Sleep->setToolTip(toolTip);
+    }
+
     this->SetImage();
     this->graphImage = this->imageActive;
 
@@ -113,6 +133,8 @@ void Agent::Update(QJsonObject jsonObjAgentData)
 
     this->data.Sleep        = jsonObjAgentData["a_sleep"].toDouble();
     this->data.Jitter       = jsonObjAgentData["a_jitter"].toDouble();
+    this->data.WorkingTime  = jsonObjAgentData["a_workingtime"].toDouble();
+    this->data.KillDate     = jsonObjAgentData["a_killdate"].toDouble();
     this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
     this->data.Tags         = jsonObjAgentData["a_tags"].toString();
     this->data.Color        = jsonObjAgentData["a_color"].toString();
@@ -127,6 +149,24 @@ void Agent::Update(QJsonObject jsonObjAgentData)
         username += " [" + this->data.Impersonated + "]";
     this->item_Username->setText(username);
 
+    if (this->data.WorkingTime || this->data.KillDate) {
+        QString toolTip = "";
+        if (this->data.WorkingTime) {
+            uint startH = ( this->data.WorkingTime >> 24 ) % 64;
+            uint startM = ( this->data.WorkingTime >> 16 ) % 64;
+            uint endH   = ( this->data.WorkingTime >>  8 ) % 64;
+            uint endM   = ( this->data.WorkingTime >>  0 ) % 64;
+
+            QChar c = QLatin1Char('0');
+            toolTip = QString("Work time: %1:%2 - %3:%4\n").arg(startH, 2, 10, c).arg(startM, 2, 10, c).arg(endH, 2, 10, c).arg(endM, 2, 10, c);
+        }
+        if (this->data.KillDate) {
+            QDateTime dateTime = QDateTime::fromSecsSinceEpoch(this->data.KillDate);
+            toolTip += QString("Kill date: %1").arg(dateTime.toString("dd.MM.yyyy hh:mm:ss"));
+        }
+        this->item_Sleep->setToolTip(toolTip);
+    }
+
     if (this->data.Mark == mark) {
         if (old_Sleep != this->data.Sleep || old_Jitter != this->data.Jitter) {
             QString sleep = QString("%1 (%2%)").arg( FormatSecToStr(this->data.Sleep) ).arg(this->data.Jitter);
@@ -140,14 +180,9 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     }
     else {
         this->MarkItem(mark);
-
         if (mark == "Terminated") {
             adaptixWidget->SessionsGraphPage->RemoveAgent(this, true);
         }
-
-        // else if ( Reason == "Work time" ) {
-        //     session.WorkingTime  = (uint32_t) strtoul(Package->Body.Info["String"].c_str(), NULL, 0);
-        // }
     }
 }
 

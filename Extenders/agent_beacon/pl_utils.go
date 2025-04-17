@@ -1165,3 +1165,37 @@ func parseDurationToSeconds(input string) (int, error) {
 
 	return totalSeconds, nil
 }
+
+func parseStringToWorkingTime(WorkingTime string) (int, error) {
+	IntWorkingTime := 0
+	if WorkingTime != "" {
+		match, err := regexp.MatchString("^[12]?[0-9]:[0-6][0-9]-[12]?[0-9]:[0-6][0-9]$", WorkingTime)
+		if err != nil || match == false {
+			return IntWorkingTime, errors.New("Failed to parse working time: Invalid format")
+		}
+
+		startAndEnd := strings.Split(WorkingTime, "-")
+		startHourandMinutes := strings.Split(startAndEnd[0], ":")
+		endHourandMinutes := strings.Split(startAndEnd[1], ":")
+
+		startHour, _ := strconv.Atoi(startHourandMinutes[0])
+		startMin, _ := strconv.Atoi(startHourandMinutes[1])
+		endHour, _ := strconv.Atoi(endHourandMinutes[0])
+		endMin, _ := strconv.Atoi(endHourandMinutes[1])
+
+		if startHour < 0 || startHour > 24 || endHour < 0 || endHour > 24 || startMin < 0 || startMin > 60 || endMin < 0 || endMin > 60 {
+			return IntWorkingTime, errors.New("Failed to parse working time: Incorrectly defined time")
+		}
+
+		if endHour < startHour || (startHour == endHour && endMin <= startMin) {
+			return IntWorkingTime, errors.New("Failed to parse working time: The end hour cannot be earlier than the start hour")
+		}
+
+		IntWorkingTime |= startHour << 24
+		IntWorkingTime |= startMin << 16
+		IntWorkingTime |= endHour << 8
+		IntWorkingTime |= endMin << 0
+	}
+
+	return IntWorkingTime, nil
+}

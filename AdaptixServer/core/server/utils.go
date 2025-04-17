@@ -171,6 +171,8 @@ type SyncPackerAgentNew struct {
 	ExternalIP   string `json:"a_external_ip"`
 	InternalIP   string `json:"a_internal_ip"`
 	GmtOffset    int    `json:"a_gmt_offset"`
+	WorkingTime  int    `json:"a_workingtime"`
+	KillDate     int    `json:"a_killdate"`
 	Sleep        uint   `json:"a_sleep"`
 	Jitter       uint   `json:"a_jitter"`
 	Pid          string `json:"a_pid"`
@@ -196,6 +198,8 @@ type SyncPackerAgentUpdate struct {
 	Id           string `json:"a_id"`
 	Sleep        uint   `json:"a_sleep"`
 	Jitter       uint   `json:"a_jitter"`
+	WorkingTime  int    `json:"a_workingtime"`
+	KillDate     int    `json:"a_killdate"`
 	Impersonated string `json:"a_impersonated"`
 	Tags         string `json:"a_tags"`
 	Mark         string `json:"a_mark"`

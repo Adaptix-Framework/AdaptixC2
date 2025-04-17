@@ -398,6 +398,24 @@
               "args": [
                 "INT <size>"
               ]
+            },
+            {
+              "name": "killdate",
+              "message": "Task: set beacon's killdate",
+              "description": "Set the date and time for the beacon to stop working.",
+              "example": "profile killdate 28.02.2030 12:34:00",
+              "args": [
+                "STRING <datetime> { Datetime 'DD.MM.YYYY hh:mm:ss' in GMT format. Set 0 to disable the option}"
+              ]
+            },
+            {
+              "name": "workingtime",
+              "message": "Task: set beacon's workingtime",
+              "description": "Set the start and end time of the beacon activity",
+              "example": "profile workingtime 8:00-17:30",
+              "args": [
+                "STRING <time> {Time interval in the format 'HH:mm(start)-HH:mm(end)'. Set 0 to disable the option}"
+              ]
             }
           ]
         },
@@ -943,17 +961,17 @@
 
 
       "browsers": {
-        "file_browser": false,
-        "file_browser_disks": false,
-        "file_browser_download": false,
-        "file_browser_upload": false,
+        "file_browser": true,
+        "file_browser_disks": true,
+        "file_browser_download": true,
+        "file_browser_upload": true,
 
-        "process_browser": false,
+        "process_browser": true,
 
-        "downloads_state": false,
-        "tasks_job_kill": false,
+        "downloads_state": true,
+        "tasks_job_kill": true,
 
-        "sessions_menu_exit": false
+        "sessions_menu_exit": true
       }
 
     }

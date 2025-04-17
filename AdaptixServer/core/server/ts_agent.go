@@ -174,6 +174,8 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
 	agent, _ := value.(*Agent)
 	agent.Data.Sleep = newAgentData.Sleep
 	agent.Data.Jitter = newAgentData.Jitter
+	agent.Data.WorkingTime = newAgentData.WorkingTime
+	agent.Data.KillDate = newAgentData.KillDate
 
 	err := ts.DBMS.DbAgentUpdate(agent.Data)
 	if err != nil {
