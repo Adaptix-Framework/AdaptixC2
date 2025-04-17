@@ -45,13 +45,13 @@ func (dbms *DBMS) DbAgentInsert(agentData adaptix.AgentData) error {
 
 	insertQuery = `INSERT INTO Agents (Id, Crc, Name, SessionKey, Listener, Async, ExternalIP, InternalIP, GmtOffset, 
                        Sleep, Jitter, Pid, Tid, Arch, Elevated, Process, Os, OsDesc, Domain, Computer, Username, Impersonated,
-					   OemCP, ACP, CreateTime, LastTick, Tags, Mark, Color
-				   ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);`
+					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color
+				   ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);`
 	_, err = dbms.database.Exec(insertQuery,
 		agentData.Id, agentData.Crc, agentData.Name, agentData.SessionKey, agentData.Listener, agentData.Async, agentData.ExternalIP,
 		agentData.InternalIP, agentData.GmtOffset, agentData.Sleep, agentData.Jitter, agentData.Pid, agentData.Tid, agentData.Arch,
 		agentData.Elevated, agentData.Process, agentData.Os, agentData.OsDesc, agentData.Domain, agentData.Computer, agentData.Username,
-		agentData.Impersonated, agentData.OemCP, agentData.ACP, agentData.CreateTime, agentData.LastTick, agentData.Tags, agentData.Mark,
+		agentData.Impersonated, agentData.OemCP, agentData.ACP, agentData.CreateTime, agentData.LastTick, agentData.WorkingTime, agentData.KillDate, agentData.Tags, agentData.Mark,
 		agentData.Color,
 	)
 	return err
@@ -74,8 +74,10 @@ func (dbms *DBMS) DbAgentUpdate(agentData adaptix.AgentData) error {
 		return fmt.Errorf("agent %s does not exists", agentData.Id)
 	}
 
-	updateQuery = `UPDATE Agents SET Sleep = ?, Jitter = ?, Impersonated = ?, Tags = ?, Mark = ?, Color = ? WHERE Id = ?;`
-	_, err = dbms.database.Exec(updateQuery, agentData.Sleep, agentData.Jitter, agentData.Impersonated, agentData.Tags, agentData.Mark, agentData.Color, agentData.Id)
+	updateQuery = `UPDATE Agents SET Sleep = ?, Jitter = ?, Impersonated = ?, WorkingTime = ?, KillDate = ?, Tags = ?, Mark = ?, Color = ? WHERE Id = ?;`
+	_, err = dbms.database.Exec(updateQuery, agentData.Sleep, agentData.Jitter, agentData.Impersonated, agentData.WorkingTime, agentData.KillDate,
+		agentData.Tags, agentData.Mark, agentData.Color, agentData.Id,
+	)
 	return err
 }
 
@@ -135,7 +137,7 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 	if ok {
 		selectQuery = `SELECT Id, Crc, Name, SessionKey, Listener, Async, ExternalIP, InternalIP, GmtOffset, 
                        Sleep, Jitter, Pid, Tid, Arch, Elevated, Process, Os, OsDesc, Domain, Computer, Username, Impersonated,
-					   OemCP, ACP, CreateTime, LastTick, Tags, Mark, Color FROM Agents;`
+					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color FROM Agents;`
 		query, err := dbms.database.Query(selectQuery)
 		if err == nil {
 
@@ -145,7 +147,8 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 					&agentData.Async, &agentData.ExternalIP, &agentData.InternalIP, &agentData.GmtOffset, &agentData.Sleep,
 					&agentData.Jitter, &agentData.Pid, &agentData.Tid, &agentData.Arch, &agentData.Elevated, &agentData.Process,
 					&agentData.Os, &agentData.OsDesc, &agentData.Domain, &agentData.Computer, &agentData.Username, &agentData.Impersonated,
-					&agentData.OemCP, &agentData.ACP, &agentData.CreateTime, &agentData.LastTick, &agentData.Tags, &agentData.Mark, &agentData.Color,
+					&agentData.OemCP, &agentData.ACP, &agentData.CreateTime, &agentData.LastTick, &agentData.WorkingTime, &agentData.KillDate,
+					&agentData.Tags, &agentData.Mark, &agentData.Color,
 				)
 				if err != nil {
 					continue

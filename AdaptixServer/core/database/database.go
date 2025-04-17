@@ -88,6 +88,8 @@ func (dbms *DBMS) DatabaseInit() error {
     	"ACP" INTEGER,
     	"CreateTime" BIGINT,
     	"LastTick" INTEGER,
+    	"WorkingTime" INTEGER,	
+    	"KillDate" INTEGER,
     	"Tags" TEXT,
     	"Mark" TEXT,
     	"Color" TEXT
