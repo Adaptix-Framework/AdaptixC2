@@ -552,7 +552,7 @@ void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG subcommand = inPacker->Unpack32();
 
-	if (subcommand == 1) {
+	if (subcommand == 1) { // sleep time
 		ULONG sleep  = inPacker->Unpack32();
 		ULONG jitter = inPacker->Unpack32();
 		ULONG taskId = inPacker->Unpack32();
@@ -566,7 +566,7 @@ void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(agent->config->sleep_delay);
 		outPacker->Pack32(agent->config->jitter_delay);
 	} 
-	else if (subcommand == 2) {
+	else if (subcommand == 2) { // download chunks size
 		ULONG size   = inPacker->Unpack32();
 		ULONG taskId = inPacker->Unpack32();
 		
@@ -576,6 +576,28 @@ void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(COMMAND_PROFILE);
 		outPacker->Pack32(subcommand);
 		outPacker->Pack32(agent->downloader->chunkSize);
+	}
+	else if (subcommand == 3) { // killdate
+		ULONG kill_date = inPacker->Unpack32();
+		ULONG taskId    = inPacker->Unpack32();
+
+		agent->config->kill_date = kill_date;
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->kill_date);
+	}
+	else if (subcommand == 4) { // workingsize
+		ULONG workingtime = inPacker->Unpack32();
+		ULONG taskId      = inPacker->Unpack32();
+
+		agent->config->working_time = workingtime;
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->working_time);
 	}
 }
 

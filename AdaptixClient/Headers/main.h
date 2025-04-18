@@ -57,6 +57,7 @@
 #include <QGraphicsSceneContextMenuEvent>
 #include <QPainter>
 #include <QScrollBar>
+#include <QDateTimeEdit>
 
 
 #include <Utils/Logs.h>

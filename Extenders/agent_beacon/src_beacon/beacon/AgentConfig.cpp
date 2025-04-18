@@ -41,20 +41,30 @@ AgentConfig::AgentConfig()
 
 	this->listener_type = 0;
 
+	this->kill_date    = packer->Unpack32();
+	this->working_time = packer->Unpack32();
+	this->sleep_delay  = packer->Unpack32();
+	this->jitter_delay = packer->Unpack32();
+
 #elif defined(BEACON_SMB)
 
 	this->profile.pipename = packer->UnpackBytesCopy(&length);
-	this->listener_type = packer->Unpack32();
+	this->listener_type    = packer->Unpack32();
+	this->kill_date        = packer->Unpack32();
+	this->working_time     = 0;
+	this->sleep_delay      = 0;
+	this->jitter_delay     = 0;
 
 #elif defined(BEACON_TCP)
 	this->profile.prepend = packer->UnpackBytesCopy(&length);
 	this->profile.port    = packer->Unpack32();
 	this->listener_type   = packer->Unpack32();
+	this->kill_date       = packer->Unpack32();
+	this->working_time    = 0;
+	this->sleep_delay     = 0;
+	this->jitter_delay    = 0;
 
 #endif
-
-	this->sleep_delay  = packer->Unpack32();
-	this->jitter_delay = packer->Unpack32();
 
 	this->download_chunk_size = 0x19000;
 

@@ -729,10 +729,9 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 				if err != nil {
 					err = errors.New("Invalid date format, use: 'DD.MM.YYYY hh:mm:ss'")
 					goto RET
-				} else {
-					killDate = int(t.Unix())
-					// KillDate = utils.EpochTimeToSystemTime(KillDate)
 				}
+				killDate = int(t.Unix())
+				// KillDate = utils.EpochTimeToSystemTime(KillDate)
 			}
 			array = []interface{}{COMMAND_PROFILE, 3, killDate}
 
