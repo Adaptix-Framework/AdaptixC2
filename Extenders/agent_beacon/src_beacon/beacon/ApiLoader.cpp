@@ -76,6 +76,8 @@ BOOL ApiLoad()
 		ApiWin->GetOEMCP				= (decltype(GetOEMCP)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETOEMCP);
 		ApiWin->GetModuleBaseNameA		= (decltype(GetModuleBaseNameA)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_K32GETMODULEBASENAMEA);
 		ApiWin->GetModuleHandleA		= (decltype(GetModuleHandleA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETMODULEHANDLEA);
+		ApiWin->GetLocalTime			= (decltype(GetLocalTime)*)            GetSymbolAddress(hKernel32Module, HASH_FUNC_GETLOCALTIME);
+		ApiWin->GetSystemTimeAsFileTime = (decltype(GetSystemTimeAsFileTime)*) GetSymbolAddress(hKernel32Module, HASH_FUNC_GETSYSTEMTIMEASFILETIME);
 		ApiWin->GetProcAddress			= (decltype(GetProcAddress)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETPROCADDRESS);
 		ApiWin->GetTickCount			= (decltype(GetTickCount)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETTICKCOUNT);
 		ApiWin->GetTimeZoneInformation	= (decltype(GetTimeZoneInformation)*)  GetSymbolAddress(hKernel32Module, HASH_FUNC_GETTIMEZONEINFORMATION);

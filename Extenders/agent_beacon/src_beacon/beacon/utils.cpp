@@ -557,9 +557,6 @@ ULONG FileTimeToUnixTimestamp(FILETIME ft)
     uli.LowPart = ft.dwLowDateTime;
     uli.HighPart = ft.dwHighDateTime;
 
-    //const ULONG64 EPOCH_DIFFERENCE = 11644473600ULL;
-    //return (uli.QuadPart / 10000000ULL) - EPOCH_DIFFERENCE;
-
     const DWORD EPOCH_DIFFERENCE_LOW  = 0xD53E8000; 
     const DWORD EPOCH_DIFFERENCE_HIGH = 0x019DB1DE; 
 
@@ -572,8 +569,30 @@ ULONG FileTimeToUnixTimestamp(FILETIME ft)
         uli.HighPart -= EPOCH_DIFFERENCE_HIGH;
     }
 
-    ULONG seconds = (uli.HighPart * ((1ULL << 32) / 10000000)) + (uli.LowPart / 10000000);
-    return seconds;
+    DWORD quotient = 0;
+    DWORD remainder = 0;
+    for (int i = 63; i >= 0; i--) {
+        remainder <<= 1;
+        if (i >= 32) {
+            remainder |= (uli.HighPart >> (i - 32)) & 1;
+        }
+        else {
+            remainder |= (uli.LowPart >> i) & 1;
+        }
+
+        if (remainder >= 10000000) {
+            remainder -= 10000000;
+            quotient |= (1UL << i);
+        }
+    }
+    return quotient;
+}
+
+ULONG GetSystemTimeAsUnixTimestamp()
+{
+    FILETIME ft;
+    ApiWin->GetSystemTimeAsFileTime(&ft);
+    return FileTimeToUnixTimestamp(ft);
 }
 
 void ConvertUnicodeStringToChar(wchar_t* src, size_t srcSize, char* dst, size_t dstSize)

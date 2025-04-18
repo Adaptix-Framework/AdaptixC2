@@ -83,4 +83,6 @@ DWORD StrCmpLowW(WCHAR* str1, WCHAR* str2);
 
 ULONG FileTimeToUnixTimestamp(FILETIME ft);
 
+ULONG GetSystemTimeAsUnixTimestamp();
+
 void ConvertUnicodeStringToChar( wchar_t* src, size_t srcSize, char* dst, size_t dstSize);

@@ -31,5 +31,6 @@ public:
 
 	void  SetActive(BOOL state);
 	BOOL  IsActive();
+	ULONG GetWorkingSleep();
 	BYTE* BuildBeat(ULONG* size);
 };
