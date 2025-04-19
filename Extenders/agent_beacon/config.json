@@ -38,38 +38,70 @@
                 "position": [1, 1, 1, 2]
               },
               {
-                "type": "hline",
-                "position": [2, 0, 1, 3]
-              },
-              {
                 "type": "label",
                 "text": "Sleep (Jitter %):",
-                "position": [3, 0, 1, 1]
+                "position": [2, 0, 1, 1]
               },
               {
                 "type": "input",
                 "id": "sleep",
                 "placeholder": "1h 2m 5s",
                 "text": "4s",
-                "position": [3, 1, 1, 1]
+                "position": [2, 1, 1, 1]
               },
               {
                 "type": "spinbox",
                 "id": "jitter",
                 "min": 0,
                 "max": 100,
+                "position": [2, 2, 1, 1]
+              },
+              {
+                "type": "checkbox",
+                "text": "Set 'killdate'",
+                "id": "is_killdate",
+                "position": [3, 0, 1, 1]
+              },
+              {
+                "type": "date_input",
+                "id": "kill_date",
+                "format": "dd.MM.yyyy",
+                "position": [3, 1, 1, 1]
+              },
+              {
+                "type": "time_input",
+                "id": "kill_time",
+                "format": "HH:mm:ss",
                 "position": [3, 2, 1, 1]
+              },
+              {
+                "type": "checkbox",
+                "text": "Set 'workingtime'",
+                "id": "is_workingtime",
+                "position": [4, 0, 1, 1]
+              },
+              {
+                "type": "time_input",
+                "id": "start_time",
+                "format": "HH:mm",
+                "position": [4, 1, 1, 1]
+              },
+              {
+                "type": "time_input",
+                "id": "end_time",
+                "format": "HH:mm",
+                "position": [4, 2, 1, 1]
               },
               {
                 "type": "label",
                 "text": "Service Name:",
-                "position": [4, 0, 1, 1]
+                "position": [5, 0, 1, 1]
               },
               {
                 "type": "input",
                 "id": "svcname",
                 "text": "AgentService",
-                "position": [4, 1, 1, 2]
+                "position": [5, 1, 1, 2]
               }
             ]
           }
@@ -108,8 +140,22 @@
                 "position": [1, 1, 1, 2]
               },
               {
-                "type": "hline",
-                "position": [2, 0, 1, 3]
+                "type": "checkbox",
+                "text": "Set 'killdate'",
+                "id": "is_killdate",
+                "position": [2, 0, 1, 1]
+              },
+              {
+                "type": "date_input",
+                "id": "kill_date",
+                "format": "dd.MM.yyyy",
+                "position": [2, 1, 1, 1]
+              },
+              {
+                "type": "time_input",
+                "id": "kill_time",
+                "format": "HH:mm:ss",
+                "position": [2, 2, 1, 1]
               },
               {
                 "type": "label",
@@ -159,8 +205,22 @@
                 "position": [1, 1, 1, 2]
               },
               {
-                "type": "hline",
-                "position": [2, 0, 1, 3]
+                "type": "checkbox",
+                "text": "Set 'killdate'",
+                "id": "is_killdate",
+                "position": [2, 0, 1, 1]
+              },
+              {
+                "type": "date_input",
+                "id": "kill_date",
+                "format": "dd.MM.yyyy",
+                "position": [2, 1, 1, 1]
+              },
+              {
+                "type": "time_input",
+                "id": "kill_time",
+                "format": "HH:mm:ss",
+                "position": [2, 2, 1, 1]
               },
               {
                 "type": "label",

