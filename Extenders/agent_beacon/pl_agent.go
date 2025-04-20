@@ -1111,7 +1111,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				return outTasks
 			}
 			result := packer.ParseInt8()
-			var drives []adaptix.ListingDrivesData
+			var drives []adaptix.ListingDrivesDataWin
 
 			if result == 0 {
 				errorCode := packer.ParseInt32()
@@ -1125,7 +1125,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					if false == packer.CheckPacker([]string{"byte", "int"}) {
 						return outTasks
 					}
-					var driveData adaptix.ListingDrivesData
+					var driveData adaptix.ListingDrivesDataWin
 					driveCode := packer.ParseInt8()
 					driveType := packer.ParseInt32()
 
@@ -1384,7 +1384,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			}
 			result := packer.ParseInt8()
 
-			var items []adaptix.ListingFileData
+			var items []adaptix.ListingFileDataWin
 			var rootPath string
 
 			if result == 0 {
@@ -1408,15 +1408,15 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					task.Message = fmt.Sprintf("The '%s' directory is EMPTY", rootPath)
 				} else {
 
-					var folders []adaptix.ListingFileData
-					var files []adaptix.ListingFileData
+					var folders []adaptix.ListingFileDataWin
+					var files []adaptix.ListingFileDataWin
 
 					for i := 0; i < filesCount; i++ {
 						if false == packer.CheckPacker([]string{"byte", "long", "int", "array"}) {
 							return outTasks
 						}
 						isDir := packer.ParseInt8()
-						fileData := adaptix.ListingFileData{
+						fileData := adaptix.ListingFileDataWin{
 							IsDir:    false,
 							Size:     int64(packer.ParseInt64()),
 							Date:     int64(packer.ParseInt32()),
@@ -1532,7 +1532,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 			result := packer.ParseInt8()
 
-			var proclist []adaptix.ListingProcessData
+			var proclist []adaptix.ListingProcessDataWin
 
 			if result == 0 {
 				errorCode := packer.ParseInt32()
@@ -1554,7 +1554,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					if false == packer.CheckPacker([]string{"word", "word", "word", "byte", "byte", "array", "array", "array"}) {
 						return outTasks
 					}
-					procData := adaptix.ListingProcessData{
+					procData := adaptix.ListingProcessDataWin{
 						Pid:       uint(packer.ParseInt16()),
 						Ppid:      uint(packer.ParseInt16()),
 						SessionId: uint(packer.ParseInt16()),
