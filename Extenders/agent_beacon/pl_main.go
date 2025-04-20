@@ -322,7 +322,7 @@ func (m *ModuleExtender) AgentBrowserJobKill(jobId string) (adaptix.TaskData, er
 
 /// SYNC
 
-func SyncBrowserDisks(ts Teamserver, taskData adaptix.TaskData, drivesSlice []adaptix.ListingDrivesData) {
+func SyncBrowserDisks(ts Teamserver, taskData adaptix.TaskData, drivesSlice []adaptix.ListingDrivesDataWin) {
 	jsonDrives, err := json.Marshal(drivesSlice)
 	if err != nil {
 		return
@@ -331,7 +331,7 @@ func SyncBrowserDisks(ts Teamserver, taskData adaptix.TaskData, drivesSlice []ad
 	ts.TsClientGuiDisks(taskData, string(jsonDrives))
 }
 
-func SyncBrowserFiles(ts Teamserver, taskData adaptix.TaskData, path string, filesSlice []adaptix.ListingFileData) {
+func SyncBrowserFiles(ts Teamserver, taskData adaptix.TaskData, path string, filesSlice []adaptix.ListingFileDataWin) {
 	jsonDrives, err := json.Marshal(filesSlice)
 	if err != nil {
 		return
@@ -344,7 +344,7 @@ func SyncBrowserFilesStatus(ts Teamserver, taskData adaptix.TaskData) {
 	ts.TsClientGuiFilesStatus(taskData)
 }
 
-func SyncBrowserProcess(ts Teamserver, taskData adaptix.TaskData, processlist []adaptix.ListingProcessData) {
+func SyncBrowserProcess(ts Teamserver, taskData adaptix.TaskData, processlist []adaptix.ListingProcessDataWin) {
 	jsonProcess, err := json.Marshal(processlist)
 	if err != nil {
 		return

@@ -45,23 +45,34 @@ void BrowserProcessWidget::createUI()
     tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
     tableWidget->horizontalHeader()->setHighlightSections( false );
     tableWidget->verticalHeader()->setVisible( false );
-    tableWidget->setColumnCount(6);
-    tableWidget->setHorizontalHeaderItem(0, new QTableWidgetItem("Process ID"));
-    tableWidget->setHorizontalHeaderItem(1, new QTableWidgetItem("Process PPID"));
-    tableWidget->setHorizontalHeaderItem(2, new QTableWidgetItem("Arch"));
-    tableWidget->setHorizontalHeaderItem(3, new QTableWidgetItem("Session"));
-    tableWidget->setHorizontalHeaderItem(4, new QTableWidgetItem("Context"));
-    tableWidget->setHorizontalHeaderItem(5, new QTableWidgetItem("Process Name"));
+
+    if (this->agent->data.Os == OS_WINDOWS) {
+        tableWidget->setColumnCount(6);
+        tableWidget->setHorizontalHeaderItem(0, new QTableWidgetItem("PID"));
+        tableWidget->setHorizontalHeaderItem(1, new QTableWidgetItem("PPID"));
+        tableWidget->setHorizontalHeaderItem(2, new QTableWidgetItem("Arch"));
+        tableWidget->setHorizontalHeaderItem(3, new QTableWidgetItem("Session"));
+        tableWidget->setHorizontalHeaderItem(4, new QTableWidgetItem("Context"));
+        tableWidget->setHorizontalHeaderItem(5, new QTableWidgetItem("Process"));
+    }
+    else {
+        tableWidget->setColumnCount(5);
+        tableWidget->setHorizontalHeaderItem(0, new QTableWidgetItem("PID"));
+        tableWidget->setHorizontalHeaderItem(1, new QTableWidgetItem("PPID"));
+        tableWidget->setHorizontalHeaderItem(2, new QTableWidgetItem("TTY"));
+        tableWidget->setHorizontalHeaderItem(3, new QTableWidgetItem("Context"));
+        tableWidget->setHorizontalHeaderItem(4, new QTableWidgetItem("Process"));
+    }
 
     listGridLayout = new QGridLayout(this);
     listGridLayout->setContentsMargins(5, 4, 1, 1);
     listGridLayout->setVerticalSpacing(4);
     listGridLayout->setHorizontalSpacing(8);
 
-    listGridLayout->addWidget( buttonReload, 0, 0, 1, 1  );
-    listGridLayout->addWidget( inputFilter,  0, 1, 1, 5  );
-    listGridLayout->addWidget( line_1,       0, 6, 1, 1  );
-    listGridLayout->addWidget( statusLabel,  0, 7, 1, 1  );
+    listGridLayout->addWidget( buttonReload, 0, 0, 1, 1 );
+    listGridLayout->addWidget( inputFilter,  0, 1, 1, 5 );
+    listGridLayout->addWidget( line_1,       0, 6, 1, 1 );
+    listGridLayout->addWidget( statusLabel,  0, 7, 1, 1 );
     listGridLayout->addWidget( tableWidget,  1, 0, 1, 8 );
 
     listBrowserWidget = new QWidget(this);
@@ -108,32 +119,50 @@ void BrowserProcessWidget::SetProcess(int msgType, const QString &data) const
     if ( !jsonDoc.isArray() )
         return;
 
-    QMap<int, BrowserProcessData> processMap;
-
     QJsonArray jsonArray = jsonDoc.array();
-    for ( QJsonValue value : jsonArray ) {
-        QJsonObject jsonObject = value.toObject();
 
-        BrowserProcessData processData = {0};
-        processData.pid     = jsonObject["b_pid"].toDouble();
-        processData.ppid    = jsonObject["b_ppid"].toDouble();
-        processData.sessId  = jsonObject["b_session_id"].toDouble();
-        processData.arch    = jsonObject["b_arch"].toString();
-        processData.context = jsonObject["b_context"].toString();
-        processData.process = jsonObject["b_process_name"].toString();
+    if (agent->data.Os == OS_WINDOWS) {
+        QMap<int, BrowserProcessDataWin> processMap;
+        for ( QJsonValue value : jsonArray ) {
+            QJsonObject jsonObject = value.toObject();
 
-        processMap[processData.pid] = processData;
+            BrowserProcessDataWin processData = {0};
+            processData.pid     = jsonObject["b_pid"].toDouble();
+            processData.ppid    = jsonObject["b_ppid"].toDouble();
+            processData.sessId  = jsonObject["b_session_id"].toDouble();
+            processData.arch    = jsonObject["b_arch"].toString();
+            processData.context = jsonObject["b_context"].toString();
+            processData.process = jsonObject["b_process_name"].toString();
+
+            processMap[processData.pid] = processData;
+        }
+        this->setTableProcessDataWin(processMap);
+        this->setTreeProcessDataWin(processMap);
     }
+    else {
+        QMap<int, BrowserProcessDataUnix> processMap;
+        for ( QJsonValue value : jsonArray ) {
+            QJsonObject jsonObject = value.toObject();
 
-    this->setTableProcessData(processMap);
-    this->setTreeProcessData(processMap);
+            BrowserProcessDataUnix processData = {0};
+            processData.pid     = jsonObject["b_pid"].toDouble();
+            processData.ppid    = jsonObject["b_ppid"].toDouble();
+            processData.tty     = jsonObject["b_tty"].toString();
+            processData.context = jsonObject["b_context"].toString();
+            processData.process = jsonObject["b_process_name"].toString();
+
+            processMap[processData.pid] = processData;
+        }
+        this->setTableProcessDataUnix(processMap);
+        this->setTreeProcessDataUnix(processMap);
+    }
 
     this->onFilter(inputFilter->text());
 }
 
 /// PRIVATE
 
-void BrowserProcessWidget::setTableProcessData(QMap<int, BrowserProcessData> processMap) const
+void BrowserProcessWidget::setTableProcessDataWin(QMap<int, BrowserProcessDataWin> processMap) const
 {
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
@@ -181,6 +210,66 @@ void BrowserProcessWidget::setTableProcessData(QMap<int, BrowserProcessData> pro
         tableWidget->setItem(row, 4, item_Context);
         tableWidget->setItem(row, 5, item_Process);
 
+        tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+        tableWidget->verticalHeader()->setSectionResizeMode(row, QHeaderView::ResizeToContents);
+
+        row++;
+    }
+
+    tableWidget->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 4, QHeaderView::ResizeToContents );
+
+    tableWidget->setSortingEnabled( true );
+}
+
+void BrowserProcessWidget::setTableProcessDataUnix(QMap<int, BrowserProcessDataUnix> processMap) const
+{
+    for (int index = tableWidget->rowCount(); index > 0; index-- )
+        tableWidget->removeRow(index -1 );
+
+    tableWidget->setRowCount(processMap.size());
+    tableWidget->setSortingEnabled( false );
+
+    int row = 0;
+    for (auto item : processMap) {
+        auto item_Pid = new QTableWidgetItem( QString::number(item.pid) );
+        item_Pid->setTextAlignment( Qt::AlignCenter );
+        item_Pid->setFlags(item_Pid->flags() ^ Qt::ItemIsEditable);
+
+        auto item_Ppid = new QTableWidgetItem( QString::number(item.ppid) );
+        item_Ppid->setTextAlignment( Qt::AlignCenter );
+        item_Ppid->setFlags(item_Ppid->flags() ^ Qt::ItemIsEditable);
+
+        auto item_Tty = new QTableWidgetItem( item.tty );
+        item_Tty->setTextAlignment( Qt::AlignCenter );
+        item_Tty->setFlags(item_Tty->flags() ^ Qt::ItemIsEditable);
+
+        auto item_Context = new QTableWidgetItem( item.context );
+        item_Context->setFlags(item_Context->flags() ^ Qt::ItemIsEditable);
+
+        auto item_Process = new QTableWidgetItem( item.process );
+        item_Process->setFlags(item_Process->flags() ^ Qt::ItemIsEditable);
+
+        if ( agent->data.Pid == QString::number(item.pid) ) {
+            item_Pid->setForeground(QColor(COLOR_ChiliPepper));
+            item_Ppid->setForeground(QColor(COLOR_ChiliPepper));
+            item_Tty->setForeground(QColor(COLOR_ChiliPepper));
+            item_Context->setForeground(QColor(COLOR_ChiliPepper));
+            item_Process->setForeground(QColor(COLOR_ChiliPepper));
+        }
+
+        tableWidget->setItem(row, 0, item_Pid);
+        tableWidget->setItem(row, 1, item_Ppid);
+        tableWidget->setItem(row, 2, item_Tty);
+        tableWidget->setItem(row, 3, item_Context);
+        tableWidget->setItem(row, 4, item_Process);
+
+        tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+        tableWidget->verticalHeader()->setSectionResizeMode(row, QHeaderView::ResizeToContents);
+
         row++;
     }
 
@@ -192,24 +281,28 @@ void BrowserProcessWidget::setTableProcessData(QMap<int, BrowserProcessData> pro
     tableWidget->setSortingEnabled( true );
 }
 
-void BrowserProcessWidget::setTreeProcessData(QMap<int, BrowserProcessData> processMap) const
+void BrowserProcessWidget::setTreeProcessDataWin(QMap<int, BrowserProcessDataWin> processMap) const
 {
     treeBrowserWidget->clear();
 
     treeBrowserWidget->setColumnCount(3);
-    treeBrowserWidget->setHeaderLabels({"Process Name", "Process ID", "Context"});
+    treeBrowserWidget->setHeaderLabels({"Process", "Process ID", "Context"});
 
     QMap<int, QTreeWidgetItem*> nodeMap;
 
-    for (BrowserProcessData processData : processMap) {
-        if (processData.ppid == 0 || !processMap.contains(processData.ppid)) {
+    auto pids = processMap.keys();
+    for (int pid : pids) {
+        BrowserProcessDataWin processData = processMap[pid];
+        if (processData.ppid == 0 || !pids.contains(processData.ppid)) {
             QTreeWidgetItem* rootItem = new QTreeWidgetItem(treeBrowserWidget);
             rootItem->setText(0, processData.process);
             rootItem->setText(1, QString::number(processData.pid));
             rootItem->setText(2, processData.context);
 
+            processMap.remove(processData.pid);
+
             nodeMap[processData.pid] = rootItem;
-            addProcessToTree(rootItem, processData.pid, processMap, &nodeMap);
+            addProcessToTreeWin(rootItem, processData.pid, processMap, &nodeMap);
         }
     }
 
@@ -221,17 +314,73 @@ void BrowserProcessWidget::setTreeProcessData(QMap<int, BrowserProcessData> proc
     treeBrowserWidget->expandAll();
 }
 
-void BrowserProcessWidget::addProcessToTree(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessData> processMap, QMap<int, QTreeWidgetItem*> *nodeMap)
+void BrowserProcessWidget::addProcessToTreeWin(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessDataWin> processMap, QMap<int, QTreeWidgetItem*> *nodeMap)
 {
-    for (BrowserProcessData processData : processMap) {
+    auto pids = processMap.keys();
+    for (int pid : pids) {
+        BrowserProcessDataWin processData = processMap[pid];
         if (processData.ppid == parentPID) {
             QTreeWidgetItem* childItem = new QTreeWidgetItem(parent);
             childItem->setText(0, processData.process);
             childItem->setText(1, QString::number(processData.pid));
             childItem->setText(2, processData.context);
 
+            processMap.remove(processData.pid);
+
             (*nodeMap)[processData.pid] = childItem;
-            addProcessToTree(childItem, processData.pid, processMap, nodeMap);
+            addProcessToTreeWin(childItem, processData.pid, processMap, nodeMap);
+        }
+    }
+}
+
+void BrowserProcessWidget::setTreeProcessDataUnix(QMap<int, BrowserProcessDataUnix> processMap) const
+{
+    treeBrowserWidget->clear();
+
+    treeBrowserWidget->setColumnCount(3);
+    treeBrowserWidget->setHeaderLabels({"Process", "Process ID", "Context"});
+
+    QMap<int, QTreeWidgetItem*> nodeMap;
+
+    auto pids = processMap.keys();
+    for (int pid : pids) {
+        BrowserProcessDataUnix processData = processMap[pid];
+        if (processData.ppid == 0 || !pids.contains(processData.ppid)) {
+            QTreeWidgetItem* rootItem = new QTreeWidgetItem(treeBrowserWidget);
+            rootItem->setText(0, processData.process);
+            rootItem->setText(1, QString::number(processData.pid));
+            rootItem->setText(2, processData.context);
+
+            processMap.remove(processData.pid);
+
+            nodeMap[processData.pid] = rootItem;
+            addProcessToTreeUnix(rootItem, processData.pid, processMap, &nodeMap);
+        }
+    }
+
+    treeBrowserWidget->header()->setStretchLastSection(false);
+    treeBrowserWidget->header()->setSectionResizeMode( 0, QHeaderView::Stretch );
+    treeBrowserWidget->header()->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
+    treeBrowserWidget->header()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
+
+    treeBrowserWidget->expandAll();
+}
+
+void BrowserProcessWidget::addProcessToTreeUnix(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessDataUnix> processMap, QMap<int, QTreeWidgetItem*> *nodeMap)
+{
+    auto pids = processMap.keys();
+    for (int pid : pids) {
+        BrowserProcessDataUnix processData = processMap[pid];
+        if (processData.ppid == parentPID) {
+            QTreeWidgetItem* childItem = new QTreeWidgetItem(parent);
+            childItem->setText(0, processData.process);
+            childItem->setText(1, QString::number(processData.pid));
+            childItem->setText(2, processData.context);
+
+            processMap.remove(processData.pid);
+
+            (*nodeMap)[processData.pid] = childItem;
+            addProcessToTreeUnix(childItem, processData.pid, processMap, nodeMap);
         }
     }
 }
@@ -299,9 +448,7 @@ void BrowserProcessWidget::handleTableMenu(const QPoint &pos)
         return;
 
     auto ctxMenu = QMenu();
-
     ctxMenu.addAction( "Copy PID", this, &BrowserProcessWidget::actionCopyPid);
-
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }
 
