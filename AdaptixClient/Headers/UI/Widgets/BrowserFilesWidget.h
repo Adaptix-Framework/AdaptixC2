@@ -15,6 +15,9 @@ public:
     QString Name;
     QString Size;
     QString Modified;
+    QString Mode;
+    QString User;
+    QString Group;
     QString Status;
     QVector<BrowserFileData*> Files;
 
@@ -25,7 +28,7 @@ public:
 
     void SetType(int type);
     void SetStored(bool stored);
-    void CreateBrowserFileData(const QString &path, int type );
+    void CreateBrowserFileData(const QString &path, int os );
 };
 
 class FileBrowserTreeItem : public QTreeWidgetItem
@@ -68,7 +71,7 @@ class BrowserFilesWidget : public QWidget
     void setStoredFileData(const QString &path, const BrowserFileData &currenFileData);
     void updateFileData(BrowserFileData* currenFileData, const QString &path, QJsonArray jsonArray);
     void tableShowItems(QVector<BrowserFileData*> files ) const;
-    void cdBroser(const QString &path);
+    void cdBrowser(const QString &path);
 
     BrowserFileData  createFileData(const QString &path) const;
     BrowserFileData* getFileData(const QString &path);
@@ -77,7 +80,7 @@ public:
     BrowserFilesWidget(Agent* a);
     ~BrowserFilesWidget() override;
 
-    void SetDisks(qint64 time, int msgType, const QString &message, const QString &data);
+    void SetDisksWin(qint64 time, int msgType, const QString &message, const QString &data);
     void AddFiles(qint64 time, int msgType, const QString &message, const QString &path, const QString &data);
     void SetStatus(qint64 time, int msgType, const QString &message) const;
 
