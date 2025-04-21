@@ -554,7 +554,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         if (AgentsMap.contains(agentId) ) {
             auto agent = AgentsMap[agentId];
             if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
-                agent->FileBrowser->SetDisks(time, msgType, message, data);
+                agent->FileBrowser->SetDisksWin(time, msgType, message, data);
         }
         return;
     }
