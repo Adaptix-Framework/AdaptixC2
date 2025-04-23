@@ -180,7 +180,7 @@ func (ts *Teamserver) TsClientGuiFiles(taskData adaptix.TaskData, path string, j
 		taskData.Message = "Status: OK"
 	}
 
-	for len(path) > 0 && (strings.HasSuffix(path, "\\") || strings.HasSuffix(path, "/")) {
+	for len(path) > 0 && (strings.HasSuffix(path, "\\") || (path != "/" && strings.HasSuffix(path, "/"))) {
 		path = path[:len(path)-1]
 	}
 
