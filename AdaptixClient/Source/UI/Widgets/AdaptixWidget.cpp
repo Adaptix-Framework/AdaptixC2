@@ -13,6 +13,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     SessionsGraphPage = new SessionsGraph(this);
     TunnelsTab        = new TunnelsWidget(this);
     DownloadsTab      = new DownloadsWidget(this);
+    ScreenshotsTab    = new ScreenshotsWidget(this);
     TasksTab          = new TasksWidget(this);
 
     mainStackedWidget->addWidget(SessionsTablePage);
@@ -37,13 +38,13 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( tasksButton,     &QPushButton::clicked, this, &AdaptixWidget::SetTasksUI);
     connect( tunnelButton,    &QPushButton::clicked, this, &AdaptixWidget::LoadTunnelsUI);
     connect( downloadsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
+    connect( screensButton,   &QPushButton::clicked, this, &AdaptixWidget::LoadScreenshotsUI);
     connect( reconnectButton, &QPushButton::clicked, this, &AdaptixWidget::OnReconnect);
 
     connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
 
     connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
 
-    // connect( ChannelThread,   &QThread::started,              ChannelWsWorker, &WebSocketWorker::run );
     connect( ChannelWsWorker, &WebSocketWorker::received_data,    this, &AdaptixWidget::DataHandler );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, &AdaptixWidget::ChannelClose );
 
@@ -53,11 +54,9 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     TickThread->start();
     ChannelThread->start();
 
-    // TODO: Enable menu button
-    line_2->setVisible(false);
+    /// TODO: Enable menu button
     targetsButton->setVisible(false);
     credsButton->setVisible(false);
-    screensButton->setVisible(false);
     keysButton->setVisible(false);
 
     HttpReqSync( *profile );
@@ -158,10 +157,10 @@ void AdaptixWidget::createUI()
     topHLayout->addWidget(sessionsButton);
     topHLayout->addWidget(graphButton);
     topHLayout->addWidget(targetsButton);
-    topHLayout->addWidget(line_2);
     topHLayout->addWidget(tasksButton);
-    topHLayout->addWidget(line_3);
+    topHLayout->addWidget(line_2);
     topHLayout->addWidget(tunnelButton);
+    topHLayout->addWidget(line_3);
     topHLayout->addWidget(downloadsButton);
     topHLayout->addWidget(credsButton);
     topHLayout->addWidget(screensButton);
@@ -305,6 +304,7 @@ void AdaptixWidget::ClearAdaptix()
 {
     LogsTab->Clear();
     DownloadsTab->Clear();
+    ScreenshotsTab->Clear();
     TasksTab->Clear();
     ListenersTab->Clear();
     SessionsGraphPage->Clear();
@@ -528,6 +528,11 @@ void AdaptixWidget::LoadTunnelsUI() const
 void AdaptixWidget::LoadDownloadsUI() const
 {
     this->AddTab(DownloadsTab, "Downloads", ":/icons/downloads");
+}
+
+void AdaptixWidget::LoadScreenshotsUI() const
+{
+    this->AddTab(ScreenshotsTab, "Screenshots", ":/icons/picture");
 }
 
 void AdaptixWidget::LoadTasksOutput() const

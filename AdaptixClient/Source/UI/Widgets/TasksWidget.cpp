@@ -43,7 +43,6 @@ void TaskOutputWidget::SetConten(const QString &message, const QString &text) co
         outputTextEdit->setText( TrimmedEnds(text) );
 }
 
-
 TasksWidget::TasksWidget( QWidget* w )
 {
     this->mainWidget = w;
@@ -54,12 +53,11 @@ TasksWidget::TasksWidget( QWidget* w )
     connect(tableWidget,  &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
 
     connect(tableWidget->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &TasksWidget::onTableItemSelection);
-    // connect(tableWidget,  &QTableWidget::itemSelectionChanged,       this, &TasksWidget::onTableItemSelection);
-    connect(tableWidget,  &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
-    connect(comboAgent,   &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
-    connect(comboStatus,  &QComboBox::currentTextChanged,            this, &TasksWidget::onAgentChange);
-    connect(inputFilter,  &QLineEdit::textChanged,                   this, &TasksWidget::onAgentChange);
-    connect(hideButton,   &ClickableLabel::clicked,                  this, &TasksWidget::toggleSearchPanel);
+    connect(tableWidget, &QTableWidget::itemSelectionChanged, this, [this](){tableWidget->setFocus();});
+    connect(comboAgent,  &QComboBox::currentTextChanged,      this, &TasksWidget::onAgentChange);
+    connect(comboStatus, &QComboBox::currentTextChanged,      this, &TasksWidget::onAgentChange);
+    connect(inputFilter, &QLineEdit::textChanged,             this, &TasksWidget::onAgentChange);
+    connect(hideButton,  &ClickableLabel::clicked,            this, &TasksWidget::toggleSearchPanel);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -396,7 +394,8 @@ void TasksWidget::onTableItemSelection(const QModelIndex &current, const QModelI
     adaptixWidget->LoadTasksOutput();
 }
 
-void TasksWidget::onAgentChange(QString agentId) const {
+void TasksWidget::onAgentChange(QString agentId) const
+{
     this->SetData();
 }
 

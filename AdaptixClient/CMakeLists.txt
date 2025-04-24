@@ -71,6 +71,7 @@ SET( HEADERS
         Headers/UI/Graph/GraphItemLink.h
         Headers/UI/Graph/GraphScene.h
         Headers/UI/Graph/LayoutTreeLeft.h
+        Headers/UI/Widgets/ScreenshotsWidget.h
 )
 
 add_executable(AdaptixClient
@@ -121,6 +122,7 @@ add_executable(AdaptixClient
         Source/UI/Graph/GraphItemLink.cpp
         Source/UI/Graph/GraphScene.cpp
         Source/UI/Graph/LayoutTreeLeft.cpp
+        Source/UI/Widgets/ScreenshotsWidget.cpp
 )
 
 if(UNIX)

@@ -10,6 +10,7 @@
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Widgets/DownloadsWidget.h>
+#include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
 #include <Client/WidgetBuilder.h>
@@ -81,6 +82,7 @@ public:
     SessionsGraph*       SessionsGraphPage = nullptr;
     TunnelsWidget*       TunnelsTab        = nullptr;
     DownloadsWidget*     DownloadsTab      = nullptr;
+    ScreenshotsWidget*   ScreenshotsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
     QMap<QString, QMap<QString, Commander*>> Commanders;    // agentName -> ( handlerId -> commander)
@@ -90,6 +92,7 @@ public:
     QVector<ListenerData>         Listeners;
     QVector<TunnelData>           Tunnels;
     QMap<QString, DownloadData>   Downloads;
+    QMap<QString, ScreenData>     Screenshots;
     QMap<QString, PivotData>      Pivots;
     QVector<QString>              TasksVector;
     QMap<QString, Task*>          TasksMap;
@@ -127,6 +130,7 @@ public slots:
     void LoadListenersUI() const;
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;
+    void LoadScreenshotsUI() const;
     void LoadTasksOutput() const;
     void OnReconnect();
     void LoadConsoleUI(const QString &AgentId);

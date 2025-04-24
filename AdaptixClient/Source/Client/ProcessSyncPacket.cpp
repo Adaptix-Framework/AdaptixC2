@@ -210,6 +210,25 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
+    if( spType == TYPE_SCREEN_CREATE ) {
+        if (!jsonObj.contains("s_screen_id") || !jsonObj["s_screen_id"].isString()) return false;
+        if (!jsonObj.contains("s_user")      || !jsonObj["s_user"].isString())      return false;
+        if (!jsonObj.contains("s_computer")  || !jsonObj["s_computer"].isString())  return false;
+        if (!jsonObj.contains("s_note")      || !jsonObj["s_note"].isString())      return false;
+        if (!jsonObj.contains("s_date")      || !jsonObj["s_date"].isDouble())      return false;
+        if (!jsonObj.contains("s_content")   || !jsonObj["s_content"].isString())   return false;
+        return true;
+    }
+    if( spType == TYPE_SCREEN_UPDATE ) {
+        if (!jsonObj.contains("s_screen_id") || !jsonObj["s_screen_id"].isString()) return false;
+        if (!jsonObj.contains("s_note")      || !jsonObj["s_note"].isString())      return false;
+        return true;
+    }
+    if( spType == TYPE_SCREEN_DELETE ) {
+        if (!jsonObj.contains("s_screen_id") || !jsonObj["s_screen_id"].isString()) return false;
+        return true;
+    }
+
     if( spType == TYPE_BROWSER_DISKS ) {
         if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) return false;
         if (!jsonObj.contains("b_time")     || !jsonObj["b_time"].isDouble())     return false;
@@ -489,7 +508,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         int state      = jsonObj["d_state"].toDouble();
 
         DownloadsTab->EditDownloadItem(fileId, recvSize, state);
-
         return;
     }
     if( spType == TYPE_DOWNLOAD_DELETE )
@@ -497,7 +515,34 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString fileId = jsonObj["d_file_id"].toString();
 
         DownloadsTab->RemoveDownloadItem(fileId);
+        return;
+    }
 
+    if( spType == TYPE_SCREEN_CREATE )
+    {
+        ScreenData newScreen = {};
+        newScreen.ScreenId = jsonObj["s_screen_id"].toString();
+        newScreen.User     = jsonObj["s_user"].toString();
+        newScreen.Computer = jsonObj["s_computer"].toString();
+        newScreen.Note     = jsonObj["s_note"].toString();
+        newScreen.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["s_date"].toDouble()));
+        newScreen.Content  = QByteArray::fromBase64(jsonObj["s_content"].toString().toUtf8());
+
+        ScreenshotsTab->AddScreenshotItem(newScreen);
+        return;
+    }
+    if( spType == TYPE_SCREEN_UPDATE )
+    {
+        QString screenId = jsonObj["s_screen_id"].toString();
+        QString note     = jsonObj["s_note"].toString();
+
+        ScreenshotsTab->EditScreenshotItem(screenId, note);
+        return;
+    }
+    if( spType == TYPE_SCREEN_DELETE )
+    {
+        QString screenId = jsonObj["s_screen_id"].toString();
+        ScreenshotsTab->RemoveScreenshotItem(screenId);
         return;
     }
 
