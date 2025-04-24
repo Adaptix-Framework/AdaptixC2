@@ -115,6 +115,10 @@
 #define TYPE_TUNNEL_EDIT   0x58
 #define TYPE_TUNNEL_DELETE 0x59
 
+#define TYPE_SCREEN_CREATE 0x5b
+#define TYPE_SCREEN_UPDATE 0x5c
+#define TYPE_SCREEN_DELETE 0x5d
+
 #define TYPE_BROWSER_DISKS   0x61
 #define TYPE_BROWSER_FILES   0x62
 #define TYPE_BROWSER_STATUS  0x63
@@ -235,6 +239,16 @@ typedef struct DownloadData
     int     State;
     QString Date;
 } DownloadData;
+
+typedef struct ScreenData
+{
+    QString    ScreenId;
+    QString    User;
+    QString    Computer;
+    QString    Date;
+    QString    Note;
+    QByteArray Content;
+} ScreenData;
 
 typedef struct TunnelData
 {

@@ -62,4 +62,10 @@ bool HttpReqTunnelStop(const QString &tunnelId, AuthProfile profile, QString* me
 
 bool HttpReqTunnelSetInfo(const QString &tunnelId, const QString &info, AuthProfile profile, QString* message, bool* ok );
 
+/// SCREEN
+
+bool HttpReqScreenSetNote( QStringList scrensId, const QString &note, AuthProfile profile, QString* message, bool* ok );
+
+bool HttpReqScreenRemove( QStringList scrensId, AuthProfile profile, QString* message, bool* ok );
+
 #endif //ADAPTIXCLIENT_REQUESTOR_H
