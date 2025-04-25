@@ -27,13 +27,7 @@ func (dbms *DBMS) DbListenerExist(listenerName string) bool {
 }
 
 func (dbms *DBMS) DbListenerInsert(listenerData adaptix.ListenerData, customData []byte) error {
-	var (
-		ok          bool
-		err         error
-		insertQuery string
-	)
-
-	ok = dbms.DatabaseExists()
+	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database not exists")
 	}
@@ -43,20 +37,14 @@ func (dbms *DBMS) DbListenerInsert(listenerData adaptix.ListenerData, customData
 		return fmt.Errorf("listener %s alredy exists", listenerData.Name)
 	}
 
-	insertQuery = `INSERT INTO Listeners (ListenerName, ListenerType, ListenerConfig, Watermark, CustomData) values(?,?,?,?,?);`
-	_, err = dbms.database.Exec(insertQuery, listenerData.Name, listenerData.Type, listenerData.Data, listenerData.Watermark, customData)
+	insertQuery := `INSERT INTO Listeners (ListenerName, ListenerType, ListenerConfig, Watermark, CustomData) values(?,?,?,?,?);`
+	_, err := dbms.database.Exec(insertQuery, listenerData.Name, listenerData.Type, listenerData.Data, listenerData.Watermark, customData)
 
 	return err
 }
 
 func (dbms *DBMS) DbListenerDelete(listenerName string) error {
-	var (
-		ok          bool
-		err         error
-		deleteQuery string
-	)
-
-	ok = dbms.DatabaseExists()
+	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database not exists")
 	}
@@ -66,20 +54,14 @@ func (dbms *DBMS) DbListenerDelete(listenerName string) error {
 		return fmt.Errorf("listener %s not exists", listenerName)
 	}
 
-	deleteQuery = `DELETE FROM Listeners WHERE ListenerName = ?;`
-	_, err = dbms.database.Exec(deleteQuery, listenerName)
+	deleteQuery := `DELETE FROM Listeners WHERE ListenerName = ?;`
+	_, err := dbms.database.Exec(deleteQuery, listenerName)
 
 	return err
 }
 
 func (dbms *DBMS) DbListenerUpdate(listenerName string, listenerConfig string, customData []byte) error {
-	var (
-		ok          bool
-		err         error
-		updateQuery string
-	)
-
-	ok = dbms.DatabaseExists()
+	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database not exists")
 	}
@@ -89,8 +71,8 @@ func (dbms *DBMS) DbListenerUpdate(listenerName string, listenerConfig string, c
 		return fmt.Errorf("listener %s not exists", listenerName)
 	}
 
-	updateQuery = `UPDATE Listeners SET ListenerConfig = ?, CustomData = ? WHERE ListenerName = ?;`
-	_, err = dbms.database.Exec(updateQuery, listenerConfig, customData, listenerName)
+	updateQuery := `UPDATE Listeners SET ListenerConfig = ?, CustomData = ? WHERE ListenerName = ?;`
+	_, err := dbms.database.Exec(updateQuery, listenerConfig, customData, listenerName)
 
 	return err
 }
@@ -104,15 +86,11 @@ type ListenerRow struct {
 }
 
 func (dbms *DBMS) DbListenerAll() []ListenerRow {
-	var (
-		listeners   []ListenerRow
-		ok          bool
-		selectQuery string
-	)
+	var listeners []ListenerRow
 
-	ok = dbms.DatabaseExists()
+	ok := dbms.DatabaseExists()
 	if ok {
-		selectQuery = `SELECT ListenerName, ListenerType, ListenerConfig, Watermark, CustomData FROM Listeners;`
+		selectQuery := `SELECT ListenerName, ListenerType, ListenerConfig, Watermark, CustomData FROM Listeners;`
 		query, err := dbms.database.Query(selectQuery)
 		if err == nil {
 

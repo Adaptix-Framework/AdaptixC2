@@ -67,6 +67,7 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	packets = append(packets, ts.TsPresyncListeners()...)
 	packets = append(packets, ts.TsPresyncAgents()...)
 	packets = append(packets, ts.TsPresyncDownloads()...)
+	packets = append(packets, ts.TsPresyncScreenshots()...)
 	packets = append(packets, ts.TsPresyncTunnels()...)
 	packets = append(packets, ts.TsPresyncEvents()...)
 	packets = append(packets, ts.TsPresyncPivots()...)
@@ -188,6 +189,25 @@ func (ts *Teamserver) TsPresyncDownloads() []interface{} {
 		packets = append(packets, d1, d2)
 		return true
 	})
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
+	var sortedScreens []adaptix.ScreenData
+	ts.screenshots.ForEach(func(key string, value interface{}) bool {
+		screenData := value.(adaptix.ScreenData)
+		index := sort.Search(len(sortedScreens), func(i int) bool {
+			return sortedScreens[i].Date > screenData.Date
+		})
+		sortedScreens = append(sortedScreens[:index], append([]adaptix.ScreenData{screenData}, sortedScreens[index:]...)...)
+		return true
+	})
+
+	var packets []interface{}
+	for _, screenData := range sortedScreens {
+		t := CreateSpScreenshotCreate(screenData)
+		packets = append(packets, t)
+	}
 	return packets
 }
 

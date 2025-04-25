@@ -8,6 +8,17 @@ import (
 	"time"
 )
 
+func (ts *Teamserver) TsTaskRunningExists(agentId string, taskId string) bool {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
+		return false
+	}
+	agent, _ := value.(*Agent)
+
+	return agent.RunningTasks.Contains(taskId)
+}
+
 func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData) {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
