@@ -1,6 +1,14 @@
 package tformat
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+	_ "golang.org/x/image/bmp"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+)
 
 const (
 	Reset = "\033[0m"
@@ -42,4 +50,13 @@ func SizeBytesToFormat(bytes uint64) string {
 		return fmt.Sprintf("%v bytes", size)
 
 	}
+}
+
+func DetectImageFormat(data []byte) (string, error) {
+	reader := bytes.NewReader(data)
+	_, format, err := image.Decode(reader)
+	if err != nil {
+		return "", err
+	}
+	return format, nil
 }

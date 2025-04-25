@@ -48,6 +48,10 @@ const (
 	TYPE_TUNNEL_EDIT   = 0x58
 	TYPE_TUNNEL_DELETE = 0x59
 
+	TYPE_SCREEN_CREATE = 0x5b
+	TYPE_SCREEN_UPDATE = 0x5c
+	TYPE_SCREEN_DELETE = 0x5d
+
 	TYPE_BROWSER_DISKS        = 0x61
 	TYPE_BROWSER_FILES        = 0x62
 	TYPE_BROWSER_FILES_STATUS = 0x63
@@ -353,6 +357,38 @@ func CreateSpDownloadDelete(fileId string) SyncPackerDownloadDelete {
 		SpType: TYPE_DOWNLOAD_DELETE,
 
 		FileId: fileId,
+	}
+}
+
+/// SCREEN
+
+func CreateSpScreenshotCreate(screenData adaptix.ScreenData) SyncPackerScreenshotCreate {
+	return SyncPackerScreenshotCreate{
+		SpType: TYPE_SCREEN_CREATE,
+
+		ScreenId: screenData.ScreenId,
+		User:     screenData.User,
+		Computer: screenData.Computer,
+		Note:     screenData.Note,
+		Date:     screenData.Date,
+		Content:  screenData.Content,
+	}
+}
+
+func CreateSpScreenshotUpdate(screenId string, note string) SyncPackerScreenshotUpdate {
+	return SyncPackerScreenshotUpdate{
+		SpType: TYPE_SCREEN_UPDATE,
+
+		ScreenId: screenId,
+		Note:     note,
+	}
+}
+
+func CreateSpScreenshotDelete(screenId string) SyncPackerScreenshotDelete {
+	return SyncPackerScreenshotDelete{
+		SpType: TYPE_SCREEN_DELETE,
+
+		ScreenId: screenId,
 	}
 }
 

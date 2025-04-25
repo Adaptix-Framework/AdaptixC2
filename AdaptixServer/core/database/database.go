@@ -61,6 +61,16 @@ func (dbms *DBMS) DatabaseInit() error {
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Screenshots" (
+    	"ScreenId" TEXT NOT NULL UNIQUE, 
+    	"User" TEXT NOT NULL,
+    	"Computer" TEXT NOT NULL,
+    	"LocalPath" TEXT NOT NULL,
+    	"Note" TEXT,
+    	"Date" BIGINT
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Agents" (
     	"Id" TEXT NOT NULL UNIQUE, 
     	"Crc" TEXT NOT NULL,

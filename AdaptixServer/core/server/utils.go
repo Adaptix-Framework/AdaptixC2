@@ -53,13 +53,14 @@ type Teamserver struct {
 	wm_agent_types map[string]string   // agentMark string : agentName string
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
-	events    *safe.Slice // 			         : sync_packet interface{}
-	clients   safe.Map    // username string     : socket *websocket.Conn
-	agents    safe.Map    // agentId string      : agent *Agent
-	listeners safe.Map    // listenerName string : listenerData ListenerData
-	downloads safe.Map    // dileId string       : downloadData DownloadData
-	tunnels   safe.Map    // tunnelId string     : tunnel Tunnel
-	pivots    *safe.Slice // 			         : PivotData
+	events      *safe.Slice // 			         : sync_packet interface{}
+	clients     safe.Map    // username string     : socket *websocket.Conn
+	agents      safe.Map    // agentId string      : agent *Agent
+	listeners   safe.Map    // listenerName string : listenerData ListenerData
+	downloads   safe.Map    // fileId string       : downloadData DownloadData
+	screenshots safe.Map    // screeId string      : screenData ScreenDataData
+	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
+	pivots      *safe.Slice // 			         : PivotData
 }
 
 type Agent struct {
@@ -342,6 +343,32 @@ type SyncPackerDownloadDelete struct {
 	SpType int `json:"type"`
 
 	FileId string `json:"d_file_id"`
+}
+
+/// SCREEN
+
+type SyncPackerScreenshotCreate struct {
+	SpType int `json:"type"`
+
+	ScreenId string `json:"s_screen_id"`
+	User     string `json:"s_user"`
+	Computer string `json:"s_computer"`
+	Note     string `json:"s_note"`
+	Date     int64  `json:"s_date"`
+	Content  []byte `json:"s_content"`
+}
+
+type SyncPackerScreenshotUpdate struct {
+	SpType int `json:"type"`
+
+	ScreenId string `json:"s_screen_id"`
+	Note     string `json:"s_note"`
+}
+
+type SyncPackerScreenshotDelete struct {
+	SpType int `json:"type"`
+
+	ScreenId string `json:"s_screen_id"`
 }
 
 /// BROWSER

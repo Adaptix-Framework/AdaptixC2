@@ -27,13 +27,7 @@ func (dbms *DBMS) DbDownloadExist(fileId string) bool {
 }
 
 func (dbms *DBMS) DbDownloadInsert(downloadData adaptix.DownloadData) error {
-	var (
-		err         error
-		ok          bool
-		insertQuery string
-	)
-
-	ok = dbms.DatabaseExists()
+	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database not exists")
 	}
@@ -43,8 +37,8 @@ func (dbms *DBMS) DbDownloadInsert(downloadData adaptix.DownloadData) error {
 		return fmt.Errorf("download %s alredy exists", downloadData.FileId)
 	}
 
-	insertQuery = `INSERT INTO Downloads (FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State) values(?,?,?,?,?,?,?,?,?,?,?);`
-	_, err = dbms.database.Exec(insertQuery,
+	insertQuery := `INSERT INTO Downloads (FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State) values(?,?,?,?,?,?,?,?,?,?,?);`
+	_, err := dbms.database.Exec(insertQuery,
 		downloadData.FileId, downloadData.AgentId, downloadData.AgentName, downloadData.User, downloadData.Computer, downloadData.RemotePath,
 		downloadData.LocalPath, downloadData.TotalSize, downloadData.RecvSize, downloadData.Date, downloadData.State,
 	)
@@ -52,13 +46,7 @@ func (dbms *DBMS) DbDownloadInsert(downloadData adaptix.DownloadData) error {
 }
 
 func (dbms *DBMS) DbDownloadDelete(fileId string) error {
-	var (
-		ok          bool
-		err         error
-		deleteQuery string
-	)
-
-	ok = dbms.DatabaseExists()
+	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database not exists")
 	}
@@ -68,22 +56,18 @@ func (dbms *DBMS) DbDownloadDelete(fileId string) error {
 		return fmt.Errorf("download %s does not exists", fileId)
 	}
 
-	deleteQuery = `DELETE FROM Downloads WHERE FileId = ?;`
-	_, err = dbms.database.Exec(deleteQuery, fileId)
+	deleteQuery := `DELETE FROM Downloads WHERE FileId = ?;`
+	_, err := dbms.database.Exec(deleteQuery, fileId)
 
 	return err
 }
 
 func (dbms *DBMS) DbDownloadAll() []adaptix.DownloadData {
-	var (
-		downloads   []adaptix.DownloadData
-		ok          bool
-		selectQuery string
-	)
+	var downloads []adaptix.DownloadData
 
-	ok = dbms.DatabaseExists()
+	ok := dbms.DatabaseExists()
 	if ok {
-		selectQuery = `SELECT FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State FROM Downloads;`
+		selectQuery := `SELECT FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State FROM Downloads;`
 		query, err := dbms.database.Query(selectQuery)
 		if err == nil {
 

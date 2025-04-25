@@ -55,6 +55,9 @@ type Teamserver interface {
 	TsDownloadSync(fileId string) (string, []byte, error)
 	TsDownloadDelete(fileId string) error
 
+	TsScreenshotDelete(screenId string) error
+	TsScreenshotNote(screenId string, note string) error
+
 	TsDownloadChangeState(fileId string, username string, command string) error
 	TsAgentGuiDisks(agentId string, username string) error
 	TsAgentGuiProcess(agentId string, username string) error
@@ -158,6 +161,9 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/files", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiFiles)
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/upload", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiUpload)
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/process", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiProcess)
+
+	connector.Engine.POST(tsProfile.Endpoint+"/screen/setnote", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotSetNote)
+	connector.Engine.POST(tsProfile.Endpoint+"/screen/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotRemove)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStop)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/setinfo", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelSetIno)
