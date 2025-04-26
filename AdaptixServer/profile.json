@@ -8,7 +8,10 @@
     "extenders": [
       "extenders/listener_beacon_http/config.json",
       "extenders/listener_beacon_smb/config.json",
-      "extenders/agent_beacon/config.json"
+      "extenders/listener_beacon_tcp/config.json",
+      "extenders/agent_beacon/config.json",
+      "extenders/listener_gopher_tcp/config.json",
+      "extenders/agent_gopher/config.json"
     ]
   },
 
