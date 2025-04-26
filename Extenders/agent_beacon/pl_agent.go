@@ -190,7 +190,6 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 	for _, b := range packedProfile {
 		profileString += fmt.Sprintf("\\x%02x", b)
 	}
-	fmt.Println(profileString)
 
 	return []byte(profileString), nil
 }
