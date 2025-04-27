@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"github.com/vmihailenco/msgpack/v5"
@@ -17,7 +16,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"time"
 )
 
