@@ -9,6 +9,7 @@ all: clean
 	@ (cd src_beacon && $(MAKE) --no-print-directory)
 	@ mv src_beacon/objects_http ./dist/objects_http
 	@ mv src_beacon/objects_smb ./dist/objects_smb
+	@ mv src_beacon/objects_tcp ./dist/objects_tcp
 	@ echo "      done..."
 
 clean:
