@@ -167,12 +167,6 @@
           ]
         },
         {
-          "command": "disks",
-          "message": "Task: show mounted disks",
-          "description": "Lists mounted drives on current system",
-          "example": "disks"
-        },
-        {
           "command": "download",
           "message": "Task: download file",
           "description": "Download a file",

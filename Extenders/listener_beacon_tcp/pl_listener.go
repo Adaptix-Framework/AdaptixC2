@@ -63,7 +63,7 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		randSlice := make([]byte, 16)
 		_, _ = rand.Read(randSlice)
 		conf.EncryptKey = randSlice[:16]
-		conf.Protocol = "tcp"
+		conf.Protocol = "bind_tcp"
 	} else {
 		err = json.Unmarshal(listenerCustomData, &conf)
 		if err != nil {
