@@ -24,6 +24,7 @@ void Extender::LoadFromFile(QString path, bool enabled)
     QJsonDocument jsonDocument;
     QJsonArray    extensionsArray;
     QJsonArray    agentsArray;
+    QVector<QJsonObject> exConstants;
     QMap<QString, QVector<QJsonObject> > exCommands;
 
     ExtensionFile extensionFile = {0};
@@ -62,7 +63,7 @@ void Extender::LoadFromFile(QString path, bool enabled)
         goto END;
     }
 
-    extensionFile.Name = rootObj.value("name").toString();
+    extensionFile.Name        = rootObj.value("name").toString();
     extensionFile.Description = rootObj.value("description").toString();
 
     extensionsArray = rootObj.value("extensions").toArray();
@@ -105,6 +106,18 @@ void Extender::LoadFromFile(QString path, bool enabled)
                 exCommands[key].push_back(extJsonObject);
             }
 
+        } else if(type == "constant") {
+            bool result = true;
+            QString msg = ValidExtConstant(extJsonObject, &result);
+            if (!result) {
+                extensionFile.Comment = msg;
+                extensionFile.Enabled = false;
+                extensionFile.Valid   = false;
+                goto END;
+            }
+
+            exConstants.push_back(extJsonObject);
+
         } else {
             extensionFile.Comment = "Unknown extension type";
             extensionFile.Enabled = false;
@@ -113,10 +126,11 @@ void Extender::LoadFromFile(QString path, bool enabled)
         }
     }
 
-    extensionFile.Comment    = fileContent;
-    extensionFile.ExCommands = exCommands;
-    extensionFile.Enabled    = enabled;
-    extensionFile.Valid      = true;
+    extensionFile.Comment     = fileContent;
+    extensionFile.ExConstants = exConstants;
+    extensionFile.ExCommands  = exCommands;
+    extensionFile.Enabled     = enabled;
+    extensionFile.Valid       = true;
 
 END:
     this->SetExtension(extensionFile);

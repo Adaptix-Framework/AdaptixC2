@@ -57,13 +57,14 @@
 #include <QGraphicsSceneContextMenuEvent>
 #include <QPainter>
 #include <QScrollBar>
+#include <QDateTimeEdit>
 
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.3"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.4"
 
 ///////////
 
@@ -114,6 +115,10 @@
 #define TYPE_TUNNEL_EDIT   0x58
 #define TYPE_TUNNEL_DELETE 0x59
 
+#define TYPE_SCREEN_CREATE 0x5b
+#define TYPE_SCREEN_UPDATE 0x5c
+#define TYPE_SCREEN_DELETE 0x5d
+
 #define TYPE_BROWSER_DISKS   0x61
 #define TYPE_BROWSER_FILES   0x62
 #define TYPE_BROWSER_STATUS  0x63
@@ -155,6 +160,17 @@
 
 //////////
 
+typedef struct BrowsersConfig {
+    bool FileBrowser;
+    bool FileBrowserDisks;
+    bool FileBrowserDownload;
+    bool FileBrowserUpload;
+    bool ProcessBrowser;
+    bool DownloadState;
+    bool TasksJobKill;
+    bool SessionsMenuExit;
+} BrowsersConfig;
+
 typedef struct SettingsData {
     bool    ConsoleTime;
     QString MainTheme;
@@ -175,8 +191,7 @@ typedef struct ListenerData
     QString ListenerType;
     QString BindHost;
     QString BindPort;
-    QString AgentHost;
-    QString AgentPort;
+    QString AgentAddresses;
     QString Status;
     QString Data;
 } ListenerData;
@@ -190,6 +205,8 @@ typedef struct AgentData
     QString     ExternalIP;
     QString     InternalIP;
     int         GmtOffset;
+    uint        KillDate;
+    uint        WorkingTime;
     int         Sleep;
     int         Jitter;
     QString     Pid;
@@ -222,6 +239,16 @@ typedef struct DownloadData
     int     State;
     QString Date;
 } DownloadData;
+
+typedef struct ScreenData
+{
+    QString    ScreenId;
+    QString    User;
+    QString    Computer;
+    QString    Date;
+    QString    Note;
+    QByteArray Content;
+} ScreenData;
 
 typedef struct TunnelData
 {

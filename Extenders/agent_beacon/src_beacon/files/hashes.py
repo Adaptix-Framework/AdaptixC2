@@ -84,6 +84,8 @@ K32GetModuleBaseNameA
 GetModuleBaseNameA
 GetModuleHandleA
 GetProcAddress
+GetLocalTime
+GetSystemTimeAsFileTime
 GetTickCount
 GetTimeZoneInformation
 GetUserNameA

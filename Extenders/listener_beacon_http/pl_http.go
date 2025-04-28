@@ -23,12 +23,11 @@ import (
 )
 
 type HTTPConfig struct {
-	Ssl        bool     `json:"ssl"`
-	HostBind   string   `json:"host_bind"`
-	PortBind   string   `json:"port_bind"`
-	PortAgent  string   `json:"callback_port"`
-	HostsAgent []string `json:"hosts_agent"`
+	HostBind           string `json:"host_bind"`
+	PortBind           int    `json:"port_bind"`
+	Callback_addresses string `json:"callback_addresses"`
 
+	Ssl         bool   `json:"ssl"`
 	SslCert     []byte `json:"ssl_cert"`
 	SslKey      []byte `json:"ssl_key"`
 	SslCertPath string `json:"ssl_cert_path"`
@@ -36,7 +35,7 @@ type HTTPConfig struct {
 
 	// Agent
 	HttpMethod     string `json:"http_method"`
-	Uri            string `json:"urn"`
+	Uri            string `json:"uri"`
 	ParameterName  string `json:"hb_header"`
 	UserAgent      string `json:"user_agent"`
 	HostHeader     string `json:"host_header"`
@@ -48,10 +47,9 @@ type HTTPConfig struct {
 	WebPageError       string            `json:"page-error"`
 	WebPageOutput      string            `json:"page-payload"`
 
-	Callback_servers string `json:"callback_servers"`
-	Server_headers   string `json:"server_headers"`
-	Protocol         string `json:"protocol"`
-	EncryptKey       []byte `json:"encrypt_key"`
+	Server_headers string `json:"server_headers"`
+	Protocol       string `json:"protocol"`
+	EncryptKey     []byte `json:"encrypt_key"`
 }
 
 type HTTP struct {
@@ -62,38 +60,37 @@ type HTTP struct {
 	Active    bool
 }
 
-func (h *HTTP) Start() error {
+func (handler *HTTP) Start(ts Teamserver) error {
 	var err error = nil
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	//router := gin.Default()
-	router.NoRoute(h.pageError)
+	router.NoRoute(handler.pageError)
 
 	router.Use(func(c *gin.Context) {
-		for header, value := range h.Config.ResponseHeaders {
+		for header, value := range handler.Config.ResponseHeaders {
 			c.Header(header, value)
 		}
 		c.Next()
 	})
 
-	if h.Config.HttpMethod == "POST" {
-		router.POST("/*endpoint", h.processRequest)
-	} else if h.Config.HttpMethod == "GET" {
-		router.GET("/*endpoint", h.processRequest)
+	if handler.Config.HttpMethod == "POST" {
+		router.POST("/*endpoint", handler.processRequest)
+	} else if handler.Config.HttpMethod == "GET" {
+		router.GET("/*endpoint", handler.processRequest)
 	}
 
-	h.Active = true
+	handler.Active = true
 
-	h.Server = &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", h.Config.HostBind, h.Config.PortBind),
+	handler.Server = &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", handler.Config.HostBind, handler.Config.PortBind),
 		Handler: router,
 	}
 
-	if h.Config.Ssl {
-		fmt.Println("   ", "Started listener: https://"+h.Config.HostBind+":"+h.Config.PortBind)
+	if handler.Config.Ssl {
+		fmt.Printf("   Started listener: https://%s:%d\n", handler.Config.HostBind, handler.Config.PortBind)
 
-		listenerPath := ListenerDataPath + "/" + h.Name
+		listenerPath := ListenerDataDir + "/" + handler.Name
 		_, err = os.Stat(listenerPath)
 		if os.IsNotExist(err) {
 			err = os.Mkdir(listenerPath, os.ModePerm)
@@ -102,46 +99,46 @@ func (h *HTTP) Start() error {
 			}
 		}
 
-		h.Config.SslCertPath = listenerPath + "/listener.crt"
-		h.Config.SslKeyPath = listenerPath + "/listener.key"
+		handler.Config.SslCertPath = listenerPath + "/listener.crt"
+		handler.Config.SslKeyPath = listenerPath + "/listener.key"
 
-		if len(h.Config.SslCert) == 0 || len(h.Config.SslKey) == 0 {
-			err = h.generateSelfSignedCert(h.Config.SslCertPath, h.Config.SslKeyPath)
+		if len(handler.Config.SslCert) == 0 || len(handler.Config.SslKey) == 0 {
+			err = handler.generateSelfSignedCert(handler.Config.SslCertPath, handler.Config.SslKeyPath)
 			if err != nil {
-				h.Active = false
+				handler.Active = false
 				fmt.Println("Error generating self-signed certificate:", err)
 				return err
 			}
 		} else {
-			err = os.WriteFile(h.Config.SslCertPath, h.Config.SslCert, 0600)
+			err = os.WriteFile(handler.Config.SslCertPath, handler.Config.SslCert, 0600)
 			if err != nil {
 				return err
 			}
-			err = os.WriteFile(h.Config.SslKeyPath, h.Config.SslKey, 0600)
+			err = os.WriteFile(handler.Config.SslKeyPath, handler.Config.SslKey, 0600)
 			if err != nil {
 				return err
 			}
 		}
 
 		go func() {
-			err = h.Server.ListenAndServeTLS(h.Config.SslCertPath, h.Config.SslKeyPath)
+			err = handler.Server.ListenAndServeTLS(handler.Config.SslCertPath, handler.Config.SslKeyPath)
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				fmt.Printf("Error starting HTTPS server: %v\n", err)
 				return
 			}
-			h.Active = true
+			handler.Active = true
 		}()
 
 	} else {
-		fmt.Println("   ", "Started listener: http://"+h.Config.HostBind+":"+h.Config.PortBind)
+		fmt.Printf("   Started listener: http://%s:%d\n", handler.Config.HostBind, handler.Config.PortBind)
 
 		go func() {
-			err = h.Server.ListenAndServe()
+			err = handler.Server.ListenAndServe()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				fmt.Printf("Error starting HTTP server: %v\n", err)
 				return
 			}
-			h.Active = true
+			handler.Active = true
 		}()
 	}
 
@@ -149,12 +146,12 @@ func (h *HTTP) Start() error {
 	return err
 }
 
-func (h *HTTP) Stop() error {
+func (handler *HTTP) Stop() error {
 	var (
 		ctx          context.Context
 		cancel       context.CancelFunc
 		err          error = nil
-		listenerPath       = ListenerDataPath + "/" + h.Name
+		listenerPath       = ListenerDataDir + "/" + handler.Name
 	)
 
 	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
@@ -168,11 +165,11 @@ func (h *HTTP) Stop() error {
 		}
 	}
 
-	err = h.Server.Shutdown(ctx)
+	err = handler.Server.Shutdown(ctx)
 	return err
 }
 
-func (h *HTTP) processRequest(ctx *gin.Context) {
+func (handler *HTTP) processRequest(ctx *gin.Context) {
 	var (
 		ExternalIP   string
 		err          error
@@ -186,40 +183,40 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 	valid := false
 	u, err := url.Parse(ctx.Request.RequestURI)
 	if err == nil {
-		if h.Config.Uri == u.Path {
+		if handler.Config.Uri == u.Path {
 			valid = true
 		}
 	}
 	if valid == false {
-		h.pageError(ctx)
+		handler.pageError(ctx)
 		return
 	}
 
-	if len(h.Config.HostHeader) > 0 {
+	if len(handler.Config.HostHeader) > 0 {
 		requestHost := ctx.Request.Host
-		if h.Config.HostHeader != requestHost {
-			h.pageError(ctx)
+		if handler.Config.HostHeader != requestHost {
+			handler.pageError(ctx)
 			return
 		}
 	}
 
-	if h.Config.UserAgent != ctx.Request.UserAgent() {
-		h.pageError(ctx)
+	if handler.Config.UserAgent != ctx.Request.UserAgent() {
+		handler.pageError(ctx)
 		return
 	}
 
 	ExternalIP = strings.Split(ctx.Request.RemoteAddr, ":")[0]
-	if h.Config.TrustXForwardedFor {
+	if handler.Config.TrustXForwardedFor {
 		ExternalIP = ctx.Request.Header.Get("X-Forwarded-For")
 	}
 
-	agentType, agentId, beat, bodyData, err = h.parseBeatAndData(ctx)
+	agentType, agentId, beat, bodyData, err = handler.parseBeatAndData(ctx)
 	if err != nil {
 		goto ERR
 	}
 
 	if !ModuleObject.ts.TsAgentIsExists(agentId) {
-		err = ModuleObject.ts.TsAgentCreate(agentType, agentId, beat, h.Name, ExternalIP, true)
+		err = ModuleObject.ts.TsAgentCreate(agentType, agentId, beat, handler.Name, ExternalIP, true)
 		if err != nil {
 			goto ERR
 		}
@@ -227,15 +224,15 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 
 	_ = ModuleObject.ts.TsAgentProcessData(agentId, bodyData)
 
-	responseData, err = ModuleObject.ts.TsAgentGetHostedTasks(agentId, SetMaxTaskDataSize)
+	responseData, err = ModuleObject.ts.TsAgentGetHostedTasks(agentId, 0x1900000) // 25 Mb
 	if err != nil {
 		goto ERR
 	} else {
-		html := []byte(strings.ReplaceAll(h.Config.WebPageOutput, "<<<PAYLOAD_DATA>>>", string(responseData)))
+		html := []byte(strings.ReplaceAll(handler.Config.WebPageOutput, "<<<PAYLOAD_DATA>>>", string(responseData)))
 		_, err = ctx.Writer.Write(html)
 		if err != nil {
 			fmt.Println("Failed to write to request: " + err.Error())
-			h.pageError(ctx)
+			handler.pageError(ctx)
 			return
 		}
 	}
@@ -245,10 +242,10 @@ func (h *HTTP) processRequest(ctx *gin.Context) {
 
 ERR:
 	fmt.Println("Error: " + err.Error())
-	h.pageError(ctx)
+	handler.pageError(ctx)
 }
 
-func (h *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte, []byte, error) {
+func (handler *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte, []byte, error) {
 	var (
 		beat           string
 		agentType      uint
@@ -259,7 +256,7 @@ func (h *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte, []byt
 		err            error
 	)
 
-	params := ctx.Request.Header[h.Config.ParameterName]
+	params := ctx.Request.Header[handler.Config.ParameterName]
 	if len(params) > 0 {
 		beat = params[0]
 	} else {
@@ -271,7 +268,7 @@ func (h *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte, []byt
 		return "", "", nil, nil, errors.New("failed decrypt beat")
 	}
 
-	rc4crypt, errcrypt := rc4.NewCipher(h.Config.EncryptKey)
+	rc4crypt, errcrypt := rc4.NewCipher(handler.Config.EncryptKey)
 	if errcrypt != nil {
 		return "", "", nil, nil, errors.New("rc4 decrypt error")
 	}
@@ -291,7 +288,7 @@ func (h *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte, []byt
 	return fmt.Sprintf("%08x", agentType), fmt.Sprintf("%08x", agentId), agentInfo, bodyData, nil
 }
 
-func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
+func (handler *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 	var (
 		certData   []byte
 		keyData    []byte
@@ -322,7 +319,7 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 		BasicConstraintsValid: true,
 	}
 
-	template.DNSNames = []string{h.Config.HostBind}
+	template.DNSNames = []string{handler.Config.HostBind}
 
 	certData, err = x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {
@@ -334,8 +331,8 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 		return fmt.Errorf("failed to write certificate: %v", err)
 	}
 
-	h.Config.SslCert = certBuffer.Bytes()
-	err = os.WriteFile(certFile, h.Config.SslCert, 0644)
+	handler.Config.SslCert = certBuffer.Bytes()
+	err = os.WriteFile(certFile, handler.Config.SslCert, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create certificate file: %v", err)
 	}
@@ -346,8 +343,8 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 		return fmt.Errorf("failed to write private key: %v", err)
 	}
 
-	h.Config.SslKey = keyBuffer.Bytes()
-	err = os.WriteFile(keyFile, h.Config.SslKey, 0644)
+	handler.Config.SslKey = keyBuffer.Bytes()
+	err = os.WriteFile(keyFile, handler.Config.SslKey, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create key file: %v", err)
 	}
@@ -355,8 +352,8 @@ func (h *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 	return nil
 }
 
-func (h *HTTP) pageError(ctx *gin.Context) {
+func (handler *HTTP) pageError(ctx *gin.Context) {
 	ctx.Writer.WriteHeader(http.StatusNotFound)
-	html := []byte(h.Config.WebPageError)
+	html := []byte(handler.Config.WebPageError)
 	_, _ = ctx.Writer.Write(html)
 }

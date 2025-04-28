@@ -16,7 +16,7 @@ void InitBofOutputData()
 	}
 }
 
-#define BEACON_FUNCTIONS_COUNT 23
+#define BEACON_FUNCTIONS_COUNT 26
 
 BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 
@@ -43,7 +43,7 @@ BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 	{ HASH_FUNC_BEACONFORMATFREE,             BeaconFormatFree },
 	{ HASH_FUNC_BEACONFORMATINT,              BeaconFormatInt },
 
-	/// 3 - Internal APIs
+	/// 7 - Internal APIs
 
 	{ HASH_FUNC_BEACONUSETOKEN,               BeaconUseToken },
 	{ HASH_FUNC_BEACONREVERTTOKEN,            BeaconRevertToken },
@@ -53,11 +53,11 @@ BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 	//{ HASH_FUNC_BEACONINJECTPROCESS,          BeaconInjectProcess },
 	//{ HASH_FUNC_BEACONINJECTTEMPORARYPROCESS, BeaconInjectTemporaryProcess },
 	//{ HASH_FUNC_BEACONCLEANUPPROCESS,         BeaconCleanupProcess },
-	{ HASH_FUNC_TOWIDECHAR,					  toWideChar },
 	//{ HASH_FUNC_BEACONINFORMATION,            BeaconInformation },
-	//{ HASH_FUNC_BEACONADDVALUE,               BeaconAddValue },
-	//{ HASH_FUNC_BEACONGETVALUE,               BeaconGetValue },
-	//{ HASH_FUNC_BEACONREMOVEVALUE,            BeaconRemoveValue },
+	{ HASH_FUNC_TOWIDECHAR,					  toWideChar },
+	{ HASH_FUNC_BEACONADDVALUE,               BeaconAddValue },
+	{ HASH_FUNC_BEACONGETVALUE,               BeaconGetValue },
+	{ HASH_FUNC_BEACONREMOVEVALUE,            BeaconRemoveValue },
 
 	/// 5 - Other APIs
 

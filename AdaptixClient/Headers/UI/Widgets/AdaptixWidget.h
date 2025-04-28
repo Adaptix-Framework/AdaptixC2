@@ -10,6 +10,7 @@
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Widgets/DownloadsWidget.h>
+#include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
 #include <Client/WidgetBuilder.h>
@@ -20,6 +21,20 @@ class SessionsTableWidget;
 class SessionsGraph;
 class LastTickWorker;
 
+typedef struct RegAgentConfig {
+    QString        agentName;
+    QString        watermark;
+    QString        listenerName;
+    QString        operatingSystem;
+    QString        handlerId;
+    WidgetBuilder* builder;
+    Commander*     commander;
+    BrowsersConfig browsers;
+    bool           valid;
+} RegAgentConfig;
+
+
+
 class AdaptixWidget : public QWidget
 {
 Q_OBJECT
@@ -29,9 +44,9 @@ Q_OBJECT
     QPushButton*    logsButton        = nullptr;
     QPushButton*    sessionsButton    = nullptr;
     QPushButton*    graphButton       = nullptr;
-    QPushButton*    tasksButton        = nullptr;
+    QPushButton*    tasksButton       = nullptr;
     QPushButton*    targetsButton     = nullptr;
-    QPushButton*    tunnelButton       = nullptr;
+    QPushButton*    tunnelButton      = nullptr;
     QPushButton*    downloadsButton   = nullptr;
     QPushButton*    credsButton       = nullptr;
     QPushButton*    screensButton     = nullptr;
@@ -67,15 +82,17 @@ public:
     SessionsGraph*       SessionsGraphPage = nullptr;
     TunnelsWidget*       TunnelsTab        = nullptr;
     DownloadsWidget*     DownloadsTab      = nullptr;
+    ScreenshotsWidget*   ScreenshotsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
-    QMap<QString, Commander*>     RegisterAgentsCmd;
-    QMap<QString, WidgetBuilder*> RegisterAgentsUI;
-    QMap<QString, WidgetBuilder*> RegisterListenersUI;
-    QMap<QString, QStringList>    LinkListenerAgent;
+    QMap<QString, QMap<QString, Commander*>> Commanders;    // agentName -> ( handlerId -> commander)
+    QMap<QString, QMap<QString, BrowsersConfig>> AgentBrowserConfigs;    // agentName -> ( handlerId -> BrowserConfigs)
+    QVector<RegAgentConfig>       RegisterAgents;
+    QMap<QString, WidgetBuilder*> RegisterListeners;  // listenerName -> builder
     QVector<ListenerData>         Listeners;
     QVector<TunnelData>           Tunnels;
     QMap<QString, DownloadData>   Downloads;
+    QMap<QString, ScreenData>     Screenshots;
     QMap<QString, PivotData>      Pivots;
     QVector<QString>              TasksVector;
     QMap<QString, Task*>          TasksMap;
@@ -83,11 +100,15 @@ public:
     QMap<QString, Agent*>         AgentsMap;
     QMap<QString, ExtensionFile>  Extensions;
 
-    explicit AdaptixWidget(AuthProfile* authProfile);
+    explicit AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker);
     ~AdaptixWidget() override;
 
     AuthProfile* GetProfile() const;
+
+    void RegisterListenerConfig(const QString &fn, const QString &ui);
+    void RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &handlersJson, const QString &listenersJson);
     void ClearAdaptix();
+    RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
     void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
     void RemoveTab(int index) const;
     void AddExtension(ExtensionFile ext);
@@ -109,6 +130,7 @@ public slots:
     void LoadListenersUI() const;
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;
+    void LoadScreenshotsUI() const;
     void LoadTasksOutput() const;
     void OnReconnect();
     void LoadConsoleUI(const QString &AgentId);

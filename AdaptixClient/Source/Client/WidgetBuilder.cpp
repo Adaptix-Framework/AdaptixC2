@@ -83,6 +83,19 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj, boo
                 boxLayout->addWidget(line);
             }
         }
+        else if (type == "vspacer" || type == "hspacer") {
+            auto spacer = new QSpacerItem(40, 20);
+            if (type == "vspacer")
+                spacer->changeSize(40, 20, QSizePolicy::Minimum, QSizePolicy::Expanding);
+            else
+                spacer->changeSize(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+            if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
+                gridLayout->addItem(spacer, row, col, rowSpan, colSpan);
+            } else if (auto boxLayout = qobject_cast<QBoxLayout*>(layout)) {
+                boxLayout->addItem(spacer);
+            }
+        }
         else if (type == "input") {
             auto lineEdit = new QLineEdit(widget);
 
@@ -97,6 +110,39 @@ QLayout* WidgetBuilder::BuildLayout(QString layoutType, QJsonObject rootObj, boo
 
             if (!id.isEmpty()) {
                 widgetMap[id] = lineEdit;
+            }
+        }
+        else if (type == "date_input") {
+            auto dateEdit = new QDateEdit(widget);
+
+            dateEdit->setCalendarPopup(true);
+            dateEdit->setDateTime(QDateTime::currentDateTime());
+            dateEdit->setDisplayFormat(elementObj["format"].toString());
+
+            if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
+                gridLayout->addWidget(dateEdit, row, col, rowSpan, colSpan);
+            } else if (auto boxLayout = qobject_cast<QBoxLayout*>(layout)) {
+                boxLayout->addWidget(dateEdit);
+            }
+
+            if (!id.isEmpty()) {
+                widgetMap[id] = dateEdit;
+            }
+        }
+        else if (type == "time_input") {
+            auto timeEdit = new QTimeEdit(widget);
+
+            timeEdit->setDateTime(QDateTime::currentDateTime());
+            timeEdit->setDisplayFormat(elementObj["format"].toString());
+
+            if (auto gridLayout = qobject_cast<QGridLayout*>(layout)) {
+                gridLayout->addWidget(timeEdit, row, col, rowSpan, colSpan);
+            } else if (auto boxLayout = qobject_cast<QBoxLayout*>(layout)) {
+                boxLayout->addWidget(timeEdit);
+            }
+
+            if (!id.isEmpty()) {
+                widgetMap[id] = timeEdit;
             }
         }
         else if (type == "file_selector") {
@@ -328,6 +374,16 @@ QString WidgetBuilder::CollectData()
             collectedData[id] = lineEdit->text();
         }
 
+        else if (auto timeEdit = qobject_cast<QTimeEdit*>(widget)) {
+            QTime time = timeEdit->time();
+            collectedData[id] = time.toString(timeEdit->displayFormat());
+        }
+
+        else if (auto dateEdit = qobject_cast<QDateEdit*>(widget)) {
+            QDate date = dateEdit->date();
+            collectedData[id] = date.toString(dateEdit->displayFormat());
+        }
+
         else if (auto fileSelector = qobject_cast<FileSelector*>(widget)) {
             collectedData[id] = fileSelector->content;
         }
@@ -411,6 +467,20 @@ void WidgetBuilder::FillData(const QString &jsonString)
 
         if (auto lineEdit = qobject_cast<QLineEdit*>(widget)) {
             lineEdit->setText(value.toString());
+        }
+
+        else if (auto timeEdit = qobject_cast<QTimeEdit*>(widget)) {
+            QTime time = QTime::fromString(value.toString(), timeEdit->displayFormat());
+            if (time.isValid()) {
+                timeEdit->setTime(time);
+            }
+        }
+
+        else if (auto dateEdit = qobject_cast<QDateEdit*>(widget)) {
+            QDate date = QDate::fromString(value.toString(), dateEdit->displayFormat());
+            if (date.isValid()) {
+                dateEdit->setDate(date);
+            }
         }
 
         else if (auto comboBox = qobject_cast<QComboBox*>(widget)) {

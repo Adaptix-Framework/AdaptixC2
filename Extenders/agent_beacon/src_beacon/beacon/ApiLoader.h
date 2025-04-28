@@ -57,6 +57,8 @@ struct WINAPIFUNC
 	DECL_API(GetModuleBaseNameA);
 	DECL_API(GetModuleHandleA);
 	DECL_API(GetProcAddress);
+	DECL_API(GetLocalTime);
+	DECL_API(GetSystemTimeAsFileTime);
 	DECL_API(GetTickCount);
 	//DECL_API(GetTokenInformation);
 	DECL_API(GetTimeZoneInformation);
@@ -121,7 +123,6 @@ struct WINAPIFUNC
 	DECL_API(accept);
 	DECL_API(listen);
 	DECL_API(bind);
-
 };
 
 struct NTAPIFUNC

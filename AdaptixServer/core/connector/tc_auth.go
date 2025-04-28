@@ -4,8 +4,8 @@ import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/token"
-	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"net/http"
@@ -55,13 +55,26 @@ func (tc *TsConnector) tcLogin(ctx *gin.Context) {
 }
 
 func (tc *TsConnector) tcConnect(ctx *gin.Context) {
-	var (
-		wsUpgrader websocket.Upgrader
-		wsConn     *websocket.Conn
-		err        error
-	)
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+	username, ok := value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
 
-	wsConn, err = wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+	exists = tc.teamserver.TsClientExists(username)
+	if exists {
+		fmt.Println("username:", username)
+		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
+
+	var wsUpgrader websocket.Upgrader
+	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		logs.Error("", "WebSocket upgrade error: "+err.Error())
 		return
@@ -72,43 +85,31 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 		return
 	}
 
-	go tc.tcWebsocketConnect(wsConn)
+	go tc.tcWebsocketConnect(username, wsConn)
 }
 
-func (tc *TsConnector) tcWebsocketConnect(wsConn *websocket.Conn) {
-	var (
-		body        []byte
-		err         error
-		structToken AccessJWT
-		username    string
-	)
-
-	_, body, err = wsConn.ReadMessage()
-	if err != nil {
-		logs.Error("", "Failed ReadMessage from WebSocket: "+err.Error())
+func (tc *TsConnector) tcSync(ctx *gin.Context) {
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+	username, ok := value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
 		return
 	}
 
-	err = json.Unmarshal(body, &structToken)
-	if err != nil {
-		logs.Error("", "JSON Unmarshal error: "+err.Error())
-		return
-	}
+	go tc.teamserver.TsClientSync(username)
+}
 
-	username, err = token.GetUsernameFromJWT(structToken.AccessToken)
-	if err != nil {
-		logs.Error("", "Invalid JWT error: "+err.Error())
-		return
-	}
-
+func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Conn) {
 	tc.teamserver.TsClientConnect(username, wsConn)
-
 	for {
-		if _, _, err = wsConn.ReadMessage(); err == nil {
+		_, _, err := wsConn.ReadMessage()
+		if err == nil {
 			continue
 		}
-
-		logs.Debug("Client '%s' disconnected: %s\n", username, err.Error())
 
 		tc.teamserver.TsClientDisconnect(username)
 		break

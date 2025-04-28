@@ -6,11 +6,12 @@ import (
 )
 
 type RepoLogs struct {
-	Path         string
-	DataPath     string
-	DbPath       string
-	ListenerPath string
-	DownloadPath string
+	Path           string
+	DataPath       string
+	DbPath         string
+	ListenerPath   string
+	DownloadPath   string
+	ScreenshotPath string
 }
 
 var RepoLogsInstance *RepoLogs
@@ -19,11 +20,12 @@ func NewRepoLogs() (*RepoLogs, error) {
 
 	path, err := os.Getwd()
 	repologs := &RepoLogs{
-		Path:         path,
-		DataPath:     path + "/data",
-		DbPath:       path + "/data/adaptixserver.db",
-		ListenerPath: path + "/data/listener",
-		DownloadPath: path + "/data/download",
+		Path:           path,
+		DataPath:       path + "/data",
+		DbPath:         path + "/data/adaptixserver.db",
+		ListenerPath:   path + "/data/listener",
+		DownloadPath:   path + "/data/download",
+		ScreenshotPath: path + "/data/screenshot",
 	}
 
 	_, err = os.Stat(repologs.DataPath)
@@ -47,6 +49,14 @@ func NewRepoLogs() (*RepoLogs, error) {
 		err = os.Mkdir(repologs.DownloadPath, os.ModePerm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create %s folder: %s", repologs.DownloadPath, err.Error())
+		}
+	}
+
+	_, err = os.Stat(repologs.ScreenshotPath)
+	if os.IsNotExist(err) {
+		err = os.Mkdir(repologs.ScreenshotPath, os.ModePerm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create %s folder: %s", repologs.ScreenshotPath, err.Error())
 		}
 	}
 

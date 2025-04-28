@@ -18,11 +18,28 @@ BOOL PeekNamedPipeTime(HANDLE hNamedPipe, int waitTime);
 
 int ReadFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
 
-int ReadDataFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+int ReadDataFromPipe(HANDLE hPipe, LPVOID* buffer, ULONG* bufferSize);
 
 BOOL WriteToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
 
 BOOL WriteDataToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
+
+
+//////////
+
+WORD _htons(WORD hostshort);
+
+ULONG _inet_addr(const char* ip);
+
+BOOL PeekSocketTime(SOCKET sock, int waitTime);
+
+int ReadFromSocket(SOCKET sock, char* buffer, int bufferSize);
+
+int ReadDataFromSocket(SOCKET sock, LPVOID* buffer, ULONG* bufferSize);
+
+BOOL WriteToSocket(SOCKET sock, BYTE* buffer, ULONG bufferSize);
+
+BOOL WriteDataToSocket(SOCKET sock, BYTE* buffer, ULONG bufferSize);
 
 //////////
 
@@ -65,5 +82,7 @@ DWORD StrCmpLowA(CHAR* str1, CHAR* str2);
 DWORD StrCmpLowW(WCHAR* str1, WCHAR* str2);
 
 ULONG FileTimeToUnixTimestamp(FILETIME ft);
+
+ULONG GetSystemTimeAsUnixTimestamp();
 
 void ConvertUnicodeStringToChar( wchar_t* src, size_t srcSize, char* dst, size_t dstSize);

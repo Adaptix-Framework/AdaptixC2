@@ -1,10 +1,10 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/extender"
 	"bytes"
 	"encoding/json"
+	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 	"sort"
 )
@@ -67,6 +67,7 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	packets = append(packets, ts.TsPresyncListeners()...)
 	packets = append(packets, ts.TsPresyncAgents()...)
 	packets = append(packets, ts.TsPresyncDownloads()...)
+	packets = append(packets, ts.TsPresyncScreenshots()...)
 	packets = append(packets, ts.TsPresyncTunnels()...)
 	packets = append(packets, ts.TsPresyncEvents()...)
 	packets = append(packets, ts.TsPresyncPivots()...)
@@ -94,16 +95,18 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 	var packets []interface{}
 	ts.listener_configs.ForEach(func(key string, value interface{}) bool {
 		listenerInfo := value.(extender.ListenerInfo)
-		p := CreateSpListenerReg(key, listenerInfo.ListenerUI)
+		p := CreateSpListenerReg(key, listenerInfo.UI)
 		packets = append(packets, p)
 		return true
 	})
+
 	ts.agent_configs.ForEach(func(key string, value interface{}) bool {
 		agentInfo := value.(extender.AgentInfo)
-		p := CreateSpAgentReg(key, agentInfo.ListenerName, agentInfo.AgentUI, agentInfo.AgentCmd)
+		p := CreateSpAgentReg(agentInfo.Name, agentInfo.Watermark, agentInfo.ListenersJson, agentInfo.HandlersJson)
 		packets = append(packets, p)
 		return true
 	})
+
 	return packets
 }
 
@@ -186,6 +189,25 @@ func (ts *Teamserver) TsPresyncDownloads() []interface{} {
 		packets = append(packets, d1, d2)
 		return true
 	})
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
+	var sortedScreens []adaptix.ScreenData
+	ts.screenshots.ForEach(func(key string, value interface{}) bool {
+		screenData := value.(adaptix.ScreenData)
+		index := sort.Search(len(sortedScreens), func(i int) bool {
+			return sortedScreens[i].Date > screenData.Date
+		})
+		sortedScreens = append(sortedScreens[:index], append([]adaptix.ScreenData{screenData}, sortedScreens[index:]...)...)
+		return true
+	})
+
+	var packets []interface{}
+	for _, screenData := range sortedScreens {
+		t := CreateSpScreenshotCreate(screenData)
+		packets = append(packets, t)
+	}
 	return packets
 }
 

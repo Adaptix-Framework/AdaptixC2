@@ -30,13 +30,14 @@ func NewTeamserver() *Teamserver {
 		wm_agent_types: make(map[string]string),
 		wm_listeners:   make(map[string][]string),
 
-		events:    safe.NewSlice(),
-		clients:   safe.NewMap(),
-		agents:    safe.NewMap(),
-		listeners: safe.NewMap(),
-		downloads: safe.NewMap(),
-		tunnels:   safe.NewMap(),
-		pivots:    safe.NewSlice(),
+		events:      safe.NewSlice(),
+		clients:     safe.NewMap(),
+		agents:      safe.NewMap(),
+		listeners:   safe.NewMap(),
+		downloads:   safe.NewMap(),
+		screenshots: safe.NewMap(),
+		tunnels:     safe.NewMap(),
+		pivots:      safe.NewSlice(),
 	}
 	ts.Extender = extender.NewExtender(ts)
 	return ts
@@ -114,6 +115,12 @@ func (ts *Teamserver) RestoreData() {
 			agent.Active = false
 		}
 
+		if agent.Data.Mark == "" {
+			if !agent.Data.Async {
+				agent.Data.Mark = "Disconnect"
+			}
+		}
+
 		ts.agents.Put(agentData.Id, agent)
 
 		packet := CreateSpAgentNew(agentData)
@@ -175,6 +182,25 @@ func (ts *Teamserver) RestoreData() {
 		countDownloads++
 	}
 	logs.Success("   ", "Restored %v downloads", countDownloads)
+
+	/// SCREENSHOTS
+	countScreenshots := 0
+	restoreScreenshots := ts.DBMS.DbScreenshotAll()
+	for _, restoreScreen := range restoreScreenshots {
+
+		restoreScreen.Content, err = os.ReadFile(restoreScreen.LocalPath)
+		if err != nil {
+			continue
+		}
+
+		ts.screenshots.Put(restoreScreen.ScreenId, restoreScreen)
+
+		packet := CreateSpScreenshotCreate(restoreScreen)
+		ts.TsSyncAllClients(packet)
+
+		countScreenshots++
+	}
+	logs.Success("   ", "Restored %v screens", countScreenshots)
 
 	/// LISTENERS
 	countListeners := 0

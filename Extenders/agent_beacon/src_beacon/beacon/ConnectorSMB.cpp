@@ -129,7 +129,7 @@ BYTE* ConnectorSMB::RecvData()
     return this->recvData;
 }
 
-DWORD ConnectorSMB::RecvSize()
+int ConnectorSMB::RecvSize()
 {
 	return this->recvSize;
 }
@@ -151,8 +151,8 @@ void ConnectorSMB::Listen()
 
 void ConnectorSMB::Disconnect() 
 {
-    if (this->recvData && this->allocaSize) {
-        memset(this->recvData, 0, this->recvSize);
+    if (this->allocaSize) {
+        memset(this->recvData, 0, this->allocaSize);
         this->functions->LocalFree(this->recvData);
         this->recvData = NULL;
     }

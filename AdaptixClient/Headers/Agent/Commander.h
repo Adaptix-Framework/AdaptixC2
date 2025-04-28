@@ -24,7 +24,6 @@ struct Command
     QList<Argument> args;
     QList<Command>  subcommands;
     QString         exec;
-    QString         extPath;
 };
 
 struct Constant
@@ -36,6 +35,7 @@ struct Constant
 struct ExtModule
 {
     QString Name;
+    QString FilePath;
     QList<Command> Commands;
     QMap<QString, Constant> Constants;
 };
@@ -61,11 +61,11 @@ class Commander
     QMap<QString, ExtModule> extModules;
     QString error;
 
+    Constant        ParseConstant(QJsonObject jsonObject);
     Command         ParseCommand(QJsonObject jsonObject);
     Argument        ParseArgument(const QString &argString);
-    CommanderResult ProcessCommand(AgentData agentData, Command command, QStringList args);
-
-    static QString  ProcessExecExtension(const AgentData &agentData, const QString &filepath, QString ExecString, QList<Argument> args, QJsonObject jsonObj);
+    CommanderResult ProcessCommand(AgentData agentData, Command command, QStringList args, ExtModule extMod);
+    QString         ProcessExecExtension(const AgentData &agentData, ExtModule extMod, QString ExecString, QList<Argument> args, QJsonObject jsonObj);
     CommanderResult ProcessHelp(QStringList commandParts);
 
 public:
@@ -73,7 +73,7 @@ public:
     ~Commander();
 
     bool AddRegCommands(const QByteArray &jsonData);
-    bool AddExtModule(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands);
+    bool AddExtModule(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands, QList<QJsonObject> extConstants);
     void RemoveExtModule(const QString &filepath);
     QString GetError();
     QStringList GetCommands();

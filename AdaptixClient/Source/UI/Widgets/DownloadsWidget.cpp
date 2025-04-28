@@ -131,10 +131,15 @@ void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload )
 
     tableWidget->horizontalHeader()->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 4, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 6, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 7, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 8, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 9, QHeaderView::ResizeToContents );
+
+    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+    tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 
     adaptixWidget->Downloads[newDownload.FileId] = newDownload;
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 )
 
@@ -14,6 +13,7 @@ type AgentConfig struct {
 	ListenerName string `json:"listener_name"`
 	ListenerType string `json:"listener_type"`
 	AgentName    string `json:"agent"`
+	Os           string `json:"operating_system"`
 	Config       string `json:"config"`
 }
 
@@ -39,7 +39,7 @@ func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
 		return
 	}
 
-	fileContent, fileName, err = tc.teamserver.TsAgentGenerate(agentConfig.AgentName, agentConfig.Config, listenerWM, listenerProfile)
+	fileContent, fileName, err = tc.teamserver.TsAgentGenerate(agentConfig.AgentName, agentConfig.Config, agentConfig.Os, listenerWM, listenerProfile)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -86,7 +86,7 @@ func (tc *TsConnector) TcAgentCommand(ctx *gin.Context) {
 
 	err = json.Unmarshal([]byte(commandData.Data), &args)
 	if err != nil {
-		log.Fatalf("Error parsing commands JSON: %v", err)
+		fmt.Printf("Error parsing commands JSON: %s\n", err.Error())
 	}
 
 	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.CmdLine, args)

