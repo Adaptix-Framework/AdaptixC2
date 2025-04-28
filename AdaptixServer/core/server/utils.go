@@ -1,13 +1,13 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
 	"context"
+	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 	"net"
 	"sync"
@@ -53,13 +53,14 @@ type Teamserver struct {
 	wm_agent_types map[string]string   // agentMark string : agentName string
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
-	events    *safe.Slice // 			         : sync_packet interface{}
-	clients   safe.Map    // username string     : socket *websocket.Conn
-	agents    safe.Map    // agentId string      : agent *Agent
-	listeners safe.Map    // listenerName string : listenerData ListenerData
-	downloads safe.Map    // dileId string       : downloadData DownloadData
-	tunnels   safe.Map    // tunnelId string     : tunnel Tunnel
-	pivots    *safe.Slice // 			         : PivotData
+	events      *safe.Slice // 			         : sync_packet interface{}
+	clients     safe.Map    // username string     : socket *websocket.Conn
+	agents      safe.Map    // agentId string      : agent *Agent
+	listeners   safe.Map    // listenerName string : listenerData ListenerData
+	downloads   safe.Map    // fileId string       : downloadData DownloadData
+	screenshots safe.Map    // screeId string      : screenData ScreenDataData
+	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
+	pivots      *safe.Slice // 			         : PivotData
 }
 
 type Agent struct {
@@ -94,11 +95,11 @@ type Tunnel struct {
 	listener    net.Listener
 	connections safe.Map
 
-	handlerConnectTCP func(channelId int, addr string, port int) []byte
-	handlerConnectUDP func(channelId int, addr string, port int) []byte
-	handlerWriteTCP   func(channelId int, data []byte) []byte
-	handlerWriteUDP   func(channelId int, data []byte) []byte
-	handlerClose      func(channelId int) []byte
+	handlerConnectTCP func(channelId int, addr string, port int) adaptix.TaskData
+	handlerConnectUDP func(channelId int, addr string, port int) adaptix.TaskData
+	handlerWriteTCP   func(channelId int, data []byte) adaptix.TaskData
+	handlerWriteUDP   func(channelId int, data []byte) adaptix.TaskData
+	handlerClose      func(channelId int) adaptix.TaskData
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -139,8 +140,7 @@ type SyncPackerListenerStart struct {
 	ListenerType   string `json:"l_type"`
 	BindHost       string `json:"l_bind_host"`
 	BindPort       string `json:"l_bind_port"`
-	AgentHost      string `json:"l_agent_host"`
-	AgentPort      string `json:"l_agent_port"`
+	AgentAddrs     string `json:"l_agent_addr"`
 	ListenerStatus string `json:"l_status"`
 	Data           string `json:"l_data"`
 }
@@ -156,10 +156,10 @@ type SyncPackerListenerStop struct {
 type SyncPackerAgentReg struct {
 	SpType int `json:"type"`
 
-	Agent     string   `json:"agent"`
-	Listeners []string `json:"listener"`
-	AgentUI   string   `json:"ui"`
-	AgentCmd  string   `json:"cmd"`
+	Agent         string `json:"agent"`
+	Watermark     string `json:"watermark"`
+	ListenersJson string `json:"listeners_json"`
+	HandlersJson  string `json:"handlers_json"`
 }
 
 type SyncPackerAgentNew struct {
@@ -172,6 +172,8 @@ type SyncPackerAgentNew struct {
 	ExternalIP   string `json:"a_external_ip"`
 	InternalIP   string `json:"a_internal_ip"`
 	GmtOffset    int    `json:"a_gmt_offset"`
+	WorkingTime  int    `json:"a_workingtime"`
+	KillDate     int    `json:"a_killdate"`
 	Sleep        uint   `json:"a_sleep"`
 	Jitter       uint   `json:"a_jitter"`
 	Pid          string `json:"a_pid"`
@@ -197,6 +199,8 @@ type SyncPackerAgentUpdate struct {
 	Id           string `json:"a_id"`
 	Sleep        uint   `json:"a_sleep"`
 	Jitter       uint   `json:"a_jitter"`
+	WorkingTime  int    `json:"a_workingtime"`
+	KillDate     int    `json:"a_killdate"`
 	Impersonated string `json:"a_impersonated"`
 	Tags         string `json:"a_tags"`
 	Mark         string `json:"a_mark"`
@@ -339,6 +343,32 @@ type SyncPackerDownloadDelete struct {
 	SpType int `json:"type"`
 
 	FileId string `json:"d_file_id"`
+}
+
+/// SCREEN
+
+type SyncPackerScreenshotCreate struct {
+	SpType int `json:"type"`
+
+	ScreenId string `json:"s_screen_id"`
+	User     string `json:"s_user"`
+	Computer string `json:"s_computer"`
+	Note     string `json:"s_note"`
+	Date     int64  `json:"s_date"`
+	Content  []byte `json:"s_content"`
+}
+
+type SyncPackerScreenshotUpdate struct {
+	SpType int `json:"type"`
+
+	ScreenId string `json:"s_screen_id"`
+	Note     string `json:"s_note"`
+}
+
+type SyncPackerScreenshotDelete struct {
+	SpType int `json:"type"`
+
+	ScreenId string `json:"s_screen_id"`
 }
 
 /// BROWSER

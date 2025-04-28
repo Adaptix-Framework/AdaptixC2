@@ -8,14 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Adaptix-Framework/axc2"
 	"regexp"
-)
-
-const (
-	SetType     = INTERNAL
-	SetProtocol = "smb"
-	SetName     = "BeaconSMB"
-	SetUiPath   = "_ui_listener.json"
 )
 
 func (m *ModuleExtender) HandlerListenerValid(data string) error {
@@ -42,9 +36,9 @@ func (m *ModuleExtender) HandlerListenerValid(data string) error {
 	return nil
 }
 
-func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (ListenerData, []byte, any, error) {
+func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configData string, listenerCustomData []byte) (adaptix.ListenerData, []byte, any, error) {
 	var (
-		listenerData ListenerData
+		listenerData adaptix.ListenerData
 		customdData  []byte
 	)
 
@@ -65,7 +59,7 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		randSlice := make([]byte, 16)
 		_, _ = rand.Read(randSlice)
 		conf.EncryptKey = randSlice[:16]
-		conf.Protocol = "smb"
+		conf.Protocol = "bind_smb"
 	} else {
 		err = json.Unmarshal(listenerCustomData, &conf)
 		if err != nil {
@@ -79,11 +73,10 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		Active: true,
 	}
 
-	listenerData = ListenerData{
+	listenerData = adaptix.ListenerData{
 		BindHost:  "",
 		BindPort:  "",
-		AgentHost: "",
-		AgentPort: listener.Config.Pipename,
+		AgentAddr: "\\\\.\\pipe\\" + listener.Config.Pipename,
 		Status:    "Listen",
 	}
 
@@ -99,9 +92,9 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 	return listenerData, customdData, listener, nil
 }
 
-func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any, configData string) (ListenerData, []byte, bool) {
+func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any, configData string) (adaptix.ListenerData, []byte, bool) {
 	var (
-		listenerData ListenerData
+		listenerData adaptix.ListenerData
 		customdData  []byte
 		ok           bool = false
 	)
@@ -121,11 +114,10 @@ func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any
 			return listenerData, customdData, false
 		}
 
-		listenerData = ListenerData{
+		listenerData = adaptix.ListenerData{
 			BindHost:  "",
 			BindPort:  "",
-			AgentHost: "",
-			AgentPort: listener.Config.Pipename,
+			AgentAddr: "\\\\.\\pipe\\" + listener.Config.Pipename,
 			Status:    "Listen",
 		}
 
@@ -207,7 +199,7 @@ func (m *ModuleExtender) HandlerListenerInteralHandler(name string, data []byte,
 		agentInfo = agentInfo[4:]
 		agentId = fmt.Sprintf("%08x", uint(binary.BigEndian.Uint32(agentInfo[:4])))
 		agentInfo = agentInfo[4:]
-		
+
 		if !ModuleObject.ts.TsAgentIsExists(agentId) {
 			err = ModuleObject.ts.TsAgentCreate(agentType, agentId, agentInfo, listener.Name, "", false)
 			if err != nil {

@@ -18,7 +18,7 @@ ListenersWidget::~ListenersWidget() = default;
 void ListenersWidget::createUI()
 {
     tableWidget = new QTableWidget( this );
-    tableWidget->setColumnCount( 7 );
+    tableWidget->setColumnCount( 6 );
     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
     tableWidget->setAutoFillBackground( false );
     tableWidget->setShowGrid( false );
@@ -38,9 +38,8 @@ void ListenersWidget::createUI()
     tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Type" ) );
     tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Bind Host" ) );
     tableWidget->setHorizontalHeaderItem( 3, new QTableWidgetItem( "Bind Port" ) );
-    tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem( "Port (agent)" ) );
-    tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem( "C2 Hosts (agent)" ) );
-    tableWidget->setHorizontalHeaderItem( 6, new QTableWidgetItem( "Status" ) );
+    tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem( "C2 Hosts (agent)" ) );
+    tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem( "Status" ) );
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
@@ -59,17 +58,15 @@ void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( auto listener : adaptixWidget->Listeners ) {
-        if( listener.ListenerName == newListener.ListenerName ) {
+        if( listener.ListenerName == newListener.ListenerName )
             return;
-        }
     }
 
     auto item_Name      = new QTableWidgetItem( newListener.ListenerName );
     auto item_Type      = new QTableWidgetItem( newListener.ListenerType );
     auto item_BindHost  = new QTableWidgetItem( newListener.BindHost );
     auto item_BindPort  = new QTableWidgetItem( newListener.BindPort );
-    auto item_AgentPort = new QTableWidgetItem( newListener.AgentPort );
-    auto item_AgentHost = new QTableWidgetItem( newListener.AgentHost );
+    auto item_AgentHost = new QTableWidgetItem( newListener.AgentAddresses );
     auto item_Status    = new QTableWidgetItem( newListener.Status );
 
     item_Name->setFlags( item_Name->flags() ^ Qt::ItemIsEditable );
@@ -81,9 +78,6 @@ void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
 
     item_BindPort->setFlags( item_BindPort->flags() ^ Qt::ItemIsEditable );
     item_BindPort->setTextAlignment( Qt::AlignCenter );
-
-    item_AgentPort->setFlags( item_AgentPort->flags() ^ Qt::ItemIsEditable );
-    item_AgentPort->setTextAlignment( Qt::AlignCenter );
 
     item_AgentHost->setFlags( item_AgentHost->flags() ^ Qt::ItemIsEditable );
     item_AgentHost->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
@@ -106,14 +100,18 @@ void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
     tableWidget->setItem( tableWidget->rowCount() - 1, 1, item_Type );
     tableWidget->setItem( tableWidget->rowCount() - 1, 2, item_BindHost );
     tableWidget->setItem( tableWidget->rowCount() - 1, 3, item_BindPort );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 4, item_AgentPort );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 5, item_AgentHost );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 6, item_Status );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 4, item_AgentHost );
+    tableWidget->setItem( tableWidget->rowCount() - 1, 5, item_Status );
     tableWidget->setSortingEnabled( isSortingEnabled );
 
+    tableWidget->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 4, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 6, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( 5, QHeaderView::ResizeToContents );
+
+    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+    tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 
     adaptixWidget->Listeners.push_back(newListener);
 }
@@ -126,8 +124,7 @@ void ListenersWidget::EditListenerItem(const ListenerData &newListener) const
         if( adaptixWidget->Listeners[i].ListenerName == newListener.ListenerName ) {
             adaptixWidget->Listeners[i].BindHost = newListener.BindHost;
             adaptixWidget->Listeners[i].BindPort = newListener.BindPort;
-            adaptixWidget->Listeners[i].AgentHost = newListener.AgentHost;
-            adaptixWidget->Listeners[i].AgentPort = newListener.AgentPort;
+            adaptixWidget->Listeners[i].AgentAddresses = newListener.AgentAddresses;
             adaptixWidget->Listeners[i].Status = newListener.Status;
             adaptixWidget->Listeners[i].Data = newListener.Data;
             break;
@@ -139,14 +136,13 @@ void ListenersWidget::EditListenerItem(const ListenerData &newListener) const
         if ( item && item->text() == newListener.ListenerName ) {
             tableWidget->item(row, 2)->setText(newListener.BindHost);
             tableWidget->item(row, 3)->setText(newListener.BindPort);
-            tableWidget->item(row, 4)->setText(newListener.AgentPort);
-            tableWidget->item(row, 5)->setText(newListener.AgentHost);
-            tableWidget->item(row, 6)->setText(newListener.Status);
+            tableWidget->item(row, 4)->setText(newListener.AgentAddresses);
+            tableWidget->item(row, 5)->setText(newListener.Status);
 
             if ( newListener.Status == "Listen"  )
-                tableWidget->item(row, 6)->setForeground(QColor(COLOR_NeonGreen) );
+                tableWidget->item(row, 5)->setForeground(QColor(COLOR_NeonGreen) );
             else
-                tableWidget->item(row, 6)->setForeground( QColor(COLOR_ChiliPepper) );
+                tableWidget->item(row, 5)->setForeground( QColor(COLOR_ChiliPepper) );
             break;
         }
     }
@@ -193,16 +189,16 @@ void ListenersWidget::createListener() const
     if ( !adaptixWidget )
         return;
 
-    for( auto regLst : adaptixWidget->RegisterListenersUI ) {
+    for( auto regLst : adaptixWidget->RegisterListeners ) {
         regLst->BuildWidget(false);
     }
 
     DialogListener dialogListener;
-    dialogListener.AddExListeners( adaptixWidget->RegisterListenersUI );
+    dialogListener.AddExListeners( adaptixWidget->RegisterListeners );
     dialogListener.SetProfile( *(adaptixWidget->GetProfile()) );
     dialogListener.Start();
 
-    for( auto regLst : adaptixWidget->RegisterListenersUI ) {
+    for( auto regLst : adaptixWidget->RegisterListeners ) {
         regLst->ClearWidget();
     }
 }
@@ -226,7 +222,7 @@ void ListenersWidget::editListener() const
     }
 
     QMap<QString, WidgetBuilder*> tmpRegisterListenersUI;
-    tmpRegisterListenersUI[listenerType] = adaptixWidget->RegisterListenersUI[listenerType];
+    tmpRegisterListenersUI[listenerType] = adaptixWidget->RegisterListeners[listenerType];
     tmpRegisterListenersUI[listenerType]->BuildWidget(true);
     tmpRegisterListenersUI[listenerType]->FillData(listenerData);
 
@@ -278,12 +274,15 @@ void ListenersWidget::generateAgent() const
     if (parts.size() != 3) {
         return;
     }
+    QString targetListener = parts[2];
 
-    QMap<QString, WidgetBuilder*> tmpRegisterAgentsUI;
-    auto agents= adaptixWidget->LinkListenerAgent[parts[2]];
-    for( auto agent : agents ) {
-        tmpRegisterAgentsUI[agent] = adaptixWidget->RegisterAgentsUI[agent];
-        tmpRegisterAgentsUI[agent]->BuildWidget(false );
+    QVector<RegAgentConfig> tmpRegisterAgentsUI;
+    for( auto regAgent : adaptixWidget->RegisterAgents ) {
+        if (targetListener == regAgent.listenerName) {
+            tmpRegisterAgentsUI.push_back(regAgent);
+            if (tmpRegisterAgentsUI.last().builder)
+                tmpRegisterAgentsUI.last().builder->BuildWidget(false);
+        }
     }
 
     DialogAgent dialogAgent(listenerName, listenerType);
@@ -292,6 +291,6 @@ void ListenersWidget::generateAgent() const
     dialogAgent.Start();
 
     for( auto regAgent: tmpRegisterAgentsUI ) {
-        regAgent->ClearWidget();
+        regAgent.builder->ClearWidget();
     }
 }

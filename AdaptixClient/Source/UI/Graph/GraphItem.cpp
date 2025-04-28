@@ -44,7 +44,7 @@ GraphItem::GraphItem( SessionsGraph* graphView, Agent* agent )
 
     if ( agent ) {
         const QString note1 = QString("%1 @ %2").arg( agent->data.Username ).arg( agent->data.Computer );
-        const QString note2 = QString("%1 (%2)").arg( agent->data.Id ).arg( agent->data.Process );
+        const QString note2 = QString("%1 (%2) : %3").arg( agent->data.Id ).arg( agent->data.Name ).arg( agent->data.Pid );
         this->note = new GraphItemNote( note1, note2 );
         sessionsGraph->scene()->addItem( this->note );
     }

@@ -6,9 +6,12 @@
     "cert": "server.rsa.crt",
     "key": "server.rsa.key",
     "extenders": [
-      "extenders/listener_beacon_http/listener_beacon_http.so",
-      "extenders/listener_beacon_smb/listener_beacon_smb.so",
-      "extenders/agent_beacon/agent_beacon.so"
+      "extenders/listener_beacon_http/config.json",
+      "extenders/listener_beacon_smb/config.json",
+      "extenders/listener_beacon_tcp/config.json",
+      "extenders/agent_beacon/config.json",
+      "extenders/listener_gopher_tcp/config.json",
+      "extenders/agent_gopher/config.json"
     ]
   },
 

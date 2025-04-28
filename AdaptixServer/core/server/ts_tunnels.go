@@ -1,15 +1,13 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/proxy"
 	"AdaptixServer/core/utils/safe"
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Adaptix-Framework/axc2"
 	"io"
 	"math/rand"
 	"net"
@@ -80,9 +78,8 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 		Completed:  true,
 		FinishDate: time.Now().Unix(),
 	}
-	var taskBuffer bytes.Buffer
-	_ = json.NewEncoder(&taskBuffer).Encode(taskData)
-	ts.TsTaskUpdate(tunnel.Data.AgentId, taskBuffer.Bytes())
+
+	ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
 
 	message := ""
 	if tunnel.Data.Type == "SOCKS5 proxy" {
@@ -121,17 +118,12 @@ func (ts *Teamserver) TsTunnelSetInfo(TunnelId string, Info string) error {
 
 /// Socks5
 
-func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
-	var (
-		agent       *Agent
-		socksTunnel *Tunnel
-	)
-
+func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
 	}
-	agent, _ = value.(*Agent)
+	agent, _ := value.(*Agent)
 
 	port := strconv.Itoa(Port)
 	addr := Address + ":" + port
@@ -140,7 +132,7 @@ func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port 
 		return "", err
 	}
 
-	socksTunnel = &Tunnel{
+	socksTunnel := &Tunnel{
 		listener:    listener,
 		connections: safe.NewMap(),
 
@@ -189,17 +181,12 @@ func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port 
 	return socksTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
-	var (
-		agent       *Agent
-		socksTunnel *Tunnel
-	)
-
+func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
 	}
-	agent, _ = value.(*Agent)
+	agent, _ := value.(*Agent)
 
 	port := strconv.Itoa(Port)
 	addr := Address + ":" + port
@@ -208,7 +195,7 @@ func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port 
 		return "", err
 	}
 
-	socksTunnel = &Tunnel{
+	socksTunnel := &Tunnel{
 		listener:    listener,
 		connections: safe.NewMap(),
 
@@ -259,17 +246,12 @@ func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port 
 	return socksTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) []byte, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
-	var (
-		agent       *Agent
-		socksTunnel *Tunnel
-	)
-
+func (ts *Teamserver) TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
 	}
-	agent, _ = value.(*Agent)
+	agent, _ := value.(*Agent)
 
 	port := strconv.Itoa(Port)
 	addr := Address + ":" + port
@@ -278,7 +260,7 @@ func (ts *Teamserver) TsTunnelCreateSocks5Auth(AgentId string, Address string, P
 		return "", err
 	}
 
-	socksTunnel = &Tunnel{
+	socksTunnel := &Tunnel{
 		listener:    listener,
 		connections: safe.NewMap(),
 
@@ -339,17 +321,12 @@ func (ts *Teamserver) TsTunnelStopSocks(AgentId string, Port int) {
 
 /// Port Forward
 
-func (ts *Teamserver) TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
-	var (
-		agent     *Agent
-		fwdTunnel *Tunnel
-	)
-
+func (ts *Teamserver) TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
 	}
-	agent, _ = value.(*Agent)
+	agent, _ := value.(*Agent)
 
 	port := strconv.Itoa(Port)
 	addr := Address + ":" + port
@@ -358,7 +335,7 @@ func (ts *Teamserver) TsTunnelCreateLocalPortFwd(AgentId string, Address string,
 		return "", err
 	}
 
-	fwdTunnel = &Tunnel{
+	fwdTunnel := &Tunnel{
 		listener:    listener,
 		connections: safe.NewMap(),
 
@@ -415,22 +392,17 @@ func (ts *Teamserver) TsTunnelStopLocalPortFwd(AgentId string, Port int) {
 	_ = ts.TsTunnelStop(TunnelId)
 }
 
-func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) []byte, FuncMsgWrite func(channelId int, data []byte) []byte, FuncMsgClose func(channelId int) []byte) (string, error) {
-	var (
-		agent     *Agent
-		fwdTunnel *Tunnel
-	)
-
+func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
 	}
-	agent, _ = value.(*Agent)
+	agent, _ := value.(*Agent)
 
 	port := strconv.Itoa(Port)
 	fport := strconv.Itoa(FwdPort)
 
-	fwdTunnel = &Tunnel{
+	fwdTunnel := &Tunnel{
 		connections: safe.NewMap(),
 
 		handlerWriteTCP: FuncMsgWrite,
@@ -466,10 +438,9 @@ func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdA
 
 func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, string, error) {
 	var (
-		tunnel     *Tunnel
-		value      interface{}
-		ok         bool
-		taskBuffer bytes.Buffer
+		tunnel *Tunnel
+		value  interface{}
+		ok     bool
 	)
 
 	tunId := fmt.Sprintf("%08x", tunnelId)
@@ -502,8 +473,9 @@ func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (str
 				FinishDate:  time.Now().Unix(),
 				Completed:   true,
 			}
-			_ = json.NewEncoder(&taskBuffer).Encode(taskData)
-			ts.TsTaskUpdate(tunnel.Data.AgentId, taskBuffer.Bytes())
+
+			ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
+
 			return tunnel.TaskId, "", errors.New("this port is already in use")
 		}
 	}
@@ -511,28 +483,21 @@ func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (str
 }
 
 func (ts *Teamserver) TsTunnelStopRemotePortFwd(AgentId string, Port int) {
-	var (
-		tunnel *Tunnel
-		agent  *Agent
-		value  interface{}
-		ok     bool
-	)
-
 	port := strconv.Itoa(Port)
 	id := krypt.CRC32([]byte(AgentId + "rportfwd" + port))
 	TunnelId := fmt.Sprintf("%08x", id)
 
-	value, ok = ts.tunnels.Get(TunnelId)
+	value, ok := ts.tunnels.Get(TunnelId)
 	if !ok {
 		return
 	}
-	tunnel, _ = value.(*Tunnel)
+	tunnel, _ := value.(*Tunnel)
 
 	value, ok = ts.agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return
 	}
-	agent, _ = value.(*Agent)
+	agent, _ := value.(*Agent)
 
 	rawTaskData := tunnel.handlerClose(int(id))
 	sendTunnelTaskData(agent, rawTaskData)
@@ -619,25 +584,18 @@ func (ts *Teamserver) TsTunnelConnectionClose(channelId int) {
 }
 
 func (ts *Teamserver) TsTunnelConnectionAccept(tunnelId int, channelId int) {
-	var (
-		value  interface{}
-		tunnel *Tunnel
-		agent  *Agent
-		ok     bool
-	)
-
 	tunId := fmt.Sprintf("%08x", tunnelId)
-	value, ok = ts.tunnels.Get(tunId)
+	value, ok := ts.tunnels.Get(tunId)
 	if !ok {
 		return
 	}
-	tunnel, _ = value.(*Tunnel)
+	tunnel, _ := value.(*Tunnel)
 
 	value, ok = ts.agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return
 	}
-	agent, _ = value.(*Agent)
+	agent, _ := value.(*Agent)
 
 	handlerReverseAccept(agent, tunnel, channelId)
 }
@@ -676,14 +634,15 @@ func handleRequestSocks5(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
 
 	channelId := int(rand.Uint32())
 	protocol := "TCP"
-	var rawTaskData []byte
+
+	var taskData adaptix.TaskData
 	if socksCommand == 3 {
-		rawTaskData = tunnel.handlerConnectUDP(channelId, targetAddress, targetPort)
+		taskData = tunnel.handlerConnectUDP(channelId, targetAddress, targetPort)
 		protocol = "UDP"
 	} else {
-		rawTaskData = tunnel.handlerConnectTCP(channelId, targetAddress, targetPort)
+		taskData = tunnel.handlerConnectTCP(channelId, targetAddress, targetPort)
 	}
-	sendTunnelTaskData(agent, rawTaskData)
+	sendTunnelTaskData(agent, taskData)
 
 	tunnelConnection := &TunnelConnection{
 		channelId: channelId,
@@ -705,14 +664,14 @@ func handleRequestSocks5Auth(agent *Agent, tunnel *Tunnel, socksConn net.Conn, u
 
 	channelId := int(rand.Uint32())
 	protocol := "TCP"
-	var rawTaskData []byte
+	var taskData adaptix.TaskData
 	if socksCommand == 3 {
-		rawTaskData = tunnel.handlerConnectUDP(channelId, targetAddress, targetPort)
+		taskData = tunnel.handlerConnectUDP(channelId, targetAddress, targetPort)
 		protocol = "UDP"
 	} else {
-		rawTaskData = tunnel.handlerConnectTCP(channelId, targetAddress, targetPort)
+		taskData = tunnel.handlerConnectTCP(channelId, targetAddress, targetPort)
 	}
-	sendTunnelTaskData(agent, rawTaskData)
+	sendTunnelTaskData(agent, taskData)
 
 	tunnelConnection := &TunnelConnection{
 		channelId: channelId,
@@ -762,17 +721,7 @@ func handlerReverseAccept(agent *Agent, tunnel *Tunnel, channelId int) {
 
 /// process socket
 
-func sendTunnelTaskData(agent *Agent, rawTaskData []byte) {
-	var (
-		taskData adaptix.TaskData
-		err      error
-	)
-
-	err = json.Unmarshal(rawTaskData, &taskData)
-	if err != nil {
-		return
-	}
-
+func sendTunnelTaskData(agent *Agent, taskData adaptix.TaskData) {
 	if taskData.TaskId == "" {
 		taskData.TaskId, _ = krypt.GenerateUID(8)
 	}
@@ -781,7 +730,7 @@ func sendTunnelTaskData(agent *Agent, rawTaskData []byte) {
 }
 
 func socketToTunnelData(agent *Agent, tunnel *Tunnel, tunnelConnection *TunnelConnection) {
-	var rawTaskData []byte
+	var taskData adaptix.TaskData
 
 	buffer := make([]byte, 0x10000)
 	for {
@@ -792,7 +741,7 @@ func socketToTunnelData(agent *Agent, tunnel *Tunnel, tunnelConnection *TunnelCo
 			n, err := tunnelConnection.conn.Read(buffer)
 			if err != nil {
 				if err == io.EOF {
-					rawTaskData = tunnel.handlerClose(tunnelConnection.channelId)
+					taskData = tunnel.handlerClose(tunnelConnection.channelId)
 				} else {
 					fmt.Printf("Error read data: %v\n", err)
 					continue
@@ -800,13 +749,13 @@ func socketToTunnelData(agent *Agent, tunnel *Tunnel, tunnelConnection *TunnelCo
 				break
 			} else {
 				if tunnelConnection.protocol == "UDP" {
-					rawTaskData = tunnel.handlerWriteUDP(tunnelConnection.channelId, buffer[:n])
+					taskData = tunnel.handlerWriteUDP(tunnelConnection.channelId, buffer[:n])
 				} else {
-					rawTaskData = tunnel.handlerWriteTCP(tunnelConnection.channelId, buffer[:n])
+					taskData = tunnel.handlerWriteTCP(tunnelConnection.channelId, buffer[:n])
 				}
 			}
 
-			sendTunnelTaskData(agent, rawTaskData)
+			sendTunnelTaskData(agent, taskData)
 		}
 	}
 }

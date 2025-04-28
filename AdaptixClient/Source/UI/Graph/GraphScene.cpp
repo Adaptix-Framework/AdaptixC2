@@ -30,21 +30,28 @@ void GraphScene::mouseMoveEvent( QGraphicsSceneMouseEvent* event )
 void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 {
     auto graphics_items = selectedItems();
-
     if(graphics_items.empty())
         if( (graphics_items = items(event->scenePos())).empty() )
             return QGraphicsScene::contextMenuEvent( event );
+
+    bool menuProcessBrowser = false;
+    bool menuFileBrowser = false;
+    bool menuExit = false;
 
     bool valid = false;
     for ( const auto& _graphics_item : graphics_items ) {
         const auto item = dynamic_cast<GraphItem*>( _graphics_item );
         if ( item && item->agent ) {
             valid = true;
-            break;
+            if (item->agent->browsers.FileBrowser)      menuFileBrowser = true;
+            if (item->agent->browsers.ProcessBrowser)   menuProcessBrowser = true;
+            if (item->agent->browsers.SessionsMenuExit) menuExit = true;
         }
     }
     if (!valid)
         return;
+
+
 
     QMenu menu = QMenu();
 
@@ -55,11 +62,17 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
     auto agentMenu = new QMenu("Agent", &menu);
     agentMenu->addAction("Tasks");
-    agentMenu->addAction(agentSep1);
-    agentMenu->addAction("File Browser");
-    agentMenu->addAction("Process Browser");
-    agentMenu->addAction(agentSep2);
-    agentMenu->addAction("Exit");
+    if (menuFileBrowser || menuProcessBrowser) {
+        agentMenu->addAction(agentSep1);
+        if (menuFileBrowser)
+            agentMenu->addAction("File Browser");
+        if (menuProcessBrowser)
+            agentMenu->addAction("Process Browser");
+    }
+    if (menuExit) {
+        agentMenu->addAction(agentSep2);
+        agentMenu->addAction("Exit");
+    }
 
     auto itemMenu = new QMenu("Item", &menu);
     itemMenu->addAction("Mark as Active");
@@ -95,14 +108,14 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     else if ( action->text() == "File Browser" ) {
         for ( const auto& _graphics_item : graphics_items ) {
             const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent)
+            if ( item && item->agent )
                 adaptixWidget->LoadFileBrowserUI(item->agent->data.Id);
         }
     }
     else if ( action->text() == "Process Browser" ) {
         for ( const auto& _graphics_item : graphics_items ) {
             const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent)
+            if ( item && item->agent )
                 adaptixWidget->LoadProcessBrowserUI(item->agent->data.Id);
         }
     }
@@ -110,7 +123,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         QStringList listId;
         for ( const auto& _graphics_item : graphics_items ) {
             const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent)
+            if ( item && item->agent && item->agent->browsers.SessionsMenuExit )
                 listId.append(item->agent->data.Id);
         }
         if(listId.empty())

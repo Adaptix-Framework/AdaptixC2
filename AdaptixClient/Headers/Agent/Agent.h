@@ -21,6 +21,7 @@ public:
     AdaptixWidget* adaptixWidget = nullptr;
 
     AgentData data = {};
+    BrowsersConfig browsers = {};
 
     QImage imageActive   = QImage();
     QImage imageInactive = QImage();
@@ -55,7 +56,7 @@ public:
     bool show   = true;
     QString original_item_color;
 
-    explicit Agent(QJsonObject jsonObjAgentData, Commander* commander, AdaptixWidget* w );
+    explicit Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w );
     ~Agent();
 
     void    Update(QJsonObject jsonObjAgentData);

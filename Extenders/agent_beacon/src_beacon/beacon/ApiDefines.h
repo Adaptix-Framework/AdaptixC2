@@ -134,6 +134,8 @@
 #define HASH_FUNC_BEACONGETVALUE                     0x132c1909
 #define HASH_FUNC_BEACONREMOVEVALUE                  0xb772ea57
 #define HASH_FUNC_LOADLIBRARYA                       0x1159d0fa
+#define HASH_FUNC_GETLOCALTIME                       0xcbd6d0de
+#define HASH_FUNC_GETSYSTEMTIMEASFILETIME            0xa94c633b
 #define HASH_FUNC_GETPROCADDRESS                     0x184f2ade
 #define HASH_FUNC_GETMODULEHANDLEA                   0x700712f7
 #define HASH_FUNC_FREELIBRARY                        0x26ccae3b

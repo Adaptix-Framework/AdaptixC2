@@ -1,35 +1,32 @@
 package server
 
 import (
-	"AdaptixServer/core/adaptix"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
-	"bytes"
-	"encoding/json"
 	"fmt"
+	"github.com/Adaptix-Framework/axc2"
 	"time"
 )
 
-func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string, taskObject []byte) {
-	var (
-		agent    *Agent
-		taskData adaptix.TaskData
-		value    any
-		ok       bool
-		err      error
-	)
-	err = json.Unmarshal(taskObject, &taskData)
-	if err != nil {
-		logs.Error("", "TsTaskCreate: %v", err.Error())
-		return
+func (ts *Teamserver) TsTaskRunningExists(agentId string, taskId string) bool {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
+		return false
 	}
+	agent, _ := value.(*Agent)
 
-	value, ok = ts.agents.Get(agentId)
+	return agent.RunningTasks.Contains(taskId)
+}
+
+func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData) {
+	value, ok := ts.agents.Get(agentId)
 	if !ok {
 		logs.Error("", "TsTaskCreate: agent %v not found", agentId)
 		return
 	}
-	agent = value.(*Agent)
+
+	agent, _ := value.(*Agent)
 	if agent.Active == false {
 		return
 	}
@@ -112,32 +109,19 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 	}
 }
 
-func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
-	var (
-		agent    *Agent
-		task     adaptix.TaskData
-		taskData adaptix.TaskData
-		value    any
-		ok       bool
-		err      error
-	)
-	err = json.Unmarshal(taskObject, &taskData)
-	if err != nil {
-		return
-	}
-
-	value, ok = ts.agents.Get(agentId)
+func (ts *Teamserver) TsTaskUpdate(agentId string, taskData adaptix.TaskData) {
+	value, ok := ts.agents.Get(agentId)
 	if !ok {
 		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
 		return
 	}
-	agent = value.(*Agent)
+	agent, _ := value.(*Agent)
 
 	value, ok = agent.RunningTasks.GetDelete(taskData.TaskId)
 	if !ok {
 		return
 	}
-	task = value.(adaptix.TaskData)
+	task, _ := value.(adaptix.TaskData)
 
 	task.Data = []byte("")
 	task.FinishDate = taskData.FinishDate
@@ -250,20 +234,13 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskObject []byte) {
 }
 
 func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
-	var (
-		agent *Agent
-		task  adaptix.TaskData
-		value any
-		ok    bool
-	)
-
-	value, ok = ts.agents.Get(agentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
 		return fmt.Errorf("agent %v not found", agentId)
 	}
+	agent, _ := value.(*Agent)
 
+	var task adaptix.TaskData
 	for i := 0; i < agent.TasksQueue.Len(); i++ {
 		if value, ok = agent.TasksQueue.Get(i); ok {
 			task = value.(adaptix.TaskData)
@@ -277,18 +254,17 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 	if ok {
 		return fmt.Errorf("task %v in process", taskId)
 	}
-
 	value, ok = agent.CompletedTasks.GetDelete(taskId)
-	if ok {
-		task = value.(adaptix.TaskData)
-		_ = ts.DBMS.DbTaskDelete(task.TaskId, "")
-
-		packet := CreateSpAgentTaskRemove(task)
-		ts.TsSyncAllClients(packet)
-		return nil
+	if !ok {
+		return fmt.Errorf("task %v not found", taskId)
 	}
 
-	return fmt.Errorf("task %v not found", taskId)
+	task = value.(adaptix.TaskData)
+	_ = ts.DBMS.DbTaskDelete(task.TaskId, "")
+
+	packet := CreateSpAgentTaskRemove(task)
+	ts.TsSyncAllClients(packet)
+	return nil
 }
 
 /////
@@ -318,36 +294,29 @@ func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {
 	return false
 }
 
-func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int) ([][]byte, error) {
-	var (
-		tasksArray [][]byte
-		agent      *Agent
-		value      any
-		ok         bool
-	)
-
-	value, ok = ts.agents.Get(agentId)
+func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int) ([]adaptix.TaskData, error) {
+	value, ok := ts.agents.Get(agentId)
 	if !ok {
 		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
 	}
-	agent = value.(*Agent)
+	agent, _ := value.(*Agent)
 
 	/// TASKS QUEUE
 
 	var sendTasks []string
-
+	tasksSize := 0
+	var tasks []adaptix.TaskData
 	for i := 0; i < agent.TasksQueue.Len(); i++ {
 		value, ok = agent.TasksQueue.Get(i)
 		if ok {
 			taskData := value.(adaptix.TaskData)
-			if len(tasksArray)+len(taskData.Data) < availableSize {
-				var taskBuffer bytes.Buffer
-				_ = json.NewEncoder(&taskBuffer).Encode(taskData)
-				tasksArray = append(tasksArray, taskBuffer.Bytes())
+			if tasksSize+len(taskData.Data) < availableSize {
+				tasks = append(tasks, taskData)
 				agent.RunningTasks.Put(taskData.TaskId, taskData)
 				agent.TasksQueue.Delete(i)
 				i--
 				sendTasks = append(sendTasks, taskData.TaskId)
+				tasksSize += len(taskData.Data)
 			} else {
 				break
 			}
@@ -367,12 +336,11 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 		value, ok = agent.TunnelQueue.Get(i)
 		if ok {
 			tunnelTaskData := value.(adaptix.TaskData)
-			if len(tasksArray)+len(tunnelTaskData.Data) < availableSize {
-				var taskBuffer bytes.Buffer
-				_ = json.NewEncoder(&taskBuffer).Encode(tunnelTaskData)
-				tasksArray = append(tasksArray, taskBuffer.Bytes())
+			if tasksSize+len(tunnelTaskData.Data) < availableSize {
+				tasks = append(tasks, tunnelTaskData)
 				agent.TunnelQueue.Delete(i)
 				i--
+				tasksSize += len(tunnelTaskData.Data)
 			} else {
 				break
 			}
@@ -386,8 +354,8 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 	for i := 0; i < agent.PivotChilds.Len(); i++ {
 		value, ok = agent.PivotChilds.Get(i)
 		if ok {
-			lostSize := availableSize - len(tasksArray)
 			pivotData := value.(*adaptix.PivotData)
+			lostSize := availableSize - tasksSize
 			if availableSize > 0 {
 				data, err := ts.TsAgentGetHostedTasks(pivotData.ChildAgentId, lostSize)
 				if err != nil {
@@ -397,31 +365,26 @@ func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int)
 				if err != nil {
 					continue
 				}
-				tasksArray = append(tasksArray, pivotTaskData)
+				tasks = append(tasks, pivotTaskData)
+				tasksSize += len(pivotTaskData.Data)
 			}
+		} else {
+			break
 		}
 	}
 
-	return tasksArray, nil
+	return tasks, nil
 }
 
 func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
-	var (
-		agent *Agent
-		task  adaptix.TaskData
-		value any
-		ok    bool
-		found bool
-	)
-
-	value, ok = ts.agents.Get(agentId)
-	if ok {
-		agent = value.(*Agent)
-	} else {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
 		return fmt.Errorf("agent %v not found", agentId)
 	}
+	agent, _ := value.(*Agent)
 
-	found = false
+	var task adaptix.TaskData
+	found := false
 	for i := 0; i < agent.TasksQueue.Len(); i++ {
 		if value, ok = agent.TasksQueue.Get(i); ok {
 			task = value.(adaptix.TaskData)
@@ -440,20 +403,17 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 	}
 
 	value, ok = agent.RunningTasks.Get(taskId)
-	if ok {
-		task = value.(adaptix.TaskData)
-		if task.Type == TYPE_JOB {
-			data, err := ts.Extender.ExAgentBrowserJobKill(agent.Data.Name, taskId)
-			if err != nil {
-				return err
-			}
-
-			ts.TsTaskCreate(agent.Data.Id, "job kill "+taskId, "", data)
-
-			return nil
-		} else {
-			return fmt.Errorf("taski %v in process", taskId)
-		}
+	if !ok {
+		return nil
 	}
+	if value.(adaptix.TaskData).Type != TYPE_JOB {
+		return fmt.Errorf("task %v in process", taskId)
+	}
+
+	taskData, err := ts.Extender.ExAgentBrowserJobKill(agent.Data, taskId)
+	if err != nil {
+		return err
+	}
+	ts.TsTaskCreate(agent.Data.Id, "job kill "+taskId, "", taskData)
 	return nil
 }

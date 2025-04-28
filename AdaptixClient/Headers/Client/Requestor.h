@@ -8,6 +8,8 @@ QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QStri
 
 bool HttpReqLogin(AuthProfile* profile);
 
+bool HttpReqSync(AuthProfile profile);
+
 bool HttpReqJwtUpdate(AuthProfile* profile);
 
 /// LISTENER
@@ -20,7 +22,7 @@ bool HttpReqListenerStop(const QString &listenerName, const QString &listenerTyp
 
 /// AGENT
 
-bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &configData, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &os, const QString &configData, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqAgentCommand(const QString &agentName, const QString &agentId, const QString &cmdLine, const QString &data, AuthProfile profile, QString* message, bool* ok );
 
@@ -59,5 +61,11 @@ bool HttpReqBrowserUpload(const QString &agentId, const QString &path, const QSt
 bool HttpReqTunnelStop(const QString &tunnelId, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqTunnelSetInfo(const QString &tunnelId, const QString &info, AuthProfile profile, QString* message, bool* ok );
+
+/// SCREEN
+
+bool HttpReqScreenSetNote( QStringList scrensId, const QString &note, AuthProfile profile, QString* message, bool* ok );
+
+bool HttpReqScreenRemove( QStringList scrensId, AuthProfile profile, QString* message, bool* ok );
 
 #endif //ADAPTIXCLIENT_REQUESTOR_H

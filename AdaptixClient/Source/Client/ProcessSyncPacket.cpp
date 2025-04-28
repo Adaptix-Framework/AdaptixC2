@@ -32,8 +32,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if ( !jsonObj.contains("l_type")       || !jsonObj["l_type"].isString() )       return false;
         if ( !jsonObj.contains("l_bind_host")  || !jsonObj["l_bind_host"].isString() )  return false;
         if ( !jsonObj.contains("l_bind_port")  || !jsonObj["l_bind_port"].isString() )  return false;
-        if ( !jsonObj.contains("l_agent_host") || !jsonObj["l_agent_host"].isString() ) return false;
-        if ( !jsonObj.contains("l_agent_port") || !jsonObj["l_agent_port"].isString() ) return false;
+        if ( !jsonObj.contains("l_agent_addr") || !jsonObj["l_agent_addr"].isString() ) return false;
         if ( !jsonObj.contains("l_status")     || !jsonObj["l_status"].isString() )     return false;
         if ( !jsonObj.contains("l_data")       || !jsonObj["l_data"].isString() )       return false;
         return true;
@@ -44,10 +43,10 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
 
     if( spType == TYPE_AGENT_REG ) {
-        if ( !jsonObj.contains("agent")    || !jsonObj["agent"].isString() )    return false;
-        if ( !jsonObj.contains("listener") || !jsonObj["listener"].isArray() ) return false;
-        if ( !jsonObj.contains("ui")       || !jsonObj["ui"].isString() )       return false;
-        if ( !jsonObj.contains("cmd")      || !jsonObj["cmd"].isString() )      return false;
+        if ( !jsonObj.contains("agent")          || !jsonObj["agent"].isString() )          return false;
+        if ( !jsonObj.contains("watermark")      || !jsonObj["watermark"].isString() )      return false;
+        if ( !jsonObj.contains("listeners_json") || !jsonObj["listeners_json"].isString() ) return false;
+        if ( !jsonObj.contains("handlers_json")  || !jsonObj["handlers_json"].isString() )  return false;
         return true;
     }
     if( spType == TYPE_AGENT_NEW ) {
@@ -211,6 +210,25 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
+    if( spType == TYPE_SCREEN_CREATE ) {
+        if (!jsonObj.contains("s_screen_id") || !jsonObj["s_screen_id"].isString()) return false;
+        if (!jsonObj.contains("s_user")      || !jsonObj["s_user"].isString())      return false;
+        if (!jsonObj.contains("s_computer")  || !jsonObj["s_computer"].isString())  return false;
+        if (!jsonObj.contains("s_note")      || !jsonObj["s_note"].isString())      return false;
+        if (!jsonObj.contains("s_date")      || !jsonObj["s_date"].isDouble())      return false;
+        if (!jsonObj.contains("s_content")   || !jsonObj["s_content"].isString())   return false;
+        return true;
+    }
+    if( spType == TYPE_SCREEN_UPDATE ) {
+        if (!jsonObj.contains("s_screen_id") || !jsonObj["s_screen_id"].isString()) return false;
+        if (!jsonObj.contains("s_note")      || !jsonObj["s_note"].isString())      return false;
+        return true;
+    }
+    if( spType == TYPE_SCREEN_DELETE ) {
+        if (!jsonObj.contains("s_screen_id") || !jsonObj["s_screen_id"].isString()) return false;
+        return true;
+    }
+
     if( spType == TYPE_BROWSER_DISKS ) {
         if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) return false;
         if (!jsonObj.contains("b_time")     || !jsonObj["b_time"].isDouble())     return false;
@@ -290,30 +308,28 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_LISTENER_START )
     {
-        ListenerData newListener = {0};
-        newListener.ListenerName = jsonObj["l_name"].toString();
-        newListener.ListenerType = jsonObj["l_type"].toString();
-        newListener.BindHost     = jsonObj["l_bind_host"].toString();
-        newListener.BindPort     = jsonObj["l_bind_port"].toString();
-        newListener.AgentPort    = jsonObj["l_agent_port"].toString();
-        newListener.AgentHost    = jsonObj["l_agent_host"].toString();
-        newListener.Status       = jsonObj["l_status"].toString();
-        newListener.Data         = jsonObj["l_data"].toString();
+        ListenerData newListener = {};
+        newListener.ListenerName   = jsonObj["l_name"].toString();
+        newListener.ListenerType   = jsonObj["l_type"].toString();
+        newListener.BindHost       = jsonObj["l_bind_host"].toString();
+        newListener.BindPort       = jsonObj["l_bind_port"].toString();
+        newListener.AgentAddresses = jsonObj["l_agent_addr"].toString();
+        newListener.Status         = jsonObj["l_status"].toString();
+        newListener.Data           = jsonObj["l_data"].toString();
 
         ListenersTab->AddListenerItem(newListener);
         return;
     }
     if( spType == TYPE_LISTENER_EDIT )
     {
-        ListenerData newListener = {0};
-        newListener.ListenerName = jsonObj["l_name"].toString();
-        newListener.ListenerType = jsonObj["l_type"].toString();
-        newListener.BindHost     = jsonObj["l_bind_host"].toString();
-        newListener.BindPort     = jsonObj["l_bind_port"].toString();
-        newListener.AgentPort    = jsonObj["l_agent_port"].toString();
-        newListener.AgentHost    = jsonObj["l_agent_host"].toString();
-        newListener.Status       = jsonObj["l_status"].toString();
-        newListener.Data         = jsonObj["l_data"].toString();
+        ListenerData newListener = {};
+        newListener.ListenerName   = jsonObj["l_name"].toString();
+        newListener.ListenerType   = jsonObj["l_type"].toString();
+        newListener.BindHost       = jsonObj["l_bind_host"].toString();
+        newListener.BindPort       = jsonObj["l_bind_port"].toString();
+        newListener.AgentAddresses = jsonObj["l_agent_addr"].toString();
+        newListener.Status         = jsonObj["l_status"].toString();
+        newListener.Data           = jsonObj["l_data"].toString();
 
         ListenersTab->EditListenerItem(newListener);
         return;
@@ -331,7 +347,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         QString agentName = jsonObj["a_name"].toString();
 
-        Agent* newAgent = new Agent(jsonObj, RegisterAgentsCmd[agentName], this);
+        Agent* newAgent = new Agent(jsonObj, this);
         SessionsTablePage->AddAgentItem( newAgent );
         SessionsGraphPage->AddAgent(newAgent, this->synchronized);
         return;
@@ -492,7 +508,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         int state      = jsonObj["d_state"].toDouble();
 
         DownloadsTab->EditDownloadItem(fileId, recvSize, state);
-
         return;
     }
     if( spType == TYPE_DOWNLOAD_DELETE )
@@ -500,7 +515,34 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString fileId = jsonObj["d_file_id"].toString();
 
         DownloadsTab->RemoveDownloadItem(fileId);
+        return;
+    }
 
+    if( spType == TYPE_SCREEN_CREATE )
+    {
+        ScreenData newScreen = {};
+        newScreen.ScreenId = jsonObj["s_screen_id"].toString();
+        newScreen.User     = jsonObj["s_user"].toString();
+        newScreen.Computer = jsonObj["s_computer"].toString();
+        newScreen.Note     = jsonObj["s_note"].toString();
+        newScreen.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["s_date"].toDouble()));
+        newScreen.Content  = QByteArray::fromBase64(jsonObj["s_content"].toString().toUtf8());
+
+        ScreenshotsTab->AddScreenshotItem(newScreen);
+        return;
+    }
+    if( spType == TYPE_SCREEN_UPDATE )
+    {
+        QString screenId = jsonObj["s_screen_id"].toString();
+        QString note     = jsonObj["s_note"].toString();
+
+        ScreenshotsTab->EditScreenshotItem(screenId, note);
+        return;
+    }
+    if( spType == TYPE_SCREEN_DELETE )
+    {
+        QString screenId = jsonObj["s_screen_id"].toString();
+        ScreenshotsTab->RemoveScreenshotItem(screenId);
         return;
     }
 
@@ -554,9 +596,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString message = jsonObj["b_message"].toString();
         QString data    = jsonObj["b_data"].toString();
 
-        if (AgentsMap.contains(agentId))
-            AgentsMap[agentId]->FileBrowser->SetDisks(time, msgType, message, data);
-
+        if (AgentsMap.contains(agentId) ) {
+            auto agent = AgentsMap[agentId];
+            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+                agent->FileBrowser->SetDisksWin(time, msgType, message, data);
+        }
         return;
     }
     if( spType == TYPE_BROWSER_FILES )
@@ -568,9 +612,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString path    = jsonObj["b_path"].toString();
         QString data    = jsonObj["b_data"].toString();
 
-        if (AgentsMap.contains(agentId))
-            AgentsMap[agentId]->FileBrowser->AddFiles(time, msgType, message, path, data);
-
+        if (AgentsMap.contains(agentId) ) {
+            auto agent = AgentsMap[agentId];
+            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+                agent->FileBrowser->AddFiles(time, msgType, message, path, data);
+        }
         return;
     }
     if( spType == TYPE_BROWSER_PROCESS )
@@ -582,10 +628,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString data    = jsonObj["b_data"].toString();
 
         if (AgentsMap.contains(agentId)) {
-            AgentsMap[agentId]->ProcessBrowser->SetStatus(time, msgType, message);
-            AgentsMap[agentId]->ProcessBrowser->SetProcess(msgType, data);
+            auto agent = AgentsMap[agentId];
+            if (agent && agent->browsers.ProcessBrowser && agent->ProcessBrowser) {
+                agent->ProcessBrowser->SetStatus(time, msgType, message);
+                agent->ProcessBrowser->SetProcess(msgType, data);
+            }
         }
-
         return;
     }
     if( spType == TYPE_BROWSER_STATUS )
@@ -595,9 +643,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         int     msgType = jsonObj["b_msg_type"].toDouble();
         QString message = jsonObj["b_message"].toString();
 
-        if (AgentsMap.contains(agentId))
-            AgentsMap[agentId]->FileBrowser->SetStatus( time, msgType, message );
-
+        if (AgentsMap.contains(agentId) ) {
+            auto agent = AgentsMap[agentId];
+            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+                agent->FileBrowser->SetStatus(time, msgType, message);
+        }
         return;
     }
 
@@ -642,6 +692,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 SessionsGraphPage->UnlinkAgent(parentAgent, childAgent, this->synchronized);
             }
         }
+        return;
     }
 
 
@@ -653,7 +704,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString message = jsonObj["message"].toString();
 
         LogsTab->AddLogs(type, time, message);
+        return;
     }
+
 
 
     if( spType == TYPE_LISTENER_REG )
@@ -661,36 +714,17 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString fn = jsonObj["fn"].toString();
         QString ui = jsonObj["ui"].toString();
 
-        auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
-        if(widgetBuilder->GetError().isEmpty())
-            RegisterListenersUI[fn] = widgetBuilder;
-
+        this->RegisterListenerConfig(fn, ui);
         return;
     }
     if( spType == TYPE_AGENT_REG )
     {
-        QString agentName = jsonObj["agent"].toString();
-        QString ui        = jsonObj["ui"].toString();
-        QString cmd       = jsonObj["cmd"].toString();
-        QJsonArray listenerNames = jsonObj["listener"].toArray();
+        QString agentName      = jsonObj["agent"].toString();
+        QString agentwatermark = jsonObj["watermark"].toString();
+        QString listenersJson  = jsonObj["listeners_json"].toString();
+        QString handlersJson   = jsonObj["handlers_json"].toString();
 
-        auto widgetBuilder = new WidgetBuilder(ui.toLocal8Bit() );
-        if(widgetBuilder->GetError().isEmpty())
-            RegisterAgentsUI[agentName] = widgetBuilder;
-
-        auto commander = new Commander();
-        bool result = true;
-        QString msg = ValidCommandsFile(cmd.toLocal8Bit(), &result);
-        if ( result )
-            commander->AddRegCommands(cmd.toLocal8Bit());
-
-        RegisterAgentsCmd[agentName] = commander;
-
-        for (QJsonValue listener : listenerNames) {
-            QString name = listener.toString();
-            LinkListenerAgent[name].push_back(agentName);
-        }
-
+        this->RegisterAgentConfig(agentName, agentwatermark, handlersJson, listenersJson);
         return;
     }
 }

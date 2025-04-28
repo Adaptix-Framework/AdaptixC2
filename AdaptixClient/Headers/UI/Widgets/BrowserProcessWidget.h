@@ -11,7 +11,15 @@ typedef struct BrowserProcessData {
     QString arch;
     QString context;
     QString process;
-} BrowserProcessData;
+} BrowserProcessDataWin;
+
+typedef struct BrowserProcessDataUnix {
+    int     pid;
+    int     ppid;
+    QString tty;
+    QString context;
+    QString process;
+} BrowserProcessDataWinUnix;
 
 class BrowserProcessWidget : public QWidget
 {
@@ -29,10 +37,13 @@ class BrowserProcessWidget : public QWidget
     Agent*  agent;
 
     void createUI();
-    void setTableProcessData(QMap<int, BrowserProcessData> processMap) const;
-    void setTreeProcessData(QMap<int, BrowserProcessData> processMap) const;
+    void setTableProcessDataWin(QMap<int, BrowserProcessDataWin> processMap) const;
+    void setTableProcessDataUnix(QMap<int, BrowserProcessDataUnix> processMap) const;
+    void setTreeProcessDataWin(QMap<int, BrowserProcessDataWin> processMap) const;
+    static void addProcessToTreeWin(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessDataWin> processMap, QMap<int, QTreeWidgetItem*> *nodeMap);
+    void setTreeProcessDataUnix(QMap<int, BrowserProcessDataUnix> processMap) const;
+    static void addProcessToTreeUnix(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessDataUnix> processMap, QMap<int, QTreeWidgetItem*> *nodeMap);
 
-    static void addProcessToTree(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessData> processMap, QMap<int, QTreeWidgetItem*> *nodeMap);
     void filterTreeWidget(const QString &filterText) const;
     void filterTableWidget(const QString &filterText) const;
 

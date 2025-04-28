@@ -11,7 +11,7 @@ ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
     this->UpgradeCompleter();
 
     connect(CommandCompleter, QOverload<const QString &>::of(&QCompleter::activated), this, &ConsoleWidget::onCompletionSelected, Qt::DirectConnection);
-    connect( InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput, Qt::QueuedConnection );
+    connect(InputLineEdit, &QLineEdit::returnPressed, this, &ConsoleWidget::processInput, Qt::QueuedConnection );
 
     kphInputLineEdit = new KPH_ConsoleInput(InputLineEdit, OutputTextEdit, this);
 }
@@ -29,7 +29,13 @@ void ConsoleWidget::createUI()
     InputLineEdit->setProperty( "LineEditStyle", "console" );
     InputLineEdit->setFont( QFont( "Hack" ));
 
-    QString info = QString("[%1] %2 @ %3.%4").arg( agent->data.Id ).arg( agent->data.Username ).arg( agent->data.Computer ).arg( agent->data.Domain );
+    QString info = "";
+    if ( agent->data.Domain == "" || agent->data.Computer == agent->data.Domain )
+        info = QString("[%1] %2 @ %3").arg( agent->data.Id ).arg( agent->data.Username ).arg( agent->data.Computer );
+    else
+        info = QString("[%1] %2 @ %3.%4").arg( agent->data.Id ).arg( agent->data.Username ).arg( agent->data.Computer ).arg( agent->data.Domain );
+
+
     InfoLabel = new QLabel(this);
     InfoLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     InfoLabel->setProperty( "LabelStyle", "console" );
@@ -139,6 +145,9 @@ void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, const QString &taskId
 /// SLOTS
 
 void ConsoleWidget::processInput() {
+    if (!commander)
+        return;
+
     QString commandLine = TrimmedEnds(InputLineEdit->text());
 
     if ( this->userSelectedCompletion ) {

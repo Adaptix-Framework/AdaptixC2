@@ -1,171 +1,255 @@
 package extender
 
-import "errors"
+import (
+	"errors"
+	"github.com/Adaptix-Framework/axc2"
+)
 
-func (ex *AdaptixExtender) ExAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentGenerate(config, listenerWM, listenerProfile)
-	} else {
+func (ex *AdaptixExtender) ExAgentGenerate(agentName string, config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
+	module, ok := ex.agentModules[agentName]
+	if !ok {
 		return nil, "", errors.New("module not found")
 	}
+	return module.F.AgentGenerate(config, operatingSystem, listenerWM, listenerProfile)
 }
 
-func (ex *AdaptixExtender) ExAgentCreate(agentName string, beat []byte) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentCreate(beat)
-	} else {
-		return nil, errors.New("module not found")
+func (ex *AdaptixExtender) ExAgentCreate(agentName string, beat []byte) (adaptix.AgentData, error) {
+	module, ok := ex.agentModules[agentName]
+	if !ok {
+		return adaptix.AgentData{}, errors.New("module not found")
 	}
+	return module.F.AgentCreate(beat)
 }
 
-func (ex *AdaptixExtender) ExAgentProcessData(agentName string, agentObject []byte, packedData []byte) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentProcessData(agentObject, packedData)
-	} else {
-		return nil, errors.New("module not found")
-	}
-}
-
-func (ex *AdaptixExtender) ExAgentPackData(agentName string, agentObject []byte, maxDataSize int) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentPackData(agentObject, maxDataSize)
-	} else {
-		return nil, errors.New("module not found")
-	}
-}
-
-func (ex *AdaptixExtender) ExAgentPivotPackData(agentName string, pivotId string, data []byte) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentPivotPackData(pivotId, data)
-	} else {
-		return nil, errors.New("module not found")
-	}
-}
-
-func (ex *AdaptixExtender) ExAgentCommand(client string, cmdline string, agentName string, agentObject []byte, args map[string]any) error {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentCommand(client, cmdline, agentObject, args)
-	} else {
+func (ex *AdaptixExtender) ExAgentCommand(client string, cmdline string, agentName string, agentData adaptix.AgentData, args map[string]any) error {
+	module, ok := ex.agentModules[agentName]
+	if !ok {
 		return errors.New("module not found")
 	}
+	return module.F.AgentCommand(client, cmdline, agentData, args)
 }
 
-func (ex *AdaptixExtender) ExAgentDownloadChangeState(agentName string, agentObject []byte, newState int, fileId string) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentDownloadChangeState(agentObject, newState, fileId)
-	} else {
+func (ex *AdaptixExtender) ExAgentProcessData(agentData adaptix.AgentData, packedData []byte) ([]byte, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
 		return nil, errors.New("module not found")
 	}
+	return module.F.AgentProcessData(agentData, packedData)
 }
 
-func (ex *AdaptixExtender) ExAgentBrowserDisks(agentName string, agentObject []byte) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentBrowserDisks(agentObject)
-	} else {
+func (ex *AdaptixExtender) ExAgentPackData(agentData adaptix.AgentData, maxDataSize int) ([]byte, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
 		return nil, errors.New("module not found")
 	}
+	return module.F.AgentPackData(agentData, maxDataSize)
 }
 
-func (ex *AdaptixExtender) ExAgentBrowserProcess(agentName string, agentObject []byte) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentBrowserProcess(agentObject)
-	} else {
-		return nil, errors.New("module not found")
+func (ex *AdaptixExtender) ExAgentPivotPackData(agentName string, pivotId string, data []byte) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
 	}
+	return module.F.AgentPivotPackData(pivotId, data)
 }
 
-func (ex *AdaptixExtender) ExAgentBrowserFiles(agentName string, path string, agentObject []byte) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentBrowserFiles(path, agentObject)
-	} else {
-		return nil, errors.New("module not found")
+func (ex *AdaptixExtender) ExAgentDownloadChangeState(agentData adaptix.AgentData, newState int, fileId string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
 	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadChangeState is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadChangeState is not supported")
+	}
+	if !supportConf.DownloadsState {
+		return adaptix.TaskData{}, errors.New("function DownloadChangeState is not supported")
+	}
+
+	return module.F.AgentDownloadChangeState(agentData, newState, fileId)
 }
 
-func (ex *AdaptixExtender) ExAgentBrowserUpload(agentName string, path string, content []byte, agentObject []byte) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentBrowserUpload(path, content, agentObject)
-	} else {
-		return nil, errors.New("module not found")
+func (ex *AdaptixExtender) ExAgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
 	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function BrowserDisks is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function BrowserDisks is not supported")
+	}
+	if !supportConf.FileBrowserDisks {
+		return adaptix.TaskData{}, errors.New("function BrowserDisks is not supported")
+	}
+
+	return module.F.AgentBrowserDisks(agentData)
 }
 
-func (ex *AdaptixExtender) ExAgentBrowserDownload(agentName string, path string, agentObject []byte) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentBrowserDownload(path, agentObject)
-	} else {
-		return nil, errors.New("module not found")
+func (ex *AdaptixExtender) ExAgentBrowserProcess(agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
 	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function ProcessBrowser is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function ProcessBrowser is not supported")
+	}
+	if !supportConf.ProcessBrowser {
+		return adaptix.TaskData{}, errors.New("function ProcessBrowser is not supported")
+	}
+
+	return module.F.AgentBrowserProcess(agentData)
 }
 
-func (ex *AdaptixExtender) ExAgentBrowserJobKill(agentName string, jobId string) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentBrowserJobKill(jobId)
-	} else {
-		return nil, errors.New("module not found")
+func (ex *AdaptixExtender) ExAgentBrowserFiles(agentData adaptix.AgentData, path string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
 	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function FileBrowser is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function FileBrowser is not supported")
+	}
+	if !supportConf.FileBrowser {
+		return adaptix.TaskData{}, errors.New("function FileBrowser is not supported")
+	}
+
+	return module.F.AgentBrowserFiles(path, agentData)
 }
 
-func (ex *AdaptixExtender) ExAgentCtxExit(agentName string, agentObject []byte) ([]byte, error) {
-	var module *ModuleExtender
-
-	value, ok := ex.agentModules.Get(agentName)
-	if ok {
-		module = value.(*ModuleExtender)
-		return module.AgentBrowserExit(agentObject)
-	} else {
-		return nil, errors.New("module not found")
+func (ex *AdaptixExtender) ExAgentBrowserUpload(agentData adaptix.AgentData, path string, content []byte) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
 	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function FileBrowserUpload is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function FileBrowserUpload is not supported")
+	}
+	if !supportConf.FileBrowserUpload {
+		return adaptix.TaskData{}, errors.New("function FileBrowserUpload is not supported")
+	}
+
+	return module.F.AgentBrowserUpload(path, content, agentData)
+}
+
+func (ex *AdaptixExtender) ExAgentBrowserDownload(agentData adaptix.AgentData, path string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function FileBrowserDownload is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function FileBrowserDownload is not supported")
+	}
+	if !supportConf.FileBrowserDownload {
+		return adaptix.TaskData{}, errors.New("function FileBrowserDownload is not supported")
+	}
+
+	return module.F.AgentBrowserDownload(path, agentData)
+}
+
+func (ex *AdaptixExtender) ExAgentCtxExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function SessionsMenuExit is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function SessionsMenuExit is not supported")
+	}
+	if !supportConf.SessionsMenuExit {
+		return adaptix.TaskData{}, errors.New("function SessionsMenuExit is not supported")
+	}
+
+	return module.F.AgentBrowserExit(agentData)
+}
+
+func (ex *AdaptixExtender) ExAgentBrowserJobKill(agentData adaptix.AgentData, jobId string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function TasksJobKill is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function TasksJobKill is not supported")
+	}
+	if !supportConf.TasksJobKill {
+		return adaptix.TaskData{}, errors.New("function TasksJobKill is not supported")
+	}
+
+	return module.F.AgentBrowserJobKill(jobId)
 }
