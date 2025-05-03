@@ -56,6 +56,8 @@ type Teamserver interface {
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
 
+	TsScreenshotAdd(agentId string, Note string, Content []byte) error
+
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
 	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
