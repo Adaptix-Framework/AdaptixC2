@@ -1210,47 +1210,96 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			task.Completed = true
 
 		case COMMAND_EXEC_BOF_OUT:
-			if false == packer.CheckPacker([]string{"int", "array"}) {
+			if false == packer.CheckPacker([]string{"int"}) {
 				return outTasks
 			}
-
 			outputType := packer.ParseInt32()
-			output := packer.ParseString()
 
 			if outputType == BOF_ERROR_PARSE {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				_ = packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Parse BOF error"
+
 			} else if outputType == BOF_ERROR_MAX_FUNCS {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				_ = packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "The number of functions in the BOF file exceeds 512"
+
 			} else if outputType == BOF_ERROR_ENTRY {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				_ = packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Entry function not found"
 
 			} else if outputType == BOF_ERROR_ALLOC {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				_ = packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Error allocation of BOF memory"
 
 			} else if outputType == BOF_ERROR_SYMBOL {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				output := packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Symbol not found: " + output + "\n"
 
 			} else if outputType == CALLBACK_ERROR {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				output := packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.ACP)
 
 			} else if outputType == CALLBACK_OUTPUT_OEM {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				output := packer.ParseString()
+
 				task.MessageType = MESSAGE_SUCCESS
 				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.OemCP)
 
+			} else if outputType == CALLBACK_AX_SCREENSHOT {
+				if false == packer.CheckPacker([]string{"array", "array"}) {
+					return outTasks
+				}
+				note := packer.ParseString()
+				screen := packer.ParseBytes()
+
+				_ = ts.TsScreenshotAdd(agentData.Id, note, screen)
+
 			} else {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				output := packer.ParseString()
+
 				task.MessageType = MESSAGE_SUCCESS
 				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.ACP)
