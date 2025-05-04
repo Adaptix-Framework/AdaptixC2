@@ -64,7 +64,7 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.4"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.5"
 
 ///////////
 
@@ -166,7 +166,9 @@ typedef struct BrowsersConfig {
     bool FileBrowserDownload;
     bool FileBrowserUpload;
     bool ProcessBrowser;
-    bool DownloadState;
+    bool DownloadsCancel;
+    bool DownloadsResume;
+    bool DownloadsPause;
     bool TasksJobKill;
     bool SessionsMenuExit;
 } BrowsersConfig;

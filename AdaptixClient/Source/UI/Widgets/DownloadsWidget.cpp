@@ -203,8 +203,27 @@ void DownloadsWidget::RemoveDownloadItem(const QString &fileId) const
 
 void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
 {
-    if ( ! tableWidget->itemAt( pos ) )
+    if ( !tableWidget->itemAt(pos) )
         return;
+
+    bool menuDownloadResume = false;
+    bool menuDownloadPause  = false;
+    bool menuDownloadCancel = false;
+
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 2)->isSelected() ) {
+            QString agentId = tableWidget->item( rowIndex, 2 )->text();
+            if (adaptixWidget->AgentsMap.contains(agentId) && adaptixWidget->AgentsMap[agentId]) {
+                auto agent = adaptixWidget->AgentsMap[agentId];
+                if (agent) {
+                    if (agent->browsers.DownloadsResume) menuDownloadResume = true;
+                    if (agent->browsers.DownloadsPause)  menuDownloadPause  = true;
+                    if (agent->browsers.DownloadsCancel) menuDownloadCancel = true;
+                }
+            }
+        }
+    }
 
     auto FileID   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
     auto Received = tableWidget->item( tableWidget->currentRow(), 8 )->text();
@@ -215,14 +234,20 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
         ctxMenu.addAction("Delete file", this, &DownloadsWidget::actionDelete );
     }
     else {
-        if( tableWidget->cellWidget( tableWidget->currentRow(), 9)->isEnabled() )
-            ctxMenu.addAction("Stop", this, &DownloadsWidget::actionStop );
-        else
-            ctxMenu.addAction("Start", this, &DownloadsWidget::actionStart );
-        ctxMenu.addAction("Cancel", this, &DownloadsWidget::actionCancel );
+        if( tableWidget->cellWidget( tableWidget->currentRow(), 9)->isEnabled() ) {
+            if (menuDownloadPause)
+                ctxMenu.addAction("Pause", this, &DownloadsWidget::actionPause );
+        }
+        else {
+            if (menuDownloadResume)
+                ctxMenu.addAction("Resume", this, &DownloadsWidget::actionResume );
+        }
+
+        if (menuDownloadCancel)
+            ctxMenu.addAction("Cancel", this, &DownloadsWidget::actionCancel );
     }
 
-    ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos ) );
+    ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos) );
 }
 
 void DownloadsWidget::actionSync() const
@@ -233,14 +258,12 @@ void DownloadsWidget::actionSync() const
         QString fileId  = tableWidget->item( tableWidget->currentRow(), 0 )->text();
 
         QJsonObject dataJson;
-        dataJson["action"] = "sync";
-        dataJson["file"] = fileId;
+        dataJson["file_id"] = fileId;
         QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-        QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/browser/download/state";
+        QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/download/sync";
         QJsonObject jsonObject = HttpReq(sUrl, jsonData, adaptixWidget->GetProfile()->GetAccessToken());
-        if ( jsonObject.contains("message") && jsonObject.contains("ok") || jsonObject.contains("content") && jsonObject.contains("filename") && jsonObject.contains("ok") ) {
-        }
+        if ( jsonObject.contains("message") && jsonObject.contains("ok") || jsonObject.contains("content") && jsonObject.contains("filename") && jsonObject.contains("ok") ) {}
         else {
             MessageError("JWT error");
             return;
@@ -290,7 +313,7 @@ void DownloadsWidget::actionDelete() const
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqBrowserDownload("delete", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
+        bool result = HttpReqDownloadAction("delete", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
             MessageError("JWT error");
             return;
@@ -302,7 +325,7 @@ void DownloadsWidget::actionDelete() const
     }
 }
 
-void DownloadsWidget::actionStart() const
+void DownloadsWidget::actionResume() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
@@ -311,7 +334,7 @@ void DownloadsWidget::actionStart() const
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqBrowserDownload("start", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
+        bool result = HttpReqDownloadAction("resume", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
             MessageError("JWT error");
             return;
@@ -323,7 +346,7 @@ void DownloadsWidget::actionStart() const
     }
 }
 
-void DownloadsWidget::actionStop() const
+void DownloadsWidget::actionPause() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
@@ -332,7 +355,7 @@ void DownloadsWidget::actionStop() const
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqBrowserDownload("stop", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
+        bool result = HttpReqDownloadAction("pause", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
             MessageError("JWT error");
             return;
@@ -353,7 +376,7 @@ void DownloadsWidget::actionCancel() const
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqBrowserDownload("cancel", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
+        bool result = HttpReqDownloadAction("cancel", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
             MessageError("JWT error");
             return;

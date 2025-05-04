@@ -644,7 +644,10 @@
 
         "process_browser": true,
 
-        "downloads_state": true,
+        "downloads_cancel": true,
+        "downloads_resume": true,
+        "downloads_pause": true,
+
         "tasks_job_kill": true,
 
         "sessions_menu_exit": true
@@ -1028,7 +1031,10 @@
 
         "process_browser": true,
 
-        "downloads_state": true,
+        "downloads_cancel": true,
+        "downloads_resume": true,
+        "downloads_pause": true,
+        
         "tasks_job_kill": true,
 
         "sessions_menu_exit": true

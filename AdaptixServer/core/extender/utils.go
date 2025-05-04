@@ -32,7 +32,9 @@ type ExConfAgentSupportedBrowsers struct {
 	FileBrowserDownload bool `json:"file_browser_download"`
 	FileBrowserUpload   bool `json:"file_browser_upload"`
 	ProcessBrowser      bool `json:"process_browser"`
-	DownloadsState      bool `json:"downloads_state"`
+	DownloadsCancel     bool `json:"downloads_cancel"`
+	DownloadsResume     bool `json:"downloads_resume"`
+	DownloadsPause      bool `json:"downloads_pause"`
 	TasksJobKill        bool `json:"tasks_job_kill"`
 	SessionsMenuExit    bool `json:"sessions_menu_exit"`
 }
@@ -91,12 +93,16 @@ type ExtAgentFunc interface {
 	AgentPackData(agentData adaptix.AgentData, maxDataSize int) ([]byte, error)
 	AgentPivotPackData(pivotId string, data []byte) (adaptix.TaskData, error)
 
-	AgentDownloadChangeState(agentData adaptix.AgentData, newState int, fileId string) (adaptix.TaskData, error)
 	AgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserProcess(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserFiles(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserUpload(path string, content []byte, agentData adaptix.AgentData) (adaptix.TaskData, error)
-	AgentBrowserDownload(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+
+	AgentTaskDownloadStart(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentTaskDownloadResume(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentTaskDownloadPause(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	
 	AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserJobKill(jobId string) (adaptix.TaskData, error)
 }

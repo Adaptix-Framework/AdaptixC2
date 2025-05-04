@@ -310,15 +310,18 @@
       "browsers": {
         "file_browser": true,
         "file_browser_disks": false,
-        "file_browser_download": false,
-        "file_browser_upload": false,
+        "file_browser_download": true,
+        "file_browser_upload": true,
 
         "process_browser": true,
 
-        "downloads_state": false,
+        "downloads_cancel": false,
+        "downloads_resume": false,
+        "downloads_pause": false,
+
         "tasks_job_kill": false,
 
-        "sessions_menu_exit": false
+        "sessions_menu_exit": true
       }
     }
   ]

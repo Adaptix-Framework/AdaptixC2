@@ -1021,10 +1021,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 /// BROWSERS
 
-func BrowserDownloadChangeState(fid string, newState int) ([]byte, error) {
-	return nil, nil
-}
-
 func BrowserDisks(agentData adaptix.AgentData) ([]byte, error) {
 	return nil, nil
 }
@@ -1041,19 +1037,80 @@ func BrowserFiles(path string, agentData adaptix.AgentData) ([]byte, error) {
 }
 
 func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix.AgentData) ([]byte, error) {
+
+	zipContent, err := ZipBytes(content, path)
+	if err != nil {
+		return nil, err
+	}
+
+	chunkSize := 0x500000 // 5Mb
+	bufferSize := len(zipContent)
+
+	inTaskData := adaptix.TaskData{
+		Type:    TYPE_TASK,
+		AgentId: agentData.Id,
+		Sync:    false,
+	}
+
+	var cmd Command
+	for start := 0; start < bufferSize; start += chunkSize {
+		fin := start + chunkSize
+		finish := false
+		if fin >= bufferSize {
+			fin = bufferSize
+			finish = true
+		}
+
+		inPackerData, _ := msgpack.Marshal(ParamsUpload{
+			Path:    path,
+			Content: zipContent[start:fin],
+			Finish:  finish,
+		})
+		inCmd := Command{Code: COMMAND_UPLOAD, Data: inPackerData}
+
+		if finish {
+			cmd = inCmd
+			break
+
+		} else {
+			inTaskData.Data, _ = msgpack.Marshal(inCmd)
+			inTaskData.TaskId = fmt.Sprintf("%08x", mrand.Uint32())
+
+			ts.TsTaskCreate(agentData.Id, "", "", inTaskData)
+		}
+	}
+	return msgpack.Marshal(cmd)
+}
+
+/// DOWNLOADS
+
+func TaskDownloadStart(path string, taskId string, agentData adaptix.AgentData) ([]byte, error) {
+	packerData, _ := msgpack.Marshal(ParamsDownload{Path: path, Task: taskId})
+	cmd := Command{Code: COMMAND_DOWNLOAD, Data: packerData}
+	return msgpack.Marshal(cmd)
+}
+
+func TaskDownloadCancel(fileId string, taskId string, agentData adaptix.AgentData) ([]byte, error) {
 	return nil, nil
 }
 
-func BrowserDownload(path string, agentData adaptix.AgentData) ([]byte, error) {
+func TaskDownloadResume(fileId string, agentData adaptix.AgentData) ([]byte, error) {
 	return nil, nil
 }
+
+func TaskDownloadPause(fileId string, agentData adaptix.AgentData) ([]byte, error) {
+	return nil, nil
+}
+
+///
 
 func BrowserJobKill(jobId string) ([]byte, error) {
 	return nil, nil
 }
 
 func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
-	return nil, nil
+	cmd := Command{Code: COMMAND_EXIT, Data: nil}
+	return msgpack.Marshal(cmd)
 }
 
 /// TUNNELS

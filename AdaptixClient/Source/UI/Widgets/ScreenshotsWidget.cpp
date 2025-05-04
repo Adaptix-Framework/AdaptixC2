@@ -89,6 +89,7 @@ void ImageFrame::clear()
 
 
 
+
 ScreenshotsWidget::ScreenshotsWidget(QWidget* w)
 {
     this->mainWidget = w;

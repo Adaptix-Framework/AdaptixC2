@@ -54,16 +54,20 @@ type Teamserver interface {
 	TsDownloadClose(fileId string, reason int) error
 	TsDownloadSync(fileId string) (string, []byte, error)
 	TsDownloadDelete(fileId string) error
+	///
+	TsDownloadTaskStart(agentId string, path string, username string) error
+	TsDownloadTaskCancel(fileId string, clientName string) error
+	TsDownloadTaskResume(fileId string, clientName string) error
+	TsDownloadTaskPause(fileId string, clientName string) error
 
 	TsScreenshotDelete(screenId string) error
 	TsScreenshotNote(screenId string, note string) error
 
-	TsDownloadChangeState(fileId string, username string, command string) error
 	TsAgentGuiDisks(agentId string, username string) error
 	TsAgentGuiProcess(agentId string, username string) error
 	TsAgentGuiFiles(agentId string, path string, username string) error
 	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
-	TsAgentGuiDownload(agentId string, path string, username string) error
+
 	TsAgentGuiExit(agentId string, username string) error
 
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
@@ -155,8 +159,13 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskStop)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskDelete)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/download/state", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadState)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/download/start", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownload)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadSync)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadDelete)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/start", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadStart)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/cancel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadCancel)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/resume", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadResume)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/pause", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadPause)
+
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/disks", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDisks)
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/files", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiFiles)
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/upload", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiUpload)
