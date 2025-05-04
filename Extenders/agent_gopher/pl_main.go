@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/Adaptix-Framework/axc2"
 	"math/rand"
 	"time"
@@ -197,21 +199,6 @@ func (m *ModuleExtender) AgentProcessData(agentData adaptix.AgentData, packedDat
 
 /// BROWSERS
 
-func (m *ModuleExtender) AgentDownloadChangeState(agentData adaptix.AgentData, newState int, fileId string) (adaptix.TaskData, error) {
-	packData, err := BrowserDownloadChangeState(fileId, newState)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
 func (m *ModuleExtender) AgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error) {
 	packData, err := BrowserDisks(agentData)
 	if err != nil {
@@ -272,20 +259,81 @@ func (m *ModuleExtender) AgentBrowserUpload(path string, content []byte, agentDa
 	return taskData, nil
 }
 
-func (m *ModuleExtender) AgentBrowserDownload(path string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := BrowserDownload(path, agentData)
+///
+
+func (m *ModuleExtender) AgentTaskDownloadStart(path string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+
+	r := make([]byte, 4)
+	_, _ = rand.Read(r)
+	taskId := fmt.Sprintf("%08x", binary.BigEndian.Uint32(r))
+
+	packData, err := TaskDownloadStart(path, taskId, agentData)
 	if err != nil {
 		return adaptix.TaskData{}, err
 	}
 
 	taskData := adaptix.TaskData{
-		Type: TYPE_TASK,
-		Data: packData,
-		Sync: true,
+		TaskId: taskId,
+		Type:   TYPE_TASK,
+		Data:   packData,
+		Sync:   true,
 	}
 
 	return taskData, nil
 }
+
+func (m *ModuleExtender) AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+
+	downloadData, err := m.ts.TsDownloadGet(fileId)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	packData, err := TaskDownloadCancel(fileId, agentData)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	taskData := adaptix.TaskData{
+		Type: TYPE_BROWSER,
+		Data: packData,
+		Sync: false,
+	}
+
+	return taskData, nil
+}
+
+func (m *ModuleExtender) AgentTaskDownloadResume(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	packData, err := TaskDownloadResume(fileId, agentData)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	taskData := adaptix.TaskData{
+		Type: TYPE_BROWSER,
+		Data: packData,
+		Sync: false,
+	}
+
+	return taskData, nil
+}
+
+func (m *ModuleExtender) AgentTaskDownloadPause(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	packData, err := TaskDownloadPause(fileId, agentData)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	taskData := adaptix.TaskData{
+		Type: TYPE_BROWSER,
+		Data: packData,
+		Sync: false,
+	}
+
+	return taskData, nil
+}
+
+///
 
 func (m *ModuleExtender) AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {
 	packData, err := BrowserExit(agentData)

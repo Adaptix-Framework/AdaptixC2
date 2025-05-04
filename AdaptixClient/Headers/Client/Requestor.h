@@ -42,9 +42,9 @@ bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile
 
 ///DOWNLOAD
 
-bool HttpReqBrowserDownload(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqDownloadStart(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqBrowserDownloadStart(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqDownloadAction(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok );
 
 ///BROWSER
 

@@ -249,8 +249,12 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             browsersConfig.FileBrowserUpload = browsersObject["file_browser_upload"].toBool();
         if (browsersObject.contains("process_browser") && browsersObject["process_browser"].isBool())
             browsersConfig.ProcessBrowser = browsersObject["process_browser"].toBool();
-        if (browsersObject.contains("downloads_state") && browsersObject["downloads_state"].isBool())
-            browsersConfig.DownloadState = browsersObject["downloads_state"].toBool();
+        if (browsersObject.contains("downloads_cancel") && browsersObject["downloads_cancel"].isBool())
+            browsersConfig.DownloadsCancel = browsersObject["downloads_cancel"].toBool();
+        if (browsersObject.contains("downloads_resume") && browsersObject["downloads_resume"].isBool())
+            browsersConfig.DownloadsResume = browsersObject["downloads_resume"].toBool();
+        if (browsersObject.contains("downloads_pause") && browsersObject["downloads_pause"].isBool())
+            browsersConfig.DownloadsPause = browsersObject["downloads_pause"].toBool();
         if (browsersObject.contains("tasks_job_kill") && browsersObject["tasks_job_kill"].isBool())
             browsersConfig.TasksJobKill = browsersObject["tasks_job_kill"].toBool();
         if (browsersObject.contains("sessions_menu_exit") && browsersObject["sessions_menu_exit"].isBool())

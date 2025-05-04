@@ -53,32 +53,6 @@ func (ex *AdaptixExtender) ExAgentPivotPackData(agentName string, pivotId string
 	return module.F.AgentPivotPackData(pivotId, data)
 }
 
-func (ex *AdaptixExtender) ExAgentDownloadChangeState(agentData adaptix.AgentData, newState int, fileId string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-
-	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	supports, ok := module.Supports[lName]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("function DownloadChangeState is not supported")
-	}
-	supportConf, ok := supports[agentData.Os]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("function DownloadChangeState is not supported")
-	}
-	if !supportConf.DownloadsState {
-		return adaptix.TaskData{}, errors.New("function DownloadChangeState is not supported")
-	}
-
-	return module.F.AgentDownloadChangeState(agentData, newState, fileId)
-}
-
 func (ex *AdaptixExtender) ExAgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error) {
 	module, ok := ex.agentModules[agentData.Name]
 	if !ok {
@@ -179,7 +153,9 @@ func (ex *AdaptixExtender) ExAgentBrowserUpload(agentData adaptix.AgentData, pat
 	return module.F.AgentBrowserUpload(path, content, agentData)
 }
 
-func (ex *AdaptixExtender) ExAgentBrowserDownload(agentData adaptix.AgentData, path string) (adaptix.TaskData, error) {
+/// Downloads
+
+func (ex *AdaptixExtender) ExAgentDownloadTaskStart(agentData adaptix.AgentData, path string) (adaptix.TaskData, error) {
 	module, ok := ex.agentModules[agentData.Name]
 	if !ok {
 		return adaptix.TaskData{}, errors.New("module not found")
@@ -201,8 +177,88 @@ func (ex *AdaptixExtender) ExAgentBrowserDownload(agentData adaptix.AgentData, p
 		return adaptix.TaskData{}, errors.New("function FileBrowserDownload is not supported")
 	}
 
-	return module.F.AgentBrowserDownload(path, agentData)
+	return module.F.AgentTaskDownloadStart(path, agentData)
 }
+
+func (ex *AdaptixExtender) ExAgentDownloadTaskCancel(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuCancel is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuCancel is not supported")
+	}
+	if !supportConf.DownloadsCancel {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuCancel is not supported")
+	}
+
+	return module.F.AgentTaskDownloadCancel(fileId, agentData)
+}
+
+func (ex *AdaptixExtender) ExAgentDownloadTaskResume(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuResume is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuResume is not supported")
+	}
+	if !supportConf.DownloadsResume {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuResume is not supported")
+	}
+
+	return module.F.AgentTaskDownloadResume(fileId, agentData)
+}
+
+func (ex *AdaptixExtender) ExAgentDownloadTaskPause(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuPause is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuPause is not supported")
+	}
+	if !supportConf.DownloadsPause {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuPause is not supported")
+	}
+
+	return module.F.AgentTaskDownloadPause(fileId, agentData)
+}
+
+////
 
 func (ex *AdaptixExtender) ExAgentCtxExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {
 	module, ok := ex.agentModules[agentData.Name]

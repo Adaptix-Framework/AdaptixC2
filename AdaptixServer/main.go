@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const VERSION = "0.4"
+const VERSION = "0.5"
 
 func main() {
 	fmt.Printf("\n[===== Adaptix Framework v%v =====]\n\n", VERSION)

