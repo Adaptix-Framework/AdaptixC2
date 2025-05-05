@@ -6,6 +6,10 @@
 
 QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token );
 
+QJsonObject HttpReqTimeout( int timeout, const QString &sUrl, const QByteArray &jsonData, const QString &token );
+
+/// CLIENT
+
 bool HttpReqLogin(AuthProfile* profile);
 
 bool HttpReqSync(AuthProfile profile);

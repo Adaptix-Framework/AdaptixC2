@@ -129,6 +129,16 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 	return nil
 }
 
+func (ts *Teamserver) TsDownloadGet(fileId string) (adaptix.DownloadData, error) {
+	value, ok := ts.downloads.Get(fileId)
+	if !ok {
+		return adaptix.DownloadData{}, errors.New("File not found: " + fileId)
+	}
+	downloadData := value.(adaptix.DownloadData)
+
+	return downloadData, nil
+}
+
 func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 	value, ok := ts.downloads.Get(fileId)
 	if !ok {

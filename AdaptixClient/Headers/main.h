@@ -171,6 +171,11 @@ typedef struct BrowsersConfig {
     bool DownloadsPause;
     bool TasksJobKill;
     bool SessionsMenuExit;
+    bool SessionsMenuTunnels;
+    bool Socks4;
+    bool Socks5;
+    bool Lportfwd;
+    bool Rportfwd;
 } BrowsersConfig;
 
 typedef struct SettingsData {

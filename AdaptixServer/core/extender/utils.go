@@ -37,6 +37,11 @@ type ExConfAgentSupportedBrowsers struct {
 	DownloadsPause      bool `json:"downloads_pause"`
 	TasksJobKill        bool `json:"tasks_job_kill"`
 	SessionsMenuExit    bool `json:"sessions_menu_exit"`
+	SessionsMenuTunnels bool `json:"sessions_menu_tunnels"`
+	Socks4              bool `json:"socks4"`
+	Socks5              bool `json:"socks5"`
+	Lportfwd            bool `json:"lportfwd"`
+	Rportfwd            bool `json:"rportfwd"`
 }
 
 type ExConfAgentHandlers struct {
@@ -102,7 +107,7 @@ type ExtAgentFunc interface {
 	AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentTaskDownloadResume(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentTaskDownloadPause(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
-	
+
 	AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserJobKill(jobId string) (adaptix.TaskData, error)
 }

@@ -283,12 +283,7 @@ func (m *ModuleExtender) AgentTaskDownloadStart(path string, agentData adaptix.A
 }
 
 func (m *ModuleExtender) AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-
-	downloadData, err := m.ts.TsDownloadGet(fileId)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
+	
 	packData, err := TaskDownloadCancel(fileId, agentData)
 	if err != nil {
 		return adaptix.TaskData{}, err

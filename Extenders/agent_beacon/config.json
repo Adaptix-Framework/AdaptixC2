@@ -637,6 +637,14 @@
       ],
 
       "browsers": {
+        "sessions_menu_tunnels": true,
+        "socks4": true,
+        "socks5": true,
+        "lportfwd": true,
+        "rportfwd": true,
+
+        "sessions_menu_exit": true,
+
         "file_browser": true,
         "file_browser_disks": true,
         "file_browser_download": true,
@@ -648,9 +656,7 @@
         "downloads_resume": true,
         "downloads_pause": true,
 
-        "tasks_job_kill": true,
-
-        "sessions_menu_exit": true
+        "tasks_job_kill": true
       }
 
     },
@@ -1024,6 +1030,15 @@
 
 
       "browsers": {
+        "sessions_menu_tunnels": true,
+        "socks4": true,
+        "socks5": true,
+        "lportfwd": true,
+        "rportfwd": true,
+
+        "sessions_menu_exit": true,
+
+
         "file_browser": true,
         "file_browser_disks": true,
         "file_browser_download": true,
@@ -1035,9 +1050,7 @@
         "downloads_resume": true,
         "downloads_pause": true,
         
-        "tasks_job_kill": true,
-
-        "sessions_menu_exit": true
+        "tasks_job_kill": true
       }
 
     }

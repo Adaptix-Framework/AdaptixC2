@@ -257,6 +257,18 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             browsersConfig.DownloadsPause = browsersObject["downloads_pause"].toBool();
         if (browsersObject.contains("tasks_job_kill") && browsersObject["tasks_job_kill"].isBool())
             browsersConfig.TasksJobKill = browsersObject["tasks_job_kill"].toBool();
+        if (browsersObject.contains("socks4") && browsersObject["socks4"].isBool())
+            browsersConfig.Socks4 = browsersObject["socks4"].toBool();
+        if (browsersObject.contains("socks5") && browsersObject["socks5"].isBool())
+            browsersConfig.Socks5 = browsersObject["socks5"].toBool();
+        if (browsersObject.contains("lportfwd") && browsersObject["lportfwd"].isBool())
+            browsersConfig.Lportfwd = browsersObject["lportfwd"].toBool();
+        if (browsersObject.contains("rportfwd") && browsersObject["rportfwd"].isBool())
+            browsersConfig.Rportfwd = browsersObject["rportfwd"].toBool();
+        if (browsersObject.contains("sessions_menu_tunnels") && browsersObject["sessions_menu_tunnels"].isBool())
+            browsersConfig.SessionsMenuTunnels = browsersObject["sessions_menu_tunnels"].toBool();
+
+
         if (browsersObject.contains("sessions_menu_exit") && browsersObject["sessions_menu_exit"].isBool())
             browsersConfig.SessionsMenuExit = browsersObject["sessions_menu_exit"].toBool();
 
