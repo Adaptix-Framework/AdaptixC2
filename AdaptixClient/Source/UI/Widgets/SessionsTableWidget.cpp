@@ -331,6 +331,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     bool menuProcessBrowser = false;
     bool menuFileBrowser = false;
     bool menuExit = false;
+    bool menuTunnels = false;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
@@ -339,9 +340,10 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
             if (adaptixWidget->AgentsMap[agentId]) {
                 auto agent = adaptixWidget->AgentsMap[agentId];
                 if (agent) {
-                    if (agent->browsers.FileBrowser)      menuFileBrowser = true;
-                    if (agent->browsers.ProcessBrowser)   menuProcessBrowser = true;
-                    if (agent->browsers.SessionsMenuExit) menuExit = true;
+                    menuFileBrowser = agent->browsers.FileBrowser;
+                    menuProcessBrowser = agent->browsers.ProcessBrowser;
+                    menuTunnels = agent->browsers.SessionsMenuTunnels;
+                    menuExit = agent->browsers.SessionsMenuExit;
                 }
             }
         }
@@ -358,12 +360,14 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 
     auto agentMenu = new QMenu("Agent", &ctxMenu);
     agentMenu->addAction("Tasks", this, &SessionsTableWidget::actionTasksBrowserOpen);
-    if (menuFileBrowser || menuProcessBrowser) {
+    if (menuFileBrowser || menuProcessBrowser || menuTunnels) {
         agentMenu->addAction(agentSep1);
         if (menuFileBrowser)
             agentMenu->addAction("File Browser", this, &SessionsTableWidget::actionFileBrowserOpen);
         if (menuProcessBrowser)
             agentMenu->addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
+        if (menuTunnels)
+            agentMenu->addAction("Create Tunnel", this, &SessionsTableWidget::actionCreateTunnel);
     }
     if (menuExit) {
         agentMenu->addAction(agentSep2);
@@ -439,6 +443,14 @@ void SessionsTableWidget::actionProcessBrowserOpen() const
             adaptixWidget->LoadProcessBrowserUI(agentId);
         }
     }
+}
+
+void SessionsTableWidget::actionCreateTunnel() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
 }
 
 void SessionsTableWidget::actionAgentExit() const

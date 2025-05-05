@@ -12,6 +12,7 @@ struct Argument
     QString mark;
     QString description;
     QString defaultValue;
+    bool    defaultUsed;
     bool    valid;
 };
 

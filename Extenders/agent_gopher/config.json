@@ -308,6 +308,15 @@
       ],
 
       "browsers": {
+        "sessions_menu_tunnels": false,
+        "socks4": false,
+        "socks5": false,
+        "lportfwd": false,
+        "rportfwd": false,
+
+        "sessions_menu_exit": true,
+
+
         "file_browser": true,
         "file_browser_disks": false,
         "file_browser_download": true,
@@ -315,13 +324,11 @@
 
         "process_browser": true,
 
-        "downloads_cancel": false,
+        "downloads_cancel": true,
         "downloads_resume": false,
         "downloads_pause": false,
 
-        "tasks_job_kill": false,
-
-        "sessions_menu_exit": true
+        "tasks_job_kill": false
       }
     }
   ]

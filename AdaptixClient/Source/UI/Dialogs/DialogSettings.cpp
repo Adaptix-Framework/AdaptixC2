@@ -233,7 +233,8 @@ void DialogSettings::onStackChange(int index) const
     stackSettings->setCurrentIndex(index);
 }
 
-void DialogSettings::onHealthChange() const {
+void DialogSettings::onHealthChange() const
+{
     buttonApply->setEnabled(true);
     bool active = sessionsHealthCheck->isChecked();
     sessionsLabel1->setEnabled(active);

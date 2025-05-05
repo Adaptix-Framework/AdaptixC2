@@ -37,15 +37,18 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     bool menuProcessBrowser = false;
     bool menuFileBrowser = false;
     bool menuExit = false;
+    bool menuTunnels = false;
 
     bool valid = false;
     for ( const auto& _graphics_item : graphics_items ) {
         const auto item = dynamic_cast<GraphItem*>( _graphics_item );
         if ( item && item->agent ) {
             valid = true;
-            if (item->agent->browsers.FileBrowser)      menuFileBrowser = true;
-            if (item->agent->browsers.ProcessBrowser)   menuProcessBrowser = true;
-            if (item->agent->browsers.SessionsMenuExit) menuExit = true;
+
+            menuFileBrowser = item->agent->browsers.FileBrowser;
+            menuProcessBrowser = item->agent->browsers.ProcessBrowser;
+            menuTunnels = item->agent->browsers.SessionsMenuTunnels;
+            menuExit = item->agent->browsers.SessionsMenuExit;
         }
     }
     if (!valid)
@@ -62,12 +65,14 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
     auto agentMenu = new QMenu("Agent", &menu);
     agentMenu->addAction("Tasks");
-    if (menuFileBrowser || menuProcessBrowser) {
+    if (menuFileBrowser || menuProcessBrowser || menuTunnels) {
         agentMenu->addAction(agentSep1);
         if (menuFileBrowser)
             agentMenu->addAction("File Browser");
         if (menuProcessBrowser)
             agentMenu->addAction("Process Browser");
+        if (menuTunnels)
+            agentMenu->addAction("Create Tunnel");
     }
     if (menuExit) {
         agentMenu->addAction(agentSep2);
@@ -118,6 +123,9 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
             if ( item && item->agent )
                 adaptixWidget->LoadProcessBrowserUI(item->agent->data.Id);
         }
+    }
+    else if ( action->text() == "Create Tunnel" ) {
+
     }
     else if ( action->text() ==  "Exit" ) {
         QStringList listId;

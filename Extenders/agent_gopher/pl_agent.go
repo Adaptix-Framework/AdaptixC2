@@ -1090,8 +1090,10 @@ func TaskDownloadStart(path string, taskId string, agentData adaptix.AgentData) 
 	return msgpack.Marshal(cmd)
 }
 
-func TaskDownloadCancel(fileId string, taskId string, agentData adaptix.AgentData) ([]byte, error) {
-	return nil, nil
+func TaskDownloadCancel(fileId string, agentData adaptix.AgentData) ([]byte, error) {
+	packerData, _ := msgpack.Marshal(ParamsJobKill{Id: fileId})
+	cmd := Command{Code: COMMAND_JOB_KILL, Data: packerData}
+	return msgpack.Marshal(cmd)
 }
 
 func TaskDownloadResume(fileId string, agentData adaptix.AgentData) ([]byte, error) {

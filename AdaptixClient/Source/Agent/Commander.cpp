@@ -81,32 +81,52 @@ void BofPacker::Pack(const QString &type, const QJsonValue &jsonValue)
             return;
 
         QByteArray valueData = jsonValue.toString().toUtf8();
-        valueData.append('\0');
 
-        QByteArray valueLengthData;
-        int strLength = valueData.size();
-        valueLengthData.append(reinterpret_cast<const char*>(&strLength), sizeof(strLength));
+        if (valueData.size() == 0) {
+            QByteArray valueLengthData;
+            int strLength = 0;
+            valueLengthData.append(reinterpret_cast<const char*>(&strLength), 4);
 
-        data.append(valueLengthData);
-        data.append(valueData);
+            data.append(valueLengthData);
+        }
+        else {
+            valueData.append('\0');
+
+            QByteArray valueLengthData;
+            int strLength = valueData.size();
+            valueLengthData.append(reinterpret_cast<const char*>(&strLength), 4);
+
+            data.append(valueLengthData);
+            data.append(valueData);
+        }
     }
     else if (type == "WSTR") {
         if (!jsonValue.isString())
             return;
 
         QString str = jsonValue.toString();
-        const char16_t* utf16Data = reinterpret_cast<const char16_t*>(str.utf16());
-        int utf16Length = str.size() + 1;
 
-        QByteArray strData;
-        strData.append(reinterpret_cast<const char*>(utf16Data), utf16Length * sizeof(char16_t));
+        if (str.size() == 0) {
+            QByteArray valueLengthData;
+            int strLength = 0;
+            valueLengthData.append(reinterpret_cast<const char*>(&strLength), 4);
 
-        QByteArray strLengthData;
-        int strLength = utf16Length * sizeof(char16_t);
-        strLengthData.append(reinterpret_cast<const char*>(&strLength), sizeof(strLength));
+            data.append(valueLengthData);
+        }
+        else {
+            const char16_t* utf16Data = reinterpret_cast<const char16_t*>(str.utf16());
+            int utf16Length = str.size() + 1;
 
-        data.append(strLengthData);
-        data.append(strData);
+            QByteArray strData;
+            strData.append(reinterpret_cast<const char*>(utf16Data), utf16Length * sizeof(char16_t));
+
+            QByteArray strLengthData;
+            int strLength = utf16Length * sizeof(char16_t);
+            strLengthData.append(reinterpret_cast<const char*>(&strLength), 4);
+
+            data.append(strLengthData);
+            data.append(strData);
+        }
     }
     else if (type == "INT") {
         if (jsonValue.isString()) {
@@ -164,10 +184,11 @@ void BofPacker::Pack(const QString &type, const QJsonValue &jsonValue)
 
         QByteArray bytesLengthData;
         int bytesLength = bytes.size();
-        bytesLengthData.append(reinterpret_cast<const char*>(&bytesLength), sizeof(bytesLength));
+        bytesLengthData.append(reinterpret_cast<const char*>(&bytesLength), 4);
 
         data.append(bytesLengthData);
-        data.append(bytes);
+        if (bytesLength > 0)
+            data.append(bytes);
     }
 }
 
@@ -305,6 +326,7 @@ Argument Commander::ParseArgument(const QString &argString)
     arg.description      = match.captured(4).trimmed();
 
     if( !defaultValue.isEmpty() ) {
+        arg.defaultUsed = true;
         arg.defaultValue = defaultValue.mid(1, defaultValue.size() - 2).trimmed();
     }
 
@@ -445,7 +467,7 @@ CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, 
                     }
                 }
             } else if (commandArg.required) {
-                if (commandArg.defaultValue.isEmpty()) {
+                if (commandArg.defaultValue.isEmpty() && !commandArg.defaultUsed) {
                     return CommanderResult{true, "Missing required argument: " + commandArg.name, true };
                 } else {
                     if (commandArg.type == "STRING") {
@@ -560,7 +582,7 @@ CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, 
                             }
                         }
                     } else if (subArg.required) {
-                        if (subArg.defaultValue.isEmpty()) {
+                        if (subArg.defaultValue.isEmpty() && !subArg.defaultUsed) {
                             return CommanderResult{true, "Missing required argument for subcommand: " + subArg.name, true };
                         } else {
                             if (subArg.type == "STRING") {
@@ -866,7 +888,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 for (const auto &arg : foundCommand.args) {
                     QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
                     QString padding = QString(maxArgLength - fullarg.size(), ' ');
-                    output << "    " + fullarg + padding + "  : " + arg.type + (arg.defaultValue.isEmpty() ? ". " : " (default: '" + arg.defaultValue + "'). ") + arg.description + "\n";
+                    output << "    " + fullarg + padding + "  : " + arg.type + (arg.defaultUsed ? " (default: '" + arg.defaultValue + "'). " : ". ") + arg.description + "\n";
                 }
             }
         }
@@ -906,7 +928,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 for (const auto &arg : foundSubCommand.args) {
                     QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
                     QString padding = QString(maxArgLength - fullarg.size(), ' ');
-                    output << "    " + fullarg + padding + "  : " + arg.type + (arg.defaultValue.isEmpty() ? ". " : " (default: '" + arg.defaultValue + "'). ") + arg.description + "\n";
+                    output << "    " + fullarg + padding + "  : " + arg.type + (arg.defaultUsed ? " (default: '" + arg.defaultValue + "'). " : ". ") + arg.description + "\n";
                 }
             }
         }
