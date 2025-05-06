@@ -1,5 +1,6 @@
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
 #include <MainAdaptix.h>
 
@@ -8,14 +9,14 @@ SessionsTableWidget::SessionsTableWidget( QWidget* w )
     this->mainWidget = w;
     this->createUI();
 
-    connect( tableWidget,  &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
-    connect( tableWidget,  &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
-    connect( tableWidget,  &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
-    connect( checkOnlyActive, &QCheckBox::stateChanged,               this, &SessionsTableWidget::onFilterUpdate);
-    connect( inputFilter1, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( inputFilter2, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( inputFilter3, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( hideButton,   &ClickableLabel::clicked,                  this, &SessionsTableWidget::toggleSearchPanel);
+    connect( tableWidget,     &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
+    connect( tableWidget,     &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
+    connect( tableWidget,     &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
+    connect( checkOnlyActive, &QCheckBox::stateChanged,                  this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter1,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter2,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter3,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( hideButton,      &ClickableLabel::clicked,                  this, &SessionsTableWidget::toggleSearchPanel);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -333,6 +334,8 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     bool menuExit = false;
     bool menuTunnels = false;
 
+    int selectedCount = 0;
+
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -347,6 +350,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
                 }
             }
         }
+        selectedCount++;
     }
 
     auto ctxMenu = QMenu();
@@ -366,7 +370,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
             agentMenu->addAction("File Browser", this, &SessionsTableWidget::actionFileBrowserOpen);
         if (menuProcessBrowser)
             agentMenu->addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
-        if (menuTunnels)
+        if (menuTunnels  && selectedCount == 1)
             agentMenu->addAction("Create Tunnel", this, &SessionsTableWidget::actionCreateTunnel);
     }
     if (menuExit) {
@@ -451,6 +455,52 @@ void SessionsTableWidget::actionCreateTunnel() const
     if (!adaptixWidget)
         return;
 
+    Agent* agent = nullptr;
+
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            if (adaptixWidget->AgentsMap.contains(agentId) && adaptixWidget->AgentsMap[agentId]) {
+                agent = adaptixWidget->AgentsMap[agentId];
+                break;
+            }
+        }
+    }
+
+    if (!agent)
+        return;
+
+    DialogTunnel dialogTunnel;
+    dialogTunnel.SetSettings(agent->data.Id, agent->browsers.Socks5, agent->browsers.Socks4, agent->browsers.Lportfwd, agent->browsers.Rportfwd);
+
+    while (true) {
+        dialogTunnel.StartDialog();
+        if (dialogTunnel.IsValid())
+            break;
+
+        QString msg = dialogTunnel.GetMessage();
+        if (msg.isEmpty())
+            return;
+
+        MessageError(msg);
+    }
+
+    QString    tunnelType = dialogTunnel.GetTunnelType();
+    QByteArray tunnelData = dialogTunnel.GetTunnelData();
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *(adaptixWidget->GetProfile()), &message, &ok);
+    if( !result ) {
+        MessageError("Server is not responding");
+        return;
+    }
+    if ( !ok ) {
+        MessageError(message);
+        return;
+    }
+
+    agent = nullptr;
 }
 
 void SessionsTableWidget::actionAgentExit() const

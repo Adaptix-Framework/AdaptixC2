@@ -63,6 +63,7 @@ public slots:
     void actionTasksBrowserOpen() const;
     void actionFileBrowserOpen() const;
     void actionProcessBrowserOpen() const;
+    void actionCreateTunnel() const;
     void actionAgentExit() const;
     void actionMarkActive() const;
     void actionMarkInactive() const;
