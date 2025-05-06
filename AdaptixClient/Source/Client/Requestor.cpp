@@ -473,6 +473,18 @@ bool HttpReqBrowserUpload(const QString &agentId, const QString &path, const QSt
 
 ///TUNNEL
 
+bool HttpReqTunnelStartServer(const QString &tunnelType, const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok)
+{
+    QString sUrl = profile.GetURL() + "/tunnel/start/" + tunnelType;
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
 bool HttpReqTunnelStop(const QString &tunnelId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;

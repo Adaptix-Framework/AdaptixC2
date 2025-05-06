@@ -62,6 +62,8 @@ bool HttpReqBrowserUpload(const QString &agentId, const QString &path, const QSt
 
 ///TUNNEL
 
+bool HttpReqTunnelStartServer(const QString &tunnelType, const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);
+
 bool HttpReqTunnelStop(const QString &tunnelId, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqTunnelSetInfo(const QString &tunnelId, const QString &info, AuthProfile profile, QString* message, bool* ok );
