@@ -258,6 +258,33 @@ func (ex *AdaptixExtender) ExAgentDownloadTaskPause(agentData adaptix.AgentData,
 	return module.F.AgentTaskDownloadPause(fileId, agentData)
 }
 
+/// Tunnels
+
+func (ex *AdaptixExtender) ExAgentTunnelTaskSock5(agentData adaptix.AgentData, desc string, lhost string, lport int, auth bool, username string, password string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function Sock5 is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function Sock5 is not supported")
+	}
+	if !supportConf.Socks5 {
+		return adaptix.TaskData{}, errors.New("function Sock5 is not supported")
+	}
+
+	//return 
+}
+
 ////
 
 func (ex *AdaptixExtender) ExAgentCtxExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {

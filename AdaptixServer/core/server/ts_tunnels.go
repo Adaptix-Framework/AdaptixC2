@@ -15,42 +15,39 @@ import (
 	"time"
 )
 
-func (ts *Teamserver) TsTunnelAdd(tunnel *Tunnel) {
-
-	message := ""
-	if tunnel.Data.Type == "SOCKS5 proxy" {
-		message = fmt.Sprintf("SOCKS5 server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-	} else if tunnel.Data.Type == "SOCKS4 proxy" {
-		message = fmt.Sprintf("SOCKS4 server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-	} else if tunnel.Data.Type == "SOCKS5 Auth proxy" {
-		message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-	} else if tunnel.Data.Type == "Local port forward" {
-		message = fmt.Sprintf("Local port forward started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
+func (ts *Teamserver) TsTunnelTaskStartSocks5(agentId string, desc string, lhost string, lport int, auth bool, username string, password string) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
 
-	tunnel.TaskId, _ = krypt.GenerateUID(8)
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return fmt.Errorf("agent '%v' not active", agentId)
+	}
 
-	ts.tunnels.Put(tunnel.Data.TunnelId, tunnel)
+	taskData, err := ts.Extender.ExAgentTunnelTaskSock5(agent.Data, desc, lhost, lport, auth, username, password)
+	if err != nil {
+		return err
+	}
 
-	packet := CreateSpTunnelCreate(tunnel.Data)
-	ts.TsSyncAllClients(packet)
-
-	packet2 := CreateSpEvent(EVENT_TUNNEL_START, message)
-	ts.TsSyncAllClients(packet2)
-	ts.events.Put(packet2)
+	//ts.TsTaskCreate(agentId, "", clientName, taskData)
+	return nil
 }
 
-func (ts *Teamserver) TsReverseAdd(tunnel *Tunnel) {
-	packet := CreateSpTunnelCreate(tunnel.Data)
-	ts.TsSyncAllClients(packet)
-
-	message := fmt.Sprintf("Reverse port forward to '%s:%s'", tunnel.Data.Fhost, tunnel.Data.Fport)
-	packet2 := CreateSpEvent(EVENT_TUNNEL_START, message)
-	ts.TsSyncAllClients(packet2)
-	ts.events.Put(packet2)
+func (ts *Teamserver) TsTunnelTaskStartSocks4(agentId string, desc string, lhost string, lport int) error {
+	return nil
 }
 
-func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
+func (ts *Teamserver) TsTunnelTaskStartLpf(agentId string, desc string, lhost string, lport int, thost string, tport int) error {
+	return nil
+}
+
+func (ts *Teamserver) TsTunnelTaskStartRpf(agentId string, desc string, port int, thost string, tport int) error {
+	return nil
+}
+
+func (ts *Teamserver) TsTunnelTaskStop(TunnelId string) error {
 	value, ok := ts.tunnels.GetDelete(TunnelId)
 	if !ok {
 		return errors.New("tunnel Not Found")
@@ -114,6 +111,43 @@ func (ts *Teamserver) TsTunnelSetInfo(TunnelId string, Info string) error {
 	ts.TsSyncAllClients(packet)
 
 	return nil
+}
+
+/// Ts
+
+func (ts *Teamserver) TsTunnelAdd(tunnel *Tunnel) {
+
+	message := ""
+	if tunnel.Data.Type == "SOCKS5 proxy" {
+		message = fmt.Sprintf("SOCKS5 server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
+	} else if tunnel.Data.Type == "SOCKS4 proxy" {
+		message = fmt.Sprintf("SOCKS4 server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
+	} else if tunnel.Data.Type == "SOCKS5 Auth proxy" {
+		message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
+	} else if tunnel.Data.Type == "Local port forward" {
+		message = fmt.Sprintf("Local port forward started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
+	}
+
+	tunnel.TaskId, _ = krypt.GenerateUID(8)
+
+	ts.tunnels.Put(tunnel.Data.TunnelId, tunnel)
+
+	packet := CreateSpTunnelCreate(tunnel.Data)
+	ts.TsSyncAllClients(packet)
+
+	packet2 := CreateSpEvent(EVENT_TUNNEL_START, message)
+	ts.TsSyncAllClients(packet2)
+	ts.events.Put(packet2)
+}
+
+func (ts *Teamserver) TsReverseAdd(tunnel *Tunnel) {
+	packet := CreateSpTunnelCreate(tunnel.Data)
+	ts.TsSyncAllClients(packet)
+
+	message := fmt.Sprintf("Reverse port forward to '%s:%s'", tunnel.Data.Fhost, tunnel.Data.Fport)
+	packet2 := CreateSpEvent(EVENT_TUNNEL_START, message)
+	ts.TsSyncAllClients(packet2)
+	ts.events.Put(packet2)
 }
 
 /// Socks5
@@ -316,7 +350,7 @@ func (ts *Teamserver) TsTunnelStopSocks(AgentId string, Port int) {
 	id := krypt.CRC32([]byte(AgentId + "socks" + port))
 	TunnelId := fmt.Sprintf("%08x", id)
 
-	_ = ts.TsTunnelStop(TunnelId)
+	_ = ts.TsTunnelTaskStop(TunnelId)
 }
 
 /// Port Forward
@@ -389,7 +423,7 @@ func (ts *Teamserver) TsTunnelStopLocalPortFwd(AgentId string, Port int) {
 	id := krypt.CRC32([]byte(AgentId + "lportfwd" + port))
 	TunnelId := fmt.Sprintf("%08x", id)
 
-	_ = ts.TsTunnelStop(TunnelId)
+	_ = ts.TsTunnelTaskStop(TunnelId)
 }
 
 func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
@@ -502,7 +536,7 @@ func (ts *Teamserver) TsTunnelStopRemotePortFwd(AgentId string, Port int) {
 	rawTaskData := tunnel.handlerClose(int(id))
 	sendTunnelTaskData(agent, rawTaskData)
 
-	_ = ts.TsTunnelStop(TunnelId)
+	_ = ts.TsTunnelTaskStop(TunnelId)
 }
 
 /// Connection
