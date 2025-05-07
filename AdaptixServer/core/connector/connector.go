@@ -52,6 +52,7 @@ type Teamserver interface {
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
+	///
 	TsDownloadSync(fileId string) (string, []byte, error)
 	TsDownloadDelete(fileId string) error
 	///
@@ -75,8 +76,15 @@ type Teamserver interface {
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
 	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
 
-	TsTunnelStop(TunnelId string) error
+	TsTunnelTaskStartSocks5(agentId string, desc string, lhost string, lport int, auth bool, username string, password string) error
+	TsTunnelTaskStartSocks4(agentId string, desc string, lhost string, lport int) error
+	TsTunnelTaskStartLpf(agentId string, desc string, lhost string, lport int, thost string, tport int) error
+	TsTunnelTaskStartRpf(agentId string, desc string, port int, thost string, tport int) error
+	TsTunnelTaskStop(TunnelId string) error
+
+	//
 	TsTunnelSetInfo(TunnelId string, Info string) error
+	//
 	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
 	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
 	TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
@@ -174,6 +182,10 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/setnote", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotSetNote)
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotRemove)
 
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks5", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks5)
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks4", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks4)
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/lportfwd", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartLpf)
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/rportfwd", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartRpf)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStop)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/setinfo", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelSetIno)
 

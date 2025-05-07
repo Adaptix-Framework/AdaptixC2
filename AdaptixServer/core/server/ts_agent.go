@@ -51,7 +51,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	if !ok {
 		return fmt.Errorf("listener %v does not exists", listenerName)
 	}
-	
+
 	lType := strings.Split(value.(adaptix.ListenerData).Type, "/")[0]
 	if lType == "internal" {
 		agentData.Mark = "Unlink"
@@ -250,7 +250,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 		return true
 	})
 	for _, id := range tunnels {
-		_ = ts.TsTunnelStop(id)
+		_ = ts.TsTunnelTaskStop(id)
 	}
 
 	/// Clear TunnelQueue
@@ -339,7 +339,7 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 		return true
 	})
 	for _, id := range tunnels {
-		_ = ts.TsTunnelStop(id)
+		_ = ts.TsTunnelTaskStop(id)
 	}
 
 	if agent.PivotParent != nil {
