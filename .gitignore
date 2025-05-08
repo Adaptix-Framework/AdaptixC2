@@ -1,0 +1,7 @@
+cmake-build-debug/
+objects_http/
+objects_smb/
+objects_tcp/
+.idea/
+.qt/
+*.so

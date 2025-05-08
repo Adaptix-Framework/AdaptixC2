@@ -688,7 +688,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 					goto RET
 				}
 			}
-			taskData.TaskId, err = ts.TsTunnelCreateLocalPortFwd(agent.Id, lhost, lport, fhost, fport, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
+			taskData.TaskId, err = ts.TsTunnelCreateLocalPortFwd(agent.Id, "", lhost, lport, fhost, fport, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
 			if err != nil {
 				goto RET
 			}
@@ -861,7 +861,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 				}
 			}
 
-			taskData.TaskId, err = ts.TsTunnelCreateRemotePortFwd(agent.Id, lport, fhost, fport, TunnelMessageReverse, TunnelMessageWriteTCP, TunnelMessageClose)
+			taskData.TaskId, err = ts.TsTunnelCreateRemotePortFwd(agent.Id, "", lport, fhost, fport, TunnelMessageReverse, TunnelMessageWriteTCP, TunnelMessageClose)
 			if err != nil {
 				goto RET
 			}
@@ -942,7 +942,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 
 			version4, _ := args["-socks4"].(bool)
 			if version4 {
-				taskData.TaskId, err = ts.TsTunnelCreateSocks4(agent.Id, address, port, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
+				taskData.TaskId, err = ts.TsTunnelCreateSocks4(agent.Id, "", address, port, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
 				if err != nil {
 					goto RET
 				}
@@ -961,14 +961,14 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 						err = errors.New("parameter 'password' must be set")
 						goto RET
 					}
-					taskData.TaskId, err = ts.TsTunnelCreateSocks5Auth(agent.Id, address, port, username, password, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
+					taskData.TaskId, err = ts.TsTunnelCreateSocks5Auth(agent.Id, "", address, port, username, password, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
 					if err != nil {
 						goto RET
 					}
 					taskData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
 
 				} else {
-					taskData.TaskId, err = ts.TsTunnelCreateSocks5(agent.Id, address, port, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
+					taskData.TaskId, err = ts.TsTunnelCreateSocks5(agent.Id, "", address, port, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
 					if err != nil {
 						goto RET
 					}

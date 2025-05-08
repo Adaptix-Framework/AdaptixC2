@@ -282,7 +282,82 @@ func (ex *AdaptixExtender) ExAgentTunnelTaskSock5(agentData adaptix.AgentData, d
 		return adaptix.TaskData{}, errors.New("function Sock5 is not supported")
 	}
 
-	//return 
+	return module.F.AgentTunnelTaskSock5(desc, lhost, lport, auth, username, password, agentData)
+}
+
+func (ex *AdaptixExtender) ExAgentTunnelTaskSock4(agentData adaptix.AgentData, desc string, lhost string, lport int) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function Sock4 is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function Sock4 is not supported")
+	}
+	if !supportConf.Socks4 {
+		return adaptix.TaskData{}, errors.New("function Sock4 is not supported")
+	}
+
+	return module.F.AgentTunnelTaskSock4(desc, lhost, lport, agentData)
+}
+
+func (ex *AdaptixExtender) ExAgentTunnelTaskLpf(agentData adaptix.AgentData, desc string, lhost string, lport int, thost string, tport int) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function LocalPortFwd is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function LocalPortFwd is not supported")
+	}
+	if !supportConf.Lportfwd {
+		return adaptix.TaskData{}, errors.New("function LocalPortFwd is not supported")
+	}
+
+	return module.F.AgentTunnelTaskLpf(desc, lhost, lport, thost, tport, agentData)
+}
+
+func (ex *AdaptixExtender) ExAgentTunnelTaskRpf(agentData adaptix.AgentData, desc string, port int, thost string, tport int) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function ReversePortFwd is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function ReversePortFwd is not supported")
+	}
+	if !supportConf.Rportfwd {
+		return adaptix.TaskData{}, errors.New("function ReversePortFwd is not supported")
+	}
+
+	return module.F.AgentTunnelTaskRpf(desc, port, thost, tport, agentData)
 }
 
 ////

@@ -108,7 +108,10 @@ type ExtAgentFunc interface {
 	AgentTaskDownloadResume(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentTaskDownloadPause(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 
-	AgentTunnelTaskSock5(desc string, lhost string, lport int, auth bool, username string, password string) (adaptix.TaskData, error)
+	AgentTunnelTaskSock5(desc string, lhost string, lport int, auth bool, username string, password string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentTunnelTaskSock4(desc string, lhost string, lport int, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentTunnelTaskLpf(desc string, lhost string, lport int, thost string, tport int, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentTunnelTaskRpf(desc string, port int, thost string, tport int, agentData adaptix.AgentData) (adaptix.TaskData, error)
 
 	AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserJobKill(jobId string) (adaptix.TaskData, error)
