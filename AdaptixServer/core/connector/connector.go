@@ -76,20 +76,20 @@ type Teamserver interface {
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
 	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
 
-	TsTunnelTaskStartSocks5(agentId string, desc string, lhost string, lport int, auth bool, username string, password string) error
-	TsTunnelTaskStartSocks4(agentId string, desc string, lhost string, lport int) error
-	TsTunnelTaskStartLpf(agentId string, desc string, lhost string, lport int, thost string, tport int) error
-	TsTunnelTaskStartRpf(agentId string, desc string, port int, thost string, tport int) error
+	TsTunnelTaskStartSocks5(agentId string, clientName string, desc string, lhost string, lport int, auth bool, username string, password string) error
+	TsTunnelTaskStartSocks4(agentId string, clientName string, desc string, lhost string, lport int) error
+	TsTunnelTaskStartLpf(agentId string, clientName string, desc string, lhost string, lport int, thost string, tport int) error
+	TsTunnelTaskStartRpf(agentId string, clientName string, desc string, port int, thost string, tport int) error
 	TsTunnelTaskStop(TunnelId string) error
 
 	//
 	TsTunnelSetInfo(TunnelId string, Info string) error
 	//
-	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateSocks4(AgentId string, Info string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateSocks5(AgentId string, Info string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateSocks5Auth(AgentId string, Info string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
 	TsTunnelStopSocks(AgentId string, Port int)
-	TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateLocalPortFwd(AgentId string, Info string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
 	TsTunnelStopLocalPortFwd(AgentId string, Port int)
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionResume(AgentId string, channelId int)

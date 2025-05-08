@@ -28,7 +28,37 @@ func (tc *TsConnector) TcTunnelStartSocks5(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsTunnelTaskStartSocks5(ta.AgentId, ta.Description, ta.Lhost, ta.Lport, ta.UseAuth, ta.Username, ta.Password)
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+	clientName, ok := value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
+
+	if ta.Lhost == "" {
+		_ = ctx.Error(errors.New("l_host is required"))
+		return
+	}
+	if ta.Lport < 1 || ta.Lport > 65535 {
+		_ = ctx.Error(errors.New("l_port must be from 1 to 65535"))
+		return
+	}
+	if ta.UseAuth {
+		if ta.Username == "" {
+			_ = ctx.Error(errors.New("username is required"))
+			return
+		}
+		if ta.Password == "" {
+			_ = ctx.Error(errors.New("password is required"))
+			return
+		}
+	}
+
+	err = tc.teamserver.TsTunnelTaskStartSocks5(ta.AgentId, clientName, ta.Description, ta.Lhost, ta.Lport, ta.UseAuth, ta.Username, ta.Password)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -56,7 +86,27 @@ func (tc *TsConnector) TcTunnelStartSocks4(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsTunnelTaskStartSocks4(ta.AgentId, ta.Description, ta.Lhost, ta.Lport)
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+	clientName, ok := value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
+
+	if ta.Lhost == "" {
+		_ = ctx.Error(errors.New("l_host is required"))
+		return
+	}
+	if ta.Lport < 1 || ta.Lport > 65535 {
+		_ = ctx.Error(errors.New("l_port must be from 1 to 65535"))
+		return
+	}
+
+	err = tc.teamserver.TsTunnelTaskStartSocks4(ta.AgentId, clientName, ta.Description, ta.Lhost, ta.Lport)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -86,7 +136,35 @@ func (tc *TsConnector) TcTunnelStartLpf(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsTunnelTaskStartLpf(ta.AgentId, ta.Description, ta.Lhost, ta.Lport, ta.Thost, ta.Tport)
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+	clientName, ok := value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
+
+	if ta.Lhost == "" {
+		_ = ctx.Error(errors.New("l_host is required"))
+		return
+	}
+	if ta.Lport < 1 || ta.Lport > 65535 {
+		_ = ctx.Error(errors.New("l_port must be from 1 to 65535"))
+		return
+	}
+	if ta.Thost == "" {
+		_ = ctx.Error(errors.New("t_host is required"))
+		return
+	}
+	if ta.Tport < 1 || ta.Tport > 65535 {
+		_ = ctx.Error(errors.New("t_port must be from 1 to 65535"))
+		return
+	}
+
+	err = tc.teamserver.TsTunnelTaskStartLpf(ta.AgentId, clientName, ta.Description, ta.Lhost, ta.Lport, ta.Thost, ta.Tport)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -115,7 +193,31 @@ func (tc *TsConnector) TcTunnelStartRpf(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsTunnelTaskStartRpf(ta.AgentId, ta.Description, ta.Port, ta.Thost, ta.Tport)
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+	clientName, ok := value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
+
+	if ta.Port < 1 || ta.Port > 65535 {
+		_ = ctx.Error(errors.New("port must be from 1 to 65535"))
+		return
+	}
+	if ta.Thost == "" {
+		_ = ctx.Error(errors.New("t_host is required"))
+		return
+	}
+	if ta.Tport < 1 || ta.Tport > 65535 {
+		_ = ctx.Error(errors.New("t_port must be from 1 to 65535"))
+		return
+	}
+
+	err = tc.teamserver.TsTunnelTaskStartRpf(ta.AgentId, clientName, ta.Description, ta.Port, ta.Thost, ta.Tport)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

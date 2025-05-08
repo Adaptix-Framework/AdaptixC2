@@ -63,13 +63,13 @@ type Teamserver interface {
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
 	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
 
-	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateSocks4(AgentId string, Info string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateSocks5(AgentId string, Info string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateSocks5Auth(AgentId string, Info string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
 	TsTunnelStopSocks(AgentId string, Port int)
-	TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateLocalPortFwd(AgentId string, Info string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
 	TsTunnelStopLocalPortFwd(AgentId string, Port int)
-	TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelCreateRemotePortFwd(AgentId string, Info string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
 	TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, string, error)
 	TsTunnelStopRemotePortFwd(AgentId string, Port int)
 	TsTunnelConnectionClose(channelId int)
@@ -390,6 +390,65 @@ func SyncBrowserProcess(ts Teamserver, taskData adaptix.TaskData, processlist []
 }
 
 /// TYPE_TUNNEL
+
+func (m *ModuleExtender) AgentTunnelTaskSock5(desc string, lhost string, lport int, auth bool, username string, password string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	var err error
+	taskData := adaptix.TaskData{}
+	taskData.Type = TYPE_TUNNEL
+
+	if auth {
+		taskData.TaskId, err = m.ts.TsTunnelCreateSocks5Auth(agentData.Id, desc, lhost, lport, username, password, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
+	} else {
+		taskData.TaskId, err = m.ts.TsTunnelCreateSocks5(agentData.Id, desc, lhost, lport, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
+	}
+
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	return taskData, nil
+}
+
+func (m *ModuleExtender) AgentTunnelTaskSock4(desc string, lhost string, lport int, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	var err error
+	taskData := adaptix.TaskData{}
+	taskData.Type = TYPE_TUNNEL
+
+	taskData.TaskId, err = m.ts.TsTunnelCreateSocks4(agentData.Id, desc, lhost, lport, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	return taskData, nil
+}
+
+func (m *ModuleExtender) AgentTunnelTaskLpf(desc string, lhost string, lport int, thost string, tport int, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	var err error
+	taskData := adaptix.TaskData{}
+	taskData.Type = TYPE_TUNNEL
+
+	taskData.TaskId, err = m.ts.TsTunnelCreateLocalPortFwd(agentData.Id, desc, lhost, lport, thost, tport, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	return taskData, nil
+}
+
+func (m *ModuleExtender) AgentTunnelTaskRpf(desc string, port int, thost string, tport int, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	var err error
+	taskData := adaptix.TaskData{}
+	taskData.Type = TYPE_TUNNEL
+
+	taskData.TaskId, err = m.ts.TsTunnelCreateRemotePortFwd(agentData.Id, desc, port, thost, tport, TunnelMessageReverse, TunnelMessageWriteTCP, TunnelMessageClose)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	return taskData, nil
+}
+
+//
 
 func TunnelMessageConnectTCP(channelId int, address string, port int) adaptix.TaskData {
 	packData, _ := TunnelCreateTCP(channelId, address, port)

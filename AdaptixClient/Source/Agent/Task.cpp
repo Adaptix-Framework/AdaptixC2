@@ -60,6 +60,9 @@ Task::Task(QJsonObject jsonObjTaskData)
             item_Result->setForeground(QColor(COLOR_NeonGreen) );
         }
     }
+    else if (taskType == "TUNNEL") {
+        this->data.Status = "Running";
+    }
     this->item_Result->setText(this->data.Status);
 }
 

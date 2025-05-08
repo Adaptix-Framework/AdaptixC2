@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func (ts *Teamserver) TsTunnelTaskStartSocks5(agentId string, desc string, lhost string, lport int, auth bool, username string, password string) error {
+func (ts *Teamserver) TsTunnelTaskStartSocks5(agentId string, clientName string, desc string, lhost string, lport int, auth bool, username string, password string) error {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -31,19 +31,100 @@ func (ts *Teamserver) TsTunnelTaskStartSocks5(agentId string, desc string, lhost
 		return err
 	}
 
-	//ts.TsTaskCreate(agentId, "", clientName, taskData)
+	taskData.Type = TYPE_TUNNEL
+	taskData.Sync = true
+	commandline := ""
+	if auth {
+		commandline = fmt.Sprintf("[from browser] socks5 start %v:%v -auth %v %v", lhost, lport, username, password)
+		taskData.Message = fmt.Sprintf("Started socks5 tunnel (with Auth) on %v:%v", lhost, lport)
+	} else {
+		commandline = fmt.Sprintf("[from browser] socks5 start %v:%v", lhost, lport)
+		taskData.Message = fmt.Sprintf("Started socks5 tunnel on %v:%v", lhost, lport)
+	}
+	taskData.MessageType = CONSOLE_OUT_SUCCESS
+
+	ts.TsTaskCreate(agentId, commandline, clientName, taskData)
 	return nil
 }
 
-func (ts *Teamserver) TsTunnelTaskStartSocks4(agentId string, desc string, lhost string, lport int) error {
+func (ts *Teamserver) TsTunnelTaskStartSocks4(agentId string, clientName string, desc string, lhost string, lport int) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent '%v' does not exist", agentId)
+	}
+
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return fmt.Errorf("agent '%v' not active", agentId)
+	}
+
+	taskData, err := ts.Extender.ExAgentTunnelTaskSock4(agent.Data, desc, lhost, lport)
+	if err != nil {
+		return err
+	}
+
+	commandline := fmt.Sprintf("[from browser] socks4 start %v:%v", lhost, lport)
+
+	taskData.Type = TYPE_TUNNEL
+	taskData.Sync = true
+	taskData.Message = fmt.Sprintf("Started socks4 tunnel on %v:%v", lhost, lport)
+	taskData.MessageType = CONSOLE_OUT_SUCCESS
+
+	ts.TsTaskCreate(agentId, commandline, clientName, taskData)
 	return nil
 }
 
-func (ts *Teamserver) TsTunnelTaskStartLpf(agentId string, desc string, lhost string, lport int, thost string, tport int) error {
+func (ts *Teamserver) TsTunnelTaskStartLpf(agentId string, clientName string, desc string, lhost string, lport int, thost string, tport int) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent '%v' does not exist", agentId)
+	}
+
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return fmt.Errorf("agent '%v' not active", agentId)
+	}
+
+	taskData, err := ts.Extender.ExAgentTunnelTaskLpf(agent.Data, desc, lhost, lport, thost, tport)
+	if err != nil {
+		return err
+	}
+
+	commandline := fmt.Sprintf("[from browser] local_port_fwd start %v:%v %v:%v", lhost, lport, thost, tport)
+
+	taskData.Type = TYPE_TUNNEL
+	taskData.Sync = true
+	taskData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, thost, tport)
+	taskData.MessageType = CONSOLE_OUT_SUCCESS
+
+	ts.TsTaskCreate(agentId, commandline, clientName, taskData)
 	return nil
 }
 
-func (ts *Teamserver) TsTunnelTaskStartRpf(agentId string, desc string, port int, thost string, tport int) error {
+func (ts *Teamserver) TsTunnelTaskStartRpf(agentId string, clientName string, desc string, port int, thost string, tport int) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent '%v' does not exist", agentId)
+	}
+
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return fmt.Errorf("agent '%v' not active", agentId)
+	}
+
+	taskData, err := ts.Extender.ExAgentTunnelTaskRpf(agent.Data, desc, port, thost, tport)
+	if err != nil {
+		return err
+	}
+
+	commandline := fmt.Sprintf("[from browser] reverse_port_fwd start %v %v:%v", port, thost, tport)
+
+	taskData.Type = TYPE_TUNNEL
+	taskData.Sync = true
+	taskData.Message = fmt.Sprintf("Starting reverse port forwarding %d to %s:%d", port, thost, tport)
+	taskData.MessageType = CONSOLE_OUT_INFO
+
+	ts.TsTaskCreate(agentId, commandline, clientName, taskData)
 	return nil
 }
 
@@ -152,7 +233,7 @@ func (ts *Teamserver) TsReverseAdd(tunnel *Tunnel) {
 
 /// Socks5
 
-func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
+func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Info string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
@@ -202,7 +283,7 @@ func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port 
 		Username:  agent.Data.Username,
 		Process:   agent.Data.Process,
 		Type:      "SOCKS4 proxy",
-		Info:      "",
+		Info:      Info,
 		Interface: Address,
 		Port:      port,
 		Client:    "",
@@ -215,7 +296,7 @@ func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port 
 	return socksTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
+func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Info string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
@@ -267,7 +348,7 @@ func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port 
 		Username:  agent.Data.Username,
 		Process:   agent.Data.Process,
 		Type:      "SOCKS5 proxy",
-		Info:      "",
+		Info:      Info,
 		Interface: Address,
 		Port:      port,
 		Client:    "",
@@ -280,7 +361,7 @@ func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port 
 	return socksTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
+func (ts *Teamserver) TsTunnelCreateSocks5Auth(AgentId string, Info string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
@@ -355,7 +436,7 @@ func (ts *Teamserver) TsTunnelStopSocks(AgentId string, Port int) {
 
 /// Port Forward
 
-func (ts *Teamserver) TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
+func (ts *Teamserver) TsTunnelCreateLocalPortFwd(AgentId string, Info string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
@@ -405,7 +486,7 @@ func (ts *Teamserver) TsTunnelCreateLocalPortFwd(AgentId string, Address string,
 		Username:  agent.Data.Username,
 		Process:   agent.Data.Process,
 		Type:      "Local port forward",
-		Info:      "",
+		Info:      Info,
 		Interface: Address,
 		Port:      port,
 		Client:    "",
@@ -426,7 +507,7 @@ func (ts *Teamserver) TsTunnelStopLocalPortFwd(AgentId string, Port int) {
 	_ = ts.TsTunnelTaskStop(TunnelId)
 }
 
-func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
+func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Info string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
@@ -454,7 +535,7 @@ func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdA
 		Username:  agent.Data.Username,
 		Process:   agent.Data.Process,
 		Type:      "Reverse port forward",
-		Info:      "",
+		Info:      Info,
 		Interface: "",
 		Port:      port,
 		Client:    "",
