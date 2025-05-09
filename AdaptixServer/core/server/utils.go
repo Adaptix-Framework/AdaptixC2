@@ -31,6 +31,14 @@ const (
 	TYPE_PROXY_DATA = 5
 )
 
+const (
+	TUNNEL_SOCKS4      = 1
+	TUNNEL_SOCKS5      = 2
+	TUNNEL_SOCKS5_AUTH = 3
+	TUNNEL_LPORTFWD    = 4
+	TUNNEL_RPORTFWD    = 5
+)
+
 // TeamServer
 
 type Client struct {
@@ -90,6 +98,8 @@ type TunnelConnection struct {
 
 type Tunnel struct {
 	TaskId string
+	Active bool
+	Type   int
 	Data   adaptix.TunnelData
 
 	listener    net.Listener
@@ -100,6 +110,7 @@ type Tunnel struct {
 	handlerWriteTCP   func(channelId int, data []byte) adaptix.TaskData
 	handlerWriteUDP   func(channelId int, data []byte) adaptix.TaskData
 	handlerClose      func(channelId int) adaptix.TaskData
+	handleReverse     func(tunnelId int, port int) adaptix.TaskData
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

@@ -688,10 +688,16 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 					goto RET
 				}
 			}
-			taskData.TaskId, err = ts.TsTunnelCreateLocalPortFwd(agent.Id, "", lhost, lport, fhost, fport, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
+
+			tunnelId, err := ts.TsTunnelCreateLportfwd(agent.Id, "", lhost, lport, fhost, fport)
 			if err != nil {
 				goto RET
 			}
+			taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+			if err != nil {
+				goto RET
+			}
+
 			taskData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, fhost, fport)
 			taskData.MessageType = MESSAGE_SUCCESS
 			taskData.ClearText = "\n"
@@ -861,10 +867,15 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 				}
 			}
 
-			taskData.TaskId, err = ts.TsTunnelCreateRemotePortFwd(agent.Id, "", lport, fhost, fport, TunnelMessageReverse, TunnelMessageWriteTCP, TunnelMessageClose)
+			tunnelId, err := ts.TsTunnelCreateRportfwd(agent.Id, "", lport, fhost, fport)
 			if err != nil {
 				goto RET
 			}
+			taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+			if err != nil {
+				goto RET
+			}
+			
 			messageData.Message = fmt.Sprintf("Starting reverse port forwarding %d to %s:%d", lport, fhost, fport)
 			messageData.Status = MESSAGE_INFO
 			messageData.Text = "\n"
@@ -942,7 +953,11 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 
 			version4, _ := args["-socks4"].(bool)
 			if version4 {
-				taskData.TaskId, err = ts.TsTunnelCreateSocks4(agent.Id, "", address, port, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
+				tunnelId, err := ts.TsTunnelCreateSocks4(agent.Id, "", address, port)
+				if err != nil {
+					goto RET
+				}
+				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
 				if err != nil {
 					goto RET
 				}
@@ -961,17 +976,27 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 						err = errors.New("parameter 'password' must be set")
 						goto RET
 					}
-					taskData.TaskId, err = ts.TsTunnelCreateSocks5Auth(agent.Id, "", address, port, username, password, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
+					tunnelId, err := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, true, username, password)
 					if err != nil {
 						goto RET
 					}
+					taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+					if err != nil {
+						goto RET
+					}
+
 					taskData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
 
 				} else {
-					taskData.TaskId, err = ts.TsTunnelCreateSocks5(agent.Id, "", address, port, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
+					tunnelId, err := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, false, "", "")
 					if err != nil {
 						goto RET
 					}
+					taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+					if err != nil {
+						goto RET
+					}
+
 					taskData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
 				}
 			}
