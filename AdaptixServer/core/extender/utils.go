@@ -113,6 +113,8 @@ type ExtAgentFunc interface {
 	AgentTunnelTaskLpf(desc string, lhost string, lport int, thost string, tport int, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentTunnelTaskRpf(desc string, port int, thost string, tport int, agentData adaptix.AgentData) (adaptix.TaskData, error)
 
+	AgentTunnelCallbacks() (func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error)
+
 	AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserJobKill(jobId string) (adaptix.TaskData, error)
 }

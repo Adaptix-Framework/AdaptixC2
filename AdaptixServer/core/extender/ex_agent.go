@@ -360,6 +360,45 @@ func (ex *AdaptixExtender) ExAgentTunnelTaskRpf(agentData adaptix.AgentData, des
 	return module.F.AgentTunnelTaskRpf(desc, port, thost, tport, agentData)
 }
 
+func (ex *AdaptixExtender) ExAgentTunnelCallbacks(agentData adaptix.AgentData, tunnelType int) (func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return nil, nil, nil, nil, nil, nil, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return nil, nil, nil, nil, nil, nil, errors.New("Tunnels are not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return nil, nil, nil, nil, nil, nil, errors.New("Tunnels are not supported")
+	}
+
+	// TUNNEL_SOCKS4
+	if tunnelType == 1 && !supportConf.Socks4 {
+		return nil, nil, nil, nil, nil, nil, errors.New("function Socks4 is not supported")
+	}
+	// TUNNEL_SOCKS5 or TUNNEL_SOCKS5_AUTH
+	if (tunnelType == 2 || tunnelType == 3) && !supportConf.Socks5 {
+		return nil, nil, nil, nil, nil, nil, errors.New("function Socks5 is not supported")
+	}
+	// TUNNEL_LPORTFWD
+	if tunnelType == 4 && !supportConf.Lportfwd {
+		return nil, nil, nil, nil, nil, nil, errors.New("function LocalPortForward is not supported")
+	}
+	// TUNNEL_RPORTFWD
+	if tunnelType == 5 && !supportConf.Rportfwd {
+		return nil, nil, nil, nil, nil, nil, errors.New("function ReversePortFwd is not supported")
+	}
+
+	return module.F.AgentTunnelCallbacks()
+}
+
 ////
 
 func (ex *AdaptixExtender) ExAgentCtxExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {
