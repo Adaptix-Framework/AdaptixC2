@@ -68,12 +68,12 @@ type Teamserver interface {
 	TsTunnelCreateSocks5(AgentId string, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (string, error)
 	TsTunnelCreateLportfwd(AgentId string, Info string, Lhost string, Lport int, Thost string, Tport int) (string, error)
 	TsTunnelCreateRportfwd(AgentId string, Info string, Lport int, Thost string, Tport int) (string, error)
+	TsTunnelUpdateRportfwd(tunnelId int, result bool) (string, string, error)
 
 	TsTunnelStopSocks(AgentId string, Port int)
-	TsTunnelStopLocalPortFwd(AgentId string, Port int)
+	TsTunnelStopLportfwd(AgentId string, Port int)
+	TsTunnelStopRportfwd(AgentId string, Port int)
 
-	TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, string, error)
-	TsTunnelStopRemotePortFwd(AgentId string, Port int)
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionResume(AgentId string, channelId int)
 	TsTunnelConnectionData(channelId int, data []byte)
@@ -391,64 +391,7 @@ func SyncBrowserProcess(ts Teamserver, taskData adaptix.TaskData, processlist []
 	ts.TsClientGuiProcess(taskData, string(jsonProcess))
 }
 
-/// TYPE_TUNNEL
-
-func (m *ModuleExtender) AgentTunnelTaskSock5(desc string, lhost string, lport int, auth bool, username string, password string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	var err error
-	taskData := adaptix.TaskData{}
-	taskData.Type = TYPE_TUNNEL
-
-	//if auth {
-	//	taskData.TaskId, err = m.ts.TsTunnelCreateSocks5Auth(agentData.Id, desc, lhost, lport, username, password, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
-	//} else {
-	//	taskData.TaskId, err = m.ts.TsTunnelCreateSocks5(agentData.Id, desc, lhost, lport, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
-	//}
-
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentTunnelTaskSock4(desc string, lhost string, lport int, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	//var err error
-	taskData := adaptix.TaskData{}
-	taskData.Type = TYPE_TUNNEL
-
-	//taskData.TaskId, err = m.ts.TsTunnelCreateSocks4(agentData.Id, desc, lhost, lport, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
-	//if err != nil {
-	//	return adaptix.TaskData{}, err
-	//}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentTunnelTaskLpf(desc string, lhost string, lport int, thost string, tport int, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	//var err error
-	taskData := adaptix.TaskData{}
-	taskData.Type = TYPE_TUNNEL
-
-	//taskData.TaskId, err = m.ts.TsTunnelCreateLocalPortFwd(agentData.Id, desc, lhost, lport, thost, tport, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
-	//if err != nil {
-	//	return adaptix.TaskData{}, err
-	//}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentTunnelTaskRpf(desc string, port int, thost string, tport int, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	//var err error
-	taskData := adaptix.TaskData{}
-	taskData.Type = TYPE_TUNNEL
-
-	//taskData.TaskId, err = m.ts.TsTunnelCreateRemotePortFwd(agentData.Id, desc, port, thost, tport, TunnelMessageReverse, TunnelMessageWriteTCP, TunnelMessageClose)
-	//if err != nil {
-	//	return adaptix.TaskData{}, err
-	//}
-
-	return taskData, nil
-}
+/// TUNNEL
 
 func (m *ModuleExtender) AgentTunnelCallbacks() (func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {
 	return TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose, TunnelMessageReverse, nil

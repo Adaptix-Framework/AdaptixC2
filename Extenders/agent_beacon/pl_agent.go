@@ -705,7 +705,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		} else if subcommand == "stop" {
 			taskData.Completed = true
 
-			ts.TsTunnelStopLocalPortFwd(agent.Id, lport)
+			ts.TsTunnelStopLportfwd(agent.Id, lport)
 
 			taskData.Message = fmt.Sprintf("Local port forwarding on %d stopped", lport)
 			taskData.MessageType = MESSAGE_SUCCESS
@@ -875,7 +875,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 			if err != nil {
 				goto RET
 			}
-			
+
 			messageData.Message = fmt.Sprintf("Starting reverse port forwarding %d to %s:%d", lport, fhost, fport)
 			messageData.Status = MESSAGE_INFO
 			messageData.Text = "\n"
@@ -883,7 +883,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		} else if subcommand == "stop" {
 			taskData.Completed = true
 
-			ts.TsTunnelStopRemotePortFwd(agent.Id, lport)
+			ts.TsTunnelStopRportfwd(agent.Id, lport)
 
 			taskData.MessageType = MESSAGE_SUCCESS
 			taskData.Message = "Reverse port forwarding has been stopped"
@@ -1760,9 +1760,9 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			tunnelId := int(TaskId)
 			result := packer.ParseInt8()
 			if result == 0 {
-				task.TaskId, task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, false)
+				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, false)
 			} else {
-				task.TaskId, task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, true)
+				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, true)
 			}
 
 			if err != nil {
