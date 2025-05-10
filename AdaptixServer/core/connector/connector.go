@@ -76,21 +76,15 @@ type Teamserver interface {
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
 	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
 
-	TsTunnelTaskStartSocks5(agentId string, clientName string, desc string, lhost string, lport int, auth bool, username string, password string) error
-	TsTunnelTaskStartSocks4(agentId string, clientName string, desc string, lhost string, lport int) error
-	TsTunnelTaskStartLpf(agentId string, clientName string, desc string, lhost string, lport int, thost string, tport int) error
-	TsTunnelTaskStartRpf(agentId string, clientName string, desc string, port int, thost string, tport int) error
+	TsTunnelTaskStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error)
 	TsTunnelTaskStop(TunnelId string) error
-	//
 	TsTunnelSetInfo(TunnelId string, Info string) error
-	//
 	TsTunnelCreateSocks4(AgentId string, Info string, Lhost string, Lport int) (string, error)
 	TsTunnelCreateSocks5(AgentId string, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (string, error)
 	TsTunnelCreateLportfwd(AgentId string, Info string, Lhost string, Lport int, Thost string, Tport int) (string, error)
-
 	TsTunnelStopSocks(AgentId string, Port int)
-	TsTunnelStopLocalPortFwd(AgentId string, Port int)
-
+	TsTunnelStopLportfwd(AgentId string, Port int)
+	TsTunnelStopRportfwd(AgentId string, Port int)
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionResume(AgentId string, channelId int)
 	TsTunnelConnectionData(channelId int, data []byte)
