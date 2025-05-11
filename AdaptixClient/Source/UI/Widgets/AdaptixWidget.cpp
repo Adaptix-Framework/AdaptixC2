@@ -327,6 +327,14 @@ void AdaptixWidget::ClearAdaptix()
     SessionsTablePage->Clear();
     TunnelsTab->Clear();
 
+    for (auto tunnelId : ClientTunnels.keys()) {
+        auto tunnel = ClientTunnels[tunnelId];
+        ClientTunnels.remove(tunnelId);
+        tunnel->Stop();
+        delete tunnel;
+    }
+    ClientTunnels.clear();
+
     for (int i = 0; i < RegisterAgents.size(); i++) {
         WidgetBuilder* builder   = RegisterAgents[i].builder;
         RegisterAgents.remove(i);

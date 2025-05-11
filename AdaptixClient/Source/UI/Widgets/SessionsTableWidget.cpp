@@ -486,21 +486,47 @@ void SessionsTableWidget::actionCreateTunnel() const
     }
 
     QString    tunnelType = dialogTunnel.GetTunnelType();
+    QString    endpoint   = dialogTunnel.GetEndpoint();
     QByteArray tunnelData = dialogTunnel.GetTunnelData();
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Server is not responding");
-        return;
+    if ( endpoint == "Teamserver" ) {
+        QString message = "";
+        bool ok = false;
+        bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *(adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            MessageError("Server is not responding");
+            return;
+        }
+        if (!ok) MessageError(message);
     }
-    if ( !ok ) {
-        MessageError(message);
-        return;
-    }
+    else {
+        auto tunnelEndpoint = new TunnelEndpoint();
+        bool started = tunnelEndpoint->StartTunnel(adaptixWidget->GetProfile(), tunnelType, tunnelData);
+        if (started) {
+            QString message = "";
+            bool ok = false;
+            bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *(adaptixWidget->GetProfile()), &message, &ok);
+            if( !result ) {
+                MessageError("Server is not responding");
+                delete tunnelEndpoint;
+                return;
+            }
 
-    agent = nullptr;
+            if ( !ok ) {
+                MessageError(message);
+                delete tunnelEndpoint;
+                return;
+            }
+            QString tunnelId = message;
+
+            tunnelEndpoint->SetTunnelId(tunnelId);
+            adaptixWidget->ClientTunnels[tunnelId] = tunnelEndpoint;
+            MessageSuccess("Tunnel " + tunnelId + " started");
+        }
+        else {
+            delete tunnelEndpoint;
+        }
+    }
 }
 
 void SessionsTableWidget::actionAgentExit() const

@@ -73,6 +73,8 @@ SET( HEADERS
         Headers/UI/Graph/LayoutTreeLeft.h
         Headers/UI/Widgets/ScreenshotsWidget.h
         Headers/UI/Dialogs/DialogTunnel.h
+        Headers/Client/TunnelEndpoint.h
+        Headers/Client/TunnelWorker.h
 )
 
 add_executable(AdaptixClient
@@ -125,6 +127,8 @@ add_executable(AdaptixClient
         Source/UI/Graph/LayoutTreeLeft.cpp
         Source/UI/Widgets/ScreenshotsWidget.cpp
         Source/UI/Dialogs/DialogTunnel.cpp
+        Source/Client/TunnelEndpoint.cpp
+        Source/Client/TunnelWorker.cpp
 )
 
 if(UNIX)
