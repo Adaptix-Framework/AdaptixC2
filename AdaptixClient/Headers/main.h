@@ -58,7 +58,8 @@
 #include <QPainter>
 #include <QScrollBar>
 #include <QDateTimeEdit>
-
+#include <QButtonGroup>
+#include <QTcpServer>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>

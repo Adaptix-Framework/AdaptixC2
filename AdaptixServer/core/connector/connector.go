@@ -15,9 +15,9 @@ import (
 
 type Teamserver interface {
 	TsClientExists(username string) bool
-	TsClientConnect(username string, socket *websocket.Conn)
-	TsClientSync(username string)
 	TsClientDisconnect(username string)
+	TsClientSync(username string)
+	TsClientConnect(username string, socket *websocket.Conn)
 
 	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error
 	TsListenerEdit(listenerName string, configType string, config string) error
@@ -76,9 +76,11 @@ type Teamserver interface {
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
 	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
 
-	TsTunnelTaskStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error)
-	TsTunnelTaskStop(TunnelId string) error
-	TsTunnelSetInfo(TunnelId string, Info string) error
+	TsTunnelClientStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error)
+	TsTunnelClientNewChannel(TunnelId string, channelId string, wsconn *websocket.Conn) error
+	TsTunnelClientStop(TunnelId string, Client string) error
+	TsTunnelStop(TunnelId string) error
+	TsTunnelClientSetInfo(TunnelId string, Info string) error
 	TsTunnelCreateSocks4(AgentId string, Info string, Lhost string, Lport int) (string, error)
 	TsTunnelCreateSocks5(AgentId string, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (string, error)
 	TsTunnelCreateLportfwd(AgentId string, Info string, Lhost string, Lport int, Thost string, Tport int) (string, error)
@@ -145,6 +147,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcSync)
 
 	connector.Engine.GET(tsProfile.Endpoint+"/connect", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcConnect)
+	connector.Engine.GET(tsProfile.Endpoint+"/channel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcChannel)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStart)
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerEdit)

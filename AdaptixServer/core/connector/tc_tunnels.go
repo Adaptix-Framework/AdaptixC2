@@ -64,9 +64,9 @@ func (tc *TsConnector) TcTunnelStartSocks5(ctx *gin.Context) {
 	}
 
 	if ta.UseAuth {
-		tunnelId, err = tc.teamserver.TsTunnelTaskStart(ta.AgentId, ta.Listen, 3, ta.Description, ta.Lhost, ta.Lport, clientName, "", 0, ta.Username, ta.Password)
+		tunnelId, err = tc.teamserver.TsTunnelClientStart(ta.AgentId, ta.Listen, 3, ta.Description, ta.Lhost, ta.Lport, clientName, "", 0, ta.Username, ta.Password)
 	} else {
-		tunnelId, err = tc.teamserver.TsTunnelTaskStart(ta.AgentId, ta.Listen, 2, ta.Description, ta.Lhost, ta.Lport, clientName, "", 0, ta.Username, ta.Password)
+		tunnelId, err = tc.teamserver.TsTunnelClientStart(ta.AgentId, ta.Listen, 2, ta.Description, ta.Lhost, ta.Lport, clientName, "", 0, ta.Username, ta.Password)
 	}
 	if err != nil {
 		goto ERR
@@ -123,7 +123,7 @@ func (tc *TsConnector) TcTunnelStartSocks4(ctx *gin.Context) {
 		goto ERR
 	}
 
-	tunnelId, err = tc.teamserver.TsTunnelTaskStart(ta.AgentId, ta.Listen, 1, ta.Description, ta.Lhost, ta.Lport, clientName, "", 0, "", "")
+	tunnelId, err = tc.teamserver.TsTunnelClientStart(ta.AgentId, ta.Listen, 1, ta.Description, ta.Lhost, ta.Lport, clientName, "", 0, "", "")
 	if err != nil {
 		goto ERR
 	}
@@ -189,7 +189,7 @@ func (tc *TsConnector) TcTunnelStartLpf(ctx *gin.Context) {
 		goto ERR
 	}
 
-	tunnelId, err = tc.teamserver.TsTunnelTaskStart(ta.AgentId, ta.Listen, 4, ta.Description, ta.Lhost, ta.Lport, clientName, ta.Thost, ta.Tport, "", "")
+	tunnelId, err = tc.teamserver.TsTunnelClientStart(ta.AgentId, ta.Listen, 4, ta.Description, ta.Lhost, ta.Lport, clientName, ta.Thost, ta.Tport, "", "")
 	if err != nil {
 		goto ERR
 	}
@@ -251,7 +251,7 @@ func (tc *TsConnector) TcTunnelStartRpf(ctx *gin.Context) {
 	}
 
 	//tunnelId
-	_, err = tc.teamserver.TsTunnelTaskStart(ta.AgentId, ta.Listen, 5, ta.Description, "", ta.Port, clientName, ta.Thost, ta.Tport, "", "")
+	_, err = tc.teamserver.TsTunnelClientStart(ta.AgentId, ta.Listen, 5, ta.Description, "", ta.Port, clientName, ta.Thost, ta.Tport, "", "")
 	if err != nil {
 		goto ERR
 	}
@@ -275,7 +275,18 @@ func (tc *TsConnector) TcTunnelStop(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsTunnelTaskStop(tunnelAction.TunnelId)
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+	clientName, ok := value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
+
+	err = tc.teamserver.TsTunnelClientStop(tunnelAction.TunnelId, clientName)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -297,7 +308,7 @@ func (tc *TsConnector) TcTunnelSetIno(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsTunnelSetInfo(tunnelAction.TunnelId, tunnelAction.Info)
+	err = tc.teamserver.TsTunnelClientSetInfo(tunnelAction.TunnelId, tunnelAction.Info)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

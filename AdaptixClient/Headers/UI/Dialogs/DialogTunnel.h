@@ -12,6 +12,8 @@ class DialogTunnel : public QDialog
      QComboBox*      tunnelTypeCombo      = nullptr;
      QLabel*         tunnelDescLabel      = nullptr;
      QLineEdit*      tunnelDescInput      = nullptr;
+     QLabel*         tunnelEndpointLabel  = nullptr;
+     QComboBox*      tunnelEndpointCombo  = nullptr;
      QGroupBox*      tunnelConfigGroupbox = nullptr;
      QStackedWidget* tunnelStackWidget    = nullptr;
      QGridLayout*    stackGridLayout      = nullptr;
@@ -73,6 +75,7 @@ public:
      bool IsValid() const;
      QString GetMessage() const;
      QString GetTunnelType() const;
+     QString GetEndpoint() const;
      QByteArray GetTunnelData() const;
 
 protected slots:

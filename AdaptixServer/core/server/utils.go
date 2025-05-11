@@ -92,6 +92,7 @@ type TunnelConnection struct {
 	channelId    int
 	protocol     string
 	conn         net.Conn
+	wsconn       *websocket.Conn
 	ctx          context.Context
 	handleCancel context.CancelFunc
 }

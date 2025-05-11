@@ -250,7 +250,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 		return true
 	})
 	for _, id := range tunnels {
-		_ = ts.TsTunnelTaskStop(id)
+		_ = ts.TsTunnelStop(id)
 	}
 
 	/// Clear TunnelQueue
@@ -339,7 +339,7 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 		return true
 	})
 	for _, id := range tunnels {
-		_ = ts.TsTunnelTaskStop(id)
+		_ = ts.TsTunnelStop(id)
 	}
 
 	if agent.PivotParent != nil {

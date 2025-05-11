@@ -5,10 +5,10 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/token"
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"net/http"
+	"strings"
 )
 
 type Credentials struct {
@@ -68,7 +68,6 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 
 	exists = tc.teamserver.TsClientExists(username)
 	if exists {
-		fmt.Println("username:", username)
 		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: invalid username type in context", "ok": false})
 		return
 	}
@@ -88,6 +87,19 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 	go tc.tcWebsocketConnect(username, wsConn)
 }
 
+func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Conn) {
+	tc.teamserver.TsClientConnect(username, wsConn)
+	for {
+		_, _, err := wsConn.ReadMessage()
+		if err == nil {
+			continue
+		}
+
+		tc.teamserver.TsClientDisconnect(username)
+		break
+	}
+}
+
 func (tc *TsConnector) tcSync(ctx *gin.Context) {
 	value, exists := ctx.Get("username")
 	if !exists {
@@ -103,15 +115,44 @@ func (tc *TsConnector) tcSync(ctx *gin.Context) {
 	go tc.teamserver.TsClientSync(username)
 }
 
-func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Conn) {
-	tc.teamserver.TsClientConnect(username, wsConn)
-	for {
-		_, _, err := wsConn.ReadMessage()
-		if err == nil {
-			continue
-		}
+func (tc *TsConnector) tcChannel(ctx *gin.Context) {
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+	username, ok := value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
 
-		tc.teamserver.TsClientDisconnect(username)
-		break
+	exists = tc.teamserver.TsClientExists(username)
+	if !exists {
+		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
+
+	var wsUpgrader websocket.Upgrader
+	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+	if err != nil {
+		logs.Error("", "WebSocket upgrade error: "+err.Error())
+		return
+	}
+
+	if wsConn == nil {
+		logs.Error("", "WebSocket is nil")
+		return
+	}
+
+	ChannelType := ctx.GetHeader("Channel-Type")
+	if ChannelType == "tunnel" {
+		tunnelData := ctx.GetHeader("Tunnel-Data")
+		id := strings.Split(tunnelData, ":")
+		if len(id) != 2 {
+			ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid Tunnel-Data", "ok": false})
+			return
+		}
+		_ = tc.teamserver.TsTunnelClientNewChannel(id[0], id[1], wsConn)
 	}
 }
