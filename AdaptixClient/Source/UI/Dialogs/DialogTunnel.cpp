@@ -208,14 +208,23 @@ void DialogTunnel::SetSettings(const QString &agentId, const bool s5, const bool
 
 void DialogTunnel::changeType(const QString &type) const
 {
-     if (type == "Socks5")
+     tunnelEndpointCombo->clear();
+     tunnelEndpointCombo->addItem("Teamserver");
+     if (type == "Socks5") {
           tunnelStackWidget->setCurrentIndex(0);
-     else if (type == "Socks4")
+          tunnelEndpointCombo->addItem("Client");
+     }
+     else if (type == "Socks4") {
           tunnelStackWidget->setCurrentIndex(1);
-     else if (type == "Local port forwarding")
+          tunnelEndpointCombo->addItem("Client");
+     }
+     else if (type == "Local port forwarding") {
           tunnelStackWidget->setCurrentIndex(2);
-     else if (type == "Reverse port forwarding")
+          tunnelEndpointCombo->addItem("Client");
+     }
+     else if (type == "Reverse port forwarding") {
           tunnelStackWidget->setCurrentIndex(3);
+     }
 }
 
 void DialogTunnel::onSocks5AuthCheckChange() const

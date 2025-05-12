@@ -1,12 +1,11 @@
 #include <Client/TunnelWorker.h>
 
-TunnelWorker::TunnelWorker(const QString &token, QTcpSocket* socket, const QUrl& wsUrl, const QString& tunnelId, const QString& channelId, QObject* parent) : QObject(parent)
+TunnelWorker::TunnelWorker(QTcpSocket* socket, const QString &token, const QUrl& wsUrl, const QString& tunnelData, QObject* parent) : QObject(parent)
 {
     this->token = token;
     this->wsUrl = wsUrl;
     this->tcpSocket = socket;
-    this->tunnelId = tunnelId;
-    this->channelId = channelId;
+    this->tunnelData = tunnelData;
 }
 
 TunnelWorker::~TunnelWorker() = default;
@@ -26,14 +25,14 @@ void TunnelWorker::start()
     websocket->setSslConfiguration(sslConfig);
     websocket->ignoreSslErrors();
 
-    connect(websocket, &QWebSocket::connected, this, &TunnelWorker::onWsConnected, Qt::DirectConnection);
-    connect(websocket, &QWebSocket::binaryMessageReceived, this, &TunnelWorker::onWsBinaryMessageReceived, Qt::DirectConnection);
-    connect(websocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &TunnelWorker::onWsError, Qt::DirectConnection);
+    connect(websocket, &QWebSocket::connected,                                          this, &TunnelWorker::onWsConnected,             Qt::DirectConnection);
+    connect(websocket, &QWebSocket::binaryMessageReceived,                              this, &TunnelWorker::onWsBinaryMessageReceived, Qt::DirectConnection);
+    connect(websocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &TunnelWorker::onWsError,                 Qt::DirectConnection);
 
     QNetworkRequest request(wsUrl);
     request.setRawHeader("Authorization", QString("Bearer " + token).toUtf8());
     request.setRawHeader("Channel-Type",  QString("tunnel").toUtf8());
-    request.setRawHeader("Tunnel-Data",   QString(this->tunnelId + ":" + this->channelId).toUtf8());
+    request.setRawHeader("Channel-Data",  QString(this->tunnelData).toUtf8());
 
     websocket->open(request);
 }
