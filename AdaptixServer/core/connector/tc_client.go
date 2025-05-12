@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"net/http"
-	"strings"
 )
 
 type Credentials struct {
@@ -147,12 +146,7 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 
 	ChannelType := ctx.GetHeader("Channel-Type")
 	if ChannelType == "tunnel" {
-		tunnelData := ctx.GetHeader("Tunnel-Data")
-		id := strings.Split(tunnelData, ":")
-		if len(id) != 2 {
-			ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid Tunnel-Data", "ok": false})
-			return
-		}
-		_ = tc.teamserver.TsTunnelClientNewChannel(id[0], id[1], wsConn)
+		tunnelData := ctx.GetHeader("Channel-Data")
+		_ = tc.teamserver.TsTunnelClientNewChannel(tunnelData, wsConn)
 	}
 }

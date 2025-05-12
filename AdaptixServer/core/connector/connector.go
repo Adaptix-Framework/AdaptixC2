@@ -45,7 +45,7 @@ type Teamserver interface {
 
 	TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData)
 	TsTaskUpdate(agentId string, data adaptix.TaskData)
-	TsTaskQueueGetAvailable(agentId string, availableSize int) ([]adaptix.TaskData, error)
+	TsTaskQueueGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
 	TsTaskStop(agentId string, taskId string) error
 	TsTaskDelete(agentId string, taskId string) error
 
@@ -77,7 +77,7 @@ type Teamserver interface {
 	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
 
 	TsTunnelClientStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error)
-	TsTunnelClientNewChannel(TunnelId string, channelId string, wsconn *websocket.Conn) error
+	TsTunnelClientNewChannel(TunnelData string, wsconn *websocket.Conn) error
 	TsTunnelClientStop(TunnelId string, Client string) error
 	TsTunnelStop(TunnelId string) error
 	TsTunnelClientSetInfo(TunnelId string, Info string) error

@@ -5,6 +5,7 @@ import (
 	"AdaptixServer/core/utils/proxy"
 	"AdaptixServer/core/utils/safe"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/Adaptix-Framework/axc2"
@@ -13,6 +14,7 @@ import (
 	"math/rand"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -41,7 +43,8 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 			commandline = fmt.Sprintf("[from browser] socks4 start %v:%v", Lhost, Lport)
 			message = fmt.Sprintf("SOCKS4 server started on '%v:%v'\n", Lhost, Lport)
 		} else {
-
+			commandline = fmt.Sprintf("[from browser] socks4 (client) start %v:%v", Lhost, Lport)
+			message = fmt.Sprintf("SOCKS4 server started on (client '%v') '%v:%v'\n", Client, Lhost, Lport)
 		}
 
 	case TUNNEL_SOCKS5:
@@ -49,7 +52,8 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 			commandline = fmt.Sprintf("[from browser] socks5 start %v:%v", Lhost, Lport)
 			message = fmt.Sprintf("SOCKS5 server started on '%v:%v'\n", Lhost, Lport)
 		} else {
-
+			commandline = fmt.Sprintf("[from browser] socks5 (client) start %v:%v", Lhost, Lport)
+			message = fmt.Sprintf("SOCKS5 server started on (client '%v') '%v:%v'\n", Client, Lhost, Lport)
 		}
 
 	case TUNNEL_SOCKS5_AUTH:
@@ -57,7 +61,8 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 			commandline = fmt.Sprintf("[from browser] socks5 start %v:%v -auth %v %v", Lhost, Lport, AuthUser, AuthPass)
 			message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%v:%v'\n", Lhost, Lport)
 		} else {
-
+			commandline = fmt.Sprintf("[from browser] socks5 (client) start %v:%v -auth %v %v", Lhost, Lport, AuthUser, AuthPass)
+			message = fmt.Sprintf("SOCKS5 (with Auth) server started on (client '%v') '%v:%v'\n", Client, Lhost, Lport)
 		}
 
 	case TUNNEL_LPORTFWD:
@@ -120,8 +125,25 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 	return tunnelId, nil
 }
 
-func (ts *Teamserver) TsTunnelClientNewChannel(TunnelId string, channelId string, wsconn *websocket.Conn) error {
-	value, ok := ts.tunnels.Get(TunnelId)
+func (ts *Teamserver) TsTunnelClientNewChannel(TunnelData string, wsconn *websocket.Conn) error {
+
+	data, err := base64.StdEncoding.DecodeString(TunnelData)
+	if err != nil {
+		return errors.New("invalid tunnel data")
+	}
+
+	d := strings.Split(string(data), "|")
+	if len(d) != 5 {
+		return errors.New("invalid tunnel data")
+	}
+
+	tunnelId := d[0]
+	channelId := d[1]
+	mode := d[2]
+	host := d[3]
+	tPort := d[4]
+
+	value, ok := ts.tunnels.Get(tunnelId)
 	if !ok {
 		return errors.New("tunnel not found")
 	}
@@ -138,7 +160,27 @@ func (ts *Teamserver) TsTunnelClientNewChannel(TunnelId string, channelId string
 		return errors.New("channelId not supported")
 	}
 
-	go handleTunnelConnectionClient(agent, tunnel, wsconn, int(cid))
+	port := 0
+	if tunnel.Type == TUNNEL_SOCKS4 || tunnel.Type == TUNNEL_SOCKS5 || tunnel.Type == TUNNEL_SOCKS5_AUTH {
+		port, err = strconv.Atoi(tPort)
+		if err != nil {
+			return errors.New("Invalid port number")
+		}
+		if port < 1 || port > 65535 {
+			return errors.New("Invalid port number")
+		}
+		if host == "" {
+			return errors.New("Invalid host")
+		}
+	}
+
+	if tunnel.Type == TUNNEL_SOCKS5 || tunnel.Type == TUNNEL_SOCKS5_AUTH {
+		if mode != "tcp" && mode != "udp" {
+			return errors.New("invalid mode")
+		}
+	}
+
+	go handleTunnelConnectionClient(agent, tunnel, wsconn, int(cid), host, port, mode)
 
 	return nil
 }
@@ -488,25 +530,28 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 
 	ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
 
-	message := ""
-	switch tunnel.Type {
-	case TUNNEL_SOCKS4:
-		message = fmt.Sprintf("SOCKS4 server ':%s' stopped", tunnel.Data.Port)
-	case TUNNEL_SOCKS5:
-		message = fmt.Sprintf("SOCKS5 server ':%s' stopped", tunnel.Data.Port)
-	case TUNNEL_SOCKS5_AUTH:
-		message = fmt.Sprintf("SOCKS5 (with Auth) server ':%s' stopped", tunnel.Data.Port)
-	case TUNNEL_LPORTFWD:
-		message = fmt.Sprintf("Local port forward on ':%s' stopped", tunnel.Data.Port)
-	case TUNNEL_RPORTFWD:
-		message = fmt.Sprintf("Remote port forward to '%s:%s' stopped", tunnel.Data.Fhost, tunnel.Data.Fport)
-	default:
-		return errors.New("tunnel type not supported")
-	}
+	if tunnel.Data.Client != "" {
+		message := ""
+		switch tunnel.Type {
+		case TUNNEL_SOCKS4:
+			message = fmt.Sprintf("SOCKS4 server ':%s' stopped", tunnel.Data.Port)
+		case TUNNEL_SOCKS5:
+			message = fmt.Sprintf("SOCKS5 server ':%s' stopped", tunnel.Data.Port)
+		case TUNNEL_SOCKS5_AUTH:
+			message = fmt.Sprintf("SOCKS5 (with Auth) server ':%s' stopped", tunnel.Data.Port)
+		case TUNNEL_LPORTFWD:
+			message = fmt.Sprintf("Local port forward on ':%s' stopped", tunnel.Data.Port)
+		case TUNNEL_RPORTFWD:
+			message = fmt.Sprintf("Remote port forward to '%s:%s' stopped", tunnel.Data.Fhost, tunnel.Data.Fport)
+		default:
+			return errors.New("tunnel type not supported")
+		}
 
-	packet2 := CreateSpEvent(EVENT_TUNNEL_STOP, message)
-	ts.TsSyncAllClients(packet2)
-	ts.events.Put(packet2)
+		packet2 := CreateSpEvent(EVENT_TUNNEL_STOP, message)
+		ts.TsSyncAllClients(packet2)
+		ts.events.Put(packet2)
+
+	}
 
 	return nil
 }
@@ -728,7 +773,7 @@ func handleTunnelConnection(agent *Agent, tunnel *Tunnel, conn net.Conn) {
 	tunnel.connections.Put(strconv.Itoa(tunnelConnection.channelId), tunnelConnection)
 }
 
-func handleTunnelConnectionClient(agent *Agent, tunnel *Tunnel, wsconn *websocket.Conn, channelId int) {
+func handleTunnelConnectionClient(agent *Agent, tunnel *Tunnel, wsconn *websocket.Conn, channelId int, targetAddress string, targetPort int, protocol string) {
 	tunnelConnection := &TunnelConnection{
 		channelId: channelId,
 		conn:      nil,
@@ -741,10 +786,23 @@ func handleTunnelConnectionClient(agent *Agent, tunnel *Tunnel, wsconn *websocke
 	switch tunnel.Type {
 
 	case TUNNEL_SOCKS4:
+		taskData = tunnel.handlerConnectTCP(tunnelConnection.channelId, targetAddress, targetPort)
 
 	case TUNNEL_SOCKS5:
+		if protocol == "udp" {
+			taskData = tunnel.handlerConnectUDP(tunnelConnection.channelId, targetAddress, targetPort)
+			tunnelConnection.protocol = "UDP"
+		} else {
+			taskData = tunnel.handlerConnectTCP(tunnelConnection.channelId, targetAddress, targetPort)
+		}
 
 	case TUNNEL_SOCKS5_AUTH:
+		if protocol == "udp" {
+			taskData = tunnel.handlerConnectUDP(tunnelConnection.channelId, targetAddress, targetPort)
+			tunnelConnection.protocol = "UDP"
+		} else {
+			taskData = tunnel.handlerConnectTCP(tunnelConnection.channelId, targetAddress, targetPort)
+		}
 
 	case TUNNEL_LPORTFWD:
 		tport, _ := strconv.Atoi(tunnel.Data.Fport)

@@ -10,12 +10,11 @@ Q_OBJECT
     QWebSocket* websocket = nullptr;
     QUrl        wsUrl;
     QString     token;
-    QString     tunnelId;
-    QString     channelId;
+    QString     tunnelData;
     std::atomic<bool> stopped = false;
 
 public:
-    TunnelWorker(const QString &token, QTcpSocket* socket, const QUrl& wsUrl, const QString& tunnelId, const QString& channelId, QObject* parent = nullptr);
+    TunnelWorker(QTcpSocket* socket, const QString &token, const QUrl& wsUrl, const QString& tunnelData, QObject* parent = nullptr);
     ~TunnelWorker() override;
 
 signals:
