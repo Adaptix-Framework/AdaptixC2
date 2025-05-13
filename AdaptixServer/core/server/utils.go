@@ -111,7 +111,7 @@ type Tunnel struct {
 	handlerWriteTCP   func(channelId int, data []byte) adaptix.TaskData
 	handlerWriteUDP   func(channelId int, data []byte) adaptix.TaskData
 	handlerClose      func(channelId int) adaptix.TaskData
-	handleReverse     func(tunnelId int, port int) adaptix.TaskData
+	handlerReverse    func(tunnelId int, port int) adaptix.TaskData
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

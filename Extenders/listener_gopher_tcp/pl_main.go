@@ -9,7 +9,8 @@ type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
+	TsAgentGetHostedTasksAll(agentId string, maxDataSize int) ([]byte, error)
+	TsAgentGetHostedTasksOnly(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentSetMark(agentId string, makr string) error
 
 	TsTaskRunningExists(agentId string, taskId string) bool

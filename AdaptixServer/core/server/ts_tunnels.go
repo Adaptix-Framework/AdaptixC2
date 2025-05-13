@@ -291,7 +291,7 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 
 		id, _ := strconv.ParseInt(TunnelId, 16, 64)
 		port, _ := strconv.Atoi(tunnel.Data.Port)
-		taskData := tunnel.handleReverse(int(id), port)
+		taskData := tunnel.handlerReverse(int(id), port)
 		sendTunnelTaskData(agent, taskData)
 
 	} else {
@@ -407,7 +407,7 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 		handlerWriteTCP:   fWriteTCP,
 		handlerWriteUDP:   fWriteUDP,
 		handlerClose:      fClose,
-		handleReverse:     fReverse,
+		handlerReverse:    fReverse,
 	}
 
 	value, ok = ts.tunnels.Get(tunnel.Data.TunnelId)

@@ -107,7 +107,7 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 	valueAgent, ok := ts.agents.Get(pivotData.ParentAgentId)
 	if ok {
 		parentAgent := valueAgent.(*Agent)
-		for i := 0; i < parentAgent.PivotChilds.Len(); i++ {
+		for i := uint(0); i < parentAgent.PivotChilds.Len(); i++ {
 			valuePivot, ok := parentAgent.PivotChilds.Get(i)
 			if ok {
 				if valuePivot.(*adaptix.PivotData).PivotId == pivotId {
@@ -125,7 +125,7 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 
 	_ = ts.TsAgentSetMark(pivotData.ChildAgentId, "Unlink")
 
-	for i := 0; i < ts.pivots.Len(); i++ {
+	for i := uint(0); i < ts.pivots.Len(); i++ {
 		valuePivot, ok := ts.pivots.Get(i)
 		if ok {
 			if valuePivot.(*adaptix.PivotData).PivotId == pivotId {

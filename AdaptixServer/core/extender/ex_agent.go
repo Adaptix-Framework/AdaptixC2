@@ -37,12 +37,12 @@ func (ex *AdaptixExtender) ExAgentProcessData(agentData adaptix.AgentData, packe
 	return module.F.AgentProcessData(agentData, packedData)
 }
 
-func (ex *AdaptixExtender) ExAgentPackData(agentData adaptix.AgentData, maxDataSize int) ([]byte, error) {
+func (ex *AdaptixExtender) ExAgentPackData(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error) {
 	module, ok := ex.agentModules[agentData.Name]
 	if !ok {
 		return nil, errors.New("module not found")
 	}
-	return module.F.AgentPackData(agentData, maxDataSize)
+	return module.F.AgentPackData(agentData, tasks)
 }
 
 func (ex *AdaptixExtender) ExAgentPivotPackData(agentName string, pivotId string, data []byte) (adaptix.TaskData, error) {

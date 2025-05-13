@@ -28,7 +28,7 @@ type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
+	TsAgentGetHostedTasksAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error
 	TsAgentGenerate(agentName string, config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
@@ -45,7 +45,7 @@ type Teamserver interface {
 
 	TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData)
 	TsTaskUpdate(agentId string, data adaptix.TaskData)
-	TsTaskQueueGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
+	TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
 	TsTaskStop(agentId string, taskId string) error
 	TsTaskDelete(agentId string, taskId string) error
 

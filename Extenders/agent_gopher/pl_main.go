@@ -47,7 +47,7 @@ type Teamserver interface {
 
 	TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData)
 	TsTaskUpdate(agentId string, data adaptix.TaskData)
-	TsTaskQueueGetAvailable(agentId string, availableSize int) ([]adaptix.TaskData, error)
+	TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
@@ -141,12 +141,7 @@ func (m *ModuleExtender) AgentCommand(client string, cmdline string, agentData a
 	return nil
 }
 
-func (m *ModuleExtender) AgentPackData(agentData adaptix.AgentData, maxDataSize int) ([]byte, error) {
-	tasks, err := m.ts.TsTaskQueueGetAvailable(agentData.Id, maxDataSize)
-	if err != nil {
-		return nil, err
-	}
-
+func (m *ModuleExtender) AgentPackData(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error) {
 	packedData, err := PackTasks(agentData, tasks)
 	if err != nil {
 		return nil, err
