@@ -138,7 +138,9 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 	return nil
 }
 
-func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error) {
+/// Get Tasks
+
+func (ts *Teamserver) TsAgentGetHostedTasksAll(agentId string, maxDataSize int) ([]byte, error) {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
 		return nil, fmt.Errorf("agent type %v does not exists", agentId)
@@ -153,7 +155,13 @@ func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]
 	}
 
 	if tasksCount > 0 || tunnelTasksCount > 0 || pivotTasksExists {
-		respData, err := ts.Extender.ExAgentPackData(agent.Data, maxDataSize)
+
+		tasks, err := ts.TsTaskGetAvailableAll(agent.Data.Id, maxDataSize)
+		if err != nil {
+			return nil, err
+		}
+
+		respData, err := ts.Extender.ExAgentPackData(agent.Data, tasks)
 		if err != nil {
 			return nil, err
 		}
@@ -166,6 +174,32 @@ func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]
 	}
 
 	return []byte(""), nil
+}
+
+func (ts *Teamserver) TsAgentGetHostedTasksOnly(agentId string, maxDataSize int) ([]byte, error) {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return nil, fmt.Errorf("agent type %v does not exists", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	if agent.TasksQueue.Len() == 0 {
+		return []byte(""), nil
+	}
+
+	tasks, _, err := ts.TsTaskGetAvailableTasks(agent.Data.Id, maxDataSize)
+	if err != nil {
+		return nil, err
+	}
+
+	respData, err := ts.Extender.ExAgentPackData(agent.Data, tasks)
+	if err != nil {
+		return nil, err
+	}
+
+	message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
+	ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "", false)
+	return respData, nil
 }
 
 /// Data

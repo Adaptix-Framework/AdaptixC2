@@ -42,8 +42,8 @@ void TunnelsWidget::createUI()
      tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem("Interface"));
      tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem("Listen port"));
      tableWidget->setHorizontalHeaderItem( 9, new QTableWidgetItem("Client"));
-     tableWidget->setHorizontalHeaderItem( 10, new QTableWidgetItem("Forward host"));
-     tableWidget->setHorizontalHeaderItem( 11, new QTableWidgetItem("Forward port"));
+     tableWidget->setHorizontalHeaderItem( 10, new QTableWidgetItem("Target host"));
+     tableWidget->setHorizontalHeaderItem( 11, new QTableWidgetItem("Target port"));
      tableWidget->hideColumn( 0 );
 
      mainGridLayout = new QGridLayout( this );

@@ -349,8 +349,8 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
                     menuExit = agent->browsers.SessionsMenuExit;
                 }
             }
+            selectedCount++;
         }
-        selectedCount++;
     }
 
     auto ctxMenu = QMenu();
