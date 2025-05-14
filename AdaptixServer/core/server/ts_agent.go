@@ -58,16 +58,17 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	}
 
 	agent := &Agent{
-		Data:           agentData,
-		OutConsole:     safe.NewSlice(),
-		TunnelQueue:    safe.NewSlice(),
-		TasksQueue:     safe.NewSlice(),
-		RunningTasks:   safe.NewMap(),
-		CompletedTasks: safe.NewMap(),
-		PivotParent:    nil,
-		PivotChilds:    safe.NewSlice(),
-		Tick:           false,
-		Active:         true,
+		Data:              agentData,
+		OutConsole:        safe.NewSlice(),
+		TunnelQueue:       safe.NewSlice(),
+		TasksQueue:        safe.NewSlice(),
+		TunnelConnectTask: safe.NewSlice(),
+		RunningTasks:      safe.NewMap(),
+		CompletedTasks:    safe.NewMap(),
+		PivotParent:       nil,
+		PivotChilds:       safe.NewSlice(),
+		Tick:              false,
+		Active:            true,
 	}
 
 	ts.agents.Put(agentData.Id, agent)
@@ -148,13 +149,14 @@ func (ts *Teamserver) TsAgentGetHostedTasksAll(agentId string, maxDataSize int) 
 	agent, _ := value.(*Agent)
 
 	tasksCount := agent.TasksQueue.Len()
+	tunnelConnectCount := agent.TunnelConnectTask.Len()
 	tunnelTasksCount := agent.TunnelQueue.Len()
 	pivotTasksExists := false
 	if agent.PivotChilds.Len() > 0 {
 		pivotTasksExists = ts.TsTasksPivotExists(agent.Data.Id, true)
 	}
 
-	if tasksCount > 0 || tunnelTasksCount > 0 || pivotTasksExists {
+	if tasksCount > 0 || tunnelConnectCount > 0 || tunnelTasksCount > 0 || pivotTasksExists {
 
 		tasks, err := ts.TsTaskGetAvailableAll(agent.Data.Id, maxDataSize)
 		if err != nil {
@@ -183,7 +185,8 @@ func (ts *Teamserver) TsAgentGetHostedTasksOnly(agentId string, maxDataSize int)
 	}
 	agent, _ := value.(*Agent)
 
-	if agent.TasksQueue.Len() == 0 {
+	tasksCount := agent.TasksQueue.Len()
+	if tasksCount == 0 && agent.TunnelConnectTask.Len() == 0 {
 		return []byte(""), nil
 	}
 
@@ -197,9 +200,54 @@ func (ts *Teamserver) TsAgentGetHostedTasksOnly(agentId string, maxDataSize int)
 		return nil, err
 	}
 
-	message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
-	ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "", false)
+	if tasksCount > 0 {
+		message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
+		ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "", false)
+	}
+
 	return respData, nil
+}
+
+func (ts *Teamserver) TsAgentGetHostedTasksTunnels2(agentId string, channelId int, maxDataSize int) ([]byte, error) {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return nil, fmt.Errorf("agent type %v does not exists", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	var tasks []adaptix.TaskData
+	tasksSize := 0
+
+	/// TUNNELS QUEUE
+
+	for i := uint(0); i < agent.TunnelQueue.Len(); i++ {
+		value, ok = agent.TunnelQueue.Get(i)
+		if ok {
+			taskDataTunnel := value.(adaptix.TaskDataTunnel)
+			if taskDataTunnel.ChannelId == channelId {
+				if tasksSize+len(taskDataTunnel.Data.Data) < maxDataSize {
+					tasks = append(tasks, taskDataTunnel.Data)
+					agent.TunnelQueue.Delete(i)
+					i--
+					tasksSize += len(taskDataTunnel.Data.Data)
+				} else {
+					break
+				}
+			}
+		} else {
+			break
+		}
+	}
+
+	if len(tasks) > 0 {
+		respData, err := ts.Extender.ExAgentPackData(agent.Data, tasks)
+		if err != nil {
+			return nil, err
+		}
+		return respData, nil
+	}
+
+	return []byte(""), nil
 }
 
 /// Data

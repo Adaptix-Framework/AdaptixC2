@@ -15,6 +15,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -54,9 +55,10 @@ type TCP struct {
 }
 
 const (
-	INIT_PACK  = 1
-	EXFIL_PACK = 2
-	JOB_PACK   = 3
+	INIT_PACK   = 1
+	EXFIL_PACK  = 2
+	JOB_PACK    = 3
+	TUNNEL_PACK = 4
 )
 
 type StartMsg struct {
@@ -80,6 +82,14 @@ type JobPack struct {
 	Id   uint   `msgpack:"id"`
 	Type uint   `msgpack:"type"`
 	Task string `msgpack:"task"`
+}
+
+type TunnelPack struct {
+	Id        uint   `msgpack:"id"`
+	Type      uint   `msgpack:"type"`
+	ChannelId int    `msgpack:"channel_id"`
+	Key       []byte `msgpack:"key"`
+	Alive     bool   `msgpack:"alive"`
 }
 
 func (handler *TCP) Start(ts Teamserver) error {
@@ -165,7 +175,9 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		goto ERR
 	}
 
-	if initMsg.Type == INIT_PACK {
+	switch initMsg.Type {
+
+	case INIT_PACK:
 
 		var initPack InitPack
 		err := msgpack.Unmarshal(initMsg.Data, &initPack)
@@ -217,7 +229,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		handler.AgentConnects.Delete(agentId)
 		_ = conn.Close()
 
-	} else if initMsg.Type == EXFIL_PACK {
+	case EXFIL_PACK:
 
 		var exfilPack ExfilPack
 		err := msgpack.Unmarshal(initMsg.Data, &exfilPack)
@@ -243,11 +255,10 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 			_ = ModuleObject.ts.TsAgentProcessData(agentId, recvData)
 		}
 
-		//_ = ts.TsAgentSetMark(agentId, "Disconnect")
 		handler.JobConnects.Delete(jcId)
 		_ = conn.Close()
 
-	} else if initMsg.Type == JOB_PACK {
+	case JOB_PACK:
 
 		var jobPack JobPack
 		err := msgpack.Unmarshal(initMsg.Data, &jobPack)
@@ -273,8 +284,84 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 			_ = ModuleObject.ts.TsAgentProcessData(agentId, recvData)
 		}
 
-		//_ = ts.TsAgentSetMark(agentId, "Disconnect")
 		handler.JobConnects.Delete(jcId)
+		_ = conn.Close()
+
+	case TUNNEL_PACK:
+
+		var tunPack TunnelPack
+		err := msgpack.Unmarshal(initMsg.Data, &tunPack)
+		if err != nil {
+			goto ERR
+		}
+
+		agentId := fmt.Sprintf("%08x", tunPack.Id)
+
+		if !ModuleObject.ts.TsTunnelChannelExists(tunPack.ChannelId) {
+			goto ERR
+		}
+
+		if !tunPack.Alive {
+			ts.TsTunnelConnectionClose(tunPack.ChannelId)
+			_ = conn.Close()
+			return
+		}
+
+		ts.TsTunnelConnectionResume(agentId, tunPack.ChannelId)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					recvData, err = recvMsg(conn)
+					if err != nil {
+						cancel()
+						return
+					}
+
+					decData, err := DecryptData(recvData, tunPack.Key)
+					if err != nil {
+						continue
+					}
+
+					ts.TsTunnelConnectionData(tunPack.ChannelId, decData)
+				}
+			}
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					sendData, err = ModuleObject.ts.TsAgentGetHostedTasksTunnels2(agentId, tunPack.ChannelId, 0x1900000)
+					if err != nil {
+						break
+					}
+					if len(sendData) > 0 {
+						err := sendMsg(conn, sendData)
+						if err != nil {
+							cancel()
+							return
+						}
+					}
+				}
+			}
+		}()
+
+		wg.Wait()
+
+		ts.TsTunnelConnectionClose(tunPack.ChannelId)
 		_ = conn.Close()
 	}
 

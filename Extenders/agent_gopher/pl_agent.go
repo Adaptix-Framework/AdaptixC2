@@ -218,6 +218,7 @@ func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
 		agent.OsDesc = sessionInfo.OSVersion
 	} else if sessionInfo.Os == "windows" {
 		agent.Os = OS_WINDOWS
+		agent.OsDesc = sessionInfo.OSVersion
 	} else if sessionInfo.Os == "darwin" {
 		agent.Os = OS_MAC
 		agent.OsDesc = sessionInfo.OSVersion
@@ -528,6 +529,77 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 
 	case "screenshot":
 		cmd = Command{Code: COMMAND_SCREENSHOT, Data: nil}
+
+	case "socks":
+		taskData.Type = TYPE_TUNNEL
+
+		portNumber, ok := args["port"].(float64)
+		port := int(portNumber)
+		if ok {
+			if port < 1 || port > 65535 {
+				err = errors.New("port must be from 1 to 65535")
+				goto RET
+			}
+		}
+		if subcommand == "start" {
+			address, ok := args["address"].(string)
+			if !ok {
+				err = errors.New("parameter 'address' must be set")
+				goto RET
+			}
+
+			auth, _ := args["-a"].(bool)
+			if auth {
+				username, ok := args["username"].(string)
+				if !ok {
+					err = errors.New("parameter 'username' must be set")
+					goto RET
+				}
+				password, ok := args["password"].(string)
+				if !ok {
+					err = errors.New("parameter 'password' must be set")
+					goto RET
+				}
+
+				tunnelId, err := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, true, username, password)
+				if err != nil {
+					goto RET
+				}
+				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+				if err != nil {
+					goto RET
+				}
+
+				taskData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
+
+			} else {
+				tunnelId, err := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, false, "", "")
+				if err != nil {
+					goto RET
+				}
+				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+				if err != nil {
+					goto RET
+				}
+
+				taskData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
+			}
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.ClearText = "\n"
+
+		} else if subcommand == "stop" {
+			taskData.Completed = true
+
+			ts.TsTunnelStopSocks(agent.Id, port)
+
+			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.Message = "Socks5 server has been stopped"
+			taskData.ClearText = "\n"
+
+		} else {
+			err = errors.New("subcommand must be 'start' or 'stop'")
+			goto RET
+		}
 
 	case "upload":
 		remote_path, ok := args["remote_path"].(string)
@@ -1118,23 +1190,32 @@ func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
 /// TUNNELS
 
 func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {
-	return nil, nil
+	addr := fmt.Sprintf("%s:%d", address, port)
+	packerData, _ := msgpack.Marshal(ParamsTunnelStart{Proto: "tcp", ChannelId: channelId, Address: addr})
+	cmd := Command{Code: COMMAND_TUNNEL_START, Data: packerData}
+	return msgpack.Marshal(cmd)
 }
 
 func TunnelCreateUDP(channelId int, address string, port int) ([]byte, error) {
-	return nil, nil
+	addr := fmt.Sprintf("%s:%d", address, port)
+	packerData, _ := msgpack.Marshal(ParamsTunnelStart{Proto: "udp", ChannelId: channelId, Address: addr})
+	cmd := Command{Code: COMMAND_TUNNEL_START, Data: packerData}
+	return msgpack.Marshal(cmd)
 }
 
 func TunnelWriteTCP(channelId int, data []byte) ([]byte, error) {
-	return nil, nil
+	cmd := Command{Code: 0, Data: data}
+	return msgpack.Marshal(cmd)
 }
 
 func TunnelWriteUDP(channelId int, data []byte) ([]byte, error) {
-	return nil, nil
+	cmd := Command{Code: 0, Data: data}
+	return msgpack.Marshal(cmd)
 }
 
 func TunnelClose(channelId int) ([]byte, error) {
-	return nil, nil
+	cmd := Command{Code: 1, Data: nil}
+	return msgpack.Marshal(cmd)
 }
 
 func TunnelReverse(tunnelId int, port int) ([]byte, error) {

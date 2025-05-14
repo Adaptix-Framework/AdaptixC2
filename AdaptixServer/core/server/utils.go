@@ -78,8 +78,9 @@ type Agent struct {
 
 	OutConsole *safe.Slice //  sync_packet interface{}
 
-	TunnelQueue *safe.Slice // taskData TaskData
-	TasksQueue  *safe.Slice // taskData TaskData
+	TunnelConnectTask *safe.Slice // taskData TaskData
+	TunnelQueue       *safe.Slice // taskData TaskDataTunnel
+	TasksQueue        *safe.Slice // taskData TaskData
 
 	RunningTasks   safe.Map // taskId string, taskData TaskData
 	CompletedTasks safe.Map // taskId string, taskData TaskData
