@@ -102,7 +102,8 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 		}
 
 	case TYPE_PROXY_DATA:
-		agent.TunnelQueue.Put(taskData)
+		fmt.Println("----TYPE_PROXY_DATA----")
+	//agent.TunnelQueue.Put(taskData)
 
 	default:
 		break
@@ -342,10 +343,27 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 			break
 		}
 	}
-
 	if len(sendTasks) > 0 {
 		packet := CreateSpAgentTaskSend(sendTasks)
 		ts.TsSyncAllClients(packet)
+	}
+
+	for i := uint(0); i < agent.TunnelConnectTask.Len(); i++ {
+		value, ok = agent.TunnelConnectTask.Get(i)
+		if ok {
+			taskData := value.(adaptix.TaskData)
+			if tasksSize+len(taskData.Data) < availableSize {
+				tasks = append(tasks, taskData)
+				agent.TunnelConnectTask.Delete(i)
+				i--
+				//sendTasks = append(sendTasks, taskData.TaskId)
+				tasksSize += len(taskData.Data)
+			} else {
+				break
+			}
+		} else {
+			break
+		}
 	}
 
 	/// TUNNELS QUEUE
@@ -353,12 +371,12 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 	for i := uint(0); i < agent.TunnelQueue.Len(); i++ {
 		value, ok = agent.TunnelQueue.Get(i)
 		if ok {
-			tunnelTaskData := value.(adaptix.TaskData)
-			if tasksSize+len(tunnelTaskData.Data) < availableSize {
-				tasks = append(tasks, tunnelTaskData)
+			taskDataTunnel := value.(adaptix.TaskDataTunnel)
+			if tasksSize+len(taskDataTunnel.Data.Data) < availableSize {
+				tasks = append(tasks, taskDataTunnel.Data)
 				agent.TunnelQueue.Delete(i)
 				i--
-				tasksSize += len(tunnelTaskData.Data)
+				tasksSize += len(taskDataTunnel.Data.Data)
 			} else {
 				break
 			}
@@ -431,30 +449,16 @@ func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int)
 		ts.TsSyncAllClients(packet)
 	}
 
-	return tasks, tasksSize, nil
-}
-
-func (ts *Teamserver) TsTaskGetAvailableTunnel(agentId string, availableSize int) ([]adaptix.TaskData, error) {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
-	}
-	agent, _ := value.(*Agent)
-
-	var tasks []adaptix.TaskData
-	tasksSize := 0
-
-	/// TUNNELS QUEUE
-
-	for i := uint(0); i < agent.TunnelQueue.Len(); i++ {
-		value, ok = agent.TunnelQueue.Get(i)
+	for i := uint(0); i < agent.TunnelConnectTask.Len(); i++ {
+		value, ok = agent.TunnelConnectTask.Get(i)
 		if ok {
-			tunnelTaskData := value.(adaptix.TaskData)
-			if tasksSize+len(tunnelTaskData.Data) < availableSize {
-				tasks = append(tasks, tunnelTaskData)
-				agent.TunnelQueue.Delete(i)
+			taskData := value.(adaptix.TaskData)
+			if tasksSize+len(taskData.Data) < availableSize {
+				tasks = append(tasks, taskData)
+				agent.TunnelConnectTask.Delete(i)
 				i--
-				tasksSize += len(tunnelTaskData.Data)
+				//sendTasks = append(sendTasks, taskData.TaskId)
+				tasksSize += len(taskData.Data)
 			} else {
 				break
 			}
@@ -463,7 +467,7 @@ func (ts *Teamserver) TsTaskGetAvailableTunnel(agentId string, availableSize int
 		}
 	}
 
-	return tasks, nil
+	return tasks, tasksSize, nil
 }
 
 /// Get Pivot Tasks

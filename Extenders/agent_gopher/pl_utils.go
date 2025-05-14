@@ -204,6 +204,12 @@ type ParamsJobKill struct {
 	Id string `msgpack:"id"`
 }
 
+type ParamsTunnelStart struct {
+	Proto     string `msgpack:"proto"`
+	ChannelId int    `msgpack:"channel_id"`
+	Address   string `msgpack:"address"`
+}
+
 const (
 	COMMAND_ERROR      = 0
 	COMMAND_PWD        = 1
@@ -225,8 +231,9 @@ const (
 	COMMAND_RUN        = 17
 	COMMAND_JOB_LIST   = 18
 	COMMAND_JOB_KILL   = 19
-)
 
+	COMMAND_TUNNEL_START = 31
+)
 
 func parseDurationToSeconds(input string) (int, error) {
 	re := regexp.MustCompile(`(\d+)(h|m|s)`)

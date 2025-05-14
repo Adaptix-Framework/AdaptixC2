@@ -10,6 +10,66 @@
       "listener_name": "GopherTCP",
       "configs" : [
         {
+          "operating_system": "windows",
+          "handler": "handler_windows",
+          "generate_ui": {
+            "layout": "glayout",
+            "elements": [
+              {
+                "type": "label",
+                "text": "Arch:",
+                "position": [0, 0, 1, 1]
+              },
+              {
+                "type": "combo",
+                "items": ["amd64", "arm64"],
+                "id": "arch",
+                "position": [0, 1, 1, 1]
+              },
+              {
+                "type": "label",
+                "text": "Format:",
+                "position": [1, 0, 1, 1]
+              },
+              {
+                "type": "combo",
+                "items": ["Binary EXE"],
+                "id": "format",
+                "position": [1, 1, 1, 1]
+              },
+              {
+                "type": "hline",
+                "position": [2, 0, 1, 2]
+              },
+              {
+                "type": "label",
+                "text": "Reconnect timeout:",
+                "position": [3, 0, 1, 1]
+              },
+              {
+                "type": "input",
+                "id": "reconn_timeout",
+                "placeholder": "seconds",
+                "text": "10",
+                "position": [3, 1, 1, 1]
+              },
+              {
+                "type": "label",
+                "text": "Reconnect count:",
+                "position": [4, 0, 1, 1]
+              },
+              {
+                "type": "spinbox",
+                "id": "reconn_count",
+                "min": 0,
+                "max": 1000000000,
+                "value": 1000000000,
+                "position": [4, 1, 1, 1]
+              }
+            ]
+          }
+        },
+        {
           "operating_system": "linux",
           "handler": "handler_unix",
           "generate_ui": {
@@ -277,6 +337,33 @@
           "example": "screenshot"
         },
         {
+          "command": "socks",
+          "description": "Managing socks tunnels",
+          "subcommands":
+          [
+            {
+              "name": "start",
+              "description": "Start a SOCKS5 proxy server and listen on a specified port",
+              "example": "socks start 1080 -a user pass",
+              "args": [
+                "STRING <-h address> (0.0.0.0) {Listening interface address}",
+                "INT <port> {Listen port}",
+                "BOOL [-a] {Enable User/Password authentication for SOCKS5}",
+                "STRING [username] {Username for SOCKS5 proxy}",
+                "STRING [password] {Password for SOCKS5 proxy}"
+              ]
+            },
+            {
+              "name": "stop",
+              "description": "Stop a SOCKS proxy server",
+              "example": "socks stop 1080",
+              "args": [
+                "INT <port>"
+              ]
+            }
+          ]
+        },
+        {
           "command": "shell",
           "message": "Task: command execute",
           "description": "Execute command via /bin/sh",
@@ -308,9 +395,233 @@
       ],
 
       "browsers": {
-        "sessions_menu_tunnels": false,
+        "sessions_menu_tunnels": true,
         "socks4": false,
-        "socks5": false,
+        "socks5": true,
+        "lportfwd": false,
+        "rportfwd": false,
+
+        "sessions_menu_exit": true,
+
+
+        "file_browser": true,
+        "file_browser_disks": false,
+        "file_browser_download": true,
+        "file_browser_upload": true,
+
+        "process_browser": true,
+
+        "downloads_cancel": true,
+        "downloads_resume": false,
+        "downloads_pause": false,
+
+        "tasks_job_kill": false
+      }
+    },
+    {
+      "id": "handler_windows",
+
+      "commands": [
+        {
+          "command": "cat",
+          "message": "Task: read file",
+          "description": "Read a file",
+          "example": "cat C:\\file.exe",
+          "args": [
+            "STRING <path>"
+          ]
+        },
+        {
+          "command": "cp",
+          "message": "Task: copy file or directory",
+          "description": "Copy file or directory",
+          "example": "cp src.txt dst.txt",
+          "args": [
+            "STRING <src>",
+            "STRING <dst>"
+          ]
+        },
+        {
+          "command": "cd",
+          "message": "Task: change working directory",
+          "description": "Change current working directory",
+          "example": "cd C:\\Windows",
+          "args": [
+            "STRING <path>"
+          ]
+        },
+        {
+          "command": "download",
+          "message": "Task: download file",
+          "description": "Download a file",
+          "example": "download C:\\Temp\\file.txt",
+          "args": [
+            "STRING <path>"
+          ]
+        },
+        {
+          "command": "exit",
+          "message": "Task: kill agent",
+          "description": "Kill agent",
+          "example": "exit"
+        },
+        {
+          "command": "job",
+          "description": "Long-running tasks manager",
+          "subcommands":
+          [
+            {
+              "name": "list",
+              "message": "Task: show jobs",
+              "description": "List of jobs",
+              "example": "job list"
+            },
+            {
+              "name": "kill",
+              "message": "Task: kill job",
+              "description": "Kill a specified job",
+              "example": "job kill 1a2b3c4d",
+              "args": [
+                "STRING <task_id>"
+              ]
+            }
+          ]
+        },
+        {
+          "command": "kill",
+          "message": "Task: kill process",
+          "description": "Kill a process with a given PID",
+          "example": "kill 7865",
+          "args": [
+            "INT <pid>"
+          ]
+        },
+        {
+          "command": "ls",
+          "message": "Task: list of files in a folder",
+          "description": "Lists files in a folder",
+          "example": "ls C:\\Windows",
+          "args": [
+            "STRING <directory> (.)"
+          ]
+        },
+        {
+          "command": "mv",
+          "message": "Task: move file or directory",
+          "description": "Move file or directory",
+          "example": "mv src.txt dst.txt",
+          "args": [
+            "STRING <src>",
+            "STRING <dst>"
+          ]
+        },
+        {
+          "command": "mkdir",
+          "message": "Task: make directory",
+          "description": "Make a directory",
+          "example": "mkdir C:\\Temp",
+          "args": [
+            "STRING <path>"
+          ]
+        },
+        {
+          "command": "ps",
+          "message": "Task: show process list",
+          "description": "Show process list",
+          "example": "ps"
+        },
+        {
+          "command": "pwd",
+          "message": "Task: print working directory",
+          "description": "Print current working directory",
+          "example": "pwd"
+        },
+        {
+          "command": "rm",
+          "message": "Task: remove file or directory",
+          "description": "Remove a file or folder",
+          "example": "rm C:\\Temp\\file.txt",
+          "args": [
+            "STRING <path>"
+          ]
+        },
+        {
+          "command": "run",
+          "message": "Task: command run",
+          "description": "Execute long command or scripts via /bin/sh",
+          "example": "run whoami /all",
+          "args": [
+            "STRING <cmd>"
+          ]
+        },
+        {
+          "command": "screenshot",
+          "message": "Task: screenshot",
+          "description": "Take a single screenshot",
+          "example": "screenshot"
+        },
+        {
+          "command": "socks",
+          "description": "Managing socks tunnels",
+          "subcommands":
+          [
+            {
+              "name": "start",
+              "description": "Start a SOCKS5 proxy server and listen on a specified port",
+              "example": "socks start 1080 -a user pass",
+              "args": [
+                "STRING <-h address> (0.0.0.0) {Listening interface address}",
+                "INT <port> {Listen port}",
+                "BOOL [-a] {Enable User/Password authentication for SOCKS5}",
+                "STRING [username] {Username for SOCKS5 proxy}",
+                "STRING [password] {Password for SOCKS5 proxy}"
+              ]
+            },
+            {
+              "name": "stop",
+              "description": "Stop a SOCKS proxy server",
+              "example": "socks stop 1080",
+              "args": [
+                "INT <port>"
+              ]
+            }
+          ]
+        },
+        {
+          "command": "shell",
+          "message": "Task: command execute",
+          "description": "Execute command via cmd.exe",
+          "example": "shell whoami /all",
+          "args": [
+            "STRING <cmd>"
+          ]
+        },
+        {
+          "command": "upload",
+          "message": "Task: upload file",
+          "description": "Upload a file",
+          "example": "upload /tmp/file.txt C:\\Temp\\file.txt",
+          "args": [
+            "FILE <local_file>",
+            "STRING [remote_path]"
+          ]
+        },
+        {
+          "command": "zip",
+          "message": "Task: Zip a file or directory",
+          "description": "archive (zip) a file or directory",
+          "example": "zip C:\\backup C:\\Temp\\qwe.zip",
+          "args": [
+            "STRING <path>",
+            "STRING <zip_path>"
+          ]
+        }
+      ],
+
+      "browsers": {
+        "sessions_menu_tunnels": true,
+        "socks4": false,
+        "socks5": true,
         "lportfwd": false,
         "rportfwd": false,
 
