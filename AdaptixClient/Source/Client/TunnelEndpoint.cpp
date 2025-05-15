@@ -61,17 +61,18 @@ void TunnelEndpoint::SetTunnelId(const QString &tunnelId)
 
 void TunnelEndpoint::StopChannel(const QString& channelId)
 {
-    auto it = tunnelChannels.find(channelId);
-    if (it == tunnelChannels.end())
-        return;
-
-    ChannelHandle handle = it.value();
-    tunnelChannels.erase(it);
-
-    QMetaObject::invokeMethod(handle.worker, "stop", Qt::QueuedConnection);
-
-    handle.thread->quit();
-    handle.thread->wait(1000);
+ //    auto it = tunnelChannels.find(channelId);
+ //    if (it == tunnelChannels.end())
+ //        return;
+ //
+ //    ChannelHandle handle = it.value();
+ //    tunnelChannels.erase(it);
+ //
+	// handle.worker->stop();
+ //    // QMetaObject::invokeMethod(handle.worker, "stop", Qt::QueuedConnection);
+ //
+ //    handle.thread->quit();
+ //    handle.thread->wait(1000);
 }
 
 void TunnelEndpoint::Stop()
@@ -79,13 +80,22 @@ void TunnelEndpoint::Stop()
     if (tcpServer->isListening())
         tcpServer->close();
 
-    for (auto it = tunnelChannels.begin(); it != tunnelChannels.end(); ) {
-        auto handle = it.value();
-        QMetaObject::invokeMethod(handle.worker, "stop", Qt::QueuedConnection);
-        handle.thread->quit();
-        handle.thread->wait(1000);
-        it = tunnelChannels.erase(it);
-    }
+	// for (auto id : tunnelChannels.keys()) {
+	// 	auto handle = tunnelChannels.value(id);
+	// 	tunnelChannels.remove(id);
+	//
+	// 	if (handle.worker && handle.thread) {
+	// 		// handle.worker->stop();
+	// 		QMetaObject::invokeMethod( handle.worker, "stop", Qt::BlockingQueuedConnection );
+	// 		handle.thread->quit();
+	// 		handle.thread->wait();
+	// 	}
+	//
+	// 	if (handle.worker)
+	// 		handle.worker->deleteLater();
+	// 	if (handle.thread)
+	// 		handle.thread->deleteLater();
+	// }
 }
 
 void TunnelEndpoint::onStartLpfChannel()
@@ -112,8 +122,9 @@ void TunnelEndpoint::onStartLpfChannel()
         connect(worker, &TunnelWorker::finished, thread, &QThread::quit);
         connect(worker, &TunnelWorker::finished, worker, &TunnelWorker::deleteLater);
         connect(thread, &QThread::finished,      thread, &QThread::deleteLater);
+    	connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
 
-        tunnelChannels.insert(channelId, { thread, worker });
+        // tunnelChannels.insert(channelId, { thread, worker, channelId });
         thread->start();
     }
 }
@@ -160,8 +171,9 @@ void TunnelEndpoint::onStartSocks4Channel()
         connect(worker, &TunnelWorker::finished, thread, &QThread::quit);
         connect(worker, &TunnelWorker::finished, worker, &TunnelWorker::deleteLater);
         connect(thread, &QThread::finished,      thread, &QThread::deleteLater);
+    	connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
 
-        tunnelChannels.insert(channelId, { thread, worker });
+        // tunnelChannels.insert(channelId, { thread, worker, channelId });
         thread->start();
     }
 }
@@ -249,8 +261,9 @@ void TunnelEndpoint::onStartSocks5Channel()
         connect(worker, &TunnelWorker::finished, thread, &QThread::quit);
         connect(worker, &TunnelWorker::finished, worker, &TunnelWorker::deleteLater);
         connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    	connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
 
-        tunnelChannels.insert(channelId, { thread, worker });
+        // tunnelChannels.insert(channelId, { thread, worker, channelId });
         thread->start();
     }
 }
@@ -387,8 +400,9 @@ void TunnelEndpoint::onStartSocks5AuthChannel()
         connect(worker, &TunnelWorker::finished, thread, &QThread::quit);
         connect(worker, &TunnelWorker::finished, worker, &TunnelWorker::deleteLater);
         connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    	connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
 
-        tunnelChannels.insert(channelId, { thread, worker });
+        // tunnelChannels.insert(channelId, { thread, worker, channelId });
         thread->start();
     }
 }

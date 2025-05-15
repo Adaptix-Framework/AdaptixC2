@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type GenerateConfig struct {
@@ -207,6 +208,8 @@ func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
 		return adaptix.AgentData{}, err
 	}
 
+	agent.ACP = int(sessionInfo.Acp)
+	agent.OemCP = int(sessionInfo.Oem)
 	agent.Pid = fmt.Sprintf("%v", sessionInfo.PID)
 	agent.Tid = ""
 	agent.Arch = "x64"
@@ -224,6 +227,7 @@ func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
 		agent.OsDesc = sessionInfo.OSVersion
 	} else {
 		agent.Os = OS_UNKNOWN
+		return agent, errors.New("unknown OS")
 	}
 
 	agent.SessionKey = sessionInfo.EncryptKey
@@ -440,7 +444,6 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 			err = errors.New("parameter 'directory' must be set")
 			goto RET
 		}
-		//dir = ConvertUTF8toCp(dir, agent.ACP)
 		packerData, _ := msgpack.Marshal(ParamsLs{Path: dir})
 		cmd = Command{Code: COMMAND_LS, Data: packerData}
 
@@ -788,76 +791,145 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					continue
 				}
 
-				var items []adaptix.ListingFileDataUnix
+				if agentData.Os == OS_WINDOWS {
 
-				if !params.Result {
-					task.Message = params.Status
-					task.MessageType = MESSAGE_ERROR
-				} else {
-					var Files []FileInfo
-					err := msgpack.Unmarshal(params.Files, &Files)
-					if err != nil {
-						continue
-					}
+					var items []adaptix.ListingFileDataWin
 
-					filesCount := len(Files)
-					if filesCount == 0 {
-						task.Message = fmt.Sprintf("The '%s' directory is EMPTY", params.Path)
+					if !params.Result {
+						task.Message = params.Status
+						task.MessageType = MESSAGE_ERROR
 					} else {
-
-						modeFsize := 1
-						lnkFsize := 1
-						userFsize := 1
-						groupFsize := 1
-						sizeFsize := 1
-						dateFsize := 1
-
-						for _, f := range Files {
-							val := fmt.Sprintf("%d", f.Nlink)
-							if len(val) > lnkFsize {
-								lnkFsize = len(val)
-							}
-							val = fmt.Sprintf("%d", f.Size)
-							if len(val) > sizeFsize {
-								sizeFsize = len(val)
-							}
-							if len(f.Mode) > modeFsize {
-								modeFsize = len(f.Mode)
-							}
-							if len(f.User) > userFsize {
-								userFsize = len(f.User)
-							}
-							if len(f.Group) > groupFsize {
-								groupFsize = len(f.Group)
-							}
-							if len(f.Date) > dateFsize {
-								dateFsize = len(f.Date)
-							}
+						var Files []FileInfo
+						err := msgpack.Unmarshal(params.Files, &Files)
+						if err != nil {
+							continue
 						}
 
-						format2 := fmt.Sprintf(" %%-%ds %%-%dd %%-%ds %%-%ds %%-%dd %%-%ds %%s", modeFsize, lnkFsize, userFsize, groupFsize, sizeFsize, dateFsize)
-						OutputText := ""
-						for _, fi := range Files {
-							OutputText += fmt.Sprintf("\n"+format2, fi.Mode, fi.Nlink, fi.User, fi.Group, fi.Size, fi.Date, fi.Filename)
+						filesCount := len(Files)
+						if filesCount == 0 {
+							task.Message = fmt.Sprintf("The '%s' directory is EMPTY", params.Path)
+						} else {
 
-							fileData := adaptix.ListingFileDataUnix{
-								IsDir:    fi.IsDir,
-								Mode:     fi.Mode,
-								User:     fi.User,
-								Group:    fi.Group,
-								Size:     fi.Size,
-								Date:     fi.Date,
-								Filename: fi.Filename,
+							var folders []adaptix.ListingFileDataWin
+							var files []adaptix.ListingFileDataWin
+
+							for _, f := range Files {
+
+								date := int64(0)
+								t, err := time.Parse("02/01/2006 15:04", f.Date)
+								if err == nil {
+									date = t.Unix()
+								}
+
+								fileData := adaptix.ListingFileDataWin{
+									IsDir:    f.IsDir,
+									Size:     f.Size,
+									Date:     date,
+									Filename: f.Filename,
+								}
+
+								if f.IsDir {
+									folders = append(folders, fileData)
+								} else {
+									files = append(files, fileData)
+								}
 							}
 
-							items = append(items, fileData)
-						}
+							items = append(folders, files...)
 
-						task.Message = fmt.Sprintf("List of files in the '%s' directory", params.Path)
-						task.ClearText = OutputText
+							OutputText := fmt.Sprintf(" %-8s %-14s %-20s  %s\n", "Type", "Size", "Last Modified      ", "Name")
+							OutputText += fmt.Sprintf(" %-8s %-14s %-20s  %s", "----", "---------", "----------------   ", "----")
+
+							for _, item := range items {
+								t := time.Unix(item.Date, 0).UTC()
+								lastWrite := fmt.Sprintf("%02d/%02d/%d %02d:%02d", t.Day(), t.Month(), t.Year(), t.Hour(), t.Minute())
+
+								if item.IsDir {
+									OutputText += fmt.Sprintf("\n %-8s %-14s %-20s  %-8v", "dir", "", lastWrite, item.Filename)
+								} else {
+									OutputText += fmt.Sprintf("\n %-8s %-14s %-20s  %-8v", "", SizeBytesToFormat(item.Size), lastWrite, item.Filename)
+								}
+							}
+							task.Message = fmt.Sprintf("List of files in the '%s' directory", params.Path)
+							task.ClearText = OutputText
+
+						}
 					}
+					SyncBrowserFilesWindows(ts, task, params.Path, items)
+
+				} else {
+
+					var items []adaptix.ListingFileDataUnix
+
+					if !params.Result {
+						task.Message = params.Status
+						task.MessageType = MESSAGE_ERROR
+					} else {
+						var Files []FileInfo
+						err := msgpack.Unmarshal(params.Files, &Files)
+						if err != nil {
+							continue
+						}
+
+						filesCount := len(Files)
+						if filesCount == 0 {
+							task.Message = fmt.Sprintf("The '%s' directory is EMPTY", params.Path)
+						} else {
+
+							modeFsize := 1
+							lnkFsize := 1
+							userFsize := 1
+							groupFsize := 1
+							sizeFsize := 1
+							dateFsize := 1
+
+							for _, f := range Files {
+								val := fmt.Sprintf("%d", f.Nlink)
+								if len(val) > lnkFsize {
+									lnkFsize = len(val)
+								}
+								val = fmt.Sprintf("%d", f.Size)
+								if len(val) > sizeFsize {
+									sizeFsize = len(val)
+								}
+								if len(f.Mode) > modeFsize {
+									modeFsize = len(f.Mode)
+								}
+								if len(f.User) > userFsize {
+									userFsize = len(f.User)
+								}
+								if len(f.Group) > groupFsize {
+									groupFsize = len(f.Group)
+								}
+								if len(f.Date) > dateFsize {
+									dateFsize = len(f.Date)
+								}
+							}
+
+							format2 := fmt.Sprintf(" %%-%ds %%-%dd %%-%ds %%-%ds %%-%dd %%-%ds %%s", modeFsize, lnkFsize, userFsize, groupFsize, sizeFsize, dateFsize)
+							OutputText := ""
+							for _, fi := range Files {
+								OutputText += fmt.Sprintf("\n"+format2, fi.Mode, fi.Nlink, fi.User, fi.Group, fi.Size, fi.Date, fi.Filename)
+
+								fileData := adaptix.ListingFileDataUnix{
+									IsDir:    fi.IsDir,
+									Mode:     fi.Mode,
+									User:     fi.User,
+									Group:    fi.Group,
+									Size:     fi.Size,
+									Date:     fi.Date,
+									Filename: fi.Filename,
+								}
+
+								items = append(items, fileData)
+							}
+
+							task.Message = fmt.Sprintf("List of files in the '%s' directory", params.Path)
+							task.ClearText = OutputText
+						}
+					}
+					SyncBrowserFilesUnix(ts, task, params.Path, items)
 				}
-				SyncBrowserFiles(ts, task, params.Path, items)
 
 			case COMMAND_MKDIR:
 				task.Message = "Directory created successfully"
@@ -872,67 +944,129 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					continue
 				}
 
-				var proclist []adaptix.ListingProcessDataUnix
+				if agentData.Os == OS_WINDOWS {
 
-				if !params.Result {
-					task.Message = params.Status
-					task.MessageType = MESSAGE_ERROR
-				} else {
-					var Processes []PsInfo
-					err := msgpack.Unmarshal(params.Processes, &Processes)
-					if err != nil {
-						continue
-					}
+					var proclist []adaptix.ListingProcessDataWin
 
-					procCount := len(Processes)
-					if procCount == 0 {
-						task.Message = "Failed to get process list"
+					if !params.Result {
+						task.Message = params.Status
 						task.MessageType = MESSAGE_ERROR
-						break
 					} else {
-						pidFsize := 3
-						ppidFsize := 4
-						ttyFsize := 3
-						contextFsize := 7
-
-						for _, p := range Processes {
-							val := fmt.Sprintf("%d", p.Pid)
-							if len(val) > pidFsize {
-								pidFsize = len(val)
-							}
-							val = fmt.Sprintf("%d", p.Ppid)
-							if len(val) > ppidFsize {
-								ppidFsize = len(val)
-							}
-							if len(p.Tty) > ttyFsize {
-								ttyFsize = len(p.Tty)
-							}
-							if len(p.Context) > contextFsize {
-								contextFsize = len(p.Context)
-							}
+						var Processes []PsInfo
+						err := msgpack.Unmarshal(params.Processes, &Processes)
+						if err != nil {
+							continue
 						}
 
-						format := fmt.Sprintf(" %%-%dv   %%-%dv   %%-%dv   %%-%dv   %%v", pidFsize, ppidFsize, ttyFsize, contextFsize)
-						OutputText := fmt.Sprintf(format+"\n", "PID", "PPID", "TTY", "Context", "CommandLine")
-						OutputText += fmt.Sprintf(format, "---", "----", "---", "-------", "-----------")
-						for _, p := range Processes {
-							OutputText += fmt.Sprintf("\n"+format, p.Pid, p.Ppid, p.Tty, p.Context, p.Process)
+						procCount := len(Processes)
+						if procCount == 0 {
+							task.Message = "Failed to get process list"
+							task.MessageType = MESSAGE_ERROR
+							break
+						} else {
 
-							processData := adaptix.ListingProcessDataUnix{
-								Pid:         uint(p.Pid),
-								Ppid:        uint(p.Ppid),
-								TTY:         p.Tty,
-								Context:     p.Context,
-								ProcessName: p.Process,
+							contextMaxSize := 10
+
+							for _, p := range Processes {
+
+								sessId, err := strconv.Atoi(p.Tty)
+								if err != nil {
+									sessId = 0
+								}
+
+								procData := adaptix.ListingProcessDataWin{
+									Pid:         uint(p.Pid),
+									Ppid:        uint(p.Ppid),
+									SessionId:   uint(sessId),
+									Arch:        "",
+									Context:     p.Context,
+									ProcessName: p.Process,
+								}
+
+								if len(procData.Context) > contextMaxSize {
+									contextMaxSize = len(procData.Context)
+								}
+
+								proclist = append(proclist, procData)
 							}
-							proclist = append(proclist, processData)
-						}
 
-						task.Message = "Process list:"
-						task.ClearText = OutputText
+							format := fmt.Sprintf(" %%-5v   %%-5v   %%-7v   %%-5v   %%-%vv   %%-7v", contextMaxSize)
+							OutputText := fmt.Sprintf(format, "PID", "PPID", "Session", "Arch", "Context", "Process")
+							OutputText += fmt.Sprintf("\n"+format, "---", "----", "-------", "----", "-------", "-------")
+
+							for _, item := range proclist {
+								OutputText += fmt.Sprintf("\n"+format, item.Pid, item.Ppid, item.SessionId, item.Arch, item.Context, item.ProcessName)
+							}
+							task.Message = "Process list:"
+							task.ClearText = OutputText
+						}
 					}
+					SyncBrowserProcessWindows(ts, task, proclist)
+
+				} else {
+
+					var proclist []adaptix.ListingProcessDataUnix
+
+					if !params.Result {
+						task.Message = params.Status
+						task.MessageType = MESSAGE_ERROR
+					} else {
+						var Processes []PsInfo
+						err := msgpack.Unmarshal(params.Processes, &Processes)
+						if err != nil {
+							continue
+						}
+
+						procCount := len(Processes)
+						if procCount == 0 {
+							task.Message = "Failed to get process list"
+							task.MessageType = MESSAGE_ERROR
+							break
+						} else {
+							pidFsize := 3
+							ppidFsize := 4
+							ttyFsize := 3
+							contextFsize := 7
+
+							for _, p := range Processes {
+								val := fmt.Sprintf("%d", p.Pid)
+								if len(val) > pidFsize {
+									pidFsize = len(val)
+								}
+								val = fmt.Sprintf("%d", p.Ppid)
+								if len(val) > ppidFsize {
+									ppidFsize = len(val)
+								}
+								if len(p.Tty) > ttyFsize {
+									ttyFsize = len(p.Tty)
+								}
+								if len(p.Context) > contextFsize {
+									contextFsize = len(p.Context)
+								}
+							}
+
+							format := fmt.Sprintf(" %%-%dv   %%-%dv   %%-%dv   %%-%dv   %%v", pidFsize, ppidFsize, ttyFsize, contextFsize)
+							OutputText := fmt.Sprintf(format+"\n", "PID", "PPID", "TTY", "Context", "CommandLine")
+							OutputText += fmt.Sprintf(format, "---", "----", "---", "-------", "-----------")
+							for _, p := range Processes {
+								OutputText += fmt.Sprintf("\n"+format, p.Pid, p.Ppid, p.Tty, p.Context, p.Process)
+
+								processData := adaptix.ListingProcessDataUnix{
+									Pid:         uint(p.Pid),
+									Ppid:        uint(p.Ppid),
+									TTY:         p.Tty,
+									Context:     p.Context,
+									ProcessName: p.Process,
+								}
+								proclist = append(proclist, processData)
+							}
+
+							task.Message = "Process list:"
+							task.ClearText = OutputText
+						}
+					}
+					SyncBrowserProcessUnix(ts, task, proclist)
 				}
-				SyncBrowserProcess(ts, task, proclist)
 
 			case COMMAND_KILL:
 				task.Message = "Process killed"
@@ -974,7 +1108,11 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 
 				task.Message = "Command output:"
-				task.ClearText = params.Output
+				if agentData.Os == OS_WINDOWS {
+					task.ClearText = ConvertCpToUTF8(params.Output, agentData.OemCP)
+				} else {
+					task.ClearText = params.Output
+				}
 
 			case COMMAND_RM:
 				task.Message = "Object deleted successfully"
@@ -994,7 +1132,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					continue
 				}
 				task.Message = fmt.Sprintf("Archive '%s' successfully created", params.Path)
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = MESSAGE_SUCCESS
 
 			case COMMAND_ERROR:
 				var params AnsError
@@ -1069,9 +1207,18 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					task.Message = fmt.Sprintf("Run process [%v] with pid '%v'", task.TaskId, params.Pid)
 				}
 
-				task.ClearText = params.Stdout
+				if agentData.Os == OS_WINDOWS {
+					task.ClearText = ConvertCpToUTF8(params.Stdout, agentData.OemCP)
+				} else {
+					task.ClearText = params.Stdout
+				}
+
 				if params.Stderr != "" {
-					task.ClearText += fmt.Sprintf("\n --- [error] --- \n%v ", params.Stderr)
+					errorStr := params.Stderr
+					if agentData.Os == OS_WINDOWS {
+						errorStr = ConvertCpToUTF8(params.Stdout, agentData.OemCP)
+					}
+					task.ClearText += fmt.Sprintf("\n --- [error] --- \n%v ", errorStr)
 				}
 
 				if params.Finish {

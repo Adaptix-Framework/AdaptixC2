@@ -23,6 +23,7 @@ Q_OBJECT
     struct ChannelHandle {
         QThread*      thread;
         TunnelWorker* worker;
+        QString       channelId;
     };
     QMap<QString, ChannelHandle>  tunnelChannels;
 
