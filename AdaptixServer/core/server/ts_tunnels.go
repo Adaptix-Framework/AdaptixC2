@@ -530,7 +530,7 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 
 	ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
 
-	if tunnel.Data.Client != "" {
+	if tunnel.Data.Client == "" {
 		message := ""
 		switch tunnel.Type {
 		case TUNNEL_SOCKS4:

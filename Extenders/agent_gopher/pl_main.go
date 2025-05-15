@@ -368,7 +368,16 @@ func SyncBrowserDisks(ts Teamserver, taskData adaptix.TaskData, drivesSlice []ad
 	ts.TsClientGuiDisks(taskData, string(jsonDrives))
 }
 
-func SyncBrowserFiles(ts Teamserver, taskData adaptix.TaskData, path string, filesSlice []adaptix.ListingFileDataUnix) {
+func SyncBrowserFilesUnix(ts Teamserver, taskData adaptix.TaskData, path string, filesSlice []adaptix.ListingFileDataUnix) {
+	jsonDrives, err := json.Marshal(filesSlice)
+	if err != nil {
+		return
+	}
+
+	ts.TsClientGuiFiles(taskData, path, string(jsonDrives))
+}
+
+func SyncBrowserFilesWindows(ts Teamserver, taskData adaptix.TaskData, path string, filesSlice []adaptix.ListingFileDataWin) {
 	jsonDrives, err := json.Marshal(filesSlice)
 	if err != nil {
 		return
@@ -381,7 +390,16 @@ func SyncBrowserFilesStatus(ts Teamserver, taskData adaptix.TaskData) {
 	ts.TsClientGuiFilesStatus(taskData)
 }
 
-func SyncBrowserProcess(ts Teamserver, taskData adaptix.TaskData, processlist []adaptix.ListingProcessDataUnix) {
+func SyncBrowserProcessUnix(ts Teamserver, taskData adaptix.TaskData, processlist []adaptix.ListingProcessDataUnix) {
+	jsonProcess, err := json.Marshal(processlist)
+	if err != nil {
+		return
+	}
+
+	ts.TsClientGuiProcess(taskData, string(jsonProcess))
+}
+
+func SyncBrowserProcessWindows(ts Teamserver, taskData adaptix.TaskData, processlist []adaptix.ListingProcessDataWin) {
 	jsonProcess, err := json.Marshal(processlist)
 	if err != nil {
 		return

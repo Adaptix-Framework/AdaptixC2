@@ -548,7 +548,7 @@
         {
           "command": "run",
           "message": "Task: command run",
-          "description": "Execute long command or scripts via /bin/sh",
+          "description": "Execute long command or scripts via cmd.exe",
           "example": "run whoami /all",
           "args": [
             "STRING <cmd>"

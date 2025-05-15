@@ -43,12 +43,16 @@ void TunnelWorker::stop()
         return;
 
     if (tcpSocket) {
-        tcpSocket->disconnect(this);
+        QObject::disconnect(tcpSocket, &QTcpSocket::readyRead,    this, &TunnelWorker::onTcpReadyRead);
+        QObject::disconnect(tcpSocket, &QTcpSocket::disconnected, this, &TunnelWorker::stop);
+
+        QSignalBlocker blocker(tcpSocket);
         tcpSocket->close();
     }
 
     if (websocket) {
-        websocket->disconnect(this);
+        // websocket->disconnect(this);
+        websocket->blockSignals(true);
         websocket->close();
     }
 
