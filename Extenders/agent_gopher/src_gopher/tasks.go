@@ -925,8 +925,6 @@ func jobTunnel(paramsData []byte) {
 
 		wg.Wait()
 
-		fmt.Println("Close")
-
 		_ = clientConn.Close()
 		_ = srvConn.Close()
 	}()
