@@ -145,8 +145,15 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 	}
 
 	ChannelType := ctx.GetHeader("Channel-Type")
-	if ChannelType == "tunnel" {
+
+	switch ChannelType {
+
+	case "tunnel":
 		tunnelData := ctx.GetHeader("Channel-Data")
 		_ = tc.teamserver.TsTunnelClientNewChannel(tunnelData, wsConn)
+
+	case "terminal":
+		terminalData := ctx.GetHeader("Channel-Data")
+		_ = tc.teamserver.TsAgentTerminalCreateChannel(terminalData, wsConn)
 	}
 }
