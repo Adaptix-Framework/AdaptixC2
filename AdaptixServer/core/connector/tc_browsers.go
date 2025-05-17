@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-///
+/// FileBrowser
 
 type DisksAction struct {
 	AgentId string `json:"agent_id"`
@@ -48,8 +48,6 @@ func (tc *TsConnector) TcGuiDisks(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, answer)
 }
 
-///
-
 type FilesAction struct {
 	AgentId string `json:"agent_id"`
 	Path    string `json:"path"`
@@ -90,8 +88,6 @@ func (tc *TsConnector) TcGuiFiles(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, answer)
 }
-
-///
 
 type UploadAction struct {
 	AgentId    string `json:"agent_id"`
@@ -135,7 +131,7 @@ func (tc *TsConnector) TcGuiUpload(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, answer)
 }
 
-///
+/// ProcessBrowser
 
 type ProcessAction struct {
 	AgentId string `json:"agent_id"`
@@ -176,3 +172,5 @@ func (tc *TsConnector) TcGuiProcess(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, answer)
 }
+
+/// Terminal
