@@ -37,6 +37,7 @@ func NewTeamserver() *Teamserver {
 		downloads:   safe.NewMap(),
 		screenshots: safe.NewMap(),
 		tunnels:     safe.NewMap(),
+		terminals:   safe.NewMap(),
 		pivots:      safe.NewSlice(),
 	}
 	ts.Extender = extender.NewExtender(ts)

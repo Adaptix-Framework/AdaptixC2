@@ -7,11 +7,11 @@
 
 class SessionsTableWidget : public QWidget
 {
-    QWidget*          mainWidget     = nullptr;
-    QGridLayout*      mainGridLayout = nullptr;
-    QTableWidget*     tableWidget    = nullptr;
-    QMenu*            menuSessions   = nullptr;
-    QShortcut*        shortcutSearch = nullptr;
+    QWidget*      mainWidget     = nullptr;
+    QGridLayout*  mainGridLayout = nullptr;
+    QTableWidget* tableWidget    = nullptr;
+    QMenu*        menuSessions   = nullptr;
+    QShortcut*    shortcutSearch = nullptr;
 
     QWidget*        searchWidget    = nullptr;
     QHBoxLayout*    searchLayout    = nullptr;
@@ -61,6 +61,7 @@ public slots:
 
     void actionConsoleOpen() const;
     void actionTasksBrowserOpen() const;
+    void actionTerminalOpen() const;
     void actionFileBrowserOpen() const;
     void actionProcessBrowserOpen() const;
     void actionCreateTunnel() const;

@@ -60,9 +60,9 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	agent := &Agent{
 		Data:              agentData,
 		OutConsole:        safe.NewSlice(),
-		TunnelQueue:       safe.NewSlice(),
 		TasksQueue:        safe.NewSlice(),
 		TunnelConnectTask: safe.NewSlice(),
+		TunnelQueue:       safe.NewSlice(),
 		RunningTasks:      safe.NewMap(),
 		CompletedTasks:    safe.NewMap(),
 		PivotParent:       nil,
@@ -208,7 +208,7 @@ func (ts *Teamserver) TsAgentGetHostedTasksOnly(agentId string, maxDataSize int)
 	return respData, nil
 }
 
-func (ts *Teamserver) TsAgentGetHostedTasksTunnels2(agentId string, channelId int, maxDataSize int) ([]byte, error) {
+func (ts *Teamserver) TsAgentGetHostedTasksTunnels(agentId string, channelId int, maxDataSize int) ([]byte, error) {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
 		return nil, fmt.Errorf("agent type %v does not exists", agentId)

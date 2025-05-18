@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/creack/pty v1.1.24 // indirect
 	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/gen2brain/shm v0.1.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect

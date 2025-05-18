@@ -61,14 +61,15 @@ type Teamserver struct {
 	wm_agent_types map[string]string   // agentMark string : agentName string
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
-	events      *safe.Slice // 			         : sync_packet interface{}
+	events      *safe.Slice // 			           : sync_packet interface{}
 	clients     safe.Map    // username string     : socket *websocket.Conn
 	agents      safe.Map    // agentId string      : agent *Agent
 	listeners   safe.Map    // listenerName string : listenerData ListenerData
 	downloads   safe.Map    // fileId string       : downloadData DownloadData
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
 	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
-	pivots      *safe.Slice // 			         : PivotData
+	terminals   safe.Map    // terminalId string   : terminal Terminal
+	pivots      *safe.Slice // 			           : PivotData
 }
 
 type Agent struct {
@@ -80,6 +81,7 @@ type Agent struct {
 
 	TunnelConnectTask *safe.Slice // taskData TaskData
 	TunnelQueue       *safe.Slice // taskData TaskDataTunnel
+	TerminalQueue     *safe.Slice // taskData TaskDataTunnel
 	TasksQueue        *safe.Slice // taskData TaskData
 
 	RunningTasks   safe.Map // taskId string, taskData TaskData
@@ -113,6 +115,22 @@ type Tunnel struct {
 	handlerWriteUDP   func(channelId int, data []byte) adaptix.TaskData
 	handlerClose      func(channelId int) adaptix.TaskData
 	handlerReverse    func(tunnelId int, port int) adaptix.TaskData
+}
+
+type Terminal struct {
+	TaskId     string
+	TerminalId int
+
+	agent *Agent
+
+	mu        sync.Mutex
+	wsconn    *websocket.Conn
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+
+	handlerStart func(terminalId int, program string, sizeH int, sizeW int) (adaptix.TaskData, error)
+	handlerWrite func(terminalId int, data []byte) (adaptix.TaskData, error)
+	handlerClose func(terminalId int) (adaptix.TaskData, error)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

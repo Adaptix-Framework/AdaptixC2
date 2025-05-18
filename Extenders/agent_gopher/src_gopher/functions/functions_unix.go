@@ -5,10 +5,13 @@ package functions
 
 import (
 	"fmt"
+	"github.com/shirou/gopsutil/v4/process"
+	"gopher/utils"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 func GetCP() (uint32, uint32) {

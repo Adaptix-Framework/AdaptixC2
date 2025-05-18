@@ -139,6 +139,7 @@ public slots:
     void LoadConsoleUI(const QString &AgentId);
     void LoadFileBrowserUI(const QString &AgentId);
     void LoadProcessBrowserUI(const QString &AgentId);
+    void LoadTerminalUI(const QString &AgentId);
 };
 
 #endif //ADAPTIXCLIENT_ADAPTIXWIDGET_H
