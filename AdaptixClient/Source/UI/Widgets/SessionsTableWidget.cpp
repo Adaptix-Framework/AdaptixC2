@@ -364,6 +364,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 
     auto agentMenu = new QMenu("Agent", &ctxMenu);
     agentMenu->addAction("Tasks", this, &SessionsTableWidget::actionTasksBrowserOpen);
+    agentMenu->addAction("Remote Terminal", this, &SessionsTableWidget::actionTerminalOpen);
     if (menuFileBrowser || menuProcessBrowser || menuTunnels) {
         agentMenu->addAction(agentSep1);
         if (menuFileBrowser)
@@ -425,6 +426,17 @@ void SessionsTableWidget::actionTasksBrowserOpen() const
 
     adaptixWidget->TasksTab->SetAgentFilter(agentId);
     adaptixWidget->SetTasksUI();
+}
+
+void SessionsTableWidget::actionTerminalOpen() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            adaptixWidget->LoadTerminalUI(agentId);
+        }
+    }
 }
 
 void SessionsTableWidget::actionFileBrowserOpen() const

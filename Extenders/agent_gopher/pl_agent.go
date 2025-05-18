@@ -1334,7 +1334,7 @@ func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
 	return msgpack.Marshal(cmd)
 }
 
-/// TUNNELS
+/// TUNNEL
 
 func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {
 	addr := fmt.Sprintf("%s:%d", address, port)
@@ -1367,4 +1367,22 @@ func TunnelClose(channelId int) ([]byte, error) {
 
 func TunnelReverse(tunnelId int, port int) ([]byte, error) {
 	return nil, nil
+}
+
+/// TERMINAL
+
+func TerminalStart(terminalId int, program string, sizeH int, sizeW int) ([]byte, error) {
+	packerData, _ := msgpack.Marshal(ParamsTerminalStart{TermId: terminalId, Program: program, Height: sizeH, Width: sizeW})
+	cmd := Command{Code: COMMAND_TERMINAL_START, Data: packerData}
+	return msgpack.Marshal(cmd)
+}
+
+func TerminalWrite(terminalId int, data []byte) ([]byte, error) {
+	cmd := Command{Code: 0, Data: data}
+	return msgpack.Marshal(cmd)
+}
+
+func TerminalClose(terminalId int) ([]byte, error) {
+	cmd := Command{Code: 1, Data: nil}
+	return msgpack.Marshal(cmd)
 }

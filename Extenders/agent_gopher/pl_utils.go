@@ -218,6 +218,13 @@ type ParamsTunnelStart struct {
 	Address   string `msgpack:"address"`
 }
 
+type ParamsTerminalStart struct {
+	TermId  int    `msgpack:"term_id"`
+	Program string `msgpack:"program"`
+	Height  int    `msgpack:"height"`
+	Width   int    `msgpack:"width"`
+}
+
 const (
 	COMMAND_ERROR      = 0
 	COMMAND_PWD        = 1
@@ -240,7 +247,8 @@ const (
 	COMMAND_JOB_LIST   = 18
 	COMMAND_JOB_KILL   = 19
 
-	COMMAND_TUNNEL_START = 31
+	COMMAND_TUNNEL_START   = 31
+	COMMAND_TERMINAL_START = 35
 )
 
 var codePageMapping = map[int]encoding.Encoding{

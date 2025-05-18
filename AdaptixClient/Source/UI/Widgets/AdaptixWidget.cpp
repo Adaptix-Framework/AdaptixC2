@@ -629,6 +629,18 @@ void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
     }
 }
 
+void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
+{
+    if( !AgentsMap.contains(AgentId) )
+        return;
+
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->Terminal) {
+        auto text = QString("Terminal [%1]").arg( AgentId );
+        this->AddTab(AgentsMap[AgentId]->Terminal, text);
+    }
+}
+
 void AdaptixWidget::ChannelClose() const
 {
     QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/unlink"), COLOR_ChiliPepper);

@@ -471,7 +471,7 @@ bool ColorSchemeManager::loadColorScheme(const QString &filePath) {
 
 const QStringList ColorSchemeManager::get_color_schemes_dirs() {
     QStringList list;
-    list.append(":/konsole/color-schemes/");
+    list.append(":/konsole/color-schemes");
     return list;
 }
 

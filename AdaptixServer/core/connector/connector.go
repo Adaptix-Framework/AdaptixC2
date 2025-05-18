@@ -76,6 +76,8 @@ type Teamserver interface {
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
 	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
 
+	TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error
+
 	TsTunnelClientStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error)
 	TsTunnelClientNewChannel(TunnelData string, wsconn *websocket.Conn) error
 	TsTunnelClientStop(TunnelId string, Client string) error

@@ -16,10 +16,11 @@ type Connection struct {
 /// Listener
 
 const (
-	INIT_PACK  = 1
-	EXFIL_PACK = 2
-	JOB_PACK   = 3
-	JOB_TUNNEL = 4
+	INIT_PACK    = 1
+	EXFIL_PACK   = 2
+	JOB_PACK     = 3
+	JOB_TUNNEL   = 4
+	JOB_TERMINAL = 5
 )
 
 type StartMsg struct {
@@ -51,6 +52,14 @@ type TunnelPack struct {
 	ChannelId int    `msgpack:"channel_id"`
 	Key       []byte `msgpack:"key"`
 	Alive     bool   `msgpack:"alive"`
+}
+
+type TermPack struct {
+	Id     uint   `msgpack:"id"`
+	TermId int    `msgpack:"term_id"`
+	Key    []byte `msgpack:"key"`
+	Alive  bool   `msgpack:"alive"`
+	Status string `msgpack:"status"`
 }
 
 /// Agent
@@ -259,6 +268,13 @@ type ParamsTunnelStart struct {
 	Address   string `msgpack:"address"`
 }
 
+type ParamsTerminalStart struct {
+	TermId  int    `msgpack:"term_id"`
+	Program string `msgpack:"program"`
+	Height  int    `msgpack:"height"`
+	Width   int    `msgpack:"width"`
+}
+
 const (
 	COMMAND_ERROR      = 0
 	COMMAND_PWD        = 1
@@ -281,5 +297,6 @@ const (
 	COMMAND_JOB_LIST   = 18
 	COMMAND_JOB_KILL   = 19
 
-	COMMAND_TUNNEL_START = 31
+	COMMAND_TUNNEL_START   = 31
+	COMMAND_TERMINAL_START = 35
 )
