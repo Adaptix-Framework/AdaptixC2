@@ -12,7 +12,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io"
 	"math/big"
 	"net/http"
@@ -20,6 +19,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type HTTPConfig struct {
@@ -256,9 +257,9 @@ func (handler *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte,
 		err            error
 	)
 
-	params := ctx.Request.Header[handler.Config.ParameterName]
+	params := ctx.Request.Header.Get(handler.Config.ParameterName)
 	if len(params) > 0 {
-		beat = params[0]
+		beat = params
 	} else {
 		return "", "", nil, nil, errors.New("missing beat from Headers")
 	}
