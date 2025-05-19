@@ -55,10 +55,11 @@ type TCP struct {
 }
 
 const (
-	INIT_PACK   = 1
-	EXFIL_PACK  = 2
-	JOB_PACK    = 3
-	TUNNEL_PACK = 4
+	INIT_PACK     = 1
+	EXFIL_PACK    = 2
+	JOB_PACK      = 3
+	TUNNEL_PACK   = 4
+	TERMINAL_PACK = 5
 )
 
 type StartMsg struct {
@@ -90,6 +91,14 @@ type TunnelPack struct {
 	ChannelId int    `msgpack:"channel_id"`
 	Key       []byte `msgpack:"key"`
 	Alive     bool   `msgpack:"alive"`
+}
+
+type TermPack struct {
+	Id     uint   `msgpack:"id"`
+	TermId int    `msgpack:"term_id"`
+	Key    []byte `msgpack:"key"`
+	Alive  bool   `msgpack:"alive"`
+	Status string `msgpack:"status"`
 }
 
 func (handler *TCP) Start(ts Teamserver) error {
@@ -344,7 +353,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 				case <-ctx.Done():
 					return
 				default:
-					sendData, err = ModuleObject.ts.TsAgentGetHostedTasksTunnels2(agentId, tunPack.ChannelId, 0x1900000)
+					sendData, err = ModuleObject.ts.TsAgentGetHostedTasksTunnels(agentId, tunPack.ChannelId, 0x1900000)
 					if err != nil {
 						break
 					}
@@ -363,8 +372,85 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 
 		ts.TsTunnelConnectionClose(tunPack.ChannelId)
 		_ = conn.Close()
-	}
 
+	case TERMINAL_PACK:
+
+		var termPack TermPack
+		err := msgpack.Unmarshal(initMsg.Data, &termPack)
+		if err != nil {
+			goto ERR
+		}
+
+		agentId := fmt.Sprintf("%08x", termPack.Id)
+		terminalId := fmt.Sprintf("%08x", termPack.TermId)
+
+		if !ModuleObject.ts.TsTerminalConnExists(terminalId) {
+			goto ERR
+		}
+
+		if !termPack.Alive {
+			_ = ts.TsAgentTerminalCloseChannel(terminalId, termPack.Status)
+			_ = conn.Close()
+			return
+		}
+
+		ts.TsTerminalConnResume(agentId, terminalId)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					recvData, err = recvMsg(conn)
+					if err != nil {
+						cancel()
+						return
+					}
+
+					decData, err := DecryptData(recvData, termPack.Key)
+					if err != nil {
+						continue
+					}
+
+					ts.TsTerminalConnData(terminalId, decData)
+				}
+			}
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					sendData, err = ModuleObject.ts.TsAgentGetHostedTasksTunnels(agentId, int(termPack.TermId), 0x1900000)
+					if err != nil {
+						break
+					}
+					if len(sendData) > 0 {
+						err := sendMsg(conn, sendData)
+						if err != nil {
+							cancel()
+							return
+						}
+					}
+				}
+			}
+		}()
+
+		wg.Wait()
+
+		_ = ts.TsAgentTerminalCloseChannel(terminalId, "killed")
+		_ = conn.Close()
+	}
 	return
 
 ERR:

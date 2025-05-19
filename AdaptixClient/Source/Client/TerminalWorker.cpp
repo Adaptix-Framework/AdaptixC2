@@ -36,15 +36,15 @@ void TerminalWorker::start()
 
 void TerminalWorker::stop()
 {
-     if (stopped.exchange(true))
-         return;
+    if (stopped.exchange(true))
+        return;
 
-     if (websocket) {
-         websocket->blockSignals(true);
-         websocket->close();
-     }
+    if (websocket) {
+        websocket->blockSignals(true);
+        websocket->close();
+    }
 
-     emit finished();
+    emit finished();
 }
 
 void TerminalWorker::onWsConnected() {}
@@ -54,6 +54,8 @@ void TerminalWorker::onWsBinaryMessageReceived(const QByteArray& msg) {
 
     if (!started) {
         started = true;
+
+        emit connectedToTerminal();
 
         connect(this->terminalWidget->Konsole(), &QTermWidget::sendData, this, [this](const char *data, int size) {
             if (websocket->state() == QAbstractSocket::ConnectedState) {

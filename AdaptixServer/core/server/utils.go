@@ -94,8 +94,9 @@ type Agent struct {
 type TunnelConnection struct {
 	channelId    int
 	protocol     string
-	conn         net.Conn
+	mu           sync.Mutex
 	wsconn       *websocket.Conn
+	conn         net.Conn
 	ctx          context.Context
 	handleCancel context.CancelFunc
 }

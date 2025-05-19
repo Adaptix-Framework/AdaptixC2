@@ -27,6 +27,7 @@ type ExConfAgentListeners struct {
 }
 
 type ExConfAgentSupportedBrowsers struct {
+	RemoteTerminal      bool `json:"remote_terminal"`
 	FileBrowser         bool `json:"file_browser"`
 	FileBrowserDisks    bool `json:"file_browser_disks"`
 	FileBrowserDownload bool `json:"file_browser_download"`

@@ -4,6 +4,8 @@
 #include <main.h>
 #include <UI/Widgets/TerminalWidget.h>
 
+class TerminalWidget;
+
 class TerminalWorker : public QObject
 {
 Q_OBJECT
@@ -22,6 +24,7 @@ public:
 
 signals:
      void binaryMessageToTerminal(const QByteArray& msg);
+     void connectedToTerminal();
      void finished();
 
 public slots:

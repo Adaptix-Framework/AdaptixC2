@@ -11,16 +11,20 @@ type Teamserver interface {
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedTasksAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentGetHostedTasksOnly(agentId string, maxDataSize int) ([]byte, error)
-	TsAgentGetHostedTasksTunnels2(agentId string, channelId int, maxDataSize int) ([]byte, error)
+	TsAgentGetHostedTasksTunnels(agentId string, channelId int, maxDataSize int) ([]byte, error)
 	TsAgentSetMark(agentId string, makr string) error
 
 	TsTaskRunningExists(agentId string, taskId string) bool
 	TsTunnelChannelExists(channelId int) bool
 
+	TsAgentTerminalCloseChannel(terminalId string, status string) error
+	TsTerminalConnExists(terminalId string) bool
+	TsTerminalConnData(terminalId string, data []byte)
+	TsTerminalConnResume(agentId string, terminalId string)
+
 	TsTunnelConnectionResume(AgentId string, channelId int)
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionData(channelId int, data []byte)
-	//TsTunnelConnectionAccept(tunnelId int, channelId int)
 }
 
 type ModuleExtender struct {

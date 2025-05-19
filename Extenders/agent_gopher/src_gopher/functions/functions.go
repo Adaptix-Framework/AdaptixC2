@@ -493,9 +493,7 @@ func RelaySocketToMsg(ctx context.Context, cancel context.CancelFunc, wg *sync.W
 	}
 }
 
-func RelayMsgToFile(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, src net.Conn, dst *os.File, tunKey []byte) {
-	defer wg.Done()
-
+func RelayMsgToFile(ctx context.Context, cancel context.CancelFunc, src net.Conn, dst *os.File, tunKey []byte) {
 	procSrvRead := func(data []byte) []byte {
 		var inMessage utils.Message
 		recvData, err := utils.DecryptData(data, tunKey)
@@ -553,8 +551,7 @@ func RelayMsgToFile(ctx context.Context, cancel context.CancelFunc, wg *sync.Wai
 	}
 }
 
-func RelayFileToMsg(ctx context.Context, cancel context.CancelFunc, wg *sync.WaitGroup, src *os.File, dst net.Conn, tunKey []byte) {
-	defer wg.Done()
+func RelayFileToMsg(ctx context.Context, cancel context.CancelFunc, src *os.File, dst net.Conn, tunKey []byte) {
 
 	procSrvWrite := func(data []byte) []byte {
 		buf, err := utils.EncryptData(data, tunKey)

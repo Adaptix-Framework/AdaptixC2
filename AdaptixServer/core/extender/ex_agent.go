@@ -299,6 +299,33 @@ func (ex *AdaptixExtender) ExAgentTunnelCallbacks(agentData adaptix.AgentData, t
 	return module.F.AgentTunnelCallbacks()
 }
 
+func (ex *AdaptixExtender) ExAgentTerminalCallbacks(agentData adaptix.AgentData) (func(int, string, int, int) (adaptix.TaskData, error), func(int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error) {
+
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return nil, nil, nil, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return nil, nil, nil, errors.New("RemoteTerminal are not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return nil, nil, nil, errors.New("RemoteTerminal are not supported")
+	}
+
+	if !supportConf.RemoteTerminal {
+		return nil, nil, nil, errors.New("RemoteTerminal are not supported")
+	}
+
+	return module.F.AgentTerminalCallbacks()
+}
+
 ////
 
 func (ex *AdaptixExtender) ExAgentCtxExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {
