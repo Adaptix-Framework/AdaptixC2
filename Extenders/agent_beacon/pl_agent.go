@@ -1956,3 +1956,17 @@ func TunnelReverse(tunnelId int, port int) ([]byte, error) {
 	array := []interface{}{COMMAND_TUNNEL_REVERSE, tunnelId, port}
 	return PackArray(array)
 }
+
+/// TERMINAL
+
+func TerminalStart(terminalId int, program string, sizeH int, sizeW int) ([]byte, error) {
+	return nil, nil
+}
+
+func TerminalWrite(terminalId int, data []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func TerminalClose(terminalId int) ([]byte, error) {
+	return nil, nil
+}

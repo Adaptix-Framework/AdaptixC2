@@ -941,5 +941,7 @@ func webSocketToTunnelData(agent *Agent, tunnel *Tunnel, tunnelConnection *Tunne
 }
 
 func tunnelDataToWebSocket(tunnelConnection *TunnelConnection, data []byte) {
+	tunnelConnection.mu.Lock()
+	defer tunnelConnection.mu.Unlock()
 	_ = tunnelConnection.wsconn.WriteMessage(websocket.BinaryMessage, data)
 }

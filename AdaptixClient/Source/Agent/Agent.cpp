@@ -122,7 +122,8 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     if (this->browsers.ProcessBrowser)
         this->ProcessBrowser = new BrowserProcessWidget(this);
 
-    this->Terminal = new TerminalWidget(this, adaptixWidget);
+    if (this->browsers.RemoteTerminal)
+        this->Terminal = new TerminalWidget(this, adaptixWidget);
 }
 
 Agent::~Agent() = default;

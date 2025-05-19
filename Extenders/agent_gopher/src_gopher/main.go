@@ -153,7 +153,7 @@ func main() {
 		}
 
 		/// Send Init
-		functions.SendMsg(conn, initMsg)
+		_ = functions.SendMsg(conn, initMsg)
 
 		/// Recv Command
 
@@ -189,7 +189,7 @@ func main() {
 
 			sendData, _ = msgpack.Marshal(outMessage)
 			sendData, _ = utils.EncryptData(sendData, sessionKey)
-			functions.SendMsg(conn, sendData)
+			_ = functions.SendMsg(conn, sendData)
 		}
 	}
 }

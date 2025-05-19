@@ -87,6 +87,10 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 }
 
 func (ts *Teamserver) TsAgentTerminalCloseChannel(terminalId string, status string) error {
+
+	_ = ts.TsTerminalConnClose(terminalId, status)
+
+	/// ToDo: send close Msg
 	return nil
 }
 

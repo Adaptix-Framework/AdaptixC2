@@ -35,6 +35,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         if( (graphics_items = items(event->scenePos())).empty() )
             return QGraphicsScene::contextMenuEvent( event );
 
+    bool menuRemoteTerminal = false;
     bool menuProcessBrowser = false;
     bool menuFileBrowser = false;
     bool menuExit = false;
@@ -53,10 +54,11 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         if ( item && item->agent ) {
             valid = true;
 
-            menuFileBrowser = item->agent->browsers.FileBrowser;
+            menuRemoteTerminal = item->agent->browsers.RemoteTerminal;
+            menuFileBrowser    = item->agent->browsers.FileBrowser;
             menuProcessBrowser = item->agent->browsers.ProcessBrowser;
-            menuTunnels = item->agent->browsers.SessionsMenuTunnels;
-            menuExit = item->agent->browsers.SessionsMenuExit;
+            menuTunnels        = item->agent->browsers.SessionsMenuTunnels;
+            menuExit           = item->agent->browsers.SessionsMenuExit;
 
             selectedCount++;
         }
@@ -73,8 +75,10 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
     auto agentMenu = new QMenu("Agent", &menu);
     agentMenu->addAction("Tasks");
-    if (menuFileBrowser || menuProcessBrowser || menuTunnels) {
+    if (menuFileBrowser || menuProcessBrowser || menuTunnels || menuRemoteTerminal) {
         agentMenu->addAction(agentSep1);
+        if (menuRemoteTerminal)
+            agentMenu->addAction("Remote Terminal");
         if (menuFileBrowser)
             agentMenu->addAction("File Browser");
         if (menuProcessBrowser)
@@ -116,6 +120,13 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         if ( item && item->agent) {
             adaptixWidget->TasksTab->SetAgentFilter(item->agent->data.Id);
             adaptixWidget->SetTasksUI();
+        }
+    }
+    else if ( action->text() == "Remote Terminal" ) {
+        for ( const auto& _graphics_item : graphics_items ) {
+           const auto item = dynamic_cast<GraphItem*>( _graphics_item );
+            if ( item && item->agent )
+                adaptixWidget->LoadTerminalUI(item->agent->data.Id);
         }
     }
     else if ( action->text() == "File Browser" ) {

@@ -4,6 +4,9 @@
 #include <main.h>
 #include <Agent/Agent.h>
 #include <Konsole/konsole.h>
+#include <Client/TerminalWorker.h>
+
+class TerminalWorker;
 
 class TerminalWidget : public QWidget
 {
@@ -15,7 +18,7 @@ class TerminalWidget : public QWidget
      QFrame*      line_1          = nullptr;
      QFrame*      line_2          = nullptr;
      QPushButton* startButton     = nullptr;
-     QPushButton* restartButton   = nullptr;
+     // QPushButton* restartButton   = nullptr;
      QPushButton* stopButton      = nullptr;
      QComboBox*   programComboBox = nullptr;
      QLineEdit*   programInput    = nullptr;
@@ -23,17 +26,22 @@ class TerminalWidget : public QWidget
 
      QTermWidget* termWidget      = nullptr;
 
+     QThread*        terminalThread = nullptr;
+     TerminalWorker* terminalWorker = nullptr;
+
      Agent* agent = nullptr;
 
      void createUI();
 
      void SetFont();
      void SetSettings();
+     void SetKeys();
 
 public:
      explicit TerminalWidget(Agent* a, QWidget* w);
      ~TerminalWidget() override;
 
+     void setStatus(const QString& text);
      QTermWidget* Konsole();
 
 public slots:

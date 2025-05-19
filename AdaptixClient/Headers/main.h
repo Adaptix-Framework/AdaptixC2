@@ -162,6 +162,7 @@
 //////////
 
 typedef struct BrowsersConfig {
+    bool RemoteTerminal;
     bool FileBrowser;
     bool FileBrowserDisks;
     bool FileBrowserDownload;

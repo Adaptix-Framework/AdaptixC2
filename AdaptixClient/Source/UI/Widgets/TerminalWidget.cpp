@@ -1,5 +1,4 @@
 #include <UI/Widgets/TerminalWidget.h>
-#include <Client/TerminalWorker.h>
 
 TerminalWidget::TerminalWidget(Agent* a, QWidget* w)
 {
@@ -9,6 +8,7 @@ TerminalWidget::TerminalWidget(Agent* a, QWidget* w)
 
     SetFont();
     SetSettings();
+    SetKeys();
 
     this->createUI();
 
@@ -16,7 +16,7 @@ TerminalWidget::TerminalWidget(Agent* a, QWidget* w)
 
     connect(programComboBox, &QComboBox::currentTextChanged, this, &TerminalWidget::onProgramChanged);
     connect(startButton,     &QPushButton::clicked,          this, &TerminalWidget::onStart);
-    connect(restartButton,   &QPushButton::clicked,          this, &TerminalWidget::onRestart);
+    // connect(restartButton,   &QPushButton::clicked,          this, &TerminalWidget::onRestart);
     connect(stopButton,      &QPushButton::clicked,          this, &TerminalWidget::onStop);
 }
 
@@ -35,10 +35,16 @@ void TerminalWidget::createUI()
         programComboBox->addItem("Powershell");
         programInput->setText("C:\\Windows\\System32\\cmd.exe");
     }
-    else {
+    else if (this->agent && this->agent->data.Os == OS_LINUX){
         programComboBox->addItem("Shell");
         programComboBox->addItem("Bash");
         programInput->setText("/bin/sh");
+    }
+    else {
+        programComboBox->addItem("ZSH");
+        programComboBox->addItem("Shell");
+        programComboBox->addItem("Bash");
+        programInput->setText("/bin/zsh");
     }
     programComboBox->addItem("Custom program");
 
@@ -51,11 +57,11 @@ void TerminalWidget::createUI()
     startButton->setFixedSize(37, 28);
     startButton->setToolTip("Start terminal");
 
-    restartButton = new QPushButton( QIcon(":/icons/restart"), "", this );
-    restartButton->setIconSize( QSize( 24,24 ));
-    restartButton->setFixedSize(37, 28);
-    restartButton->setToolTip("Restart terminal");
-    restartButton->setEnabled(false);
+    // restartButton = new QPushButton( QIcon(":/icons/restart"), "", this );
+    // restartButton->setIconSize( QSize( 24,24 ));
+    // restartButton->setFixedSize(37, 28);
+    // restartButton->setToolTip("Restart terminal");
+    // restartButton->setEnabled(false);
 
     stopButton = new QPushButton( QIcon(":/icons/stop"), "", this );
     stopButton->setIconSize( QSize( 24,24 ));
@@ -71,7 +77,7 @@ void TerminalWidget::createUI()
     statusDescLabel->setText("status:");
 
     statusLabel = new QLabel(this);
-    statusLabel->setText("ready");
+    statusLabel->setText("Stopped");
 
     spacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
@@ -82,7 +88,7 @@ void TerminalWidget::createUI()
     topHBoxLayout->addWidget(programComboBox);
     topHBoxLayout->addWidget(line_1);
     topHBoxLayout->addWidget(startButton);
-    topHBoxLayout->addWidget(restartButton);
+    // topHBoxLayout->addWidget(restartButton);
     topHBoxLayout->addWidget(stopButton);
     topHBoxLayout->addWidget(line_2);
     topHBoxLayout->addWidget(statusDescLabel);
@@ -103,6 +109,19 @@ void TerminalWidget::createUI()
     programInput->setMinimumHeight(programComboBox->height());
 
     this->setLayout( mainGridLayout );
+}
+
+void TerminalWidget::setStatus(const QString &text)
+{
+    this->statusLabel->setText(text);
+
+    if (text == "Stopped") {
+        programInput->setEnabled(programComboBox->currentText() == "Custom program");
+        programComboBox->setEnabled(true);
+        startButton->setEnabled(true);
+        // restartButton->setEnabled(false);
+        stopButton->setEnabled(false);
+    }
 }
 
 QTermWidget* TerminalWidget::Konsole()
@@ -155,13 +174,30 @@ void TerminalWidget::handleTerminalMenu(const QPoint &pos)
     menu.exec(this->termWidget->mapToGlobal(pos));
 }
 
+void TerminalWidget::SetKeys()
+{
+    // Ctrl+Shift+C: Copy
+    QShortcut *copyShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C), this->termWidget);
+    connect(copyShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::copyClipboard);
+    // Ctrl+Shift+V: Paste
+    QShortcut *pasteShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V), this->termWidget);
+    connect(pasteShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::pasteClipboard);
+    // Ctrl+Shift+F: Find
+    QShortcut *findShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F), this->termWidget);
+    connect(findShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::toggleShowSearchBar);
+    // Ctrl+Shift+L: Clear
+    QShortcut *clearShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_L), this->termWidget);
+    connect(clearShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::clear);
+}
+
 void TerminalWidget::onStart()
 {
     programInput->setEnabled(false);
     programComboBox->setEnabled(false);
     startButton->setEnabled(false);
-    restartButton->setEnabled(true);
+    // restartButton->setEnabled(true);
     stopButton->setEnabled(true);
+    this->setStatus("Waiting...");
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     if ( !adaptixWidget )
@@ -183,18 +219,21 @@ void TerminalWidget::onStart()
 
     QString terminalData = QString("%1|%2|%3|%4|%5").arg(agentId).arg(terminalId).arg(program).arg(sizeH).arg(sizeW).toUtf8().toBase64();
 
-    QThread* thread = new QThread;
-    TerminalWorker* worker = new TerminalWorker(this, profile->GetAccessToken(), sUrl, terminalData);
-    worker->moveToThread(thread);
+    terminalThread = new QThread;
+    terminalWorker = new TerminalWorker(this, profile->GetAccessToken(), sUrl, terminalData);
+    terminalWorker->moveToThread(terminalThread);
 
-    connect(thread, &QThread::started,         worker, &TerminalWorker::start);
-    connect(worker, &TerminalWorker::finished, thread, &QThread::quit);
-    connect(worker, &TerminalWorker::finished, worker, &TerminalWorker::deleteLater);
-    connect(thread, &QThread::finished,        thread, &QThread::deleteLater);
+    connect(terminalThread, &QThread::started,         terminalWorker, &TerminalWorker::start);
+    connect(terminalWorker, &TerminalWorker::finished, terminalThread, &QThread::quit);
+    connect(terminalWorker, &TerminalWorker::finished, terminalWorker, &TerminalWorker::deleteLater);
+    connect(terminalThread, &QThread::finished,        terminalThread, &QThread::deleteLater);
 
-    connect(worker, &TerminalWorker::binaryMessageToTerminal, this, &TerminalWidget::recvDataFromSocket, Qt::QueuedConnection);
+    connect(terminalWorker, &TerminalWorker::finished, this, [this]() { setStatus("Stopped"); }, Qt::QueuedConnection);
 
-    thread->start();
+    connect(terminalWorker, &TerminalWorker::connectedToTerminal,     this, [this]() { setStatus("Running"); }, Qt::QueuedConnection);
+    connect(terminalWorker, &TerminalWorker::binaryMessageToTerminal, this, &TerminalWidget::recvDataFromSocket, Qt::QueuedConnection);
+
+    terminalThread->start();
 }
 
 void TerminalWidget::onRestart()
@@ -204,11 +243,15 @@ void TerminalWidget::onRestart()
 
 void TerminalWidget::onStop()
 {
-    programInput->setEnabled(programComboBox->currentText() == "Custom program");
-    programComboBox->setEnabled(true);
-    startButton->setEnabled(true);
-    restartButton->setEnabled(false);
-    stopButton->setEnabled(false);
+    if (terminalWorker && terminalThread) {
+        QMetaObject::invokeMethod( terminalWorker, "stop", Qt::QueuedConnection );
+
+        terminalThread->quit();
+        terminalThread->wait();
+
+        terminalWorker = nullptr;
+        terminalThread = nullptr;
+    }
 }
 
 void TerminalWidget::onProgramChanged()
@@ -223,6 +266,10 @@ void TerminalWidget::onProgramChanged()
     }
     else if (programComboBox->currentText() == "Bash") {
         programInput->setText("/bin/bash");
+        programInput->setEnabled(false);
+    }
+    else if (programComboBox->currentText() == "ZSH") {
+        programInput->setText("/bin/zsh");
         programInput->setEnabled(false);
     }
     else if (programComboBox->currentText() == "Cmd") {

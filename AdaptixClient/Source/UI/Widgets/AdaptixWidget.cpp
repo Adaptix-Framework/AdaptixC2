@@ -239,6 +239,8 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
         Commanders[agentName][handlerId] = commander;
 
         BrowsersConfig browsersConfig = {};
+        if (browsersObject.contains("remote_terminal") && browsersObject["remote_terminal"].isBool())
+            browsersConfig.RemoteTerminal = browsersObject["remote_terminal"].toBool();
         if (browsersObject.contains("file_browser") && browsersObject["file_browser"].isBool())
             browsersConfig.FileBrowser = browsersObject["file_browser"].toBool();
         if (browsersObject.contains("file_browser_disks") && browsersObject["file_browser_disks"].isBool())
@@ -267,8 +269,6 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             browsersConfig.Rportfwd = browsersObject["rportfwd"].toBool();
         if (browsersObject.contains("sessions_menu_tunnels") && browsersObject["sessions_menu_tunnels"].isBool())
             browsersConfig.SessionsMenuTunnels = browsersObject["sessions_menu_tunnels"].toBool();
-
-
         if (browsersObject.contains("sessions_menu_exit") && browsersObject["sessions_menu_exit"].isBool())
             browsersConfig.SessionsMenuExit = browsersObject["sessions_menu_exit"].toBool();
 
@@ -635,10 +635,11 @@ void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
         return;
 
     auto agent = AgentsMap[AgentId];
-    if (agent && agent->Terminal) {
+    if (agent && agent->browsers.RemoteTerminal && agent->Terminal) {
         auto text = QString("Terminal [%1]").arg( AgentId );
         this->AddTab(AgentsMap[AgentId]->Terminal, text);
     }
+
 }
 
 void AdaptixWidget::ChannelClose() const

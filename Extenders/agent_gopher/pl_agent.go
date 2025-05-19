@@ -163,6 +163,9 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 	} else if operatingSystem == "mac" {
 		Filename = "agent.bin"
 		GoOs = "darwin"
+	} else if operatingSystem == "windows" {
+		Filename = "agent.exe"
+		GoOs = "windows"
 	} else {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", errors.New("operating system not supported")

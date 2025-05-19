@@ -637,6 +637,8 @@
       ],
 
       "browsers": {
+        "remote_terminal": false,
+
         "sessions_menu_tunnels": true,
         "socks4": true,
         "socks5": true,
@@ -1030,6 +1032,8 @@
 
 
       "browsers": {
+        "remote_terminal": false,
+
         "sessions_menu_tunnels": true,
         "socks4": true,
         "socks5": true,

@@ -3,15 +3,16 @@ module gopher
 go 1.23.0
 
 require (
+	github.com/creack/pty v1.1.24
 	github.com/kbinani/screenshot v0.0.0-20250118074034-a3924b7bbc8c
-	github.com/shirou/gopsutil/v4 v4.25.3
+	github.com/shirou/gopsutil/v4 v4.25.4
 	github.com/vmihailenco/msgpack/v5 v5.4.1
+	golang.org/x/sys v0.33.0
 	howett.net/plist v1.0.1
 )
 
 require (
-	github.com/creack/pty v1.1.24 // indirect
-	github.com/ebitengine/purego v0.8.2 // indirect
+	github.com/ebitengine/purego v0.8.3 // indirect
 	github.com/gen2brain/shm v0.1.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -23,5 +24,4 @@ require (
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/sys v0.32.0 // indirect
 )

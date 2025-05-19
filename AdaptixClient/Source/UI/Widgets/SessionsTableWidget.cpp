@@ -286,6 +286,8 @@ void SessionsTableWidget::Clear() const
         adaptixWidget->AgentsMap.remove(agentId);
         delete agent->Console;
         delete agent->FileBrowser;
+        delete agent->ProcessBrowser;
+        delete agent->Terminal;
         delete agent;
     }
 
@@ -329,6 +331,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     if ( !tableWidget->itemAt(pos) )
         return;
 
+    bool menuRemoteTerminal = false;
     bool menuProcessBrowser = false;
     bool menuFileBrowser = false;
     bool menuExit = false;
@@ -343,10 +346,11 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
             if (adaptixWidget->AgentsMap[agentId]) {
                 auto agent = adaptixWidget->AgentsMap[agentId];
                 if (agent) {
-                    menuFileBrowser = agent->browsers.FileBrowser;
+                    menuRemoteTerminal = agent->browsers.RemoteTerminal;
+                    menuFileBrowser    = agent->browsers.FileBrowser;
                     menuProcessBrowser = agent->browsers.ProcessBrowser;
-                    menuTunnels = agent->browsers.SessionsMenuTunnels;
-                    menuExit = agent->browsers.SessionsMenuExit;
+                    menuTunnels        = agent->browsers.SessionsMenuTunnels;
+                    menuExit           = agent->browsers.SessionsMenuExit;
                 }
             }
             selectedCount++;
@@ -364,9 +368,10 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 
     auto agentMenu = new QMenu("Agent", &ctxMenu);
     agentMenu->addAction("Tasks", this, &SessionsTableWidget::actionTasksBrowserOpen);
-    agentMenu->addAction("Remote Terminal", this, &SessionsTableWidget::actionTerminalOpen);
-    if (menuFileBrowser || menuProcessBrowser || menuTunnels) {
+    if (menuFileBrowser || menuProcessBrowser || menuTunnels || menuRemoteTerminal) {
         agentMenu->addAction(agentSep1);
+        if (menuRemoteTerminal)
+            agentMenu->addAction("Remote Terminal", this, &SessionsTableWidget::actionTerminalOpen);
         if (menuFileBrowser)
             agentMenu->addAction("File Browser", this, &SessionsTableWidget::actionFileBrowserOpen);
         if (menuProcessBrowser)
