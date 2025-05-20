@@ -9,7 +9,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/creack/pty"
 	"github.com/vmihailenco/msgpack/v5"
 	"gopher/functions"
 	"gopher/utils"
@@ -859,9 +858,6 @@ func jobTunnel(paramsData []byte) {
 		now := time.Now()
 		if err != nil {
 			active = false
-			fmt.Println(now.Format("15:04:05.000"))
-		} else {
-			fmt.Println("CONNECT - " + now.Format("15:04:05.000"))
 		}
 
 		var srvConn net.Conn
@@ -911,25 +907,30 @@ func jobTunnel(paramsData []byte) {
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+
+		var closeOnce sync.Once
+		closeAll := func() {
+			closeOnce.Do(func() {
+				_ = clientConn.Close()
+				_ = srvConn.Close()
+			})
+		}
 
 		var wg sync.WaitGroup
 		wg.Add(2)
 
 		go func() {
 			functions.RelayMsgToSocket(ctx, cancel, &wg, srvConn, clientConn, utils.SKey)
-			cancel()
+			closeAll()
 		}()
 
 		go func() {
 			functions.RelaySocketToMsg(ctx, cancel, &wg, clientConn, srvConn, tunKey)
-			cancel()
+			closeAll()
 		}()
 
 		wg.Wait()
 
-		_ = clientConn.Close()
-		_ = srvConn.Close()
 	}()
 }
 
@@ -941,41 +942,15 @@ func jobTerminal(paramsData []byte) {
 	}
 
 	go func() {
-
-		process := exec.Command(params.Program)
-		process.Env = append(os.Environ(),
-			"HISTORY=", "HISTSIZE=0", "HISTSAVE=",
-			"HISTZONE=", "HISTLOG=",
-			"HISTFILE=", "HISTFILE=/dev/null",
-			"HISTFILESIZE=0", "TERM=xterm-256color",
-		)
-		windowSize := pty.Winsize{Rows: uint16(params.Height), Cols: uint16(params.Width)}
-
 		active := true
 		status := ""
 
-		ptyProc, err := pty.StartWithSize(process, &windowSize)
+		process := exec.Command(params.Program)
+		ptyProc, err := functions.StartPtyCommand(process, uint16(params.Width), uint16(params.Height))
 		if err != nil {
 			active = false
 			status = err.Error()
 		}
-		defer ptyProc.Close()
-
-		//////////////////////
-
-		//go func() {
-		//	exitCode := 0
-		//	err := process.Wait()
-		//
-		//	if err != nil {
-		//		exitErr, ok := err.(*exec.ExitError)
-		//		if ok {
-		//			exitCode = exitErr.ExitCode()
-		//		}
-		//	}
-		//}()
-
-		//////////////////////
 
 		var srvConn net.Conn
 		if profile.UseSSL {
@@ -998,9 +973,12 @@ func jobTerminal(paramsData []byte) {
 			srvConn, err = net.Dial("tcp", profile.Addresses[0])
 		}
 		if err != nil {
+			if active {
+				functions.StopPty(ptyProc)
+				_ = process.Process.Kill()
+			}
 			return
 		}
-		defer srvConn.Close()
 
 		tunKey := make([]byte, 16)
 		_, _ = rand.Read(tunKey)
@@ -1013,6 +991,11 @@ func jobTerminal(paramsData []byte) {
 		if profile.BannerSize > 0 {
 			_, err := functions.ConnRead(srvConn, profile.BannerSize)
 			if err != nil {
+				srvConn.Close()
+				if active {
+					functions.StopPty(ptyProc)
+					_ = process.Process.Kill()
+				}
 				return
 			}
 		}
@@ -1021,6 +1004,7 @@ func jobTerminal(paramsData []byte) {
 		_ = functions.SendMsg(srvConn, jobMsg)
 
 		if !active {
+			srvConn.Close()
 			return
 		}
 
@@ -1028,22 +1012,33 @@ func jobTerminal(paramsData []byte) {
 		var cancelOnce sync.Once
 		cancelFn := func() { cancelOnce.Do(cancel) }
 
+		var closeOnce sync.Once
+		closeAll := func() {
+			closeOnce.Do(func() {
+				time.Sleep(200 * time.Millisecond)
+				_ = functions.StopPty(ptyProc)
+				if functions.IsProcessRunning(process) {
+					_ = process.Process.Kill()
+				}
+				_ = srvConn.Close()
+			})
+		}
+
 		var wg sync.WaitGroup
 		wg.Add(2)
 
 		go func() {
 			defer wg.Done()
 			functions.RelayMsgToFile(ctx, cancelFn, srvConn, ptyProc, utils.SKey)
-			_ = process.Process.Kill()
+			closeAll()
 		}()
 
 		go func() {
 			defer wg.Done()
 			functions.RelayFileToMsg(ctx, cancelFn, ptyProc, srvConn, tunKey)
-			_ = process.Process.Kill()
+			closeAll()
 		}()
 
 		wg.Wait()
-		fmt.Println("STOPPED")
 	}()
 }

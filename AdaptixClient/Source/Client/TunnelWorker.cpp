@@ -59,23 +59,41 @@ void TunnelWorker::stop()
     emit finished();
 }
 
-void TunnelWorker::onTcpReadyRead() const
+void TunnelWorker::onTcpReadyRead()
 {
     if (stopped || !tcpSocket || !websocket)
         return;
 
     QByteArray data = tcpSocket->readAll();
-    if (!data.isEmpty())
-        websocket->sendBinaryMessage(data);
+    if (!data.isEmpty()) {
+        if (wsConnected) {
+            websocket->sendBinaryMessage(data);
+        } else {
+            wsBuffer.enqueue(data);
+        }
+    }
 }
 
-void TunnelWorker::onWsConnected() {}
+void TunnelWorker::onWsConnected()
+{
+    {
+        QMutexLocker locker(&wsBufferMutex);
+        while (!wsBuffer.isEmpty()) {
+            QByteArray data = wsBuffer.dequeue();
+            websocket->sendBinaryMessage(data);
+        }
+    }
+
+    wsConnected = true;
+}
 
 void TunnelWorker::onWsBinaryMessageReceived(const QByteArray& msg) const
 {
     if (stopped)
         return;
+
     tcpSocket->write(msg);
+    tcpSocket->flush();
 }
 
 void TunnelWorker::onWsError(QAbstractSocket::SocketError error)

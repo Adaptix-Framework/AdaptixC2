@@ -335,6 +335,21 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 		_ = ts.TsTunnelStop(id)
 	}
 
+	/// Clear Terminals
+
+	var terminals []int
+	ts.terminals.ForEach(func(key string, value interface{}) bool {
+		term := value.(*Terminal)
+		if term.agent.Data.Id == agentId {
+			terminals = append(terminals, term.TerminalId)
+		}
+		return true
+	})
+	for _, id := range terminals {
+		termId := fmt.Sprintf("%08x", id)
+		_ = ts.TsTerminalConnClose(termId, "agent terminated")
+	}
+
 	/// Clear TunnelQueue
 
 	_ = agent.TunnelQueue.CutArray()

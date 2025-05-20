@@ -236,12 +236,21 @@ void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
 void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget || !adaptixWidget->AgentsMap.contains(agentId))
+        return;
+
     Agent* agent = adaptixWidget->AgentsMap[agentId];
     adaptixWidget->AgentsMap.remove(agentId);
     adaptixWidget->AgentsVector.removeOne(agentId);
 
-    delete agent->Console;
-    delete agent->FileBrowser;
+    if (agent->Console)
+        delete agent->Console;
+    if (agent->FileBrowser)
+        delete agent->FileBrowser;
+    if (agent->ProcessBrowser)
+        delete agent->ProcessBrowser;
+    if (agent->Terminal)
+        delete agent->Terminal;
     delete agent;
 
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
@@ -254,16 +263,16 @@ void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
 
 void SessionsTableWidget::SetData() const
 {
-     this->ClearTableContent();
+    this->ClearTableContent();
 
-     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
-     for (int i = 0; i < adaptixWidget->AgentsVector.size(); i++ ) {
-         QString agentId = adaptixWidget->AgentsVector[i];
-         Agent* agent = adaptixWidget->AgentsMap[agentId];
-         if ( agent && agent->show && this->filterItem(agent->data) )
-             this->addTableItem(agent);
-     }
+    for (int i = 0; i < adaptixWidget->AgentsVector.size(); i++ ) {
+        QString agentId = adaptixWidget->AgentsVector[i];
+        Agent* agent = adaptixWidget->AgentsMap[agentId];
+        if ( agent && agent->show && this->filterItem(agent->data) )
+            this->addTableItem(agent);
+    }
 }
 
 void SessionsTableWidget::ClearTableContent() const

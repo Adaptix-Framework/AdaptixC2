@@ -2,6 +2,8 @@
 #define TUNNELWORKER_H
 
 #include <main.h>
+#include <QQueue>
+#include <QMutex>
 
 class TunnelWorker : public QObject {
 Q_OBJECT
@@ -12,6 +14,10 @@ Q_OBJECT
     QString     token;
     QString     tunnelData;
     std::atomic<bool> stopped = false;
+
+    QMutex wsBufferMutex;
+    QQueue<QByteArray> wsBuffer;
+    bool wsConnected = false;
 
 public:
     TunnelWorker(QTcpSocket* socket, const QString &token, const QUrl& wsUrl, const QString& tunnelData, QObject* parent = nullptr);
@@ -25,7 +31,7 @@ public slots:
     void stop();
 
 private slots:
-    void onTcpReadyRead() const;
+    void onTcpReadyRead();
     void onWsConnected();
     void onWsBinaryMessageReceived(const QByteArray& msg) const;
     void onWsError(QAbstractSocket::SocketError error);

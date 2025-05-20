@@ -916,27 +916,23 @@ func tunnelDataToSocket(tunnelConnection *TunnelConnection, data []byte) {
 }
 
 func webSocketToTunnelData(agent *Agent, tunnel *Tunnel, tunnelConnection *TunnelConnection) {
-	var taskData adaptix.TaskData
+	defer tunnelConnection.handleCancel()
+
 	for {
-		select {
-
-		case <-tunnelConnection.ctx.Done():
-			return
-
-		default:
-			_, data, err := tunnelConnection.wsconn.ReadMessage()
-			if err != nil {
-				taskData = tunnel.handlerClose(tunnelConnection.channelId)
-				tunnelConnection.handleCancel()
-			} else {
-				if tunnelConnection.protocol == "UDP" {
-					taskData = tunnel.handlerWriteUDP(tunnelConnection.channelId, data)
-				} else {
-					taskData = tunnel.handlerWriteTCP(tunnelConnection.channelId, data)
-				}
-			}
+		_, data, err := tunnelConnection.wsconn.ReadMessage()
+		if err != nil {
+			taskData := tunnel.handlerClose(tunnelConnection.channelId)
 			sendTunnelTaskData(agent, tunnelConnection.channelId, taskData)
+			return
 		}
+
+		var taskData adaptix.TaskData
+		if tunnelConnection.protocol == "UDP" {
+			taskData = tunnel.handlerWriteUDP(tunnelConnection.channelId, data)
+		} else {
+			taskData = tunnel.handlerWriteTCP(tunnelConnection.channelId, data)
+		}
+		sendTunnelTaskData(agent, tunnelConnection.channelId, taskData)
 	}
 }
 
