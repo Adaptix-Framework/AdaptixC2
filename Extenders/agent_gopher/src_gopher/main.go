@@ -183,7 +183,6 @@ func main() {
 
 			if inMessage.Type == 1 {
 				outMessage.Type = 1
-				fmt.Println("--- In task ---")
 				outMessage.Object = TaskProcess(inMessage.Object)
 			}
 

@@ -157,6 +157,7 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 		return nil, "", errors.New("unknown architecture")
 	}
 
+	LdFlags := "-s -w"
 	if operatingSystem == "linux" {
 		Filename = "agent.bin"
 		GoOs = "linux"
@@ -166,6 +167,7 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 	} else if operatingSystem == "windows" {
 		Filename = "agent.exe"
 		GoOs = "windows"
+		LdFlags += " -H=windowsgui"
 	} else {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", errors.New("operating system not supported")
@@ -180,7 +182,7 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 		return nil, "", err
 	}
 
-	cmdBuild := fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s go build -trimpath -ldflags=\"-s -w\" -o %s", GoOs, GoArch, buildPath)
+	cmdBuild := fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
 	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
 	runnerCmdBuild.Dir = currentDir + "/" + SrcPath
 	runnerCmdBuild.Stdout = &stdout
