@@ -7,7 +7,12 @@ DialogTunnel::DialogTunnel()
      connect(tunnelTypeCombo, &QComboBox::currentTextChanged, this, &DialogTunnel::changeType);
      connect(buttonCreate,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCreate);
      connect(buttonCancel,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCancel);
-     connect(socks5UseAuth,   &QCheckBox::stateChanged,       this, &DialogTunnel::onSocks5AuthCheckChange );
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+     connect(socks5UseAuth, &QCheckBox::checkStateChanged, this, &DialogTunnel::onSocks5AuthCheckChange );
+#else
+     connect(socks5UseAuth, &QCheckBox::stateChanged, this, &DialogTunnel::onSocks5AuthCheckChange );
+#endif
 }
 
 DialogTunnel::~DialogTunnel() = default;

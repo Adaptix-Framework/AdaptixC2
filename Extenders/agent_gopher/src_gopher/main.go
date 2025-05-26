@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
-	"fmt"
 	"github.com/vmihailenco/msgpack/v5"
 	"gopher/functions"
 	"gopher/utils"

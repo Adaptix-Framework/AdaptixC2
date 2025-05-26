@@ -25,9 +25,14 @@ void TunnelWorker::start()
     websocket->setSslConfiguration(sslConfig);
     websocket->ignoreSslErrors();
 
-    connect(websocket, &QWebSocket::connected,                                          this, &TunnelWorker::onWsConnected,             Qt::DirectConnection);
-    connect(websocket, &QWebSocket::binaryMessageReceived,                              this, &TunnelWorker::onWsBinaryMessageReceived, Qt::DirectConnection);
-    connect(websocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &TunnelWorker::onWsError,                 Qt::DirectConnection);
+    connect(websocket, &QWebSocket::connected,             this, &TunnelWorker::onWsConnected,             Qt::DirectConnection);
+    connect(websocket, &QWebSocket::binaryMessageReceived, this, &TunnelWorker::onWsBinaryMessageReceived, Qt::DirectConnection);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    connect(websocket, &QWebSocket::errorOccurred, this, &TunnelWorker::onWsError, Qt::DirectConnection);
+#else
+    connect(websocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &TunnelWorker::onWsError, Qt::DirectConnection);
+#endif
 
     QNetworkRequest request(wsUrl);
     request.setRawHeader("Authorization", QString("Bearer " + token).toUtf8());

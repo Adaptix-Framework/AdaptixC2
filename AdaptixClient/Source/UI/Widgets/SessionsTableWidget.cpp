@@ -12,7 +12,13 @@ SessionsTableWidget::SessionsTableWidget( QWidget* w )
     connect( tableWidget,     &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
     connect( tableWidget,     &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
     connect( tableWidget,     &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
-    connect( checkOnlyActive, &QCheckBox::stateChanged,                  this, &SessionsTableWidget::onFilterUpdate);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    connect( checkOnlyActive, &QCheckBox::checkStateChanged, this, &SessionsTableWidget::onFilterUpdate);
+#else
+    connect( checkOnlyActive, &QCheckBox::stateChanged, this, &SessionsTableWidget::onFilterUpdate);
+#endif
+
     connect( inputFilter1,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
     connect( inputFilter2,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
     connect( inputFilter3,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
@@ -93,6 +99,8 @@ void SessionsTableWidget::createUI()
     tableWidget->setHorizontalHeaderItem( ColumnLast,      new QTableWidgetItem( "Last" ) );
     tableWidget->setHorizontalHeaderItem( ColumnSleep,     new QTableWidgetItem( "Sleep" ) );
 
+    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+
     for(int i = 0; i < 15; i++) {
         if (GlobalClient->settings->data.SessionsTableColumns[i] == false)
             tableWidget->hideColumn(i);
@@ -100,8 +108,8 @@ void SessionsTableWidget::createUI()
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
-    mainGridLayout->addWidget( searchWidget, 0, 0, 1, 1);
-    mainGridLayout->addWidget( tableWidget,  1, 0, 1, 1);
+    mainGridLayout->addWidget( searchWidget,   0, 0, 1, 1);
+    mainGridLayout->addWidget( tableWidget,    1, 0, 1, 1);
 }
 
 bool SessionsTableWidget::filterItem(const AgentData &agent) const

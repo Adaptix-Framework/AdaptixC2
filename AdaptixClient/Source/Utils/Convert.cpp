@@ -1,5 +1,6 @@
 #include <Utils/Convert.h>
 #include <QRandomGenerator>
+#include <QTimeZone>
 
 bool IsValidURI(const QString &uri)
 {
@@ -179,8 +180,8 @@ QString UnixTimestampGlobalToStringLocal(qint64 timestamp)
     if ( timestamp == 0 )
         return "";
 
-    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, Qt::UTC);
-    QDateTime localDateTime = epochDateTime.toLocalTime();
+    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, QTimeZone("UTC"));
+    QDateTime localDateTime = epochDateTime.toTimeZone(QTimeZone::systemTimeZone());
     QString formattedTime = localDateTime.toString("dd/MM hh:mm:ss");
     return formattedTime;
 }
@@ -190,8 +191,8 @@ QString UnixTimestampGlobalToStringLocalSmall(qint64 timestamp)
     if ( timestamp == 0 )
         return "";
 
-    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, Qt::UTC);
-    QDateTime localDateTime = epochDateTime.toLocalTime();
+    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, QTimeZone("UTC"));
+    QDateTime localDateTime = epochDateTime.toTimeZone(QTimeZone::systemTimeZone());
     QString formattedTime = localDateTime.toString("dd/MM hh:mm");
     return formattedTime;
 }
@@ -201,8 +202,8 @@ QString UnixTimestampGlobalToStringLocalFull(qint64 timestamp)
     if ( timestamp == 0 )
         return "";
 
-    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, Qt::UTC);
-    QDateTime localDateTime = epochDateTime.toLocalTime();
+    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, QTimeZone("UTC"));
+    QDateTime localDateTime = epochDateTime.toTimeZone(QTimeZone::systemTimeZone());
     QString formattedTime = localDateTime.toString("hh:mm dd/MM/yyyy");
     return formattedTime;
 }

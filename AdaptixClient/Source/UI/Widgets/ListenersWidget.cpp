@@ -110,7 +110,7 @@ void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
     tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 5, QHeaderView::ResizeToContents );
 
-    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+    // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 
     adaptixWidget->Listeners.push_back(newListener);

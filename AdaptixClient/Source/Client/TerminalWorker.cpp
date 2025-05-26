@@ -22,9 +22,14 @@ void TerminalWorker::start()
     websocket->setSslConfiguration(sslConfig);
     websocket->ignoreSslErrors();
 
-    connect(websocket, &QWebSocket::connected,                                          this, &TerminalWorker::onWsConnected,             Qt::DirectConnection);
-    connect(websocket, &QWebSocket::binaryMessageReceived,                              this, &TerminalWorker::onWsBinaryMessageReceived, Qt::DirectConnection);
-    connect(websocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &TerminalWorker::onWsError,                 Qt::DirectConnection);
+    connect(websocket, &QWebSocket::connected,             this, &TerminalWorker::onWsConnected,             Qt::DirectConnection);
+    connect(websocket, &QWebSocket::binaryMessageReceived, this, &TerminalWorker::onWsBinaryMessageReceived, Qt::DirectConnection);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    connect(websocket, &QWebSocket::errorOccurred, this, &TerminalWorker::onWsError, Qt::DirectConnection);
+#else
+    connect(websocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &TerminalWorker::onWsError, Qt::DirectConnection);
+#endif
 
     QNetworkRequest request(wsUrl);
     request.setRawHeader("Authorization", QString("Bearer " + token).toUtf8());
@@ -36,15 +41,36 @@ void TerminalWorker::start()
 
 void TerminalWorker::stop()
 {
+    // if (stopped.exchange(true))
+    //     return;
+    //
+    // if (websocket) {
+    //     websocket->blockSignals(true);
+    //     websocket->close();
+    // }
+    //
+    // emit finished();
+
     if (stopped.exchange(true))
         return;
 
     if (websocket) {
-        websocket->blockSignals(true);
-        websocket->close();
+        if (websocket->state() != QAbstractSocket::UnconnectedState) {
+            connect(websocket, &QWebSocket::disconnected, this, [this]() {
+                websocket->deleteLater();
+                emit finished();
+                this->deleteLater();
+            });
+
+            websocket->close();
+            return;
+        } else {
+            websocket->deleteLater();
+        }
     }
 
     emit finished();
+    this->deleteLater();
 }
 
 void TerminalWorker::onWsConnected() {}
@@ -70,5 +96,5 @@ void TerminalWorker::onWsBinaryMessageReceived(const QByteArray& msg) {
 
 void TerminalWorker::onWsError(QAbstractSocket::SocketError error)
 {
-    stop();
+    emit errorStop();
 }

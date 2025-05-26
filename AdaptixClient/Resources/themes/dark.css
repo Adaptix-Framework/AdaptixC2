@@ -101,6 +101,12 @@ QHeaderView::section {
     font-weight: bold;
 }
 
+QTableWidget::item {
+    padding-left: 8px;
+    padding-right: 8px;
+    border: none;
+}
+
 QTableWidget::item:selected {
     background-color: #4A4A4A;
     color: #FFFFFF;
