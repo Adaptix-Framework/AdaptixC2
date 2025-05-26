@@ -93,22 +93,17 @@ KeyboardTranslator * KeyboardTranslatorManager::loadTranslator(const QString &na
 }
 
 const KeyboardTranslator *KeyboardTranslatorManager::defaultTranslator() {
-    // Try to find the default.keytab file if it exists, otherwise
-    // fall back to the hard-coded one
+
 #if defined(Q_OS_WIN)
 #if defined(Q_CC_MSVC)
-    const KeyboardTranslator *translator =
-        findTranslator(QLatin1String("windows_conpty"));
+    const KeyboardTranslator *translator = findTranslator(QLatin1String("windows_conpty"));
 #else
-    const KeyboardTranslator *translator =
-        findTranslator(QLatin1String("windows_winpty"));
+    const KeyboardTranslator *translator = findTranslator(QLatin1String("windows_winpty"));
 #endif
 #elif defined(Q_OS_MAC)
-    const KeyboardTranslator *translator =
-        findTranslator(QLatin1String("macos_default"));
+    const KeyboardTranslator *translator = findTranslator(QLatin1String("macos_default"));
 #else
-    const KeyboardTranslator *translator =
-        findTranslator(QLatin1String("linux_default"));
+    const KeyboardTranslator *translator = findTranslator(QLatin1String("linux_default"));
 #endif
     if (!translator) {
         QBuffer textBuffer;
@@ -747,8 +742,7 @@ void KeyboardTranslator::removeEntry(const Entry &entry) {
     _entries.remove(entry.keyCode(), entry);
 }
 
-KeyboardTranslator::Entry KeyboardTranslator::findEntry(int keyCode, Qt::KeyboardModifiers modifiers,
-                              States state) const {
+KeyboardTranslator::Entry KeyboardTranslator::findEntry(int keyCode, Qt::KeyboardModifiers modifiers, States state) const {
     for (auto it = _entries.cbegin(), end = _entries.cend(); it != end; ++it) {
         if (it.key() == keyCode)
             if (it.value().matches(keyCode, modifiers, state))
