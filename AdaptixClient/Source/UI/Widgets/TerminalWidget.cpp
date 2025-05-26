@@ -154,12 +154,12 @@ void TerminalWidget::SetSettings()
 
     termWidget->setColorScheme("iTerm2 Default");
 
-    for (const QString &arg : QApplication::arguments()) {
-        if (termWidget->availableColorSchemes().contains(arg))
-            termWidget->setColorScheme(arg);
-        if (termWidget->availableKeyBindings().contains(arg))
-            termWidget->setKeyBindings(arg);
-    }
+    if (this->agent->data.Os == OS_WINDOWS)
+        termWidget->setKeyBindings("windows_conpty");
+    else if (this->agent->data.Os == OS_MAC)
+        termWidget->setKeyBindings("macos_macbook");
+    else if (this->agent->data.Os == OS_LINUX)
+        termWidget->setKeyBindings("linux_console");
 
     termWidget->setContextMenuPolicy(Qt::CustomContextMenu);
 }
