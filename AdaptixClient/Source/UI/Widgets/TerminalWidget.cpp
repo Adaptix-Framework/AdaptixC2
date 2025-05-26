@@ -229,6 +229,7 @@ void TerminalWidget::onStart()
     connect(terminalThread, &QThread::finished,        terminalThread, &QThread::deleteLater);
 
     connect(terminalWorker, &TerminalWorker::finished, this, [this]() { setStatus("Stopped"); }, Qt::QueuedConnection);
+    connect(terminalWorker, &TerminalWorker::errorStop, this, [this]() { onStop(); }, Qt::QueuedConnection);
 
     connect(terminalWorker, &TerminalWorker::connectedToTerminal,     this, [this]() { setStatus("Running"); }, Qt::QueuedConnection);
     connect(terminalWorker, &TerminalWorker::binaryMessageToTerminal, this, &TerminalWidget::recvDataFromSocket, Qt::QueuedConnection);
@@ -243,15 +244,37 @@ void TerminalWidget::onRestart()
 
 void TerminalWidget::onStop()
 {
-    if (terminalWorker && terminalThread) {
-        QMetaObject::invokeMethod( terminalWorker, "stop", Qt::QueuedConnection );
+    // if (terminalWorker && terminalThread) {
+    //     QMetaObject::invokeMethod( terminalWorker, "stop", Qt::QueuedConnection );
+    //
+    //     terminalThread->quit();
+    //     terminalThread->wait();
+    //
+    //     terminalWorker = nullptr;
+    //     terminalThread = nullptr;
+    // }
 
-        terminalThread->quit();
-        terminalThread->wait();
+    if (!terminalWorker || !terminalThread)
+        return;
 
-        terminalWorker = nullptr;
-        terminalThread = nullptr;
-    }
+    auto worker = terminalWorker;
+    auto thread = terminalThread;
+
+    terminalWorker = nullptr;
+    terminalThread = nullptr;
+
+    connect(worker, &TerminalWorker::finished, this, [this, thread]() {
+        if (thread->isRunning()) {
+            thread->quit();
+            thread->wait();
+        }
+
+        thread->deleteLater();
+
+        setStatus("Stopped");
+    });
+
+    QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
 }
 
 void TerminalWidget::onProgramChanged()

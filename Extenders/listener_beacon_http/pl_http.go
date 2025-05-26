@@ -12,6 +12,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"io"
 	"math/big"
 	"net/http"
@@ -19,8 +20,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 type HTTPConfig struct {

@@ -855,7 +855,6 @@ func jobTunnel(paramsData []byte) {
 	go func() {
 		active := true
 		clientConn, err := net.DialTimeout(params.Proto, params.Address, 500*time.Millisecond)
-		now := time.Now()
 		if err != nil {
 			active = false
 		}

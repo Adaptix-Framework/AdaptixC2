@@ -7,19 +7,41 @@ class PaddingDelegate : public QStyledItemDelegate {
 public:
     explicit PaddingDelegate(QObject* parent = nullptr) : QStyledItemDelegate(parent) {}
 
+    // void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+    //      QStyleOptionViewItem opt = option;
+    //      initStyleOption(&opt, index);
+    //
+    //      QVariant bgColor = index.data(Qt::BackgroundRole);
+    //      if (bgColor.canConvert<QColor>())
+    //          opt.backgroundBrush = QBrush(bgColor.value<QColor>());
+    //
+    //      QVariant fgColor = index.data(Qt::ForegroundRole);
+    //      if (fgColor.canConvert<QColor>())
+    //          opt.palette.setColor(QPalette::Text, fgColor.value<QColor>());
+    //
+    //     // opt.rect.adjust(0, 0, 0, 0);
+    //
+    //      QStyledItemDelegate::paint(painter, opt, index);
+    //  }
+
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
-        QStyleOptionViewItem opt = option;
-        initStyleOption(&opt, index);
+        QStyleOptionViewItem optFull = option;
+        initStyleOption(&optFull, index);
 
-        opt.rect.adjust(15, 0, -15, 0);
+        QVariant bgVar = index.data(Qt::BackgroundRole);
+        bool hasBg = bgVar.isValid();
+        QBrush bgBrush = hasBg ? bgVar.value<QBrush>() : QBrush();
 
-        QStyledItemDelegate::paint(painter, opt, index);
+        if (hasBg)
+            painter->fillRect(optFull.rect, bgBrush);
+
+        QStyledItemDelegate::paint(painter, optFull, index);
     }
 
-    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
-        QSize originalSize = QStyledItemDelegate::sizeHint(option, index);
-        return QSize(originalSize.width() + 30, originalSize.height());
-    }
+     // QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+     //     QSize originalSize = QStyledItemDelegate::sizeHint(option, index);
+     //     return QSize(originalSize.width() + 30, originalSize.height());
+     // }
 };
 
 

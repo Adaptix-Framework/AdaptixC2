@@ -35,7 +35,7 @@ void TaskOutputWidget::SetConten(const QString &message, const QString &text) co
     if( message.isEmpty() )
         inputMessage->clear();
     else
-        inputMessage->setText(message.toHtmlEscaped());
+        inputMessage->setText(TrimmedEnds(message).toHtmlEscaped());
 
     if ( text.isEmpty() )
         outputTextEdit->clear();
@@ -140,8 +140,8 @@ void TasksWidget::createUI()
     mainGridLayout->setVerticalSpacing(4);
     mainGridLayout->setHorizontalSpacing(8);
 
-    mainGridLayout->addWidget( searchWidget,  0, 0,  1, 1 );
-    mainGridLayout->addWidget( tableWidget,   1, 0,  1, 1 );
+    mainGridLayout->addWidget( searchWidget, 0, 0, 1, 1 );
+    mainGridLayout->addWidget( tableWidget,  1, 0, 1, 1 );
 
     this->setLayout(mainGridLayout);
 }
@@ -201,7 +201,7 @@ void TasksWidget::addTableItem(const Task* newTask) const
     tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnFinishTime, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnResult, QHeaderView::ResizeToContents );
 
-    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+    // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 }
 

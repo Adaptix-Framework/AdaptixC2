@@ -205,7 +205,7 @@ func GetProcesses() ([]utils.PsInfo, error) {
 	return Processes, nil
 }
 
-func IsProcessAlive(cmd *exec.Cmd) bool {
+func IsProcessRunning(cmd *exec.Cmd) bool {
 	if cmd.Process == nil {
 		return false
 	}

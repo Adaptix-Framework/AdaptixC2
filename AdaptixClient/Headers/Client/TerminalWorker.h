@@ -26,6 +26,7 @@ signals:
      void binaryMessageToTerminal(const QByteArray& msg);
      void connectedToTerminal();
      void finished();
+     void errorStop();
 
 public slots:
      void start();

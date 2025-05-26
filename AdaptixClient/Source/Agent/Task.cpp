@@ -40,7 +40,7 @@ Task::Task(QJsonObject jsonObjTaskData)
     this->item_FinishTime  = new TaskTableWidgetItem( finishTime, this );
     this->item_CommandLine = new TaskTableWidgetItem( this->data.CommandLine, this );
     this->item_Result      = new TaskTableWidgetItem( this->data.Status, this );
-    this->item_Message     = new TaskTableWidgetItem( this->data.Message, this );
+    this->item_Message     = new TaskTableWidgetItem( TrimmedEnds(this->data.Message), this );
 
     item_CommandLine->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
     item_Message->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
@@ -94,7 +94,7 @@ void Task::Update(QJsonObject jsonObjTaskData)
 
     if ( this->data.Message.isEmpty() ) {
         this->data.Message = jsonObjTaskData["a_message"].toString();
-        this->item_Message->setText(this->data.Message);
+        this->item_Message->setText(TrimmedEnds(this->data.Message));
     }
 
     this->data.Output += jsonObjTaskData["a_text"].toString();
