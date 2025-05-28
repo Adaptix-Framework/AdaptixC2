@@ -928,8 +928,10 @@ func jobTunnel(paramsData []byte) {
 
 		tunKey := make([]byte, 16)
 		_, _ = rand.Read(tunKey)
+		tunIv := make([]byte, 16)
+		_, _ = rand.Read(tunIv)
 
-		jobPack, _ := msgpack.Marshal(utils.TunnelPack{Id: uint(AgentId), Type: profile.Type, ChannelId: params.ChannelId, Key: tunKey, Alive: active})
+		jobPack, _ := msgpack.Marshal(utils.TunnelPack{Id: uint(AgentId), Type: profile.Type, ChannelId: params.ChannelId, Key: tunKey, Iv: tunIv, Alive: active})
 		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.JOB_TUNNEL, Data: jobPack})
 		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
 
@@ -950,14 +952,12 @@ func jobTunnel(paramsData []byte) {
 			return
 		}
 
-		iv := tunKey
-
 		encCipher, _ := aes.NewCipher(tunKey)
-		encStream := cipher.NewCTR(encCipher, iv)
+		encStream := cipher.NewCTR(encCipher, tunIv)
 		streamWriter := &cipher.StreamWriter{S: encStream, W: srvConn}
 
 		decCipher, _ := aes.NewCipher(tunKey)
-		decStream := cipher.NewCTR(decCipher, iv)
+		decStream := cipher.NewCTR(decCipher, tunIv)
 		streamReader := &cipher.StreamReader{S: decStream, R: srvConn}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -1046,8 +1046,10 @@ func jobTerminal(paramsData []byte) {
 
 		tunKey := make([]byte, 16)
 		_, _ = rand.Read(tunKey)
+		tunIv := make([]byte, 16)
+		_, _ = rand.Read(tunIv)
 
-		jobPack, _ := msgpack.Marshal(utils.TermPack{Id: uint(AgentId), TermId: params.TermId, Key: tunKey, Alive: active, Status: status})
+		jobPack, _ := msgpack.Marshal(utils.TermPack{Id: uint(AgentId), TermId: params.TermId, Key: tunKey, Iv: tunIv, Alive: active, Status: status})
 		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.JOB_TERMINAL, Data: jobPack})
 		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
 
@@ -1072,9 +1074,17 @@ func jobTerminal(paramsData []byte) {
 			return
 		}
 
+		encCipher, _ := aes.NewCipher(tunKey)
+		encStream := cipher.NewCTR(encCipher, tunIv)
+		streamWriter := &cipher.StreamWriter{S: encStream, W: srvConn}
+
+		decCipher, _ := aes.NewCipher(tunKey)
+		decStream := cipher.NewCTR(decCipher, tunIv)
+		streamReader := &cipher.StreamReader{S: decStream, R: srvConn}
+
 		ctx, cancel := context.WithCancel(context.Background())
-		var cancelOnce sync.Once
-		cancelFn := func() { cancelOnce.Do(cancel) }
+		TERMINALS.Store(params.TermId, cancel)
+		defer TERMINALS.Delete(params.TermId)
 
 		var closeOnce sync.Once
 		closeAll := func() {
@@ -1093,16 +1103,23 @@ func jobTerminal(paramsData []byte) {
 
 		go func() {
 			defer wg.Done()
-			functions.RelayMsgToFile(ctx, cancelFn, srvConn, ptyProc, utils.SKey)
+			functions.RelayConnToPty(ptyProc, streamReader)
 			closeAll()
 		}()
 
 		go func() {
 			defer wg.Done()
-			functions.RelayFileToMsg(ctx, cancelFn, ptyProc, srvConn, tunKey)
+			functions.RelayPtyToConn(streamWriter, ptyProc)
+			closeAll()
+		}()
+
+		go func() {
+			<-ctx.Done()
 			closeAll()
 		}()
 
 		wg.Wait()
+
+		cancel()
 	}()
 }

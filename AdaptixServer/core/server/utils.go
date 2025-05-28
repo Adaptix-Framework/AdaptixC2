@@ -126,7 +126,8 @@ type Terminal struct {
 	TaskId     string
 	TerminalId int
 
-	agent  *Agent
+	agent *Agent
+
 	wsconn *websocket.Conn
 
 	pwSrv *io.PipeWriter

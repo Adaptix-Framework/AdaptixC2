@@ -231,7 +231,7 @@ func (handler *HTTP) processRequest(ctx *gin.Context) {
 		html := []byte(strings.ReplaceAll(handler.Config.WebPageOutput, "<<<PAYLOAD_DATA>>>", string(responseData)))
 		_, err = ctx.Writer.Write(html)
 		if err != nil {
-			fmt.Println("Failed to write to request: " + err.Error())
+			//fmt.Println("Failed to write to request: " + err.Error())
 			handler.pageError(ctx)
 			return
 		}
@@ -241,7 +241,7 @@ func (handler *HTTP) processRequest(ctx *gin.Context) {
 	return
 
 ERR:
-	fmt.Println("Error: " + err.Error())
+	//fmt.Println("Error: " + err.Error())
 	handler.pageError(ctx)
 }
 
