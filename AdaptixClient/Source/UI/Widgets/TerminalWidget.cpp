@@ -6,15 +6,16 @@ TerminalWidget::TerminalWidget(Agent* a, QWidget* w)
     this->mainWidget = w;
     this->termWidget = new QTermWidget(this, this);
 
+    this->createUI();
+
     SetFont();
     SetSettings();
     SetKeys();
 
-    this->createUI();
-
     connect(termWidget, &QWidget::customContextMenuRequested, this, &TerminalWidget::handleTerminalMenu);
 
     connect(programComboBox, &QComboBox::currentTextChanged, this, &TerminalWidget::onProgramChanged);
+    connect(keytabComboBox,  &QComboBox::currentTextChanged, this, &TerminalWidget::onKeytabChanged);
     connect(startButton,     &QPushButton::clicked,          this, &TerminalWidget::onStart);
     // connect(restartButton,   &QPushButton::clicked,          this, &TerminalWidget::onRestart);
     connect(stopButton,      &QPushButton::clicked,          this, &TerminalWidget::onStop);
@@ -48,6 +49,21 @@ void TerminalWidget::createUI()
     }
     programComboBox->addItem("Custom program");
 
+    keytabLabel = new QLabel(this);
+    keytabLabel->setText("Keytab:");
+
+    keytabComboBox = new QComboBox(this);
+    keytabComboBox->addItem("linux_console");
+    keytabComboBox->addItem("linux_default");
+    keytabComboBox->addItem("macos_macbook");
+    keytabComboBox->addItem("macos_default");
+    keytabComboBox->addItem("windows_conpty");
+    keytabComboBox->addItem("windows_winpty");
+    keytabComboBox->addItem("solaris");
+    keytabComboBox->addItem("vt100");
+    keytabComboBox->addItem("vt420pc");
+    keytabComboBox->addItem("x11");
+
     line_1 = new QFrame(this);
     line_1->setFrameShape(QFrame::VLine);
     line_1->setMinimumHeight(20);
@@ -73,6 +89,10 @@ void TerminalWidget::createUI()
     line_2->setFrameShape(QFrame::VLine);
     line_2->setMinimumHeight(20);
 
+    line_3 = new QFrame(this);
+    line_3->setFrameShape(QFrame::VLine);
+    line_3->setMinimumHeight(20);
+
     statusDescLabel = new QLabel(this);
     statusDescLabel->setText("status:");
 
@@ -84,13 +104,16 @@ void TerminalWidget::createUI()
     topHBoxLayout = new QHBoxLayout(this);
     topHBoxLayout->setContentsMargins(1, 3, 1, 3);
     topHBoxLayout->setSpacing(4);
+    topHBoxLayout->addWidget(keytabLabel);
+    topHBoxLayout->addWidget(keytabComboBox);
+    topHBoxLayout->addWidget(line_1);
     topHBoxLayout->addWidget(programInput);
     topHBoxLayout->addWidget(programComboBox);
-    topHBoxLayout->addWidget(line_1);
+    topHBoxLayout->addWidget(line_2);
     topHBoxLayout->addWidget(startButton);
     // topHBoxLayout->addWidget(restartButton);
     topHBoxLayout->addWidget(stopButton);
-    topHBoxLayout->addWidget(line_2);
+    topHBoxLayout->addWidget(line_3);
     topHBoxLayout->addWidget(statusDescLabel);
     topHBoxLayout->addWidget(statusLabel);
     topHBoxLayout->addItem(spacer);
@@ -135,6 +158,8 @@ void TerminalWidget::SetFont()
 
 #ifdef Q_OS_MACOS
     font.setFamily(QStringLiteral("Monaco"));
+#elif defined(Q_OS_WIN)
+    font.setFamily(QStringLiteral("Consolas"));
 #elif defined(Q_WS_QWS)
     font.setFamily(QStringLiteral("fixed"));
 #else
@@ -154,12 +179,18 @@ void TerminalWidget::SetSettings()
 
     termWidget->setColorScheme("iTerm2 Default");
 
-    if (this->agent->data.Os == OS_WINDOWS)
+    if (this->agent->data.Os == OS_WINDOWS) {
         termWidget->setKeyBindings("windows_conpty");
-    else if (this->agent->data.Os == OS_MAC)
+        keytabComboBox->setCurrentText("windows_conpty");
+    }
+    else if (this->agent->data.Os == OS_MAC) {
         termWidget->setKeyBindings("macos_macbook");
-    else if (this->agent->data.Os == OS_LINUX)
+        keytabComboBox->setCurrentText("macos_macbook");
+    }
+    else if (this->agent->data.Os == OS_LINUX) {
         termWidget->setKeyBindings("linux_console");
+        keytabComboBox->setCurrentText("linux_console");
+    }
 
     termWidget->setContextMenuPolicy(Qt::CustomContextMenu);
 }
@@ -303,6 +334,11 @@ void TerminalWidget::onProgramChanged()
         programInput->setText("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
         programInput->setEnabled(false);
     }
+}
+
+void TerminalWidget::onKeytabChanged()
+{
+    termWidget->setKeyBindings(keytabComboBox->currentText());
 }
 
 void TerminalWidget::recvDataFromSocket(const QByteArray &msg)
