@@ -1,15 +1,14 @@
 package server
 
 import (
-	"AdaptixServer/core/utils/krypt"
-	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
+	"io"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error {
@@ -62,7 +61,9 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 		agent:      agent,
 		wsconn:     wsconn,
 	}
-	terminal.ctx, terminal.ctxCancel = context.WithCancel(context.Background())
+
+	terminal.prSrv, terminal.pwSrv = io.Pipe()
+	terminal.prTun, terminal.pwTun = io.Pipe()
 
 	terminal.handlerStart, terminal.handlerWrite, terminal.handlerClose, err = ts.Extender.ExAgentTerminalCallbacks(agent.Data)
 	if err != nil {
@@ -73,24 +74,16 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 	if err != nil {
 		return err
 	}
-	if taskData.TaskId == "" {
-		taskData.TaskId, _ = krypt.GenerateUID(8)
-	}
 
-	terminal.TaskId = taskData.TaskId
+	tunnelManageTask(agent, taskData)
 
 	ts.terminals.Put(terminalId, terminal)
-
-	agent.TunnelConnectTask.Put(taskData)
 
 	return nil
 }
 
 func (ts *Teamserver) TsAgentTerminalCloseChannel(terminalId string, status string) error {
-
 	_ = ts.TsTerminalConnClose(terminalId, status)
-
-	/// ToDo: send close Msg
 	return nil
 }
 
@@ -100,18 +93,17 @@ func (ts *Teamserver) TsTerminalConnExists(terminalId string) bool {
 	return ts.terminals.Contains(terminalId)
 }
 
-func (ts *Teamserver) TsTerminalConnData(terminalId string, data []byte) {
+func (ts *Teamserver) TsTerminalGetPipe(AgentId string, terminalId string) (*io.PipeReader, *io.PipeWriter, error) {
 	value, ok := ts.terminals.Get(terminalId)
 	if !ok {
-		return
+		return nil, nil, errors.New("terminal not found")
 	}
 	terminal, _ := value.(*Terminal)
 
-	go terminalDataToWebSocket(terminal, data)
+	return terminal.prSrv, terminal.pwTun, nil
 }
 
 func (ts *Teamserver) TsTerminalConnResume(agentId string, terminalId string) {
-
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
 		return
@@ -124,7 +116,7 @@ func (ts *Teamserver) TsTerminalConnResume(agentId string, terminalId string) {
 	}
 	terminal, _ := value.(*Terminal)
 
-	go webSocketToTerminalData(agent, terminal)
+	relayWebsocketToTerminal(agent, terminal)
 }
 
 func (ts *Teamserver) TsTerminalConnClose(terminalId string, status string) error {
@@ -134,51 +126,56 @@ func (ts *Teamserver) TsTerminalConnClose(terminalId string, status string) erro
 	}
 	terminal, _ := value.(*Terminal)
 
-	terminal.ctxCancel()
 	terminal.wsconn.Close()
+
+	terminal.prSrv.Close()
+	terminal.pwSrv.Close()
+	terminal.prTun.Close()
+	terminal.pwTun.Close()
 
 	return nil
 }
 
 ///
 
-func sendTerminalTaskData(agent *Agent, terminalId int, taskData adaptix.TaskData) {
-	if taskData.TaskId == "" {
-		taskData.TaskId, _ = krypt.GenerateUID(8)
-	}
-	taskData.AgentId = agent.Data.Id
-
-	taskTunnel := adaptix.TaskDataTunnel{
-		ChannelId: terminalId,
-		Data:      taskData,
-	}
-
-	agent.TunnelQueue.Put(taskTunnel)
-}
-
-func webSocketToTerminalData(agent *Agent, terminal *Terminal) {
-	var taskData adaptix.TaskData
-	for {
-		select {
-
-		case <-terminal.ctx.Done():
-			return
-
-		default:
-			_, data, err := terminal.wsconn.ReadMessage()
+func relayWebsocketToTerminal(agent *Agent, terminal *Terminal) {
+	var closeOnce sync.Once
+	closeChannel := func() {
+		closeOnce.Do(func() {
+			_ = terminal.wsconn.Close()
+			taskData, err := terminal.handlerClose(terminal.TerminalId)
 			if err != nil {
-				taskData, _ = terminal.handlerClose(terminal.TerminalId)
-				terminal.ctxCancel()
-			} else {
-				taskData, _ = terminal.handlerWrite(terminal.TerminalId, data)
+				return
 			}
-			sendTerminalTaskData(agent, terminal.TerminalId, taskData)
-		}
+			tunnelManageTask(agent, taskData)
+		})
 	}
-}
 
-func terminalDataToWebSocket(terminal *Terminal, data []byte) {
-	terminal.mu.Lock()
-	defer terminal.mu.Unlock()
-	_ = terminal.wsconn.WriteMessage(websocket.BinaryMessage, data)
+	go func() {
+		for {
+			_, msg, err := terminal.wsconn.ReadMessage()
+			if err != nil {
+				break
+			}
+			_, err = terminal.pwSrv.Write(msg)
+			if err != nil {
+				break
+			}
+		}
+		closeChannel()
+	}()
+
+	go func() {
+		buf := make([]byte, 0x8000)
+		for {
+			n, err := terminal.prTun.Read(buf)
+			if err != nil {
+				break
+			}
+			if err := terminal.wsconn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+				break
+			}
+		}
+		closeChannel()
+	}()
 }

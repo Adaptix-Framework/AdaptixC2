@@ -1093,7 +1093,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 	size := packer.ParseInt32()
 	if size-4 != packer.Size() {
-		fmt.Println("Invalid tasks data")
+		//fmt.Println("Invalid tasks data")
 		return outTasks
 	}
 

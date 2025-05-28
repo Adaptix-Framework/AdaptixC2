@@ -51,6 +51,7 @@ type TunnelPack struct {
 	Type      uint   `msgpack:"type"`
 	ChannelId int    `msgpack:"channel_id"`
 	Key       []byte `msgpack:"key"`
+	Iv        []byte `msgpack:"iv"`
 	Alive     bool   `msgpack:"alive"`
 }
 
@@ -58,6 +59,7 @@ type TermPack struct {
 	Id     uint   `msgpack:"id"`
 	TermId int    `msgpack:"term_id"`
 	Key    []byte `msgpack:"key"`
+	Iv     []byte `msgpack:"iv"`
 	Alive  bool   `msgpack:"alive"`
 	Status string `msgpack:"status"`
 }
