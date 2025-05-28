@@ -4,10 +4,12 @@
 package functions
 
 import (
+	"crypto/cipher"
 	"fmt"
 	"github.com/creack/pty"
 	"github.com/shirou/gopsutil/v4/process"
 	"gopher/utils"
+	"io"
 	"os"
 	"os/exec"
 	"os/user"

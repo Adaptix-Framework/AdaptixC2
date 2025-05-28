@@ -10,7 +10,10 @@
         <file>./kb-layouts/macos_default.keytab</file>
         <file>./kb-layouts/macos_macbook.keytab</file>
         <file>./kb-layouts/solaris.keytab</file>
+        <file>./kb-layouts/vt100.keytab</file>
+        <file>./kb-layouts/vt420pc.keytab</file>
         <file>./kb-layouts/windows_conpty.keytab</file>
         <file>./kb-layouts/windows_winpty.keytab</file>
+        <file>./kb-layouts/x11.keytab</file>
     </qresource>
 </RCC>

@@ -17,10 +17,13 @@ class TerminalWidget : public QWidget
      QLabel*      statusLabel     = nullptr;
      QFrame*      line_1          = nullptr;
      QFrame*      line_2          = nullptr;
+     QFrame*      line_3          = nullptr;
      QPushButton* startButton     = nullptr;
      // QPushButton* restartButton   = nullptr;
      QPushButton* stopButton      = nullptr;
      QComboBox*   programComboBox = nullptr;
+     QLabel*      keytabLabel     = nullptr;
+     QComboBox*   keytabComboBox  = nullptr;
      QLineEdit*   programInput    = nullptr;
      QSpacerItem* spacer          = nullptr;
 
@@ -50,6 +53,7 @@ public slots:
      void onRestart();
      void onStop();
      void onProgramChanged();
+     void onKeytabChanged();
      void recvDataFromSocket(const QByteArray &msg);
 };
 
