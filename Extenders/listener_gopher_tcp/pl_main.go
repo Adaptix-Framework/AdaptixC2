@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/Adaptix-Framework/axc2"
+	"io"
 )
 
 type Teamserver interface {
@@ -19,10 +20,11 @@ type Teamserver interface {
 
 	TsAgentTerminalCloseChannel(terminalId string, status string) error
 	TsTerminalConnExists(terminalId string) bool
-	TsTerminalConnData(terminalId string, data []byte)
 	TsTerminalConnResume(agentId string, terminalId string)
+	TsTerminalGetPipe(AgentId string, terminalId string) (*io.PipeReader, *io.PipeWriter, error)
 
-	TsTunnelConnectionResume(AgentId string, channelId int)
+	TsTunnelGetPipe(AgentId string, channelId int) (*io.PipeReader, *io.PipeWriter, error)
+	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionClose(channelId int)
 	TsTunnelConnectionData(channelId int, data []byte)
 }

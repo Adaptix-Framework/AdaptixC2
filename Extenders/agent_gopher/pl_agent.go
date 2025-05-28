@@ -1356,17 +1356,16 @@ func TunnelCreateUDP(channelId int, address string, port int) ([]byte, error) {
 }
 
 func TunnelWriteTCP(channelId int, data []byte) ([]byte, error) {
-	cmd := Command{Code: 0, Data: data}
-	return msgpack.Marshal(cmd)
+	return data, nil
 }
 
 func TunnelWriteUDP(channelId int, data []byte) ([]byte, error) {
-	cmd := Command{Code: 0, Data: data}
-	return msgpack.Marshal(cmd)
+	return data, nil
 }
 
 func TunnelClose(channelId int) ([]byte, error) {
-	cmd := Command{Code: 1, Data: nil}
+	packerData, _ := msgpack.Marshal(ParamsTunnelStop{ChannelId: channelId})
+	cmd := Command{Code: COMMAND_TUNNEL_STOP, Data: packerData}
 	return msgpack.Marshal(cmd)
 }
 
@@ -1383,11 +1382,11 @@ func TerminalStart(terminalId int, program string, sizeH int, sizeW int) ([]byte
 }
 
 func TerminalWrite(terminalId int, data []byte) ([]byte, error) {
-	cmd := Command{Code: 0, Data: data}
-	return msgpack.Marshal(cmd)
+	return nil, nil
 }
 
 func TerminalClose(terminalId int) ([]byte, error) {
-	cmd := Command{Code: 1, Data: nil}
+	packerData, _ := msgpack.Marshal(ParamsTerminalStop{TermId: terminalId})
+	cmd := Command{Code: COMMAND_TERMINAL_STOP, Data: packerData}
 	return msgpack.Marshal(cmd)
 }
