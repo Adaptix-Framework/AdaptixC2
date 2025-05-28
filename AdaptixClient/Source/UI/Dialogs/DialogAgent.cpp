@@ -167,9 +167,9 @@ void DialogAgent::onButtonGenerate()
 
     QString message = QString();
     bool ok = false;
-    bool result = HttpReqAgentGenerate( listenerName, listenerType, agentName, operatingSystem, configData, authProfile, &message, &ok);
+    bool result = HttpReqAgentGenerate(listenerName, listenerType, agentName, operatingSystem, configData, authProfile, &message, &ok);
     if( !result ){
-        MessageError("JWT error");
+        MessageError("Server is not responding");
         return;
     }
     if ( !ok ) {

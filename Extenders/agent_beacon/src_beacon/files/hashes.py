@@ -166,6 +166,7 @@ GetProcAddress
 GetModuleHandleA
 FreeLibrary
 __C_specific_handler
+AxAddScreenshot
 
 // wininet
 InternetOpenA

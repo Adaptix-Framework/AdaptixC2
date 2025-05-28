@@ -1,11 +1,9 @@
 cmake_minimum_required(VERSION 3.28)
-project(AdaptixClient)
+project(AdaptixClient LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
-
 
 if(UNIX)
     find_package( OpenSSL REQUIRED )
@@ -15,18 +13,70 @@ elseif(WIN32)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-subsystem,windows")
 endif()
 
-include_directories( Headers )
-
 find_package(Qt6
-        COMPONENTS
+        REQUIRED COMPONENTS
         Core
         Gui
         Widgets
         Network
         WebSockets
         Sql
-        REQUIRED
 )
+
+include_directories(
+        Headers
+        Libs
+)
+
+### KONSOLE
+
+set(KONSOLE_SOURCES
+
+        Libs/Konsole/res.qrc
+
+        Libs/Konsole/util/utf8proc.c
+        Libs/Konsole/util/CharWidth.cpp
+        Libs/Konsole/util/ColorScheme.cpp
+        Libs/Konsole/util/Filter.cpp
+        Libs/Konsole/util/History.cpp
+        Libs/Konsole/util/HistorySearch.cpp
+        Libs/Konsole/util/KeyboardTranslator.cpp
+        Libs/Konsole/util/SearchBar.cpp
+        Libs/Konsole/util/TerminalCharacterDecoder.cpp
+        Libs/Konsole/Emulation.cpp
+        Libs/Konsole/Vt102Emulation.cpp
+        Libs/Konsole/Screen.cpp
+        Libs/Konsole/ScreenWindow.cpp
+        Libs/Konsole/TerminalDisplay.cpp
+        Libs/Konsole/konsole.cpp
+)
+
+set_source_files_properties(
+        Libs/Konsole/util/utf8proc.c
+        PROPERTIES LANGUAGE C
+)
+
+set(KONSOLE_HEADERS
+        Libs/Konsole/util/utf8proc.h
+        Libs/Konsole/util/CharWidth.h
+        Libs/Konsole/util/CharacterColor.h
+        Libs/Konsole/util/Character.h
+        Libs/Konsole/util/ColorScheme.h
+        Libs/Konsole/util/Filter.h
+        Libs/Konsole/util/History.h
+        Libs/Konsole/util/HistorySearch.h
+        Libs/Konsole/util/KeyboardTranslator.h
+        Libs/Konsole/util/SearchBar.h
+        Libs/Konsole/util/TerminalCharacterDecoder.h
+        Libs/Konsole/Emulation.h
+        Libs/Konsole/Vt102Emulation.h
+        Libs/Konsole/Screen.h
+        Libs/Konsole/ScreenWindow.h
+        Libs/Konsole/TerminalDisplay.h
+        Libs/Konsole/konsole.h
+)
+
+###
 
 SET( HEADERS
         Headers/main.h
@@ -72,15 +122,23 @@ SET( HEADERS
         Headers/UI/Graph/GraphScene.h
         Headers/UI/Graph/LayoutTreeLeft.h
         Headers/UI/Widgets/ScreenshotsWidget.h
+        Headers/UI/Dialogs/DialogTunnel.h
+        Headers/Client/TunnelEndpoint.h
+        Headers/Client/TunnelWorker.h
+        Headers/UI/Widgets/TerminalWidget.h
+        Headers/Client/TerminalWorker.h
 )
 
 add_executable(AdaptixClient
+        ${KONSOLE_SOURCES}
+        ${KONSOLE_HEADERS}
 
         ${HEADERS}
 
         Source/main.cpp
 
         Resources/Resources.qrc
+
         Source/Utils/Logs.cpp
         Source/UI/Dialogs/DialogConnect.cpp
         Source/Utils/Convert.cpp
@@ -123,10 +181,18 @@ add_executable(AdaptixClient
         Source/UI/Graph/GraphScene.cpp
         Source/UI/Graph/LayoutTreeLeft.cpp
         Source/UI/Widgets/ScreenshotsWidget.cpp
+        Source/UI/Dialogs/DialogTunnel.cpp
+        Source/Client/TunnelEndpoint.cpp
+        Source/Client/TunnelWorker.cpp
+        Source/UI/Widgets/TerminalWidget.cpp
+        Source/Client/TerminalWorker.cpp
 )
+
+target_compile_definitions(AdaptixClient PRIVATE QT_DEPRECATED_WARNINGS )
 
 if(UNIX)
     target_link_libraries( AdaptixClient
+            PRIVATE
             Qt6::Core
             Qt6::Gui
             Qt6::Widgets
@@ -134,9 +200,12 @@ if(UNIX)
             Qt6::WebSockets
             Qt6::Sql
             OpenSSL::Crypto
+
+            pthread dl
     )
 elseif(APPLE)
     target_link_libraries( AdaptixClient
+            PRIVATE
             Qt6::Core
             Qt6::Gui
             Qt6::Widgets
@@ -144,14 +213,19 @@ elseif(APPLE)
             Qt6::WebSockets
             Qt6::Sql
             OpenSSL::Crypto
+
+            pthread dl
     )
 else()
     target_link_libraries( AdaptixClient
+            PRIVATE
             Qt6::Core
             Qt6::Gui
             Qt6::Widgets
             Qt6::Network
             Qt6::WebSockets
             Qt6::Sql
+
+            wsock32 ws2_32 crypt32 iphlpapi netapi32 version winmm userenv
     )
 endif()

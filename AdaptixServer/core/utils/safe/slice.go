@@ -25,21 +25,21 @@ func (sl *Slice) Put(value interface{}) {
 	sl.items = append(sl.items, value)
 }
 
-func (sl *Slice) Get(index int) (interface{}, bool) {
+func (sl *Slice) Get(index uint) (interface{}, bool) {
 	sl.mutex.RLock()
 	defer sl.mutex.RUnlock()
 
-	if index < 0 || index >= len(sl.items) {
+	if index < 0 || index >= uint(len(sl.items)) {
 		return nil, false
 	}
 	return sl.items[index], true
 }
 
-func (sl *Slice) Delete(index int) {
+func (sl *Slice) Delete(index uint) {
 	sl.mutex.Lock()
 	defer sl.mutex.Unlock()
 
-	if index < 0 || index >= len(sl.items) {
+	if index < 0 || index >= uint(len(sl.items)) {
 		return
 	}
 	sl.items = append(sl.items[:index], sl.items[index+1:]...)
@@ -66,10 +66,10 @@ func (sl *Slice) CutArray() []interface{} {
 	return array
 }
 
-func (sl *Slice) Len() int {
+func (sl *Slice) Len() uint {
 	sl.mutex.RLock()
 	defer sl.mutex.RUnlock()
-	return len(sl.items)
+	return uint(len(sl.items))
 }
 
 func (sl *Slice) Iterator() <-chan SliceItem {

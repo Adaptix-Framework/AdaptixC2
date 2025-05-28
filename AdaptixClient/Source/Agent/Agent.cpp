@@ -121,6 +121,9 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 
     if (this->browsers.ProcessBrowser)
         this->ProcessBrowser = new BrowserProcessWidget(this);
+
+    if (this->browsers.RemoteTerminal)
+        this->Terminal = new TerminalWidget(this, adaptixWidget);
 }
 
 Agent::~Agent() = default;
@@ -432,7 +435,7 @@ QString Agent::BrowserDownload(const QString &path) const
 {
     QString message = QString();
     bool ok = false;
-    bool result = HttpReqBrowserDownloadStart( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
+    bool result = HttpReqDownloadStart( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
         return "JWT error";
 

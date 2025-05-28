@@ -6,6 +6,7 @@
 #include <UI/Graph/GraphItem.h>
 #include <Agent/Commander.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/TerminalWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
@@ -13,6 +14,7 @@
 class ConsoleWidget;
 class BrowserFilesWidget;
 class BrowserProcessWidget;
+class TerminalWidget;
 class AdaptixWidget;
 
 class Agent
@@ -51,6 +53,7 @@ public:
     ConsoleWidget*        Console        = nullptr;
     BrowserFilesWidget*   FileBrowser    = nullptr;
     BrowserProcessWidget* ProcessBrowser = nullptr;
+    TerminalWidget*       Terminal       = nullptr;
 
     bool active = true;
     bool show   = true;

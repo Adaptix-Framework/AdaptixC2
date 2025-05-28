@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"context"
@@ -6,19 +6,21 @@ import (
 )
 
 type Connection struct {
-	packType     int
-	conn         net.Conn
-	ctx          context.Context
-	handleCancel context.CancelFunc
-	jobCancel    context.CancelFunc
+	PackType     int
+	Conn         net.Conn
+	Ctx          context.Context
+	HandleCancel context.CancelFunc
+	JobCancel    context.CancelFunc
 }
 
 /// Listener
 
 const (
-	INIT_PACK  = 1
-	EXFIL_PACK = 2
-	JOB_PACK   = 3
+	INIT_PACK    = 1
+	EXFIL_PACK   = 2
+	JOB_PACK     = 3
+	JOB_TUNNEL   = 4
+	JOB_TERMINAL = 5
 )
 
 type StartMsg struct {
@@ -44,6 +46,24 @@ type JobPack struct {
 	Task string `msgpack:"task"`
 }
 
+type TunnelPack struct {
+	Id        uint   `msgpack:"id"`
+	Type      uint   `msgpack:"type"`
+	ChannelId int    `msgpack:"channel_id"`
+	Key       []byte `msgpack:"key"`
+	Iv        []byte `msgpack:"iv"`
+	Alive     bool   `msgpack:"alive"`
+}
+
+type TermPack struct {
+	Id     uint   `msgpack:"id"`
+	TermId int    `msgpack:"term_id"`
+	Key    []byte `msgpack:"key"`
+	Iv     []byte `msgpack:"iv"`
+	Alive  bool   `msgpack:"alive"`
+	Status string `msgpack:"status"`
+}
+
 /// Agent
 
 type Profile struct {
@@ -65,6 +85,8 @@ type SessionInfo struct {
 	Host       string `msgpack:"host"`
 	Ipaddr     string `msgpack:"ipaddr"`
 	Elevated   bool   `msgpack:"elevated"`
+	Acp        uint32 `msgpack:"acp"`
+	Oem        uint32 `msgpack:"oem"`
 	Os         string `msgpack:"os"`
 	OSVersion  string `msgpack:"os_version"`
 	EncryptKey []byte `msgpack:"encrypt_key"`
@@ -242,6 +264,27 @@ type ParamsJobKill struct {
 	Id string `msgpack:"id"`
 }
 
+type ParamsTunnelStart struct {
+	Proto     string `msgpack:"proto"`
+	ChannelId int    `msgpack:"channel_id"`
+	Address   string `msgpack:"address"`
+}
+
+type ParamsTunnelStop struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
+type ParamsTerminalStart struct {
+	TermId  int    `msgpack:"term_id"`
+	Program string `msgpack:"program"`
+	Height  int    `msgpack:"height"`
+	Width   int    `msgpack:"width"`
+}
+
+type ParamsTerminalStop struct {
+	TermId int `msgpack:"term_id"`
+}
+
 const (
 	COMMAND_ERROR      = 0
 	COMMAND_PWD        = 1
@@ -263,4 +306,10 @@ const (
 	COMMAND_RUN        = 17
 	COMMAND_JOB_LIST   = 18
 	COMMAND_JOB_KILL   = 19
+
+	COMMAND_TUNNEL_START = 31
+	COMMAND_TUNNEL_STOP  = 32
+
+	COMMAND_TERMINAL_START = 35
+	COMMAND_TERMINAL_STOP  = 36
 )

@@ -102,7 +102,8 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 		}
 
 	case TYPE_PROXY_DATA:
-		agent.TunnelQueue.Put(taskData)
+		fmt.Println("----TYPE_PROXY_DATA----")
+	//agent.TunnelQueue.Put(taskData)
 
 	default:
 		break
@@ -241,7 +242,7 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 	agent, _ := value.(*Agent)
 
 	var task adaptix.TaskData
-	for i := 0; i < agent.TasksQueue.Len(); i++ {
+	for i := uint(0); i < agent.TasksQueue.Len(); i++ {
 		if value, ok = agent.TasksQueue.Get(i); ok {
 			task = value.(adaptix.TaskData)
 			if task.TaskId == taskId {
@@ -267,115 +268,6 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 	return nil
 }
 
-/////
-
-func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return false
-	}
-	agent := value.(*Agent)
-
-	if !first {
-		if agent.TasksQueue.Len() > 0 || agent.TunnelQueue.Len() > 0 {
-			return true
-		}
-	}
-
-	for i := 0; i < agent.PivotChilds.Len(); i++ {
-		value, ok = agent.PivotChilds.Get(i)
-		if ok {
-			pivotData := value.(*adaptix.PivotData)
-			if ts.TsTasksPivotExists(pivotData.ChildAgentId, false) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (ts *Teamserver) TsTaskQueueGetAvailable(agentId string, availableSize int) ([]adaptix.TaskData, error) {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
-	}
-	agent, _ := value.(*Agent)
-
-	/// TASKS QUEUE
-
-	var sendTasks []string
-	tasksSize := 0
-	var tasks []adaptix.TaskData
-	for i := 0; i < agent.TasksQueue.Len(); i++ {
-		value, ok = agent.TasksQueue.Get(i)
-		if ok {
-			taskData := value.(adaptix.TaskData)
-			if tasksSize+len(taskData.Data) < availableSize {
-				tasks = append(tasks, taskData)
-				agent.RunningTasks.Put(taskData.TaskId, taskData)
-				agent.TasksQueue.Delete(i)
-				i--
-				sendTasks = append(sendTasks, taskData.TaskId)
-				tasksSize += len(taskData.Data)
-			} else {
-				break
-			}
-		} else {
-			break
-		}
-	}
-
-	if len(sendTasks) > 0 {
-		packet := CreateSpAgentTaskSend(sendTasks)
-		ts.TsSyncAllClients(packet)
-	}
-
-	/// TUNNELS QUEUE
-
-	for i := 0; i < agent.TunnelQueue.Len(); i++ {
-		value, ok = agent.TunnelQueue.Get(i)
-		if ok {
-			tunnelTaskData := value.(adaptix.TaskData)
-			if tasksSize+len(tunnelTaskData.Data) < availableSize {
-				tasks = append(tasks, tunnelTaskData)
-				agent.TunnelQueue.Delete(i)
-				i--
-				tasksSize += len(tunnelTaskData.Data)
-			} else {
-				break
-			}
-		} else {
-			break
-		}
-	}
-
-	/// PIVOTS QUEUE
-
-	for i := 0; i < agent.PivotChilds.Len(); i++ {
-		value, ok = agent.PivotChilds.Get(i)
-		if ok {
-			pivotData := value.(*adaptix.PivotData)
-			lostSize := availableSize - tasksSize
-			if availableSize > 0 {
-				data, err := ts.TsAgentGetHostedTasks(pivotData.ChildAgentId, lostSize)
-				if err != nil {
-					continue
-				}
-				pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.Data.Name, pivotData.PivotId, data)
-				if err != nil {
-					continue
-				}
-				tasks = append(tasks, pivotTaskData)
-				tasksSize += len(pivotTaskData.Data)
-			}
-		} else {
-			break
-		}
-	}
-
-	return tasks, nil
-}
-
 func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
@@ -385,7 +277,7 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 
 	var task adaptix.TaskData
 	found := false
-	for i := 0; i < agent.TasksQueue.Len(); i++ {
+	for i := uint(0); i < agent.TasksQueue.Len(); i++ {
 		if value, ok = agent.TasksQueue.Get(i); ok {
 			task = value.(adaptix.TaskData)
 			if task.TaskId == taskId {
@@ -416,4 +308,227 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 	}
 	ts.TsTaskCreate(agent.Data.Id, "job kill "+taskId, "", taskData)
 	return nil
+}
+
+///// Get Tasks
+
+func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error) {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	var tasks []adaptix.TaskData
+	tasksSize := 0
+
+	/// TASKS QUEUE
+
+	var sendTasks []string
+	for i := uint(0); i < agent.TasksQueue.Len(); i++ {
+		value, ok = agent.TasksQueue.Get(i)
+		if ok {
+			taskData := value.(adaptix.TaskData)
+			if tasksSize+len(taskData.Data) < availableSize {
+				tasks = append(tasks, taskData)
+				agent.RunningTasks.Put(taskData.TaskId, taskData)
+				agent.TasksQueue.Delete(i)
+				i--
+				sendTasks = append(sendTasks, taskData.TaskId)
+				tasksSize += len(taskData.Data)
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+	if len(sendTasks) > 0 {
+		packet := CreateSpAgentTaskSend(sendTasks)
+		ts.TsSyncAllClients(packet)
+	}
+
+	for i := uint(0); i < agent.TunnelConnectTasks.Len(); i++ {
+		value, ok = agent.TunnelConnectTasks.Get(i)
+		if ok {
+			taskData := value.(adaptix.TaskData)
+			if tasksSize+len(taskData.Data) < availableSize {
+				tasks = append(tasks, taskData)
+				agent.TunnelConnectTasks.Delete(i)
+				i--
+				tasksSize += len(taskData.Data)
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+
+	/// TUNNELS QUEUE
+
+	for i := uint(0); i < agent.TunnelQueue.Len(); i++ {
+		value, ok = agent.TunnelQueue.Get(i)
+		if ok {
+			taskDataTunnel := value.(adaptix.TaskDataTunnel)
+			if tasksSize+len(taskDataTunnel.Data.Data) < availableSize {
+				tasks = append(tasks, taskDataTunnel.Data)
+				agent.TunnelQueue.Delete(i)
+				i--
+				tasksSize += len(taskDataTunnel.Data.Data)
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+
+	/// PIVOTS QUEUE
+
+	for i := uint(0); i < agent.PivotChilds.Len(); i++ {
+		value, ok = agent.PivotChilds.Get(i)
+		if ok {
+			pivotData := value.(*adaptix.PivotData)
+			lostSize := availableSize - tasksSize
+			if availableSize > 0 {
+				data, err := ts.TsAgentGetHostedTasksAll(pivotData.ChildAgentId, lostSize)
+				if err != nil {
+					continue
+				}
+				pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.Data.Name, pivotData.PivotId, data)
+				if err != nil {
+					continue
+				}
+				tasks = append(tasks, pivotTaskData)
+				tasksSize += len(pivotTaskData.Data)
+			}
+		} else {
+			break
+		}
+	}
+
+	return tasks, nil
+}
+
+func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int) ([]adaptix.TaskData, int, error) {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	var tasks []adaptix.TaskData
+	tasksSize := 0
+
+	/// TASKS QUEUE
+
+	var sendTasks []string
+	for i := uint(0); i < agent.TasksQueue.Len(); i++ {
+		value, ok = agent.TasksQueue.Get(i)
+		if ok {
+			taskData := value.(adaptix.TaskData)
+			if tasksSize+len(taskData.Data) < availableSize {
+				tasks = append(tasks, taskData)
+				agent.RunningTasks.Put(taskData.TaskId, taskData)
+				agent.TasksQueue.Delete(i)
+				i--
+				sendTasks = append(sendTasks, taskData.TaskId)
+				tasksSize += len(taskData.Data)
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+
+	if len(sendTasks) > 0 {
+		packet := CreateSpAgentTaskSend(sendTasks)
+		ts.TsSyncAllClients(packet)
+	}
+
+	for i := uint(0); i < agent.TunnelConnectTasks.Len(); i++ {
+		value, ok = agent.TunnelConnectTasks.Get(i)
+		if ok {
+			taskData := value.(adaptix.TaskData)
+			if tasksSize+len(taskData.Data) < availableSize {
+				tasks = append(tasks, taskData)
+				agent.TunnelConnectTasks.Delete(i)
+				i--
+				//sendTasks = append(sendTasks, taskData.TaskId)
+				tasksSize += len(taskData.Data)
+			} else {
+				break
+			}
+		} else {
+			break
+		}
+	}
+
+	return tasks, tasksSize, nil
+}
+
+/// Get Pivot Tasks
+
+func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return false
+	}
+	agent := value.(*Agent)
+
+	if !first {
+		if agent.TasksQueue.Len() > 0 || agent.TunnelQueue.Len() > 0 {
+			return true
+		}
+	}
+
+	for i := uint(0); i < agent.PivotChilds.Len(); i++ {
+		value, ok = agent.PivotChilds.Get(i)
+		if ok {
+			pivotData := value.(*adaptix.PivotData)
+			if ts.TsTasksPivotExists(pivotData.ChildAgentId, false) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (ts *Teamserver) TsTaskGetAvailablePivotAll(agentId string, availableSize int) ([]adaptix.TaskData, error) {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	var tasks []adaptix.TaskData
+	tasksSize := 0
+
+	/// PIVOTS QUEUE
+
+	for i := uint(0); i < agent.PivotChilds.Len(); i++ {
+		value, ok = agent.PivotChilds.Get(i)
+		if ok {
+			pivotData := value.(*adaptix.PivotData)
+			lostSize := availableSize - tasksSize
+			if availableSize > 0 {
+				data, err := ts.TsAgentGetHostedTasksAll(pivotData.ChildAgentId, lostSize)
+				if err != nil {
+					continue
+				}
+				pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.Data.Name, pivotData.PivotId, data)
+				if err != nil {
+					continue
+				}
+				tasks = append(tasks, pivotTaskData)
+				tasksSize += len(pivotTaskData.Data)
+			}
+		} else {
+			break
+		}
+	}
+
+	return tasks, nil
 }

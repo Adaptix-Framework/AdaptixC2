@@ -439,6 +439,7 @@
     <ClCompile Include="WaitMask.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="adaptix.h" />
     <ClInclude Include="Agent.h" />
     <ClInclude Include="AgentConfig.h" />
     <ClInclude Include="AgentInfo.h" />

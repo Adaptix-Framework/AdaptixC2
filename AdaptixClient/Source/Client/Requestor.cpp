@@ -25,7 +25,7 @@ QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QStri
         reply->abort();
         eventLoop.quit();
     });
-    timeoutTimer.start(5000);
+    timeoutTimer.start(3000);
 
     eventLoop.exec();
 
@@ -139,18 +139,60 @@ bool HttpReqListenerStop(const QString &listenerName, const QString &listenerTyp
 
 /// AGENT
 
+QJsonObject HttpReqTimeout( int timeout, const QString &sUrl, const QByteArray &jsonData, const QString &token )
+{
+    QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
+    sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    QSslConfiguration::setDefaultConfiguration(sslConfig);
+
+    QUrl url(sUrl);
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    if( !token.isEmpty() ) {
+        QString bearerToken = "Bearer " + token;
+        request.setRawHeader("Authorization", bearerToken.toUtf8());
+    }
+
+    QNetworkAccessManager manager;
+    QNetworkReply *reply = manager.post(request, jsonData);
+
+    QEventLoop eventLoop;
+    QObject::connect(reply, &QNetworkReply::finished, &eventLoop, &QEventLoop::quit);
+
+    QTimer timeoutTimer;
+    QObject::connect(&timeoutTimer, &QTimer::timeout, [&]() {
+        reply->abort();
+        eventLoop.quit();
+    });
+    timeoutTimer.start(timeout);
+
+    eventLoop.exec();
+
+    QJsonObject jsonObject;
+    if (reply->error() == QNetworkReply::NoError) {
+        QByteArray response_data = reply->readAll();
+        QJsonParseError parseError;
+        QJsonDocument jsonResponse = QJsonDocument::fromJson(response_data, &parseError);
+        if (parseError.error == QJsonParseError::NoError && jsonResponse.isObject()) {
+            jsonObject = jsonResponse.object();
+        }
+    }
+    reply->deleteLater();
+    return jsonObject;
+}
+
 bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &os, const QString &configData, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["listener_name"]    = listenerName;
     dataJson["listener_type"]    = listenerType;
-    dataJson["agent"]               = agentName;
+    dataJson["agent"]            = agentName;
     dataJson["operating_system"] = os;
     dataJson["config"]           = configData;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/agent/generate";
-    QJsonObject jsonObject = HttpReq( sUrl, jsonData, profile.GetAccessToken() );
+    QJsonObject jsonObject = HttpReqTimeout( 30000,sUrl, jsonData, profile.GetAccessToken() );
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
         *ok = jsonObject["ok"].toBool();
@@ -325,33 +367,16 @@ bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile
     return false;
 }
 
-/// BROWSER
+/// DOWNLOADS
 
-bool HttpReqBrowserDownload(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok )
-{
-    QJsonObject dataJson;
-    dataJson["action"] = action;
-    dataJson["file"] = fileId;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    QString sUrl = profile.GetURL() + "/browser/download/state";
-    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
-    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
-        *message = jsonObject["message"].toString();
-        *ok = jsonObject["ok"].toBool();
-        return true;
-    }
-    return false;
-}
-
-bool HttpReqBrowserDownloadStart(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqDownloadStart(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
     dataJson["agent_id"] = agentId;
     dataJson["path"] = path;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString sUrl = profile.GetURL() + "/browser/download/start";
+    QString sUrl = profile.GetURL() + "/download/start";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
@@ -360,6 +385,24 @@ bool HttpReqBrowserDownloadStart(const QString &agentId, const QString &path, Au
     }
     return false;
 }
+
+bool HttpReqDownloadAction(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["file_id"] = fileId;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/download/" + action;
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+/// BROWSER
 
 bool HttpReqBrowserDisks(const QString &agentId, AuthProfile profile, QString* message, bool* ok )
 {
@@ -429,6 +472,18 @@ bool HttpReqBrowserUpload(const QString &agentId, const QString &path, const QSt
 }
 
 ///TUNNEL
+
+bool HttpReqTunnelStartServer(const QString &tunnelType, const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok)
+{
+    QString sUrl = profile.GetURL() + "/tunnel/start/" + tunnelType;
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
 
 bool HttpReqTunnelStop(const QString &tunnelId, AuthProfile profile, QString* message, bool* ok )
 {

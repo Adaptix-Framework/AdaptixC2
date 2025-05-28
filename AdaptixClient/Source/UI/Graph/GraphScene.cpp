@@ -2,6 +2,7 @@
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
 
 GraphScene::GraphScene(int gridSize, QWidget* m, QObject* parent) : QGraphicsScene(parent)
@@ -34,24 +35,36 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         if( (graphics_items = items(event->scenePos())).empty() )
             return QGraphicsScene::contextMenuEvent( event );
 
+    bool menuRemoteTerminal = false;
     bool menuProcessBrowser = false;
     bool menuFileBrowser = false;
     bool menuExit = false;
+    bool menuTunnels = false;
+
+    bool tunnelS5 = false;
+    bool tunnelS4 = false;
+    bool tunnelLpf = false;
+    bool tunnelRpf = false;
+
+    int selectedCount = 0;
 
     bool valid = false;
     for ( const auto& _graphics_item : graphics_items ) {
         const auto item = dynamic_cast<GraphItem*>( _graphics_item );
         if ( item && item->agent ) {
             valid = true;
-            if (item->agent->browsers.FileBrowser)      menuFileBrowser = true;
-            if (item->agent->browsers.ProcessBrowser)   menuProcessBrowser = true;
-            if (item->agent->browsers.SessionsMenuExit) menuExit = true;
+
+            menuRemoteTerminal = item->agent->browsers.RemoteTerminal;
+            menuFileBrowser    = item->agent->browsers.FileBrowser;
+            menuProcessBrowser = item->agent->browsers.ProcessBrowser;
+            menuTunnels        = item->agent->browsers.SessionsMenuTunnels;
+            menuExit           = item->agent->browsers.SessionsMenuExit;
+
+            selectedCount++;
         }
     }
     if (!valid)
         return;
-
-
 
     QMenu menu = QMenu();
 
@@ -62,12 +75,16 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
     auto agentMenu = new QMenu("Agent", &menu);
     agentMenu->addAction("Tasks");
-    if (menuFileBrowser || menuProcessBrowser) {
+    if (menuFileBrowser || menuProcessBrowser || menuTunnels || menuRemoteTerminal) {
         agentMenu->addAction(agentSep1);
+        if (menuRemoteTerminal)
+            agentMenu->addAction("Remote Terminal");
         if (menuFileBrowser)
             agentMenu->addAction("File Browser");
         if (menuProcessBrowser)
             agentMenu->addAction("Process Browser");
+        if (menuTunnels && selectedCount == 1)
+            agentMenu->addAction("Create Tunnel");
     }
     if (menuExit) {
         agentMenu->addAction(agentSep2);
@@ -105,6 +122,13 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
             adaptixWidget->SetTasksUI();
         }
     }
+    else if ( action->text() == "Remote Terminal" ) {
+        for ( const auto& _graphics_item : graphics_items ) {
+           const auto item = dynamic_cast<GraphItem*>( _graphics_item );
+            if ( item && item->agent )
+                adaptixWidget->LoadTerminalUI(item->agent->data.Id);
+        }
+    }
     else if ( action->text() == "File Browser" ) {
         for ( const auto& _graphics_item : graphics_items ) {
             const auto item = dynamic_cast<GraphItem*>( _graphics_item );
@@ -118,6 +142,52 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
             if ( item && item->agent )
                 adaptixWidget->LoadProcessBrowserUI(item->agent->data.Id);
         }
+    }
+    else if ( action->text() == "Create Tunnel" ) {
+        Agent* agent = nullptr;
+        for ( const auto& _graphics_item : graphics_items ) {
+            const auto item = dynamic_cast<GraphItem*>( _graphics_item );
+            if ( item && item->agent ) {
+                agent = item->agent;
+                break;
+            }
+        }
+
+        if (!agent)
+            return;
+
+
+        DialogTunnel dialogTunnel;
+        dialogTunnel.SetSettings(agent->data.Id, agent->browsers.Socks5, agent->browsers.Socks4, agent->browsers.Lportfwd, agent->browsers.Rportfwd);
+
+        while (true) {
+            dialogTunnel.StartDialog();
+            if (dialogTunnel.IsValid())
+                break;
+
+            QString msg = dialogTunnel.GetMessage();
+            if (msg.isEmpty())
+                return;
+
+            MessageError(msg);
+        }
+
+        QString    tunnelType = dialogTunnel.GetTunnelType();
+        QByteArray tunnelData = dialogTunnel.GetTunnelData();
+
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *(adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            MessageError("Server is not responding");
+            return;
+        }
+        if ( !ok ) {
+            MessageError(message);
+            return;
+        }
+
+        agent = nullptr;
     }
     else if ( action->text() ==  "Exit" ) {
         QStringList listId;

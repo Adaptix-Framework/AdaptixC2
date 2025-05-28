@@ -42,7 +42,8 @@ void LayoutTreeLeft::ReingoldTilford( GraphItem* item )
     } else {
         GraphItem* defaultAncestor = item->childItems[ 0 ];
 
-        for ( GraphItem* child : item->childItems ) {
+        for(int i=0; i < item->childItems.size(); i++ ) {
+            GraphItem* child = item->childItems[i];
             LayoutTreeLeft::ReingoldTilford( child );
             LayoutTreeLeft::apportion( child, defaultAncestor );
         }

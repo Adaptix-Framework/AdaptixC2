@@ -23,9 +23,9 @@ DialogConnect::~DialogConnect() = default;
 
 void DialogConnect::createUI()
 {
-    resize( 740, 370 );
-    setMinimumSize( QSize( 740, 370 ) );
-    setMaximumSize( QSize( 740, 370 ) );
+    resize( 800, 370 );
+    setMinimumSize( QSize( 800, 370 ) );
+    setMaximumSize( QSize( 800, 370 ) );
 
     this->setWindowTitle("Connect");
 
@@ -82,7 +82,7 @@ void DialogConnect::createUI()
 
     tableWidget = new QTableWidget(this);
     tableWidget->setColumnCount( 3 );
-    tableWidget->setMinimumSize(QSize( 390, 0) );
+    tableWidget->setMinimumSize(QSize( 440, 0) );
     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
     tableWidget->addAction( menuContex->menuAction() );
     tableWidget->setAutoFillBackground( false );

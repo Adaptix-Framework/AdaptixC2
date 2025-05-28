@@ -3,14 +3,20 @@ package functions
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
+	"errors"
+	"fmt"
 	"github.com/kbinani/screenshot"
 	"image/png"
 	"io"
 	"io/fs"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 )
+
+/// FS
 
 func CopyFile(src, dst string, info fs.FileInfo) error {
 	source, err := os.Open(src)
@@ -336,4 +342,54 @@ func Screenshots() (map[int][]byte, error) {
 		result[i] = buf.Bytes()
 	}
 	return result, nil
+}
+
+/// NET
+
+func ConnRead(conn net.Conn, size int) ([]byte, error) {
+	if size <= 0 {
+		return nil, fmt.Errorf("incorrected size: %d", size)
+	}
+
+	message := make([]byte, 0, size)
+	tmpBuff := make([]byte, 1024)
+	readSize := 0
+
+	for readSize < size {
+		toRead := size - readSize
+		if toRead < len(tmpBuff) {
+			tmpBuff = tmpBuff[:toRead]
+		}
+
+		n, err := conn.Read(tmpBuff)
+		if err != nil {
+			return nil, err
+		}
+
+		message = append(message, tmpBuff[:n]...)
+		readSize += n
+	}
+	return message, nil
+}
+
+func RecvMsg(conn net.Conn) ([]byte, error) {
+	bufLen, err := ConnRead(conn, 4)
+	if err != nil {
+		return nil, err
+	}
+	msgLen := binary.BigEndian.Uint32(bufLen)
+
+	return ConnRead(conn, int(msgLen))
+}
+
+func SendMsg(conn net.Conn, data []byte) error {
+	if conn == nil {
+		return errors.New("conn is nil")
+	}
+
+	msgLen := make([]byte, 4)
+	binary.BigEndian.PutUint32(msgLen, uint32(len(data)))
+	message := append(msgLen, data...)
+	_, err := conn.Write(message)
+	return err
 }

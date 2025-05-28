@@ -58,13 +58,14 @@
 #include <QPainter>
 #include <QScrollBar>
 #include <QDateTimeEdit>
-
+#include <QButtonGroup>
+#include <QTcpServer>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.4"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.5"
 
 ///////////
 
@@ -161,14 +162,22 @@
 //////////
 
 typedef struct BrowsersConfig {
+    bool RemoteTerminal;
     bool FileBrowser;
     bool FileBrowserDisks;
     bool FileBrowserDownload;
     bool FileBrowserUpload;
     bool ProcessBrowser;
-    bool DownloadState;
+    bool DownloadsCancel;
+    bool DownloadsResume;
+    bool DownloadsPause;
     bool TasksJobKill;
     bool SessionsMenuExit;
+    bool SessionsMenuTunnels;
+    bool Socks4;
+    bool Socks5;
+    bool Lportfwd;
+    bool Rportfwd;
 } BrowsersConfig;
 
 typedef struct SettingsData {

@@ -239,6 +239,8 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
         Commanders[agentName][handlerId] = commander;
 
         BrowsersConfig browsersConfig = {};
+        if (browsersObject.contains("remote_terminal") && browsersObject["remote_terminal"].isBool())
+            browsersConfig.RemoteTerminal = browsersObject["remote_terminal"].toBool();
         if (browsersObject.contains("file_browser") && browsersObject["file_browser"].isBool())
             browsersConfig.FileBrowser = browsersObject["file_browser"].toBool();
         if (browsersObject.contains("file_browser_disks") && browsersObject["file_browser_disks"].isBool())
@@ -249,10 +251,24 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             browsersConfig.FileBrowserUpload = browsersObject["file_browser_upload"].toBool();
         if (browsersObject.contains("process_browser") && browsersObject["process_browser"].isBool())
             browsersConfig.ProcessBrowser = browsersObject["process_browser"].toBool();
-        if (browsersObject.contains("downloads_state") && browsersObject["downloads_state"].isBool())
-            browsersConfig.DownloadState = browsersObject["downloads_state"].toBool();
+        if (browsersObject.contains("downloads_cancel") && browsersObject["downloads_cancel"].isBool())
+            browsersConfig.DownloadsCancel = browsersObject["downloads_cancel"].toBool();
+        if (browsersObject.contains("downloads_resume") && browsersObject["downloads_resume"].isBool())
+            browsersConfig.DownloadsResume = browsersObject["downloads_resume"].toBool();
+        if (browsersObject.contains("downloads_pause") && browsersObject["downloads_pause"].isBool())
+            browsersConfig.DownloadsPause = browsersObject["downloads_pause"].toBool();
         if (browsersObject.contains("tasks_job_kill") && browsersObject["tasks_job_kill"].isBool())
             browsersConfig.TasksJobKill = browsersObject["tasks_job_kill"].toBool();
+        if (browsersObject.contains("socks4") && browsersObject["socks4"].isBool())
+            browsersConfig.Socks4 = browsersObject["socks4"].toBool();
+        if (browsersObject.contains("socks5") && browsersObject["socks5"].isBool())
+            browsersConfig.Socks5 = browsersObject["socks5"].toBool();
+        if (browsersObject.contains("lportfwd") && browsersObject["lportfwd"].isBool())
+            browsersConfig.Lportfwd = browsersObject["lportfwd"].toBool();
+        if (browsersObject.contains("rportfwd") && browsersObject["rportfwd"].isBool())
+            browsersConfig.Rportfwd = browsersObject["rportfwd"].toBool();
+        if (browsersObject.contains("sessions_menu_tunnels") && browsersObject["sessions_menu_tunnels"].isBool())
+            browsersConfig.SessionsMenuTunnels = browsersObject["sessions_menu_tunnels"].toBool();
         if (browsersObject.contains("sessions_menu_exit") && browsersObject["sessions_menu_exit"].isBool())
             browsersConfig.SessionsMenuExit = browsersObject["sessions_menu_exit"].toBool();
 
@@ -310,6 +326,14 @@ void AdaptixWidget::ClearAdaptix()
     SessionsGraphPage->Clear();
     SessionsTablePage->Clear();
     TunnelsTab->Clear();
+
+    for (auto tunnelId : ClientTunnels.keys()) {
+        auto tunnel = ClientTunnels[tunnelId];
+        ClientTunnels.remove(tunnelId);
+        tunnel->Stop();
+        delete tunnel;
+    }
+    ClientTunnels.clear();
 
     for (int i = 0; i < RegisterAgents.size(); i++) {
         WidgetBuilder* builder   = RegisterAgents[i].builder;
@@ -603,6 +627,19 @@ void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
         auto text = QString("Processes [%1]").arg( AgentId );
         this->AddTab(AgentsMap[AgentId]->ProcessBrowser, text);
     }
+}
+
+void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
+{
+    if( !AgentsMap.contains(AgentId) )
+        return;
+
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->browsers.RemoteTerminal && agent->Terminal) {
+        auto text = QString("Terminal [%1]").arg( AgentId );
+        this->AddTab(AgentsMap[AgentId]->Terminal, text);
+    }
+
 }
 
 void AdaptixWidget::ChannelClose() const

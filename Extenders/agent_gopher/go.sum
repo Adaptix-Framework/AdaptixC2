@@ -1,6 +1,10 @@
 github.com/Adaptix-Framework/axc2 v0.4.0 h1:S6TVT/FYBMqxV5R4DtQhRlx/Op43z6wfgRn9OKt+v7M=
 github.com/Adaptix-Framework/axc2 v0.4.0/go.mod h1:jQ9Yca/qAs1xnMseCH4zGAeV4r0xps/xmXq5B6f9jog=
+github.com/Adaptix-Framework/axc2 v0.5.0 h1:x7gO3cUhpOTfrchkMKalcMxw/xzB3dDO1iZstTUsEsE=
+github.com/Adaptix-Framework/axc2 v0.5.0/go.mod h1:jQ9Yca/qAs1xnMseCH4zGAeV4r0xps/xmXq5B6f9jog=
 github.com/vmihailenco/msgpack/v5 v5.4.1 h1:cQriyiUvjTwOHg8QZaPihLWeRAAVoCpE00IUPn0Bjt8=
 github.com/vmihailenco/msgpack/v5 v5.4.1/go.mod h1:GaZTsDaehaPpQVyxrf5mtQlH+pc21PIudVV/E3rRQok=
 github.com/vmihailenco/tagparser/v2 v2.0.0 h1:y09buUbR+b5aycVFQs/g70pqKVZNBmxwAhO7/IwNM9g=
 github.com/vmihailenco/tagparser/v2 v2.0.0/go.mod h1:Wri+At7QHww0WTrCBeu4J6bNtoV6mEfg5OIWRZA9qds=
+golang.org/x/text v0.25.0 h1:qVyWApTSYLk/drJRO5mDlNYskwQznZmkpV2c8q9zls4=
+golang.org/x/text v0.25.0/go.mod h1:WEdwpYrmk1qmdHvhkSTNPm3app7v4rsT8F2UD6+VHIA=

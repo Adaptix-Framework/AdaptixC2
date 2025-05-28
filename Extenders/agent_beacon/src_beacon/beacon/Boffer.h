@@ -1,5 +1,5 @@
 #pragma once
-#include "beacon.h"
+#include "adaptix.h"
 #include "ApiLoader.h"
 #include "ApiDefines.h"
 #include "Packer.h"

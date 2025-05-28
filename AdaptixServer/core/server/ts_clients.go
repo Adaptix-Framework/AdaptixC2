@@ -39,6 +39,18 @@ func (ts *Teamserver) TsClientDisconnect(username string) {
 	packet := CreateSpEvent(EVENT_CLIENT_DISCONNECT, message)
 	ts.TsSyncAllClients(packet)
 	ts.events.Put(packet)
+
+	var tunnels []string
+	ts.tunnels.ForEach(func(key string, value interface{}) bool {
+		tunnel := value.(*Tunnel)
+		if tunnel.Data.Client == username {
+			tunnels = append(tunnels, tunnel.Data.TunnelId)
+		}
+		return true
+	})
+	for _, id := range tunnels {
+		_ = ts.TsTunnelStop(id)
+	}
 }
 
 func (ts *Teamserver) TsClientSync(username string) {
