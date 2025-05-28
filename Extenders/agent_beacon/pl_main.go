@@ -75,7 +75,7 @@ type Teamserver interface {
 	TsTunnelStopRportfwd(AgentId string, Port int)
 
 	TsTunnelConnectionClose(channelId int)
-	TsTunnelConnectionResume(AgentId string, channelId int)
+	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
 	TsTunnelConnectionAccept(tunnelId int, channelId int)
 }

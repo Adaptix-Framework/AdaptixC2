@@ -102,7 +102,6 @@ func main() {
 	UPLOADS = make(map[string][]byte)
 	DOWNLOADS = make(map[string]utils.Connection)
 	JOBS = make(map[string]utils.Connection)
-	TUNNELS = make(map[int]utils.Connection)
 
 	addrIndex := 0
 	for i := 0; i < profile.ConnCount && ACTIVE; i++ {

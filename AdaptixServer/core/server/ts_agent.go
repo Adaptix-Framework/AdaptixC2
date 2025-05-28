@@ -58,17 +58,17 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	}
 
 	agent := &Agent{
-		Data:              agentData,
-		OutConsole:        safe.NewSlice(),
-		TasksQueue:        safe.NewSlice(),
-		TunnelConnectTask: safe.NewSlice(),
-		TunnelQueue:       safe.NewSlice(),
-		RunningTasks:      safe.NewMap(),
-		CompletedTasks:    safe.NewMap(),
-		PivotParent:       nil,
-		PivotChilds:       safe.NewSlice(),
-		Tick:              false,
-		Active:            true,
+		Data:               agentData,
+		OutConsole:         safe.NewSlice(),
+		TasksQueue:         safe.NewSlice(),
+		TunnelConnectTasks: safe.NewSlice(),
+		TunnelQueue:        safe.NewSlice(),
+		RunningTasks:       safe.NewMap(),
+		CompletedTasks:     safe.NewMap(),
+		PivotParent:        nil,
+		PivotChilds:        safe.NewSlice(),
+		Tick:               false,
+		Active:             true,
 	}
 
 	ts.agents.Put(agentData.Id, agent)
@@ -149,7 +149,7 @@ func (ts *Teamserver) TsAgentGetHostedTasksAll(agentId string, maxDataSize int) 
 	agent, _ := value.(*Agent)
 
 	tasksCount := agent.TasksQueue.Len()
-	tunnelConnectCount := agent.TunnelConnectTask.Len()
+	tunnelConnectCount := agent.TunnelConnectTasks.Len()
 	tunnelTasksCount := agent.TunnelQueue.Len()
 	pivotTasksExists := false
 	if agent.PivotChilds.Len() > 0 {
@@ -186,7 +186,7 @@ func (ts *Teamserver) TsAgentGetHostedTasksOnly(agentId string, maxDataSize int)
 	agent, _ := value.(*Agent)
 
 	tasksCount := agent.TasksQueue.Len()
-	if tasksCount == 0 && agent.TunnelConnectTask.Len() == 0 {
+	if tasksCount == 0 && agent.TunnelConnectTasks.Len() == 0 {
 		return []byte(""), nil
 	}
 

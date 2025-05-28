@@ -268,11 +268,19 @@ type ParamsTunnelStart struct {
 	Address   string `msgpack:"address"`
 }
 
+type ParamsTunnelStop struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
 type ParamsTerminalStart struct {
 	TermId  int    `msgpack:"term_id"`
 	Program string `msgpack:"program"`
 	Height  int    `msgpack:"height"`
 	Width   int    `msgpack:"width"`
+}
+
+type ParamsTerminalStop struct {
+	TermId int `msgpack:"term_id"`
 }
 
 const (
@@ -297,6 +305,9 @@ const (
 	COMMAND_JOB_LIST   = 18
 	COMMAND_JOB_KILL   = 19
 
-	COMMAND_TUNNEL_START   = 31
+	COMMAND_TUNNEL_START = 31
+	COMMAND_TUNNEL_STOP  = 32
+
 	COMMAND_TERMINAL_START = 35
+	COMMAND_TERMINAL_STOP  = 36
 )

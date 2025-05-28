@@ -348,15 +348,14 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 		ts.TsSyncAllClients(packet)
 	}
 
-	for i := uint(0); i < agent.TunnelConnectTask.Len(); i++ {
-		value, ok = agent.TunnelConnectTask.Get(i)
+	for i := uint(0); i < agent.TunnelConnectTasks.Len(); i++ {
+		value, ok = agent.TunnelConnectTasks.Get(i)
 		if ok {
 			taskData := value.(adaptix.TaskData)
 			if tasksSize+len(taskData.Data) < availableSize {
 				tasks = append(tasks, taskData)
-				agent.TunnelConnectTask.Delete(i)
+				agent.TunnelConnectTasks.Delete(i)
 				i--
-				//sendTasks = append(sendTasks, taskData.TaskId)
 				tasksSize += len(taskData.Data)
 			} else {
 				break
@@ -449,13 +448,13 @@ func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int)
 		ts.TsSyncAllClients(packet)
 	}
 
-	for i := uint(0); i < agent.TunnelConnectTask.Len(); i++ {
-		value, ok = agent.TunnelConnectTask.Get(i)
+	for i := uint(0); i < agent.TunnelConnectTasks.Len(); i++ {
+		value, ok = agent.TunnelConnectTasks.Get(i)
 		if ok {
 			taskData := value.(adaptix.TaskData)
 			if tasksSize+len(taskData.Data) < availableSize {
 				tasks = append(tasks, taskData)
-				agent.TunnelConnectTask.Delete(i)
+				agent.TunnelConnectTasks.Delete(i)
 				i--
 				//sendTasks = append(sendTasks, taskData.TaskId)
 				tasksSize += len(taskData.Data)

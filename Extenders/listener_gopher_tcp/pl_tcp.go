@@ -316,62 +316,50 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 			return
 		}
 
-		ts.TsTunnelConnectionResume(agentId, tunPack.ChannelId)
+		ts.TsTunnelConnectionResume(agentId, tunPack.ChannelId, true)
 
-		ctx, cancel := context.WithCancel(context.Background())
+		iv := tunPack.Key
+
+		pr, pw, err := ModuleObject.ts.TsTunnelGetPipe(agentId, tunPack.ChannelId)
+		if err != nil {
+			goto ERR
+		}
+
+		blockEnc, _ := aes.NewCipher(tunPack.Key)
+		encStream := cipher.NewCTR(blockEnc, iv)
+		encWriter := &cipher.StreamWriter{S: encStream, W: conn}
+
+		blockDec, _ := aes.NewCipher(tunPack.Key)
+		decStream := cipher.NewCTR(blockDec, iv)
+		decWriter := &cipher.StreamWriter{S: decStream, W: pw}
+
+		var closeOnce sync.Once
+		closeAll := func() {
+			closeOnce.Do(func() {
+				_ = conn.Close()
+				_ = pr.Close()
+			})
+		}
+
 		var wg sync.WaitGroup
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					recvData, err = recvMsg(conn)
-					if err != nil {
-						cancel()
-						return
-					}
-
-					decData, err := DecryptData(recvData, tunPack.Key)
-					if err != nil {
-						continue
-					}
-
-					ts.TsTunnelConnectionData(tunPack.ChannelId, decData)
-				}
-			}
+			io.Copy(encWriter, pr)
+			closeAll()
 		}()
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-					sendData, err = ModuleObject.ts.TsAgentGetHostedTasksTunnels(agentId, tunPack.ChannelId, 0x1900000)
-					if err != nil {
-						break
-					}
-					if len(sendData) > 0 {
-						err := sendMsg(conn, sendData)
-						if err != nil {
-							cancel()
-							return
-						}
-					}
-				}
-			}
+			io.Copy(decWriter, conn)
+			closeAll()
 		}()
 
 		wg.Wait()
 
 		ts.TsTunnelConnectionClose(tunPack.ChannelId)
-		_ = conn.Close()
 
 	case TERMINAL_PACK:
 

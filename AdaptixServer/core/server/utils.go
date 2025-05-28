@@ -6,9 +6,9 @@ import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
-	"context"
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
+	"io"
 	"net"
 	"sync"
 )
@@ -79,10 +79,10 @@ type Agent struct {
 
 	OutConsole *safe.Slice //  sync_packet interface{}
 
-	TunnelConnectTask *safe.Slice // taskData TaskData
-	TunnelQueue       *safe.Slice // taskData TaskDataTunnel
-	TerminalQueue     *safe.Slice // taskData TaskDataTunnel
-	TasksQueue        *safe.Slice // taskData TaskData
+	TunnelConnectTasks *safe.Slice // taskData TaskData
+	TunnelQueue        *safe.Slice // taskData TaskDataTunnel
+	TerminalQueue      *safe.Slice // taskData TaskDataTunnel
+	TasksQueue         *safe.Slice // taskData TaskData
 
 	RunningTasks   safe.Map // taskId string, taskData TaskData
 	CompletedTasks safe.Map // taskId string, taskData TaskData
@@ -91,14 +91,18 @@ type Agent struct {
 	PivotChilds *safe.Slice
 }
 
-type TunnelConnection struct {
-	channelId    int
-	protocol     string
-	mu           sync.Mutex
-	wsconn       *websocket.Conn
-	conn         net.Conn
-	ctx          context.Context
-	handleCancel context.CancelFunc
+type TunnelChannel struct {
+	channelId int
+	protocol  string
+
+	wsconn *websocket.Conn
+	conn   net.Conn
+
+	pwSrv *io.PipeWriter
+	prSrv *io.PipeReader
+
+	pwTun *io.PipeWriter
+	prTun *io.PipeReader
 }
 
 type Tunnel struct {
@@ -122,12 +126,14 @@ type Terminal struct {
 	TaskId     string
 	TerminalId int
 
-	agent *Agent
+	agent  *Agent
+	wsconn *websocket.Conn
 
-	mu        sync.Mutex
-	wsconn    *websocket.Conn
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	pwSrv *io.PipeWriter
+	prSrv *io.PipeReader
+
+	pwTun *io.PipeWriter
+	prTun *io.PipeReader
 
 	handlerStart func(terminalId int, program string, sizeH int, sizeW int) (adaptix.TaskData, error)
 	handlerWrite func(terminalId int, data []byte) (adaptix.TaskData, error)
