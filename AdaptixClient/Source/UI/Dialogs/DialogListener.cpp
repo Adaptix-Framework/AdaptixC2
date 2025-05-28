@@ -6,8 +6,8 @@ DialogListener::DialogListener()
     this->createUI();
 
     connect(listenerTypeCombobox, &QComboBox::currentTextChanged, this, &DialogListener::changeConfig);
-    connect(buttonLoad, &QPushButton::clicked, this, &DialogListener::onButtonLoad );
-    connect(buttonSave, &QPushButton::clicked, this, &DialogListener::onButtonSave );
+    connect(buttonLoad,   &QPushButton::clicked, this, &DialogListener::onButtonLoad );
+    connect(buttonSave,   &QPushButton::clicked, this, &DialogListener::onButtonSave );
     connect(buttonCreate, &QPushButton::clicked, this, &DialogListener::onButtonCreate );
     connect(buttonCancel, &QPushButton::clicked, this, &DialogListener::onButtonCancel );
 }
@@ -16,8 +16,8 @@ DialogListener::~DialogListener() = default;
 
 void DialogListener::createUI()
 {
-    this->resize( 650, 650 );
-    this->setWindowTitle( "Create Listener" );
+    this->resize(650, 650);
+    this->setWindowTitle("Create Listener");
 
     listenerNameLabel = new QLabel(this);
     listenerNameLabel->setText("Listener name:");
@@ -41,14 +41,14 @@ void DialogListener::createUI()
     line_1->setFrameShape(QFrame::VLine);
     line_1->setMinimumHeight(20);
 
-    configStackWidget = new QStackedWidget(this );
+    configStackWidget = new QStackedWidget(this);
 
-    stackGridLayout = new QGridLayout(this );
+    stackGridLayout = new QGridLayout(this);
     stackGridLayout->setHorizontalSpacing(0);
     stackGridLayout->setContentsMargins(0, 0, 0, 0 );
     stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1 );
 
-    listenerConfigGroupbox = new QGroupBox( this );
+    listenerConfigGroupbox = new QGroupBox(this);
     listenerConfigGroupbox->setTitle("Listener config");
     listenerConfigGroupbox->setLayout(stackGridLayout);
 

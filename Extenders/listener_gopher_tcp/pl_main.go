@@ -3,16 +3,30 @@ package main
 import (
 	"errors"
 	"github.com/Adaptix-Framework/axc2"
+	"io"
 )
 
 type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
+	TsAgentGetHostedTasksAll(agentId string, maxDataSize int) ([]byte, error)
+	TsAgentGetHostedTasksOnly(agentId string, maxDataSize int) ([]byte, error)
+	TsAgentGetHostedTasksTunnels(agentId string, channelId int, maxDataSize int) ([]byte, error)
 	TsAgentSetMark(agentId string, makr string) error
 
 	TsTaskRunningExists(agentId string, taskId string) bool
+	TsTunnelChannelExists(channelId int) bool
+
+	TsAgentTerminalCloseChannel(terminalId string, status string) error
+	TsTerminalConnExists(terminalId string) bool
+	TsTerminalConnResume(agentId string, terminalId string)
+	TsTerminalGetPipe(AgentId string, terminalId string) (*io.PipeReader, *io.PipeWriter, error)
+
+	TsTunnelGetPipe(AgentId string, channelId int) (*io.PipeReader, *io.PipeWriter, error)
+	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
+	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionData(channelId int, data []byte)
 }
 
 type ModuleExtender struct {

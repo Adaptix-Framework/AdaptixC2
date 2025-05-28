@@ -21,7 +21,12 @@ void WebSocketWorker::run()
     connect( webSocket, &QWebSocket::connected,             this, &WebSocketWorker::is_connected );
     connect( webSocket, &QWebSocket::disconnected,          this, &WebSocketWorker::is_disconnected );
     connect( webSocket, &QWebSocket::binaryMessageReceived, this, &WebSocketWorker::is_binaryMessageReceived );
-    connect( webSocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &WebSocketWorker::is_error);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+        connect( webSocket, &QWebSocket::errorOccurred, this, &WebSocketWorker::is_error);
+#else
+        connect( webSocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &WebSocketWorker::is_error);
+#endif
 
     QString urlTemplate = "wss://%1:%2%3/connect";
     QString sUrl = urlTemplate.arg( profile->GetHost() ).arg( profile->GetPort() ).arg( profile->GetEndpoint() );

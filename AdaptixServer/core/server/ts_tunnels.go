@@ -5,103 +5,188 @@ import (
 	"AdaptixServer/core/utils/proxy"
 	"AdaptixServer/core/utils/safe"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/Adaptix-Framework/axc2"
+	"github.com/gorilla/websocket"
 	"io"
 	"math/rand"
 	"net"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 )
 
-func (ts *Teamserver) TsTunnelAdd(tunnel *Tunnel) {
+func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error) {
+	var (
+		taskId   string
+		tunnelId string
+		err      error
+	)
 
-	message := ""
-	if tunnel.Data.Type == "SOCKS5 proxy" {
-		message = fmt.Sprintf("SOCKS5 server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-	} else if tunnel.Data.Type == "SOCKS4 proxy" {
-		message = fmt.Sprintf("SOCKS4 server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-	} else if tunnel.Data.Type == "SOCKS5 Auth proxy" {
-		message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-	} else if tunnel.Data.Type == "Local port forward" {
-		message = fmt.Sprintf("Local port forward started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
+	value, ok := ts.agents.Get(AgentId)
+	if !ok {
+		return "", fmt.Errorf("agent '%v' does not exist", AgentId)
+	}
+	agent, _ := value.(*Agent)
+	if agent.Active == false {
+		return "", fmt.Errorf("agent '%v' not active", AgentId)
 	}
 
-	tunnel.TaskId, _ = krypt.GenerateUID(8)
+	commandline := ""
+	message := ""
+	switch Type {
 
-	ts.tunnels.Put(tunnel.Data.TunnelId, tunnel)
+	case TUNNEL_SOCKS4:
+		if Listen {
+			commandline = fmt.Sprintf("[from browser] socks4 start %v:%v", Lhost, Lport)
+			message = fmt.Sprintf("SOCKS4 server started on '%v:%v'\n", Lhost, Lport)
+		} else {
+			commandline = fmt.Sprintf("[from browser] socks4 (client) start %v:%v", Lhost, Lport)
+			message = fmt.Sprintf("SOCKS4 server started on (client '%v') '%v:%v'\n", Client, Lhost, Lport)
+		}
 
-	packet := CreateSpTunnelCreate(tunnel.Data)
-	ts.TsSyncAllClients(packet)
+	case TUNNEL_SOCKS5:
+		if Listen {
+			commandline = fmt.Sprintf("[from browser] socks5 start %v:%v", Lhost, Lport)
+			message = fmt.Sprintf("SOCKS5 server started on '%v:%v'\n", Lhost, Lport)
+		} else {
+			commandline = fmt.Sprintf("[from browser] socks5 (client) start %v:%v", Lhost, Lport)
+			message = fmt.Sprintf("SOCKS5 server started on (client '%v') '%v:%v'\n", Client, Lhost, Lport)
+		}
 
-	packet2 := CreateSpEvent(EVENT_TUNNEL_START, message)
-	ts.TsSyncAllClients(packet2)
-	ts.events.Put(packet2)
+	case TUNNEL_SOCKS5_AUTH:
+		if Listen {
+			commandline = fmt.Sprintf("[from browser] socks5 start %v:%v -auth %v %v", Lhost, Lport, AuthUser, AuthPass)
+			message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%v:%v'\n", Lhost, Lport)
+		} else {
+			commandline = fmt.Sprintf("[from browser] socks5 (client) start %v:%v -auth %v %v", Lhost, Lport, AuthUser, AuthPass)
+			message = fmt.Sprintf("SOCKS5 (with Auth) server started on (client '%v') '%v:%v'\n", Client, Lhost, Lport)
+		}
+
+	case TUNNEL_LPORTFWD:
+		if Listen {
+			commandline = fmt.Sprintf("[from browser] local_port_fwd start %v:%v %v:%v", Lhost, Lport, Thost, Tport)
+			message = fmt.Sprintf("Started local port forwarding on %v:%v to %v:%v\n", Lhost, Lport, Thost, Tport)
+		} else {
+			commandline = fmt.Sprintf("[from browser] local_port_fwd (client) start on %v:%v %v:%v", Lhost, Lport, Thost, Tport)
+			message = fmt.Sprintf("Started local port forwarding on (client '%v') %v:%v to %v:%v\n", Client, Lhost, Lport, Thost, Tport)
+		}
+
+	case TUNNEL_RPORTFWD:
+		if Listen {
+			commandline = fmt.Sprintf("[from browser] reverse_port_fwd start %v %v:%v", Lport, Thost, Tport)
+			message = fmt.Sprintf("Starting reverse port forwarding %v to %v:%v\n", Lport, Thost, Tport)
+		} else {
+
+		}
+
+	default:
+		return "", errors.New("unknown tunnel type")
+	}
+
+	if Listen {
+		tunnelId, err = ts.TsTunnelCreate(AgentId, Type, Info, Lhost, Lport, "", Thost, Tport, AuthUser, AuthPass)
+		if err != nil {
+			return "", err
+		}
+		taskId, err = ts.TsTunnelStart(tunnelId)
+		if err != nil {
+			return "", err
+		}
+
+	} else {
+		tunnelId, err = ts.TsTunnelCreate(AgentId, Type, Info, Lhost, Lport, Client, Thost, Tport, AuthUser, AuthPass)
+		if err != nil {
+			return "", err
+		}
+
+		value, ok := ts.tunnels.Get(tunnelId)
+		if !ok {
+			return "", errors.New("tunnel not found")
+		}
+		tunnel, _ := value.(*Tunnel)
+		tunnel.Active = true
+
+		ts.TsEventTunnelAdd(tunnel)
+	}
+
+	taskData := adaptix.TaskData{
+		TaskId:      taskId,
+		Type:        TYPE_TUNNEL,
+		Sync:        true,
+		Message:     message,
+		MessageType: CONSOLE_OUT_SUCCESS,
+		ClearText:   "\n",
+	}
+	ts.TsTaskCreate(AgentId, commandline, Client, taskData)
+
+	return tunnelId, nil
 }
 
-func (ts *Teamserver) TsReverseAdd(tunnel *Tunnel) {
-	packet := CreateSpTunnelCreate(tunnel.Data)
-	ts.TsSyncAllClients(packet)
+func (ts *Teamserver) TsTunnelClientNewChannel(TunnelData string, wsconn *websocket.Conn) error {
 
-	message := fmt.Sprintf("Reverse port forward to '%s:%s'", tunnel.Data.Fhost, tunnel.Data.Fport)
-	packet2 := CreateSpEvent(EVENT_TUNNEL_START, message)
-	ts.TsSyncAllClients(packet2)
-	ts.events.Put(packet2)
-}
+	data, err := base64.StdEncoding.DecodeString(TunnelData)
+	if err != nil {
+		return errors.New("invalid tunnel data")
+	}
 
-func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
-	value, ok := ts.tunnels.GetDelete(TunnelId)
+	d := strings.Split(string(data), "|")
+	if len(d) != 5 {
+		return errors.New("invalid tunnel data")
+	}
+
+	tunnelId := d[0]
+	channelId := d[1]
+	mode := d[2]
+	host := d[3]
+	tPort := d[4]
+
+	value, ok := ts.tunnels.Get(tunnelId)
 	if !ok {
-		return errors.New("tunnel Not Found")
+		return errors.New("tunnel not found")
 	}
 	tunnel, _ := value.(*Tunnel)
 
-	if tunnel.listener != nil {
-		_ = tunnel.listener.Close()
+	value, ok = ts.agents.Get(tunnel.Data.AgentId)
+	if !ok {
+		return errors.New("agent not found")
+	}
+	agent, _ := value.(*Agent)
+
+	cid, err := strconv.ParseInt(channelId, 16, 64)
+	if err != nil {
+		return errors.New("channelId not supported")
 	}
 
-	tunnel.connections.ForEach(func(key string, valueConn interface{}) bool {
-		tunnelConnection, _ := valueConn.(*TunnelConnection)
-		if tunnelConnection.conn != nil {
-			tunnelConnection.handleCancel()
-			_ = tunnelConnection.conn.Close()
+	port := 0
+	if tunnel.Type == TUNNEL_SOCKS4 || tunnel.Type == TUNNEL_SOCKS5 || tunnel.Type == TUNNEL_SOCKS5_AUTH {
+		port, err = strconv.Atoi(tPort)
+		if err != nil {
+			return errors.New("Invalid port number")
 		}
-		return true
-	})
-
-	packet := CreateSpTunnelDelete(tunnel.Data)
-	ts.TsSyncAllClients(packet)
-
-	taskData := adaptix.TaskData{
-		TaskId:     tunnel.TaskId,
-		Completed:  true,
-		FinishDate: time.Now().Unix(),
+		if port < 1 || port > 65535 {
+			return errors.New("Invalid port number")
+		}
+		if host == "" {
+			return errors.New("Invalid host")
+		}
 	}
 
-	ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
-
-	message := ""
-	if tunnel.Data.Type == "SOCKS5 proxy" {
-		message = fmt.Sprintf("SOCKS5 server ':%s' stopped", tunnel.Data.Port)
-	} else if tunnel.Data.Type == "SOCKS4 proxy" {
-		message = fmt.Sprintf("SOCKS4 server ':%s' stopped", tunnel.Data.Port)
-	} else if tunnel.Data.Type == "SOCKS5 Auth proxy" {
-		message = fmt.Sprintf("SOCKS5 (with Auth) server ':%s' stopped", tunnel.Data.Port)
-	} else if tunnel.Data.Type == "Local port forward" {
-		message = fmt.Sprintf("Local port forward on ':%s' stopped", tunnel.Data.Port)
-	} else if tunnel.Data.Type == "Remote port forward" {
-		message = fmt.Sprintf("Remote port forward to '%s:%s' stopped", tunnel.Data.Fhost, tunnel.Data.Fport)
+	if tunnel.Type == TUNNEL_SOCKS5 || tunnel.Type == TUNNEL_SOCKS5_AUTH {
+		if mode != "tcp" && mode != "udp" {
+			return errors.New("invalid mode")
+		}
 	}
 
-	packet2 := CreateSpEvent(EVENT_TUNNEL_STOP, message)
-	ts.TsSyncAllClients(packet2)
-	ts.events.Put(packet2)
+	go handleTunChannelCreateClient(agent, tunnel, wsconn, int(cid), host, port, mode)
 
 	return nil
 }
 
-func (ts *Teamserver) TsTunnelSetInfo(TunnelId string, Info string) error {
+func (ts *Teamserver) TsTunnelClientSetInfo(TunnelId string, Info string) error {
 	value, ok := ts.tunnels.Get(TunnelId)
 	if !ok {
 		return errors.New("tunnel not found")
@@ -116,333 +201,235 @@ func (ts *Teamserver) TsTunnelSetInfo(TunnelId string, Info string) error {
 	return nil
 }
 
-/// Socks5
-
-func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
-	value, ok := ts.agents.Get(AgentId)
+func (ts *Teamserver) TsTunnelClientStop(TunnelId string, Client string) error {
+	value, ok := ts.tunnels.Get(TunnelId)
 	if !ok {
-		return "", errors.New("agent not found")
+		return errors.New("tunnel Not Found")
 	}
-	agent, _ := value.(*Agent)
+	tunnel, _ := value.(*Tunnel)
 
-	port := strconv.Itoa(Port)
-	addr := Address + ":" + port
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		return "", err
+	if tunnel.Data.Client == "" {
+		_ = ts.TsTunnelStop(TunnelId)
+		return nil
 	}
 
-	socksTunnel := &Tunnel{
-		listener:    listener,
-		connections: safe.NewMap(),
-
-		handlerConnectTCP: FuncMsgConnectTCP,
-		handlerWriteTCP:   FuncMsgWriteTCP,
-		handlerClose:      FuncMsgClose,
-	}
-
-	go func() {
-		for {
-			var conn net.Conn
-			conn, err = socksTunnel.listener.Accept()
-			if err != nil {
-				return
-			}
-			go handleRequestSocks4(agent, socksTunnel, conn)
+	if tunnel.Data.Client == Client {
+		value, ok = ts.tunnels.GetDelete(TunnelId)
+		if !ok {
+			return errors.New("tunnel Not Found")
 		}
-	}()
+		tunnel, _ = value.(*Tunnel)
 
-	time.Sleep(300 * time.Millisecond)
-
-	if err != nil {
-		return "", err
-	}
-
-	id := krypt.CRC32([]byte(agent.Data.Id + "socks" + port))
-	tunnelId := fmt.Sprintf("%08x", id)
-
-	socksTunnel.Data = adaptix.TunnelData{
-		TunnelId:  tunnelId,
-		AgentId:   agent.Data.Id,
-		Computer:  agent.Data.Computer,
-		Username:  agent.Data.Username,
-		Process:   agent.Data.Process,
-		Type:      "SOCKS4 proxy",
-		Info:      "",
-		Interface: Address,
-		Port:      port,
-		Client:    "",
-		Fport:     "",
-		Fhost:     "",
-	}
-
-	ts.TsTunnelAdd(socksTunnel)
-
-	return socksTunnel.TaskId, nil
-}
-
-func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
-	value, ok := ts.agents.Get(AgentId)
-	if !ok {
-		return "", errors.New("agent not found")
-	}
-	agent, _ := value.(*Agent)
-
-	port := strconv.Itoa(Port)
-	addr := Address + ":" + port
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		return "", err
-	}
-
-	socksTunnel := &Tunnel{
-		listener:    listener,
-		connections: safe.NewMap(),
-
-		handlerConnectTCP: FuncMsgConnectTCP,
-		handlerConnectUDP: FuncMsgConnectUDP,
-		handlerWriteTCP:   FuncMsgWriteTCP,
-		handlerWriteUDP:   FuncMsgWriteUDP,
-		handlerClose:      FuncMsgClose,
-	}
-
-	go func() {
-		for {
-			var conn net.Conn
-			conn, err = socksTunnel.listener.Accept()
-			if err != nil {
-				return
+		tunnel.connections.ForEach(func(key string, valueConn interface{}) bool {
+			tunChannel, _ := valueConn.(*TunnelChannel)
+			if tunChannel.wsconn != nil {
+				_ = tunChannel.wsconn.Close()
 			}
-			go handleRequestSocks5(agent, socksTunnel, conn)
+
+			tunChannel.pwTun.Close()
+			tunChannel.prTun.Close()
+			tunChannel.pwSrv.Close()
+			tunChannel.prSrv.Close()
+
+			return true
+		})
+
+		packet := CreateSpTunnelDelete(tunnel.Data)
+		ts.TsSyncAllClients(packet)
+
+		taskData := adaptix.TaskData{
+			TaskId:     tunnel.TaskId,
+			Completed:  true,
+			FinishDate: time.Now().Unix(),
 		}
-	}()
 
-	time.Sleep(300 * time.Millisecond)
-
-	if err != nil {
-		return "", err
+		ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
+		return nil
 	}
 
-	id := krypt.CRC32([]byte(agent.Data.Id + "socks" + port))
-	tunnelId := fmt.Sprintf("%08x", id)
-
-	socksTunnel.Data = adaptix.TunnelData{
-		TunnelId:  tunnelId,
-		AgentId:   agent.Data.Id,
-		Computer:  agent.Data.Computer,
-		Username:  agent.Data.Username,
-		Process:   agent.Data.Process,
-		Type:      "SOCKS5 proxy",
-		Info:      "",
-		Interface: Address,
-		Port:      port,
-		Client:    "",
-		Fport:     "",
-		Fhost:     "",
-	}
-
-	ts.TsTunnelAdd(socksTunnel)
-
-	return socksTunnel.TaskId, nil
+	return errors.New("The tunnel is running on another client's side, you are not allowed to perform this operation.")
 }
 
-func (ts *Teamserver) TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
-	value, ok := ts.agents.Get(AgentId)
+/// Tunnel Start
+
+func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
+
+	value, ok := ts.tunnels.Get(TunnelId)
+	if !ok {
+		return "", errors.New("tunnel not found")
+	}
+	tunnel, _ := value.(*Tunnel)
+
+	value, ok = ts.agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
 	}
 	agent, _ := value.(*Agent)
 
-	port := strconv.Itoa(Port)
-	addr := Address + ":" + port
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		return "", err
-	}
+	if tunnel.Type == TUNNEL_RPORTFWD {
 
-	socksTunnel := &Tunnel{
-		listener:    listener,
-		connections: safe.NewMap(),
+		id, _ := strconv.ParseInt(TunnelId, 16, 64)
+		port, _ := strconv.Atoi(tunnel.Data.Port)
+		taskData := tunnel.handlerReverse(int(id), port)
+		tunnelManageTask(agent, taskData)
 
-		handlerConnectTCP: FuncMsgConnectTCP,
-		handlerConnectUDP: FuncMsgConnectUDP,
-		handlerWriteTCP:   FuncMsgWriteTCP,
-		handlerWriteUDP:   FuncMsgWriteUDP,
-		handlerClose:      FuncMsgClose,
-	}
+	} else {
 
-	go func() {
-		for {
-			var conn net.Conn
-			conn, err = socksTunnel.listener.Accept()
-			if err != nil {
-				return
+		address := tunnel.Data.Interface + ":" + tunnel.Data.Port
+		listener, err := net.Listen("tcp", address)
+		if err != nil {
+			ts.tunnels.Delete(TunnelId)
+			return "", err
+		}
+		tunnel.listener = listener
+
+		go func() {
+			for {
+				var conn net.Conn
+				conn, err = tunnel.listener.Accept()
+				if err != nil {
+					return
+				}
+				go handleTunChannelCreate(agent, tunnel, conn)
 			}
-			go handleRequestSocks5Auth(agent, socksTunnel, conn, Username, Password)
+		}()
+
+		time.Sleep(300 * time.Millisecond)
+
+		if err != nil {
+			ts.tunnels.Delete(TunnelId)
+			return "", err
 		}
-	}()
-
-	time.Sleep(300 * time.Millisecond)
-
-	if err != nil {
-		return "", err
 	}
 
-	id := krypt.CRC32([]byte(agent.Data.Id + "socks" + port))
-	tunnelId := fmt.Sprintf("%08x", id)
+	tunnel.Active = true
 
-	socksTunnel.Data = adaptix.TunnelData{
-		TunnelId:  tunnelId,
-		AgentId:   agent.Data.Id,
-		Computer:  agent.Data.Computer,
-		Username:  agent.Data.Username,
-		Process:   agent.Data.Process,
-		Type:      "SOCKS5 Auth proxy",
-		Info:      fmt.Sprintf("%s : %s", Username, Password),
-		Interface: Address,
-		Port:      port,
-		Client:    "",
-		Fport:     "",
-		Fhost:     "",
-	}
+	ts.TsEventTunnelAdd(tunnel)
 
-	ts.TsTunnelAdd(socksTunnel)
-
-	return socksTunnel.TaskId, nil
+	return tunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelStopSocks(AgentId string, Port int) {
-	port := strconv.Itoa(Port)
-	id := krypt.CRC32([]byte(AgentId + "socks" + port))
-	TunnelId := fmt.Sprintf("%08x", id)
+func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error) {
 
-	_ = ts.TsTunnelStop(TunnelId)
-}
-
-/// Port Forward
-
-func (ts *Teamserver) TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
 	value, ok := ts.agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
 	}
 	agent, _ := value.(*Agent)
 
-	port := strconv.Itoa(Port)
-	addr := Address + ":" + port
-	listener, err := net.Listen("tcp", addr)
+	tunnelData := adaptix.TunnelData{
+		AgentId:  agent.Data.Id,
+		Computer: agent.Data.Computer,
+		Username: agent.Data.Username,
+		Process:  agent.Data.Process,
+		Info:     Info,
+		Client:   Client,
+	}
+
+	lport := strconv.Itoa(Lport)
+	tport := strconv.Itoa(Tport)
+
+	switch Type {
+
+	case TUNNEL_SOCKS4:
+		tunnelData.Type = "SOCKS4 proxy"
+		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agent.Data.Id+"socks"+lport)))
+		tunnelData.Interface = Lhost
+		tunnelData.Port = lport
+
+	case TUNNEL_SOCKS5:
+		tunnelData.Type = "SOCKS5 proxy"
+		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agent.Data.Id+"socks"+lport)))
+		tunnelData.Interface = Lhost
+		tunnelData.Port = lport
+
+	case TUNNEL_SOCKS5_AUTH:
+		tunnelData.Type = "SOCKS5 Auth proxy"
+		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agent.Data.Id+"socks"+lport)))
+		tunnelData.Interface = Lhost
+		tunnelData.Port = lport
+		tunnelData.AuthUser = AuthUser
+		tunnelData.AuthPass = AuthPass
+
+	case TUNNEL_LPORTFWD:
+		tunnelData.Type = "Local port forward"
+		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agent.Data.Id+"lportfwd"+lport)))
+		tunnelData.Interface = Lhost
+		tunnelData.Port = lport
+		tunnelData.Fhost = Thost
+		tunnelData.Fport = tport
+
+	case TUNNEL_RPORTFWD:
+		tunnelData.Type = "Reverse port forward"
+		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agent.Data.Id+"rportfwd"+lport)))
+		tunnelData.Port = lport
+		tunnelData.Fhost = Thost
+		tunnelData.Fport = tport
+
+	default:
+		return "", errors.New("invalid tunnel type")
+	}
+
+	fConnTCP, fConnUDP, fWriteTCP, fWriteUDP, fClose, fReverse, err := ts.Extender.ExAgentTunnelCallbacks(agent.Data, Type)
 	if err != nil {
 		return "", err
 	}
 
-	fwdTunnel := &Tunnel{
-		listener:    listener,
+	tunnel := &Tunnel{
 		connections: safe.NewMap(),
+		Data:        tunnelData,
+		Type:        Type,
+		Active:      false,
 
-		handlerConnectTCP: FuncMsgConnect,
-		handlerWriteTCP:   FuncMsgWrite,
-		handlerClose:      FuncMsgClose,
+		handlerConnectTCP: fConnTCP,
+		handlerConnectUDP: fConnUDP,
+		handlerWriteTCP:   fWriteTCP,
+		handlerWriteUDP:   fWriteUDP,
+		handlerClose:      fClose,
+		handlerReverse:    fReverse,
 	}
 
-	go func() {
-		for {
-			var conn net.Conn
-			conn, err = fwdTunnel.listener.Accept()
-			if err != nil {
-				return
-			}
-			go handleLocalPortFwd(agent, fwdTunnel, conn, FwdAddress, FwdPort)
+	value, ok = ts.tunnels.Get(tunnel.Data.TunnelId)
+	if ok {
+		t, _ := value.(*Tunnel)
+		if t.Active {
+			return "", errors.New("Tunnel already active")
+		} else {
+			ts.tunnels.Delete(tunnel.Data.TunnelId)
 		}
-	}()
-
-	time.Sleep(300 * time.Millisecond)
-
-	if err != nil {
-		return "", err
 	}
 
-	id := krypt.CRC32([]byte(agent.Data.Id + "lportfwd" + port))
-	tunnelId := fmt.Sprintf("%08x", id)
+	ts.tunnels.Put(tunnel.Data.TunnelId, tunnel)
 
-	fwdTunnel.Data = adaptix.TunnelData{
-		TunnelId:  tunnelId,
-		AgentId:   agent.Data.Id,
-		Computer:  agent.Data.Computer,
-		Username:  agent.Data.Username,
-		Process:   agent.Data.Process,
-		Type:      "Local port forward",
-		Info:      "",
-		Interface: Address,
-		Port:      port,
-		Client:    "",
-		Fport:     strconv.Itoa(FwdPort),
-		Fhost:     FwdAddress,
-	}
-
-	ts.TsTunnelAdd(fwdTunnel)
-
-	return fwdTunnel.TaskId, nil
+	return tunnel.Data.TunnelId, nil
 }
 
-func (ts *Teamserver) TsTunnelStopLocalPortFwd(AgentId string, Port int) {
-	port := strconv.Itoa(Port)
-	id := krypt.CRC32([]byte(AgentId + "lportfwd" + port))
-	TunnelId := fmt.Sprintf("%08x", id)
-
-	_ = ts.TsTunnelStop(TunnelId)
+func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Info string, Lhost string, Lport int) (string, error) {
+	return ts.TsTunnelCreate(AgentId, TUNNEL_SOCKS4, Info, Lhost, Lport, "", "", 0, "", "")
 }
 
-func (ts *Teamserver) TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error) {
-	value, ok := ts.agents.Get(AgentId)
-	if !ok {
-		return "", errors.New("agent not found")
+func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (string, error) {
+	if UseAuth {
+		return ts.TsTunnelCreate(AgentId, TUNNEL_SOCKS5_AUTH, Info, Lhost, Lport, "", "", 0, Username, Password)
+	} else {
+		return ts.TsTunnelCreate(AgentId, TUNNEL_SOCKS5, Info, Lhost, Lport, "", "", 0, "", "")
 	}
-	agent, _ := value.(*Agent)
-
-	port := strconv.Itoa(Port)
-	fport := strconv.Itoa(FwdPort)
-
-	fwdTunnel := &Tunnel{
-		connections: safe.NewMap(),
-
-		handlerWriteTCP: FuncMsgWrite,
-		handlerClose:    FuncMsgClose,
-	}
-	fwdTunnel.TaskId, _ = krypt.GenerateUID(8)
-
-	id := krypt.CRC32([]byte(agent.Data.Id + "rportfwd" + port))
-	tunnelId := fmt.Sprintf("%08x", id)
-
-	fwdTunnel.Data = adaptix.TunnelData{
-		TunnelId:  tunnelId,
-		AgentId:   agent.Data.Id,
-		Computer:  agent.Data.Computer,
-		Username:  agent.Data.Username,
-		Process:   agent.Data.Process,
-		Type:      "Reverse port forward",
-		Info:      "",
-		Interface: "",
-		Port:      port,
-		Client:    "",
-		Fport:     fport,
-		Fhost:     FwdAddress,
-	}
-
-	rawTaskData := FuncMsgReverse(int(id), Port)
-	sendTunnelTaskData(agent, rawTaskData)
-
-	ts.tunnels.Put(fwdTunnel.Data.TunnelId, fwdTunnel)
-
-	return fwdTunnel.TaskId, nil
 }
 
-func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, string, error) {
+func (ts *Teamserver) TsTunnelCreateLportfwd(AgentId string, Info string, Lhost string, Lport int, Thost string, Tport int) (string, error) {
+	return ts.TsTunnelCreate(AgentId, TUNNEL_LPORTFWD, Info, Lhost, Lport, "", Thost, Tport, "", "")
+}
+
+func (ts *Teamserver) TsTunnelCreateRportfwd(AgentId string, Info string, Lport int, Thost string, Tport int) (string, error) {
+	return ts.TsTunnelCreate(AgentId, TUNNEL_RPORTFWD, Info, "", Lport, "", Thost, Tport, "", "")
+}
+
+func (ts *Teamserver) TsTunnelUpdateRportfwd(tunnelId int, result bool) (string, string, error) {
 	var (
 		tunnel *Tunnel
 		value  interface{}
 		ok     bool
 	)
-
 	tunId := fmt.Sprintf("%08x", tunnelId)
 
 	if result == true {
@@ -469,20 +456,105 @@ func (ts *Teamserver) TsTunnelStateRemotePortFwd(tunnelId int, result bool) (str
 			taskData := adaptix.TaskData{
 				TaskId:      tunnel.TaskId,
 				MessageType: CONSOLE_OUT_ERROR,
-				Message:     "This port is already in use",
+				Message:     "Reverse port forward failed",
 				FinishDate:  time.Now().Unix(),
 				Completed:   true,
 			}
 
 			ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
 
-			return tunnel.TaskId, "", errors.New("this port is already in use")
+			return tunnel.TaskId, "", errors.New("reverse port forward failed")
 		}
 	}
 	return "", "", errors.New("tunnel not found")
 }
 
-func (ts *Teamserver) TsTunnelStopRemotePortFwd(AgentId string, Port int) {
+/// Tunnel Stop
+
+func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
+	value, ok := ts.tunnels.GetDelete(TunnelId)
+	if !ok {
+		return errors.New("tunnel Not Found")
+	}
+	tunnel, _ := value.(*Tunnel)
+
+	if tunnel.listener != nil {
+		_ = tunnel.listener.Close()
+	}
+
+	tunnel.connections.ForEach(func(key string, valueConn interface{}) bool {
+		tunChannel, _ := valueConn.(*TunnelChannel)
+		if tunnel.Data.Client == "" {
+			if tunChannel.conn != nil {
+				_ = tunChannel.conn.Close()
+			}
+		} else {
+			if tunChannel.wsconn != nil {
+				_ = tunChannel.wsconn.Close()
+			}
+		}
+
+		tunChannel.pwTun.Close()
+		tunChannel.prTun.Close()
+		tunChannel.pwSrv.Close()
+		tunChannel.prSrv.Close()
+
+		return true
+	})
+
+	packet := CreateSpTunnelDelete(tunnel.Data)
+	ts.TsSyncAllClients(packet)
+
+	taskData := adaptix.TaskData{
+		TaskId:     tunnel.TaskId,
+		Completed:  true,
+		FinishDate: time.Now().Unix(),
+	}
+
+	ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
+
+	if tunnel.Data.Client == "" {
+		message := ""
+		switch tunnel.Type {
+		case TUNNEL_SOCKS4:
+			message = fmt.Sprintf("SOCKS4 server ':%s' stopped", tunnel.Data.Port)
+		case TUNNEL_SOCKS5:
+			message = fmt.Sprintf("SOCKS5 server ':%s' stopped", tunnel.Data.Port)
+		case TUNNEL_SOCKS5_AUTH:
+			message = fmt.Sprintf("SOCKS5 (with Auth) server ':%s' stopped", tunnel.Data.Port)
+		case TUNNEL_LPORTFWD:
+			message = fmt.Sprintf("Local port forward on ':%s' stopped", tunnel.Data.Port)
+		case TUNNEL_RPORTFWD:
+			message = fmt.Sprintf("Remote port forward to '%s:%s' stopped", tunnel.Data.Fhost, tunnel.Data.Fport)
+		default:
+			return errors.New("tunnel type not supported")
+		}
+
+		packet2 := CreateSpEvent(EVENT_TUNNEL_STOP, message)
+		ts.TsSyncAllClients(packet2)
+		ts.events.Put(packet2)
+	}
+
+	return nil
+}
+
+func (ts *Teamserver) TsTunnelStopSocks(AgentId string, Port int) {
+	port := strconv.Itoa(Port)
+	id := krypt.CRC32([]byte(AgentId + "socks" + port))
+	TunnelId := fmt.Sprintf("%08x", id)
+
+	_ = ts.TsTunnelStop(TunnelId)
+}
+
+func (ts *Teamserver) TsTunnelStopLportfwd(AgentId string, Port int) {
+	port := strconv.Itoa(Port)
+	id := krypt.CRC32([]byte(AgentId + "lportfwd" + port))
+	TunnelId := fmt.Sprintf("%08x", id)
+
+	_ = ts.TsTunnelStop(TunnelId)
+}
+
+func (ts *Teamserver) TsTunnelStopRportfwd(AgentId string, Port int) {
 	port := strconv.Itoa(Port)
 	id := krypt.CRC32([]byte(AgentId + "rportfwd" + port))
 	TunnelId := fmt.Sprintf("%08x", id)
@@ -500,41 +572,86 @@ func (ts *Teamserver) TsTunnelStopRemotePortFwd(AgentId string, Port int) {
 	agent, _ := value.(*Agent)
 
 	rawTaskData := tunnel.handlerClose(int(id))
-	sendTunnelTaskData(agent, rawTaskData)
+	tunnelManageTask(agent, rawTaskData)
 
 	_ = ts.TsTunnelStop(TunnelId)
 }
 
 /// Connection
 
-func (ts *Teamserver) TsTunnelConnectionData(channelId int, data []byte) {
+func (ts *Teamserver) TsTunnelChannelExists(channelId int) bool {
 	var (
-		valueConn        interface{}
-		tunnelConnection *TunnelConnection
-		ok               bool
+		tunnel *Tunnel
+		ok     bool
+	)
+
+	cid := strconv.Itoa(channelId)
+	ts.tunnels.ForEach(func(key string, valueTun interface{}) bool {
+		tunnel, _ = valueTun.(*Tunnel)
+		ok = tunnel.connections.Contains(cid)
+		if ok {
+			return false
+		}
+		return true
+	})
+
+	return ok
+}
+
+func (ts *Teamserver) TsTunnelGetPipe(AgentId string, channelId int) (*io.PipeReader, *io.PipeWriter, error) {
+	var (
+		valueConn  interface{}
+		tunnel     *Tunnel
+		tunChannel *TunnelChannel
+		ok         bool
 	)
 
 	ts.tunnels.ForEach(func(key string, valueTun interface{}) bool {
-		tunnel, _ := valueTun.(*Tunnel)
+		tunnel, _ = valueTun.(*Tunnel)
 		valueConn, ok = tunnel.connections.Get(strconv.Itoa(channelId))
 		if ok {
-			tunnelConnection, _ = valueConn.(*TunnelConnection)
+			tunChannel, _ = valueConn.(*TunnelChannel)
+			return false
+		}
+		return true
+	})
+
+	if !ok {
+		return nil, nil, errors.New("tunnel connection not found")
+	}
+
+	return tunChannel.prSrv, tunChannel.pwTun, nil
+}
+
+func (ts *Teamserver) TsTunnelConnectionData(channelId int, data []byte) {
+	var (
+		tunnel     *Tunnel
+		valueConn  interface{}
+		tunChannel *TunnelChannel
+		ok         bool
+	)
+
+	ts.tunnels.ForEach(func(key string, valueTun interface{}) bool {
+		tunnel, _ = valueTun.(*Tunnel)
+		valueConn, ok = tunnel.connections.Get(strconv.Itoa(channelId))
+		if ok {
+			tunChannel, _ = valueConn.(*TunnelChannel)
 			return false
 		}
 		return true
 	})
 
 	if ok {
-		go tunnelDataToSocket(tunnelConnection, data)
+		go tunChannel.pwTun.Write(data)
 	}
 }
 
-func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int) {
+func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool) {
 	var (
-		valueConn        interface{}
-		tunnel           *Tunnel
-		tunnelConnection *TunnelConnection
-		ok               bool
+		valueConn  interface{}
+		tunnel     *Tunnel
+		tunChannel *TunnelChannel
+		ok         bool
 	)
 
 	value, ok := ts.agents.Get(AgentId)
@@ -547,38 +664,55 @@ func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int) {
 		tunnel, _ = valueTun.(*Tunnel)
 		valueConn, ok = tunnel.connections.Get(strconv.Itoa(channelId))
 		if ok {
-			tunnelConnection, _ = valueConn.(*TunnelConnection)
+			tunChannel, _ = valueConn.(*TunnelChannel)
 			return false
 		}
 		return true
 	})
 
 	if ok {
-		go socketToTunnelData(agent, tunnel, tunnelConnection)
+		if tunnel.Data.Client == "" {
+			relaySocketToTunnel(agent, tunnel, tunChannel, ioDirect)
+		} else {
+			relayWebsocketToTunnel(agent, tunnel, tunChannel, ioDirect)
+		}
 	}
 }
 
 func (ts *Teamserver) TsTunnelConnectionClose(channelId int) {
 	var (
-		valueConn        interface{}
-		tunnel           *Tunnel
-		tunnelConnection *TunnelConnection
-		ok               bool
+		valueConn  interface{}
+		tunnel     *Tunnel
+		tunChannel *TunnelChannel
+		ok         bool
 	)
 
 	ts.tunnels.ForEach(func(key string, valueTun interface{}) bool {
 		tunnel, _ = valueTun.(*Tunnel)
 		valueConn, ok = tunnel.connections.Get(strconv.Itoa(channelId))
 		if ok {
-			tunnelConnection, _ = valueConn.(*TunnelConnection)
+			tunChannel, _ = valueConn.(*TunnelChannel)
 			return false
 		}
 		return true
 	})
 
 	if ok {
-		tunnelConnection.handleCancel()
-		_ = tunnelConnection.conn.Close()
+		if tunnel.Data.Client == "" {
+			if tunChannel.conn != nil {
+				_ = tunChannel.conn.Close()
+			}
+		} else {
+			if tunChannel.wsconn != nil {
+				_ = tunChannel.wsconn.Close()
+			}
+		}
+
+		tunChannel.pwTun.Close()
+		tunChannel.prTun.Close()
+		tunChannel.pwSrv.Close()
+		tunChannel.prSrv.Close()
+
 		tunnel.connections.Delete(strconv.Itoa(channelId))
 	}
 }
@@ -597,105 +731,120 @@ func (ts *Teamserver) TsTunnelConnectionAccept(tunnelId int, channelId int) {
 	}
 	agent, _ := value.(*Agent)
 
-	handlerReverseAccept(agent, tunnel, channelId)
+	if tunnel.Data.Client == "" {
+		handlerReverseAccept(agent, tunnel, channelId)
+	} else {
+		// TODO: reverse proxy to client
+	}
 }
 
 /// handlers
 
-func handleRequestSocks4(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
+func handleTunChannelCreate(agent *Agent, tunnel *Tunnel, conn net.Conn) {
 
-	targetAddress, targetPort, err := proxy.CheckSocks4(socksConn)
-	if err != nil {
-		fmt.Println("Socks4 proxy error: ", err)
-		return
-	}
-
-	channelId := int(rand.Uint32())
-	rawTaskData := tunnel.handlerConnectTCP(channelId, targetAddress, targetPort)
-	sendTunnelTaskData(agent, rawTaskData)
-
-	tunnelConnection := &TunnelConnection{
-		channelId: channelId,
-		conn:      socksConn,
+	tunChannel := &TunnelChannel{
+		channelId: int(rand.Uint32()),
+		conn:      conn,
 		protocol:  "TCP",
 	}
-	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
 
-	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
-}
+	tunChannel.prSrv, tunChannel.pwSrv = io.Pipe()
+	tunChannel.prTun, tunChannel.pwTun = io.Pipe()
 
-func handleRequestSocks5(agent *Agent, tunnel *Tunnel, socksConn net.Conn) {
+	var taskData adaptix.TaskData
+	switch tunnel.Type {
 
-	targetAddress, targetPort, socksCommand, err := proxy.CheckSocks5(socksConn)
-	if err != nil {
-		fmt.Println("Socks5 proxy error: ", err)
+	case TUNNEL_SOCKS4:
+		targetAddress, targetPort, err := proxy.CheckSocks4(conn)
+		if err != nil {
+			//fmt.Println("Socks4 proxy error: ", err)
+			return
+		}
+		taskData = tunnel.handlerConnectTCP(tunChannel.channelId, targetAddress, targetPort)
+
+	case TUNNEL_SOCKS5:
+		targetAddress, targetPort, socksCommand, err := proxy.CheckSocks5(conn)
+		if err != nil {
+			//fmt.Println("Socks5 proxy error: ", err)
+			return
+		}
+		if socksCommand == 3 {
+			taskData = tunnel.handlerConnectUDP(tunChannel.channelId, targetAddress, targetPort)
+			tunChannel.protocol = "UDP"
+		} else {
+			taskData = tunnel.handlerConnectTCP(tunChannel.channelId, targetAddress, targetPort)
+		}
+
+	case TUNNEL_SOCKS5_AUTH:
+		targetAddress, targetPort, socksCommand, err := proxy.CheckSocks5Auth(conn, tunnel.Data.AuthUser, tunnel.Data.AuthPass)
+		if err != nil {
+			//fmt.Println("Socks5 proxy error: ", err)
+			return
+		}
+		if socksCommand == 3 {
+			taskData = tunnel.handlerConnectUDP(tunChannel.channelId, targetAddress, targetPort)
+			tunChannel.protocol = "UDP"
+		} else {
+			taskData = tunnel.handlerConnectTCP(tunChannel.channelId, targetAddress, targetPort)
+		}
+
+	case TUNNEL_LPORTFWD:
+		tport, _ := strconv.Atoi(tunnel.Data.Fport)
+		taskData = tunnel.handlerConnectTCP(tunChannel.channelId, tunnel.Data.Fhost, tport)
+
+	default:
 		return
 	}
 
-	channelId := int(rand.Uint32())
-	protocol := "TCP"
+	tunnelManageTask(agent, taskData)
 
-	var taskData adaptix.TaskData
-	if socksCommand == 3 {
-		taskData = tunnel.handlerConnectUDP(channelId, targetAddress, targetPort)
-		protocol = "UDP"
-	} else {
-		taskData = tunnel.handlerConnectTCP(channelId, targetAddress, targetPort)
-	}
-	sendTunnelTaskData(agent, taskData)
-
-	tunnelConnection := &TunnelConnection{
-		channelId: channelId,
-		conn:      socksConn,
-		protocol:  protocol,
-	}
-	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
-
-	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
+	tunnel.connections.Put(strconv.Itoa(tunChannel.channelId), tunChannel)
 }
 
-func handleRequestSocks5Auth(agent *Agent, tunnel *Tunnel, socksConn net.Conn, username string, password string) {
-
-	targetAddress, targetPort, socksCommand, err := proxy.CheckSocks5Auth(socksConn, username, password)
-	if err != nil {
-		fmt.Println("Socks5 proxy error: ", err)
-		return
-	}
-
-	channelId := int(rand.Uint32())
-	protocol := "TCP"
-	var taskData adaptix.TaskData
-	if socksCommand == 3 {
-		taskData = tunnel.handlerConnectUDP(channelId, targetAddress, targetPort)
-		protocol = "UDP"
-	} else {
-		taskData = tunnel.handlerConnectTCP(channelId, targetAddress, targetPort)
-	}
-	sendTunnelTaskData(agent, taskData)
-
-	tunnelConnection := &TunnelConnection{
+func handleTunChannelCreateClient(agent *Agent, tunnel *Tunnel, wsconn *websocket.Conn, channelId int, targetAddress string, targetPort int, protocol string) {
+	tunChannel := &TunnelChannel{
 		channelId: channelId,
-		conn:      socksConn,
-		protocol:  protocol,
-	}
-	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
-
-	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
-}
-
-func handleLocalPortFwd(agent *Agent, tunnel *Tunnel, fwdConn net.Conn, fhost string, fport int) {
-	channelId := int(rand.Uint32())
-	rawTaskData := tunnel.handlerConnectTCP(channelId, fhost, fport)
-	sendTunnelTaskData(agent, rawTaskData)
-
-	tunnelConnection := &TunnelConnection{
-		channelId: channelId,
-		conn:      fwdConn,
+		conn:      nil,
+		wsconn:    wsconn,
 		protocol:  "TCP",
 	}
-	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
 
-	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
+	tunChannel.prSrv, tunChannel.pwSrv = io.Pipe()
+	tunChannel.prTun, tunChannel.pwTun = io.Pipe()
+
+	var taskData adaptix.TaskData
+	switch tunnel.Type {
+
+	case TUNNEL_SOCKS4:
+		taskData = tunnel.handlerConnectTCP(tunChannel.channelId, targetAddress, targetPort)
+
+	case TUNNEL_SOCKS5:
+		if protocol == "udp" {
+			taskData = tunnel.handlerConnectUDP(tunChannel.channelId, targetAddress, targetPort)
+			tunChannel.protocol = "UDP"
+		} else {
+			taskData = tunnel.handlerConnectTCP(tunChannel.channelId, targetAddress, targetPort)
+		}
+
+	case TUNNEL_SOCKS5_AUTH:
+		if protocol == "udp" {
+			taskData = tunnel.handlerConnectUDP(tunChannel.channelId, targetAddress, targetPort)
+			tunChannel.protocol = "UDP"
+		} else {
+			taskData = tunnel.handlerConnectTCP(tunChannel.channelId, targetAddress, targetPort)
+		}
+
+	case TUNNEL_LPORTFWD:
+		tport, _ := strconv.Atoi(tunnel.Data.Fport)
+		taskData = tunnel.handlerConnectTCP(tunChannel.channelId, tunnel.Data.Fhost, tport)
+
+	default:
+		return
+	}
+
+	tunnelManageTask(agent, taskData)
+
+	tunnel.connections.Put(strconv.Itoa(tunChannel.channelId), tunChannel)
 }
 
 func handlerReverseAccept(agent *Agent, tunnel *Tunnel, channelId int) {
@@ -703,63 +852,168 @@ func handlerReverseAccept(agent *Agent, tunnel *Tunnel, channelId int) {
 	fwdConn, err := net.Dial("tcp", target)
 	if err != nil {
 		rawTaskData := tunnel.handlerClose(channelId)
-		sendTunnelTaskData(agent, rawTaskData)
+		tunnelManageTask(agent, rawTaskData)
 		return
 	}
 
-	tunnelConnection := &TunnelConnection{
+	tunChannel := &TunnelChannel{
 		channelId: channelId,
 		conn:      fwdConn,
 		protocol:  "TCP",
 	}
-	tunnelConnection.ctx, tunnelConnection.handleCancel = context.WithCancel(context.Background())
 
-	tunnel.connections.Put(strconv.Itoa(channelId), tunnelConnection)
+	tunChannel.prSrv, tunChannel.pwSrv = io.Pipe()
+	tunChannel.prTun, tunChannel.pwTun = io.Pipe()
 
-	go socketToTunnelData(agent, tunnel, tunnelConnection)
+	tunnel.connections.Put(strconv.Itoa(channelId), tunChannel)
+
+	relaySocketToTunnel(agent, tunnel, tunChannel, false)
 }
 
 /// process socket
 
-func sendTunnelTaskData(agent *Agent, taskData adaptix.TaskData) {
+func tunnelManageTask(agent *Agent, taskData adaptix.TaskData) {
+	taskData.AgentId = agent.Data.Id
+	if taskData.TaskId == "" {
+		taskData.TaskId, _ = krypt.GenerateUID(8)
+	}
+
+	agent.TunnelConnectTasks.Put(taskData)
+}
+
+func relayPipeToTaskData(agent *Agent, channelId int, taskData adaptix.TaskData) {
 	if taskData.TaskId == "" {
 		taskData.TaskId, _ = krypt.GenerateUID(8)
 	}
 	taskData.AgentId = agent.Data.Id
-	agent.TunnelQueue.Put(taskData)
+
+	taskTunnel := adaptix.TaskDataTunnel{
+		ChannelId: channelId,
+		Data:      taskData,
+	}
+
+	agent.TunnelQueue.Put(taskTunnel)
 }
 
-func socketToTunnelData(agent *Agent, tunnel *Tunnel, tunnelConnection *TunnelConnection) {
+func relaySocketToTunnel(agent *Agent, tunnel *Tunnel, tunChannel *TunnelChannel, direct bool) {
 	var taskData adaptix.TaskData
+	ctx, cancel := context.WithCancel(context.Background())
 
-	buffer := make([]byte, 0x10000)
-	for {
-		select {
-		case <-tunnelConnection.ctx.Done():
+	var closeOnce sync.Once
+	closeChannel := func() {
+		closeOnce.Do(func() {
+			cancel()
+			taskData := tunnel.handlerClose(tunChannel.channelId)
+			tunnelManageTask(agent, taskData)
 			return
-		default:
-			n, err := tunnelConnection.conn.Read(buffer)
-			if err != nil {
-				if err == io.EOF {
-					taskData = tunnel.handlerClose(tunnelConnection.channelId)
-				} else {
-					fmt.Printf("Error read data: %v\n", err)
-					continue
-				}
-				break
-			} else {
-				if tunnelConnection.protocol == "UDP" {
-					taskData = tunnel.handlerWriteUDP(tunnelConnection.channelId, buffer[:n])
-				} else {
-					taskData = tunnel.handlerWriteTCP(tunnelConnection.channelId, buffer[:n])
+		})
+	}
+
+	go func() {
+		io.Copy(tunChannel.pwSrv, tunChannel.conn)
+		closeChannel()
+	}()
+
+	go func() {
+		io.Copy(tunChannel.conn, tunChannel.prTun)
+		closeChannel()
+	}()
+
+	if !direct {
+		go func() {
+			buf := make([]byte, 0x8000)
+			for {
+				select {
+				case <-ctx.Done():
+					closeChannel()
+					return
+
+				default:
+					n, err := tunChannel.prSrv.Read(buf)
+					if err != nil {
+						closeChannel()
+						return
+					}
+					if n > 0 {
+						if tunChannel.protocol == "UDP" {
+							taskData = tunnel.handlerWriteUDP(tunChannel.channelId, buf[:n])
+						} else {
+							taskData = tunnel.handlerWriteTCP(tunChannel.channelId, buf[:n])
+						}
+						relayPipeToTaskData(agent, tunChannel.channelId, taskData)
+					}
 				}
 			}
-
-			sendTunnelTaskData(agent, taskData)
-		}
+		}()
 	}
 }
 
-func tunnelDataToSocket(tunnelConnection *TunnelConnection, data []byte) {
-	_, _ = tunnelConnection.conn.Write(data)
+func relayWebsocketToTunnel(agent *Agent, tunnel *Tunnel, tunChannel *TunnelChannel, direct bool) {
+	var taskData adaptix.TaskData
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var closeOnce sync.Once
+	closeChannel := func() {
+		closeOnce.Do(func() {
+			cancel()
+			_ = tunChannel.wsconn.Close()
+			taskData = tunnel.handlerClose(tunChannel.channelId)
+			tunnelManageTask(agent, taskData)
+		})
+	}
+
+	go func() {
+		for {
+			_, msg, err := tunChannel.wsconn.ReadMessage()
+			if err != nil {
+				break
+			}
+			_, err = tunChannel.pwSrv.Write(msg)
+			if err != nil {
+				break
+			}
+		}
+		closeChannel()
+	}()
+
+	go func() {
+		buf := make([]byte, 0x8000)
+		for {
+			n, err := tunChannel.prTun.Read(buf)
+			if err != nil {
+				break
+			}
+			if err := tunChannel.wsconn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+				break
+			}
+		}
+		closeChannel()
+	}()
+
+	if !direct {
+		go func() {
+			buf := make([]byte, 0x8000)
+			for {
+				select {
+				case <-ctx.Done():
+					closeChannel()
+					return
+				default:
+					n, err := tunChannel.prSrv.Read(buf)
+					if err != nil {
+						closeChannel()
+						return
+					}
+					if n > 0 {
+						if tunChannel.protocol == "UDP" {
+							taskData = tunnel.handlerWriteUDP(tunChannel.channelId, buf[:n])
+						} else {
+							taskData = tunnel.handlerWriteTCP(tunChannel.channelId, buf[:n])
+						}
+						relayPipeToTaskData(agent, tunChannel.channelId, taskData)
+					}
+				}
+			}
+		}()
+	}
 }

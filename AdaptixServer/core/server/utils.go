@@ -6,9 +6,9 @@ import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
-	"context"
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
+	"io"
 	"net"
 	"sync"
 )
@@ -29,6 +29,14 @@ const (
 	TYPE_JOB        = 3
 	TYPE_TUNNEL     = 4
 	TYPE_PROXY_DATA = 5
+)
+
+const (
+	TUNNEL_SOCKS4      = 1
+	TUNNEL_SOCKS5      = 2
+	TUNNEL_SOCKS5_AUTH = 3
+	TUNNEL_LPORTFWD    = 4
+	TUNNEL_RPORTFWD    = 5
 )
 
 // TeamServer
@@ -53,14 +61,15 @@ type Teamserver struct {
 	wm_agent_types map[string]string   // agentMark string : agentName string
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
-	events      *safe.Slice // 			         : sync_packet interface{}
+	events      *safe.Slice // 			           : sync_packet interface{}
 	clients     safe.Map    // username string     : socket *websocket.Conn
 	agents      safe.Map    // agentId string      : agent *Agent
 	listeners   safe.Map    // listenerName string : listenerData ListenerData
 	downloads   safe.Map    // fileId string       : downloadData DownloadData
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
 	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
-	pivots      *safe.Slice // 			         : PivotData
+	terminals   safe.Map    // terminalId string   : terminal Terminal
+	pivots      *safe.Slice // 			           : PivotData
 }
 
 type Agent struct {
@@ -70,8 +79,10 @@ type Agent struct {
 
 	OutConsole *safe.Slice //  sync_packet interface{}
 
-	TunnelQueue *safe.Slice // taskData TaskData
-	TasksQueue  *safe.Slice // taskData TaskData
+	TunnelConnectTasks *safe.Slice // taskData TaskData
+	TunnelQueue        *safe.Slice // taskData TaskDataTunnel
+	TerminalQueue      *safe.Slice // taskData TaskDataTunnel
+	TasksQueue         *safe.Slice // taskData TaskData
 
 	RunningTasks   safe.Map // taskId string, taskData TaskData
 	CompletedTasks safe.Map // taskId string, taskData TaskData
@@ -80,16 +91,24 @@ type Agent struct {
 	PivotChilds *safe.Slice
 }
 
-type TunnelConnection struct {
-	channelId    int
-	protocol     string
-	conn         net.Conn
-	ctx          context.Context
-	handleCancel context.CancelFunc
+type TunnelChannel struct {
+	channelId int
+	protocol  string
+
+	wsconn *websocket.Conn
+	conn   net.Conn
+
+	pwSrv *io.PipeWriter
+	prSrv *io.PipeReader
+
+	pwTun *io.PipeWriter
+	prTun *io.PipeReader
 }
 
 type Tunnel struct {
 	TaskId string
+	Active bool
+	Type   int
 	Data   adaptix.TunnelData
 
 	listener    net.Listener
@@ -100,6 +119,26 @@ type Tunnel struct {
 	handlerWriteTCP   func(channelId int, data []byte) adaptix.TaskData
 	handlerWriteUDP   func(channelId int, data []byte) adaptix.TaskData
 	handlerClose      func(channelId int) adaptix.TaskData
+	handlerReverse    func(tunnelId int, port int) adaptix.TaskData
+}
+
+type Terminal struct {
+	TaskId     string
+	TerminalId int
+
+	agent *Agent
+
+	wsconn *websocket.Conn
+
+	pwSrv *io.PipeWriter
+	prSrv *io.PipeReader
+
+	pwTun *io.PipeWriter
+	prTun *io.PipeReader
+
+	handlerStart func(terminalId int, program string, sizeH int, sizeW int) (adaptix.TaskData, error)
+	handlerWrite func(terminalId int, data []byte) (adaptix.TaskData, error)
+	handlerClose func(terminalId int) (adaptix.TaskData, error)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

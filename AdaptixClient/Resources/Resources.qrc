@@ -45,6 +45,9 @@
 
         <file alias="archive">icons/archive_64dp.png</file>
         <file alias="unarchive">icons/unarchive_64dp.png</file>
+        <file alias="start">icons/start_64dp.png</file>
+        <file alias="restart">icons/restart_64dp.png</file>
+        <file alias="stop">icons/stop_64dp.png</file>
 
         <file alias="fs_ssd">icons/filesystem/ssd_64dp.png</file>
         <file alias="fs_document">icons/filesystem/document_64dp.png</file>
@@ -79,6 +82,5 @@
         <file alias="unknown_grey">icons/graph/unknown-100-grey.png</file>
         <file alias="unknown_red">icons/graph/unknown-100-red.png</file>
     </qresource>
-
 
 </RCC>

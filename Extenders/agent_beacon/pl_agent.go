@@ -688,10 +688,16 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 					goto RET
 				}
 			}
-			taskData.TaskId, err = ts.TsTunnelCreateLocalPortFwd(agent.Id, lhost, lport, fhost, fport, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
+
+			tunnelId, err := ts.TsTunnelCreateLportfwd(agent.Id, "", lhost, lport, fhost, fport)
 			if err != nil {
 				goto RET
 			}
+			taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+			if err != nil {
+				goto RET
+			}
+
 			taskData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, fhost, fport)
 			taskData.MessageType = MESSAGE_SUCCESS
 			taskData.ClearText = "\n"
@@ -699,7 +705,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		} else if subcommand == "stop" {
 			taskData.Completed = true
 
-			ts.TsTunnelStopLocalPortFwd(agent.Id, lport)
+			ts.TsTunnelStopLportfwd(agent.Id, lport)
 
 			taskData.Message = fmt.Sprintf("Local port forwarding on %d stopped", lport)
 			taskData.MessageType = MESSAGE_SUCCESS
@@ -861,10 +867,15 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 				}
 			}
 
-			taskData.TaskId, err = ts.TsTunnelCreateRemotePortFwd(agent.Id, lport, fhost, fport, TunnelMessageReverse, TunnelMessageWriteTCP, TunnelMessageClose)
+			tunnelId, err := ts.TsTunnelCreateRportfwd(agent.Id, "", lport, fhost, fport)
 			if err != nil {
 				goto RET
 			}
+			taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+			if err != nil {
+				goto RET
+			}
+
 			messageData.Message = fmt.Sprintf("Starting reverse port forwarding %d to %s:%d", lport, fhost, fport)
 			messageData.Status = MESSAGE_INFO
 			messageData.Text = "\n"
@@ -872,7 +883,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		} else if subcommand == "stop" {
 			taskData.Completed = true
 
-			ts.TsTunnelStopRemotePortFwd(agent.Id, lport)
+			ts.TsTunnelStopRportfwd(agent.Id, lport)
 
 			taskData.MessageType = MESSAGE_SUCCESS
 			taskData.Message = "Reverse port forwarding has been stopped"
@@ -942,7 +953,11 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 
 			version4, _ := args["-socks4"].(bool)
 			if version4 {
-				taskData.TaskId, err = ts.TsTunnelCreateSocks4(agent.Id, address, port, TunnelMessageConnectTCP, TunnelMessageWriteTCP, TunnelMessageClose)
+				tunnelId, err := ts.TsTunnelCreateSocks4(agent.Id, "", address, port)
+				if err != nil {
+					goto RET
+				}
+				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
 				if err != nil {
 					goto RET
 				}
@@ -961,17 +976,27 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 						err = errors.New("parameter 'password' must be set")
 						goto RET
 					}
-					taskData.TaskId, err = ts.TsTunnelCreateSocks5Auth(agent.Id, address, port, username, password, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
+					tunnelId, err := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, true, username, password)
 					if err != nil {
 						goto RET
 					}
+					taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+					if err != nil {
+						goto RET
+					}
+
 					taskData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
 
 				} else {
-					taskData.TaskId, err = ts.TsTunnelCreateSocks5(agent.Id, address, port, TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose)
+					tunnelId, err := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, false, "", "")
 					if err != nil {
 						goto RET
 					}
+					taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+					if err != nil {
+						goto RET
+					}
+
 					taskData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
 				}
 			}
@@ -1068,7 +1093,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 	size := packer.ParseInt32()
 	if size-4 != packer.Size() {
-		fmt.Println("Invalid tasks data")
+		//fmt.Println("Invalid tasks data")
 		return outTasks
 	}
 
@@ -1210,47 +1235,96 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			task.Completed = true
 
 		case COMMAND_EXEC_BOF_OUT:
-			if false == packer.CheckPacker([]string{"int", "array"}) {
+			if false == packer.CheckPacker([]string{"int"}) {
 				return outTasks
 			}
-
 			outputType := packer.ParseInt32()
-			output := packer.ParseString()
 
 			if outputType == BOF_ERROR_PARSE {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				_ = packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Parse BOF error"
+
 			} else if outputType == BOF_ERROR_MAX_FUNCS {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				_ = packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "The number of functions in the BOF file exceeds 512"
+
 			} else if outputType == BOF_ERROR_ENTRY {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				_ = packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Entry function not found"
 
 			} else if outputType == BOF_ERROR_ALLOC {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				_ = packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Error allocation of BOF memory"
 
 			} else if outputType == BOF_ERROR_SYMBOL {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				output := packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Symbol not found: " + output + "\n"
 
 			} else if outputType == CALLBACK_ERROR {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				output := packer.ParseString()
+
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.ACP)
 
 			} else if outputType == CALLBACK_OUTPUT_OEM {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				output := packer.ParseString()
+
 				task.MessageType = MESSAGE_SUCCESS
 				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.OemCP)
 
+			} else if outputType == CALLBACK_AX_SCREENSHOT {
+				if false == packer.CheckPacker([]string{"array", "array"}) {
+					return outTasks
+				}
+				note := packer.ParseString()
+				screen := packer.ParseBytes()
+
+				_ = ts.TsScreenshotAdd(agentData.Id, note, screen)
+
 			} else {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				output := packer.ParseString()
+
 				task.MessageType = MESSAGE_SUCCESS
 				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.ACP)
@@ -1666,7 +1740,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			if result == 0 {
 				ts.TsTunnelConnectionClose(channelId)
 			} else {
-				ts.TsTunnelConnectionResume(agentData.Id, channelId)
+				ts.TsTunnelConnectionResume(agentData.Id, channelId, false)
 			}
 
 		case COMMAND_TUNNEL_WRITE_TCP:
@@ -1686,9 +1760,9 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			tunnelId := int(TaskId)
 			result := packer.ParseInt8()
 			if result == 0 {
-				task.TaskId, task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, false)
+				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, false)
 			} else {
-				task.TaskId, task.Message, err = ts.TsTunnelStateRemotePortFwd(tunnelId, true)
+				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, true)
 			}
 
 			if err != nil {
@@ -1774,17 +1848,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 /// BROWSERS
 
-func BrowserDownloadChangeState(fid string, newState int) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, newState, int(fileId)}
-
-	return PackArray(array)
-}
-
 func BrowserDisks(agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DISKS}
 	return PackArray(array)
@@ -1808,10 +1871,44 @@ func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix
 	return PackArray(array)
 }
 
-func BrowserDownload(path string, agentData adaptix.AgentData) ([]byte, error) {
+/// DOWNLOADS
+
+func TaskDownloadStart(path string, agentData adaptix.AgentData) ([]byte, error) {
 	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
 	return PackArray(array)
 }
+
+func TaskDownloadCancel(fid string) ([]byte, error) {
+	fileId, err := strconv.ParseInt(fid, 16, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_CANCELED, int(fileId)}
+	return PackArray(array)
+}
+
+func TaskDownloadResume(fid string) ([]byte, error) {
+	fileId, err := strconv.ParseInt(fid, 16, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_RUNNING, int(fileId)}
+	return PackArray(array)
+}
+
+func TaskDownloadPause(fid string) ([]byte, error) {
+	fileId, err := strconv.ParseInt(fid, 16, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_STOPPED, int(fileId)}
+	return PackArray(array)
+}
+
+///
 
 func BrowserJobKill(jobId string) ([]byte, error) {
 	jobIdstr, err := strconv.ParseInt(jobId, 16, 64)
@@ -1858,4 +1955,18 @@ func TunnelClose(channelId int) ([]byte, error) {
 func TunnelReverse(tunnelId int, port int) ([]byte, error) {
 	array := []interface{}{COMMAND_TUNNEL_REVERSE, tunnelId, port}
 	return PackArray(array)
+}
+
+/// TERMINAL
+
+func TerminalStart(terminalId int, program string, sizeH int, sizeW int) ([]byte, error) {
+	return nil, nil
+}
+
+func TerminalWrite(terminalId int, data []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func TerminalClose(terminalId int) ([]byte, error) {
+	return nil, nil
 }

@@ -140,6 +140,7 @@
 #define HASH_FUNC_GETMODULEHANDLEA                   0x700712f7
 #define HASH_FUNC_FREELIBRARY                        0x26ccae3b
 #define HASH_FUNC___C_SPECIFIC_HANDLER               0x6d7af307
+#define HASH_FUNC_AXADDSCREENSHOT                    0x495c25a4
 
 // wininet
 #define HASH_FUNC_INTERNETOPENA                      0x4c383c80

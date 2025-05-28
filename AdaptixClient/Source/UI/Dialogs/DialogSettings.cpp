@@ -24,16 +24,32 @@ DialogSettings::DialogSettings(Settings* s)
     connect(themeCombo,          &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
     connect(fontFamilyCombo,     &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
     connect(fontSizeSpin,        &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(consoleTimeCheckbox, &QCheckBox::stateChanged,       buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(sessionsHealthCheck, &QCheckBox::stateChanged,       this, &DialogSettings::onHealthChange );
     connect(sessionsCoafSpin,    &QDoubleSpinBox::valueChanged,  buttonApply, [=, this](double){buttonApply->setEnabled(true);} );
     connect(sessionsOffsetSpin,  &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
 
-    for ( int i = 0; i < 15; i++)
-        connect(sessionsCheck[i],  &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    connect(consoleTimeCheckbox, &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(sessionsHealthCheck, &QCheckBox::checkStateChanged, this, &DialogSettings::onHealthChange );
+#else
+    connect(consoleTimeCheckbox, &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(sessionsHealthCheck, &QCheckBox::stateChanged, this, &DialogSettings::onHealthChange );
+#endif
 
-    for ( int i = 0; i < 11; i++)
+    for ( int i = 0; i < 15; i++) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+        connect(sessionsCheck[i],  &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+#else
+        connect(sessionsCheck[i],  &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+#endif
+    }
+
+    for ( int i = 0; i < 11; i++) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+        connect(tasksCheck[i],  &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+#else
         connect(tasksCheck[i],  &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+#endif
+    }
 
     connect(listSettings, &QListWidget::currentRowChanged, this, &DialogSettings::onStackChange);
     connect(buttonApply, &QPushButton::clicked, this, &DialogSettings::onApply);
@@ -233,7 +249,8 @@ void DialogSettings::onStackChange(int index) const
     stackSettings->setCurrentIndex(index);
 }
 
-void DialogSettings::onHealthChange() const {
+void DialogSettings::onHealthChange() const
+{
     buttonApply->setEnabled(true);
     bool active = sessionsHealthCheck->isChecked();
     sessionsLabel1->setEnabled(active);

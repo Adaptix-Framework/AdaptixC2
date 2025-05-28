@@ -42,7 +42,7 @@ void DialogExtender::createUI()
     tableWidget->setHorizontalHeaderItem(3, new QTableWidgetItem("Status" ) );
     tableWidget->setHorizontalHeaderItem(4, new QTableWidgetItem("Comment" ) );
 
-    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+    // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->hideColumn(4);
 
     textComment = new QTextEdit(this);

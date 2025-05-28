@@ -4,6 +4,7 @@
 #include <main.h>
 #include <Client/WebSocketWorker.h>
 #include <Client/LastTickWorker.h>
+#include <Client/TunnelEndpoint.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
@@ -72,10 +73,11 @@ static bool isValidSyncPacket(QJsonObject jsonObj);
     void processSyncPacket(QJsonObject jsonObj);
 
 public:
-    QThread*             ChannelThread     = nullptr;
-    WebSocketWorker*     ChannelWsWorker   = nullptr;
-    QThread*             TickThread        = nullptr;
-    LastTickWorker*      TickWorker        = nullptr;
+    QThread*         ChannelThread   = nullptr;
+    WebSocketWorker* ChannelWsWorker = nullptr;
+    QThread*         TickThread      = nullptr;
+    LastTickWorker*  TickWorker      = nullptr;
+
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
@@ -85,20 +87,21 @@ public:
     ScreenshotsWidget*   ScreenshotsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
-    QMap<QString, QMap<QString, Commander*>> Commanders;    // agentName -> ( handlerId -> commander)
-    QMap<QString, QMap<QString, BrowsersConfig>> AgentBrowserConfigs;    // agentName -> ( handlerId -> BrowserConfigs)
-    QVector<RegAgentConfig>       RegisterAgents;
-    QMap<QString, WidgetBuilder*> RegisterListeners;  // listenerName -> builder
-    QVector<ListenerData>         Listeners;
-    QVector<TunnelData>           Tunnels;
-    QMap<QString, DownloadData>   Downloads;
-    QMap<QString, ScreenData>     Screenshots;
-    QMap<QString, PivotData>      Pivots;
-    QVector<QString>              TasksVector;
-    QMap<QString, Task*>          TasksMap;
-    QVector<QString>              AgentsVector;
-    QMap<QString, Agent*>         AgentsMap;
-    QMap<QString, ExtensionFile>  Extensions;
+    QMap<QString, QMap<QString, Commander*>> Commanders;    // agentName -> (handlerId -> commander)
+    QMap<QString, QMap<QString, BrowsersConfig>> AgentBrowserConfigs;    // agentName -> (handlerId -> BrowserConfigs)
+    QVector<RegAgentConfig>        RegisterAgents;
+    QMap<QString, WidgetBuilder*>  RegisterListeners;  // listenerName -> builder
+    QVector<ListenerData>          Listeners;
+    QVector<TunnelData>            Tunnels;
+    QMap<QString, DownloadData>    Downloads;
+    QMap<QString, ScreenData>      Screenshots;
+    QMap<QString, PivotData>       Pivots;
+    QVector<QString>               TasksVector;
+    QMap<QString, Task*>           TasksMap;
+    QVector<QString>               AgentsVector;
+    QMap<QString, Agent*>          AgentsMap;
+    QMap<QString, ExtensionFile>   Extensions;
+    QMap<QString, TunnelEndpoint*> ClientTunnels;
 
     explicit AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker);
     ~AdaptixWidget() override;
@@ -136,6 +139,8 @@ public slots:
     void LoadConsoleUI(const QString &AgentId);
     void LoadFileBrowserUI(const QString &AgentId);
     void LoadProcessBrowserUI(const QString &AgentId);
+    void LoadTerminalUI(const QString &AgentId);
+
 };
 
 #endif //ADAPTIXCLIENT_ADAPTIXWIDGET_H

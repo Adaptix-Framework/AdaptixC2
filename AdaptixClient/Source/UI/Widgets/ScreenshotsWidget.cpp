@@ -71,6 +71,7 @@ bool ImageFrame::eventFilter(QObject* obj, QEvent* e)
         if (ctrlPressed) {
             const double step = (we->angleDelta().y() > 0) ? 1.1 : 0.9;
             scaleFactor *= step;
+            scaleFactor = std::clamp(scaleFactor, 0.3, 4.0);
             resizeImage();
             return true;
         }
@@ -85,6 +86,7 @@ void ImageFrame::clear()
     scaleFactor = 1.0;
     resizeImage();
 }
+
 
 
 
@@ -133,7 +135,7 @@ void ScreenshotsWidget::createUI()
     splitter->setOrientation(Qt::Horizontal);
     splitter->addWidget(tableWidget);
     splitter->addWidget(imageFrame);
-    splitter->setSizes(QList<int>() << 10 << 200);
+    splitter->setSizes(QList<int>() << 80 << 200);
 
     mainGridLayout = new QGridLayout(this );
     mainGridLayout->setContentsMargins(0, 0, 0, 0 );
@@ -199,7 +201,7 @@ void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen) const
     tableWidget->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
 
-    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+    // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 
     adaptixWidget->Screenshots[newScreen.ScreenId] = newScreen;

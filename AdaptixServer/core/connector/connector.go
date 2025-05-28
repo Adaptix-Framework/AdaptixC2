@@ -15,9 +15,9 @@ import (
 
 type Teamserver interface {
 	TsClientExists(username string) bool
-	TsClientConnect(username string, socket *websocket.Conn)
-	TsClientSync(username string)
 	TsClientDisconnect(username string)
+	TsClientSync(username string)
+	TsClientConnect(username string, socket *websocket.Conn)
 
 	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error
 	TsListenerEdit(listenerName string, configType string, config string) error
@@ -28,7 +28,7 @@ type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
+	TsAgentGetHostedTasksAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error
 	TsAgentGenerate(agentName string, config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
@@ -45,25 +45,30 @@ type Teamserver interface {
 
 	TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData)
 	TsTaskUpdate(agentId string, data adaptix.TaskData)
-	TsTaskQueueGetAvailable(agentId string, availableSize int) ([]adaptix.TaskData, error)
+	TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
 	TsTaskStop(agentId string, taskId string) error
 	TsTaskDelete(agentId string, taskId string) error
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
+	///
 	TsDownloadSync(fileId string) (string, []byte, error)
 	TsDownloadDelete(fileId string) error
+	///
+	TsDownloadTaskStart(agentId string, path string, username string) error
+	TsDownloadTaskCancel(fileId string, clientName string) error
+	TsDownloadTaskResume(fileId string, clientName string) error
+	TsDownloadTaskPause(fileId string, clientName string) error
 
 	TsScreenshotDelete(screenId string) error
 	TsScreenshotNote(screenId string, note string) error
 
-	TsDownloadChangeState(fileId string, username string, command string) error
 	TsAgentGuiDisks(agentId string, username string) error
 	TsAgentGuiProcess(agentId string, username string) error
 	TsAgentGuiFiles(agentId string, path string, username string) error
 	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
-	TsAgentGuiDownload(agentId string, path string, username string) error
+
 	TsAgentGuiExit(agentId string, username string) error
 
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
@@ -71,16 +76,21 @@ type Teamserver interface {
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
 	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
 
+	TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error
+
+	TsTunnelClientStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error)
+	TsTunnelClientNewChannel(TunnelData string, wsconn *websocket.Conn) error
+	TsTunnelClientStop(TunnelId string, Client string) error
 	TsTunnelStop(TunnelId string) error
-	TsTunnelSetInfo(TunnelId string, Info string) error
-	TsTunnelCreateSocks4(AgentId string, Address string, Port int, FuncMsgConnectTCP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelCreateSocks5(AgentId string, Address string, Port int, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelCreateSocks5Auth(AgentId string, Address string, Port int, Username string, Password string, FuncMsgConnectTCP, FuncMsgConnectUDP func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWriteTCP, FuncMsgWriteUDP func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
+	TsTunnelClientSetInfo(TunnelId string, Info string) error
+	TsTunnelCreateSocks4(AgentId string, Info string, Lhost string, Lport int) (string, error)
+	TsTunnelCreateSocks5(AgentId string, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (string, error)
+	TsTunnelCreateLportfwd(AgentId string, Info string, Lhost string, Lport int, Thost string, Tport int) (string, error)
 	TsTunnelStopSocks(AgentId string, Port int)
-	TsTunnelCreateLocalPortFwd(AgentId string, Address string, Port int, FwdAddress string, FwdPort int, FuncMsgConnect func(channelId int, addr string, port int) adaptix.TaskData, FuncMsgWrite func(channelId int, data []byte) adaptix.TaskData, FuncMsgClose func(channelId int) adaptix.TaskData) (string, error)
-	TsTunnelStopLocalPortFwd(AgentId string, Port int)
+	TsTunnelStopLportfwd(AgentId string, Port int)
+	TsTunnelStopRportfwd(AgentId string, Port int)
 	TsTunnelConnectionClose(channelId int)
-	TsTunnelConnectionResume(AgentId string, channelId int)
+	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
 }
 
@@ -139,6 +149,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcSync)
 
 	connector.Engine.GET(tsProfile.Endpoint+"/connect", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcConnect)
+	connector.Engine.GET(tsProfile.Endpoint+"/channel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcChannel)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStart)
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerEdit)
@@ -155,8 +166,13 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskStop)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskDelete)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/download/state", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadState)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/download/start", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownload)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadSync)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadDelete)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/start", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadStart)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/cancel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadCancel)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/resume", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadResume)
+	connector.Engine.POST(tsProfile.Endpoint+"/download/pause", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadPause)
+
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/disks", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDisks)
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/files", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiFiles)
 	connector.Engine.POST(tsProfile.Endpoint+"/browser/upload", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiUpload)
@@ -165,6 +181,10 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/setnote", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotSetNote)
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotRemove)
 
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks5", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks5)
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks4", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks4)
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/lportfwd", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartLpf)
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/rportfwd", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartRpf)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStop)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/setinfo", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelSetIno)
 

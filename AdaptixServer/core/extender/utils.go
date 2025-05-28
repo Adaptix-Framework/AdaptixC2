@@ -27,14 +27,22 @@ type ExConfAgentListeners struct {
 }
 
 type ExConfAgentSupportedBrowsers struct {
+	RemoteTerminal      bool `json:"remote_terminal"`
 	FileBrowser         bool `json:"file_browser"`
 	FileBrowserDisks    bool `json:"file_browser_disks"`
 	FileBrowserDownload bool `json:"file_browser_download"`
 	FileBrowserUpload   bool `json:"file_browser_upload"`
 	ProcessBrowser      bool `json:"process_browser"`
-	DownloadsState      bool `json:"downloads_state"`
+	DownloadsCancel     bool `json:"downloads_cancel"`
+	DownloadsResume     bool `json:"downloads_resume"`
+	DownloadsPause      bool `json:"downloads_pause"`
 	TasksJobKill        bool `json:"tasks_job_kill"`
 	SessionsMenuExit    bool `json:"sessions_menu_exit"`
+	SessionsMenuTunnels bool `json:"sessions_menu_tunnels"`
+	Socks4              bool `json:"socks4"`
+	Socks5              bool `json:"socks5"`
+	Lportfwd            bool `json:"lportfwd"`
+	Rportfwd            bool `json:"rportfwd"`
 }
 
 type ExConfAgentHandlers struct {
@@ -88,15 +96,22 @@ type ExtAgentFunc interface {
 	AgentCreate(beat []byte) (adaptix.AgentData, error)
 	AgentCommand(client string, cmdline string, agentData adaptix.AgentData, args map[string]any) error
 	AgentProcessData(agentData adaptix.AgentData, packedData []byte) ([]byte, error)
-	AgentPackData(agentData adaptix.AgentData, maxDataSize int) ([]byte, error)
+	AgentPackData(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error)
 	AgentPivotPackData(pivotId string, data []byte) (adaptix.TaskData, error)
 
-	AgentDownloadChangeState(agentData adaptix.AgentData, newState int, fileId string) (adaptix.TaskData, error)
 	AgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserProcess(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserFiles(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserUpload(path string, content []byte, agentData adaptix.AgentData) (adaptix.TaskData, error)
-	AgentBrowserDownload(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+
+	AgentTaskDownloadStart(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentTaskDownloadResume(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+	AgentTaskDownloadPause(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
+
+	AgentTunnelCallbacks() (func(int, string, int) adaptix.TaskData, func(int, string, int) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int) adaptix.TaskData, func(int, int) adaptix.TaskData, error)
+	AgentTerminalCallbacks() (func(int, string, int, int) (adaptix.TaskData, error), func(int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error)
+
 	AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserJobKill(jobId string) (adaptix.TaskData, error)
 }

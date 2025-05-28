@@ -6,6 +6,10 @@
 
 QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token );
 
+QJsonObject HttpReqTimeout( int timeout, const QString &sUrl, const QByteArray &jsonData, const QString &token );
+
+/// CLIENT
+
 bool HttpReqLogin(AuthProfile* profile);
 
 bool HttpReqSync(AuthProfile profile);
@@ -42,9 +46,9 @@ bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile
 
 ///DOWNLOAD
 
-bool HttpReqBrowserDownload(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqDownloadStart(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqBrowserDownloadStart(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqDownloadAction(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok );
 
 ///BROWSER
 
@@ -57,6 +61,8 @@ bool HttpReqBrowserList(const QString &agentId, const QString &path, AuthProfile
 bool HttpReqBrowserUpload(const QString &agentId, const QString &path, const QString &content, AuthProfile profile, QString* message, bool* ok );
 
 ///TUNNEL
+
+bool HttpReqTunnelStartServer(const QString &tunnelType, const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);
 
 bool HttpReqTunnelStop(const QString &tunnelId, AuthProfile profile, QString* message, bool* ok );
 

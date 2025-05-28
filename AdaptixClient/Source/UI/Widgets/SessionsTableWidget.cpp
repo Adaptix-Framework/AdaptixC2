@@ -1,5 +1,6 @@
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
 #include <MainAdaptix.h>
 
@@ -8,14 +9,20 @@ SessionsTableWidget::SessionsTableWidget( QWidget* w )
     this->mainWidget = w;
     this->createUI();
 
-    connect( tableWidget,  &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
-    connect( tableWidget,  &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
-    connect( tableWidget,  &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
-    connect( checkOnlyActive, &QCheckBox::stateChanged,               this, &SessionsTableWidget::onFilterUpdate);
-    connect( inputFilter1, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( inputFilter2, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( inputFilter3, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( hideButton,   &ClickableLabel::clicked,                  this, &SessionsTableWidget::toggleSearchPanel);
+    connect( tableWidget,     &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
+    connect( tableWidget,     &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
+    connect( tableWidget,     &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    connect( checkOnlyActive, &QCheckBox::checkStateChanged, this, &SessionsTableWidget::onFilterUpdate);
+#else
+    connect( checkOnlyActive, &QCheckBox::stateChanged, this, &SessionsTableWidget::onFilterUpdate);
+#endif
+
+    connect( inputFilter1,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter2,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter3,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( hideButton,      &ClickableLabel::clicked,                  this, &SessionsTableWidget::toggleSearchPanel);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -92,6 +99,8 @@ void SessionsTableWidget::createUI()
     tableWidget->setHorizontalHeaderItem( ColumnLast,      new QTableWidgetItem( "Last" ) );
     tableWidget->setHorizontalHeaderItem( ColumnSleep,     new QTableWidgetItem( "Sleep" ) );
 
+    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+
     for(int i = 0; i < 15; i++) {
         if (GlobalClient->settings->data.SessionsTableColumns[i] == false)
             tableWidget->hideColumn(i);
@@ -99,8 +108,8 @@ void SessionsTableWidget::createUI()
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
-    mainGridLayout->addWidget( searchWidget, 0, 0, 1, 1);
-    mainGridLayout->addWidget( tableWidget,  1, 0, 1, 1);
+    mainGridLayout->addWidget( searchWidget,   0, 0, 1, 1);
+    mainGridLayout->addWidget( tableWidget,    1, 0, 1, 1);
 }
 
 bool SessionsTableWidget::filterItem(const AgentData &agent) const
@@ -235,12 +244,21 @@ void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
 void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget || !adaptixWidget->AgentsMap.contains(agentId))
+        return;
+
     Agent* agent = adaptixWidget->AgentsMap[agentId];
     adaptixWidget->AgentsMap.remove(agentId);
     adaptixWidget->AgentsVector.removeOne(agentId);
 
-    delete agent->Console;
-    delete agent->FileBrowser;
+    if (agent->Console)
+        delete agent->Console;
+    if (agent->FileBrowser)
+        delete agent->FileBrowser;
+    if (agent->ProcessBrowser)
+        delete agent->ProcessBrowser;
+    if (agent->Terminal)
+        delete agent->Terminal;
     delete agent;
 
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
@@ -253,16 +271,16 @@ void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
 
 void SessionsTableWidget::SetData() const
 {
-     this->ClearTableContent();
+    this->ClearTableContent();
 
-     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
-     for (int i = 0; i < adaptixWidget->AgentsVector.size(); i++ ) {
-         QString agentId = adaptixWidget->AgentsVector[i];
-         Agent* agent = adaptixWidget->AgentsMap[agentId];
-         if ( agent && agent->show && this->filterItem(agent->data) )
-             this->addTableItem(agent);
-     }
+    for (int i = 0; i < adaptixWidget->AgentsVector.size(); i++ ) {
+        QString agentId = adaptixWidget->AgentsVector[i];
+        Agent* agent = adaptixWidget->AgentsMap[agentId];
+        if ( agent && agent->show && this->filterItem(agent->data) )
+            this->addTableItem(agent);
+    }
 }
 
 void SessionsTableWidget::ClearTableContent() const
@@ -285,6 +303,8 @@ void SessionsTableWidget::Clear() const
         adaptixWidget->AgentsMap.remove(agentId);
         delete agent->Console;
         delete agent->FileBrowser;
+        delete agent->ProcessBrowser;
+        delete agent->Terminal;
         delete agent;
     }
 
@@ -328,9 +348,13 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     if ( !tableWidget->itemAt(pos) )
         return;
 
+    bool menuRemoteTerminal = false;
     bool menuProcessBrowser = false;
     bool menuFileBrowser = false;
     bool menuExit = false;
+    bool menuTunnels = false;
+
+    int selectedCount = 0;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
@@ -339,11 +363,14 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
             if (adaptixWidget->AgentsMap[agentId]) {
                 auto agent = adaptixWidget->AgentsMap[agentId];
                 if (agent) {
-                    if (agent->browsers.FileBrowser)      menuFileBrowser = true;
-                    if (agent->browsers.ProcessBrowser)   menuProcessBrowser = true;
-                    if (agent->browsers.SessionsMenuExit) menuExit = true;
+                    menuRemoteTerminal = agent->browsers.RemoteTerminal;
+                    menuFileBrowser    = agent->browsers.FileBrowser;
+                    menuProcessBrowser = agent->browsers.ProcessBrowser;
+                    menuTunnels        = agent->browsers.SessionsMenuTunnels;
+                    menuExit           = agent->browsers.SessionsMenuExit;
                 }
             }
+            selectedCount++;
         }
     }
 
@@ -358,12 +385,16 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 
     auto agentMenu = new QMenu("Agent", &ctxMenu);
     agentMenu->addAction("Tasks", this, &SessionsTableWidget::actionTasksBrowserOpen);
-    if (menuFileBrowser || menuProcessBrowser) {
+    if (menuFileBrowser || menuProcessBrowser || menuTunnels || menuRemoteTerminal) {
         agentMenu->addAction(agentSep1);
+        if (menuRemoteTerminal)
+            agentMenu->addAction("Remote Terminal", this, &SessionsTableWidget::actionTerminalOpen);
         if (menuFileBrowser)
             agentMenu->addAction("File Browser", this, &SessionsTableWidget::actionFileBrowserOpen);
         if (menuProcessBrowser)
             agentMenu->addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
+        if (menuTunnels  && selectedCount == 1)
+            agentMenu->addAction("Create Tunnel", this, &SessionsTableWidget::actionCreateTunnel);
     }
     if (menuExit) {
         agentMenu->addAction(agentSep2);
@@ -419,6 +450,17 @@ void SessionsTableWidget::actionTasksBrowserOpen() const
     adaptixWidget->SetTasksUI();
 }
 
+void SessionsTableWidget::actionTerminalOpen() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            adaptixWidget->LoadTerminalUI(agentId);
+        }
+    }
+}
+
 void SessionsTableWidget::actionFileBrowserOpen() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
@@ -437,6 +479,86 @@ void SessionsTableWidget::actionProcessBrowserOpen() const
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
             adaptixWidget->LoadProcessBrowserUI(agentId);
+        }
+    }
+}
+
+void SessionsTableWidget::actionCreateTunnel() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    Agent* agent = nullptr;
+
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            if (adaptixWidget->AgentsMap.contains(agentId) && adaptixWidget->AgentsMap[agentId]) {
+                agent = adaptixWidget->AgentsMap[agentId];
+                break;
+            }
+        }
+    }
+
+    if (!agent)
+        return;
+
+    DialogTunnel dialogTunnel;
+    dialogTunnel.SetSettings(agent->data.Id, agent->browsers.Socks5, agent->browsers.Socks4, agent->browsers.Lportfwd, agent->browsers.Rportfwd);
+
+    while (true) {
+        dialogTunnel.StartDialog();
+        if (dialogTunnel.IsValid())
+            break;
+
+        QString msg = dialogTunnel.GetMessage();
+        if (msg.isEmpty())
+            return;
+
+        MessageError(msg);
+    }
+
+    QString    tunnelType = dialogTunnel.GetTunnelType();
+    QString    endpoint   = dialogTunnel.GetEndpoint();
+    QByteArray tunnelData = dialogTunnel.GetTunnelData();
+
+    if ( endpoint == "Teamserver" ) {
+        QString message = "";
+        bool ok = false;
+        bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *(adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            MessageError("Server is not responding");
+            return;
+        }
+        if (!ok) MessageError(message);
+    }
+    else {
+        auto tunnelEndpoint = new TunnelEndpoint();
+        bool started = tunnelEndpoint->StartTunnel(adaptixWidget->GetProfile(), tunnelType, tunnelData);
+        if (started) {
+            QString message = "";
+            bool ok = false;
+            bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *(adaptixWidget->GetProfile()), &message, &ok);
+            if( !result ) {
+                MessageError("Server is not responding");
+                delete tunnelEndpoint;
+                return;
+            }
+
+            if ( !ok ) {
+                MessageError(message);
+                delete tunnelEndpoint;
+                return;
+            }
+            QString tunnelId = message;
+
+            tunnelEndpoint->SetTunnelId(tunnelId);
+            adaptixWidget->ClientTunnels[tunnelId] = tunnelEndpoint;
+            MessageSuccess("Tunnel " + tunnelId + " started");
+        }
+        else {
+            delete tunnelEndpoint;
         }
     }
 }

@@ -144,7 +144,8 @@ void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, const QString &taskId
 
 /// SLOTS
 
-void ConsoleWidget::processInput() {
+void ConsoleWidget::processInput()
+{
     if (!commander)
         return;
 

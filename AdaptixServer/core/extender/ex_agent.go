@@ -37,12 +37,12 @@ func (ex *AdaptixExtender) ExAgentProcessData(agentData adaptix.AgentData, packe
 	return module.F.AgentProcessData(agentData, packedData)
 }
 
-func (ex *AdaptixExtender) ExAgentPackData(agentData adaptix.AgentData, maxDataSize int) ([]byte, error) {
+func (ex *AdaptixExtender) ExAgentPackData(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error) {
 	module, ok := ex.agentModules[agentData.Name]
 	if !ok {
 		return nil, errors.New("module not found")
 	}
-	return module.F.AgentPackData(agentData, maxDataSize)
+	return module.F.AgentPackData(agentData, tasks)
 }
 
 func (ex *AdaptixExtender) ExAgentPivotPackData(agentName string, pivotId string, data []byte) (adaptix.TaskData, error) {
@@ -51,32 +51,6 @@ func (ex *AdaptixExtender) ExAgentPivotPackData(agentName string, pivotId string
 		return adaptix.TaskData{}, errors.New("module not found")
 	}
 	return module.F.AgentPivotPackData(pivotId, data)
-}
-
-func (ex *AdaptixExtender) ExAgentDownloadChangeState(agentData adaptix.AgentData, newState int, fileId string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-
-	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	supports, ok := module.Supports[lName]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("function DownloadChangeState is not supported")
-	}
-	supportConf, ok := supports[agentData.Os]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("function DownloadChangeState is not supported")
-	}
-	if !supportConf.DownloadsState {
-		return adaptix.TaskData{}, errors.New("function DownloadChangeState is not supported")
-	}
-
-	return module.F.AgentDownloadChangeState(agentData, newState, fileId)
 }
 
 func (ex *AdaptixExtender) ExAgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error) {
@@ -179,7 +153,9 @@ func (ex *AdaptixExtender) ExAgentBrowserUpload(agentData adaptix.AgentData, pat
 	return module.F.AgentBrowserUpload(path, content, agentData)
 }
 
-func (ex *AdaptixExtender) ExAgentBrowserDownload(agentData adaptix.AgentData, path string) (adaptix.TaskData, error) {
+/// Downloads
+
+func (ex *AdaptixExtender) ExAgentDownloadTaskStart(agentData adaptix.AgentData, path string) (adaptix.TaskData, error) {
 	module, ok := ex.agentModules[agentData.Name]
 	if !ok {
 		return adaptix.TaskData{}, errors.New("module not found")
@@ -201,8 +177,156 @@ func (ex *AdaptixExtender) ExAgentBrowserDownload(agentData adaptix.AgentData, p
 		return adaptix.TaskData{}, errors.New("function FileBrowserDownload is not supported")
 	}
 
-	return module.F.AgentBrowserDownload(path, agentData)
+	return module.F.AgentTaskDownloadStart(path, agentData)
 }
+
+func (ex *AdaptixExtender) ExAgentDownloadTaskCancel(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuCancel is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuCancel is not supported")
+	}
+	if !supportConf.DownloadsCancel {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuCancel is not supported")
+	}
+
+	return module.F.AgentTaskDownloadCancel(fileId, agentData)
+}
+
+func (ex *AdaptixExtender) ExAgentDownloadTaskResume(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuResume is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuResume is not supported")
+	}
+	if !supportConf.DownloadsResume {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuResume is not supported")
+	}
+
+	return module.F.AgentTaskDownloadResume(fileId, agentData)
+}
+
+func (ex *AdaptixExtender) ExAgentDownloadTaskPause(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuPause is not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuPause is not supported")
+	}
+	if !supportConf.DownloadsPause {
+		return adaptix.TaskData{}, errors.New("function DownloadsMenuPause is not supported")
+	}
+
+	return module.F.AgentTaskDownloadPause(fileId, agentData)
+}
+
+/// Tunnels
+
+func (ex *AdaptixExtender) ExAgentTunnelCallbacks(agentData adaptix.AgentData, tunnelType int) (func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return nil, nil, nil, nil, nil, nil, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return nil, nil, nil, nil, nil, nil, errors.New("Tunnels are not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return nil, nil, nil, nil, nil, nil, errors.New("Tunnels are not supported")
+	}
+
+	// TUNNEL_SOCKS4
+	if tunnelType == 1 && !supportConf.Socks4 {
+		return nil, nil, nil, nil, nil, nil, errors.New("function Socks4 is not supported")
+	}
+	// TUNNEL_SOCKS5 or TUNNEL_SOCKS5_AUTH
+	if (tunnelType == 2 || tunnelType == 3) && !supportConf.Socks5 {
+		return nil, nil, nil, nil, nil, nil, errors.New("function Socks5 is not supported")
+	}
+	// TUNNEL_LPORTFWD
+	if tunnelType == 4 && !supportConf.Lportfwd {
+		return nil, nil, nil, nil, nil, nil, errors.New("function LocalPortForward is not supported")
+	}
+	// TUNNEL_RPORTFWD
+	if tunnelType == 5 && !supportConf.Rportfwd {
+		return nil, nil, nil, nil, nil, nil, errors.New("function ReversePortFwd is not supported")
+	}
+
+	return module.F.AgentTunnelCallbacks()
+}
+
+func (ex *AdaptixExtender) ExAgentTerminalCallbacks(agentData adaptix.AgentData) (func(int, string, int, int) (adaptix.TaskData, error), func(int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error) {
+
+	module, ok := ex.agentModules[agentData.Name]
+	if !ok {
+		return nil, nil, nil, errors.New("module not found")
+	}
+
+	lName, err := ex.ts.TsListenerTypeByName(agentData.Listener)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	supports, ok := module.Supports[lName]
+	if !ok {
+		return nil, nil, nil, errors.New("RemoteTerminal are not supported")
+	}
+	supportConf, ok := supports[agentData.Os]
+	if !ok {
+		return nil, nil, nil, errors.New("RemoteTerminal are not supported")
+	}
+
+	if !supportConf.RemoteTerminal {
+		return nil, nil, nil, errors.New("RemoteTerminal are not supported")
+	}
+
+	return module.F.AgentTerminalCallbacks()
+}
+
+////
 
 func (ex *AdaptixExtender) ExAgentCtxExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {
 	module, ok := ex.agentModules[agentData.Name]

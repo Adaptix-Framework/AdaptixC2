@@ -212,5 +212,8 @@
     <ClInclude Include="ConnectorTCP.h">
       <Filter>Headers\Connectors</Filter>
     </ClInclude>
+    <ClInclude Include="adaptix.h">
+      <Filter>Headers\Commander\BOF</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

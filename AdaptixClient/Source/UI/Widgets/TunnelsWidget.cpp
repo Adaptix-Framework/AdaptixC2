@@ -42,8 +42,8 @@ void TunnelsWidget::createUI()
      tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem("Interface"));
      tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem("Listen port"));
      tableWidget->setHorizontalHeaderItem( 9, new QTableWidgetItem("Client"));
-     tableWidget->setHorizontalHeaderItem( 10, new QTableWidgetItem("Forward host"));
-     tableWidget->setHorizontalHeaderItem( 11, new QTableWidgetItem("Forward port"));
+     tableWidget->setHorizontalHeaderItem( 10, new QTableWidgetItem("Target host"));
+     tableWidget->setHorizontalHeaderItem( 11, new QTableWidgetItem("Target port"));
      tableWidget->hideColumn( 0 );
 
      mainGridLayout = new QGridLayout( this );
@@ -184,6 +184,13 @@ void TunnelsWidget::RemoveTunnelItem(const QString &tunnelId) const
                break;
          }
      }
+
+     if (adaptixWidget->ClientTunnels.contains(tunnelId)) {
+          auto tunnel = adaptixWidget->ClientTunnels[tunnelId];
+          adaptixWidget->ClientTunnels.remove(tunnelId);
+          tunnel->Stop();
+          delete tunnel;
+     }
 }
 
 /// Slots
@@ -192,8 +199,8 @@ void TunnelsWidget::handleTunnelsMenu(const QPoint &pos ) const
 {
      QMenu tunnelsMenu = QMenu();
 
-     tunnelsMenu.addAction( "Set info", this, &TunnelsWidget::actionSetInfo);
-     tunnelsMenu.addAction("Stop", this, &TunnelsWidget::actionStopTunnel );
+     tunnelsMenu.addAction("Set info", this, &TunnelsWidget::actionSetInfo);
+     tunnelsMenu.addAction("Stop",     this, &TunnelsWidget::actionStopTunnel);
 
      QPoint globalPos = tableWidget->mapToGlobal( pos );
      tunnelsMenu.exec(globalPos);
@@ -233,6 +240,13 @@ void TunnelsWidget::actionStopTunnel() const
      if ( !adaptixWidget )
           return;
 
+     if (adaptixWidget->ClientTunnels.contains(tunnelId)) {
+          auto tunnel = adaptixWidget->ClientTunnels[tunnelId];
+          adaptixWidget->ClientTunnels.remove(tunnelId);
+          tunnel->Stop();
+          delete tunnel;
+     }
+
      QString message = QString();
      bool ok = false;
      bool result = HttpReqTunnelStop( tunnelId, *(adaptixWidget->GetProfile()), &message, &ok );
@@ -241,7 +255,5 @@ void TunnelsWidget::actionStopTunnel() const
           return;
      }
 
-     if ( !ok ) {
-          MessageError(message);
-     }
+     if ( !ok ) MessageError(message);
 }

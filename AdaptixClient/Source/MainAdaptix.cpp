@@ -80,6 +80,8 @@ void MainAdaptix::Start() const
         break;
     }
 
+    mainUI->setMinimumSize(500, 500);
+    mainUI->resize(1024, 768);
     mainUI->showMaximized();
     mainUI->AddNewProject(authProfile, ChannelThread, ChannelWsWorker);
 
