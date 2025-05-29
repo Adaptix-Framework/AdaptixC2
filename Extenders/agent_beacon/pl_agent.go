@@ -37,7 +37,7 @@ var (
 	ObjectDir_smb  = "objects_smb"
 	ObjectDir_tcp  = "objects_tcp"
 	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
-	CFlag          = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
+	CFlags         = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
 
@@ -209,6 +209,9 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 		stderr         bytes.Buffer
 	)
 
+	cFlags := CFlags
+	lFlags := LFlags
+
 	err := json.Unmarshal([]byte(agentConfig), &generateConfig)
 	if err != nil {
 		return nil, "", err
@@ -253,9 +256,9 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 
 	agentProfileSize := len(agentProfile) / 4
 	if generateConfig.Format == "Service Exe" {
-		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DBUILD_SVC -DSERVICE_NAME='\"%s\"' -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, CFlag, ObjectDir, svcName, string(agentProfile), agentProfileSize, tempDir)
+		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DBUILD_SVC -DSERVICE_NAME='\"%s\"' -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, cFlags, ObjectDir, svcName, string(agentProfile), agentProfileSize, tempDir)
 	} else {
-		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, CFlag, ObjectDir, string(agentProfile), agentProfileSize, tempDir)
+		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, cFlags, ObjectDir, string(agentProfile), agentProfileSize, tempDir)
 	}
 	runnerCmdConfig := exec.Command("sh", "-c", cmdConfig)
 	runnerCmdConfig.Dir = currentDir
@@ -283,12 +286,12 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 		Filename = "svc_" + Filename + ".exe"
 	} else if generateConfig.Format == "DLL" {
 		Files += ObjectDir + "/main_dll" + Ext
-		LFlags += " -shared"
+		lFlags += " -shared"
 		buildPath = tempDir + "/file.dll"
 		Filename += ".dll"
 	} else if generateConfig.Format == "Shellcode" {
 		Files += ObjectDir + "/main_shellcode" + Ext
-		LFlags += " -shared"
+		lFlags += " -shared"
 		buildPath = tempDir + "/file.dll"
 		Filename += ".bin"
 	} else {
@@ -296,7 +299,7 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 		return nil, "", errors.New("unknown file format")
 	}
 
-	cmdBuild := fmt.Sprintf("%s %s %s -o %s", Compiler, LFlags, Files, buildPath)
+	cmdBuild := fmt.Sprintf("%s %s %s -o %s", Compiler, lFlags, Files, buildPath)
 	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
 	runnerCmdBuild.Dir = currentDir
 	runnerCmdBuild.Stdout = &stdout
