@@ -35,7 +35,7 @@ COMMON_FLAGS := -I $(BEACON_DIR) \
 
 .PHONY: all clean pre x64 x86
 
-NPROC := $(shell nproc)
+NPROC := $(shell if command -v nproc > /dev/null; then nproc; else sysctl -n hw.logicalcpu; fi)
 ifeq ($(MAKELEVEL), 0)
     MAKEFLAGS += -j$(NPROC) --no-print-directory
 endif
