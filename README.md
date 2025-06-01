@@ -53,4 +53,4 @@ Official [Extension-Kit](https://github.com/Adaptix-Framework/Extension-Kit) on 
 
 # CONTRIBUTING
 
-Please push сhanges to **dev** branch. Otherwise, changes will be made manually in the dev branch.
+Please push сhanges to the **dev** branch. Otherwise, changes will be made manually in the dev branch.
