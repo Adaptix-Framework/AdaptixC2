@@ -70,18 +70,20 @@ int main()
 
 #elif defined(BUILD_DLL)
 
-extern "C" __declspec(dllexport) void GetVersions()
+extern "C" __declspec(dllexport) void WINAPI GetVersions()
 {
-    HANDLE hThread = CreateThread(NULL, 0, AgentMain, NULL, 0, NULL);
-    if (hThread)
-        CloseHandle(hThread);
+    while (TRUE) {
+        Sleep(24 * 60 * 60 * 1000);
+    }
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
 {
+    HANDLE hThread = NULL;
+	
     switch (ul_reason_for_call) {
     case DLL_PROCESS_ATTACH:
-        GetVersions();
+	    hThread = CreateThread(NULL, 0, AgentMain, NULL, 0, NULL);
         break;
     case DLL_PROCESS_DETACH:
         break;
