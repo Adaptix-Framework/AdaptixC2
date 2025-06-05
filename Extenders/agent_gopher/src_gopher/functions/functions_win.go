@@ -35,9 +35,11 @@ type OSVersionInfoEx struct {
 }
 
 func GetCP() (uint32, uint32) {
-	acp := windows.GetACP()
-	oemcp, _ := windows.GetConsoleOutputCP()
-	return acp, oemcp
+	modkernel := syscall.NewLazyDLL("kernel32.dll")
+	acp, _, _ := modkernel.NewProc("GetACP").Call()
+	oemcp, _, _ := modkernel.NewProc("GetOEMCP").Call()
+
+	return uint32(acp), uint32(oemcp)
 }
 
 func GetOsVersion() (string, error) {
