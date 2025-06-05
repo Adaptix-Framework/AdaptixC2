@@ -14,7 +14,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/vmihailenco/msgpack/v5"
 	"gopher/functions"
 	"gopher/utils"
 	"io"
@@ -25,6 +24,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var UPLOADS map[string][]byte
