@@ -59,7 +59,10 @@ void DialogAgent::createUI()
     agentConfigGroupbox->setLayout(stackGridLayout);
 
     generateButton = new QPushButton( "Generate", this);
-    closeButton    = new QPushButton( "Close", this);
+    generateButton->setProperty( "ButtonStyle", "dialog" );
+
+    closeButton = new QPushButton( "Close", this);
+    closeButton->setProperty( "ButtonStyle", "dialog" );
 
     horizontalSpacer   = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);

@@ -52,6 +52,7 @@ void DialogExtender::createUI()
     auto hSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     buttonClose = new QPushButton("Close", this);
+    buttonClose->setProperty("ButtonStyle", "dialog");
     buttonClose->setFixedWidth(180);
 
     layout = new QGridLayout(this);

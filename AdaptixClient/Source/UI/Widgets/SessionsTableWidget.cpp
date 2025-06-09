@@ -100,11 +100,7 @@ void SessionsTableWidget::createUI()
     tableWidget->setHorizontalHeaderItem( ColumnSleep,     new QTableWidgetItem( "Sleep" ) );
 
     tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
-
-    for(int i = 0; i < 15; i++) {
-        if (GlobalClient->settings->data.SessionsTableColumns[i] == false)
-            tableWidget->hideColumn(i);
-    }
+    this->UpdateColumnsVisible();
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
@@ -280,6 +276,16 @@ void SessionsTableWidget::SetData() const
         Agent* agent = adaptixWidget->AgentsMap[agentId];
         if ( agent && agent->show && this->filterItem(agent->data) )
             this->addTableItem(agent);
+    }
+}
+
+void SessionsTableWidget::UpdateColumnsVisible() const
+{
+    for (int i = 0; i < 15; i++) {
+        if (GlobalClient->settings->data.SessionsTableColumns[i])
+            tableWidget->showColumn(i);
+        else
+            tableWidget->hideColumn(i);
     }
 }
 

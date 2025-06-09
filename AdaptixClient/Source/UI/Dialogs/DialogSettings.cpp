@@ -1,4 +1,5 @@
 #include <UI/Dialogs/DialogSettings.h>
+#include <MainAdaptix.h>
 
 DialogSettings::DialogSettings(Settings* s)
 {
@@ -72,6 +73,7 @@ void DialogSettings::createUI()
     themeCombo = new QComboBox(mainSettingWidget);
     themeCombo->addItem("Light_Arc");
     themeCombo->addItem("Dark");
+    themeCombo->addItem("Dracula");
 
     fontSizeLabel = new QLabel(mainSettingWidget);
     fontSizeLabel->setText("Font size: ");
@@ -222,7 +224,10 @@ void DialogSettings::createUI()
 
     hSpacer     = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     buttonClose = new QPushButton("Close", this);
+    buttonClose->setProperty("ButtonStyle", "dialog");
+
     buttonApply = new QPushButton("Apply ", this);
+    buttonApply->setProperty("ButtonStyle", "dialog");
     buttonApply->setEnabled(false);
 
     stackSettings = new QStackedWidget(this);
@@ -264,24 +269,58 @@ void DialogSettings::onApply() const
 {
     buttonApply->setEnabled(false);
 
-    settings->data.MainTheme   = themeCombo->currentText();
-    settings->data.FontSize    = fontSizeSpin->value();
-    settings->data.FontFamily  = fontFamilyCombo->currentText();
+    if(settings->data.MainTheme != themeCombo->currentText()) {
+        settings->data.MainTheme = themeCombo->currentText();
+
+        QString appTheme = ":/themes/" + settings->data.MainTheme;
+        bool result = false;
+        QString style = ReadFileString(appTheme, &result);
+        if (result) {
+            QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
+            app->setStyleSheet(style);
+        }
+    }
+
+    if(settings->data.FontSize != fontSizeSpin->value() || settings->data.FontFamily != fontFamilyCombo->currentText()) {
+        settings->data.FontSize   = fontSizeSpin->value();
+        settings->data.FontFamily = fontFamilyCombo->currentText();
+
+        QString appFontFamily = settings->data.FontFamily;
+        if (appFontFamily.startsWith("Adaptix"))
+            appFontFamily = appFontFamily.split("-")[1].trimmed();
+
+        auto appFont = QFont(appFontFamily);
+        appFont.setPointSize(settings->data.FontSize);
+        QApplication::setFont(appFont);
+    }
+
     settings->data.ConsoleTime = consoleTimeCheckbox->isChecked();
 
-    for ( int i = 0; i < 15; i++)
-        settings->data.SessionsTableColumns[i] = sessionsCheck[i]->isChecked();
+    bool updateTable = false;
+    for ( int i = 0; i < 15; i++) {
+        if (settings->data.SessionsTableColumns[i] != sessionsCheck[i]->isChecked()) {
+            settings->data.SessionsTableColumns[i] = sessionsCheck[i]->isChecked();
+            updateTable = true;
+        }
+    }
+    if (updateTable)
+        settings->getMainAdaptix()->mainUI->UpdateSessionsTableColumns();
 
     settings->data.CheckHealth = sessionsHealthCheck->isChecked();
     settings->data.HealthCoaf = sessionsCoafSpin->value();
     settings->data.HealthOffset = sessionsOffsetSpin->value();
 
-    for ( int i = 0; i < 11; i++)
-        settings->data.TasksTableColumns[i] = tasksCheck[i]->isChecked();
+    updateTable = false;
+    for ( int i = 0; i < 11; i++) {
+        if (settings->data.TasksTableColumns[i] != tasksCheck[i]->isChecked()) {
+            settings->data.TasksTableColumns[i] = tasksCheck[i]->isChecked();
+            updateTable = true;
+        }
+    }
+    if (updateTable)
+        settings->getMainAdaptix()->mainUI->UpdateTasksTableColumns();
 
     settings->SaveToDB();
-
-    MessageSuccess("Settings saved. Please restart Adaptix.");
 }
 
 void DialogSettings::onClose()

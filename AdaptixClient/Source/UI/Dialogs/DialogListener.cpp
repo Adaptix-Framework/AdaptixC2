@@ -53,9 +53,11 @@ void DialogListener::createUI()
     listenerConfigGroupbox->setLayout(stackGridLayout);
 
     buttonCreate = new QPushButton(this);
+    buttonCreate->setProperty("ButtonStyle", "dialog");
     buttonCreate->setText("Create");
 
     buttonCancel = new QPushButton(this);
+    buttonCancel->setProperty("ButtonStyle", "dialog");
     buttonCancel->setText("Cancel");
 
     horizontalSpacer   = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);

@@ -85,6 +85,20 @@ void MainUI::RemoveExtension(const ExtensionFile &extFile)
     }
 }
 
+void MainUI::UpdateSessionsTableColumns() {
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget)
+            adaptixWidget->SessionsTablePage->UpdateColumnsVisible();
+    }
+}
+
+void MainUI::UpdateTasksTableColumns() {
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget)
+            adaptixWidget->TasksTab->UpdateColumnsVisible();
+    }
+}
+
 /// Actions
 
 void MainUI::onNewProject()

@@ -23,8 +23,12 @@ public:
     static void onSettings();
 
     void AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker);
+
     void AddNewExtension(const ExtensionFile &extFile);
     void RemoveExtension(const ExtensionFile &extFile);
+
+    void UpdateSessionsTableColumns();
+    void UpdateTasksTableColumns();
 
 protected:
     void closeEvent(QCloseEvent *event) override;

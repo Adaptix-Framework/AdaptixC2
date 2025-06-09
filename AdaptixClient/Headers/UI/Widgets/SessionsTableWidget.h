@@ -50,6 +50,7 @@ public:
     void RemoveAgentItem(const QString &agentId) const;
 
     void SetData() const;
+    void UpdateColumnsVisible() const;
     void ClearTableContent() const;
     void Clear() const;
 
