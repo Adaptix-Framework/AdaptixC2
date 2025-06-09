@@ -71,8 +71,9 @@ void DialogConnect::createUI()
     lineEdit_Endpoint = new QLineEdit( this );
 
 
-    ButtonConnect = new QPushButton( this );
-    ButtonConnect->setText( "Connect" );
+    ButtonConnect = new QPushButton(this);
+    ButtonConnect->setProperty("ButtonStyle", "dialog");
+    ButtonConnect->setText("Connect");
     ButtonConnect->setFocus();
 
 

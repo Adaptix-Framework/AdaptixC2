@@ -1,3 +1,5 @@
+/* Arc Light Theme */
+
 QWidget {
     background-color: #DCDCDC;
     color: #2E3440;
@@ -12,7 +14,7 @@ QWidget:disabled {
 
 
 QLabel[LabelStyle="console"] {
-    padding: 2px;
+    padding: 4px;
     color: #2E3440;
     background-color: transparent;
 }
@@ -30,10 +32,18 @@ QLabel:disabled {
 
 
 
-QPushButton {
+QPushButton[ButtonStyle="dialog"] {
     background-color: #17A2B8;
     border: 1px solid #138496;
     padding: 8px;
+    border-radius: 4px;
+    color: #FFFFFF;
+}
+
+QPushButton {
+    background-color: #17A2B8;
+    border: 1px solid #138496;
+    padding: 4px;
     border-radius: 4px;
     color: #FFFFFF;
 }
@@ -54,7 +64,7 @@ QLineEdit[LineEditStyle="console"] {
     background-color: #111111;
     color: #e8e8e8;
     border: 1px #4A4A4A;
-    padding: 2px;
+    padding: 4px;
     border-radius: 4px;
 }
 

@@ -13,8 +13,8 @@
 
     <qresource prefix="/themes">
         <file alias="Dark">themes/dark.css</file>
+        <file alias="Dracula">themes/dracula.css</file>
         <file alias="Light_Arc">themes/light_arc.css</file>
-        <file alias="Nord">themes/color_nord.css</file>
     </qresource>
 
     <qresource prefix="/icons">

@@ -4,8 +4,11 @@ SpinTable::SpinTable(int rows, int columns, QWidget* parent)
 {
     this->setParent(parent);
 
-    buttonAdd   = new QPushButton("Add");
+    buttonAdd = new QPushButton("Add");
+    buttonAdd->setProperty("ButtonStyle", "dialog");
+
     buttonClear = new QPushButton("Clear");
+    buttonClear->setProperty("ButtonStyle", "dialog");
 
     table = new QTableWidget(rows, columns, this);
     table->setAutoFillBackground( false );

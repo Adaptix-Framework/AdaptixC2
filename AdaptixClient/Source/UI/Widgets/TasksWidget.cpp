@@ -130,10 +130,7 @@ void TasksWidget::createUI()
     tableWidget->setHorizontalHeaderItem( this->ColumnResult,      new QTableWidgetItem("Result"));
     tableWidget->setHorizontalHeaderItem( this->ColumnOutput,      new QTableWidgetItem("Output"));
 
-    for(int i = 0; i < 11; i++) {
-        if (GlobalClient->settings->data.TasksTableColumns[i] == false)
-            tableWidget->hideColumn(i);
-    }
+    this->UpdateColumnsVisible();
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
@@ -204,7 +201,6 @@ void TasksWidget::addTableItem(const Task* newTask) const
     // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 }
-
 
 /// PUBLIC
 
@@ -284,6 +280,16 @@ void TasksWidget::SetAgentFilter(const QString &agentId)
     comboAgent->setCurrentText(agentId);
 
     this->SetData();
+}
+
+void TasksWidget::UpdateColumnsVisible() const
+{
+    for(int i = 0; i < 11; i++) {
+        if (GlobalClient->settings->data.TasksTableColumns[i])
+            tableWidget->showColumn(i);
+        else
+            tableWidget->hideColumn(i);
+    }
 }
 
 void TasksWidget::SetData() const
@@ -383,7 +389,7 @@ void TasksWidget::onTableItemSelection(const QModelIndex &current, const QModelI
     if (row < 0)
         return;
 
-    QString taskId = tableWidget->item(row,0)->text();
+    QString taskId = tableWidget->item(row,this->ColumnTaskId)->text();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     if( !adaptixWidget->TasksMap.contains(taskId) )
@@ -403,7 +409,7 @@ void TasksWidget::actionCopyTaskId() const
 {
     int row = tableWidget->currentRow();
     if( row >= 0) {
-        QString taskId = tableWidget->item( row, 0 )->text();
+        QString taskId = tableWidget->item( row, this->ColumnTaskId )->text();
         QApplication::clipboard()->setText( taskId );
     }
 }
@@ -412,7 +418,7 @@ void TasksWidget::actionCopyCmd() const
 {
     int row = tableWidget->currentRow();
     if( row >= 0) {
-        QString cmdLine = tableWidget->item( row, 7 )->text();
+        QString cmdLine = tableWidget->item( row, this->ColumnCommandLine )->text();
         QApplication::clipboard()->setText( cmdLine );
     }
 }
@@ -421,7 +427,7 @@ void TasksWidget::actionOpenConsole() const
 {
     int row = tableWidget->currentRow();
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    auto agentId = tableWidget->item( row, 2 )->text();
+    auto agentId = tableWidget->item( row, this->ColumnAgentId )->text();
     adaptixWidget->LoadConsoleUI(agentId);
 }
 
@@ -432,8 +438,8 @@ void TasksWidget::actionStop() const
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, 2 )->text();
-            auto taskId = tableWidget->item( rowIndex, 0 )->text();
+            auto agentId = tableWidget->item( rowIndex, this->ColumnAgentId )->text();
+            auto taskId = tableWidget->item( rowIndex, this->ColumnTaskId )->text();
             agentTasks[agentId].append(taskId);
         }
     }
@@ -449,8 +455,8 @@ void TasksWidget::actionDelete() const
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, 2 )->text();
-            auto taskId = tableWidget->item( rowIndex, 0 )->text();
+            auto agentId = tableWidget->item( rowIndex, this->ColumnAgentId )->text();
+            auto taskId = tableWidget->item( rowIndex, this->ColumnTaskId )->text();
             agentTasks[agentId].append(taskId);
         }
     }

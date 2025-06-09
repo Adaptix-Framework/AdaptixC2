@@ -19,6 +19,7 @@ public:
     DialogSettings* dialogSettings = nullptr;
     SettingsData    data;
 
+    MainAdaptix* getMainAdaptix();
     void SetDefault();
     void LoadFromDB();
     void SaveToDB() const;

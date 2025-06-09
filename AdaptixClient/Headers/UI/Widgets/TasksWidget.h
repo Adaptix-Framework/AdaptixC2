@@ -67,6 +67,7 @@ public:
 
     void SetAgentFilter(const QString &agentId);
     void SetData() const;
+    void UpdateColumnsVisible() const;
     void ClearTableContent() const;
     void Clear() const;
 

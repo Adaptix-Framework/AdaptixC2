@@ -12,7 +12,7 @@ Q_OBJECT
 
     Settings* settings = nullptr;
 
-    QWidget*        mainWidget    = nullptr;
+    // QWidget*        mainWidget    = nullptr;
     QGridLayout*    layoutMain    = nullptr;
     QListWidget*    listSettings  = nullptr;
     QVBoxLayout*    headerLayout  = nullptr;

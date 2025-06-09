@@ -12,6 +12,10 @@ Settings::Settings(MainAdaptix* m)
 
 Settings::~Settings() = default;
 
+MainAdaptix* Settings::getMainAdaptix() {
+    return this->mainAdaptix;
+}
+
 void Settings::SetDefault()
 {
     this->data.MainTheme   = "Dark";
