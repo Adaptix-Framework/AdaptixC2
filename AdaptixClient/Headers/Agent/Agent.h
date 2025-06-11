@@ -65,7 +65,7 @@ public:
     void    Update(QJsonObject jsonObjAgentData);
     void    MarkItem(const QString &mark);
     void    SetColor(const QString &color) const;
-    void    SetImage();
+    void    UpdateImage();
     QString TasksStop(const QStringList &tasks) const;
     QString TasksDelete(const QStringList &tasks) const;
 

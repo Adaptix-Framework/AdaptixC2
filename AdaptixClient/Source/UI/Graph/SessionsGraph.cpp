@@ -169,6 +169,12 @@ void SessionsGraph::TreeDraw() const
     LayoutTreeLeft::draw(this->rootItem);
 }
 
+void SessionsGraph::UpdateIcons() const
+{
+    for (int i = 0; i < items.size(); i++)
+        items[i]->update();
+}
+
 void SessionsGraph::Clear()
 {
     for ( int i = 0; i < this->items.size(); i++ ) {

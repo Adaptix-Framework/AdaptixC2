@@ -45,6 +45,11 @@ Q_OBJECT
     QDoubleSpinBox* sessionsCoafSpin  = nullptr;
     QSpinBox*    sessionsOffsetSpin   = nullptr;
 
+    QWidget*     graphWidget = nullptr;
+    QGridLayout* graphLayout = nullptr;
+    QLabel*      graphLabel1 = nullptr;
+    QComboBox*   graphCombo1 = nullptr;
+
     QWidget*     tasksWidget      = nullptr;
     QGridLayout* tasksLayout      = nullptr;
     QGroupBox*   tasksGroup       = nullptr;

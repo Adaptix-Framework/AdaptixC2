@@ -191,6 +191,8 @@ typedef struct SettingsData {
     double HealthCoaf;
     int    HealthOffset;
 
+    QString GraphVersion;
+
     bool TasksTableColumns[11];
 } SettingsData;
 

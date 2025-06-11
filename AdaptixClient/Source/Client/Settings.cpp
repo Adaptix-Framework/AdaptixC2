@@ -30,6 +30,8 @@ void Settings::SetDefault()
     this->data.HealthCoaf = 2.0;
     this->data.HealthOffset = 40;
 
+    this->data.GraphVersion = "Version 1";
+
     for ( int i = 0; i < 11; i++)
         data.TasksTableColumns[i] = true;
 }
@@ -38,6 +40,7 @@ void Settings::LoadFromDB()
 {
     mainAdaptix->storage->SelectSettingsMain( &data );
     mainAdaptix->storage->SelectSettingsSessions( &data );
+    mainAdaptix->storage->SelectSettingsGraph( &data );
     mainAdaptix->storage->SelectSettingsTasks( &data );
 }
 
@@ -45,5 +48,6 @@ void Settings::SaveToDB() const
 {
     mainAdaptix->storage->UpdateSettingsMain( data );
     mainAdaptix->storage->UpdateSettingsSessions( data );
+    mainAdaptix->storage->UpdateSettingsGraph( data );
     mainAdaptix->storage->UpdateSettingsTasks( data );
 }

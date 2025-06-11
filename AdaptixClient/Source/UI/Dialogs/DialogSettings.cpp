@@ -19,6 +19,8 @@ DialogSettings::DialogSettings(Settings* s)
     sessionsCoafSpin->setValue(s->data.HealthCoaf);
     sessionsOffsetSpin->setValue(s->data.HealthOffset);
 
+    graphCombo1->setCurrentText(s->data.GraphVersion);
+
     for ( int i = 0; i < 11; i++)
         tasksCheck[i]->setChecked(s->data.TasksTableColumns[i]);
 
@@ -43,6 +45,8 @@ DialogSettings::DialogSettings(Settings* s)
         connect(sessionsCheck[i],  &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
 #endif
     }
+
+    connect(graphCombo1, &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
 
     for ( int i = 0; i < 11; i++) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
@@ -168,6 +172,20 @@ void DialogSettings::createUI()
 
     sessionsWidget->setLayout(sessionsLayout);
 
+    /////////////// Sessions Graph
+
+    graphWidget = new QWidget(this);
+    graphLayout = new QGridLayout(this);
+    graphLabel1 = new QLabel("Graph version:", this);
+    graphCombo1 = new QComboBox(this);
+    graphCombo1->addItem("Version 1");
+    graphCombo1->addItem("Version 2");
+
+    graphLayout->addWidget(graphLabel1, 0, 0, 1, 1);
+    graphLayout->addWidget(graphCombo1, 0, 1, 1, 1);
+
+    graphWidget->setLayout(graphLayout);
+
     /////////////// Tasks Table
 
     tasksWidget = new QWidget(this);
@@ -206,6 +224,7 @@ void DialogSettings::createUI()
     listSettings->setFixedWidth(150);
     listSettings->addItem("Main settings");
     listSettings->addItem("Sessions table");
+    listSettings->addItem("Sessions graph");
     listSettings->addItem("Tasks table");
     listSettings->setCurrentRow(0);
 
@@ -233,6 +252,7 @@ void DialogSettings::createUI()
     stackSettings = new QStackedWidget(this);
     stackSettings->addWidget(mainSettingWidget);
     stackSettings->addWidget(sessionsWidget);
+    stackSettings->addWidget(graphWidget);
     stackSettings->addWidget(tasksWidget);
 
     layoutMain = new QGridLayout(this);
@@ -309,6 +329,11 @@ void DialogSettings::onApply() const
     settings->data.CheckHealth = sessionsHealthCheck->isChecked();
     settings->data.HealthCoaf = sessionsCoafSpin->value();
     settings->data.HealthOffset = sessionsOffsetSpin->value();
+
+    if (settings->data.GraphVersion != graphCombo1->currentText()) {
+        settings->data.GraphVersion = graphCombo1->currentText();
+        settings->getMainAdaptix()->mainUI->UpdateGraphIcons();
+    }
 
     updateTable = false;
     for ( int i = 0; i < 11; i++) {

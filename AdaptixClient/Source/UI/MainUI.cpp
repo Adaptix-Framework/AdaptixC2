@@ -92,6 +92,17 @@ void MainUI::UpdateSessionsTableColumns() {
     }
 }
 
+void MainUI::UpdateGraphIcons() {
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget) {
+            for (auto agent : adaptixWidget->AgentsMap.values() ) {
+                agent->UpdateImage();
+            }
+            adaptixWidget->SessionsGraphPage->UpdateIcons();
+        }
+    }
+}
+
 void MainUI::UpdateTasksTableColumns() {
     for (auto adaptixWidget : AdaptixProjects) {
         if (adaptixWidget)
