@@ -28,6 +28,7 @@ public:
     void RemoveExtension(const ExtensionFile &extFile);
 
     void UpdateSessionsTableColumns();
+    void UpdateGraphIcons();
     void UpdateTasksTableColumns();
 
 protected:

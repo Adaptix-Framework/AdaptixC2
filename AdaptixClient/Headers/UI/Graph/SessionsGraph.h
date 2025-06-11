@@ -33,6 +33,7 @@ public:
 
     void Clear();
     void TreeDraw() const;
+    void UpdateIcons() const;
     void scaleView(qreal scaleFactor);
     void itemMoved();
 

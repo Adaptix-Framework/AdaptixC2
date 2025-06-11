@@ -36,6 +36,9 @@ public:
     static void SelectSettingsSessions(SettingsData* settingsData);
     static void UpdateSettingsSessions(const SettingsData &settingsData);
 
+    static void SelectSettingsGraph(SettingsData* settingsData);
+    static void UpdateSettingsGraph(const SettingsData &settingsData);
+
     static void SelectSettingsTasks(SettingsData* settingsData);
     static void UpdateSettingsTasks(const SettingsData &settingsData);
 };

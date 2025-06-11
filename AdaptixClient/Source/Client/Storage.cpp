@@ -34,9 +34,8 @@ Storage::Storage()
 
 Storage::~Storage()
 {
-    if (db.isOpen()) {
+    if (db.isOpen())
         db.close();
-    }
 }
 
 void Storage::checkDatabase()
@@ -76,6 +75,8 @@ void Storage::checkDatabase()
     if ( !querySettingsMain.exec() )
         LogError("Table SettingsMain not created: %s\n", querySettingsMain.lastError().text().toStdString().c_str());
 
+
+
     auto querySettingsSessions = QSqlQuery();
     querySettingsSessions.prepare("CREATE TABLE IF NOT EXISTS SettingsSessions ( "
                             "id INTEGER, "
@@ -98,9 +99,20 @@ void Storage::checkDatabase()
                             "column13 BOOLEAN, "
                             "column14 BOOLEAN );"
     );
-
     if ( !querySettingsSessions.exec() )
         LogError("Table SettingsSessions not created: %s\n", querySettingsSessions.lastError().text().toStdString().c_str());
+
+
+
+    auto querySettingsGraph = QSqlQuery();
+    querySettingsGraph.prepare("CREATE TABLE IF NOT EXISTS SettingsGraph ( "
+                            "id INTEGER, "
+                            "version TEXT );"
+    );
+    if ( !querySettingsGraph.exec() )
+        LogError("Table SettingsGraph not created: %s\n", querySettingsGraph.lastError().text().toStdString().c_str());
+
+
 
     auto querySettingsTasks = QSqlQuery();
     querySettingsTasks.prepare("CREATE TABLE IF NOT EXISTS SettingsTasks ( "
@@ -117,7 +129,6 @@ void Storage::checkDatabase()
                             "column9 BOOLEAN, "
                             "column10 BOOLEAN );"
     );
-
     if ( !querySettingsTasks.exec() )
         LogError("Table SettingsTasks not created: %s\n", querySettingsTasks.lastError().text().toStdString().c_str());
 }
@@ -413,6 +424,61 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
 
         if ( !insertQuery.exec() ) {
             LogError("The sessions settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
+        }
+    }
+}
+
+void Storage::SelectSettingsGraph(SettingsData* settingsData)
+{
+    QSqlQuery existsQuery;
+    existsQuery.prepare("SELECT 1 FROM SettingsGraph WHERE Id = 1 LIMIT 1;");
+    if (!existsQuery.exec()) {
+        LogError("Failed to existsQuery graph setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
+        return;
+    }
+    bool exists = existsQuery.next();
+
+    if(exists) {
+        QSqlQuery selectQuery;
+        selectQuery.prepare("SELECT * FROM SettingsGraph WHERE Id = 1;" );
+        if ( selectQuery.exec() && selectQuery.next()) {
+            settingsData->GraphVersion = selectQuery.value("version").toString();
+        }
+        else {
+            LogError("Failed to selectQuery graph settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
+        }
+    }
+}
+
+void Storage::UpdateSettingsGraph(const SettingsData &settingsData)
+{
+    QSqlQuery existsQuery;
+    existsQuery.prepare("SELECT 1 FROM SettingsGraph WHERE Id = 1 LIMIT 1;");
+    if (!existsQuery.exec()) {
+        LogError("Failed to existsQuery graph setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
+        return;
+    }
+    bool exists = existsQuery.next();
+
+    if(exists) {
+        QSqlQuery updateQuery;
+        updateQuery.prepare("UPDATE SettingsGraph SET version = :Version;");
+
+        updateQuery.bindValue(":Version", settingsData.GraphVersion.toStdString().c_str());
+
+        if ( !updateQuery.exec() ) {
+            LogError("SettingsGraph not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
+        }
+    }
+    else {
+        QSqlQuery insertQuery;
+        insertQuery.prepare("INSERT INTO SettingsGraph (id, version) VALUES (:Id, :Version);");
+
+        insertQuery.bindValue(":Id", 1);
+        insertQuery.bindValue(":Version", settingsData.GraphVersion.toStdString().c_str());
+
+        if ( !insertQuery.exec() ) {
+            LogError("The graph settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
         }
     }
 }
