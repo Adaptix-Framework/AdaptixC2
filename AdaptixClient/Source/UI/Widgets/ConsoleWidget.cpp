@@ -41,7 +41,7 @@ void ConsoleWidget::createUI()
     InfoLabel->setProperty( "LabelStyle", "console" );
     InfoLabel->setText ( info );
 
-    OutputTextEdit = new QTextEdit( this );
+    OutputTextEdit = new TextEditConsole(this);
     OutputTextEdit->setReadOnly(true);
     OutputTextEdit->setLineWrapMode( QTextEdit::LineWrapMode::NoWrap );
     OutputTextEdit->setProperty( "TextEditStyle", "console" );
@@ -71,74 +71,64 @@ void ConsoleWidget::InputFocus() const
 }
 
 
-void ConsoleWidget::ConsoleOutputMessage( qint64 timestamp, const QString &taskId, int type, const QString &message, const QString &text, bool completed ) const
+void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &taskId, const int type, const QString &message, const QString &text, const bool completed ) const
 {
-    QString deleter = "<br>" + TextColorHtml( "+-------------------------------------------------------------------------------------+", COLOR_Gray) + "<br>";
-
     QString promptTime = "";
-    if (GlobalClient->settings->data.ConsoleTime) {
+    if (GlobalClient->settings->data.ConsoleTime)
         promptTime = UnixTimestampGlobalToStringLocal(timestamp);
-        if ( !promptTime.isEmpty())
-            promptTime = TextColorHtml("[" + promptTime + "]", COLOR_SaturGray) + " ";
-    }
-
-    if( !taskId.isEmpty() ) {
-        deleter = QString("+--- Task [%1] closed ----------------------------------------------------------+").arg(taskId );
-        deleter = "<br>" + TextColorHtml( deleter, COLOR_Gray) + "<br>";
-    }
 
     if( !message.isEmpty() ) {
-        QString mark = "[!]";
-        if (type == CONSOLE_OUT_INFO || type == CONSOLE_OUT_LOCAL_INFO) {
-            mark = TextBoltColorHtml("[*]", COLOR_BabyBlue);
-        }
-        else if (type == CONSOLE_OUT_SUCCESS || type == CONSOLE_OUT_LOCAL_SUCCESS) {
-            mark = TextBoltColorHtml("[+]", COLOR_Yellow);
-        }
-        else if (type == CONSOLE_OUT_ERROR || type == CONSOLE_OUT_LOCAL_ERROR) {
-            mark = TextBoltColorHtml("[-]", COLOR_ChiliPepper);
-        }
 
-        QString printMessage = promptTime + mark + " " + TrimmedEnds(message).toHtmlEscaped(); // + promptTask;
+        if ( !promptTime.isEmpty() )
+            OutputTextEdit->appendColor("[" + promptTime + "] ", QColor(COLOR_SaturGray));
 
-        if ( type == CONSOLE_OUT_LOCAL_SUCCESS || type == CONSOLE_OUT_LOCAL_ERROR || type == CONSOLE_OUT_LOCAL_INFO ){
-            printMessage += "<br>";
-        }
+        if (type == CONSOLE_OUT_INFO || type == CONSOLE_OUT_LOCAL_INFO)
+            OutputTextEdit->appendColor("[*] ", QColor(COLOR_BabyBlue));
+        else if (type == CONSOLE_OUT_SUCCESS || type == CONSOLE_OUT_LOCAL_SUCCESS)
+            OutputTextEdit->appendColor("[+] ", QColor(COLOR_Yellow));
+        else if (type == CONSOLE_OUT_ERROR || type == CONSOLE_OUT_LOCAL_ERROR)
+            OutputTextEdit->appendColor("[-] ", QColor(COLOR_ChiliPepper));
+        else
+            OutputTextEdit->appendPlain("[!] ");
 
-        OutputTextEdit->append( printMessage );
+        QString printMessage = TrimmedEnds(message) +"\n";
+        if ( text.isEmpty() || type == CONSOLE_OUT_LOCAL_SUCCESS || type == CONSOLE_OUT_LOCAL_ERROR || type == CONSOLE_OUT_LOCAL_INFO)
+            printMessage += "\n";
+        OutputTextEdit->appendPlain( printMessage );
     }
 
     if ( !text.isEmpty() )
-        OutputTextEdit->append( TrimmedEnds(text) );
+        OutputTextEdit->appendPlain( TrimmedEnds(text) + "\n\n");
 
-    if (completed)
-        OutputTextEdit->append( deleter );
+    if (completed) {
+        QString deleter = "+-------------------------------------------------------------------------------------+\n\n";
+        if ( !taskId.isEmpty() )
+            deleter = QString("+--- Task [%1] closed ----------------------------------------------------------+\n\n").arg(taskId);
+
+        OutputTextEdit->appendColor(deleter, QColor(COLOR_Gray));
+    }
 }
 
 void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const
 {
-    QString promptAgent = TextUnderlineColorHtml( agent->data.Name, COLOR_Gray) + " " + TextColorHtml( ">", COLOR_Gray) + " ";
-
     QString promptTime = "";
-    if (GlobalClient->settings->data.ConsoleTime) {
+    if (GlobalClient->settings->data.ConsoleTime)
         promptTime = UnixTimestampGlobalToStringLocal(timestamp);
-        if ( !promptTime.isEmpty())
-            promptTime = TextColorHtml("[" + promptTime + "]", COLOR_SaturGray) + " ";
-    }
-
-    QString promptTask  = "";
-    if( !taskId.isEmpty() )
-        promptTask = TextColorHtml("[" + taskId + "]", COLOR_SaturGray) + " ";
-
-    QString promptUser = "";
-    if ( !user.isEmpty() )
-        promptUser = TextColorHtml(user, COLOR_Gray) + " ";
 
     if ( !commandLine.isEmpty() ) {
-        QString promptCmd = TextBoltColorHtml(commandLine);
+        if ( !promptTime.isEmpty() )
+            OutputTextEdit->appendColor("[" + promptTime + "] ", QColor(COLOR_SaturGray));
 
-        QString prompt = promptTime + promptUser + promptTask + promptAgent + promptCmd;
-        OutputTextEdit->append( prompt );
+        if ( !user.isEmpty() )
+            OutputTextEdit->appendColor(user + " ", QColor(COLOR_Gray));
+
+        if( !taskId.isEmpty() )
+            OutputTextEdit->appendColor("[" + taskId + "] ", QColor(COLOR_SaturGray));
+
+        OutputTextEdit->appendColorUnderline(agent->data.Name, QColor(COLOR_Gray));
+        OutputTextEdit->appendColor(" > ", QColor(COLOR_Gray));
+
+        OutputTextEdit->appendBold(commandLine + "\n");
     }
 }
 

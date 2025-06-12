@@ -2,18 +2,19 @@
 #define ADAPTIXCLIENT_LOGSWIDGET_H
 
 #include <main.h>
+#include <Utils/CustomElements.h>
 
 class LogsWidget : public QWidget
 {
-    QGridLayout* mainGridLayout      = nullptr;
-    QGridLayout* logsGridLayout      = nullptr;
-    QGridLayout* todoGridLayout      = nullptr;
-    QTextEdit*   logsConsoleTextEdit = nullptr;
-    QLabel*      logsLabel           = nullptr;
-    QLabel*      todoLabel           = nullptr;
-    QSplitter*   mainHSplitter       = nullptr;
-    QWidget*     logsWidget          = nullptr;
-    QWidget*     todoWidget          = nullptr;
+    QGridLayout*     mainGridLayout      = nullptr;
+    QGridLayout*     logsGridLayout      = nullptr;
+    QGridLayout*     todoGridLayout      = nullptr;
+    TextEditConsole* logsConsoleTextEdit = nullptr;
+    QLabel*          logsLabel           = nullptr;
+    QLabel*          todoLabel           = nullptr;
+    QSplitter*       mainHSplitter       = nullptr;
+    QWidget*         logsWidget          = nullptr;
+    QWidget*         todoWidget          = nullptr;
 
     void createUI();
 
