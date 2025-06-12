@@ -46,6 +46,8 @@ public:
 
 
 
+
+
 class SpinTable : public QWidget {
 Q_OBJECT
 public:
@@ -62,10 +64,11 @@ public:
 
 
 
+
+
 class FileSelector : public QWidget
 {
 Q_OBJECT
-
 public:
     QVBoxLayout* layout = nullptr;
     QLineEdit*   input  = nullptr;
@@ -76,6 +79,7 @@ public:
     explicit FileSelector(QWidget* parent = nullptr);
     ~FileSelector() override = default;
 };
+
 
 
 
@@ -96,6 +100,31 @@ protected:
         }
         QLabel::mousePressEvent(event);
     }
+};
+
+
+
+
+class TextEditConsole : public QTextEdit {
+Q_OBJECT
+    QTextCursor cachedCursor;
+    int maxLines = 30000;
+
+    void trimExcessLines();
+
+public:
+    explicit TextEditConsole(QWidget* parent = nullptr);
+
+    void appendPlain(const QString& text);
+    void appendFormatted(const QString& text, const std::function<void(QTextCharFormat&)> &styleFn);
+
+    void appendColor(const QString& text, QColor color);
+    void appendBold(const QString& text);
+    void appendUnderline(const QString& text);
+    void appendColorBold(const QString& text, QColor color);
+    void appendColorUnderline(const QString& text, QColor color);
+
+    void setMaxLines(int lines);
 };
 
 #endif //ADAPTIXCLIENT_CUSTOMELEMENTS_H

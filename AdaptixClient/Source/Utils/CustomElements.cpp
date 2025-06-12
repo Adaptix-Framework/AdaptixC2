@@ -1,4 +1,5 @@
 #include <Utils/CustomElements.h>
+#include <QTextBlock>
 
 SpinTable::SpinTable(int rows, int columns, QWidget* parent)
 {
@@ -83,4 +84,87 @@ FileSelector::FileSelector(QWidget* parent) : QWidget(parent)
 
         content = QString::fromUtf8(fileData.toBase64());
     } );
+}
+
+
+
+
+
+
+TextEditConsole::TextEditConsole(QWidget* parent) : QTextEdit(parent), cachedCursor(this->textCursor())
+{
+    cachedCursor.movePosition(QTextCursor::End);
+}
+
+void TextEditConsole::setMaxLines(const int lines)
+{
+    maxLines = lines;
+    trimExcessLines();
+}
+
+void TextEditConsole::appendPlain(const QString& text)
+{
+    cachedCursor.movePosition(QTextCursor::End);
+    cachedCursor.insertText(text, QTextCharFormat());
+    trimExcessLines();
+}
+
+void TextEditConsole::appendFormatted(const QString& text, const std::function<void(QTextCharFormat&)> &styleFn)
+{
+    cachedCursor.movePosition(QTextCursor::End);
+
+    QTextCharFormat fmt;
+    styleFn(fmt);
+
+    cachedCursor.insertText(text, fmt);
+
+    trimExcessLines();
+}
+
+void TextEditConsole::appendColor(const QString& text, const QColor color)
+{
+    appendFormatted(text, [=](QTextCharFormat& fmt) {
+        fmt.setForeground(color);
+    });
+}
+
+void TextEditConsole::appendBold(const QString& text)
+{
+    appendFormatted(text, [](QTextCharFormat& fmt) {
+        fmt.setFontWeight(QFont::Bold);
+    });
+}
+
+void TextEditConsole::appendUnderline(const QString& text)
+{
+    appendFormatted(text, [](QTextCharFormat& fmt) {
+        fmt.setFontUnderline(true);
+    });
+}
+
+void TextEditConsole::appendColorBold(const QString& text, const QColor color)
+{
+    appendFormatted(text, [=](QTextCharFormat& fmt) {
+        fmt.setForeground(color);
+        fmt.setFontWeight(QFont::Bold);
+    });
+}
+
+void TextEditConsole::appendColorUnderline(const QString &text, const QColor color)
+{
+    appendFormatted(text, [=](QTextCharFormat& fmt) {
+        fmt.setForeground(color);
+        fmt.setFontUnderline(true);
+    });
+}
+
+void TextEditConsole::trimExcessLines() {
+    auto doc = this->document();
+    while (doc->blockCount() > maxLines) {
+        QTextBlock block = doc->firstBlock();
+        QTextCursor c(block);
+        c.select(QTextCursor::BlockUnderCursor);
+        c.removeSelectedText();
+        c.deleteChar();
+    }
 }

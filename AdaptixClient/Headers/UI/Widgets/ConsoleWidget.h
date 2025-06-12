@@ -4,6 +4,7 @@
 #include <main.h>
 #include <Agent/Agent.h>
 #include <Utils/KeyPressHandler.h>
+#include <Utils/CustomElements.h>
 
 #define CONSOLE_OUT_LOCAL         1
 #define CONSOLE_OUT_LOCAL_INFO    2
@@ -16,12 +17,12 @@
 
 class ConsoleWidget : public QWidget
 {
-    QGridLayout* MainGridLayout      = nullptr;
-    QLabel*      CmdLabel            = nullptr;
-    QLabel*      InfoLabel           = nullptr;
-    QLineEdit*   InputLineEdit       = nullptr;
-    QTextEdit*   OutputTextEdit      = nullptr;
-    QCompleter*  CommandCompleter    = nullptr;
+    QGridLayout*      MainGridLayout      = nullptr;
+    QLabel*           CmdLabel            = nullptr;
+    QLabel*           InfoLabel           = nullptr;
+    QLineEdit*        InputLineEdit       = nullptr;
+    TextEditConsole*  OutputTextEdit      = nullptr;
+    QCompleter*       CommandCompleter    = nullptr;
     QStringListModel* completerModel = nullptr;
 
     bool userSelectedCompletion      = false;

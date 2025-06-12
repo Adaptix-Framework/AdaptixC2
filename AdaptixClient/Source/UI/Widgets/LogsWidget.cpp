@@ -16,7 +16,7 @@ void LogsWidget::createUI()
 //    logsLabel->setText("Logs");
 //    logsLabel->setAlignment(Qt::AlignCenter);
 
-    logsConsoleTextEdit = new QTextEdit(this);
+    logsConsoleTextEdit = new TextEditConsole(this);
     logsConsoleTextEdit->setReadOnly(true);
     logsConsoleTextEdit->setProperty("TextEditStyle", "console" );
 
@@ -61,21 +61,23 @@ void LogsWidget::createUI()
     this->setLayout( mainGridLayout );
 }
 
-void LogsWidget::AddLogs( int type, qint64 time, const QString &message ) const
+void LogsWidget::AddLogs(const int type, const qint64 time, const QString &message ) const
 {
     QString sTime = UnixTimestampGlobalToStringLocal(time);
     QString log = QString("[%1] -> ").arg(sTime);
 
-    if( type == EVENT_CLIENT_CONNECT )           log += TextColorHtml(message, COLOR_ConsoleWhite);
-    else if( type == EVENT_CLIENT_DISCONNECT )   log += TextColorHtml(message, COLOR_Gray);
-    else if( type == EVENT_LISTENER_START )      log += TextColorHtml(message, COLOR_BrightOrange);
-    else if( type == EVENT_LISTENER_STOP )       log += TextColorHtml(message, COLOR_BrightOrange);
-    else if( type == EVENT_AGENT_NEW )           log += TextColorHtml(message, COLOR_NeonGreen);
-    else if( type == EVENT_TUNNEL_START )        log += TextColorHtml(message, COLOR_PastelYellow);
-    else if( type == EVENT_TUNNEL_STOP )         log += TextColorHtml(message, COLOR_PastelYellow);
-    else                                         log += message;
+    logsConsoleTextEdit->appendPlain(log);
 
-    logsConsoleTextEdit->append( log );
+    if( type == EVENT_CLIENT_CONNECT )           logsConsoleTextEdit->appendColor(message, QColor(COLOR_ConsoleWhite));
+    else if( type == EVENT_CLIENT_DISCONNECT )   logsConsoleTextEdit->appendColor(message, QColor(COLOR_Gray));
+    else if( type == EVENT_LISTENER_START )      logsConsoleTextEdit->appendColor(message, QColor(COLOR_BrightOrange));
+    else if( type == EVENT_LISTENER_STOP )       logsConsoleTextEdit->appendColor(message, QColor(COLOR_BrightOrange));
+    else if( type == EVENT_AGENT_NEW )           logsConsoleTextEdit->appendColor(message, QColor(COLOR_NeonGreen));
+    else if( type == EVENT_TUNNEL_START )        logsConsoleTextEdit->appendColor(message, QColor(COLOR_PastelYellow));
+    else if( type == EVENT_TUNNEL_STOP )         logsConsoleTextEdit->appendColor(message, QColor(COLOR_PastelYellow));
+    else                                         logsConsoleTextEdit->appendPlain(message);
+
+    logsConsoleTextEdit->appendPlain("\n");
 }
 
 void LogsWidget::Clear() const
