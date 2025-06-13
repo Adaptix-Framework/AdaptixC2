@@ -5,8 +5,51 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
 	"strings"
 )
+
+func (tc *TsConnector) TcDownloadSyncOTP(ctx *gin.Context) {
+
+	value, exists := ctx.Get("objectId")
+	if !exists {
+		ctx.String(http.StatusNotFound, "Server error: objectId not found in context")
+		return
+	}
+
+	fileId, ok := value.(string)
+	if !ok {
+		ctx.String(http.StatusNotFound, "Server error: invalid fileId type in context")
+		return
+	}
+
+	path, err := tc.teamserver.TsDownloadGetFilepath(fileId)
+	if err != nil {
+		ctx.String(http.StatusNotFound, err.Error())
+		return
+	}
+
+	file, err := os.Open(path)
+	if err != nil {
+		ctx.String(http.StatusNotFound, "File not found")
+		return
+	}
+	defer func(file *os.File) {
+		_ = file.Close()
+	}(file)
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "Cannot get file info")
+		return
+	}
+
+	ctx.Header("Content-Disposition", "attachment; filename="+fileInfo.Name())
+	ctx.Header("Content-Type", "application/octet-stream")
+	ctx.Header("Content-Length", string(rune(fileInfo.Size())))
+
+	ctx.File(path)
+}
 
 type DownloadFileId struct {
 	File string `json:"file_id"`

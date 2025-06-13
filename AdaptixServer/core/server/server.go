@@ -5,10 +5,13 @@ import (
 	"AdaptixServer/core/database"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
+	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"os"
 )
 
@@ -39,6 +42,7 @@ func NewTeamserver() *Teamserver {
 		tunnels:     safe.NewMap(),
 		terminals:   safe.NewMap(),
 		pivots:      safe.NewSlice(),
+		otps:        safe.NewMap(),
 	}
 	ts.Extender = extender.NewExtender(ts)
 	return ts
@@ -78,6 +82,45 @@ func (ts *Teamserver) SetProfile(path string) error {
 	}
 
 	return nil
+}
+
+func (ts *Teamserver) CreateOTP(otpType string, id string) (string, error) {
+	if otpType == "download" {
+		if !ts.downloads.Contains(id) {
+			return "", errors.New("Invalid FileId")
+		}
+
+		otp, err := krypt.GenerateUID(24)
+		if err != nil {
+			return "", err
+		}
+
+		otp += id
+		ts.otps.Put(otp, id)
+		return otp, nil
+	}
+	return "", errors.New("invalid otpType")
+}
+
+func (ts *Teamserver) ValidateOTP() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		otp := ctx.GetHeader("OTP")
+		if otp == "" {
+			_ = ctx.Error(errors.New("authorization token required"))
+			return
+		}
+
+		value, ok := ts.otps.GetDelete(otp)
+		if !ok {
+			_ = ctx.Error(errors.New("authorization token required"))
+			return
+		}
+		objectId, _ := value.(string)
+
+		ctx.Set("objectId", objectId)
+		ctx.Set("otp", otp)
+		ctx.Next()
+	}
 }
 
 func (ts *Teamserver) RestoreData() {
