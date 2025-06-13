@@ -70,6 +70,7 @@ type Teamserver struct {
 	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
 	terminals   safe.Map    // terminalId string   : terminal Terminal
 	pivots      *safe.Slice // 			           : PivotData
+	otps        safe.Map    // otp string		   : Id string
 }
 
 type Agent struct {

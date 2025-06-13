@@ -271,3 +271,19 @@ func (ts *Teamserver) TsDownloadTaskPause(fileId string, clientName string) erro
 	ts.TsTaskCreate(agent.Data.Id, "", clientName, taskData)
 	return nil
 }
+
+///
+
+func (ts *Teamserver) TsDownloadGetFilepath(fileId string) (string, error) {
+	value, ok := ts.downloads.Get(fileId)
+	if !ok {
+		return "", errors.New("File not found: " + fileId)
+	}
+	downloadData := value.(adaptix.DownloadData)
+
+	if downloadData.State != DOWNLOAD_STATE_FINISHED {
+		return "", errors.New("Download not finished")
+	}
+
+	return downloadData.LocalPath, nil
+}
