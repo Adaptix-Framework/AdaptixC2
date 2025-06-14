@@ -7,8 +7,26 @@
 
     <qresource prefix="/fonts">
         <file alias="DroidSansMono">fonts/DroidSansMono.ttf</file>
-        <file alias="DejavuSansMono">fonts/DejavuSansMono.ttf</file>
-        <file alias="Hack">fonts/Hack-Regular.ttf</file>
+
+        <file alias="Anonymous">fonts/Anonymous-Pro/Anonymous_Pro.ttf</file>
+        <file alias="Anonymous_B">fonts/Anonymous-Pro/Anonymous_Pro_B.ttf</file>
+        <file alias="Anonymous_BI">fonts/Anonymous-Pro/Anonymous_Pro_BI.ttf</file>
+        <file alias="Anonymous_I">fonts/Anonymous-Pro/Anonymous_Pro_BI.ttf</file>
+
+        <file alias="DejavuSansMono">fonts/DejaVu-Sans-Mono/DejaVuSansMono.ttf</file>
+        <file alias="DejavuSansMono_B">fonts/DejaVu-Sans-Mono/DejaVuSansMono-Bold.ttf</file>
+        <file alias="DejavuSansMono_BO">fonts/DejaVu-Sans-Mono/DejaVuSansMono-BoldOblique.ttf</file>
+        <file alias="DejavuSansMono_O">fonts/DejaVu-Sans-Mono/DejaVuSansMono-Oblique.ttf</file>
+
+        <file alias="Hack">fonts/Hack/Hack-Regular.ttf</file>
+        <file alias="Hack_B">fonts/Hack/Hack-Bold.ttf</file>
+        <file alias="Hack_BI">fonts/Hack/Hack-BoldItalic.ttf</file>
+        <file alias="Hack_I">fonts/Hack/Hack-Italic.ttf</file>
+
+        <file alias="SpaceMono">fonts/Space-Mono/SpaceMono-Regular.ttf</file>
+        <file alias="SpaceMono_B">fonts/Space-Mono/SpaceMono-Bold.ttf</file>
+        <file alias="SpaceMono_BI">fonts/Space-Mono/SpaceMono-BoldItalic.ttf</file>
+        <file alias="SpaceMono_I">fonts/Space-Mono/SpaceMono-Italic.ttf</file>
     </qresource>
 
     <qresource prefix="/themes">

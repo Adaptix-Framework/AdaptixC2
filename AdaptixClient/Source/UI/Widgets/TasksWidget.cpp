@@ -1,6 +1,7 @@
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <MainAdaptix.h>
+#include <Client/Settings.h>
 
 TaskOutputWidget::TaskOutputWidget( )
 {

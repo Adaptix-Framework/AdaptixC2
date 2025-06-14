@@ -1,4 +1,5 @@
 #include <UI/Widgets/BrowserProcessWidget.h>
+#include <UI/Widgets/ConsoleWidget.h>
 
 BrowserProcessWidget::BrowserProcessWidget(Agent* a)
 {

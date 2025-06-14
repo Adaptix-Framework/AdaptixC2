@@ -1,5 +1,6 @@
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <Utils/FileSystem.h>
+#include <UI/Widgets/ConsoleWidget.h>
 
 void BrowserFileData::CreateBrowserFileData(const QString &path, int os)
 {
@@ -256,12 +257,12 @@ void BrowserFilesWidget::SetStatus( qint64 time, int msgType, const QString &mes
 
 /// PRIVATE
 
-BrowserFileData* BrowserFilesWidget::getBrowserStore(QString path)
+BrowserFileData* BrowserFilesWidget::getBrowserStore(const QString &path)
 {
     return &browserStore[path];
 }
 
-void BrowserFilesWidget::setBrowserStore(QString path, const BrowserFileData &fileData)
+void BrowserFilesWidget::setBrowserStore(const QString &path, const BrowserFileData &fileData)
 {
     browserStore[path] = fileData;
 }

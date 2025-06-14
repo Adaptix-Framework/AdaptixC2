@@ -2,7 +2,6 @@
 #define TERMINALWORKER_H
 
 #include <main.h>
-#include <UI/Widgets/TerminalWidget.h>
 
 class TerminalWidget;
 

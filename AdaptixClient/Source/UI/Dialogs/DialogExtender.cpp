@@ -1,5 +1,6 @@
 #include <UI/Dialogs/DialogExtender.h>
 #include <Utils/CustomElements.h>
+#include <Client/Extender.h>
 
 DialogExtender::DialogExtender(Extender* e)
 {

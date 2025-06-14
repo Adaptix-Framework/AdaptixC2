@@ -2,7 +2,6 @@
 #define ADAPTIXCLIENT_LASTTICKWORKER_H
 
 #include <main.h>
-#include <UI/Widgets/AdaptixWidget.h>
 
 class AdaptixWidget;
 

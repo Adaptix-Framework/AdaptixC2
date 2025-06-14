@@ -305,7 +305,6 @@ protected:
 
     bool focusNextPrevChild( bool next ) override;
 
-    // drag and drop
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dropEvent(QDropEvent* event) override;
     void doDrag();

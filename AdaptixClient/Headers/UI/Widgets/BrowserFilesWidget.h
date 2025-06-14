@@ -64,8 +64,8 @@ class BrowserFilesWidget : public QWidget
     QString currentPath;
     QMap<QString, BrowserFileData> browserStore;
 
-    BrowserFileData* getBrowserStore(QString path);
-    void setBrowserStore(QString path, const BrowserFileData &fileData);
+    BrowserFileData* getBrowserStore(const QString &path);
+    void setBrowserStore(const QString &path, const BrowserFileData &fileData);
 
     void createUI();
     void setStoredFileData(const QString &path, const BrowserFileData &currenFileData);

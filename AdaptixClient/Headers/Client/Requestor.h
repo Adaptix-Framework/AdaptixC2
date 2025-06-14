@@ -16,6 +16,8 @@ bool HttpReqSync(AuthProfile profile);
 
 bool HttpReqJwtUpdate(AuthProfile* profile);
 
+bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile profile, QString* message, bool* ok);
+
 /// LISTENER
 
 bool HttpReqListenerStart(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile profile, QString* message, bool* ok );

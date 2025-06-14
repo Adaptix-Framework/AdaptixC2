@@ -1,5 +1,12 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
+#include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/BrowserFilesWidget.h>
+#include <UI/Widgets/BrowserProcessWidget.h>
+#include <UI/Widgets/TerminalWidget.h>
+#include <Workers/LastTickWorker.h>
+#include <UI/Widgets/SessionsTableWidget.h>
+#include <UI/Graph/SessionsGraph.h>
 
 AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {

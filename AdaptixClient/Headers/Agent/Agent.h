@@ -4,12 +4,6 @@
 #include <main.h>
 #include <Agent/AgentTableWidgetItem.h>
 #include <UI/Graph/GraphItem.h>
-#include <Agent/Commander.h>
-#include <UI/Widgets/ConsoleWidget.h>
-#include <UI/Widgets/TerminalWidget.h>
-#include <UI/Widgets/BrowserFilesWidget.h>
-#include <UI/Widgets/BrowserProcessWidget.h>
-#include <UI/Widgets/AdaptixWidget.h>
 
 class ConsoleWidget;
 class BrowserFilesWidget;

@@ -1,4 +1,9 @@
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/BrowserFilesWidget.h>
+#include <UI/Widgets/BrowserProcessWidget.h>
+#include <UI/Graph/SessionsGraph.h>
+#include <UI/Widgets/SessionsTableWidget.h>
 
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 {

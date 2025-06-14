@@ -1,11 +1,10 @@
 #include <UI/Graph/GraphScene.h>
 #include <UI/Graph/GraphItem.h>
-#include <UI/Graph/SessionsGraph.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
 
-GraphScene::GraphScene(int gridSize, QWidget* m, QObject* parent) : QGraphicsScene(parent)
+GraphScene::GraphScene(const int gridSize, QWidget* m, QObject* parent) : QGraphicsScene(parent)
 {
     this->mainWidget = m;
     this->gridSize = gridSize;

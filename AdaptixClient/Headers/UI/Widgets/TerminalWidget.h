@@ -4,7 +4,7 @@
 #include <main.h>
 #include <Agent/Agent.h>
 #include <Konsole/konsole.h>
-#include <Client/TerminalWorker.h>
+#include <Workers/TerminalWorker.h>
 
 class TerminalWorker;
 

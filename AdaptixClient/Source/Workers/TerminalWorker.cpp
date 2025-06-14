@@ -1,4 +1,5 @@
-#include <Client/TerminalWorker.h>
+#include <Workers/TerminalWorker.h>
+#include <UI/Widgets/TerminalWidget.h>
 
 TerminalWorker::TerminalWorker(TerminalWidget* terminalWidget, const QString &token, const QUrl& wsUrl, const QString& terminalData, QObject* parent) : QObject(parent)
 {

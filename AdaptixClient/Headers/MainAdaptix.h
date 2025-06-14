@@ -4,8 +4,6 @@
 #include <main.h>
 #include <UI/MainUI.h>
 #include <Client/Storage.h>
-#include <Client/Extender.h>
-#include <Client/Settings.h>
 
 class Extender;
 class Settings;

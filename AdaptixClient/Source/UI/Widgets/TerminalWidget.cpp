@@ -1,4 +1,5 @@
 #include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/AdaptixWidget.h>
 
 TerminalWidget::TerminalWidget(Agent* a, QWidget* w)
 {

@@ -8,7 +8,6 @@
 #include <stdlib.h>
 
 #if defined(_MSC_VER) && _MSC_VER < 1800
-// MSVC prior to 2013 lacked stdbool.h and stdint.h
 typedef signed char utf8proc_int8_t;
 typedef unsigned char utf8proc_uint8_t;
 typedef short utf8proc_int16_t;
@@ -23,7 +22,6 @@ typedef int utf8proc_ssize_t;
 typedef unsigned int utf8proc_size_t;
 #  endif
 #  ifndef __cplusplus
-// emulate C99 bool
 typedef unsigned char utf8proc_bool;
 #    ifndef __bool_true_false_are_defined
 #      define false 0

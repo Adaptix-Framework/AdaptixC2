@@ -2,7 +2,6 @@
 #define ADAPTIXCLIENT_DIALOGEXTENDER_H
 
 #include <main.h>
-#include <Client/Extender.h>
 
 class Extender;
 

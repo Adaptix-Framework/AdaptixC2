@@ -19,8 +19,6 @@ Character Screen::defaultChar = Character(
         ' ', CharacterColor(COLOR_SPACE_DEFAULT, DEFAULT_FORE_COLOR),
         CharacterColor(COLOR_SPACE_DEFAULT, DEFAULT_BACK_COLOR), DEFAULT_RENDITION);
 
-// #define REVERSE_WRAPPED_LINES  // for wrapped line debug
-
 Screen::Screen(int l, int c)
         : lines(l), columns(c), screenLines(new ImageLine[lines + 1]),
             _scrolledLines(0), _droppedLines(0), history(new HistoryScrollNone()),
@@ -45,30 +43,30 @@ Screen::~Screen() {
 
 void Screen::cursorUp(int n) {
     if (n == 0)
-        n = 1; // Default
+        n = 1;
     int stop = cuY < _topMargin ? 0 : _topMargin;
-    cuX = qMin(columns - 1, cuX); // nowrap!
+    cuX = qMin(columns - 1, cuX); /* nowrap! */
     cuY = qMax(stop, cuY - n);
 }
 
 void Screen::cursorDown(int n) {
     if (n == 0)
-        n = 1; // Default
+        n = 1;
     int stop = cuY > _bottomMargin ? lines - 1 : _bottomMargin;
-    cuX = qMin(columns - 1, cuX); // nowrap!
+    cuX = qMin(columns - 1, cuX); /* nowrap! */
     cuY = qMin(stop, cuY + n);
 }
 
 void Screen::cursorLeft(int n) {
     if (n == 0)
-        n = 1;                      // Default
-    cuX = qMin(columns - 1, cuX); // nowrap!
+        n = 1;                      /* Default */
+    cuX = qMin(columns - 1, cuX); /* nowrap! */
     cuX = qMax(0, cuX - n);
 }
 
 void Screen::cursorNextLine(int n) {
     if (n == 0) {
-        n = 1; // Default
+        n = 1; /* Default */
     }
     cuX = 0;
     while (n > 0) {
@@ -81,7 +79,7 @@ void Screen::cursorNextLine(int n) {
 
 void Screen::cursorPreviousLine(int n) {
     if (n == 0) {
-        n = 1; // Default
+        n = 1; /* Default */
     }
     cuX = 0;
     while (n > 0) {
@@ -94,21 +92,19 @@ void Screen::cursorPreviousLine(int n) {
 
 void Screen::cursorRight(int n) {
     if (n == 0)
-        n = 1; // Default
+        n = 1; /* Default */
     cuX = qMin(columns - 1, cuX + n);
 }
 
 void Screen::setMargins(int top, int bot) {
     if (top == 0)
-        top = 1; // Default
+        top = 1; /* Default */
     if (bot == 0)
-        bot = lines; // Default
-    top = top - 1; // Adjust to internal lineno
-    bot = bot - 1; // Adjust to internal lineno
-    if (!(0 <= top && top < bot &&
-                bot < lines)) { // Debug()<<" setRegion("<<top<<","<<bot<<") : bad
-                                                // range.";
-        return; // Default error action: ignore
+        bot = lines; /* Default */
+    top = top - 1;
+    bot = bot - 1;
+    if (!(0 <= top && top < bot && bot < lines)) {
+        return; /* Default */
     }
     _topMargin = top;
     _bottomMargin = bot;
@@ -148,11 +144,9 @@ void Screen::eraseChars(int n) {
 void Screen::deleteChars(int n) {
     Q_ASSERT(n >= 0);
 
-    // always delete at least one char
     if (n == 0)
         n = 1;
 
-    // if cursor is beyond the end of the line there is nothing to do
     if (cuX >= screenLines[cuY].count())
         return;
 
@@ -198,13 +192,13 @@ void Screen::repeatChars(int count) {
 
 void Screen::deleteLines(int n) {
     if (n == 0)
-        n = 1; // Default
+        n = 1;
     scrollUp(cuY, n);
 }
 
 void Screen::insertLines(int n) {
     if (n == 0)
-        n = 1; // Default
+        n = 1;
     scrollDown(cuY, n);
 }
 
@@ -214,7 +208,7 @@ void Screen::setMode(int m) {
     case MODE_Origin:
         cuX = 0;
         cuY = _topMargin;
-        break; // FIXME: home
+        break;
     }
 }
 
@@ -224,7 +218,7 @@ void Screen::resetMode(int m) {
     case MODE_Origin:
         cuX = 0;
         cuY = 0;
-        break; // FIXME: home
+        break;
     }
 }
 
