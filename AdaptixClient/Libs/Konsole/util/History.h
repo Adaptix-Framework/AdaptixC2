@@ -151,4 +151,4 @@ protected:
   unsigned int m_nbLines;
 };
 
-#endif // HISTORY_H
+#endif

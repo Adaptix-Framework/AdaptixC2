@@ -32,4 +32,4 @@ private:
     QFontMetrics *fm;
 };
 
-#endif // CHARWIDTH_H
+#endif

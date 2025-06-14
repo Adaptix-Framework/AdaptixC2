@@ -117,7 +117,7 @@ public:
     static const Qt::KeyboardModifier CTRL_MOD;
 
 private:
-    QMultiHash<int,Entry> _entries; // entries in this keyboard translation,
+    QMultiHash<int,Entry> _entries;
     QString _name;
     QString _description;
 };
@@ -215,16 +215,14 @@ private:
     static const QByteArray defaultTranslatorText;
     
     QString get_kb_layout_dir();
-    void findTranslators(); // locate the available translators
-    KeyboardTranslator* loadTranslator(const QString& name); // loads the translator
-                                                             // with the given name
+    void findTranslators();
+    KeyboardTranslator* loadTranslator(const QString& name);
     KeyboardTranslator* loadTranslator(QIODevice* device,const QString& name);
 
     bool saveTranslator(const KeyboardTranslator* translator);
     QString findTranslatorPath(const QString& name);
 
-    QHash<QString,KeyboardTranslator*> _translators; // maps translator-name -> KeyboardTranslator
-                                                     // instance
+    QHash<QString,KeyboardTranslator*> _translators;
     bool _haveLoadedAll;
 };
 
@@ -309,4 +307,4 @@ inline KeyboardTranslator::States KeyboardTranslator::Entry::stateMask() const {
 Q_DECLARE_METATYPE(KeyboardTranslator::Entry)
 Q_DECLARE_METATYPE(const KeyboardTranslator*)
 
-#endif // KEYBOARDTRANSLATOR_H
+#endif

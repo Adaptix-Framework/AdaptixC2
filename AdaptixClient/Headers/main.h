@@ -60,12 +60,14 @@
 #include <QDateTimeEdit>
 #include <QButtonGroup>
 #include <QTcpServer>
+#include <QQueue>
+#include <QMutex>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.5"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.6"
 
 ///////////
 

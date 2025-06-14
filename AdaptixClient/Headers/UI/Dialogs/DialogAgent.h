@@ -2,7 +2,6 @@
 #define ADAPTIXCLIENT_DIALOGAGENT_H
 
 #include <main.h>
-#include <Client/WidgetBuilder.h>
 #include <Client/AuthProfile.h>
 #include <UI/Widgets/AdaptixWidget.h>
 

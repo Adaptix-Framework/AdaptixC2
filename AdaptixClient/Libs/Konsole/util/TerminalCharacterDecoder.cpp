@@ -94,7 +94,6 @@ void HTMLDecoder::begin(QTextStream *output) {
 
     std::wstring text;
 
-    // open monospace span
     openSpan(text, QLatin1String("font-family:monospace"));
 
     *output << QString::fromStdWString(text);
@@ -112,7 +111,6 @@ void HTMLDecoder::end() {
     _output = nullptr;
 }
 
-// TODO: Support for LineProperty (mainly double width , double height)
 void HTMLDecoder::decodeLine(const Character *const characters, int count, LineProperty /*properties*/) {
     Q_ASSERT(_output);
 

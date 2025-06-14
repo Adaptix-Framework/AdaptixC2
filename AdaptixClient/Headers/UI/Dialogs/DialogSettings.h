@@ -2,7 +2,6 @@
 #define ADAPTIXCLIENT_DIALOGSETTINGS_H
 
 #include <main.h>
-#include <Client/Settings.h>
 
 class Settings;
 

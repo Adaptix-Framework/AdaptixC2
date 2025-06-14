@@ -2,8 +2,6 @@
 #define TUNNELWORKER_H
 
 #include <main.h>
-#include <QQueue>
-#include <QMutex>
 
 class TunnelWorker : public QObject {
 Q_OBJECT

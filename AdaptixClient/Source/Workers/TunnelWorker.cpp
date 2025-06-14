@@ -1,4 +1,4 @@
-#include <Client/TunnelWorker.h>
+#include <Workers/TunnelWorker.h>
 
 TunnelWorker::TunnelWorker(QTcpSocket* socket, const QString &token, const QUrl& wsUrl, const QString& tunnelData, QObject* parent) : QObject(parent)
 {

@@ -218,4 +218,4 @@ private:
     QList<int>* _linePositions;
 };
 
-#endif //FILTER_H
+#endif

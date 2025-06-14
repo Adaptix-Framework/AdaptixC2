@@ -1,6 +1,6 @@
 #include <UI/Dialogs/DialogAgent.h>
 #include <Client/Requestor.h>
-#include <UI/Widgets/AdaptixWidget.h>
+#include <Client/WidgetBuilder.h>
 
 DialogAgent::DialogAgent(const QString &listenerName, const QString &listenerType)
 {

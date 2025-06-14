@@ -5,6 +5,7 @@
 #include <Agent/Agent.h>
 #include <Utils/KeyPressHandler.h>
 #include <Utils/CustomElements.h>
+#include <Agent/Commander.h>
 
 #define CONSOLE_OUT_LOCAL         1
 #define CONSOLE_OUT_LOCAL_INFO    2

@@ -1,5 +1,6 @@
 #include <UI/Dialogs/DialogSettings.h>
 #include <MainAdaptix.h>
+#include <Client/Settings.h>
 
 DialogSettings::DialogSettings(Settings* s)
 {
@@ -93,6 +94,8 @@ void DialogSettings::createUI()
     fontFamilyCombo->addItem("Adaptix - DejaVu Sans Mono");
     fontFamilyCombo->addItem("Adaptix - Droid Sans Mono");
     fontFamilyCombo->addItem("Adaptix - Hack");
+    fontFamilyCombo->addItem("Adaptix - Anonymous Pro");
+    fontFamilyCombo->addItem("Adaptix - Space Mono");
 
     consoleTimeCheckbox = new QCheckBox("Print date and time in agent console", mainSettingWidget);
 

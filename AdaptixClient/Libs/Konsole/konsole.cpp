@@ -34,12 +34,9 @@ QTermWidget::QTermWidget(QWidget *messageParentWidget, QWidget *parent)
         m_emulation->sendString(s);
     });
     connect(m_emulation, &Emulation::stateSet, this, &QTermWidget::activityStateSet);
-    //setup timer for monitoring session activity
     m_monitorTimer = new QTimer(this);
     m_monitorTimer->setSingleShot(true);
     connect(m_monitorTimer, &QTimer::timeout, this, &QTermWidget::monitorTimerDone);
-    // allow emulation to notify view when the foreground process
-    // indicates whether or not it is interested in mouse signals
     connect(m_emulation, &Emulation::programUsesMouseChanged, m_terminalDisplay, &TerminalDisplay::setUsesMouse);
     m_terminalDisplay->setUsesMouse(m_emulation->programUsesMouse());
     connect(m_emulation, &Emulation::programBracketedPasteModeChanged, m_terminalDisplay, &TerminalDisplay::setBracketedPasteMode);

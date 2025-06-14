@@ -1,4 +1,6 @@
 #include <Client/Extender.h>
+#include <MainAdaptix.h>
+#include <UI/Dialogs/DialogExtender.h>
 
 Extender::Extender(MainAdaptix* m)
 {

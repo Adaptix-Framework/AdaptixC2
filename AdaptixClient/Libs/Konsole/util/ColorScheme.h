@@ -26,7 +26,6 @@ public:
     QString name() const;
 
 #if 0
-    // Implemented upstream - in user apps
     /** Reads the color scheme from the specified configuration source */
     void read(KConfig& config);
     /** Writes the color scheme to the specified configuration source */
@@ -72,11 +71,7 @@ private:
     const ColorEntry* colorTable() const;
 
 #if 0
-    // implemented upstream - user apps
-    // reads a single colour entry from a KConfig source
-    // and sets the palette entry at 'index' to the entry read.
     void readColorEntry(KConfig& config , int index);
-    // writes a single colour entry to a KConfig source
     void writeColorEntry(KConfig& config , const QString& colorName, const ColorEntry& entry,const RandomizationRange& range) const;
 #endif
     void readColorEntry(QSettings *s, int index);
@@ -95,7 +90,7 @@ private:
     static const char* const colorNames[TABLE_COLORS];
     static const char* const translatedColorNames[TABLE_COLORS];
 
-    static const ColorEntry defaultTable[]; // table of default color entries
+    static const ColorEntry defaultTable[];
     
     ColorScheme& operator=(const ColorScheme&) = delete;
 };
@@ -143,4 +138,4 @@ private:
 
 Q_DECLARE_METATYPE(const ColorScheme*)
 
-#endif //COLORSCHEME_H
+#endif

@@ -92,16 +92,15 @@ private:
     int endWindowLine() const;
     void fillUnusedArea();
 
-    Screen* _screen; // see setScreen() , screen()
+    Screen* _screen;
     Character* _windowBuffer;
     int _windowBufferSize;
     bool _bufferNeedsUpdate;
 
     int  _windowLines;
-    int  _currentLine; // see scrollTo() , currentLine()
-    bool _trackOutput; // see setTrackOutput() , trackOutput()
-    int  _scrollCount; // count of lines which the window has been scrolled by since
-                       // the last call to resetScrollCount()
+    int  _currentLine;
+    bool _trackOutput;
+    int  _scrollCount;
 };
 
 #endif // SCREENWINDOW_H

@@ -3,7 +3,7 @@
 
 #include <main.h>
 #include <Client/AuthProfile.h>
-#include <Client/TunnelWorker.h>
+#include <Workers/TunnelWorker.h>
 
 class TunnelEndpoint : public QObject {
 Q_OBJECT

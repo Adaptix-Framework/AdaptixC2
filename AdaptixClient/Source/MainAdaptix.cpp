@@ -1,6 +1,8 @@
 #include <MainAdaptix.h>
 #include <UI/Dialogs/DialogConnect.h>
 #include <Client/Requestor.h>
+#include <Client/Extender.h>
+#include <Client/Settings.h>
 
 MainAdaptix::MainAdaptix()
 {
@@ -180,13 +182,26 @@ void MainAdaptix::SetApplicationTheme() const
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
 
     QFontDatabase::addApplicationFont(":/fonts/DroidSansMono");
-    QFontDatabase::addApplicationFont(":/fonts/Hack");
+    QFontDatabase::addApplicationFont(":/fonts/Anonymous");
+    QFontDatabase::addApplicationFont(":/fonts/Anonymous_B");
+    QFontDatabase::addApplicationFont(":/fonts/Anonymous_BI");
+    QFontDatabase::addApplicationFont(":/fonts/Anonymous_I");
     QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono");
+    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono_B");
+    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono_BO");
+    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono_O");
+    QFontDatabase::addApplicationFont(":/fonts/Hack");
+    QFontDatabase::addApplicationFont(":/fonts/Hack_B");
+    QFontDatabase::addApplicationFont(":/fonts/Hack_BI");
+    QFontDatabase::addApplicationFont(":/fonts/Hack_I");
+    QFontDatabase::addApplicationFont(":/fonts/SpaceMono");
+    QFontDatabase::addApplicationFont(":/fonts/SpaceMono_B");
+    QFontDatabase::addApplicationFont(":/fonts/SpaceMono_BI");
+    QFontDatabase::addApplicationFont(":/fonts/SpaceMono_I");
 
     QString appFontFamily = settings->data.FontFamily;
-    if (appFontFamily.startsWith("Adaptix")) {
+    if (appFontFamily.startsWith("Adaptix"))
         appFontFamily = appFontFamily.split("-")[1].trimmed();
-    }
 
     auto appFont = QFont( appFontFamily );
     appFont.setPointSize( settings->data.FontSize );

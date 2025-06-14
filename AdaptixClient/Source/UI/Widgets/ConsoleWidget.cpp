@@ -1,6 +1,7 @@
 #include <UI/Widgets/ConsoleWidget.h>
 #include <Client/Requestor.h>
 #include <MainAdaptix.h>
+#include <Client/Settings.h>
 
 ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
 {
@@ -46,7 +47,6 @@ void ConsoleWidget::createUI()
     OutputTextEdit->setLineWrapMode( QTextEdit::LineWrapMode::NoWrap );
     OutputTextEdit->setProperty( "TextEditStyle", "console" );
     OutputTextEdit->setFont( QFont( "Hack" ));
-
 
     MainGridLayout = new QGridLayout(this );
     MainGridLayout->setVerticalSpacing(4 );

@@ -1,5 +1,11 @@
 #include <UI/MainUI.h>
 #include <MainAdaptix.h>
+#include <UI/Dialogs/DialogExtender.h>
+#include <UI/Dialogs/DialogSettings.h>
+#include <Client/Extender.h>
+#include <Client/Settings.h>
+#include <UI/Graph/SessionsGraph.h>
+#include <UI/Widgets/SessionsTableWidget.h>
 
 MainUI::MainUI()
 {

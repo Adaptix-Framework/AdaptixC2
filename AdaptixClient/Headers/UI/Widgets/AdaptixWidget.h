@@ -2,14 +2,11 @@
 #define ADAPTIXCLIENT_ADAPTIXWIDGET_H
 
 #include <main.h>
-#include <Client/WebSocketWorker.h>
-#include <Client/LastTickWorker.h>
+#include <Workers/WebSocketWorker.h>
 #include <Client/TunnelEndpoint.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
-#include <UI/Widgets/SessionsTableWidget.h>
-#include <UI/Graph/SessionsGraph.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/TasksWidget.h>
@@ -17,6 +14,7 @@
 #include <Client/WidgetBuilder.h>
 #include <Agent/Agent.h>
 #include <Agent/Task.h>
+#include <Agent/Commander.h>
 
 class SessionsTableWidget;
 class SessionsGraph;

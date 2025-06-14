@@ -1,7 +1,13 @@
 #include <Agent/Agent.h>
+#include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/BrowserFilesWidget.h>
+#include <UI/Widgets/BrowserProcessWidget.h>
 #include <Client/Requestor.h>
-
 #include <MainAdaptix.h>
+#include <UI/Graph/SessionsGraph.h>
+#include <Client/Settings.h>
 
 Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 {
