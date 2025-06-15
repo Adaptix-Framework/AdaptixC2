@@ -91,31 +91,33 @@ void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &
         else
             OutputTextEdit->appendPlain("[!] ");
 
-        QString printMessage = TrimmedEnds(message) +"\n";
-        if ( text.isEmpty() || type == CONSOLE_OUT_LOCAL_SUCCESS || type == CONSOLE_OUT_LOCAL_ERROR || type == CONSOLE_OUT_LOCAL_INFO)
+        QString printMessage = TrimmedEnds(message);// +"\n";
+        if ( text.isEmpty() || type == CONSOLE_OUT_LOCAL_SUCCESS || type == CONSOLE_OUT_LOCAL_ERROR || type == CONSOLE_OUT_SUCCESS || type == CONSOLE_OUT_ERROR)
             printMessage += "\n";
-        OutputTextEdit->appendPlain( printMessage );
+        OutputTextEdit->appendPlain(printMessage);
     }
 
     if ( !text.isEmpty() )
-        OutputTextEdit->appendPlain( TrimmedEnds(text) + "\n\n");
+        OutputTextEdit->appendPlain( TrimmedEnds(text) + "\n");
 
     if (completed) {
-        QString deleter = "+-------------------------------------------------------------------------------------+\n\n";
+        QString deleter = "\n+-------------------------------------------------------------------------------------+\n";
         if ( !taskId.isEmpty() )
-            deleter = QString("+--- Task [%1] closed ----------------------------------------------------------+\n\n").arg(taskId);
+            deleter = QString("\n+--- Task [%1] closed ----------------------------------------------------------+\n").arg(taskId);
 
         OutputTextEdit->appendColor(deleter, QColor(COLOR_Gray));
     }
 }
 
-void ConsoleWidget::ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const
+void ConsoleWidget::ConsoleOutputPrompt(const qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const
 {
     QString promptTime = "";
     if (GlobalClient->settings->data.ConsoleTime)
         promptTime = UnixTimestampGlobalToStringLocal(timestamp);
 
     if ( !commandLine.isEmpty() ) {
+        OutputTextEdit->appendPlain("\n");
+
         if ( !promptTime.isEmpty() )
             OutputTextEdit->appendColor("[" + promptTime + "] ", QColor(COLOR_SaturGray));
 

@@ -88,8 +88,8 @@ void SessionsTableWidget::createUI()
     tableWidget->horizontalHeader()->setHighlightSections( false );
     tableWidget->verticalHeader()->setVisible( false );
 
-    tableWidget->setHorizontalHeaderItem( ColumnAgentID,   new QTableWidgetItem( "Agent ID" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnAgentType, new QTableWidgetItem( "Agent Type" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnAgentID,   new QTableWidgetItem( "ID" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnAgentType, new QTableWidgetItem( "Type" ) );
     tableWidget->setHorizontalHeaderItem( ColumnListener,  new QTableWidgetItem( "Listener" ) );
     tableWidget->setHorizontalHeaderItem( ColumnExternal,  new QTableWidgetItem( "External" ) );
     tableWidget->setHorizontalHeaderItem( ColumnInternal,  new QTableWidgetItem( "Internal" ) );
@@ -216,26 +216,19 @@ void SessionsTableWidget::addTableItem(const Agent* newAgent) const
     tableWidget->setSortingEnabled( isSortingEnabled );
 
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnTags, QHeaderView::Stretch);
+
+    int wDomain   = tableWidget->columnWidth(ColumnDomain);
+    int wComputer = tableWidget->columnWidth(ColumnDomain);
+    int wUser     = tableWidget->columnWidth(ColumnDomain);
 
     tableWidget->horizontalHeader()->setSectionResizeMode(ColumnDomain,   QHeaderView::Interactive);
     tableWidget->horizontalHeader()->setSectionResizeMode(ColumnComputer, QHeaderView::Interactive);
     tableWidget->horizontalHeader()->setSectionResizeMode(ColumnUser,     QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnTags,     QHeaderView::Stretch);
 
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnAgentID,   QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnAgentType, QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnListener,  QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnExternal,  QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnInternal,  QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnProcessId, QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnThreadId,  QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnSleep,     QHeaderView::ResizeToContents );
-    //
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnDomain,   QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnComputer, QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnUser, QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnOs, QHeaderView::ResizeToContents );
-    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnProcess, QHeaderView::ResizeToContents );
+    tableWidget->setColumnWidth(ColumnDomain, wDomain);
+    tableWidget->setColumnWidth(ColumnDomain, wComputer);
+    tableWidget->setColumnWidth(ColumnDomain, wUser);
 }
 
 /// PUBLIC
