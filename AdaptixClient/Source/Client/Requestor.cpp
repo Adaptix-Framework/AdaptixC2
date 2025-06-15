@@ -83,6 +83,23 @@ bool HttpReqJwtUpdate(AuthProfile* profile)
     return false;
 }
 
+bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile profile, QString* message, bool* ok)
+{
+    QJsonObject dataJson;
+    dataJson["type"] = type;
+    dataJson["id"]   = objectId;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/otp/get";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
 /// LISTENER
 
 bool HttpReqListenerStart(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile profile, QString* message, bool* ok )

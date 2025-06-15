@@ -1,6 +1,7 @@
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
+#include <UI/Dialogs/DialogDownloader.h>
 
 DownloadsWidget::DownloadsWidget(QWidget* w)
 {
@@ -231,6 +232,13 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
     auto ctxMenu = QMenu();
     if(Received.compare("") == 0) {
         ctxMenu.addAction("Sync file to client", this, &DownloadsWidget::actionSync);
+
+        auto agentMenu = new QMenu("Sync as ...", &ctxMenu);
+        agentMenu->addAction("Curl command", this, &DownloadsWidget::actionSyncCurl);
+        agentMenu->addAction("Wget command", this, &DownloadsWidget::actionSyncWget);
+        ctxMenu.addMenu(agentMenu);
+
+        ctxMenu.addSeparator();
         ctxMenu.addAction("Delete file", this, &DownloadsWidget::actionDelete );
     }
     else {
@@ -254,54 +262,120 @@ void DownloadsWidget::actionSync() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
 
-    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() == "" ) {
-        QString fileId  = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
+        return;
 
-        QJsonObject dataJson;
-        dataJson["file_id"] = fileId;
-        QByteArray jsonData = QJsonDocument(dataJson).toJson();
+    QString fileId   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    QString filePath = tableWidget->item( tableWidget->currentRow(), 5 )->text();
 
-        QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/download/sync";
-        QJsonObject jsonObject = HttpReq(sUrl, jsonData, adaptixWidget->GetProfile()->GetAccessToken());
-        if ( jsonObject.contains("message") && jsonObject.contains("ok") || jsonObject.contains("content") && jsonObject.contains("filename") && jsonObject.contains("ok") ) {}
-        else {
-            MessageError("JWT error");
-            return;
-        }
-
-        bool ok = jsonObject["ok"].toBool();
-        if ( !ok ) {
-            QString message = jsonObject["message"].toString();
-            MessageError(message);
-        }
-        else {
-            QString fileName = jsonObject["filename"].toString();
-            QByteArray encodedContent = jsonObject["content"].toString().toUtf8();
-            QByteArray fileContent = QByteArray::fromBase64(encodedContent);
-
-            QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", fileName, "All Files (*.*)" );
-            if ( filePath.isEmpty())
-                return;
-
-            QFile file(filePath);
-            if (!file.open(QIODevice::WriteOnly)) {
-                MessageError("Failed to open file for writing");
-                return;
-            }
-
-            file.write( fileContent );
-            file.close();
-
-            QInputDialog inputDialog;
-            inputDialog.setWindowTitle("Sync file");
-            inputDialog.setLabelText("File saved to:");
-            inputDialog.setTextEchoMode(QLineEdit::Normal);
-            inputDialog.setTextValue(filePath);
-            inputDialog.adjustSize();
-            inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
-            inputDialog.exec();
-        }
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqGetOTP("download", fileId, *adaptixWidget->GetProfile(), &message, &ok);
+    if( !result ) {
+        MessageError("JWT error");
+        return;
     }
+    if ( !ok ) {
+        MessageError(message);
+        return;
+    }
+    QString otp = message;
+
+    QStringList pathParts = filePath.split("\\", Qt::SkipEmptyParts);
+    QString fileName =  pathParts[pathParts.size()-1];
+    pathParts = fileName.split("/", Qt::SkipEmptyParts);
+    fileName = pathParts[pathParts.size()-1];
+
+    QString savedPath = QFileDialog::getSaveFileName( nullptr, "Save File", fileName, "All Files (*.*)" );
+    if (savedPath.isEmpty())
+        return;
+
+    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/download/sync/otp";
+
+    DialogDownloader dialog(sUrl, otp, savedPath);
+    dialog.exec();
+}
+
+void DownloadsWidget::actionSyncCurl() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
+        return;
+
+    QString fileId   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    QString filePath = tableWidget->item( tableWidget->currentRow(), 5 )->text();
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqGetOTP("download", fileId, *adaptixWidget->GetProfile(), &message, &ok);
+    if( !result ) {
+        MessageError("JWT error");
+        return;
+    }
+    if ( !ok ) {
+        MessageError(message);
+        return;
+    }
+    QString otp = message;
+
+    QStringList pathParts = filePath.split("\\", Qt::SkipEmptyParts);
+    QString fileName =  pathParts[pathParts.size()-1];
+    pathParts = fileName.split("/", Qt::SkipEmptyParts);
+    fileName = pathParts[pathParts.size()-1];
+
+    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/download/sync/otp";
+
+    QString command = QString("curl -k %1 -H 'OTP: %2' -o %3").arg(sUrl).arg(otp).arg(fileName);
+
+    QInputDialog inputDialog;
+    inputDialog.setWindowTitle("Sync file as curl");
+    inputDialog.setLabelText("Curl command:");
+    inputDialog.setTextEchoMode(QLineEdit::Normal);
+    inputDialog.setTextValue(command);
+    inputDialog.setFixedSize(700,60);
+    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+    inputDialog.exec();
+}
+
+void DownloadsWidget::actionSyncWget() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
+        return;
+
+    QString fileId   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    QString filePath = tableWidget->item( tableWidget->currentRow(), 5 )->text();
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqGetOTP("download", fileId, *adaptixWidget->GetProfile(), &message, &ok);
+    if( !result ) {
+        MessageError("JWT error");
+        return;
+    }
+    if ( !ok ) {
+        MessageError(message);
+        return;
+    }
+    QString otp = message;
+
+    QStringList pathParts = filePath.split("\\", Qt::SkipEmptyParts);
+    QString fileName =  pathParts[pathParts.size()-1];
+    pathParts = fileName.split("/", Qt::SkipEmptyParts);
+    fileName = pathParts[pathParts.size()-1];
+
+    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/download/sync/otp";
+
+    QString command = QString("wget --no-check-certificate %1 --header='OTP: %2' -O %3").arg(sUrl).arg(otp).arg(fileName);
+
+    QInputDialog inputDialog;
+    inputDialog.setWindowTitle("Sync file as curl");
+    inputDialog.setLabelText("Curl command:");
+    inputDialog.setTextEchoMode(QLineEdit::Normal);
+    inputDialog.setTextValue(command);
+    inputDialog.setFixedSize(700,60);
+    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+    inputDialog.exec();
 }
 
 void DownloadsWidget::actionDelete() const

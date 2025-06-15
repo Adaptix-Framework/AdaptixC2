@@ -126,7 +126,9 @@ SET( HEADERS
         Headers/Client/TunnelEndpoint.h
         Headers/Workers/TunnelWorker.h
         Headers/UI/Widgets/TerminalWidget.h
-        Headers/Client/TerminalWorker.h
+        Headers/Workers/TerminalWorker.h
+        Headers/UI/Dialogs/DialogDownloader.h
+        Headers/Workers/DownloaderWorker.h
 )
 
 add_executable(AdaptixClient
@@ -185,7 +187,9 @@ add_executable(AdaptixClient
         Source/Client/TunnelEndpoint.cpp
         Source/Workers/TunnelWorker.cpp
         Source/UI/Widgets/TerminalWidget.cpp
-        Source/Client/TerminalWorker.cpp
+        Source/Workers/TerminalWorker.cpp
+        Source/UI/Dialogs/DialogDownloader.cpp
+        Source/Workers/DownloaderWorker.cpp
 )
 
 target_compile_definitions(AdaptixClient PRIVATE QT_DEPRECATED_WARNINGS )
