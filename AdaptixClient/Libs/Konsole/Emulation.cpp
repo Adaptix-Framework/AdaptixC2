@@ -32,18 +32,11 @@ Emulation::Emulation()
     connect(&_bulkTimer1, &QTimer::timeout, this, &Emulation::showBulk);
     connect(&_bulkTimer2, &QTimer::timeout, this, &Emulation::showBulk);
 
-    // listen for mouse status changes
-    connect(this, &Emulation::programUsesMouseChanged, this,
-            &Emulation::usesMouseChanged);
-    connect(this, &Emulation::programBracketedPasteModeChanged, this,
-            &Emulation::bracketedPasteModeChanged);
+    connect(this, &Emulation::programUsesMouseChanged, this, &Emulation::usesMouseChanged);
+    connect(this, &Emulation::programBracketedPasteModeChanged, this, &Emulation::bracketedPasteModeChanged);
 
-    connect(this, &Emulation::cursorChanged, this,
-        [this](KeyboardCursorShape cursorShape, bool blinkingCursorEnabled) {
-            emit profileChangeCommandReceived(
-                QString(QLatin1String("CursorShape=%1;BlinkingCursorEnabled=%2"))
-                    .arg(static_cast<int>(cursorShape))
-                    .arg(blinkingCursorEnabled));
+    connect(this, &Emulation::cursorChanged, this, [this](KeyboardCursorShape cursorShape, bool blinkingCursorEnabled) {
+            emit profileChangeCommandReceived( QString(QLatin1String("CursorShape=%1;BlinkingCursorEnabled=%2")).arg(static_cast<int>(cursorShape)).arg(blinkingCursorEnabled));
     });
 }
 

@@ -103,4 +103,4 @@ private:
     int  _scrollCount;
 };
 
-#endif // SCREENWINDOW_H
+#endif

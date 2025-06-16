@@ -177,10 +177,6 @@ protected:
                 }
                 return true;
             }
-            if (keyEvent->key() == Qt::Key_L && keyEvent->modifiers() & Qt::ControlModifier) {
-                outputTextEdit->clear();
-                return true;
-            }
         }
         return QObject::eventFilter(watched, event);
     }

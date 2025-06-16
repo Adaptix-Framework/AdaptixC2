@@ -19,7 +19,6 @@ class TerminalWidget : public QWidget
      QFrame*      line_2          = nullptr;
      QFrame*      line_3          = nullptr;
      QPushButton* startButton     = nullptr;
-     // QPushButton* restartButton   = nullptr;
      QPushButton* stopButton      = nullptr;
      QComboBox*   programComboBox = nullptr;
      QLabel*      keytabLabel     = nullptr;

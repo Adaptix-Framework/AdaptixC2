@@ -7,23 +7,6 @@ class PaddingDelegate : public QStyledItemDelegate {
 public:
     explicit PaddingDelegate(QObject* parent = nullptr) : QStyledItemDelegate(parent) {}
 
-    // void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
-    //      QStyleOptionViewItem opt = option;
-    //      initStyleOption(&opt, index);
-    //
-    //      QVariant bgColor = index.data(Qt::BackgroundRole);
-    //      if (bgColor.canConvert<QColor>())
-    //          opt.backgroundBrush = QBrush(bgColor.value<QColor>());
-    //
-    //      QVariant fgColor = index.data(Qt::ForegroundRole);
-    //      if (fgColor.canConvert<QColor>())
-    //          opt.palette.setColor(QPalette::Text, fgColor.value<QColor>());
-    //
-    //     // opt.rect.adjust(0, 0, 0, 0);
-    //
-    //      QStyledItemDelegate::paint(painter, opt, index);
-    //  }
-
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
         QStyleOptionViewItem optFull = option;
         initStyleOption(&optFull, index);
@@ -108,12 +91,16 @@ protected:
 class TextEditConsole : public QTextEdit {
 Q_OBJECT
     QTextCursor cachedCursor;
-    int maxLines = 30000;
+    int  maxLines    = 30000;
+    bool autoScroll  = false;
+    bool noWrap      = true;
 
     void trimExcessLines();
+    void createContextMenu(const QPoint &pos);
+    void setBufferSize(int size);
 
 public:
-    explicit TextEditConsole(QWidget* parent = nullptr);
+    explicit TextEditConsole(QWidget* parent = nullptr, int maxLines = 30000, bool noWrap = true, bool autoScroll = false);
 
     void appendPlain(const QString& text);
     void appendFormatted(const QString& text, const std::function<void(QTextCharFormat&)> &styleFn);
@@ -125,6 +112,12 @@ public:
     void appendColorUnderline(const QString& text, QColor color);
 
     void setMaxLines(int lines);
+    void setAutoScrollEnabled(bool enabled);
+    bool isAutoScrollEnabled() const;
+    bool isNoWrapEnabled() const;
+
+signals:
+    void ctx_find();
 };
 
 #endif //ADAPTIXCLIENT_CUSTOMELEMENTS_H

@@ -647,17 +647,17 @@ CommanderResult Commander::ProcessCommand(AgentData agentData, Command command, 
 
 QString Commander::ProcessExecExtension(const AgentData &agentData, ExtModule extMod, QString ExecString, QList<Argument> args, QJsonObject jsonObj)
 {
-    // $ARCH
+    /// $ARCH
 
     ExecString = ExecString.replace("$ARCH()", agentData.Arch, Qt::CaseSensitive);
 
-    // $EXT_DIR
+    /// $EXT_DIR
 
     QFileInfo fi(extMod.FilePath);
     QString dirPath = fi.absolutePath();
     ExecString = ExecString.replace("$EXT_DIR()", dirPath, Qt::CaseSensitive);
 
-    // $MAP()
+    /// $MAP()
 
     QRegularExpression mapRe(R"(\$MAP\(\s*(\w+)\s*,\s*(\w+)\s*\))");
     QRegularExpressionMatchIterator mapReIt = mapRe.globalMatch(ExecString);
@@ -677,7 +677,7 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, ExtModule ex
             ExecString = ExecString.replace(match.captured(0), value);
     }
 
-    // $RAND
+    /// $RAND
 
     QRegularExpression re(R"(\$RAND\(\s*(\d+)\s*,\s*(\w+)\s*\))");
     QRegularExpressionMatchIterator i = re.globalMatch(ExecString);
@@ -690,7 +690,7 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, ExtModule ex
             ExecString = ExecString.replace(match.captured(0), randomString);
     }
 
-    // $HASH
+    /// $HASH
 
     QRegularExpression hashRe(R"(\$HASH\(\s*(\w+)\s*,\s*(\d+)\s*,\s*([^)]+)\s*\))");
     QRegularExpressionMatchIterator hashIt = hashRe.globalMatch(ExecString);
@@ -710,20 +710,20 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, ExtModule ex
                 inputString = inputString.replace(remainingMatch.captured(0), paramValue);
             }
         }
-        // endif
+
         QString hashString = GenerateHash(algorithm, length, inputString);
         if (!hashString.isEmpty())
             ExecString = ExecString.replace(match.captured(0), hashString);
     }
 
-    // BOF_PACK
+    /// BOF_PACK
 
     QRegularExpression packRegex(R"(\$PACK_BOF\s*\(([^)]*)\))");
     QRegularExpressionMatchIterator iter = packRegex.globalMatch(ExecString);
 
     while (iter.hasNext()) {
         QRegularExpressionMatch match = iter.next();
-        QString packContent = match.captured(1); // $PACK(...)
+        QString packContent = match.captured(1); /// $PACK(...)
 
         QRegularExpression paramRegex(R"((\s*([A-Z]+)\s+)?(?:\{\s*([^}]*)\s*\}|([^,\s][^,]*[^,\s])))");
         QRegularExpressionMatchIterator it = paramRegex.globalMatch(packContent);
@@ -737,12 +737,12 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, ExtModule ex
                 type = "CSTR";
 
             if (!paramMatch.captured(3).isEmpty()) {
-                QString value = paramMatch.captured(3); // {param}
+                QString value = paramMatch.captured(3); /// {param}
                 if( jsonObj.contains(value) )
                     packer.Pack( type, jsonObj[value] );
             }
             else if (!paramMatch.captured(4).isEmpty()) {
-                QString value = paramMatch.captured(4); // param
+                QString value = paramMatch.captured(4); /// param
                 packer.Pack( type, QJsonValue(value) );
             }
         }
@@ -750,7 +750,7 @@ QString Commander::ProcessExecExtension(const AgentData &agentData, ExtModule ex
         ExecString = ExecString.replace(match.captured(0), bofParam);
     }
 
-    // Arguments
+    /// Arguments
 
     QRegularExpression remainingArgsRegex(R"(\{\s*([^}]*)\s*\})");
     QRegularExpressionMatchIterator remainingIt = remainingArgsRegex.globalMatch(ExecString);
@@ -799,13 +799,6 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             output << QString("  =====================================\n");
 
             for ( auto command : extMod.Commands ) {
-                // QString commandName = command.name;
-                // if (!command.subcommands.isEmpty())
-                //     commandName += '*';
-                //
-                // QString tab = QString(TotalWidth - commandName.size(), ' ');
-                // output << "  " + commandName + tab + "      " + command.description + "\n";
-
                 QString commandName = command.name;
                 if ( command.subcommands.isEmpty() ) {
                     QString tab = QString(TotalWidth - commandName.size(), ' ');
