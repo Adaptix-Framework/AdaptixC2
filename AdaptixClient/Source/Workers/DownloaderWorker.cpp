@@ -35,7 +35,6 @@ void DownloaderWorker::start()
     connect(this->networkReply, &QNetworkReply::downloadProgress, this, &DownloaderWorker::onProgress);
     connect(this->networkReply, &QNetworkReply::finished, this, &DownloaderWorker::onFinished);
     connect(this->networkReply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::errorOccurred), this, &DownloaderWorker::onError);
-    //     connect(this->networkReply, &QNetworkReply::errorOccurred,    this, &Downloader::onError);
 
     this->savedFile.setFileName(this->savedPath);
     if (!this->savedFile.open(QIODevice::WriteOnly)) {

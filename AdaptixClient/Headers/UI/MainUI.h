@@ -8,7 +8,6 @@
 class MainUI : public QMainWindow
 {
     QTabWidget* mainuiTabWidget = nullptr;
-    // AdaptixWidget* mainAdaptixWidget = nullptr;
 
     QMap<QString, AdaptixWidget*> AdaptixProjects;
 

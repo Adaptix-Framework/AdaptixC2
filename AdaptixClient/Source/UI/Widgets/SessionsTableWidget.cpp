@@ -14,9 +14,9 @@ SessionsTableWidget::SessionsTableWidget( QWidget* w )
     this->mainWidget = w;
     this->createUI();
 
-    connect( tableWidget,     &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
-    connect( tableWidget,     &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
-    connect( tableWidget,     &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
+    connect( tableWidget, &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
+    connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
+    connect( tableWidget, &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
     connect( checkOnlyActive, &QCheckBox::checkStateChanged, this, &SessionsTableWidget::onFilterUpdate);
@@ -24,10 +24,10 @@ SessionsTableWidget::SessionsTableWidget( QWidget* w )
     connect( checkOnlyActive, &QCheckBox::stateChanged, this, &SessionsTableWidget::onFilterUpdate);
 #endif
 
-    connect( inputFilter1,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( inputFilter2,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( inputFilter3,    &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( hideButton,      &ClickableLabel::clicked,                  this, &SessionsTableWidget::toggleSearchPanel);
+    connect( inputFilter1, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter2, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter3, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
+    connect( hideButton,   &ClickableLabel::clicked,                  this, &SessionsTableWidget::toggleSearchPanel);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
     shortcutSearch->setContext(Qt::WidgetShortcut);

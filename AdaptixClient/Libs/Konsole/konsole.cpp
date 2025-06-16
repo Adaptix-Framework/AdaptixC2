@@ -67,7 +67,6 @@ QTermWidget::QTermWidget(QWidget *messageParentWidget, QWidget *parent)
     connect(m_emulation, &Emulation::zmodemRecvDetected, this, &QTermWidget::zmodemRecvDetected);
     connect(m_emulation, &Emulation::zmodemSendDetected, this, &QTermWidget::zmodemSendDetected);
     connect(m_emulation, &Emulation::titleChanged, this, &QTermWidget::titleChanged);
-    // redirect data from TTY to external recipient
     connect(m_emulation, &Emulation::sendData, this, [this](const char *buff, int len) {
         if (m_echo) {
             recvData(buff, len);

@@ -85,10 +85,10 @@ public:
     ScreenshotsWidget*   ScreenshotsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
-    QMap<QString, QMap<QString, Commander*>> Commanders;    // agentName -> (handlerId -> commander)
-    QMap<QString, QMap<QString, BrowsersConfig>> AgentBrowserConfigs;    // agentName -> (handlerId -> BrowserConfigs)
+    QMap<QString, QMap<QString, Commander*>> Commanders;    /// agentName -> (handlerId -> commander)
+    QMap<QString, QMap<QString, BrowsersConfig>> AgentBrowserConfigs;    /// agentName -> (handlerId -> BrowserConfigs)
     QVector<RegAgentConfig>        RegisterAgents;
-    QMap<QString, WidgetBuilder*>  RegisterListeners;  // listenerName -> builder
+    QMap<QString, WidgetBuilder*>  RegisterListeners;  /// listenerName -> builder
     QVector<ListenerData>          Listeners;
     QVector<TunnelData>            Tunnels;
     QMap<QString, DownloadData>    Downloads;

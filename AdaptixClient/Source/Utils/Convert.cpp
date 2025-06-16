@@ -290,7 +290,7 @@ QIcon RecolorIcon(QIcon originalIcon, const QString &colorString)
     QPixmap pixmap = originalIcon.pixmap(originalIcon.actualSize(QSize(128, 128)));
 
     QPainter painter(&pixmap);
-    painter.setCompositionMode(QPainter::CompositionMode_SourceIn); // Recoloring only pixels with content
+    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
     painter.fillRect(pixmap.rect(), color);
     painter.end();
 

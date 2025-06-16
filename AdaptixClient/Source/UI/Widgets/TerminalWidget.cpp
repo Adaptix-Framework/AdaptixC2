@@ -18,7 +18,6 @@ TerminalWidget::TerminalWidget(Agent* a, QWidget* w)
     connect(programComboBox, &QComboBox::currentTextChanged, this, &TerminalWidget::onProgramChanged);
     connect(keytabComboBox,  &QComboBox::currentTextChanged, this, &TerminalWidget::onKeytabChanged);
     connect(startButton,     &QPushButton::clicked,          this, &TerminalWidget::onStart);
-    // connect(restartButton,   &QPushButton::clicked,          this, &TerminalWidget::onRestart);
     connect(stopButton,      &QPushButton::clicked,          this, &TerminalWidget::onStop);
 }
 
