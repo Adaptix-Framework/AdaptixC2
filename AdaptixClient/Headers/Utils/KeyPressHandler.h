@@ -3,29 +3,6 @@
 
 #include <main.h>
 
-// class KPH_ConsoleInput : public QObject {
-//     QTextEdit *textEdit;
-//
-// public:
-//     KPH_ConsoleInput(QTextEdit *textEdit) : targetLineEdit(lineEdit) {}
-//
-// protected:
-//     bool eventFilter(QObject *obj, QEvent *event) override {
-//         if (event->type() == QEvent::KeyPress) {
-//             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-//             QLineEdit *lineEdit = qobject_cast<QTextEdit *>(obj);
-//
-//             if (lineEdit && lineEdit->hasFocus()) {
-//                 if (keyEvent->key() == Qt::Key_L && keyEvent->modifiers() & Qt::ControlModifier) {
-//                     textEdit->clear();
-//                     return true;
-//                 }
-//             }
-//         }
-//         return QObject::eventFilter(obj, event);
-//     }
-// };
-
 // class TableSearchHandler : public QObject {
 //     Q_OBJECT
 //
@@ -140,6 +117,10 @@ public:
         history.prepend(command);
         historyIndex = -1;
         tmpCommandLine = "";
+    }
+    
+    const QStringList& getHistory() const {
+        return history;
     }
 
 protected:

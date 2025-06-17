@@ -118,6 +118,7 @@ public:
 
 signals:
     void ctx_find();
+    void ctx_history();
 };
 
 #endif //ADAPTIXCLIENT_CUSTOMELEMENTS_H

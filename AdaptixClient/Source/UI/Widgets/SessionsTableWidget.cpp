@@ -24,10 +24,10 @@ SessionsTableWidget::SessionsTableWidget( QWidget* w )
     connect( checkOnlyActive, &QCheckBox::stateChanged, this, &SessionsTableWidget::onFilterUpdate);
 #endif
 
-    connect( inputFilter1, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( inputFilter2, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( inputFilter3, &QLineEdit::textChanged,                   this, &SessionsTableWidget::onFilterUpdate);
-    connect( hideButton,   &ClickableLabel::clicked,                  this, &SessionsTableWidget::toggleSearchPanel);
+    connect( inputFilter1, &QLineEdit::textChanged,  this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter2, &QLineEdit::textChanged,  this, &SessionsTableWidget::onFilterUpdate);
+    connect( inputFilter3, &QLineEdit::textChanged,  this, &SessionsTableWidget::onFilterUpdate);
+    connect( hideButton,   &ClickableLabel::clicked, this, &SessionsTableWidget::toggleSearchPanel);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -109,8 +109,8 @@ void SessionsTableWidget::createUI()
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
-    mainGridLayout->addWidget( searchWidget,   0, 0, 1, 1);
-    mainGridLayout->addWidget( tableWidget,    1, 0, 1, 1);
+    mainGridLayout->addWidget( searchWidget, 0, 0, 1, 1);
+    mainGridLayout->addWidget( tableWidget,  1, 0, 1, 1);
 }
 
 bool SessionsTableWidget::filterItem(const AgentData &agent) const
