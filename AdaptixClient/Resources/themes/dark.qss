@@ -729,6 +729,7 @@ QCheckBox::indicator:disabled {
 
 QListWidget {
     background-color: #2A2A2A;
+    alternate-background-color: #2E2E2E;
     border: 1px solid #4A4A4A;
     color: #E0E0E0;
     border-radius: 4px;

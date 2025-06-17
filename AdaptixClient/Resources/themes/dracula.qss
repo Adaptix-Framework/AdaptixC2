@@ -654,6 +654,7 @@ QCheckBox::indicator:disabled {
 
 QListWidget {
     background-color: #44475a;
+    alternate-background-color: #414458;
     border: 1px solid #6272a4;
     color: #f8f8f2;
     border-radius: 4px;
@@ -664,10 +665,6 @@ QListWidget::item {
     padding: 4px;
     border-radius: 4px;
     color: #f8f8f2;
-}
-
-QListWidget::item:nth-child(odd) {
-    background-color: #414458;
 }
 
 QListWidget::item:hover {

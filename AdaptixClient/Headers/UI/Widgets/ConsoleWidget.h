@@ -18,28 +18,43 @@
 
 class ConsoleWidget : public QWidget
 {
-    QGridLayout*      MainGridLayout      = nullptr;
-    QLabel*           CmdLabel            = nullptr;
-    QLabel*           InfoLabel           = nullptr;
-    QLineEdit*        InputLineEdit       = nullptr;
-    TextEditConsole*  OutputTextEdit      = nullptr;
-    QCompleter*       CommandCompleter    = nullptr;
-    QStringListModel* completerModel = nullptr;
+    QGridLayout*      MainGridLayout   = nullptr;
+    QLabel*           CmdLabel         = nullptr;
+    QLabel*           InfoLabel        = nullptr;
+    QLineEdit*        InputLineEdit    = nullptr;
+    TextEditConsole*  OutputTextEdit   = nullptr;
+    QCompleter*       CommandCompleter = nullptr;
+    QStringListModel* completerModel   = nullptr;
 
-    bool userSelectedCompletion      = false;
+    QWidget*        searchWidget   = nullptr;
+    QHBoxLayout*    searchLayout   = nullptr;
+    ClickableLabel* prevButton     = nullptr;
+    ClickableLabel* nextButton     = nullptr;
+    QLabel*         searchLabel    = nullptr;
+    QLineEdit*      searchLineEdit = nullptr;
+    ClickableLabel* hideButton     = nullptr;
+    QSpacerItem*    spacer         = nullptr;
+    QShortcut*      shortcutSearch = nullptr;
+
+    bool userSelectedCompletion = false;
+    int  currentIndex = -1;
+    QVector<QTextEdit::ExtraSelection> allSelections;
 
     Agent*     agent     = nullptr;
     Commander* commander = nullptr;
-    KPH_ConsoleInput * kphInputLineEdit = nullptr;
+    KPH_ConsoleInput* kphInputLineEdit = nullptr;
 
     void createUI();
+    void findAndHighlightAll(const QString& pattern);
+    void highlightCurrent() const;
 
 public:
     explicit ConsoleWidget(Agent* a, Commander* c);
     ~ConsoleWidget() override;
 
     void UpgradeCompleter() const;
-    void InputFocus() const;
+     void InputFocus() const;
+    void AddToHistory(const QString& command);
 
     void ConsoleOutputMessage( qint64 timestamp, const QString &taskId, int type, const QString &message, const QString &text, bool completed ) const;
     void ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const;
@@ -47,6 +62,10 @@ public:
 public slots:
     void processInput();
     void onCompletionSelected(const QString &selectedText);
+    void toggleSearchPanel();
+    void handleSearch();
+    void handleSearchBackward();
+    void handleShowHistory();
 };
 
 #endif //ADAPTIXCLIENT_CONSOLEWIDGET_H

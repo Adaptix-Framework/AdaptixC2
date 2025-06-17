@@ -460,6 +460,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (AgentsMap.contains(AgentId)) {
             AgentsMap[AgentId]->Console->ConsoleOutputPrompt( StartTime, TaskId, Client, CommandLine);
+            if (!this->synchronized)
+                AgentsMap[AgentId]->Console->AddToHistory(CommandLine);
 
             qint64 ConsoleTime = StartTime;
             if (Completed)

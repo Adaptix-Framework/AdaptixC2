@@ -113,6 +113,9 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
 
     menu->addSeparator();
 
+    QAction *showHistory = menu->addAction("Show history (Ctrl + H)");
+    connect(showHistory, &QAction::triggered, this, [this]() { emit ctx_history(); });
+
     QAction *setBufferSizeAction = menu->addAction("Set buffer size...");
     connect(setBufferSizeAction, &QAction::triggered, this, [this]() {
         bool ok;
