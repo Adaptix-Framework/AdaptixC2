@@ -183,17 +183,21 @@ typedef struct BrowsersConfig {
 } BrowsersConfig;
 
 typedef struct SettingsData {
-    bool    ConsoleTime;
     QString MainTheme;
     QString FontFamily;
     int     FontSize;
+    QString GraphVersion;
+    int     RemoteTerminalBufferSize;
+
+    bool ConsoleTime;
+    int  ConsoleBufferSize;
+    bool ConsoleNoWrap;
+    bool ConsoleAutoScroll;
 
     bool   SessionsTableColumns[15];
     bool   CheckHealth;
     double HealthCoaf;
     int    HealthOffset;
-
-    QString GraphVersion;
 
     bool TasksTableColumns[11];
 } SettingsData;

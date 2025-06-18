@@ -21,15 +21,26 @@ Q_OBJECT
     QPushButton*    buttonApply   = nullptr;
     QPushButton*    buttonClose   = nullptr;
 
-    QWidget*     mainSettingWidget   = nullptr;
-    QGridLayout* mainSettingLayout   = nullptr;
-    QLabel*      themeLabel          = nullptr;
-    QComboBox*   themeCombo          = nullptr;
-    QLabel*      fontSizeLabel       = nullptr;
-    QSpinBox*    fontSizeSpin        = nullptr;
-    QLabel*      fontFamilyLabel     = nullptr;
-    QComboBox*   fontFamilyCombo     = nullptr;
-    QCheckBox*   consoleTimeCheckbox = nullptr;
+    QWidget*     mainSettingWidget = nullptr;
+    QGridLayout* mainSettingLayout = nullptr;
+    QLabel*      themeLabel        = nullptr;
+    QComboBox*   themeCombo        = nullptr;
+    QLabel*      fontSizeLabel     = nullptr;
+    QSpinBox*    fontSizeSpin      = nullptr;
+    QLabel*      fontFamilyLabel   = nullptr;
+    QComboBox*   fontFamilyCombo   = nullptr;
+    QLabel*      graphLabel1       = nullptr;
+    QComboBox*   graphCombo1       = nullptr;
+    QLabel*      terminalSizeLabel = nullptr;
+    QSpinBox*    terminalSizeSpin  = nullptr;
+
+    QGroupBox*   consoleGroup              = nullptr;
+    QGridLayout* consoleGroupLayout        = nullptr;
+    QLabel*      consoleSizeLabel          = nullptr;
+    QSpinBox*    consoleSizeSpin           = nullptr;
+    QCheckBox*   consoleTimeCheckbox       = nullptr;
+    QCheckBox*   consoleNoWrapCheckbox     = nullptr;
+    QCheckBox*   consoleAutoScrollCheckbox = nullptr;
 
     QWidget*     sessionsWidget       = nullptr;
     QGridLayout* sessionsLayout       = nullptr;
@@ -42,11 +53,6 @@ Q_OBJECT
     QLabel*      sessionsLabel3       = nullptr;
     QDoubleSpinBox* sessionsCoafSpin  = nullptr;
     QSpinBox*    sessionsOffsetSpin   = nullptr;
-
-    QWidget*     graphWidget = nullptr;
-    QGridLayout* graphLayout = nullptr;
-    QLabel*      graphLabel1 = nullptr;
-    QComboBox*   graphCombo1 = nullptr;
 
     QWidget*     tasksWidget      = nullptr;
     QGridLayout* tasksLayout      = nullptr;

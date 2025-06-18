@@ -1,5 +1,7 @@
 #include <UI/Widgets/TerminalWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <MainAdaptix.h>
+#include <Client/Settings.h>
 
 TerminalWidget::TerminalWidget(Agent* a, QWidget* w)
 {
@@ -177,6 +179,8 @@ void TerminalWidget::SetSettings()
     termWidget->setMargin(0);
     termWidget->setDrawLineChars(false);
 
+    termWidget->setHistorySize(GlobalClient->settings->data.RemoteTerminalBufferSize);
+
     termWidget->setColorScheme("iTerm2 Default");
 
     if (this->agent->data.Os == OS_WINDOWS) {
@@ -198,10 +202,20 @@ void TerminalWidget::SetSettings()
 void TerminalWidget::handleTerminalMenu(const QPoint &pos)
 {
     QMenu menu(this->termWidget);
-    menu.addAction("Find  (Ctrl+Shift+F)", this->termWidget, &QTermWidget::toggleShowSearchBar);
     menu.addAction("Copy  (Ctrl+Shift+C)", this->termWidget, &QTermWidget::copyClipboard);
     menu.addAction("Paste (Ctrl+Shift+V)", this->termWidget, &QTermWidget::pasteClipboard);
     menu.addAction("Clear (Ctrl+Shift+L)", this->termWidget, &QTermWidget::clear);
+    menu.addAction("Find  (Ctrl+Shift+F)", this->termWidget, &QTermWidget::toggleShowSearchBar);
+    menu.addSeparator();
+
+    QAction *setBufferSizeAction = menu.addAction("Set buffer size...");
+    connect(setBufferSizeAction, &QAction::triggered, this, [this]() {
+        bool ok;
+        int newSize = QInputDialog::getInt(this, "Set buffer size", "Enter maximum number of lines:", termWidget->historySize(), 100, 100000, 100, &ok);
+        if (ok)
+            termWidget->setHistorySize(newSize);
+    });
+
     menu.exec(this->termWidget->mapToGlobal(pos));
 }
 

@@ -88,10 +88,13 @@ FileSelector::FileSelector(QWidget* parent) : QWidget(parent)
 
 
 
-TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, bool autoScroll) : QTextEdit(parent), cachedCursor(this->textCursor())
+TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, bool autoScroll) : QTextEdit(parent), cachedCursor(this->textCursor()), maxLines(maxLines), noWrap(noWrap), autoScroll(autoScroll)
 {
     cachedCursor.movePosition(QTextCursor::End);
-    
+
+    if (noWrap)
+        setLineWrapMode( QTextEdit::LineWrapMode::NoWrap );
+
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &TextEditConsole::customContextMenuRequested, this, &TextEditConsole::createContextMenu);
 }
