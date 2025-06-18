@@ -33,6 +33,9 @@ public:
     static void SelectSettingsMain(SettingsData* settingsData);
     static void UpdateSettingsMain(const SettingsData &settingsData);
 
+    static void SelectSettingsConsole(SettingsData* settingsData);
+    static void UpdateSettingsConsole(const SettingsData &settingsData);
+
     static void SelectSettingsSessions(SettingsData* settingsData);
     static void UpdateSettingsSessions(const SettingsData &settingsData);
 

@@ -77,6 +77,19 @@ void Storage::checkDatabase()
 
 
 
+    auto querySettingsConsole = QSqlQuery();
+    querySettingsConsole.prepare("CREATE TABLE IF NOT EXISTS SettingsConsole ( "
+                            "id INTEGER, "
+                            "terminalBuffer INTEGER, "
+                            "consoleBuffer INTEGER, "
+                            "noWrap BOOLEAN, "
+                            "autoScroll BOOLEAN );"
+    );
+    if ( !querySettingsConsole.exec() )
+        LogError("Table SettingsConsole not created: %s\n", querySettingsConsole.lastError().text().toStdString().c_str());
+
+
+
     auto querySettingsSessions = QSqlQuery();
     querySettingsSessions.prepare("CREATE TABLE IF NOT EXISTS SettingsSessions ( "
                             "id INTEGER, "
@@ -343,6 +356,73 @@ void Storage::UpdateSettingsMain(const SettingsData &settingsData)
     }
 }
 
+void Storage::SelectSettingsConsole(SettingsData* settingsData)
+{
+    QSqlQuery existsQuery;
+    existsQuery.prepare("SELECT 1 FROM SettingsConsole WHERE Id = 1 LIMIT 1;");
+    if (!existsQuery.exec()) {
+        LogError("Failed to existsQuery console setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
+        return;
+    }
+    bool exists = existsQuery.next();
+
+    if(exists) {
+        QSqlQuery selectQuery;
+        selectQuery.prepare("SELECT * FROM SettingsConsole WHERE Id = 1;" );
+        if ( selectQuery.exec() && selectQuery.next()) {
+            settingsData->RemoteTerminalBufferSize = selectQuery.value("terminalBuffer").toInt();
+            settingsData->ConsoleBufferSize  = selectQuery.value("consoleBuffer").toInt();
+            settingsData->ConsoleNoWrap      = selectQuery.value("noWrap").toBool();
+            settingsData->ConsoleAutoScroll  = selectQuery.value("autoScroll").toBool();
+        }
+        else {
+            LogError("Failed to selectQuery console settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
+        }
+    }
+}
+
+void Storage::UpdateSettingsConsole(const SettingsData &settingsData)
+{
+    QSqlQuery existsQuery;
+    existsQuery.prepare("SELECT 1 FROM SettingsConsole WHERE Id = 1 LIMIT 1;");
+    if (!existsQuery.exec()) {
+        LogError("Failed to existsQuery console setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
+        return;
+    }
+    bool exists = existsQuery.next();
+
+    if(exists) {
+        QSqlQuery updateQuery;
+        updateQuery.prepare("UPDATE SettingsConsole SET "
+                            "terminalBuffer = :TerminalBuffer, "
+                            "consoleBuffer = :ConsoleBuffer, "
+                            "noWrap = :NoWrap, "
+                            "autoScroll = :AutoScroll "
+                            "WHERE Id = 1;");
+
+        updateQuery.bindValue(":TerminalBuffer", settingsData.RemoteTerminalBufferSize);
+        updateQuery.bindValue(":ConsoleBuffer", settingsData.ConsoleBufferSize);
+        updateQuery.bindValue(":NoWrap", settingsData.ConsoleNoWrap);
+        updateQuery.bindValue(":AutoScroll", settingsData.ConsoleAutoScroll);
+
+        if ( !updateQuery.exec() )
+            LogError("SettingsConsole not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
+    }
+    else {
+        QSqlQuery insertQuery;
+        insertQuery.prepare("INSERT INTO SettingsConsole (id, terminalBuffer, consoleBuffer, noWrap, autoScroll) VALUES (:Id, :TerminalBuffer, :ConsoleBuffer, :NoWrap, :AutoScroll);");
+
+        insertQuery.bindValue(":Id", 1);
+        insertQuery.bindValue(":TerminalBuffer", settingsData.RemoteTerminalBufferSize);
+        insertQuery.bindValue(":ConsoleBuffer", settingsData.ConsoleBufferSize);
+        insertQuery.bindValue(":NoWrap", settingsData.ConsoleNoWrap);
+        insertQuery.bindValue(":AutoScroll", settingsData.ConsoleAutoScroll);
+
+        if ( !insertQuery.exec() )
+            LogError("The console settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
+    }
+}
+
 void Storage::SelectSettingsSessions(SettingsData* settingsData)
 {
     QSqlQuery existsQuery;
@@ -367,9 +447,8 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
                 settingsData->SessionsTableColumns[i] = selectQuery.value(columnName).toBool();
             }
         }
-        else {
+        else
             LogError("Failed to selectQuery sessions settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
-        }
     }
 }
 
@@ -398,9 +477,8 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
             QString column = ":Column" + QString::number(i);
             updateQuery.bindValue(column, settingsData.SessionsTableColumns[i]);
         }
-        if ( !updateQuery.exec() ) {
+        if ( !updateQuery.exec() )
             LogError("SettingsSessions not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
-        }
     }
     else {
         QString strQuery = "INSERT INTO SettingsSessions (id, healthCheck, healthCoaf, healthOffset, column0";
@@ -422,9 +500,8 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
             insertQuery.bindValue(column, settingsData.SessionsTableColumns[i]);
         }
 
-        if ( !insertQuery.exec() ) {
+        if ( !insertQuery.exec() )
             LogError("The sessions settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
-        }
     }
 }
 
@@ -441,12 +518,10 @@ void Storage::SelectSettingsGraph(SettingsData* settingsData)
     if(exists) {
         QSqlQuery selectQuery;
         selectQuery.prepare("SELECT * FROM SettingsGraph WHERE Id = 1;" );
-        if ( selectQuery.exec() && selectQuery.next()) {
+        if ( selectQuery.exec() && selectQuery.next())
             settingsData->GraphVersion = selectQuery.value("version").toString();
-        }
-        else {
+        else
             LogError("Failed to selectQuery graph settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
-        }
     }
 }
 

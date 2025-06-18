@@ -92,9 +92,8 @@ void ConsoleWidget::createUI()
     InfoLabel->setProperty( "LabelStyle", "console" );
     InfoLabel->setText ( info );
 
-    OutputTextEdit = new TextEditConsole(this);
+    OutputTextEdit = new TextEditConsole(this, GlobalClient->settings->data.ConsoleBufferSize, GlobalClient->settings->data.ConsoleNoWrap, GlobalClient->settings->data.ConsoleAutoScroll);
     OutputTextEdit->setReadOnly(true);
-    OutputTextEdit->setLineWrapMode( QTextEdit::LineWrapMode::NoWrap );
     OutputTextEdit->setProperty( "TextEditStyle", "console" );
     OutputTextEdit->setFont( QFont( "Hack" ));
 
