@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"os"
+	"strings"
+	"time"
 )
 
 func NewTeamserver() *Teamserver {
@@ -171,7 +173,13 @@ func (ts *Teamserver) RestoreData() {
 		packet := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packet)
 
-		message := fmt.Sprintf("Restore '%v' (%v) executed on '%v @ %v.%v' (%v)", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP)
+		createdAt := time.Unix(agentData.CreateTime, 0).Format("15:04:05 02.01.2006")
+		message := ""
+		if len(agentData.Domain) == 0 || strings.ToLower(agentData.Computer) == strings.ToLower(agentData.Domain) {
+			message = fmt.Sprintf("Restore '%v' (%v) executed on '%v @ %v' (%v) [created '%v']", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.InternalIP, createdAt)
+		} else {
+			message = fmt.Sprintf("Restore '%v' (%v) executed on '%v @ %v.%v' (%v) [created '%v']", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP, createdAt)
+		}
 		packet2 := CreateSpEvent(EVENT_AGENT_NEW, message)
 		ts.TsSyncAllClients(packet2)
 		ts.events.Put(packet2)

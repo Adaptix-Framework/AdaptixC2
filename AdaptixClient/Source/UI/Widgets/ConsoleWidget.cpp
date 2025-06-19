@@ -37,6 +37,7 @@ ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
     connect(shortcutSearch, &QShortcut::activated, this, &ConsoleWidget::handleShowHistory);
 
     kphInputLineEdit = new KPH_ConsoleInput(InputLineEdit, OutputTextEdit, this);
+    InputLineEdit->installEventFilter(kphInputLineEdit);
 }
 
 ConsoleWidget::~ConsoleWidget() {}
@@ -311,7 +312,7 @@ void ConsoleWidget::handleShowHistory()
     QDialog *historyDialog = new QDialog(this);
     historyDialog->setWindowTitle(tr("Command History"));
     historyDialog->setAttribute(Qt::WA_DeleteOnClose);
-    
+
 
     QListWidget *historyList = new QListWidget(historyDialog);
     historyList->setWordWrap(true);
@@ -349,10 +350,10 @@ void ConsoleWidget::handleShowHistory()
         historyDialog->accept();
         InputLineEdit->setFocus();
     });
-    
+
     historyDialog->resize(800, 500);
     historyDialog->move(QCursor::pos() - QPoint(historyDialog->width()/2, historyDialog->height()/2));
-    
+
     historyDialog->setModal(true);
     historyDialog->show();
 }
