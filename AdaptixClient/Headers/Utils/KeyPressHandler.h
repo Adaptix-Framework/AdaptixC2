@@ -3,110 +3,21 @@
 
 #include <main.h>
 
-// class TableSearchHandler : public QObject {
-//     Q_OBJECT
-//
-// public:
-//     TableSearchHandler(QTableWidget *table, QWidget *parent = nullptr) : QObject(parent), tableWidget(table) {
-//
-//         searchLineEdit = new QLineEdit(parent);
-//         searchLineEdit->setPlaceholderText("Search...");
-//         searchLineEdit->hide();
-//
-//         QVBoxLayout *mainLayout = qobject_cast<QVBoxLayout *>(parent->layout());
-//         if (mainLayout) {
-//             mainLayout->addWidget(searchLineEdit);
-//         }
-//
-//         connect(searchLineEdit, &QLineEdit::textChanged, this, &TableSearchHandler::filterTable);
-//
-//         tableWidget->installEventFilter(this);
-//     }
-//
-// protected:
-//     bool eventFilter(QObject *watched, QEvent *event) override {
-//         if (watched == tableWidget && event->type() == QEvent::KeyPress) {
-//             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-//
-//             if (keyEvent->key() == Qt::Key_F && keyEvent->modifiers() & Qt::ControlModifier) {
-//                 toggleSearchField();
-//                 return true;
-//             }
-//         }
-//         return QObject::eventFilter(watched, event);
-//     }
-//
-// private:
-//     QTableWidget *tableWidget;
-//     QLineEdit *searchLineEdit;
-//     QWidget *searchWidget;
-//
-//     void toggleSearchField() {
-//         if (searchLineEdit->isVisible()) {
-//             searchLineEdit->hide();
-//         } else {
-//             searchLineEdit->show();
-//             searchLineEdit->setFocus();
-//         }
-//     }
-//
-//     void filterTable(const QString &text) {
-//         for (int row = 0; row < tableWidget->rowCount(); ++row) {
-//             bool matchFound = false;
-//             for (int col = 0; col < tableWidget->columnCount(); ++col) {
-//                 QTableWidgetItem *item = tableWidget->item(row, col);
-//                 if (item && item->text().contains(text, Qt::CaseInsensitive)) {
-//                     matchFound = true;
-//                     break;
-//                 }
-//             }
-//             tableWidget->setRowHidden(row, !matchFound);
-//         }
-//     }
-// };
-
-// class KPH_UpTable : public QObject
-// {
-// Q_OBJECT
-//     QTableWidget *tableWidget;
-//
-// public:
-//     KPH_UpTable(QTableWidget *table, QObject *parent = nullptr) : QObject(parent), tableWidget(table) {
-//         tableWidget->installEventFilter(this);
-//     }
-//
-// protected:
-//     bool eventFilter(QObject *watched, QEvent *event) override {
-//         if (watched == tableWidget && event->type() == QEvent::KeyPress) {
-//             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-//             int row = tableWidget->currentRow();
-//             int rowCount = tableWidget->rowCount();
-//
-//             if (keyEvent->key() == Qt::Key_Up) {
-//                 if (row > 0) tableWidget->setCurrentCell(row - 1, 0);
-//                 return true;
-//             }
-//             if (keyEvent->key() == Qt::Key_Down) {
-//                 if (row < rowCount - 1) tableWidget->setCurrentCell(row + 1, 0);
-//                 return true;
-//             }
-//             if (keyEvent->key() == Qt::Key_A && keyEvent->modifiers() & Qt::ControlModifier) {
-//                 tableWidget->selectAll();
-//                 return true;
-//             }
-//         }
-//         return QObject::eventFilter(watched, event);
-//     }
-// };
-
 class KPH_ConsoleInput : public QObject
 {
 Q_OBJECT
-    QLineEdit *inputLineEdit;
-    QTextEdit *outputTextEdit;
-    QString tmpCommandLine;
+    QLineEdit*  inputLineEdit;
+    QTextEdit*  outputTextEdit;
+    QString     tmpCommandLine;
+
     QStringList history;
     int historyIndex;
+
+    QStringList completions;
+    int completionIndex;
+    QString completionBase;
+    QString completionPrefix;
+    QString completionSuffix;
 
 public:
     KPH_ConsoleInput(QLineEdit *input, QTextEdit *output, QObject *parent = nullptr) : QObject(parent), inputLineEdit(input), outputTextEdit(output), historyIndex(-1) {
@@ -119,9 +30,7 @@ public:
         tmpCommandLine = "";
     }
     
-    const QStringList& getHistory() const {
-        return history;
-    }
+    const QStringList& getHistory() const { return history; }
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override {
@@ -135,7 +44,6 @@ protected:
                 if (historyIndex < history.size() - 1) {
                     if (historyIndex == -1)
                         tmpCommandLine = inputLineEdit->text();
-
                     historyIndex++;
                     inputLineEdit->setText(history[historyIndex]);
                 } else {
@@ -148,7 +56,6 @@ protected:
             if (keyEvent->key() == Qt::Key_Down) {
                 if ( history.size() == 0 )
                     return true;
-
                 if (historyIndex > 0) {
                     historyIndex--;
                     inputLineEdit->setText(history[historyIndex]);
@@ -158,6 +65,93 @@ protected:
                 }
                 return true;
             }
+
+            if (keyEvent->key() == Qt::Key_Tab) {
+                if (keyEvent->modifiers() & Qt::ControlModifier) {
+                    QString filePath = QFileDialog::getOpenFileName(nullptr, "Select file");
+                    if (!filePath.isEmpty()) {
+                        int cursorPos = inputLineEdit->cursorPosition();
+                        QString text = inputLineEdit->text();
+                        text.insert(cursorPos, "\"" + filePath + "\"");
+                        inputLineEdit->setText(text);
+                        inputLineEdit->setCursorPosition(cursorPos + filePath.length());
+                    }
+                    return true;
+                }
+                else {
+                    if (completionIndex < 0) {
+                        QString text = inputLineEdit->text();
+                        int cursorPos = inputLineEdit->cursorPosition();
+
+                        bool inQuotes = false;
+                        int start = cursorPos;
+                        while (start > 0) {
+                            QChar prev = text.at(start - 1);
+                            if (prev == '"' && (start < 2 || text.at(start - 2) != '\\'))
+                                inQuotes = !inQuotes;
+                            if (!inQuotes && prev.isSpace())
+                                break;
+                            start--;
+                        }
+                        completionPrefix = text.left(start);
+                        completionBase = text.mid(start, cursorPos - start);
+                        completionSuffix = text.mid(cursorPos);
+
+                        if (completionBase.startsWith('"') && completionBase.endsWith('"'))
+                            completionBase = completionBase.mid(1, completionBase.length() - 2);
+
+                        QString expanded = completionBase;
+                        if (expanded.startsWith("~/"))
+                            expanded = QDir::homePath() + expanded.mid(1);
+
+                        if (expanded == "") {
+                            completionIndex = -1;
+                            return true;
+                        }
+
+                        completions.clear();
+                        completionIndex = 0;
+                        QFileInfo fi(expanded);
+                        QString dirPath = fi.path().isEmpty() ? QDir::currentPath() : fi.path();
+                        QString nameStart = fi.fileName();
+                        QDir dir(dirPath);
+
+                        QStringList nameFilters{ nameStart + '*' };
+                        QFileInfoList infos = dir.entryInfoList( nameFilters, QDir::NoDotAndDotDot | QDir::AllEntries, QDir::Name );
+
+                        const QString home = QDir::homePath();
+                        for (const QFileInfo &item : infos) {
+                            QString path = item.absoluteFilePath();
+                            if (path.startsWith(home))
+                                path = '~' + path.mid(home.length());
+                            if (item.isDir())
+                                path += QDir::separator();
+#ifdef Q_OS_WIN
+                            path.replace('/', '\\');
+#endif
+                            if (path.contains(' '))
+                                path = '"' + path + '"';
+                            completions << path;
+                        }
+                    }
+
+                    if (!completions.isEmpty()) {
+                        QString chosen = completions[completionIndex];
+                        QString newText = completionPrefix + chosen + completionSuffix;
+                        inputLineEdit->setText(newText);
+
+                        int selBaseOffset = completionPrefix.length();
+                        int selOffset = completionBase.length();
+                        int selStart = selBaseOffset + selOffset;
+                        int selLen = chosen.length() - selOffset;
+                        inputLineEdit->setSelection(selStart, selLen);
+
+                        completionIndex = (completionIndex + 1) % completions.size();
+                    }
+                    return true;
+                }
+            }
+            completionIndex = -1;
         }
         return QObject::eventFilter(watched, event);
     }

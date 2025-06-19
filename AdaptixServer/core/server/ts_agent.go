@@ -81,7 +81,12 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	packetNew := CreateSpAgentNew(agentData)
 	ts.TsSyncAllClients(packetNew)
 
-	message := fmt.Sprintf("New '%v' (%v) executed on '%v @ %v.%v' (%v)", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP)
+	message := ""
+	if len(agentData.Domain) == 0 || strings.ToLower(agentData.Computer) == strings.ToLower(agentData.Domain) {
+		message = fmt.Sprintf("New '%v' (%v) executed on '%v @ %v' (%v)", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.InternalIP)
+	} else {
+		message = fmt.Sprintf("New '%v' (%v) executed on '%v @ %v.%v' (%v)", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP)
+	}
 	packet2 := CreateSpEvent(EVENT_AGENT_NEW, message)
 	ts.TsSyncAllClients(packet2)
 	ts.events.Put(packet2)
