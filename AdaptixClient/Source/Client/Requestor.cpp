@@ -257,6 +257,26 @@ bool HttpReqAgentExit( QStringList agentsId, AuthProfile profile, QString* messa
     return false;
 }
 
+bool HttpReqConsoleRemove( QStringList agentsId, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonArray arrayId;
+    for (QString item : agentsId)
+        arrayId.append(item);
+
+    QJsonObject dataJson;
+    dataJson["agent_id_array"] = arrayId;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/agent/console/remove";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
 bool HttpReqAgentRemove( QStringList agentsId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonArray arrayId;

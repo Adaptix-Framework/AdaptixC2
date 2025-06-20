@@ -153,6 +153,39 @@ type AgentRemove struct {
 	AgentIdArray []string `json:"agent_id_array"`
 }
 
+func (tc *TsConnector) TcAgentConsoleRemove(ctx *gin.Context) {
+	var (
+		agentRemove AgentRemove
+		err         error
+	)
+
+	err = ctx.ShouldBindJSON(&agentRemove)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		return
+	}
+
+	var errorsSlice []string
+	for _, agentId := range agentRemove.AgentIdArray {
+		err = tc.teamserver.TsAgentConsoleRemove(agentId)
+		if err != nil {
+			errorsSlice = append(errorsSlice, err.Error())
+		}
+	}
+
+	if len(errorsSlice) > 0 {
+		message := ""
+		for i, errorMessage := range errorsSlice {
+			message += fmt.Sprintf("%d. %s\n", i+1, errorMessage)
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": false})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}
+
 func (tc *TsConnector) TcAgentRemove(ctx *gin.Context) {
 	var (
 		agentRemove AgentRemove
