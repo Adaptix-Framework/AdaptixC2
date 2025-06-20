@@ -367,9 +367,9 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 
     bool menuRemoteTerminal = false;
     bool menuProcessBrowser = false;
-    bool menuFileBrowser = false;
-    bool menuExit = false;
-    bool menuTunnels = false;
+    bool menuFileBrowser    = false;
+    bool menuExit           = false;
+    bool menuTunnels        = false;
 
     int selectedCount = 0;
 
@@ -391,58 +391,66 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
         }
     }
 
-    auto ctxMenu = QMenu();
-
-    auto agentSep1 = new QAction();
-    agentSep1->setSeparator(true);
-    auto agentSep2 = new QAction();
-    agentSep2->setSeparator(true);
-
     /// AGENT MENU
 
-    auto agentMenu = new QMenu("Agent", &ctxMenu);
-    agentMenu->addAction("Tasks", this, &SessionsTableWidget::actionTasksBrowserOpen);
-    if (menuFileBrowser || menuProcessBrowser || menuTunnels || menuRemoteTerminal) {
-        agentMenu->addAction(agentSep1);
-        if (menuRemoteTerminal)
-            agentMenu->addAction("Remote Terminal", this, &SessionsTableWidget::actionTerminalOpen);
+    auto agentMenu = QMenu("Agent");
+    agentMenu.addAction("Execute command", this, &SessionsTableWidget::actionExecuteCommand);
+    agentMenu.addAction("Task manager", this, &SessionsTableWidget::actionTasksBrowserOpen);
+    agentMenu.addSeparator();
+    if (menuExit)
+        agentMenu.addAction("Exit", this, &SessionsTableWidget::actionAgentExit);
+    agentMenu.addAction("Remove console data", this, &SessionsTableWidget::actionConsoleDelete);
+    agentMenu.addAction("Remove from server", this, &SessionsTableWidget::actionAgentRemove);
+
+    /// BROWSER MENU
+
+    bool showBrowser = false;
+    auto browserMenu = QMenu("Browsers");
+    if (menuFileBrowser || menuProcessBrowser || menuRemoteTerminal) {
+        showBrowser = true;
         if (menuFileBrowser)
-            agentMenu->addAction("File Browser", this, &SessionsTableWidget::actionFileBrowserOpen);
+            browserMenu.addAction("File Browser", this, &SessionsTableWidget::actionFileBrowserOpen);
         if (menuProcessBrowser)
-            agentMenu->addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
-        if (menuTunnels  && selectedCount == 1)
-            agentMenu->addAction("Create Tunnel", this, &SessionsTableWidget::actionCreateTunnel);
-    }
-    if (menuExit) {
-        agentMenu->addAction(agentSep2);
-        agentMenu->addAction("Exit", this, &SessionsTableWidget::actionAgentExit);
+            browserMenu.addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
+        if (menuRemoteTerminal)
+            browserMenu.addAction("Remote Terminal", this, &SessionsTableWidget::actionTerminalOpen);
     }
 
-    /// ITEM MENU
+    /// ACCESS MENU
 
-    auto itemMenu = new QMenu("Item", &ctxMenu);
-    itemMenu->addAction("Mark as Active",   this, &SessionsTableWidget::actionMarkActive);
-    itemMenu->addAction("Mark as Inactive", this, &SessionsTableWidget::actionMarkInactive);
-    itemMenu->addSeparator();
-    itemMenu->addAction("Set items color", this, &SessionsTableWidget::actionItemColor);
-    itemMenu->addAction("Set text color",  this, &SessionsTableWidget::actionTextColor);
-    itemMenu->addAction("Reset color",     this, &SessionsTableWidget::actionColorReset);
-    itemMenu->addSeparator();
-    itemMenu->addAction( "Hide on client", this, &SessionsTableWidget::actionItemHide);
-    itemMenu->addAction( "Show all items", this, &SessionsTableWidget::actionItemsShowAll);
+    bool showAccess = false;
+    auto accessMenu = QMenu("Access");
+    if (menuTunnels  && selectedCount == 1) {
+        showAccess = true;
+        accessMenu.addAction("Create Tunnel", this, &SessionsTableWidget::actionCreateTunnel);
+    }
 
-    auto ctxSep1 = new QAction();
-    ctxSep1->setSeparator(true);
-    auto ctxSep2 = new QAction();
-    ctxSep2->setSeparator(true);
+    /// SESSION MENU
 
-    ctxMenu.addAction( "Console", this, &SessionsTableWidget::actionConsoleOpen);
-    ctxMenu.addAction(ctxSep1);
-    ctxMenu.addMenu(agentMenu);
-    ctxMenu.addMenu(itemMenu);
-    ctxMenu.addAction(ctxSep2);
-    ctxMenu.addAction( "Set tag", this, &SessionsTableWidget::actionItemTag);
-    ctxMenu.addAction( "Remove from server", this, &SessionsTableWidget::actionAgentRemove);
+    auto sessionMenu = QMenu("Session");
+    sessionMenu.addAction("Mark as Active",   this, &SessionsTableWidget::actionMarkActive);
+    sessionMenu.addAction("Mark as Inactive", this, &SessionsTableWidget::actionMarkInactive);
+    sessionMenu.addSeparator();
+    sessionMenu.addAction("Set items color", this, &SessionsTableWidget::actionItemColor);
+    sessionMenu.addAction("Set text color",  this, &SessionsTableWidget::actionTextColor);
+    sessionMenu.addAction("Reset color",     this, &SessionsTableWidget::actionColorReset);
+    sessionMenu.addSeparator();
+    sessionMenu.addAction( "Hide on client", this, &SessionsTableWidget::actionItemHide);
+
+    /// MAIN MENU
+
+    auto ctxMenu = QMenu();
+    ctxMenu.addAction("Console", this, &SessionsTableWidget::actionConsoleOpen);
+    ctxMenu.addSeparator();
+    ctxMenu.addMenu(&agentMenu);
+    if (showBrowser)
+        ctxMenu.addMenu(&browserMenu);
+    if (showAccess)
+        ctxMenu.addMenu(&accessMenu);
+    ctxMenu.addSeparator();
+    ctxMenu.addMenu(&sessionMenu);
+    ctxMenu.addAction("Set tag", this, &SessionsTableWidget::actionItemTag);
+    ctxMenu.addAction("Show all items", this, &SessionsTableWidget::actionItemsShowAll);
 
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }
@@ -450,6 +458,9 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 void SessionsTableWidget::actionConsoleOpen() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -458,10 +469,41 @@ void SessionsTableWidget::actionConsoleOpen() const
     }
 }
 
+void SessionsTableWidget::actionExecuteCommand()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    QStringList listId;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            listId.append(agentId);
+        }
+    }
+
+    if(listId.empty())
+        return;
+
+    bool ok = false;
+    QString cmd = QInputDialog::getText(this,"Execute Command", "Command", QLineEdit::Normal, "", &ok);
+    if (!ok)
+        return;
+
+    for(auto id : listId) {
+        adaptixWidget->AgentsMap[id]->Console->SetInput(cmd);
+        adaptixWidget->AgentsMap[id]->Console->processInput();
+    }
+}
+
 void SessionsTableWidget::actionTasksBrowserOpen() const
 {
-    QString agentId = tableWidget->item( tableWidget->currentRow(), ColumnAgentID )->text();
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    QString agentId = tableWidget->item( tableWidget->currentRow(), ColumnAgentID )->text();
 
     adaptixWidget->TasksTab->SetAgentFilter(agentId);
     adaptixWidget->SetTasksUI();
@@ -470,6 +512,9 @@ void SessionsTableWidget::actionTasksBrowserOpen() const
 void SessionsTableWidget::actionTerminalOpen() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -481,6 +526,9 @@ void SessionsTableWidget::actionTerminalOpen() const
 void SessionsTableWidget::actionFileBrowserOpen() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -492,6 +540,9 @@ void SessionsTableWidget::actionFileBrowserOpen() const
 void SessionsTableWidget::actionProcessBrowserOpen() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -582,9 +633,11 @@ void SessionsTableWidget::actionCreateTunnel() const
 
 void SessionsTableWidget::actionAgentExit() const
 {
-    QStringList listId;
-
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -606,8 +659,11 @@ void SessionsTableWidget::actionAgentExit() const
 
 void SessionsTableWidget::actionMarkActive() const
 {
-    QStringList listId;
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -629,8 +685,11 @@ void SessionsTableWidget::actionMarkActive() const
 
 void SessionsTableWidget::actionMarkInactive() const
 {
-    QStringList listId;
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -652,8 +711,11 @@ void SessionsTableWidget::actionMarkInactive() const
 
 void SessionsTableWidget::actionItemColor() const
 {
-    QStringList listId;
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -679,8 +741,11 @@ void SessionsTableWidget::actionItemColor() const
 
 void SessionsTableWidget::actionTextColor() const
 {
-    QStringList listId;
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -706,8 +771,11 @@ void SessionsTableWidget::actionTextColor() const
 
 void SessionsTableWidget::actionColorReset() const
 {
-    QStringList listId;
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -727,8 +795,50 @@ void SessionsTableWidget::actionColorReset() const
     }
 }
 
+void SessionsTableWidget::actionConsoleDelete()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    QMessageBox::StandardButton reply = QMessageBox::question(this, "Clear Confirmation",
+                                      "Are you sure you want to delete all agent console data and history from server (tasks will not be deleted from TaskManager)?\n\n"
+                                      "If you want to temporarily hide the contents of the agent console, do so through the agent console menu.",
+                                      QMessageBox::Yes | QMessageBox::No,
+                                      QMessageBox::No);
+
+    if (reply != QMessageBox::Yes)
+        return;
+
+    QStringList listId;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
+            listId.append(agentId);
+        }
+    }
+
+    if(listId.empty())
+        return;
+
+    for (auto id : listId)
+        adaptixWidget->AgentsMap[id]->Console->Clear();
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqConsoleRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
+    if( !result ) {
+        MessageError("JWT error");
+        return;
+    }
+}
+
 void SessionsTableWidget::actionAgentRemove()
 {
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     QMessageBox::StandardButton reply = QMessageBox::question(this, "Delete Confirmation",
                                       "Are you sure you want to delete all information about the selected agents from the server?\n\n"
                                       "If you want to hide the record, simply choose: 'Item -> Hide on Client'.",
@@ -739,8 +849,6 @@ void SessionsTableWidget::actionAgentRemove()
         return;
 
     QStringList listId;
-
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -762,9 +870,11 @@ void SessionsTableWidget::actionAgentRemove()
 
 void SessionsTableWidget::actionItemTag() const
 {
-    QStringList listId;
-
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -796,6 +906,9 @@ void SessionsTableWidget::actionItemTag() const
 void SessionsTableWidget::actionItemHide() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
 
@@ -812,8 +925,11 @@ void SessionsTableWidget::actionItemHide() const
 
 void SessionsTableWidget::actionItemsShowAll() const
 {
-    bool refact = false;
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    bool refact = false;
     for (auto agent : adaptixWidget->AgentsMap) {
         if (agent->show == false) {
             agent->show = true;

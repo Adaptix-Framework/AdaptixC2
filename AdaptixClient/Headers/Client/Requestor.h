@@ -34,6 +34,8 @@ bool HttpReqAgentCommand(const QString &agentName, const QString &agentId, const
 
 bool HttpReqAgentExit( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
 
+bool HttpReqConsoleRemove( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
+
 bool HttpReqAgentRemove( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqAgentSetTag( QStringList agentsId, const QString &tag, AuthProfile profile, QString* message, bool* ok );

@@ -165,6 +165,8 @@ void ConsoleWidget::highlightCurrent() const
     searchLabel->setText(QString("%1 of %2").arg(currentIndex + 1).arg(sels.size()));
 }
 
+///
+
 void ConsoleWidget::UpgradeCompleter() const
 {
     if (commander)
@@ -179,6 +181,16 @@ void ConsoleWidget::InputFocus() const
 void ConsoleWidget::AddToHistory(const QString &command)
 {
     kphInputLineEdit->AddToHistory(command);
+}
+
+void ConsoleWidget::SetInput(const QString &command)
+{
+    InputLineEdit->setText(command);
+}
+
+void ConsoleWidget::Clear()
+{
+    OutputTextEdit->clear();
 }
 
 void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &taskId, const int type, const QString &message, const QString &text, const bool completed ) const

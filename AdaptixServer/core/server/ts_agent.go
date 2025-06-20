@@ -409,6 +409,19 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 	return nil
 }
 
+func (ts *Teamserver) TsAgentConsoleRemove(agentId string) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent '%v' does not exist", agentId)
+	}
+	agent := value.(*Agent)
+	agent.OutConsole.CutArray()
+
+	_ = ts.DBMS.DbConsoleDelete(agentId)
+
+	return nil
+}
+
 func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	value, ok := ts.agents.GetDelete(agentId)
 	if !ok {
@@ -443,6 +456,8 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	for _, id := range tunnels {
 		_ = ts.TsTunnelStop(id)
 	}
+
+	/// Clear Pivots
 
 	if agent.PivotParent != nil {
 		_ = ts.TsPivotDelete(agent.PivotParent.PivotId)

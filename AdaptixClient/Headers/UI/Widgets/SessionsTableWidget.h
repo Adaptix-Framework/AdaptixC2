@@ -61,6 +61,7 @@ public slots:
     void onFilterUpdate() const;
 
     void actionConsoleOpen() const;
+    void actionExecuteCommand();
     void actionTasksBrowserOpen() const;
     void actionTerminalOpen() const;
     void actionFileBrowserOpen() const;
@@ -73,6 +74,7 @@ public slots:
     void actionTextColor() const;
     void actionColorReset() const;
     void actionAgentRemove();
+    void actionConsoleDelete();
     void actionItemTag() const;
     void actionItemHide() const;
     void actionItemsShowAll() const;
