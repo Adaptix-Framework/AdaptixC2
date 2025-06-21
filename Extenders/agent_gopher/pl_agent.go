@@ -509,12 +509,10 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		taskData.TaskId = fmt.Sprintf("%08x", taskId)
 
 		if agent.Os == OS_WINDOWS {
-			cmdArgs := []string{"/c", cmdParam}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "C:\\Windows\\System32\\cmd.exe", Args: cmdArgs, Task: taskData.TaskId})
+			packerData, _ := msgpack.Marshal(ParamsRun{Program: strings.Fields(cmdParam)[0], Args: strings.Fields(cmdParam)[1:], Task: taskData.TaskId})
 			cmd = Command{Code: COMMAND_RUN, Data: packerData}
 		} else {
-			cmdArgs := []string{"-c", cmdParam}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "/bin/sh", Args: cmdArgs, Task: taskData.TaskId})
+			packerData, _ := msgpack.Marshal(ParamsRun{Program: strings.Fields(cmdParam)[0], Args: strings.Fields(cmdParam)[1:], Task: taskData.TaskId})
 			cmd = Command{Code: COMMAND_RUN, Data: packerData}
 		}
 
