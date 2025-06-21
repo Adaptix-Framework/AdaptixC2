@@ -215,20 +215,7 @@ void SessionsTableWidget::addTableItem(const Agent* newAgent) const
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnSleep,     newAgent->item_Sleep );
     tableWidget->setSortingEnabled( isSortingEnabled );
 
-    tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnTags, QHeaderView::Stretch);
-
-    int wDomain   = tableWidget->columnWidth(ColumnDomain);
-    int wComputer = tableWidget->columnWidth(ColumnDomain);
-    int wUser     = tableWidget->columnWidth(ColumnDomain);
-
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnDomain,   QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnComputer, QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnUser,     QHeaderView::Interactive);
-
-    tableWidget->setColumnWidth(ColumnDomain, wDomain);
-    tableWidget->setColumnWidth(ColumnDomain, wComputer);
-    tableWidget->setColumnWidth(ColumnDomain, wUser);
+    this->UpdateColumnsWidth();
 }
 
 /// PUBLIC
@@ -236,6 +223,9 @@ void SessionsTableWidget::addTableItem(const Agent* newAgent) const
 void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     if ( adaptixWidget->AgentsMap.contains(newAgent->data.Id) )
         return;
 
@@ -281,6 +271,8 @@ void SessionsTableWidget::SetData() const
     this->ClearTableContent();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     for (int i = 0; i < adaptixWidget->AgentsVector.size(); i++ ) {
         QString agentId = adaptixWidget->AgentsVector[i];
@@ -300,6 +292,25 @@ void SessionsTableWidget::UpdateColumnsVisible() const
     }
 }
 
+void SessionsTableWidget::UpdateColumnsWidth() const
+{
+    tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnTags, QHeaderView::Stretch);
+
+    int wDomain   = tableWidget->columnWidth(ColumnDomain);
+    int wComputer = tableWidget->columnWidth(ColumnDomain);
+    int wUser     = tableWidget->columnWidth(ColumnDomain);
+
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnDomain,   QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnComputer, QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnUser,     QHeaderView::Interactive);
+
+    tableWidget->setColumnWidth(ColumnDomain, wDomain);
+    tableWidget->setColumnWidth(ColumnDomain, wComputer);
+    tableWidget->setColumnWidth(ColumnDomain, wUser);
+}
+
+
 void SessionsTableWidget::ClearTableContent() const
 {
     for (int row = tableWidget->rowCount() - 1; row >= 0; row--) {
@@ -313,6 +324,9 @@ void SessionsTableWidget::ClearTableContent() const
 void SessionsTableWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->AgentsVector.clear();
 
     for (auto agentId : adaptixWidget->AgentsMap.keys()) {
@@ -350,6 +364,9 @@ void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index) con
     QString AgentId = tableWidget->item(index.row(),0)->text();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->LoadConsoleUI(AgentId);
 }
 
@@ -374,6 +391,9 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     int selectedCount = 0;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             QString agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();

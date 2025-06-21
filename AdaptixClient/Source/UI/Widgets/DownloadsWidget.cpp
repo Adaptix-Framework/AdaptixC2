@@ -51,6 +51,9 @@ DownloadsWidget::~DownloadsWidget() = default;
 void DownloadsWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->Downloads.clear();
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
@@ -59,7 +62,7 @@ void DownloadsWidget::Clear() const
 void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload )
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if(adaptixWidget->Downloads.contains(newDownload.FileId))
+    if (!adaptixWidget || adaptixWidget->Downloads.contains(newDownload.FileId))
         return;
 
     if( tableWidget->rowCount() < 1 )
@@ -148,6 +151,9 @@ void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload )
 void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int state) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->Downloads[fileId].RecvSize = recvSize;
     adaptixWidget->Downloads[fileId].State    = state;
 
@@ -190,6 +196,9 @@ void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int 
 void DownloadsWidget::RemoveDownloadItem(const QString &fileId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->Downloads.remove(fileId);
 
     for ( int row = 0; row < tableWidget->rowCount(); row++ ) {
@@ -212,6 +221,9 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
     bool menuDownloadCancel = false;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 2)->isSelected() ) {
             QString agentId = tableWidget->item( rowIndex, 2 )->text();
@@ -261,6 +273,8 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
 void DownloadsWidget::actionSync() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
         return;
@@ -299,6 +313,9 @@ void DownloadsWidget::actionSync() const
 void DownloadsWidget::actionSyncCurl() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
         return;
 
@@ -340,6 +357,9 @@ void DownloadsWidget::actionSyncCurl() const
 void DownloadsWidget::actionSyncWget() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
         return;
 
@@ -381,6 +401,8 @@ void DownloadsWidget::actionSyncWget() const
 void DownloadsWidget::actionDelete() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() == "" ) {
 
@@ -402,6 +424,8 @@ void DownloadsWidget::actionDelete() const
 void DownloadsWidget::actionResume() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
 
@@ -423,6 +447,8 @@ void DownloadsWidget::actionResume() const
 void DownloadsWidget::actionPause() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
 
@@ -444,6 +470,8 @@ void DownloadsWidget::actionPause() const
 void DownloadsWidget::actionCancel() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
 

@@ -62,6 +62,8 @@ void MainUI::closeEvent(QCloseEvent* event)
 void MainUI::AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
     auto adaptixWidget = new AdaptixWidget(profile, channelThread, channelWsWorker);
+    if (!adaptixWidget)
+        return;
 
     for (auto extFile : GlobalClient->extender->extenderFiles){
         if(extFile.Valid && extFile.Enabled)
@@ -127,6 +129,9 @@ void MainUI::onCloseProject()
 {
     int currentIndex = mainuiTabWidget->currentIndex();
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainuiTabWidget->currentWidget() );
+    if (!adaptixWidget)
+        return;
+
     if (adaptixWidget) {
         AdaptixProjects.remove(adaptixWidget->GetProfile()->GetProject());
         adaptixWidget->Close();

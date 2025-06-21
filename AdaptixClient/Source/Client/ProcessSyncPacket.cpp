@@ -363,8 +363,14 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if(AgentsMap.contains(agentId)) {
             Agent* agent = AgentsMap[agentId];
+            QString oldUsername = agent->item_Username->text();
             agent->Update(jsonObj);
+            QString newUsername = agent->item_Username->text();
+
+            if (oldUsername != newUsername)
+                SessionsTablePage->UpdateColumnsWidth();
         }
+        return;
     }
     if( spType == TYPE_AGENT_TICK )
     {
@@ -378,7 +384,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                     agent->MarkItem("");
             }
         }
-
         return;
     }
     if( spType == TYPE_AGENT_REMOVE )
@@ -388,8 +393,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             SessionsGraphPage->RemoveAgent(this->AgentsMap[agentId], this->synchronized);
             SessionsTablePage->RemoveAgentItem(agentId);
             TasksTab->RemoveAgentTasksItem(agentId);
-
         }
+        return;
     }
 
 

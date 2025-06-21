@@ -208,6 +208,9 @@ void TasksWidget::addTableItem(const Task* newTask) const
 void TasksWidget::AddTaskItem(Task* newTask) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     if ( adaptixWidget->TasksMap.contains(newTask->data.TaskId) )
         return;
 
@@ -226,6 +229,9 @@ void TasksWidget::AddTaskItem(Task* newTask) const
 void TasksWidget::RemoveTaskItem(const QString &taskId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget || !adaptixWidget->TasksMap.contains((taskId)))
+        return;
+
     Task* task = adaptixWidget->TasksMap[taskId];
     QString agentId = task->data.AgentId;
 
@@ -258,6 +264,9 @@ void TasksWidget::RemoveTaskItem(const QString &taskId) const
 void TasksWidget::RemoveAgentTasksItem(const QString &agentId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for (auto key : adaptixWidget->TasksMap.keys()) {
         Task* task = adaptixWidget->TasksMap[key];
         if (task->data.AgentId == agentId) {
@@ -300,6 +309,8 @@ void TasksWidget::SetData() const
     this->ClearTableContent();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     for (int i = 0; i < adaptixWidget->TasksVector.size(); i++ ) {
         QString taskId = adaptixWidget->TasksVector[i];
@@ -323,6 +334,9 @@ void TasksWidget::ClearTableContent() const
 void TasksWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->TasksVector.clear();
 
     for (auto taskId : adaptixWidget->TasksMap.keys()) {
@@ -393,7 +407,7 @@ void TasksWidget::onTableItemSelection(const QModelIndex &current, const QModelI
     QString taskId = tableWidget->item(row,this->ColumnTaskId)->text();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if( !adaptixWidget->TasksMap.contains(taskId) )
+    if (!adaptixWidget || !adaptixWidget->TasksMap.contains(taskId) )
         return;
 
     TaskData taskData = adaptixWidget->TasksMap[taskId]->data;
@@ -428,6 +442,9 @@ void TasksWidget::actionOpenConsole() const
 {
     int row = tableWidget->currentRow();
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     auto agentId = tableWidget->item( row, this->ColumnAgentId )->text();
     adaptixWidget->LoadConsoleUI(agentId);
 }
@@ -437,6 +454,9 @@ void TasksWidget::actionStop() const
     QMap<QString, QStringList> agentTasks;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, this->ColumnAgentId )->text();
@@ -454,6 +474,9 @@ void TasksWidget::actionDelete() const
     QMap<QString, QStringList> agentTasks;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, this->ColumnAgentId )->text();

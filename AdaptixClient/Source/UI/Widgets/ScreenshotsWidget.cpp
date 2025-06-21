@@ -145,6 +145,9 @@ void ScreenshotsWidget::createUI()
 void ScreenshotsWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->Screenshots.clear();
 
     QSignalBlocker blocker(tableWidget->selectionModel());
@@ -372,7 +375,7 @@ void ScreenshotsWidget::onTableItemSelection(const QModelIndex &current, const Q
     QString screenId = tableWidget->item(row,0)->text();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if( !adaptixWidget->Screenshots.contains(screenId) )
+    if (!adaptixWidget || !adaptixWidget->Screenshots.contains(screenId) )
         return;
 
     ScreenData screenData = adaptixWidget->Screenshots[screenId];

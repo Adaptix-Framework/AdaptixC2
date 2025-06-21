@@ -373,7 +373,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 	tasksRunning := agent.RunningTasks.CutMap()
 	for _, value = range tasksRunning {
 		task := value.(adaptix.TaskData)
-		if task.TaskId == terminateTaskId {
+		if task.TaskId == terminateTaskId && task.Sync {
 			agent.RunningTasks.Put(task.TaskId, task)
 		} else {
 			packet := CreateSpAgentTaskRemove(task)

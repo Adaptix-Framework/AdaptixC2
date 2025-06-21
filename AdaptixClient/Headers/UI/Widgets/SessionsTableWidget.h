@@ -51,6 +51,7 @@ public:
 
     void SetData() const;
     void UpdateColumnsVisible() const;
+    void UpdateColumnsWidth() const;
     void ClearTableContent() const;
     void Clear() const;
 
