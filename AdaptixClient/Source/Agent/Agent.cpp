@@ -146,9 +146,9 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     this->data.Jitter       = jsonObjAgentData["a_jitter"].toDouble();
     this->data.WorkingTime  = jsonObjAgentData["a_workingtime"].toDouble();
     this->data.KillDate     = jsonObjAgentData["a_killdate"].toDouble();
-    this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
     this->data.Tags         = jsonObjAgentData["a_tags"].toString();
     this->data.Color        = jsonObjAgentData["a_color"].toString();
+    this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
     QString mark            = jsonObjAgentData["a_mark"].toString();
 
     this->item_Tags->setText(this->data.Tags);
@@ -158,7 +158,11 @@ void Agent::Update(QJsonObject jsonObjAgentData)
         username = "* " + username;
     if ( !this->data.Impersonated.isEmpty() )
         username += " [" + this->data.Impersonated + "]";
-    this->item_Username->setText(username);
+
+    if (this->item_Username->text() != username) {
+        this->item_Username->setText(username);
+
+    }
 
     if (this->data.WorkingTime || this->data.KillDate) {
         QString toolTip = "";

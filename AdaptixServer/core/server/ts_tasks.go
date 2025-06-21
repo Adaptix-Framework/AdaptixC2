@@ -80,13 +80,13 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 		agent.TasksQueue.Put(taskData)
 
 	case TYPE_TUNNEL:
-		if taskData.Completed {
-			agent.CompletedTasks.Put(taskData.TaskId, taskData)
-		} else {
-			agent.RunningTasks.Put(taskData.TaskId, taskData)
-		}
-
 		if taskData.Sync {
+			if taskData.Completed {
+				agent.CompletedTasks.Put(taskData.TaskId, taskData)
+			} else {
+				agent.RunningTasks.Put(taskData.TaskId, taskData)
+			}
+
 			packet := CreateSpAgentTaskSync(taskData)
 			ts.TsSyncAllClients(packet)
 
@@ -151,13 +151,13 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskData adaptix.TaskData) {
 		task.Message = oldMessage
 		task.ClearText = oldText + task.ClearText
 
-		if task.Completed {
-			agent.CompletedTasks.Put(task.TaskId, task)
-		} else {
-			agent.RunningTasks.Put(task.TaskId, task)
-		}
-
 		if task.Sync {
+			if task.Completed {
+				agent.CompletedTasks.Put(task.TaskId, task)
+			} else {
+				agent.RunningTasks.Put(task.TaskId, task)
+			}
+
 			if task.Completed {
 				_ = ts.DBMS.DbTaskInsert(task)
 			}
@@ -188,13 +188,13 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskData adaptix.TaskData) {
 		task.Message = oldMessage
 		task.ClearText = oldText + task.ClearText
 
-		if task.Completed {
-			agent.CompletedTasks.Put(task.TaskId, task)
-		} else {
-			agent.RunningTasks.Put(task.TaskId, task)
-		}
-
 		if task.Sync {
+			if task.Completed {
+				agent.CompletedTasks.Put(task.TaskId, task)
+			} else {
+				agent.RunningTasks.Put(task.TaskId, task)
+			}
+
 			if task.Completed {
 				_ = ts.DBMS.DbTaskInsert(task)
 			}
@@ -211,13 +211,13 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskData adaptix.TaskData) {
 		task.Message = taskData.Message
 		task.ClearText = taskData.ClearText
 
-		if task.Completed {
-			agent.CompletedTasks.Put(task.TaskId, task)
-		} else {
-			agent.RunningTasks.Put(task.TaskId, task)
-		}
-
 		if task.Sync {
+			if task.Completed {
+				agent.CompletedTasks.Put(task.TaskId, task)
+			} else {
+				agent.RunningTasks.Put(task.TaskId, task)
+			}
+
 			if task.Completed {
 				_ = ts.DBMS.DbTaskInsert(task)
 			}
@@ -331,7 +331,9 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 			taskData := value.(adaptix.TaskData)
 			if tasksSize+len(taskData.Data) < availableSize {
 				tasks = append(tasks, taskData)
-				agent.RunningTasks.Put(taskData.TaskId, taskData)
+				if taskData.Sync || taskData.Type == TYPE_BROWSER {
+					agent.RunningTasks.Put(taskData.TaskId, taskData)
+				}
 				agent.TasksQueue.Delete(i)
 				i--
 				sendTasks = append(sendTasks, taskData.TaskId)
@@ -430,7 +432,9 @@ func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int)
 			taskData := value.(adaptix.TaskData)
 			if tasksSize+len(taskData.Data) < availableSize {
 				tasks = append(tasks, taskData)
-				agent.RunningTasks.Put(taskData.TaskId, taskData)
+				if taskData.Sync || taskData.Type == TYPE_BROWSER {
+					agent.RunningTasks.Put(taskData.TaskId, taskData)
+				}
 				agent.TasksQueue.Delete(i)
 				i--
 				sendTasks = append(sendTasks, taskData.TaskId)

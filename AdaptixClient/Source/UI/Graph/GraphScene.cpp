@@ -106,6 +106,8 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         return;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if ( action->text() == "Console" ) {
         for ( const auto& _graphics_item : graphics_items ) {
