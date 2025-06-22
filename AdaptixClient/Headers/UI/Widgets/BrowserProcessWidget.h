@@ -2,7 +2,8 @@
 #define ADAPTIXCLIENT_BROWSERPROCESSWIDGET_H
 
 #include <main.h>
-#include <Agent/Agent.h>
+
+class Agent;
 
 typedef struct BrowserProcessData {
     int     pid;

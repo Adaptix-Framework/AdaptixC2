@@ -1,12 +1,17 @@
+#include <Agent/Agent.h>
+#include <Agent/AgentTableWidgetItem.h>
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/TerminalWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/TasksWidget.h>
 #include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
 #include <Client/Settings.h>
+#include <Client/TunnelEndpoint.h>
+#include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
 SessionsTableWidget::SessionsTableWidget( QWidget* w )
@@ -672,7 +677,7 @@ void SessionsTableWidget::actionAgentExit() const
     bool ok = false;
     bool result = HttpReqAgentExit(listId, *(adaptixWidget->GetProfile()), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
 }
@@ -698,7 +703,7 @@ void SessionsTableWidget::actionMarkActive() const
     bool ok = false;
     bool result = HttpReqAgentSetMark(listId, "", *(adaptixWidget->GetProfile()), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
 }
@@ -724,7 +729,7 @@ void SessionsTableWidget::actionMarkInactive() const
     bool ok = false;
     bool result = HttpReqAgentSetMark(listId, "Inactive", *(adaptixWidget->GetProfile()), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
 }
@@ -753,7 +758,7 @@ void SessionsTableWidget::actionItemColor() const
         bool ok = false;
         bool result = HttpReqAgentSetColor(listId, itemColorHex, "", false, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
     }
@@ -783,7 +788,7 @@ void SessionsTableWidget::actionTextColor() const
         bool ok = false;
         bool result = HttpReqAgentSetColor(listId, "",  textColorHex, false, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
     }
@@ -810,7 +815,7 @@ void SessionsTableWidget::actionColorReset() const
     bool ok = false;
     bool result = HttpReqAgentSetColor(listId, "",  "", true, *(adaptixWidget->GetProfile()), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
 }
@@ -848,7 +853,7 @@ void SessionsTableWidget::actionConsoleDelete()
     bool ok = false;
     bool result = HttpReqConsoleRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
 }
@@ -883,7 +888,7 @@ void SessionsTableWidget::actionAgentRemove()
     bool ok = false;
     bool result = HttpReqAgentRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
 }
@@ -917,7 +922,7 @@ void SessionsTableWidget::actionItemTag() const
         bool ok = false;
         bool result = HttpReqAgentSetTag(listId, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
     }

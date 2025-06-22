@@ -2,8 +2,9 @@
 #define TUNNELENDPOINT_H
 
 #include <main.h>
-#include <Client/AuthProfile.h>
-#include <Workers/TunnelWorker.h>
+
+class AuthProfile;
+class TunnelWorker;
 
 class TunnelEndpoint : public QObject {
 Q_OBJECT

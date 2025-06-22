@@ -66,6 +66,7 @@ type Teamserver struct {
 	agents      safe.Map    // agentId string      : agent *Agent
 	listeners   safe.Map    // listenerName string : listenerData ListenerData
 	downloads   safe.Map    // fileId string       : downloadData DownloadData
+	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
 	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
 	terminals   safe.Map    // terminalId string   : terminal Terminal

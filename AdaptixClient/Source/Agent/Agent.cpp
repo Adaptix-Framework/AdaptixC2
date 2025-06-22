@@ -1,13 +1,16 @@
 #include <Agent/Agent.h>
+#include <Agent/AgentTableWidgetItem.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/TerminalWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
-#include <Client/Requestor.h>
-#include <MainAdaptix.h>
+#include <UI/Graph/GraphItem.h>
 #include <UI/Graph/SessionsGraph.h>
+#include <Client/Requestor.h>
 #include <Client/Settings.h>
+#include <Client/AuthProfile.h>
+#include <MainAdaptix.h>
 
 Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 {
@@ -357,7 +360,7 @@ QString Agent::TasksStop(const QStringList &tasks) const
     bool ok = false;
     bool result = HttpReqTaskStop( data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -368,7 +371,7 @@ QString Agent::TasksDelete(const QStringList &tasks) const
     bool ok = false;
     bool result = HttpReqTasksDelete(data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -414,7 +417,7 @@ QString Agent::BrowserDisks() const
     bool ok = false;
     bool result = HttpReqBrowserDisks( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -425,7 +428,7 @@ QString Agent::BrowserProcess() const
     bool ok = false;
     bool result = HttpReqBrowserProcess( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -436,7 +439,7 @@ QString Agent::BrowserList(const QString &path) const
     bool ok = false;
     bool result = HttpReqBrowserList( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -447,7 +450,7 @@ QString Agent::BrowserUpload(const QString &path, const QString &content) const
     bool ok = false;
     bool result = HttpReqBrowserUpload( data.Id, path, content, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -458,7 +461,7 @@ QString Agent::BrowserDownload(const QString &path) const
     bool ok = false;
     bool result = HttpReqDownloadStart( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }

@@ -11,6 +11,7 @@ type RepoLogs struct {
 	DbPath         string
 	ListenerPath   string
 	DownloadPath   string
+	UploadPath     string
 	ScreenshotPath string
 }
 
@@ -25,6 +26,7 @@ func NewRepoLogs() (*RepoLogs, error) {
 		DbPath:         path + "/data/adaptixserver.db",
 		ListenerPath:   path + "/data/listener",
 		DownloadPath:   path + "/data/download",
+		UploadPath:     path + "/data/tmp_upload",
 		ScreenshotPath: path + "/data/screenshot",
 	}
 
@@ -49,6 +51,15 @@ func NewRepoLogs() (*RepoLogs, error) {
 		err = os.Mkdir(repologs.DownloadPath, os.ModePerm)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create %s folder: %s", repologs.DownloadPath, err.Error())
+		}
+	}
+
+	_ = os.RemoveAll(repologs.UploadPath)
+	_, err = os.Stat(repologs.UploadPath)
+	if os.IsNotExist(err) {
+		err = os.Mkdir(repologs.UploadPath, os.ModePerm)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create %s folder: %s", repologs.UploadPath, err.Error())
 		}
 	}
 

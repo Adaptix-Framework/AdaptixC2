@@ -1,6 +1,8 @@
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
+#include <Client/TunnelEndpoint.h>
 
 TunnelsWidget::TunnelsWidget(QWidget* w)
 {
@@ -236,7 +238,7 @@ void TunnelsWidget::actionSetInfo() const
           bool ok = false;
           bool result = HttpReqTunnelSetInfo(tunnelId, newInfo, *(adaptixWidget->GetProfile()), &message, &ok);
           if( !result ) {
-               MessageError("JWT error");
+               MessageError("Response timeout");
                return;
           }
      }
@@ -263,7 +265,7 @@ void TunnelsWidget::actionStopTunnel() const
      bool ok = false;
      bool result = HttpReqTunnelStop( tunnelId, *(adaptixWidget->GetProfile()), &message, &ok );
      if( !result ){
-          MessageError("JWT error");
+          MessageError("Response timeout");
           return;
      }
 

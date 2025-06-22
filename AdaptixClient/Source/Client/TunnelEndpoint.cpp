@@ -1,4 +1,6 @@
+#include <Workers/TunnelWorker.h>
 #include <Client/TunnelEndpoint.h>
+#include <Client/AuthProfile.h>
 
 TunnelEndpoint::TunnelEndpoint(QObject* parent) : QObject(parent), tcpServer(new QTcpServer(this)){}
 

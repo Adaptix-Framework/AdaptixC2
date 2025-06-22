@@ -1,3 +1,4 @@
+#include <Agent/Agent.h>
 #include <UI/Graph/GraphItemLink.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/SessionsGraph.h>

@@ -1,6 +1,7 @@
 #include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
 
-QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token )
+QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token, const int timeout)
 {
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
@@ -25,7 +26,7 @@ QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QStri
         reply->abort();
         eventLoop.quit();
     });
-    timeoutTimer.start(3000);
+    timeoutTimer.start(timeout);
 
     eventLoop.exec();
 
@@ -90,7 +91,7 @@ bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile pro
     dataJson["id"]   = objectId;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString sUrl = profile.GetURL() + "/otp/get";
+    QString sUrl = profile.GetURL() + "/otp/generate";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
@@ -227,7 +228,7 @@ bool HttpReqAgentCommand(const QString &agentName, const QString &agentId, const
     dataJson["data"]    = data;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString sUrl = profile.GetURL() + "/agent/command";
+    QString sUrl = profile.GetURL() + "/agent/command/execute";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();

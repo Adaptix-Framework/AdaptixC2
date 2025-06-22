@@ -1,5 +1,6 @@
 #include <UI/Dialogs/DialogListener.h>
 #include <Client/Requestor.h>
+#include <Client/WidgetBuilder.h>
 
 DialogListener::DialogListener()
 {
@@ -153,7 +154,7 @@ void DialogListener::onButtonCreate()
         result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
 
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
     if ( !ok ) {

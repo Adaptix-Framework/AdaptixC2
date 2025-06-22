@@ -1,6 +1,9 @@
+#include <Agent/Agent.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Graph/GraphItemLink.h>
 #include <UI/Graph/LayoutTreeLeft.h>
+#include <UI/Graph/GraphItem.h>
+#include <UI/Graph/GraphScene.h>
 
 SessionsGraph::SessionsGraph(QWidget* parent) : QGraphicsView(parent)
 {

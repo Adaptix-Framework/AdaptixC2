@@ -2,8 +2,9 @@
 #define ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H
 
 #include <main.h>
-#include <Agent/Agent.h>
 #include <Utils/CustomElements.h>
+
+class Agent;
 
 class SessionsTableWidget : public QWidget
 {

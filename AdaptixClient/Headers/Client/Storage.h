@@ -2,7 +2,8 @@
 #define ADAPTIXCLIENT_STORAGE_H
 
 #include <main.h>
-#include <Client/AuthProfile.h>
+
+class AuthProfile;
 
 class Storage
 {

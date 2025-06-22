@@ -1,11 +1,15 @@
+#include <Agent/Agent.h>
 #include <UI/MainUI.h>
-#include <MainAdaptix.h>
+#include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/SessionsTableWidget.h>
+#include <UI/Widgets/TasksWidget.h>
+#include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogExtender.h>
 #include <UI/Dialogs/DialogSettings.h>
 #include <Client/Extender.h>
 #include <Client/Settings.h>
-#include <UI/Graph/SessionsGraph.h>
-#include <UI/Widgets/SessionsTableWidget.h>
+#include <Client/AuthProfile.h>
+#include <MainAdaptix.h>
 
 MainUI::MainUI()
 {

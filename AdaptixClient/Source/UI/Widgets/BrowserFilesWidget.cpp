@@ -1,8 +1,9 @@
-#include <UI/Widgets/BrowserFilesWidget.h>
+#include <Agent/Agent.h>
 #include <Utils/FileSystem.h>
+#include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 
-void BrowserFileData::CreateBrowserFileData(const QString &path, int os)
+void BrowserFileData::CreateBrowserFileData(const QString &path, const int os)
 {
     Fullpath = path;
     Type = TYPE_DIR;
@@ -26,13 +27,13 @@ void BrowserFileData::CreateBrowserFileData(const QString &path, int os)
     TreeItem->setIcon(0, GetFileSystemIcon(Type, false));
 }
 
-void BrowserFileData::SetType(int type)
+void BrowserFileData::SetType(const int type)
 {
     this->Type = type;
     this->TreeItem->setIcon(0, GetFileSystemIcon(type, this->Stored));
 }
 
-void BrowserFileData::SetStored(bool stored)
+void BrowserFileData::SetStored(const bool stored)
 {
     this->Stored = stored;
     this->TreeItem->setIcon(0, GetFileSystemIcon(this->Type, this->Stored));

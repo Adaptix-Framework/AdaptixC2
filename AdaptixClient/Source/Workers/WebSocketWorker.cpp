@@ -1,4 +1,5 @@
 #include <Workers/WebSocketWorker.h>
+#include <Client/AuthProfile.h>
 
 WebSocketWorker::WebSocketWorker(AuthProfile* authProfile)
 {

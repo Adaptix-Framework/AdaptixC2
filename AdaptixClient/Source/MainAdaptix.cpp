@@ -1,8 +1,12 @@
-#include <MainAdaptix.h>
+#include <Workers/WebSocketWorker.h>
+#include <UI/MainUI.h>
 #include <UI/Dialogs/DialogConnect.h>
 #include <Client/Requestor.h>
 #include <Client/Extender.h>
 #include <Client/Settings.h>
+#include <Client/Storage.h>
+#include <Client/AuthProfile.h>
+#include <MainAdaptix.h>
 
 MainAdaptix::MainAdaptix()
 {

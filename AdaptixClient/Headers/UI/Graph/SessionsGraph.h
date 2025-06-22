@@ -2,9 +2,10 @@
 #define ADAPTIXCLIENT_SESSIONSGRAPH_H
 
 #include <main.h>
-#include <Agent/Agent.h>
-#include <UI/Graph/GraphItem.h>
-#include <UI/Graph/GraphScene.h>
+
+class Agent;
+class GraphItem;
+class GraphScene;
 
 class SessionsGraph final : public QGraphicsView
 {

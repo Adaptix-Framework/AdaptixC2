@@ -2,8 +2,9 @@
 #define ADAPTIXCLIENT_TASKSWIDGET_H
 
 #include <main.h>
-#include <Agent/Task.h>
 #include <Utils/CustomElements.h>
+
+class Task;
 
 class TaskOutputWidget : public QWidget
 {
