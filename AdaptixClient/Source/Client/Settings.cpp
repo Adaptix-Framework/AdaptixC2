@@ -1,5 +1,6 @@
-#include <Client/Settings.h>
 #include <UI/Dialogs/DialogSettings.h>
+#include <Client/Settings.h>
+#include <Client/Storage.h>
 #include <MainAdaptix.h>
 
 Settings::Settings(MainAdaptix* m)

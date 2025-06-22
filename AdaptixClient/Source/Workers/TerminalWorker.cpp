@@ -1,3 +1,4 @@
+#include <Konsole/konsole.h>
 #include <Workers/TerminalWorker.h>
 #include <UI/Widgets/TerminalWidget.h>
 

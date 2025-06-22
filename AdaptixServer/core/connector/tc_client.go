@@ -157,30 +157,3 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 		_ = tc.teamserver.TsAgentTerminalCreateChannel(terminalData, wsConn)
 	}
 }
-
-type AccessOTP struct {
-	Type string `json:"type"`
-	Id   string `json:"id"`
-}
-
-func (tc *TsConnector) tcGetOTP(ctx *gin.Context) {
-	var (
-		accessOTP AccessOTP
-		answer    gin.H
-	)
-
-	err := ctx.ShouldBindJSON(&accessOTP)
-	if err != nil {
-		_ = ctx.Error(errors.New("invalid otp"))
-		return
-	}
-
-	otp, err := tc.teamserver.CreateOTP(accessOTP.Type, accessOTP.Id)
-	if err != nil {
-		answer = gin.H{"message": err.Error(), "ok": false}
-	} else {
-		answer = gin.H{"message": otp, "ok": true}
-	}
-
-	ctx.JSON(http.StatusOK, answer)
-}

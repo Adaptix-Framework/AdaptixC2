@@ -1,6 +1,7 @@
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
 
 ImageFrame::ImageFrame(QWidget* parent)
     : QWidget(parent),
@@ -295,7 +296,7 @@ void ScreenshotsWidget::actionNote() const
         bool ok = false;
         bool result = HttpReqScreenSetNote(listId, newNote, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
     }
@@ -361,7 +362,7 @@ void ScreenshotsWidget::actionDelete() const
     bool ok = false;
     bool result = HttpReqScreenRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
 }

@@ -2,10 +2,11 @@
 #define ADAPTIXCLIENT_CONSOLEWIDGET_H
 
 #include <main.h>
-#include <Agent/Agent.h>
 #include <Utils/KeyPressHandler.h>
 #include <Utils/CustomElements.h>
-#include <Agent/Commander.h>
+
+class Agent;
+class Commander;
 
 #define CONSOLE_OUT_LOCAL         1
 #define CONSOLE_OUT_LOCAL_INFO    2
@@ -14,7 +15,6 @@
 #define CONSOLE_OUT_INFO          5
 #define CONSOLE_OUT_ERROR         6
 #define CONSOLE_OUT_SUCCESS       7
-
 
 class ConsoleWidget : public QWidget
 {

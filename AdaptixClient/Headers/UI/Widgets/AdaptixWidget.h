@@ -2,23 +2,24 @@
 #define ADAPTIXCLIENT_ADAPTIXWIDGET_H
 
 #include <main.h>
-#include <Workers/WebSocketWorker.h>
-#include <Client/TunnelEndpoint.h>
-#include <UI/Dialogs/DialogSyncPacket.h>
-#include <UI/Widgets/LogsWidget.h>
-#include <UI/Widgets/ListenersWidget.h>
-#include <UI/Widgets/DownloadsWidget.h>
-#include <UI/Widgets/ScreenshotsWidget.h>
-#include <UI/Widgets/TasksWidget.h>
-#include <UI/Widgets/TunnelsWidget.h>
-#include <Client/WidgetBuilder.h>
-#include <Agent/Agent.h>
-#include <Agent/Task.h>
-#include <Agent/Commander.h>
 
+class Task;
+class Agent;
+class Commander;
+class LastTickWorker;
+class WebSocketWorker;
 class SessionsTableWidget;
 class SessionsGraph;
-class LastTickWorker;
+class LogsWidget;
+class ListenersWidget;
+class DownloadsWidget;
+class ScreenshotsWidget;
+class TasksWidget;
+class TunnelsWidget;
+class TunnelEndpoint;
+class WidgetBuilder;
+class DialogSyncPacket;
+class AuthProfile;
 
 typedef struct RegAgentConfig {
     QString        agentName;
@@ -67,7 +68,7 @@ Q_OBJECT
 
     void createUI();
 
-static bool isValidSyncPacket(QJsonObject jsonObj);
+    static bool isValidSyncPacket(QJsonObject jsonObj);
     void processSyncPacket(QJsonObject jsonObj);
 
 public:

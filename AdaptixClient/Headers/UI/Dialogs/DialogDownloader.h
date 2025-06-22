@@ -7,7 +7,8 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QThread>
-#include <Workers/DownloaderWorker.h>
+
+class DownloaderWorker;
 
 class DialogDownloader : public QDialog {
 Q_OBJECT

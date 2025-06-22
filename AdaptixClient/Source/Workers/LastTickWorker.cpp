@@ -1,7 +1,9 @@
-#include <Workers/LastTickWorker.h>
-#include <Client/Settings.h>
 #include <Agent/Agent.h>
+#include <Agent/AgentTableWidgetItem.h>
+#include <Workers/LastTickWorker.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Client/Settings.h>
+#include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
 LastTickWorker::LastTickWorker(AdaptixWidget *w)

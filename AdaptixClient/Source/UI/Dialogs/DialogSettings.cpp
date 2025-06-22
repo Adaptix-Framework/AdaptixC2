@@ -1,3 +1,4 @@
+#include <UI/MainUI.h>
 #include <UI/Dialogs/DialogSettings.h>
 #include <MainAdaptix.h>
 #include <Client/Settings.h>

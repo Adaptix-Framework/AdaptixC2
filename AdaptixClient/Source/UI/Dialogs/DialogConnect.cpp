@@ -1,4 +1,6 @@
 #include <UI/Dialogs/DialogConnect.h>
+#include <Client/AuthProfile.h>
+#include <Client/Storage.h>
 #include <MainAdaptix.h>
 
 DialogConnect::DialogConnect()

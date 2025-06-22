@@ -2,9 +2,10 @@
 #define ADAPTIXCLIENT_REQUESTOR_H
 
 #include <main.h>
-#include <Client/AuthProfile.h>
 
-QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token );
+class AuthProfile;
+
+QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token, int timeout = 3000 );
 
 QJsonObject HttpReqTimeout( int timeout, const QString &sUrl, const QByteArray &jsonData, const QString &token );
 

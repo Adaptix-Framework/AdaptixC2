@@ -1,6 +1,8 @@
+#include <Agent/Agent.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/GraphItemLink.h>
 #include <UI/Graph/SessionsGraph.h>
+#include <UI/Graph/GraphScene.h>
 
 GraphItemNote::GraphItemNote(const QString &h, const QString &t)
 {

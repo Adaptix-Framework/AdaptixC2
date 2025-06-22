@@ -1,4 +1,5 @@
 #include <Agent/Task.h>
+#include <Agent/TaskTableWidgetItem.h>
 #include <UI/Widgets/ConsoleWidget.h>
 
 Task::Task(QJsonObject jsonObjTaskData)

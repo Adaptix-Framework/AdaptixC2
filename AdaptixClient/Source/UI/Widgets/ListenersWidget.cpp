@@ -3,6 +3,7 @@
 #include <UI/Dialogs/DialogAgent.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
+#include <Client/WidgetBuilder.h>
 
 ListenersWidget::ListenersWidget(QWidget* w)
 {
@@ -261,7 +262,7 @@ void ListenersWidget::removeListener() const
     bool ok = false;
     bool result = HttpReqListenerStop( listenerName, listenerType, *(adaptixWidget->GetProfile()), &message, &ok );
     if( !result ){
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
 

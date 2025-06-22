@@ -1,7 +1,10 @@
+#include <Agent/Agent.h>
+#include <Agent/Task.h>
+#include <Agent/TaskTableWidgetItem.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <MainAdaptix.h>
 #include <Client/Settings.h>
+#include <MainAdaptix.h>
 
 TaskOutputWidget::TaskOutputWidget( )
 {

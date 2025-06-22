@@ -1,3 +1,4 @@
+#include <Agent/Agent.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 

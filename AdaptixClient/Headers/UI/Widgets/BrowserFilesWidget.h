@@ -2,8 +2,8 @@
 #define ADAPTIXCLIENT_BROWSERFILESWIDGET_H
 
 #include <main.h>
-#include <Agent/Agent.h>
 
+class Agent;
 class FileBrowserTreeItem;
 
 class BrowserFileData

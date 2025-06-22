@@ -2,10 +2,10 @@
 #define TERMINALWIDGET_H
 
 #include <main.h>
-#include <Agent/Agent.h>
-#include <Konsole/konsole.h>
-#include <Workers/TerminalWorker.h>
 
+class Agent;
+class Konsole;
+class QTermWidget;
 class TerminalWorker;
 
 class TerminalWidget : public QWidget

@@ -2,8 +2,8 @@
 #define ADAPTIXCLIENT_DIALOGAGENT_H
 
 #include <main.h>
-#include <Client/AuthProfile.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Client/AuthProfile.h>
 
 class DialogAgent : public QDialog
 {

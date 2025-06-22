@@ -1,7 +1,9 @@
+#include <Agent/Agent.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <Client/Requestor.h>
 #include <UI/Dialogs/DialogDownloader.h>
+#include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
 
 DownloadsWidget::DownloadsWidget(QWidget* w)
 {
@@ -286,7 +288,7 @@ void DownloadsWidget::actionSync() const
     bool ok = false;
     bool result = HttpReqGetOTP("download", fileId, *adaptixWidget->GetProfile(), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
     if ( !ok ) {
@@ -304,7 +306,7 @@ void DownloadsWidget::actionSync() const
     if (savedPath.isEmpty())
         return;
 
-    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/download/sync/otp";
+    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
 
     DialogDownloader dialog(sUrl, otp, savedPath);
     dialog.exec();
@@ -326,7 +328,7 @@ void DownloadsWidget::actionSyncCurl() const
     bool ok = false;
     bool result = HttpReqGetOTP("download", fileId, *adaptixWidget->GetProfile(), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
     if ( !ok ) {
@@ -340,7 +342,7 @@ void DownloadsWidget::actionSyncCurl() const
     pathParts = fileName.split("/", Qt::SkipEmptyParts);
     fileName = pathParts[pathParts.size()-1];
 
-    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/download/sync/otp";
+    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
 
     QString command = QString("curl -k %1 -H 'OTP: %2' -o %3").arg(sUrl).arg(otp).arg(fileName);
 
@@ -370,7 +372,7 @@ void DownloadsWidget::actionSyncWget() const
     bool ok = false;
     bool result = HttpReqGetOTP("download", fileId, *adaptixWidget->GetProfile(), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
     if ( !ok ) {
@@ -384,7 +386,7 @@ void DownloadsWidget::actionSyncWget() const
     pathParts = fileName.split("/", Qt::SkipEmptyParts);
     fileName = pathParts[pathParts.size()-1];
 
-    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/download/sync/otp";
+    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
 
     QString command = QString("wget --no-check-certificate %1 --header='OTP: %2' -O %3").arg(sUrl).arg(otp).arg(fileName);
 
@@ -411,7 +413,7 @@ void DownloadsWidget::actionDelete() const
         bool ok = false;
         bool result = HttpReqDownloadAction("delete", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
 
@@ -434,7 +436,7 @@ void DownloadsWidget::actionResume() const
         bool ok = false;
         bool result = HttpReqDownloadAction("resume", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
 
@@ -457,7 +459,7 @@ void DownloadsWidget::actionPause() const
         bool ok = false;
         bool result = HttpReqDownloadAction("pause", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
 
@@ -480,7 +482,7 @@ void DownloadsWidget::actionCancel() const
         bool ok = false;
         bool result = HttpReqDownloadAction("cancel", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
 

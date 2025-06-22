@@ -2,8 +2,10 @@
 #define ADAPTIXCLIENT_MAINUI_H
 
 #include <main.h>
-#include <UI/Widgets/AdaptixWidget.h>
-#include <Client/AuthProfile.h>
+
+class AuthProfile;
+class AdaptixWidget;
+class WebSocketWorker;
 
 class MainUI : public QMainWindow
 {

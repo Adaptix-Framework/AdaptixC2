@@ -1,8 +1,11 @@
+#include <Agent/Agent.h>
 #include <UI/Graph/GraphScene.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/TasksWidget.h>
 #include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
 
 GraphScene::GraphScene(const int gridSize, QWidget* m, QObject* parent) : QGraphicsScene(parent)
 {
@@ -204,7 +207,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         bool ok = false;
         bool result = HttpReqAgentExit(listId, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+        MessageError("Response timeout");
             return;
         }
     }
@@ -222,7 +225,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         bool ok = false;
         bool result = HttpReqAgentSetMark(listId, "", *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+        MessageError("Response timeout");
             return;
         }
     }
@@ -240,7 +243,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         bool ok = false;
         bool result = HttpReqAgentSetMark(listId, "Inactive", *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
     }
@@ -266,7 +269,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         bool ok = false;
         bool result = HttpReqAgentRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
     }

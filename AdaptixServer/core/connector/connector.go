@@ -60,6 +60,8 @@ type Teamserver interface {
 	TsDownloadSync(fileId string) (string, []byte, error)
 	TsDownloadDelete(fileId string) error
 	TsDownloadGetFilepath(fileId string) (string, error)
+	TsUploadGetFilepath(fileId string) (string, error)
+	TsUploadGetFileContent(fileId string) ([]byte, error)
 	//
 	TsDownloadTaskStart(agentId string, path string, username string) error
 	TsDownloadTaskCancel(fileId string, clientName string) error
@@ -153,7 +155,9 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponse), token.RefreshTokenHandler)
 	connector.Engine.POST(tsProfile.Endpoint+"/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcSync)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/otp/get", connector.tcGetOTP)
+	connector.Engine.POST(tsProfile.Endpoint+"/otp/generate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcOTP_Generate)
+	connector.Engine.POST(tsProfile.Endpoint+"/otp/upload/temp", ts.ValidateOTP(), default404Middleware(tsResponse), connector.tcOTP_UploadTemp)
+	connector.Engine.GET(tsProfile.Endpoint+"/otp/download/sync", ts.ValidateOTP(), default404Middleware(tsResponse), connector.tcOTP_DownloadSync)
 
 	connector.Engine.GET(tsProfile.Endpoint+"/connect", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcConnect)
 	connector.Engine.GET(tsProfile.Endpoint+"/channel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcChannel)
@@ -163,7 +167,8 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStop)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/generate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentGenerate)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/command", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommand)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/command/file", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommandFile)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/command/execute", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommandExecute)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/console/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentConsoleRemove)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentRemove)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/exit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentExit)
@@ -174,7 +179,6 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskStop)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskDelete)
 
-	connector.Engine.GET(tsProfile.Endpoint+"/download/sync/otp", ts.ValidateOTP(), default404Middleware(tsResponse), connector.TcDownloadSyncOTP)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadSync)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadDelete)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/start", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadStart)

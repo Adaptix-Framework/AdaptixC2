@@ -2,14 +2,14 @@
 #define ADAPTIXCLIENT_AGENT_H
 
 #include <main.h>
-#include <Agent/AgentTableWidgetItem.h>
-#include <UI/Graph/GraphItem.h>
 
 class ConsoleWidget;
 class BrowserFilesWidget;
 class BrowserProcessWidget;
 class TerminalWidget;
 class AdaptixWidget;
+class AgentTableWidgetItem;
+class GraphItem;
 
 class Agent
 {

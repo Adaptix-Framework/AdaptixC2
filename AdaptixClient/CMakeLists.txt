@@ -129,6 +129,8 @@ SET( HEADERS
         Headers/Workers/TerminalWorker.h
         Headers/UI/Dialogs/DialogDownloader.h
         Headers/Workers/DownloaderWorker.h
+        Headers/Workers/UploaderWorker.h
+        Headers/UI/Dialogs/DialogUploader.h
 )
 
 add_executable(AdaptixClient
@@ -190,6 +192,8 @@ add_executable(AdaptixClient
         Source/Workers/TerminalWorker.cpp
         Source/UI/Dialogs/DialogDownloader.cpp
         Source/Workers/DownloaderWorker.cpp
+        Source/Workers/UploaderWorker.cpp
+        Source/UI/Dialogs/DialogUploader.cpp
 )
 
 target_compile_definitions(AdaptixClient PRIVATE QT_DEPRECATED_WARNINGS )

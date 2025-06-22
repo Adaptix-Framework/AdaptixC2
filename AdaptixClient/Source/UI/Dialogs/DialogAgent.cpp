@@ -1,6 +1,7 @@
 #include <UI/Dialogs/DialogAgent.h>
 #include <Client/Requestor.h>
 #include <Client/WidgetBuilder.h>
+#include <Client/AuthProfile.h>
 
 DialogAgent::DialogAgent(const QString &listenerName, const QString &listenerType)
 {

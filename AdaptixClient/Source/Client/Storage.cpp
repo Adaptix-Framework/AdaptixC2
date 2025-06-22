@@ -1,4 +1,5 @@
 #include <Client/Storage.h>
+#include <Client/AuthProfile.h>
 
 Storage::Storage()
 {

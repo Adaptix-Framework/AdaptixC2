@@ -1,3 +1,4 @@
+#include <Workers/DownloaderWorker.h>
 #include <UI/Dialogs/DialogDownloader.h>
 
 #include <QFileInfo>
@@ -52,7 +53,6 @@ DialogDownloader::DialogDownloader(const QString &url, const QString &otp, const
     });
 
     connect(worker, &DownloaderWorker::finished, this, [this]() {
-
         if (!worker->IsError()) {
             progressBar->setValue(100);
             statusLabel->setText("Download finished.");

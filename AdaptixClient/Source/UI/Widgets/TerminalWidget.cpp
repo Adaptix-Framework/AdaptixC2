@@ -1,7 +1,11 @@
+#include <Agent/Agent.h>
+#include <Konsole/konsole.h>
+#include <Workers/TerminalWorker.h>
 #include <UI/Widgets/TerminalWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <MainAdaptix.h>
 #include <Client/Settings.h>
+#include <Client/AuthProfile.h>
+#include <MainAdaptix.h>
 
 TerminalWidget::TerminalWidget(Agent* a, QWidget* w)
 {
