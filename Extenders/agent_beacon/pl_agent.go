@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -881,7 +882,6 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 
 			messageData.Message = fmt.Sprintf("Starting reverse port forwarding %d to %s:%d", lport, fhost, fport)
 			messageData.Status = MESSAGE_INFO
-			messageData.Text = "\n"
 
 		} else if subcommand == "stop" {
 			taskData.Completed = true
@@ -890,7 +890,6 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 
 			taskData.MessageType = MESSAGE_SUCCESS
 			taskData.Message = "Reverse port forwarding has been stopped"
-			taskData.ClearText = "\n"
 
 		} else {
 			err = errors.New("subcommand must be 'start' or 'stop'")
@@ -1663,17 +1662,84 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					}
 
 					procData.ProcessName = ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
-
 					proclist = append(proclist, procData)
 				}
 
-				format := fmt.Sprintf(" %%-5v   %%-5v   %%-7v   %%-5v   %%-%vv   %%-7v", contextMaxSize)
+				type TreeProc struct {
+					Data     adaptix.ListingProcessDataWin
+					Children []*TreeProc
+				}
+
+				procMap := make(map[uint]*TreeProc)
+				var roots []*TreeProc
+
+				for _, proc := range proclist {
+					node := &TreeProc{Data: proc}
+					procMap[proc.Pid] = node
+				}
+
+				for _, node := range procMap {
+					if node.Data.Ppid == 0 || node.Data.Pid == node.Data.Ppid {
+						roots = append(roots, node)
+					} else if parent, ok := procMap[node.Data.Ppid]; ok {
+						parent.Children = append(parent.Children, node)
+					} else {
+						roots = append(roots, node) // orphaned node
+					}
+				}
+
+				sort.Slice(roots, func(i, j int) bool {
+					return roots[i].Data.Pid < roots[j].Data.Pid
+				})
+
+				var sortChildren func(node *TreeProc)
+				sortChildren = func(node *TreeProc) {
+					sort.Slice(node.Children, func(i, j int) bool {
+						return node.Children[i].Data.Pid < node.Children[j].Data.Pid
+					})
+					for _, child := range node.Children {
+						sortChildren(child)
+					}
+				}
+				for _, root := range roots {
+					sortChildren(root)
+				}
+
+				format := fmt.Sprintf(" %%-5v   %%-5v   %%-7v   %%-5v   %%-%vv   %%v", contextMaxSize)
 				OutputText := fmt.Sprintf(format, "PID", "PPID", "Session", "Arch", "Context", "Process")
 				OutputText += fmt.Sprintf("\n"+format, "---", "----", "-------", "----", "-------", "-------")
 
-				for _, item := range proclist {
-					OutputText += fmt.Sprintf("\n"+format, item.Pid, item.Ppid, item.SessionId, item.Arch, item.Context, item.ProcessName)
+				var lines []string
+
+				var formatTree func(node *TreeProc, prefix string, isLast bool)
+				formatTree = func(node *TreeProc, prefix string, isLast bool) {
+					branch := "├─ "
+					if isLast {
+						branch = "└─ "
+					}
+					treePrefix := prefix + branch
+					data := node.Data
+
+					line := fmt.Sprintf(format, data.Pid, data.Ppid, data.SessionId, data.Arch, data.Context, treePrefix+data.ProcessName)
+					lines = append(lines, line)
+
+					childPrefix := prefix
+					if isLast {
+						childPrefix += "    "
+					} else {
+						childPrefix += "│   "
+					}
+
+					for i, child := range node.Children {
+						formatTree(child, childPrefix, i == len(node.Children)-1)
+					}
 				}
+
+				for i, root := range roots {
+					formatTree(root, "", i == len(roots)-1)
+				}
+
+				OutputText += "\n" + strings.Join(lines, "\n")
 				task.Message = "Process list:"
 				task.ClearText = OutputText
 			}
