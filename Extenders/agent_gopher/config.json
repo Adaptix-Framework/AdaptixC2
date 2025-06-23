@@ -38,25 +38,31 @@
                 "position": [1, 1, 1, 1]
               },
               {
+                "type": "checkbox",
+                "text": "Windows 7 support",
+                "id": "win7_support",
+                "position": [2, 1, 1, 1]
+              },
+              {
                 "type": "hline",
-                "position": [2, 0, 1, 2]
+                "position": [3, 0, 1, 2]
               },
               {
                 "type": "label",
                 "text": "Reconnect timeout:",
-                "position": [3, 0, 1, 1]
+                "position": [4, 0, 1, 1]
               },
               {
                 "type": "input",
                 "id": "reconn_timeout",
                 "placeholder": "seconds",
                 "text": "10",
-                "position": [3, 1, 1, 1]
+                "position": [4, 1, 1, 1]
               },
               {
                 "type": "label",
                 "text": "Reconnect count:",
-                "position": [4, 0, 1, 1]
+                "position": [5, 0, 1, 1]
               },
               {
                 "type": "spinbox",
@@ -64,7 +70,7 @@
                 "min": 0,
                 "max": 1000000000,
                 "value": 1000000000,
-                "position": [4, 1, 1, 1]
+                "position": [5, 1, 1, 1]
               }
             ]
           }
