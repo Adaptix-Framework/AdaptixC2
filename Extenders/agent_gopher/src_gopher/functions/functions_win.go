@@ -205,6 +205,12 @@ func GetProcesses() ([]utils.PsInfo, error) {
 	return Processes, nil
 }
 
+func ProcessSettings(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow: true,
+	}
+}
+
 func IsProcessRunning(cmd *exec.Cmd) bool {
 	if cmd.Process == nil {
 		return false
