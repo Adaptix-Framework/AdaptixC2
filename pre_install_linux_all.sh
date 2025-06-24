@@ -5,7 +5,7 @@ sudo apt install mingw-w64 make -y
 wget https://go.dev/dl/go1.24.4.linux-amd64.tar.gz -O /tmp/go1.24.4.linux-amd64.tar.gz
 sudo rm -rf /usr/local/go /usr/local/bin/go
 sudo tar -C /usr/local -xzf /tmp/go1.24.4.linux-amd64.tar.gz
-sudo ln -s /usr/lib/go/bin/go /usr/local/bin/go
+sudo ln -s /usr/local/go/bin/go /usr/local/bin/go
 
 # for windows 7 support by gopher agent
 git clone https://github.com/Adaptix-Framework/go-win7 /tmp/go-win7
