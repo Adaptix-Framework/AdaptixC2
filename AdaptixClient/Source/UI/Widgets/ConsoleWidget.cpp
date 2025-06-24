@@ -289,7 +289,7 @@ void ConsoleWidget::handleSearch()
         return;
     }
 
-    if (currentIndex < 0 || allSelections.isEmpty() || allSelections[0].cursor.selectedText() != pattern) {
+    if (currentIndex < 0 || allSelections.isEmpty() || allSelections[0].cursor.selectedText().compare( pattern, Qt::CaseInsensitive) != 0 ) {
         findAndHighlightAll(pattern);
         currentIndex = 0;
     }
@@ -311,7 +311,7 @@ void ConsoleWidget::handleSearchBackward()
         return;
     }
 
-    if (currentIndex < 0 || allSelections.isEmpty() || allSelections[0].cursor.selectedText() != pattern) {
+    if (currentIndex < 0 || allSelections.isEmpty() || allSelections[0].cursor.selectedText().compare( pattern, Qt::CaseInsensitive) != 0 ) {
         findAndHighlightAll(pattern);
         currentIndex = allSelections.size() - 1;
     }
