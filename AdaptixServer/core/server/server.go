@@ -8,10 +8,7 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"encoding/json"
-	"fmt"
 	"os"
-	"strings"
-	"time"
 )
 
 func NewTeamserver() *Teamserver {
@@ -50,12 +47,14 @@ func NewTeamserver() *Teamserver {
 
 func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, extenders []string) {
 	ts.Profile.Server = &profile.TsProfile{
-		Port:      port,
-		Endpoint:  endpoint,
-		Password:  password,
-		Cert:      cert,
-		Key:       key,
-		Extenders: extenders,
+		Port:       port,
+		Endpoint:   endpoint,
+		Password:   password,
+		Cert:       cert,
+		Key:        key,
+		Extenders:  extenders,
+		ATokenLive: 12,
+		RTokenLive: 168,
 	}
 	ts.Profile.ServerResponse = &profile.TsResponse{
 		Status:      404,
@@ -132,16 +131,7 @@ func (ts *Teamserver) RestoreData() {
 		packet := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packet)
 
-		createdAt := time.Unix(agentData.CreateTime, 0).Format("15:04:05 02.01.2006")
-		message := ""
-		if len(agentData.Domain) == 0 || strings.ToLower(agentData.Computer) == strings.ToLower(agentData.Domain) {
-			message = fmt.Sprintf("Restore '%v' (%v) executed on '%v @ %v' (%v) [created '%v']", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.InternalIP, createdAt)
-		} else {
-			message = fmt.Sprintf("Restore '%v' (%v) executed on '%v @ %v.%v' (%v) [created '%v']", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP, createdAt)
-		}
-		packet2 := CreateSpEvent(EVENT_AGENT_NEW, message)
-		ts.TsSyncAllClients(packet2)
-		ts.events.Put(packet2)
+		ts.TsEventAgent(true, agentData)
 
 		/// Tasks
 		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)

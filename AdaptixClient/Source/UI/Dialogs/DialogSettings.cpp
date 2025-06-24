@@ -253,7 +253,7 @@ void DialogSettings::createUI()
     listSettings->setFixedWidth(150);
     listSettings->addItem("Main settings");
     listSettings->addItem("Sessions table");
-    listSettings->addItem("Sessions graph");
+    // listSettings->addItem("Sessions graph");
     listSettings->addItem("Tasks table");
     listSettings->setCurrentRow(0);
 

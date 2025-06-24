@@ -45,8 +45,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	token.InitJWT()
-
 	ts := server.NewTeamserver()
 
 	if *profilePath != "" {
@@ -68,6 +66,8 @@ func main() {
 		logs.Error("", err.Error())
 		os.Exit(0)
 	}
+
+	token.InitJWT(ts.Profile.Server.ATokenLive, ts.Profile.Server.RTokenLive)
 
 	ts.Extender.LoadPlugins(ts.Profile.Server.Extenders)
 	ts.Start()

@@ -13,15 +13,19 @@ import (
 
 var accessKey string
 var refreshKey string
+var accessTokenLiveHours int
+var refreshTokenLiveHours int
 
 type Claims struct {
 	Username string `json:"username"`
 	jwt.RegisteredClaims
 }
 
-func InitJWT() {
+func InitJWT(accessTokenHours int, refreshTokenHours int) {
 	accessKey, _ = generateRandomKey(32)
 	refreshKey, _ = generateRandomKey(32)
+	accessTokenLiveHours = accessTokenHours
+	refreshTokenLiveHours = refreshTokenHours
 }
 
 func generateRandomKey(length int) (string, error) {
@@ -33,7 +37,7 @@ func generateRandomKey(length int) (string, error) {
 }
 
 func GenerateAccessToken(username string) (string, error) {
-	expirationTime := time.Now().Add(8 * time.Hour)
+	expirationTime := time.Now().Add(time.Duration(accessTokenLiveHours) * time.Hour)
 	claims := &Claims{
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -50,7 +54,7 @@ func GenerateAccessToken(username string) (string, error) {
 }
 
 func GenerateRefreshToken(username string) (string, error) {
-	expirationTime := time.Now().Add(7 * 24 * time.Hour)
+	expirationTime := time.Now().Add(time.Duration(refreshTokenLiveHours) * time.Hour)
 	claims := &Claims{
 		Username: username,
 		RegisteredClaims: jwt.RegisteredClaims{
