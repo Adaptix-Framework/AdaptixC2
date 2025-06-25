@@ -60,12 +60,14 @@
 #include <QDateTimeEdit>
 #include <QButtonGroup>
 #include <QTcpServer>
+#include <QQueue>
+#include <QMutex>
 
 #include <Utils/Logs.h>
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.5"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.6"
 
 ///////////
 
@@ -141,23 +143,23 @@
 
 /////////
 
-#define COLOR_Black           "#000000"     // black
-#define COLOR_NeonGreen       "#39FF14"     // green
-#define COLOR_KellyGreen      "#4CBB17"     // green
-#define COLOR_Green           "#008000"     // green
-#define COLOR_Berry           "#A01641"     // red
-#define COLOR_ChiliPepper     "#E32227"     // red
-#define COLOR_BrightOrange    "#FFA500"     // orange
-#define COLOR_PastelYellow    "#FDFD96"     // yellow
-#define COLOR_Yellow          "#FFFF00"     // yellow
-#define COLOR_BabyBlue        "#89CFF0"     // blue
-#define COLOR_Purple          "#800080"     // purple
-#define COLOR_DarkBrownishRed "#4A403D"     // gray-red
-#define COLOR_LightGray       "#A0A0A0"     // gray
-#define COLOR_Gray            "#808080"     // gray
-#define COLOR_SaturGray       "#606060"     // gray
-#define COLOR_ConsoleWhite    "#E0E0E0"     // white
-#define COLOR_White           "#FFFFFF"     // white
+#define COLOR_Black           "#000000"     /// black
+#define COLOR_NeonGreen       "#39FF14"     /// green
+#define COLOR_KellyGreen      "#4CBB17"     /// green
+#define COLOR_Green           "#008000"     /// green
+#define COLOR_Berry           "#A01641"     /// red
+#define COLOR_ChiliPepper     "#E32227"     /// red
+#define COLOR_BrightOrange    "#FFA500"     /// orange
+#define COLOR_PastelYellow    "#FDFD96"     /// yellow
+#define COLOR_Yellow          "#FFFF00"     /// yellow
+#define COLOR_BabyBlue        "#89CFF0"     /// blue
+#define COLOR_Purple          "#800080"     /// purple
+#define COLOR_DarkBrownishRed "#4A403D"     /// gray-red
+#define COLOR_LightGray       "#A0A0A0"     /// gray
+#define COLOR_Gray            "#808080"     /// gray
+#define COLOR_SaturGray       "#606060"     /// gray
+#define COLOR_ConsoleWhite    "#E0E0E0"     /// white
+#define COLOR_White           "#FFFFFF"     /// white
 
 //////////
 
@@ -181,10 +183,16 @@ typedef struct BrowsersConfig {
 } BrowsersConfig;
 
 typedef struct SettingsData {
-    bool    ConsoleTime;
     QString MainTheme;
     QString FontFamily;
     int     FontSize;
+    QString GraphVersion;
+    int     RemoteTerminalBufferSize;
+
+    bool ConsoleTime;
+    int  ConsoleBufferSize;
+    bool ConsoleNoWrap;
+    bool ConsoleAutoScroll;
 
     bool   SessionsTableColumns[15];
     bool   CheckHealth;

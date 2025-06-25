@@ -149,8 +149,7 @@ HistoryScroll *HistoryTypeNone::scroll(HistoryScroll *old) const {
 }
 int HistoryTypeNone::maximumLineCount() const { return 0; }
 
-HistoryTypeBuffer::HistoryTypeBuffer(unsigned int nbLines)
-    : m_nbLines(nbLines) {}
+HistoryTypeBuffer::HistoryTypeBuffer(unsigned int nbLines) : m_nbLines(nbLines) {}
 bool HistoryTypeBuffer::isEnabled() const { return true; }
 int HistoryTypeBuffer::maximumLineCount() const { return m_nbLines; }
 HistoryScroll *HistoryTypeBuffer::scroll(HistoryScroll *old) const {

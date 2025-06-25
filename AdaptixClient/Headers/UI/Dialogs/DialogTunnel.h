@@ -2,8 +2,6 @@
 #define DIALOGTUNNEL_H
 
 #include <main.h>
-#include <Client/WidgetBuilder.h>
-#include <Client/AuthProfile.h>
 
 class DialogTunnel : public QDialog
 {

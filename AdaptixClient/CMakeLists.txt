@@ -91,7 +91,7 @@ SET( HEADERS
         Headers/UI/MainUI.h
         Headers/UI/Widgets/AdaptixWidget.h
         Headers/UI/Widgets/LogsWidget.h
-        Headers/Client/WebSocketWorker.h
+        Headers/Workers/WebSocketWorker.h
         Headers/UI/Dialogs/DialogSyncPacket.h
         Headers/UI/Widgets/ListenersWidget.h
         Headers/UI/Dialogs/DialogListener.h
@@ -101,7 +101,7 @@ SET( HEADERS
         Headers/UI/Widgets/ConsoleWidget.h
         Headers/Agent/Agent.h
         Headers/Agent/AgentTableWidgetItem.h
-        Headers/Client/LastTickWorker.h
+        Headers/Workers/LastTickWorker.h
         Headers/Agent/Commander.h
         Headers/UI/Widgets/DownloadsWidget.h
         Headers/UI/Widgets/BrowserFilesWidget.h
@@ -124,9 +124,13 @@ SET( HEADERS
         Headers/UI/Widgets/ScreenshotsWidget.h
         Headers/UI/Dialogs/DialogTunnel.h
         Headers/Client/TunnelEndpoint.h
-        Headers/Client/TunnelWorker.h
+        Headers/Workers/TunnelWorker.h
         Headers/UI/Widgets/TerminalWidget.h
-        Headers/Client/TerminalWorker.h
+        Headers/Workers/TerminalWorker.h
+        Headers/UI/Dialogs/DialogDownloader.h
+        Headers/Workers/DownloaderWorker.h
+        Headers/Workers/UploaderWorker.h
+        Headers/UI/Dialogs/DialogUploader.h
 )
 
 add_executable(AdaptixClient
@@ -150,7 +154,7 @@ add_executable(AdaptixClient
         Source/UI/MainUI.cpp
         Source/UI/Widgets/AdaptixWidget.cpp
         Source/UI/Widgets/LogsWidget.cpp
-        Source/Client/WebSocketWorker.cpp
+        Source/Workers/WebSocketWorker.cpp
         Source/UI/Dialogs/DialogSyncPacket.cpp
         Source/Client/ProcessSyncPacket.cpp
         Source/UI/Widgets/ListenersWidget.cpp
@@ -161,7 +165,7 @@ add_executable(AdaptixClient
         Source/UI/Widgets/ConsoleWidget.cpp
         Source/Agent/Agent.cpp
         Source/Agent/AgentTableWidgetItem.cpp
-        Source/Client/LastTickWorker.cpp
+        Source/Workers/LastTickWorker.cpp
         Source/Agent/Commander.cpp
         Source/UI/Widgets/DownloadsWidget.cpp
         Source/UI/Widgets/BrowserFilesWidget.cpp
@@ -183,9 +187,13 @@ add_executable(AdaptixClient
         Source/UI/Widgets/ScreenshotsWidget.cpp
         Source/UI/Dialogs/DialogTunnel.cpp
         Source/Client/TunnelEndpoint.cpp
-        Source/Client/TunnelWorker.cpp
+        Source/Workers/TunnelWorker.cpp
         Source/UI/Widgets/TerminalWidget.cpp
-        Source/Client/TerminalWorker.cpp
+        Source/Workers/TerminalWorker.cpp
+        Source/UI/Dialogs/DialogDownloader.cpp
+        Source/Workers/DownloaderWorker.cpp
+        Source/Workers/UploaderWorker.cpp
+        Source/UI/Dialogs/DialogUploader.cpp
 )
 
 target_compile_definitions(AdaptixClient PRIVATE QT_DEPRECATED_WARNINGS )

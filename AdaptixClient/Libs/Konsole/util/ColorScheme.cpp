@@ -12,16 +12,15 @@
 
 const ColorEntry ColorScheme::defaultTable[TABLE_COLORS] = {
     ColorEntry(QColor(0x00, 0x00, 0x00), false),
-    ColorEntry(QColor(0xFF, 0xFF, 0xFF), true) , // Dfore, Dback
+    ColorEntry(QColor(0xFF, 0xFF, 0xFF), true) ,
     ColorEntry(QColor(0x00, 0x00, 0x00), false),
-    ColorEntry(QColor(0xB2, 0x18, 0x18), false), // Black, Red
+    ColorEntry(QColor(0xB2, 0x18, 0x18), false),
     ColorEntry(QColor(0x18, 0xB2, 0x18), false),
-    ColorEntry(QColor(0xB2, 0x68, 0x18), false), // Green, Yellow
+    ColorEntry(QColor(0xB2, 0x68, 0x18), false),
     ColorEntry(QColor(0x18, 0x18, 0xB2), false),
-    ColorEntry(QColor(0xB2, 0x18, 0xB2), false), // Blue, Magenta
+    ColorEntry(QColor(0xB2, 0x18, 0xB2), false),
     ColorEntry(QColor(0x18, 0xB2, 0xB2), false),
-    ColorEntry(QColor(0xB2, 0xB2, 0xB2), false), // Cyan, White
-    // intensive
+    ColorEntry(QColor(0xB2, 0xB2, 0xB2), false),
     ColorEntry(QColor(0x00, 0x00, 0x00), false),
     ColorEntry(QColor(0xFF, 0xFF, 0xFF), true) ,
     ColorEntry(QColor(0x68, 0x68, 0x68), false),
@@ -57,7 +56,6 @@ const char *const ColorScheme::colorNames[TABLE_COLORS] = {
     "Color7Intense"
 };
 
-// dummy silently comment out the tr_NOOP
 #define tr_NOOP
 const char *const ColorScheme::translatedColorNames[TABLE_COLORS] = {
     tr_NOOP("Foreground"),
@@ -181,10 +179,6 @@ bool ColorScheme::randomizedBackgroundColor() const {
 }
 
 void ColorScheme::setRandomizedBackgroundColor(bool randomize) {
-    // the hue of the background colour is allowed to be randomly
-    // adjusted as much as possible.
-    //
-    // the value and saturation are left alone to maintain read-ability
     if (randomize) {
         setRandomizationRange(1 /* background color index */, MAX_HUE, 255, 0);
     } else {
@@ -248,7 +242,6 @@ void ColorScheme::read(const QString &fileName) {
 }
 
 #if 0
-// implemented upstream - user apps
 void ColorScheme::read(KConfig& config) {
     KConfigGroup configGroup = config.group("General");
 
@@ -298,8 +291,6 @@ void ColorScheme::readColorEntry(QSettings *s, int index) {
     QString colorStr;
     int r, g, b;
     bool ok = false;
-    // XXX: Undocumented(?) QSettings behavior: values with commas are parsed
-    // as QStringList and others QString
     if (colorValue.typeId() == QMetaType::QStringList) {
         QStringList rgbList = colorValue.toStringList();
         colorStr = rgbList.join(QLatin1Char(','));
@@ -320,7 +311,6 @@ void ColorScheme::readColorEntry(QSettings *s, int index) {
             QLatin1String("^#[0-9a-f]{6}$"),
             QRegularExpression::CaseInsensitiveOption);
         if (hexColorPattern.match(colorStr).hasMatch()) {
-            // Parsing is always ok as already matched by the regexp
             r = QStringView{colorStr}.mid(1, 2).toInt(nullptr, 16);
             g = QStringView{colorStr}.mid(3, 2).toInt(nullptr, 16);
             b = QStringView{colorStr}.mid(5, 2).toInt(nullptr, 16);
@@ -354,8 +344,7 @@ void ColorScheme::readColorEntry(QSettings *s, int index) {
 }
 
 #if 0
-// implemented upstream - user apps
-void ColorScheme::writeColorEntry(KConfig& config , const QString& colorName, 
+void ColorScheme::writeColorEntry(KConfig& config , const QString& colorName,
         const ColorEntry& entry , const RandomizationRange& random) const {
     KConfigGroup configGroup(&config,colorName);
 
@@ -365,8 +354,6 @@ void ColorScheme::writeColorEntry(KConfig& config , const QString& colorName,
         configGroup.writeEntry("Bold",entry.fontWeight == ColorEntry::Bold);
     }
 
-    // record randomization if this color has randomization or
-    // if one of the keys already exists
     if ( !random.isNull() || configGroup.hasKey("MaxRandomHue") ) {
         configGroup.writeEntry("MaxRandomHue",static_cast<int>(random.hue));
         configGroup.writeEntry("MaxRandomValue",static_cast<int>(random.value));
@@ -498,7 +485,6 @@ const ColorScheme *ColorSchemeManager::defaultColorScheme() const {
 bool ColorSchemeManager::deleteColorScheme(const QString &name) {
     Q_ASSERT(_colorSchemes.contains(name));
 
-    // lookup the path and delete
     QString path = findColorSchemePath(name);
     if (QFile::remove(path)) {
         _colorSchemes.remove(name);

@@ -2,8 +2,6 @@
 #define ADAPTIXCLIENT_SETTINGS_H
 
 #include <main.h>
-#include <UI/Dialogs/DialogSettings.h>
-#include <MainAdaptix.h>
 
 class DialogSettings;
 class MainAdaptix;
@@ -19,6 +17,7 @@ public:
     DialogSettings* dialogSettings = nullptr;
     SettingsData    data;
 
+    MainAdaptix* getMainAdaptix();
     void SetDefault();
     void LoadFromDB();
     void SaveToDB() const;

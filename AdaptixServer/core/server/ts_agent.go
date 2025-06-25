@@ -81,10 +81,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	packetNew := CreateSpAgentNew(agentData)
 	ts.TsSyncAllClients(packetNew)
 
-	message := fmt.Sprintf("New '%v' (%v) executed on '%v @ %v.%v' (%v)", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP)
-	packet2 := CreateSpEvent(EVENT_AGENT_NEW, message)
-	ts.TsSyncAllClients(packet2)
-	ts.events.Put(packet2)
+	ts.TsEventAgent(false, agentData)
 
 	return nil
 }
@@ -368,7 +365,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 	tasksRunning := agent.RunningTasks.CutMap()
 	for _, value = range tasksRunning {
 		task := value.(adaptix.TaskData)
-		if task.TaskId == terminateTaskId {
+		if task.TaskId == terminateTaskId && task.Sync {
 			agent.RunningTasks.Put(task.TaskId, task)
 		} else {
 			packet := CreateSpAgentTaskRemove(task)
@@ -400,6 +397,19 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 
 	packetNew := CreateSpAgentUpdate(agent.Data)
 	ts.TsSyncAllClients(packetNew)
+
+	return nil
+}
+
+func (ts *Teamserver) TsAgentConsoleRemove(agentId string) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent '%v' does not exist", agentId)
+	}
+	agent := value.(*Agent)
+	agent.OutConsole.CutArray()
+
+	_ = ts.DBMS.DbConsoleDelete(agentId)
 
 	return nil
 }
@@ -438,6 +448,8 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	for _, id := range tunnels {
 		_ = ts.TsTunnelStop(id)
 	}
+
+	/// Clear Pivots
 
 	if agent.PivotParent != nil {
 		_ = ts.TsPivotDelete(agent.PivotParent.PivotId)

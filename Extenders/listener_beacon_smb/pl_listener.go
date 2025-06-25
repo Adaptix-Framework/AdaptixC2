@@ -26,9 +26,9 @@ func (m *ModuleExtender) HandlerListenerValid(data string) error {
 		return err
 	}
 
-	matched, err := regexp.MatchString(`^[a-zA-Z0-9\-_]+$`, conf.Pipename)
+	matched, err := regexp.MatchString(`^[a-zA-Z0-9\-_.]+$`, conf.Pipename)
 	if err != nil || !matched {
-		return errors.New("uri invalid")
+		return errors.New("Pipename invalid")
 	}
 
 	/// END CODE

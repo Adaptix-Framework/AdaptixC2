@@ -1,4 +1,20 @@
+#include <Agent/Agent.h>
+#include <Agent/Task.h>
+#include <Agent/AgentTableWidgetItem.h>
+#include <Agent/TaskTableWidgetItem.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/BrowserFilesWidget.h>
+#include <UI/Widgets/BrowserProcessWidget.h>
+#include <UI/Widgets/SessionsTableWidget.h>
+#include <UI/Widgets/ListenersWidget.h>
+#include <UI/Widgets/TasksWidget.h>
+#include <UI/Widgets/LogsWidget.h>
+#include <UI/Widgets/DownloadsWidget.h>
+#include <UI/Widgets/ScreenshotsWidget.h>
+#include <UI/Widgets/TunnelsWidget.h>
+#include <UI/Graph/SessionsGraph.h>
+#include <UI/Dialogs/DialogSyncPacket.h>
 
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 {
@@ -358,8 +374,14 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if(AgentsMap.contains(agentId)) {
             Agent* agent = AgentsMap[agentId];
+            QString oldUsername = agent->item_Username->text();
             agent->Update(jsonObj);
+            QString newUsername = agent->item_Username->text();
+
+            if (oldUsername != newUsername)
+                SessionsTablePage->UpdateColumnsWidth();
         }
+        return;
     }
     if( spType == TYPE_AGENT_TICK )
     {
@@ -373,7 +395,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                     agent->MarkItem("");
             }
         }
-
         return;
     }
     if( spType == TYPE_AGENT_REMOVE )
@@ -383,8 +404,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             SessionsGraphPage->RemoveAgent(this->AgentsMap[agentId], this->synchronized);
             SessionsTablePage->RemoveAgentItem(agentId);
             TasksTab->RemoveAgentTasksItem(agentId);
-
         }
+        return;
     }
 
 
@@ -415,7 +436,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 task->item_Result->setText("Running");
             }
         }
-
         return;
     }
     if( spType == TYPE_AGENT_TASK_REMOVE )
@@ -435,9 +455,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString message = jsonObj["a_message"].toString();
         int     msgType = jsonObj["a_msg_type"].toDouble();
 
-        if (AgentsMap.contains(agentId))
+        if (AgentsMap.contains(agentId)) {
             AgentsMap[agentId]->Console->ConsoleOutputMessage(time, "", msgType, message, text, false );
-
+        }
         return;
     }
     if( spType == TYPE_AGENT_CONSOLE_TASK_SYNC )
@@ -455,6 +475,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (AgentsMap.contains(AgentId)) {
             AgentsMap[AgentId]->Console->ConsoleOutputPrompt( StartTime, TaskId, Client, CommandLine);
+            if (!this->synchronized)
+                AgentsMap[AgentId]->Console->AddToHistory(CommandLine);
 
             qint64 ConsoleTime = StartTime;
             if (Completed)
@@ -462,7 +484,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
             AgentsMap[AgentId]->Console->ConsoleOutputMessage( ConsoleTime, TaskId, MessageType, Message, Output , Completed );
         }
-
         return;
     }
     if( spType == TYPE_AGENT_CONSOLE_TASK_UPD )
@@ -475,9 +496,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString Output      = jsonObj["a_text"].toString();
         bool    Completed   = jsonObj["a_completed"].toBool();
 
-        if (AgentsMap.contains(AgentId))
+        if (AgentsMap.contains(AgentId)) {
             AgentsMap[AgentId]->Console->ConsoleOutputMessage( FinishTime, TaskId, MessageType, Message, Output , Completed );
-
+        }
         return;
     }
 
@@ -565,7 +586,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newTunnel.Fport     = jsonObj["p_fport"].toString();
 
         TunnelsTab->AddTunnelItem(newTunnel);
-
         return;
     }
     if( spType == TYPE_TUNNEL_EDIT )
@@ -574,7 +594,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString Info     = jsonObj["p_info"].toString();
 
         TunnelsTab->EditTunnelItem(TunnelId, Info);
-
         return;
     }
     if( spType == TYPE_TUNNEL_DELETE )
@@ -582,7 +601,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString TunnelId = jsonObj["p_tunnel_id"].toString();
 
         TunnelsTab->RemoveTunnelItem(TunnelId);
-
         return;
     }
 

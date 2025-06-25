@@ -1,5 +1,16 @@
 #include <Agent/Agent.h>
+#include <Agent/AgentTableWidgetItem.h>
+#include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/BrowserFilesWidget.h>
+#include <UI/Widgets/BrowserProcessWidget.h>
+#include <UI/Graph/GraphItem.h>
+#include <UI/Graph/SessionsGraph.h>
 #include <Client/Requestor.h>
+#include <Client/Settings.h>
+#include <Client/AuthProfile.h>
+#include <MainAdaptix.h>
 
 Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 {
@@ -101,7 +112,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
         this->item_Sleep->setToolTip(toolTip);
     }
 
-    this->SetImage();
+    this->UpdateImage();
     this->graphImage = this->imageActive;
 
     if (mark == "") {
@@ -138,9 +149,9 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     this->data.Jitter       = jsonObjAgentData["a_jitter"].toDouble();
     this->data.WorkingTime  = jsonObjAgentData["a_workingtime"].toDouble();
     this->data.KillDate     = jsonObjAgentData["a_killdate"].toDouble();
-    this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
     this->data.Tags         = jsonObjAgentData["a_tags"].toString();
     this->data.Color        = jsonObjAgentData["a_color"].toString();
+    this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
     QString mark            = jsonObjAgentData["a_mark"].toString();
 
     this->item_Tags->setText(this->data.Tags);
@@ -150,7 +161,11 @@ void Agent::Update(QJsonObject jsonObjAgentData)
         username = "* " + username;
     if ( !this->data.Impersonated.isEmpty() )
         username += " [" + this->data.Impersonated + "]";
-    this->item_Username->setText(username);
+
+    if (this->item_Username->text() != username) {
+        this->item_Username->setText(username);
+
+    }
 
     if (this->data.WorkingTime || this->data.KillDate) {
         QString toolTip = "";
@@ -282,50 +297,59 @@ void Agent::SetColor(const QString &color) const
     }
 }
 
-void Agent::SetImage()
+void Agent::UpdateImage()
 {
+    QString v = "v1";
+    if (GlobalClient->settings->data.GraphVersion == "Version 2")
+        v = "v2";
+
     if (data.Os == OS_WINDOWS) {
         if (data.Elevated) {
             this->item_Os->setIcon(QIcon(":/icons/os_win_red"));
-            this->imageActive = QImage(":/graph/win_red");
+            this->imageActive = QImage(":/graph/"+v+"/win_red");
         }
         else {
             this->item_Os->setIcon(QIcon(":/icons/os_win_blue"));
-            this->imageActive = QImage(":/graph/win_blue");
+            this->imageActive = QImage(":/graph/"+v+"/win_blue");
         }
-        this->imageInactive = QImage(":/graph/win_grey");
+        this->imageInactive = QImage(":/graph/"+v+"/win_grey");
     }
     else if (data.Os == OS_LINUX) {
         if (data.Elevated) {
             this->item_Os->setIcon(QIcon(":/icons/os_linux_red"));
-            this->imageActive = QImage(":/graph/linux_red");
+            this->imageActive = QImage(":/graph/"+v+"/linux_red");
         } else {
             this->item_Os->setIcon(QIcon(":/icons/os_linux_blue"));
-            this->imageActive = QImage(":/graph/linux_blue");
+            this->imageActive = QImage(":/graph/"+v+"/linux_blue");
         }
-        this->imageInactive = QImage(":/graph/linux_grey");
+        this->imageInactive = QImage(":/graph/"+v+"/linux_grey");
     }
     else if (data.Os == OS_MAC) {
         if (data.Elevated) {
             this->item_Os->setIcon(QIcon(":/icons/os_mac_red"));
-            this->imageActive = QImage(":/graph/mac_red");
+            this->imageActive = QImage(":/graph/"+v+"/mac_red");
         } else {
             this->item_Os->setIcon(QIcon(":/icons/os_mac_blue"));
-            this->imageActive = QImage(":/graph/mac_blue");
+            this->imageActive = QImage(":/graph/"+v+"/mac_blue");
         }
-        this->imageInactive = QImage(":/graph/mac_grey");
+        this->imageInactive = QImage(":/graph/"+v+"/mac_grey");
     }
     else {
         if (data.Elevated) {
             // this->item_Os->setIcon(QIcon(":/icons/unknown_red"));
-            this->imageActive = QImage(":/graph/unknown_red");
+            this->imageActive = QImage(":/graph/"+v+"/unknown_red");
         }
         else {
             // this->item_Os->setIcon(QIcon(":/icons/unknown_blue"));
-            this->imageActive = QImage(":/graph/unknown_blue");
+            this->imageActive = QImage(":/graph/"+v+"/unknown_blue");
         }
-        this->imageInactive = QImage(":/graph/unknown_grey");
+        this->imageInactive = QImage(":/graph/"+v+"/unknown_grey");
     }
+
+    if (this->data.Mark == "")
+        this->graphImage = this->imageActive;
+    else
+        this->graphImage = this->imageInactive;
 }
 
 /// TASK
@@ -336,7 +360,7 @@ QString Agent::TasksStop(const QStringList &tasks) const
     bool ok = false;
     bool result = HttpReqTaskStop( data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -347,7 +371,7 @@ QString Agent::TasksDelete(const QStringList &tasks) const
     bool ok = false;
     bool result = HttpReqTasksDelete(data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -393,7 +417,7 @@ QString Agent::BrowserDisks() const
     bool ok = false;
     bool result = HttpReqBrowserDisks( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -404,7 +428,7 @@ QString Agent::BrowserProcess() const
     bool ok = false;
     bool result = HttpReqBrowserProcess( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -415,7 +439,7 @@ QString Agent::BrowserList(const QString &path) const
     bool ok = false;
     bool result = HttpReqBrowserList( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -426,7 +450,7 @@ QString Agent::BrowserUpload(const QString &path, const QString &content) const
     bool ok = false;
     bool result = HttpReqBrowserUpload( data.Id, path, content, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }
@@ -437,7 +461,7 @@ QString Agent::BrowserDownload(const QString &path) const
     bool ok = false;
     bool result = HttpReqDownloadStart( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
-        return "JWT error";
+        return "Response timeout";
 
     return message;
 }

@@ -4,7 +4,6 @@ import (
 	"AdaptixServer/core/utils/safe"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/websocket"
 	"sync"
 )
@@ -35,10 +34,7 @@ func (ts *Teamserver) TsClientDisconnect(username string) {
 	client.synced = false
 	client.socket.Close()
 
-	message := fmt.Sprintf("Client '%v' disconnected from teamserver", username)
-	packet := CreateSpEvent(EVENT_CLIENT_DISCONNECT, message)
-	ts.TsSyncAllClients(packet)
-	ts.events.Put(packet)
+	ts.TsEventClient(false, username)
 
 	var tunnels []string
 	ts.tunnels.ForEach(func(key string, value interface{}) bool {
@@ -79,8 +75,5 @@ func (ts *Teamserver) TsClientSync(username string) {
 		}
 	}
 
-	message := fmt.Sprintf("Client '%v' connected to teamserver", username)
-	packet := CreateSpEvent(EVENT_CLIENT_CONNECT, message)
-	ts.TsSyncAllClients(packet)
-	ts.events.Put(packet)
+	ts.TsEventClient(true, username)
 }

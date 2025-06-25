@@ -2,10 +2,10 @@
 #define TERMINALWIDGET_H
 
 #include <main.h>
-#include <Agent/Agent.h>
-#include <Konsole/konsole.h>
-#include <Client/TerminalWorker.h>
 
+class Agent;
+class Konsole;
+class QTermWidget;
 class TerminalWorker;
 
 class TerminalWidget : public QWidget
@@ -19,7 +19,6 @@ class TerminalWidget : public QWidget
      QFrame*      line_2          = nullptr;
      QFrame*      line_3          = nullptr;
      QPushButton* startButton     = nullptr;
-     // QPushButton* restartButton   = nullptr;
      QPushButton* stopButton      = nullptr;
      QComboBox*   programComboBox = nullptr;
      QLabel*      keytabLabel     = nullptr;

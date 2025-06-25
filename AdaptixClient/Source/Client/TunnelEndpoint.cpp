@@ -1,4 +1,6 @@
+#include <Workers/TunnelWorker.h>
 #include <Client/TunnelEndpoint.h>
+#include <Client/AuthProfile.h>
 
 TunnelEndpoint::TunnelEndpoint(QObject* parent) : QObject(parent), tcpServer(new QTcpServer(this)){}
 
@@ -69,7 +71,7 @@ void TunnelEndpoint::StopChannel(const QString& channelId)
  //    tunnelChannels.erase(it);
  //
 	// handle.worker->stop();
- //    // QMetaObject::invokeMethod(handle.worker, "stop", Qt::QueuedConnection);
+ //   dQMetaObject::invokeMethod(handle.worker, "stop", Qt::QueuedConnection);
  //
  //    handle.thread->quit();
  //    handle.thread->wait(1000);
@@ -173,7 +175,6 @@ void TunnelEndpoint::onStartSocks4Channel()
         connect(thread, &QThread::finished,      thread, &QThread::deleteLater);
     	connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
 
-        // tunnelChannels.insert(channelId, { thread, worker, channelId });
         thread->start();
     }
 }
@@ -263,7 +264,6 @@ void TunnelEndpoint::onStartSocks5Channel()
         connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     	connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
 
-        // tunnelChannels.insert(channelId, { thread, worker, channelId });
         thread->start();
     }
 }
@@ -402,7 +402,6 @@ void TunnelEndpoint::onStartSocks5AuthChannel()
         connect(thread, &QThread::finished, thread, &QThread::deleteLater);
     	connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
 
-        // tunnelChannels.insert(channelId, { thread, worker, channelId });
         thread->start();
     }
 }

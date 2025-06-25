@@ -2,20 +2,14 @@
 #define ADAPTIXCLIENT_AGENT_H
 
 #include <main.h>
-#include <Agent/AgentTableWidgetItem.h>
-#include <UI/Graph/GraphItem.h>
-#include <Agent/Commander.h>
-#include <UI/Widgets/ConsoleWidget.h>
-#include <UI/Widgets/TerminalWidget.h>
-#include <UI/Widgets/BrowserFilesWidget.h>
-#include <UI/Widgets/BrowserProcessWidget.h>
-#include <UI/Widgets/AdaptixWidget.h>
 
 class ConsoleWidget;
 class BrowserFilesWidget;
 class BrowserProcessWidget;
 class TerminalWidget;
 class AdaptixWidget;
+class AgentTableWidgetItem;
+class GraphItem;
 
 class Agent
 {
@@ -65,7 +59,7 @@ public:
     void    Update(QJsonObject jsonObjAgentData);
     void    MarkItem(const QString &mark);
     void    SetColor(const QString &color) const;
-    void    SetImage();
+    void    UpdateImage();
     QString TasksStop(const QStringList &tasks) const;
     QString TasksDelete(const QStringList &tasks) const;
 

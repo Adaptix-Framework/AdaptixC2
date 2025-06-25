@@ -1,4 +1,6 @@
 #include <UI/Dialogs/DialogConnect.h>
+#include <Client/AuthProfile.h>
+#include <Client/Storage.h>
 #include <MainAdaptix.h>
 
 DialogConnect::DialogConnect()
@@ -71,8 +73,9 @@ void DialogConnect::createUI()
     lineEdit_Endpoint = new QLineEdit( this );
 
 
-    ButtonConnect = new QPushButton( this );
-    ButtonConnect->setText( "Connect" );
+    ButtonConnect = new QPushButton(this);
+    ButtonConnect->setProperty("ButtonStyle", "dialog");
+    ButtonConnect->setText("Connect");
     ButtonConnect->setFocus();
 
 

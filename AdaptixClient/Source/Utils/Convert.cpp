@@ -1,6 +1,12 @@
 #include <Utils/Convert.h>
 #include <QRandomGenerator>
 #include <QTimeZone>
+#include <QString>
+#include <QRegularExpression>
+#include <QDateTime>
+#include <QPixmap>
+#include <QIcon>
+#include <QPainter>
 
 bool IsValidURI(const QString &uri)
 {
@@ -216,27 +222,27 @@ QString TextColorHtml(const QString &text, const QString &color)
     return R"(<font color=")" + color + R"(">)" + text.toHtmlEscaped() + R"(</font>)";
 }
 
-QString TextUnderlineColorHtml(const QString &text, const QString &color)
-{
-    if (text.isEmpty())
-        return "";
-
-    if (color.isEmpty())
-        return R"(<u>)" + text.toHtmlEscaped() + R"(</u>)";
-
-    return R"(<font color=")" + color + R"("><u>)" + text.toHtmlEscaped() + R"(</u></font>)";
-}
-
-QString TextBoltColorHtml(const QString &text, const QString &color )
-{
-    if (text.isEmpty())
-        return "";
-
-    if (color.isEmpty())
-        return R"(<b>)" + text.toHtmlEscaped() + R"(</b>)";
-
-    return R"(<font color=")" + color + R"("><b>)" + text.toHtmlEscaped() + R"(</b></font>)";
-}
+// QString TextUnderlineColorHtml(const QString &text, const QString &color)
+// {
+//     if (text.isEmpty())
+//         return "";
+//
+//     if (color.isEmpty())
+//         return R"(<u>)" + text.toHtmlEscaped() + R"(</u>)";
+//
+//     return R"(<font color=")" + color + R"("><u>)" + text.toHtmlEscaped() + R"(</u></font>)";
+// }
+//
+// QString TextBoltColorHtml(const QString &text, const QString &color )
+// {
+//     if (text.isEmpty())
+//         return "";
+//
+//     if (color.isEmpty())
+//         return R"(<b>)" + text.toHtmlEscaped() + R"(</b>)";
+//
+//     return R"(<font color=")" + color + R"("><b>)" + text.toHtmlEscaped() + R"(</b></font>)";
+// }
 
 QString FormatSecToStr(int seconds)
 {
@@ -284,7 +290,7 @@ QIcon RecolorIcon(QIcon originalIcon, const QString &colorString)
     QPixmap pixmap = originalIcon.pixmap(originalIcon.actualSize(QSize(128, 128)));
 
     QPainter painter(&pixmap);
-    painter.setCompositionMode(QPainter::CompositionMode_SourceIn); // Recoloring only pixels with content
+    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
     painter.fillRect(pixmap.rect(), color);
     painter.end();
 

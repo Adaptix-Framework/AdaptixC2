@@ -14,6 +14,9 @@ import (
 )
 
 type Teamserver interface {
+	CreateOTP(otpType string, id string) (string, error)
+	ValidateOTP() gin.HandlerFunc
+
 	TsClientExists(username string) bool
 	TsClientDisconnect(username string)
 	TsClientSync(username string)
@@ -36,6 +39,7 @@ type Teamserver interface {
 	TsAgentImpersonate(agentId string, impersonated string, elevated bool) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentRemove(agentId string) error
+	TsAgentConsoleRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
 	TsAgentSetMark(agentId string, makr string) error
 	TsAgentSetColor(agentId string, background string, foreground string, reset bool) error
@@ -52,10 +56,13 @@ type Teamserver interface {
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
-	///
+	//
 	TsDownloadSync(fileId string) (string, []byte, error)
 	TsDownloadDelete(fileId string) error
-	///
+	TsDownloadGetFilepath(fileId string) (string, error)
+	TsUploadGetFilepath(fileId string) (string, error)
+	TsUploadGetFileContent(fileId string) ([]byte, error)
+	//
 	TsDownloadTaskStart(agentId string, path string, username string) error
 	TsDownloadTaskCancel(fileId string, clientName string) error
 	TsDownloadTaskResume(fileId string, clientName string) error
@@ -148,15 +155,21 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponse), token.RefreshTokenHandler)
 	connector.Engine.POST(tsProfile.Endpoint+"/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcSync)
 
+	connector.Engine.POST(tsProfile.Endpoint+"/otp/generate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcOTP_Generate)
+	connector.Engine.POST(tsProfile.Endpoint+"/otp/upload/temp", ts.ValidateOTP(), default404Middleware(tsResponse), connector.tcOTP_UploadTemp)
+	connector.Engine.GET(tsProfile.Endpoint+"/otp/download/sync", ts.ValidateOTP(), default404Middleware(tsResponse), connector.tcOTP_DownloadSync)
+
 	connector.Engine.GET(tsProfile.Endpoint+"/connect", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcConnect)
 	connector.Engine.GET(tsProfile.Endpoint+"/channel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcChannel)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStart)
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerEdit)
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStop)
-
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/generate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentGenerate)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/command", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommand)
+
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/command/file", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommandFile)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/command/execute", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommandExecute)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/console/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentConsoleRemove)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentRemove)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/exit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentExit)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/settag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetTag)

@@ -1,6 +1,7 @@
 #include <UI/Dialogs/DialogAgent.h>
 #include <Client/Requestor.h>
-#include <UI/Widgets/AdaptixWidget.h>
+#include <Client/WidgetBuilder.h>
+#include <Client/AuthProfile.h>
 
 DialogAgent::DialogAgent(const QString &listenerName, const QString &listenerType)
 {
@@ -59,7 +60,10 @@ void DialogAgent::createUI()
     agentConfigGroupbox->setLayout(stackGridLayout);
 
     generateButton = new QPushButton( "Generate", this);
-    closeButton    = new QPushButton( "Close", this);
+    generateButton->setProperty( "ButtonStyle", "dialog" );
+
+    closeButton = new QPushButton( "Close", this);
+    closeButton->setProperty( "ButtonStyle", "dialog" );
 
     horizontalSpacer   = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);

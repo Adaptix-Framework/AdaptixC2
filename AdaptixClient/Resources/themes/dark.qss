@@ -1,4 +1,4 @@
-/* Dark Theme */
+/* Adaptix Dark Theme */
 
 QWidget {
     background-color: #222222;
@@ -14,7 +14,7 @@ QWidget:disabled {
 
 
 QLabel[LabelStyle="console"] {
-    padding: 2px;
+    padding: 4px;
     color: #E0E0E0;
     background-color: transparent;
 }
@@ -32,10 +32,18 @@ QLabel:disabled {
 
 
 
-QPushButton {
+QPushButton[ButtonStyle="dialog"] {
     background-color: #333333;
     border: 1px solid #4A4A4A;
     padding: 8px;
+    border-radius: 4px;
+    color: #E0E0E0;
+}
+
+QPushButton {
+    background-color: #333333;
+    border: 1px solid #4A4A4A;
+    padding: 4px;
     border-radius: 4px;
     color: #E0E0E0;
 }
@@ -57,7 +65,7 @@ QLineEdit[LineEditStyle="console"] {
     color: #e8e8e8;
     /*font-family: "monospace";*/
     border: 1px #4A4A4A;
-    padding: 2px;
+    padding: 4px;
     border-radius: 4px;
 }
 
@@ -388,7 +396,7 @@ QComboBox {
     background-color: #2A2A2A;
     color: #E0E0E0;
     border: 1px solid #4A4A4A;
-    padding: 5px;
+    padding: 4px;
     border-radius: 4px;
 }
 
@@ -600,7 +608,7 @@ QDateEdit {
     background-color: #2A2A2A;
     color: #E0E0E0;
     border: 1px solid #4A4A4A;
-    padding: 5px;
+    padding: 4px;
     border-radius: 4px;
 }
 
@@ -721,6 +729,7 @@ QCheckBox::indicator:disabled {
 
 QListWidget {
     background-color: #2A2A2A;
+    alternate-background-color: #2E2E2E;
     border: 1px solid #4A4A4A;
     color: #E0E0E0;
     border-radius: 4px;

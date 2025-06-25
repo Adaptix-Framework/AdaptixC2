@@ -44,10 +44,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, 
 	packet := CreateSpListenerStart(listenerData)
 	ts.TsSyncAllClients(packet)
 
-	message := fmt.Sprintf("Listener '%v' (%v) started", listenerName, listenerType)
-	packet2 := CreateSpEvent(EVENT_LISTENER_START, message)
-	ts.TsSyncAllClients(packet2)
-	ts.events.Put(packet2)
+	ts.TsEventListenerStart(false, listenerName, listenerType)
 
 	_ = ts.DBMS.DbListenerInsert(listenerData, customData)
 
@@ -76,10 +73,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerType string, l
 	packet := CreateSpListenerEdit(listenerData)
 	ts.TsSyncAllClients(packet)
 
-	message := fmt.Sprintf("Listener '%v' reconfigured", listenerName)
-	packet2 := CreateSpEvent(EVENT_LISTENER_START, message)
-	ts.TsSyncAllClients(packet2)
-	ts.events.Put(packet2)
+	ts.TsEventListenerStart(true, listenerName, listenerType)
 
 	_ = ts.DBMS.DbListenerUpdate(listenerName, listenerConfig, customData)
 
@@ -104,10 +98,7 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 	packet := CreateSpListenerStop(listenerName)
 	ts.TsSyncAllClients(packet)
 
-	message := fmt.Sprintf("Listener '%v' stopped", listenerName)
-	packet2 := CreateSpEvent(EVENT_LISTENER_STOP, message)
-	ts.TsSyncAllClients(packet2)
-	ts.events.Put(packet2)
+	ts.TsEventListenerStop(listenerName, listenerType)
 
 	_ = ts.DBMS.DbListenerDelete(listenerName)
 

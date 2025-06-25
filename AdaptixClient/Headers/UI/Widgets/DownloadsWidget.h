@@ -23,6 +23,8 @@ public:
 public slots:
     void handleDownloadsMenu(const QPoint &pos );
     void actionSync() const;
+    void actionSyncCurl() const;
+    void actionSyncWget() const;
     void actionDelete() const;
     void actionResume() const;
     void actionPause() const;

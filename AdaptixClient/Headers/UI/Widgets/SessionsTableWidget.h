@@ -2,8 +2,9 @@
 #define ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H
 
 #include <main.h>
-#include <Agent/Agent.h>
 #include <Utils/CustomElements.h>
+
+class Agent;
 
 class SessionsTableWidget : public QWidget
 {
@@ -50,6 +51,8 @@ public:
     void RemoveAgentItem(const QString &agentId) const;
 
     void SetData() const;
+    void UpdateColumnsVisible() const;
+    void UpdateColumnsWidth() const;
     void ClearTableContent() const;
     void Clear() const;
 
@@ -60,6 +63,7 @@ public slots:
     void onFilterUpdate() const;
 
     void actionConsoleOpen() const;
+    void actionExecuteCommand();
     void actionTasksBrowserOpen() const;
     void actionTerminalOpen() const;
     void actionFileBrowserOpen() const;
@@ -72,6 +76,7 @@ public slots:
     void actionTextColor() const;
     void actionColorReset() const;
     void actionAgentRemove();
+    void actionConsoleDelete();
     void actionItemTag() const;
     void actionItemHide() const;
     void actionItemsShowAll() const;

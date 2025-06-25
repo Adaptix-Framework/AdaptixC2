@@ -12,7 +12,9 @@
       "extenders/agent_beacon/config.json",
       "extenders/listener_gopher_tcp/config.json",
       "extenders/agent_gopher/config.json"
-    ]
+    ],
+    "access_token_live_hours": 12,
+    "refresh_token_live_hours": 168
   },
 
   "ServerResponse": {
@@ -20,8 +22,16 @@
     "headers": {
       "Content-Type": "text/html; charset=UTF-8",
       "Server": "AdaptixC2",
-      "Adaptix Version": "v0.3"
+      "Adaptix Version": "v0.6"
     },
     "page": "404page.html"
+  },
+
+  "EventCallback": {
+    "Telegram": {
+      "token": "",
+      "chats_id": []
+    },
+    "new_agent_message": "New agent: %type% (%id%)\n\n%user% @ %computer% (%internalip%)\nelevated: %elevated%\nfrom: %externalip%\ndomain: %domain%"
   }
 }

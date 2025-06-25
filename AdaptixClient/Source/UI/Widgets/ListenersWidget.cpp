@@ -3,6 +3,7 @@
 #include <UI/Dialogs/DialogAgent.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
+#include <Client/WidgetBuilder.h>
 
 ListenersWidget::ListenersWidget(QWidget* w)
 {
@@ -49,6 +50,9 @@ void ListenersWidget::createUI()
 void ListenersWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->Listeners.clear();
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
@@ -57,6 +61,9 @@ void ListenersWidget::Clear() const
 void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( auto listener : adaptixWidget->Listeners ) {
         if( listener.ListenerName == newListener.ListenerName )
             return;
@@ -119,6 +126,8 @@ void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
 void ListenersWidget::EditListenerItem(const ListenerData &newListener) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     for ( int i = 0; i < adaptixWidget->Listeners.size(); i++ ) {
         if( adaptixWidget->Listeners[i].ListenerName == newListener.ListenerName ) {
@@ -151,6 +160,9 @@ void ListenersWidget::EditListenerItem(const ListenerData &newListener) const
 void ListenersWidget::RemoveListenerItem(const QString &listenerName) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for ( int i = 0; i < adaptixWidget->Listeners.size(); i++ ) {
         if( adaptixWidget->Listeners[i].ListenerName == listenerName ) {
             adaptixWidget->Listeners.erase( adaptixWidget->Listeners.begin() + i );
@@ -250,7 +262,7 @@ void ListenersWidget::removeListener() const
     bool ok = false;
     bool result = HttpReqListenerStop( listenerName, listenerType, *(adaptixWidget->GetProfile()), &message, &ok );
     if( !result ){
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
 

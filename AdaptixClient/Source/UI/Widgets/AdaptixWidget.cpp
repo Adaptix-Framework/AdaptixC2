@@ -1,5 +1,26 @@
+#include <Agent/Agent.h>
+#include <Agent/Task.h>
+#include <Agent/Commander.h>
+#include <Workers/LastTickWorker.h>
+#include <Workers/WebSocketWorker.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/BrowserFilesWidget.h>
+#include <UI/Widgets/BrowserProcessWidget.h>
+#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/SessionsTableWidget.h>
+#include <UI/Widgets/LogsWidget.h>
+#include <UI/Widgets/ListenersWidget.h>
+#include <UI/Widgets/DownloadsWidget.h>
+#include <UI/Widgets/ScreenshotsWidget.h>
+#include <UI/Widgets/TasksWidget.h>
+#include <UI/Widgets/TunnelsWidget.h>
+#include <UI/Graph/SessionsGraph.h>
+#include <UI/Dialogs/DialogSyncPacket.h>
 #include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
+#include <Client/TunnelEndpoint.h>
+#include <Client/WidgetBuilder.h>
 
 AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
