@@ -2,7 +2,8 @@
 #define ADAPTIXCLIENT_STORAGE_H
 
 #include <main.h>
-#include <Client/AuthProfile.h>
+
+class AuthProfile;
 
 class Storage
 {
@@ -33,8 +34,14 @@ public:
     static void SelectSettingsMain(SettingsData* settingsData);
     static void UpdateSettingsMain(const SettingsData &settingsData);
 
+    static void SelectSettingsConsole(SettingsData* settingsData);
+    static void UpdateSettingsConsole(const SettingsData &settingsData);
+
     static void SelectSettingsSessions(SettingsData* settingsData);
     static void UpdateSettingsSessions(const SettingsData &settingsData);
+
+    static void SelectSettingsGraph(SettingsData* settingsData);
+    static void UpdateSettingsGraph(const SettingsData &settingsData);
 
     static void SelectSettingsTasks(SettingsData* settingsData);
     static void UpdateSettingsTasks(const SettingsData &settingsData);

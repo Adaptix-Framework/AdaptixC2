@@ -2,13 +2,12 @@
 #define ADAPTIXCLIENT_MAINADAPTIX_H
 
 #include <main.h>
-#include <UI/MainUI.h>
-#include <Client/Storage.h>
-#include <Client/Extender.h>
-#include <Client/Settings.h>
 
 class Extender;
 class Settings;
+class Storage;
+class MainUI;
+class AuthProfile;
 
 class MainAdaptix : public QWidget {
 
@@ -21,11 +20,11 @@ public:
     explicit MainAdaptix();
     ~MainAdaptix() override;
 
-    void         Start() const;
+    static void Exit();
 
-    static void         Exit();
-    void         NewProject() const;
-    void         SetApplicationTheme() const;
+    void Start() const;
+    void NewProject() const;
+    void SetApplicationTheme() const;
 
     static AuthProfile* Login();
 };

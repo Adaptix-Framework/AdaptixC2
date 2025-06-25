@@ -1,5 +1,6 @@
 #include <UI/Dialogs/DialogExtender.h>
 #include <Utils/CustomElements.h>
+#include <Client/Extender.h>
 
 DialogExtender::DialogExtender(Extender* e)
 {
@@ -42,7 +43,6 @@ void DialogExtender::createUI()
     tableWidget->setHorizontalHeaderItem(3, new QTableWidgetItem("Status" ) );
     tableWidget->setHorizontalHeaderItem(4, new QTableWidgetItem("Comment" ) );
 
-    // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->hideColumn(4);
 
     textComment = new QTextEdit(this);
@@ -52,6 +52,7 @@ void DialogExtender::createUI()
     auto hSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     buttonClose = new QPushButton("Close", this);
+    buttonClose->setProperty("ButtonStyle", "dialog");
     buttonClose->setFixedWidth(180);
 
     layout = new QGridLayout(this);

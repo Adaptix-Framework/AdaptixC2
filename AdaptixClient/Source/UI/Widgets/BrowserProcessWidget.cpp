@@ -1,4 +1,6 @@
+#include <Agent/Agent.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
+#include <UI/Widgets/ConsoleWidget.h>
 
 BrowserProcessWidget::BrowserProcessWidget(Agent* a)
 {
@@ -210,7 +212,6 @@ void BrowserProcessWidget::setTableProcessDataWin(QMap<int, BrowserProcessDataWi
         tableWidget->setItem(row, 4, item_Context);
         tableWidget->setItem(row, 5, item_Process);
 
-        // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
         tableWidget->verticalHeader()->setSectionResizeMode(row, QHeaderView::ResizeToContents);
 
         row++;
@@ -267,7 +268,6 @@ void BrowserProcessWidget::setTableProcessDataUnix(QMap<int, BrowserProcessDataU
         tableWidget->setItem(row, 3, item_Context);
         tableWidget->setItem(row, 4, item_Process);
 
-        // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
         tableWidget->verticalHeader()->setSectionResizeMode(row, QHeaderView::ResizeToContents);
 
         row++;

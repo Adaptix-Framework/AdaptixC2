@@ -1,11 +1,13 @@
+#include <Agent/Agent.h>
 #include <UI/Graph/GraphScene.h>
 #include <UI/Graph/GraphItem.h>
-#include <UI/Graph/SessionsGraph.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/TasksWidget.h>
 #include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
 
-GraphScene::GraphScene(int gridSize, QWidget* m, QObject* parent) : QGraphicsScene(parent)
+GraphScene::GraphScene(const int gridSize, QWidget* m, QObject* parent) : QGraphicsScene(parent)
 {
     this->mainWidget = m;
     this->gridSize = gridSize;
@@ -107,6 +109,8 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         return;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if ( action->text() == "Console" ) {
         for ( const auto& _graphics_item : graphics_items ) {
@@ -203,7 +207,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         bool ok = false;
         bool result = HttpReqAgentExit(listId, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+        MessageError("Response timeout");
             return;
         }
     }
@@ -221,7 +225,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         bool ok = false;
         bool result = HttpReqAgentSetMark(listId, "", *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+        MessageError("Response timeout");
             return;
         }
     }
@@ -239,7 +243,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         bool ok = false;
         bool result = HttpReqAgentSetMark(listId, "Inactive", *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
     }
@@ -265,7 +269,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         bool ok = false;
         bool result = HttpReqAgentRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
     }

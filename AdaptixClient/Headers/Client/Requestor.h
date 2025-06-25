@@ -2,9 +2,10 @@
 #define ADAPTIXCLIENT_REQUESTOR_H
 
 #include <main.h>
-#include <Client/AuthProfile.h>
 
-QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token );
+class AuthProfile;
+
+QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token, int timeout = 3000 );
 
 QJsonObject HttpReqTimeout( int timeout, const QString &sUrl, const QByteArray &jsonData, const QString &token );
 
@@ -15,6 +16,8 @@ bool HttpReqLogin(AuthProfile* profile);
 bool HttpReqSync(AuthProfile profile);
 
 bool HttpReqJwtUpdate(AuthProfile* profile);
+
+bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile profile, QString* message, bool* ok);
 
 /// LISTENER
 
@@ -31,6 +34,8 @@ bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerTy
 bool HttpReqAgentCommand(const QString &agentName, const QString &agentId, const QString &cmdLine, const QString &data, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqAgentExit( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
+
+bool HttpReqConsoleRemove( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqAgentRemove( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
 

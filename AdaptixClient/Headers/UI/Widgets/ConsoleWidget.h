@@ -2,8 +2,11 @@
 #define ADAPTIXCLIENT_CONSOLEWIDGET_H
 
 #include <main.h>
-#include <Agent/Agent.h>
 #include <Utils/KeyPressHandler.h>
+#include <Utils/CustomElements.h>
+
+class Agent;
+class Commander;
 
 #define CONSOLE_OUT_LOCAL         1
 #define CONSOLE_OUT_LOCAL_INFO    2
@@ -13,24 +16,37 @@
 #define CONSOLE_OUT_ERROR         6
 #define CONSOLE_OUT_SUCCESS       7
 
-
 class ConsoleWidget : public QWidget
 {
-    QGridLayout* MainGridLayout      = nullptr;
-    QLabel*      CmdLabel            = nullptr;
-    QLabel*      InfoLabel           = nullptr;
-    QLineEdit*   InputLineEdit       = nullptr;
-    QTextEdit*   OutputTextEdit      = nullptr;
-    QCompleter*  CommandCompleter    = nullptr;
-    QStringListModel* completerModel = nullptr;
+    QGridLayout*      MainGridLayout   = nullptr;
+    QLabel*           CmdLabel         = nullptr;
+    QLabel*           InfoLabel        = nullptr;
+    QLineEdit*        InputLineEdit    = nullptr;
+    TextEditConsole*  OutputTextEdit   = nullptr;
+    QCompleter*       CommandCompleter = nullptr;
+    QStringListModel* completerModel   = nullptr;
 
-    bool userSelectedCompletion      = false;
+    QWidget*        searchWidget   = nullptr;
+    QHBoxLayout*    searchLayout   = nullptr;
+    ClickableLabel* prevButton     = nullptr;
+    ClickableLabel* nextButton     = nullptr;
+    QLabel*         searchLabel    = nullptr;
+    QLineEdit*      searchLineEdit = nullptr;
+    ClickableLabel* hideButton     = nullptr;
+    QSpacerItem*    spacer         = nullptr;
+    QShortcut*      shortcutSearch = nullptr;
+
+    bool userSelectedCompletion = false;
+    int  currentIndex = -1;
+    QVector<QTextEdit::ExtraSelection> allSelections;
 
     Agent*     agent     = nullptr;
     Commander* commander = nullptr;
-    KPH_ConsoleInput * kphInputLineEdit = nullptr;
+    KPH_ConsoleInput* kphInputLineEdit = nullptr;
 
     void createUI();
+    void findAndHighlightAll(const QString& pattern);
+    void highlightCurrent() const;
 
 public:
     explicit ConsoleWidget(Agent* a, Commander* c);
@@ -38,6 +54,9 @@ public:
 
     void UpgradeCompleter() const;
     void InputFocus() const;
+    void AddToHistory(const QString& command);
+    void SetInput(const QString &command);
+    void Clear();
 
     void ConsoleOutputMessage( qint64 timestamp, const QString &taskId, int type, const QString &message, const QString &text, bool completed ) const;
     void ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const;
@@ -45,6 +64,10 @@ public:
 public slots:
     void processInput();
     void onCompletionSelected(const QString &selectedText);
+    void toggleSearchPanel();
+    void handleSearch();
+    void handleSearchBackward();
+    void handleShowHistory();
 };
 
 #endif //ADAPTIXCLIENT_CONSOLEWIDGET_H

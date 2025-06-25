@@ -18,7 +18,6 @@ const QByteArray KeyboardTranslatorManager::defaultTranslatorText(
 );
 
 #ifdef Q_OS_MAC
-// On Mac, Qt::ControlModifier means Cmd, and MetaModifier means Ctrl
 const Qt::KeyboardModifier KeyboardTranslator::CTRL_MOD = Qt::MetaModifier;
 #else
 const Qt::KeyboardModifier KeyboardTranslator::CTRL_MOD = Qt::ControlModifier;
@@ -158,18 +157,15 @@ void KeyboardTranslatorWriter::writeEntry(const KeyboardTranslator::Entry &entry
 
 KeyboardTranslatorReader::KeyboardTranslatorReader(QIODevice *source)
     : _source(source), _hasNext(false) {
-    // read input until we find the description
     while (_description.isEmpty() && !source->atEnd()) {
         QList<Token> tokens = tokenize(QString::fromUtf8(source->readLine()));
         if (!tokens.isEmpty() && tokens.first().type == Token::TitleKeyword)
         _description = tokens[1].text;
     }
-    // read first entry (if any)
     readNext();
 }
 
 void KeyboardTranslatorReader::readNext() {
-    // find next entry
     while (!_source->atEnd()) {
         const QList<Token> &tokens = tokenize(QString::fromUtf8(_source->readLine()));
         if (!tokens.isEmpty() && tokens.first().type == Token::KeyKeyword) {
@@ -185,11 +181,9 @@ void KeyboardTranslatorReader::readNext() {
             KeyboardTranslator::Command command = KeyboardTranslator::NoCommand;
             QByteArray text;
 
-            // get text or command
             if (tokens[2].type == Token::OutputText) {
                 text = tokens[2].text.toLocal8Bit();
             } else if (tokens[2].type == Token::Command) {
-                // identify command
                 if (!parseAsCommand(tokens[2].text, command))
                     qDebug() << "Command" << tokens[2].text << "not understood.";
             }
@@ -284,8 +278,6 @@ bool KeyboardTranslatorReader::decodeSequence(
             buffer.clear();
         }
 
-        // check if this is a wanted / not-wanted flag and update the
-        // state ready for the next item
         if (ch == QLatin1Char('+'))
             isWanted = true;
         else if (ch == QLatin1Char('-'))
@@ -346,7 +338,6 @@ bool KeyboardTranslatorReader::parseAsKeyCode(const QString &item, int &keyCode)
             qDebug() << "Unhandled key codes in sequence: " << item;
         }
     }
-    // additional cases implemented for backwards compatibility with KDE 3
     else if (item == QLatin1String("prior"))
         keyCode = Qt::Key_PageUp;
     else if (item == QLatin1String("next"))
@@ -371,9 +362,6 @@ KeyboardTranslator::Entry KeyboardTranslatorReader::createEntry(const QString &c
     entryString.append(condition);
     entryString.append(QLatin1String(" : "));
 
-    // if 'result' is the name of a command then the entry result will be that
-    // command, otherwise the result will be treated as a string to echo when the
-    // key sequence specified by 'condition' is pressed
     KeyboardTranslator::Command command;
     if (parseAsCommand(result, command))
         entryString.append(result);
@@ -406,7 +394,6 @@ bool KeyboardTranslatorReader::parseError() {
 QList<KeyboardTranslatorReader::Token> KeyboardTranslatorReader::tokenize(const QString &line) {
     QString text = line;
 
-    // remove comments
     bool inQuotes = false;
     int commentPos = -1;
     for (int i = text.length() - 1; i >= 0; i--) {
@@ -445,11 +432,9 @@ QList<KeyboardTranslatorReader::Token> KeyboardTranslatorReader::tokenize(const 
         list << keyToken << sequenceToken;
 
         if (keyMatch.captured(3).isEmpty()) {
-            // capturedTexts()[2] is a command
             Token commandToken = {Token::Command, keyMatch.captured(2)};
             list << commandToken;
         } else {
-            // capturedTexts()[3] is the output string
             Token outputToken = {Token::OutputText, keyMatch.captured(3)};
             list << outputToken;
         }
@@ -485,7 +470,6 @@ bool KeyboardTranslator::Entry::matches(int keyCode,
                                         Qt::KeyboardModifiers modifiers,
                                         States testState) const {
 #ifdef Q_OS_MAC
-    // On Mac, arrow keys are considered part of keypad. Ignore that.
     modifiers &= ~Qt::KeypadModifier;
 #endif
 

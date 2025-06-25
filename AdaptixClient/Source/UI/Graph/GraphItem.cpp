@@ -1,6 +1,8 @@
+#include <Agent/Agent.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/GraphItemLink.h>
 #include <UI/Graph/SessionsGraph.h>
+#include <UI/Graph/GraphScene.h>
 
 GraphItemNote::GraphItemNote(const QString &h, const QString &t)
 {
@@ -67,7 +69,7 @@ QRectF GraphItem::boundingRect() const
 void GraphItem::paint( QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
     if ( this->sessionsGraph->IsRootItem(this) )
-        painter->drawImage(rect, QImage(":/graph/firewall"));
+        painter->drawImage(rect, QImage(":/graph/v2/firewall"));
     else
         painter->drawImage(rect, this->agent->graphImage);
 

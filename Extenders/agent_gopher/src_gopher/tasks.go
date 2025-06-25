@@ -416,6 +416,7 @@ func taskShell(paramsData []byte) ([]byte, error) {
 	}
 
 	cmd := exec.Command(params.Program, params.Args...)
+	functions.ProcessSettings(cmd)
 	output, _ := cmd.CombinedOutput()
 
 	return msgpack.Marshal(utils.AnsShell{Output: string(output)})
@@ -679,6 +680,7 @@ func jobRun(paramsData []byte) ([]byte, error) {
 
 	procCtx, procCancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(procCtx, params.Program, params.Args...)
+	functions.ProcessSettings(cmd)
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		procCancel()

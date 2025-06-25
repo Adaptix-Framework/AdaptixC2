@@ -1,6 +1,9 @@
+#include <Agent/Agent.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Graph/GraphItemLink.h>
 #include <UI/Graph/LayoutTreeLeft.h>
+#include <UI/Graph/GraphItem.h>
+#include <UI/Graph/GraphScene.h>
 
 SessionsGraph::SessionsGraph(QWidget* parent) : QGraphicsView(parent)
 {
@@ -167,6 +170,12 @@ void SessionsGraph::UnlinkAgent(const Agent* parentAgent, const Agent* childAgen
 void SessionsGraph::TreeDraw() const
 {
     LayoutTreeLeft::draw(this->rootItem);
+}
+
+void SessionsGraph::UpdateIcons() const
+{
+    for (int i = 0; i < items.size(); i++)
+        items[i]->update();
 }
 
 void SessionsGraph::Clear()

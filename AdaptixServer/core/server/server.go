@@ -8,7 +8,6 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"encoding/json"
-	"fmt"
 	"os"
 )
 
@@ -35,10 +34,12 @@ func NewTeamserver() *Teamserver {
 		agents:      safe.NewMap(),
 		listeners:   safe.NewMap(),
 		downloads:   safe.NewMap(),
+		tmp_uploads: safe.NewMap(),
 		screenshots: safe.NewMap(),
 		tunnels:     safe.NewMap(),
 		terminals:   safe.NewMap(),
 		pivots:      safe.NewSlice(),
+		otps:        safe.NewMap(),
 	}
 	ts.Extender = extender.NewExtender(ts)
 	return ts
@@ -46,12 +47,14 @@ func NewTeamserver() *Teamserver {
 
 func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, extenders []string) {
 	ts.Profile.Server = &profile.TsProfile{
-		Port:      port,
-		Endpoint:  endpoint,
-		Password:  password,
-		Cert:      cert,
-		Key:       key,
-		Extenders: extenders,
+		Port:       port,
+		Endpoint:   endpoint,
+		Password:   password,
+		Cert:       cert,
+		Key:        key,
+		Extenders:  extenders,
+		ATokenLive: 12,
+		RTokenLive: 168,
 	}
 	ts.Profile.ServerResponse = &profile.TsResponse{
 		Status:      404,
@@ -128,10 +131,7 @@ func (ts *Teamserver) RestoreData() {
 		packet := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packet)
 
-		message := fmt.Sprintf("Restore '%v' (%v) executed on '%v @ %v.%v' (%v)", agentData.Name, agentData.Id, agentData.Username, agentData.Computer, agentData.Domain, agentData.InternalIP)
-		packet2 := CreateSpEvent(EVENT_AGENT_NEW, message)
-		ts.TsSyncAllClients(packet2)
-		ts.events.Put(packet2)
+		ts.TsEventAgent(true, agentData)
 
 		/// Tasks
 		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)

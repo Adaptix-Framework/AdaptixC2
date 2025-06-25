@@ -2,8 +2,6 @@
 #define ADAPTIXCLIENT_EXTENDER_H
 
 #include <main.h>
-#include <UI/Dialogs/DialogExtender.h>
-#include <MainAdaptix.h>
 
 class DialogExtender;
 class MainAdaptix;

@@ -2,7 +2,8 @@
 #define TASK_H
 
 #include <main.h>
-#include <Agent/TaskTableWidgetItem.h>
+
+class TaskTableWidgetItem;
 
 class Task
 {

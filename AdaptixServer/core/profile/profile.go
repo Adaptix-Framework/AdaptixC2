@@ -69,6 +69,16 @@ func (p *AdaptixProfile) IsValid() error {
 		}
 	}
 
+	if p.Server.ATokenLive < 1 {
+		logs.Error("", "'Teamserver.access_token_live_hours' must be set")
+		valid = false
+	}
+
+	if p.Server.RTokenLive < 1 {
+		logs.Error("", "'Teamserver.refresh_token_live_hours' must be set")
+		valid = false
+	}
+
 	if p.ServerResponse.PagePath != "" {
 		_, err := os.Stat(p.ServerResponse.PagePath)
 		if err != nil {
@@ -84,4 +94,5 @@ func (p *AdaptixProfile) IsValid() error {
 	} else {
 		return errors.New("Invalid profile\n")
 	}
+
 }

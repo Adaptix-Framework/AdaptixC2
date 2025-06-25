@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Adaptix-Framework/axc2"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -270,4 +271,50 @@ func (ts *Teamserver) TsDownloadTaskPause(fileId string, clientName string) erro
 
 	ts.TsTaskCreate(agent.Data.Id, "", clientName, taskData)
 	return nil
+}
+
+///
+
+func (ts *Teamserver) TsDownloadGetFilepath(fileId string) (string, error) {
+	value, ok := ts.downloads.Get(fileId)
+	if !ok {
+		return "", errors.New("File not found: " + fileId)
+	}
+	downloadData := value.(adaptix.DownloadData)
+
+	if downloadData.State != DOWNLOAD_STATE_FINISHED {
+		return "", errors.New("Download not finished")
+	}
+
+	return downloadData.LocalPath, nil
+}
+
+func (ts *Teamserver) TsUploadGetFilepath(fileId string) (string, error) {
+	value, ok := ts.tmp_uploads.Get(fileId)
+	if !ok {
+		return "", errors.New("File not found: " + fileId)
+	}
+	filename := value.(string)
+
+	path := logs.RepoLogsInstance.UploadPath + "/" + filename
+
+	return path, nil
+}
+
+func (ts *Teamserver) TsUploadGetFileContent(fileId string) ([]byte, error) {
+	value, ok := ts.tmp_uploads.GetDelete(fileId)
+	if !ok {
+		return nil, errors.New("File not found: " + fileId)
+	}
+	filename := value.(string)
+
+	path := logs.RepoLogsInstance.UploadPath + "/" + filename
+
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, errors.New("Failed to read file: " + fileId)
+	}
+	_ = os.Remove(path)
+
+	return data, nil
 }

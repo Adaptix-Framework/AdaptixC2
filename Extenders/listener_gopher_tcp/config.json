@@ -103,7 +103,6 @@
         "editable": "false",
         "position": [ 6, 2, 1, 2 ]
       },
-
       {
         "type": "file_selector",
         "id": "client_cert",

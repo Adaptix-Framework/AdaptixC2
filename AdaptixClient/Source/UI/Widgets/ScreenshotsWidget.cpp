@@ -1,6 +1,7 @@
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
 
 ImageFrame::ImageFrame(QWidget* parent)
     : QWidget(parent),
@@ -145,6 +146,9 @@ void ScreenshotsWidget::createUI()
 void ScreenshotsWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->Screenshots.clear();
 
     QSignalBlocker blocker(tableWidget->selectionModel());
@@ -292,7 +296,7 @@ void ScreenshotsWidget::actionNote() const
         bool ok = false;
         bool result = HttpReqScreenSetNote(listId, newNote, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
     }
@@ -358,7 +362,7 @@ void ScreenshotsWidget::actionDelete() const
     bool ok = false;
     bool result = HttpReqScreenRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
 }
@@ -372,7 +376,7 @@ void ScreenshotsWidget::onTableItemSelection(const QModelIndex &current, const Q
     QString screenId = tableWidget->item(row,0)->text();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if( !adaptixWidget->Screenshots.contains(screenId) )
+    if (!adaptixWidget || !adaptixWidget->Screenshots.contains(screenId) )
         return;
 
     ScreenData screenData = adaptixWidget->Screenshots[screenId];

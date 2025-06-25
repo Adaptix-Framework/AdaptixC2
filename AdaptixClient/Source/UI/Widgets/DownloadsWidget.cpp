@@ -1,6 +1,9 @@
+#include <Agent/Agent.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Dialogs/DialogDownloader.h>
 #include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
 
 DownloadsWidget::DownloadsWidget(QWidget* w)
 {
@@ -50,6 +53,9 @@ DownloadsWidget::~DownloadsWidget() = default;
 void DownloadsWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->Downloads.clear();
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
@@ -58,7 +64,7 @@ void DownloadsWidget::Clear() const
 void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload )
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if(adaptixWidget->Downloads.contains(newDownload.FileId))
+    if (!adaptixWidget || adaptixWidget->Downloads.contains(newDownload.FileId))
         return;
 
     if( tableWidget->rowCount() < 1 )
@@ -147,6 +153,9 @@ void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload )
 void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int state) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->Downloads[fileId].RecvSize = recvSize;
     adaptixWidget->Downloads[fileId].State    = state;
 
@@ -189,6 +198,9 @@ void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int 
 void DownloadsWidget::RemoveDownloadItem(const QString &fileId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->Downloads.remove(fileId);
 
     for ( int row = 0; row < tableWidget->rowCount(); row++ ) {
@@ -211,6 +223,9 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
     bool menuDownloadCancel = false;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 2)->isSelected() ) {
             QString agentId = tableWidget->item( rowIndex, 2 )->text();
@@ -231,6 +246,13 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
     auto ctxMenu = QMenu();
     if(Received.compare("") == 0) {
         ctxMenu.addAction("Sync file to client", this, &DownloadsWidget::actionSync);
+
+        auto agentMenu = new QMenu("Sync as ...", &ctxMenu);
+        agentMenu->addAction("Curl command", this, &DownloadsWidget::actionSyncCurl);
+        agentMenu->addAction("Wget command", this, &DownloadsWidget::actionSyncWget);
+        ctxMenu.addMenu(agentMenu);
+
+        ctxMenu.addSeparator();
         ctxMenu.addAction("Delete file", this, &DownloadsWidget::actionDelete );
     }
     else {
@@ -253,60 +275,136 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
 void DownloadsWidget::actionSync() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
-    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() == "" ) {
-        QString fileId  = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
+        return;
 
-        QJsonObject dataJson;
-        dataJson["file_id"] = fileId;
-        QByteArray jsonData = QJsonDocument(dataJson).toJson();
+    QString fileId   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    QString filePath = tableWidget->item( tableWidget->currentRow(), 5 )->text();
 
-        QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/download/sync";
-        QJsonObject jsonObject = HttpReq(sUrl, jsonData, adaptixWidget->GetProfile()->GetAccessToken());
-        if ( jsonObject.contains("message") && jsonObject.contains("ok") || jsonObject.contains("content") && jsonObject.contains("filename") && jsonObject.contains("ok") ) {}
-        else {
-            MessageError("JWT error");
-            return;
-        }
-
-        bool ok = jsonObject["ok"].toBool();
-        if ( !ok ) {
-            QString message = jsonObject["message"].toString();
-            MessageError(message);
-        }
-        else {
-            QString fileName = jsonObject["filename"].toString();
-            QByteArray encodedContent = jsonObject["content"].toString().toUtf8();
-            QByteArray fileContent = QByteArray::fromBase64(encodedContent);
-
-            QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", fileName, "All Files (*.*)" );
-            if ( filePath.isEmpty())
-                return;
-
-            QFile file(filePath);
-            if (!file.open(QIODevice::WriteOnly)) {
-                MessageError("Failed to open file for writing");
-                return;
-            }
-
-            file.write( fileContent );
-            file.close();
-
-            QInputDialog inputDialog;
-            inputDialog.setWindowTitle("Sync file");
-            inputDialog.setLabelText("File saved to:");
-            inputDialog.setTextEchoMode(QLineEdit::Normal);
-            inputDialog.setTextValue(filePath);
-            inputDialog.adjustSize();
-            inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
-            inputDialog.exec();
-        }
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqGetOTP("download", fileId, *adaptixWidget->GetProfile(), &message, &ok);
+    if( !result ) {
+        MessageError("Response timeout");
+        return;
     }
+    if ( !ok ) {
+        MessageError(message);
+        return;
+    }
+    QString otp = message;
+
+    QStringList pathParts = filePath.split("\\", Qt::SkipEmptyParts);
+    QString fileName =  pathParts[pathParts.size()-1];
+    pathParts = fileName.split("/", Qt::SkipEmptyParts);
+    fileName = pathParts[pathParts.size()-1];
+
+    QString savedPath = QFileDialog::getSaveFileName( nullptr, "Save File", fileName, "All Files (*.*)" );
+    if (savedPath.isEmpty())
+        return;
+
+    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
+
+    DialogDownloader dialog(sUrl, otp, savedPath);
+    dialog.exec();
+}
+
+void DownloadsWidget::actionSyncCurl() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
+        return;
+
+    QString fileId   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    QString filePath = tableWidget->item( tableWidget->currentRow(), 5 )->text();
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqGetOTP("download", fileId, *adaptixWidget->GetProfile(), &message, &ok);
+    if( !result ) {
+        MessageError("Response timeout");
+        return;
+    }
+    if ( !ok ) {
+        MessageError(message);
+        return;
+    }
+    QString otp = message;
+
+    QStringList pathParts = filePath.split("\\", Qt::SkipEmptyParts);
+    QString fileName =  pathParts[pathParts.size()-1];
+    pathParts = fileName.split("/", Qt::SkipEmptyParts);
+    fileName = pathParts[pathParts.size()-1];
+
+    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
+
+    QString command = QString("curl -k %1 -H 'OTP: %2' -o %3").arg(sUrl).arg(otp).arg(fileName);
+
+    QInputDialog inputDialog;
+    inputDialog.setWindowTitle("Sync file as curl");
+    inputDialog.setLabelText("Curl command:");
+    inputDialog.setTextEchoMode(QLineEdit::Normal);
+    inputDialog.setTextValue(command);
+    inputDialog.setFixedSize(700,60);
+    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+    inputDialog.exec();
+}
+
+void DownloadsWidget::actionSyncWget() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
+    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
+        return;
+
+    QString fileId   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    QString filePath = tableWidget->item( tableWidget->currentRow(), 5 )->text();
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqGetOTP("download", fileId, *adaptixWidget->GetProfile(), &message, &ok);
+    if( !result ) {
+        MessageError("Response timeout");
+        return;
+    }
+    if ( !ok ) {
+        MessageError(message);
+        return;
+    }
+    QString otp = message;
+
+    QStringList pathParts = filePath.split("\\", Qt::SkipEmptyParts);
+    QString fileName =  pathParts[pathParts.size()-1];
+    pathParts = fileName.split("/", Qt::SkipEmptyParts);
+    fileName = pathParts[pathParts.size()-1];
+
+    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
+
+    QString command = QString("wget --no-check-certificate %1 --header='OTP: %2' -O %3").arg(sUrl).arg(otp).arg(fileName);
+
+    QInputDialog inputDialog;
+    inputDialog.setWindowTitle("Sync file as curl");
+    inputDialog.setLabelText("Curl command:");
+    inputDialog.setTextEchoMode(QLineEdit::Normal);
+    inputDialog.setTextValue(command);
+    inputDialog.setFixedSize(700,60);
+    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+    inputDialog.exec();
 }
 
 void DownloadsWidget::actionDelete() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() == "" ) {
 
@@ -315,7 +413,7 @@ void DownloadsWidget::actionDelete() const
         bool ok = false;
         bool result = HttpReqDownloadAction("delete", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
 
@@ -328,6 +426,8 @@ void DownloadsWidget::actionDelete() const
 void DownloadsWidget::actionResume() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
 
@@ -336,7 +436,7 @@ void DownloadsWidget::actionResume() const
         bool ok = false;
         bool result = HttpReqDownloadAction("resume", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
 
@@ -349,6 +449,8 @@ void DownloadsWidget::actionResume() const
 void DownloadsWidget::actionPause() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
 
@@ -357,7 +459,7 @@ void DownloadsWidget::actionPause() const
         bool ok = false;
         bool result = HttpReqDownloadAction("pause", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
 
@@ -370,6 +472,8 @@ void DownloadsWidget::actionPause() const
 void DownloadsWidget::actionCancel() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
 
@@ -378,7 +482,7 @@ void DownloadsWidget::actionCancel() const
         bool ok = false;
         bool result = HttpReqDownloadAction("cancel", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
-            MessageError("JWT error");
+            MessageError("Response timeout");
             return;
         }
 

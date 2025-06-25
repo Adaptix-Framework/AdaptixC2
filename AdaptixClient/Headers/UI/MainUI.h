@@ -2,13 +2,14 @@
 #define ADAPTIXCLIENT_MAINUI_H
 
 #include <main.h>
-#include <UI/Widgets/AdaptixWidget.h>
-#include <Client/AuthProfile.h>
+
+class AuthProfile;
+class AdaptixWidget;
+class WebSocketWorker;
 
 class MainUI : public QMainWindow
 {
     QTabWidget* mainuiTabWidget = nullptr;
-    // AdaptixWidget* mainAdaptixWidget = nullptr;
 
     QMap<QString, AdaptixWidget*> AdaptixProjects;
 
@@ -23,8 +24,13 @@ public:
     static void onSettings();
 
     void AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker);
+
     void AddNewExtension(const ExtensionFile &extFile);
     void RemoveExtension(const ExtensionFile &extFile);
+
+    void UpdateSessionsTableColumns();
+    void UpdateGraphIcons();
+    void UpdateTasksTableColumns();
 
 protected:
     void closeEvent(QCloseEvent *event) override;

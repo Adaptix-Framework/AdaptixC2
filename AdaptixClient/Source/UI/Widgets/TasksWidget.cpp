@@ -1,5 +1,9 @@
+#include <Agent/Agent.h>
+#include <Agent/Task.h>
+#include <Agent/TaskTableWidgetItem.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Client/Settings.h>
 #include <MainAdaptix.h>
 
 TaskOutputWidget::TaskOutputWidget( )
@@ -130,10 +134,7 @@ void TasksWidget::createUI()
     tableWidget->setHorizontalHeaderItem( this->ColumnResult,      new QTableWidgetItem("Result"));
     tableWidget->setHorizontalHeaderItem( this->ColumnOutput,      new QTableWidgetItem("Output"));
 
-    for(int i = 0; i < 11; i++) {
-        if (GlobalClient->settings->data.TasksTableColumns[i] == false)
-            tableWidget->hideColumn(i);
-    }
+    this->UpdateColumnsVisible();
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
@@ -205,12 +206,14 @@ void TasksWidget::addTableItem(const Task* newTask) const
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 }
 
-
 /// PUBLIC
 
 void TasksWidget::AddTaskItem(Task* newTask) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     if ( adaptixWidget->TasksMap.contains(newTask->data.TaskId) )
         return;
 
@@ -229,6 +232,9 @@ void TasksWidget::AddTaskItem(Task* newTask) const
 void TasksWidget::RemoveTaskItem(const QString &taskId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget || !adaptixWidget->TasksMap.contains((taskId)))
+        return;
+
     Task* task = adaptixWidget->TasksMap[taskId];
     QString agentId = task->data.AgentId;
 
@@ -261,6 +267,9 @@ void TasksWidget::RemoveTaskItem(const QString &taskId) const
 void TasksWidget::RemoveAgentTasksItem(const QString &agentId) const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for (auto key : adaptixWidget->TasksMap.keys()) {
         Task* task = adaptixWidget->TasksMap[key];
         if (task->data.AgentId == agentId) {
@@ -286,6 +295,16 @@ void TasksWidget::SetAgentFilter(const QString &agentId)
     this->SetData();
 }
 
+void TasksWidget::UpdateColumnsVisible() const
+{
+    for(int i = 0; i < 11; i++) {
+        if (GlobalClient->settings->data.TasksTableColumns[i])
+            tableWidget->showColumn(i);
+        else
+            tableWidget->hideColumn(i);
+    }
+}
+
 void TasksWidget::SetData() const
 {
     taskOutputConsole->SetConten("", "");
@@ -293,6 +312,8 @@ void TasksWidget::SetData() const
     this->ClearTableContent();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
 
     for (int i = 0; i < adaptixWidget->TasksVector.size(); i++ ) {
         QString taskId = adaptixWidget->TasksVector[i];
@@ -316,6 +337,9 @@ void TasksWidget::ClearTableContent() const
 void TasksWidget::Clear() const
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     adaptixWidget->TasksVector.clear();
 
     for (auto taskId : adaptixWidget->TasksMap.keys()) {
@@ -383,10 +407,10 @@ void TasksWidget::onTableItemSelection(const QModelIndex &current, const QModelI
     if (row < 0)
         return;
 
-    QString taskId = tableWidget->item(row,0)->text();
+    QString taskId = tableWidget->item(row,this->ColumnTaskId)->text();
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if( !adaptixWidget->TasksMap.contains(taskId) )
+    if (!adaptixWidget || !adaptixWidget->TasksMap.contains(taskId) )
         return;
 
     TaskData taskData = adaptixWidget->TasksMap[taskId]->data;
@@ -403,7 +427,7 @@ void TasksWidget::actionCopyTaskId() const
 {
     int row = tableWidget->currentRow();
     if( row >= 0) {
-        QString taskId = tableWidget->item( row, 0 )->text();
+        QString taskId = tableWidget->item( row, this->ColumnTaskId )->text();
         QApplication::clipboard()->setText( taskId );
     }
 }
@@ -412,7 +436,7 @@ void TasksWidget::actionCopyCmd() const
 {
     int row = tableWidget->currentRow();
     if( row >= 0) {
-        QString cmdLine = tableWidget->item( row, 7 )->text();
+        QString cmdLine = tableWidget->item( row, this->ColumnCommandLine )->text();
         QApplication::clipboard()->setText( cmdLine );
     }
 }
@@ -421,7 +445,10 @@ void TasksWidget::actionOpenConsole() const
 {
     int row = tableWidget->currentRow();
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    auto agentId = tableWidget->item( row, 2 )->text();
+    if (!adaptixWidget)
+        return;
+
+    auto agentId = tableWidget->item( row, this->ColumnAgentId )->text();
     adaptixWidget->LoadConsoleUI(agentId);
 }
 
@@ -430,10 +457,13 @@ void TasksWidget::actionStop() const
     QMap<QString, QStringList> agentTasks;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, 2 )->text();
-            auto taskId = tableWidget->item( rowIndex, 0 )->text();
+            auto agentId = tableWidget->item( rowIndex, this->ColumnAgentId )->text();
+            auto taskId = tableWidget->item( rowIndex, this->ColumnTaskId )->text();
             agentTasks[agentId].append(taskId);
         }
     }
@@ -447,10 +477,13 @@ void TasksWidget::actionDelete() const
     QMap<QString, QStringList> agentTasks;
 
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+    if (!adaptixWidget)
+        return;
+
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, 2 )->text();
-            auto taskId = tableWidget->item( rowIndex, 0 )->text();
+            auto agentId = tableWidget->item( rowIndex, this->ColumnAgentId )->text();
+            auto taskId = tableWidget->item( rowIndex, this->ColumnTaskId )->text();
             agentTasks[agentId].append(taskId);
         }
     }

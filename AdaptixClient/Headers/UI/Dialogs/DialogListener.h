@@ -2,8 +2,9 @@
 #define ADAPTIXCLIENT_DIALOGLISTENER_H
 
 #include <main.h>
-#include <Client/WidgetBuilder.h>
 #include <Client/AuthProfile.h>
+
+class WidgetBuilder;
 
 class DialogListener : public QDialog
 {

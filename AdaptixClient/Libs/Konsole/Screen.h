@@ -189,8 +189,8 @@ private:
     int lines;
     int columns;
 
-    typedef QVector<Character> ImageLine;      // [0..columns]
-    ImageLine*          screenLines;    // [lines]
+    typedef QVector<Character> ImageLine;
+    ImageLine*          screenLines;
 
     int _scrolledLines;
     QRect _lastScrolledRegion;
@@ -216,14 +216,14 @@ private:
 
     QBitArray tabStops;
 
-    int selBegin; // The first location selected.
-    int selTopLeft;    // TopLeft Location.
-    int selBottomRight;    // Bottom Right Location.
-    bool blockSelectionMode;  // Column selection mode
+    int selBegin;
+    int selTopLeft;
+    int selBottomRight;
+    bool blockSelectionMode;
 
-    CharacterColor effectiveForeground; // These are derived from
-    CharacterColor effectiveBackground; // the cu_* variables above
-    quint8 effectiveRendition;          // to speed up operation
+    CharacterColor effectiveForeground;
+    CharacterColor effectiveBackground;
+    quint8 effectiveRendition;
 
     class SavedState {
     public:
@@ -245,4 +245,4 @@ private:
     static Character defaultChar;
 };
 
-#endif // SCREEN_H
+#endif

@@ -42,43 +42,43 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 	case TUNNEL_SOCKS4:
 		if Listen {
 			commandline = fmt.Sprintf("[from browser] socks4 start %v:%v", Lhost, Lport)
-			message = fmt.Sprintf("SOCKS4 server started on '%v:%v'\n", Lhost, Lport)
+			message = fmt.Sprintf("SOCKS4 server started on '%v:%v'", Lhost, Lport)
 		} else {
 			commandline = fmt.Sprintf("[from browser] socks4 (client) start %v:%v", Lhost, Lport)
-			message = fmt.Sprintf("SOCKS4 server started on (client '%v') '%v:%v'\n", Client, Lhost, Lport)
+			message = fmt.Sprintf("SOCKS4 server started on (client '%v') '%v:%v'", Client, Lhost, Lport)
 		}
 
 	case TUNNEL_SOCKS5:
 		if Listen {
 			commandline = fmt.Sprintf("[from browser] socks5 start %v:%v", Lhost, Lport)
-			message = fmt.Sprintf("SOCKS5 server started on '%v:%v'\n", Lhost, Lport)
+			message = fmt.Sprintf("SOCKS5 server started on '%v:%v'", Lhost, Lport)
 		} else {
 			commandline = fmt.Sprintf("[from browser] socks5 (client) start %v:%v", Lhost, Lport)
-			message = fmt.Sprintf("SOCKS5 server started on (client '%v') '%v:%v'\n", Client, Lhost, Lport)
+			message = fmt.Sprintf("SOCKS5 server started on (client '%v') '%v:%v'", Client, Lhost, Lport)
 		}
 
 	case TUNNEL_SOCKS5_AUTH:
 		if Listen {
 			commandline = fmt.Sprintf("[from browser] socks5 start %v:%v -auth %v %v", Lhost, Lport, AuthUser, AuthPass)
-			message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%v:%v'\n", Lhost, Lport)
+			message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%v:%v'", Lhost, Lport)
 		} else {
 			commandline = fmt.Sprintf("[from browser] socks5 (client) start %v:%v -auth %v %v", Lhost, Lport, AuthUser, AuthPass)
-			message = fmt.Sprintf("SOCKS5 (with Auth) server started on (client '%v') '%v:%v'\n", Client, Lhost, Lport)
+			message = fmt.Sprintf("SOCKS5 (with Auth) server started on (client '%v') '%v:%v'", Client, Lhost, Lport)
 		}
 
 	case TUNNEL_LPORTFWD:
 		if Listen {
 			commandline = fmt.Sprintf("[from browser] local_port_fwd start %v:%v %v:%v", Lhost, Lport, Thost, Tport)
-			message = fmt.Sprintf("Started local port forwarding on %v:%v to %v:%v\n", Lhost, Lport, Thost, Tport)
+			message = fmt.Sprintf("Started local port forwarding on %v:%v to %v:%v", Lhost, Lport, Thost, Tport)
 		} else {
 			commandline = fmt.Sprintf("[from browser] local_port_fwd (client) start on %v:%v %v:%v", Lhost, Lport, Thost, Tport)
-			message = fmt.Sprintf("Started local port forwarding on (client '%v') %v:%v to %v:%v\n", Client, Lhost, Lport, Thost, Tport)
+			message = fmt.Sprintf("Started local port forwarding on (client '%v') %v:%v to %v:%v", Client, Lhost, Lport, Thost, Tport)
 		}
 
 	case TUNNEL_RPORTFWD:
 		if Listen {
 			commandline = fmt.Sprintf("[from browser] reverse_port_fwd start %v %v:%v", Lport, Thost, Tport)
-			message = fmt.Sprintf("Starting reverse port forwarding %v to %v:%v\n", Lport, Thost, Tport)
+			message = fmt.Sprintf("Starting reverse port forwarding %v to %v:%v", Lport, Thost, Tport)
 		} else {
 
 		}
@@ -109,6 +109,10 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 		}
 		tunnel, _ := value.(*Tunnel)
 		tunnel.Active = true
+		tunnel.TaskId, _ = krypt.GenerateUID(8)
+
+		packet := CreateSpTunnelCreate(tunnel.Data)
+		ts.TsSyncAllClients(packet)
 
 		ts.TsEventTunnelAdd(tunnel)
 	}
@@ -119,7 +123,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 		Sync:        true,
 		Message:     message,
 		MessageType: CONSOLE_OUT_SUCCESS,
-		ClearText:   "\n",
+		ClearText:   "",
 	}
 	ts.TsTaskCreate(AgentId, commandline, Client, taskData)
 
@@ -303,6 +307,10 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 	}
 
 	tunnel.Active = true
+	tunnel.TaskId, _ = krypt.GenerateUID(8)
+
+	packet := CreateSpTunnelCreate(tunnel.Data)
+	ts.TsSyncAllClients(packet)
 
 	ts.TsEventTunnelAdd(tunnel)
 
@@ -437,14 +445,12 @@ func (ts *Teamserver) TsTunnelUpdateRportfwd(tunnelId int, result bool) (string,
 		if ok {
 			tunnel, _ = value.(*Tunnel)
 
-			message := fmt.Sprintf("Reverse port forward '%s' to '%s:%s'", tunnel.Data.Port, tunnel.Data.Fhost, tunnel.Data.Fport)
-
 			packet := CreateSpTunnelCreate(tunnel.Data)
 			ts.TsSyncAllClients(packet)
 
-			packet2 := CreateSpEvent(EVENT_TUNNEL_START, message)
-			ts.TsSyncAllClients(packet2)
-			ts.events.Put(packet2)
+			ts.TsEventTunnelAdd(tunnel)
+
+			message := fmt.Sprintf("Reverse port forward '%s' to '%s:%s'", tunnel.Data.Port, tunnel.Data.Fhost, tunnel.Data.Fport)
 
 			return tunnel.TaskId, message, nil
 		}
@@ -513,27 +519,7 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 
 	ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
 
-	if tunnel.Data.Client == "" {
-		message := ""
-		switch tunnel.Type {
-		case TUNNEL_SOCKS4:
-			message = fmt.Sprintf("SOCKS4 server ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_SOCKS5:
-			message = fmt.Sprintf("SOCKS5 server ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_SOCKS5_AUTH:
-			message = fmt.Sprintf("SOCKS5 (with Auth) server ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_LPORTFWD:
-			message = fmt.Sprintf("Local port forward on ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_RPORTFWD:
-			message = fmt.Sprintf("Remote port forward to '%s:%s' stopped", tunnel.Data.Fhost, tunnel.Data.Fport)
-		default:
-			return errors.New("tunnel type not supported")
-		}
-
-		packet2 := CreateSpEvent(EVENT_TUNNEL_STOP, message)
-		ts.TsSyncAllClients(packet2)
-		ts.events.Put(packet2)
-	}
+	ts.TsEventTunnelRemove(tunnel)
 
 	return nil
 }

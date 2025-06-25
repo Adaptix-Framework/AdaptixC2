@@ -24,6 +24,7 @@ import (
 type GenerateConfig struct {
 	Arch             string `json:"arch"`
 	Format           string `json:"format"`
+	Win7support      bool   `json:"win7_support"`
 	ReconnectTimeout string `json:"reconn_timeout"`
 	ReconnectCount   int    `json:"reconn_count"`
 }
@@ -183,6 +184,13 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 	}
 
 	cmdBuild := fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
+	if operatingSystem == "windows" && generateConfig.Win7support {
+		_, err := os.Stat("/usr/lib/go-win7/go")
+		if os.IsNotExist(err) {
+			return nil, "", errors.New("go-win7 not installed")
+		}
+		cmdBuild = fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s GOROOT=/usr/lib/go-win7/ /usr/lib/go-win7/go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
+	}
 	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
 	runnerCmdBuild.Dir = currentDir + "/" + SrcPath
 	runnerCmdBuild.Stdout = &stdout
@@ -1129,6 +1137,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					continue
 				}
 				task.Message = fmt.Sprintf("File '%s' successfully uploaded", params.Path)
+				SyncBrowserFilesStatus(ts, task)
 
 			case COMMAND_ZIP:
 				var params AnsZip

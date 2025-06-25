@@ -1,5 +1,6 @@
 #include <UI/Dialogs/DialogListener.h>
 #include <Client/Requestor.h>
+#include <Client/WidgetBuilder.h>
 
 DialogListener::DialogListener()
 {
@@ -53,9 +54,11 @@ void DialogListener::createUI()
     listenerConfigGroupbox->setLayout(stackGridLayout);
 
     buttonCreate = new QPushButton(this);
+    buttonCreate->setProperty("ButtonStyle", "dialog");
     buttonCreate->setText("Create");
 
     buttonCancel = new QPushButton(this);
+    buttonCancel->setProperty("ButtonStyle", "dialog");
     buttonCancel->setText("Cancel");
 
     horizontalSpacer   = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
@@ -151,7 +154,7 @@ void DialogListener::onButtonCreate()
         result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
 
     if( !result ) {
-        MessageError("JWT error");
+        MessageError("Response timeout");
         return;
     }
     if ( !ok ) {

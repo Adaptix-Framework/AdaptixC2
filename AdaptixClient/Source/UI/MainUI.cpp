@@ -1,4 +1,14 @@
+#include <Agent/Agent.h>
 #include <UI/MainUI.h>
+#include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/SessionsTableWidget.h>
+#include <UI/Widgets/TasksWidget.h>
+#include <UI/Graph/SessionsGraph.h>
+#include <UI/Dialogs/DialogExtender.h>
+#include <UI/Dialogs/DialogSettings.h>
+#include <Client/Extender.h>
+#include <Client/Settings.h>
+#include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
 MainUI::MainUI()
@@ -56,6 +66,8 @@ void MainUI::closeEvent(QCloseEvent* event)
 void MainUI::AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
     auto adaptixWidget = new AdaptixWidget(profile, channelThread, channelWsWorker);
+    if (!adaptixWidget)
+        return;
 
     for (auto extFile : GlobalClient->extender->extenderFiles){
         if(extFile.Valid && extFile.Enabled)
@@ -85,6 +97,31 @@ void MainUI::RemoveExtension(const ExtensionFile &extFile)
     }
 }
 
+void MainUI::UpdateSessionsTableColumns() {
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget)
+            adaptixWidget->SessionsTablePage->UpdateColumnsVisible();
+    }
+}
+
+void MainUI::UpdateGraphIcons() {
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget) {
+            for (auto agent : adaptixWidget->AgentsMap.values() ) {
+                agent->UpdateImage();
+            }
+            adaptixWidget->SessionsGraphPage->UpdateIcons();
+        }
+    }
+}
+
+void MainUI::UpdateTasksTableColumns() {
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget)
+            adaptixWidget->TasksTab->UpdateColumnsVisible();
+    }
+}
+
 /// Actions
 
 void MainUI::onNewProject()
@@ -96,6 +133,9 @@ void MainUI::onCloseProject()
 {
     int currentIndex = mainuiTabWidget->currentIndex();
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainuiTabWidget->currentWidget() );
+    if (!adaptixWidget)
+        return;
+
     if (adaptixWidget) {
         AdaptixProjects.remove(adaptixWidget->GetProfile()->GetProject());
         adaptixWidget->Close();

@@ -1,6 +1,8 @@
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
+#include <Client/TunnelEndpoint.h>
 
 TunnelsWidget::TunnelsWidget(QWidget* w)
 {
@@ -54,6 +56,9 @@ void TunnelsWidget::createUI()
 void TunnelsWidget::Clear() const
 {
      auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+     if (!adaptixWidget)
+          return;
+
      adaptixWidget->Tunnels.clear();
      for (int index = tableWidget->rowCount(); index > 0; index-- )
          tableWidget->removeRow(index -1 );
@@ -62,6 +67,9 @@ void TunnelsWidget::Clear() const
 void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
 {
      auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+     if (!adaptixWidget)
+          return;
+
      for( auto tunnel : adaptixWidget->Tunnels ) {
           if( tunnel.TunnelId == newTunnel.TunnelId )
                return;
@@ -151,6 +159,9 @@ void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
 void TunnelsWidget::EditTunnelItem(const QString &tunnelId, const QString &info) const
 {
      auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+     if (!adaptixWidget)
+          return;
+
      for ( int i = 0; i < adaptixWidget->Tunnels.size(); i++ ) {
           if( adaptixWidget->Tunnels[i].TunnelId == tunnelId ) {
                adaptixWidget->Tunnels[i].Info = info;
@@ -170,6 +181,9 @@ void TunnelsWidget::EditTunnelItem(const QString &tunnelId, const QString &info)
 void TunnelsWidget::RemoveTunnelItem(const QString &tunnelId) const
 {
      auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
+     if (!adaptixWidget)
+          return;
+
      for ( int i = 0; i < adaptixWidget->Tunnels.size(); i++ ) {
           if( adaptixWidget->Tunnels[i].TunnelId == tunnelId ) {
                adaptixWidget->Tunnels.erase( adaptixWidget->Tunnels.begin() + i );
@@ -224,7 +238,7 @@ void TunnelsWidget::actionSetInfo() const
           bool ok = false;
           bool result = HttpReqTunnelSetInfo(tunnelId, newInfo, *(adaptixWidget->GetProfile()), &message, &ok);
           if( !result ) {
-               MessageError("JWT error");
+               MessageError("Response timeout");
                return;
           }
      }
@@ -251,7 +265,7 @@ void TunnelsWidget::actionStopTunnel() const
      bool ok = false;
      bool result = HttpReqTunnelStop( tunnelId, *(adaptixWidget->GetProfile()), &message, &ok );
      if( !result ){
-          MessageError("JWT error");
+          MessageError("Response timeout");
           return;
      }
 

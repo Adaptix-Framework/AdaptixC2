@@ -1,8 +1,8 @@
-# AdaptixC2 v0.5
+# AdaptixC2 v0.6
 
 Adaptix is an extensible post-exploitation and adversarial emulation framework made for penetration testers. The Adaptix server is written in Golang and to allow operator flexibility. The GUI Client is written in C++ QT, allowing it to be used on Linux, Windows, and MacOS operating systems. [Full documentation is available here](https://adaptix-framework.gitbook.io/adaptix-framework).
 
-![](https://adaptix-framework.gitbook.io/~gitbook/image?url=https%3A%2F%2F2104178602-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FS8p8XLFtLmf0NkofQvoa%252Fuploads%252Fq6c6ZSunA9myTeOMATrT%252FScreenshot_20250427_221822.png%3Falt%3Dmedia%26token%3D857a47b8-32a4-4df6-a963-93b1ebe282fe&width=768&dpr=4&quality=100&sign=2b0940b2&sv=2)
+![](https://adaptix-framework.gitbook.io/adaptix-framework/~gitbook/image?url=https%3A%2F%2F2104178602-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FS8p8XLFtLmf0NkofQvoa%252Fuploads%252FYyoRo3MmqD8iQaEApgaK%252FScreenshot_20250624_000326.png%3Falt%3Dmedia%26token%3De87b1861-91fa-413a-b9f7-8fabf362fb7d&width=768&dpr=4&quality=100&sign=eca8f023&sv=2)
 
 
 
@@ -53,4 +53,4 @@ Official [Extension-Kit](https://github.com/Adaptix-Framework/Extension-Kit) on 
 
 # CONTRIBUTING
 
-Please pushing сhanges to **dev** braach. Otherwise, changes will be made manually in the dev branch.
+Please push сhanges to the **dev** branch. Otherwise, changes will be made manually in the dev branch.

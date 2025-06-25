@@ -1,4 +1,7 @@
+#include <UI/MainUI.h>
 #include <UI/Dialogs/DialogSettings.h>
+#include <MainAdaptix.h>
+#include <Client/Settings.h>
 
 DialogSettings::DialogSettings(Settings* s)
 {
@@ -9,7 +12,13 @@ DialogSettings::DialogSettings(Settings* s)
     themeCombo->setCurrentText(s->data.MainTheme);
     fontFamilyCombo->setCurrentText(s->data.FontFamily);
     fontSizeSpin->setValue(s->data.FontSize);
+    graphCombo1->setCurrentText(s->data.GraphVersion);
+    terminalSizeSpin->setValue(s->data.RemoteTerminalBufferSize);
+
+    consoleSizeSpin->setValue(s->data.ConsoleBufferSize);
     consoleTimeCheckbox->setChecked(s->data.ConsoleTime);
+    consoleNoWrapCheckbox->setChecked(s->data.ConsoleNoWrap);
+    consoleAutoScrollCheckbox->setChecked(s->data.ConsoleAutoScroll);
 
     for ( int i = 0; i < 15; i++)
         sessionsCheck[i]->setChecked(s->data.SessionsTableColumns[i]);
@@ -21,18 +30,24 @@ DialogSettings::DialogSettings(Settings* s)
     for ( int i = 0; i < 11; i++)
         tasksCheck[i]->setChecked(s->data.TasksTableColumns[i]);
 
-    connect(themeCombo,          &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
-    connect(fontFamilyCombo,     &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
-    connect(fontSizeSpin,        &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(sessionsCoafSpin,    &QDoubleSpinBox::valueChanged,  buttonApply, [=, this](double){buttonApply->setEnabled(true);} );
-    connect(sessionsOffsetSpin,  &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(themeCombo,         &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
+    connect(fontFamilyCombo,    &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
+    connect(fontSizeSpin,       &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(sessionsCoafSpin,   &QDoubleSpinBox::valueChanged,  buttonApply, [=, this](double){buttonApply->setEnabled(true);} );
+    connect(sessionsOffsetSpin, &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(terminalSizeSpin,   &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(consoleSizeSpin,    &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    connect(consoleTimeCheckbox, &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(sessionsHealthCheck, &QCheckBox::checkStateChanged, this, &DialogSettings::onHealthChange );
+    connect(consoleTimeCheckbox,       &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(consoleNoWrapCheckbox,     &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(consoleAutoScrollCheckbox, &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(sessionsHealthCheck,       &QCheckBox::checkStateChanged, this, &DialogSettings::onHealthChange );
 #else
-    connect(consoleTimeCheckbox, &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(sessionsHealthCheck, &QCheckBox::stateChanged, this, &DialogSettings::onHealthChange );
+    connect(consoleTimeCheckbox,       &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(consoleNoWrapCheckbox,     &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(consoleAutoScrollCheckbox, &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(sessionsHealthCheck,       &QCheckBox::stateChanged, this, &DialogSettings::onHealthChange );
 #endif
 
     for ( int i = 0; i < 15; i++) {
@@ -43,6 +58,8 @@ DialogSettings::DialogSettings(Settings* s)
 #endif
     }
 
+    connect(graphCombo1, &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
+
     for ( int i = 0; i < 11; i++) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
         connect(tasksCheck[i],  &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
@@ -52,8 +69,8 @@ DialogSettings::DialogSettings(Settings* s)
     }
 
     connect(listSettings, &QListWidget::currentRowChanged, this, &DialogSettings::onStackChange);
-    connect(buttonApply, &QPushButton::clicked, this, &DialogSettings::onApply);
-    connect(buttonClose, &QPushButton::clicked, this, &DialogSettings::onClose);
+    connect(buttonApply,  &QPushButton::clicked,           this, &DialogSettings::onApply);
+    connect(buttonClose,  &QPushButton::clicked,           this, &DialogSettings::onClose);
 }
 
 void DialogSettings::createUI()
@@ -66,37 +83,65 @@ void DialogSettings::createUI()
     mainSettingWidget = new QWidget(this);
     mainSettingLayout = new QGridLayout(mainSettingWidget);
 
-    themeLabel = new QLabel(mainSettingWidget);
-    themeLabel->setText("Main theme: ");
-
+    themeLabel = new QLabel("Main theme: ", mainSettingWidget);
     themeCombo = new QComboBox(mainSettingWidget);
     themeCombo->addItem("Light_Arc");
     themeCombo->addItem("Dark");
+    themeCombo->addItem("Dracula");
 
-    fontSizeLabel = new QLabel(mainSettingWidget);
-    fontSizeLabel->setText("Font size: ");
-
-    fontSizeSpin = new QSpinBox(mainSettingWidget);
+    fontSizeLabel = new QLabel("Font size: ", mainSettingWidget);
+    fontSizeSpin  = new QSpinBox(mainSettingWidget);
     fontSizeSpin->setMinimum(7);
     fontSizeSpin->setMaximum(30);
 
-    fontFamilyLabel = new QLabel(mainSettingWidget);
-    fontFamilyLabel->setText("Font family: ");
-
+    fontFamilyLabel = new QLabel("Font family: ", mainSettingWidget);
     fontFamilyCombo = new QComboBox(mainSettingWidget);
     fontFamilyCombo->addItem("Adaptix - DejaVu Sans Mono");
     fontFamilyCombo->addItem("Adaptix - Droid Sans Mono");
     fontFamilyCombo->addItem("Adaptix - Hack");
+    fontFamilyCombo->addItem("Adaptix - Anonymous Pro");
+    fontFamilyCombo->addItem("Adaptix - Space Mono");
 
-    consoleTimeCheckbox = new QCheckBox("Print date and time in agent console", mainSettingWidget);
+    graphLabel1 = new QLabel("Session Graph version:", mainSettingWidget);
+    graphCombo1 = new QComboBox(mainSettingWidget);
+    graphCombo1->addItem("Version 1");
+    graphCombo1->addItem("Version 2");
 
-    mainSettingLayout->addWidget(themeLabel, 0, 0, 1, 1);
-    mainSettingLayout->addWidget(themeCombo, 0, 1, 1, 1);
-    mainSettingLayout->addWidget(fontFamilyLabel, 1,0, 1, 1);
-    mainSettingLayout->addWidget(fontFamilyCombo, 1, 1, 1, 1);
-    mainSettingLayout->addWidget(fontSizeLabel, 2, 0, 1, 1);
-    mainSettingLayout->addWidget(fontSizeSpin, 2, 1, 1, 1);
-    mainSettingLayout->addWidget(consoleTimeCheckbox, 3, 0, 1, 2);
+    terminalSizeLabel = new QLabel("RemoteTerminal buffer (lines):", mainSettingWidget);
+    terminalSizeSpin  = new QSpinBox(mainSettingWidget);
+    terminalSizeSpin->setMinimum(1);
+    terminalSizeSpin->setMaximum(100000);
+
+    consoleGroup  = new QGroupBox("Agent Console", mainSettingWidget);
+
+    consoleSizeLabel = new QLabel("Buffer size (lines):", consoleGroup);
+    consoleSizeSpin  = new QSpinBox(consoleGroup);
+    consoleSizeSpin->setMinimum(1);
+    consoleSizeSpin->setMaximum(100000);
+
+    consoleTimeCheckbox = new QCheckBox("Print date and time", consoleGroup);
+    consoleNoWrapCheckbox = new QCheckBox("No Wrap mode", consoleGroup);
+    consoleAutoScrollCheckbox = new QCheckBox("Auto Scroll mode", consoleGroup);
+
+    consoleGroupLayout = new QGridLayout(consoleGroup);
+    consoleGroupLayout->addWidget(consoleSizeLabel,          0, 0, 1, 1);
+    consoleGroupLayout->addWidget(consoleSizeSpin,           0, 1, 1, 1);
+    consoleGroupLayout->addWidget(consoleTimeCheckbox,       1, 0, 1, 2);
+    consoleGroupLayout->addWidget(consoleNoWrapCheckbox,     2, 0, 1, 2);
+    consoleGroupLayout->addWidget(consoleAutoScrollCheckbox, 3, 0, 1, 2);
+    consoleGroup->setLayout(consoleGroupLayout);
+
+    mainSettingLayout->addWidget(themeLabel,        0, 0, 1, 1);
+    mainSettingLayout->addWidget(themeCombo,        0, 1, 1, 1);
+    mainSettingLayout->addWidget(fontFamilyLabel,   1, 0, 1, 1);
+    mainSettingLayout->addWidget(fontFamilyCombo,   1, 1, 1, 1);
+    mainSettingLayout->addWidget(fontSizeLabel,     2, 0, 1, 1);
+    mainSettingLayout->addWidget(fontSizeSpin,      2, 1, 1, 1);
+    mainSettingLayout->addWidget(graphLabel1,       3, 0, 1, 1);
+    mainSettingLayout->addWidget(graphCombo1,       3, 1, 1, 1);
+    mainSettingLayout->addWidget(terminalSizeLabel, 4, 0, 1, 1);
+    mainSettingLayout->addWidget(terminalSizeSpin,  4, 1, 1, 1);
+    mainSettingLayout->addWidget(consoleGroup,      5, 0, 1, 2);
 
     mainSettingWidget->setLayout(mainSettingLayout);
 
@@ -166,6 +211,10 @@ void DialogSettings::createUI()
 
     sessionsWidget->setLayout(sessionsLayout);
 
+    /////////////// Sessions Graph
+
+
+
     /////////////// Tasks Table
 
     tasksWidget = new QWidget(this);
@@ -204,6 +253,7 @@ void DialogSettings::createUI()
     listSettings->setFixedWidth(150);
     listSettings->addItem("Main settings");
     listSettings->addItem("Sessions table");
+    // listSettings->addItem("Sessions graph");
     listSettings->addItem("Tasks table");
     listSettings->setCurrentRow(0);
 
@@ -222,7 +272,10 @@ void DialogSettings::createUI()
 
     hSpacer     = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     buttonClose = new QPushButton("Close", this);
+    buttonClose->setProperty("ButtonStyle", "dialog");
+
     buttonApply = new QPushButton("Apply ", this);
+    buttonApply->setProperty("ButtonStyle", "dialog");
     buttonApply->setEnabled(false);
 
     stackSettings = new QStackedWidget(this);
@@ -264,24 +317,68 @@ void DialogSettings::onApply() const
 {
     buttonApply->setEnabled(false);
 
-    settings->data.MainTheme   = themeCombo->currentText();
-    settings->data.FontSize    = fontSizeSpin->value();
-    settings->data.FontFamily  = fontFamilyCombo->currentText();
-    settings->data.ConsoleTime = consoleTimeCheckbox->isChecked();
+    if(settings->data.MainTheme != themeCombo->currentText()) {
+        settings->data.MainTheme = themeCombo->currentText();
 
-    for ( int i = 0; i < 15; i++)
-        settings->data.SessionsTableColumns[i] = sessionsCheck[i]->isChecked();
+        QString appTheme = ":/themes/" + settings->data.MainTheme;
+        bool result = false;
+        QString style = ReadFileString(appTheme, &result);
+        if (result) {
+            QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
+            app->setStyleSheet(style);
+        }
+    }
+
+    if(settings->data.FontSize != fontSizeSpin->value() || settings->data.FontFamily != fontFamilyCombo->currentText()) {
+        settings->data.FontSize   = fontSizeSpin->value();
+        settings->data.FontFamily = fontFamilyCombo->currentText();
+
+        QString appFontFamily = settings->data.FontFamily;
+        if (appFontFamily.startsWith("Adaptix"))
+            appFontFamily = appFontFamily.split("-")[1].trimmed();
+
+        auto appFont = QFont(appFontFamily);
+        appFont.setPointSize(settings->data.FontSize);
+        QApplication::setFont(appFont);
+    }
+
+    if (settings->data.GraphVersion != graphCombo1->currentText()) {
+        settings->data.GraphVersion = graphCombo1->currentText();
+        settings->getMainAdaptix()->mainUI->UpdateGraphIcons();
+    }
+
+    settings->data.RemoteTerminalBufferSize = terminalSizeSpin->value();
+
+    settings->data.ConsoleBufferSize = consoleSizeSpin->value();
+    settings->data.ConsoleTime = consoleTimeCheckbox->isChecked();
+    settings->data.ConsoleNoWrap = consoleNoWrapCheckbox->isChecked();
+    settings->data.ConsoleAutoScroll = consoleAutoScrollCheckbox->isChecked();
+
+    bool updateTable = false;
+    for ( int i = 0; i < 15; i++) {
+        if (settings->data.SessionsTableColumns[i] != sessionsCheck[i]->isChecked()) {
+            settings->data.SessionsTableColumns[i] = sessionsCheck[i]->isChecked();
+            updateTable = true;
+        }
+    }
+    if (updateTable)
+        settings->getMainAdaptix()->mainUI->UpdateSessionsTableColumns();
 
     settings->data.CheckHealth = sessionsHealthCheck->isChecked();
     settings->data.HealthCoaf = sessionsCoafSpin->value();
     settings->data.HealthOffset = sessionsOffsetSpin->value();
 
-    for ( int i = 0; i < 11; i++)
-        settings->data.TasksTableColumns[i] = tasksCheck[i]->isChecked();
+    updateTable = false;
+    for ( int i = 0; i < 11; i++) {
+        if (settings->data.TasksTableColumns[i] != tasksCheck[i]->isChecked()) {
+            settings->data.TasksTableColumns[i] = tasksCheck[i]->isChecked();
+            updateTable = true;
+        }
+    }
+    if (updateTable)
+        settings->getMainAdaptix()->mainUI->UpdateTasksTableColumns();
 
     settings->SaveToDB();
-
-    MessageSuccess("Settings saved. Please restart Adaptix.");
 }
 
 void DialogSettings::onClose()

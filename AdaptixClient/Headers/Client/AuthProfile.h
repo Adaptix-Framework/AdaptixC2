@@ -1,5 +1,6 @@
 #ifndef ADAPTIXCLIENT_AUTHPROFILE_H
 #define ADAPTIXCLIENT_AUTHPROFILE_H
+
 #include <main.h>
 
 class AuthProfile
