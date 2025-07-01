@@ -1,5 +1,8 @@
 #include <Workers/WebSocketWorker.h>
 #include <Client/AuthProfile.h>
+#include <QTimer>
+
+QTimer *pingTimer = nullptr;
 
 WebSocketWorker::WebSocketWorker(AuthProfile* authProfile)
 {
@@ -37,6 +40,14 @@ void WebSocketWorker::run()
     request.setRawHeader("Authorization", "Bearer " + profile->GetAccessToken().toUtf8());
 
     webSocket->open(request);
+
+    pingTimer = new QTimer(this);
+    connect(pingTimer, &QTimer::timeout, this, [this]() {
+        if (webSocket->state() == QAbstractSocket::ConnectedState) {
+            webSocket->ping();
+        }
+    });
+    pingTimer->start(20000);
 }
 
 void WebSocketWorker::is_error(QAbstractSocket::SocketError error)
@@ -67,6 +78,7 @@ void WebSocketWorker::is_disconnected()
 {
     this->ok = false;
     this->message = "Disconnected from server";
+    if (pingTimer) pingTimer->stop();
     emit this->websocket_closed();
 }
 
