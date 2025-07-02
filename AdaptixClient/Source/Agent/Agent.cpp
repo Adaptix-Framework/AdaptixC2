@@ -19,7 +19,6 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->data.Id           = jsonObjAgentData["a_id"].toString();
     this->data.Name         = jsonObjAgentData["a_name"].toString();
     this->data.Listener     = jsonObjAgentData["a_listener"].toString();
-
     this->data.Async        = jsonObjAgentData["a_async"].toBool();
     this->data.ExternalIP   = jsonObjAgentData["a_external_ip"].toString();
     this->data.InternalIP   = jsonObjAgentData["a_internal_ip"].toString();
@@ -336,11 +335,9 @@ void Agent::UpdateImage()
     }
     else {
         if (data.Elevated) {
-            // this->item_Os->setIcon(QIcon(":/icons/unknown_red"));
             this->imageActive = QImage(":/graph/"+v+"/unknown_red");
         }
         else {
-            // this->item_Os->setIcon(QIcon(":/icons/unknown_blue"));
             this->imageActive = QImage(":/graph/"+v+"/unknown_blue");
         }
         this->imageInactive = QImage(":/graph/"+v+"/unknown_grey");

@@ -205,7 +205,6 @@ void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen) const
     tableWidget->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
 
-    // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 
     adaptixWidget->Screenshots[newScreen.ScreenId] = newScreen;

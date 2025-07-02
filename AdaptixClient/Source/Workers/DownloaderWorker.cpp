@@ -4,8 +4,8 @@
 DownloaderWorker::DownloaderWorker(const QUrl &url, const QString &otp, const QString &savedPath)
 {
     this->savedPath = savedPath;
-    this->otp = otp;
-    this->url = QUrl(url);
+    this->otp       = otp;
+    this->url       = QUrl(url);
     this->cancelled = false;
     this->error     = false;
     this->lastBytes = 0;
@@ -17,10 +17,7 @@ DownloaderWorker::~DownloaderWorker()
         networkReply->deleteLater();
 }
 
-bool DownloaderWorker::IsError()
-{
- return error;
-}
+bool DownloaderWorker::IsError() { return error; }
 
 void DownloaderWorker::start()
 {
@@ -31,9 +28,9 @@ void DownloaderWorker::start()
 
     this->networkReply = this->networkManager->get(request);
 
-    connect(this->networkReply, &QNetworkReply::readyRead, this, &DownloaderWorker::onReadyRead);
+    connect(this->networkReply, &QNetworkReply::readyRead,        this, &DownloaderWorker::onReadyRead);
     connect(this->networkReply, &QNetworkReply::downloadProgress, this, &DownloaderWorker::onProgress);
-    connect(this->networkReply, &QNetworkReply::finished, this, &DownloaderWorker::onFinished);
+    connect(this->networkReply, &QNetworkReply::finished,         this, &DownloaderWorker::onFinished);
     connect(this->networkReply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::errorOccurred), this, &DownloaderWorker::onError);
 
     this->savedFile.setFileName(this->savedPath);

@@ -147,7 +147,6 @@ void DialogTunnel::createUI()
      lpfGridLayout->addWidget(lpfTargetPortSpin,  1, 2, 1, 1);
      tunnelStackWidget->addWidget(lpfWidget);
 
-     // RPF
      rpfWidget = new QWidget(this);
      rpfPortLabel = new QLabel("Port:", rpfWidget);
      rpfPortSpin  = new QSpinBox(rpfWidget);

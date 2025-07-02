@@ -79,12 +79,6 @@ void TerminalWidget::createUI()
     startButton->setFixedSize(37, 28);
     startButton->setToolTip("Start terminal");
 
-    // restartButton = new QPushButton( QIcon(":/icons/restart"), "", this );
-    // restartButton->setIconSize( QSize( 24,24 ));
-    // restartButton->setFixedSize(37, 28);
-    // restartButton->setToolTip("Restart terminal");
-    // restartButton->setEnabled(false);
-
     stopButton = new QPushButton( QIcon(":/icons/stop"), "", this );
     stopButton->setIconSize( QSize( 24,24 ));
     stopButton->setFixedSize(37, 28);
@@ -117,7 +111,6 @@ void TerminalWidget::createUI()
     topHBoxLayout->addWidget(programComboBox);
     topHBoxLayout->addWidget(line_2);
     topHBoxLayout->addWidget(startButton);
-    // topHBoxLayout->addWidget(restartButton);
     topHBoxLayout->addWidget(stopButton);
     topHBoxLayout->addWidget(line_3);
     topHBoxLayout->addWidget(statusDescLabel);
@@ -148,7 +141,6 @@ void TerminalWidget::setStatus(const QString &text)
         programInput->setEnabled(programComboBox->currentText() == "Custom program");
         programComboBox->setEnabled(true);
         startButton->setEnabled(true);
-        // restartButton->setEnabled(false);
         stopButton->setEnabled(false);
     }
 }
@@ -225,16 +217,16 @@ void TerminalWidget::handleTerminalMenu(const QPoint &pos)
 
 void TerminalWidget::SetKeys()
 {
-    // Ctrl+Shift+C: Copy
+    /// Ctrl+Shift+C: Copy
     QShortcut *copyShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C), this->termWidget);
     connect(copyShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::copyClipboard);
-    // Ctrl+Shift+V: Paste
+    /// Ctrl+Shift+V: Paste
     QShortcut *pasteShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V), this->termWidget);
     connect(pasteShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::pasteClipboard);
-    // Ctrl+Shift+F: Find
+    /// Ctrl+Shift+F: Find
     QShortcut *findShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F), this->termWidget);
     connect(findShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::toggleShowSearchBar);
-    // Ctrl+Shift+L: Clear
+    /// Ctrl+Shift+L: Clear
     QShortcut *clearShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_L), this->termWidget);
     connect(clearShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::clear);
 }
@@ -244,7 +236,6 @@ void TerminalWidget::onStart()
     programInput->setEnabled(false);
     programComboBox->setEnabled(false);
     startButton->setEnabled(false);
-    // restartButton->setEnabled(true);
     stopButton->setEnabled(true);
     this->setStatus("Waiting...");
 
@@ -293,15 +284,6 @@ void TerminalWidget::onRestart()
 
 void TerminalWidget::onStop()
 {
-    // if (terminalWorker && terminalThread) {
-    //     QMetaObject::invokeMethod( terminalWorker, "stop", Qt::QueuedConnection );
-    //
-    //     terminalThread->quit();
-    //     terminalThread->wait();
-    //
-    //     terminalWorker = nullptr;
-    //     terminalThread = nullptr;
-    // }
 
     if (!terminalWorker || !terminalThread)
         return;

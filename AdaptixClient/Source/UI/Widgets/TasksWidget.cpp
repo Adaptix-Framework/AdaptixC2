@@ -202,7 +202,6 @@ void TasksWidget::addTableItem(const Task* newTask) const
     tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnFinishTime, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnResult, QHeaderView::ResizeToContents );
 
-    // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 }
 

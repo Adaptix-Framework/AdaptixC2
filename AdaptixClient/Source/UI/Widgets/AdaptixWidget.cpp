@@ -25,7 +25,7 @@
 AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
     this->createUI();
-    this->ChannelThread = channelThread;
+    this->ChannelThread   = channelThread;
     this->ChannelWsWorker = channelWsWorker;
 
     LogsTab           = new LogsWidget();
@@ -214,10 +214,7 @@ void AdaptixWidget::createUI()
     this->setLayout(mainGridLayout);
 }
 
-AuthProfile* AdaptixWidget::GetProfile() const
-{
-    return this->profile;
-}
+AuthProfile* AdaptixWidget::GetProfile() const { return this->profile; }
 
 void AdaptixWidget::RegisterListenerConfig(const QString &fn, const QString &ui)
 {

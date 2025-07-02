@@ -15,7 +15,6 @@ bool IsValidURI(const QString &uri)
     return match.hasMatch();
 }
 
-
 QString ValidCommandsFile(const QByteArray &jsonData, bool* result)
 {
     QJsonParseError parseError;

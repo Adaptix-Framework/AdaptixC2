@@ -143,18 +143,18 @@ protected:
         LocaleCodec = 0,
         Utf8Codec   = 1
     };
-    void setCodec(EmulationCodec codec); // codec number, 0 = locale, 1=utf8
+    void setCodec(EmulationCodec codec);
 
     QList<ScreenWindow*> _windows;
 
-    Screen* _currentScreen;  // pointer to the screen which is currently active,
+    Screen* _currentScreen;
 
     Screen* _screen[2];
 
     QStringEncoder _fromUtf16;
     QStringDecoder _toUtf16;
 
-    const KeyboardTranslator* _keyTranslator; // the keyboard layout
+    const KeyboardTranslator* _keyTranslator;
     
     bool _enableHandleCtrlC;
 
@@ -181,4 +181,4 @@ private:
     QByteArray dupCache;
 };
 
-#endif // EMULATION_H
+#endif

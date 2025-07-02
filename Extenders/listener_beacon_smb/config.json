@@ -1,25 +1,9 @@
 {
   "extender_type": "listener",
   "extender_file": "listener_beacon_smb.so",
+  "ax_file": "ax_config.js",
 
   "listener_name": "BeaconSMB",
   "listener_type": "internal",
-  "protocol": "bind_smb",
-
-  "ui": {
-    "layout": "glayout",
-    "elements": [
-      {
-        "type": "label",
-        "text": "Pipename (C2):",
-        "position": [0, 0, 1, 1]
-      },
-      {
-        "type": "input",
-        "id": "pipename",
-        "editable": "false",
-        "position": [0, 1, 1, 1]
-      }
-    ]
-  }
+  "protocol": "bind_smb"
 }

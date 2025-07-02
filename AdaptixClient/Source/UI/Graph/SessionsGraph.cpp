@@ -80,12 +80,12 @@ void SessionsGraph::RemoveAgent(Agent* agent, bool drawTree)
         agent->graphItem->parentLink = nullptr;
     }
 
-    ///CHILD
+    /// CHILD
     auto childs = agent->graphItem->childItems;
     if ( !childs.empty() ) {
         for (int i = 0; i < childs.size(); i++) {
-            // childs[i]->agent->graphItem->parentLink = nullptr;
-            // childs[i]->agent->graphItem->parentItem = nullptr;
+            /// childs[i]->agent->graphItem->parentLink = nullptr;
+            /// childs[i]->agent->graphItem->parentItem = nullptr;
             this->LinkToRoot(childs[i]->agent->graphItem);
         }
     }
@@ -104,7 +104,7 @@ void SessionsGraph::RemoveAgent(Agent* agent, bool drawTree)
     }
     agent->graphItem->childLinks.clear();
 
-    // NODE
+    /// NODE
     for ( int i = 0; i < this->items.size(); i++ ) {
         if ( this->items[ i ] == agent->graphItem ) {
             this->items.erase( this->items.begin() + i );
