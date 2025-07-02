@@ -98,10 +98,7 @@ void DialogListener::createUI()
     buttonCancel->setFixedHeight(buttonHeight);
 }
 
-void DialogListener::Start()
-{
-    this->exec();
-}
+void DialogListener::Start() { this->exec(); }
 
 void DialogListener::AddExListeners(const QMap<QString, WidgetBuilder*> &listeners)
 {
@@ -248,7 +245,4 @@ void DialogListener::onButtonSave()
     inputDialog.exec();
 }
 
-void DialogListener::onButtonCancel()
-{
-    this->close();
-}
+void DialogListener::onButtonCancel() { this->close(); }

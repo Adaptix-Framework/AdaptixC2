@@ -77,7 +77,6 @@ QTermWidget::QTermWidget(QWidget *messageParentWidget, QWidget *parent)
     connect( m_emulation, &Emulation::changeTabTextColorRequest, this, &QTermWidget::changeTabTextColorRequest);
     connect( m_emulation, &Emulation::cursorChanged, this, &QTermWidget::cursorChanged);
 
-    // That's OK, FilterChain's dtor takes care of UrlFilter.
     m_urlFilter = new UrlFilter();
     connect(m_urlFilter, &UrlFilter::activated, this, &QTermWidget::urlActivated);
     m_terminalDisplay->filterChain()->addFilter(m_urlFilter);
@@ -226,7 +225,6 @@ void QTermWidget::setColorScheme(const QString& origName) {
     const bool isFile = QFile::exists(origName);
     const QString& name = isFile ? QFileInfo(origName).baseName() : origName;
 
-    // avoid legacy (int) solution
     if (!availableColorSchemes().contains(name)) {
         if (isFile) {
             if (ColorSchemeManager::instance()->loadCustomColorScheme(origName))
@@ -335,13 +333,9 @@ void QTermWidget::updateTerminalSize() {
     int minLines = -1;
     int minColumns = -1;
 
-    // minimum number of lines and columns that views require for
-    // their size to be taken into consideration ( to avoid problems
-    // with new view widgets which haven't yet been set to their correct size )
     const int VIEW_LINES_THRESHOLD = 2;
     const int VIEW_COLUMNS_THRESHOLD = 2;
 
-    //select largest number of lines and columns that will fit in all visible views
     if ( m_terminalDisplay->isHidden() == false &&
             m_terminalDisplay->lines() >= VIEW_LINES_THRESHOLD &&
             m_terminalDisplay->columns() >= VIEW_COLUMNS_THRESHOLD ) {
@@ -349,7 +343,6 @@ void QTermWidget::updateTerminalSize() {
         minColumns = (minColumns == -1) ? m_terminalDisplay->columns() : qMin( minColumns , m_terminalDisplay->columns() );
     }
 
-    // backend emulation must have a _terminal of at least 1 column x 1 line in size
     if ( minLines > 0 && minColumns > 0 ) {
         m_emulation->setImageSize( minLines , minColumns );
     }

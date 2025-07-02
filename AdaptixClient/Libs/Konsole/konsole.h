@@ -49,7 +49,6 @@ public:
     void setTerminalBackgroundVideo(const QString& backgroundVideo);
     void setTerminalBackgroundMode(int mode);
 
-    /// Text codec, default is UTF-8
     void setTextCodec(QStringEncoder codec);
 
     void setColorScheme(const QString & name);

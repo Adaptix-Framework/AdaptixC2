@@ -516,7 +516,6 @@ const ColorScheme *ColorSchemeManager::findColorScheme(const QString &name) {
     if (_colorSchemes.contains(name)) {
         return _colorSchemes[name];
     } else {
-        // look for this color scheme
         QString path = findColorSchemePath(name);
         if (!path.isEmpty() && loadColorScheme(path)) {
             return findColorScheme(name);

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.29)
 project(AdaptixClient LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 26)
@@ -21,6 +21,7 @@ find_package(Qt6
         Network
         WebSockets
         Sql
+        Qml
 )
 
 include_directories(
@@ -207,6 +208,7 @@ if(UNIX)
             Qt6::Network
             Qt6::WebSockets
             Qt6::Sql
+            Qt6::Qml
             OpenSSL::Crypto
 
             pthread dl
@@ -220,6 +222,7 @@ elseif(APPLE)
             Qt6::Network
             Qt6::WebSockets
             Qt6::Sql
+            Qt6::Qml
             OpenSSL::Crypto
 
             pthread dl
@@ -233,6 +236,7 @@ else()
             Qt6::Network
             Qt6::WebSockets
             Qt6::Sql
+            Qt6::Qml
 
             wsock32 ws2_32 crypt32 iphlpapi netapi32 version winmm userenv
     )

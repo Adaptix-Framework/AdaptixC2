@@ -28,12 +28,12 @@
 
 struct CharCodes
 {
-  char charset[4]; //
-  int  cu_cs;      // actual charset.
-  bool graphic;    // Some VT100 tricks
-  bool pound  ;    // Some VT100 tricks
-  bool sa_graphic; // saved graphic
-  bool sa_pound;   // saved pound
+  char charset[4];
+  int  cu_cs;
+  bool graphic;
+  bool pound  ;
+  bool sa_graphic;
+  bool sa_pound;
 };
 
 class Vt102Emulation : public Emulation
@@ -87,9 +87,9 @@ private:
   void resetModes();
 
   void resetTokenizer();
-  #define MAX_TOKEN_LENGTH 100000 // Max length of tokens (e.g. window title)
+  #define MAX_TOKEN_LENGTH 100000
   void addToCurrentToken(wchar_t cc);
-  wchar_t tokenBuffer[MAX_TOKEN_LENGTH]; //FIXME: overflow?
+  wchar_t tokenBuffer[MAX_TOKEN_LENGTH];
   int tokenBufferPos;
 #define MAXARGS 15
   void addDigit(int dig);
@@ -140,12 +140,12 @@ private:
   bool _reportFocusEvents;
   QStringEncoder _toUtf8;
 
-  bool _isTitleChanged; ///< flag if the title/icon was changed by user
+  bool _isTitleChanged;
   QString _userTitle;
-  QString _iconText; // as set by: echo -en '\033]1;IconText\007
+  QString _iconText;
   QString _nameTitle;
   QString _iconName;
-  QColor _modifiedBackground; // as set by: echo -en '\033]11;Color\007
+  QColor _modifiedBackground;
 };
 
-#endif // VT102EMULATION_H
+#endif
