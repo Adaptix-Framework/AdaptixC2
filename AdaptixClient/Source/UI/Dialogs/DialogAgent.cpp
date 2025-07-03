@@ -1,7 +1,7 @@
 #include <UI/Dialogs/DialogAgent.h>
 #include <Client/Requestor.h>
-#include <Client/WidgetBuilder.h>
 #include <Client/AuthProfile.h>
+#include <Client/AxScript/AxElementWrappers.h>
 
 DialogAgent::DialogAgent(const QString &listenerName, const QString &listenerType)
 {
@@ -33,9 +33,6 @@ void DialogAgent::createUI()
 
     agentLabel    = new QLabel("Agent: ", this);
     agentCombobox = new QComboBox(this);
-
-    osLabel    = new QLabel("OS: ", this);
-    osCombobox = new QComboBox(this);
 
     buttonLoad = new QPushButton(QIcon(":/icons/unarchive"), "", this);
     buttonLoad->setIconSize( QSize( 25,25 ));
@@ -112,8 +109,6 @@ void DialogAgent::Start()
 void DialogAgent::AddExAgents(const QVector<RegAgentConfig> &regAgents)
 {
     agentCombobox->clear();
-    osCombobox->clear();
-    agentsOs.clear();
 
     this->regAgents = regAgents;
 
@@ -244,10 +239,6 @@ void DialogAgent::onButtonLoad()
         MessageError("Required parameter 'agent' is missing");
         return;
     }
-    if ( !jsonObject.contains("operating_system") || !jsonObject["operating_system"].isString() ) {
-        MessageError("Required parameter 'operating_system' is missing");
-        return;
-    }
     if ( !jsonObject.contains("config") || !jsonObject["config"].isString() ) {
         MessageError("Required parameter 'config' is missing");
         return;
@@ -259,7 +250,6 @@ void DialogAgent::onButtonLoad()
     }
 
     QString agentType = jsonObject["agent"].toString();
-
     int typeIndex = agentCombobox->findText( agentType );
     if ( typeIndex == -1 || !this->agentsOs.contains(agentType)) {
         MessageError("No such agent exists");
@@ -268,19 +258,6 @@ void DialogAgent::onButtonLoad()
     agentCombobox->setCurrentIndex(typeIndex);
 
     this->changeConfig(agentType);
-
-    QString operatingSystem = jsonObject["operating_system"].toString();
-    typeIndex = osCombobox->findText( operatingSystem );
-
-    QStringList items;
-    for (auto os : this->agentsOs[agentType])
-        items.push_back(os);
-
-    if(typeIndex == -1 || !items.contains(operatingSystem)) {
-        MessageError("No such agent exists");
-        return;
-    }
-    agentCombobox->setCurrentIndex(typeIndex);
 
     QString configData = jsonObject["config"].toString();
     for (auto regAgent : this->regAgents ) {

@@ -1,3 +1,4 @@
+#include <QJSEngine>
 #include <Agent/Agent.h>
 #include <Agent/Task.h>
 #include <Agent/Commander.h>
@@ -20,7 +21,8 @@
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/TunnelEndpoint.h>
-#include <Client/WidgetBuilder.h>
+#include <Client/AxScript/AxScriptManager.h>
+#include <Client/AxScript/AxCommandWrappers.h>
 
 AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
@@ -236,16 +238,6 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
         LogError("Error Listener %s Json Format", agentName.toStdString().c_str());
         return;
     }
-    QJsonArray handlersArray = handlersDocument.array();
-    for (QJsonValue handlerValue : handlersArray) {
-        QJsonObject handlerObj = handlerValue.toObject();
-        if (!handlerObj.contains("id")       || !handlerObj["id"].isString())       continue;
-        if (!handlerObj.contains("commands") || !handlerObj["commands"].isArray())  continue;
-        if (!handlerObj.contains("browsers") || !handlerObj["browsers"].isObject()) continue;
-
-        QString     handlerId      = handlerObj["id"].toString();
-        QJsonArray  commandsArray  = handlerObj["commands"].toArray();
-        QJsonObject browsersObject = handlerObj["browsers"].toObject();
 
         QByteArray commandsData = QJsonDocument(commandsArray).toJson();
         auto commander = new Commander();
@@ -392,34 +384,6 @@ void AdaptixWidget::Close()
 
     this->ClearAdaptix();
 }
-
-
-
-RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QString &listenerName, const int os)
-{
-    QString operatingSystem = "windows";
-    if (os == OS_LINUX)
-        operatingSystem = "linux";
-    else if (os == OS_MAC)
-        operatingSystem = "mac";
-
-    QString listener = "";
-    for ( auto listenerData : this->Listeners) {
-        if ( listenerData.ListenerName == listenerName ) {
-            listener = listenerData.ListenerType.split("/")[2];
-            break;
-        }
-    }
-
-    for (auto regAgent : this->RegisterAgents) {
-        if (regAgent.agentName == agentName && regAgent.listenerName == listener && regAgent.operatingSystem == operatingSystem)
-            return regAgent;
-    }
-
-    return {};
-}
-
-
 
 void AdaptixWidget::AddTab(QWidget *tab, const QString &title, const QString &icon) const
 {
