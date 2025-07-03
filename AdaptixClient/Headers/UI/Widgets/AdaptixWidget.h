@@ -17,7 +17,6 @@ class ScreenshotsWidget;
 class TasksWidget;
 class TunnelsWidget;
 class TunnelEndpoint;
-class WidgetBuilder;
 class DialogSyncPacket;
 class AuthProfile;
 
@@ -86,10 +85,7 @@ public:
     ScreenshotsWidget*   ScreenshotsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
-    QMap<QString, QMap<QString, Commander*>> Commanders;    /// agentName -> (handlerId -> commander)
-    QMap<QString, QMap<QString, BrowsersConfig>> AgentBrowserConfigs;    /// agentName -> (handlerId -> BrowserConfigs)
     QVector<RegAgentConfig>        RegisterAgents;
-    QMap<QString, WidgetBuilder*>  RegisterListeners;  /// listenerName -> builder
     QVector<ListenerData>          Listeners;
     QVector<TunnelData>            Tunnels;
     QMap<QString, DownloadData>    Downloads;

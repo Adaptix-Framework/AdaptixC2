@@ -1,14 +1,14 @@
+#include <QJSEngine>
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Dialogs/DialogListener.h>
 #include <UI/Dialogs/DialogAgent.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
-#include <Client/WidgetBuilder.h>
+#include <Client/AxScript/AxElementWrappers.h>
+#include <Client/AxScript/AxScriptManager.h>
 
 ListenersWidget::ListenersWidget(QWidget* w)
 {
-    this->mainWidget = w;
-
     this->createUI();
 
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &ListenersWidget::handleListenersMenu );
@@ -49,10 +49,6 @@ void ListenersWidget::createUI()
 
 void ListenersWidget::Clear() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     adaptixWidget->Listeners.clear();
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
@@ -60,10 +56,6 @@ void ListenersWidget::Clear() const
 
 void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     for( auto listener : adaptixWidget->Listeners ) {
         if( listener.ListenerName == newListener.ListenerName )
             return;
@@ -117,7 +109,6 @@ void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
     tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 5, QHeaderView::ResizeToContents );
 
-    // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 
     adaptixWidget->Listeners.push_back(newListener);
@@ -125,10 +116,6 @@ void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
 
 void ListenersWidget::EditListenerItem(const ListenerData &newListener) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     for ( int i = 0; i < adaptixWidget->Listeners.size(); i++ ) {
         if( adaptixWidget->Listeners[i].ListenerName == newListener.ListenerName ) {
             adaptixWidget->Listeners[i].BindHost = newListener.BindHost;
@@ -159,10 +146,6 @@ void ListenersWidget::EditListenerItem(const ListenerData &newListener) const
 
 void ListenersWidget::RemoveListenerItem(const QString &listenerName) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     for ( int i = 0; i < adaptixWidget->Listeners.size(); i++ ) {
         if( adaptixWidget->Listeners[i].ListenerName == listenerName ) {
             adaptixWidget->Listeners.erase( adaptixWidget->Listeners.begin() + i );
@@ -222,9 +205,6 @@ void ListenersWidget::editListener() const
 
     auto listenerName = tableWidget->item( tableWidget->currentRow(), 0 )->text();
     auto listenerType = tableWidget->item( tableWidget->currentRow(), 1 )->text();
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget )
-        return;
 
     QString listenerData = "";
     for (auto listener : adaptixWidget->Listeners) {
@@ -254,9 +234,6 @@ void ListenersWidget::removeListener() const
 
     auto listenerName = tableWidget->item( tableWidget->currentRow(), 0 )->text();
     auto listenerType = tableWidget->item( tableWidget->currentRow(), 1 )->text();
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget )
-        return;
 
     QString message = QString();
     bool ok = false;
@@ -278,9 +255,6 @@ void ListenersWidget::generateAgent() const
 
     auto listenerName = tableWidget->item( tableWidget->currentRow(), 0 )->text();
     auto listenerType = tableWidget->item( tableWidget->currentRow(), 1 )->text();
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget )
-        return;
 
     QStringList parts = listenerType.split("/");
     if (parts.size() != 3) {

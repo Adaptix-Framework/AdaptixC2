@@ -1,6 +1,6 @@
 #include <UI/Dialogs/DialogListener.h>
 #include <Client/Requestor.h>
-#include <Client/WidgetBuilder.h>
+#include <Client/AxScript/AxElementWrappers.h>
 
 DialogListener::DialogListener()
 {

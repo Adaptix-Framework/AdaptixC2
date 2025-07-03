@@ -3,6 +3,8 @@
 
 #include <main.h>
 
+class AdaptixWidget;
+
 class ListenersWidget : public QWidget
 {
     QWidget*      mainWidget     = nullptr;

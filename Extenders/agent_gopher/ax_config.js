@@ -159,6 +159,7 @@ function GenerateUI(listenerType)
     });
 
     var container = form.create_container()
+    container.put("os", comboOS)
     container.put("arch", comboArch)
     container.put("format", comboFormat)
     container.put("reconn_timeout", textReconnTimeout)
