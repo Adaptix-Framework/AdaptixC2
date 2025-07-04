@@ -2,7 +2,7 @@
 #include <Client/Requestor.h>
 #include <Client/AxScript/AxElementWrappers.h>
 
-DialogListener::DialogListener()
+DialogListener::DialogListener(QWidget *parent) : QDialog(parent)
 {
     this->createUI();
 
@@ -100,22 +100,26 @@ void DialogListener::createUI()
 
 void DialogListener::Start() { this->exec(); }
 
-void DialogListener::AddExListeners(const QMap<QString, WidgetBuilder*> &listeners)
+void DialogListener::AddExListeners(const QStringList &listeners, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers)
 {
-    listenersUI = listeners;
+    this->listeners  = listeners;
+    this->widgets    = widgets;
+    this->containers = containers;
 
-    for (auto w : listenersUI.values()) {
-        configStackWidget->addWidget( w->GetWidget() );
+    for (auto listener : listeners) {
+        widgets[listener]->setParent(nullptr);
+        widgets[listener]->setParent(this);
+        containers[listener]->setParent(nullptr);
+        containers[listener]->setParent(this);
+
+        configStackWidget->addWidget(widgets[listener]);
     }
 
     listenerTypeCombobox->clear();
-    listenerTypeCombobox->addItems( listenersUI.keys() );
+    listenerTypeCombobox->addItems(listeners);
 }
 
-void DialogListener::SetProfile(const AuthProfile &profile)
-{
-    this->authProfile = profile;
-}
+void DialogListener::SetProfile(const AuthProfile &profile) { this->authProfile = profile; }
 
 void DialogListener::SetEditMode(const QString &name)
 {
@@ -129,10 +133,8 @@ void DialogListener::SetEditMode(const QString &name)
 
 void DialogListener::changeConfig(const QString &fn)
 {
-    if (listenersUI[fn]) {
-        auto w = listenersUI[fn]->GetWidget();
-        configStackWidget->setCurrentWidget(w);
-    }
+    if (widgets.contains(fn))
+        configStackWidget->setCurrentWidget(widgets[fn]);
 }
 
 void DialogListener::onButtonCreate()
@@ -140,8 +142,8 @@ void DialogListener::onButtonCreate()
     auto configName= inputListenerName->text();
     auto configType= listenerTypeCombobox->currentText();
     auto configData = QString();
-    if (listenersUI[configType])
-        configData = listenersUI[configType]->CollectData();
+    if (containers[configType])
+        configData = containers[configType]->toJson();
 
     QString message = QString();
     bool result, ok = false;
@@ -197,14 +199,14 @@ void DialogListener::onButtonLoad()
 
     QString configType = jsonObject["type"].toString();
     int typeIndex = listenerTypeCombobox->findText( configType );
-    if(typeIndex == -1 || !listenersUI.contains(configType)) {
+    if(typeIndex == -1 || !containers.contains(configType)) {
         MessageError("No such listener exists");
         return;
     }
 
     QString configData = jsonObject["config"].toString();
     listenerTypeCombobox->setCurrentIndex(typeIndex);
-    listenersUI[configType]->FillData(configData);
+    containers[configType]->fromJson(configData);
 }
 
 void DialogListener::onButtonSave()
@@ -212,8 +214,8 @@ void DialogListener::onButtonSave()
     auto configName= inputListenerName->text();
     auto configType= listenerTypeCombobox->currentText();
     auto configData = QString();
-    if (listenersUI[configType])
-        configData = listenersUI[configType]->CollectData();
+    if (containers[configType])
+        configData = containers[configType]->toJson();
 
     QJsonObject dataJson;
     dataJson["name"]   = configName;

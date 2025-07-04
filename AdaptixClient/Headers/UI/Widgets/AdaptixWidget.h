@@ -19,14 +19,13 @@ class TunnelsWidget;
 class TunnelEndpoint;
 class DialogSyncPacket;
 class AuthProfile;
+class AxScriptManager;
 
 typedef struct RegAgentConfig {
-    QString        agentName;
+    QString        name;
     QString        watermark;
-    QString        listenerName;
-    QString        operatingSystem;
-    QString        handlerId;
-    WidgetBuilder* builder;
+    QString        listenerType;
+    int            os;
     Commander*     commander;
     BrowsersConfig browsers;
     bool           valid;
@@ -76,6 +75,8 @@ public:
     QThread*         TickThread      = nullptr;
     LastTickWorker*  TickWorker      = nullptr;
 
+    AxScriptManager* ScriptManager = nullptr;
+
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
@@ -103,15 +104,17 @@ public:
 
     AuthProfile* GetProfile() const;
 
-    void RegisterListenerConfig(const QString &fn, const QString &ui);
-    void RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &handlersJson, const QString &listenersJson);
-    void ClearAdaptix();
-    RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
+    void RegisterListenerConfig(const QString &fn, const QString &ax_script);
+    void RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &ax_script, const QStringList &listeners);
     void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
     void RemoveTab(int index) const;
     void AddExtension(ExtensionFile ext);
     void RemoveExtension(const ExtensionFile &ext);
     void Close();
+    void ClearAdaptix();
+
+    QList<QString> GetAgentNames(const QString &listenerType) const;
+    RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
 
 signals:
     void SyncedSignal();

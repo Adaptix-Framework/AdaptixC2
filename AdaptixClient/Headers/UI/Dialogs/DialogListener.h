@@ -4,7 +4,7 @@
 #include <main.h>
 #include <Client/AuthProfile.h>
 
-class WidgetBuilder;
+class AxContainerWrapper;
 
 class DialogListener : public QDialog
 {
@@ -26,17 +26,20 @@ class DialogListener : public QDialog
     QGroupBox*      listenerConfigGroupbox = nullptr;
     QStackedWidget* configStackWidget      = nullptr;
 
-    QMap<QString, WidgetBuilder*> listenersUI;
-    AuthProfile                   authProfile;
-    bool                          editMode = false;
+    QStringList listeners;
+    QMap<QString, QWidget*> widgets;
+    QMap<QString, AxContainerWrapper*> containers;
+
+    AuthProfile authProfile;
+    bool        editMode = false;
 
     void createUI();
 
 public:
-    explicit DialogListener();
+    explicit DialogListener(QWidget *parent = nullptr);
     ~DialogListener() override;
 
-    void AddExListeners(const QMap<QString, WidgetBuilder*> &listeners);
+    void AddExListeners(const QStringList &listeners, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers);
     void SetProfile(const AuthProfile &profile);
     void Start();
     void SetEditMode(const QString &name);

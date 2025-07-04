@@ -7,11 +7,11 @@
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-ListenersWidget::ListenersWidget(QWidget* w)
+ListenersWidget::ListenersWidget(AdaptixWidget* w) : adaptixWidget(w)
 {
     this->createUI();
 
-    connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &ListenersWidget::handleListenersMenu );
+    connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &ListenersWidget::handleListenersMenu);
 }
 
 ListenersWidget::~ListenersWidget() = default;
@@ -168,37 +168,85 @@ void ListenersWidget::handleListenersMenu(const QPoint &pos ) const
 {
     QMenu listenerMenu = QMenu();
 
-    listenerMenu.addAction("Create", this, &ListenersWidget::createListener );
-    listenerMenu.addAction("Edit", this, &ListenersWidget::editListener );
-    listenerMenu.addAction("Remove", this, &ListenersWidget::removeListener );
+    listenerMenu.addAction("Create", this, &ListenersWidget::onCreateListener );
+    listenerMenu.addAction("Edit",   this, &ListenersWidget::onEditListener );
+    listenerMenu.addAction("Remove", this, &ListenersWidget::onRemoveListener );
     listenerMenu.addSeparator();
-    listenerMenu.addAction("Generate agent", this, &ListenersWidget::generateAgent );
+    listenerMenu.addAction("Generate agent", this, &ListenersWidget::onGenerateAgent );
 
-    QPoint globalPos = tableWidget->mapToGlobal( pos );
-    listenerMenu.exec(globalPos );
+    QPoint globalPos = tableWidget->mapToGlobal(pos);
+    listenerMenu.exec(globalPos);
 }
 
-void ListenersWidget::createListener() const
+void ListenersWidget::onCreateListener() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget )
-        return;
+    QStringList listeners;
+    QMap<QString, QWidget*> widgets;
+    QMap<QString, AxContainerWrapper*> containers;
 
-    for( auto regLst : adaptixWidget->RegisterListeners ) {
-        regLst->BuildWidget(false);
+    auto listenersList = adaptixWidget->ScriptManager->ListenerScriptList();
+
+    for (auto listener : listenersList) {
+        auto engine = adaptixWidget->ScriptManager->ListenerScriptEngine(listener);
+        if (engine == nullptr) {
+            // emit QJSValue::TypeError, QString("Listener %1 is not registered").arg(name) /// ToDo error
+            continue;
+        }
+
+        QJSValue func = engine->globalObject().property("ListenerUI");
+        if (!func.isCallable()) {
+            // emit QJSValue::TypeError, "Function ListenerUI is not registered")
+            continue;
+        }
+
+        QJSValueList args;
+        args << QJSValue(true);
+        QJSValue result = func.call(args);
+        if (result.isError()) {
+            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(result.property("fileName").toString()).arg(result.property("stack").toString());
+            // emit consoleAppendError(error);
+            continue;
+        }
+
+        if (!result.isObject()) {
+            // emit consoleAppendError("ListenerUI() must return panel and container objects");
+            continue;
+        }
+
+        QJSValue ui_container = result.property("ui_container");
+        QJSValue ui_panel = result.property("ui_panel");
+        if ( ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject()) {
+            // emit consoleAppendError("ListenerUI() must return panel and container objects");
+            continue;
+        }
+
+        QObject* objPanel = ui_panel.toQObject();
+        auto* formElement = dynamic_cast<AxPanelWrapper*>(objPanel);
+        if (!formElement) {
+            // emit consoleAppendError("ListenerUI() must return panel and container objects");
+            continue;
+        }
+
+        QObject* objContainer = ui_container.toQObject();
+        auto* container = dynamic_cast<AxContainerWrapper*>(objContainer);
+        if (!container) {
+            // emit consoleAppendError("ListenerUI() must return panel and container objects");
+            continue;
+        }
+
+        listeners.append(listener);
+        widgets[listener] = formElement->widget();
+        containers[listener] = container;
     }
 
-    DialogListener dialogListener;
-    dialogListener.AddExListeners( adaptixWidget->RegisterListeners );
-    dialogListener.SetProfile( *(adaptixWidget->GetProfile()) );
-    dialogListener.Start();
-
-    for( auto regLst : adaptixWidget->RegisterListeners ) {
-        regLst->ClearWidget();
-    }
+    DialogListener* dialogListener = new DialogListener();
+    dialogListener->setAttribute(Qt::WA_DeleteOnClose);
+    dialogListener->SetProfile( *(adaptixWidget->GetProfile()) );
+    dialogListener->AddExListeners(listeners, widgets, containers);
+    dialogListener->Start();
 }
 
-void ListenersWidget::editListener() const
+void ListenersWidget::onEditListener() const
 {
     if (tableWidget->selectionModel()->selectedRows().empty())
         return;
@@ -210,24 +258,76 @@ void ListenersWidget::editListener() const
     for (auto listener : adaptixWidget->Listeners) {
         if(listener.ListenerName == listenerName) {
             listenerData = listener.Data;
+            break;
         }
     }
 
-    QMap<QString, WidgetBuilder*> tmpRegisterListenersUI;
-    tmpRegisterListenersUI[listenerType] = adaptixWidget->RegisterListeners[listenerType];
-    tmpRegisterListenersUI[listenerType]->BuildWidget(true);
-    tmpRegisterListenersUI[listenerType]->FillData(listenerData);
+    QStringList listeners;
+    QMap<QString, QWidget*> widgets;
+    QMap<QString, AxContainerWrapper*> containers;
 
-    DialogListener dialogListener;
-    dialogListener.SetEditMode(listenerName);
-    dialogListener.AddExListeners(tmpRegisterListenersUI );
-    dialogListener.SetProfile( *(adaptixWidget->GetProfile()) );
-    dialogListener.Start();
+    auto engine = adaptixWidget->ScriptManager->ListenerScriptEngine(listenerType);
+    if (engine == nullptr) {
+        // emit QJSValue::TypeError, QString("Listener %1 is not registered").arg(name) /// ToDo error
+        return;;
+    }
 
-    tmpRegisterListenersUI[listenerType]->ClearWidget();
+    QJSValue func = engine->globalObject().property("ListenerUI");
+    if (!func.isCallable()) {
+        // emit QJSValue::TypeError, "Function ListenerUI is not registered")
+        return;
+    }
+
+    QJSValueList args;
+    args << QJSValue(false);
+    QJSValue result = func.call(args);
+    if (result.isError()) {
+        QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(result.property("fileName").toString()).arg(result.property("stack").toString());
+        // emit consoleAppendError(error);
+        return;
+    }
+
+    if (!result.isObject()) {
+        // emit consoleAppendError("ListenerUI() must return panel and container objects");
+        return;
+    }
+
+    QJSValue ui_container = result.property("ui_container");
+    QJSValue ui_panel = result.property("ui_panel");
+    if ( ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject()) {
+        // emit consoleAppendError("ListenerUI() must return panel and container objects");
+        return;
+    }
+
+    QObject* objPanel = ui_panel.toQObject();
+    auto* formElement = dynamic_cast<AxPanelWrapper*>(objPanel);
+    if (!formElement) {
+        // emit consoleAppendError("ListenerUI() must return panel and container objects");
+        return;
+    }
+
+    QObject* objContainer = ui_container.toQObject();
+    auto* container = dynamic_cast<AxContainerWrapper*>(objContainer);
+    if (!container) {
+        // emit consoleAppendError("ListenerUI() must return panel and container objects");
+        return;
+    }
+
+    listeners.append(listenerType);
+    widgets[listenerType] = formElement->widget();
+    containers[listenerType] = container;
+
+    container->fromJson(listenerData);
+
+    DialogListener* dialogListener = new DialogListener();
+    dialogListener->setAttribute(Qt::WA_DeleteOnClose);
+    dialogListener->SetEditMode(listenerName);
+    dialogListener->SetProfile( *(adaptixWidget->GetProfile()) );
+    dialogListener->AddExListeners(listeners, widgets, containers);
+    dialogListener->Start();
 }
 
-void ListenersWidget::removeListener() const
+void ListenersWidget::onRemoveListener() const
 {
     if (tableWidget->selectionModel()->selectedRows().empty())
         return;
@@ -248,7 +348,7 @@ void ListenersWidget::removeListener() const
     }
 }
 
-void ListenersWidget::generateAgent() const
+void ListenersWidget::onGenerateAgent() const
 {
     if (tableWidget->selectionModel()->selectedRows().empty())
         return;
@@ -261,22 +361,68 @@ void ListenersWidget::generateAgent() const
         return;
     }
     QString targetListener = parts[2];
+    QList<QString> agentNames = adaptixWidget->GetAgentNames(targetListener);
 
-    QVector<RegAgentConfig> tmpRegisterAgentsUI;
-    for( auto regAgent : adaptixWidget->RegisterAgents ) {
-        if (targetListener == regAgent.listenerName) {
-            tmpRegisterAgentsUI.push_back(regAgent);
-            if (tmpRegisterAgentsUI.last().builder)
-                tmpRegisterAgentsUI.last().builder->BuildWidget(false);
+    QStringList agents;
+    QMap<QString, QWidget*> widgets;
+    QMap<QString, AxContainerWrapper*> containers;
+
+    for (auto agent : agentNames) {
+        auto engine = adaptixWidget->ScriptManager->AgentScriptEngine(agent);
+        if (engine == nullptr) {
+            // emit QJSValue::TypeError, QString("Listener %1 is not registered").arg(name) /// ToDo error
+            return;;
         }
+
+        QJSValue func = engine->globalObject().property("GenerateUI");
+        if (!func.isCallable()) {
+            // emit QJSValue::TypeError, "Function GenerateUI is not registered")
+            return;
+        }
+
+        QJSValueList args;
+        args << QJSValue(targetListener);
+        QJSValue result = func.call(args);
+        if (result.isError()) {
+            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(result.property("fileName").toString()).arg(result.property("stack").toString());
+            // emit consoleAppendError(error);
+            return;
+        }
+
+        if (!result.isObject()) {
+            // emit consoleAppendError("GenerateUI() must return panel and container objects");
+            return;
+        }
+
+        QJSValue ui_container = result.property("ui_container");
+        QJSValue ui_panel = result.property("ui_panel");
+        if ( ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject()) {
+            // emit consoleAppendError("GenerateUI() must return panel and container objects");
+            return;
+        }
+
+        QObject* objPanel = ui_panel.toQObject();
+        auto* formElement = dynamic_cast<AxPanelWrapper*>(objPanel);
+        if (!formElement) {
+            // emit consoleAppendError("GenerateUI() must return panel and container objects");
+            return;
+        }
+
+        QObject* objContainer = ui_container.toQObject();
+        auto* container = dynamic_cast<AxContainerWrapper*>(objContainer);
+        if (!container) {
+            // emit consoleAppendError("GenerateUI() must return panel and container objects");
+            return;
+        }
+
+        agents.append(agent);
+        widgets[agent] = formElement->widget();
+        containers[agent] = container;
     }
 
-    DialogAgent dialogAgent(listenerName, listenerType);
-    dialogAgent.AddExAgents(tmpRegisterAgentsUI);
-    dialogAgent.SetProfile( *(adaptixWidget->GetProfile()) );
-    dialogAgent.Start();
-
-    for( auto regAgent: tmpRegisterAgentsUI ) {
-        regAgent.builder->ClearWidget();
-    }
+    DialogAgent* dialogListener = new DialogAgent(listenerName, listenerType);
+    dialogListener->setAttribute(Qt::WA_DeleteOnClose);
+    dialogListener->SetProfile( *(adaptixWidget->GetProfile()) );
+    dialogListener->AddExAgents(agents, widgets, containers);
+    dialogListener->Start();
 }

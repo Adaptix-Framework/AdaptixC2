@@ -95,7 +95,7 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 	var packets []interface{}
 	ts.listener_configs.ForEach(func(key string, value interface{}) bool {
 		listenerInfo := value.(extender.ListenerInfo)
-		p := CreateSpListenerReg(key, listenerInfo.UI)
+		p := CreateSpListenerReg(key, listenerInfo.AX)
 		packets = append(packets, p)
 		return true
 	})

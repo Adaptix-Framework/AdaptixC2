@@ -95,12 +95,12 @@ func CreateSpSyncFinish() SyncPackerFinish {
 
 /// LISTENER
 
-func CreateSpListenerReg(fn string, ui string) SyncPackerListenerReg {
+func CreateSpListenerReg(fn string, ax string) SyncPackerListenerReg {
 	return SyncPackerListenerReg{
 		SpType: TYPE_LISTENER_REG,
 
 		ListenerFN: fn,
-		ListenerUI: ui,
+		ListenerAX: ax,
 	}
 }
 
