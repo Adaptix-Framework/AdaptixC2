@@ -205,9 +205,10 @@ func (handler *HTTP) processRequest(ctx *gin.Context) {
 		return
 	}
 
-	ExternalIP = strings.Split(ctx.Request.RemoteAddr, ":")[0]
-	if handler.Config.TrustXForwardedFor {
+	if handler.Config.TrustXForwardedFor && ctx.Request.Header.Get("X-Forwarded-For") != "" {
 		ExternalIP = ctx.Request.Header.Get("X-Forwarded-For")
+	} else {
+		ExternalIP = strings.Split(ctx.Request.RemoteAddr, ":")[0]
 	}
 
 	agentType, agentId, beat, bodyData, err = handler.parseBeatAndData(ctx)
