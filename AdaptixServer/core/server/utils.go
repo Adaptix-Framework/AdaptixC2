@@ -171,7 +171,7 @@ type SyncPackerListenerReg struct {
 	SpType int `json:"type"`
 
 	ListenerFN string `json:"fn"`
-	ListenerUI string `json:"ui"`
+	ListenerAX string `json:"ax"`
 }
 
 type SyncPackerListenerStart struct {

@@ -40,7 +40,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_LISTENER_REG ) {
         if ( !jsonObj.contains("fn") || !jsonObj["fn"].isString() ) return false;
-        if ( !jsonObj.contains("ui") || !jsonObj["ui"].isString() ) return false;
+        if ( !jsonObj.contains("ax") || !jsonObj["ax"].isString() ) return false;
         return true;
     }
     if( spType == TYPE_LISTENER_START || spType == TYPE_LISTENER_EDIT ) {
@@ -730,9 +730,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_LISTENER_REG )
     {
         QString fn = jsonObj["fn"].toString();
-        QString ui = jsonObj["ui"].toString();
+        QString ax = jsonObj["ax"].toString();
 
-        this->RegisterListenerConfig(fn, ui);
+        this->RegisterListenerConfig(fn, ax);
         return;
     }
     if( spType == TYPE_AGENT_REG )
