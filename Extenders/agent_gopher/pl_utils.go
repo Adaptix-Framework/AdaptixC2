@@ -4,14 +4,15 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/encoding/simplifiedchinese"
-	"golang.org/x/text/transform"
 	"io"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 type Profile struct {
@@ -233,6 +234,16 @@ type ParamsTerminalStop struct {
 	TermId int `msgpack:"term_id"`
 }
 
+type ParamsExecBof struct {
+	Object   []byte `msgpack:"object"`
+	ArgsPack string `msgpack:"argspack`
+	Task     string `msgpack:"task"`
+}
+
+type AnsExecBof struct {
+	Output string `msgpack:"output"`
+}
+
 const (
 	COMMAND_ERROR      = 0
 	COMMAND_PWD        = 1
@@ -260,6 +271,8 @@ const (
 
 	COMMAND_TERMINAL_START = 35
 	COMMAND_TERMINAL_STOP  = 36
+
+	COMMAND_EXEC_BOF = 50
 )
 
 var codePageMapping = map[int]encoding.Encoding{

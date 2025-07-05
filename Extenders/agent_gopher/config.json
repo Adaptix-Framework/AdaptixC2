@@ -468,6 +468,23 @@
           ]
         },
         {
+          "command": "execute",
+          "description": "Execute [bof] in the current process's memory",
+          "subcommands":
+          [
+            {
+              "name": "bof",
+              "message": "Task: execute BOF",
+              "description": "Execute Beacon Object File",
+              "example": "execute bof /home/user/whoami.o",
+              "args": [
+                "FILE <bof> {Local path to object file}",
+                "STRING [param_data]"
+              ]
+            }
+          ]
+        },
+        {
           "command": "exit",
           "message": "Task: kill agent",
           "description": "Kill agent",
