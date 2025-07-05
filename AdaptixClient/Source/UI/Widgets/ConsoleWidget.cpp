@@ -394,7 +394,10 @@ void ConsoleWidget::processInput()
 
     this->AddToHistory(commandLine);
 
-    auto cmdResult = commander->ProcessInput( agent->data, commandLine );
+    auto cmdResult = commander->ProcessInput( agent->data.Id, commandLine );
+    if (cmdResult.hooked)
+        return;
+
     if ( cmdResult.output ) {
         QString message = "";
         QString text    = "";
@@ -415,11 +418,14 @@ void ConsoleWidget::processInput()
         return;
     }
 
+    QJsonDocument jsonDoc(cmdResult.data);
+    QString commandData = jsonDoc.toJson();
+
     /// 5 Mb
-    if (cmdResult.message.size() < 0x500000) {
+    if (commandData.size() < 0x500000) {
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqAgentCommand(agent->data.Name, agent->data.Id, commandLine, cmdResult.message, *(agent->adaptixWidget->GetProfile()), &message, &ok);
+        bool result = HttpReqAgentCommand(agent->data.Name, agent->data.Id, commandLine, commandData, *(agent->adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
             MessageError("Response timeout");
             return;
@@ -453,7 +459,7 @@ void ConsoleWidget::processInput()
         dataJson["name"]    = agent->data.Name;
         dataJson["id"]      = agent->data.Id;
         dataJson["cmdline"] = commandLine;
-        dataJson["data"]    = cmdResult.message;
+        dataJson["data"]    = commandData;
         QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
         QString sUrl = agent->adaptixWidget->GetProfile()->GetURL() + "/otp/upload/temp";

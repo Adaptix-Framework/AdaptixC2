@@ -5,6 +5,8 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
 
+class AxContainerWrapper;
+
 class DialogAgent : public QDialog
 {
     QGridLayout*    mainGridLayout      = nullptr;
@@ -18,8 +20,6 @@ class DialogAgent : public QDialog
     QLineEdit*      listenerInput       = nullptr;
     QLabel*         agentLabel          = nullptr;
     QComboBox*      agentCombobox       = nullptr;
-    QLabel*         osLabel             = nullptr;
-    QComboBox*      osCombobox          = nullptr;
     QPushButton*    buttonLoad          = nullptr;
     QPushButton*    buttonSave          = nullptr;
     QPushButton*    closeButton         = nullptr;
@@ -27,12 +27,13 @@ class DialogAgent : public QDialog
     QGroupBox*      agentConfigGroupbox = nullptr;
     QStackedWidget* configStackWidget   = nullptr;
 
-    QVector<RegAgentConfig>    regAgents;
-    QMap<QString, QSet<QString>> agentsOs;
-
     AuthProfile authProfile;
     QString     listenerName;
     QString     listenerType;
+
+    QStringList agents;
+    QMap<QString, QWidget*> widgets;
+    QMap<QString, AxContainerWrapper*> containers;
 
     void createUI();
 
@@ -40,15 +41,14 @@ public:
     explicit DialogAgent(const QString &listenerName, const QString &listenerType);
     ~DialogAgent() override;
 
-    void AddExAgents(const QVector<RegAgentConfig> &regAgents);
+    void AddExAgents(const QStringList &agents, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers);
     void SetProfile(const AuthProfile &profile);
     void Start();
 
 protected slots:
-    void changeConfig(const QString &fn);
-    void changeOs(const QString &os);
     void onButtonLoad();
     void onButtonSave();
+    void changeConfig(const QString &agentName);
     void onButtonGenerate();
     void onButtonClose();
 };
