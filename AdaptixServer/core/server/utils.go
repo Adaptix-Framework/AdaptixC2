@@ -197,10 +197,10 @@ type SyncPackerListenerStop struct {
 type SyncPackerAgentReg struct {
 	SpType int `json:"type"`
 
-	Agent         string `json:"agent"`
-	Watermark     string `json:"watermark"`
-	ListenersJson string `json:"listeners_json"`
-	HandlersJson  string `json:"handlers_json"`
+	Agent     string   `json:"agent"`
+	Watermark string   `json:"watermark"`
+	AX        string   `json:"ax"`
+	Listeners []string `json:"listeners"`
 }
 
 type SyncPackerAgentNew struct {

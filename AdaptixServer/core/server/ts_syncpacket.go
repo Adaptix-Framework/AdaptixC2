@@ -134,14 +134,14 @@ func CreateSpListenerStop(name string) SyncPackerListenerStop {
 
 /// AGENT
 
-func CreateSpAgentReg(agent string, watermark string, listenersJson string, handlersJson string) SyncPackerAgentReg {
+func CreateSpAgentReg(agent string, watermark string, ax string, listeners []string) SyncPackerAgentReg {
 	return SyncPackerAgentReg{
 		SpType: TYPE_AGENT_REG,
 
-		Agent:         agent,
-		Watermark:     watermark,
-		ListenersJson: listenersJson,
-		HandlersJson:  handlersJson,
+		Agent:     agent,
+		Watermark: watermark,
+		AX:        ax,
+		Listeners: listeners,
 	}
 }
 

@@ -22,6 +22,7 @@ import (
 )
 
 type GenerateConfig struct {
+	Os               string `json:"os"`
 	Arch             string `json:"arch"`
 	Format           string `json:"format"`
 	Win7support      bool   `json:"win7_support"`
@@ -33,7 +34,7 @@ var (
 	SrcPath = "src_gopher"
 )
 
-func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
+func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
 	var (
 		generateConfig GenerateConfig
 		profileData    []byte
@@ -127,7 +128,7 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 	return []byte(profileString), nil
 }
 
-func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
+func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
 	var (
 		generateConfig GenerateConfig
 		GoArch         string
@@ -159,13 +160,13 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 	}
 
 	LdFlags := "-s -w"
-	if operatingSystem == "linux" {
+	if generateConfig.Os == "linux" {
 		Filename = "agent.bin"
 		GoOs = "linux"
-	} else if operatingSystem == "mac" {
+	} else if generateConfig.Os == "mac" {
 		Filename = "agent.bin"
 		GoOs = "darwin"
-	} else if operatingSystem == "windows" {
+	} else if generateConfig.Os == "windows" {
 		Filename = "agent.exe"
 		GoOs = "windows"
 		LdFlags += " -H=windowsgui"
@@ -184,7 +185,7 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 	}
 
 	cmdBuild := fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
-	if operatingSystem == "windows" && generateConfig.Win7support {
+	if generateConfig.Os == "windows" && generateConfig.Win7support {
 		_, err := os.Stat("/usr/lib/go-win7/go")
 		if os.IsNotExist(err) {
 			return nil, "", errors.New("go-win7 not installed")

@@ -42,7 +42,7 @@ var (
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
 
-func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
+func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
 	var (
 		generateConfig GenerateConfig
 		err            error
@@ -195,7 +195,7 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 	return []byte(profileString), nil
 }
 
-func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
+func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
 	var (
 		generateConfig GenerateConfig
 		ConnectorFile  string

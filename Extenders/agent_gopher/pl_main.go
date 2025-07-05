@@ -97,7 +97,7 @@ func InitPlugin(ts any, moduleDir string, watermark string) any {
 	return ModuleObject
 }
 
-func (m *ModuleExtender) AgentGenerate(config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
+func (m *ModuleExtender) AgentGenerate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
 	var (
 		listenerMap  map[string]any
 		agentProfile []byte
@@ -109,12 +109,12 @@ func (m *ModuleExtender) AgentGenerate(config string, operatingSystem string, li
 		return nil, "", err
 	}
 
-	agentProfile, err = AgentGenerateProfile(config, operatingSystem, listenerWM, listenerMap)
+	agentProfile, err = AgentGenerateProfile(config, listenerWM, listenerMap)
 	if err != nil {
 		return nil, "", err
 	}
 
-	return AgentGenerateBuild(config, operatingSystem, agentProfile, listenerMap)
+	return AgentGenerateBuild(config, agentProfile, listenerMap)
 }
 
 func (m *ModuleExtender) AgentCreate(beat []byte) (adaptix.AgentData, error) {

@@ -33,7 +33,7 @@ type Teamserver interface {
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedTasksAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error
-	TsAgentGenerate(agentName string, config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
+	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
 	TsAgentImpersonate(agentId string, impersonated string, elevated bool) error

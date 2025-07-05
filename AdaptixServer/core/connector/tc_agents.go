@@ -13,7 +13,6 @@ type AgentConfig struct {
 	ListenerName string `json:"listener_name"`
 	ListenerType string `json:"listener_type"`
 	AgentName    string `json:"agent"`
-	Os           string `json:"operating_system"`
 	Config       string `json:"config"`
 }
 
@@ -39,7 +38,7 @@ func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
 		return
 	}
 
-	fileContent, fileName, err = tc.teamserver.TsAgentGenerate(agentConfig.AgentName, agentConfig.Config, agentConfig.Os, listenerWM, listenerProfile)
+	fileContent, fileName, err = tc.teamserver.TsAgentGenerate(agentConfig.AgentName, agentConfig.Config, listenerWM, listenerProfile)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

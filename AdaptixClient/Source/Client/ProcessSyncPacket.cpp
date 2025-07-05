@@ -59,10 +59,10 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
 
     if( spType == TYPE_AGENT_REG ) {
-        if ( !jsonObj.contains("agent")          || !jsonObj["agent"].isString() )          return false;
-        if ( !jsonObj.contains("watermark")      || !jsonObj["watermark"].isString() )      return false;
-        if ( !jsonObj.contains("listeners_json") || !jsonObj["listeners_json"].isString() ) return false;
-        if ( !jsonObj.contains("handlers_json")  || !jsonObj["handlers_json"].isString() )  return false;
+        if ( !jsonObj.contains("agent")     || !jsonObj["agent"].isString() )     return false;
+        if ( !jsonObj.contains("watermark") || !jsonObj["watermark"].isString() ) return false;
+        if ( !jsonObj.contains("ax")        || !jsonObj["ax"].isString() )        return false;
+        if ( !jsonObj.contains("listeners") || !jsonObj["listeners"].isArray() )  return false;
         return true;
     }
     if( spType == TYPE_AGENT_NEW ) {
@@ -737,12 +737,16 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
     if( spType == TYPE_AGENT_REG )
     {
-        QString agentName      = jsonObj["agent"].toString();
-        QString agentwatermark = jsonObj["watermark"].toString();
-        QString listenersJson  = jsonObj["listeners_json"].toString();
-        QString handlersJson   = jsonObj["handlers_json"].toString();
+        QString agentName         = jsonObj["agent"].toString();
+        QString agentwatermark    = jsonObj["watermark"].toString();
+        QString ax_script         = jsonObj["ax"].toString();
+        QJsonArray listenersArray = jsonObj["listeners"].toArray();
 
-        this->RegisterAgentConfig(agentName, agentwatermark, handlersJson, listenersJson);
+        QStringList listeners;
+        for (QJsonValue listener : listenersArray)
+            listeners.append(listener.toString());
+
+        this->RegisterAgentConfig(agentName, agentwatermark, ax_script, listeners);
         return;
     }
 }
