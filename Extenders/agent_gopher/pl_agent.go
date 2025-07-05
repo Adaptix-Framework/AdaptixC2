@@ -799,7 +799,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				if err != nil {
 					continue
 				}
-				task.Message += "BOF output"
+				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(params.Output, agentData.ACP)
 
 			case COMMAND_EXIT:
