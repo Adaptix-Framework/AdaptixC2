@@ -3,6 +3,7 @@
 
 #include <main.h>
 
+class Commander;
 class ConsoleWidget;
 class BrowserFilesWidget;
 class BrowserProcessWidget;
@@ -16,14 +17,15 @@ class Agent
 public:
     AdaptixWidget* adaptixWidget = nullptr;
 
-    AgentData data = {};
+    AgentData      data     = {};
     BrowsersConfig browsers = {};
 
     QImage imageActive   = QImage();
     QImage imageInactive = QImage();
 
-    QString connType = QString();
-    QString parentId = QString();
+    QString connType     = QString();
+    QString listenerType = QString();
+    QString parentId     = QString();
     QVector<QString> childsId;
 
     AgentTableWidgetItem* item_Id       = nullptr;
@@ -44,6 +46,7 @@ public:
     GraphItem*            graphItem     = nullptr;
     QImage                graphImage    = QImage();
 
+    Commander*            commander      = nullptr;
     ConsoleWidget*        Console        = nullptr;
     BrowserFilesWidget*   FileBrowser    = nullptr;
     BrowserProcessWidget* ProcessBrowser = nullptr;

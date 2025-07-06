@@ -1,5 +1,20 @@
 /// Beacom agent
 
+let exit_thread_action  = menu.create_action("Terminate thread",  function(value) { value.forEach(v => ax.execute_command(v, "terminate thread")) });
+let exit_process_action = menu.create_action("Terminate process", function(value) { value.forEach(v => ax.execute_command(v, "terminate process")) });
+let exit_menu = menu.create_menu("Exit");
+exit_menu.addItem(exit_thread_action)
+exit_menu.addItem(exit_process_action)
+menu.add_session_agent(exit_menu, ["beacon"])
+
+let file_browser_action     = menu.create_action("File Browser",    function(value) { value.forEach(v => ax.open_browser_files(v)) });
+let process_browser_action  = menu.create_action("Process Browser", function(value) { value.forEach(v => ax.open_browser_process(v)) });
+menu.add_session_browser(file_browser_action, ["beacon"])
+menu.add_session_browser(process_browser_action, ["beacon"])
+
+let tunnel_access_action = menu.create_action("Create Tunnel", function(value) { ax.open_access_tunnel(value[0], true, true, true, true) });
+menu.add_session_access(tunnel_access_action, ["beacon"])
+
 function RegisterCommands(listenerType)
 {
     var cmd_cat = ax.create_command("cat", "Read first 2048 bytes of the specified file", "cat C:\\file.exe", "Task: read file");
@@ -141,11 +156,8 @@ function RegisterCommands(listenerType)
         }
         let params = cmdline.substring(6);
         let new_cmd = "ps run -o C:\\Windows\\System32\\cmd.exe /c " + params;
-        ax.execute_command(id, new_cmd);
+        ax.execute_alias(id, cmdline, new_cmd);
     });
-
-
-
 
     if(listenerType == "BeaconHTTP") {
         var commands_external = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,

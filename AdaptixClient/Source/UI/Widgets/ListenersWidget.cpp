@@ -62,7 +62,7 @@ void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
     }
 
     auto item_Name      = new QTableWidgetItem( newListener.ListenerName );
-    auto item_Type      = new QTableWidgetItem( newListener.ListenerType );
+    auto item_Type      = new QTableWidgetItem( newListener.ListenerFullName );
     auto item_BindHost  = new QTableWidgetItem( newListener.BindHost );
     auto item_BindPort  = new QTableWidgetItem( newListener.BindPort );
     auto item_AgentHost = new QTableWidgetItem( newListener.AgentAddresses );

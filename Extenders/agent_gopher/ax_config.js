@@ -1,5 +1,18 @@
 /// Gopher agent
 
+let exit_action = menu.create_action("Exit", function(value) { value.forEach(v => ax.execute_command(v, "exit")) });
+menu.add_session_agent(exit_action, ["gopher"])
+
+let file_browser_action     = menu.create_action("File Browser",    function(value) { value.forEach(v => ax.open_browser_files(v)) });
+let process_browser_action  = menu.create_action("Process Browser", function(value) { value.forEach(v => ax.open_browser_process(v)) });
+let terminal_browser_action = menu.create_action("Remote Terminal", function(value) { value.forEach(v => ax.open_browser_terminal(v)) });
+menu.add_session_browser(file_browser_action, ["gopher"])
+menu.add_session_browser(process_browser_action, ["gopher"])
+menu.add_session_browser(terminal_browser_action, ["gopher"])
+
+let tunnel_access_action = menu.create_action("Create Tunnel", function(value) { ax.open_access_tunnel(value[0], true, true, false, false) });
+menu.add_session_access(tunnel_access_action, ["gopher"])
+
 function RegisterCommands(listenerType)
 {
     var cmd_cat_win = ax.create_command("cat", "Read a file", "cat C:\\file.exe", "Task: read file");

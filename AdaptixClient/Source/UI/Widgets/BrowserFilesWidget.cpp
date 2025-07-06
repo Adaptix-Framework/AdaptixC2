@@ -605,10 +605,6 @@ void BrowserFilesWidget::onUpload() const
 
 void BrowserFilesWidget::actionDownload() const
 {
-    // QString path = inputPath->text();
-    // if ( path.isEmpty() )
-        // return;
-
     if (currentPath.isEmpty())
         return;
 

@@ -259,7 +259,6 @@ func (m *ModuleExtender) AgentBrowserUpload(path string, content []byte, agentDa
 ///
 
 func (m *ModuleExtender) AgentTaskDownloadStart(path string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-
 	r := make([]byte, 4)
 	_, _ = rand.Read(r)
 	taskId := fmt.Sprintf("%08x", binary.BigEndian.Uint32(r))
@@ -280,7 +279,6 @@ func (m *ModuleExtender) AgentTaskDownloadStart(path string, agentData adaptix.A
 }
 
 func (m *ModuleExtender) AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-
 	packData, err := TaskDownloadCancel(fileId, agentData)
 	if err != nil {
 		return adaptix.TaskData{}, err

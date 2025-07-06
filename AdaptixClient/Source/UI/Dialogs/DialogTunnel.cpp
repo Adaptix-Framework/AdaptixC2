@@ -1,9 +1,18 @@
 #include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
 
-DialogTunnel::DialogTunnel()
+DialogTunnel::DialogTunnel(const QString &agentId, const bool s4, const bool s5, const bool lpf, const bool rpf)
 {
      this->createUI();
+
+     tunnelTypeCombo->clear();
+     this->AgentId = agentId;
+
+     if (s4)  tunnelTypeCombo->addItem("Socks4");
+     if (s5)  tunnelTypeCombo->addItem("Socks5");
+     if (lpf) tunnelTypeCombo->addItem("Local port forwarding");
+     if (rpf) tunnelTypeCombo->addItem("Reverse port forwarding");
+
      connect(tunnelTypeCombo, &QComboBox::currentTextChanged, this, &DialogTunnel::changeType);
      connect(buttonCreate,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCreate);
      connect(buttonCancel,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCancel);
@@ -176,41 +185,15 @@ void DialogTunnel::StartDialog()
      this->exec();
 }
 
-bool DialogTunnel::IsValid() const
-{
-     return this->valid;
-}
+bool DialogTunnel::IsValid() const { return this->valid; }
 
-QString DialogTunnel::GetMessage() const
-{
-     return this->message;
-}
+QString DialogTunnel::GetMessage() const { return this->message; }
 
-QString DialogTunnel::GetTunnelType() const
-{
-     return this->tunnelType;
-}
+QString DialogTunnel::GetTunnelType() const { return this->tunnelType; }
 
-QString DialogTunnel::GetEndpoint() const
-{
-     return this->tunnelEndpointCombo->currentText();
-}
+QString DialogTunnel::GetEndpoint() const { return this->tunnelEndpointCombo->currentText(); }
 
-QByteArray DialogTunnel::GetTunnelData() const
-{
-     return this->jsonData;
-}
-
-void DialogTunnel::SetSettings(const QString &agentId, const bool s5, const bool s4, const bool lpf, const bool rpf)
-{
-     tunnelTypeCombo->clear();
-     this->AgentId = agentId;
-
-     if (s5)  tunnelTypeCombo->addItem("Socks5");
-     if (s4)  tunnelTypeCombo->addItem("Socks4");
-     if (lpf) tunnelTypeCombo->addItem("Local port forwarding");
-     if (rpf) tunnelTypeCombo->addItem("Reverse port forwarding");
-}
+QByteArray DialogTunnel::GetTunnelData() const { return this->jsonData; }
 
 void DialogTunnel::changeType(const QString &type) const
 {
@@ -363,7 +346,4 @@ void DialogTunnel::onButtonCreate()
      this->close();
 }
 
-void DialogTunnel::onButtonCancel()
-{
-     this->close();
-}
+void DialogTunnel::onButtonCancel() { this->close(); }

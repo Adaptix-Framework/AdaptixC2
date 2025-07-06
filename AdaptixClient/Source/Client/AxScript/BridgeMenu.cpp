@@ -44,13 +44,3 @@ void BridgeMenu::clear()
     qDeleteAll(menuItems);
     menuItems.clear();
 }
-
-
-
-// QList<BridgeMenuItem*> ScriptManager::getAllItems() const {
-//     QList<BridgeMenuItem*> all;
-//     for (auto* registry : m_scriptRegistries.values()) {
-//         all.append(registry->items());
-//     }
-//     return all;
-// }

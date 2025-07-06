@@ -16,7 +16,7 @@ Q_OBJECT
     QWidget*        widget;
     QList<AbstractAxMenuItem*> menuItems;
 
-    const QList<AbstractAxMenuItem*>& items() const;
+    const QList<AbstractAxMenuItem*> items() const;
     void clear();
 
 public:

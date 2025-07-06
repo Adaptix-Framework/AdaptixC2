@@ -2029,13 +2029,13 @@ func TunnelReverse(tunnelId int, port int) ([]byte, error) {
 /// TERMINAL
 
 func TerminalStart(terminalId int, program string, sizeH int, sizeW int) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Remote Terminal not supported")
 }
 
 func TerminalWrite(terminalId int, data []byte) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Remote Terminal not supported")
 }
 
 func TerminalClose(terminalId int) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Remote Terminal not supported")
 }

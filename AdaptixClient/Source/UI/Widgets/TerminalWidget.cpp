@@ -217,16 +217,16 @@ void TerminalWidget::handleTerminalMenu(const QPoint &pos)
 
 void TerminalWidget::SetKeys()
 {
-    /// Ctrl+Shift+C: Copy
+    /* Ctrl+Shift+C: Copy */
     QShortcut *copyShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C), this->termWidget);
     connect(copyShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::copyClipboard);
-    /// Ctrl+Shift+V: Paste
+    /* Ctrl+Shift+V: Paste */
     QShortcut *pasteShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V), this->termWidget);
     connect(pasteShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::pasteClipboard);
-    /// Ctrl+Shift+F: Find
+    /* Ctrl+Shift+F: Find */
     QShortcut *findShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F), this->termWidget);
     connect(findShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::toggleShowSearchBar);
-    /// Ctrl+Shift+L: Clear
+    /* Ctrl+Shift+L: Clear */
     QShortcut *clearShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_L), this->termWidget);
     connect(clearShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::clear);
 }

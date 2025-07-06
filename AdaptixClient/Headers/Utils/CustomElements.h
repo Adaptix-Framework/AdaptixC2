@@ -20,11 +20,6 @@ public:
 
         QStyledItemDelegate::paint(painter, optFull, index);
     }
-
-     // QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
-     //     QSize originalSize = QStyledItemDelegate::sizeHint(option, index);
-     //     return QSize(originalSize.width() + 30, originalSize.height());
-     // }
 };
 
 

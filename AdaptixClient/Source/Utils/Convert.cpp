@@ -221,27 +221,32 @@ QString TextColorHtml(const QString &text, const QString &color)
     return R"(<font color=")" + color + R"(">)" + text.toHtmlEscaped() + R"(</font>)";
 }
 
-// QString TextUnderlineColorHtml(const QString &text, const QString &color)
-// {
-//     if (text.isEmpty())
-//         return "";
-//
-//     if (color.isEmpty())
-//         return R"(<u>)" + text.toHtmlEscaped() + R"(</u>)";
-//
-//     return R"(<font color=")" + color + R"("><u>)" + text.toHtmlEscaped() + R"(</u></font>)";
-// }
-//
-// QString TextBoltColorHtml(const QString &text, const QString &color )
-// {
-//     if (text.isEmpty())
-//         return "";
-//
-//     if (color.isEmpty())
-//         return R"(<b>)" + text.toHtmlEscaped() + R"(</b>)";
-//
-//     return R"(<font color=")" + color + R"("><b>)" + text.toHtmlEscaped() + R"(</b></font>)";
-// }
+
+/*
+QString TextUnderlineColorHtml(const QString &text, const QString &color)
+{
+    if (text.isEmpty())
+        return "";
+
+    if (color.isEmpty())
+        return R"(<u>)" + text.toHtmlEscaped() + R"(</u>)";
+
+    return R"(<font color=")" + color + R"("><u>)" + text.toHtmlEscaped() + R"(</u></font>)";
+}
+*/
+
+/*
+QString TextBoltColorHtml(const QString &text, const QString &color )
+{
+    if (text.isEmpty())
+        return "";
+
+    if (color.isEmpty())
+        return R"(<b>)" + text.toHtmlEscaped() + R"(</b>)";
+
+    return R"(<font color=")" + color + R"("><b>)" + text.toHtmlEscaped() + R"(</b></font>)";
+}
+*/
 
 QString FormatSecToStr(int seconds)
 {
