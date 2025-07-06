@@ -28,11 +28,6 @@ LogsWidget::~LogsWidget() = default;
 
 void LogsWidget::createUI()
 {
-    /// Logs
-//    logsLabel = new QLabel(this);
-//    logsLabel->setText("Logs");
-//    logsLabel->setAlignment(Qt::AlignCenter);
-
     searchWidget = new QWidget(this);
     searchWidget->setVisible(false);
 

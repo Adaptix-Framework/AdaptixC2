@@ -342,7 +342,7 @@ func PackTasks(agentData adaptix.AgentData, tasksArray []adaptix.TaskData) ([]by
 }
 
 func PackPivotTasks(pivotId string, data []byte) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Pivot not packed")
 }
 
 func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
@@ -1256,7 +1256,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 /// BROWSERS
 
 func BrowserDisks(agentData adaptix.AgentData) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Disks Browsers not supported")
 }
 
 func BrowserProcess(agentData adaptix.AgentData) ([]byte, error) {
@@ -1331,17 +1331,17 @@ func TaskDownloadCancel(fileId string, agentData adaptix.AgentData) ([]byte, err
 }
 
 func TaskDownloadResume(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Download Resume not supported")
 }
 
 func TaskDownloadPause(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Download Pause not supported")
 }
 
 ///
 
 func BrowserJobKill(jobId string) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Job Kill not supported")
 }
 
 func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {

@@ -14,7 +14,7 @@ AxActionWrapper::AxActionWrapper(const QString& text, const QJSValue& handler, Q
 QAction* AxActionWrapper::action() const { return this->pAction; }
 
 void AxActionWrapper::setContext(QVariantList context) {
-    QObject::disconnect(pAction);
+    QObject::disconnect(pAction, nullptr, this, nullptr);
 
     QObject::connect(pAction, &QAction::triggered, this, [this, context]() { triggerWithContext(context); });
 }

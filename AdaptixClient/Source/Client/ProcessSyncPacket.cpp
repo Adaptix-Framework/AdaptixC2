@@ -326,7 +326,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         ListenerData newListener = {};
         newListener.ListenerName   = jsonObj["l_name"].toString();
-        newListener.ListenerType   = jsonObj["l_type"].toString();
+        newListener.ListenerFullName   = jsonObj["l_type"].toString();
         newListener.BindHost       = jsonObj["l_bind_host"].toString();
         newListener.BindPort       = jsonObj["l_bind_port"].toString();
         newListener.AgentAddresses = jsonObj["l_agent_addr"].toString();
@@ -340,7 +340,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         ListenerData newListener = {};
         newListener.ListenerName   = jsonObj["l_name"].toString();
-        newListener.ListenerType   = jsonObj["l_type"].toString();
+        newListener.ListenerFullName   = jsonObj["l_type"].toString();
         newListener.BindHost       = jsonObj["l_bind_host"].toString();
         newListener.BindPort       = jsonObj["l_bind_port"].toString();
         newListener.AgentAddresses = jsonObj["l_agent_addr"].toString();

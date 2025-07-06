@@ -11,8 +11,8 @@ class Agent;
 
 class AxScriptManager : public QObject {
 Q_OBJECT
-    AdaptixWidget*  mainWidget;
-    AxScriptEngine* mainScript;
+    AdaptixWidget*  mainWidget = nullptr;
+    AxScriptEngine* mainScript = nullptr;
     QMap<QString, AxScriptEngine*> scripts;
     QMap<QString, AxScriptEngine*> listeners_scripts;
     QMap<QString, AxScriptEngine*> agents_scripts;
@@ -24,7 +24,8 @@ public:
     void Clear();
     void ResetMain();
 
-    QMap<QString, Agent*> getAgents() const;
+    AdaptixWidget* GetAdaptix() const;
+    QMap<QString, Agent*> GetAgents() const;
 
     QStringList ListenerScriptList();
     void        ListenerScriptAdd(const QString &name, const QString &ax_script);

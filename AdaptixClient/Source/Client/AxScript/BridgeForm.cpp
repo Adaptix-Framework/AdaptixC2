@@ -43,9 +43,6 @@ void BridgeForm::connect(QObject* sender, const QString& signalName, const QJSVa
             else if (typeName == "bool")
                 connected = QObject::connect(sender, method, proxy, proxy->metaObject()->method(proxy->metaObject()->indexOfSlot("callWithArg(bool)")));
         }
-        // else if (paramCount == 2) {
-            // connected = QObject::connect(sender, method, proxy, proxy->metaObject()->method(proxy->metaObject()->indexOfSlot("callWithArgs(QVariant,QVariant)")));
-        // }
         else {
             emit consoleAppendError("connect -> Signal " + signalName + " has too many parameters (not supported)");
             return;

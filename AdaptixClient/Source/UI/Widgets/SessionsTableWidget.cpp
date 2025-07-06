@@ -8,15 +8,18 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Dialogs/DialogTunnel.h>
+#include <Client/AxScript/AxScriptManager.h>
 #include <Client/Requestor.h>
 #include <Client/Settings.h>
 #include <Client/TunnelEndpoint.h>
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
-SessionsTableWidget::SessionsTableWidget( QWidget* w )
+
+SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w )
 {
-    this->mainWidget = w;
+    this->adaptixWidget = w;
+
     this->createUI();
 
     connect( tableWidget, &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
@@ -227,10 +230,6 @@ void SessionsTableWidget::addTableItem(const Agent* newAgent) const
 
 void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     if ( adaptixWidget->AgentsMap.contains(newAgent->data.Id) )
         return;
 
@@ -245,8 +244,7 @@ void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
 
 void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget || !adaptixWidget->AgentsMap.contains(agentId))
+    if (!adaptixWidget->AgentsMap.contains(agentId))
         return;
 
     Agent* agent = adaptixWidget->AgentsMap[agentId];
@@ -274,10 +272,6 @@ void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
 void SessionsTableWidget::SetData() const
 {
     this->ClearTableContent();
-
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
 
     for (int i = 0; i < adaptixWidget->AgentsVector.size(); i++ ) {
         QString agentId = adaptixWidget->AgentsVector[i];
@@ -328,10 +322,6 @@ void SessionsTableWidget::ClearTableContent() const
 
 void SessionsTableWidget::Clear() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     adaptixWidget->AgentsVector.clear();
 
     for (auto agentId : adaptixWidget->AgentsMap.keys()) {
@@ -368,17 +358,10 @@ void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index) con
 {
     QString AgentId = tableWidget->item(index.row(),0)->text();
 
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     adaptixWidget->LoadConsoleUI(AgentId);
 }
 
-void SessionsTableWidget::onFilterUpdate() const
-{
-    this->SetData();
-}
+void SessionsTableWidget::onFilterUpdate() const { this->SetData(); }
 
 /// Menu
 
@@ -482,10 +465,6 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 
 void SessionsTableWidget::actionConsoleOpen() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
@@ -496,10 +475,6 @@ void SessionsTableWidget::actionConsoleOpen() const
 
 void SessionsTableWidget::actionExecuteCommand()
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -524,10 +499,6 @@ void SessionsTableWidget::actionExecuteCommand()
 
 void SessionsTableWidget::actionTasksBrowserOpen() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     QString agentId = tableWidget->item( tableWidget->currentRow(), ColumnAgentID )->text();
 
     adaptixWidget->TasksTab->SetAgentFilter(agentId);
@@ -684,10 +655,6 @@ void SessionsTableWidget::actionAgentExit() const
 
 void SessionsTableWidget::actionMarkActive() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -710,10 +677,6 @@ void SessionsTableWidget::actionMarkActive() const
 
 void SessionsTableWidget::actionMarkInactive() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -736,10 +699,6 @@ void SessionsTableWidget::actionMarkInactive() const
 
 void SessionsTableWidget::actionItemColor() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -766,10 +725,6 @@ void SessionsTableWidget::actionItemColor() const
 
 void SessionsTableWidget::actionTextColor() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -796,10 +751,6 @@ void SessionsTableWidget::actionTextColor() const
 
 void SessionsTableWidget::actionColorReset() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -822,16 +773,11 @@ void SessionsTableWidget::actionColorReset() const
 
 void SessionsTableWidget::actionConsoleDelete()
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     QMessageBox::StandardButton reply = QMessageBox::question(this, "Clear Confirmation",
                                       "Are you sure you want to delete all agent console data and history from server (tasks will not be deleted from TaskManager)?\n\n"
                                       "If you want to temporarily hide the contents of the agent console, do so through the agent console menu.",
                                       QMessageBox::Yes | QMessageBox::No,
                                       QMessageBox::No);
-
     if (reply != QMessageBox::Yes)
         return;
 
@@ -860,10 +806,6 @@ void SessionsTableWidget::actionConsoleDelete()
 
 void SessionsTableWidget::actionAgentRemove()
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     QMessageBox::StandardButton reply = QMessageBox::question(this, "Delete Confirmation",
                                       "Are you sure you want to delete all information about the selected agents from the server?\n\n"
                                       "If you want to hide the record, simply choose: 'Item -> Hide on Client'.",
@@ -895,10 +837,6 @@ void SessionsTableWidget::actionAgentRemove()
 
 void SessionsTableWidget::actionItemTag() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -930,10 +868,6 @@ void SessionsTableWidget::actionItemTag() const
 
 void SessionsTableWidget::actionItemHide() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
 
@@ -950,10 +884,6 @@ void SessionsTableWidget::actionItemHide() const
 
 void SessionsTableWidget::actionItemsShowAll() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     bool refact = false;
     for (auto agent : adaptixWidget->AgentsMap) {
         if (agent->show == false) {

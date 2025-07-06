@@ -389,13 +389,6 @@ void Vt102Emulation::processOSC() {
     }
 
     switch (command) {
-    /*
-     * Operating System Controls https://www.xfree86.org/current/ctlseqs.html
-     *
-     * Ps = 0 → Change Icon Name and Window Title to Pt
-     * Ps = 1 → Change Icon Name to Pt
-     * Ps = 2 → Change Window Title to Pt
-     */
     case 0:
     case 1:
     case 2: {
@@ -525,8 +518,6 @@ void Vt102Emulation::doTitleChanged(int what, const QString &caption) {
         emit titleChanged(what, caption);
     }
 }
-
-// Interpreting Codes ---------------------------------------------------------
 
 /*
      Now that the incoming character stream is properly tokenized,
@@ -1479,7 +1470,6 @@ void Vt102Emulation::reportSecondaryAttributes() {
 }
 
 void Vt102Emulation::reportTerminalParms(int p)
-// DECREPTPARM
 {
     const size_t sz = 100;
     char tmp[sz];
@@ -1538,25 +1528,11 @@ void Vt102Emulation::sendMouseEvent(int cb, int cx, int cy, int eventType) {
     sendString(command);
 }
 
-/**
- * The focus lost event can be used by Vim (or other terminal applications)
- * to recognize that the konsole window has lost focus.
- * The escape sequence is also used by iTerm2.
- * Vim needs the following plugin to be installed to convert the escape
- * sequence into the FocusLost autocmd: https://github.com/sjl/vitality.vim
- */
 void Vt102Emulation::focusLost(void) {
     if (_reportFocusEvents)
         sendString("\033[O");
 }
 
-/**
- * The focus gained event can be used by Vim (or other terminal applications)
- * to recognize that the konsole window has gained focus again.
- * The escape sequence is also used by iTerm2.
- * Vim needs the following plugin to be installed to convert the escape
- * sequence into the FocusGained autocmd: https://github.com/sjl/vitality.vim
- */
 void Vt102Emulation::focusGained(void) {
     if (_reportFocusEvents)
         sendString("\033[I");
@@ -1687,8 +1663,6 @@ void Vt102Emulation::sendKeyEvent(QKeyEvent *event, bool fromPaste) {
 /*                                                                           */
 /* ------------------------------------------------------------------------- */
 
-// Character Set Conversion ------------------------------------------------ --
-
 /*
      The processing contains a VT100 specific code translation layer.
      It's still in use and mainly responsible for the line drawing graphics.
@@ -1796,8 +1770,6 @@ void Vt102Emulation::restoreCursor() {
 
      We decided on the precise precise extend, somehow.
 */
-
-// "Mode" related part of the state. These are all booleans.
 
 void Vt102Emulation::resetModes() {
 
@@ -1915,5 +1887,4 @@ char Vt102Emulation::eraseChar() const {
 void Vt102Emulation::reportDecodingError() {
     if (tokenBufferPos == 0 || (tokenBufferPos == 1 && (tokenBuffer[0] & 0xff) >= 32))
         return;
-    //qDebug()<< "Undecodable sequence:" << QString::fromWCharArray(tokenBuffer, tokenBufferPos);
 }

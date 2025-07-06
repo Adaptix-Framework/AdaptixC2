@@ -159,7 +159,6 @@ void QTermWidget::search(bool forwards, bool next) {
             new HistorySearch(m_emulation, regExp, forwards, startColumn, startLine, this);
     connect(historySearch, &HistorySearch::matchFound, this, [this](int startColumn, int startLine, int endColumn, int endLine){
         ScreenWindow* sw = m_terminalDisplay->screenWindow();
-        //qDebug() << "Scroll to" << startLine;
         sw->scrollTo(startLine);
         sw->setTrackOutput(false);
         sw->notifyOutputChanged();
@@ -321,7 +320,6 @@ void QTermWidget::sendKeyEvent(QKeyEvent *e) {
 }
 
 void QTermWidget::resizeEvent(QResizeEvent*) {
-    //qDebug("global window resizing...with %d %d", this->size().width(), this->size().height());
     m_terminalDisplay->resize(this->size());
 }
 
@@ -349,14 +347,6 @@ void QTermWidget::updateTerminalSize() {
 }
 
 void QTermWidget::monitorTimerDone() {
-    //FIXME: The idea here is that the notification popup will appear to tell the user than output from
-    //the terminal has stopped and the popup will disappear when the user activates the session.
-    //
-    //This breaks with the addition of multiple views of a session.  The popup should disappear
-    //when any of the views of the session becomes active
-
-
-    //FIXME: Make message text for this notification and the activity notification more descriptive.
     if (m_monitorSilence) {
         emit silence();
         emit stateChanged(NOTIFYSILENCE);
@@ -376,7 +366,6 @@ void QTermWidget::activityStateSet(int state) {
         }
 
         if ( m_monitorActivity ) {
-            //FIXME:  See comments in monitorTimerDone()
             if (!m_notifiedActivity) {
                 m_notifiedActivity=true;
                 emit activity();

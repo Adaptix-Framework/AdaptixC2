@@ -205,7 +205,7 @@ typedef struct SettingsData {
 typedef struct ListenerData
 {
     QString ListenerName;
-    QString ListenerType;
+    QString ListenerFullName;
     QString BindHost;
     QString BindPort;
     QString AgentAddresses;

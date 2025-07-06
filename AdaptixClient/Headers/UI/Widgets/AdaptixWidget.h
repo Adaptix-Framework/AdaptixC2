@@ -104,8 +104,6 @@ public:
 
     AuthProfile* GetProfile() const;
 
-    void RegisterListenerConfig(const QString &fn, const QString &ax_script);
-    void RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &ax_script, const QStringList &listeners);
     void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
     void RemoveTab(int index) const;
     void AddExtension(ExtensionFile ext);
@@ -113,8 +111,17 @@ public:
     void Close();
     void ClearAdaptix();
 
+    void RegisterListenerConfig(const QString &fn, const QString &ax_script);
+    void RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &ax_script, const QStringList &listeners);
     QList<QString> GetAgentNames(const QString &listenerType) const;
     RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
+
+    void LoadConsoleUI(const QString &AgentId);
+    void LoadTasksOutput() const;
+    void LoadFileBrowserUI(const QString &AgentId);
+    void LoadProcessBrowserUI(const QString &AgentId);
+    void LoadTerminalUI(const QString &AgentId);
+    void ShowTunnelCreator(const QString &AgentId, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
 
 signals:
     void SyncedSignal();
@@ -132,13 +139,7 @@ public slots:
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;
     void LoadScreenshotsUI() const;
-    void LoadTasksOutput() const;
     void OnReconnect();
-    void LoadConsoleUI(const QString &AgentId);
-    void LoadFileBrowserUI(const QString &AgentId);
-    void LoadProcessBrowserUI(const QString &AgentId);
-    void LoadTerminalUI(const QString &AgentId);
-
 };
 
 #endif //ADAPTIXCLIENT_ADAPTIXWIDGET_H

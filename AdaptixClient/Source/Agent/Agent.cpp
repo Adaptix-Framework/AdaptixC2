@@ -53,8 +53,9 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 
     for ( auto listenerData : this->adaptixWidget->Listeners) {
         if ( listenerData.ListenerName == this->data.Listener ) {
-            QString listenerType = listenerData.ListenerType.split("/")[0];
-            if (listenerType == "internal")
+            QStringList parts = listenerData.ListenerFullName.split("/");
+            this->listenerType = parts[2];
+            if (parts[0] == "internal")
                 this->connType = "internal";
             else
                 this->connType = "external";
@@ -124,24 +125,19 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     auto regAgnet = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
     this->browsers = regAgnet.browsers;
 
-    this->Console = new ConsoleWidget(this, regAgnet.commander);
-
-    if (this->browsers.FileBrowser)
-        this->FileBrowser = new BrowserFilesWidget(this);
-
-    if (this->browsers.ProcessBrowser)
-        this->ProcessBrowser = new BrowserProcessWidget(this);
-
-    if (this->browsers.RemoteTerminal)
-        this->Terminal = new TerminalWidget(this, adaptixWidget);
+    this->commander      = regAgnet.commander;
+    this->Console        = new ConsoleWidget(this, regAgnet.commander);
+    this->FileBrowser    = new BrowserFilesWidget(this);
+    this->ProcessBrowser = new BrowserProcessWidget(this);
+    this->Terminal       = new TerminalWidget(this, adaptixWidget);
 }
 
 Agent::~Agent() = default;
 
 void Agent::Update(QJsonObject jsonObjAgentData)
 {
-    int old_Sleep     = this->data.Sleep;
-    int old_Jitter    = this->data.Jitter;
+    int old_Sleep        = this->data.Sleep;
+    int old_Jitter       = this->data.Jitter;
     QString old_Color = this->data.Color;
 
     this->data.Sleep        = jsonObjAgentData["a_sleep"].toDouble();

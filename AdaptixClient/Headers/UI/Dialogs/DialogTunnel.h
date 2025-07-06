@@ -65,10 +65,9 @@ class DialogTunnel : public QDialog
      void createUI();
 
 public:
-     explicit DialogTunnel();
+     explicit DialogTunnel(const QString &agentId, bool s4, bool s5, bool lpf, bool rpf);
      ~DialogTunnel() override;
 
-     void SetSettings(const QString &agentId, bool s5, bool s4, bool lpf, bool rpf);
      void StartDialog();
      bool IsValid() const;
      QString GetMessage() const;

@@ -18,6 +18,7 @@
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
+#include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/TunnelEndpoint.h>
@@ -218,7 +219,145 @@ void AdaptixWidget::createUI()
     this->setLayout(mainGridLayout);
 }
 
+/// MAIN
+
 AuthProfile* AdaptixWidget::GetProfile() const { return this->profile; }
+
+void AdaptixWidget::AddTab(QWidget *tab, const QString &title, const QString &icon) const
+{
+    if ( mainTabWidget->count() == 0 )
+        mainVSplitter->setSizes(QList<int>() << 100 << 200);
+    else if ( mainTabWidget->count() == 1 )
+        mainTabWidget->setMovable(true);
+
+    int id = mainTabWidget->addTab( tab, title );
+
+    mainTabWidget->setIconSize( QSize( 17, 17 ) );
+    mainTabWidget->setTabIcon(id, QIcon(icon));
+    mainTabWidget->setCurrentIndex( id );
+}
+
+void AdaptixWidget::RemoveTab(int index) const
+{
+    if (index == -1)
+        return;
+
+    mainTabWidget->removeTab(index);
+
+    if (mainTabWidget->count() == 0)
+        mainVSplitter->setSizes(QList<int>() << 0);
+    else if (mainTabWidget->count() == 1)
+        mainTabWidget->setMovable(false);
+}
+
+void AdaptixWidget::AddExtension(ExtensionFile ext)
+{
+    if( Extensions.contains(ext.FilePath) )
+        return;
+
+    Extensions[ext.FilePath] = ext;
+
+    if( !synchronized )
+        return;
+
+    // ToDo: AddExtension
+
+    // for (QString agentName : ext.ExCommands.keys()) {
+    //     if (Commanders.contains(agentName)) {
+    //         for (auto commander : Commanders[agentName] ) {
+    //             if (commander) {
+    //                 bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName], ext.ExConstants);
+    //                 if (result) {
+    //                     for( auto agent : AgentsMap ){
+    //                         if( agent && agent->Console )
+    //                             agent->Console->UpgradeCompleter();
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+}
+
+void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
+{
+    Extensions.remove(ext.FilePath);
+
+    // ToDo: RemoveExtension
+
+    // for (QString agentName : ext.ExCommands.keys()) {
+    //     if (Commanders.contains(agentName)) {
+    //         for (auto commander : Commanders[agentName] ) {
+    //             if (commander) {
+    //                 commander->RemoveExtModule(ext.FilePath);
+    //                 for( auto agent : AgentsMap ){
+    //                     if( agent && agent->Console )
+    //                         agent->Console->UpgradeCompleter();
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+}
+
+void AdaptixWidget::Close()
+{
+    TickThread->quit();
+    TickThread->wait();
+    delete TickThread;
+
+    ChannelThread->quit();
+    ChannelThread->wait();
+    delete ChannelThread;
+
+    ChannelWsWorker->webSocket->close();
+
+    this->ClearAdaptix();
+}
+
+void AdaptixWidget::ClearAdaptix()
+{
+    LogsTab->Clear();
+    DownloadsTab->Clear();
+    ScreenshotsTab->Clear();
+    TasksTab->Clear();
+    ListenersTab->Clear();
+    SessionsGraphPage->Clear();
+    SessionsTablePage->Clear();
+    TunnelsTab->Clear();
+
+    ScriptManager->Clear();
+
+    for (auto tunnelId : ClientTunnels.keys()) {
+        auto tunnel = ClientTunnels[tunnelId];
+        ClientTunnels.remove(tunnelId);
+        tunnel->Stop();
+        delete tunnel;
+    }
+    ClientTunnels.clear();
+
+    // ToDO: ClearAdaptix
+
+    // for (int i = 0; i < RegisterAgents.size(); i++) {
+    //     WidgetBuilder* builder   = RegisterAgents[i].builder;
+    //     RegisterAgents.remove(i);
+    //     i--;
+    //     delete builder;
+    // }
+
+    // ToDo: Clear Commanders
+
+    // for (auto commanderMap : Commanders ) {
+    //     for (auto k : commanderMap.keys()) {
+    //         Commander* commander = commanderMap[k];
+    //         commanderMap.remove(k);
+    //         delete commander;
+    //     }
+    // }
+    // Commanders.clear();
+}
+
+/// REGISTER
 
 void AdaptixWidget::RegisterListenerConfig(const QString &fn, const QString &ax_script)
 {
@@ -319,140 +458,6 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
     }
 }
 
-void AdaptixWidget::ClearAdaptix()
-{
-    LogsTab->Clear();
-    DownloadsTab->Clear();
-    ScreenshotsTab->Clear();
-    TasksTab->Clear();
-    ListenersTab->Clear();
-    SessionsGraphPage->Clear();
-    SessionsTablePage->Clear();
-    TunnelsTab->Clear();
-
-    ScriptManager->Clear();
-
-    for (auto tunnelId : ClientTunnels.keys()) {
-        auto tunnel = ClientTunnels[tunnelId];
-        ClientTunnels.remove(tunnelId);
-        tunnel->Stop();
-        delete tunnel;
-    }
-    ClientTunnels.clear();
-
-    // ToDO: ClearAdaptix
-
-    // for (int i = 0; i < RegisterAgents.size(); i++) {
-    //     WidgetBuilder* builder   = RegisterAgents[i].builder;
-    //     RegisterAgents.remove(i);
-    //     i--;
-    //     delete builder;
-    // }
-
-    // ToDo: Clear Commanders
-
-    // for (auto commanderMap : Commanders ) {
-    //     for (auto k : commanderMap.keys()) {
-    //         Commander* commander = commanderMap[k];
-    //         commanderMap.remove(k);
-    //         delete commander;
-    //     }
-    // }
-    // Commanders.clear();
-}
-
-void AdaptixWidget::Close()
-{
-    TickThread->quit();
-    TickThread->wait();
-    delete TickThread;
-
-    ChannelThread->quit();
-    ChannelThread->wait();
-    delete ChannelThread;
-
-    ChannelWsWorker->webSocket->close();
-
-    this->ClearAdaptix();
-}
-
-void AdaptixWidget::AddTab(QWidget *tab, const QString &title, const QString &icon) const
-{
-    if ( mainTabWidget->count() == 0 )
-        mainVSplitter->setSizes(QList<int>() << 100 << 200);
-    else if ( mainTabWidget->count() == 1 )
-        mainTabWidget->setMovable(true);
-
-    int id = mainTabWidget->addTab( tab, title );
-
-    mainTabWidget->setIconSize( QSize( 17, 17 ) );
-    mainTabWidget->setTabIcon(id, QIcon(icon));
-    mainTabWidget->setCurrentIndex( id );
-}
-
-void AdaptixWidget::RemoveTab(int index) const
-{
-    if (index == -1)
-        return;
-
-    mainTabWidget->removeTab(index);
-
-    if (mainTabWidget->count() == 0)
-        mainVSplitter->setSizes(QList<int>() << 0);
-    else if (mainTabWidget->count() == 1)
-        mainTabWidget->setMovable(false);
-}
-
-void AdaptixWidget::AddExtension(ExtensionFile ext)
-{
-    if( Extensions.contains(ext.FilePath) )
-        return;
-
-    Extensions[ext.FilePath] = ext;
-
-    if( !synchronized )
-        return;
-
-    // ToDo: AddExtension
-
-    // for (QString agentName : ext.ExCommands.keys()) {
-    //     if (Commanders.contains(agentName)) {
-    //         for (auto commander : Commanders[agentName] ) {
-    //             if (commander) {
-    //                 bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName], ext.ExConstants);
-    //                 if (result) {
-    //                     for( auto agent : AgentsMap ){
-    //                         if( agent && agent->Console )
-    //                             agent->Console->UpgradeCompleter();
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-}
-
-void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
-{
-    Extensions.remove(ext.FilePath);
-
-    // ToDo: RemoveExtension
-
-    // for (QString agentName : ext.ExCommands.keys()) {
-    //     if (Commanders.contains(agentName)) {
-    //         for (auto commander : Commanders[agentName] ) {
-    //             if (commander) {
-    //                 commander->RemoveExtModule(ext.FilePath);
-    //                 for( auto agent : AgentsMap ){
-    //                     if( agent && agent->Console )
-    //                         agent->Console->UpgradeCompleter();
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-}
-
 QList<QString> AdaptixWidget::GetAgentNames(const QString &listenerType) const
 {
     QSet<QString> names;
@@ -463,13 +468,13 @@ QList<QString> AdaptixWidget::GetAgentNames(const QString &listenerType) const
     return names.values();
 }
 
-RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QString &listenerName, const int os) // ToDo: get Commander
+RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QString &listenerName, const int os)
 {
     if (os == OS_WINDOWS || os == OS_LINUX || os == OS_MAC) {
         QString listener = "";
         for ( auto listenerData : this->Listeners) {
             if ( listenerData.ListenerName == listenerName ) {
-                listener = listenerData.ListenerType.split("/")[2];
+                listener = listenerData.ListenerFullName.split("/")[2];
                 break;
             }
         }
@@ -483,8 +488,156 @@ RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QStrin
     return {};
 }
 
+/// SHOW PANELS
+
+void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
+{
+    if( !AgentsMap.contains(AgentId) )
+        return;
+
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->Console) {
+        auto text = QString("Console [%1]").arg( AgentId );
+        this->AddTab(AgentsMap[AgentId]->Console, text);
+        AgentsMap[AgentId]->Console->InputFocus();
+    }
+
+}
+
+void AdaptixWidget::LoadTasksOutput() const
+{
+    this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
+}
+
+void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
+{
+    if( !AgentsMap.contains(AgentId) )
+        return;
+
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->FileBrowser) {
+        auto text = QString("Files [%1]").arg( AgentId );
+        this->AddTab(AgentsMap[AgentId]->FileBrowser, text);
+    }
+}
+
+void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
+{
+    if( !AgentsMap.contains(AgentId) )
+        return;
+
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->ProcessBrowser) {
+        auto text = QString("Processes [%1]").arg( AgentId );
+        this->AddTab(AgentsMap[AgentId]->ProcessBrowser, text);
+    }
+}
+
+void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
+{
+    if( !AgentsMap.contains(AgentId) )
+        return;
+
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->Terminal) {
+        auto text = QString("Terminal [%1]").arg( AgentId );
+        this->AddTab(AgentsMap[AgentId]->Terminal, text);
+    }
+}
+
+void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd)
+{
+    DialogTunnel* dialogTunnel = new DialogTunnel(AgentId, socks4, socks5, lportfwd, rportfwd);
+
+    while (true) {
+        dialogTunnel->StartDialog();
+        if (dialogTunnel->IsValid())
+            break;
+
+        QString msg = dialogTunnel->GetMessage();
+        if (msg.isEmpty()) {
+            delete dialogTunnel;
+            return;
+        }
+
+        MessageError(msg);
+    }
+
+    QString    tunnelType = dialogTunnel->GetTunnelType();
+    QString    endpoint   = dialogTunnel->GetEndpoint();
+    QByteArray tunnelData = dialogTunnel->GetTunnelData();
+
+    if ( endpoint == "Teamserver" ) {
+        QString message = "";
+        bool ok = false;
+        bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *profile, &message, &ok);
+        if( !result ) {
+            MessageError("Server is not responding");
+            delete dialogTunnel;
+            return;
+        }
+        if (!ok) MessageError(message);
+    }
+    else {
+        auto tunnelEndpoint = new TunnelEndpoint();
+        bool started = tunnelEndpoint->StartTunnel(profile, tunnelType, tunnelData);
+        if (started) {
+            QString message = "";
+            bool ok = false;
+            bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *profile, &message, &ok);
+            if( !result ) {
+                MessageError("Server is not responding");
+                delete tunnelEndpoint;
+                delete dialogTunnel;
+                return;
+            }
+
+            if ( !ok ) {
+                MessageError(message);
+                delete tunnelEndpoint;
+                delete dialogTunnel;
+                return;
+            }
+            QString tunnelId = message;
+
+            tunnelEndpoint->SetTunnelId(tunnelId);
+            this->ClientTunnels[tunnelId] = tunnelEndpoint;
+            MessageSuccess("Tunnel " + tunnelId + " started");
+        }
+        else {
+            delete tunnelEndpoint;
+        }
+    }
+    delete dialogTunnel;
+}
 
 /// SLOTS
+
+void AdaptixWidget::ChannelClose() const
+{
+    QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/unlink"), COLOR_ChiliPepper);
+    reconnectButton->setIcon(onReconnectButton);
+    ChannelThread->quit();
+}
+
+void AdaptixWidget::DataHandler(const QByteArray &data)
+{
+    QJsonParseError parseError;
+    QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
+
+    if ( parseError.error != QJsonParseError::NoError || !jsonDoc.isObject() ) {
+        LogError("Error parsing JSON data: %s", parseError.errorString().toStdString().c_str());
+        return;
+    }
+
+    QJsonObject jsonObj = jsonDoc.object();
+    if( !this->isValidSyncPacket(jsonObj) ) {
+        LogError("Invalid SyncPacket");
+        return;
+    }
+
+    this->processSyncPacket(jsonObj);
+}
 
 void AdaptixWidget::OnSynced()
 {
@@ -567,11 +720,6 @@ void AdaptixWidget::LoadScreenshotsUI() const
     this->AddTab(ScreenshotsTab, "Screenshots", ":/icons/picture");
 }
 
-void AdaptixWidget::LoadTasksOutput() const
-{
-    this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
-}
-
 void AdaptixWidget::OnReconnect()
 {
     if (ChannelThread->isRunning()) {
@@ -599,79 +747,3 @@ void AdaptixWidget::OnReconnect()
     }
 }
 
-void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
-{
-    if( !AgentsMap.contains(AgentId) )
-        return;
-
-    auto agent = AgentsMap[AgentId];
-    if (agent && agent->Console) {
-        auto text = QString("Console [%1]").arg( AgentId );
-        this->AddTab(AgentsMap[AgentId]->Console, text);
-        AgentsMap[AgentId]->Console->InputFocus();
-    }
-
-}
-
-void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
-{
-    if( !AgentsMap.contains(AgentId) )
-        return;
-
-    auto agent = AgentsMap[AgentId];
-    if (agent && agent->browsers.FileBrowser && agent->FileBrowser) {
-        auto text = QString("Files [%1]").arg( AgentId );
-        this->AddTab(AgentsMap[AgentId]->FileBrowser, text);
-    }
-}
-
-void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
-{
-    if( !AgentsMap.contains(AgentId) )
-        return;
-
-    auto agent = AgentsMap[AgentId];
-    if (agent && agent->browsers.ProcessBrowser && agent->ProcessBrowser) {
-        auto text = QString("Processes [%1]").arg( AgentId );
-        this->AddTab(AgentsMap[AgentId]->ProcessBrowser, text);
-    }
-}
-
-void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
-{
-    if( !AgentsMap.contains(AgentId) )
-        return;
-
-    auto agent = AgentsMap[AgentId];
-    if (agent && agent->browsers.RemoteTerminal && agent->Terminal) {
-        auto text = QString("Terminal [%1]").arg( AgentId );
-        this->AddTab(AgentsMap[AgentId]->Terminal, text);
-    }
-
-}
-
-void AdaptixWidget::ChannelClose() const
-{
-    QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/unlink"), COLOR_ChiliPepper);
-    reconnectButton->setIcon(onReconnectButton);
-    ChannelThread->quit();
-}
-
-void AdaptixWidget::DataHandler(const QByteArray &data)
-{
-    QJsonParseError parseError;
-    QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
-
-    if ( parseError.error != QJsonParseError::NoError || !jsonDoc.isObject() ) {
-        LogError("Error parsing JSON data: %s", parseError.errorString().toStdString().c_str());
-        return;
-    }
-
-    QJsonObject jsonObj = jsonDoc.object();
-    if( !this->isValidSyncPacket(jsonObj) ) {
-        LogError("Invalid SyncPacket");
-        return;
-    }
-
-    this->processSyncPacket(jsonObj);
-}

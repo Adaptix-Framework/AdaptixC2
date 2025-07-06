@@ -5,10 +5,12 @@
 #include <Utils/CustomElements.h>
 
 class Agent;
+class AdaptixWidget;
 
 class SessionsTableWidget : public QWidget
 {
-    QWidget*      mainWidget     = nullptr;
+    AdaptixWidget* adaptixWidget = nullptr;
+
     QGridLayout*  mainGridLayout = nullptr;
     QTableWidget* tableWidget    = nullptr;
     QMenu*        menuSessions   = nullptr;
@@ -44,7 +46,7 @@ public:
     int ColumnSleep     = 14;
     int ColumnCount     = 15;
 
-    explicit SessionsTableWidget( QWidget* w );
+    explicit SessionsTableWidget( AdaptixWidget* w );
     ~SessionsTableWidget() override;
 
     void AddAgentItem(Agent* newAgent) const;

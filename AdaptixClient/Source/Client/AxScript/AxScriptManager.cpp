@@ -4,7 +4,10 @@
 #include <Client/AxScript/BridgeEvent.h>
 #include <UI/Widgets/AdaptixWidget.h>
 
-AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), mainWidget(main_widget) {
+#include <Agent/Agent.h>
+
+AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), mainWidget(main_widget)
+{
     mainScript = new AxScriptEngine(this, "main", this);
 }
 
@@ -22,14 +25,17 @@ void AxScriptManager::Clear()
     scripts.clear();
 }
 
-void AxScriptManager::ResetMain() {
+void AxScriptManager::ResetMain()
+{
     if (mainScript)
         delete mainScript;
 
     mainScript = new AxScriptEngine(this, "main", this);
 }
 
-QMap<QString, Agent*> AxScriptManager::getAgents() const { return mainWidget->AgentsMap; }
+AdaptixWidget* AxScriptManager::GetAdaptix() const { return this->mainWidget; }
+
+QMap<QString, Agent*> AxScriptManager::GetAgents() const { return mainWidget->AgentsMap; }
 
 
 /// MAIN
@@ -157,6 +163,3 @@ void AxScriptManager::emitAllEventTestClick()
             module->event()->emitEventTestClick();
     }
 }
-
-/////////////////////
-

@@ -31,35 +31,35 @@ QStringList unserializeParams(const QString &commandline)
             continue;
         }
 
-        // If we encounter a double quote
+        /* If we encounter a double quote */
         if (c == '"') {
             inQuotes = !inQuotes;
             ++i;
             continue;
         }
 
-        // If we encounter a backslash, handle escape sequences
+        /* If we encounter a backslash, handle escape sequences */
         if (c == '\\') {
             int numBS = 0;
-            // Count the number of consecutive backslashes
+            /*Count the number of consecutive backslashes*/
             while (i < len && commandline[i] == '\\') {
                 ++numBS;
                 ++i;
             }
-            // Check if the next character is a double quote
+            /*Check if the next character is a double quote*/
             if (i < len && commandline[i] == '"') {
-                // Append half the number of backslashes (integer division)
+                /*Append half the number of backslashes (integer division)*/
                 token.append(QString(numBS / 2, '\\'));
                 if (numBS % 2 == 0) {
-                    // Even number of backslashes: the quote is not escaped, so it toggles the quote state
+                    /*Even number of backslashes: the quote is not escaped, so it toggles the quote state*/
                     inQuotes = !inQuotes;
                 } else {
-                    // Odd number of backslashes: the quote is escaped, add it to the token
+                    /*Odd number of backslashes: the quote is escaped, add it to the token*/
                     token.append('"');
                 }
                 ++i;
             } else {
-                // No double quote after backslashes: all backslashes are literal
+                /*No double quote after backslashes: all backslashes are literal*/
                 token.append(QString(numBS, '\\'));
             }
             continue;
@@ -94,7 +94,7 @@ void Commander::RemoveAxCommands(const QString &filepath)
     // extModules.remove(filepath);
 }
 
-CommanderResult Commander::ProcessInput(QString agentId, QString cmdline) /// todo ProcessCmdLine
+CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
 {
     QStringList parts = unserializeParams(cmdline);
     if (parts.isEmpty())

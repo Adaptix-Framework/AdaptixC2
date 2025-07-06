@@ -92,7 +92,7 @@ Q_OBJECT
 public:
     explicit AxMenuWrapper(const QString& title, QObject* parent = nullptr);
     QMenu* menu() const;
-    void setContext(QVariantList context);
+    void setContext(QVariantList context) override;
 
     Q_INVOKABLE void addItem(AbstractAxMenuItem* item);
 };
