@@ -36,10 +36,11 @@ AxScriptEngine::~AxScriptEngine()
         if (action) delete action;
     }
     context.actions.clear();
-
-    // for (auto obj : context.objects){
-    //     if (obj) delete obj;
-    // }
+/*
+    for (auto obj : context.objects){
+        if (obj) delete obj;
+    }
+*/
     context.objects.clear();
 
     bridgeApp.reset();
@@ -65,22 +66,31 @@ void AxScriptEngine::registerObject(QObject *obj) { context.objects.append(obj);
 
 void AxScriptEngine::registerAction(QAction *action) { context.actions.append(action); }
 
-void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu)
+/////
+
+void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners)
 {
-    if (type == "SessionMain")
-        context.menuSessionMain.append(menu);
-    else if (type == "SessionAccess")
-        context.menuSessionAccess.append(menu);
+    QSet<int> os;
+    if (list_os.contains("windows")) os.insert(1);
+    if (list_os.contains("linux")) os.insert(2);
+    if (list_os.contains("macos")) os.insert(3);
+
+    AxMenuItem item = {menu, list_agents,  list_listeners, os};
+
+    if (     type == "SessionMain")    context.menuSessionMain.append(item);
+    else if (type == "SessionAgent")   context.menuSessionAgent.append(item);
+    else if (type == "SessionBrowser") context.menuSessionBrowser.append(item);
+    else if (type == "SessionAccess")  context.menuSessionAccess.append(item);
 }
 
-QList<AbstractAxMenuItem*> AxScriptEngine::getMenuItems(const QString &type)
+QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
 {
-    if (type == "SessionMain")
-        return context.menuSessionMain;
-    else if (type == "SessionAccess")
-        return context.menuSessionAccess;
+    if (     type == "SessionMain")    return context.menuSessionMain;
+    else if (type == "SessionAgent")   return context.menuSessionAgent;
+    else if (type == "SessionBrowser") return context.menuSessionBrowser;
+    else if (type == "SessionAccess")  return context.menuSessionAccess;
 
-    return QList<AbstractAxMenuItem*>();
+    return QList<AxMenuItem>();
 }
 
 bool AxScriptEngine::execute(const QString &code)

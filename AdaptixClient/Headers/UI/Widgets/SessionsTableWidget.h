@@ -67,11 +67,6 @@ public slots:
     void actionConsoleOpen() const;
     void actionExecuteCommand();
     void actionTasksBrowserOpen() const;
-    void actionTerminalOpen() const;
-    void actionFileBrowserOpen() const;
-    void actionProcessBrowserOpen() const;
-    void actionCreateTunnel() const;
-    void actionAgentExit() const;
     void actionMarkActive() const;
     void actionMarkInactive() const;
     void actionItemColor() const;
