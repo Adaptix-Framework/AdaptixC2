@@ -163,13 +163,11 @@
 
 //////////
 
+// ToDo: BrowsersConfig
 typedef struct BrowsersConfig {
-    bool RemoteTerminal;
-    bool FileBrowser;
     bool FileBrowserDisks;
     bool FileBrowserDownload;
     bool FileBrowserUpload;
-    bool ProcessBrowser;
     bool DownloadsCancel;
     bool DownloadsResume;
     bool DownloadsPause;

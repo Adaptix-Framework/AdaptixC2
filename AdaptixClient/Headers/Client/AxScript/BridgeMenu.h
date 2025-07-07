@@ -28,8 +28,10 @@ public slots:
     AxMenuWrapper*      create_menu(const QString& title);
     AxSeparatorWrapper* create_separator();
 
-    void add_session_main(AbstractAxMenuItem* item) const;
-    void add_session_access(AbstractAxMenuItem* item) const;
+    void add_session_main(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+    void add_session_agent(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+    void add_session_browser(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+    void add_session_access(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
 };
 
 #endif //BRIDGEMENU_H

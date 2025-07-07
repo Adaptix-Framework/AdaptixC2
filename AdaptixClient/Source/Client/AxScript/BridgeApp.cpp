@@ -4,7 +4,8 @@
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxCommandWrappers.h>
 #include <Client/AxScript/AxScriptManager.h>
-
+#include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/AdaptixWidget.h>
 
 BridgeApp::BridgeApp(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine), widget(new QWidget()){}
 
@@ -17,7 +18,7 @@ AxScriptEngine* BridgeApp::GetScriptEngine() const { return this->scriptEngine; 
 QJSValue BridgeApp::agents() const
 {
     QVariantList list;
-    auto mapAgents = scriptEngine->manager()->getAgents();
+    auto mapAgents = scriptEngine->manager()->GetAgents();
 
     for (auto agent : mapAgents) {
         QVariantMap map;
@@ -190,43 +191,38 @@ QObject* BridgeApp::create_commands_group(const QString &name, const QJSValue &a
 
 void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const QString &command) const
 {
-    auto mapAgents = scriptEngine->manager()->getAgents();
+    auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))
         return;
 
-    // /// TODO change it;
-    // auto cmdResult = mapAgents[id]->commander->ProcessInput(id, command);
-    // if (!cmdResult.hooked) {
-    //     if (cmdResult.output) {
-    //         mapAgents[id]->console->OutputTextEdit->setText(cmdResult.message);
-    //     } else {
-    //         QJsonDocument jsonDoc(cmdResult.data);
-    //         mapAgents[id]->console->OutputTextEdit->setText(jsonDoc.toJson());
-    //     }
-    // }
+    auto agent = mapAgents[id];
+    if (!agent)
+        return;
+
+    auto cmdResult = agent->commander->ProcessInput(id, command);
+    if (!cmdResult.hooked)
+        agent->Console->ProcessCmdResult(cmdline, cmdResult);
 }
 
 void BridgeApp::execute_command(const QString &id, const QString &command) const
 {
-    auto mapAgents = scriptEngine->manager()->getAgents();
+    auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))
         return;
 
-    // /// TODO change it;
-    // auto cmdResult = mapAgents[id]->commander->ProcessInput(id, command);
-    // if (!cmdResult.hooked) {
-    //     if (cmdResult.output) {
-    //         mapAgents[id]->console->OutputTextEdit->setText(cmdResult.message);
-    //     } else {
-    //         QJsonDocument jsonDoc(cmdResult.data);
-    //         mapAgents[id]->console->OutputTextEdit->setText(jsonDoc.toJson());
-    //     }
-    // }
+    auto agent = mapAgents[id];
+    if (!agent)
+        return;
+
+    auto cmdResult = agent->commander->ProcessInput(id, command);
+    if (!cmdResult.hooked)
+        agent->Console->ProcessCmdResult(command, cmdResult);
+
 }
 
 bool BridgeApp::is64(const QString &id) const
 {
-    auto mapAgents = scriptEngine->manager()->getAgents();
+    auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))
         return false;
 
@@ -236,6 +232,14 @@ bool BridgeApp::is64(const QString &id) const
 void BridgeApp::log(const QString &text) { emit consoleAppend(text); }
 
 void BridgeApp::log_error(const QString &text) { emit consoleAppendError(text); }
+
+void BridgeApp::open_access_tunnel(const QString &id, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd) { scriptEngine->manager()->GetAdaptix()->ShowTunnelCreator(id, socks4, socks5, lportfwd, rportfwd); }
+
+void BridgeApp::open_browser_files(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadFileBrowserUI(id); }
+
+void BridgeApp::open_browser_process(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadProcessBrowserUI(id); }
+
+void BridgeApp::open_browser_terminal(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id); }
 
 void BridgeApp::register_commands_group(QObject *obj, const QJSValue &os, const QJSValue &agents, const QJSValue &listeners) const
 {

@@ -370,32 +370,11 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     if ( !tableWidget->itemAt(pos) )
         return;
 
-    bool menuRemoteTerminal = false;
-    bool menuProcessBrowser = false;
-    bool menuFileBrowser    = false;
-    bool menuExit           = false;
-    bool menuTunnels        = false;
-
-    int selectedCount = 0;
-
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
+    QStringList agentIds;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
             QString agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
-            if (adaptixWidget->AgentsMap[agentId]) {
-                auto agent = adaptixWidget->AgentsMap[agentId];
-                if (agent) {
-                    menuRemoteTerminal = agent->browsers.RemoteTerminal;
-                    menuFileBrowser    = agent->browsers.FileBrowser;
-                    menuProcessBrowser = agent->browsers.ProcessBrowser;
-                    menuTunnels        = agent->browsers.SessionsMenuTunnels;
-                    menuExit           = agent->browsers.SessionsMenuExit;
-                }
-            }
-            selectedCount++;
+            agentIds.append(agentId);
         }
     }
 
@@ -405,33 +384,13 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     agentMenu.addAction("Execute command", this, &SessionsTableWidget::actionExecuteCommand);
     agentMenu.addAction("Task manager", this, &SessionsTableWidget::actionTasksBrowserOpen);
     agentMenu.addSeparator();
-    if (menuExit)
-        agentMenu.addAction("Exit", this, &SessionsTableWidget::actionAgentExit);
+
+    int agentCount = adaptixWidget->ScriptManager->AddMenuSession(&agentMenu, "SessionAgent", agentIds);
+    if (agentCount > 0)
+        agentMenu.addSeparator();
+
     agentMenu.addAction("Remove console data", this, &SessionsTableWidget::actionConsoleDelete);
     agentMenu.addAction("Remove from server", this, &SessionsTableWidget::actionAgentRemove);
-
-    /// BROWSER MENU
-
-    bool showBrowser = false;
-    auto browserMenu = QMenu("Browsers");
-    if (menuFileBrowser || menuProcessBrowser || menuRemoteTerminal) {
-        showBrowser = true;
-        if (menuFileBrowser)
-            browserMenu.addAction("File Browser", this, &SessionsTableWidget::actionFileBrowserOpen);
-        if (menuProcessBrowser)
-            browserMenu.addAction("Process Browser", this, &SessionsTableWidget::actionProcessBrowserOpen);
-        if (menuRemoteTerminal)
-            browserMenu.addAction("Remote Terminal", this, &SessionsTableWidget::actionTerminalOpen);
-    }
-
-    /// ACCESS MENU
-
-    bool showAccess = false;
-    auto accessMenu = QMenu("Access");
-    if (menuTunnels  && selectedCount == 1) {
-        showAccess = true;
-        accessMenu.addAction("Create Tunnel", this, &SessionsTableWidget::actionCreateTunnel);
-    }
 
     /// SESSION MENU
 
@@ -451,10 +410,19 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     ctxMenu.addAction("Console", this, &SessionsTableWidget::actionConsoleOpen);
     ctxMenu.addSeparator();
     ctxMenu.addMenu(&agentMenu);
-    if (showBrowser)
+
+    auto browserMenu = QMenu("Browsers");
+    int browserCount = adaptixWidget->ScriptManager->AddMenuSession(&browserMenu, "SessionBrowser", agentIds);
+    if (browserCount > 0)
         ctxMenu.addMenu(&browserMenu);
-    if (showAccess)
+
+    auto accessMenu = QMenu("Access");
+    int accessCount = adaptixWidget->ScriptManager->AddMenuSession(&accessMenu, "SessionAccess", agentIds);
+    if (accessCount > 0)
         ctxMenu.addMenu(&accessMenu);
+
+    adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
+
     ctxMenu.addSeparator();
     ctxMenu.addMenu(&sessionMenu);
     ctxMenu.addAction("Set tag", this, &SessionsTableWidget::actionItemTag);
@@ -503,154 +471,6 @@ void SessionsTableWidget::actionTasksBrowserOpen() const
 
     adaptixWidget->TasksTab->SetAgentFilter(agentId);
     adaptixWidget->SetTasksUI();
-}
-
-void SessionsTableWidget::actionTerminalOpen() const
-{
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
-            adaptixWidget->LoadTerminalUI(agentId);
-        }
-    }
-}
-
-void SessionsTableWidget::actionFileBrowserOpen() const
-{
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
-            adaptixWidget->LoadFileBrowserUI(agentId);
-        }
-    }
-}
-
-void SessionsTableWidget::actionProcessBrowserOpen() const
-{
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
-            adaptixWidget->LoadProcessBrowserUI(agentId);
-        }
-    }
-}
-
-void SessionsTableWidget::actionCreateTunnel() const
-{
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
-    Agent* agent = nullptr;
-
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
-            if (adaptixWidget->AgentsMap.contains(agentId) && adaptixWidget->AgentsMap[agentId]) {
-                agent = adaptixWidget->AgentsMap[agentId];
-                break;
-            }
-        }
-    }
-
-    if (!agent)
-        return;
-
-    DialogTunnel dialogTunnel;
-    dialogTunnel.SetSettings(agent->data.Id, agent->browsers.Socks5, agent->browsers.Socks4, agent->browsers.Lportfwd, agent->browsers.Rportfwd);
-
-    while (true) {
-        dialogTunnel.StartDialog();
-        if (dialogTunnel.IsValid())
-            break;
-
-        QString msg = dialogTunnel.GetMessage();
-        if (msg.isEmpty())
-            return;
-
-        MessageError(msg);
-    }
-
-    QString    tunnelType = dialogTunnel.GetTunnelType();
-    QString    endpoint   = dialogTunnel.GetEndpoint();
-    QByteArray tunnelData = dialogTunnel.GetTunnelData();
-
-    if ( endpoint == "Teamserver" ) {
-        QString message = "";
-        bool ok = false;
-        bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Server is not responding");
-            return;
-        }
-        if (!ok) MessageError(message);
-    }
-    else {
-        auto tunnelEndpoint = new TunnelEndpoint();
-        bool started = tunnelEndpoint->StartTunnel(adaptixWidget->GetProfile(), tunnelType, tunnelData);
-        if (started) {
-            QString message = "";
-            bool ok = false;
-            bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *(adaptixWidget->GetProfile()), &message, &ok);
-            if( !result ) {
-                MessageError("Server is not responding");
-                delete tunnelEndpoint;
-                return;
-            }
-
-            if ( !ok ) {
-                MessageError(message);
-                delete tunnelEndpoint;
-                return;
-            }
-            QString tunnelId = message;
-
-            tunnelEndpoint->SetTunnelId(tunnelId);
-            adaptixWidget->ClientTunnels[tunnelId] = tunnelEndpoint;
-            MessageSuccess("Tunnel " + tunnelId + " started");
-        }
-        else {
-            delete tunnelEndpoint;
-        }
-    }
-}
-
-void SessionsTableWidget::actionAgentExit() const
-{
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
-    QStringList listId;
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, ColumnAgentID )->text();
-            listId.append(agentId);
-        }
-    }
-
-    if(listId.empty())
-        return;
-
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentExit(listId, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
 }
 
 void SessionsTableWidget::actionMarkActive() const

@@ -616,7 +616,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (AgentsMap.contains(agentId) ) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+            if (agent && agent->FileBrowser)
                 agent->FileBrowser->SetDisksWin(time, msgType, message, data);
         }
         return;
@@ -632,7 +632,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (AgentsMap.contains(agentId) ) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+            if (agent && agent->FileBrowser)
                 agent->FileBrowser->AddFiles(time, msgType, message, path, data);
         }
         return;
@@ -647,7 +647,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (AgentsMap.contains(agentId)) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->browsers.ProcessBrowser && agent->ProcessBrowser) {
+            if (agent && agent->ProcessBrowser) {
                 agent->ProcessBrowser->SetStatus(time, msgType, message);
                 agent->ProcessBrowser->SetProcess(msgType, data);
             }
@@ -663,7 +663,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (AgentsMap.contains(agentId) ) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+            if (agent && agent->FileBrowser)
                 agent->FileBrowser->SetStatus(time, msgType, message);
         }
         return;

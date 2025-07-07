@@ -15,14 +15,23 @@ class BridgeMenu;
 class AbstractAxMenuItem;
 class AxScriptManager;
 
+struct AxMenuItem {
+    AbstractAxMenuItem* menu;
+    QSet<QString> agents;
+    QSet<QString> listenerts;
+    QSet<int>     os;
+};
+
 struct ScriptContext {
     QString         name;
     QJSValue        scriptObject;
     QList<QObject*> objects;
     QList<QAction*> actions;
 
-    QList<AbstractAxMenuItem*> menuSessionMain;
-    QList<AbstractAxMenuItem*> menuSessionAccess;
+    QList<AxMenuItem> menuSessionMain;
+    QList<AxMenuItem> menuSessionAgent;
+    QList<AxMenuItem> menuSessionBrowser;
+    QList<AxMenuItem> menuSessionAccess;
 };
 
 class AxScriptEngine : public QObject {
@@ -51,10 +60,10 @@ public:
 
     void registerObject(QObject* obj);
     void registerAction(QAction* action);
-    void registerMenu(const QString &type, AbstractAxMenuItem* menu);
+    void registerMenu(const QString &type, AbstractAxMenuItem* menu, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners);
     bool execute(const QString &code);
 
-    QList<AbstractAxMenuItem*> getMenuItems(const QString &type);
+    QList<AxMenuItem> getMenuItems(const QString &type);
 };
 
 #endif //AXSCRIPTENGINE_H

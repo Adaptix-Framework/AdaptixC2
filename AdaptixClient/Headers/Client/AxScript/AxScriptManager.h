@@ -43,7 +43,7 @@ public:
 
     QJSValue AgentScriptExecute(const QString &name, const QString &code);
 
-    void AddMenuSessionMain(QMenu* menu, const QVariantList& arg) const;
+    int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds) const;
 
     void emitAllEventTestClick();
 };

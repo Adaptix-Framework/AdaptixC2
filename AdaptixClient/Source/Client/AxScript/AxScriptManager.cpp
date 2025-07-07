@@ -122,28 +122,51 @@ QJSValue AxScriptManager::AgentScriptExecute(const QString &name, const QString 
 
 /// MENU
 
-void AxScriptManager::AddMenuSessionMain(QMenu *menu, const QVariantList& context) const
+int AxScriptManager::AddMenuSession(QMenu *menu, const QString &menuType, QStringList agentIds) const
 {
+    QVariantList  context;
+    QSet<QString> agentTypes;
+    QSet<QString> listenerTypes;
+    QSet<int>     osTypes;
+    for (auto agent_id: agentIds) {
+        if (mainWidget->AgentsMap.contains(agent_id)) {
+            agentTypes.insert(mainWidget->AgentsMap[agent_id]->data.Name);
+            osTypes.insert(mainWidget->AgentsMap[agent_id]->data.Os);
+            listenerTypes.insert(mainWidget->AgentsMap[agent_id]->listenerType);
+            context << agent_id;
+        }
+    }
+
     QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
     list.append(this->mainScript);
 
-    QList<AbstractAxMenuItem*> items;
+    QList<AxMenuItem> items;
     for (const auto script : list)
-        items += script->getMenuItems("SessionMain");
+        items += script->getMenuItems(menuType);
 
+    int count = 0;
     for (int i = 0; i < items.size(); ++i) {
-        items[i]->setContext(context);
+        AxMenuItem item = items[i];
 
-        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(items[i])) {
+        if ( !item.agents.contains(agentTypes) )
+            continue;
+        if (item.os.size() > 0 && !item.os.contains(osTypes))
+            continue;
+        if (item.listenerts.size() > 0 && !item.listenerts.contains(listenerTypes))
+            continue;
+
+        item.menu->setContext(context);
+        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
             menu->addAction(item1->action());
-        }
-        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(items[i])) {
+        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
             menu->addAction(item2->action());
-        }
-        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(items[i])) {
+        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
             menu->addMenu(item3->menu());
-        }
+        else
+            continue;
+        count++;
     }
+    return count;
 }
 
 /// EVENT
