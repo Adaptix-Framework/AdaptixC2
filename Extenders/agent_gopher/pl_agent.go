@@ -1344,11 +1344,6 @@ func BrowserJobKill(jobId string) ([]byte, error) {
 	return nil, errors.New("Function Job Kill not supported")
 }
 
-func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
-	cmd := Command{Code: COMMAND_EXIT, Data: nil}
-	return msgpack.Marshal(cmd)
-}
-
 /// TUNNEL
 
 func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {

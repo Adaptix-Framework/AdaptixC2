@@ -68,6 +68,7 @@ type Teamserver struct {
 	downloads   safe.Map    // fileId string       : downloadData DownloadData
 	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
+	credentials *safe.Slice
 	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
 	terminals   safe.Map    // terminalId string   : terminal Terminal
 	pivots      *safe.Slice // 			           : PivotData
@@ -410,6 +411,42 @@ type SyncPackerScreenshotDelete struct {
 	SpType int `json:"type"`
 
 	ScreenId string `json:"s_screen_id"`
+}
+
+/// CREDS
+
+type SyncPackerCredentialsAdd struct {
+	SpType int `json:"type"`
+
+	CredId   string `json:"c_creds_id"`
+	Username string `json:"c_username"`
+	Password string `json:"c_password"`
+	Realm    string `json:"c_realm"`
+	Type     string `json:"c_type"`
+	Tag      string `json:"c_tag"`
+	Date     int64  `json:"c_date"`
+	Storage  string `json:"c_storage"`
+	AgentId  string `json:"c_agent_id"`
+	Host     string `json:"c_host"`
+}
+
+type SyncPackerCredentialsUpdate struct {
+	SpType int `json:"type"`
+
+	CredId   string `json:"c_creds_id"`
+	Username string `json:"c_username"`
+	Password string `json:"c_password"`
+	Realm    string `json:"c_realm"`
+	Type     string `json:"c_type"`
+	Tag      string `json:"c_tag"`
+	Storage  string `json:"c_storage"`
+	Host     string `json:"c_host"`
+}
+
+type SyncPackerCredentialsDelete struct {
+	SpType int `json:"type"`
+
+	CredId string `json:"c_creds_id"`
 }
 
 /// BROWSER

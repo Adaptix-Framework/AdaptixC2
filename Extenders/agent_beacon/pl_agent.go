@@ -1989,11 +1989,6 @@ func BrowserJobKill(jobId string) ([]byte, error) {
 	return PackArray(array)
 }
 
-func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
-	array := []interface{}{COMMAND_TERMINATE, 2}
-	return PackArray(array)
-}
-
 /// TUNNELS
 
 func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {

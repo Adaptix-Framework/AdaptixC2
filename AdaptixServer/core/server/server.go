@@ -36,6 +36,7 @@ func NewTeamserver() *Teamserver {
 		downloads:   safe.NewMap(),
 		tmp_uploads: safe.NewMap(),
 		screenshots: safe.NewMap(),
+		credentials: safe.NewSlice(),
 		tunnels:     safe.NewMap(),
 		terminals:   safe.NewMap(),
 		pivots:      safe.NewSlice(),
@@ -203,6 +204,20 @@ func (ts *Teamserver) RestoreData() {
 		countScreenshots++
 	}
 	logs.Success("   ", "Restored %v screens", countScreenshots)
+
+	/// CREDENTIALS
+	countCredentials := 0
+	restoreCredentials := ts.DBMS.DbCredentialsAll()
+	for _, restoreCredential := range restoreCredentials {
+
+		ts.credentials.Put(restoreCredential)
+
+		packet := CreateSpCredentialsAdd(*restoreCredential)
+		ts.TsSyncAllClients(packet)
+
+		countCredentials++
+	}
+	logs.Success("   ", "Restored %v credentials", countCredentials)
 
 	/// LISTENERS
 	countListeners := 0

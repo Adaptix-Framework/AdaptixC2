@@ -63,6 +63,10 @@ const (
 
 	TYPE_PIVOT_CREATE = 0x71
 	TYPE_PIVOT_DELETE = 0x72
+
+	TYPE_CREDS_CREATE = 0x81
+	TYPE_CREDS_EDIT   = 0x82
+	TYPE_CREDS_DELETE = 0x83
 )
 
 func CreateSpEvent(event int, message string) SpEvent {
@@ -389,6 +393,48 @@ func CreateSpScreenshotDelete(screenId string) SyncPackerScreenshotDelete {
 		SpType: TYPE_SCREEN_DELETE,
 
 		ScreenId: screenId,
+	}
+}
+
+/// SCREEN
+
+func CreateSpCredentialsAdd(credsData adaptix.CredsData) SyncPackerCredentialsAdd {
+	return SyncPackerCredentialsAdd{
+		SpType: TYPE_CREDS_CREATE,
+
+		CredId:   credsData.CredId,
+		Username: credsData.Username,
+		Password: credsData.Password,
+		Realm:    credsData.Realm,
+		Type:     credsData.Type,
+		Tag:      credsData.Tag,
+		Date:     credsData.Date,
+		Storage:  credsData.Storage,
+		AgentId:  credsData.AgentId,
+		Host:     credsData.Host,
+	}
+}
+
+func CreateSpCredentialsUpdate(credsData adaptix.CredsData) SyncPackerCredentialsUpdate {
+	return SyncPackerCredentialsUpdate{
+		SpType: TYPE_CREDS_EDIT,
+
+		CredId:   credsData.CredId,
+		Username: credsData.Username,
+		Password: credsData.Password,
+		Realm:    credsData.Realm,
+		Type:     credsData.Type,
+		Tag:      credsData.Tag,
+		Storage:  credsData.Storage,
+		Host:     credsData.Host,
+	}
+}
+
+func CreateSpCredentialsDelete(credsId string) SyncPackerCredentialsDelete {
+	return SyncPackerCredentialsDelete{
+		SpType: TYPE_CREDS_DELETE,
+
+		CredId: credsId,
 	}
 }
 
