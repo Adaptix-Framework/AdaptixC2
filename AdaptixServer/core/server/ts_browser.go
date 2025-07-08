@@ -88,26 +88,6 @@ func (ts *Teamserver) TsAgentGuiUpload(agentId string, path string, content []by
 	return nil
 }
 
-func (ts *Teamserver) TsAgentGuiExit(agentId string, clientName string) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent '%v' does not exist", agentId)
-	}
-
-	agent, _ := value.(*Agent)
-	if agent.Active == false {
-		return fmt.Errorf("agent '%v' not active", agentId)
-	}
-
-	taskData, err := ts.Extender.ExAgentCtxExit(agent.Data)
-	if err != nil {
-		return err
-	}
-
-	ts.TsTaskCreate(agentId, "agent terminate", clientName, taskData)
-	return nil
-}
-
 /// SYNC
 
 func (ts *Teamserver) TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string) {

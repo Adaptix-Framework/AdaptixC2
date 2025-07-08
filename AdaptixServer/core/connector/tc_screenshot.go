@@ -14,7 +14,7 @@ func (tc *TsConnector) TcScreenshotRemove(ctx *gin.Context) {
 	var screenRemove ScreenRemove
 	err := ctx.ShouldBindJSON(&screenRemove)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
@@ -52,7 +52,7 @@ func (tc *TsConnector) TcScreenshotSetNote(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&screenNote)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 

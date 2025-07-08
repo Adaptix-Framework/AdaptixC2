@@ -325,21 +325,6 @@ func (m *ModuleExtender) AgentTaskDownloadPause(fileId string, agentData adaptix
 
 ///
 
-func (m *ModuleExtender) AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := BrowserExit(agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_TASK,
-		Data: packData,
-		Sync: true,
-	}
-
-	return taskData, nil
-}
-
 func (m *ModuleExtender) AgentBrowserJobKill(jobId string) (adaptix.TaskData, error) {
 	packData, err := BrowserJobKill(jobId)
 	if err != nil {

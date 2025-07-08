@@ -71,12 +71,14 @@ type Teamserver interface {
 	TsScreenshotDelete(screenId string) error
 	TsScreenshotNote(screenId string, note string) error
 
+	TsCredentilsAdd(username string, password string, realm string, credType string, tag string, storage string, agentId string, host string) error
+	TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error
+	TsCredentilsDelete(credId string) error
+
 	TsAgentGuiDisks(agentId string, username string) error
 	TsAgentGuiProcess(agentId string, username string) error
 	TsAgentGuiFiles(agentId string, path string, username string) error
 	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
-
-	TsAgentGuiExit(agentId string, username string) error
 
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
 	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
@@ -171,7 +173,6 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/command/execute", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommandExecute)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/console/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentConsoleRemove)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentRemove)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/exit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentExit)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/settag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetTag)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/setmark", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetMark)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/setcolor", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetColor)
@@ -193,6 +194,10 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/setnote", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotSetNote)
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotRemove)
+
+	connector.Engine.POST(tsProfile.Endpoint+"/creds/add", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsAdd)
+	connector.Engine.POST(tsProfile.Endpoint+"/creds/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsEdit)
+	connector.Engine.POST(tsProfile.Endpoint+"/creds/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsRemove)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks5", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks5)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks4", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks4)

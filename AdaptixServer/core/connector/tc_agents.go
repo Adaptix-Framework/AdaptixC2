@@ -67,7 +67,7 @@ func (tc *TsConnector) TcAgentCommandExecute(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&commandData)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
@@ -113,7 +113,7 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&commandData2)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
@@ -154,57 +154,6 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }
 
-type AgentExit struct {
-	AgentIdArray []string `json:"agent_id_array"`
-}
-
-func (tc *TsConnector) TcAgentExit(ctx *gin.Context) {
-	var (
-		agentExit AgentExit
-		err       error
-		username  string
-		ok        bool
-	)
-
-	err = ctx.ShouldBindJSON(&agentExit)
-	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
-		return
-	}
-
-	value, exists := ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-
-	username, ok = value.(string)
-	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
-		return
-	}
-
-	var errorsSlice []string
-	for _, agentId := range agentExit.AgentIdArray {
-		err = tc.teamserver.TsAgentGuiExit(agentId, username)
-		if err != nil {
-			errorsSlice = append(errorsSlice, err.Error())
-		}
-	}
-
-	if len(errorsSlice) > 0 {
-		message := ""
-		for i, errorMessage := range errorsSlice {
-			message += fmt.Sprintf("%d. %s\n", i+1, errorMessage)
-		}
-
-		ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": false})
-		return
-	}
-
-	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
-}
-
 type AgentRemove struct {
 	AgentIdArray []string `json:"agent_id_array"`
 }
@@ -217,7 +166,7 @@ func (tc *TsConnector) TcAgentConsoleRemove(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&agentRemove)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
@@ -250,7 +199,7 @@ func (tc *TsConnector) TcAgentRemove(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&agentRemove)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
@@ -288,7 +237,7 @@ func (tc *TsConnector) TcAgentSetTag(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&agentTag)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
@@ -326,7 +275,7 @@ func (tc *TsConnector) TcAgentSetMark(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&agentMark)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
@@ -366,7 +315,7 @@ func (tc *TsConnector) TcAgentSetColor(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&agentColor)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
@@ -404,7 +353,7 @@ func (tc *TsConnector) TcAgentTaskStop(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&agentTasks)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
@@ -437,7 +386,7 @@ func (tc *TsConnector) TcAgentTaskDelete(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&agentTasks)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid command data", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 

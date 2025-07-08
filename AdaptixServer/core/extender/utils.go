@@ -76,7 +76,6 @@ type ExtAgent interface {
 	AgentTunnelCallbacks() (func(int, string, int) adaptix.TaskData, func(int, string, int) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int) adaptix.TaskData, func(int, int) adaptix.TaskData, error)
 	AgentTerminalCallbacks() (func(int, string, int, int) (adaptix.TaskData, error), func(int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error)
 
-	AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserJobKill(jobId string) (adaptix.TaskData, error)
 }
 

@@ -71,6 +71,7 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	packets = append(packets, ts.TsPresyncTunnels()...)
 	packets = append(packets, ts.TsPresyncEvents()...)
 	packets = append(packets, ts.TsPresyncPivots()...)
+	packets = append(packets, ts.TsPresyncCredentials()...)
 
 	startPacket := CreateSpSyncStart(len(packets))
 	_ = json.NewEncoder(&buffer).Encode(startPacket)
@@ -207,6 +208,16 @@ func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
 	for _, screenData := range sortedScreens {
 		t := CreateSpScreenshotCreate(screenData)
 		packets = append(packets, t)
+	}
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncCredentials() []interface{} {
+	var packets []interface{}
+	for value := range ts.credentials.Iterator() {
+		creds := value.Item.(*adaptix.CredsData)
+		p := CreateSpCredentialsAdd(*creds)
+		packets = append(packets, p)
 	}
 	return packets
 }
