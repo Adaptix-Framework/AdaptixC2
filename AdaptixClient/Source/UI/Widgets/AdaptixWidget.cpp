@@ -14,6 +14,7 @@
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
+#include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Graph/SessionsGraph.h>
@@ -40,6 +41,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     TunnelsTab        = new TunnelsWidget(this);
     DownloadsTab      = new DownloadsWidget(this);
     ScreenshotsTab    = new ScreenshotsWidget(this);
+    CredentialsTab    = new CredentialsWidget(this);
     TasksTab          = new TasksWidget(this);
 
     mainStackedWidget->addWidget(SessionsTablePage);
@@ -65,6 +67,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( tunnelButton,    &QPushButton::clicked, this, &AdaptixWidget::LoadTunnelsUI);
     connect( downloadsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
     connect( screensButton,   &QPushButton::clicked, this, &AdaptixWidget::LoadScreenshotsUI);
+    connect( credsButton,     &QPushButton::clicked, this, &AdaptixWidget::LoadCredentialsUI);
     connect( reconnectButton, &QPushButton::clicked, this, &AdaptixWidget::OnReconnect);
 
     connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
@@ -82,7 +85,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
 
     /// TODO: Enable menu button
     targetsButton->setVisible(false);
-    credsButton->setVisible(false);
     keysButton->setVisible(false);
 
     HttpReqSync( *profile );
@@ -325,6 +327,7 @@ void AdaptixWidget::ClearAdaptix()
     SessionsGraphPage->Clear();
     SessionsTablePage->Clear();
     TunnelsTab->Clear();
+    CredentialsTab->Clear();
 
     ScriptManager->Clear();
 
@@ -695,30 +698,17 @@ void AdaptixWidget::SetTasksUI() const
     this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
 }
 
-void AdaptixWidget::LoadLogsUI() const
-{
-    this->AddTab(LogsTab, "Logs", ":/icons/logs");
-}
+void AdaptixWidget::LoadLogsUI() const { this->AddTab(LogsTab, "Logs", ":/icons/logs"); }
 
-void AdaptixWidget::LoadListenersUI() const
-{
-    this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
-}
+void AdaptixWidget::LoadListenersUI() const { this->AddTab(ListenersTab, "Listeners", ":/icons/listeners"); }
 
-void AdaptixWidget::LoadTunnelsUI() const
-{
-    this->AddTab(TunnelsTab, "Tunnels", ":/icons/vpn");
-}
+void AdaptixWidget::LoadTunnelsUI() const { this->AddTab(TunnelsTab, "Tunnels", ":/icons/vpn"); }
 
-void AdaptixWidget::LoadDownloadsUI() const
-{
-    this->AddTab(DownloadsTab, "Downloads", ":/icons/downloads");
-}
+void AdaptixWidget::LoadDownloadsUI() const { this->AddTab(DownloadsTab, "Downloads", ":/icons/downloads"); }
 
-void AdaptixWidget::LoadScreenshotsUI() const
-{
-    this->AddTab(ScreenshotsTab, "Screenshots", ":/icons/picture");
-}
+void AdaptixWidget::LoadScreenshotsUI() const { this->AddTab(ScreenshotsTab, "Screenshots", ":/icons/picture"); }
+
+void AdaptixWidget::LoadCredentialsUI() const { this->AddTab(CredentialsTab, "Credentials", ":/icons/key"); }
 
 void AdaptixWidget::OnReconnect()
 {

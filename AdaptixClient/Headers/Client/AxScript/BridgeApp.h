@@ -21,6 +21,7 @@ public:
 public slots:
     QJSValue agents() const;
     QString  bof_pack(const QString &types, const QJSValue &args) const;
+    void     credentials_add(const QString &username, const QString &password, const QString &realm = "", const QString &type = "password", const QString &tag = "", const QString &storage = "manual", const QString &host = "");
     QObject* create_command(const QString &name, const QString &description, const QString &example = "", const QString &message = "");
     QObject* create_commands_group(const QString &name, const QJSValue& array);
     void     execute_alias(const QString &id, const QString &cmdline, const QString &command) const;

@@ -60,9 +60,9 @@ public:
 
 public slots:
     void toggleSearchPanel() const;
+    void onFilterUpdate() const;
     void handleTableDoubleClicked( const QModelIndex &index ) const;
     void handleSessionsTableMenu(const QPoint &pos );
-    void onFilterUpdate() const;
 
     void actionConsoleOpen() const;
     void actionExecuteCommand();

@@ -1,10 +1,9 @@
+#include <Agent/Agent.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/BridgeEvent.h>
 #include <UI/Widgets/AdaptixWidget.h>
-
-#include <Agent/Agent.h>
 
 AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), mainWidget(main_widget)
 {

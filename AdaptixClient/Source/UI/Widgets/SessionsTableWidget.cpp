@@ -15,7 +15,6 @@
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
-
 SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w )
 {
     this->adaptixWidget = w;
@@ -308,7 +307,6 @@ void SessionsTableWidget::UpdateColumnsWidth() const
     tableWidget->setColumnWidth(ColumnDomain, wComputer);
     tableWidget->setColumnWidth(ColumnDomain, wUser);
 }
-
 
 void SessionsTableWidget::ClearTableContent() const
 {

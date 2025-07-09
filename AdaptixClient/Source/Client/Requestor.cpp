@@ -101,7 +101,7 @@ bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile pro
     return false;
 }
 
-/// LISTENER
+///LISTENER
 
 bool HttpReqListenerStart(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile profile, QString* message, bool* ok )
 {
@@ -138,10 +138,10 @@ bool HttpReqListenerEdit(const QString &listenerName, const QString &configType,
     return false;
 }
 
-bool HttpReqListenerStop(const QString &listenerName, const QString &listenerType, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqListenerStop(const QString &credsId, const QString &listenerType, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
-    dataJson["name"] = listenerName;
+    dataJson["name"] = credsId;
     dataJson["type"] = listenerType;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
@@ -155,7 +155,7 @@ bool HttpReqListenerStop(const QString &listenerName, const QString &listenerTyp
     return false;
 }
 
-/// AGENT
+///AGENT
 
 QJsonObject HttpReqTimeout( int timeout, const QString &sUrl, const QByteArray &jsonData, const QString &token )
 {
@@ -228,26 +228,6 @@ bool HttpReqAgentCommand(const QString &agentName, const QString &agentId, const
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/agent/command/execute";
-    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
-    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
-        *message = jsonObject["message"].toString();
-        *ok = jsonObject["ok"].toBool();
-        return true;
-    }
-    return false;
-}
-
-bool HttpReqAgentExit( QStringList agentsId, AuthProfile profile, QString* message, bool* ok )
-{
-    QJsonArray arrayId;
-    for (QString item : agentsId)
-        arrayId.append(item);
-
-    QJsonObject dataJson;
-    dataJson["agent_id_array"] = arrayId;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    QString sUrl = profile.GetURL() + "/agent/exit";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
@@ -555,7 +535,7 @@ bool HttpReqTunnelSetInfo(const QString &tunnelId, const QString &info, AuthProf
     return false;
 }
 
-/// SCREEN
+///SCREEN
 
 bool HttpReqScreenSetNote( QStringList scrensId, const QString &note, AuthProfile profile, QString* message, bool* ok )
 {
@@ -589,6 +569,48 @@ bool HttpReqScreenRemove( QStringList scrensId, AuthProfile profile, QString* me
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/screen/remove";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+///CREDS
+
+bool HttpReqCredentialsCreate(const QByteArray &jsonData, AuthProfile profile, QString *message, bool *ok)
+{
+    QString sUrl = profile.GetURL() + "/creds/add";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqCredentialsEdit(const QByteArray &jsonData, AuthProfile profile, QString *message, bool *ok)
+{
+    QString sUrl = profile.GetURL() + "/creds/edit";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqCredentialsRemove(const QString &credsId, AuthProfile profile, QString* message, bool* ok)
+{
+    QJsonObject dataJson;
+    dataJson["cred_id"] = credsId;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/creds/remove";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
