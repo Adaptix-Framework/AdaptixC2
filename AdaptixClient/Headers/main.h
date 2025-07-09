@@ -134,6 +134,10 @@
 #define TYPE_PIVOT_CREATE 0x71
 #define TYPE_PIVOT_DELETE 0x72
 
+#define TYPE_CREDS_CREATE 0x81
+#define TYPE_CREDS_EDIT   0x82
+#define TYPE_CREDS_DELETE 0x83
+
 //////////
 
 #define DOWNLOAD_STATE_RUNNING  0x1
@@ -171,13 +175,6 @@ typedef struct BrowsersConfig {
     bool DownloadsCancel;
     bool DownloadsResume;
     bool DownloadsPause;
-    bool TasksJobKill;
-    bool SessionsMenuExit;
-    bool SessionsMenuTunnels;
-    bool Socks4;
-    bool Socks5;
-    bool Lportfwd;
-    bool Rportfwd;
 } BrowsersConfig;
 
 typedef struct SettingsData {
@@ -264,6 +261,20 @@ typedef struct ScreenData
     QString    Note;
     QByteArray Content;
 } ScreenData;
+
+typedef struct CredentialData
+{
+    QString CredId;
+    QString Username;
+    QString Password;
+    QString Realm;
+    QString Type;
+    QString Tag;
+    QString Date;
+    QString Storage;
+    QString AgentId;
+    QString Host;
+} CredentialData;
 
 typedef struct TunnelData
 {

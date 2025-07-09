@@ -14,6 +14,7 @@ class LogsWidget;
 class ListenersWidget;
 class DownloadsWidget;
 class ScreenshotsWidget;
+class CredentialsWidget;
 class TasksWidget;
 class TunnelsWidget;
 class TunnelEndpoint;
@@ -84,6 +85,7 @@ public:
     TunnelsWidget*       TunnelsTab        = nullptr;
     DownloadsWidget*     DownloadsTab      = nullptr;
     ScreenshotsWidget*   ScreenshotsTab    = nullptr;
+    CredentialsWidget*   CredentialsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
     QVector<RegAgentConfig>        RegisterAgents;
@@ -91,6 +93,7 @@ public:
     QVector<TunnelData>            Tunnels;
     QMap<QString, DownloadData>    Downloads;
     QMap<QString, ScreenData>      Screenshots;
+    QVector<CredentialData>        Credentials;
     QMap<QString, PivotData>       Pivots;
     QVector<QString>               TasksVector;
     QMap<QString, Task*>           TasksMap;
@@ -139,6 +142,7 @@ public slots:
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;
     void LoadScreenshotsUI() const;
+    void LoadCredentialsUI() const;
     void OnReconnect();
 };
 

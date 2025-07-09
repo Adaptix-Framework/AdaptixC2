@@ -4,8 +4,9 @@
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxCommandWrappers.h>
 #include <Client/AxScript/AxScriptManager.h>
-#include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/CredentialsWidget.h>
 
 BridgeApp::BridgeApp(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine), widget(new QWidget()){}
 
@@ -171,6 +172,10 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args) const
 
     strLengthData.append(data);
     return strLengthData.toBase64();
+}
+
+void BridgeApp::credentials_add(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host) {
+    scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(username, password, realm, type, tag, storage, host);
 }
 
 QObject* BridgeApp::create_command(const QString &name, const QString &description, const QString &example, const QString &message)

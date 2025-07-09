@@ -13,8 +13,10 @@
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
+#include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
+
 
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 {
@@ -242,6 +244,35 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
     if( spType == TYPE_SCREEN_DELETE ) {
         if (!jsonObj.contains("s_screen_id") || !jsonObj["s_screen_id"].isString()) return false;
+        return true;
+    }
+
+    if ( spType == TYPE_CREDS_CREATE ) {
+        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
+        if (!jsonObj.contains("c_username") || !jsonObj["c_username"].isString()) return false;
+        if (!jsonObj.contains("c_password") || !jsonObj["c_password"].isString()) return false;
+        if (!jsonObj.contains("c_realm")    || !jsonObj["c_realm"].isString())    return false;
+        if (!jsonObj.contains("c_type")     || !jsonObj["c_type"].isString())     return false;
+        if (!jsonObj.contains("c_tag")      || !jsonObj["c_tag"].isString())      return false;
+        if (!jsonObj.contains("c_date")     || !jsonObj["c_date"].isDouble())     return false;
+        if (!jsonObj.contains("c_storage")  || !jsonObj["c_storage"].isString())  return false;
+        if (!jsonObj.contains("c_agent_id") || !jsonObj["c_agent_id"].isString()) return false;
+        if (!jsonObj.contains("c_host")     || !jsonObj["c_host"].isString())     return false;
+        return true;
+    }
+    if ( spType == TYPE_CREDS_EDIT ) {
+        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
+        if (!jsonObj.contains("c_username") || !jsonObj["c_username"].isString()) return false;
+        if (!jsonObj.contains("c_password") || !jsonObj["c_password"].isString()) return false;
+        if (!jsonObj.contains("c_realm")    || !jsonObj["c_realm"].isString())    return false;
+        if (!jsonObj.contains("c_type")     || !jsonObj["c_type"].isString())     return false;
+        if (!jsonObj.contains("c_tag")      || !jsonObj["c_tag"].isString())      return false;
+        if (!jsonObj.contains("c_storage")  || !jsonObj["c_storage"].isString())  return false;
+        if (!jsonObj.contains("c_host")     || !jsonObj["c_host"].isString())     return false;
+        return true;
+    }
+    if ( spType == TYPE_CREDS_DELETE ) {
+        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
         return true;
     }
 
@@ -564,6 +595,46 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         QString screenId = jsonObj["s_screen_id"].toString();
         ScreenshotsTab->RemoveScreenshotItem(screenId);
+        return;
+    }
+
+
+
+    if ( spType == TYPE_CREDS_CREATE )
+    {
+        CredentialData newCredential = {};
+        newCredential.CredId   = jsonObj["c_creds_id"].toString();
+        newCredential.Username = jsonObj["c_username"].toString();
+        newCredential.Password = jsonObj["c_password"].toString();
+        newCredential.Realm    = jsonObj["c_realm"].toString();
+        newCredential.Type     = jsonObj["c_type"].toString();
+        newCredential.Tag      = jsonObj["c_tag"].toString();
+        newCredential.Storage  = jsonObj["c_storage"].toString();
+        newCredential.AgentId  = jsonObj["c_agent_id"].toString();
+        newCredential.Host     = jsonObj["c_host"].toString();
+        newCredential.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["c_date"].toDouble()));
+
+        CredentialsTab->AddCredentialsItem(newCredential);
+        return;
+    }
+    if ( spType == TYPE_CREDS_EDIT ) {
+        CredentialData newCredential = {};
+        newCredential.CredId   = jsonObj["c_creds_id"].toString();
+        newCredential.Username = jsonObj["c_username"].toString();
+        newCredential.Password = jsonObj["c_password"].toString();
+        newCredential.Realm    = jsonObj["c_realm"].toString();
+        newCredential.Type     = jsonObj["c_type"].toString();
+        newCredential.Tag      = jsonObj["c_tag"].toString();
+        newCredential.Storage  = jsonObj["c_storage"].toString();
+        newCredential.Host     = jsonObj["c_host"].toString();
+
+        CredentialsTab->EditCredentialsItem(newCredential);
+        return;
+    }
+    if ( spType == TYPE_CREDS_DELETE ) {
+        QString credId = jsonObj["c_creds_id"].toString();
+
+        CredentialsTab->RemoveCredentialsItem(credId);
         return;
     }
 

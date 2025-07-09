@@ -240,7 +240,7 @@ void DialogAgent::onButtonSave()
     dataJson["config"]        = configData;
     QByteArray fileContent = QJsonDocument(dataJson).toJson();
 
-    QString tmpFilename = QString("%1_%2_config.json").arg(configType);
+    QString tmpFilename = QString("%1_config.json").arg(configType);
     QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", tmpFilename, "JSON files (*.json)" );
     if ( filePath.isEmpty())
         return;
@@ -262,6 +262,7 @@ void DialogAgent::onButtonSave()
     inputDialog.adjustSize();
     inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
     inputDialog.exec();
+
 }
 
 void DialogAgent::onButtonClose() { this->close(); }
