@@ -6,6 +6,7 @@
 #include <Workers/WebSocketWorker.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/AxConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/TerminalWidget.h>
@@ -34,6 +35,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
 
     ScriptManager = new AxScriptManager(this, this);
 
+    AxConsoleTab      = new AxConsoleWidget(ScriptManager, this);
     LogsTab           = new LogsWidget();
     ListenersTab      = new ListenersWidget(this);
     SessionsTablePage = new SessionsTableWidget(this);
@@ -377,7 +379,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
 
     QJSValue func = engine->globalObject().property("RegisterCommands");
     if (!func.isCallable()) {
-        // emit QJSValue::TypeError, "Function RegisterCommands is not registered")
+        ScriptManager->consolePrintError(agentName + " - function RegisterCommands is not registered");
         return;
     }
 
@@ -387,12 +389,12 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
         args << QJSValue(listener);
         QJSValue registerResult = func.call(args);
         if (registerResult.isError()) {
-            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(registerResult.toString()).arg(registerResult.property("lineNumber").toInt()).arg(registerResult.property("fileName").toString()).arg(registerResult.property("stack").toString());
-            // emit consoleAppendError(error);
+            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(registerResult.toString()).arg(registerResult.property("lineNumber").toInt()).arg(agentName).arg(registerResult.property("stack").toString());
+            ScriptManager->consolePrintError(error);
             return;
         }
         if (!registerResult.isObject()) {
-            // emit consoleAppendError("RegisterCommands() must return CommandsGroup objects");
+            ScriptManager->consolePrintError(agentName + " - function RegisterCommands must return CommandsGroup objects");
             return;
         }
 
@@ -413,7 +415,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
                 RegisterAgents.push_back(config);
             }
             else {
-                // emit consoleAppendError("commands_windows must return CommandsGroup object");
+                ScriptManager->consolePrintError(agentName + " - commands_windows must return CommandsGroup object");
             }
         }
 
@@ -434,7 +436,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
                 RegisterAgents.push_back(config);
             }
             else {
-                // emit consoleAppendError("commands_linux must return CommandsGroup object");
+                ScriptManager->consolePrintError(agentName + " - commands_linux must return CommandsGroup object");
             }
         }
 
@@ -455,7 +457,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
                 RegisterAgents.push_back(config);
             }
             else {
-                // emit consoleAppendError("commands_macos must return CommandsGroup object");
+                ScriptManager->consolePrintError(agentName + " - commands_macos must return CommandsGroup object");
             }
         }
     }
@@ -697,6 +699,8 @@ void AdaptixWidget::SetTasksUI() const
     mainStackedWidget->setCurrentIndex(2);
     this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
 }
+
+void AdaptixWidget::LoadAxConsoleUI() const { this->AddTab(AxConsoleTab, "AxScript Console", ":/icons/code_blocks"); }
 
 void AdaptixWidget::LoadLogsUI() const { this->AddTab(LogsTab, "Logs", ":/icons/logs"); }
 

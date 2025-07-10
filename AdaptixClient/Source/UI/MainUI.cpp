@@ -24,10 +24,14 @@ MainUI::MainUI()
     menuProject->addAction(newProjectAction);
     menuProject->addAction(closeProjectAction);
 
+    auto axConsoleAction = new QAction("AxScript console ", this);
+    connect(axConsoleAction, &QAction::triggered, this, &MainUI::onAxScriptConsole);
+    auto scriptManagerAction = new QAction("Script manager", this);
+    connect(scriptManagerAction, &QAction::triggered, this, &MainUI::onScriptManager);
+
     auto menuExtender = new QMenu("Extender", this);
-    auto extenderAction = new QAction("Open extender", this);
-    connect(extenderAction, &QAction::triggered, this, &MainUI::onExtender);
-    menuExtender->addAction(extenderAction);
+    menuExtender->addAction(axConsoleAction);
+    menuExtender->addAction(scriptManagerAction);
 
     auto menuSettings = new QMenu("Settings", this);
     auto settingsAction = new QAction("Open settings", this);
@@ -66,11 +70,9 @@ void MainUI::closeEvent(QCloseEvent* event)
 void MainUI::AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
     auto adaptixWidget = new AdaptixWidget(profile, channelThread, channelWsWorker);
-    if (!adaptixWidget)
-        return;
 
     for (auto extFile : GlobalClient->extender->extenderFiles){
-        if(extFile.Valid && extFile.Enabled)
+        if(extFile.Enabled)
             adaptixWidget->AddExtension(extFile);
     }
 
@@ -124,10 +126,7 @@ void MainUI::UpdateTasksTableColumns() {
 
 /// Actions
 
-void MainUI::onNewProject()
-{
-    GlobalClient->NewProject();
-}
+void MainUI::onNewProject() { GlobalClient->NewProject(); }
 
 void MainUI::onCloseProject()
 {
@@ -136,20 +135,22 @@ void MainUI::onCloseProject()
     if (!adaptixWidget)
         return;
 
-    if (adaptixWidget) {
-        AdaptixProjects.remove(adaptixWidget->GetProfile()->GetProject());
-        adaptixWidget->Close();
-        delete adaptixWidget;
-    }
+    AdaptixProjects.remove(adaptixWidget->GetProfile()->GetProject());
+    adaptixWidget->Close();
+    delete adaptixWidget;
+
     mainuiTabWidget->removeTab(currentIndex);
 }
 
-void MainUI::onExtender()
+void MainUI::onAxScriptConsole()
 {
-    GlobalClient->extender->dialogExtender->show();
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainuiTabWidget->currentWidget() );
+    if (!adaptixWidget)
+        return;
+
+    adaptixWidget->LoadAxConsoleUI();
 }
 
-void MainUI::onSettings()
-{
-    GlobalClient->settings->dialogSettings->show();
-}
+void MainUI::onScriptManager() { GlobalClient->extender->dialogExtender->show(); }
+
+void MainUI::onSettings() { GlobalClient->settings->dialogSettings->show(); }

@@ -141,6 +141,7 @@ SET( HEADERS
         Headers/Client/AxScript/AxElementWrappers.h
         Headers/UI/Widgets/CredentialsWidget.h
         Headers/UI/Dialogs/DialogCredential.h
+        Headers/UI/Widgets/AxConsoleWidget.h
 )
 
 add_executable(AdaptixClient
@@ -213,6 +214,7 @@ add_executable(AdaptixClient
         Source/Client/AxScript/AxElementWrappers.cpp
         Source/UI/Widgets/CredentialsWidget.cpp
         Source/UI/Dialogs/DialogCredential.cpp
+        Source/UI/Widgets/AxConsoleWidget.cpp
 )
 
 target_compile_definitions(AdaptixClient PRIVATE QT_DEPRECATED_WARNINGS )

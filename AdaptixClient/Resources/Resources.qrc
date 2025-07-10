@@ -36,6 +36,7 @@
     </qresource>
 
     <qresource prefix="/icons">
+        <file alias="code_blocks">icons/code_blocks_64dp.png</file>
         <file alias="listeners">icons/headphones_64dp.png</file>
         <file alias="logs">icons/notes_64dp.png</file>
         <file alias="format_list">icons/format_list_bulleted_64dp.png</file>
@@ -61,8 +62,8 @@
         <file alias="arrow_right">icons/arrow_right_alt_64dp.png</file>
         <file alias="storage">icons/storage_64dp.png</file>
 
-        <file alias="archive">icons/archive_64dp.png</file>
-        <file alias="unarchive">icons/unarchive_64dp.png</file>
+        <file alias="file_open">icons/file_open_64dp.png</file>
+        <file alias="save_as">icons/save_as_64dp.png</file>
         <file alias="start">icons/start_64dp.png</file>
         <file alias="restart">icons/restart_64dp.png</file>
         <file alias="stop">icons/stop_64dp.png</file>

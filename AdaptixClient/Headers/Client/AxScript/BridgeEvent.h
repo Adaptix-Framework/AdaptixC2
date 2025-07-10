@@ -23,7 +23,7 @@ public slots:
     void emitEventTestClick();
 
 signals:
-    void consoleAppendError(const QString &msg);
+    void consoleError(const QString &msg);
 };
 
 #endif //BRIDGEEVENT_H

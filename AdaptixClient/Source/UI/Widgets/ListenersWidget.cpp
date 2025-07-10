@@ -189,13 +189,13 @@ void ListenersWidget::onCreateListener() const
     for (auto listener : listenersList) {
         auto engine = adaptixWidget->ScriptManager->ListenerScriptEngine(listener);
         if (engine == nullptr) {
-            // emit QJSValue::TypeError, QString("Listener %1 is not registered").arg(name) /// ToDo error
+            adaptixWidget->ScriptManager->consolePrintError(QString("Listener %1 is not registered").arg(listener));
             continue;
         }
 
         QJSValue func = engine->globalObject().property("ListenerUI");
         if (!func.isCallable()) {
-            // emit QJSValue::TypeError, "Function ListenerUI is not registered")
+            adaptixWidget->ScriptManager->consolePrintError(listener + " - function ListenerUI is not registered");
             continue;
         }
 
@@ -203,34 +203,35 @@ void ListenersWidget::onCreateListener() const
         args << QJSValue(true);
         QJSValue result = func.call(args);
         if (result.isError()) {
-            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(result.property("fileName").toString()).arg(result.property("stack").toString());
-            // emit consoleAppendError(error);
+            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(listener).arg(result.property("stack").toString());
+            adaptixWidget->ScriptManager->consolePrintError(error);
             continue;
         }
 
         if (!result.isObject()) {
-            // emit consoleAppendError("ListenerUI() must return panel and container objects");
+            adaptixWidget->ScriptManager->consolePrintError(listener + " - function ListenerUI must return panel and container objects");
             continue;
         }
 
         QJSValue ui_container = result.property("ui_container");
         QJSValue ui_panel = result.property("ui_panel");
         if ( ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject()) {
-            // emit consoleAppendError("ListenerUI() must return panel and container objects");
+            adaptixWidget->ScriptManager->consolePrintError(listener + " - function ListenerUI must return panel and container objects");
+
             continue;
         }
 
         QObject* objPanel = ui_panel.toQObject();
         auto* formElement = dynamic_cast<AxPanelWrapper*>(objPanel);
         if (!formElement) {
-            // emit consoleAppendError("ListenerUI() must return panel and container objects");
+            adaptixWidget->ScriptManager->consolePrintError(listener + " - function ListenerUI must return panel and container objects");
             continue;
         }
 
         QObject* objContainer = ui_container.toQObject();
         auto* container = dynamic_cast<AxContainerWrapper*>(objContainer);
         if (!container) {
-            // emit consoleAppendError("ListenerUI() must return panel and container objects");
+            adaptixWidget->ScriptManager->consolePrintError(listener + " - function ListenerUI must return panel and container objects");
             continue;
         }
 
@@ -268,13 +269,13 @@ void ListenersWidget::onEditListener() const
 
     auto engine = adaptixWidget->ScriptManager->ListenerScriptEngine(listenerType);
     if (engine == nullptr) {
-        // emit QJSValue::TypeError, QString("Listener %1 is not registered").arg(name) /// ToDo error
+        adaptixWidget->ScriptManager->consolePrintError(QString("Listener %1 is not registered").arg(listenerName));
         return;;
     }
 
     QJSValue func = engine->globalObject().property("ListenerUI");
     if (!func.isCallable()) {
-        // emit QJSValue::TypeError, "Function ListenerUI is not registered")
+        adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function ListenerUI is not registered");
         return;
     }
 
@@ -282,34 +283,34 @@ void ListenersWidget::onEditListener() const
     args << QJSValue(false);
     QJSValue result = func.call(args);
     if (result.isError()) {
-        QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(result.property("fileName").toString()).arg(result.property("stack").toString());
-        // emit consoleAppendError(error);
+        QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(listenerName).arg(result.property("stack").toString());
+        adaptixWidget->ScriptManager->consolePrintError(error);
         return;
     }
 
     if (!result.isObject()) {
-        // emit consoleAppendError("ListenerUI() must return panel and container objects");
+        adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function ListenerUI must return panel and container objects");
         return;
     }
 
     QJSValue ui_container = result.property("ui_container");
     QJSValue ui_panel = result.property("ui_panel");
     if ( ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject()) {
-        // emit consoleAppendError("ListenerUI() must return panel and container objects");
+        adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function ListenerUI must return panel and container objects");
         return;
     }
 
     QObject* objPanel = ui_panel.toQObject();
     auto* formElement = dynamic_cast<AxPanelWrapper*>(objPanel);
     if (!formElement) {
-        // emit consoleAppendError("ListenerUI() must return panel and container objects");
+        adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function ListenerUI must return panel and container objects");
         return;
     }
 
     QObject* objContainer = ui_container.toQObject();
     auto* container = dynamic_cast<AxContainerWrapper*>(objContainer);
     if (!container) {
-        // emit consoleAppendError("ListenerUI() must return panel and container objects");
+        adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function ListenerUI must return panel and container objects");
         return;
     }
 
@@ -370,13 +371,13 @@ void ListenersWidget::onGenerateAgent() const
     for (auto agent : agentNames) {
         auto engine = adaptixWidget->ScriptManager->AgentScriptEngine(agent);
         if (engine == nullptr) {
-            // emit QJSValue::TypeError, QString("Listener %1 is not registered").arg(name) /// ToDo error
+            adaptixWidget->ScriptManager->consolePrintError(QString("Listener %1 is not registered").arg(agent));
             return;;
         }
 
         QJSValue func = engine->globalObject().property("GenerateUI");
         if (!func.isCallable()) {
-            // emit QJSValue::TypeError, "Function GenerateUI is not registered")
+            adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function GenerateUI is not registered");
             return;
         }
 
@@ -384,34 +385,34 @@ void ListenersWidget::onGenerateAgent() const
         args << QJSValue(targetListener);
         QJSValue result = func.call(args);
         if (result.isError()) {
-            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(result.property("fileName").toString()).arg(result.property("stack").toString());
-            // emit consoleAppendError(error);
+            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(listenerName).arg(result.property("stack").toString());
+            adaptixWidget->ScriptManager->consolePrintError(error);
             return;
         }
 
         if (!result.isObject()) {
-            // emit consoleAppendError("GenerateUI() must return panel and container objects");
+            adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function GenerateUI must return panel and container objects");
             return;
         }
 
         QJSValue ui_container = result.property("ui_container");
         QJSValue ui_panel = result.property("ui_panel");
         if ( ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject()) {
-            // emit consoleAppendError("GenerateUI() must return panel and container objects");
+            adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function GenerateUI must return panel and container objects");
             return;
         }
 
         QObject* objPanel = ui_panel.toQObject();
         auto* formElement = dynamic_cast<AxPanelWrapper*>(objPanel);
         if (!formElement) {
-            // emit consoleAppendError("GenerateUI() must return panel and container objects");
+            adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function GenerateUI must return panel and container objects");
             return;
         }
 
         QObject* objContainer = ui_container.toQObject();
         auto* container = dynamic_cast<AxContainerWrapper*>(objContainer);
         if (!container) {
-            // emit consoleAppendError("GenerateUI() must return panel and container objects");
+            adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function GenerateUI must return panel and container objects");
             return;
         }
 

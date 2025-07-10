@@ -174,6 +174,27 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args) const
     return strLengthData.toBase64();
 }
 
+void BridgeApp::console_message(const QString &id, const QString &message, const QString &type, const QString &text)
+{
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+    if (!mapAgents.contains(id))
+        return;
+
+    auto agent = mapAgents[id];
+    if (!agent)
+        return;
+
+    int msgType = CONSOLE_OUT;
+    if (type == "info")
+        msgType = CONSOLE_OUT_LOCAL_INFO;
+    else if (type == "success")
+        msgType = CONSOLE_OUT_LOCAL_SUCCESS;
+    else if (type == "error")
+        msgType = CONSOLE_OUT_LOCAL_ERROR;
+
+    agent->Console->ConsoleOutputMessage(QDateTime::currentSecsSinceEpoch(), "", msgType, message, text, false);
+}
+
 void BridgeApp::credentials_add(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host) {
     scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(username, password, realm, type, tag, storage, host);
 }
@@ -181,7 +202,7 @@ void BridgeApp::credentials_add(const QString &username, const QString &password
 QObject* BridgeApp::create_command(const QString &name, const QString &description, const QString &example, const QString &message)
 {
     auto* wrapper = new AxCommandWrappers(name, description, example, message, this);
-    connect(wrapper, &AxCommandWrappers::consoleAppendError, this, &BridgeApp::consoleAppendError);
+    connect(wrapper, &AxCommandWrappers::consoleError, this, &BridgeApp::consoleError);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }
@@ -189,7 +210,7 @@ QObject* BridgeApp::create_command(const QString &name, const QString &descripti
 QObject* BridgeApp::create_commands_group(const QString &name, const QJSValue &array)
 {
     auto* wrapper = new AxCommandGroupWrapper(name, array, scriptEngine->engine(), this);
-    connect(wrapper, &AxCommandGroupWrapper::consoleAppendError, this, &BridgeApp::consoleAppendError);
+    connect(wrapper, &AxCommandGroupWrapper::consoleError, this, &BridgeApp::consoleError);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }
@@ -234,9 +255,9 @@ bool BridgeApp::is64(const QString &id) const
     return mapAgents[id]->data.Arch == "x64";
 }
 
-void BridgeApp::log(const QString &text) { emit consoleAppend(text); }
+void BridgeApp::log(const QString &text) { emit consoleMessage(text); }
 
-void BridgeApp::log_error(const QString &text) { emit consoleAppendError(text); }
+void BridgeApp::log_error(const QString &text) { emit consoleError(text); }
 
 void BridgeApp::open_access_tunnel(const QString &id, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd) { scriptEngine->manager()->GetAdaptix()->ShowTunnelCreator(id, socks4, socks5, lportfwd, rportfwd); }
 
