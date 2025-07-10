@@ -36,7 +36,7 @@ public:
     Q_INVOKABLE void setPreHook(const QJSValue& handler);
 
 signals:
-    void consoleAppendError(const QString &msg);
+    void consoleError(const QString &msg);
 };
 
 
@@ -60,7 +60,7 @@ public:
     Q_INVOKABLE void add(const QJSValue& array);
 
 signals:
-    void consoleAppendError(const QString &msg);
+    void consoleError(const QString &msg);
 };
 
 #endif //AXCOMMANDWRAPPERS_H

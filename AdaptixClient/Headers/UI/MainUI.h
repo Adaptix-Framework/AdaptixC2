@@ -19,8 +19,9 @@ public:
 
     static void onNewProject();
     void onCloseProject();
+    void onAxScriptConsole();
 
-    static void onExtender();
+    static void onScriptManager();
     static void onSettings();
 
     void AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker);

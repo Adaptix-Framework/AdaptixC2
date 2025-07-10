@@ -4,6 +4,7 @@
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/BridgeEvent.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/AxConsoleWidget.h>
 
 AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), mainWidget(main_widget)
 {
@@ -11,6 +12,8 @@ AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): Q
 }
 
 AxScriptManager::~AxScriptManager() = default;
+
+QJSEngine * AxScriptManager::MainScriptEngine() { return mainScript->engine(); }
 
 void AxScriptManager::Clear()
 {
@@ -35,6 +38,7 @@ void AxScriptManager::ResetMain()
 AdaptixWidget* AxScriptManager::GetAdaptix() const { return this->mainWidget; }
 
 QMap<QString, Agent*> AxScriptManager::GetAgents() const { return mainWidget->AgentsMap; }
+
 
 
 /// MAIN
@@ -70,14 +74,11 @@ void AxScriptManager::AgentScriptAdd(const QString &name, const QString &ax_scri
     agents_scripts[name] = script;
 }
 
-QJSEngine * AxScriptManager::AgentScriptEngine(const QString &name)
+QJSEngine* AxScriptManager::AgentScriptEngine(const QString &name)
 {
     if (!agents_scripts.contains(name)) return nullptr;
     return agents_scripts[name]->engine();
 }
-
-
-void AxScriptManager::ScriptSetMain(AxScriptEngine *script) { mainScript = script; } /// ToDo:
 
 void AxScriptManager::ScriptAdd(const QString &name, AxScriptEngine* script)
 {
@@ -92,7 +93,6 @@ void AxScriptManager::ScriptRemove(const QString &name)
     delete scriptEngine;
 }
 
-
 // void AxScriptManager::ExScriptRemove(const QString &name)
 // {
 //     if (!ex_scripts.contains(name))
@@ -102,8 +102,6 @@ void AxScriptManager::ScriptRemove(const QString &name)
 //
 //     delete scriptEngine;
 // }
-
-
 
 QJSValue AxScriptManager::AgentScriptExecute(const QString &name, const QString &code)
 {
@@ -185,3 +183,7 @@ void AxScriptManager::emitAllEventTestClick()
             module->event()->emitEventTestClick();
     }
 }
+
+void AxScriptManager::consolePrintMessage(const QString &message) { this->mainWidget->AxConsoleTab->PrintMessage(message); }
+
+void AxScriptManager::consolePrintError(const QString &message) { this->mainWidget->AxConsoleTab->PrintError(message); }

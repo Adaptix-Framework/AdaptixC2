@@ -33,11 +33,11 @@ void DialogAgent::createUI()
     agentLabel    = new QLabel("Agent: ", this);
     agentCombobox = new QComboBox(this);
 
-    buttonLoad = new QPushButton(QIcon(":/icons/unarchive"), "", this);
+    buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
     buttonLoad->setIconSize( QSize( 25,25 ));
     buttonLoad->setToolTip("Load profile from file");
 
-    buttonSave = new QPushButton(QIcon(":/icons/archive"), "", this);
+    buttonSave = new QPushButton(QIcon(":/icons/save_as"), "", this);
     buttonSave->setIconSize( QSize( 25,25 ));
     buttonSave->setToolTip("Save profile to file");
 

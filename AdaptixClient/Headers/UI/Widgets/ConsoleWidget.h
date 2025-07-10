@@ -15,6 +15,7 @@ class Agent;
 #define CONSOLE_OUT_INFO          5
 #define CONSOLE_OUT_ERROR         6
 #define CONSOLE_OUT_SUCCESS       7
+#define CONSOLE_OUT               10
 
 class  ConsoleWidget : public QWidget
 {

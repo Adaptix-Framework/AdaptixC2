@@ -5,10 +5,7 @@
 #include <Client/AxScript/BridgeEvent.h>
 #include <Client/AxScript/BridgeMenu.h>
 
-// #include <Classes/MainWindow.h>
-// #include <Classes/AxContainers/AxScriptConsole.h>
-
-AxScriptEngine::AxScriptEngine(AxScriptManager *script_manager, const QString &name, QObject *parent) : QObject(parent), scriptManager(script_manager)
+AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &name, QObject *parent) : QObject(parent), scriptManager(script_manager)
 {
     jsEngine = std::make_unique<QJSEngine>();
     jsEngine->installExtensions(QJSEngine::ConsoleExtension);
@@ -18,14 +15,15 @@ AxScriptEngine::AxScriptEngine(AxScriptManager *script_manager, const QString &n
     bridgeEvent = std::make_unique<BridgeEvent>(this, this);
     bridgeMenu  = std::make_unique<BridgeMenu>(this, this);
 
-    jsEngine->globalObject().setProperty("ax",      jsEngine->newQObject(bridgeApp.get()));
-    jsEngine->globalObject().setProperty("form",    jsEngine->newQObject(bridgeForm.get()));
-    jsEngine->globalObject().setProperty("event",   jsEngine->newQObject(bridgeEvent.get()));
-    jsEngine->globalObject().setProperty("menu",    jsEngine->newQObject(bridgeMenu.get()));
-    // connect(bridgeEvent.get(), &BridgeEvent::consoleAppendError, main->scriptConsole, &AxScriptConsole::appendErrorOutput);
-    // connect(bridgeForm.get(),  &BridgeForm::consoleAppendError,  main->scriptConsole, &AxScriptConsole::appendErrorOutput);
-    // connect(bridgeApp.get(),   &BridgeApp::consoleAppendError,   main->scriptConsole, &AxScriptConsole::appendErrorOutput);
-    // connect(bridgeApp.get(),   &BridgeApp::consoleAppend,        main->scriptConsole, &AxScriptConsole::appendOutput);
+    jsEngine->globalObject().setProperty("ax",    jsEngine->newQObject(bridgeApp.get()));
+    jsEngine->globalObject().setProperty("form",  jsEngine->newQObject(bridgeForm.get()));
+    jsEngine->globalObject().setProperty("event", jsEngine->newQObject(bridgeEvent.get()));
+    jsEngine->globalObject().setProperty("menu",  jsEngine->newQObject(bridgeMenu.get()));
+
+    connect(bridgeEvent.get(), &BridgeEvent::consoleError, script_manager, &AxScriptManager::consolePrintError);
+    connect(bridgeForm.get(),  &BridgeForm::consoleError,  script_manager, &AxScriptManager::consolePrintError);
+    connect(bridgeApp.get(),   &BridgeApp::consoleError,   script_manager, &AxScriptManager::consolePrintError);
+    connect(bridgeApp.get(),   &BridgeApp::consoleError,   script_manager, &AxScriptManager::consolePrintMessage);
 
     context.name = name;
 }
@@ -97,14 +95,14 @@ bool AxScriptEngine::execute(const QString &code)
 {
     QJSValue result = jsEngine->evaluate(code, context.name);
     if (result.isError()) {
-        QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4")
+        QString error = QStringLiteral("%1\n    at line %2 in %3\n    stack: %4")
             .arg(result.toString())
             .arg(result.property("lineNumber").toInt())
             .arg(result.property("fileName").toString())
             .arg(result.property("stack").toString());
 
-        // auto main = qobject_cast<MainWindow*>( mainWidget );
-        // main->scriptConsole->appendErrorOutput(error);
+        scriptManager->consolePrintError(error);
+
         return false;
     }
     context.scriptObject = result;

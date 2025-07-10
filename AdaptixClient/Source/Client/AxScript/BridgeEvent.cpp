@@ -9,7 +9,7 @@ void BridgeEvent::on_event(const QJSValue &handler)
     if (handler.isCallable())
         eventHandlers.append(handler);
     else
-        emit consoleAppendError("on_event -> handler in not Callable");
+        emit consoleError("on_event -> handler in not Callable");
 }
 
 void BridgeEvent::emitEventTestClick()
@@ -18,6 +18,6 @@ void BridgeEvent::emitEventTestClick()
         if (handler.isCallable())
             eventHandlers.append(handler);
         else
-            emit consoleAppendError("EventTestClick -> handler in not Callable");
+            emit consoleError("EventTestClick -> handler in not Callable");
     }
 }

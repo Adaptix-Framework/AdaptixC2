@@ -12,7 +12,7 @@ BridgeForm::~BridgeForm() { delete widget; }
 void BridgeForm::connect(QObject* sender, const QString& signalName, const QJSValue& handler)
 {
     if (!sender || !handler.isCallable()) {
-        emit consoleAppendError("connect -> Invalid sender or handler");
+        emit consoleError("connect -> Invalid sender or handler");
         return;
     }
 
@@ -44,17 +44,17 @@ void BridgeForm::connect(QObject* sender, const QString& signalName, const QJSVa
                 connected = QObject::connect(sender, method, proxy, proxy->metaObject()->method(proxy->metaObject()->indexOfSlot("callWithArg(bool)")));
         }
         else {
-            emit consoleAppendError("connect -> Signal " + signalName + " has too many parameters (not supported)");
+            emit consoleError("connect -> Signal " + signalName + " has too many parameters (not supported)");
             return;
         }
 
         if (!connected)
-            emit consoleAppendError("connect -> Failed to connect signal " + method.methodSignature());
+            emit consoleError("connect -> Failed to connect signal " + method.methodSignature());
 
         return;
     }
 
-    emit consoleAppendError("connect -> Signal " + signalName + " not found");
+    emit consoleError("connect -> Signal " + signalName + " not found");
 }
 
 void BridgeForm::show_message(const QString &title, const QString &text)

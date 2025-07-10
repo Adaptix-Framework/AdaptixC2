@@ -10,6 +10,7 @@ class LastTickWorker;
 class WebSocketWorker;
 class SessionsTableWidget;
 class SessionsGraph;
+class AxConsoleWidget;
 class LogsWidget;
 class ListenersWidget;
 class DownloadsWidget;
@@ -78,6 +79,7 @@ public:
 
     AxScriptManager* ScriptManager = nullptr;
 
+    AxConsoleWidget*     AxConsoleTab      = nullptr;
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
@@ -137,6 +139,7 @@ public slots:
     void SetSessionsTableUI() const;
     void SetGraphUI() const;
     void SetTasksUI() const;
+    void LoadAxConsoleUI() const;
     void LoadLogsUI() const;
     void LoadListenersUI() const;
     void LoadTunnelsUI() const;

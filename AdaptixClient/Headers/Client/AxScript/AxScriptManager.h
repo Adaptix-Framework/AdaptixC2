@@ -21,8 +21,9 @@ public:
     AxScriptManager(AdaptixWidget* main_widget, QObject *parent = nullptr);
     ~AxScriptManager() override;
 
-    void Clear();
+    QJSEngine* MainScriptEngine();
     void ResetMain();
+    void Clear();
 
     AdaptixWidget* GetAdaptix() const;
     QMap<QString, Agent*> GetAgents() const;
@@ -36,7 +37,6 @@ public:
 
     ////
 
-    void ScriptSetMain(AxScriptEngine* script);
     void ScriptAdd(const QString &name, AxScriptEngine* script);
     void ScriptRemove(const QString &name);
     // void ExScriptRemove(const QString &name);
@@ -46,6 +46,10 @@ public:
     int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds) const;
 
     void emitAllEventTestClick();
+
+public slots:
+    void consolePrintMessage(const QString &message);
+    void consolePrintError(const QString &message);
 };
 
 #endif //AXSCRIPTMANAGER_H

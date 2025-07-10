@@ -203,7 +203,7 @@ void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &
         else if (type == CONSOLE_OUT_ERROR || type == CONSOLE_OUT_LOCAL_ERROR)
             OutputTextEdit->appendColor("[-] ", QColor(COLOR_ChiliPepper));
         else
-            OutputTextEdit->appendPlain("[!] ");
+            OutputTextEdit->appendPlain(" ");
 
         QString printMessage = TrimmedEnds(message);
         if ( text.isEmpty() || type == CONSOLE_OUT_LOCAL_SUCCESS || type == CONSOLE_OUT_LOCAL_ERROR || type == CONSOLE_OUT_SUCCESS || type == CONSOLE_OUT_ERROR)
