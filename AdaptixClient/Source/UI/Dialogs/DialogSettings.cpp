@@ -78,7 +78,6 @@ void DialogSettings::createUI()
     this->setWindowTitle("Adaptix Settings");
     this->resize(600, 300);
 
-    /////////////// Main setting
 
     mainSettingWidget = new QWidget(this);
     mainSettingLayout = new QGridLayout(mainSettingWidget);
@@ -145,7 +144,6 @@ void DialogSettings::createUI()
 
     mainSettingWidget->setLayout(mainSettingLayout);
 
-    /////////////// Sessions Table
 
     sessionsWidget = new QWidget(this);
     sessionsLayout = new QGridLayout(sessionsWidget);
@@ -211,7 +209,6 @@ void DialogSettings::createUI()
 
     sessionsWidget->setLayout(sessionsLayout);
 
-    /////////////// Tasks Table
 
     tasksWidget = new QWidget(this);
     tasksLayout = new QGridLayout(tasksWidget);
@@ -243,7 +240,6 @@ void DialogSettings::createUI()
     tasksLayout->addWidget(tasksGroup, 0, 0, 1, 1);
     tasksWidget->setLayout(tasksLayout);
 
-    //////////////
 
     listSettings = new QListWidget(this);
     listSettings->setFixedWidth(150);

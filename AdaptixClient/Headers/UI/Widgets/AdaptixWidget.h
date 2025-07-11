@@ -25,7 +25,6 @@ class AxScriptManager;
 
 typedef struct RegAgentConfig {
     QString        name;
-    QString        watermark;
     QString        listenerType;
     int            os;
     Commander*     commander;
@@ -149,4 +148,4 @@ public slots:
     void OnReconnect();
 };
 
-#endif //ADAPTIXCLIENT_ADAPTIXWIDGET_H
+#endif

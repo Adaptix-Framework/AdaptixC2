@@ -48,4 +48,4 @@ private slots:
     void onStartSocks5AuthChannel();
 };
 
-#endif //TUNNELENDPOINT_H
+#endif

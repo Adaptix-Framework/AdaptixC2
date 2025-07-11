@@ -40,4 +40,4 @@ public slots:
     void onError(QNetworkReply::NetworkError);
 };
 
-#endif //UPLOADERWORKER_H
+#endif

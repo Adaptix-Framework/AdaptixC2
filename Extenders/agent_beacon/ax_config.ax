@@ -32,7 +32,7 @@ function RegisterCommands(listenerType)
     var cmd_download = ax.create_command("download", "Download a file", "download C:\\Temp\\file.txt", "Task: download file");
     cmd_download.addArgString("file", true);
 
-    var _cmd_execute_bof = ax.create_command("list", "Execute Beacon Object File", "execute bof /home/user/whoami.o", "Task: execute BOF");
+    var _cmd_execute_bof = ax.create_command("bof", "Execute Beacon Object File", "execute bof /home/user/whoami.o", "Task: execute BOF");
     _cmd_execute_bof.addArgFile("bof", true, "Path to object file");
     _cmd_execute_bof.addArgString("param_data", false);
     var cmd_execute = ax.create_command("execute", "Execute [bof] in the current process's memory");
@@ -148,28 +148,37 @@ function RegisterCommands(listenerType)
     cmd_upload.addArgFile("local_file", true);
     cmd_upload.addArgString("remote_path", false);
 
+    /// Aliases
+
     var cmd_shell = ax.create_command("shell", "Execute command via cmd.exe", "shell whoami /all");
-    cmd_shell.addArgString("command", true);
-    cmd_shell.setPreHook(function (id, cmdline, ...args){
-        if(args.length == 0) {
-            ax.console_print()
-        }
-        let params = cmdline.substring(6);
-        let new_cmd = "ps run -o C:\\Windows\\System32\\cmd.exe /c " + params;
+    cmd_shell.addArgString("cmd_params", true);
+    cmd_shell.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
+        let new_cmd = "ps run -o C:\\Windows\\System32\\cmd.exe /c " + parsed_json["cmd_params"];
         ax.execute_alias(id, cmdline, new_cmd);
+    });
+
+    var cmd_powershell = ax.create_command("powershell", "Execute command via powershell.exe", "powershell ls");
+    cmd_powershell.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
+        let new_cmd = "ps run -o C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -c " + parsed_json["cmd_params"];
+        ax.execute_alias(id, cmdline, new_cmd);
+    });
+
+    var cmd_interact = ax.create_command("interact", "Set 'sleep 0'", "interact");
+    cmd_interact.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
+        ax.execute_alias(id, cmdline, "sleep 0");
     });
 
     if(listenerType == "BeaconHTTP") {
         var commands_external = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
             cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
-            cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell] );
+            cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact] );
 
         return { commands_windows: commands_external }
     }
     else if (listenerType == "BeaconSMB" || listenerType == "BeaconTCP") {
         var commands_internal = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
             cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd,
-            cmd_socks, cmd_terminate, cmd_unlink, cmd_upload] );
+            cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact] );
 
         return { commands_windows: commands_internal }
     }

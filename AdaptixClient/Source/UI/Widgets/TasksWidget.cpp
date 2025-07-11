@@ -205,7 +205,7 @@ void TasksWidget::addTableItem(const Task* newTask) const
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 }
 
-/// PUBLIC
+
 
 void TasksWidget::AddTaskItem(Task* newTask) const
 {

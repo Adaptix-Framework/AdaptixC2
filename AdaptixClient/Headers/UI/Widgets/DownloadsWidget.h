@@ -31,4 +31,4 @@ public slots:
     void actionCancel() const;
 };
 
-#endif //ADAPTIXCLIENT_DOWNLOADSWIDGET_H
+#endif

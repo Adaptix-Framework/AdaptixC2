@@ -336,7 +336,6 @@ uint ExtendedCharTable::createExtendedChar(uint* unicodePoints , ushort length) 
                         }
                     }
                 } else {
-                    qWarning() << "Using all the extended char hashes, going to miss this extended character";
                     return 0;
                 }
             }

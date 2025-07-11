@@ -41,4 +41,4 @@ public slots:
     void onError(QNetworkReply::NetworkError);
 };
 
-#endif //DOWNLOADERWORKER_H
+#endif

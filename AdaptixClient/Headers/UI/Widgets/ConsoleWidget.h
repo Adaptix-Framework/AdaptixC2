@@ -55,17 +55,16 @@ public:
 
     void ProcessCmdResult(const QString &commandLine, const CommanderResult &cmdResult);
 
-    void UpgradeCompleter() const;
     void InputFocus() const;
     void AddToHistory(const QString& command);
     void SetInput(const QString &command);
     void Clear();
 
-
     void ConsoleOutputMessage( qint64 timestamp, const QString &taskId, int type, const QString &message, const QString &text, bool completed ) const;
     void ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const;
 
 public slots:
+    void upgradeCompleter() const;
     void processInput();
     void onCompletionSelected(const QString &selectedText);
     void toggleSearchPanel();
@@ -74,4 +73,4 @@ public slots:
     void handleShowHistory();
 };
 
-#endif //ADAPTIXCLIENT_CONSOLEWIDGET_H
+#endif

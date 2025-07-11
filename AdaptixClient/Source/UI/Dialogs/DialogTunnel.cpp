@@ -90,7 +90,6 @@ void DialogTunnel::createUI()
      buttonCreate->setFixedHeight(buttonHeight);
      buttonCancel->setFixedHeight(buttonHeight);
 
-     /// Socks5
      socks5Widget = new QWidget(this);
      socks5LocalAddrLabel = new QLabel("Listen:", socks5Widget);
      socks5LocalAddrInput = new QLineEdit("0.0.0.0", socks5Widget);
@@ -117,7 +116,7 @@ void DialogTunnel::createUI()
      socks5GridLayout->addWidget(socks5AuthPassInput,  3, 1, 1, 2);
      tunnelStackWidget->addWidget(socks5Widget);
 
-     /// Socks4
+
      socks4Widget = new QWidget(this);
      socks4LocalAddrLabel = new QLabel("Listen:", socks4Widget);
      socks4LocalAddrInput = new QLineEdit("0.0.0.0", socks4Widget);
@@ -132,7 +131,7 @@ void DialogTunnel::createUI()
      socks4GridLayout->addWidget(socks4LocalPortSpin,  0, 2, 1, 1);
      tunnelStackWidget->addWidget(socks4Widget);
 
-     /// LPF
+
      lpfWidget = new QWidget(this);
      lpfLocalAddrLabel = new QLabel("Listen:", lpfWidget);
      lpfLocalAddrInput = new QLineEdit("0.0.0.0", lpfWidget);

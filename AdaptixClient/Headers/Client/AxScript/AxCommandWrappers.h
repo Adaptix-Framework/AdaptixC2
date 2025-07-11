@@ -63,4 +63,4 @@ signals:
     void consoleError(const QString &msg);
 };
 
-#endif //AXCOMMANDWRAPPERS_H
+#endif

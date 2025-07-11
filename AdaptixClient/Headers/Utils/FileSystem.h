@@ -28,4 +28,4 @@ QString GetParentPathUnix(const QString& path);
 
 QIcon GetFileSystemIcon(int type, bool used);
 
-#endif //ADAPTIXCLIENT_FILESYSTEM_H
+#endif

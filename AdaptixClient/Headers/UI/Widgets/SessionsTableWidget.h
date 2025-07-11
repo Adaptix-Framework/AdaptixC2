@@ -79,4 +79,4 @@ public slots:
     void actionItemsShowAll() const;
 };
 
-#endif //ADAPTIXCLIENT_SESSIONSTABLEWIDGET_H
+#endif

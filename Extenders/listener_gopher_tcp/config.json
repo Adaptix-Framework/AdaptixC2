@@ -1,7 +1,7 @@
 {
   "extender_type": "listener",
   "extender_file": "listener_gopher_tcp.so",
-  "ax_file": "ax_config.js",
+  "ax_file": "ax_config.ax",
 
   "listener_name": "GopherTCP",
   "listener_type": "external",

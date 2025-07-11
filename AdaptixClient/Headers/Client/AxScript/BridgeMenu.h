@@ -34,4 +34,4 @@ public slots:
     void add_session_access(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
 };
 
-#endif //BRIDGEMENU_H
+#endif

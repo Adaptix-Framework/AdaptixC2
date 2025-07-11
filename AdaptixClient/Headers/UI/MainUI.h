@@ -37,4 +37,4 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 };
 
-#endif //ADAPTIXCLIENT_MAINUI_H
+#endif

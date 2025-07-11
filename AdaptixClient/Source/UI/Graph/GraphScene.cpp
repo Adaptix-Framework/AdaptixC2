@@ -55,7 +55,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
 
 
-    /// AGENT MENU
+
 
     auto agentMenu = QMenu("Agent");
     agentMenu.addAction("Execute command");
@@ -69,13 +69,13 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     agentMenu.addAction("Remove console data");
     agentMenu.addAction("Remove from server");
 
-    /// SESSION MENU
+
 
     auto sessionMenu = QMenu("Session");
     sessionMenu.addAction("Mark as Active");
     sessionMenu.addAction("Mark as Inactive");
 
-    /// MAIN MENU
+
 
     auto ctxMenu = QMenu();
     ctxMenu.addAction("Console");

@@ -96,4 +96,4 @@ public slots:
     void handleTableMenu(const QPoint &pos);
 };
 
-#endif //ADAPTIXCLIENT_BROWSERFILESWIDGET_H
+#endif
