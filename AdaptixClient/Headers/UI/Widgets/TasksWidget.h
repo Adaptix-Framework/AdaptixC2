@@ -84,4 +84,4 @@ public slots:
     void actionDelete() const;
 };
 
-#endif //ADAPTIXCLIENT_TASKSWIDGET_H
+#endif

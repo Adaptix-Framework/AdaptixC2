@@ -39,6 +39,8 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w )
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
     shortcutSearch->setContext(Qt::WidgetShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &SessionsTableWidget::toggleSearchPanel);
+
+
 }
 
 SessionsTableWidget::~SessionsTableWidget() = default;
@@ -225,7 +227,7 @@ void SessionsTableWidget::addTableItem(const Agent* newAgent) const
     this->UpdateColumnsWidth();
 }
 
-/// PUBLIC
+
 
 void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
 {
@@ -376,7 +378,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
         }
     }
 
-    /// AGENT MENU
+
 
     auto agentMenu = QMenu("Agent");
     agentMenu.addAction("Execute command", this, &SessionsTableWidget::actionExecuteCommand);
@@ -390,7 +392,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     agentMenu.addAction("Remove console data", this, &SessionsTableWidget::actionConsoleDelete);
     agentMenu.addAction("Remove from server", this, &SessionsTableWidget::actionAgentRemove);
 
-    /// SESSION MENU
+
 
     auto sessionMenu = QMenu("Session");
     sessionMenu.addAction("Mark as Active",   this, &SessionsTableWidget::actionMarkActive);
@@ -402,7 +404,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     sessionMenu.addSeparator();
     sessionMenu.addAction( "Hide on client", this, &SessionsTableWidget::actionItemHide);
 
-    /// MAIN MENU
+
 
     auto ctxMenu = QMenu();
     ctxMenu.addAction("Console", this, &SessionsTableWidget::actionConsoleOpen);

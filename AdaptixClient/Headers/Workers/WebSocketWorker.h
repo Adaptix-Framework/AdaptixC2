@@ -34,4 +34,4 @@ signals:
     void websocket_closed();
 };
 
-#endif //ADAPTIXCLIENT_WEBSOCKETWORKER_H
+#endif

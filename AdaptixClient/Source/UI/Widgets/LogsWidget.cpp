@@ -88,7 +88,7 @@ void LogsWidget::createUI()
     todoWidget->setLayout(todoGridLayout);
 
 
-    /// Main
+
     mainHSplitter = new QSplitter( Qt::Horizontal, this );
     mainHSplitter->setHandleWidth(3);
     mainHSplitter->addWidget(logsWidget);

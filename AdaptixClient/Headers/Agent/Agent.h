@@ -78,4 +78,4 @@ public:
     QString BrowserDownload(const QString &path) const;
 };
 
-#endif //ADAPTIXCLIENT_AGENT_H
+#endif

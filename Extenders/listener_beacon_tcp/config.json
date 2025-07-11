@@ -1,7 +1,7 @@
 {
   "extender_type": "listener",
   "extender_file": "listener_beacon_tcp.so",
-  "ax_file": "ax_config.js",
+  "ax_file": "ax_config.ax",
 
   "listener_name": "BeaconTCP",
   "listener_type": "internal",

@@ -94,4 +94,4 @@ public slots:
     }
 };
 
-#endif //BRIDGEFORM_H
+#endif

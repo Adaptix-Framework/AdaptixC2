@@ -85,4 +85,4 @@ bool HttpReqCredentialsEdit(const QByteArray &jsonData, AuthProfile profile, QSt
 
 bool HttpReqCredentialsRemove(const QString &credsId, AuthProfile profile, QString* message, bool* ok);
 
-#endif //ADAPTIXCLIENT_REQUESTOR_H
+#endif

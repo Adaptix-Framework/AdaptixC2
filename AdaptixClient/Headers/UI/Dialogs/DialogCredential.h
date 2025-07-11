@@ -48,4 +48,4 @@ protected slots:
     void onButtonCancel();
 };
 
-#endif //DIALOGCREDENTIAL_H
+#endif

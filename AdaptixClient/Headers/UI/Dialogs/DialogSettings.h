@@ -72,4 +72,5 @@ public slots:
     void onClose();
 };
 
-#endif //ADAPTIXCLIENT_DIALOGSETTINGS_H
+
+#endif

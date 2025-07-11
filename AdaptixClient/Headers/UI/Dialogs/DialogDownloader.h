@@ -27,4 +27,4 @@ public:
     ~DialogDownloader() override;
 };
 
-#endif //DIALOGDOWNLOADER_H
+#endif

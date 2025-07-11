@@ -17,4 +17,4 @@ public:
     void SetColor(QColor bg, QColor fg);
 };
 
-#endif //ADAPTIXCLIENT_TABLEWIDGETITEMAGENT_H
+#endif

@@ -26,4 +26,4 @@ signals:
     void consoleError(const QString &msg);
 };
 
-#endif //BRIDGEEVENT_H
+#endif

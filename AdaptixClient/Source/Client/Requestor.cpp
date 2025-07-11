@@ -138,10 +138,10 @@ bool HttpReqListenerEdit(const QString &listenerName, const QString &configType,
     return false;
 }
 
-bool HttpReqListenerStop(const QString &credsId, const QString &listenerType, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqListenerStop(const QString &listenerName, const QString &listenerType, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
-    dataJson["name"] = credsId;
+    dataJson["name"] = listenerName;
     dataJson["type"] = listenerType;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 

@@ -13,7 +13,7 @@ ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
     commander = c;
 
     this->createUI();
-    this->UpgradeCompleter();
+    this->upgradeCompleter();
 
     connect(CommandCompleter, QOverload<const QString &>::of(&QCompleter::activated), this, &ConsoleWidget::onCompletionSelected, Qt::DirectConnection);
     connect(InputLineEdit,    &QLineEdit::returnPressed,                              this, &ConsoleWidget::processInput,         Qt::QueuedConnection );
@@ -23,6 +23,7 @@ ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
     connect(hideButton,       &ClickableLabel::clicked,                               this, &ConsoleWidget::toggleSearchPanel);
     connect(OutputTextEdit,   &TextEditConsole::ctx_find,                             this, &ConsoleWidget::toggleSearchPanel);
     connect(OutputTextEdit,   &TextEditConsole::ctx_history,                          this, &ConsoleWidget::handleShowHistory);
+    connect(commander,        &Commander::commandsUpdated,                            this, &ConsoleWidget::upgradeCompleter);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), OutputTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -169,9 +170,9 @@ void ConsoleWidget::highlightCurrent() const
     searchLabel->setText(QString("%1 of %2").arg(currentIndex + 1).arg(sels.size()));
 }
 
-///
 
-void ConsoleWidget::UpgradeCompleter() const
+
+void ConsoleWidget::upgradeCompleter() const
 {
     if (commander)
         completerModel->setStringList(commander->GetCommands());
@@ -485,7 +486,4 @@ void ConsoleWidget::handleShowHistory()
     historyDialog->show();
 }
 
-void ConsoleWidget::onCompletionSelected(const QString &selectedText)
-{
-    userSelectedCompletion = true;
-}
+void ConsoleWidget::onCompletionSelected(const QString &selectedText) { userSelectedCompletion = true; }

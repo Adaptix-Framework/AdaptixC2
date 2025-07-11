@@ -34,4 +34,4 @@ public:
     void    SetRefreshToken(const QString &token);
 };
 
-#endif //ADAPTIXCLIENT_AUTHPROFILE_H
+#endif

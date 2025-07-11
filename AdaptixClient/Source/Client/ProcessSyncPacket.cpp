@@ -62,7 +62,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_AGENT_REG ) {
         if ( !jsonObj.contains("agent")     || !jsonObj["agent"].isString() )     return false;
-        if ( !jsonObj.contains("watermark") || !jsonObj["watermark"].isString() ) return false;
         if ( !jsonObj.contains("ax")        || !jsonObj["ax"].isString() )        return false;
         if ( !jsonObj.contains("listeners") || !jsonObj["listeners"].isArray() )  return false;
         return true;
@@ -809,7 +808,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_AGENT_REG )
     {
         QString agentName         = jsonObj["agent"].toString();
-        QString agentwatermark    = jsonObj["watermark"].toString();
         QString ax_script         = jsonObj["ax"].toString();
         QJsonArray listenersArray = jsonObj["listeners"].toArray();
 
@@ -817,7 +815,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         for (QJsonValue listener : listenersArray)
             listeners.append(listener.toString());
 
-        this->RegisterAgentConfig(agentName, agentwatermark, ax_script, listeners);
+        this->RegisterAgentConfig(agentName, ax_script, listeners);
         return;
     }
 }
