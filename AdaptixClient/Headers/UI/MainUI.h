@@ -11,7 +11,7 @@ class MainUI : public QMainWindow
 {
     QTabWidget* mainuiTabWidget = nullptr;
 
-    QMap<QString, AdaptixWidget*> AdaptixProjects;
+    QVector<AdaptixWidget*> AdaptixProjects;
 
 public:
     explicit MainUI();
@@ -26,7 +26,7 @@ public:
 
     void AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker);
 
-    void AddNewExtension(const ExtensionFile &extFile);
+    bool AddNewExtension(ExtensionFile *extFile);
     void RemoveExtension(const ExtensionFile &extFile);
 
     void UpdateSessionsTableColumns();

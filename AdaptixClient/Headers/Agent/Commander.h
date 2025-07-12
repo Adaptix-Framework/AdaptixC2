@@ -38,6 +38,7 @@ struct Command
 struct CommandsGroup
 {
     QString        groupName;
+    QString        filepath;
     QList<Command> commands;
     QJSEngine*     engine;
 };
@@ -51,8 +52,10 @@ struct CommanderResult
     bool        hooked;
 };
 
-class Commander
+class Commander : public QObject
 {
+Q_OBJECT
+
     QString agentType;
     QString listenerType;
     QString error;
@@ -60,24 +63,24 @@ class Commander
     CommandsGroup regCommandsGroup;
     QVector<CommandsGroup> axCommandsGroup;
 
-    void            ProcessPreHook(QJSEngine *engine, const QString &agentId, const Command &command, const QString &cmdline, QStringList args);
+    QString         ProcessPreHook(QJSEngine *engine, const Command &command, const QString &agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args);
     CommanderResult ProcessCommand(Command command, QStringList args, QJsonObject jsonObj);
     CommanderResult ProcessHelp(QStringList commandParts);
 
 public:
     explicit Commander();
-    ~Commander();
+    ~Commander() override;
 
     void AddRegCommands(const CommandsGroup &group);
-    void AddAxCommands(const QString &groupName, const QList<Command> &axCommands, QJSEngine *engine);
+    void AddAxCommands(const CommandsGroup &group);
+    void RemoveAxCommands(const QString &filepath);
 
     QString GetError();
     QStringList GetCommands();
     CommanderResult ProcessInput(QString agentId, QString cmdline);
 
-
-
-    void RemoveAxCommands(const QString &filepath);
+signals:
+    void commandsUpdated();
 };
 
-#endif //ADAPTIXCLIENT_COMMANDER_H
+#endif

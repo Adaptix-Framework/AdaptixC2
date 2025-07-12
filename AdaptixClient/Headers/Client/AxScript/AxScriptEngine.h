@@ -64,6 +64,9 @@ public:
     bool execute(const QString &code);
 
     QList<AxMenuItem> getMenuItems(const QString &type);
+
+public slots:
+    void engineError(const QString &message);
 };
 
-#endif //AXSCRIPTENGINE_H
+#endif

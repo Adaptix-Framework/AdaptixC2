@@ -23,7 +23,7 @@ public slots:
     void emitEventTestClick();
 
 signals:
-    void consoleError(const QString &msg);
+    void scriptError(const QString &msg);
 };
 
 #endif

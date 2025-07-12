@@ -36,7 +36,7 @@ public:
     Q_INVOKABLE void setPreHook(const QJSValue& handler);
 
 signals:
-    void consoleError(const QString &msg);
+    void scriptError(const QString &msg);
 };
 
 
@@ -51,8 +51,9 @@ Q_OBJECT
     QJSEngine*     engine;
 
 public:
-    explicit AxCommandGroupWrapper(const QString &name, const QJSValue& array, QJSEngine* engine, QObject* parent = nullptr);
+    explicit AxCommandGroupWrapper(QJSEngine* engine, QObject* parent = nullptr);
 
+    void SetParams(const QString &name, const QJSValue& array);
     QString        getName() const;
     QList<Command> getCommands() const;
     QJSEngine*     getEngine() const;
@@ -60,7 +61,7 @@ public:
     Q_INVOKABLE void add(const QJSValue& array);
 
 signals:
-    void consoleError(const QString &msg);
+    void scriptError(const QString &msg);
 };
 
 #endif

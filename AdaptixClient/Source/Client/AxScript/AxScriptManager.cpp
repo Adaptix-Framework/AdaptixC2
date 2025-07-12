@@ -6,8 +6,7 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/AxConsoleWidget.h>
 
-AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), mainWidget(main_widget)
-{
+AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), mainWidget(main_widget) {
     mainScript = new AxScriptEngine(this, "main", this);
 }
 
@@ -29,6 +28,10 @@ void AxScriptManager::Clear()
 
 void AxScriptManager::ResetMain()
 {
+    auto commanderList = mainWidget->GetCommandersAll();
+    for (auto commander : commanderList)
+        commander->RemoveAxCommands(mainScript->context.name);
+
     if (mainScript)
         delete mainScript;
 
@@ -38,8 +41,6 @@ void AxScriptManager::ResetMain()
 AdaptixWidget* AxScriptManager::GetAdaptix() const { return this->mainWidget; }
 
 QMap<QString, Agent*> AxScriptManager::GetAgents() const { return mainWidget->AgentsMap; }
-
-
 
 /// MAIN
 
@@ -62,6 +63,8 @@ QJSEngine* AxScriptManager::ListenerScriptEngine(const QString &name)
     return listeners_scripts[name]->engine();
 }
 
+
+
 QStringList AxScriptManager::AgentScriptList() { return agents_scripts.keys(); }
 
 void AxScriptManager::AgentScriptAdd(const QString &name, const QString &ax_script)
@@ -80,29 +83,6 @@ QJSEngine* AxScriptManager::AgentScriptEngine(const QString &name)
     return agents_scripts[name]->engine();
 }
 
-void AxScriptManager::ScriptAdd(const QString &name, AxScriptEngine* script)
-{
-    if (scripts.contains(name)) return;
-    scripts[name] = script;
-}
-
-void AxScriptManager::ScriptRemove(const QString &name)
-{
-    if (!scripts.contains(name)) return;
-    auto scriptEngine = scripts.take(name);
-    delete scriptEngine;
-}
-
-// void AxScriptManager::ExScriptRemove(const QString &name)
-// {
-//     if (!ex_scripts.contains(name))
-//         return;
-//
-//     auto scriptEngine = ex_scripts.take(name);
-//
-//     delete scriptEngine;
-// }
-
 QJSValue AxScriptManager::AgentScriptExecute(const QString &name, const QString &code)
 {
     QJSValue result;
@@ -116,6 +96,55 @@ QJSValue AxScriptManager::AgentScriptExecute(const QString &name, const QString 
     }
     return result;
 }
+
+
+
+QStringList AxScriptManager::ScriptList() { return scripts.keys(); }
+
+bool AxScriptManager::ScriptAdd(ExtensionFile* ext)
+{
+    AxScriptEngine* script = new AxScriptEngine(this, ext->FilePath, this);
+    scripts[ext->FilePath] = script;
+    bool result = script->execute(ext->Code);
+    if (result) {
+        QJSValue metadata = script->engine()->globalObject().property("metadata");
+        if (metadata.isObject()) {
+            ext->Name = metadata.property("name").toString();
+            ext->Description = metadata.property("description").toString();
+            ext->NoSave = metadata.property("nosave").toBool();
+        }
+    }
+    else {
+        ext->Enabled = false;
+        ext->Message = QString("%1\n    at line %2 in %3").arg(script->context.scriptObject.toString()).arg(script->context.scriptObject.property("lineNumber").toInt()).arg(ext->FilePath);
+    }
+    return result;
+}
+
+void AxScriptManager::ScriptRemove(const ExtensionFile &ext)
+{
+    auto scriptEngine = scripts.take(ext.FilePath);
+
+    auto commanderList = mainWidget->GetCommandersAll();
+    for (auto commander : commanderList)
+        commander->RemoveAxCommands(ext.FilePath);
+
+    delete scriptEngine;
+}
+
+
+
+void AxScriptManager::GlobalScriptLoad(const QString &path) { emit mainWidget->LoadGlobalScriptSignal(path); }
+
+void AxScriptManager::GlobalScriptUnload(const QString &path) { emit mainWidget->UnloadGlobalScriptSignal(path); }
+
+void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os)
+{
+    auto commanderList = mainWidget->GetCommanders(listeners, agents, os);
+    for (auto commander : commanderList)
+        commander->AddAxCommands(group);
+}
+
 
 /// MENU
 
@@ -183,6 +212,8 @@ void AxScriptManager::emitAllEventTestClick()
             module->event()->emitEventTestClick();
     }
 }
+
+/// SLOTS
 
 void AxScriptManager::consolePrintMessage(const QString &message) { this->mainWidget->AxConsoleTab->PrintMessage(message); }
 
