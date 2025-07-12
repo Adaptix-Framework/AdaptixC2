@@ -17,6 +17,7 @@ AxConsoleWidget::AxConsoleWidget(AxScriptManager* m, AdaptixWidget* w): adaptixW
     connect(hideButton,     &ClickableLabel::clicked,      this, &AxConsoleWidget::toggleSearchPanel);
     connect(OutputTextEdit, &TextEditConsole::ctx_find,    this, &AxConsoleWidget::toggleSearchPanel);
     connect(OutputTextEdit, &TextEditConsole::ctx_history, this, &AxConsoleWidget::handleShowHistory);
+    connect(ResetButton,    &QPushButton::clicked,         this, &AxConsoleWidget::onResetScript);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), OutputTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -70,6 +71,11 @@ void AxConsoleWidget::createUI()
     searchLayout->addWidget(hideButton);
     searchLayout->addSpacerItem(spacer);
 
+    OutputTextEdit = new TextEditConsole(this, 30000, true, true);
+    OutputTextEdit->setReadOnly(true);
+    OutputTextEdit->setProperty( "TextEditStyle", "console" );
+    OutputTextEdit->setFont( QFont( "Hack" ));
+
     CmdLabel = new QLabel( "ax >", this );
     CmdLabel->setProperty( "LabelStyle", "console" );
 
@@ -77,18 +83,16 @@ void AxConsoleWidget::createUI()
     InputLineEdit->setProperty( "LineEditStyle", "console" );
     InputLineEdit->setFont( QFont( "Hack" ));
 
-    OutputTextEdit = new TextEditConsole(this, 30000, true, true);
-    OutputTextEdit->setReadOnly(true);
-    OutputTextEdit->setProperty( "TextEditStyle", "console" );
-    OutputTextEdit->setFont( QFont( "Hack" ));
+    ResetButton = new QPushButton("Reset AxScript");
 
     MainGridLayout = new QGridLayout(this );
     MainGridLayout->setVerticalSpacing(4 );
     MainGridLayout->setContentsMargins(0, 1, 0, 4 );
-    MainGridLayout->addWidget( searchWidget,   0, 0, 1, 2 );
-    MainGridLayout->addWidget( OutputTextEdit, 1, 0, 1, 2 );
+    MainGridLayout->addWidget( searchWidget,   0, 0, 1, 3 );
+    MainGridLayout->addWidget( OutputTextEdit, 1, 0, 1, 3 );
     MainGridLayout->addWidget( CmdLabel,       2, 0, 1, 1 );
     MainGridLayout->addWidget( InputLineEdit,  2, 1, 1, 1 );
+    MainGridLayout->addWidget( ResetButton,    2, 2, 1, 1 );
 
     searchWidget->setVisible(false);
 }
@@ -149,8 +153,6 @@ void AxConsoleWidget::AddToHistory(const QString &command) { kphInputLineEdit->A
 void AxConsoleWidget::PrintMessage(const QString &message) { OutputTextEdit->appendColor(message + "\n", QColor(COLOR_ConsoleWhite)); }
 
 void AxConsoleWidget::PrintError(const QString &message) { OutputTextEdit->appendColor(message + "\n", QColor(COLOR_ChiliPepper)); }
-
-// void AxConsoleWidget::Clear() { OutputTextEdit->clear(); }
 
 void AxConsoleWidget::processInput()
 {
@@ -290,4 +292,10 @@ void AxConsoleWidget::handleShowHistory()
 
     historyDialog->setModal(true);
     historyDialog->show();
+}
+
+void AxConsoleWidget::onResetScript()
+{
+    scriptManager->ResetMain();
+    OutputTextEdit->clear();
 }

@@ -100,7 +100,6 @@ public:
     QMap<QString, Task*>           TasksMap;
     QVector<QString>               AgentsVector;
     QMap<QString, Agent*>          AgentsMap;
-    QMap<QString, ExtensionFile>   Extensions;
     QMap<QString, TunnelEndpoint*> ClientTunnels;
 
     explicit AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker);
@@ -110,15 +109,17 @@ public:
 
     void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
     void RemoveTab(int index) const;
-    void AddExtension(ExtensionFile ext);
+    bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);
     void Close();
     void ClearAdaptix();
 
     void RegisterListenerConfig(const QString &fn, const QString &ax_script);
-    void RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &ax_script, const QStringList &listeners);
+    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners);
     QList<QString> GetAgentNames(const QString &listenerType) const;
     RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
+    QList<Commander*> GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const;
+    QList<Commander*> GetCommandersAll() const;
 
     void LoadConsoleUI(const QString &AgentId);
     void LoadTasksOutput() const;
@@ -129,6 +130,9 @@ public:
 
 signals:
     void SyncedSignal();
+    void SyncedOnReloadSignal(QString project);
+    void LoadGlobalScriptSignal(QString path);
+    void UnloadGlobalScriptSignal(QString path);
 
 public slots:
     void ChannelClose() const;

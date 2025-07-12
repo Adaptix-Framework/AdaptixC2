@@ -83,15 +83,20 @@ Commander::~Commander() = default;
 
 void Commander::AddRegCommands(const CommandsGroup &group) { regCommandsGroup = group; }
 
-void Commander::AddAxCommands(const QString &groupName, const QList<Command> &axCommands, QJSEngine *engine)
-{
-    CommandsGroup newGroup = {groupName, axCommands};
-    axCommandsGroup.append(newGroup);
+void Commander::AddAxCommands(const CommandsGroup &group) {
+    axCommandsGroup.append(group);
+    emit commandsUpdated();
 }
 
 void Commander::RemoveAxCommands(const QString &filepath)
 {
-    // extModules.remove(filepath);
+    for (int i = 0; i < axCommandsGroup.size(); ++i) {
+        if (axCommandsGroup[i].filepath == filepath) {
+            axCommandsGroup.removeAt(i);
+            i--;
+        }
+    }
+    emit commandsUpdated();
 }
 
 CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
@@ -113,7 +118,20 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
                 jsonObj["command"] = command.name;
 
                 if ( command.subcommands.isEmpty() ) {
-                    return ProcessCommand(command, parts, jsonObj);
+
+                    auto cmdResult = ProcessCommand(command, parts, jsonObj);
+                    if ( !cmdResult.output && command.is_pre_hook) {
+                        QString hook_result = ProcessPreHook(script_group.engine, command, agentId, cmdline, cmdResult.data, parts);
+                        if (hook_result.isEmpty()) {
+                            return CommanderResult{false, false, "", {}, true };
+                        } else {
+                            cmdResult.output = true;
+                            cmdResult.error = true;
+                            cmdResult.message = hook_result;
+                        }
+                    }
+                    return cmdResult;
+
                 }
                 else {
                     if ( parts.isEmpty() )
@@ -126,10 +144,20 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
                         if (subCommandName == subcommand.name) {
                             jsonObj["subcommand"] = subcommand.name;
 
-                            return ProcessCommand(subcommand, parts, jsonObj);
+                            auto cmdResult = ProcessCommand(subcommand, parts, jsonObj);
+                            if ( !cmdResult.output && subcommand.is_pre_hook) {
+                                QString hook_result = ProcessPreHook(script_group.engine, subcommand, agentId, cmdline, cmdResult.data, parts);
+                                if (hook_result.isEmpty()) {
+                                    return CommanderResult{false, false, "", {}, true };
+                                } else {
+                                    cmdResult.output = true;
+                                    cmdResult.error = true;
+                                    cmdResult.message = hook_result;
+                                }
+                            }
+                            return cmdResult;
                         }
                     }
-
                     return CommanderResult{true, true, "Subcommand not found"};
                 }
             }
@@ -142,12 +170,20 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
             jsonObj["command"] = command.name;
 
             if ( command.subcommands.isEmpty() ) {
-                if (command.is_pre_hook) {
-                    ProcessPreHook(regCommandsGroup.engine, agentId, command, cmdline, parts);
-                    return CommanderResult{false, false, "", {}, true };
-                } else {
-                    return ProcessCommand(command, parts, jsonObj);
+
+                auto cmdResult = ProcessCommand(command, parts, jsonObj);
+                if ( !cmdResult.output && command.is_pre_hook) {
+                    QString hook_result = ProcessPreHook(regCommandsGroup.engine, command, agentId, cmdline, cmdResult.data, parts);
+                    if (hook_result.isEmpty()) {
+                        return CommanderResult{false, false, "", {}, true };
+                    } else {
+                        cmdResult.output = true;
+                        cmdResult.error = true;
+                        cmdResult.message = hook_result;
+                    }
                 }
+                return cmdResult;
+
             } else {
                 if ( parts.isEmpty() )
                     return CommanderResult{true, true, "Subcommand must be set" };
@@ -159,15 +195,21 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
                     if (subCommandName == subcommand.name) {
                         jsonObj["subcommand"] = subcommand.name;
 
-                        if (subcommand.is_pre_hook) {
-                            ProcessPreHook(regCommandsGroup.engine, agentId, subcommand, cmdline, parts);
-                            return CommanderResult{false, false, "", {}, true };
-                        } else {
-                            return ProcessCommand(subcommand, parts, jsonObj);
+                        auto cmdResult = ProcessCommand(subcommand, parts, jsonObj);
+                        if ( !cmdResult.output && subcommand.is_pre_hook) {
+                            QString hook_result = ProcessPreHook(regCommandsGroup.engine, subcommand, agentId, cmdline, cmdResult.data, parts);
+                            if (hook_result.isEmpty()) {
+                                return CommanderResult{false, false, "", {}, true };
+                            } else {
+                                cmdResult.output = true;
+                                cmdResult.error = true;
+                                cmdResult.message = hook_result;
+                            }
+
                         }
+                        return cmdResult;
                     }
                 }
-
                 return CommanderResult{true, true, "Subcommand not found" };
             }
         }
@@ -176,23 +218,24 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
     return CommanderResult{true, true, "Command not found"};
 }
 
-void Commander::ProcessPreHook(QJSEngine *engine, const QString &agentId, const Command &command, const QString &cmdline, QStringList args)
+QString Commander::ProcessPreHook(QJSEngine *engine, const Command &command, const QString &agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args)
 {
     if (!engine)
-        return;
+        return "Ax Engine is not available";
 
     QList<QJSValue> jsArgs;
     jsArgs << engine->toScriptValue(agentId);
     jsArgs << engine->toScriptValue(cmdline);
+    jsArgs << engine->toScriptValue(jsonObj.toVariantMap());
     for (const QString& arg : args) {
         jsArgs << engine->toScriptValue(arg);
     }
 
     QJSValue result = command.pre_hook.call(jsArgs);
     if (result.isError()) {
-        qWarning() << "JS error:" << result.property("message").toString();
-        qWarning() << "Stack trace:" << result.property("stack").toString();
+        return  "Error: " + result.property("message").toString();
     }
+    return "";
 }
 
 CommanderResult Commander::ProcessCommand(Command command, QStringList args, QJsonObject jsonObj)

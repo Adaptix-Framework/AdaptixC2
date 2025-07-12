@@ -4,8 +4,10 @@
 #include <QObject>
 #include <QMenu>
 #include <QJSValue>
+#include <Agent/Commander.h>
 
 class AxScriptEngine;
+class ExtensionFile;
 class AdaptixWidget;
 class Agent;
 
@@ -31,19 +33,21 @@ public:
     QStringList ListenerScriptList();
     void        ListenerScriptAdd(const QString &name, const QString &ax_script);
     QJSEngine*  ListenerScriptEngine(const QString &name);
+
     QStringList AgentScriptList();
     void        AgentScriptAdd(const QString &name, const QString &ax_script);
     QJSEngine*  AgentScriptEngine(const QString &name);
+    QJSValue    AgentScriptExecute(const QString &name, const QString &code);
 
-    ////
+    QStringList ScriptList();
+    bool        ScriptAdd(ExtensionFile* ext);
+    void        ScriptRemove(const ExtensionFile &ext);
 
-    void ScriptAdd(const QString &name, AxScriptEngine* script);
-    void ScriptRemove(const QString &name);
-    // void ExScriptRemove(const QString &name);
+    void GlobalScriptLoad(const QString &path);
+    void GlobalScriptUnload(const QString &path);
 
-    QJSValue AgentScriptExecute(const QString &name, const QString &code);
-
-    int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds) const;
+    void RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
+    int  AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds) const;
 
     void emitAllEventTestClick();
 
@@ -52,4 +56,4 @@ public slots:
     void consolePrintError(const QString &message);
 };
 
-#endif //AXSCRIPTMANAGER_H
+#endif

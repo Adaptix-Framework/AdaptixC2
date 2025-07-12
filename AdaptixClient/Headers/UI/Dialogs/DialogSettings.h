@@ -72,5 +72,4 @@ public slots:
     void onClose();
 };
 
-
 #endif

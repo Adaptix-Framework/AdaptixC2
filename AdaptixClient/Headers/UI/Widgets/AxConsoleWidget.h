@@ -14,10 +14,11 @@ class AxConsoleWidget : public QWidget
     AdaptixWidget*   adaptixWidget = nullptr;
     AxScriptManager* scriptManager = nullptr;
 
-    QGridLayout*      MainGridLayout = nullptr;
-    QLabel*           CmdLabel       = nullptr;
-    QLineEdit*        InputLineEdit  = nullptr;
-    TextEditConsole*  OutputTextEdit = nullptr;
+    QGridLayout*     MainGridLayout = nullptr;
+    QLabel*          CmdLabel       = nullptr;
+    QLineEdit*       InputLineEdit  = nullptr;
+    TextEditConsole* OutputTextEdit = nullptr;
+    QPushButton*     ResetButton    = nullptr;
 
     QWidget*        searchWidget   = nullptr;
     QHBoxLayout*    searchLayout   = nullptr;
@@ -44,7 +45,6 @@ public:
 
     void InputFocus() const;
     void AddToHistory(const QString& command);
-//     void Clear();
     void PrintMessage(const QString& message);
     void PrintError(const QString& message);
 
@@ -54,6 +54,7 @@ public slots:
     void handleSearch();
     void handleSearchBackward();
     void handleShowHistory();
+    void onResetScript();
 };
 
 #endif

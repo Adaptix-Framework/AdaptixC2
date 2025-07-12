@@ -47,7 +47,7 @@ public slots:
     QObject* create_dialog(const QString &title) const;
 
 signals:
-    void consoleError(const QString &msg);
+    void scriptError(const QString &msg);
 };
 
 

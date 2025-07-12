@@ -254,54 +254,29 @@ void AdaptixWidget::RemoveTab(int index) const
         mainTabWidget->setMovable(false);
 }
 
-void AdaptixWidget::AddExtension(ExtensionFile ext)
+bool AdaptixWidget::AddExtension(ExtensionFile* ext)
 {
-    if( Extensions.contains(ext.FilePath) )
-        return;
+    if (ScriptManager->ScriptList().contains(ext->FilePath)) {
+        ext->Enabled = false;
+        ext->Message = "Script already loaded";
+        return false;
+    }
 
-    Extensions[ext.FilePath] = ext;
+    if( !synchronized ) {
+        ext->Enabled = false;
+        ext->Message = "C2 not synchronized";
+        return false;
+    }
 
-    if( !synchronized )
-        return;
-
-    // ToDo: AddExtension
-
-    // for (QString agentName : ext.ExCommands.keys()) {
-    //     if (Commanders.contains(agentName)) {
-    //         for (auto commander : Commanders[agentName] ) {
-    //             if (commander) {
-    //                 bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName], ext.ExConstants);
-    //                 if (result) {
-    //                     for( auto agent : AgentsMap ){
-    //                         if( agent && agent->Console )
-    //                             agent->Console->UpgradeCompleter();
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    return ScriptManager->ScriptAdd(ext);
 }
 
 void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
 {
-    Extensions.remove(ext.FilePath);
+    if (!ScriptManager->ScriptList().contains(ext.FilePath))
+        return;
 
-    // ToDo: RemoveExtension
-
-    // for (QString agentName : ext.ExCommands.keys()) {
-    //     if (Commanders.contains(agentName)) {
-    //         for (auto commander : Commanders[agentName] ) {
-    //             if (commander) {
-    //                 commander->RemoveExtModule(ext.FilePath);
-    //                 for( auto agent : AgentsMap ){
-    //                     if( agent && agent->Console )
-    //                         agent->Console->UpgradeCompleter();
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    return ScriptManager->ScriptRemove(ext);
 }
 
 void AdaptixWidget::Close()
@@ -331,8 +306,6 @@ void AdaptixWidget::ClearAdaptix()
     TunnelsTab->Clear();
     CredentialsTab->Clear();
 
-    ScriptManager->Clear();
-
     for (auto tunnelId : ClientTunnels.keys()) {
         auto tunnel = ClientTunnels[tunnelId];
         ClientTunnels.remove(tunnelId);
@@ -341,35 +314,19 @@ void AdaptixWidget::ClearAdaptix()
     }
     ClientTunnels.clear();
 
-    // ToDO: ClearAdaptix
+    ScriptManager->Clear();
 
-    // for (int i = 0; i < RegisterAgents.size(); i++) {
-    //     WidgetBuilder* builder   = RegisterAgents[i].builder;
-    //     RegisterAgents.remove(i);
-    //     i--;
-    //     delete builder;
-    // }
+    for (auto regAgent : RegisterAgents)
+        delete regAgent.commander;
 
-    // ToDo: Clear Commanders
-
-    // for (auto commanderMap : Commanders ) {
-    //     for (auto k : commanderMap.keys()) {
-    //         Commander* commander = commanderMap[k];
-    //         commanderMap.remove(k);
-    //         delete commander;
-    //     }
-    // }
-    // Commanders.clear();
+    RegisterAgents.clear();
 }
 
 /// REGISTER
 
-void AdaptixWidget::RegisterListenerConfig(const QString &fn, const QString &ax_script)
-{
-    ScriptManager->ListenerScriptAdd(fn, ax_script);
-}
+void AdaptixWidget::RegisterListenerConfig(const QString &fn, const QString &ax_script) { ScriptManager->ListenerScriptAdd(fn, ax_script); }
 
-void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &ax_script, const QStringList &listeners)
+void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners)
 {
     ScriptManager->AgentScriptAdd(agentName, ax_script);
 
@@ -403,15 +360,16 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             QObject* objPanel = commands_windows.toQObject();
             auto* wrapper = dynamic_cast<AxCommandGroupWrapper*>(objPanel);
             if (wrapper) {
-                CommandsGroup commandsGroup;
+                CommandsGroup commandsGroup = {};
                 commandsGroup.groupName = wrapper->getName();
                 commandsGroup.commands  = wrapper->getCommands();
                 commandsGroup.engine    = wrapper->getEngine();
+                commandsGroup.filepath  = "";
 
                 Commander* commander = new Commander();
                 commander->AddRegCommands(commandsGroup);
 
-                RegAgentConfig config = {agentName, watermark, listener, OS_WINDOWS, commander, {}, true};
+                RegAgentConfig config = {agentName, listener, OS_WINDOWS, commander, {}, true};
                 RegisterAgents.push_back(config);
             }
             else {
@@ -424,15 +382,16 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             QObject* objPanel = commands_linux.toQObject();
             auto* wrapper = dynamic_cast<AxCommandGroupWrapper*>(objPanel);
             if (wrapper) {
-                CommandsGroup commandsGroup;
+                CommandsGroup commandsGroup = {};
                 commandsGroup.groupName = wrapper->getName();
                 commandsGroup.commands  = wrapper->getCommands();
                 commandsGroup.engine    = wrapper->getEngine();
+                commandsGroup.filepath  = "";
 
                 Commander* commander = new Commander();
                 commander->AddRegCommands(commandsGroup);
 
-                RegAgentConfig config = {agentName, watermark, listener, OS_LINUX, commander, {}, true};
+                RegAgentConfig config = {agentName, listener, OS_LINUX, commander, {}, true};
                 RegisterAgents.push_back(config);
             }
             else {
@@ -445,15 +404,16 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             QObject* objPanel = commands_macos.toQObject();
             auto* wrapper = dynamic_cast<AxCommandGroupWrapper*>(objPanel);
             if (wrapper) {
-                CommandsGroup commandsGroup;
+                CommandsGroup commandsGroup = {};
                 commandsGroup.groupName = wrapper->getName();
                 commandsGroup.commands  = wrapper->getCommands();
                 commandsGroup.engine    = wrapper->getEngine();
+                commandsGroup.filepath  = "";
 
                 Commander* commander = new Commander();
                 commander->AddRegCommands(commandsGroup);
 
-                RegAgentConfig config = {agentName, watermark, listener, OS_MAC, commander, {}, true};
+                RegAgentConfig config = {agentName, listener, OS_MAC, commander, {}, true};
                 RegisterAgents.push_back(config);
             }
             else {
@@ -493,6 +453,29 @@ RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QStrin
     return {};
 }
 
+QList<Commander*> AdaptixWidget::GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const
+{
+    QList<Commander*> commanders;
+    for (auto regAgent : this->RegisterAgents) {
+        if ( !agents.contains(regAgent.name) ) continue;
+
+        if ( !listeners.empty() && !listeners.contains(regAgent.listenerType)) continue;
+
+        if ( !os.empty() && !os.contains(regAgent.os) ) continue;
+
+        commanders.append(regAgent.commander);
+    }
+    return commanders;
+}
+
+QList<Commander *> AdaptixWidget::GetCommandersAll() const
+{
+    QList<Commander*> commanders;
+    for (auto regAgent : this->RegisterAgents)
+        commanders.append(regAgent.commander);
+    return commanders;
+}
+
 /// SHOW PANELS
 
 void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
@@ -509,10 +492,7 @@ void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
 
 }
 
-void AdaptixWidget::LoadTasksOutput() const
-{
-    this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
-}
+void AdaptixWidget::LoadTasksOutput() const { this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job"); }
 
 void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
 {
@@ -650,28 +630,7 @@ void AdaptixWidget::OnSynced()
 
     this->SessionsGraphPage->TreeDraw();
 
-    // ToDo: OnSynced
-
-    // for (auto ext : Extensions) {
-    //
-    //     for (QString agentName : ext.ExCommands.keys()) {
-    //
-    //         if (Commanders.contains(agentName)) {
-    //             for (auto commander : Commanders[agentName] ) {
-    //
-    //                 if (commander) {
-    //                     bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName], ext.ExConstants);
-    //                     if (result) {
-    //                         for( auto agent : AgentsMap ){
-    //                             if( agent && agent->Console )
-    //                                 agent->Console->UpgradeCompleter();
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    emit SyncedOnReloadSignal(profile->GetProject());
 }
 
 void AdaptixWidget::SetSessionsTableUI() const

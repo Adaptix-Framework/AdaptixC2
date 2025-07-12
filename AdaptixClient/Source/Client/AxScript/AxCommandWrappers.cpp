@@ -27,7 +27,7 @@ void AxCommandWrappers::addSubCommands(const QJSValue& value)
                 command.subcommands.append(commandWrapper->getCommand());
             }
             else {
-                emit consoleError("Item at index " + QString::number(i) + " is not an Command");
+                emit scriptError("Item at index " + QString::number(i) + " is not an Command");
             }
         }
     }
@@ -37,7 +37,7 @@ void AxCommandWrappers::addSubCommands(const QJSValue& value)
             command.subcommands.append(commandWrapper->getCommand());
         }
         else {
-            emit consoleError("Item is not an Command");
+            emit scriptError("Item is not an Command");
         }
     }
 
@@ -135,20 +135,20 @@ void AxCommandWrappers::addArgFlagString(const QString &flag, const QString &nam
 
 void AxCommandWrappers::addArgFile(const QString &name, bool required, const QString &description)
 {
-    Argument arg = { "STRING", name, required, false, "", description, false, QVariant() };
+    Argument arg = { "FILE", name, required, false, "", description, false, QVariant() };
     command.args.append(arg);
 }
 
 void AxCommandWrappers::addArgFlagFile(const QString &flag, const QString &name, bool required, const QString &description)
 {
-    Argument arg = { "STRING", name, required, true, flag, description, false, QVariant() };
+    Argument arg = { "FILE", name, required, true, flag, description, false, QVariant() };
     command.args.append(arg);
 }
 
 void AxCommandWrappers::setPreHook(const QJSValue &handler)
 {
     if (!handler.isCallable()) {
-        emit consoleError("handler is not function");
+        emit scriptError("handler is not function");
         return;
     }
 
@@ -157,12 +157,14 @@ void AxCommandWrappers::setPreHook(const QJSValue &handler)
 }
 
 
-AxCommandGroupWrapper::AxCommandGroupWrapper(const QString &name, const QJSValue& array, QJSEngine* engine, QObject* parent) : QObject(parent), name(name)
+AxCommandGroupWrapper::AxCommandGroupWrapper(QJSEngine* engine, QObject* parent) : QObject(parent), parent(parent), engine(engine) {}
+
+void AxCommandGroupWrapper::SetParams(const QString &name, const QJSValue &array)
 {
-    this->parent = parent;
+    this->name = name;
 
     if (array.isUndefined() || array.isNull() || !array.isArray()) {
-        emit consoleError("array is not the Command[]");
+        emit scriptError("array is not the Command[]");
         return;
     }
 
@@ -174,11 +176,9 @@ AxCommandGroupWrapper::AxCommandGroupWrapper(const QString &name, const QJSValue
         if (auto* commandWrapper = qobject_cast<AxCommandWrappers*>(obj)) {
             this->commands.append(commandWrapper->getCommand());
         } else {
-            emit consoleError("Item at index " + QString::number(i) + " is not an Command");
+            emit scriptError("Item at index " + QString::number(i) + " is not an Command");
         }
     }
-
-    this->engine = engine;
 }
 
 QString AxCommandGroupWrapper::getName() const { return name; }
@@ -200,7 +200,7 @@ void AxCommandGroupWrapper::add(const QJSValue &value) {
             if (auto* commandWrapper = qobject_cast<AxCommandWrappers*>(obj)) {
                 this->commands.append(commandWrapper->getCommand());
             } else {
-                emit consoleError("Item at index " + QString::number(i) + " is not an Command");
+                emit scriptError("Item at index " + QString::number(i) + " is not an Command");
             }
         }
     }
@@ -209,7 +209,7 @@ void AxCommandGroupWrapper::add(const QJSValue &value) {
         if (auto* commandWrapper = qobject_cast<AxCommandWrappers*>(obj)) {
             this->commands.append(commandWrapper->getCommand());
         } else {
-            emit consoleError("Item is not an Command");
+            emit scriptError("Item is not an Command");
         }
     }
 }

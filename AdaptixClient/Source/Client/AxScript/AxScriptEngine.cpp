@@ -20,10 +20,11 @@ AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &n
     jsEngine->globalObject().setProperty("event", jsEngine->newQObject(bridgeEvent.get()));
     jsEngine->globalObject().setProperty("menu",  jsEngine->newQObject(bridgeMenu.get()));
 
-    connect(bridgeEvent.get(), &BridgeEvent::consoleError, script_manager, &AxScriptManager::consolePrintError);
-    connect(bridgeForm.get(),  &BridgeForm::consoleError,  script_manager, &AxScriptManager::consolePrintError);
     connect(bridgeApp.get(),   &BridgeApp::consoleError,   script_manager, &AxScriptManager::consolePrintError);
-    connect(bridgeApp.get(),   &BridgeApp::consoleError,   script_manager, &AxScriptManager::consolePrintMessage);
+    connect(bridgeApp.get(),   &BridgeApp::consoleMessage, script_manager, &AxScriptManager::consolePrintMessage);
+    connect(bridgeApp.get(),   &BridgeApp::engineError,   this, &AxScriptEngine::engineError);
+    connect(bridgeForm.get(),  &BridgeForm::scriptError,  this, &AxScriptEngine::engineError);
+    connect(bridgeEvent.get(), &BridgeEvent::scriptError, this, &AxScriptEngine::engineError);
 
     context.name = name;
 }
@@ -91,20 +92,16 @@ QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
     return QList<AxMenuItem>();
 }
 
+void AxScriptEngine::engineError(const QString &message) { engine()->throwError(QJSValue::TypeError, message); }
+
 bool AxScriptEngine::execute(const QString &code)
 {
     QJSValue result = jsEngine->evaluate(code, context.name);
+    context.scriptObject = result;
     if (result.isError()) {
-        QString error = QStringLiteral("%1\n    at line %2 in %3\n    stack: %4")
-            .arg(result.toString())
-            .arg(result.property("lineNumber").toInt())
-            .arg(result.property("fileName").toString())
-            .arg(result.property("stack").toString());
-
+        QString error = QStringLiteral("%1\n    at line %2 in %3\n    stack: %4\n").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(context.name).arg(result.property("stack").toString());
         scriptManager->consolePrintError(error);
-
         return false;
     }
-    context.scriptObject = result;
     return true;
 }

@@ -8,8 +8,6 @@ Extender::Extender(MainAdaptix* m)
 {
     mainAdaptix = m;
     dialogExtender = new DialogExtender(this);
-
-    this->LoadFromDB();
 }
 
 Extender::~Extender() = default;
@@ -21,126 +19,57 @@ void Extender::LoadFromDB()
         this->LoadFromFile( list[i].FilePath, list[i].Enabled );
 }
 
-void Extender::LoadFromFile(QString path, bool enabled)
+void Extender::LoadFromFile(const QString &path, const bool enabled)
 {
-    QString       fileContent;
-    QJsonObject   rootObj;
-    QJsonDocument jsonDocument;
-    QJsonArray    extensionsArray;
-    QJsonArray    agentsArray;
-    QVector<QJsonObject> exConstants;
-    QMap<QString, QVector<QJsonObject> > exCommands;
+    if (extenderFiles.contains(path))
+        return;
 
-    ExtensionFile extensionFile = {0};
+    ExtensionFile extensionFile = {};
     extensionFile.FilePath = path;
+    extensionFile.Enabled  = enabled;
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         extensionFile.Enabled = false;
-        extensionFile.Valid   = false;
+        extensionFile.Message = "Cannot open file.";
         goto END;
     }
-    fileContent = QString(file.readAll());
+    extensionFile.Code = QTextStream(&file).readAll();
     file.close();
-
-    jsonDocument = QJsonDocument::fromJson(fileContent.toUtf8());
-    if ( jsonDocument.isNull() || !jsonDocument.isObject()) {
-        extensionFile.Enabled = false;
-        goto END;
-    }
-
-    rootObj = jsonDocument.object();
-    if( !rootObj.contains("name") && rootObj["name"].isString() ) {
-        extensionFile.Enabled = false;
-        goto END;
-    }
-
-    if( !rootObj.contains("extensions") && rootObj["extensions"].isArray() ) {
-        extensionFile.Enabled = false;
-        goto END;
-    }
-
-    extensionFile.Name        = rootObj.value("name").toString();
-    extensionFile.Description = rootObj.value("description").toString();
-
-    extensionsArray = rootObj.value("extensions").toArray();
-    for (QJsonValue extensionValue : extensionsArray) {
-        QJsonObject extJsonObject = extensionValue.toObject();
-
-        if( !extJsonObject.contains("type") && extJsonObject["type"].isString() ) {
-            extensionFile.Enabled = false;
-            goto END;
-        }
-
-        QString type = extJsonObject.value("type").toString();
-        if(type == "command") {
-            QStringList agentsList;
-
-            if( !extJsonObject.contains("agents") && extJsonObject["agents"].isArray() ) {
-                extensionFile.Enabled = false;
-                goto END;
-            }
-
-            agentsArray = extJsonObject.value("agents").toArray();
-            for (QJsonValue agentStr : agentsArray) {
-                agentsList.push_back(agentStr.toString());
-            }
-
-            bool result = true;
-            QString msg = ValidExtCommand(extJsonObject, &result);
-            if (!result) {
-                extensionFile.Enabled = false;
-                goto END;
-            }
-
-            for(QString key : agentsList) {
-                exCommands[key].push_back(extJsonObject);
-            }
-
-        } else if(type == "constant") {
-            bool result = true;
-            QString msg = ValidExtConstant(extJsonObject, &result);
-            if (!result) {
-                extensionFile.Enabled = false;
-                goto END;
-            }
-
-            exConstants.push_back(extJsonObject);
-
-        } else {
-            extensionFile.Enabled = false;
-            goto END;
-        }
-    }
-
-    extensionFile.Comment     = fileContent;
-    extensionFile.ExConstants = exConstants;
-    extensionFile.ExCommands  = exCommands;
-    extensionFile.Enabled     = enabled;
-    extensionFile.Valid       = true;
 
 END:
     this->SetExtension(extensionFile);
 }
 
-void Extender::SetExtension(const ExtensionFile &extFile)
+void Extender::SetExtension(ExtensionFile extFile)
 {
+    bool result = false;
+
     if(extenderFiles.contains(extFile.FilePath)) {
-        if( extFile.Valid && extFile.Enabled ) {
+        if(extFile.Enabled) {
             mainAdaptix->mainUI->RemoveExtension(extFile);
-            mainAdaptix->mainUI->AddNewExtension(extFile);
+            bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
+            if (!success) {
+                mainAdaptix->mainUI->RemoveExtension(extFile);
+            }
         }
         dialogExtender->UpdateExtenderItem(extFile);
         mainAdaptix->storage->UpdateExtension(extFile);
     }
     else {
-        extenderFiles[extFile.FilePath] = extFile;
-        if( extFile.Valid && extFile.Enabled )
-            mainAdaptix->mainUI->AddNewExtension(extFile);
+        if( extFile.Enabled ) {
+            bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
+            if (!success) {
+                mainAdaptix->mainUI->RemoveExtension(extFile);
+            }
+        }
 
-        dialogExtender->AddExtenderItem(extFile);
-        if( !mainAdaptix->storage->ExistsExtension(extFile.FilePath))
-            mainAdaptix->storage->AddExtension(extFile);
+        if (!extFile.NoSave) {
+            extenderFiles[extFile.FilePath] = extFile;
+            dialogExtender->AddExtenderItem(extFile);
+            if( !mainAdaptix->storage->ExistsExtension(extFile.FilePath))
+                mainAdaptix->storage->AddExtension(extFile);
+        }
     }
 }
 
@@ -149,9 +78,13 @@ void Extender::EnableExtension(const QString &path)
     if( !extenderFiles.contains(path) )
         return;
 
-    if( extenderFiles[path].Valid && !extenderFiles[path].Enabled ) {
+    if( !extenderFiles[path].Enabled && extenderFiles[path].Message.isEmpty()) {
         extenderFiles[path].Enabled = true;
-        mainAdaptix->mainUI->AddNewExtension(extenderFiles[path]);
+        bool success = mainAdaptix->mainUI->AddNewExtension(&(extenderFiles[path]));
+        if (!success) {
+            mainAdaptix->mainUI->RemoveExtension(extenderFiles[path]);
+        }
+
         dialogExtender->UpdateExtenderItem(extenderFiles[path]);
         mainAdaptix->storage->UpdateExtension(extenderFiles[path]);
     }
@@ -162,7 +95,7 @@ void Extender::DisableExtension(const QString &path)
     if( !extenderFiles.contains(path) )
         return;
 
-    if( extenderFiles[path].Valid && extenderFiles[path].Enabled ) {
+    if( extenderFiles[path].Enabled ) {
         extenderFiles[path].Enabled = false;
         mainAdaptix->mainUI->RemoveExtension(extenderFiles[path]);
         dialogExtender->UpdateExtenderItem(extenderFiles[path]);
@@ -181,3 +114,9 @@ void Extender::RemoveExtension(const QString &path)
 
     extenderFiles.remove(path);
 }
+
+void Extender::syncedOnReload(QString project) { this->LoadFromDB(); }
+
+void Extender::loadGlobalScript(const QString &path) { this->LoadFromFile(path, true); }
+
+void Extender::unloadGlobalScript(const QString &path) { this->RemoveExtension(path); }
