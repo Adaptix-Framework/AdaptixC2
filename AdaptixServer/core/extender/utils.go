@@ -58,7 +58,7 @@ type ExtListener interface {
 type ExtAgent interface {
 	AgentGenerate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 	AgentCreate(beat []byte) (adaptix.AgentData, error)
-	AgentCommand(client string, cmdline string, agentData adaptix.AgentData, args map[string]any) error
+	AgentCommand(client string, cmdline string, hookId string, agentData adaptix.AgentData, args map[string]any) error
 	AgentProcessData(agentData adaptix.AgentData, packedData []byte) ([]byte, error)
 	AgentPackData(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error)
 	AgentPivotPackData(pivotId string, data []byte) (adaptix.TaskData, error)

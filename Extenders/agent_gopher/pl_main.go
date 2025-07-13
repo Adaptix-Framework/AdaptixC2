@@ -121,7 +121,7 @@ func (m *ModuleExtender) AgentCreate(beat []byte) (adaptix.AgentData, error) {
 	return CreateAgent(beat)
 }
 
-func (m *ModuleExtender) AgentCommand(client string, cmdline string, agentData adaptix.AgentData, args map[string]any) error {
+func (m *ModuleExtender) AgentCommand(client string, cmdline string, hookId string, agentData adaptix.AgentData, args map[string]any) error {
 	command, ok := args["command"].(string)
 	if !ok {
 		return errors.New("'command' must be set")
@@ -131,7 +131,8 @@ func (m *ModuleExtender) AgentCommand(client string, cmdline string, agentData a
 	if err != nil {
 		return err
 	}
-
+	taskData.HookId = hookId
+	
 	m.ts.TsTaskCreate(agentData.Id, cmdline, client, taskData)
 
 	if len(messageData.Message) > 0 || len(messageData.Text) > 0 {

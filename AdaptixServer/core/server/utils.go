@@ -21,6 +21,7 @@ const (
 	CONSOLE_OUT_INFO          = 5
 	CONSOLE_OUT_ERROR         = 6
 	CONSOLE_OUT_SUCCESS       = 7
+	CONSOLE_OUT               = 10
 )
 
 const (
@@ -88,10 +89,18 @@ type Agent struct {
 	TasksQueue         *safe.Slice // taskData TaskData
 
 	RunningTasks   safe.Map // taskId string, taskData TaskData
+	RunningJobs    safe.Map // taskId string, list []TaskData
 	CompletedTasks safe.Map // taskId string, taskData TaskData
 
 	PivotParent *adaptix.PivotData
 	PivotChilds *safe.Slice
+}
+
+type HookJob struct {
+	Sent      bool
+	Processed bool
+	Job       adaptix.TaskData
+	mu        sync.Mutex
 }
 
 type TunnelChannel struct {
@@ -199,7 +208,6 @@ type SyncPackerAgentReg struct {
 	SpType int `json:"type"`
 
 	Agent     string   `json:"agent"`
-	Watermark string   `json:"watermark"`
 	AX        string   `json:"ax"`
 	Listeners []string `json:"listeners"`
 }
@@ -292,6 +300,19 @@ type SyncPackerAgentTaskUpdate struct {
 	TaskId      string `json:"a_task_id"`
 	TaskType    int    `json:"a_task_type"`
 	FinishTime  int64  `json:"a_finish_time"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	Text        string `json:"a_text"`
+	Completed   bool   `json:"a_completed"`
+}
+
+type SyncPackerAgentTaskHook struct {
+	SpType int `json:"type"`
+
+	AgentId     string `json:"a_id"`
+	TaskId      string `json:"a_task_id"`
+	HookId      string `json:"a_hook_id"`
+	JobIndex    int    `json:"a_job_index"`
 	MessageType int    `json:"a_msg_type"`
 	Message     string `json:"a_message"`
 	Text        string `json:"a_text"`

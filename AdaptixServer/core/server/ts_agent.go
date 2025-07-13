@@ -64,6 +64,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 		TunnelConnectTasks: safe.NewSlice(),
 		TunnelQueue:        safe.NewSlice(),
 		RunningTasks:       safe.NewMap(),
+		RunningJobs:        safe.NewMap(),
 		CompletedTasks:     safe.NewMap(),
 		PivotParent:        nil,
 		PivotChilds:        safe.NewSlice(),
@@ -86,7 +87,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	return nil
 }
 
-func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error {
+func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, args map[string]any) error {
 	if !ts.agent_configs.Contains(agentName) {
 		return fmt.Errorf("agent %v not registered", agentName)
 	}
@@ -101,7 +102,7 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 		return fmt.Errorf("agent '%v' not active", agentId)
 	}
 
-	return ts.Extender.ExAgentCommand(clientName, cmdline, agentName, agent.Data, args)
+	return ts.Extender.ExAgentCommand(clientName, cmdline, agentName, hookId, agent.Data, args)
 }
 
 func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error {
@@ -370,6 +371,10 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 		} else {
 			packet := CreateSpAgentTaskRemove(task)
 			ts.TsSyncAllClients(packet)
+		}
+
+		if task.Type == TYPE_JOB {
+			agent.RunningJobs.Delete(task.TaskId)
 		}
 	}
 

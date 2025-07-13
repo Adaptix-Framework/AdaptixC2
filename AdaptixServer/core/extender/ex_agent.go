@@ -21,12 +21,12 @@ func (ex *AdaptixExtender) ExAgentCreate(agentName string, beat []byte) (adaptix
 	return module.AgentCreate(beat)
 }
 
-func (ex *AdaptixExtender) ExAgentCommand(client string, cmdline string, agentName string, agentData adaptix.AgentData, args map[string]any) error {
+func (ex *AdaptixExtender) ExAgentCommand(client string, cmdline string, agentName string, hookId string, agentData adaptix.AgentData, args map[string]any) error {
 	module, ok := ex.agentModules[agentName]
 	if !ok {
 		return errors.New("module not found")
 	}
-	return module.AgentCommand(client, cmdline, agentData, args)
+	return module.AgentCommand(client, cmdline, hookId, agentData, args)
 }
 
 func (ex *AdaptixExtender) ExAgentProcessData(agentData adaptix.AgentData, packedData []byte) ([]byte, error) {

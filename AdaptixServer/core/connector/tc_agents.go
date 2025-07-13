@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -54,6 +55,7 @@ type CommandData struct {
 	AgentId   string `json:"id"`
 	CmdLine   string `json:"cmdline"`
 	Data      string `json:"data"`
+	HookId    string `json:"ax_hook_id"`
 }
 
 func (tc *TsConnector) TcAgentCommandExecute(ctx *gin.Context) {
@@ -88,7 +90,7 @@ func (tc *TsConnector) TcAgentCommandExecute(ctx *gin.Context) {
 		fmt.Printf("Error parsing commands JSON: %s\n", err.Error())
 	}
 
-	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.CmdLine, args)
+	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.CmdLine, args)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -145,7 +147,7 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 		fmt.Printf("Error parsing commands JSON: %s\n", err.Error())
 	}
 
-	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.CmdLine, args)
+	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.CmdLine, args)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -405,6 +407,63 @@ func (tc *TsConnector) TcAgentTaskDelete(ctx *gin.Context) {
 		}
 
 		ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": false})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}
+
+type AgentTaskHook struct {
+	AgentId     string `json:"a_id"`
+	TaskId      string `json:"a_task_id"`
+	HookId      string `json:"a_hook_id"`
+	JobIndex    int    `json:"a_job_index"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	Text        string `json:"a_text"`
+	Completed   bool   `json:"a_completed"`
+}
+
+func (tc *TsConnector) TcAgentTaskHook(ctx *gin.Context) {
+	var (
+		username  string
+		tasksHook AgentTaskHook
+		err       error
+		ok        bool
+	)
+
+	err = ctx.ShouldBindJSON(&tasksHook)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
+		return
+	}
+
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+
+	username, ok = value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
+
+	hookData := adaptix.TaskData{
+		AgentId:     tasksHook.AgentId,
+		TaskId:      tasksHook.TaskId,
+		HookId:      tasksHook.HookId,
+		Client:      username,
+		MessageType: tasksHook.MessageType,
+		Message:     tasksHook.Message,
+		ClearText:   tasksHook.Text,
+		Completed:   tasksHook.Completed,
+	}
+
+	err = tc.teamserver.TsTaskPostHook(hookData, tasksHook.JobIndex)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
 	}
 
