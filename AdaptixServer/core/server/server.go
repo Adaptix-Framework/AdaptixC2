@@ -90,7 +90,6 @@ func (ts *Teamserver) RestoreData() {
 		err error
 	)
 
-	/// DATABASE
 	ok = ts.DBMS.DatabaseExists()
 	if !ok {
 		return
@@ -110,6 +109,7 @@ func (ts *Teamserver) RestoreData() {
 			TasksQueue:         safe.NewSlice(),
 			TunnelConnectTasks: safe.NewSlice(),
 			RunningTasks:       safe.NewMap(),
+			RunningJobs:        safe.NewMap(),
 			CompletedTasks:     safe.NewMap(),
 			PivotParent:        nil,
 			PivotChilds:        safe.NewSlice(),

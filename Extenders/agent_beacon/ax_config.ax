@@ -122,7 +122,7 @@ function RegisterCommands(listenerType)
 
     var cmd_sleep = ax.create_command("sleep", "Sets sleep time", "sleep 30m5s 10");
     cmd_sleep.addArgString("sleep", true, "Time in '%h%m%s' format or number of seconds");
-    cmd_sleep.addArgInt("jitter", true, "Max random amount of time in % added to sleep");
+    cmd_sleep.addArgInt("jitter", false, "Max random amount of time in % added to sleep");
 
     var _cmd_socks_start = ax.create_command("start", "Start a SOCKS(4a/5) proxy server and listen on a specified port", "socks start 1080 -auth user pass");
     _cmd_socks_start.addArgFlagString("-h", "address", "Listening interface address", "0.0.0.0");

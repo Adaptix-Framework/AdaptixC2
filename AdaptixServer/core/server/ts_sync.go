@@ -9,6 +9,11 @@ import (
 	"sort"
 )
 
+func (ts *Teamserver) TsClientConnected(username string) bool {
+	_, found := ts.clients.Get(username)
+	return found
+}
+
 func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	var (
 		buffer   bytes.Buffer

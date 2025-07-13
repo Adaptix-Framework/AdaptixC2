@@ -39,6 +39,7 @@ const (
 	TYPE_AGENT_TASK_UPDATE = 0x4a
 	TYPE_AGENT_TASK_SEND   = 0x4b
 	TYPE_AGENT_TASK_REMOVE = 0x4c
+	TYPE_AGENT_TASK_HOOK   = 0x4d
 
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
@@ -261,6 +262,21 @@ func CreateSpAgentTaskRemove(taskData adaptix.TaskData) SyncPackerAgentTaskRemov
 		SpType: TYPE_AGENT_TASK_REMOVE,
 
 		TaskId: taskData.TaskId,
+	}
+}
+
+func CreateSpAgentTaskHook(taskData adaptix.TaskData, jobIndex int) SyncPackerAgentTaskHook {
+	return SyncPackerAgentTaskHook{
+		SpType: TYPE_AGENT_TASK_HOOK,
+
+		AgentId:     taskData.AgentId,
+		TaskId:      taskData.TaskId,
+		HookId:      taskData.HookId,
+		JobIndex:    jobIndex,
+		MessageType: taskData.MessageType,
+		Message:     taskData.Message,
+		Text:        taskData.ClearText,
+		Completed:   taskData.Completed,
 	}
 }
 
