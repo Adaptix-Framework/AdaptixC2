@@ -1,6 +1,5 @@
 #include <Client/AxScript/AxCommandWrappers.h>
 
-
 AxCommandWrappers::AxCommandWrappers(const QString &name, const QString &description, const QString &example, const QString &message, QObject* parent) : QObject(parent)
 {
     command = {};

@@ -7,10 +7,11 @@
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
-ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
+ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c)
 {
-    agent     = a;
-    commander = c;
+    adaptixWidget = w;
+    agent         = a;
+    commander     = c;
 
     this->createUI();
     this->upgradeCompleter();
@@ -249,7 +250,7 @@ void ConsoleWidget::ConsoleOutputPrompt(const qint64 timestamp, const QString &t
     }
 }
 
-void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const CommanderResult &cmdResult)
+void ConsoleWidget::ProcessCmdResult(const QString &commandLine, CommanderResult cmdResult)
 {
     if ( cmdResult.output ) {
         QString message = "";
@@ -271,19 +272,40 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
         return;
     }
 
+    QString hookId = "";
+    if (cmdResult.post_hook.isSet) {
+        hookId = GenerateRandomString(8, "hex");
+        while (adaptixWidget->PostHooksJS.contains(hookId))
+            hookId = GenerateRandomString(8, "hex");
+
+        adaptixWidget->PostHooksJS[hookId] = cmdResult.post_hook;
+    }
+
     QJsonDocument jsonDoc(cmdResult.data);
     QString commandData = jsonDoc.toJson();
+
+    QJsonObject dataJson;
+    dataJson["name"]       = agent->data.Name;
+    dataJson["id"]         = agent->data.Id;
+    dataJson["cmdline"]    = commandLine;
+    dataJson["data"]       = commandData;
+    dataJson["ax_hook_id"] = hookId;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     /// 5 Mb
     if (commandData.size() < 0x500000) {
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqAgentCommand(agent->data.Name, agent->data.Id, commandLine, commandData, *(agent->adaptixWidget->GetProfile()), &message, &ok);
+        bool result = HttpReqAgentCommand(jsonData, *(agent->adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
+            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                adaptixWidget->PostHooksJS.remove(hookId);
             MessageError("Response timeout");
             return;
         }
         if (!ok) {
+            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                adaptixWidget->PostHooksJS.remove(hookId);
             this->ConsoleOutputPrompt(0, "", "", commandLine);
             this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, message, "", true);
         }
@@ -297,10 +319,14 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
         QString objId = GenerateRandomString(8, "hex");
         bool result = HttpReqGetOTP("tmp_upload", objId, *(agent->adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
+            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                adaptixWidget->PostHooksJS.remove(hookId);
             MessageError("Response timeout");
             return;
         }
         if (!ok) {
+            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                adaptixWidget->PostHooksJS.remove(hookId);
             MessageError(message);
             return;
         }
@@ -308,21 +334,17 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
 
         /// 2. Upload with OTP
 
-        QJsonObject dataJson;
-        dataJson["name"]    = agent->data.Name;
-        dataJson["id"]      = agent->data.Id;
-        dataJson["cmdline"]    = commandLine;
-        dataJson["data"]    = commandData;
-        QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
         QString sUrl = agent->adaptixWidget->GetProfile()->GetURL() + "/otp/upload/temp";
 
         auto* uploaderDialog = new DialogUploader(sUrl, otp, jsonData);
         uploaderDialog->setAttribute(Qt::WA_DeleteOnClose);
 
         connect(uploaderDialog, &DialogUploader::finished, [&](const bool success) {
-            if (!success)
+            if (!success) {
+                if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                    adaptixWidget->PostHooksJS.remove(hookId);
                 return;
+            }
 
             /// 3. Send Command
 
@@ -333,16 +355,22 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
             sUrl = agent->adaptixWidget->GetProfile()->GetURL() + "/agent/command/file";
             QJsonObject jsonObject = HttpReq(sUrl, json2Data, agent->adaptixWidget->GetProfile()->GetAccessToken(), 10000);
             if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
-                if (jsonObject["ok"].toBool() == false)
+                if (jsonObject["ok"].toBool() == false) {
+                    if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                        adaptixWidget->PostHooksJS.remove(hookId);
                     MessageError( jsonObject["message"].toString());
+                }
             }
             else {
+                if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                    adaptixWidget->PostHooksJS.remove(hookId);
                 MessageError("Response timeout");
                 return;
             }
         });
 
         uploaderDialog->exec();
+
     }
 }
 
@@ -368,7 +396,7 @@ void ConsoleWidget::processInput()
     this->AddToHistory(commandLine);
 
     auto cmdResult = commander->ProcessInput( agent->data.Id, commandLine );
-    if (cmdResult.hooked)
+    if (cmdResult.is_pre_hook)
         return;
 
     this->ProcessCmdResult(commandLine, cmdResult);

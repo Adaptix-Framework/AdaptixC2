@@ -26,8 +26,8 @@ public slots:
     void     credentials_add(const QString &username, const QString &password, const QString &realm = "", const QString &type = "password", const QString &tag = "", const QString &storage = "manual", const QString &host = "");
     QObject* create_command(const QString &name, const QString &description, const QString &example = "", const QString &message = "");
     QObject* create_commands_group(const QString &name, const QJSValue& array);
-    void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "") const;
-    void     execute_command(const QString &id, const QString &command) const;
+    void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "", const QJSValue &hook = QJSValue()) const;
+    void     execute_command(const QString &id, const QString &command, const QJSValue &hook = QJSValue()) const;
     QString  file_basename(const QString &path) const;
     QString  file_read(QString path) const;
     bool     is64(const QString &id) const;

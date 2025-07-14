@@ -45,18 +45,18 @@ void Extender::SetExtension(ExtensionFile extFile)
 {
     bool result = false;
 
-    if(extenderFiles.contains(extFile.FilePath)) {
-        if(extFile.Enabled) {
-            mainAdaptix->mainUI->RemoveExtension(extFile);
-            bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
-            if (!success) {
-                mainAdaptix->mainUI->RemoveExtension(extFile);
-            }
-        }
-        dialogExtender->UpdateExtenderItem(extFile);
-        mainAdaptix->storage->UpdateExtension(extFile);
-    }
-    else {
+    // if(extenderFiles.contains(extFile.FilePath)) {
+    //     if(extFile.Enabled) {
+    //         mainAdaptix->mainUI->RemoveExtension(extFile);
+    //         bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
+    //         if (!success) {
+    //             mainAdaptix->mainUI->RemoveExtension(extFile);
+    //         }
+    //     }
+    //     dialogExtender->UpdateExtenderItem(extFile);
+    //     mainAdaptix->storage->UpdateExtension(extFile);
+    // }
+    // else {
         if( extFile.Enabled ) {
             bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
             if (!success) {
@@ -70,7 +70,7 @@ void Extender::SetExtension(ExtensionFile extFile)
             if( !mainAdaptix->storage->ExistsExtension(extFile.FilePath))
                 mainAdaptix->storage->AddExtension(extFile);
         }
-    }
+    // }
 }
 
 void Extender::EnableExtension(const QString &path)

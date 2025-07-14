@@ -218,15 +218,8 @@ bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerTy
     return false;
 }
 
-bool HttpReqAgentCommand(const QString &agentName, const QString &agentId, const QString &cmdLine, const QString &data, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqAgentCommand(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok )
 {
-    QJsonObject dataJson;
-    dataJson["name"]    = agentName;
-    dataJson["id"]      = agentId;
-    dataJson["cmdline"] = cmdLine;
-    dataJson["data"]    = data;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
     QString sUrl = profile.GetURL() + "/agent/command/execute";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
@@ -342,6 +335,8 @@ bool HttpReqAgentSetColor( QStringList agentsId, const QString &background, cons
     return false;
 }
 
+///TASK
+
 bool HttpReqTaskStop(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonArray arrayId;
@@ -375,6 +370,18 @@ bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/agent/task/delete";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok)
+{
+    QString sUrl = profile.GetURL() + "/agent/task/hook";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();

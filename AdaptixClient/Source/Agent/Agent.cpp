@@ -126,7 +126,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->browsers = regAgnet.browsers;
 
     this->commander      = regAgnet.commander;
-    this->Console        = new ConsoleWidget(this, regAgnet.commander);
+    this->Console        = new ConsoleWidget(adaptixWidget, this, regAgnet.commander);
     this->FileBrowser    = new BrowserFilesWidget(this);
     this->ProcessBrowser = new BrowserProcessWidget(this);
     this->Terminal       = new TerminalWidget(this, adaptixWidget);

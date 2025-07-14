@@ -27,8 +27,9 @@ public:
     void ResetMain();
     void Clear();
 
-    AdaptixWidget* GetAdaptix() const;
+    AdaptixWidget*        GetAdaptix() const;
     QMap<QString, Agent*> GetAgents() const;
+    QJSEngine*            GetEngine(const QString &name);
 
     QStringList ListenerScriptList();
     void        ListenerScriptAdd(const QString &name, const QString &ax_script);

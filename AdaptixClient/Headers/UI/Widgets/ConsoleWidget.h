@@ -7,6 +7,7 @@
 #include <Agent/Commander.h>
 
 class Agent;
+class AdaptixWidget;
 
 #define CONSOLE_OUT_LOCAL         1
 #define CONSOLE_OUT_LOCAL_INFO    2
@@ -17,8 +18,10 @@ class Agent;
 #define CONSOLE_OUT_SUCCESS       7
 #define CONSOLE_OUT               10
 
-class  ConsoleWidget : public QWidget
+class ConsoleWidget : public QWidget
 {
+    AdaptixWidget* adaptixWidget = nullptr;
+
     QGridLayout*      MainGridLayout   = nullptr;
     QLabel*           CmdLabel         = nullptr;
     QLabel*           InfoLabel        = nullptr;
@@ -50,10 +53,10 @@ class  ConsoleWidget : public QWidget
     void highlightCurrent() const;
 
 public:
-    explicit ConsoleWidget(Agent* a, Commander* c);
+    explicit ConsoleWidget(AdaptixWidget* w, Agent* a, Commander* c);
     ~ConsoleWidget() override;
 
-    void ProcessCmdResult(const QString &commandLine, const CommanderResult &cmdResult);
+    void ProcessCmdResult(const QString &commandLine, CommanderResult cmdResult);
 
     void InputFocus() const;
     void AddToHistory(const QString& command);

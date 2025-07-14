@@ -143,8 +143,19 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isArray()) return false;
         return true;
     }
-    if( spType == TYPE_AGENT_TASK_REMOVE ) {
+    if ( spType == TYPE_AGENT_TASK_REMOVE ) {
         if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isString()) return false;
+        return true;
+    }
+    if ( spType == TYPE_AGENT_TASK_HOOK ) {
+        if (!jsonObj.contains("a_id")        || !jsonObj["a_id"].isString())        return false;
+        if (!jsonObj.contains("a_task_id")   || !jsonObj["a_task_id"].isString())   return false;
+        if (!jsonObj.contains("a_hook_id")   || !jsonObj["a_hook_id"].isString())   return false;
+        if (!jsonObj.contains("a_job_index") || !jsonObj["a_job_index"].isDouble()) return false;
+        if (!jsonObj.contains("a_msg_type")  || !jsonObj["a_msg_type"].isDouble())  return false;
+        if (!jsonObj.contains("a_message")   || !jsonObj["a_message"].isString())   return false;
+        if (!jsonObj.contains("a_text")      || !jsonObj["a_text"].isString())      return false;
+        if (!jsonObj.contains("a_completed") || !jsonObj["a_completed"].isBool())   return false;
         return true;
     }
 
@@ -473,6 +484,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString TaskId = jsonObj["a_task_id"].toString();
         TasksTab->RemoveTaskItem(TaskId);
         return;
+    }
+    if ( spType == TYPE_AGENT_TASK_HOOK )
+    {
+        this->PostHookProcess(jsonObj);
     }
 
 
