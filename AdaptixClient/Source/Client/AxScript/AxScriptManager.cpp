@@ -42,6 +42,20 @@ AdaptixWidget* AxScriptManager::GetAdaptix() const { return this->mainWidget; }
 
 QMap<QString, Agent*> AxScriptManager::GetAgents() const { return mainWidget->AgentsMap; }
 
+QJSEngine* AxScriptManager::GetEngine(const QString &name)
+{
+    if (agents_scripts.contains(name) && agents_scripts[name])
+        return agents_scripts[name]->engine();
+
+    if (scripts.contains(name) && scripts[name])
+        return scripts[name]->engine();
+
+    if (name == "main" && mainScript)
+        return mainScript->engine();
+
+    return nullptr;
+}
+
 /// MAIN
 
 QStringList AxScriptManager::ListenerScriptList() { return listeners_scripts.keys(); }

@@ -29,7 +29,6 @@ void DialogExtender::createUI()
     tableWidget->setWordWrap(true );
     tableWidget->setCornerButtonEnabled(false );
     tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows );
-    tableWidget->setSelectionMode(QAbstractItemView::MultiSelection );
     tableWidget->setFocusPolicy(Qt::NoFocus );
     tableWidget->setAlternatingRowColors(true );
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch );
@@ -174,6 +173,7 @@ void DialogExtender::onActionReload() const
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
             auto filePath = tableWidget->item( rowIndex, 1 )->text();
+            extender->RemoveExtension(filePath);
             extender->LoadFromFile(filePath, true);
         }
     }

@@ -1,7 +1,6 @@
 #include <QJSEngine>
 #include <Agent/Agent.h>
 #include <Agent/Task.h>
-#include <Agent/Commander.h>
 #include <Workers/LastTickWorker.h>
 #include <Workers/WebSocketWorker.h>
 #include <UI/Widgets/AdaptixWidget.h>
@@ -468,12 +467,79 @@ QList<Commander*> AdaptixWidget::GetCommanders(const QStringList &listeners, con
     return commanders;
 }
 
-QList<Commander *> AdaptixWidget::GetCommandersAll() const
+QList<Commander*> AdaptixWidget::GetCommandersAll() const
 {
     QList<Commander*> commanders;
     for (auto regAgent : this->RegisterAgents)
         commanders.append(regAgent.commander);
     return commanders;
+}
+
+void AdaptixWidget::PostHookProcess(QJsonObject jsonHookObj)
+{
+    QString hookId = jsonHookObj["a_hook_id"].toString();
+    bool completed = jsonHookObj["a_completed"].toBool();
+
+    if (PostHooksJS.contains(hookId)) {
+        PostHook post_hooks = PostHooksJS[hookId];
+        if (completed)
+            PostHooksJS.remove(hookId);
+
+        auto jsEngine = ScriptManager->GetEngine(post_hooks.engineName);
+        if (jsEngine && post_hooks.hook.isCallable()) {
+
+            int jobIndex = jsonHookObj["a_job_index"].toDouble();
+
+            QJsonObject obj;
+            obj["agent"]     = jsonHookObj["a_id"].toString();;
+            obj["message"]   = jsonHookObj["a_message"].toString();
+            obj["text"]      = jsonHookObj["a_text"].toString();
+            obj["completed"] = completed;
+            obj["index"]     = jobIndex;
+
+            int msgType = jsonHookObj["a_msg_type"].toDouble();
+            if (msgType == CONSOLE_OUT_LOCAL_INFO || msgType == CONSOLE_OUT_INFO)
+                obj["type"] = "info";
+            else if (msgType == CONSOLE_OUT_LOCAL_ERROR || msgType == CONSOLE_OUT_ERROR)
+                obj["type"] = "error";
+            else if (msgType == CONSOLE_OUT_LOCAL_SUCCESS || msgType == CONSOLE_OUT_SUCCESS)
+                obj["type"] = "success";
+            else
+                obj["type"] = "";
+
+            QJSValue result = post_hooks.hook.call(QJSValueList() << jsEngine->toScriptValue(obj));
+            if (result.isObject()) {
+                QJsonObject modifiedObj = result.toVariant().toJsonObject();
+
+                if (modifiedObj.contains("message") && modifiedObj["message"].isString())
+                    jsonHookObj["a_message"] = modifiedObj["message"].toString();
+                if (modifiedObj.contains("text") && modifiedObj["text"].isString())
+                    jsonHookObj["a_text"] = modifiedObj["text"].toString();
+                if (modifiedObj.contains("type") && modifiedObj["type"].isString()) {
+                    QString modifiedType = modifiedObj["type"].toString();
+                    if (modifiedType == "info")
+                        jsonHookObj["a_msg_type"] = CONSOLE_OUT_INFO;
+                    else if (modifiedType == "error")
+                        jsonHookObj["a_msg_type"] = CONSOLE_OUT_ERROR;
+                    else if (modifiedType == "success")
+                        jsonHookObj["a_msg_type"] = CONSOLE_OUT_SUCCESS;
+                    else
+                        jsonHookObj["a_msg_type"] = CONSOLE_OUT;
+                }
+            }
+        }
+    }
+
+    QByteArray jsonData = QJsonDocument(jsonHookObj).toJson();
+
+    QString message = "";
+    bool ok = false;
+    bool result = HttpReqTasksHook(jsonData, *profile, &message, &ok);
+    if( !result ) {
+        MessageError("Server is not responding");
+        return;
+    }
+    if (!ok) MessageError(message);
 }
 
 /// SHOW PANELS

@@ -31,7 +31,7 @@ bool HttpReqListenerStop(const QString &listenerName, const QString &listenerTyp
 
 bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &configData, AuthProfile profile, QString* message, bool* ok );
 
-bool HttpReqAgentCommand(const QString &agentName, const QString &agentId, const QString &cmdLine, const QString &data, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqAgentCommand(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqConsoleRemove( QStringList agentsId, AuthProfile profile, QString* message, bool* ok );
 
@@ -43,9 +43,13 @@ bool HttpReqAgentSetMark( QStringList agentsId, const QString &mark, AuthProfile
 
 bool HttpReqAgentSetColor( QStringList agentsId, const QString &background, const QString &foreground, bool reset, AuthProfile profile, QString* message, bool* ok );
 
+///TASK
+
 bool HttpReqTaskStop(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
+
+bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);
 
 ///DOWNLOAD
 

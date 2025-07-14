@@ -31,8 +31,6 @@ struct Command
     QList<Command>  subcommands;
     bool            is_pre_hook;
     QJSValue        pre_hook;
-    bool            is_post_hook;
-    QJSValue        post_hook;
 };
 
 struct CommandsGroup
@@ -43,14 +41,24 @@ struct CommandsGroup
     QJSEngine*     engine;
 };
 
+struct PostHook
+{
+    bool     isSet;
+    QString  engineName;
+    QJSValue hook;
+};
+
 struct CommanderResult
 {
     bool        error;
     bool        output;
     QString     message;
     QJsonObject data;
-    bool        hooked;
+    bool        is_pre_hook;
+    PostHook    post_hook;
 };
+
+
 
 class Commander : public QObject
 {

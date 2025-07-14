@@ -71,9 +71,9 @@ Task::~Task() = default;
 
 void Task::Update(QJsonObject jsonObjTaskData)
 {
-    this->data.Completed   = jsonObjTaskData["a_completed"].toBool();
+    this->data.Completed = jsonObjTaskData["a_completed"].toBool();
     if (this->data.Completed) {
-        this->data.FinishTime  = jsonObjTaskData["a_finish_time"].toDouble();
+        this->data.FinishTime = jsonObjTaskData["a_finish_time"].toDouble();
         QString finishTime = UnixTimestampGlobalToStringLocal(this->data.FinishTime);
         this->item_FinishTime->setText(finishTime);
 

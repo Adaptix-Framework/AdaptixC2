@@ -20,7 +20,7 @@ AxScriptEngine* BridgeApp::GetScriptEngine() const { return this->scriptEngine; 
 
 QJSValue BridgeApp::agents() const
 {
-    QVariantList list;
+    QVariantMap list;
     auto mapAgents = scriptEngine->manager()->GetAgents();
 
     for (auto agent : mapAgents) {
@@ -49,7 +49,7 @@ QJSValue BridgeApp::agents() const
         else if (agent->data.Os == OS_MAC)   map["os"] = "macos";
         else                                 map["os"] = "unknown";
 
-        list << map;
+        list[agent->data.Id] = map;
     }
 
     return this->scriptEngine->engine()->toScriptValue(list);
@@ -222,7 +222,7 @@ QObject* BridgeApp::create_commands_group(const QString &name, const QJSValue &a
     return wrapper;
 }
 
-void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message) const
+void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))
@@ -233,15 +233,19 @@ void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const Q
         return;
 
     auto cmdResult = agent->commander->ProcessInput(id, command);
-    if (!cmdResult.hooked) {
+    if (!cmdResult.is_pre_hook) {
         if (!message.isEmpty()) {
             cmdResult.data["message"] = message;
         }
+
+        if (!hook.isUndefined() && !hook.isNull() && hook.isCallable())
+            cmdResult.post_hook = {true, scriptEngine->context.name, hook};
+
         agent->Console->ProcessCmdResult(cmdline, cmdResult);
     }
 }
 
-void BridgeApp::execute_command(const QString &id, const QString &command) const
+void BridgeApp::execute_command(const QString &id, const QString &command, const QJSValue &hook) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))
@@ -252,9 +256,13 @@ void BridgeApp::execute_command(const QString &id, const QString &command) const
         return;
 
     auto cmdResult = agent->commander->ProcessInput(id, command);
-    if (!cmdResult.hooked)
-        agent->Console->ProcessCmdResult(command, cmdResult);
+    if (!cmdResult.is_pre_hook) {
 
+        if (!hook.isUndefined() && !hook.isNull() && hook.isCallable())
+            cmdResult.post_hook = {true, scriptEngine->context.name, hook};
+
+        agent->Console->ProcessCmdResult(command, cmdResult);
+    }
 }
 
 QString BridgeApp::file_basename(const QString &path) const

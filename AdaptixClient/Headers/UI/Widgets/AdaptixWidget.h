@@ -1,11 +1,12 @@
 #ifndef ADAPTIXCLIENT_ADAPTIXWIDGET_H
 #define ADAPTIXCLIENT_ADAPTIXWIDGET_H
 
+#include <Agent/Commander.h>
 #include <main.h>
+#include <QJSValue>
 
 class Task;
 class Agent;
-class Commander;
 class LastTickWorker;
 class WebSocketWorker;
 class SessionsTableWidget;
@@ -100,6 +101,7 @@ public:
     QMap<QString, Task*>           TasksMap;
     QVector<QString>               AgentsVector;
     QMap<QString, Agent*>          AgentsMap;
+    QMap<QString, PostHook>        PostHooksJS;
     QMap<QString, TunnelEndpoint*> ClientTunnels;
 
     explicit AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker);
@@ -120,6 +122,8 @@ public:
     RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
     QList<Commander*> GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const;
     QList<Commander*> GetCommandersAll() const;
+
+    void PostHookProcess(QJsonObject jsonHookObj);
 
     void LoadConsoleUI(const QString &AgentId);
     void LoadTasksOutput() const;
