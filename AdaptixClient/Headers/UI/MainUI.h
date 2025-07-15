@@ -27,6 +27,7 @@ public:
     void AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker);
 
     bool AddNewExtension(ExtensionFile *extFile);
+    bool SyncExtension(const QString &Project, ExtensionFile *extFile);
     void RemoveExtension(const ExtensionFile &extFile);
 
     void UpdateSessionsTableColumns();

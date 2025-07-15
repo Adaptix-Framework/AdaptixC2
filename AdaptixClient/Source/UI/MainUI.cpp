@@ -92,6 +92,15 @@ bool MainUI::AddNewExtension(ExtensionFile *extFile)
     return result;
 }
 
+bool MainUI::SyncExtension(const QString &Project, ExtensionFile *extFile)
+{
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget && adaptixWidget->GetProfile()->GetProject() == Project)
+            return adaptixWidget->AddExtension(extFile);
+    }
+    return true;
+}
+
 void MainUI::RemoveExtension(const ExtensionFile &extFile)
 {
     for (auto adaptixWidget : AdaptixProjects) {

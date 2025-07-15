@@ -161,7 +161,7 @@ void DialogExtender::handleMenu(const QPoint &pos ) const
 
 void DialogExtender::onActionLoad() const
 {
-    QString filePath = QFileDialog::getOpenFileName(nullptr, "Load Script", "", "AX Files (*.ax)");
+    QString filePath = QFileDialog::getOpenFileName(nullptr, "Load Script", "", "AxScript Files (*.axs)");
     if ( filePath.isEmpty())
         return;
 

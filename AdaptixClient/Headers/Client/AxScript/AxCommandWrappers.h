@@ -23,7 +23,7 @@ public:
     Q_INVOKABLE void addArgInt(const QString &name, bool required = false, const QString &description = "");
     Q_INVOKABLE void addArgInt(const QString &name, const QString &description, const QJSValue &value);
     Q_INVOKABLE void addArgFlagInt(const QString &flag, const QString &name, bool required = false, const QString &description = "");
-    Q_INVOKABLE void addArgFlaInt(const QString &flag, const QString &name, const QString &description, const QJSValue &value);
+    Q_INVOKABLE void addArgFlagInt(const QString &flag, const QString &name, const QString &description, const QJSValue &value);
 
     Q_INVOKABLE void addArgString(const QString &name, bool required = false, const QString &description = "");
     Q_INVOKABLE void addArgString(const QString &name, const QString &description, const QJSValue &value);

@@ -34,6 +34,12 @@ function RegisterCommands(listenerType)
     var cmd_download_unix = ax.create_command("download", "Download a file", "download /tmp/file", "Task: download file");
     cmd_download_unix.addArgString("path", true);
 
+    var _cmd_execute_bof = ax.create_command("bof", "Execute Beacon Object File", "execute bof /home/user/whoami.o", "Task: execute BOF");
+    _cmd_execute_bof.addArgFile("bof", true, "Path to object file");
+    _cmd_execute_bof.addArgString("param_data", false);
+    var cmd_execute = ax.create_command("execute", "Execute [bof] in the current process's memory");
+    cmd_execute.addSubCommands([_cmd_execute_bof])
+
     var cmd_exit = ax.create_command("exit", "Kill agent", "exit", "Task: kill agent");
 
     var _cmd_job_list = ax.create_command("list", "List of jobs", "job list", "Task: show jobs");
@@ -105,7 +111,7 @@ function RegisterCommands(listenerType)
     cmd_zip_unix.addArgString("path", true);
     cmd_zip_unix.addArgString("zip_path", true);
 
-    var commands_win  = ax.create_commands_group("gopher", [cmd_cat_win,  cmd_cp, cmd_cd_win,  cmd_download_win,  cmd_exit, cmd_job, cmd_kill, cmd_ls_win,  cmd_mv, cmd_mkdir_win,  cmd_ps, cmd_pwd, cmd_rm_win,  cmd_run_win,  cmd_screenshot, cmd_socks, cmd_shell_win,  cmd_upload_win,  cmd_zip_win] );
+    var commands_win  = ax.create_commands_group("gopher", [cmd_cat_win,  cmd_cp, cmd_cd_win,  cmd_download_win,  cmd_execute, cmd_exit, cmd_job, cmd_kill, cmd_ls_win,  cmd_mv, cmd_mkdir_win,  cmd_ps, cmd_pwd, cmd_rm_win,  cmd_run_win,  cmd_screenshot, cmd_socks, cmd_shell_win,  cmd_upload_win,  cmd_zip_win] );
     var commands_unix = ax.create_commands_group("gopher", [cmd_cat_unix, cmd_cp, cmd_cd_unix, cmd_download_unix, cmd_exit, cmd_job, cmd_kill, cmd_ls_unix, cmd_mv, cmd_mkdir_unix, cmd_ps, cmd_pwd, cmd_rm_unix, cmd_run_unix, cmd_screenshot, cmd_socks, cmd_shell_unix, cmd_upload_unix, cmd_zip_unix] );
 
     return {
