@@ -77,13 +77,18 @@ QStringList unserializeParams(const QString &commandline)
 
 
 
-Commander::Commander(){}
+Commander::Commander()
+{
+    regCommandsGroup = {};
+    axCommandsGroup  = {};
+}
 
 Commander::~Commander() = default;
 
 void Commander::AddRegCommands(const CommandsGroup &group) { regCommandsGroup = group; }
 
-void Commander::AddAxCommands(const CommandsGroup &group) {
+void Commander::AddAxCommands(const CommandsGroup &group)
+{
     axCommandsGroup.append(group);
     emit commandsUpdated();
 }

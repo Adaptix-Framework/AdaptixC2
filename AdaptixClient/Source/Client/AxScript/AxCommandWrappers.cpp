@@ -84,7 +84,7 @@ void AxCommandWrappers::addArgFlagInt(const QString &flag, const QString &name, 
     command.args.append(arg);
 }
 
-void AxCommandWrappers::addArgFlaInt(const QString &flag, const QString &name, const QString &description, const QJSValue &value)
+void AxCommandWrappers::addArgFlagInt(const QString &flag, const QString &name, const QString &description, const QJSValue &value)
 {
     Argument arg = { "INT", name, true, true, flag, description, false, QVariant() };
 

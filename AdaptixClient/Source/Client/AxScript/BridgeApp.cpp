@@ -1,4 +1,5 @@
 #include <main.h>
+#include <QTimeZone>
 #include <Agent/Agent.h>
 #include <Client/AxScript/BridgeApp.h>
 #include <Client/AxScript/AxScriptEngine.h>
@@ -55,7 +56,63 @@ QJSValue BridgeApp::agents() const
     return this->scriptEngine->engine()->toScriptValue(list);
 }
 
-QString BridgeApp::arch(const QString &id) const {
+QJSValue BridgeApp::agent_info(const QString &id, QString property) const
+{
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+    if (!mapAgents.contains(id))
+        return false;
+
+    QJSValue ret;
+    auto info = mapAgents[id]->data;
+
+    if (property == "id")
+        return QJSValue(info.Id);
+    if (property == "type")
+        return QJSValue(info.Name);
+    if (property == "listener")
+        return QJSValue(info.Listener);
+    if (property == "externalIP")
+        return QJSValue(info.ExternalIP);
+    if (property == "internalIP")
+        return QJSValue(info.InternalIP);
+    if (property == "domain")
+        return QJSValue(info.Domain);
+    if (property == "computer")
+        return QJSValue(info.Computer);
+    if (property == "username")
+        return QJSValue(info.Username);
+    if (property == "process")
+        return QJSValue(info.Process);
+    if (property == "arch")
+        return QJSValue(info.Arch);
+    if (property == "pid")
+        return QJSValue(info.Pid.toInt());
+    if (property == "tid")
+        return QJSValue(info.Tid.toInt());
+    if (property == "gmt")
+        return QJSValue(info.GmtOffset);
+    if (property == "elevated")
+        return QJSValue(info.Elevated);
+    if (property == "tags")
+        return QJSValue(info.Tags);
+    if (property == "async")
+        return QJSValue(info.Async);
+    if (property == "sleep")
+        return QJSValue(info.Sleep);
+    if (property == "os_full")
+        return QJSValue(info.OsDesc);
+    if (property == "os") {
+        if (info.Os == OS_WINDOWS) return "windows";
+        else if (info.Os == OS_LINUX) return "linux";
+        else if (info.Os == OS_MAC) return "macos";
+        else return "unknown";
+    }
+
+    return QJSValue::UndefinedValue;
+}
+
+QString BridgeApp::arch(const QString &id) const
+{
     auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))
         return "x86";
@@ -90,17 +147,14 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
             }
 
             QByteArray valueData = value.toString().toUtf8();
-
-            int strLength = valueData.isEmpty() ? 0 : valueData.size() + 1;
+            int strLength = valueData.size() + 1;
 
             QByteArray valueLengthData;
             valueLengthData.append(reinterpret_cast<const char*>(&strLength), 4);
             data.append(valueLengthData);
 
-            if (!valueData.isEmpty()) {
-                valueData.append('\0');
-                data.append(valueData);
-            }
+            valueData.append('\0');
+            data.append(valueData);
         }
         else if (items[i] == "wstr") {
             if (!value.canConvert<QString>()) {
@@ -109,28 +163,18 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
             }
 
             QString str = value.toString();
+            const char16_t* utf16Data = reinterpret_cast<const char16_t*>(str.utf16());
+            int utf16Length = str.size() + 1;
 
-            if (str.size() == 0) {
-                QByteArray valueLengthData;
-                int strLength = 0;
-                valueLengthData.append(reinterpret_cast<const char*>(&strLength), 4);
+            QByteArray strData;
+            strData.append(reinterpret_cast<const char*>(utf16Data), utf16Length * sizeof(char16_t));
 
-                data.append(valueLengthData);
-            }
-            else {
-                const char16_t* utf16Data = reinterpret_cast<const char16_t*>(str.utf16());
-                int utf16Length = str.size() + 1;
+            QByteArray strLengthData;
+            int strLength = utf16Length * sizeof(char16_t);
+            strLengthData.append(reinterpret_cast<const char*>(&strLength), 4);
 
-                QByteArray strData;
-                strData.append(reinterpret_cast<const char*>(utf16Data), utf16Length * sizeof(char16_t));
-
-                QByteArray strLengthData;
-                int strLength = utf16Length * sizeof(char16_t);
-                strLengthData.append(reinterpret_cast<const char*>(&strLength), 4);
-
-                data.append(strLengthData);
-                data.append(strData);
-            }
+            data.append(strLengthData);
+            data.append(strData);
         }
         else if (items[i] == "bytes") {
             if (!value.canConvert<QString>()) {
@@ -271,6 +315,8 @@ QString BridgeApp::file_basename(const QString &path) const
     return path.mid(slash + 1);
 }
 
+bool BridgeApp::file_exists(const QString &path) const { return QFile::exists(path); }
+
 QString BridgeApp::file_read(QString path) const
 {
     if (path.startsWith("~/"))
@@ -286,6 +332,13 @@ QString BridgeApp::file_read(QString path) const
     }
 }
 
+QString BridgeApp::format_time(const QString &format, const int &time) const
+{
+    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(time, QTimeZone("UTC"));
+    QDateTime localDateTime = epochDateTime.toTimeZone(QTimeZone::systemTimeZone());
+    return localDateTime.toString(format);
+}
+
 bool BridgeApp::is64(const QString &id) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
@@ -293,6 +346,15 @@ bool BridgeApp::is64(const QString &id) const
         return false;
 
     return mapAgents[id]->data.Arch == "x64";
+}
+
+bool BridgeApp::isadmin(const QString &id) const
+{
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+    if (!mapAgents.contains(id))
+        return false;
+
+    return mapAgents[id]->data.Elevated;
 }
 
 void BridgeApp::log(const QString &text) { emit consoleMessage(text); }
@@ -372,3 +434,5 @@ QString BridgeApp::script_dir()
     return GetParentPathUnix(scriptEngine->context.name) + "/";
 #endif
 }
+
+int BridgeApp::ticks() { return QDateTime::currentSecsSinceEpoch(); }

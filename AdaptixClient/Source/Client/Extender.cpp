@@ -8,6 +8,7 @@ Extender::Extender(MainAdaptix* m)
 {
     mainAdaptix = m;
     dialogExtender = new DialogExtender(this);
+    this->LoadFromDB();
 }
 
 Extender::~Extender() = default;
@@ -15,15 +16,23 @@ Extender::~Extender() = default;
 void Extender::LoadFromDB()
 {
     auto list = mainAdaptix->storage->ListExtensions();
-    for(int i=0; i < list.size(); i++)
-        this->LoadFromFile( list[i].FilePath, list[i].Enabled );
+    for(auto ext : list) {
+
+        QFile file(ext.FilePath);
+        if (!file.open(QIODevice::ReadOnly)) {
+            ext.Enabled = false;
+            ext.Message = "Cannot open file.";
+        }
+        ext.Code = QTextStream(&file).readAll();
+        file.close();
+
+        extenderFiles[ext.FilePath] = ext;
+        dialogExtender->AddExtenderItem(extenderFiles[ext.FilePath]);
+    }
 }
 
 void Extender::LoadFromFile(const QString &path, const bool enabled)
 {
-    if (extenderFiles.contains(path))
-        return;
-
     ExtensionFile extensionFile = {};
     extensionFile.FilePath = path;
     extensionFile.Enabled  = enabled;
@@ -43,20 +52,18 @@ END:
 
 void Extender::SetExtension(ExtensionFile extFile)
 {
-    bool result = false;
-
-    // if(extenderFiles.contains(extFile.FilePath)) {
-    //     if(extFile.Enabled) {
-    //         mainAdaptix->mainUI->RemoveExtension(extFile);
-    //         bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
-    //         if (!success) {
-    //             mainAdaptix->mainUI->RemoveExtension(extFile);
-    //         }
-    //     }
-    //     dialogExtender->UpdateExtenderItem(extFile);
-    //     mainAdaptix->storage->UpdateExtension(extFile);
-    // }
-    // else {
+    if(extenderFiles.contains(extFile.FilePath)) {
+        if(extFile.Enabled) {
+            mainAdaptix->mainUI->RemoveExtension(extFile);
+            bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
+            if (!success) {
+                mainAdaptix->mainUI->RemoveExtension(extFile);
+            }
+        }
+        dialogExtender->UpdateExtenderItem(extFile);
+        mainAdaptix->storage->UpdateExtension(extFile);
+    }
+    else {
         if( extFile.Enabled ) {
             bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
             if (!success) {
@@ -70,7 +77,7 @@ void Extender::SetExtension(ExtensionFile extFile)
             if( !mainAdaptix->storage->ExistsExtension(extFile.FilePath))
                 mainAdaptix->storage->AddExtension(extFile);
         }
-    // }
+    }
 }
 
 void Extender::EnableExtension(const QString &path)
@@ -115,7 +122,19 @@ void Extender::RemoveExtension(const QString &path)
     extenderFiles.remove(path);
 }
 
-void Extender::syncedOnReload(QString project) { this->LoadFromDB(); }
+void Extender::syncedOnReload(const QString &project)
+{
+    for (auto path : extenderFiles.keys()) {
+        if(extenderFiles[path].Enabled) {
+            bool success = mainAdaptix->mainUI->SyncExtension(project, &(extenderFiles[path]));
+            if (!success) {
+                mainAdaptix->mainUI->RemoveExtension(extenderFiles[path]);
+            }
+        }
+        dialogExtender->UpdateExtenderItem(extenderFiles[path]);
+        mainAdaptix->storage->UpdateExtension(extenderFiles[path]);
+    }
+}
 
 void Extender::loadGlobalScript(const QString &path) { this->LoadFromFile(path, true); }
 
