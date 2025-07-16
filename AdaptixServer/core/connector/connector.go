@@ -64,7 +64,6 @@ type Teamserver interface {
 	TsUploadGetFilepath(fileId string) (string, error)
 	TsUploadGetFileContent(fileId string) ([]byte, error)
 	//
-	TsDownloadTaskStart(agentId string, path string, username string) error
 	TsDownloadTaskCancel(fileId string, clientName string) error
 	TsDownloadTaskResume(fileId string, clientName string) error
 	TsDownloadTaskPause(fileId string, clientName string) error
@@ -184,7 +183,6 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 
 	connector.Engine.POST(tsProfile.Endpoint+"/download/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadSync)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadDelete)
-	connector.Engine.POST(tsProfile.Endpoint+"/download/start", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadStart)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/cancel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadCancel)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/resume", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadResume)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/pause", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadPause)

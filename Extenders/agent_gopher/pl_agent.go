@@ -1316,7 +1316,6 @@ func BrowserFiles(path string, agentData adaptix.AgentData) ([]byte, error) {
 }
 
 func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix.AgentData) ([]byte, error) {
-
 	zipContent, err := ZipBytes(content, path)
 	if err != nil {
 		return nil, err
@@ -1362,12 +1361,6 @@ func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix
 }
 
 /// DOWNLOADS
-
-func TaskDownloadStart(path string, taskId string, agentData adaptix.AgentData) ([]byte, error) {
-	packerData, _ := msgpack.Marshal(ParamsDownload{Path: path, Task: taskId})
-	cmd := Command{Code: COMMAND_DOWNLOAD, Data: packerData}
-	return msgpack.Marshal(cmd)
-}
 
 func TaskDownloadCancel(fileId string, agentData adaptix.AgentData) ([]byte, error) {
 	packerData, _ := msgpack.Marshal(ParamsJobKill{Id: fileId})

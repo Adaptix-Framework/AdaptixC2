@@ -61,47 +61,6 @@ func (tc *TsConnector) TcGuiDownloadDelete(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, answer)
 }
 
-type DownloadStartAction struct {
-	AgentId string `json:"agent_id"`
-	Path    string `json:"path"`
-}
-
-func (tc *TsConnector) TcGuiDownloadStart(ctx *gin.Context) {
-	var (
-		downloadAction DownloadStartAction
-		username       string
-		ok             bool
-		err            error
-		answer         gin.H
-	)
-
-	err = ctx.ShouldBindJSON(&downloadAction)
-	if err != nil {
-		_ = ctx.Error(errors.New("invalid action"))
-		return
-	}
-
-	value, exists := ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-
-	username, ok = value.(string)
-	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
-		return
-	}
-
-	err = tc.teamserver.TsDownloadTaskStart(downloadAction.AgentId, downloadAction.Path, username)
-	if err != nil {
-		answer = gin.H{"message": err.Error(), "ok": false}
-	} else {
-		answer = gin.H{"message": "Downloading...", "ok": true}
-	}
-	ctx.JSON(http.StatusOK, answer)
-}
-
 func (tc *TsConnector) TcGuiDownloadCancel(ctx *gin.Context) {
 	var (
 		downloadFid DownloadFileId

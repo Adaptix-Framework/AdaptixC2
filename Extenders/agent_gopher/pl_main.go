@@ -1,11 +1,9 @@
 package main
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Adaptix-Framework/axc2"
 	"math/rand"
 	"time"
@@ -132,7 +130,7 @@ func (m *ModuleExtender) AgentCommand(client string, cmdline string, hookId stri
 		return err
 	}
 	taskData.HookId = hookId
-	
+
 	m.ts.TsTaskCreate(agentData.Id, cmdline, client, taskData)
 
 	if len(messageData.Message) > 0 || len(messageData.Text) > 0 {
@@ -258,26 +256,6 @@ func (m *ModuleExtender) AgentBrowserUpload(path string, content []byte, agentDa
 }
 
 ///
-
-func (m *ModuleExtender) AgentTaskDownloadStart(path string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	r := make([]byte, 4)
-	_, _ = rand.Read(r)
-	taskId := fmt.Sprintf("%08x", binary.BigEndian.Uint32(r))
-
-	packData, err := TaskDownloadStart(path, taskId, agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		TaskId: taskId,
-		Type:   TYPE_TASK,
-		Data:   packData,
-		Sync:   true,
-	}
-
-	return taskData, nil
-}
 
 func (m *ModuleExtender) AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
 	packData, err := TaskDownloadCancel(fileId, agentData)

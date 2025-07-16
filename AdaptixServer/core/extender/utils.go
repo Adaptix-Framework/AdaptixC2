@@ -68,7 +68,6 @@ type ExtAgent interface {
 	AgentBrowserFiles(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentBrowserUpload(path string, content []byte, agentData adaptix.AgentData) (adaptix.TaskData, error)
 
-	AgentTaskDownloadStart(path string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentTaskDownloadResume(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
 	AgentTaskDownloadPause(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error)
