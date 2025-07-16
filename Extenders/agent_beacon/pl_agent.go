@@ -1942,11 +1942,6 @@ func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix
 
 /// DOWNLOADS
 
-func TaskDownloadStart(path string, agentData adaptix.AgentData) ([]byte, error) {
-	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
-	return PackArray(array)
-}
-
 func TaskDownloadCancel(fid string) ([]byte, error) {
 	fileId, err := strconv.ParseInt(fid, 16, 64)
 	if err != nil {

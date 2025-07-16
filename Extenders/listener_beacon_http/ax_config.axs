@@ -3,42 +3,42 @@
 function ListenerUI(mode_create)
 {
     // MAIN SETTING
-    var labelHost = form.create_label("Host & port (Bind):");
-    var textlineHostBind = form.create_textline("0.0.0.0");
+    let labelHost = form.create_label("Host & port (Bind):");
+    let textlineHostBind = form.create_textline("0.0.0.0");
     textlineHostBind.setEnabled(mode_create)
-    var spinPortBind = form.create_spin();
+    let spinPortBind = form.create_spin();
     spinPortBind.setRange(1, 65535);
     spinPortBind.setValue(443);
     spinPortBind.setEnabled(mode_create)
 
-    var labelCallback = form.create_label("Callback addresses:");
-    var textCallback = form.create_textmulti();
+    let labelCallback = form.create_label("Callback addresses:");
+    let textCallback = form.create_textmulti();
     textCallback.setPlaceholder("192.168.1.1:443\nserver2.com:8080");
 
-    var labelMethod = form.create_label("Method:");
-    var comboMethod = form.create_combo();
+    let labelMethod = form.create_label("Method:");
+    let comboMethod = form.create_combo();
     comboMethod.addItems(["POST", "GET"]);
     comboMethod.setEnabled(mode_create)
 
-    var labelUri = form.create_label("URI:");
-    var textlineUri = form.create_textline();
+    let labelUri = form.create_label("URI:");
+    let textlineUri = form.create_textline();
     textlineUri.setPlaceholder("/uri.php");
 
-    var labelUserAgent = form.create_label("User-Agent:");
-    var textlineUserAgent = form.create_textline("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
+    let labelUserAgent = form.create_label("User-Agent:");
+    let textlineUserAgent = form.create_textline("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
 
-    var labelHB = form.create_label("Heartbeat Header:");
-    var textlineHB = form.create_textline("X-Beacon-Id");
+    let labelHB = form.create_label("Heartbeat Header:");
+    let textlineHB = form.create_textline("X-Beacon-Id");
 
-    var checkSsl = form.create_check("Use SSL (HTTPS)");
+    let checkSsl = form.create_check("Use SSL (HTTPS)");
     checkSsl.setEnabled(mode_create)
 
-    var certSelector = form.create_file_selector();
+    let certSelector = form.create_file_selector();
     certSelector.setPlaceholder("SSL certificate");
-    var keySelector = form.create_file_selector();
+    let keySelector = form.create_file_selector();
     keySelector.setPlaceholder("SSL key");
 
-    var layoutMain = form.create_gridlayout();
+    let layoutMain = form.create_gridlayout();
     layoutMain.addWidget(labelHost, 0, 0, 1, 1);
     layoutMain.addWidget(textlineHostBind, 0, 1, 1, 1);
     layoutMain.addWidget(spinPortBind, 0, 2, 1, 1);
@@ -56,23 +56,23 @@ function ListenerUI(mode_create)
     layoutMain.addWidget(certSelector, 7, 0, 1, 3);
     layoutMain.addWidget(keySelector, 8, 0, 1, 3);
 
-    var panelMain = form.create_panel();
+    let panelMain = form.create_panel();
     panelMain.setLayout(layoutMain);
 
     // HTTP HEADERS
-    var checkTrust = form.create_check("Trust X-Forwarded-For");
+    let checkTrust = form.create_check("Trust X-Forwarded-For");
 
-    var labelHostHeader = form.create_label("Host Header:");
-    var textlineHostHeader = form.create_textline();
+    let labelHostHeader = form.create_label("Host Header:");
+    let textlineHostHeader = form.create_textline();
 
-    var labelRequestHeaders = form.create_label("Request Headers:");
-    var textRequestHeaders = form.create_textmulti();
+    let labelRequestHeaders = form.create_label("Request Headers:");
+    let textRequestHeaders = form.create_textmulti();
 
-    var labelServerHeaders = form.create_label("Server Headers:");
-    var textServerHeaders = form.create_textmulti();
+    let labelServerHeaders = form.create_label("Server Headers:");
+    let textServerHeaders = form.create_textmulti();
     textServerHeaders.setEnabled(mode_create)
 
-    var layoutHeaders = form.create_gridlayout();
+    let layoutHeaders = form.create_gridlayout();
     layoutHeaders.addWidget(checkTrust, 0, 0, 1, 2);
     layoutHeaders.addWidget(labelHostHeader, 1, 0, 1, 1);
     layoutHeaders.addWidget(textlineHostHeader, 1, 1, 1, 1);
@@ -81,38 +81,38 @@ function ListenerUI(mode_create)
     layoutHeaders.addWidget(labelServerHeaders, 3, 0, 1, 1);
     layoutHeaders.addWidget(textServerHeaders, 3, 1, 1, 1);
 
-    var panelHeaders = form.create_panel();
+    let panelHeaders = form.create_panel();
     panelHeaders.setLayout(layoutHeaders);
 
     // HTTP HEADERS
-    var textError = form.create_textmulti("<!DOCTYPE html>\n<html>\n<head>\n<title>ERROR 404 - Nothing Found</title>\n</head>\n<body>\n<h1 class=\"cover-heading\">ERROR 404 - PAGE NOT FOUND</h1>\n</div>\n</div>\n</div>\n</body>\n</html>");
+    let textError = form.create_textmulti("<!DOCTYPE html>\n<html>\n<head>\n<title>ERROR 404 - Nothing Found</title>\n</head>\n<body>\n<h1 class=\"cover-heading\">ERROR 404 - PAGE NOT FOUND</h1>\n</div>\n</div>\n</div>\n</body>\n</html>");
 
-    var layoutError = form.create_gridlayout();
+    let layoutError = form.create_gridlayout();
     layoutError.addWidget(textError, 0, 0, 1, 1);
 
-    var panelError = form.create_panel();
+    let panelError = form.create_panel();
     panelError.setLayout(layoutError);
 
     // PAYLOAD
-    var textPayload = form.create_textmulti("{\"status\": \"ok\", \"data\": \"<<<PAYLOAD_DATA>>>\", \"metrics\": \"sync\"}");
+    let textPayload = form.create_textmulti("{\"status\": \"ok\", \"data\": \"<<<PAYLOAD_DATA>>>\", \"metrics\": \"sync\"}");
 
-    var layoutPayload = form.create_gridlayout();
+    let layoutPayload = form.create_gridlayout();
     layoutPayload.addWidget(textPayload, 0, 0, 1, 1);
 
-    var panelPayload = form.create_panel();
+    let panelPayload = form.create_panel();
     panelPayload.setLayout(layoutPayload);
 
     //
-    var tabs = form.create_tabs();
+    let tabs = form.create_tabs();
     tabs.addTab(panelMain, "Main settings");
     tabs.addTab(panelHeaders, "HTTP Headers");
     tabs.addTab(panelError, "Page Error");
     tabs.addTab(panelPayload, "Page Payload");
 
-    var layout = form.create_hlayout();
+    let layout = form.create_hlayout();
     layout.addWidget(tabs);
 
-    var container = form.create_container();
+    let container = form.create_container();
     container.put("host_bind", textlineHostBind);
     container.put("port_bind", spinPortBind);
     container.put("callback_addresses", textCallback);
@@ -143,7 +143,7 @@ function ListenerUI(mode_create)
         }
     });
 
-    var panel = form.create_panel();
+    let panel = form.create_panel();
     panel.setLayout(layout);
 
     return {

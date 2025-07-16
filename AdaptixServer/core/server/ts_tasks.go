@@ -121,7 +121,6 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, updateData adaptix.TaskData) 
 
 	value, ok = agent.RunningTasks.Get(updateData.TaskId)
 	if !ok {
-		logs.Error("", "TsTaskUpdate: task (jobs) %v not found", updateData.TaskId)
 		return
 	}
 	task, _ := value.(adaptix.TaskData)
@@ -497,6 +496,9 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 		return err
 	}
 	ts.TsTaskCreate(agent.Data.Id, "job kill "+taskId, "", taskData)
+
+	// ToDo: Job stop
+
 	return nil
 }
 

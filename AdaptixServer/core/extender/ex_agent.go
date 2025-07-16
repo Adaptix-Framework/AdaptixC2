@@ -87,14 +87,6 @@ func (ex *AdaptixExtender) ExAgentBrowserUpload(agentData adaptix.AgentData, pat
 
 /// Downloads
 
-func (ex *AdaptixExtender) ExAgentDownloadTaskStart(agentData adaptix.AgentData, path string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentTaskDownloadStart(path, agentData)
-}
-
 func (ex *AdaptixExtender) ExAgentDownloadTaskCancel(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
 	module, ok := ex.agentModules[agentData.Name]
 	if !ok {

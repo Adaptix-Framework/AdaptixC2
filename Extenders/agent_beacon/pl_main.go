@@ -262,21 +262,6 @@ func (m *ModuleExtender) AgentBrowserUpload(path string, content []byte, agentDa
 
 ///
 
-func (m *ModuleExtender) AgentTaskDownloadStart(path string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := TaskDownloadStart(path, agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_TASK,
-		Data: packData,
-		Sync: true,
-	}
-
-	return taskData, nil
-}
-
 func (m *ModuleExtender) AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
 	packData, err := TaskDownloadCancel(fileId)
 	if err != nil {

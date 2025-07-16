@@ -2,55 +2,55 @@
 
 function ListenerUI(mode_create)
 {
-    var labelHost = form.create_label("Host & port (Bind):");
-    var textlineHost = form.create_textline("0.0.0.0");
+    let labelHost = form.create_label("Host & port (Bind):");
+    let textlineHost = form.create_textline("0.0.0.0");
     textlineHost.setEnabled(mode_create)
-    var spinPort = form.create_spin();
+    let spinPort = form.create_spin();
     spinPort.setRange(1, 65535);
     spinPort.setValue(4444);
     spinPort.setEnabled(mode_create)
 
-    var labelCallback = form.create_label("Callback addresses:");
-    var texteditCallback = form.create_textmulti();
+    let labelCallback = form.create_label("Callback addresses:");
+    let texteditCallback = form.create_textmulti();
     texteditCallback.setPlaceholder("192.168.1.1:4444\nserver2.com:5555");
 
-    var labelTimeout = form.create_label("Timeout (sec):");
-    var spinTimeout = form.create_spin();
+    let labelTimeout = form.create_label("Timeout (sec):");
+    let spinTimeout = form.create_spin();
     spinTimeout.setRange(1, 1000000);
     spinTimeout.setValue(10);
 
-    var labelBanner = form.create_label("TCP banner:");
-    var texteditBanner = form.create_textmulti("AdaptixC2 server\n");
+    let labelBanner = form.create_label("TCP banner:");
+    let texteditBanner = form.create_textmulti("AdaptixC2 server\n");
 
-    var labelAnswer = form.create_label("Error answer:");
-    var texteditAnswer = form.create_textmulti("Connection error...\n");
+    let labelAnswer = form.create_label("Error answer:");
+    let texteditAnswer = form.create_textmulti("Connection error...\n");
 
-    var checkMtls = form.create_check("Use mTLS");
+    let checkMtls = form.create_check("Use mTLS");
     checkMtls.setEnabled(mode_create)
 
-    var howButton = form.create_button("How generate?");
+    let howButton = form.create_button("How generate?");
 
-    var caCertSelector = form.create_file_selector();
+    let caCertSelector = form.create_file_selector();
     caCertSelector.setPlaceholder("CA cert");
     caCertSelector.setEnabled(false);
 
-    var srvCertSelector = form.create_file_selector();
+    let srvCertSelector = form.create_file_selector();
     srvCertSelector.setPlaceholder("Server cert");
     srvCertSelector.setEnabled(false);
 
-    var srvKeySelector = form.create_file_selector();
+    let srvKeySelector = form.create_file_selector();
     srvKeySelector.setPlaceholder("Server key");
     srvKeySelector.setEnabled(false);
 
-    var clientCertSelector = form.create_file_selector();
+    let clientCertSelector = form.create_file_selector();
     clientCertSelector.setPlaceholder("Client cert");
     clientCertSelector.setEnabled(false);
 
-    var clientKeySelector = form.create_file_selector();
+    let clientKeySelector = form.create_file_selector();
     clientKeySelector.setPlaceholder("Client key");
     clientKeySelector.setEnabled(false);
 
-    var layout = form.create_gridlayout();
+    let layout = form.create_gridlayout();
     layout.addWidget(labelHost, 0, 0, 1, 1);
     layout.addWidget(textlineHost, 0, 1, 1, 2);
     layout.addWidget(spinPort, 0, 3, 1, 1);
@@ -111,7 +111,7 @@ function ListenerUI(mode_create)
         dialog.exec()
     });
 
-    var container = form.create_container()
+    let container = form.create_container()
     container.put("host_bind", textlineHost)
     container.put("port_bind", spinPort)
     container.put("callback_addresses", texteditCallback)
@@ -125,7 +125,7 @@ function ListenerUI(mode_create)
     container.put("client_cert", clientCertSelector)
     container.put("client_key", clientKeySelector)
 
-    var panel = form.create_panel()
+    let panel = form.create_panel()
     panel.setLayout(layout)
 
     return {
