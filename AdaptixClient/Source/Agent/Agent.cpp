@@ -447,14 +447,3 @@ QString Agent::BrowserUpload(const QString &path, const QString &content) const
 
     return message;
 }
-
-QString Agent::BrowserDownload(const QString &path) const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqDownloadStart( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
-}

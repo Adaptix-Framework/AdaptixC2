@@ -171,7 +171,7 @@
 // ToDo: BrowsersConfig
 typedef struct BrowsersConfig {
     bool FileBrowserDisks;
-    bool FileBrowserDownload;
+    // bool FileBrowserDownload;
     bool FileBrowserUpload;
     bool DownloadsCancel;
     bool DownloadsResume;

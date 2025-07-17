@@ -209,6 +209,63 @@ int AxScriptManager::AddMenuSession(QMenu *menu, const QString &menuType, QStrin
     return count;
 }
 
+int AxScriptManager::AddMenuFileBrowser(QMenu *menu, const QString &agentId, const QString &path, QVector<QPair<QString, QString>> files) const
+{
+    QVariantList context;
+
+    for (auto file : files) {
+        QVariantMap map;
+        map["agent"] = agentId;
+        map["path"]  = path;
+        map["name"]  = file.first;
+        map["type"]  = file.second;
+        context << map;
+    }
+
+    QSet<QString> agentTypes;
+    QSet<QString> listenerTypes;
+    QSet<int>     osTypes;
+
+    if (mainWidget->AgentsMap.contains(agentId)) {
+        agentTypes.insert(mainWidget->AgentsMap[agentId]->data.Name);
+        osTypes.insert(mainWidget->AgentsMap[agentId]->data.Os);
+        listenerTypes.insert(mainWidget->AgentsMap[agentId]->listenerType);
+    }
+
+    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
+    list.append(this->mainScript);
+
+    QList<AxMenuItem> items;
+    for (const auto script : list)
+        items += script->getMenuItems("FileBrowser");
+
+    int count = 0;
+    for (int i = 0; i < items.size(); ++i) {
+        AxMenuItem item = items[i];
+
+        if ( !item.agents.contains(agentTypes) )
+            continue;
+        if (item.os.size() > 0 && !item.os.contains(osTypes))
+            continue;
+        if (item.listenerts.size() > 0 && !item.listenerts.contains(listenerTypes))
+            continue;
+
+        item.menu->setContext(context);
+
+        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
+            menu->addAction(item1->action());
+        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
+            menu->addAction(item2->action());
+        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
+            menu->addMenu(item3->menu());
+        else
+            continue;
+        count++;
+    }
+    return count;
+}
+
+
 /// EVENT
 
 void AxScriptManager::emitAllEventTestClick()

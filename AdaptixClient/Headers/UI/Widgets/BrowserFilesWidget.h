@@ -90,7 +90,6 @@ public slots:
     void onParent();
     void onReload() const;
     void onUpload() const;
-    void actionDownload() const;
     void handleTableDoubleClicked(const QModelIndex &index);
     void handleTreeDoubleClicked(QTreeWidgetItem* item, int column);
     void handleTableMenu(const QPoint &pos);

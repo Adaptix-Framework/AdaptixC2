@@ -75,7 +75,6 @@ public:
     QString BrowserProcess() const;
     QString BrowserList(const QString &path) const;
     QString BrowserUpload(const QString &path, const QString &content) const;
-    QString BrowserDownload(const QString &path) const;
 };
 
 #endif

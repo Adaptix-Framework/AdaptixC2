@@ -3,16 +3,18 @@
 
 #include <main.h>
 
+class AdaptixWidget;
+
 class DownloadsWidget : public QWidget
 {
-    QWidget*      mainWidget     = nullptr;
-    QTableWidget* tableWidget    = nullptr;
-    QGridLayout*  mainGridLayout = nullptr;
+    AdaptixWidget* adaptixWidget  = nullptr;
+    QTableWidget*  tableWidget    = nullptr;
+    QGridLayout*   mainGridLayout = nullptr;
 
     void createUI();
 
 public:
-    DownloadsWidget(QWidget* w);
+    DownloadsWidget(AdaptixWidget* w);
     ~DownloadsWidget() override;
 
     void Clear() const;

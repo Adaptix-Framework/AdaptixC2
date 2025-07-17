@@ -16,7 +16,7 @@ Q_OBJECT
     QWidget*        widget;
     QList<AbstractAxMenuItem*> menuItems;
 
-    const QList<AbstractAxMenuItem*> items() const;
+    QList<AbstractAxMenuItem*> items() const;
     void clear();
 
 public:
@@ -32,6 +32,8 @@ public slots:
     void add_session_agent(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
     void add_session_browser(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
     void add_session_access(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+
+    void add_filebrowser(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
 };
 
 #endif
