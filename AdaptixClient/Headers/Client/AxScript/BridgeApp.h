@@ -20,7 +20,7 @@ public:
 
 public slots:
     QJSValue agents() const;
-    QJSValue agent_info(const QString &id, QString property) const;
+    QJSValue agent_info(const QString &id, const QString &property) const;
     QString  arch(const QString &id) const;
     QString  bof_pack(const QString &types, const QJSValue &args);
     void     console_message(const QString &id, const QString &message, const QString &type = "", const QString &text = "");

@@ -49,6 +49,7 @@ public:
 
     void RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
     int  AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds) const;
+    int  AddMenuFileBrowser(QMenu* menu, const QString &agentId, const QString &path, QVector<QPair<QString, QString>> files) const;
 
     void emitAllEventTestClick();
 

@@ -56,7 +56,7 @@ QJSValue BridgeApp::agents() const
     return this->scriptEngine->engine()->toScriptValue(list);
 }
 
-QJSValue BridgeApp::agent_info(const QString &id, QString property) const
+QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))

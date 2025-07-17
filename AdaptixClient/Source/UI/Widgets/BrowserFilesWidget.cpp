@@ -3,6 +3,9 @@
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 
+#include "Client/AxScript/AxScriptManager.h"
+#include "UI/Widgets/AdaptixWidget.h"
+
 void BrowserFileData::CreateBrowserFileData(const QString &path, const int os)
 {
     Fullpath = path;
@@ -47,12 +50,12 @@ BrowserFilesWidget::BrowserFilesWidget(Agent* a)
     agent = a;
     this->createUI();
 
-    connect(buttonDisks,  &QPushButton::clicked,     this, &BrowserFilesWidget::onDisks);
-    connect(buttonList,   &QPushButton::clicked,     this, &BrowserFilesWidget::onList);
-    connect(buttonParent, &QPushButton::clicked,     this, &BrowserFilesWidget::onParent);
-    connect(buttonReload, &QPushButton::clicked,     this, &BrowserFilesWidget::onReload);
-    connect(buttonUpload, &QPushButton::clicked,     this, &BrowserFilesWidget::onUpload);
-    connect(inputPath,    &QLineEdit::returnPressed, this, &BrowserFilesWidget::onList);
+    connect(buttonDisks,       &QPushButton::clicked,                     this, &BrowserFilesWidget::onDisks);
+    connect(buttonList,        &QPushButton::clicked,                     this, &BrowserFilesWidget::onList);
+    connect(buttonParent,      &QPushButton::clicked,                     this, &BrowserFilesWidget::onParent);
+    connect(buttonReload,      &QPushButton::clicked,                     this, &BrowserFilesWidget::onReload);
+    connect(buttonUpload,      &QPushButton::clicked,                     this, &BrowserFilesWidget::onUpload);
+    connect(inputPath,         &QLineEdit::returnPressed,                 this, &BrowserFilesWidget::onList);
     connect(tableWidget,       &QTableWidget::doubleClicked,              this, &BrowserFilesWidget::handleTableDoubleClicked);
     connect(treeBrowserWidget, &QTreeWidget::itemDoubleClicked,           this, &BrowserFilesWidget::handleTreeDoubleClicked);
     connect(tableWidget,       &QTableWidget::customContextMenuRequested, this, &BrowserFilesWidget::handleTableMenu );
@@ -258,15 +261,9 @@ void BrowserFilesWidget::SetStatus( qint64 time, int msgType, const QString &mes
 
 /// PRIVATE
 
-BrowserFileData* BrowserFilesWidget::getBrowserStore(const QString &path)
-{
-    return &browserStore[path];
-}
+BrowserFileData* BrowserFilesWidget::getBrowserStore(const QString &path) { return &browserStore[path]; }
 
-void BrowserFilesWidget::setBrowserStore(const QString &path, const BrowserFileData &fileData)
-{
-    browserStore[path] = fileData;
-}
+void BrowserFilesWidget::setBrowserStore(const QString &path, const BrowserFileData &fileData) { browserStore[path] = fileData; }
 
 BrowserFileData BrowserFilesWidget::createFileData(const QString &path) const
 {
@@ -428,7 +425,6 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
             browserStore.remove(data.Fullpath);
             oldFiles.remove(oldPath);
         }
-
     }
 }
 
@@ -503,7 +499,7 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
             return;
     }
 
-    BrowserFileData fileData = * this->getBrowserStore(fPath);
+    BrowserFileData fileData = *this->getBrowserStore(fPath);
     if (fileData.Type == TYPE_FILE)
         return;
 
@@ -603,27 +599,6 @@ void BrowserFilesWidget::onUpload() const
     statusLabel->setText(status);
 }
 
-void BrowserFilesWidget::actionDownload() const
-{
-    if (currentPath.isEmpty())
-        return;
-
-    QList<QString> files;
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto filename = tableWidget->item( rowIndex, 0 )->text();
-
-            if (this->agent->data.Os == OS_WINDOWS)
-                files.append(currentPath + "\\" + filename);
-            else
-                files.append(currentPath + "/" + filename);
-        }
-    }
-
-    for (auto file : files)
-        QString status = agent->BrowserDownload(file);
-}
-
 void BrowserFilesWidget::handleTableDoubleClicked(const QModelIndex &index)
 {
     QString filename = tableWidget->item(index.row(),0)->text();
@@ -652,13 +627,44 @@ void BrowserFilesWidget::handleTreeDoubleClicked(QTreeWidgetItem* item, int colu
 
 void BrowserFilesWidget::handleTableMenu(const QPoint &pos)
 {
-    if ( ! tableWidget->itemAt(pos) )
+    if ( !tableWidget->itemAt(pos) || currentPath.isEmpty())
         return;
 
-    if ( !agent->browsers.FileBrowserDownload )
+    if ( !(agent && agent->adaptixWidget && agent->adaptixWidget->ScriptManager) )
         return;
+
+    QString path = currentPath;
+    if (this->agent->data.Os == OS_WINDOWS) {
+        if (!path.endsWith("\\"))
+            path += "\\";
+    }
+    else {
+        if (!path.endsWith("/"))
+            path += "/";
+    }
+
+    QVector<QPair<QString, QString> > items;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto filename = tableWidget->item( rowIndex, 0 )->text();
+            auto fullname = path + filename;
+            if (this->agent->data.Os == OS_WINDOWS)
+                fullname = fullname.toLower();
+
+            if (!browserStore.contains(fullname))
+                continue;
+
+            int filetype = this->getBrowserStore(fullname)->Type;
+            if (filetype == TYPE_FILE)
+                items.append(QPair<QString, QString>(filename, "file"));
+            else
+                items.append(QPair<QString, QString>(filename, "dir"));
+        }
+    }
 
     auto ctxMenu = QMenu();
-    ctxMenu.addAction( "Download", this, &BrowserFilesWidget::actionDownload);
+
+    agent->adaptixWidget->ScriptManager->AddMenuFileBrowser(&ctxMenu, agent->data.Id, path, items);
+
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }

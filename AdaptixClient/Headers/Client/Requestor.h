@@ -53,8 +53,6 @@ bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* 
 
 ///DOWNLOAD
 
-bool HttpReqDownloadStart(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok );
-
 bool HttpReqDownloadAction(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok );
 
 ///BROWSER

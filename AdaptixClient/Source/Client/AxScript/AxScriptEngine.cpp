@@ -80,6 +80,7 @@ void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu,
     else if (type == "SessionAgent")   context.menuSessionAgent.append(item);
     else if (type == "SessionBrowser") context.menuSessionBrowser.append(item);
     else if (type == "SessionAccess")  context.menuSessionAccess.append(item);
+    else if (type == "FileBrowser")    context.menuFileBrowser.append(item);
 }
 
 QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
@@ -88,6 +89,7 @@ QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
     else if (type == "SessionAgent")   return context.menuSessionAgent;
     else if (type == "SessionBrowser") return context.menuSessionBrowser;
     else if (type == "SessionAccess")  return context.menuSessionAccess;
+    else if (type == "FileBrowser")    return context.menuFileBrowser;
 
     return QList<AxMenuItem>();
 }

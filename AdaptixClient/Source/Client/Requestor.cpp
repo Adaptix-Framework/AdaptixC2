@@ -393,23 +393,6 @@ bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* 
 
 /// DOWNLOADS
 
-bool HttpReqDownloadStart(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok )
-{
-    QJsonObject dataJson;
-    dataJson["agent_id"] = agentId;
-    dataJson["path"] = path;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    QString sUrl = profile.GetURL() + "/download/start";
-    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
-    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
-        *message = jsonObject["message"].toString();
-        *ok = jsonObject["ok"].toBool();
-        return true;
-    }
-    return false;
-}
-
 bool HttpReqDownloadAction(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
