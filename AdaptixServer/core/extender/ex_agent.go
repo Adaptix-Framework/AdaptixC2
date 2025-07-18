@@ -85,32 +85,6 @@ func (ex *AdaptixExtender) ExAgentBrowserUpload(agentData adaptix.AgentData, pat
 	return module.AgentBrowserUpload(path, content, agentData)
 }
 
-/// Downloads
-
-func (ex *AdaptixExtender) ExAgentDownloadTaskCancel(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentTaskDownloadCancel(fileId, agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentDownloadTaskResume(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentTaskDownloadResume(fileId, agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentDownloadTaskPause(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentTaskDownloadPause(fileId, agentData)
-}
-
 /// Tunnels
 
 func (ex *AdaptixExtender) ExAgentTunnelCallbacks(agentData adaptix.AgentData, tunnelType int) (func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {

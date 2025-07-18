@@ -257,53 +257,6 @@ func (m *ModuleExtender) AgentBrowserUpload(path string, content []byte, agentDa
 
 ///
 
-func (m *ModuleExtender) AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := TaskDownloadCancel(fileId, agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentTaskDownloadResume(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := TaskDownloadResume(fileId, agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentTaskDownloadPause(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := TaskDownloadPause(fileId, agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
-///
-
 func (m *ModuleExtender) AgentBrowserJobKill(jobId string) (adaptix.TaskData, error) {
 	packData, err := BrowserJobKill(jobId)
 	if err != nil {

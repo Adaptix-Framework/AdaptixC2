@@ -7,13 +7,14 @@ exit_menu.addItem(exit_thread_action)
 exit_menu.addItem(exit_process_action)
 menu.add_session_agent(exit_menu, ["beacon"])
 
-let file_browser_action     = menu.create_action("File Browser",    function(value) { value.forEach(v => ax.open_browser_files(v)) });
-let process_browser_action  = menu.create_action("Process Browser", function(value) { value.forEach(v => ax.open_browser_process(v)) });
+let file_browser_action    = menu.create_action("File Browser",    function(value) { value.forEach(v => ax.open_browser_files(v)) });
+let process_browser_action = menu.create_action("Process Browser", function(value) { value.forEach(v => ax.open_browser_process(v)) });
 menu.add_session_browser(file_browser_action, ["beacon"])
 menu.add_session_browser(process_browser_action, ["beacon"])
 
 let tunnel_access_action = menu.create_action("Create Tunnel", function(value) { ax.open_access_tunnel(value[0], true, true, true, true) });
 menu.add_session_access(tunnel_access_action, ["beacon"])
+
 
 
 let execute_action = menu.create_action("Execute", function(files_list) {
@@ -44,18 +45,30 @@ let execute_action = menu.create_action("Execute", function(files_list) {
         if( output_check.isChecked()) { command += "-o "; }
         command += text_bin.text() + " " + text_args.text();
 
-        ax.execute_command(file.agent, command);
+        ax.execute_command(file.agent_id, command);
     }
 });
 let download_action = menu.create_action("Download", function(files_list) {
     files_list.forEach((file) => {
         if(file.type == "file") {
-            ax.execute_command(file.agent, "download " + file.path + file.name);
+            ax.execute_command(file.agent_id, "download " + file.path + file.name);
         }
     });
 });
 menu.add_filebrowser(execute_action, ["beacon"])
 menu.add_filebrowser(download_action, ["beacon"])
+
+
+
+let download_stop_action = menu.create_action("Pause", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil stop " + file.file_id) ) });
+menu.add_download_running(download_stop_action, ["beacon"])
+
+let download_start_action = menu.create_action("Resume", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil start " + file.file_id) ) });
+menu.add_download_stopped(download_start_action, ["beacon"])
+
+let download_cancel_action = menu.create_action("Cancel", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil cancel " + file.file_id) ) });
+menu.add_download_running(download_cancel_action, ["beacon"])
+menu.add_download_stopped(download_cancel_action, ["beacon"])
 
 
 
@@ -83,11 +96,11 @@ function RegisterCommands(listenerType)
     cmd_execute.addSubCommands([_cmd_execute_bof])
 
     let _cmd_exfil_cancel = ax.create_command("cancel", "Cancels a download", "exfil cancel 1a2b3c4d");
-    _cmd_exfil_cancel.addArgFile("file_id", true);
+    _cmd_exfil_cancel.addArgString("file_id", true);
     let _cmd_exfil_start = ax.create_command("start", "Resumes a download that's has been stoped", "exfil start 1a2b3c4d");
-    _cmd_exfil_start.addArgFile("file_id", true);
+    _cmd_exfil_start.addArgString("file_id", true);
     let _cmd_exfil_stop = ax.create_command("stop", "Stops a download that's in-progress", "exfil stop 1a2b3c4d");
-    _cmd_exfil_stop.addArgFile("file_id", true);
+    _cmd_exfil_stop.addArgString("file_id", true);
     let cmd_exfil = ax.create_command("exfil", "Manage current downloads");
     cmd_exfil.addSubCommands([_cmd_exfil_cancel, _cmd_exfil_start, _cmd_exfil_stop])
 

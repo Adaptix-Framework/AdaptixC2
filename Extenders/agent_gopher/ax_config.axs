@@ -5,7 +5,7 @@ menu.add_session_agent(exit_action, ["gopher"])
 
 let file_browser_action     = menu.create_action("File Browser",    function(agents_id) { agents_id.forEach(id => ax.open_browser_files(id)) });
 let process_browser_action  = menu.create_action("Process Browser", function(agents_id) { agents_id.forEach(id => ax.open_browser_process(id)) });
-let terminal_browser_action = menu.create_action("Remote Terminal", function(agents_id) { agents_id.forEach(id => ax.open_browser_terminal(id)) });
+let terminal_browser_action = menu.create_action("Remote Terminal", function(agents_id) { agents_id.forEach(id => ax.open_remote_terminal(id)) });
 menu.add_session_browser(file_browser_action, ["gopher"])
 menu.add_session_browser(process_browser_action, ["gopher"])
 menu.add_session_browser(terminal_browser_action, ["gopher"])
@@ -13,8 +13,11 @@ menu.add_session_browser(terminal_browser_action, ["gopher"])
 let tunnel_access_action = menu.create_action("Create Tunnel", function(agents_id) { ax.open_access_tunnel(agents_id[0], true, true, false, false) });
 menu.add_session_access(tunnel_access_action, ["gopher"]);
 
-let download_action = menu.create_action("Download", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent, "download " + file.path + file.name) ) });
+let download_action = menu.create_action("Download", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "download " + file.path + file.name) ) });
 menu.add_filebrowser(download_action, ["gopher"])
+
+let cancel_action = menu.create_action("Cancel", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "job kill " + file.file_id) ) });
+menu.add_download_running(cancel_action, ["gopher"])
 
 function RegisterCommands(listenerType)
 {
