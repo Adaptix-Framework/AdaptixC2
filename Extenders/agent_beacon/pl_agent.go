@@ -1940,38 +1940,6 @@ func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix
 	return PackArray(array)
 }
 
-/// DOWNLOADS
-
-func TaskDownloadCancel(fid string) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_CANCELED, int(fileId)}
-	return PackArray(array)
-}
-
-func TaskDownloadResume(fid string) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_RUNNING, int(fileId)}
-	return PackArray(array)
-}
-
-func TaskDownloadPause(fid string) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_STOPPED, int(fileId)}
-	return PackArray(array)
-}
-
 ///
 
 func BrowserJobKill(jobId string) ([]byte, error) {

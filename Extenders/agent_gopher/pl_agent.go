@@ -1360,22 +1360,6 @@ func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix
 	return msgpack.Marshal(cmd)
 }
 
-/// DOWNLOADS
-
-func TaskDownloadCancel(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	packerData, _ := msgpack.Marshal(ParamsJobKill{Id: fileId})
-	cmd := Command{Code: COMMAND_JOB_KILL, Data: packerData}
-	return msgpack.Marshal(cmd)
-}
-
-func TaskDownloadResume(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	return nil, errors.New("Function Download Resume not supported")
-}
-
-func TaskDownloadPause(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	return nil, errors.New("Function Download Pause not supported")
-}
-
 ///
 
 func BrowserJobKill(jobId string) ([]byte, error) {
