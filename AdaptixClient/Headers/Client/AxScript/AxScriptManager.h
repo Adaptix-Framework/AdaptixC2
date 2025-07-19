@@ -6,10 +6,27 @@
 #include <QJSValue>
 #include <Agent/Commander.h>
 
-class AxScriptEngine;
-class ExtensionFile;
-class AdaptixWidget;
-class Agent;
+struct ExtensionFile;
+class  AxScriptEngine;
+class  AdaptixWidget;
+class  Agent;
+
+struct DataMenuFileBrowser {
+    QString agentId;
+    QString path;
+    QString name;
+    QString type;
+};
+
+struct DataMenuDownload {
+    QString agentId;
+    QString fileId;
+    QString path;
+    QString state;
+};
+
+
+
 
 class AxScriptManager : public QObject {
 Q_OBJECT
@@ -49,7 +66,9 @@ public:
 
     void RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
     int  AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds) const;
-    int  AddMenuFileBrowser(QMenu* menu, const QString &agentId, const QString &path, QVector<QPair<QString, QString>> files) const;
+    int  AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files) const;
+    int  AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files) const;
+
 
     void emitAllEventTestClick();
 

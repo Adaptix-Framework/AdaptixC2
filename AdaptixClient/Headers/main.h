@@ -168,14 +168,10 @@
 
 //////////
 
-// ToDo: BrowsersConfig
+// ToDo: BrowserConfig
 typedef struct BrowsersConfig {
     bool FileBrowserDisks;
-    // bool FileBrowserDownload;
     bool FileBrowserUpload;
-    bool DownloadsCancel;
-    bool DownloadsResume;
-    bool DownloadsPause;
 } BrowsersConfig;
 
 typedef struct SettingsData {

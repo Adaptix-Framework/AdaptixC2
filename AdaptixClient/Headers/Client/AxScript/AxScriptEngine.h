@@ -33,6 +33,9 @@ struct ScriptContext {
     QList<AxMenuItem> menuSessionBrowser;
     QList<AxMenuItem> menuSessionAccess;
     QList<AxMenuItem> menuFileBrowser;
+    QList<AxMenuItem> menuDownloadRunning;
+    QList<AxMenuItem> menuDownloadStopped;
+    QList<AxMenuItem> menuDownloadFinished;
 };
 
 class AxScriptEngine : public QObject {

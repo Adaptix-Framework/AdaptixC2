@@ -76,20 +76,26 @@ void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu,
 
     AxMenuItem item = {menu, list_agents,  list_listeners, os};
 
-    if (     type == "SessionMain")    context.menuSessionMain.append(item);
-    else if (type == "SessionAgent")   context.menuSessionAgent.append(item);
-    else if (type == "SessionBrowser") context.menuSessionBrowser.append(item);
-    else if (type == "SessionAccess")  context.menuSessionAccess.append(item);
-    else if (type == "FileBrowser")    context.menuFileBrowser.append(item);
+    if (     type == "SessionMain")      context.menuSessionMain.append(item);
+    else if (type == "SessionAgent")     context.menuSessionAgent.append(item);
+    else if (type == "SessionBrowser")   context.menuSessionBrowser.append(item);
+    else if (type == "SessionAccess")    context.menuSessionAccess.append(item);
+    else if (type == "FileBrowser")      context.menuFileBrowser.append(item);
+    else if (type == "DownloadRunning")  context.menuDownloadRunning.append(item);
+    else if (type == "DownloadStopped")  context.menuDownloadStopped.append(item);
+    else if (type == "DownloadFinished") context.menuDownloadFinished.append(item);
 }
 
 QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
 {
-    if (     type == "SessionMain")    return context.menuSessionMain;
-    else if (type == "SessionAgent")   return context.menuSessionAgent;
-    else if (type == "SessionBrowser") return context.menuSessionBrowser;
-    else if (type == "SessionAccess")  return context.menuSessionAccess;
-    else if (type == "FileBrowser")    return context.menuFileBrowser;
+    if (     type == "SessionMain")      return context.menuSessionMain;
+    else if (type == "SessionAgent")     return context.menuSessionAgent;
+    else if (type == "SessionBrowser")   return context.menuSessionBrowser;
+    else if (type == "SessionAccess")    return context.menuSessionAccess;
+    else if (type == "FileBrowser")      return context.menuFileBrowser;
+    else if (type == "DownloadRunning")  return context.menuDownloadRunning;
+    else if (type == "DownloadStopped")  return context.menuDownloadStopped;
+    else if (type == "DownloadFinished") return context.menuDownloadFinished;
 
     return QList<AxMenuItem>();
 }

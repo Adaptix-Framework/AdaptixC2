@@ -189,3 +189,96 @@ void BridgeMenu::add_filebrowser(AbstractAxMenuItem *item, const QJSValue &agent
 
     this->scriptEngine->registerMenu("FileBrowser", item, list_agents, list_os, list_listeners);
 }
+
+void BridgeMenu::add_download_running(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
+{
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("DownloadRunning", item, list_agents, list_os, list_listeners);
+}
+
+void BridgeMenu::add_download_stopped(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
+{
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("DownloadStopped", item, list_agents, list_os, list_listeners);
+}
+
+void BridgeMenu::add_download_finished(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
+{
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("DownloadFinished", item, list_agents, list_os, list_listeners);
+}

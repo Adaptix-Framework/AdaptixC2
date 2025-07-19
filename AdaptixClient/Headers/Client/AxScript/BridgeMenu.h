@@ -34,6 +34,10 @@ public slots:
     void add_session_access(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
 
     void add_filebrowser(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+
+    void add_download_running(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+    void add_download_stopped(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+    void add_download_finished(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
 };
 
 #endif

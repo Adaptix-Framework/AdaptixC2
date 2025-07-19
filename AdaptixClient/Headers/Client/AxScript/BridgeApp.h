@@ -37,10 +37,11 @@ public slots:
     bool     isadmin(const QString &id) const;
     void     log(const QString &text);
     void     log_error(const QString &text);
+    void     open_agent_console(const QString &id);
     void     open_access_tunnel(const QString &id, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
     void     open_browser_files(const QString &id);
     void     open_browser_process(const QString &id);
-    void     open_browser_terminal(const QString &id);
+    void     open_remote_terminal(const QString &id);
     void     register_commands_group(QObject* obj, const QJSValue& agents, const QJSValue& os, const QJSValue& listeners);
     void     script_load(const QString &path);
     void     script_unload(const QString &path);
