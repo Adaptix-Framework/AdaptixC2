@@ -146,6 +146,8 @@ void AxConsoleWidget::highlightCurrent() const
     searchLabel->setText(QString("%1 of %2").arg(currentIndex + 1).arg(sels.size()));
 }
 
+void AxConsoleWidget::OutputClear() const { OutputTextEdit->clear(); }
+
 void AxConsoleWidget::InputFocus() const { InputLineEdit->setFocus(); }
 
 void AxConsoleWidget::AddToHistory(const QString &command) { kphInputLineEdit->AddToHistory(command); }

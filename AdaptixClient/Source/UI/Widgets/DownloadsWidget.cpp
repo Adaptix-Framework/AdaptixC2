@@ -4,6 +4,8 @@
 #include <UI/Dialogs/DialogDownloader.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
+#include <Client/AxScript/AxScriptManager.h>
+
 
 DownloadsWidget::DownloadsWidget(AdaptixWidget* w)
 {
@@ -24,6 +26,7 @@ void DownloadsWidget::createUI()
     tableWidget->setWordWrap( true );
     tableWidget->setCornerButtonEnabled( true );
     tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
+    tableWidget->setSelectionMode( QAbstractItemView::SingleSelection );
     tableWidget->setFocusPolicy( Qt::NoFocus );
     tableWidget->setAlternatingRowColors( true );
     tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
@@ -204,51 +207,43 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
     if ( !tableWidget->itemAt(pos) )
         return;
 
-    bool menuDownloadResume = false;
-    bool menuDownloadPause  = false;
-    bool menuDownloadCancel = false;
+    QVector<DataMenuDownload> files;
 
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 2)->isSelected() ) {
-            QString agentId = tableWidget->item( rowIndex, 2 )->text();
-            if (adaptixWidget->AgentsMap.contains(agentId) && adaptixWidget->AgentsMap[agentId]) {
-                auto agent = adaptixWidget->AgentsMap[agentId];
-                if (agent) {
-                    if (agent->browsers.DownloadsResume) menuDownloadResume = true;
-                    if (agent->browsers.DownloadsPause)  menuDownloadPause  = true;
-                    if (agent->browsers.DownloadsCancel) menuDownloadCancel = true;
-                }
-            }
-        }
-    }
-
-    auto FileID   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
-    auto Received = tableWidget->item( tableWidget->currentRow(), 8 )->text();
+    DataMenuDownload data = {};
+    data.agentId = tableWidget->item( tableWidget->currentRow(), 2 )->text();
+    data.fileId  = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    data.path    = tableWidget->item( tableWidget->currentRow(), 5 )->text();
 
     auto ctxMenu = QMenu();
+    auto Received = tableWidget->item( tableWidget->currentRow(), 8 )->text();
     if(Received.compare("") == 0) {
         ctxMenu.addAction("Sync file to client", this, &DownloadsWidget::actionSync);
 
-        auto agentMenu = new QMenu("Sync as ...", &ctxMenu);
-        agentMenu->addAction("Curl command", this, &DownloadsWidget::actionSyncCurl);
-        agentMenu->addAction("Wget command", this, &DownloadsWidget::actionSyncWget);
-        ctxMenu.addMenu(agentMenu);
-
+        auto syncMenu = new QMenu("Sync as ...", &ctxMenu);
+        syncMenu->addAction("Curl command", this, &DownloadsWidget::actionSyncCurl);
+        syncMenu->addAction("Wget command", this, &DownloadsWidget::actionSyncWget);
+        ctxMenu.addMenu(syncMenu);
         ctxMenu.addSeparator();
+
+        data.state = "finished";
+        files.append(data);
+        int menuCount = adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadFinished", files);
+        if (menuCount > 0)
+            ctxMenu.addSeparator();
+
         ctxMenu.addAction("Delete file", this, &DownloadsWidget::actionDelete );
     }
     else {
         if( tableWidget->cellWidget( tableWidget->currentRow(), 9)->isEnabled() ) {
-            if (menuDownloadPause)
-                ctxMenu.addAction("Pause", this, &DownloadsWidget::actionPause );
+            data.state = "running";
+            files.append(data);
+            adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadRunning", files);
         }
         else {
-            if (menuDownloadResume)
-                ctxMenu.addAction("Resume", this, &DownloadsWidget::actionResume );
+            data.state = "stopped";
+            files.append(data);
+            adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadStopped", files);
         }
-
-        if (menuDownloadCancel)
-            ctxMenu.addAction("Cancel", this, &DownloadsWidget::actionCancel );
     }
 
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos) );

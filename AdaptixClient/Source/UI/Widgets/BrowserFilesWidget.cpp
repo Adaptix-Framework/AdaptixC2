@@ -176,7 +176,7 @@ void BrowserFilesWidget::createUI()
     this->setLayout(mainGridLayout);
 }
 
-void BrowserFilesWidget::SetDisksWin(qint64 time, int msgType, const QString &message, const QString &data)
+void BrowserFilesWidget::SetDisksWin(const qint64 time, const int msgType, const QString &message, const QString &data)
 {
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
@@ -208,7 +208,7 @@ void BrowserFilesWidget::SetDisksWin(qint64 time, int msgType, const QString &me
     inputPath->setText(currentPath);
 }
 
-void BrowserFilesWidget::AddFiles(qint64 time, int msgType, const QString &message, const QString &path, const QString &data)
+void BrowserFilesWidget::AddFiles(const qint64 time, const int msgType, const QString &message, const QString &path, const QString &data)
 {
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
@@ -245,7 +245,7 @@ void BrowserFilesWidget::AddFiles(qint64 time, int msgType, const QString &messa
     inputPath->setText(currentPath);
 }
 
-void BrowserFilesWidget::SetStatus( qint64 time, int msgType, const QString &message ) const
+void BrowserFilesWidget::SetStatus(const qint64 time, const int msgType, const QString &message ) const
 {
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
@@ -511,8 +511,6 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
     }
 }
 
-
-
 /// SLOTS
 
 void BrowserFilesWidget::onDisks() const
@@ -643,9 +641,10 @@ void BrowserFilesWidget::handleTableMenu(const QPoint &pos)
             path += "/";
     }
 
-    QVector<QPair<QString, QString> > items;
+    QVector<DataMenuFileBrowser> items;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+
             auto filename = tableWidget->item( rowIndex, 0 )->text();
             auto fullname = path + filename;
             if (this->agent->data.Os == OS_WINDOWS)
@@ -654,17 +653,21 @@ void BrowserFilesWidget::handleTableMenu(const QPoint &pos)
             if (!browserStore.contains(fullname))
                 continue;
 
+            DataMenuFileBrowser dataFile = {};
+            dataFile.agentId = agent->data.Id;
+            dataFile.path    = path;
+
             int filetype = this->getBrowserStore(fullname)->Type;
             if (filetype == TYPE_FILE)
-                items.append(QPair<QString, QString>(filename, "file"));
+                items.append(DataMenuFileBrowser{agent->data.Id, path, filename, "file"});
             else
-                items.append(QPair<QString, QString>(filename, "dir"));
+                items.append(DataMenuFileBrowser{agent->data.Id, path, filename, "dir"});
         }
     }
 
     auto ctxMenu = QMenu();
 
-    agent->adaptixWidget->ScriptManager->AddMenuFileBrowser(&ctxMenu, agent->data.Id, path, items);
+    agent->adaptixWidget->ScriptManager->AddMenuFileBrowser(&ctxMenu, items);
 
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }

@@ -295,6 +295,7 @@ void AdaptixWidget::Close()
 
 void AdaptixWidget::ClearAdaptix()
 {
+    AxConsoleTab->OutputClear();
     LogsTab->Clear();
     DownloadsTab->Clear();
     ScreenshotsTab->Clear();
