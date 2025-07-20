@@ -32,7 +32,7 @@ type Teamserver interface {
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedTasksAll(agentId string, maxDataSize int) ([]byte, error)
-	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, args map[string]any) error
+	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error
 	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
@@ -57,7 +57,7 @@ type Teamserver interface {
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
-	
+
 	TsDownloadSync(fileId string) (string, []byte, error)
 	TsDownloadDelete(fileId string) error
 	TsDownloadGetFilepath(fileId string) (string, error)
@@ -70,11 +70,6 @@ type Teamserver interface {
 	TsCredentilsAdd(username string, password string, realm string, credType string, tag string, storage string, agentId string, host string) error
 	TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error
 	TsCredentilsDelete(credId string) error
-
-	TsAgentGuiDisks(agentId string, username string) error
-	TsAgentGuiProcess(agentId string, username string) error
-	TsAgentGuiFiles(agentId string, path string, username string) error
-	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
 
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
 	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
@@ -179,11 +174,6 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 
 	connector.Engine.POST(tsProfile.Endpoint+"/download/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadSync)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadDelete)
-
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/disks", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDisks)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/files", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiFiles)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/upload", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiUpload)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/process", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiProcess)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/setnote", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotSetNote)
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotRemove)

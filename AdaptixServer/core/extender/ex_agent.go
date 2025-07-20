@@ -21,12 +21,12 @@ func (ex *AdaptixExtender) ExAgentCreate(agentName string, beat []byte) (adaptix
 	return module.AgentCreate(beat)
 }
 
-func (ex *AdaptixExtender) ExAgentCommand(client string, cmdline string, agentName string, hookId string, agentData adaptix.AgentData, args map[string]any) error {
+func (ex *AdaptixExtender) ExAgentCommand(agentName string, agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
 	module, ok := ex.agentModules[agentName]
 	if !ok {
-		return errors.New("module not found")
+		return adaptix.TaskData{}, adaptix.ConsoleMessageData{}, errors.New("module not found")
 	}
-	return module.AgentCommand(client, cmdline, hookId, agentData, args)
+	return module.AgentCommand(agentData, args)
 }
 
 func (ex *AdaptixExtender) ExAgentProcessData(agentData adaptix.AgentData, packedData []byte) ([]byte, error) {
@@ -51,38 +51,6 @@ func (ex *AdaptixExtender) ExAgentPivotPackData(agentName string, pivotId string
 		return adaptix.TaskData{}, errors.New("module not found")
 	}
 	return module.AgentPivotPackData(pivotId, data)
-}
-
-func (ex *AdaptixExtender) ExAgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentBrowserDisks(agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentBrowserProcess(agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentBrowserProcess(agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentBrowserFiles(agentData adaptix.AgentData, path string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentBrowserFiles(path, agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentBrowserUpload(agentData adaptix.AgentData, path string, content []byte) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentBrowserUpload(path, content, agentData)
 }
 
 /// Tunnels

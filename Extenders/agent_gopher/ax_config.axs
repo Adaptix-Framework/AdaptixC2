@@ -19,6 +19,23 @@ menu.add_filebrowser(download_action, ["gopher"])
 let cancel_action = menu.create_action("Cancel", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "job kill " + file.file_id) ) });
 menu.add_download_running(cancel_action, ["gopher"])
 
+var event_files_action = function(id, path) {
+    ax.execute_browser(id, "ls " + path);
+}
+event.on_filebrowser_list(event_files_action, ["gopher"]);
+
+var event_upload_action = function(id, path, filepath) {
+    let filename = ax.file_basename(filepath);
+    ax.execute_browser(id, "upload " + filepath + " " + path + filename);
+}
+event.on_filebrowser_upload(event_upload_action, ["gopher"]);
+
+var event_process_action = function(id) {
+    ax.execute_browser(id, "ps");
+}
+event.on_processbrowser_list(event_process_action, ["gopher"]);
+
+
 function RegisterCommands(listenerType)
 {
     let cmd_cat_win = ax.create_command("cat", "Read a file", "cat C:\\file.exe", "Task: read file");

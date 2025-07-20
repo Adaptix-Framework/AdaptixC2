@@ -87,7 +87,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	return nil
 }
 
-func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, args map[string]any) error {
+func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error {
 	if !ts.agent_configs.Contains(agentName) {
 		return fmt.Errorf("agent %v not registered", agentName)
 	}
@@ -102,7 +102,21 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 		return fmt.Errorf("agent '%v' not active", agentId)
 	}
 
-	return ts.Extender.ExAgentCommand(clientName, cmdline, agentName, hookId, agent.Data, args)
+	taskData, messageData, err := ts.Extender.ExAgentCommand(agentName, agent.Data, args)
+	if err != nil {
+		return err
+	}
+	taskData.HookId = hookId
+	if taskData.Type == TYPE_TASK && ui {
+		taskData.Type = TYPE_BROWSER
+	}
+
+	ts.TsTaskCreate(agentId, cmdline, clientName, taskData)
+
+	if (taskData.Type != TYPE_BROWSER) && (len(messageData.Message) > 0 || len(messageData.Text) > 0) {
+		ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text, false)
+	}
+	return nil
 }
 
 func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error {

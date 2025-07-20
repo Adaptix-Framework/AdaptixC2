@@ -1,92 +1,9 @@
 package server
 
 import (
-	"fmt"
 	"github.com/Adaptix-Framework/axc2"
 	"strings"
 )
-
-/// AGENT
-
-func (ts *Teamserver) TsAgentGuiDisks(agentId string, clientName string) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent '%v' does not exist", agentId)
-	}
-
-	agent, _ := value.(*Agent)
-	if agent.Active == false {
-		return fmt.Errorf("agent '%v' not active", agentId)
-	}
-
-	taskData, err := ts.Extender.ExAgentBrowserDisks(agent.Data)
-	if err != nil {
-		return err
-	}
-
-	ts.TsTaskCreate(agentId, "", clientName, taskData)
-	return nil
-}
-
-func (ts *Teamserver) TsAgentGuiProcess(agentId string, clientName string) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent '%v' does not exist", agentId)
-	}
-
-	agent, _ := value.(*Agent)
-	if agent.Active == false {
-		return fmt.Errorf("agent '%v' not active", agentId)
-	}
-
-	taskData, err := ts.Extender.ExAgentBrowserProcess(agent.Data)
-	if err != nil {
-		return err
-	}
-
-	ts.TsTaskCreate(agentId, "", clientName, taskData)
-	return nil
-}
-
-func (ts *Teamserver) TsAgentGuiFiles(agentId string, path string, clientName string) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent '%v' does not exist", agentId)
-	}
-
-	agent, _ := value.(*Agent)
-	if agent.Active == false {
-		return fmt.Errorf("agent '%v' not active", agentId)
-	}
-
-	taskData, err := ts.Extender.ExAgentBrowserFiles(agent.Data, path)
-	if err != nil {
-		return err
-	}
-
-	ts.TsTaskCreate(agentId, "", clientName, taskData)
-	return nil
-}
-
-func (ts *Teamserver) TsAgentGuiUpload(agentId string, path string, content []byte, clientName string) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent '%v' does not exist", agentId)
-	}
-
-	agent, _ := value.(*Agent)
-	if agent.Active == false {
-		return fmt.Errorf("agent '%v' not active", agentId)
-	}
-
-	taskData, err := ts.Extender.ExAgentBrowserUpload(agent.Data, path, content)
-	if err != nil {
-		return err
-	}
-
-	ts.TsTaskCreate(agentId, "", clientName, taskData)
-	return nil
-}
 
 /// SYNC
 

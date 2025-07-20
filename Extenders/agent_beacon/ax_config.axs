@@ -72,6 +72,28 @@ menu.add_download_stopped(download_cancel_action, ["beacon"])
 
 
 
+var event_disks_action = function(id) {
+    ax.execute_browser(id, "disks");
+}
+event.on_filebrowser_disks(event_disks_action, ["beacon"]);
+
+var event_files_action = function(id, path) {
+    ax.execute_browser(id, "ls " + path);
+}
+event.on_filebrowser_list(event_files_action, ["beacon"]);
+
+var event_upload_action = function(id, path, filepath) {
+    let filename = ax.file_basename(filepath);
+    ax.execute_browser(id, "upload " + filepath + " " + path + filename);
+}
+event.on_filebrowser_upload(event_upload_action, ["beacon"]);
+
+var event_process_action = function(id) {
+    ax.execute_browser(id, "ps list");
+}
+event.on_processbrowser_list(event_process_action, ["beacon"]);
+
+
 function RegisterCommands(listenerType)
 {
     let cmd_cat = ax.create_command("cat", "Read first 2048 bytes of the specified file", "cat C:\\file.exe", "Task: read file");
