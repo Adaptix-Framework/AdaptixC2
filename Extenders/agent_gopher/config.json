@@ -1,7 +1,7 @@
 {
   "extender_type": "agent",
   "extender_file": "agent_gopher.so",
-  "ax_file": "ax_config.js",
+  "ax_file": "ax_config.axs",
 
   "agent_name": "gopher",
   "agent_watermark": "904e5493",

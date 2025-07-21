@@ -2,6 +2,8 @@
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 
+#include "UI/Widgets/AdaptixWidget.h"
+
 BrowserProcessWidget::BrowserProcessWidget(Agent* a)
 {
     agent = a;
@@ -423,8 +425,8 @@ void BrowserProcessWidget::filterTableWidget(const QString &filterText) const
 
 void BrowserProcessWidget::onReload() const
 {
-    QString status = agent->BrowserProcess();
-    statusLabel->setText(status);
+    statusLabel->setText("");
+    emit agent->adaptixWidget->eventProcessBrowserList(agent->data.Id);
 }
 
 void BrowserProcessWidget::onFilter(const QString &text) const

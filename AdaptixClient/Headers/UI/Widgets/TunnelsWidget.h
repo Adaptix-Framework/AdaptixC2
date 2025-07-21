@@ -26,4 +26,4 @@ public slots:
      void actionStopTunnel() const;
 };
 
-#endif //TUNNELSWIDGET_H
+#endif

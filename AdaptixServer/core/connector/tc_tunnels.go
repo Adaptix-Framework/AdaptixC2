@@ -250,7 +250,6 @@ func (tc *TsConnector) TcTunnelStartRpf(ctx *gin.Context) {
 		goto ERR
 	}
 
-	//tunnelId
 	_, err = tc.teamserver.TsTunnelClientStart(ta.AgentId, ta.Listen, 5, ta.Description, "", ta.Port, clientName, ta.Thost, ta.Tport, "", "")
 	if err != nil {
 		goto ERR

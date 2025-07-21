@@ -5,10 +5,7 @@
 #include <Client/AxScript/BridgeEvent.h>
 #include <Client/AxScript/BridgeMenu.h>
 
-// #include <Classes/MainWindow.h>
-// #include <Classes/AxContainers/AxScriptConsole.h>
-
-AxScriptEngine::AxScriptEngine(AxScriptManager *script_manager, const QString &name, QObject *parent) : QObject(parent), scriptManager(script_manager)
+AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &name, QObject *parent) : QObject(parent), scriptManager(script_manager)
 {
     jsEngine = std::make_unique<QJSEngine>();
     jsEngine->installExtensions(QJSEngine::ConsoleExtension);
@@ -18,14 +15,16 @@ AxScriptEngine::AxScriptEngine(AxScriptManager *script_manager, const QString &n
     bridgeEvent = std::make_unique<BridgeEvent>(this, this);
     bridgeMenu  = std::make_unique<BridgeMenu>(this, this);
 
-    jsEngine->globalObject().setProperty("ax",      jsEngine->newQObject(bridgeApp.get()));
-    jsEngine->globalObject().setProperty("form",    jsEngine->newQObject(bridgeForm.get()));
-    jsEngine->globalObject().setProperty("event",   jsEngine->newQObject(bridgeEvent.get()));
-    jsEngine->globalObject().setProperty("menu",    jsEngine->newQObject(bridgeMenu.get()));
-    // connect(bridgeEvent.get(), &BridgeEvent::consoleAppendError, main->scriptConsole, &AxScriptConsole::appendErrorOutput);
-    // connect(bridgeForm.get(),  &BridgeForm::consoleAppendError,  main->scriptConsole, &AxScriptConsole::appendErrorOutput);
-    // connect(bridgeApp.get(),   &BridgeApp::consoleAppendError,   main->scriptConsole, &AxScriptConsole::appendErrorOutput);
-    // connect(bridgeApp.get(),   &BridgeApp::consoleAppend,        main->scriptConsole, &AxScriptConsole::appendOutput);
+    jsEngine->globalObject().setProperty("ax",    jsEngine->newQObject(bridgeApp.get()));
+    jsEngine->globalObject().setProperty("form",  jsEngine->newQObject(bridgeForm.get()));
+    jsEngine->globalObject().setProperty("event", jsEngine->newQObject(bridgeEvent.get()));
+    jsEngine->globalObject().setProperty("menu",  jsEngine->newQObject(bridgeMenu.get()));
+
+    connect(bridgeApp.get(),   &BridgeApp::consoleError,   script_manager, &AxScriptManager::consolePrintError);
+    connect(bridgeApp.get(),   &BridgeApp::consoleMessage, script_manager, &AxScriptManager::consolePrintMessage);
+    connect(bridgeApp.get(),   &BridgeApp::engineError,   this, &AxScriptEngine::engineError);
+    connect(bridgeForm.get(),  &BridgeForm::scriptError,  this, &AxScriptEngine::engineError);
+    connect(bridgeEvent.get(), &BridgeEvent::scriptError, this, &AxScriptEngine::engineError);
 
     context.name = name;
 }
@@ -36,10 +35,11 @@ AxScriptEngine::~AxScriptEngine()
         if (action) delete action;
     }
     context.actions.clear();
-
-    // for (auto obj : context.objects){
-    //     if (obj) delete obj;
-    // }
+/*
+    for (auto obj : context.objects){
+        if (obj) delete obj;
+    }
+*/
     context.objects.clear();
 
     bridgeApp.reset();
@@ -65,38 +65,89 @@ void AxScriptEngine::registerObject(QObject *obj) { context.objects.append(obj);
 
 void AxScriptEngine::registerAction(QAction *action) { context.actions.append(action); }
 
-void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu)
+/////
+
+void AxScriptEngine::registerEvent(const QString &type, const QJSValue &handler, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id)
 {
-    if (type == "SessionMain")
-        context.menuSessionMain.append(menu);
-    else if (type == "SessionAccess")
-        context.menuSessionAccess.append(menu);
+    QSet<int> os;
+    if (list_os.contains("windows")) os.insert(1);
+    if (list_os.contains("linux")) os.insert(2);
+    if (list_os.contains("macos")) os.insert(3);
+
+    AxEvent event = {handler, id, list_agents,  list_listeners, os, jsEngine.get()};
+
+    if (     type == "FileBroserDisks")    context.eventFileBroserDisks.append(event);
+    else if (type == "FileBroserList")     context.eventFileBroserList.append(event);
+    else if (type == "FileBroserUpload")   context.eventFileBroserUpload.append(event);
+    else if (type == "ProcessBrowserList") context.eventProcessBrowserList.append(event);
 }
 
-QList<AbstractAxMenuItem*> AxScriptEngine::getMenuItems(const QString &type)
+QList<AxEvent> AxScriptEngine::getEvents(const QString &type)
 {
-    if (type == "SessionMain")
-        return context.menuSessionMain;
-    else if (type == "SessionAccess")
-        return context.menuSessionAccess;
+    if (     type == "FileBroserDisks")    return context.eventFileBroserDisks;
+    else if (type == "FileBroserList")     return context.eventFileBroserList;
+    else if (type == "FileBroserUpload")   return context.eventFileBroserUpload;
+    else if (type == "ProcessBrowserList") return context.eventProcessBrowserList;
 
-    return QList<AbstractAxMenuItem*>();
+    return QList<AxEvent>();
 }
+
+void AxScriptEngine::removeEvent(const QString &id)
+{
+    for (int i=0; i< context.eventFileBroserDisks.size(); i++) {
+        if (id == context.eventFileBroserDisks[i].event_id) {
+            context.eventFileBroserDisks.removeAt(i);
+            i--;
+        }
+    }
+}
+
+
+/////
+
+void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners)
+{
+    QSet<int> os;
+    if (list_os.contains("windows")) os.insert(1);
+    if (list_os.contains("linux")) os.insert(2);
+    if (list_os.contains("macos")) os.insert(3);
+
+    AxMenuItem item = {menu, list_agents,  list_listeners, os};
+
+    if (     type == "SessionMain")      context.menuSessionMain.append(item);
+    else if (type == "SessionAgent")     context.menuSessionAgent.append(item);
+    else if (type == "SessionBrowser")   context.menuSessionBrowser.append(item);
+    else if (type == "SessionAccess")    context.menuSessionAccess.append(item);
+    else if (type == "FileBrowser")      context.menuFileBrowser.append(item);
+    else if (type == "DownloadRunning")  context.menuDownloadRunning.append(item);
+    else if (type == "DownloadStopped")  context.menuDownloadStopped.append(item);
+    else if (type == "DownloadFinished") context.menuDownloadFinished.append(item);
+}
+
+QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
+{
+    if (     type == "SessionMain")      return context.menuSessionMain;
+    else if (type == "SessionAgent")     return context.menuSessionAgent;
+    else if (type == "SessionBrowser")   return context.menuSessionBrowser;
+    else if (type == "SessionAccess")    return context.menuSessionAccess;
+    else if (type == "FileBrowser")      return context.menuFileBrowser;
+    else if (type == "DownloadRunning")  return context.menuDownloadRunning;
+    else if (type == "DownloadStopped")  return context.menuDownloadStopped;
+    else if (type == "DownloadFinished") return context.menuDownloadFinished;
+
+    return QList<AxMenuItem>();
+}
+
+void AxScriptEngine::engineError(const QString &message) { engine()->throwError(QJSValue::TypeError, message); }
 
 bool AxScriptEngine::execute(const QString &code)
 {
     QJSValue result = jsEngine->evaluate(code, context.name);
+    context.scriptObject = result;
     if (result.isError()) {
-        QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4")
-            .arg(result.toString())
-            .arg(result.property("lineNumber").toInt())
-            .arg(result.property("fileName").toString())
-            .arg(result.property("stack").toString());
-
-        // auto main = qobject_cast<MainWindow*>( mainWidget );
-        // main->scriptConsole->appendErrorOutput(error);
+        QString error = QStringLiteral("%1\n    at line %2 in %3\n    stack: %4\n").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(context.name).arg(result.property("stack").toString());
+        scriptManager->consolePrintError(error);
         return false;
     }
-    context.scriptObject = result;
     return true;
 }

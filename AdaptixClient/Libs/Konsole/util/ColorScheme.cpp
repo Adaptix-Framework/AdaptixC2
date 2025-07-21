@@ -318,8 +318,6 @@ void ColorScheme::readColorEntry(QSettings *s, int index) {
         }
     }
     if (!ok) {
-        qWarning().nospace() << "Invalid color value " << colorStr << " for "
-                            << colorName << ". Fallback to black.";
         r = g = b = 0;
     }
     entry.color = QColor(r, g, b);

@@ -229,19 +229,19 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 
 			attempt++;
 			if (!connected) {
-				if ( dwError == ERROR_INTERNET_CANNOT_CONNECT || dwError == ERROR_INTERNET_TIMEOUT ) {
-					if (this->hConnect) {
-						this->functions->InternetCloseHandle(this->hConnect);
-						this->hConnect = NULL;
-					}
-					if (this->hInternet) {
-						this->functions->InternetCloseHandle(this->hInternet);
-						this->hInternet = NULL;
-					}
-
-					this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
-					this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_REFRESH, NULL, 0);
+				//if ( dwError == ERROR_INTERNET_CANNOT_CONNECT || dwError == ERROR_INTERNET_TIMEOUT ) {
+				if (this->hConnect) {
+					this->functions->InternetCloseHandle(this->hConnect);
+					this->hConnect = NULL;
 				}
+				if (this->hInternet) {
+					this->functions->InternetCloseHandle(this->hInternet);
+					this->hInternet = NULL;
+				}
+
+				this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
+				this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_REFRESH, NULL, 0);
+				//}
 
 				this->server_index = (this->server_index + 1) % this->server_count;
 			}

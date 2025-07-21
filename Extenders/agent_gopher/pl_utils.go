@@ -236,7 +236,7 @@ type ParamsTerminalStop struct {
 
 type ParamsExecBof struct {
 	Object   []byte `msgpack:"object"`
-	ArgsPack string `msgpack:"argspack`
+	ArgsPack string `msgpack:"argspack"`
 	Task     string `msgpack:"task"`
 }
 

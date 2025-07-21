@@ -30,4 +30,4 @@ public slots:
     void onGenerateAgent() const;
 };
 
-#endif //ADAPTIXCLIENT_LISTENERSWIDGET_H
+#endif

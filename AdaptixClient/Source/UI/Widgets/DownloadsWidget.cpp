@@ -4,10 +4,12 @@
 #include <UI/Dialogs/DialogDownloader.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
+#include <Client/AxScript/AxScriptManager.h>
 
-DownloadsWidget::DownloadsWidget(QWidget* w)
+
+DownloadsWidget::DownloadsWidget(AdaptixWidget* w)
 {
-    this->mainWidget = w;
+    this->adaptixWidget = w;
     this->createUI();
 
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &DownloadsWidget::handleDownloadsMenu );
@@ -24,6 +26,7 @@ void DownloadsWidget::createUI()
     tableWidget->setWordWrap( true );
     tableWidget->setCornerButtonEnabled( true );
     tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
+    tableWidget->setSelectionMode( QAbstractItemView::SingleSelection );
     tableWidget->setFocusPolicy( Qt::NoFocus );
     tableWidget->setAlternatingRowColors( true );
     tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
@@ -52,10 +55,6 @@ DownloadsWidget::~DownloadsWidget() = default;
 
 void DownloadsWidget::Clear() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     adaptixWidget->Downloads.clear();
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
@@ -63,8 +62,7 @@ void DownloadsWidget::Clear() const
 
 void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload )
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget || adaptixWidget->Downloads.contains(newDownload.FileId))
+    if ( adaptixWidget->Downloads.contains(newDownload.FileId) )
         return;
 
     if( tableWidget->rowCount() < 1 )
@@ -149,12 +147,8 @@ void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload )
     adaptixWidget->Downloads[newDownload.FileId] = newDownload;
 }
 
-void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int state) const
+void DownloadsWidget::EditDownloadItem(const QString &fileId, const int recvSize, const int state) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     adaptixWidget->Downloads[fileId].RecvSize = recvSize;
     adaptixWidget->Downloads[fileId].State    = state;
 
@@ -196,10 +190,6 @@ void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int 
 
 void DownloadsWidget::RemoveDownloadItem(const QString &fileId) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     adaptixWidget->Downloads.remove(fileId);
 
     for ( int row = 0; row < tableWidget->rowCount(); row++ ) {
@@ -217,55 +207,43 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
     if ( !tableWidget->itemAt(pos) )
         return;
 
-    bool menuDownloadResume = false;
-    bool menuDownloadPause  = false;
-    bool menuDownloadCancel = false;
+    QVector<DataMenuDownload> files;
 
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 2)->isSelected() ) {
-            QString agentId = tableWidget->item( rowIndex, 2 )->text();
-            if (adaptixWidget->AgentsMap.contains(agentId) && adaptixWidget->AgentsMap[agentId]) {
-                auto agent = adaptixWidget->AgentsMap[agentId];
-                if (agent) {
-                    if (agent->browsers.DownloadsResume) menuDownloadResume = true;
-                    if (agent->browsers.DownloadsPause)  menuDownloadPause  = true;
-                    if (agent->browsers.DownloadsCancel) menuDownloadCancel = true;
-                }
-            }
-        }
-    }
-
-    auto FileID   = tableWidget->item( tableWidget->currentRow(), 0 )->text();
-    auto Received = tableWidget->item( tableWidget->currentRow(), 8 )->text();
+    DataMenuDownload data = {};
+    data.agentId = tableWidget->item( tableWidget->currentRow(), 2 )->text();
+    data.fileId  = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    data.path    = tableWidget->item( tableWidget->currentRow(), 5 )->text();
 
     auto ctxMenu = QMenu();
+    auto Received = tableWidget->item( tableWidget->currentRow(), 8 )->text();
     if(Received.compare("") == 0) {
         ctxMenu.addAction("Sync file to client", this, &DownloadsWidget::actionSync);
 
-        auto agentMenu = new QMenu("Sync as ...", &ctxMenu);
-        agentMenu->addAction("Curl command", this, &DownloadsWidget::actionSyncCurl);
-        agentMenu->addAction("Wget command", this, &DownloadsWidget::actionSyncWget);
-        ctxMenu.addMenu(agentMenu);
-
+        auto syncMenu = new QMenu("Sync as ...", &ctxMenu);
+        syncMenu->addAction("Curl command", this, &DownloadsWidget::actionSyncCurl);
+        syncMenu->addAction("Wget command", this, &DownloadsWidget::actionSyncWget);
+        ctxMenu.addMenu(syncMenu);
         ctxMenu.addSeparator();
+
+        data.state = "finished";
+        files.append(data);
+        int menuCount = adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadFinished", files);
+        if (menuCount > 0)
+            ctxMenu.addSeparator();
+
         ctxMenu.addAction("Delete file", this, &DownloadsWidget::actionDelete );
     }
     else {
         if( tableWidget->cellWidget( tableWidget->currentRow(), 9)->isEnabled() ) {
-            if (menuDownloadPause)
-                ctxMenu.addAction("Pause", this, &DownloadsWidget::actionPause );
+            data.state = "running";
+            files.append(data);
+            adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadRunning", files);
         }
         else {
-            if (menuDownloadResume)
-                ctxMenu.addAction("Resume", this, &DownloadsWidget::actionResume );
+            data.state = "stopped";
+            files.append(data);
+            adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadStopped", files);
         }
-
-        if (menuDownloadCancel)
-            ctxMenu.addAction("Cancel", this, &DownloadsWidget::actionCancel );
     }
 
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos) );
@@ -273,10 +251,6 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
 
 void DownloadsWidget::actionSync() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
         return;
 
@@ -313,10 +287,6 @@ void DownloadsWidget::actionSync() const
 
 void DownloadsWidget::actionSyncCurl() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
         return;
 
@@ -357,10 +327,6 @@ void DownloadsWidget::actionSyncCurl() const
 
 void DownloadsWidget::actionSyncWget() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" )
         return;
 
@@ -401,85 +367,12 @@ void DownloadsWidget::actionSyncWget() const
 
 void DownloadsWidget::actionDelete() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() == "" ) {
 
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
         QString message = QString();
         bool ok = false;
         bool result = HttpReqDownloadAction("delete", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
-        if (!result) {
-            MessageError("Response timeout");
-            return;
-        }
-
-        if (!ok) {
-            MessageError(message);
-        }
-    }
-}
-
-void DownloadsWidget::actionResume() const
-{
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
-    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
-
-        QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqDownloadAction("resume", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
-        if (!result) {
-            MessageError("Response timeout");
-            return;
-        }
-
-        if (!ok) {
-            MessageError(message);
-        }
-    }
-}
-
-void DownloadsWidget::actionPause() const
-{
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
-    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
-
-        QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqDownloadAction("pause", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
-        if (!result) {
-            MessageError("Response timeout");
-            return;
-        }
-
-        if (!ok) {
-            MessageError(message);
-        }
-    }
-}
-
-void DownloadsWidget::actionCancel() const
-{
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
-    if( tableWidget->item( tableWidget->currentRow(), 8 )->text() != "" ) {
-
-        QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqDownloadAction("cancel", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
             MessageError("Response timeout");
             return;

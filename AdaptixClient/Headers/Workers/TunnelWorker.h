@@ -35,4 +35,4 @@ private slots:
     void onWsError(QAbstractSocket::SocketError error);
 };
 
-#endif //TUNNELWORKER_H
+#endif

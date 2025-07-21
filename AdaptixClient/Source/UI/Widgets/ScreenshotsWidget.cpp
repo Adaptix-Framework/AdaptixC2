@@ -3,12 +3,7 @@
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 
-ImageFrame::ImageFrame(QWidget* parent)
-    : QWidget(parent),
-      label(new QLabel),
-      scrollArea(new QScrollArea(this)),
-      ctrlPressed(false),
-      scaleFactor(1.0)
+ImageFrame::ImageFrame(QWidget* parent) : QWidget(parent), label(new QLabel), scrollArea(new QScrollArea(this)), ctrlPressed(false), scaleFactor(1.0)
 {
     setFocusPolicy(Qt::StrongFocus);
 

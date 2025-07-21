@@ -1,11 +1,11 @@
 #include <QJSEngine>
 #include <Agent/Agent.h>
 #include <Agent/Task.h>
-#include <Agent/Commander.h>
 #include <Workers/LastTickWorker.h>
 #include <Workers/WebSocketWorker.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/AxConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/TerminalWidget.h>
@@ -14,6 +14,7 @@
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
+#include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Graph/SessionsGraph.h>
@@ -32,7 +33,12 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     this->ChannelWsWorker = channelWsWorker;
 
     ScriptManager = new AxScriptManager(this, this);
+    connect(this, &AdaptixWidget::eventFileBrowserDisks,   ScriptManager, &AxScriptManager::emitFileBrowserDisks);
+    connect(this, &AdaptixWidget::eventFileBrowserList,    ScriptManager, &AxScriptManager::emitFileBrowserList);
+    connect(this, &AdaptixWidget::eventFileBrowserUpload,  ScriptManager, &AxScriptManager::emitFileBrowserUpload);
+    connect(this, &AdaptixWidget::eventProcessBrowserList, ScriptManager, &AxScriptManager::emitProcessBrowserList);
 
+    AxConsoleTab      = new AxConsoleWidget(ScriptManager, this);
     LogsTab           = new LogsWidget();
     ListenersTab      = new ListenersWidget(this);
     SessionsTablePage = new SessionsTableWidget(this);
@@ -40,6 +46,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     TunnelsTab        = new TunnelsWidget(this);
     DownloadsTab      = new DownloadsWidget(this);
     ScreenshotsTab    = new ScreenshotsWidget(this);
+    CredentialsTab    = new CredentialsWidget(this);
     TasksTab          = new TasksWidget(this);
 
     mainStackedWidget->addWidget(SessionsTablePage);
@@ -65,6 +72,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( tunnelButton,    &QPushButton::clicked, this, &AdaptixWidget::LoadTunnelsUI);
     connect( downloadsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
     connect( screensButton,   &QPushButton::clicked, this, &AdaptixWidget::LoadScreenshotsUI);
+    connect( credsButton,     &QPushButton::clicked, this, &AdaptixWidget::LoadCredentialsUI);
     connect( reconnectButton, &QPushButton::clicked, this, &AdaptixWidget::OnReconnect);
 
     connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
@@ -82,7 +90,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
 
     /// TODO: Enable menu button
     targetsButton->setVisible(false);
-    credsButton->setVisible(false);
     keysButton->setVisible(false);
 
     HttpReqSync( *profile );
@@ -250,54 +257,29 @@ void AdaptixWidget::RemoveTab(int index) const
         mainTabWidget->setMovable(false);
 }
 
-void AdaptixWidget::AddExtension(ExtensionFile ext)
+bool AdaptixWidget::AddExtension(ExtensionFile* ext)
 {
-    if( Extensions.contains(ext.FilePath) )
-        return;
+    if (ScriptManager->ScriptList().contains(ext->FilePath)) {
+        ext->Enabled = false;
+        ext->Message = "Script already loaded";
+        return false;
+    }
 
-    Extensions[ext.FilePath] = ext;
+    if( !synchronized ) {
+        ext->Enabled = false;
+        ext->Message = "C2 not synchronized";
+        return false;
+    }
 
-    if( !synchronized )
-        return;
-
-    // ToDo: AddExtension
-
-    // for (QString agentName : ext.ExCommands.keys()) {
-    //     if (Commanders.contains(agentName)) {
-    //         for (auto commander : Commanders[agentName] ) {
-    //             if (commander) {
-    //                 bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName], ext.ExConstants);
-    //                 if (result) {
-    //                     for( auto agent : AgentsMap ){
-    //                         if( agent && agent->Console )
-    //                             agent->Console->UpgradeCompleter();
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    return ScriptManager->ScriptAdd(ext);
 }
 
 void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
 {
-    Extensions.remove(ext.FilePath);
+    if (!ScriptManager->ScriptList().contains(ext.FilePath))
+        return;
 
-    // ToDo: RemoveExtension
-
-    // for (QString agentName : ext.ExCommands.keys()) {
-    //     if (Commanders.contains(agentName)) {
-    //         for (auto commander : Commanders[agentName] ) {
-    //             if (commander) {
-    //                 commander->RemoveExtModule(ext.FilePath);
-    //                 for( auto agent : AgentsMap ){
-    //                     if( agent && agent->Console )
-    //                         agent->Console->UpgradeCompleter();
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    return ScriptManager->ScriptRemove(ext);
 }
 
 void AdaptixWidget::Close()
@@ -317,6 +299,7 @@ void AdaptixWidget::Close()
 
 void AdaptixWidget::ClearAdaptix()
 {
+    AxConsoleTab->OutputClear();
     LogsTab->Clear();
     DownloadsTab->Clear();
     ScreenshotsTab->Clear();
@@ -325,8 +308,7 @@ void AdaptixWidget::ClearAdaptix()
     SessionsGraphPage->Clear();
     SessionsTablePage->Clear();
     TunnelsTab->Clear();
-
-    ScriptManager->Clear();
+    CredentialsTab->Clear();
 
     for (auto tunnelId : ClientTunnels.keys()) {
         auto tunnel = ClientTunnels[tunnelId];
@@ -336,35 +318,19 @@ void AdaptixWidget::ClearAdaptix()
     }
     ClientTunnels.clear();
 
-    // ToDO: ClearAdaptix
+    ScriptManager->Clear();
 
-    // for (int i = 0; i < RegisterAgents.size(); i++) {
-    //     WidgetBuilder* builder   = RegisterAgents[i].builder;
-    //     RegisterAgents.remove(i);
-    //     i--;
-    //     delete builder;
-    // }
+    for (auto regAgent : RegisterAgents)
+        delete regAgent.commander;
 
-    // ToDo: Clear Commanders
-
-    // for (auto commanderMap : Commanders ) {
-    //     for (auto k : commanderMap.keys()) {
-    //         Commander* commander = commanderMap[k];
-    //         commanderMap.remove(k);
-    //         delete commander;
-    //     }
-    // }
-    // Commanders.clear();
+    RegisterAgents.clear();
 }
 
 /// REGISTER
 
-void AdaptixWidget::RegisterListenerConfig(const QString &fn, const QString &ax_script)
-{
-    ScriptManager->ListenerScriptAdd(fn, ax_script);
-}
+void AdaptixWidget::RegisterListenerConfig(const QString &fn, const QString &ax_script) { ScriptManager->ListenerScriptAdd(fn, ax_script); }
 
-void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &ax_script, const QStringList &listeners)
+void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners)
 {
     ScriptManager->AgentScriptAdd(agentName, ax_script);
 
@@ -374,7 +340,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
 
     QJSValue func = engine->globalObject().property("RegisterCommands");
     if (!func.isCallable()) {
-        // emit QJSValue::TypeError, "Function RegisterCommands is not registered")
+        ScriptManager->consolePrintError(agentName + " - function RegisterCommands is not registered");
         return;
     }
 
@@ -384,12 +350,12 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
         args << QJSValue(listener);
         QJSValue registerResult = func.call(args);
         if (registerResult.isError()) {
-            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(registerResult.toString()).arg(registerResult.property("lineNumber").toInt()).arg(registerResult.property("fileName").toString()).arg(registerResult.property("stack").toString());
-            // emit consoleAppendError(error);
+            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(registerResult.toString()).arg(registerResult.property("lineNumber").toInt()).arg(agentName).arg(registerResult.property("stack").toString());
+            ScriptManager->consolePrintError(error);
             return;
         }
         if (!registerResult.isObject()) {
-            // emit consoleAppendError("RegisterCommands() must return CommandsGroup objects");
+            ScriptManager->consolePrintError(agentName + " - function RegisterCommands must return CommandsGroup objects");
             return;
         }
 
@@ -398,19 +364,20 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             QObject* objPanel = commands_windows.toQObject();
             auto* wrapper = dynamic_cast<AxCommandGroupWrapper*>(objPanel);
             if (wrapper) {
-                CommandsGroup commandsGroup;
+                CommandsGroup commandsGroup = {};
                 commandsGroup.groupName = wrapper->getName();
                 commandsGroup.commands  = wrapper->getCommands();
                 commandsGroup.engine    = wrapper->getEngine();
+                commandsGroup.filepath  = "";
 
                 Commander* commander = new Commander();
                 commander->AddRegCommands(commandsGroup);
 
-                RegAgentConfig config = {agentName, watermark, listener, OS_WINDOWS, commander, {}, true};
+                RegAgentConfig config = {agentName, listener, OS_WINDOWS, commander, true};
                 RegisterAgents.push_back(config);
             }
             else {
-                // emit consoleAppendError("commands_windows must return CommandsGroup object");
+                ScriptManager->consolePrintError(agentName + " - commands_windows must return CommandsGroup object");
             }
         }
 
@@ -419,19 +386,20 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             QObject* objPanel = commands_linux.toQObject();
             auto* wrapper = dynamic_cast<AxCommandGroupWrapper*>(objPanel);
             if (wrapper) {
-                CommandsGroup commandsGroup;
+                CommandsGroup commandsGroup = {};
                 commandsGroup.groupName = wrapper->getName();
                 commandsGroup.commands  = wrapper->getCommands();
                 commandsGroup.engine    = wrapper->getEngine();
+                commandsGroup.filepath  = "";
 
                 Commander* commander = new Commander();
                 commander->AddRegCommands(commandsGroup);
 
-                RegAgentConfig config = {agentName, watermark, listener, OS_LINUX, commander, {}, true};
+                RegAgentConfig config = {agentName, listener, OS_LINUX, commander, true};
                 RegisterAgents.push_back(config);
             }
             else {
-                // emit consoleAppendError("commands_linux must return CommandsGroup object");
+                ScriptManager->consolePrintError(agentName + " - commands_linux must return CommandsGroup object");
             }
         }
 
@@ -440,19 +408,20 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
             QObject* objPanel = commands_macos.toQObject();
             auto* wrapper = dynamic_cast<AxCommandGroupWrapper*>(objPanel);
             if (wrapper) {
-                CommandsGroup commandsGroup;
+                CommandsGroup commandsGroup = {};
                 commandsGroup.groupName = wrapper->getName();
                 commandsGroup.commands  = wrapper->getCommands();
                 commandsGroup.engine    = wrapper->getEngine();
+                commandsGroup.filepath  = "";
 
                 Commander* commander = new Commander();
                 commander->AddRegCommands(commandsGroup);
 
-                RegAgentConfig config = {agentName, watermark, listener, OS_MAC, commander, {}, true};
+                RegAgentConfig config = {agentName, listener, OS_MAC, commander, true};
                 RegisterAgents.push_back(config);
             }
             else {
-                // emit consoleAppendError("commands_macos must return CommandsGroup object");
+                ScriptManager->consolePrintError(agentName + " - commands_macos must return CommandsGroup object");
             }
         }
     }
@@ -488,6 +457,96 @@ RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QStrin
     return {};
 }
 
+QList<Commander*> AdaptixWidget::GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const
+{
+    QList<Commander*> commanders;
+    for (auto regAgent : this->RegisterAgents) {
+        if ( !agents.contains(regAgent.name) ) continue;
+
+        if ( !listeners.empty() && !listeners.contains(regAgent.listenerType)) continue;
+
+        if ( !os.empty() && !os.contains(regAgent.os) ) continue;
+
+        commanders.append(regAgent.commander);
+    }
+    return commanders;
+}
+
+QList<Commander*> AdaptixWidget::GetCommandersAll() const
+{
+    QList<Commander*> commanders;
+    for (auto regAgent : this->RegisterAgents)
+        commanders.append(regAgent.commander);
+    return commanders;
+}
+
+void AdaptixWidget::PostHookProcess(QJsonObject jsonHookObj)
+{
+    QString hookId = jsonHookObj["a_hook_id"].toString();
+    bool completed = jsonHookObj["a_completed"].toBool();
+
+    if (PostHooksJS.contains(hookId)) {
+        PostHook post_hooks = PostHooksJS[hookId];
+        if (completed)
+            PostHooksJS.remove(hookId);
+
+        auto jsEngine = ScriptManager->GetEngine(post_hooks.engineName);
+        if (jsEngine && post_hooks.hook.isCallable()) {
+
+            int jobIndex = jsonHookObj["a_job_index"].toDouble();
+
+            QJsonObject obj;
+            obj["agent"]     = jsonHookObj["a_id"].toString();;
+            obj["message"]   = jsonHookObj["a_message"].toString();
+            obj["text"]      = jsonHookObj["a_text"].toString();
+            obj["completed"] = completed;
+            obj["index"]     = jobIndex;
+
+            int msgType = jsonHookObj["a_msg_type"].toDouble();
+            if (msgType == CONSOLE_OUT_LOCAL_INFO || msgType == CONSOLE_OUT_INFO)
+                obj["type"] = "info";
+            else if (msgType == CONSOLE_OUT_LOCAL_ERROR || msgType == CONSOLE_OUT_ERROR)
+                obj["type"] = "error";
+            else if (msgType == CONSOLE_OUT_LOCAL_SUCCESS || msgType == CONSOLE_OUT_SUCCESS)
+                obj["type"] = "success";
+            else
+                obj["type"] = "";
+
+            QJSValue result = post_hooks.hook.call(QJSValueList() << jsEngine->toScriptValue(obj));
+            if (result.isObject()) {
+                QJsonObject modifiedObj = result.toVariant().toJsonObject();
+
+                if (modifiedObj.contains("message") && modifiedObj["message"].isString())
+                    jsonHookObj["a_message"] = modifiedObj["message"].toString();
+                if (modifiedObj.contains("text") && modifiedObj["text"].isString())
+                    jsonHookObj["a_text"] = modifiedObj["text"].toString();
+                if (modifiedObj.contains("type") && modifiedObj["type"].isString()) {
+                    QString modifiedType = modifiedObj["type"].toString();
+                    if (modifiedType == "info")
+                        jsonHookObj["a_msg_type"] = CONSOLE_OUT_INFO;
+                    else if (modifiedType == "error")
+                        jsonHookObj["a_msg_type"] = CONSOLE_OUT_ERROR;
+                    else if (modifiedType == "success")
+                        jsonHookObj["a_msg_type"] = CONSOLE_OUT_SUCCESS;
+                    else
+                        jsonHookObj["a_msg_type"] = CONSOLE_OUT;
+                }
+            }
+        }
+    }
+
+    QByteArray jsonData = QJsonDocument(jsonHookObj).toJson();
+
+    QString message = "";
+    bool ok = false;
+    bool result = HttpReqTasksHook(jsonData, *profile, &message, &ok);
+    if( !result ) {
+        MessageError("Server is not responding");
+        return;
+    }
+    if (!ok) MessageError(message);
+}
+
 /// SHOW PANELS
 
 void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
@@ -504,10 +563,7 @@ void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
 
 }
 
-void AdaptixWidget::LoadTasksOutput() const
-{
-    this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
-}
+void AdaptixWidget::LoadTasksOutput() const { this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job"); }
 
 void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
 {
@@ -645,28 +701,7 @@ void AdaptixWidget::OnSynced()
 
     this->SessionsGraphPage->TreeDraw();
 
-    // ToDo: OnSynced
-
-    // for (auto ext : Extensions) {
-    //
-    //     for (QString agentName : ext.ExCommands.keys()) {
-    //
-    //         if (Commanders.contains(agentName)) {
-    //             for (auto commander : Commanders[agentName] ) {
-    //
-    //                 if (commander) {
-    //                     bool result = commander->AddExtModule(ext.FilePath, ext.Name, ext.ExCommands[agentName], ext.ExConstants);
-    //                     if (result) {
-    //                         for( auto agent : AgentsMap ){
-    //                             if( agent && agent->Console )
-    //                                 agent->Console->UpgradeCompleter();
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    emit SyncedOnReloadSignal(profile->GetProject());
 }
 
 void AdaptixWidget::SetSessionsTableUI() const
@@ -695,30 +730,19 @@ void AdaptixWidget::SetTasksUI() const
     this->AddTab(TasksTab->taskOutputConsole, "Task Output", ":/icons/job");
 }
 
-void AdaptixWidget::LoadLogsUI() const
-{
-    this->AddTab(LogsTab, "Logs", ":/icons/logs");
-}
+void AdaptixWidget::LoadAxConsoleUI() const { this->AddTab(AxConsoleTab, "AxScript Console", ":/icons/code_blocks"); }
 
-void AdaptixWidget::LoadListenersUI() const
-{
-    this->AddTab(ListenersTab, "Listeners", ":/icons/listeners");
-}
+void AdaptixWidget::LoadLogsUI() const { this->AddTab(LogsTab, "Logs", ":/icons/logs"); }
 
-void AdaptixWidget::LoadTunnelsUI() const
-{
-    this->AddTab(TunnelsTab, "Tunnels", ":/icons/vpn");
-}
+void AdaptixWidget::LoadListenersUI() const { this->AddTab(ListenersTab, "Listeners", ":/icons/listeners"); }
 
-void AdaptixWidget::LoadDownloadsUI() const
-{
-    this->AddTab(DownloadsTab, "Downloads", ":/icons/downloads");
-}
+void AdaptixWidget::LoadTunnelsUI() const { this->AddTab(TunnelsTab, "Tunnels", ":/icons/vpn"); }
 
-void AdaptixWidget::LoadScreenshotsUI() const
-{
-    this->AddTab(ScreenshotsTab, "Screenshots", ":/icons/picture");
-}
+void AdaptixWidget::LoadDownloadsUI() const { this->AddTab(DownloadsTab, "Downloads", ":/icons/downloads"); }
+
+void AdaptixWidget::LoadScreenshotsUI() const { this->AddTab(ScreenshotsTab, "Screenshots", ":/icons/picture"); }
+
+void AdaptixWidget::LoadCredentialsUI() const { this->AddTab(CredentialsTab, "Credentials", ":/icons/key"); }
 
 void AdaptixWidget::OnReconnect()
 {

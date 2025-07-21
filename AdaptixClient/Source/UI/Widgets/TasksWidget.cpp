@@ -47,9 +47,13 @@ void TaskOutputWidget::SetConten(const QString &message, const QString &text) co
         outputTextEdit->setText( TrimmedEnds(text) );
 }
 
-TasksWidget::TasksWidget( QWidget* w )
+
+
+
+
+TasksWidget::TasksWidget( AdaptixWidget* w )
 {
-    this->mainWidget = w;
+    this->adaptixWidget = w;
     this->createUI();
 
     taskOutputConsole = new TaskOutputWidget();
@@ -205,14 +209,10 @@ void TasksWidget::addTableItem(const Task* newTask) const
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 }
 
-/// PUBLIC
+
 
 void TasksWidget::AddTaskItem(Task* newTask) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     if ( adaptixWidget->TasksMap.contains(newTask->data.TaskId) )
         return;
 
@@ -230,8 +230,7 @@ void TasksWidget::AddTaskItem(Task* newTask) const
 
 void TasksWidget::RemoveTaskItem(const QString &taskId) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget || !adaptixWidget->TasksMap.contains((taskId)))
+    if ( !adaptixWidget->TasksMap.contains((taskId)))
         return;
 
     Task* task = adaptixWidget->TasksMap[taskId];
@@ -265,10 +264,6 @@ void TasksWidget::RemoveTaskItem(const QString &taskId) const
 
 void TasksWidget::RemoveAgentTasksItem(const QString &agentId) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     for (auto key : adaptixWidget->TasksMap.keys()) {
         Task* task = adaptixWidget->TasksMap[key];
         if (task->data.AgentId == agentId) {
@@ -417,10 +412,7 @@ void TasksWidget::onTableItemSelection(const QModelIndex &current, const QModelI
     adaptixWidget->LoadTasksOutput();
 }
 
-void TasksWidget::onAgentChange(QString agentId) const
-{
-    this->SetData();
-}
+void TasksWidget::onAgentChange(QString agentId) const { this->SetData(); }
 
 void TasksWidget::actionCopyTaskId() const
 {

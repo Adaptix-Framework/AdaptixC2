@@ -109,6 +109,7 @@
 #define TYPE_AGENT_TASK_UPDATE 0x4a
 #define TYPE_AGENT_TASK_SEND   0x4b
 #define TYPE_AGENT_TASK_REMOVE 0x4c
+#define TYPE_AGENT_TASK_HOOK   0x4d
 
 #define TYPE_DOWNLOAD_CREATE 0x51
 #define TYPE_DOWNLOAD_UPDATE 0x52
@@ -133,6 +134,10 @@
 
 #define TYPE_PIVOT_CREATE 0x71
 #define TYPE_PIVOT_DELETE 0x72
+
+#define TYPE_CREDS_CREATE 0x81
+#define TYPE_CREDS_EDIT   0x82
+#define TYPE_CREDS_DELETE 0x83
 
 //////////
 
@@ -162,25 +167,6 @@
 #define COLOR_White           "#FFFFFF"     /// white
 
 //////////
-
-typedef struct BrowsersConfig {
-    bool RemoteTerminal;
-    bool FileBrowser;
-    bool FileBrowserDisks;
-    bool FileBrowserDownload;
-    bool FileBrowserUpload;
-    bool ProcessBrowser;
-    bool DownloadsCancel;
-    bool DownloadsResume;
-    bool DownloadsPause;
-    bool TasksJobKill;
-    bool SessionsMenuExit;
-    bool SessionsMenuTunnels;
-    bool Socks4;
-    bool Socks5;
-    bool Lportfwd;
-    bool Rportfwd;
-} BrowsersConfig;
 
 typedef struct SettingsData {
     QString MainTheme;
@@ -267,6 +253,20 @@ typedef struct ScreenData
     QByteArray Content;
 } ScreenData;
 
+typedef struct CredentialData
+{
+    QString CredId;
+    QString Username;
+    QString Password;
+    QString Realm;
+    QString Type;
+    QString Tag;
+    QString Date;
+    QString Storage;
+    QString AgentId;
+    QString Host;
+} CredentialData;
+
 typedef struct TunnelData
 {
     QString TunnelId;
@@ -313,12 +313,13 @@ typedef struct ExtensionFile
 {
     QString Name;
     QString FilePath;
+    QString Code;
     QString Description;
-    QString Comment;
+    QString Message;
     bool    Enabled;
+    bool    NoSave;
     bool    Valid;
 
-    QVector<QJsonObject> ExConstants;
     QMap<QString, QVector<QJsonObject> > ExCommands;
 } ExtensionFile;
 

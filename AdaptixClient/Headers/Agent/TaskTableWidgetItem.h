@@ -14,4 +14,4 @@ public:
     ~TaskTableWidgetItem() override;
 };
 
-#endif //ADAPTIXCLIENT_TABLEWIDGETITEMTASK_H
+#endif

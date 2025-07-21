@@ -37,4 +37,4 @@ private slots:
      void onWsError(QAbstractSocket::SocketError error);
 };
 
-#endif //TERMINALWORKER_H
+#endif

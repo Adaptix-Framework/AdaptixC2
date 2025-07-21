@@ -224,7 +224,7 @@ QVector<ExtensionFile> Storage::ListExtensions()
     query.prepare( "SELECT * FROM Extensions;" );
     if ( query.exec() ) {
         while ( query.next() ) {
-            ExtensionFile ext;
+            ExtensionFile ext = {};
             ext.FilePath = query.value("filepath").toString();
             ext.Enabled  = query.value("enabled").toBool();
             list.push_back(ext);

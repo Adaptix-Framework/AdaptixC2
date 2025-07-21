@@ -23,7 +23,7 @@ public:
     Q_INVOKABLE void addArgInt(const QString &name, bool required = false, const QString &description = "");
     Q_INVOKABLE void addArgInt(const QString &name, const QString &description, const QJSValue &value);
     Q_INVOKABLE void addArgFlagInt(const QString &flag, const QString &name, bool required = false, const QString &description = "");
-    Q_INVOKABLE void addArgFlaInt(const QString &flag, const QString &name, const QString &description, const QJSValue &value);
+    Q_INVOKABLE void addArgFlagInt(const QString &flag, const QString &name, const QString &description, const QJSValue &value);
 
     Q_INVOKABLE void addArgString(const QString &name, bool required = false, const QString &description = "");
     Q_INVOKABLE void addArgString(const QString &name, const QString &description, const QJSValue &value);
@@ -36,7 +36,7 @@ public:
     Q_INVOKABLE void setPreHook(const QJSValue& handler);
 
 signals:
-    void consoleAppendError(const QString &msg);
+    void scriptError(const QString &msg);
 };
 
 
@@ -51,8 +51,9 @@ Q_OBJECT
     QJSEngine*     engine;
 
 public:
-    explicit AxCommandGroupWrapper(const QString &name, const QJSValue& array, QJSEngine* engine, QObject* parent = nullptr);
+    explicit AxCommandGroupWrapper(QJSEngine* engine, QObject* parent = nullptr);
 
+    void SetParams(const QString &name, const QJSValue& array);
     QString        getName() const;
     QList<Command> getCommands() const;
     QJSEngine*     getEngine() const;
@@ -60,7 +61,7 @@ public:
     Q_INVOKABLE void add(const QJSValue& array);
 
 signals:
-    void consoleAppendError(const QString &msg);
+    void scriptError(const QString &msg);
 };
 
-#endif //AXCOMMANDWRAPPERS_H
+#endif

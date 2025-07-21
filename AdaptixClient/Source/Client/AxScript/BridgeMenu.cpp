@@ -6,6 +6,14 @@ BridgeMenu::BridgeMenu(AxScriptEngine* scriptEngine, QObject* parent) : QObject(
 
 BridgeMenu::~BridgeMenu() { delete widget; }
 
+QList<AbstractAxMenuItem*> BridgeMenu::items() const { return menuItems; }
+
+void BridgeMenu::clear()
+{
+    qDeleteAll(menuItems);
+    menuItems.clear();
+}
+
 AxActionWrapper* BridgeMenu::create_action(const QString& text, const QJSValue& handler)
 {
     auto* action = new AxActionWrapper(text, handler, scriptEngine->engine(), this);
@@ -27,20 +35,250 @@ AxMenuWrapper* BridgeMenu::create_menu(const QString& title)
     return menu;
 }
 
-void BridgeMenu::add_session_main(AbstractAxMenuItem *item) const
+void BridgeMenu::add_session_main(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
 {
-    this->scriptEngine->registerMenu("SessionMain", item);
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("SessionMain", item, list_agents, list_os, list_listeners);
 }
 
-void BridgeMenu::add_session_access(AbstractAxMenuItem *item) const
+void BridgeMenu::add_session_agent(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
 {
-    this->scriptEngine->registerMenu("SessionAccess", item);
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("SessionAgent", item, list_agents, list_os, list_listeners);
 }
 
-const QList<AbstractAxMenuItem*>& BridgeMenu::items() const { return menuItems; }
-
-void BridgeMenu::clear()
+void BridgeMenu::add_session_browser(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
 {
-    qDeleteAll(menuItems);
-    menuItems.clear();
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("SessionBrowser", item, list_agents, list_os, list_listeners);
+}
+
+void BridgeMenu::add_session_access(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
+{
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("SessionAccess", item, list_agents, list_os, list_listeners);
+}
+
+void BridgeMenu::add_filebrowser(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
+{
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("FileBrowser", item, list_agents, list_os, list_listeners);
+}
+
+void BridgeMenu::add_download_running(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
+{
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("DownloadRunning", item, list_agents, list_os, list_listeners);
+}
+
+void BridgeMenu::add_download_stopped(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
+{
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("DownloadStopped", item, list_agents, list_os, list_listeners);
+}
+
+void BridgeMenu::add_download_finished(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) const
+{
+    QSet<QString> list_agents;
+    QSet<QString> list_os;
+    QSet<QString> list_listeners;
+
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+        return;
+
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents.insert(val.toString());
+    }
+
+    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
+        for (int i = 0; i < os.property("length").toInt(); ++i) {
+            QJSValue val = os.property(i);
+            list_os << val.toString();
+        }
+    }
+
+    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
+        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
+            QJSValue val = listeners.property(i);
+            list_listeners << val.toString();
+        }
+    }
+
+    this->scriptEngine->registerMenu("DownloadFinished", item, list_agents, list_os, list_listeners);
 }

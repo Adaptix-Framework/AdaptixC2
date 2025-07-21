@@ -9,6 +9,11 @@ import (
 	"sort"
 )
 
+func (ts *Teamserver) TsClientConnected(username string) bool {
+	_, found := ts.clients.Get(username)
+	return found
+}
+
 func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	var (
 		buffer   bytes.Buffer
@@ -71,6 +76,7 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	packets = append(packets, ts.TsPresyncTunnels()...)
 	packets = append(packets, ts.TsPresyncEvents()...)
 	packets = append(packets, ts.TsPresyncPivots()...)
+	packets = append(packets, ts.TsPresyncCredentials()...)
 
 	startPacket := CreateSpSyncStart(len(packets))
 	_ = json.NewEncoder(&buffer).Encode(startPacket)
@@ -102,7 +108,7 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 
 	ts.agent_configs.ForEach(func(key string, value interface{}) bool {
 		agentInfo := value.(extender.AgentInfo)
-		p := CreateSpAgentReg(agentInfo.Name, agentInfo.Watermark, agentInfo.AX, agentInfo.Listeners)
+		p := CreateSpAgentReg(agentInfo.Name, agentInfo.AX, agentInfo.Listeners)
 		packets = append(packets, p)
 		return true
 	})
@@ -207,6 +213,16 @@ func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
 	for _, screenData := range sortedScreens {
 		t := CreateSpScreenshotCreate(screenData)
 		packets = append(packets, t)
+	}
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncCredentials() []interface{} {
+	var packets []interface{}
+	for value := range ts.credentials.Iterator() {
+		creds := value.Item.(*adaptix.CredsData)
+		p := CreateSpCredentialsAdd(*creds)
+		packets = append(packets, p)
 	}
 	return packets
 }

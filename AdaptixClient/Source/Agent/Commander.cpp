@@ -77,28 +77,38 @@ QStringList unserializeParams(const QString &commandline)
 
 
 
-Commander::Commander(){}
+Commander::Commander()
+{
+    regCommandsGroup = {};
+    axCommandsGroup  = {};
+}
 
 Commander::~Commander() = default;
 
 void Commander::AddRegCommands(const CommandsGroup &group) { regCommandsGroup = group; }
 
-void Commander::AddAxCommands(const QString &groupName, const QList<Command> &axCommands, QJSEngine *engine)
+void Commander::AddAxCommands(const CommandsGroup &group)
 {
-    CommandsGroup newGroup = {groupName, axCommands};
-    axCommandsGroup.append(newGroup);
+    axCommandsGroup.append(group);
+    emit commandsUpdated();
 }
 
 void Commander::RemoveAxCommands(const QString &filepath)
 {
-    // extModules.remove(filepath);
+    for (int i = 0; i < axCommandsGroup.size(); ++i) {
+        if (axCommandsGroup[i].filepath == filepath) {
+            axCommandsGroup.removeAt(i);
+            i--;
+        }
+    }
+    emit commandsUpdated();
 }
 
 CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
 {
     QStringList parts = unserializeParams(cmdline);
     if (parts.isEmpty())
-        return CommanderResult{false, true, ""};
+        return CommanderResult{false, true, "", {}, false, {}};
 
     QString commandName = parts[0];
     parts.removeAt(0);
@@ -113,11 +123,24 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
                 jsonObj["command"] = command.name;
 
                 if ( command.subcommands.isEmpty() ) {
-                    return ProcessCommand(command, parts, jsonObj);
+
+                    auto cmdResult = ProcessCommand(command, parts, jsonObj);
+                    if ( !cmdResult.output && command.is_pre_hook) {
+                        QString hook_result = ProcessPreHook(script_group.engine, command, agentId, cmdline, cmdResult.data, parts);
+                        if (hook_result.isEmpty()) {
+                            return CommanderResult{false, false, "", {}, true, {} };
+                        } else {
+                            cmdResult.output = true;
+                            cmdResult.error = true;
+                            cmdResult.message = hook_result;
+                        }
+                    }
+                    return cmdResult;
+
                 }
                 else {
                     if ( parts.isEmpty() )
-                        return CommanderResult{true, true, "Subcommand must be set"};
+                        return CommanderResult{true, true, "Subcommand must be set", {}, false, {}};
 
                     QString subCommandName = parts[0];
                     parts.removeAt(0);
@@ -126,11 +149,21 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
                         if (subCommandName == subcommand.name) {
                             jsonObj["subcommand"] = subcommand.name;
 
-                            return ProcessCommand(subcommand, parts, jsonObj);
+                            auto cmdResult = ProcessCommand(subcommand, parts, jsonObj);
+                            if ( !cmdResult.output && subcommand.is_pre_hook) {
+                                QString hook_result = ProcessPreHook(script_group.engine, subcommand, agentId, cmdline, cmdResult.data, parts);
+                                if (hook_result.isEmpty()) {
+                                    return CommanderResult{false, false, "", {}, true, {} };
+                                } else {
+                                    cmdResult.output = true;
+                                    cmdResult.error = true;
+                                    cmdResult.message = hook_result;
+                                }
+                            }
+                            return cmdResult;
                         }
                     }
-
-                    return CommanderResult{true, true, "Subcommand not found"};
+                    return CommanderResult{true, true, "Subcommand not found", {}, false, {}};
                 }
             }
         }
@@ -142,15 +175,23 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
             jsonObj["command"] = command.name;
 
             if ( command.subcommands.isEmpty() ) {
-                if (command.is_pre_hook) {
-                    ProcessPreHook(regCommandsGroup.engine, agentId, command, cmdline, parts);
-                    return CommanderResult{false, false, "", {}, true };
-                } else {
-                    return ProcessCommand(command, parts, jsonObj);
+
+                auto cmdResult = ProcessCommand(command, parts, jsonObj);
+                if ( !cmdResult.output && command.is_pre_hook) {
+                    QString hook_result = ProcessPreHook(regCommandsGroup.engine, command, agentId, cmdline, cmdResult.data, parts);
+                    if (hook_result.isEmpty()) {
+                        return CommanderResult{false, false, "", {}, true, {} };
+                    } else {
+                        cmdResult.output = true;
+                        cmdResult.error = true;
+                        cmdResult.message = hook_result;
+                    }
                 }
+                return cmdResult;
+
             } else {
                 if ( parts.isEmpty() )
-                    return CommanderResult{true, true, "Subcommand must be set" };
+                    return CommanderResult{true, true, "Subcommand must be set", {}, false, {} };
 
                 QString subCommandName = parts[0];
                 parts.removeAt(0);
@@ -159,40 +200,47 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
                     if (subCommandName == subcommand.name) {
                         jsonObj["subcommand"] = subcommand.name;
 
-                        if (subcommand.is_pre_hook) {
-                            ProcessPreHook(regCommandsGroup.engine, agentId, subcommand, cmdline, parts);
-                            return CommanderResult{false, false, "", {}, true };
-                        } else {
-                            return ProcessCommand(subcommand, parts, jsonObj);
+                        auto cmdResult = ProcessCommand(subcommand, parts, jsonObj);
+                        if ( !cmdResult.output && subcommand.is_pre_hook) {
+                            QString hook_result = ProcessPreHook(regCommandsGroup.engine, subcommand, agentId, cmdline, cmdResult.data, parts);
+                            if (hook_result.isEmpty()) {
+                                return CommanderResult{false, false, "", {}, true, {} };
+                            } else {
+                                cmdResult.output = true;
+                                cmdResult.error = true;
+                                cmdResult.message = hook_result;
+                            }
+
                         }
+                        return cmdResult;
                     }
                 }
-
-                return CommanderResult{true, true, "Subcommand not found" };
+                return CommanderResult{true, true, "Subcommand not found", {}, false, {} };
             }
         }
     }
 
-    return CommanderResult{true, true, "Command not found"};
+    return CommanderResult{true, true, "Command not found", {}, false, {}};
 }
 
-void Commander::ProcessPreHook(QJSEngine *engine, const QString &agentId, const Command &command, const QString &cmdline, QStringList args)
+QString Commander::ProcessPreHook(QJSEngine *engine, const Command &command, const QString &agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args)
 {
     if (!engine)
-        return;
+        return "Ax Engine is not available";
 
     QList<QJSValue> jsArgs;
     jsArgs << engine->toScriptValue(agentId);
     jsArgs << engine->toScriptValue(cmdline);
+    jsArgs << engine->toScriptValue(jsonObj.toVariantMap());
     for (const QString& arg : args) {
         jsArgs << engine->toScriptValue(arg);
     }
 
     QJSValue result = command.pre_hook.call(jsArgs);
     if (result.isError()) {
-        qWarning() << "JS error:" << result.property("message").toString();
-        qWarning() << "Stack trace:" << result.property("stack").toString();
+        return  "Error: " + result.property("message").toString();
     }
+    return "";
 }
 
 CommanderResult Commander::ProcessCommand(Command command, QStringList args, QJsonObject jsonObj)
@@ -259,12 +307,12 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args, QJs
                     jsonObj[commandArg.name] = QString::fromLatin1(fileData.toBase64());
                     file.close();
                 } else {
-                    return CommanderResult{true, true, "Failed to open file: " + path};
+                    return CommanderResult{true, true, "Failed to open file: " + path, {}, false, {}};
                 }
             }
         } else if (commandArg.required) {
             if ( (commandArg.defaultValue.isNull() || !commandArg.defaultValue.isValid()) && !commandArg.defaultUsed) {
-                return CommanderResult{true, true, "Missing required argument: " + commandArg.name};
+                return CommanderResult{true, true, "Missing required argument: " + commandArg.name, {}, false, {}};
             }
             else {
                 if (commandArg.type == "STRING" && commandArg.defaultValue.typeId() == QMetaType::QString) {
@@ -275,7 +323,7 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args, QJs
                     jsonObj[commandArg.mark] = commandArg.defaultValue.toBool();
                 }
                 else {
-                    return CommanderResult{true, true, "Missing required argument: " + commandArg.name};
+                    return CommanderResult{true, true, "Missing required argument: " + commandArg.name, {}, false, {}};
                 }
             }
         }
@@ -291,7 +339,7 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args, QJs
         jsonObj["message"] = msg;
     }
 
-    return CommanderResult{false, false, "", jsonObj };
+    return CommanderResult{false, false, "", jsonObj, false, {} };
 }
 
 QString Commander::GetError() { return error; }
@@ -336,7 +384,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             }
         }
 
-        return CommanderResult{false, true, result};
+        return CommanderResult{false, true, result, {}, false, {}};
     }
     else {
         Command foundCommand;
@@ -362,7 +410,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
         }
 
         if ( foundCommand.name.isEmpty() )
-            return CommanderResult{true, true, "Unknown command: " + commandName};
+            return CommanderResult{true, true, "Unknown command: " + commandName, {}, false, {}};
 
         if (commandParts.size() == 1) {
             output << QString("\n");
@@ -403,7 +451,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 for (const auto &arg : foundCommand.args) {
                     QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
                     QString padding = QString(maxArgLength - fullarg.size(), ' ');
-                    output << "    " + fullarg + padding + "  : " + arg.type + (arg.defaultUsed ? " (default: '" + arg.defaultValue.toString() + "'). " : ". ") + arg.description + "\n";
+                    output << "    " + fullarg + padding + "  : " + (arg.type + ".").leftJustified(9, ' ') + (arg.defaultUsed ? " (default: '" + arg.defaultValue.toString() + "'). " : " ") + arg.description + "\n";
                 }
             }
         }
@@ -418,7 +466,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             }
 
             if ( foundSubCommand.name.isEmpty() )
-                return CommanderResult{true, true, "Unknown subcommand: " + subCommandName};
+                return CommanderResult{true, true, "Unknown subcommand: " + subCommandName, {}, false, {}};
 
             output << "  Command               : " + foundCommand.name + " " + foundSubCommand.name +"\n";
             if(!foundSubCommand.description.isEmpty())
@@ -443,14 +491,14 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 for (const auto &arg : foundSubCommand.args) {
                     QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
                     QString padding = QString(maxArgLength - fullarg.size(), ' ');
-                    output << "    " + fullarg + padding + "  : " + arg.type + (arg.defaultUsed ? " (default: '" + arg.defaultValue.toString() + "'). " : ". ") + arg.description + "\n";
+                    output << "    " + fullarg + padding + "  : " + (arg.type + ".").leftJustified(9, ' ') + (arg.defaultUsed ? ".- (default: '" + arg.defaultValue.toString() + "'). " : " ") + arg.description + "\n";
                 }
             }
         }
         else {
-            return CommanderResult{true, true, "Error Help format: 'help [command [subcommand]]'"};
+            return CommanderResult{true, true, "Error Help format: 'help [command [subcommand]]'", {}, false, {}};
         }
-        return CommanderResult{false, true, output.readAll()};
+        return CommanderResult{false, true, output.readAll(), {}, false, {}};
     }
 }
 

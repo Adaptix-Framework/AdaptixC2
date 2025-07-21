@@ -1,7 +1,9 @@
 #include <Agent/Agent.h>
 #include <Utils/FileSystem.h>
+#include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <Client/AxScript/AxScriptManager.h>
 
 void BrowserFileData::CreateBrowserFileData(const QString &path, const int os)
 {
@@ -47,12 +49,12 @@ BrowserFilesWidget::BrowserFilesWidget(Agent* a)
     agent = a;
     this->createUI();
 
-    connect(buttonDisks,  &QPushButton::clicked,     this, &BrowserFilesWidget::onDisks);
-    connect(buttonList,   &QPushButton::clicked,     this, &BrowserFilesWidget::onList);
-    connect(buttonParent, &QPushButton::clicked,     this, &BrowserFilesWidget::onParent);
-    connect(buttonReload, &QPushButton::clicked,     this, &BrowserFilesWidget::onReload);
-    connect(buttonUpload, &QPushButton::clicked,     this, &BrowserFilesWidget::onUpload);
-    connect(inputPath,    &QLineEdit::returnPressed, this, &BrowserFilesWidget::onList);
+    connect(buttonDisks,       &QPushButton::clicked,                     this, &BrowserFilesWidget::onDisks);
+    connect(buttonList,        &QPushButton::clicked,                     this, &BrowserFilesWidget::onList);
+    connect(buttonParent,      &QPushButton::clicked,                     this, &BrowserFilesWidget::onParent);
+    connect(buttonReload,      &QPushButton::clicked,                     this, &BrowserFilesWidget::onReload);
+    connect(buttonUpload,      &QPushButton::clicked,                     this, &BrowserFilesWidget::onUpload);
+    connect(inputPath,         &QLineEdit::returnPressed,                 this, &BrowserFilesWidget::onList);
     connect(tableWidget,       &QTableWidget::doubleClicked,              this, &BrowserFilesWidget::handleTableDoubleClicked);
     connect(treeBrowserWidget, &QTreeWidget::itemDoubleClicked,           this, &BrowserFilesWidget::handleTreeDoubleClicked);
     connect(tableWidget,       &QTableWidget::customContextMenuRequested, this, &BrowserFilesWidget::handleTableMenu );
@@ -86,15 +88,11 @@ void BrowserFilesWidget::createUI()
     buttonDisks->setIconSize( QSize( 24,24 ));
     buttonDisks->setFixedSize(37, 28);
     buttonDisks->setToolTip("Disks list");
-    if (!agent->browsers.FileBrowserDisks)
-        buttonDisks->setEnabled(false);
 
     buttonUpload = new QPushButton(QIcon(":/icons/upload"), "", this);
     buttonUpload->setIconSize( QSize( 24,24 ));
     buttonUpload->setFixedSize(37, 28);
     buttonUpload->setToolTip("Upload File");
-    if (!agent->browsers.FileBrowserUpload)
-        buttonUpload->setEnabled(false);
 
     line_2 = new QFrame(this);
     line_2->setFrameShape(QFrame::VLine);
@@ -173,7 +171,7 @@ void BrowserFilesWidget::createUI()
     this->setLayout(mainGridLayout);
 }
 
-void BrowserFilesWidget::SetDisksWin(qint64 time, int msgType, const QString &message, const QString &data)
+void BrowserFilesWidget::SetDisksWin(const qint64 time, const int msgType, const QString &message, const QString &data)
 {
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
@@ -205,7 +203,7 @@ void BrowserFilesWidget::SetDisksWin(qint64 time, int msgType, const QString &me
     inputPath->setText(currentPath);
 }
 
-void BrowserFilesWidget::AddFiles(qint64 time, int msgType, const QString &message, const QString &path, const QString &data)
+void BrowserFilesWidget::AddFiles(const qint64 time, const int msgType, const QString &message, const QString &path, const QString &data)
 {
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
@@ -242,7 +240,7 @@ void BrowserFilesWidget::AddFiles(qint64 time, int msgType, const QString &messa
     inputPath->setText(currentPath);
 }
 
-void BrowserFilesWidget::SetStatus( qint64 time, int msgType, const QString &message ) const
+void BrowserFilesWidget::SetStatus(const qint64 time, const int msgType, const QString &message ) const
 {
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
@@ -258,15 +256,9 @@ void BrowserFilesWidget::SetStatus( qint64 time, int msgType, const QString &mes
 
 /// PRIVATE
 
-BrowserFileData* BrowserFilesWidget::getBrowserStore(const QString &path)
-{
-    return &browserStore[path];
-}
+BrowserFileData* BrowserFilesWidget::getBrowserStore(const QString &path) { return &browserStore[path]; }
 
-void BrowserFilesWidget::setBrowserStore(const QString &path, const BrowserFileData &fileData)
-{
-    browserStore[path] = fileData;
-}
+void BrowserFilesWidget::setBrowserStore(const QString &path, const BrowserFileData &fileData) { browserStore[path] = fileData; }
 
 BrowserFileData BrowserFilesWidget::createFileData(const QString &path) const
 {
@@ -428,7 +420,6 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
             browserStore.remove(data.Fullpath);
             oldFiles.remove(oldPath);
         }
-
     }
 }
 
@@ -503,33 +494,31 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
             return;
     }
 
-    BrowserFileData fileData = * this->getBrowserStore(fPath);
+    BrowserFileData fileData = *this->getBrowserStore(fPath);
     if (fileData.Type == TYPE_FILE)
         return;
 
     if (fileData.Stored) {
         this->setStoredFileData(path, fileData);
     } else {
-        QString status = agent->BrowserList(path);
-        statusLabel->setText(status);
+        statusLabel->setText("");
+        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
     }
 }
-
-
 
 /// SLOTS
 
 void BrowserFilesWidget::onDisks() const
 {
-    QString status = agent->BrowserDisks();
-    statusLabel->setText(status);
+    statusLabel->setText("");
+    emit agent->adaptixWidget->eventFileBrowserDisks(agent->data.Id);
 }
 
 void BrowserFilesWidget::onList() const
 {
     QString path = inputPath->text();
-    QString status = agent->BrowserList(path);
-    statusLabel->setText(status);
+    statusLabel->setText("");
+    emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
 }
 
 void BrowserFilesWidget::onParent()
@@ -566,12 +555,12 @@ void BrowserFilesWidget::onReload() const
         else
             path = "./";
 
-        QString status = agent->BrowserList(path);
-        statusLabel->setText(status);
+        statusLabel->setText("");
+        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
     }
     else {
-        QString status = agent->BrowserList(currentPath);
-        statusLabel->setText(status);
+        statusLabel->setText("");
+        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, currentPath);
     }
 }
 
@@ -581,47 +570,18 @@ void BrowserFilesWidget::onUpload() const
     if ( path.isEmpty() )
         return;
 
-    QString filePath = QFileDialog::getOpenFileName( nullptr, "Select file", QDir::homePath());
+    QString remotePath = currentPath;
+    if (this->agent->data.Os == OS_WINDOWS)
+        remotePath += "\\";
+    else
+        remotePath += "/";
+
+    QString filePath = QFileDialog::getOpenFileName(nullptr, "Select file", QDir::homePath());
     if ( filePath.isEmpty())
         return;
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly))
-        return;
-
-    QByteArray fileContent = file.readAll();
-    file.close();
-
-    QString base64Content = fileContent.toBase64();
-    QString remotePath = currentPath;
-    if (this->agent->data.Os == OS_WINDOWS)
-        remotePath += "\\" + QFileInfo(filePath).fileName();
-    else
-        remotePath += "/" + QFileInfo(filePath).fileName();
-
-    QString status = agent->BrowserUpload( remotePath, base64Content );
-    statusLabel->setText(status);
-}
-
-void BrowserFilesWidget::actionDownload() const
-{
-    if (currentPath.isEmpty())
-        return;
-
-    QList<QString> files;
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto filename = tableWidget->item( rowIndex, 0 )->text();
-
-            if (this->agent->data.Os == OS_WINDOWS)
-                files.append(currentPath + "\\" + filename);
-            else
-                files.append(currentPath + "/" + filename);
-        }
-    }
-
-    for (auto file : files)
-        QString status = agent->BrowserDownload(file);
+    statusLabel->setText("");
+    emit agent->adaptixWidget->eventFileBrowserUpload(agent->data.Id, remotePath, filePath);
 }
 
 void BrowserFilesWidget::handleTableDoubleClicked(const QModelIndex &index)
@@ -652,13 +612,49 @@ void BrowserFilesWidget::handleTreeDoubleClicked(QTreeWidgetItem* item, int colu
 
 void BrowserFilesWidget::handleTableMenu(const QPoint &pos)
 {
-    if ( ! tableWidget->itemAt(pos) )
+    if ( !tableWidget->itemAt(pos) || currentPath.isEmpty())
         return;
 
-    if ( !agent->browsers.FileBrowserDownload )
+    if ( !(agent && agent->adaptixWidget && agent->adaptixWidget->ScriptManager) )
         return;
+
+    QString path = currentPath;
+    if (this->agent->data.Os == OS_WINDOWS) {
+        if (!path.endsWith("\\"))
+            path += "\\";
+    }
+    else {
+        if (!path.endsWith("/"))
+            path += "/";
+    }
+
+    QVector<DataMenuFileBrowser> items;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+
+            auto filename = tableWidget->item( rowIndex, 0 )->text();
+            auto fullname = path + filename;
+            if (this->agent->data.Os == OS_WINDOWS)
+                fullname = fullname.toLower();
+
+            if (!browserStore.contains(fullname))
+                continue;
+
+            DataMenuFileBrowser dataFile = {};
+            dataFile.agentId = agent->data.Id;
+            dataFile.path    = path;
+
+            int filetype = this->getBrowserStore(fullname)->Type;
+            if (filetype == TYPE_FILE)
+                items.append(DataMenuFileBrowser{agent->data.Id, path, filename, "file"});
+            else
+                items.append(DataMenuFileBrowser{agent->data.Id, path, filename, "dir"});
+        }
+    }
 
     auto ctxMenu = QMenu();
-    ctxMenu.addAction( "Download", this, &BrowserFilesWidget::actionDownload);
+
+    agent->adaptixWidget->ScriptManager->AddMenuFileBrowser(&ctxMenu, items);
+
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }

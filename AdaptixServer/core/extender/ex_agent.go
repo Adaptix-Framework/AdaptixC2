@@ -21,12 +21,12 @@ func (ex *AdaptixExtender) ExAgentCreate(agentName string, beat []byte) (adaptix
 	return module.AgentCreate(beat)
 }
 
-func (ex *AdaptixExtender) ExAgentCommand(client string, cmdline string, agentName string, agentData adaptix.AgentData, args map[string]any) error {
+func (ex *AdaptixExtender) ExAgentCommand(agentName string, agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
 	module, ok := ex.agentModules[agentName]
 	if !ok {
-		return errors.New("module not found")
+		return adaptix.TaskData{}, adaptix.ConsoleMessageData{}, errors.New("module not found")
 	}
-	return module.AgentCommand(client, cmdline, agentData, args)
+	return module.AgentCommand(agentData, args)
 }
 
 func (ex *AdaptixExtender) ExAgentProcessData(agentData adaptix.AgentData, packedData []byte) ([]byte, error) {
@@ -53,72 +53,6 @@ func (ex *AdaptixExtender) ExAgentPivotPackData(agentName string, pivotId string
 	return module.AgentPivotPackData(pivotId, data)
 }
 
-func (ex *AdaptixExtender) ExAgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentBrowserDisks(agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentBrowserProcess(agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentBrowserProcess(agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentBrowserFiles(agentData adaptix.AgentData, path string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentBrowserFiles(path, agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentBrowserUpload(agentData adaptix.AgentData, path string, content []byte) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentBrowserUpload(path, content, agentData)
-}
-
-/// Downloads
-
-func (ex *AdaptixExtender) ExAgentDownloadTaskStart(agentData adaptix.AgentData, path string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentTaskDownloadStart(path, agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentDownloadTaskCancel(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentTaskDownloadCancel(fileId, agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentDownloadTaskResume(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentTaskDownloadResume(fileId, agentData)
-}
-
-func (ex *AdaptixExtender) ExAgentDownloadTaskPause(agentData adaptix.AgentData, fileId string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentTaskDownloadPause(fileId, agentData)
-}
-
 /// Tunnels
 
 func (ex *AdaptixExtender) ExAgentTunnelCallbacks(agentData adaptix.AgentData, tunnelType int) (func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {
@@ -139,14 +73,6 @@ func (ex *AdaptixExtender) ExAgentTerminalCallbacks(agentData adaptix.AgentData)
 }
 
 ////
-
-func (ex *AdaptixExtender) ExAgentCtxExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentBrowserExit(agentData)
-}
 
 func (ex *AdaptixExtender) ExAgentBrowserJobKill(agentData adaptix.AgentData, jobId string) (adaptix.TaskData, error) {
 	module, ok := ex.agentModules[agentData.Name]
