@@ -29,4 +29,4 @@ public:
      static void executeShifts( GraphItem* item );
 };
 
-#endif //ADAPTIXCLIENT_LAYOUTTREELEFT_H
+#endif

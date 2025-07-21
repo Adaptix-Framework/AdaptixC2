@@ -52,4 +52,4 @@ protected slots:
     void onButtonCancel();
 };
 
-#endif //ADAPTIXCLIENT_DIALOGLISTENER_H
+#endif

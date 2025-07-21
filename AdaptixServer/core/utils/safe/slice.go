@@ -45,6 +45,17 @@ func (sl *Slice) Delete(index uint) {
 	sl.items = append(sl.items[:index], sl.items[index+1:]...)
 }
 
+func (sl *Slice) Replace(index uint, value interface{}) {
+	sl.mutex.Lock()
+	defer sl.mutex.Unlock()
+
+	if index >= uint(len(sl.items)) {
+		return
+	}
+
+	sl.items[index] = value
+}
+
 func (sl *Slice) DirectLock() {
 	sl.mutex.RLock()
 }

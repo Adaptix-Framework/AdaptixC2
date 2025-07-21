@@ -471,12 +471,18 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 	return memoryId
 }
 
-func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
+func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
 	var (
 		taskData    adaptix.TaskData
 		messageData adaptix.ConsoleMessageData
 		err         error
 	)
+
+	command, ok := args["command"].(string)
+	if !ok {
+		return taskData, messageData, errors.New("'command' must be set")
+	}
+	subcommand, _ := args["subcommand"].(string)
 
 	taskData = adaptix.TaskData{
 		Type: TYPE_TASK,
@@ -488,8 +494,6 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		Text:   "",
 	}
 	messageData.Message, _ = args["message"].(string)
-
-	subcommand, _ := args["subcommand"].(string)
 
 	/// START CODE HERE
 
@@ -1915,68 +1919,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 	return outTasks
 }
 
-/// BROWSERS
-
-func BrowserDisks(agentData adaptix.AgentData) ([]byte, error) {
-	array := []interface{}{COMMAND_DISKS}
-	return PackArray(array)
-}
-
-func BrowserProcess(agentData adaptix.AgentData) ([]byte, error) {
-	array := []interface{}{COMMAND_PS_LIST}
-	return PackArray(array)
-}
-
-func BrowserFiles(path string, agentData adaptix.AgentData) ([]byte, error) {
-	dir := ConvertUTF8toCp(path, agentData.ACP)
-	array := []interface{}{COMMAND_LS, dir}
-	return PackArray(array)
-}
-
-func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix.AgentData) ([]byte, error) {
-	memoryId := CreateTaskCommandSaveMemory(ts, agentData.Id, content)
-	fileName := ConvertUTF8toCp(path, agentData.ACP)
-	array := []interface{}{COMMAND_UPLOAD, memoryId, fileName}
-	return PackArray(array)
-}
-
-/// DOWNLOADS
-
-func TaskDownloadStart(path string, agentData adaptix.AgentData) ([]byte, error) {
-	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
-	return PackArray(array)
-}
-
-func TaskDownloadCancel(fid string) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_CANCELED, int(fileId)}
-	return PackArray(array)
-}
-
-func TaskDownloadResume(fid string) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_RUNNING, int(fileId)}
-	return PackArray(array)
-}
-
-func TaskDownloadPause(fid string) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_STOPPED, int(fileId)}
-	return PackArray(array)
-}
-
 ///
 
 func BrowserJobKill(jobId string) ([]byte, error) {
@@ -1986,11 +1928,6 @@ func BrowserJobKill(jobId string) ([]byte, error) {
 	}
 
 	array := []interface{}{COMMAND_JOBS_KILL, int(jobIdstr)}
-	return PackArray(array)
-}
-
-func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
-	array := []interface{}{COMMAND_TERMINATE, 2}
 	return PackArray(array)
 }
 

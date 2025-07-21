@@ -15,6 +15,11 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 	*inPacker = Packer( recv, recvSize );
 
 	ULONG packerSize = inPacker->Unpack32();
+	if (packerSize > recvSize - 4) {
+		MemFreeLocal((LPVOID*)&inPacker, sizeof(Packer));
+		return;
+	}
+
 	while ( packerSize + 4 > inPacker->datasize())
 	{	
 		ULONG CommandId = inPacker->Unpack32();

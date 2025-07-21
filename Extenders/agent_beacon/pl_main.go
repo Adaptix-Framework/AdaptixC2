@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"github.com/Adaptix-Framework/axc2"
 	"math/rand"
 	"time"
@@ -124,24 +123,8 @@ func (m *ModuleExtender) AgentCreate(beat []byte) (adaptix.AgentData, error) {
 	return CreateAgent(beat)
 }
 
-func (m *ModuleExtender) AgentCommand(client string, cmdline string, agentData adaptix.AgentData, args map[string]any) error {
-	command, ok := args["command"].(string)
-	if !ok {
-		return errors.New("'command' must be set")
-	}
-
-	taskData, messageData, err := CreateTask(m.ts, agentData, command, args)
-	if err != nil {
-		return err
-	}
-
-	m.ts.TsTaskCreate(agentData.Id, cmdline, client, taskData)
-
-	if len(messageData.Message) > 0 || len(messageData.Text) > 0 {
-		m.ts.TsAgentConsoleOutput(agentData.Id, messageData.Status, messageData.Message, messageData.Text, false)
-	}
-
-	return nil
+func (m *ModuleExtender) AgentCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
+	return CreateTask(m.ts, agentData, args)
 }
 
 func (m *ModuleExtender) AgentPackData(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error) {
@@ -197,146 +180,7 @@ func (m *ModuleExtender) AgentProcessData(agentData adaptix.AgentData, packedDat
 	return nil, nil
 }
 
-/// BROWSERS
-
-func (m *ModuleExtender) AgentBrowserDisks(agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := BrowserDisks(agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentBrowserProcess(agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := BrowserProcess(agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentBrowserFiles(path string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := BrowserFiles(path, agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentBrowserUpload(path string, content []byte, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := BrowserUpload(m.ts, path, content, agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
 ///
-
-func (m *ModuleExtender) AgentTaskDownloadStart(path string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := TaskDownloadStart(path, agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_TASK,
-		Data: packData,
-		Sync: true,
-	}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentTaskDownloadCancel(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := TaskDownloadCancel(fileId)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentTaskDownloadResume(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := TaskDownloadResume(fileId)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
-func (m *ModuleExtender) AgentTaskDownloadPause(fileId string, agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := TaskDownloadPause(fileId)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_BROWSER,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
-///
-
-func (m *ModuleExtender) AgentBrowserExit(agentData adaptix.AgentData) (adaptix.TaskData, error) {
-	packData, err := BrowserExit(agentData)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_TASK,
-		Data: packData,
-		Sync: true,
-	}
-
-	return taskData, nil
-}
 
 func (m *ModuleExtender) AgentBrowserJobKill(jobId string) (adaptix.TaskData, error) {
 	packData, err := BrowserJobKill(jobId)

@@ -13,8 +13,10 @@
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
+#include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
+
 
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 {
@@ -60,7 +62,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_AGENT_REG ) {
         if ( !jsonObj.contains("agent")     || !jsonObj["agent"].isString() )     return false;
-        if ( !jsonObj.contains("watermark") || !jsonObj["watermark"].isString() ) return false;
         if ( !jsonObj.contains("ax")        || !jsonObj["ax"].isString() )        return false;
         if ( !jsonObj.contains("listeners") || !jsonObj["listeners"].isArray() )  return false;
         return true;
@@ -142,8 +143,19 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isArray()) return false;
         return true;
     }
-    if( spType == TYPE_AGENT_TASK_REMOVE ) {
+    if ( spType == TYPE_AGENT_TASK_REMOVE ) {
         if (!jsonObj.contains("a_task_id") || !jsonObj["a_task_id"].isString()) return false;
+        return true;
+    }
+    if ( spType == TYPE_AGENT_TASK_HOOK ) {
+        if (!jsonObj.contains("a_id")        || !jsonObj["a_id"].isString())        return false;
+        if (!jsonObj.contains("a_task_id")   || !jsonObj["a_task_id"].isString())   return false;
+        if (!jsonObj.contains("a_hook_id")   || !jsonObj["a_hook_id"].isString())   return false;
+        if (!jsonObj.contains("a_job_index") || !jsonObj["a_job_index"].isDouble()) return false;
+        if (!jsonObj.contains("a_msg_type")  || !jsonObj["a_msg_type"].isDouble())  return false;
+        if (!jsonObj.contains("a_message")   || !jsonObj["a_message"].isString())   return false;
+        if (!jsonObj.contains("a_text")      || !jsonObj["a_text"].isString())      return false;
+        if (!jsonObj.contains("a_completed") || !jsonObj["a_completed"].isBool())   return false;
         return true;
     }
 
@@ -242,6 +254,35 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
     if( spType == TYPE_SCREEN_DELETE ) {
         if (!jsonObj.contains("s_screen_id") || !jsonObj["s_screen_id"].isString()) return false;
+        return true;
+    }
+
+    if ( spType == TYPE_CREDS_CREATE ) {
+        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
+        if (!jsonObj.contains("c_username") || !jsonObj["c_username"].isString()) return false;
+        if (!jsonObj.contains("c_password") || !jsonObj["c_password"].isString()) return false;
+        if (!jsonObj.contains("c_realm")    || !jsonObj["c_realm"].isString())    return false;
+        if (!jsonObj.contains("c_type")     || !jsonObj["c_type"].isString())     return false;
+        if (!jsonObj.contains("c_tag")      || !jsonObj["c_tag"].isString())      return false;
+        if (!jsonObj.contains("c_date")     || !jsonObj["c_date"].isDouble())     return false;
+        if (!jsonObj.contains("c_storage")  || !jsonObj["c_storage"].isString())  return false;
+        if (!jsonObj.contains("c_agent_id") || !jsonObj["c_agent_id"].isString()) return false;
+        if (!jsonObj.contains("c_host")     || !jsonObj["c_host"].isString())     return false;
+        return true;
+    }
+    if ( spType == TYPE_CREDS_EDIT ) {
+        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
+        if (!jsonObj.contains("c_username") || !jsonObj["c_username"].isString()) return false;
+        if (!jsonObj.contains("c_password") || !jsonObj["c_password"].isString()) return false;
+        if (!jsonObj.contains("c_realm")    || !jsonObj["c_realm"].isString())    return false;
+        if (!jsonObj.contains("c_type")     || !jsonObj["c_type"].isString())     return false;
+        if (!jsonObj.contains("c_tag")      || !jsonObj["c_tag"].isString())      return false;
+        if (!jsonObj.contains("c_storage")  || !jsonObj["c_storage"].isString())  return false;
+        if (!jsonObj.contains("c_host")     || !jsonObj["c_host"].isString())     return false;
+        return true;
+    }
+    if ( spType == TYPE_CREDS_DELETE ) {
+        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
         return true;
     }
 
@@ -444,6 +485,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         TasksTab->RemoveTaskItem(TaskId);
         return;
     }
+    if ( spType == TYPE_AGENT_TASK_HOOK )
+    {
+        this->PostHookProcess(jsonObj);
+    }
 
 
 
@@ -569,6 +614,46 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
 
 
+    if ( spType == TYPE_CREDS_CREATE )
+    {
+        CredentialData newCredential = {};
+        newCredential.CredId   = jsonObj["c_creds_id"].toString();
+        newCredential.Username = jsonObj["c_username"].toString();
+        newCredential.Password = jsonObj["c_password"].toString();
+        newCredential.Realm    = jsonObj["c_realm"].toString();
+        newCredential.Type     = jsonObj["c_type"].toString();
+        newCredential.Tag      = jsonObj["c_tag"].toString();
+        newCredential.Storage  = jsonObj["c_storage"].toString();
+        newCredential.AgentId  = jsonObj["c_agent_id"].toString();
+        newCredential.Host     = jsonObj["c_host"].toString();
+        newCredential.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["c_date"].toDouble()));
+
+        CredentialsTab->AddCredentialsItem(newCredential);
+        return;
+    }
+    if ( spType == TYPE_CREDS_EDIT ) {
+        CredentialData newCredential = {};
+        newCredential.CredId   = jsonObj["c_creds_id"].toString();
+        newCredential.Username = jsonObj["c_username"].toString();
+        newCredential.Password = jsonObj["c_password"].toString();
+        newCredential.Realm    = jsonObj["c_realm"].toString();
+        newCredential.Type     = jsonObj["c_type"].toString();
+        newCredential.Tag      = jsonObj["c_tag"].toString();
+        newCredential.Storage  = jsonObj["c_storage"].toString();
+        newCredential.Host     = jsonObj["c_host"].toString();
+
+        CredentialsTab->EditCredentialsItem(newCredential);
+        return;
+    }
+    if ( spType == TYPE_CREDS_DELETE ) {
+        QString credId = jsonObj["c_creds_id"].toString();
+
+        CredentialsTab->RemoveCredentialsItem(credId);
+        return;
+    }
+
+
+
     if( spType == TYPE_TUNNEL_CREATE )
     {
         TunnelData newTunnel = {0};
@@ -616,7 +701,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (AgentsMap.contains(agentId) ) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+            if (agent && agent->FileBrowser)
                 agent->FileBrowser->SetDisksWin(time, msgType, message, data);
         }
         return;
@@ -632,7 +717,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (AgentsMap.contains(agentId) ) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+            if (agent && agent->FileBrowser)
                 agent->FileBrowser->AddFiles(time, msgType, message, path, data);
         }
         return;
@@ -647,7 +732,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (AgentsMap.contains(agentId)) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->browsers.ProcessBrowser && agent->ProcessBrowser) {
+            if (agent && agent->ProcessBrowser) {
                 agent->ProcessBrowser->SetStatus(time, msgType, message);
                 agent->ProcessBrowser->SetProcess(msgType, data);
             }
@@ -663,7 +748,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if (AgentsMap.contains(agentId) ) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->browsers.FileBrowser && agent->FileBrowser)
+            if (agent && agent->FileBrowser)
                 agent->FileBrowser->SetStatus(time, msgType, message);
         }
         return;
@@ -738,7 +823,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_AGENT_REG )
     {
         QString agentName         = jsonObj["agent"].toString();
-        QString agentwatermark    = jsonObj["watermark"].toString();
         QString ax_script         = jsonObj["ax"].toString();
         QJsonArray listenersArray = jsonObj["listeners"].toArray();
 
@@ -746,7 +830,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         for (QJsonValue listener : listenersArray)
             listeners.append(listener.toString());
 
-        this->RegisterAgentConfig(agentName, agentwatermark, ax_script, listeners);
+        this->RegisterAgentConfig(agentName, ax_script, listeners);
         return;
     }
 }

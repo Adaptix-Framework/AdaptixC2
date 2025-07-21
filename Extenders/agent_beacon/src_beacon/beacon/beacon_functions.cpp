@@ -142,7 +142,7 @@ void BeaconFormatAlloc(formatp* format, int maxsz)
 	if (format == NULL) {
 		return;
 	}
-	format->original = (PCHAR)ApiWin->LocalAlloc(maxsz, 1);
+	format->original = (PCHAR)ApiWin->LocalAlloc(LPTR, maxsz);
 	format->buffer = format->original;
 	format->length = 0;
 	format->size = maxsz;

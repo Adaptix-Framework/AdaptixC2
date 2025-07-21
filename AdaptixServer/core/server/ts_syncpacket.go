@@ -39,6 +39,7 @@ const (
 	TYPE_AGENT_TASK_UPDATE = 0x4a
 	TYPE_AGENT_TASK_SEND   = 0x4b
 	TYPE_AGENT_TASK_REMOVE = 0x4c
+	TYPE_AGENT_TASK_HOOK   = 0x4d
 
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
@@ -63,6 +64,10 @@ const (
 
 	TYPE_PIVOT_CREATE = 0x71
 	TYPE_PIVOT_DELETE = 0x72
+
+	TYPE_CREDS_CREATE = 0x81
+	TYPE_CREDS_EDIT   = 0x82
+	TYPE_CREDS_DELETE = 0x83
 )
 
 func CreateSpEvent(event int, message string) SpEvent {
@@ -134,12 +139,11 @@ func CreateSpListenerStop(name string) SyncPackerListenerStop {
 
 /// AGENT
 
-func CreateSpAgentReg(agent string, watermark string, ax string, listeners []string) SyncPackerAgentReg {
+func CreateSpAgentReg(agent string, ax string, listeners []string) SyncPackerAgentReg {
 	return SyncPackerAgentReg{
 		SpType: TYPE_AGENT_REG,
 
 		Agent:     agent,
-		Watermark: watermark,
 		AX:        ax,
 		Listeners: listeners,
 	}
@@ -258,6 +262,21 @@ func CreateSpAgentTaskRemove(taskData adaptix.TaskData) SyncPackerAgentTaskRemov
 		SpType: TYPE_AGENT_TASK_REMOVE,
 
 		TaskId: taskData.TaskId,
+	}
+}
+
+func CreateSpAgentTaskHook(taskData adaptix.TaskData, jobIndex int) SyncPackerAgentTaskHook {
+	return SyncPackerAgentTaskHook{
+		SpType: TYPE_AGENT_TASK_HOOK,
+
+		AgentId:     taskData.AgentId,
+		TaskId:      taskData.TaskId,
+		HookId:      taskData.HookId,
+		JobIndex:    jobIndex,
+		MessageType: taskData.MessageType,
+		Message:     taskData.Message,
+		Text:        taskData.ClearText,
+		Completed:   taskData.Completed,
 	}
 }
 
@@ -389,6 +408,48 @@ func CreateSpScreenshotDelete(screenId string) SyncPackerScreenshotDelete {
 		SpType: TYPE_SCREEN_DELETE,
 
 		ScreenId: screenId,
+	}
+}
+
+/// SCREEN
+
+func CreateSpCredentialsAdd(credsData adaptix.CredsData) SyncPackerCredentialsAdd {
+	return SyncPackerCredentialsAdd{
+		SpType: TYPE_CREDS_CREATE,
+
+		CredId:   credsData.CredId,
+		Username: credsData.Username,
+		Password: credsData.Password,
+		Realm:    credsData.Realm,
+		Type:     credsData.Type,
+		Tag:      credsData.Tag,
+		Date:     credsData.Date,
+		Storage:  credsData.Storage,
+		AgentId:  credsData.AgentId,
+		Host:     credsData.Host,
+	}
+}
+
+func CreateSpCredentialsUpdate(credsData adaptix.CredsData) SyncPackerCredentialsUpdate {
+	return SyncPackerCredentialsUpdate{
+		SpType: TYPE_CREDS_EDIT,
+
+		CredId:   credsData.CredId,
+		Username: credsData.Username,
+		Password: credsData.Password,
+		Realm:    credsData.Realm,
+		Type:     credsData.Type,
+		Tag:      credsData.Tag,
+		Storage:  credsData.Storage,
+		Host:     credsData.Host,
+	}
+}
+
+func CreateSpCredentialsDelete(credsId string) SyncPackerCredentialsDelete {
+	return SyncPackerCredentialsDelete{
+		SpType: TYPE_CREDS_DELETE,
+
+		CredId: credsId,
 	}
 }
 

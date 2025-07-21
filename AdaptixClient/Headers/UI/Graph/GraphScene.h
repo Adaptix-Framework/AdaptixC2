@@ -20,4 +20,4 @@ private:
     void contextMenuEvent( QGraphicsSceneContextMenuEvent *event ) override;
 };
 
-#endif //ADAPTIXCLIENT_GRAPHSCENE_H
+#endif

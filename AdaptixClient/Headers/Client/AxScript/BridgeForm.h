@@ -20,8 +20,6 @@ public:
 public slots:
     void connect(QObject* sender, const QString& signal, const QJSValue& handler);
 
-    void show_message(const QString &title, const QString &text);
-
     /// Elements
     QObject* create_vlayout();
     QObject* create_hlayout();
@@ -47,8 +45,9 @@ public slots:
     QObject* create_dialog(const QString &title) const;
 
 signals:
-    void consoleAppendError(const QString &msg);
+    void scriptError(const QString &msg);
 };
+
 
 
 
@@ -93,4 +92,4 @@ public slots:
     }
 };
 
-#endif //BRIDGEFORM_H
+#endif

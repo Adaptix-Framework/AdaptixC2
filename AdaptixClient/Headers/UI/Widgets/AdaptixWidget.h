@@ -1,19 +1,22 @@
 #ifndef ADAPTIXCLIENT_ADAPTIXWIDGET_H
 #define ADAPTIXCLIENT_ADAPTIXWIDGET_H
 
+#include <Agent/Commander.h>
 #include <main.h>
+#include <QJSValue>
 
 class Task;
 class Agent;
-class Commander;
 class LastTickWorker;
 class WebSocketWorker;
 class SessionsTableWidget;
 class SessionsGraph;
+class AxConsoleWidget;
 class LogsWidget;
 class ListenersWidget;
 class DownloadsWidget;
 class ScreenshotsWidget;
+class CredentialsWidget;
 class TasksWidget;
 class TunnelsWidget;
 class TunnelEndpoint;
@@ -23,11 +26,9 @@ class AxScriptManager;
 
 typedef struct RegAgentConfig {
     QString        name;
-    QString        watermark;
     QString        listenerType;
     int            os;
     Commander*     commander;
-    BrowsersConfig browsers;
     bool           valid;
 } RegAgentConfig;
 
@@ -77,6 +78,7 @@ public:
 
     AxScriptManager* ScriptManager = nullptr;
 
+    AxConsoleWidget*     AxConsoleTab      = nullptr;
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
@@ -84,6 +86,7 @@ public:
     TunnelsWidget*       TunnelsTab        = nullptr;
     DownloadsWidget*     DownloadsTab      = nullptr;
     ScreenshotsWidget*   ScreenshotsTab    = nullptr;
+    CredentialsWidget*   CredentialsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
     QVector<RegAgentConfig>        RegisterAgents;
@@ -91,12 +94,13 @@ public:
     QVector<TunnelData>            Tunnels;
     QMap<QString, DownloadData>    Downloads;
     QMap<QString, ScreenData>      Screenshots;
+    QVector<CredentialData>        Credentials;
     QMap<QString, PivotData>       Pivots;
     QVector<QString>               TasksVector;
     QMap<QString, Task*>           TasksMap;
     QVector<QString>               AgentsVector;
     QMap<QString, Agent*>          AgentsMap;
-    QMap<QString, ExtensionFile>   Extensions;
+    QMap<QString, PostHook>        PostHooksJS;
     QMap<QString, TunnelEndpoint*> ClientTunnels;
 
     explicit AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker);
@@ -106,15 +110,19 @@ public:
 
     void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
     void RemoveTab(int index) const;
-    void AddExtension(ExtensionFile ext);
+    bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);
     void Close();
     void ClearAdaptix();
 
     void RegisterListenerConfig(const QString &fn, const QString &ax_script);
-    void RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &ax_script, const QStringList &listeners);
+    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners);
     QList<QString> GetAgentNames(const QString &listenerType) const;
     RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
+    QList<Commander*> GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const;
+    QList<Commander*> GetCommandersAll() const;
+
+    void PostHookProcess(QJsonObject jsonHookObj);
 
     void LoadConsoleUI(const QString &AgentId);
     void LoadTasksOutput() const;
@@ -125,6 +133,14 @@ public:
 
 signals:
     void SyncedSignal();
+    void SyncedOnReloadSignal(QString project);
+    void LoadGlobalScriptSignal(QString path);
+    void UnloadGlobalScriptSignal(QString path);
+
+    void eventFileBrowserDisks(QString agentId);
+    void eventFileBrowserList(QString agentId, QString path);
+    void eventFileBrowserUpload(QString agentId, QString path, QString localFilename);
+    void eventProcessBrowserList(QString agentId);
 
 public slots:
     void ChannelClose() const;
@@ -134,12 +150,14 @@ public slots:
     void SetSessionsTableUI() const;
     void SetGraphUI() const;
     void SetTasksUI() const;
+    void LoadAxConsoleUI() const;
     void LoadLogsUI() const;
     void LoadListenersUI() const;
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;
     void LoadScreenshotsUI() const;
+    void LoadCredentialsUI() const;
     void OnReconnect();
 };
 
-#endif //ADAPTIXCLIENT_ADAPTIXWIDGET_H
+#endif

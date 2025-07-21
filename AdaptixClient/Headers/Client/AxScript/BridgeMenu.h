@@ -16,7 +16,7 @@ Q_OBJECT
     QWidget*        widget;
     QList<AbstractAxMenuItem*> menuItems;
 
-    const QList<AbstractAxMenuItem*> items() const;
+    QList<AbstractAxMenuItem*> items() const;
     void clear();
 
 public:
@@ -28,8 +28,16 @@ public slots:
     AxMenuWrapper*      create_menu(const QString& title);
     AxSeparatorWrapper* create_separator();
 
-    void add_session_main(AbstractAxMenuItem* item) const;
-    void add_session_access(AbstractAxMenuItem* item) const;
+    void add_session_main(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+    void add_session_agent(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+    void add_session_browser(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+    void add_session_access(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+
+    void add_filebrowser(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+
+    void add_download_running(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+    void add_download_stopped(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
+    void add_download_finished(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue()) const;
 };
 
-#endif //BRIDGEMENU_H
+#endif

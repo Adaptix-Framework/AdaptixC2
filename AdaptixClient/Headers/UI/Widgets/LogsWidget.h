@@ -47,4 +47,4 @@ public slots:
     void handleSearchBackward();
 };
 
-#endif //ADAPTIXCLIENT_LOGSWIDGET_H
+#endif

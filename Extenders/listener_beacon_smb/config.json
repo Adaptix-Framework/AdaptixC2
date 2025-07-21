@@ -1,7 +1,7 @@
 {
   "extender_type": "listener",
   "extender_file": "listener_beacon_smb.so",
-  "ax_file": "ax_config.js",
+  "ax_file": "ax_config.axs",
 
   "listener_name": "BeaconSMB",
   "listener_type": "internal",

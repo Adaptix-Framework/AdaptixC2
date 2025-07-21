@@ -71,4 +71,4 @@ protected:
     void mouseMoveEvent( QGraphicsSceneMouseEvent* event ) override;
 };
 
-#endif //ADAPTIXCLIENT_GRAPHITEM_H
+#endif

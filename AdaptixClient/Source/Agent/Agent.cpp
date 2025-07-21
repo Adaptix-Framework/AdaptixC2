@@ -123,10 +123,9 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     }
 
     auto regAgnet = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
-    this->browsers = regAgnet.browsers;
 
     this->commander      = regAgnet.commander;
-    this->Console        = new ConsoleWidget(this, regAgnet.commander);
+    this->Console        = new ConsoleWidget(adaptixWidget, this, regAgnet.commander);
     this->FileBrowser    = new BrowserFilesWidget(this);
     this->ProcessBrowser = new BrowserProcessWidget(this);
     this->Terminal       = new TerminalWidget(this, adaptixWidget);
@@ -387,10 +386,7 @@ void Agent::UnsetParent(const PivotData &pivotData)
     this->item_Last->setText( QString::fromUtf8("\u221E  \u221E") );
 }
 
-void Agent::AddChild(const PivotData &pivotData)
-{
-    this->childsId.push_back(pivotData.ChildAgentId);
-}
+void Agent::AddChild(const PivotData &pivotData) { this->childsId.push_back(pivotData.ChildAgentId); }
 
 void Agent::RemoveChild(const PivotData &pivotData)
 {
@@ -400,61 +396,4 @@ void Agent::RemoveChild(const PivotData &pivotData)
             break;
         }
     }
-}
-
-/// BROWSER
-
-QString Agent::BrowserDisks() const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqBrowserDisks( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
-}
-
-QString Agent::BrowserProcess() const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqBrowserProcess( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
-}
-
-QString Agent::BrowserList(const QString &path) const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqBrowserList( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
-}
-
-QString Agent::BrowserUpload(const QString &path, const QString &content) const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqBrowserUpload( data.Id, path, content, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
-}
-
-QString Agent::BrowserDownload(const QString &path) const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqDownloadStart( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
 }

@@ -116,4 +116,4 @@ signals:
     void ctx_history();
 };
 
-#endif //ADAPTIXCLIENT_CUSTOMELEMENTS_H
+#endif

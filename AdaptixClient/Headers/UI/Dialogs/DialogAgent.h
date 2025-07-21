@@ -53,4 +53,4 @@ protected slots:
     void onButtonClose();
 };
 
-#endif //ADAPTIXCLIENT_DIALOGAGENT_H
+#endif

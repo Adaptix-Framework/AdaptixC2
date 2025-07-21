@@ -55,6 +55,33 @@ public:
 };
 
 
+// /// BYTES
+//
+// class AxByteArrayWrapper : public QObject {
+// Q_OBJECT
+//     QByteArray data;
+//
+// public:
+//     explicit AxByteArrayWrapper(QString str, QObject* parent = nullptr);
+//
+//     Q_INVOKABLE QString toHex() const;
+//     Q_INVOKABLE QString toBase64() const;
+//     Q_INVOKABLE QString toString() const;
+//     Q_INVOKABLE QVariantList toIntArray() const;
+//     Q_INVOKABLE int at(int index) const;
+//     Q_INVOKABLE void clear();
+//     Q_INVOKABLE int size() const;
+//     Q_INVOKABLE bool contains(QObject* other) const;
+//
+//     Q_INVOKABLE int compare(QObject* other) const;
+//     Q_INVOKABLE void trimmed();
+//     Q_INVOKABLE void prepend(QObject*  value);
+//     Q_INVOKABLE void append(QObject*  value);
+//     Q_INVOKABLE void insert(int index, QObject* value);
+//     Q_INVOKABLE AxByteArrayWrapper* slice(int start, int length = -1) const;
+// };
+
+
 
 // MENU
 
@@ -500,4 +527,4 @@ public:
     Q_INVOKABLE void close() const;
 };
 
-#endif //AXELEMENTWRAPPERS_H
+#endif

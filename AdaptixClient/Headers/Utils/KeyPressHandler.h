@@ -157,4 +157,4 @@ protected:
     }
 };
 
-#endif //KEYPRESSHANDLER_H
+#endif

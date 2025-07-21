@@ -32,4 +32,4 @@ protected:
     static void paintLineText( QPainter* painter, double angle, const QLineF &line, const QString &text, QColor textColor );
 };
 
-#endif //ADAPTIXCLIENT_GRAPHITEMLINK_H
+#endif

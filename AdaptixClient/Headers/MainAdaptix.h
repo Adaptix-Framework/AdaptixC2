@@ -31,4 +31,4 @@ public:
 
 extern MainAdaptix* GlobalClient;
 
-#endif //ADAPTIXCLIENT_MAINADAPTIX_H
+#endif

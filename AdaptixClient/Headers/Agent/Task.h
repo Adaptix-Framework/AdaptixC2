@@ -28,4 +28,4 @@ public:
      void    Update(QJsonObject jsonObjTaskData);
 };
 
-#endif //TASK_H
+#endif

@@ -346,12 +346,18 @@ func PackPivotTasks(pivotId string, data []byte) ([]byte, error) {
 	return nil, errors.New("Function Pivot not packed")
 }
 
-func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
+func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
 	var (
 		taskData    adaptix.TaskData
 		messageData adaptix.ConsoleMessageData
 		err         error
 	)
+
+	command, ok := args["command"].(string)
+	if !ok {
+		return taskData, messageData, errors.New("'command' must be set")
+	}
+	subcommand, _ := args["subcommand"].(string)
 
 	taskData = adaptix.TaskData{
 		Type: TYPE_TASK,
@@ -363,8 +369,6 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		Text:   "",
 	}
 	messageData.Message, _ = args["message"].(string)
-
-	subcommand, _ := args["subcommand"].(string)
 
 	/// START CODE HERE
 
@@ -1299,100 +1303,10 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 	return outTasks
 }
 
-/// BROWSERS
-
-func BrowserDisks(agentData adaptix.AgentData) ([]byte, error) {
-	return nil, errors.New("Function Disks Browsers not supported")
-}
-
-func BrowserProcess(agentData adaptix.AgentData) ([]byte, error) {
-	cmd := Command{Code: COMMAND_PS, Data: nil}
-	return msgpack.Marshal(cmd)
-}
-
-func BrowserFiles(path string, agentData adaptix.AgentData) ([]byte, error) {
-	packerData, _ := msgpack.Marshal(ParamsLs{Path: path})
-	cmd := Command{Code: COMMAND_LS, Data: packerData}
-	return msgpack.Marshal(cmd)
-}
-
-func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix.AgentData) ([]byte, error) {
-
-	zipContent, err := ZipBytes(content, path)
-	if err != nil {
-		return nil, err
-	}
-
-	chunkSize := 0x500000 // 5Mb
-	bufferSize := len(zipContent)
-
-	inTaskData := adaptix.TaskData{
-		Type:    TYPE_TASK,
-		AgentId: agentData.Id,
-		Sync:    false,
-	}
-
-	var cmd Command
-	for start := 0; start < bufferSize; start += chunkSize {
-		fin := start + chunkSize
-		finish := false
-		if fin >= bufferSize {
-			fin = bufferSize
-			finish = true
-		}
-
-		inPackerData, _ := msgpack.Marshal(ParamsUpload{
-			Path:    path,
-			Content: zipContent[start:fin],
-			Finish:  finish,
-		})
-		inCmd := Command{Code: COMMAND_UPLOAD, Data: inPackerData}
-
-		if finish {
-			cmd = inCmd
-			break
-
-		} else {
-			inTaskData.Data, _ = msgpack.Marshal(inCmd)
-			inTaskData.TaskId = fmt.Sprintf("%08x", mrand.Uint32())
-
-			ts.TsTaskCreate(agentData.Id, "", "", inTaskData)
-		}
-	}
-	return msgpack.Marshal(cmd)
-}
-
-/// DOWNLOADS
-
-func TaskDownloadStart(path string, taskId string, agentData adaptix.AgentData) ([]byte, error) {
-	packerData, _ := msgpack.Marshal(ParamsDownload{Path: path, Task: taskId})
-	cmd := Command{Code: COMMAND_DOWNLOAD, Data: packerData}
-	return msgpack.Marshal(cmd)
-}
-
-func TaskDownloadCancel(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	packerData, _ := msgpack.Marshal(ParamsJobKill{Id: fileId})
-	cmd := Command{Code: COMMAND_JOB_KILL, Data: packerData}
-	return msgpack.Marshal(cmd)
-}
-
-func TaskDownloadResume(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	return nil, errors.New("Function Download Resume not supported")
-}
-
-func TaskDownloadPause(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	return nil, errors.New("Function Download Pause not supported")
-}
-
 ///
 
 func BrowserJobKill(jobId string) ([]byte, error) {
 	return nil, errors.New("Function Job Kill not supported")
-}
-
-func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
-	cmd := Command{Code: COMMAND_EXIT, Data: nil}
-	return msgpack.Marshal(cmd)
 }
 
 /// TUNNEL

@@ -21,6 +21,7 @@ const (
 	CONSOLE_OUT_INFO          = 5
 	CONSOLE_OUT_ERROR         = 6
 	CONSOLE_OUT_SUCCESS       = 7
+	CONSOLE_OUT               = 10
 )
 
 const (
@@ -68,6 +69,7 @@ type Teamserver struct {
 	downloads   safe.Map    // fileId string       : downloadData DownloadData
 	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
+	credentials *safe.Slice
 	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
 	terminals   safe.Map    // terminalId string   : terminal Terminal
 	pivots      *safe.Slice // 			           : PivotData
@@ -87,10 +89,18 @@ type Agent struct {
 	TasksQueue         *safe.Slice // taskData TaskData
 
 	RunningTasks   safe.Map // taskId string, taskData TaskData
+	RunningJobs    safe.Map // taskId string, list []TaskData
 	CompletedTasks safe.Map // taskId string, taskData TaskData
 
 	PivotParent *adaptix.PivotData
 	PivotChilds *safe.Slice
+}
+
+type HookJob struct {
+	Sent      bool
+	Processed bool
+	Job       adaptix.TaskData
+	mu        sync.Mutex
 }
 
 type TunnelChannel struct {
@@ -198,7 +208,6 @@ type SyncPackerAgentReg struct {
 	SpType int `json:"type"`
 
 	Agent     string   `json:"agent"`
-	Watermark string   `json:"watermark"`
 	AX        string   `json:"ax"`
 	Listeners []string `json:"listeners"`
 }
@@ -291,6 +300,19 @@ type SyncPackerAgentTaskUpdate struct {
 	TaskId      string `json:"a_task_id"`
 	TaskType    int    `json:"a_task_type"`
 	FinishTime  int64  `json:"a_finish_time"`
+	MessageType int    `json:"a_msg_type"`
+	Message     string `json:"a_message"`
+	Text        string `json:"a_text"`
+	Completed   bool   `json:"a_completed"`
+}
+
+type SyncPackerAgentTaskHook struct {
+	SpType int `json:"type"`
+
+	AgentId     string `json:"a_id"`
+	TaskId      string `json:"a_task_id"`
+	HookId      string `json:"a_hook_id"`
+	JobIndex    int    `json:"a_job_index"`
 	MessageType int    `json:"a_msg_type"`
 	Message     string `json:"a_message"`
 	Text        string `json:"a_text"`
@@ -410,6 +432,42 @@ type SyncPackerScreenshotDelete struct {
 	SpType int `json:"type"`
 
 	ScreenId string `json:"s_screen_id"`
+}
+
+/// CREDS
+
+type SyncPackerCredentialsAdd struct {
+	SpType int `json:"type"`
+
+	CredId   string `json:"c_creds_id"`
+	Username string `json:"c_username"`
+	Password string `json:"c_password"`
+	Realm    string `json:"c_realm"`
+	Type     string `json:"c_type"`
+	Tag      string `json:"c_tag"`
+	Date     int64  `json:"c_date"`
+	Storage  string `json:"c_storage"`
+	AgentId  string `json:"c_agent_id"`
+	Host     string `json:"c_host"`
+}
+
+type SyncPackerCredentialsUpdate struct {
+	SpType int `json:"type"`
+
+	CredId   string `json:"c_creds_id"`
+	Username string `json:"c_username"`
+	Password string `json:"c_password"`
+	Realm    string `json:"c_realm"`
+	Type     string `json:"c_type"`
+	Tag      string `json:"c_tag"`
+	Storage  string `json:"c_storage"`
+	Host     string `json:"c_host"`
+}
+
+type SyncPackerCredentialsDelete struct {
+	SpType int `json:"type"`
+
+	CredId string `json:"c_creds_id"`
 }
 
 /// BROWSER

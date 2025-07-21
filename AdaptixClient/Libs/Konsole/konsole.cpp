@@ -228,8 +228,6 @@ void QTermWidget::setColorScheme(const QString& origName) {
         if (isFile) {
             if (ColorSchemeManager::instance()->loadCustomColorScheme(origName))
                 cs = ColorSchemeManager::instance()->findColorScheme(name);
-            else
-                qWarning () << Q_FUNC_INFO << "cannot load color scheme from" << origName;
         }
 
         if (!cs)

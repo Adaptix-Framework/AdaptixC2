@@ -3,6 +3,7 @@ package server
 import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
+	"AdaptixServer/core/utils/safe"
 	"fmt"
 	"github.com/Adaptix-Framework/axc2"
 	"time"
@@ -52,14 +53,14 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 
 	case TYPE_TASK:
 		if taskData.Sync {
-			packet := CreateSpAgentTaskSync(taskData)
-			ts.TsSyncAllClients(packet)
+			packet_task := CreateSpAgentTaskSync(taskData)
+			ts.TsSyncAllClients(packet_task)
 
-			packet2 := CreateSpAgentConsoleTaskSync(taskData)
-			ts.TsSyncAllClients(packet2)
+			packet_console := CreateSpAgentConsoleTaskSync(taskData)
+			ts.TsSyncAllClients(packet_console)
 
-			agent.OutConsole.Put(packet2)
-			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
+			agent.OutConsole.Put(packet_console)
+			_ = ts.DBMS.DbConsoleInsert(agentId, packet_console)
 		}
 		agent.TasksQueue.Put(taskData)
 
@@ -68,14 +69,14 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 
 	case TYPE_JOB:
 		if taskData.Sync {
-			packet := CreateSpAgentTaskSync(taskData)
-			ts.TsSyncAllClients(packet)
+			packet_task := CreateSpAgentTaskSync(taskData)
+			ts.TsSyncAllClients(packet_task)
 
-			packet2 := CreateSpAgentConsoleTaskSync(taskData)
-			ts.TsSyncAllClients(packet2)
+			packet_console := CreateSpAgentConsoleTaskSync(taskData)
+			ts.TsSyncAllClients(packet_console)
 
-			agent.OutConsole.Put(packet2)
-			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
+			agent.OutConsole.Put(packet_console)
+			_ = ts.DBMS.DbConsoleInsert(agentId, packet_console)
 		}
 		agent.TasksQueue.Put(taskData)
 
@@ -87,14 +88,14 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 				agent.RunningTasks.Put(taskData.TaskId, taskData)
 			}
 
-			packet := CreateSpAgentTaskSync(taskData)
-			ts.TsSyncAllClients(packet)
+			packet_task := CreateSpAgentTaskSync(taskData)
+			ts.TsSyncAllClients(packet_task)
 
-			packet2 := CreateSpAgentConsoleTaskSync(taskData)
-			ts.TsSyncAllClients(packet2)
+			packet_console := CreateSpAgentConsoleTaskSync(taskData)
+			ts.TsSyncAllClients(packet_console)
 
-			agent.OutConsole.Put(packet2)
-			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
+			agent.OutConsole.Put(packet_console)
+			_ = ts.DBMS.DbConsoleInsert(agentId, packet_console)
 
 			if taskData.Completed {
 				_ = ts.DBMS.DbTaskInsert(taskData)
@@ -110,7 +111,7 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 	}
 }
 
-func (ts *Teamserver) TsTaskUpdate(agentId string, taskData adaptix.TaskData) {
+func (ts *Teamserver) TsTaskUpdate(agentId string, updateData adaptix.TaskData) {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
 		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
@@ -118,108 +119,295 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskData adaptix.TaskData) {
 	}
 	agent, _ := value.(*Agent)
 
-	value, ok = agent.RunningTasks.GetDelete(taskData.TaskId)
+	value, ok = agent.RunningTasks.Get(updateData.TaskId)
 	if !ok {
 		return
 	}
 	task, _ := value.(adaptix.TaskData)
 
 	task.Data = []byte("")
-	task.FinishDate = taskData.FinishDate
-	task.Completed = taskData.Completed
 
 	if task.Type == TYPE_JOB {
-		if task.MessageType != CONSOLE_OUT_ERROR {
-			task.MessageType = taskData.MessageType
-		}
+		updateData.AgentId = agentId
 
-		var oldMessage string
-		if task.Message == "" {
-			oldMessage = taskData.Message
-		} else {
-			oldMessage = task.Message
-		}
+		if task.HookId != "" && task.Client != "" && ts.TsClientConnected(task.Client) {
+			updateData.HookId = task.HookId
 
-		oldText := task.ClearText
+			hookJob := &HookJob{
+				Job:       updateData,
+				Processed: false,
+				Sent:      false,
+			}
 
-		task.Message = taskData.Message
-		task.ClearText = taskData.ClearText
-
-		packet := CreateSpAgentTaskUpdate(task)
-		packet2 := CreateSpAgentConsoleTaskUpd(task)
-
-		task.Message = oldMessage
-		task.ClearText = oldText + task.ClearText
-
-		if task.Sync {
-			if task.Completed {
-				agent.CompletedTasks.Put(task.TaskId, task)
+			num := 0
+			value2, ok := agent.RunningJobs.Get(task.TaskId)
+			if ok {
+				jobs := value2.(*safe.Slice)
+				jobs.Put(hookJob)
+				num = int(jobs.Len() - 1)
 			} else {
-				agent.RunningTasks.Put(task.TaskId, task)
+				jobs := safe.NewSlice()
+				jobs.Put(hookJob)
+				agent.RunningJobs.Put(task.TaskId, jobs)
 			}
 
-			if task.Completed {
-				_ = ts.DBMS.DbTaskInsert(task)
+			packet := CreateSpAgentTaskHook(updateData, num)
+			ts.TsSyncClient(task.Client, packet)
+
+		} else {
+			if task.Sync {
+
+				hookJob := &HookJob{
+					Job:       updateData,
+					Processed: true,
+					Sent:      true,
+				}
+
+				value2, ok := agent.RunningJobs.Get(task.TaskId)
+
+				if updateData.Completed {
+					agent.RunningTasks.Delete(updateData.TaskId)
+
+					if ok {
+						jobs := value2.(*safe.Slice)
+						jobs.Put(hookJob)
+						jobs_array := jobs.CutArray()
+						for _, job_value := range jobs_array {
+							jobData := job_value.(*HookJob)
+							if task.MessageType != CONSOLE_OUT_ERROR {
+								task.MessageType = jobData.Job.MessageType
+							}
+							if task.Message == "" {
+								task.Message = jobData.Job.Message
+							}
+							task.ClearText += jobData.Job.ClearText
+						}
+
+						agent.RunningJobs.Delete(task.TaskId)
+
+					} else {
+						task.MessageType = updateData.MessageType
+						task.Message = updateData.Message
+						task.ClearText = updateData.ClearText
+					}
+
+					task.FinishDate = updateData.FinishDate
+					task.Completed = updateData.Completed
+
+					agent.CompletedTasks.Put(task.TaskId, task)
+					_ = ts.DBMS.DbTaskInsert(task)
+
+				} else {
+					if ok {
+						jobs := value2.(*safe.Slice)
+						jobs.Put(hookJob)
+					} else {
+						jobs := safe.NewSlice()
+						jobs.Put(hookJob)
+						agent.RunningJobs.Put(task.TaskId, jobs)
+					}
+				}
+
+				packet_task_update := CreateSpAgentTaskUpdate(updateData)
+				packet_console_update := CreateSpAgentConsoleTaskUpd(updateData)
+
+				ts.TsSyncAllClients(packet_task_update)
+				ts.TsSyncAllClients(packet_console_update)
+
+				agent.OutConsole.Put(packet_console_update)
+				_ = ts.DBMS.DbConsoleInsert(agentId, packet_console_update)
 			}
-
-			ts.TsSyncAllClients(packet)
-			ts.TsSyncAllClients(packet2)
-
-			agent.OutConsole.Put(packet2)
-			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
 		}
 
 	} else if task.Type == TYPE_TUNNEL {
-		var oldMessage string
+		agent.RunningTasks.Delete(updateData.TaskId)
+
+		task.FinishDate = updateData.FinishDate
+		task.Completed = updateData.Completed
+		task.MessageType = updateData.MessageType
+
+		var tmpTask = task
+		tmpTask.Message = updateData.Message
+		tmpTask.ClearText = updateData.ClearText
+
 		if task.Message == "" {
-			oldMessage = taskData.Message
-		} else {
-			oldMessage = task.Message
+			task.Message = updateData.Message
 		}
-		oldText := task.ClearText
-
-		task.MessageType = taskData.MessageType
-		task.Message = taskData.Message
-		task.ClearText = taskData.ClearText
-
-		packet := CreateSpAgentTaskUpdate(task)
-		packet2 := CreateSpAgentConsoleTaskUpd(task)
-
-		task.Message = oldMessage
-		task.ClearText = oldText + task.ClearText
+		task.ClearText += updateData.ClearText
 
 		if task.Sync {
 			if task.Completed {
 				agent.CompletedTasks.Put(task.TaskId, task)
+				_ = ts.DBMS.DbTaskInsert(task)
 			} else {
 				agent.RunningTasks.Put(task.TaskId, task)
 			}
 
-			if task.Completed {
-				_ = ts.DBMS.DbTaskInsert(task)
-			}
+			packet_task_update := CreateSpAgentTaskUpdate(tmpTask)
+			packet_console_update := CreateSpAgentConsoleTaskUpd(tmpTask)
 
-			ts.TsSyncAllClients(packet)
-			ts.TsSyncAllClients(packet2)
+			ts.TsSyncAllClients(packet_task_update)
+			ts.TsSyncAllClients(packet_console_update)
 
-			agent.OutConsole.Put(packet2)
-			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
+			agent.OutConsole.Put(packet_console_update)
+			_ = ts.DBMS.DbConsoleInsert(agentId, packet_console_update)
 		}
 
 	} else if task.Type == TYPE_TASK || task.Type == TYPE_BROWSER {
-		task.MessageType = taskData.MessageType
-		task.Message = taskData.Message
-		task.ClearText = taskData.ClearText
+		agent.RunningTasks.Delete(updateData.TaskId)
+
+		task.FinishDate = updateData.FinishDate
+		task.Completed = updateData.Completed
+		task.MessageType = updateData.MessageType
+		task.Message = updateData.Message
+		task.ClearText = updateData.ClearText
+
+		if task.HookId != "" && task.Client != "" && ts.TsClientConnected(task.Client) {
+
+			agent.RunningTasks.Put(task.TaskId, task)
+
+			packet := CreateSpAgentTaskHook(task, 0)
+			ts.TsSyncClient(task.Client, packet)
+
+		} else {
+			if task.Sync {
+				if task.Completed {
+					agent.CompletedTasks.Put(task.TaskId, task)
+					_ = ts.DBMS.DbTaskInsert(task)
+				} else {
+					agent.RunningTasks.Put(task.TaskId, task)
+				}
+
+				packet := CreateSpAgentTaskUpdate(task)
+				ts.TsSyncAllClients(packet)
+
+				packet2 := CreateSpAgentConsoleTaskUpd(task)
+				ts.TsSyncAllClients(packet2)
+
+				agent.OutConsole.Put(packet2)
+				_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
+			}
+		}
+	}
+}
+
+func (ts *Teamserver) TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error {
+	value, ok := ts.agents.Get(hookData.AgentId)
+	if !ok {
+		return fmt.Errorf("agent %v not found", hookData.AgentId)
+	}
+	agent, _ := value.(*Agent)
+
+	value, ok = agent.RunningTasks.Get(hookData.TaskId)
+	if !ok {
+		return fmt.Errorf("task %v not found", hookData.TaskId)
+	}
+	task, _ := value.(adaptix.TaskData)
+
+	if task.HookId == "" || task.HookId != hookData.HookId || task.Client != hookData.Client || !ts.TsClientConnected(task.Client) {
+		return fmt.Errorf("Operation not available")
+	}
+
+	if task.Type == TYPE_JOB {
+
+		if task.Sync {
+
+			value2, ok := agent.RunningJobs.Get(task.TaskId)
+			if !ok {
+				return fmt.Errorf("job %v not found", task.TaskId)
+			}
+			jobs := value2.(*safe.Slice)
+
+			jobValue, ok := jobs.Get(uint(jobIndex))
+			if !ok {
+				return fmt.Errorf("job %v not found", task.TaskId)
+			}
+			jobData := jobValue.(*HookJob)
+
+			jobData.Job.MessageType = hookData.MessageType
+			jobData.Job.Message = hookData.Message
+			jobData.Job.ClearText = hookData.ClearText
+			jobData.Processed = true
+
+			completed := false
+			sent := false
+
+			jobs.DirectLock()
+			defer jobs.DirectUnlock()
+
+			slice := jobs.DirectSlice()
+			for i := 0; i < len(slice); i++ {
+
+				hookJob := slice[i].(*HookJob)
+				if hookJob.Job.Completed {
+					completed = true
+				}
+				hookJob.mu.Lock()
+				if !hookJob.Sent {
+					if hookJob.Processed {
+						hookJob.Sent = true
+
+						packet_task_update := CreateSpAgentTaskUpdate(hookJob.Job)
+						packet_console_update := CreateSpAgentConsoleTaskUpd(hookJob.Job)
+
+						ts.TsSyncAllClients(packet_task_update)
+						ts.TsSyncAllClients(packet_console_update)
+
+						agent.OutConsole.Put(packet_console_update)
+						_ = ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)
+						sent = true
+					} else {
+						hookJob.mu.Unlock()
+						break
+					}
+				}
+				hookJob.mu.Unlock()
+			}
+
+			if completed && sent {
+				agent.RunningTasks.Delete(task.TaskId)
+
+				for i := 0; i < len(slice); i++ {
+					hookJob := slice[i].(*HookJob)
+					if task.MessageType != CONSOLE_OUT_ERROR {
+						task.MessageType = hookJob.Job.MessageType
+					}
+					if task.Message == "" {
+						task.Message = hookJob.Job.Message
+					}
+					task.ClearText += hookJob.Job.ClearText
+
+					task.FinishDate = hookJob.Job.FinishDate
+					task.Completed = hookJob.Job.Completed
+				}
+
+				agent.RunningJobs.Delete(task.TaskId)
+
+				agent.CompletedTasks.Put(task.TaskId, task)
+				_ = ts.DBMS.DbTaskInsert(task)
+			}
+		}
+
+	} else if task.Type == TYPE_TUNNEL {
+
+	} else if task.Type == TYPE_TASK || task.Type == TYPE_BROWSER {
+
+		_, ok = agent.RunningTasks.GetDelete(hookData.TaskId)
+		if !ok {
+			return fmt.Errorf("task %v not found", hookData.TaskId)
+		}
+
+		task.MessageType = hookData.MessageType
+		task.Message = hookData.Message
+		task.ClearText = hookData.ClearText
 
 		if task.Sync {
 			if task.Completed {
+				task.HookId = ""
 				agent.CompletedTasks.Put(task.TaskId, task)
+				_ = ts.DBMS.DbTaskInsert(task)
 			} else {
 				agent.RunningTasks.Put(task.TaskId, task)
-			}
-
-			if task.Completed {
-				_ = ts.DBMS.DbTaskInsert(task)
 			}
 
 			packet := CreateSpAgentTaskUpdate(task)
@@ -229,9 +417,10 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, taskData adaptix.TaskData) {
 			ts.TsSyncAllClients(packet2)
 
 			agent.OutConsole.Put(packet2)
-			_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
+			_ = ts.DBMS.DbConsoleInsert(task.AgentId, packet2)
 		}
 	}
+	return nil
 }
 
 func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
@@ -307,6 +496,9 @@ func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
 		return err
 	}
 	ts.TsTaskCreate(agent.Data.Id, "job kill "+taskId, "", taskData)
+
+	// ToDo: Job stop
+
 	return nil
 }
 
@@ -446,7 +638,6 @@ func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int)
 			break
 		}
 	}
-
 	if len(sendTasks) > 0 {
 		packet := CreateSpAgentTaskSend(sendTasks)
 		ts.TsSyncAllClients(packet)

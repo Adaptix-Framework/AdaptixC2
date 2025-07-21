@@ -32,7 +32,7 @@ type Teamserver interface {
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedTasksAll(agentId string, maxDataSize int) ([]byte, error)
-	TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error
+	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error
 	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
@@ -52,31 +52,24 @@ type Teamserver interface {
 	TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
 	TsTaskStop(agentId string, taskId string) error
 	TsTaskDelete(agentId string, taskId string) error
+	TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
-	//
+
 	TsDownloadSync(fileId string) (string, []byte, error)
 	TsDownloadDelete(fileId string) error
 	TsDownloadGetFilepath(fileId string) (string, error)
 	TsUploadGetFilepath(fileId string) (string, error)
 	TsUploadGetFileContent(fileId string) ([]byte, error)
-	//
-	TsDownloadTaskStart(agentId string, path string, username string) error
-	TsDownloadTaskCancel(fileId string, clientName string) error
-	TsDownloadTaskResume(fileId string, clientName string) error
-	TsDownloadTaskPause(fileId string, clientName string) error
 
 	TsScreenshotDelete(screenId string) error
 	TsScreenshotNote(screenId string, note string) error
 
-	TsAgentGuiDisks(agentId string, username string) error
-	TsAgentGuiProcess(agentId string, username string) error
-	TsAgentGuiFiles(agentId string, path string, username string) error
-	TsAgentGuiUpload(agentId string, path string, content []byte, username string) error
-
-	TsAgentGuiExit(agentId string, username string) error
+	TsCredentilsAdd(username string, password string, realm string, credType string, tag string, storage string, agentId string, host string) error
+	TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error
+	TsCredentilsDelete(credId string) error
 
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
 	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
@@ -171,28 +164,23 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/command/execute", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommandExecute)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/console/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentConsoleRemove)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentRemove)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/exit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentExit)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/settag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetTag)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/setmark", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetMark)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/setcolor", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetColor)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskStop)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskDelete)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/hook", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskHook)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/download/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadSync)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadDelete)
-	connector.Engine.POST(tsProfile.Endpoint+"/download/start", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadStart)
-	connector.Engine.POST(tsProfile.Endpoint+"/download/cancel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadCancel)
-	connector.Engine.POST(tsProfile.Endpoint+"/download/resume", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadResume)
-	connector.Engine.POST(tsProfile.Endpoint+"/download/pause", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadPause)
-
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/disks", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDisks)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/files", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiFiles)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/upload", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiUpload)
-	connector.Engine.POST(tsProfile.Endpoint+"/browser/process", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiProcess)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/setnote", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotSetNote)
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotRemove)
+
+	connector.Engine.POST(tsProfile.Endpoint+"/creds/add", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsAdd)
+	connector.Engine.POST(tsProfile.Endpoint+"/creds/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsEdit)
+	connector.Engine.POST(tsProfile.Endpoint+"/creds/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsRemove)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks5", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks5)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks4", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks4)

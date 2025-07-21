@@ -21,4 +21,4 @@ public slots:
     void updateLastItems() const;
 };
 
-#endif //ADAPTIXCLIENT_LASTTICKWORKER_H
+#endif
