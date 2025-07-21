@@ -28,9 +28,6 @@ public slots:
     void actionSyncCurl() const;
     void actionSyncWget() const;
     void actionDelete() const;
-    void actionResume() const;
-    void actionPause() const;
-    void actionCancel() const;
 };
 
 #endif

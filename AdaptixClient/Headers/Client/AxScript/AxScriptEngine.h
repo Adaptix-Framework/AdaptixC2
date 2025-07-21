@@ -15,6 +15,15 @@ class BridgeMenu;
 class AbstractAxMenuItem;
 class AxScriptManager;
 
+struct AxEvent {
+    QJSValue      handler;
+    QString       event_id;
+    QSet<QString> agents;
+    QSet<QString> listenerts;
+    QSet<int>     os;
+    QJSEngine*    jsEngine;
+};
+
 struct AxMenuItem {
     AbstractAxMenuItem* menu;
     QSet<QString> agents;
@@ -27,6 +36,11 @@ struct ScriptContext {
     QJSValue        scriptObject;
     QList<QObject*> objects;
     QList<QAction*> actions;
+
+    QList<AxEvent> eventFileBroserDisks;
+    QList<AxEvent> eventFileBroserList;
+    QList<AxEvent> eventFileBroserUpload;
+    QList<AxEvent> eventProcessBrowserList;
 
     QList<AxMenuItem> menuSessionMain;
     QList<AxMenuItem> menuSessionAgent;
@@ -64,9 +78,12 @@ public:
 
     void registerObject(QObject* obj);
     void registerAction(QAction* action);
+    void registerEvent(const QString &type, const QJSValue &handler, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id);
+    void removeEvent(const QString &id);
     void registerMenu(const QString &type, AbstractAxMenuItem* menu, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners);
     bool execute(const QString &code);
 
+    QList<AxEvent>    getEvents(const QString &type);
     QList<AxMenuItem> getMenuItems(const QString &type);
 
 public slots:

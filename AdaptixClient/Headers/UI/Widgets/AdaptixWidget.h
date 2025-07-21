@@ -29,7 +29,6 @@ typedef struct RegAgentConfig {
     QString        listenerType;
     int            os;
     Commander*     commander;
-    BrowsersConfig browsers;
     bool           valid;
 } RegAgentConfig;
 
@@ -137,6 +136,11 @@ signals:
     void SyncedOnReloadSignal(QString project);
     void LoadGlobalScriptSignal(QString path);
     void UnloadGlobalScriptSignal(QString path);
+
+    void eventFileBrowserDisks(QString agentId);
+    void eventFileBrowserList(QString agentId, QString path);
+    void eventFileBrowserUpload(QString agentId, QString path, QString localFilename);
+    void eventProcessBrowserList(QString agentId);
 
 public slots:
     void ChannelClose() const;

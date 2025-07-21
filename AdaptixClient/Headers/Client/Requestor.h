@@ -55,16 +55,6 @@ bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* 
 
 bool HttpReqDownloadAction(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok );
 
-///BROWSER
-
-bool HttpReqBrowserDisks(const QString &agentId, AuthProfile profile, QString* message, bool* ok );
-
-bool HttpReqBrowserProcess(const QString &agentId, AuthProfile profile, QString* message, bool* ok );
-
-bool HttpReqBrowserList(const QString &agentId, const QString &path, AuthProfile profile, QString* message, bool* ok );
-
-bool HttpReqBrowserUpload(const QString &agentId, const QString &path, const QString &content, AuthProfile profile, QString* message, bool* ok );
-
 ///TUNNEL
 
 bool HttpReqTunnelStartServer(const QString &tunnelType, const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);

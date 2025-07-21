@@ -168,12 +168,6 @@
 
 //////////
 
-// ToDo: BrowserConfig
-typedef struct BrowsersConfig {
-    bool FileBrowserDisks;
-    bool FileBrowserUpload;
-} BrowsersConfig;
-
 typedef struct SettingsData {
     QString MainTheme;
     QString FontFamily;

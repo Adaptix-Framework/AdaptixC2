@@ -56,7 +56,7 @@ public:
     explicit ConsoleWidget(AdaptixWidget* w, Agent* a, Commander* c);
     ~ConsoleWidget() override;
 
-    void ProcessCmdResult(const QString &commandLine, CommanderResult cmdResult);
+    void ProcessCmdResult(const QString &commandLine, const CommanderResult &cmdResult, bool UI);
 
     void InputFocus() const;
     void AddToHistory(const QString& command);
