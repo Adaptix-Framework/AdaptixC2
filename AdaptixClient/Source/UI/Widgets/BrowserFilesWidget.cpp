@@ -1,10 +1,9 @@
 #include <Agent/Agent.h>
 #include <Utils/FileSystem.h>
+#include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
-
-#include "Client/AxScript/AxScriptManager.h"
-#include "UI/Widgets/AdaptixWidget.h"
+#include <Client/AxScript/AxScriptManager.h>
 
 void BrowserFileData::CreateBrowserFileData(const QString &path, const int os)
 {
@@ -89,15 +88,11 @@ void BrowserFilesWidget::createUI()
     buttonDisks->setIconSize( QSize( 24,24 ));
     buttonDisks->setFixedSize(37, 28);
     buttonDisks->setToolTip("Disks list");
-    if (!agent->browsers.FileBrowserDisks)
-        buttonDisks->setEnabled(false);
 
     buttonUpload = new QPushButton(QIcon(":/icons/upload"), "", this);
     buttonUpload->setIconSize( QSize( 24,24 ));
     buttonUpload->setFixedSize(37, 28);
     buttonUpload->setToolTip("Upload File");
-    if (!agent->browsers.FileBrowserUpload)
-        buttonUpload->setEnabled(false);
 
     line_2 = new QFrame(this);
     line_2->setFrameShape(QFrame::VLine);
@@ -506,8 +501,8 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
     if (fileData.Stored) {
         this->setStoredFileData(path, fileData);
     } else {
-        QString status = agent->BrowserList(path);
-        statusLabel->setText(status);
+        statusLabel->setText("");
+        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
     }
 }
 
@@ -515,15 +510,15 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
 
 void BrowserFilesWidget::onDisks() const
 {
-    QString status = agent->BrowserDisks();
-    statusLabel->setText(status);
+    statusLabel->setText("");
+    emit agent->adaptixWidget->eventFileBrowserDisks(agent->data.Id);
 }
 
 void BrowserFilesWidget::onList() const
 {
     QString path = inputPath->text();
-    QString status = agent->BrowserList(path);
-    statusLabel->setText(status);
+    statusLabel->setText("");
+    emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
 }
 
 void BrowserFilesWidget::onParent()
@@ -560,12 +555,12 @@ void BrowserFilesWidget::onReload() const
         else
             path = "./";
 
-        QString status = agent->BrowserList(path);
-        statusLabel->setText(status);
+        statusLabel->setText("");
+        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
     }
     else {
-        QString status = agent->BrowserList(currentPath);
-        statusLabel->setText(status);
+        statusLabel->setText("");
+        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, currentPath);
     }
 }
 
@@ -575,26 +570,18 @@ void BrowserFilesWidget::onUpload() const
     if ( path.isEmpty() )
         return;
 
-    QString filePath = QFileDialog::getOpenFileName( nullptr, "Select file", QDir::homePath());
+    QString remotePath = currentPath;
+    if (this->agent->data.Os == OS_WINDOWS)
+        remotePath += "\\";
+    else
+        remotePath += "/";
+
+    QString filePath = QFileDialog::getOpenFileName(nullptr, "Select file", QDir::homePath());
     if ( filePath.isEmpty())
         return;
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::ReadOnly))
-        return;
-
-    QByteArray fileContent = file.readAll();
-    file.close();
-
-    QString base64Content = fileContent.toBase64();
-    QString remotePath = currentPath;
-    if (this->agent->data.Os == OS_WINDOWS)
-        remotePath += "\\" + QFileInfo(filePath).fileName();
-    else
-        remotePath += "/" + QFileInfo(filePath).fileName();
-
-    QString status = agent->BrowserUpload( remotePath, base64Content );
-    statusLabel->setText(status);
+    statusLabel->setText("");
+    emit agent->adaptixWidget->eventFileBrowserUpload(agent->data.Id, remotePath, filePath);
 }
 
 void BrowserFilesWidget::handleTableDoubleClicked(const QModelIndex &index)

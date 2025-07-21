@@ -57,11 +57,6 @@ void BridgeForm::connect(QObject* sender, const QString& signalName, const QJSVa
     emit scriptError("connect -> Signal " + signalName + " not found");
 }
 
-void BridgeForm::show_message(const QString &title, const QString &text)
-{
-    QMessageBox::information(nullptr, title, text);
-}
-
 /// Elements
 
 QObject* BridgeForm::create_vlayout()

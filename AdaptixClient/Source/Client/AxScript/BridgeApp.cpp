@@ -9,8 +9,6 @@
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
 
-#include "MainAdaptix.h"
-
 BridgeApp::BridgeApp(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine), widget(new QWidget()){}
 
 BridgeApp::~BridgeApp() { delete widget; }
@@ -285,8 +283,22 @@ void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const Q
         if (!hook.isUndefined() && !hook.isNull() && hook.isCallable())
             cmdResult.post_hook = {true, scriptEngine->context.name, hook};
 
-        agent->Console->ProcessCmdResult(cmdline, cmdResult);
+        agent->Console->ProcessCmdResult(cmdline, cmdResult, false);
     }
+}
+
+void BridgeApp::execute_browser(const QString &id, const QString &command) const
+{
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+    if (!mapAgents.contains(id))
+        return;
+
+    auto agent = mapAgents[id];
+    if (!agent)
+        return;
+
+    auto cmdResult = agent->commander->ProcessInput(id, command);
+    agent->Console->ProcessCmdResult(command, cmdResult, true);
 }
 
 void BridgeApp::execute_command(const QString &id, const QString &command, const QJSValue &hook) const
@@ -305,7 +317,7 @@ void BridgeApp::execute_command(const QString &id, const QString &command, const
         if (!hook.isUndefined() && !hook.isNull() && hook.isCallable())
             cmdResult.post_hook = {true, scriptEngine->context.name, hook};
 
-        agent->Console->ProcessCmdResult(command, cmdResult);
+        agent->Console->ProcessCmdResult(command, cmdResult, false);
     }
 }
 
@@ -436,5 +448,7 @@ QString BridgeApp::script_dir()
     return GetParentPathUnix(scriptEngine->context.name) + "/";
 #endif
 }
+
+void BridgeApp::show_message(const QString &title, const QString &text) { QMessageBox::information(nullptr, title, text); }
 
 int BridgeApp::ticks() { return QDateTime::currentSecsSinceEpoch(); }

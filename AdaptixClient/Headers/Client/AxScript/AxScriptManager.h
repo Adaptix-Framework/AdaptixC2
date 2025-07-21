@@ -7,6 +7,8 @@
 #include <Agent/Commander.h>
 
 struct ExtensionFile;
+struct AxMenuItem;
+struct AxEvent;
 class  AxScriptEngine;
 class  AdaptixWidget;
 class  Agent;
@@ -65,16 +67,23 @@ public:
     void GlobalScriptUnload(const QString &path);
 
     void RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
-    int  AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds) const;
-    int  AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files) const;
-    int  AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files) const;
+    void RemoveEvent(const QString &event_id);
+    QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType);
+    QList<AxEvent>    FilterEvents(const QString &agentId, const QString &eventType);
 
-
-    void emitAllEventTestClick();
+    int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds);
+    int AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files);
+    int AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files);
 
 public slots:
     void consolePrintMessage(const QString &message);
     void consolePrintError(const QString &message);
+
+    void emitFileBrowserDisks(const QString &agentId);
+    void emitFileBrowserList(const QString &agentId, const QString &path);
+    void emitFileBrowserUpload(const QString &agentId, const QString &path, const QString &localFilename);
+    void emitProcessBrowserList(const QString &agentId);
+
 };
 
 #endif

@@ -67,6 +67,44 @@ void AxScriptEngine::registerAction(QAction *action) { context.actions.append(ac
 
 /////
 
+void AxScriptEngine::registerEvent(const QString &type, const QJSValue &handler, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id)
+{
+    QSet<int> os;
+    if (list_os.contains("windows")) os.insert(1);
+    if (list_os.contains("linux")) os.insert(2);
+    if (list_os.contains("macos")) os.insert(3);
+
+    AxEvent event = {handler, id, list_agents,  list_listeners, os, jsEngine.get()};
+
+    if (     type == "FileBroserDisks")    context.eventFileBroserDisks.append(event);
+    else if (type == "FileBroserList")     context.eventFileBroserList.append(event);
+    else if (type == "FileBroserUpload")   context.eventFileBroserUpload.append(event);
+    else if (type == "ProcessBrowserList") context.eventProcessBrowserList.append(event);
+}
+
+QList<AxEvent> AxScriptEngine::getEvents(const QString &type)
+{
+    if (     type == "FileBroserDisks")    return context.eventFileBroserDisks;
+    else if (type == "FileBroserList")     return context.eventFileBroserList;
+    else if (type == "FileBroserUpload")   return context.eventFileBroserUpload;
+    else if (type == "ProcessBrowserList") return context.eventProcessBrowserList;
+
+    return QList<AxEvent>();
+}
+
+void AxScriptEngine::removeEvent(const QString &id)
+{
+    for (int i=0; i< context.eventFileBroserDisks.size(); i++) {
+        if (id == context.eventFileBroserDisks[i].event_id) {
+            context.eventFileBroserDisks.removeAt(i);
+            i--;
+        }
+    }
+}
+
+
+/////
+
 void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners)
 {
     QSet<int> os;

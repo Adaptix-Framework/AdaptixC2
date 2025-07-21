@@ -250,25 +250,30 @@ void ConsoleWidget::ConsoleOutputPrompt(const qint64 timestamp, const QString &t
     }
 }
 
-void ConsoleWidget::ProcessCmdResult(const QString &commandLine, CommanderResult cmdResult)
+void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const CommanderResult &cmdResult, const bool UI)
 {
     if ( cmdResult.output ) {
-        QString message = "";
-        QString text    = "";
-        int     type    = 0;
-
-        if (cmdResult.error) {
-            type    = CONSOLE_OUT_LOCAL_ERROR;
-            message = cmdResult.message;
+        if (UI) {
+            if (cmdResult.error)
+                MessageError(cmdResult.message);
         }
         else {
-            type = CONSOLE_OUT_LOCAL;
-            text = cmdResult.message;
+            QString message = "";
+            QString text    = "";
+            int     type    = 0;
+
+            if (cmdResult.error) {
+                type    = CONSOLE_OUT_LOCAL_ERROR;
+                message = cmdResult.message;
+            }
+            else {
+                type = CONSOLE_OUT_LOCAL;
+                text = cmdResult.message;
+            }
+
+            this->ConsoleOutputPrompt(0, "", "", commandLine);
+            this->ConsoleOutputMessage(0, "", type, message, text, true);
         }
-
-        this->ConsoleOutputPrompt(0, "", "", commandLine);
-        this->ConsoleOutputMessage(0, "", type, message, text, true);
-
         return;
     }
 
@@ -287,6 +292,7 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, CommanderResult
     QJsonObject dataJson;
     dataJson["name"]       = agent->data.Name;
     dataJson["id"]         = agent->data.Id;
+    dataJson["ui"]         = UI;
     dataJson["cmdline"]    = commandLine;
     dataJson["data"]       = commandData;
     dataJson["ax_hook_id"] = hookId;
@@ -370,10 +376,8 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, CommanderResult
         });
 
         uploaderDialog->exec();
-
     }
 }
-
 
 /// SLOTS
 
@@ -399,7 +403,7 @@ void ConsoleWidget::processInput()
     if (cmdResult.is_pre_hook)
         return;
 
-    this->ProcessCmdResult(commandLine, cmdResult);
+    this->ProcessCmdResult(commandLine, cmdResult, false);
 }
 
 void ConsoleWidget::toggleSearchPanel()

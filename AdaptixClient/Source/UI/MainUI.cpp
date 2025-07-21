@@ -29,7 +29,7 @@ MainUI::MainUI()
     auto scriptManagerAction = new QAction("Script manager", this);
     connect(scriptManagerAction, &QAction::triggered, this, &MainUI::onScriptManager);
 
-    auto menuExtender = new QMenu("Ax Script", this);
+    auto menuExtender = new QMenu("AxScript", this);
     menuExtender->addAction(axConsoleAction);
     menuExtender->addAction(scriptManagerAction);
 

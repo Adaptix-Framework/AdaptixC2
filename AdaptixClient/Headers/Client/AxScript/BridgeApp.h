@@ -28,6 +28,7 @@ public slots:
     QObject* create_command(const QString &name, const QString &description, const QString &example = "", const QString &message = "");
     QObject* create_commands_group(const QString &name, const QJSValue& array);
     void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "", const QJSValue &hook = QJSValue()) const;
+    void     execute_browser(const QString &id, const QString &command) const;
     void     execute_command(const QString &id, const QString &command, const QJSValue &hook = QJSValue()) const;
     QString  file_basename(const QString &path) const;
     bool     file_exists(const QString &path) const;
@@ -46,6 +47,7 @@ public slots:
     void     script_load(const QString &path);
     void     script_unload(const QString &path);
     QString  script_dir();
+    void     show_message(const QString &title, const QString &text);
     int      ticks();
 
 signals:

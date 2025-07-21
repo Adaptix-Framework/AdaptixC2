@@ -5,6 +5,7 @@
 #include <Utils/CustomElements.h>
 
 class Task;
+class AdaptixWidget;
 
 class TaskOutputWidget : public QWidget
 {
@@ -26,10 +27,10 @@ public:
 
 class TasksWidget : public QWidget
 {
-    QWidget*      mainWidget     = nullptr;
-    QGridLayout*  mainGridLayout = nullptr;
-    QTableWidget* tableWidget    = nullptr;
-    QShortcut*    shortcutSearch = nullptr;
+    AdaptixWidget* adaptixWidget  = nullptr;
+    QGridLayout*   mainGridLayout = nullptr;
+    QTableWidget*  tableWidget    = nullptr;
+    QShortcut*     shortcutSearch = nullptr;
 
     QWidget*        searchWidget = nullptr;
     QHBoxLayout*    searchLayout = nullptr;
@@ -59,7 +60,7 @@ public:
 
     TaskOutputWidget* taskOutputConsole = nullptr;
 
-    explicit TasksWidget( QWidget* w );
+    explicit TasksWidget( AdaptixWidget* w );
     ~TasksWidget() override;
 
     void AddTaskItem(Task* newTask) const;

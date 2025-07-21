@@ -20,8 +20,6 @@ public:
 public slots:
     void connect(QObject* sender, const QString& signal, const QJSValue& handler);
 
-    void show_message(const QString &title, const QString &text);
-
     /// Elements
     QObject* create_vlayout();
     QObject* create_hlayout();

@@ -33,6 +33,10 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     this->ChannelWsWorker = channelWsWorker;
 
     ScriptManager = new AxScriptManager(this, this);
+    connect(this, &AdaptixWidget::eventFileBrowserDisks,   ScriptManager, &AxScriptManager::emitFileBrowserDisks);
+    connect(this, &AdaptixWidget::eventFileBrowserList,    ScriptManager, &AxScriptManager::emitFileBrowserList);
+    connect(this, &AdaptixWidget::eventFileBrowserUpload,  ScriptManager, &AxScriptManager::emitFileBrowserUpload);
+    connect(this, &AdaptixWidget::eventProcessBrowserList, ScriptManager, &AxScriptManager::emitProcessBrowserList);
 
     AxConsoleTab      = new AxConsoleWidget(ScriptManager, this);
     LogsTab           = new LogsWidget();
@@ -369,7 +373,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
                 Commander* commander = new Commander();
                 commander->AddRegCommands(commandsGroup);
 
-                RegAgentConfig config = {agentName, listener, OS_WINDOWS, commander, {}, true};
+                RegAgentConfig config = {agentName, listener, OS_WINDOWS, commander, true};
                 RegisterAgents.push_back(config);
             }
             else {
@@ -391,7 +395,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
                 Commander* commander = new Commander();
                 commander->AddRegCommands(commandsGroup);
 
-                RegAgentConfig config = {agentName, listener, OS_LINUX, commander, {}, true};
+                RegAgentConfig config = {agentName, listener, OS_LINUX, commander, true};
                 RegisterAgents.push_back(config);
             }
             else {
@@ -413,7 +417,7 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
                 Commander* commander = new Commander();
                 commander->AddRegCommands(commandsGroup);
 
-                RegAgentConfig config = {agentName, listener, OS_MAC, commander, {}, true};
+                RegAgentConfig config = {agentName, listener, OS_MAC, commander, true};
                 RegisterAgents.push_back(config);
             }
             else {

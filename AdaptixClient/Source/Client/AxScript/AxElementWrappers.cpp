@@ -19,7 +19,6 @@ void AxActionWrapper::setContext(QVariantList context) {
     QObject::connect(pAction, &QAction::triggered, this, [this, context]() { triggerWithContext(context); });
 }
 
-// void AxActionWrapper::triggerWithContext(const QVariantMap &context) const {
 void AxActionWrapper::triggerWithContext(const QVariantList& arg) const {
     if (!handler.isCallable())
         return;

@@ -17,8 +17,7 @@ class Agent
 public:
     AdaptixWidget* adaptixWidget = nullptr;
 
-    AgentData      data     = {};
-    BrowsersConfig browsers = {};
+    AgentData data = {};
 
     QImage imageActive   = QImage();
     QImage imageInactive = QImage();
@@ -70,11 +69,6 @@ public:
     void UnsetParent(const PivotData &pivotData);
     void AddChild(const PivotData &pivotData);
     void RemoveChild(const PivotData &pivotData);
-
-    QString BrowserDisks() const;
-    QString BrowserProcess() const;
-    QString BrowserList(const QString &path) const;
-    QString BrowserUpload(const QString &path, const QString &content) const;
 };
 
 #endif
