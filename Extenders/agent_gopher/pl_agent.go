@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Adaptix-Framework/axc2"
+	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	mrand "math/rand"
 	"os"
@@ -17,9 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	adaptix "github.com/Adaptix-Framework/axc2"
-	"github.com/vmihailenco/msgpack/v5"
 )
 
 type GenerateConfig struct {
