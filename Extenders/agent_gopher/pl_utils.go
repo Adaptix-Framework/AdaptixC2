@@ -4,15 +4,14 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"io"
-	"regexp"
-	"strconv"
-	"strings"
-
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/charmap"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	"golang.org/x/text/transform"
+	"io"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 type Profile struct {

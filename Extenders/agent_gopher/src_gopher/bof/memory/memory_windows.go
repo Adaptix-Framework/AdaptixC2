@@ -4,7 +4,6 @@ package memory
 
 import "unsafe"
 
-// faster implementation
 func MemCpy(dst, src uintptr, n uint32) {
 	if n <= 0 {
 		return
@@ -15,7 +14,6 @@ func MemCpy(dst, src uintptr, n uint32) {
 	copy(dstSlice, srcSlice)
 }
 
-// faster implementation
 func MemSet(dst uintptr, val byte, n uint32) {
 	if n <= 0 {
 		return

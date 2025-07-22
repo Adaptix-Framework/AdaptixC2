@@ -12,6 +12,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/vmihailenco/msgpack/v5"
+	"gopher/bof/coffer"
+	"gopher/functions"
+	"gopher/utils"
 	"io"
 	"net"
 	"os"
@@ -20,12 +24,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
-	"gopher/bof/coffer"
-	"gopher/functions"
-	"gopher/utils"
-
-	"github.com/vmihailenco/msgpack/v5"
 )
 
 var UPLOADS map[string][]byte

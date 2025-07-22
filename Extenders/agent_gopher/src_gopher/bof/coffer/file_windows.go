@@ -402,7 +402,6 @@ func ErrorFlatten(err error) error {
 	return err
 }
 
-// MultiError represents a collection of errors
 type MultiError []error
 
 // Error checks count of errors which are stored in the MultiError and
@@ -419,8 +418,6 @@ func (e MultiError) Error() string {
 		return e[0].Error()
 	default:
 		var buf bytes.Buffer
-		// no error checking of Write* methods,
-		// as according to the docs, err is always nil.
 		buf.WriteString(fmt.Sprintf("pecoff: multi error (%d)\n", len(e)))
 		for _, err := range e {
 			buf.WriteRune('\t')
@@ -438,19 +435,13 @@ var (
 	ErrStrOffOutOfBounds = errors.New("string offset is out of bounds")
 )
 
-// GetString returns a string which starts at
-// specified offset inside the string table.
 func (t StringTable) GetString(offset int) (string, error) {
 	if offset < 0 || offset >= len(t) {
 		return "", ErrStrOffOutOfBounds
 	}
 	nullIndex := offset
-	// all strings must be null-terminated,
-	// but we don't want to crash unexpectedly,
-	// so let's check slice bounds anyway.
 	for nullIndex < len(t) && t[nullIndex] != 0 {
 		nullIndex++
 	}
-	// if nullIndex == len(t) { panic("last string is not null-terminated") }
 	return string(t[offset:nullIndex]), nil
 }

@@ -13,11 +13,17 @@ menu.add_session_browser(terminal_browser_action, ["gopher"])
 let tunnel_access_action = menu.create_action("Create Tunnel", function(agents_id) { ax.open_access_tunnel(agents_id[0], true, true, false, false) });
 menu.add_session_access(tunnel_access_action, ["gopher"]);
 
+
+
 let download_action = menu.create_action("Download", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "download " + file.path + file.name) ) });
 menu.add_filebrowser(download_action, ["gopher"])
 
+
+
 let cancel_action = menu.create_action("Cancel", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "job kill " + file.file_id) ) });
-menu.add_download_running(cancel_action, ["gopher"])
+menu.add_downloads_running(cancel_action, ["gopher"])
+
+
 
 var event_files_action = function(id, path) {
     ax.execute_browser(id, "ls " + path);
@@ -34,6 +40,7 @@ var event_process_action = function(id) {
     ax.execute_browser(id, "ps");
 }
 event.on_processbrowser_list(event_process_action, ["gopher"]);
+
 
 
 function RegisterCommands(listenerType)
