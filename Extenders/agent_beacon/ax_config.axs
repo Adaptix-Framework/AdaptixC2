@@ -1,4 +1,4 @@
-/// Beacom agent
+/// Beacon agent
 
 let exit_thread_action  = menu.create_action("Terminate thread",  function(value) { value.forEach(v => ax.execute_command(v, "terminate thread")) });
 let exit_process_action = menu.create_action("Terminate process", function(value) { value.forEach(v => ax.execute_command(v, "terminate process")) });
@@ -7,14 +7,15 @@ exit_menu.addItem(exit_thread_action)
 exit_menu.addItem(exit_process_action)
 menu.add_session_agent(exit_menu, ["beacon"])
 
+
 let file_browser_action    = menu.create_action("File Browser",    function(value) { value.forEach(v => ax.open_browser_files(v)) });
 let process_browser_action = menu.create_action("Process Browser", function(value) { value.forEach(v => ax.open_browser_process(v)) });
 menu.add_session_browser(file_browser_action, ["beacon"])
 menu.add_session_browser(process_browser_action, ["beacon"])
 
+
 let tunnel_access_action = menu.create_action("Create Tunnel", function(value) { ax.open_access_tunnel(value[0], true, true, true, true) });
 menu.add_session_access(tunnel_access_action, ["beacon"])
-
 
 
 let execute_action = menu.create_action("Execute", function(files_list) {
@@ -59,17 +60,24 @@ menu.add_filebrowser(execute_action, ["beacon"])
 menu.add_filebrowser(download_action, ["beacon"])
 
 
-
 let download_stop_action = menu.create_action("Pause", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil stop " + file.file_id) ) });
-menu.add_download_running(download_stop_action, ["beacon"])
-
 let download_start_action = menu.create_action("Resume", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil start " + file.file_id) ) });
-menu.add_download_stopped(download_start_action, ["beacon"])
-
+let download_separator1 = menu.create_separator()
 let download_cancel_action = menu.create_action("Cancel", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil cancel " + file.file_id) ) });
-menu.add_download_running(download_cancel_action, ["beacon"])
-menu.add_download_stopped(download_cancel_action, ["beacon"])
+menu.add_downloads_running(download_stop_action, ["beacon"])
+menu.add_downloads_running(download_start_action, ["beacon"])
+menu.add_downloads_running(download_separator1, ["beacon"])
+menu.add_downloads_running(download_cancel_action, ["beacon"])
 
+
+let job_stop_action = menu.create_action("Stop job", function(tasks_list) {
+    tasks_list.forEach((task) => {
+        if(task.type == "JOB" && task.state == "Running") {
+            ax.execute_command(task.agent_id, "jobs kill " + task.task_id);
+        }
+    });
+});
+menu.add_tasks_job(job_stop_action, ["beacon"])
 
 
 var event_disks_action = function(id) {
@@ -128,10 +136,10 @@ function RegisterCommands(listenerType)
 
     let cmd_getuid = ax.create_command("getuid", "Prints the User ID associated with the current token", "getuid", "Task: get username of current token");
 
-    let _cmd_job_list = ax.create_command("list", "List of jobs", "job list", "Task: show jobs");
-    let _cmd_job_kill = ax.create_command("kill", "Kill a specified job", "job kill 1a2b3c4d", "Task: kill job");
+    let _cmd_job_list = ax.create_command("list", "List of jobs", "jobs list", "Task: show jobs");
+    let _cmd_job_kill = ax.create_command("kill", "Kill a specified job", "jobs kill 1a2b3c4d", "Task: kill job");
     _cmd_job_kill.addArgString("task_id", true);
-    let cmd_job = ax.create_command("job", "Long-running tasks manager");
+    let cmd_job = ax.create_command("jobs", "Long-running tasks manager");
     cmd_job.addSubCommands([_cmd_job_list, _cmd_job_kill]);
 
     let _cmd_link_smb = ax.create_command("smb", "Connect to an SMB agent and re-establish control of it", "link smb 192.168.1.2 pipe_a1b2", "Task: Connect to an SMB agent");
@@ -175,11 +183,10 @@ function RegisterCommands(listenerType)
     let _cmd_ps_list = ax.create_command("list", "Show process list", "ps list", "Task: show process list");
     let _cmd_ps_kill = ax.create_command("kill", "Kill a process with a given PID", "ps kill 7865", "Task: kill process");
     _cmd_ps_kill.addArgInt("pid", true);
-    let _cmd_ps_run = ax.create_command("run", "Run a program", "run -s cmd.exe \"whoami /all\"", "Task: create new process");
+    let _cmd_ps_run = ax.create_command("run", "Run a program", "run -s cmd.exe /c whoami /all", "Task: create new process");
     _cmd_ps_run.addArgBool("-s", "Suspend process");
     _cmd_ps_run.addArgBool("-o", "Output to console");
-    _cmd_ps_run.addArgString("program", true);
-    _cmd_ps_run.addArgString("args", false);
+    _cmd_ps_run.addArgString("args", true);
     let cmd_ps = ax.create_command("ps", "Process manager");
     cmd_ps.addSubCommands([_cmd_ps_list, _cmd_ps_kill, _cmd_ps_run]);
 
@@ -237,6 +244,7 @@ function RegisterCommands(listenerType)
     });
 
     let cmd_powershell = ax.create_command("powershell", "Execute command via powershell.exe", "powershell ls");
+    cmd_powershell.addArgString("cmd_params", true);
     cmd_powershell.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
         let new_cmd = "ps run -o C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -c " + parsed_json["cmd_params"];
         ax.execute_alias(id, cmdline, new_cmd);
@@ -324,8 +332,8 @@ function GenerateUI(listenerType)
             textSvcName.setVisible(true);
         }
         else {
-            labelSvcName.setVisible(true)
-            textSvcName.setVisible(true);
+            labelSvcName.setVisible(false)
+            textSvcName.setVisible(false);
         }
     });
 
