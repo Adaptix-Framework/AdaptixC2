@@ -41,9 +41,9 @@ unsigned int swap_endianess(unsigned int indata)
 
 void BeaconDataParse(datap* parser, char* buffer, int size)
 {
-	if (parser == NULL) {
+	if (parser == NULL || buffer == NULL)
 		return;
-	}
+
 	parser->original = buffer;
 	parser->buffer = buffer;
 	parser->length = size - 4;
@@ -54,6 +54,9 @@ void BeaconDataParse(datap* parser, char* buffer, int size)
 
 int BeaconDataInt(datap* parser)
 {
+	if (parser == NULL)
+		return 0;
+
 	int fourbyteint = 0;
 	if (parser->length < 4) {
 		return 0;
@@ -66,6 +69,9 @@ int BeaconDataInt(datap* parser)
 
 short BeaconDataShort(datap* parser)
 {
+	if (parser == NULL)
+		return 0;
+
 	short retvalue = 0;
 	if (parser->length < 2) {
 		return 0;
@@ -78,26 +84,34 @@ short BeaconDataShort(datap* parser)
 
 int BeaconDataLength(datap* parser)
 {
+	if (parser == NULL)
+		return 0;
+
 	return parser->length;
 }
 
 char* BeaconDataExtract(datap* parser, int* size)
 {
+	if (parser == NULL)
+		return 0;
+
 	unsigned int length = 0;
 	char* outdata = NULL;
 	if (parser->length < 4) {
 		return NULL;
 	}
 	memcpy(&length, parser->buffer, 4);
+	parser->length -= 4;
 	parser->buffer += 4;
 
 	outdata = parser->buffer;
 	if (outdata == NULL) {
 		return NULL;
 	}
-	parser->length -= 4;
+
 	parser->length -= length;
 	parser->buffer += length;
+
 	if (size != NULL && outdata != NULL) {
 		*size = length;
 	}
@@ -110,11 +124,17 @@ char* BeaconDataExtract(datap* parser, int* size)
 
 void BeaconOutput(int type, const char* data, int len)
 {
+	if (data == NULL)
+		return;
+
 	BofOutputToTask(type, (PBYTE)data, len);
 }
 
 void BeaconPrintf(int type, const char* fmt, ...)
 {
+	if (fmt == NULL)
+		return;
+
 	int length = 0;
 	va_list args;
 
@@ -151,6 +171,9 @@ void BeaconFormatAlloc(formatp* format, int maxsz)
 
 void BeaconFormatReset(formatp* format)
 {
+	if (format == NULL)
+		return;
+
 	memset(format->original, 0, format->size);
 	format->buffer = format->original;
 	format->length = format->size;
@@ -159,6 +182,9 @@ void BeaconFormatReset(formatp* format)
 
 void BeaconFormatAppend(formatp* format, const char* text, int len)
 {
+	if (format == NULL || text == NULL)
+		return;
+
 	memcpy(format->buffer, text, len);
 	format->buffer += len;
 	format->length += len;
@@ -167,6 +193,9 @@ void BeaconFormatAppend(formatp* format, const char* text, int len)
 
 void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 {
+	if (format == NULL || fmt == NULL)
+		return;
+
 	va_list args;
 	int length = 0;
 
@@ -187,6 +216,9 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 
 char* BeaconFormatToString(formatp* format, int* size)
 {
+	if (format == NULL || size == NULL)
+		return NULL;
+
 	if(size != NULL)
 		*size = format->length;
 
@@ -198,9 +230,9 @@ char* BeaconFormatToString(formatp* format, int* size)
 
 void BeaconFormatFree(formatp* format)
 {
-	if (format == NULL) {
+	if (format == NULL)
 		return;
-	}
+
 	if (format->original) {
 		MemFreeLocal((LPVOID*) &format->original, format->size);
 	}
@@ -212,6 +244,9 @@ void BeaconFormatFree(formatp* format)
 
 void BeaconFormatInt(formatp* format, int value)
 {
+	if (format == NULL)
+		return;
+
 	unsigned int indata = value;
 	unsigned int outdata = 0;
 	if (format->length + 4 > format->size) {
