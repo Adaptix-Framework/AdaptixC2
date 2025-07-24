@@ -423,6 +423,35 @@ func (ts *Teamserver) TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) er
 	return nil
 }
 
+func (ts *Teamserver) TsTaskCancel(agentId string, taskId string) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent %v not found", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	var task adaptix.TaskData
+	found := false
+	for i := uint(0); i < agent.TasksQueue.Len(); i++ {
+		if value, ok = agent.TasksQueue.Get(i); ok {
+			task = value.(adaptix.TaskData)
+			if task.TaskId == taskId {
+				agent.TasksQueue.Delete(i)
+				found = true
+				break
+			}
+		}
+	}
+
+	if found {
+		packet := CreateSpAgentTaskRemove(task)
+		ts.TsSyncAllClients(packet)
+		return nil
+	}
+
+	return nil
+}
+
 func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
@@ -454,51 +483,6 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 
 	packet := CreateSpAgentTaskRemove(task)
 	ts.TsSyncAllClients(packet)
-	return nil
-}
-
-func (ts *Teamserver) TsTaskStop(agentId string, taskId string) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent %v not found", agentId)
-	}
-	agent, _ := value.(*Agent)
-
-	var task adaptix.TaskData
-	found := false
-	for i := uint(0); i < agent.TasksQueue.Len(); i++ {
-		if value, ok = agent.TasksQueue.Get(i); ok {
-			task = value.(adaptix.TaskData)
-			if task.TaskId == taskId {
-				agent.TasksQueue.Delete(i)
-				found = true
-				break
-			}
-		}
-	}
-
-	if found {
-		packet := CreateSpAgentTaskRemove(task)
-		ts.TsSyncAllClients(packet)
-		return nil
-	}
-
-	value, ok = agent.RunningTasks.Get(taskId)
-	if !ok {
-		return nil
-	}
-	if value.(adaptix.TaskData).Type != TYPE_JOB {
-		return fmt.Errorf("task %v in process", taskId)
-	}
-
-	taskData, err := ts.Extender.ExAgentBrowserJobKill(agent.Data, taskId)
-	if err != nil {
-		return err
-	}
-	ts.TsTaskCreate(agent.Data.Id, "job kill "+taskId, "", taskData)
-
-	// ToDo: Job stop
-
 	return nil
 }
 
