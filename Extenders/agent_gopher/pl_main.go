@@ -175,23 +175,6 @@ func (m *ModuleExtender) AgentProcessData(agentData adaptix.AgentData, packedDat
 	return nil, nil
 }
 
-///
-
-func (m *ModuleExtender) AgentBrowserJobKill(jobId string) (adaptix.TaskData, error) {
-	packData, err := BrowserJobKill(jobId)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_TASK,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
-}
-
 /// SYNC
 
 func SyncBrowserDisks(ts Teamserver, taskData adaptix.TaskData, drivesSlice []adaptix.ListingDrivesDataWin) {

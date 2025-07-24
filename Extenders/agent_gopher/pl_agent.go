@@ -1302,12 +1302,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 	return outTasks
 }
 
-///
-
-func BrowserJobKill(jobId string) ([]byte, error) {
-	return nil, errors.New("Function Job Kill not supported")
-}
-
 /// TUNNEL
 
 func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {

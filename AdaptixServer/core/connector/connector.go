@@ -50,7 +50,7 @@ type Teamserver interface {
 	TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData)
 	TsTaskUpdate(agentId string, data adaptix.TaskData)
 	TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
-	TsTaskStop(agentId string, taskId string) error
+	TsTaskCancel(agentId string, taskId string) error
 	TsTaskDelete(agentId string, taskId string) error
 	TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error
 
@@ -168,7 +168,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/setmark", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetMark)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/setcolor", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetColor)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskStop)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/cancel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskCancel)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskDelete)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/hook", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskHook)
 

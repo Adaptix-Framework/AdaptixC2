@@ -348,7 +348,7 @@ type AgentTaskDelete struct {
 	TasksId []string `json:"tasks_array"`
 }
 
-func (tc *TsConnector) TcAgentTaskStop(ctx *gin.Context) {
+func (tc *TsConnector) TcAgentTaskCancel(ctx *gin.Context) {
 	var (
 		agentTasks AgentTaskDelete
 		err        error
@@ -362,7 +362,7 @@ func (tc *TsConnector) TcAgentTaskStop(ctx *gin.Context) {
 
 	var errorsSlice []string
 	for _, taskId := range agentTasks.TasksId {
-		err = tc.teamserver.TsTaskStop(agentTasks.AgentId, taskId)
+		err = tc.teamserver.TsTaskCancel(agentTasks.AgentId, taskId)
 		if err != nil {
 			errorsSlice = append(errorsSlice, err.Error())
 		}

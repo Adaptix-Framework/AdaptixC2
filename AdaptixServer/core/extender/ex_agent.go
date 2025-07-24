@@ -71,13 +71,3 @@ func (ex *AdaptixExtender) ExAgentTerminalCallbacks(agentData adaptix.AgentData)
 	}
 	return module.AgentTerminalCallbacks()
 }
-
-////
-
-func (ex *AdaptixExtender) ExAgentBrowserJobKill(agentData adaptix.AgentData, jobId string) (adaptix.TaskData, error) {
-	module, ok := ex.agentModules[agentData.Name]
-	if !ok {
-		return adaptix.TaskData{}, errors.New("module not found")
-	}
-	return module.AgentBrowserJobKill(jobId)
-}

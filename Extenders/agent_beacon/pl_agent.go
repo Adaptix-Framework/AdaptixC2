@@ -820,14 +820,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 				programArgs = ConvertUTF8toCp(programArgs, agent.ACP)
 			}
 
-			program, ok := args["program"].(string)
-			if !ok {
-				err = errors.New("parameter 'program' must be set")
-				goto RET
-			}
-			program = ConvertUTF8toCp(program, agent.ACP)
-
-			array = []interface{}{COMMAND_PS_RUN, output, programState, program, programArgs}
+			array = []interface{}{COMMAND_PS_RUN, output, programState, programArgs}
 
 		} else {
 			err = errors.New("subcommand must be 'list', 'kill' or 'run'")
@@ -1917,18 +1910,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 		outTasks = append(outTasks, task)
 	}
 	return outTasks
-}
-
-///
-
-func BrowserJobKill(jobId string) ([]byte, error) {
-	jobIdstr, err := strconv.ParseInt(jobId, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_JOBS_KILL, int(jobIdstr)}
-	return PackArray(array)
 }
 
 /// TUNNELS
