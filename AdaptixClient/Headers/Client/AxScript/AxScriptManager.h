@@ -27,9 +27,6 @@ struct DataMenuDownload {
     QString state;
 };
 
-
-
-
 class AxScriptManager : public QObject {
 Q_OBJECT
     AdaptixWidget*  mainWidget = nullptr;
@@ -74,6 +71,7 @@ public:
     int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds);
     int AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files);
     int AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files);
+    int AddMenuTask(QMenu* menu, const QString &menuType, const QStringList &tasks);
 
 public slots:
     void consolePrintMessage(const QString &message);
@@ -83,7 +81,6 @@ public slots:
     void emitFileBrowserList(const QString &agentId, const QString &path);
     void emitFileBrowserUpload(const QString &agentId, const QString &path, const QString &localFilename);
     void emitProcessBrowserList(const QString &agentId);
-
 };
 
 #endif

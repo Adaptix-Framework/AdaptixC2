@@ -474,6 +474,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             QString id = idValue.toString();
             if (TasksMap.contains(id)) {
                 Task* task = TasksMap[id];
+                task->data.Status = "Running";
                 task->item_Result->setText("Running");
             }
         }

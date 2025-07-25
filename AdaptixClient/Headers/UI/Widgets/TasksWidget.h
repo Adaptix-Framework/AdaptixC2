@@ -81,7 +81,7 @@ public slots:
     void actionCopyTaskId() const;
     void actionCopyCmd() const;
     void actionOpenConsole() const;
-    void actionStop() const;
+    void actionCancel() const;
     void actionDelete() const;
 };
 

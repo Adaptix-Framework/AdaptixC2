@@ -224,6 +224,8 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
     return strLengthData.toBase64();
 }
 
+void BridgeApp::copy_to_clipboard(const QString &text) { QApplication::clipboard()->setText(text); }
+
 void BridgeApp::console_message(const QString &id, const QString &message, const QString &type, const QString &text)
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
@@ -434,6 +436,19 @@ void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, co
     commandsGroup.filepath  = scriptEngine->context.name;
 
     scriptEngine->manager()->RegisterCommandsGroup(commandsGroup, list_listeners, list_agents, list_os);
+}
+
+void BridgeApp::script_import(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return scriptEngine->engine()->throwError("Could not open script: " + path);
+    }
+    QTextStream in(&file);
+    QString code = in.readAll();
+    file.close();
+
+    scriptEngine->engine()->evaluate(code, path);
 }
 
 void BridgeApp::script_load(const QString &path) { scriptEngine->manager()->GlobalScriptLoad(path); }
