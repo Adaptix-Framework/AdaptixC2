@@ -45,7 +45,7 @@ bool HttpReqAgentSetColor( QStringList agentsId, const QString &background, cons
 
 ///TASK
 
-bool HttpReqTaskStop(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
+bool HttpReqTaskCancel(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
 

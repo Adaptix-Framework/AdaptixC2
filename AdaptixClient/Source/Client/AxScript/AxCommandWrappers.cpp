@@ -78,7 +78,7 @@ void AxCommandWrappers::addArgInt(const QString &name, const QString &descriptio
     command.args.append(arg);
 }
 
-void AxCommandWrappers::addArgFlagInt(const QString &flag, const QString &name, bool required, const QString &description)
+void AxCommandWrappers::addArgFlagInt(const QString &flag, const QString &name, const bool required, const QString &description)
 {
     Argument arg = { "INT", name, required, true, flag, description, false, QVariant() };
     command.args.append(arg);
@@ -96,7 +96,7 @@ void AxCommandWrappers::addArgFlagInt(const QString &flag, const QString &name, 
     command.args.append(arg);
 }
 
-void AxCommandWrappers::addArgString(const QString &name, bool required, const QString &description)
+void AxCommandWrappers::addArgString(const QString &name, const bool required, const QString &description)
 {
     Argument arg = { "STRING", name, required, false, "", description, false, QVariant() };
     command.args.append(arg);
@@ -114,7 +114,7 @@ void AxCommandWrappers::addArgString(const QString &name, const QString &descrip
     command.args.append(arg);
 }
 
-void AxCommandWrappers::addArgFlagString(const QString &flag, const QString &name, bool required, const QString &description)
+void AxCommandWrappers::addArgFlagString(const QString &flag, const QString &name, const bool required, const QString &description)
 {
     Argument arg = { "STRING", name, required, true, flag, description, false, QVariant() };
     command.args.append(arg);
@@ -132,13 +132,13 @@ void AxCommandWrappers::addArgFlagString(const QString &flag, const QString &nam
     command.args.append(arg);
 }
 
-void AxCommandWrappers::addArgFile(const QString &name, bool required, const QString &description)
+void AxCommandWrappers::addArgFile(const QString &name, const bool required, const QString &description)
 {
     Argument arg = { "FILE", name, required, false, "", description, false, QVariant() };
     command.args.append(arg);
 }
 
-void AxCommandWrappers::addArgFlagFile(const QString &flag, const QString &name, bool required, const QString &description)
+void AxCommandWrappers::addArgFlagFile(const QString &flag, const QString &name, const bool required, const QString &description)
 {
     Argument arg = { "FILE", name, required, true, flag, description, false, QVariant() };
     command.args.append(arg);

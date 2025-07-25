@@ -6,6 +6,8 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/AxConsoleWidget.h>
 
+#include "Agent/Task.h"
+
 AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), mainWidget(main_widget) {
     mainScript = new AxScriptEngine(this, "main", this);
 }
@@ -238,7 +240,6 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
     return ret;
 }
 
-
 /// MENU
 
 int AxScriptManager::AddMenuSession(QMenu *menu, const QString &menuType, QStringList agentIds)
@@ -337,6 +338,52 @@ int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVect
     }
     return count;
 }
+
+int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QStringList &tasks)
+{
+    if (tasks.empty()) return 0;
+
+    QSet<QString> agents;
+
+    QVariantList context;
+    for (auto taskId : tasks) {
+        if (mainWidget->TasksMap.contains(taskId) && mainWidget->TasksMap[taskId]) {
+            TaskData taskData = mainWidget->TasksMap[taskId]->data;
+            QVariantMap map;
+            map["agent_id"] = taskData.AgentId;
+            map["task_id"]  = taskData.TaskId;
+            map["state"]    = taskData.Status;
+            if ( taskData.TaskType == 1 )
+                map["type"] = "TASK";
+            else if ( taskData.TaskType == 3 )
+                map["type"] = "JOB";
+            else if ( taskData.TaskType == 4 )
+                map["type"] = "TUNNEL";
+            else
+                map["type"] = "unknown";
+            context << map;
+        }
+    }
+
+    int count = 0;
+    QList<AxMenuItem> items = this->FilterMenuItems(QList<QString>(agents.begin(), agents.end()), menuType);
+    for (int i = 0; i < items.size(); ++i) {
+        AxMenuItem item = items[i];
+
+        item.menu->setContext(context);
+        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
+            menu->addAction(item1->action());
+        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
+            menu->addAction(item2->action());
+        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
+            menu->addMenu(item3->menu());
+        else
+            continue;
+        count++;
+    }
+    return count;
+}
+
 
 /// EVENT
 

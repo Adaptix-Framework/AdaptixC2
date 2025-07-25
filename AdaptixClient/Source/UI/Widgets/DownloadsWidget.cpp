@@ -237,13 +237,12 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos )
         if( tableWidget->cellWidget( tableWidget->currentRow(), 9)->isEnabled() ) {
             data.state = "running";
             files.append(data);
-            adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadRunning", files);
         }
         else {
             data.state = "stopped";
             files.append(data);
-            adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadStopped", files);
         }
+        adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadRunning", files);
     }
 
     ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos) );

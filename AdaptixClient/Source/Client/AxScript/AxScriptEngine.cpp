@@ -120,8 +120,9 @@ void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu,
     else if (type == "SessionAccess")    context.menuSessionAccess.append(item);
     else if (type == "FileBrowser")      context.menuFileBrowser.append(item);
     else if (type == "DownloadRunning")  context.menuDownloadRunning.append(item);
-    else if (type == "DownloadStopped")  context.menuDownloadStopped.append(item);
     else if (type == "DownloadFinished") context.menuDownloadFinished.append(item);
+    else if (type == "Tasks")            context.menuTasks.append(item);
+    else if (type == "TasksJob")         context.menuTasksJob.append(item);
 }
 
 QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
@@ -132,8 +133,9 @@ QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
     else if (type == "SessionAccess")    return context.menuSessionAccess;
     else if (type == "FileBrowser")      return context.menuFileBrowser;
     else if (type == "DownloadRunning")  return context.menuDownloadRunning;
-    else if (type == "DownloadStopped")  return context.menuDownloadStopped;
     else if (type == "DownloadFinished") return context.menuDownloadFinished;
+    else if (type == "Tasks")            return context.menuTasks;
+    else if (type == "TasksJob")         return context.menuTasksJob;
 
     return QList<AxMenuItem>();
 }

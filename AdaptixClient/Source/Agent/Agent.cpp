@@ -346,11 +346,11 @@ void Agent::UpdateImage()
 
 /// TASK
 
-QString Agent::TasksStop(const QStringList &tasks) const
+QString Agent::TasksCancel(const QStringList &tasks) const
 {
     QString message = QString();
     bool ok = false;
-    bool result = HttpReqTaskStop( data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
+    bool result = HttpReqTaskCancel( data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
         return "Response timeout";
 
