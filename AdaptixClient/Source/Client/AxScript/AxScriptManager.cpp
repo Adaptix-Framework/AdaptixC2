@@ -1,4 +1,7 @@
 #include <Agent/Agent.h>
+#include <Agent/Task.h>
+#include <Client/Requestor.h>
+#include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptEngine.h>
@@ -6,9 +9,9 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/AxConsoleWidget.h>
 
-#include "Agent/Task.h"
 
-AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), mainWidget(main_widget) {
+
+AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), adaptixWidget(main_widget) {
     mainScript = new AxScriptEngine(this, "main", this);
 }
 
@@ -30,7 +33,7 @@ void AxScriptManager::Clear()
 
 void AxScriptManager::ResetMain()
 {
-    auto commanderList = mainWidget->GetCommandersAll();
+    auto commanderList = adaptixWidget->GetCommandersAll();
     for (auto commander : commanderList)
         commander->RemoveAxCommands(mainScript->context.name);
 
@@ -39,10 +42,6 @@ void AxScriptManager::ResetMain()
 
     mainScript = new AxScriptEngine(this, "main", this);
 }
-
-AdaptixWidget* AxScriptManager::GetAdaptix() const { return this->mainWidget; }
-
-QMap<QString, Agent*> AxScriptManager::GetAgents() const { return mainWidget->AgentsMap; }
 
 QJSEngine* AxScriptManager::GetEngine(const QString &name)
 {
@@ -57,6 +56,12 @@ QJSEngine* AxScriptManager::GetEngine(const QString &name)
 
     return nullptr;
 }
+
+AdaptixWidget* AxScriptManager::GetAdaptix() const { return this->adaptixWidget; }
+
+QMap<QString, Agent*> AxScriptManager::GetAgents() const { return adaptixWidget->AgentsMap; }
+
+QVector<CredentialData> AxScriptManager::GetCredentials() const { return adaptixWidget->Credentials; }
 
 /// MAIN
 
@@ -141,7 +146,7 @@ void AxScriptManager::ScriptRemove(const ExtensionFile &ext)
 {
     auto scriptEngine = scripts.take(ext.FilePath);
 
-    auto commanderList = mainWidget->GetCommandersAll();
+    auto commanderList = adaptixWidget->GetCommandersAll();
     for (auto commander : commanderList)
         commander->RemoveAxCommands(ext.FilePath);
 
@@ -150,13 +155,13 @@ void AxScriptManager::ScriptRemove(const ExtensionFile &ext)
 
 
 
-void AxScriptManager::GlobalScriptLoad(const QString &path) { emit mainWidget->LoadGlobalScriptSignal(path); }
+void AxScriptManager::GlobalScriptLoad(const QString &path) { emit adaptixWidget->LoadGlobalScriptSignal(path); }
 
-void AxScriptManager::GlobalScriptUnload(const QString &path) { emit mainWidget->UnloadGlobalScriptSignal(path); }
+void AxScriptManager::GlobalScriptUnload(const QString &path) { emit adaptixWidget->UnloadGlobalScriptSignal(path); }
 
 void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os)
 {
-    auto commanderList = mainWidget->GetCommanders(listeners, agents, os);
+    auto commanderList = adaptixWidget->GetCommanders(listeners, agents, os);
     for (auto commander : commanderList)
         commander->AddAxCommands(group);
 }
@@ -176,10 +181,10 @@ QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, 
     QSet<QString> listenerTypes;
     QSet<int>     osTypes;
     for (auto agent_id: agentIds) {
-        if (mainWidget->AgentsMap.contains(agent_id)) {
-            agentTypes.insert(mainWidget->AgentsMap[agent_id]->data.Name);
-            osTypes.insert(mainWidget->AgentsMap[agent_id]->data.Os);
-            listenerTypes.insert(mainWidget->AgentsMap[agent_id]->listenerType);
+        if (adaptixWidget->AgentsMap.contains(agent_id)) {
+            agentTypes.insert(adaptixWidget->AgentsMap[agent_id]->data.Name);
+            osTypes.insert(adaptixWidget->AgentsMap[agent_id]->data.Os);
+            listenerTypes.insert(adaptixWidget->AgentsMap[agent_id]->listenerType);
         }
     }
 
@@ -210,12 +215,12 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
 {
     QList<AxEvent> ret;
 
-    if( !mainWidget->AgentsMap.contains(agentId) )
+    if( !adaptixWidget->AgentsMap.contains(agentId) )
         return ret;
 
-    QString agentType    = mainWidget->AgentsMap[agentId]->data.Name;
-    QString listenerType = mainWidget->AgentsMap[agentId]->listenerType;
-    int     osType          = mainWidget->AgentsMap[agentId]->data.Os;
+    QString agentType    = adaptixWidget->AgentsMap[agentId]->data.Name;
+    QString listenerType = adaptixWidget->AgentsMap[agentId]->listenerType;
+    int     osType          = adaptixWidget->AgentsMap[agentId]->data.Os;
 
     QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
     list.append(this->mainScript);
@@ -246,7 +251,7 @@ int AxScriptManager::AddMenuSession(QMenu *menu, const QString &menuType, QStrin
 {
     QVariantList context;
     for (auto agent_id: agentIds) {
-        if (mainWidget->AgentsMap.contains(agent_id)) {
+        if (adaptixWidget->AgentsMap.contains(agent_id)) {
             context << agent_id;
         }
     }
@@ -275,7 +280,7 @@ int AxScriptManager::AddMenuFileBrowser(QMenu *menu, QVector<DataMenuFileBrowser
 
     QVariantList  context;
     for (auto file : files) {
-        if (mainWidget->AgentsMap.contains(file.agentId)) {
+        if (adaptixWidget->AgentsMap.contains(file.agentId)) {
             QVariantMap map;
             map["agent_id"] = file.agentId;
             map["path"]     = file.path;
@@ -304,13 +309,51 @@ int AxScriptManager::AddMenuFileBrowser(QMenu *menu, QVector<DataMenuFileBrowser
     return count;
 }
 
+int AxScriptManager::AddMenuProcessBrowser(QMenu *menu, QVector<DataMenuProcessBrowser> processes)
+{
+    if (processes.empty()) return 0;
+
+    QVariantList  context;
+    for (auto proc : processes) {
+        if (adaptixWidget->AgentsMap.contains(proc.agentId)) {
+            QVariantMap map;
+            map["agent_id"]   = proc.agentId;
+            map["pid"]        = proc.pid;
+            map["ppid"]       = proc.ppid;
+            map["arch"]       = proc.arch;
+            map["session_id"] = proc.session_id;
+            map["context"]    = proc.context;
+            map["process"]    = proc.process;
+            context << map;
+        }
+    }
+
+    int count = 0;
+    QList<AxMenuItem> items = this->FilterMenuItems(QStringList() << processes[0].agentId, "ProcessBrowser");
+    for (int i = 0; i < items.size(); ++i) {
+        AxMenuItem item = items[i];
+
+        item.menu->setContext(context);
+        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
+            menu->addAction(item1->action());
+        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
+            menu->addAction(item2->action());
+        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
+            menu->addMenu(item3->menu());
+        else
+            continue;
+        count++;
+    }
+    return count;
+}
+
 int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVector<DataMenuDownload> files)
 {
     if (files.empty()) return 0;
 
     QVariantList context;
     for (auto file : files) {
-        if (mainWidget->AgentsMap.contains(file.agentId)) {
+        if (adaptixWidget->AgentsMap.contains(file.agentId)) {
             QVariantMap map;
             map["agent_id"] = file.agentId;
             map["file_id"]  = file.fileId;
@@ -347,8 +390,8 @@ int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QSt
 
     QVariantList context;
     for (auto taskId : tasks) {
-        if (mainWidget->TasksMap.contains(taskId) && mainWidget->TasksMap[taskId]) {
-            TaskData taskData = mainWidget->TasksMap[taskId]->data;
+        if (adaptixWidget->TasksMap.contains(taskId) && adaptixWidget->TasksMap[taskId]) {
+            TaskData taskData = adaptixWidget->TasksMap[taskId]->data;
             QVariantMap map;
             map["agent_id"] = taskData.AgentId;
             map["task_id"]  = taskData.TaskId;
@@ -361,7 +404,9 @@ int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QSt
                 map["type"] = "TUNNEL";
             else
                 map["type"] = "unknown";
+
             context << map;
+            agents.insert(taskData.AgentId);
         }
     }
 
@@ -440,6 +485,6 @@ void AxScriptManager::emitProcessBrowserList(const QString &agentId)
 
 /// SLOTS
 
-void AxScriptManager::consolePrintMessage(const QString &message) { this->mainWidget->AxConsoleTab->PrintMessage(message); }
+void AxScriptManager::consolePrintMessage(const QString &message) { this->adaptixWidget->AxConsoleTab->PrintMessage(message); }
 
-void AxScriptManager::consolePrintError(const QString &message) { this->mainWidget->AxConsoleTab->PrintError(message); }
+void AxScriptManager::consolePrintError(const QString &message) { this->adaptixWidget->AxConsoleTab->PrintError(message); }

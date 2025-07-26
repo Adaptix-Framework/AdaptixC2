@@ -14,9 +14,45 @@ let tunnel_access_action = menu.create_action("Create Tunnel", function(agents_i
 menu.add_session_access(tunnel_access_action, ["gopher"]);
 
 
+let execute_action = menu.create_action("Execute", function(files_list) {
+    file = files_list[0];
+    if(file.type != "file"){ return; }
 
+    let label_bin = form.create_label("Binary:");
+    let text_bin = form.create_textline(file.path + file.name);
+    text_bin.setEnabled(false);
+    let label_args = form.create_label("Arguments:");
+    let text_args = form.create_textline();
+
+    let layout = form.create_gridlayout();
+    layout.addWidget(label_bin, 0, 0, 1, 1);
+    layout.addWidget(text_bin, 0, 1, 1, 1);
+    layout.addWidget(label_args, 1, 0, 1, 1);
+    layout.addWidget(text_args, 1, 1, 1, 1);
+
+    let dialog = form.create_dialog("Execute binary");
+    dialog.setSize(500, 80);
+    dialog.setLayout(layout);
+    if ( dialog.exec() == true )
+    {
+        let command = "run " + text_bin.text() + " " + text_args.text();
+        ax.execute_command(file.agent_id, command);
+    }
+});
 let download_action = menu.create_action("Download", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "download " + file.path + file.name) ) });
+let remove_action = menu.create_action("Remove", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "rm " + file.path + file.name) ) });
 menu.add_filebrowser(download_action, ["gopher"])
+menu.add_filebrowser(remove_action, ["gopher"])
+
+
+let job_stop_action = menu.create_action("Stop job", function(tasks_list) {
+    tasks_list.forEach((task) => {
+        if(task.type == "JOB" && task.state == "Running") {
+            ax.execute_command(task.agent_id, "job kill " + task.task_id);
+        }
+    });
+});
+menu.add_tasks_job(job_stop_action, ["gopher"])
 
 
 

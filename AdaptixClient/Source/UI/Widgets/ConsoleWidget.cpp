@@ -21,10 +21,13 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c)
     connect(searchLineEdit,   &QLineEdit::returnPressed,                              this, &ConsoleWidget::handleSearch);
     connect(nextButton,       &ClickableLabel::clicked,                               this, &ConsoleWidget::handleSearch);
     connect(prevButton,       &ClickableLabel::clicked,                               this, &ConsoleWidget::handleSearchBackward);
+    connect(searchInput,      &KPH_SearchInput::escPressed,                           this, &ConsoleWidget::toggleSearchPanel );
     connect(hideButton,       &ClickableLabel::clicked,                               this, &ConsoleWidget::toggleSearchPanel);
     connect(OutputTextEdit,   &TextEditConsole::ctx_find,                             this, &ConsoleWidget::toggleSearchPanel);
     connect(OutputTextEdit,   &TextEditConsole::ctx_history,                          this, &ConsoleWidget::handleShowHistory);
     connect(commander,        &Commander::commandsUpdated,                            this, &ConsoleWidget::upgradeCompleter);
+
+
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), OutputTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -63,6 +66,8 @@ void ConsoleWidget::createUI()
     searchLineEdit = new QLineEdit();
     searchLineEdit->setPlaceholderText("Find");
     searchLineEdit->setMaximumWidth(300);
+
+    searchInput = new KPH_SearchInput(searchLineEdit, this);
 
     hideButton = new ClickableLabel("X");
     hideButton->setCursor( Qt::PointingHandCursor );

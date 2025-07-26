@@ -17,7 +17,7 @@ Q_OBJECT
     QLabel*       speedLabel   = nullptr;
     QLabel*       statusLabel  = nullptr;
     QLabel*       labelPath    = nullptr;
-    QLineEdit*    lineeditPash = nullptr;
+    QLineEdit*    lineeditPath = nullptr;
 
     QThread*          workerThread;
     DownloaderWorker* worker;

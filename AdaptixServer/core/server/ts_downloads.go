@@ -108,7 +108,7 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 
 	err := downloadData.File.Close()
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Failed to finish download [%x] file: %v", downloadData.FileId, err))
+		logs.Debug("", fmt.Sprintf("Failed to finish download [%x] file: %v", downloadData.FileId, err))
 	}
 
 	if reason == DOWNLOAD_STATE_FINISHED {

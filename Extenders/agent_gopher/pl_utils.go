@@ -271,7 +271,8 @@ const (
 	COMMAND_TERMINAL_START = 35
 	COMMAND_TERMINAL_STOP  = 36
 
-	COMMAND_EXEC_BOF = 50
+	COMMAND_EXEC_BOF     = 50
+	COMMAND_EXEC_BOF_OUT = 51
 )
 
 var codePageMapping = map[int]encoding.Encoding{

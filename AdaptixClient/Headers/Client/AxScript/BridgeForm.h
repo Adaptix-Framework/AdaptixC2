@@ -66,7 +66,7 @@ public slots:
             handler.call();
     }
 
-    void callWithArg(const QVariant &arg) const {
+    void callWithArg(const bool &arg) const {
         if (handler.isCallable()) {
             QJSValueList args;
             args << engine->toScriptValue(arg);
@@ -74,11 +74,10 @@ public slots:
         }
     }
 
-    void callWithArgs(const QVariant &arg1, const QVariant &arg2) const {
+    void callWithArg(const int &arg) const {
         if (handler.isCallable()) {
             QJSValueList args;
-            args << engine->toScriptValue(arg1);
-            args << engine->toScriptValue(arg2);
+            args << engine->toScriptValue(arg);
             handler.call(args);
         }
     }
@@ -87,6 +86,15 @@ public slots:
         if (handler.isCallable()) {
             QJSValueList args;
             args << engine->toScriptValue(arg);
+            handler.call(args);
+        }
+    }
+
+    void callWithArgs(const int &arg1, const int &arg2) const {
+        if (handler.isCallable()) {
+            QJSValueList args;
+            args << engine->toScriptValue(arg1);
+            args << engine->toScriptValue(arg2);
             handler.call(args);
         }
     }

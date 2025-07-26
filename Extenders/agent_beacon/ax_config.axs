@@ -56,8 +56,14 @@ let download_action = menu.create_action("Download", function(files_list) {
         }
     });
 });
+let remove_action = menu.create_action("Remove", function(files_list) {
+    files_list.forEach(file => ax.execute_command(file.agent_id, "rm " + file.path + file.name))
+});
 menu.add_filebrowser(execute_action, ["beacon"])
 menu.add_filebrowser(download_action, ["beacon"])
+menu.add_filebrowser(remove_action, ["beacon"])
+
+
 
 
 let download_stop_action = menu.create_action("Pause", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil stop " + file.file_id) ) });

@@ -86,6 +86,10 @@ void BridgeMenu::add_filebrowser(AbstractAxMenuItem *item, const QJSValue &agent
     this->reg("FileBrowser", item, agents, os, listeners);
 }
 
+void BridgeMenu::add_processbrowser(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) {
+    this->reg("ProcessBrowser", item, agents, os, listeners);
+}
+
 void BridgeMenu::add_downloads_running(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners){
     this->reg("DownloadRunning", item, agents, os, listeners);
 }

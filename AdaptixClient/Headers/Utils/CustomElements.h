@@ -18,6 +18,8 @@ public:
         if (hasBg)
             painter->fillRect(optFull.rect, bgBrush);
 
+        optFull.state &= ~QStyle::State_HasFocus;
+
         QStyledItemDelegate::paint(painter, optFull, index);
     }
 };

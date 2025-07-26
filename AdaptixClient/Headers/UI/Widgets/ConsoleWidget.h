@@ -39,6 +39,7 @@ class ConsoleWidget : public QWidget
     ClickableLabel* hideButton     = nullptr;
     QSpacerItem*    spacer         = nullptr;
     QShortcut*      shortcutSearch = nullptr;
+    KPH_SearchInput* searchInput   = nullptr;
 
     bool userSelectedCompletion = false;
     int  currentIndex = -1;
