@@ -1,6 +1,7 @@
 package connector
 
 import (
+	"AdaptixServer/core/utils/logs"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -88,7 +89,7 @@ func (tc *TsConnector) TcAgentCommandExecute(ctx *gin.Context) {
 
 	err = json.Unmarshal([]byte(commandData.Data), &args)
 	if err != nil {
-		fmt.Printf("Error parsing commands JSON: %s\n", err.Error())
+		logs.Debug("", "Error parsing commands JSON: %s\n", err.Error())
 	}
 
 	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.CmdLine, commandData.UI, args)
@@ -145,7 +146,7 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 
 	err = json.Unmarshal([]byte(commandData.Data), &args)
 	if err != nil {
-		fmt.Printf("Error parsing commands JSON: %s\n", err.Error())
+		logs.Debug("", "Error parsing commands JSON: %s\n", err.Error())
 	}
 
 	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.CmdLine, commandData.UI, args)
@@ -226,6 +227,8 @@ func (tc *TsConnector) TcAgentRemove(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }
+
+/// Setters
 
 type AgentTag struct {
 	AgentIdArray []string `json:"agent_id_array"`

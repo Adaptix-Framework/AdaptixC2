@@ -2,6 +2,7 @@ package server
 
 import (
 	"AdaptixServer/core/utils/krypt"
+	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/proxy"
 	"AdaptixServer/core/utils/safe"
 	"context"
@@ -658,9 +659,17 @@ func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int, io
 
 	if ok {
 		if tunnel.Data.Client == "" {
-			relaySocketToTunnel(agent, tunnel, tunChannel, ioDirect)
+			if tunChannel.conn != nil {
+				relaySocketToTunnel(agent, tunnel, tunChannel, ioDirect)
+			} else {
+				logs.Debug("", "[ERROR] tunChannel.conn is nil in relaySocketToTunnel")
+			}
 		} else {
-			relayWebsocketToTunnel(agent, tunnel, tunChannel, ioDirect)
+			if tunChannel.wsconn != nil {
+				relayWebsocketToTunnel(agent, tunnel, tunChannel, ioDirect)
+			} else {
+				logs.Debug("", "[ERROR] tunChannel.wsconn is nil in relayWebsocketToTunnel")
+			}
 		}
 	}
 }
@@ -743,7 +752,7 @@ func handleTunChannelCreate(agent *Agent, tunnel *Tunnel, conn net.Conn) {
 	case TUNNEL_SOCKS4:
 		targetAddress, targetPort, err := proxy.CheckSocks4(conn)
 		if err != nil {
-			//fmt.Println("Socks4 proxy error: ", err)
+			logs.Debug("", "[ERROR] Socks4 proxy error: ", err)
 			return
 		}
 		taskData = tunnel.handlerConnectTCP(tunChannel.channelId, targetAddress, targetPort)
@@ -751,7 +760,7 @@ func handleTunChannelCreate(agent *Agent, tunnel *Tunnel, conn net.Conn) {
 	case TUNNEL_SOCKS5:
 		targetAddress, targetPort, socksCommand, err := proxy.CheckSocks5(conn)
 		if err != nil {
-			//fmt.Println("Socks5 proxy error: ", err)
+			logs.Debug("", "[ERROR] Socks5 proxy error: ", err)
 			return
 		}
 		if socksCommand == 3 {
@@ -764,7 +773,7 @@ func handleTunChannelCreate(agent *Agent, tunnel *Tunnel, conn net.Conn) {
 	case TUNNEL_SOCKS5_AUTH:
 		targetAddress, targetPort, socksCommand, err := proxy.CheckSocks5Auth(conn, tunnel.Data.AuthUser, tunnel.Data.AuthPass)
 		if err != nil {
-			//fmt.Println("Socks5 proxy error: ", err)
+			logs.Debug("", "Socks5 proxy error: ", err)
 			return
 		}
 		if socksCommand == 3 {
@@ -896,11 +905,23 @@ func relaySocketToTunnel(agent *Agent, tunnel *Tunnel, tunChannel *TunnelChannel
 	}
 
 	go func() {
+		if tunChannel.pwSrv == nil || tunChannel.conn == nil {
+			logs.Debug("", "[ERROR relaySocketToTunnel] pwSrv or conn == nil — error copy (pwSrv <- conn)")
+			closeChannel()
+			return
+		}
+
 		io.Copy(tunChannel.pwSrv, tunChannel.conn)
 		closeChannel()
 	}()
 
 	go func() {
+		if tunChannel.prTun == nil || tunChannel.conn == nil {
+			logs.Debug("", "[ERROR relaySocketToTunnel] prTun or conn == nil — error copy (conn <- prTun)")
+			closeChannel()
+			return
+		}
+
 		io.Copy(tunChannel.conn, tunChannel.prTun)
 		closeChannel()
 	}()

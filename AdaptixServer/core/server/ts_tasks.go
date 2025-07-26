@@ -103,8 +103,7 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 		}
 
 	case TYPE_PROXY_DATA:
-		fmt.Println("----TYPE_PROXY_DATA----")
-	//agent.TunnelQueue.Put(taskData)
+		logs.Debug("", "----TYPE_PROXY_DATA----")
 
 	default:
 		break

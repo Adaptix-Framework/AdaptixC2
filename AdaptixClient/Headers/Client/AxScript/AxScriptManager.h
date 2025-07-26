@@ -5,6 +5,7 @@
 #include <QMenu>
 #include <QJSValue>
 #include <Agent/Commander.h>
+#include <main.h>
 
 struct ExtensionFile;
 struct AxMenuItem;
@@ -20,6 +21,16 @@ struct DataMenuFileBrowser {
     QString type;
 };
 
+struct DataMenuProcessBrowser {
+    QString agentId;
+    QString pid;
+    QString ppid;
+    QString arch;
+    QString session_id;
+    QString context;
+    QString process;
+};
+
 struct DataMenuDownload {
     QString agentId;
     QString fileId;
@@ -29,8 +40,8 @@ struct DataMenuDownload {
 
 class AxScriptManager : public QObject {
 Q_OBJECT
-    AdaptixWidget*  mainWidget = nullptr;
-    AxScriptEngine* mainScript = nullptr;
+    AdaptixWidget*  adaptixWidget = nullptr;
+    AxScriptEngine* mainScript    = nullptr;
     QMap<QString, AxScriptEngine*> scripts;
     QMap<QString, AxScriptEngine*> listeners_scripts;
     QMap<QString, AxScriptEngine*> agents_scripts;
@@ -70,6 +81,7 @@ public:
 
     int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds);
     int AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files);
+    int AddMenuProcessBrowser(QMenu* menu, QVector<DataMenuProcessBrowser> processes);
     int AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files);
     int AddMenuTask(QMenu* menu, const QString &menuType, const QStringList &tasks);
 

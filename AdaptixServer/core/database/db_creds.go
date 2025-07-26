@@ -1,6 +1,7 @@
 package database
 
 import (
+	"AdaptixServer/core/utils/logs"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -95,7 +96,7 @@ func (dbms *DBMS) DbCredentialsAll() []*adaptix.CredsData {
 				creds = append(creds, credsData)
 			}
 		} else {
-			fmt.Println(err.Error() + " --- Clear database file!")
+			logs.Debug("", err.Error()+" --- Clear database file!")
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()

@@ -1237,7 +1237,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				fileId := fmt.Sprintf("%08x", params.FileId)
 
 				if params.Start {
-					//			fileName := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 					task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %v]", params.Path, params.Size, fileId)
 					_ = ts.TsDownloadAdd(agentData.Id, fileId, params.Path, params.Size)
 				}
