@@ -33,9 +33,9 @@ function ListenerUI(mode_create)
     let checkSsl = form.create_check("Use SSL (HTTPS)");
     checkSsl.setEnabled(mode_create)
 
-    let certSelector = form.create_file_selector();
+    let certSelector = form.create_selector_file();
     certSelector.setPlaceholder("SSL certificate");
-    let keySelector = form.create_file_selector();
+    let keySelector = form.create_selector_file();
     keySelector.setPlaceholder("SSL key");
 
     let layoutMain = form.create_gridlayout();

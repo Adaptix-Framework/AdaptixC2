@@ -135,15 +135,19 @@ function RegisterCommands(listenerType)
 
     let cmd_pwd = ax.create_command("pwd", "Print current working directory", "pwd", "Task: print working directory");
 
+    let cmd_rev2self = ax.create_command("rev2self", "Revert to your original access token", "rev2self", "Task: revert token");
+
     let cmd_rm_win = ax.create_command("rm", "Remove a file or folder", "rm C:\\Temp\\file.txt", "Task: remove file or directory");
     cmd_rm_win.addArgString("path", true);
     let cmd_rm_unix = ax.create_command("rm", "Remove a file or folder", "rm /tmp/file", "Task: remove file or directory");
     cmd_rm_unix.addArgString("path", true);
 
-    let cmd_run_win = ax.create_command("run", "Execute long command or scripts via cmd.exe", "run whoami /all", "Task: command run");
-    cmd_run_win.addArgString("cmd", true);
-    let cmd_run_unix = ax.create_command("run", "Execute long command or scripts via /bin/sh", "run /tmp/script.sh", "Task: command run");
-    cmd_run_unix.addArgString("cmd", true);
+    let cmd_run_win = ax.create_command("run", "Execute long command or scripts", "run C:\\Windows\\cmd.exe /c \\\"whoami /all\\\"", "Task: command run");
+    cmd_run_win.addArgString("program", true);
+    cmd_run_win.addArgString("args", false);
+    let cmd_run_unix = ax.create_command("run", "Execute long command or scripts", "run /tmp/script.sh", "Task: command run");
+    cmd_run_unix.addArgString("program", true);
+    cmd_run_unix.addArgString("args", false);
 
     let cmd_screenshot = ax.create_command("screenshot", "Take a single screenshot", "screenshot", "Task: screenshot");
 
@@ -177,8 +181,8 @@ function RegisterCommands(listenerType)
     cmd_zip_unix.addArgString("path", true);
     cmd_zip_unix.addArgString("zip_path", true);
 
-    let commands_win  = ax.create_commands_group("gopher", [cmd_cat_win,  cmd_cp, cmd_cd_win,  cmd_download_win,  cmd_execute, cmd_exit, cmd_job, cmd_kill, cmd_ls_win,  cmd_mv, cmd_mkdir_win,  cmd_ps, cmd_pwd, cmd_rm_win,  cmd_run_win,  cmd_screenshot, cmd_socks, cmd_shell_win,  cmd_upload_win,  cmd_zip_win] );
-    let commands_unix = ax.create_commands_group("gopher", [cmd_cat_unix, cmd_cp, cmd_cd_unix, cmd_download_unix, cmd_exit, cmd_job, cmd_kill, cmd_ls_unix, cmd_mv, cmd_mkdir_unix, cmd_ps, cmd_pwd, cmd_rm_unix, cmd_run_unix, cmd_screenshot, cmd_socks, cmd_shell_unix, cmd_upload_unix, cmd_zip_unix] );
+    let commands_win  = ax.create_commands_group("gopher", [cmd_cat_win,  cmd_cp, cmd_cd_win,  cmd_download_win,  cmd_execute, cmd_exit, cmd_job, cmd_kill, cmd_ls_win,  cmd_mv, cmd_mkdir_win,  cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm_win,  cmd_run_win,  cmd_screenshot, cmd_socks, cmd_shell_win,  cmd_upload_win,  cmd_zip_win] );
+    let commands_unix = ax.create_commands_group("gopher", [cmd_cat_unix, cmd_cp, cmd_cd_unix, cmd_download_unix,              cmd_exit, cmd_job, cmd_kill, cmd_ls_unix, cmd_mv, cmd_mkdir_unix, cmd_ps, cmd_pwd,               cmd_rm_unix, cmd_run_unix, cmd_screenshot, cmd_socks, cmd_shell_unix, cmd_upload_unix, cmd_zip_unix] );
 
     return {
         commands_windows: commands_win,

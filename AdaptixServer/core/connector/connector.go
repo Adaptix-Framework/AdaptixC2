@@ -36,13 +36,13 @@ type Teamserver interface {
 	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
-	TsAgentImpersonate(agentId string, impersonated string, elevated bool) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentRemove(agentId string) error
 	TsAgentConsoleRemove(agentId string) error
 	TsAgentSetTag(agentId string, tag string) error
 	TsAgentSetMark(agentId string, makr string) error
 	TsAgentSetColor(agentId string, background string, foreground string, reset bool) error
+	TsAgentSetImpersonate(agentId string, impersonated string, elevated bool) error
 	TsAgentTickUpdate()
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
@@ -158,15 +158,17 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStart)
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerEdit)
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStop)
+
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/generate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentGenerate)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentRemove)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/command/file", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommandFile)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/command/execute", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommandExecute)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/console/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentConsoleRemove)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentRemove)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/settag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetTag)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/setmark", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetMark)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/setcolor", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetColor)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/set/tag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetTag)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/set/mark", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetMark)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/set/color", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetColor)
+	connector.Engine.POST(tsProfile.Endpoint+"/agent/set/impersonate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetImpersonate)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/cancel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskCancel)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskDelete)

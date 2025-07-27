@@ -245,6 +245,36 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
     return ret;
 }
 
+/// APP
+
+void AxScriptManager::AppAgentSetColor(const QStringList &agents, const QString &background, const QString &foreground, const bool reset)
+{
+    QString message = "";
+    bool ok = false;
+    HttpReqAgentSetColor(agents, background, foreground, reset, *(adaptixWidget->GetProfile()), &message, &ok);
+}
+
+void AxScriptManager::AppAgentSetImpersonate(const QString &id, const QString &impersonate, const bool elevated)
+{
+    QString message = "";
+    bool ok = false;
+    HttpReqAgentSetImpersonate(id, impersonate, elevated, *(adaptixWidget->GetProfile()), &message, &ok);
+}
+
+void AxScriptManager::AppAgentSetMark(const QStringList &agents, const QString &mark)
+{
+    QString message = "";
+    bool ok = false;
+    HttpReqAgentSetMark(agents, mark, *(adaptixWidget->GetProfile()), &message, &ok);
+}
+
+void AxScriptManager::AppAgentSetTag(const QStringList &agents, const QString &tag)
+{
+    QString message = "";
+    bool ok = false;
+    HttpReqAgentSetTag(agents, tag, *(adaptixWidget->GetProfile()), &message, &ok);
+}
+
 /// MENU
 
 int AxScriptManager::AddMenuSession(QMenu *menu, const QString &menuType, QStringList agentIds)

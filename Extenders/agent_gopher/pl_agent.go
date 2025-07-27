@@ -11,11 +11,13 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Adaptix-Framework/axc2"
+	"github.com/google/shlex"
 	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	mrand "math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -532,6 +534,9 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 	case "pwd":
 		cmd = Command{Code: COMMAND_PWD, Data: nil}
 
+	case "rev2self":
+		cmd = Command{Code: COMMAND_REV2SELF, Data: nil}
+
 	case "rm":
 		path, ok := args["path"].(string)
 		if !ok {
@@ -545,11 +550,12 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 	case "run":
 		taskData.Type = TYPE_JOB
 
-		cmdParam, ok := args["cmd"].(string)
+		prog, ok := args["program"].(string)
 		if !ok {
-			err = errors.New("parameter 'cmd' must be set")
+			err = errors.New("parameter 'program' must be set")
 			goto RET
 		}
+		args, ok := args["args"].(string)
 
 		r := make([]byte, 4)
 		_, _ = rand.Read(r)
@@ -557,15 +563,10 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 
 		taskData.TaskId = fmt.Sprintf("%08x", taskId)
 
-		if agent.Os == OS_WINDOWS {
-			cmdArgs := []string{"/c", cmdParam}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "C:\\Windows\\System32\\cmd.exe", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		} else {
-			cmdArgs := []string{"-c", cmdParam}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "/bin/sh", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		}
+		cmdArgs, _ := shlex.Split(args)
+
+		packerData, _ := msgpack.Marshal(ParamsRun{Program: prog, Args: cmdArgs, Task: taskData.TaskId})
+		cmd = Command{Code: COMMAND_RUN, Data: packerData}
 
 	case "shell":
 		cmdParam, ok := args["cmd"].(string)
@@ -1053,13 +1054,81 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 								proclist = append(proclist, procData)
 							}
 
-							format := fmt.Sprintf(" %%-5v   %%-5v   %%-7v   %%-5v   %%-%vv   %%-7v", contextMaxSize)
+							type TreeProc struct {
+								Data     adaptix.ListingProcessDataWin
+								Children []*TreeProc
+							}
+
+							procMap := make(map[uint]*TreeProc)
+							var roots []*TreeProc
+
+							for _, proc := range proclist {
+								node := &TreeProc{Data: proc}
+								procMap[proc.Pid] = node
+							}
+
+							for _, node := range procMap {
+								if node.Data.Ppid == 0 || node.Data.Pid == node.Data.Ppid {
+									roots = append(roots, node)
+								} else if parent, ok := procMap[node.Data.Ppid]; ok {
+									parent.Children = append(parent.Children, node)
+								} else {
+									roots = append(roots, node)
+								}
+							}
+
+							sort.Slice(roots, func(i, j int) bool {
+								return roots[i].Data.Pid < roots[j].Data.Pid
+							})
+
+							var sortChildren func(node *TreeProc)
+							sortChildren = func(node *TreeProc) {
+								sort.Slice(node.Children, func(i, j int) bool {
+									return node.Children[i].Data.Pid < node.Children[j].Data.Pid
+								})
+								for _, child := range node.Children {
+									sortChildren(child)
+								}
+							}
+							for _, root := range roots {
+								sortChildren(root)
+							}
+
+							format := fmt.Sprintf(" %%-5v   %%-5v   %%-7v   %%-5v   %%-%vv   %%v", contextMaxSize)
 							OutputText := fmt.Sprintf(format, "PID", "PPID", "Session", "Arch", "Context", "Process")
 							OutputText += fmt.Sprintf("\n"+format, "---", "----", "-------", "----", "-------", "-------")
 
-							for _, item := range proclist {
-								OutputText += fmt.Sprintf("\n"+format, item.Pid, item.Ppid, item.SessionId, item.Arch, item.Context, item.ProcessName)
+							var lines []string
+
+							var formatTree func(node *TreeProc, prefix string, isLast bool)
+							formatTree = func(node *TreeProc, prefix string, isLast bool) {
+								branch := "├─ "
+								if isLast {
+									branch = "└─ "
+								}
+								treePrefix := prefix + branch
+								data := node.Data
+
+								line := fmt.Sprintf(format, data.Pid, data.Ppid, data.SessionId, data.Arch, data.Context, treePrefix+data.ProcessName)
+								lines = append(lines, line)
+
+								childPrefix := prefix
+								if isLast {
+									childPrefix += "    "
+								} else {
+									childPrefix += "│   "
+								}
+
+								for i, child := range node.Children {
+									formatTree(child, childPrefix, i == len(node.Children)-1)
+								}
 							}
+
+							for i, root := range roots {
+								formatTree(root, "", i == len(roots)-1)
+							}
+
+							OutputText += "\n" + strings.Join(lines, "\n")
 							task.Message = "Process list:"
 							task.ClearText = OutputText
 						}
@@ -1106,13 +1175,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 								if len(p.Context) > contextFsize {
 									contextFsize = len(p.Context)
 								}
-							}
-
-							format := fmt.Sprintf(" %%-%dv   %%-%dv   %%-%dv   %%-%dv   %%v", pidFsize, ppidFsize, ttyFsize, contextFsize)
-							OutputText := fmt.Sprintf(format+"\n", "PID", "PPID", "TTY", "Context", "CommandLine")
-							OutputText += fmt.Sprintf(format, "---", "----", "---", "-------", "-----------")
-							for _, p := range Processes {
-								OutputText += fmt.Sprintf("\n"+format, p.Pid, p.Ppid, p.Tty, p.Context, p.Process)
 
 								processData := adaptix.ListingProcessDataUnix{
 									Pid:         uint(p.Pid),
@@ -1121,9 +1183,85 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 									Context:     p.Context,
 									ProcessName: p.Process,
 								}
+
 								proclist = append(proclist, processData)
 							}
 
+							type TreeProc struct {
+								Data     adaptix.ListingProcessDataUnix
+								Children []*TreeProc
+							}
+
+							procMap := make(map[uint]*TreeProc)
+							var roots []*TreeProc
+
+							for _, proc := range proclist {
+								node := &TreeProc{Data: proc}
+								procMap[proc.Pid] = node
+							}
+
+							for _, node := range procMap {
+								if node.Data.Ppid == 0 || node.Data.Pid == node.Data.Ppid {
+									roots = append(roots, node)
+								} else if parent, ok := procMap[node.Data.Ppid]; ok {
+									parent.Children = append(parent.Children, node)
+								} else {
+									roots = append(roots, node)
+								}
+							}
+
+							sort.Slice(roots, func(i, j int) bool {
+								return roots[i].Data.Pid < roots[j].Data.Pid
+							})
+
+							var sortChildren func(node *TreeProc)
+							sortChildren = func(node *TreeProc) {
+								sort.Slice(node.Children, func(i, j int) bool {
+									return node.Children[i].Data.Pid < node.Children[j].Data.Pid
+								})
+								for _, child := range node.Children {
+									sortChildren(child)
+								}
+							}
+							for _, root := range roots {
+								sortChildren(root)
+							}
+
+							format := fmt.Sprintf(" %%-%dv   %%-%dv   %%-%dv   %%-%dv   %%v", pidFsize, ppidFsize, ttyFsize, contextFsize)
+							OutputText := fmt.Sprintf(format, "PID", "PPID", "TTY", "Context", "CommandLine")
+							OutputText += fmt.Sprintf("\n"+format, "---", "----", "---", "-------", "-----------")
+
+							var lines []string
+
+							var formatTree func(node *TreeProc, prefix string, isLast bool)
+							formatTree = func(node *TreeProc, prefix string, isLast bool) {
+								branch := "├─ "
+								if isLast {
+									branch = "└─ "
+								}
+								treePrefix := prefix + branch
+								data := node.Data
+
+								line := fmt.Sprintf(format, data.Pid, data.Ppid, data.TTY, data.Context, treePrefix+data.ProcessName)
+								lines = append(lines, line)
+
+								childPrefix := prefix
+								if isLast {
+									childPrefix += "    "
+								} else {
+									childPrefix += "│   "
+								}
+
+								for i, child := range node.Children {
+									formatTree(child, childPrefix, i == len(node.Children)-1)
+								}
+							}
+
+							for i, root := range roots {
+								formatTree(root, "", i == len(roots)-1)
+							}
+
+							OutputText += "\n" + strings.Join(lines, "\n")
 							task.Message = "Process list:"
 							task.ClearText = OutputText
 						}
@@ -1176,6 +1314,10 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				} else {
 					task.ClearText = params.Output
 				}
+
+			case COMMAND_REV2SELF:
+				task.Message = "Token reverted successfully"
+				_ = ts.TsAgentSetImpersonate(agentData.Id, "", false)
 
 			case COMMAND_RM:
 				task.Message = "Object deleted successfully"

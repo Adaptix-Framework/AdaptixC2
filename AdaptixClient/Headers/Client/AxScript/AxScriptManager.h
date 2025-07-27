@@ -79,6 +79,11 @@ public:
     QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType);
     QList<AxEvent>    FilterEvents(const QString &agentId, const QString &eventType);
 
+    void AppAgentSetColor(const QStringList &agents, const QString &background, const QString &foreground, const bool reset);
+    void AppAgentSetImpersonate(const QString &id, const QString &impersonate, const bool elevated);
+    void AppAgentSetMark(const QStringList &agents, const QString &mark);
+    void AppAgentSetTag(const QStringList &agents, const QString &tag);
+
     int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds);
     int AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files);
     int AddMenuProcessBrowser(QMenu* menu, QVector<DataMenuProcessBrowser> processes);

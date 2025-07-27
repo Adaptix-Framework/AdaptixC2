@@ -109,6 +109,56 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
     return QJSValue::UndefinedValue;
 }
 
+void BridgeApp::agent_set_color(const QJSValue &agents, const QString &background, const QString &foreground, const bool reset)
+{
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+        emit engineError("agent_set_color expected array of strings in agents parameter!");
+        return;
+    }
+
+    QStringList list_agents;
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents << val.toString();
+    }
+
+    scriptEngine->manager()->AppAgentSetColor(list_agents, background, foreground, reset);
+}
+
+void BridgeApp::agent_set_impersonate(const QString &id, const QString &impersonate, const bool elevated) { scriptEngine->manager()->AppAgentSetImpersonate(id, impersonate, elevated); }
+
+void BridgeApp::agent_set_mark(const QJSValue &agents, const QString &mark)
+{
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+        emit engineError("agent_set_color expected array of strings in agents parameter!");
+        return;
+    }
+
+    QStringList list_agents;
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents << val.toString();
+    }
+
+    scriptEngine->manager()->AppAgentSetMark(list_agents, mark);
+}
+
+void BridgeApp::agent_set_tag(const QJSValue &agents, const QString &tag)
+{
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+        emit engineError("agent_set_color expected array of strings in agents parameter!");
+        return;
+    }
+
+    QStringList list_agents;
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents << val.toString();
+    }
+
+    scriptEngine->manager()->AppAgentSetTag(list_agents, tag);
+}
+
 QString BridgeApp::arch(const QString &id) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
