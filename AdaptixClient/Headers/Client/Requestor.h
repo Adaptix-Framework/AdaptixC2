@@ -43,6 +43,8 @@ bool HttpReqAgentSetMark( QStringList agentsId, const QString &mark, AuthProfile
 
 bool HttpReqAgentSetColor( QStringList agentsId, const QString &background, const QString &foreground, bool reset, AuthProfile profile, QString* message, bool* ok );
 
+bool HttpReqAgentSetImpersonate(const QString &agentId, const QString &impersonate, bool elevated, AuthProfile profile, QString* message, bool* ok );
+
 ///TASK
 
 bool HttpReqTaskCancel(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );

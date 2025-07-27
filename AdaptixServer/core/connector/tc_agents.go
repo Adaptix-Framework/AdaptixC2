@@ -346,6 +346,31 @@ func (tc *TsConnector) TcAgentSetColor(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }
 
+type AgentImpersonate struct {
+	AgentId     string `json:"agent_id"`
+	Impersonate string `json:"impersonate"`
+	Elevated    bool   `json:"elevated"`
+}
+
+func (tc *TsConnector) TcAgentSetImpersonate(ctx *gin.Context) {
+	var (
+		agentImpersonate AgentImpersonate
+		err              error
+	)
+
+	err = ctx.ShouldBindJSON(&agentImpersonate)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
+		return
+	}
+
+	_ = tc.teamserver.TsAgentSetImpersonate(agentImpersonate.AgentId, agentImpersonate.Impersonate, agentImpersonate.Elevated)
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}
+
+/// Tasks
+
 type AgentTaskDelete struct {
 	AgentId string   `json:"agent_id"`
 	TasksId []string `json:"tasks_array"`

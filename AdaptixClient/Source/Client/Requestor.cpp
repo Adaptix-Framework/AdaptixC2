@@ -281,7 +281,7 @@ bool HttpReqAgentSetTag( QStringList agentsId, const QString &tag, AuthProfile p
     dataJson["tag"] = tag;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString sUrl = profile.GetURL() + "/agent/settag";
+    QString sUrl = profile.GetURL() + "/agent/set/tag";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
@@ -302,7 +302,7 @@ bool HttpReqAgentSetMark( QStringList agentsId, const QString &mark, AuthProfile
     dataJson["mark"] = mark;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString sUrl = profile.GetURL() + "/agent/setmark";
+    QString sUrl = profile.GetURL() + "/agent/set/mark";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
@@ -312,7 +312,7 @@ bool HttpReqAgentSetMark( QStringList agentsId, const QString &mark, AuthProfile
     return false;
 }
 
-bool HttpReqAgentSetColor( QStringList agentsId, const QString &background, const QString &foreground, bool reset, AuthProfile profile, QString* message, bool* ok )
+bool HttpReqAgentSetColor( QStringList agentsId, const QString &background, const QString &foreground, const bool reset, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonArray arrayId;
     for (QString item : agentsId)
@@ -325,7 +325,25 @@ bool HttpReqAgentSetColor( QStringList agentsId, const QString &background, cons
     dataJson["reset"] = reset;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString sUrl = profile.GetURL() + "/agent/setcolor";
+    QString sUrl = profile.GetURL() + "/agent/set/color";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqAgentSetImpersonate(const QString &agentId, const QString &impersonate, const bool elevated, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["agent_id"]    = agentId;
+    dataJson["impersonate"] = impersonate;
+    dataJson["elevated"]    = elevated;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/agent/set/impersonate";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();

@@ -8,4 +8,7 @@ require (
 	golang.org/x/text v0.26.0
 )
 
-require github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
+require (
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
+	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
+)

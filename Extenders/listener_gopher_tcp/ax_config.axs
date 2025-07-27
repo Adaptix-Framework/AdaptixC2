@@ -30,23 +30,23 @@ function ListenerUI(mode_create)
 
     let howButton = form.create_button("How generate?");
 
-    let caCertSelector = form.create_file_selector();
+    let caCertSelector = form.create_selector_file();
     caCertSelector.setPlaceholder("CA cert");
     caCertSelector.setEnabled(false);
 
-    let srvCertSelector = form.create_file_selector();
+    let srvCertSelector = form.create_selector_file();
     srvCertSelector.setPlaceholder("Server cert");
     srvCertSelector.setEnabled(false);
 
-    let srvKeySelector = form.create_file_selector();
+    let srvKeySelector = form.create_selector_file();
     srvKeySelector.setPlaceholder("Server key");
     srvKeySelector.setEnabled(false);
 
-    let clientCertSelector = form.create_file_selector();
+    let clientCertSelector = form.create_selector_file();
     clientCertSelector.setPlaceholder("Client cert");
     clientCertSelector.setEnabled(false);
 
-    let clientKeySelector = form.create_file_selector();
+    let clientKeySelector = form.create_selector_file();
     clientKeySelector.setPlaceholder("Client key");
     clientKeySelector.setEnabled(false);
 

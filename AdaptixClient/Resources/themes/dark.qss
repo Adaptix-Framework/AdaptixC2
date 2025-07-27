@@ -118,6 +118,7 @@ QTableWidget::item {
 QTableWidget::item:selected {
     background-color: #4A4A4A;
     color: #FFFFFF;
+    outline: none;
 }
 
 QTableWidget:disabled {
@@ -330,6 +331,20 @@ QProgressBar:disabled {
     background-color: #1A1A1A;
     color: #4A4A4A;
     border: 1px solid #3A3A3A;
+}
+
+
+
+QScrollArea {
+    background-color: #2A2A2A;
+    border: 1px solid #4A4A4A;
+    border-radius: 4px;
+}
+
+QScrollArea:disabled {
+    background-color: #1A1A1A;
+    border: 1px solid #3A3A3A;
+    color: #4A4A4A;
 }
 
 
@@ -737,7 +752,7 @@ QListWidget {
 }
 
 QListWidget::item {
-    padding: 4px;
+    padding: 0px;
     border-radius: 4px;
     color: #E0E0E0;
 }
@@ -751,6 +766,7 @@ QListWidget::item:selected {
     background-color: #4A4A4A;
     color: #FFFFFF;
     border: 1px solid #5A5A5A;
+    margin: 1px;
 }
 
 QListWidget:focus {

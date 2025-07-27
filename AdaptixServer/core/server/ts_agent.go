@@ -286,29 +286,6 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
 	return nil
 }
 
-func (ts *Teamserver) TsAgentImpersonate(agentId string, impersonated string, elevated bool) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return errors.New("agent does not exist")
-	}
-	agent, _ := value.(*Agent)
-
-	agent.Data.Impersonated = impersonated
-	if impersonated != "" && elevated {
-		agent.Data.Impersonated += " *"
-	}
-
-	err := ts.DBMS.DbAgentUpdate(agent.Data)
-	if err != nil {
-		logs.Error("", err.Error())
-	}
-
-	packetNew := CreateSpAgentUpdate(agent.Data)
-	ts.TsSyncAllClients(packetNew)
-
-	return nil
-}
-
 func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) error {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
@@ -497,6 +474,8 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	return nil
 }
 
+/// Setters
+
 func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
@@ -569,6 +548,29 @@ func (ts *Teamserver) TsAgentSetColor(agentId string, background string, foregro
 			fcolor = foreground
 		}
 		agent.Data.Color = bcolor + "-" + fcolor
+	}
+
+	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	if err != nil {
+		logs.Error("", err.Error())
+	}
+
+	packetNew := CreateSpAgentUpdate(agent.Data)
+	ts.TsSyncAllClients(packetNew)
+
+	return nil
+}
+
+func (ts *Teamserver) TsAgentSetImpersonate(agentId string, impersonated string, elevated bool) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return errors.New("agent does not exist")
+	}
+	agent, _ := value.(*Agent)
+
+	agent.Data.Impersonated = impersonated
+	if impersonated != "" && elevated {
+		agent.Data.Impersonated += " *"
 	}
 
 	err := ts.DBMS.DbAgentUpdate(agent.Data)

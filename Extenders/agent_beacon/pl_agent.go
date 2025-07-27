@@ -1092,7 +1092,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 	size := packer.ParseInt32()
 	if size-4 != packer.Size() {
-		//fmt.Println("Invalid tasks data")
 		return outTasks
 	}
 
@@ -1332,16 +1331,14 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			task.Completed = false
 
 		case COMMAND_GETUID:
-			if false == packer.CheckPacker([]string{"byte", "byte", "array", "array"}) {
+			if false == packer.CheckPacker([]string{"byte", "array", "array"}) {
 				return outTasks
 			}
 
-			gui := packer.ParseInt8()
 			high := packer.ParseInt8()
 			domain := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			username := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			message := ""
-			elevated := false
 
 			if username != "" {
 				if domain != "" {
@@ -1350,14 +1347,9 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				message = fmt.Sprintf("You are '%v'", username)
 				if high > 0 {
 					message += " (elevated)"
-					elevated = true
 				}
 			}
 			task.Message = message
-
-			if gui > 0 {
-				_ = ts.TsAgentImpersonate(agentData.Id, username, elevated)
-			}
 
 		case COMMAND_JOB:
 			if false == packer.CheckPacker([]string{"byte"}) {
@@ -1775,15 +1767,8 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			task.ClearText = path
 
 		case COMMAND_REV2SELF:
-			if false == packer.CheckPacker([]string{"byte"}) {
-				return outTasks
-			}
-
-			gui := packer.ParseInt8()
-			if gui == 1 {
-				task.Message = "Token reverted successfully"
-			}
-			_ = ts.TsAgentImpersonate(agentData.Id, "", agentData.Elevated)
+			task.Message = "Token reverted successfully"
+			_ = ts.TsAgentSetImpersonate(agentData.Id, "", false)
 
 		case COMMAND_RM:
 			if false == packer.CheckPacker([]string{"byte"}) {
