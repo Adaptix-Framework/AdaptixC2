@@ -297,6 +297,30 @@ void BridgeApp::console_message(const QString &id, const QString &message, const
     agent->Console->ConsoleOutputMessage(QDateTime::currentSecsSinceEpoch(), "", msgType, message, text, false);
 }
 
+QJSValue BridgeApp::credentials() const
+{
+    QVariantMap list;
+    auto vecCreds = scriptEngine->manager()->GetCredentials();
+
+    for (auto cred : vecCreds) {
+        QVariantMap map;
+        map["id"]       = cred.CredId;
+        map["username"] = cred.Username;
+        map["password"] = cred.Password;
+        map["realm"]    = cred.Realm;
+        map["type"]     = cred.Type;
+        map["tag"]      = cred.Tag;
+        map["date"]     = cred.Date;
+        map["storage"]  = cred.Storage;
+        map["agent_id"] = cred.AgentId;
+        map["host"]     = cred.Host;
+
+        list[cred.CredId] = map;
+    }
+
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
 void BridgeApp::credentials_add(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host) { scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(username, password, realm, type, tag, storage, host); }
 
 QObject* BridgeApp::create_command(const QString &name, const QString &description, const QString &example, const QString &message)
@@ -434,6 +458,12 @@ void BridgeApp::open_browser_files(const QString &id) { scriptEngine->manager()-
 void BridgeApp::open_browser_process(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadProcessBrowserUI(id); }
 
 void BridgeApp::open_remote_terminal(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id); }
+
+QString BridgeApp::prompt_open_file(const QString &caption, const QString &filter) { return QFileDialog::getOpenFileName(nullptr, caption, QDir::homePath(), filter); }
+
+QString BridgeApp::prompt_open_dir(const QString &caption) { return QFileDialog::getExistingDirectory(nullptr, caption, QDir::homePath()); }
+
+QString BridgeApp::prompt_save_file(const QString &filename, const QString &caption, const QString &filter) { return QFileDialog::getSaveFileName(nullptr, caption, filename,  filter); }
 
 void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners)
 {

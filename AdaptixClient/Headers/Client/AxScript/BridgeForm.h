@@ -37,12 +37,21 @@ public slots:
     QObject* create_timeline(const QString& format = "HH:mm:ss");
     QObject* create_button(const QString& text= "");
     QObject* create_textmulti(const QString& text= "");
-    QObject* create_file_selector();
+    QObject* create_list();
+    QObject* create_table(const QJSValue &headers);
+    QObject* create_selector_file();
     QObject* create_tabs();
-    QObject* create_panel();
 
+    QObject* create_groupbox(const QString& title = "", const bool checkable = false);
+    QObject* create_hsplitter();
+    QObject* create_vsplitter();
+    QObject* create_scrollarea();
+    QObject* create_panel();
+    QObject* create_stack();
     QObject* create_container();
     QObject* create_dialog(const QString &title) const;
+
+    QObject* create_selector_credentials(const QJSValue &headers) const;
 
 signals:
     void scriptError(const QString &msg);

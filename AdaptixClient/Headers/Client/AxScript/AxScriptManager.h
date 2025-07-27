@@ -54,9 +54,10 @@ public:
     void ResetMain();
     void Clear();
 
-    AdaptixWidget*        GetAdaptix() const;
-    QMap<QString, Agent*> GetAgents() const;
-    QJSEngine*            GetEngine(const QString &name);
+    QJSEngine*              GetEngine(const QString &name);
+    AdaptixWidget*          GetAdaptix() const;
+    QMap<QString, Agent*>   GetAgents() const;
+    QVector<CredentialData> GetCredentials() const;
 
     QStringList ListenerScriptList();
     void        ListenerScriptAdd(const QString &name, const QString &ax_script);
