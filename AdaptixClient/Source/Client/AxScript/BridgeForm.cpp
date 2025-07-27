@@ -43,6 +43,12 @@ void BridgeForm::connect(QObject* sender, const QString& signalName, const QJSVa
             else if (typeName == "bool")
                 connected = QObject::connect(sender, method, proxy, proxy->metaObject()->method(proxy->metaObject()->indexOfSlot("callWithArg(bool)")));
         }
+        else if (paramCount == 2) {
+            QByteArray typeName1 = method.parameterTypes().value(0);
+            QByteArray typeName2 = method.parameterTypes().value(1);
+            if (typeName1 == "int" && typeName2 == "int")
+                connected = QObject::connect(sender, method, proxy, proxy->metaObject()->method(proxy->metaObject()->indexOfSlot("callWithArgs(int,int)")));
+        }
         else {
             emit scriptError("connect -> Signal " + signalName + " has too many parameters (not supported)");
             return;
@@ -180,10 +186,26 @@ QObject* BridgeForm::create_textmulti(const QString& text)
     return wrapper;
 }
 
-QObject* BridgeForm::create_file_selector()
+QObject* BridgeForm::create_list()
+{
+    auto* list = new QListWidget(widget);
+    auto* wrapper = new AxListWidgetWrapper(list, scriptEngine->engine(), this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_table(const QJSValue &headers)
+{
+    auto* table = new QTableWidget(widget);
+    auto* wrapper = new AxTableWidgetWrapper(headers, table, scriptEngine->engine(), this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_selector_file()
 {
     auto fileSelector = new FileSelector(widget);
-    auto* wrapper = new AxFileSelectorWrapper(fileSelector, this);
+    auto* wrapper = new AxSelectorFile(fileSelector, this);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }
@@ -196,10 +218,50 @@ QObject* BridgeForm::create_tabs()
     return wrapper;
 }
 
+QObject* BridgeForm::create_groupbox(const QString &title, const bool checkable)
+{
+    auto* box = new QGroupBox(title, widget);
+    auto* wrapper = new AxGroupBoxWrapper(checkable, box, this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_hsplitter()
+{
+    auto* splitter = new QSplitter(Qt::Horizontal, widget);
+    auto* wrapper = new AxSplitterWrapper(splitter, this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_vsplitter()
+{
+    auto* splitter = new QSplitter(Qt::Vertical, widget);
+    auto* wrapper = new AxSplitterWrapper(splitter, this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_scrollarea()
+{
+    auto* area = new QScrollArea(widget);
+    auto* wrapper = new AxScrollAreaWrapper(area, this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
 QObject* BridgeForm::create_panel()
 {
     auto* panel = new QWidget(widget);
     auto* wrapper = new AxPanelWrapper(panel, this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_stack()
+{
+    auto* stack = new QStackedWidget(widget);
+    auto* wrapper = new AxStackedWidgetWrapper(stack, this);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }
@@ -216,4 +278,14 @@ QObject* BridgeForm::create_dialog(const QString& title) const
     auto* wrapper = new AxDialogWrapper(title, widget);
     scriptEngine->registerObject(wrapper);
     return wrapper;
+}
+
+QObject* BridgeForm::create_selector_credentials(const QJSValue &headers) const
+{
+    auto* table = new QTableWidget(widget);
+    auto* button = new QPushButton(widget);
+    auto* wrapper = new AxSelectorCreds(headers, table, button, scriptEngine, widget);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+
 }

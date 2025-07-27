@@ -29,6 +29,7 @@ public slots:
     QString  bof_pack(const QString &types, const QJSValue &args);
     void     copy_to_clipboard(const QString &text);
     void     console_message(const QString &id, const QString &message, const QString &type = "", const QString &text = "");
+    QJSValue credentials() const;
     void     credentials_add(const QString &username, const QString &password, const QString &realm = "", const QString &type = "password", const QString &tag = "", const QString &storage = "manual", const QString &host = "");
     QObject* create_command(const QString &name, const QString &description, const QString &example = "", const QString &message = "");
     QObject* create_commands_group(const QString &name, const QJSValue& array);
@@ -48,6 +49,9 @@ public slots:
     void     open_browser_files(const QString &id);
     void     open_browser_process(const QString &id);
     void     open_remote_terminal(const QString &id);
+    QString  prompt_open_file(const QString &caption = "Select file", const QString &filter = QString());
+    QString  prompt_open_dir(const QString &caption = "Select file");
+    QString  prompt_save_file(const QString &filename, const QString &caption = "Select file", const QString &filter = QString());
     void     register_commands_group(QObject* obj, const QJSValue& agents, const QJSValue& os, const QJSValue& listeners);
     void     script_import(const QString &path);
     void     script_load(const QString &path);

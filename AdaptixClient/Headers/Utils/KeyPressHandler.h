@@ -3,6 +3,34 @@
 
 #include <main.h>
 
+class KPH_SearchInput : public QObject
+{
+Q_OBJECT
+     QLineEdit*  inputLineEdit;
+
+public:
+     KPH_SearchInput(QLineEdit *input, QObject *parent = nullptr) : QObject(parent), inputLineEdit(input) {
+         inputLineEdit->installEventFilter(this);
+     }
+
+signals:
+    void escPressed();
+
+protected:
+     bool eventFilter(QObject *watched, QEvent *event) override {
+         if (watched == inputLineEdit && event->type() == QEvent::KeyPress) {
+             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+
+             if ( keyEvent->key() == Qt::Key_Escape ) {
+                 emit escPressed();
+             }
+         }
+         return QObject::eventFilter(watched, event);
+     }
+};
+
+
+
 class KPH_ConsoleInput : public QObject
 {
 Q_OBJECT
@@ -63,6 +91,11 @@ protected:
                     historyIndex = -1;
                     inputLineEdit->setText(tmpCommandLine);
                 }
+                return true;
+            }
+
+            if (keyEvent->key() == Qt::Key_L && (keyEvent->modifiers() & Qt::ControlModifier)) {
+                outputTextEdit->clear();
                 return true;
             }
 
