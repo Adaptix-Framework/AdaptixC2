@@ -3,9 +3,11 @@
 #include <UI/Graph/GraphItem.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/TasksWidget.h>
-#include <UI/Dialogs/DialogTunnel.h>
+#include <UI/Widgets/ConsoleWidget.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
+#include <Client/AxScript/AxScriptManager.h>
+
 
 GraphScene::GraphScene(const int gridSize, QWidget* m, QObject* parent) : QGraphicsScene(parent)
 {
@@ -32,216 +34,112 @@ void GraphScene::mouseMoveEvent( QGraphicsSceneMouseEvent* event )
 
 void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 {
-    auto graphics_items = selectedItems();
-    if(graphics_items.empty())
-        if( (graphics_items = items(event->scenePos())).empty() )
-            return QGraphicsScene::contextMenuEvent( event );
-
-    bool menuRemoteTerminal = false;
-    bool menuProcessBrowser = false;
-    bool menuFileBrowser = false;
-    bool menuExit = false;
-    bool menuTunnels = false;
-
-    bool tunnelS5 = false;
-    bool tunnelS4 = false;
-    bool tunnelLpf = false;
-    bool tunnelRpf = false;
-
-    int selectedCount = 0;
-
-    bool valid = false;
-    for ( const auto& _graphics_item : graphics_items ) {
-        const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-        if ( item && item->agent ) {
-            valid = true;
-
-            menuRemoteTerminal = item->agent->browsers.RemoteTerminal;
-            menuFileBrowser    = item->agent->browsers.FileBrowser;
-            menuProcessBrowser = item->agent->browsers.ProcessBrowser;
-            menuTunnels        = item->agent->browsers.SessionsMenuTunnels;
-            menuExit           = item->agent->browsers.SessionsMenuExit;
-
-            selectedCount++;
-        }
-    }
-    if (!valid)
-        return;
-
-    QMenu menu = QMenu();
-
-    auto agentSep1 = new QAction();
-    agentSep1->setSeparator(true);
-    auto agentSep2 = new QAction();
-    agentSep2->setSeparator(true);
-
-    auto agentMenu = new QMenu("Agent", &menu);
-    agentMenu->addAction("Tasks");
-    if (menuFileBrowser || menuProcessBrowser || menuTunnels || menuRemoteTerminal) {
-        agentMenu->addAction(agentSep1);
-        if (menuRemoteTerminal)
-            agentMenu->addAction("Remote Terminal");
-        if (menuFileBrowser)
-            agentMenu->addAction("File Browser");
-        if (menuProcessBrowser)
-            agentMenu->addAction("Process Browser");
-        if (menuTunnels && selectedCount == 1)
-            agentMenu->addAction("Create Tunnel");
-    }
-    if (menuExit) {
-        agentMenu->addAction(agentSep2);
-        agentMenu->addAction("Exit");
-    }
-
-    auto itemMenu = new QMenu("Item", &menu);
-    itemMenu->addAction("Mark as Active");
-    itemMenu->addAction("Mark as Inactive");
-
-    menu.addAction("Console");
-    menu.addSeparator();
-    menu.addMenu(agentMenu);
-    menu.addMenu(itemMenu);
-    menu.addSeparator();
-    menu.addAction("Remove from server");
-
-    const auto action = menu.exec( event->screenPos() );
-    if ( !action )
-        return;
-
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
     if (!adaptixWidget)
         return;
 
+    auto graphics_items = selectedItems();
+    if(graphics_items.empty()) {
+        if( (graphics_items = items(event->scenePos())).empty() )
+            return QGraphicsScene::contextMenuEvent( event );
+    }
+
+    QStringList agentIds;
+    for ( const auto& _graphics_item : graphics_items ) {
+        const auto item = dynamic_cast<GraphItem*>( _graphics_item );
+        if ( item && item->agent )
+            agentIds.append(item->agent->data.Id);
+    }
+    if (agentIds.size() == 0)
+        return;
+
+
+
+
+
+    auto agentMenu = QMenu("Agent");
+    agentMenu.addAction("Execute command");
+    agentMenu.addAction("Task manager");
+    agentMenu.addSeparator();
+
+    int agentCount = adaptixWidget->ScriptManager->AddMenuSession(&agentMenu, "SessionAgent", agentIds);
+    if (agentCount > 0)
+        agentMenu.addSeparator();
+
+    agentMenu.addAction("Remove console data");
+    agentMenu.addAction("Remove from server");
+
+
+
+    auto sessionMenu = QMenu("Session");
+    sessionMenu.addAction("Mark as Active");
+    sessionMenu.addAction("Mark as Inactive");
+
+
+
+    auto ctxMenu = QMenu();
+    ctxMenu.addAction("Console");
+    ctxMenu.addSeparator();
+    ctxMenu.addMenu(&agentMenu);
+
+    auto browserMenu = QMenu("Browsers");
+    int browserCount = adaptixWidget->ScriptManager->AddMenuSession(&browserMenu, "SessionBrowser", agentIds);
+    if (browserCount > 0)
+        ctxMenu.addMenu(&browserMenu);
+
+    auto accessMenu = QMenu("Access");
+    int accessCount = adaptixWidget->ScriptManager->AddMenuSession(&accessMenu, "SessionAccess", agentIds);
+    if (accessCount > 0)
+        ctxMenu.addMenu(&accessMenu);
+
+    adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
+
+    ctxMenu.addSeparator();
+    ctxMenu.addMenu(&sessionMenu);
+    ctxMenu.addAction("Set tag");
+
+    const auto action = ctxMenu.exec( event->screenPos() );
+    if ( !action )
+        return;
+
     if ( action->text() == "Console" ) {
-        for ( const auto& _graphics_item : graphics_items ) {
-            const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent)
-                adaptixWidget->LoadConsoleUI(item->agent->data.Id);
+        for (QString agentId : agentIds) {
+            adaptixWidget->LoadConsoleUI(agentId);
         }
     }
-    else if ( action->text() == "Tasks") {
+    else if ( action->text() == "Execute command") {
+        bool ok = false;
+        QString cmd = QInputDialog::getText(nullptr,"Execute Command", "Command", QLineEdit::Normal, "", &ok);
+        if (!ok)
+            return;
+
         const auto item = dynamic_cast<GraphItem*>( graphics_items[0] );
         if ( item && item->agent) {
-            adaptixWidget->TasksTab->SetAgentFilter(item->agent->data.Id);
+            item->agent->Console->SetInput(cmd);
+            item->agent->Console->processInput();
+        }
+    }
+    else if ( action->text() == "Task manager") {
+        for (QString agentId : agentIds) {
+            adaptixWidget->TasksTab->SetAgentFilter(agentId);
             adaptixWidget->SetTasksUI();
         }
     }
-    else if ( action->text() == "Remote Terminal" ) {
-        for ( const auto& _graphics_item : graphics_items ) {
-           const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent )
-                adaptixWidget->LoadTerminalUI(item->agent->data.Id);
-        }
-    }
-    else if ( action->text() == "File Browser" ) {
-        for ( const auto& _graphics_item : graphics_items ) {
-            const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent )
-                adaptixWidget->LoadFileBrowserUI(item->agent->data.Id);
-        }
-    }
-    else if ( action->text() == "Process Browser" ) {
-        for ( const auto& _graphics_item : graphics_items ) {
-            const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent )
-                adaptixWidget->LoadProcessBrowserUI(item->agent->data.Id);
-        }
-    }
-    else if ( action->text() == "Create Tunnel" ) {
-        Agent* agent = nullptr;
-        for ( const auto& _graphics_item : graphics_items ) {
-            const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent ) {
-                agent = item->agent;
-                break;
-            }
-        }
-
-        if (!agent)
+    else if ( action->text() == "Remove console data" ) {
+        QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "Clear Confirmation",
+                                          "Are you sure you want to delete all agent console data and history from server (tasks will not be deleted from TaskManager)?\n\n"
+                                          "If you want to temporarily hide the contents of the agent console, do so through the agent console menu.",
+                                          QMessageBox::Yes | QMessageBox::No,
+                                          QMessageBox::No);
+        if (reply != QMessageBox::Yes)
             return;
 
-
-        DialogTunnel dialogTunnel;
-        dialogTunnel.SetSettings(agent->data.Id, agent->browsers.Socks5, agent->browsers.Socks4, agent->browsers.Lportfwd, agent->browsers.Rportfwd);
-
-        while (true) {
-            dialogTunnel.StartDialog();
-            if (dialogTunnel.IsValid())
-                break;
-
-            QString msg = dialogTunnel.GetMessage();
-            if (msg.isEmpty())
-                return;
-
-            MessageError(msg);
-        }
-
-        QString    tunnelType = dialogTunnel.GetTunnelType();
-        QByteArray tunnelData = dialogTunnel.GetTunnelData();
+        for (auto id : agentIds)
+            adaptixWidget->AgentsMap[id]->Console->Clear();
 
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Server is not responding");
-            return;
-        }
-        if ( !ok ) {
-            MessageError(message);
-            return;
-        }
-
-        agent = nullptr;
-    }
-    else if ( action->text() ==  "Exit" ) {
-        QStringList listId;
-        for ( const auto& _graphics_item : graphics_items ) {
-            const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent && item->agent->browsers.SessionsMenuExit )
-                listId.append(item->agent->data.Id);
-        }
-        if(listId.empty())
-            return;
-
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentExit(listId, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-        MessageError("Response timeout");
-            return;
-        }
-    }
-    else if ( action->text() == "Mark as Active" ) {
-        QStringList listId;
-        for ( const auto& _graphics_item : graphics_items ) {
-            const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent)
-                listId.append(item->agent->data.Id);
-        }
-        if(listId.empty())
-            return;
-
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetMark(listId, "", *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-        MessageError("Response timeout");
-            return;
-        }
-    }
-    else if ( action->text() == "Mark as Inactive"  ) {
-        QStringList listId;
-        for ( const auto& _graphics_item : graphics_items ) {
-            const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent)
-                listId.append(item->agent->data.Id);
-        }
-        if(listId.empty())
-            return;
-
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetMark(listId, "Inactive", *(adaptixWidget->GetProfile()), &message, &ok);
+        bool result = HttpReqConsoleRemove(agentIds, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
             MessageError("Response timeout");
             return;
@@ -256,21 +154,44 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         if (reply != QMessageBox::Yes)
             return;
 
-        QStringList listId;
-        for ( const auto& _graphics_item : graphics_items ) {
-            const auto item = dynamic_cast<GraphItem*>( _graphics_item );
-            if ( item && item->agent)
-                listId.append(item->agent->data.Id);
-        }
-        if(listId.empty())
-            return;
-
         QString message = QString();
         bool ok = false;
-        bool result = HttpReqAgentRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
+        bool result = HttpReqAgentRemove(agentIds, *(adaptixWidget->GetProfile()), &message, &ok);
         if( !result ) {
             MessageError("Response timeout");
             return;
+        }
+    }
+    else if ( action->text() == "Mark as Active" ) {
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqAgentSetMark(agentIds, "", *(adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            MessageError("Response timeout");
+            return;
+        }
+    }
+    else if ( action->text() == "Mark as Inactive" ) {
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqAgentSetMark(agentIds, "Inactive", *(adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            MessageError("Response timeout");
+            return;
+        }
+    }
+    else if ( action->text() == "Set tag" ) {
+        QString tag = "";
+        bool inputOk;
+        QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
+        if ( inputOk ) {
+            QString message = QString();
+            bool ok = false;
+            bool result = HttpReqAgentSetTag(agentIds, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
+            if( !result ) {
+                MessageError("Response timeout");
+                return;
+            }
         }
     }
 }

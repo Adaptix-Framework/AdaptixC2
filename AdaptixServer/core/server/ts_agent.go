@@ -64,6 +64,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 		TunnelConnectTasks: safe.NewSlice(),
 		TunnelQueue:        safe.NewSlice(),
 		RunningTasks:       safe.NewMap(),
+		RunningJobs:        safe.NewMap(),
 		CompletedTasks:     safe.NewMap(),
 		PivotParent:        nil,
 		PivotChilds:        safe.NewSlice(),
@@ -86,7 +87,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	return nil
 }
 
-func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, cmdline string, args map[string]any) error {
+func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error {
 	if !ts.agent_configs.Contains(agentName) {
 		return fmt.Errorf("agent %v not registered", agentName)
 	}
@@ -101,7 +102,21 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 		return fmt.Errorf("agent '%v' not active", agentId)
 	}
 
-	return ts.Extender.ExAgentCommand(clientName, cmdline, agentName, agent.Data, args)
+	taskData, messageData, err := ts.Extender.ExAgentCommand(agentName, agent.Data, args)
+	if err != nil {
+		return err
+	}
+	taskData.HookId = hookId
+	if taskData.Type == TYPE_TASK && ui {
+		taskData.Type = TYPE_BROWSER
+	}
+
+	ts.TsTaskCreate(agentId, cmdline, clientName, taskData)
+
+	if (taskData.Type != TYPE_BROWSER) && (len(messageData.Message) > 0 || len(messageData.Text) > 0) {
+		ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text, false)
+	}
+	return nil
 }
 
 func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error {
@@ -271,29 +286,6 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
 	return nil
 }
 
-func (ts *Teamserver) TsAgentImpersonate(agentId string, impersonated string, elevated bool) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return errors.New("agent does not exist")
-	}
-	agent, _ := value.(*Agent)
-
-	agent.Data.Impersonated = impersonated
-	if impersonated != "" && elevated {
-		agent.Data.Impersonated += " *"
-	}
-
-	err := ts.DBMS.DbAgentUpdate(agent.Data)
-	if err != nil {
-		logs.Error("", err.Error())
-	}
-
-	packetNew := CreateSpAgentUpdate(agent.Data)
-	ts.TsSyncAllClients(packetNew)
-
-	return nil
-}
-
 func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) error {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
@@ -370,6 +362,10 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 		} else {
 			packet := CreateSpAgentTaskRemove(task)
 			ts.TsSyncAllClients(packet)
+		}
+
+		if task.Type == TYPE_JOB {
+			agent.RunningJobs.Delete(task.TaskId)
 		}
 	}
 
@@ -478,6 +474,8 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	return nil
 }
 
+/// Setters
+
 func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
@@ -563,6 +561,29 @@ func (ts *Teamserver) TsAgentSetColor(agentId string, background string, foregro
 	return nil
 }
 
+func (ts *Teamserver) TsAgentSetImpersonate(agentId string, impersonated string, elevated bool) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return errors.New("agent does not exist")
+	}
+	agent, _ := value.(*Agent)
+
+	agent.Data.Impersonated = impersonated
+	if impersonated != "" && elevated {
+		agent.Data.Impersonated += " *"
+	}
+
+	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	if err != nil {
+		logs.Error("", err.Error())
+	}
+
+	packetNew := CreateSpAgentUpdate(agent.Data)
+	ts.TsSyncAllClients(packetNew)
+
+	return nil
+}
+
 /// Sync
 
 func (ts *Teamserver) TsAgentTickUpdate() {
@@ -588,8 +609,8 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 	}
 }
 
-func (ts *Teamserver) TsAgentGenerate(agentName string, config string, operatingSystem string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
-	return ts.Extender.ExAgentGenerate(agentName, config, operatingSystem, listenerWM, listenerProfile)
+func (ts *Teamserver) TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
+	return ts.Extender.ExAgentGenerate(agentName, config, listenerWM, listenerProfile)
 }
 
 /// Console

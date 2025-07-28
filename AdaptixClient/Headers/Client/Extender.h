@@ -6,23 +6,29 @@
 class DialogExtender;
 class MainAdaptix;
 
-class Extender
+class Extender : public QObject
 {
+Q_OBJECT
     MainAdaptix* mainAdaptix = nullptr;
 
 public:
     explicit Extender(MainAdaptix* m);
-    ~Extender();
+    ~Extender() override;
 
     DialogExtender* dialogExtender = nullptr;
     QMap<QString, ExtensionFile> extenderFiles;
 
     void LoadFromDB();
-    void LoadFromFile(QString path, bool enabled);
-    void SetExtension(const ExtensionFile &extFile );
+    void LoadFromFile(const QString &path, bool enabled);
+    void SetExtension(ExtensionFile extFile );
     void EnableExtension(const QString &path);
     void DisableExtension(const QString &path);
     void RemoveExtension(const QString &path);
+
+public slots:
+    void syncedOnReload(const QString &project);
+    void loadGlobalScript(const QString &path);
+    void unloadGlobalScript(const QString &path);
 };
 
-#endif //ADAPTIXCLIENT_EXTENDER_H
+#endif

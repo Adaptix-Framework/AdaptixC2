@@ -94,10 +94,7 @@ void MainAdaptix::Start() const
     QApplication::exec();
 }
 
-void MainAdaptix::Exit()
-{
-    QCoreApplication::quit();
-}
+void MainAdaptix::Exit() { QCoreApplication::quit(); }
 
 void MainAdaptix::NewProject() const
 {

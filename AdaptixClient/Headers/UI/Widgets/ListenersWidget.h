@@ -3,16 +3,18 @@
 
 #include <main.h>
 
+class AdaptixWidget;
+
 class ListenersWidget : public QWidget
 {
-    QWidget*      mainWidget     = nullptr;
-    QGridLayout*  mainGridLayout = nullptr;
-    QTableWidget* tableWidget    = nullptr;
+    AdaptixWidget* adaptixWidget  = nullptr;
+    QGridLayout*   mainGridLayout = nullptr;
+    QTableWidget*  tableWidget    = nullptr;
 
     void createUI();
 
 public:
-    explicit ListenersWidget( QWidget* w );
+    explicit ListenersWidget(AdaptixWidget* w);
     ~ListenersWidget() override;
 
     void Clear() const;
@@ -22,10 +24,10 @@ public:
 
 public slots:
     void handleListenersMenu( const QPoint &pos ) const;
-    void createListener() const;
-    void editListener() const;
-    void removeListener() const;
-    void generateAgent() const;
+    void onCreateListener() const;
+    void onEditListener() const;
+    void onRemoveListener() const;
+    void onGenerateAgent() const;
 };
 
-#endif //ADAPTIXCLIENT_LISTENERSWIDGET_H
+#endif

@@ -59,4 +59,4 @@ public slots:
     void actionDownload() const;
 };
 
-#endif //SCREENSHOTSWIDGET_H
+#endif

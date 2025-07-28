@@ -3,12 +3,7 @@
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 
-ImageFrame::ImageFrame(QWidget* parent)
-    : QWidget(parent),
-      label(new QLabel),
-      scrollArea(new QScrollArea(this)),
-      ctrlPressed(false),
-      scaleFactor(1.0)
+ImageFrame::ImageFrame(QWidget* parent) : QWidget(parent), label(new QLabel), scrollArea(new QScrollArea(this)), ctrlPressed(false), scaleFactor(1.0)
 {
     setFocusPolicy(Qt::StrongFocus);
 
@@ -205,7 +200,6 @@ void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen) const
     tableWidget->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
 
-    // tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 
     adaptixWidget->Screenshots[newScreen.ScreenId] = newScreen;

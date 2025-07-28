@@ -23,4 +23,4 @@ public:
     void SaveToDB() const;
 };
 
-#endif //ADAPTIXCLIENT_SETTINGS_H
+#endif

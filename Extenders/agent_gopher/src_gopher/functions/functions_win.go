@@ -240,3 +240,9 @@ func RelayPtyToConn(to *cipher.StreamWriter, from any) {
 	pipe := from.(pty.Pty)
 	io.Copy(to, pipe)
 }
+
+func Rev2Self() {
+	advapi32 := syscall.NewLazyDLL("advapi32.dll")
+	revertToSelf := advapi32.NewProc("RevertToSelf")
+	revertToSelf.Call()
+}

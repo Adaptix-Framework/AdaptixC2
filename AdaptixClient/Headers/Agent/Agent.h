@@ -3,6 +3,7 @@
 
 #include <main.h>
 
+class Commander;
 class ConsoleWidget;
 class BrowserFilesWidget;
 class BrowserProcessWidget;
@@ -17,13 +18,13 @@ public:
     AdaptixWidget* adaptixWidget = nullptr;
 
     AgentData data = {};
-    BrowsersConfig browsers = {};
 
     QImage imageActive   = QImage();
     QImage imageInactive = QImage();
 
-    QString connType = QString();
-    QString parentId = QString();
+    QString connType     = QString();
+    QString listenerType = QString();
+    QString parentId     = QString();
     QVector<QString> childsId;
 
     AgentTableWidgetItem* item_Id       = nullptr;
@@ -44,6 +45,7 @@ public:
     GraphItem*            graphItem     = nullptr;
     QImage                graphImage    = QImage();
 
+    Commander*            commander      = nullptr;
     ConsoleWidget*        Console        = nullptr;
     BrowserFilesWidget*   FileBrowser    = nullptr;
     BrowserProcessWidget* ProcessBrowser = nullptr;
@@ -60,19 +62,13 @@ public:
     void    MarkItem(const QString &mark);
     void    SetColor(const QString &color) const;
     void    UpdateImage();
-    QString TasksStop(const QStringList &tasks) const;
+    QString TasksCancel(const QStringList &tasks) const;
     QString TasksDelete(const QStringList &tasks) const;
 
     void SetParent(const PivotData &pivotData);
     void UnsetParent(const PivotData &pivotData);
     void AddChild(const PivotData &pivotData);
     void RemoveChild(const PivotData &pivotData);
-
-    QString BrowserDisks() const;
-    QString BrowserProcess() const;
-    QString BrowserList(const QString &path) const;
-    QString BrowserUpload(const QString &path, const QString &content) const;
-    QString BrowserDownload(const QString &path) const;
 };
 
-#endif //ADAPTIXCLIENT_AGENT_H
+#endif

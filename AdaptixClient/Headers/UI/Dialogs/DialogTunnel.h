@@ -20,7 +20,7 @@ class DialogTunnel : public QDialog
      QPushButton*    buttonCreate         = nullptr;
      QSpacerItem*    horizontalSpacer_1   = nullptr;
      QSpacerItem*    horizontalSpacer_2   = nullptr;
-     //Socks5
+
      QWidget*        socks5Widget         = nullptr;
      QGridLayout*    socks5GridLayout     = nullptr;
      QLabel*         socks5LocalAddrLabel = nullptr;
@@ -31,13 +31,13 @@ class DialogTunnel : public QDialog
      QLineEdit*      socks5AuthUserInput  = nullptr;
      QLabel*         socks5AuthPassLabel  = nullptr;
      QLineEdit*      socks5AuthPassInput  = nullptr;
-     //Socks4
+
      QWidget*        socks4Widget         = nullptr;
      QGridLayout*    socks4GridLayout     = nullptr;
      QLabel*         socks4LocalAddrLabel = nullptr;
      QLineEdit*      socks4LocalAddrInput = nullptr;
      QSpinBox*       socks4LocalPortSpin  = nullptr;
-     //LPF
+
      QWidget*        lpfWidget          = nullptr;
      QGridLayout*    lpfGridLayout      = nullptr;
      QLabel*         lpfLocalAddrLabel  = nullptr;
@@ -46,7 +46,7 @@ class DialogTunnel : public QDialog
      QLabel*         lpfTargetAddrLabel = nullptr;
      QLineEdit*      lpfTargetAddrInput = nullptr;
      QSpinBox*       lpfTargetPortSpin  = nullptr;
-     //RPF
+
      QWidget*        rpfWidget          = nullptr;
      QGridLayout*    rpfGridLayout      = nullptr;
      QLabel*         rpfPortLabel       = nullptr;
@@ -65,10 +65,9 @@ class DialogTunnel : public QDialog
      void createUI();
 
 public:
-     explicit DialogTunnel();
+     explicit DialogTunnel(const QString &agentId, bool s4, bool s5, bool lpf, bool rpf);
      ~DialogTunnel() override;
 
-     void SetSettings(const QString &agentId, bool s5, bool s4, bool lpf, bool rpf);
      void StartDialog();
      bool IsValid() const;
      QString GetMessage() const;
@@ -83,4 +82,4 @@ protected slots:
      void onButtonCancel();
 };
 
-#endif //DIALOGTUNNEL_H
+#endif

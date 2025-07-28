@@ -12,8 +12,11 @@ Q_OBJECT
     Extender*     extender    = nullptr;
     QGridLayout*  layout      = nullptr;
     QTableWidget* tableWidget = nullptr;
+    QSplitter*    splitter    = nullptr;
     QTextEdit*    textComment = nullptr;
     QPushButton*  buttonClose = nullptr;
+    QSpacerItem*  spacer1     = nullptr;
+    QSpacerItem*  spacer2     = nullptr;
 
     void createUI();
 
@@ -35,4 +38,4 @@ public slots:
     void onRowSelect(int row, int column) const;
 };
 
-#endif //ADAPTIXCLIENT_DIALOGEXTENDER_H
+#endif

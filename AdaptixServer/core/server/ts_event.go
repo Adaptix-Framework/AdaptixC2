@@ -15,10 +15,10 @@ func (ts *Teamserver) TsEventClient(connected bool, username string) {
 	var packet SpEvent
 
 	if connected {
-		message := fmt.Sprintf("Client '%v' connected to teamserver", username)
+		message := fmt.Sprintf("Operator '%v' connected to teamserver", username)
 		packet = CreateSpEvent(EVENT_CLIENT_CONNECT, message)
 	} else {
-		message := fmt.Sprintf("Client '%v' disconnected from teamserver", username)
+		message := fmt.Sprintf("Operator '%v' disconnected from teamserver", username)
 		packet = CreateSpEvent(EVENT_CLIENT_DISCONNECT, message)
 	}
 

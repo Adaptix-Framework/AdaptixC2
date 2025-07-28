@@ -108,7 +108,7 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 
 	err := downloadData.File.Close()
 	if err != nil {
-		fmt.Println(fmt.Sprintf("Failed to finish download [%x] file: %v", downloadData.FileId, err))
+		logs.Debug("", fmt.Sprintf("Failed to finish download [%x] file: %v", downloadData.FileId, err))
 	}
 
 	if reason == DOWNLOAD_STATE_FINISHED {
@@ -182,94 +182,6 @@ func (ts *Teamserver) TsDownloadDelete(fileId string) error {
 
 	ts.downloads.Delete(fileId)
 
-	return nil
-}
-
-///
-
-func (ts *Teamserver) TsDownloadTaskStart(agentId string, path string, clientName string) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent '%v' does not exist", agentId)
-	}
-
-	agent, _ := value.(*Agent)
-	if agent.Active == false {
-		return fmt.Errorf("agent '%v' not active", agentId)
-	}
-
-	taskData, err := ts.Extender.ExAgentDownloadTaskStart(agent.Data, path)
-	if err != nil {
-		return err
-	}
-
-	ts.TsTaskCreate(agentId, "", clientName, taskData)
-	return nil
-}
-
-func (ts *Teamserver) TsDownloadTaskCancel(fileId string, clientName string) error {
-	value, ok := ts.downloads.Get(fileId)
-	if !ok {
-		return errors.New("File not found: " + fileId)
-	}
-	downloadData := value.(adaptix.DownloadData)
-
-	value, ok = ts.agents.Get(downloadData.AgentId)
-	if !ok {
-		return errors.New("Agent not found: " + downloadData.AgentId)
-	}
-	agent := value.(*Agent)
-
-	taskData, err := ts.Extender.ExAgentDownloadTaskCancel(agent.Data, fileId)
-	if err != nil {
-		return err
-	}
-
-	ts.TsTaskCreate(agent.Data.Id, "", clientName, taskData)
-	return nil
-}
-
-func (ts *Teamserver) TsDownloadTaskResume(fileId string, clientName string) error {
-	value, ok := ts.downloads.Get(fileId)
-	if !ok {
-		return errors.New("File not found: " + fileId)
-	}
-	downloadData := value.(adaptix.DownloadData)
-
-	value, ok = ts.agents.Get(downloadData.AgentId)
-	if !ok {
-		return errors.New("Agent not found: " + downloadData.AgentId)
-	}
-	agent := value.(*Agent)
-
-	taskData, err := ts.Extender.ExAgentDownloadTaskResume(agent.Data, fileId)
-	if err != nil {
-		return err
-	}
-
-	ts.TsTaskCreate(agent.Data.Id, "", clientName, taskData)
-	return nil
-}
-
-func (ts *Teamserver) TsDownloadTaskPause(fileId string, clientName string) error {
-	value, ok := ts.downloads.Get(fileId)
-	if !ok {
-		return errors.New("File not found: " + fileId)
-	}
-	downloadData := value.(adaptix.DownloadData)
-
-	value, ok = ts.agents.Get(downloadData.AgentId)
-	if !ok {
-		return errors.New("Agent not found: " + downloadData.AgentId)
-	}
-	agent := value.(*Agent)
-
-	taskData, err := ts.Extender.ExAgentDownloadTaskPause(agent.Data, fileId)
-	if err != nil {
-		return err
-	}
-
-	ts.TsTaskCreate(agent.Data.Id, "", clientName, taskData)
 	return nil
 }
 

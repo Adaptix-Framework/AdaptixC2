@@ -3,6 +3,24 @@
 
 #include <main.h>
 
+class ListDelegate : public QStyledItemDelegate {
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+        QLineEdit* editor = new QLineEdit(parent);
+        editor->setContentsMargins(1, 1, 1, 1);
+        return editor;
+    }
+
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+        QSize size = QStyledItemDelegate::sizeHint(option, index);
+        return QSize(size.width(), size.height() + 10);
+    }
+};
+
+
+
 class PaddingDelegate : public QStyledItemDelegate {
 public:
     explicit PaddingDelegate(QObject* parent = nullptr) : QStyledItemDelegate(parent) {}
@@ -18,13 +36,10 @@ public:
         if (hasBg)
             painter->fillRect(optFull.rect, bgBrush);
 
+        optFull.state &= ~QStyle::State_HasFocus;
+
         QStyledItemDelegate::paint(painter, optFull, index);
     }
-
-     // QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
-     //     QSize originalSize = QStyledItemDelegate::sizeHint(option, index);
-     //     return QSize(originalSize.width() + 30, originalSize.height());
-     // }
 };
 
 
@@ -121,4 +136,4 @@ signals:
     void ctx_history();
 };
 
-#endif //ADAPTIXCLIENT_CUSTOMELEMENTS_H
+#endif

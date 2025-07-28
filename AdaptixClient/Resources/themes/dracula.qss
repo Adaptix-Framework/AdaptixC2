@@ -294,6 +294,18 @@ QProgressBar:disabled {
     border: 1px solid #44475a;
 }
 
+QScrollArea {
+    background-color: #44475a;
+    border: 1px solid #6272a4;
+    border-radius: 4px;
+}
+
+QScrollArea:disabled {
+    background-color: #343746;
+    border: 1px solid #44475a;
+    color: #6272a4;
+}
+
 QScrollBar:horizontal {
     border: none;
     background: #44475a;
@@ -662,7 +674,7 @@ QListWidget {
 }
 
 QListWidget::item {
-    padding: 4px;
+    padding: 2px;
     border-radius: 4px;
     color: #f8f8f2;
 }
@@ -676,6 +688,7 @@ QListWidget::item:selected {
     background-color: #6272a4;
     color: #ffffff;
     border: 1px solid #bd93f9;
+    margin: 1px;
 }
 
 QListWidget:focus {

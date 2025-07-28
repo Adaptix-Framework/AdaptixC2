@@ -172,8 +172,6 @@ void ScreenWindow::scrollTo(int line) {
     const int delta = line - _currentLine;
     _currentLine = line;
 
-    // keep track of number of lines scrolled by,
-    // this can be reset by calling resetScrollCount()
     _scrollCount += delta;
 
     _bufferNeedsUpdate = true;
@@ -216,10 +214,8 @@ void ScreenWindow::notifyOutputChanged() {
 
 void ScreenWindow::handleCommandFromKeyboard(
     KeyboardTranslator::Command command) {
-    // Keyboard-based navigation
     bool update = false;
 
-    // EraseCommand is handled in Vt102Emulation
     if (command & KeyboardTranslator::ScrollPageUpCommand) {
         scrollBy(ScreenWindow::ScrollPages, -1);
         update = true;

@@ -1,19 +1,24 @@
 #ifndef ADAPTIXCLIENT_COMMANDER_H
 #define ADAPTIXCLIENT_COMMANDER_H
 
-#include <main.h>
+#include <QJsonArray>
+#include <QJsonParseError>
+#include <QJsonDocument>
+#include <QFileInfo>
+#include <QDir>
+#include <QJsonObject>
+#include <QJSValue>
 
 struct Argument
 {
-    QString type;
-    QString name;
-    bool    required;
-    bool    flag;
-    QString mark;
-    QString description;
-    QString defaultValue;
-    bool    defaultUsed;
-    bool    valid;
+    QString  type;
+    QString  name;
+    bool     required;
+    bool     flag;
+    QString  mark;
+    QString  description;
+    bool     defaultUsed;
+    QVariant defaultValue;
 };
 
 struct Command
@@ -24,61 +29,66 @@ struct Command
     QString         example;
     QList<Argument> args;
     QList<Command>  subcommands;
-    QString         exec;
+    bool            is_pre_hook;
+    QJSValue        pre_hook;
 };
 
-struct Constant
+struct CommandsGroup
 {
-    QString Name;
-    QMap<QString,QString> Map;
+    QString        groupName;
+    QString        filepath;
+    QList<Command> commands;
+    QJSEngine*     engine;
 };
 
-struct ExtModule
+struct PostHook
 {
-    QString Name;
-    QString FilePath;
-    QList<Command> Commands;
-    QMap<QString, Constant> Constants;
+    bool     isSet;
+    QString  engineName;
+    QJSValue hook;
 };
 
 struct CommanderResult
 {
-    bool    output;
-    QString message;
-    bool    error;
+    bool        error;
+    bool        output;
+    QString     message;
+    QJsonObject data;
+    bool        is_pre_hook;
+    PostHook    post_hook;
 };
 
-class BofPacker
-{
-public:
-    QByteArray data;
-    void Pack(const QString &type, const QJsonValue &jsonValue);
-    QString Build() const;
-};
 
-class Commander
+
+class Commander : public QObject
 {
-    QList<Command> commands;
-    QMap<QString, ExtModule> extModules;
+Q_OBJECT
+
+    QString agentType;
+    QString listenerType;
     QString error;
 
-    Constant        ParseConstant(QJsonObject jsonObject);
-    Command         ParseCommand(QJsonObject jsonObject);
-    Argument        ParseArgument(const QString &argString);
-    CommanderResult ProcessCommand(AgentData agentData, Command command, QStringList args, ExtModule extMod);
-    QString         ProcessExecExtension(const AgentData &agentData, ExtModule extMod, QString ExecString, QList<Argument> args, QJsonObject jsonObj);
+    CommandsGroup regCommandsGroup;
+    QVector<CommandsGroup> axCommandsGroup;
+
+    QString         ProcessPreHook(QJSEngine *engine, const Command &command, const QString &agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args);
+    CommanderResult ProcessCommand(Command command, QStringList args, QJsonObject jsonObj);
     CommanderResult ProcessHelp(QStringList commandParts);
 
 public:
     explicit Commander();
-    ~Commander();
+    ~Commander() override;
 
-    bool AddRegCommands(const QByteArray &jsonData);
-    bool AddExtModule(const QString &filepath, const QString &extName, QList<QJsonObject> extCommands, QList<QJsonObject> extConstants);
-    void RemoveExtModule(const QString &filepath);
+    void AddRegCommands(const CommandsGroup &group);
+    void AddAxCommands(const CommandsGroup &group);
+    void RemoveAxCommands(const QString &filepath);
+
     QString GetError();
     QStringList GetCommands();
-    CommanderResult ProcessInput(AgentData agentData, QString input);
+    CommanderResult ProcessInput(QString agentId, QString cmdline);
+
+signals:
+    void commandsUpdated();
 };
 
-#endif //ADAPTIXCLIENT_COMMANDER_H
+#endif

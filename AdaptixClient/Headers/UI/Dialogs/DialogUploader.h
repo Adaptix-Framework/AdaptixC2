@@ -26,4 +26,4 @@ public:
     ~DialogUploader() override;
 };
 
-#endif // DIALOGUPLOADER_H
+#endif

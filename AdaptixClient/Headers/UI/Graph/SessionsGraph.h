@@ -43,4 +43,4 @@ protected:
     void timerEvent( QTimerEvent* event ) override;
 };
 
-#endif //ADAPTIXCLIENT_SESSIONSGRAPH_H
+#endif

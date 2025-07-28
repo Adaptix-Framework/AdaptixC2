@@ -28,11 +28,6 @@ LogsWidget::~LogsWidget() = default;
 
 void LogsWidget::createUI()
 {
-    /// Logs
-//    logsLabel = new QLabel(this);
-//    logsLabel->setText("Logs");
-//    logsLabel->setAlignment(Qt::AlignCenter);
-
     searchWidget = new QWidget(this);
     searchWidget->setVisible(false);
 
@@ -69,7 +64,6 @@ void LogsWidget::createUI()
     logsGridLayout = new QGridLayout(this);
     logsGridLayout->setContentsMargins(1, 1, 1, 1);
     logsGridLayout->setVerticalSpacing(1);
-//    logsGridLayout->addWidget(logsLabel, 0, 0, 1, 1);
     logsGridLayout->addWidget( searchWidget,        0, 0, 1, 1);
     logsGridLayout->addWidget( logsConsoleTextEdit, 1, 0, 1, 1);
 
@@ -94,12 +88,10 @@ void LogsWidget::createUI()
     todoWidget->setLayout(todoGridLayout);
 
 
-    /// Main
+
     mainHSplitter = new QSplitter( Qt::Horizontal, this );
     mainHSplitter->setHandleWidth(3);
     mainHSplitter->addWidget(logsWidget);
-//    mainHSplitter->addWidget(todoWidget);
-//    mainHSplitter->setSizes(QList<int>({200, 40}));
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins(0, 0, 0, 0);

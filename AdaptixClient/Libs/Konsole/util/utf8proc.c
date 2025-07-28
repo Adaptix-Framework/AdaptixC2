@@ -16967,9 +16967,6 @@ static const utf8proc_uint16_t utf8proc_combinations[] = {
 74, 77, 1, 53694, 1, 53696,
 };
 
-
-////////////////////////////////////////////////////////////////////////
-
 UTF8PROC_DLLEXPORT const utf8proc_int8_t utf8proc_utf8class[256] = {
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -17049,18 +17046,17 @@ UTF8PROC_DLLEXPORT utf8proc_ssize_t utf8proc_iterate(
     *dst = uc;
     return 1;
   }
-  // Must be between 0xc2 and 0xf4 inclusive to be valid
+
   if ((utf8proc_uint32_t)(uc - 0xc2) > (0xf4-0xc2)) return UTF8PROC_ERROR_INVALIDUTF8;
-  if (uc < 0xe0) {         // 2-byte sequence
-     // Must have valid continuation character
+  if (uc < 0xe0) {
+
      if (str >= end || !utf_cont(*str)) return UTF8PROC_ERROR_INVALIDUTF8;
      *dst = ((uc & 0x1f)<<6) | (*str & 0x3f);
      return 2;
   }
-  if (uc < 0xf0) {        // 3-byte sequence
+  if (uc < 0xf0) {
      if ((str + 1 >= end) || !utf_cont(*str) || !utf_cont(str[1]))
         return UTF8PROC_ERROR_INVALIDUTF8;
-     // Check for surrogate chars
      if (uc == 0xed && *str > 0x9f)
          return UTF8PROC_ERROR_INVALIDUTF8;
      uc = ((uc & 0xf)<<12) | ((*str & 0x3f)<<6) | (str[1] & 0x3f);
@@ -17069,11 +17065,8 @@ UTF8PROC_DLLEXPORT utf8proc_ssize_t utf8proc_iterate(
      *dst = uc;
      return 3;
   }
-  // 4-byte sequence
-  // Must have 3 valid continuation characters
   if ((str + 2 >= end) || !utf_cont(*str) || !utf_cont(str[1]) || !utf_cont(str[2]))
      return UTF8PROC_ERROR_INVALIDUTF8;
-  // Make sure in correct range (0x10000 - 0x10ffff)
   if (uc == 0xf0) {
     if (*str < 0x90) return UTF8PROC_ERROR_INVALIDUTF8;
   } else if (uc == 0xf4) {
@@ -17097,8 +17090,6 @@ UTF8PROC_DLLEXPORT utf8proc_ssize_t utf8proc_encode_char(utf8proc_int32_t uc, ut
     dst[0] = (utf8proc_uint8_t)(0xC0 + (uc >> 6));
     dst[1] = (utf8proc_uint8_t)(0x80 + (uc & 0x3F));
     return 2;
-  // Note: we allow encoding 0xd800-0xdfff here, so as not to change
-  // the API, however, these are actually invalid in UTF-8
   } else if (uc < 0x10000) {
     dst[0] = (utf8proc_uint8_t)(0xE0 + (uc >> 12));
     dst[1] = (utf8proc_uint8_t)(0x80 + ((uc >> 6) & 0x3F));
@@ -17158,32 +17149,32 @@ UTF8PROC_DLLEXPORT const utf8proc_property_t *utf8proc_get_property(utf8proc_int
 
 static utf8proc_bool grapheme_break_simple(int lbc, int tbc) {
   return
-    (lbc == UTF8PROC_BOUNDCLASS_START) ? true :       // GB1
-    (lbc == UTF8PROC_BOUNDCLASS_CR &&                 // GB3
-     tbc == UTF8PROC_BOUNDCLASS_LF) ? false :         // ---
-    (lbc >= UTF8PROC_BOUNDCLASS_CR && lbc <= UTF8PROC_BOUNDCLASS_CONTROL) ? true :  // GB4
-    (tbc >= UTF8PROC_BOUNDCLASS_CR && tbc <= UTF8PROC_BOUNDCLASS_CONTROL) ? true :  // GB5
-    (lbc == UTF8PROC_BOUNDCLASS_L &&                  // GB6
-     (tbc == UTF8PROC_BOUNDCLASS_L ||                 // ---
-      tbc == UTF8PROC_BOUNDCLASS_V ||                 // ---
-      tbc == UTF8PROC_BOUNDCLASS_LV ||                // ---
-      tbc == UTF8PROC_BOUNDCLASS_LVT)) ? false :      // ---
-    ((lbc == UTF8PROC_BOUNDCLASS_LV ||                // GB7
-      lbc == UTF8PROC_BOUNDCLASS_V) &&                // ---
-     (tbc == UTF8PROC_BOUNDCLASS_V ||                 // ---
-      tbc == UTF8PROC_BOUNDCLASS_T)) ? false :        // ---
-    ((lbc == UTF8PROC_BOUNDCLASS_LVT ||               // GB8
-      lbc == UTF8PROC_BOUNDCLASS_T) &&                // ---
-     tbc == UTF8PROC_BOUNDCLASS_T) ? false :          // ---
-    (tbc == UTF8PROC_BOUNDCLASS_EXTEND ||             // GB9
-     tbc == UTF8PROC_BOUNDCLASS_ZWJ ||                // ---
-     tbc == UTF8PROC_BOUNDCLASS_SPACINGMARK ||        // GB9a
-     lbc == UTF8PROC_BOUNDCLASS_PREPEND) ? false :    // GB9b
-    (lbc == UTF8PROC_BOUNDCLASS_E_ZWG &&              // GB11 (requires additional handling below)
-     tbc == UTF8PROC_BOUNDCLASS_EXTENDED_PICTOGRAPHIC) ? false : // ----
-    (lbc == UTF8PROC_BOUNDCLASS_REGIONAL_INDICATOR &&          // GB12/13 (requires additional handling below)
-     tbc == UTF8PROC_BOUNDCLASS_REGIONAL_INDICATOR) ? false :  // ----
-    true; // GB999
+    (lbc == UTF8PROC_BOUNDCLASS_START) ? true :
+    (lbc == UTF8PROC_BOUNDCLASS_CR &&
+     tbc == UTF8PROC_BOUNDCLASS_LF) ? false :
+    (lbc >= UTF8PROC_BOUNDCLASS_CR && lbc <= UTF8PROC_BOUNDCLASS_CONTROL) ? true :
+    (tbc >= UTF8PROC_BOUNDCLASS_CR && tbc <= UTF8PROC_BOUNDCLASS_CONTROL) ? true :
+    (lbc == UTF8PROC_BOUNDCLASS_L &&
+     (tbc == UTF8PROC_BOUNDCLASS_L ||
+      tbc == UTF8PROC_BOUNDCLASS_V ||
+      tbc == UTF8PROC_BOUNDCLASS_LV ||
+      tbc == UTF8PROC_BOUNDCLASS_LVT)) ? false :
+    ((lbc == UTF8PROC_BOUNDCLASS_LV ||
+      lbc == UTF8PROC_BOUNDCLASS_V) &&
+     (tbc == UTF8PROC_BOUNDCLASS_V ||                 
+      tbc == UTF8PROC_BOUNDCLASS_T)) ? false :        
+    ((lbc == UTF8PROC_BOUNDCLASS_LVT ||
+      lbc == UTF8PROC_BOUNDCLASS_T) &&                
+     tbc == UTF8PROC_BOUNDCLASS_T) ? false :          
+    (tbc == UTF8PROC_BOUNDCLASS_EXTEND ||
+     tbc == UTF8PROC_BOUNDCLASS_ZWJ ||                
+     tbc == UTF8PROC_BOUNDCLASS_SPACINGMARK ||
+     lbc == UTF8PROC_BOUNDCLASS_PREPEND) ? false :
+    (lbc == UTF8PROC_BOUNDCLASS_E_ZWG &&
+     tbc == UTF8PROC_BOUNDCLASS_EXTENDED_PICTOGRAPHIC) ? false : 
+    (lbc == UTF8PROC_BOUNDCLASS_REGIONAL_INDICATOR &&
+     tbc == UTF8PROC_BOUNDCLASS_REGIONAL_INDICATOR) ? false :  
+    true;
 }
 
 static utf8proc_bool grapheme_break_extended(int lbc, int tbc, int licb, int ticb, utf8proc_int32_t *state)
@@ -17195,13 +17186,13 @@ static utf8proc_bool grapheme_break_extended(int lbc, int tbc, int licb, int tic
       state_icb = licb == UTF8PROC_INDIC_CONJUNCT_BREAK_CONSONANT ? licb : UTF8PROC_INDIC_CONJUNCT_BREAK_NONE;
     }
     else { /* lbc and licb are already encoded in *state */
-      state_bc = *state & 0xff;  // 1st byte of state is bound class
-      state_icb = *state >> 8;   // 2nd byte of state is indic conjunct break
+      state_bc = *state & 0xff;
+      state_icb = *state >> 8;
     }
 
     utf8proc_bool break_permitted = grapheme_break_simple(state_bc, tbc) &&
        !(state_icb == UTF8PROC_INDIC_CONJUNCT_BREAK_LINKER
-        && ticb == UTF8PROC_INDIC_CONJUNCT_BREAK_CONSONANT); // GB9c
+        && ticb == UTF8PROC_INDIC_CONJUNCT_BREAK_CONSONANT);
 
     if (ticb == UTF8PROC_INDIC_CONJUNCT_BREAK_CONSONANT
         || state_icb == UTF8PROC_INDIC_CONJUNCT_BREAK_CONSONANT
@@ -17213,12 +17204,12 @@ static utf8proc_bool grapheme_break_extended(int lbc, int tbc, int licb, int tic
 
     if (state_bc == tbc && tbc == UTF8PROC_BOUNDCLASS_REGIONAL_INDICATOR)
       state_bc = UTF8PROC_BOUNDCLASS_OTHER;
-    // Special support for GB11 (emoji extend* zwj / emoji)
+
     else if (state_bc == UTF8PROC_BOUNDCLASS_EXTENDED_PICTOGRAPHIC) {
-      if (tbc == UTF8PROC_BOUNDCLASS_EXTEND) // fold EXTEND codepoints into emoji
+      if (tbc == UTF8PROC_BOUNDCLASS_EXTEND)
         state_bc = UTF8PROC_BOUNDCLASS_EXTENDED_PICTOGRAPHIC;
       else if (tbc == UTF8PROC_BOUNDCLASS_ZWJ)
-        state_bc = UTF8PROC_BOUNDCLASS_E_ZWG; // state to record emoji+zwg combo
+        state_bc = UTF8PROC_BOUNDCLASS_E_ZWG;
       else
         state_bc = tbc;
     }

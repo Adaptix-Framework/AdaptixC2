@@ -318,8 +318,6 @@ void ColorScheme::readColorEntry(QSettings *s, int index) {
         }
     }
     if (!ok) {
-        qWarning().nospace() << "Invalid color value " << colorStr << " for "
-                            << colorName << ". Fallback to black.";
         r = g = b = 0;
     }
     entry.color = QColor(r, g, b);
@@ -516,7 +514,6 @@ const ColorScheme *ColorSchemeManager::findColorScheme(const QString &name) {
     if (_colorSchemes.contains(name)) {
         return _colorSchemes[name];
     } else {
-        // look for this color scheme
         QString path = findColorSchemePath(name);
         if (!path.isEmpty() && loadColorScheme(path)) {
             return findColorScheme(name);

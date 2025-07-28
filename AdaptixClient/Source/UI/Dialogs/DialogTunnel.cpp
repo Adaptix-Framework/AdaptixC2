@@ -1,9 +1,18 @@
 #include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
 
-DialogTunnel::DialogTunnel()
+DialogTunnel::DialogTunnel(const QString &agentId, const bool s4, const bool s5, const bool lpf, const bool rpf)
 {
      this->createUI();
+
+     tunnelTypeCombo->clear();
+     this->AgentId = agentId;
+
+     if (s4)  tunnelTypeCombo->addItem("Socks4");
+     if (s5)  tunnelTypeCombo->addItem("Socks5");
+     if (lpf) tunnelTypeCombo->addItem("Local port forwarding");
+     if (rpf) tunnelTypeCombo->addItem("Reverse port forwarding");
+
      connect(tunnelTypeCombo, &QComboBox::currentTextChanged, this, &DialogTunnel::changeType);
      connect(buttonCreate,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCreate);
      connect(buttonCancel,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCancel);
@@ -81,7 +90,6 @@ void DialogTunnel::createUI()
      buttonCreate->setFixedHeight(buttonHeight);
      buttonCancel->setFixedHeight(buttonHeight);
 
-     /// Socks5
      socks5Widget = new QWidget(this);
      socks5LocalAddrLabel = new QLabel("Listen:", socks5Widget);
      socks5LocalAddrInput = new QLineEdit("0.0.0.0", socks5Widget);
@@ -108,7 +116,7 @@ void DialogTunnel::createUI()
      socks5GridLayout->addWidget(socks5AuthPassInput,  3, 1, 1, 2);
      tunnelStackWidget->addWidget(socks5Widget);
 
-     /// Socks4
+
      socks4Widget = new QWidget(this);
      socks4LocalAddrLabel = new QLabel("Listen:", socks4Widget);
      socks4LocalAddrInput = new QLineEdit("0.0.0.0", socks4Widget);
@@ -123,7 +131,7 @@ void DialogTunnel::createUI()
      socks4GridLayout->addWidget(socks4LocalPortSpin,  0, 2, 1, 1);
      tunnelStackWidget->addWidget(socks4Widget);
 
-     /// LPF
+
      lpfWidget = new QWidget(this);
      lpfLocalAddrLabel = new QLabel("Listen:", lpfWidget);
      lpfLocalAddrInput = new QLineEdit("0.0.0.0", lpfWidget);
@@ -147,7 +155,6 @@ void DialogTunnel::createUI()
      lpfGridLayout->addWidget(lpfTargetPortSpin,  1, 2, 1, 1);
      tunnelStackWidget->addWidget(lpfWidget);
 
-     // RPF
      rpfWidget = new QWidget(this);
      rpfPortLabel = new QLabel("Port:", rpfWidget);
      rpfPortSpin  = new QSpinBox(rpfWidget);
@@ -177,41 +184,15 @@ void DialogTunnel::StartDialog()
      this->exec();
 }
 
-bool DialogTunnel::IsValid() const
-{
-     return this->valid;
-}
+bool DialogTunnel::IsValid() const { return this->valid; }
 
-QString DialogTunnel::GetMessage() const
-{
-     return this->message;
-}
+QString DialogTunnel::GetMessage() const { return this->message; }
 
-QString DialogTunnel::GetTunnelType() const
-{
-     return this->tunnelType;
-}
+QString DialogTunnel::GetTunnelType() const { return this->tunnelType; }
 
-QString DialogTunnel::GetEndpoint() const
-{
-     return this->tunnelEndpointCombo->currentText();
-}
+QString DialogTunnel::GetEndpoint() const { return this->tunnelEndpointCombo->currentText(); }
 
-QByteArray DialogTunnel::GetTunnelData() const
-{
-     return this->jsonData;
-}
-
-void DialogTunnel::SetSettings(const QString &agentId, const bool s5, const bool s4, const bool lpf, const bool rpf)
-{
-     tunnelTypeCombo->clear();
-     this->AgentId = agentId;
-
-     if (s5)  tunnelTypeCombo->addItem("Socks5");
-     if (s4)  tunnelTypeCombo->addItem("Socks4");
-     if (lpf) tunnelTypeCombo->addItem("Local port forwarding");
-     if (rpf) tunnelTypeCombo->addItem("Reverse port forwarding");
-}
+QByteArray DialogTunnel::GetTunnelData() const { return this->jsonData; }
 
 void DialogTunnel::changeType(const QString &type) const
 {
@@ -364,7 +345,4 @@ void DialogTunnel::onButtonCreate()
      this->close();
 }
 
-void DialogTunnel::onButtonCancel()
-{
-     this->close();
-}
+void DialogTunnel::onButtonCancel() { this->close(); }

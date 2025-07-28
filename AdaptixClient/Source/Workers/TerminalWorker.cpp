@@ -43,16 +43,6 @@ void TerminalWorker::start()
 
 void TerminalWorker::stop()
 {
-    // if (stopped.exchange(true))
-    //     return;
-    //
-    // if (websocket) {
-    //     websocket->blockSignals(true);
-    //     websocket->close();
-    // }
-    //
-    // emit finished();
-
     if (stopped.exchange(true))
         return;
 

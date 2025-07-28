@@ -4,9 +4,10 @@
 #include <main.h>
 #include <Utils/KeyPressHandler.h>
 #include <Utils/CustomElements.h>
+#include <Agent/Commander.h>
 
 class Agent;
-class Commander;
+class AdaptixWidget;
 
 #define CONSOLE_OUT_LOCAL         1
 #define CONSOLE_OUT_LOCAL_INFO    2
@@ -15,9 +16,12 @@ class Commander;
 #define CONSOLE_OUT_INFO          5
 #define CONSOLE_OUT_ERROR         6
 #define CONSOLE_OUT_SUCCESS       7
+#define CONSOLE_OUT               10
 
 class ConsoleWidget : public QWidget
 {
+    AdaptixWidget* adaptixWidget = nullptr;
+
     QGridLayout*      MainGridLayout   = nullptr;
     QLabel*           CmdLabel         = nullptr;
     QLabel*           InfoLabel        = nullptr;
@@ -35,6 +39,7 @@ class ConsoleWidget : public QWidget
     ClickableLabel* hideButton     = nullptr;
     QSpacerItem*    spacer         = nullptr;
     QShortcut*      shortcutSearch = nullptr;
+    KPH_SearchInput* searchInput   = nullptr;
 
     bool userSelectedCompletion = false;
     int  currentIndex = -1;
@@ -49,10 +54,11 @@ class ConsoleWidget : public QWidget
     void highlightCurrent() const;
 
 public:
-    explicit ConsoleWidget(Agent* a, Commander* c);
+    explicit ConsoleWidget(AdaptixWidget* w, Agent* a, Commander* c);
     ~ConsoleWidget() override;
 
-    void UpgradeCompleter() const;
+    void ProcessCmdResult(const QString &commandLine, const CommanderResult &cmdResult, bool UI);
+
     void InputFocus() const;
     void AddToHistory(const QString& command);
     void SetInput(const QString &command);
@@ -62,6 +68,7 @@ public:
     void ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const;
 
 public slots:
+    void upgradeCompleter() const;
     void processInput();
     void onCompletionSelected(const QString &selectedText);
     void toggleSearchPanel();
@@ -70,4 +77,4 @@ public slots:
     void handleShowHistory();
 };
 
-#endif //ADAPTIXCLIENT_CONSOLEWIDGET_H
+#endif
