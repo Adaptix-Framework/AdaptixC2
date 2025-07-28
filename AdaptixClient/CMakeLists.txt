@@ -21,6 +21,7 @@ find_package(Qt6
         Network
         WebSockets
         Sql
+        Qml
 )
 
 include_directories(
@@ -95,7 +96,6 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogSyncPacket.h
         Headers/UI/Widgets/ListenersWidget.h
         Headers/UI/Dialogs/DialogListener.h
-        Headers/Client/WidgetBuilder.h
         Headers/UI/Widgets/SessionsTableWidget.h
         Headers/UI/Dialogs/DialogAgent.h
         Headers/UI/Widgets/ConsoleWidget.h
@@ -131,6 +131,17 @@ SET( HEADERS
         Headers/Workers/DownloaderWorker.h
         Headers/Workers/UploaderWorker.h
         Headers/UI/Dialogs/DialogUploader.h
+        Headers/Client/AxScript/AxScriptManager.h
+        Headers/Client/AxScript/AxScriptEngine.h
+        Headers/Client/AxScript/BridgeApp.h
+        Headers/Client/AxScript/BridgeEvent.h
+        Headers/Client/AxScript/BridgeForm.h
+        Headers/Client/AxScript/BridgeMenu.h
+        Headers/Client/AxScript/AxCommandWrappers.h
+        Headers/Client/AxScript/AxElementWrappers.h
+        Headers/UI/Widgets/CredentialsWidget.h
+        Headers/UI/Dialogs/DialogCredential.h
+        Headers/UI/Widgets/AxConsoleWidget.h
 )
 
 add_executable(AdaptixClient
@@ -159,7 +170,6 @@ add_executable(AdaptixClient
         Source/Client/ProcessSyncPacket.cpp
         Source/UI/Widgets/ListenersWidget.cpp
         Source/UI/Dialogs/DialogListener.cpp
-        Source/Client/WidgetBuilder.cpp
         Source/UI/Widgets/SessionsTableWidget.cpp
         Source/UI/Dialogs/DialogAgent.cpp
         Source/UI/Widgets/ConsoleWidget.cpp
@@ -194,6 +204,17 @@ add_executable(AdaptixClient
         Source/Workers/DownloaderWorker.cpp
         Source/Workers/UploaderWorker.cpp
         Source/UI/Dialogs/DialogUploader.cpp
+        Source/Client/AxScript/AxScriptManager.cpp
+        Source/Client/AxScript/AxScriptEngine.cpp
+        Source/Client/AxScript/BridgeApp.cpp
+        Source/Client/AxScript/BridgeEvent.cpp
+        Source/Client/AxScript/BridgeForm.cpp
+        Source/Client/AxScript/BridgeMenu.cpp
+        Source/Client/AxScript/AxCommandWrappers.cpp
+        Source/Client/AxScript/AxElementWrappers.cpp
+        Source/UI/Widgets/CredentialsWidget.cpp
+        Source/UI/Dialogs/DialogCredential.cpp
+        Source/UI/Widgets/AxConsoleWidget.cpp
 )
 
 target_compile_definitions(AdaptixClient PRIVATE QT_DEPRECATED_WARNINGS )
@@ -207,6 +228,7 @@ if(UNIX)
             Qt6::Network
             Qt6::WebSockets
             Qt6::Sql
+            Qt6::Qml
             OpenSSL::Crypto
 
             pthread dl
@@ -220,6 +242,7 @@ elseif(APPLE)
             Qt6::Network
             Qt6::WebSockets
             Qt6::Sql
+            Qt6::Qml
             OpenSSL::Crypto
 
             pthread dl
@@ -233,6 +256,7 @@ else()
             Qt6::Network
             Qt6::WebSockets
             Qt6::Sql
+            Qt6::Qml
 
             wsock32 ws2_32 crypt32 iphlpapi netapi32 version winmm userenv
     )

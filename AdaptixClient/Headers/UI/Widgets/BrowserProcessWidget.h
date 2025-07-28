@@ -64,4 +64,4 @@ public slots:
     void onTreeSelect() const;
 };
 
-#endif //ADAPTIXCLIENT_BROWSERPROCESSWIDGET_H
+#endif

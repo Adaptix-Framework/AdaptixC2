@@ -37,4 +37,4 @@ QString GenerateRandomString(const int length, const QString &setName);
 
 QString GenerateHash(const QString &algorithm, int length, const QString &inputString);
 
-#endif //ADAPTIXCLIENT_CONVERT_H
+#endif

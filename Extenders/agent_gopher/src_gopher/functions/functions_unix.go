@@ -207,3 +207,5 @@ func RelayPtyToConn(to *cipher.StreamWriter, from any) {
 	pipe := from.(*os.File)
 	io.Copy(to, pipe)
 }
+
+func Rev2Self() {}

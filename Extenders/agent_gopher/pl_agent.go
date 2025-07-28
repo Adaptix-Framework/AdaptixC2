@@ -11,17 +11,20 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Adaptix-Framework/axc2"
+	"github.com/google/shlex"
 	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	mrand "math/rand"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type GenerateConfig struct {
+	Os               string `json:"os"`
 	Arch             string `json:"arch"`
 	Format           string `json:"format"`
 	Win7support      bool   `json:"win7_support"`
@@ -33,7 +36,7 @@ var (
 	SrcPath = "src_gopher"
 )
 
-func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
+func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
 	var (
 		generateConfig GenerateConfig
 		profileData    []byte
@@ -127,7 +130,7 @@ func AgentGenerateProfile(agentConfig string, operatingSystem string, listenerWM
 	return []byte(profileString), nil
 }
 
-func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
+func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map[string]any) ([]byte, string, error) {
 	var (
 		generateConfig GenerateConfig
 		GoArch         string
@@ -159,13 +162,13 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 	}
 
 	LdFlags := "-s -w"
-	if operatingSystem == "linux" {
+	if generateConfig.Os == "linux" {
 		Filename = "agent.bin"
 		GoOs = "linux"
-	} else if operatingSystem == "mac" {
+	} else if generateConfig.Os == "mac" {
 		Filename = "agent.bin"
 		GoOs = "darwin"
-	} else if operatingSystem == "windows" {
+	} else if generateConfig.Os == "windows" {
 		Filename = "agent.exe"
 		GoOs = "windows"
 		LdFlags += " -H=windowsgui"
@@ -184,7 +187,7 @@ func AgentGenerateBuild(agentConfig string, operatingSystem string, agentProfile
 	}
 
 	cmdBuild := fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
-	if operatingSystem == "windows" && generateConfig.Win7support {
+	if generateConfig.Os == "windows" && generateConfig.Win7support {
 		_, err := os.Stat("/usr/lib/go-win7/go")
 		if os.IsNotExist(err) {
 			return nil, "", errors.New("go-win7 not installed")
@@ -341,15 +344,21 @@ func PackTasks(agentData adaptix.AgentData, tasksArray []adaptix.TaskData) ([]by
 }
 
 func PackPivotTasks(pivotId string, data []byte) ([]byte, error) {
-	return nil, nil
+	return nil, errors.New("Function Pivot not packed")
 }
 
-func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
+func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
 	var (
 		taskData    adaptix.TaskData
 		messageData adaptix.ConsoleMessageData
 		err         error
 	)
+
+	command, ok := args["command"].(string)
+	if !ok {
+		return taskData, messageData, errors.New("'command' must be set")
+	}
+	subcommand, _ := args["subcommand"].(string)
 
 	taskData = adaptix.TaskData{
 		Type: TYPE_TASK,
@@ -361,8 +370,6 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 		Text:   "",
 	}
 	messageData.Message, _ = args["message"].(string)
-
-	subcommand, _ := args["subcommand"].(string)
 
 	/// START CODE HERE
 
@@ -420,6 +427,42 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 
 		packerData, _ := msgpack.Marshal(ParamsDownload{Path: path, Task: taskData.TaskId})
 		cmd = Command{Code: COMMAND_DOWNLOAD, Data: packerData}
+
+	case "execute":
+		if agent.Os != OS_WINDOWS {
+			goto RET
+		}
+
+		if subcommand == "bof" {
+			taskData.Type = TYPE_JOB
+
+			r := make([]byte, 4)
+			_, _ = rand.Read(r)
+			taskId := binary.BigEndian.Uint32(r)
+
+			taskData.TaskId = fmt.Sprintf("%08x", taskId)
+
+			bofFile, ok := args["bof"].(string)
+			if !ok {
+				err = errors.New("parameter 'bof' must be set")
+				goto RET
+			}
+			bofContent, err := base64.StdEncoding.DecodeString(bofFile)
+			if err != nil {
+				goto RET
+			}
+
+			paramData, ok := args["param_data"].(string)
+			if !ok {
+				paramData = ""
+			}
+
+			packerData, _ := msgpack.Marshal(ParamsExecBof{Object: bofContent, ArgsPack: paramData, Task: taskData.TaskId})
+			cmd = Command{Code: COMMAND_EXEC_BOF, Data: packerData}
+		} else {
+			err = errors.New("subcommand must be 'bof'")
+			goto RET
+		}
 
 	case "exit":
 		cmd = Command{Code: COMMAND_EXIT, Data: nil}
@@ -491,6 +534,9 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 	case "pwd":
 		cmd = Command{Code: COMMAND_PWD, Data: nil}
 
+	case "rev2self":
+		cmd = Command{Code: COMMAND_REV2SELF, Data: nil}
+
 	case "rm":
 		path, ok := args["path"].(string)
 		if !ok {
@@ -504,11 +550,12 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 	case "run":
 		taskData.Type = TYPE_JOB
 
-		cmdParam, ok := args["cmd"].(string)
+		prog, ok := args["program"].(string)
 		if !ok {
-			err = errors.New("parameter 'cmd' must be set")
+			err = errors.New("parameter 'program' must be set")
 			goto RET
 		}
+		args, ok := args["args"].(string)
 
 		r := make([]byte, 4)
 		_, _ = rand.Read(r)
@@ -516,15 +563,10 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, command string, args map
 
 		taskData.TaskId = fmt.Sprintf("%08x", taskId)
 
-		if agent.Os == OS_WINDOWS {
-			cmdArgs := []string{"/c", cmdParam}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "C:\\Windows\\System32\\cmd.exe", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		} else {
-			cmdArgs := []string{"-c", cmdParam}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "/bin/sh", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		}
+		cmdArgs, _ := shlex.Split(args)
+
+		packerData, _ := msgpack.Marshal(ParamsRun{Program: prog, Args: cmdArgs, Task: taskData.TaskId})
+		cmd = Command{Code: COMMAND_RUN, Data: packerData}
 
 	case "shell":
 		cmdParam, ok := args["cmd"].(string)
@@ -754,6 +796,15 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 			case COMMAND_CP:
 				task.Message = "Object copied successfully"
+
+			case COMMAND_EXEC_BOF:
+				var params AnsExecBof
+				err := msgpack.Unmarshal(cmd.Data, &params)
+				if err != nil {
+					continue
+				}
+				task.Message = "BOF output"
+				task.ClearText = ConvertCpToUTF8(params.Output, agentData.ACP)
 
 			case COMMAND_EXIT:
 				task.Message = "The agent has completed its work (kill process)"
@@ -1003,13 +1054,81 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 								proclist = append(proclist, procData)
 							}
 
-							format := fmt.Sprintf(" %%-5v   %%-5v   %%-7v   %%-5v   %%-%vv   %%-7v", contextMaxSize)
+							type TreeProc struct {
+								Data     adaptix.ListingProcessDataWin
+								Children []*TreeProc
+							}
+
+							procMap := make(map[uint]*TreeProc)
+							var roots []*TreeProc
+
+							for _, proc := range proclist {
+								node := &TreeProc{Data: proc}
+								procMap[proc.Pid] = node
+							}
+
+							for _, node := range procMap {
+								if node.Data.Ppid == 0 || node.Data.Pid == node.Data.Ppid {
+									roots = append(roots, node)
+								} else if parent, ok := procMap[node.Data.Ppid]; ok {
+									parent.Children = append(parent.Children, node)
+								} else {
+									roots = append(roots, node)
+								}
+							}
+
+							sort.Slice(roots, func(i, j int) bool {
+								return roots[i].Data.Pid < roots[j].Data.Pid
+							})
+
+							var sortChildren func(node *TreeProc)
+							sortChildren = func(node *TreeProc) {
+								sort.Slice(node.Children, func(i, j int) bool {
+									return node.Children[i].Data.Pid < node.Children[j].Data.Pid
+								})
+								for _, child := range node.Children {
+									sortChildren(child)
+								}
+							}
+							for _, root := range roots {
+								sortChildren(root)
+							}
+
+							format := fmt.Sprintf(" %%-5v   %%-5v   %%-7v   %%-5v   %%-%vv   %%v", contextMaxSize)
 							OutputText := fmt.Sprintf(format, "PID", "PPID", "Session", "Arch", "Context", "Process")
 							OutputText += fmt.Sprintf("\n"+format, "---", "----", "-------", "----", "-------", "-------")
 
-							for _, item := range proclist {
-								OutputText += fmt.Sprintf("\n"+format, item.Pid, item.Ppid, item.SessionId, item.Arch, item.Context, item.ProcessName)
+							var lines []string
+
+							var formatTree func(node *TreeProc, prefix string, isLast bool)
+							formatTree = func(node *TreeProc, prefix string, isLast bool) {
+								branch := "├─ "
+								if isLast {
+									branch = "└─ "
+								}
+								treePrefix := prefix + branch
+								data := node.Data
+
+								line := fmt.Sprintf(format, data.Pid, data.Ppid, data.SessionId, data.Arch, data.Context, treePrefix+data.ProcessName)
+								lines = append(lines, line)
+
+								childPrefix := prefix
+								if isLast {
+									childPrefix += "    "
+								} else {
+									childPrefix += "│   "
+								}
+
+								for i, child := range node.Children {
+									formatTree(child, childPrefix, i == len(node.Children)-1)
+								}
 							}
+
+							for i, root := range roots {
+								formatTree(root, "", i == len(roots)-1)
+							}
+
+							OutputText += "\n" + strings.Join(lines, "\n")
 							task.Message = "Process list:"
 							task.ClearText = OutputText
 						}
@@ -1056,13 +1175,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 								if len(p.Context) > contextFsize {
 									contextFsize = len(p.Context)
 								}
-							}
-
-							format := fmt.Sprintf(" %%-%dv   %%-%dv   %%-%dv   %%-%dv   %%v", pidFsize, ppidFsize, ttyFsize, contextFsize)
-							OutputText := fmt.Sprintf(format+"\n", "PID", "PPID", "TTY", "Context", "CommandLine")
-							OutputText += fmt.Sprintf(format, "---", "----", "---", "-------", "-----------")
-							for _, p := range Processes {
-								OutputText += fmt.Sprintf("\n"+format, p.Pid, p.Ppid, p.Tty, p.Context, p.Process)
 
 								processData := adaptix.ListingProcessDataUnix{
 									Pid:         uint(p.Pid),
@@ -1071,9 +1183,85 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 									Context:     p.Context,
 									ProcessName: p.Process,
 								}
+
 								proclist = append(proclist, processData)
 							}
 
+							type TreeProc struct {
+								Data     adaptix.ListingProcessDataUnix
+								Children []*TreeProc
+							}
+
+							procMap := make(map[uint]*TreeProc)
+							var roots []*TreeProc
+
+							for _, proc := range proclist {
+								node := &TreeProc{Data: proc}
+								procMap[proc.Pid] = node
+							}
+
+							for _, node := range procMap {
+								if node.Data.Ppid == 0 || node.Data.Pid == node.Data.Ppid {
+									roots = append(roots, node)
+								} else if parent, ok := procMap[node.Data.Ppid]; ok {
+									parent.Children = append(parent.Children, node)
+								} else {
+									roots = append(roots, node)
+								}
+							}
+
+							sort.Slice(roots, func(i, j int) bool {
+								return roots[i].Data.Pid < roots[j].Data.Pid
+							})
+
+							var sortChildren func(node *TreeProc)
+							sortChildren = func(node *TreeProc) {
+								sort.Slice(node.Children, func(i, j int) bool {
+									return node.Children[i].Data.Pid < node.Children[j].Data.Pid
+								})
+								for _, child := range node.Children {
+									sortChildren(child)
+								}
+							}
+							for _, root := range roots {
+								sortChildren(root)
+							}
+
+							format := fmt.Sprintf(" %%-%dv   %%-%dv   %%-%dv   %%-%dv   %%v", pidFsize, ppidFsize, ttyFsize, contextFsize)
+							OutputText := fmt.Sprintf(format, "PID", "PPID", "TTY", "Context", "CommandLine")
+							OutputText += fmt.Sprintf("\n"+format, "---", "----", "---", "-------", "-----------")
+
+							var lines []string
+
+							var formatTree func(node *TreeProc, prefix string, isLast bool)
+							formatTree = func(node *TreeProc, prefix string, isLast bool) {
+								branch := "├─ "
+								if isLast {
+									branch = "└─ "
+								}
+								treePrefix := prefix + branch
+								data := node.Data
+
+								line := fmt.Sprintf(format, data.Pid, data.Ppid, data.TTY, data.Context, treePrefix+data.ProcessName)
+								lines = append(lines, line)
+
+								childPrefix := prefix
+								if isLast {
+									childPrefix += "    "
+								} else {
+									childPrefix += "│   "
+								}
+
+								for i, child := range node.Children {
+									formatTree(child, childPrefix, i == len(node.Children)-1)
+								}
+							}
+
+							for i, root := range roots {
+								formatTree(root, "", i == len(roots)-1)
+							}
+
+							OutputText += "\n" + strings.Join(lines, "\n")
 							task.Message = "Process list:"
 							task.ClearText = OutputText
 						}
@@ -1126,6 +1314,10 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				} else {
 					task.ClearText = params.Output
 				}
+
+			case COMMAND_REV2SELF:
+				task.Message = "Token reverted successfully"
+				_ = ts.TsAgentSetImpersonate(agentData.Id, "", false)
 
 			case COMMAND_RM:
 				task.Message = "Object deleted successfully"
@@ -1187,7 +1379,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				fileId := fmt.Sprintf("%08x", params.FileId)
 
 				if params.Start {
-					//			fileName := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 					task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %v]", params.Path, params.Size, fileId)
 					_ = ts.TsDownloadAdd(agentData.Id, fileId, params.Path, params.Size)
 				}
@@ -1250,102 +1441,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 	/// END CODE
 	return outTasks
-}
-
-/// BROWSERS
-
-func BrowserDisks(agentData adaptix.AgentData) ([]byte, error) {
-	return nil, nil
-}
-
-func BrowserProcess(agentData adaptix.AgentData) ([]byte, error) {
-	cmd := Command{Code: COMMAND_PS, Data: nil}
-	return msgpack.Marshal(cmd)
-}
-
-func BrowserFiles(path string, agentData adaptix.AgentData) ([]byte, error) {
-	packerData, _ := msgpack.Marshal(ParamsLs{Path: path})
-	cmd := Command{Code: COMMAND_LS, Data: packerData}
-	return msgpack.Marshal(cmd)
-}
-
-func BrowserUpload(ts Teamserver, path string, content []byte, agentData adaptix.AgentData) ([]byte, error) {
-
-	zipContent, err := ZipBytes(content, path)
-	if err != nil {
-		return nil, err
-	}
-
-	chunkSize := 0x500000 // 5Mb
-	bufferSize := len(zipContent)
-
-	inTaskData := adaptix.TaskData{
-		Type:    TYPE_TASK,
-		AgentId: agentData.Id,
-		Sync:    false,
-	}
-
-	var cmd Command
-	for start := 0; start < bufferSize; start += chunkSize {
-		fin := start + chunkSize
-		finish := false
-		if fin >= bufferSize {
-			fin = bufferSize
-			finish = true
-		}
-
-		inPackerData, _ := msgpack.Marshal(ParamsUpload{
-			Path:    path,
-			Content: zipContent[start:fin],
-			Finish:  finish,
-		})
-		inCmd := Command{Code: COMMAND_UPLOAD, Data: inPackerData}
-
-		if finish {
-			cmd = inCmd
-			break
-
-		} else {
-			inTaskData.Data, _ = msgpack.Marshal(inCmd)
-			inTaskData.TaskId = fmt.Sprintf("%08x", mrand.Uint32())
-
-			ts.TsTaskCreate(agentData.Id, "", "", inTaskData)
-		}
-	}
-	return msgpack.Marshal(cmd)
-}
-
-/// DOWNLOADS
-
-func TaskDownloadStart(path string, taskId string, agentData adaptix.AgentData) ([]byte, error) {
-	packerData, _ := msgpack.Marshal(ParamsDownload{Path: path, Task: taskId})
-	cmd := Command{Code: COMMAND_DOWNLOAD, Data: packerData}
-	return msgpack.Marshal(cmd)
-}
-
-func TaskDownloadCancel(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	packerData, _ := msgpack.Marshal(ParamsJobKill{Id: fileId})
-	cmd := Command{Code: COMMAND_JOB_KILL, Data: packerData}
-	return msgpack.Marshal(cmd)
-}
-
-func TaskDownloadResume(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	return nil, nil
-}
-
-func TaskDownloadPause(fileId string, agentData adaptix.AgentData) ([]byte, error) {
-	return nil, nil
-}
-
-///
-
-func BrowserJobKill(jobId string) ([]byte, error) {
-	return nil, nil
-}
-
-func BrowserExit(agentData adaptix.AgentData) ([]byte, error) {
-	cmd := Command{Code: COMMAND_EXIT, Data: nil}
-	return msgpack.Marshal(cmd)
 }
 
 /// TUNNEL

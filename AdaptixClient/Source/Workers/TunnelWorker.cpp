@@ -56,7 +56,6 @@ void TunnelWorker::stop()
     }
 
     if (websocket) {
-        // websocket->disconnect(this);
         websocket->blockSignals(true);
         websocket->close();
     }

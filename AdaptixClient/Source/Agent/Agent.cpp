@@ -19,7 +19,6 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->data.Id           = jsonObjAgentData["a_id"].toString();
     this->data.Name         = jsonObjAgentData["a_name"].toString();
     this->data.Listener     = jsonObjAgentData["a_listener"].toString();
-
     this->data.Async        = jsonObjAgentData["a_async"].toBool();
     this->data.ExternalIP   = jsonObjAgentData["a_external_ip"].toString();
     this->data.InternalIP   = jsonObjAgentData["a_internal_ip"].toString();
@@ -54,8 +53,9 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 
     for ( auto listenerData : this->adaptixWidget->Listeners) {
         if ( listenerData.ListenerName == this->data.Listener ) {
-            QString listenerType = listenerData.ListenerType.split("/")[0];
-            if (listenerType == "internal")
+            QStringList parts = listenerData.ListenerFullName.split("/");
+            this->listenerType = parts[2];
+            if (parts[0] == "internal")
                 this->connType = "internal";
             else
                 this->connType = "external";
@@ -123,26 +123,20 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     }
 
     auto regAgnet = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
-    this->browsers = regAgnet.browsers;
 
-    this->Console = new ConsoleWidget(this, regAgnet.commander);
-
-    if (this->browsers.FileBrowser)
-        this->FileBrowser = new BrowserFilesWidget(this);
-
-    if (this->browsers.ProcessBrowser)
-        this->ProcessBrowser = new BrowserProcessWidget(this);
-
-    if (this->browsers.RemoteTerminal)
-        this->Terminal = new TerminalWidget(this, adaptixWidget);
+    this->commander      = regAgnet.commander;
+    this->Console        = new ConsoleWidget(adaptixWidget, this, regAgnet.commander);
+    this->FileBrowser    = new BrowserFilesWidget(this);
+    this->ProcessBrowser = new BrowserProcessWidget(this);
+    this->Terminal       = new TerminalWidget(this, adaptixWidget);
 }
 
 Agent::~Agent() = default;
 
 void Agent::Update(QJsonObject jsonObjAgentData)
 {
-    int old_Sleep     = this->data.Sleep;
-    int old_Jitter    = this->data.Jitter;
+    int old_Sleep        = this->data.Sleep;
+    int old_Jitter       = this->data.Jitter;
     QString old_Color = this->data.Color;
 
     this->data.Sleep        = jsonObjAgentData["a_sleep"].toDouble();
@@ -336,11 +330,9 @@ void Agent::UpdateImage()
     }
     else {
         if (data.Elevated) {
-            // this->item_Os->setIcon(QIcon(":/icons/unknown_red"));
             this->imageActive = QImage(":/graph/"+v+"/unknown_red");
         }
         else {
-            // this->item_Os->setIcon(QIcon(":/icons/unknown_blue"));
             this->imageActive = QImage(":/graph/"+v+"/unknown_blue");
         }
         this->imageInactive = QImage(":/graph/"+v+"/unknown_grey");
@@ -354,11 +346,11 @@ void Agent::UpdateImage()
 
 /// TASK
 
-QString Agent::TasksStop(const QStringList &tasks) const
+QString Agent::TasksCancel(const QStringList &tasks) const
 {
     QString message = QString();
     bool ok = false;
-    bool result = HttpReqTaskStop( data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
+    bool result = HttpReqTaskCancel( data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
     if (!result)
         return "Response timeout";
 
@@ -394,10 +386,7 @@ void Agent::UnsetParent(const PivotData &pivotData)
     this->item_Last->setText( QString::fromUtf8("\u221E  \u221E") );
 }
 
-void Agent::AddChild(const PivotData &pivotData)
-{
-    this->childsId.push_back(pivotData.ChildAgentId);
-}
+void Agent::AddChild(const PivotData &pivotData) { this->childsId.push_back(pivotData.ChildAgentId); }
 
 void Agent::RemoveChild(const PivotData &pivotData)
 {
@@ -407,61 +396,4 @@ void Agent::RemoveChild(const PivotData &pivotData)
             break;
         }
     }
-}
-
-/// BROWSER
-
-QString Agent::BrowserDisks() const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqBrowserDisks( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
-}
-
-QString Agent::BrowserProcess() const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqBrowserProcess( data.Id, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
-}
-
-QString Agent::BrowserList(const QString &path) const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqBrowserList( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
-}
-
-QString Agent::BrowserUpload(const QString &path, const QString &content) const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqBrowserUpload( data.Id, path, content, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
-}
-
-QString Agent::BrowserDownload(const QString &path) const
-{
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqDownloadStart( data.Id, path, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
 }

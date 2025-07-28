@@ -8,6 +8,7 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"encoding/json"
+	"net"
 	"os"
 )
 
@@ -36,6 +37,7 @@ func NewTeamserver() *Teamserver {
 		downloads:   safe.NewMap(),
 		tmp_uploads: safe.NewMap(),
 		screenshots: safe.NewMap(),
+		credentials: safe.NewSlice(),
 		tunnels:     safe.NewMap(),
 		terminals:   safe.NewMap(),
 		pivots:      safe.NewSlice(),
@@ -45,8 +47,9 @@ func NewTeamserver() *Teamserver {
 	return ts
 }
 
-func (ts *Teamserver) SetSettings(port int, endpoint string, password string, cert string, key string, extenders []string) {
+func (ts *Teamserver) SetSettings(host string, port int, endpoint string, password string, cert string, key string, extenders []string) {
 	ts.Profile.Server = &profile.TsProfile{
+		Interface:  host,
 		Port:       port,
 		Endpoint:   endpoint,
 		Password:   password,
@@ -89,7 +92,6 @@ func (ts *Teamserver) RestoreData() {
 		err error
 	)
 
-	/// DATABASE
 	ok = ts.DBMS.DatabaseExists()
 	if !ok {
 		return
@@ -109,6 +111,7 @@ func (ts *Teamserver) RestoreData() {
 			TasksQueue:         safe.NewSlice(),
 			TunnelConnectTasks: safe.NewSlice(),
 			RunningTasks:       safe.NewMap(),
+			RunningJobs:        safe.NewMap(),
 			CompletedTasks:     safe.NewMap(),
 			PivotParent:        nil,
 			PivotChilds:        safe.NewSlice(),
@@ -204,6 +207,20 @@ func (ts *Teamserver) RestoreData() {
 	}
 	logs.Success("   ", "Restored %v screens", countScreenshots)
 
+	/// CREDENTIALS
+	countCredentials := 0
+	restoreCredentials := ts.DBMS.DbCredentialsAll()
+	for _, restoreCredential := range restoreCredentials {
+
+		ts.credentials.Put(restoreCredential)
+
+		packet := CreateSpCredentialsAdd(*restoreCredential)
+		ts.TsSyncAllClients(packet)
+
+		countCredentials++
+	}
+	logs.Success("   ", "Restored %v credentials", countCredentials)
+
 	/// LISTENERS
 	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()
@@ -224,6 +241,28 @@ func (ts *Teamserver) Start() {
 		err     error
 	)
 
+	interfaces, err := net.Interfaces()
+	if err == nil {
+		ts.Parameters.Interfaces = append(ts.Parameters.Interfaces, "0.0.0.0")
+		for _, i := range interfaces {
+			iAddrs, err := i.Addrs()
+			if err == nil {
+				for _, addr := range iAddrs {
+					ipNet, ok := addr.(*net.IPNet)
+					if ok {
+						if ipNet.IP.To4() != nil {
+							ts.Parameters.Interfaces = append(ts.Parameters.Interfaces, ipNet.IP.String())
+						}
+					}
+				}
+			}
+		}
+	}
+	if len(ts.Parameters.Interfaces) == 0 {
+		ts.Parameters.Interfaces = append(ts.Parameters.Interfaces, "0.0.0.0")
+		ts.Parameters.Interfaces = append(ts.Parameters.Interfaces, "127.0.0.1")
+	}
+
 	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server, *ts.Profile.ServerResponse)
 	if err != nil {
 		logs.Error("", "Failed to init HTTP handler: "+err.Error())
@@ -231,7 +270,7 @@ func (ts *Teamserver) Start() {
 	}
 
 	go ts.AdaptixServer.Start(&stopped)
-	logs.Success("", "Starting server -> https://%s:%v%s", "0.0.0.0", ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
+	logs.Success("", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
 
 	ts.RestoreData()
 

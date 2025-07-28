@@ -37,4 +37,4 @@ public:
     void finish() const;
 };
 
-#endif //ADAPTIXCLIENT_DIALOGSYNCPACKET_H
+#endif

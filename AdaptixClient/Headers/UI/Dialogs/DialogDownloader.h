@@ -17,7 +17,7 @@ Q_OBJECT
     QLabel*       speedLabel   = nullptr;
     QLabel*       statusLabel  = nullptr;
     QLabel*       labelPath    = nullptr;
-    QLineEdit*    lineeditPash = nullptr;
+    QLineEdit*    lineeditPath = nullptr;
 
     QThread*          workerThread;
     DownloaderWorker* worker;
@@ -27,4 +27,4 @@ public:
     ~DialogDownloader() override;
 };
 
-#endif //DIALOGDOWNLOADER_H
+#endif

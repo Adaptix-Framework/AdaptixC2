@@ -49,4 +49,4 @@ private slots:
 
 };
 
-#endif //ADAPTIXCLIENT_DIALOGCONNECT_H
+#endif

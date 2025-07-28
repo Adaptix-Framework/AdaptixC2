@@ -732,7 +732,7 @@ KeyboardTranslator::Entry KeyboardTranslator::findEntry(int keyCode, Qt::Keyboar
             if (it.value().matches(keyCode, modifiers, state))
                 return *it;
     }
-    return Entry(); // entry not found
+    return Entry();
 }
 
 void KeyboardTranslatorManager::addTranslator(KeyboardTranslator *translator) {
@@ -745,7 +745,6 @@ void KeyboardTranslatorManager::addTranslator(KeyboardTranslator *translator) {
 bool KeyboardTranslatorManager::deleteTranslator(const QString &name) {
     Q_ASSERT(_translators.contains(name));
 
-    // locate and delete
     QString path = findTranslatorPath(name);
     if (QFile::remove(path)) {
         _translators.remove(name);

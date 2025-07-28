@@ -1,15 +1,17 @@
 #include <Agent/Agent.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/AdaptixWidget.h>
+#include <Client/AxScript/AxScriptManager.h>
 
 BrowserProcessWidget::BrowserProcessWidget(Agent* a)
 {
     agent = a;
     this->createUI();
 
-    connect(buttonReload, &QPushButton::clicked,   this, &BrowserProcessWidget::onReload);
-    connect(inputFilter,  &QLineEdit::textChanged, this, &BrowserProcessWidget::onFilter);
-    connect(tableWidget,  &QTableWidget::customContextMenuRequested, this, &BrowserProcessWidget::handleTableMenu );
+    connect(buttonReload,      &QPushButton::clicked,   this, &BrowserProcessWidget::onReload);
+    connect(inputFilter,       &QLineEdit::textChanged, this, &BrowserProcessWidget::onFilter);
+    connect(tableWidget,       &QTableWidget::customContextMenuRequested, this, &BrowserProcessWidget::handleTableMenu );
     connect(tableWidget,       &QTableWidget::clicked, this, &BrowserProcessWidget::onTableSelect );
     connect(treeBrowserWidget, &QTreeWidget::clicked,  this, &BrowserProcessWidget::onTreeSelect );
 }
@@ -42,7 +44,6 @@ void BrowserProcessWidget::createUI()
     tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
     tableWidget->setFocusPolicy( Qt::NoFocus );
     tableWidget->setAlternatingRowColors( true );
-    tableWidget->setSelectionMode( QAbstractItemView::SingleSelection );
     tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
     tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
     tableWidget->horizontalHeader()->setHighlightSections( false );
@@ -314,7 +315,7 @@ void BrowserProcessWidget::setTreeProcessDataWin(QMap<int, BrowserProcessDataWin
     treeBrowserWidget->expandAll();
 }
 
-void BrowserProcessWidget::addProcessToTreeWin(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessDataWin> processMap, QMap<int, QTreeWidgetItem*> *nodeMap)
+void BrowserProcessWidget::addProcessToTreeWin(QTreeWidgetItem* parent, const int parentPID, QMap<int, BrowserProcessDataWin> processMap, QMap<int, QTreeWidgetItem*> *nodeMap)
 {
     auto pids = processMap.keys();
     for (int pid : pids) {
@@ -366,7 +367,7 @@ void BrowserProcessWidget::setTreeProcessDataUnix(QMap<int, BrowserProcessDataUn
     treeBrowserWidget->expandAll();
 }
 
-void BrowserProcessWidget::addProcessToTreeUnix(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessDataUnix> processMap, QMap<int, QTreeWidgetItem*> *nodeMap)
+void BrowserProcessWidget::addProcessToTreeUnix(QTreeWidgetItem* parent, const int parentPID, QMap<int, BrowserProcessDataUnix> processMap, QMap<int, QTreeWidgetItem*> *nodeMap)
 {
     auto pids = processMap.keys();
     for (int pid : pids) {
@@ -423,14 +424,55 @@ void BrowserProcessWidget::filterTableWidget(const QString &filterText) const
 
 void BrowserProcessWidget::onReload() const
 {
-    QString status = agent->BrowserProcess();
-    statusLabel->setText(status);
+    statusLabel->setText("");
+    emit agent->adaptixWidget->eventProcessBrowserList(agent->data.Id);
 }
 
 void BrowserProcessWidget::onFilter(const QString &text) const
 {
     this->filterTreeWidget(text);
     this->filterTableWidget(text);
+}
+
+void BrowserProcessWidget::handleTableMenu(const QPoint &pos)
+{
+    if ( !tableWidget->itemAt(pos) )
+        return;
+
+    QVector<DataMenuProcessBrowser> items;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            DataMenuProcessBrowser data;
+            data.agentId = this->agent->data.Id;
+
+            if (this->agent->data.Os == OS_WINDOWS) {
+                data.pid        = tableWidget->item(rowIndex, 0)->text();
+                data.ppid       = tableWidget->item(rowIndex, 1)->text();
+                data.arch       = tableWidget->item(rowIndex, 2)->text();
+                data.session_id = tableWidget->item(rowIndex, 3)->text();
+                data.context    = tableWidget->item(rowIndex, 4)->text();
+                data.process    = tableWidget->item(rowIndex, 5)->text();
+            }
+            else {
+                data.pid        = tableWidget->item(rowIndex, 0)->text();
+                data.ppid       = tableWidget->item(rowIndex, 1)->text();
+                data.session_id = tableWidget->item(rowIndex, 2)->text();
+                data.context    = tableWidget->item(rowIndex, 3)->text();
+                data.process    = tableWidget->item(rowIndex, 4)->text();
+            }
+            items.append(data);
+        }
+    }
+
+    auto ctxMenu = QMenu();
+
+    int count = agent->adaptixWidget->ScriptManager->AddMenuProcessBrowser(&ctxMenu, items);
+    if (count) {
+        ctxMenu.addSeparator();
+    }
+    ctxMenu.addAction( "Copy PID", this, &BrowserProcessWidget::actionCopyPid);
+
+    ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }
 
 void BrowserProcessWidget::actionCopyPid() const
@@ -440,16 +482,6 @@ void BrowserProcessWidget::actionCopyPid() const
         QString pid = tableWidget->item( row, 0 )->text();
         QApplication::clipboard()->setText( pid );
     }
-}
-
-void BrowserProcessWidget::handleTableMenu(const QPoint &pos)
-{
-    if ( ! tableWidget->itemAt(pos) )
-        return;
-
-    auto ctxMenu = QMenu();
-    ctxMenu.addAction( "Copy PID", this, &BrowserProcessWidget::actionCopyPid);
-    ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
 }
 
 void BrowserProcessWidget::onTableSelect() const

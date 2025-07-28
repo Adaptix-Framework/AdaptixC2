@@ -24,10 +24,14 @@ MainUI::MainUI()
     menuProject->addAction(newProjectAction);
     menuProject->addAction(closeProjectAction);
 
-    auto menuExtender = new QMenu("Extender", this);
-    auto extenderAction = new QAction("Open extender", this);
-    connect(extenderAction, &QAction::triggered, this, &MainUI::onExtender);
-    menuExtender->addAction(extenderAction);
+    auto axConsoleAction = new QAction("AxScript console ", this);
+    connect(axConsoleAction, &QAction::triggered, this, &MainUI::onAxScriptConsole);
+    auto scriptManagerAction = new QAction("Script manager", this);
+    connect(scriptManagerAction, &QAction::triggered, this, &MainUI::onScriptManager);
+
+    auto menuExtender = new QMenu("AxScript", this);
+    menuExtender->addAction(axConsoleAction);
+    menuExtender->addAction(scriptManagerAction);
 
     auto menuSettings = new QMenu("Settings", this);
     auto settingsAction = new QAction("Open settings", this);
@@ -51,10 +55,8 @@ MainUI::MainUI()
 
 MainUI::~MainUI()
 {
-    for (auto project : AdaptixProjects.keys()) {
-        delete AdaptixProjects[project];
-        AdaptixProjects.remove(project);
-    }
+    qDeleteAll(AdaptixProjects);
+    AdaptixProjects.clear();
 }
 
 void MainUI::closeEvent(QCloseEvent* event)
@@ -66,27 +68,37 @@ void MainUI::closeEvent(QCloseEvent* event)
 void MainUI::AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
     auto adaptixWidget = new AdaptixWidget(profile, channelThread, channelWsWorker);
-    if (!adaptixWidget)
-        return;
-
-    for (auto extFile : GlobalClient->extender->extenderFiles){
-        if(extFile.Valid && extFile.Enabled)
-            adaptixWidget->AddExtension(extFile);
-    }
+    connect(adaptixWidget, &AdaptixWidget::SyncedOnReloadSignal,   GlobalClient->extender, &Extender::syncedOnReload);
+    connect(adaptixWidget, &AdaptixWidget::LoadGlobalScriptSignal, GlobalClient->extender, &Extender::loadGlobalScript);
+    connect(adaptixWidget, &AdaptixWidget::UnloadGlobalScriptSignal, GlobalClient->extender, &Extender::unloadGlobalScript);
 
     QString tabName = "   " + profile->GetProject() + "   " ;
     int id = mainuiTabWidget->addTab( adaptixWidget, tabName);
     mainuiTabWidget->setCurrentIndex( id );
 
-    AdaptixProjects[profile->GetProject()] = adaptixWidget;
+    AdaptixProjects.append(adaptixWidget);
 }
 
-void MainUI::AddNewExtension(const ExtensionFile &extFile)
+bool MainUI::AddNewExtension(ExtensionFile *extFile)
+{
+    bool result = true;
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget) {
+            result = adaptixWidget->AddExtension(extFile);
+            if (!result)
+                break;
+        }
+    }
+    return result;
+}
+
+bool MainUI::SyncExtension(const QString &Project, ExtensionFile *extFile)
 {
     for (auto adaptixWidget : AdaptixProjects) {
-        if (adaptixWidget)
-            adaptixWidget->AddExtension(extFile);
+        if (adaptixWidget && adaptixWidget->GetProfile()->GetProject() == Project)
+            return adaptixWidget->AddExtension(extFile);
     }
+    return true;
 }
 
 void MainUI::RemoveExtension(const ExtensionFile &extFile)
@@ -97,7 +109,8 @@ void MainUI::RemoveExtension(const ExtensionFile &extFile)
     }
 }
 
-void MainUI::UpdateSessionsTableColumns() {
+void MainUI::UpdateSessionsTableColumns()
+{
     for (auto adaptixWidget : AdaptixProjects) {
         if (adaptixWidget)
             adaptixWidget->SessionsTablePage->UpdateColumnsVisible();
@@ -115,7 +128,8 @@ void MainUI::UpdateGraphIcons() {
     }
 }
 
-void MainUI::UpdateTasksTableColumns() {
+void MainUI::UpdateTasksTableColumns()
+{
     for (auto adaptixWidget : AdaptixProjects) {
         if (adaptixWidget)
             adaptixWidget->TasksTab->UpdateColumnsVisible();
@@ -124,10 +138,7 @@ void MainUI::UpdateTasksTableColumns() {
 
 /// Actions
 
-void MainUI::onNewProject()
-{
-    GlobalClient->NewProject();
-}
+void MainUI::onNewProject() { GlobalClient->NewProject(); }
 
 void MainUI::onCloseProject()
 {
@@ -136,20 +147,28 @@ void MainUI::onCloseProject()
     if (!adaptixWidget)
         return;
 
-    if (adaptixWidget) {
-        AdaptixProjects.remove(adaptixWidget->GetProfile()->GetProject());
-        adaptixWidget->Close();
-        delete adaptixWidget;
+    for (int i = 0; i < AdaptixProjects.size(); ++i) {
+        if (AdaptixProjects[i] == adaptixWidget) {
+            AdaptixProjects.remove(i);
+            break;
+        }
     }
+
+    adaptixWidget->Close();
+    delete adaptixWidget;
+
     mainuiTabWidget->removeTab(currentIndex);
 }
 
-void MainUI::onExtender()
+void MainUI::onAxScriptConsole()
 {
-    GlobalClient->extender->dialogExtender->show();
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainuiTabWidget->currentWidget() );
+    if (!adaptixWidget)
+        return;
+
+    adaptixWidget->LoadAxConsoleUI();
 }
 
-void MainUI::onSettings()
-{
-    GlobalClient->settings->dialogSettings->show();
-}
+void MainUI::onScriptManager() { GlobalClient->extender->dialogExtender->show(); }
+
+void MainUI::onSettings() { GlobalClient->settings->dialogSettings->show(); }

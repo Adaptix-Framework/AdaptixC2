@@ -2,11 +2,29 @@
 #include "ProcLoader.h"
 #include "utils.h"
 
+#define llabs(n) ((n) < 0 ? -(n) : (n))
+
 #if defined(__x86_64__) || defined(_WIN64)
 int IMP_LENGTH = 6;
 #else
 int IMP_LENGTH = 7;
 #endif
+
+int my_strncpy_s(char* dest, unsigned int destsz, const char* src, unsigned int count) {
+	if (!dest || !src) return 1;
+	if (destsz == 0)   return 2;
+
+	unsigned int i = 0;
+	for (; i < count && i < destsz - 1 && src[i] != '\0'; ++i)
+		dest[i] = src[i];
+
+	if (i < count && src[i] != '\0') {
+		dest[0] = '\0';
+		return 3;
+	}
+	dest[i] = '\0';
+	return 0;
+}
 
 void InitBofOutputData()
 {
@@ -68,14 +86,14 @@ BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 	{ HASH_FUNC_GETMODULEHANDLEA,             proxy_GetModuleHandleA },
 	{ HASH_FUNC_FREELIBRARY,                  proxy_FreeLibrary },
 	{ HASH_FUNC_GETPROCADDRESS,				  proxy_GetProcAddress },
-	{ HASH_FUNC___C_SPECIFIC_HANDLER,         NULL },
+	{ HASH_FUNC___C_SPECIFIC_HANDLER,         NULL }, // GetProcAddress(kern, "__C_specific_handler");
 };
 
 void* FindProcBySymbol(char* symbol)
 {
 	if ( StrLenA(symbol) > IMP_LENGTH) {
 		ULONG funcHash = Djb2A((PUCHAR) symbol + IMP_LENGTH);
-		for (int i = 0; i < BEACON_FUNCTIONS_COUNT; i++) { // BeaconFunctionsCount
+		for (int i = 0; i < BEACON_FUNCTIONS_COUNT; i++) {
 			if (funcHash == BeaconFunctions[i].hash) {
 				if ( BeaconFunctions[i].proc != NULL ) 
 					return BeaconFunctions[i].proc;
@@ -136,7 +154,11 @@ bool AllocateSections(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* mapSe
 		mapSections[i] = (char*)ApiWin->VirtualAlloc(NULL, pSection->SizeOfRawData, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
 		if (!mapSections[i] && pSection->SizeOfRawData)
 			return FALSE;
-		memcpy(mapSections[i], coffFile + pSection->PointerToRawData, pSection->SizeOfRawData);
+
+		if (pSection->PointerToRawData)
+			memcpy(mapSections[i], coffFile + pSection->PointerToRawData, pSection->SizeOfRawData);
+		else
+			memset(mapSections[i], 0, pSection->SizeOfRawData);
 	}
 	return TRUE;
 }
@@ -146,13 +168,16 @@ void CleanupSections(PCHAR* mapSections, int maxSections)
 	for (int i = 0; i < maxSections; i++) {
 		if (mapSections[i]) {
 			ApiWin->VirtualFree(mapSections[i], 0, MEM_RELEASE);
+			mapSections[i] = NULL;
 		}
 	}
 }
 
-bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* mapSections, COF_SYMBOL* pSymbolTable, char* mapFunctions) {
+bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* mapSections, COF_SYMBOL* pSymbolTable, LPVOID* mapFunctions) {
 	bool status = TRUE;
 	int mapFunctionsSize = 0;
+	char* procSymbol = NULL;
+	char  procSymbolShort[9] = { 0 };
 
 	for (int sectionIndex = 0; sectionIndex < pHeader->NumberOfSections; sectionIndex++) {
 		COF_SECTION* pSection = (COF_SECTION*)(coffFile + sizeof(COF_HEADER) + (sizeof(COF_SECTION) * sectionIndex));
@@ -166,70 +191,96 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 			}
 
 			int offset = 0;
+			void* procAddress = NULL;
 #ifdef _WIN64
 			unsigned long long bigOffset = 0;
 #endif
 
-			if (pSymbol.Name.cName[0] != 0) { // Internal Symbol
-				int sectionNumber = pSymbol.SectionNumber - 1;
-				if (sectionNumber < 0 || sectionNumber >= pHeader->NumberOfSections) {
-					BeaconOutput(BOF_ERROR_SYMBOL, pSymbol.Name.cName, StrLenA(pSymbol.Name.cName));
-					status = FALSE;
-				}
-
-#ifdef _WIN64
-				if (pRelocTable->Type == IMAGE_REL_AMD64_ADDR64) {
-					memcpy(&bigOffset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(unsigned long long));
-					bigOffset += (unsigned long long)mapSections[sectionNumber];
-					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &bigOffset, sizeof(unsigned long long));
-				}
-				else if (pRelocTable->Type == IMAGE_REL_AMD64_ADDR32NB || pRelocTable->Type == IMAGE_REL_AMD64_REL32) {
-					memcpy(&offset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(int));
-					offset += (int)(mapSections[sectionNumber] - (mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4));
-					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(int));
-				}
-#else
-				memcpy(&offset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(int));
-				offset += (unsigned int)(mapSections[pSymbolTable[pRelocTable->SymbolTableIndex].SectionNumber - 1]);
-				memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(unsigned int));
-#endif
+			if (pSymbol.Name.dwName[0] == 0) {
+				procSymbol = ((char*)(pSymbolTable + pHeader->NumberOfSymbols)) + pSymbol.Name.dwName[1];
 			}
-			else { // External Symbol
-				unsigned int symOffset = pSymbol.Name.dwName[1];
-				char* procSymbol = ((char*)(pSymbolTable + pHeader->NumberOfSymbols)) + symOffset;
-				void* procAddress = FindProcBySymbol(procSymbol);
-				if (!procAddress) {
+			else {
+				if (pSymbol.Name.cName[7] != 0) {
+					my_strncpy_s(procSymbolShort, sizeof(procSymbolShort), pSymbol.Name.cName, sizeof(pSymbol.Name.cName));
+					procSymbol = procSymbolShort;
+				}
+				else {
+					procSymbol = pSymbol.Name.cName;
+				}
+			}
+
+			if (pSymbol.SectionNumber > 0)
+			{
+				procAddress = mapSections[pSymbol.SectionNumber - 1];
+				procAddress = (void*)((char*)procAddress + pSymbol.Value);
+			}
+			else if(pSymbol.Value == 0 && (pSymbol.StorageClass == IMAGE_SYM_CLASS_EXTERNAL || pSymbol.StorageClass == IMAGE_SYM_CLASS_EXTERNAL_DEF))
+			{
+				procAddress = FindProcBySymbol(procSymbol);
+				if (procAddress == NULL && pSymbolTable[pRelocTable->SymbolTableIndex].SectionNumber == 0) {
 					BeaconOutput(BOF_ERROR_SYMBOL, procSymbol, StrLenA(procSymbol));
 					status = FALSE;
 				}
-#ifdef _WIN64
-				if (pRelocTable->Type == IMAGE_REL_AMD64_REL32) {
-					if (((char*)(mapFunctions + mapFunctionsSize * 8) - (mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4)) > 0xffffffff) {
-						return FALSE;
-					}
-					memcpy(mapFunctions + mapFunctionsSize * 8, &procAddress, sizeof(unsigned long long));
-					offset = (int)((mapFunctions + mapFunctionsSize * 8) - (mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4));
-					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(int));
+				else {
+					mapFunctions[mapFunctionsSize] = procAddress;
+					procAddress = &mapFunctions[mapFunctionsSize];
 					mapFunctionsSize++;
+				}
+			}
+			else
+			{
+				BeaconOutput(BOF_ERROR_SYMBOL, "Undefined symbol", 17);
+				status = FALSE;
+			}
 
-					if (mapFunctionsSize * 8 >= MAP_FUNCTIONS_SIZE) {
-						BeaconOutput(BOF_ERROR_MAX_FUNCS, procSymbol, StrLenA(procSymbol));
+			if (status != FALSE) {
+#ifdef _WIN64
+				if (pRelocTable->Type == IMAGE_REL_AMD64_ADDR64) // Type == 1 - 64-bit VA of the relocation target
+				{
+					memcpy(&bigOffset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(unsigned long long));
+					bigOffset += (unsigned long long) procAddress;
+					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &bigOffset, sizeof(unsigned long long));
+				}
+				else if (pRelocTable->Type == IMAGE_REL_AMD64_ADDR32NB) // Type == 3 relocation code
+				{
+					memcpy(&offset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(int));
+					if (((char*)(mapSections[pSymbol.SectionNumber - 1] + offset) - (char*)(mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4)) > 0xffffffff) {
 						return FALSE;
 					}
+					offset = ((char*)(mapSections[pSymbol.SectionNumber - 1] + offset) - (char*)(mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4));
+					offset += pSymbolTable[pRelocTable->SymbolTableIndex].Value;
+					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(int));
+				}
+				// Type == 4,5,6,7,8,9 relocation code (make global variables)
+				else if (pRelocTable->Type == IMAGE_REL_AMD64_REL32 || pRelocTable->Type == IMAGE_REL_AMD64_REL32_1 || pRelocTable->Type == IMAGE_REL_AMD64_REL32_2 || pRelocTable->Type == IMAGE_REL_AMD64_REL32_3 || pRelocTable->Type == IMAGE_REL_AMD64_REL32_4 || pRelocTable->Type == IMAGE_REL_AMD64_REL32_5)
+				{
+					offset = 0;
+					int typeIndex = pRelocTable->Type - 4;
+
+					memcpy(&offset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(int));
+					if (llabs((long long)procAddress - (long long)(mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4 + typeIndex)) > UINT_MAX) {
+						return FALSE;
+					}
+					offset += ((size_t)procAddress - ((size_t)mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4 + typeIndex));
+					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(int));
 				}
 #else
-				memcpy(mapFunctions + mapFunctionsSize * 4, &procAddress, sizeof(int));
-				offset = (int)(mapFunctions + mapFunctionsSize * 4);
-				memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(int));
-				mapFunctionsSize++;
-
-				if (mapFunctionsSize * 4 >= MAP_FUNCTIONS_SIZE) {
-					BeaconOutput(BOF_ERROR_MAX_FUNCS, procSymbol, StrLenA(procSymbol));
-					return FALSE;
+				if (pRelocTable->Type == IMAGE_REL_I386_DIR32)
+				{
+					offset = 0;
+					memcpy(&offset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(int));
+					offset = (unsigned int)procAddress + offset;
+					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(unsigned int));
+				}
+				else if (pRelocTable->Type == IMAGE_REL_I386_REL32)
+				{
+					offset = 0;
+					memcpy(&offset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(int));
+					offset = (unsigned int)procAddress - (unsigned int)(mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4);
+					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(unsigned int));
 				}
 #endif
 			}
-
 			pRelocTable = (COF_RELOCATION*)((char*)pRelocTable + sizeof(COF_RELOCATION));
 		}
 	}
@@ -253,7 +304,7 @@ Packer* ObjectExecute(ULONG taskId, char* targetFuncName, unsigned char* coffFil
 	COF_HEADER* pHeader      = NULL;
 	COF_SYMBOL* pSymbolTable = NULL;
 	PCHAR entryFuncName      = NULL;
-	PCHAR mapFunctions       = NULL;
+	LPVOID* mapFunctions       = NULL;
 	BOOL  result			 = FALSE;
 	PCHAR mapSections[MAX_SECTIONS] = { 0 };
 
@@ -279,7 +330,7 @@ Packer* ObjectExecute(ULONG taskId, char* targetFuncName, unsigned char* coffFil
 		goto RET;
 	}
 
-	mapFunctions = (char*) ApiWin->VirtualAlloc(NULL, MAP_FUNCTIONS_SIZE, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
+	mapFunctions = (LPVOID*) ApiWin->VirtualAlloc(NULL, MAP_FUNCTIONS_SIZE, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
 	if (!mapFunctions) {
 		BeaconOutput(BOF_ERROR_ALLOC, NULL, 0);
 		goto RET;
@@ -294,8 +345,10 @@ Packer* ObjectExecute(ULONG taskId, char* targetFuncName, unsigned char* coffFil
 	ExecuteProc(entryFuncName, args, argsSize, pSymbolTable, pHeader, mapSections);
 
 RET:
-	if(mapFunctions)
+	if (mapFunctions) {
 		ApiWin->VirtualFree(mapFunctions, 0, MEM_RELEASE);
+		mapFunctions = NULL;
+	}
 
 	FreeFunctionName(entryFuncName);
 	CleanupSections(mapSections, MAX_SECTIONS);

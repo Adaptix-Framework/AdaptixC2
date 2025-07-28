@@ -20,7 +20,7 @@ DialogDownloader::DialogDownloader(const QString &url, const QString &otp, const
     statusLabel  = new QLabel("Starting...", this);
     speedLabel   = new QLabel("Speed: 0 KB/s", this);
     labelPath    = new QLabel("File saved to:", this);
-    lineeditPash = new QLineEdit(savedPath, this);
+    lineeditPath = new QLineEdit(savedPath, this);
     cancelButton = new QPushButton("Cancel", this);
 
     QVBoxLayout *layout = new QVBoxLayout(this);
@@ -28,12 +28,13 @@ DialogDownloader::DialogDownloader(const QString &url, const QString &otp, const
     layout->addWidget(progressBar);
     layout->addWidget(speedLabel);
     layout->addWidget(labelPath);
-    layout->addWidget(lineeditPash);
+    layout->addWidget(lineeditPath);
     layout->addWidget(cancelButton);
     setLayout(layout);
 
     labelPath->setVisible(false);
-    lineeditPash->setVisible(false);
+    lineeditPath->setVisible(false);
+    lineeditPath->setReadOnly(false);
 
     workerThread = new QThread(this);
     worker = new DownloaderWorker(url, otp, savedPath);
@@ -59,7 +60,8 @@ DialogDownloader::DialogDownloader(const QString &url, const QString &otp, const
 
             speedLabel->setVisible(false);
             labelPath->setVisible(true);
-            lineeditPash->setVisible(true);
+            lineeditPath->setVisible(true);
+            lineeditPath->selectAll();
         }
         cancelButton->setText("Close");
         disconnect(cancelButton, nullptr, nullptr, nullptr);

@@ -9,14 +9,14 @@ import (
 	"sort"
 )
 
-func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
-	var (
-		buffer   bytes.Buffer
-		err      error
-		clientWS *websocket.Conn
-	)
+func (ts *Teamserver) TsClientConnected(username string) bool {
+	_, found := ts.clients.Get(username)
+	return found
+}
 
-	err = json.NewEncoder(&buffer).Encode(packet)
+func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(packet)
 	if err != nil {
 		return
 	}
@@ -24,8 +24,9 @@ func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	value, found := ts.clients.Get(username)
 	if found {
 		client := value.(*Client)
-		clientWS = client.socket
-		err = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+		client.lockSocket.Lock()
+		err = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+		client.lockSocket.Unlock()
 		if err != nil {
 			return
 		}
@@ -57,7 +58,7 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 	})
 }
 
-func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
+func (ts *Teamserver) TsSyncStored(client *Client) {
 	var (
 		buffer  bytes.Buffer
 		packets []interface{}
@@ -71,21 +72,25 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	packets = append(packets, ts.TsPresyncTunnels()...)
 	packets = append(packets, ts.TsPresyncEvents()...)
 	packets = append(packets, ts.TsPresyncPivots()...)
+	packets = append(packets, ts.TsPresyncCredentials()...)
 
-	startPacket := CreateSpSyncStart(len(packets))
+	client.lockSocket.Lock()
+	defer client.lockSocket.Unlock()
+
+	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
 	_ = json.NewEncoder(&buffer).Encode(startPacket)
-	_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 	buffer.Reset()
 
 	for _, p := range packets {
 		var pBuffer bytes.Buffer
 		_ = json.NewEncoder(&pBuffer).Encode(p)
-		_ = clientWS.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
+		_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
 	}
 
 	finishPacket := CreateSpSyncFinish()
 	_ = json.NewEncoder(&buffer).Encode(finishPacket)
-	_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 	buffer.Reset()
 }
 
@@ -95,14 +100,14 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 	var packets []interface{}
 	ts.listener_configs.ForEach(func(key string, value interface{}) bool {
 		listenerInfo := value.(extender.ListenerInfo)
-		p := CreateSpListenerReg(key, listenerInfo.UI)
+		p := CreateSpListenerReg(key, listenerInfo.AX)
 		packets = append(packets, p)
 		return true
 	})
 
 	ts.agent_configs.ForEach(func(key string, value interface{}) bool {
 		agentInfo := value.(extender.AgentInfo)
-		p := CreateSpAgentReg(agentInfo.Name, agentInfo.Watermark, agentInfo.ListenersJson, agentInfo.HandlersJson)
+		p := CreateSpAgentReg(agentInfo.Name, agentInfo.AX, agentInfo.Listeners)
 		packets = append(packets, p)
 		return true
 	})
@@ -207,6 +212,16 @@ func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
 	for _, screenData := range sortedScreens {
 		t := CreateSpScreenshotCreate(screenData)
 		packets = append(packets, t)
+	}
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncCredentials() []interface{} {
+	var packets []interface{}
+	for value := range ts.credentials.Iterator() {
+		creds := value.Item.(*adaptix.CredsData)
+		p := CreateSpCredentialsAdd(*creds)
+		packets = append(packets, p)
 	}
 	return packets
 }

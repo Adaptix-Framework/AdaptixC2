@@ -56,4 +56,4 @@ public slots:
      void recvDataFromSocket(const QByteArray &msg);
 };
 
-#endif //TERMINALWIDGET_H
+#endif

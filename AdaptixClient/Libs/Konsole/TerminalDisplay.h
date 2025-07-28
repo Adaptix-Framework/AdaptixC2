@@ -322,7 +322,6 @@ protected:
 
     void mouseTripleClickEvent(QMouseEvent* ev);
 
-    // reimplemented
     void inputMethodEvent ( QInputMethodEvent* event ) override;
     QVariant inputMethodQuery( Qt::InputMethodQuery query ) const override;
 
@@ -337,7 +336,7 @@ protected slots:
 private slots:
 
     void swapColorTable();
-    void tripleClickTimeout();  // resets possibleTripleClick
+    void tripleClickTimeout();
 
 private:
 
@@ -384,7 +383,7 @@ private:
     bool isLineChar(Character c) const;
     bool isLineCharString(const std::wstring& string) const;
 
-    void hideStaleMouse() const; // conditionally hides the mouse cursor
+    void hideStaleMouse() const;
 
     QPointer<ScreenWindow> _screenWindow;
 
@@ -393,28 +392,28 @@ private:
     QGridLayout* _gridLayout;
 
     CharWidth *_charWidth;
-    bool _fixedFont; // has fixed pitch
-    bool _fixedFont_original; // used only in textWidth()
-    int  _fontHeight;     // height
-    int  _fontWidth;     // width
-    int  _fontAscent;     // ascend
-    bool _boldIntense;   // Whether intense colors should be rendered with bold font
-    int  _drawTextAdditionHeight;   // additional height to prevent font trancation
-    bool _drawTextTestFlag;         // indicate it is a testing or not
+    bool _fixedFont;
+    bool _fixedFont_original;
+    int  _fontHeight;
+    int  _fontWidth;
+    int  _fontAscent;
+    bool _boldIntense;
+    int  _drawTextAdditionHeight;
+    bool _drawTextTestFlag;
 
-    int _leftMargin;    // offset
-    int _topMargin;    // offset
+    int _leftMargin;
+    int _topMargin;
 
-    int _lines;      // the number of lines that can be displayed in the widget
-    int _columns;    // the number of columns that can be displayed in the widget
+    int _lines;
+    int _columns;
 
-    int _usedLines;  // the number of lines that are actually being used, this will be less
+    int _usedLines;
 
-    int _usedColumns; // the number of columns that are actually being used, this will be less
+    int _usedColumns;
 
     int _contentHeight;
     int _contentWidth;
-    Character* _image; // [lines][columns]
+    Character* _image;
 
     int _imageSize;
     QVector<LineProperty> _lineProperties;
@@ -431,10 +430,10 @@ private:
     bool _disabledBracketedPasteMode;
     bool _showResizeNotificationEnabled;
 
-    QPoint  _iPntSel; // initial selection point
-    QPoint  _pntSel; // current selection point
-    QPoint  _tripleSelBegin; // help avoid flicker
-    int     _actSel; // selection state
+    QPoint  _iPntSel;
+    QPoint  _pntSel;
+    QPoint  _tripleSelBegin;
+    int     _actSel;
     bool    _wordSelectionMode;
     bool    _lineSelectionMode;
     bool    _preserveLineBreaks;
@@ -446,23 +445,22 @@ private:
     QString     _wordCharacters;
     int         _bellMode;
 
-    bool _blinking;   // hide text in paintEvent
-    bool _hasBlinker; // has characters to blink
-    bool _cursorBlinking;     // hide cursor in paintEvent
-    bool _hasBlinkingCursor;  // has blinking cursor enabled
-    bool _allowBlinkingText;  // allow text to blink
-    bool _ctrlDrag;           // require Ctrl key for drag
+    bool _blinking;
+    bool _hasBlinker;
+    bool _cursorBlinking;
+    bool _hasBlinkingCursor;
+    bool _allowBlinkingText;
+    bool _ctrlDrag;
     TripleClickMode _tripleClickMode;
-    bool _isFixedSize; //Columns / lines are locked.
-    QTimer* _blinkTimer;  // active when hasBlinker
-    QTimer* _blinkCursorTimer;  // active when hasBlinkingCursor
+    bool _isFixedSize;
+    QTimer* _blinkTimer;
+    QTimer* _blinkCursorTimer;
     static std::shared_ptr<QTimer> _hideMouseTimer;
 
-    //QMenu* _drop;
     QString _dropText;
     int _dndFileCount;
 
-    bool _possibleTripleClick;  // is set in mouseDoubleClickEvent and deleted
+    bool _possibleTripleClick;
 
     QLabel* _resizeWidget;
     QTimer* _resizeTimer;
@@ -473,7 +471,7 @@ private:
 
     uint _lineSpacing;
 
-    bool _colorsInverted; // true during visual bell
+    bool _colorsInverted;
 
     QSize _size;
 
@@ -481,9 +479,6 @@ private:
 
     QPixmap *_backgroundPixmapRef = nullptr;
     QPixmap _backgroundImage;
-    // QMovie *_backgroundMovie = nullptr;
-    // QMediaPlayer* _backgroundVideoPlayer;
-    // QVideoSink* _backgroundVideoSink;
     QPixmap _backgroundVideoFrame;
     bool _isLocked;
     QPixmap _lockbackgroundImage;
@@ -510,7 +505,7 @@ private:
     };
     InputMethodData _inputMethodData;
 
-    static bool _antialiasText;   // do we antialias or not
+    static bool _antialiasText;
 
     static const int TEXT_BLINK_DELAY = 500;
 
@@ -521,7 +516,7 @@ private:
 
     int _mouseAutohideDelay;
 
-    int _preeditColorIndex = 16; //Color4Intense
+    int _preeditColorIndex = 16;
 
     int shiftSelectionStartX = -1;
     int shiftSelectionStartY = -1;
@@ -595,4 +590,4 @@ private:
     QDialogButtonBox *buttonBox;
 };
 
-#endif // TERMINALDISPLAY_H
+#endif

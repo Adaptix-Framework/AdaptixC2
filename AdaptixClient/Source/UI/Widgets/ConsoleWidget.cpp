@@ -1,5 +1,4 @@
 #include <Agent/Agent.h>
-#include <Agent/Commander.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Dialogs/DialogUploader.h>
@@ -8,23 +7,27 @@
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
-
-ConsoleWidget::ConsoleWidget( Agent* a, Commander* c)
+ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c)
 {
-    agent     = a;
-    commander = c;
+    adaptixWidget = w;
+    agent         = a;
+    commander     = c;
 
     this->createUI();
-    this->UpgradeCompleter();
+    this->upgradeCompleter();
 
     connect(CommandCompleter, QOverload<const QString &>::of(&QCompleter::activated), this, &ConsoleWidget::onCompletionSelected, Qt::DirectConnection);
     connect(InputLineEdit,    &QLineEdit::returnPressed,                              this, &ConsoleWidget::processInput,         Qt::QueuedConnection );
     connect(searchLineEdit,   &QLineEdit::returnPressed,                              this, &ConsoleWidget::handleSearch);
     connect(nextButton,       &ClickableLabel::clicked,                               this, &ConsoleWidget::handleSearch);
     connect(prevButton,       &ClickableLabel::clicked,                               this, &ConsoleWidget::handleSearchBackward);
+    connect(searchInput,      &KPH_SearchInput::escPressed,                           this, &ConsoleWidget::toggleSearchPanel );
     connect(hideButton,       &ClickableLabel::clicked,                               this, &ConsoleWidget::toggleSearchPanel);
     connect(OutputTextEdit,   &TextEditConsole::ctx_find,                             this, &ConsoleWidget::toggleSearchPanel);
     connect(OutputTextEdit,   &TextEditConsole::ctx_history,                          this, &ConsoleWidget::handleShowHistory);
+    connect(commander,        &Commander::commandsUpdated,                            this, &ConsoleWidget::upgradeCompleter);
+
+
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), OutputTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -63,6 +66,8 @@ void ConsoleWidget::createUI()
     searchLineEdit = new QLineEdit();
     searchLineEdit->setPlaceholderText("Find");
     searchLineEdit->setMaximumWidth(300);
+
+    searchInput = new KPH_SearchInput(searchLineEdit, this);
 
     hideButton = new ClickableLabel("X");
     hideButton->setCursor( Qt::PointingHandCursor );
@@ -171,33 +176,21 @@ void ConsoleWidget::highlightCurrent() const
     searchLabel->setText(QString("%1 of %2").arg(currentIndex + 1).arg(sels.size()));
 }
 
-///
 
-void ConsoleWidget::UpgradeCompleter() const
+
+void ConsoleWidget::upgradeCompleter() const
 {
     if (commander)
         completerModel->setStringList(commander->GetCommands());
 }
 
-void ConsoleWidget::InputFocus() const
-{
-    InputLineEdit->setFocus();
-}
+void ConsoleWidget::InputFocus() const { InputLineEdit->setFocus(); }
 
-void ConsoleWidget::AddToHistory(const QString &command)
-{
-    kphInputLineEdit->AddToHistory(command);
-}
+void ConsoleWidget::AddToHistory(const QString &command) { kphInputLineEdit->AddToHistory(command); }
 
-void ConsoleWidget::SetInput(const QString &command)
-{
-    InputLineEdit->setText(command);
-}
+void ConsoleWidget::SetInput(const QString &command) { InputLineEdit->setText(command); }
 
-void ConsoleWidget::Clear()
-{
-    OutputTextEdit->clear();
-}
+void ConsoleWidget::Clear() { OutputTextEdit->clear(); }
 
 void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &taskId, const int type, const QString &message, const QString &text, const bool completed ) const
 {
@@ -217,10 +210,10 @@ void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &
         else if (type == CONSOLE_OUT_ERROR || type == CONSOLE_OUT_LOCAL_ERROR)
             OutputTextEdit->appendColor("[-] ", QColor(COLOR_ChiliPepper));
         else
-            OutputTextEdit->appendPlain("[!] ");
+            OutputTextEdit->appendPlain(" ");
 
-        QString printMessage = TrimmedEnds(message);// +"\n";
-        if ( text.isEmpty() || type == CONSOLE_OUT_LOCAL_SUCCESS || type == CONSOLE_OUT_LOCAL_ERROR || type == CONSOLE_OUT_SUCCESS || type == CONSOLE_OUT_ERROR)
+        QString printMessage = TrimmedEnds(message);
+        if ( text.isEmpty() || type == CONSOLE_OUT_LOCAL_INFO || type == CONSOLE_OUT_LOCAL_SUCCESS || type == CONSOLE_OUT_LOCAL_ERROR || type == CONSOLE_OUT_SUCCESS || type == CONSOLE_OUT_ERROR)
             printMessage += "\n";
         OutputTextEdit->appendPlain(printMessage);
     }
@@ -262,7 +255,161 @@ void ConsoleWidget::ConsoleOutputPrompt(const qint64 timestamp, const QString &t
     }
 }
 
+void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const CommanderResult &cmdResult, const bool UI)
+{
+    if ( cmdResult.output ) {
+        if (UI) {
+            if (cmdResult.error)
+                MessageError(cmdResult.message);
+        }
+        else {
+            QString message = "";
+            QString text    = "";
+            int     type    = 0;
+
+            if (cmdResult.error) {
+                type    = CONSOLE_OUT_LOCAL_ERROR;
+                message = cmdResult.message;
+            }
+            else {
+                type = CONSOLE_OUT_LOCAL;
+                text = cmdResult.message;
+            }
+
+            this->ConsoleOutputPrompt(0, "", "", commandLine);
+            this->ConsoleOutputMessage(0, "", type, message, text, true);
+        }
+        return;
+    }
+
+    QString hookId = "";
+    if (cmdResult.post_hook.isSet) {
+        hookId = GenerateRandomString(8, "hex");
+        while (adaptixWidget->PostHooksJS.contains(hookId))
+            hookId = GenerateRandomString(8, "hex");
+
+        adaptixWidget->PostHooksJS[hookId] = cmdResult.post_hook;
+    }
+
+    QJsonDocument jsonDoc(cmdResult.data);
+    QString commandData = jsonDoc.toJson();
+
+    QJsonObject dataJson;
+    dataJson["name"]       = agent->data.Name;
+    dataJson["id"]         = agent->data.Id;
+    dataJson["ui"]         = UI;
+    dataJson["cmdline"]    = commandLine;
+    dataJson["data"]       = commandData;
+    dataJson["ax_hook_id"] = hookId;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    /// 5 Mb
+    if (commandData.size() < 0x500000) {
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqAgentCommand(jsonData, *(agent->adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                adaptixWidget->PostHooksJS.remove(hookId);
+            MessageError("Response timeout");
+            return;
+        }
+        if (!ok) {
+            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                adaptixWidget->PostHooksJS.remove(hookId);
+            this->ConsoleOutputPrompt(0, "", "", commandLine);
+            this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, message, "", true);
+        }
+    }
+    else {
+
+        /// 1. Get OTP
+
+        QString message = QString();
+        bool ok = false;
+        QString objId = GenerateRandomString(8, "hex");
+        bool result = HttpReqGetOTP("tmp_upload", objId, *(agent->adaptixWidget->GetProfile()), &message, &ok);
+        if (!result) {
+            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                adaptixWidget->PostHooksJS.remove(hookId);
+            MessageError("Response timeout");
+            return;
+        }
+        if (!ok) {
+            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                adaptixWidget->PostHooksJS.remove(hookId);
+            MessageError(message);
+            return;
+        }
+        QString otp = message;
+
+        /// 2. Upload with OTP
+
+        QString sUrl = agent->adaptixWidget->GetProfile()->GetURL() + "/otp/upload/temp";
+
+        auto* uploaderDialog = new DialogUploader(sUrl, otp, jsonData);
+        uploaderDialog->setAttribute(Qt::WA_DeleteOnClose);
+
+        connect(uploaderDialog, &DialogUploader::finished, [&](const bool success) {
+            if (!success) {
+                if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                    adaptixWidget->PostHooksJS.remove(hookId);
+                return;
+            }
+
+            /// 3. Send Command
+
+            QJsonObject data2Json;
+            data2Json["object_id"] = objId;
+            QByteArray json2Data = QJsonDocument(data2Json).toJson();
+
+            sUrl = agent->adaptixWidget->GetProfile()->GetURL() + "/agent/command/file";
+            QJsonObject jsonObject = HttpReq(sUrl, json2Data, agent->adaptixWidget->GetProfile()->GetAccessToken(), 10000);
+            if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+                if (jsonObject["ok"].toBool() == false) {
+                    if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                        adaptixWidget->PostHooksJS.remove(hookId);
+                    MessageError( jsonObject["message"].toString());
+                }
+            }
+            else {
+                if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                    adaptixWidget->PostHooksJS.remove(hookId);
+                MessageError("Response timeout");
+                return;
+            }
+        });
+
+        uploaderDialog->exec();
+    }
+}
+
 /// SLOTS
+
+void ConsoleWidget::processInput()
+{
+    if (!commander)
+        return;
+
+    QString commandLine = TrimmedEnds(InputLineEdit->text());
+
+    if ( this->userSelectedCompletion ) {
+        this->userSelectedCompletion = false;
+            return;
+    }
+
+    InputLineEdit->clear();
+    if (commandLine.isEmpty())
+        return;
+
+    this->AddToHistory(commandLine);
+
+    auto cmdResult = commander->ProcessInput( agent->data.Id, commandLine );
+    if (cmdResult.is_pre_hook)
+        return;
+
+    this->ProcessCmdResult(commandLine, cmdResult, false);
+}
 
 void ConsoleWidget::toggleSearchPanel()
 {
@@ -376,117 +523,4 @@ void ConsoleWidget::handleShowHistory()
     historyDialog->show();
 }
 
-void ConsoleWidget::processInput()
-{
-    if (!commander)
-        return;
-
-    QString commandLine = TrimmedEnds(InputLineEdit->text());
-
-    if ( this->userSelectedCompletion ) {
-        this->userSelectedCompletion = false;
-            return;
-    }
-
-    InputLineEdit->clear();
-    if (commandLine.isEmpty())
-        return;
-
-    this->AddToHistory(commandLine);
-
-    auto cmdResult = commander->ProcessInput( agent->data, commandLine );
-    if ( cmdResult.output ) {
-        QString message = "";
-        QString text    = "";
-        int     type    = 0;
-
-        if (cmdResult.error) {
-            type    = CONSOLE_OUT_LOCAL_ERROR;
-            message = cmdResult.message;
-        }
-        else {
-            type = CONSOLE_OUT_LOCAL;
-            text = cmdResult.message;
-        }
-
-        this->ConsoleOutputPrompt(0, "", "", commandLine);
-        this->ConsoleOutputMessage(0, "", type, message, text, true);
-
-        return;
-    }
-
-    /// 5 Mb
-    if (cmdResult.message.size() < 0x500000) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentCommand(agent->data.Name, agent->data.Id, commandLine, cmdResult.message, *(agent->adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
-        if (!ok) {
-            this->ConsoleOutputPrompt(0, "", "", commandLine);
-            this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, message, "", true);
-        }
-    }
-    else {
-
-        /// 1. Get OTP
-
-        QString message = QString();
-        bool ok = false;
-        QString objId = GenerateRandomString(8, "hex");
-        bool result = HttpReqGetOTP("tmp_upload", objId, *(agent->adaptixWidget->GetProfile()), &message, &ok);
-        if (!result) {
-            MessageError("Response timeout");
-            return;
-        }
-        if (!ok) {
-            MessageError(message);
-            return;
-        }
-        QString otp = message;
-
-        /// 2. Upload with OTP
-
-        QJsonObject dataJson;
-        dataJson["name"]    = agent->data.Name;
-        dataJson["id"]      = agent->data.Id;
-        dataJson["cmdline"] = commandLine;
-        dataJson["data"]    = cmdResult.message;
-        QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-        QString sUrl = agent->adaptixWidget->GetProfile()->GetURL() + "/otp/upload/temp";
-
-        auto* uploaderDialog = new DialogUploader(sUrl, otp, jsonData);
-        uploaderDialog->setAttribute(Qt::WA_DeleteOnClose);
-
-        connect(uploaderDialog, &DialogUploader::finished, [&](const bool success) {
-            if (!success)
-                return;
-
-            /// 3. Send Command
-
-            QJsonObject data2Json;
-            data2Json["object_id"] = objId;
-            QByteArray json2Data = QJsonDocument(data2Json).toJson();
-
-            sUrl = agent->adaptixWidget->GetProfile()->GetURL() + "/agent/command/file";
-            QJsonObject jsonObject = HttpReq(sUrl, json2Data, agent->adaptixWidget->GetProfile()->GetAccessToken(), 10000);
-            if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
-                if (jsonObject["ok"].toBool() == false)
-                    MessageError( jsonObject["message"].toString());
-            }
-            else {
-                MessageError("Response timeout");
-                return;
-            }
-        });
-
-        uploaderDialog->exec();
-    }
-}
-
-void ConsoleWidget::onCompletionSelected(const QString &selectedText) {
-    userSelectedCompletion = true;
-}
+void ConsoleWidget::onCompletionSelected(const QString &selectedText) { userSelectedCompletion = true; }

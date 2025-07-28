@@ -63,18 +63,20 @@ void TunnelEndpoint::SetTunnelId(const QString &tunnelId)
 
 void TunnelEndpoint::StopChannel(const QString& channelId)
 {
- //    auto it = tunnelChannels.find(channelId);
- //    if (it == tunnelChannels.end())
- //        return;
- //
- //    ChannelHandle handle = it.value();
- //    tunnelChannels.erase(it);
- //
-	// handle.worker->stop();
- //   dQMetaObject::invokeMethod(handle.worker, "stop", Qt::QueuedConnection);
- //
- //    handle.thread->quit();
- //    handle.thread->wait(1000);
+    /*
+    auto it = tunnelChannels.find(channelId);
+    if (it == tunnelChannels.end())
+        return;
+
+    ChannelHandle handle = it.value();
+    tunnelChannels.erase(it);
+
+	handle.worker->stop();
+   dQMetaObject::invokeMethod(handle.worker, "stop", Qt::QueuedConnection);
+
+    handle.thread->quit();
+    handle.thread->wait(1000);
+    */
 }
 
 void TunnelEndpoint::Stop()
@@ -82,22 +84,24 @@ void TunnelEndpoint::Stop()
     if (tcpServer->isListening())
         tcpServer->close();
 
-	// for (auto id : tunnelChannels.keys()) {
-	// 	auto handle = tunnelChannels.value(id);
-	// 	tunnelChannels.remove(id);
-	//
-	// 	if (handle.worker && handle.thread) {
-	// 		// handle.worker->stop();
-	// 		QMetaObject::invokeMethod( handle.worker, "stop", Qt::BlockingQueuedConnection );
-	// 		handle.thread->quit();
-	// 		handle.thread->wait();
-	// 	}
-	//
-	// 	if (handle.worker)
-	// 		handle.worker->deleteLater();
-	// 	if (handle.thread)
-	// 		handle.thread->deleteLater();
-	// }
+	/*
+	for (auto id : tunnelChannels.keys()) {
+		auto handle = tunnelChannels.value(id);
+		tunnelChannels.remove(id);
+
+		if (handle.worker && handle.thread) {
+			// handle.worker->stop();
+			QMetaObject::invokeMethod( handle.worker, "stop", Qt::BlockingQueuedConnection );
+			handle.thread->quit();
+			handle.thread->wait();
+		}
+
+		if (handle.worker)
+			handle.worker->deleteLater();
+		if (handle.thread)
+			handle.thread->deleteLater();
+	}
+	*/
 }
 
 void TunnelEndpoint::onStartLpfChannel()
@@ -126,7 +130,6 @@ void TunnelEndpoint::onStartLpfChannel()
         connect(thread, &QThread::finished,      thread, &QThread::deleteLater);
     	connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
 
-        // tunnelChannels.insert(channelId, { thread, worker, channelId });
         thread->start();
     }
 }
@@ -145,7 +148,7 @@ void TunnelEndpoint::onStartSocks4Channel()
         }
         QByteArray header = clientSock->read(8);
         const uchar* d = reinterpret_cast<const uchar*>(header.constData());
-        if (d[0] != 0x04 || d[1] != 0x01) {  // VER=4, CMD=1 (CONNECT)
+        if (d[0] != 0x04 || d[1] != 0x01) {  /// VER=4, CMD=1 (CONNECT)
             clientSock->disconnectFromHost();
             return;
         }
@@ -220,7 +223,7 @@ void TunnelEndpoint::onStartSocks5Channel()
     	QString dstAddress;
     	quint16 dstPort;
 
-    	if (addrType == 0x01) { // IPv4
+    	if (addrType == 0x01) { /// IPv4
     		if (request.size() < 10) {
     			clientSock->disconnectFromHost();
     			continue;
@@ -229,7 +232,7 @@ void TunnelEndpoint::onStartSocks5Channel()
     		dstAddress = ip.toString();
     		dstPort = (static_cast<uchar>(request[8]) << 8) | static_cast<uchar>(request[9]);
 
-    	} else if (addrType == 0x03) { // DNS
+    	} else if (addrType == 0x03) { /// DNS
     		uchar domainLen = static_cast<uchar>(request[4]);
     		if (request.size() < 5 + domainLen + 2) {
     			clientSock->disconnectFromHost();
@@ -358,7 +361,7 @@ void TunnelEndpoint::onStartSocks5AuthChannel()
     	QString dstAddress;
     	quint16 dstPort;
 
-    	if (addrType == 0x01) { // IPv4
+    	if (addrType == 0x01) { /// IPv4
     		if (request.size() < 10) {
     			clientSock->disconnectFromHost();
 		    	continue;
@@ -368,7 +371,7 @@ void TunnelEndpoint::onStartSocks5AuthChannel()
     		dstAddress = ip.toString();
     		dstPort = (static_cast<uchar>(request[8]) << 8) | static_cast<uchar>(request[9]);
 
-    	} else if (addrType == 0x03) { // DNS
+    	} else if (addrType == 0x03) { /// DNS
     		uchar domainLen = static_cast<uchar>(request[4]);
     		if (request.size() < 5 + domainLen + 2) {
     			clientSock->disconnectFromHost();

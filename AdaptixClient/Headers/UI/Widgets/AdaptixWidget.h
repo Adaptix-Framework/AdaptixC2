@@ -1,35 +1,34 @@
 #ifndef ADAPTIXCLIENT_ADAPTIXWIDGET_H
 #define ADAPTIXCLIENT_ADAPTIXWIDGET_H
 
+#include <Agent/Commander.h>
 #include <main.h>
+#include <QJSValue>
 
 class Task;
 class Agent;
-class Commander;
 class LastTickWorker;
 class WebSocketWorker;
 class SessionsTableWidget;
 class SessionsGraph;
+class AxConsoleWidget;
 class LogsWidget;
 class ListenersWidget;
 class DownloadsWidget;
 class ScreenshotsWidget;
+class CredentialsWidget;
 class TasksWidget;
 class TunnelsWidget;
 class TunnelEndpoint;
-class WidgetBuilder;
 class DialogSyncPacket;
 class AuthProfile;
+class AxScriptManager;
 
 typedef struct RegAgentConfig {
-    QString        agentName;
-    QString        watermark;
-    QString        listenerName;
-    QString        operatingSystem;
-    QString        handlerId;
-    WidgetBuilder* builder;
+    QString        name;
+    QString        listenerType;
+    int            os;
     Commander*     commander;
-    BrowsersConfig browsers;
     bool           valid;
 } RegAgentConfig;
 
@@ -77,6 +76,9 @@ public:
     QThread*         TickThread      = nullptr;
     LastTickWorker*  TickWorker      = nullptr;
 
+    AxScriptManager* ScriptManager = nullptr;
+
+    AxConsoleWidget*     AxConsoleTab      = nullptr;
     LogsWidget*          LogsTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
@@ -84,41 +86,62 @@ public:
     TunnelsWidget*       TunnelsTab        = nullptr;
     DownloadsWidget*     DownloadsTab      = nullptr;
     ScreenshotsWidget*   ScreenshotsTab    = nullptr;
+    CredentialsWidget*   CredentialsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
-    QMap<QString, QMap<QString, Commander*>> Commanders;    /// agentName -> (handlerId -> commander)
-    QMap<QString, QMap<QString, BrowsersConfig>> AgentBrowserConfigs;    /// agentName -> (handlerId -> BrowserConfigs)
     QVector<RegAgentConfig>        RegisterAgents;
-    QMap<QString, WidgetBuilder*>  RegisterListeners;  /// listenerName -> builder
     QVector<ListenerData>          Listeners;
     QVector<TunnelData>            Tunnels;
     QMap<QString, DownloadData>    Downloads;
     QMap<QString, ScreenData>      Screenshots;
+    QVector<CredentialData>        Credentials;
     QMap<QString, PivotData>       Pivots;
     QVector<QString>               TasksVector;
     QMap<QString, Task*>           TasksMap;
     QVector<QString>               AgentsVector;
     QMap<QString, Agent*>          AgentsMap;
-    QMap<QString, ExtensionFile>   Extensions;
+    QMap<QString, PostHook>        PostHooksJS;
     QMap<QString, TunnelEndpoint*> ClientTunnels;
+    QStringList addresses;
 
     explicit AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker);
     ~AdaptixWidget() override;
 
     AuthProfile* GetProfile() const;
 
-    void RegisterListenerConfig(const QString &fn, const QString &ui);
-    void RegisterAgentConfig(const QString &agentName, const QString &watermark, const QString &handlersJson, const QString &listenersJson);
-    void ClearAdaptix();
-    RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
     void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
     void RemoveTab(int index) const;
-    void AddExtension(ExtensionFile ext);
+    bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);
     void Close();
+    void ClearAdaptix();
+
+    void RegisterListenerConfig(const QString &fn, const QString &ax_script);
+    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners);
+    QList<QString> GetAgentNames(const QString &listenerType) const;
+    RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
+    QList<Commander*> GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const;
+    QList<Commander*> GetCommandersAll() const;
+
+    void PostHookProcess(QJsonObject jsonHookObj);
+
+    void LoadConsoleUI(const QString &AgentId);
+    void LoadTasksOutput() const;
+    void LoadFileBrowserUI(const QString &AgentId);
+    void LoadProcessBrowserUI(const QString &AgentId);
+    void LoadTerminalUI(const QString &AgentId);
+    void ShowTunnelCreator(const QString &AgentId, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
 
 signals:
     void SyncedSignal();
+    void SyncedOnReloadSignal(QString project);
+    void LoadGlobalScriptSignal(QString path);
+    void UnloadGlobalScriptSignal(QString path);
+
+    void eventFileBrowserDisks(QString agentId);
+    void eventFileBrowserList(QString agentId, QString path);
+    void eventFileBrowserUpload(QString agentId, QString path, QString localFilename);
+    void eventProcessBrowserList(QString agentId);
 
 public slots:
     void ChannelClose() const;
@@ -128,18 +151,14 @@ public slots:
     void SetSessionsTableUI() const;
     void SetGraphUI() const;
     void SetTasksUI() const;
+    void LoadAxConsoleUI() const;
     void LoadLogsUI() const;
     void LoadListenersUI() const;
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;
     void LoadScreenshotsUI() const;
-    void LoadTasksOutput() const;
+    void LoadCredentialsUI() const;
     void OnReconnect();
-    void LoadConsoleUI(const QString &AgentId);
-    void LoadFileBrowserUI(const QString &AgentId);
-    void LoadProcessBrowserUI(const QString &AgentId);
-    void LoadTerminalUI(const QString &AgentId);
-
 };
 
-#endif //ADAPTIXCLIENT_ADAPTIXWIDGET_H
+#endif

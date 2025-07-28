@@ -92,7 +92,6 @@ void Emulation::setScreen(int n) {
     Screen *old = _currentScreen;
     _currentScreen = _screen[n & 1];
     if (_currentScreen != old) {
-        // tell all windows onto this emulation to switch to the newly active screen
         for (ScreenWindow *window : std::as_const(_windows))
             window->setScreen(_currentScreen);
         checkScreenInUse();
@@ -146,8 +145,6 @@ QString Emulation::keyBindings() const {
     return _keyTranslator->name(); 
 }
 
-// process application unicode input to terminal
-// this is a trivial scanner
 void Emulation::receiveChar(wchar_t c) {
     c &= 0xff;
     switch (c) {
@@ -175,7 +172,7 @@ void Emulation::receiveChar(wchar_t c) {
 void Emulation::sendKeyEvent(QKeyEvent *ev, bool) {
     emit stateSet(NOTIFYNORMAL);
 
-    if (!ev->text().isEmpty()) { // A block of text
+    if (!ev->text().isEmpty()) {
         emit sendData(ev->text().toUtf8().constData(), ev->text().length());
     }
 }
@@ -197,11 +194,9 @@ void Emulation::receiveData(const char *text, int length) {
 
     for (int i = 0; i < length; i++) {
         if (text[i] == '\030') {
-            // ZRQINIT 0 Request receive init
             if ((length - i - 1 > 3) && (strncmp(text + i + 1, "B00", 3) == 0)) {
                 emit zmodemSendDetected();
             }
-            // ZRINIT	1	 Receive init
             if ((length - i - 1 > 5) && (strncmp(text + i + 1, "B0100", 5) == 0)) {
                 emit zmodemRecvDetected();
             }
@@ -237,7 +232,6 @@ void Emulation::writeToStream(TerminalCharacterDecoder *_decoder, int startLine,
 }
 
 int Emulation::lineCount() const {
-    // sum number of lines currently on _screen plus number of lines in history
     return _currentScreen->getLines() + _currentScreen->getHistLines();
 }
 
@@ -316,7 +310,7 @@ uint ExtendedCharTable::createExtendedChar(uint* unicodePoints , ushort length) 
     const uint initialHash = hash;
     bool triedCleaningSolution = false;
 
-    while (extendedCharTable.contains(hash) && hash != 0) { // 0 has a special meaning for chars so we don't use it
+    while (extendedCharTable.contains(hash) && hash != 0) {
         if (extendedCharMatch(hash, unicodePoints, length)) {
             return hash;
         } else {
@@ -342,7 +336,6 @@ uint ExtendedCharTable::createExtendedChar(uint* unicodePoints , ushort length) 
                         }
                     }
                 } else {
-                    qWarning() << "Using all the extended char hashes, going to miss this extended character";
                     return 0;
                 }
             }
@@ -374,7 +367,6 @@ ExtendedCharTable::ExtendedCharTable() {
 }
 
 ExtendedCharTable::~ExtendedCharTable() {
-    // free all allocated character buffers
     QHashIterator<uint,uint*> iter(extendedCharTable);
     while (iter.hasNext()) {
         iter.next();
@@ -382,5 +374,4 @@ ExtendedCharTable::~ExtendedCharTable() {
     }
 }
 
-// global instance
 ExtendedCharTable ExtendedCharTable::instance;

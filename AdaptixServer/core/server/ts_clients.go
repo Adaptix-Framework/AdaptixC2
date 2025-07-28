@@ -58,7 +58,7 @@ func (ts *Teamserver) TsClientSync(username string) {
 	socket := client.socket
 
 	if !client.synced {
-		ts.TsSyncStored(socket)
+		ts.TsSyncStored(client)
 
 		for {
 			if client.tmp_store.Len() > 0 {

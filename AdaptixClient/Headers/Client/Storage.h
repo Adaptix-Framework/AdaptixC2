@@ -47,4 +47,4 @@ public:
     static void UpdateSettingsTasks(const SettingsData &settingsData);
 };
 
-#endif //ADAPTIXCLIENT_STORAGE_H
+#endif

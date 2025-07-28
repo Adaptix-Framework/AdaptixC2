@@ -233,6 +233,16 @@ type ParamsTerminalStop struct {
 	TermId int `msgpack:"term_id"`
 }
 
+type ParamsExecBof struct {
+	Object   []byte `msgpack:"object"`
+	ArgsPack string `msgpack:"argspack"`
+	Task     string `msgpack:"task"`
+}
+
+type AnsExecBof struct {
+	Output string `msgpack:"output"`
+}
+
 const (
 	COMMAND_ERROR      = 0
 	COMMAND_PWD        = 1
@@ -254,12 +264,16 @@ const (
 	COMMAND_RUN        = 17
 	COMMAND_JOB_LIST   = 18
 	COMMAND_JOB_KILL   = 19
+	COMMAND_REV2SELF   = 20
 
 	COMMAND_TUNNEL_START = 31
 	COMMAND_TUNNEL_STOP  = 32
 
 	COMMAND_TERMINAL_START = 35
 	COMMAND_TERMINAL_STOP  = 36
+
+	COMMAND_EXEC_BOF     = 50
+	COMMAND_EXEC_BOF_OUT = 51
 )
 
 var codePageMapping = map[int]encoding.Encoding{

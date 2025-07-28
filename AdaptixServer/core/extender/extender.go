@@ -62,19 +62,6 @@ func (ex *AdaptixExtender) LoadPluginListener(config_path string, config_data []
 		return
 	}
 
-	listenerUI, err := json.Marshal(configListener.UI)
-	if err != nil {
-		logs.Error("", "Error %s converting info to JSON: %s", config_path, err.Error())
-		return
-	}
-
-	listenerInfo := ListenerInfo{
-		Name:     configListener.ListenerName,
-		Type:     configListener.ListenerType,
-		Protocol: configListener.Protocol,
-		UI:       string(listenerUI),
-	}
-
 	plugin_path := filepath.Dir(config_path) + "/" + configListener.ExtenderFile
 	plug, err := plugin.Open(plugin_path)
 	if err != nil {
@@ -100,6 +87,20 @@ func (ex *AdaptixExtender) LoadPluginListener(config_path string, config_data []
 		return
 	}
 
+	ax_path := filepath.Dir(config_path) + "/" + configListener.AxFile
+	ax_content, err := os.ReadFile(ax_path)
+	if err != nil {
+		logs.Error("", "failed to read ax file %s: %s", ax_path, err.Error())
+		return
+	}
+
+	listenerInfo := ListenerInfo{
+		Name:     configListener.ListenerName,
+		Type:     configListener.ListenerType,
+		Protocol: configListener.Protocol,
+		AX:       string(ax_content),
+	}
+
 	err = ex.ts.TsListenerReg(listenerInfo)
 	if err != nil {
 		logs.Error("", "plugin %s does not registered: %s", plugin_path, err.Error())
@@ -118,72 +119,18 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 		return
 	}
 
-	browsersFunc := make(map[string]map[int]ExConfAgentSupportedBrowsers)
-
-	for _, listener := range configAgent.Listeners {
-		for _, config := range listener.OsConfigs {
-			OStype := 0
-			if config.Os == "windows" {
-				OStype = 1
-			} else if config.Os == "linux" {
-				OStype = 2
-			} else if config.Os == "mac" {
-				OStype = 3
-			} else {
-				logs.Error("", "Error OS for listener: %s. Must be linux, windows, or mac.", listener.ListenerName)
-				return
-			}
-
-			found := false
-			for _, handler := range configAgent.Handlers {
-				if config.Handler == handler.Id {
-
-					var supportsFunc ExConfAgentSupportedBrowsers
-					hb, err := json.Marshal(handler.Browsers)
-					if err != nil {
-						logs.Error("", "Error %s converting info to JSON: %s", config_path, err.Error())
-						return
-					}
-					err = json.Unmarshal(hb, &supportsFunc)
-					if err != nil {
-						logs.Error("", "Error config parse: %s", err.Error())
-						return
-					}
-
-					_, ok := browsersFunc[listener.ListenerName]
-					if !ok {
-						browsersFunc[listener.ListenerName] = make(map[int]ExConfAgentSupportedBrowsers)
-					}
-					browsersFunc[listener.ListenerName][OStype] = supportsFunc
-
-					found = true
-					break
-				}
-			}
-			if !found {
-				logs.Error("", "Handler %s for listener %s not found.", config.Handler, listener.ListenerName)
-				return
-			}
-		}
-	}
-
-	handlersJson, err := json.Marshal(configAgent.Handlers)
+	ax_path := filepath.Dir(config_path) + "/" + configAgent.AxFile
+	ax_content, err := os.ReadFile(ax_path)
 	if err != nil {
-		logs.Error("", "Error %s converting info to JSON: %s", config_path, err.Error())
-		return
-	}
-
-	listenersJson, err := json.Marshal(configAgent.Listeners)
-	if err != nil {
-		logs.Error("", "Error %s converting info to JSON: %s", config_path, err.Error())
+		logs.Error("", "failed to read ax file %s: %s", ax_path, err.Error())
 		return
 	}
 
 	agentInfo := AgentInfo{
-		Name:          configAgent.AgentName,
-		Watermark:     configAgent.AgentWatermark,
-		ListenersJson: string(listenersJson),
-		HandlersJson:  string(handlersJson),
+		Name:      configAgent.AgentName,
+		Watermark: configAgent.AgentWatermark,
+		AX:        string(ax_content),
+		Listeners: configAgent.Listeners,
 	}
 
 	plugin_path := filepath.Dir(config_path) + "/" + configAgent.ExtenderFile
@@ -205,9 +152,9 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 		return
 	}
 
-	module, ok := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), agentInfo.Watermark).(ExtAgentFunc)
+	module, ok := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), agentInfo.Watermark).(ExtAgent)
 	if !ok {
-		logs.Error("", "plugin %s does not implement the ExtAgentFunc interface", plugin_path)
+		logs.Error("", "plugin %s does not implement the ExtAgent interface", plugin_path)
 		return
 	}
 
@@ -217,8 +164,5 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 		return
 	}
 
-	ex.agentModules[agentInfo.Name] = ExtAgent{
-		F:        module,
-		Supports: browsersFunc,
-	}
+	ex.agentModules[agentInfo.Name] = module
 }
