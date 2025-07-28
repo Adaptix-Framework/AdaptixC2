@@ -5,8 +5,10 @@ function ListenerUI(mode_create)
     // MAIN SETTING
     let labelHost = form.create_label("Host & port (Bind):");
     let comboHostBind = form.create_combo();
-    comboHostBind.setItems(ax.interfaces());
     comboHostBind.setEnabled(mode_create)
+    comboHostBind.clear();
+    let addrs = ax.interfaces();
+    for (let item of addrs) { comboHostBind.addItem(item); }
     let spinPortBind = form.create_spin();
     spinPortBind.setRange(1, 65535);
     spinPortBind.setValue(443);
