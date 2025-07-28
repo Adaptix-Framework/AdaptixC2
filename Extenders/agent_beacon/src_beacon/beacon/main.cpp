@@ -79,9 +79,7 @@ static CRITICAL_SECTION g_InitLock;
 void InitializeSynchronization()
 {
     if (InterlockedCompareExchange(&g_LockInitialized, TRUE, FALSE) == FALSE)
-    {
         InitializeCriticalSection(&g_InitLock);
-    }
 }
 
 // Internal function to run agent with proper synchronization
@@ -89,22 +87,15 @@ void run()
 {
     // Initialize synchronization if needed
     InitializeSynchronization();
-    
+
     // Attempt to acquire initialization ownership
-    if (InterlockedCompareExchange(&g_AgentInitialized, TRUE, FALSE) == FALSE)
-    {
+    if (InterlockedCompareExchange(&g_AgentInitialized, TRUE, FALSE) == FALSE) {
         // Create agent thread without blocking
         HANDLE hThread = CreateThread(NULL, 0, AgentMain, NULL, 0, NULL);
         if (hThread)
-        {
-            // Detach thread for asynchronous execution
-            CloseHandle(hThread);
-        }
+            CloseHandle(hThread); // Detach thread for asynchronous execution
         else
-        {
-            // Reset flag on failure to allow retry
-            InterlockedExchange(&g_AgentInitialized, FALSE);
-        }
+            InterlockedExchange(&g_AgentInitialized, FALSE); // Reset flag on failure to allow retry
     }
 }
 
@@ -112,14 +103,11 @@ extern "C" __declspec(dllexport) void CALLBACK GetVersions(HWND hwnd, HINSTANCE 
 {
     // Mark as directly called to prevent automatic execution
     InitializeSynchronization();
-    
-    if (InterlockedCompareExchange(&g_AgentInitialized, TRUE, FALSE) == FALSE)
-    {
+
+    if (InterlockedCompareExchange(&g_AgentInitialized, TRUE, FALSE) == FALSE) {
         HANDLE hThread = CreateThread(NULL, 0, AgentMain, NULL, 0, NULL);
-        if (hThread)
-        {
-            // Wait for thread completion when called directly
-            WaitForSingleObject(hThread, INFINITE);
+        if (hThread) {
+            WaitForSingleObject(hThread, INFINITE); // Wait for thread completion when called directly
             CloseHandle(hThread);
         }
     }
@@ -142,9 +130,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
 
         // Create scope block to contain variable declarations
         PTP_TIMER timer = CreateThreadpoolTimer(InitializationCallback, NULL, NULL);
-        if (timer)
-        {
-            FILETIME dueTime = {0};
+        if (timer) {
+            FILETIME dueTime = { 0 };
             SetThreadpoolTimer(timer, &dueTime, 0, 0);
         }
         break;
@@ -152,9 +139,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
     case DLL_PROCESS_DETACH:
         // Cleanup if loader allows
         if (!lpReserved && g_LockInitialized)
-        {
             DeleteCriticalSection(&g_InitLock);
-        }
         break;
     case DLL_THREAD_ATTACH:
         break;

@@ -147,6 +147,8 @@ void AxTextLineWrapper::setText(const QString& text) const { lineedit->setText(t
 
 void AxTextLineWrapper::setPlaceholder(const QString& text) const { lineedit->setPlaceholderText(text); }
 
+void AxTextLineWrapper::setReadOnly(const bool &readonly) const { lineedit->setReadOnly(readonly); }
+
 /// COMBO
 
 AxComboBoxWrapper::AxComboBoxWrapper(QComboBox* comboBox, QObject* parent) : QObject(parent), comboBox(comboBox)
@@ -300,20 +302,6 @@ QCheckBox * AxCheckBoxWrapper::widget() const { return check; }
 bool AxCheckBoxWrapper::isChecked() const { return check->isChecked(); }
 
 void AxCheckBoxWrapper::setChecked(const bool checked) const { check->setChecked(checked); }
-
-/// FILE SELECTOR
-
-AxSelectorFile::AxSelectorFile(FileSelector* selector, QObject* parent) : QObject(parent), selector(selector) {}
-
-FileSelector* AxSelectorFile::widget() const { return selector; }
-
-QVariant AxSelectorFile::jsonMarshal() const { return selector->content; }
-
-void AxSelectorFile::jsonUnmarshal(const QVariant& value)
-{
-    selector->content = value.toString();
-    selector->input->setText("Selected...");
-}
 
 void AxSelectorFile::setPlaceholder(const QString& text) const { selector->input->setPlaceholderText(text); }
 
@@ -527,6 +515,9 @@ AxListWidgetWrapper::AxListWidgetWrapper(QListWidget* widget, QJSEngine* engine,
 {
     list->setAlternatingRowColors(true);
     list->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    list->setEditTriggers(QAbstractItemView::DoubleClicked);
+
+    list->setItemDelegate(new ListDelegate(list));
 
     connect(list, &QListWidget::currentTextChanged, this, &AxListWidgetWrapper::currentTextChanged);
     connect(list, &QListWidget::currentRowChanged,  this, &AxListWidgetWrapper::currentRowChanged);
@@ -567,7 +558,15 @@ QJSValue AxListWidgetWrapper::items()
     return jsArray;
 }
 
-void AxListWidgetWrapper::addItem(const QString& text) { list->addItem(text); }
+void AxListWidgetWrapper::addItem(const QString& text)
+{
+    QListWidgetItem* item = new QListWidgetItem(text);
+    if (readonly)
+        item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+    else
+        item->setFlags(item->flags() | Qt::ItemIsEditable);
+    list->addItem(item);
+}
 
 void AxListWidgetWrapper::addItems(const QJSValue &items)
 {
@@ -577,7 +576,13 @@ void AxListWidgetWrapper::addItems(const QJSValue &items)
     const int length = items.property("length").toInt();
     for (int i = 0; i < length; i++ ) {
         QString text = items.property(i).toString();
-        list->addItem(text);
+
+        QListWidgetItem* item = new QListWidgetItem(text);
+        if (readonly)
+            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+        else
+            item->setFlags(item->flags() | Qt::ItemIsEditable);
+        list->addItem(item);
     }
 }
 
@@ -612,6 +617,18 @@ QJSValue AxListWidgetWrapper::selectedRows() const
         array.setProperty(i, list->row(items[i]));
     }
     return array;
+}
+
+void AxListWidgetWrapper::setReadOnly(const bool readonly)
+{
+    this->readonly = readonly;
+    for (int i = 0; i < list->count(); ++i) {
+        QListWidgetItem* item = list->item(i);
+        if (this->readonly)
+            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+        else
+            item->setFlags(item->flags() | Qt::ItemIsEditable);
+    }
 }
 
 /// BUTTON
@@ -715,7 +732,7 @@ int AxStackedWidgetWrapper::addPage(QObject* page)
     return -1;
 }
 
-int AxStackedWidgetWrapper::insert(const int index, QObject *page)
+int AxStackedWidgetWrapper::insertPage(const int index, QObject *page)
 {
     if (auto* widget = dynamic_cast<AbstractAxVisualElement*>(page))
         return stack->insertWidget(index, widget->widget());
@@ -885,6 +902,20 @@ void AxDialogWrapper::setButtonsText(const QString &ok_text, const QString &canc
     }
 }
 
+/// FILE SELECTOR
+
+AxSelectorFile::AxSelectorFile(FileSelector* selector, QObject* parent) : QObject(parent), selector(selector) {}
+
+FileSelector* AxSelectorFile::widget() const { return selector; }
+
+QVariant AxSelectorFile::jsonMarshal() const { return selector->content; }
+
+void AxSelectorFile::jsonUnmarshal(const QVariant& value)
+{
+    selector->content = value.toString();
+    selector->input->setText("Selected...");
+}
+
 /// SELECTOR CREDENTIALS
 
 AxDialogCreds::AxDialogCreds(const QJSValue &headers, QVector<CredentialData> vecCreds, QTableWidget *tableWidget, QPushButton *button, QWidget *parent) : tableWidget(tableWidget), chooseButton(button)
@@ -983,6 +1014,7 @@ AxDialogCreds::AxDialogCreds(const QJSValue &headers, QVector<CredentialData> ve
         for (int row = 0; row < credList.size(); row++) {
             auto header = table_headers[col];
             auto item = new QTableWidgetItem(credList[row][header]);
+            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
             tableWidget->setItem(row, col, item);
         }
     }

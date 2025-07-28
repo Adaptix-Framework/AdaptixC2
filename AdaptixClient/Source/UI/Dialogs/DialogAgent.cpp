@@ -74,7 +74,7 @@ void DialogAgent::createUI()
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->addWidget( listenerLabel,       0, 0, 1, 1);
     mainGridLayout->addWidget( listenerInput,       0, 1, 1, 1);
-    mainGridLayout->addWidget( line_1,              0, 2, 3, 1);
+    mainGridLayout->addWidget( line_1,              0, 2, 2, 1);
     mainGridLayout->addWidget( buttonLoad,          0, 3, 1, 1);
     mainGridLayout->addWidget( agentLabel,          1, 0, 1, 1);
     mainGridLayout->addWidget( agentCombobox,       1, 1, 1, 1);

@@ -26,7 +26,8 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     int spType = jsonObj["type"].toDouble();
 
     if( spType == TYPE_SYNC_START ) {
-        if ( !jsonObj.contains("count") || !jsonObj["count"].isDouble() ) return false;
+        if ( !jsonObj.contains("count")      || !jsonObj["count"].isDouble() ) return false;
+        if ( !jsonObj.contains("interfaces") || !jsonObj["interfaces"].isArray() )  return false;
         return true;
     }
     if( spType == TYPE_SYNC_FINISH ) {
@@ -345,6 +346,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_SYNC_START )
     {
         int count = jsonObj["count"].toDouble();
+        QJsonArray interfaces = jsonObj["interfaces"].toArray();
+
+        for (QJsonValue addrValue : interfaces) {
+            QString addr = addrValue.toString();
+            this->addresses.append(addr);
+        }
+
         dialogSyncPacket->init(count);
         this->sync = true;
         this->setEnabled(false);
@@ -366,13 +374,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_LISTENER_START )
     {
         ListenerData newListener = {};
-        newListener.ListenerName   = jsonObj["l_name"].toString();
-        newListener.ListenerFullName   = jsonObj["l_type"].toString();
-        newListener.BindHost       = jsonObj["l_bind_host"].toString();
-        newListener.BindPort       = jsonObj["l_bind_port"].toString();
-        newListener.AgentAddresses = jsonObj["l_agent_addr"].toString();
-        newListener.Status         = jsonObj["l_status"].toString();
-        newListener.Data           = jsonObj["l_data"].toString();
+        newListener.ListenerName     = jsonObj["l_name"].toString();
+        newListener.ListenerFullName = jsonObj["l_type"].toString();
+        newListener.BindHost         = jsonObj["l_bind_host"].toString();
+        newListener.BindPort         = jsonObj["l_bind_port"].toString();
+        newListener.AgentAddresses   = jsonObj["l_agent_addr"].toString();
+        newListener.Status           = jsonObj["l_status"].toString();
+        newListener.Data             = jsonObj["l_data"].toString();
 
         ListenersTab->AddListenerItem(newListener);
         return;
@@ -380,13 +388,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_LISTENER_EDIT )
     {
         ListenerData newListener = {};
-        newListener.ListenerName   = jsonObj["l_name"].toString();
-        newListener.ListenerFullName   = jsonObj["l_type"].toString();
-        newListener.BindHost       = jsonObj["l_bind_host"].toString();
-        newListener.BindPort       = jsonObj["l_bind_port"].toString();
-        newListener.AgentAddresses = jsonObj["l_agent_addr"].toString();
-        newListener.Status         = jsonObj["l_status"].toString();
-        newListener.Data           = jsonObj["l_data"].toString();
+        newListener.ListenerName     = jsonObj["l_name"].toString();
+        newListener.ListenerFullName = jsonObj["l_type"].toString();
+        newListener.BindHost         = jsonObj["l_bind_host"].toString();
+        newListener.BindPort         = jsonObj["l_bind_port"].toString();
+        newListener.AgentAddresses   = jsonObj["l_agent_addr"].toString();
+        newListener.Status           = jsonObj["l_status"].toString();
+        newListener.Data             = jsonObj["l_data"].toString();
 
         ListenersTab->EditListenerItem(newListener);
         return;

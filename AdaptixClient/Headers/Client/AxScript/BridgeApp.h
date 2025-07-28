@@ -40,6 +40,7 @@ public slots:
     bool     file_exists(const QString &path) const;
     QString  file_read(QString path) const;
     QString  format_time(const QString &format, const int &time) const;
+    QJSValue interfaces() const;
     bool     is64(const QString &id) const;
     bool     isadmin(const QString &id) const;
     void     log(const QString &text);
@@ -50,7 +51,7 @@ public slots:
     void     open_browser_process(const QString &id);
     void     open_remote_terminal(const QString &id);
     QString  prompt_open_file(const QString &caption = "Select file", const QString &filter = QString());
-    QString  prompt_open_dir(const QString &caption = "Select file");
+    QString  prompt_open_dir(const QString &caption = "Select directory");
     QString  prompt_save_file(const QString &filename, const QString &caption = "Select file", const QString &filter = QString());
     void     register_commands_group(QObject* obj, const QJSValue& agents, const QJSValue& os, const QJSValue& listeners);
     void     script_import(const QString &path);

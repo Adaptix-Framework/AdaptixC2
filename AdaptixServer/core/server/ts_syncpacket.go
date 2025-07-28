@@ -84,11 +84,12 @@ func CreateSpEvent(event int, message string) SpEvent {
 
 /// SYNC
 
-func CreateSpSyncStart(count int) SyncPackerStart {
+func CreateSpSyncStart(count int, addrs []string) SyncPackerStart {
 	return SyncPackerStart{
 		SpType: TYPE_SYNC_START,
 
-		Count: count,
+		Count:     count,
+		Addresses: addrs,
 	}
 }
 

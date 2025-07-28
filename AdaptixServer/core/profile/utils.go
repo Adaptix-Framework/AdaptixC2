@@ -7,6 +7,7 @@ type AdaptixProfile struct {
 }
 
 type TsProfile struct {
+	Interface  string   `json:"interface"`
 	Port       int      `json:"port"`
 	Endpoint   string   `json:"endpoint"`
 	Password   string   `json:"password"`

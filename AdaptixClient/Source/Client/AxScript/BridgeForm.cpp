@@ -287,5 +287,4 @@ QObject* BridgeForm::create_selector_credentials(const QJSValue &headers) const
     auto* wrapper = new AxSelectorCreds(headers, table, button, scriptEngine, widget);
     scriptEngine->registerObject(wrapper);
     return wrapper;
-
 }
