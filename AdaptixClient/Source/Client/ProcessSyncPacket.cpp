@@ -348,6 +348,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         int count = jsonObj["count"].toDouble();
         QJsonArray interfaces = jsonObj["interfaces"].toArray();
 
+        this->addresses.clear();
         for (QJsonValue addrValue : interfaces) {
             QString addr = addrValue.toString();
             this->addresses.append(addr);
