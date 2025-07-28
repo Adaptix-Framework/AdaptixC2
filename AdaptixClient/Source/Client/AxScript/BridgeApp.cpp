@@ -24,24 +24,25 @@ QJSValue BridgeApp::agents() const
 
     for (auto agent : mapAgents) {
         QVariantMap map;
-        map["id"]          = agent->data.Id;
-        map["type"   ]     = agent->data.Name;
-        map["listener"]    = agent->data.Listener;
-        map["external_ip"] = agent->data.ExternalIP;
-        map["internal_ip"] = agent->data.InternalIP;
-        map["domain"]      = agent->data.Domain;
-        map["computer"]    = agent->data.Computer;
-        map["username"]    = agent->data.Username;
-        map["process"]     = agent->data.Process;
-        map["arch"]        = agent->data.Arch;
-        map["pid"]         = agent->data.Pid.toInt();
-        map["tid"]         = agent->data.Tid.toInt();
-        map["gmt"]         = agent->data.GmtOffset;
-        map["elevated"]    = agent->data.Elevated;
-        map["tags"]        = agent->data.Tags;
-        map["async"]       = agent->data.Async;
-        map["sleep"]       = agent->data.Sleep;
-        map["os_full"]     = agent->data.OsDesc;
+        map["id"]           = agent->data.Id;
+        map["type"]         = agent->data.Name;
+        map["listener"]     = agent->data.Listener;
+        map["external_ip"]  = agent->data.ExternalIP;
+        map["internal_ip"]  = agent->data.InternalIP;
+        map["domain"]       = agent->data.Domain;
+        map["computer"]     = agent->data.Computer;
+        map["username"]     = agent->data.Username;
+        map["impersonated"] = agent->data.Impersonated;
+        map["process"]      = agent->data.Process;
+        map["arch"]         = agent->data.Arch;
+        map["pid"]          = agent->data.Pid.toInt();
+        map["tid"]          = agent->data.Tid.toInt();
+        map["gmt"]          = agent->data.GmtOffset;
+        map["elevated"]     = agent->data.Elevated;
+        map["tags"]         = agent->data.Tags;
+        map["async"]        = agent->data.Async;
+        map["sleep"]        = agent->data.Sleep;
+        map["os_full"]      = agent->data.OsDesc;
 
         if (agent->data.Os == OS_WINDOWS)    map["os"] = "windows";
         else if (agent->data.Os == OS_LINUX) map["os"] = "linux";
@@ -79,6 +80,8 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
         return QJSValue(info.Computer);
     if (property == "username")
         return QJSValue(info.Username);
+    if (property == "impersonated")
+        return QJSValue(info.Impersonated);
     if (property == "process")
         return QJSValue(info.Process);
     if (property == "arch")
@@ -427,6 +430,17 @@ QString BridgeApp::format_time(const QString &format, const int &time) const
     return localDateTime.toString(format);
 }
 
+QJSValue BridgeApp::interfaces() const
+{
+    QVariantList list;
+    auto interfaces = scriptEngine->manager()->GetInterfaces();
+
+    for (auto addr : interfaces)
+        list.append(addr);
+
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
 bool BridgeApp::is64(const QString &id) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
@@ -547,3 +561,4 @@ QString BridgeApp::script_dir()
 void BridgeApp::show_message(const QString &title, const QString &text) { QMessageBox::information(nullptr, title, text); }
 
 int BridgeApp::ticks() { return QDateTime::currentSecsSinceEpoch(); }
+

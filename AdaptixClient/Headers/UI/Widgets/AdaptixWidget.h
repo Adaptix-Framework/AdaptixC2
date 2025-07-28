@@ -102,6 +102,7 @@ public:
     QMap<QString, Agent*>          AgentsMap;
     QMap<QString, PostHook>        PostHooksJS;
     QMap<QString, TunnelEndpoint*> ClientTunnels;
+    QStringList addresses;
 
     explicit AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker);
     ~AdaptixWidget() override;

@@ -3,7 +3,7 @@ module adaptix_listener_gopher_tcp
 go 1.24.4
 
 require (
-	github.com/Adaptix-Framework/axc2 v0.5.0
+	github.com/Adaptix-Framework/axc2 v0.7.0
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 )
 

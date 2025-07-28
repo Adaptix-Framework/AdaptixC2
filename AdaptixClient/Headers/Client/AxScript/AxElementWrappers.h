@@ -227,8 +227,9 @@ public:
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
 
     Q_INVOKABLE QString text() const;
-    Q_INVOKABLE void setText(const QString& text) const;
-    Q_INVOKABLE void setPlaceholder(const QString& text) const;
+    Q_INVOKABLE void    setText(const QString& text) const;
+    Q_INVOKABLE void    setPlaceholder(const QString& text) const;
+    Q_INVOKABLE void    setReadOnly(const bool& readonly) const;
 
 signals:
     void textChanged(const QString &text);
@@ -257,13 +258,13 @@ public:
     Q_INVOKABLE bool getEnabled() const override { return widget()->isEnabled(); }
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
 
-    Q_INVOKABLE void addItem(const QString& text) const;
-    Q_INVOKABLE void addItems(const QJSValue& array) const;
-    Q_INVOKABLE void setItems(const QJSValue& array) const;
-    Q_INVOKABLE void clear() const;
+    Q_INVOKABLE void    addItem(const QString& text) const;
+    Q_INVOKABLE void    addItems(const QJSValue& array) const;
+    Q_INVOKABLE void    setItems(const QJSValue& array) const;
+    Q_INVOKABLE void    clear() const;
     Q_INVOKABLE QString currentText() const;
-    Q_INVOKABLE void setCurrentIndex(int index) const;
-    Q_INVOKABLE int currentIndex() const;
+    Q_INVOKABLE void    setCurrentIndex(int index) const;
+    Q_INVOKABLE int     currentIndex() const;
 
 signals:
     void currentTextChanged(const QString &text);
@@ -290,7 +291,7 @@ public:
     Q_INVOKABLE bool getEnabled() const override { return widget()->isEnabled(); }
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
 
-    Q_INVOKABLE int value() const;
+    Q_INVOKABLE int  value() const;
     Q_INVOKABLE void setValue(int value) const;
     Q_INVOKABLE void setRange(int min, int max) const;
 
@@ -319,7 +320,7 @@ public:
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
 
     Q_INVOKABLE QString dateString() const;
-    Q_INVOKABLE void setDateString(const QString& date) const;
+    Q_INVOKABLE void    setDateString(const QString& date) const;
 };
 
 
@@ -343,7 +344,7 @@ public:
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
 
     Q_INVOKABLE QString timeString() const;
-    Q_INVOKABLE void setTimeString(const QString& time) const;
+    Q_INVOKABLE void    setTimeString(const QString& time) const;
 };
 
 
@@ -367,10 +368,10 @@ public:
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
 
     Q_INVOKABLE QString text() const;
-    Q_INVOKABLE void setText(const QString& text) const;
-    Q_INVOKABLE void appendText(const QString& text) const;
-    Q_INVOKABLE void setPlaceholder(const QString& text) const;
-    Q_INVOKABLE void setReadOnly(const bool& readonly) const;
+    Q_INVOKABLE void    setText(const QString& text) const;
+    Q_INVOKABLE void    appendText(const QString& text) const;
+    Q_INVOKABLE void    setPlaceholder(const QString& text) const;
+    Q_INVOKABLE void    setReadOnly(const bool& readonly) const;
 };
 
 
@@ -398,29 +399,6 @@ public:
 
 signals:
     void stateChanged();
-};
-
-
-
-/// SELECTOR FILE
-
-class AxSelectorFile : public QObject, public AbstractAxElement, public AbstractAxVisualElement {
-Q_OBJECT
-    FileSelector* selector;
-
-public:
-    explicit AxSelectorFile(FileSelector* selector, QObject* parent = nullptr);
-
-    QVariant jsonMarshal() const override;
-    void jsonUnmarshal(const QVariant& value) override;
-
-    FileSelector* widget() const override;
-    Q_INVOKABLE void setEnabled(const bool enable) const override { widget()->setEnabled(enable); }
-    Q_INVOKABLE void setVisible(const bool enable) const override { widget()->setVisible(enable); }
-    Q_INVOKABLE bool getEnabled() const override { return widget()->isEnabled(); }
-    Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
-
-    Q_INVOKABLE void setPlaceholder(const QString& text) const;
 };
 
 
@@ -520,6 +498,8 @@ Q_OBJECT
     QListWidget* list;
     QJSEngine*   engine;
 
+    bool readonly = false;
+
 public:
     explicit AxListWidgetWrapper(QListWidget* widget, QJSEngine* engine, QObject* parent = nullptr);
 
@@ -543,6 +523,7 @@ public:
     Q_INVOKABLE int      currentRow() const;
     Q_INVOKABLE void     setCurrentRow(int row);
     Q_INVOKABLE QJSValue selectedRows() const;
+    Q_INVOKABLE void     setReadOnly(bool readonly);
 
 signals:
     void currentTextChanged(const QString &currentText);
@@ -666,7 +647,7 @@ public:
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
 
     Q_INVOKABLE int  addPage(QObject* page);
-    Q_INVOKABLE int  insert(int index, QObject* page);
+    Q_INVOKABLE int  insertPage(int index, QObject* page);
     Q_INVOKABLE void removePage(int index);
     Q_INVOKABLE void setCurrentIndex(int index);
     Q_INVOKABLE int  currentIndex() const;
@@ -741,11 +722,34 @@ public:
 
 
 
+/// SELECTOR FILE
+
+class AxSelectorFile : public QObject, public AbstractAxElement, public AbstractAxVisualElement {
+    Q_OBJECT
+        FileSelector* selector;
+
+public:
+    explicit AxSelectorFile(FileSelector* selector, QObject* parent = nullptr);
+
+    QVariant jsonMarshal() const override;
+    void jsonUnmarshal(const QVariant& value) override;
+
+    FileSelector* widget() const override;
+    Q_INVOKABLE void setEnabled(const bool enable) const override { widget()->setEnabled(enable); }
+    Q_INVOKABLE void setVisible(const bool enable) const override { widget()->setVisible(enable); }
+    Q_INVOKABLE bool getEnabled() const override { return widget()->isEnabled(); }
+    Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
+
+    Q_INVOKABLE void setPlaceholder(const QString& text) const;
+};
+
+
+
 /// SELECTOR CREDENTIALS
 
 class AxDialogCreds : public QDialog {
-    Q_OBJECT
-        QVBoxLayout*  mainLayout   = nullptr;
+Q_OBJECT
+    QVBoxLayout*  mainLayout   = nullptr;
     QTableWidget* tableWidget  = nullptr;
     QHBoxLayout*  bottomLayout = nullptr;
     QPushButton*  chooseButton = nullptr;
@@ -756,9 +760,6 @@ class AxDialogCreds : public QDialog {
     QHBoxLayout*    searchLayout   = nullptr;
     QLineEdit*      searchLineEdit = nullptr;
     ClickableLabel* hideButton     = nullptr;
-
-    // bool filterItem(const TaskData &task) const;
-    // void addTableItem(const Task* newTask) const;
 
     QVector<QString> table_headers;
     QVector<QMap<QString, QString> > credList;
@@ -777,8 +778,8 @@ public slots:
 };
 
 class AxSelectorCreds : public QObject {
-    Q_OBJECT
-        AxDialogCreds*  dialog;
+Q_OBJECT
+    AxDialogCreds*  dialog;
     AxScriptEngine* scriptEngine;
     QMap<QString, CredentialData> creds;
 

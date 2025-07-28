@@ -57,11 +57,13 @@ QJSEngine* AxScriptManager::GetEngine(const QString &name)
     return nullptr;
 }
 
-AdaptixWidget* AxScriptManager::GetAdaptix() const { return this->adaptixWidget; }
+AdaptixWidget* AxScriptManager::GetAdaptix() const { return adaptixWidget; }
 
 QMap<QString, Agent*> AxScriptManager::GetAgents() const { return adaptixWidget->AgentsMap; }
 
 QVector<CredentialData> AxScriptManager::GetCredentials() const { return adaptixWidget->Credentials; }
+
+QStringList AxScriptManager::GetInterfaces() const { return adaptixWidget->addresses; }
 
 /// MAIN
 

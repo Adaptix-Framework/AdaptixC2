@@ -233,9 +233,8 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 				status = FALSE;
 			}
 
-
-#ifdef _WIN64
 			if (status != FALSE) {
+#ifdef _WIN64
 				if (pRelocTable->Type == IMAGE_REL_AMD64_ADDR64) // Type == 1 - 64-bit VA of the relocation target
 				{
 					memcpy(&bigOffset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(unsigned long long));
@@ -266,19 +265,19 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(int));
 				}
 #else
-			if (pRelocTable->Type == IMAGE_REL_I386_DIR32)
-			{
-				offset = 0;
-				memcpy(&offset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(int));
-				offset = (unsigned int)procAddress + offset;
-				memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(unsigned int));
-			}
-			else if (pRelocTable->Type == IMAGE_REL_I386_REL32)
-			{
-				offset = 0;
-				memcpy(&offset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(int));
-				offset = (unsigned int)procAddress - (unsigned int)(mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4);
-				memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(unsigned int));
+				if (pRelocTable->Type == IMAGE_REL_I386_DIR32)
+				{
+					offset = 0;
+					memcpy(&offset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(int));
+					offset = (unsigned int)procAddress + offset;
+					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(unsigned int));
+				}
+				else if (pRelocTable->Type == IMAGE_REL_I386_REL32)
+				{
+					offset = 0;
+					memcpy(&offset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(int));
+					offset = (unsigned int)procAddress - (unsigned int)(mapSections[sectionIndex] + pRelocTable->VirtualAddress + 4);
+					memcpy(mapSections[sectionIndex] + pRelocTable->VirtualAddress, &offset, sizeof(unsigned int));
 				}
 #endif
 			}

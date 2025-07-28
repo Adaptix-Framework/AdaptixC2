@@ -39,9 +39,8 @@ public slots:
     QObject* create_textmulti(const QString& text= "");
     QObject* create_list();
     QObject* create_table(const QJSValue &headers);
-    QObject* create_selector_file();
-    QObject* create_tabs();
 
+    QObject* create_tabs();
     QObject* create_groupbox(const QString& title = "", const bool checkable = false);
     QObject* create_hsplitter();
     QObject* create_vsplitter();
@@ -51,6 +50,7 @@ public slots:
     QObject* create_container();
     QObject* create_dialog(const QString &title) const;
 
+    QObject* create_selector_file();
     QObject* create_selector_credentials(const QJSValue &headers) const;
 
 signals:

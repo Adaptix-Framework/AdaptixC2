@@ -15,13 +15,8 @@ func (ts *Teamserver) TsClientConnected(username string) bool {
 }
 
 func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
-	var (
-		buffer   bytes.Buffer
-		err      error
-		clientWS *websocket.Conn
-	)
-
-	err = json.NewEncoder(&buffer).Encode(packet)
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(packet)
 	if err != nil {
 		return
 	}
@@ -29,8 +24,9 @@ func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	value, found := ts.clients.Get(username)
 	if found {
 		client := value.(*Client)
-		clientWS = client.socket
-		err = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+		client.lockSocket.Lock()
+		err = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+		client.lockSocket.Unlock()
 		if err != nil {
 			return
 		}
@@ -62,7 +58,7 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 	})
 }
 
-func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
+func (ts *Teamserver) TsSyncStored(client *Client) {
 	var (
 		buffer  bytes.Buffer
 		packets []interface{}
@@ -78,20 +74,23 @@ func (ts *Teamserver) TsSyncStored(clientWS *websocket.Conn) {
 	packets = append(packets, ts.TsPresyncPivots()...)
 	packets = append(packets, ts.TsPresyncCredentials()...)
 
-	startPacket := CreateSpSyncStart(len(packets))
+	client.lockSocket.Lock()
+	defer client.lockSocket.Unlock()
+
+	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
 	_ = json.NewEncoder(&buffer).Encode(startPacket)
-	_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 	buffer.Reset()
 
 	for _, p := range packets {
 		var pBuffer bytes.Buffer
 		_ = json.NewEncoder(&pBuffer).Encode(p)
-		_ = clientWS.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
+		_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
 	}
 
 	finishPacket := CreateSpSyncFinish()
 	_ = json.NewEncoder(&buffer).Encode(finishPacket)
-	_ = clientWS.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 	buffer.Reset()
 }
 

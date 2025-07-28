@@ -50,11 +50,16 @@ type Client struct {
 	tmp_store  *safe.Slice
 }
 
+type TsParameters struct {
+	Interfaces []string
+}
+
 type Teamserver struct {
 	Profile       *profile.AdaptixProfile
 	DBMS          *database.DBMS
 	AdaptixServer *connector.TsConnector
 	Extender      *extender.AdaptixExtender
+	Parameters    TsParameters
 
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
@@ -160,7 +165,8 @@ type Terminal struct {
 type SyncPackerStart struct {
 	SpType int `json:"type"`
 
-	Count int `json:"count"`
+	Count     int      `json:"count"`
+	Addresses []string `json:"interfaces"`
 }
 
 type SyncPackerFinish struct {

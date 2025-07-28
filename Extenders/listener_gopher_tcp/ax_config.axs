@@ -3,8 +3,10 @@
 function ListenerUI(mode_create)
 {
     let labelHost = form.create_label("Host & port (Bind):");
-    let textlineHost = form.create_textline("0.0.0.0");
-    textlineHost.setEnabled(mode_create)
+    let comboHostBind = form.create_combo();
+    comboHostBind.setItems(ax.interfaces());
+    comboHostBind.setEnabled(mode_create)
+    
     let spinPort = form.create_spin();
     spinPort.setRange(1, 65535);
     spinPort.setValue(4444);
@@ -52,7 +54,7 @@ function ListenerUI(mode_create)
 
     let layout = form.create_gridlayout();
     layout.addWidget(labelHost, 0, 0, 1, 1);
-    layout.addWidget(textlineHost, 0, 1, 1, 2);
+    layout.addWidget(comboHostBind, 0, 1, 1, 2);
     layout.addWidget(spinPort, 0, 3, 1, 1);
     layout.addWidget(labelCallback, 1, 0, 1, 1);
     layout.addWidget(texteditCallback, 1, 1, 1, 3);
@@ -112,7 +114,7 @@ function ListenerUI(mode_create)
     });
 
     let container = form.create_container()
-    container.put("host_bind", textlineHost)
+    container.put("host_bind", comboHostBind)
     container.put("port_bind", spinPort)
     container.put("callback_addresses", texteditCallback)
     container.put("timeout", spinTimeout)

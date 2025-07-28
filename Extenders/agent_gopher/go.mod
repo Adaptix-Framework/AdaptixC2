@@ -3,12 +3,10 @@ module adaptix_agent_gopher
 go 1.24.4
 
 require (
-	github.com/Adaptix-Framework/axc2 v0.5.0
+	github.com/Adaptix-Framework/axc2 v0.7.0
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/vmihailenco/msgpack/v5 v5.4.1
-	golang.org/x/text v0.26.0
+	golang.org/x/text v0.27.0
 )
 
-require (
-	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-)
+require github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect

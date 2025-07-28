@@ -213,7 +213,7 @@ void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &
             OutputTextEdit->appendPlain(" ");
 
         QString printMessage = TrimmedEnds(message);
-        if ( text.isEmpty() || type == CONSOLE_OUT_LOCAL_SUCCESS || type == CONSOLE_OUT_LOCAL_ERROR || type == CONSOLE_OUT_SUCCESS || type == CONSOLE_OUT_ERROR)
+        if ( text.isEmpty() || type == CONSOLE_OUT_LOCAL_INFO || type == CONSOLE_OUT_LOCAL_SUCCESS || type == CONSOLE_OUT_LOCAL_ERROR || type == CONSOLE_OUT_SUCCESS || type == CONSOLE_OUT_ERROR)
             printMessage += "\n";
         OutputTextEdit->appendPlain(printMessage);
     }

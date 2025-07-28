@@ -58,6 +58,7 @@ public:
     AdaptixWidget*          GetAdaptix() const;
     QMap<QString, Agent*>   GetAgents() const;
     QVector<CredentialData> GetCredentials() const;
+    QStringList             GetInterfaces() const;
 
     QStringList ListenerScriptList();
     void        ListenerScriptAdd(const QString &name, const QString &ax_script);

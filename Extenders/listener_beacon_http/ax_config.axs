@@ -4,8 +4,9 @@ function ListenerUI(mode_create)
 {
     // MAIN SETTING
     let labelHost = form.create_label("Host & port (Bind):");
-    let textlineHostBind = form.create_textline("0.0.0.0");
-    textlineHostBind.setEnabled(mode_create)
+    let comboHostBind = form.create_combo();
+    comboHostBind.setItems(ax.interfaces());
+    comboHostBind.setEnabled(mode_create)
     let spinPortBind = form.create_spin();
     spinPortBind.setRange(1, 65535);
     spinPortBind.setValue(443);
@@ -30,17 +31,22 @@ function ListenerUI(mode_create)
     let labelHB = form.create_label("Heartbeat Header:");
     let textlineHB = form.create_textline("X-Beacon-Id");
 
-    let checkSsl = form.create_check("Use SSL (HTTPS)");
-    checkSsl.setEnabled(mode_create)
-
     let certSelector = form.create_selector_file();
     certSelector.setPlaceholder("SSL certificate");
     let keySelector = form.create_selector_file();
     keySelector.setPlaceholder("SSL key");
+    let layout_group = form.create_vlayout();
+    layout_group.addWidget(certSelector);
+    layout_group.addWidget(keySelector);
+    let panel_group = form.create_panel();
+    panel_group.setLayout(layout_group);
+    let ssl_group = form.create_groupbox("Use SSL (HTTPS)", true)
+    ssl_group.setPanel(panel_group);
+    ssl_group.setChecked(false);
 
     let layoutMain = form.create_gridlayout();
     layoutMain.addWidget(labelHost, 0, 0, 1, 1);
-    layoutMain.addWidget(textlineHostBind, 0, 1, 1, 1);
+    layoutMain.addWidget(comboHostBind, 0, 1, 1, 1);
     layoutMain.addWidget(spinPortBind, 0, 2, 1, 1);
     layoutMain.addWidget(labelCallback, 1, 0, 1, 1);
     layoutMain.addWidget(textCallback, 1, 1, 1, 2);
@@ -52,9 +58,7 @@ function ListenerUI(mode_create)
     layoutMain.addWidget(textlineUserAgent, 4, 1, 1, 2);
     layoutMain.addWidget(labelHB, 5, 0, 1, 1);
     layoutMain.addWidget(textlineHB, 5, 1, 1, 2);
-    layoutMain.addWidget(checkSsl, 6, 0, 1, 3);
-    layoutMain.addWidget(certSelector, 7, 0, 1, 3);
-    layoutMain.addWidget(keySelector, 8, 0, 1, 3);
+    layoutMain.addWidget(ssl_group, 6, 0, 1, 3);
 
     let panelMain = form.create_panel();
     panelMain.setLayout(layoutMain);
@@ -113,14 +117,14 @@ function ListenerUI(mode_create)
     layout.addWidget(tabs);
 
     let container = form.create_container();
-    container.put("host_bind", textlineHostBind);
+    container.put("host_bind", comboHostBind);
     container.put("port_bind", spinPortBind);
     container.put("callback_addresses", textCallback);
     container.put("http_method", comboMethod);
     container.put("uri", textlineUri);
     container.put("user_agent", textlineUserAgent);
     container.put("hb_header", textlineHB);
-    container.put("ssl", checkSsl);
+    container.put("ssl", ssl_group);
     container.put("ssl_cert", certSelector);
     container.put("ssl_key", keySelector);
     container.put("x-forwarded-for", checkTrust);
@@ -129,19 +133,6 @@ function ListenerUI(mode_create)
     container.put("server_headers", textServerHeaders);
     container.put("page-error", textError);
     container.put("page-payload", textPayload);
-
-    certSelector.setEnabled(false);
-    keySelector.setEnabled(false);
-
-    form.connect(checkSsl, "stateChanged", function() {
-        if(certSelector.getEnabled()) {
-            certSelector.setEnabled(false);
-            keySelector.setEnabled(false);
-        } else {
-            certSelector.setEnabled(true);
-            keySelector.setEnabled(true);
-        }
-    });
 
     let panel = form.create_panel();
     panel.setLayout(layout);

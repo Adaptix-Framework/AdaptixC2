@@ -397,7 +397,9 @@ void TasksWidget::handleTasksMenu( const QPoint &pos )
     ctxMenu.addSeparator();
 
     int taskCount = adaptixWidget->ScriptManager->AddMenuTask(&ctxMenu, "Tasks", taskIds);
-    int jobCount  = adaptixWidget->ScriptManager->AddMenuTask(&ctxMenu, "TasksJob", taskIds);
+    int jobCount  = 0;
+    if (job_running)
+        jobCount = adaptixWidget->ScriptManager->AddMenuTask(&ctxMenu, "TasksJob", taskIds);
     if (taskCount + jobCount > 0)
         ctxMenu.addSeparator();
 
