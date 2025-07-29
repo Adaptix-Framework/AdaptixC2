@@ -241,9 +241,9 @@ void AxDateEditWrapper::jsonUnmarshal(const QVariant& value) { setDateString(val
 
 QDateEdit* AxDateEditWrapper::widget() const { return dateedit; }
 
-QString AxDateEditWrapper::dateString() const { return dateedit->date().toString(Qt::ISODate); }
+QString AxDateEditWrapper::dateString() const { return dateedit->date().toString( dateedit->displayFormat()); }
 
-void AxDateEditWrapper::setDateString(const QString& date) const { dateedit->setDate(QDate::fromString(date, Qt::ISODate)); }
+void AxDateEditWrapper::setDateString(const QString& date) const { dateedit->setDate(QDate::fromString(date, dateedit->displayFormat())); }
 
 /// TIME
 
@@ -258,9 +258,9 @@ void AxTimeEditWrapper::jsonUnmarshal(const QVariant& value) { setTimeString(val
 
 QTimeEdit * AxTimeEditWrapper::widget() const { return timeedit; }
 
-QString AxTimeEditWrapper::timeString() const { return timeedit->time().toString("HH:mm:ss"); }
+QString AxTimeEditWrapper::timeString() const { return timeedit->time().toString(timeedit->displayFormat()); }
 
-void AxTimeEditWrapper::setTimeString(const QString& time) const { timeedit->setTime(QTime::fromString(time, "HH:mm:ss")); }
+void AxTimeEditWrapper::setTimeString(const QString& time) const { timeedit->setTime(QTime::fromString(time, timeedit->displayFormat())); }
 
 /// TEXTMULTI
 
