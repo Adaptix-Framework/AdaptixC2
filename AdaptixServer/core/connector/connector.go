@@ -95,11 +95,12 @@ type Teamserver interface {
 }
 
 type TsConnector struct {
-	Port     int
-	Hash     string
-	Endpoint string
-	Cert     string
-	Key      string
+	Interface string
+	Port      int
+	Hash      string
+	Endpoint  string
+	Cert      string
+	Key       string
 
 	Engine     *gin.Engine
 	teamserver Teamserver
@@ -138,6 +139,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	var connector = new(TsConnector)
 	connector.Engine = gin.New()
 	connector.teamserver = ts
+	connector.Interface = tsProfile.Interface
 	connector.Port = tsProfile.Port
 	connector.Endpoint = tsProfile.Endpoint
 	connector.Hash = krypt.SHA256([]byte(tsProfile.Password))
@@ -197,7 +199,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 }
 
 func (tc *TsConnector) Start(finished *chan bool) {
-	host := fmt.Sprintf(":%d", tc.Port)
+	host := fmt.Sprintf("%s:%d", tc.Interface, tc.Port)
 	err := tc.Engine.RunTLS(host, tc.Cert, tc.Key)
 	if err != nil {
 		logs.Error("", "Failed to start HTTP Server: "+err.Error())
