@@ -70,6 +70,9 @@ int main()
 
 #elif defined(BUILD_DLL)
 
+#define _WIN32_WINNT 0x0600
+#include <threadpoolapiset.h>
+
 // Global synchronization primitives
 static volatile LONG g_AgentInitialized = FALSE;
 static volatile LONG g_LockInitialized = FALSE;

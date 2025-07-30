@@ -1,7 +1,7 @@
 all: clean
 	@ echo "    * Building agent_beacon plugin"
 	@ mkdir dist
-	@ cp config.json ./dist/
+	@ cp config.json ax_config.axs ./dist/
 	@ go build -buildmode=plugin -ldflags="-s -w" -o ./dist/agent_beacon.so pl_main.go pl_agent.go pl_packer.go pl_utils.go
 	@ echo "      done..."
 

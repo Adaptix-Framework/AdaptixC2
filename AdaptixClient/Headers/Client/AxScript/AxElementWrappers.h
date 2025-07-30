@@ -17,6 +17,8 @@
 #include <QPushButton>
 #include <QDialogButtonBox>
 #include <Utils/CustomElements.h>
+#include <QAction>
+#include <QPointer>
 
 class AxScriptEngine;
 
