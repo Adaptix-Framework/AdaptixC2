@@ -551,11 +551,11 @@ void BridgeApp::script_unload(const QString &path) { scriptEngine->manager()->Gl
 
 QString BridgeApp::script_dir()
 {
-#ifdef Q_OS_WIN
-    return GetParentPathWindows(scriptEngine->context.name) + "\\";
-#else
+//#ifdef Q_OS_WIN
+//    return GetParentPathWindows(scriptEngine->context.name) + "\\";
+//#else
     return GetParentPathUnix(scriptEngine->context.name) + "/";
-#endif
+//#endif
 }
 
 void BridgeApp::show_message(const QString &title, const QString &text) { QMessageBox::information(nullptr, title, text); }
