@@ -1173,7 +1173,7 @@ func parseDurationToSeconds(input string) (int, error) {
 func parseStringToWorkingTime(WorkingTime string) (int, error) {
 	IntWorkingTime := 0
 	if WorkingTime != "" {
-		match, err := regexp.MatchString("^[12]?[0-9]:[0-6][0-9]-[12]?[0-9]:[0-6][0-9]$", WorkingTime)
+		match, err := regexp.MatchString("^[012]?[0-9]:[0-6][0-9]-[012]?[0-9]:[0-6][0-9]$", WorkingTime)
 		if err != nil || match == false {
 			return IntWorkingTime, errors.New("Failed to parse working time: Invalid format")
 		}
