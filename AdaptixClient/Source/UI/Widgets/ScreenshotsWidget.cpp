@@ -108,7 +108,7 @@ void ScreenshotsWidget::createUI()
     tableWidget->setShowGrid( false );
     tableWidget->setSortingEnabled( true );
     tableWidget->setWordWrap( true );
-    tableWidget->setCornerButtonEnabled( true );
+    tableWidget->setCornerButtonEnabled( false );
     tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
     tableWidget->setFocusPolicy( Qt::NoFocus );
     tableWidget->setAlternatingRowColors( true );

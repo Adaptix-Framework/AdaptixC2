@@ -42,91 +42,97 @@ void AxCommandWrappers::addSubCommands(const QJSValue& value)
 
 }
 
-void AxCommandWrappers::addArgBool(const QString &flag, const QString &description)
+void AxCommandWrappers::addArgBool(const QString &flag, const QJSValue &arg2, const QJSValue &arg3)
 {
-    Argument arg = { "BOOL", "", false, true, flag, description, false, QVariant() };
-    command.args.append(arg);
-}
+    Argument arg = { "BOOL", "", false, true, flag, "", false, QVariant() };
 
-void AxCommandWrappers::addArgBool(const QString &flag, const QString &description, const QJSValue &value)
-{
-    Argument arg = { "BOOL", "", true, true, flag, description, false, QVariant() };
+    if (arg2.isString()) {
+        arg.description = arg2.toString();
 
-    if ( !value.isUndefined() && !value.isNull() ) {
-        arg.defaultUsed = true;
-        arg.defaultValue = value.toVariant();
+        if (!arg3.isUndefined() && !arg3.isNull()) {
+            arg.defaultUsed = true;
+            arg.defaultValue = arg3.toVariant();
+        }
     }
 
     command.args.append(arg);
 }
 
-void AxCommandWrappers::addArgInt(const QString &name, const bool required, const QString &description)
+void AxCommandWrappers::addArgInt(const QString &name, const QJSValue &arg2, const QJSValue &arg3)
 {
-    Argument arg = { "INT", name, required, false, "", description, false, QVariant() };
-    command.args.append(arg);
-}
+    Argument arg = { "INT", name, false, false, "", "", false, QVariant() };
 
-void AxCommandWrappers::addArgInt(const QString &name, const QString &description, const QJSValue &value)
-{
-    Argument arg = { "INT", name, true, false, "", description, false, QVariant() };
+    if (arg2.isBool()) {
+        arg.required = arg2.toBool();
+        arg.description = arg3.isString() ? arg3.toString() : "";
+    } else if (arg2.isString()) {
+        arg.required = true;
+        arg.description = arg2.toString();
 
-    if ( !value.isUndefined() && !value.isNull() ) {
-        arg.defaultUsed = true;
-        arg.defaultValue = value.toVariant();
+        if (!arg3.isUndefined() && !arg3.isNull()) {
+            arg.defaultUsed = true;
+            arg.defaultValue = arg3.toVariant();
+        }
     }
 
     command.args.append(arg);
 }
 
-void AxCommandWrappers::addArgFlagInt(const QString &flag, const QString &name, const bool required, const QString &description)
+void AxCommandWrappers::addArgFlagInt(const QString &flag, const QString &name, const QJSValue &arg3, const QJSValue &arg4)
 {
-    Argument arg = { "INT", name, required, true, flag, description, false, QVariant() };
-    command.args.append(arg);
-}
+    Argument arg = { "INT", name, false, true, flag, "", false, QVariant() };
 
-void AxCommandWrappers::addArgFlagInt(const QString &flag, const QString &name, const QString &description, const QJSValue &value)
-{
-    Argument arg = { "INT", name, true, true, flag, description, false, QVariant() };
+    if (arg3.isBool()) {
+        arg.required = arg3.toBool();
+        arg.description = arg4.isString() ? arg4.toString() : "";
+    } else if (arg3.isString()) {
+        arg.required = true;
+        arg.description = arg3.toString();
 
-    if ( !value.isUndefined() && !value.isNull() ) {
-        arg.defaultUsed = true;
-        arg.defaultValue = value.toVariant();
+        if (!arg4.isUndefined() && !arg4.isNull()) {
+            arg.defaultUsed = true;
+            arg.defaultValue = arg4.toVariant();
+        }
     }
 
     command.args.append(arg);
 }
 
-void AxCommandWrappers::addArgString(const QString &name, const bool required, const QString &description)
+void AxCommandWrappers::addArgString(const QString &name, const QJSValue &arg2, const QJSValue &arg3)
 {
-    Argument arg = { "STRING", name, required, false, "", description, false, QVariant() };
-    command.args.append(arg);
-}
+    Argument arg = { "STRING", name, true, false, "", "", false, QVariant() };
 
-void AxCommandWrappers::addArgString(const QString &name, const QString &description, const QJSValue &value)
-{
-    Argument arg = { "STRING", name, true, false, "", description, false, QVariant() };
+    if (arg2.isBool()) {
+        arg.required = arg2.toBool();
+        arg.description = arg3.isString() ? arg3.toString() : "";
+    }
+    else if (arg2.isString()) {
+        arg.description = arg2.toString();
 
-    if ( !value.isUndefined() && !value.isNull() ) {
-        arg.defaultUsed = true;
-        arg.defaultValue = value.toVariant();
+        if (!arg3.isUndefined() && !arg3.isNull()) {
+            arg.defaultUsed = true;
+            arg.defaultValue = arg3.toVariant();
+        }
     }
 
     command.args.append(arg);
 }
 
-void AxCommandWrappers::addArgFlagString(const QString &flag, const QString &name, const bool required, const QString &description)
+void AxCommandWrappers::addArgFlagString(const QString &flag, const QString &name, const QJSValue &arg3, const QJSValue &arg4)
 {
-    Argument arg = { "STRING", name, required, true, flag, description, false, QVariant() };
-    command.args.append(arg);
-}
+    Argument arg = { "STRING", name, false, true, flag, "", false, QVariant() };
 
-void AxCommandWrappers::addArgFlagString(const QString &flag, const QString &name, const QString &description, const QJSValue &value)
-{
-    Argument arg = { "STRING", name, true, true, flag, description, false, QVariant() };
+    if (arg3.isBool()) {
+        arg.required = arg3.toBool();
+        arg.description = arg4.isString() ? arg4.toString() : "";
+    } else if (arg3.isString()) {
+        arg.required = true;
+        arg.description = arg3.toString();
 
-    if ( !value.isUndefined() && !value.isNull() ) {
-        arg.defaultUsed = true;
-        arg.defaultValue = value.toVariant();
+        if (!arg4.isUndefined() && !arg4.isNull()) {
+            arg.defaultUsed = true;
+            arg.defaultValue = arg4.toVariant();
+        }
     }
 
     command.args.append(arg);
@@ -154,7 +160,6 @@ void AxCommandWrappers::setPreHook(const QJSValue &handler)
     command.is_pre_hook = true;
     command.pre_hook = handler;
 }
-
 
 AxCommandGroupWrapper::AxCommandGroupWrapper(QJSEngine* engine, QObject* parent) : QObject(parent), parent(parent), engine(engine) {}
 
@@ -186,7 +191,8 @@ QList<Command> AxCommandGroupWrapper::getCommands() const { return commands; }
 
 QJSEngine* AxCommandGroupWrapper::getEngine() const { return this->engine; }
 
-void AxCommandGroupWrapper::add(const QJSValue &value) {
+void AxCommandGroupWrapper::add(const QJSValue &value)
+{
     if (value.isUndefined() || value.isNull())
         return;
 

@@ -17,18 +17,13 @@ public:
 
     Q_INVOKABLE void addSubCommands(const QJSValue& array);
 
-    Q_INVOKABLE void addArgBool(const QString &flag, const QString &description = "");
-    Q_INVOKABLE void addArgBool(const QString &flag, const QString &description, const QJSValue &value);
+    Q_INVOKABLE void addArgBool(const QString &flag, const QJSValue &arg2 = QJSValue(), const QJSValue &arg3 = QJSValue());
 
-    Q_INVOKABLE void addArgInt(const QString &name, bool required = false, const QString &description = "");
-    Q_INVOKABLE void addArgInt(const QString &name, const QString &description, const QJSValue &value);
-    Q_INVOKABLE void addArgFlagInt(const QString &flag, const QString &name, bool required = false, const QString &description = "");
-    Q_INVOKABLE void addArgFlagInt(const QString &flag, const QString &name, const QString &description, const QJSValue &value);
+    Q_INVOKABLE void addArgInt(const QString &name, const QJSValue &arg2 = QJSValue(), const QJSValue &arg3 = QJSValue());
+    Q_INVOKABLE void addArgFlagInt(const QString &flag, const QString &name, const QJSValue &arg3 = QJSValue(), const QJSValue &arg4 = QJSValue());
 
-    Q_INVOKABLE void addArgString(const QString &name, bool required = false, const QString &description = "");
-    Q_INVOKABLE void addArgString(const QString &name, const QString &description, const QJSValue &value);
-    Q_INVOKABLE void addArgFlagString(const QString &flag, const QString &name, bool required = false, const QString &description = "");
-    Q_INVOKABLE void addArgFlagString(const QString &flag, const QString &name, const QString &description, const QJSValue &value);
+    Q_INVOKABLE void addArgString(const QString &name, const QJSValue &arg2 = QJSValue(), const QJSValue &arg3 = QJSValue());
+    Q_INVOKABLE void addArgFlagString(const QString &flag, const QString &name, const QJSValue &arg3 = QJSValue(), const QJSValue &arg4 = QJSValue());
 
     Q_INVOKABLE void addArgFile(const QString &name, bool required = false, const QString &description = "");
     Q_INVOKABLE void addArgFlagFile(const QString &flag, const QString &name, bool required = false, const QString &description = "");
