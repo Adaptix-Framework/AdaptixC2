@@ -212,7 +212,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		handler.AgentConnects.Put(agentId, connection)
 
 		for {
-			sendData, err = ModuleObject.ts.TsAgentGetHostedTasksOnly(agentId, 0x1900000)
+			sendData, err = ModuleObject.ts.TsAgentGetHostedTasks(agentId, 0x1900000)
 			if err != nil {
 				break
 			}
