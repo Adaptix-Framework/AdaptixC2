@@ -62,10 +62,10 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 			agent.OutConsole.Put(packet_console)
 			_ = ts.DBMS.DbConsoleInsert(agentId, packet_console)
 		}
-		agent.TasksQueue.Put(taskData)
+		agent.HostedTasks.Push(taskData)
 
 	case TYPE_BROWSER:
-		agent.TasksQueue.Put(taskData)
+		agent.HostedTasks.Push(taskData)
 
 	case TYPE_JOB:
 		if taskData.Sync {
@@ -78,7 +78,7 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 			agent.OutConsole.Put(packet_console)
 			_ = ts.DBMS.DbConsoleInsert(agentId, packet_console)
 		}
-		agent.TasksQueue.Put(taskData)
+		agent.HostedTasks.Push(taskData)
 
 	case TYPE_TUNNEL:
 		if taskData.Sync {
@@ -429,25 +429,18 @@ func (ts *Teamserver) TsTaskCancel(agentId string, taskId string) error {
 	}
 	agent, _ := value.(*Agent)
 
-	var task adaptix.TaskData
-	found := false
-	for i := uint(0); i < agent.TasksQueue.Len(); i++ {
-		if value, ok = agent.TasksQueue.Get(i); ok {
-			task = value.(adaptix.TaskData)
-			if task.TaskId == taskId {
-				agent.TasksQueue.Delete(i)
-				found = true
-				break
-			}
-		}
-	}
+	found, retTask := agent.HostedTasks.RemoveIf(func(v interface{}) bool {
+		task, ok := v.(adaptix.TaskData)
+		return ok && task.TaskId == taskId
+	})
 
 	if found {
-		packet := CreateSpAgentTaskRemove(task)
-		ts.TsSyncAllClients(packet)
-		return nil
+		task, ok := retTask.(adaptix.TaskData)
+		if ok {
+			packet := CreateSpAgentTaskRemove(task)
+			ts.TsSyncAllClients(packet)
+		}
 	}
-
 	return nil
 }
 
@@ -458,14 +451,12 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 	}
 	agent, _ := value.(*Agent)
 
-	var task adaptix.TaskData
-	for i := uint(0); i < agent.TasksQueue.Len(); i++ {
-		if value, ok = agent.TasksQueue.Get(i); ok {
-			task = value.(adaptix.TaskData)
-			if task.TaskId == taskId {
-				return fmt.Errorf("task %v in process", taskId)
-			}
-		}
+	found, _ := agent.HostedTasks.FindIf(func(v interface{}) bool {
+		task, ok := v.(*adaptix.TaskData)
+		return ok && task.TaskId == taskId
+	})
+	if found {
+		return fmt.Errorf("task %v in process", taskId)
 	}
 
 	value, ok = agent.RunningTasks.Get(taskId)
@@ -477,7 +468,7 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 		return fmt.Errorf("task %v not found", taskId)
 	}
 
-	task = value.(adaptix.TaskData)
+	task := value.(adaptix.TaskData)
 	_ = ts.DBMS.DbTaskDelete(task.TaskId, "")
 
 	packet := CreateSpAgentTaskRemove(task)
@@ -500,23 +491,22 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 	/// TASKS QUEUE
 
 	var sendTasks []string
-	for i := uint(0); i < agent.TasksQueue.Len(); i++ {
-		value, ok = agent.TasksQueue.Get(i)
-		if ok {
-			taskData := value.(adaptix.TaskData)
-			if tasksSize+len(taskData.Data) < availableSize {
-				tasks = append(tasks, taskData)
-				if taskData.Sync || taskData.Type == TYPE_BROWSER {
-					agent.RunningTasks.Put(taskData.TaskId, taskData)
-				}
-				agent.TasksQueue.Delete(i)
-				i--
-				sendTasks = append(sendTasks, taskData.TaskId)
-				tasksSize += len(taskData.Data)
-			} else {
-				break
+	for {
+		item, err := agent.HostedTasks.Pop()
+		if err != nil {
+			break
+		}
+		taskData := item.(adaptix.TaskData)
+
+		if tasksSize+len(taskData.Data) < availableSize {
+			tasks = append(tasks, taskData)
+			if taskData.Sync || taskData.Type == TYPE_BROWSER {
+				agent.RunningTasks.Put(taskData.TaskId, taskData)
 			}
+			sendTasks = append(sendTasks, taskData.TaskId)
+			tasksSize += len(taskData.Data)
 		} else {
+			agent.HostedTasks.PushFront(taskData)
 			break
 		}
 	}
@@ -525,38 +515,36 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 		ts.TsSyncAllClients(packet)
 	}
 
-	for i := uint(0); i < agent.TunnelConnectTasks.Len(); i++ {
-		value, ok = agent.TunnelConnectTasks.Get(i)
-		if ok {
-			taskData := value.(adaptix.TaskData)
-			if tasksSize+len(taskData.Data) < availableSize {
-				tasks = append(tasks, taskData)
-				agent.TunnelConnectTasks.Delete(i)
-				i--
-				tasksSize += len(taskData.Data)
-			} else {
-				break
-			}
+	for {
+		item, err := agent.HostedTunnelTasks.Pop()
+		if err != nil {
+			break
+		}
+		taskData := item.(adaptix.TaskData)
+
+		if tasksSize+len(taskData.Data) < availableSize {
+			tasks = append(tasks, taskData)
+			tasksSize += len(taskData.Data)
 		} else {
+			agent.HostedTunnelTasks.PushFront(taskData)
 			break
 		}
 	}
 
 	/// TUNNELS QUEUE
 
-	for i := uint(0); i < agent.TunnelQueue.Len(); i++ {
-		value, ok = agent.TunnelQueue.Get(i)
-		if ok {
-			taskDataTunnel := value.(adaptix.TaskDataTunnel)
-			if tasksSize+len(taskDataTunnel.Data.Data) < availableSize {
-				tasks = append(tasks, taskDataTunnel.Data)
-				agent.TunnelQueue.Delete(i)
-				i--
-				tasksSize += len(taskDataTunnel.Data.Data)
-			} else {
-				break
-			}
+	for {
+		item, err := agent.HostedTunnelData.Pop()
+		if err != nil {
+			break
+		}
+		taskDataTunnel := item.(adaptix.TaskDataTunnel)
+
+		if tasksSize+len(taskDataTunnel.Data.Data) < availableSize {
+			tasks = append(tasks, taskDataTunnel.Data)
+			tasksSize += len(taskDataTunnel.Data.Data)
 		} else {
+			agent.HostedTunnelData.PushFront(taskDataTunnel)
 			break
 		}
 	}
@@ -569,7 +557,7 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 			pivotData := value.(*adaptix.PivotData)
 			lostSize := availableSize - tasksSize
 			if availableSize > 0 {
-				data, err := ts.TsAgentGetHostedTasksAll(pivotData.ChildAgentId, lostSize)
+				data, err := ts.TsAgentGetHostedAll(pivotData.ChildAgentId, lostSize)
 				if err != nil {
 					continue
 				}
@@ -601,23 +589,22 @@ func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int)
 	/// TASKS QUEUE
 
 	var sendTasks []string
-	for i := uint(0); i < agent.TasksQueue.Len(); i++ {
-		value, ok = agent.TasksQueue.Get(i)
-		if ok {
-			taskData := value.(adaptix.TaskData)
-			if tasksSize+len(taskData.Data) < availableSize {
-				tasks = append(tasks, taskData)
-				if taskData.Sync || taskData.Type == TYPE_BROWSER {
-					agent.RunningTasks.Put(taskData.TaskId, taskData)
-				}
-				agent.TasksQueue.Delete(i)
-				i--
-				sendTasks = append(sendTasks, taskData.TaskId)
-				tasksSize += len(taskData.Data)
-			} else {
-				break
+	for {
+		item, err := agent.HostedTasks.Pop()
+		if err != nil {
+			break
+		}
+		taskData := item.(adaptix.TaskData)
+
+		if tasksSize+len(taskData.Data) < availableSize {
+			tasks = append(tasks, taskData)
+			if taskData.Sync || taskData.Type == TYPE_BROWSER {
+				agent.RunningTasks.Put(taskData.TaskId, taskData)
 			}
+			sendTasks = append(sendTasks, taskData.TaskId)
+			tasksSize += len(taskData.Data)
 		} else {
+			agent.HostedTasks.PushFront(taskData)
 			break
 		}
 	}
@@ -626,20 +613,18 @@ func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int)
 		ts.TsSyncAllClients(packet)
 	}
 
-	for i := uint(0); i < agent.TunnelConnectTasks.Len(); i++ {
-		value, ok = agent.TunnelConnectTasks.Get(i)
-		if ok {
-			taskData := value.(adaptix.TaskData)
-			if tasksSize+len(taskData.Data) < availableSize {
-				tasks = append(tasks, taskData)
-				agent.TunnelConnectTasks.Delete(i)
-				i--
-				//sendTasks = append(sendTasks, taskData.TaskId)
-				tasksSize += len(taskData.Data)
-			} else {
-				break
-			}
+	for {
+		item, err := agent.HostedTunnelTasks.Pop()
+		if err != nil {
+			break
+		}
+		taskData := item.(adaptix.TaskData)
+
+		if tasksSize+len(taskData.Data) < availableSize {
+			tasks = append(tasks, taskData)
+			tasksSize += len(taskData.Data)
 		} else {
+			agent.HostedTunnelTasks.PushFront(taskData)
 			break
 		}
 	}
@@ -657,7 +642,7 @@ func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {
 	agent := value.(*Agent)
 
 	if !first {
-		if agent.TasksQueue.Len() > 0 || agent.TunnelQueue.Len() > 0 {
+		if agent.HostedTasks.Len() > 0 || agent.HostedTunnelData.Len() > 0 {
 			return true
 		}
 	}
@@ -692,7 +677,7 @@ func (ts *Teamserver) TsTaskGetAvailablePivotAll(agentId string, availableSize i
 			pivotData := value.(*adaptix.PivotData)
 			lostSize := availableSize - tasksSize
 			if availableSize > 0 {
-				data, err := ts.TsAgentGetHostedTasksAll(pivotData.ChildAgentId, lostSize)
+				data, err := ts.TsAgentGetHostedAll(pivotData.ChildAgentId, lostSize)
 				if err != nil {
 					continue
 				}
