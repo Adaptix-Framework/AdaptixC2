@@ -44,6 +44,9 @@ void BridgeEvent::reg(const QString &event, const QString &type, const QJSValue 
     this->scriptEngine->registerEvent(event, handler, list_agents, list_os, list_listeners, event_id);
 }
 
+void BridgeEvent::on_new_agent(const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id) {
+    this->reg("new_agent", "on_new_agent", handler, agents, os, listeners, event_id);
+}
 
 
 void BridgeEvent::on_filebrowser_disks(const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id) {

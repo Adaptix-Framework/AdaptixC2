@@ -41,6 +41,7 @@ struct ScriptContext {
     QList<AxEvent> eventFileBroserList;
     QList<AxEvent> eventFileBroserUpload;
     QList<AxEvent> eventProcessBrowserList;
+    QList<AxEvent> eventNewAgent;
 
     QList<AxMenuItem> menuSessionMain;
     QList<AxMenuItem> menuSessionAgent;

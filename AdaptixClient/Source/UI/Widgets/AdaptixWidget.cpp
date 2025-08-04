@@ -244,7 +244,7 @@ void AdaptixWidget::AddTab(QWidget *tab, const QString &title, const QString &ic
     mainTabWidget->setCurrentIndex( id );
 }
 
-void AdaptixWidget::RemoveTab(int index) const
+void AdaptixWidget::RemoveTab(const int index) const
 {
     if (index == -1)
         return;
