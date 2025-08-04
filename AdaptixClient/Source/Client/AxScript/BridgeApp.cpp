@@ -343,6 +343,38 @@ QObject* BridgeApp::create_commands_group(const QString &name, const QJSValue &a
     return wrapper;
 }
 
+QJSValue BridgeApp::downloads() const
+{
+    QVariantMap list;
+    auto mapDownloads = scriptEngine->manager()->GetDownloads();
+
+    for (auto download : mapDownloads) {
+        QVariantMap map;
+        map["id"]         = download.FileId;
+        map["agent_id"]   = download.AgentId;
+        map["agent_name"] = download.AgentName;
+        map["user"]       = download.User;
+        map["computer"]   = download.Computer;
+        map["filename"]   = download.Filename;
+        map["recv_size"]  = download.RecvSize;
+        map["total_size"] = download.TotalSize;
+        map["date"]       = download.Date;
+
+        if (download.State == DOWNLOAD_STATE_RUNNING)
+            map["state"] = "running";
+        else if (download.State == DOWNLOAD_STATE_STOPPED)
+            map["state"] = "stopped";
+        else if (download.State == DOWNLOAD_STATE_FINISHED)
+            map["state"] = "finished";
+        else
+            map["state"] = "canceled";
+
+        list[download.FileId] = map;
+    }
+
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
 void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
@@ -423,11 +455,24 @@ QString BridgeApp::file_read(QString path) const
     }
 }
 
+QString BridgeApp::format_size(const int &size) const { return BytesToFormat(size); }
+
 QString BridgeApp::format_time(const QString &format, const int &time) const
 {
     QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(time, QTimeZone("UTC"));
     QDateTime localDateTime = epochDateTime.toTimeZone(QTimeZone::systemTimeZone());
     return localDateTime.toString(format);
+}
+
+QJSValue BridgeApp::ids() const
+{
+    QVariantList list;
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+
+    for (auto agent : mapAgents)
+        list.append(agent->data.Id);
+
+    return this->scriptEngine->engine()->toScriptValue(list);
 }
 
 QJSValue BridgeApp::interfaces() const
@@ -448,6 +493,15 @@ bool BridgeApp::is64(const QString &id) const
         return false;
 
     return mapAgents[id]->data.Arch == "x64";
+}
+
+bool BridgeApp::isactive(const QString &id) const
+{
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+    if (!mapAgents.contains(id))
+        return false;
+
+    return mapAgents[id]->active;
 }
 
 bool BridgeApp::isadmin(const QString &id) const
@@ -551,14 +605,52 @@ void BridgeApp::script_unload(const QString &path) { scriptEngine->manager()->Gl
 
 QString BridgeApp::script_dir()
 {
-//#ifdef Q_OS_WIN
-//    return GetParentPathWindows(scriptEngine->context.name) + "\\";
-//#else
     return GetParentPathUnix(scriptEngine->context.name) + "/";
-//#endif
+}
+
+QJSValue BridgeApp::screenshots()
+{
+    QVariantMap list;
+    auto screenshots = scriptEngine->manager()->GetScreenshots();
+
+    for (auto screen : screenshots) {
+        QVariantMap map;
+        map["id"]       = screen.ScreenId;
+        map["user"]     = screen.User;
+        map["computer"] = screen.Computer;
+        map["note"]     = screen.Note;
+        map["date"]     = screen.Date;
+        list[screen.ScreenId] = map;
+    }
+
+    return this->scriptEngine->engine()->toScriptValue(list);
 }
 
 void BridgeApp::show_message(const QString &title, const QString &text) { QMessageBox::information(nullptr, title, text); }
 
 int BridgeApp::ticks() { return QDateTime::currentSecsSinceEpoch(); }
 
+QJSValue BridgeApp::tunnels()
+{
+    QVariantMap list;
+    auto tunnels = scriptEngine->manager()->GetTunnels();
+
+    for (auto tun : tunnels) {
+        QVariantMap map;
+        map["id"]        = tun.TunnelId;
+        map["agent_id"]  = tun.AgentId;
+        map["username"]  = tun.Username;
+        map["computer"]  = tun.Computer;
+        map["process"]   = tun.Process;
+        map["type"]      = tun.Type;
+        map["info"]      = tun.Info;
+        map["interface"] = tun.Interface;
+        map["port"]      = tun.Port;
+        map["client"]    = tun.Client;
+        map["f_port"]    = tun.Fport;
+        map["f_host"]    = tun.Fhost;
+        list[tun.TunnelId]  = map;
+    }
+
+    return this->scriptEngine->engine()->toScriptValue(list);
+}

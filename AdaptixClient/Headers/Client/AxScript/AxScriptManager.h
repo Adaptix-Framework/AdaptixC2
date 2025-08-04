@@ -54,11 +54,14 @@ public:
     void ResetMain();
     void Clear();
 
-    QJSEngine*              GetEngine(const QString &name);
-    AdaptixWidget*          GetAdaptix() const;
-    QMap<QString, Agent*>   GetAgents() const;
-    QVector<CredentialData> GetCredentials() const;
-    QStringList             GetInterfaces() const;
+    QJSEngine*                  GetEngine(const QString &name);
+    AdaptixWidget*              GetAdaptix() const;
+    QMap<QString, Agent*>       GetAgents() const;
+    QVector<CredentialData>     GetCredentials() const;
+    QMap<QString, DownloadData> GetDownloads() const;
+    QMap<QString, ScreenData>   GetScreenshots() const;
+    QVector<TunnelData>         GetTunnels() const;
+    QStringList                 GetInterfaces() const;
 
     QStringList ListenerScriptList();
     void        ListenerScriptAdd(const QString &name, const QString &ax_script);
@@ -96,6 +99,7 @@ public slots:
     void consolePrintMessage(const QString &message);
     void consolePrintError(const QString &message);
 
+    void emitNewAgent(const QString &agentId);
     void emitFileBrowserDisks(const QString &agentId);
     void emitFileBrowserList(const QString &agentId, const QString &path);
     void emitFileBrowserUpload(const QString &agentId, const QString &path, const QString &localFilename);

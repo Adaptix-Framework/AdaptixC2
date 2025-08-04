@@ -33,15 +33,19 @@ public slots:
     void     credentials_add(const QString &username, const QString &password, const QString &realm = "", const QString &type = "password", const QString &tag = "", const QString &storage = "manual", const QString &host = "");
     QObject* create_command(const QString &name, const QString &description, const QString &example = "", const QString &message = "");
     QObject* create_commands_group(const QString &name, const QJSValue& array);
+    QJSValue downloads() const;
     void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "", const QJSValue &hook = QJSValue()) const;
     void     execute_browser(const QString &id, const QString &command) const;
     void     execute_command(const QString &id, const QString &command, const QJSValue &hook = QJSValue()) const;
     QString  file_basename(const QString &path) const;
     bool     file_exists(const QString &path) const;
     QString  file_read(QString path) const;
+    QString  format_size(const int &size) const;
     QString  format_time(const QString &format, const int &time) const;
+    QJSValue ids() const;
     QJSValue interfaces() const;
     bool     is64(const QString &id) const;
+    bool     isactive(const QString &id) const;
     bool     isadmin(const QString &id) const;
     void     log(const QString &text);
     void     log_error(const QString &text);
@@ -58,8 +62,10 @@ public slots:
     void     script_load(const QString &path);
     void     script_unload(const QString &path);
     QString  script_dir();
+    QJSValue screenshots();
     void     show_message(const QString &title, const QString &text);
     int      ticks();
+    QJSValue tunnels();
 
 signals:
     void consoleMessage(const QString &msg);
