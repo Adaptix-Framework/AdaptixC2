@@ -253,6 +253,7 @@ function GenerateUI(listenerType)
     container.put("format", comboFormat)
     container.put("reconn_timeout", textReconnTimeout)
     container.put("reconn_count", spinReconnCount)
+    container.put("win7_support", checkWin7)
 
     let panel = form.create_panel()
     panel.setLayout(layout)
