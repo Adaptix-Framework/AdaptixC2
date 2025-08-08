@@ -63,6 +63,12 @@ QMap<QString, Agent*> AxScriptManager::GetAgents() const { return adaptixWidget-
 
 QVector<CredentialData> AxScriptManager::GetCredentials() const { return adaptixWidget->Credentials; }
 
+QMap<QString, DownloadData> AxScriptManager::GetDownloads() const { return adaptixWidget->Downloads; }
+
+QMap<QString, ScreenData> AxScriptManager::GetScreenshots() const { return adaptixWidget->Screenshots; }
+
+QVector<TunnelData> AxScriptManager::GetTunnels() const { return adaptixWidget->Tunnels; }
+
 QStringList AxScriptManager::GetInterfaces() const { return adaptixWidget->addresses; }
 
 /// MAIN
@@ -463,6 +469,18 @@ int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QSt
 
 
 /// EVENT
+
+void AxScriptManager::emitNewAgent(const QString &agentId)
+{
+    QList<AxEvent> items = this->FilterEvents(agentId, "new_agent");
+    for (int i = 0; i < items.size(); ++i) {
+        AxEvent event = items[i];
+        if (event.jsEngine) {
+            QJSValue argId = event.jsEngine->toScriptValue(agentId);
+            event.handler.call(QJSValueList() << argId);
+        }
+    }
+}
 
 void AxScriptManager::emitFileBrowserDisks(const QString &agentId)
 {

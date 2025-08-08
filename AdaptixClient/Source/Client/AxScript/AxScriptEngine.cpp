@@ -80,6 +80,7 @@ void AxScriptEngine::registerEvent(const QString &type, const QJSValue &handler,
     else if (type == "FileBroserList")     context.eventFileBroserList.append(event);
     else if (type == "FileBroserUpload")   context.eventFileBroserUpload.append(event);
     else if (type == "ProcessBrowserList") context.eventProcessBrowserList.append(event);
+    else if (type == "new_agent")          context.eventNewAgent.append(event);
 }
 
 QList<AxEvent> AxScriptEngine::getEvents(const QString &type)
@@ -88,6 +89,7 @@ QList<AxEvent> AxScriptEngine::getEvents(const QString &type)
     else if (type == "FileBroserList")     return context.eventFileBroserList;
     else if (type == "FileBroserUpload")   return context.eventFileBroserUpload;
     else if (type == "ProcessBrowserList") return context.eventProcessBrowserList;
+    else if (type == "new_agent")          return context.eventNewAgent;
 
     return QList<AxEvent>();
 }
