@@ -87,6 +87,7 @@ void DialogSettings::createUI()
     themeCombo->addItem("Light_Arc");
     themeCombo->addItem("Dark");
     themeCombo->addItem("Dracula");
+    themeCombo->addItem("Fallout");
 
     fontSizeLabel = new QLabel("Font size: ", mainSettingWidget);
     fontSizeSpin  = new QSpinBox(mainSettingWidget);
