@@ -1,0 +1,255 @@
+/* Fallout3 Pip-Boy Theme */
+
+
+QWidget {
+    background-color: #111111; /* Dark base mimicking Pip-Boy screen */
+    color: #00FF00; /* Bright green text like Pip-Boy display */
+    font-family: "VT323", monospace; /* Retro terminal font */
+}
+
+QWidget:disabled {
+    background-color: #0A0A0A; /* Deeper dark for disabled */
+    color: #00CC00; /* Slightly muted green */
+}
+
+QLabel[LabelStyle="console"] {
+    padding: 4px;
+    color: #00CC00;
+    background-color: transparent;
+}
+
+QLabel {
+    padding: 4px;
+    color: #ffffff;
+    background-color: transparent;
+}
+
+QLabel:disabled {
+    color: #00CC00;
+}
+
+/* Push Buttons */
+QPushButton[ButtonStyle="dialog"] {
+    background-color: #000000; /* Dark gray for rugged look */
+    border: 1px solid #006600;
+    padding: 8px;
+    border-radius: 2px;
+    color: #00FF00;
+}
+
+QPushButton {
+    background-color: #1A1A1A;
+    border: 1px solid #006600;
+    padding: 4px;
+    border-radius: 2px;
+    color: #00FF00;
+}
+
+QPushButton:hover {
+    background-color: #425041ff;
+}
+
+QPushButton:disabled {
+    background-color: #0A0A0A;
+    color: #00FF00;
+    border: 1px solid #004400;
+}
+
+QLineEdit[LineEditStyle="console"] {
+    background-color: #000000;
+    color: #ffffff;
+    border: 1px #00f2fa;
+    padding: 4px;
+    border-radius: 4px;
+}
+
+QLineEdit {
+    background-color: #0A0A0A;
+    color: #00FF00;
+    border: 1px solid #006600;
+    padding: 4px;
+    border-radius: 2px;
+}
+
+QLineEdit:disabled {
+    background-color: #050505;
+    color: #00CC00;
+    border: 1px solid #004400;
+}
+
+/* Table Widget */
+QTableWidget {
+    background-color: #111111;
+    alternate-background-color: #1A1A1A;
+    border: 1px solid #006600;
+    color: #00ff00;
+    border-radius: 2px;
+}
+
+QHeaderView::section {
+    color: #00FF00;
+    padding: 4px;
+    background: qlineargradient(
+        x1: 0, y1: 0, x2: 0, y2: 1,
+        stop: 0 #222222,
+        stop: 1 #1A1A1A
+    );
+    border: none;
+    border-bottom: 1px solid #006600;
+    border-right: 1px solid #006600;
+    font-weight: bold;
+}
+
+QTableWidget::item {
+    padding-left: 8px;
+    padding-right: 8px;
+    border: none;
+}
+
+QTableWidget::item:selected {
+    background-color: #000000;
+    color: #00FF00;
+    outline: none;
+}
+
+QTableWidget:disabled {
+    background-color: #0A0A0A;
+    color: #00CC00;
+    border: 1px solid #004400;
+}
+
+/* Menu */
+QMenu {
+    background-color: #111111;
+    border: 1px solid #006600;
+    border-radius: 2px;
+    padding: 3px;
+}
+
+QMenu::item {
+    padding: 5px 10px;
+    color: #00FF00;
+    border-radius: 2px;
+}
+
+QMenu::item:selected {
+    background-color: #1A1A1A;
+    color: #00FF00;
+    border: 1px solid #007700;
+}
+
+QMenu::separator {
+    height: 2px;
+    background: #006600;
+    margin: 3px 5px;
+}
+
+QMenu:disabled {
+    background-color: #0A0A0A;
+    color: #00CC00;
+}
+
+/* Menu Bar */
+QMenuBar {
+    background-color: #111111;
+    color: #00FF00;
+    padding: 4px;
+    border-bottom: 1px solid #006600;
+}
+
+QMenuBar::item {
+    background-color: transparent;
+    padding: 4px 4px;
+    margin: 0px 4px;
+    color: #00FF00;
+    border-radius: 2px;
+}
+
+QMenuBar::item:selected {
+    background-color: #1A1A1A;
+    color: #00FF00;
+}
+
+QMenuBar::item:pressed {
+    background-color: #222222;
+    color: #00FF00;
+    border: 1px solid #007700;
+}
+
+/* Tab Widget */
+QTabWidget::pane {
+    border: 1px solid #006600;
+    background-color: #111111;
+}
+
+QTabBar::tab {
+    background-color: #1A1A1A;
+    color: #00FF00;
+    padding: 4px;
+    border: 1px solid #006600;
+    border-top-left-radius: 2px;
+    border-top-right-radius: 2px;
+}
+
+QTabBar::tab:selected {
+    background-color: #111111;
+    color: #00FF00;
+}
+
+QTabBar::tab:hover {
+    background-color: #222222;
+}
+
+/* Progress Bar */
+QProgressBar {
+    border: 2px solid #006600;
+    border-radius: 2px;
+    background-color: #111111;
+    text-align: center;
+    color: #00FF00;
+}
+
+QProgressBar::chunk {
+    background-color: #00CC00; /* Lighter green for progress */
+    border-radius: 2px;
+}
+
+QProgressBar:disabled {
+    background-color: #0A0A0A;
+    color: #00CC00;
+    border: 1px solid #004400;
+}
+
+QTextEdit[TextEditStyle="console"] {
+    background-color: #111111;
+    color: #FFFFFF;
+    border: 0px;
+    padding: 2px;
+    border-radius: 0px;
+}
+
+QTextEdit {
+    background-color: #FFFFFF; 
+    border: 1px solid #FFFFFF; 
+    color: #00CC00; 
+    padding: 2px;
+    border-radius: 4px;
+}
+
+QTextEdit:disabled {
+    background-color: #F0F0F0; 
+    color: #A0A0A0; 
+}
+
+QPlainTextEdit {
+    background-color: #FFFFFF; 
+    border: 1px solid #D0D0D0; 
+    color: #c8ff00ff; 
+    padding: 2px;
+    border-radius: 4px;
+}
+
+QPlainTextEdit:disabled {
+    background-color: #F0F0F0; 
+    color: #A0A0A0; 
+}

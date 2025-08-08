@@ -33,6 +33,7 @@
         <file alias="Dark">themes/dark.qss</file>
         <file alias="Dracula">themes/dracula.qss</file>
         <file alias="Light_Arc">themes/light_arc.qss</file>
+        <file alias="Fallout">themes/fallout.qss</file>
     </qresource>
 
     <qresource prefix="/icons">
