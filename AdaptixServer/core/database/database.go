@@ -39,7 +39,7 @@ func (dbms *DBMS) DatabaseInit() error {
 
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Listeners" (
     	"ListenerName" TEXT NOT NULL UNIQUE, 
-    	"ListenerType" TEXT NOT NULL,
+    	"ListenerRegName" TEXT NOT NULL,
     	"ListenerConfig" TEXT NOT NULL,
     	"Watermark" TEXT NOT NULL,
     	"CustomData" BLOB

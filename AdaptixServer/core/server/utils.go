@@ -185,20 +185,24 @@ type SpEvent struct {
 type SyncPackerListenerReg struct {
 	SpType int `json:"type"`
 
-	ListenerFN string `json:"fn"`
-	ListenerAX string `json:"ax"`
+	Name     string `json:"l_name"`
+	Protocol string `json:"l_protocol"`
+	Type     string `json:"l_type"`
+	AX       string `json:"ax"`
 }
 
 type SyncPackerListenerStart struct {
 	SpType int `json:"type"`
 
-	ListenerName   string `json:"l_name"`
-	ListenerType   string `json:"l_type"`
-	BindHost       string `json:"l_bind_host"`
-	BindPort       string `json:"l_bind_port"`
-	AgentAddrs     string `json:"l_agent_addr"`
-	ListenerStatus string `json:"l_status"`
-	Data           string `json:"l_data"`
+	ListenerName     string `json:"l_name"`
+	ListenerRegName  string `json:"l_reg_name"`
+	ListenerProtocol string `json:"l_protocol"`
+	ListenerType     string `json:"l_type"`
+	BindHost         string `json:"l_bind_host"`
+	BindPort         string `json:"l_bind_port"`
+	AgentAddrs       string `json:"l_agent_addr"`
+	ListenerStatus   string `json:"l_status"`
+	Data             string `json:"l_data"`
 }
 
 type SyncPackerListenerStop struct {

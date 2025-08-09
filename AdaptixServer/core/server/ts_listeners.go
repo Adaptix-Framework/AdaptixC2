@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	isvalid "AdaptixServer/core/utils/valid"
@@ -9,23 +10,29 @@ import (
 	"github.com/Adaptix-Framework/axc2"
 )
 
-func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, listenerConfig string, listenerWatermark string, listenerCustomData []byte) error {
-
-	if !ts.listener_configs.Contains(listenerType) {
-		return fmt.Errorf("listener %v does not exist", listenerType)
+func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName string, listenerConfig string, listenerWatermark string, listenerCustomData []byte) error {
+	value, ok := ts.listener_configs.Get(listenerRegName)
+	if !ok {
+		return fmt.Errorf("listener %v does not register", listenerRegName)
 	}
+	listenerInfo, _ := value.(extender.ListenerInfo)
+
 	if ts.listeners.Contains(listenerName) {
 		return errors.New("listener already exists")
 	}
 
-	listenerData, customData, err := ts.Extender.ExListenerStart(listenerName, listenerType, listenerConfig, listenerCustomData)
+	listenerData, customData, err := ts.Extender.ExListenerStart(listenerName, listenerRegName, listenerConfig, listenerCustomData)
 	if err != nil {
 		return err
 	}
 
 	listenerData.Name = listenerName
-	listenerData.Type = listenerType
+	listenerData.RegName = listenerRegName
 	listenerData.Data = listenerConfig
+	listenerData.Type = listenerInfo.Type
+	if listenerData.Protocol == "" {
+		listenerData.Protocol = listenerInfo.Protocol
+	}
 	if listenerData.Watermark == "" {
 		listenerData.Watermark = listenerWatermark
 	}
@@ -39,41 +46,48 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerType string, 
 
 	ts.listeners.Put(listenerName, listenerData)
 
-	ts.wm_listeners[listenerData.Watermark] = []string{listenerName, listenerType}
+	ts.wm_listeners[listenerData.Watermark] = []string{listenerName, listenerRegName}
 
 	packet := CreateSpListenerStart(listenerData)
 	ts.TsSyncAllClients(packet)
 
-	ts.TsEventListenerStart(false, listenerName, listenerType)
+	ts.TsEventListenerStart(false, listenerName, listenerRegName)
 
 	_ = ts.DBMS.DbListenerInsert(listenerData, customData)
 
 	return nil
 }
 
-func (ts *Teamserver) TsListenerEdit(listenerName string, listenerType string, listenerConfig string) error {
-	if !ts.listener_configs.Contains(listenerType) {
-		return fmt.Errorf("listener %v does not exist", listenerType)
+func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string, listenerConfig string) error {
+	value, ok := ts.listener_configs.Get(listenerRegName)
+	if !ok {
+		return fmt.Errorf("listener %v does not register", listenerRegName)
 	}
+	listenerInfo, _ := value.(extender.ListenerInfo)
+
 	if !ts.listeners.Contains(listenerName) {
 		return fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
-	listenerData, customData, err := ts.Extender.ExListenerEdit(listenerName, listenerType, listenerConfig)
+	listenerData, customData, err := ts.Extender.ExListenerEdit(listenerName, listenerRegName, listenerConfig)
 	if err != nil {
 		return err
 	}
 
 	listenerData.Name = listenerName
-	listenerData.Type = listenerType
+	listenerData.RegName = listenerRegName
 	listenerData.Data = listenerConfig
+	listenerData.Type = listenerInfo.Type
+	if listenerData.Protocol == "" {
+		listenerData.Protocol = listenerInfo.Protocol
+	}
 
 	ts.listeners.Put(listenerName, listenerData)
 
 	packet := CreateSpListenerEdit(listenerData)
 	ts.TsSyncAllClients(packet)
 
-	ts.TsEventListenerStart(true, listenerName, listenerType)
+	ts.TsEventListenerStart(true, listenerName, listenerRegName)
 
 	_ = ts.DBMS.DbListenerUpdate(listenerName, listenerConfig, customData)
 

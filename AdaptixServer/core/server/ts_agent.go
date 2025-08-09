@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"AdaptixServer/core/utils/tformat"
@@ -52,8 +53,14 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 		return fmt.Errorf("listener %v does not exists", listenerName)
 	}
 
-	lType := strings.Split(value.(adaptix.ListenerData).Type, "/")[0]
-	if lType == "internal" {
+	regName := value.(adaptix.ListenerData).RegName
+	value, ok = ts.listener_configs.Get(regName)
+	if !ok {
+		return fmt.Errorf("listener %v does not register", regName)
+	}
+
+	listenerInfo, _ := value.(extender.ListenerInfo)
+	if listenerInfo.Type == "internal" {
 		agentData.Mark = "Unlink"
 	}
 
