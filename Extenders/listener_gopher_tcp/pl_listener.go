@@ -132,6 +132,10 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		Status:    "Listen",
 	}
 
+	if listener.Config.Ssl {
+		listenerData.Protocol = "mtls"
+	}
+
 	if !listener.Active {
 		listenerData.Status = "Closed"
 	}

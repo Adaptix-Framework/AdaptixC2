@@ -3,7 +3,6 @@ package extender
 import (
 	"AdaptixServer/core/utils/logs"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"plugin"
@@ -107,8 +106,7 @@ func (ex *AdaptixExtender) LoadPluginListener(config_path string, config_data []
 		return
 	}
 
-	listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.Type, listenerInfo.Protocol, listenerInfo.Name)
-	ex.listenerModules[listenerFN] = module
+	ex.listenerModules[listenerInfo.Name] = module
 }
 
 func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byte) {

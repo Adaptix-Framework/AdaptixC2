@@ -42,7 +42,7 @@ type AgentInfo struct {
 
 type Teamserver interface {
 	TsListenerReg(listenerInfo ListenerInfo) error
-	TsListenerTypeByName(listenerName string) (string, error)
+	TsListenerRegByName(listenerName string) (string, error)
 	TsAgentReg(agentInfo AgentInfo) error
 }
 

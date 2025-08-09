@@ -101,12 +101,14 @@ func CreateSpSyncFinish() SyncPackerFinish {
 
 /// LISTENER
 
-func CreateSpListenerReg(fn string, ax string) SyncPackerListenerReg {
+func CreateSpListenerReg(name string, protocol string, l_type string, ax string) SyncPackerListenerReg {
 	return SyncPackerListenerReg{
 		SpType: TYPE_LISTENER_REG,
 
-		ListenerFN: fn,
-		ListenerAX: ax,
+		Name:     name,
+		Protocol: protocol,
+		Type:     l_type,
+		AX:       ax,
 	}
 }
 
@@ -114,13 +116,15 @@ func CreateSpListenerStart(listenerData adaptix.ListenerData) SyncPackerListener
 	return SyncPackerListenerStart{
 		SpType: TYPE_LISTENER_START,
 
-		ListenerName:   listenerData.Name,
-		ListenerType:   listenerData.Type,
-		BindHost:       listenerData.BindHost,
-		BindPort:       listenerData.BindPort,
-		AgentAddrs:     listenerData.AgentAddr,
-		ListenerStatus: listenerData.Status,
-		Data:           listenerData.Data,
+		ListenerName:     listenerData.Name,
+		ListenerRegName:  listenerData.RegName,
+		ListenerProtocol: listenerData.Protocol,
+		ListenerType:     listenerData.Type,
+		BindHost:         listenerData.BindHost,
+		BindPort:         listenerData.BindPort,
+		AgentAddrs:       listenerData.AgentAddr,
+		ListenerStatus:   listenerData.Status,
+		Data:             listenerData.Data,
 	}
 }
 
