@@ -42,12 +42,16 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
 
     if( spType == TYPE_LISTENER_REG ) {
-        if ( !jsonObj.contains("fn") || !jsonObj["fn"].isString() ) return false;
-        if ( !jsonObj.contains("ax") || !jsonObj["ax"].isString() ) return false;
+        if ( !jsonObj.contains("l_name")     || !jsonObj["l_name"].isString() )     return false;
+        if ( !jsonObj.contains("l_protocol") || !jsonObj["l_protocol"].isString() ) return false;
+        if ( !jsonObj.contains("l_type")     || !jsonObj["l_type"].isString() )     return false;
+        if ( !jsonObj.contains("ax")         || !jsonObj["ax"].isString() )         return false;
         return true;
     }
     if( spType == TYPE_LISTENER_START || spType == TYPE_LISTENER_EDIT ) {
         if ( !jsonObj.contains("l_name")       || !jsonObj["l_name"].isString() )       return false;
+        if ( !jsonObj.contains("l_reg_name")   || !jsonObj["l_reg_name"].isString() )   return false;
+        if ( !jsonObj.contains("l_protocol")   || !jsonObj["l_protocol"].isString() )   return false;
         if ( !jsonObj.contains("l_type")       || !jsonObj["l_type"].isString() )       return false;
         if ( !jsonObj.contains("l_bind_host")  || !jsonObj["l_bind_host"].isString() )  return false;
         if ( !jsonObj.contains("l_bind_port")  || !jsonObj["l_bind_port"].isString() )  return false;
@@ -375,8 +379,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_LISTENER_START )
     {
         ListenerData newListener = {};
-        newListener.ListenerName     = jsonObj["l_name"].toString();
-        newListener.ListenerFullName = jsonObj["l_type"].toString();
+        newListener.Name             = jsonObj["l_name"].toString();
+        newListener.ListenerRegName  = jsonObj["l_reg_name"].toString();
+        newListener.ListenerType     = jsonObj["l_type"].toString();
+        newListener.ListenerProtocol = jsonObj["l_protocol"].toString();
         newListener.BindHost         = jsonObj["l_bind_host"].toString();
         newListener.BindPort         = jsonObj["l_bind_port"].toString();
         newListener.AgentAddresses   = jsonObj["l_agent_addr"].toString();
@@ -389,8 +395,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_LISTENER_EDIT )
     {
         ListenerData newListener = {};
-        newListener.ListenerName     = jsonObj["l_name"].toString();
-        newListener.ListenerFullName = jsonObj["l_type"].toString();
+        newListener.Name             = jsonObj["l_name"].toString();
+        newListener.ListenerRegName  = jsonObj["l_reg_name"].toString();
+        newListener.ListenerType     = jsonObj["l_type"].toString();
+        newListener.ListenerProtocol = jsonObj["l_protocol"].toString();
         newListener.BindHost         = jsonObj["l_bind_host"].toString();
         newListener.BindPort         = jsonObj["l_bind_port"].toString();
         newListener.AgentAddresses   = jsonObj["l_agent_addr"].toString();
@@ -824,10 +832,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_LISTENER_REG )
     {
-        QString fn = jsonObj["fn"].toString();
-        QString ax = jsonObj["ax"].toString();
+        QString name     = jsonObj["l_name"].toString();
+        QString protocol = jsonObj["l_protocol"].toString();
+        QString type     = jsonObj["l_type"].toString();
+        QString ax       = jsonObj["ax"].toString();
 
-        this->RegisterListenerConfig(fn, ax);
+        this->RegisterListenerConfig(name, protocol, type, ax);
         return;
     }
     if( spType == TYPE_AGENT_REG )

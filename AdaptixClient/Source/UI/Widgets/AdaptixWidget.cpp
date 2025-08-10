@@ -328,7 +328,12 @@ void AdaptixWidget::ClearAdaptix()
 
 /// REGISTER
 
-void AdaptixWidget::RegisterListenerConfig(const QString &fn, const QString &ax_script) { ScriptManager->ListenerScriptAdd(fn, ax_script); }
+void AdaptixWidget::RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script)
+{
+    ScriptManager->ListenerScriptAdd(name, ax_script);
+    RegListenerConfig config = { name, protocol, type };
+    RegisterListeners.push_back(config);
+}
 
 void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners)
 {
@@ -427,6 +432,15 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
     }
 }
 
+RegListenerConfig AdaptixWidget::GetRegListener(const QString &listenerName)
+{
+    for (auto regListener : this->RegisterListeners)
+        if (regListener.name == listenerName)
+            return regListener;
+
+    return RegListenerConfig{};
+}
+
 QList<QString> AdaptixWidget::GetAgentNames(const QString &listenerType) const
 {
     QSet<QString> names;
@@ -442,8 +456,8 @@ RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QStrin
     if (os == OS_WINDOWS || os == OS_LINUX || os == OS_MAC) {
         QString listener = "";
         for ( auto listenerData : this->Listeners) {
-            if ( listenerData.ListenerName == listenerName ) {
-                listener = listenerData.ListenerFullName.split("/")[2];
+            if ( listenerData.Name == listenerName ) {
+                listener = listenerData.ListenerRegName;
                 break;
             }
         }

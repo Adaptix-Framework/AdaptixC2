@@ -52,10 +52,9 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
         username += " [" + this->data.Impersonated + "]";
 
     for ( auto listenerData : this->adaptixWidget->Listeners) {
-        if ( listenerData.ListenerName == this->data.Listener ) {
-            QStringList parts = listenerData.ListenerFullName.split("/");
-            this->listenerType = parts[2];
-            if (parts[0] == "internal")
+        if ( listenerData.Name == this->data.Listener ) {
+            this->listenerType = listenerData.ListenerRegName;
+            if (listenerData.ListenerType == "internal")
                 this->connType = "internal";
             else
                 this->connType = "external";
