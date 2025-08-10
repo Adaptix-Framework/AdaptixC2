@@ -11,6 +11,15 @@ class ListenersWidget : public QWidget
     QGridLayout*   mainGridLayout = nullptr;
     QTableWidget*  tableWidget    = nullptr;
 
+    int ColumnName     = 0;
+    int ColumnRegName  = 1;
+    int ColumnType     = 2;
+    int ColumnProtocol = 3;
+    int ColumnBindHost = 4;
+    int ColumnBindPort = 5;
+    int ColumnHosts    = 6;
+    int ColumnStatus   = 7;
+
     void createUI();
 
 public:

@@ -24,6 +24,12 @@ class DialogSyncPacket;
 class AuthProfile;
 class AxScriptManager;
 
+typedef struct RegListenerConfig {
+    QString name;
+    QString protocol;
+    QString type;
+} RegListenerConfig;
+
 typedef struct RegAgentConfig {
     QString        name;
     QString        listenerType;
@@ -89,6 +95,7 @@ public:
     CredentialsWidget*   CredentialsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
 
+    QVector<RegListenerConfig>     RegisterListeners;
     QVector<RegAgentConfig>        RegisterAgents;
     QVector<ListenerData>          Listeners;
     QVector<TunnelData>            Tunnels;
@@ -116,10 +123,11 @@ public:
     void Close();
     void ClearAdaptix();
 
-    void RegisterListenerConfig(const QString &fn, const QString &ax_script);
+    void RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script);
     void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners);
-    QList<QString> GetAgentNames(const QString &listenerType) const;
-    RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
+    RegListenerConfig GetRegListener(const QString &listenerName);
+    QList<QString>    GetAgentNames(const QString &listenerType) const;
+    RegAgentConfig    GetRegAgent(const QString &agentName, const QString &listenerName, int os);
     QList<Commander*> GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const;
     QList<Commander*> GetCommandersAll() const;
 

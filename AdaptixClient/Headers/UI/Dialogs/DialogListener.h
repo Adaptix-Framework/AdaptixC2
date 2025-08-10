@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_DIALOGLISTENER_H
 
 #include <main.h>
+#include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
 
 class AxContainerWrapper;
@@ -17,6 +18,8 @@ class DialogListener : public QDialog
     QFrame*         line_1                 = nullptr;
     QLabel*         listenerNameLabel      = nullptr;
     QLineEdit*      inputListenerName      = nullptr;
+    QLabel*         listenerLabel          = nullptr;
+    QComboBox*      listenerCombobox       = nullptr;
     QLabel*         listenerTypeLabel      = nullptr;
     QComboBox*      listenerTypeCombobox   = nullptr;
     QPushButton*    buttonLoad             = nullptr;
@@ -26,8 +29,8 @@ class DialogListener : public QDialog
     QGroupBox*      listenerConfigGroupbox = nullptr;
     QStackedWidget* configStackWidget      = nullptr;
 
-    QStringList listeners;
-    QMap<QString, QWidget*> widgets;
+    QList<RegListenerConfig> listeners;
+    QMap<QString, QWidget*>  widgets;
     QMap<QString, AxContainerWrapper*> containers;
 
     AuthProfile authProfile;
@@ -39,13 +42,14 @@ public:
     explicit DialogListener(QWidget *parent = nullptr);
     ~DialogListener() override;
 
-    void AddExListeners(const QStringList &listeners, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers);
+    void AddExListeners(const QList<RegListenerConfig> &listeners, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers);
     void SetProfile(const AuthProfile &profile);
     void Start();
     void SetEditMode(const QString &name);
 
 protected slots:
     void changeConfig(const QString &fn);
+    void changeType(const QString &type);
     void onButtonLoad();
     void onButtonSave();
     void onButtonCreate();
