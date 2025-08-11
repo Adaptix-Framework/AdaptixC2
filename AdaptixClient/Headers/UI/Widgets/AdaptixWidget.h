@@ -17,6 +17,7 @@ class ListenersWidget;
 class DownloadsWidget;
 class ScreenshotsWidget;
 class CredentialsWidget;
+class TargetsWidget;
 class TasksWidget;
 class TunnelsWidget;
 class TunnelEndpoint;
@@ -94,6 +95,7 @@ public:
     ScreenshotsWidget*   ScreenshotsTab    = nullptr;
     CredentialsWidget*   CredentialsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
+    TargetsWidget*       TargetsTab        = nullptr;
 
     QVector<RegListenerConfig>     RegisterListeners;
     QVector<RegAgentConfig>        RegisterAgents;
@@ -166,6 +168,7 @@ public slots:
     void LoadDownloadsUI() const;
     void LoadScreenshotsUI() const;
     void LoadCredentialsUI() const;
+    void LoadTargetsUI() const;
     void OnReconnect();
 };
 

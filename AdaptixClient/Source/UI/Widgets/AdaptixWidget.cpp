@@ -15,6 +15,7 @@
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
+#include <UI/Widgets/TargetsWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Graph/SessionsGraph.h>
@@ -48,6 +49,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     ScreenshotsTab    = new ScreenshotsWidget(this);
     CredentialsTab    = new CredentialsWidget(this);
     TasksTab          = new TasksWidget(this);
+    TargetsTab        = new TargetsWidget(this);
 
     mainStackedWidget->addWidget(SessionsTablePage);
     mainStackedWidget->addWidget(SessionsGraphPage);
@@ -73,6 +75,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( downloadsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
     connect( screensButton,   &QPushButton::clicked, this, &AdaptixWidget::LoadScreenshotsUI);
     connect( credsButton,     &QPushButton::clicked, this, &AdaptixWidget::LoadCredentialsUI);
+    connect( targetsButton,   &QPushButton::clicked, this, &AdaptixWidget::LoadTargetsUI);
     connect( reconnectButton, &QPushButton::clicked, this, &AdaptixWidget::OnReconnect);
 
     connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
@@ -89,7 +92,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     ChannelThread->start();
 
     /// TODO: Enable menu button
-    targetsButton->setVisible(false);
     keysButton->setVisible(false);
 
     HttpReqSync( *profile );
@@ -757,6 +759,8 @@ void AdaptixWidget::LoadDownloadsUI() const { this->AddTab(DownloadsTab, "Downlo
 void AdaptixWidget::LoadScreenshotsUI() const { this->AddTab(ScreenshotsTab, "Screenshots", ":/icons/picture"); }
 
 void AdaptixWidget::LoadCredentialsUI() const { this->AddTab(CredentialsTab, "Credentials", ":/icons/key"); }
+
+void AdaptixWidget::LoadTargetsUI() const { this->AddTab(TargetsTab, "Targets", ":/icons/devices"); }
 
 void AdaptixWidget::OnReconnect()
 {
