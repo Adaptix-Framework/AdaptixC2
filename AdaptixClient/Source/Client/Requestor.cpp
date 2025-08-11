@@ -558,3 +558,17 @@ bool HttpReqCredentialsRemove(const QString &credsId, AuthProfile profile, QStri
     }
     return false;
 }
+
+///TARGETS
+
+bool HttpReqTargetsCreate(const QByteArray &jsonData, AuthProfile profile, QString *message, bool *ok)
+{
+    QString sUrl = profile.GetURL() + "/targets/add";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}

@@ -269,6 +269,21 @@ typedef struct CredentialData
     QString Host;
 } CredentialData;
 
+typedef struct TargetData
+{
+    QString TargetId;
+    QString Computer;
+    QString Domain;
+    QString Address;
+    QString Tag;
+    int     Os;
+    QString OsDesk;
+    QString Date;
+    QString Info;
+    bool    Alive;
+    bool    Owned;
+} TargetData;
+
 typedef struct TunnelData
 {
     QString TunnelId;
