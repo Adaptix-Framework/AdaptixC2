@@ -28,14 +28,15 @@ class TargetsWidget : public QWidget
     int ColumnInfo     = 7;
 
     void createUI();
-    bool filterItem(const CredentialData &credentials) const;
-    void addTableItem(const CredentialData &newCredentials) const;
+    bool filterItem(const TargetData &target) const;
+    void addTableItem(const TargetData &target) const;
 
 public:
     explicit TargetsWidget(AdaptixWidget* w);
     ~TargetsWidget() override;
 
     void Clear() const;
+    void AddTargetsItems(QList<TargetData> targetList) const;
 
     void SetData() const;
     void ClearTableContent() const;

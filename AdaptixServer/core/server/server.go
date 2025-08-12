@@ -38,6 +38,7 @@ func NewTeamserver() *Teamserver {
 		tmp_uploads: safe.NewMap(),
 		screenshots: safe.NewMap(),
 		credentials: safe.NewSlice(),
+		targets:     safe.NewSlice(),
 		tunnels:     safe.NewMap(),
 		terminals:   safe.NewMap(),
 		pivots:      safe.NewSlice(),

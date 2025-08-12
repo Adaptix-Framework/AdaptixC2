@@ -154,6 +154,22 @@ func (dbms *DBMS) DatabaseInit() error {
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Targets" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"TargetId" TEXT NOT NULL,
+    	"Computer" TEXT,
+    	"Domain" TEXT,
+    	"Address" TEXT,
+    	"Os" INTEGER,
+    	"OsDesk" TEXT,
+    	"Tag" TEXT,
+    	"Info" TEXT,
+    	"Date" BIGINT,
+		"Alive" BOOLEAN,
+		"Owned" BOOLEAN
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
 	return err
 }
 
