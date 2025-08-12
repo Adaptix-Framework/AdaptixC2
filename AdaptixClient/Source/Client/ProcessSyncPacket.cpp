@@ -16,6 +16,7 @@
 #include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
+#include <UI/Widgets/TargetsWidget.h>
 
 
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
@@ -288,6 +289,12 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
     if ( spType == TYPE_CREDS_DELETE ) {
         if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
+        return true;
+    }
+
+
+    if ( spType == TYPE_TARGETS_CREATE ) {
+        if (!jsonObj.contains("t_targets") || !jsonObj["t_targets"].isArray()) return false;
         return true;
     }
 
@@ -671,6 +678,47 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
 
 
+
+    if ( spType == TYPE_TARGETS_CREATE )
+    {
+        QList<TargetData> targetsList;
+        QJsonArray arr = jsonObj.value("t_targets").toArray();
+        for (const QJsonValue &val : arr) {
+            if (!val.isObject())
+                continue;
+
+            QJsonObject obj = val.toObject();
+            if (!obj.contains("t_target_id") || !obj["t_target_id"].isString()) continue;
+            if (!obj.contains("t_computer")  || !obj["t_computer"].isString())  continue;
+            if (!obj.contains("t_domain")    || !obj["t_domain"].isString())    continue;
+            if (!obj.contains("t_address")   || !obj["t_address"].isString())   continue;
+            if (!obj.contains("t_os")        || !obj["t_os"].isDouble())        continue;
+            if (!obj.contains("t_os_desk")   || !obj["t_os_desk"].isString())   continue;
+            if (!obj.contains("t_tag")       || !obj["t_tag"].isString())       continue;
+            if (!obj.contains("t_info")      || !obj["t_info"].isString())      continue;
+            if (!obj.contains("t_date")      || !obj["t_date"].isDouble())      continue;
+            if (!obj.contains("t_alive")     || !obj["t_alive"].isBool())       continue;
+            if (!obj.contains("t_owned")     || !obj["t_owned"].isBool())       continue;
+
+            TargetData t;
+            t.TargetId = obj.value("t_target_id").toString();
+            t.Computer = obj.value("t_computer").toString();
+            t.Domain   = obj.value("t_domain").toString();
+            t.Address  = obj.value("t_address").toString();
+            t.Os       = obj.value("t_os").toInt();
+            t.OsDesk   = obj.value("t_os_desk").toString();
+            t.Tag      = obj.value("t_tag").toString();
+            t.Info     = obj.value("t_info").toString();
+            t.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(obj["t_date"].toDouble()));
+            t.Alive    = obj.value("t_alive").toBool();
+            t.Owned    = obj.value("t_owned").toBool();
+
+            targetsList.append(t);
+        }
+
+        TargetsTab->AddTargetsItems(targetsList);
+        return;
+    }
 
     if( spType == TYPE_TUNNEL_CREATE )
     {

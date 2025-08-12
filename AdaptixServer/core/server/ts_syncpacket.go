@@ -68,6 +68,10 @@ const (
 	TYPE_CREDS_CREATE = 0x81
 	TYPE_CREDS_EDIT   = 0x82
 	TYPE_CREDS_DELETE = 0x83
+
+	TYPE_TARGETS_CREATE = 0x87
+	TYPE_TARGETS_EDIT   = 0x88
+	TYPE_TARGETS_DELETE = 0x89
 )
 
 func CreateSpEvent(event int, message string) SpEvent {
@@ -416,7 +420,7 @@ func CreateSpScreenshotDelete(screenId string) SyncPackerScreenshotDelete {
 	}
 }
 
-/// SCREEN
+/// CREDS
 
 func CreateSpCredentialsAdd(credsData adaptix.CredsData) SyncPackerCredentialsAdd {
 	return SyncPackerCredentialsAdd{
@@ -455,6 +459,33 @@ func CreateSpCredentialsDelete(credsId string) SyncPackerCredentialsDelete {
 		SpType: TYPE_CREDS_DELETE,
 
 		CredId: credsId,
+	}
+}
+
+
+func CreateSpTargetsAdd(targetsData []adaptix.TargetData) SyncPackerTargetsAdd {
+	var syncTargets []SyncPackerTarget
+
+	for _, targetData := range targetsData {
+		t := SyncPackerTarget{
+			TargetId: targetData.TargetId,
+			Computer: targetData.Computer,
+			Domain:   targetData.Domain,
+			Address:  targetData.Address,
+			Os:       targetData.Os,
+			OsDesk:   targetData.OsDesk,
+			Tag:      targetData.Tag,
+			Info:     targetData.Info,
+			Date:     targetData.Date,
+			Alive:    targetData.Alive,
+			Owned:    targetData.Owned,
+		}
+		syncTargets = append(syncTargets, t)
+	}
+
+	return SyncPackerTargetsAdd{
+		SpType:  TYPE_TARGETS_CREATE,
+		Targets: syncTargets,
 	}
 }
 

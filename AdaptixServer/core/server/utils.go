@@ -75,6 +75,7 @@ type Teamserver struct {
 	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
 	credentials *safe.Slice
+	targets     *safe.Slice
 	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
 	terminals   safe.Map    // terminalId string   : terminal Terminal
 	pivots      *safe.Slice // 			           : PivotData
@@ -477,6 +478,28 @@ type SyncPackerCredentialsDelete struct {
 	SpType int `json:"type"`
 
 	CredId string `json:"c_creds_id"`
+}
+
+/// TARGETS
+
+type SyncPackerTarget struct {
+	TargetId string `json:"t_target_id"`
+	Computer string `json:"t_computer"`
+	Domain   string `json:"t_domain"`
+	Address  string `json:"t_address"`
+	Os       int    `json:"t_os"`
+	OsDesk   string `json:"t_os_desk"`
+	Tag      string `json:"t_tag"`
+	Info     string `json:"t_info"`
+	Date     int64  `json:"t_date"`
+	Alive    bool   `json:"t_alive"`
+	Owned    bool   `json:"t_owned"`
+}
+
+type SyncPackerTargetsAdd struct {
+	SpType int `json:"type"`
+
+	Targets []SyncPackerTarget `json:"t_targets"`
 }
 
 /// BROWSER

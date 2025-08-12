@@ -104,6 +104,7 @@ public:
     QMap<QString, DownloadData>    Downloads;
     QMap<QString, ScreenData>      Screenshots;
     QVector<CredentialData>        Credentials;
+    QVector<TargetData>            Targets;
     QMap<QString, PivotData>       Pivots;
     QVector<QString>               TasksVector;
     QMap<QString, Task*>           TasksMap;

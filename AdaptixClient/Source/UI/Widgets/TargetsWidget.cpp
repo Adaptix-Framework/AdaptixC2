@@ -10,6 +10,7 @@ TargetsWidget::TargetsWidget(AdaptixWidget* w) : adaptixWidget(w)
     this->createUI();
 
      connect(tableWidget,  &QTableWidget::customContextMenuRequested, this, &TargetsWidget::handleTargetsMenu);
+     connect(tableWidget,  &QTableWidget::cellDoubleClicked,          this, &TargetsWidget::onEditTarget);
      connect(tableWidget,  &QTableWidget::itemSelectionChanged,       this, [this](){tableWidget->setFocus();} );
      connect(hideButton,   &ClickableLabel::clicked,                  this, &TargetsWidget::toggleSearchPanel);
      connect(inputFilter,  &QLineEdit::textChanged,                   this, &TargetsWidget::onFilterUpdate);
@@ -75,18 +76,147 @@ void TargetsWidget::createUI()
     mainGridLayout->addWidget( tableWidget,  1, 0, 1, 1);
 }
 
+bool TargetsWidget::filterItem(const TargetData &target) const
+{
+    if ( !this->searchWidget->isVisible() )
+        return true;
+
+    QString filter1 = this->inputFilter->text();
+    if( !filter1.isEmpty() ) {
+        if ( target.Computer.contains(filter1, Qt::CaseInsensitive) ||
+            target.Domain.contains(filter1, Qt::CaseInsensitive) ||
+            target.Address.contains(filter1, Qt::CaseInsensitive) ||
+            target.Tag.contains(filter1, Qt::CaseInsensitive) ||
+            target.OsDesk.contains(filter1, Qt::CaseInsensitive) ||
+            target.Info.contains(filter1, Qt::CaseInsensitive)
+        )
+            return true;
+        else
+            return false;
+    }
+    return true;
+}
+
+void TargetsWidget::addTableItem(const TargetData &target) const
+{
+    auto item_TargetId = new QTableWidgetItem( target.TargetId );
+    auto item_Computer = new QTableWidgetItem( target.Computer );
+    auto item_Domain   = new QTableWidgetItem( target.Domain );
+    auto item_Address  = new QTableWidgetItem( target.Address );
+    auto item_Tag      = new QTableWidgetItem( target.Tag );
+    auto item_Os       = new QTableWidgetItem( target.OsDesk );
+    auto item_Date     = new QTableWidgetItem( target.Date );
+    auto item_Info     = new QTableWidgetItem( target.Info );
+
+    item_Computer->setFlags( item_Computer->flags() ^ Qt::ItemIsEditable );
+    item_Computer->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
+
+    item_Domain->setFlags( item_Domain->flags() ^ Qt::ItemIsEditable );
+    item_Domain->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
+
+    item_Address->setFlags( item_Address->flags() ^ Qt::ItemIsEditable );
+    item_Address->setTextAlignment( Qt::AlignCenter );
+
+    item_Os->setFlags( item_Os->flags() ^ Qt::ItemIsEditable );
+    item_Os->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
+
+    item_Tag->setFlags( item_Tag->flags() ^ Qt::ItemIsEditable );
+    item_Tag->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
+
+    item_Date->setFlags( item_Date->flags() ^ Qt::ItemIsEditable );
+    item_Date->setTextAlignment( Qt::AlignCenter );
+
+    item_Info->setFlags( item_Info->flags() ^ Qt::ItemIsEditable );
+    item_Info->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
+
+    if (target.Os == OS_WINDOWS) {
+        if (target.Owned) {
+            item_Os->setIcon(QIcon(":/icons/os_win_red"));
+        } else if(target.Alive) {
+            item_Os->setIcon(QIcon(":/icons/os_win_blue"));
+        } else {
+            item_Os->setIcon(QIcon(":/icons/os_win_grey"));
+        }
+    }
+    else if (target.Os == OS_LINUX) {
+        if (target.Owned) {
+            item_Os->setIcon(QIcon(":/icons/os_linux_red"));
+        } else if(target.Alive) {
+            item_Os->setIcon(QIcon(":/icons/os_linux_blue"));
+        } else {
+            item_Os->setIcon(QIcon(":/icons/os_linux_grey"));
+        }
+    }
+    else if (target.Os == OS_MAC) {
+        if (target.Owned) {
+            item_Os->setIcon(QIcon(":/icons/os_mac_red"));
+        } else if(target.Alive) {
+            item_Os->setIcon(QIcon(":/icons/os_mac_blue"));
+        } else {
+            item_Os->setIcon(QIcon(":/icons/os_mac_grey"));
+        }
+    }
+
+    if( tableWidget->rowCount() < 1 )
+        tableWidget->setRowCount( 1 );
+    else
+        tableWidget->setRowCount( tableWidget->rowCount() + 1 );
+
+    bool isSortingEnabled = tableWidget->isSortingEnabled();
+    tableWidget->setSortingEnabled( false );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnId,       item_TargetId );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnComputer, item_Computer );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnDomain,   item_Domain );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnAddress,  item_Address );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnTag,      item_Tag );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnOs,       item_Os );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnDate,     item_Date );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnInfo,     item_Info );
+    tableWidget->setSortingEnabled( isSortingEnabled );
+
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnComputer, QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnDomain,   QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnAddress,  QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnOs,       QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnDate,     QHeaderView::ResizeToContents );
+
+    tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
+}
+
 /// Main
 
 void TargetsWidget::Clear() const
 {
-    adaptixWidget->Credentials.clear();
+    adaptixWidget->Targets.clear();
     this->ClearTableContent();
     inputFilter->clear();
+}
+
+void TargetsWidget::AddTargetsItems(QList<TargetData> targetList) const
+{
+    for (auto target : targetList) {
+        for( auto t : adaptixWidget->Targets ) {
+            if( t.TargetId == target.TargetId )
+                continue;
+        }
+
+        adaptixWidget->Targets.push_back(target);
+
+        if( !this->filterItem(target) )
+            continue;
+
+        this->addTableItem(target);
+    }
 }
 
 void TargetsWidget::SetData() const
 {
     this->ClearTableContent();
+
+    for (int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
+        if ( this->filterItem(adaptixWidget->Targets[i]) )
+            this->addTableItem(adaptixWidget->Targets[i]);
+    }
 }
 
 void TargetsWidget::ClearTableContent() const
