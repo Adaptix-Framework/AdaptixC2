@@ -73,6 +73,7 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	packets = append(packets, ts.TsPresyncEvents()...)
 	packets = append(packets, ts.TsPresyncPivots()...)
 	packets = append(packets, ts.TsPresyncCredentials()...)
+	packets = append(packets, ts.TsPresyncTargets()...)
 
 	client.lockSocket.Lock()
 	defer client.lockSocket.Unlock()
@@ -223,6 +224,19 @@ func (ts *Teamserver) TsPresyncCredentials() []interface{} {
 		p := CreateSpCredentialsAdd(*creds)
 		packets = append(packets, p)
 	}
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncTargets() []interface{} {
+	var targets []*adaptix.TargetData
+	for value := range ts.targets.Iterator() {
+		target := value.Item.(*adaptix.TargetData)
+		targets = append(targets, target)
+	}
+
+	p := CreateSpTargetsAdd(targets)
+	var packets []interface{}
+	packets = append(packets, p)
 	return packets
 }
 

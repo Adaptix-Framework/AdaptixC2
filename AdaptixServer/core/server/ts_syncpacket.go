@@ -462,8 +462,9 @@ func CreateSpCredentialsDelete(credsId string) SyncPackerCredentialsDelete {
 	}
 }
 
+/// CREDS
 
-func CreateSpTargetsAdd(targetsData []adaptix.TargetData) SyncPackerTargetsAdd {
+func CreateSpTargetsAdd(targetsData []*adaptix.TargetData) SyncPackerTargetsAdd {
 	var syncTargets []SyncPackerTarget
 
 	for _, targetData := range targetsData {
@@ -486,6 +487,32 @@ func CreateSpTargetsAdd(targetsData []adaptix.TargetData) SyncPackerTargetsAdd {
 	return SyncPackerTargetsAdd{
 		SpType:  TYPE_TARGETS_CREATE,
 		Targets: syncTargets,
+	}
+}
+
+func CreateSpTargetUpdate(targetData adaptix.TargetData) SyncPackerTargetUpdate {
+	return SyncPackerTargetUpdate{
+		SpType: TYPE_TARGETS_EDIT,
+
+		TargetId: targetData.TargetId,
+		Computer: targetData.Computer,
+		Domain:   targetData.Domain,
+		Address:  targetData.Address,
+		Os:       targetData.Os,
+		OsDesk:   targetData.OsDesk,
+		Tag:      targetData.Tag,
+		Info:     targetData.Info,
+		Date:     targetData.Date,
+		Alive:    targetData.Alive,
+		Owned:    targetData.Owned,
+	}
+}
+
+func CreateSpTargetDelete(targetId string) SyncPackerTargetDelete {
+	return SyncPackerTargetDelete{
+		SpType: TYPE_TARGETS_DELETE,
+
+		TargetId: targetId,
 	}
 }
 
