@@ -222,6 +222,17 @@ func (ts *Teamserver) RestoreData() {
 	}
 	logs.Success("   ", "Restored %v credentials", countCredentials)
 
+	/// TARGETS
+	countTargets := 0
+	restoreTargets := ts.DBMS.DbTargetsAll()
+	for _, restoreTarget := range restoreTargets {
+		ts.targets.Put(restoreTarget)
+		countTargets++
+	}
+	packetTargets := CreateSpTargetsAdd(restoreTargets)
+	ts.TsSyncAllClients(packetTargets)
+	logs.Success("   ", "Restored %v targets", countTargets)
+
 	/// LISTENERS
 	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()

@@ -27,7 +27,7 @@ func (dbms *DBMS) DbTargetExist(targetId string) bool {
 	return false
 }
 
-func (dbms *DBMS) DbTargetsAdd(targetsData []adaptix.TargetData) error {
+func (dbms *DBMS) DbTargetsAdd(targetsData []*adaptix.TargetData) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database not exists")
@@ -52,7 +52,7 @@ func (dbms *DBMS) DbTargetsAdd(targetsData []adaptix.TargetData) error {
 	return nil
 }
 
-func (dbms *DBMS) DbTargetUpdate(targetData adaptix.TargetData) error {
+func (dbms *DBMS) DbTargetUpdate(targetData *adaptix.TargetData) error {
 
 	ok := dbms.DatabaseExists()
 	if !ok {
