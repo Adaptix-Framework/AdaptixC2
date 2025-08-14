@@ -5,3 +5,11 @@ objects_tcp/
 .idea/
 .qt/
 *.so
+dist/
+AdaptixClient/CMakeFiles/
+AdaptixClient/AdaptixClient_autogen/
+AdaptixClient/CMakeCache.txt
+AdaptixClient/*.log
+AdaptixClient/cmake_*
+AdaptixClient/Makefile
+AdaptixServer/build_error.log
