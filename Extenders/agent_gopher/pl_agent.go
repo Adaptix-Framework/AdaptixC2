@@ -165,7 +165,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	if generateConfig.Os == "linux" {
 		Filename = "agent.bin"
 		GoOs = "linux"
-	} else if generateConfig.Os == "mac" {
+	} else if generateConfig.Os == "mac" || generateConfig.Os == "macos" {
 		Filename = "agent.bin"
 		GoOs = "darwin"
 	} else if generateConfig.Os == "windows" {
