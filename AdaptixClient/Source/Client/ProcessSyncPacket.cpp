@@ -292,11 +292,30 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
-
     if ( spType == TYPE_TARGETS_CREATE ) {
         if (!jsonObj.contains("t_targets") || !jsonObj["t_targets"].isArray()) return false;
         return true;
     }
+    if ( spType == TYPE_TARGETS_EDIT ) {
+        if (!jsonObj.contains("t_target_id") || !jsonObj["t_target_id"].isString()) return false;
+        if (!jsonObj.contains("t_computer")  || !jsonObj["t_computer"].isString())  return false;
+        if (!jsonObj.contains("t_domain")    || !jsonObj["t_domain"].isString())    return false;
+        if (!jsonObj.contains("t_address")   || !jsonObj["t_address"].isString())   return false;
+        if (!jsonObj.contains("t_os")        || !jsonObj["t_os"].isDouble())        return false;
+        if (!jsonObj.contains("t_os_desk")   || !jsonObj["t_os_desk"].isString())   return false;
+        if (!jsonObj.contains("t_tag")       || !jsonObj["t_tag"].isString())       return false;
+        if (!jsonObj.contains("t_info")      || !jsonObj["t_info"].isString())      return false;
+        if (!jsonObj.contains("t_date")      || !jsonObj["t_date"].isDouble())      return false;
+        if (!jsonObj.contains("t_alive")     || !jsonObj["t_alive"].isBool())       return false;
+        if (!jsonObj.contains("t_owned")     || !jsonObj["t_owned"].isBool())       return false;
+        return true;
+    }
+    if ( spType == TYPE_TARGETS_DELETE ) {
+        if (!jsonObj.contains("t_target_id") || !jsonObj["t_target_id"].isString()) return false;
+        return true;
+    }
+
+
 
     if( spType == TYPE_BROWSER_DISKS ) {
         if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) return false;
@@ -706,7 +725,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             t.Domain   = obj.value("t_domain").toString();
             t.Address  = obj.value("t_address").toString();
             t.Os       = obj.value("t_os").toInt();
-            t.OsDesk   = obj.value("t_os_desk").toString();
+            t.OsDesc   = obj.value("t_os_desk").toString();
             t.Tag      = obj.value("t_tag").toString();
             t.Info     = obj.value("t_info").toString();
             t.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(obj["t_date"].toDouble()));
@@ -719,6 +738,31 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         TargetsTab->AddTargetsItems(targetsList);
         return;
     }
+    if ( spType == TYPE_TARGETS_EDIT ) {
+        TargetData targetData = {};
+        targetData.TargetId = jsonObj["t_target_id"].toString();
+        targetData.Computer = jsonObj["t_computer"].toString();
+        targetData.Domain   = jsonObj["t_domain"].toString();
+        targetData.Address  = jsonObj["t_address"].toString();
+        targetData.Os       = jsonObj["t_os"].toDouble();
+        targetData.OsDesc   = jsonObj["t_os_desk"].toString();
+        targetData.Tag      = jsonObj["t_tag"].toString();
+        targetData.Info     = jsonObj["t_info"].toString();
+        targetData.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["t_date"].toDouble()));
+        targetData.Alive    = jsonObj["t_alive"].toBool();
+        targetData.Owned    = jsonObj["t_owned"].toBool();
+
+        TargetsTab->EditTargetsItem(targetData);
+        return;
+    }
+    if ( spType == TYPE_TARGETS_DELETE ) {
+        QString targetId = jsonObj["t_target_id"].toString();
+
+        TargetsTab->RemoveTargetsItem(targetId);
+        return;
+    }
+
+
 
     if( spType == TYPE_TUNNEL_CREATE )
     {

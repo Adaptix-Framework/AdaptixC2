@@ -83,4 +83,8 @@ bool HttpReqCredentialsRemove(const QString &credsId, AuthProfile profile, QStri
 
 bool HttpReqTargetsCreate(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);
 
+bool HttpReqTargetEdit(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);
+
+bool HttpReqTargetRemove(const QString &targetId, AuthProfile profile, QString* message, bool* ok);
+
 #endif
