@@ -379,7 +379,7 @@ void CredentialsWidget::onEditCreds() const
     CredentialData credData = dialogCreds->GetCredData();
 
     QJsonObject dataJson;
-    dataJson["cred_id"] = credData.CredId;
+    dataJson["cred_id"]  = credData.CredId;
     dataJson["username"] = credData.Username;
     dataJson["password"] = credData.Password;
     dataJson["realm"]    = credData.Realm;
@@ -396,7 +396,6 @@ void CredentialsWidget::onEditCreds() const
     bool result = HttpReqCredentialsEdit(jsonData, *(adaptixWidget->GetProfile()), &message, &ok);
     if( !result ) {
         MessageError("Server is not responding");
-        delete dialogCreds;
         return;
     }
     if (!ok) MessageError(message);

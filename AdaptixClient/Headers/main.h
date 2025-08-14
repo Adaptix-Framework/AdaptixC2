@@ -281,7 +281,7 @@ typedef struct TargetData
     QString Address;
     QString Tag;
     int     Os;
-    QString OsDesk;
+    QString OsDesc;
     QString Date;
     QString Info;
     bool    Alive;

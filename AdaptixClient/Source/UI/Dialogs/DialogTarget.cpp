@@ -98,7 +98,7 @@ void DialogTarget::SetEditmode(const TargetData &targetData)
     addressInput->setText(targetData.Address);
     aliveCheck->setChecked(targetData.Alive);
     osCombo->setCurrentIndex(targetData.Os);
-    osDescInput->setText(targetData.OsDesk);
+    osDescInput->setText(targetData.OsDesc);
     tagInput->setText(targetData.Tag);
     infoInput->setText(targetData.Info);
 }
@@ -118,7 +118,7 @@ void DialogTarget::onButtonCreate()
     data.Address  = addressInput->text();
     data.Alive    = aliveCheck->isChecked();
     data.Os       = osCombo->currentIndex();
-    data.OsDesk   = osDescInput->text();
+    data.OsDesc   = osDescInput->text();
     data.Tag      = tagInput->text();
     data.Info     = infoInput->text();
 

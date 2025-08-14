@@ -87,7 +87,7 @@ bool TargetsWidget::filterItem(const TargetData &target) const
             target.Domain.contains(filter1, Qt::CaseInsensitive) ||
             target.Address.contains(filter1, Qt::CaseInsensitive) ||
             target.Tag.contains(filter1, Qt::CaseInsensitive) ||
-            target.OsDesk.contains(filter1, Qt::CaseInsensitive) ||
+            target.OsDesc.contains(filter1, Qt::CaseInsensitive) ||
             target.Info.contains(filter1, Qt::CaseInsensitive)
         )
             return true;
@@ -104,7 +104,7 @@ void TargetsWidget::addTableItem(const TargetData &target) const
     auto item_Domain   = new QTableWidgetItem( target.Domain );
     auto item_Address  = new QTableWidgetItem( target.Address );
     auto item_Tag      = new QTableWidgetItem( target.Tag );
-    auto item_Os       = new QTableWidgetItem( target.OsDesk );
+    auto item_Os       = new QTableWidgetItem( target.OsDesc );
     auto item_Date     = new QTableWidgetItem( target.Date );
     auto item_Info     = new QTableWidgetItem( target.Info );
 
@@ -209,6 +209,66 @@ void TargetsWidget::AddTargetsItems(QList<TargetData> targetList) const
     }
 }
 
+void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
+{
+    for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
+        if( adaptixWidget->Targets[i].TargetId == newTarget.TargetId ) {
+            adaptixWidget->Targets[i].Computer = newTarget.Computer;
+            adaptixWidget->Targets[i].Domain   = newTarget.Domain;
+            adaptixWidget->Targets[i].Address  = newTarget.Address;
+            adaptixWidget->Targets[i].Tag      = newTarget.Tag;
+            adaptixWidget->Targets[i].Os       = newTarget.Os;
+            adaptixWidget->Targets[i].OsDesc   = newTarget.OsDesc;
+            adaptixWidget->Targets[i].Date     = newTarget.Date;
+            adaptixWidget->Targets[i].Info     = newTarget.Info;
+            adaptixWidget->Targets[i].Alive    = newTarget.Alive;
+            adaptixWidget->Targets[i].Owned    = newTarget.Owned;
+            break;
+        }
+    }
+
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *item = tableWidget->item(row, ColumnId);
+        if ( item && item->text() == newTarget.TargetId ) {
+            tableWidget->item(row, ColumnComputer)->setText(newTarget.Computer);
+            tableWidget->item(row, ColumnDomain  )->setText(newTarget.Domain);
+            tableWidget->item(row, ColumnAddress )->setText(newTarget.Address);
+            tableWidget->item(row, ColumnTag     )->setText(newTarget.Tag);
+            tableWidget->item(row, ColumnOs      )->setText(newTarget.OsDesc);
+            tableWidget->item(row, ColumnDate    )->setText(newTarget.Date);
+            tableWidget->item(row, ColumnInfo    )->setText(newTarget.Info);
+
+            if (newTarget.Os == OS_WINDOWS) {
+                if (newTarget.Owned) {
+                    tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_win_red"));
+                } else if(newTarget.Alive) {
+                    tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_win_blue"));
+                } else {
+                    tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_win_grey"));
+                }
+            }
+            else if (newTarget.Os == OS_LINUX) {
+                if (newTarget.Owned) {
+                    tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_linux_red"));
+                } else if(newTarget.Alive) {
+                    tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_linux_blue"));
+                } else {
+                    tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_linux_grey"));
+                }
+            }
+            else if (newTarget.Os == OS_MAC) {
+                if (newTarget.Owned) {
+                    tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_mac_red"));
+                } else if(newTarget.Alive) {
+                    tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_mac_blue"));
+                } else {
+                    tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_mac_grey"));
+                }
+            }
+        }
+    }
+}
+
 void TargetsWidget::SetData() const
 {
     this->ClearTableContent();
@@ -216,6 +276,24 @@ void TargetsWidget::SetData() const
     for (int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
         if ( this->filterItem(adaptixWidget->Targets[i]) )
             this->addTableItem(adaptixWidget->Targets[i]);
+    }
+}
+
+void TargetsWidget::RemoveTargetsItem(const QString &targetId) const
+{
+    for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
+        if( adaptixWidget->Targets[i].TargetId == targetId ) {
+            adaptixWidget->Targets.erase( adaptixWidget->Targets.begin() + i );
+            break;
+        }
+    }
+
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *item = tableWidget->item(row, ColumnId);
+        if ( item && item->text() == targetId ) {
+            tableWidget->removeRow(row);
+            break;
+        }
     }
 }
 
@@ -240,7 +318,7 @@ void TargetsWidget::TargetsAdd(QList<TargetData> targetList)
         obj["domain"]   = target.Domain;
         obj["address"]  = target.Address;
         obj["os"]       = target.Os;
-        obj["os_desk"]  = target.OsDesk;
+        obj["os_desk"]  = target.OsDesc;
         obj["tag"]      = target.Tag;
         obj["info"]     = target.Info;
         obj["alive"]    = target.Alive;
@@ -318,15 +396,129 @@ void TargetsWidget::onCreateTarget()
 
 void TargetsWidget::onEditTarget() const
 {
+    if (tableWidget->selectionModel()->selectedRows().empty())
+        return;
 
+    auto targetId = tableWidget->item( tableWidget->currentRow(), ColumnId )->text();
+
+    bool found = false;
+    TargetData targetData;
+    for (auto target : adaptixWidget->Targets) {
+        if (target.TargetId == targetId) {
+            targetData = target;
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+        return;
+
+    DialogTarget* dialogTarget = new DialogTarget();
+    dialogTarget->SetEditmode(targetData);
+    while (true) {
+        dialogTarget->StartDialog();
+        if (dialogTarget->IsValid())
+            break;
+
+        QString msg = dialogTarget->GetMessage();
+        if (msg.isEmpty()) {
+            delete dialogTarget;
+            return;
+        }
+
+        MessageError(msg);
+    }
+
+    TargetData newTargetData = dialogTarget->GetTargetData();
+
+    QJsonObject dataJson;
+    dataJson["t_target_id"] = newTargetData.TargetId;
+    dataJson["t_computer"]  = newTargetData.Computer;
+    dataJson["t_domain"]    = newTargetData.Domain;
+    dataJson["t_address"]   = newTargetData.Address;
+    dataJson["t_os"]        = newTargetData.Os;
+    dataJson["t_os_desk"]   = newTargetData.OsDesc;
+    dataJson["t_tag"]       = newTargetData.Tag;
+    dataJson["t_info"]      = newTargetData.Info;
+    dataJson["t_alive"]     = newTargetData.Alive;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    delete dialogTarget;
+
+    QString message = "";
+    bool ok = false;
+    bool result = HttpReqTargetEdit(jsonData, *(adaptixWidget->GetProfile()), &message, &ok);
+    if( !result ) {
+        MessageError("Server is not responding");
+        return;
+    }
+    if (!ok) MessageError(message);
 }
 
 void TargetsWidget::onRemoveTarget() const
 {
+    if (tableWidget->selectionModel()->selectedRows().empty())
+        return;
 
+    auto targetId = tableWidget->item( tableWidget->currentRow(), ColumnId )->text();
+
+    QString message = QString();
+    bool ok = false;
+    bool result = HttpReqTargetRemove(targetId, *(adaptixWidget->GetProfile()), &message, &ok);
+    if( !result ){
+        MessageError("Response timeout");
+        return;
+    }
+
+    if ( !ok ) MessageError(message);
 }
 
 void TargetsWidget::onExportTarget() const
 {
+    if (tableWidget->selectionModel()->selectedRows().empty())
+        return;
 
+    QInputDialog dialog;
+    dialog.setWindowTitle("Format for saving");
+    dialog.setLabelText("Format:");
+    dialog.setTextValue("%computer%.%domain% - %address%");
+    QLineEdit *lineEdit = dialog.findChild<QLineEdit*>();
+    if (lineEdit)
+        lineEdit->setMinimumWidth(400);
+
+    bool inputOk = (dialog.exec() == QDialog::Accepted);
+    if (!inputOk)
+        return;
+
+    QString format = dialog.textValue();
+
+    QString fileName = QFileDialog::getSaveFileName( nullptr, "Save Targets", "targets.txt", "Text Files (*.txt);;All Files (*)" );
+    if ( fileName.isEmpty())
+        return;
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        MessageError("Failed to open file for writing");
+        return;
+    }
+
+     QString content = "";
+     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+         if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
+
+             QString computer = tableWidget->item(rowIndex, ColumnComputer)->text();
+             QString domain   = tableWidget->item(rowIndex, ColumnDomain)->text();
+             QString address  = tableWidget->item(rowIndex, ColumnAddress)->text();
+
+             QString temp = format;
+             content += temp
+             .replace("%computer%", computer)
+             .replace("%domain%", domain)
+             .replace("%address%", address)
+             + "\n";
+         }
+     }
+
+     file.write(content.trimmed().toUtf8());
+     file.close();
 }

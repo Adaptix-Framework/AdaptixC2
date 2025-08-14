@@ -572,3 +572,31 @@ bool HttpReqTargetsCreate(const QByteArray &jsonData, AuthProfile profile, QStri
     }
     return false;
 }
+
+bool HttpReqTargetEdit(const QByteArray &jsonData, AuthProfile profile, QString *message, bool *ok)
+{
+    QString sUrl = profile.GetURL() + "/targets/edit";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqTargetRemove(const QString &targetId, AuthProfile profile, QString* message, bool* ok)
+{
+    QJsonObject dataJson;
+    dataJson["t_target_id"] = targetId;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/targets/remove";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
