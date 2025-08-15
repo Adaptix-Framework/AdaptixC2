@@ -14,9 +14,10 @@
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
+#include <UI/Widgets/TargetsWidget.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
-#include <UI/Widgets/TargetsWidget.h>
+
 
 
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
@@ -291,6 +292,11 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
         return true;
     }
+    if ( spType == TYPE_CREDS_SET_TAG ) {
+        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isArray()) return false;
+        if (!jsonObj.contains("c_tag")      || !jsonObj["c_tag"].isString())     return false;
+        return true;
+    }
 
     if ( spType == TYPE_TARGETS_CREATE ) {
         if (!jsonObj.contains("t_targets") || !jsonObj["t_targets"].isArray()) return false;
@@ -312,6 +318,11 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
     if ( spType == TYPE_TARGETS_DELETE ) {
         if (!jsonObj.contains("t_target_id") || !jsonObj["t_target_id"].isString()) return false;
+        return true;
+    }
+    if ( spType == TYPE_TARGETS_SET_TAG ) {
+        if (!jsonObj.contains("t_targets_id") || !jsonObj["t_targets_id"].isArray()) return false;
+        if (!jsonObj.contains("t_tag")        || !jsonObj["t_tag"].isString())       return false;
         return true;
     }
 
@@ -695,6 +706,19 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         CredentialsTab->RemoveCredentialsItem(credId);
         return;
     }
+    if ( spType == TYPE_CREDS_SET_TAG ) {
+        QString tag    = jsonObj["c_tag"].toString();
+        QJsonArray arr = jsonObj["c_creds_id"].toArray();
+
+        QStringList ids;
+        for (auto jsonCred : arr) {
+            QString id = jsonCred.toString();
+            ids.append(id);
+        }
+        CredentialsTab->CredsSetTag(ids, tag);
+
+        return;
+    }
 
 
 
@@ -761,7 +785,19 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         TargetsTab->RemoveTargetsItem(targetId);
         return;
     }
+    if ( spType == TYPE_TARGETS_SET_TAG ) {
+        QString tag    = jsonObj["t_tag"].toString();
+        QJsonArray arr = jsonObj["t_targets_id"].toArray();
 
+        QStringList ids;
+        for (auto jsonTarget : arr) {
+            QString id = jsonTarget.toString();
+            ids.append(id);
+        }
+        TargetsTab->TargetsSetTag(ids, tag);
+
+        return;
+    }
 
 
     if( spType == TYPE_TUNNEL_CREATE )

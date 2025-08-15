@@ -70,10 +70,12 @@ type Teamserver interface {
 	TsCredentilsAdd(username string, password string, realm string, credType string, tag string, storage string, agentId string, host string) error
 	TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error
 	TsCredentilsDelete(credId string) error
+	TsCredentialsSetTag(credsId []string, tag string) error
 
 	TsTargetsAdd(targets []map[string]interface{}) error
 	TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error
 	TsTargetDelete(targetId string) error
+	TsTargetSetTag(targetsId []string, tag string) error
 
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
 	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
@@ -189,10 +191,12 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/creds/add", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsAdd)
 	connector.Engine.POST(tsProfile.Endpoint+"/creds/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsEdit)
 	connector.Engine.POST(tsProfile.Endpoint+"/creds/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsRemove)
+	connector.Engine.POST(tsProfile.Endpoint+"/creds/set/tag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsSetTag)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/targets/add", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetsAdd)
 	connector.Engine.POST(tsProfile.Endpoint+"/targets/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetEdit)
 	connector.Engine.POST(tsProfile.Endpoint+"/targets/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetRemove)
+	connector.Engine.POST(tsProfile.Endpoint+"/targets/set/tag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetSetTag)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks5", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks5)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks4", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks4)

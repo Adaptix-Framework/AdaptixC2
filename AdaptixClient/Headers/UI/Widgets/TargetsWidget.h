@@ -39,6 +39,7 @@ public:
     void AddTargetsItems(QList<TargetData> targetList) const;
     void EditTargetsItem(const TargetData &newTarget) const;
     void RemoveTargetsItem(const QString &targetId) const;
+    void TargetsSetTag(const QStringList &targetIds, const QString &tag) const;
 
     void SetData() const;
     void ClearTableContent() const;
@@ -52,6 +53,7 @@ public slots:
     void onCreateTarget();
     void onEditTarget() const;
     void onRemoveTarget() const;
+    void onSetTag() const;
     void onExportTarget() const;
 };
 

@@ -559,6 +559,27 @@ bool HttpReqCredentialsRemove(const QString &credsId, AuthProfile profile, QStri
     return false;
 }
 
+bool HttpReqCredentialsSetTag( QStringList credsId, const QString &tag, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonArray arrayId;
+    for (QString item : credsId)
+        arrayId.append(item);
+
+    QJsonObject dataJson;
+    dataJson["id_array"] = arrayId;
+    dataJson["tag"] = tag;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/creds/set/tag";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
 ///TARGETS
 
 bool HttpReqTargetsCreate(const QByteArray &jsonData, AuthProfile profile, QString *message, bool *ok)
@@ -592,6 +613,27 @@ bool HttpReqTargetRemove(const QString &targetId, AuthProfile profile, QString* 
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/targets/remove";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqTargetSetTag( QStringList targetsId, const QString &tag, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonArray arrayId;
+    for (QString item : targetsId)
+        arrayId.append(item);
+
+    QJsonObject dataJson;
+    dataJson["id_array"] = arrayId;
+    dataJson["tag"] = tag;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/targets/set/tag";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();

@@ -65,13 +65,15 @@ const (
 	TYPE_PIVOT_CREATE = 0x71
 	TYPE_PIVOT_DELETE = 0x72
 
-	TYPE_CREDS_CREATE = 0x81
-	TYPE_CREDS_EDIT   = 0x82
-	TYPE_CREDS_DELETE = 0x83
+	TYPE_CREDS_CREATE  = 0x81
+	TYPE_CREDS_EDIT    = 0x82
+	TYPE_CREDS_DELETE  = 0x83
+	TYPE_CREDS_SET_TAG = 0x84
 
-	TYPE_TARGETS_CREATE = 0x87
-	TYPE_TARGETS_EDIT   = 0x88
-	TYPE_TARGETS_DELETE = 0x89
+	TYPE_TARGETS_CREATE  = 0x87
+	TYPE_TARGETS_EDIT    = 0x88
+	TYPE_TARGETS_DELETE  = 0x89
+	TYPE_TARGETS_SET_TAG = 0x8a
 )
 
 func CreateSpEvent(event int, message string) SpEvent {
@@ -462,6 +464,15 @@ func CreateSpCredentialsDelete(credsId string) SyncPackerCredentialsDelete {
 	}
 }
 
+func CreateSpCredentialsSetTag(credsId []string, tag string) SyncPackerCredentialsTag {
+	return SyncPackerCredentialsTag{
+		SpType: TYPE_CREDS_SET_TAG,
+
+		CredsId: credsId,
+		Tag:     tag,
+	}
+}
+
 /// CREDS
 
 func CreateSpTargetsAdd(targetsData []*adaptix.TargetData) SyncPackerTargetsAdd {
@@ -513,6 +524,15 @@ func CreateSpTargetDelete(targetId string) SyncPackerTargetDelete {
 		SpType: TYPE_TARGETS_DELETE,
 
 		TargetId: targetId,
+	}
+}
+
+func CreateSpTargetSetTag(targetsId []string, tag string) SyncPackerTargetTag {
+	return SyncPackerTargetTag{
+		SpType: TYPE_TARGETS_SET_TAG,
+
+		TargetsId: targetsId,
+		Tag:       tag,
 	}
 }
 
