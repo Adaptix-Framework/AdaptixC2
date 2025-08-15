@@ -297,6 +297,32 @@ void TargetsWidget::RemoveTargetsItem(const QString &targetId) const
     }
 }
 
+void TargetsWidget::TargetsSetTag(const QStringList &targetIds, const QString &tag) const
+{
+    QSet<QString> set1 = QSet<QString>(targetIds.begin(), targetIds.end());
+    for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
+        if( set1.contains(adaptixWidget->Targets[i].TargetId) ) {
+            adaptixWidget->Targets[i].Tag = tag;
+            set1.remove(adaptixWidget->Targets[i].TargetId);
+
+            if (set1.size() == 0)
+                break;
+        }
+    }
+
+    QSet<QString> set2 = QSet<QString>(targetIds.begin(), targetIds.end());
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *item = tableWidget->item(row, ColumnId);
+        if( item && set2.contains(item->text()) ) {
+            tableWidget->item(row, ColumnTag)->setText(tag);
+            set2.remove(item->text());
+
+            if (set2.size() == 0)
+                break;
+        }
+    }
+}
+
 void TargetsWidget::ClearTableContent() const
 {
     for (int row = tableWidget->rowCount() - 1; row >= 0; row--) {
@@ -362,7 +388,8 @@ void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
     ctxMenu.addAction("Edit",   this, &TargetsWidget::onEditTarget );
     ctxMenu.addAction("Remove", this, &TargetsWidget::onRemoveTarget );
     ctxMenu.addSeparator();
-    ctxMenu.addAction("Export", this, &TargetsWidget::onExportTarget );
+    ctxMenu.addAction("Set tag", this, &TargetsWidget::onSetTag );
+    ctxMenu.addAction("Export",  this, &TargetsWidget::onExportTarget );
 
     QPoint globalPos = tableWidget->mapToGlobal(pos);
     ctxMenu.exec(globalPos);
@@ -471,6 +498,37 @@ void TargetsWidget::onRemoveTarget() const
     }
 
     if ( !ok ) MessageError(message);
+}
+
+void TargetsWidget::onSetTag() const
+{
+    QStringList listId;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, ColumnId)->isSelected() ) {
+            auto agentId = tableWidget->item( rowIndex, ColumnId )->text();
+            listId.append(agentId);
+        }
+    }
+
+    if(listId.empty())
+        return;
+
+    QString tag = "";
+    if(listId.size() == 1) {
+        tag = tableWidget->item( tableWidget->currentRow(), ColumnTag )->text();
+    }
+
+    bool inputOk;
+    QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
+    if ( inputOk ) {
+        QString message = QString();
+        bool ok = false;
+        bool result = HttpReqTargetSetTag(listId, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
+        if( !result ) {
+            MessageError("Response timeout");
+            return;
+        }
+    }
 }
 
 void TargetsWidget::onExportTarget() const

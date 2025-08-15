@@ -87,10 +87,41 @@ func (ts *Teamserver) TsCredentilsDelete(credId string) error {
 			}
 		}
 	}
-	
+
 	_ = ts.DBMS.DbCredentialsDelete(credId)
 
 	packet := CreateSpCredentialsDelete(credId)
+	ts.TsSyncAllClients(packet)
+
+	return nil
+}
+
+/// Setters
+
+func (ts *Teamserver) TsCredentialsSetTag(credsId []string, tag string) error {
+
+	var ids []string
+	for valueCred := range ts.credentials.Iterator() {
+		cred := valueCred.Item.(*adaptix.CredsData)
+		found := false
+
+		for i := len(credsId) - 1; i >= 0; i-- {
+			if cred.CredId == credsId[i] {
+				cred.Tag = tag
+				found = true
+				_ = ts.DBMS.DbCredentialsUpdate(*cred)
+				ids = append(ids, cred.CredId)
+				credsId = append(credsId[:i], credsId[i+1:]...)
+				break
+			}
+		}
+
+		if found && len(credsId) == 0 {
+			break
+		}
+	}
+
+	packet := CreateSpCredentialsSetTag(ids, tag)
 	ts.TsSyncAllClients(packet)
 
 	return nil

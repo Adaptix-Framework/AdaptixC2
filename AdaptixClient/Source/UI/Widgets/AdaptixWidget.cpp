@@ -311,6 +311,7 @@ void AdaptixWidget::ClearAdaptix()
     SessionsTablePage->Clear();
     TunnelsTab->Clear();
     CredentialsTab->Clear();
+    TargetsTab->Clear();
 
     for (auto tunnelId : ClientTunnels.keys()) {
         auto tunnel = ClientTunnels[tunnelId];

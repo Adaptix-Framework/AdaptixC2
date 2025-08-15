@@ -62,6 +62,28 @@ func (tc *TsConnector) TcTargetEdit(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }
 
+type TargetsTag struct {
+	TargetIdArray []string `json:"id_array"`
+	Tag           string   `json:"tag"`
+}
+
+func (tc *TsConnector) TcTargetSetTag(ctx *gin.Context) {
+	var (
+		targetsTag TargetsTag
+		err        error
+	)
+
+	err = ctx.ShouldBindJSON(&targetsTag)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
+		return
+	}
+
+	err = tc.teamserver.TsTargetSetTag(targetsTag.TargetIdArray, targetsTag.Tag)
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}
+
 type TargetRemove struct {
 	TargetId string `json:"t_target_id"`
 }

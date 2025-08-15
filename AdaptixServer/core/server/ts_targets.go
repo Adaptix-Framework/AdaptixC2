@@ -115,7 +115,6 @@ func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain str
 }
 
 func (ts *Teamserver) TsTargetDelete(targetId string) error {
-
 	for i := uint(0); i < ts.targets.Len(); i++ {
 		valueTarget, ok := ts.targets.Get(i)
 		if ok {
@@ -129,6 +128,37 @@ func (ts *Teamserver) TsTargetDelete(targetId string) error {
 	_ = ts.DBMS.DbTargetDelete(targetId)
 
 	packet := CreateSpTargetDelete(targetId)
+	ts.TsSyncAllClients(packet)
+
+	return nil
+}
+
+/// Setters
+
+func (ts *Teamserver) TsTargetSetTag(targetsId []string, tag string) error {
+
+	var ids []string
+	for valueTarget := range ts.targets.Iterator() {
+		target := valueTarget.Item.(*adaptix.TargetData)
+		found := false
+
+		for i := len(targetsId) - 1; i >= 0; i-- {
+			if target.TargetId == targetsId[i] {
+				target.Tag = tag
+				found = true
+				_ = ts.DBMS.DbTargetUpdate(target)
+				ids = append(ids, target.TargetId)
+				targetsId = append(targetsId[:i], targetsId[i+1:]...)
+				break
+			}
+		}
+
+		if found && len(targetsId) == 0 {
+			break
+		}
+	}
+
+	packet := CreateSpTargetSetTag(ids, tag)
 	ts.TsSyncAllClients(packet)
 
 	return nil

@@ -9,7 +9,7 @@ import (
 )
 
 func (dbms *DBMS) DbTargetExist(targetId string) bool {
-	rows, err := dbms.database.Query("SELECT CredId FROM Targets;")
+	rows, err := dbms.database.Query("SELECT TargetId FROM Targets;")
 	if err != nil {
 		return false
 	}

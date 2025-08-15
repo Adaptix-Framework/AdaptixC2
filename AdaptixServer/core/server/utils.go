@@ -480,6 +480,13 @@ type SyncPackerCredentialsDelete struct {
 	CredId string `json:"c_creds_id"`
 }
 
+type SyncPackerCredentialsTag struct {
+	SpType int `json:"type"`
+
+	CredsId []string `json:"c_creds_id"`
+	Tag     string   `json:"c_tag"`
+}
+
 /// TARGETS
 
 type SyncPackerTarget struct {
@@ -522,6 +529,13 @@ type SyncPackerTargetDelete struct {
 	SpType int `json:"type"`
 
 	TargetId string `json:"t_target_id"`
+}
+
+type SyncPackerTargetTag struct {
+	SpType int `json:"type"`
+
+	TargetsId []string `json:"t_targets_id"`
+	Tag       string   `json:"t_tag"`
 }
 
 /// BROWSER

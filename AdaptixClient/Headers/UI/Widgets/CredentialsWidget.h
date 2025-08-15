@@ -18,6 +18,17 @@ class CredentialsWidget : public QWidget
     QLineEdit*      inputFilter     = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
+    int ColumnId       = 0;
+    int ColumnUsername = 1;
+    int ColumnPassword = 2;
+    int ColumnRealm    = 3;
+    int ColumnType     = 4;
+    int ColumnTag      = 5;
+    int ColumnDate     = 6;
+    int ColumnStorage  = 7;
+    int ColumnAgent    = 8;
+    int ColumnHost     = 9;
+
     void createUI();
     bool filterItem(const CredentialData &credentials) const;
     void addTableItem(const CredentialData &newCredentials) const;
@@ -30,6 +41,7 @@ public:
     void AddCredentialsItem(const CredentialData &newCredentials) const;
     void EditCredentialsItem(const CredentialData &newCredentials) const;
     void RemoveCredentialsItem(const QString &credId) const;
+    void CredsSetTag(const QStringList &credsIds, const QString &tag) const;
 
     void SetData() const;
     void ClearTableContent() const;
@@ -43,6 +55,7 @@ public slots:
     void onCreateCreds();
     void onEditCreds() const;
     void onRemoveCreds() const;
+    void onSetTag() const;
     void onExportCreds() const;
 };
 
