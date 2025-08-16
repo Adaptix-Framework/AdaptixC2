@@ -60,6 +60,7 @@ public:
     QVector<CredentialData>     GetCredentials() const;
     QMap<QString, DownloadData> GetDownloads() const;
     QMap<QString, ScreenData>   GetScreenshots() const;
+    QVector<TargetData>         GetTargets() const;
     QVector<TunnelData>         GetTunnels() const;
     QStringList                 GetInterfaces() const;
 

@@ -64,6 +64,9 @@ public slots:
     QString  script_dir();
     QJSValue screenshots();
     void     show_message(const QString &title, const QString &text);
+    QJSValue targets() const;
+    void     targets_add(const QString &computer, const QString &domain, const QString &address, const QString &os = "unknown", const QString &osDesc = "", const QString &tag = "", const QString &info = "", bool alive = true);
+    void     targets_add_list(const QVariantList &array);
     int      ticks();
     QJSValue tunnels();
 

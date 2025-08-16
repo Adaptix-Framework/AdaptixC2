@@ -67,6 +67,8 @@ QMap<QString, DownloadData> AxScriptManager::GetDownloads() const { return adapt
 
 QMap<QString, ScreenData> AxScriptManager::GetScreenshots() const { return adaptixWidget->Screenshots; }
 
+QVector<TargetData> AxScriptManager::GetTargets() const { return adaptixWidget->Targets; }
+
 QVector<TunnelData> AxScriptManager::GetTunnels() const { return adaptixWidget->Tunnels; }
 
 QStringList AxScriptManager::GetInterfaces() const { return adaptixWidget->addresses; }
