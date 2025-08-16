@@ -17,28 +17,30 @@ func (ts *Teamserver) TsAgentIsExists(agentId string) bool {
 	return ts.agents.Contains(agentId)
 }
 
-func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error {
+func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error) {
 	if beat == nil {
-		return fmt.Errorf("agent %v does not register", agentId)
+		return adaptix.AgentData{}, fmt.Errorf("agent %v does not register", agentId)
 	}
 
 	agentName, ok := ts.wm_agent_types[agentCrc]
 	if !ok {
-		return fmt.Errorf("agent type %v does not exists", agentCrc)
+		return adaptix.AgentData{}, fmt.Errorf("agent type %v does not exists", agentCrc)
 	}
 	ok = ts.agents.Contains(agentId)
 	if ok {
-		return fmt.Errorf("agent %v already exists", agentId)
+		return adaptix.AgentData{}, fmt.Errorf("agent %v already exists", agentId)
 	}
 
 	agentData, err := ts.Extender.ExAgentCreate(agentName, beat)
 	if err != nil {
-		return err
+		return adaptix.AgentData{}, err
 	}
 
+	if agentData.Id == "" {
+		agentData.Id = agentId
+	}
 	agentData.Crc = agentCrc
 	agentData.Name = agentName
-	agentData.Id = agentId
 	agentData.Listener = listenerName
 	agentData.ExternalIP = ExternalIP
 	agentData.CreateTime = time.Now().Unix()
@@ -50,13 +52,13 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 
 	value, ok := ts.listeners.Get(listenerName)
 	if !ok {
-		return fmt.Errorf("listener %v does not exists", listenerName)
+		return agentData, fmt.Errorf("listener %v does not exists", listenerName)
 	}
 
 	regName := value.(adaptix.ListenerData).RegName
 	value, ok = ts.listener_configs.Get(regName)
 	if !ok {
-		return fmt.Errorf("listener %v does not register", regName)
+		return agentData, fmt.Errorf("listener %v does not register", regName)
 	}
 
 	listenerInfo, _ := value.(extender.ListenerInfo)
@@ -91,7 +93,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 
 	ts.TsEventAgent(false, agentData)
 
-	return nil
+	return agentData, nil
 }
 
 func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error {

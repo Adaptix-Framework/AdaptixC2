@@ -8,6 +8,7 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
+#include <UI/Widgets/TargetsWidget.h>
 
 BridgeApp::BridgeApp(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine), widget(new QWidget()){}
 
@@ -627,6 +628,75 @@ QJSValue BridgeApp::screenshots()
 }
 
 void BridgeApp::show_message(const QString &title, const QString &text) { QMessageBox::information(nullptr, title, text); }
+
+QJSValue BridgeApp::targets() const
+{
+    QVariantMap list;
+    auto targets = scriptEngine->manager()->GetTargets();
+
+    for (auto target : targets) {
+        QVariantMap map;
+        map["id"]       = target.TargetId;
+        map["computer"] = target.Computer;
+        map["domain"]   = target.Domain;
+        map["address"]  = target.Address;
+        map["tag"]      = target.Tag;
+        map["date"]     = target.Date;
+        map["info"]     = target.Info;
+        map["alive"]    = target.Alive;
+        map["owned"]    = target.Owned;
+        map["os_desc"]  = target.OsDesc;
+
+        if (target.Os == OS_WINDOWS)    map["os"] = "windows";
+        else if (target.Os == OS_LINUX) map["os"] = "linux";
+        else if (target.Os == OS_MAC)   map["os"] = "macos";
+        else                            map["os"] = "unknown";
+
+        list[target.TargetId] = map;
+    }
+
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+void BridgeApp::targets_add(const QString &computer, const QString &domain, const QString &address, const QString &os, const QString &osDesc, const QString &tag, const QString &info, bool alive)
+{
+    TargetData target = {"", computer, domain, address, tag, 0, osDesc, "", info, alive};
+
+    if (os == "windows")    target.Os = OS_WINDOWS;
+    else if (os == "linux") target.Os = OS_LINUX;
+    else if (os == "macos") target.Os = OS_MAC;
+    else                    target.Os = OS_UNKNOWN;
+
+    QList<TargetData> targets;
+    targets.append(target);
+    scriptEngine->manager()->GetAdaptix()->TargetsTab->TargetsAdd(targets);
+}
+
+void BridgeApp::targets_add_list(const QVariantList &array)
+{
+    QList<TargetData> targets;
+
+    for (const QVariant &item : array) {
+        QVariantMap map = item.toMap();
+        TargetData td = {};
+        if (map.contains("computer")) td.Computer = map["computer"].toString();
+        if (map.contains("domain")) td.Domain = map["domain"].toString();
+        if (map.contains("address")) td.Address = map["address"].toString();
+        if (map.contains("tag")) td.Tag = map["tag"].toString();
+        if (map.contains("info")) td.Info = map["info"].toString();
+        if (map.contains("alive")) td.Alive = map["alive"].toBool();
+        if (map.contains("os_desc")) td.OsDesc = map["os_desc"].toString();
+        if (map.contains("os")) {
+            QString os = map["os"].toString();
+            if (os == "windows")    td.Os = OS_WINDOWS;
+            else if (os == "linux") td.Os = OS_LINUX;
+            else if (os == "macos") td.Os = OS_MAC;
+            else                    td.Os = OS_UNKNOWN;
+        }
+        targets.append(td);
+    }
+    scriptEngine->manager()->GetAdaptix()->TargetsTab->TargetsAdd(targets);
+}
 
 int BridgeApp::ticks() { return QDateTime::currentSecsSinceEpoch(); }
 

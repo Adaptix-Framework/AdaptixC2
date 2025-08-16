@@ -205,7 +205,7 @@ func (m *ModuleExtender) HandlerListenerInteralHandler(name string, data []byte,
 		agentInfo = agentInfo[4:]
 
 		if !ModuleObject.ts.TsAgentIsExists(agentId) {
-			err = ModuleObject.ts.TsAgentCreate(agentType, agentId, agentInfo, listener.Name, "", false)
+			_, err = ModuleObject.ts.TsAgentCreate(agentType, agentId, agentInfo, listener.Name, "", false)
 			if err != nil {
 				return agentId, err, ok
 			}

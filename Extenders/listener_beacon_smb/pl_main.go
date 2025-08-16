@@ -7,7 +7,7 @@ import (
 
 type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
-	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
+	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
 }
 
 type ModuleExtender struct {

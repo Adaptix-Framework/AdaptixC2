@@ -217,7 +217,7 @@ func (handler *HTTP) processRequest(ctx *gin.Context) {
 	}
 
 	if !ModuleObject.ts.TsAgentIsExists(agentId) {
-		err = ModuleObject.ts.TsAgentCreate(agentType, agentId, beat, handler.Name, ExternalIP, true)
+		_, err = ModuleObject.ts.TsAgentCreate(agentType, agentId, beat, handler.Name, ExternalIP, true)
 		if err != nil {
 			goto ERR
 		}

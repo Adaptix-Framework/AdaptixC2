@@ -201,7 +201,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		ExternalIP := strings.Split(conn.RemoteAddr().String(), ":")[0]
 
 		if !ModuleObject.ts.TsAgentIsExists(agentId) {
-			err = ModuleObject.ts.TsAgentCreate(agentType, agentId, initPack.Data, handler.Name, ExternalIP, false)
+			_, err = ModuleObject.ts.TsAgentCreate(agentType, agentId, initPack.Data, handler.Name, ExternalIP, false)
 			if err != nil {
 				goto ERR
 			}
