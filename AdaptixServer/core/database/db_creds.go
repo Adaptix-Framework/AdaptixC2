@@ -27,21 +27,28 @@ func (dbms *DBMS) DbCredentialsExist(creedsId string) bool {
 	return false
 }
 
-func (dbms *DBMS) DbCredentialsAdd(credsData adaptix.CredsData) error {
+func (dbms *DBMS) DbCredentialsAdd(credsData []*adaptix.CredsData) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database not exists")
 	}
 
-	ok = dbms.DbCredentialsExist(credsData.CredId)
-	if ok {
-		return fmt.Errorf("creds %s alredy exists", credsData.CredId)
+	for _, creds := range credsData {
+		ok = dbms.DbCredentialsExist(creds.CredId)
+		if ok {
+			return fmt.Errorf("creds %s alredy exists", creds.CredId)
+		}
+
+		insertQuery := `INSERT INTO Credentials (CredId, Username, Password, Realm, Type, Tag, Date, Storage, AgentId, Host) values(?,?,?,?,?,?,?,?,?,?);`
+		_, err := dbms.database.Exec(insertQuery, creds.CredId, creds.Username, creds.Password, creds.Realm, creds.Type,
+			creds.Tag, creds.Date, creds.Storage, creds.AgentId, creds.Host)
+		if err != nil {
+			logs.Error("", err.Error())
+			continue
+		}
 	}
 
-	insertQuery := `INSERT INTO Credentials (CredId, Username, Password, Realm, Type, Tag, Date, Storage, AgentId, Host) values(?,?,?,?,?,?,?,?,?,?);`
-	_, err := dbms.database.Exec(insertQuery, credsData.CredId, credsData.Username, credsData.Password, credsData.Realm, credsData.Type,
-		credsData.Tag, credsData.Date, credsData.Storage, credsData.AgentId, credsData.Host)
-	return err
+	return nil
 }
 
 func (dbms *DBMS) DbCredentialsUpdate(credsData adaptix.CredsData) error {

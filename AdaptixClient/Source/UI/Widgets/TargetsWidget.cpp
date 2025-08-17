@@ -348,7 +348,6 @@ void TargetsWidget::TargetsAdd(QList<TargetData> targetList)
         obj["tag"]      = target.Tag;
         obj["info"]     = target.Info;
         obj["alive"]    = target.Alive;
-
         jsonArray.append(obj);
     }
 

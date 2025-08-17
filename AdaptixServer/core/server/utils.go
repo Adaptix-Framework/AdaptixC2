@@ -446,9 +446,7 @@ type SyncPackerScreenshotDelete struct {
 
 /// CREDS
 
-type SyncPackerCredentialsAdd struct {
-	SpType int `json:"type"`
-
+type SyncPackerCredentials struct {
 	CredId   string `json:"c_creds_id"`
 	Username string `json:"c_username"`
 	Password string `json:"c_password"`
@@ -459,6 +457,12 @@ type SyncPackerCredentialsAdd struct {
 	Storage  string `json:"c_storage"`
 	AgentId  string `json:"c_agent_id"`
 	Host     string `json:"c_host"`
+}
+
+type SyncPackerCredentialsAdd struct {
+	SpType int `json:"type"`
+
+	Creds []SyncPackerCredentials `json:"c_creds"`
 }
 
 type SyncPackerCredentialsUpdate struct {

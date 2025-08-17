@@ -264,17 +264,9 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
+
     if ( spType == TYPE_CREDS_CREATE ) {
-        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
-        if (!jsonObj.contains("c_username") || !jsonObj["c_username"].isString()) return false;
-        if (!jsonObj.contains("c_password") || !jsonObj["c_password"].isString()) return false;
-        if (!jsonObj.contains("c_realm")    || !jsonObj["c_realm"].isString())    return false;
-        if (!jsonObj.contains("c_type")     || !jsonObj["c_type"].isString())     return false;
-        if (!jsonObj.contains("c_tag")      || !jsonObj["c_tag"].isString())      return false;
-        if (!jsonObj.contains("c_date")     || !jsonObj["c_date"].isDouble())     return false;
-        if (!jsonObj.contains("c_storage")  || !jsonObj["c_storage"].isString())  return false;
-        if (!jsonObj.contains("c_agent_id") || !jsonObj["c_agent_id"].isString()) return false;
-        if (!jsonObj.contains("c_host")     || !jsonObj["c_host"].isString())     return false;
+        if (!jsonObj.contains("c_creds") || !jsonObj["c_creds"].isArray()) return false;
         return true;
     }
     if ( spType == TYPE_CREDS_EDIT ) {
@@ -668,22 +660,41 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
 
 
+    if ( spType == TYPE_CREDS_CREATE ) {
+        QList<CredentialData> credList;
+        QJsonArray arr = jsonObj.value("c_creds").toArray();
+        for (const QJsonValue &val : arr) {
+            if (!val.isObject())
+                continue;
 
-    if ( spType == TYPE_CREDS_CREATE )
-    {
-        CredentialData newCredential = {};
-        newCredential.CredId   = jsonObj["c_creds_id"].toString();
-        newCredential.Username = jsonObj["c_username"].toString();
-        newCredential.Password = jsonObj["c_password"].toString();
-        newCredential.Realm    = jsonObj["c_realm"].toString();
-        newCredential.Type     = jsonObj["c_type"].toString();
-        newCredential.Tag      = jsonObj["c_tag"].toString();
-        newCredential.Storage  = jsonObj["c_storage"].toString();
-        newCredential.AgentId  = jsonObj["c_agent_id"].toString();
-        newCredential.Host     = jsonObj["c_host"].toString();
-        newCredential.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["c_date"].toDouble()));
+            QJsonObject obj = val.toObject();
+            if (!obj.contains("c_creds_id") || !obj["c_creds_id"].isString()) continue;
+            if (!obj.contains("c_username") || !obj["c_username"].isString()) continue;
+            if (!obj.contains("c_password") || !obj["c_password"].isString()) continue;
+            if (!obj.contains("c_realm")    || !obj["c_realm"].isString())    continue;
+            if (!obj.contains("c_type")     || !obj["c_type"].isString())     continue;
+            if (!obj.contains("c_tag")      || !obj["c_tag"].isString())      continue;
+            if (!obj.contains("c_date")     || !obj["c_date"].isDouble())     continue;
+            if (!obj.contains("c_storage")  || !obj["c_storage"].isString())  continue;
+            if (!obj.contains("c_agent_id") || !obj["c_agent_id"].isString()) continue;
+            if (!obj.contains("c_host")     || !obj["c_host"].isString())     continue;
 
-        CredentialsTab->AddCredentialsItem(newCredential);
+            CredentialData c;
+            c.CredId   = obj.value("c_creds_id").toString();
+            c.Username = obj.value("c_username").toString();
+            c.Password = obj.value("c_password").toString();
+            c.Realm    = obj.value("c_realm").toString();
+            c.Type     = obj.value("c_type").toString();
+            c.Tag      = obj.value("c_tag").toString();
+            c.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(obj["c_date"].toDouble()));
+            c.Storage  = obj.value("c_storage").toString();
+            c.AgentId  = obj.value("c_agent_id").toString();
+            c.Host     = obj.value("c_host").toString();
+
+            credList.append(c);
+        }
+
+        CredentialsTab->AddCredentialsItems(credList);
         return;
     }
     if ( spType == TYPE_CREDS_EDIT ) {
@@ -719,7 +730,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         return;
     }
-
 
 
     if ( spType == TYPE_TARGETS_CREATE )

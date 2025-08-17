@@ -7,33 +7,58 @@ import (
 	"time"
 )
 
-func (ts *Teamserver) TsCredentilsAdd(username string, password string, realm string, credType string, tag string, storage string, agentId string, host string) error {
+func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
+	var newCreds []*adaptix.CredsData
 
-	for value := range ts.credentials.Iterator() {
-		cred := value.Item.(*adaptix.CredsData)
-		if cred.Username == username && cred.Realm == realm && cred.Password == password {
-			return nil
+	for _, value := range creds {
+		cred := &adaptix.CredsData{}
+		if v, ok := value["username"].(string); ok {
+			cred.Username = v
 		}
+		if v, ok := value["password"].(string); ok {
+			cred.Password = v
+		}
+		if v, ok := value["realm"].(string); ok {
+			cred.Realm = v
+		}
+		if v, ok := value["type"].(string); ok {
+			cred.Type = v
+		}
+		if v, ok := value["tag"].(string); ok {
+			cred.Tag = v
+		}
+		if v, ok := value["storage"].(string); ok {
+			cred.Storage = v
+		}
+		if v, ok := value["agent_id"].(string); ok {
+			cred.AgentId = v
+		}
+		if v, ok := value["host"].(string); ok {
+			cred.Host = v
+		}
+
+		found := false
+		for c_value := range ts.credentials.Iterator() {
+			c := c_value.Item.(*adaptix.CredsData)
+			if c.Username == cred.Username && c.Realm == cred.Realm && c.Password == cred.Password {
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+
+		cred.CredId = fmt.Sprintf("%08x", rand.Uint32())
+		cred.Date = time.Now().Unix()
+
+		newCreds = append(newCreds, cred)
+		ts.credentials.Put(cred)
 	}
 
-	credsData := &adaptix.CredsData{
-		CredId:   fmt.Sprintf("%08x", rand.Uint32()),
-		Username: username,
-		Password: password,
-		Realm:    realm,
-		Type:     credType,
-		Tag:      tag,
-		Date:     time.Now().Unix(),
-		Storage:  storage,
-		AgentId:  agentId,
-		Host:     host,
-	}
+	_ = ts.DBMS.DbCredentialsAdd(newCreds)
 
-	ts.credentials.Put(credsData)
-
-	_ = ts.DBMS.DbCredentialsAdd(*credsData)
-
-	packet := CreateSpCredentialsAdd(*credsData)
+	packet := CreateSpCredentialsAdd(newCreds)
 	ts.TsSyncAllClients(packet)
 
 	return nil

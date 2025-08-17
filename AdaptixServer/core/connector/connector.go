@@ -67,7 +67,7 @@ type Teamserver interface {
 	TsScreenshotDelete(screenId string) error
 	TsScreenshotNote(screenId string, note string) error
 
-	TsCredentilsAdd(username string, password string, realm string, credType string, tag string, storage string, agentId string, host string) error
+	TsCredentilsAdd(creds []map[string]interface{}) error
 	TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error
 	TsCredentilsDelete(credId string) error
 	TsCredentialsSetTag(credsId []string, tag string) error

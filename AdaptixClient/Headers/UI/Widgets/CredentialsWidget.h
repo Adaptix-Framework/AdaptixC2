@@ -38,7 +38,7 @@ public:
     ~CredentialsWidget() override;
 
     void Clear() const;
-    void AddCredentialsItem(const CredentialData &newCredentials) const;
+    void AddCredentialsItems(QList<CredentialData> credsList) const;
     void EditCredentialsItem(const CredentialData &newCredentials) const;
     void RemoveCredentialsItem(const QString &credId) const;
     void CredsSetTag(const QStringList &credsIds, const QString &tag) const;
@@ -46,7 +46,7 @@ public:
     void SetData() const;
     void ClearTableContent() const;
 
-    void CredentialsAdd(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host);
+    void CredentialsAdd(QList<CredentialData> credsList);
 
 public slots:
     void toggleSearchPanel() const;
