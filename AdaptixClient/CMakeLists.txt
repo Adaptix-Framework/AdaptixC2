@@ -137,6 +137,7 @@ SET( HEADERS
         Headers/Client/AxScript/BridgeEvent.h
         Headers/Client/AxScript/BridgeForm.h
         Headers/Client/AxScript/BridgeMenu.h
+        Headers/Client/AxScript/BridgeTimer.h
         Headers/Client/AxScript/AxCommandWrappers.h
         Headers/Client/AxScript/AxElementWrappers.h
         Headers/UI/Widgets/CredentialsWidget.h
@@ -210,6 +211,7 @@ add_executable(AdaptixClient
         Source/Client/AxScript/BridgeEvent.cpp
         Source/Client/AxScript/BridgeForm.cpp
         Source/Client/AxScript/BridgeMenu.cpp
+        Source/Client/AxScript/BridgeTimer.cpp
         Source/Client/AxScript/AxCommandWrappers.cpp
         Source/Client/AxScript/AxElementWrappers.cpp
         Source/UI/Widgets/CredentialsWidget.cpp

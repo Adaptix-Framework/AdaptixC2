@@ -12,6 +12,7 @@ class BridgeApp;
 class BridgeForm;
 class BridgeEvent;
 class BridgeMenu;
+class BridgeTimer;
 class AbstractAxMenuItem;
 class AxScriptManager;
 
@@ -63,6 +64,7 @@ Q_OBJECT
     std::unique_ptr<BridgeForm>  bridgeForm;
     std::unique_ptr<BridgeEvent> bridgeEvent;
     std::unique_ptr<BridgeMenu>  bridgeMenu;
+    std::unique_ptr<BridgeTimer> bridgeTimer;
 
 public:
     ScriptContext context;
@@ -75,6 +77,7 @@ public:
     BridgeForm*  form() const;
     BridgeEvent* event() const;
     BridgeMenu*  menu() const;
+    BridgeTimer* timer() const;
 
     AxScriptManager* manager() const;
 
