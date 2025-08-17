@@ -16,14 +16,25 @@ type CredsAdd struct {
 }
 
 func (tc *TsConnector) TcCredentialsAdd(ctx *gin.Context) {
-	var credsAdd CredsAdd
-	err := ctx.ShouldBindJSON(&credsAdd)
-	if err != nil {
+	var m map[string]interface{}
+	var creds []map[string]interface{}
+
+	if err := ctx.ShouldBindJSON(&m); err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
+	arr, ok := m["creds"].([]interface{})
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON structure", "ok": false})
+		return
+	}
+	for _, v := range arr {
+		if obj, ok := v.(map[string]interface{}); ok {
+			creds = append(creds, obj)
+		}
+	}
 
-	err = tc.teamserver.TsCredentilsAdd(credsAdd.Username, credsAdd.Password, credsAdd.Realm, credsAdd.Type, credsAdd.Tag, credsAdd.Storage, "", credsAdd.Host)
+	err := tc.teamserver.TsCredentilsAdd(creds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

@@ -179,19 +179,21 @@ void CredentialsWidget::Clear() const
     inputFilter->clear();
 }
 
-void CredentialsWidget::AddCredentialsItem(const CredentialData &newCredentials) const
+void CredentialsWidget::AddCredentialsItems(QList<CredentialData> credsList) const
 {
-    for( auto creds : adaptixWidget->Credentials ) {
-        if( creds.CredId == newCredentials.CredId )
+    for (auto cred : credsList) {
+        for( auto c : adaptixWidget->Credentials ) {
+            if( c.CredId == cred.CredId )
+                return;
+        }
+
+        adaptixWidget->Credentials.push_back(cred);
+
+        if( !this->filterItem(cred) )
             return;
+
+        this->addTableItem(cred);
     }
-
-    adaptixWidget->Credentials.push_back(newCredentials);
-
-    if( !this->filterItem(newCredentials) )
-        return;
-
-    this->addTableItem(newCredentials);
 }
 
 void CredentialsWidget::EditCredentialsItem(const CredentialData &newCredentials) const
@@ -289,17 +291,23 @@ void CredentialsWidget::ClearTableContent() const
 
 /// Sender
 
-void CredentialsWidget::CredentialsAdd(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host)
+void CredentialsWidget::CredentialsAdd(QList<CredentialData> credsList)
 {
-    QJsonObject dataJson;
-    dataJson["username"] = username;
-    dataJson["password"] = password;
-    dataJson["realm"]    = realm;
-    dataJson["type"]     = type;
-    dataJson["tag"]      = tag;
-    dataJson["storage"]  = storage;
-    dataJson["host"]     = host;
+    QJsonArray jsonArray;
+    for (const auto &cred : credsList) {
+        QJsonObject obj;
+        obj["username"] = cred.Username;
+        obj["password"] = cred.Password;
+        obj["realm"]    = cred.Realm;
+        obj["type"]     = cred.Type;
+        obj["tag"]      = cred.Tag;
+        obj["storage"]  = cred.Storage;
+        obj["host"]     = cred.Host;
+        jsonArray.append(obj);
+    }
 
+    QJsonObject dataJson;
+    dataJson["creds"] = jsonArray;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString message = "";
@@ -362,7 +370,9 @@ void CredentialsWidget::onCreateCreds()
 
     delete dialogCreds;
 
-    this->CredentialsAdd(credData.Username, credData.Password, credData.Realm, credData.Type, credData.Tag, credData.Storage, credData.Host);
+    QList<CredentialData> credList;
+    credList.append(credData);
+    this->CredentialsAdd(credList);
 }
 
 void CredentialsWidget::onEditCreds() const

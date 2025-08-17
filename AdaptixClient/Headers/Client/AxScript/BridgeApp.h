@@ -31,6 +31,7 @@ public slots:
     void     console_message(const QString &id, const QString &message, const QString &type = "", const QString &text = "");
     QJSValue credentials() const;
     void     credentials_add(const QString &username, const QString &password, const QString &realm = "", const QString &type = "password", const QString &tag = "", const QString &storage = "manual", const QString &host = "");
+    void     credentials_add_list(const QVariantList &array);
     QObject* create_command(const QString &name, const QString &description, const QString &example = "", const QString &message = "");
     QObject* create_commands_group(const QString &name, const QJSValue& array);
     QJSValue downloads() const;

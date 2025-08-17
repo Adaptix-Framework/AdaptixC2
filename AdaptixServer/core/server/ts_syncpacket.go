@@ -424,20 +424,28 @@ func CreateSpScreenshotDelete(screenId string) SyncPackerScreenshotDelete {
 
 /// CREDS
 
-func CreateSpCredentialsAdd(credsData adaptix.CredsData) SyncPackerCredentialsAdd {
+func CreateSpCredentialsAdd(creds []*adaptix.CredsData) SyncPackerCredentialsAdd {
+	var syncCreds []SyncPackerCredentials
+
+	for _, credsData := range creds {
+		t := SyncPackerCredentials{
+			CredId:   credsData.CredId,
+			Username: credsData.Username,
+			Password: credsData.Password,
+			Realm:    credsData.Realm,
+			Type:     credsData.Type,
+			Tag:      credsData.Tag,
+			Date:     credsData.Date,
+			Storage:  credsData.Storage,
+			AgentId:  credsData.AgentId,
+			Host:     credsData.Host,
+		}
+		syncCreds = append(syncCreds, t)
+	}
+
 	return SyncPackerCredentialsAdd{
 		SpType: TYPE_CREDS_CREATE,
-
-		CredId:   credsData.CredId,
-		Username: credsData.Username,
-		Password: credsData.Password,
-		Realm:    credsData.Realm,
-		Type:     credsData.Type,
-		Tag:      credsData.Tag,
-		Date:     credsData.Date,
-		Storage:  credsData.Storage,
-		AgentId:  credsData.AgentId,
-		Host:     credsData.Host,
+		Creds:  syncCreds,
 	}
 }
 
@@ -473,7 +481,7 @@ func CreateSpCredentialsSetTag(credsId []string, tag string) SyncPackerCredentia
 	}
 }
 
-/// CREDS
+/// TARGETS
 
 func CreateSpTargetsAdd(targetsData []*adaptix.TargetData) SyncPackerTargetsAdd {
 	var syncTargets []SyncPackerTarget

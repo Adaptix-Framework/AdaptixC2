@@ -218,12 +218,15 @@ func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncCredentials() []interface{} {
-	var packets []interface{}
+	var creds []*adaptix.CredsData
 	for value := range ts.credentials.Iterator() {
-		creds := value.Item.(*adaptix.CredsData)
-		p := CreateSpCredentialsAdd(*creds)
-		packets = append(packets, p)
+		c := value.Item.(*adaptix.CredsData)
+		creds = append(creds, c)
 	}
+
+	p := CreateSpCredentialsAdd(creds)
+	var packets []interface{}
+	packets = append(packets, p)
 	return packets
 }
 

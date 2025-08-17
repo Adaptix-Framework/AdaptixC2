@@ -214,12 +214,10 @@ func (ts *Teamserver) RestoreData() {
 	for _, restoreCredential := range restoreCredentials {
 
 		ts.credentials.Put(restoreCredential)
-
-		packet := CreateSpCredentialsAdd(*restoreCredential)
-		ts.TsSyncAllClients(packet)
-
 		countCredentials++
 	}
+	packetCreds := CreateSpCredentialsAdd(restoreCredentials)
+	ts.TsSyncAllClients(packetCreds)
 	logs.Success("   ", "Restored %v credentials", countCredentials)
 
 	/// TARGETS

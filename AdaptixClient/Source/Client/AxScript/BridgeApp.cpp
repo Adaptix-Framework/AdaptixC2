@@ -325,7 +325,32 @@ QJSValue BridgeApp::credentials() const
     return this->scriptEngine->engine()->toScriptValue(list);
 }
 
-void BridgeApp::credentials_add(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host) { scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(username, password, realm, type, tag, storage, host); }
+void BridgeApp::credentials_add(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host)
+{
+    CredentialData cred = {"", username, password, realm, type, tag, 0, storage, "", host};
+
+    QList<CredentialData> credsList;
+    credsList.append(cred);
+    scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(credsList);
+}
+
+void BridgeApp::credentials_add_list(const QVariantList &array)
+{
+    QList<CredentialData> credsList;
+    for (const QVariant &item : array) {
+        QVariantMap map = item.toMap();
+        CredentialData cd = {};
+        if (map.contains("username")) cd.Username = map["username"].toString();
+        if (map.contains("password")) cd.Password = map["password"].toString();
+        if (map.contains("realm"))    cd.Realm    = map["realm"].toString();
+        if (map.contains("type"))     cd.Tag      = map["type"].toString();
+        if (map.contains("tag"))      cd.Tag      = map["tag"].toString();
+        if (map.contains("storage"))  cd.Storage  = map["storage"].toString();
+        if (map.contains("host"))     cd.Host     = map["host"].toString();
+        credsList.append(cd);
+    }
+    scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(credsList);
+}
 
 QObject* BridgeApp::create_command(const QString &name, const QString &description, const QString &example, const QString &message)
 {
@@ -604,10 +629,7 @@ void BridgeApp::script_load(const QString &path) { scriptEngine->manager()->Glob
 
 void BridgeApp::script_unload(const QString &path) { scriptEngine->manager()->GlobalScriptUnload(path); }
 
-QString BridgeApp::script_dir()
-{
-    return GetParentPathUnix(scriptEngine->context.name) + "/";
-}
+QString BridgeApp::script_dir() { return GetParentPathUnix(scriptEngine->context.name) + "/"; }
 
 QJSValue BridgeApp::screenshots()
 {
