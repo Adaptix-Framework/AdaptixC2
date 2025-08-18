@@ -469,6 +469,68 @@ int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QSt
     return count;
 }
 
+int AxScriptManager::AddMenuTargets(QMenu *menu, const QString &menuType, const QStringList &targets)
+{
+    QVariantList context;
+    for (auto targetId: targets)
+        context << targetId;
+
+    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
+    list.append(this->mainScript);
+
+    QList<AxMenuItem> items;
+    for (const auto script : list)
+        items += script->getMenuItems(menuType);
+
+    int count = 0;
+    for (int i = 0; i < items.size(); ++i) {
+        AxMenuItem item = items[i];
+
+        item.menu->setContext(context);
+        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
+            menu->addAction(item1->action());
+        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
+            menu->addAction(item2->action());
+        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
+            menu->addMenu(item3->menu());
+        else
+            continue;
+        count++;
+    }
+    return count;
+}
+
+int AxScriptManager::AddMenuCreds(QMenu *menu, const QString &menuType, const QStringList &creds)
+{
+    QVariantList context;
+    for (auto credId: creds)
+        context << credId;
+
+    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
+    list.append(this->mainScript);
+
+    QList<AxMenuItem> items;
+    for (const auto script : list)
+        items += script->getMenuItems(menuType);
+
+    int count = 0;
+    for (int i = 0; i < items.size(); ++i) {
+        AxMenuItem item = items[i];
+
+        item.menu->setContext(context);
+        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
+            menu->addAction(item1->action());
+        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
+            menu->addAction(item2->action());
+        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
+            menu->addMenu(item3->menu());
+        else
+            continue;
+        count++;
+    }
+    return count;
+}
+
 
 /// EVENT
 

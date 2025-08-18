@@ -3,7 +3,9 @@
 #include <UI/Dialogs/DialogTarget.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
+#include <Client/AxScript/AxScriptManager.h>
 #include <Utils/CustomElements.h>
+
 
 TargetsWidget::TargetsWidget(AdaptixWidget* w) : adaptixWidget(w)
 {
@@ -381,14 +383,32 @@ void TargetsWidget::onFilterUpdate() const { this->SetData(); }
 
 void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
 {
+    QStringList targets;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            QString targetId = tableWidget->item( rowIndex, ColumnId )->text();
+            targets.append(targetId);
+        }
+    }
+
     auto ctxMenu = QMenu();
+
+    int topCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsTop", targets);
+    if (topCount > 0)
+        ctxMenu.addSeparator();
 
     ctxMenu.addAction("Create", this, &TargetsWidget::onCreateTarget );
     ctxMenu.addAction("Edit",   this, &TargetsWidget::onEditTarget );
     ctxMenu.addAction("Remove", this, &TargetsWidget::onRemoveTarget );
     ctxMenu.addSeparator();
+
+    int centerCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsCenter", targets);
+    if (centerCount > 0)
+        ctxMenu.addSeparator();
+
     ctxMenu.addAction("Set tag", this, &TargetsWidget::onSetTag );
     ctxMenu.addAction("Export",  this, &TargetsWidget::onExportTarget );
+    int bottomCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
 
     QPoint globalPos = tableWidget->mapToGlobal(pos);
     ctxMenu.exec(globalPos);

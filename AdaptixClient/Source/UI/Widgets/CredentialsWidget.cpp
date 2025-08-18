@@ -3,6 +3,7 @@
 #include <UI/Dialogs/DialogCredential.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
+#include <Client/AxScript/AxScriptManager.h>
 #include <Utils/CustomElements.h>
 
 CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : adaptixWidget(w)
@@ -336,12 +337,25 @@ void CredentialsWidget::onFilterUpdate() const { this->SetData(); }
 
 void CredentialsWidget::handleCredentialsMenu(const QPoint &pos ) const
 {
+    QStringList creds;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            QString credId = tableWidget->item( rowIndex, ColumnId )->text();
+            creds.append(credId);
+        }
+    }
+
     auto ctxMenu = QMenu();
 
     ctxMenu.addAction("Create", this, &CredentialsWidget::onCreateCreds );
     ctxMenu.addAction("Edit",   this, &CredentialsWidget::onEditCreds );
     ctxMenu.addAction("Remove", this, &CredentialsWidget::onRemoveCreds );
     ctxMenu.addSeparator();
+
+    int centerCount = adaptixWidget->ScriptManager->AddMenuCreds(&ctxMenu, "Creds", creds);
+    if (centerCount > 0)
+        ctxMenu.addSeparator();
+
     ctxMenu.addAction("Set tag", this, &CredentialsWidget::onSetTag );
     ctxMenu.addAction("Export",  this, &CredentialsWidget::onExportCreds );
 

@@ -52,6 +52,7 @@ public slots:
 
     QObject* create_selector_file();
     QObject* create_selector_credentials(const QJSValue &headers) const;
+    QObject* create_selector_agents(const QJSValue &headers) const;
 
 signals:
     void scriptError(const QString &msg);
