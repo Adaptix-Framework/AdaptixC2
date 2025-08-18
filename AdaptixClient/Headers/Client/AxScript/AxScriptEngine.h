@@ -53,6 +53,10 @@ struct ScriptContext {
     QList<AxMenuItem> menuDownloadFinished;
     QList<AxMenuItem> menuTasks;
     QList<AxMenuItem> menuTasksJob;
+    QList<AxMenuItem> menuTargetsTop;
+    QList<AxMenuItem> menuTargetsBottom;
+    QList<AxMenuItem> menuTargetsCenter;
+    QList<AxMenuItem> menuCreds;
 };
 
 class AxScriptEngine : public QObject {

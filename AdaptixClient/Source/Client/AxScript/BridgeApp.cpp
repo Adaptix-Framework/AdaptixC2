@@ -553,6 +553,12 @@ void BridgeApp::open_browser_process(const QString &id) { scriptEngine->manager(
 
 void BridgeApp::open_remote_terminal(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id); }
 
+bool BridgeApp::prompt_confirm(const QString &title, const QString &text)
+{
+    QMessageBox::StandardButton reply = QMessageBox::question(nullptr, title, text, QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    return (reply == QMessageBox::Yes);
+}
+
 QString BridgeApp::prompt_open_file(const QString &caption, const QString &filter) { return QFileDialog::getOpenFileName(nullptr, caption, QDir::homePath(), filter); }
 
 QString BridgeApp::prompt_open_dir(const QString &caption) { return QFileDialog::getExistingDirectory(nullptr, caption, QDir::homePath()); }

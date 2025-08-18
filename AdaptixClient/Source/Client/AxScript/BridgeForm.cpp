@@ -288,3 +288,12 @@ QObject* BridgeForm::create_selector_credentials(const QJSValue &headers) const
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }
+
+QObject * BridgeForm::create_selector_agents(const QJSValue &headers) const
+{
+    auto* table = new QTableWidget(widget);
+    auto* button = new QPushButton(widget);
+    auto* wrapper = new AxSelectorAgents(headers, table, button, scriptEngine, widget);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}

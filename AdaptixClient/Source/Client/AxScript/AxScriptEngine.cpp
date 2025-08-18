@@ -111,8 +111,8 @@ void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu,
 {
     QSet<int> os;
     if (list_os.contains("windows")) os.insert(1);
-    if (list_os.contains("linux")) os.insert(2);
-    if (list_os.contains("macos")) os.insert(3);
+    if (list_os.contains("linux"))   os.insert(2);
+    if (list_os.contains("macos"))   os.insert(3);
 
     AxMenuItem item = {menu, list_agents,  list_listeners, os};
 
@@ -126,6 +126,10 @@ void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu,
     else if (type == "DownloadFinished") context.menuDownloadFinished.append(item);
     else if (type == "Tasks")            context.menuTasks.append(item);
     else if (type == "TasksJob")         context.menuTasksJob.append(item);
+    else if (type == "TargetsTop")       context.menuTargetsTop.append(item);
+    else if (type == "TargetsBottom")    context.menuTargetsBottom.append(item);
+    else if (type == "TargetsCenter")    context.menuTargetsCenter.append(item);
+    else if (type == "Creds")            context.menuCreds.append(item);
 }
 
 QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
@@ -140,6 +144,10 @@ QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
     else if (type == "DownloadFinished") return context.menuDownloadFinished;
     else if (type == "Tasks")            return context.menuTasks;
     else if (type == "TasksJob")         return context.menuTasksJob;
+    else if (type == "TargetsTop")       return context.menuTargetsTop;
+    else if (type == "TargetsBottom")    return context.menuTargetsBottom;
+    else if (type == "TargetsCenter")    return context.menuTargetsCenter;
+    else if (type == "Creds")            return context.menuCreds;
 
     return QList<AxMenuItem>();
 }

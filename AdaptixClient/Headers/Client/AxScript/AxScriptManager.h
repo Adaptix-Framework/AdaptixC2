@@ -95,6 +95,8 @@ public:
     int AddMenuProcessBrowser(QMenu* menu, QVector<DataMenuProcessBrowser> processes);
     int AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files);
     int AddMenuTask(QMenu* menu, const QString &menuType, const QStringList &tasks);
+    int AddMenuTargets(QMenu* menu, const QString &menuType, const QStringList &targets);
+    int AddMenuCreds(QMenu* menu, const QString &menuType, const QStringList &creds);
 
 public slots:
     void consolePrintMessage(const QString &message);

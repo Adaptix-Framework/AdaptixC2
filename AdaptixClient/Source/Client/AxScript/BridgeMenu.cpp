@@ -105,3 +105,20 @@ void BridgeMenu::add_tasks(AbstractAxMenuItem *item, const QJSValue &agents, con
 void BridgeMenu::add_tasks_job(AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners) {
     this->reg("TasksJob", item, agents, os, listeners);
 }
+
+void BridgeMenu::add_targets(AbstractAxMenuItem *item, const QString &position)
+{
+    if (position == "top") {
+        this->scriptEngine->registerMenu("TargetsTop", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
+    }
+    else if (position == "bottom") {
+        this->scriptEngine->registerMenu("TargetsBottom", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
+    }
+    else {
+        this->scriptEngine->registerMenu("TargetsCenter", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
+    }
+}
+
+void BridgeMenu::add_credentials(AbstractAxMenuItem *item) {
+    this->scriptEngine->registerMenu("Creds", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
+}
