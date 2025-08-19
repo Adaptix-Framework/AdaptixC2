@@ -70,6 +70,8 @@ void TargetsWidget::createUI()
     tableWidget->setHorizontalHeaderItem(ColumnDate,     new QTableWidgetItem("Date"));
     tableWidget->setHorizontalHeaderItem(ColumnInfo,     new QTableWidgetItem("Info"));
 
+    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+
     tableWidget->hideColumn(0);
 
     mainGridLayout = new QGridLayout( this );
@@ -281,20 +283,22 @@ void TargetsWidget::SetData() const
     }
 }
 
-void TargetsWidget::RemoveTargetsItem(const QString &targetId) const
+void TargetsWidget::RemoveTargetsItem(const QStringList &targetsId) const
 {
-    for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
-        if( adaptixWidget->Targets[i].TargetId == targetId ) {
-            adaptixWidget->Targets.erase( adaptixWidget->Targets.begin() + i );
-            break;
+    for (auto targetId : targetsId) {
+        for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
+            if( adaptixWidget->Targets[i].TargetId == targetId ) {
+                adaptixWidget->Targets.erase( adaptixWidget->Targets.begin() + i );
+                break;
+            }
         }
-    }
 
-    for (int row = 0; row < tableWidget->rowCount(); ++row) {
-        QTableWidgetItem *item = tableWidget->item(row, ColumnId);
-        if ( item && item->text() == targetId ) {
-            tableWidget->removeRow(row);
-            break;
+        for (int row = 0; row < tableWidget->rowCount(); ++row) {
+            QTableWidgetItem *item = tableWidget->item(row, ColumnId);
+            if ( item && item->text() == targetId ) {
+                tableWidget->removeRow(row);
+                break;
+            }
         }
     }
 }
@@ -503,20 +507,20 @@ void TargetsWidget::onEditTarget() const
 
 void TargetsWidget::onRemoveTarget() const
 {
-    if (tableWidget->selectionModel()->selectedRows().empty())
-        return;
+    QStringList listId;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto id = tableWidget->item( rowIndex, ColumnId )->text();
+            listId.append(id);
+        }
+    }
 
-    auto targetId = tableWidget->item( tableWidget->currentRow(), ColumnId )->text();
+    if(listId.empty())
+        return;
 
     QString message = QString();
     bool ok = false;
-    bool result = HttpReqTargetRemove(targetId, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ){
-        MessageError("Response timeout");
-        return;
-    }
-
-    if ( !ok ) MessageError(message);
+    HttpReqTargetRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
 }
 
 void TargetsWidget::onSetTag() const

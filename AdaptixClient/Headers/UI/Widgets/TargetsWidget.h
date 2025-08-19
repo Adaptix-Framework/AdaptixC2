@@ -38,7 +38,7 @@ public:
     void Clear() const;
     void AddTargetsItems(QList<TargetData> targetList) const;
     void EditTargetsItem(const TargetData &newTarget) const;
-    void RemoveTargetsItem(const QString &targetId) const;
+    void RemoveTargetsItem(const QStringList &targetsId) const;
     void TargetsSetTag(const QStringList &targetIds, const QString &tag) const;
 
     void SetData() const;

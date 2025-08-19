@@ -543,10 +543,14 @@ bool HttpReqCredentialsEdit(const QByteArray &jsonData, AuthProfile profile, QSt
     return false;
 }
 
-bool HttpReqCredentialsRemove(const QString &credsId, AuthProfile profile, QString* message, bool* ok)
+bool HttpReqCredentialsRemove(const QStringList &credsId, AuthProfile profile, QString* message, bool* ok)
 {
+    QJsonArray arrayId;
+    for (QString item : credsId)
+        arrayId.append(item);
+
     QJsonObject dataJson;
-    dataJson["cred_id"] = credsId;
+    dataJson["cred_id_array"] = arrayId;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/creds/remove";
@@ -606,10 +610,14 @@ bool HttpReqTargetEdit(const QByteArray &jsonData, AuthProfile profile, QString 
     return false;
 }
 
-bool HttpReqTargetRemove(const QString &targetId, AuthProfile profile, QString* message, bool* ok)
+bool HttpReqTargetRemove(const QStringList &targetsId, AuthProfile profile, QString* message, bool* ok)
 {
+    QJsonArray arrayId;
+    for (QString item : targetsId)
+        arrayId.append(item);
+
     QJsonObject dataJson;
-    dataJson["t_target_id"] = targetId;
+    dataJson["target_id_array"] = arrayId;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/targets/remove";

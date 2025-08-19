@@ -101,21 +101,23 @@ func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password 
 	return nil
 }
 
-func (ts *Teamserver) TsCredentilsDelete(credId string) error {
+func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
 
-	for i := uint(0); i < ts.credentials.Len(); i++ {
-		valuePivot, ok := ts.credentials.Get(i)
-		if ok {
-			if valuePivot.(*adaptix.CredsData).CredId == credId {
-				ts.credentials.Delete(i)
-				break
+	for _, id := range credsId {
+		for i := uint(0); i < ts.credentials.Len(); i++ {
+			valuePivot, ok := ts.credentials.Get(i)
+			if ok {
+				if valuePivot.(*adaptix.CredsData).CredId == id {
+					ts.credentials.Delete(i)
+					break
+				}
 			}
 		}
+
+		_ = ts.DBMS.DbCredentialsDelete(id)
 	}
 
-	_ = ts.DBMS.DbCredentialsDelete(credId)
-
-	packet := CreateSpCredentialsDelete(credId)
+	packet := CreateSpCredentialsDelete(credsId)
 	ts.TsSyncAllClients(packet)
 
 	return nil

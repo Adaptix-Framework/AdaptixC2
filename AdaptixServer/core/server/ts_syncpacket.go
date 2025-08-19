@@ -464,11 +464,11 @@ func CreateSpCredentialsUpdate(credsData adaptix.CredsData) SyncPackerCredential
 	}
 }
 
-func CreateSpCredentialsDelete(credsId string) SyncPackerCredentialsDelete {
+func CreateSpCredentialsDelete(credsId []string) SyncPackerCredentialsDelete {
 	return SyncPackerCredentialsDelete{
 		SpType: TYPE_CREDS_DELETE,
 
-		CredId: credsId,
+		CredsId: credsId,
 	}
 }
 
@@ -527,11 +527,11 @@ func CreateSpTargetUpdate(targetData adaptix.TargetData) SyncPackerTargetUpdate 
 	}
 }
 
-func CreateSpTargetDelete(targetId string) SyncPackerTargetDelete {
+func CreateSpTargetDelete(targetsId []string) SyncPackerTargetDelete {
 	return SyncPackerTargetDelete{
 		SpType: TYPE_TARGETS_DELETE,
 
-		TargetId: targetId,
+		TargetsId: targetsId,
 	}
 }
 

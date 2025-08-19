@@ -705,7 +705,13 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
 
     QJsonObject jsonObj = jsonDoc.object();
     if( !this->isValidSyncPacket(jsonObj) ) {
-        LogError("Invalid SyncPacket");
+
+        QString msg = "Invalid SyncPacket";
+        if ( jsonObj.contains("type") && jsonObj["type"].isDouble() ) {
+            int spType = jsonObj["type"].toDouble();
+            msg.append(": " + QString::number(spType));
+        }
+        LogError(msg.toStdString().c_str());
         return;
     }
 

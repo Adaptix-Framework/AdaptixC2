@@ -85,7 +85,7 @@ func (tc *TsConnector) TcTargetSetTag(ctx *gin.Context) {
 }
 
 type TargetRemove struct {
-	TargetId string `json:"t_target_id"`
+	TargetsId []string `json:"target_id_array"`
 }
 
 func (tc *TsConnector) TcTargetRemove(ctx *gin.Context) {
@@ -96,7 +96,7 @@ func (tc *TsConnector) TcTargetRemove(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsTargetDelete(targetRemove.TargetId)
+	err = tc.teamserver.TsTargetDelete(targetRemove.TargetsId)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

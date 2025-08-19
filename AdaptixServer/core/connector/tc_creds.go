@@ -94,7 +94,7 @@ func (tc *TsConnector) TcCredentialsSetTag(ctx *gin.Context) {
 }
 
 type CredsRemove struct {
-	CredId string `json:"cred_id"`
+	CredsId []string `json:"cred_id_array"`
 }
 
 func (tc *TsConnector) TcCredentialsRemove(ctx *gin.Context) {
@@ -105,7 +105,7 @@ func (tc *TsConnector) TcCredentialsRemove(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsCredentilsDelete(credsRemove.CredId)
+	err = tc.teamserver.TsCredentilsDelete(credsRemove.CredsId)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
