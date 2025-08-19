@@ -71,6 +71,8 @@ void CredentialsWidget::createUI()
     tableWidget->setHorizontalHeaderItem(ColumnAgent,    new QTableWidgetItem("Agent"));
     tableWidget->setHorizontalHeaderItem(ColumnHost,     new QTableWidgetItem("Host"));
 
+    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+
     tableWidget->hideColumn(0);
 
     mainGridLayout = new QGridLayout( this );
@@ -226,20 +228,22 @@ void CredentialsWidget::EditCredentialsItem(const CredentialData &newCredentials
     }
 }
 
-void CredentialsWidget::RemoveCredentialsItem(const QString &credId) const
+void CredentialsWidget::RemoveCredentialsItem(const QStringList &credsId) const
 {
-    for ( int i = 0; i < adaptixWidget->Credentials.size(); i++ ) {
-        if( adaptixWidget->Credentials[i].CredId == credId ) {
-            adaptixWidget->Credentials.erase( adaptixWidget->Credentials.begin() + i );
-            break;
+    for (auto credId : credsId) {
+        for ( int i = 0; i < adaptixWidget->Credentials.size(); i++ ) {
+            if( adaptixWidget->Credentials[i].CredId == credId ) {
+                adaptixWidget->Credentials.erase( adaptixWidget->Credentials.begin() + i );
+                break;
+            }
         }
-    }
 
-    for (int row = 0; row < tableWidget->rowCount(); ++row) {
-        QTableWidgetItem *item = tableWidget->item(row, ColumnId);
-        if ( item && item->text() == credId ) {
-            tableWidget->removeRow(row);
-            break;
+        for (int row = 0; row < tableWidget->rowCount(); ++row) {
+            QTableWidgetItem *item = tableWidget->item(row, ColumnId);
+            if ( item && item->text() == credId ) {
+                tableWidget->removeRow(row);
+                break;
+            }
         }
     }
 }
@@ -452,20 +456,20 @@ void CredentialsWidget::onEditCreds() const
 
 void CredentialsWidget::onRemoveCreds() const
 {
-    if (tableWidget->selectionModel()->selectedRows().empty())
-        return;
+    QStringList listId;
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            auto id = tableWidget->item( rowIndex, ColumnId )->text();
+            listId.append(id);
+        }
+    }
 
-    auto credId = tableWidget->item( tableWidget->currentRow(), ColumnId )->text();
+    if(listId.empty())
+        return;
 
     QString message = QString();
     bool ok = false;
-    bool result = HttpReqCredentialsRemove(credId, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ){
-        MessageError("Response timeout");
-        return;
-    }
-
-    if ( !ok ) MessageError(message);
+    HttpReqCredentialsRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
 }
 
 void CredentialsWidget::onExportCreds() const

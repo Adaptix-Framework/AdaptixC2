@@ -69,12 +69,12 @@ type Teamserver interface {
 
 	TsCredentilsAdd(creds []map[string]interface{}) error
 	TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error
-	TsCredentilsDelete(credId string) error
+	TsCredentilsDelete(credsId []string) error
 	TsCredentialsSetTag(credsId []string, tag string) error
 
 	TsTargetsAdd(targets []map[string]interface{}) error
 	TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error
-	TsTargetDelete(targetId string) error
+	TsTargetDelete(targetsId []string) error
 	TsTargetSetTag(targetsId []string, tag string) error
 
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)

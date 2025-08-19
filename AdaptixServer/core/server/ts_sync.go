@@ -239,7 +239,9 @@ func (ts *Teamserver) TsPresyncTargets() []interface{} {
 
 	p := CreateSpTargetsAdd(targets)
 	var packets []interface{}
-	packets = append(packets, p)
+	if len(targets) > 0 {
+		packets = append(packets, p)
+	}
 	return packets
 }
 

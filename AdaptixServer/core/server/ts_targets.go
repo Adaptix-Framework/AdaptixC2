@@ -114,20 +114,23 @@ func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain str
 	return nil
 }
 
-func (ts *Teamserver) TsTargetDelete(targetId string) error {
-	for i := uint(0); i < ts.targets.Len(); i++ {
-		valueTarget, ok := ts.targets.Get(i)
-		if ok {
-			if valueTarget.(*adaptix.TargetData).TargetId == targetId {
-				ts.targets.Delete(i)
-				break
+func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
+
+	for _, id := range targetsId {
+		for i := uint(0); i < ts.targets.Len(); i++ {
+			valueTarget, ok := ts.targets.Get(i)
+			if ok {
+				if valueTarget.(*adaptix.TargetData).TargetId == id {
+					ts.targets.Delete(i)
+					break
+				}
 			}
 		}
+
+		_ = ts.DBMS.DbTargetDelete(id)
 	}
 
-	_ = ts.DBMS.DbTargetDelete(targetId)
-
-	packet := CreateSpTargetDelete(targetId)
+	packet := CreateSpTargetDelete(targetsId)
 	ts.TsSyncAllClients(packet)
 
 	return nil

@@ -77,7 +77,7 @@ bool HttpReqCredentialsCreate(const QByteArray &jsonData, AuthProfile profile, Q
 
 bool HttpReqCredentialsEdit(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);
 
-bool HttpReqCredentialsRemove(const QString &credsId, AuthProfile profile, QString* message, bool* ok);
+bool HttpReqCredentialsRemove(const QStringList &credsId, AuthProfile profile, QString* message, bool* ok);
 
 bool HttpReqCredentialsSetTag( QStringList credsId, const QString &tag, AuthProfile profile, QString* message, bool* ok );
 
@@ -87,7 +87,7 @@ bool HttpReqTargetsCreate(const QByteArray &jsonData, AuthProfile profile, QStri
 
 bool HttpReqTargetEdit(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);
 
-bool HttpReqTargetRemove(const QString &targetId, AuthProfile profile, QString* message, bool* ok);
+bool HttpReqTargetRemove(const QStringList &targetsId, AuthProfile profile, QString* message, bool* ok);
 
 bool HttpReqTargetSetTag( QStringList targetsId, const QString &tag, AuthProfile profile, QString* message, bool* ok );
 

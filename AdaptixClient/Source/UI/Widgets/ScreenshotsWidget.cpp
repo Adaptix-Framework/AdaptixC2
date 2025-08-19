@@ -2,6 +2,7 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
+#include <Utils/CustomElements.h>
 
 ImageFrame::ImageFrame(QWidget* parent) : QWidget(parent), label(new QLabel), scrollArea(new QScrollArea(this)), ctrlPressed(false), scaleFactor(1.0)
 {
@@ -123,6 +124,9 @@ void ScreenshotsWidget::createUI()
     tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Computer" ) );
     tableWidget->setHorizontalHeaderItem( 3, new QTableWidgetItem( "Note" ) );
     tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem( "Date" ) );
+
+    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+
     tableWidget->hideColumn( 0 );
 
     imageFrame = new ImageFrame(this);

@@ -481,7 +481,7 @@ type SyncPackerCredentialsUpdate struct {
 type SyncPackerCredentialsDelete struct {
 	SpType int `json:"type"`
 
-	CredId string `json:"c_creds_id"`
+	CredsId []string `json:"c_creds_id"`
 }
 
 type SyncPackerCredentialsTag struct {
@@ -532,7 +532,7 @@ type SyncPackerTargetUpdate struct {
 type SyncPackerTargetDelete struct {
 	SpType int `json:"type"`
 
-	TargetId string `json:"t_target_id"`
+	TargetsId []string `json:"t_target_id"`
 }
 
 type SyncPackerTargetTag struct {

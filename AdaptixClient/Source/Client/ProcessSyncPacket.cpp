@@ -281,7 +281,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if ( spType == TYPE_CREDS_DELETE ) {
-        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
+        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isArray()) return false;
         return true;
     }
     if ( spType == TYPE_CREDS_SET_TAG ) {
@@ -309,7 +309,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if ( spType == TYPE_TARGETS_DELETE ) {
-        if (!jsonObj.contains("t_target_id") || !jsonObj["t_target_id"].isString()) return false;
+        if (!jsonObj.contains("t_target_id") || !jsonObj["t_target_id"].isArray()) return false;
         return true;
     }
     if ( spType == TYPE_TARGETS_SET_TAG ) {
@@ -712,9 +712,16 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
     if ( spType == TYPE_CREDS_DELETE ) {
-        QString credId = jsonObj["c_creds_id"].toString();
+        QStringList credsId;
+        QJsonArray arr = jsonObj.value("c_creds_id").toArray();
+        for (const QJsonValue &val : arr) {
+            if (!val.isString())
+                continue;
 
-        CredentialsTab->RemoveCredentialsItem(credId);
+            credsId.append(val.toString());
+        }
+
+        CredentialsTab->RemoveCredentialsItem(credsId);
         return;
     }
     if ( spType == TYPE_CREDS_SET_TAG ) {
@@ -790,9 +797,16 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
     if ( spType == TYPE_TARGETS_DELETE ) {
-        QString targetId = jsonObj["t_target_id"].toString();
+        QStringList targetsId;
+        QJsonArray arr = jsonObj.value("t_target_id").toArray();
+        for (const QJsonValue &val : arr) {
+            if (!val.isString())
+                continue;
 
-        TargetsTab->RemoveTargetsItem(targetId);
+            targetsId.append(val.toString());
+        }
+
+        TargetsTab->RemoveTargetsItem(targetsId);
         return;
     }
     if ( spType == TYPE_TARGETS_SET_TAG ) {

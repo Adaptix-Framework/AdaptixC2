@@ -40,7 +40,7 @@ public:
     void Clear() const;
     void AddCredentialsItems(QList<CredentialData> credsList) const;
     void EditCredentialsItem(const CredentialData &newCredentials) const;
-    void RemoveCredentialsItem(const QString &credId) const;
+    void RemoveCredentialsItem(const QStringList &credsId) const;
     void CredsSetTag(const QStringList &credsIds, const QString &tag) const;
 
     void SetData() const;
