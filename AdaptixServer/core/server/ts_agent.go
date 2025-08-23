@@ -93,6 +93,8 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 
 	ts.TsEventAgent(false, agentData)
 
+	_ = ts.TsTargetsCreateAlive(agentData)
+
 	return agentData, nil
 }
 

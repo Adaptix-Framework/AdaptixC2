@@ -183,6 +183,7 @@ void MainAdaptix::SetApplicationTheme() const
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
 
     QFontDatabase::addApplicationFont(":/fonts/DroidSansMono");
+    QFontDatabase::addApplicationFont(":/fonts/VT323");
     QFontDatabase::addApplicationFont(":/fonts/Anonymous");
     QFontDatabase::addApplicationFont(":/fonts/Anonymous_B");
     QFontDatabase::addApplicationFont(":/fonts/Anonymous_BI");

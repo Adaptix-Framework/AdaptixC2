@@ -329,7 +329,7 @@ func (ts *Teamserver) TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) er
 			jobData.Processed = true
 
 			completed := false
-			sent := false
+			sent := true
 
 			jobs.DirectLock()
 			defer jobs.DirectUnlock()
@@ -341,6 +341,9 @@ func (ts *Teamserver) TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) er
 				if hookJob.Job.Completed {
 					completed = true
 				}
+
+				not_process_break := false
+
 				hookJob.mu.Lock()
 				if !hookJob.Sent {
 					if hookJob.Processed {
@@ -354,13 +357,19 @@ func (ts *Teamserver) TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) er
 
 						agent.OutConsole.Put(packet_console_update)
 						_ = ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)
-						sent = true
 					} else {
-						hookJob.mu.Unlock()
-						break
+						not_process_break = true
 					}
 				}
+				if sent != false {
+					sent = hookJob.Sent
+				}
+
 				hookJob.mu.Unlock()
+
+				if not_process_break {
+					break
+				}
 			}
 
 			if completed && sent {
