@@ -14,18 +14,27 @@ AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &n
     bridgeForm  = std::make_unique<BridgeForm>(this, this);
     bridgeEvent = std::make_unique<BridgeEvent>(this, this);
     bridgeMenu  = std::make_unique<BridgeMenu>(this, this);
+    bridgeTimer = std::make_unique<BridgeTimer>(this, this);
 
     jsEngine->globalObject().setProperty("ax",    jsEngine->newQObject(bridgeApp.get()));
     jsEngine->globalObject().setProperty("form",  jsEngine->newQObject(bridgeForm.get()));
     jsEngine->globalObject().setProperty("event", jsEngine->newQObject(bridgeEvent.get()));
     jsEngine->globalObject().setProperty("menu",  jsEngine->newQObject(bridgeMenu.get()));
 
+
+    QJSValue timerObj = jsEngine->newQObject(bridgeTimer.get());
+    jsEngine->globalObject().setProperty("timer", timerObj);
+    jsEngine->globalObject().setProperty("setTimeout", timerObj.property("setTimeout"));
+    jsEngine->globalObject().setProperty("setInterval", timerObj.property("setInterval"));
+    jsEngine->globalObject().setProperty("clearTimeout", timerObj.property("clearTimeout"));
+    jsEngine->globalObject().setProperty("clearInterval", timerObj.property("clearInterval"));
+
     connect(bridgeApp.get(),   &BridgeApp::consoleError,   script_manager, &AxScriptManager::consolePrintError);
     connect(bridgeApp.get(),   &BridgeApp::consoleMessage, script_manager, &AxScriptManager::consolePrintMessage);
     connect(bridgeApp.get(),   &BridgeApp::engineError,   this, &AxScriptEngine::engineError);
     connect(bridgeForm.get(),  &BridgeForm::scriptError,  this, &AxScriptEngine::engineError);
     connect(bridgeEvent.get(), &BridgeEvent::scriptError, this, &AxScriptEngine::engineError);
-
+    connect(bridgeTimer.get(), &BridgeTimer::engineError, this, &AxScriptEngine::engineError);
     context.name = name;
 }
 
@@ -46,6 +55,7 @@ AxScriptEngine::~AxScriptEngine()
     bridgeForm.reset();
     bridgeEvent.reset();
     bridgeMenu.reset();
+    bridgeTimer.reset();
     jsEngine.reset();
 }
 
@@ -58,6 +68,8 @@ BridgeForm* AxScriptEngine::form() const { return bridgeForm.get(); }
 BridgeEvent* AxScriptEngine::event() const { return bridgeEvent.get(); }
 
 BridgeMenu* AxScriptEngine::menu() const { return bridgeMenu.get(); }
+
+BridgeTimer* AxScriptEngine::timer() const { return bridgeTimer.get(); }
 
 AxScriptManager* AxScriptEngine::manager() const { return this->scriptManager; }
 
