@@ -485,6 +485,24 @@ QString BridgeApp::file_read(QString path) const
     }
 }
 
+bool BridgeApp::file_write(QString path, const QString &content, bool append) const
+{
+    if (path.startsWith("~/"))
+        path = QDir::home().filePath(path.mid(2));
+
+    QFile file(path);
+    QIODevice::OpenMode mode = append ? (QIODevice::WriteOnly | QIODevice::Append) 
+                                      : QIODevice::WriteOnly;
+    
+    if (file.open(mode)) {
+        QTextStream stream(&file);
+        stream << content;
+        file.close();
+        return true;
+    }
+    return false;
+}
+
 QString BridgeApp::format_size(const int &size) const { return BytesToFormat(size); }
 
 QString BridgeApp::format_time(const QString &format, const int &time) const

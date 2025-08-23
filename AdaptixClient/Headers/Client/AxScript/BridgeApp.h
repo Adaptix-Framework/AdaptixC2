@@ -41,6 +41,7 @@ public slots:
     QString  file_basename(const QString &path) const;
     bool     file_exists(const QString &path) const;
     QString  file_read(QString path) const;
+    bool     file_write(QString path, const QString &content, bool append = false) const;
     QString  format_size(const int &size) const;
     QString  format_time(const QString &format, const int &time) const;
     QJSValue ids() const;
