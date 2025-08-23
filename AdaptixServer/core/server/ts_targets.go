@@ -75,6 +75,47 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 	return nil
 }
 
+func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) error {
+	target := &adaptix.TargetData{
+		TargetId: fmt.Sprintf("%08x", rand.Uint32()),
+		Computer: agentData.Computer,
+		Domain:   agentData.Domain,
+		Address:  agentData.InternalIP,
+		Os:       agentData.Os,
+		OsDesk:   agentData.OsDesc,
+		Date:     time.Now().Unix(),
+		Alive:    true,
+	}
+
+	for t_value := range ts.targets.Iterator() {
+		t := t_value.Item.(*adaptix.TargetData)
+		if (t.Address == target.Address && t.Address != "") || (strings.EqualFold(t.Computer, target.Computer) && std.DomainsEqual(t.Domain, target.Domain)) {
+			return nil
+		}
+	}
+
+	if target.OsDesk == "" {
+		if target.Os == 1 {
+			target.OsDesk = "Windows"
+		} else if target.Os == 2 {
+			target.OsDesk = "Linux"
+		} else if target.Os == 3 {
+			target.OsDesk = "MacOS"
+		}
+	}
+
+	var newTargets []*adaptix.TargetData
+	newTargets = append(newTargets, target)
+	ts.targets.Put(target)
+
+	_ = ts.DBMS.DbTargetsAdd(newTargets)
+
+	packet := CreateSpTargetsAdd(newTargets)
+	ts.TsSyncAllClients(packet)
+
+	return nil
+}
+
 func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error {
 
 	var target *adaptix.TargetData

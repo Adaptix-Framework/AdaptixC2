@@ -349,6 +349,10 @@ void BridgeApp::credentials_add_list(const QVariantList &array)
         if (map.contains("host"))     cd.Host     = map["host"].toString();
         credsList.append(cd);
     }
+
+    if (credsList.isEmpty())
+        return;
+
     scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(credsList);
 }
 
@@ -723,6 +727,10 @@ void BridgeApp::targets_add_list(const QVariantList &array)
         }
         targets.append(td);
     }
+
+    if (targets.isEmpty())
+        return;
+
     scriptEngine->manager()->GetAdaptix()->TargetsTab->TargetsAdd(targets);
 }
 

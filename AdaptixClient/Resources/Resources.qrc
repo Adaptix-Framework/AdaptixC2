@@ -7,6 +7,7 @@
 
     <qresource prefix="/fonts">
         <file alias="DroidSansMono">fonts/DroidSansMono.ttf</file>
+        <file alias="VT323">fonts/VT323-Regular.ttf</file>
 
         <file alias="Anonymous">fonts/Anonymous-Pro/Anonymous_Pro.ttf</file>
         <file alias="Anonymous_B">fonts/Anonymous-Pro/Anonymous_Pro_B.ttf</file>
@@ -32,6 +33,7 @@
     <qresource prefix="/themes">
         <file alias="Dark">themes/dark.qss</file>
         <file alias="Dracula">themes/dracula.qss</file>
+        <file alias="Fallout">themes/fallout.qss</file>
         <file alias="Light_Arc">themes/light_arc.qss</file>
     </qresource>
 
