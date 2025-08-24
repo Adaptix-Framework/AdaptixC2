@@ -41,8 +41,10 @@ public slots:
     QString  file_basename(const QString &path) const;
     bool     file_exists(const QString &path) const;
     QString  file_read(QString path) const;
+    bool     file_write(QString path, const QString &content, bool append = false) const;
     QString  format_size(const int &size) const;
     QString  format_time(const QString &format, const int &time) const;
+    QStringList get_commands(const QString &id) const;
     QJSValue ids() const;
     QJSValue interfaces() const;
     bool     is64(const QString &id) const;
@@ -71,6 +73,7 @@ public slots:
     void     targets_add_list(const QVariantList &array);
     int      ticks();
     QJSValue tunnels();
+    QJSValue validate_command(const QString &id, const QString &command) const;
 
 signals:
     void consoleMessage(const QString &msg);
