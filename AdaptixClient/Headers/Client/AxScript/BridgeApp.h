@@ -73,6 +73,7 @@ public slots:
     void     targets_add_list(const QVariantList &array);
     int      ticks();
     QJSValue tunnels();
+    QJSValue validate_command(const QString &id, const QString &command) const;
 
 signals:
     void consoleMessage(const QString &msg);
