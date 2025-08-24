@@ -123,6 +123,7 @@ public:
     void RemoveTab(int index) const;
     bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);
+    bool IsSynchronized();
     void Close();
     void ClearAdaptix();
 
@@ -149,6 +150,7 @@ signals:
     void LoadGlobalScriptSignal(QString path);
     void UnloadGlobalScriptSignal(QString path);
 
+    void eventNewAgent(QString agentId);
     void eventFileBrowserDisks(QString agentId);
     void eventFileBrowserList(QString agentId, QString path);
     void eventFileBrowserUpload(QString agentId, QString path, QString localFilename);

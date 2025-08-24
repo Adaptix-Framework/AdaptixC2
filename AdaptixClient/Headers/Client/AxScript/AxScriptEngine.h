@@ -12,12 +12,12 @@ class BridgeApp;
 class BridgeForm;
 class BridgeEvent;
 class BridgeMenu;
-class BridgeTimer;
 class AbstractAxMenuItem;
 class AxScriptManager;
 
 struct AxEvent {
     QJSValue      handler;
+    QTimer*       timer;
     QString       event_id;
     QSet<QString> agents;
     QSet<QString> listenerts;
@@ -43,6 +43,9 @@ struct ScriptContext {
     QList<AxEvent> eventFileBroserUpload;
     QList<AxEvent> eventProcessBrowserList;
     QList<AxEvent> eventNewAgent;
+    QList<AxEvent> eventReady;
+    QList<AxEvent> eventDisconnect;
+    QList<AxEvent> eventTimer;
 
     QList<AxMenuItem> menuSessionMain;
     QList<AxMenuItem> menuSessionAgent;
@@ -69,7 +72,6 @@ Q_OBJECT
     std::unique_ptr<BridgeForm>  bridgeForm;
     std::unique_ptr<BridgeEvent> bridgeEvent;
     std::unique_ptr<BridgeMenu>  bridgeMenu;
-    std::unique_ptr<BridgeTimer> bridgeTimer;
 
 public:
     ScriptContext context;
@@ -82,14 +84,14 @@ public:
     BridgeForm*  form() const;
     BridgeEvent* event() const;
     BridgeMenu*  menu() const;
-    BridgeTimer* timer() const;
-    
+
     AxScriptManager* manager() const;
 
     void registerObject(QObject* obj);
     void registerAction(QAction* action);
-    void registerEvent(const QString &type, const QJSValue &handler, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id);
+    void registerEvent(const QString &type, const QJSValue &handler, QTimer* timer, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id);
     void removeEvent(const QString &id);
+    QStringList listEvent();
     void registerMenu(const QString &type, AbstractAxMenuItem* menu, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners);
     bool execute(const QString &code);
 

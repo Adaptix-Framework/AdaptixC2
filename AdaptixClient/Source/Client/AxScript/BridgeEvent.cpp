@@ -41,12 +41,9 @@ void BridgeEvent::reg(const QString &event, const QString &type, const QJSValue 
         }
     }
 
-    this->scriptEngine->registerEvent(event, handler, list_agents, list_os, list_listeners, event_id);
+    this->scriptEngine->registerEvent(event, handler, nullptr, list_agents, list_os, list_listeners, event_id);
 }
 
-void BridgeEvent::on_new_agent(const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id) {
-    this->reg("new_agent", "on_new_agent", handler, agents, os, listeners, event_id);
-}
 
 
 void BridgeEvent::on_filebrowser_disks(const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id) {
@@ -65,4 +62,79 @@ void BridgeEvent::on_processbrowser_list(const QJSValue &handler, const QJSValue
     this->reg("ProcessBrowserList", "on_processbrowser_list", handler, agents, os, listeners, event_id);
 }
 
-void BridgeEvent::remove(const QString &event_id) { this->scriptEngine->manager()->RemoveEvent(event_id); }
+void BridgeEvent::on_new_agent(const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id) {
+    this->reg("new_agent", "on_new_agent", handler, agents, os, listeners, event_id);
+}
+
+void BridgeEvent::on_ready(const QJSValue &handler, const QString &event_id)
+{
+    if (!handler.isCallable())
+        emit scriptError("on_ready -> handler in not Callable");
+
+    this->scriptEngine->registerEvent("ready", handler, nullptr, QSet<QString>(), QSet<QString>(), QSet<QString>(), event_id);
+}
+
+void BridgeEvent::on_disconnect(const QJSValue &handler, const QString &event_id)
+{
+    if (!handler.isCallable())
+        emit scriptError("on_disconnect -> handler in not Callable");
+
+    this->scriptEngine->registerEvent("disconnect", handler, nullptr, QSet<QString>(), QSet<QString>(), QSet<QString>(), event_id);
+}
+
+QString BridgeEvent::on_interval(const QJSValue &handler, int delay, QString event_id)
+{
+    if (!handler.isCallable())
+        emit scriptError("on_timer -> handler in not Callable");
+
+    if (delay < 0) delay = 0;
+    if (event_id == "") event_id = "interval_" + GenerateRandomString(8, "hex");
+
+    QTimer* timer = new QTimer(this);
+    timer->setInterval(delay*1000);
+    timer->setSingleShot(false);
+
+    this->scriptEngine->registerEvent("timer", handler, timer, QSet<QString>(), QSet<QString>(), QSet<QString>(), event_id);
+
+    connect(timer, &QTimer::timeout, this, [handler]() mutable { handler.call(); });
+
+    timer->start();
+    return event_id;
+}
+
+QString BridgeEvent::on_timeout(const QJSValue &handler, int delay, QString event_id)
+{
+    if (!handler.isCallable())
+        emit scriptError("on_timeout -> handler in not Callable");
+
+    if (delay < 0) delay = 0;
+    if (event_id == "") event_id = "timeout_" + GenerateRandomString(8, "hex");
+
+    QTimer* timer = new QTimer(this);
+    timer->setInterval(delay*1000);
+    timer->setSingleShot(true);
+
+    this->scriptEngine->registerEvent("timer", handler, timer, QSet<QString>(), QSet<QString>(), QSet<QString>(), event_id);
+
+    connect(timer, &QTimer::timeout, this, [this, event_id, handler]() mutable {
+        handler.call();
+        this->remove(event_id);
+    });
+
+    timer->start();
+    return event_id;
+}
+
+
+
+QJSValue BridgeEvent::list()
+{
+    QStringList events = this->scriptEngine->manager()->EventList();
+    QVariantList list;
+    for (auto id : events)
+        list.append(id);
+
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+void BridgeEvent::remove(const QString &event_id) { this->scriptEngine->manager()->EventRemove(event_id); }

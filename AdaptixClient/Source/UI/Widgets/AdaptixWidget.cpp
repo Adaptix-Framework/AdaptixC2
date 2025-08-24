@@ -34,6 +34,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     this->ChannelWsWorker = channelWsWorker;
 
     ScriptManager = new AxScriptManager(this, this);
+    connect(this, &AdaptixWidget::eventNewAgent,           ScriptManager, &AxScriptManager::emitNewAgent);
     connect(this, &AdaptixWidget::eventFileBrowserDisks,   ScriptManager, &AxScriptManager::emitFileBrowserDisks);
     connect(this, &AdaptixWidget::eventFileBrowserList,    ScriptManager, &AxScriptManager::emitFileBrowserList);
     connect(this, &AdaptixWidget::eventFileBrowserUpload,  ScriptManager, &AxScriptManager::emitFileBrowserUpload);
@@ -64,7 +65,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     TickWorker = new LastTickWorker( this );
     TickWorker->moveToThread( TickThread );
 
-    connect( this, &AdaptixWidget::SyncedSignal, this, &AdaptixWidget::OnSynced);
+    connect( this, &AdaptixWidget::SyncedSignal, this,   &AdaptixWidget::OnSynced);
+    connect( this, &AdaptixWidget::SyncedSignal, ScriptManager, &AxScriptManager::emitReadyClient);
 
     connect( logsButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
@@ -82,8 +84,9 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
 
     connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
 
-    connect( ChannelWsWorker, &WebSocketWorker::received_data,    this, &AdaptixWidget::DataHandler );
-    connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, &AdaptixWidget::ChannelClose );
+    connect( ChannelWsWorker, &WebSocketWorker::received_data,    this,   &AdaptixWidget::DataHandler );
+    connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this,   &AdaptixWidget::ChannelClose );
+    connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, ScriptManager, &AxScriptManager::emitDisconnectClient );
 
     dialogSyncPacket = new DialogSyncPacket();
     dialogSyncPacket->splashScreen->show();
@@ -125,11 +128,6 @@ void AdaptixWidget::createUI()
     graphButton->setFixedSize(37, 28);
     graphButton->setToolTip("Session graph");
 
-    targetsButton = new QPushButton( QIcon(":/icons/devices"), "", this );
-    targetsButton->setIconSize( QSize( 24,24 ));
-    targetsButton->setFixedSize(37, 28);
-    targetsButton->setToolTip("Targets table");
-
     line_2 = new QFrame(this);
     line_2->setFrameShape(QFrame::VLine);
     line_2->setMinimumHeight(25);
@@ -152,6 +150,11 @@ void AdaptixWidget::createUI()
     downloadsButton->setIconSize( QSize( 24,24 ));
     downloadsButton->setFixedSize(37, 28);
     downloadsButton->setToolTip("Downloads");
+
+    targetsButton = new QPushButton( QIcon(":/icons/devices"), "", this );
+    targetsButton->setIconSize( QSize( 24,24 ));
+    targetsButton->setFixedSize(37, 28);
+    targetsButton->setToolTip("Targets table");
 
     credsButton = new QPushButton( QIcon(":/icons/key"), "", this );
     credsButton->setIconSize( QSize( 24,24 ));
@@ -191,12 +194,12 @@ void AdaptixWidget::createUI()
     topHLayout->addWidget(line_1);
     topHLayout->addWidget(sessionsButton);
     topHLayout->addWidget(graphButton);
-    topHLayout->addWidget(targetsButton);
     topHLayout->addWidget(tasksButton);
     topHLayout->addWidget(line_2);
     topHLayout->addWidget(tunnelButton);
     topHLayout->addWidget(line_3);
     topHLayout->addWidget(downloadsButton);
+    topHLayout->addWidget(targetsButton);
     topHLayout->addWidget(credsButton);
     topHLayout->addWidget(screensButton);
     topHLayout->addWidget(keysButton);
@@ -283,6 +286,8 @@ void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
 
     return ScriptManager->ScriptRemove(ext);
 }
+
+bool AdaptixWidget::IsSynchronized() { return this->synchronized; }
 
 void AdaptixWidget::Close()
 {

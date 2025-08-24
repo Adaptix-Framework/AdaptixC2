@@ -485,15 +485,13 @@ QString BridgeApp::file_read(QString path) const
     }
 }
 
-bool BridgeApp::file_write(QString path, const QString &content, bool append) const
+bool BridgeApp::file_write_text(QString path, const QString &content, bool append) const
 {
     if (path.startsWith("~/"))
         path = QDir::home().filePath(path.mid(2));
 
     QFile file(path);
-    QIODevice::OpenMode mode = append ? (QIODevice::WriteOnly | QIODevice::Append) 
-                                      : QIODevice::WriteOnly;
-    
+    QIODevice::OpenMode mode = append ? (QIODevice::WriteOnly | QIODevice::Append) : QIODevice::WriteOnly;
     if (file.open(mode)) {
         QTextStream stream(&file);
         stream << content;
@@ -510,6 +508,17 @@ QString BridgeApp::format_time(const QString &format, const int &time) const
     QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(time, QTimeZone("UTC"));
     QDateTime localDateTime = epochDateTime.toTimeZone(QTimeZone::systemTimeZone());
     return localDateTime.toString(format);
+}
+
+QJSValue BridgeApp::get_commands(const QString &id) const
+{
+    QVariantList list;
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+    if ( mapAgents.contains(id) ) {
+        for (auto cmd : mapAgents[id]->commander->GetCommands())
+            list.append(cmd);
+    }
+    return this->scriptEngine->engine()->toScriptValue(list);
 }
 
 QJSValue BridgeApp::ids() const
@@ -778,38 +787,26 @@ QJSValue BridgeApp::tunnels()
 
     return this->scriptEngine->engine()->toScriptValue(list);
 }
+
 QJSValue BridgeApp::validate_command(const QString &id, const QString &command) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
     QVariantMap result;
-    
+
     if (!mapAgents.contains(id)) {
         result["valid"] = false;
         result["message"] = "Agent not found";
         return scriptEngine->engine()->toScriptValue(result);
     }
-    
-    // Use Commander's complete validation - ALL checks
-    auto cmdResult = mapAgents[id]->commander->ProcessInput(id, command);
-    
-    result["valid"] = !cmdResult.error;
-    result["message"] = cmdResult.message;
-    result["is_pre_hook"] = cmdResult.is_pre_hook;
-    result["has_output"] = cmdResult.output;
-    result["has_post_hook"] = cmdResult.post_hook.isSet;
-    
-    // Include parsed data if validation passed
-    if (!cmdResult.error) {
-        result["parsed"] = cmdResult.data.toVariantMap();
-    }
-    
-    return scriptEngine->engine()->toScriptValue(result);
-}
 
-QStringList BridgeApp::get_commands(const QString &id) const
-{
-    auto mapAgents = scriptEngine->manager()->GetAgents();
-    if (!mapAgents.contains(id)) return QStringList();
-    
-    return mapAgents[id]->commander->GetCommands();
+    auto cmdResult = mapAgents[id]->commander->ProcessInput(id, command);
+    result["valid"]         = !cmdResult.error;
+    result["message"]       = cmdResult.message;
+    result["is_pre_hook"]   = cmdResult.is_pre_hook;
+    result["has_output"]    = cmdResult.output;
+    result["has_post_hook"] = cmdResult.post_hook.isSet;
+    if (!cmdResult.error)
+        result["parsed"] = cmdResult.data.toVariantMap();
+
+    return scriptEngine->engine()->toScriptValue(result);
 }

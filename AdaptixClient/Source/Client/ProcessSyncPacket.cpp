@@ -453,6 +453,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         Agent* newAgent = new Agent(jsonObj, this);
         SessionsTablePage->AddAgentItem( newAgent );
         SessionsGraphPage->AddAgent(newAgent, this->synchronized);
+
+        if (synchronized)
+            emit eventNewAgent(newAgent->data.Id);
+
         return;
     }
     if( spType == TYPE_AGENT_UPDATE )

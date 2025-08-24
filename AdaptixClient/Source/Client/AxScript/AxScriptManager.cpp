@@ -176,7 +176,20 @@ void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QS
         commander->AddAxCommands(group);
 }
 
-void AxScriptManager::RemoveEvent(const QString &event_id)
+QStringList AxScriptManager::EventList()
+{
+    QStringList slist;
+    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
+    list.append(this->mainScript);
+
+    for (const auto script : list) {
+        if (script != nullptr)
+            slist += script->listEvent();
+    }
+    return slist;
+}
+
+void AxScriptManager::EventRemove(const QString &event_id)
 {
     QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
     list.append(this->mainScript);
@@ -594,6 +607,40 @@ void AxScriptManager::emitProcessBrowserList(const QString &agentId)
             QJSValue argId = event.jsEngine->toScriptValue(agentId);
             event.handler.call(QJSValueList() << argId);
         }
+    }
+}
+
+void AxScriptManager::emitReadyClient()
+{
+    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
+    list.append(this->mainScript);
+
+    QList<AxEvent> items;
+    for (const auto script : list) {
+        items += script->getEvents("ready");
+    }
+
+    for (int i = 0; i < items.size(); ++i) {
+        AxEvent event = items[i];
+        if (event.jsEngine)
+            event.handler.call();
+    }
+}
+
+void AxScriptManager::emitDisconnectClient()
+{
+    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
+    list.append(this->mainScript);
+
+    QList<AxEvent> items;
+    for (const auto script : list) {
+        items += script->getEvents("disconnect");
+    }
+
+    for (int i = 0; i < items.size(); ++i) {
+        AxEvent event = items[i];
+        if (event.jsEngine)
+            event.handler.call();
     }
 }
 
