@@ -794,6 +794,9 @@ QJSValue BridgeApp::validate_command(const QString &id, const QString &command) 
     
     result["valid"] = !cmdResult.error;
     result["message"] = cmdResult.message;
+    result["is_pre_hook"] = cmdResult.is_pre_hook;
+    result["has_output"] = cmdResult.output;
+    result["has_post_hook"] = cmdResult.post_hook.isSet;
     
     // Include parsed data if validation passed
     if (!cmdResult.error) {
