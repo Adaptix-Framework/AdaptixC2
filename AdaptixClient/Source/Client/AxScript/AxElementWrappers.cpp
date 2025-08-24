@@ -1,6 +1,8 @@
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <Agent/Agent.h>
+
 #include <QJSEngine>
 #include <QJsonObject>
 #include <QJsonDocument>
@@ -8,7 +10,7 @@
 #include <QDateEdit>
 #include <QDialog>
 #include <QMenu>
-#include <Agent/Agent.h>
+
 
 
 /// MENU

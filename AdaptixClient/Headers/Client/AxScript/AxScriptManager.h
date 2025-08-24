@@ -80,8 +80,9 @@ public:
     void GlobalScriptLoad(const QString &path);
     void GlobalScriptUnload(const QString &path);
 
-    void RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
-    void RemoveEvent(const QString &event_id);
+    void        RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
+    void        EventRemove(const QString &event_id);
+    QStringList EventList();
     QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType);
     QList<AxEvent>    FilterEvents(const QString &agentId, const QString &eventType);
 
@@ -107,6 +108,8 @@ public slots:
     void emitFileBrowserList(const QString &agentId, const QString &path);
     void emitFileBrowserUpload(const QString &agentId, const QString &path, const QString &localFilename);
     void emitProcessBrowserList(const QString &agentId);
+    void emitReadyClient();
+    void emitDisconnectClient();
 };
 
 #endif

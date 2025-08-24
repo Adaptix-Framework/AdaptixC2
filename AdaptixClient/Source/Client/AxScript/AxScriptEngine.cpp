@@ -14,27 +14,18 @@ AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &n
     bridgeForm  = std::make_unique<BridgeForm>(this, this);
     bridgeEvent = std::make_unique<BridgeEvent>(this, this);
     bridgeMenu  = std::make_unique<BridgeMenu>(this, this);
-    bridgeTimer = std::make_unique<BridgeTimer>(this, this);
 
     jsEngine->globalObject().setProperty("ax",    jsEngine->newQObject(bridgeApp.get()));
     jsEngine->globalObject().setProperty("form",  jsEngine->newQObject(bridgeForm.get()));
     jsEngine->globalObject().setProperty("event", jsEngine->newQObject(bridgeEvent.get()));
     jsEngine->globalObject().setProperty("menu",  jsEngine->newQObject(bridgeMenu.get()));
 
-
-    QJSValue timerObj = jsEngine->newQObject(bridgeTimer.get());
-    jsEngine->globalObject().setProperty("timer", timerObj);
-    jsEngine->globalObject().setProperty("setTimeout", timerObj.property("setTimeout"));
-    jsEngine->globalObject().setProperty("setInterval", timerObj.property("setInterval"));
-    jsEngine->globalObject().setProperty("clearTimeout", timerObj.property("clearTimeout"));
-    jsEngine->globalObject().setProperty("clearInterval", timerObj.property("clearInterval"));
-
     connect(bridgeApp.get(),   &BridgeApp::consoleError,   script_manager, &AxScriptManager::consolePrintError);
     connect(bridgeApp.get(),   &BridgeApp::consoleMessage, script_manager, &AxScriptManager::consolePrintMessage);
     connect(bridgeApp.get(),   &BridgeApp::engineError,   this, &AxScriptEngine::engineError);
     connect(bridgeForm.get(),  &BridgeForm::scriptError,  this, &AxScriptEngine::engineError);
     connect(bridgeEvent.get(), &BridgeEvent::scriptError, this, &AxScriptEngine::engineError);
-    connect(bridgeTimer.get(), &BridgeTimer::engineError, this, &AxScriptEngine::engineError);
+
     context.name = name;
 }
 
@@ -44,18 +35,14 @@ AxScriptEngine::~AxScriptEngine()
         if (action) delete action;
     }
     context.actions.clear();
-/*
-    for (auto obj : context.objects){
-        if (obj) delete obj;
-    }
-*/
     context.objects.clear();
+
+
 
     bridgeApp.reset();
     bridgeForm.reset();
     bridgeEvent.reset();
     bridgeMenu.reset();
-    bridgeTimer.reset();
     jsEngine.reset();
 }
 
@@ -69,8 +56,6 @@ BridgeEvent* AxScriptEngine::event() const { return bridgeEvent.get(); }
 
 BridgeMenu* AxScriptEngine::menu() const { return bridgeMenu.get(); }
 
-BridgeTimer* AxScriptEngine::timer() const { return bridgeTimer.get(); }
-
 AxScriptManager* AxScriptEngine::manager() const { return this->scriptManager; }
 
 void AxScriptEngine::registerObject(QObject *obj) { context.objects.append(obj); }
@@ -79,20 +64,23 @@ void AxScriptEngine::registerAction(QAction *action) { context.actions.append(ac
 
 /////
 
-void AxScriptEngine::registerEvent(const QString &type, const QJSValue &handler, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id)
+void AxScriptEngine::registerEvent(const QString &type, const QJSValue &handler, QTimer* timer, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id)
 {
     QSet<int> os;
     if (list_os.contains("windows")) os.insert(1);
     if (list_os.contains("linux")) os.insert(2);
     if (list_os.contains("macos")) os.insert(3);
 
-    AxEvent event = {handler, id, list_agents,  list_listeners, os, jsEngine.get()};
+    AxEvent event = {handler, timer, id, list_agents,  list_listeners, os, jsEngine.get()};
 
     if (     type == "FileBroserDisks")    context.eventFileBroserDisks.append(event);
     else if (type == "FileBroserList")     context.eventFileBroserList.append(event);
     else if (type == "FileBroserUpload")   context.eventFileBroserUpload.append(event);
     else if (type == "ProcessBrowserList") context.eventProcessBrowserList.append(event);
     else if (type == "new_agent")          context.eventNewAgent.append(event);
+    else if (type == "ready")              context.eventReady.append(event);
+    else if (type == "disconnect")         context.eventDisconnect.append(event);
+    else if (type == "timer")              context.eventTimer.append(event);
 }
 
 QList<AxEvent> AxScriptEngine::getEvents(const QString &type)
@@ -102,9 +90,14 @@ QList<AxEvent> AxScriptEngine::getEvents(const QString &type)
     else if (type == "FileBroserUpload")   return context.eventFileBroserUpload;
     else if (type == "ProcessBrowserList") return context.eventProcessBrowserList;
     else if (type == "new_agent")          return context.eventNewAgent;
+    else if (type == "ready")              return context.eventReady;
+    else if (type == "disconnect")         return context.eventDisconnect;
+    else if (type == "timer")              return context.eventTimer;
 
     return QList<AxEvent>();
 }
+
+
 
 void AxScriptEngine::removeEvent(const QString &id)
 {
@@ -114,6 +107,88 @@ void AxScriptEngine::removeEvent(const QString &id)
             i--;
         }
     }
+    for (int i=0; i< context.eventFileBroserList.size(); i++) {
+        if (id == context.eventFileBroserList[i].event_id) {
+            context.eventFileBroserList.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventFileBroserUpload.size(); i++) {
+        if (id == context.eventFileBroserUpload[i].event_id) {
+            context.eventFileBroserUpload.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventProcessBrowserList.size(); i++) {
+        if (id == context.eventProcessBrowserList[i].event_id) {
+            context.eventProcessBrowserList.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventNewAgent.size(); i++) {
+        if (id == context.eventNewAgent[i].event_id) {
+            context.eventNewAgent.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventReady.size(); i++) {
+        if (id == context.eventReady[i].event_id) {
+            context.eventReady.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventDisconnect.size(); i++) {
+        if (id == context.eventDisconnect[i].event_id) {
+            context.eventDisconnect.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventTimer.size(); i++) {
+        if (id == context.eventTimer[i].event_id) {
+            auto event = context.eventTimer.takeAt(i);
+            event.timer->stop();
+            event.timer->deleteLater();
+            i--;
+        }
+    }
+}
+
+QStringList AxScriptEngine::listEvent()
+{
+    QStringList list;
+    for (int i=0; i< context.eventFileBroserDisks.size(); i++) {
+        if (context.eventFileBroserDisks[i].event_id != "")
+            list.append(context.eventFileBroserDisks[i].event_id);
+    }
+    for (int i=0; i< context.eventFileBroserList.size(); i++) {
+        if (context.eventFileBroserList[i].event_id != "")
+            list.append(context.eventFileBroserList[i].event_id);
+    }
+    for (int i=0; i< context.eventFileBroserUpload.size(); i++) {
+        if (context.eventFileBroserUpload[i].event_id != "")
+            list.append(context.eventFileBroserUpload[i].event_id);
+    }
+    for (int i=0; i< context.eventProcessBrowserList.size(); i++) {
+        if (context.eventProcessBrowserList[i].event_id != "")
+            list.append(context.eventProcessBrowserList[i].event_id);
+    }
+    for (int i=0; i< context.eventNewAgent.size(); i++) {
+        if (context.eventNewAgent[i].event_id != "")
+            list.append(context.eventNewAgent[i].event_id);
+    }
+    for (int i=0; i< context.eventReady.size(); i++) {
+        if (context.eventReady[i].event_id != "")
+            list.append(context.eventReady[i].event_id);
+    }
+    for (int i=0; i< context.eventDisconnect.size(); i++) {
+        if (context.eventDisconnect[i].event_id != "")
+            list.append(context.eventDisconnect[i].event_id);
+    }
+    for (int i=0; i< context.eventTimer.size(); i++) {
+        if (context.eventTimer[i].event_id != "")
+            list.append(context.eventTimer[i].event_id);
+    }
+    return list;
 }
 
 
