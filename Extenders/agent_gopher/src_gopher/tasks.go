@@ -12,7 +12,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/vmihailenco/msgpack/v5"
 	"gopher/bof/coffer"
 	"gopher/functions"
 	"gopher/utils"
@@ -24,6 +23,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var UPLOADS map[string][]byte
@@ -1160,7 +1161,6 @@ func jobTerminal(paramsData []byte) {
 
 		wg.Wait()
 		_ = process.Wait()
-
 		cancel()
 	}()
 }

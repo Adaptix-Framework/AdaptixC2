@@ -4,9 +4,10 @@ import (
 	"AdaptixServer/core/extender"
 	"bytes"
 	"encoding/json"
+	"sort"
+
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
-	"sort"
 )
 
 func (ts *Teamserver) TsClientConnected(username string) bool {

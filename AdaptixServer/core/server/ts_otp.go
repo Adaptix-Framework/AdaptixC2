@@ -3,6 +3,7 @@ package server
 import (
 	"AdaptixServer/core/utils/krypt"
 	"errors"
+
 	"github.com/gin-gonic/gin"
 )
 

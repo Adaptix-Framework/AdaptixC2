@@ -9,8 +9,6 @@ Packer* bofOutputPacker = NULL;
 int     bofOutputCount  = 0;
 ULONG   bofTaskId       = 0;
 
-ULONG bofImpersonate = 1;
-
 void BofOutputToTask(int type, PBYTE data, int dataSize)
 {
 	if (bofOutputPacker) {
@@ -265,8 +263,7 @@ void BeaconFormatInt(formatp* format, int value)
 
 BOOL BeaconUseToken(HANDLE token)
 {
-	if (ApiWin->SetThreadToken(NULL, token) || ApiWin->ImpersonateLoggedOnUser(token) ) {
-		bofImpersonate = 2;
+	if (ApiWin->ImpersonateLoggedOnUser(token) || ApiWin->SetThreadToken(NULL, token)) {
 		return TRUE;
 	}
 	return FALSE;
@@ -275,7 +272,6 @@ BOOL BeaconUseToken(HANDLE token)
 void BeaconRevertToken(void)
 {
 	ApiWin->RevertToSelf();
-	bofImpersonate = 0;
 }
 
 BOOL BeaconIsAdmin(void)

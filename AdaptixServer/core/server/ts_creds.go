@@ -2,9 +2,10 @@ package server
 
 import (
 	"fmt"
-	adaptix "github.com/Adaptix-Framework/axc2"
 	"math/rand"
 	"time"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {

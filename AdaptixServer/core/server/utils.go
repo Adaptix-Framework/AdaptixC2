@@ -6,11 +6,12 @@ import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
-	"github.com/Adaptix-Framework/axc2"
-	"github.com/gorilla/websocket"
 	"io"
 	"net"
 	"sync"
+
+	"github.com/Adaptix-Framework/axc2"
+	"github.com/gorilla/websocket"
 )
 
 const (
