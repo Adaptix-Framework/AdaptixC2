@@ -891,136 +891,128 @@ func relayPipeToTaskData(agent *Agent, channelId int, taskData adaptix.TaskData)
 }
 
 func relaySocketToTunnel(agent *Agent, tunnel *Tunnel, tunChannel *TunnelChannel, direct bool) {
-	var taskData adaptix.TaskData
-	ctx, cancel := context.WithCancel(context.Background())
+    var taskData adaptix.TaskData
+    var wg sync.WaitGroup
+    ctx, cancel := context.WithCancel(context.Background())
+    finish := func() {
+        cancel()
+        taskData = tunnel.handlerClose(tunChannel.channelId)
+        tunnelManageTask(agent, taskData)
+    }
 
-	var closeOnce sync.Once
-	closeChannel := func() {
-		closeOnce.Do(func() {
-			cancel()
-			taskData := tunnel.handlerClose(tunChannel.channelId)
-			tunnelManageTask(agent, taskData)
-			return
-		})
-	}
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        if tunChannel.pwSrv == nil || tunChannel.conn == nil {
+            logs.Debug("", "[ERROR relaySocketToTunnel] pwSrv or conn == nil — copy (pwSrv <- conn)")
+            return
+        }
+        io.Copy(tunChannel.pwSrv, tunChannel.conn)
+        _ = tunChannel.pwSrv.Close()
+    }()
 
-	go func() {
-		if tunChannel.pwSrv == nil || tunChannel.conn == nil {
-			logs.Debug("", "[ERROR relaySocketToTunnel] pwSrv or conn == nil — error copy (pwSrv <- conn)")
-			closeChannel()
-			return
-		}
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        if tunChannel.prTun == nil || tunChannel.conn == nil {
+            logs.Debug("", "[ERROR relaySocketToTunnel] prTun or conn == nil — copy (conn <- prTun)")
+            return
+        }
+        io.Copy(tunChannel.conn, tunChannel.prTun)
+        if tcp, ok := tunChannel.conn.(*net.TCPConn); ok {
+            _ = tcp.CloseWrite()
+        }
+    }()
 
-		io.Copy(tunChannel.pwSrv, tunChannel.conn)
-		closeChannel()
-	}()
-
-	go func() {
-		if tunChannel.prTun == nil || tunChannel.conn == nil {
-			logs.Debug("", "[ERROR relaySocketToTunnel] prTun or conn == nil — error copy (conn <- prTun)")
-			closeChannel()
-			return
-		}
-
-		io.Copy(tunChannel.conn, tunChannel.prTun)
-		closeChannel()
-	}()
-
-	if !direct {
-		go func() {
-			buf := make([]byte, 0x8000)
-			for {
-				select {
-				case <-ctx.Done():
-					closeChannel()
-					return
-
-				default:
-					n, err := tunChannel.prSrv.Read(buf)
-					if err != nil {
-						closeChannel()
-						return
-					}
-					if n > 0 {
-						if tunChannel.protocol == "UDP" {
-							taskData = tunnel.handlerWriteUDP(tunChannel.channelId, buf[:n])
-						} else {
-							taskData = tunnel.handlerWriteTCP(tunChannel.channelId, buf[:n])
-						}
-						relayPipeToTaskData(agent, tunChannel.channelId, taskData)
-					}
-				}
-			}
-		}()
-	}
+    if !direct {
+        go func() {
+            buf := make([]byte, 0x8000)
+            for {
+                select {
+                case <-ctx.Done():
+                    return
+                default:
+                    n, err := tunChannel.prSrv.Read(buf)
+                    if n > 0 {
+                        var td adaptix.TaskData
+                        if tunChannel.protocol == "UDP" {
+                            td = tunnel.handlerWriteUDP(tunChannel.channelId, buf[:n])
+                        } else {
+                            td = tunnel.handlerWriteTCP(tunChannel.channelId, buf[:n])
+                        }
+                        relayPipeToTaskData(agent, tunChannel.channelId, td)
+                    }
+                    if err != nil {
+                        wg.Wait()
+                        finish()
+                        return
+                    }
+                }
+            }
+        }()
+    }
 }
 
 func relayWebsocketToTunnel(agent *Agent, tunnel *Tunnel, tunChannel *TunnelChannel, direct bool) {
-	var taskData adaptix.TaskData
-	ctx, cancel := context.WithCancel(context.Background())
+    var taskData adaptix.TaskData
+    var wg sync.WaitGroup
+    ctx, cancel := context.WithCancel(context.Background())
+    finish := func() {
+        cancel()
+        _ = tunChannel.wsconn.Close()
+        taskData = tunnel.handlerClose(tunChannel.channelId)
+        tunnelManageTask(agent, taskData)
+    }
 
-	var closeOnce sync.Once
-	closeChannel := func() {
-		closeOnce.Do(func() {
-			cancel()
-			_ = tunChannel.wsconn.Close()
-			taskData = tunnel.handlerClose(tunChannel.channelId)
-			tunnelManageTask(agent, taskData)
-		})
-	}
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        for {
+            _, msg, err := tunChannel.wsconn.ReadMessage()
+            if err != nil { break }
+            if _, err := tunChannel.pwSrv.Write(msg); err != nil { break }
+        }
+        _ = tunChannel.pwSrv.Close()
+    }()
 
-	go func() {
-		for {
-			_, msg, err := tunChannel.wsconn.ReadMessage()
-			if err != nil {
-				break
-			}
-			_, err = tunChannel.pwSrv.Write(msg)
-			if err != nil {
-				break
-			}
-		}
-		closeChannel()
-	}()
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        buf := make([]byte, 0x8000)
+        for {
+            n, err := tunChannel.prTun.Read(buf)
+            if n > 0 {
+                if err := tunChannel.wsconn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil { break }
+            }
+            if err != nil { break }
+        }
+    }()
 
-	go func() {
-		buf := make([]byte, 0x8000)
-		for {
-			n, err := tunChannel.prTun.Read(buf)
-			if err != nil {
-				break
-			}
-			if err := tunChannel.wsconn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
-				break
-			}
-		}
-		closeChannel()
-	}()
-
-	if !direct {
-		go func() {
-			buf := make([]byte, 0x8000)
-			for {
-				select {
-				case <-ctx.Done():
-					closeChannel()
-					return
-				default:
-					n, err := tunChannel.prSrv.Read(buf)
-					if err != nil {
-						closeChannel()
-						return
-					}
-					if n > 0 {
-						if tunChannel.protocol == "UDP" {
-							taskData = tunnel.handlerWriteUDP(tunChannel.channelId, buf[:n])
-						} else {
-							taskData = tunnel.handlerWriteTCP(tunChannel.channelId, buf[:n])
-						}
-						relayPipeToTaskData(agent, tunChannel.channelId, taskData)
-					}
-				}
-			}
-		}()
-	}
+    if !direct {
+        go func() {
+            buf := make([]byte, 0x8000)
+            for {
+                select {
+                case <-ctx.Done():
+                    return
+                default:
+                    n, err := tunChannel.prSrv.Read(buf)
+                    if n > 0 {
+                        var td adaptix.TaskData
+                        if tunChannel.protocol == "UDP" {
+                            td = tunnel.handlerWriteUDP(tunChannel.channelId, buf[:n])
+                        } else {
+                            td = tunnel.handlerWriteTCP(tunChannel.channelId, buf[:n])
+                        }
+                        relayPipeToTaskData(agent, tunChannel.channelId, td)
+                    }
+                    if err != nil {
+                        wg.Wait()
+                        finish()
+                        return
+                    }
+                }
+            }
+        }()
+    }
 }
