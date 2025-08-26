@@ -3,8 +3,9 @@ package connector
 import (
 	isvalid "AdaptixServer/core/utils/valid"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type ListenerConfig struct {

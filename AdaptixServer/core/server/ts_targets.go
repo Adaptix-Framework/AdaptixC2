@@ -3,10 +3,11 @@ package server
 import (
 	"AdaptixServer/core/utils/std"
 	"fmt"
-	adaptix "github.com/Adaptix-Framework/axc2"
 	"math/rand"
 	"strings"
 	"time"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
@@ -85,6 +86,7 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) error {
 		OsDesk:   agentData.OsDesc,
 		Date:     time.Now().Unix(),
 		Alive:    true,
+		Owned:    true,
 	}
 
 	for t_value := range ts.targets.Iterator() {

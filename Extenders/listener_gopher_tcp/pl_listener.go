@@ -6,10 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
 	"net"
 	"strconv"
 	"strings"
+
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (m *ModuleExtender) HandlerListenerValid(data string) error {

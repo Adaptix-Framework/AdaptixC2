@@ -228,6 +228,8 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 					break
 				}
 
+				_ = ModuleObject.ts.TsAgentSetTick(agentId)
+
 				_ = ModuleObject.ts.TsAgentProcessData(agentId, recvData)
 			} else {
 				if !isClientConnected(conn, handler.Config.Ssl) {

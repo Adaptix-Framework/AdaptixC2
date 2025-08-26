@@ -5,8 +5,9 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
 	"time"
+
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsTaskRunningExists(agentId string, taskId string) bool {

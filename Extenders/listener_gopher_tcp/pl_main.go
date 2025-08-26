@@ -2,13 +2,15 @@ package main
 
 import (
 	"errors"
-	"github.com/Adaptix-Framework/axc2"
 	"io"
+
+	"github.com/Adaptix-Framework/axc2"
 )
 
 type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
+	TsAgentSetTick(agentId string) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)

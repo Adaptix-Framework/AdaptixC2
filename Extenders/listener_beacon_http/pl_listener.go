@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
-	"github.com/gin-gonic/gin"
 	"net"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/Adaptix-Framework/axc2"
+	"github.com/gin-gonic/gin"
 )
 
 func (m *ModuleExtender) HandlerListenerValid(data string) error {

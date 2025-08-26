@@ -8,9 +8,10 @@ import (
 	isvalid "AdaptixServer/core/utils/valid"
 	"errors"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
 	"strings"
 	"time"
+
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsAgentIsExists(agentId string) bool {
@@ -137,14 +138,6 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 		return fmt.Errorf("agent type %v does not exists", agentId)
 	}
 	agent, _ := value.(*Agent)
-
-	/// AGENT TICK
-
-	if agent.Data.Async {
-		agent.Data.LastTick = int(time.Now().Unix())
-		_ = ts.DBMS.DbAgentTick(agent.Data)
-		agent.Tick = true
-	}
 
 	if agent.Data.Mark == "Inactive" {
 		agent.Data.Mark = ""
@@ -631,6 +624,21 @@ func (ts *Teamserver) TsAgentSetImpersonate(agentId string, impersonated string,
 	packetNew := CreateSpAgentUpdate(agent.Data)
 	ts.TsSyncAllClients(packetNew)
 
+	return nil
+}
+
+func (ts *Teamserver) TsAgentSetTick(agentId string) error {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent type %v does not exists", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	if agent.Data.Async {
+		agent.Data.LastTick = int(time.Now().Unix())
+		_ = ts.DBMS.DbAgentTick(agent.Data)
+		agent.Tick = true
+	}
 	return nil
 }
 
