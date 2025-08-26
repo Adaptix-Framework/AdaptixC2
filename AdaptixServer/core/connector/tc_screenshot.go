@@ -2,8 +2,9 @@ package connector
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type ScreenRemove struct {

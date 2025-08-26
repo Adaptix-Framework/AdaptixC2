@@ -3,9 +3,10 @@ package connector
 import (
 	"encoding/base64"
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type DownloadFileId struct {

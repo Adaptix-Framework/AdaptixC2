@@ -1,8 +1,9 @@
 package connector
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 func (tc *TsConnector) TcTargetsAdd(ctx *gin.Context) {

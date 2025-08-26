@@ -7,10 +7,11 @@ import (
 	"AdaptixServer/core/utils/token"
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"os"
 )
 
 type Teamserver interface {
@@ -43,6 +44,7 @@ type Teamserver interface {
 	TsAgentSetMark(agentId string, makr string) error
 	TsAgentSetColor(agentId string, background string, foreground string, reset bool) error
 	TsAgentSetImpersonate(agentId string, impersonated string, elevated bool) error
+	TsAgentSetTick(agentId string) error
 	TsAgentTickUpdate()
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)

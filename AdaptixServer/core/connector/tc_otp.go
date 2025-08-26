@@ -2,9 +2,10 @@ package connector
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
+
+	"github.com/gin-gonic/gin"
 )
 
 type AccessOTP struct {

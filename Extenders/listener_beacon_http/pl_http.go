@@ -12,7 +12,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io"
 	"math/big"
 	"net/http"
@@ -20,6 +19,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type HTTPConfig struct {
@@ -222,6 +223,8 @@ func (handler *HTTP) processRequest(ctx *gin.Context) {
 			goto ERR
 		}
 	}
+
+	_ = ModuleObject.ts.TsAgentSetTick(agentId)
 
 	_ = ModuleObject.ts.TsAgentProcessData(agentId, bodyData)
 

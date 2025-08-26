@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+
 	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 type AgentConfig struct {
