@@ -1159,6 +1159,7 @@ func jobTerminal(paramsData []byte) {
 		}()
 
 		wg.Wait()
+		_ = process.Wait()
 
 		cancel()
 	}()
