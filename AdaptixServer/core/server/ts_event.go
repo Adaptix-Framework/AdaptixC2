@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	adaptix "github.com/Adaptix-Framework/axc2"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsEventClient(connected bool, username string) {

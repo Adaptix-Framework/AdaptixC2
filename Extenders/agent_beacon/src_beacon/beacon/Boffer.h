@@ -27,9 +27,6 @@ extern Packer* bofOutputPacker;
 extern int     bofOutputCount;
 extern ULONG   bofTaskId;
 
-extern ULONG bofImpersonate;
-
-
 typedef struct COF_HEADER {
 	short Machine;
 	short NumberOfSections;

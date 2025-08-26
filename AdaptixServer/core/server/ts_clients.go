@@ -4,8 +4,9 @@ import (
 	"AdaptixServer/core/utils/safe"
 	"bytes"
 	"encoding/json"
-	"github.com/gorilla/websocket"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 func (ts *Teamserver) TsClientExists(username string) bool {

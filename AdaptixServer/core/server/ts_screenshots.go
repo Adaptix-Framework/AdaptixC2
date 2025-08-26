@@ -5,9 +5,10 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/tformat"
 	"errors"
-	adaptix "github.com/Adaptix-Framework/axc2"
 	"os"
 	"time"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byte) error {

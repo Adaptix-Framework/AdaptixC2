@@ -11,23 +11,23 @@ int main()
 
 #elif defined(BUILD_SVC)
 
-SERVICE_STATUS        ServiceStatus = {0};
+SERVICE_STATUS        ServiceStatus = { 0 };
 SERVICE_STATUS_HANDLE hStatus;
 
 void ServiceMain(int argc, char** argv);
 void ControlHandler(DWORD request);
 
-void ServiceMain(int argc, char** argv) 
+void ServiceMain(int argc, char** argv)
 {
     CHAR* SvcName = getServiceName();
     hStatus = RegisterServiceCtrlHandlerA(SvcName, (LPHANDLER_FUNCTION)ControlHandler);
-    if( !hStatus )
+    if (!hStatus)
         return;
 
     ServiceStatus.dwServiceType = SERVICE_WIN32;
     ServiceStatus.dwCurrentState = SERVICE_START_PENDING;
     ServiceStatus.dwControlsAccepted = SERVICE_ACCEPT_STOP | SERVICE_ACCEPT_SHUTDOWN;
-    
+
     ServiceStatus.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(hStatus, &ServiceStatus);
 
@@ -37,7 +37,7 @@ void ServiceMain(int argc, char** argv)
     SetServiceStatus(hStatus, &ServiceStatus);
 }
 
-void ControlHandler(DWORD request) 
+void ControlHandler(DWORD request)
 {
     switch (request) {
     case SERVICE_CONTROL_STOP:
@@ -53,11 +53,11 @@ void ControlHandler(DWORD request)
     SetServiceStatus(hStatus, &ServiceStatus);
 }
 
-int main() 
+int main()
 {
     SERVICE_TABLE_ENTRYA ServiceTable[2];
     CHAR* SvcName = getServiceName();
-    ServiceTable[0].lpServiceName = (LPSTR) SvcName;
+    ServiceTable[0].lpServiceName = (LPSTR)SvcName;
     ServiceTable[0].lpServiceProc = (LPSERVICE_MAIN_FUNCTIONA)ServiceMain;
 
     ServiceTable[1].lpServiceName = NULL;
@@ -166,7 +166,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     AgentMain();
-	return 0;
+    return 0;
 }
 
 #endif
