@@ -10,6 +10,7 @@ import (
 
 func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 	var newCreds []*adaptix.CredsData
+	var cbCredsData []adaptix.CredsData
 
 	for _, value := range creds {
 		cred := &adaptix.CredsData{}
@@ -53,6 +54,7 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 		cred.CredId = fmt.Sprintf("%08x", rand.Uint32())
 		cred.Date = time.Now().Unix()
 
+		cbCredsData = append(cbCredsData, *cred)
 		newCreds = append(newCreds, cred)
 		ts.credentials.Put(cred)
 	}
@@ -61,6 +63,8 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 
 	packet := CreateSpCredentialsAdd(newCreds)
 	ts.TsSyncAllClients(packet)
+
+	go ts.TsEventCallbackCreds(cbCredsData)
 
 	return nil
 }
