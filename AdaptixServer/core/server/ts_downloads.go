@@ -119,6 +119,9 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 		if err != nil {
 			logs.Error("", err.Error())
 		}
+
+		go ts.TsEventCallbackDownloads(downloadData)
+
 	} else {
 		downloadData.State = DOWNLOAD_STATE_CANCELED
 		_ = os.Remove(downloadData.LocalPath)
