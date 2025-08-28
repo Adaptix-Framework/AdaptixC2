@@ -37,7 +37,12 @@ AxScriptEngine::~AxScriptEngine()
     context.actions.clear();
     context.objects.clear();
 
-
+    for (auto event : context.eventTimer) {
+        if (event.timer) {
+            event.timer->stop();
+            event.timer->deleteLater();
+        }
+    }
 
     bridgeApp.reset();
     bridgeForm.reset();
