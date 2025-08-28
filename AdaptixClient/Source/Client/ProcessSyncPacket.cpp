@@ -14,8 +14,10 @@
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
+#include <UI/Widgets/TargetsWidget.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
+
 
 
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
@@ -42,12 +44,16 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     }
 
     if( spType == TYPE_LISTENER_REG ) {
-        if ( !jsonObj.contains("fn") || !jsonObj["fn"].isString() ) return false;
-        if ( !jsonObj.contains("ax") || !jsonObj["ax"].isString() ) return false;
+        if ( !jsonObj.contains("l_name")     || !jsonObj["l_name"].isString() )     return false;
+        if ( !jsonObj.contains("l_protocol") || !jsonObj["l_protocol"].isString() ) return false;
+        if ( !jsonObj.contains("l_type")     || !jsonObj["l_type"].isString() )     return false;
+        if ( !jsonObj.contains("ax")         || !jsonObj["ax"].isString() )         return false;
         return true;
     }
     if( spType == TYPE_LISTENER_START || spType == TYPE_LISTENER_EDIT ) {
         if ( !jsonObj.contains("l_name")       || !jsonObj["l_name"].isString() )       return false;
+        if ( !jsonObj.contains("l_reg_name")   || !jsonObj["l_reg_name"].isString() )   return false;
+        if ( !jsonObj.contains("l_protocol")   || !jsonObj["l_protocol"].isString() )   return false;
         if ( !jsonObj.contains("l_type")       || !jsonObj["l_type"].isString() )       return false;
         if ( !jsonObj.contains("l_bind_host")  || !jsonObj["l_bind_host"].isString() )  return false;
         if ( !jsonObj.contains("l_bind_port")  || !jsonObj["l_bind_port"].isString() )  return false;
@@ -258,17 +264,9 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
+
     if ( spType == TYPE_CREDS_CREATE ) {
-        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
-        if (!jsonObj.contains("c_username") || !jsonObj["c_username"].isString()) return false;
-        if (!jsonObj.contains("c_password") || !jsonObj["c_password"].isString()) return false;
-        if (!jsonObj.contains("c_realm")    || !jsonObj["c_realm"].isString())    return false;
-        if (!jsonObj.contains("c_type")     || !jsonObj["c_type"].isString())     return false;
-        if (!jsonObj.contains("c_tag")      || !jsonObj["c_tag"].isString())      return false;
-        if (!jsonObj.contains("c_date")     || !jsonObj["c_date"].isDouble())     return false;
-        if (!jsonObj.contains("c_storage")  || !jsonObj["c_storage"].isString())  return false;
-        if (!jsonObj.contains("c_agent_id") || !jsonObj["c_agent_id"].isString()) return false;
-        if (!jsonObj.contains("c_host")     || !jsonObj["c_host"].isString())     return false;
+        if (!jsonObj.contains("c_creds") || !jsonObj["c_creds"].isArray()) return false;
         return true;
     }
     if ( spType == TYPE_CREDS_EDIT ) {
@@ -283,9 +281,44 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if ( spType == TYPE_CREDS_DELETE ) {
-        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isString()) return false;
+        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isArray()) return false;
         return true;
     }
+    if ( spType == TYPE_CREDS_SET_TAG ) {
+        if (!jsonObj.contains("c_creds_id") || !jsonObj["c_creds_id"].isArray()) return false;
+        if (!jsonObj.contains("c_tag")      || !jsonObj["c_tag"].isString())     return false;
+        return true;
+    }
+
+    if ( spType == TYPE_TARGETS_CREATE ) {
+        if (!jsonObj.contains("t_targets") || !jsonObj["t_targets"].isArray()) return false;
+        return true;
+    }
+    if ( spType == TYPE_TARGETS_EDIT ) {
+        if (!jsonObj.contains("t_target_id") || !jsonObj["t_target_id"].isString()) return false;
+        if (!jsonObj.contains("t_computer")  || !jsonObj["t_computer"].isString())  return false;
+        if (!jsonObj.contains("t_domain")    || !jsonObj["t_domain"].isString())    return false;
+        if (!jsonObj.contains("t_address")   || !jsonObj["t_address"].isString())   return false;
+        if (!jsonObj.contains("t_os")        || !jsonObj["t_os"].isDouble())        return false;
+        if (!jsonObj.contains("t_os_desk")   || !jsonObj["t_os_desk"].isString())   return false;
+        if (!jsonObj.contains("t_tag")       || !jsonObj["t_tag"].isString())       return false;
+        if (!jsonObj.contains("t_info")      || !jsonObj["t_info"].isString())      return false;
+        if (!jsonObj.contains("t_date")      || !jsonObj["t_date"].isDouble())      return false;
+        if (!jsonObj.contains("t_alive")     || !jsonObj["t_alive"].isBool())       return false;
+        if (!jsonObj.contains("t_owned")     || !jsonObj["t_owned"].isBool())       return false;
+        return true;
+    }
+    if ( spType == TYPE_TARGETS_DELETE ) {
+        if (!jsonObj.contains("t_target_id") || !jsonObj["t_target_id"].isArray()) return false;
+        return true;
+    }
+    if ( spType == TYPE_TARGETS_SET_TAG ) {
+        if (!jsonObj.contains("t_targets_id") || !jsonObj["t_targets_id"].isArray()) return false;
+        if (!jsonObj.contains("t_tag")        || !jsonObj["t_tag"].isString())       return false;
+        return true;
+    }
+
+
 
     if( spType == TYPE_BROWSER_DISKS ) {
         if (!jsonObj.contains("b_agent_id") || !jsonObj["b_agent_id"].isString()) return false;
@@ -375,8 +408,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_LISTENER_START )
     {
         ListenerData newListener = {};
-        newListener.ListenerName     = jsonObj["l_name"].toString();
-        newListener.ListenerFullName = jsonObj["l_type"].toString();
+        newListener.Name             = jsonObj["l_name"].toString();
+        newListener.ListenerRegName  = jsonObj["l_reg_name"].toString();
+        newListener.ListenerType     = jsonObj["l_type"].toString();
+        newListener.ListenerProtocol = jsonObj["l_protocol"].toString();
         newListener.BindHost         = jsonObj["l_bind_host"].toString();
         newListener.BindPort         = jsonObj["l_bind_port"].toString();
         newListener.AgentAddresses   = jsonObj["l_agent_addr"].toString();
@@ -389,8 +424,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_LISTENER_EDIT )
     {
         ListenerData newListener = {};
-        newListener.ListenerName     = jsonObj["l_name"].toString();
-        newListener.ListenerFullName = jsonObj["l_type"].toString();
+        newListener.Name             = jsonObj["l_name"].toString();
+        newListener.ListenerRegName  = jsonObj["l_reg_name"].toString();
+        newListener.ListenerType     = jsonObj["l_type"].toString();
+        newListener.ListenerProtocol = jsonObj["l_protocol"].toString();
         newListener.BindHost         = jsonObj["l_bind_host"].toString();
         newListener.BindPort         = jsonObj["l_bind_port"].toString();
         newListener.AgentAddresses   = jsonObj["l_agent_addr"].toString();
@@ -416,6 +453,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         Agent* newAgent = new Agent(jsonObj, this);
         SessionsTablePage->AddAgentItem( newAgent );
         SessionsGraphPage->AddAgent(newAgent, this->synchronized);
+
+        if (synchronized)
+            emit eventNewAgent(newAgent->data.Id);
+
         return;
     }
     if( spType == TYPE_AGENT_UPDATE )
@@ -623,22 +664,41 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     }
 
 
+    if ( spType == TYPE_CREDS_CREATE ) {
+        QList<CredentialData> credList;
+        QJsonArray arr = jsonObj.value("c_creds").toArray();
+        for (const QJsonValue &val : arr) {
+            if (!val.isObject())
+                continue;
 
-    if ( spType == TYPE_CREDS_CREATE )
-    {
-        CredentialData newCredential = {};
-        newCredential.CredId   = jsonObj["c_creds_id"].toString();
-        newCredential.Username = jsonObj["c_username"].toString();
-        newCredential.Password = jsonObj["c_password"].toString();
-        newCredential.Realm    = jsonObj["c_realm"].toString();
-        newCredential.Type     = jsonObj["c_type"].toString();
-        newCredential.Tag      = jsonObj["c_tag"].toString();
-        newCredential.Storage  = jsonObj["c_storage"].toString();
-        newCredential.AgentId  = jsonObj["c_agent_id"].toString();
-        newCredential.Host     = jsonObj["c_host"].toString();
-        newCredential.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["c_date"].toDouble()));
+            QJsonObject obj = val.toObject();
+            if (!obj.contains("c_creds_id") || !obj["c_creds_id"].isString()) continue;
+            if (!obj.contains("c_username") || !obj["c_username"].isString()) continue;
+            if (!obj.contains("c_password") || !obj["c_password"].isString()) continue;
+            if (!obj.contains("c_realm")    || !obj["c_realm"].isString())    continue;
+            if (!obj.contains("c_type")     || !obj["c_type"].isString())     continue;
+            if (!obj.contains("c_tag")      || !obj["c_tag"].isString())      continue;
+            if (!obj.contains("c_date")     || !obj["c_date"].isDouble())     continue;
+            if (!obj.contains("c_storage")  || !obj["c_storage"].isString())  continue;
+            if (!obj.contains("c_agent_id") || !obj["c_agent_id"].isString()) continue;
+            if (!obj.contains("c_host")     || !obj["c_host"].isString())     continue;
 
-        CredentialsTab->AddCredentialsItem(newCredential);
+            CredentialData c;
+            c.CredId   = obj.value("c_creds_id").toString();
+            c.Username = obj.value("c_username").toString();
+            c.Password = obj.value("c_password").toString();
+            c.Realm    = obj.value("c_realm").toString();
+            c.Type     = obj.value("c_type").toString();
+            c.Tag      = obj.value("c_tag").toString();
+            c.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(obj["c_date"].toDouble()));
+            c.Storage  = obj.value("c_storage").toString();
+            c.AgentId  = obj.value("c_agent_id").toString();
+            c.Host     = obj.value("c_host").toString();
+
+            credList.append(c);
+        }
+
+        CredentialsTab->AddCredentialsItems(credList);
         return;
     }
     if ( spType == TYPE_CREDS_EDIT ) {
@@ -656,12 +716,116 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
     if ( spType == TYPE_CREDS_DELETE ) {
-        QString credId = jsonObj["c_creds_id"].toString();
+        QStringList credsId;
+        QJsonArray arr = jsonObj.value("c_creds_id").toArray();
+        for (const QJsonValue &val : arr) {
+            if (!val.isString())
+                continue;
 
-        CredentialsTab->RemoveCredentialsItem(credId);
+            credsId.append(val.toString());
+        }
+
+        CredentialsTab->RemoveCredentialsItem(credsId);
+        return;
+    }
+    if ( spType == TYPE_CREDS_SET_TAG ) {
+        QString tag    = jsonObj["c_tag"].toString();
+        QJsonArray arr = jsonObj["c_creds_id"].toArray();
+
+        QStringList ids;
+        for (auto jsonCred : arr) {
+            QString id = jsonCred.toString();
+            ids.append(id);
+        }
+        CredentialsTab->CredsSetTag(ids, tag);
+
         return;
     }
 
+
+    if ( spType == TYPE_TARGETS_CREATE )
+    {
+        QList<TargetData> targetsList;
+        QJsonArray arr = jsonObj.value("t_targets").toArray();
+        for (const QJsonValue &val : arr) {
+            if (!val.isObject())
+                continue;
+
+            QJsonObject obj = val.toObject();
+            if (!obj.contains("t_target_id") || !obj["t_target_id"].isString()) continue;
+            if (!obj.contains("t_computer")  || !obj["t_computer"].isString())  continue;
+            if (!obj.contains("t_domain")    || !obj["t_domain"].isString())    continue;
+            if (!obj.contains("t_address")   || !obj["t_address"].isString())   continue;
+            if (!obj.contains("t_os")        || !obj["t_os"].isDouble())        continue;
+            if (!obj.contains("t_os_desk")   || !obj["t_os_desk"].isString())   continue;
+            if (!obj.contains("t_tag")       || !obj["t_tag"].isString())       continue;
+            if (!obj.contains("t_info")      || !obj["t_info"].isString())      continue;
+            if (!obj.contains("t_date")      || !obj["t_date"].isDouble())      continue;
+            if (!obj.contains("t_alive")     || !obj["t_alive"].isBool())       continue;
+            if (!obj.contains("t_owned")     || !obj["t_owned"].isBool())       continue;
+
+            TargetData t;
+            t.TargetId = obj.value("t_target_id").toString();
+            t.Computer = obj.value("t_computer").toString();
+            t.Domain   = obj.value("t_domain").toString();
+            t.Address  = obj.value("t_address").toString();
+            t.Os       = obj.value("t_os").toInt();
+            t.OsDesc   = obj.value("t_os_desk").toString();
+            t.Tag      = obj.value("t_tag").toString();
+            t.Info     = obj.value("t_info").toString();
+            t.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(obj["t_date"].toDouble()));
+            t.Alive    = obj.value("t_alive").toBool();
+            t.Owned    = obj.value("t_owned").toBool();
+
+            targetsList.append(t);
+        }
+
+        TargetsTab->AddTargetsItems(targetsList);
+        return;
+    }
+    if ( spType == TYPE_TARGETS_EDIT ) {
+        TargetData targetData = {};
+        targetData.TargetId = jsonObj["t_target_id"].toString();
+        targetData.Computer = jsonObj["t_computer"].toString();
+        targetData.Domain   = jsonObj["t_domain"].toString();
+        targetData.Address  = jsonObj["t_address"].toString();
+        targetData.Os       = jsonObj["t_os"].toDouble();
+        targetData.OsDesc   = jsonObj["t_os_desk"].toString();
+        targetData.Tag      = jsonObj["t_tag"].toString();
+        targetData.Info     = jsonObj["t_info"].toString();
+        targetData.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["t_date"].toDouble()));
+        targetData.Alive    = jsonObj["t_alive"].toBool();
+        targetData.Owned    = jsonObj["t_owned"].toBool();
+
+        TargetsTab->EditTargetsItem(targetData);
+        return;
+    }
+    if ( spType == TYPE_TARGETS_DELETE ) {
+        QStringList targetsId;
+        QJsonArray arr = jsonObj.value("t_target_id").toArray();
+        for (const QJsonValue &val : arr) {
+            if (!val.isString())
+                continue;
+
+            targetsId.append(val.toString());
+        }
+
+        TargetsTab->RemoveTargetsItem(targetsId);
+        return;
+    }
+    if ( spType == TYPE_TARGETS_SET_TAG ) {
+        QString tag    = jsonObj["t_tag"].toString();
+        QJsonArray arr = jsonObj["t_targets_id"].toArray();
+
+        QStringList ids;
+        for (auto jsonTarget : arr) {
+            QString id = jsonTarget.toString();
+            ids.append(id);
+        }
+        TargetsTab->TargetsSetTag(ids, tag);
+
+        return;
+    }
 
 
     if( spType == TYPE_TUNNEL_CREATE )
@@ -824,10 +988,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_LISTENER_REG )
     {
-        QString fn = jsonObj["fn"].toString();
-        QString ax = jsonObj["ax"].toString();
+        QString name     = jsonObj["l_name"].toString();
+        QString protocol = jsonObj["l_protocol"].toString();
+        QString type     = jsonObj["l_type"].toString();
+        QString ax       = jsonObj["ax"].toString();
 
-        this->RegisterListenerConfig(fn, ax);
+        this->RegisterListenerConfig(name, protocol, type, ax);
         return;
     }
     if( spType == TYPE_AGENT_REG )

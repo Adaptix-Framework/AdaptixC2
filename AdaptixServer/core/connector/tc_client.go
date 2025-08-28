@@ -5,9 +5,10 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/token"
 	"errors"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"net/http"
 )
 
 type Credentials struct {

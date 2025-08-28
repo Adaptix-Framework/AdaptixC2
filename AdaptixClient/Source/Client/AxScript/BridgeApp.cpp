@@ -8,6 +8,7 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
+#include <UI/Widgets/TargetsWidget.h>
 
 BridgeApp::BridgeApp(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine), widget(new QWidget()){}
 
@@ -324,7 +325,36 @@ QJSValue BridgeApp::credentials() const
     return this->scriptEngine->engine()->toScriptValue(list);
 }
 
-void BridgeApp::credentials_add(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host) { scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(username, password, realm, type, tag, storage, host); }
+void BridgeApp::credentials_add(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host)
+{
+    CredentialData cred = {"", username, password, realm, type, tag, 0, storage, "", host};
+
+    QList<CredentialData> credsList;
+    credsList.append(cred);
+    scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(credsList);
+}
+
+void BridgeApp::credentials_add_list(const QVariantList &array)
+{
+    QList<CredentialData> credsList;
+    for (const QVariant &item : array) {
+        QVariantMap map = item.toMap();
+        CredentialData cd = {};
+        if (map.contains("username")) cd.Username = map["username"].toString();
+        if (map.contains("password")) cd.Password = map["password"].toString();
+        if (map.contains("realm"))    cd.Realm    = map["realm"].toString();
+        if (map.contains("type"))     cd.Tag      = map["type"].toString();
+        if (map.contains("tag"))      cd.Tag      = map["tag"].toString();
+        if (map.contains("storage"))  cd.Storage  = map["storage"].toString();
+        if (map.contains("host"))     cd.Host     = map["host"].toString();
+        credsList.append(cd);
+    }
+
+    if (credsList.isEmpty())
+        return;
+
+    scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(credsList);
+}
 
 QObject* BridgeApp::create_command(const QString &name, const QString &description, const QString &example, const QString &message)
 {
@@ -341,6 +371,38 @@ QObject* BridgeApp::create_commands_group(const QString &name, const QJSValue &a
     wrapper->SetParams(name, array);
     scriptEngine->registerObject(wrapper);
     return wrapper;
+}
+
+QJSValue BridgeApp::downloads() const
+{
+    QVariantMap list;
+    auto mapDownloads = scriptEngine->manager()->GetDownloads();
+
+    for (auto download : mapDownloads) {
+        QVariantMap map;
+        map["id"]         = download.FileId;
+        map["agent_id"]   = download.AgentId;
+        map["agent_name"] = download.AgentName;
+        map["user"]       = download.User;
+        map["computer"]   = download.Computer;
+        map["filename"]   = download.Filename;
+        map["recv_size"]  = download.RecvSize;
+        map["total_size"] = download.TotalSize;
+        map["date"]       = download.Date;
+
+        if (download.State == DOWNLOAD_STATE_RUNNING)
+            map["state"] = "running";
+        else if (download.State == DOWNLOAD_STATE_STOPPED)
+            map["state"] = "stopped";
+        else if (download.State == DOWNLOAD_STATE_FINISHED)
+            map["state"] = "finished";
+        else
+            map["state"] = "canceled";
+
+        list[download.FileId] = map;
+    }
+
+    return this->scriptEngine->engine()->toScriptValue(list);
 }
 
 void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const
@@ -423,11 +485,51 @@ QString BridgeApp::file_read(QString path) const
     }
 }
 
+bool BridgeApp::file_write_text(QString path, const QString &content, bool append) const
+{
+    if (path.startsWith("~/"))
+        path = QDir::home().filePath(path.mid(2));
+
+    QFile file(path);
+    QIODevice::OpenMode mode = append ? (QIODevice::WriteOnly | QIODevice::Append) : QIODevice::WriteOnly;
+    if (file.open(mode)) {
+        QTextStream stream(&file);
+        stream << content;
+        file.close();
+        return true;
+    }
+    return false;
+}
+
+QString BridgeApp::format_size(const int &size) const { return BytesToFormat(size); }
+
 QString BridgeApp::format_time(const QString &format, const int &time) const
 {
     QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(time, QTimeZone("UTC"));
     QDateTime localDateTime = epochDateTime.toTimeZone(QTimeZone::systemTimeZone());
     return localDateTime.toString(format);
+}
+
+QJSValue BridgeApp::get_commands(const QString &id) const
+{
+    QVariantList list;
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+    if ( mapAgents.contains(id) ) {
+        for (auto cmd : mapAgents[id]->commander->GetCommands())
+            list.append(cmd);
+    }
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+QJSValue BridgeApp::ids() const
+{
+    QVariantList list;
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+
+    for (auto agent : mapAgents)
+        list.append(agent->data.Id);
+
+    return this->scriptEngine->engine()->toScriptValue(list);
 }
 
 QJSValue BridgeApp::interfaces() const
@@ -448,6 +550,15 @@ bool BridgeApp::is64(const QString &id) const
         return false;
 
     return mapAgents[id]->data.Arch == "x64";
+}
+
+bool BridgeApp::isactive(const QString &id) const
+{
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+    if (!mapAgents.contains(id))
+        return false;
+
+    return mapAgents[id]->active;
 }
 
 bool BridgeApp::isadmin(const QString &id) const
@@ -472,6 +583,12 @@ void BridgeApp::open_browser_files(const QString &id) { scriptEngine->manager()-
 void BridgeApp::open_browser_process(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadProcessBrowserUI(id); }
 
 void BridgeApp::open_remote_terminal(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id); }
+
+bool BridgeApp::prompt_confirm(const QString &title, const QString &text)
+{
+    QMessageBox::StandardButton reply = QMessageBox::question(nullptr, title, text, QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    return (reply == QMessageBox::Yes);
+}
 
 QString BridgeApp::prompt_open_file(const QString &caption, const QString &filter) { return QFileDialog::getOpenFileName(nullptr, caption, QDir::homePath(), filter); }
 
@@ -549,16 +666,147 @@ void BridgeApp::script_load(const QString &path) { scriptEngine->manager()->Glob
 
 void BridgeApp::script_unload(const QString &path) { scriptEngine->manager()->GlobalScriptUnload(path); }
 
-QString BridgeApp::script_dir()
+QString BridgeApp::script_dir() { return GetParentPathUnix(scriptEngine->context.name) + "/"; }
+
+QJSValue BridgeApp::screenshots()
 {
-//#ifdef Q_OS_WIN
-//    return GetParentPathWindows(scriptEngine->context.name) + "\\";
-//#else
-    return GetParentPathUnix(scriptEngine->context.name) + "/";
-//#endif
+    QVariantMap list;
+    auto screenshots = scriptEngine->manager()->GetScreenshots();
+
+    for (auto screen : screenshots) {
+        QVariantMap map;
+        map["id"]       = screen.ScreenId;
+        map["user"]     = screen.User;
+        map["computer"] = screen.Computer;
+        map["note"]     = screen.Note;
+        map["date"]     = screen.Date;
+        list[screen.ScreenId] = map;
+    }
+
+    return this->scriptEngine->engine()->toScriptValue(list);
 }
 
 void BridgeApp::show_message(const QString &title, const QString &text) { QMessageBox::information(nullptr, title, text); }
 
+QJSValue BridgeApp::targets() const
+{
+    QVariantMap list;
+    auto targets = scriptEngine->manager()->GetTargets();
+
+    for (auto target : targets) {
+        QVariantMap map;
+        map["id"]       = target.TargetId;
+        map["computer"] = target.Computer;
+        map["domain"]   = target.Domain;
+        map["address"]  = target.Address;
+        map["tag"]      = target.Tag;
+        map["date"]     = target.Date;
+        map["info"]     = target.Info;
+        map["alive"]    = target.Alive;
+        map["owned"]    = target.Owned;
+        map["os_desc"]  = target.OsDesc;
+
+        if (target.Os == OS_WINDOWS)    map["os"] = "windows";
+        else if (target.Os == OS_LINUX) map["os"] = "linux";
+        else if (target.Os == OS_MAC)   map["os"] = "macos";
+        else                            map["os"] = "unknown";
+
+        list[target.TargetId] = map;
+    }
+
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+void BridgeApp::targets_add(const QString &computer, const QString &domain, const QString &address, const QString &os, const QString &osDesc, const QString &tag, const QString &info, bool alive)
+{
+    TargetData target = {"", computer, domain, address, tag, 0, osDesc, "", info, alive};
+
+    if (os == "windows")    target.Os = OS_WINDOWS;
+    else if (os == "linux") target.Os = OS_LINUX;
+    else if (os == "macos") target.Os = OS_MAC;
+    else                    target.Os = OS_UNKNOWN;
+
+    QList<TargetData> targets;
+    targets.append(target);
+    scriptEngine->manager()->GetAdaptix()->TargetsTab->TargetsAdd(targets);
+}
+
+void BridgeApp::targets_add_list(const QVariantList &array)
+{
+    QList<TargetData> targets;
+
+    for (const QVariant &item : array) {
+        QVariantMap map = item.toMap();
+        TargetData td = {};
+        if (map.contains("computer")) td.Computer = map["computer"].toString();
+        if (map.contains("domain")) td.Domain = map["domain"].toString();
+        if (map.contains("address")) td.Address = map["address"].toString();
+        if (map.contains("tag")) td.Tag = map["tag"].toString();
+        if (map.contains("info")) td.Info = map["info"].toString();
+        if (map.contains("alive")) td.Alive = map["alive"].toBool();
+        if (map.contains("os_desc")) td.OsDesc = map["os_desc"].toString();
+        if (map.contains("os")) {
+            QString os = map["os"].toString();
+            if (os == "windows")    td.Os = OS_WINDOWS;
+            else if (os == "linux") td.Os = OS_LINUX;
+            else if (os == "macos") td.Os = OS_MAC;
+            else                    td.Os = OS_UNKNOWN;
+        }
+        targets.append(td);
+    }
+
+    if (targets.isEmpty())
+        return;
+
+    scriptEngine->manager()->GetAdaptix()->TargetsTab->TargetsAdd(targets);
+}
+
 int BridgeApp::ticks() { return QDateTime::currentSecsSinceEpoch(); }
 
+QJSValue BridgeApp::tunnels()
+{
+    QVariantMap list;
+    auto tunnels = scriptEngine->manager()->GetTunnels();
+
+    for (auto tun : tunnels) {
+        QVariantMap map;
+        map["id"]        = tun.TunnelId;
+        map["agent_id"]  = tun.AgentId;
+        map["username"]  = tun.Username;
+        map["computer"]  = tun.Computer;
+        map["process"]   = tun.Process;
+        map["type"]      = tun.Type;
+        map["info"]      = tun.Info;
+        map["interface"] = tun.Interface;
+        map["port"]      = tun.Port;
+        map["client"]    = tun.Client;
+        map["f_port"]    = tun.Fport;
+        map["f_host"]    = tun.Fhost;
+        list[tun.TunnelId]  = map;
+    }
+
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+QJSValue BridgeApp::validate_command(const QString &id, const QString &command) const
+{
+    auto mapAgents = scriptEngine->manager()->GetAgents();
+    QVariantMap result;
+
+    if (!mapAgents.contains(id)) {
+        result["valid"] = false;
+        result["message"] = "Agent not found";
+        return scriptEngine->engine()->toScriptValue(result);
+    }
+
+    auto cmdResult = mapAgents[id]->commander->ProcessInput(id, command);
+    result["valid"]         = !cmdResult.error;
+    result["message"]       = cmdResult.message;
+    result["is_pre_hook"]   = cmdResult.is_pre_hook;
+    result["has_output"]    = cmdResult.output;
+    result["has_post_hook"] = cmdResult.post_hook.isSet;
+    if (!cmdResult.error)
+        result["parsed"] = cmdResult.data.toVariantMap();
+
+    return scriptEngine->engine()->toScriptValue(result);
+}

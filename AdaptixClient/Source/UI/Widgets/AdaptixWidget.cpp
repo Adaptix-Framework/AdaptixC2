@@ -15,6 +15,7 @@
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
+#include <UI/Widgets/TargetsWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Graph/SessionsGraph.h>
@@ -33,6 +34,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     this->ChannelWsWorker = channelWsWorker;
 
     ScriptManager = new AxScriptManager(this, this);
+    connect(this, &AdaptixWidget::eventNewAgent,           ScriptManager, &AxScriptManager::emitNewAgent);
     connect(this, &AdaptixWidget::eventFileBrowserDisks,   ScriptManager, &AxScriptManager::emitFileBrowserDisks);
     connect(this, &AdaptixWidget::eventFileBrowserList,    ScriptManager, &AxScriptManager::emitFileBrowserList);
     connect(this, &AdaptixWidget::eventFileBrowserUpload,  ScriptManager, &AxScriptManager::emitFileBrowserUpload);
@@ -48,6 +50,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     ScreenshotsTab    = new ScreenshotsWidget(this);
     CredentialsTab    = new CredentialsWidget(this);
     TasksTab          = new TasksWidget(this);
+    TargetsTab        = new TargetsWidget(this);
 
     mainStackedWidget->addWidget(SessionsTablePage);
     mainStackedWidget->addWidget(SessionsGraphPage);
@@ -62,7 +65,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     TickWorker = new LastTickWorker( this );
     TickWorker->moveToThread( TickThread );
 
-    connect( this, &AdaptixWidget::SyncedSignal, this, &AdaptixWidget::OnSynced);
+    connect( this, &AdaptixWidget::SyncedSignal, this,   &AdaptixWidget::OnSynced);
+    connect( this, &AdaptixWidget::SyncedSignal, ScriptManager, &AxScriptManager::emitReadyClient);
 
     connect( logsButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
@@ -73,14 +77,16 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( downloadsButton, &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
     connect( screensButton,   &QPushButton::clicked, this, &AdaptixWidget::LoadScreenshotsUI);
     connect( credsButton,     &QPushButton::clicked, this, &AdaptixWidget::LoadCredentialsUI);
+    connect( targetsButton,   &QPushButton::clicked, this, &AdaptixWidget::LoadTargetsUI);
     connect( reconnectButton, &QPushButton::clicked, this, &AdaptixWidget::OnReconnect);
 
     connect( mainTabWidget->tabBar(), &QTabBar::tabCloseRequested, this, &AdaptixWidget::RemoveTab );
 
     connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
 
-    connect( ChannelWsWorker, &WebSocketWorker::received_data,    this, &AdaptixWidget::DataHandler );
-    connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, &AdaptixWidget::ChannelClose );
+    connect( ChannelWsWorker, &WebSocketWorker::received_data,    this,   &AdaptixWidget::DataHandler );
+    connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this,   &AdaptixWidget::ChannelClose );
+    connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, ScriptManager, &AxScriptManager::emitDisconnectClient );
 
     dialogSyncPacket = new DialogSyncPacket();
     dialogSyncPacket->splashScreen->show();
@@ -89,7 +95,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     ChannelThread->start();
 
     /// TODO: Enable menu button
-    targetsButton->setVisible(false);
     keysButton->setVisible(false);
 
     HttpReqSync( *profile );
@@ -123,11 +128,6 @@ void AdaptixWidget::createUI()
     graphButton->setFixedSize(37, 28);
     graphButton->setToolTip("Session graph");
 
-    targetsButton = new QPushButton( QIcon(":/icons/devices"), "", this );
-    targetsButton->setIconSize( QSize( 24,24 ));
-    targetsButton->setFixedSize(37, 28);
-    targetsButton->setToolTip("Targets table");
-
     line_2 = new QFrame(this);
     line_2->setFrameShape(QFrame::VLine);
     line_2->setMinimumHeight(25);
@@ -150,6 +150,11 @@ void AdaptixWidget::createUI()
     downloadsButton->setIconSize( QSize( 24,24 ));
     downloadsButton->setFixedSize(37, 28);
     downloadsButton->setToolTip("Downloads");
+
+    targetsButton = new QPushButton( QIcon(":/icons/devices"), "", this );
+    targetsButton->setIconSize( QSize( 24,24 ));
+    targetsButton->setFixedSize(37, 28);
+    targetsButton->setToolTip("Targets table");
 
     credsButton = new QPushButton( QIcon(":/icons/key"), "", this );
     credsButton->setIconSize( QSize( 24,24 ));
@@ -189,12 +194,12 @@ void AdaptixWidget::createUI()
     topHLayout->addWidget(line_1);
     topHLayout->addWidget(sessionsButton);
     topHLayout->addWidget(graphButton);
-    topHLayout->addWidget(targetsButton);
     topHLayout->addWidget(tasksButton);
     topHLayout->addWidget(line_2);
     topHLayout->addWidget(tunnelButton);
     topHLayout->addWidget(line_3);
     topHLayout->addWidget(downloadsButton);
+    topHLayout->addWidget(targetsButton);
     topHLayout->addWidget(credsButton);
     topHLayout->addWidget(screensButton);
     topHLayout->addWidget(keysButton);
@@ -244,7 +249,7 @@ void AdaptixWidget::AddTab(QWidget *tab, const QString &title, const QString &ic
     mainTabWidget->setCurrentIndex( id );
 }
 
-void AdaptixWidget::RemoveTab(int index) const
+void AdaptixWidget::RemoveTab(const int index) const
 {
     if (index == -1)
         return;
@@ -282,6 +287,8 @@ void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
     return ScriptManager->ScriptRemove(ext);
 }
 
+bool AdaptixWidget::IsSynchronized() { return this->synchronized; }
+
 void AdaptixWidget::Close()
 {
     TickThread->quit();
@@ -309,6 +316,7 @@ void AdaptixWidget::ClearAdaptix()
     SessionsTablePage->Clear();
     TunnelsTab->Clear();
     CredentialsTab->Clear();
+    TargetsTab->Clear();
 
     for (auto tunnelId : ClientTunnels.keys()) {
         auto tunnel = ClientTunnels[tunnelId];
@@ -328,7 +336,12 @@ void AdaptixWidget::ClearAdaptix()
 
 /// REGISTER
 
-void AdaptixWidget::RegisterListenerConfig(const QString &fn, const QString &ax_script) { ScriptManager->ListenerScriptAdd(fn, ax_script); }
+void AdaptixWidget::RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script)
+{
+    ScriptManager->ListenerScriptAdd(name, ax_script);
+    RegListenerConfig config = { name, protocol, type };
+    RegisterListeners.push_back(config);
+}
 
 void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners)
 {
@@ -427,6 +440,15 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
     }
 }
 
+RegListenerConfig AdaptixWidget::GetRegListener(const QString &listenerName)
+{
+    for (auto regListener : this->RegisterListeners)
+        if (regListener.name == listenerName)
+            return regListener;
+
+    return RegListenerConfig{};
+}
+
 QList<QString> AdaptixWidget::GetAgentNames(const QString &listenerType) const
 {
     QSet<QString> names;
@@ -442,8 +464,8 @@ RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QStrin
     if (os == OS_WINDOWS || os == OS_LINUX || os == OS_MAC) {
         QString listener = "";
         for ( auto listenerData : this->Listeners) {
-            if ( listenerData.ListenerName == listenerName ) {
-                listener = listenerData.ListenerFullName.split("/")[2];
+            if ( listenerData.Name == listenerName ) {
+                listener = listenerData.ListenerRegName;
                 break;
             }
         }
@@ -688,7 +710,13 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
 
     QJsonObject jsonObj = jsonDoc.object();
     if( !this->isValidSyncPacket(jsonObj) ) {
-        LogError("Invalid SyncPacket");
+
+        QString msg = "Invalid SyncPacket";
+        if ( jsonObj.contains("type") && jsonObj["type"].isDouble() ) {
+            int spType = jsonObj["type"].toDouble();
+            msg.append(": " + QString::number(spType));
+        }
+        LogError(msg.toStdString().c_str());
         return;
     }
 
@@ -743,6 +771,8 @@ void AdaptixWidget::LoadDownloadsUI() const { this->AddTab(DownloadsTab, "Downlo
 void AdaptixWidget::LoadScreenshotsUI() const { this->AddTab(ScreenshotsTab, "Screenshots", ":/icons/picture"); }
 
 void AdaptixWidget::LoadCredentialsUI() const { this->AddTab(CredentialsTab, "Credentials", ":/icons/key"); }
+
+void AdaptixWidget::LoadTargetsUI() const { this->AddTab(TargetsTab, "Targets", ":/icons/devices"); }
 
 void AdaptixWidget::OnReconnect()
 {

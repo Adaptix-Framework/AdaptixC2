@@ -17,12 +17,19 @@ class ListenersWidget;
 class DownloadsWidget;
 class ScreenshotsWidget;
 class CredentialsWidget;
+class TargetsWidget;
 class TasksWidget;
 class TunnelsWidget;
 class TunnelEndpoint;
 class DialogSyncPacket;
 class AuthProfile;
 class AxScriptManager;
+
+typedef struct RegListenerConfig {
+    QString name;
+    QString protocol;
+    QString type;
+} RegListenerConfig;
 
 typedef struct RegAgentConfig {
     QString        name;
@@ -88,13 +95,16 @@ public:
     ScreenshotsWidget*   ScreenshotsTab    = nullptr;
     CredentialsWidget*   CredentialsTab    = nullptr;
     TasksWidget*         TasksTab          = nullptr;
+    TargetsWidget*       TargetsTab        = nullptr;
 
+    QVector<RegListenerConfig>     RegisterListeners;
     QVector<RegAgentConfig>        RegisterAgents;
     QVector<ListenerData>          Listeners;
     QVector<TunnelData>            Tunnels;
     QMap<QString, DownloadData>    Downloads;
     QMap<QString, ScreenData>      Screenshots;
     QVector<CredentialData>        Credentials;
+    QVector<TargetData>            Targets;
     QMap<QString, PivotData>       Pivots;
     QVector<QString>               TasksVector;
     QMap<QString, Task*>           TasksMap;
@@ -113,13 +123,15 @@ public:
     void RemoveTab(int index) const;
     bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);
+    bool IsSynchronized();
     void Close();
     void ClearAdaptix();
 
-    void RegisterListenerConfig(const QString &fn, const QString &ax_script);
+    void RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script);
     void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners);
-    QList<QString> GetAgentNames(const QString &listenerType) const;
-    RegAgentConfig GetRegAgent(const QString &agentName, const QString &listenerName, int os);
+    RegListenerConfig GetRegListener(const QString &listenerName);
+    QList<QString>    GetAgentNames(const QString &listenerType) const;
+    RegAgentConfig    GetRegAgent(const QString &agentName, const QString &listenerName, int os);
     QList<Commander*> GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const;
     QList<Commander*> GetCommandersAll() const;
 
@@ -138,6 +150,7 @@ signals:
     void LoadGlobalScriptSignal(QString path);
     void UnloadGlobalScriptSignal(QString path);
 
+    void eventNewAgent(QString agentId);
     void eventFileBrowserDisks(QString agentId);
     void eventFileBrowserList(QString agentId, QString path);
     void eventFileBrowserUpload(QString agentId, QString path, QString localFilename);
@@ -158,6 +171,7 @@ public slots:
     void LoadDownloadsUI() const;
     void LoadScreenshotsUI() const;
     void LoadCredentialsUI() const;
+    void LoadTargetsUI() const;
     void OnReconnect();
 };
 

@@ -4,9 +4,10 @@ import (
 	"AdaptixServer/core/extender"
 	"bytes"
 	"encoding/json"
+	"sort"
+
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
-	"sort"
 )
 
 func (ts *Teamserver) TsClientConnected(username string) bool {
@@ -73,6 +74,7 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	packets = append(packets, ts.TsPresyncEvents()...)
 	packets = append(packets, ts.TsPresyncPivots()...)
 	packets = append(packets, ts.TsPresyncCredentials()...)
+	packets = append(packets, ts.TsPresyncTargets()...)
 
 	client.lockSocket.Lock()
 	defer client.lockSocket.Unlock()
@@ -100,7 +102,7 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 	var packets []interface{}
 	ts.listener_configs.ForEach(func(key string, value interface{}) bool {
 		listenerInfo := value.(extender.ListenerInfo)
-		p := CreateSpListenerReg(key, listenerInfo.AX)
+		p := CreateSpListenerReg(listenerInfo.Name, listenerInfo.Protocol, listenerInfo.Type, listenerInfo.AX)
 		packets = append(packets, p)
 		return true
 	})
@@ -217,10 +219,30 @@ func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncCredentials() []interface{} {
-	var packets []interface{}
+	var creds []*adaptix.CredsData
 	for value := range ts.credentials.Iterator() {
-		creds := value.Item.(*adaptix.CredsData)
-		p := CreateSpCredentialsAdd(*creds)
+		c := value.Item.(*adaptix.CredsData)
+		creds = append(creds, c)
+	}
+
+	p := CreateSpCredentialsAdd(creds)
+	var packets []interface{}
+	if len(creds) > 0 {
+		packets = append(packets, p)
+	}
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncTargets() []interface{} {
+	var targets []*adaptix.TargetData
+	for value := range ts.targets.Iterator() {
+		target := value.Item.(*adaptix.TargetData)
+		targets = append(targets, target)
+	}
+
+	p := CreateSpTargetsAdd(targets)
+	var packets []interface{}
+	if len(targets) > 0 {
 		packets = append(packets, p)
 	}
 	return packets

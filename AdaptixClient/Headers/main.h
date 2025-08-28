@@ -67,7 +67,7 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.7"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.8"
 
 ///////////
 
@@ -135,9 +135,15 @@
 #define TYPE_PIVOT_CREATE 0x71
 #define TYPE_PIVOT_DELETE 0x72
 
-#define TYPE_CREDS_CREATE 0x81
-#define TYPE_CREDS_EDIT   0x82
-#define TYPE_CREDS_DELETE 0x83
+#define TYPE_CREDS_CREATE  0x81
+#define TYPE_CREDS_EDIT    0x82
+#define TYPE_CREDS_DELETE  0x83
+#define TYPE_CREDS_SET_TAG 0x84
+
+#define TYPE_TARGETS_CREATE  0x87
+#define TYPE_TARGETS_EDIT    0x88
+#define TYPE_TARGETS_DELETE  0x89
+#define TYPE_TARGETS_SET_TAG 0x8a
 
 //////////
 
@@ -190,8 +196,10 @@ typedef struct SettingsData {
 
 typedef struct ListenerData
 {
-    QString ListenerName;
-    QString ListenerFullName;
+    QString Name;
+    QString ListenerRegName;
+    QString ListenerProtocol;
+    QString ListenerType;
     QString BindHost;
     QString BindPort;
     QString AgentAddresses;
@@ -266,6 +274,21 @@ typedef struct CredentialData
     QString AgentId;
     QString Host;
 } CredentialData;
+
+typedef struct TargetData
+{
+    QString TargetId;
+    QString Computer;
+    QString Domain;
+    QString Address;
+    QString Tag;
+    int     Os;
+    QString OsDesc;
+    QString Date;
+    QString Info;
+    bool    Alive;
+    bool    Owned;
+} TargetData;
 
 typedef struct TunnelData
 {

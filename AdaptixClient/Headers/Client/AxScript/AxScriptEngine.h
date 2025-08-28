@@ -17,6 +17,7 @@ class AxScriptManager;
 
 struct AxEvent {
     QJSValue      handler;
+    QTimer*       timer;
     QString       event_id;
     QSet<QString> agents;
     QSet<QString> listenerts;
@@ -41,6 +42,10 @@ struct ScriptContext {
     QList<AxEvent> eventFileBroserList;
     QList<AxEvent> eventFileBroserUpload;
     QList<AxEvent> eventProcessBrowserList;
+    QList<AxEvent> eventNewAgent;
+    QList<AxEvent> eventReady;
+    QList<AxEvent> eventDisconnect;
+    QList<AxEvent> eventTimer;
 
     QList<AxMenuItem> menuSessionMain;
     QList<AxMenuItem> menuSessionAgent;
@@ -52,6 +57,10 @@ struct ScriptContext {
     QList<AxMenuItem> menuDownloadFinished;
     QList<AxMenuItem> menuTasks;
     QList<AxMenuItem> menuTasksJob;
+    QList<AxMenuItem> menuTargetsTop;
+    QList<AxMenuItem> menuTargetsBottom;
+    QList<AxMenuItem> menuTargetsCenter;
+    QList<AxMenuItem> menuCreds;
 };
 
 class AxScriptEngine : public QObject {
@@ -80,8 +89,9 @@ public:
 
     void registerObject(QObject* obj);
     void registerAction(QAction* action);
-    void registerEvent(const QString &type, const QJSValue &handler, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id);
+    void registerEvent(const QString &type, const QJSValue &handler, QTimer* timer, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id);
     void removeEvent(const QString &id);
+    QStringList listEvent();
     void registerMenu(const QString &type, AbstractAxMenuItem* menu, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners);
     bool execute(const QString &code);
 

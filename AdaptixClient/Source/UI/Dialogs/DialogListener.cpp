@@ -6,7 +6,8 @@ DialogListener::DialogListener(QWidget *parent) : QDialog(parent)
 {
     this->createUI();
 
-    connect(listenerTypeCombobox, &QComboBox::currentTextChanged, this, &DialogListener::changeConfig);
+    connect(listenerCombobox,     &QComboBox::currentTextChanged, this, &DialogListener::changeConfig);
+    connect(listenerTypeCombobox, &QComboBox::currentTextChanged, this, &DialogListener::changeType);
     connect(buttonLoad,   &QPushButton::clicked, this, &DialogListener::onButtonLoad );
     connect(buttonSave,   &QPushButton::clicked, this, &DialogListener::onButtonSave );
     connect(buttonCreate, &QPushButton::clicked, this, &DialogListener::onButtonCreate );
@@ -25,9 +26,12 @@ void DialogListener::createUI()
 
     inputListenerName = new QLineEdit(this);
 
+    listenerLabel = new QLabel(this);
+    listenerLabel->setText("Listener: ");
+    listenerCombobox = new QComboBox(this);
+
     listenerTypeLabel = new QLabel(this);
     listenerTypeLabel->setText("Listener type: ");
-
     listenerTypeCombobox = new QComboBox(this);
 
     buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
@@ -74,14 +78,16 @@ void DialogListener::createUI()
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->addWidget( listenerNameLabel,      0, 0, 1, 1);
     mainGridLayout->addWidget( inputListenerName,      0, 1, 1, 1);
-    mainGridLayout->addWidget( line_1,                 0, 2, 2, 1);
+    mainGridLayout->addWidget( line_1,                 0, 2, 3, 1);
     mainGridLayout->addWidget( buttonLoad,             0, 3, 1, 1);
     mainGridLayout->addWidget( listenerTypeLabel,      1, 0, 1, 1);
     mainGridLayout->addWidget( listenerTypeCombobox,   1, 1, 1, 1);
     mainGridLayout->addWidget( buttonSave,             1, 3, 1, 1);
-    mainGridLayout->addItem(   horizontalSpacer,       2, 0, 1, 4);
-    mainGridLayout->addWidget( listenerConfigGroupbox, 3, 0, 1, 4);
-    mainGridLayout->addLayout( hLayoutBottom,          4, 0, 1, 4);
+    mainGridLayout->addWidget( listenerLabel,          2, 0, 1, 1);
+    mainGridLayout->addWidget( listenerCombobox,       2, 1, 1, 1);
+    mainGridLayout->addItem(   horizontalSpacer,       3, 0, 1, 4);
+    mainGridLayout->addWidget( listenerConfigGroupbox, 4, 0, 1, 4);
+    mainGridLayout->addLayout( hLayoutBottom,          5, 0, 1, 4);
 
     this->setLayout(mainGridLayout);
 
@@ -100,23 +106,30 @@ void DialogListener::createUI()
 
 void DialogListener::Start() { this->exec(); }
 
-void DialogListener::AddExListeners(const QStringList &listeners, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers)
+void DialogListener::AddExListeners(const QList<RegListenerConfig> &listeners, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers)
 {
+    listenerCombobox->clear();
+    listenerTypeCombobox->clear();
+
     this->listeners  = listeners;
     this->widgets    = widgets;
     this->containers = containers;
 
+    QSet<QString> listenersSet;
+
     for (auto listener : listeners) {
-        widgets[listener]->setParent(nullptr);
-        widgets[listener]->setParent(this);
-        containers[listener]->setParent(nullptr);
-        containers[listener]->setParent(this);
+        widgets[listener.name]->setParent(nullptr);
+        widgets[listener.name]->setParent(this);
+        containers[listener.name]->setParent(nullptr);
+        containers[listener.name]->setParent(this);
 
-        configStackWidget->addWidget(widgets[listener]);
+        configStackWidget->addWidget(widgets[listener.name]);
+        listenerCombobox->addItem(listener.name);
+        QString type = listener.type + " (" + listener.protocol + ")";
+        listenersSet.insert(type);
     }
-
-    listenerTypeCombobox->clear();
-    listenerTypeCombobox->addItems(listeners);
+    listenerTypeCombobox->addItem("any");
+    listenerTypeCombobox->addItems(QList<QString>(listenersSet.begin(), listenersSet.end()));
 }
 
 void DialogListener::SetProfile(const AuthProfile &profile) { this->authProfile = profile; }
@@ -126,6 +139,7 @@ void DialogListener::SetEditMode(const QString &name)
     this->setWindowTitle( "Edit Listener" );
     inputListenerName->setText(name);
     inputListenerName->setDisabled(true);
+    listenerCombobox->setDisabled(true);
     listenerTypeCombobox->setDisabled(true);
     buttonCreate->setText("Edit");
     editMode = true;
@@ -137,10 +151,20 @@ void DialogListener::changeConfig(const QString &fn)
         configStackWidget->setCurrentWidget(widgets[fn]);
 }
 
+void DialogListener::changeType(const QString &type)
+{
+    listenerCombobox->clear();
+    for (auto listener : listeners) {
+        QString listenerType = listener.type + " (" + listener.protocol + ")";
+        if (listenerType == type || type == "any")
+            listenerCombobox->addItem(listener.name);
+    }
+}
+
 void DialogListener::onButtonCreate()
 {
     auto configName= inputListenerName->text();
-    auto configType= listenerTypeCombobox->currentText();
+    auto configType= listenerCombobox->currentText();
     auto configData = QString();
     if (containers[configType])
         configData = containers[configType]->toJson();
@@ -198,21 +222,21 @@ void DialogListener::onButtonLoad()
         inputListenerName->setText( jsonObject["name"].toString() );
 
     QString configType = jsonObject["type"].toString();
-    int typeIndex = listenerTypeCombobox->findText( configType );
+    int typeIndex = listenerCombobox->findText( configType );
     if(typeIndex == -1 || !containers.contains(configType)) {
         MessageError("No such listener exists");
         return;
     }
 
     QString configData = jsonObject["config"].toString();
-    listenerTypeCombobox->setCurrentIndex(typeIndex);
+    listenerCombobox->setCurrentIndex(typeIndex);
     containers[configType]->fromJson(configData);
 }
 
 void DialogListener::onButtonSave()
 {
     auto configName= inputListenerName->text();
-    auto configType= listenerTypeCombobox->currentText();
+    auto configType= listenerCombobox->currentText();
     auto configData = QString();
     if (containers[configType])
         configData = containers[configType]->toJson();

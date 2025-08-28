@@ -35,12 +35,14 @@ AxScriptEngine::~AxScriptEngine()
         if (action) delete action;
     }
     context.actions.clear();
-/*
-    for (auto obj : context.objects){
-        if (obj) delete obj;
-    }
-*/
     context.objects.clear();
+
+    for (auto event : context.eventTimer) {
+        if (event.timer) {
+            event.timer->stop();
+            event.timer->deleteLater();
+        }
+    }
 
     bridgeApp.reset();
     bridgeForm.reset();
@@ -67,19 +69,23 @@ void AxScriptEngine::registerAction(QAction *action) { context.actions.append(ac
 
 /////
 
-void AxScriptEngine::registerEvent(const QString &type, const QJSValue &handler, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id)
+void AxScriptEngine::registerEvent(const QString &type, const QJSValue &handler, QTimer* timer, const QSet<QString> &list_agents, const QSet<QString> &list_os, const QSet<QString> &list_listeners, const QString &id)
 {
     QSet<int> os;
     if (list_os.contains("windows")) os.insert(1);
     if (list_os.contains("linux")) os.insert(2);
     if (list_os.contains("macos")) os.insert(3);
 
-    AxEvent event = {handler, id, list_agents,  list_listeners, os, jsEngine.get()};
+    AxEvent event = {handler, timer, id, list_agents,  list_listeners, os, jsEngine.get()};
 
     if (     type == "FileBroserDisks")    context.eventFileBroserDisks.append(event);
     else if (type == "FileBroserList")     context.eventFileBroserList.append(event);
     else if (type == "FileBroserUpload")   context.eventFileBroserUpload.append(event);
     else if (type == "ProcessBrowserList") context.eventProcessBrowserList.append(event);
+    else if (type == "new_agent")          context.eventNewAgent.append(event);
+    else if (type == "ready")              context.eventReady.append(event);
+    else if (type == "disconnect")         context.eventDisconnect.append(event);
+    else if (type == "timer")              context.eventTimer.append(event);
 }
 
 QList<AxEvent> AxScriptEngine::getEvents(const QString &type)
@@ -88,9 +94,15 @@ QList<AxEvent> AxScriptEngine::getEvents(const QString &type)
     else if (type == "FileBroserList")     return context.eventFileBroserList;
     else if (type == "FileBroserUpload")   return context.eventFileBroserUpload;
     else if (type == "ProcessBrowserList") return context.eventProcessBrowserList;
+    else if (type == "new_agent")          return context.eventNewAgent;
+    else if (type == "ready")              return context.eventReady;
+    else if (type == "disconnect")         return context.eventDisconnect;
+    else if (type == "timer")              return context.eventTimer;
 
     return QList<AxEvent>();
 }
+
+
 
 void AxScriptEngine::removeEvent(const QString &id)
 {
@@ -100,6 +112,88 @@ void AxScriptEngine::removeEvent(const QString &id)
             i--;
         }
     }
+    for (int i=0; i< context.eventFileBroserList.size(); i++) {
+        if (id == context.eventFileBroserList[i].event_id) {
+            context.eventFileBroserList.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventFileBroserUpload.size(); i++) {
+        if (id == context.eventFileBroserUpload[i].event_id) {
+            context.eventFileBroserUpload.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventProcessBrowserList.size(); i++) {
+        if (id == context.eventProcessBrowserList[i].event_id) {
+            context.eventProcessBrowserList.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventNewAgent.size(); i++) {
+        if (id == context.eventNewAgent[i].event_id) {
+            context.eventNewAgent.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventReady.size(); i++) {
+        if (id == context.eventReady[i].event_id) {
+            context.eventReady.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventDisconnect.size(); i++) {
+        if (id == context.eventDisconnect[i].event_id) {
+            context.eventDisconnect.removeAt(i);
+            i--;
+        }
+    }
+    for (int i=0; i< context.eventTimer.size(); i++) {
+        if (id == context.eventTimer[i].event_id) {
+            auto event = context.eventTimer.takeAt(i);
+            event.timer->stop();
+            event.timer->deleteLater();
+            i--;
+        }
+    }
+}
+
+QStringList AxScriptEngine::listEvent()
+{
+    QStringList list;
+    for (int i=0; i< context.eventFileBroserDisks.size(); i++) {
+        if (context.eventFileBroserDisks[i].event_id != "")
+            list.append(context.eventFileBroserDisks[i].event_id);
+    }
+    for (int i=0; i< context.eventFileBroserList.size(); i++) {
+        if (context.eventFileBroserList[i].event_id != "")
+            list.append(context.eventFileBroserList[i].event_id);
+    }
+    for (int i=0; i< context.eventFileBroserUpload.size(); i++) {
+        if (context.eventFileBroserUpload[i].event_id != "")
+            list.append(context.eventFileBroserUpload[i].event_id);
+    }
+    for (int i=0; i< context.eventProcessBrowserList.size(); i++) {
+        if (context.eventProcessBrowserList[i].event_id != "")
+            list.append(context.eventProcessBrowserList[i].event_id);
+    }
+    for (int i=0; i< context.eventNewAgent.size(); i++) {
+        if (context.eventNewAgent[i].event_id != "")
+            list.append(context.eventNewAgent[i].event_id);
+    }
+    for (int i=0; i< context.eventReady.size(); i++) {
+        if (context.eventReady[i].event_id != "")
+            list.append(context.eventReady[i].event_id);
+    }
+    for (int i=0; i< context.eventDisconnect.size(); i++) {
+        if (context.eventDisconnect[i].event_id != "")
+            list.append(context.eventDisconnect[i].event_id);
+    }
+    for (int i=0; i< context.eventTimer.size(); i++) {
+        if (context.eventTimer[i].event_id != "")
+            list.append(context.eventTimer[i].event_id);
+    }
+    return list;
 }
 
 
@@ -109,8 +203,8 @@ void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu,
 {
     QSet<int> os;
     if (list_os.contains("windows")) os.insert(1);
-    if (list_os.contains("linux")) os.insert(2);
-    if (list_os.contains("macos")) os.insert(3);
+    if (list_os.contains("linux"))   os.insert(2);
+    if (list_os.contains("macos"))   os.insert(3);
 
     AxMenuItem item = {menu, list_agents,  list_listeners, os};
 
@@ -124,6 +218,10 @@ void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu,
     else if (type == "DownloadFinished") context.menuDownloadFinished.append(item);
     else if (type == "Tasks")            context.menuTasks.append(item);
     else if (type == "TasksJob")         context.menuTasksJob.append(item);
+    else if (type == "TargetsTop")       context.menuTargetsTop.append(item);
+    else if (type == "TargetsBottom")    context.menuTargetsBottom.append(item);
+    else if (type == "TargetsCenter")    context.menuTargetsCenter.append(item);
+    else if (type == "Creds")            context.menuCreds.append(item);
 }
 
 QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
@@ -138,6 +236,10 @@ QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
     else if (type == "DownloadFinished") return context.menuDownloadFinished;
     else if (type == "Tasks")            return context.menuTasks;
     else if (type == "TasksJob")         return context.menuTasksJob;
+    else if (type == "TargetsTop")       return context.menuTargetsTop;
+    else if (type == "TargetsBottom")    return context.menuTargetsBottom;
+    else if (type == "TargetsCenter")    return context.menuTargetsCenter;
+    else if (type == "Creds")            return context.menuCreds;
 
     return QList<AxMenuItem>();
 }
