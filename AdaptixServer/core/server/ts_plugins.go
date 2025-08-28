@@ -5,8 +5,8 @@ import (
 	isvalid "AdaptixServer/core/utils/valid"
 	"errors"
 	"fmt"
+
 	adaptix "github.com/Adaptix-Framework/axc2"
-	"strings"
 )
 
 func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
@@ -23,26 +23,23 @@ func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
 		return errors.New("invalid listener name (must only contain letters and numbers): " + listenerInfo.Type)
 	}
 
-	listenerFN := fmt.Sprintf("%v/%v/%v", listenerInfo.Type, listenerInfo.Protocol, listenerInfo.Name)
-
-	if ts.listener_configs.Contains(listenerFN) {
-		return fmt.Errorf("listener %v already exists", listenerFN)
+	if ts.listener_configs.Contains(listenerInfo.Name) {
+		return fmt.Errorf("listener %v already exists", listenerInfo.Name)
 	}
 
-	ts.listener_configs.Put(listenerFN, listenerInfo)
+	ts.listener_configs.Put(listenerInfo.Name, listenerInfo)
 
 	return nil
 }
 
-func (ts *Teamserver) TsListenerTypeByName(listenerName string) (string, error) {
+func (ts *Teamserver) TsListenerRegByName(listenerName string) (string, error) {
 
 	value, ok := ts.listeners.Get(listenerName)
 	if !ok {
 		return "", errors.New("listener not found: " + listenerName)
 	}
 
-	lName := strings.Split(value.(adaptix.ListenerData).Type, "/")[2]
-	return lName, nil
+	return value.(adaptix.ListenerData).RegName, nil
 }
 
 func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {

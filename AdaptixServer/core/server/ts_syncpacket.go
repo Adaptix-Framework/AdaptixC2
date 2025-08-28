@@ -1,8 +1,9 @@
 package server
 
 import (
-	"github.com/Adaptix-Framework/axc2"
 	"time"
+
+	"github.com/Adaptix-Framework/axc2"
 )
 
 const (
@@ -65,9 +66,15 @@ const (
 	TYPE_PIVOT_CREATE = 0x71
 	TYPE_PIVOT_DELETE = 0x72
 
-	TYPE_CREDS_CREATE = 0x81
-	TYPE_CREDS_EDIT   = 0x82
-	TYPE_CREDS_DELETE = 0x83
+	TYPE_CREDS_CREATE  = 0x81
+	TYPE_CREDS_EDIT    = 0x82
+	TYPE_CREDS_DELETE  = 0x83
+	TYPE_CREDS_SET_TAG = 0x84
+
+	TYPE_TARGETS_CREATE  = 0x87
+	TYPE_TARGETS_EDIT    = 0x88
+	TYPE_TARGETS_DELETE  = 0x89
+	TYPE_TARGETS_SET_TAG = 0x8a
 )
 
 func CreateSpEvent(event int, message string) SpEvent {
@@ -101,12 +108,14 @@ func CreateSpSyncFinish() SyncPackerFinish {
 
 /// LISTENER
 
-func CreateSpListenerReg(fn string, ax string) SyncPackerListenerReg {
+func CreateSpListenerReg(name string, protocol string, l_type string, ax string) SyncPackerListenerReg {
 	return SyncPackerListenerReg{
 		SpType: TYPE_LISTENER_REG,
 
-		ListenerFN: fn,
-		ListenerAX: ax,
+		Name:     name,
+		Protocol: protocol,
+		Type:     l_type,
+		AX:       ax,
 	}
 }
 
@@ -114,13 +123,15 @@ func CreateSpListenerStart(listenerData adaptix.ListenerData) SyncPackerListener
 	return SyncPackerListenerStart{
 		SpType: TYPE_LISTENER_START,
 
-		ListenerName:   listenerData.Name,
-		ListenerType:   listenerData.Type,
-		BindHost:       listenerData.BindHost,
-		BindPort:       listenerData.BindPort,
-		AgentAddrs:     listenerData.AgentAddr,
-		ListenerStatus: listenerData.Status,
-		Data:           listenerData.Data,
+		ListenerName:     listenerData.Name,
+		ListenerRegName:  listenerData.RegName,
+		ListenerProtocol: listenerData.Protocol,
+		ListenerType:     listenerData.Type,
+		BindHost:         listenerData.BindHost,
+		BindPort:         listenerData.BindPort,
+		AgentAddrs:       listenerData.AgentAddr,
+		ListenerStatus:   listenerData.Status,
+		Data:             listenerData.Data,
 	}
 }
 
@@ -412,22 +423,30 @@ func CreateSpScreenshotDelete(screenId string) SyncPackerScreenshotDelete {
 	}
 }
 
-/// SCREEN
+/// CREDS
 
-func CreateSpCredentialsAdd(credsData adaptix.CredsData) SyncPackerCredentialsAdd {
+func CreateSpCredentialsAdd(creds []*adaptix.CredsData) SyncPackerCredentialsAdd {
+	var syncCreds []SyncPackerCredentials
+
+	for _, credsData := range creds {
+		t := SyncPackerCredentials{
+			CredId:   credsData.CredId,
+			Username: credsData.Username,
+			Password: credsData.Password,
+			Realm:    credsData.Realm,
+			Type:     credsData.Type,
+			Tag:      credsData.Tag,
+			Date:     credsData.Date,
+			Storage:  credsData.Storage,
+			AgentId:  credsData.AgentId,
+			Host:     credsData.Host,
+		}
+		syncCreds = append(syncCreds, t)
+	}
+
 	return SyncPackerCredentialsAdd{
 		SpType: TYPE_CREDS_CREATE,
-
-		CredId:   credsData.CredId,
-		Username: credsData.Username,
-		Password: credsData.Password,
-		Realm:    credsData.Realm,
-		Type:     credsData.Type,
-		Tag:      credsData.Tag,
-		Date:     credsData.Date,
-		Storage:  credsData.Storage,
-		AgentId:  credsData.AgentId,
-		Host:     credsData.Host,
+		Creds:  syncCreds,
 	}
 }
 
@@ -446,11 +465,83 @@ func CreateSpCredentialsUpdate(credsData adaptix.CredsData) SyncPackerCredential
 	}
 }
 
-func CreateSpCredentialsDelete(credsId string) SyncPackerCredentialsDelete {
+func CreateSpCredentialsDelete(credsId []string) SyncPackerCredentialsDelete {
 	return SyncPackerCredentialsDelete{
 		SpType: TYPE_CREDS_DELETE,
 
-		CredId: credsId,
+		CredsId: credsId,
+	}
+}
+
+func CreateSpCredentialsSetTag(credsId []string, tag string) SyncPackerCredentialsTag {
+	return SyncPackerCredentialsTag{
+		SpType: TYPE_CREDS_SET_TAG,
+
+		CredsId: credsId,
+		Tag:     tag,
+	}
+}
+
+/// TARGETS
+
+func CreateSpTargetsAdd(targetsData []*adaptix.TargetData) SyncPackerTargetsAdd {
+	var syncTargets []SyncPackerTarget
+
+	for _, targetData := range targetsData {
+		t := SyncPackerTarget{
+			TargetId: targetData.TargetId,
+			Computer: targetData.Computer,
+			Domain:   targetData.Domain,
+			Address:  targetData.Address,
+			Os:       targetData.Os,
+			OsDesk:   targetData.OsDesk,
+			Tag:      targetData.Tag,
+			Info:     targetData.Info,
+			Date:     targetData.Date,
+			Alive:    targetData.Alive,
+			Owned:    targetData.Owned,
+		}
+		syncTargets = append(syncTargets, t)
+	}
+
+	return SyncPackerTargetsAdd{
+		SpType:  TYPE_TARGETS_CREATE,
+		Targets: syncTargets,
+	}
+}
+
+func CreateSpTargetUpdate(targetData adaptix.TargetData) SyncPackerTargetUpdate {
+	return SyncPackerTargetUpdate{
+		SpType: TYPE_TARGETS_EDIT,
+
+		TargetId: targetData.TargetId,
+		Computer: targetData.Computer,
+		Domain:   targetData.Domain,
+		Address:  targetData.Address,
+		Os:       targetData.Os,
+		OsDesk:   targetData.OsDesk,
+		Tag:      targetData.Tag,
+		Info:     targetData.Info,
+		Date:     targetData.Date,
+		Alive:    targetData.Alive,
+		Owned:    targetData.Owned,
+	}
+}
+
+func CreateSpTargetDelete(targetsId []string) SyncPackerTargetDelete {
+	return SyncPackerTargetDelete{
+		SpType: TYPE_TARGETS_DELETE,
+
+		TargetsId: targetsId,
+	}
+}
+
+func CreateSpTargetSetTag(targetsId []string, tag string) SyncPackerTargetTag {
+	return SyncPackerTargetTag{
+		SpType: TYPE_TARGETS_SET_TAG,
+
+		TargetsId: targetsId,
+		Tag:       tag,
 	}
 }
 

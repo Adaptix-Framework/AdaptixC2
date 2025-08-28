@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
 	"math/rand"
 	"net"
 	"os"
@@ -16,21 +15,25 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Adaptix-Framework/axc2"
 )
 
 type GenerateConfig struct {
-	Os            string `json:"os"`
-	Arch          string `json:"arch"`
-	Format        string `json:"format"`
-	Sleep         string `json:"sleep"`
-	Jitter        int    `json:"jitter"`
-	SvcName       string `json:"svcname"`
-	IsKillDate    bool   `json:"is_killdate"`
-	Killdate      string `json:"kill_date"`
-	Killtime      string `json:"kill_time"`
-	IsWorkingTime bool   `json:"is_workingtime"`
-	StartTime     string `json:"start_time"`
-	EndTime       string `json:"end_time"`
+	Os                 string `json:"os"`
+	Arch               string `json:"arch"`
+	Format             string `json:"format"`
+	Sleep              string `json:"sleep"`
+	Jitter             int    `json:"jitter"`
+	SvcName            string `json:"svcname"`
+	IsKillDate         bool   `json:"is_killdate"`
+	Killdate           string `json:"kill_date"`
+	Killtime           string `json:"kill_time"`
+	IsWorkingTime      bool   `json:"is_workingtime"`
+	StartTime          string `json:"start_time"`
+	EndTime            string `json:"end_time"`
+	IsSideloading      bool   `json:"is_sideloading"`
+	SideloadingContent string `json:"sideloading_content"`
 }
 
 var (
@@ -290,6 +293,17 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 		lFlags += " -shared"
 		buildPath = tempDir + "/file.dll"
 		Filename += ".dll"
+		if generateConfig.IsSideloading {
+			sideloadingContent, err := base64.StdEncoding.DecodeString(generateConfig.SideloadingContent)
+			if err != nil {
+				return nil, "", errors.New("unknown sideloading DLL format")
+			}
+			defPath, err := CreateDefinitionFile(sideloadingContent, tempDir)
+			if err != nil {
+				return nil, "", err
+			}
+			lFlags += " " + defPath
+		}
 	} else if generateConfig.Format == "Shellcode" {
 		Files += ObjectDir + "/main_shellcode" + Ext
 		lFlags += " -shared"

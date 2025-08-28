@@ -23,7 +23,7 @@
     "headers": {
       "Content-Type": "text/html; charset=UTF-8",
       "Server": "AdaptixC2",
-      "Adaptix Version": "v0.7"
+      "Adaptix Version": "v0.8"
     },
     "page": "404page.html"
   },
@@ -33,6 +33,8 @@
       "token": "",
       "chats_id": []
     },
-    "new_agent_message": "New agent: %type% (%id%)\n\n%user% @ %computer% (%internalip%)\nelevated: %elevated%\nfrom: %externalip%\ndomain: %domain%"
+    "new_agent_message": "New agent: %type% (%id%)\n\n%user% @ %computer% (%internalip%)\nelevated: %elevated%\nfrom: %externalip%\ndomain: %domain%",
+    "new_cred_message": "New secret [%type%]:\n\n%username% : %password% (%domain%)\n\nStorage: %storage%\nHost: %host%",
+    "new_download_message":"File saved: %path% [%size%] from %computer% (%user%)"
   }
 }

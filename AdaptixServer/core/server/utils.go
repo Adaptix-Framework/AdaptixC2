@@ -6,11 +6,12 @@ import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
-	"github.com/Adaptix-Framework/axc2"
-	"github.com/gorilla/websocket"
 	"io"
 	"net"
 	"sync"
+
+	"github.com/Adaptix-Framework/axc2"
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -75,6 +76,7 @@ type Teamserver struct {
 	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
 	credentials *safe.Slice
+	targets     *safe.Slice
 	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
 	terminals   safe.Map    // terminalId string   : terminal Terminal
 	pivots      *safe.Slice // 			           : PivotData
@@ -88,10 +90,9 @@ type Agent struct {
 
 	OutConsole *safe.Slice //  sync_packet interface{}
 
-	TunnelConnectTasks *safe.Slice // taskData TaskData
-	TunnelQueue        *safe.Slice // taskData TaskDataTunnel
-	TerminalQueue      *safe.Slice // taskData TaskDataTunnel
-	TasksQueue         *safe.Slice // taskData TaskData
+	HostedTasks       *safe.Queue // taskData TaskData
+	HostedTunnelTasks *safe.Queue // taskData TaskData
+	HostedTunnelData  *safe.Queue // taskData TaskDataTunnel
 
 	RunningTasks   safe.Map // taskId string, taskData TaskData
 	RunningJobs    safe.Map // taskId string, list []TaskData
@@ -186,20 +187,24 @@ type SpEvent struct {
 type SyncPackerListenerReg struct {
 	SpType int `json:"type"`
 
-	ListenerFN string `json:"fn"`
-	ListenerAX string `json:"ax"`
+	Name     string `json:"l_name"`
+	Protocol string `json:"l_protocol"`
+	Type     string `json:"l_type"`
+	AX       string `json:"ax"`
 }
 
 type SyncPackerListenerStart struct {
 	SpType int `json:"type"`
 
-	ListenerName   string `json:"l_name"`
-	ListenerType   string `json:"l_type"`
-	BindHost       string `json:"l_bind_host"`
-	BindPort       string `json:"l_bind_port"`
-	AgentAddrs     string `json:"l_agent_addr"`
-	ListenerStatus string `json:"l_status"`
-	Data           string `json:"l_data"`
+	ListenerName     string `json:"l_name"`
+	ListenerRegName  string `json:"l_reg_name"`
+	ListenerProtocol string `json:"l_protocol"`
+	ListenerType     string `json:"l_type"`
+	BindHost         string `json:"l_bind_host"`
+	BindPort         string `json:"l_bind_port"`
+	AgentAddrs       string `json:"l_agent_addr"`
+	ListenerStatus   string `json:"l_status"`
+	Data             string `json:"l_data"`
 }
 
 type SyncPackerListenerStop struct {
@@ -442,9 +447,7 @@ type SyncPackerScreenshotDelete struct {
 
 /// CREDS
 
-type SyncPackerCredentialsAdd struct {
-	SpType int `json:"type"`
-
+type SyncPackerCredentials struct {
 	CredId   string `json:"c_creds_id"`
 	Username string `json:"c_username"`
 	Password string `json:"c_password"`
@@ -455,6 +458,12 @@ type SyncPackerCredentialsAdd struct {
 	Storage  string `json:"c_storage"`
 	AgentId  string `json:"c_agent_id"`
 	Host     string `json:"c_host"`
+}
+
+type SyncPackerCredentialsAdd struct {
+	SpType int `json:"type"`
+
+	Creds []SyncPackerCredentials `json:"c_creds"`
 }
 
 type SyncPackerCredentialsUpdate struct {
@@ -473,7 +482,65 @@ type SyncPackerCredentialsUpdate struct {
 type SyncPackerCredentialsDelete struct {
 	SpType int `json:"type"`
 
-	CredId string `json:"c_creds_id"`
+	CredsId []string `json:"c_creds_id"`
+}
+
+type SyncPackerCredentialsTag struct {
+	SpType int `json:"type"`
+
+	CredsId []string `json:"c_creds_id"`
+	Tag     string   `json:"c_tag"`
+}
+
+/// TARGETS
+
+type SyncPackerTarget struct {
+	TargetId string `json:"t_target_id"`
+	Computer string `json:"t_computer"`
+	Domain   string `json:"t_domain"`
+	Address  string `json:"t_address"`
+	Os       int    `json:"t_os"`
+	OsDesk   string `json:"t_os_desk"`
+	Tag      string `json:"t_tag"`
+	Info     string `json:"t_info"`
+	Date     int64  `json:"t_date"`
+	Alive    bool   `json:"t_alive"`
+	Owned    bool   `json:"t_owned"`
+}
+
+type SyncPackerTargetsAdd struct {
+	SpType int `json:"type"`
+
+	Targets []SyncPackerTarget `json:"t_targets"`
+}
+
+type SyncPackerTargetUpdate struct {
+	SpType int `json:"type"`
+
+	TargetId string `json:"t_target_id"`
+	Computer string `json:"t_computer"`
+	Domain   string `json:"t_domain"`
+	Address  string `json:"t_address"`
+	Os       int    `json:"t_os"`
+	OsDesk   string `json:"t_os_desk"`
+	Tag      string `json:"t_tag"`
+	Info     string `json:"t_info"`
+	Date     int64  `json:"t_date"`
+	Alive    bool   `json:"t_alive"`
+	Owned    bool   `json:"t_owned"`
+}
+
+type SyncPackerTargetDelete struct {
+	SpType int `json:"type"`
+
+	TargetsId []string `json:"t_target_id"`
+}
+
+type SyncPackerTargetTag struct {
+	SpType int `json:"type"`
+
+	TargetsId []string `json:"t_targets_id"`
+	Tag       string   `json:"t_tag"`
 }
 
 /// BROWSER

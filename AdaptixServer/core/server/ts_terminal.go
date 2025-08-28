@@ -4,11 +4,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"io"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
 func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error {

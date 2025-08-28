@@ -23,7 +23,17 @@ public slots:
     void on_filebrowser_list(const QJSValue &handler, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue(), const QString &event_id = "");
     void on_filebrowser_upload(const QJSValue &handler, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue(), const QString &event_id = "");
     void on_processbrowser_list(const QJSValue &handler, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue(), const QString &event_id = "");
-    void remove(const QString &event_id);
+
+    void on_new_agent(const QJSValue &handler, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue(), const QString &event_id = "");
+
+    void on_disconnect(const QJSValue &handler, const QString &event_id = "");
+    void on_ready(const QJSValue &handler, const QString &event_id = "");
+
+    QString on_interval(const QJSValue &handler, int delay, QString event_id = "");
+    QString on_timeout(const QJSValue &handler, int delay, QString event_id = "");
+
+    QJSValue list();
+    void     remove(const QString &event_id);
 
 signals:
     void scriptError(const QString &msg);

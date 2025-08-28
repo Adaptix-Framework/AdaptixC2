@@ -7,10 +7,11 @@ import (
 	"AdaptixServer/core/utils/token"
 	"errors"
 	"fmt"
+	"os"
+
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"os"
 )
 
 type Teamserver interface {
@@ -29,9 +30,9 @@ type Teamserver interface {
 	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
 	TsAgentIsExists(agentId string) bool
-	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) error
+	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
 	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentGetHostedTasksAll(agentId string, maxDataSize int) ([]byte, error)
+	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error
 	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
@@ -43,6 +44,7 @@ type Teamserver interface {
 	TsAgentSetMark(agentId string, makr string) error
 	TsAgentSetColor(agentId string, background string, foreground string, reset bool) error
 	TsAgentSetImpersonate(agentId string, impersonated string, elevated bool) error
+	TsAgentSetTick(agentId string) error
 	TsAgentTickUpdate()
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
@@ -67,9 +69,15 @@ type Teamserver interface {
 	TsScreenshotDelete(screenId string) error
 	TsScreenshotNote(screenId string, note string) error
 
-	TsCredentilsAdd(username string, password string, realm string, credType string, tag string, storage string, agentId string, host string) error
+	TsCredentilsAdd(creds []map[string]interface{}) error
 	TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error
-	TsCredentilsDelete(credId string) error
+	TsCredentilsDelete(credsId []string) error
+	TsCredentialsSetTag(credsId []string, tag string) error
+
+	TsTargetsAdd(targets []map[string]interface{}) error
+	TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error
+	TsTargetDelete(targetsId []string) error
+	TsTargetSetTag(targetsId []string, tag string) error
 
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
 	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
@@ -185,6 +193,12 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/creds/add", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsAdd)
 	connector.Engine.POST(tsProfile.Endpoint+"/creds/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsEdit)
 	connector.Engine.POST(tsProfile.Endpoint+"/creds/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsRemove)
+	connector.Engine.POST(tsProfile.Endpoint+"/creds/set/tag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsSetTag)
+
+	connector.Engine.POST(tsProfile.Endpoint+"/targets/add", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetsAdd)
+	connector.Engine.POST(tsProfile.Endpoint+"/targets/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetEdit)
+	connector.Engine.POST(tsProfile.Endpoint+"/targets/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetRemove)
+	connector.Engine.POST(tsProfile.Endpoint+"/targets/set/tag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetSetTag)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks5", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks5)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks4", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks4)

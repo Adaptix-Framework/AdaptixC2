@@ -201,7 +201,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		ExternalIP := strings.Split(conn.RemoteAddr().String(), ":")[0]
 
 		if !ModuleObject.ts.TsAgentIsExists(agentId) {
-			err = ModuleObject.ts.TsAgentCreate(agentType, agentId, initPack.Data, handler.Name, ExternalIP, false)
+			_, err = ModuleObject.ts.TsAgentCreate(agentType, agentId, initPack.Data, handler.Name, ExternalIP, false)
 			if err != nil {
 				goto ERR
 			}
@@ -212,7 +212,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		handler.AgentConnects.Put(agentId, connection)
 
 		for {
-			sendData, err = ModuleObject.ts.TsAgentGetHostedTasksOnly(agentId, 0x1900000)
+			sendData, err = ModuleObject.ts.TsAgentGetHostedTasks(agentId, 0x1900000)
 			if err != nil {
 				break
 			}
@@ -227,6 +227,8 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 				if err != nil {
 					break
 				}
+
+				_ = ModuleObject.ts.TsAgentSetTick(agentId)
 
 				_ = ModuleObject.ts.TsAgentProcessData(agentId, recvData)
 			} else {

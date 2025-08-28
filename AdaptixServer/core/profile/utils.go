@@ -30,5 +30,7 @@ type TsCallback struct {
 		Token   string   `json:"token"`
 		ChatsId []string `json:"chats_id"`
 	} `json:"Telegram"`
-	NewAgentMessage string `json:"new_agent_message"`
+	NewAgentMessage    string `json:"new_agent_message"`
+	NewCredMessage     string `json:"new_cred_message"`
+	NewDownloadMessage string `json:"new_download_message"`
 }

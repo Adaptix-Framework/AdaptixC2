@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	"github.com/Adaptix-Framework/axc2"
 )
 
@@ -38,8 +39,8 @@ func (dbms *DBMS) DbListenerInsert(listenerData adaptix.ListenerData, customData
 		return fmt.Errorf("listener %s alredy exists", listenerData.Name)
 	}
 
-	insertQuery := `INSERT INTO Listeners (ListenerName, ListenerType, ListenerConfig, Watermark, CustomData) values(?,?,?,?,?);`
-	_, err := dbms.database.Exec(insertQuery, listenerData.Name, listenerData.Type, listenerData.Data, listenerData.Watermark, customData)
+	insertQuery := `INSERT INTO Listeners (ListenerName, ListenerRegName, ListenerConfig, Watermark, CustomData) values(?,?,?,?,?);`
+	_, err := dbms.database.Exec(insertQuery, listenerData.Name, listenerData.RegName, listenerData.Data, listenerData.Watermark, customData)
 
 	return err
 }
@@ -79,11 +80,11 @@ func (dbms *DBMS) DbListenerUpdate(listenerName string, listenerConfig string, c
 }
 
 type ListenerRow struct {
-	ListenerName   string
-	ListenerType   string
-	ListenerConfig string
-	Watermark      string
-	CustomData     []byte
+	ListenerName    string
+	ListenerRegName string
+	ListenerConfig  string
+	Watermark       string
+	CustomData      []byte
 }
 
 func (dbms *DBMS) DbListenerAll() []ListenerRow {
@@ -91,13 +92,13 @@ func (dbms *DBMS) DbListenerAll() []ListenerRow {
 
 	ok := dbms.DatabaseExists()
 	if ok {
-		selectQuery := `SELECT ListenerName, ListenerType, ListenerConfig, Watermark, CustomData FROM Listeners;`
+		selectQuery := `SELECT ListenerName, ListenerRegName, ListenerConfig, Watermark, CustomData FROM Listeners;`
 		query, err := dbms.database.Query(selectQuery)
 		if err == nil {
 
 			for query.Next() {
 				listenerRow := ListenerRow{}
-				err = query.Scan(&listenerRow.ListenerName, &listenerRow.ListenerType, &listenerRow.ListenerConfig, &listenerRow.Watermark, &listenerRow.CustomData)
+				err = query.Scan(&listenerRow.ListenerName, &listenerRow.ListenerRegName, &listenerRow.ListenerConfig, &listenerRow.Watermark, &listenerRow.CustomData)
 				if err != nil {
 					continue
 				}

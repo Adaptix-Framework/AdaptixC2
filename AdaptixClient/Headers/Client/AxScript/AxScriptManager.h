@@ -54,11 +54,15 @@ public:
     void ResetMain();
     void Clear();
 
-    QJSEngine*              GetEngine(const QString &name);
-    AdaptixWidget*          GetAdaptix() const;
-    QMap<QString, Agent*>   GetAgents() const;
-    QVector<CredentialData> GetCredentials() const;
-    QStringList             GetInterfaces() const;
+    QJSEngine*                  GetEngine(const QString &name);
+    AdaptixWidget*              GetAdaptix() const;
+    QMap<QString, Agent*>       GetAgents() const;
+    QVector<CredentialData>     GetCredentials() const;
+    QMap<QString, DownloadData> GetDownloads() const;
+    QMap<QString, ScreenData>   GetScreenshots() const;
+    QVector<TargetData>         GetTargets() const;
+    QVector<TunnelData>         GetTunnels() const;
+    QStringList                 GetInterfaces() const;
 
     QStringList ListenerScriptList();
     void        ListenerScriptAdd(const QString &name, const QString &ax_script);
@@ -76,8 +80,9 @@ public:
     void GlobalScriptLoad(const QString &path);
     void GlobalScriptUnload(const QString &path);
 
-    void RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
-    void RemoveEvent(const QString &event_id);
+    void        RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
+    void        EventRemove(const QString &event_id);
+    QStringList EventList();
     QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType);
     QList<AxEvent>    FilterEvents(const QString &agentId, const QString &eventType);
 
@@ -91,15 +96,20 @@ public:
     int AddMenuProcessBrowser(QMenu* menu, QVector<DataMenuProcessBrowser> processes);
     int AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files);
     int AddMenuTask(QMenu* menu, const QString &menuType, const QStringList &tasks);
+    int AddMenuTargets(QMenu* menu, const QString &menuType, const QStringList &targets);
+    int AddMenuCreds(QMenu* menu, const QString &menuType, const QStringList &creds);
 
 public slots:
     void consolePrintMessage(const QString &message);
     void consolePrintError(const QString &message);
 
+    void emitNewAgent(const QString &agentId);
     void emitFileBrowserDisks(const QString &agentId);
     void emitFileBrowserList(const QString &agentId, const QString &path);
     void emitFileBrowserUpload(const QString &agentId, const QString &path, const QString &localFilename);
     void emitProcessBrowserList(const QString &agentId);
+    void emitReadyClient();
+    void emitDisconnectClient();
 };
 
 #endif

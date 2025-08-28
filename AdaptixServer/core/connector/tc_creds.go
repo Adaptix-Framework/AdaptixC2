@@ -1,8 +1,9 @@
 package connector
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type CredsAdd struct {
@@ -16,14 +17,25 @@ type CredsAdd struct {
 }
 
 func (tc *TsConnector) TcCredentialsAdd(ctx *gin.Context) {
-	var credsAdd CredsAdd
-	err := ctx.ShouldBindJSON(&credsAdd)
-	if err != nil {
+	var m map[string]interface{}
+	var creds []map[string]interface{}
+
+	if err := ctx.ShouldBindJSON(&m); err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
+	arr, ok := m["creds"].([]interface{})
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON structure", "ok": false})
+		return
+	}
+	for _, v := range arr {
+		if obj, ok := v.(map[string]interface{}); ok {
+			creds = append(creds, obj)
+		}
+	}
 
-	err = tc.teamserver.TsCredentilsAdd(credsAdd.Username, credsAdd.Password, credsAdd.Realm, credsAdd.Type, credsAdd.Tag, credsAdd.Storage, "", credsAdd.Host)
+	err := tc.teamserver.TsCredentilsAdd(creds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -60,8 +72,30 @@ func (tc *TsConnector) TcCredentialsEdit(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }
 
+type CredsTag struct {
+	CredIdArray []string `json:"id_array"`
+	Tag         string   `json:"tag"`
+}
+
+func (tc *TsConnector) TcCredentialsSetTag(ctx *gin.Context) {
+	var (
+		credsTag CredsTag
+		err      error
+	)
+
+	err = ctx.ShouldBindJSON(&credsTag)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
+		return
+	}
+
+	err = tc.teamserver.TsCredentialsSetTag(credsTag.CredIdArray, credsTag.Tag)
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}
+
 type CredsRemove struct {
-	CredId string `json:"cred_id"`
+	CredsId []string `json:"cred_id_array"`
 }
 
 func (tc *TsConnector) TcCredentialsRemove(ctx *gin.Context) {
@@ -72,7 +106,7 @@ func (tc *TsConnector) TcCredentialsRemove(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsCredentilsDelete(credsRemove.CredId)
+	err = tc.teamserver.TsCredentilsDelete(credsRemove.CredsId)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

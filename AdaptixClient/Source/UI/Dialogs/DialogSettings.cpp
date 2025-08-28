@@ -87,6 +87,7 @@ void DialogSettings::createUI()
     themeCombo->addItem("Light_Arc");
     themeCombo->addItem("Dark");
     themeCombo->addItem("Dracula");
+    themeCombo->addItem("Fallout");
 
     fontSizeLabel = new QLabel("Font size: ", mainSettingWidget);
     fontSizeSpin  = new QSpinBox(mainSettingWidget);
@@ -97,6 +98,7 @@ void DialogSettings::createUI()
     fontFamilyCombo = new QComboBox(mainSettingWidget);
     fontFamilyCombo->addItem("Adaptix - DejaVu Sans Mono");
     fontFamilyCombo->addItem("Adaptix - Droid Sans Mono");
+    fontFamilyCombo->addItem("Adaptix - VT323");
     fontFamilyCombo->addItem("Adaptix - Hack");
     fontFamilyCombo->addItem("Adaptix - Anonymous Pro");
     fontFamilyCombo->addItem("Adaptix - Space Mono");

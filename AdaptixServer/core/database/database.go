@@ -2,6 +2,7 @@ package database
 
 import (
 	"database/sql"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -39,7 +40,7 @@ func (dbms *DBMS) DatabaseInit() error {
 
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Listeners" (
     	"ListenerName" TEXT NOT NULL UNIQUE, 
-    	"ListenerType" TEXT NOT NULL,
+    	"ListenerRegName" TEXT NOT NULL,
     	"ListenerConfig" TEXT NOT NULL,
     	"Watermark" TEXT NOT NULL,
     	"CustomData" BLOB
@@ -151,6 +152,22 @@ func (dbms *DBMS) DatabaseInit() error {
     	"Storage" TEXT,
 		"AgentId" TEXT,
 		"Host" TEXT
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Targets" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"TargetId" TEXT NOT NULL,
+    	"Computer" TEXT,
+    	"Domain" TEXT,
+    	"Address" TEXT,
+    	"Os" INTEGER,
+    	"OsDesk" TEXT,
+    	"Tag" TEXT,
+    	"Info" TEXT,
+    	"Date" BIGINT,
+		"Alive" BOOLEAN,
+		"Owned" BOOLEAN
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 

@@ -2,8 +2,9 @@ package connector
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 type TunnelStartSocks5Action struct {

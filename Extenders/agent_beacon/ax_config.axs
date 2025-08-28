@@ -315,6 +315,11 @@ function GenerateUI(listenerType)
     let textSvcName = form.create_textline("AgentService");
     textSvcName.setVisible(false);
 
+    let checkSideloading = form.create_check("Legit-DLL:");
+    checkSideloading.setVisible(false);
+    let sideloadingSelector = form.create_selector_file();
+    sideloadingSelector.setVisible(false);
+
     let layout = form.create_gridlayout();
     layout.addWidget(labelArch, 0, 0, 1, 1);
     layout.addWidget(comboArch, 0, 1, 1, 2);
@@ -331,15 +336,23 @@ function GenerateUI(listenerType)
     layout.addWidget(timeFinish, 4, 2, 1, 1);
     layout.addWidget(labelSvcName, 5, 0, 1, 1);
     layout.addWidget(textSvcName, 5, 1, 1, 2);
+    layout.addWidget(checkSideloading, 6, 0, 1, 1);
+    layout.addWidget(sideloadingSelector, 6, 1, 1, 2);
 
     form.connect(comboFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
             labelSvcName.setVisible(true)
             textSvcName.setVisible(true);
-        }
-        else {
+        } else {
             labelSvcName.setVisible(false)
             textSvcName.setVisible(false);
+        }
+        if(text == "DLL") {
+            checkSideloading.setVisible(true);
+            sideloadingSelector.setVisible(true);
+        } else {
+            checkSideloading.setVisible(false)
+            sideloadingSelector.setVisible(false);
         }
     });
 
@@ -355,6 +368,8 @@ function GenerateUI(listenerType)
     container.put("start_time", timeStart)
     container.put("end_time", timeFinish)
     container.put("svcname", textSvcName)
+    container.put("is_sideloading",checkSideloading)
+    container.put("sideloading_content",sideloadingSelector)
 
     let panel = form.create_panel()
     panel.setLayout(layout)

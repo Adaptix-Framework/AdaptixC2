@@ -34,6 +34,22 @@ inline const QMap<QString, QString> FIELD_MAP_CREDS = {
     {"host",     "Host"}
 };
 
+inline const QMap<QString, QString> FIELD_MAP_AGENTS = {
+    {"id",          "Agent ID"},
+    {"type",        "Type"},
+    {"listener",    "Listener"},
+    {"external_ip", "External"},
+    {"internal_ip", "Internal"},
+    {"domain",      "Domain"},
+    {"computer",    "Computer"},
+    {"username",    "Username"},
+    {"process",     "Process"},
+    {"pid",         "PID"},
+    {"tid",         "TID"},
+    {"os",          "OS"},
+    {"tags",        "Tags"},
+};
+
 /// ABSTRACT
 
 class AbstractAxLayout {
@@ -61,6 +77,7 @@ public:
 
 class AbstractAxSelector {
 public:
+    // virtual ~AbstractAxElement() = default;
     virtual QJSValue selected_data() const = 0;
 };
 
@@ -787,6 +804,54 @@ Q_OBJECT
 
 public:
     explicit AxSelectorCreds(const QJSValue &headers, QTableWidget* tableWidget, QPushButton* button, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+
+    Q_INVOKABLE void     setSize(int w, int h) const;
+    Q_INVOKABLE QJSValue exec() const;
+    Q_INVOKABLE void     close() const;
+};
+
+
+
+/// SELECTOR CREDENTIALS
+
+class AxDialogAgents : public QDialog {
+Q_OBJECT
+    QVBoxLayout*  mainLayout   = nullptr;
+    QTableWidget* tableWidget  = nullptr;
+    QHBoxLayout*  bottomLayout = nullptr;
+    QPushButton*  chooseButton = nullptr;
+    QSpacerItem*  spacer_1     = nullptr;
+    QSpacerItem*  spacer_2     = nullptr;
+
+    QWidget*        searchWidget   = nullptr;
+    QHBoxLayout*    searchLayout   = nullptr;
+    QLineEdit*      searchLineEdit = nullptr;
+    ClickableLabel* hideButton     = nullptr;
+
+    QVector<QString> table_headers;
+    QVector<QMap<QString, QString> > agentsList;
+    QMap<QString, AgentData>    allData;
+    QVector<AgentData> selectedData;
+
+public:
+    explicit AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QTableWidget* tableWidget, QPushButton* button, QWidget* parent = nullptr);
+
+    QVector<AgentData> data();
+
+public slots:
+    void onClicked();
+    void handleSearch();
+    void clearSearch();
+};
+
+class AxSelectorAgents : public QObject {
+Q_OBJECT
+    AxDialogAgents*  dialog;
+    AxScriptEngine* scriptEngine;
+    QMap<QString, AgentData> agents;
+
+public:
+    explicit AxSelectorAgents(const QJSValue &headers, QTableWidget* tableWidget, QPushButton* button, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
 
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;

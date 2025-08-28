@@ -38,6 +38,7 @@ func NewTeamserver() *Teamserver {
 		tmp_uploads: safe.NewMap(),
 		screenshots: safe.NewMap(),
 		credentials: safe.NewSlice(),
+		targets:     safe.NewSlice(),
 		tunnels:     safe.NewMap(),
 		terminals:   safe.NewMap(),
 		pivots:      safe.NewSlice(),
@@ -105,18 +106,18 @@ func (ts *Teamserver) RestoreData() {
 	for _, agentData := range restoreAgents {
 
 		agent := &Agent{
-			Data:               agentData,
-			OutConsole:         safe.NewSlice(),
-			TunnelQueue:        safe.NewSlice(),
-			TasksQueue:         safe.NewSlice(),
-			TunnelConnectTasks: safe.NewSlice(),
-			RunningTasks:       safe.NewMap(),
-			RunningJobs:        safe.NewMap(),
-			CompletedTasks:     safe.NewMap(),
-			PivotParent:        nil,
-			PivotChilds:        safe.NewSlice(),
-			Tick:               false,
-			Active:             true,
+			Data:              agentData,
+			OutConsole:        safe.NewSlice(),
+			HostedTunnelData:  safe.NewSafeQueue(0x1000),
+			HostedTasks:       safe.NewSafeQueue(0x100),
+			HostedTunnelTasks: safe.NewSafeQueue(0x100),
+			RunningTasks:      safe.NewMap(),
+			RunningJobs:       safe.NewMap(),
+			CompletedTasks:    safe.NewMap(),
+			PivotParent:       nil,
+			PivotChilds:       safe.NewSlice(),
+			Tick:              false,
+			Active:            true,
 		}
 
 		if agent.Data.Mark == "Terminated" {
@@ -213,19 +214,28 @@ func (ts *Teamserver) RestoreData() {
 	for _, restoreCredential := range restoreCredentials {
 
 		ts.credentials.Put(restoreCredential)
-
-		packet := CreateSpCredentialsAdd(*restoreCredential)
-		ts.TsSyncAllClients(packet)
-
 		countCredentials++
 	}
+	packetCreds := CreateSpCredentialsAdd(restoreCredentials)
+	ts.TsSyncAllClients(packetCreds)
 	logs.Success("   ", "Restored %v credentials", countCredentials)
+
+	/// TARGETS
+	countTargets := 0
+	restoreTargets := ts.DBMS.DbTargetsAll()
+	for _, restoreTarget := range restoreTargets {
+		ts.targets.Put(restoreTarget)
+		countTargets++
+	}
+	packetTargets := CreateSpTargetsAdd(restoreTargets)
+	ts.TsSyncAllClients(packetTargets)
+	logs.Success("   ", "Restored %v targets", countTargets)
 
 	/// LISTENERS
 	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
-		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerType, restoreListener.ListenerConfig, restoreListener.Watermark, restoreListener.CustomData)
+		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.Watermark, restoreListener.CustomData)
 		if err != nil {
 			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {

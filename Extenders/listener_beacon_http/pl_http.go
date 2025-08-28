@@ -12,7 +12,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"io"
 	"math/big"
 	"net/http"
@@ -20,6 +19,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type HTTPConfig struct {
@@ -217,15 +218,17 @@ func (handler *HTTP) processRequest(ctx *gin.Context) {
 	}
 
 	if !ModuleObject.ts.TsAgentIsExists(agentId) {
-		err = ModuleObject.ts.TsAgentCreate(agentType, agentId, beat, handler.Name, ExternalIP, true)
+		_, err = ModuleObject.ts.TsAgentCreate(agentType, agentId, beat, handler.Name, ExternalIP, true)
 		if err != nil {
 			goto ERR
 		}
 	}
 
+	_ = ModuleObject.ts.TsAgentSetTick(agentId)
+
 	_ = ModuleObject.ts.TsAgentProcessData(agentId, bodyData)
 
-	responseData, err = ModuleObject.ts.TsAgentGetHostedTasksAll(agentId, 0x1900000) // 25 Mb
+	responseData, err = ModuleObject.ts.TsAgentGetHostedAll(agentId, 0x1900000) // 25 Mb
 	if err != nil {
 		goto ERR
 	} else {

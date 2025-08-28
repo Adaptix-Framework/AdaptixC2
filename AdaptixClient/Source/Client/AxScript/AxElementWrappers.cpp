@@ -1,6 +1,8 @@
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <Agent/Agent.h>
+
 #include <QJSEngine>
 #include <QJsonObject>
 #include <QJsonDocument>
@@ -1095,3 +1097,220 @@ QJSValue AxSelectorCreds::exec() const
 }
 
 void AxSelectorCreds::close() const { dialog->close(); }
+
+/// SELECTOR AGENTS
+
+AxDialogAgents::AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QTableWidget *tableWidget, QPushButton *button, QWidget *parent) : tableWidget(tableWidget), chooseButton(button)
+{
+    tableWidget->setAlternatingRowColors( true );
+    tableWidget->setAutoFillBackground( false );
+    tableWidget->setShowGrid( false );
+    tableWidget->setSortingEnabled( true );
+    tableWidget->setWordWrap( true );
+    tableWidget->setCornerButtonEnabled( true );
+    tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
+    tableWidget->setFocusPolicy( Qt::NoFocus );
+    tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
+    tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
+    tableWidget->horizontalHeader()->setHighlightSections( false );
+    tableWidget->verticalHeader()->setVisible( false );
+
+    chooseButton->setText("Choose");
+
+    spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
+    spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
+
+    bottomLayout = new QHBoxLayout();
+    bottomLayout->addItem(spacer_1);
+    bottomLayout->addWidget(chooseButton);
+    bottomLayout->addItem(spacer_2);
+
+    searchWidget = new QWidget(this);
+
+    searchLineEdit = new QLineEdit(searchWidget);
+    searchLineEdit->setPlaceholderText("filter");
+
+    hideButton = new ClickableLabel("X");
+    hideButton->setCursor( Qt::PointingHandCursor );
+
+    searchLayout = new QHBoxLayout(searchWidget);
+    searchLayout->setContentsMargins(0, 0, 0, 0);
+    searchLayout->setSpacing(4);
+    searchLayout->addWidget(searchLineEdit);
+    searchLayout->addWidget(hideButton);
+
+    mainLayout = new QVBoxLayout();
+    mainLayout->addWidget(searchWidget);
+    mainLayout->addWidget(tableWidget);
+    mainLayout->addLayout(bottomLayout);
+
+    setLayout(mainLayout);
+
+    connect(searchLineEdit, &QLineEdit::textEdited,   this, &AxDialogAgents::handleSearch);
+    connect(chooseButton,   &QPushButton::clicked,    this, &AxDialogAgents::onClicked);
+    connect(hideButton,     &ClickableLabel::clicked, this, &AxDialogAgents::clearSearch);
+
+    for (auto agentData : vecAgents) {
+        QString username = agentData.Username;
+        if ( agentData.Elevated )
+            username = "* " + username;
+        if ( !agentData.Impersonated.isEmpty() )
+            username += " [" + agentData.Impersonated + "]";
+
+        QString process  = QString("%1 (%2)").arg(agentData.Process).arg(agentData.Arch);
+
+        QString os = "unknown";
+        if (agentData.Os == OS_WINDOWS)    os = "windows";
+        else if (agentData.Os == OS_LINUX) os = "linux";
+        else if (agentData.Os == OS_MAC)   os = "macos";
+
+        QMap<QString, QString> map;
+        map["id"]          = agentData.Id;
+        map["type"]        = agentData.Name;
+        map["listener"]    = agentData.Listener;
+        map["external_ip"] = agentData.ExternalIP;
+        map["internal_ip"] = agentData.InternalIP;
+        map["domain"]      = agentData.Domain;
+        map["computer"]    = agentData.Computer;
+        map["username"]    = username;
+        map["process"]     = process;
+        map["pid"]         = agentData.Pid;
+        map["tid"]         = agentData.Tid;
+        map["os"]          = os;
+        map["tags"]        = agentData.Tags;
+
+        agentsList.append(map);
+        allData[agentData.Id] = agentData;
+    }
+
+    int columns = 0;
+    tableWidget->setColumnCount(columns);
+
+    const int length = headers.property("length").toInt();
+    for (int i = 0; i < length; ++i) {
+        QString val = headers.property(i).toString();
+        if (FIELD_MAP_AGENTS.contains(val)) {
+            columns += 1;
+            tableWidget->setColumnCount(columns);
+            tableWidget->setHorizontalHeaderItem(columns - 1, new QTableWidgetItem(FIELD_MAP_AGENTS[val]));
+            table_headers.append(val);
+        }
+    }
+    columns += 1;
+    tableWidget->setColumnCount(columns);
+    tableWidget->setHorizontalHeaderItem(columns - 1, new QTableWidgetItem("Agent ID"));
+    table_headers.append("id");
+    tableWidget->hideColumn(columns - 1);
+
+    if (columns > 2) {
+        for (int i = 0 ; i < columns-2; ++i) {
+            tableWidget->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+        }
+    }
+
+    tableWidget->setRowCount(agentsList.size());
+    for (int col = 0; col < table_headers.size(); ++col) {
+        for (int row = 0; row < agentsList.size(); row++) {
+            auto header = table_headers[col];
+            auto item = new QTableWidgetItem(agentsList[row][header]);
+            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+            tableWidget->setItem(row, col, item);
+        }
+    }
+
+    handleSearch();
+}
+
+QVector<AgentData> AxDialogAgents::data() { return selectedData; }
+
+void AxDialogAgents::onClicked()
+{
+    selectedData.clear();
+    int columns = tableWidget->columnCount();
+    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+            QString id = tableWidget->item(rowIndex, columns-1)->text();
+            selectedData.append(allData[id]);
+        }
+    }
+    this->accept();
+}
+
+void AxDialogAgents::handleSearch()
+{
+    QString filterText = searchLineEdit->text();
+
+    for (int row = 0; row < tableWidget->rowCount(); row++) {
+        bool match = false;
+        for (int col = 0; col < tableWidget->columnCount()-1; ++col) {
+            if (tableWidget->item(row, col) && tableWidget->item(row, col)->text().contains(filterText, Qt::CaseInsensitive)) {
+                match = true;
+                break;
+            }
+        }
+        tableWidget->setRowHidden(row, !match);
+    }
+}
+
+void AxDialogAgents::clearSearch()
+{
+    searchLineEdit->clear();
+    handleSearch();
+}
+
+AxSelectorAgents::AxSelectorAgents(const QJSValue &headers, QTableWidget* tableWidget, QPushButton* button, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
+{
+    QVector<AgentData> vecAgents;
+
+    auto agents = scriptEngine->manager()->GetAgents().values();
+    for (auto agent : agents)
+        vecAgents.append(agent->data);
+
+    dialog = new AxDialogAgents(headers, vecAgents, tableWidget, button);
+    dialog->setWindowTitle("Choose agent");
+}
+
+void AxSelectorAgents::setSize(const int w, const int h ) const { dialog->resize(w, h); }
+
+QJSValue AxSelectorAgents::exec() const
+{
+    QVector<AgentData> vecAgents;
+    if (dialog->exec() == QDialog::Accepted) {
+        vecAgents = dialog->data();
+    }
+
+    QVariantList list;
+    for (auto agentData : vecAgents) {
+        QString username = agentData.Username;
+        if ( agentData.Elevated )
+            username = "* " + username;
+        if ( !agentData.Impersonated.isEmpty() )
+            username += " [" + agentData.Impersonated + "]";
+
+        QString process  = QString("%1 (%2)").arg(agentData.Process).arg(agentData.Arch);
+
+        QString os = "unknown";
+        if (agentData.Os == OS_WINDOWS)    os = "windows";
+        else if (agentData.Os == OS_LINUX) os = "linux";
+        else if (agentData.Os == OS_MAC)   os = "macos";
+
+        QVariantMap map;
+        map["id"]          = agentData.Id;
+        map["type"]        = agentData.Name;
+        map["listener"]    = agentData.Listener;
+        map["external_ip"] = agentData.ExternalIP;
+        map["internal_ip"] = agentData.InternalIP;
+        map["domain"]      = agentData.Domain;
+        map["computer"]    = agentData.Computer;
+        map["username"]    = username;
+        map["process"]     = process;
+        map["pid"]         = agentData.Pid;
+        map["tid"]         = agentData.Tid;
+        map["os"]          = os;
+        map["tags"]        = agentData.Tags;
+        list.append(map);
+    }
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+void AxSelectorAgents::close() const { dialog->close(); }

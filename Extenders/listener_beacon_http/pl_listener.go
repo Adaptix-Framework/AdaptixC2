@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
-	"github.com/gin-gonic/gin"
 	"net"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/Adaptix-Framework/axc2"
+	"github.com/gin-gonic/gin"
 )
 
 func (m *ModuleExtender) HandlerListenerValid(data string) error {
@@ -173,6 +174,10 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		BindPort:  strconv.Itoa(listener.Config.PortBind),
 		AgentAddr: conf.Callback_addresses,
 		Status:    "Listen",
+	}
+
+	if listener.Config.Ssl {
+		listenerData.Protocol = "https"
 	}
 
 	if !listener.Active {
