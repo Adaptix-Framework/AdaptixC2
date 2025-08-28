@@ -227,7 +227,9 @@ func (ts *Teamserver) TsPresyncCredentials() []interface{} {
 
 	p := CreateSpCredentialsAdd(creds)
 	var packets []interface{}
-	packets = append(packets, p)
+	if len(creds) > 0 {
+		packets = append(packets, p)
+	}
 	return packets
 }
 
