@@ -14,7 +14,7 @@ func (dbms *DBMS) DbConsoleInsert(agentId string, packet interface{}) error {
 
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	insertQuery := `INSERT INTO Consoles (AgentId, Packet) values(?,?);`
@@ -25,7 +25,7 @@ func (dbms *DBMS) DbConsoleInsert(agentId string, packet interface{}) error {
 func (dbms *DBMS) DbConsoleDelete(agentId string) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	deleteQuery := `DELETE FROM Consoles WHERE AgentId = ?;`
@@ -52,7 +52,7 @@ func (dbms *DBMS) DbConsoleAll(agentId string) [][]byte {
 				consoles = append(consoles, message)
 			}
 		} else {
-			logs.Debug("", err.Error()+" --- Clear database file!")
+			logs.Debug("", "Failed to query consoles: "+err.Error())
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()

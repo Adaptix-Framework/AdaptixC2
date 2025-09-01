@@ -5,11 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (dbms *DBMS) DbTargetExist(targetId string) bool {
-	rows, err := dbms.database.Query("SELECT TargetId FROM Targets;")
+	rows, err := dbms.database.Query("SELECT TargetId FROM Targets WHERE TargetId = ?;", targetId)
 	if err != nil {
 		return false
 	}
@@ -17,26 +18,19 @@ func (dbms *DBMS) DbTargetExist(targetId string) bool {
 		_ = rows.Close()
 	}(rows)
 
-	for rows.Next() {
-		rowTargetId := ""
-		_ = rows.Scan(&rowTargetId)
-		if targetId == rowTargetId {
-			return true
-		}
-	}
-	return false
+	return rows.Next()
 }
 
 func (dbms *DBMS) DbTargetsAdd(targetsData []*adaptix.TargetData) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	for _, targetData := range targetsData {
 		ok = dbms.DbTargetExist(targetData.TargetId)
 		if ok {
-			logs.Error("", "target %s alredy exists", targetData.TargetId)
+			logs.Error("", "target %s already exists", targetData.TargetId)
 			continue
 		}
 
@@ -56,12 +50,12 @@ func (dbms *DBMS) DbTargetUpdate(targetData *adaptix.TargetData) error {
 
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbTargetExist(targetData.TargetId)
 	if !ok {
-		return fmt.Errorf("target %s not exists", targetData.TargetId)
+		return fmt.Errorf("target %s does not exist", targetData.TargetId)
 	}
 
 	updateQuery := `UPDATE Targets SET Computer = ?, Domain = ?, Address = ?, Os = ?, OsDesk = ?, Tag = ?, Info = ?, Alive = ?, Owned = ? WHERE TargetId = ?;`
@@ -73,12 +67,12 @@ func (dbms *DBMS) DbTargetUpdate(targetData *adaptix.TargetData) error {
 func (dbms *DBMS) DbTargetDelete(targetId string) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbTargetExist(targetId)
 	if !ok {
-		return fmt.Errorf("target %s not exists", targetId)
+		return fmt.Errorf("target %s does not exist", targetId)
 	}
 
 	deleteQuery := `DELETE FROM Targets WHERE TargetId = ?;`
@@ -104,7 +98,7 @@ func (dbms *DBMS) DbTargetsAll() []*adaptix.TargetData {
 				targets = append(targets, targetData)
 			}
 		} else {
-			logs.Debug("", err.Error()+" --- Clear database file!")
+			logs.Debug("", "Failed to query targets: "+err.Error())
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()
