@@ -10,7 +10,7 @@ import (
 )
 
 func (dbms *DBMS) DbDownloadExist(fileId string) bool {
-	rows, err := dbms.database.Query("SELECT FileId FROM Downloads;")
+	rows, err := dbms.database.Query("SELECT FileId FROM Downloads WHERE FileId = ?;", fileId)
 	if err != nil {
 		return false
 	}
@@ -18,25 +18,18 @@ func (dbms *DBMS) DbDownloadExist(fileId string) bool {
 		_ = rows.Close()
 	}(rows)
 
-	for rows.Next() {
-		rowFileId := ""
-		_ = rows.Scan(&rowFileId)
-		if fileId == rowFileId {
-			return true
-		}
-	}
-	return false
+	return rows.Next()
 }
 
 func (dbms *DBMS) DbDownloadInsert(downloadData adaptix.DownloadData) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbDownloadExist(downloadData.FileId)
 	if ok {
-		return fmt.Errorf("download %s alredy exists", downloadData.FileId)
+		return fmt.Errorf("download %s already exists", downloadData.FileId)
 	}
 
 	insertQuery := `INSERT INTO Downloads (FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State) values(?,?,?,?,?,?,?,?,?,?,?);`
@@ -50,12 +43,12 @@ func (dbms *DBMS) DbDownloadInsert(downloadData adaptix.DownloadData) error {
 func (dbms *DBMS) DbDownloadDelete(fileId string) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbDownloadExist(fileId)
 	if !ok {
-		return fmt.Errorf("download %s does not exists", fileId)
+		return fmt.Errorf("download %s does not exist", fileId)
 	}
 
 	deleteQuery := `DELETE FROM Downloads WHERE FileId = ?;`
@@ -84,7 +77,7 @@ func (dbms *DBMS) DbDownloadAll() []adaptix.DownloadData {
 				downloads = append(downloads, downloadData)
 			}
 		} else {
-			logs.Debug("", err.Error()+" --- Clear database file!")
+			logs.Debug("", "Failed to query downloads: "+err.Error())
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()

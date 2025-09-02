@@ -10,7 +10,7 @@ import (
 )
 
 func (dbms *DBMS) DbPivotExist(pivotId string) bool {
-	rows, err := dbms.database.Query("SELECT PivotId FROM Pivots;")
+	rows, err := dbms.database.Query("SELECT PivotId FROM Pivots WHERE PivotId = ?;", pivotId)
 	if err != nil {
 		return false
 	}
@@ -18,14 +18,7 @@ func (dbms *DBMS) DbPivotExist(pivotId string) bool {
 		_ = rows.Close()
 	}(rows)
 
-	for rows.Next() {
-		rowPivotId := ""
-		_ = rows.Scan(&rowPivotId)
-		if pivotId == rowPivotId {
-			return true
-		}
-	}
-	return false
+	return rows.Next()
 }
 
 func (dbms *DBMS) DbPivotInsert(pivotData adaptix.PivotData) error {
@@ -79,7 +72,7 @@ func (dbms *DBMS) DbPivotAll() []*adaptix.PivotData {
 				pivots = append(pivots, pivotData)
 			}
 		} else {
-			logs.Debug("", err.Error()+" --- Clear database file!")
+			logs.Debug("", "Failed to query pivots: "+err.Error())
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()
