@@ -19,3 +19,18 @@ func DomainsEqual(d1, d2 string) bool {
 
 	return nb1 == nb2
 }
+
+func DifferenceStringsArray(a, b []string) []string {
+	remove := make(map[string]struct{}, len(b))
+	for _, v := range b {
+		remove[v] = struct{}{}
+	}
+
+	var result []string
+	for _, v := range a {
+		if _, found := remove[v]; !found {
+			result = append(result, v)
+		}
+	}
+	return result
+}

@@ -208,6 +208,8 @@ func (tc *TsConnector) TcAgentRemove(ctx *gin.Context) {
 		return
 	}
 
+	_ = tc.teamserver.TsTargetRemoveSessions(agentRemove.AgentIdArray)
+
 	var errorsSlice []string
 	for _, agentId := range agentRemove.AgentIdArray {
 		err = tc.teamserver.TsAgentRemove(agentId)

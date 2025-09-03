@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	adaptix "github.com/Adaptix-Framework/axc2"
 )
@@ -34,9 +35,9 @@ func (dbms *DBMS) DbTargetsAdd(targetsData []*adaptix.TargetData) error {
 			continue
 		}
 
-		insertQuery := `INSERT INTO Targets (TargetId, Computer, Domain, Address, Os, OsDesk, Tag, Info, Date, Alive, Owned) values(?,?,?,?,?,?,?,?,?,?,?);`
+		insertQuery := `INSERT INTO Targets (TargetId, Computer, Domain, Address, Os, OsDesk, Tag, Info, Date, Alive, Agents) values(?,?,?,?,?,?,?,?,?,?,?);`
 		_, err := dbms.database.Exec(insertQuery, targetData.TargetId, targetData.Computer, targetData.Domain, targetData.Address, targetData.Os,
-			targetData.OsDesk, targetData.Tag, targetData.Info, targetData.Date, targetData.Alive, targetData.Owned)
+			targetData.OsDesk, targetData.Tag, targetData.Info, targetData.Date, targetData.Alive, strings.Join(targetData.Agents, ","))
 		if err != nil {
 			logs.Error("", err.Error())
 			continue
@@ -58,9 +59,9 @@ func (dbms *DBMS) DbTargetUpdate(targetData *adaptix.TargetData) error {
 		return fmt.Errorf("target %s does not exist", targetData.TargetId)
 	}
 
-	updateQuery := `UPDATE Targets SET Computer = ?, Domain = ?, Address = ?, Os = ?, OsDesk = ?, Tag = ?, Info = ?, Alive = ?, Owned = ? WHERE TargetId = ?;`
+	updateQuery := `UPDATE Targets SET Computer = ?, Domain = ?, Address = ?, Os = ?, OsDesk = ?, Tag = ?, Info = ?, Alive = ?, Agents = ? WHERE TargetId = ?;`
 	_, err := dbms.database.Exec(updateQuery, targetData.Computer, targetData.Domain, targetData.Address, targetData.Os,
-		targetData.OsDesk, targetData.Tag, targetData.Info, targetData.Alive, targetData.Owned, targetData.TargetId)
+		targetData.OsDesk, targetData.Tag, targetData.Info, targetData.Alive, strings.Join(targetData.Agents, ","), targetData.TargetId)
 	return err
 }
 
@@ -85,16 +86,21 @@ func (dbms *DBMS) DbTargetsAll() []*adaptix.TargetData {
 
 	ok := dbms.DatabaseExists()
 	if ok {
-		selectQuery := `SELECT TargetId, Computer, Domain, Address, Os, OsDesk, Tag, Info, Date, Alive, Owned FROM Targets;`
+		selectQuery := `SELECT TargetId, Computer, Domain, Address, Os, OsDesk, Tag, Info, Date, Alive, Agents FROM Targets;`
 		query, err := dbms.database.Query(selectQuery)
 		if err == nil {
 			for query.Next() {
 				targetData := &adaptix.TargetData{}
+				agetns_str := ""
 				err = query.Scan(&targetData.TargetId, &targetData.Computer, &targetData.Domain, &targetData.Address, &targetData.Os,
-					&targetData.OsDesk, &targetData.Tag, &targetData.Info, &targetData.Date, &targetData.Alive, &targetData.Owned)
+					&targetData.OsDesk, &targetData.Tag, &targetData.Info, &targetData.Date, &targetData.Alive, &agetns_str)
 				if err != nil {
 					continue
 				}
+				if agetns_str != "" {
+					targetData.Agents = strings.Split(agetns_str, ",")
+				}
+
 				targets = append(targets, targetData)
 			}
 		} else {
