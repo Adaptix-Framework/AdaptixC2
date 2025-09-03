@@ -78,6 +78,7 @@ type Teamserver interface {
 	TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error
 	TsTargetDelete(targetsId []string) error
 	TsTargetSetTag(targetsId []string, tag string) error
+	TsTargetRemoveSessions(agentsId []string) error
 
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
 	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
