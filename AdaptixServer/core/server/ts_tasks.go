@@ -486,6 +486,32 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 	return nil
 }
 
+func (ts *Teamserver) TsTaskSave(taskData adaptix.TaskData) error {
+	value, ok := ts.agents.Get(taskData.AgentId)
+	if !ok {
+		return fmt.Errorf("Agent %v not found", taskData.AgentId)
+	}
+	agent, _ := value.(*Agent)
+
+	taskData.Type = TYPE_TASK
+	taskData.TaskId, _ = krypt.GenerateUID(8)
+	taskData.Computer = agent.Data.Computer
+	taskData.User = agent.Data.Username
+	taskData.StartDate = time.Now().Unix()
+	taskData.FinishDate = taskData.StartDate
+	taskData.Sync = true
+	taskData.Completed = true
+
+	agent.CompletedTasks.Put(taskData.TaskId, taskData)
+
+	packet_task := CreateSpAgentTaskSync(taskData)
+	ts.TsSyncAllClients(packet_task)
+
+	_ = ts.DBMS.DbTaskInsert(taskData)
+
+	return nil
+}
+
 ///// Get Tasks
 
 func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error) {
