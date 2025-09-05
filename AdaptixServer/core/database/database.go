@@ -47,6 +47,14 @@ func (dbms *DBMS) DatabaseInit() error {
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Chat" (
+    	"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"Username" TEXT NOT NULL,
+    	"Message" TEXT NOT NULL,
+    	"Date" BIGINT
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Downloads" (
     	"FileId" TEXT NOT NULL UNIQUE, 
     	"AgentId" TEXT NOT NULL,

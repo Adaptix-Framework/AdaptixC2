@@ -11,6 +11,7 @@
 #include <UI/Widgets/TerminalWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/LogsWidget.h>
+#include <UI/Widgets/ChatWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
@@ -40,8 +41,11 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect(this, &AdaptixWidget::eventFileBrowserUpload,  ScriptManager, &AxScriptManager::emitFileBrowserUpload);
     connect(this, &AdaptixWidget::eventProcessBrowserList, ScriptManager, &AxScriptManager::emitProcessBrowserList);
 
+    profile = authProfile;
+    
     AxConsoleTab      = new AxConsoleWidget(ScriptManager, this);
     LogsTab           = new LogsWidget();
+    ChatTab           = new ChatWidget(this);
     ListenersTab      = new ListenersWidget(this);
     SessionsTablePage = new SessionsTableWidget(this);
     SessionsGraphPage = new SessionsGraph(this);
@@ -59,8 +63,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     this->SetSessionsTableUI();
     this->LoadLogsUI();
 
-    profile = authProfile;
-
     TickThread = new QThread;
     TickWorker = new LastTickWorker( this );
     TickWorker->moveToThread( TickThread );
@@ -69,6 +71,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( this, &AdaptixWidget::SyncedSignal, ScriptManager, &AxScriptManager::emitReadyClient);
 
     connect( logsButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
+    connect( chatButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadChatUI);
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
     connect( sessionsButton,  &QPushButton::clicked, this, &AdaptixWidget::SetSessionsTableUI);
     connect( graphButton,     &QPushButton::clicked, this, &AdaptixWidget::SetGraphUI);
@@ -117,6 +120,11 @@ void AdaptixWidget::createUI()
     line_1 = new QFrame(this);
     line_1->setFrameShape(QFrame::VLine);
     line_1->setMinimumHeight(25);
+
+    chatButton = new QPushButton(QIcon(":/icons/chat"), "", this );
+    chatButton->setIconSize( QSize( 24,24 ));
+    chatButton->setFixedSize(37, 28);
+    chatButton->setToolTip("Chat");
 
     sessionsButton = new QPushButton( QIcon(":/icons/format_list"), "", this );
     sessionsButton->setIconSize( QSize( 24,24 ));
@@ -191,6 +199,7 @@ void AdaptixWidget::createUI()
 
     topHLayout->addWidget(listenersButton);
     topHLayout->addWidget(logsButton);
+    topHLayout->addWidget(chatButton);
     topHLayout->addWidget(line_1);
     topHLayout->addWidget(sessionsButton);
     topHLayout->addWidget(graphButton);
@@ -308,6 +317,7 @@ void AdaptixWidget::ClearAdaptix()
 {
     AxConsoleTab->OutputClear();
     LogsTab->Clear();
+    ChatTab->Clear();
     DownloadsTab->Clear();
     ScreenshotsTab->Clear();
     TasksTab->Clear();
@@ -761,6 +771,8 @@ void AdaptixWidget::SetTasksUI() const
 void AdaptixWidget::LoadAxConsoleUI() const { this->AddTab(AxConsoleTab, "AxScript Console", ":/icons/code_blocks"); }
 
 void AdaptixWidget::LoadLogsUI() const { this->AddTab(LogsTab, "Logs", ":/icons/logs"); }
+
+void AdaptixWidget::LoadChatUI() const { this->AddTab(ChatTab, "Chat", ":/icons/chat"); }
 
 void AdaptixWidget::LoadListenersUI() const { this->AddTab(ListenersTab, "Listeners", ":/icons/listeners"); }
 
