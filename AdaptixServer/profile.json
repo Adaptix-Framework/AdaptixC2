@@ -3,9 +3,7 @@
     "interface": "0.0.0.0",
     "port": 4321,
     "endpoint": "/endpoint",
-    "operators": {
-      "user": "password"
-    },
+    "password": "pass",
     "cert": "server.rsa.crt",
     "key": "server.rsa.key",
     "extenders": [
