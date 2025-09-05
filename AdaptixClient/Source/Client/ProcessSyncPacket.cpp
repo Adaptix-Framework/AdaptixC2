@@ -10,6 +10,7 @@
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/LogsWidget.h>
+#include <UI/Widgets/ChatWidget.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
@@ -195,6 +196,14 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("a_message")     || !jsonObj["a_message"].isString())     return false;
         if (!jsonObj.contains("a_text")        || !jsonObj["a_text"].isString())        return false;
         if (!jsonObj.contains("a_completed")   || !jsonObj["a_completed"].isBool())     return false;
+        return true;
+    }
+
+    if( spType == TYPE_CHAT_MESSAGE )
+    {
+        if (!jsonObj.contains("c_username") || !jsonObj["c_username"].isString()) return false;
+        if (!jsonObj.contains("c_message")  || !jsonObj["c_message"].isString())  return false;
+        if (!jsonObj.contains("c_date")     || !jsonObj["c_date"].isDouble())     return false;
         return true;
     }
 
@@ -598,7 +607,14 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
 
-
+    if( spType == TYPE_CHAT_MESSAGE )
+    {
+        QString username = jsonObj["c_username"].toString();
+        QString message  = jsonObj["c_message"].toString();
+        qint64  time     = jsonObj["c_date"].toDouble();
+        ChatTab->AddChatMessage(time, username, message);
+        return;
+    }
 
     if( spType == TYPE_DOWNLOAD_CREATE )
     {

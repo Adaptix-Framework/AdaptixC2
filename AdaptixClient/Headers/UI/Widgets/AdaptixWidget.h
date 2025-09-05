@@ -13,6 +13,7 @@ class SessionsTableWidget;
 class SessionsGraph;
 class AxConsoleWidget;
 class LogsWidget;
+class ChatWidget;
 class ListenersWidget;
 class DownloadsWidget;
 class ScreenshotsWidget;
@@ -48,6 +49,7 @@ Q_OBJECT
     QHBoxLayout*    topHLayout        = nullptr;
     QPushButton*    listenersButton   = nullptr;
     QPushButton*    logsButton        = nullptr;
+    QPushButton*    chatButton        = nullptr;
     QPushButton*    sessionsButton    = nullptr;
     QPushButton*    graphButton       = nullptr;
     QPushButton*    tasksButton       = nullptr;
@@ -87,6 +89,7 @@ public:
 
     AxConsoleWidget*     AxConsoleTab      = nullptr;
     LogsWidget*          LogsTab           = nullptr;
+    ChatWidget*          ChatTab           = nullptr;
     ListenersWidget*     ListenersTab      = nullptr;
     SessionsTableWidget* SessionsTablePage = nullptr;
     SessionsGraph*       SessionsGraphPage = nullptr;
@@ -166,6 +169,7 @@ public slots:
     void SetTasksUI() const;
     void LoadAxConsoleUI() const;
     void LoadLogsUI() const;
+    void LoadChatUI() const;
     void LoadListenersUI() const;
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;
