@@ -506,17 +506,17 @@ type SyncPackerCredentialsTag struct {
 /// TARGETS
 
 type SyncPackerTarget struct {
-	TargetId string `json:"t_target_id"`
-	Computer string `json:"t_computer"`
-	Domain   string `json:"t_domain"`
-	Address  string `json:"t_address"`
-	Os       int    `json:"t_os"`
-	OsDesk   string `json:"t_os_desk"`
-	Tag      string `json:"t_tag"`
-	Info     string `json:"t_info"`
-	Date     int64  `json:"t_date"`
-	Alive    bool   `json:"t_alive"`
-	Owned    bool   `json:"t_owned"`
+	TargetId string   `json:"t_target_id"`
+	Computer string   `json:"t_computer"`
+	Domain   string   `json:"t_domain"`
+	Address  string   `json:"t_address"`
+	Os       int      `json:"t_os"`
+	OsDesk   string   `json:"t_os_desk"`
+	Tag      string   `json:"t_tag"`
+	Info     string   `json:"t_info"`
+	Date     int64    `json:"t_date"`
+	Alive    bool     `json:"t_alive"`
+	Agents   []string `json:"t_agents"`
 }
 
 type SyncPackerTargetsAdd struct {
@@ -528,17 +528,17 @@ type SyncPackerTargetsAdd struct {
 type SyncPackerTargetUpdate struct {
 	SpType int `json:"type"`
 
-	TargetId string `json:"t_target_id"`
-	Computer string `json:"t_computer"`
-	Domain   string `json:"t_domain"`
-	Address  string `json:"t_address"`
-	Os       int    `json:"t_os"`
-	OsDesk   string `json:"t_os_desk"`
-	Tag      string `json:"t_tag"`
-	Info     string `json:"t_info"`
-	Date     int64  `json:"t_date"`
-	Alive    bool   `json:"t_alive"`
-	Owned    bool   `json:"t_owned"`
+	TargetId string   `json:"t_target_id"`
+	Computer string   `json:"t_computer"`
+	Domain   string   `json:"t_domain"`
+	Address  string   `json:"t_address"`
+	Os       int      `json:"t_os"`
+	OsDesk   string   `json:"t_os_desk"`
+	Tag      string   `json:"t_tag"`
+	Info     string   `json:"t_info"`
+	Date     int64    `json:"t_date"`
+	Alive    bool     `json:"t_alive"`
+	Agents   []string `json:"t_agents"`
 }
 
 type SyncPackerTargetDelete struct {

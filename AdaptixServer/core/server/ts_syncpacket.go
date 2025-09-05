@@ -513,7 +513,7 @@ func CreateSpTargetsAdd(targetsData []*adaptix.TargetData) SyncPackerTargetsAdd 
 			Info:     targetData.Info,
 			Date:     targetData.Date,
 			Alive:    targetData.Alive,
-			Owned:    targetData.Owned,
+			Agents:   targetData.Agents,
 		}
 		syncTargets = append(syncTargets, t)
 	}
@@ -538,7 +538,7 @@ func CreateSpTargetUpdate(targetData adaptix.TargetData) SyncPackerTargetUpdate 
 		Info:     targetData.Info,
 		Date:     targetData.Date,
 		Alive:    targetData.Alive,
-		Owned:    targetData.Owned,
+		Agents:   targetData.Agents,
 	}
 }
 

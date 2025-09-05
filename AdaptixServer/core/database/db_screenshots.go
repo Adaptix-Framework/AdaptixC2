@@ -10,7 +10,7 @@ import (
 )
 
 func (dbms *DBMS) DbScreenshotExist(screenId string) bool {
-	rows, err := dbms.database.Query("SELECT ScreenId FROM Screenshots;")
+	rows, err := dbms.database.Query("SELECT ScreenId FROM Screenshots WHERE ScreenId = ?;", screenId)
 	if err != nil {
 		return false
 	}
@@ -18,25 +18,18 @@ func (dbms *DBMS) DbScreenshotExist(screenId string) bool {
 		_ = rows.Close()
 	}(rows)
 
-	for rows.Next() {
-		rowScreenId := ""
-		_ = rows.Scan(&rowScreenId)
-		if screenId == rowScreenId {
-			return true
-		}
-	}
-	return false
+	return rows.Next()
 }
 
 func (dbms *DBMS) DbScreenshotInsert(screenData adaptix.ScreenData) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbScreenshotExist(screenData.ScreenId)
 	if ok {
-		return fmt.Errorf("screen %s alredy exists", screenData.ScreenId)
+		return fmt.Errorf("screen %s already exists", screenData.ScreenId)
 	}
 
 	insertQuery := `INSERT INTO Screenshots (ScreenId, User, Computer, LocalPath, Note, Date) values(?,?,?,?,?,?);`
@@ -48,12 +41,12 @@ func (dbms *DBMS) DbScreenshotUpdate(screenId string, note string) error {
 
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbScreenshotExist(screenId)
 	if !ok {
-		return fmt.Errorf("screen %s not exists", screenId)
+		return fmt.Errorf("screen %s does not exist", screenId)
 	}
 
 	updateQuery := `UPDATE Screenshots SET Note = ? WHERE ScreenId = ?;`
@@ -64,12 +57,12 @@ func (dbms *DBMS) DbScreenshotUpdate(screenId string, note string) error {
 func (dbms *DBMS) DbScreenshotDelete(screenId string) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbScreenshotExist(screenId)
 	if !ok {
-		return fmt.Errorf("screen %s not exists", screenId)
+		return fmt.Errorf("screen %s does not exist", screenId)
 	}
 
 	deleteQuery := `DELETE FROM Screenshots WHERE ScreenId = ?;`
@@ -94,7 +87,7 @@ func (dbms *DBMS) DbScreenshotAll() []adaptix.ScreenData {
 				screens = append(screens, screenData)
 			}
 		} else {
-			logs.Debug("", err.Error()+" --- Clear database file!")
+			logs.Debug("", "Failed to query screenshots: "+err.Error())
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()

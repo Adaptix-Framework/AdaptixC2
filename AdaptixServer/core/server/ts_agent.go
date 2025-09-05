@@ -84,19 +84,19 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 
 	ts.agents.Put(agentData.Id, agent)
 
-	err = ts.DBMS.DbAgentInsert(agentData)
+	packetNew := CreateSpAgentNew(agentData)
+	ts.TsSyncAllClients(packetNew)
+
+	agent.Data.TargetId, _ = ts.TsTargetsCreateAlive(agentData)
+
+	err = ts.DBMS.DbAgentInsert(agent.Data)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	packetNew := CreateSpAgentNew(agentData)
-	ts.TsSyncAllClients(packetNew)
+	ts.TsEventAgent(false, agent.Data)
 
-	ts.TsEventAgent(false, agentData)
-
-	_ = ts.TsTargetsCreateAlive(agentData)
-
-	return agentData, nil
+	return agent.Data, nil
 }
 
 func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error {

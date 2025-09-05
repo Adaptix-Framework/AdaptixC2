@@ -314,7 +314,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         if (!jsonObj.contains("t_info")      || !jsonObj["t_info"].isString())      return false;
         if (!jsonObj.contains("t_date")      || !jsonObj["t_date"].isDouble())      return false;
         if (!jsonObj.contains("t_alive")     || !jsonObj["t_alive"].isBool())       return false;
-        if (!jsonObj.contains("t_owned")     || !jsonObj["t_owned"].isBool())       return false;
+        if (!jsonObj.contains("t_agents"))       return false;
         return true;
     }
     if ( spType == TYPE_TARGETS_DELETE ) {
@@ -778,7 +778,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             if (!obj.contains("t_info")      || !obj["t_info"].isString())      continue;
             if (!obj.contains("t_date")      || !obj["t_date"].isDouble())      continue;
             if (!obj.contains("t_alive")     || !obj["t_alive"].isBool())       continue;
-            if (!obj.contains("t_owned")     || !obj["t_owned"].isBool())       continue;
+            if (!obj.contains("t_agents")) continue;
 
             TargetData t;
             t.TargetId = obj.value("t_target_id").toString();
@@ -791,8 +791,15 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             t.Info     = obj.value("t_info").toString();
             t.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(obj["t_date"].toDouble()));
             t.Alive    = obj.value("t_alive").toBool();
-            t.Owned    = obj.value("t_owned").toBool();
 
+            if (obj.value("t_agents").isArray()) {
+                QJsonArray sessions = obj.value("t_agents").toArray();
+                for (const QJsonValue &agent_id : sessions) {
+                    if (agent_id.isString()) {
+                        t.Agents.append(agent_id.toString());
+                    }
+                }
+            }
             targetsList.append(t);
         }
 
@@ -811,7 +818,15 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         targetData.Info     = jsonObj["t_info"].toString();
         targetData.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["t_date"].toDouble()));
         targetData.Alive    = jsonObj["t_alive"].toBool();
-        targetData.Owned    = jsonObj["t_owned"].toBool();
+
+        if (jsonObj.value("t_agents").isArray()) {
+            QJsonArray sessions = jsonObj.value("t_agents").toArray();
+            for (const QJsonValue &agent_id : sessions) {
+                if (agent_id.isString()) {
+                    targetData.Agents.append(agent_id.toString());
+                }
+            }
+        }
 
         TargetsTab->EditTargetsItem(targetData);
         return;
