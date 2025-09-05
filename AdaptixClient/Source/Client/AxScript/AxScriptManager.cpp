@@ -7,9 +7,8 @@
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/BridgeEvent.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/AxConsoleWidget.h>
-
-
 
 AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), adaptixWidget(main_widget) {
     mainScript = new AxScriptEngine(this, "main", this);
@@ -266,6 +265,27 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
         ret.append(event);
     }
     return ret;
+}
+
+void AxScriptManager::AppAgentHide(const QStringList &agents)
+{
+    bool updated = false;
+    for (auto agentId : agents) {
+        if (adaptixWidget->AgentsMap.contains(agentId)) {
+            adaptixWidget->AgentsMap[agentId]->show = false;
+            updated = true;
+        }
+    }
+
+    if (updated)
+        adaptixWidget->SessionsTablePage->SetData();
+}
+
+void AxScriptManager::AppAgentRemove(const QStringList &agents)
+{
+    QString message = "";
+    bool ok = false;
+    HttpReqAgentRemove(agents, *(adaptixWidget->GetProfile()), &message, &ok);
 }
 
 /// APP

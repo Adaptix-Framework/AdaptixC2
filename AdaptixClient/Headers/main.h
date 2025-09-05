@@ -67,7 +67,7 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.8"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.9"
 
 ///////////
 
@@ -277,17 +277,17 @@ typedef struct CredentialData
 
 typedef struct TargetData
 {
-    QString TargetId;
-    QString Computer;
-    QString Domain;
-    QString Address;
-    QString Tag;
-    int     Os;
-    QString OsDesc;
-    QString Date;
-    QString Info;
-    bool    Alive;
-    bool    Owned;
+    QString     TargetId;
+    QString     Computer;
+    QString     Domain;
+    QString     Address;
+    QString     Tag;
+    int         Os;
+    QString     OsDesc;
+    QString     Date;
+    QString     Info;
+    bool        Alive;
+    QStringList Agents;
 } TargetData;
 
 typedef struct TunnelData

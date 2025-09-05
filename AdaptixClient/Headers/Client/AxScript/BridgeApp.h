@@ -21,6 +21,8 @@ public:
 public slots:
     QJSValue agents() const;
     QJSValue agent_info(const QString &id, const QString &property) const;
+    void     agent_hide(const QJSValue& agents);
+    void     agent_remove(const QJSValue& agents);
     void     agent_set_color(const QJSValue& agents, const QString &background, const QString &foreground, const bool reset);
     void     agent_set_impersonate(const QString &id, const QString &impersonate, const bool elevated);
     void     agent_set_mark(const QJSValue& agents, const QString &mark);

@@ -133,8 +133,10 @@ void TargetsWidget::addTableItem(const TargetData &target) const
     item_Info->setFlags( item_Info->flags() ^ Qt::ItemIsEditable );
     item_Info->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
 
+    bool owned = (target.Agents.size() > 0);
+
     if (target.Os == OS_WINDOWS) {
-        if (target.Owned) {
+        if (owned) {
             item_Os->setIcon(QIcon(":/icons/os_win_red"));
         } else if(target.Alive) {
             item_Os->setIcon(QIcon(":/icons/os_win_blue"));
@@ -143,7 +145,7 @@ void TargetsWidget::addTableItem(const TargetData &target) const
         }
     }
     else if (target.Os == OS_LINUX) {
-        if (target.Owned) {
+        if (owned) {
             item_Os->setIcon(QIcon(":/icons/os_linux_red"));
         } else if(target.Alive) {
             item_Os->setIcon(QIcon(":/icons/os_linux_blue"));
@@ -152,7 +154,7 @@ void TargetsWidget::addTableItem(const TargetData &target) const
         }
     }
     else if (target.Os == OS_MAC) {
-        if (target.Owned) {
+        if (owned) {
             item_Os->setIcon(QIcon(":/icons/os_mac_red"));
         } else if(target.Alive) {
             item_Os->setIcon(QIcon(":/icons/os_mac_blue"));
@@ -226,7 +228,7 @@ void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
             adaptixWidget->Targets[i].Date     = newTarget.Date;
             adaptixWidget->Targets[i].Info     = newTarget.Info;
             adaptixWidget->Targets[i].Alive    = newTarget.Alive;
-            adaptixWidget->Targets[i].Owned    = newTarget.Owned;
+            adaptixWidget->Targets[i].Agents   = newTarget.Agents;
             break;
         }
     }
@@ -242,8 +244,9 @@ void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
             tableWidget->item(row, ColumnDate    )->setText(newTarget.Date);
             tableWidget->item(row, ColumnInfo    )->setText(newTarget.Info);
 
+            bool owned = (newTarget.Agents.size() > 0);
             if (newTarget.Os == OS_WINDOWS) {
-                if (newTarget.Owned) {
+                if (owned) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_win_red"));
                 } else if(newTarget.Alive) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_win_blue"));
@@ -252,7 +255,7 @@ void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
                 }
             }
             else if (newTarget.Os == OS_LINUX) {
-                if (newTarget.Owned) {
+                if (owned) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_linux_red"));
                 } else if(newTarget.Alive) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_linux_blue"));
@@ -261,7 +264,7 @@ void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
                 }
             }
             else if (newTarget.Os == OS_MAC) {
-                if (newTarget.Owned) {
+                if (owned) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_mac_red"));
                 } else if(newTarget.Alive) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_mac_blue"));
