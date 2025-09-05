@@ -34,7 +34,7 @@ func (tc *TsConnector) tcLogin(ctx *gin.Context) {
 
 	recvHash := krypt.SHA256([]byte(creds.Password))
 
-	if recvHash != tc.Operators[creds.Username] {
+	if recvHash != tc.Hash {
 		_ = ctx.Error(errors.New("incorrect password"))
 		return
 	}

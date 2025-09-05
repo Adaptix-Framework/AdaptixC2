@@ -24,8 +24,8 @@ func (p *AdaptixProfile) IsValid() error {
 		valid = false
 	}
 
-	if len(p.Server.Operators) == 0 {
-		logs.Error("", "'Teamserver.operators' must be set")
+	if p.Server.Password == "" {
+		logs.Error("", "'Teamserver.password' must be set")
 		valid = false
 	}
 
