@@ -113,6 +113,38 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
     return QJSValue::UndefinedValue;
 }
 
+void BridgeApp::agent_hide(const QJSValue &agents)
+{
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+        emit engineError("agent_hide expected array of strings in agents parameter!");
+        return;
+    }
+
+    QStringList list_agents;
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents << val.toString();
+    }
+
+    scriptEngine->manager()->AppAgentHide(list_agents);
+}
+
+void BridgeApp::agent_remove(const QJSValue &agents)
+{
+    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+        emit engineError("agent_remove expected array of strings in agents parameter!");
+        return;
+    }
+
+    QStringList list_agents;
+    for (int i = 0; i < agents.property("length").toInt(); ++i) {
+        QJSValue val = agents.property(i);
+        list_agents << val.toString();
+    }
+
+    scriptEngine->manager()->AppAgentRemove(list_agents);
+}
+
 void BridgeApp::agent_set_color(const QJSValue &agents, const QString &background, const QString &foreground, const bool reset)
 {
     if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
@@ -694,6 +726,11 @@ QJSValue BridgeApp::targets() const
     auto targets = scriptEngine->manager()->GetTargets();
 
     for (auto target : targets) {
+
+        QVariantList sessions;
+        for (auto agent : target.Agents)
+            sessions << agent;
+
         QVariantMap map;
         map["id"]       = target.TargetId;
         map["computer"] = target.Computer;
@@ -703,7 +740,7 @@ QJSValue BridgeApp::targets() const
         map["date"]     = target.Date;
         map["info"]     = target.Info;
         map["alive"]    = target.Alive;
-        map["owned"]    = target.Owned;
+        map["agents"]   = sessions;
         map["os_desc"]  = target.OsDesc;
 
         if (target.Os == OS_WINDOWS)    map["os"] = "windows";

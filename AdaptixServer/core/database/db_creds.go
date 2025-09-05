@@ -9,8 +9,8 @@ import (
 	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
-func (dbms *DBMS) DbCredentialsExist(creedsId string) bool {
-	rows, err := dbms.database.Query("SELECT CredId FROM Credentials;")
+func (dbms *DBMS) DbCredentialsExist(credsId string) bool {
+	rows, err := dbms.database.Query("SELECT CredId FROM Credentials WHERE CredId = ?;", credsId)
 	if err != nil {
 		return false
 	}
@@ -18,26 +18,20 @@ func (dbms *DBMS) DbCredentialsExist(creedsId string) bool {
 		_ = rows.Close()
 	}(rows)
 
-	for rows.Next() {
-		rowCredsId := ""
-		_ = rows.Scan(&rowCredsId)
-		if creedsId == rowCredsId {
-			return true
-		}
-	}
-	return false
+	return rows.Next()
+
 }
 
 func (dbms *DBMS) DbCredentialsAdd(credsData []*adaptix.CredsData) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	for _, creds := range credsData {
 		ok = dbms.DbCredentialsExist(creds.CredId)
 		if ok {
-			return fmt.Errorf("creds %s alredy exists", creds.CredId)
+			return fmt.Errorf("creds %s already exists", creds.CredId)
 		}
 
 		insertQuery := `INSERT INTO Credentials (CredId, Username, Password, Realm, Type, Tag, Date, Storage, AgentId, Host) values(?,?,?,?,?,?,?,?,?,?);`
@@ -56,12 +50,12 @@ func (dbms *DBMS) DbCredentialsUpdate(credsData adaptix.CredsData) error {
 
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbCredentialsExist(credsData.CredId)
 	if !ok {
-		return fmt.Errorf("creds %s not exists", credsData.CredId)
+		return fmt.Errorf("creds %s does not exist", credsData.CredId)
 	}
 
 	updateQuery := `UPDATE Credentials SET Username = ?, Password = ?, Realm = ?, Type = ?, Tag = ?, Storage = ?, Host = ? WHERE CredId = ?;`
@@ -73,12 +67,12 @@ func (dbms *DBMS) DbCredentialsUpdate(credsData adaptix.CredsData) error {
 func (dbms *DBMS) DbCredentialsDelete(credId string) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbCredentialsExist(credId)
 	if !ok {
-		return fmt.Errorf("creds %s not exists", credId)
+		return fmt.Errorf("creds %s does not exist", credId)
 	}
 
 	deleteQuery := `DELETE FROM Credentials WHERE CredId = ?;`
@@ -104,7 +98,7 @@ func (dbms *DBMS) DbCredentialsAll() []*adaptix.CredsData {
 				creds = append(creds, credsData)
 			}
 		} else {
-			logs.Debug("", err.Error()+" --- Clear database file!")
+			logs.Debug("", "Failed to query credentials: "+err.Error())
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()

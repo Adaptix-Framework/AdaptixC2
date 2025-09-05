@@ -10,7 +10,7 @@ import (
 )
 
 func (dbms *DBMS) DbTaskExist(taskId string) bool {
-	rows, err := dbms.database.Query("SELECT TaskId FROM Tasks;")
+	rows, err := dbms.database.Query("SELECT TaskId FROM Tasks WHERE TaskId = ?;", taskId)
 	if err != nil {
 		return false
 	}
@@ -18,25 +18,18 @@ func (dbms *DBMS) DbTaskExist(taskId string) bool {
 		_ = rows.Close()
 	}(rows)
 
-	for rows.Next() {
-		rowTaskId := ""
-		_ = rows.Scan(&rowTaskId)
-		if taskId == rowTaskId {
-			return true
-		}
-	}
-	return false
+	return rows.Next()
 }
 
 func (dbms *DBMS) DbTaskInsert(taskData adaptix.TaskData) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbTaskExist(taskData.TaskId)
 	if ok {
-		return fmt.Errorf("task %s alredy exists", taskData.TaskId)
+		return fmt.Errorf("task %s already exists", taskData.TaskId)
 	}
 
 	insertQuery := `INSERT INTO Tasks (TaskId, AgentId, TaskType, Client, User, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed) values(?,?,?,?,?,?,?,?,?,?,?,?,?);`
@@ -47,12 +40,12 @@ func (dbms *DBMS) DbTaskInsert(taskData adaptix.TaskData) error {
 func (dbms *DBMS) DbTaskUpdate(taskData adaptix.TaskData) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbTaskExist(taskData.TaskId)
 	if !ok {
-		return fmt.Errorf("task %s does not exists", taskData.TaskId)
+		return fmt.Errorf("task %s does not exist", taskData.TaskId)
 	}
 
 	updateQuery := `UPDATE Tasks SET FinishDate = ?, MessageType = ?, Message = ?, ClearText = ?, Completed = ? WHERE TaskId = ?;`
@@ -65,7 +58,7 @@ func (dbms *DBMS) DbTaskDelete(taskId string, agentId string) error {
 
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	if taskId != "" {
@@ -97,7 +90,7 @@ func (dbms *DBMS) DbTasksAll(agentId string) []adaptix.TaskData {
 				tasks = append(tasks, taskData)
 			}
 		} else {
-			logs.Debug("", err.Error()+" --- Clear database file!")
+			logs.Debug("", "Failed to query tasks: "+err.Error())
 		}
 		defer func(query *sql.Rows) {
 			_ = query.Close()

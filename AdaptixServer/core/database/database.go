@@ -111,7 +111,8 @@ func (dbms *DBMS) DatabaseInit() error {
     	"KillDate" INTEGER,
     	"Tags" TEXT,
     	"Mark" TEXT,
-    	"Color" TEXT
+    	"Color" TEXT,
+    	"TargetId" TEXT
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
@@ -175,7 +176,7 @@ func (dbms *DBMS) DatabaseInit() error {
     	"Info" TEXT,
     	"Date" BIGINT,
 		"Alive" BOOLEAN,
-		"Owned" BOOLEAN
+		"Agents" TEXT
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
