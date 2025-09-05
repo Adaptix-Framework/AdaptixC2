@@ -586,7 +586,7 @@ void AxScriptManager::emitFileBrowserList(const QString &agentId, const QString 
 
 void AxScriptManager::emitFileBrowserUpload(const QString &agentId, const QString &path, const QString &localFilename)
 {
-    QList<AxEvent> items = this->FilterEvents(agentId, "FileBroserUpload");
+    QList<AxEvent> items = this->FilterEvents(agentId, "FileBrowserUpload");
     for (int i = 0; i < items.size(); ++i) {
         AxEvent event = items[i];
         if (event.jsEngine) {
