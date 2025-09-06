@@ -7,15 +7,16 @@ type AdaptixProfile struct {
 }
 
 type TsProfile struct {
-	Interface  string   `json:"interface"`
-	Port       int      `json:"port"`
-	Endpoint   string   `json:"endpoint"`
-	Password   string   `json:"password"`
-	Cert       string   `json:"cert"`
-	Key        string   `json:"key"`
-	Extenders  []string `json:"extenders"`
-	ATokenLive int      `json:"access_token_live_hours"`
-	RTokenLive int      `json:"refresh_token_live_hours"`
+	Interface  string            `json:"interface"`
+	Port       int               `json:"port"`
+	Endpoint   string            `json:"endpoint"`
+	Password   string            `json:"password"`
+	Operators  map[string]string `json:"operators"`
+	Cert       string            `json:"cert"`
+	Key        string            `json:"key"`
+	Extenders  []string          `json:"extenders"`
+	ATokenLive int               `json:"access_token_live_hours"`
+	RTokenLive int               `json:"refresh_token_live_hours"`
 }
 
 type TsResponse struct {
