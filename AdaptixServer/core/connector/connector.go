@@ -108,6 +108,7 @@ type TsConnector struct {
 	Interface string
 	Port      int
 	Hash      string
+	Operators map[string]string
 	Endpoint  string
 	Cert      string
 	Key       string
@@ -155,6 +156,11 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Hash = krypt.SHA256([]byte(tsProfile.Password))
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
+	
+	connector.Operators = make(map[string]string, len(tsProfile.Operators))
+	for username, password := range tsProfile.Operators {
+		connector.Operators[username] = krypt.SHA256([]byte(password))
+	}
 
 	connector.Engine.POST(tsProfile.Endpoint+"/login", default404Middleware(tsResponse), connector.tcLogin)
 	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponse), token.RefreshTokenHandler)
