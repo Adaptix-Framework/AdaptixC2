@@ -4,8 +4,10 @@
     "port": 4321,
     "endpoint": "/endpoint",
     "password": "pass",
+    "only_password": true,
     "operators": {
-      "user": "password"
+      "operator1": "pass1",
+      "operator2": "pass2"
     },
     "cert": "server.rsa.crt",
     "key": "server.rsa.key",
