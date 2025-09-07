@@ -45,4 +45,4 @@ public slots:
     void handleSearchBackward();
 };
 
-#endif
+#endif //ADAPTIXCLIENT_CHATWIDGET_H

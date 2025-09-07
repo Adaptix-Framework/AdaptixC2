@@ -13,7 +13,7 @@ ChatWidget::ChatWidget(AdaptixWidget* w) : adaptixWidget(w)
     connect(nextButton,          &ClickableLabel::clicked,   this, &ChatWidget::handleSearch);
     connect(prevButton,          &ClickableLabel::clicked,   this, &ChatWidget::handleSearchBackward);
     connect(hideButton,          &ClickableLabel::clicked,   this, &ChatWidget::toggleSearchPanel);
-    connect(chatTextEdit, &TextEditConsole::ctx_find, this, &ChatWidget::toggleSearchPanel);
+    connect(chatTextEdit,        &TextEditConsole::ctx_find, this, &ChatWidget::toggleSearchPanel);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), chatTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -75,10 +75,10 @@ void ChatWidget::createUI()
     chatGridLayout = new QGridLayout(this);
     chatGridLayout->setContentsMargins(0, 1, 0, 4);
     chatGridLayout->setVerticalSpacing(4);
-    chatGridLayout->addWidget( searchWidget, 0, 0, 1, 1);
-    chatGridLayout->addWidget( chatTextEdit, 1, 0, 1, 2);
+    chatGridLayout->addWidget( searchWidget,  0, 0, 1, 1);
+    chatGridLayout->addWidget( chatTextEdit,  1, 0, 1, 2);
     chatGridLayout->addWidget( usernameLabel, 2, 0, 1, 1);
-    chatGridLayout->addWidget( chatInput, 2, 1, 1, 1);
+    chatGridLayout->addWidget( chatInput,     2, 1, 1, 1);
 }
 
 void ChatWidget::handleChat()
@@ -154,16 +154,12 @@ void ChatWidget::highlightCurrent() const
     sels[currentIndex].format = activeFmt;
 
     chatTextEdit->setExtraSelections(sels);
-
     chatTextEdit->setTextCursor(sels[currentIndex].cursor);
 
     searchLabel->setText(QString("%1 of %2").arg(currentIndex + 1).arg(sels.size()));
 }
 
-void ChatWidget::Clear() const
-{
-    chatTextEdit->clear();
-}
+void ChatWidget::Clear() const { chatTextEdit->clear(); }
 
 void ChatWidget::toggleSearchPanel()
 {

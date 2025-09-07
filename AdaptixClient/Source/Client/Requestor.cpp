@@ -414,7 +414,7 @@ bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* 
 bool HttpReqChatSendMessage(const QString &chat_message, AuthProfile profile, QString* message, bool* ok )
 {
     QJsonObject dataJson;
-    dataJson["chat_message"] = chat_message;
+    dataJson["message"] = chat_message;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/chat/send";

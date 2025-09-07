@@ -34,6 +34,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     this->ChannelThread   = channelThread;
     this->ChannelWsWorker = channelWsWorker;
 
+    this->profile = authProfile;
+
     ScriptManager = new AxScriptManager(this, this);
     connect(this, &AdaptixWidget::eventNewAgent,           ScriptManager, &AxScriptManager::emitNewAgent);
     connect(this, &AdaptixWidget::eventFileBrowserDisks,   ScriptManager, &AxScriptManager::emitFileBrowserDisks);
@@ -41,8 +43,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect(this, &AdaptixWidget::eventFileBrowserUpload,  ScriptManager, &AxScriptManager::emitFileBrowserUpload);
     connect(this, &AdaptixWidget::eventProcessBrowserList, ScriptManager, &AxScriptManager::emitProcessBrowserList);
 
-    profile = authProfile;
-    
     AxConsoleTab      = new AxConsoleWidget(ScriptManager, this);
     LogsTab           = new LogsWidget();
     ChatTab           = new ChatWidget(this);
