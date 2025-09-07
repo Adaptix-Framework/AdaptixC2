@@ -20,6 +20,7 @@ func main() {
 		host         = flag.String("i", "0.0.0.0", "Teamserver listen interface")
 		port         = flag.Int("p", 0, "Teamserver handler port")
 		endpoint     = flag.String("e", "", "Teamserver URI endpoint")
+		username     = flag.String("u", "", "Teamserver username")
 		password     = flag.String("pw", "", "Teamserver password")
 		certPath     = flag.String("sc", "", "Path to the SSL certificate")
 		keyPath      = flag.String("sk", "", "Path to the SSL key")
@@ -34,7 +35,7 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Printf("\nEither provide options individually or use a JSON config file with -config flag.\n\n")
 		fmt.Printf("Example:\n")
-		fmt.Printf("   AdaptixServer -i 0.0.0.0 -p port -pw password -e endpoint -sc SslCert -sk SslKey [-ex ext1,ext2,...] [-debug]\n")
+		fmt.Printf("   AdaptixServer -i 0.0.0.0 -p port -u username -pw password -e endpoint -sc SslCert -sk SslKey [-ex ext1,ext2,...] [-debug]\n")
 		fmt.Printf("   AdaptixServer -profile profile.json [-debug]\n")
 	}
 	flag.Parse()
@@ -54,9 +55,9 @@ func main() {
 			logs.Error("", err.Error())
 			os.Exit(1)
 		}
-	} else if *port > 1 && *port < 65535 && *endpoint != "" && *password != "" {
+	} else if *port > 1 && *port < 65535 && *endpoint != "" && *username != "" && *password != "" {
 		extenders := strings.Split(*extenderPath, ",")
-		ts.SetSettings(*host, *port, *endpoint, *password, *certPath, *keyPath, extenders)
+		ts.SetSettings(*host, *port, *endpoint, *username, *password, *certPath, *keyPath, extenders)
 	} else {
 		flag.Usage()
 		os.Exit(0)

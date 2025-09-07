@@ -409,6 +409,24 @@ bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* 
     return false;
 }
 
+///CHAT
+
+bool HttpReqChatSendMessage(const QString &chat_message, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["chat_message"] = chat_message;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/chat/send";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
 /// DOWNLOADS
 
 bool HttpReqDownloadAction(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok )

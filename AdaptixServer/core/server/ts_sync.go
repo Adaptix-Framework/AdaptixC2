@@ -68,6 +68,7 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	packets = append(packets, ts.TsPresyncExtenders()...)
 	packets = append(packets, ts.TsPresyncListeners()...)
 	packets = append(packets, ts.TsPresyncAgents()...)
+	packets = append(packets, ts.TsPresyncChat()...)
 	packets = append(packets, ts.TsPresyncDownloads()...)
 	packets = append(packets, ts.TsPresyncScreenshots()...)
 	packets = append(packets, ts.TsPresyncTunnels()...)
@@ -182,6 +183,16 @@ func (ts *Teamserver) TsPresyncPivots() []interface{} {
 	for value := range ts.pivots.Iterator() {
 		pivot := value.Item.(*adaptix.PivotData)
 		p := CreateSpPivotCreate(*pivot)
+		packets = append(packets, p)
+	}
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncChat() []interface{} {
+	var packets []interface{}
+	for value := range ts.messages.Iterator() {
+		message := value.Item.(adaptix.ChatData)
+		p := CreateSpChatMessage(message)
 		packets = append(packets, p)
 	}
 	return packets

@@ -72,6 +72,7 @@ type Teamserver struct {
 	clients     safe.Map    // username string     : socket *websocket.Conn
 	agents      safe.Map    // agentId string      : agent *Agent
 	listeners   safe.Map    // listenerName string : listenerData ListenerData
+	messages    *safe.Slice //  				   : chatData ChatData
 	downloads   safe.Map    // fileId string       : downloadData DownloadData
 	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
@@ -388,6 +389,16 @@ type SyncPackerPivotDelete struct {
 	SpType int `json:"type"`
 
 	PivotId string `json:"p_pivot_id"`
+}
+
+/// CHAT
+
+type SyncPackerChatMessage struct {
+	SpType int `json:"type"`
+
+	Username string `json:"c_username"`
+	Message  string `json:"c_message"`
+	Date     int64  `json:"c_date"`
 }
 
 /// DOWNLOAD
