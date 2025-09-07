@@ -143,6 +143,8 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogCredential.h
         Headers/UI/Widgets/AxConsoleWidget.h
         Headers/UI/Dialogs/DialogTarget.h
+        Headers/UI/Dialogs/DialogSaveTask.h
+        Headers/UI/Widgets/ChatWidget.h
 )
 
 add_executable(AdaptixClient
@@ -218,6 +220,8 @@ add_executable(AdaptixClient
         Source/UI/Widgets/AxConsoleWidget.cpp
         Source/UI/Widgets/TargetsWidget.cpp
         Source/UI/Dialogs/DialogTarget.cpp
+        Source/UI/Dialogs/DialogSaveTask.cpp
+        Source/UI/Widgets/ChatWidget.cpp
 )
 
 target_compile_definitions(AdaptixClient PRIVATE QT_DEPRECATED_WARNINGS )

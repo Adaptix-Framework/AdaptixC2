@@ -72,7 +72,7 @@ type Teamserver struct {
 	clients     safe.Map    // username string     : socket *websocket.Conn
 	agents      safe.Map    // agentId string      : agent *Agent
 	listeners   safe.Map    // listenerName string : listenerData ListenerData
-	messages    *safe.Slice //  				   : chatData ChatData
+	messages    *safe.Slice //                     : chatData ChatData
 	downloads   safe.Map    // fileId string       : downloadData DownloadData
 	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData

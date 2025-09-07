@@ -137,6 +137,8 @@ void TasksWidget::createUI()
     tableWidget->setHorizontalHeaderItem( this->ColumnResult,      new QTableWidgetItem("Result"));
     tableWidget->setHorizontalHeaderItem( this->ColumnOutput,      new QTableWidgetItem("Output"));
 
+    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+
     this->UpdateColumnsVisible();
 
     mainGridLayout = new QGridLayout(this);

@@ -57,8 +57,7 @@ type Teamserver interface {
 	TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error
 	TsTaskSave(hookData adaptix.TaskData) error
 
-	
-  TsChatSendMessage(username string, message string)
+	TsChatSendMessage(username string, message string)
 
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
@@ -162,13 +161,9 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Operators = make(map[string]string, len(tsProfile.Operators))
 	for username, password := range tsProfile.Operators {
 		connector.Operators[username] = krypt.SHA256([]byte(password))
+	}
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
-
-	connector.Operators = make(map[string]string, len(tsProfile.Operators))
-	for username, password := range tsProfile.Operators {
-		connector.Operators[username] = krypt.SHA256([]byte(password))
-	}
 
 	connector.Engine.POST(tsProfile.Endpoint+"/login", default404Middleware(tsResponse), connector.tcLogin)
 	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponse), token.RefreshTokenHandler)

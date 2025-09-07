@@ -49,12 +49,12 @@ func NewTeamserver() *Teamserver {
 	return ts
 }
 
-func (ts *Teamserver) SetSettings(host string, port int, endpoint string, username string, password string, cert string, key string, extenders []string) {
+func (ts *Teamserver) SetSettings(host string, port int, endpoint string, password string, cert string, key string, extenders []string) {
 	ts.Profile.Server = &profile.TsProfile{
 		Interface:  host,
 		Port:       port,
 		Endpoint:   endpoint,
-		Operators:  map[string]string{username: password},
+		Password:   password,
 		Cert:       cert,
 		Key:        key,
 		Extenders:  extenders,
@@ -184,7 +184,7 @@ func (ts *Teamserver) RestoreData() {
 		countMessages++
 	}
 	logs.Success("   ", "Restored %v messages", countMessages)
-
+	
 	/// DOWNLOADS
 	countDownloads := 0
 	restoreDownloads := ts.DBMS.DbDownloadAll()

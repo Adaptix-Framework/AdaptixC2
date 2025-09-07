@@ -19,8 +19,6 @@
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
 
-
-
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 {
     if ( !jsonObj.contains("type") || !jsonObj["type"].isDouble() )
@@ -607,6 +605,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
 
+
+
     if( spType == TYPE_CHAT_MESSAGE )
     {
         QString username = jsonObj["c_username"].toString();
@@ -615,6 +615,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         ChatTab->AddChatMessage(time, username, message);
         return;
     }
+
+
 
     if( spType == TYPE_DOWNLOAD_CREATE )
     {
