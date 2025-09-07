@@ -56,9 +56,10 @@ type Teamserver interface {
 	TsTaskDelete(agentId string, taskId string) error
 	TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error
 	TsTaskSave(hookData adaptix.TaskData) error
+
 	
   TsChatSendMessage(username string, message string)
-  
+
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
@@ -109,6 +110,8 @@ type Teamserver interface {
 type TsConnector struct {
 	Interface string
 	Port      int
+	Hash      string
+	OnlyHash  bool
 	Operators map[string]string
 	Endpoint  string
 	Cert      string
@@ -154,6 +157,11 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Interface = tsProfile.Interface
 	connector.Port = tsProfile.Port
 	connector.Endpoint = tsProfile.Endpoint
+	connector.Hash = krypt.SHA256([]byte(tsProfile.Password))
+	connector.OnlyHash = tsProfile.OnlyPassword
+	connector.Operators = make(map[string]string, len(tsProfile.Operators))
+	for username, password := range tsProfile.Operators {
+		connector.Operators[username] = krypt.SHA256([]byte(password))
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
 
