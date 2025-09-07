@@ -42,6 +42,8 @@ const (
 	TYPE_AGENT_TASK_REMOVE = 0x4c
 	TYPE_AGENT_TASK_HOOK   = 0x4d
 
+	TYPE_CHAT_MESSAGE = 0x50
+
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
 	TYPE_DOWNLOAD_DELETE = 0x53
@@ -353,6 +355,18 @@ func CreateSpPivotDelete(pivotId string) SyncPackerPivotDelete {
 		SpType: TYPE_PIVOT_DELETE,
 
 		PivotId: pivotId,
+	}
+}
+
+/// CHAT
+
+func CreateSpChatMessage(chatData adaptix.ChatData) SyncPackerChatMessage {
+	return SyncPackerChatMessage{
+		SpType: TYPE_CHAT_MESSAGE,
+
+		Username: chatData.Username,
+		Message:  chatData.Message,
+		Date:     chatData.Date,
 	}
 }
 

@@ -53,6 +53,10 @@ bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile
 
 bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);
 
+///CHAT
+
+bool HttpReqChatSendMessage(const QString &text, AuthProfile profile, QString* message, bool* ok );
+
 ///DOWNLOAD
 
 bool HttpReqDownloadAction(const QString &action, const QString &fileId, AuthProfile profile, QString* message, bool* ok );

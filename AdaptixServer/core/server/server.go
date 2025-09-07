@@ -34,6 +34,7 @@ func NewTeamserver() *Teamserver {
 		clients:     safe.NewMap(),
 		agents:      safe.NewMap(),
 		listeners:   safe.NewMap(),
+		messages:    safe.NewSlice(),
 		downloads:   safe.NewMap(),
 		tmp_uploads: safe.NewMap(),
 		screenshots: safe.NewMap(),
@@ -48,12 +49,12 @@ func NewTeamserver() *Teamserver {
 	return ts
 }
 
-func (ts *Teamserver) SetSettings(host string, port int, endpoint string, password string, cert string, key string, extenders []string) {
+func (ts *Teamserver) SetSettings(host string, port int, endpoint string, username string, password string, cert string, key string, extenders []string) {
 	ts.Profile.Server = &profile.TsProfile{
 		Interface:  host,
 		Port:       port,
 		Endpoint:   endpoint,
-		Password:   password,
+		Operators:  map[string]string{username: password},
 		Cert:       cert,
 		Key:        key,
 		Extenders:  extenders,
@@ -172,6 +173,17 @@ func (ts *Teamserver) RestoreData() {
 		countPivots++
 	}
 	logs.Success("   ", "Restored %v pivots", countPivots)
+
+	/// CHAT
+	countMessages := 0
+	restoreChat := ts.DBMS.DbChatAll()
+	for _, restoreMessage := range restoreChat {
+		ts.messages.Put(restoreMessage)
+		packet := CreateSpChatMessage(restoreMessage)
+		ts.TsSyncAllClients(packet)
+		countMessages++
+	}
+	logs.Success("   ", "Restored %v messages", countMessages)
 
 	/// DOWNLOADS
 	countDownloads := 0

@@ -57,6 +57,9 @@ type Teamserver interface {
 	TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error
 	TsTaskSave(hookData adaptix.TaskData) error
 
+	
+  TsChatSendMessage(username string, message string)
+
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
@@ -159,9 +162,13 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Operators = make(map[string]string, len(tsProfile.Operators))
 	for username, password := range tsProfile.Operators {
 		connector.Operators[username] = krypt.SHA256([]byte(password))
-	}
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
+
+	connector.Operators = make(map[string]string, len(tsProfile.Operators))
+	for username, password := range tsProfile.Operators {
+		connector.Operators[username] = krypt.SHA256([]byte(password))
+	}
 
 	connector.Engine.POST(tsProfile.Endpoint+"/login", default404Middleware(tsResponse), connector.tcLogin)
 	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponse), token.RefreshTokenHandler)
@@ -193,6 +200,8 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskDelete)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/hook", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskHook)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/save", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskSave)
+
+	connector.Engine.POST(tsProfile.Endpoint+"/chat/send", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcChatSendMessage)
 
 	connector.Engine.POST(tsProfile.Endpoint+"/download/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadSync)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadDelete)
