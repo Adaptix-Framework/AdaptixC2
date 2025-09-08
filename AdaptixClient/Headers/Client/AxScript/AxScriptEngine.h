@@ -40,7 +40,7 @@ struct ScriptContext {
 
     QList<AxEvent> eventFileBroserDisks;
     QList<AxEvent> eventFileBroserList;
-    QList<AxEvent> eventFileBroserUpload;
+    QList<AxEvent> eventFileBrowserUpload;
     QList<AxEvent> eventProcessBrowserList;
     QList<AxEvent> eventNewAgent;
     QList<AxEvent> eventReady;

@@ -80,7 +80,7 @@ void AxScriptEngine::registerEvent(const QString &type, const QJSValue &handler,
 
     if (     type == "FileBroserDisks")    context.eventFileBroserDisks.append(event);
     else if (type == "FileBroserList")     context.eventFileBroserList.append(event);
-    else if (type == "FileBroserUpload")   context.eventFileBroserUpload.append(event);
+    else if (type == "FileBrowserUpload")   context.eventFileBrowserUpload.append(event);
     else if (type == "ProcessBrowserList") context.eventProcessBrowserList.append(event);
     else if (type == "new_agent")          context.eventNewAgent.append(event);
     else if (type == "ready")              context.eventReady.append(event);
@@ -92,7 +92,7 @@ QList<AxEvent> AxScriptEngine::getEvents(const QString &type)
 {
     if (     type == "FileBroserDisks")    return context.eventFileBroserDisks;
     else if (type == "FileBroserList")     return context.eventFileBroserList;
-    else if (type == "FileBroserUpload")   return context.eventFileBroserUpload;
+    else if (type == "FileBrowserUpload")   return context.eventFileBrowserUpload;
     else if (type == "ProcessBrowserList") return context.eventProcessBrowserList;
     else if (type == "new_agent")          return context.eventNewAgent;
     else if (type == "ready")              return context.eventReady;
@@ -118,9 +118,9 @@ void AxScriptEngine::removeEvent(const QString &id)
             i--;
         }
     }
-    for (int i=0; i< context.eventFileBroserUpload.size(); i++) {
-        if (id == context.eventFileBroserUpload[i].event_id) {
-            context.eventFileBroserUpload.removeAt(i);
+    for (int i=0; i< context.eventFileBrowserUpload.size(); i++) {
+        if (id == context.eventFileBrowserUpload[i].event_id) {
+            context.eventFileBrowserUpload.removeAt(i);
             i--;
         }
     }
@@ -169,9 +169,9 @@ QStringList AxScriptEngine::listEvent()
         if (context.eventFileBroserList[i].event_id != "")
             list.append(context.eventFileBroserList[i].event_id);
     }
-    for (int i=0; i< context.eventFileBroserUpload.size(); i++) {
-        if (context.eventFileBroserUpload[i].event_id != "")
-            list.append(context.eventFileBroserUpload[i].event_id);
+    for (int i=0; i< context.eventFileBrowserUpload.size(); i++) {
+        if (context.eventFileBrowserUpload[i].event_id != "")
+            list.append(context.eventFileBrowserUpload[i].event_id);
     }
     for (int i=0; i< context.eventProcessBrowserList.size(); i++) {
         if (context.eventProcessBrowserList[i].event_id != "")

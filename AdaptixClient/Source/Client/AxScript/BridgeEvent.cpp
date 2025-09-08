@@ -55,7 +55,7 @@ void BridgeEvent::on_filebrowser_list(const QJSValue &handler, const QJSValue &a
 }
 
 void BridgeEvent::on_filebrowser_upload(const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id) {
-    this->reg("FileBroserUpload", "on_filebrowser_upload", handler, agents, os, listeners, event_id);
+    this->reg("FileBrowserUpload", "on_filebrowser_upload", handler, agents, os, listeners, event_id);
 }
 
 void BridgeEvent::on_processbrowser_list(const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id) {
