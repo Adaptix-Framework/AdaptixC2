@@ -7,24 +7,25 @@ class Agent;
 class Konsole;
 class QTermWidget;
 class TerminalWorker;
+class AdaptixWidget;
 
 class TerminalWidget : public QWidget
 {
-     QWidget*     mainWidget      = nullptr;
-     QGridLayout* mainGridLayout  = nullptr;
-     QHBoxLayout* topHBoxLayout   = nullptr;
-     QLabel*      statusDescLabel = nullptr;
-     QLabel*      statusLabel     = nullptr;
-     QFrame*      line_1          = nullptr;
-     QFrame*      line_2          = nullptr;
-     QFrame*      line_3          = nullptr;
-     QPushButton* startButton     = nullptr;
-     QPushButton* stopButton      = nullptr;
-     QComboBox*   programComboBox = nullptr;
-     QLabel*      keytabLabel     = nullptr;
-     QComboBox*   keytabComboBox  = nullptr;
-     QLineEdit*   programInput    = nullptr;
-     QSpacerItem* spacer          = nullptr;
+     AdaptixWidget* adaptixWidget   = nullptr;
+     QGridLayout*   mainGridLayout  = nullptr;
+     QHBoxLayout*   topHBoxLayout   = nullptr;
+     QLabel*        statusDescLabel = nullptr;
+     QLabel*        statusLabel     = nullptr;
+     QFrame*        line_1          = nullptr;
+     QFrame*        line_2          = nullptr;
+     QFrame*        line_3          = nullptr;
+     QPushButton*   startButton     = nullptr;
+     QPushButton*   stopButton      = nullptr;
+     QComboBox*     programComboBox = nullptr;
+     QLabel*        keytabLabel     = nullptr;
+     QComboBox*     keytabComboBox  = nullptr;
+     QLineEdit*     programInput    = nullptr;
+     QSpacerItem*   spacer          = nullptr;
 
      QTermWidget* termWidget      = nullptr;
 
@@ -40,7 +41,7 @@ class TerminalWidget : public QWidget
      void SetKeys();
 
 public:
-     explicit TerminalWidget(Agent* a, QWidget* w);
+     explicit TerminalWidget(Agent* a, AdaptixWidget* w);
      ~TerminalWidget() override;
 
      void setStatus(const QString& text);

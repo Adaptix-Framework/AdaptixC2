@@ -53,6 +53,8 @@ bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile
 
 bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);
 
+bool HttpReqTasksSave(const QString &agentId, const QString &CommandLine, int MessageType, const QString &Message, const QString &ClearText, AuthProfile profile, QString* message, bool* ok );
+
 ///CHAT
 
 bool HttpReqChatSendMessage(const QString &text, AuthProfile profile, QString* message, bool* ok );
