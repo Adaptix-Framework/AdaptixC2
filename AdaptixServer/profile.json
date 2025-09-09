@@ -17,7 +17,6 @@
     "access_token_live_hours": 12,
     "refresh_token_live_hours": 168
   },
-
   "ServerResponse": {
     "status": 404,
     "headers": {
@@ -27,14 +26,23 @@
     },
     "page": "404page.html"
   },
-
   "EventCallback": {
     "Telegram": {
       "token": "",
       "chats_id": []
     },
+    "webhooks": [
+      {
+        "url": "https://ntfy.sh/your-topic",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "text/plain",
+          "Authorization": "Bearer <token>"
+        }
+      }
+    ],
     "new_agent_message": "New agent: %type% (%id%)\n\n%user% @ %computer% (%internalip%)\nelevated: %elevated%\nfrom: %externalip%\ndomain: %domain%",
     "new_cred_message": "New secret [%type%]:\n\n%username% : %password% (%domain%)\n\nStorage: %storage%\nHost: %host%",
-    "new_download_message":"File saved: %path% [%size%] from %computer% (%user%)"
+    "new_download_message": "File saved: %path% [%size%] from %computer% (%user%)"
   }
 }
