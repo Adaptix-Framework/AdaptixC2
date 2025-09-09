@@ -4,15 +4,16 @@ import (
 	"crypto/rc4"
 	"errors"
 	"fmt"
-	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/encoding/simplifiedchinese"
-	"golang.org/x/text/transform"
 	"io"
 	"net"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 const (
@@ -76,7 +77,8 @@ const (
 	CALLBACK_CUSTOM      = 0x1000
 	CALLBACK_CUSTOM_LAST = 0x13ff
 
-	CALLBACK_AX_SCREENSHOT = 0x81
+	CALLBACK_AX_SCREENSHOT   = 0x81
+	CALLBACK_AX_DOWNLOAD_MEM = 0x82
 
 	BOF_ERROR_PARSE     = 0x101
 	BOF_ERROR_SYMBOL    = 0x102

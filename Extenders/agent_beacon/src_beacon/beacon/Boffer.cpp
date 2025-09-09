@@ -34,7 +34,7 @@ void InitBofOutputData()
 	}
 }
 
-#define BEACON_FUNCTIONS_COUNT 27
+#define BEACON_FUNCTIONS_COUNT 28
 
 BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 
@@ -77,8 +77,9 @@ BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 	{ HASH_FUNC_BEACONGETVALUE,               BeaconGetValue },
 	{ HASH_FUNC_BEACONREMOVEVALUE,            BeaconRemoveValue },
 
-	/// 1 - Adaptix APIs
-	{ HASH_FUNC_AXADDSCREENSHOT, AxAddScreenshot },
+	/// 2 - Adaptix APIs
+	{ HASH_FUNC_AXADDSCREENSHOT,  AxAddScreenshot },
+	{ HASH_FUNC_AXDOWNLOADMEMORY, AxDownloadMemory },
 
 	/// 5 - Other APIs
 
@@ -195,6 +196,8 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 #ifdef _WIN64
 			unsigned long long bigOffset = 0;
 #endif
+
+//////////////////////////////////////////
 
 			if (pSymbol.Name.dwName[0] == 0) {
 				procSymbol = ((char*)(pSymbolTable + pHeader->NumberOfSymbols)) + pSymbol.Name.dwName[1];

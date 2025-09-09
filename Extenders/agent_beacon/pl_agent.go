@@ -1331,6 +1331,16 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 				_ = ts.TsScreenshotAdd(agentData.Id, note, screen)
 
+			} else if outputType == CALLBACK_AX_DOWNLOAD_MEM {
+				if false == packer.CheckPacker([]string{"array", "array"}) {
+					return outTasks
+				}
+				filename := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+				data := packer.ParseBytes()
+				fileId := fmt.Sprintf("%08x", rand.Uint32())
+
+				_ = ts.TsDownloadSave(agentData.Id, fileId, filename, data)
+
 			} else {
 				if false == packer.CheckPacker([]string{"array"}) {
 					return outTasks

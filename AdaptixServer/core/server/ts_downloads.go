@@ -134,6 +134,67 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 	return nil
 }
 
+func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename string, content []byte) error {
+
+	downloadData := adaptix.DownloadData{
+		AgentId:    agentId,
+		FileId:     fileId,
+		RemotePath: filename,
+		TotalSize:  len(content),
+		RecvSize:   len(content),
+		Date:       time.Now().Unix(),
+		State:      DOWNLOAD_STATE_FINISHED,
+	}
+
+	value, ok := ts.agents.Get(agentId)
+	if ok {
+		downloadData.User = value.(*Agent).Data.Username
+		downloadData.Computer = value.(*Agent).Data.Computer
+		downloadData.AgentName = value.(*Agent).Data.Name
+	} else {
+		return errors.New("Agent not found: " + agentId)
+	}
+
+	dirPath := logs.RepoLogsInstance.DownloadPath
+	baseName := filepath.Base(filepath.Clean(strings.ReplaceAll(filename, `\`, `/`)))
+	saveName := krypt.MD5([]byte(strconv.FormatInt(downloadData.Date, 10))) + "_" + baseName
+
+	_, err := os.Stat(dirPath)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(dirPath, os.ModePerm)
+		if err != nil {
+			return errors.New("Failed to create download path: " + err.Error())
+		}
+	}
+
+	downloadData.LocalPath = dirPath + "/" + saveName
+	downloadData.File, err = os.Create(downloadData.LocalPath)
+	if err != nil {
+		return errors.New("Failed to create file: " + err.Error())
+	}
+	_, err = downloadData.File.Write(content)
+	err = downloadData.File.Close()
+
+	ts.downloads.Put(downloadData.FileId, downloadData)
+
+	packetRes1 := CreateSpDownloadCreate(downloadData)
+	ts.TsSyncAllClients(packetRes1)
+
+	packetRes2 := CreateSpDownloadUpdate(downloadData)
+	ts.TsSyncAllClients(packetRes2)
+
+	err = ts.DBMS.DbDownloadInsert(downloadData)
+	if err != nil {
+		logs.Error("", err.Error())
+	}
+
+	go ts.TsEventCallbackDownloads(downloadData)
+
+	return nil
+}
+
+///
+
 func (ts *Teamserver) TsDownloadGet(fileId string) (adaptix.DownloadData, error) {
 	value, ok := ts.downloads.Get(fileId)
 	if !ok {

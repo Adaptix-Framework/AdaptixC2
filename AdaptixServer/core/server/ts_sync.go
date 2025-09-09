@@ -199,14 +199,26 @@ func (ts *Teamserver) TsPresyncChat() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncDownloads() []interface{} {
-	var packets []interface{}
+	var (
+		packets         []interface{}
+		sortedDownloads []adaptix.DownloadData
+	)
+
 	ts.downloads.ForEach(func(key string, value interface{}) bool {
 		downloadData := value.(adaptix.DownloadData)
+		index := sort.Search(len(sortedDownloads), func(i int) bool {
+			return sortedDownloads[i].Date > downloadData.Date
+		})
+		sortedDownloads = append(sortedDownloads[:index], append([]adaptix.DownloadData{downloadData}, sortedDownloads[index:]...)...)
+		return true
+	})
+
+	for _, downloadData := range sortedDownloads {
 		d1 := CreateSpDownloadCreate(downloadData)
 		d2 := CreateSpDownloadUpdate(downloadData)
 		packets = append(packets, d1, d2)
-		return true
-	})
+	}
+
 	return packets
 }
 
