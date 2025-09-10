@@ -230,12 +230,14 @@ func taskExecBof(paramsData []byte) ([]byte, error) {
 		args = make([]byte, 1)
 	}
 
-	out, err := coffer.Load(params.Object, args)
+	msgs, err := coffer.Load(params.Object, args)
 	if err != nil {
 		return nil, err
 	}
 
-	return msgpack.Marshal(utils.AnsExecBof{Output: out})
+	list, _ := msgpack.Marshal(msgs)
+
+	return msgpack.Marshal(utils.AnsExecBof{Msgs: list})
 }
 
 func taskExit() ([]byte, error) {

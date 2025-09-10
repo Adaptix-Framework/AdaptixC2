@@ -4,14 +4,15 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/charmap"
-	"golang.org/x/text/encoding/simplifiedchinese"
-	"golang.org/x/text/transform"
 	"io"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/charmap"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 type Profile struct {
@@ -239,8 +240,13 @@ type ParamsExecBof struct {
 	Task     string `msgpack:"task"`
 }
 
+type BofMsg struct {
+	Type int    `msgpack:"type"`
+	Data []byte `msgpack:"data"`
+}
+
 type AnsExecBof struct {
-	Output string `msgpack:"output"`
+	Msgs []byte `msgpack:"msgs"`
 }
 
 const (
@@ -274,6 +280,16 @@ const (
 
 	COMMAND_EXEC_BOF     = 50
 	COMMAND_EXEC_BOF_OUT = 51
+
+	CALLBACK_OUTPUT      = 0x0
+	CALLBACK_OUTPUT_OEM  = 0x1e
+	CALLBACK_OUTPUT_UTF8 = 0x20
+	CALLBACK_ERROR       = 0x0d
+	CALLBACK_CUSTOM      = 0x1000
+	CALLBACK_CUSTOM_LAST = 0x13ff
+
+	CALLBACK_AX_SCREENSHOT   = 0x81
+	CALLBACK_AX_DOWNLOAD_MEM = 0x82
 )
 
 var codePageMapping = map[int]encoding.Encoding{
