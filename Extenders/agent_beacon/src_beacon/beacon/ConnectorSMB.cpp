@@ -47,7 +47,7 @@ BOOL ConnectorSMB::SetConfig(ProfileSMB profile, BYTE* beat, ULONG beatSize)
     pListOfExplicitEntries.Trustee.TrusteeType  = TRUSTEE_IS_WELL_KNOWN_GROUP;
     pListOfExplicitEntries.Trustee.ptstrName    = (LPTSTR)pEveryoneSID;
 
-    if (this->functions->SetEntriesInAclA(1, &pListOfExplicitEntries, 0, &pACL) != ERROR_SUCCESS)
+    if (this->functions->SetEntriesInAclA(1, (PEXPLICIT_ACCESS_A) & pListOfExplicitEntries, 0, &pACL) != ERROR_SUCCESS)
         return FALSE;
 
     PSECURITY_DESCRIPTOR pSD = this->functions->LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
