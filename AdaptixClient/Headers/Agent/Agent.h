@@ -39,6 +39,7 @@ public:
     AgentTableWidgetItem* item_Process  = nullptr;
     AgentTableWidgetItem* item_Pid      = nullptr;
     AgentTableWidgetItem* item_Tid      = nullptr;
+    AgentTableWidgetItem* item_CreateTime = nullptr;
     AgentTableWidgetItem* item_Tags     = nullptr;
     AgentTableWidgetItem* item_Last     = nullptr;
     AgentTableWidgetItem* item_Sleep    = nullptr;

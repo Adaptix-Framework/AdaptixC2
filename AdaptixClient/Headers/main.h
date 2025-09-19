@@ -186,7 +186,7 @@ typedef struct SettingsData {
     bool ConsoleNoWrap;
     bool ConsoleAutoScroll;
 
-    bool   SessionsTableColumns[15];
+    bool   SessionsTableColumns[16];
     bool   CheckHealth;
     double HealthCoaf;
     int    HealthOffset;
@@ -235,6 +235,7 @@ typedef struct AgentData
     QString     Mark;
     QString     Color;
     int         LastTick;
+    qint64      CreateTime;
 } AgentData;
 
 typedef struct DownloadData

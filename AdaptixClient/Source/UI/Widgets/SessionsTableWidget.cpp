@@ -109,6 +109,7 @@ void SessionsTableWidget::createUI()
     tableWidget->setHorizontalHeaderItem( ColumnProcess,   new QTableWidgetItem( "Process" ) );
     tableWidget->setHorizontalHeaderItem( ColumnProcessId, new QTableWidgetItem( "PID" ) );
     tableWidget->setHorizontalHeaderItem( ColumnThreadId,  new QTableWidgetItem( "TID" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnCreateTime, new QTableWidgetItem( "Created" ) );
     tableWidget->setHorizontalHeaderItem( ColumnTags,      new QTableWidgetItem( "Tags" ) );
     tableWidget->setHorizontalHeaderItem( ColumnLast,      new QTableWidgetItem( "Last" ) );
     tableWidget->setHorizontalHeaderItem( ColumnSleep,     new QTableWidgetItem( "Sleep" ) );
@@ -219,6 +220,7 @@ void SessionsTableWidget::addTableItem(const Agent* newAgent) const
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnProcess,   newAgent->item_Process );
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnProcessId, newAgent->item_Pid );
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnThreadId,  newAgent->item_Tid );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnCreateTime, newAgent->item_CreateTime );
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnTags,      newAgent->item_Tags );
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnLast,      newAgent->item_Last );
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnSleep,     newAgent->item_Sleep );
