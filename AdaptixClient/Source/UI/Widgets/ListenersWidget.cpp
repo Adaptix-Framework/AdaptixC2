@@ -352,6 +352,18 @@ void ListenersWidget::onRemoveListener() const
     auto listenerName    = tableWidget->item( tableWidget->currentRow(), ColumnName )->text();
     auto listenerRegName = tableWidget->item( tableWidget->currentRow(), ColumnRegName )->text();
 
+    // 添加确认对话框
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(const_cast<ListenersWidget*>(this), 
+                                  "确认删除监听器", 
+                                  QString("确定要删除监听器 '%1' 吗？\n\n此操作不可撤销，将停止该监听器并从列表中移除。").arg(listenerName),
+                                  QMessageBox::Yes | QMessageBox::No,
+                                  QMessageBox::No);
+    
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+
     QString message = QString();
     bool ok = false;
     bool result = HttpReqListenerStop( listenerName, listenerRegName, *(adaptixWidget->GetProfile()), &message, &ok );
