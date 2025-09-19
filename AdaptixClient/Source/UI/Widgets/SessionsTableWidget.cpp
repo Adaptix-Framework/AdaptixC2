@@ -296,20 +296,62 @@ void SessionsTableWidget::UpdateColumnsVisible() const
 
 void SessionsTableWidget::UpdateColumnsWidth() const
 {
+    // 首先设置为 ResizeToContents 来获取合适的初始宽度
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    
+    // 获取各列的当前宽度作为初始宽度
+    int wAgentID    = tableWidget->columnWidth(ColumnAgentID);
+    int wAgentType  = tableWidget->columnWidth(ColumnAgentType);
+    int wListener   = tableWidget->columnWidth(ColumnListener);
+    int wExternal   = tableWidget->columnWidth(ColumnExternal);
+    int wInternal   = tableWidget->columnWidth(ColumnInternal);
+    int wDomain     = tableWidget->columnWidth(ColumnDomain);
+    int wComputer   = tableWidget->columnWidth(ColumnComputer);
+    int wUser       = tableWidget->columnWidth(ColumnUser);
+    int wOs         = tableWidget->columnWidth(ColumnOs);
+    int wProcess    = tableWidget->columnWidth(ColumnProcess);
+    int wProcessId  = tableWidget->columnWidth(ColumnProcessId);
+    int wThreadId   = tableWidget->columnWidth(ColumnThreadId);
+    int wCreateTime = tableWidget->columnWidth(ColumnCreateTime);
+    int wLast       = tableWidget->columnWidth(ColumnLast);
+    int wSleep      = tableWidget->columnWidth(ColumnSleep);
+
+    // 将所有列设置为 Interactive 模式，允许用户手动调整宽度
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnAgentID,    QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnAgentType,  QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnListener,   QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnExternal,   QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnInternal,   QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnDomain,     QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnComputer,   QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnUser,       QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnOs,         QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnProcess,    QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnProcessId,  QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnThreadId,   QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnCreateTime, QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnLast,       QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnSleep,      QHeaderView::Interactive);
+    
+    // Tags 列保持 Stretch 模式，占用剩余空间
     tableWidget->horizontalHeader()->setSectionResizeMode(ColumnTags, QHeaderView::Stretch);
 
-    int wDomain   = tableWidget->columnWidth(ColumnDomain);
-    int wComputer = tableWidget->columnWidth(ColumnDomain);
-    int wUser     = tableWidget->columnWidth(ColumnDomain);
-
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnDomain,   QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnComputer, QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnUser,     QHeaderView::Interactive);
-
-    tableWidget->setColumnWidth(ColumnDomain, wDomain);
-    tableWidget->setColumnWidth(ColumnDomain, wComputer);
-    tableWidget->setColumnWidth(ColumnDomain, wUser);
+    // 设置各列的初始宽度
+    tableWidget->setColumnWidth(ColumnAgentID,    wAgentID);
+    tableWidget->setColumnWidth(ColumnAgentType,  wAgentType);
+    tableWidget->setColumnWidth(ColumnListener,   wListener);
+    tableWidget->setColumnWidth(ColumnExternal,   wExternal);
+    tableWidget->setColumnWidth(ColumnInternal,   wInternal);
+    tableWidget->setColumnWidth(ColumnDomain,     wDomain);
+    tableWidget->setColumnWidth(ColumnComputer,   wComputer);
+    tableWidget->setColumnWidth(ColumnUser,       wUser);
+    tableWidget->setColumnWidth(ColumnOs,         wOs);
+    tableWidget->setColumnWidth(ColumnProcess,    wProcess);
+    tableWidget->setColumnWidth(ColumnProcessId,  wProcessId);
+    tableWidget->setColumnWidth(ColumnThreadId,   wThreadId);
+    tableWidget->setColumnWidth(ColumnCreateTime, wCreateTime);
+    tableWidget->setColumnWidth(ColumnLast,       wLast);
+    tableWidget->setColumnWidth(ColumnSleep,      wSleep);
 }
 
 void SessionsTableWidget::ClearTableContent() const
