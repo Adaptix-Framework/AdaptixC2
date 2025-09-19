@@ -6,6 +6,7 @@
 #include <Client/Settings.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <MainAdaptix.h>
+#include <Utils/FontManager.h>
 
 
 TaskOutputWidget::TaskOutputWidget() { this->createUI(); }
@@ -17,7 +18,7 @@ void TaskOutputWidget::createUI()
     inputMessage = new QLineEdit(this);
     inputMessage->setReadOnly(true);
     inputMessage->setProperty("LineEditStyle", "console");
-    inputMessage->setFont( QFont( "Hack" ));
+    inputMessage->setFont( FontManager::instance().getFont("Hack") );
 
     outputTextEdit = new QTextEdit(this);
     outputTextEdit->setReadOnly(true);

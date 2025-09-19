@@ -209,7 +209,7 @@ bool HttpReqAgentGenerate(const QString &listenerName, const QString &listenerTy
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/agent/generate";
-    QJsonObject jsonObject = HttpReqTimeout( 30000,sUrl, jsonData, profile.GetAccessToken() );
+    QJsonObject jsonObject = HttpReqTimeout( 60000,sUrl, jsonData, profile.GetAccessToken() );
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
         *ok = jsonObject["ok"].toBool();

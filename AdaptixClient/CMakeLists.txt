@@ -82,6 +82,9 @@ set(KONSOLE_HEADERS
 SET( HEADERS
         Headers/main.h
         Headers/Utils/Logs.h
+        Headers/Utils/FontManager.h
+        Headers/Utils/QtFontFix.h
+        Headers/Utils/NonBlockingDialogs.h
         Headers/UI/Dialogs/DialogConnect.h
         Headers/Utils/Convert.h
         Headers/MainAdaptix.h
@@ -156,6 +159,9 @@ add_executable(AdaptixClient
         Resources/Resources.qrc
 
         Source/Utils/Logs.cpp
+        Source/Utils/FontManager.cpp
+        Source/Utils/QtFontFix.cpp
+        Source/Utils/NonBlockingDialogs.cpp
         Source/UI/Dialogs/DialogConnect.cpp
         Source/Utils/Convert.cpp
         Source/MainAdaptix.cpp

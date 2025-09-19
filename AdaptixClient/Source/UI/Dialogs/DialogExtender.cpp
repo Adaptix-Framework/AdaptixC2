@@ -1,5 +1,6 @@
 #include <UI/Dialogs/DialogExtender.h>
 #include <Utils/CustomElements.h>
+#include <Utils/NonBlockingDialogs.h>
 #include <Client/Extender.h>
 
 DialogExtender::DialogExtender(Extender* e)
@@ -174,11 +175,13 @@ void DialogExtender::handleMenu(const QPoint &pos ) const
 
 void DialogExtender::onActionLoad() const
 {
-    QString filePath = QFileDialog::getOpenFileName(nullptr, "Load Script", "", "AxScript Files (*.axs)");
-    if ( filePath.isEmpty())
-        return;
+    NonBlockingDialogs::getOpenFileName(const_cast<DialogExtender*>(this), "Load Script", "", "AxScript Files (*.axs)",
+        [this](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
 
-    extender->LoadFromFile(filePath, true);
+            extender->LoadFromFile(filePath, true);
+        });
 }
 
 void DialogExtender::onActionReload() const

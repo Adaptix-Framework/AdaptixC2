@@ -590,11 +590,20 @@ bool BridgeApp::prompt_confirm(const QString &title, const QString &text)
     return (reply == QMessageBox::Yes);
 }
 
-QString BridgeApp::prompt_open_file(const QString &caption, const QString &filter) { return QFileDialog::getOpenFileName(nullptr, caption, QDir::homePath(), filter); }
+QString BridgeApp::prompt_open_file(const QString &caption, const QString &filter) { 
+    // Note: BridgeApp methods need to be converted to async callbacks for full non-blocking support
+    return QFileDialog::getOpenFileName(nullptr, caption, QDir::homePath(), filter); 
+}
 
-QString BridgeApp::prompt_open_dir(const QString &caption) { return QFileDialog::getExistingDirectory(nullptr, caption, QDir::homePath()); }
+QString BridgeApp::prompt_open_dir(const QString &caption) { 
+    // Note: BridgeApp methods need to be converted to async callbacks for full non-blocking support
+    return QFileDialog::getExistingDirectory(nullptr, caption, QDir::homePath()); 
+}
 
-QString BridgeApp::prompt_save_file(const QString &filename, const QString &caption, const QString &filter) { return QFileDialog::getSaveFileName(nullptr, caption, filename,  filter); }
+QString BridgeApp::prompt_save_file(const QString &filename, const QString &caption, const QString &filter) { 
+    // Note: BridgeApp methods need to be converted to async callbacks for full non-blocking support
+    return QFileDialog::getSaveFileName(nullptr, caption, filename,  filter); 
+}
 
 void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners)
 {

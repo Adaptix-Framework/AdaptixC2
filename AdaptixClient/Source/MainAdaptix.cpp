@@ -7,6 +7,7 @@
 #include <Client/Storage.h>
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
+#include <Utils/FontManager.h>
 
 MainAdaptix::MainAdaptix()
 {
@@ -54,7 +55,7 @@ void MainAdaptix::Start() const
 
         ChannelThread->start();
 
-        timeoutTimer.start(5000);
+        timeoutTimer.start(15000);
         loop.exec();
 
         if (!timeoutTimer.isActive()) {
@@ -182,24 +183,8 @@ void MainAdaptix::SetApplicationTheme() const
 {
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
 
-    QFontDatabase::addApplicationFont(":/fonts/DroidSansMono");
-    QFontDatabase::addApplicationFont(":/fonts/VT323");
-    QFontDatabase::addApplicationFont(":/fonts/Anonymous");
-    QFontDatabase::addApplicationFont(":/fonts/Anonymous_B");
-    QFontDatabase::addApplicationFont(":/fonts/Anonymous_BI");
-    QFontDatabase::addApplicationFont(":/fonts/Anonymous_I");
-    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono");
-    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono_B");
-    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono_BO");
-    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono_O");
-    QFontDatabase::addApplicationFont(":/fonts/Hack");
-    QFontDatabase::addApplicationFont(":/fonts/Hack_B");
-    QFontDatabase::addApplicationFont(":/fonts/Hack_BI");
-    QFontDatabase::addApplicationFont(":/fonts/Hack_I");
-    QFontDatabase::addApplicationFont(":/fonts/SpaceMono");
-    QFontDatabase::addApplicationFont(":/fonts/SpaceMono_B");
-    QFontDatabase::addApplicationFont(":/fonts/SpaceMono_BI");
-    QFontDatabase::addApplicationFont(":/fonts/SpaceMono_I");
+    // 初始化字体管理器，它会处理所有字体的加载
+    FontManager::instance().initialize();
 
     QString appFontFamily = settings->data.FontFamily;
     if (appFontFamily.startsWith("Adaptix"))

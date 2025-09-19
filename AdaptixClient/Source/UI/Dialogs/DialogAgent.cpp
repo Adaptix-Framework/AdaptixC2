@@ -1,4 +1,5 @@
 #include <UI/Dialogs/DialogAgent.h>
+#include <Utils/NonBlockingDialogs.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxElementWrappers.h>
@@ -150,36 +151,39 @@ void DialogAgent::onButtonGenerate()
     QString filename = QString( QByteArray::fromBase64(parts[0].toUtf8()));
     QByteArray content = QByteArray::fromBase64(parts[1].toUtf8());
 
-    QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", filename, "All Files (*.*)" );
-    if ( filePath.isEmpty())
-        return;
+    NonBlockingDialogs::getSaveFileName(this, "Save File", filename, "All Files (*.*)",
+        [this, content](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly)) {
-        MessageError("Failed to open file for writing");
-        return;
-    }
+            QFile file(filePath);
+            if (!file.open(QIODevice::WriteOnly)) {
+                MessageError("Failed to open file for writing");
+                return;
+            }
 
-    file.write( content );
-    file.close();
+            file.write(content);
+            file.close();
 
-    QInputDialog inputDialog;
-    inputDialog.setWindowTitle("Save agent");
-    inputDialog.setLabelText("File saved to:");
-    inputDialog.setTextEchoMode(QLineEdit::Normal);
-    inputDialog.setTextValue(filePath);
-    inputDialog.adjustSize();
-    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
-    inputDialog.exec();
+            QInputDialog inputDialog;
+            inputDialog.setWindowTitle("Save agent");
+            inputDialog.setLabelText("File saved to:");
+            inputDialog.setTextEchoMode(QLineEdit::Normal);
+            inputDialog.setTextValue(filePath);
+            inputDialog.adjustSize();
+            inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+            inputDialog.exec();
 
-    this->close();
+            this->close();
+        });
 }
 
 void DialogAgent::onButtonLoad()
 {
-    QString filePath = QFileDialog::getOpenFileName( nullptr, "Select file", QDir::homePath(), "JSON files (*.json)" );
-    if ( filePath.isEmpty())
-        return;
+    NonBlockingDialogs::getOpenFileName(this, "Select file", QDir::homePath(), "JSON files (*.json)",
+        [this](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly))
@@ -214,17 +218,18 @@ void DialogAgent::onButtonLoad()
         return;
     }
 
-    QString agentType = jsonObject["agent"].toString();
-    int typeIndex = agentCombobox->findText( agentType );
-    if ( typeIndex == -1 ) {
-        MessageError("No such agent exists");
-        return;
-    }
-    agentCombobox->setCurrentIndex(typeIndex);
-    this->changeConfig(agentType);
+            QString agentType = jsonObject["agent"].toString();
+            int typeIndex = agentCombobox->findText( agentType );
+            if ( typeIndex == -1 ) {
+                MessageError("No such agent exists");
+                return;
+            }
+            agentCombobox->setCurrentIndex(typeIndex);
+            this->changeConfig(agentType);
 
-    QString configData = jsonObject["config"].toString();
-    containers[agentType]->fromJson(configData);
+            QString configData = jsonObject["config"].toString();
+            containers[agentType]->fromJson(configData);
+        });
 }
 
 void DialogAgent::onButtonSave()
@@ -241,27 +246,29 @@ void DialogAgent::onButtonSave()
     QByteArray fileContent = QJsonDocument(dataJson).toJson();
 
     QString tmpFilename = QString("%1_config.json").arg(configType);
-    QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", tmpFilename, "JSON files (*.json)" );
-    if ( filePath.isEmpty())
-        return;
+    NonBlockingDialogs::getSaveFileName(this, "Save File", tmpFilename, "JSON files (*.json)",
+        [this, fileContent](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly)) {
-        MessageError("Failed to open file for writing");
-        return;
-    }
+            QFile file(filePath);
+            if (!file.open(QIODevice::WriteOnly)) {
+                MessageError("Failed to open file for writing");
+                return;
+            }
 
-    file.write( fileContent );
-    file.close();
+            file.write(fileContent);
+            file.close();
 
-    QInputDialog inputDialog;
-    inputDialog.setWindowTitle("Save config");
-    inputDialog.setLabelText("File saved to:");
-    inputDialog.setTextEchoMode(QLineEdit::Normal);
-    inputDialog.setTextValue(filePath);
-    inputDialog.adjustSize();
-    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
-    inputDialog.exec();
+            QInputDialog inputDialog;
+            inputDialog.setWindowTitle("Save config");
+            inputDialog.setLabelText("File saved to:");
+            inputDialog.setTextEchoMode(QLineEdit::Normal);
+            inputDialog.setTextValue(filePath);
+            inputDialog.adjustSize();
+            inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+            inputDialog.exec();
+        });
 
 }
 

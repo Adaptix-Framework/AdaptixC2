@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
 
 type DBMS struct {
@@ -18,7 +18,7 @@ func NewDatabase(dbPath string) (*DBMS, error) {
 		exists: true,
 	}
 
-	dbms.database, err = sql.Open("sqlite3", dbPath)
+	dbms.database, err = sql.Open("sqlite", dbPath)
 	if err != nil {
 		dbms.exists = false
 	}

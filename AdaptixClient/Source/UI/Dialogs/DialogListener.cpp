@@ -1,4 +1,5 @@
 #include <UI/Dialogs/DialogListener.h>
+#include <Utils/NonBlockingDialogs.h>
 #include <Client/Requestor.h>
 #include <Client/AxScript/AxElementWrappers.h>
 
@@ -190,9 +191,10 @@ void DialogListener::onButtonCreate()
 
 void DialogListener::onButtonLoad()
 {
-    QString filePath = QFileDialog::getOpenFileName( nullptr, "Select file", QDir::homePath(), "JSON files (*.json)" );
-    if ( filePath.isEmpty())
-        return;
+    NonBlockingDialogs::getOpenFileName(this, "Select file", QDir::homePath(), "JSON files (*.json)",
+        [this](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly))
@@ -225,12 +227,13 @@ void DialogListener::onButtonLoad()
     int typeIndex = listenerCombobox->findText( configType );
     if(typeIndex == -1 || !containers.contains(configType)) {
         MessageError("No such listener exists");
-        return;
-    }
+                return;
+            }
 
-    QString configData = jsonObject["config"].toString();
-    listenerCombobox->setCurrentIndex(typeIndex);
-    containers[configType]->fromJson(configData);
+            QString configData = jsonObject["config"].toString();
+            listenerCombobox->setCurrentIndex(typeIndex);
+            containers[configType]->fromJson(configData);
+        });
 }
 
 void DialogListener::onButtonSave()
@@ -248,27 +251,29 @@ void DialogListener::onButtonSave()
     QByteArray fileContent = QJsonDocument(dataJson).toJson();
 
     QString tmpFilename = configName + "_listener_config.json";
-    QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", tmpFilename, "JSON files (*.json)" );
-    if ( filePath.isEmpty())
-        return;
+    NonBlockingDialogs::getSaveFileName(this, "Save File", tmpFilename, "JSON files (*.json)",
+        [this, fileContent](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly)) {
-        MessageError("Failed to open file for writing");
-        return;
-    }
+            QFile file(filePath);
+            if (!file.open(QIODevice::WriteOnly)) {
+                MessageError("Failed to open file for writing");
+                return;
+            }
 
-    file.write( fileContent );
-    file.close();
+            file.write(fileContent);
+            file.close();
 
-    QInputDialog inputDialog;
-    inputDialog.setWindowTitle("Save config");
-    inputDialog.setLabelText("File saved to:");
-    inputDialog.setTextEchoMode(QLineEdit::Normal);
-    inputDialog.setTextValue(filePath);
-    inputDialog.adjustSize();
-    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
-    inputDialog.exec();
+            QInputDialog inputDialog;
+            inputDialog.setWindowTitle("Save config");
+            inputDialog.setLabelText("File saved to:");
+            inputDialog.setTextEchoMode(QLineEdit::Normal);
+            inputDialog.setTextValue(filePath);
+            inputDialog.adjustSize();
+            inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+            inputDialog.exec();
+        });
 }
 
 void DialogListener::onButtonCancel() { this->close(); }

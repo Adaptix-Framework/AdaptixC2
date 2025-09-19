@@ -3,6 +3,7 @@
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Utils/CustomElements.h>
+#include <Utils/NonBlockingDialogs.h>
 
 ImageFrame::ImageFrame(QWidget* parent) : QWidget(parent), label(new QLabel), scrollArea(new QScrollArea(this)), ctrlPressed(false), scaleFactor(1.0)
 {
@@ -315,27 +316,29 @@ void ScreenshotsWidget::actionDownload() const
 
     ScreenData screenData = adaptixWidget->Screenshots[screenId];
 
-    QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", "screenshot.png", "All Files (*.*)" );
-    if ( filePath.isEmpty())
-        return;
+    NonBlockingDialogs::getSaveFileName(const_cast<ScreenshotsWidget*>(this), "Save File", "screenshot.png", "All Files (*.*)",
+        [this, screenData](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly)) {
-        MessageError("Failed to open file for writing");
-        return;
-    }
+            QFile file(filePath);
+            if (!file.open(QIODevice::WriteOnly)) {
+                MessageError("Failed to open file for writing");
+                return;
+            }
 
-    file.write( screenData.Content );
-    file.close();
+            file.write(screenData.Content);
+            file.close();
 
-    QInputDialog inputDialog;
-    inputDialog.setWindowTitle("Sync file");
-    inputDialog.setLabelText("File saved to:");
-    inputDialog.setTextEchoMode(QLineEdit::Normal);
-    inputDialog.setTextValue(filePath);
-    inputDialog.adjustSize();
-    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
-    inputDialog.exec();
+            QInputDialog inputDialog;
+            inputDialog.setWindowTitle("Sync file");
+            inputDialog.setLabelText("File saved to:");
+            inputDialog.setTextEchoMode(QLineEdit::Normal);
+            inputDialog.setTextValue(filePath);
+            inputDialog.adjustSize();
+            inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+            inputDialog.exec();
+        });
 
 }
 

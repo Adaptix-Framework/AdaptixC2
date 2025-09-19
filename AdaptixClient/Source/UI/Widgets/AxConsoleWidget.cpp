@@ -5,6 +5,7 @@
 #include <Utils/KeyPressHandler.h>
 #include <Utils/CustomElements.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <Utils/FontManager.h>
 
 AxConsoleWidget::AxConsoleWidget(AxScriptManager* m, AdaptixWidget* w): adaptixWidget(w), scriptManager(m)
 {
@@ -74,14 +75,14 @@ void AxConsoleWidget::createUI()
     OutputTextEdit = new TextEditConsole(this, 30000, true, true);
     OutputTextEdit->setReadOnly(true);
     OutputTextEdit->setProperty( "TextEditStyle", "console" );
-    OutputTextEdit->setFont( QFont( "Hack" ));
+    OutputTextEdit->setFont( FontManager::instance().getFont("Hack") );
 
     CmdLabel = new QLabel( "ax >", this );
     CmdLabel->setProperty( "LabelStyle", "console" );
 
     InputLineEdit = new QLineEdit(this);
     InputLineEdit->setProperty( "LineEditStyle", "console" );
-    InputLineEdit->setFont( QFont( "Hack" ));
+    InputLineEdit->setFont( FontManager::instance().getFont("Hack") );
 
     ResetButton = new QPushButton("Reset AxScript");
 

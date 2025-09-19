@@ -6,6 +6,7 @@
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
+#include <Utils/FontManager.h>
 
 ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c)
 {
@@ -91,7 +92,7 @@ void ConsoleWidget::createUI()
 
     InputLineEdit = new QLineEdit(this);
     InputLineEdit->setProperty( "LineEditStyle", "console" );
-    InputLineEdit->setFont( QFont( "Hack" ));
+    InputLineEdit->setFont( FontManager::instance().getFont("Hack") );
 
     QString info = "";
     if ( agent->data.Domain == "" || agent->data.Computer == agent->data.Domain )
@@ -107,7 +108,7 @@ void ConsoleWidget::createUI()
     OutputTextEdit = new TextEditConsole(this, GlobalClient->settings->data.ConsoleBufferSize, GlobalClient->settings->data.ConsoleNoWrap, GlobalClient->settings->data.ConsoleAutoScroll);
     OutputTextEdit->setReadOnly(true);
     OutputTextEdit->setProperty( "TextEditStyle", "console" );
-    OutputTextEdit->setFont( QFont( "Hack" ));
+    OutputTextEdit->setFont( FontManager::instance().getFont("Hack") );
 
     MainGridLayout = new QGridLayout(this );
     MainGridLayout->setVerticalSpacing(4 );
