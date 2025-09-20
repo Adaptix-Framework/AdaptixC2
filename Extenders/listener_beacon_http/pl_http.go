@@ -48,9 +48,13 @@ type HTTPConfig struct {
 	WebPageError       string            `json:"page-error"`
 	WebPageOutput      string            `json:"page-payload"`
 
+	// Encryption
+	EncryptKey       []byte `json:"-"`
+	EncryptKeyHex    string `json:"encrypt_key_hex"`
+	EncryptKeyBase64 string `json:"encrypt_key_base64"`
+
 	Server_headers string `json:"server_headers"`
 	Protocol       string `json:"protocol"`
-	EncryptKey     []byte `json:"encrypt_key"`
 }
 
 type HTTP struct {

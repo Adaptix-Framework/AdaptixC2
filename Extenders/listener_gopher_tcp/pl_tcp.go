@@ -10,13 +10,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type TCPConfig struct {
@@ -35,8 +36,10 @@ type TCPConfig struct {
 	ErrorAnswer string `json:"error_answer"`
 	Timeout     int    `json:"timeout"`
 
-	Protocol   string `json:"protocol"`
-	EncryptKey []byte `json:"encrypt_key"`
+	Protocol         string `json:"protocol"`
+	EncryptKey       []byte `json:"-"`
+	EncryptKeyHex    string `json:"encrypt_key_hex"`
+	EncryptKeyBase64 string `json:"encrypt_key_base64"`
 }
 
 type Connection struct {

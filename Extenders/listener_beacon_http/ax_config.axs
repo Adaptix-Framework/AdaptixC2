@@ -46,6 +46,11 @@ function ListenerUI(mode_create)
     ssl_group.setPanel(panel_group);
     ssl_group.setChecked(false);
 
+    // 加密密钥设置
+    let labelEncryptKey = form.create_label("自定义加密密钥:");
+    let textlineEncryptKey = form.create_textline();
+    textlineEncryptKey.setPlaceholder("留空则自动生成随机密钥");
+
     let layoutMain = form.create_gridlayout();
     layoutMain.addWidget(labelHost, 0, 0, 1, 1);
     layoutMain.addWidget(comboHostBind, 0, 1, 1, 1);
@@ -60,7 +65,9 @@ function ListenerUI(mode_create)
     layoutMain.addWidget(textlineUserAgent, 4, 1, 1, 2);
     layoutMain.addWidget(labelHB, 5, 0, 1, 1);
     layoutMain.addWidget(textlineHB, 5, 1, 1, 2);
-    layoutMain.addWidget(ssl_group, 6, 0, 1, 3);
+    layoutMain.addWidget(labelEncryptKey, 6, 0, 1, 1);
+    layoutMain.addWidget(textlineEncryptKey, 6, 1, 1, 2);
+    layoutMain.addWidget(ssl_group, 7, 0, 1, 3);
 
     let panelMain = form.create_panel();
     panelMain.setLayout(layoutMain);
@@ -135,6 +142,7 @@ function ListenerUI(mode_create)
     container.put("server_headers", textServerHeaders);
     container.put("page-error", textError);
     container.put("page-payload", textPayload);
+    container.put("encrypt_key_hex", textlineEncryptKey);
 
     let panel = form.create_panel();
     panel.setLayout(layout);

@@ -10,9 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
-	"github.com/google/shlex"
-	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	mrand "math/rand"
 	"os"
@@ -21,6 +18,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/google/shlex"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type GenerateConfig struct {
@@ -53,8 +54,15 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 		return nil, err
 	}
 
-	encrypt_key, _ := listenerMap["encrypt_key"].(string)
-	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
+	// 优先使用base64编码的密钥，如果不存在则使用原始密钥字段
+	encrypt_key_base64, ok := listenerMap["encrypt_key_base64"].(string)
+	if !ok || encrypt_key_base64 == "" {
+		// 兼容旧版本，使用原始encrypt_key字段
+		encrypt_key, _ := listenerMap["encrypt_key"].(string)
+		encrypt_key_base64 = encrypt_key
+	}
+
+	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key_base64)
 	if err != nil {
 		return nil, err
 	}

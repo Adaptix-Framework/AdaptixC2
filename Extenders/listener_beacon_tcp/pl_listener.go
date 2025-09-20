@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rc4"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
 	"strconv"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (m *ModuleExtender) HandlerListenerValid(data string) error {
@@ -60,14 +62,53 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 			return listenerData, customdData, listener, err
 		}
 
-		randSlice := make([]byte, 16)
-		_, _ = rand.Read(randSlice)
-		conf.EncryptKey = randSlice[:16]
+		// 处理自定义加密密钥
+		if conf.EncryptKeyHex != "" {
+			// 用户提供了自定义密钥，直接处理字符串
+			keyBytes := []byte(conf.EncryptKeyHex)
+			if len(keyBytes) > 16 {
+				keyBytes = keyBytes[:16] // 截断到16字节
+			} else if len(keyBytes) < 16 {
+				// 填充到16字节
+				padded := make([]byte, 16)
+				copy(padded, keyBytes)
+				keyBytes = padded
+			}
+			conf.EncryptKey = keyBytes
+			// 设置Base64编码的密钥用于agent生成
+			conf.EncryptKeyBase64 = base64.StdEncoding.EncodeToString(keyBytes)
+		} else {
+			// 生成随机密钥
+			randSlice := make([]byte, 16)
+			_, _ = rand.Read(randSlice)
+			conf.EncryptKey = randSlice[:16]
+			conf.EncryptKeyBase64 = base64.StdEncoding.EncodeToString(conf.EncryptKey)
+		}
 		conf.Protocol = "bind_tcp"
 	} else {
 		err = json.Unmarshal(listenerCustomData, &conf)
 		if err != nil {
 			return listenerData, customdData, listener, err
+		}
+
+		// 从数据库恢复时，需要重新设置EncryptKey
+		if conf.EncryptKeyBase64 != "" {
+			conf.EncryptKey, err = base64.StdEncoding.DecodeString(conf.EncryptKeyBase64)
+			if err != nil {
+				return listenerData, customdData, listener, err
+			}
+		} else if conf.EncryptKeyHex != "" {
+			// 兼容旧版本，从hex字段恢复
+			keyBytes := []byte(conf.EncryptKeyHex)
+			if len(keyBytes) > 16 {
+				keyBytes = keyBytes[:16]
+			} else if len(keyBytes) < 16 {
+				padded := make([]byte, 16)
+				copy(padded, keyBytes)
+				keyBytes = padded
+			}
+			conf.EncryptKey = keyBytes
+			conf.EncryptKeyBase64 = base64.StdEncoding.EncodeToString(keyBytes)
 		}
 	}
 

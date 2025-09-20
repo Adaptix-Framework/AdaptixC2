@@ -28,6 +28,10 @@ function ListenerUI(mode_create)
     let labelAnswer = form.create_label("Error answer:");
     let texteditAnswer = form.create_textmulti("Connection error...\n");
 
+    let labelEncryptKey = form.create_label("自定义加密密钥:");
+    let textlineEncryptKey = form.create_textline();
+    textlineEncryptKey.setPlaceholder("留空则自动生成随机密钥");
+
     let checkMtls = form.create_check("Use mTLS");
     checkMtls.setEnabled(mode_create)
 
@@ -65,13 +69,15 @@ function ListenerUI(mode_create)
     layout.addWidget(texteditBanner, 3, 1, 1, 3);
     layout.addWidget(labelAnswer, 4, 0, 1, 1);
     layout.addWidget(texteditAnswer, 4, 1, 1, 3);
-    layout.addWidget(checkMtls, 5, 0, 1, 1);
-    layout.addWidget(howButton, 5, 1, 1, 1);
-    layout.addWidget(caCertSelector, 5, 2, 1, 2);
-    layout.addWidget(srvKeySelector, 6, 0, 1, 2);
-    layout.addWidget(srvCertSelector, 6, 2, 1, 2);
-    layout.addWidget(clientKeySelector, 7, 0, 1, 2);
-    layout.addWidget(clientCertSelector, 7, 2, 1, 2);
+    layout.addWidget(labelEncryptKey, 5, 0, 1, 1);
+    layout.addWidget(textlineEncryptKey, 5, 1, 1, 3);
+    layout.addWidget(checkMtls, 6, 0, 1, 1);
+    layout.addWidget(howButton, 6, 1, 1, 1);
+    layout.addWidget(caCertSelector, 6, 2, 1, 2);
+    layout.addWidget(srvKeySelector, 7, 0, 1, 2);
+    layout.addWidget(srvCertSelector, 7, 2, 1, 2);
+    layout.addWidget(clientKeySelector, 8, 0, 1, 2);
+    layout.addWidget(clientCertSelector, 8, 2, 1, 2);
 
     form.connect(checkMtls, "stateChanged", function() {
         if(caCertSelector.getEnabled()) {
@@ -127,6 +133,7 @@ function ListenerUI(mode_create)
     container.put("server_key", srvKeySelector)
     container.put("client_cert", clientCertSelector)
     container.put("client_key", clientKeySelector)
+    container.put("encrypt_key_hex", textlineEncryptKey)
 
     let panel = form.create_panel()
     panel.setLayout(layout)
