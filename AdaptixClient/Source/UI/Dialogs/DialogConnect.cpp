@@ -157,8 +157,12 @@ AuthProfile* DialogConnect::StartDialog()
     if( this->toConnect ) {
         AuthProfile* newProfile = new AuthProfile(lineEdit_Project->text(), lineEdit_User->text(),lineEdit_Password->text(),lineEdit_Host->text(),lineEdit_Port->text(), lineEdit_Endpoint->text());
 
-        if( ! GlobalClient->storage->ExistsProject(lineEdit_Project->text()) )
+        if( ! GlobalClient->storage->ExistsProject(lineEdit_Project->text()) ) {
             GlobalClient->storage->AddProject(*newProfile);
+        } else {
+            // 项目已存在，更新配置以保存最新的连接信息
+            GlobalClient->storage->UpdateProject(*newProfile);
+        }
 
         return newProfile;
     }
