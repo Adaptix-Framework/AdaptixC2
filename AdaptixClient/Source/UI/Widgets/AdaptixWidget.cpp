@@ -470,8 +470,15 @@ RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QStrin
             }
         }
 
+        // 首先尝试精确匹配（包括监听器名称）
         for (auto regAgent : this->RegisterAgents) {
             if (regAgent.name == agentName && regAgent.listenerType == listener && regAgent.os == os)
+                return regAgent;
+        }
+        
+        // 如果精确匹配失败，忽略监听器名称，只匹配代理名称和操作系统
+        for (auto regAgent : this->RegisterAgents) {
+            if (regAgent.name == agentName && regAgent.os == os)
                 return regAgent;
         }
     }
