@@ -123,15 +123,31 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
         this->MarkItem(mark);
     }
 
+    // 添加详细的调试信息
+    qDebug() << "Agent constructor - Looking for RegAgent:";
+    qDebug() << "  Agent Name:" << data.Name;
+    qDebug() << "  Listener:" << data.Listener;
+    qDebug() << "  OS:" << data.Os;
+    
     auto regAgnet = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
 
-    // 检查 commander 是否有效，如果无效则创建默认的 commander
+    // 检查 commander 是否有效
     if (regAgnet.commander == nullptr) {
-        // 创建一个默认的 Commander 以防止输入无响应
-        this->commander = new Commander();
-        qDebug() << "Warning: No matching RegAgent found for" << data.Name << data.Listener << data.Os << "- created default commander";
+        qDebug() << "No exact RegAgent match found, trying fallback...";
+        
+        // 尝试查找任何匹配的 commander 作为备用
+        QList<Commander*> allCommanders = this->adaptixWidget->GetCommandersAll();
+        if (!allCommanders.isEmpty()) {
+            this->commander = allCommanders.first();
+            qDebug() << "Using fallback commander from" << allCommanders.size() << "available commanders";
+        } else {
+            // 最后的备用方案：创建空的 commander
+            this->commander = new Commander();
+            qDebug() << "Error: No commanders available - created empty commander";
+        }
     } else {
         this->commander = regAgnet.commander;
+        qDebug() << "Found exact RegAgent match - using proper commander";
     }
     
     this->Console        = new ConsoleWidget(adaptixWidget, this, this->commander);
