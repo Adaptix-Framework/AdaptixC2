@@ -232,10 +232,8 @@ bool DialogConnect::checkValidInput() const
         return false;
     }
 
-    if( GlobalClient->storage->ExistsProject(lineEdit_Project->text()) && isNewProject ) {
-        MessageError("Project already exists");
-        return false;
-    }
+    // 移除项目存在性检查的冲突逻辑
+    // 现在统一由StartDialog()方法处理项目的添加或更新
 
     return true;
 }
