@@ -125,8 +125,16 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 
     auto regAgnet = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
 
-    this->commander      = regAgnet.commander;
-    this->Console        = new ConsoleWidget(adaptixWidget, this, regAgnet.commander);
+    // 检查 commander 是否有效，如果无效则创建默认的 commander
+    if (regAgnet.commander == nullptr) {
+        // 创建一个默认的 Commander 以防止输入无响应
+        this->commander = new Commander();
+        qDebug() << "Warning: No matching RegAgent found for" << data.Name << data.Listener << data.Os << "- created default commander";
+    } else {
+        this->commander = regAgnet.commander;
+    }
+    
+    this->Console        = new ConsoleWidget(adaptixWidget, this, this->commander);
     this->FileBrowser    = new BrowserFilesWidget(this);
     this->ProcessBrowser = new BrowserProcessWidget(this);
     this->Terminal       = new TerminalWidget(this, adaptixWidget);
