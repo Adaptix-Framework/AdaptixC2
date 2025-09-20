@@ -279,6 +279,21 @@ func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any
 		listener.Config.WebPageError = conf.WebPageError
 		listener.Config.WebPageOutput = conf.WebPageOutput
 
+		// 更新加密密钥
+		if conf.EncryptKeyHex != "" {
+			keyBytes := []byte(conf.EncryptKeyHex)
+			if len(keyBytes) > 16 {
+				keyBytes = keyBytes[:16]
+			} else if len(keyBytes) < 16 {
+				padded := make([]byte, 16)
+				copy(padded, keyBytes)
+				keyBytes = padded
+			}
+			listener.Config.EncryptKey = keyBytes
+			listener.Config.EncryptKeyHex = conf.EncryptKeyHex
+			listener.Config.EncryptKeyBase64 = base64.StdEncoding.EncodeToString(keyBytes)
+		}
+
 		listenerData = adaptix.ListenerData{
 			BindHost:  listener.Config.HostBind,
 			BindPort:  strconv.Itoa(listener.Config.PortBind),
