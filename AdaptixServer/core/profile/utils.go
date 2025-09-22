@@ -32,7 +32,20 @@ type TsCallback struct {
 		Token   string   `json:"token"`
 		ChatsId []string `json:"chats_id"`
 	} `json:"Telegram"`
-	NewAgentMessage    string `json:"new_agent_message"`
-	NewCredMessage     string `json:"new_cred_message"`
-	NewDownloadMessage string `json:"new_download_message"`
+	Webhooks           []WebhookConfig `json:"webhooks"`
+	NewAgentMessage    string          `json:"new_agent_message"`
+	NewCredMessage     string          `json:"new_cred_message"`
+	NewDownloadMessage string          `json:"new_download_message"`
+}
+
+type WebhookConfig struct {
+	URL       string            `json:"url"`
+	Method    string            `json:"method"`
+	Headers   map[string]string `json:"headers"`
+	BasicAuth *BasicAuth        `json:"basic_auth,omitempty"`
+}
+
+type BasicAuth struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
