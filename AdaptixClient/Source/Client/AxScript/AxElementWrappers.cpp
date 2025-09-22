@@ -523,8 +523,8 @@ AxListWidgetWrapper::AxListWidgetWrapper(QListWidget* widget, QJSEngine* engine,
 
     connect(list, &QListWidget::currentTextChanged, this, &AxListWidgetWrapper::currentTextChanged);
     connect(list, &QListWidget::currentRowChanged,  this, &AxListWidgetWrapper::currentRowChanged);
-    connect(list, &QListWidget::itemClicked,        this, [this](const QListWidgetItem* item) { if (item) emit itemClickedText(item->text()); });
-    connect(list, &QListWidget::itemDoubleClicked,  this, [this](const QListWidgetItem* item) { if (item) emit itemDoubleClickedText(item->text()); });
+    connect(list, &QListWidget::itemClicked,        this, [this](const QListWidgetItem* item) { if (item) Q_EMIT itemClickedText(item->text()); });
+    connect(list, &QListWidget::itemDoubleClicked,  this, [this](const QListWidgetItem* item) { if (item) Q_EMIT itemDoubleClickedText(item->text()); });
 }
 
 QVariant AxListWidgetWrapper::jsonMarshal() const
@@ -858,6 +858,7 @@ AxDialogWrapper::AxDialogWrapper(const QString& title, QWidget* parent) : QObjec
 {
     dialog = new QDialog(parent);
     dialog->setWindowTitle(title);
+    dialog->setProperty("Main", "base");
     layout = new QVBoxLayout(dialog);
 
     buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -922,6 +923,8 @@ void AxSelectorFile::jsonUnmarshal(const QVariant& value)
 
 AxDialogCreds::AxDialogCreds(const QJSValue &headers, QVector<CredentialData> vecCreds, QTableWidget *tableWidget, QPushButton *button, QWidget *parent) : tableWidget(tableWidget), chooseButton(button)
 {
+    this->setProperty("Main", "base");
+
     tableWidget->setAlternatingRowColors( true );
     tableWidget->setAutoFillBackground( false );
     tableWidget->setShowGrid( false );
@@ -1102,6 +1105,8 @@ void AxSelectorCreds::close() const { dialog->close(); }
 
 AxDialogAgents::AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QTableWidget *tableWidget, QPushButton *button, QWidget *parent) : tableWidget(tableWidget), chooseButton(button)
 {
+    this->setProperty("Main", "base");
+
     tableWidget->setAlternatingRowColors( true );
     tableWidget->setAutoFillBackground( false );
     tableWidget->setShowGrid( false );

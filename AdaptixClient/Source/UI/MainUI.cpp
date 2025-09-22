@@ -14,6 +14,7 @@
 MainUI::MainUI()
 {
     this->setWindowTitle( FRAMEWORK_VERSION );
+    this->setProperty("Main", "base");
 
     auto newProjectAction = new QAction("New Project", this);
     connect(newProjectAction, &QAction::triggered, this, &MainUI::onNewProject);

@@ -49,7 +49,7 @@ public:
     void PrintMessage(const QString& message);
     void PrintError(const QString& message);
 
-public slots:
+public Q_SLOTS:
     void processInput();
     void toggleSearchPanel();
     void handleSearch();

@@ -90,7 +90,7 @@ void ImageFrame::clear()
 
 ScreenshotsWidget::ScreenshotsWidget(QWidget* w)
 {
-    this->mainWidget = w;
+    this->adaptixWidget = w;
     this->createUI();
 
     connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &ScreenshotsWidget::handleScreenshotsMenu);
@@ -144,10 +144,6 @@ void ScreenshotsWidget::createUI()
 
 void ScreenshotsWidget::Clear() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     adaptixWidget->Screenshots.clear();
 
     QSignalBlocker blocker(tableWidget->selectionModel());
@@ -161,10 +157,6 @@ void ScreenshotsWidget::Clear() const
 
 void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>(mainWidget);
-    if(adaptixWidget->Screenshots.contains(newScreen.ScreenId))
-        return;
-
     if( tableWidget->rowCount() < 1 )
         tableWidget->setRowCount( 1 );
     else
@@ -211,10 +203,6 @@ void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen) const
 
 void ScreenshotsWidget::EditScreenshotItem(const QString &screenId, const QString &note) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     if (!adaptixWidget->Screenshots.contains(screenId))
         return;
 
@@ -231,10 +219,6 @@ void ScreenshotsWidget::EditScreenshotItem(const QString &screenId, const QStrin
 
 void ScreenshotsWidget::RemoveScreenshotItem(const QString &screenId) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>(mainWidget);
-    if (!adaptixWidget)
-        return;
-
     if (!adaptixWidget->Screenshots.contains(screenId))
         return;
 
@@ -268,10 +252,6 @@ void ScreenshotsWidget::handleScreenshotsMenu(const QPoint &pos )
 
 void ScreenshotsWidget::actionNote() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget )
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -303,10 +283,6 @@ void ScreenshotsWidget::actionNote() const
 void ScreenshotsWidget::actionDownload() const
 {
     if (tableWidget->selectionModel()->selectedRows().empty())
-        return;
-
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget )
         return;
 
     QString screenId = tableWidget->item( tableWidget->currentRow(), 0 )->text();
@@ -341,10 +317,6 @@ void ScreenshotsWidget::actionDownload() const
 
 void ScreenshotsWidget::actionDelete() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget )
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -373,8 +345,7 @@ void ScreenshotsWidget::onTableItemSelection(const QModelIndex &current, const Q
 
     QString screenId = tableWidget->item(row,0)->text();
 
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget || !adaptixWidget->Screenshots.contains(screenId) )
+    if (!adaptixWidget->Screenshots.contains(screenId) )
         return;
 
     ScreenData screenData = adaptixWidget->Screenshots[screenId];

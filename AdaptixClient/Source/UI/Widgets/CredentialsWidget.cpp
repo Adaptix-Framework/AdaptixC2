@@ -163,14 +163,18 @@ void CredentialsWidget::addTableItem(const CredentialData &newCredentials) const
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnHost,     item_Host );
     tableWidget->setSortingEnabled( isSortingEnabled );
 
+    tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
+
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnUsername, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnPassword, QHeaderView::ResizeToContents );
+    // tableWidget->horizontalHeader()->setSectionResizeMode( ColumnPassword, QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnRealm,    QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnType,     QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnTag,      QHeaderView::Stretch );
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnDate,     QHeaderView::ResizeToContents );
+    tableWidget->horizontalHeader()->setSectionResizeMode( ColumnStorage,  QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnAgent,    QHeaderView::ResizeToContents );
     tableWidget->horizontalHeader()->setSectionResizeMode( ColumnHost,     QHeaderView::ResizeToContents );
 
-    tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
 }
 
 /// Main

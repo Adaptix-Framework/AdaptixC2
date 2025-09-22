@@ -1,9 +1,11 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.28) # 3.15
 project(AdaptixClient LANGUAGES C CXX)
 
-set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
+set(CMAKE_CXX_STANDARD 17)          # 26
+set(CMAKE_CXX_STANDARD_REQUIRED ON) # -
+#set(CMAKE_INCLUDE_CURRENT_DIRS ON)  # -
 
 if(UNIX)
     find_package( OpenSSL REQUIRED )
@@ -224,7 +226,12 @@ add_executable(AdaptixClient
         Source/UI/Widgets/ChatWidget.cpp
 )
 
-target_compile_definitions(AdaptixClient PRIVATE QT_DEPRECATED_WARNINGS )
+target_compile_definitions(
+        AdaptixClient
+        PUBLIC KDDW_FRONTEND_QTWIDGETS KDDW_FRONTEND_QT BUILDING_DOCKS_LIBRARY
+        PRIVATE QT_DEPRECATED_WARNINGS QT_NO_KEYWORDS
+#        QT_NO_SIGNALS_SLOTS_KEYWORDS
+)
 
 if(UNIX)
     target_link_libraries( AdaptixClient

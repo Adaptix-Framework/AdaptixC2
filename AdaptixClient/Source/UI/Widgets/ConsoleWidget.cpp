@@ -27,8 +27,6 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c)
     connect(OutputTextEdit,   &TextEditConsole::ctx_history,                          this, &ConsoleWidget::handleShowHistory);
     connect(commander,        &Commander::commandsUpdated,                            this, &ConsoleWidget::upgradeCompleter);
 
-
-
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), OutputTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &ConsoleWidget::toggleSearchPanel);

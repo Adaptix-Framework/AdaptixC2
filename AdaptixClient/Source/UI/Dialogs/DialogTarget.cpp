@@ -14,6 +14,7 @@ void DialogTarget::createUI()
 {
     this->resize(500, 250);
     this->setWindowTitle( "Add target" );
+    this->setProperty("Main", "base");
 
     computerLabel = new QLabel("Computer:", this);
     computerInput = new QLineEdit(this);

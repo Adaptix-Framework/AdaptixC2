@@ -1,13 +1,13 @@
 /* Fallout Pip-Boy Theme - Enhanced & Complete */
 
-QWidget {
-    background-color: #111111; /* Dark base mimicking Pip-Boy screen */
-    color: #00FF00; /* Bright green text like Pip-Boy display */
+QWidget[Main="base"] {
+    background-color: #111111;
+    color: #00FF00;
 }
 
 QWidget:disabled {
-    background-color: #0A0A0A; /* Deeper dark for disabled */
-    color: #006400; /* Darker, muted green for disabled state */
+    background-color: #0A0A0A;
+    color: #006400;
 }
 
 QLabel[LabelStyle="console"] {

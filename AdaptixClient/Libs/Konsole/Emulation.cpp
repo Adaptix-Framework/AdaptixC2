@@ -36,7 +36,7 @@ Emulation::Emulation()
     connect(this, &Emulation::programBracketedPasteModeChanged, this, &Emulation::bracketedPasteModeChanged);
 
     connect(this, &Emulation::cursorChanged, this, [this](KeyboardCursorShape cursorShape, bool blinkingCursorEnabled) {
-            emit profileChangeCommandReceived( QString(QLatin1String("CursorShape=%1;BlinkingCursorEnabled=%2")).arg(static_cast<int>(cursorShape)).arg(blinkingCursorEnabled));
+            Q_EMIT profileChangeCommandReceived( QString(QLatin1String("CursorShape=%1;BlinkingCursorEnabled=%2")).arg(static_cast<int>(cursorShape)).arg(blinkingCursorEnabled));
     });
 }
 
@@ -72,7 +72,7 @@ ScreenWindow *Emulation::createWindow() {
 }
 
 void Emulation::checkScreenInUse() {
-    emit primaryScreenInUse(_currentScreen == _screen[0]);
+    Q_EMIT primaryScreenInUse(_currentScreen == _screen[0]);
 }
 
 Emulation::~Emulation() {
@@ -120,7 +120,7 @@ void Emulation::setCodec(QStringEncoder qtc) {
 
     _toUtf16 = QStringDecoder{utf8() ? QStringConverter::Encoding::Utf8
                                     : QStringConverter::Encoding::System};
-    emit useUtf8Request(utf8());
+    Q_EMIT useUtf8Request(utf8());
 }
 
 bool Emulation::utf8() const {
@@ -161,7 +161,7 @@ void Emulation::receiveChar(wchar_t c) {
             _currentScreen->toStartOfLine();
             break;
         case 0x07:
-            emit stateSet(NOTIFYBELL);
+            Q_EMIT stateSet(NOTIFYBELL);
             break;
         default:
             _currentScreen->displayCharacter(c);
@@ -170,10 +170,10 @@ void Emulation::receiveChar(wchar_t c) {
 }
 
 void Emulation::sendKeyEvent(QKeyEvent *ev, bool) {
-    emit stateSet(NOTIFYNORMAL);
+    Q_EMIT stateSet(NOTIFYNORMAL);
 
     if (!ev->text().isEmpty()) {
-        emit sendData(ev->text().toUtf8().constData(), ev->text().length());
+        Q_EMIT sendData(ev->text().toUtf8().constData(), ev->text().length());
     }
 }
 
@@ -182,7 +182,7 @@ void Emulation::sendString(const char *, int) {}
 void Emulation::sendMouseEvent(int /*buttons*/, int /*column*/, int /*row*/, int /*eventType*/) {}
 
 void Emulation::receiveData(const char *text, int length) {
-    emit stateSet(NOTIFYACTIVITY);
+    Q_EMIT stateSet(NOTIFYACTIVITY);
 
     bufferedUpdate();
 
@@ -195,10 +195,10 @@ void Emulation::receiveData(const char *text, int length) {
     for (int i = 0; i < length; i++) {
         if (text[i] == '\030') {
             if ((length - i - 1 > 3) && (strncmp(text + i + 1, "B00", 3) == 0)) {
-                emit zmodemSendDetected();
+                Q_EMIT zmodemSendDetected();
             }
             if ((length - i - 1 > 5) && (strncmp(text + i + 1, "B0100", 5) == 0)) {
-                emit zmodemRecvDetected();
+                Q_EMIT zmodemRecvDetected();
             }
         }
     }
@@ -218,7 +218,7 @@ void Emulation::dupDisplayCharacter(wchar_t cc) {
         decoder.decodeLine(data, dupCache.size(), 0);
         decoder.end();
         delete[] data;
-        emit dupDisplayOutput(lineText.toUtf8().constData(),
+        Q_EMIT dupDisplayOutput(lineText.toUtf8().constData(),
                             lineText.toUtf8().length());
         dupCache.clear();
     } else {
@@ -239,7 +239,7 @@ void Emulation::showBulk() {
     _bulkTimer1.stop();
     _bulkTimer2.stop();
 
-    emit outputChanged();
+    Q_EMIT outputChanged();
 
     _currentScreen->resetScrolledLines();
     _currentScreen->resetDroppedLines();
@@ -276,7 +276,7 @@ void Emulation::setImageSize(int lines, int columns) {
     _screen[0]->resizeImage(lines, columns);
     _screen[1]->resizeImage(lines, columns);
 
-    emit imageSizeChanged(lines, columns);
+    Q_EMIT imageSizeChanged(lines, columns);
 
     bufferedUpdate();
 }

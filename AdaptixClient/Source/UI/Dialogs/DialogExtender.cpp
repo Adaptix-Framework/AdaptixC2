@@ -19,6 +19,7 @@ void DialogExtender::createUI()
 {
     this->setWindowTitle("AxScript manager");
     this->resize(1200, 700);
+    this->setProperty("Main", "base");
 
     tableWidget = new QTableWidget(this);
     tableWidget->setColumnCount(4);

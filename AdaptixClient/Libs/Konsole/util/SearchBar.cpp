@@ -103,9 +103,9 @@ void SearchBar::noMatchFound() {
 void SearchBar::keyReleaseEvent(QKeyEvent* keyEvent) {
     if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
         if (keyEvent->modifiers() == Qt::ShiftModifier) {
-            emit findPrevious();
+            Q_EMIT findPrevious();
         } else {
-            emit findNext();
+            Q_EMIT findNext();
         }
     } else if (keyEvent->key() == Qt::Key_Escape) {
         hide();

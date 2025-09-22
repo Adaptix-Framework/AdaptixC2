@@ -73,7 +73,7 @@ public:
     void ClearTableContent() const;
     void Clear() const;
 
-public slots:
+public Q_SLOTS:
     void toggleSearchPanel();
     void handleTasksMenu( const QPoint &pos );
     void onTableItemSelection(const QModelIndex &current, const QModelIndex &previous) const;

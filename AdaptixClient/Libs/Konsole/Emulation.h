@@ -71,7 +71,7 @@ public:
 
     void setEnableHandleCtrlC(bool enable) { _enableHandleCtrlC = enable; }
 
-public slots:
+public Q_SLOTS:
 
     virtual void setImageSize(int lines, int columns);
 
@@ -87,7 +87,7 @@ public slots:
 
     void dupDisplayCharacter(wchar_t cc);
 
-signals:
+Q_SIGNALS:
 
     void sendData(const char* data,int len);
 
@@ -158,13 +158,13 @@ protected:
     
     bool _enableHandleCtrlC;
 
-protected slots:
+protected Q_SLOTS:
 
     void bufferedUpdate();
     
     void checkScreenInUse();
 
-private slots:
+private Q_SLOTS:
 
     void showBulk();
 

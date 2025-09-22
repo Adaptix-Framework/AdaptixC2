@@ -43,7 +43,7 @@ public:
     QString GetMessage() const;
     CredentialData GetCredData() const;
 
-protected slots:
+protected Q_SLOTS:
     void onButtonCreate();
     void onButtonCancel();
 };

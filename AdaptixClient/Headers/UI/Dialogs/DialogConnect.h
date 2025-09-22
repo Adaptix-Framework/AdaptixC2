@@ -41,7 +41,7 @@ public:
 
     AuthProfile* StartDialog();
 
-private slots:
+private Q_SLOTS:
     void onButton_Connect();
     void handleContextMenu( const QPoint &pos ) const;
     void itemSelected();

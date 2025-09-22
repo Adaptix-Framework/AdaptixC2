@@ -116,7 +116,7 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
 void BridgeApp::agent_hide(const QJSValue &agents)
 {
     if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
-        emit engineError("agent_hide expected array of strings in agents parameter!");
+        Q_EMIT engineError("agent_hide expected array of strings in agents parameter!");
         return;
     }
 
@@ -132,7 +132,7 @@ void BridgeApp::agent_hide(const QJSValue &agents)
 void BridgeApp::agent_remove(const QJSValue &agents)
 {
     if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
-        emit engineError("agent_remove expected array of strings in agents parameter!");
+        Q_EMIT engineError("agent_remove expected array of strings in agents parameter!");
         return;
     }
 
@@ -148,7 +148,7 @@ void BridgeApp::agent_remove(const QJSValue &agents)
 void BridgeApp::agent_set_color(const QJSValue &agents, const QString &background, const QString &foreground, const bool reset)
 {
     if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
-        emit engineError("agent_set_color expected array of strings in agents parameter!");
+        Q_EMIT engineError("agent_set_color expected array of strings in agents parameter!");
         return;
     }
 
@@ -166,7 +166,7 @@ void BridgeApp::agent_set_impersonate(const QString &id, const QString &imperson
 void BridgeApp::agent_set_mark(const QJSValue &agents, const QString &mark)
 {
     if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
-        emit engineError("agent_set_color expected array of strings in agents parameter!");
+        Q_EMIT engineError("agent_set_color expected array of strings in agents parameter!");
         return;
     }
 
@@ -182,7 +182,7 @@ void BridgeApp::agent_set_mark(const QJSValue &agents, const QString &mark)
 void BridgeApp::agent_set_tag(const QJSValue &agents, const QString &tag)
 {
     if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
-        emit engineError("agent_set_color expected array of strings in agents parameter!");
+        Q_EMIT engineError("agent_set_color expected array of strings in agents parameter!");
         return;
     }
 
@@ -207,7 +207,7 @@ QString BridgeApp::arch(const QString &id) const
 QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
 {
     if (!args.isArray()) {
-        emit engineError("bof_pack expected array of arguments!");
+        Q_EMIT engineError("bof_pack expected array of arguments!");
         return "";
     }
 
@@ -215,7 +215,7 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
     int length = args.property("length").toInt();
 
     if (items.size() != length) {
-        emit engineError("bof_pack expects the same number of types and arguments!");
+        Q_EMIT engineError("bof_pack expects the same number of types and arguments!");
         return "";
     }
 
@@ -226,7 +226,7 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
 
         if (items[i] == "cstr") {
             if (!value.canConvert<QString>()) {
-                emit engineError(QString("bof_pack cannot convert argument at index %1 to string").arg(i));
+                Q_EMIT engineError(QString("bof_pack cannot convert argument at index %1 to string").arg(i));
                 return "";
             }
 
@@ -242,7 +242,7 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
         }
         else if (items[i] == "wstr") {
             if (!value.canConvert<QString>()) {
-                emit engineError(QString("bof_pack cannot convert argument at index %1 to string").arg(i));
+                Q_EMIT engineError(QString("bof_pack cannot convert argument at index %1 to string").arg(i));
                 return "";
             }
 
@@ -262,7 +262,7 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
         }
         else if (items[i] == "bytes") {
             if (!value.canConvert<QString>()) {
-                emit engineError(QString("bof_pack cannot convert argument at index %1 to string").arg(i));
+                Q_EMIT engineError(QString("bof_pack cannot convert argument at index %1 to string").arg(i));
                 return "";
             }
 
@@ -276,7 +276,7 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
         }
         else if (items[i] == "int") {
             if (!value.canConvert<int>()) {
-                emit engineError(QString("bof_pack cannot convert argument at index %1 to int").arg(i));
+                Q_EMIT engineError(QString("bof_pack cannot convert argument at index %1 to int").arg(i));
                 return "";
             }
 
@@ -287,7 +287,7 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
         }
         else if (items[i] == "short") {
             if (!value.canConvert<int>()) {
-                emit engineError(QString("bof_pack cannot convert argument at index %1 to short").arg(i));
+                Q_EMIT engineError(QString("bof_pack cannot convert argument at index %1 to short").arg(i));
                 return "";
             }
 
@@ -297,7 +297,7 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
             data.append(numData);
         }
         else {
-            emit engineError(QString("bof_pack does not expect type '%1' (index %2)").arg(items[i]).arg(i));
+            Q_EMIT engineError(QString("bof_pack does not expect type '%1' (index %2)").arg(items[i]).arg(i));
             return "";
         }
     }
@@ -553,6 +553,8 @@ QJSValue BridgeApp::get_commands(const QString &id) const
     return this->scriptEngine->engine()->toScriptValue(list);
 }
 
+QString BridgeApp::hash(const QString &algorithm, const int length, const QString &input) { return GenerateHash(algorithm, length, input); }
+
 QJSValue BridgeApp::ids() const
 {
     QVariantList list;
@@ -602,9 +604,9 @@ bool BridgeApp::isadmin(const QString &id) const
     return mapAgents[id]->data.Elevated;
 }
 
-void BridgeApp::log(const QString &text) { emit consoleMessage(text); }
+void BridgeApp::log(const QString &text) { Q_EMIT consoleMessage(text); }
 
-void BridgeApp::log_error(const QString &text) { emit consoleError(text); }
+void BridgeApp::log_error(const QString &text) { Q_EMIT consoleError(text); }
 
 void BridgeApp::open_agent_console(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadConsoleUI(id); }
 
@@ -628,6 +630,10 @@ QString BridgeApp::prompt_open_dir(const QString &caption) { return QFileDialog:
 
 QString BridgeApp::prompt_save_file(const QString &filename, const QString &caption, const QString &filter) { return QFileDialog::getSaveFileName(nullptr, caption, filename,  filter); }
 
+QString BridgeApp::random_string(const int length, const QString &setname) { return GenerateRandomString(length, setname); }
+
+int BridgeApp::random_int(const int min, const int max) { return GenerateRandomInt(min, max); }
+
 void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners)
 {
     QList<int> list_os;
@@ -635,17 +641,17 @@ void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, co
     QStringList list_listeners;
 
     if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
-        emit engineError("register_commands_group expected array of strings in agents parameter!");
+        Q_EMIT engineError("register_commands_group expected array of strings in agents parameter!");
         return;
     }
 
     if (os.isUndefined() && (os.isNull() || !os.isArray()) ) {
-        emit engineError("register_commands_group expected array of strings in os parameter!");
+        Q_EMIT engineError("register_commands_group expected array of strings in os parameter!");
         return;
     }
 
     if (listeners.isUndefined() && (listeners.isNull() || !listeners.isArray())) {
-        emit engineError("register_commands_group expected array of strings in listeners parameter!");
+        Q_EMIT engineError("register_commands_group expected array of strings in listeners parameter!");
         return;
     }
 
@@ -668,7 +674,7 @@ void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, co
 
     auto wrapper = qobject_cast<AxCommandGroupWrapper*>(obj);
     if (!wrapper) {
-        emit engineError("register_commands_group no support object type!");
+        Q_EMIT engineError("register_commands_group no support object type!");
         return;
     }
 

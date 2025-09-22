@@ -480,7 +480,7 @@ void Vt102Emulation::doTitleChanged(int what, const QString &caption) {
         if (backColor.isValid()) {
             if (backColor != _modifiedBackground) {
                 _modifiedBackground = backColor;
-                emit changeBackgroundColorRequest(backColor);
+                Q_EMIT changeBackgroundColorRequest(backColor);
             }
         }
     }
@@ -497,7 +497,7 @@ void Vt102Emulation::doTitleChanged(int what, const QString &caption) {
         QString cwd = caption;
         cwd =
                 cwd.replace(QRegularExpression(QLatin1String("^~")), QDir::homePath());
-        emit openUrlRequest(cwd);
+        Q_EMIT openUrlRequest(cwd);
     }
 
     if (what == 32) {
@@ -510,12 +510,12 @@ void Vt102Emulation::doTitleChanged(int what, const QString &caption) {
     }
 
     if (what == 50) {
-        emit profileChangeCommandReceived(caption);
+        Q_EMIT profileChangeCommandReceived(caption);
         return;
     }
 
     if (modified) {
-        emit titleChanged(what, caption);
+        Q_EMIT titleChanged(what, caption);
     }
 }
 
@@ -558,7 +558,7 @@ void Vt102Emulation::processToken(int token, wchar_t p, int q) {
     case TY_CTL('F'): /* ACK: ignored                      */
         break;
     case TY_CTL('G'):
-        emit stateSet(NOTIFYBELL);
+        Q_EMIT stateSet(NOTIFYBELL);
         break;
     case TY_CTL('H'):
         _currentScreen->backspace();
@@ -732,11 +732,11 @@ void Vt102Emulation::processToken(int token, wchar_t p, int q) {
 
     case TY_CSI_PS('t', 8):
         setImageSize(p /*lines */, q /* columns */);
-        emit imageResizeRequest(QSize(q, p));
+        Q_EMIT imageResizeRequest(QSize(q, p));
         break;
 
     case TY_CSI_PS('t', 28):
-        emit changeTabTextColorRequest(p);
+        Q_EMIT changeTabTextColorRequest(p);
         break;
 
     case TY_CSI_PS('K', 0):
@@ -993,22 +993,22 @@ void Vt102Emulation::processToken(int token, wchar_t p, int q) {
 
     case TY_CSI_PS_SP('q', 0): /* fall through */
     case TY_CSI_PS_SP('q', 1):
-        emit cursorChanged(KeyboardCursorShape::BlockCursor, true);
+        Q_EMIT cursorChanged(KeyboardCursorShape::BlockCursor, true);
         break;
     case TY_CSI_PS_SP('q', 2):
-        emit cursorChanged(KeyboardCursorShape::BlockCursor, false);
+        Q_EMIT cursorChanged(KeyboardCursorShape::BlockCursor, false);
         break;
     case TY_CSI_PS_SP('q', 3):
-        emit cursorChanged(KeyboardCursorShape::UnderlineCursor, true);
+        Q_EMIT cursorChanged(KeyboardCursorShape::UnderlineCursor, true);
         break;
     case TY_CSI_PS_SP('q', 4):
-        emit cursorChanged(KeyboardCursorShape::UnderlineCursor, false);
+        Q_EMIT cursorChanged(KeyboardCursorShape::UnderlineCursor, false);
         break;
     case TY_CSI_PS_SP('q', 5):
-        emit cursorChanged(KeyboardCursorShape::IBeamCursor, true);
+        Q_EMIT cursorChanged(KeyboardCursorShape::IBeamCursor, true);
         break;
     case TY_CSI_PS_SP('q', 6):
-        emit cursorChanged(KeyboardCursorShape::IBeamCursor, false);
+        Q_EMIT cursorChanged(KeyboardCursorShape::IBeamCursor, false);
         break;
 
     case TY_CSI_PN('@'):
@@ -1438,9 +1438,9 @@ void Vt102Emulation::clearScreenAndSetColumns(int columnCount) {
 
 void Vt102Emulation::sendString(const char *s, int length) {
     if (length >= 0)
-        emit sendData(s, length);
+        Q_EMIT sendData(s, length);
     else
-        emit sendData(s, static_cast<int>(strlen(s)));
+        Q_EMIT sendData(s, static_cast<int>(strlen(s)));
 }
 
 void Vt102Emulation::reportCursorPosition() {
@@ -1556,11 +1556,11 @@ void Vt102Emulation::sendKeyEvent(QKeyEvent *event, bool fromPaste) {
     if (modifiers & KeyboardTranslator::CTRL_MOD) {
         switch (event->key()) {
         case Qt::Key_S:
-            emit flowControlKeyPressed(true);
+            Q_EMIT flowControlKeyPressed(true);
             break;
         case Qt::Key_Q:
         case Qt::Key_C:
-            emit flowControlKeyPressed(false);
+            Q_EMIT flowControlKeyPressed(false);
             break;
         }
     }
@@ -1589,7 +1589,7 @@ void Vt102Emulation::sendKeyEvent(QKeyEvent *event, bool fromPaste) {
                 (event->key() == Qt::Key_C)) {
             bool isSelection = !_currentScreen->isClearSelection();
             if (isSelection) {
-                emit handleCtrlC();
+                Q_EMIT handleCtrlC();
                 return;
             }
         }
@@ -1617,7 +1617,7 @@ void Vt102Emulation::sendKeyEvent(QKeyEvent *event, bool fromPaste) {
             if (entry.command() & KeyboardTranslator::EraseCommand) {
                 textToSend += eraseChar();
             } else {
-                emit handleCommandFromKeyboard(entry.command());
+                Q_EMIT handleCommandFromKeyboard(entry.command());
             }
 
         } else if (!entry.text().isEmpty()) {
@@ -1636,9 +1636,9 @@ void Vt102Emulation::sendKeyEvent(QKeyEvent *event, bool fromPaste) {
         }
 
         if (!fromPaste && textToSend.length()) {
-            emit outputFromKeypressEvent();
+            Q_EMIT outputFromKeypressEvent();
         }
-        emit sendData(textToSend.constData(), textToSend.length());
+        Q_EMIT sendData(textToSend.constData(), textToSend.length());
     } else {
         QString translatorError =
                 tr("No keyboard translator available.  "
@@ -1808,11 +1808,11 @@ void Vt102Emulation::setMode(int m) {
     case MODE_Mouse1001:
     case MODE_Mouse1002:
     case MODE_Mouse1003:
-        emit programUsesMouseChanged(false);
+        Q_EMIT programUsesMouseChanged(false);
         break;
 
     case MODE_BracketedPaste:
-        emit programBracketedPasteModeChanged(true);
+        Q_EMIT programBracketedPasteModeChanged(true);
         break;
 
     case MODE_AppScreen:
@@ -1837,11 +1837,11 @@ void Vt102Emulation::resetMode(int m) {
     case MODE_Mouse1001:
     case MODE_Mouse1002:
     case MODE_Mouse1003:
-        emit programUsesMouseChanged(true);
+        Q_EMIT programUsesMouseChanged(true);
         break;
 
     case MODE_BracketedPaste:
-        emit programBracketedPasteModeChanged(false);
+        Q_EMIT programBracketedPasteModeChanged(false);
         break;
 
     case MODE_AppScreen:

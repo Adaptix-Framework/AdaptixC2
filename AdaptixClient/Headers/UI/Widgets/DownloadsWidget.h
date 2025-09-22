@@ -22,7 +22,7 @@ public:
     void EditDownloadItem(const QString &fileId, int recvSize, int state) const;
     void RemoveDownloadItem(const QString &fileId) const;
 
-public slots:
+public Q_SLOTS:
     void handleDownloadsMenu(const QPoint &pos );
     void actionSync() const;
     void actionSyncCurl() const;

@@ -31,7 +31,7 @@ public:
     void EditListenerItem(const ListenerData &newListener) const;
     void RemoveListenerItem(const QString &listenerName) const;
 
-public slots:
+public Q_SLOTS:
     void handleListenersMenu( const QPoint &pos ) const;
     void onCreateListener() const;
     void onEditListener() const;

@@ -250,7 +250,7 @@ public:
     Q_INVOKABLE void    setPlaceholder(const QString& text) const;
     Q_INVOKABLE void    setReadOnly(const bool& readonly) const;
 
-signals:
+Q_SIGNALS:
     void textChanged(const QString &text);
     void textEdited(const QString &text);
     void returnPressed();
@@ -285,7 +285,7 @@ public:
     Q_INVOKABLE void    setCurrentIndex(int index) const;
     Q_INVOKABLE int     currentIndex() const;
 
-signals:
+Q_SIGNALS:
     void currentTextChanged(const QString &text);
     void currentIndexChanged(int index);
 };
@@ -314,7 +314,7 @@ public:
     Q_INVOKABLE void setValue(int value) const;
     Q_INVOKABLE void setRange(int min, int max) const;
 
-signals:
+Q_SIGNALS:
     void valueChanged(int);
 };
 
@@ -416,7 +416,7 @@ public:
     Q_INVOKABLE bool isChecked() const;
     Q_INVOKABLE void setChecked(bool checked) const;
 
-signals:
+Q_SIGNALS:
     void stateChanged();
 };
 
@@ -502,7 +502,7 @@ public:
     Q_INVOKABLE void     clear();
     Q_INVOKABLE QJSValue selectedRows();
 
-signals:
+Q_SIGNALS:
     void cellChanged(int row, int column);
     void cellClicked(int row, int column);
     void cellDoubleClicked(int row, int column);
@@ -544,7 +544,7 @@ public:
     Q_INVOKABLE QJSValue selectedRows() const;
     Q_INVOKABLE void     setReadOnly(bool readonly);
 
-signals:
+Q_SIGNALS:
     void currentTextChanged(const QString &currentText);
     void currentRowChanged(int currentRow);
     void itemClickedText(const QString& text);
@@ -568,7 +568,7 @@ public:
     Q_INVOKABLE bool getEnabled() const override { return widget()->isEnabled(); }
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
 
-signals:
+Q_SIGNALS:
     void clicked();
 };
 
@@ -600,7 +600,7 @@ public:
     Q_INVOKABLE void setChecked(bool checked);
     Q_INVOKABLE void setPanel(QObject* panel) const;
 
-signals:
+Q_SIGNALS:
     void clicked(bool checked = false);
 };
 
@@ -644,7 +644,7 @@ public:
     Q_INVOKABLE void addPage(QObject* w);
     Q_INVOKABLE void setSizes(const QVariantList& sizes);
 
-signals:
+Q_SIGNALS:
     void splitterMoved(int pos, int index);
 };
 
@@ -672,7 +672,7 @@ public:
     Q_INVOKABLE int  currentIndex() const;
     Q_INVOKABLE int  count() const;
 
-signals:
+Q_SIGNALS:
     void currentChanged(int index);
 };
 
@@ -790,7 +790,7 @@ public:
 
     QVector<CredentialData> data();
 
-public slots:
+public Q_SLOTS:
     void onClicked();
     void handleSearch();
     void clearSearch();
@@ -838,7 +838,7 @@ public:
 
     QVector<AgentData> data();
 
-public slots:
+public Q_SLOTS:
     void onClicked();
     void handleSearch();
     void clearSearch();

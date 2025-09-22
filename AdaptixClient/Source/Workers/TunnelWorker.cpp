@@ -60,7 +60,7 @@ void TunnelWorker::stop()
         websocket->close();
     }
 
-    emit finished();
+    Q_EMIT finished();
 }
 
 void TunnelWorker::onTcpReadyRead()

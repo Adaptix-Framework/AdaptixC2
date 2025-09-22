@@ -25,7 +25,7 @@ public:
 
     void reg(const QString &type, AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners);
 
-public slots:
+public Q_SLOTS:
     AxActionWrapper*    create_action(const QString& text, const QJSValue& handler);
     AxMenuWrapper*      create_menu(const QString& title);
     AxSeparatorWrapper* create_separator();

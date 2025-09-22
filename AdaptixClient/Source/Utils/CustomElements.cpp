@@ -109,7 +109,7 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
     connect(selectAllAction, &QAction::triggered, this, [this]() { selectAll(); });
 
     QAction *findAction = menu->addAction("Find         (Ctrl + F)");
-    connect(findAction, &QAction::triggered, this, [this]() { emit ctx_find(); });
+    connect(findAction, &QAction::triggered, this, [this]() { Q_EMIT ctx_find(); });
     
     QAction *clearAction = menu->addAction("Clear        (Ctrl + L)");
     connect(clearAction, &QAction::triggered, this, [this]() { clear(); });
@@ -117,7 +117,7 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
     menu->addSeparator();
 
     QAction *showHistory = menu->addAction("Show history (Ctrl + H)");
-    connect(showHistory, &QAction::triggered, this, [this]() { emit ctx_history(); });
+    connect(showHistory, &QAction::triggered, this, [this]() { Q_EMIT ctx_history(); });
 
     QAction *setBufferSizeAction = menu->addAction("Set buffer size...");
     connect(setBufferSizeAction, &QAction::triggered, this, [this]() {

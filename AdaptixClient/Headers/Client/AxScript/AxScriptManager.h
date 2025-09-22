@@ -101,7 +101,7 @@ public:
     int AddMenuTargets(QMenu* menu, const QString &menuType, const QStringList &targets);
     int AddMenuCreds(QMenu* menu, const QString &menuType, const QStringList &creds);
 
-public slots:
+public Q_SLOTS:
     void consolePrintMessage(const QString &message);
     void consolePrintError(const QString &message);
 

@@ -48,7 +48,7 @@ void WebSocketWorker::is_error(QAbstractSocket::SocketError error)
     if (errMsg.contains("511") || errMsg.contains("Network Authentication Required"))
         this->message = "User already connected";
 
-    emit ws_error();
+    Q_EMIT ws_error();
 }
 
 void WebSocketWorker::SetProfile(AuthProfile* authProfile)
@@ -60,17 +60,17 @@ void WebSocketWorker::is_connected()
 {
     this->ok = true;
     this->message = "";
-    emit this->connected();
+    Q_EMIT this->connected();
 }
 
 void WebSocketWorker::is_disconnected()
 {
     this->ok = false;
     this->message = "Disconnected from server";
-    emit this->websocket_closed();
+    Q_EMIT this->websocket_closed();
 }
 
 void WebSocketWorker::is_binaryMessageReceived(const QByteArray &data)
 {
-    emit this->received_data( data );
+    Q_EMIT this->received_data( data );
 }

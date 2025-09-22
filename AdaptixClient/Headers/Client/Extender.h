@@ -25,7 +25,7 @@ public:
     void DisableExtension(const QString &path);
     void RemoveExtension(const QString &path);
 
-public slots:
+public Q_SLOTS:
     void syncedOnReload(const QString &project);
     void loadGlobalScript(const QString &path);
     void unloadGlobalScript(const QString &path);

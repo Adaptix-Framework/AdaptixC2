@@ -28,7 +28,7 @@ public:
     void UpdateExtenderItem(const ExtensionFile &extenderItem) const;
     void RemoveExtenderItem(const ExtensionFile &extenderItem) const;
 
-public slots:
+public Q_SLOTS:
     void handleMenu(const QPoint &pos ) const;
     void onActionLoad() const;
     void onActionReload() const;

@@ -1,11 +1,11 @@
 /* Dracula Theme */
 
-QWidget {
+QWidget[Main="base"] {
     background-color: #282a36;
     color: #f8f8f2;
 }
 
-QWidget:disabled {
+QWidget:disabled[Main="base"] {
     background-color: #21222c;
     color: #6272a4;
 }

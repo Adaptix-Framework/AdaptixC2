@@ -21,13 +21,13 @@ public:
     void run() override;
     void SetProfile(AuthProfile* authProfile);
 
-public slots:
+public Q_SLOTS:
     void is_connected();
     void is_disconnected();
     void is_binaryMessageReceived( const QByteArray &data );
     void is_error(QAbstractSocket::SocketError error);
 
-signals:
+Q_SIGNALS:
     void connected();
     void ws_error();
     void received_data( QByteArray data );

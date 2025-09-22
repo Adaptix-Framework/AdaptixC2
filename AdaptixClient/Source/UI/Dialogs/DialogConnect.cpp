@@ -30,6 +30,7 @@ void DialogConnect::createUI()
     setMaximumSize( QSize( 800, 370 ) );
 
     this->setWindowTitle("Connect");
+    this->setProperty("Main", "base");
 
     label_UserInfo = new QLabel( this );
     label_UserInfo->setAlignment(Qt::AlignCenter);

@@ -18,7 +18,7 @@ public:
 
     void reg(const QString &event, const QString &type, const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id);
 
-public slots:
+public Q_SLOTS:
     void on_filebrowser_disks(const QJSValue &handler, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue(), const QString &event_id = "");
     void on_filebrowser_list(const QJSValue &handler, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue(), const QString &event_id = "");
     void on_filebrowser_upload(const QJSValue &handler, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue(), const QString &event_id = "");
@@ -35,7 +35,7 @@ public slots:
     QJSValue list();
     void     remove(const QString &event_id);
 
-signals:
+Q_SIGNALS:
     void scriptError(const QString &msg);
 };
 
