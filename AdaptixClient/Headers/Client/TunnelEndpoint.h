@@ -41,7 +41,7 @@ public:
 
     void StopChannel(const QString& tunnelId);
 
-private slots:
+private Q_SLOTS:
     void onStartLpfChannel();
     void onStartSocks4Channel();
     void onStartSocks5Channel();

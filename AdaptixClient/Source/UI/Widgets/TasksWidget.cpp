@@ -4,9 +4,9 @@
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Settings.h>
+#include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <MainAdaptix.h>
-
 
 TaskOutputWidget::TaskOutputWidget() { this->createUI(); }
 
@@ -53,6 +53,7 @@ void TaskOutputWidget::SetConten(const QString &message, const QString &text) co
 TasksWidget::TasksWidget( AdaptixWidget* w )
 {
     this->adaptixWidget = w;
+
     this->createUI();
 
     taskOutputConsole = new TaskOutputWidget();

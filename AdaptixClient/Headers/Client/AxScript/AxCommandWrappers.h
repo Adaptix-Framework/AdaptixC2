@@ -30,7 +30,7 @@ public:
 
     Q_INVOKABLE void setPreHook(const QJSValue& handler);
 
-signals:
+Q_SIGNALS:
     void scriptError(const QString &msg);
 };
 
@@ -55,7 +55,7 @@ public:
 
     Q_INVOKABLE void add(const QJSValue& array);
 
-signals:
+Q_SIGNALS:
     void scriptError(const QString &msg);
 };
 

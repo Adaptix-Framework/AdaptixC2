@@ -298,16 +298,22 @@ void SessionsTableWidget::UpdateColumnsWidth() const
     tableWidget->horizontalHeader()->setSectionResizeMode(ColumnTags, QHeaderView::Stretch);
 
     int wDomain   = tableWidget->columnWidth(ColumnDomain);
-    int wComputer = tableWidget->columnWidth(ColumnDomain);
-    int wUser     = tableWidget->columnWidth(ColumnDomain);
+    int wComputer = tableWidget->columnWidth(ColumnComputer);
+    int wUser     = tableWidget->columnWidth(ColumnUser);
+    int wOs       = tableWidget->columnWidth(ColumnOs);
+    int wProcess  = tableWidget->columnWidth(ColumnProcess);
 
     tableWidget->horizontalHeader()->setSectionResizeMode(ColumnDomain,   QHeaderView::Interactive);
     tableWidget->horizontalHeader()->setSectionResizeMode(ColumnComputer, QHeaderView::Interactive);
     tableWidget->horizontalHeader()->setSectionResizeMode(ColumnUser,     QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnOs,       QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnProcess,  QHeaderView::Interactive);
 
-    tableWidget->setColumnWidth(ColumnDomain, wDomain);
-    tableWidget->setColumnWidth(ColumnDomain, wComputer);
-    tableWidget->setColumnWidth(ColumnDomain, wUser);
+    tableWidget->setColumnWidth(ColumnDomain,   wDomain);
+    tableWidget->setColumnWidth(ColumnComputer, wComputer);
+    tableWidget->setColumnWidth(ColumnUser,     wUser);
+    tableWidget->setColumnWidth(ColumnOs,       wOs);
+    tableWidget->setColumnWidth(ColumnProcess,  wProcess);
 }
 
 void SessionsTableWidget::ClearTableContent() const

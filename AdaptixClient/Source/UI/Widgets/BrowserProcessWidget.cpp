@@ -2,9 +2,10 @@
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-BrowserProcessWidget::BrowserProcessWidget(Agent* a)
+BrowserProcessWidget::BrowserProcessWidget(AdaptixWidget* w, Agent* a)
 {
     agent = a;
     this->createUI();
@@ -425,7 +426,7 @@ void BrowserProcessWidget::filterTableWidget(const QString &filterText) const
 void BrowserProcessWidget::onReload() const
 {
     statusLabel->setText("");
-    emit agent->adaptixWidget->eventProcessBrowserList(agent->data.Id);
+    Q_EMIT agent->adaptixWidget->eventProcessBrowserList(agent->data.Id);
 }
 
 void BrowserProcessWidget::onFilter(const QString &text) const

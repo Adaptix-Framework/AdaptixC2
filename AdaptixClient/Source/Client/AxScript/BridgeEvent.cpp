@@ -9,7 +9,7 @@ BridgeEvent::~BridgeEvent() {}
 void BridgeEvent::reg(const QString &event, const QString &type, const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id)
 {
     if (!handler.isCallable()) {
-        emit scriptError( type + " -> handler in not Callable");
+        Q_EMIT scriptError( type + " -> handler in not Callable");
         return;
     }
 
@@ -18,7 +18,7 @@ void BridgeEvent::reg(const QString &event, const QString &type, const QJSValue 
     QSet<QString> list_listeners;
 
     if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0) {
-        emit scriptError(type + " -> agents in undefined");
+        Q_EMIT scriptError(type + " -> agents in undefined");
         return;
     }
 
@@ -69,7 +69,7 @@ void BridgeEvent::on_new_agent(const QJSValue &handler, const QJSValue &agents, 
 void BridgeEvent::on_ready(const QJSValue &handler, const QString &event_id)
 {
     if (!handler.isCallable())
-        emit scriptError("on_ready -> handler in not Callable");
+        Q_EMIT scriptError("on_ready -> handler in not Callable");
 
     this->scriptEngine->registerEvent("ready", handler, nullptr, QSet<QString>(), QSet<QString>(), QSet<QString>(), event_id);
 }
@@ -77,7 +77,7 @@ void BridgeEvent::on_ready(const QJSValue &handler, const QString &event_id)
 void BridgeEvent::on_disconnect(const QJSValue &handler, const QString &event_id)
 {
     if (!handler.isCallable())
-        emit scriptError("on_disconnect -> handler in not Callable");
+        Q_EMIT scriptError("on_disconnect -> handler in not Callable");
 
     this->scriptEngine->registerEvent("disconnect", handler, nullptr, QSet<QString>(), QSet<QString>(), QSet<QString>(), event_id);
 }
@@ -85,7 +85,7 @@ void BridgeEvent::on_disconnect(const QJSValue &handler, const QString &event_id
 QString BridgeEvent::on_interval(const QJSValue &handler, int delay, QString event_id)
 {
     if (!handler.isCallable())
-        emit scriptError("on_timer -> handler in not Callable");
+        Q_EMIT scriptError("on_timer -> handler in not Callable");
 
     if (delay < 0) delay = 0;
     if (event_id == "") event_id = "interval_" + GenerateRandomString(8, "hex");
@@ -105,7 +105,7 @@ QString BridgeEvent::on_interval(const QJSValue &handler, int delay, QString eve
 QString BridgeEvent::on_timeout(const QJSValue &handler, int delay, QString event_id)
 {
     if (!handler.isCallable())
-        emit scriptError("on_timeout -> handler in not Callable");
+        Q_EMIT scriptError("on_timeout -> handler in not Callable");
 
     if (delay < 0) delay = 0;
     if (event_id == "") event_id = "timeout_" + GenerateRandomString(8, "hex");

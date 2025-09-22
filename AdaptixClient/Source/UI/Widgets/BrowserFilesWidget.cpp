@@ -3,6 +3,7 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 
 void BrowserFileData::CreateBrowserFileData(const QString &path, const int os)
@@ -44,7 +45,7 @@ void BrowserFileData::SetStored(const bool stored)
 
 
 
-BrowserFilesWidget::BrowserFilesWidget(Agent* a)
+BrowserFilesWidget::BrowserFilesWidget(AdaptixWidget* w, Agent* a)
 {
     agent = a;
     this->createUI();
@@ -502,7 +503,7 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
         this->setStoredFileData(path, fileData);
     } else {
         statusLabel->setText("");
-        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
+        Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
     }
 }
 
@@ -511,14 +512,14 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
 void BrowserFilesWidget::onDisks() const
 {
     statusLabel->setText("");
-    emit agent->adaptixWidget->eventFileBrowserDisks(agent->data.Id);
+    Q_EMIT agent->adaptixWidget->eventFileBrowserDisks(agent->data.Id);
 }
 
 void BrowserFilesWidget::onList() const
 {
     QString path = inputPath->text();
     statusLabel->setText("");
-    emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
+    Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
 }
 
 void BrowserFilesWidget::onParent()
@@ -556,11 +557,11 @@ void BrowserFilesWidget::onReload() const
             path = "./";
 
         statusLabel->setText("");
-        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
+        Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
     }
     else {
         statusLabel->setText("");
-        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, currentPath);
+        Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, currentPath);
     }
 }
 

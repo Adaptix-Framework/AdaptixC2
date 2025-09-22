@@ -98,7 +98,7 @@ public:
     QList<AxEvent>    getEvents(const QString &type);
     QList<AxMenuItem> getMenuItems(const QString &type);
 
-public slots:
+public Q_SLOTS:
     void engineError(const QString &message);
 };
 

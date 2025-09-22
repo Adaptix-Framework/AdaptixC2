@@ -14,6 +14,7 @@ void DialogSaveTask::createUI()
 {
     this->resize(900, 500);
     this->setWindowTitle( "Save Task" );
+    this->setProperty("Main", "base");
 
     commandLineLabel = new QLabel("CommandLine:", this);
     commandLineInput = new QLineEdit(this);

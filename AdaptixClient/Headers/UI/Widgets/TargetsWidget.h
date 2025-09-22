@@ -9,6 +9,7 @@ class ClickableLabel;
 class TargetsWidget : public QWidget
 {
     AdaptixWidget* adaptixWidget  = nullptr;
+
     QGridLayout*   mainGridLayout = nullptr;
     QTableWidget*  tableWidget    = nullptr;
     QShortcut*     shortcutSearch = nullptr;
@@ -46,7 +47,7 @@ public:
 
     void TargetsAdd(QList<TargetData> targetList);
 
-public slots:
+public Q_SLOTS:
     void toggleSearchPanel() const;
     void onFilterUpdate() const;
     void handleTargetsMenu( const QPoint &pos ) const;

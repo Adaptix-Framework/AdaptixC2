@@ -1,4 +1,6 @@
 #include <UI/Widgets/LogsWidget.h>
+#include <UI/Widgets/AdaptixWidget.h>
+#include <Client/AuthProfile.h>
 #include <Utils/Convert.h>
 
 LogsWidget::LogsWidget()
@@ -69,8 +71,6 @@ void LogsWidget::createUI()
 
     logsWidget = new QWidget(this);
     logsWidget->setLayout(logsGridLayout);
-
-
 
     /// ToDo: todo list + sync chat
     todoLabel = new QLabel(this);

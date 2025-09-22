@@ -35,7 +35,7 @@ public:
     QString  GetMessage() const;
     TaskData GetData() const;
 
-protected slots:
+protected Q_SLOTS:
     void onButtonSave();
     void onButtonCancel();
 };

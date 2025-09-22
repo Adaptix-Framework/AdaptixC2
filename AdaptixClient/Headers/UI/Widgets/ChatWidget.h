@@ -38,7 +38,7 @@ public:
     void AddChatMessage(qint64 time, const QString &username, const QString &message) const;
     void Clear() const;
 
-public slots:
+public Q_SLOTS:
     void handleChat();
     void toggleSearchPanel();
     void handleSearch();

@@ -48,11 +48,11 @@ public:
   void reset() override;
   char eraseChar() const override;
 
-signals:
+Q_SIGNALS:
   void changeBackgroundColorRequest(const QColor &);
   void openUrlRequest(const QString & url);
 
-public slots:
+public Q_SLOTS:
   void sendString(const char*,int length = -1) override;
   void sendText(const QString& text) override;
   void sendKeyEvent(QKeyEvent*, bool fromPaste) override;
@@ -65,7 +65,7 @@ protected:
   void resetMode(int mode) override;
   void receiveChar(wchar_t cc) override;
 
-private slots:
+private Q_SLOTS:
   void updateTitle();
 
 private:

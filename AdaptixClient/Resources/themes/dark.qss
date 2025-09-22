@@ -1,15 +1,21 @@
 /* Adaptix Dark Theme */
 
-QWidget {
+QWidget[Main="base"] {
     background-color: #222222;
     color: #E0E0E0;
 }
 
-QWidget:disabled {
+QWidget:disabled[Main="base"] {
     background-color: #1A1A1A;
     color: #5A5A5A;
 }
 
+
+
+QDialog, QInputDialog, QColorDialog, QFileDialog {
+    background-color: #222222;
+    color: #E0E0E0;
+}
 
 
 
@@ -120,6 +126,18 @@ QTableWidget::item:selected {
     color: #FFFFFF;
     outline: none;
 }
+
+
+/*QTableWidget::item:selected:focus {*/
+/*    outline: none;*/
+/*    border: none;*/
+/*}*/
+
+/*QTableWidget::item:focus {*/
+/*    outline: none;*/
+/*    border: none;*/
+/*    background: none;*/
+/*}*/
 
 QTableWidget:disabled {
     background-color: #1A1A1A;

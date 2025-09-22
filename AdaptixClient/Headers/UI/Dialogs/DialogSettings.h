@@ -65,7 +65,7 @@ void createUI();
 public:
     DialogSettings(Settings* s);
 
-public slots:
+public Q_SLOTS:
     void onStackChange(int index) const;
     void onHealthChange() const;
     void onApply() const;

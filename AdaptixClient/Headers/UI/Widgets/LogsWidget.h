@@ -4,7 +4,9 @@
 #include <main.h>
 #include <Utils/CustomElements.h>
 
-class LogsWidget : public QWidget
+class AdaptixWidget;
+
+class LogsWidget : public DockTab
 {
     QGridLayout*     mainGridLayout      = nullptr;
     QGridLayout*     logsGridLayout      = nullptr;
@@ -35,13 +37,13 @@ class LogsWidget : public QWidget
     void highlightCurrent() const;
 
 public:
-    explicit LogsWidget();
+    explicit LogsWidget(AdaptixWidget* w);
     ~LogsWidget() override;
 
      void AddLogs( int type, qint64 time, const QString &Message) const;
      void Clear() const;
 
-public slots:
+public Q_SLOTS:
     void toggleSearchPanel();
     void handleSearch();
     void handleSearchBackward();

@@ -8,12 +8,12 @@ ChatWidget::ChatWidget(AdaptixWidget* w) : adaptixWidget(w)
 {
     this->createUI();
 
-    connect(chatInput,           &QLineEdit::returnPressed,  this, &ChatWidget::handleChat);
-    connect(searchLineEdit,      &QLineEdit::returnPressed,  this, &ChatWidget::handleSearch);
-    connect(nextButton,          &ClickableLabel::clicked,   this, &ChatWidget::handleSearch);
-    connect(prevButton,          &ClickableLabel::clicked,   this, &ChatWidget::handleSearchBackward);
-    connect(hideButton,          &ClickableLabel::clicked,   this, &ChatWidget::toggleSearchPanel);
-    connect(chatTextEdit,        &TextEditConsole::ctx_find, this, &ChatWidget::toggleSearchPanel);
+    connect(chatInput,      &QLineEdit::returnPressed,  this, &ChatWidget::handleChat);
+    connect(searchLineEdit, &QLineEdit::returnPressed,  this, &ChatWidget::handleSearch);
+    connect(nextButton,     &ClickableLabel::clicked,   this, &ChatWidget::handleSearch);
+    connect(prevButton,     &ClickableLabel::clicked,   this, &ChatWidget::handleSearchBackward);
+    connect(hideButton,     &ClickableLabel::clicked,   this, &ChatWidget::toggleSearchPanel);
+    connect(chatTextEdit,   &TextEditConsole::ctx_find, this, &ChatWidget::toggleSearchPanel);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), chatTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);

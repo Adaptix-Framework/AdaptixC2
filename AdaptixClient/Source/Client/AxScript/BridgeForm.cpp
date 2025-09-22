@@ -12,7 +12,7 @@ BridgeForm::~BridgeForm() { delete widget; }
 void BridgeForm::connect(QObject* sender, const QString& signalName, const QJSValue& handler)
 {
     if (!sender || !handler.isCallable()) {
-        emit scriptError("connect -> Invalid sender or handler");
+        Q_EMIT scriptError("connect -> Invalid sender or handler");
         return;
     }
 
@@ -50,17 +50,17 @@ void BridgeForm::connect(QObject* sender, const QString& signalName, const QJSVa
                 connected = QObject::connect(sender, method, proxy, proxy->metaObject()->method(proxy->metaObject()->indexOfSlot("callWithArgs(int,int)")));
         }
         else {
-            emit scriptError("connect -> Signal " + signalName + " has too many parameters (not supported)");
+            Q_EMIT scriptError("connect -> Signal " + signalName + " has too many parameters (not supported)");
             return;
         }
 
         if (!connected)
-            emit scriptError("connect -> Failed to connect signal " + method.methodSignature());
+            Q_EMIT scriptError("connect -> Failed to connect signal " + method.methodSignature());
 
         return;
     }
 
-    emit scriptError("connect -> Signal " + signalName + " not found");
+    Q_EMIT scriptError("connect -> Signal " + signalName + " not found");
 }
 
 /// Elements
@@ -253,6 +253,7 @@ QObject* BridgeForm::create_scrollarea()
 QObject* BridgeForm::create_panel()
 {
     auto* panel = new QWidget(widget);
+    panel->setProperty("Main", "base");
     auto* wrapper = new AxPanelWrapper(panel, this);
     scriptEngine->registerObject(wrapper);
     return wrapper;

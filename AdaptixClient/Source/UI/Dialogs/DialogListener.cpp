@@ -20,6 +20,7 @@ void DialogListener::createUI()
 {
     this->resize(650, 650);
     this->setWindowTitle("Create Listener");
+    this->setProperty("Main", "base");
 
     listenerNameLabel = new QLabel(this);
     listenerNameLabel->setText("Listener name:");

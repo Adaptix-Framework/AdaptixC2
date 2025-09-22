@@ -50,7 +50,7 @@ void TerminalWorker::stop()
         if (websocket->state() != QAbstractSocket::UnconnectedState) {
             connect(websocket, &QWebSocket::disconnected, this, [this]() {
                 websocket->deleteLater();
-                emit finished();
+                Q_EMIT finished();
                 this->deleteLater();
             });
 
@@ -61,7 +61,7 @@ void TerminalWorker::stop()
         }
     }
 
-    emit finished();
+    Q_EMIT finished();
     this->deleteLater();
 }
 
@@ -73,7 +73,7 @@ void TerminalWorker::onWsBinaryMessageReceived(const QByteArray& msg) {
     if (!started) {
         started = true;
 
-        emit connectedToTerminal();
+        Q_EMIT connectedToTerminal();
 
         connect(this->terminalWidget->Konsole(), &QTermWidget::sendData, this, [this](const char *data, int size) {
             if (websocket->state() == QAbstractSocket::ConnectedState) {
@@ -83,10 +83,10 @@ void TerminalWorker::onWsBinaryMessageReceived(const QByteArray& msg) {
     }
 
     if (!msg.isEmpty())
-        emit binaryMessageToTerminal(msg);
+        Q_EMIT binaryMessageToTerminal(msg);
 }
 
 void TerminalWorker::onWsError(QAbstractSocket::SocketError error)
 {
-    emit errorStop();
+    Q_EMIT errorStop();
 }

@@ -67,7 +67,7 @@ public:
     void ConsoleOutputMessage( qint64 timestamp, const QString &taskId, int type, const QString &message, const QString &text, bool completed ) const;
     void ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const;
 
-public slots:
+public Q_SLOTS:
     void upgradeCompleter() const;
     void processInput();
     void onCompletionSelected(const QString &selectedText);

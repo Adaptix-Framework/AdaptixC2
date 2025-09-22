@@ -90,7 +90,7 @@ void Commander::AddRegCommands(const CommandsGroup &group) { regCommandsGroup = 
 void Commander::AddAxCommands(const CommandsGroup &group)
 {
     axCommandsGroup.append(group);
-    emit commandsUpdated();
+    Q_EMIT commandsUpdated();
 }
 
 void Commander::RemoveAxCommands(const QString &filepath)
@@ -101,7 +101,7 @@ void Commander::RemoveAxCommands(const QString &filepath)
             i--;
         }
     }
-    emit commandsUpdated();
+    Q_EMIT commandsUpdated();
 }
 
 CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
@@ -440,7 +440,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
 
                 int maxArgLength = 0;
                 for (const auto &arg : foundCommand.args) {
-                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    QString fullarg = ((arg.required && !arg.defaultUsed) ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + ((arg.required && !arg.defaultUsed) ? ">" : "]");
                     maxArgLength = qMax(maxArgLength, fullarg.size());
                     usageStream << " " + fullarg;
                 }
@@ -449,7 +449,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 output << "  Arguments:\n";
 
                 for (const auto &arg : foundCommand.args) {
-                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    QString fullarg = ((arg.required && !arg.defaultUsed) ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + ((arg.required && !arg.defaultUsed) ? ">" : "]");
                     QString padding = QString(maxArgLength - fullarg.size(), ' ');
                     output << "    " + fullarg + padding + "  : " + (arg.type + ".").leftJustified(9, ' ') + (arg.defaultUsed ? " (default: '" + arg.defaultValue.toString() + "'). " : " ") + arg.description + "\n";
                 }
@@ -480,7 +480,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
 
                 int maxArgLength = 0;
                 for (const auto &arg : foundSubCommand.args) {
-                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    QString fullarg = ((arg.required && !arg.defaultUsed) ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + ((arg.required && !arg.defaultUsed) ? ">" : "]");
                     maxArgLength = qMax(maxArgLength, fullarg.size());
                     usageStream << " " + fullarg;
                 }
@@ -489,7 +489,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 output << "  Arguments:\n";
 
                 for (const auto &arg : foundSubCommand.args) {
-                    QString fullarg = (arg.required ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + (arg.required ? ">" : "]");
+                    QString fullarg = ((arg.required && !arg.defaultUsed) ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + ((arg.required && !arg.defaultUsed) ? ">" : "]");
                     QString padding = QString(maxArgLength - fullarg.size(), ' ');
                     output << "    " + fullarg + padding + "  : " + (arg.type + ".").leftJustified(9, ' ') + (arg.defaultUsed ? ".- (default: '" + arg.defaultValue.toString() + "'). " : " ") + arg.description + "\n";
                 }

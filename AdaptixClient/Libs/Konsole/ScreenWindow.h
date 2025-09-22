@@ -72,12 +72,12 @@ public:
 
     QString getScreenText(int row1, int col1, int row2, int col2, int mode);
 
-public slots:
+public Q_SLOTS:
     void notifyOutputChanged();
 
     void handleCommandFromKeyboard(KeyboardTranslator::Command command);
 
-signals:
+Q_SIGNALS:
     void outputChanged();
 
     void scrolled(int line);

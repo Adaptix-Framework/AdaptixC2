@@ -58,7 +58,7 @@ public:
     void ClearTableContent() const;
     void Clear() const;
 
-public slots:
+public Q_SLOTS:
     void toggleSearchPanel() const;
     void onFilterUpdate() const;
     void handleTableDoubleClicked( const QModelIndex &index ) const;

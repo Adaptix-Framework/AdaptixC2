@@ -147,7 +147,7 @@ public:
     void LoadTerminalUI(const QString &AgentId);
     void ShowTunnelCreator(const QString &AgentId, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
 
-signals:
+Q_SIGNALS:
     void SyncedSignal();
     void SyncedOnReloadSignal(QString project);
     void LoadGlobalScriptSignal(QString path);
@@ -159,7 +159,7 @@ signals:
     void eventFileBrowserUpload(QString agentId, QString path, QString localFilename);
     void eventProcessBrowserList(QString agentId);
 
-public slots:
+public Q_SLOTS:
     void ChannelClose() const;
     void DataHandler(const QByteArray& data);
 

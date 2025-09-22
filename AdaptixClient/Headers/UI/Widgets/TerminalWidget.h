@@ -47,7 +47,7 @@ public:
      void setStatus(const QString& text);
      QTermWidget* Konsole();
 
-public slots:
+public Q_SLOTS:
      void handleTerminalMenu(const QPoint &pos);
      void onStart();
      void onRestart();

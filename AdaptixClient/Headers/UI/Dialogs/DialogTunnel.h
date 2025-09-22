@@ -75,7 +75,7 @@ public:
      QString GetEndpoint() const;
      QByteArray GetTunnelData() const;
 
-protected slots:
+protected Q_SLOTS:
      void changeType(const QString &type) const;
      void onSocks5AuthCheckChange() const;
      void onButtonCreate();

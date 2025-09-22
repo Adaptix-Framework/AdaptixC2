@@ -77,7 +77,7 @@ void DialogSettings::createUI()
 {
     this->setWindowTitle("Adaptix Settings");
     this->resize(600, 300);
-
+    this->setProperty("Main", "base");
 
     mainSettingWidget = new QWidget(this);
     mainSettingLayout = new QGridLayout(mainSettingWidget);

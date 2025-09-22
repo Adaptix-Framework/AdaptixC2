@@ -3,6 +3,8 @@
 
 #include <main.h>
 
+class AdaptixWidget;
+
 class ImageFrame : public QWidget
 {
 Q_OBJECT
@@ -24,7 +26,7 @@ protected:
     void keyReleaseEvent(QKeyEvent* e) override;
     bool eventFilter(QObject* obj, QEvent* e) override;
 
-public slots:
+public Q_SLOTS:
     void resizeImage() const;
     void setPixmap(const QPixmap&);
 };
@@ -34,16 +36,16 @@ public slots:
 class ScreenshotsWidget : public QWidget
 {
 Q_OBJECT
-    QWidget*      mainWidget     = nullptr;
-    QTableWidget* tableWidget    = nullptr;
-    QGridLayout*  mainGridLayout = nullptr;
-    QSplitter*    splitter       = nullptr;
-    ImageFrame*   imageFrame     = nullptr;
+    AdaptixWidget* adaptixWidget  = nullptr;
+    QTableWidget*  tableWidget    = nullptr;
+    QGridLayout*   mainGridLayout = nullptr;
+    QSplitter*     splitter       = nullptr;
+    ImageFrame*    imageFrame     = nullptr;
 
     void createUI();
 
 public:
-    ScreenshotsWidget(QWidget* w);
+    ScreenshotsWidget(AdaptixWidget* w);
     ~ScreenshotsWidget() override;
 
      void Clear() const;
@@ -51,7 +53,7 @@ public:
      void EditScreenshotItem(const QString &screenId, const QString &note) const;
      void RemoveScreenshotItem(const QString &screenId) const;
 
-public slots:
+public Q_SLOTS:
     void onTableItemSelection(const QModelIndex &current, const QModelIndex &previous) const;
     void handleScreenshotsMenu(const QPoint &pos);
     void actionDelete() const;

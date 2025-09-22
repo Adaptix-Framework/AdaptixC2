@@ -406,7 +406,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             this->sync = false;
             this->setEnabled(true);
 
-            emit this->SyncedSignal();
+            Q_EMIT this->SyncedSignal();
         }
         return;
     }
@@ -462,7 +462,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         SessionsGraphPage->AddAgent(newAgent, this->synchronized);
 
         if (synchronized)
-            emit eventNewAgent(newAgent->data.Id);
+            Q_EMIT eventNewAgent(newAgent->data.Id);
 
         return;
     }

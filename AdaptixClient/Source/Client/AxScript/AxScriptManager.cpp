@@ -164,9 +164,9 @@ void AxScriptManager::ScriptRemove(const ExtensionFile &ext)
 
 
 
-void AxScriptManager::GlobalScriptLoad(const QString &path) { emit adaptixWidget->LoadGlobalScriptSignal(path); }
+void AxScriptManager::GlobalScriptLoad(const QString &path) { Q_EMIT adaptixWidget->LoadGlobalScriptSignal(path); }
 
-void AxScriptManager::GlobalScriptUnload(const QString &path) { emit adaptixWidget->UnloadGlobalScriptSignal(path); }
+void AxScriptManager::GlobalScriptUnload(const QString &path) { Q_EMIT adaptixWidget->UnloadGlobalScriptSignal(path); }
 
 void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os)
 {

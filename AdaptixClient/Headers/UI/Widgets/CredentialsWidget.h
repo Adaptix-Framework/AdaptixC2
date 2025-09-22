@@ -48,7 +48,7 @@ public:
 
     void CredentialsAdd(QList<CredentialData> credsList);
 
-public slots:
+public Q_SLOTS:
     void toggleSearchPanel() const;
     void onFilterUpdate() const;
     void handleCredentialsMenu( const QPoint &pos ) const;

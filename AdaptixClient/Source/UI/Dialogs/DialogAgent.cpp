@@ -25,6 +25,7 @@ void DialogAgent::createUI()
 {
     this->resize( 450, 450 );
     this->setWindowTitle( "Generate Agent" );
+    this->setProperty("Main", "base");
 
     listenerLabel = new QLabel("Listener:", this);
     listenerInput = new QLineEdit(this);
