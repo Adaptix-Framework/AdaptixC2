@@ -668,6 +668,46 @@ func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int)
 	return tasks, tasksSize, nil
 }
 
+func (ts *Teamserver) TsTaskGetAvailableTasksCount(agentId string, maxCount int, availableSize int) ([]adaptix.TaskData, int, error) {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	var tasks []adaptix.TaskData
+	tasksSize := 0
+
+	/// TASKS QUEUE
+
+	var sendTasks []string
+	for i := 0; i < maxCount; i++ {
+		item, err := agent.HostedTasks.Pop()
+		if err != nil {
+			break
+		}
+		taskData := item.(adaptix.TaskData)
+
+		if tasksSize+len(taskData.Data) < availableSize {
+			tasks = append(tasks, taskData)
+			if taskData.Sync || taskData.Type == TYPE_BROWSER {
+				agent.RunningTasks.Put(taskData.TaskId, taskData)
+			}
+			sendTasks = append(sendTasks, taskData.TaskId)
+			tasksSize += len(taskData.Data)
+		} else {
+			agent.HostedTasks.PushFront(taskData)
+			break
+		}
+	}
+	if len(sendTasks) > 0 {
+		packet := CreateSpAgentTaskSend(sendTasks)
+		ts.TsSyncAllClients(packet)
+	}
+
+	return tasks, tasksSize, nil
+}
+
 /// Get Pivot Tasks
 
 func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {

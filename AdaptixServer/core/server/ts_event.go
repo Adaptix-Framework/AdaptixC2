@@ -138,14 +138,12 @@ func (ts *Teamserver) TsEventCallbackAgent(agentData adaptix.AgentData) {
 		msg = strings.ReplaceAll(msg, "%elevated%", fmt.Sprintf("%v", agentData.Elevated))
 		msg = strings.ReplaceAll(msg, "%pid%", fmt.Sprintf("%v", agentData.Pid))
 
-		// Send Telegram notifications
 		if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
 			for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
 				SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
 			}
 		}
 
-		// Send webhook notifications
 		for _, webhook := range ts.Profile.Callbacks.Webhooks {
 			if webhook.URL != "" {
 				SendWebhook(msg, webhook)
@@ -156,17 +154,14 @@ func (ts *Teamserver) TsEventCallbackAgent(agentData adaptix.AgentData) {
 
 func (ts *Teamserver) TsEventCallbackCreds(creds []adaptix.CredsData) {
 	if ts.Profile.Callbacks.NewCredMessage != "" {
+
 		if len(creds) > 4 {
 			msg := fmt.Sprintf("Added %d new credentials", len(creds))
-
-			// Send Telegram notifications
 			if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
 				for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
 					SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
 				}
 			}
-
-			// Send webhook notifications
 			for _, webhook := range ts.Profile.Callbacks.Webhooks {
 				if webhook.URL != "" {
 					SendWebhook(msg, webhook)
@@ -184,14 +179,11 @@ func (ts *Teamserver) TsEventCallbackCreds(creds []adaptix.CredsData) {
 				msg = strings.ReplaceAll(msg, "%storage%", credData.Storage)
 				msg = strings.ReplaceAll(msg, "%host%", credData.Host)
 
-				// Send Telegram notifications
 				if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
 					for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
 						SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
 					}
 				}
-
-				// Send webhook notifications
 				for _, webhook := range ts.Profile.Callbacks.Webhooks {
 					if webhook.URL != "" {
 						SendWebhook(msg, webhook)
@@ -210,14 +202,11 @@ func (ts *Teamserver) TsEventCallbackDownloads(downloadData adaptix.DownloadData
 		msg = strings.ReplaceAll(msg, "%path%", downloadData.RemotePath)
 		msg = strings.ReplaceAll(msg, "%size%", tformat.SizeBytesToFormat(uint64(downloadData.TotalSize)))
 
-		// Send Telegram notifications
 		if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
 			for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
 				SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
 			}
 		}
-
-		// Send webhook notifications
 		for _, webhook := range ts.Profile.Callbacks.Webhooks {
 			if webhook.URL != "" {
 				SendWebhook(msg, webhook)
@@ -255,40 +244,28 @@ func SendTelegram(text, botToken, chatID string) {
 
 func SendWebhook(text string, webhook profile.WebhookConfig) {
 	go func() {
-		// Retry up to 2 times on failure
-		for attempt := 0; attempt < 2; attempt++ {
-			req, err := http.NewRequest(webhook.Method, webhook.URL, strings.NewReader(text))
-			if err != nil {
-				continue
-			}
 
-			// Set headers
-			for key, value := range webhook.Headers {
-				req.Header.Set(key, value)
-			}
+		text = strings.ReplaceAll(webhook.Data, "%data%", text)
 
-			// Set basic auth if provided
-			if webhook.BasicAuth != nil && webhook.BasicAuth.Username != "" {
-				req.SetBasicAuth(webhook.BasicAuth.Username, webhook.BasicAuth.Password)
-			}
-
-			// Default to text/plain if no content-type specified
-			if _, hasContentType := webhook.Headers["Content-Type"]; !hasContentType {
-				req.Header.Set("Content-Type", "text/plain")
-			}
-
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				continue
-			}
-			defer func(Body io.ReadCloser) {
-				_ = Body.Close()
-			}(resp.Body)
-
-			// Success if status code is 2xx
-			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-				return
-			}
+		req, err := http.NewRequest(webhook.Method, webhook.URL, strings.NewReader(text))
+		if err != nil {
+			return
 		}
+
+		for key, value := range webhook.Headers {
+			req.Header.Set(key, value)
+		}
+
+		if _, hasContentType := webhook.Headers["Content-Type"]; !hasContentType {
+			req.Header.Set("Content-Type", "text/plain")
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return
+		}
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(resp.Body)
 	}()
 }

@@ -157,43 +157,6 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 
 /// Get Tasks
 
-func (ts *Teamserver) TsAgentGetHostedTasks2(count int, agentId string, maxDataSize int) ([]byte, error) {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("agent type %v does not exists", agentId)
-	}
-	agent, _ := value.(*Agent)
-
-	tasksCount := agent.HostedTasks.Len()
-	tunnelConnectCount := agent.HostedTunnelTasks.Len()
-	tunnelTasksCount := agent.HostedTunnelData.Len()
-	pivotTasksExists := false
-	if agent.PivotChilds.Len() > 0 {
-		pivotTasksExists = ts.TsTasksPivotExists(agent.Data.Id, true)
-	}
-
-	if tasksCount > 0 || tunnelConnectCount > 0 || tunnelTasksCount > 0 || pivotTasksExists {
-
-		tasks, err := ts.TsTaskGetAvailableAll(agent.Data.Id, maxDataSize)
-		if err != nil {
-			return nil, err
-		}
-
-		respData, err := ts.Extender.ExAgentPackData(agent.Data, tasks)
-		if err != nil {
-			return nil, err
-		}
-
-		if tasksCount > 0 {
-			message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
-			ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "", false)
-		}
-		return respData, nil
-	}
-
-	return []byte(""), nil
-}
-
 func (ts *Teamserver) TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error) {
 	value, ok := ts.agents.Get(agentId)
 	if !ok {
@@ -259,6 +222,34 @@ func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]
 	}
 
 	return respData, nil
+}
+
+func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId string, count int, maxDataSize int) ([]byte, error) {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return nil, fmt.Errorf("agent type %v does not exists", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	tasksCount := agent.HostedTasks.Len()
+	if tasksCount > 0 {
+
+		tasks, _, err := ts.TsTaskGetAvailableTasksCount(agent.Data.Id, count, maxDataSize)
+		if err != nil {
+			return nil, err
+		}
+
+		respData, err := ts.Extender.ExAgentPackData(agent.Data, tasks)
+		if err != nil {
+			return nil, err
+		}
+
+		message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
+		ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "", false)
+
+		return respData, nil
+	}
+	return []byte(""), nil
 }
 
 //func (ts *Teamserver) TsAgentGetHostedTunnels(agentId string, channelId int, maxDataSize int) ([]byte, error) {

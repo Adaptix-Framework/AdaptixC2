@@ -36,14 +36,8 @@
       "token": "",
       "chats_id": []
     },
-    "webhooks": [
+    "Webhooks": [
       {
-        "url": "https://ntfy.sh/your-topic",
-        "method": "POST",
-        "headers": {
-          "Content-Type": "text/plain",
-          "Authorization": "Bearer <token>"
-        }
       }
     ],
     "new_agent_message": "New agent: %type% (%id%)\n\n%user% @ %computer% (%internalip%)\nelevated: %elevated%\nfrom: %externalip%\ndomain: %domain%",
