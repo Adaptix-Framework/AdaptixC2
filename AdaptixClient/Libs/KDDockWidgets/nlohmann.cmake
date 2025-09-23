@@ -1,0 +1,10 @@
+find_package(nlohmann_json QUIET)
+
+function(link_to_nlohman target)
+    if(nlohmann_json_FOUND)
+        target_link_libraries(${target} PRIVATE nlohmann_json::nlohmann_json)
+    else()
+        message(STATUS "nlohmann_json not found in system. Using our own bundled one")
+        target_include_directories(${target} SYSTEM PRIVATE ${KKDockWidgets_PROJECT_ROOT}/Libs/KDDockWidgets/3rdparty/nlohmann)
+    endif()
+endfunction()

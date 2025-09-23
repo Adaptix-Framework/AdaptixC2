@@ -7,6 +7,8 @@ set(CMAKE_CXX_STANDARD 17)          # 26
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # -
 #set(CMAKE_INCLUDE_CURRENT_DIRS ON)  # -
 
+add_subdirectory(Libs/KDDockWidgets)
+
 if(UNIX)
     find_package( OpenSSL REQUIRED )
 elseif(APPLE)
@@ -30,6 +32,10 @@ include_directories(
         Headers
         Libs
 )
+
+### KDDOCKWIDGETS
+
+set(KDDOCKWIDGETS_RESOURCES Libs/KDDockWidgets/kddockwidgets_resources.qrc)
 
 ### KONSOLE
 
@@ -153,6 +159,8 @@ add_executable(AdaptixClient
         ${KONSOLE_SOURCES}
         ${KONSOLE_HEADERS}
 
+        ${KDDOCKWIDGETS_RESOURCES}
+
         ${HEADERS}
 
         Source/main.cpp
@@ -245,6 +253,8 @@ if(UNIX)
             Qt6::Qml
             OpenSSL::Crypto
 
+            kddockwidgets
+
             pthread dl
     )
 elseif(APPLE)
@@ -259,6 +269,8 @@ elseif(APPLE)
             Qt6::Qml
             OpenSSL::Crypto
 
+            kddockwidgets
+
             pthread dl
     )
 else()
@@ -271,6 +283,8 @@ else()
             Qt6::WebSockets
             Qt6::Sql
             Qt6::Qml
+
+            kddockwidgets
 
             wsock32 ws2_32 crypt32 iphlpapi netapi32 version winmm userenv
     )
