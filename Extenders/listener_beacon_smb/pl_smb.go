@@ -2,8 +2,8 @@ package main
 
 type SMBConfig struct {
 	Pipename   string `json:"pipename"`
+	EncryptKey string `json:"encrypt_key"`
 	Protocol   string `json:"protocol"`
-	EncryptKey []byte `json:"encrypt_key"`
 }
 
 type SMB struct {

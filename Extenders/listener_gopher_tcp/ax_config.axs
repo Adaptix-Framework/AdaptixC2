@@ -28,6 +28,12 @@ function ListenerUI(mode_create)
     let labelAnswer = form.create_label("Error answer:");
     let texteditAnswer = form.create_textmulti("Connection error...\n");
 
+    let labelEncryptKey = form.create_label("Encryption key:");
+    let textlineEncryptKey = form.create_textline(ax.random_string(32, "hex"));
+    textlineEncryptKey.setEnabled(mode_create)
+    let buttonEncryptKey = form.create_button("Generate");
+    buttonEncryptKey.setEnabled(mode_create)
+
     let checkMtls = form.create_check("Use mTLS");
     checkMtls.setEnabled(mode_create)
 
@@ -54,24 +60,29 @@ function ListenerUI(mode_create)
     clientKeySelector.setEnabled(false);
 
     let layout = form.create_gridlayout();
-    layout.addWidget(labelHost, 0, 0, 1, 1);
-    layout.addWidget(comboHostBind, 0, 1, 1, 2);
-    layout.addWidget(spinPort, 0, 3, 1, 1);
-    layout.addWidget(labelCallback, 1, 0, 1, 1);
-    layout.addWidget(texteditCallback, 1, 1, 1, 3);
-    layout.addWidget(labelTimeout, 2, 0, 1, 1);
-    layout.addWidget(spinTimeout, 2, 1, 1, 3);
-    layout.addWidget(labelBanner, 3, 0, 1, 1);
-    layout.addWidget(texteditBanner, 3, 1, 1, 3);
-    layout.addWidget(labelAnswer, 4, 0, 1, 1);
-    layout.addWidget(texteditAnswer, 4, 1, 1, 3);
-    layout.addWidget(checkMtls, 5, 0, 1, 1);
-    layout.addWidget(howButton, 5, 1, 1, 1);
-    layout.addWidget(caCertSelector, 5, 2, 1, 2);
-    layout.addWidget(srvKeySelector, 6, 0, 1, 2);
-    layout.addWidget(srvCertSelector, 6, 2, 1, 2);
-    layout.addWidget(clientKeySelector, 7, 0, 1, 2);
-    layout.addWidget(clientCertSelector, 7, 2, 1, 2);
+    layout.addWidget(labelHost,          0, 0, 1, 1);
+    layout.addWidget(comboHostBind,      0, 1, 1, 2);
+    layout.addWidget(spinPort,           0, 3, 1, 1);
+    layout.addWidget(labelCallback,      1, 0, 1, 1);
+    layout.addWidget(texteditCallback,   1, 1, 1, 3);
+    layout.addWidget(labelTimeout,       2, 0, 1, 1);
+    layout.addWidget(spinTimeout,        2, 1, 1, 3);
+    layout.addWidget(labelBanner,        3, 0, 1, 1);
+    layout.addWidget(texteditBanner,     3, 1, 1, 3);
+    layout.addWidget(labelAnswer,        4, 0, 1, 1);
+    layout.addWidget(texteditAnswer,     4, 1, 1, 3);
+    layout.addWidget(labelEncryptKey,    5, 0, 1, 1);
+    layout.addWidget(textlineEncryptKey, 5, 1, 1, 2);
+    layout.addWidget(buttonEncryptKey,   5, 3, 1, 1);
+    layout.addWidget(checkMtls,          6, 0, 1, 1);
+    layout.addWidget(howButton,          6, 1, 1, 1);
+    layout.addWidget(caCertSelector,     6, 2, 1, 2);
+    layout.addWidget(srvKeySelector,     7, 0, 1, 2);
+    layout.addWidget(srvCertSelector,    7, 2, 1, 2);
+    layout.addWidget(clientKeySelector,  8, 0, 1, 2);
+    layout.addWidget(clientCertSelector, 8, 2, 1, 2);
+
+    form.connect(buttonEncryptKey, "clicked", function() { textlineEncryptKey.setText( ax.random_string(32, "hex") ); });
 
     form.connect(checkMtls, "stateChanged", function() {
         if(caCertSelector.getEnabled()) {

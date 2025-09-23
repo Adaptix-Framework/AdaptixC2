@@ -2,11 +2,11 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -73,6 +73,11 @@ func (m *ModuleExtender) HandlerListenerValid(data string) error {
 		return errors.New("Timeout must be greater than 0")
 	}
 
+	match, _ := regexp.MatchString("^[0-9a-f]{32}$", conf.EncryptKey)
+	if len(conf.EncryptKey) != 32 || !match {
+		return errors.New("encrypt_key must be 32 hex characters")
+	}
+
 	/// END CODE
 
 	return nil
@@ -102,9 +107,6 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, "\n", ", ")
 		conf.Callback_addresses = strings.TrimSuffix(conf.Callback_addresses, ", ")
 
-		randSlice := make([]byte, 16)
-		_, _ = rand.Read(randSlice)
-		conf.EncryptKey = randSlice[:16]
 		conf.Protocol = "tcp"
 
 	} else {
