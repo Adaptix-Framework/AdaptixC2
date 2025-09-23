@@ -2,14 +2,15 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
 	"crypto/rc4"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
 	"regexp"
+
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (m *ModuleExtender) HandlerListenerValid(data string) error {
@@ -29,6 +30,11 @@ func (m *ModuleExtender) HandlerListenerValid(data string) error {
 	matched, err := regexp.MatchString(`^[a-zA-Z0-9\-_.]+$`, conf.Pipename)
 	if err != nil || !matched {
 		return errors.New("Pipename invalid")
+	}
+
+	match, _ := regexp.MatchString("^[0-9a-f]{32}$", conf.EncryptKey)
+	if len(conf.EncryptKey) != 32 || !match {
+		return errors.New("encrypt_key must be 32 hex characters")
 	}
 
 	/// END CODE
@@ -56,9 +62,6 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 			return listenerData, customdData, listener, err
 		}
 
-		randSlice := make([]byte, 16)
-		_, _ = rand.Read(randSlice)
-		conf.EncryptKey = randSlice[:16]
 		conf.Protocol = "bind_smb"
 	} else {
 		err = json.Unmarshal(listenerCustomData, &conf)
@@ -187,7 +190,11 @@ func (m *ModuleExtender) HandlerListenerInteralHandler(name string, data []byte,
 	listener := listenerObject.(*SMB)
 	if listener.Name == name {
 
-		rc4crypt, errcrypt := rc4.NewCipher(listener.Config.EncryptKey)
+		encKey, err := hex.DecodeString(listener.Config.EncryptKey)
+		if err != nil {
+			return "", err, true
+		}
+		rc4crypt, errcrypt := rc4.NewCipher(encKey)
 		if errcrypt != nil {
 			return "", errcrypt, true
 		}
@@ -203,7 +210,7 @@ func (m *ModuleExtender) HandlerListenerInteralHandler(name string, data []byte,
 		if !ModuleObject.ts.TsAgentIsExists(agentId) {
 			_, err = ModuleObject.ts.TsAgentCreate(agentType, agentId, agentInfo, listener.Name, "", false)
 			if err != nil {
-				return agentId, err, ok
+				return agentId, err, false
 			}
 		}
 

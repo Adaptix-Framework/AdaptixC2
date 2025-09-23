@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -83,7 +84,7 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 	}
 
 	encrypt_key, _ := listenerMap["encrypt_key"].(string)
-	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
+	encryptKey, err := hex.DecodeString(encrypt_key)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +160,7 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 		params = append(params, kill_date)
 
 	case "bind_tcp":
-		prepend, _ := listenerMap["prepend"].(string)
+		prepend, _ := listenerMap["prepend_data"].(string)
 		port, _ := listenerMap["port_bind"].(float64)
 
 		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
