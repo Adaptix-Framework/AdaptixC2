@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_BROWSERPROCESSWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class Agent;
 class AdaptixWidget;
@@ -23,7 +24,7 @@ typedef struct BrowserProcessDataUnix {
     QString process;
 } BrowserProcessDataWinUnix;
 
-class BrowserProcessWidget : public QWidget
+class BrowserProcessWidget : public DockTab
 {
     QGridLayout*  mainGridLayout    = nullptr;
     QGridLayout*  listGridLayout    = nullptr;

@@ -121,7 +121,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     }
     else if ( action->text() == "Task manager") {
         for (QString agentId : agentIds) {
-            adaptixWidget->TasksTab->SetAgentFilter(agentId);
+            adaptixWidget->TasksDock->SetAgentFilter(agentId);
             adaptixWidget->SetTasksUI();
         }
     }

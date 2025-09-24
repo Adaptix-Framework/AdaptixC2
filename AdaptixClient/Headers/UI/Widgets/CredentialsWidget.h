@@ -2,11 +2,12 @@
 #define CREDENTIALSWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class AdaptixWidget;
 class ClickableLabel;
 
-class CredentialsWidget : public QWidget
+class CredentialsWidget : public DockTab
 {
     AdaptixWidget* adaptixWidget  = nullptr;
     QGridLayout*   mainGridLayout = nullptr;

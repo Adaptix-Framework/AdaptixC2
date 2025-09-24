@@ -4,13 +4,15 @@
 #include <Client/AuthProfile.h>
 #include <Client/TunnelEndpoint.h>
 
-TunnelsWidget::TunnelsWidget(AdaptixWidget* w)
+TunnelsWidget::TunnelsWidget(AdaptixWidget* w) : DockTab("Tunnels", w->GetProfile()->GetProject(), ":/icons/vpn")
 {
      this->adaptixWidget = w;
 
      this->createUI();
 
      connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &TunnelsWidget::handleTunnelsMenu );
+
+     this->dockWidget->setWidget(this);
 }
 
 TunnelsWidget::~TunnelsWidget() = default;

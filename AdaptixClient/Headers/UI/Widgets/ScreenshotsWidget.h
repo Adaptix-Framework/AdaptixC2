@@ -2,6 +2,7 @@
 #define SCREENSHOTSWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class AdaptixWidget;
 
@@ -33,7 +34,7 @@ public Q_SLOTS:
 
 
 
-class ScreenshotsWidget : public QWidget
+class ScreenshotsWidget : public DockTab
 {
 Q_OBJECT
     AdaptixWidget* adaptixWidget  = nullptr;

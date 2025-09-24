@@ -278,7 +278,7 @@ void AxScriptManager::AppAgentHide(const QStringList &agents)
     }
 
     if (updated)
-        adaptixWidget->SessionsTablePage->SetData();
+        adaptixWidget->SessionsTableDock->SetData();
 }
 
 void AxScriptManager::AppAgentRemove(const QStringList &agents)
@@ -666,6 +666,6 @@ void AxScriptManager::emitDisconnectClient()
 
 /// SLOTS
 
-void AxScriptManager::consolePrintMessage(const QString &message) { this->adaptixWidget->AxConsoleTab->PrintMessage(message); }
+void AxScriptManager::consolePrintMessage(const QString &message) { this->adaptixWidget->AxConsoleDock->PrintMessage(message); }
 
-void AxScriptManager::consolePrintError(const QString &message) { this->adaptixWidget->AxConsoleTab->PrintError(message); }
+void AxScriptManager::consolePrintError(const QString &message) { this->adaptixWidget->AxConsoleDock->PrintError(message); }

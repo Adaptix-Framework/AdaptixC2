@@ -425,7 +425,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newListener.Status           = jsonObj["l_status"].toString();
         newListener.Data             = jsonObj["l_data"].toString();
 
-        ListenersTab->AddListenerItem(newListener);
+        ListenersDock->AddListenerItem(newListener);
         return;
     }
     if( spType == TYPE_LISTENER_EDIT )
@@ -441,14 +441,14 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newListener.Status           = jsonObj["l_status"].toString();
         newListener.Data             = jsonObj["l_data"].toString();
 
-        ListenersTab->EditListenerItem(newListener);
+        ListenersDock->EditListenerItem(newListener);
         return;
     }
     if( spType == TYPE_LISTENER_STOP )
     {
         QString listenerName = jsonObj["l_name"].toString();
 
-        ListenersTab->RemoveListenerItem(listenerName);
+        ListenersDock->RemoveListenerItem(listenerName);
         return;
     }
 
@@ -458,8 +458,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentName = jsonObj["a_name"].toString();
 
         Agent* newAgent = new Agent(jsonObj, this);
-        SessionsTablePage->AddAgentItem( newAgent );
-        SessionsGraphPage->AddAgent(newAgent, this->synchronized);
+        SessionsTableDock->AddAgentItem( newAgent );
+        SessionsGraphDock->AddAgent(newAgent, this->synchronized);
 
         if (synchronized)
             Q_EMIT eventNewAgent(newAgent->data.Id);
@@ -477,7 +477,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             QString newUsername = agent->item_Username->text();
 
             if (oldUsername != newUsername)
-                SessionsTablePage->UpdateColumnsWidth();
+                SessionsTableDock->UpdateColumnsWidth();
         }
         return;
     }
@@ -499,9 +499,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         QString agentId = jsonObj["a_id"].toString();
         if (this->AgentsMap.contains(agentId)) {
-            SessionsGraphPage->RemoveAgent(this->AgentsMap[agentId], this->synchronized);
-            SessionsTablePage->RemoveAgentItem(agentId);
-            TasksTab->RemoveAgentTasksItem(agentId);
+            SessionsGraphDock->RemoveAgent(this->AgentsMap[agentId], this->synchronized);
+            SessionsTableDock->RemoveAgentItem(agentId);
+            TasksDock->RemoveAgentTasksItem(agentId);
         }
         return;
     }
@@ -511,7 +511,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_AGENT_TASK_SYNC )
     {
         Task* newTask = new Task(jsonObj);
-        TasksTab->AddTaskItem(newTask);
+        TasksDock->AddTaskItem(newTask);
         return;
     }
     if( spType == TYPE_AGENT_TASK_UPDATE )
@@ -540,7 +540,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_AGENT_TASK_REMOVE )
     {
         QString TaskId = jsonObj["a_task_id"].toString();
-        TasksTab->RemoveTaskItem(TaskId);
+        TasksDock->RemoveTaskItem(TaskId);
         return;
     }
     if ( spType == TYPE_AGENT_TASK_HOOK )
@@ -612,7 +612,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString username = jsonObj["c_username"].toString();
         QString message  = jsonObj["c_message"].toString();
         qint64  time     = jsonObj["c_date"].toDouble();
-        ChatTab->AddChatMessage(time, username, message);
+        ChatDock->AddChatMessage(time, username, message);
         return;
     }
 
@@ -632,7 +632,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newDownload.RecvSize  = 0;
         newDownload.State     = DOWNLOAD_STATE_RUNNING;
 
-        DownloadsTab->AddDownloadItem(newDownload);
+        DownloadsDock->AddDownloadItem(newDownload);
 
         return;
     }
@@ -642,14 +642,14 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         int recvSize   = jsonObj["d_recv_size"].toDouble();
         int state      = jsonObj["d_state"].toDouble();
 
-        DownloadsTab->EditDownloadItem(fileId, recvSize, state);
+        DownloadsDock->EditDownloadItem(fileId, recvSize, state);
         return;
     }
     if( spType == TYPE_DOWNLOAD_DELETE )
     {
         QString fileId = jsonObj["d_file_id"].toString();
 
-        DownloadsTab->RemoveDownloadItem(fileId);
+        DownloadsDock->RemoveDownloadItem(fileId);
         return;
     }
 
@@ -663,7 +663,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newScreen.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["s_date"].toDouble()));
         newScreen.Content  = QByteArray::fromBase64(jsonObj["s_content"].toString().toUtf8());
 
-        ScreenshotsTab->AddScreenshotItem(newScreen);
+        ScreenshotsDock->AddScreenshotItem(newScreen);
         return;
     }
     if( spType == TYPE_SCREEN_UPDATE )
@@ -671,13 +671,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString screenId = jsonObj["s_screen_id"].toString();
         QString note     = jsonObj["s_note"].toString();
 
-        ScreenshotsTab->EditScreenshotItem(screenId, note);
+        ScreenshotsDock->EditScreenshotItem(screenId, note);
         return;
     }
     if( spType == TYPE_SCREEN_DELETE )
     {
         QString screenId = jsonObj["s_screen_id"].toString();
-        ScreenshotsTab->RemoveScreenshotItem(screenId);
+        ScreenshotsDock->RemoveScreenshotItem(screenId);
         return;
     }
 
@@ -716,7 +716,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             credList.append(c);
         }
 
-        CredentialsTab->AddCredentialsItems(credList);
+        CredentialsDock->AddCredentialsItems(credList);
         return;
     }
     if ( spType == TYPE_CREDS_EDIT ) {
@@ -730,7 +730,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newCredential.Storage  = jsonObj["c_storage"].toString();
         newCredential.Host     = jsonObj["c_host"].toString();
 
-        CredentialsTab->EditCredentialsItem(newCredential);
+        CredentialsDock->EditCredentialsItem(newCredential);
         return;
     }
     if ( spType == TYPE_CREDS_DELETE ) {
@@ -743,7 +743,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             credsId.append(val.toString());
         }
 
-        CredentialsTab->RemoveCredentialsItem(credsId);
+        CredentialsDock->RemoveCredentialsItem(credsId);
         return;
     }
     if ( spType == TYPE_CREDS_SET_TAG ) {
@@ -755,7 +755,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             QString id = jsonCred.toString();
             ids.append(id);
         }
-        CredentialsTab->CredsSetTag(ids, tag);
+        CredentialsDock->CredsSetTag(ids, tag);
 
         return;
     }
@@ -805,7 +805,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             targetsList.append(t);
         }
 
-        TargetsTab->AddTargetsItems(targetsList);
+        TargetsDock->AddTargetsItems(targetsList);
         return;
     }
     if ( spType == TYPE_TARGETS_EDIT ) {
@@ -830,7 +830,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             }
         }
 
-        TargetsTab->EditTargetsItem(targetData);
+        TargetsDock->EditTargetsItem(targetData);
         return;
     }
     if ( spType == TYPE_TARGETS_DELETE ) {
@@ -843,7 +843,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             targetsId.append(val.toString());
         }
 
-        TargetsTab->RemoveTargetsItem(targetsId);
+        TargetsDock->RemoveTargetsItem(targetsId);
         return;
     }
     if ( spType == TYPE_TARGETS_SET_TAG ) {
@@ -855,7 +855,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             QString id = jsonTarget.toString();
             ids.append(id);
         }
-        TargetsTab->TargetsSetTag(ids, tag);
+        TargetsDock->TargetsSetTag(ids, tag);
 
         return;
     }
@@ -877,7 +877,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newTunnel.Fhost     = jsonObj["p_fhost"].toString();
         newTunnel.Fport     = jsonObj["p_fport"].toString();
 
-        TunnelsTab->AddTunnelItem(newTunnel);
+        TunnelsDock->AddTunnelItem(newTunnel);
         return;
     }
     if( spType == TYPE_TUNNEL_EDIT )
@@ -885,14 +885,14 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString TunnelId = jsonObj["p_tunnel_id"].toString();
         QString Info     = jsonObj["p_info"].toString();
 
-        TunnelsTab->EditTunnelItem(TunnelId, Info);
+        TunnelsDock->EditTunnelItem(TunnelId, Info);
         return;
     }
     if( spType == TYPE_TUNNEL_DELETE )
     {
         QString TunnelId = jsonObj["p_tunnel_id"].toString();
 
-        TunnelsTab->RemoveTunnelItem(TunnelId);
+        TunnelsDock->RemoveTunnelItem(TunnelId);
         return;
     }
 
@@ -980,7 +980,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
             Pivots[pivotData.PivotId] = pivotData;
 
-            SessionsGraphPage->RelinkAgent(parentAgent, childAgent, pivotData.PivotName, this->synchronized);
+            SessionsGraphDock->RelinkAgent(parentAgent, childAgent, pivotData.PivotName, this->synchronized);
         }
         return;
     }
@@ -999,7 +999,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 parentAgent->RemoveChild(pivotData);
                 childAgent->UnsetParent(pivotData);
 
-                SessionsGraphPage->UnlinkAgent(parentAgent, childAgent, this->synchronized);
+                SessionsGraphDock->UnlinkAgent(parentAgent, childAgent, this->synchronized);
             }
         }
         return;
@@ -1013,7 +1013,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         qint64  time    = jsonObj["date"].toDouble();
         QString message = jsonObj["message"].toString();
 
-        LogsTab->AddLogs(type, time, message);
+        LogsDock->AddLogs(type, time, message);
         return;
     }
 

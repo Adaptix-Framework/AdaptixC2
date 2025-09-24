@@ -9,7 +9,7 @@
 #include <Client/Requestor.h>
 #include <MainAdaptix.h>
 
-TerminalWidget::TerminalWidget(Agent* a, AdaptixWidget* w)
+TerminalWidget::TerminalWidget(Agent* a, AdaptixWidget* w) : DockTab(QString("Terminal [%1]").arg(a->data.Id), w->GetProfile()->GetProject())
 {
     this->agent = a;
     this->adaptixWidget = w;
@@ -27,6 +27,8 @@ TerminalWidget::TerminalWidget(Agent* a, AdaptixWidget* w)
     connect(keytabComboBox,  &QComboBox::currentTextChanged, this, &TerminalWidget::onKeytabChanged);
     connect(startButton,     &QPushButton::clicked,          this, &TerminalWidget::onStart);
     connect(stopButton,      &QPushButton::clicked,          this, &TerminalWidget::onStop);
+
+    this->dockWidget->setWidget(this);
 }
 
 TerminalWidget::~TerminalWidget() = default;

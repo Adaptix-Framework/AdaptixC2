@@ -2,11 +2,12 @@
 #define TARGETSWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class AdaptixWidget;
 class ClickableLabel;
 
-class TargetsWidget : public QWidget
+class TargetsWidget : public DockTab
 {
     AdaptixWidget* adaptixWidget  = nullptr;
 

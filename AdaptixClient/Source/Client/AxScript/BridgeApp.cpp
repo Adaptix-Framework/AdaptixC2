@@ -363,7 +363,7 @@ void BridgeApp::credentials_add(const QString &username, const QString &password
 
     QList<CredentialData> credsList;
     credsList.append(cred);
-    scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(credsList);
+    scriptEngine->manager()->GetAdaptix()->CredentialsDock->CredentialsAdd(credsList);
 }
 
 void BridgeApp::credentials_add_list(const QVariantList &array)
@@ -385,7 +385,7 @@ void BridgeApp::credentials_add_list(const QVariantList &array)
     if (credsList.isEmpty())
         return;
 
-    scriptEngine->manager()->GetAdaptix()->CredentialsTab->CredentialsAdd(credsList);
+    scriptEngine->manager()->GetAdaptix()->CredentialsDock->CredentialsAdd(credsList);
 }
 
 QObject* BridgeApp::create_command(const QString &name, const QString &description, const QString &example, const QString &message)
@@ -771,7 +771,7 @@ void BridgeApp::targets_add(const QString &computer, const QString &domain, cons
 
     QList<TargetData> targets;
     targets.append(target);
-    scriptEngine->manager()->GetAdaptix()->TargetsTab->TargetsAdd(targets);
+    scriptEngine->manager()->GetAdaptix()->TargetsDock->TargetsAdd(targets);
 }
 
 void BridgeApp::targets_add_list(const QVariantList &array)
@@ -801,7 +801,7 @@ void BridgeApp::targets_add_list(const QVariantList &array)
     if (targets.isEmpty())
         return;
 
-    scriptEngine->manager()->GetAdaptix()->TargetsTab->TargetsAdd(targets);
+    scriptEngine->manager()->GetAdaptix()->TargetsDock->TargetsAdd(targets);
 }
 
 int BridgeApp::ticks() { return QDateTime::currentSecsSinceEpoch(); }

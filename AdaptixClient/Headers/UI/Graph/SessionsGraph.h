@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_SESSIONSGRAPH_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class Agent;
 class GraphItem;
@@ -11,6 +12,7 @@ class SessionsGraph final : public QGraphicsView
 {
 Q_OBJECT
     QWidget* mainWidget = nullptr;
+    KDDockWidgets::QtWidgets::DockWidget* dockWidget = nullptr;
 
     QVector<GraphItem*> items;
     GraphScene* graphScene = nullptr;
@@ -22,6 +24,7 @@ public:
     ~SessionsGraph() override;
 
     GraphScene* GetGraphScene() const { return this->graphScene; }
+    KDDockWidgets::QtWidgets::DockWidget* dock() { return this->dockWidget; };
 
     void RootInit();
     bool IsRootItem( const GraphItem* item ) const;

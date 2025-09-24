@@ -4,7 +4,7 @@
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
 
-ChatWidget::ChatWidget(AdaptixWidget* w) : adaptixWidget(w)
+ChatWidget::ChatWidget(AdaptixWidget* w) : DockTab("Chat", w->GetProfile()->GetProject(), ":/icons/chat"), adaptixWidget(w)
 {
     this->createUI();
 
@@ -26,6 +26,8 @@ ChatWidget::ChatWidget(AdaptixWidget* w) : adaptixWidget(w)
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+A"), chatTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
     connect(shortcutSearch, &QShortcut::activated, chatTextEdit, &QTextEdit::selectAll);
+
+    this->dockWidget->setWidget(this);
 }
 
 ChatWidget::~ChatWidget() = default;

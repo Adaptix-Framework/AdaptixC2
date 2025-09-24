@@ -2,11 +2,12 @@
 #define ADAPTIXCLIENT_CHATWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 #include <Utils/CustomElements.h>
 
 class AdaptixWidget;
 
-class ChatWidget : public QWidget
+class ChatWidget : public DockTab
 {
     AdaptixWidget*   adaptixWidget  = nullptr;
     QLabel*          usernameLabel  = nullptr;

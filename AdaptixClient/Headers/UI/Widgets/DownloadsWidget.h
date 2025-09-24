@@ -2,10 +2,11 @@
 #define ADAPTIXCLIENT_DOWNLOADSWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class AdaptixWidget;
 
-class DownloadsWidget : public QWidget
+class DownloadsWidget : public DockTab
 {
     AdaptixWidget* adaptixWidget  = nullptr;
     QTableWidget*  tableWidget    = nullptr;

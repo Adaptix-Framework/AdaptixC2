@@ -114,7 +114,7 @@ void MainUI::UpdateSessionsTableColumns()
 {
     for (auto adaptixWidget : AdaptixProjects) {
         if (adaptixWidget)
-            adaptixWidget->SessionsTablePage->UpdateColumnsVisible();
+            adaptixWidget->SessionsTableDock->UpdateColumnsVisible();
     }
 }
 
@@ -124,7 +124,7 @@ void MainUI::UpdateGraphIcons() {
             for (auto agent : adaptixWidget->AgentsMap.values() ) {
                 agent->UpdateImage();
             }
-            adaptixWidget->SessionsGraphPage->UpdateIcons();
+            adaptixWidget->SessionsGraphDock->UpdateIcons();
         }
     }
 }
@@ -133,7 +133,7 @@ void MainUI::UpdateTasksTableColumns()
 {
     for (auto adaptixWidget : AdaptixProjects) {
         if (adaptixWidget)
-            adaptixWidget->TasksTab->UpdateColumnsVisible();
+            adaptixWidget->TasksDock->UpdateColumnsVisible();
     }
 }
 

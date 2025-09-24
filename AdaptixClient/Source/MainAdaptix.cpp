@@ -8,6 +8,8 @@
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
+#include <kddockwidgets/Config.h>
+
 MainAdaptix::MainAdaptix()
 {
     storage  = new Storage();
@@ -181,6 +183,17 @@ AuthProfile* MainAdaptix::Login()
 void MainAdaptix::SetApplicationTheme() const
 {
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
+
+    KDDockWidgets::initFrontend(KDDockWidgets::FrontendType::QtWidgets);
+    KDDockWidgets::Config::self().setSeparatorThickness(5);
+
+    auto flags = KDDockWidgets::Config::self().flags();
+    flags |= KDDockWidgets::Config::Flag_TabsHaveCloseButton;
+    flags |= KDDockWidgets::Config::Flag_ShowButtonsOnTabBarIfTitleBarHidden;
+    flags |= KDDockWidgets::Config::Flag_AllowSwitchingTabsViaMenu;
+    flags |= KDDockWidgets::Config::Flag_AllowReorderTabs;
+    flags |= KDDockWidgets::Config::Flag_DoubleClickMaximizes;
+    KDDockWidgets::Config::self().setFlags(flags);
 
     QFontDatabase::addApplicationFont(":/fonts/DroidSansMono");
     QFontDatabase::addApplicationFont(":/fonts/VT323");

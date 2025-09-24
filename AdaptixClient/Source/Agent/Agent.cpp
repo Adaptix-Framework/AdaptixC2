@@ -121,13 +121,24 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
         this->MarkItem(mark);
     }
 
-    auto regAgnet = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
+    auto regAgent = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
 
-    this->commander      = regAgnet.commander;
-    this->Console        = new ConsoleWidget(adaptixWidget, this, regAgnet.commander);
-    this->FileBrowser    = new BrowserFilesWidget(this);
-    this->ProcessBrowser = new BrowserProcessWidget(this);
-    this->Terminal       = new TerminalWidget(this, adaptixWidget);
+    if (regAgent.commander)
+        this->commander = regAgent.commander;
+    else
+        this->commander = new Commander();
+
+    this->Console = new ConsoleWidget(adaptixWidget, this, this->commander);
+    adaptixWidget->PlaceDockBottom(this->Console->dock());
+
+    this->FileBrowser = new BrowserFilesWidget(adaptixWidget, this);
+    adaptixWidget->PlaceDockBottom(this->FileBrowser->dock());
+
+    this->ProcessBrowser = new BrowserProcessWidget(adaptixWidget, this);
+    adaptixWidget->PlaceDockBottom(this->ProcessBrowser->dock());
+
+    this->Terminal = new TerminalWidget(this, adaptixWidget);
+    adaptixWidget->PlaceDockBottom(this->Terminal->dock());
 }
 
 Agent::~Agent() = default;
@@ -192,7 +203,7 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     else {
         this->MarkItem(mark);
         if (mark == "Terminated") {
-            adaptixWidget->SessionsGraphPage->RemoveAgent(this, true);
+            adaptixWidget->SessionsGraphDock->RemoveAgent(this, true);
         }
     }
 }

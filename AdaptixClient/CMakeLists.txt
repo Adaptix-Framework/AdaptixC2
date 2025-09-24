@@ -153,6 +153,7 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogTarget.h
         Headers/UI/Dialogs/DialogSaveTask.h
         Headers/UI/Widgets/ChatWidget.h
+        Headers/UI/Widgets/AbstractDock.h
 )
 
 add_executable(AdaptixClient

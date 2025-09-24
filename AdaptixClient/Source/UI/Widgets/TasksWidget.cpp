@@ -58,6 +58,16 @@ TasksWidget::TasksWidget( AdaptixWidget* w )
 
     taskOutputConsole = new TaskOutputWidget();
 
+    dockWidgetTable = new KDDockWidgets::QtWidgets::DockWidget( + "Tasks:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
+    dockWidgetTable->setTitle("Tasks");
+    dockWidgetTable->setWidget(this);
+    dockWidgetTable->setIcon(QIcon( ":/icons/job" ), KDDockWidgets::IconPlace::TabBar);
+
+    dockWidgetOutput = new KDDockWidgets::QtWidgets::DockWidget( + "Task Output:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
+    dockWidgetOutput->setTitle("Task Output");
+    dockWidgetOutput->setWidget(taskOutputConsole);
+    dockWidgetOutput->setIcon(QIcon( ":/icons/job" ), KDDockWidgets::IconPlace::TabBar);
+
     connect(tableWidget,  &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
 
     connect(tableWidget->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &TasksWidget::onTableItemSelection);
@@ -73,6 +83,10 @@ TasksWidget::TasksWidget( AdaptixWidget* w )
 }
 
 TasksWidget::~TasksWidget() = default;
+
+KDDockWidgets::QtWidgets::DockWidget* TasksWidget::dockTasks() { return this->dockWidgetTable; }
+
+KDDockWidgets::QtWidgets::DockWidget * TasksWidget::dockTasksOutput() { return this->dockWidgetOutput; }
 
 void TasksWidget::createUI()
 {

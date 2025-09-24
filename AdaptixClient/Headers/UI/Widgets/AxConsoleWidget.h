@@ -2,6 +2,7 @@
 #define AXCONSOLEWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class AdaptixWidget;
 class AxScriptManager;
@@ -9,7 +10,7 @@ class TextEditConsole;
 class ClickableLabel;
 class KPH_ConsoleInput;
 
-class AxConsoleWidget : public QWidget
+class AxConsoleWidget : public DockTab
 {
     AdaptixWidget*   adaptixWidget = nullptr;
     AxScriptManager* scriptManager = nullptr;
