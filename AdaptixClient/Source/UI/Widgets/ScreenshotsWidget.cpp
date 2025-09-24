@@ -88,7 +88,7 @@ void ImageFrame::clear()
 
 
 
-ScreenshotsWidget::ScreenshotsWidget(QWidget* w)
+ScreenshotsWidget::ScreenshotsWidget(AdaptixWidget* w) : DockTab("Screenshots", w->GetProfile()->GetProject(), ":/icons/picture")
 {
     this->adaptixWidget = w;
     this->createUI();
@@ -97,6 +97,8 @@ ScreenshotsWidget::ScreenshotsWidget(QWidget* w)
     connect(tableWidget->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &ScreenshotsWidget::onTableItemSelection);
     connect(tableWidget, &QTableWidget::itemSelectionChanged, this, [this](){tableWidget->setFocus();});
     connect(splitter, &QSplitter::splitterMoved, imageFrame, &ImageFrame::resizeImage);
+
+    this->dockWidget->setWidget(this);
 }
 
 ScreenshotsWidget::~ScreenshotsWidget() = default;

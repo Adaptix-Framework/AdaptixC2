@@ -2,6 +2,7 @@
 #define TERMINALWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class Agent;
 class Konsole;
@@ -9,7 +10,7 @@ class QTermWidget;
 class TerminalWorker;
 class AdaptixWidget;
 
-class TerminalWidget : public QWidget
+class TerminalWidget : public DockTab
 {
      AdaptixWidget* adaptixWidget   = nullptr;
      QGridLayout*   mainGridLayout  = nullptr;

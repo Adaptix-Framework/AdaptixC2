@@ -6,13 +6,14 @@
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-
-DownloadsWidget::DownloadsWidget(AdaptixWidget* w)
+DownloadsWidget::DownloadsWidget(AdaptixWidget* w) : DockTab("Downloads", w->GetProfile()->GetProject(), ":/icons/downloads")
 {
     this->adaptixWidget = w;
     this->createUI();
 
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &DownloadsWidget::handleDownloadsMenu );
+
+    this->dockWidget->setWidget(this);
 }
 
 void DownloadsWidget::createUI()

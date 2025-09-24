@@ -6,8 +6,7 @@
 #include <Client/AxScript/AxScriptManager.h>
 #include <Utils/CustomElements.h>
 
-
-TargetsWidget::TargetsWidget(AdaptixWidget* w) : adaptixWidget(w)
+TargetsWidget::TargetsWidget(AdaptixWidget* w) : DockTab("Targets", w->GetProfile()->GetProject(), ":/icons/devices"), adaptixWidget(w)
 {
     this->createUI();
 
@@ -20,6 +19,8 @@ TargetsWidget::TargetsWidget(AdaptixWidget* w) : adaptixWidget(w)
      shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
      shortcutSearch->setContext(Qt::WidgetShortcut);
      connect(shortcutSearch, &QShortcut::activated, this, &TargetsWidget::toggleSearchPanel);
+
+    this->dockWidget->setWidget(this);
 }
 
 TargetsWidget::~TargetsWidget() = default;

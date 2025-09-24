@@ -2,10 +2,11 @@
 #define ADAPTIXCLIENT_LISTENERSWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class AdaptixWidget;
 
-class ListenersWidget : public QWidget
+class ListenersWidget : public DockTab
 {
     AdaptixWidget* adaptixWidget  = nullptr;
     QGridLayout*   mainGridLayout = nullptr;

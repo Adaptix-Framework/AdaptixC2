@@ -3,7 +3,7 @@
 #include <Client/AuthProfile.h>
 #include <Utils/Convert.h>
 
-LogsWidget::LogsWidget()
+LogsWidget::LogsWidget(AdaptixWidget* w) : DockTab("Logs", w->GetProfile()->GetProject(), ":/icons/logs")
 {
     this->createUI();
 
@@ -24,6 +24,8 @@ LogsWidget::LogsWidget()
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+A"), logsConsoleTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
     connect(shortcutSearch, &QShortcut::activated, logsConsoleTextEdit, &QTextEdit::selectAll);
+
+    this->dockWidget->setWidget(this);
 }
 
 LogsWidget::~LogsWidget() = default;

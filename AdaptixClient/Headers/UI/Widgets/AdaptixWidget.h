@@ -3,6 +3,10 @@
 
 #include <Agent/Commander.h>
 #include <main.h>
+
+#include <kddockwidgets/qtwidgets/views/DockWidget.h>
+#include <kddockwidgets/qtwidgets/views/MainWindow.h>
+
 #include <QJSValue>
 
 class Task;
@@ -60,14 +64,15 @@ Q_OBJECT
     QPushButton*    screensButton     = nullptr;
     QPushButton*    keysButton        = nullptr;
     QPushButton*    reconnectButton   = nullptr;
+    QSpacerItem*    horizontalSpacer1 = nullptr;
     QFrame*         line_1            = nullptr;
     QFrame*         line_2            = nullptr;
     QFrame*         line_3            = nullptr;
     QFrame*         line_4            = nullptr;
-    QSplitter*      mainVSplitter     = nullptr;
-    QTabWidget*     mainTabWidget     = nullptr;
-    QSpacerItem*    horizontalSpacer1 = nullptr;
-    QStackedWidget* mainStackedWidget = nullptr;
+
+    KDDockWidgets::QtWidgets::MainWindow* mainDockWidget;
+    KDDockWidgets::QtWidgets::DockWidget* dockTop;
+    KDDockWidgets::QtWidgets::DockWidget* dockBottom;
 
     bool              synchronized     = false;
     bool              sync             = false;
@@ -87,18 +92,18 @@ public:
 
     AxScriptManager* ScriptManager = nullptr;
 
-    AxConsoleWidget*     AxConsoleTab      = nullptr;
-    LogsWidget*          LogsTab           = nullptr;
-    ChatWidget*          ChatTab           = nullptr;
-    ListenersWidget*     ListenersTab      = nullptr;
-    SessionsTableWidget* SessionsTablePage = nullptr;
-    SessionsGraph*       SessionsGraphPage = nullptr;
-    TunnelsWidget*       TunnelsTab        = nullptr;
-    DownloadsWidget*     DownloadsTab      = nullptr;
-    ScreenshotsWidget*   ScreenshotsTab    = nullptr;
-    CredentialsWidget*   CredentialsTab    = nullptr;
-    TasksWidget*         TasksTab          = nullptr;
-    TargetsWidget*       TargetsTab        = nullptr;
+    AxConsoleWidget*     AxConsoleDock      = nullptr;
+    LogsWidget*          LogsDock          = nullptr;
+    ChatWidget*          ChatDock           = nullptr;
+    ListenersWidget*     ListenersDock      = nullptr;
+    SessionsTableWidget* SessionsTableDock = nullptr;
+    SessionsGraph*       SessionsGraphDock = nullptr;
+    TunnelsWidget*       TunnelsDock        = nullptr;
+    DownloadsWidget*     DownloadsDock      = nullptr;
+    ScreenshotsWidget*   ScreenshotsDock    = nullptr;
+    CredentialsWidget*   CredentialsDock    = nullptr;
+    TasksWidget*         TasksDock         = nullptr;
+    TargetsWidget*       TargetsDock        = nullptr;
 
     QVector<RegListenerConfig>     RegisterListeners;
     QVector<RegAgentConfig>        RegisterAgents;
@@ -122,8 +127,10 @@ public:
 
     AuthProfile* GetProfile() const;
 
-    void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
-    void RemoveTab(int index) const;
+    void AddDockTop(const KDDockWidgets::QtWidgets::DockWidget* dock) const;
+    void AddDockBottom(const KDDockWidgets::QtWidgets::DockWidget* dock) const;
+    void PlaceDockBottom(KDDockWidgets::QtWidgets::DockWidget* dock) const;
+
     bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);
     bool IsSynchronized();

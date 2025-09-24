@@ -7,7 +7,7 @@
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
-ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c)
+ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTab(QString("Console [%1]").arg( a->data.Id ), w->GetProfile()->GetProject())
 {
     adaptixWidget = w;
     agent         = a;
@@ -45,6 +45,8 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c)
 
     kphInputLineEdit = new KPH_ConsoleInput(InputLineEdit, OutputTextEdit, this);
     InputLineEdit->installEventFilter(kphInputLineEdit);
+
+    this->dockWidget->setWidget(this);
 }
 
 ConsoleWidget::~ConsoleWidget() {}

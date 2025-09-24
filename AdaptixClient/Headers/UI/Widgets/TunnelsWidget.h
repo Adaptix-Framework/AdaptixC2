@@ -2,10 +2,11 @@
 #define TUNNELSWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class AdaptixWidget;
 
-class TunnelsWidget : public QWidget
+class TunnelsWidget : public DockTab
 {
      AdaptixWidget* adaptixWidget  = nullptr;
      QGridLayout*   mainGridLayout = nullptr;

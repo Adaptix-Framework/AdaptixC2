@@ -6,7 +6,7 @@
 #include <Client/AxScript/AxScriptManager.h>
 #include <Utils/CustomElements.h>
 
-CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : adaptixWidget(w)
+CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : DockTab("Credentials", w->GetProfile()->GetProject(), ":/icons/key"), adaptixWidget(w)
 {
     this->createUI();
 
@@ -19,6 +19,8 @@ CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : adaptixWidget(w)
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
     shortcutSearch->setContext(Qt::WidgetShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &CredentialsWidget::toggleSearchPanel);
+
+    this->dockWidget->setWidget(this);
 }
 
 CredentialsWidget::~CredentialsWidget() = default;

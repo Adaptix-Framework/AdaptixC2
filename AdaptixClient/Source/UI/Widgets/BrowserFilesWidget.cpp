@@ -45,7 +45,7 @@ void BrowserFileData::SetStored(const bool stored)
 
 
 
-BrowserFilesWidget::BrowserFilesWidget(AdaptixWidget* w, Agent* a)
+BrowserFilesWidget::BrowserFilesWidget(AdaptixWidget* w, Agent* a) : DockTab(QString("Files [%1]").arg( a->data.Id ), w->GetProfile()->GetProject())
 {
     agent = a;
     this->createUI();
@@ -59,6 +59,8 @@ BrowserFilesWidget::BrowserFilesWidget(AdaptixWidget* w, Agent* a)
     connect(tableWidget,       &QTableWidget::doubleClicked,              this, &BrowserFilesWidget::handleTableDoubleClicked);
     connect(treeBrowserWidget, &QTreeWidget::itemDoubleClicked,           this, &BrowserFilesWidget::handleTreeDoubleClicked);
     connect(tableWidget,       &QTableWidget::customContextMenuRequested, this, &BrowserFilesWidget::handleTableMenu );
+
+    this->dockWidget->setWidget(this);
 }
 
 BrowserFilesWidget::~BrowserFilesWidget() = default;

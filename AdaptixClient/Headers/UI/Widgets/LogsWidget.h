@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_LOGSWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 #include <Utils/CustomElements.h>
 
 class AdaptixWidget;

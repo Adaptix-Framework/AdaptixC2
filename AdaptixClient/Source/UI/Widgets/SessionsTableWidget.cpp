@@ -15,7 +15,7 @@
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
-SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w )
+SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions table", w->GetProfile()->GetProject(), ":/icons/format_list")
 {
     this->adaptixWidget = w;
 
@@ -40,7 +40,7 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w )
     shortcutSearch->setContext(Qt::WidgetShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &SessionsTableWidget::toggleSearchPanel);
 
-
+    this->dockWidget->setWidget(this);
 }
 
 SessionsTableWidget::~SessionsTableWidget() = default;
@@ -475,7 +475,7 @@ void SessionsTableWidget::actionTasksBrowserOpen() const
 {
     QString agentId = tableWidget->item( tableWidget->currentRow(), ColumnAgentID )->text();
 
-    adaptixWidget->TasksTab->SetAgentFilter(agentId);
+    adaptixWidget->TasksDock->SetAgentFilter(agentId);
     adaptixWidget->SetTasksUI();
 }
 

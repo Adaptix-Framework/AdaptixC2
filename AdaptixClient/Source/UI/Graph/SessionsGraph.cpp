@@ -4,10 +4,19 @@
 #include <UI/Graph/LayoutTreeLeft.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/GraphScene.h>
+#include <UI/Widgets/AdaptixWidget.h>
+#include <Client/AuthProfile.h>
 
 SessionsGraph::SessionsGraph(QWidget* parent) : QGraphicsView(parent)
 {
     this->mainWidget = parent;
+
+    QString project = static_cast<AdaptixWidget *>(parent)->GetProfile()->GetProject();
+
+    dockWidget = new KDDockWidgets::QtWidgets::DockWidget("Sessions Graph:Dock-" + project, KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
+    dockWidget->setTitle("Sessions Graph");
+    dockWidget->setWidget(this);
+    dockWidget->setIcon(QIcon( ":/icons/graph" ), KDDockWidgets::IconPlace::TabBar);
 
     setDragMode( QGraphicsView::RubberBandDrag );
     setCacheMode( QGraphicsView::CacheBackground );

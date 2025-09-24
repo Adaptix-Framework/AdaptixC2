@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_BROWSERFILESWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class Agent;
 class FileBrowserTreeItem;
@@ -43,7 +44,7 @@ public:
     }
 };
 
-class BrowserFilesWidget : public QWidget
+class BrowserFilesWidget : public DockTab
 {
     QGridLayout*  mainGridLayout    = nullptr;
     QGridLayout*  listGridLayout    = nullptr;
