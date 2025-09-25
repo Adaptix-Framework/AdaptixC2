@@ -1,5 +1,6 @@
 #include <Agent/Agent.h>
 #include <Utils/FileSystem.h>
+#include <Utils/NonBlockingDialogs.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
@@ -579,12 +580,14 @@ void BrowserFilesWidget::onUpload() const
     else
         remotePath += "/";
 
-    QString filePath = QFileDialog::getOpenFileName(nullptr, "Select file", QDir::homePath());
-    if ( filePath.isEmpty())
-        return;
+    NonBlockingDialogs::getOpenFileName(const_cast<BrowserFilesWidget*>(this), "Select file", QDir::homePath(), "All Files (*.*)",
+        [this, remotePath](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
 
-    statusLabel->setText("");
-    emit agent->adaptixWidget->eventFileBrowserUpload(agent->data.Id, remotePath, filePath);
+            statusLabel->setText("");
+            Q_EMIT agent->adaptixWidget->eventFileBrowserUpload(agent->data.Id, remotePath, filePath);
+    });
 }
 
 void BrowserFilesWidget::handleTableDoubleClicked(const QModelIndex &index)

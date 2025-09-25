@@ -6,6 +6,7 @@
 #include <Client/Settings.h>
 #include <Client/Storage.h>
 #include <Client/AuthProfile.h>
+#include <Utils/FontManager.h>
 #include <MainAdaptix.h>
 
 #include <kddockwidgets/Config.h>
@@ -195,24 +196,7 @@ void MainAdaptix::SetApplicationTheme() const
     flags |= KDDockWidgets::Config::Flag_DoubleClickMaximizes;
     KDDockWidgets::Config::self().setFlags(flags);
 
-    QFontDatabase::addApplicationFont(":/fonts/DroidSansMono");
-    QFontDatabase::addApplicationFont(":/fonts/VT323");
-    QFontDatabase::addApplicationFont(":/fonts/Anonymous");
-    QFontDatabase::addApplicationFont(":/fonts/Anonymous_B");
-    QFontDatabase::addApplicationFont(":/fonts/Anonymous_BI");
-    QFontDatabase::addApplicationFont(":/fonts/Anonymous_I");
-    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono");
-    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono_B");
-    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono_BO");
-    QFontDatabase::addApplicationFont(":/fonts/DejavuSansMono_O");
-    QFontDatabase::addApplicationFont(":/fonts/Hack");
-    QFontDatabase::addApplicationFont(":/fonts/Hack_B");
-    QFontDatabase::addApplicationFont(":/fonts/Hack_BI");
-    QFontDatabase::addApplicationFont(":/fonts/Hack_I");
-    QFontDatabase::addApplicationFont(":/fonts/SpaceMono");
-    QFontDatabase::addApplicationFont(":/fonts/SpaceMono_B");
-    QFontDatabase::addApplicationFont(":/fonts/SpaceMono_BI");
-    QFontDatabase::addApplicationFont(":/fonts/SpaceMono_I");
+    FontManager::instance().initialize();
 
     QString appFontFamily = settings->data.FontFamily;
     if (appFontFamily.startsWith("Adaptix"))
