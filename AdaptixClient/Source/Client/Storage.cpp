@@ -204,6 +204,23 @@ void Storage::AddProject(AuthProfile profile)
     }
 }
 
+void Storage::UpdateProject(AuthProfile profile)
+{
+    QSqlQuery query;
+    query.prepare("UPDATE Projects SET host = :Host, port = :Port, endpoint = :Endpoint, username = :Username, password = :Password WHERE project = :Project;");
+
+    query.bindValue(":Project", profile.GetProject().toStdString().c_str());
+    query.bindValue(":Host", profile.GetHost().toStdString().c_str());
+    query.bindValue(":Port", profile.GetPort().toStdString().c_str());
+    query.bindValue(":Endpoint", profile.GetEndpoint().toStdString().c_str());
+    query.bindValue(":Username", profile.GetUsername().toStdString().c_str());
+    query.bindValue(":Password", profile.GetPassword().toStdString().c_str());
+
+    if ( !query.exec() ) {
+        LogError("The project has not been updated in the database: %s\n", query.lastError().text().toStdString().c_str());
+    }
+}
+
 void Storage::RemoveProject(const QString &project)
 {
     QSqlQuery query;

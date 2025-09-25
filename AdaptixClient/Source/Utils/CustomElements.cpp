@@ -1,4 +1,5 @@
 #include <Utils/CustomElements.h>
+#include <Utils/NonBlockingDialogs.h>
 #include <QTextBlock>
 
 SpinTable::SpinTable(int rows, int columns, QWidget* parent)
@@ -65,22 +66,24 @@ FileSelector::FileSelector(QWidget* parent) : QWidget(parent)
 
     connect(button, &QPushButton::clicked, this, [&]()
     {
-        QString selectedFile = QFileDialog::getOpenFileName(this, "Select a file");
-        if (selectedFile.isEmpty())
-            return;
+        NonBlockingDialogs::getOpenFileName(this, "Select a file", "", "All Files (*.*)",
+            [this](const QString& selectedFile) {
+                if (selectedFile.isEmpty())
+                    return;
 
-        QString filePath = selectedFile;
-        input->setText(filePath);
+                QString filePath = selectedFile;
+                input->setText(filePath);
 
-        QFile file(filePath);
-        if (!file.open(QIODevice::ReadOnly))
-            return;
+                QFile file(filePath);
+                if (!file.open(QIODevice::ReadOnly))
+                    return;
 
-        QByteArray fileData = file.readAll();
-        file.close();
+                QByteArray fileData = file.readAll();
+                file.close();
 
-        content = QString::fromUtf8(fileData.toBase64());
-    } );
+                content = QString::fromUtf8(fileData.toBase64());
+        });
+    });
 }
 
 

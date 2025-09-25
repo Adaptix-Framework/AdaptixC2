@@ -154,6 +154,8 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogSaveTask.h
         Headers/UI/Widgets/ChatWidget.h
         Headers/UI/Widgets/AbstractDock.h
+        Headers/Utils/NonBlockingDialogs.h
+        Headers/Utils/FontManager.h
 )
 
 add_executable(AdaptixClient
@@ -233,6 +235,8 @@ add_executable(AdaptixClient
         Source/UI/Dialogs/DialogTarget.cpp
         Source/UI/Dialogs/DialogSaveTask.cpp
         Source/UI/Widgets/ChatWidget.cpp
+        Source/Utils/NonBlockingDialogs.cpp
+        Source/Utils/FontManager.cpp
 )
 
 target_compile_definitions(

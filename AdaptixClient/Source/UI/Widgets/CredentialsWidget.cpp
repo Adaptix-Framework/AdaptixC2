@@ -5,6 +5,7 @@
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Utils/CustomElements.h>
+#include <Utils/NonBlockingDialogs.h>
 
 CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : DockTab("Credentials", w->GetProfile()->GetProject(), ":/icons/key"), adaptixWidget(w)
 {
@@ -498,35 +499,37 @@ void CredentialsWidget::onExportCreds() const
 
     QString format = dialog.textValue();
 
-    QString fileName = QFileDialog::getSaveFileName( nullptr, "Save credentials", "creds.txt", "Text Files (*.txt);;All Files (*)" );
-    if ( fileName.isEmpty())
-        return;
+    NonBlockingDialogs::getSaveFileName(const_cast<CredentialsWidget*>(this), "Save credentials", "creds.txt", "Text Files (*.txt);;All Files (*)",
+        [this, format](const QString& fileName) {
+            if (fileName.isEmpty())
+                return;
 
-    QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly)) {
-        MessageError("Failed to open file for writing");
-        return;
-    }
+            QFile file(fileName);
+            if (!file.open(QIODevice::WriteOnly)) {
+                MessageError("Failed to open file for writing");
+                return;
+            }
 
-    QString content = "";
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
+            QString content = "";
+            for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+                if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
 
-            QString realm    = tableWidget->item(rowIndex, ColumnRealm)->text();
-            QString username = tableWidget->item(rowIndex, ColumnUsername)->text();
-            QString password = tableWidget->item(rowIndex, ColumnPassword)->text();
+                    QString realm    = tableWidget->item(rowIndex, ColumnRealm)->text();
+                    QString username = tableWidget->item(rowIndex, ColumnUsername)->text();
+                    QString password = tableWidget->item(rowIndex, ColumnPassword)->text();
 
-            QString temp = format;
-            content += temp
-            .replace("%realm%", realm)
-            .replace("%username%", username)
-            .replace("%password%", password)
-            + "\n";
-        }
-    }
+                    QString temp = format;
+                    content += temp
+                    .replace("%realm%", realm)
+                    .replace("%username%", username)
+                    .replace("%password%", password)
+                    + "\n";
+                }
+            }
 
-    file.write(content.trimmed().toUtf8());
-    file.close();
+            file.write(content.trimmed().toUtf8());
+            file.close();
+    });
 }
 
 void CredentialsWidget::onSetTag() const
