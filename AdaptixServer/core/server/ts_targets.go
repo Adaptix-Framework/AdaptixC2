@@ -2,6 +2,7 @@ package server
 
 import (
 	"AdaptixServer/core/utils/std"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -9,6 +10,21 @@ import (
 
 	adaptix "github.com/Adaptix-Framework/axc2"
 )
+
+func (ts *Teamserver) TsTargetsList() (string, error) {
+	var targets []adaptix.TargetData
+
+	for value := range ts.targets.Iterator() {
+		target := *value.Item.(*adaptix.TargetData)
+		targets = append(targets, target)
+	}
+
+	jsonTarget, err := json.Marshal(targets)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonTarget), nil
+}
 
 func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 	var newTargets []*adaptix.TargetData

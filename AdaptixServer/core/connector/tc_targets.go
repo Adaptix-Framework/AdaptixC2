@@ -6,6 +6,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (tc *TsConnector) TcTargetsList(ctx *gin.Context) {
+	jsonTargets, err := tc.teamserver.TsTargetsList()
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonTargets))
+}
+
 func (tc *TsConnector) TcTargetsAdd(ctx *gin.Context) {
 	var m map[string]interface{}
 	var targets []map[string]interface{}

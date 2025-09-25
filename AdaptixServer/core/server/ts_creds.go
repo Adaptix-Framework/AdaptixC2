@@ -1,12 +1,27 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"time"
 
 	adaptix "github.com/Adaptix-Framework/axc2"
 )
+
+func (ts *Teamserver) TsCredentilsList() (string, error) {
+	var creds []adaptix.CredsData
+	for value := range ts.credentials.Iterator() {
+		c := *value.Item.(*adaptix.CredsData)
+		creds = append(creds, c)
+	}
+
+	jsonCreds, err := json.Marshal(creds)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonCreds), nil
+}
 
 func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 	var newCreds []*adaptix.CredsData

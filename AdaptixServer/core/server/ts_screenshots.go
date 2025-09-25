@@ -4,12 +4,27 @@ import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/tformat"
+	"encoding/json"
 	"errors"
 	"os"
 	"time"
 
 	adaptix "github.com/Adaptix-Framework/axc2"
 )
+
+func (ts *Teamserver) TsScreenshotList() (string, error) {
+	var screens []adaptix.ScreenData
+	ts.screenshots.ForEach(func(key string, value interface{}) bool {
+		screens = append(screens, value.(adaptix.ScreenData))
+		return true
+	})
+
+	jsonScreenshot, err := json.Marshal(screens)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonScreenshot), nil
+}
 
 func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byte) error {
 	screenData := adaptix.ScreenData{

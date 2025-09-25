@@ -3,6 +3,7 @@ package server
 import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -194,6 +195,22 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 }
 
 ///
+
+func (ts *Teamserver) TsDownloadList() (string, error) {
+	var downloads []adaptix.DownloadData
+	ts.downloads.ForEach(func(key string, value interface{}) bool {
+		data := value.(adaptix.DownloadData)
+		data.LocalPath = "******"
+		downloads = append(downloads, data)
+		return true
+	})
+
+	jsonDownloads, err := json.Marshal(downloads)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonDownloads), nil
+}
 
 func (ts *Teamserver) TsDownloadGet(fileId string) (adaptix.DownloadData, error) {
 	value, ok := ts.downloads.Get(fileId)

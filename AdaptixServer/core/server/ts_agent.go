@@ -6,6 +6,7 @@ import (
 	"AdaptixServer/core/utils/safe"
 	"AdaptixServer/core/utils/tformat"
 	isvalid "AdaptixServer/core/utils/valid"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,6 +14,20 @@ import (
 
 	"github.com/Adaptix-Framework/axc2"
 )
+
+func (ts *Teamserver) TsAgentList() (string, error) {
+	var agents []adaptix.AgentData
+	ts.agents.ForEach(func(key string, value interface{}) bool {
+		agents = append(agents, value.(*Agent).Data)
+		return true
+	})
+
+	jsonAgents, err := json.Marshal(agents)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonAgents), nil
+}
 
 func (ts *Teamserver) TsAgentIsExists(agentId string) bool {
 	return ts.agents.Contains(agentId)

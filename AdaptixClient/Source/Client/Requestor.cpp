@@ -502,7 +502,7 @@ bool HttpReqTunnelSetInfo(const QString &tunnelId, const QString &info, AuthProf
     dataJson["p_info"] = info;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString sUrl = profile.GetURL() + "/tunnel/setinfo";
+    QString sUrl = profile.GetURL() + "/tunnel/set/info";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
