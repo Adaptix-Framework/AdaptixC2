@@ -7,6 +7,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (tc *TsConnector) TcTunnelList(ctx *gin.Context) {
+	jsonTunnels, err := tc.teamserver.TsTunnelList()
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonTunnels))
+}
+
 type TunnelStartSocks5Action struct {
 	AgentId     string `json:"agent_id"`
 	Listen      bool   `json:"listen"`

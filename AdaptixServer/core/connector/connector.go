@@ -23,12 +23,14 @@ type Teamserver interface {
 	TsClientSync(username string)
 	TsClientConnect(username string, socket *websocket.Conn)
 
+	TsListenerList() (string, error)
 	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error
 	TsListenerEdit(listenerName string, configType string, config string) error
 	TsListenerStop(listenerName string, configType string) error
 	TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error)
 	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
+	TsAgentList() (string, error)
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
 	TsAgentProcessData(agentId string, bodyData []byte) error
@@ -63,20 +65,24 @@ type Teamserver interface {
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
 
+	TsDownloadList() (string, error)
 	TsDownloadSync(fileId string) (string, []byte, error)
 	TsDownloadDelete(fileId string) error
 	TsDownloadGetFilepath(fileId string) (string, error)
 	TsUploadGetFilepath(fileId string) (string, error)
 	TsUploadGetFileContent(fileId string) ([]byte, error)
 
+	TsScreenshotList() (string, error)
 	TsScreenshotDelete(screenId string) error
 	TsScreenshotNote(screenId string, note string) error
 
+	TsCredentilsList() (string, error)
 	TsCredentilsAdd(creds []map[string]interface{}) error
 	TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error
 	TsCredentilsDelete(credsId []string) error
 	TsCredentialsSetTag(credsId []string, tag string) error
 
+	TsTargetsList() (string, error)
 	TsTargetsAdd(targets []map[string]interface{}) error
 	TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error
 	TsTargetDelete(targetsId []string) error
@@ -90,6 +96,7 @@ type Teamserver interface {
 
 	TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error
 
+	TsTunnelList() (string, error)
 	TsTunnelClientStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error)
 	TsTunnelClientNewChannel(TunnelData string, wsconn *websocket.Conn) error
 	TsTunnelClientStop(TunnelId string, Client string) error
@@ -176,10 +183,12 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.GET(tsProfile.Endpoint+"/connect", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcConnect)
 	connector.Engine.GET(tsProfile.Endpoint+"/channel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcChannel)
 
+	connector.Engine.GET(tsProfile.Endpoint+"/listener/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerList)
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStart)
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerEdit)
 	connector.Engine.POST(tsProfile.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStop)
 
+	connector.Engine.GET(tsProfile.Endpoint+"/agent/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentList)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/generate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentGenerate)
 	connector.Engine.POST(tsProfile.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentRemove)
 
@@ -198,28 +207,33 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 
 	connector.Engine.POST(tsProfile.Endpoint+"/chat/send", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcChatSendMessage)
 
+	connector.Engine.GET(tsProfile.Endpoint+"/download/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcDownloadList)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadSync)
 	connector.Engine.POST(tsProfile.Endpoint+"/download/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadDelete)
 
+	connector.Engine.GET(tsProfile.Endpoint+"/screen/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotList)
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/setnote", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotSetNote)
 	connector.Engine.POST(tsProfile.Endpoint+"/screen/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotRemove)
 
+	connector.Engine.GET(tsProfile.Endpoint+"/creds/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsList)
 	connector.Engine.POST(tsProfile.Endpoint+"/creds/add", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsAdd)
 	connector.Engine.POST(tsProfile.Endpoint+"/creds/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsEdit)
 	connector.Engine.POST(tsProfile.Endpoint+"/creds/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsRemove)
 	connector.Engine.POST(tsProfile.Endpoint+"/creds/set/tag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsSetTag)
 
+	connector.Engine.GET(tsProfile.Endpoint+"/targets/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetsList)
 	connector.Engine.POST(tsProfile.Endpoint+"/targets/add", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetsAdd)
 	connector.Engine.POST(tsProfile.Endpoint+"/targets/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetEdit)
 	connector.Engine.POST(tsProfile.Endpoint+"/targets/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetRemove)
 	connector.Engine.POST(tsProfile.Endpoint+"/targets/set/tag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetSetTag)
 
+	connector.Engine.GET(tsProfile.Endpoint+"/tunnel/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelList)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks5", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks5)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks4", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks4)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/lportfwd", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartLpf)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/rportfwd", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartRpf)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStop)
-	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/setinfo", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelSetIno)
+	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/set/info", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelSetIno)
 
 	connector.Engine.NoRoute(default404Middleware(tsResponse), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 

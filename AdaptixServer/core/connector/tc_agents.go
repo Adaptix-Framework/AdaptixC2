@@ -11,6 +11,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (tc *TsConnector) TcAgentList(ctx *gin.Context) {
+	jsonAgents, err := tc.teamserver.TsAgentList()
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonAgents))
+}
+
 type AgentConfig struct {
 	ListenerName string `json:"listener_name"`
 	ListenerType string `json:"listener_type"`
