@@ -3,11 +3,10 @@ project(AdaptixClient LANGUAGES C CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
-set(CMAKE_CXX_STANDARD 17)          # 26
-set(CMAKE_CXX_STANDARD_REQUIRED ON) # -
-#set(CMAKE_INCLUDE_CURRENT_DIRS ON)  # -
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_subdirectory(Libs/KDDockWidgets)
+add_subdirectory(Libs/kddockwidgets)
 
 if(UNIX)
     find_package( OpenSSL REQUIRED )
@@ -35,7 +34,7 @@ include_directories(
 
 ### KDDOCKWIDGETS
 
-set(KDDOCKWIDGETS_RESOURCES Libs/KDDockWidgets/kddockwidgets_resources.qrc)
+set(KDDOCKWIDGETS_RESOURCES Libs/kddockwidgets/kddockwidgets_resources.qrc)
 
 ### KONSOLE
 
