@@ -2,6 +2,16 @@ all: clean prepare server client extenders
 
 DIST_DIR := dist
 
+UNAME_S := $(uname -s)
+
+ifeq ($(UNAME_S),Linux)
+  NPROC := $(nproc)
+endif
+
+ifeq ($(UNAME_S),Darwin)
+  NPROC := $(sysctl -n hw.ncpu)
+endif
+
 prepare:
 	@if [ ! -d "$(DIST_DIR)" ]; then \
 		mkdir "$(DIST_DIR)"; \
@@ -10,6 +20,7 @@ prepare:
 
 clean:
 	@ rm -rf $(DIST_DIR)
+
 
 server: prepare
 	@ echo "[*] Building adaptixserver..."
@@ -26,6 +37,13 @@ client: prepare
 	@ mv ./AdaptixClient/AdaptixClient ./$(DIST_DIR)/
 	@ echo "[+] done"
 
+client-fast: prepare
+	@ echo "[*] Building AdaptixClient in $(NPROC) threads..."
+	@ cd AdaptixClient && cmake . > /dev/null 2>cmake_error.log || { echo "[ERROR] CMake failed:"; cat cmake_error.log >&2; exit 1; }
+	@ cd AdaptixClient && make --no-print-directory -j$(NPROC)
+	@ mv ./AdaptixClient/AdaptixClient ./$(DIST_DIR)/
+	@ echo "[+] done"
+
 ### Extenders here
 
 EXTENDER_DIRS := $(shell find Extenders -maxdepth 1 -type d -not -path "." -exec test -f {}/Makefile \; -print)
@@ -39,3 +57,29 @@ extenders: prepare
 		mv $$dir/dist $(DIST_DIR)/extenders/$$plugin_name; \
 	done
 	@ echo "[+] done"
+
+clean-all: clean
+	@ echo "[*] Cleaning all build artifacts..."
+	@ find . -name "*.o" -delete
+	@ find . -name "*.so" -delete
+	@ find . -name "*.a" -delete
+	@ find . -name "build_error.log" -delete
+	@ find . -name "cmake_error.log" -delete
+	@ echo "[+] All artifacts cleaned"
+
+help:
+	@ echo "AdaptixC2 Build System"
+	@ echo ""
+	@ echo "Available targets:"
+	@ echo "  all         - Build everything (server, client, extenders)"
+	@ echo "  server      - Build only the server"
+	@ echo "  client      - Build only the client in multithread mode (fast build)"
+	@ echo "  client-fast - Build only the client"
+	@ echo "  extenders   - Build only the extenders"
+	@ echo "  clean       - Remove dist directory"
+	@ echo "  clean-all   - Remove all build artifacts"
+	@ echo "  help        - Show this help message"
+	@ echo ""
+	@ echo "Platform: $(UNAME_S)"
+
+.PHONY: all server client extenders clean clean-all help prepare

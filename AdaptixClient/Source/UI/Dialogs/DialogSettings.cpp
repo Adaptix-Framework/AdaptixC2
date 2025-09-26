@@ -30,41 +30,41 @@ DialogSettings::DialogSettings(Settings* s)
     for ( int i = 0; i < 11; i++)
         tasksCheck[i]->setChecked(s->data.TasksTableColumns[i]);
 
-    connect(themeCombo,         &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
-    connect(fontFamilyCombo,    &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
-    connect(fontSizeSpin,       &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(sessionsCoafSpin,   &QDoubleSpinBox::valueChanged,  buttonApply, [=, this](double){buttonApply->setEnabled(true);} );
-    connect(sessionsOffsetSpin, &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(terminalSizeSpin,   &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(consoleSizeSpin,    &QSpinBox::valueChanged,        buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(themeCombo,         &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
+    connect(fontFamilyCombo,    &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
+    connect(fontSizeSpin,       &QSpinBox::valueChanged,        buttonApply, [this](int){buttonApply->setEnabled(true);} );
+    connect(sessionsCoafSpin,   &QDoubleSpinBox::valueChanged,  buttonApply, [this](double){buttonApply->setEnabled(true);} );
+    connect(sessionsOffsetSpin, &QSpinBox::valueChanged,        buttonApply, [this](int){buttonApply->setEnabled(true);} );
+    connect(terminalSizeSpin,   &QSpinBox::valueChanged,        buttonApply, [this](int){buttonApply->setEnabled(true);} );
+    connect(consoleSizeSpin,    &QSpinBox::valueChanged,        buttonApply, [this](int){buttonApply->setEnabled(true);} );
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    connect(consoleTimeCheckbox,       &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(consoleNoWrapCheckbox,     &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(consoleAutoScrollCheckbox, &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(consoleTimeCheckbox,       &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+    connect(consoleNoWrapCheckbox,     &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+    connect(consoleAutoScrollCheckbox, &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
     connect(sessionsHealthCheck,       &QCheckBox::checkStateChanged, this, &DialogSettings::onHealthChange );
 #else
-    connect(consoleTimeCheckbox,       &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(consoleNoWrapCheckbox,     &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
-    connect(consoleAutoScrollCheckbox, &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+    connect(consoleTimeCheckbox,       &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+    connect(consoleNoWrapCheckbox,     &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+    connect(consoleAutoScrollCheckbox, &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
     connect(sessionsHealthCheck,       &QCheckBox::stateChanged, this, &DialogSettings::onHealthChange );
 #endif
 
     for ( int i = 0; i < 15; i++) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-        connect(sessionsCheck[i],  &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+        connect(sessionsCheck[i],  &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
 #else
-        connect(sessionsCheck[i],  &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+        connect(sessionsCheck[i],  &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
 #endif
     }
 
-    connect(graphCombo1, &QComboBox::currentTextChanged, buttonApply, [=, this](const QString &text){buttonApply->setEnabled(true);} );
+    connect(graphCombo1, &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
 
     for ( int i = 0; i < 11; i++) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-        connect(tasksCheck[i],  &QCheckBox::checkStateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+        connect(tasksCheck[i],  &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
 #else
-        connect(tasksCheck[i],  &QCheckBox::stateChanged, buttonApply, [=, this](int){buttonApply->setEnabled(true);} );
+        connect(tasksCheck[i],  &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
 #endif
     }
 
