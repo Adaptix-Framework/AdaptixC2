@@ -2,14 +2,14 @@ all: clean prepare server client extenders
 
 DIST_DIR := dist
 
-UNAME_S := $(uname -s)
+UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
-  NPROC := $(nproc)
+  NPROC := $(shell nproc)
 endif
 
 ifeq ($(UNAME_S),Darwin)
-  NPROC := $(sysctl -n hw.ncpu)
+  NPROC := $(shell sysctl -n hw.ncpu)
 endif
 
 prepare:
@@ -24,7 +24,7 @@ clean:
 
 server: prepare
 	@ echo "[*] Building adaptixserver..."
-	@ cd AdaptixServer && go build -ldflags="-s -w" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
+	@ cd AdaptixServer && go build -buildvcs=false -ldflags="-s -w" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
 	@ sudo setcap 'cap_net_bind_service=+ep' AdaptixServer/adaptixserver
 	@ mv AdaptixServer/adaptixserver ./$(DIST_DIR)/
 	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.json AdaptixServer/404page.html ./$(DIST_DIR)/
@@ -80,6 +80,6 @@ help:
 	@ echo "  clean-all   - Remove all build artifacts"
 	@ echo "  help        - Show this help message"
 	@ echo ""
-	@ echo "Platform: $(UNAME_S)"
+	@ echo "Platform: $(UNAME_S) [$(NPROC) proc]"
 
 .PHONY: all server client extenders clean clean-all help prepare
