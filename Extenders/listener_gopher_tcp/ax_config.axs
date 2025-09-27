@@ -132,6 +132,7 @@ function ListenerUI(mode_create)
     container.put("timeout", spinTimeout)
     container.put("tcp_banner", texteditBanner)
     container.put("error_answer", texteditAnswer)
+    container.put("encrypt_key", textlineEncryptKey);
     container.put("ssl", checkMtls)
     container.put("ca_cert", caCertSelector)
     container.put("server_cert", srvCertSelector)
