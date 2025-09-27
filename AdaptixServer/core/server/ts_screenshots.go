@@ -15,7 +15,9 @@ import (
 func (ts *Teamserver) TsScreenshotList() (string, error) {
 	var screens []adaptix.ScreenData
 	ts.screenshots.ForEach(func(key string, value interface{}) bool {
-		screens = append(screens, value.(adaptix.ScreenData))
+		screenData := value.(adaptix.ScreenData)
+		screenData.LocalPath = "******"
+		screens = append(screens, screenData)
 		return true
 	})
 
