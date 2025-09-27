@@ -290,6 +290,6 @@ else()
 
             kddockwidgets
 
-            wsock32 ws2_32 crypt32 iphlpapi netapi32 version winmm userenv
+            wsock32 ws2_32 crypt32 iphlpapi netapi32 version winmm userenv dwmapi
     )
 endif()
