@@ -83,14 +83,14 @@ void ScreenWindow::setSelectionStart(int column, int line, bool columnMode) {
     _screen->setSelectionStart(column, qMin(line + currentLine(), endWindowLine()), columnMode);
 
     _bufferNeedsUpdate = true;
-    emit selectionChanged();
+    Q_EMIT selectionChanged();
 }
 
 void ScreenWindow::setSelectionEnd(int column, int line) {
     _screen->setSelectionEnd(column, qMin(line + currentLine(), endWindowLine()));
 
     _bufferNeedsUpdate = true;
-    emit selectionChanged();
+    Q_EMIT selectionChanged();
 }
 
 bool ScreenWindow::isSelected(int column, int line) {
@@ -100,7 +100,7 @@ bool ScreenWindow::isSelected(int column, int line) {
 void ScreenWindow::clearSelection() {
     _screen->clearSelection();
 
-    emit selectionChanged();
+    Q_EMIT selectionChanged();
 }
 
 bool ScreenWindow::isClearSelection() { 
@@ -176,7 +176,7 @@ void ScreenWindow::scrollTo(int line) {
 
     _bufferNeedsUpdate = true;
 
-    emit scrolled(_currentLine);
+    Q_EMIT scrolled(_currentLine);
 }
 
 void ScreenWindow::setTrackOutput(bool trackOutput) {
@@ -209,7 +209,7 @@ void ScreenWindow::notifyOutputChanged() {
 
     _bufferNeedsUpdate = true;
 
-    emit outputChanged();
+    Q_EMIT outputChanged();
 }
 
 void ScreenWindow::handleCommandFromKeyboard(
@@ -233,7 +233,7 @@ void ScreenWindow::handleCommandFromKeyboard(
         update = true;
     }
     if (command & KeyboardTranslator::ScrollDownToBottomCommand) {
-        emit scrollToEnd();
+        Q_EMIT scrollToEnd();
         update = true;
     }
     if (command & KeyboardTranslator::ScrollUpToTopCommand) {
@@ -244,6 +244,6 @@ void ScreenWindow::handleCommandFromKeyboard(
     if (update) {
         setTrackOutput(atEndOfOutput());
 
-        emit outputChanged();
+        Q_EMIT outputChanged();
     }
 }

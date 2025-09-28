@@ -2,9 +2,11 @@
 #define ADAPTIXCLIENT_BROWSERFILESWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class Agent;
 class FileBrowserTreeItem;
+class AdaptixWidget;
 
 class BrowserFileData
 {
@@ -42,7 +44,7 @@ public:
     }
 };
 
-class BrowserFilesWidget : public QWidget
+class BrowserFilesWidget : public DockTab
 {
     QGridLayout*  mainGridLayout    = nullptr;
     QGridLayout*  listGridLayout    = nullptr;
@@ -60,7 +62,7 @@ class BrowserFilesWidget : public QWidget
     QFrame*       line_1            = nullptr;
     QFrame*       line_2            = nullptr;
 
-    Agent*  agent;
+    Agent* agent;
     QString currentPath;
     QMap<QString, BrowserFileData> browserStore;
 
@@ -77,14 +79,14 @@ class BrowserFilesWidget : public QWidget
     BrowserFileData* getFileData(const QString &path);
 
 public:
-    BrowserFilesWidget(Agent* a);
+    BrowserFilesWidget(AdaptixWidget* w, Agent* a);
     ~BrowserFilesWidget() override;
 
     void SetDisksWin(qint64 time, int msgType, const QString &message, const QString &data);
     void AddFiles(qint64 time, int msgType, const QString &message, const QString &path, const QString &data);
     void SetStatus(qint64 time, int msgType, const QString &message) const;
 
-public slots:
+public Q_SLOTS:
     void onDisks() const;
     void onList() const;
     void onParent();

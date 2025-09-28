@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
-	"github.com/Adaptix-Framework/axc2"
 	"math/rand"
 	"time"
+
+	"github.com/Adaptix-Framework/axc2"
 )
 
 const (
@@ -54,6 +55,7 @@ type Teamserver interface {
 	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
+	TsDownloadSave(agentId string, fileId string, filename string, content []byte) error
 
 	TsScreenshotAdd(agentId string, Note string, Content []byte) error
 

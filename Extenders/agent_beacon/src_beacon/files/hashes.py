@@ -167,6 +167,7 @@ GetModuleHandleA
 FreeLibrary
 __C_specific_handler
 AxAddScreenshot
+AxDownloadMemory
 
 // wininet
 InternetOpenA

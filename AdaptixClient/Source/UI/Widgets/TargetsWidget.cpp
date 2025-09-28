@@ -5,9 +5,9 @@
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Utils/CustomElements.h>
+#include <Utils/NonBlockingDialogs.h>
 
-
-TargetsWidget::TargetsWidget(AdaptixWidget* w) : adaptixWidget(w)
+TargetsWidget::TargetsWidget(AdaptixWidget* w) : DockTab("Targets", w->GetProfile()->GetProject(), ":/icons/devices"), adaptixWidget(w)
 {
     this->createUI();
 
@@ -20,6 +20,8 @@ TargetsWidget::TargetsWidget(AdaptixWidget* w) : adaptixWidget(w)
      shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
      shortcutSearch->setContext(Qt::WidgetShortcut);
      connect(shortcutSearch, &QShortcut::activated, this, &TargetsWidget::toggleSearchPanel);
+
+    this->dockWidget->setWidget(this);
 }
 
 TargetsWidget::~TargetsWidget() = default;
@@ -133,8 +135,10 @@ void TargetsWidget::addTableItem(const TargetData &target) const
     item_Info->setFlags( item_Info->flags() ^ Qt::ItemIsEditable );
     item_Info->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
 
+    bool owned = (target.Agents.size() > 0);
+
     if (target.Os == OS_WINDOWS) {
-        if (target.Owned) {
+        if (owned) {
             item_Os->setIcon(QIcon(":/icons/os_win_red"));
         } else if(target.Alive) {
             item_Os->setIcon(QIcon(":/icons/os_win_blue"));
@@ -143,7 +147,7 @@ void TargetsWidget::addTableItem(const TargetData &target) const
         }
     }
     else if (target.Os == OS_LINUX) {
-        if (target.Owned) {
+        if (owned) {
             item_Os->setIcon(QIcon(":/icons/os_linux_red"));
         } else if(target.Alive) {
             item_Os->setIcon(QIcon(":/icons/os_linux_blue"));
@@ -152,7 +156,7 @@ void TargetsWidget::addTableItem(const TargetData &target) const
         }
     }
     else if (target.Os == OS_MAC) {
-        if (target.Owned) {
+        if (owned) {
             item_Os->setIcon(QIcon(":/icons/os_mac_red"));
         } else if(target.Alive) {
             item_Os->setIcon(QIcon(":/icons/os_mac_blue"));
@@ -226,7 +230,7 @@ void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
             adaptixWidget->Targets[i].Date     = newTarget.Date;
             adaptixWidget->Targets[i].Info     = newTarget.Info;
             adaptixWidget->Targets[i].Alive    = newTarget.Alive;
-            adaptixWidget->Targets[i].Owned    = newTarget.Owned;
+            adaptixWidget->Targets[i].Agents   = newTarget.Agents;
             break;
         }
     }
@@ -242,8 +246,9 @@ void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
             tableWidget->item(row, ColumnDate    )->setText(newTarget.Date);
             tableWidget->item(row, ColumnInfo    )->setText(newTarget.Info);
 
+            bool owned = (newTarget.Agents.size() > 0);
             if (newTarget.Os == OS_WINDOWS) {
-                if (newTarget.Owned) {
+                if (owned) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_win_red"));
                 } else if(newTarget.Alive) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_win_blue"));
@@ -252,7 +257,7 @@ void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
                 }
             }
             else if (newTarget.Os == OS_LINUX) {
-                if (newTarget.Owned) {
+                if (owned) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_linux_red"));
                 } else if(newTarget.Alive) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_linux_blue"));
@@ -261,7 +266,7 @@ void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
                 }
             }
             else if (newTarget.Os == OS_MAC) {
-                if (newTarget.Owned) {
+                if (owned) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_mac_red"));
                 } else if(newTarget.Alive) {
                     tableWidget->item(row, ColumnOs)->setIcon(QIcon(":/icons/os_mac_blue"));
@@ -573,33 +578,35 @@ void TargetsWidget::onExportTarget() const
 
     QString format = dialog.textValue();
 
-    QString fileName = QFileDialog::getSaveFileName( nullptr, "Save Targets", "targets.txt", "Text Files (*.txt);;All Files (*)" );
-    if ( fileName.isEmpty())
-        return;
+    NonBlockingDialogs::getSaveFileName(const_cast<TargetsWidget*>(this), "Save Targets", "targets.txt", "Text Files (*.txt);;All Files (*)",
+        [this, format](const QString& fileName) {
+            if (fileName.isEmpty())
+                return;
 
-    QFile file(fileName);
-    if (!file.open(QIODevice::WriteOnly)) {
-        MessageError("Failed to open file for writing");
-        return;
-    }
+            QFile file(fileName);
+            if (!file.open(QIODevice::WriteOnly)) {
+                MessageError("Failed to open file for writing");
+                return;
+            }
 
-     QString content = "";
-     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-         if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
+            QString content = "";
+            for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
+                if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
 
-             QString computer = tableWidget->item(rowIndex, ColumnComputer)->text();
-             QString domain   = tableWidget->item(rowIndex, ColumnDomain)->text();
-             QString address  = tableWidget->item(rowIndex, ColumnAddress)->text();
+                    QString computer = tableWidget->item(rowIndex, ColumnComputer)->text();
+                    QString domain   = tableWidget->item(rowIndex, ColumnDomain)->text();
+                    QString address  = tableWidget->item(rowIndex, ColumnAddress)->text();
 
-             QString temp = format;
-             content += temp
-             .replace("%computer%", computer)
-             .replace("%domain%", domain)
-             .replace("%address%", address)
-             + "\n";
-         }
-     }
+                    QString temp = format;
+                    content += temp
+                    .replace("%computer%", computer)
+                    .replace("%domain%", domain)
+                    .replace("%address%", address)
+                    + "\n";
+                }
+            }
 
-     file.write(content.trimmed().toUtf8());
-     file.close();
+            file.write(content.trimmed().toUtf8());
+            file.close();
+    });
 }

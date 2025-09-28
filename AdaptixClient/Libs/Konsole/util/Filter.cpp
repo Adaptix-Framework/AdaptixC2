@@ -376,7 +376,7 @@ UrlFilter::HotSpot::~HotSpot() {
 }
 
 void FilterObject::emitActivated(const QUrl &url, uint32_t opcode) {
-    emit activated(url, opcode);
+    Q_EMIT activated(url, opcode);
 }
 
 FilterObject *UrlFilter::HotSpot::getUrlObject() const { return _urlObject; }

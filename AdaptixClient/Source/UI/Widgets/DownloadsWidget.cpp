@@ -5,14 +5,16 @@
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <Utils/NonBlockingDialogs.h>
 
-
-DownloadsWidget::DownloadsWidget(AdaptixWidget* w)
+DownloadsWidget::DownloadsWidget(AdaptixWidget* w) : DockTab("Downloads", w->GetProfile()->GetProject(), ":/icons/downloads")
 {
     this->adaptixWidget = w;
     this->createUI();
 
     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &DownloadsWidget::handleDownloadsMenu );
+
+    this->dockWidget->setWidget(this);
 }
 
 void DownloadsWidget::createUI()
@@ -274,14 +276,16 @@ void DownloadsWidget::actionSync() const
     pathParts = fileName.split("/", Qt::SkipEmptyParts);
     fileName = pathParts[pathParts.size()-1];
 
-    QString savedPath = QFileDialog::getSaveFileName( nullptr, "Save File", fileName, "All Files (*.*)" );
-    if (savedPath.isEmpty())
-        return;
+    NonBlockingDialogs::getSaveFileName(const_cast<DownloadsWidget*>(this), "Save File", fileName, "All Files (*.*)",
+        [this, otp](const QString& savedPath) {
+            if (savedPath.isEmpty())
+                return;
 
-    QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
+            QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
 
-    DialogDownloader dialog(sUrl, otp, savedPath);
-    dialog.exec();
+            DialogDownloader dialog(sUrl, otp, savedPath);
+            dialog.exec();
+    });
 }
 
 void DownloadsWidget::actionSyncCurl() const

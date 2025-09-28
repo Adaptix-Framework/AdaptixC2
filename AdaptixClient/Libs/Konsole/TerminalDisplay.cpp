@@ -192,7 +192,7 @@ void TerminalDisplay::fontChange(const QFont &) {
 
     _fontAscent = fm.ascent();
 
-    emit changedFontMetricSignal(_fontHeight, _fontWidth);
+    Q_EMIT changedFontMetricSignal(_fontHeight, _fontWidth);
     propagateSize();
 
     _drawTextTestFlag = true;
@@ -1273,7 +1273,7 @@ void TerminalDisplay::focusOutEvent(QFocusEvent *) {
 
     _blinkTimer->stop();
 
-    emit termLostFocus();
+    Q_EMIT termLostFocus();
 }
 void TerminalDisplay::focusInEvent(QFocusEvent *) {
     if (_hasBlinkingCursor) {
@@ -1284,7 +1284,7 @@ void TerminalDisplay::focusInEvent(QFocusEvent *) {
     if (_hasBlinker)
         _blinkTimer->start(TEXT_BLINK_DELAY);
 
-    emit termGetFocus();
+    Q_EMIT termGetFocus();
 }
 
 void TerminalDisplay::enterEvent(QEnterEvent* event)
@@ -1799,19 +1799,19 @@ void TerminalDisplay::updateImageSize() {
     if (_resizing) {
         if (_showResizeNotificationEnabled)
             showResizeNotification();
-        emit changedContentSizeSignal(_contentHeight, _contentWidth);
-        emit changedContentCountSignal(_lines, _columns);
+        Q_EMIT changedContentSizeSignal(_contentHeight, _contentWidth);
+        Q_EMIT changedContentCountSignal(_lines, _columns);
     }
 
     _resizing = false;
 }
 
 void TerminalDisplay::showEvent(QShowEvent *) {
-    emit changedContentSizeSignal(_contentHeight, _contentWidth);
+    Q_EMIT changedContentSizeSignal(_contentHeight, _contentWidth);
 }
 
 void TerminalDisplay::hideEvent(QHideEvent *) {
-    emit changedContentSizeSignal(_contentHeight, _contentWidth);
+    Q_EMIT changedContentSizeSignal(_contentHeight, _contentWidth);
 }
 
 void TerminalDisplay::scrollBarPositionChanged(int) {
@@ -1872,7 +1872,7 @@ void TerminalDisplay::setScrollBarPosition(
 }
 
 void TerminalDisplay::mousePressEvent(QMouseEvent *ev) {
-    emit mousePressEventForwarded(ev);
+    Q_EMIT mousePressEventForwarded(ev);
 
     if (_possibleTripleClick && (ev->button() == Qt::LeftButton)) {
         mouseTripleClickEvent(ev);
@@ -1894,7 +1894,7 @@ void TerminalDisplay::mousePressEvent(QMouseEvent *ev) {
         _lineSelectionMode = false;
         _wordSelectionMode = false;
 
-        emit isBusySelecting(true);
+        Q_EMIT isBusySelecting(true);
         bool selected = false;
 
 
@@ -1966,7 +1966,7 @@ void TerminalDisplay::mousePressEvent(QMouseEvent *ev) {
                     _iPntSel = _pntSel = pos;
                     _actSel = 1;
                 } else {
-                    emit mouseSignal(
+                    Q_EMIT mouseSignal(
                             0, charColumn + 1,
                             charLine + 1 + _scrollBar->value() - _scrollBar->maximum(), 0);
                 }
@@ -1985,14 +1985,14 @@ void TerminalDisplay::mousePressEvent(QMouseEvent *ev) {
         if (_mouseMarks || (ev->modifiers() & Qt::ShiftModifier))
             emitSelection(true, ev->modifiers() & Qt::ControlModifier);
         else
-            emit mouseSignal(
+            Q_EMIT mouseSignal(
                     1, charColumn + 1,
                     charLine + 1 + _scrollBar->value() - _scrollBar->maximum(), 0);
     } else if (ev->button() == Qt::RightButton) {
         if (_mouseMarks || (ev->modifiers() & Qt::ShiftModifier))
-            emit configureRequest(ev->pos());
+            Q_EMIT configureRequest(ev->pos());
         else
-            emit mouseSignal(
+            Q_EMIT mouseSignal(
                     2, charColumn + 1,
                     charLine + 1 + _scrollBar->value() - _scrollBar->maximum(), 0);
     }
@@ -2119,7 +2119,7 @@ void TerminalDisplay::mouseMoveEvent(QMouseEvent *ev) {
         if (ev->buttons() & Qt::RightButton)
             button = 2;
 
-        emit mouseSignal(button, charColumn + 1,
+        Q_EMIT mouseSignal(button, charColumn + 1,
                         charLine + 1 + _scrollBar->value() - _scrollBar->maximum(),
                         1);
 
@@ -2132,7 +2132,7 @@ void TerminalDisplay::mouseMoveEvent(QMouseEvent *ev) {
                 ev->position().x() < dragInfo.start.x() - distance ||
                 ev->position().y() > dragInfo.start.y() + distance ||
                 ev->position().y() < dragInfo.start.y() - distance) {
-            emit isBusySelecting(false);
+            Q_EMIT isBusySelecting(false);
 
             _screenWindow->clearSelection();
             doDrag();
@@ -2363,7 +2363,7 @@ void TerminalDisplay::mouseReleaseEvent(QMouseEvent *ev) {
     getCharacterPosition(ev->pos(), charLine, charColumn);
 
     if (ev->button() == Qt::LeftButton) {
-        emit isBusySelecting(false);
+        Q_EMIT isBusySelecting(false);
         if (dragInfo.state == diPending) {
             _screenWindow->clearSelection();
         } else {
@@ -2374,7 +2374,7 @@ void TerminalDisplay::mouseReleaseEvent(QMouseEvent *ev) {
             _actSel = 0;
 
             if (!_mouseMarks && !(ev->modifiers() & Qt::ShiftModifier))
-                emit mouseSignal(
+                Q_EMIT mouseSignal(
                         0, charColumn + 1,
                         charLine + 1 + _scrollBar->value() - _scrollBar->maximum(), 2);
         }
@@ -2384,7 +2384,7 @@ void TerminalDisplay::mouseReleaseEvent(QMouseEvent *ev) {
     if (!_mouseMarks && ((ev->button() == Qt::RightButton &&
                                                 !(ev->modifiers() & Qt::ShiftModifier)) ||
                                              ev->button() == Qt::MiddleButton)) {
-        emit mouseSignal(ev->button() == Qt::MiddleButton ? 1 : 2, charColumn + 1,
+        Q_EMIT mouseSignal(ev->button() == Qt::MiddleButton ? 1 : 2, charColumn + 1,
                                          charLine + 1 + _scrollBar->value() - _scrollBar->maximum(),
                                          2);
     }
@@ -2443,7 +2443,7 @@ void TerminalDisplay::mouseDoubleClickEvent(QMouseEvent *ev) {
     QPoint pos(charColumn, charLine);
 
     if (!_mouseMarks && !(ev->modifiers() & Qt::ShiftModifier)) {
-        emit mouseSignal(0, pos.x() + 1,pos.y() + 1 + _scrollBar->value() - _scrollBar->maximum(), 0);
+        Q_EMIT mouseSignal(0, pos.x() + 1,pos.y() + 1 + _scrollBar->value() - _scrollBar->maximum(), 0);
         return;
     }
 
@@ -2523,13 +2523,13 @@ void TerminalDisplay::wheelEvent(QWheelEvent *ev) {
         QKeyEvent keyScrollEvent(QEvent::KeyPress, key, Qt::NoModifier);
 
         for (int i = 0; i < linesToScroll; i++)
-            emit keyPressedSignal(&keyScrollEvent, false);
+            Q_EMIT keyPressedSignal(&keyScrollEvent, false);
     } else if (!_mouseMarks) {
         int charLine;
         int charColumn;
         getCharacterPosition(ev->position(), charLine, charColumn);
 
-        emit mouseSignal(ev->angleDelta().y() > 0 ? 4 : 5, charColumn + 1,
+        Q_EMIT mouseSignal(ev->angleDelta().y() > 0 ? 4 : 5, charColumn + 1,
                         charLine + 1 + _scrollBar->value() - _scrollBar->maximum(), 0);
     }
 }
@@ -2551,7 +2551,7 @@ void TerminalDisplay::mouseTripleClickEvent(QMouseEvent *ev) {
     _wordSelectionMode = false;
 
     _actSel = 2;
-    emit isBusySelecting(true);
+    Q_EMIT isBusySelecting(true);
 
     while (_iPntSel.y() > 0 && (_lineProperties[_iPntSel.y() - 1] & LINE_WRAPPED))
         _iPntSel.ry()--;
@@ -2636,7 +2636,7 @@ void TerminalDisplay::setUsesMouse(bool on) {
     if (_mouseMarks != on) {
         _mouseMarks = on;
         setCursor(_mouseMarks ? Qt::IBeamCursor : Qt::ArrowCursor);
-        emit usesMouseChanged();
+        Q_EMIT usesMouseChanged();
     }
 }
 bool TerminalDisplay::usesMouse() const { return _mouseMarks; }
@@ -2677,7 +2677,7 @@ void TerminalDisplay::emitSelection(bool useXselection, bool appendReturn) {
         }
 
         QKeyEvent e(QEvent::KeyPress, 0, Qt::NoModifier, text);
-        emit keyPressedSignal(&e, true);
+        Q_EMIT keyPressedSignal(&e, true);
 
         _screenWindow->clearSelection();
 
@@ -2775,7 +2775,7 @@ void TerminalDisplay::keyPressEvent(QKeyEvent *event) {
             _cursorBlinking = false;
     }
 
-    emit keyPressedSignal(event, false);
+    Q_EMIT keyPressedSignal(event, false);
 
     event->accept();
 }
@@ -2783,7 +2783,7 @@ void TerminalDisplay::keyPressEvent(QKeyEvent *event) {
 void TerminalDisplay::inputMethodEvent(QInputMethodEvent *event) {
     QKeyEvent keyEvent(QEvent::KeyPress, 0, Qt::NoModifier,
                                          event->commitString());
-    emit keyPressedSignal(&keyEvent, false);
+    Q_EMIT keyPressedSignal(&keyEvent, false);
 
     _inputMethodData.preeditString = event->preeditString().toStdWString();
     update(preeditRect() | _inputMethodData.previousPreeditRect);
@@ -2840,7 +2840,7 @@ bool TerminalDisplay::handleShortcutOverrideEvent(QKeyEvent *keyEvent) {
         }
         if (modifierCount < 2) {
             bool override = false;
-            emit overrideShortcutCheck(keyEvent, override);
+            Q_EMIT overrideShortcutCheck(keyEvent, override);
             if (override) {
                 keyEvent->accept();
                 return true;
@@ -2895,7 +2895,7 @@ void TerminalDisplay::bell() {
         if (_bellMode == SystemBeepBell) {
             QApplication::beep();
         } else if (_bellMode == NotifyBell) {
-            emit notifyBell();
+            Q_EMIT notifyBell();
         } else if (_bellMode == VisualBell) {
             swapColorTable();
             QTimer::singleShot(200, this, &TerminalDisplay::swapColorTable);
@@ -2904,7 +2904,7 @@ void TerminalDisplay::bell() {
 }
 
 void TerminalDisplay::selectionChanged() {
-    emit copyAvailable(_screenWindow->selectedText(false).isEmpty() == false);
+    Q_EMIT copyAvailable(_screenWindow->selectedText(false).isEmpty() == false);
 }
 
 void TerminalDisplay::swapColorTable() {
@@ -3056,7 +3056,7 @@ void TerminalDisplay::dropEvent(QDropEvent *event) {
         }
     }
 
-    emit sendStringToEmu(dropText.toLocal8Bit().constData());
+    Q_EMIT sendStringToEmu(dropText.toLocal8Bit().constData());
 }
 
 void TerminalDisplay::doDrag() {

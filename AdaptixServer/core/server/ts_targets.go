@@ -2,6 +2,7 @@ package server
 
 import (
 	"AdaptixServer/core/utils/std"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -9,6 +10,21 @@ import (
 
 	adaptix "github.com/Adaptix-Framework/axc2"
 )
+
+func (ts *Teamserver) TsTargetsList() (string, error) {
+	var targets []adaptix.TargetData
+
+	for value := range ts.targets.Iterator() {
+		target := *value.Item.(*adaptix.TargetData)
+		targets = append(targets, target)
+	}
+
+	jsonTarget, err := json.Marshal(targets)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonTarget), nil
+}
 
 func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 	var newTargets []*adaptix.TargetData
@@ -76,7 +92,7 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 	return nil
 }
 
-func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) error {
+func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string, error) {
 	target := &adaptix.TargetData{
 		TargetId: fmt.Sprintf("%08x", rand.Uint32()),
 		Computer: agentData.Computer,
@@ -86,13 +102,20 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) error {
 		OsDesk:   agentData.OsDesc,
 		Date:     time.Now().Unix(),
 		Alive:    true,
-		Owned:    true,
 	}
+	target.Agents = append(target.Agents, agentData.Id)
 
 	for t_value := range ts.targets.Iterator() {
 		t := t_value.Item.(*adaptix.TargetData)
 		if (t.Address == target.Address && t.Address != "") || (strings.EqualFold(t.Computer, target.Computer) && std.DomainsEqual(t.Domain, target.Domain)) {
-			return nil
+			t.Agents = append(t.Agents, agentData.Id)
+
+			_ = ts.DBMS.DbTargetUpdate(t)
+
+			packet := CreateSpTargetUpdate(*t)
+			ts.TsSyncAllClients(packet)
+
+			return t.TargetId, nil
 		}
 	}
 
@@ -115,7 +138,7 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) error {
 	packet := CreateSpTargetsAdd(newTargets)
 	ts.TsSyncAllClients(packet)
 
-	return nil
+	return target.TargetId, nil
 }
 
 func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error {
@@ -206,6 +229,39 @@ func (ts *Teamserver) TsTargetSetTag(targetsId []string, tag string) error {
 
 	packet := CreateSpTargetSetTag(ids, tag)
 	ts.TsSyncAllClients(packet)
+
+	return nil
+}
+
+func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
+	targets_id := make(map[string]string)
+
+	for _, agentId := range agentsId {
+		value, ok := ts.agents.Get(agentId)
+		if !ok {
+			continue
+		}
+		agent, _ := value.(*Agent)
+
+		if agent.Data.TargetId != "" {
+			targets_id[agent.Data.TargetId] = ""
+		}
+	}
+
+	for targetId, _ := range targets_id {
+		for t_value := range ts.targets.Iterator() {
+			t := t_value.Item.(*adaptix.TargetData)
+			if t.TargetId == targetId {
+
+				t.Agents = std.DifferenceStringsArray(t.Agents, agentsId)
+
+				_ = ts.DBMS.DbTargetUpdate(t)
+
+				packet := CreateSpTargetUpdate(*t)
+				ts.TsSyncAllClients(packet)
+			}
+		}
+	}
 
 	return nil
 }

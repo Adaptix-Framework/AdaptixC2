@@ -486,6 +486,32 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 	return nil
 }
 
+func (ts *Teamserver) TsTaskSave(taskData adaptix.TaskData) error {
+	value, ok := ts.agents.Get(taskData.AgentId)
+	if !ok {
+		return fmt.Errorf("Agent %v not found", taskData.AgentId)
+	}
+	agent, _ := value.(*Agent)
+
+	taskData.Type = TYPE_TASK
+	taskData.TaskId, _ = krypt.GenerateUID(8)
+	taskData.Computer = agent.Data.Computer
+	taskData.User = agent.Data.Username
+	taskData.StartDate = time.Now().Unix()
+	taskData.FinishDate = taskData.StartDate
+	taskData.Sync = true
+	taskData.Completed = true
+
+	agent.CompletedTasks.Put(taskData.TaskId, taskData)
+
+	packet_task := CreateSpAgentTaskSync(taskData)
+	ts.TsSyncAllClients(packet_task)
+
+	_ = ts.DBMS.DbTaskInsert(taskData)
+
+	return nil
+}
+
 ///// Get Tasks
 
 func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error) {
@@ -637,6 +663,46 @@ func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int)
 			agent.HostedTunnelTasks.PushFront(taskData)
 			break
 		}
+	}
+
+	return tasks, tasksSize, nil
+}
+
+func (ts *Teamserver) TsTaskGetAvailableTasksCount(agentId string, maxCount int, availableSize int) ([]adaptix.TaskData, int, error) {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	var tasks []adaptix.TaskData
+	tasksSize := 0
+
+	/// TASKS QUEUE
+
+	var sendTasks []string
+	for i := 0; i < maxCount; i++ {
+		item, err := agent.HostedTasks.Pop()
+		if err != nil {
+			break
+		}
+		taskData := item.(adaptix.TaskData)
+
+		if tasksSize+len(taskData.Data) < availableSize {
+			tasks = append(tasks, taskData)
+			if taskData.Sync || taskData.Type == TYPE_BROWSER {
+				agent.RunningTasks.Put(taskData.TaskId, taskData)
+			}
+			sendTasks = append(sendTasks, taskData.TaskId)
+			tasksSize += len(taskData.Data)
+		} else {
+			agent.HostedTasks.PushFront(taskData)
+			break
+		}
+	}
+	if len(sendTasks) > 0 {
+		packet := CreateSpAgentTaskSend(sendTasks)
+		ts.TsSyncAllClients(packet)
 	}
 
 	return tasks, tasksSize, nil

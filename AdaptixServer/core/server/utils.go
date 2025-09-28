@@ -72,6 +72,7 @@ type Teamserver struct {
 	clients     safe.Map    // username string     : socket *websocket.Conn
 	agents      safe.Map    // agentId string      : agent *Agent
 	listeners   safe.Map    // listenerName string : listenerData ListenerData
+	messages    *safe.Slice //                     : chatData ChatData
 	downloads   safe.Map    // fileId string       : downloadData DownloadData
 	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
@@ -390,6 +391,16 @@ type SyncPackerPivotDelete struct {
 	PivotId string `json:"p_pivot_id"`
 }
 
+/// CHAT
+
+type SyncPackerChatMessage struct {
+	SpType int `json:"type"`
+
+	Username string `json:"c_username"`
+	Message  string `json:"c_message"`
+	Date     int64  `json:"c_date"`
+}
+
 /// DOWNLOAD
 
 type SyncPackerDownloadCreate struct {
@@ -495,17 +506,17 @@ type SyncPackerCredentialsTag struct {
 /// TARGETS
 
 type SyncPackerTarget struct {
-	TargetId string `json:"t_target_id"`
-	Computer string `json:"t_computer"`
-	Domain   string `json:"t_domain"`
-	Address  string `json:"t_address"`
-	Os       int    `json:"t_os"`
-	OsDesk   string `json:"t_os_desk"`
-	Tag      string `json:"t_tag"`
-	Info     string `json:"t_info"`
-	Date     int64  `json:"t_date"`
-	Alive    bool   `json:"t_alive"`
-	Owned    bool   `json:"t_owned"`
+	TargetId string   `json:"t_target_id"`
+	Computer string   `json:"t_computer"`
+	Domain   string   `json:"t_domain"`
+	Address  string   `json:"t_address"`
+	Os       int      `json:"t_os"`
+	OsDesk   string   `json:"t_os_desk"`
+	Tag      string   `json:"t_tag"`
+	Info     string   `json:"t_info"`
+	Date     int64    `json:"t_date"`
+	Alive    bool     `json:"t_alive"`
+	Agents   []string `json:"t_agents"`
 }
 
 type SyncPackerTargetsAdd struct {
@@ -517,17 +528,17 @@ type SyncPackerTargetsAdd struct {
 type SyncPackerTargetUpdate struct {
 	SpType int `json:"type"`
 
-	TargetId string `json:"t_target_id"`
-	Computer string `json:"t_computer"`
-	Domain   string `json:"t_domain"`
-	Address  string `json:"t_address"`
-	Os       int    `json:"t_os"`
-	OsDesk   string `json:"t_os_desk"`
-	Tag      string `json:"t_tag"`
-	Info     string `json:"t_info"`
-	Date     int64  `json:"t_date"`
-	Alive    bool   `json:"t_alive"`
-	Owned    bool   `json:"t_owned"`
+	TargetId string   `json:"t_target_id"`
+	Computer string   `json:"t_computer"`
+	Domain   string   `json:"t_domain"`
+	Address  string   `json:"t_address"`
+	Os       int      `json:"t_os"`
+	OsDesk   string   `json:"t_os_desk"`
+	Tag      string   `json:"t_tag"`
+	Info     string   `json:"t_info"`
+	Date     int64    `json:"t_date"`
+	Alive    bool     `json:"t_alive"`
+	Agents   []string `json:"t_agents"`
 }
 
 type SyncPackerTargetDelete struct {

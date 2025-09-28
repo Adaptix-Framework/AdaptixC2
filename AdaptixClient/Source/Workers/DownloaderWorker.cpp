@@ -36,7 +36,7 @@ void DownloaderWorker::start()
     this->savedFile.setFileName(this->savedPath);
     if (!this->savedFile.open(QIODevice::WriteOnly)) {
         this->error = true;
-        emit failed("Cannot open file: " + this->savedFile.errorString());
+        Q_EMIT failed("Cannot open file: " + this->savedFile.errorString());
         return;
     }
 
@@ -59,11 +59,11 @@ void DownloaderWorker::onReadyRead()
 
 void DownloaderWorker::onProgress(const qint64 received, const qint64 total)
 {
-    emit progress(received, total);
+    Q_EMIT progress(received, total);
 
     if (timer.elapsed() >= 1000) {
         double kbps = (received - lastBytes) / 1024.0;
-        emit speedUpdated(kbps);
+        Q_EMIT speedUpdated(kbps);
         lastBytes = received;
         timer.restart();
     }
@@ -74,9 +74,9 @@ void DownloaderWorker::onFinished()
     this->savedFile.close();
     if (this->cancelled) {
         this->savedFile.remove();
-        emit failed("Download canceled.");
+        Q_EMIT failed("Download canceled.");
     } else {
-        emit finished();
+        Q_EMIT finished();
     }
 }
 
@@ -84,5 +84,5 @@ void DownloaderWorker::onError(QNetworkReply::NetworkError)
 {
     this->savedFile.close();
     this->savedFile.remove();
-    emit failed("Download error: " + this->networkReply->errorString());
+    Q_EMIT failed("Download error: " + this->networkReply->errorString());
 }

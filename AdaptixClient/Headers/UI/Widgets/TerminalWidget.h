@@ -2,29 +2,31 @@
 #define TERMINALWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class Agent;
 class Konsole;
 class QTermWidget;
 class TerminalWorker;
+class AdaptixWidget;
 
-class TerminalWidget : public QWidget
+class TerminalWidget : public DockTab
 {
-     QWidget*     mainWidget      = nullptr;
-     QGridLayout* mainGridLayout  = nullptr;
-     QHBoxLayout* topHBoxLayout   = nullptr;
-     QLabel*      statusDescLabel = nullptr;
-     QLabel*      statusLabel     = nullptr;
-     QFrame*      line_1          = nullptr;
-     QFrame*      line_2          = nullptr;
-     QFrame*      line_3          = nullptr;
-     QPushButton* startButton     = nullptr;
-     QPushButton* stopButton      = nullptr;
-     QComboBox*   programComboBox = nullptr;
-     QLabel*      keytabLabel     = nullptr;
-     QComboBox*   keytabComboBox  = nullptr;
-     QLineEdit*   programInput    = nullptr;
-     QSpacerItem* spacer          = nullptr;
+     AdaptixWidget* adaptixWidget   = nullptr;
+     QGridLayout*   mainGridLayout  = nullptr;
+     QHBoxLayout*   topHBoxLayout   = nullptr;
+     QLabel*        statusDescLabel = nullptr;
+     QLabel*        statusLabel     = nullptr;
+     QFrame*        line_1          = nullptr;
+     QFrame*        line_2          = nullptr;
+     QFrame*        line_3          = nullptr;
+     QPushButton*   startButton     = nullptr;
+     QPushButton*   stopButton      = nullptr;
+     QComboBox*     programComboBox = nullptr;
+     QLabel*        keytabLabel     = nullptr;
+     QComboBox*     keytabComboBox  = nullptr;
+     QLineEdit*     programInput    = nullptr;
+     QSpacerItem*   spacer          = nullptr;
 
      QTermWidget* termWidget      = nullptr;
 
@@ -40,13 +42,13 @@ class TerminalWidget : public QWidget
      void SetKeys();
 
 public:
-     explicit TerminalWidget(Agent* a, QWidget* w);
+     explicit TerminalWidget(Agent* a, AdaptixWidget* w);
      ~TerminalWidget() override;
 
      void setStatus(const QString& text);
      QTermWidget* Konsole();
 
-public slots:
+public Q_SLOTS:
      void handleTerminalMenu(const QPoint &pos);
      void onStart();
      void onRestart();

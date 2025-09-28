@@ -17,7 +17,7 @@ public:
     BridgeForm(AxScriptEngine* scriptEngine, QObject* parent = nullptr);
     ~BridgeForm() override;
 
-public slots:
+public Q_SLOTS:
     void connect(QObject* sender, const QString& signal, const QJSValue& handler);
 
     /// Elements
@@ -54,7 +54,7 @@ public slots:
     QObject* create_selector_credentials(const QJSValue &headers) const;
     QObject* create_selector_agents(const QJSValue &headers) const;
 
-signals:
+Q_SIGNALS:
     void scriptError(const QString &msg);
 };
 
@@ -70,7 +70,7 @@ public:
 
     explicit SignalProxy(QJSEngine* engine, QJSValue handler, QObject* parent = nullptr) : QObject(parent), engine(engine), handler(std::move(handler)) {}
 
-public slots:
+public Q_SLOTS:
     void call() const {
         if (handler.isCallable())
             handler.call();

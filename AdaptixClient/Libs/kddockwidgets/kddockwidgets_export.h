@@ -1,0 +1,42 @@
+
+#ifndef KDDOCKWIDGETS_EXPORT_H
+#define KDDOCKWIDGETS_EXPORT_H
+
+#ifdef KDDOCKWIDGETS_STATIC_DEFINE
+#  define KDDOCKWIDGETS_EXPORT
+#  define KDDOCKWIDGETS_NO_EXPORT
+#else
+#  ifndef KDDOCKWIDGETS_EXPORT
+#    ifdef kddockwidgets_EXPORTS
+        /* We are building this library */
+#      define KDDOCKWIDGETS_EXPORT 
+#    else
+        /* We are using this library */
+#      define KDDOCKWIDGETS_EXPORT 
+#    endif
+#  endif
+
+#  ifndef KDDOCKWIDGETS_NO_EXPORT
+#    define KDDOCKWIDGETS_NO_EXPORT 
+#  endif
+#endif
+
+#ifndef KDDOCKWIDGETS_DEPRECATED
+#  define KDDOCKWIDGETS_DEPRECATED __attribute__ ((__deprecated__))
+#endif
+
+#ifndef KDDOCKWIDGETS_DEPRECATED_EXPORT
+#  define KDDOCKWIDGETS_DEPRECATED_EXPORT KDDOCKWIDGETS_EXPORT KDDOCKWIDGETS_DEPRECATED
+#endif
+
+#ifndef KDDOCKWIDGETS_DEPRECATED_NO_EXPORT
+#  define KDDOCKWIDGETS_DEPRECATED_NO_EXPORT KDDOCKWIDGETS_NO_EXPORT KDDOCKWIDGETS_DEPRECATED
+#endif
+
+#if 0 /* DEFINE_NO_DEPRECATED */
+#  ifndef KDDOCKWIDGETS_NO_DEPRECATED
+#    define KDDOCKWIDGETS_NO_DEPRECATED
+#  endif
+#endif
+
+#endif /* KDDOCKWIDGETS_EXPORT_H */

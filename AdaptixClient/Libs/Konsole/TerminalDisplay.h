@@ -194,7 +194,7 @@ public:
 
     void autoHideMouseAfter(int delay);
 
-public slots:
+public Q_SLOTS:
 
     void updateImage();
 
@@ -255,7 +255,7 @@ public slots:
     
     void set_fix_quardCRT_issue33(bool fix) { _fix_quardCRT_issue33 = fix; }
 
-signals:
+Q_SIGNALS:
 
     void keyPressedSignal(QKeyEvent *e, bool fromPaste);
 
@@ -325,7 +325,7 @@ protected:
     void inputMethodEvent ( QInputMethodEvent* event ) override;
     QVariant inputMethodQuery( Qt::InputMethodQuery query ) const override;
 
-protected slots:
+protected Q_SLOTS:
 
     void scrollBarPositionChanged(int value);
     void blinkEvent();
@@ -333,7 +333,7 @@ protected slots:
 
     void enableBell();
 
-private slots:
+private Q_SLOTS:
 
     void swapColorTable();
     void tripleClickTimeout();

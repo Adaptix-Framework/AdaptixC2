@@ -141,7 +141,7 @@ public:
     void setEcho(bool echo);
     void setKeyboardCursorColor(bool useForegroundColor, const QColor& color);
     void proxySendData(QByteArray data) {
-        emit sendData(data.data(), data.size());
+        Q_EMIT sendData(data.data(), data.size());
     }
 
     void setLocked(bool enabled);
@@ -178,7 +178,7 @@ public:
     void reTranslateUi(void);
     void set_fix_quardCRT_issue33(bool fix);
 
-signals:
+Q_SIGNALS:
     void finished();
     void copyAvailable(bool);
     void termGetFocus();
@@ -204,7 +204,7 @@ signals:
     void zmodemRecvDetected();
     void handleCtrlC(void);
 
-public slots:
+public Q_SLOTS:
     void copyClipboard();
     void copySelection();
     void pasteClipboard();
@@ -228,14 +228,14 @@ public slots:
 protected:
     void resizeEvent(QResizeEvent *) override;
 
-protected slots:
+protected Q_SLOTS:
     void sessionFinished();
     void updateTerminalSize();
     void selectionChanged(bool textSelected);
     void monitorTimerDone();
     void activityStateSet(int);
 
-private slots:
+private Q_SLOTS:
     void cursorChanged(Emulation::KeyboardCursorShape cursorShape, bool blinkingCursorEnabled);
 
 private:

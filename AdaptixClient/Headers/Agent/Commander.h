@@ -87,7 +87,7 @@ public:
     QStringList GetCommands();
     CommanderResult ProcessInput(QString agentId, QString cmdline);
 
-signals:
+Q_SIGNALS:
     void commandsUpdated();
 };
 

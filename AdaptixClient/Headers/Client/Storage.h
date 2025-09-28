@@ -21,6 +21,7 @@ public:
     static QVector<AuthProfile> ListProjects();
 
     static void AddProject(AuthProfile profile);
+    static void UpdateProject(AuthProfile profile);
     static void RemoveProject(const QString &project);
     static bool ExistsProject(const QString &project);
 

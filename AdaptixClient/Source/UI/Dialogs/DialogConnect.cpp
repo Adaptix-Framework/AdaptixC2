@@ -30,6 +30,7 @@ void DialogConnect::createUI()
     setMaximumSize( QSize( 800, 370 ) );
 
     this->setWindowTitle("Connect");
+    this->setProperty("Main", "base");
 
     label_UserInfo = new QLabel( this );
     label_UserInfo->setAlignment(Qt::AlignCenter);
@@ -157,8 +158,11 @@ AuthProfile* DialogConnect::StartDialog()
     if( this->toConnect ) {
         AuthProfile* newProfile = new AuthProfile(lineEdit_Project->text(), lineEdit_User->text(),lineEdit_Password->text(),lineEdit_Host->text(),lineEdit_Port->text(), lineEdit_Endpoint->text());
 
-        if( ! GlobalClient->storage->ExistsProject(lineEdit_Project->text()) )
+        if( GlobalClient->storage->ExistsProject(lineEdit_Project->text()) ) {
+            GlobalClient->storage->UpdateProject(*newProfile);
+        } else {
             GlobalClient->storage->AddProject(*newProfile);
+        }
 
         return newProfile;
     }

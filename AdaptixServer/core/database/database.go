@@ -47,6 +47,14 @@ func (dbms *DBMS) DatabaseInit() error {
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Chat" (
+    	"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"Username" TEXT NOT NULL,
+    	"Message" TEXT NOT NULL,
+    	"Date" BIGINT
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Downloads" (
     	"FileId" TEXT NOT NULL UNIQUE, 
     	"AgentId" TEXT NOT NULL,
@@ -103,7 +111,8 @@ func (dbms *DBMS) DatabaseInit() error {
     	"KillDate" INTEGER,
     	"Tags" TEXT,
     	"Mark" TEXT,
-    	"Color" TEXT
+    	"Color" TEXT,
+    	"TargetId" TEXT
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
@@ -167,7 +176,7 @@ func (dbms *DBMS) DatabaseInit() error {
     	"Info" TEXT,
     	"Date" BIGINT,
 		"Alive" BOOLEAN,
-		"Owned" BOOLEAN
+		"Agents" TEXT
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 

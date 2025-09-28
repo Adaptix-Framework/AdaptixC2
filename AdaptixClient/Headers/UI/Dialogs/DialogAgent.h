@@ -45,7 +45,7 @@ public:
     void SetProfile(const AuthProfile &profile);
     void Start();
 
-protected slots:
+protected Q_SLOTS:
     void onButtonLoad();
     void onButtonSave();
     void changeConfig(const QString &agentName);

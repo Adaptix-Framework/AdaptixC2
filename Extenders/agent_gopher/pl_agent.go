@@ -7,12 +7,10 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Adaptix-Framework/axc2"
-	"github.com/google/shlex"
-	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	mrand "math/rand"
 	"os"
@@ -21,6 +19,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Adaptix-Framework/axc2"
+	"github.com/google/shlex"
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type GenerateConfig struct {
@@ -54,7 +56,7 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 	}
 
 	encrypt_key, _ := listenerMap["encrypt_key"].(string)
-	encryptKey, err := base64.StdEncoding.DecodeString(encrypt_key)
+	encryptKey, err := hex.DecodeString(encrypt_key)
 	if err != nil {
 		return nil, err
 	}
@@ -344,6 +346,7 @@ func PackTasks(agentData adaptix.AgentData, tasksArray []adaptix.TaskData) ([]by
 }
 
 func PackPivotTasks(pivotId string, data []byte) ([]byte, error) {
+
 	return nil, errors.New("Function Pivot not packed")
 }
 
@@ -798,13 +801,66 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				task.Message = "Object copied successfully"
 
 			case COMMAND_EXEC_BOF:
+
 				var params AnsExecBof
 				err := msgpack.Unmarshal(cmd.Data, &params)
 				if err != nil {
 					continue
 				}
+
+				var msgs []BofMsg
+				err = msgpack.Unmarshal(params.Msgs, &msgs)
+				if err != nil {
+					continue
+				}
+
 				task.Message = "BOF output"
-				task.ClearText = ConvertCpToUTF8(params.Output, agentData.ACP)
+
+				for _, msg := range msgs {
+					if msg.Type == CALLBACK_AX_SCREENSHOT {
+
+						buf := bytes.NewReader(msg.Data)
+						var length uint32
+						if err := binary.Read(buf, binary.LittleEndian, &length); err != nil {
+							continue
+						}
+						note := make([]byte, length)
+						if _, err := buf.Read(note); err != nil {
+							continue
+						}
+						screen := make([]byte, len(msg.Data)-4-int(length))
+						if _, err := buf.Read(screen); err != nil {
+							continue
+						}
+
+						_ = ts.TsScreenshotAdd(agentData.Id, string(note), screen)
+
+					} else if msg.Type == CALLBACK_AX_DOWNLOAD_MEM {
+						buf := bytes.NewReader(msg.Data)
+						var length uint32
+						if err := binary.Read(buf, binary.LittleEndian, &length); err != nil {
+							continue
+						}
+						filename := make([]byte, length)
+						if _, err := buf.Read(filename); err != nil {
+							continue
+						}
+						data := make([]byte, len(msg.Data)-4-int(length))
+						if _, err := buf.Read(data); err != nil {
+							continue
+						}
+						name := ConvertCpToUTF8(string(filename), agentData.ACP)
+						fileId := fmt.Sprintf("%08x", mrand.Uint32())
+						_ = ts.TsDownloadSave(agentData.Id, fileId, name, data)
+
+					} else if msg.Type == CALLBACK_ERROR {
+						task.MessageType = MESSAGE_ERROR
+						task.Message = "BOF error"
+						task.ClearText += ConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
+					} else {
+						task.ClearText += ConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
+					}
+				}
 
 			case COMMAND_EXIT:
 				task.Message = "The agent has completed its work (kill process)"

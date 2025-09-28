@@ -2,13 +2,15 @@
 #define TARGETSWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class AdaptixWidget;
 class ClickableLabel;
 
-class TargetsWidget : public QWidget
+class TargetsWidget : public DockTab
 {
     AdaptixWidget* adaptixWidget  = nullptr;
+
     QGridLayout*   mainGridLayout = nullptr;
     QTableWidget*  tableWidget    = nullptr;
     QShortcut*     shortcutSearch = nullptr;
@@ -46,7 +48,7 @@ public:
 
     void TargetsAdd(QList<TargetData> targetList);
 
-public slots:
+public Q_SLOTS:
     void toggleSearchPanel() const;
     void onFilterUpdate() const;
     void handleTargetsMenu( const QPoint &pos ) const;

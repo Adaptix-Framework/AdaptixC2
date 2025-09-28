@@ -5,7 +5,7 @@
 
 class AuthProfile;
 
-QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token, int timeout = 3000 );
+QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token, int timeout = 5000 );
 
 QJsonObject HttpReqTimeout( int timeout, const QString &sUrl, const QByteArray &jsonData, const QString &token );
 
@@ -52,6 +52,12 @@ bool HttpReqTaskCancel(const QString &agentId, QStringList tasksId, AuthProfile 
 bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile profile, QString* message, bool* ok );
 
 bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok);
+
+bool HttpReqTasksSave(const QString &agentId, const QString &CommandLine, int MessageType, const QString &Message, const QString &ClearText, AuthProfile profile, QString* message, bool* ok );
+
+///CHAT
+
+bool HttpReqChatSendMessage(const QString &text, AuthProfile profile, QString* message, bool* ok );
 
 ///DOWNLOAD
 

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/tformat"
 	"bytes"
 	"encoding/json"
@@ -125,7 +126,7 @@ func (ts *Teamserver) TsEventTunnelRemove(tunnel *Tunnel) {
 /// CALLBACKS
 
 func (ts *Teamserver) TsEventCallbackAgent(agentData adaptix.AgentData) {
-	if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil && ts.Profile.Callbacks.NewAgentMessage != "" {
+	if ts.Profile.Callbacks.NewAgentMessage != "" {
 		msg := ts.Profile.Callbacks.NewAgentMessage
 		msg = strings.ReplaceAll(msg, "%type%", agentData.Name)
 		msg = strings.ReplaceAll(msg, "%id%", agentData.Id)
@@ -135,21 +136,36 @@ func (ts *Teamserver) TsEventCallbackAgent(agentData adaptix.AgentData) {
 		msg = strings.ReplaceAll(msg, "%internalip%", agentData.InternalIP)
 		msg = strings.ReplaceAll(msg, "%domain%", agentData.Domain)
 		msg = strings.ReplaceAll(msg, "%elevated%", fmt.Sprintf("%v", agentData.Elevated))
-		msg = strings.ReplaceAll(msg, "%pid%", fmt.Sprintf("%v", agentData.Elevated))
+		msg = strings.ReplaceAll(msg, "%pid%", fmt.Sprintf("%v", agentData.Pid))
 
-		for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
-			SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+		if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
+			for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
+				SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+			}
+		}
+
+		for _, webhook := range ts.Profile.Callbacks.Webhooks {
+			if webhook.URL != "" {
+				SendWebhook(msg, webhook)
+			}
 		}
 	}
 }
 
 func (ts *Teamserver) TsEventCallbackCreds(creds []adaptix.CredsData) {
-	if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil && ts.Profile.Callbacks.NewCredMessage != "" {
+	if ts.Profile.Callbacks.NewCredMessage != "" {
 
 		if len(creds) > 4 {
 			msg := fmt.Sprintf("Added %d new credentials", len(creds))
-			for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
-				SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+			if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
+				for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
+					SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+				}
+			}
+			for _, webhook := range ts.Profile.Callbacks.Webhooks {
+				if webhook.URL != "" {
+					SendWebhook(msg, webhook)
+				}
 			}
 		} else {
 			for _, credData := range creds {
@@ -163,8 +179,15 @@ func (ts *Teamserver) TsEventCallbackCreds(creds []adaptix.CredsData) {
 				msg = strings.ReplaceAll(msg, "%storage%", credData.Storage)
 				msg = strings.ReplaceAll(msg, "%host%", credData.Host)
 
-				for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
-					SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+				if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
+					for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
+						SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+					}
+				}
+				for _, webhook := range ts.Profile.Callbacks.Webhooks {
+					if webhook.URL != "" {
+						SendWebhook(msg, webhook)
+					}
 				}
 			}
 		}
@@ -172,15 +195,22 @@ func (ts *Teamserver) TsEventCallbackCreds(creds []adaptix.CredsData) {
 }
 
 func (ts *Teamserver) TsEventCallbackDownloads(downloadData adaptix.DownloadData) {
-	if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil && ts.Profile.Callbacks.NewDownloadMessage != "" {
+	if ts.Profile.Callbacks.NewDownloadMessage != "" {
 		msg := ts.Profile.Callbacks.NewDownloadMessage
 		msg = strings.ReplaceAll(msg, "%user%", downloadData.User)
 		msg = strings.ReplaceAll(msg, "%computer%", downloadData.Computer)
 		msg = strings.ReplaceAll(msg, "%path%", downloadData.RemotePath)
 		msg = strings.ReplaceAll(msg, "%size%", tformat.SizeBytesToFormat(uint64(downloadData.TotalSize)))
 
-		for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
-			SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+		if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
+			for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
+				SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+			}
+		}
+		for _, webhook := range ts.Profile.Callbacks.Webhooks {
+			if webhook.URL != "" {
+				SendWebhook(msg, webhook)
+			}
 		}
 	}
 }
@@ -201,6 +231,34 @@ func SendTelegram(text, botToken, chatID string) {
 			return
 		}
 		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return
+		}
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(resp.Body)
+	}()
+}
+
+func SendWebhook(text string, webhook profile.WebhookConfig) {
+	go func() {
+
+		text = strings.ReplaceAll(webhook.Data, "%data%", text)
+
+		req, err := http.NewRequest(webhook.Method, webhook.URL, strings.NewReader(text))
+		if err != nil {
+			return
+		}
+
+		for key, value := range webhook.Headers {
+			req.Header.Set(key, value)
+		}
+
+		if _, hasContentType := webhook.Headers["Content-Type"]; !hasContentType {
+			req.Header.Set("Content-Type", "text/plain")
+		}
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {

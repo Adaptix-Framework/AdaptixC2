@@ -13,6 +13,7 @@ DialogDownloader::DialogDownloader(const QString &url, const QString &otp, const
 {
     this->setWindowTitle("Synchronization...");
     this->resize(400, 150);
+    this->setProperty("Main", "base");
 
     progressBar = new QProgressBar(this);
     progressBar->setRange(0, 100);

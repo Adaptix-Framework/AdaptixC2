@@ -1,12 +1,14 @@
 #include <QJSEngine>
 #include <QJSValue>
-#include  <UI/Widgets/AxConsoleWidget.h>
+#include <UI/Widgets/AxConsoleWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Utils/KeyPressHandler.h>
 #include <Utils/CustomElements.h>
+#include <Utils/FontManager.h>
+#include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-AxConsoleWidget::AxConsoleWidget(AxScriptManager* m, AdaptixWidget* w): adaptixWidget(w), scriptManager(m)
+AxConsoleWidget::AxConsoleWidget(AxScriptManager* m, AdaptixWidget* w) : DockTab("AxScript Console", w->GetProfile()->GetProject(), ":/icons/code_blocks"), adaptixWidget(w), scriptManager(m)
 {
     this->createUI();
 
@@ -37,6 +39,8 @@ AxConsoleWidget::AxConsoleWidget(AxScriptManager* m, AdaptixWidget* w): adaptixW
 
     kphInputLineEdit = new KPH_ConsoleInput(InputLineEdit, OutputTextEdit, this);
     InputLineEdit->installEventFilter(kphInputLineEdit);
+
+    this->dockWidget->setWidget(this);
 }
 
 AxConsoleWidget::~AxConsoleWidget() {}
@@ -74,14 +78,14 @@ void AxConsoleWidget::createUI()
     OutputTextEdit = new TextEditConsole(this, 30000, true, true);
     OutputTextEdit->setReadOnly(true);
     OutputTextEdit->setProperty( "TextEditStyle", "console" );
-    OutputTextEdit->setFont( QFont( "Hack" ));
+    OutputTextEdit->setFont( FontManager::instance().getFont("Hack") );
 
     CmdLabel = new QLabel( "ax >", this );
     CmdLabel->setProperty( "LabelStyle", "console" );
 
     InputLineEdit = new QLineEdit(this);
     InputLineEdit->setProperty( "LineEditStyle", "console" );
-    InputLineEdit->setFont( QFont( "Hack" ));
+    InputLineEdit->setFont( FontManager::instance().getFont("Hack") );
 
     ResetButton = new QPushButton("Reset AxScript");
 

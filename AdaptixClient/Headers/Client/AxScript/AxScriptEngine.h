@@ -40,7 +40,7 @@ struct ScriptContext {
 
     QList<AxEvent> eventFileBroserDisks;
     QList<AxEvent> eventFileBroserList;
-    QList<AxEvent> eventFileBroserUpload;
+    QList<AxEvent> eventFileBrowserUpload;
     QList<AxEvent> eventProcessBrowserList;
     QList<AxEvent> eventNewAgent;
     QList<AxEvent> eventReady;
@@ -98,7 +98,7 @@ public:
     QList<AxEvent>    getEvents(const QString &type);
     QList<AxMenuItem> getMenuItems(const QString &type);
 
-public slots:
+public Q_SLOTS:
     void engineError(const QString &message);
 };
 

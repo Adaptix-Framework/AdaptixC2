@@ -291,8 +291,13 @@ type ParamsExecBof struct {
 	Task     string `msgpack:"task"`
 }
 
+type BofMsg struct {
+	Type int    `msgpack:"type"`
+	Data []byte `msgpack:"data"`
+}
+
 type AnsExecBof struct {
-	Output string `msgpack:"output"`
+	Msgs []byte `msgpack:"msgs"`
 }
 
 const (

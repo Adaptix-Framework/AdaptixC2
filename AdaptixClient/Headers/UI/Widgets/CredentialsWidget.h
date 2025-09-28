@@ -2,11 +2,12 @@
 #define CREDENTIALSWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class AdaptixWidget;
 class ClickableLabel;
 
-class CredentialsWidget : public QWidget
+class CredentialsWidget : public DockTab
 {
     AdaptixWidget* adaptixWidget  = nullptr;
     QGridLayout*   mainGridLayout = nullptr;
@@ -48,7 +49,7 @@ public:
 
     void CredentialsAdd(QList<CredentialData> credsList);
 
-public slots:
+public Q_SLOTS:
     void toggleSearchPanel() const;
     void onFilterUpdate() const;
     void handleCredentialsMenu( const QPoint &pos ) const;

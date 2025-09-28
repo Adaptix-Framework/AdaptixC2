@@ -14,6 +14,7 @@ void DialogCredential::createUI()
 {
     this->resize(500, 300);
     this->setWindowTitle( "Add credentials" );
+    this->setProperty("Main", "base");
 
     usernameLabel = new QLabel("Username:", this);
     usernameInput = new QLineEdit(this);

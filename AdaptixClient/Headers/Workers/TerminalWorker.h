@@ -21,17 +21,17 @@ public:
      TerminalWorker(TerminalWidget* terminalWidget, const QString &token, const QUrl& wsUrl, const QString& terminalData, QObject* parent = nullptr);
      ~TerminalWorker() override;
 
-signals:
+Q_SIGNALS:
      void binaryMessageToTerminal(const QByteArray& msg);
      void connectedToTerminal();
      void finished();
      void errorStop();
 
-public slots:
+public Q_SLOTS:
      void start();
      void stop();
 
-private slots:
+private Q_SLOTS:
      void onWsConnected();
      void onWsBinaryMessageReceived(const QByteArray& msg);
      void onWsError(QAbstractSocket::SocketError error);

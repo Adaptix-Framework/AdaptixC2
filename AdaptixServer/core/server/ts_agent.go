@@ -6,6 +6,7 @@ import (
 	"AdaptixServer/core/utils/safe"
 	"AdaptixServer/core/utils/tformat"
 	isvalid "AdaptixServer/core/utils/valid"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -13,6 +14,20 @@ import (
 
 	"github.com/Adaptix-Framework/axc2"
 )
+
+func (ts *Teamserver) TsAgentList() (string, error) {
+	var agents []adaptix.AgentData
+	ts.agents.ForEach(func(key string, value interface{}) bool {
+		agents = append(agents, value.(*Agent).Data)
+		return true
+	})
+
+	jsonAgents, err := json.Marshal(agents)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonAgents), nil
+}
 
 func (ts *Teamserver) TsAgentIsExists(agentId string) bool {
 	return ts.agents.Contains(agentId)
@@ -84,19 +99,19 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 
 	ts.agents.Put(agentData.Id, agent)
 
-	err = ts.DBMS.DbAgentInsert(agentData)
+	packetNew := CreateSpAgentNew(agentData)
+	ts.TsSyncAllClients(packetNew)
+
+	agent.Data.TargetId, _ = ts.TsTargetsCreateAlive(agentData)
+
+	err = ts.DBMS.DbAgentInsert(agent.Data)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	packetNew := CreateSpAgentNew(agentData)
-	ts.TsSyncAllClients(packetNew)
+	ts.TsEventAgent(false, agent.Data)
 
-	ts.TsEventAgent(false, agentData)
-
-	_ = ts.TsTargetsCreateAlive(agentData)
-
-	return agentData, nil
+	return agent.Data, nil
 }
 
 func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error {
@@ -156,43 +171,6 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 }
 
 /// Get Tasks
-
-func (ts *Teamserver) TsAgentGetHostedTasks2(count int, agentId string, maxDataSize int) ([]byte, error) {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("agent type %v does not exists", agentId)
-	}
-	agent, _ := value.(*Agent)
-
-	tasksCount := agent.HostedTasks.Len()
-	tunnelConnectCount := agent.HostedTunnelTasks.Len()
-	tunnelTasksCount := agent.HostedTunnelData.Len()
-	pivotTasksExists := false
-	if agent.PivotChilds.Len() > 0 {
-		pivotTasksExists = ts.TsTasksPivotExists(agent.Data.Id, true)
-	}
-
-	if tasksCount > 0 || tunnelConnectCount > 0 || tunnelTasksCount > 0 || pivotTasksExists {
-
-		tasks, err := ts.TsTaskGetAvailableAll(agent.Data.Id, maxDataSize)
-		if err != nil {
-			return nil, err
-		}
-
-		respData, err := ts.Extender.ExAgentPackData(agent.Data, tasks)
-		if err != nil {
-			return nil, err
-		}
-
-		if tasksCount > 0 {
-			message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
-			ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "", false)
-		}
-		return respData, nil
-	}
-
-	return []byte(""), nil
-}
 
 func (ts *Teamserver) TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error) {
 	value, ok := ts.agents.Get(agentId)
@@ -259,6 +237,34 @@ func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]
 	}
 
 	return respData, nil
+}
+
+func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId string, count int, maxDataSize int) ([]byte, error) {
+	value, ok := ts.agents.Get(agentId)
+	if !ok {
+		return nil, fmt.Errorf("agent type %v does not exists", agentId)
+	}
+	agent, _ := value.(*Agent)
+
+	tasksCount := agent.HostedTasks.Len()
+	if tasksCount > 0 {
+
+		tasks, _, err := ts.TsTaskGetAvailableTasksCount(agent.Data.Id, count, maxDataSize)
+		if err != nil {
+			return nil, err
+		}
+
+		respData, err := ts.Extender.ExAgentPackData(agent.Data, tasks)
+		if err != nil {
+			return nil, err
+		}
+
+		message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
+		ts.TsAgentConsoleOutput(agentId, CONSOLE_OUT_INFO, message, "", false)
+
+		return respData, nil
+	}
+	return []byte(""), nil
 }
 
 //func (ts *Teamserver) TsAgentGetHostedTunnels(agentId string, channelId int, maxDataSize int) ([]byte, error) {

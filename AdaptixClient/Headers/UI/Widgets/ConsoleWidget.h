@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_CONSOLEWIDGET_H
 
 #include <main.h>
+#include <UI/Widgets/AbstractDock.h>
 #include <Utils/KeyPressHandler.h>
 #include <Utils/CustomElements.h>
 #include <Agent/Commander.h>
@@ -18,7 +19,7 @@ class AdaptixWidget;
 #define CONSOLE_OUT_SUCCESS       7
 #define CONSOLE_OUT               10
 
-class ConsoleWidget : public QWidget
+class ConsoleWidget : public DockTab
 {
     AdaptixWidget* adaptixWidget = nullptr;
 
@@ -67,7 +68,7 @@ public:
     void ConsoleOutputMessage( qint64 timestamp, const QString &taskId, int type, const QString &message, const QString &text, bool completed ) const;
     void ConsoleOutputPrompt( qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine ) const;
 
-public slots:
+public Q_SLOTS:
     void upgradeCompleter() const;
     void processInput();
     void onCompletionSelected(const QString &selectedText);
