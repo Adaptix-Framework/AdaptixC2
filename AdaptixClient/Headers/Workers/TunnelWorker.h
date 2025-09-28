@@ -21,14 +21,14 @@ public:
     TunnelWorker(QTcpSocket* socket, const QString &token, const QUrl& wsUrl, const QString& tunnelData, QObject* parent = nullptr);
     ~TunnelWorker() override;
 
-signals:
+Q_SIGNALS:
     void finished();
 
-public slots:
+public Q_SLOTS:
     void start();
     void stop();
 
-private slots:
+private Q_SLOTS:
     void onTcpReadyRead();
     void onWsConnected();
     void onWsBinaryMessageReceived(const QByteArray& msg) const;

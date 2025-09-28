@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -88,6 +87,11 @@ func (m *ModuleExtender) HandlerListenerValid(data string) error {
 		return errors.New("user_agent is required")
 	}
 
+	match, _ := regexp.MatchString("^[0-9a-f]{32}$", conf.EncryptKey)
+	if len(conf.EncryptKey) != 32 || !match {
+		return errors.New("encrypt_key must be 32 hex characters")
+	}
+
 	if !strings.Contains(conf.WebPageOutput, "<<<PAYLOAD_DATA>>>") {
 		return errors.New("page-payload must contain '<<<PAYLOAD_DATA>>>' template")
 	}
@@ -144,10 +148,6 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 
 			conf.ResponseHeaders[key] = value
 		}
-
-		randSlice := make([]byte, 16)
-		_, _ = rand.Read(randSlice)
-		conf.EncryptKey = randSlice[:16]
 		conf.Protocol = "http"
 
 	} else {

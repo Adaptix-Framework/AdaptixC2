@@ -167,7 +167,7 @@ private:
 
     static const QRegularExpression CompleteUrlRegExp;
 
-signals:
+Q_SIGNALS:
     void activated(const QUrl& url, uint32_t opcode);
 };
 
@@ -181,7 +181,7 @@ public:
 
 private:
     Filter::HotSpot* _filter;
-signals:
+Q_SIGNALS:
     void activated(const QUrl& url, uint32_t opcode);
 };
 

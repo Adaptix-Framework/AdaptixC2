@@ -13,7 +13,7 @@ public:
          inputLineEdit->installEventFilter(this);
      }
 
-signals:
+Q_SIGNALS:
     void escPressed();
 
 protected:
@@ -22,7 +22,7 @@ protected:
              QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
 
              if ( keyEvent->key() == Qt::Key_Escape ) {
-                 emit escPressed();
+                 Q_EMIT escPressed();
              }
          }
          return QObject::eventFilter(watched, event);
@@ -34,9 +34,9 @@ protected:
 class KPH_ConsoleInput : public QObject
 {
 Q_OBJECT
-    QLineEdit*  inputLineEdit;
-    QTextEdit*  outputTextEdit;
-    QString     tmpCommandLine;
+    QLineEdit* inputLineEdit;
+    QTextEdit* outputTextEdit;
+    QString    tmpCommandLine;
 
     QStringList history;
     int historyIndex;

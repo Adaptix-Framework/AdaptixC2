@@ -7,6 +7,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (tc *TsConnector) TcScreenshotList(ctx *gin.Context) {
+	jsonScreen, err := tc.teamserver.TsScreenshotList()
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonScreen))
+}
+
 type ScreenRemove struct {
 	ScreenIdArray []string `json:"screen_id_array"`
 }

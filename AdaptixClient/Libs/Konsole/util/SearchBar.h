@@ -23,11 +23,11 @@ public:
     void setText(const QString &text);
     void retranslateUi();
 
-public slots:
+public Q_SLOTS:
     void noMatchFound();
     void hide();
 
-signals:
+Q_SIGNALS:
     void searchCriteriaChanged();
     void highlightMatchesChanged(bool highlightMatches);
     void findNext();
@@ -36,7 +36,7 @@ signals:
 protected:
     void keyReleaseEvent(QKeyEvent* keyEvent) override;
 
-private slots:
+private Q_SLOTS:
     void clearBackgroundColor();
 
 private:

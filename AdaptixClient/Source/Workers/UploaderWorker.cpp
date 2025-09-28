@@ -46,11 +46,11 @@ void UploaderWorker::cancel() {
 }
 
 void UploaderWorker::onProgress(const qint64 sent, const qint64 total) {
-    emit progress(sent, total);
+    Q_EMIT progress(sent, total);
 
     if (timer.elapsed() >= 1000) {
         double kbps = (sent - lastBytes) / 1024.0;
-        emit speedUpdated(kbps);
+        Q_EMIT speedUpdated(kbps);
         lastBytes = sent;
         timer.restart();
     }
@@ -58,21 +58,21 @@ void UploaderWorker::onProgress(const qint64 sent, const qint64 total) {
 
 void UploaderWorker::onFinished() {
     if (cancelled) {
-        emit failed("Upload canceled.");
+        Q_EMIT failed("Upload canceled.");
         return;
     }
 
     int statusCode = networkReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     if (statusCode != 200) {
         QByteArray response = networkReply->readAll();
-        emit failed(QString("Server error: %1\nResponse: %2").arg(statusCode).arg(QString::fromUtf8(response)));
+        Q_EMIT failed(QString("Server error: %1\nResponse: %2").arg(statusCode).arg(QString::fromUtf8(response)));
         return;
     }
 
-    emit finished();
+    Q_EMIT finished();
 }
 
 void UploaderWorker::onError(QNetworkReply::NetworkError) {
     error = true;
-    emit failed("Upload error: " + networkReply->errorString());
+    Q_EMIT failed("Upload error: " + networkReply->errorString());
 }

@@ -397,9 +397,47 @@ bool HttpReqTasksDelete(const QString &agentId, QStringList tasksId, AuthProfile
     return false;
 }
 
+bool HttpReqTasksSave(const QString &agentId, const QString &CommandLine, const int MessageType, const QString &Message, const QString &ClearText, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["agent_id"]     = agentId;
+    dataJson["command_line"] = CommandLine;
+    dataJson["message_type"] = MessageType;
+    dataJson["message"]      = Message;
+    dataJson["clear_text"]   = ClearText;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/agent/task/save";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
 bool HttpReqTasksHook(const QByteArray &jsonData, AuthProfile profile, QString* message, bool* ok)
 {
     QString sUrl = profile.GetURL() + "/agent/task/hook";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
+    if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
+        *message = jsonObject["message"].toString();
+        *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+///CHAT
+
+bool HttpReqChatSendMessage(const QString &chat_message, AuthProfile profile, QString* message, bool* ok )
+{
+    QJsonObject dataJson;
+    dataJson["message"] = chat_message;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = profile.GetURL() + "/chat/send";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
@@ -464,7 +502,7 @@ bool HttpReqTunnelSetInfo(const QString &tunnelId, const QString &info, AuthProf
     dataJson["p_info"] = info;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString sUrl = profile.GetURL() + "/tunnel/setinfo";
+    QString sUrl = profile.GetURL() + "/tunnel/set/info";
     QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken());
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();

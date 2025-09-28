@@ -3,6 +3,10 @@
 
 #include <Agent/Commander.h>
 #include <main.h>
+
+#include <kddockwidgets/qtwidgets/views/DockWidget.h>
+#include <kddockwidgets/qtwidgets/views/MainWindow.h>
+
 #include <QJSValue>
 
 class Task;
@@ -13,6 +17,7 @@ class SessionsTableWidget;
 class SessionsGraph;
 class AxConsoleWidget;
 class LogsWidget;
+class ChatWidget;
 class ListenersWidget;
 class DownloadsWidget;
 class ScreenshotsWidget;
@@ -48,6 +53,7 @@ Q_OBJECT
     QHBoxLayout*    topHLayout        = nullptr;
     QPushButton*    listenersButton   = nullptr;
     QPushButton*    logsButton        = nullptr;
+    QPushButton*    chatButton        = nullptr;
     QPushButton*    sessionsButton    = nullptr;
     QPushButton*    graphButton       = nullptr;
     QPushButton*    tasksButton       = nullptr;
@@ -58,14 +64,15 @@ Q_OBJECT
     QPushButton*    screensButton     = nullptr;
     QPushButton*    keysButton        = nullptr;
     QPushButton*    reconnectButton   = nullptr;
+    QSpacerItem*    horizontalSpacer1 = nullptr;
     QFrame*         line_1            = nullptr;
     QFrame*         line_2            = nullptr;
     QFrame*         line_3            = nullptr;
     QFrame*         line_4            = nullptr;
-    QSplitter*      mainVSplitter     = nullptr;
-    QTabWidget*     mainTabWidget     = nullptr;
-    QSpacerItem*    horizontalSpacer1 = nullptr;
-    QStackedWidget* mainStackedWidget = nullptr;
+
+    KDDockWidgets::QtWidgets::MainWindow* mainDockWidget;
+    KDDockWidgets::QtWidgets::DockWidget* dockTop;
+    KDDockWidgets::QtWidgets::DockWidget* dockBottom;
 
     bool              synchronized     = false;
     bool              sync             = false;
@@ -85,17 +92,18 @@ public:
 
     AxScriptManager* ScriptManager = nullptr;
 
-    AxConsoleWidget*     AxConsoleTab      = nullptr;
-    LogsWidget*          LogsTab           = nullptr;
-    ListenersWidget*     ListenersTab      = nullptr;
-    SessionsTableWidget* SessionsTablePage = nullptr;
-    SessionsGraph*       SessionsGraphPage = nullptr;
-    TunnelsWidget*       TunnelsTab        = nullptr;
-    DownloadsWidget*     DownloadsTab      = nullptr;
-    ScreenshotsWidget*   ScreenshotsTab    = nullptr;
-    CredentialsWidget*   CredentialsTab    = nullptr;
-    TasksWidget*         TasksTab          = nullptr;
-    TargetsWidget*       TargetsTab        = nullptr;
+    AxConsoleWidget*     AxConsoleDock      = nullptr;
+    LogsWidget*          LogsDock          = nullptr;
+    ChatWidget*          ChatDock           = nullptr;
+    ListenersWidget*     ListenersDock      = nullptr;
+    SessionsTableWidget* SessionsTableDock = nullptr;
+    SessionsGraph*       SessionsGraphDock = nullptr;
+    TunnelsWidget*       TunnelsDock        = nullptr;
+    DownloadsWidget*     DownloadsDock      = nullptr;
+    ScreenshotsWidget*   ScreenshotsDock    = nullptr;
+    CredentialsWidget*   CredentialsDock    = nullptr;
+    TasksWidget*         TasksDock         = nullptr;
+    TargetsWidget*       TargetsDock        = nullptr;
 
     QVector<RegListenerConfig>     RegisterListeners;
     QVector<RegAgentConfig>        RegisterAgents;
@@ -119,8 +127,10 @@ public:
 
     AuthProfile* GetProfile() const;
 
-    void AddTab(QWidget* tab, const QString &title, const QString &icon = "" ) const;
-    void RemoveTab(int index) const;
+    void AddDockTop(const KDDockWidgets::QtWidgets::DockWidget* dock) const;
+    void AddDockBottom(const KDDockWidgets::QtWidgets::DockWidget* dock) const;
+    void PlaceDockBottom(KDDockWidgets::QtWidgets::DockWidget* dock) const;
+
     bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);
     bool IsSynchronized();
@@ -144,7 +154,7 @@ public:
     void LoadTerminalUI(const QString &AgentId);
     void ShowTunnelCreator(const QString &AgentId, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
 
-signals:
+Q_SIGNALS:
     void SyncedSignal();
     void SyncedOnReloadSignal(QString project);
     void LoadGlobalScriptSignal(QString path);
@@ -156,7 +166,7 @@ signals:
     void eventFileBrowserUpload(QString agentId, QString path, QString localFilename);
     void eventProcessBrowserList(QString agentId);
 
-public slots:
+public Q_SLOTS:
     void ChannelClose() const;
     void DataHandler(const QByteArray& data);
 
@@ -166,6 +176,7 @@ public slots:
     void SetTasksUI() const;
     void LoadAxConsoleUI() const;
     void LoadLogsUI() const;
+    void LoadChatUI() const;
     void LoadListenersUI() const;
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;

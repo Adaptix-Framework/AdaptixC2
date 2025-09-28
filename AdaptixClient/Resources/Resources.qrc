@@ -41,6 +41,7 @@
         <file alias="code_blocks">icons/code_blocks_64dp.png</file>
         <file alias="listeners">icons/headphones_64dp.png</file>
         <file alias="logs">icons/notes_64dp.png</file>
+        <file alias="chat">icons/chat_64dp.png</file>
         <file alias="format_list">icons/format_list_bulleted_64dp.png</file>
         <file alias="graph">icons/hub_64dp.png</file>
         <file alias="job">icons/job_64dp.png</file>

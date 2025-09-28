@@ -3,12 +3,13 @@
 
 #include <main.h>
 #include <Utils/CustomElements.h>
+#include <UI/Widgets/AbstractDock.h>
 
 class Agent;
 class AdaptixWidget;
 
-class SessionsTableWidget : public QWidget
-{
+class SessionsTableWidget : public DockTab
+{;
     AdaptixWidget* adaptixWidget = nullptr;
 
     QGridLayout*  mainGridLayout = nullptr;
@@ -58,7 +59,7 @@ public:
     void ClearTableContent() const;
     void Clear() const;
 
-public slots:
+public Q_SLOTS:
     void toggleSearchPanel() const;
     void onFilterUpdate() const;
     void handleTableDoubleClicked( const QModelIndex &index ) const;

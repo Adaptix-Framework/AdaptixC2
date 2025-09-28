@@ -322,6 +322,12 @@ QString GenerateRandomString(const int length, const QString &setName)
     return result;
 }
 
+int GenerateRandomInt(const int min, const int max)
+{
+    return QRandomGenerator::global()->bounded(max - min + 1) + min;
+}
+
+
 QString GenerateHash(const QString &algorithm, int length, const QString &inputString)
 {
     QCryptographicHash::Algorithm hashAlgo;

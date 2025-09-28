@@ -18,9 +18,11 @@ public:
     ~BridgeApp() override;
     AxScriptEngine* GetScriptEngine() const;
 
-public slots:
+public Q_SLOTS:
     QJSValue agents() const;
     QJSValue agent_info(const QString &id, const QString &property) const;
+    void     agent_hide(const QJSValue& agents);
+    void     agent_remove(const QJSValue& agents);
     void     agent_set_color(const QJSValue& agents, const QString &background, const QString &foreground, const bool reset);
     void     agent_set_impersonate(const QString &id, const QString &impersonate, const bool elevated);
     void     agent_set_mark(const QJSValue& agents, const QString &mark);
@@ -45,6 +47,7 @@ public slots:
     QString  format_size(const int &size) const;
     QString  format_time(const QString &format, const int &time) const;
     QJSValue get_commands(const QString &id) const;
+    QString  hash(const QString &algorithm, int length, const QString &input);
     QJSValue ids() const;
     QJSValue interfaces() const;
     bool     is64(const QString &id) const;
@@ -61,6 +64,8 @@ public slots:
     QString  prompt_open_file(const QString &caption = "Select file", const QString &filter = QString());
     QString  prompt_open_dir(const QString &caption = "Select directory");
     QString  prompt_save_file(const QString &filename, const QString &caption = "Select file", const QString &filter = QString());
+    QString  random_string(const int length, const QString &setname);
+    int      random_int(const int min, const int max);
     void     register_commands_group(QObject* obj, const QJSValue& agents, const QJSValue& os, const QJSValue& listeners);
     void     script_import(const QString &path);
     void     script_load(const QString &path);
@@ -75,7 +80,7 @@ public slots:
     QJSValue tunnels();
     QJSValue validate_command(const QString &id, const QString &command) const;
 
-signals:
+Q_SIGNALS:
     void consoleMessage(const QString &msg);
     void consoleError(const QString &msg);
     void engineError(const QString &msg);

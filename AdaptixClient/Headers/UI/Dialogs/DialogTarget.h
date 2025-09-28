@@ -44,7 +44,7 @@ public:
     QString    GetMessage() const;
     TargetData GetTargetData() const;
 
-protected slots:
+protected Q_SLOTS:
     void onButtonCreate();
     void onButtonCancel();
 };

@@ -8,21 +8,24 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/vmihailenco/msgpack/v5"
 	"io"
 	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 type TCPConfig struct {
 	HostBind           string `json:"host_bind"`
 	PortBind           int    `json:"port_bind"`
 	Callback_addresses string `json:"callback_addresses"`
+	EncryptKey         string `json:"encrypt_key"`
 
 	Ssl        bool   `json:"ssl"`
 	CaCert     []byte `json:"ca_cert"`
@@ -35,8 +38,7 @@ type TCPConfig struct {
 	ErrorAnswer string `json:"error_answer"`
 	Timeout     int    `json:"timeout"`
 
-	Protocol   string `json:"protocol"`
-	EncryptKey []byte `json:"encrypt_key"`
+	Protocol string `json:"protocol"`
 }
 
 type Connection struct {
@@ -156,6 +158,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 	var (
 		sendData []byte
 		recvData []byte
+		encKey   []byte
 		err      error
 		initMsg  StartMsg
 	)
@@ -176,7 +179,11 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		goto ERR
 	}
 
-	recvData, err = DecryptData(recvData, handler.Config.EncryptKey)
+	encKey, err = hex.DecodeString(handler.Config.EncryptKey)
+	if err != nil {
+		goto ERR
+	}
+	recvData, err = DecryptData(recvData, encKey)
 	if err != nil {
 		goto ERR
 	}

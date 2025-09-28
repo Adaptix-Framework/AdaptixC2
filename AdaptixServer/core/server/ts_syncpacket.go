@@ -24,6 +24,8 @@ const (
 	TYPE_SYNC_START  = 0x11
 	TYPE_SYNC_FINISH = 0x12
 
+	TYPE_CHAT_MESSAGE = 0x18
+
 	TYPE_LISTENER_REG   = 0x31
 	TYPE_LISTENER_START = 0x32
 	TYPE_LISTENER_STOP  = 0x33
@@ -356,6 +358,18 @@ func CreateSpPivotDelete(pivotId string) SyncPackerPivotDelete {
 	}
 }
 
+/// CHAT
+
+func CreateSpChatMessage(chatData adaptix.ChatData) SyncPackerChatMessage {
+	return SyncPackerChatMessage{
+		SpType: TYPE_CHAT_MESSAGE,
+
+		Username: chatData.Username,
+		Message:  chatData.Message,
+		Date:     chatData.Date,
+	}
+}
+
 /// DOWNLOAD
 
 func CreateSpDownloadCreate(downloadData adaptix.DownloadData) SyncPackerDownloadCreate {
@@ -499,7 +513,7 @@ func CreateSpTargetsAdd(targetsData []*adaptix.TargetData) SyncPackerTargetsAdd 
 			Info:     targetData.Info,
 			Date:     targetData.Date,
 			Alive:    targetData.Alive,
-			Owned:    targetData.Owned,
+			Agents:   targetData.Agents,
 		}
 		syncTargets = append(syncTargets, t)
 	}
@@ -524,7 +538,7 @@ func CreateSpTargetUpdate(targetData adaptix.TargetData) SyncPackerTargetUpdate 
 		Info:     targetData.Info,
 		Date:     targetData.Date,
 		Alive:    targetData.Alive,
-		Owned:    targetData.Owned,
+		Agents:   targetData.Agents,
 	}
 }
 

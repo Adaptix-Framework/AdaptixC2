@@ -7,11 +7,13 @@
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-ListenersWidget::ListenersWidget(AdaptixWidget* w) : adaptixWidget(w)
+ListenersWidget::ListenersWidget(AdaptixWidget* w) : DockTab("Listeners", w->GetProfile()->GetProject(), ":/icons/listeners"), adaptixWidget(w)
 {
     this->createUI();
 
     connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &ListenersWidget::handleListenersMenu);
+
+    this->dockWidget->setWidget(this);
 }
 
 ListenersWidget::~ListenersWidget() = default;
@@ -351,6 +353,13 @@ void ListenersWidget::onRemoveListener() const
 
     auto listenerName    = tableWidget->item( tableWidget->currentRow(), ColumnName )->text();
     auto listenerRegName = tableWidget->item( tableWidget->currentRow(), ColumnRegName )->text();
+
+    QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "Delete Confirmation",
+                                      QString("Are you sure you want to remove the '%1' listener?").arg(listenerName),
+                                      QMessageBox::Yes | QMessageBox::No,
+                                      QMessageBox::No);
+    if (reply != QMessageBox::Yes)
+        return;
 
     QString message = QString();
     bool ok = false;

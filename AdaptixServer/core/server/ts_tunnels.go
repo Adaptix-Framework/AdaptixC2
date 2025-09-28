@@ -7,6 +7,7 @@ import (
 	"AdaptixServer/core/utils/safe"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +21,20 @@ import (
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
+
+func (ts *Teamserver) TsTunnelList() (string, error) {
+	var tunnels []adaptix.TunnelData
+	ts.tunnels.ForEach(func(key string, value interface{}) bool {
+		tunnels = append(tunnels, value.(*Tunnel).Data)
+		return true
+	})
+
+	jsonTunnel, err := json.Marshal(tunnels)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonTunnel), nil
+}
 
 func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error) {
 	var (

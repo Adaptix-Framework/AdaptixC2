@@ -8,6 +8,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (tc *TsConnector) TcListenerList(ctx *gin.Context) {
+	jsonListeners, err := tc.teamserver.TsListenerList()
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonListeners))
+}
+
 type ListenerConfig struct {
 	ListenerName string `json:"name"`
 	ConfigType   string `json:"type"`
@@ -15,12 +25,8 @@ type ListenerConfig struct {
 }
 
 func (tc *TsConnector) TcListenerStart(ctx *gin.Context) {
-	var (
-		listener ListenerConfig
-		err      error
-	)
-
-	err = ctx.ShouldBindJSON(&listener)
+	var listener ListenerConfig
+	err := ctx.ShouldBindJSON(&listener)
 	if err != nil {
 		_ = ctx.Error(errors.New("invalid listener"))
 		return
@@ -41,12 +47,8 @@ func (tc *TsConnector) TcListenerStart(ctx *gin.Context) {
 }
 
 func (tc *TsConnector) TcListenerStop(ctx *gin.Context) {
-	var (
-		listener ListenerConfig
-		err      error
-	)
-
-	err = ctx.ShouldBindJSON(&listener)
+	var listener ListenerConfig
+	err := ctx.ShouldBindJSON(&listener)
 	if err != nil {
 		_ = ctx.Error(errors.New("invalid listener"))
 		return
@@ -62,12 +64,8 @@ func (tc *TsConnector) TcListenerStop(ctx *gin.Context) {
 }
 
 func (tc *TsConnector) TcListenerEdit(ctx *gin.Context) {
-	var (
-		listener ListenerConfig
-		err      error
-	)
-
-	err = ctx.ShouldBindJSON(&listener)
+	var listener ListenerConfig
+	err := ctx.ShouldBindJSON(&listener)
 	if err != nil {
 		_ = ctx.Error(errors.New("invalid listener"))
 		return

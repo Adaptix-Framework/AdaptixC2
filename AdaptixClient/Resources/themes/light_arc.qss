@@ -1,11 +1,11 @@
 /* Arc Light Theme */
 
-QWidget {
+QWidget[Main="base"] {
     background-color: #DCDCDC;
     color: #2E3440;
 }
 
-QWidget:disabled {
+QWidget:disabled[Main="base"] {
     background-color: #E8E8E8;
     color: #A0A0A0;
 }

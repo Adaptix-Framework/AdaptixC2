@@ -4,9 +4,10 @@
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Settings.h>
+#include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <Utils/FontManager.h>
 #include <MainAdaptix.h>
-
 
 TaskOutputWidget::TaskOutputWidget() { this->createUI(); }
 
@@ -17,7 +18,7 @@ void TaskOutputWidget::createUI()
     inputMessage = new QLineEdit(this);
     inputMessage->setReadOnly(true);
     inputMessage->setProperty("LineEditStyle", "console");
-    inputMessage->setFont( QFont( "Hack" ));
+    inputMessage->setFont( FontManager::instance().getFont("Hack") );
 
     outputTextEdit = new QTextEdit(this);
     outputTextEdit->setReadOnly(true);
@@ -53,9 +54,20 @@ void TaskOutputWidget::SetConten(const QString &message, const QString &text) co
 TasksWidget::TasksWidget( AdaptixWidget* w )
 {
     this->adaptixWidget = w;
+
     this->createUI();
 
     taskOutputConsole = new TaskOutputWidget();
+
+    dockWidgetTable = new KDDockWidgets::QtWidgets::DockWidget( + "Tasks:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
+    dockWidgetTable->setTitle("Tasks");
+    dockWidgetTable->setWidget(this);
+    dockWidgetTable->setIcon(QIcon( ":/icons/job" ), KDDockWidgets::IconPlace::TabBar);
+
+    dockWidgetOutput = new KDDockWidgets::QtWidgets::DockWidget( + "Task Output:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
+    dockWidgetOutput->setTitle("Task Output");
+    dockWidgetOutput->setWidget(taskOutputConsole);
+    dockWidgetOutput->setIcon(QIcon( ":/icons/job" ), KDDockWidgets::IconPlace::TabBar);
 
     connect(tableWidget,  &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
 
@@ -72,6 +84,10 @@ TasksWidget::TasksWidget( AdaptixWidget* w )
 }
 
 TasksWidget::~TasksWidget() = default;
+
+KDDockWidgets::QtWidgets::DockWidget* TasksWidget::dockTasks() { return this->dockWidgetTable; }
+
+KDDockWidgets::QtWidgets::DockWidget * TasksWidget::dockTasksOutput() { return this->dockWidgetOutput; }
 
 void TasksWidget::createUI()
 {
@@ -136,6 +152,8 @@ void TasksWidget::createUI()
     tableWidget->setHorizontalHeaderItem( this->ColumnCommandLine, new QTableWidgetItem("Commandline"));
     tableWidget->setHorizontalHeaderItem( this->ColumnResult,      new QTableWidgetItem("Result"));
     tableWidget->setHorizontalHeaderItem( this->ColumnOutput,      new QTableWidgetItem("Output"));
+
+    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
 
     this->UpdateColumnsVisible();
 

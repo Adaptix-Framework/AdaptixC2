@@ -33,6 +33,12 @@ function ListenerUI(mode_create)
     let labelHB = form.create_label("Heartbeat Header:");
     let textlineHB = form.create_textline("X-Beacon-Id");
 
+    let labelEncryptKey = form.create_label("Encryption key:");
+    let textlineEncryptKey = form.create_textline(ax.random_string(32, "hex"));
+    textlineEncryptKey.setEnabled(mode_create)
+    let buttonEncryptKey = form.create_button("Generate");
+    buttonEncryptKey.setEnabled(mode_create)
+
     let certSelector = form.create_selector_file();
     certSelector.setPlaceholder("SSL certificate");
     let keySelector = form.create_selector_file();
@@ -45,6 +51,8 @@ function ListenerUI(mode_create)
     let ssl_group = form.create_groupbox("Use SSL (HTTPS)", true)
     ssl_group.setPanel(panel_group);
     ssl_group.setChecked(false);
+
+    form.connect(buttonEncryptKey, "clicked", function() { textlineEncryptKey.setText( ax.random_string(32, "hex") ); });
 
     let layoutMain = form.create_gridlayout();
     layoutMain.addWidget(labelHost, 0, 0, 1, 1);
@@ -60,7 +68,10 @@ function ListenerUI(mode_create)
     layoutMain.addWidget(textlineUserAgent, 4, 1, 1, 2);
     layoutMain.addWidget(labelHB, 5, 0, 1, 1);
     layoutMain.addWidget(textlineHB, 5, 1, 1, 2);
-    layoutMain.addWidget(ssl_group, 6, 0, 1, 3);
+    layoutMain.addWidget(labelEncryptKey, 6, 0, 1, 1);
+    layoutMain.addWidget(textlineEncryptKey, 6, 1, 1, 1);
+    layoutMain.addWidget(buttonEncryptKey, 6, 2, 1, 1);
+    layoutMain.addWidget(ssl_group, 7, 0, 1, 3);
 
     let panelMain = form.create_panel();
     panelMain.setLayout(layoutMain);
@@ -126,6 +137,7 @@ function ListenerUI(mode_create)
     container.put("uri", textlineUri);
     container.put("user_agent", textlineUserAgent);
     container.put("hb_header", textlineHB);
+    container.put("encrypt_key", textlineEncryptKey);
     container.put("ssl", ssl_group);
     container.put("ssl_cert", certSelector);
     container.put("ssl_key", keySelector);

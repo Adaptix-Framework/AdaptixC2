@@ -4,13 +4,15 @@
 #include <Client/AuthProfile.h>
 #include <Client/TunnelEndpoint.h>
 
-TunnelsWidget::TunnelsWidget(QWidget* w)
+TunnelsWidget::TunnelsWidget(AdaptixWidget* w) : DockTab("Tunnels", w->GetProfile()->GetProject(), ":/icons/vpn")
 {
-     this->mainWidget = w;
+     this->adaptixWidget = w;
 
      this->createUI();
 
      connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &TunnelsWidget::handleTunnelsMenu );
+
+     this->dockWidget->setWidget(this);
 }
 
 TunnelsWidget::~TunnelsWidget() = default;
@@ -55,10 +57,6 @@ void TunnelsWidget::createUI()
 
 void TunnelsWidget::Clear() const
 {
-     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-     if (!adaptixWidget)
-          return;
-
      adaptixWidget->Tunnels.clear();
      for (int index = tableWidget->rowCount(); index > 0; index-- )
          tableWidget->removeRow(index -1 );
@@ -66,10 +64,6 @@ void TunnelsWidget::Clear() const
 
 void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
 {
-     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-     if (!adaptixWidget)
-          return;
-
      for( auto tunnel : adaptixWidget->Tunnels ) {
           if( tunnel.TunnelId == newTunnel.TunnelId )
                return;
@@ -158,10 +152,6 @@ void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
 
 void TunnelsWidget::EditTunnelItem(const QString &tunnelId, const QString &info) const
 {
-     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-     if (!adaptixWidget)
-          return;
-
      for ( int i = 0; i < adaptixWidget->Tunnels.size(); i++ ) {
           if( adaptixWidget->Tunnels[i].TunnelId == tunnelId ) {
                adaptixWidget->Tunnels[i].Info = info;
@@ -180,10 +170,6 @@ void TunnelsWidget::EditTunnelItem(const QString &tunnelId, const QString &info)
 
 void TunnelsWidget::RemoveTunnelItem(const QString &tunnelId) const
 {
-     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-     if (!adaptixWidget)
-          return;
-
      for ( int i = 0; i < adaptixWidget->Tunnels.size(); i++ ) {
           if( adaptixWidget->Tunnels[i].TunnelId == tunnelId ) {
                adaptixWidget->Tunnels.erase( adaptixWidget->Tunnels.begin() + i );
@@ -227,9 +213,6 @@ void TunnelsWidget::actionSetInfo() const
 
      QString tunnelId = tableWidget->item( tableWidget->currentRow(), 0 )->text();
      QString info     = tableWidget->item( tableWidget->currentRow(), 6 )->text();
-     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-     if ( !adaptixWidget )
-          return;
 
      bool inputOk;
      QString newInfo = QInputDialog::getText(nullptr, "Set info", "Info:", QLineEdit::Normal,info, &inputOk);
@@ -250,9 +233,6 @@ void TunnelsWidget::actionStopTunnel() const
           return;
 
      auto tunnelId = tableWidget->item( tableWidget->currentRow(), 0 )->text();
-     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-     if ( !adaptixWidget )
-          return;
 
      if (adaptixWidget->ClientTunnels.contains(tunnelId)) {
           auto tunnel = adaptixWidget->ClientTunnels[tunnelId];

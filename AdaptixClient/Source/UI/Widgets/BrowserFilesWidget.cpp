@@ -1,8 +1,10 @@
 #include <Agent/Agent.h>
 #include <Utils/FileSystem.h>
+#include <Utils/NonBlockingDialogs.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 
 void BrowserFileData::CreateBrowserFileData(const QString &path, const int os)
@@ -44,7 +46,7 @@ void BrowserFileData::SetStored(const bool stored)
 
 
 
-BrowserFilesWidget::BrowserFilesWidget(Agent* a)
+BrowserFilesWidget::BrowserFilesWidget(AdaptixWidget* w, Agent* a) : DockTab(QString("Files [%1]").arg( a->data.Id ), w->GetProfile()->GetProject())
 {
     agent = a;
     this->createUI();
@@ -58,6 +60,8 @@ BrowserFilesWidget::BrowserFilesWidget(Agent* a)
     connect(tableWidget,       &QTableWidget::doubleClicked,              this, &BrowserFilesWidget::handleTableDoubleClicked);
     connect(treeBrowserWidget, &QTreeWidget::itemDoubleClicked,           this, &BrowserFilesWidget::handleTreeDoubleClicked);
     connect(tableWidget,       &QTableWidget::customContextMenuRequested, this, &BrowserFilesWidget::handleTableMenu );
+
+    this->dockWidget->setWidget(this);
 }
 
 BrowserFilesWidget::~BrowserFilesWidget() = default;
@@ -502,7 +506,7 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
         this->setStoredFileData(path, fileData);
     } else {
         statusLabel->setText("");
-        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
+        Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
     }
 }
 
@@ -511,14 +515,14 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
 void BrowserFilesWidget::onDisks() const
 {
     statusLabel->setText("");
-    emit agent->adaptixWidget->eventFileBrowserDisks(agent->data.Id);
+    Q_EMIT agent->adaptixWidget->eventFileBrowserDisks(agent->data.Id);
 }
 
 void BrowserFilesWidget::onList() const
 {
     QString path = inputPath->text();
     statusLabel->setText("");
-    emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
+    Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
 }
 
 void BrowserFilesWidget::onParent()
@@ -556,11 +560,11 @@ void BrowserFilesWidget::onReload() const
             path = "./";
 
         statusLabel->setText("");
-        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
+        Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
     }
     else {
         statusLabel->setText("");
-        emit agent->adaptixWidget->eventFileBrowserList(agent->data.Id, currentPath);
+        Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, currentPath);
     }
 }
 
@@ -576,12 +580,14 @@ void BrowserFilesWidget::onUpload() const
     else
         remotePath += "/";
 
-    QString filePath = QFileDialog::getOpenFileName(nullptr, "Select file", QDir::homePath());
-    if ( filePath.isEmpty())
-        return;
+    NonBlockingDialogs::getOpenFileName(const_cast<BrowserFilesWidget*>(this), "Select file", QDir::homePath(), "All Files (*.*)",
+        [this, remotePath](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
 
-    statusLabel->setText("");
-    emit agent->adaptixWidget->eventFileBrowserUpload(agent->data.Id, remotePath, filePath);
+            statusLabel->setText("");
+            Q_EMIT agent->adaptixWidget->eventFileBrowserUpload(agent->data.Id, remotePath, filePath);
+    });
 }
 
 void BrowserFilesWidget::handleTableDoubleClicked(const QModelIndex &index)

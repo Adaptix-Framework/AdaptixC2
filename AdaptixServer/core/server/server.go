@@ -34,6 +34,7 @@ func NewTeamserver() *Teamserver {
 		clients:     safe.NewMap(),
 		agents:      safe.NewMap(),
 		listeners:   safe.NewMap(),
+		messages:    safe.NewSlice(),
 		downloads:   safe.NewMap(),
 		tmp_uploads: safe.NewMap(),
 		screenshots: safe.NewMap(),
@@ -173,6 +174,17 @@ func (ts *Teamserver) RestoreData() {
 	}
 	logs.Success("   ", "Restored %v pivots", countPivots)
 
+	/// CHAT
+	countMessages := 0
+	restoreChat := ts.DBMS.DbChatAll()
+	for _, restoreMessage := range restoreChat {
+		ts.messages.Put(restoreMessage)
+		packet := CreateSpChatMessage(restoreMessage)
+		ts.TsSyncAllClients(packet)
+		countMessages++
+	}
+	logs.Success("   ", "Restored %v messages", countMessages)
+	
 	/// DOWNLOADS
 	countDownloads := 0
 	restoreDownloads := ts.DBMS.DbDownloadAll()
@@ -283,6 +295,7 @@ func (ts *Teamserver) Start() {
 	logs.Success("", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
 
 	ts.RestoreData()
+	logs.Success("", "The AdaptixC2 server is ready")
 
 	go ts.TsAgentTickUpdate()
 

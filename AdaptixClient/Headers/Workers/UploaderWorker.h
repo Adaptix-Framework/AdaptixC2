@@ -26,13 +26,13 @@ public:
 
     bool IsError() const;
 
-signals:
+Q_SIGNALS:
     void progress(qint64 sent, qint64 total);
     void speedUpdated(double kbps);
     void finished();
     void failed(const QString &error);
 
-public slots:
+public Q_SLOTS:
     void start();
     void cancel();
     void onProgress(qint64, qint64);

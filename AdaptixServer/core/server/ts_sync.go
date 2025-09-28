@@ -68,6 +68,7 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	packets = append(packets, ts.TsPresyncExtenders()...)
 	packets = append(packets, ts.TsPresyncListeners()...)
 	packets = append(packets, ts.TsPresyncAgents()...)
+	packets = append(packets, ts.TsPresyncChat()...)
 	packets = append(packets, ts.TsPresyncDownloads()...)
 	packets = append(packets, ts.TsPresyncScreenshots()...)
 	packets = append(packets, ts.TsPresyncTunnels()...)
@@ -187,15 +188,37 @@ func (ts *Teamserver) TsPresyncPivots() []interface{} {
 	return packets
 }
 
-func (ts *Teamserver) TsPresyncDownloads() []interface{} {
+func (ts *Teamserver) TsPresyncChat() []interface{} {
 	var packets []interface{}
+	for value := range ts.messages.Iterator() {
+		message := value.Item.(adaptix.ChatData)
+		p := CreateSpChatMessage(message)
+		packets = append(packets, p)
+	}
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncDownloads() []interface{} {
+	var (
+		packets         []interface{}
+		sortedDownloads []adaptix.DownloadData
+	)
+
 	ts.downloads.ForEach(func(key string, value interface{}) bool {
 		downloadData := value.(adaptix.DownloadData)
+		index := sort.Search(len(sortedDownloads), func(i int) bool {
+			return sortedDownloads[i].Date > downloadData.Date
+		})
+		sortedDownloads = append(sortedDownloads[:index], append([]adaptix.DownloadData{downloadData}, sortedDownloads[index:]...)...)
+		return true
+	})
+
+	for _, downloadData := range sortedDownloads {
 		d1 := CreateSpDownloadCreate(downloadData)
 		d2 := CreateSpDownloadUpdate(downloadData)
 		packets = append(packets, d1, d2)
-		return true
-	})
+	}
+
 	return packets
 }
 

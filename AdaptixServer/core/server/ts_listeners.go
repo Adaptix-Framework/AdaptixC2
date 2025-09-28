@@ -5,11 +5,26 @@ import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	isvalid "AdaptixServer/core/utils/valid"
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/Adaptix-Framework/axc2"
 )
+
+func (ts *Teamserver) TsListenerList() (string, error) {
+	var listeners []adaptix.ListenerData
+	ts.listeners.ForEach(func(key string, value interface{}) bool {
+		listeners = append(listeners, value.(adaptix.ListenerData))
+		return true
+	})
+
+	jsonListeners, err := json.Marshal(listeners)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonListeners), nil
+}
 
 func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName string, listenerConfig string, listenerWatermark string, listenerCustomData []byte) error {
 	value, ok := ts.listener_configs.Get(listenerRegName)

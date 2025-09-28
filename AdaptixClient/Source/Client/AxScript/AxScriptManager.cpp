@@ -7,9 +7,8 @@
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/BridgeEvent.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/AxConsoleWidget.h>
-
-
 
 AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), adaptixWidget(main_widget) {
     mainScript = new AxScriptEngine(this, "main", this);
@@ -165,9 +164,9 @@ void AxScriptManager::ScriptRemove(const ExtensionFile &ext)
 
 
 
-void AxScriptManager::GlobalScriptLoad(const QString &path) { emit adaptixWidget->LoadGlobalScriptSignal(path); }
+void AxScriptManager::GlobalScriptLoad(const QString &path) { Q_EMIT adaptixWidget->LoadGlobalScriptSignal(path); }
 
-void AxScriptManager::GlobalScriptUnload(const QString &path) { emit adaptixWidget->UnloadGlobalScriptSignal(path); }
+void AxScriptManager::GlobalScriptUnload(const QString &path) { Q_EMIT adaptixWidget->UnloadGlobalScriptSignal(path); }
 
 void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os)
 {
@@ -266,6 +265,27 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
         ret.append(event);
     }
     return ret;
+}
+
+void AxScriptManager::AppAgentHide(const QStringList &agents)
+{
+    bool updated = false;
+    for (auto agentId : agents) {
+        if (adaptixWidget->AgentsMap.contains(agentId)) {
+            adaptixWidget->AgentsMap[agentId]->show = false;
+            updated = true;
+        }
+    }
+
+    if (updated)
+        adaptixWidget->SessionsTableDock->SetData();
+}
+
+void AxScriptManager::AppAgentRemove(const QStringList &agents)
+{
+    QString message = "";
+    bool ok = false;
+    HttpReqAgentRemove(agents, *(adaptixWidget->GetProfile()), &message, &ok);
 }
 
 /// APP
@@ -586,7 +606,7 @@ void AxScriptManager::emitFileBrowserList(const QString &agentId, const QString 
 
 void AxScriptManager::emitFileBrowserUpload(const QString &agentId, const QString &path, const QString &localFilename)
 {
-    QList<AxEvent> items = this->FilterEvents(agentId, "FileBroserUpload");
+    QList<AxEvent> items = this->FilterEvents(agentId, "FileBrowserUpload");
     for (int i = 0; i < items.size(); ++i) {
         AxEvent event = items[i];
         if (event.jsEngine) {
@@ -646,6 +666,6 @@ void AxScriptManager::emitDisconnectClient()
 
 /// SLOTS
 
-void AxScriptManager::consolePrintMessage(const QString &message) { this->adaptixWidget->AxConsoleTab->PrintMessage(message); }
+void AxScriptManager::consolePrintMessage(const QString &message) { this->adaptixWidget->AxConsoleDock->PrintMessage(message); }
 
-void AxScriptManager::consolePrintError(const QString &message) { this->adaptixWidget->AxConsoleTab->PrintError(message); }
+void AxScriptManager::consolePrintError(const QString &message) { this->adaptixWidget->AxConsoleDock->PrintError(message); }

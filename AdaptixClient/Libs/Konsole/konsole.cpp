@@ -71,7 +71,7 @@ QTermWidget::QTermWidget(QWidget *messageParentWidget, QWidget *parent)
         if (m_echo) {
             recvData(buff, len);
         }
-        emit sendData(buff, len);
+        Q_EMIT sendData(buff, len);
     });
     connect( m_emulation, &Emulation::dupDisplayOutput, this, &QTermWidget::dupDisplayOutput);
     connect( m_emulation, &Emulation::changeTabTextColorRequest, this, &QTermWidget::changeTabTextColorRequest);
@@ -110,7 +110,7 @@ QTermWidget::QTermWidget(QWidget *messageParentWidget, QWidget *parent)
     connect(m_terminalDisplay, &TerminalDisplay::termLostFocus,
             this, &QTermWidget::termLostFocus);
     connect(m_terminalDisplay, &TerminalDisplay::keyPressedSignal, this, [this] (QKeyEvent* e, bool) { 
-        emit termKeyPressed(e); 
+        Q_EMIT termKeyPressed(e);
     });
 
     setScrollBarPosition(NoScrollBar);
@@ -129,12 +129,12 @@ QTermWidget::~QTermWidget() {
     clearHighLightTexts();
     delete m_urlFilter;
     delete m_searchBar;
-    emit destroyed();
+    Q_EMIT destroyed();
     delete m_emulation;
 }
 
 void QTermWidget::selectionChanged(bool textSelected) {
-    emit copyAvailable(textSelected);
+    Q_EMIT copyAvailable(textSelected);
 }
 
 void QTermWidget::search(bool forwards, bool next) {
@@ -322,7 +322,7 @@ void QTermWidget::resizeEvent(QResizeEvent*) {
 }
 
 void QTermWidget::sessionFinished() {
-    emit finished();
+    Q_EMIT finished();
 }
 
 void QTermWidget::updateTerminalSize() {
@@ -346,10 +346,10 @@ void QTermWidget::updateTerminalSize() {
 
 void QTermWidget::monitorTimerDone() {
     if (m_monitorSilence) {
-        emit silence();
-        emit stateChanged(NOTIFYSILENCE);
+        Q_EMIT silence();
+        Q_EMIT stateChanged(NOTIFYSILENCE);
     } else {
-        emit stateChanged(NOTIFYNORMAL);
+        Q_EMIT stateChanged(NOTIFYNORMAL);
     }
 
     m_notifiedActivity=false;
@@ -366,7 +366,7 @@ void QTermWidget::activityStateSet(int state) {
         if ( m_monitorActivity ) {
             if (!m_notifiedActivity) {
                 m_notifiedActivity=true;
-                emit activity();
+                Q_EMIT activity();
             }
         }
     }
@@ -378,7 +378,7 @@ void QTermWidget::activityStateSet(int state) {
         state = NOTIFYNORMAL;
     }
 
-    emit stateChanged(state);
+    Q_EMIT stateChanged(state);
 }
 
 void QTermWidget::setMonitorActivity(bool enabled) {
@@ -481,7 +481,7 @@ void QTermWidget::setFlowControlEnabled(bool enabled) {
 
     m_flowControl = enabled;
 
-    emit flowControlEnabledChanged(enabled);
+    Q_EMIT flowControlEnabledChanged(enabled);
 }
 
 bool QTermWidget::flowControlEnabled(void) {

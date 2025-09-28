@@ -6,6 +6,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (tc *TsConnector) TcCredentialsList(ctx *gin.Context) {
+	jsonCreds, err := tc.teamserver.TsCredentilsList()
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonCreds))
+}
+
 type CredsAdd struct {
 	Username string `json:"username"`
 	Password string `json:"password"`

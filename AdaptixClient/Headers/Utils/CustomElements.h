@@ -88,13 +88,13 @@ class ClickableLabel : public QLabel {
 public:
     explicit ClickableLabel(const QString &label, QWidget *parent = nullptr) : QLabel(label, parent) {}
 
-    signals:
+    Q_SIGNALS:
         void clicked();
 
 protected:
     void mousePressEvent(QMouseEvent *event) override {
         if (event->button() == Qt::LeftButton) {
-            emit clicked();
+            Q_EMIT clicked();
         }
         QLabel::mousePressEvent(event);
     }
@@ -131,7 +131,7 @@ public:
     bool isAutoScrollEnabled() const;
     bool isNoWrapEnabled() const;
 
-signals:
+Q_SIGNALS:
     void ctx_find();
     void ctx_history();
 };

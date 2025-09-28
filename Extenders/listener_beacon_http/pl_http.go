@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -27,6 +28,7 @@ type HTTPConfig struct {
 	HostBind           string `json:"host_bind"`
 	PortBind           int    `json:"port_bind"`
 	Callback_addresses string `json:"callback_addresses"`
+	EncryptKey         string `json:"encrypt_key"`
 
 	Ssl         bool   `json:"ssl"`
 	SslCert     []byte `json:"ssl_cert"`
@@ -50,7 +52,6 @@ type HTTPConfig struct {
 
 	Server_headers string `json:"server_headers"`
 	Protocol       string `json:"protocol"`
-	EncryptKey     []byte `json:"encrypt_key"`
 }
 
 type HTTP struct {
@@ -272,7 +273,11 @@ func (handler *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte,
 		return "", "", nil, nil, errors.New("failed decrypt beat")
 	}
 
-	rc4crypt, errcrypt := rc4.NewCipher(handler.Config.EncryptKey)
+	encKey, err := hex.DecodeString(handler.Config.EncryptKey)
+	if err != nil {
+		return "", "", nil, nil, errors.New("failed decrypt beat")
+	}
+	rc4crypt, errcrypt := rc4.NewCipher(encKey)
 	if errcrypt != nil {
 		return "", "", nil, nil, errors.New("rc4 decrypt error")
 	}

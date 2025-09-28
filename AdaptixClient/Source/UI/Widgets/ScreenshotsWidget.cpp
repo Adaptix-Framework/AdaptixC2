@@ -3,6 +3,7 @@
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Utils/CustomElements.h>
+#include <Utils/NonBlockingDialogs.h>
 
 ImageFrame::ImageFrame(QWidget* parent) : QWidget(parent), label(new QLabel), scrollArea(new QScrollArea(this)), ctrlPressed(false), scaleFactor(1.0)
 {
@@ -88,15 +89,17 @@ void ImageFrame::clear()
 
 
 
-ScreenshotsWidget::ScreenshotsWidget(QWidget* w)
+ScreenshotsWidget::ScreenshotsWidget(AdaptixWidget* w) : DockTab("Screenshots", w->GetProfile()->GetProject(), ":/icons/picture")
 {
-    this->mainWidget = w;
+    this->adaptixWidget = w;
     this->createUI();
 
     connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &ScreenshotsWidget::handleScreenshotsMenu);
     connect(tableWidget->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &ScreenshotsWidget::onTableItemSelection);
     connect(tableWidget, &QTableWidget::itemSelectionChanged, this, [this](){tableWidget->setFocus();});
     connect(splitter, &QSplitter::splitterMoved, imageFrame, &ImageFrame::resizeImage);
+
+    this->dockWidget->setWidget(this);
 }
 
 ScreenshotsWidget::~ScreenshotsWidget() = default;
@@ -144,10 +147,6 @@ void ScreenshotsWidget::createUI()
 
 void ScreenshotsWidget::Clear() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     adaptixWidget->Screenshots.clear();
 
     QSignalBlocker blocker(tableWidget->selectionModel());
@@ -161,10 +160,6 @@ void ScreenshotsWidget::Clear() const
 
 void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>(mainWidget);
-    if(adaptixWidget->Screenshots.contains(newScreen.ScreenId))
-        return;
-
     if( tableWidget->rowCount() < 1 )
         tableWidget->setRowCount( 1 );
     else
@@ -211,10 +206,6 @@ void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen) const
 
 void ScreenshotsWidget::EditScreenshotItem(const QString &screenId, const QString &note) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget)
-        return;
-
     if (!adaptixWidget->Screenshots.contains(screenId))
         return;
 
@@ -231,10 +222,6 @@ void ScreenshotsWidget::EditScreenshotItem(const QString &screenId, const QStrin
 
 void ScreenshotsWidget::RemoveScreenshotItem(const QString &screenId) const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>(mainWidget);
-    if (!adaptixWidget)
-        return;
-
     if (!adaptixWidget->Screenshots.contains(screenId))
         return;
 
@@ -268,10 +255,6 @@ void ScreenshotsWidget::handleScreenshotsMenu(const QPoint &pos )
 
 void ScreenshotsWidget::actionNote() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget )
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -305,46 +288,39 @@ void ScreenshotsWidget::actionDownload() const
     if (tableWidget->selectionModel()->selectedRows().empty())
         return;
 
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget )
-        return;
-
     QString screenId = tableWidget->item( tableWidget->currentRow(), 0 )->text();
     if (!adaptixWidget->Screenshots.contains(screenId))
         return;
 
     ScreenData screenData = adaptixWidget->Screenshots[screenId];
 
-    QString filePath = QFileDialog::getSaveFileName( nullptr, "Save File", "screenshot.png", "All Files (*.*)" );
-    if ( filePath.isEmpty())
-        return;
+    NonBlockingDialogs::getSaveFileName(const_cast<ScreenshotsWidget*>(this), "Save File", "screenshot.png", "All Files (*.*)",
+        [this, screenData](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
 
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly)) {
-        MessageError("Failed to open file for writing");
-        return;
-    }
+            QFile file(filePath);
+            if (!file.open(QIODevice::WriteOnly)) {
+                MessageError("Failed to open file for writing");
+                return;
+            }
 
-    file.write( screenData.Content );
-    file.close();
+            file.write( screenData.Content );
+            file.close();
 
-    QInputDialog inputDialog;
-    inputDialog.setWindowTitle("Sync file");
-    inputDialog.setLabelText("File saved to:");
-    inputDialog.setTextEchoMode(QLineEdit::Normal);
-    inputDialog.setTextValue(filePath);
-    inputDialog.adjustSize();
-    inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
-    inputDialog.exec();
-
+            QInputDialog inputDialog;
+            inputDialog.setWindowTitle("Sync file");
+            inputDialog.setLabelText("File saved to:");
+            inputDialog.setTextEchoMode(QLineEdit::Normal);
+            inputDialog.setTextValue(filePath);
+            inputDialog.adjustSize();
+            inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+            inputDialog.exec();
+    });
 }
 
 void ScreenshotsWidget::actionDelete() const
 {
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if ( !adaptixWidget )
-        return;
-
     QStringList listId;
     for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
         if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
@@ -373,8 +349,7 @@ void ScreenshotsWidget::onTableItemSelection(const QModelIndex &current, const Q
 
     QString screenId = tableWidget->item(row,0)->text();
 
-    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainWidget );
-    if (!adaptixWidget || !adaptixWidget->Screenshots.contains(screenId) )
+    if (!adaptixWidget->Screenshots.contains(screenId) )
         return;
 
     ScreenData screenData = adaptixWidget->Screenshots[screenId];

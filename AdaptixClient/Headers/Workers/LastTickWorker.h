@@ -17,7 +17,7 @@ public:
 
     void run() override;
 
-public slots:
+public Q_SLOTS:
     void updateLastItems() const;
 };
 
