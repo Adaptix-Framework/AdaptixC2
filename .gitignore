@@ -13,3 +13,4 @@ AdaptixClient/*.log
 AdaptixClient/cmake_*
 AdaptixClient/Makefile
 AdaptixServer/build_error.log
+release/
