@@ -46,7 +46,6 @@ function ListenerUI(mode_create)
 
     let controlsLayout = form.create_gridlayout();
     controlsLayout.addWidget(buttonEncryptKey, 0, 0, 1, 1);
-    controlsLayout.addWidget(checkCustomKey, 0, 1, 1, 1);
     let controlsPanel = form.create_panel();
     controlsPanel.setLayout(controlsLayout);
 
@@ -54,17 +53,20 @@ function ListenerUI(mode_create)
         textlineEncryptKey.setText(ax.random_string(32, "hex"));
     }
 
-    function updateCustomKeyState(state, options) {
-        let isCustomKey = state ? true : false;
-        let triggeredByUser = options && options.user === true;
-        let keepExisting = options && options.keep === true;
+    function updateCustomKeyState(options) {
+        let isCustomKey = checkCustomKey.isChecked();
+        let userTriggered = options && options.user === true;
 
         if (isCustomKey) {
-            textlineEncryptKey.setReadOnly(false);
             textlineEncryptKey.setEnabled(mode_create);
+            textlineEncryptKey.setReadOnly(false);
             textlineEncryptKey.setPlaceholder("Enter custom key (6-32 chars)");
             buttonEncryptKey.setEnabled(false);
             labelCustomKeyInfo.setVisible(true);
+
+            if (!userTriggered && textlineEncryptKey.text().length === 0) {
+                textlineEncryptKey.setText("");
+            }
         } else {
             textlineEncryptKey.setReadOnly(true);
             textlineEncryptKey.setEnabled(mode_create);
@@ -72,17 +74,21 @@ function ListenerUI(mode_create)
             buttonEncryptKey.setEnabled(mode_create);
             labelCustomKeyInfo.setVisible(false);
 
-            if ((mode_create && !keepExisting) || triggeredByUser) {
+            if (!userTriggered && mode_create && textlineEncryptKey.text().length === 0) {
                 setRandomEncryptKey();
             }
         }
     }
 
-    updateCustomKeyState(0, { keep: !mode_create });
+    if (mode_create && textlineEncryptKey.text().length === 0) {
+        setRandomEncryptKey();
+    }
+
+    updateCustomKeyState();
 
     // Connect custom key checkbox to enable/disable key generation
-    form.connect(checkCustomKey, "stateChanged", function(state) {
-        updateCustomKeyState(state, { user: true });
+    form.connect(checkCustomKey, "stateChanged", function() {
+        updateCustomKeyState({ user: true });
     });
 
     let certSelector = form.create_selector_file();
@@ -114,11 +120,12 @@ function ListenerUI(mode_create)
     layoutMain.addWidget(textlineUserAgent, 4, 1, 1, 2);
     layoutMain.addWidget(labelHB, 5, 0, 1, 1);
     layoutMain.addWidget(textlineHB, 5, 1, 1, 2);
-    layoutMain.addWidget(labelEncryptKey, 6, 0, 1, 1);
-    layoutMain.addWidget(textlineEncryptKey, 6, 1, 1, 1);
-    layoutMain.addWidget(controlsPanel, 6, 2, 1, 1);
-    layoutMain.addWidget(labelCustomKeyInfo, 7, 1, 1, 2);
-    layoutMain.addWidget(ssl_group, 8, 0, 1, 3);
+    layoutMain.addWidget(checkCustomKey, 6, 0, 1, 3);
+    layoutMain.addWidget(labelEncryptKey, 7, 0, 1, 1);
+    layoutMain.addWidget(textlineEncryptKey, 7, 1, 1, 1);
+    layoutMain.addWidget(controlsPanel, 7, 2, 1, 1);
+    layoutMain.addWidget(labelCustomKeyInfo, 8, 0, 1, 3);
+    layoutMain.addWidget(ssl_group, 9, 0, 1, 3);
 
     let panelMain = form.create_panel();
     panelMain.setLayout(layoutMain);
