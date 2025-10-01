@@ -1,11 +1,50 @@
+# 编译产物和缓存目录
 cmake-build-debug/
 objects_http/
 objects_smb/
 objects_tcp/
-.idea/
-.qt/
-*.so
 dist/
+build/
+out/
+
+# IDE 和编辑器文件
+.idea/
+.vscode/
+.qt/
+*.swp
+*.swo
+*~
+
+# 编译产物文件
+*.so
+*.dll
+*.dylib
+*.o
+*.obj
+*.a
+*.lib
+*.exe
+*.out
+*.app
+
+# CMake 文件
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CMakeScripts/
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+CPack*
+
+# Qt 自动生成文件
+*_autogen/
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+*.qm
+
+# 特定项目的编译产物
 AdaptixClient/CMakeFiles/
 AdaptixClient/AdaptixClient_autogen/
 AdaptixClient/CMakeCache.txt
@@ -13,3 +52,19 @@ AdaptixClient/*.log
 AdaptixClient/cmake_*
 AdaptixClient/Makefile
 AdaptixServer/build_error.log
+
+# 发布目录
+release/
+
+# 日志文件
+*.log
+*.log.*
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 备份文件
+*.bak
+*.backup
+*.tmp
