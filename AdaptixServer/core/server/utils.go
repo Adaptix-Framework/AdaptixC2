@@ -10,7 +10,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -250,6 +250,7 @@ type SyncPackerAgentNew struct {
 	Username     string `json:"a_username"`
 	Impersonated string `json:"a_impersonated"`
 	LastTick     int    `json:"a_last_tick"`
+	CreateTime   int64  `json:"a_create_time"`
 	Tags         string `json:"a_tags"`
 	Mark         string `json:"a_mark"`
 	Color        string `json:"a_color"`

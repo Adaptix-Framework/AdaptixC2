@@ -30,22 +30,23 @@ class SessionsTableWidget : public DockTab
     void addTableItem(const Agent* newAgent) const;
 
 public:
-    int ColumnAgentID   = 0;
-    int ColumnAgentType = 1;
-    int ColumnExternal  = 2;
-    int ColumnListener  = 3;
-    int ColumnInternal  = 4;
-    int ColumnDomain    = 5;
-    int ColumnComputer  = 6;
-    int ColumnUser      = 7;
-    int ColumnOs        = 8;
-    int ColumnProcess   = 9;
-    int ColumnProcessId = 10;
-    int ColumnThreadId  = 11;
-    int ColumnTags      = 12;
-    int ColumnLast      = 13;
-    int ColumnSleep     = 14;
-    int ColumnCount     = 15;
+    int ColumnAgentID     = 0;
+    int ColumnAgentType   = 1;
+    int ColumnListener    = 2;
+    int ColumnExternal    = 3;
+    int ColumnInternal    = 4;
+    int ColumnDomain      = 5;
+    int ColumnComputer    = 6;
+    int ColumnUser        = 7;
+    int ColumnOs          = 8;
+    int ColumnProcess     = 9;
+    int ColumnProcessId   = 10;
+    int ColumnThreadId    = 11;
+    int ColumnCreateTime  = 12;
+    int ColumnLast        = 13;
+    int ColumnTags        = 14;
+    int ColumnSleep       = 15;
+    int ColumnCount       = 16;
 
     explicit SessionsTableWidget( AdaptixWidget* w );
     ~SessionsTableWidget() override;

@@ -19,6 +19,8 @@ QString UnixTimestampGlobalToStringLocalSmall(qint64 timestamp);
 
 QString UnixTimestampGlobalToStringLocalFull(qint64 timestamp);
 
+QString UnixTimestampGlobalToStringLocalYYMMDD(qint64 timestamp);
+
 QString TextColorHtml(const QString &text, const QString &color);
 
 // QString TextUnderlineColorHtml(const QString &text, const QString &color = "");

@@ -97,21 +97,22 @@ void SessionsTableWidget::createUI()
     tableWidget->horizontalHeader()->setHighlightSections( false );
     tableWidget->verticalHeader()->setVisible( false );
 
-    tableWidget->setHorizontalHeaderItem( ColumnAgentID,   new QTableWidgetItem( "ID" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnAgentType, new QTableWidgetItem( "Type" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnListener,  new QTableWidgetItem( "Listener" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnExternal,  new QTableWidgetItem( "External" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnInternal,  new QTableWidgetItem( "Internal" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnDomain,    new QTableWidgetItem( "Domain" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnComputer,  new QTableWidgetItem( "Computer" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnUser,      new QTableWidgetItem( "User" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnOs,        new QTableWidgetItem( "OS" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnProcess,   new QTableWidgetItem( "Process" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnProcessId, new QTableWidgetItem( "PID" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnThreadId,  new QTableWidgetItem( "TID" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnTags,      new QTableWidgetItem( "Tags" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnLast,      new QTableWidgetItem( "Last" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnSleep,     new QTableWidgetItem( "Sleep" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnAgentID,     new QTableWidgetItem( "ID" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnAgentType,   new QTableWidgetItem( "Type" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnListener,    new QTableWidgetItem( "Listener" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnExternal,    new QTableWidgetItem( "External" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnInternal,    new QTableWidgetItem( "Internal" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnDomain,      new QTableWidgetItem( "Domain" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnComputer,    new QTableWidgetItem( "Computer" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnUser,        new QTableWidgetItem( "User" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnOs,          new QTableWidgetItem( "OS" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnProcess,     new QTableWidgetItem( "Process" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnProcessId,   new QTableWidgetItem( "PID" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnThreadId,    new QTableWidgetItem( "TID" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnCreateTime,  new QTableWidgetItem( "Create" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnLast,        new QTableWidgetItem( "Last" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnTags,        new QTableWidgetItem( "Tags" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnSleep,       new QTableWidgetItem( "Sleep" ) );
 
     tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     this->UpdateColumnsVisible();
@@ -207,21 +208,26 @@ void SessionsTableWidget::addTableItem(const Agent* newAgent) const
 
     bool isSortingEnabled = tableWidget->isSortingEnabled();
     tableWidget->setSortingEnabled( false );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnAgentID,   newAgent->item_Id );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnAgentType, newAgent->item_Type );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnListener,  newAgent->item_Listener );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnExternal,  newAgent->item_External );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnInternal,  newAgent->item_Internal );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnDomain,    newAgent->item_Domain );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnComputer,  newAgent->item_Computer );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnUser,      newAgent->item_Username );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnOs,        newAgent->item_Os );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnProcess,   newAgent->item_Process );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnProcessId, newAgent->item_Pid );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnThreadId,  newAgent->item_Tid );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnTags,      newAgent->item_Tags );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnLast,      newAgent->item_Last );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnSleep,     newAgent->item_Sleep );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnAgentID,     newAgent->item_Id );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnAgentType,   newAgent->item_Type );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnListener,    newAgent->item_Listener );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnExternal,    newAgent->item_External );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnInternal,    newAgent->item_Internal );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnDomain,      newAgent->item_Domain );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnComputer,    newAgent->item_Computer );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnUser,        newAgent->item_Username );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnOs,          newAgent->item_Os );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnProcess,     newAgent->item_Process );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnProcessId,   newAgent->item_Pid );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnThreadId,    newAgent->item_Tid );
+    
+    // Add create time item
+    auto item_CreateTime = new AgentTableWidgetItem( UnixTimestampGlobalToStringLocalYYMMDD(newAgent->data.CreateTime), (Agent*)newAgent );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnCreateTime, item_CreateTime );
+    
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnLast,        newAgent->item_Last );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnTags,        newAgent->item_Tags );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnSleep,       newAgent->item_Sleep );
     tableWidget->setSortingEnabled( isSortingEnabled );
 
     this->UpdateColumnsWidth();
@@ -284,7 +290,7 @@ void SessionsTableWidget::SetData() const
 
 void SessionsTableWidget::UpdateColumnsVisible() const
 {
-    for (int i = 0; i < 15; i++) {
+    for (int i = 0; i < 16; i++) {
         if (GlobalClient->settings->data.SessionsTableColumns[i])
             tableWidget->showColumn(i);
         else
@@ -297,23 +303,26 @@ void SessionsTableWidget::UpdateColumnsWidth() const
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     tableWidget->horizontalHeader()->setSectionResizeMode(ColumnTags, QHeaderView::Stretch);
 
-    int wDomain   = tableWidget->columnWidth(ColumnDomain);
-    int wComputer = tableWidget->columnWidth(ColumnComputer);
-    int wUser     = tableWidget->columnWidth(ColumnUser);
-    int wOs       = tableWidget->columnWidth(ColumnOs);
-    int wProcess  = tableWidget->columnWidth(ColumnProcess);
+    int wDomain     = tableWidget->columnWidth(ColumnDomain);
+    int wComputer   = tableWidget->columnWidth(ColumnComputer);
+    int wUser       = tableWidget->columnWidth(ColumnUser);
+    int wOs         = tableWidget->columnWidth(ColumnOs);
+    int wProcess    = tableWidget->columnWidth(ColumnProcess);
+    int wCreateTime = tableWidget->columnWidth(ColumnCreateTime);
 
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnDomain,   QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnComputer, QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnUser,     QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnOs,       QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnProcess,  QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnDomain,     QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnComputer,   QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnUser,       QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnOs,         QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnProcess,    QHeaderView::Interactive);
+    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnCreateTime, QHeaderView::Interactive);
 
-    tableWidget->setColumnWidth(ColumnDomain,   wDomain);
-    tableWidget->setColumnWidth(ColumnComputer, wComputer);
-    tableWidget->setColumnWidth(ColumnUser,     wUser);
-    tableWidget->setColumnWidth(ColumnOs,       wOs);
-    tableWidget->setColumnWidth(ColumnProcess,  wProcess);
+    tableWidget->setColumnWidth(ColumnDomain,     wDomain);
+    tableWidget->setColumnWidth(ColumnComputer,   wComputer);
+    tableWidget->setColumnWidth(ColumnUser,       wUser);
+    tableWidget->setColumnWidth(ColumnOs,         wOs);
+    tableWidget->setColumnWidth(ColumnProcess,    wProcess);
+    tableWidget->setColumnWidth(ColumnCreateTime, wCreateTime);
 }
 
 void SessionsTableWidget::ClearTableContent() const

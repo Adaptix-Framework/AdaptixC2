@@ -373,9 +373,15 @@ void AdaptixWidget::ClearAdaptix()
 
 void AdaptixWidget::RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script)
 {
+    // 仅注册，不改动“已存在监听器列表”（该列表由 START/EDIT/STOP 驱动）
     ScriptManager->ListenerScriptAdd(name, ax_script);
     RegListenerConfig config = { name, protocol, type };
     RegisterListeners.push_back(config);
+
+    // 调试日志：记录当前注册和脚本列表
+    auto list = ScriptManager->ListenerScriptList();
+    ScriptManager->consolePrintMessage(QString("[Client] RegisterListenerConfig: name=%1 type=%2 protocol=%3 list=%4")
+                                       .arg(name).arg(type).arg(protocol).arg(list.join(",")));
 }
 
 void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners)

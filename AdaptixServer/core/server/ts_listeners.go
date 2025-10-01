@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsListenerList() (string, error) {
@@ -114,16 +114,19 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 	if !ts.listener_configs.Contains(listenerType) {
 		return fmt.Errorf("listener %v does not exist", listenerType)
 	}
-	if !ts.listeners.Contains(listenerName) {
-		return fmt.Errorf("listener '%v' does not exist", listenerName)
-	}
 
-	err := ts.Extender.ExListenerStop(listenerName, listenerType)
-	if err != nil {
-		return err
+	inMemory := ts.listeners.Contains(listenerName)
+	if inMemory {
+		// Normal stop flow for active listener
+		err := ts.Extender.ExListenerStop(listenerName, listenerType)
+		if err != nil {
+			return err
+		}
+		ts.listeners.Delete(listenerName)
+	} else {
+		// Ghost entry: not active in memory. Proceed with DB cleanup and UI removal.
+		// Do not fail hard — allow user to remove stale records.
 	}
-
-	ts.listeners.Delete(listenerName)
 
 	packet := CreateSpListenerStop(listenerName)
 	ts.TsSyncAllClients(packet)

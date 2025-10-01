@@ -237,6 +237,7 @@ typedef struct AgentData
     QString     Mark;
     QString     Color;
     int         LastTick;
+    qint64      CreateTime;
 } AgentData;
 
 typedef struct DownloadData

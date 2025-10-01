@@ -3,6 +3,7 @@
 #include <Agent/AgentTableWidgetItem.h>
 #include <Agent/TaskTableWidgetItem.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Client/AxScript/AxScriptManager.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
@@ -1027,6 +1028,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString ax       = jsonObj["ax"].toString();
 
         this->RegisterListenerConfig(name, protocol, type, ax);
+        // Actually load the AX script into the script engine so ListenerScriptEngine() can find it
+        this->ScriptManager->ListenerScriptAdd(name, ax);
+        // Debug: print current listener scripts after adding
+        {
+            auto list = this->ScriptManager->ListenerScriptList();
+            this->ScriptManager->consolePrintMessage(QString("[Client] ListenerScriptAdd: %1, list=%2").arg(name).arg(list.join(",")));
+        }
         return;
     }
     if( spType == TYPE_AGENT_REG )

@@ -3,7 +3,7 @@ package server
 import (
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 const (
@@ -190,6 +190,7 @@ func CreateSpAgentNew(agentData adaptix.AgentData) SyncPackerAgentNew {
 		Username:     agentData.Username,
 		Impersonated: agentData.Impersonated,
 		LastTick:     agentData.LastTick,
+		CreateTime:   agentData.CreateTime,
 		Tags:         agentData.Tags,
 		Mark:         agentData.Mark,
 		Color:        agentData.Color,

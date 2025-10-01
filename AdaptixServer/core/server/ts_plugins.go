@@ -20,11 +20,11 @@ func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
 	}
 
 	if !isvalid.ValidSBNString(listenerInfo.Name) {
-		return errors.New("invalid listener name (must only contain letters and numbers): " + listenerInfo.Type)
+		return errors.New("invalid listener name (must only contain letters and numbers): " + listenerInfo.Name)
 	}
 
 	if ts.listener_configs.Contains(listenerInfo.Name) {
-		return fmt.Errorf("listener %v already exists", listenerInfo.Name)
+		return fmt.Errorf("listener %v already exists (duplicate registration is not allowed)", listenerInfo.Name)
 	}
 
 	ts.listener_configs.Put(listenerInfo.Name, listenerInfo)

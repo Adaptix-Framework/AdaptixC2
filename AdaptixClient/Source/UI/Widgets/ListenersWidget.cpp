@@ -60,9 +60,19 @@ void ListenersWidget::Clear() const
 
 void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
 {
+    // Check if listener already exists, if so, update it instead of adding a new one
+    bool found = false;
     for( auto listener : adaptixWidget->Listeners ) {
-        if( listener.Name == newListener.Name )
-            return;
+        if( listener.Name == newListener.Name ) {
+            found = true;
+            break;
+        }
+    }
+    
+    if (found) {
+        // If listener already exists, update it
+        EditListenerItem(newListener);
+        return;
     }
 
     auto item_Name      = new QTableWidgetItem( newListener.Name );
@@ -201,6 +211,7 @@ void ListenersWidget::onCreateListener() const
     QMap<QString, AxContainerWrapper*> containers;
 
     auto listenersList = adaptixWidget->ScriptManager->ListenerScriptList();
+    adaptixWidget->ScriptManager->consolePrintMessage(QString("[Client] onCreateListener scripts=%1").arg(listenersList.join(",")));
 
     for (auto listener : listenersList) {
         auto engine = adaptixWidget->ScriptManager->ListenerScriptEngine(listener);
@@ -252,6 +263,7 @@ void ListenersWidget::onCreateListener() const
         }
 
         auto regListener = adaptixWidget->GetRegListener(listener);
+        adaptixWidget->ScriptManager->consolePrintMessage(QString("[Client] ListenerUI OK: %1").arg(listener));
 
         listeners.append(regListener);
         widgets[listener] = formElement->widget();

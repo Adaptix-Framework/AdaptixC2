@@ -78,8 +78,10 @@ QStringList AxScriptManager::ListenerScriptList() { return listeners_scripts.key
 
 void AxScriptManager::ListenerScriptAdd(const QString &name, const QString &ax_script)
 {
-    if (listeners_scripts.contains(name))
-        return;
+    // If the listener script already exists, remove it first to ensure we have the latest version
+    if (listeners_scripts.contains(name)) {
+        delete listeners_scripts.take(name);
+    }
 
     AxScriptEngine* script = new AxScriptEngine(this, name, this);
     script->execute(ax_script);

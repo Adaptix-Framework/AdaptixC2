@@ -8,8 +8,10 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"encoding/json"
+	"io/fs"
 	"net"
 	"os"
+	"path/filepath"
 )
 
 func NewTeamserver() *Teamserver {
@@ -184,7 +186,7 @@ func (ts *Teamserver) RestoreData() {
 		countMessages++
 	}
 	logs.Success("   ", "Restored %v messages", countMessages)
-	
+
 	/// DOWNLOADS
 	countDownloads := 0
 	restoreDownloads := ts.DBMS.DbDownloadAll()
@@ -247,6 +249,17 @@ func (ts *Teamserver) RestoreData() {
 	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
+		// 跳过未注册的监听器类型（避免“幽灵条目”）
+		if !ts.listener_configs.Contains(restoreListener.ListenerRegName) {
+			logs.Error("", "Skip restore listener %s: reg '%s' is not registered", restoreListener.ListenerName, restoreListener.ListenerRegName)
+			continue
+		}
+		// 跳过内存中已存在的监听器（防重复恢复）
+		if ts.listeners.Contains(restoreListener.ListenerName) {
+			logs.Warn("", "Skip restore listener %s: already present in memory", restoreListener.ListenerName)
+			continue
+		}
+
 		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.Watermark, restoreListener.CustomData)
 		if err != nil {
 			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
@@ -293,6 +306,52 @@ func (ts *Teamserver) Start() {
 
 	go ts.AdaptixServer.Start(&stopped)
 	logs.Success("", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
+
+	// Build extenders list: use profile, plus auto-scan release/extenders for config.json as fallback/augmentation
+	extenders := ts.Profile.Server.Extenders
+	// Auto-scan local release/extenders directory for any config.json files
+	{
+		baseDir := filepath.Join("release", "extenders")
+		var found []string
+		_ = filepath.WalkDir(baseDir, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return nil
+			}
+			if d.IsDir() {
+				return nil
+			}
+			if filepath.Base(path) == "config.json" {
+				found = append(found, path)
+			}
+			return nil
+		})
+		if len(found) > 0 {
+			extenders = append(extenders, found...)
+			logs.Success("", "Auto-scanned %d extender configs from %s", len(found), baseDir)
+		} else {
+			logs.Warn("", "No extender configs found by auto-scan in %s", baseDir)
+		}
+	}
+
+	// Load extenders/plugins before restoring data to ensure registration is available for clients
+	ts.Extender.LoadPlugins(extenders)
+	logs.Success("", "Extender load requested for %d configs", len(extenders))
+	for i, p := range extenders {
+		logs.Info("   ", "Extender[%d]: %s", i, p)
+	}
+
+	// Broadcast registered listeners to already-connected clients, so "Create Listener" dropdown updates immediately
+	countReg := 0
+	ts.listener_configs.ForEach(func(key string, value interface{}) bool {
+		listenerInfo := value.(extender.ListenerInfo)
+		axLen := len(listenerInfo.AX)
+		logs.Info("", "RegisterListener -> Name=%s Type=%s Protocol=%s AX_len=%d", listenerInfo.Name, listenerInfo.Type, listenerInfo.Protocol, axLen)
+		p := CreateSpListenerReg(listenerInfo.Name, listenerInfo.Protocol, listenerInfo.Type, listenerInfo.AX)
+		ts.TsSyncAllClients(p)
+		countReg++
+		return true
+	})
+	logs.Success("", "Broadcasted %d registered listeners", countReg)
 
 	ts.RestoreData()
 	logs.Success("", "The AdaptixC2 server is ready")

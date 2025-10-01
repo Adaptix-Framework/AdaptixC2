@@ -38,6 +38,26 @@ function ListenerUI(mode_create)
     textlineEncryptKey.setEnabled(mode_create)
     let buttonEncryptKey = form.create_button("Generate");
     buttonEncryptKey.setEnabled(mode_create)
+    
+    // Custom key settings
+    let checkCustomKey = form.create_check("Use custom key (string format)");
+    let labelCustomKeyInfo = form.create_label("Custom key must be 6-32 characters");
+    labelCustomKeyInfo.setEnabled(false);
+    
+    // Connect custom key checkbox to enable/disable key generation
+    form.connect(checkCustomKey, "stateChanged", function(state) {
+        if (state) {
+            // Enable custom key input
+            textlineEncryptKey.setPlaceholder("Enter custom key (6-32 chars)");
+            buttonEncryptKey.setEnabled(false);
+            labelCustomKeyInfo.setEnabled(true);
+        } else {
+            // Revert to hex key
+            textlineEncryptKey.setPlaceholder("");
+            buttonEncryptKey.setEnabled(mode_create);
+            labelCustomKeyInfo.setEnabled(false);
+        }
+    });
 
     let certSelector = form.create_selector_file();
     certSelector.setPlaceholder("SSL certificate");
@@ -71,7 +91,9 @@ function ListenerUI(mode_create)
     layoutMain.addWidget(labelEncryptKey, 6, 0, 1, 1);
     layoutMain.addWidget(textlineEncryptKey, 6, 1, 1, 1);
     layoutMain.addWidget(buttonEncryptKey, 6, 2, 1, 1);
-    layoutMain.addWidget(ssl_group, 7, 0, 1, 3);
+    layoutMain.addWidget(checkCustomKey, 7, 0, 1, 2);
+    layoutMain.addWidget(labelCustomKeyInfo, 7, 1, 1, 2);
+    layoutMain.addWidget(ssl_group, 8, 0, 1, 3);
 
     let panelMain = form.create_panel();
     panelMain.setLayout(layoutMain);
@@ -138,6 +160,7 @@ function ListenerUI(mode_create)
     container.put("user_agent", textlineUserAgent);
     container.put("hb_header", textlineHB);
     container.put("encrypt_key", textlineEncryptKey);
+    container.put("use_custom_key", checkCustomKey);
     container.put("ssl", ssl_group);
     container.put("ssl_cert", certSelector);
     container.put("ssl_key", keySelector);

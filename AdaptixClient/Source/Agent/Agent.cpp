@@ -39,6 +39,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->data.Username     = jsonObjAgentData["a_username"].toString();
     this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
     this->data.LastTick     = jsonObjAgentData["a_last_tick"].toDouble();
+    this->data.CreateTime   = jsonObjAgentData["a_create_time"].toDouble();
     this->data.Tags         = jsonObjAgentData["a_tags"].toString();
     this->data.Color        = jsonObjAgentData["a_color"].toString();
     QString mark            = jsonObjAgentData["a_mark"].toString();
@@ -87,11 +88,12 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->item_Os       = new AgentTableWidgetItem( this->data.OsDesc, this );
     this->item_Process  = new AgentTableWidgetItem( process, this );
     this->item_Pid      = new AgentTableWidgetItem( this->data.Pid, this );
-    this->item_Tid      = new AgentTableWidgetItem( this->data.Tid, this );
-    this->item_Tags     = new AgentTableWidgetItem( this->data.Tags, this );
-    this->item_Last     = new AgentTableWidgetItem( last, this );
-    this->item_Sleep    = new AgentTableWidgetItem( sleep, this );
-    this->item_Pid      = new AgentTableWidgetItem( this->data.Pid, this );
+    this->item_Tid         = new AgentTableWidgetItem( this->data.Tid, this );
+    this->item_Tags        = new AgentTableWidgetItem( this->data.Tags, this );
+    this->item_Last        = new AgentTableWidgetItem( last, this );
+    this->item_Sleep       = new AgentTableWidgetItem( sleep, this );
+    this->item_CreateTime  = new AgentTableWidgetItem( UnixTimestampGlobalToStringLocalYYMMDD(this->data.CreateTime), this );
+    this->item_Pid         = new AgentTableWidgetItem( this->data.Pid, this );
 
     if (this->data.WorkingTime || this->data.KillDate) {
         QString toolTip = "";
@@ -156,6 +158,10 @@ void Agent::Update(QJsonObject jsonObjAgentData)
     this->data.Tags         = jsonObjAgentData["a_tags"].toString();
     this->data.Color        = jsonObjAgentData["a_color"].toString();
     this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
+    this->data.CreateTime   = jsonObjAgentData["a_create_time"].toDouble();
+    
+    // Update create time item
+    this->item_CreateTime->setText(UnixTimestampGlobalToStringLocalYYMMDD(this->data.CreateTime));
     QString mark            = jsonObjAgentData["a_mark"].toString();
 
     this->item_Tags->setText(this->data.Tags);

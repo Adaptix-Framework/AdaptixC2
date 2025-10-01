@@ -213,6 +213,17 @@ QString UnixTimestampGlobalToStringLocalFull(qint64 timestamp)
     return formattedTime;
 }
 
+QString UnixTimestampGlobalToStringLocalYYMMDD(qint64 timestamp)
+{
+    if ( timestamp == 0 )
+        return "";
+
+    QDateTime epochDateTime = QDateTime::fromSecsSinceEpoch(timestamp, QTimeZone("UTC"));
+    QDateTime localDateTime = epochDateTime.toTimeZone(QTimeZone::systemTimeZone());
+    QString formattedTime = localDateTime.toString("yy/MM/dd hh:mm:ss");
+    return formattedTime;
+}
+
 QString TextColorHtml(const QString &text, const QString &color)
 {
     if (text.isEmpty())

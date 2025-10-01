@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
 )
 
@@ -87,9 +87,18 @@ func (m *ModuleExtender) HandlerListenerValid(data string) error {
 		return errors.New("user_agent is required")
 	}
 
-	match, _ := regexp.MatchString("^[0-9a-f]{32}$", conf.EncryptKey)
-	if len(conf.EncryptKey) != 32 || !match {
-		return errors.New("encrypt_key must be 32 hex characters")
+	// Check if custom key is enabled
+	if conf.UseCustomKey {
+		// Validate custom key length (6-32 characters)
+		if len(conf.EncryptKey) < 6 || len(conf.EncryptKey) > 32 {
+			return errors.New("encrypt_key must be between 6 and 32 characters when custom key is enabled")
+		}
+	} else {
+		// Original validation for hex key
+		match, _ := regexp.MatchString("^[0-9a-f]{32}$", conf.EncryptKey)
+		if len(conf.EncryptKey) != 32 || !match {
+			return errors.New("encrypt_key must be 32 hex characters")
+		}
 	}
 
 	if !strings.Contains(conf.WebPageOutput, "<<<PAYLOAD_DATA>>>") {

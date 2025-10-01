@@ -15,4 +15,4 @@ RUN make client
 
 FROM scratch AS exporter
 
-COPY --from=builder /app/dist .
+COPY --from=builder /app/release .

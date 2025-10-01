@@ -1,6 +1,6 @@
 all: clean prepare server client extenders
 
-DIST_DIR := dist
+DIST_DIR := release
 
 UNAME_S := $(shell uname -s)
 
@@ -25,7 +25,6 @@ clean:
 server: prepare
 	@ echo "[*] Building adaptixserver..."
 	@ cd AdaptixServer && go build -buildvcs=false -ldflags="-s -w" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
-	@ sudo setcap 'cap_net_bind_service=+ep' AdaptixServer/adaptixserver
 	@ mv AdaptixServer/adaptixserver ./$(DIST_DIR)/
 	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.json AdaptixServer/404page.html ./$(DIST_DIR)/
 	@ echo "[+] done"
@@ -76,7 +75,7 @@ help:
 	@ echo "  client      - Build only the client in multithread mode (fast build)"
 	@ echo "  client-fast - Build only the client"
 	@ echo "  extenders   - Build only the extenders"
-	@ echo "  clean       - Remove dist directory"
+	@ echo "  clean       - Remove release directory"
 	@ echo "  clean-all   - Remove all build artifacts"
 	@ echo "  help        - Show this help message"
 	@ echo ""
