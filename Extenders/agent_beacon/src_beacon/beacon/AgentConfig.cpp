@@ -15,10 +15,67 @@ AgentConfig::AgentConfig()
 	*packer = Packer( (BYTE*)ProfileBytes, size);
 	ULONG profileSize = packer->Unpack32();
 
-	this->encrypt_key = (PBYTE) MemAllocLocal(16);
-	memcpy(this->encrypt_key, packer->data() + 4 + profileSize, 16);
+	const ULONG CUSTOM_KEY_TAG = 0x59454B43;
 
-	DecryptRC4(packer->data()+4, profileSize, this->encrypt_key, 16);
+	ULONG dataOffset = 4 + profileSize;
+	ULONG remaining  = 0;
+	if (size > dataOffset) {
+		remaining = size - dataOffset;
+	}
+
+	PBYTE basePtr   = packer->data();
+	PBYTE keySource = basePtr + dataOffset;
+	ULONG keyLength = remaining;
+
+	this->encrypt_key_size = 0;
+
+	if (remaining >= sizeof(ULONG) * 2) {
+		ULONG tag = 0;
+		memcpy(&tag, keySource, sizeof(ULONG));
+		if (tag == CUSTOM_KEY_TAG) {
+			ULONG requested = 0;
+			memcpy(&requested, keySource + sizeof(ULONG), sizeof(ULONG));
+
+			ULONG available = remaining - (sizeof(ULONG) * 2);
+			if (requested > available) {
+				requested = available;
+			}
+
+			keySource += sizeof(ULONG) * 2;
+			keyLength = requested;
+		}
+	}
+
+	if (keyLength == 0) {
+		keyLength = remaining;
+	}
+	if (keyLength == 0) {
+		keyLength = 16;
+	}
+	if (keyLength > 256) {
+		keyLength = 256;
+	}
+
+	ULONG maxReadable = 0;
+	if (size > (ULONG)(keySource - basePtr)) {
+		maxReadable = size - (ULONG)(keySource - basePtr);
+	}
+	if (keyLength > maxReadable) {
+		keyLength = maxReadable;
+	}
+	if (keyLength == 0) {
+		keyLength = 16;
+	}
+
+	this->encrypt_key_size = keyLength;
+	this->encrypt_key = (PBYTE) MemAllocLocal(this->encrypt_key_size);
+	if (maxReadable >= this->encrypt_key_size && this->encrypt_key_size != 0) {
+		memcpy(this->encrypt_key, keySource, this->encrypt_key_size);
+	} else {
+		memset(this->encrypt_key, 0, this->encrypt_key_size);
+	}
+
+	DecryptRC4(packer->data()+4, profileSize, this->encrypt_key, static_cast<int>(this->encrypt_key_size));
 	
 	this->agent_type = packer->Unpack32();
 	

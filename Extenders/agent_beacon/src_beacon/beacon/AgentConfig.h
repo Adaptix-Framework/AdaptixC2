@@ -38,6 +38,7 @@ public:
 	ULONG agent_type;
 	ULONG listener_type;
 	BYTE* encrypt_key;
+	ULONG encrypt_key_size;
 	ULONG sleep_delay;
 	ULONG jitter_delay;
 	ULONG kill_date;

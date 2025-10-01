@@ -84,9 +84,19 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 	}
 
 	encrypt_key, _ := listenerMap["encrypt_key"].(string)
-	encryptKey, err := hex.DecodeString(encrypt_key)
-	if err != nil {
-		return nil, err
+	useCustomKey, _ := listenerMap["use_custom_key"].(bool)
+
+	var encryptKey []byte
+	if useCustomKey {
+		encryptKey = []byte(encrypt_key)
+		if len(encryptKey) < 6 || len(encryptKey) > 32 {
+			return nil, errors.New("invalid custom key length")
+		}
+	} else {
+		encryptKey, err = hex.DecodeString(encrypt_key)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	protocol, _ := listenerMap["protocol"].(string)
@@ -185,11 +195,20 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 		return nil, err
 	}
 
-	profileArray := []interface{}{len(cryptParams), cryptParams, encryptKey}
-	packedProfile, err := PackArray(profileArray)
-	if err != nil {
-		return nil, err
-	}
+	const customKeyTag uint32 = 0x59454B43 // 'CKEY'
+
+	profileBuffer := bytes.NewBuffer(nil)
+	lengthBuf := make([]byte, 4)
+	binary.LittleEndian.PutUint32(lengthBuf, uint32(len(cryptParams)))
+	profileBuffer.Write(lengthBuf)
+	profileBuffer.Write(cryptParams)
+	binary.LittleEndian.PutUint32(lengthBuf, customKeyTag)
+	profileBuffer.Write(lengthBuf)
+	binary.LittleEndian.PutUint32(lengthBuf, uint32(len(encryptKey)))
+	profileBuffer.Write(lengthBuf)
+	profileBuffer.Write(encryptKey)
+
+	packedProfile := profileBuffer.Bytes()
 
 	profileString := ""
 	for _, b := range packedProfile {

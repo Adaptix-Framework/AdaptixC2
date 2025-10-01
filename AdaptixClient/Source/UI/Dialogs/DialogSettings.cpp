@@ -154,7 +154,7 @@ void DialogSettings::createUI()
     QStringList sessionsCheckboxLabels = {
         "Agent ID", "Agent Type", "External", "Listener", "Internal",
         "Domain", "Computer", "User", "OS", "Process",
-        "PID", "TID", "Tags", "Last", "Sleep"
+        "PID", "TID", "Last", "Sleep", "Tags"
     };
 
     for (int i = 0; i < 15; ++i)

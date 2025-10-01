@@ -44,8 +44,8 @@ public:
     int ColumnThreadId    = 11;
     int ColumnCreateTime  = 12;
     int ColumnLast        = 13;
-    int ColumnTags        = 14;
-    int ColumnSleep       = 15;
+    int ColumnSleep       = 14;
+    int ColumnTags        = 15;
     int ColumnCount       = 16;
 
     explicit SessionsTableWidget( AdaptixWidget* w );

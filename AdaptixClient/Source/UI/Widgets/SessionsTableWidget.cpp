@@ -111,8 +111,8 @@ void SessionsTableWidget::createUI()
     tableWidget->setHorizontalHeaderItem( ColumnThreadId,    new QTableWidgetItem( "TID" ) );
     tableWidget->setHorizontalHeaderItem( ColumnCreateTime,  new QTableWidgetItem( "Create" ) );
     tableWidget->setHorizontalHeaderItem( ColumnLast,        new QTableWidgetItem( "Last" ) );
-    tableWidget->setHorizontalHeaderItem( ColumnTags,        new QTableWidgetItem( "Tags" ) );
     tableWidget->setHorizontalHeaderItem( ColumnSleep,       new QTableWidgetItem( "Sleep" ) );
+    tableWidget->setHorizontalHeaderItem( ColumnTags,        new QTableWidgetItem( "Tags" ) );
 
     tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
     this->UpdateColumnsVisible();
@@ -226,8 +226,8 @@ void SessionsTableWidget::addTableItem(const Agent* newAgent) const
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnCreateTime, item_CreateTime );
     
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnLast,        newAgent->item_Last );
-    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnTags,        newAgent->item_Tags );
     tableWidget->setItem( tableWidget->rowCount() - 1, ColumnSleep,       newAgent->item_Sleep );
+    tableWidget->setItem( tableWidget->rowCount() - 1, ColumnTags,        newAgent->item_Tags );
     tableWidget->setSortingEnabled( isSortingEnabled );
 
     this->UpdateColumnsWidth();
