@@ -92,8 +92,8 @@ void SessionsTableWidget::createUI()
     tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
     tableWidget->setFocusPolicy( Qt::NoFocus );
     tableWidget->setAlternatingRowColors( true );
-    tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
-    tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
+    tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Interactive );
+    tableWidget->horizontalHeader()->setStretchLastSection( false );
     tableWidget->horizontalHeader()->setHighlightSections( false );
     tableWidget->verticalHeader()->setVisible( false );
 
@@ -296,26 +296,22 @@ void SessionsTableWidget::UpdateColumnsVisible() const
 
 void SessionsTableWidget::UpdateColumnsWidth() const
 {
+    // 1. 先设置所有列为 ResizeToContents 以计算初始宽度
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnTags, QHeaderView::Stretch);
-
-    int wDomain   = tableWidget->columnWidth(ColumnDomain);
-    int wComputer = tableWidget->columnWidth(ColumnComputer);
-    int wUser     = tableWidget->columnWidth(ColumnUser);
-    int wOs       = tableWidget->columnWidth(ColumnOs);
-    int wProcess  = tableWidget->columnWidth(ColumnProcess);
-
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnDomain,   QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnComputer, QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnUser,     QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnOs,       QHeaderView::Interactive);
-    tableWidget->horizontalHeader()->setSectionResizeMode(ColumnProcess,  QHeaderView::Interactive);
-
-    tableWidget->setColumnWidth(ColumnDomain,   wDomain);
-    tableWidget->setColumnWidth(ColumnComputer, wComputer);
-    tableWidget->setColumnWidth(ColumnUser,     wUser);
-    tableWidget->setColumnWidth(ColumnOs,       wOs);
-    tableWidget->setColumnWidth(ColumnProcess,  wProcess);
+    
+    // 2. 获取所有列的自动计算宽度
+    QVector<int> columnWidths;
+    for (int i = 0; i < ColumnCount; i++) {
+        columnWidths.append(tableWidget->columnWidth(i));
+    }
+    
+    // 3. 将所有列改为 Interactive 模式（用户可拖动，类似 Excel）
+    tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    
+    // 4. 恢复计算出的列宽
+    for (int i = 0; i < ColumnCount; i++) {
+        tableWidget->setColumnWidth(i, columnWidths[i]);
+    }
 }
 
 void SessionsTableWidget::ClearTableContent() const
