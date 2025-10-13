@@ -10,7 +10,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -227,32 +227,33 @@ type SyncPackerAgentReg struct {
 type SyncPackerAgentNew struct {
 	SpType int `json:"type"`
 
-	Id           string `json:"a_id"`
-	Name         string `json:"a_name"`
-	Listener     string `json:"a_listener"`
-	Async        bool   `json:"a_async"`
-	ExternalIP   string `json:"a_external_ip"`
-	InternalIP   string `json:"a_internal_ip"`
-	GmtOffset    int    `json:"a_gmt_offset"`
-	WorkingTime  int    `json:"a_workingtime"`
-	KillDate     int    `json:"a_killdate"`
-	Sleep        uint   `json:"a_sleep"`
-	Jitter       uint   `json:"a_jitter"`
-	Pid          string `json:"a_pid"`
-	Tid          string `json:"a_tid"`
-	Arch         string `json:"a_arch"`
-	Elevated     bool   `json:"a_elevated"`
-	Process      string `json:"a_process"`
-	Os           int    `json:"a_os"`
-	OsDesc       string `json:"a_os_desc"`
-	Domain       string `json:"a_domain"`
-	Computer     string `json:"a_computer"`
-	Username     string `json:"a_username"`
-	Impersonated string `json:"a_impersonated"`
-	LastTick     int    `json:"a_last_tick"`
-	Tags         string `json:"a_tags"`
-	Mark         string `json:"a_mark"`
-	Color        string `json:"a_color"`
+	Id              string `json:"a_id"`
+	Name            string `json:"a_name"`
+	Listener        string `json:"a_listener"`
+	Async           bool   `json:"a_async"`
+	ExternalIP      string `json:"a_external_ip"`
+	InternalIP      string `json:"a_internal_ip"`
+	GmtOffset       int    `json:"a_gmt_offset"`
+	WorkingTime     int    `json:"a_workingtime"`
+	KillDate        int    `json:"a_killdate"`
+	Sleep           uint   `json:"a_sleep"`
+	Jitter          uint   `json:"a_jitter"`
+	Pid             string `json:"a_pid"`
+	Tid             string `json:"a_tid"`
+	Arch            string `json:"a_arch"`
+	Elevated        bool   `json:"a_elevated"`
+	Process         string `json:"a_process"`
+	Os              int    `json:"a_os"`
+	OsDesc          string `json:"a_os_desc"`
+	Domain          string `json:"a_domain"`
+	Computer        string `json:"a_computer"`
+	Username        string `json:"a_username"`
+	Impersonated    string `json:"a_impersonated"`
+	FirstOnlineTime string `json:"a_first"`
+	LastTick        int    `json:"a_last_tick"`
+	Tags            string `json:"a_tags"`
+	Mark            string `json:"a_mark"`
+	Color           string `json:"a_color"`
 }
 
 type SyncPackerAgentUpdate struct {

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsAgentList() (string, error) {

@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 type GenerateConfig struct {
@@ -84,6 +84,9 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 	}
 
 	encrypt_key, _ := listenerMap["encrypt_key"].(string)
+
+	// encrypt_key 应该已经是监听器转换后的 32 位 hex 字符串
+	// 直接解码即可
 	encryptKey, err := hex.DecodeString(encrypt_key)
 	if err != nil {
 		return nil, err

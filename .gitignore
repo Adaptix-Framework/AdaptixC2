@@ -1,15 +1,57 @@
+# IDE and build directories
 cmake-build-debug/
+.idea/
+.qt/
+.vscode/
+
+# Object files and binaries
+*.o
+*.so
+*.exe
+*.bin
+*.dll
+*.dylib
+*.a
+
+# Build artifacts
 objects_http/
 objects_smb/
 objects_tcp/
-.idea/
-.qt/
-*.so
 dist/
+modules/
+
+# CMake
 AdaptixClient/CMakeFiles/
 AdaptixClient/AdaptixClient_autogen/
 AdaptixClient/CMakeCache.txt
 AdaptixClient/*.log
 AdaptixClient/cmake_*
 AdaptixClient/Makefile
+AdaptixClient/AdaptixClient
+AdaptixClient/Libs/kddockwidgets/CMakeFiles/
+AdaptixClient/Libs/kddockwidgets/kddockwidgets_autogen/
+AdaptixClient/Libs/kddockwidgets/Makefile
+AdaptixClient/Libs/kddockwidgets/cmake_install.cmake
+
+# Go build
+AdaptixServer/adaptixserver
 AdaptixServer/build_error.log
+
+# Release directory (runtime artifacts)
+release/
+!release/.gitkeep
+
+# Temporary and log files
+*.log
+*.tmp
+*.swp
+*~
+
+# Database and data files
+*.db
+data/
+
+# SSL certificates (if auto-generated)
+*.crt
+*.key
+*.pem

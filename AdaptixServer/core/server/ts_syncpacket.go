@@ -3,7 +3,7 @@ package server
 import (
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 const (
@@ -164,35 +164,42 @@ func CreateSpAgentReg(agent string, ax string, listeners []string) SyncPackerAge
 }
 
 func CreateSpAgentNew(agentData adaptix.AgentData) SyncPackerAgentNew {
+	// 计算首次上线时间（使用CreateTime转换为yy/dd/mm hh:mm:ss格式）
+	firstOnlineTime := ""
+	if agentData.CreateTime > 0 {
+		firstOnlineTime = time.Unix(agentData.CreateTime, 0).Format("06/02/01 15:04:05")
+	}
+
 	return SyncPackerAgentNew{
 		SpType: TYPE_AGENT_NEW,
 
-		Id:           agentData.Id,
-		Name:         agentData.Name,
-		Listener:     agentData.Listener,
-		Async:        agentData.Async,
-		ExternalIP:   agentData.ExternalIP,
-		InternalIP:   agentData.InternalIP,
-		GmtOffset:    agentData.GmtOffset,
-		WorkingTime:  agentData.WorkingTime,
-		KillDate:     agentData.KillDate,
-		Sleep:        agentData.Sleep,
-		Jitter:       agentData.Jitter,
-		Pid:          agentData.Pid,
-		Tid:          agentData.Tid,
-		Arch:         agentData.Arch,
-		Elevated:     agentData.Elevated,
-		Process:      agentData.Process,
-		Os:           agentData.Os,
-		OsDesc:       agentData.OsDesc,
-		Domain:       agentData.Domain,
-		Computer:     agentData.Computer,
-		Username:     agentData.Username,
-		Impersonated: agentData.Impersonated,
-		LastTick:     agentData.LastTick,
-		Tags:         agentData.Tags,
-		Mark:         agentData.Mark,
-		Color:        agentData.Color,
+		Id:              agentData.Id,
+		Name:            agentData.Name,
+		Listener:        agentData.Listener,
+		Async:           agentData.Async,
+		ExternalIP:      agentData.ExternalIP,
+		InternalIP:      agentData.InternalIP,
+		GmtOffset:       agentData.GmtOffset,
+		WorkingTime:     agentData.WorkingTime,
+		KillDate:        agentData.KillDate,
+		Sleep:           agentData.Sleep,
+		Jitter:          agentData.Jitter,
+		Pid:             agentData.Pid,
+		Tid:             agentData.Tid,
+		Arch:            agentData.Arch,
+		Elevated:        agentData.Elevated,
+		Process:         agentData.Process,
+		Os:              agentData.Os,
+		OsDesc:          agentData.OsDesc,
+		Domain:          agentData.Domain,
+		Computer:        agentData.Computer,
+		Username:        agentData.Username,
+		Impersonated:    agentData.Impersonated,
+		FirstOnlineTime: firstOnlineTime,
+		LastTick:        agentData.LastTick,
+		Tags:            agentData.Tags,
+		Mark:            agentData.Mark,
+		Color:           agentData.Color,
 	}
 }
 

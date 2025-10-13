@@ -42,10 +42,11 @@ public:
     int ColumnProcess   = 9;
     int ColumnProcessId = 10;
     int ColumnThreadId  = 11;
-    int ColumnTags      = 12;
+    int ColumnFirst     = 12;
     int ColumnLast      = 13;
     int ColumnSleep     = 14;
-    int ColumnCount     = 15;
+    int ColumnTags      = 15;
+    int ColumnCount     = 16;
 
     explicit SessionsTableWidget( AdaptixWidget* w );
     ~SessionsTableWidget() override;

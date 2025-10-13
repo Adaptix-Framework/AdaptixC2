@@ -41,6 +41,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->data.LastTick     = jsonObjAgentData["a_last_tick"].toDouble();
     this->data.Tags         = jsonObjAgentData["a_tags"].toString();
     this->data.Color        = jsonObjAgentData["a_color"].toString();
+    this->data.FirstOnlineTime = jsonObjAgentData["a_first"].toString();
     QString mark            = jsonObjAgentData["a_mark"].toString();
 
     QString process  = QString("%1 (%2)").arg(this->data.Process).arg(this->data.Arch);
@@ -88,10 +89,10 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->item_Process  = new AgentTableWidgetItem( process, this );
     this->item_Pid      = new AgentTableWidgetItem( this->data.Pid, this );
     this->item_Tid      = new AgentTableWidgetItem( this->data.Tid, this );
-    this->item_Tags     = new AgentTableWidgetItem( this->data.Tags, this );
+    this->item_First    = new AgentTableWidgetItem( this->data.FirstOnlineTime, this );
     this->item_Last     = new AgentTableWidgetItem( last, this );
     this->item_Sleep    = new AgentTableWidgetItem( sleep, this );
-    this->item_Pid      = new AgentTableWidgetItem( this->data.Pid, this );
+    this->item_Tags     = new AgentTableWidgetItem( this->data.Tags, this );
 
     if (this->data.WorkingTime || this->data.KillDate) {
         QString toolTip = "";
@@ -276,9 +277,10 @@ void Agent::SetColor(const QString &color) const
         this->item_Process->RevertColor();
         this->item_Pid->RevertColor();
         this->item_Tid->RevertColor();
-        this->item_Tags->RevertColor();
+        this->item_First->RevertColor();
         this->item_Last->RevertColor();
         this->item_Sleep->RevertColor();
+        this->item_Tags->RevertColor();
     } else {
         QStringList colors = color.split('-');
         if (colors.size() == 2) {
@@ -294,9 +296,10 @@ void Agent::SetColor(const QString &color) const
             this->item_Process->SetColor(QColor(colors[0]), QColor(colors[1]));
             this->item_Pid->SetColor(QColor(colors[0]), QColor(colors[1]));
             this->item_Tid->SetColor(QColor(colors[0]), QColor(colors[1]));
-            this->item_Tags->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_First->SetColor(QColor(colors[0]), QColor(colors[1]));
             this->item_Last->SetColor(QColor(colors[0]), QColor(colors[1]));
             this->item_Sleep->SetColor(QColor(colors[0]), QColor(colors[1]));
+            this->item_Tags->SetColor(QColor(colors[0]), QColor(colors[1]));
         }
     }
 }

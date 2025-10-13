@@ -41,6 +41,7 @@ QJSValue BridgeApp::agents() const
         map["gmt"]          = agent->data.GmtOffset;
         map["elevated"]     = agent->data.Elevated;
         map["tags"]         = agent->data.Tags;
+        map["first"]        = agent->data.FirstOnlineTime;
         map["async"]        = agent->data.Async;
         map["sleep"]        = agent->data.Sleep;
         map["os_full"]      = agent->data.OsDesc;
