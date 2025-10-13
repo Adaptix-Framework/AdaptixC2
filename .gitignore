@@ -8,10 +8,13 @@ cmake-build-debug/
 *.o
 *.so
 *.exe
-*.bin
 *.dll
 *.dylib
 *.a
+
+# 排除必需的stub文件
+*.bin
+!Extenders/agent_beacon/src_beacon/files/stub*.bin
 
 # Build artifacts
 objects_http/
@@ -30,6 +33,7 @@ AdaptixClient/Makefile
 AdaptixClient/AdaptixClient
 AdaptixClient/Libs/kddockwidgets/CMakeFiles/
 AdaptixClient/Libs/kddockwidgets/kddockwidgets_autogen/
+AdaptixClient/Libs/kddockwidgets/kddockwidgets_export.h
 AdaptixClient/Libs/kddockwidgets/Makefile
 AdaptixClient/Libs/kddockwidgets/cmake_install.cmake
 
