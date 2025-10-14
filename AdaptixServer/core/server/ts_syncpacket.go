@@ -164,10 +164,10 @@ func CreateSpAgentReg(agent string, ax string, listeners []string) SyncPackerAge
 }
 
 func CreateSpAgentNew(agentData adaptix.AgentData) SyncPackerAgentNew {
-	// 计算首次上线时间（使用CreateTime转换为yy/dd/mm hh:mm:ss格式）
+	// 计算首次上线时间（使用CreateTime转换为yy/mm/dd hh:mm:ss格式）
 	firstOnlineTime := ""
 	if agentData.CreateTime > 0 {
-		firstOnlineTime = time.Unix(agentData.CreateTime, 0).Format("06/02/01 15:04:05")
+		firstOnlineTime = time.Unix(agentData.CreateTime, 0).Format("06/01/02 15:04:05")
 	}
 
 	return SyncPackerAgentNew{

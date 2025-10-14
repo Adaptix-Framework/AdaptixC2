@@ -1,0 +1,4 @@
+set(__QT_DEPLOY_TARGET_kddockwidgets_FILE /Users/blackman/netattack/c2/AdaptixC2/AdaptixClient/Libs/kddockwidgets/libkddockwidgets.a)
+set(__QT_DEPLOY_TARGET_kddockwidgets_TYPE STATIC_LIBRARY)
+set(__QT_DEPLOY_TARGET_AdaptixClient_FILE /Users/blackman/netattack/c2/AdaptixC2/AdaptixClient/AdaptixClient)
+set(__QT_DEPLOY_TARGET_AdaptixClient_TYPE EXECUTABLE)

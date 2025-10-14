@@ -1,61 +1,91 @@
-# IDE and build directories
-cmake-build-debug/
+# 操作系统与IDE
+.DS_Store
+Thumbs.db
 .idea/
-.qt/
 .vscode/
 
-# Object files and binaries
-*.o
-*.so
-*.exe
-*.dll
-*.dylib
-*.a
-
-# 排除必需的stub文件
-*.bin
-!Extenders/agent_beacon/src_beacon/files/stub*.bin
-
-# Build artifacts
-objects_http/
-objects_smb/
-objects_tcp/
+# 构建产物/中间文件
+build/
 dist/
-modules/
+out/
+bin/
+obj/
+CMakeCache.txt
+CMakeFiles/
+**/CMakeFiles/
+**/pkgRedirects/
+*.o
+*.obj
+*.a
+*.lib
+*.pdb
+*.dll
+*.so
+*.dylib
+*.exe
+*.msi
+*.class
+*.jar
 
-# CMake
-AdaptixClient/CMakeFiles/
+# 自动生成与预编译库
 AdaptixClient/AdaptixClient_autogen/
-AdaptixClient/CMakeCache.txt
-AdaptixClient/*.log
-AdaptixClient/cmake_*
-AdaptixClient/Makefile
-AdaptixClient/AdaptixClient
-AdaptixClient/Libs/kddockwidgets/CMakeFiles/
-AdaptixClient/Libs/kddockwidgets/kddockwidgets_autogen/
-AdaptixClient/Libs/kddockwidgets/kddockwidgets_export.h
-AdaptixClient/Libs/kddockwidgets/Makefile
-AdaptixClient/Libs/kddockwidgets/cmake_install.cmake
+**/_autogen/
+AdaptixClient/Libs/
 
-# Go build
-AdaptixServer/adaptixserver
-AdaptixServer/build_error.log
+# Extension-Kit 二进制与图片（保留 _include 源）
+Extension-Kit/**/_bin/
+Extension-Kit/**/_img/
 
-# Release directory (runtime artifacts)
-release/
-!release/.gitkeep
+# release 输出目录（不提交运行时数据与打包物）
+release/data/
+release/*
 
-# Temporary and log files
+# 常见二进制/归档文件
+*.bin
+*.img
+*.iso
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.bz2
+*.xz
+*.zst
+*.tar.gz
+*.tgz
+
+# 媒体文件（全部排除）
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.bmp
+*.tiff
+*.svg
+*.mp3
+*.wav
+*.aac
+*.flac
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+# 日志与临时
 *.log
-*.tmp
-*.swp
-*~
+logs/
+tmp/
+temp/
 
-# Database and data files
-*.db
-data/
-
-# SSL certificates (if auto-generated)
-*.crt
+# 私密/凭据
+.env
+.env.*
 *.key
 *.pem
+*.crt
+secrets/
+config/local/
+configs/local/
