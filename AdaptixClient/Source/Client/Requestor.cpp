@@ -5,6 +5,8 @@ QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QStri
 {
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    // 强制使用TLS 1.2或更高版本，避免降级到TLSv1
+    sslConfig.setProtocol(QSsl::TlsV1_2OrLater);
     QSslConfiguration::setDefaultConfiguration(sslConfig);
 
     QUrl url(sUrl);
@@ -51,7 +53,8 @@ bool HttpReqLogin(AuthProfile* profile)
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile->GetURL() + "/login";
-    QJsonObject jsonObject = HttpReq(sUrl, jsonData, QString());
+    // 增加登录超时到20秒，适应Cloudflare隧道的延迟
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, QString(), 20000);
     if (jsonObject.contains("access_token") && jsonObject.contains("refresh_token")) {
         profile->SetAccessToken( jsonObject["access_token"].toString() );
         profile->SetRefreshToken( jsonObject["refresh_token"].toString() );
@@ -161,6 +164,8 @@ QJsonObject HttpReqTimeout( int timeout, const QString &sUrl, const QByteArray &
 {
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    // 强制使用TLS 1.2或更高版本，避免降级到TLSv1
+    sslConfig.setProtocol(QSsl::TlsV1_2OrLater);
     QSslConfiguration::setDefaultConfiguration(sslConfig);
 
     QUrl url(sUrl);

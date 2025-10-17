@@ -6,6 +6,7 @@ import (
 	"AdaptixServer/core/utils/token"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -73,13 +74,14 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 		return
 	}
 
-	exists = tc.teamserver.TsClientExists(username)
-	if exists {
-		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: invalid username type in context", "ok": false})
-		return
+	// 先断开旧连接（如果存在）
+	if tc.teamserver.TsClientExists(username) {
+		tc.teamserver.TsClientDisconnect(username)
 	}
 
 	var wsUpgrader websocket.Upgrader
+	// 增加握手超时，适应Cloudflare隧道延迟
+	wsUpgrader.HandshakeTimeout = 15 * time.Second
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		logs.Error("", "WebSocket upgrade error: "+err.Error())
@@ -95,15 +97,35 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 }
 
 func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Conn) {
-	tc.teamserver.TsClientConnect(username, wsConn)
-	for {
-		_, _, err := wsConn.ReadMessage()
-		if err == nil {
-			continue
-		}
+	ws := wsConn
+	ws.SetReadDeadline(time.Now().Add(90 * time.Second))
+	ws.SetPongHandler(func(string) error {
+		ws.SetReadDeadline(time.Now().Add(90 * time.Second))
+		return nil
+	})
 
-		tc.teamserver.TsClientDisconnect(username)
-		break
+	tc.teamserver.TsClientConnect(username, wsConn)
+
+	// 心跳ticker
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			if err := ws.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+				tc.teamserver.TsClientDisconnect(username)
+				return
+			}
+		default:
+			_, _, err := ws.ReadMessage()
+			if err == nil {
+				continue
+			}
+			tc.teamserver.TsClientDisconnect(username)
+			return
+		}
 	}
 }
 
@@ -141,6 +163,8 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 	}
 
 	var wsUpgrader websocket.Upgrader
+	// 增加握手超时，适应Cloudflare隧道延迟
+	wsUpgrader.HandshakeTimeout = 15 * time.Second
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		logs.Error("", "WebSocket upgrade error: "+err.Error())

@@ -16,6 +16,8 @@ void WebSocketWorker::run()
     webSocket = new QWebSocket;
     auto SslConf = webSocket->sslConfiguration();
     SslConf.setPeerVerifyMode( QSslSocket::VerifyNone );
+    // 强制使用TLS 1.2或更高版本，避免降级到TLSv1
+    SslConf.setProtocol( QSsl::TlsV1_2OrLater );
     webSocket->setSslConfiguration( SslConf );
     webSocket->ignoreSslErrors();
 
@@ -37,6 +39,9 @@ void WebSocketWorker::run()
     request.setRawHeader("Authorization", "Bearer " + profile->GetAccessToken().toUtf8());
 
     webSocket->open(request);
+    
+    // 启动事件循环，保持线程运行以处理WebSocket事件（包括Ping/Pong）
+    exec();
 }
 
 void WebSocketWorker::is_error(QAbstractSocket::SocketError error)

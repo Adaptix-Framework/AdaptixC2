@@ -76,6 +76,7 @@ release/*
 
 # 日志与临时
 *.log
+*.md
 logs/
 tmp/
 temp/
