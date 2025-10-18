@@ -46,12 +46,14 @@ func (ts *Teamserver) ValidateOTP() gin.HandlerFunc {
 		otp := ctx.GetHeader("OTP")
 		if otp == "" {
 			_ = ctx.Error(errors.New("authorization token required"))
+			ctx.Abort() // 必须调用Abort()终止请求链
 			return
 		}
 
 		value, ok := ts.otps.GetDelete(otp)
 		if !ok {
 			_ = ctx.Error(errors.New("authorization token required"))
+			ctx.Abort() // 必须调用Abort()终止请求链
 			return
 		}
 		objectId, _ := value.(string)

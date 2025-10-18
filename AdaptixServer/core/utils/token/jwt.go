@@ -4,11 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 var accessKey string
@@ -88,6 +89,7 @@ func ValidateAccessToken() gin.HandlerFunc {
 		tokenString := ctx.GetHeader("Authorization")
 		if tokenString == "" {
 			_ = ctx.Error(errors.New("authorization token required"))
+			ctx.Abort() // 必须调用Abort()终止请求链
 			return
 		}
 
@@ -95,12 +97,14 @@ func ValidateAccessToken() gin.HandlerFunc {
 			tokenString = tokenString[7:]
 		} else {
 			_ = ctx.Error(errors.New("authorization token required"))
+			ctx.Abort() // 必须调用Abort()终止请求链
 			return
 		}
 
 		username, err := GetUsernameFromJWT(tokenString)
 		if err != nil {
 			_ = ctx.Error(err)
+			ctx.Abort() // 必须调用Abort()终止请求链
 			return
 		}
 
@@ -114,6 +118,7 @@ func RefreshTokenHandler(ctx *gin.Context) {
 	refreshToken := ctx.GetHeader("Authorization")
 	if refreshToken == "" {
 		_ = ctx.Error(errors.New("refresh token required"))
+		ctx.Abort() // 必须调用Abort()终止请求链
 		return
 	}
 
@@ -121,6 +126,7 @@ func RefreshTokenHandler(ctx *gin.Context) {
 		refreshToken = refreshToken[7:]
 	} else {
 		_ = ctx.Error(errors.New("refresh token required"))
+		ctx.Abort() // 必须调用Abort()终止请求链
 		return
 	}
 
@@ -131,12 +137,14 @@ func RefreshTokenHandler(ctx *gin.Context) {
 
 	if err != nil || !token.Valid {
 		_ = ctx.Error(errors.New("invalid refresh token"))
+		ctx.Abort() // 必须调用Abort()终止请求链
 		return
 	}
 
 	newAccessToken, err := GenerateAccessToken(claims.Username)
 	if err != nil {
 		_ = ctx.Error(errors.New("could not generate access token"))
+		ctx.Abort() // 必须调用Abort()终止请求链
 		return
 	}
 
