@@ -82,6 +82,10 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 	var wsUpgrader websocket.Upgrader
 	// 增加握手超时，适应Cloudflare隧道延迟
 	wsUpgrader.HandshakeTimeout = 15 * time.Second
+	// 允许所有Origin，因为通过Cloudflare隧道时Origin会不匹配，且已有JWT验证保护
+	wsUpgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		logs.Error("", "WebSocket upgrade error: "+err.Error())
@@ -165,6 +169,10 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 	var wsUpgrader websocket.Upgrader
 	// 增加握手超时，适应Cloudflare隧道延迟
 	wsUpgrader.HandshakeTimeout = 15 * time.Second
+	// 允许所有Origin，因为通过Cloudflare隧道时Origin会不匹配，且已有JWT验证保护
+	wsUpgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		logs.Error("", "WebSocket upgrade error: "+err.Error())
