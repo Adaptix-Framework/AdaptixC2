@@ -5,9 +5,12 @@ import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/token"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
@@ -243,7 +246,35 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 
 func (tc *TsConnector) Start(finished *chan bool) {
 	host := fmt.Sprintf("%s:%d", tc.Interface, tc.Port)
-	err := tc.Engine.RunTLS(host, tc.Cert, tc.Key)
+
+	// 使用自定义TLS配置，更好地支持Cloudflare隧道
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12, // 最低TLS 1.2
+		MaxVersion: tls.VersionTLS13, // 最高TLS 1.3
+		// InsecureSkipVerify对服务器无效，服务器不验证客户端
+		// 但设置宽松的CipherSuites可以提高兼容性
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+		},
+		PreferServerCipherSuites: false, // 允许客户端选择cipher
+	}
+
+	server := &http.Server{
+		Addr:           host,
+		Handler:        tc.Engine,
+		TLSConfig:      tlsConfig,
+		ReadTimeout:    30 * time.Second,
+		WriteTimeout:   30 * time.Second,
+		IdleTimeout:    120 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1MB
+	}
+
+	err := server.ListenAndServeTLS(tc.Cert, tc.Key)
 	if err != nil {
 		logs.Error("", "Failed to start HTTP Server: "+err.Error())
 		return
