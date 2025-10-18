@@ -49,8 +49,6 @@ type Client struct {
 	lockSocket *sync.Mutex
 	socket     *websocket.Conn
 	tmp_store  *safe.Slice
-	msgQueue   chan interface{} // 异步发送队列
-	done       chan bool         // 关闭信号
 }
 
 type TsParameters struct {

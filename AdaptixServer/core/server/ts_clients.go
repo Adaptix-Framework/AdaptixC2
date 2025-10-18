@@ -1,12 +1,10 @@
 package server
 
 import (
-	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"bytes"
 	"encoding/json"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -22,14 +20,9 @@ func (ts *Teamserver) TsClientConnect(username string, socket *websocket.Conn) {
 		lockSocket: &sync.Mutex{},
 		socket:     socket,
 		tmp_store:  safe.NewSlice(),
-		msgQueue:   make(chan interface{}, 256), // 缓冲256条消息
-		done:       make(chan bool),
 	}
 
 	ts.clients.Put(username, client)
-
-	// 启动异步发送goroutine
-	go ts.TsClientMessageSender(username, client)
 }
 
 func (ts *Teamserver) TsClientDisconnect(username string) {
@@ -40,7 +33,6 @@ func (ts *Teamserver) TsClientDisconnect(username string) {
 	client := value.(*Client)
 
 	client.synced = false
-	close(client.done) // 通知发送goroutine退出
 	client.socket.Close()
 
 	ts.TsEventClient(false, username)
@@ -64,6 +56,7 @@ func (ts *Teamserver) TsClientSync(username string) {
 		return
 	}
 	client := value.(*Client)
+	socket := client.socket
 
 	if !client.synced {
 		ts.TsSyncStored(client)
@@ -72,11 +65,9 @@ func (ts *Teamserver) TsClientSync(username string) {
 			if client.tmp_store.Len() > 0 {
 				arr := client.tmp_store.CutArray()
 				for _, v := range arr {
-					select {
-					case client.msgQueue <- v:
-					default:
-						logs.Warn("", "Client %s message queue full, dropping message", username)
-					}
+					var buffer bytes.Buffer
+					_ = json.NewEncoder(&buffer).Encode(v)
+					_ = socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 				}
 			} else {
 				client.synced = true
@@ -86,30 +77,4 @@ func (ts *Teamserver) TsClientSync(username string) {
 	}
 
 	ts.TsEventClient(true, username)
-}
-
-// 异步消息发送循环
-func (ts *Teamserver) TsClientMessageSender(username string, client *Client) {
-	for {
-		select {
-		case <-client.done:
-			return
-		case msg := <-client.msgQueue:
-			var buffer bytes.Buffer
-			err := json.NewEncoder(&buffer).Encode(msg)
-			if err != nil {
-				continue
-			}
-
-			client.lockSocket.Lock()
-			client.socket.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			err = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-			client.lockSocket.Unlock()
-
-			if err != nil {
-				ts.TsClientDisconnect(username)
-				return
-			}
-		}
-	}
 }
