@@ -169,6 +169,7 @@ Q_SIGNALS:
 public Q_SLOTS:
     void ChannelClose() const;
     void DataHandler(const QByteArray& data);
+    void OnWebSocketConnected();
 
     void OnSynced();
     void SetSessionsTableUI() const;

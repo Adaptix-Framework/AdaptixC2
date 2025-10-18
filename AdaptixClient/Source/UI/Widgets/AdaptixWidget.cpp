@@ -119,6 +119,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( ChannelWsWorker, &WebSocketWorker::received_data,    this,   &AdaptixWidget::DataHandler );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this,   &AdaptixWidget::ChannelClose );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, ScriptManager, &AxScriptManager::emitDisconnectClient );
+    // 关键修复：在WebSocket连接成功后再调用sync，确保连接已建立
+    connect( ChannelWsWorker, &WebSocketWorker::connected,        this,   &AdaptixWidget::OnWebSocketConnected );
 
     dialogSyncPacket = new DialogSyncPacket();
     dialogSyncPacket->splashScreen->show();
@@ -129,7 +131,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     /// TODO: Enable menu button
     keysButton->setVisible(false);
 
-    HttpReqSync( *profile );
+    // HttpReqSync 移至 OnWebSocketConnected() 中调用
 }
 
 AdaptixWidget::~AdaptixWidget() = default;
@@ -757,6 +759,12 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
     this->processSyncPacket(jsonObj);
 }
 
+void AdaptixWidget::OnWebSocketConnected()
+{
+    // WebSocket连接成功后，调用sync同步服务器数据
+    HttpReqSync( *profile );
+}
+
 void AdaptixWidget::OnSynced()
 {
     synchronized = true;
@@ -813,7 +821,7 @@ void AdaptixWidget::OnReconnect()
         QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/link"), COLOR_NeonGreen);
         reconnectButton->setIcon(onReconnectButton);
 
-        HttpReqSync( *profile );
+        // HttpReqSync 会在 OnWebSocketConnected() 中自动调用
     }
 }
 
