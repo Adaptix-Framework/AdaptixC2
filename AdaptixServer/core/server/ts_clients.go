@@ -27,7 +27,7 @@ func (ts *Teamserver) TsClientConnect(username string, socket *websocket.Conn) {
 	}
 
 	ts.clients.Put(username, client)
-	
+
 	// 启动异步发送goroutine
 	go ts.TsClientMessageSender(username, client)
 }
@@ -107,7 +107,7 @@ func (ts *Teamserver) TsClientMessageSender(username string, client *Client) {
 			client.lockSocket.Unlock()
 
 			if err != nil {
-				tc.teamserver.TsClientDisconnect(username)
+				ts.TsClientDisconnect(username)
 				return
 			}
 		}
