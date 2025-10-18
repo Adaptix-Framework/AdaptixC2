@@ -113,11 +113,11 @@ public:
                                                          ///< too, otherwise they wouldn't appear in
                                                          ///< the task bar.
         Flag_TitleBarNoFloatButton = 0x4000, ///< The TitleBar won't show the float button
+        Flag_TitleBarShowAutoHide = 0x8000, ///< Supports minimizing dock widgets to the side-bar
         Flag_AutoHideSupport =
-            0x8000 | Flag_TitleBarNoFloatButton, ///< Supports minimizing dock widgets to the
-                                                 ///< side-bar. By default it also turns off the
-                                                 ///< float button, but you can remove
-                                                 ///< Flag_TitleBarNoFloatButton to have both.
+            Flag_TitleBarShowAutoHide | Flag_TitleBarNoFloatButton, ///< Supports minimizing dock widgets to the
+                                                                    ///< side-bar. This flag also turns off the
+                                                                    ///< float button.
         Flag_KeepAboveIfNotUtilityWindow =
             0x10000, ///< Only meaningful if Flag_DontUseUtilityFloatingWindows is set. If floating
                      ///< windows are normal windows, you might still want them to keep above and

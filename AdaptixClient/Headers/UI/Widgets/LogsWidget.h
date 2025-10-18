@@ -11,13 +11,13 @@ class LogsWidget : public DockTab
 {
     QGridLayout*     mainGridLayout      = nullptr;
     QGridLayout*     logsGridLayout      = nullptr;
-    QGridLayout*     todoGridLayout      = nullptr;
+    // QGridLayout*     todoGridLayout      = nullptr;
     TextEditConsole* logsConsoleTextEdit = nullptr;
     QLabel*          logsLabel           = nullptr;
-    QLabel*          todoLabel           = nullptr;
+    // QLabel*          todoLabel           = nullptr;
     QSplitter*       mainHSplitter       = nullptr;
     QWidget*         logsWidget          = nullptr;
-    QWidget*         todoWidget          = nullptr;
+    // QWidget*         todoWidget          = nullptr;
 
     QWidget*        searchWidget   = nullptr;
     QHBoxLayout*    searchLayout   = nullptr;

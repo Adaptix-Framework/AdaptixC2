@@ -84,6 +84,7 @@ TabBar::TabBar(Core::TabBar *controller, QWidget *parent)
     , TabBarViewInterface(controller)
     , d(new Private(controller))
 {
+    setShape(Config::self().tabsAtBottom() ? QTabBar::RoundedSouth : QTabBar::RoundedNorth);
     setStyle(proxyStyle());
 }
 

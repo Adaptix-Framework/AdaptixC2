@@ -126,6 +126,33 @@ QTableWidget:disabled {
 
 
 
+QTableView {
+    background-color: #F0F0F0;
+    alternate-background-color: #F8F8F8;
+    border: 1px solid #D0D0D0;
+    color: #2E3440;
+    border-radius: 4px;
+}
+
+QTableView::item {
+    padding-left: 8px;
+    padding-right: 4px;
+    border: none;
+}
+
+QTableView::item:selected {
+    background-color: #4A566A;
+    color: #FFFFFF;
+}
+
+QTableView:disabled {
+    background-color: #E8E8E8;
+    color: #A0A0A0;
+    border: 1px solid #E0E0E0;
+}
+
+
+
 
 QTreeWidget {
     background-color: #F0F0F0; 

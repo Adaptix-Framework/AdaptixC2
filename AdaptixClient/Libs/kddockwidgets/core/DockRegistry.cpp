@@ -711,7 +711,7 @@ bool DockRegistry::onMouseButtonPress(View *view, MouseEvent *event)
     }
 
     // The following code is for hididng the overlay
-    if (!(Config::self().flags() & Config::Flag_AutoHideSupport))
+    if (!(Config::self().flags() & Config::Flag_TitleBarShowAutoHide))
         return false;
 
     if (view->is(ViewType::Group)) {

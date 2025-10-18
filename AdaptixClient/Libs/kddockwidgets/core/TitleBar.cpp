@@ -47,7 +47,7 @@ TitleBar::TitleBar(Group *parent)
     , d(new Private())
     , m_group(parent)
     , m_floatingWindow(nullptr)
-    , m_supportsAutoHide((Config::self().flags() & Config::Flag_AutoHideSupport) == Config::Flag_AutoHideSupport)
+    , m_supportsAutoHide((Config::self().flags() & Config::Flag_TitleBarShowAutoHide) == Config::Flag_TitleBarShowAutoHide)
     , m_isStandalone(false)
 {
     init();
@@ -73,7 +73,7 @@ TitleBar::TitleBar(FloatingWindow *parent)
     , d(new Private())
     , m_group(nullptr)
     , m_floatingWindow(parent)
-    , m_supportsAutoHide((Config::self().flags() & Config::Flag_AutoHideSupport) == Config::Flag_AutoHideSupport)
+    , m_supportsAutoHide((Config::self().flags() & Config::Flag_TitleBarShowAutoHide) == Config::Flag_TitleBarShowAutoHide)
     , m_isStandalone(false)
 {
     init();

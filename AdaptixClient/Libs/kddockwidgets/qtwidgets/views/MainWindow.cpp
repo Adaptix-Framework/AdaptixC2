@@ -65,7 +65,7 @@ public:
     explicit Private(MainWindow *qq)
         : q(qq)
         , m_controller(qq->mainWindow())
-        , m_supportsAutoHide(Config::self().flags() & Config::Flag_AutoHideSupport)
+        , m_supportsAutoHide(Config::self().flags() & Config::Flag_TitleBarShowAutoHide)
         , m_centralWidget(new MyCentralWidget(qq))
         , m_layout(new QHBoxLayout(m_centralWidget)) // 1 level of indirection so we can add some
                                                      // margins

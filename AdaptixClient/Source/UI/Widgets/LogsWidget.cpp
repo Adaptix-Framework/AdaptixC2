@@ -75,19 +75,19 @@ void LogsWidget::createUI()
     logsWidget->setLayout(logsGridLayout);
 
     /// ToDo: todo list + sync chat
-    todoLabel = new QLabel(this);
-    todoLabel->setText("ToDo notes");
-    todoLabel->setAlignment(Qt::AlignCenter);
-
-    todoGridLayout = new QGridLayout(this);
-    todoGridLayout->setContentsMargins(1, 1, 1, 1);
-    todoGridLayout->setVerticalSpacing(1);
-    todoGridLayout->setHorizontalSpacing(2);
-
-    todoGridLayout->addWidget(todoLabel, 0, 0, 1, 1);
-
-    todoWidget = new QWidget(this);
-    todoWidget->setLayout(todoGridLayout);
+    // todoLabel = new QLabel(this);
+    // todoLabel->setText("ToDo notes");
+    // todoLabel->setAlignment(Qt::AlignCenter);
+    //
+    // todoGridLayout = new QGridLayout(this);
+    // todoGridLayout->setContentsMargins(1, 1, 1, 1);
+    // todoGridLayout->setVerticalSpacing(1);
+    // todoGridLayout->setHorizontalSpacing(2);
+    //
+    // todoGridLayout->addWidget(todoLabel, 0, 0, 1, 1);
+    //
+    // todoWidget = new QWidget(this);
+    // todoWidget->setLayout(todoGridLayout);
 
 
 

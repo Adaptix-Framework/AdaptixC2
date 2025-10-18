@@ -98,7 +98,6 @@ QLineEdit:disabled {
     border: 1px solid #003300;
 }
 
-/* Table Widget */
 QTableWidget {
     background-color: #0A0A0A;
     alternate-background-color: #111111;
@@ -135,6 +134,33 @@ QTableWidget::item:selected {
 }
 
 QTableWidget:disabled {
+    background-color: #050505;
+    color: #004400;
+    border: 1px solid #003300;
+}
+
+QTableView {
+    background-color: #0A0A0A;
+    alternate-background-color: #111111;
+    border: 1px solid #006600;
+    color: #00FF00;
+    border-radius: 2px;
+    gridline-color: #003300;
+}
+
+QTableView::item {
+    padding-left: 8px;
+    padding-right: 8px;
+    border: none;
+}
+
+QTableView::item:selected {
+    background-color: #006400;
+    color: #000000;
+    outline: none;
+}
+
+QTableView:disabled {
     background-color: #050505;
     color: #004400;
     border: 1px solid #003300;
