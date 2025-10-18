@@ -22,6 +22,7 @@ type Teamserver interface {
 	ValidateOTP() gin.HandlerFunc
 
 	TsClientExists(username string) bool
+	TsClientSocketMatch(username string, socket *websocket.Conn) bool
 	TsClientDisconnect(username string)
 	TsClientSync(username string)
 	TsClientConnect(username string, socket *websocket.Conn)

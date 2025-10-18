@@ -114,12 +114,19 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
+	// 清理函数：只有当socket仍然是当前用户的连接时才断开
+	defer func() {
+		// 检查这个socket是否仍然是当前用户的活跃连接
+		if tc.teamserver.TsClientSocketMatch(username, wsConn) {
+			tc.teamserver.TsClientDisconnect(username)
+		}
+	}()
+
 	for {
 		select {
 		case <-ticker.C:
 			ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
 			if err := ws.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				tc.teamserver.TsClientDisconnect(username)
 				return
 			}
 		default:
@@ -127,7 +134,6 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 			if err == nil {
 				continue
 			}
-			tc.teamserver.TsClientDisconnect(username)
 			return
 		}
 	}

@@ -13,6 +13,15 @@ func (ts *Teamserver) TsClientExists(username string) bool {
 	return ts.clients.Contains(username)
 }
 
+func (ts *Teamserver) TsClientSocketMatch(username string, socket *websocket.Conn) bool {
+	value, ok := ts.clients.Get(username)
+	if !ok {
+		return false
+	}
+	client := value.(*Client)
+	return client.socket == socket
+}
+
 func (ts *Teamserver) TsClientConnect(username string, socket *websocket.Conn) {
 	client := &Client{
 		username:   username,
