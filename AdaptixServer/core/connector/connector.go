@@ -158,7 +158,8 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	}
 
 	var connector = new(TsConnector)
-	connector.Engine = gin.New()
+	// 使用Default()而不是New()，包含Recovery和Logger中间件，防止panic导致服务器崩溃
+	connector.Engine = gin.Default()
 	connector.teamserver = ts
 	connector.Interface = tsProfile.Interface
 	connector.Port = tsProfile.Port
