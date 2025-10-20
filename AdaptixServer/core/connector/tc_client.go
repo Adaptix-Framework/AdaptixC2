@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -75,6 +76,20 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 		return
 	}
 
+	// 获取或创建该用户的连接锁
+	lockValue, exists := tc.connectLocks.Get(username)
+	var userLock *sync.Mutex
+	if !exists {
+		userLock = &sync.Mutex{}
+		tc.connectLocks.Put(username, userLock)
+	} else {
+		userLock = lockValue.(*sync.Mutex)
+	}
+
+	// 加锁，防止同一用户的并发连接请求互相干扰
+	userLock.Lock()
+	defer userLock.Unlock()
+
 	// 先断开旧连接（如果存在）
 	if tc.teamserver.TsClientExists(username) {
 		tc.teamserver.TsClientDisconnect(username)
@@ -127,8 +142,6 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 
 	// 启动心跳发送goroutine
 	go func() {
-		// heartbeatStop可能为nil（如果在获取前Client被删除）
-		// 这种情况下只依赖TsClientSocketMatch检查
 		for {
 			if !tc.teamserver.TsClientSocketMatch(username, wsConn) {
 				return
@@ -144,6 +157,7 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 				}
 			case <-heartbeatStop:
 				// Client被断开，退出心跳
+				// heartbeatStop可能为nil，但不会进入这个case（nil channel永不可读）
 				return
 			}
 		}

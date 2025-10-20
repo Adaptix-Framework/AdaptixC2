@@ -4,6 +4,7 @@ import (
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
+	"AdaptixServer/core/utils/safe"
 	"AdaptixServer/core/utils/token"
 	"crypto/tls"
 	"errors"
@@ -129,8 +130,9 @@ type TsConnector struct {
 	Cert      string
 	Key       string
 
-	Engine     *gin.Engine
-	teamserver Teamserver
+	Engine       *gin.Engine
+	teamserver   Teamserver
+	connectLocks safe.Map // 每个用户的连接锁，防止并发连接冲突
 }
 
 func default404Middleware(tsResponse profile.TsResponse) gin.HandlerFunc {
@@ -178,6 +180,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	}
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
+	connector.connectLocks = safe.NewMap() // 初始化连接锁map
 
 	connector.Engine.POST(tsProfile.Endpoint+"/login", default404Middleware(tsResponse), connector.tcLogin)
 	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponse), token.RefreshTokenHandler)
