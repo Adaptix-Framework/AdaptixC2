@@ -96,19 +96,31 @@ func (ts *Teamserver) TsClientSync(username string) {
 		return
 	}
 	client := value.(*Client)
-	socket := client.socket
 
 	if !client.synced {
+		// 先发送所有存储的数据（TsSyncStored内部会加锁）
 		ts.TsSyncStored(client)
 
+		// 然后发送tmp_store中的数据（需要加锁，避免与心跳冲突）
 		for {
 			if client.tmp_store.Len() > 0 {
 				arr := client.tmp_store.CutArray()
+				
+				client.lockSocket.Lock()
 				for _, v := range arr {
 					var buffer bytes.Buffer
-					_ = json.NewEncoder(&buffer).Encode(v)
-					_ = socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+					err := json.NewEncoder(&buffer).Encode(v)
+					if err != nil {
+						client.lockSocket.Unlock()
+						return
+					}
+					err = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+					if err != nil {
+						client.lockSocket.Unlock()
+						return
+					}
 				}
+				client.lockSocket.Unlock()
 			} else {
 				client.synced = true
 				break
