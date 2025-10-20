@@ -18,6 +18,9 @@ void WebSocketWorker::run()
     SslConf.setPeerVerifyMode( QSslSocket::VerifyNone );
     // 强制使用TLS 1.2或更高版本，避免降级到TLSv1
     SslConf.setProtocol( QSsl::TlsV1_2OrLater );
+    // 禁用ALPN协议协商，强制使用HTTP/1.1进行WebSocket连接
+    // 这对Cloudflare tunnel至关重要，因为HTTP/2不支持标准的WebSocket升级
+    SslConf.setAllowedNextProtocols(QList<QByteArray>());
     webSocket->setSslConfiguration( SslConf );
     webSocket->ignoreSslErrors();
 
