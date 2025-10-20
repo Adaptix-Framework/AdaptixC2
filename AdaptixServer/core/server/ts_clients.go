@@ -105,7 +105,7 @@ func (ts *Teamserver) TsClientSync(username string) {
 		for {
 			if client.tmp_store.Len() > 0 {
 				arr := client.tmp_store.CutArray()
-				
+
 				client.lockSocket.Lock()
 				for _, v := range arr {
 					var buffer bytes.Buffer
