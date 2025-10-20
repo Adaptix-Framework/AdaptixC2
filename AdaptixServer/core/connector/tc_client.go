@@ -5,6 +5,7 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/token"
 	"errors"
+	"net"
 	"net/http"
 	"time"
 
@@ -125,23 +126,31 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 	// 启动心跳发送goroutine
 	go func() {
 		for {
-			<-ticker.C
-			ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
-			if err := ws.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				// 心跳发送失败，关闭连接
-				ws.Close()
+			if !tc.teamserver.TsClientSocketMatch(username, wsConn) {
 				return
+			}
+			select {
+			case <-ticker.C:
+				if err := tc.teamserver.TsClientWriteControl(username, websocket.PingMessage, nil); err != nil {
+					if ne, ok := err.(net.Error); ok && ne.Timeout() {
+						continue
+					}
+					ws.Close()
+					return
+				}
 			}
 		}
 	}()
 
 	// 主循环：阻塞读取消息（包括客户端发送的Pong响应）
 	for {
+		if !tc.teamserver.TsClientSocketMatch(username, wsConn) {
+			return
+		}
 		_, _, err := ws.ReadMessage()
 		if err != nil {
 			return
 		}
-		// 接收到消息后继续读取
 	}
 }
 
@@ -160,7 +169,7 @@ func (tc *TsConnector) tcSync(ctx *gin.Context) {
 	// 启动异步同步，立即返回200响应
 	// 数据会通过WebSocket（/connect）以二进制消息形式发送到客户端
 	go tc.teamserver.TsClientSync(username)
-	
+
 	// 立即返回200 OK响应，让HTTP请求完成
 	ctx.JSON(http.StatusOK, gin.H{"message": "sync started", "ok": true})
 }

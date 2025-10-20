@@ -4,10 +4,21 @@ import (
 	"AdaptixServer/core/utils/safe"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
+
+type Client struct {
+	username      string
+	synced        bool
+	lockSocket    *sync.Mutex
+	socket        *websocket.Conn
+	tmp_store     *safe.Slice
+	heartbeatStop chan struct{}
+}
 
 func (ts *Teamserver) TsClientExists(username string) bool {
 	return ts.clients.Contains(username)
@@ -24,14 +35,33 @@ func (ts *Teamserver) TsClientSocketMatch(username string, socket *websocket.Con
 
 func (ts *Teamserver) TsClientConnect(username string, socket *websocket.Conn) {
 	client := &Client{
-		username:   username,
-		synced:     false,
-		lockSocket: &sync.Mutex{},
-		socket:     socket,
-		tmp_store:  safe.NewSlice(),
+		username:      username,
+		synced:        false,
+		lockSocket:    &sync.Mutex{},
+		socket:        socket,
+		tmp_store:     safe.NewSlice(),
+		heartbeatStop: make(chan struct{}),
 	}
 
 	ts.clients.Put(username, client)
+}
+
+func (ts *Teamserver) TsClientWriteControl(username string, messageType int, data []byte) error {
+	value, ok := ts.clients.Get(username)
+	if !ok {
+		return errors.New("client not found")
+	}
+
+	client := value.(*Client)
+	client.lockSocket.Lock()
+	defer client.lockSocket.Unlock()
+
+	deadline := time.Now().Add(5 * time.Second)
+	if err := client.socket.SetWriteDeadline(deadline); err != nil {
+		return err
+	}
+
+	return client.socket.WriteControl(messageType, data, deadline)
 }
 
 func (ts *Teamserver) TsClientDisconnect(username string) {
@@ -42,6 +72,7 @@ func (ts *Teamserver) TsClientDisconnect(username string) {
 	client := value.(*Client)
 
 	client.synced = false
+	close(client.heartbeatStop)
 	client.socket.Close()
 
 	ts.TsEventClient(false, username)
