@@ -44,11 +44,12 @@ const (
 // TeamServer
 
 type Client struct {
-	username   string
-	synced     bool
-	lockSocket *sync.Mutex
-	socket     *websocket.Conn
-	tmp_store  *safe.Slice
+	username      string
+	synced        bool
+	lockSocket    *sync.Mutex
+	socket        *websocket.Conn
+	tmp_store     *safe.Slice
+	heartbeatStop chan struct{}
 }
 
 type TsParameters struct {

@@ -110,6 +110,8 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 	})
 
 	tc.teamserver.TsClientConnect(username, wsConn)
+	// 立即获取heartbeatStop，减少竞态窗口
+	heartbeatStop := tc.teamserver.TsClientHeartbeatStop(username)
 
 	// 心跳ticker
 	ticker := time.NewTicker(30 * time.Second)
@@ -125,6 +127,8 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 
 	// 启动心跳发送goroutine
 	go func() {
+		// heartbeatStop可能为nil（如果在获取前Client被删除）
+		// 这种情况下只依赖TsClientSocketMatch检查
 		for {
 			if !tc.teamserver.TsClientSocketMatch(username, wsConn) {
 				return
@@ -138,6 +142,9 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 					ws.Close()
 					return
 				}
+			case <-heartbeatStop:
+				// Client被断开，退出心跳
+				return
 			}
 		}
 	}()

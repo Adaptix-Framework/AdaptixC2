@@ -64,6 +64,15 @@ func (ts *Teamserver) TsClientWriteControl(username string, messageType int, dat
 	return client.socket.WriteControl(messageType, data, deadline)
 }
 
+func (ts *Teamserver) TsClientHeartbeatStop(username string) <-chan struct{} {
+	value, ok := ts.clients.Get(username)
+	if !ok {
+		return nil
+	}
+	client := value.(*Client)
+	return client.heartbeatStop
+}
+
 func (ts *Teamserver) TsClientDisconnect(username string) {
 	value, ok := ts.clients.GetDelete(username)
 	if !ok {
