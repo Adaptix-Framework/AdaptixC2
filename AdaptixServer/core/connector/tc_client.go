@@ -113,7 +113,7 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 	// 心跳ticker
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-
+	
 	// 清理函数：只有当socket仍然是当前用户的连接时才断开
 	defer func() {
 		// 检查这个socket是否仍然是当前用户的活跃连接
@@ -122,20 +122,26 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 		}
 	}()
 
-	for {
-		select {
-		case <-ticker.C:
+	// 启动心跳发送goroutine
+	go func() {
+		for {
+			<-ticker.C
 			ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
 			if err := ws.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+				// 心跳发送失败，关闭连接
+				ws.Close()
 				return
 			}
-		default:
-			_, _, err := ws.ReadMessage()
-			if err == nil {
-				continue
-			}
+		}
+	}()
+
+	// 主循环：阻塞读取消息（包括客户端发送的Pong响应）
+	for {
+		_, _, err := ws.ReadMessage()
+		if err != nil {
 			return
 		}
+		// 接收到消息后继续读取
 	}
 }
 
