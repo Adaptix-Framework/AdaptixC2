@@ -11,15 +11,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Client struct {
-	username      string
-	synced        bool
-	lockSocket    *sync.Mutex
-	socket        *websocket.Conn
-	tmp_store     *safe.Slice
-	heartbeatStop chan struct{}
-}
-
 func (ts *Teamserver) TsClientExists(username string) bool {
 	return ts.clients.Contains(username)
 }
