@@ -113,7 +113,7 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 	// 心跳ticker
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	// 清理函数：只有当socket仍然是当前用户的连接时才断开
 	defer func() {
 		// 检查这个socket是否仍然是当前用户的活跃连接
@@ -157,7 +157,12 @@ func (tc *TsConnector) tcSync(ctx *gin.Context) {
 		return
 	}
 
+	// 启动异步同步，立即返回200响应
+	// 数据会通过WebSocket（/connect）以二进制消息形式发送到客户端
 	go tc.teamserver.TsClientSync(username)
+	
+	// 立即返回200 OK响应，让HTTP请求完成
+	ctx.JSON(http.StatusOK, gin.H{"message": "sync started", "ok": true})
 }
 
 func (tc *TsConnector) tcChannel(ctx *gin.Context) {

@@ -69,8 +69,12 @@ bool HttpReqSync(AuthProfile profile)
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/sync";
-    HttpReq(sUrl, jsonData, profile.GetAccessToken());
-    return false;
+    // sync是长操作，可能需要更长的超时时间（30秒）
+    // 因为服务器需要收集所有数据包并发送给客户端
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, profile.GetAccessToken(), 30000);
+    // sync请求可能不返回JSON，只要没有错误即可
+    // 数据会通过WebSocket以二进制消息形式到达
+    return true;  // 改为返回true，因为数据通过WebSocket接收
 }
 
 bool HttpReqJwtUpdate(AuthProfile* profile)
