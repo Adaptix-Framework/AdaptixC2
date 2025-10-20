@@ -7,12 +7,12 @@ AuthProfile::AuthProfile()
 
 AuthProfile::AuthProfile(const QString &project, const QString &username, const QString &password, const QString &host, const QString &port, const QString &endpoint)
 {
-    this->project = project;
-    this->username = username;
-    this->password = password;
-    this->host = host;
-    this->port = port;
-    this->endpoint = endpoint;
+    this->project = project.trimmed();
+    this->username = username.trimmed();
+    this->password = password;  // 密码不trim，可能包含有意的空格
+    this->host = host.trimmed().toLower();  // 清理域名：去空格+转小写
+    this->port = port.trimmed();
+    this->endpoint = endpoint.trimmed();
     this->valid = true;
 }
 
