@@ -124,12 +124,15 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     dialogSyncPacket->splashScreen->show();
 
     TickThread->start();
-    // ChannelThread已经在MainAdaptix中启动，WebSocket已连接
-    // 直接调用sync，不需要等待connected信号（信号已经发射过了）
-    HttpReqSync( *profile );
-
+    
     /// TODO: Enable menu button
     keysButton->setVisible(false);
+    
+    // ChannelThread已经在MainAdaptix中启动，WebSocket已连接
+    // 使用QTimer::singleShot在构造函数完成后异步调用sync，避免阻塞UI线程
+    QTimer::singleShot(100, this, [this]() {
+        HttpReqSync( *profile );
+    });
 }
 
 AdaptixWidget::~AdaptixWidget() = default;
