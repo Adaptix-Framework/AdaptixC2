@@ -106,7 +106,10 @@ void DialogListener::createUI()
     buttonCancel->setFixedHeight(buttonHeight);
 }
 
-void DialogListener::Start() { this->exec(); }
+void DialogListener::Start() { 
+    this->setModal(true);
+    this->show();  // 使用show()代替exec()，不阻塞事件循环
+}
 
 void DialogListener::AddExListeners(const QList<RegListenerConfig> &listeners, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers)
 {
@@ -171,23 +174,49 @@ void DialogListener::onButtonCreate()
     if (containers[configType])
         configData = containers[configType]->toJson();
 
-    QString message = QString();
-    bool result, ok = false;
-    if ( editMode )
-        result = HttpReqListenerEdit(configName, configType, configData, authProfile, &message, &ok);
-    else
-        result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
+    // 禁用按钮防止重复点击
+    buttonCreate->setEnabled(false);
+    buttonCreate->setText("Creating...");
 
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
-    if ( !ok ) {
-        MessageError(message);
-        return;
-    }
+    // 在单独线程中执行HTTP请求，避免阻塞WebSocket事件循环
+    QThread* workerThread = new QThread();
+    QObject* worker = new QObject();
+    worker->moveToThread(workerThread);
 
-    this->close();
+    connect(workerThread, &QThread::started, worker, [=, this]() {
+        QString message = QString();
+        bool result, ok = false;
+        
+        if ( editMode )
+            result = HttpReqListenerEdit(configName, configType, configData, authProfile, &message, &ok);
+        else
+            result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
+
+        // 在主线程中处理结果
+        QMetaObject::invokeMethod(this, [=, this]() {
+            if( !result ) {
+                MessageError("Response timeout");
+                buttonCreate->setEnabled(true);
+                buttonCreate->setText(editMode ? "Edit" : "Create");
+            }
+            else if ( !ok ) {
+                MessageError(message);
+                buttonCreate->setEnabled(true);
+                buttonCreate->setText(editMode ? "Edit" : "Create");
+            }
+            else {
+                this->close();
+            }
+
+            // 清理worker和线程
+            workerThread->quit();
+            workerThread->wait();
+            worker->deleteLater();
+            workerThread->deleteLater();
+        }, Qt::QueuedConnection);
+    });
+
+    workerThread->start();
 }
 
 void DialogListener::onButtonLoad()

@@ -746,14 +746,25 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
     }
 
     QJsonObject jsonObj = jsonDoc.object();
+    
+    // 调试日志：记录收到的数据包类型
+    if ( jsonObj.contains("type") && jsonObj["type"].isDouble() ) {
+        int spType = jsonObj["type"].toDouble();
+        LogInfo("Received packet type: 0x%X (%d)", spType, spType);
+    }
+    
     if( !this->isValidSyncPacket(jsonObj) ) {
-
         QString msg = "Invalid SyncPacket";
         if ( jsonObj.contains("type") && jsonObj["type"].isDouble() ) {
             int spType = jsonObj["type"].toDouble();
-            msg.append(": " + QString::number(spType));
+            msg.append(": 0x" + QString::number(spType, 16).toUpper() + " (" + QString::number(spType) + ")");
         }
         LogError(msg.toStdString().c_str());
+        
+        // 额外调试：打印数据包的所有字段名
+        QStringList keys = jsonObj.keys();
+        LogInfo("Packet fields: %s", keys.join(", ").toStdString().c_str());
+        
         return;
     }
 

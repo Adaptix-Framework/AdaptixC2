@@ -2,11 +2,12 @@ package server
 
 import (
 	"AdaptixServer/core/extender"
+	"AdaptixServer/core/utils/logs"
 	"bytes"
 	"encoding/json"
 	"sort"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -46,13 +47,30 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 	}
 	data := buffer.Bytes()
 
+	// 调试日志
+	packetMap, _ := packet.(map[string]interface{})
+	if packetMap == nil {
+		// 尝试通过反射获取packet类型
+		packetMap = make(map[string]interface{})
+	}
+
 	ts.clients.ForEach(func(key string, value interface{}) bool {
 		client := value.(*Client)
 		if client.synced {
+			logs.Info("", "Sending packet to synced client %s (direct)", key)
 			client.lockSocket.Lock()
-			_ = client.socket.WriteMessage(websocket.BinaryMessage, data)
+			err := client.socket.WriteMessage(websocket.BinaryMessage, data)
 			client.lockSocket.Unlock()
+
+			if err != nil {
+				logs.Error("", "Failed to send packet to client %s: %v", key, err)
+				// 连接已断开，应该清理客户端
+				go ts.TsClientDisconnect(key)
+			} else {
+				logs.Info("", "Successfully sent %d bytes to client %s", len(data), key)
+			}
 		} else {
+			logs.Info("", "Storing packet for unsynced client %s (tmp_store)", key)
 			client.tmp_store.Put(packet)
 		}
 		return true

@@ -101,7 +101,8 @@ func (ts *Teamserver) TsClientSync(username string) {
 		// 先发送所有存储的数据（TsSyncStored内部会加锁）
 		ts.TsSyncStored(client)
 
-		// 然后发送tmp_store中的数据（需要加锁，避免与心跳冲突）
+		// 在标记为synced之前，发送tmp_store中的数据（避免丢失同步期间的新数据）
+		// 注意：必须在设置synced=true之前发送，否则可能丢失新数据
 		for {
 			if client.tmp_store.Len() > 0 {
 				arr := client.tmp_store.CutArray()
@@ -122,6 +123,8 @@ func (ts *Teamserver) TsClientSync(username string) {
 				}
 				client.lockSocket.Unlock()
 			} else {
+				// 所有数据发送完成后，标记为synced
+				// 这样后续的TsSyncAllClients调用就会直接发送，不会放入tmp_store
 				client.synced = true
 				break
 			}

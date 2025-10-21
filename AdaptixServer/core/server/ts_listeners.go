@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsListenerList() (string, error) {
@@ -64,6 +64,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 
 	ts.wm_listeners[listenerData.Watermark] = []string{listenerName, listenerRegName}
 
+	logs.Info("", "Sending TYPE_LISTENER_START packet for listener: %s", listenerName)
 	packet := CreateSpListenerStart(listenerData)
 	ts.TsSyncAllClients(packet)
 

@@ -1,5 +1,6 @@
 #include <Workers/WebSocketWorker.h>
 #include <Client/AuthProfile.h>
+#include <Utils/Logs.h>
 
 WebSocketWorker::WebSocketWorker(AuthProfile* authProfile)
 {
@@ -80,5 +81,6 @@ void WebSocketWorker::is_disconnected()
 
 void WebSocketWorker::is_binaryMessageReceived(const QByteArray &data)
 {
+    LogInfo("WebSocket received binary message: %d bytes", data.size());
     Q_EMIT this->received_data( data );
 }

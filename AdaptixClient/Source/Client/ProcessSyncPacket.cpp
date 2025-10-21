@@ -414,6 +414,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_LISTENER_START )
     {
+        LogInfo("Processing TYPE_LISTENER_START packet");
+        
         ListenerData newListener = {};
         newListener.Name             = jsonObj["l_name"].toString();
         newListener.ListenerRegName  = jsonObj["l_reg_name"].toString();
@@ -425,6 +427,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newListener.Status           = jsonObj["l_status"].toString();
         newListener.Data             = jsonObj["l_data"].toString();
 
+        LogInfo("Adding listener: %s (%s)", newListener.Name.toStdString().c_str(), newListener.ListenerRegName.toStdString().c_str());
         ListenersDock->AddListenerItem(newListener);
         return;
     }
