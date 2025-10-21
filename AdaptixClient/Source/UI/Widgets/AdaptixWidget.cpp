@@ -1,6 +1,5 @@
 #include <QJSEngine>
 #include <Agent/Agent.h>
-#include <Agent/Task.h>
 #include <Workers/LastTickWorker.h>
 #include <Workers/WebSocketWorker.h>
 #include <UI/Widgets/AdaptixWidget.h>
@@ -762,6 +761,7 @@ void AdaptixWidget::OnSynced()
     synchronized = true;
 
     this->SessionsGraphDock->TreeDraw();
+    this->TasksDock->UpdateColumnsSize();
 
     Q_EMIT SyncedOnReloadSignal(profile->GetProject());
 }

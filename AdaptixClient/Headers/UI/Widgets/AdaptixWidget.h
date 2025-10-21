@@ -114,8 +114,7 @@ public:
     QVector<CredentialData>        Credentials;
     QVector<TargetData>            Targets;
     QMap<QString, PivotData>       Pivots;
-    QVector<QString>               TasksVector;
-    QMap<QString, Task*>           TasksMap;
+    QMap<QString, TaskData>        TasksMap;
     QVector<QString>               AgentsVector;
     QMap<QString, Agent*>          AgentsMap;
     QMap<QString, PostHook>        PostHooksJS;

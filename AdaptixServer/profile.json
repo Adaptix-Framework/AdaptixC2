@@ -27,7 +27,7 @@
     "headers": {
       "Content-Type": "text/html; charset=UTF-8",
       "Server": "AdaptixC2",
-      "Adaptix Version": "v0.9"
+      "Adaptix Version": "v0.10"
     },
     "page": "404page.html"
   },

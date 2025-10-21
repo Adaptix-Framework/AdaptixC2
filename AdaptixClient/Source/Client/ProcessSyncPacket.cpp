@@ -510,7 +510,21 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_AGENT_TASK_SYNC )
     {
-        Task* newTask = new Task(jsonObj);
+        TaskData newTask = {};
+        newTask.TaskId      = jsonObj["a_task_id"].toString();
+        newTask.TaskType    = jsonObj["a_task_type"].toDouble();
+        newTask.AgentId     = jsonObj["a_id"].toString();
+        newTask.StartTime   = jsonObj["a_start_time"].toDouble();
+        newTask.CommandLine = jsonObj["a_cmdline"].toString();
+        newTask.Client      = jsonObj["a_client"].toString();
+        newTask.User        = jsonObj["a_user"].toString();
+        newTask.Computer    = jsonObj["a_computer"].toString();
+        newTask.FinishTime  = jsonObj["a_finish_time"].toDouble();
+        newTask.MessageType = jsonObj["a_msg_type"].toDouble();
+        newTask.Message     = jsonObj["a_message"].toString();
+        newTask.Output      = jsonObj["a_text"].toString();
+        newTask.Completed   = jsonObj["a_completed"].toBool();
+
         TasksDock->AddTaskItem(newTask);
         return;
     }
@@ -519,8 +533,29 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString taskId = jsonObj["a_task_id"].toString();
 
         if(TasksMap.contains(taskId)) {
-            Task* task = TasksMap[taskId];
-            task->Update(jsonObj);
+            TaskData* task = &TasksMap[taskId];
+
+            task->Completed = jsonObj["a_completed"].toBool();
+            if (task->Completed) {
+                task->FinishTime = jsonObj["a_finish_time"].toDouble();
+
+                task->MessageType = jsonObj["a_msg_type"].toDouble();
+                if ( task->MessageType == CONSOLE_OUT_ERROR || task->MessageType == CONSOLE_OUT_LOCAL_ERROR ) {
+                    task->Status = "Error";
+                }
+                else if ( task->MessageType == CONSOLE_OUT_INFO || task->MessageType == CONSOLE_OUT_LOCAL_INFO ) {
+                    task->Status = "Canceled";
+                }
+                else {
+                    task->Status = "Success";
+                }
+            }
+
+            if ( task->Message.isEmpty() )
+                task->Message = jsonObj["a_message"].toString();
+            task->Output += jsonObj["a_text"].toString();
+
+            TasksDock->UpdateTaskItem(taskId, *task);
         }
         return;
     }
@@ -530,9 +565,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         for (QJsonValue idValue : taskIDs) {
             QString id = idValue.toString();
             if (TasksMap.contains(id)) {
-                Task* task = TasksMap[id];
-                task->data.Status = "Running";
-                task->item_Result->setText("Running");
+                TaskData* task = &TasksMap[id];
+                task->Status = "Running";
             }
         }
         return;
