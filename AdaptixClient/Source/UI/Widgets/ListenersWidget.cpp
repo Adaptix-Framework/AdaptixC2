@@ -60,7 +60,6 @@ void ListenersWidget::Clear() const
 
 void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
 {
-    LogInfo("AddListenerItem called for: %s", newListener.Name.toStdString().c_str());
     
     for( auto listener : adaptixWidget->Listeners ) {
         if( listener.Name == newListener.Name ) {
@@ -69,7 +68,6 @@ void ListenersWidget::AddListenerItem(const ListenerData &newListener ) const
         }
     }
 
-    LogInfo("Creating new listener item in table");
     auto item_Name      = new QTableWidgetItem( newListener.Name );
     auto item_RegName   = new QTableWidgetItem( newListener.ListenerRegName );
     auto item_Type      = new QTableWidgetItem( newListener.ListenerType );

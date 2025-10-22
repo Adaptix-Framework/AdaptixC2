@@ -81,6 +81,5 @@ void WebSocketWorker::is_disconnected()
 
 void WebSocketWorker::is_binaryMessageReceived(const QByteArray &data)
 {
-    LogInfo("WebSocket received binary message: %d bytes", data.size());
     Q_EMIT this->received_data( data );
 }
