@@ -129,9 +129,27 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     keysButton->setVisible(false);
     
     // ChannelThread已经在MainAdaptix中启动，WebSocket已连接
-    // 使用QTimer::singleShot在构造函数完成后异步调用sync，避免阻塞UI线程
+    // 使用QTimer::singleShot在构造函数完成后异步调用sync
+    // 并在worker线程中执行HTTP请求，避免阻塞主事件循环
     QTimer::singleShot(100, this, [this]() {
-        HttpReqSync( *profile );
+        QThread* workerThread = new QThread();
+        QObject* worker = new QObject();
+        worker->moveToThread(workerThread);
+        
+        connect(workerThread, &QThread::started, worker, [=, this]() {
+            // Sync在worker线程执行
+            HttpReqSync( *profile );
+            
+            // 清理（Sync不需要回调，数据通过WebSocket返回）
+            QMetaObject::invokeMethod(qApp, [=]() {
+                workerThread->quit();
+                workerThread->wait();
+                worker->deleteLater();
+                workerThread->deleteLater();
+            }, Qt::QueuedConnection);
+        });
+        
+        workerThread->start();
     });
 }
 
@@ -683,47 +701,82 @@ void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4,
     QByteArray tunnelData = dialogTunnel->GetTunnelData();
 
     if ( endpoint == "Teamserver" ) {
-        QString message = "";
-        bool ok = false;
-        bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *profile, &message, &ok);
-        if( !result ) {
-            MessageError("Server is not responding");
-            delete dialogTunnel;
-            return;
-        }
-        if (!ok) MessageError(message);
+        // 在单独线程中执行HTTP请求，避免阻塞WebSocket事件循环
+        QThread* workerThread = new QThread();
+        QObject* worker = new QObject();
+        worker->moveToThread(workerThread);
+        
+        connect(workerThread, &QThread::started, worker, [=, this]() {
+            QString message = "";
+            bool ok = false;
+            bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *profile, &message, &ok);
+            
+            QMetaObject::invokeMethod(this, [=, this]() {
+                if( !result ) {
+                    MessageError("Server is not responding");
+                } else if (!ok) {
+                    MessageError(message);
+                }
+                
+                delete dialogTunnel;
+                
+                // 清理
+                workerThread->quit();
+                workerThread->wait();
+                worker->deleteLater();
+                workerThread->deleteLater();
+            }, Qt::QueuedConnection);
+        });
+        
+        workerThread->start();
     }
     else {
         auto tunnelEndpoint = new TunnelEndpoint();
         bool started = tunnelEndpoint->StartTunnel(profile, tunnelType, tunnelData);
         if (started) {
-            QString message = "";
-            bool ok = false;
-            bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *profile, &message, &ok);
-            if( !result ) {
-                MessageError("Server is not responding");
-                delete tunnelEndpoint;
-                delete dialogTunnel;
-                return;
-            }
-
-            if ( !ok ) {
-                MessageError(message);
-                delete tunnelEndpoint;
-                delete dialogTunnel;
-                return;
-            }
-            QString tunnelId = message;
-
-            tunnelEndpoint->SetTunnelId(tunnelId);
-            this->ClientTunnels[tunnelId] = tunnelEndpoint;
-            MessageSuccess("Tunnel " + tunnelId + " started");
+            // 在单独线程中执行HTTP请求，避免阻塞WebSocket事件循环
+            QThread* workerThread = new QThread();
+            QObject* worker = new QObject();
+            worker->moveToThread(workerThread);
+            
+            connect(workerThread, &QThread::started, worker, [=, this]() {
+                QString message = "";
+                bool ok = false;
+                bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *profile, &message, &ok);
+                
+                QMetaObject::invokeMethod(this, [=, this]() {
+                    if( !result ) {
+                        MessageError("Server is not responding");
+                        delete tunnelEndpoint;
+                        delete dialogTunnel;
+                    } else if ( !ok ) {
+                        MessageError(message);
+                        delete tunnelEndpoint;
+                        delete dialogTunnel;
+                    } else {
+                        // 成功！
+                        QString tunnelId = message;
+                        tunnelEndpoint->SetTunnelId(tunnelId);
+                        this->ClientTunnels[tunnelId] = tunnelEndpoint;
+                        MessageSuccess("Tunnel " + tunnelId + " started");
+                        delete dialogTunnel;
+                    }
+                    
+                    // 清理
+                    workerThread->quit();
+                    workerThread->wait();
+                    worker->deleteLater();
+                    workerThread->deleteLater();
+                }, Qt::QueuedConnection);
+            });
+            
+            workerThread->start();
         }
         else {
             delete tunnelEndpoint;
+            delete dialogTunnel;
         }
     }
-    delete dialogTunnel;
 }
 
 /// SLOTS
@@ -773,8 +826,25 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
 
 void AdaptixWidget::OnWebSocketConnected()
 {
-    // WebSocket连接成功后，调用sync同步服务器数据
-    HttpReqSync( *profile );
+    // WebSocket连接成功后，在worker线程中调用sync，避免阻塞主事件循环
+    QThread* workerThread = new QThread();
+    QObject* worker = new QObject();
+    worker->moveToThread(workerThread);
+    
+    connect(workerThread, &QThread::started, worker, [=, this]() {
+        // Sync在worker线程执行
+        HttpReqSync( *profile );
+        
+        // 清理（Sync不需要回调，数据通过WebSocket返回）
+        QMetaObject::invokeMethod(qApp, [=]() {
+            workerThread->quit();
+            workerThread->wait();
+            worker->deleteLater();
+            workerThread->deleteLater();
+        }, Qt::QueuedConnection);
+    });
+    
+    workerThread->start();
 }
 
 void AdaptixWidget::OnSynced()
@@ -813,28 +883,66 @@ void AdaptixWidget::LoadTargetsUI() const { this->AddDockBottom( TargetsDock->do
 void AdaptixWidget::OnReconnect()
 {
     if (ChannelThread->isRunning()) {
-        bool result = HttpReqJwtUpdate(profile);
-        if (!result) {
-            MessageError("Login failure");
-            return;
-        }
+        // 在worker线程中执行JWT刷新，避免阻塞主事件循环
+        QThread* workerThread = new QThread();
+        QObject* worker = new QObject();
+        worker->moveToThread(workerThread);
+        
+        connect(workerThread, &QThread::started, worker, [=, this]() {
+            bool result = HttpReqJwtUpdate(profile);
+            
+            QMetaObject::invokeMethod(this, [=, this]() {
+                if (!result) {
+                    MessageError("Login failure");
+                } else {
+                    // JWT刷新成功，继续重连流程
+                    // (原代码中后续逻辑会自动执行)
+                }
+                
+                // 清理
+                workerThread->quit();
+                workerThread->wait();
+                worker->deleteLater();
+                workerThread->deleteLater();
+            }, Qt::QueuedConnection);
+        });
+        
+        workerThread->start();
+        return;  // 提前返回，让异步完成
     }
     else {
-        bool result = HttpReqLogin(profile);
-        if (!result) {
-            MessageError("Login failure");
-            return;
-        }
-
-        this->ClearAdaptix();
-
-        // 重连时需要等待WebSocket连接成功后再sync
-        connect( ChannelWsWorker, &WebSocketWorker::connected, this, &AdaptixWidget::OnWebSocketConnected, Qt::UniqueConnection );
+        // 在worker线程中执行登录，避免阻塞主事件循环
+        QThread* workerThread = new QThread();
+        QObject* worker = new QObject();
+        worker->moveToThread(workerThread);
         
-        ChannelThread->start();
+        connect(workerThread, &QThread::started, worker, [=, this]() {
+            bool result = HttpReqLogin(profile);
+            
+            QMetaObject::invokeMethod(this, [=, this]() {
+                if (!result) {
+                    MessageError("Login failure");
+                } else {
+                    this->ClearAdaptix();
 
-        QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/link"), COLOR_NeonGreen);
-        reconnectButton->setIcon(onReconnectButton);
+                    // 重连时需要等待WebSocket连接成功后再sync
+                    connect( ChannelWsWorker, &WebSocketWorker::connected, this, &AdaptixWidget::OnWebSocketConnected, Qt::UniqueConnection );
+                    
+                    ChannelThread->start();
+
+                    QIcon onReconnectButton = RecolorIcon(QIcon(":/icons/link"), COLOR_NeonGreen);
+                    reconnectButton->setIcon(onReconnectButton);
+                }
+                
+                // 清理
+                workerThread->quit();
+                workerThread->wait();
+                worker->deleteLater();
+                workerThread->deleteLater();
+            }, Qt::QueuedConnection);
+        });
+        
+        workerThread->start();
     }
 }
 

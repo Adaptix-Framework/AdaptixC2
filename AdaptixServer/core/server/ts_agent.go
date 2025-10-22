@@ -669,7 +669,9 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 			ts.TsSyncAllClients(packetTick)
 		}
 
-		time.Sleep(800 * time.Millisecond)
+		// 降低检查频率，避免频繁占用WebSocket锁，阻塞Ping心跳
+		// 从800ms改为10秒，减少锁竞争
+		time.Sleep(10 * time.Second)
 	}
 }
 
