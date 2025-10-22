@@ -309,7 +309,6 @@ void TasksWidget::handleTasksMenu( const QPoint &pos )
     bool remove      = false;
 
     QStringList taskIds;
-
     QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
     for (const QModelIndex &proxyIndex : selectedRows) {
         QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);

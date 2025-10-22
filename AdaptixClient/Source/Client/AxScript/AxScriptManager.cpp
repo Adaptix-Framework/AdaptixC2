@@ -277,7 +277,7 @@ void AxScriptManager::AppAgentHide(const QStringList &agents)
     }
 
     if (updated)
-        adaptixWidget->SessionsTableDock->SetData();
+        adaptixWidget->SessionsTableDock->UpdateData();
 }
 
 void AxScriptManager::AppAgentRemove(const QStringList &agents)

@@ -1,7 +1,4 @@
 #include <Agent/Agent.h>
-#include <Agent/Task.h>
-#include <Agent/AgentTableWidgetItem.h>
-#include <Agent/TaskTableWidgetItem.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
@@ -470,14 +467,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         QString agentId = jsonObj["a_id"].toString();
 
-        if(AgentsMap.contains(agentId)) {
-            Agent* agent = AgentsMap[agentId];
-            QString oldUsername = agent->item_Username->text();
+        Agent* agent = AgentsMap.value(agentId, nullptr);
+        if(agent) {
+            auto oldData = agent->data;
             agent->Update(jsonObj);
-            QString newUsername = agent->item_Username->text();
 
-            if (oldUsername != newUsername)
-                SessionsTableDock->UpdateColumnsWidth();
+            SessionsTableDock->UpdateAgentItem(oldData, agent);
         }
         return;
     }
@@ -486,8 +481,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QJsonArray agentIDs = jsonObj["a_id"].toArray();
         for (QJsonValue idValue : agentIDs) {
             QString id = idValue.toString();
-            if (AgentsMap.contains(id)) {
-                Agent* agent = AgentsMap[id];
+
+            Agent* agent = AgentsMap.value(id, nullptr);
+            if (agent) {
                 agent->data.LastTick = QDateTime::currentSecsSinceEpoch();
                 if (agent->data.Mark != "Terminated")
                     agent->MarkItem("");
@@ -1015,6 +1011,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             Pivots[pivotData.PivotId] = pivotData;
 
             SessionsGraphDock->RelinkAgent(parentAgent, childAgent, pivotData.PivotName, this->synchronized);
+            SessionsTableDock->UpdateAgentItem(childAgent->data, childAgent);
         }
         return;
     }
@@ -1034,6 +1031,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 childAgent->UnsetParent(pivotData);
 
                 SessionsGraphDock->UnlinkAgent(parentAgent, childAgent, this->synchronized);
+                SessionsTableDock->UpdateAgentItem(childAgent->data, childAgent);
             }
         }
         return;

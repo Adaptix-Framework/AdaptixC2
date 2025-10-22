@@ -122,6 +122,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     dialogSyncPacket = new DialogSyncPacket();
     dialogSyncPacket->splashScreen->show();
 
+    SessionsTableDock->start();
     TickThread->start();
     ChannelThread->start();
 
@@ -762,6 +763,7 @@ void AdaptixWidget::OnSynced()
 
     this->SessionsGraphDock->TreeDraw();
     this->TasksDock->UpdateColumnsSize();
+    this->SessionsTableDock->UpdateColumnsSize();
 
     Q_EMIT SyncedOnReloadSignal(profile->GetProject());
 }

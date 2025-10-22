@@ -17,8 +17,11 @@ public:
 
     void run() override;
 
+Q_SIGNALS:
+    void agentUpdated(const QString& agentId);
+
 public Q_SLOTS:
-    void updateLastItems() const;
+    void updateLastItems();
 };
 
 #endif
