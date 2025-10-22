@@ -2,7 +2,6 @@ package server
 
 import (
 	"AdaptixServer/core/extender"
-	"AdaptixServer/core/utils/logs"
 	"bytes"
 	"encoding/json"
 	"sort"
@@ -57,20 +56,19 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 	ts.clients.ForEach(func(key string, value interface{}) bool {
 		client := value.(*Client)
 		if client.synced {
-			logs.Info("", "Sending packet to synced client %s (direct)", key)
+
 			client.lockSocket.Lock()
 			err := client.socket.WriteMessage(websocket.BinaryMessage, data)
 			client.lockSocket.Unlock()
 
 			if err != nil {
-				logs.Error("", "Failed to send packet to client %s: %v", key, err)
-				// 连接已断开，应该清理客户端
+
 				go ts.TsClientDisconnect(key)
 			} else {
-				logs.Info("", "Successfully sent %d bytes to client %s", len(data), key)
+
 			}
 		} else {
-			logs.Info("", "Storing packet for unsynced client %s (tmp_store)", key)
+
 			client.tmp_store.Put(packet)
 		}
 		return true
