@@ -670,8 +670,8 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 		}
 
 		// 降低检查频率，避免频繁占用WebSocket锁，阻塞Ping心跳
-		// 从800ms改为10秒，减少锁竞争
-		time.Sleep(10 * time.Second)
+		// 从800ms改为10秒，再改为30秒，与Ping间隔对齐，彻底避免锁竞争
+		time.Sleep(30 * time.Second)
 	}
 }
 

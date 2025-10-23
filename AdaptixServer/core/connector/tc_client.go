@@ -118,9 +118,10 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 
 func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Conn) {
 	ws := wsConn
-	ws.SetReadDeadline(time.Now().Add(90 * time.Second))
+	// 增加ReadDeadline到180秒，给予更宽容的超时时间，避免锁竞争导致的误断开
+	ws.SetReadDeadline(time.Now().Add(180 * time.Second))
 	ws.SetPongHandler(func(string) error {
-		ws.SetReadDeadline(time.Now().Add(90 * time.Second))
+		ws.SetReadDeadline(time.Now().Add(180 * time.Second))
 		return nil
 	})
 

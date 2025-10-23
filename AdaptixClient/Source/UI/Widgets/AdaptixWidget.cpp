@@ -803,7 +803,6 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
     // 调试日志：记录收到的数据包类型
     if ( jsonObj.contains("type") && jsonObj["type"].isDouble() ) {
         int spType = jsonObj["type"].toDouble();
-        
     }
     
     if( !this->isValidSyncPacket(jsonObj) ) {
@@ -814,6 +813,8 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
         }
         LogError(msg.toStdString().c_str());
         
+        // 额外调试：打印数据包的所有字段名
+        QStringList keys = jsonObj.keys();
         
         return;
     }

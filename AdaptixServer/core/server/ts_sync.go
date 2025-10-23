@@ -2,9 +2,11 @@ package server
 
 import (
 	"AdaptixServer/core/extender"
+	"AdaptixServer/core/utils/logs"
 	"bytes"
 	"encoding/json"
 	"sort"
+	"time"
 
 	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
@@ -56,19 +58,26 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 	ts.clients.ForEach(func(key string, value interface{}) bool {
 		client := value.(*Client)
 		if client.synced {
-
 			client.lockSocket.Lock()
+
+			// 设置10秒写入超时，防止无限阻塞导致死锁
+			deadline := time.Now().Add(10 * time.Second)
+			client.socket.SetWriteDeadline(deadline)
+
 			err := client.socket.WriteMessage(websocket.BinaryMessage, data)
+
+			// 重置WriteDeadline（重要！避免影响后续写入）
+			client.socket.SetWriteDeadline(time.Time{})
+
 			client.lockSocket.Unlock()
 
 			if err != nil {
-
+				// 只在出错时记录日志，减少日志量
+				logs.Error("", "Failed to send %d bytes to client %s: %v", len(data), key, err)
 				go ts.TsClientDisconnect(key)
-			} else {
-
 			}
+			// 成功时不记录日志，保持简洁
 		} else {
-
 			client.tmp_store.Put(packet)
 		}
 		return true

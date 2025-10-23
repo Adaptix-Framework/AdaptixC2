@@ -426,7 +426,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newListener.Status           = jsonObj["l_status"].toString();
         newListener.Data             = jsonObj["l_data"].toString();
 
-       
         ListenersDock->AddListenerItem(newListener);
         return;
     }
