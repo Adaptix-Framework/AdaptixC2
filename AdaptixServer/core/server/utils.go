@@ -10,7 +10,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -173,6 +173,11 @@ type SyncPackerStart struct {
 
 type SyncPackerFinish struct {
 	SpType int `json:"type"`
+}
+
+type SyncPackerBatch struct {
+	SpType  int           `json:"type"`
+	Packets []interface{} `json:"packets"`
 }
 
 type SpEvent struct {

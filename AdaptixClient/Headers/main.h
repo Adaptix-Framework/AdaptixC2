@@ -92,6 +92,7 @@
 #define TYPE_SYNC_FINISH 0x12
 
 #define SP_TYPE_EVENT  0x13
+#define TYPE_SYNC_BATCH  0x14
 
 #define TYPE_CHAT_MESSAGE 0x18
 

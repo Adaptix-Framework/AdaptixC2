@@ -32,6 +32,11 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
+    if( spType == TYPE_SYNC_BATCH ) {
+        if ( !jsonObj.contains("packets") || !jsonObj["packets"].isArray() ) return false;
+        return true;
+    }
+
     if(spType == SP_TYPE_EVENT) {
         if ( !jsonObj.contains("event_type") || !jsonObj["event_type"].isDouble() ) return false;
         if ( !jsonObj.contains("date")       || !jsonObj["date"].isDouble() )       return false;
@@ -375,7 +380,40 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 {
     int spType = jsonObj["type"].toDouble();
-    if( this->sync && dialogSyncPacket != nullptr ) {
+    
+    if( spType == TYPE_SYNC_BATCH )
+    {
+        // Process batch packet: extract all packets and process them
+        QJsonArray packetsArray = jsonObj["packets"].toArray();
+        
+        // Temporarily disable UI updates for performance
+        if (LogsDock && LogsDock->logsConsoleTextEdit) {
+            LogsDock->logsConsoleTextEdit->setUpdatesEnabled(false);
+        }
+        
+        for (const QJsonValue &packetValue : packetsArray) {
+            if (packetValue.isObject()) {
+                QJsonObject packetObj = packetValue.toObject();
+                // Recursively process each packet in the batch
+                processSyncPacket(packetObj);
+            }
+        }
+        
+        // Re-enable UI updates and refresh once
+        if (LogsDock && LogsDock->logsConsoleTextEdit) {
+            LogsDock->logsConsoleTextEdit->setUpdatesEnabled(true);
+        }
+        
+        // Update progress once for entire batch
+        if( this->sync && dialogSyncPacket != nullptr ) {
+            dialogSyncPacket->receivedLogs += packetsArray.size();
+            dialogSyncPacket->upgrade();
+        }
+        
+        return;
+    }
+    
+    if( this->sync && dialogSyncPacket != nullptr && spType != TYPE_SYNC_BATCH ) {
         dialogSyncPacket->receivedLogs++;
         dialogSyncPacket->upgrade();
     }

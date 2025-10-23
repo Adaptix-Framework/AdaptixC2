@@ -4,9 +4,11 @@ import (
 	"AdaptixServer/core/extender"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"sort"
+	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -65,6 +67,8 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 		packets []interface{}
 	)
 
+	startTime := time.Now()
+
 	packets = append(packets, ts.TsPresyncExtenders()...)
 	packets = append(packets, ts.TsPresyncListeners()...)
 	packets = append(packets, ts.TsPresyncAgents()...)
@@ -85,9 +89,19 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 	buffer.Reset()
 
-	for _, p := range packets {
+	// Batch transmission: send packets in groups of 100
+	const BATCH_SIZE = 100
+	for i := 0; i < len(packets); i += BATCH_SIZE {
+		end := i + BATCH_SIZE
+		if end > len(packets) {
+			end = len(packets)
+		}
+
+		batch := packets[i:end]
+		batchPacket := CreateSpSyncBatch(batch)
+
 		var pBuffer bytes.Buffer
-		_ = json.NewEncoder(&pBuffer).Encode(p)
+		_ = json.NewEncoder(&pBuffer).Encode(batchPacket)
 		_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
 	}
 
@@ -95,6 +109,11 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	_ = json.NewEncoder(&buffer).Encode(finishPacket)
 	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 	buffer.Reset()
+
+	elapsed := time.Since(startTime)
+	batchCount := (len(packets) + BATCH_SIZE - 1) / BATCH_SIZE
+	println(fmt.Sprintf("[SYNC] Client %s: %d packets in %d batches, completed in %v",
+		client.username, len(packets), batchCount, elapsed))
 }
 
 ///////////////
