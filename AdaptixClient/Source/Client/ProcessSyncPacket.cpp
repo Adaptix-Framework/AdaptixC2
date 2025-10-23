@@ -832,6 +832,33 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                     }
                 }
             }
+
+            bool owned = (t.Agents.size() > 0);
+            if (t.Os == OS_WINDOWS) {
+                if (owned)
+                    t.OsIcon = QIcon(":/icons/os_win_red");
+                else if(t.Alive)
+                    t.OsIcon = QIcon(":/icons/os_win_blue");
+                else
+                    t.OsIcon = QIcon(":/icons/os_win_grey");
+            }
+            else if (t.Os == OS_LINUX) {
+                if (owned)
+                    t.OsIcon = QIcon(":/icons/os_linux_red");
+                else if(t.Alive)
+                    t.OsIcon = QIcon(":/icons/os_linux_blue");
+                else
+                    t.OsIcon = QIcon(":/icons/os_linux_grey");
+            }
+            else if (t.Os == OS_MAC) {
+                if (owned)
+                    t.OsIcon = QIcon(":/icons/os_mac_red");
+                else if(t.Alive)
+                    t.OsIcon = QIcon(":/icons/os_mac_blue");
+                else
+                    t.OsIcon = QIcon(":/icons/os_mac_grey");
+            }
+
             targetsList.append(t);
         }
 
@@ -839,28 +866,54 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
     if ( spType == TYPE_TARGETS_EDIT ) {
-        TargetData targetData = {};
-        targetData.TargetId = jsonObj["t_target_id"].toString();
-        targetData.Computer = jsonObj["t_computer"].toString();
-        targetData.Domain   = jsonObj["t_domain"].toString();
-        targetData.Address  = jsonObj["t_address"].toString();
-        targetData.Os       = jsonObj["t_os"].toDouble();
-        targetData.OsDesc   = jsonObj["t_os_desk"].toString();
-        targetData.Tag      = jsonObj["t_tag"].toString();
-        targetData.Info     = jsonObj["t_info"].toString();
-        targetData.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["t_date"].toDouble()));
-        targetData.Alive    = jsonObj["t_alive"].toBool();
+        TargetData t = {};
+        t.TargetId = jsonObj["t_target_id"].toString();
+        t.Computer = jsonObj["t_computer"].toString();
+        t.Domain   = jsonObj["t_domain"].toString();
+        t.Address  = jsonObj["t_address"].toString();
+        t.Os       = jsonObj["t_os"].toDouble();
+        t.OsDesc   = jsonObj["t_os_desk"].toString();
+        t.Tag      = jsonObj["t_tag"].toString();
+        t.Info     = jsonObj["t_info"].toString();
+        t.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["t_date"].toDouble()));
+        t.Alive    = jsonObj["t_alive"].toBool();
 
         if (jsonObj.value("t_agents").isArray()) {
             QJsonArray sessions = jsonObj.value("t_agents").toArray();
             for (const QJsonValue &agent_id : sessions) {
                 if (agent_id.isString()) {
-                    targetData.Agents.append(agent_id.toString());
+                    t.Agents.append(agent_id.toString());
                 }
             }
         }
 
-        TargetsDock->EditTargetsItem(targetData);
+        bool owned = (t.Agents.size() > 0);
+        if (t.Os == OS_WINDOWS) {
+            if (owned)
+                t.OsIcon = QIcon(":/icons/os_win_red");
+            else if(t.Alive)
+                t.OsIcon = QIcon(":/icons/os_win_blue");
+            else
+                t.OsIcon = QIcon(":/icons/os_win_grey");
+        }
+        else if (t.Os == OS_LINUX) {
+            if (owned)
+                t.OsIcon = QIcon(":/icons/os_linux_red");
+            else if(t.Alive)
+                t.OsIcon = QIcon(":/icons/os_linux_blue");
+            else
+                t.OsIcon = QIcon(":/icons/os_linux_grey");
+        }
+        else if (t.Os == OS_MAC) {
+            if (owned)
+                t.OsIcon = QIcon(":/icons/os_mac_red");
+            else if(t.Alive)
+                t.OsIcon = QIcon(":/icons/os_mac_blue");
+            else
+                t.OsIcon = QIcon(":/icons/os_mac_grey");
+        }
+
+        TargetsDock->EditTargetsItem(t);
         return;
     }
     if ( spType == TYPE_TARGETS_DELETE ) {
