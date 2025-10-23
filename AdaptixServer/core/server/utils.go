@@ -44,12 +44,13 @@ const (
 // TeamServer
 
 type Client struct {
-	username      string
-	synced        bool
-	lockSocket    *sync.Mutex
-	socket        *websocket.Conn
-	tmp_store     *safe.Slice
-	heartbeatStop chan struct{}
+	Username      string
+	Synced        bool
+	Socket        *websocket.Conn
+	TmpStore      *safe.Slice
+	Send          chan []byte   // Buffered channel for outbound messages (Gorilla pattern)
+	HeartbeatStop chan struct{} // Signal to stop the connection
+	// lockSocket removed - no longer needed with Per-Connection Writer pattern
 }
 
 type TsParameters struct {

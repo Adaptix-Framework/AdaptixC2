@@ -5,7 +5,6 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/token"
 	"errors"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -116,57 +115,81 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 	go tc.tcWebsocketConnect(username, wsConn)
 }
 
-func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Conn) {
-	ws := wsConn
-	// 增加ReadDeadline到180秒，给予更宽容的超时时间，避免锁竞争导致的误断开
-	ws.SetReadDeadline(time.Now().Add(180 * time.Second))
-	ws.SetPongHandler(func(string) error {
-		ws.SetReadDeadline(time.Now().Add(180 * time.Second))
-		return nil
-	})
+// writePump handles all writes to the websocket connection (Gorilla official pattern).
+// It is the ONLY goroutine that writes to the websocket, ensuring concurrency safety.
+// Ping heartbeats are sent from this same goroutine to avoid lock contention.
+func (tc *TsConnector) writePump(username string, ws *websocket.Conn) {
+	ticker := time.NewTicker(30 * time.Second) // Ping interval
+	defer func() {
+		ticker.Stop()
+		ws.Close()
+	}()
 
-	tc.teamserver.TsClientConnect(username, wsConn)
-	// 立即获取heartbeatStop，减少竞态窗口
+	sendChan := tc.teamserver.TsClientSendChannel(username)
+	if sendChan == nil {
+		return
+	}
 	heartbeatStop := tc.teamserver.TsClientHeartbeatStop(username)
 
-	// 心跳ticker
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
+	for {
+		select {
+		case message, ok := <-sendChan:
+			ws.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if !ok {
+				// The send channel was closed, close the websocket
+				ws.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
 
-	// 清理函数：只有当socket仍然是当前用户的连接时才断开
+			// Write the first message
+			if err := ws.WriteMessage(websocket.BinaryMessage, message); err != nil {
+				return
+			}
+
+			// Batch optimization: drain the send channel and write all pending messages
+			// This significantly improves performance when there are many queued messages
+			n := len(sendChan)
+			for i := 0; i < n; i++ {
+				msg := <-sendChan
+				if err := ws.WriteMessage(websocket.BinaryMessage, msg); err != nil {
+					return
+				}
+			}
+
+		case <-ticker.C:
+			// Send Ping heartbeat
+			ws.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			if err := ws.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
+
+		case <-heartbeatStop:
+			// Client disconnect signal
+			return
+		}
+	}
+}
+
+// readPump handles all reads from the websocket connection.
+// It is the ONLY goroutine that reads from the websocket.
+func (tc *TsConnector) readPump(username string, ws *websocket.Conn) {
 	defer func() {
-		// 检查这个socket是否仍然是当前用户的活跃连接
-		if tc.teamserver.TsClientSocketMatch(username, wsConn) {
+		// Check if this socket is still the active connection for the user
+		if tc.teamserver.TsClientSocketMatch(username, ws) {
 			tc.teamserver.TsClientDisconnect(username)
 		}
 	}()
 
-	// 启动心跳发送goroutine
-	go func() {
-		for {
-			if !tc.teamserver.TsClientSocketMatch(username, wsConn) {
-				return
-			}
-			select {
-			case <-ticker.C:
-				if err := tc.teamserver.TsClientWriteControl(username, websocket.PingMessage, nil); err != nil {
-					if ne, ok := err.(net.Error); ok && ne.Timeout() {
-						continue
-					}
-					ws.Close()
-					return
-				}
-			case <-heartbeatStop:
-				// Client被断开，退出心跳
-				// heartbeatStop可能为nil，但不会进入这个case（nil channel永不可读）
-				return
-			}
-		}
-	}()
+	// Set read deadline and pong handler
+	ws.SetReadDeadline(time.Now().Add(90 * time.Second)) // Restored to 90s
+	ws.SetPongHandler(func(string) error {
+		ws.SetReadDeadline(time.Now().Add(90 * time.Second))
+		return nil
+	})
 
-	// 主循环：阻塞读取消息（包括客户端发送的Pong响应）
+	// Read loop - blocks on ReadMessage
 	for {
-		if !tc.teamserver.TsClientSocketMatch(username, wsConn) {
+		if !tc.teamserver.TsClientSocketMatch(username, ws) {
 			return
 		}
 		_, _, err := ws.ReadMessage()
@@ -174,6 +197,18 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 			return
 		}
 	}
+}
+
+func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Conn) {
+	// Register the client
+	tc.teamserver.TsClientConnect(username, wsConn)
+
+	// Launch writePump (handles all writes including Ping heartbeats)
+	go tc.writePump(username, wsConn)
+
+	// Launch readPump (handles all reads including Pong responses)
+	// This function blocks until the connection is closed
+	tc.readPump(username, wsConn)
 }
 
 func (tc *TsConnector) tcSync(ctx *gin.Context) {

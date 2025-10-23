@@ -6,10 +6,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"sort"
-	"time"
 
 	adaptix "github.com/Adaptix-Framework/axc2"
-	"github.com/gorilla/websocket"
 )
 
 func (ts *Teamserver) TsClientConnected(username string) bool {
@@ -27,58 +25,41 @@ func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	value, found := ts.clients.Get(username)
 	if found {
 		client := value.(*Client)
-		client.lockSocket.Lock()
-		err = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-		client.lockSocket.Unlock()
-		if err != nil {
-			return
+		// Use channel for sending (Gorilla pattern)
+		select {
+		case client.Send <- buffer.Bytes():
+			// Successfully queued message
+		default:
+			// Send channel is full - client is too slow, disconnect it
+			logs.Error("", "Client %s send queue is full, disconnecting", username)
+			go ts.TsClientDisconnect(username)
 		}
 	}
 }
 
 func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
-	var (
-		buffer bytes.Buffer
-		err    error
-	)
-
-	err = json.NewEncoder(&buffer).Encode(packet)
+	var buffer bytes.Buffer
+	err := json.NewEncoder(&buffer).Encode(packet)
 	if err != nil {
 		return
 	}
 	data := buffer.Bytes()
 
-	// 调试日志
-	packetMap, _ := packet.(map[string]interface{})
-	if packetMap == nil {
-		// 尝试通过反射获取packet类型
-		packetMap = make(map[string]interface{})
-	}
-
 	ts.clients.ForEach(func(key string, value interface{}) bool {
 		client := value.(*Client)
-		if client.synced {
-			client.lockSocket.Lock()
-
-			// 设置10秒写入超时，防止无限阻塞导致死锁
-			deadline := time.Now().Add(10 * time.Second)
-			client.socket.SetWriteDeadline(deadline)
-
-			err := client.socket.WriteMessage(websocket.BinaryMessage, data)
-
-			// 重置WriteDeadline（重要！避免影响后续写入）
-			client.socket.SetWriteDeadline(time.Time{})
-
-			client.lockSocket.Unlock()
-
-			if err != nil {
-				// 只在出错时记录日志，减少日志量
-				logs.Error("", "Failed to send %d bytes to client %s: %v", len(data), key, err)
+		if client.Synced {
+			// Use channel for sending (Gorilla pattern)
+			// Non-blocking send with default case to detect slow clients
+			select {
+			case client.Send <- data:
+				// Successfully queued message
+			default:
+				// Send channel is full - client is too slow, disconnect it
+				logs.Error("", "Client %s send queue is full, disconnecting", key)
 				go ts.TsClientDisconnect(key)
 			}
-			// 成功时不记录日志，保持简洁
 		} else {
-			client.tmp_store.Put(packet)
+			client.TmpStore.Put(packet)
 		}
 		return true
 	})
@@ -102,23 +83,23 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	packets = append(packets, ts.TsPresyncCredentials()...)
 	packets = append(packets, ts.TsPresyncTargets()...)
 
-	client.lockSocket.Lock()
-	defer client.lockSocket.Unlock()
-
+	// Send start packet
 	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
 	_ = json.NewEncoder(&buffer).Encode(startPacket)
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+	client.Send <- buffer.Bytes()
 	buffer.Reset()
 
+	// Send all sync packets through channel
 	for _, p := range packets {
 		var pBuffer bytes.Buffer
 		_ = json.NewEncoder(&pBuffer).Encode(p)
-		_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
+		client.Send <- pBuffer.Bytes()
 	}
 
+	// Send finish packet
 	finishPacket := CreateSpSyncFinish()
 	_ = json.NewEncoder(&buffer).Encode(finishPacket)
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+	client.Send <- buffer.Bytes()
 	buffer.Reset()
 }
 

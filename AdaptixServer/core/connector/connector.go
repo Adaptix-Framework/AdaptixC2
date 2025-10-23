@@ -27,7 +27,7 @@ type Teamserver interface {
 	TsClientDisconnect(username string)
 	TsClientSync(username string)
 	TsClientConnect(username string, socket *websocket.Conn)
-	TsClientWriteControl(username string, messageType int, data []byte) error
+	TsClientSendChannel(username string) chan []byte
 	TsClientHeartbeatStop(username string) <-chan struct{}
 
 	TsListenerList() (string, error)
