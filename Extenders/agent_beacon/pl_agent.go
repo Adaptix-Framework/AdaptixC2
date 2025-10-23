@@ -1326,6 +1326,16 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.OemCP)
 
+			} else if outputType == CALLBACK_OUTPUT_UTF8 {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				output := packer.ParseString()
+
+				task.MessageType = MESSAGE_SUCCESS
+				task.Message = "BOF output"
+				task.ClearText = output // Already UTF-8, no conversion needed
+
 			} else if outputType == CALLBACK_AX_SCREENSHOT {
 				if false == packer.CheckPacker([]string{"array", "array"}) {
 					return outTasks
