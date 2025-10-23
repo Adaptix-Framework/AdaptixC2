@@ -167,7 +167,10 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 
 	var connector = new(TsConnector)
 	// 使用Default()而不是New()，包含Recovery和Logger中间件，防止panic导致服务器崩溃
-	connector.Engine = gin.Default()
+	// Use gin.New() instead of gin.Default() to disable default logging middleware
+	gin.SetMode(gin.ReleaseMode)
+	connector.Engine = gin.New()
+	connector.Engine.Use(gin.Recovery()) // Keep panic recovery, but no logger
 	connector.teamserver = ts
 	connector.Interface = tsProfile.Interface
 	connector.Port = tsProfile.Port

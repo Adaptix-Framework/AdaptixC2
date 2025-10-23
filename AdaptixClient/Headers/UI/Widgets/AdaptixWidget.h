@@ -91,6 +91,10 @@ public:
     LastTickWorker*  TickWorker      = nullptr;
 
     AxScriptManager* ScriptManager = nullptr;
+    
+    // MCP Bridge
+    QThread*         MCPBridgeThread = nullptr;
+    class MCPBridgeWorker* MCPBridge = nullptr;
 
     AxConsoleWidget*     AxConsoleDock      = nullptr;
     LogsWidget*          LogsDock          = nullptr;

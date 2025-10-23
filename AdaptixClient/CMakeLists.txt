@@ -155,6 +155,16 @@ SET( HEADERS
         Headers/UI/Widgets/AbstractDock.h
         Headers/Utils/NonBlockingDialogs.h
         Headers/Utils/FontManager.h
+        
+                # MCP Bridge
+                Source/Workers/MCP/MCPProtocol.h
+                Source/Workers/MCP/MCPCommandHandler.h
+                Source/Workers/MCP/MCPBridgeWorker.h
+                Source/Workers/MCP/handlers/BOFHandler.h
+                Source/Workers/MCP/handlers/AxScriptHandler.h
+                Source/Workers/MCP/handlers/InfoHandler.h
+                Source/Workers/MCP/handlers/ListenerHandler.h
+                Source/Workers/MCP/handlers/ConsoleHandler.h
 )
 
 add_executable(AdaptixClient
@@ -236,6 +246,15 @@ add_executable(AdaptixClient
         Source/UI/Widgets/ChatWidget.cpp
         Source/Utils/NonBlockingDialogs.cpp
         Source/Utils/FontManager.cpp
+        
+                # MCP Bridge
+                Source/Workers/MCP/MCPCommandHandler.cpp
+                Source/Workers/MCP/MCPBridgeWorker.cpp
+                Source/Workers/MCP/handlers/BOFHandler.cpp
+                Source/Workers/MCP/handlers/AxScriptHandler.cpp
+                Source/Workers/MCP/handlers/InfoHandler.cpp
+                Source/Workers/MCP/handlers/ListenerHandler.cpp
+                Source/Workers/MCP/handlers/ConsoleHandler.cpp
 )
 
 target_compile_definitions(

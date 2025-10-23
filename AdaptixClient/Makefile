@@ -2162,6 +2162,174 @@ Source/Workers/LastTickWorker.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/LastTickWorker.cpp.s
 .PHONY : Source/Workers/LastTickWorker.cpp.s
 
+Source/Workers/MCP/MCPBridgeWorker.o: Source/Workers/MCP/MCPBridgeWorker.cpp.o
+.PHONY : Source/Workers/MCP/MCPBridgeWorker.o
+
+# target to build an object file
+Source/Workers/MCP/MCPBridgeWorker.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/MCPBridgeWorker.cpp.o
+.PHONY : Source/Workers/MCP/MCPBridgeWorker.cpp.o
+
+Source/Workers/MCP/MCPBridgeWorker.i: Source/Workers/MCP/MCPBridgeWorker.cpp.i
+.PHONY : Source/Workers/MCP/MCPBridgeWorker.i
+
+# target to preprocess a source file
+Source/Workers/MCP/MCPBridgeWorker.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/MCPBridgeWorker.cpp.i
+.PHONY : Source/Workers/MCP/MCPBridgeWorker.cpp.i
+
+Source/Workers/MCP/MCPBridgeWorker.s: Source/Workers/MCP/MCPBridgeWorker.cpp.s
+.PHONY : Source/Workers/MCP/MCPBridgeWorker.s
+
+# target to generate assembly for a file
+Source/Workers/MCP/MCPBridgeWorker.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/MCPBridgeWorker.cpp.s
+.PHONY : Source/Workers/MCP/MCPBridgeWorker.cpp.s
+
+Source/Workers/MCP/MCPCommandHandler.o: Source/Workers/MCP/MCPCommandHandler.cpp.o
+.PHONY : Source/Workers/MCP/MCPCommandHandler.o
+
+# target to build an object file
+Source/Workers/MCP/MCPCommandHandler.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/MCPCommandHandler.cpp.o
+.PHONY : Source/Workers/MCP/MCPCommandHandler.cpp.o
+
+Source/Workers/MCP/MCPCommandHandler.i: Source/Workers/MCP/MCPCommandHandler.cpp.i
+.PHONY : Source/Workers/MCP/MCPCommandHandler.i
+
+# target to preprocess a source file
+Source/Workers/MCP/MCPCommandHandler.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/MCPCommandHandler.cpp.i
+.PHONY : Source/Workers/MCP/MCPCommandHandler.cpp.i
+
+Source/Workers/MCP/MCPCommandHandler.s: Source/Workers/MCP/MCPCommandHandler.cpp.s
+.PHONY : Source/Workers/MCP/MCPCommandHandler.s
+
+# target to generate assembly for a file
+Source/Workers/MCP/MCPCommandHandler.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/MCPCommandHandler.cpp.s
+.PHONY : Source/Workers/MCP/MCPCommandHandler.cpp.s
+
+Source/Workers/MCP/handlers/AxScriptHandler.o: Source/Workers/MCP/handlers/AxScriptHandler.cpp.o
+.PHONY : Source/Workers/MCP/handlers/AxScriptHandler.o
+
+# target to build an object file
+Source/Workers/MCP/handlers/AxScriptHandler.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/AxScriptHandler.cpp.o
+.PHONY : Source/Workers/MCP/handlers/AxScriptHandler.cpp.o
+
+Source/Workers/MCP/handlers/AxScriptHandler.i: Source/Workers/MCP/handlers/AxScriptHandler.cpp.i
+.PHONY : Source/Workers/MCP/handlers/AxScriptHandler.i
+
+# target to preprocess a source file
+Source/Workers/MCP/handlers/AxScriptHandler.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/AxScriptHandler.cpp.i
+.PHONY : Source/Workers/MCP/handlers/AxScriptHandler.cpp.i
+
+Source/Workers/MCP/handlers/AxScriptHandler.s: Source/Workers/MCP/handlers/AxScriptHandler.cpp.s
+.PHONY : Source/Workers/MCP/handlers/AxScriptHandler.s
+
+# target to generate assembly for a file
+Source/Workers/MCP/handlers/AxScriptHandler.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/AxScriptHandler.cpp.s
+.PHONY : Source/Workers/MCP/handlers/AxScriptHandler.cpp.s
+
+Source/Workers/MCP/handlers/BOFHandler.o: Source/Workers/MCP/handlers/BOFHandler.cpp.o
+.PHONY : Source/Workers/MCP/handlers/BOFHandler.o
+
+# target to build an object file
+Source/Workers/MCP/handlers/BOFHandler.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/BOFHandler.cpp.o
+.PHONY : Source/Workers/MCP/handlers/BOFHandler.cpp.o
+
+Source/Workers/MCP/handlers/BOFHandler.i: Source/Workers/MCP/handlers/BOFHandler.cpp.i
+.PHONY : Source/Workers/MCP/handlers/BOFHandler.i
+
+# target to preprocess a source file
+Source/Workers/MCP/handlers/BOFHandler.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/BOFHandler.cpp.i
+.PHONY : Source/Workers/MCP/handlers/BOFHandler.cpp.i
+
+Source/Workers/MCP/handlers/BOFHandler.s: Source/Workers/MCP/handlers/BOFHandler.cpp.s
+.PHONY : Source/Workers/MCP/handlers/BOFHandler.s
+
+# target to generate assembly for a file
+Source/Workers/MCP/handlers/BOFHandler.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/BOFHandler.cpp.s
+.PHONY : Source/Workers/MCP/handlers/BOFHandler.cpp.s
+
+Source/Workers/MCP/handlers/ConsoleHandler.o: Source/Workers/MCP/handlers/ConsoleHandler.cpp.o
+.PHONY : Source/Workers/MCP/handlers/ConsoleHandler.o
+
+# target to build an object file
+Source/Workers/MCP/handlers/ConsoleHandler.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/ConsoleHandler.cpp.o
+.PHONY : Source/Workers/MCP/handlers/ConsoleHandler.cpp.o
+
+Source/Workers/MCP/handlers/ConsoleHandler.i: Source/Workers/MCP/handlers/ConsoleHandler.cpp.i
+.PHONY : Source/Workers/MCP/handlers/ConsoleHandler.i
+
+# target to preprocess a source file
+Source/Workers/MCP/handlers/ConsoleHandler.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/ConsoleHandler.cpp.i
+.PHONY : Source/Workers/MCP/handlers/ConsoleHandler.cpp.i
+
+Source/Workers/MCP/handlers/ConsoleHandler.s: Source/Workers/MCP/handlers/ConsoleHandler.cpp.s
+.PHONY : Source/Workers/MCP/handlers/ConsoleHandler.s
+
+# target to generate assembly for a file
+Source/Workers/MCP/handlers/ConsoleHandler.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/ConsoleHandler.cpp.s
+.PHONY : Source/Workers/MCP/handlers/ConsoleHandler.cpp.s
+
+Source/Workers/MCP/handlers/InfoHandler.o: Source/Workers/MCP/handlers/InfoHandler.cpp.o
+.PHONY : Source/Workers/MCP/handlers/InfoHandler.o
+
+# target to build an object file
+Source/Workers/MCP/handlers/InfoHandler.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/InfoHandler.cpp.o
+.PHONY : Source/Workers/MCP/handlers/InfoHandler.cpp.o
+
+Source/Workers/MCP/handlers/InfoHandler.i: Source/Workers/MCP/handlers/InfoHandler.cpp.i
+.PHONY : Source/Workers/MCP/handlers/InfoHandler.i
+
+# target to preprocess a source file
+Source/Workers/MCP/handlers/InfoHandler.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/InfoHandler.cpp.i
+.PHONY : Source/Workers/MCP/handlers/InfoHandler.cpp.i
+
+Source/Workers/MCP/handlers/InfoHandler.s: Source/Workers/MCP/handlers/InfoHandler.cpp.s
+.PHONY : Source/Workers/MCP/handlers/InfoHandler.s
+
+# target to generate assembly for a file
+Source/Workers/MCP/handlers/InfoHandler.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/InfoHandler.cpp.s
+.PHONY : Source/Workers/MCP/handlers/InfoHandler.cpp.s
+
+Source/Workers/MCP/handlers/ListenerHandler.o: Source/Workers/MCP/handlers/ListenerHandler.cpp.o
+.PHONY : Source/Workers/MCP/handlers/ListenerHandler.o
+
+# target to build an object file
+Source/Workers/MCP/handlers/ListenerHandler.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/ListenerHandler.cpp.o
+.PHONY : Source/Workers/MCP/handlers/ListenerHandler.cpp.o
+
+Source/Workers/MCP/handlers/ListenerHandler.i: Source/Workers/MCP/handlers/ListenerHandler.cpp.i
+.PHONY : Source/Workers/MCP/handlers/ListenerHandler.i
+
+# target to preprocess a source file
+Source/Workers/MCP/handlers/ListenerHandler.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/ListenerHandler.cpp.i
+.PHONY : Source/Workers/MCP/handlers/ListenerHandler.cpp.i
+
+Source/Workers/MCP/handlers/ListenerHandler.s: Source/Workers/MCP/handlers/ListenerHandler.cpp.s
+.PHONY : Source/Workers/MCP/handlers/ListenerHandler.s
+
+# target to generate assembly for a file
+Source/Workers/MCP/handlers/ListenerHandler.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/AdaptixClient.dir/build.make CMakeFiles/AdaptixClient.dir/Source/Workers/MCP/handlers/ListenerHandler.cpp.s
+.PHONY : Source/Workers/MCP/handlers/ListenerHandler.cpp.s
+
 Source/Workers/TerminalWorker.o: Source/Workers/TerminalWorker.cpp.o
 .PHONY : Source/Workers/TerminalWorker.o
 
@@ -2542,6 +2710,27 @@ help:
 	@echo "... Source/Workers/LastTickWorker.o"
 	@echo "... Source/Workers/LastTickWorker.i"
 	@echo "... Source/Workers/LastTickWorker.s"
+	@echo "... Source/Workers/MCP/MCPBridgeWorker.o"
+	@echo "... Source/Workers/MCP/MCPBridgeWorker.i"
+	@echo "... Source/Workers/MCP/MCPBridgeWorker.s"
+	@echo "... Source/Workers/MCP/MCPCommandHandler.o"
+	@echo "... Source/Workers/MCP/MCPCommandHandler.i"
+	@echo "... Source/Workers/MCP/MCPCommandHandler.s"
+	@echo "... Source/Workers/MCP/handlers/AxScriptHandler.o"
+	@echo "... Source/Workers/MCP/handlers/AxScriptHandler.i"
+	@echo "... Source/Workers/MCP/handlers/AxScriptHandler.s"
+	@echo "... Source/Workers/MCP/handlers/BOFHandler.o"
+	@echo "... Source/Workers/MCP/handlers/BOFHandler.i"
+	@echo "... Source/Workers/MCP/handlers/BOFHandler.s"
+	@echo "... Source/Workers/MCP/handlers/ConsoleHandler.o"
+	@echo "... Source/Workers/MCP/handlers/ConsoleHandler.i"
+	@echo "... Source/Workers/MCP/handlers/ConsoleHandler.s"
+	@echo "... Source/Workers/MCP/handlers/InfoHandler.o"
+	@echo "... Source/Workers/MCP/handlers/InfoHandler.i"
+	@echo "... Source/Workers/MCP/handlers/InfoHandler.s"
+	@echo "... Source/Workers/MCP/handlers/ListenerHandler.o"
+	@echo "... Source/Workers/MCP/handlers/ListenerHandler.i"
+	@echo "... Source/Workers/MCP/handlers/ListenerHandler.s"
 	@echo "... Source/Workers/TerminalWorker.o"
 	@echo "... Source/Workers/TerminalWorker.i"
 	@echo "... Source/Workers/TerminalWorker.s"

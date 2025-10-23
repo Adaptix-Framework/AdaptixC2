@@ -81,6 +81,13 @@ logs/
 tmp/
 temp/
 
+# 测试文件（根目录）
+test_*.py
+test_*.sh
+
+# MCP 编译产物
+adaptix_mcp/adaptix_mcp
+
 # 私密/凭据
 .env
 .env.*

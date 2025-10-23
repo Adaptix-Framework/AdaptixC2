@@ -17,7 +17,9 @@ func (ts *Teamserver) TsClientConnected(username string) bool {
 
 func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(packet)
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false) // Disable HTML escaping to preserve UTF-8
+	err := encoder.Encode(packet)
 	if err != nil {
 		return
 	}
@@ -39,7 +41,9 @@ func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 
 func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(packet)
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false) // Disable HTML escaping to preserve UTF-8
+	err := encoder.Encode(packet)
 	if err != nil {
 		return
 	}
@@ -84,21 +88,26 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	packets = append(packets, ts.TsPresyncTargets()...)
 
 	// Send start packet
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false) // Disable HTML escaping to preserve UTF-8
 	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
-	_ = json.NewEncoder(&buffer).Encode(startPacket)
+	_ = encoder.Encode(startPacket)
 	client.Send <- buffer.Bytes()
 	buffer.Reset()
 
 	// Send all sync packets through channel
 	for _, p := range packets {
 		var pBuffer bytes.Buffer
-		_ = json.NewEncoder(&pBuffer).Encode(p)
+		pEncoder := json.NewEncoder(&pBuffer)
+		pEncoder.SetEscapeHTML(false) // Disable HTML escaping to preserve UTF-8
+		_ = pEncoder.Encode(p)
 		client.Send <- pBuffer.Bytes()
 	}
 
 	// Send finish packet
 	finishPacket := CreateSpSyncFinish()
-	_ = json.NewEncoder(&buffer).Encode(finishPacket)
+	buffer.Reset()
+	_ = encoder.Encode(finishPacket)
 	client.Send <- buffer.Bytes()
 	buffer.Reset()
 }

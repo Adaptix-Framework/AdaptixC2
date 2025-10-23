@@ -176,6 +176,15 @@
 
 //////////
 
+typedef struct MCPBridgeSettings {
+    bool    enabled = true;                  // Enable MCP Bridge (auto-enabled for testing)
+    int     port = 9999;                     // Listen port
+    QString bindAddress = "127.0.0.1";       // Bind address (localhost only)
+    bool    requireAuth = false;             // Require authentication
+    QString authToken = "";                  // Authentication token
+    bool    auditLog = true;                 // Enable audit logging
+} MCPBridgeSettings;
+
 typedef struct SettingsData {
     QString MainTheme;
     QString FontFamily;
@@ -194,6 +203,8 @@ typedef struct SettingsData {
     int    HealthOffset;
 
     bool TasksTableColumns[11];
+    
+    MCPBridgeSettings mcpBridge;             // MCP Bridge settings
 } SettingsData;
 
 typedef struct ListenerData

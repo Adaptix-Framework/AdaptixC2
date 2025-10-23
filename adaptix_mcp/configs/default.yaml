@@ -1,0 +1,13 @@
+client:
+  url: "ws://127.0.0.1:9999"
+  reconnect_interval: 5s
+  timeout: 30s
+
+mcp:
+  name: "adaptix-mcp"
+  version: "1.0.0"
+  
+logging:
+  level: "info"
+  format: "text"
+
