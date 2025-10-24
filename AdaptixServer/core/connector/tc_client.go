@@ -14,6 +14,7 @@ import (
 type Credentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Version  string `json:"version"` // Client version, e.g., "0.11.0"
 }
 
 type AccessJWT struct {
@@ -46,7 +47,7 @@ func (tc *TsConnector) tcLogin(ctx *gin.Context) {
 		}
 	}
 
-	accessToken, err := token.GenerateAccessToken(creds.Username)
+	accessToken, err := token.GenerateAccessToken(creds.Username, creds.Version)
 	if err != nil {
 		_ = ctx.Error(errors.New("could not generate access token"))
 		return
@@ -73,6 +74,10 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 		return
 	}
 
+	// Extract version from JWT token (empty string for old clients)
+	versionValue, _ := ctx.Get("version")
+	version, _ := versionValue.(string)
+
 	exists = tc.teamserver.TsClientExists(username)
 	if exists {
 		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: invalid username type in context", "ok": false})
@@ -91,11 +96,11 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 		return
 	}
 
-	go tc.tcWebsocketConnect(username, wsConn)
+	go tc.tcWebsocketConnect(username, version, wsConn)
 }
 
-func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Conn) {
-	tc.teamserver.TsClientConnect(username, wsConn)
+func (tc *TsConnector) tcWebsocketConnect(username string, version string, wsConn *websocket.Conn) {
+	tc.teamserver.TsClientConnect(username, version, wsConn)
 	for {
 		_, _, err := wsConn.ReadMessage()
 		if err == nil {

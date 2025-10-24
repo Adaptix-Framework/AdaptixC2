@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -21,7 +21,7 @@ type Teamserver interface {
 	TsClientExists(username string) bool
 	TsClientDisconnect(username string)
 	TsClientSync(username string)
-	TsClientConnect(username string, socket *websocket.Conn)
+	TsClientConnect(username string, version string, socket *websocket.Conn)
 
 	TsListenerList() (string, error)
 	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error

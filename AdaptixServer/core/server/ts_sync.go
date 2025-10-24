@@ -121,6 +121,26 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 	buffer.Reset()
 
+	// Backward compatibility: check if client supports batch sync
+	if !client.supportsBatchSync {
+		// Legacy mode: send individual packets for old clients (v0.10 and earlier)
+		for _, p := range packets {
+			var pBuffer bytes.Buffer
+			_ = json.NewEncoder(&pBuffer).Encode(p)
+			_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
+		}
+
+		finishPacket := CreateSpSyncFinish()
+		_ = json.NewEncoder(&buffer).Encode(finishPacket)
+		_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+		buffer.Reset()
+
+		elapsed := time.Since(startTime)
+		println(fmt.Sprintf("[SYNC] Client %s (legacy): %d packets (individual), completed in %v",
+			client.username, len(packets), elapsed))
+		return
+	}
+
 	// Phase 2: Type-based categorized batching for better organization
 	// Group packets by category and send in optimized batches
 	const BATCH_SIZE = 100

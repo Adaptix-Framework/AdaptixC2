@@ -13,16 +13,40 @@ func (ts *Teamserver) TsClientExists(username string) bool {
 	return ts.clients.Contains(username)
 }
 
-func (ts *Teamserver) TsClientConnect(username string, socket *websocket.Conn) {
+func (ts *Teamserver) TsClientConnect(username string, version string, socket *websocket.Conn) {
+	// Parse version and enable batch sync for v0.11.0+
+	supportsBatch := isVersionSupported(version)
+
 	client := &Client{
-		username:   username,
-		synced:     false,
-		lockSocket: &sync.Mutex{},
-		socket:     socket,
-		tmp_store:  safe.NewSlice(),
+		username:          username,
+		version:           version,
+		synced:            false,
+		supportsBatchSync: supportsBatch,
+		lockSocket:        &sync.Mutex{},
+		socket:            socket,
+		tmp_store:         safe.NewSlice(),
 	}
 
 	ts.clients.Put(username, client)
+}
+
+// isVersionSupported checks if client version supports batch sync (>= 0.11.0)
+func isVersionSupported(version string) bool {
+	// Empty version means old client (< 0.11.0)
+	if version == "" {
+		return false
+	}
+
+	// Simple version comparison: check if >= 0.11.0
+	// Format: "0.11.0", "0.11", "0.12.0", etc.
+	if len(version) >= 4 {
+		// Extract major.minor (e.g., "0.11" from "0.11.0")
+		if version[:4] >= "0.11" {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (ts *Teamserver) TsClientDisconnect(username string) {
