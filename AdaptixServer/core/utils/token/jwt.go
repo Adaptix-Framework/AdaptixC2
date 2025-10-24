@@ -56,10 +56,11 @@ func GenerateAccessToken(username string, version string) (string, error) {
 	return tokenString, nil
 }
 
-func GenerateRefreshToken(username string) (string, error) {
+func GenerateRefreshToken(username string, version string) (string, error) {
 	expirationTime := time.Now().Add(time.Duration(refreshTokenLiveHours) * time.Hour)
 	claims := &Claims{
 		Username: username,
+		Version:  version, // Preserve version in refresh token
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},

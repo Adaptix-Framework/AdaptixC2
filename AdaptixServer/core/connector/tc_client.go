@@ -53,7 +53,7 @@ func (tc *TsConnector) tcLogin(ctx *gin.Context) {
 		return
 	}
 
-	refreshToken, err := token.GenerateRefreshToken(creds.Username)
+	refreshToken, err := token.GenerateRefreshToken(creds.Username, creds.Version)
 	if err != nil {
 		_ = ctx.Error(errors.New("could not generate refresh token"))
 		return

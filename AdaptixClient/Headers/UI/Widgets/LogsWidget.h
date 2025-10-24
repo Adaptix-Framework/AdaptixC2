@@ -12,10 +12,14 @@ class LogsWidget : public DockTab
     QGridLayout*     mainGridLayout      = nullptr;
     QGridLayout*     logsGridLayout      = nullptr;
     // QGridLayout*     todoGridLayout      = nullptr;
+
     TextEditConsole* logsConsoleTextEdit = nullptr;
+
     QLabel*          logsLabel           = nullptr;
     // QLabel*          todoLabel           = nullptr;
+
     QSplitter*       mainHSplitter       = nullptr;
+
     QWidget*         logsWidget          = nullptr;
     // QWidget*         todoWidget          = nullptr;
 
@@ -31,6 +35,7 @@ class LogsWidget : public DockTab
 
     bool userSelectedCompletion = false;
     int  currentIndex = -1;
+
     QVector<QTextEdit::ExtraSelection> allSelections;
 
     void createUI();
@@ -41,8 +46,10 @@ public:
     explicit LogsWidget(AdaptixWidget* w);
     ~LogsWidget() override;
 
-     void AddLogs( int type, qint64 time, const QString &Message) const;
-     void Clear() const;
+    void AddLogs( int type, qint64 time, const QString &Message) const;
+
+    void Clear() const;
+    TextEditConsole* GetLogsConsoleTextEdit() const { return logsConsoleTextEdit; }
 
 public Q_SLOTS:
     void toggleSearchPanel();
@@ -50,4 +57,4 @@ public Q_SLOTS:
     void handleSearchBackward();
 };
 
-#endif
+#endif //ADAPTIXCLIENT_LOGSWIDGET_H

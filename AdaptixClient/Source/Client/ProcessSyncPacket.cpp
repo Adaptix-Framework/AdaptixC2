@@ -394,8 +394,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString category = jsonObj.value("category").toString("general");
         
         // Temporarily disable UI updates for performance
-        if (LogsDock && LogsDock->logsConsoleTextEdit) {
-            LogsDock->logsConsoleTextEdit->setUpdatesEnabled(false);
+        if (LogsDock && LogsDock->GetLogsConsoleTextEdit()) {
+            LogsDock->GetLogsConsoleTextEdit()->setUpdatesEnabled(false);
         }
         
         for (const QJsonValue &packetValue : packetsArray) {
@@ -407,8 +407,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         }
         
         // Re-enable UI updates and refresh once
-        if (LogsDock && LogsDock->logsConsoleTextEdit) {
-            LogsDock->logsConsoleTextEdit->setUpdatesEnabled(true);
+        if (LogsDock && LogsDock->GetLogsConsoleTextEdit()) {
+            LogsDock->GetLogsConsoleTextEdit()->setUpdatesEnabled(true);
         }
         
         // Update progress once for entire batch

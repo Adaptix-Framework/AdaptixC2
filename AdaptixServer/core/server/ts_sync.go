@@ -113,82 +113,84 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	packets = append(packets, ts.TsPresyncCredentials()...)
 	packets = append(packets, ts.TsPresyncTargets()...)
 
-	client.lockSocket.Lock()
-	defer client.lockSocket.Unlock()
-
+	// Pre-serialize start packet
 	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
-	_ = json.NewEncoder(&buffer).Encode(startPacket)
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-	buffer.Reset()
+	var startBuffer bytes.Buffer
+	_ = json.NewEncoder(&startBuffer).Encode(startPacket)
 
-	// Backward compatibility: check if client supports batch sync
+	// Pre-serialize all data packets outside of lock
+	var serializedPackets [][]byte
+
 	if !client.supportsBatchSync {
-		// Legacy mode: send individual packets for old clients (v0.10 and earlier)
+		// Legacy mode: pre-serialize individual packets
 		for _, p := range packets {
 			var pBuffer bytes.Buffer
 			_ = json.NewEncoder(&pBuffer).Encode(p)
-			_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
+			serializedPackets = append(serializedPackets, pBuffer.Bytes())
 		}
+	} else {
+		// Batch mode: pre-serialize categorized batches
+		const BATCH_SIZE = 100
+		categoryMap := make(map[string][]interface{})
+		categoryOrder := []string{} // Preserve order
 
-		finishPacket := CreateSpSyncFinish()
-		_ = json.NewEncoder(&buffer).Encode(finishPacket)
-		_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-		buffer.Reset()
-
-		elapsed := time.Since(startTime)
-		println(fmt.Sprintf("[SYNC] Client %s (legacy): %d packets (individual), completed in %v",
-			client.username, len(packets), elapsed))
-		return
-	}
-
-	// Phase 2: Type-based categorized batching for better organization
-	// Group packets by category and send in optimized batches
-	const BATCH_SIZE = 100
-
-	categoryMap := make(map[string][]interface{})
-	categoryOrder := []string{} // Preserve order
-
-	// Categorize packets by type
-	for _, p := range packets {
-		category := getPacketCategory(p)
-		if _, exists := categoryMap[category]; !exists {
-			categoryOrder = append(categoryOrder, category)
-		}
-		categoryMap[category] = append(categoryMap[category], p)
-	}
-
-	// Send categorized batches
-	for _, category := range categoryOrder {
-		categoryPackets := categoryMap[category]
-
-		// Send in batches within each category
-		for i := 0; i < len(categoryPackets); i += BATCH_SIZE {
-			end := i + BATCH_SIZE
-			if end > len(categoryPackets) {
-				end = len(categoryPackets)
+		// Categorize packets by type
+		for _, p := range packets {
+			category := getPacketCategory(p)
+			if _, exists := categoryMap[category]; !exists {
+				categoryOrder = append(categoryOrder, category)
 			}
+			categoryMap[category] = append(categoryMap[category], p)
+		}
 
-			batch := categoryPackets[i:end]
-			batchPacket := CreateSpSyncCategoryBatch(category, batch)
+		// Serialize categorized batches
+		for _, category := range categoryOrder {
+			categoryPackets := categoryMap[category]
 
-			var pBuffer bytes.Buffer
-			_ = json.NewEncoder(&pBuffer).Encode(batchPacket)
-			_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
+			// Serialize in batches within each category
+			for i := 0; i < len(categoryPackets); i += BATCH_SIZE {
+				end := i + BATCH_SIZE
+				if end > len(categoryPackets) {
+					end = len(categoryPackets)
+				}
+
+				batch := categoryPackets[i:end]
+				batchPacket := CreateSpSyncCategoryBatch(category, batch)
+
+				var pBuffer bytes.Buffer
+				_ = json.NewEncoder(&pBuffer).Encode(batchPacket)
+				serializedPackets = append(serializedPackets, pBuffer.Bytes())
+			}
 		}
 	}
 
+	// Pre-serialize finish packet
 	finishPacket := CreateSpSyncFinish()
-	_ = json.NewEncoder(&buffer).Encode(finishPacket)
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-	buffer.Reset()
+	var finishBuffer bytes.Buffer
+	_ = json.NewEncoder(&finishBuffer).Encode(finishPacket)
+
+	// Now hold lock only for network I/O
+	client.lockSocket.Lock()
+	defer client.lockSocket.Unlock()
+
+	// Send start packet
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, startBuffer.Bytes())
+
+	// Send all pre-serialized packets
+	for _, serialized := range serializedPackets {
+		_ = client.socket.WriteMessage(websocket.BinaryMessage, serialized)
+	}
+
+	// Send finish packet
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, finishBuffer.Bytes())
 
 	elapsed := time.Since(startTime)
-	totalBatches := 0
-	for _, catPackets := range categoryMap {
-		totalBatches += (len(catPackets) + BATCH_SIZE - 1) / BATCH_SIZE
+	mode := "batch"
+	if !client.supportsBatchSync {
+		mode = "legacy"
 	}
-	println(fmt.Sprintf("[SYNC] Client %s: %d packets in %d categories, %d batches, completed in %v",
-		client.username, len(packets), len(categoryOrder), totalBatches, elapsed))
+	println(fmt.Sprintf("[SYNC] Client %s (%s): %d packets in %d messages, completed in %v",
+		client.username, mode, len(packets), len(serializedPackets), elapsed))
 }
 
 ///////////////

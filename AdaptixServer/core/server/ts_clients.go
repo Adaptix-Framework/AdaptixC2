@@ -4,6 +4,8 @@ import (
 	"AdaptixServer/core/utils/safe"
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -30,20 +32,44 @@ func (ts *Teamserver) TsClientConnect(username string, version string, socket *w
 	ts.clients.Put(username, client)
 }
 
-// isVersionSupported checks if client version supports batch sync (>= 0.11.0)
+// isVersionSupported checks if client version supports batch sync (>= 0.10.0)
+// v0.10 is the current dev branch with batch sync support
+// Supports formats: "0.10.0", "v0.10", "Adaptix Framework v0.10", etc.
 func isVersionSupported(version string) bool {
-	// Empty version means old client (< 0.11.0)
+	// Empty version means old client without version field (< 0.10.0)
 	if version == "" {
 		return false
 	}
 
-	// Simple version comparison: check if >= 0.11.0
-	// Format: "0.11.0", "0.11", "0.12.0", etc.
-	if len(version) >= 4 {
-		// Extract major.minor (e.g., "0.11" from "0.11.0")
-		if version[:4] >= "0.11" {
-			return true
+	// Extract version numbers using regex to handle multiple formats
+	// Matches: "v0.10.0", "0.10", "Adaptix Framework v0.10", etc.
+	var major, minor int
+
+	// Try to find pattern like "v0.10" or "0.10"
+	if strings.Contains(version, "v") {
+		// Extract after 'v': "Adaptix Framework v0.10" -> "0.10"
+		parts := strings.Split(version, "v")
+		if len(parts) >= 2 {
+			versionNum := strings.TrimSpace(parts[len(parts)-1])
+			_, err := fmt.Sscanf(versionNum, "%d.%d", &major, &minor)
+			if err != nil {
+				return false // Invalid format
+			}
 		}
+	} else {
+		// Direct format: "0.11.0" or "0.11"
+		_, err := fmt.Sscanf(version, "%d.%d", &major, &minor)
+		if err != nil {
+			return false // Invalid format
+		}
+	}
+
+	// Check if version >= 0.10.0 (current dev branch with batch sync)
+	if major > 0 {
+		return true
+	}
+	if major == 0 && minor >= 10 {
+		return true
 	}
 
 	return false
