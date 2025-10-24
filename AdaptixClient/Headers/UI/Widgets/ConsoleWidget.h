@@ -38,6 +38,7 @@ class ConsoleWidget : public DockTab
     QLabel*         searchLabel    = nullptr;
     QLineEdit*      searchLineEdit = nullptr;
     ClickableLabel* hideButton     = nullptr;
+    ClickableLabel* clearButton    = nullptr;
     QSpacerItem*    spacer         = nullptr;
     QShortcut*      shortcutSearch = nullptr;
     KPH_SearchInput* searchInput   = nullptr;

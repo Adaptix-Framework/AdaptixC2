@@ -134,6 +134,7 @@ public:
 Q_SIGNALS:
     void ctx_find();
     void ctx_history();
+    void ctx_clear();
 };
 
 #endif

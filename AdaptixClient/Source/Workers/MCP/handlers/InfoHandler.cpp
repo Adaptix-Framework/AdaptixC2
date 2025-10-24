@@ -2,6 +2,7 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <Agent/Agent.h>
+#include <Agent/Task.h>
 
 InfoHandler::InfoHandler(AdaptixWidget* widget)
     : adaptixWidget(widget)
@@ -34,6 +35,10 @@ MCP::MCPResponse InfoHandler::handle(const MCP::MCPRequest& request) {
         return handleListDownloads(request);
     } else if (subCommand == "list_screenshots") {
         return handleListScreenshots(request);
+    } else if (subCommand == "list_tasks") {
+        return handleListTasks(request);
+    } else if (subCommand == "get_task_output") {
+        return handleGetTaskOutput(request);
     } else {
         return MCP::MCPResponse::error(
             request.requestId,
@@ -294,6 +299,92 @@ MCP::MCPResponse InfoHandler::handleListScreenshots(const MCP::MCPRequest& reque
     return MCP::MCPResponse::success(
         request.requestId,
         QString("Found %1 screenshots").arg(screenshotsArray.size()),
+        data
+    );
+}
+
+MCP::MCPResponse InfoHandler::handleListTasks(const MCP::MCPRequest& request) {
+    QString agentId = request.params["agent_id"].toString();
+    
+    QJsonArray tasksArray;
+    
+    // Iterate through all tasks
+    for (auto it = adaptixWidget->TasksMap.constBegin(); 
+         it != adaptixWidget->TasksMap.constEnd(); ++it) {
+        Task* task = it.value();
+        
+        // If agent_id is specified, filter by agent
+        if (!agentId.isEmpty() && task->data.AgentId != agentId) {
+            continue;
+        }
+        
+        QJsonObject taskObj;
+        taskObj["task_id"] = task->data.TaskId;
+        taskObj["agent_id"] = task->data.AgentId;
+        taskObj["command"] = task->data.CommandLine;
+        taskObj["status"] = task->data.Status;
+        taskObj["completed"] = task->data.Completed;
+        taskObj["start_time"] = task->data.StartTime;
+        taskObj["finish_time"] = task->data.FinishTime;
+        taskObj["computer"] = task->data.Computer;
+        taskObj["user"] = task->data.User;
+        
+        // Include output preview (first 200 chars)
+        QString outputPreview = task->data.Output;
+        if (outputPreview.length() > 200) {
+            outputPreview = outputPreview.left(200) + "...";
+        }
+        taskObj["output_preview"] = outputPreview;
+        
+        tasksArray.append(taskObj);
+    }
+    
+    QJsonObject data;
+    data["tasks"] = tasksArray;
+    data["count"] = tasksArray.size();
+    
+    return MCP::MCPResponse::success(
+        request.requestId,
+        QString("Found %1 tasks").arg(tasksArray.size()),
+        data
+    );
+}
+
+MCP::MCPResponse InfoHandler::handleGetTaskOutput(const MCP::MCPRequest& request) {
+    QString taskId = request.params["task_id"].toString();
+    
+    if (taskId.isEmpty()) {
+        return MCP::MCPResponse::error(
+            request.requestId,
+            "Missing required parameter: task_id"
+        );
+    }
+    
+    // Find the task
+    Task* task = adaptixWidget->TasksMap.value(taskId, nullptr);
+    
+    if (!task) {
+        return MCP::MCPResponse::error(
+            request.requestId,
+            QString("Task not found: %1").arg(taskId)
+        );
+    }
+    
+    QJsonObject data;
+    data["task_id"] = task->data.TaskId;
+    data["agent_id"] = task->data.AgentId;
+    data["command"] = task->data.CommandLine;
+    data["status"] = task->data.Status;
+    data["completed"] = task->data.Completed;
+    data["start_time"] = task->data.StartTime;
+    data["finish_time"] = task->data.FinishTime;
+    data["computer"] = task->data.Computer;
+    data["user"] = task->data.User;
+    data["output"] = task->data.Output;  // Full output
+    
+    return MCP::MCPResponse::success(
+        request.requestId,
+        QString("Retrieved task %1").arg(taskId),
         data
     );
 }

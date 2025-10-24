@@ -10,6 +10,7 @@ import (
 func (s *MCPServer) registerTools() {
 	s.tools["execute_command"] = s.handleExecuteCommandTool
 	s.tools["get_console_output"] = s.handleGetConsoleOutputTool
+	s.tools["clear_console"] = s.handleClearConsoleTool
 	s.tools["list_agents"] = s.handleListAgentsTool
 	s.tools["get_agent_info"] = s.handleGetAgentInfoTool
 	s.tools["list_listeners"] = s.handleListListenersTool
@@ -19,8 +20,10 @@ func (s *MCPServer) registerTools() {
 	s.tools["list_credentials"] = s.handleListCredentialsTool
 	s.tools["list_downloads"] = s.handleListDownloadsTool
 	s.tools["list_screenshots"] = s.handleListScreenshotsTool
+	s.tools["list_tasks"] = s.handleListTasksTool
+	s.tools["get_task_output"] = s.handleGetTaskOutputTool
 
-	utils.InfoLogger.Println("🛠️  Registered Tools: execute_command, get_console_output, list_agents, get_agent_info, list_listeners, create_listener, edit_listener, stop_listener, list_credentials, list_downloads, list_screenshots")
+	utils.InfoLogger.Println("🛠️  Registered Tools: execute_command, get_console_output, clear_console, list_agents, get_agent_info, list_listeners, create_listener, edit_listener, stop_listener, list_credentials, list_downloads, list_screenshots, list_tasks, get_task_output")
 }
 
 // routeTool 路由Tool请求
@@ -109,6 +112,30 @@ func (s *MCPServer) handleGetConsoleOutputTool(params map[string]interface{}) (i
 	return "", fmt.Errorf("no console output available")
 }
 
+// handleClearConsoleTool 清空控制台输出
+func (s *MCPServer) handleClearConsoleTool(params map[string]interface{}) (interface{}, error) {
+	agentID, ok := params["agent_id"].(string)
+	if !ok {
+		return nil, fmt.Errorf("missing or invalid agent_id")
+	}
+
+	// 调用ConsoleHandler清空控制台
+	resp, err := s.clientConnector.SendCommand("console", map[string]interface{}{
+		"command":  "clear_console",
+		"agent_id": agentID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to clear console: %w", err)
+	}
+
+	// 返回成功消息
+	if resp.Status == "success" {
+		return fmt.Sprintf("✅ Console cleared for agent %s", agentID), nil
+	}
+
+	return nil, fmt.Errorf("failed to clear console: %s", resp.Message)
+}
+
 // handleListAgentsTool 列出所有Agent
 func (s *MCPServer) handleListAgentsTool(params map[string]interface{}) (interface{}, error) {
 	// 调用InfoHandler获取Agent列表
@@ -151,6 +178,54 @@ func (s *MCPServer) handleGetAgentInfoTool(params map[string]interface{}) (inter
 	}
 
 	return map[string]interface{}{}, fmt.Errorf("no agent info available")
+}
+
+// handleListTasksTool 列出所有任务
+func (s *MCPServer) handleListTasksTool(params map[string]interface{}) (interface{}, error) {
+	// Optional agent_id filter
+	reqParams := map[string]interface{}{
+		"command": "list_tasks",
+	}
+
+	if agentID, ok := params["agent_id"].(string); ok && agentID != "" {
+		reqParams["agent_id"] = agentID
+	}
+
+	resp, err := s.clientConnector.SendCommand("info", reqParams)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tasks: %w", err)
+	}
+
+	if resp.Data != nil {
+		return resp.Data, nil
+	}
+
+	return map[string]interface{}{
+		"tasks": []interface{}{},
+		"count": 0,
+	}, nil
+}
+
+// handleGetTaskOutputTool 获取指定任务的完整输出
+func (s *MCPServer) handleGetTaskOutputTool(params map[string]interface{}) (interface{}, error) {
+	taskID, ok := params["task_id"].(string)
+	if !ok || taskID == "" {
+		return nil, fmt.Errorf("missing or invalid task_id")
+	}
+
+	resp, err := s.clientConnector.SendCommand("info", map[string]interface{}{
+		"command": "get_task_output",
+		"task_id": taskID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task output: %w", err)
+	}
+
+	if resp.Data != nil {
+		return resp.Data, nil
+	}
+
+	return nil, fmt.Errorf("task not found: %s", taskID)
 }
 
 // handleListListenersTool 列出所有Listener

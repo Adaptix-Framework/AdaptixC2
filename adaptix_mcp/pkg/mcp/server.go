@@ -260,6 +260,20 @@ func (s *MCPServer) handleToolsList(req JSONRPCRequest) *JSONRPCResponse {
 			},
 		},
 		{
+			Name:        "clear_console",
+			Description: "Clear the console output of an agent",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"agent_id": map[string]interface{}{
+						"type":        "string",
+						"description": "Agent ID",
+					},
+				},
+				"required": []string{"agent_id"},
+			},
+		},
+		{
 			Name:        "list_agents",
 			Description: "List all connected agents",
 			InputSchema: map[string]interface{}{
@@ -311,6 +325,33 @@ func (s *MCPServer) handleToolsList(req JSONRPCRequest) *JSONRPCResponse {
 			InputSchema: map[string]interface{}{
 				"type":       "object",
 				"properties": map[string]interface{}{},
+			},
+		},
+		{
+			Name:        "list_tasks",
+			Description: "List all tasks (optionally filtered by agent_id)",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"agent_id": map[string]interface{}{
+						"type":        "string",
+						"description": "Optional: Filter tasks by agent ID",
+					},
+				},
+			},
+		},
+		{
+			Name:        "get_task_output",
+			Description: "Get the full output of a specific task",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"task_id": map[string]interface{}{
+						"type":        "string",
+						"description": "Task ID",
+					},
+				},
+				"required": []string{"task_id"},
 			},
 		},
 		{

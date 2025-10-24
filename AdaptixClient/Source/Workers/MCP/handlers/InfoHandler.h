@@ -37,6 +37,8 @@ private:
     MCP::MCPResponse handleListCredentials(const MCP::MCPRequest& request);
     MCP::MCPResponse handleListDownloads(const MCP::MCPRequest& request);
     MCP::MCPResponse handleListScreenshots(const MCP::MCPRequest& request);
+    MCP::MCPResponse handleListTasks(const MCP::MCPRequest& request);
+    MCP::MCPResponse handleGetTaskOutput(const MCP::MCPRequest& request);
 };
 
 #endif // INFOHANDLER_H

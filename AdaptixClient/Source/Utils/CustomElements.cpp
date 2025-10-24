@@ -115,7 +115,7 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
     connect(findAction, &QAction::triggered, this, [this]() { Q_EMIT ctx_find(); });
     
     QAction *clearAction = menu->addAction("Clear        (Ctrl + L)");
-    connect(clearAction, &QAction::triggered, this, [this]() { clear(); });
+    connect(clearAction, &QAction::triggered, this, [this]() { Q_EMIT ctx_clear(); });
 
     menu->addSeparator();
 

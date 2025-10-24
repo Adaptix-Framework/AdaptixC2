@@ -19,10 +19,12 @@ MCPResponse ConsoleHandler::handle(const MCPRequest& request)
     
     if (command == "send_input") {
         return handleSendInput(request);
+    } else if (command == "clear_console") {
+        return handleClearConsole(request);
     } else {
         return MCPResponse::error(
             request.requestId,
-            QString("Unknown console command: %1. Use: send_input").arg(command)
+            QString("Unknown console command: %1. Use: send_input, clear_console").arg(command)
         );
     }
 }
@@ -89,6 +91,60 @@ MCPResponse ConsoleHandler::handleSendInput(const MCPRequest& request)
         return MCPResponse::error(
             request.requestId,
             QString("Failed to send command to agent %1").arg(agentId)
+        );
+    }
+}
+
+MCPResponse ConsoleHandler::handleClearConsole(const MCPRequest& request)
+{
+    QString agentId = request.params["agent_id"].toString();
+    
+    if (agentId.isEmpty()) {
+        return MCPResponse::error(request.requestId, 
+            "Missing required parameter: agent_id");
+    }
+    
+    // 获取Agent
+    Agent* agent = adaptixWidget->AgentsMap.value(agentId, nullptr);
+    if (!agent) {
+        return MCPResponse::error(
+            request.requestId,
+            QString("Agent '%1' not found").arg(agentId)
+        );
+    }
+    
+    // 获取Agent的Console
+    if (!agent->Console) {
+        return MCPResponse::error(
+            request.requestId,
+            QString("Agent '%1' has no console").arg(agentId)
+        );
+    }
+    
+    // 在主线程中执行Console清屏操作
+    bool success = false;
+    
+    QMetaObject::invokeMethod(agent->Console, [agent, &success]() {
+        if (agent->Console) {
+            agent->Console->Clear();
+            success = true;
+        }
+    }, Qt::BlockingQueuedConnection);
+    
+    if (success) {
+        QJsonObject data;
+        data["agent_id"] = agentId;
+        data["cleared"] = true;
+        
+        return MCPResponse::success(
+            request.requestId,
+            QString("Console cleared for agent %1").arg(agentId),
+            data
+        );
+    } else {
+        return MCPResponse::error(
+            request.requestId,
+            QString("Failed to clear console for agent %1").arg(agentId)
         );
     }
 }

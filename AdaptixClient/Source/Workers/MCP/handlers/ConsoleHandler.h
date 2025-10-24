@@ -13,6 +13,7 @@ class AdaptixWidget;
  * 提供直接操作Agent Console的能力，模拟用户输入
  * 支持命令:
  * - send_input: 向Console发送输入并执行
+ * - clear_console: 清空Console输出
  * - get_output: 获取Console输出（已在InfoHandler实现）
  */
 class ConsoleHandler : public IMCPCommandHandler {
@@ -34,6 +35,7 @@ private:
     
     // 命令处理函数
     MCP::MCPResponse handleSendInput(const MCP::MCPRequest& request);
+    MCP::MCPResponse handleClearConsole(const MCP::MCPRequest& request);
 };
 
 #endif // ADAPTIX_MCP_CONSOLEHANDLER_H

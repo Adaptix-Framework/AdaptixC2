@@ -24,8 +24,10 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
     connect(prevButton,       &ClickableLabel::clicked,                               this, &ConsoleWidget::handleSearchBackward);
     connect(searchInput,      &KPH_SearchInput::escPressed,                           this, &ConsoleWidget::toggleSearchPanel );
     connect(hideButton,       &ClickableLabel::clicked,                               this, &ConsoleWidget::toggleSearchPanel);
+    connect(clearButton,      &ClickableLabel::clicked,                               this, &ConsoleWidget::Clear);
     connect(OutputTextEdit,   &TextEditConsole::ctx_find,                             this, &ConsoleWidget::toggleSearchPanel);
     connect(OutputTextEdit,   &TextEditConsole::ctx_history,                          this, &ConsoleWidget::handleShowHistory);
+    connect(OutputTextEdit,   &TextEditConsole::ctx_clear,                            this, &ConsoleWidget::Clear);
     connect(commander,        &Commander::commandsUpdated,                            this, &ConsoleWidget::upgradeCompleter);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), OutputTextEdit);
@@ -73,6 +75,10 @@ void ConsoleWidget::createUI()
     hideButton = new ClickableLabel("X");
     hideButton->setCursor( Qt::PointingHandCursor );
 
+    clearButton = new ClickableLabel("Clear");
+    clearButton->setCursor( Qt::PointingHandCursor );
+    clearButton->setStyleSheet("QLabel { padding: 2px 8px; }");
+
     spacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     searchLayout = new QHBoxLayout(searchWidget);
@@ -84,6 +90,7 @@ void ConsoleWidget::createUI()
     searchLayout->addWidget(searchLineEdit);
     searchLayout->addWidget(hideButton);
     searchLayout->addSpacerItem(spacer);
+    searchLayout->addWidget(clearButton);
 
     QString prompt = QString("%1 >").arg(agent->data.Name);
     CmdLabel = new QLabel(this );
