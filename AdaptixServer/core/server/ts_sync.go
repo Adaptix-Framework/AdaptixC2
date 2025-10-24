@@ -94,10 +94,7 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 }
 
 func (ts *Teamserver) TsSyncStored(client *Client) {
-	var (
-		buffer  bytes.Buffer
-		packets []interface{}
-	)
+	var packets []interface{}
 
 	startTime := time.Now()
 
