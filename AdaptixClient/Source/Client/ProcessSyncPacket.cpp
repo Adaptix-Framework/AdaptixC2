@@ -37,6 +37,12 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
+    if( spType == TYPE_SYNC_CATEGORY_BATCH ) {
+        if ( !jsonObj.contains("category") || !jsonObj["category"].isString() ) return false;
+        if ( !jsonObj.contains("packets") || !jsonObj["packets"].isArray() ) return false;
+        return true;
+    }
+
     if(spType == SP_TYPE_EVENT) {
         if ( !jsonObj.contains("event_type") || !jsonObj["event_type"].isDouble() ) return false;
         if ( !jsonObj.contains("date")       || !jsonObj["date"].isDouble() )       return false;
@@ -381,10 +387,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 {
     int spType = jsonObj["type"].toDouble();
     
-    if( spType == TYPE_SYNC_BATCH )
+    if( spType == TYPE_SYNC_BATCH || spType == TYPE_SYNC_CATEGORY_BATCH )
     {
         // Process batch packet: extract all packets and process them
         QJsonArray packetsArray = jsonObj["packets"].toArray();
+        QString category = jsonObj.value("category").toString("general");
         
         // Temporarily disable UI updates for performance
         if (LogsDock && LogsDock->logsConsoleTextEdit) {

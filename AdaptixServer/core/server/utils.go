@@ -180,6 +180,12 @@ type SyncPackerBatch struct {
 	Packets []interface{} `json:"packets"`
 }
 
+type SyncPackerCategoryBatch struct {
+	SpType   int           `json:"type"`
+	Category string        `json:"category"` // "agents", "events", "console", "tasks", etc.
+	Packets  []interface{} `json:"packets"`
+}
+
 type SpEvent struct {
 	Type int `json:"type"`
 

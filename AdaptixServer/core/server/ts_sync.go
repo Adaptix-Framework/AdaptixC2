@@ -17,6 +17,38 @@ func (ts *Teamserver) TsClientConnected(username string) bool {
 	return found
 }
 
+// getPacketCategory categorizes packets for optimized batch transmission
+func getPacketCategory(packet interface{}) string {
+	switch packet.(type) {
+	case SyncPackerListenerReg, SyncPackerListenerStart:
+		return "listeners"
+	case SyncPackerAgentReg, SyncPackerAgentNew, SyncPackerAgentUpdate:
+		return "agents"
+	case SyncPackerAgentConsoleOutput, SyncPackerAgentConsoleTaskSync, SyncPackerAgentConsoleTaskUpd:
+		return "console"
+	case SyncPackerAgentTaskSync, SyncPackerAgentTaskUpdate:
+		return "tasks"
+	case SpEvent:
+		return "events"
+	case SyncPackerChatMessage:
+		return "chat"
+	case SyncPackerDownloadCreate, SyncPackerDownloadUpdate:
+		return "downloads"
+	case SyncPackerScreenshotCreate:
+		return "screenshots"
+	case SyncPackerTunnelCreate:
+		return "tunnels"
+	case SyncPackerPivotCreate:
+		return "pivots"
+	case SyncPackerCredentialsAdd:
+		return "credentials"
+	case SyncPackerTargetsAdd:
+		return "targets"
+	default:
+		return "misc"
+	}
+}
+
 func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	var buffer bytes.Buffer
 	err := json.NewEncoder(&buffer).Encode(packet)
@@ -89,20 +121,40 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 	buffer.Reset()
 
-	// Batch transmission: send packets in groups of 100
+	// Phase 2: Type-based categorized batching for better organization
+	// Group packets by category and send in optimized batches
 	const BATCH_SIZE = 100
-	for i := 0; i < len(packets); i += BATCH_SIZE {
-		end := i + BATCH_SIZE
-		if end > len(packets) {
-			end = len(packets)
+
+	categoryMap := make(map[string][]interface{})
+	categoryOrder := []string{} // Preserve order
+
+	// Categorize packets by type
+	for _, p := range packets {
+		category := getPacketCategory(p)
+		if _, exists := categoryMap[category]; !exists {
+			categoryOrder = append(categoryOrder, category)
 		}
+		categoryMap[category] = append(categoryMap[category], p)
+	}
 
-		batch := packets[i:end]
-		batchPacket := CreateSpSyncBatch(batch)
+	// Send categorized batches
+	for _, category := range categoryOrder {
+		categoryPackets := categoryMap[category]
 
-		var pBuffer bytes.Buffer
-		_ = json.NewEncoder(&pBuffer).Encode(batchPacket)
-		_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
+		// Send in batches within each category
+		for i := 0; i < len(categoryPackets); i += BATCH_SIZE {
+			end := i + BATCH_SIZE
+			if end > len(categoryPackets) {
+				end = len(categoryPackets)
+			}
+
+			batch := categoryPackets[i:end]
+			batchPacket := CreateSpSyncCategoryBatch(category, batch)
+
+			var pBuffer bytes.Buffer
+			_ = json.NewEncoder(&pBuffer).Encode(batchPacket)
+			_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
+		}
 	}
 
 	finishPacket := CreateSpSyncFinish()
@@ -111,9 +163,12 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	buffer.Reset()
 
 	elapsed := time.Since(startTime)
-	batchCount := (len(packets) + BATCH_SIZE - 1) / BATCH_SIZE
-	println(fmt.Sprintf("[SYNC] Client %s: %d packets in %d batches, completed in %v",
-		client.username, len(packets), batchCount, elapsed))
+	totalBatches := 0
+	for _, catPackets := range categoryMap {
+		totalBatches += (len(catPackets) + BATCH_SIZE - 1) / BATCH_SIZE
+	}
+	println(fmt.Sprintf("[SYNC] Client %s: %d packets in %d categories, %d batches, completed in %v",
+		client.username, len(packets), len(categoryOrder), totalBatches, elapsed))
 }
 
 ///////////////
@@ -181,10 +236,10 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 				return true
 			})
 
-			/// Consoles
-			for value := range agent.OutConsole.Iterator() {
-				packets = append(packets, value.Item)
-			}
+			/// Consoles - Use DirectAccess for better performance
+			agent.OutConsole.DirectAccess(func(item interface{}) {
+				packets = append(packets, item)
+			})
 		}
 	}
 	ts.agents.DirectUnlock()
@@ -199,21 +254,21 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 
 func (ts *Teamserver) TsPresyncPivots() []interface{} {
 	var packets []interface{}
-	for value := range ts.pivots.Iterator() {
-		pivot := value.Item.(*adaptix.PivotData)
+	ts.pivots.DirectAccess(func(item interface{}) {
+		pivot := item.(*adaptix.PivotData)
 		p := CreateSpPivotCreate(*pivot)
 		packets = append(packets, p)
-	}
+	})
 	return packets
 }
 
 func (ts *Teamserver) TsPresyncChat() []interface{} {
 	var packets []interface{}
-	for value := range ts.messages.Iterator() {
-		message := value.Item.(adaptix.ChatData)
+	ts.messages.DirectAccess(func(item interface{}) {
+		message := item.(adaptix.ChatData)
 		p := CreateSpChatMessage(message)
 		packets = append(packets, p)
-	}
+	})
 	return packets
 }
 
@@ -262,10 +317,10 @@ func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
 
 func (ts *Teamserver) TsPresyncCredentials() []interface{} {
 	var creds []*adaptix.CredsData
-	for value := range ts.credentials.Iterator() {
-		c := value.Item.(*adaptix.CredsData)
+	ts.credentials.DirectAccess(func(item interface{}) {
+		c := item.(*adaptix.CredsData)
 		creds = append(creds, c)
-	}
+	})
 
 	p := CreateSpCredentialsAdd(creds)
 	var packets []interface{}
@@ -277,10 +332,10 @@ func (ts *Teamserver) TsPresyncCredentials() []interface{} {
 
 func (ts *Teamserver) TsPresyncTargets() []interface{} {
 	var targets []*adaptix.TargetData
-	for value := range ts.targets.Iterator() {
-		target := value.Item.(*adaptix.TargetData)
+	ts.targets.DirectAccess(func(item interface{}) {
+		target := item.(*adaptix.TargetData)
 		targets = append(targets, target)
-	}
+	})
 
 	p := CreateSpTargetsAdd(targets)
 	var packets []interface{}
@@ -303,8 +358,8 @@ func (ts *Teamserver) TsPresyncTunnels() []interface{} {
 
 func (ts *Teamserver) TsPresyncEvents() []interface{} {
 	var packets []interface{}
-	for value := range ts.events.Iterator() {
-		packets = append(packets, value.Item)
-	}
+	ts.events.DirectAccess(func(item interface{}) {
+		packets = append(packets, item)
+	})
 	return packets
 }
