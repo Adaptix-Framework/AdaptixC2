@@ -764,6 +764,7 @@ void AdaptixWidget::OnSynced()
     this->SessionsGraphDock->TreeDraw();
     this->TasksDock->UpdateColumnsSize();
     this->SessionsTableDock->UpdateColumnsSize();
+    this->CredentialsDock->UpdateColumnsSize();
     this->TargetsDock->UpdateColumnsSize();
 
     Q_EMIT SyncedOnReloadSignal(profile->GetProject());
