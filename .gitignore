@@ -13,3 +13,14 @@ AdaptixClient/*.log
 AdaptixClient/cmake_*
 AdaptixClient/Makefile
 AdaptixServer/build_error.log
+
+# CMake generated files in kddockwidgets
+AdaptixClient/Libs/kddockwidgets/CMakeFiles/
+AdaptixClient/Libs/kddockwidgets/Makefile
+AdaptixClient/Libs/kddockwidgets/cmake_install.cmake
+AdaptixClient/Libs/kddockwidgets/*_autogen/
+AdaptixClient/Libs/kddockwidgets/*.a
+AdaptixClient/Libs/kddockwidgets/*_export.h
+
+# VSCode
+.vscode/
