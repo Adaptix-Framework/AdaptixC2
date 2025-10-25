@@ -602,6 +602,12 @@ QDateEdit::down-arrow {
     height: 20px;
 }
 
+QDateEdit:disabled {
+    background-color: #343746;
+    color: #6272a4;
+    border: 1px solid #44475a;
+}
+
 QAbstractItemView#Completer {
     background-color: #44475a;
     border: 1px solid #6272a4;

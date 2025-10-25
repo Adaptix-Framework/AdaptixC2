@@ -24,7 +24,7 @@ DialogAgent::~DialogAgent() = default;
 
 void DialogAgent::createUI()
 {
-    this->resize( 450, 450 );
+    this->resize( 550, 450 );
     this->setWindowTitle( "Generate Agent" );
     this->setProperty("Main", "base");
 
