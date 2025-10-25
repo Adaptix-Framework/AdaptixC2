@@ -17,7 +17,9 @@ func (ts *Teamserver) TsClientConnected(username string) bool {
 
 func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(packet)
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(packet)
 	if err != nil {
 		return
 	}
@@ -35,12 +37,11 @@ func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 }
 
 func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
-	var (
-		buffer bytes.Buffer
-		err    error
-	)
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(packet)
 
-	err = json.NewEncoder(&buffer).Encode(packet)
 	if err != nil {
 		return
 	}
@@ -80,19 +81,24 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	client.lockSocket.Lock()
 	defer client.lockSocket.Unlock()
 
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
 	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
-	_ = json.NewEncoder(&buffer).Encode(startPacket)
+	_ = encoder.Encode(startPacket)
 	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 	buffer.Reset()
 
 	for _, p := range packets {
 		var pBuffer bytes.Buffer
-		_ = json.NewEncoder(&pBuffer).Encode(p)
+		pEncoder := json.NewEncoder(&pBuffer)
+		pEncoder.SetEscapeHTML(false)
+		_ = pEncoder.Encode(p)
 		_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
 	}
 
 	finishPacket := CreateSpSyncFinish()
-	_ = json.NewEncoder(&buffer).Encode(finishPacket)
+	buffer.Reset()
+	_ = encoder.Encode(finishPacket)
 	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
 	buffer.Reset()
 }
