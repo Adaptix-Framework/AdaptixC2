@@ -10,7 +10,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -44,11 +44,13 @@ const (
 // TeamServer
 
 type Client struct {
-	username   string
-	synced     bool
-	lockSocket *sync.Mutex
-	socket     *websocket.Conn
-	tmp_store  *safe.Slice
+	username          string
+	version           string // Client version, e.g., "0.11.0"
+	synced            bool
+	supportsBatchSync bool // Supports TYPE_SYNC_BATCH and TYPE_SYNC_CATEGORY_BATCH (v0.11+)
+	lockSocket        *sync.Mutex
+	socket            *websocket.Conn
+	tmp_store         *safe.Slice
 }
 
 type TsParameters struct {
@@ -173,6 +175,17 @@ type SyncPackerStart struct {
 
 type SyncPackerFinish struct {
 	SpType int `json:"type"`
+}
+
+type SyncPackerBatch struct {
+	SpType  int           `json:"type"`
+	Packets []interface{} `json:"packets"`
+}
+
+type SyncPackerCategoryBatch struct {
+	SpType   int           `json:"type"`
+	Category string        `json:"category"` // "agents", "events", "console", "tasks", etc.
+	Packets  []interface{} `json:"packets"`
 }
 
 type SpEvent struct {

@@ -25,6 +25,7 @@ void DialogSyncPacket::init(int count)
 {
     receivedLogs = 0;
     totalLogs = count;
+    startTime = QDateTime::currentMSecsSinceEpoch();
     QString progress = QString("Received: %1 / %2").arg(receivedLogs).arg(totalLogs);
     logProgressLabel->setText(progress);
     logProgressLabel->setAlignment(Qt::AlignCenter);
@@ -49,6 +50,15 @@ void DialogSyncPacket::upgrade() const
 
 void DialogSyncPacket::finish() const
 {
-    logProgressLabel->setText("Synchronization complete!");
+    qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
+    double seconds = elapsed / 1000.0;
+    
+    QString completeMsg = QString("Synchronization complete! %1 items in %2s")
+        .arg(totalLogs)
+        .arg(seconds, 0, 'f', 2);
+    
+    logProgressLabel->setText(completeMsg);
+    qDebug() << "[SYNC] Client sync completed:" << totalLogs << "items in" << elapsed << "ms";
+    
     splashScreen->close();
 }

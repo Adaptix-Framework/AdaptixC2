@@ -4,11 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
-	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 var accessKey string
@@ -18,6 +19,7 @@ var refreshTokenLiveHours int
 
 type Claims struct {
 	Username string `json:"username"`
+	Version  string `json:"version"` // Client version
 	jwt.RegisteredClaims
 }
 
@@ -36,10 +38,11 @@ func generateRandomKey(length int) (string, error) {
 	return base64.URLEncoding.EncodeToString(bytes), nil
 }
 
-func GenerateAccessToken(username string) (string, error) {
+func GenerateAccessToken(username string, version string) (string, error) {
 	expirationTime := time.Now().Add(time.Duration(accessTokenLiveHours) * time.Hour)
 	claims := &Claims{
 		Username: username,
+		Version:  version,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -53,10 +56,11 @@ func GenerateAccessToken(username string) (string, error) {
 	return tokenString, nil
 }
 
-func GenerateRefreshToken(username string) (string, error) {
+func GenerateRefreshToken(username string, version string) (string, error) {
 	expirationTime := time.Now().Add(time.Duration(refreshTokenLiveHours) * time.Hour)
 	claims := &Claims{
 		Username: username,
+		Version:  version, // Preserve version in refresh token
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -98,13 +102,17 @@ func ValidateAccessToken() gin.HandlerFunc {
 			return
 		}
 
-		username, err := GetUsernameFromJWT(tokenString)
-		if err != nil {
-			_ = ctx.Error(err)
+		claims := &Claims{}
+		jwtToken, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return []byte(accessKey), nil
+		})
+		if err != nil || !jwtToken.Valid {
+			_ = ctx.Error(errors.New("invalid token"))
 			return
 		}
 
-		ctx.Set("username", username)
+		ctx.Set("username", claims.Username)
+		ctx.Set("version", claims.Version)
 		ctx.Next()
 	}
 }
@@ -134,7 +142,7 @@ func RefreshTokenHandler(ctx *gin.Context) {
 		return
 	}
 
-	newAccessToken, err := GenerateAccessToken(claims.Username)
+	newAccessToken, err := GenerateAccessToken(claims.Username, claims.Version)
 	if err != nil {
 		_ = ctx.Error(errors.New("could not generate access token"))
 		return

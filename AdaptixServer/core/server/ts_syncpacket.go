@@ -3,7 +3,7 @@ package server
 import (
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 const (
@@ -21,8 +21,10 @@ const (
 )
 
 const (
-	TYPE_SYNC_START  = 0x11
-	TYPE_SYNC_FINISH = 0x12
+	TYPE_SYNC_START          = 0x11
+	TYPE_SYNC_FINISH         = 0x12
+	TYPE_SYNC_BATCH          = 0x14
+	TYPE_SYNC_CATEGORY_BATCH = 0x15 // Categorized batch for better organization
 
 	TYPE_CHAT_MESSAGE = 0x18
 
@@ -105,6 +107,21 @@ func CreateSpSyncStart(count int, addrs []string) SyncPackerStart {
 func CreateSpSyncFinish() SyncPackerFinish {
 	return SyncPackerFinish{
 		SpType: TYPE_SYNC_FINISH,
+	}
+}
+
+func CreateSpSyncBatch(packets []interface{}) SyncPackerBatch {
+	return SyncPackerBatch{
+		SpType:  TYPE_SYNC_BATCH,
+		Packets: packets,
+	}
+}
+
+func CreateSpSyncCategoryBatch(category string, packets []interface{}) SyncPackerCategoryBatch {
+	return SyncPackerCategoryBatch{
+		SpType:   TYPE_SYNC_CATEGORY_BATCH,
+		Category: category,
+		Packets:  packets,
 	}
 }
 

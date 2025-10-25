@@ -49,6 +49,7 @@ bool HttpReqLogin(AuthProfile* profile)
     QJsonObject dataJson;
     dataJson["username"] = profile->GetUsername();
     dataJson["password"] = profile->GetPassword();
+    dataJson["version"] = FRAMEWORK_VERSION; // Send client version for batch sync detection
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile->GetURL() + "/login";

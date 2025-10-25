@@ -28,6 +28,7 @@ public:
     CustomSplashScreen* splashScreen = nullptr;
     int totalLogs    = 0;
     int receivedLogs = 0;
+    qint64 startTime = 0;
 
     explicit DialogSyncPacket();
     ~DialogSyncPacket();

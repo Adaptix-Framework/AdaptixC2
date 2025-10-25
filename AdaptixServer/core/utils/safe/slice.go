@@ -100,3 +100,14 @@ func (sl *Slice) Iterator() <-chan SliceItem {
 	}()
 	return ch
 }
+
+// DirectAccess provides direct access to slice items via callback
+// More efficient than Iterator() as it avoids channel overhead and memory copy
+func (sl *Slice) DirectAccess(callback func(item interface{})) {
+	sl.mutex.RLock()
+	defer sl.mutex.RUnlock()
+
+	for _, item := range sl.items {
+		callback(item)
+	}
+}
