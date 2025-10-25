@@ -52,13 +52,11 @@ void DialogSyncPacket::finish() const
 {
     qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - startTime;
     double seconds = elapsed / 1000.0;
-    
+
     QString completeMsg = QString("Synchronization complete! %1 items in %2s")
         .arg(totalLogs)
         .arg(seconds, 0, 'f', 2);
-    
+
     logProgressLabel->setText(completeMsg);
-    qDebug() << "[SYNC] Client sync completed:" << totalLogs << "items in" << elapsed << "ms";
-    
     splashScreen->close();
 }

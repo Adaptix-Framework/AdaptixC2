@@ -14,7 +14,7 @@ import (
 type Credentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
-	Version  string `json:"version"` // Client version, e.g., "0.11.0"
+	Version  string `json:"version"`
 }
 
 type AccessJWT struct {
@@ -74,7 +74,6 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 		return
 	}
 
-	// Extract version from JWT token (empty string for old clients)
 	versionValue, _ := ctx.Get("version")
 	version, _ := versionValue.(string)
 

@@ -10,10 +10,8 @@ import (
 	"strings"
 )
 
-const VERSION = "0.10"
-
 func main() {
-	fmt.Printf("\n[===== Adaptix Framework v%v =====]\n\n", VERSION)
+	fmt.Printf("\n[===== Adaptix Framework %v =====]\n\n", server.SMALL_VERSION)
 
 	var (
 		err          error

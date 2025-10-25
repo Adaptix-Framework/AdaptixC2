@@ -4,11 +4,9 @@ import (
 	"AdaptixServer/core/extender"
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"sort"
-	"time"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -17,7 +15,6 @@ func (ts *Teamserver) TsClientConnected(username string) bool {
 	return found
 }
 
-// getPacketCategory categorizes packets for optimized batch transmission
 func getPacketCategory(packet interface{}) string {
 	switch packet.(type) {
 	case SyncPackerListenerReg, SyncPackerListenerStart:
@@ -97,8 +94,6 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 func (ts *Teamserver) TsSyncStored(client *Client) {
 	var packets []interface{}
 
-	startTime := time.Now()
-
 	packets = append(packets, ts.TsPresyncExtenders()...)
 	packets = append(packets, ts.TsPresyncListeners()...)
 	packets = append(packets, ts.TsPresyncAgents()...)
@@ -111,28 +106,23 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	packets = append(packets, ts.TsPresyncCredentials()...)
 	packets = append(packets, ts.TsPresyncTargets()...)
 
-	// Pre-serialize start packet
 	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
 	var startBuffer bytes.Buffer
 	_ = json.NewEncoder(&startBuffer).Encode(startPacket)
 
-	// Pre-serialize all data packets outside of lock
 	var serializedPackets [][]byte
 
-	if !client.supportsBatchSync {
-		// Legacy mode: pre-serialize individual packets
+	if !client.versionSupport {
 		for _, p := range packets {
 			var pBuffer bytes.Buffer
 			_ = json.NewEncoder(&pBuffer).Encode(p)
 			serializedPackets = append(serializedPackets, pBuffer.Bytes())
 		}
 	} else {
-		// Batch mode: pre-serialize categorized batches
 		const BATCH_SIZE = 100
 		categoryMap := make(map[string][]interface{})
 		categoryOrder := []string{} // Preserve order
 
-		// Categorize packets by type
 		for _, p := range packets {
 			category := getPacketCategory(p)
 			if _, exists := categoryMap[category]; !exists {
@@ -141,11 +131,9 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 			categoryMap[category] = append(categoryMap[category], p)
 		}
 
-		// Serialize categorized batches
 		for _, category := range categoryOrder {
 			categoryPackets := categoryMap[category]
 
-			// Serialize in batches within each category
 			for i := 0; i < len(categoryPackets); i += BATCH_SIZE {
 				end := i + BATCH_SIZE
 				if end > len(categoryPackets) {
@@ -162,35 +150,20 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 		}
 	}
 
-	// Pre-serialize finish packet
 	finishPacket := CreateSpSyncFinish()
 	var finishBuffer bytes.Buffer
 	_ = json.NewEncoder(&finishBuffer).Encode(finishPacket)
 
-	// Now hold lock only for network I/O
 	client.lockSocket.Lock()
 	defer client.lockSocket.Unlock()
 
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
-	_ = encoder.Encode(startPacket)
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-	buffer.Reset()
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, startBuffer.Bytes())
 
-	for _, p := range packets {
-		var pBuffer bytes.Buffer
-		pEncoder := json.NewEncoder(&pBuffer)
-		pEncoder.SetEscapeHTML(false)
-		_ = pEncoder.Encode(p)
-		_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
+	for _, serialized := range serializedPackets {
+		_ = client.socket.WriteMessage(websocket.BinaryMessage, serialized)
 	}
 
-	finishPacket := CreateSpSyncFinish()
-	buffer.Reset()
-	_ = encoder.Encode(finishPacket)
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-	buffer.Reset()
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, finishBuffer.Bytes())
 }
 
 ///////////////
@@ -258,7 +231,7 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 				return true
 			})
 
-			/// Consoles - Use DirectAccess for better performance
+			/// Consoles
 			agent.OutConsole.DirectAccess(func(item interface{}) {
 				packets = append(packets, item)
 			})

@@ -19,7 +19,7 @@ var refreshTokenLiveHours int
 
 type Claims struct {
 	Username string `json:"username"`
-	Version  string `json:"version"` // Client version
+	Version  string `json:"version"`
 	jwt.RegisteredClaims
 }
 
@@ -60,7 +60,7 @@ func GenerateRefreshToken(username string, version string) (string, error) {
 	expirationTime := time.Now().Add(time.Duration(refreshTokenLiveHours) * time.Hour)
 	claims := &Claims{
 		Username: username,
-		Version:  version, // Preserve version in refresh token
+		Version:  version,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -72,19 +72,6 @@ func GenerateRefreshToken(username string, version string) (string, error) {
 		return "", err
 	}
 	return tokenString, nil
-}
-
-func GetUsernameFromJWT(token string) (string, error) {
-	claims := &Claims{}
-	jwtToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(accessKey), nil
-	})
-
-	if err != nil || !jwtToken.Valid {
-		return "", errors.New("invalid token")
-	}
-
-	return claims.Username, nil
 }
 
 func ValidateAccessToken() gin.HandlerFunc {

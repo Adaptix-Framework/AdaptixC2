@@ -10,7 +10,7 @@ import (
 	"net"
 	"sync"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -44,13 +44,12 @@ const (
 // TeamServer
 
 type Client struct {
-	username          string
-	version           string // Client version, e.g., "0.11.0"
-	synced            bool
-	supportsBatchSync bool // Supports TYPE_SYNC_BATCH and TYPE_SYNC_CATEGORY_BATCH (v0.11+)
-	lockSocket        *sync.Mutex
-	socket            *websocket.Conn
-	tmp_store         *safe.Slice
+	username       string
+	synced         bool
+	versionSupport bool
+	lockSocket     *sync.Mutex
+	socket         *websocket.Conn
+	tmp_store      *safe.Slice
 }
 
 type TsParameters struct {

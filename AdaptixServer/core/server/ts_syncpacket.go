@@ -3,7 +3,7 @@ package server
 import (
 	"time"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 )
 
 const (
@@ -24,7 +24,7 @@ const (
 	TYPE_SYNC_START          = 0x11
 	TYPE_SYNC_FINISH         = 0x12
 	TYPE_SYNC_BATCH          = 0x14
-	TYPE_SYNC_CATEGORY_BATCH = 0x15 // Categorized batch for better organization
+	TYPE_SYNC_CATEGORY_BATCH = 0x15
 
 	TYPE_CHAT_MESSAGE = 0x18
 
