@@ -5,9 +5,12 @@ import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/token"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gin-gonic/gin"
@@ -158,7 +161,9 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	}
 
 	var connector = new(TsConnector)
+	gin.SetMode(gin.ReleaseMode)
 	connector.Engine = gin.New()
+	connector.Engine.Use(gin.Recovery())
 	connector.teamserver = ts
 	connector.Interface = tsProfile.Interface
 	connector.Port = tsProfile.Port
@@ -242,7 +247,33 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 
 func (tc *TsConnector) Start(finished *chan bool) {
 	host := fmt.Sprintf("%s:%d", tc.Interface, tc.Port)
-	err := tc.Engine.RunTLS(host, tc.Cert, tc.Key)
+
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		MaxVersion: tls.VersionTLS13,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+		},
+		PreferServerCipherSuites: false,
+	}
+
+	server := &http.Server{
+		Addr:           host,
+		Handler:        tc.Engine,
+		TLSConfig:      tlsConfig,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		IdleTimeout:    30 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1MB
+	}
+
+	err := server.ListenAndServeTLS(tc.Cert, tc.Key)
+	//err := tc.Engine.RunTLS(host, tc.Cert, tc.Key)
 	if err != nil {
 		logs.Error("", "Failed to start HTTP Server: "+err.Error())
 		return

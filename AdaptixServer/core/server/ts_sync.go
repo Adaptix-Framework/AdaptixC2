@@ -51,7 +51,9 @@ func getPacketCategory(packet interface{}) string {
 
 func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(packet)
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(packet)
 	if err != nil {
 		return
 	}
@@ -69,12 +71,11 @@ func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 }
 
 func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
-	var (
-		buffer bytes.Buffer
-		err    error
-	)
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(packet)
 
-	err = json.NewEncoder(&buffer).Encode(packet)
 	if err != nil {
 		return
 	}
@@ -170,24 +171,26 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	client.lockSocket.Lock()
 	defer client.lockSocket.Unlock()
 
-	// Send start packet
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, startBuffer.Bytes())
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
+	_ = encoder.Encode(startPacket)
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+	buffer.Reset()
 
-	// Send all pre-serialized packets
-	for _, serialized := range serializedPackets {
-		_ = client.socket.WriteMessage(websocket.BinaryMessage, serialized)
+	for _, p := range packets {
+		var pBuffer bytes.Buffer
+		pEncoder := json.NewEncoder(&pBuffer)
+		pEncoder.SetEscapeHTML(false)
+		_ = pEncoder.Encode(p)
+		_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
 	}
 
-	// Send finish packet
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, finishBuffer.Bytes())
-
-	elapsed := time.Since(startTime)
-	mode := "batch"
-	if !client.supportsBatchSync {
-		mode = "legacy"
-	}
-	println(fmt.Sprintf("[SYNC] Client %s (%s): %d packets in %d messages, completed in %v",
-		client.username, mode, len(packets), len(serializedPackets), elapsed))
+	finishPacket := CreateSpSyncFinish()
+	buffer.Reset()
+	_ = encoder.Encode(finishPacket)
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+	buffer.Reset()
 }
 
 ///////////////

@@ -762,7 +762,7 @@ QJSValue BridgeApp::targets() const
 
 void BridgeApp::targets_add(const QString &computer, const QString &domain, const QString &address, const QString &os, const QString &osDesc, const QString &tag, const QString &info, bool alive)
 {
-    TargetData target = {"", computer, domain, address, tag, 0, osDesc, "", info, alive};
+    TargetData target = {"", computer, domain, address, tag, QIcon(), 0, osDesc, "", info, alive};
 
     if (os == "windows")    target.Os = OS_WINDOWS;
     else if (os == "linux") target.Os = OS_LINUX;

@@ -85,6 +85,9 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 	}
 
 	var wsUpgrader websocket.Upgrader
+	wsUpgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		logs.Error("", "WebSocket upgrade error: "+err.Error())
@@ -125,6 +128,8 @@ func (tc *TsConnector) tcSync(ctx *gin.Context) {
 	}
 
 	go tc.teamserver.TsClientSync(username)
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "sync started", "ok": true})
 }
 
 func (tc *TsConnector) tcChannel(ctx *gin.Context) {
@@ -146,6 +151,9 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 	}
 
 	var wsUpgrader websocket.Upgrader
+	wsUpgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		logs.Error("", "WebSocket upgrade error: "+err.Error())

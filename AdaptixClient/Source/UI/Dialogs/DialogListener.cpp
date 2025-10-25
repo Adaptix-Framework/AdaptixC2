@@ -106,7 +106,11 @@ void DialogListener::createUI()
     buttonCancel->setFixedHeight(buttonHeight);
 }
 
-void DialogListener::Start() { this->exec(); }
+void DialogListener::Start()
+{
+    this->setModal(true);
+    this->show();
+}
 
 void DialogListener::AddExListeners(const QList<RegListenerConfig> &listeners, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers)
 {
@@ -171,23 +175,45 @@ void DialogListener::onButtonCreate()
     if (containers[configType])
         configData = containers[configType]->toJson();
 
-    QString message = QString();
-    bool result, ok = false;
-    if ( editMode )
-        result = HttpReqListenerEdit(configName, configType, configData, authProfile, &message, &ok);
-    else
-        result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
+    buttonCreate->setEnabled(false);
+    buttonCreate->setText("Creating...");
 
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
-    if ( !ok ) {
-        MessageError(message);
-        return;
-    }
+    QThread* workerThread = new QThread();
+    QObject* worker = new QObject();
+    worker->moveToThread(workerThread);
 
-    this->close();
+    connect(workerThread, &QThread::started, worker, [=, this]() {
+        QString message = QString();
+        bool result, ok = false;
+
+        if ( editMode )
+            result = HttpReqListenerEdit(configName, configType, configData, authProfile, &message, &ok);
+        else
+            result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
+
+        QMetaObject::invokeMethod(this, [=, this]() {
+            if( !result ) {
+                MessageError("Response timeout");
+                buttonCreate->setEnabled(true);
+                buttonCreate->setText(editMode ? "Edit" : "Create");
+            }
+            else if ( !ok ) {
+                MessageError(message);
+                buttonCreate->setEnabled(true);
+                buttonCreate->setText(editMode ? "Edit" : "Create");
+            }
+            else {
+                this->close();
+            }
+
+            workerThread->quit();
+            workerThread->wait();
+            worker->deleteLater();
+            workerThread->deleteLater();
+        }, Qt::QueuedConnection);
+    });
+
+    workerThread->start();
 }
 
 void DialogListener::onButtonLoad()

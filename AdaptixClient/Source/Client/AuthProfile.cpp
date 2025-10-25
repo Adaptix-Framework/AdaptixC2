@@ -7,12 +7,12 @@ AuthProfile::AuthProfile()
 
 AuthProfile::AuthProfile(const QString &project, const QString &username, const QString &password, const QString &host, const QString &port, const QString &endpoint)
 {
-    this->project = project;
-    this->username = username;
+    this->project = project.trimmed();
+    this->username = username.trimmed();
     this->password = password;
-    this->host = host;
-    this->port = port;
-    this->endpoint = endpoint;
+    this->host = host.trimmed();
+    this->port = port.trimmed();
+    this->endpoint = endpoint.trimmed();
     this->valid = true;
 }
 

@@ -286,6 +286,7 @@ typedef struct TargetData
     QString     Domain;
     QString     Address;
     QString     Tag;
+    QIcon       OsIcon;
     int         Os;
     QString     OsDesc;
     QString     Date;

@@ -15,7 +15,7 @@ DialogAgent::DialogAgent(const QString &listenerName, const QString &listenerTyp
 
     connect(buttonLoad,     &QPushButton::clicked,          this, &DialogAgent::onButtonLoad);
     connect(buttonSave,     &QPushButton::clicked,          this, &DialogAgent::onButtonSave);
-    connect(agentCombobox,  &QComboBox::currentTextChanged, this, &DialogAgent::changeConfig) ;
+    connect(agentCombobox,  &QComboBox::currentTextChanged, this, &DialogAgent::changeConfig);
     connect(generateButton, &QPushButton::clicked,          this, &DialogAgent::onButtonGenerate);
     connect(closeButton,    &QPushButton::clicked,          this, &DialogAgent::onButtonClose);
 }
@@ -24,7 +24,7 @@ DialogAgent::~DialogAgent() = default;
 
 void DialogAgent::createUI()
 {
-    this->resize( 450, 450 );
+    this->resize( 550, 450 );
     this->setWindowTitle( "Generate Agent" );
     this->setProperty("Main", "base");
 
@@ -100,7 +100,11 @@ void DialogAgent::createUI()
     generateButton->setFixedHeight(buttonHeight);
 }
 
-void DialogAgent::Start() { this->exec(); }
+void DialogAgent::Start()
+{
+    this->setModal(true);
+    this->show();
+}
 
 void DialogAgent::AddExAgents(const QStringList &agents, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers)
 {

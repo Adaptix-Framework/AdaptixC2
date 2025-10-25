@@ -718,7 +718,7 @@ func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {
 	agent := value.(*Agent)
 
 	if !first {
-		if agent.HostedTasks.Len() > 0 || agent.HostedTunnelData.Len() > 0 {
+		if agent.HostedTasks.Len() > 0 || agent.HostedTunnelTasks.Len() > 0 || agent.HostedTunnelData.Len() > 0 {
 			return true
 		}
 	}

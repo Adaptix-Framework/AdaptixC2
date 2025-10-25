@@ -16,6 +16,7 @@ void WebSocketWorker::run()
     webSocket = new QWebSocket;
     auto SslConf = webSocket->sslConfiguration();
     SslConf.setPeerVerifyMode( QSslSocket::VerifyNone );
+    SslConf.setProtocol( QSsl::TlsV1_2OrLater );
     webSocket->setSslConfiguration( SslConf );
     webSocket->ignoreSslErrors();
 
@@ -37,6 +38,8 @@ void WebSocketWorker::run()
     request.setRawHeader("Authorization", "Bearer " + profile->GetAccessToken().toUtf8());
 
     webSocket->open(request);
+
+    exec();
 }
 
 void WebSocketWorker::is_error(QAbstractSocket::SocketError error)
