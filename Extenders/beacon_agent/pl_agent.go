@@ -1110,6 +1110,8 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 		return outTasks
 	}
 
+	bof_output := make(map[string]bool)
+
 	for packer.Size() >= 8 {
 
 		if false == packer.CheckPacker([]string{"int", "int"}) {
@@ -1319,9 +1321,33 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 				output := packer.ParseString()
 
+				_, ok := bof_output[task.TaskId]
+				if ok {
+					task.Message = ""
+				} else {
+					bof_output[task.TaskId] = true
+					task.Message = "BOF output"
+				}
+
 				task.MessageType = MESSAGE_SUCCESS
-				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.OemCP)
+
+			} else if outputType == CALLBACK_OUTPUT_UTF8 {
+				if false == packer.CheckPacker([]string{"array"}) {
+					return outTasks
+				}
+				output := packer.ParseString()
+
+				_, ok := bof_output[task.TaskId]
+				if ok {
+					task.Message = ""
+				} else {
+					bof_output[task.TaskId] = true
+					task.Message = "BOF output"
+				}
+
+				task.MessageType = MESSAGE_SUCCESS
+				task.ClearText = output
 
 			} else if outputType == CALLBACK_AX_SCREENSHOT {
 				if false == packer.CheckPacker([]string{"array", "array"}) {
@@ -1348,8 +1374,15 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 				output := packer.ParseString()
 
+				_, ok := bof_output[task.TaskId]
+				if ok {
+					task.Message = ""
+				} else {
+					bof_output[task.TaskId] = true
+					task.Message = "BOF output"
+				}
+
 				task.MessageType = MESSAGE_SUCCESS
-				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.ACP)
 			}
 

@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/kbinani/screenshot"
 	"image/png"
 	"io"
 	"io/fs"
@@ -14,6 +13,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/kbinani/screenshot"
 )
 
 /// FS
