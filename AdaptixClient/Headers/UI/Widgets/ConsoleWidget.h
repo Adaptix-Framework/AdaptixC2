@@ -76,6 +76,11 @@ public Q_SLOTS:
     void handleSearch();
     void handleSearchBackward();
     void handleShowHistory();
+
+    // Batch sync optimization: control UI updates
+    void SetConsoleUpdatesEnabled(bool enabled) const {
+        if (OutputTextEdit) OutputTextEdit->setUpdatesEnabled(enabled);
+    }
 };
 
 #endif

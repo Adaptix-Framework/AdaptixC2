@@ -109,9 +109,11 @@ Q_OBJECT
     int  maxLines    = 30000;
     bool autoScroll  = false;
     bool noWrap      = true;
+    bool skipTrim    = false;  // Flag to skip trimming during batch operations
 
     void trimExcessLines();
     void createContextMenu(const QPoint &pos);
+    static bool globalSkipTrim;  // Global flag to skip trimming on ALL instances during sync
     void setBufferSize(int size);
 
 public:
@@ -130,6 +132,9 @@ public:
     void setAutoScrollEnabled(bool enabled);
     bool isAutoScrollEnabled() const;
     bool isNoWrapEnabled() const;
+    
+    static void setGlobalSkipTrim(bool skip);    // Set global skip for ALL instances
+    static bool getGlobalSkipTrim();              // Get global skip state
 
 Q_SIGNALS:
     void ctx_find();

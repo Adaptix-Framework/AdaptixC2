@@ -392,8 +392,19 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QJsonArray packetsArray = jsonObj["packets"].toArray();
         QString category = jsonObj.value("category").toString("general");
 
+        // Batch optimization: disable UI updates and trim operations for ALL batches
         if (LogsDock && LogsDock->GetLogsConsoleTextEdit()) {
             LogsDock->GetLogsConsoleTextEdit()->setUpdatesEnabled(false);
+            
+            // Skip trim operations during batch processing - applies to ALL categories
+            TextEditConsole::setGlobalSkipTrim(true);
+        }
+
+        // Disable UI updates for all Agent Console widgets during batch processing
+        for (auto it = AgentsMap.begin(); it != AgentsMap.end(); ++it) {
+            if (it.value() && it.value()->Console) {
+                it.value()->Console->SetConsoleUpdatesEnabled(false);
+            }
         }
 
         for (const QJsonValue &packetValue : packetsArray) {
@@ -404,13 +415,22 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         }
 
         if (LogsDock && LogsDock->GetLogsConsoleTextEdit()) {
+            // Restore skip trim flag and perform single trim after batch
+            TextEditConsole::setGlobalSkipTrim(false);
+            LogsDock->GetLogsConsoleTextEdit()->trimExcessLines();
+            
+            // Re-enable UI updates for all Agent Console widgets
+            for (auto it = AgentsMap.begin(); it != AgentsMap.end(); ++it) {
+                if (it.value() && it.value()->Console) {
+                    it.value()->Console->SetConsoleUpdatesEnabled(true);
+                }
+            }
+            
             LogsDock->GetLogsConsoleTextEdit()->setUpdatesEnabled(true);
         }
 
-        if( this->sync && dialogSyncPacket != nullptr ) {
-            dialogSyncPacket->receivedLogs += packetsArray.size();
-            dialogSyncPacket->upgrade();
-        }
+        // NOTE: Do NOT increment receivedLogs here - recursive processSyncPacket() calls 
+        // already incremented it for each packet in the batch (would cause double-counting)
 
         return;
     }

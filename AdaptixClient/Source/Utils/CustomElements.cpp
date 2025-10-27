@@ -2,6 +2,8 @@
 #include <Utils/NonBlockingDialogs.h>
 #include <QTextBlock>
 
+bool TextEditConsole::globalSkipTrim = false;
+
 SpinTable::SpinTable(int rows, int columns, QWidget* parent)
 {
     this->setParent(parent);
@@ -174,6 +176,14 @@ bool TextEditConsole::isNoWrapEnabled() const {
     return noWrap;
 }
 
+void TextEditConsole::setGlobalSkipTrim(bool skip) {
+    globalSkipTrim = skip;
+}
+
+bool TextEditConsole::getGlobalSkipTrim() {
+    return globalSkipTrim;
+}
+
 void TextEditConsole::appendPlain(const QString& text)
 {
     bool atBottom = verticalScrollBar()->value() == verticalScrollBar()->maximum();
@@ -181,7 +191,9 @@ void TextEditConsole::appendPlain(const QString& text)
     cachedCursor.movePosition(QTextCursor::End);
     cachedCursor.insertText(text, QTextCharFormat());
     
-    trimExcessLines();
+    if (!skipTrim && !globalSkipTrim) {
+        trimExcessLines();
+    }
 
     if (autoScroll || atBottom)
         verticalScrollBar()->setValue(verticalScrollBar()->maximum());
@@ -196,7 +208,9 @@ void TextEditConsole::appendFormatted(const QString& text, const std::function<v
     styleFn(fmt);
     cachedCursor.insertText(text, fmt);
 
-    trimExcessLines();
+    if (!skipTrim && !globalSkipTrim) {
+        trimExcessLines();
+    }
 
     if (autoScroll || atBottom)
         verticalScrollBar()->setValue(verticalScrollBar()->maximum());
