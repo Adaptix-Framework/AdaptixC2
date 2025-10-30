@@ -92,18 +92,18 @@ public:
 
     AxScriptManager* ScriptManager = nullptr;
 
-    AxConsoleWidget*     AxConsoleDock      = nullptr;
+    AxConsoleWidget*     AxConsoleDock     = nullptr;
     LogsWidget*          LogsDock          = nullptr;
-    ChatWidget*          ChatDock           = nullptr;
-    ListenersWidget*     ListenersDock      = nullptr;
+    ChatWidget*          ChatDock          = nullptr;
+    ListenersWidget*     ListenersDock     = nullptr;
     SessionsTableWidget* SessionsTableDock = nullptr;
     SessionsGraph*       SessionsGraphDock = nullptr;
-    TunnelsWidget*       TunnelsDock        = nullptr;
-    DownloadsWidget*     DownloadsDock      = nullptr;
-    ScreenshotsWidget*   ScreenshotsDock    = nullptr;
-    CredentialsWidget*   CredentialsDock    = nullptr;
+    TunnelsWidget*       TunnelsDock       = nullptr;
+    DownloadsWidget*     DownloadsDock     = nullptr;
+    ScreenshotsWidget*   ScreenshotsDock   = nullptr;
+    CredentialsWidget*   CredentialsDock   = nullptr;
     TasksWidget*         TasksDock         = nullptr;
-    TargetsWidget*       TargetsDock        = nullptr;
+    TargetsWidget*       TargetsDock       = nullptr;
 
     QVector<RegListenerConfig>     RegisterListeners;
     QVector<RegAgentConfig>        RegisterAgents;
@@ -114,9 +114,7 @@ public:
     QVector<CredentialData>        Credentials;
     QVector<TargetData>            Targets;
     QMap<QString, PivotData>       Pivots;
-    QVector<QString>               TasksVector;
-    QMap<QString, Task*>           TasksMap;
-    QVector<QString>               AgentsVector;
+    QMap<QString, TaskData>        TasksMap;
     QMap<QString, Agent*>          AgentsMap;
     QMap<QString, PostHook>        PostHooksJS;
     QMap<QString, TunnelEndpoint*> ClientTunnels;
@@ -170,6 +168,7 @@ public Q_SLOTS:
     void ChannelClose() const;
     void DataHandler(const QByteArray& data);
 
+    void OnWebSocketConnected();
     void OnSynced();
     void SetSessionsTableUI() const;
     void SetGraphUI() const;

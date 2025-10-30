@@ -127,24 +127,39 @@ QTableWidget::item:selected {
     outline: none;
 }
 
-
-/*QTableWidget::item:selected:focus {*/
-/*    outline: none;*/
-/*    border: none;*/
-/*}*/
-
-/*QTableWidget::item:focus {*/
-/*    outline: none;*/
-/*    border: none;*/
-/*    background: none;*/
-/*}*/
-
 QTableWidget:disabled {
     background-color: #1A1A1A;
     color: #4A4A4A;
     border: 1px solid #3A3A3A;
 }
 
+
+
+QTableView {
+    background-color: #2A2A2A;
+    alternate-background-color: #2E2E2E;
+    border: 1px solid #4A4A4A;
+    color: #E0E0E0;
+    border-radius: 4px;
+}
+
+QTableView::item {
+    padding-left: 8px;
+    padding-right: 8px;
+    border: none;
+}
+
+QTableView::item:selected {
+    background-color: #4A4A4A;
+    color: #FFFFFF;
+    outline: none;
+}
+
+QTableView:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
+    border: 1px solid #3A3A3A;
+}
 
 
 
@@ -656,6 +671,11 @@ QDateEdit::down-arrow {
     height: 20px;
 }
 
+QDateEdit:disabled {
+    background-color: #1A1A1A;
+    color: #4A4A4A;
+    border: 1px solid #3A3A3A;
+}
 
 
 

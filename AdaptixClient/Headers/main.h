@@ -67,7 +67,8 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.9"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.10"
+#define SMALL_VERSION "v0.10"
 
 ///////////
 
@@ -91,7 +92,9 @@
 #define TYPE_SYNC_START  0x11
 #define TYPE_SYNC_FINISH 0x12
 
-#define SP_TYPE_EVENT  0x13
+#define SP_TYPE_EVENT            0x13
+#define TYPE_SYNC_BATCH          0x14
+#define TYPE_SYNC_CATEGORY_BATCH 0x15
 
 #define TYPE_CHAT_MESSAGE 0x18
 
@@ -284,6 +287,7 @@ typedef struct TargetData
     QString     Domain;
     QString     Address;
     QString     Tag;
+    QIcon       OsIcon;
     int         Os;
     QString     OsDesc;
     QString     Date;

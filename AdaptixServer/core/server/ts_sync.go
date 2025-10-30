@@ -15,9 +15,42 @@ func (ts *Teamserver) TsClientConnected(username string) bool {
 	return found
 }
 
+func getPacketCategory(packet interface{}) string {
+	switch packet.(type) {
+	case SyncPackerListenerReg, SyncPackerListenerStart:
+		return "listeners"
+	case SyncPackerAgentReg, SyncPackerAgentNew, SyncPackerAgentUpdate:
+		return "agents"
+	case SyncPackerAgentConsoleOutput, SyncPackerAgentConsoleTaskSync, SyncPackerAgentConsoleTaskUpd:
+		return "console"
+	case SyncPackerAgentTaskSync, SyncPackerAgentTaskUpdate:
+		return "tasks"
+	case SpEvent:
+		return "events"
+	case SyncPackerChatMessage:
+		return "chat"
+	case SyncPackerDownloadCreate, SyncPackerDownloadUpdate:
+		return "downloads"
+	case SyncPackerScreenshotCreate:
+		return "screenshots"
+	case SyncPackerTunnelCreate:
+		return "tunnels"
+	case SyncPackerPivotCreate:
+		return "pivots"
+	case SyncPackerCredentialsAdd:
+		return "credentials"
+	case SyncPackerTargetsAdd:
+		return "targets"
+	default:
+		return "misc"
+	}
+}
+
 func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	var buffer bytes.Buffer
-	err := json.NewEncoder(&buffer).Encode(packet)
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(packet)
 	if err != nil {
 		return
 	}
@@ -35,12 +68,11 @@ func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 }
 
 func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
-	var (
-		buffer bytes.Buffer
-		err    error
-	)
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(packet)
 
-	err = json.NewEncoder(&buffer).Encode(packet)
 	if err != nil {
 		return
 	}
@@ -60,10 +92,7 @@ func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 }
 
 func (ts *Teamserver) TsSyncStored(client *Client) {
-	var (
-		buffer  bytes.Buffer
-		packets []interface{}
-	)
+	var packets []interface{}
 
 	packets = append(packets, ts.TsPresyncExtenders()...)
 	packets = append(packets, ts.TsPresyncListeners()...)
@@ -77,24 +106,64 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	packets = append(packets, ts.TsPresyncCredentials()...)
 	packets = append(packets, ts.TsPresyncTargets()...)
 
-	client.lockSocket.Lock()
-	defer client.lockSocket.Unlock()
-
 	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
-	_ = json.NewEncoder(&buffer).Encode(startPacket)
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-	buffer.Reset()
+	var startBuffer bytes.Buffer
+	_ = json.NewEncoder(&startBuffer).Encode(startPacket)
 
-	for _, p := range packets {
-		var pBuffer bytes.Buffer
-		_ = json.NewEncoder(&pBuffer).Encode(p)
-		_ = client.socket.WriteMessage(websocket.BinaryMessage, pBuffer.Bytes())
+	var serializedPackets [][]byte
+
+	if !client.versionSupport {
+		for _, p := range packets {
+			var pBuffer bytes.Buffer
+			_ = json.NewEncoder(&pBuffer).Encode(p)
+			serializedPackets = append(serializedPackets, pBuffer.Bytes())
+		}
+	} else {
+		const BATCH_SIZE = 100
+		categoryMap := make(map[string][]interface{})
+		categoryOrder := []string{} // Preserve order
+
+		for _, p := range packets {
+			category := getPacketCategory(p)
+			if _, exists := categoryMap[category]; !exists {
+				categoryOrder = append(categoryOrder, category)
+			}
+			categoryMap[category] = append(categoryMap[category], p)
+		}
+
+		for _, category := range categoryOrder {
+			categoryPackets := categoryMap[category]
+
+			for i := 0; i < len(categoryPackets); i += BATCH_SIZE {
+				end := i + BATCH_SIZE
+				if end > len(categoryPackets) {
+					end = len(categoryPackets)
+				}
+
+				batch := categoryPackets[i:end]
+				batchPacket := CreateSpSyncCategoryBatch(category, batch)
+
+				var pBuffer bytes.Buffer
+				_ = json.NewEncoder(&pBuffer).Encode(batchPacket)
+				serializedPackets = append(serializedPackets, pBuffer.Bytes())
+			}
+		}
 	}
 
 	finishPacket := CreateSpSyncFinish()
-	_ = json.NewEncoder(&buffer).Encode(finishPacket)
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-	buffer.Reset()
+	var finishBuffer bytes.Buffer
+	_ = json.NewEncoder(&finishBuffer).Encode(finishPacket)
+
+	client.lockSocket.Lock()
+	defer client.lockSocket.Unlock()
+
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, startBuffer.Bytes())
+
+	for _, serialized := range serializedPackets {
+		_ = client.socket.WriteMessage(websocket.BinaryMessage, serialized)
+	}
+
+	_ = client.socket.WriteMessage(websocket.BinaryMessage, finishBuffer.Bytes())
 }
 
 ///////////////
@@ -163,9 +232,9 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 			})
 
 			/// Consoles
-			for value := range agent.OutConsole.Iterator() {
-				packets = append(packets, value.Item)
-			}
+			agent.OutConsole.DirectAccess(func(item interface{}) {
+				packets = append(packets, item)
+			})
 		}
 	}
 	ts.agents.DirectUnlock()
@@ -180,21 +249,21 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 
 func (ts *Teamserver) TsPresyncPivots() []interface{} {
 	var packets []interface{}
-	for value := range ts.pivots.Iterator() {
-		pivot := value.Item.(*adaptix.PivotData)
+	ts.pivots.DirectAccess(func(item interface{}) {
+		pivot := item.(*adaptix.PivotData)
 		p := CreateSpPivotCreate(*pivot)
 		packets = append(packets, p)
-	}
+	})
 	return packets
 }
 
 func (ts *Teamserver) TsPresyncChat() []interface{} {
 	var packets []interface{}
-	for value := range ts.messages.Iterator() {
-		message := value.Item.(adaptix.ChatData)
+	ts.messages.DirectAccess(func(item interface{}) {
+		message := item.(adaptix.ChatData)
 		p := CreateSpChatMessage(message)
 		packets = append(packets, p)
-	}
+	})
 	return packets
 }
 
@@ -243,10 +312,10 @@ func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
 
 func (ts *Teamserver) TsPresyncCredentials() []interface{} {
 	var creds []*adaptix.CredsData
-	for value := range ts.credentials.Iterator() {
-		c := value.Item.(*adaptix.CredsData)
+	ts.credentials.DirectAccess(func(item interface{}) {
+		c := item.(*adaptix.CredsData)
 		creds = append(creds, c)
-	}
+	})
 
 	p := CreateSpCredentialsAdd(creds)
 	var packets []interface{}
@@ -258,10 +327,10 @@ func (ts *Teamserver) TsPresyncCredentials() []interface{} {
 
 func (ts *Teamserver) TsPresyncTargets() []interface{} {
 	var targets []*adaptix.TargetData
-	for value := range ts.targets.Iterator() {
-		target := value.Item.(*adaptix.TargetData)
+	ts.targets.DirectAccess(func(item interface{}) {
+		target := item.(*adaptix.TargetData)
 		targets = append(targets, target)
-	}
+	})
 
 	p := CreateSpTargetsAdd(targets)
 	var packets []interface{}
@@ -284,8 +353,8 @@ func (ts *Teamserver) TsPresyncTunnels() []interface{} {
 
 func (ts *Teamserver) TsPresyncEvents() []interface{} {
 	var packets []interface{}
-	for value := range ts.events.Iterator() {
-		packets = append(packets, value.Item)
-	}
+	ts.events.DirectAccess(func(item interface{}) {
+		packets = append(packets, item)
+	})
 	return packets
 }

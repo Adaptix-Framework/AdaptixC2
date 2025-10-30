@@ -1,7 +1,4 @@
 #include <Agent/Agent.h>
-#include <Agent/Task.h>
-#include <Agent/AgentTableWidgetItem.h>
-#include <Agent/TaskTableWidgetItem.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
@@ -32,6 +29,17 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
     if( spType == TYPE_SYNC_FINISH ) {
+        return true;
+    }
+
+    if( spType == TYPE_SYNC_BATCH ) {
+        if ( !jsonObj.contains("packets") || !jsonObj["packets"].isArray() ) return false;
+        return true;
+    }
+
+    if( spType == TYPE_SYNC_CATEGORY_BATCH ) {
+        if ( !jsonObj.contains("category") || !jsonObj["category"].isString() ) return false;
+        if ( !jsonObj.contains("packets")  || !jsonObj["packets"].isArray() )   return false;
         return true;
     }
 
@@ -378,7 +386,36 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 {
     int spType = jsonObj["type"].toDouble();
-    if( this->sync && dialogSyncPacket != nullptr ) {
+
+    if( spType == TYPE_SYNC_BATCH || spType == TYPE_SYNC_CATEGORY_BATCH )
+    {
+        QJsonArray packetsArray = jsonObj["packets"].toArray();
+        QString category = jsonObj.value("category").toString("general");
+
+        if (LogsDock && LogsDock->GetLogsConsoleTextEdit()) {
+            LogsDock->GetLogsConsoleTextEdit()->setUpdatesEnabled(false);
+        }
+
+        for (const QJsonValue &packetValue : packetsArray) {
+            if (packetValue.isObject()) {
+                QJsonObject packetObj = packetValue.toObject();
+                processSyncPacket(packetObj);
+            }
+        }
+
+        if (LogsDock && LogsDock->GetLogsConsoleTextEdit()) {
+            LogsDock->GetLogsConsoleTextEdit()->setUpdatesEnabled(true);
+        }
+
+        if( this->sync && dialogSyncPacket != nullptr ) {
+            dialogSyncPacket->receivedLogs += packetsArray.size();
+            dialogSyncPacket->upgrade();
+        }
+
+        return;
+    }
+
+    if( this->sync && dialogSyncPacket != nullptr && spType != TYPE_SYNC_BATCH ) {
         dialogSyncPacket->receivedLogs++;
         dialogSyncPacket->upgrade();
     }
@@ -470,14 +507,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     {
         QString agentId = jsonObj["a_id"].toString();
 
-        if(AgentsMap.contains(agentId)) {
-            Agent* agent = AgentsMap[agentId];
-            QString oldUsername = agent->item_Username->text();
+        Agent* agent = AgentsMap.value(agentId, nullptr);
+        if(agent) {
+            auto oldData = agent->data;
             agent->Update(jsonObj);
-            QString newUsername = agent->item_Username->text();
 
-            if (oldUsername != newUsername)
-                SessionsTableDock->UpdateColumnsWidth();
+            SessionsTableDock->UpdateAgentItem(oldData, agent);
         }
         return;
     }
@@ -486,8 +521,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QJsonArray agentIDs = jsonObj["a_id"].toArray();
         for (QJsonValue idValue : agentIDs) {
             QString id = idValue.toString();
-            if (AgentsMap.contains(id)) {
-                Agent* agent = AgentsMap[id];
+
+            Agent* agent = AgentsMap.value(id, nullptr);
+            if (agent) {
                 agent->data.LastTick = QDateTime::currentSecsSinceEpoch();
                 if (agent->data.Mark != "Terminated")
                     agent->MarkItem("");
@@ -510,7 +546,21 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if( spType == TYPE_AGENT_TASK_SYNC )
     {
-        Task* newTask = new Task(jsonObj);
+        TaskData newTask = {};
+        newTask.TaskId      = jsonObj["a_task_id"].toString();
+        newTask.TaskType    = jsonObj["a_task_type"].toDouble();
+        newTask.AgentId     = jsonObj["a_id"].toString();
+        newTask.StartTime   = jsonObj["a_start_time"].toDouble();
+        newTask.CommandLine = jsonObj["a_cmdline"].toString();
+        newTask.Client      = jsonObj["a_client"].toString();
+        newTask.User        = jsonObj["a_user"].toString();
+        newTask.Computer    = jsonObj["a_computer"].toString();
+        newTask.FinishTime  = jsonObj["a_finish_time"].toDouble();
+        newTask.MessageType = jsonObj["a_msg_type"].toDouble();
+        newTask.Message     = jsonObj["a_message"].toString();
+        newTask.Output      = jsonObj["a_text"].toString();
+        newTask.Completed   = jsonObj["a_completed"].toBool();
+
         TasksDock->AddTaskItem(newTask);
         return;
     }
@@ -519,8 +569,29 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString taskId = jsonObj["a_task_id"].toString();
 
         if(TasksMap.contains(taskId)) {
-            Task* task = TasksMap[taskId];
-            task->Update(jsonObj);
+            TaskData* task = &TasksMap[taskId];
+
+            task->Completed = jsonObj["a_completed"].toBool();
+            if (task->Completed) {
+                task->FinishTime = jsonObj["a_finish_time"].toDouble();
+
+                task->MessageType = jsonObj["a_msg_type"].toDouble();
+                if ( task->MessageType == CONSOLE_OUT_ERROR || task->MessageType == CONSOLE_OUT_LOCAL_ERROR ) {
+                    task->Status = "Error";
+                }
+                else if ( task->MessageType == CONSOLE_OUT_INFO || task->MessageType == CONSOLE_OUT_LOCAL_INFO ) {
+                    task->Status = "Canceled";
+                }
+                else {
+                    task->Status = "Success";
+                }
+            }
+
+            if ( task->Message.isEmpty() )
+                task->Message = jsonObj["a_message"].toString();
+            task->Output += jsonObj["a_text"].toString();
+
+            TasksDock->UpdateTaskItem(taskId, *task);
         }
         return;
     }
@@ -530,9 +601,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         for (QJsonValue idValue : taskIDs) {
             QString id = idValue.toString();
             if (TasksMap.contains(id)) {
-                Task* task = TasksMap[id];
-                task->data.Status = "Running";
-                task->item_Result->setText("Running");
+                TaskData* task = &TasksMap[id];
+                task->Status = "Running";
             }
         }
         return;
@@ -802,6 +872,33 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                     }
                 }
             }
+
+            bool owned = (t.Agents.size() > 0);
+            if (t.Os == OS_WINDOWS) {
+                if (owned)
+                    t.OsIcon = QIcon(":/icons/os_win_red");
+                else if(t.Alive)
+                    t.OsIcon = QIcon(":/icons/os_win_blue");
+                else
+                    t.OsIcon = QIcon(":/icons/os_win_grey");
+            }
+            else if (t.Os == OS_LINUX) {
+                if (owned)
+                    t.OsIcon = QIcon(":/icons/os_linux_red");
+                else if(t.Alive)
+                    t.OsIcon = QIcon(":/icons/os_linux_blue");
+                else
+                    t.OsIcon = QIcon(":/icons/os_linux_grey");
+            }
+            else if (t.Os == OS_MAC) {
+                if (owned)
+                    t.OsIcon = QIcon(":/icons/os_mac_red");
+                else if(t.Alive)
+                    t.OsIcon = QIcon(":/icons/os_mac_blue");
+                else
+                    t.OsIcon = QIcon(":/icons/os_mac_grey");
+            }
+
             targetsList.append(t);
         }
 
@@ -809,28 +906,54 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         return;
     }
     if ( spType == TYPE_TARGETS_EDIT ) {
-        TargetData targetData = {};
-        targetData.TargetId = jsonObj["t_target_id"].toString();
-        targetData.Computer = jsonObj["t_computer"].toString();
-        targetData.Domain   = jsonObj["t_domain"].toString();
-        targetData.Address  = jsonObj["t_address"].toString();
-        targetData.Os       = jsonObj["t_os"].toDouble();
-        targetData.OsDesc   = jsonObj["t_os_desk"].toString();
-        targetData.Tag      = jsonObj["t_tag"].toString();
-        targetData.Info     = jsonObj["t_info"].toString();
-        targetData.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["t_date"].toDouble()));
-        targetData.Alive    = jsonObj["t_alive"].toBool();
+        TargetData t = {};
+        t.TargetId = jsonObj["t_target_id"].toString();
+        t.Computer = jsonObj["t_computer"].toString();
+        t.Domain   = jsonObj["t_domain"].toString();
+        t.Address  = jsonObj["t_address"].toString();
+        t.Os       = jsonObj["t_os"].toDouble();
+        t.OsDesc   = jsonObj["t_os_desk"].toString();
+        t.Tag      = jsonObj["t_tag"].toString();
+        t.Info     = jsonObj["t_info"].toString();
+        t.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["t_date"].toDouble()));
+        t.Alive    = jsonObj["t_alive"].toBool();
 
         if (jsonObj.value("t_agents").isArray()) {
             QJsonArray sessions = jsonObj.value("t_agents").toArray();
             for (const QJsonValue &agent_id : sessions) {
                 if (agent_id.isString()) {
-                    targetData.Agents.append(agent_id.toString());
+                    t.Agents.append(agent_id.toString());
                 }
             }
         }
 
-        TargetsDock->EditTargetsItem(targetData);
+        bool owned = (t.Agents.size() > 0);
+        if (t.Os == OS_WINDOWS) {
+            if (owned)
+                t.OsIcon = QIcon(":/icons/os_win_red");
+            else if(t.Alive)
+                t.OsIcon = QIcon(":/icons/os_win_blue");
+            else
+                t.OsIcon = QIcon(":/icons/os_win_grey");
+        }
+        else if (t.Os == OS_LINUX) {
+            if (owned)
+                t.OsIcon = QIcon(":/icons/os_linux_red");
+            else if(t.Alive)
+                t.OsIcon = QIcon(":/icons/os_linux_blue");
+            else
+                t.OsIcon = QIcon(":/icons/os_linux_grey");
+        }
+        else if (t.Os == OS_MAC) {
+            if (owned)
+                t.OsIcon = QIcon(":/icons/os_mac_red");
+            else if(t.Alive)
+                t.OsIcon = QIcon(":/icons/os_mac_blue");
+            else
+                t.OsIcon = QIcon(":/icons/os_mac_grey");
+        }
+
+        TargetsDock->EditTargetsItem(t);
         return;
     }
     if ( spType == TYPE_TARGETS_DELETE ) {
@@ -981,6 +1104,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             Pivots[pivotData.PivotId] = pivotData;
 
             SessionsGraphDock->RelinkAgent(parentAgent, childAgent, pivotData.PivotName, this->synchronized);
+            SessionsTableDock->UpdateAgentItem(childAgent->data, childAgent);
         }
         return;
     }
@@ -1000,6 +1124,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 childAgent->UnsetParent(pivotData);
 
                 SessionsGraphDock->UnlinkAgent(parentAgent, childAgent, this->synchronized);
+                SessionsTableDock->UpdateAgentItem(childAgent->data, childAgent);
             }
         }
         return;

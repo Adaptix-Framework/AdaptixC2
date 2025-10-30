@@ -21,6 +21,7 @@ void TerminalWorker::start()
 
     auto sslConfig = websocket->sslConfiguration();
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    sslConfig.setProtocol( QSsl::TlsV1_2OrLater );
     websocket->setSslConfiguration(sslConfig);
     websocket->ignoreSslErrors();
 

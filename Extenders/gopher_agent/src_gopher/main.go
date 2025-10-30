@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/binary"
-	"github.com/vmihailenco/msgpack/v5"
 	"gopher/functions"
 	"gopher/utils"
 	"net"
@@ -14,6 +13,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
 var ACTIVE = true

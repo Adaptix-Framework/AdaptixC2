@@ -1,6 +1,5 @@
 #include <Agent/Agent.h>
-#include <Agent/Task.h>
-#include <Agent/TaskTableWidgetItem.h>
+#include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Settings.h>
@@ -8,6 +7,7 @@
 #include <Client/AxScript/AxScriptManager.h>
 #include <Utils/FontManager.h>
 #include <MainAdaptix.h>
+
 
 TaskOutputWidget::TaskOutputWidget() { this->createUI(); }
 
@@ -69,16 +69,20 @@ TasksWidget::TasksWidget( AdaptixWidget* w )
     dockWidgetOutput->setWidget(taskOutputConsole);
     dockWidgetOutput->setIcon(QIcon( ":/icons/job" ), KDDockWidgets::IconPlace::TabBar);
 
-    connect(tableWidget,  &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
+    connect(tableView,  &QTableWidget::customContextMenuRequested, this, &TasksWidget::handleTasksMenu);
+    connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
+        Q_UNUSED(selected)
+        Q_UNUSED(deselected)
+        tableView->setFocus();
+    });
 
-    connect(tableWidget->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &TasksWidget::onTableItemSelection);
-    connect(tableWidget, &QTableWidget::itemSelectionChanged, this, [this](){tableWidget->setFocus();});
-    connect(comboAgent,  &QComboBox::currentTextChanged,      this, &TasksWidget::onAgentChange);
-    connect(comboStatus, &QComboBox::currentTextChanged,      this, &TasksWidget::onAgentChange);
-    connect(inputFilter, &QLineEdit::textChanged,             this, &TasksWidget::onAgentChange);
-    connect(hideButton,  &ClickableLabel::clicked,            this, &TasksWidget::toggleSearchPanel);
+    connect(tableView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &TasksWidget::onTableItemSelection);
+    connect(comboAgent,  &QComboBox::currentTextChanged, this, &TasksWidget::onFilterChanged);
+    connect(comboStatus, &QComboBox::currentTextChanged, this, &TasksWidget::onFilterChanged);
+    connect(inputFilter, &QLineEdit::textChanged,        this, &TasksWidget::onFilterChanged);
+    connect(hideButton,  &ClickableLabel::clicked,       this, &TasksWidget::toggleSearchPanel);
 
-    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableWidget);
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
     shortcutSearch->setContext(Qt::WidgetShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &TasksWidget::toggleSearchPanel);
 }
@@ -117,7 +121,7 @@ void TasksWidget::createUI()
     hideButton->setCursor( Qt::PointingHandCursor );
 
     searchLayout = new QHBoxLayout(searchWidget);
-    searchLayout->setContentsMargins(0, 0, 0, 0);
+    searchLayout->setContentsMargins(0, 4, 0, 0);
     searchLayout->setSpacing(4);
     searchLayout->addSpacerItem(horizontalSpacer1);
     searchLayout->addWidget(comboAgent);
@@ -126,34 +130,33 @@ void TasksWidget::createUI()
     searchLayout->addWidget(hideButton);
     searchLayout->addSpacerItem(horizontalSpacer2);
 
-    tableWidget = new QTableWidget(this );
-    tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
-    tableWidget->setAutoFillBackground( false );
-    tableWidget->setShowGrid( false );
-    tableWidget->setSortingEnabled( true );
-    tableWidget->setWordWrap( true );
-    tableWidget->setCornerButtonEnabled( true );
-    tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
-    tableWidget->setFocusPolicy( Qt::NoFocus );
-    tableWidget->setAlternatingRowColors( true );
-    tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
-    tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
-    tableWidget->horizontalHeader()->setHighlightSections( false );
-    tableWidget->verticalHeader()->setVisible( false );
-    tableWidget->setColumnCount(11);
-    tableWidget->setHorizontalHeaderItem( this->ColumnTaskId,      new QTableWidgetItem("Task ID"));
-    tableWidget->setHorizontalHeaderItem( this->ColumnTaskType,    new QTableWidgetItem("Task Type"));
-    tableWidget->setHorizontalHeaderItem( this->ColumnAgentId,     new QTableWidgetItem("Agent ID"));
-    tableWidget->setHorizontalHeaderItem( this->ColumnClient,      new QTableWidgetItem("Client"));
-    tableWidget->setHorizontalHeaderItem( this->ColumnUser,        new QTableWidgetItem("User"));
-    tableWidget->setHorizontalHeaderItem( this->ColumnComputer,    new QTableWidgetItem("Computer"));
-    tableWidget->setHorizontalHeaderItem( this->ColumnStartTime,   new QTableWidgetItem("Start Time"));
-    tableWidget->setHorizontalHeaderItem( this->ColumnFinishTime,  new QTableWidgetItem("Finish Time"));
-    tableWidget->setHorizontalHeaderItem( this->ColumnCommandLine, new QTableWidgetItem("Commandline"));
-    tableWidget->setHorizontalHeaderItem( this->ColumnResult,      new QTableWidgetItem("Result"));
-    tableWidget->setHorizontalHeaderItem( this->ColumnOutput,      new QTableWidgetItem("Output"));
+    tasksModel = new TasksTableModel(this);
+    proxyModel = new TasksFilterProxyModel(this);
+    proxyModel->setSourceModel(tasksModel);
+    proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
 
-    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+    tableView = new QTableView(this );
+    tableView->setModel(proxyModel);
+    tableView->setContextMenuPolicy( Qt::CustomContextMenu );
+    tableView->setAutoFillBackground( false );
+    tableView->setShowGrid( false );
+    tableView->setSortingEnabled( true );
+    tableView->setWordWrap( true );
+    tableView->setCornerButtonEnabled( true );
+    tableView->setSelectionBehavior( QAbstractItemView::SelectRows );
+    tableView->setFocusPolicy( Qt::NoFocus );
+    tableView->setAlternatingRowColors( true );
+    tableView->horizontalHeader()->setSectionResizeMode( QHeaderView::ResizeToContents );
+    tableView->horizontalHeader()->setCascadingSectionResizes( true );
+    tableView->horizontalHeader()->setHighlightSections( false );
+    tableView->verticalHeader()->setVisible( false );
+
+    proxyModel->sort(-1);
+
+    tableView->horizontalHeader()->setSectionResizeMode( TC_CommandLine, QHeaderView::Stretch );
+    tableView->horizontalHeader()->setSectionResizeMode( TC_Output,      QHeaderView::Stretch );
+
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
 
     this->UpdateColumnsVisible();
 
@@ -163,86 +166,47 @@ void TasksWidget::createUI()
     mainGridLayout->setHorizontalSpacing(8);
 
     mainGridLayout->addWidget( searchWidget, 0, 0, 1, 1 );
-    mainGridLayout->addWidget( tableWidget,  1, 0, 1, 1 );
+    mainGridLayout->addWidget( tableView,    1, 0, 1, 1 );
 
     this->setLayout(mainGridLayout);
 }
 
-bool TasksWidget::filterItem(const TaskData &task) const
+
+
+void TasksWidget::AddTaskItem(TaskData newTask) const
 {
-    if ( !this->showPanel )
-        return true;
-
-    if( comboAgent->currentText() != "All agents" ) {
-        if (comboAgent->currentText() != task.AgentId)
-            return false;
-    }
-
-    if( comboStatus->currentIndex() > 0 ) {
-        if( comboStatus->currentText() != task.Status )
-            return false;
-    }
-
-    if( !inputFilter->text().isEmpty() ) {
-        if ( !task.Message.contains(inputFilter->text(), Qt::CaseInsensitive) && !task.CommandLine.contains(inputFilter->text(), Qt::CaseInsensitive) )
-            return false;
-    }
-
-    return true;
-}
-
-void TasksWidget::addTableItem(const Task* newTask) const
-{
-    if( tableWidget->rowCount() < 1 )
-        tableWidget->setRowCount( 1 );
-    else
-        tableWidget->setRowCount( tableWidget->rowCount() + 1 );
-
-    bool isSortingEnabled = tableWidget->isSortingEnabled();
-    tableWidget->setSortingEnabled( false );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnTaskId,      newTask->item_TaskId );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnTaskType,    newTask->item_TaskType );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnAgentId,     newTask->item_AgentId );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnClient,      newTask->item_Client );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnUser,        newTask->item_User );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnComputer,    newTask->item_Computer );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnStartTime,   newTask->item_StartTime );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnFinishTime,  newTask->item_FinishTime );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnCommandLine, newTask->item_CommandLine );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnResult,      newTask->item_Result );
-    tableWidget->setItem( tableWidget->rowCount() - 1, this->ColumnOutput,      newTask->item_Message );
-    tableWidget->setSortingEnabled( isSortingEnabled );
-
-    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnTaskId, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnTaskType, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnAgentId, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnClient, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnUser, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnComputer, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnStartTime, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnFinishTime, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( this->ColumnResult, QHeaderView::ResizeToContents );
-
-    tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
-}
-
-
-
-void TasksWidget::AddTaskItem(Task* newTask) const
-{
-    if ( adaptixWidget->TasksMap.contains(newTask->data.TaskId) )
+    if ( adaptixWidget->TasksMap.contains(newTask.TaskId) )
         return;
 
-    adaptixWidget->TasksMap[newTask->data.TaskId] = newTask;
-    adaptixWidget->TasksVector.push_back(newTask->data.TaskId);
+    newTask.Status = "Hosted";
+    if (newTask.Completed) {
+        if ( newTask.MessageType == CONSOLE_OUT_ERROR || newTask.MessageType == CONSOLE_OUT_LOCAL_ERROR ) {
+            newTask.Status = "Error";
+        }
+        else if ( newTask.MessageType == CONSOLE_OUT_INFO || newTask.MessageType == CONSOLE_OUT_LOCAL_INFO ) {
+            newTask.Status = "Canceled";
+        }
+        else {
+            newTask.Status = "Success";
+        }
+    }
+    else if (newTask.TaskType == 4) {
+        newTask.Status = "Running";
+    }
+    adaptixWidget->TasksMap[newTask.TaskId] = newTask;
 
-    if( comboAgent->findText(newTask->data.AgentId) == -1 )
-        comboAgent->addItem(newTask->data.AgentId);
+    tasksModel->add(newTask);
 
-    if( !this->filterItem(newTask->data) )
-        return;
+    if (comboAgent->findText(newTask.AgentId) == -1)
+        comboAgent->addItem(newTask.AgentId);
 
-    this->addTableItem(newTask);
+    if (adaptixWidget->IsSynchronized())
+        this->UpdateColumnsSize();
+}
+
+void TasksWidget::UpdateTaskItem(const QString &taskId, const TaskData &task) const
+{
+    tasksModel->update(taskId, task);
 }
 
 void TasksWidget::RemoveTaskItem(const QString &taskId) const
@@ -250,43 +214,22 @@ void TasksWidget::RemoveTaskItem(const QString &taskId) const
     if ( !adaptixWidget->TasksMap.contains((taskId)))
         return;
 
-    Task* task = adaptixWidget->TasksMap[taskId];
-    QString agentId = task->data.AgentId;
+    TaskData task = adaptixWidget->TasksMap[taskId];
+    QString agentId = task.AgentId;
 
     adaptixWidget->TasksMap.remove(taskId);
-    adaptixWidget->TasksVector.removeOne(taskId);
-    delete task;
 
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if (taskId == tableWidget->item( rowIndex, 0 )->text()) {
-            tableWidget->removeRow(rowIndex);
-            break;
-        }
-    }
-
-    bool found = false;
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( agentId == tableWidget->item( rowIndex, 2 )->text()) {
-            found = true;
-            break;
-        }
-    }
-
-    if ( !found ) {
-        int index = comboAgent->findText(agentId);
-        if (index != -1)
-            comboAgent->removeItem(index);
-    }
+    tasksModel->remove(taskId);
 }
 
 void TasksWidget::RemoveAgentTasksItem(const QString &agentId) const
 {
     for (auto key : adaptixWidget->TasksMap.keys()) {
-        Task* task = adaptixWidget->TasksMap[key];
-        if (task->data.AgentId == agentId) {
+        TaskData task = adaptixWidget->TasksMap[key];
+        if (task.AgentId == agentId) {
             adaptixWidget->TasksMap.remove(key);
-            adaptixWidget->TasksVector.removeOne(key);
-            delete task;
+
+            tasksModel->remove(task.TaskId);
         }
     }
 
@@ -294,70 +237,48 @@ void TasksWidget::RemoveAgentTasksItem(const QString &agentId) const
     if (index != -1)
         comboAgent->removeItem(index);
 
-    this->SetData();
+    tableView->reset();
 }
 
 void TasksWidget::SetAgentFilter(const QString &agentId)
 {
     this->searchWidget->setVisible(true);
     this->showPanel = true;
-    comboAgent->setCurrentText(agentId);
+    this->comboAgent->setCurrentText(agentId);
 
-    this->SetData();
+    this->onFilterChanged();
 }
 
 void TasksWidget::UpdateColumnsVisible() const
 {
     for(int i = 0; i < 11; i++) {
         if (GlobalClient->settings->data.TasksTableColumns[i])
-            tableWidget->showColumn(i);
+            tableView->showColumn(i);
         else
-            tableWidget->hideColumn(i);
+            tableView->hideColumn(i);
     }
 }
 
-void TasksWidget::SetData() const
+void TasksWidget::UpdateColumnsSize() const
 {
-    taskOutputConsole->SetConten("", "");
-
-    this->ClearTableContent();
-
-    for (int i = 0; i < adaptixWidget->TasksVector.size(); i++ ) {
-        QString taskId = adaptixWidget->TasksVector[i];
-        Task* task = adaptixWidget->TasksMap[taskId];
-        if ( task && this->filterItem(task->data) )
-            this->addTableItem(task);
-    }
-}
-
-void TasksWidget::ClearTableContent() const
-{
-    QSignalBlocker blocker(tableWidget->selectionModel());
-    for (int row = tableWidget->rowCount() - 1; row >= 0; row--) {
-        for (int col = 0; col < tableWidget->columnCount(); ++col)
-            tableWidget->takeItem(row, col);
-
-        tableWidget->removeRow(row);
-    }
+    tableView->resizeColumnToContents(TC_Client);
+    tableView->resizeColumnToContents(TC_User);
+    tableView->resizeColumnToContents(TC_Computer);
+    tableView->resizeColumnToContents(TC_Result);
 }
 
 void TasksWidget::Clear() const
 {
-    adaptixWidget->TasksVector.clear();
-
     for (auto taskId : adaptixWidget->TasksMap.keys()) {
-        Task* task = adaptixWidget->TasksMap[taskId];
+        TaskData task = adaptixWidget->TasksMap[taskId];
         adaptixWidget->TasksMap.remove(taskId);
-        delete task;
     }
-
-    this->ClearTableContent();
 
     taskOutputConsole->SetConten("", "");
 
+    tasksModel->clear();
     comboAgent->clear();
-    comboAgent->addItem( "All agents" );
-    comboAgent->setCurrentIndex(0);
+    comboAgent->addItem("All agents");
     comboStatus->setCurrentIndex(0);
     inputFilter->clear();
 }
@@ -375,36 +296,35 @@ void TasksWidget::toggleSearchPanel()
     else {
         this->showPanel = true;
         this->searchWidget->setVisible(true);
-
     }
-
-    this->SetData();
 }
 
 void TasksWidget::handleTasksMenu( const QPoint &pos )
 {
-    if ( !tableWidget->itemAt(pos) )
-        return;
+    QModelIndex index = tableView->indexAt(pos);
+    if (!index.isValid()) return;
 
     bool cancel      = false;
     bool job_running = false;
     bool remove      = false;
 
     QStringList taskIds;
+    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+    for (const QModelIndex &proxyIndex : selectedRows) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (!sourceIndex.isValid()) continue;
 
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            QString result = tableWidget->item(rowIndex, this->ColumnResult)->text();
-            QString type   = tableWidget->item(rowIndex, this->ColumnTaskType)->text();
-            if ( result == "Hosted" )
-                cancel = true;
-            else if (result == "Running" && type == "JOB")
-                job_running = true;
-            else
-                remove = true;
+        QString result = tasksModel->data(tasksModel->index(sourceIndex.row(), TC_Result), Qt::DisplayRole).toString();
+        QString type   = tasksModel->data(tasksModel->index(sourceIndex.row(), TC_TaskType), Qt::DisplayRole).toString();
+        QString taskId = tasksModel->data(tasksModel->index(sourceIndex.row(), TC_TaskId), Qt::DisplayRole).toString();
+        taskIds.append(taskId);
 
-            taskIds.append(tableWidget->item(rowIndex, this->ColumnTaskId)->text());
-        }
+        if ( result == "Hosted" )
+            cancel = true;
+        else if (result == "Running" && type == "JOB")
+            job_running = true;
+        else
+            remove = true;
     }
 
     auto ctxMenu = QMenu();
@@ -417,86 +337,113 @@ void TasksWidget::handleTasksMenu( const QPoint &pos )
     int taskCount = adaptixWidget->ScriptManager->AddMenuTask(&ctxMenu, "Tasks", taskIds);
     int jobCount  = 0;
     if (job_running)
-        jobCount = adaptixWidget->ScriptManager->AddMenuTask(&ctxMenu, "TasksJob", taskIds);
+    jobCount = adaptixWidget->ScriptManager->AddMenuTask(&ctxMenu, "TasksJob", taskIds);
     if (taskCount + jobCount > 0)
-        ctxMenu.addSeparator();
+    ctxMenu.addSeparator();
 
     if (cancel)
-        ctxMenu.addAction("Cancel", this, &TasksWidget::actionCancel);
+    ctxMenu.addAction("Cancel", this, &TasksWidget::actionCancel);
     if (remove)
-        ctxMenu.addAction("Delete task", this, &TasksWidget::actionDelete);
+    ctxMenu.addAction("Delete task", this, &TasksWidget::actionDelete);
 
-    ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
+    ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));
 }
 
 void TasksWidget::onTableItemSelection(const QModelIndex &current, const QModelIndex &previous) const
 {
-    int row = current.row();
-    if (row < 0)
+    Q_UNUSED(previous);
+
+    auto idx = tableView->currentIndex();
+    if (!idx.isValid())
         return;
 
-    QString taskId = tableWidget->item(row,this->ColumnTaskId)->text();
-    if (!adaptixWidget->TasksMap.contains(taskId) )
+    QString taskId = proxyModel->index(idx.row(), TC_TaskId).data().toString();
+    if (taskId.isEmpty())
         return;
 
-    TaskData taskData = adaptixWidget->TasksMap[taskId]->data;
+    if (!adaptixWidget->TasksMap.contains(taskId))
+        return;
+
+    TaskData taskData = adaptixWidget->TasksMap[taskId];
     taskOutputConsole->SetConten(taskData.Message, taskData.Output);
     adaptixWidget->LoadTasksOutput();
 }
 
-void TasksWidget::onAgentChange(QString agentId) const { this->SetData(); }
+void TasksWidget::onFilterChanged() const
+{
+    auto *f = qobject_cast<TasksFilterProxyModel *>(proxyModel);
+    if (!f) return;
+
+    f->setAgentFilter(comboAgent->currentText());
+    f->setStatusFilter(comboStatus->currentText());
+    f->setTextFilter(inputFilter->text());
+}
 
 void TasksWidget::actionCopyTaskId() const
 {
-    int row = tableWidget->currentRow();
-    if( row >= 0) {
-        QString taskId = tableWidget->item( row, this->ColumnTaskId )->text();
-        QApplication::clipboard()->setText( taskId );
+    auto idx = tableView->currentIndex();
+    if (idx.isValid()) {
+        QString taskId = proxyModel->index(idx.row(), TC_TaskId).data().toString();
+        QApplication::clipboard()->setText(taskId);
     }
 }
 
 void TasksWidget::actionCopyCmd() const
 {
-    int row = tableWidget->currentRow();
-    if( row >= 0) {
-        QString cmdLine = tableWidget->item( row, this->ColumnCommandLine )->text();
-        QApplication::clipboard()->setText( cmdLine );
+    auto idx = tableView->currentIndex();
+    if (idx.isValid()) {
+        QString cmdLine = proxyModel->index(idx.row(), TC_CommandLine).data().toString();
+        QApplication::clipboard()->setText(cmdLine);
     }
 }
 
 void TasksWidget::actionOpenConsole() const
 {
-    int row = tableWidget->currentRow();
-    auto agentId = tableWidget->item( row, this->ColumnAgentId )->text();
-    adaptixWidget->LoadConsoleUI(agentId);
+    auto idx = tableView->currentIndex();
+    if (idx.isValid()) {
+        QString agentId = proxyModel->index(idx.row(), TC_AgentId).data().toString();
+        adaptixWidget->LoadConsoleUI(agentId);
+    }
 }
 
 void TasksWidget::actionCancel() const
 {
     QMap<QString, QStringList> agentTasks;
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, this->ColumnAgentId )->text();
-            auto taskId = tableWidget->item( rowIndex, this->ColumnTaskId )->text();
+
+    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+    for (const QModelIndex &proxyIndex : selectedRows) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (!sourceIndex.isValid()) continue;
+
+        QString agentId = tasksModel->data(tasksModel->index(sourceIndex.row(), TC_AgentId), Qt::DisplayRole).toString();
+        QString taskId  = tasksModel->data(tasksModel->index(sourceIndex.row(), TC_TaskId), Qt::DisplayRole).toString();
+        if (!agentId.isEmpty() && !taskId.isEmpty())
             agentTasks[agentId].append(taskId);
-        }
     }
 
-    for( QString agentId : agentTasks.keys())
-        adaptixWidget->AgentsMap[agentId]->TasksCancel(agentTasks[agentId]);
+    for (auto it = agentTasks.begin(); it != agentTasks.end(); ++it) {
+        if (adaptixWidget->AgentsMap.contains(it.key()))
+            adaptixWidget->AgentsMap[it.key()]->TasksCancel(it.value());
+    }
 }
 
 void TasksWidget::actionDelete() const
 {
     QMap<QString, QStringList> agentTasks;
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            auto agentId = tableWidget->item( rowIndex, this->ColumnAgentId )->text();
-            auto taskId = tableWidget->item( rowIndex, this->ColumnTaskId )->text();
+
+    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+    for (const QModelIndex &proxyIndex : selectedRows) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (!sourceIndex.isValid()) continue;
+
+        QString agentId = tasksModel->data(tasksModel->index(sourceIndex.row(), TC_AgentId), Qt::DisplayRole).toString();
+        QString taskId  = tasksModel->data(tasksModel->index(sourceIndex.row(), TC_TaskId), Qt::DisplayRole).toString();
+        if (!agentId.isEmpty() && !taskId.isEmpty())
             agentTasks[agentId].append(taskId);
-        }
     }
 
-    for( QString agentId : agentTasks.keys())
-        adaptixWidget->AgentsMap[agentId]->TasksDelete(agentTasks[agentId]);
+    for (auto it = agentTasks.begin(); it != agentTasks.end(); ++it) {
+        if (adaptixWidget->AgentsMap.contains(it.key()))
+            adaptixWidget->AgentsMap[it.key()]->TasksDelete(it.value());
+    }
 }

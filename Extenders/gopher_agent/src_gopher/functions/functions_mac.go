@@ -6,8 +6,6 @@ package functions
 import (
 	"crypto/cipher"
 	"fmt"
-	"github.com/creack/pty"
-	"github.com/shirou/gopsutil/v4/process"
 	"gopher/utils"
 	"io"
 	"os"
@@ -16,6 +14,9 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/creack/pty"
+	"github.com/shirou/gopsutil/v4/process"
 
 	"howett.net/plist"
 )

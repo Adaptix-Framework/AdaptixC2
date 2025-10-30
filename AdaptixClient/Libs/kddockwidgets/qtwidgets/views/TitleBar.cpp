@@ -113,8 +113,14 @@ bool Button::event(QEvent *ev)
     case QEvent::KeyPress:
     case QEvent::KeyRelease: {
         // A Button can trigger the deletion of its parent, in which case we use deleteLater
-        QScopedValueRollback<bool> guard(m_inEventHandler, true);
-        return QToolButton::event(ev);
+        m_inEventHandler = true;
+        QPointer<QObject> guard = this;
+        const bool result = QToolButton::event(ev);
+
+        if (guard) // Button press can trigger deletion of Button
+            m_inEventHandler = false;
+
+        return result;
     }
     default:
         break;

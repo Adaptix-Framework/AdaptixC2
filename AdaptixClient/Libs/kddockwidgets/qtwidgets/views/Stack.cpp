@@ -228,12 +228,15 @@ Core::Stack *Stack::stack() const
 
 bool Stack::isPositionDraggable(QPoint p) const
 {
-    if (tabPosition() != QTabWidget::North) {
-        qWarning() << Q_FUNC_INFO << "Not implemented yet. Only North is supported";
-        return false;
+    switch (tabPosition()) {
+        case QTabWidget::North:
+            return p.y() >= 0 && p.y() <= tabBar()->height();
+        case QTabWidget::South:
+            return p.y() >= tabBar()->y();
+        default:
+            qWarning() << Q_FUNC_INFO << "Not implemented yet. Only North and South is supported";
+            return false;
     }
-
-    return p.y() >= 0 && p.y() <= tabBar()->height();
 }
 
 QAbstractButton *Stack::button(TitleBarButtonType type) const

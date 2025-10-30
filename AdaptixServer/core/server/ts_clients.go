@@ -9,17 +9,23 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const SMALL_VERSION = "v0.10"
+
 func (ts *Teamserver) TsClientExists(username string) bool {
 	return ts.clients.Contains(username)
 }
 
-func (ts *Teamserver) TsClientConnect(username string, socket *websocket.Conn) {
+func (ts *Teamserver) TsClientConnect(username string, version string, socket *websocket.Conn) {
+
+	supportsBatchSync := version == SMALL_VERSION
+
 	client := &Client{
-		username:   username,
-		synced:     false,
-		lockSocket: &sync.Mutex{},
-		socket:     socket,
-		tmp_store:  safe.NewSlice(),
+		username:       username,
+		synced:         false,
+		versionSupport: supportsBatchSync,
+		lockSocket:     &sync.Mutex{},
+		socket:         socket,
+		tmp_store:      safe.NewSlice(),
 	}
 
 	ts.clients.Put(username, client)

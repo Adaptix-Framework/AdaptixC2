@@ -533,7 +533,7 @@ bool LayoutSaver::restoreLayout(const QByteArray &data)
             if (auto mwFunc = Config::self().mainWindowFactoryFunc()) {
                 mainWindow = mwFunc(mw.uniqueName, mw.options);
             } else {
-                KDDW_ERROR("Failed to restore layout create MainWindow with name {} first");
+                KDDW_ERROR("Failed to restore layout create MainWindow with name {} first", mw.uniqueName);
                 return false;
             }
         }

@@ -14,6 +14,7 @@ import (
 type Credentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Version  string `json:"version"`
 }
 
 type AccessJWT struct {
@@ -46,13 +47,13 @@ func (tc *TsConnector) tcLogin(ctx *gin.Context) {
 		}
 	}
 
-	accessToken, err := token.GenerateAccessToken(creds.Username)
+	accessToken, err := token.GenerateAccessToken(creds.Username, creds.Version)
 	if err != nil {
 		_ = ctx.Error(errors.New("could not generate access token"))
 		return
 	}
 
-	refreshToken, err := token.GenerateRefreshToken(creds.Username)
+	refreshToken, err := token.GenerateRefreshToken(creds.Username, creds.Version)
 	if err != nil {
 		_ = ctx.Error(errors.New("could not generate refresh token"))
 		return
@@ -73,6 +74,9 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 		return
 	}
 
+	versionValue, _ := ctx.Get("version")
+	version, _ := versionValue.(string)
+
 	exists = tc.teamserver.TsClientExists(username)
 	if exists {
 		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: invalid username type in context", "ok": false})
@@ -80,6 +84,9 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 	}
 
 	var wsUpgrader websocket.Upgrader
+	wsUpgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		logs.Error("", "WebSocket upgrade error: "+err.Error())
@@ -91,11 +98,11 @@ func (tc *TsConnector) tcConnect(ctx *gin.Context) {
 		return
 	}
 
-	go tc.tcWebsocketConnect(username, wsConn)
+	go tc.tcWebsocketConnect(username, version, wsConn)
 }
 
-func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Conn) {
-	tc.teamserver.TsClientConnect(username, wsConn)
+func (tc *TsConnector) tcWebsocketConnect(username string, version string, wsConn *websocket.Conn) {
+	tc.teamserver.TsClientConnect(username, version, wsConn)
 	for {
 		_, _, err := wsConn.ReadMessage()
 		if err == nil {
@@ -120,6 +127,8 @@ func (tc *TsConnector) tcSync(ctx *gin.Context) {
 	}
 
 	go tc.teamserver.TsClientSync(username)
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "sync started", "ok": true})
 }
 
 func (tc *TsConnector) tcChannel(ctx *gin.Context) {
@@ -141,6 +150,9 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 	}
 
 	var wsUpgrader websocket.Upgrader
+	wsUpgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
 		logs.Error("", "WebSocket upgrade error: "+err.Error())

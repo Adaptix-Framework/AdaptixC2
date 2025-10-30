@@ -11,6 +11,7 @@ ListenersWidget::ListenersWidget(AdaptixWidget* w) : DockTab("Listeners", w->Get
 {
     this->createUI();
 
+    connect(tableWidget, &QTableWidget::cellDoubleClicked,          this, &ListenersWidget::onEditListener);
     connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &ListenersWidget::handleListenersMenu);
 
     this->dockWidget->setWidget(this);

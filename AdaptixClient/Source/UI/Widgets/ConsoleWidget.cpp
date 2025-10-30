@@ -306,21 +306,35 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
 
     /// 5 Mb
     if (commandData.size() < 0x500000) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentCommand(jsonData, *(agent->adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
-                adaptixWidget->PostHooksJS.remove(hookId);
-            MessageError("Response timeout");
-            return;
-        }
-        if (!ok) {
-            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
-                adaptixWidget->PostHooksJS.remove(hookId);
-            this->ConsoleOutputPrompt(0, "", "", commandLine);
-            this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, message, "", true);
-        }
+        QThread* workerThread = new QThread();
+        QObject* worker = new QObject();
+        worker->moveToThread(workerThread);
+
+        connect(workerThread, &QThread::started, worker, [=, this]() {
+            QString message = QString();
+            bool ok = false;
+            bool result = HttpReqAgentCommand(jsonData, *(agent->adaptixWidget->GetProfile()), &message, &ok);
+
+            QMetaObject::invokeMethod(this, [=, this]() {
+                if( !result ) {
+                    if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                        adaptixWidget->PostHooksJS.remove(hookId);
+                    MessageError("Response timeout");
+                } else if (!ok) {
+                    if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
+                        adaptixWidget->PostHooksJS.remove(hookId);
+                    this->ConsoleOutputPrompt(0, "", "", commandLine);
+                    this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, message, "", true);
+                }
+
+                workerThread->quit();
+                workerThread->wait();
+                worker->deleteLater();
+                workerThread->deleteLater();
+            }, Qt::QueuedConnection);
+        });
+
+        workerThread->start();
     }
     else {
 

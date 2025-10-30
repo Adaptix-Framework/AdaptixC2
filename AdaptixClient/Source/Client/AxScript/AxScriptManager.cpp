@@ -1,5 +1,4 @@
 #include <Agent/Agent.h>
-#include <Agent/Task.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
@@ -278,7 +277,7 @@ void AxScriptManager::AppAgentHide(const QStringList &agents)
     }
 
     if (updated)
-        adaptixWidget->SessionsTableDock->SetData();
+        adaptixWidget->SessionsTableDock->UpdateData();
 }
 
 void AxScriptManager::AppAgentRemove(const QStringList &agents)
@@ -463,8 +462,8 @@ int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QSt
 
     QVariantList context;
     for (auto taskId : tasks) {
-        if (adaptixWidget->TasksMap.contains(taskId) && adaptixWidget->TasksMap[taskId]) {
-            TaskData taskData = adaptixWidget->TasksMap[taskId]->data;
+        if (adaptixWidget->TasksMap.contains(taskId)) {
+            TaskData taskData = adaptixWidget->TasksMap[taskId];
             QVariantMap map;
             map["agent_id"] = taskData.AgentId;
             map["task_id"]  = taskData.TaskId;

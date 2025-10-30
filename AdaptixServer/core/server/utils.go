@@ -44,11 +44,12 @@ const (
 // TeamServer
 
 type Client struct {
-	username   string
-	synced     bool
-	lockSocket *sync.Mutex
-	socket     *websocket.Conn
-	tmp_store  *safe.Slice
+	username       string
+	synced         bool
+	versionSupport bool
+	lockSocket     *sync.Mutex
+	socket         *websocket.Conn
+	tmp_store      *safe.Slice
 }
 
 type TsParameters struct {
@@ -173,6 +174,17 @@ type SyncPackerStart struct {
 
 type SyncPackerFinish struct {
 	SpType int `json:"type"`
+}
+
+type SyncPackerBatch struct {
+	SpType  int           `json:"type"`
+	Packets []interface{} `json:"packets"`
+}
+
+type SyncPackerCategoryBatch struct {
+	SpType   int           `json:"type"`
+	Category string        `json:"category"` // "agents", "events", "console", "tasks", etc.
+	Packets  []interface{} `json:"packets"`
 }
 
 type SpEvent struct {

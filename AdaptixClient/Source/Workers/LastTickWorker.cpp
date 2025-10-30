@@ -1,5 +1,4 @@
 #include <Agent/Agent.h>
-#include <Agent/AgentTableWidgetItem.h>
 #include <Workers/LastTickWorker.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/Settings.h>
@@ -17,10 +16,11 @@ LastTickWorker::~LastTickWorker() = default;
 void LastTickWorker::run()
 {
     QObject::connect( timer, &QTimer::timeout, this, &LastTickWorker::updateLastItems );
-    timer->start( 1000 );
+    timer->start( 500 );
+    exec();
 }
 
-void LastTickWorker::updateLastItems() const
+void LastTickWorker::updateLastItems()
 {
     for ( auto agent : mainWidget->AgentsMap ) {
         if ( agent->data.Async && agent->active ) {
@@ -38,27 +38,35 @@ void LastTickWorker::updateLastItems() const
                 int nowH = Now.time().hour() + agent->data.GmtOffset;
                 int nowM = Now.time().minute();
 
-
                 if ( startH < nowH && nowH < endH  ){}
                 else if ( startH == nowH && startH != endH && startM <= nowM ){}
                 else if ( endH == nowH && startM <= nowM && nowM < endM ){}
                 else {
                     isOffHours = true;
-                    agent->MarkItem("No worktime");
+                    if (agent->data.Mark != "No worktime")
+                        agent->MarkItem("No worktime");
                 }
             }
 
             if ( GlobalClient->settings->data.CheckHealth && !isOffHours ) {
                 if (diff > agent->data.Sleep * GlobalClient->settings->data.HealthCoaf + GlobalClient->settings->data.HealthOffset) {
-                    agent->item_Last->setText( FormatSecToStr(diff) + " / " + FormatSecToStr(agent->data.Sleep));
-                    agent->MarkItem("No response");
+
+                    if (diff > 24 * 3600)
+                        agent->LastMark = UnixTimestampGlobalToStringLocalSmall(agent->data.LastTick);
+                    else
+                        agent->LastMark = FormatSecToStr(diff) + " / " + FormatSecToStr(agent->data.Sleep);
+
+                    if (agent->data.Mark != "No response")
+                        agent->MarkItem("No response");
+
                     continue;
                 }
                 else {
                     agent->MarkItem("");
                 }
             }
-            agent->item_Last->setText( FormatSecToStr(diff) );
+            agent->LastMark = FormatSecToStr(diff);
         }
     }
+
 }

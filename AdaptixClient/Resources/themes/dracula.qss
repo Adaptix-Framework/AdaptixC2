@@ -113,6 +113,31 @@ QTableWidget:disabled {
     border: 1px solid #44475a;
 }
 
+QTableView {
+    background-color: #44475a;
+    alternate-background-color: #414458;
+    border: 1px solid #6272a4;
+    color: #f8f8f2;
+    border-radius: 4px;
+}
+
+QTableView::item {
+    padding-left: 8px;
+    padding-right: 8px;
+    border: none;
+}
+
+QTableView::item:selected {
+    background-color: #6272a4;
+    color: #ffffff;
+}
+
+QTableView:disabled {
+    background-color: #343746;
+    color: #6272a4;
+    border: 1px solid #44475a;
+}
+
 QTreeWidget {
     background-color: #44475a;
     alternate-background-color: #414458;
@@ -575,6 +600,12 @@ QDateEdit::down-arrow {
     image: url(:/icons/double_arrow_down);
     width: 20px;
     height: 20px;
+}
+
+QDateEdit:disabled {
+    background-color: #343746;
+    color: #6272a4;
+    border: 1px solid #44475a;
 }
 
 QAbstractItemView#Completer {

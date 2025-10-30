@@ -33,7 +33,7 @@ func (tc *TsConnector) TcListenerStart(ctx *gin.Context) {
 	}
 
 	if isvalid.ValidListenerName(listener.ListenerName) == false {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Invalid JSON name", "ok": false})
+		ctx.JSON(http.StatusOK, gin.H{"message": "Invalid listener name", "ok": false})
 		return
 	}
 

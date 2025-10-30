@@ -100,3 +100,12 @@ func (sl *Slice) Iterator() <-chan SliceItem {
 	}()
 	return ch
 }
+
+func (sl *Slice) DirectAccess(callback func(item interface{})) {
+	sl.mutex.RLock()
+	defer sl.mutex.RUnlock()
+
+	for _, item := range sl.items {
+		callback(item)
+	}
+}

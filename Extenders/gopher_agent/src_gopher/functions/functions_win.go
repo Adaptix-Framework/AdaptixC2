@@ -6,8 +6,6 @@ package functions
 import (
 	"crypto/cipher"
 	"fmt"
-	"github.com/gabemarshall/pty"
-	"golang.org/x/sys/windows"
 	"gopher/utils"
 	"io"
 	"os"
@@ -18,6 +16,9 @@ import (
 	"strings"
 	"syscall"
 	"unsafe"
+
+	"github.com/gabemarshall/pty"
+	"golang.org/x/sys/windows"
 )
 
 type OSVersionInfoEx struct {

@@ -5,6 +5,7 @@ QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QStri
 {
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    sslConfig.setProtocol(QSsl::TlsV1_2OrLater);
     QSslConfiguration::setDefaultConfiguration(sslConfig);
 
     QUrl url(sUrl);
@@ -48,6 +49,7 @@ bool HttpReqLogin(AuthProfile* profile)
     QJsonObject dataJson;
     dataJson["username"] = profile->GetUsername();
     dataJson["password"] = profile->GetPassword();
+    dataJson["version"]  = SMALL_VERSION;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile->GetURL() + "/login";
@@ -161,6 +163,7 @@ QJsonObject HttpReqTimeout( int timeout, const QString &sUrl, const QByteArray &
 {
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
+    sslConfig.setProtocol(QSsl::TlsV1_2OrLater);
     QSslConfiguration::setDefaultConfiguration(sslConfig);
 
     QUrl url(sUrl);
