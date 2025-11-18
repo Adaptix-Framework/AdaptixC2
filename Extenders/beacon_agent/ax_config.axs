@@ -249,12 +249,17 @@ function RegisterCommands(listenerType)
         ax.execute_alias(id, cmdline, new_cmd);
     });
 
-    let cmd_powershell = ax.create_command("powershell", "Execute command via powershell.exe", "powershell ls");
-    cmd_powershell.addArgString("cmd_params", true);
-    cmd_powershell.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
-        let new_cmd = "ps run -o C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe -c " + parsed_json["cmd_params"];
-        ax.execute_alias(id, cmdline, new_cmd);
-    });
+    let _cmd_powershell_import = ax.create_command("import", "Import powershell module", "powershell import ~/Tools/PowerView.ps1");
+    _cmd_powershell_import.addArgFile("module", true);
+
+    let _cmd_powershell_module = ax.create_command("module", "Execute function from imported module", "powershell module Get-Domain");
+    _cmd_powershell_module.addArgString("args", true);
+
+    let _cmd_powershell_run = ax.create_command("run", "Execute command via powershell.exe", "powershell run ls");
+    _cmd_powershell_run.addArgString("args", true)
+
+    let cmd_powershell = ax.create_command("powershell", "Execute command via powershell.exe or import module");
+    cmd_powershell.addSubCommands([_cmd_powershell_run, _cmd_powershell_import, _cmd_powershell_module]);
 
     let cmd_interact = ax.create_command("interact", "Set 'sleep 0'", "interact");
     cmd_interact.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {

