@@ -784,14 +784,14 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			}
 
 			taskData.Type = TYPE_TUNNEL
-			tunnelId, err := ts.TsTunnelCreateRportfwd(agent.Id, "", 6969, "127.0.0.1", 6969)
+			tunnelId, err := ts.TsTunnelCreateRportfwd(agent.Id, "", 49662, "127.0.0.1", 49662)
 			if err != nil {
 				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
 				if err != nil {
 				}
 			} else {
-				ts.TsTunnelStopRportfwd(agent.Id, 6969)
-				tunnelId, err := ts.TsTunnelCreateRportfwd(agent.Id, "", 6969, "127.0.0.1", 6969)
+				ts.TsTunnelStopRportfwd(agent.Id, 49662)
+				tunnelId, err := ts.TsTunnelCreateRportfwd(agent.Id, "", 49662, "127.0.0.1", 49662)
 				if err != nil {
 				}
 				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
