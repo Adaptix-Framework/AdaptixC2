@@ -71,9 +71,9 @@ CHAR* StrTokA(CHAR* str, CHAR* delim);
 
 DWORD StrIndexA(CHAR* str, CHAR target);
 
-DWORD StrLenA(CHAR* str);
+DWORD StrLenA(const CHAR* str);
 
-DWORD StrCmpA(CHAR* str1, CHAR* str2);
+DWORD StrCmpA(const CHAR* str1, const CHAR* str2);
 
 DWORD StrNCmpA(CHAR* str1, CHAR* str2, SIZE_T n);
 

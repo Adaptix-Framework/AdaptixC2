@@ -137,9 +137,13 @@ void BeaconPrintf(int type, const char* fmt, ...)
 	va_list args;
 
 	va_start(args, fmt);
-	length = ApiWin->vsnprintf(NULL, 0, fmt, args) + 1;
+	length = ApiWin->vsnprintf(NULL, 0, fmt, args);
 	va_end(args);
 
+	if (length == -1)
+		return;
+
+	length += 1;
 	char* tmp_output = (char*)MemAllocLocal(length);
 
 	va_start(args, fmt);
@@ -198,8 +202,12 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 	int length = 0;
 
 	va_start(args, fmt);
-	length = ApiWin->vsnprintf(NULL, 0, fmt, args);
+	length = ApiWin->vsnprintf(NULL, 0, fmt, args); // -1 
 	va_end(args);
+
+	if (length == -1)
+		return;
+
 	if (format->length + length > format->size) {
 		return;
 	}
@@ -342,51 +350,51 @@ BOOL BeaconInformation(BEACON_INFO* info)
 
 BOOL BeaconAddValue(const char* key, void* ptr)
 {
-	if (!key)
+	if (!key || StrLenA(key) == 0)
+		return FALSE;
+	for (const auto& pair : g_Agent->Values) {
+		if (StrCmpA((const char*)pair.key, key) == 0) {
+			return FALSE;
+		}
+	}
+	size_t keyLen = StrLenA(key) + 1;
+	CHAR* newKey = (CHAR*)MemAllocLocal(keyLen);
+	if (!newKey)
 		return FALSE;
 
-	DWORD keyLength = StrLenA((CHAR*)key);
-	if(keyLength < 1)
-		return FALSE;
-
-	if( g_Agent->Values.contains((CHAR*)key) )
-		return FALSE;
-
-	g_Agent->Values[(CHAR*)key] = ptr;
+	memcpy(newKey, key, keyLen);
+	g_Agent->Values.insert(newKey, ptr);
 
 	return TRUE;
 }
 
 PVOID BeaconGetValue(const char* key)
 {
-	if (!key)
+	if (!key || StrLenA(key) == 0)
 		return NULL;
-
-	DWORD keyLength = StrLenA((CHAR*)key);
-	if (keyLength < 1)
-		return NULL;
-
-	if (g_Agent->Values.contains((CHAR*)key))
-		return g_Agent->Values[(CHAR*)key];
+	for (const auto& pair : g_Agent->Values) {
+		if (StrCmpA((const char*)pair.key, key) == 0) {
+			return pair.value;
+		}
+	}
 
 	return NULL;
 }
 
 BOOL BeaconRemoveValue(const char* key)
 {
-	if (!key)
+	if (!key || strlen(key) == 0)
 		return FALSE;
-
-	DWORD keyLength = StrLenA((CHAR*)key);
-	if (keyLength < 1)
-		return FALSE;
-
-	if (!g_Agent->Values.contains((CHAR*)key))
-		return FALSE;
-
-	g_Agent->Values.remove((CHAR*)key);
-
-	return TRUE;
+	for (auto it = g_Agent->Values.begin(); it != g_Agent->Values.end(); ++it) {
+		if (StrCmpA((const char*)(*it).key, key) == 0) {
+			LPVOID lpKey = (*it).key;
+			DWORD dwBufferSize = StrLenA((*it).key);
+			MemFreeLocal(&lpKey, dwBufferSize);
+			g_Agent->Values.remove((*it).key);
+			return TRUE;
+		}
+	}
+	return FALSE;
 }
 
 PCHAR BeaconGetCustomUserData() 

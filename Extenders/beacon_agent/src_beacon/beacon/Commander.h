@@ -74,4 +74,7 @@ public:
 
 	void CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void Exit(Packer* outPacker);
+
+	static void* operator new(size_t sz);
+	static void operator delete(void* p) noexcept;
 };

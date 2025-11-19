@@ -462,7 +462,7 @@ CHAR* StrTokA(CHAR* str, CHAR* delim)
     return token_start;
 }
 
-DWORD StrCmpA(CHAR* str1, CHAR* str2)
+DWORD StrCmpA(const CHAR* str1, const CHAR* str2)
 {
     while (*str1 && (*str1 == *str2)) {
         str1++;
@@ -534,7 +534,7 @@ DWORD StrCmpLowW(WCHAR* str1, WCHAR* str2)
     return *str1 - *str2;
 }
 
-DWORD StrLenA(CHAR* str)
+DWORD StrLenA(const CHAR* str)
 {
     int i = 0;
     if (str != NULL)

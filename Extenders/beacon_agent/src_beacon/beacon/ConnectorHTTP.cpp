@@ -3,6 +3,7 @@
 #include "ApiDefines.h"
 #include "ProcLoader.h"
 #include "Encoders.h"
+#include "utils.h"
 
 BOOL _isdigest(char c)
 {
@@ -40,6 +41,15 @@ DWORD _strlen(CHAR* str)
 	if (str != NULL)
 		for (; str[i]; i++);
 	return i;
+}
+
+void* ConnectorHTTP::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void ConnectorHTTP::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(ConnectorHTTP));
 }
 
 ConnectorHTTP::ConnectorHTTP()

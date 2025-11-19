@@ -2,6 +2,8 @@
 
 #include <windows.h>
 #include <aclapi.h>
+
+#define _NO_NTDLL_CRT_
 #include "ntdll.h"
 
 #ifndef PROFILE_STRUCT
@@ -84,4 +86,7 @@ public:
 	BYTE* RecvData();
 	int RecvSize();
 	void  RecvClear();
+
+	static void* operator new(size_t sz);
+	static void operator delete(void* p) noexcept;
 };
