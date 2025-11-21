@@ -448,9 +448,8 @@ func FormatToString(format *formatp, size *uint32) uintptr {
 		*size = format.length
 	}
 
-	// Проверяем, что есть место для '\0'
 	if format.length >= format.size {
-		return format.original // буфер полон, не можем добавить терминатор
+		return format.original
 	}
 
 	*(*byte)(unsafe.Pointer(format.buffer)) = 0

@@ -200,7 +200,6 @@ func UnzipFile(zipPath string, targetDir string) error {
 			continue
 		}
 
-		// Убедимся, что директория существует
 		err = os.MkdirAll(filepath.Dir(destPath), os.ModePerm)
 		if err != nil {
 			return err
