@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const SMALL_VERSION = "v0.10"
+const SMALL_VERSION = "v0.11"
 
 func (ts *Teamserver) TsClientExists(username string) bool {
 	return ts.clients.Contains(username)

@@ -4,13 +4,13 @@
 #include "Packer.h"
 #include "Crypt.h"
 
-void* Agent::operator new(size_t sz) 
+void* Agent::operator new(size_t sz)
 {
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void Agent::operator delete(void* p) noexcept 
+void Agent::operator delete(void* p) noexcept
 {
 	MemFreeLocal(&p, sizeof(Agent));
 }
