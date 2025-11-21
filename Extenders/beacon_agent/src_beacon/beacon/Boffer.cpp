@@ -28,9 +28,8 @@ int my_strncpy_s(char* dest, unsigned int destsz, const char* src, unsigned int 
 
 void InitBofOutputData()
 {
-	if (bofOutputPacker == NULL) {
+	if (bofOutputPacker == NULL)
 		bofOutputPacker = new Packer();
-	}
 }
 
 #define BEACON_FUNCTIONS_COUNT 28
@@ -154,10 +153,10 @@ bool AllocateSections(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* mapSe
 		mapSections[i] = (char*)ApiWin->VirtualAlloc(NULL, pSection->SizeOfRawData, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
 		if (!mapSections[i] && pSection->SizeOfRawData)
 			return FALSE;
-
+		
 		if (pSection->PointerToRawData)
 			memcpy(mapSections[i], coffFile + pSection->PointerToRawData, pSection->SizeOfRawData);
-		else
+		else 
 			memset(mapSections[i], 0, pSection->SizeOfRawData);
 	}
 	return TRUE;
@@ -211,12 +210,12 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 				}
 			}
 
-			if (pSymbol.SectionNumber > 0)
+			if (pSymbol.SectionNumber > 0) 
 			{
 				procAddress = mapSections[pSymbol.SectionNumber - 1];
 				procAddress = (void*)((char*)procAddress + pSymbol.Value);
 			}
-			else if(pSymbol.Value == 0 && (pSymbol.StorageClass == IMAGE_SYM_CLASS_EXTERNAL || pSymbol.StorageClass == IMAGE_SYM_CLASS_EXTERNAL_DEF))
+			else if(pSymbol.Value == 0 && (pSymbol.StorageClass == IMAGE_SYM_CLASS_EXTERNAL || pSymbol.StorageClass == IMAGE_SYM_CLASS_EXTERNAL_DEF)) 
 			{
 				procAddress = FindProcBySymbol(procSymbol);
 				if (procAddress == NULL && pSymbolTable[pRelocTable->SymbolTableIndex].SectionNumber == 0) {
@@ -229,7 +228,7 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 					mapFunctionsSize++;
 				}
 			}
-			else
+			else 
 			{
 				BeaconOutput(BOF_ERROR_SYMBOL, "Undefined symbol", 17);
 				status = FALSE;
@@ -237,7 +236,7 @@ bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* map
 
 			if (status != FALSE) {
 #ifdef _WIN64
-				if (pRelocTable->Type == IMAGE_REL_AMD64_ADDR64) // Type == 1 - 64-bit VA of the relocation target
+				if (pRelocTable->Type == IMAGE_REL_AMD64_ADDR64) // Type == 1 - 64-bit VA of the relocation target 
 				{
 					memcpy(&bigOffset, mapSections[sectionIndex] + pRelocTable->VirtualAddress, sizeof(unsigned long long));
 					bigOffset += (unsigned long long) procAddress;

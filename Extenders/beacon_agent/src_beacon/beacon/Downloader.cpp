@@ -1,12 +1,14 @@
 #include "Downloader.h"
 #include "utils.h"
 
-void* Downloader::operator new(size_t sz) {
+void* Downloader::operator new(size_t sz) 
+{
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void Downloader::operator delete(void* p) noexcept {
+void Downloader::operator delete(void* p) noexcept 
+{
 	MemFreeLocal(&p, sizeof(Downloader));
 }
 

@@ -2,12 +2,14 @@
 #include "AgentInfo.h"
 #include "utils.h"
 
-void* AgentInfo::operator new(size_t sz) {
+void* AgentInfo::operator new(size_t sz) 
+{
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void AgentInfo::operator delete(void* p) noexcept {
+void AgentInfo::operator delete(void* p) noexcept 
+{
 	MemFreeLocal(&p, sizeof(AgentInfo));
 }
 

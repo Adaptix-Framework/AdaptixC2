@@ -4,12 +4,14 @@
 #include "ProcLoader.h"
 #include "utils.h"
 
-void* ConnectorTCP::operator new(size_t sz) {
+void* ConnectorTCP::operator new(size_t sz) 
+{
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void ConnectorTCP::operator delete(void* p) noexcept {
+void ConnectorTCP::operator delete(void* p) noexcept 
+{
 	MemFreeLocal(&p, sizeof(ConnectorTCP));
 }
 

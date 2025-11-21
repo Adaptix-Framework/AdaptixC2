@@ -142,8 +142,8 @@ void BeaconPrintf(int type, const char* fmt, ...)
 
 	if (length == -1)
 		return;
-
 	length += 1;
+
 	char* tmp_output = (char*)MemAllocLocal(length);
 
 	va_start(args, fmt);
@@ -202,7 +202,7 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 	int length = 0;
 
 	va_start(args, fmt);
-	length = ApiWin->vsnprintf(NULL, 0, fmt, args); // -1 
+	length = ApiWin->vsnprintf(NULL, 0, fmt, args);
 	va_end(args);
 
 	if (length == -1)
@@ -352,6 +352,7 @@ BOOL BeaconAddValue(const char* key, void* ptr)
 {
 	if (!key || StrLenA(key) == 0)
 		return FALSE;
+
 	for (const auto& pair : g_Agent->Values) {
 		if (StrCmpA((const char*)pair.key, key) == 0) {
 			return FALSE;
@@ -372,6 +373,7 @@ PVOID BeaconGetValue(const char* key)
 {
 	if (!key || StrLenA(key) == 0)
 		return NULL;
+
 	for (const auto& pair : g_Agent->Values) {
 		if (StrCmpA((const char*)pair.key, key) == 0) {
 			return pair.value;
@@ -385,6 +387,7 @@ BOOL BeaconRemoveValue(const char* key)
 {
 	if (!key || strlen(key) == 0)
 		return FALSE;
+
 	for (auto it = g_Agent->Values.begin(); it != g_Agent->Values.end(); ++it) {
 		if (StrCmpA((const char*)(*it).key, key) == 0) {
 			LPVOID lpKey = (*it).key;

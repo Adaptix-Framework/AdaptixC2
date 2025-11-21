@@ -472,7 +472,7 @@ DWORD StrCmpA(const CHAR* str1, const CHAR* str2)
     return (unsigned char)*str1 - (unsigned char)*str2;
 }
 
-DWORD StrNCmpA(CHAR* str1, CHAR* str2, SIZE_T n)
+DWORD StrNCmpA( CHAR* str1,  CHAR* str2, SIZE_T n)
 {
     while (n > 0 && *str1 && (*str1 == *str2)) {
         str1++;

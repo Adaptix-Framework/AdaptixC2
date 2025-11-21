@@ -36,5 +36,4 @@ public:
 
 	static void* operator new(size_t sz);
 	static void operator delete(void* p) noexcept;
-
 };

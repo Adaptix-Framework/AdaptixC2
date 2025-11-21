@@ -5,6 +5,7 @@
 #include "Encoders.h"
 #include "utils.h"
 
+
 BOOL _isdigest(char c)
 {
 	return c >= '0' && c <= '9';
@@ -43,12 +44,14 @@ DWORD _strlen(CHAR* str)
 	return i;
 }
 
-void* ConnectorHTTP::operator new(size_t sz) {
+void* ConnectorHTTP::operator new(size_t sz)
+{
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void ConnectorHTTP::operator delete(void* p) noexcept {
+void ConnectorHTTP::operator delete(void* p) noexcept
+{
 	MemFreeLocal(&p, sizeof(ConnectorHTTP));
 }
 

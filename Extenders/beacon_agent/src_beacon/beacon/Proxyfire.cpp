@@ -1,5 +1,16 @@
 #include "Proxyfire.h"
 
+void* Proxyfire::operator new(size_t sz) 
+{
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void Proxyfire::operator delete(void* p) noexcept 
+{
+	MemFreeLocal(&p, sizeof(Proxyfire));
+}
+
 void PackProxyStatus(Packer* packer, ULONG channelId, ULONG commandId, BOOL result)
 {
 	packer->Pack32(channelId);
@@ -12,15 +23,6 @@ void PackProxyData(Packer* packer, ULONG channelId, BYTE* data, ULONG dataSize )
 	packer->Pack32(channelId);
 	packer->Pack32(COMMAND_TUNNEL_WRITE_TCP);
 	packer->PackBytes(data, dataSize);
-}
-
-void* Proxyfire::operator new(size_t sz) {
-	void* p = MemAllocLocal(sz);
-	return p;
-}
-
-void Proxyfire::operator delete(void* p) noexcept {
-	MemFreeLocal(&p, sizeof(Proxyfire));
 }
 
 void Proxyfire::AddProxyData(ULONG channelId, SOCKET sock, ULONG waitTime, ULONG mode, ULONG address, WORD port, ULONG state)

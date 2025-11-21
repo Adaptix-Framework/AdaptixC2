@@ -229,7 +229,7 @@ void AgentMain()
 		g_Connector->Disconnect();
 
 	} while (g_Agent->IsActive());
-	
+
 	delete packerOut;
 
 	MemFreeLocal((LPVOID*)&beat, beatSize);

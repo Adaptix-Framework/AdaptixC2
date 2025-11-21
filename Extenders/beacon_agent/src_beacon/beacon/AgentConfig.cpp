@@ -4,12 +4,14 @@
 #include "utils.h"
 #include "config.h"
 
-void* AgentConfig::operator new(size_t sz) {
+void* AgentConfig::operator new(size_t sz)
+{
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void AgentConfig::operator delete(void* p) noexcept {
+void AgentConfig::operator delete(void* p) noexcept
+{
 	MemFreeLocal(&p, sizeof(AgentConfig));
 }
 
@@ -20,7 +22,7 @@ AgentConfig::AgentConfig()
 	CHAR* ProfileBytes = (CHAR*) MemAllocLocal(size);
 	memcpy(ProfileBytes, getProfile(), size);
 
-	Packer* packer = new Packer( (BYTE*)ProfileBytes, size);
+	Packer* packer = new Packer((BYTE*)ProfileBytes, size);
 	ULONG profileSize = packer->Unpack32();
 
 	this->encrypt_key = (PBYTE) MemAllocLocal(16);

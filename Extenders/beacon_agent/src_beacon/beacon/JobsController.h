@@ -31,6 +31,6 @@ public:
     JobData CreateJobData(ULONG taskId, WORD Type, WORD State, HANDLE object, WORD pid, HANDLE input, HANDLE output);
     void    ProcessJobs(Packer* packer);
 
-	static void* operator new(size_t sz);
-	static void operator delete(void* p) noexcept;
+    static void* operator new(size_t sz);
+    static void operator delete(void* p) noexcept;
 };

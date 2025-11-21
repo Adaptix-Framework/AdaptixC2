@@ -1,11 +1,13 @@
 #include "Pivotter.h"
 
-void* Pivotter::operator new(size_t sz) {
+void* Pivotter::operator new(size_t sz) 
+{
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void Pivotter::operator delete(void* p) noexcept {
+void Pivotter::operator delete(void* p) noexcept 
+{
 	MemFreeLocal(&p, sizeof(Pivotter));
 }
 

@@ -1,11 +1,13 @@
 #include "MemorySaver.h"
 
-void* MemorySaver::operator new(size_t sz) {
+void* MemorySaver::operator new(size_t sz) 
+{
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void MemorySaver::operator delete(void* p) noexcept {
+void MemorySaver::operator delete(void* p) noexcept 
+{
 	MemFreeLocal(&p, sizeof(MemorySaver));
 }
 
