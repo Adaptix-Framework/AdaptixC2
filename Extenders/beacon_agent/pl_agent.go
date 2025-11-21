@@ -576,6 +576,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 				params, err = base64.StdEncoding.DecodeString(paramData)
 				if err != nil {
 					params = []byte(paramData)
+					params = append(params, 0)
 				}
 			}
 

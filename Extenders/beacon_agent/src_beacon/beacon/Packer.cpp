@@ -1,5 +1,14 @@
 #include "Packer.h"
 
+void* Packer::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void Packer::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(Packer));
+}
+
 Packer::Packer()
 {       
     this->buffer = (BYTE*) MemAllocLocal(4);

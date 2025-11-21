@@ -2,6 +2,16 @@
 #include "ApiLoader.h"
 #include "ApiDefines.h"
 #include "ProcLoader.h"
+#include "utils.h"
+
+void* ConnectorSMB::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void ConnectorSMB::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(ConnectorSMB));
+}
 
 ConnectorSMB::ConnectorSMB()
 {

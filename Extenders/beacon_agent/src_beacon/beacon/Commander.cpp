@@ -1,6 +1,15 @@
 #include "Commander.h"
 #include "Boffer.h"
 
+void* Commander::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void Commander::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(Commander));
+}
+
 Commander::Commander(Agent* a)
 {
 	this->agent = a;
@@ -11,12 +20,11 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 	if (recvSize < 8)
 		return;
 
-	Packer* inPacker  = (Packer*)MemAllocLocal(sizeof(Packer));
-	*inPacker = Packer( recv, recvSize );
+	Packer* inPacker = new Packer( recv, recvSize );
 
 	ULONG packerSize = inPacker->Unpack32();
 	if (packerSize > recvSize - 4) {
-		MemFreeLocal((LPVOID*)&inPacker, sizeof(Packer));
+		delete inPacker;
 		return;
 	}
 
@@ -125,7 +133,7 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		}
 	}
 	if (inPacker)
-		MemFreeLocal((LPVOID*) &inPacker, sizeof(Packer));
+		delete inPacker;
 }
 
 void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)

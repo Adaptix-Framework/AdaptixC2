@@ -20,4 +20,7 @@ public:
 
 	void WriteMemoryData(ULONG memoryId, ULONG totalSize, ULONG dataSize, PBYTE data);
 	void RemoveMemoryData(ULONG memoryId);
+
+	static void* operator new(size_t sz);
+	static void operator delete(void* p) noexcept;
 };

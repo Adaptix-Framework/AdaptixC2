@@ -1,5 +1,14 @@
 #include "MemorySaver.h"
 
+void* MemorySaver::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void MemorySaver::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(MemorySaver));
+}
+
 MemorySaver::MemorySaver(){}
 
 void MemorySaver::WriteMemoryData(ULONG memoryId, ULONG totalSize, ULONG dataSize, PBYTE data)

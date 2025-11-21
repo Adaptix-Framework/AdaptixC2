@@ -14,6 +14,15 @@ void PackProxyData(Packer* packer, ULONG channelId, BYTE* data, ULONG dataSize )
 	packer->PackBytes(data, dataSize);
 }
 
+void* Proxyfire::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void Proxyfire::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(Proxyfire));
+}
+
 void Proxyfire::AddProxyData(ULONG channelId, SOCKET sock, ULONG waitTime, ULONG mode, ULONG address, WORD port, ULONG state)
 {
 	TunnelData tunnelData = { 0 };

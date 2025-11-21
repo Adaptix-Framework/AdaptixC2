@@ -14697,6 +14697,7 @@ typedef const GUID *LPCGUID;
 #endif
 
 NTSTATUS
+NTAPI
 RtlGetVersion(
     OUT PRTL_OSVERSIONINFOW lpVersionInformation
     );
@@ -22379,6 +22380,7 @@ IMPORT_FN wchar_t * __cdecl wcsncpy(wchar_t *dest, const wchar_t *source, size_t
 
 NTSYSAPI
 ULONG
+NTAPI
 RtlRandomEx(
     PULONG Seed
 );

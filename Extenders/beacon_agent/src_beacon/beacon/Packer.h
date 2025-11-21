@@ -31,4 +31,7 @@ public:
 	VOID  Clear(BOOL renew);
 	PBYTE data();
 	ULONG datasize();
+
+	static void* operator new(size_t sz);
+	static void operator delete(void* p) noexcept;
 };

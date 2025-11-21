@@ -29,4 +29,7 @@ public:
 	void LinkPivotTCP(ULONG taskId, ULONG commandId, CHAR* address, WORD port, Packer* outPacker);
 	void UnlinkPivot(ULONG taskId, ULONG commandId, ULONG pivotId, Packer* outPacker);
 	void WritePivot(ULONG pivotId, BYTE* data, ULONG size);
+
+	static void* operator new(size_t sz);
+	static void operator delete(void* p) noexcept;
 };

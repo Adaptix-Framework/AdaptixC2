@@ -29,8 +29,7 @@ int my_strncpy_s(char* dest, unsigned int destsz, const char* src, unsigned int 
 void InitBofOutputData()
 {
 	if (bofOutputPacker == NULL) {
-		bofOutputPacker = (Packer*)MemAllocLocal(sizeof(Packer));
-		*bofOutputPacker = Packer();
+		bofOutputPacker = new Packer();
 	}
 }
 

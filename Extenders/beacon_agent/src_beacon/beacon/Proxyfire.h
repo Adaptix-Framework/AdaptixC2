@@ -50,4 +50,7 @@ public:
 	void ConnectMessageReverse(ULONG tunnelId, WORD port, Packer* outPacker);
 
 	void AddProxyData(ULONG channelId, SOCKET sock, ULONG waitTime, ULONG mode, ULONG address, WORD port, ULONG state);
+
+	static void* operator new(size_t sz);
+	static void operator delete(void* p) noexcept;
 };

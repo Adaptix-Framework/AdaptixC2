@@ -2,6 +2,15 @@
 #include "AgentInfo.h"
 #include "utils.h"
 
+void* AgentInfo::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void AgentInfo::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(AgentInfo));
+}
+
 AgentInfo::AgentInfo()
 {
 	SYSTEM_PROCESSOR_INFORMATION SystemInfo = { 0 };

