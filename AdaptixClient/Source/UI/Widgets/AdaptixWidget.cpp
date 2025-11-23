@@ -915,6 +915,8 @@ void AdaptixWidget::OnReconnect()
             }, Qt::QueuedConnection);
         });
 
+        dialogSyncPacket->splashScreen->show();
+
         workerThread->start();
     }
 }

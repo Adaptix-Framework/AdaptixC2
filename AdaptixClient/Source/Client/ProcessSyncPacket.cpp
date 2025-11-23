@@ -432,6 +432,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         }
 
         dialogSyncPacket->init(count);
+
         this->sync = true;
         this->setEnabled(false);
         return;
