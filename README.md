@@ -1,8 +1,14 @@
 # AdaptixC2 v0.10
 
-Adaptix is an extensible post-exploitation and adversarial emulation framework made for penetration testers. The Adaptix server is written in Golang and to allow operator flexibility. The GUI Client is written in C++ QT, allowing it to be used on Linux, Windows, and MacOS operating systems. [Full documentation is available here](https://adaptix-framework.gitbook.io/adaptix-framework).
+Adaptix is an extensible post-exploitation and adversarial emulation framework made for authorized penetration testing. The Adaptix server is written in Golang and to allow operator flexibility. The GUI Client is written in C++ QT, allowing it to be used on Linux, Windows, and MacOS operating systems. [Full documentation is available here](https://adaptix-framework.gitbook.io/adaptix-framework).
 
 ![](https://adaptix-framework.gitbook.io/adaptix-framework/~gitbook/image?url=https%3A%2F%2F2104178602-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FS8p8XLFtLmf0NkofQvoa%252Fuploads%252FrKGlqi7FhQNN8vdoWfFf%252FScreenshot_20250927_224408.png%3Falt%3Dmedia%26token%3D8466b9a1-d6a7-48e0-a174-c27a16695883&width=768&dpr=4&quality=100&sign=db47f987&sv=2)
+
+
+
+## Legal Warning
+
+This tool is designed for AUTHORIZED security testing and red team operations ONLY. Unauthorized use is strictly prohibited and may violate local and international laws. Use at your own risk.
 
 
 

@@ -202,8 +202,6 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	{
 		otp_group.POST("/otp/upload/temp", connector.tcOTP_UploadTemp)
 		otp_group.GET("/otp/download/sync", connector.tcOTP_DownloadSync)
-		//otp_group.POST("/otp/upload/temp", ts.ValidateOTP(), default404Middleware(tsResponse), gin.WrapH(connector.tcOTP_UploadTemp()))
-		//otp_group.GET("/otp/download/sync", ts.ValidateOTP(), default404Middleware(tsResponse), gin.WrapH(connector.tcOTP_DownloadSync()))
 	}
 
 	api_group := connector.Engine.Group(tsProfile.Endpoint)

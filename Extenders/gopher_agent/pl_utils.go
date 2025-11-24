@@ -1282,6 +1282,11 @@ func parseDurationToSeconds(input string) (int, error) {
 	re := regexp.MustCompile(`(\d+)(h|m|s)`)
 	matches := re.FindAllStringSubmatch(input, -1)
 
+	if matches == nil {
+		input = input + "s"
+		matches = re.FindAllStringSubmatch(input, -1)
+	}
+
 	totalSeconds := 0
 	for _, match := range matches {
 		value, err := strconv.Atoi(match[1])

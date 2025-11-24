@@ -24,8 +24,7 @@ clean:
 
 server: prepare
 	@ echo "[*] Building adaptixserver..."
-	@ cd AdaptixServer && go build -buildvcs=false -ldflags="-s -w" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
-	@ sudo setcap 'cap_net_bind_service=+ep' AdaptixServer/adaptixserver
+	@ cd AdaptixServer && GOEXPERIMENT=jsonv2,greenteagc go build -buildvcs=false -ldflags="-s -w" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
 	@ mv AdaptixServer/adaptixserver ./$(DIST_DIR)/
 	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.json AdaptixServer/404page.html ./$(DIST_DIR)/
 	@ echo "[+] done"
@@ -58,6 +57,8 @@ extenders: prepare
 	done
 	@ echo "[+] done"
 
+server-ext: clean server extenders
+
 clean-all: clean
 	@ echo "[*] Cleaning all build artifacts..."
 	@ find . -name "*.o" -delete
@@ -73,6 +74,7 @@ help:
 	@ echo "Available targets:"
 	@ echo "  all         - Build everything (server, client, extenders)"
 	@ echo "  server      - Build only the server"
+	@ echo "  server-ext  - Build server and extenders (no client, ideal for VPS)"
 	@ echo "  client      - Build only the client in multithread mode (fast build)"
 	@ echo "  client-fast - Build only the client"
 	@ echo "  extenders   - Build only the extenders"
@@ -82,4 +84,4 @@ help:
 	@ echo ""
 	@ echo "Platform: $(UNAME_S) [$(NPROC) proc]"
 
-.PHONY: all server client extenders clean clean-all help prepare
+.PHONY: all server server-ext client extenders clean clean-all help prepare
