@@ -156,6 +156,14 @@ func taskCat(paramsData []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if fileInfo.Size() > 10*1024 {
+		return nil, fmt.Errorf("file size exceeds 10 KB")
+	}
+
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err

@@ -81,9 +81,9 @@ event.on_processbrowser_list(event_process_action, ["gopher"]);
 
 function RegisterCommands(listenerType)
 {
-    let cmd_cat_win = ax.create_command("cat", "Read a file", "cat C:\\file.exe", "Task: read file");
+    let cmd_cat_win = ax.create_command("cat", "Read a file (less 10 КB)", "cat C:\\file.exe", "Task: read file");
     cmd_cat_win.addArgString("path", true);
-    let cmd_cat_unix = ax.create_command("cat", "Read a file", "cat /etc/passwd", "Task: read file");
+    let cmd_cat_unix = ax.create_command("cat", "Read a file (less 10 КB)", "cat /etc/passwd", "Task: read file");
     cmd_cat_unix.addArgString("path", true);
 
     let cmd_cp = ax.create_command("cp", "Copy file or directory", "cp src.txt dst.txt", "Task: copy file or directory");
