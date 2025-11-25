@@ -103,6 +103,11 @@ void LogsWidget::createUI()
     this->setLayout( mainGridLayout );
 }
 
+void LogsWidget::SetUpdatesEnabled(const bool enabled)
+{
+    logsConsoleTextEdit->setUpdatesEnabled(enabled);
+}
+
 void LogsWidget::findAndHighlightAll(const QString &pattern)
 {
     allSelections.clear();

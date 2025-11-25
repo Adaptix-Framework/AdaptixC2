@@ -19,6 +19,11 @@ ListenersWidget::ListenersWidget(AdaptixWidget* w) : DockTab("Listeners", w->Get
 
 ListenersWidget::~ListenersWidget() = default;
 
+void ListenersWidget::SetUpdatesEnabled(const bool enabled)
+{
+    tableWidget->setUpdatesEnabled(enabled);
+}
+
 void ListenersWidget::createUI()
 {
     tableWidget = new QTableWidget( this );

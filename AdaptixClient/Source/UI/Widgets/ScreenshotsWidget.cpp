@@ -104,6 +104,11 @@ ScreenshotsWidget::ScreenshotsWidget(AdaptixWidget* w) : DockTab("Screenshots", 
 
 ScreenshotsWidget::~ScreenshotsWidget() = default;
 
+void ScreenshotsWidget::SetUpdatesEnabled(const bool enabled)
+{
+    tableWidget->setUpdatesEnabled(enabled);
+}
+
 void ScreenshotsWidget::createUI()
 {
     tableWidget = new QTableWidget(this );

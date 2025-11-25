@@ -84,6 +84,8 @@ Q_OBJECT
     static bool isValidSyncPacket(QJsonObject jsonObj);
     void processSyncPacket(QJsonObject jsonObj);
 
+    void setSyncUpdateUI(bool enabled);
+
 public:
     QThread*         ChannelThread   = nullptr;
     WebSocketWorker* ChannelWsWorker = nullptr;

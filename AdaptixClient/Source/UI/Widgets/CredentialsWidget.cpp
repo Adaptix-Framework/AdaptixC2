@@ -30,6 +30,11 @@ CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : DockTab("Credentials", 
 
 CredentialsWidget::~CredentialsWidget() = default;
 
+void CredentialsWidget::SetUpdatesEnabled(const bool enabled)
+{
+    tableView->setUpdatesEnabled(enabled);
+}
+
 void CredentialsWidget::createUI()
 {
     auto horizontalSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);

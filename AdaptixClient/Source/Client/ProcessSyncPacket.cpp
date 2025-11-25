@@ -13,8 +13,10 @@
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Widgets/TargetsWidget.h>
+#include <UI/Widgets/AxConsoleWidget.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
+
 
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 {
@@ -387,24 +389,35 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 {
     int spType = jsonObj["type"].toDouble();
 
+    if( spType == TYPE_SYNC_START )
+    {
+        int count = jsonObj["count"].toDouble();
+        QJsonArray interfaces = jsonObj["interfaces"].toArray();
+
+        this->addresses.clear();
+        for (QJsonValue addrValue : interfaces) {
+            QString addr = addrValue.toString();
+            this->addresses.append(addr);
+        }
+
+        this->sync = true;
+        this->setSyncUpdateUI(false);
+
+        dialogSyncPacket->init(count);
+
+        return;
+    }
+
     if( spType == TYPE_SYNC_BATCH || spType == TYPE_SYNC_CATEGORY_BATCH )
     {
         QJsonArray packetsArray = jsonObj["packets"].toArray();
         QString category = jsonObj.value("category").toString("general");
-
-        if (LogsDock && LogsDock->GetLogsConsoleTextEdit()) {
-            LogsDock->GetLogsConsoleTextEdit()->setUpdatesEnabled(false);
-        }
 
         for (const QJsonValue &packetValue : packetsArray) {
             if (packetValue.isObject()) {
                 QJsonObject packetObj = packetValue.toObject();
                 processSyncPacket(packetObj);
             }
-        }
-
-        if (LogsDock && LogsDock->GetLogsConsoleTextEdit()) {
-            LogsDock->GetLogsConsoleTextEdit()->setUpdatesEnabled(true);
         }
 
         if( this->sync && dialogSyncPacket != nullptr ) {
@@ -420,29 +433,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         dialogSyncPacket->upgrade();
     }
 
-    if( spType == TYPE_SYNC_START )
-    {
-        int count = jsonObj["count"].toDouble();
-        QJsonArray interfaces = jsonObj["interfaces"].toArray();
-
-        this->addresses.clear();
-        for (QJsonValue addrValue : interfaces) {
-            QString addr = addrValue.toString();
-            this->addresses.append(addr);
-        }
-
-        dialogSyncPacket->init(count);
-
-        this->sync = true;
-        this->setEnabled(false);
-        return;
-    }
     if( spType == TYPE_SYNC_FINISH )
     {
         if (dialogSyncPacket != nullptr ) {
-            dialogSyncPacket->finish();
+
             this->sync = false;
-            this->setEnabled(true);
+            this->setSyncUpdateUI(true);
+            dialogSyncPacket->finish();
 
             Q_EMIT this->SyncedSignal();
         }
@@ -1168,4 +1165,24 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         this->RegisterAgentConfig(agentName, ax_script, listeners);
         return;
     }
+}
+
+void AdaptixWidget::setSyncUpdateUI(const bool enabled)
+{
+    if (AxConsoleDock)     AxConsoleDock->SetUpdatesEnabled(enabled);
+    if (LogsDock)          LogsDock->SetUpdatesEnabled(enabled);
+    if (ChatDock)          ChatDock->SetUpdatesEnabled(enabled);
+    if (ListenersDock)     ListenersDock->SetUpdatesEnabled(enabled);
+    if (SessionsTableDock) SessionsTableDock->SetUpdatesEnabled(enabled);
+    if (TunnelsDock)       TunnelsDock->SetUpdatesEnabled(enabled);
+    if (DownloadsDock)     DownloadsDock->SetUpdatesEnabled(enabled);
+    if (ScreenshotsDock)   ScreenshotsDock->SetUpdatesEnabled(enabled);
+    if (CredentialsDock)   CredentialsDock->SetUpdatesEnabled(enabled);
+    if (TasksDock)         TasksDock->SetUpdatesEnabled(enabled);
+    if (TargetsDock)       TargetsDock->SetUpdatesEnabled(enabled);
+
+    for (const auto agent : AgentsMap.values())
+        agent->Console->SetUpdatesEnabled(enabled);
+
+    this->setEnabled(enabled);
 }

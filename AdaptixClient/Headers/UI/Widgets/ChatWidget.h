@@ -36,6 +36,8 @@ public:
     explicit ChatWidget(AdaptixWidget* w);
     ~ChatWidget() override;
 
+    void SetUpdatesEnabled(const bool enabled);
+
     void AddChatMessage(qint64 time, const QString &username, const QString &message) const;
     void Clear() const;
 

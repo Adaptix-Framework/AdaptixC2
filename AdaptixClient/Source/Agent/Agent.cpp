@@ -66,6 +66,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
         this->commander = new Commander();
 
     this->Console = new ConsoleWidget(adaptixWidget, this, this->commander);
+    this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
     adaptixWidget->PlaceDockBottom(this->Console->dock());
 
     this->FileBrowser = new BrowserFilesWidget(adaptixWidget, this);

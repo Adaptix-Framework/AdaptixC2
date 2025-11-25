@@ -45,6 +45,11 @@ AxConsoleWidget::AxConsoleWidget(AxScriptManager* m, AdaptixWidget* w) : DockTab
 
 AxConsoleWidget::~AxConsoleWidget() {}
 
+void AxConsoleWidget::SetUpdatesEnabled(const bool enabled)
+{
+    OutputTextEdit->setUpdatesEnabled(enabled);
+}
+
 void AxConsoleWidget::createUI()
 {
     searchWidget = new QWidget(this);

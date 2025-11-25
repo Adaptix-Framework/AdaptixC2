@@ -18,6 +18,8 @@ public:
     DownloadsWidget(AdaptixWidget* w);
     ~DownloadsWidget() override;
 
+    void SetUpdatesEnabled(const bool enabled);
+
     void Clear() const;
     void AddDownloadItem(const DownloadData &newDownload);
     void EditDownloadItem(const QString &fileId, int recvSize, int state) const;

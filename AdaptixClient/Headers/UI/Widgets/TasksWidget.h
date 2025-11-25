@@ -251,6 +251,8 @@ public:
     KDDockWidgets::QtWidgets::DockWidget* dockTasks();
     KDDockWidgets::QtWidgets::DockWidget* dockTasksOutput();
 
+    void SetUpdatesEnabled(const bool enabled);
+
     void AddTaskItem(TaskData newTask) const;
     void UpdateTaskItem(const QString &taskId, const TaskData &task) const;
     void RemoveTaskItem(const QString &taskId) const;

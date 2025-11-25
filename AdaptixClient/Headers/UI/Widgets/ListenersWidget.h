@@ -27,6 +27,8 @@ public:
     explicit ListenersWidget(AdaptixWidget* w);
     ~ListenersWidget() override;
 
+    void SetUpdatesEnabled(const bool enabled);
+
     void Clear() const;
     void AddListenerItem(const ListenerData &newListener) const;
     void EditListenerItem(const ListenerData &newListener) const;

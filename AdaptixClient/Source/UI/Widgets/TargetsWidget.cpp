@@ -30,6 +30,11 @@ TargetsWidget::TargetsWidget(AdaptixWidget* w) : DockTab("Targets", w->GetProfil
 
 TargetsWidget::~TargetsWidget() = default;
 
+void TargetsWidget::SetUpdatesEnabled(const bool enabled)
+{
+    tableView->setUpdatesEnabled(enabled);
+}
+
 void TargetsWidget::createUI()
 {
     auto horizontalSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);

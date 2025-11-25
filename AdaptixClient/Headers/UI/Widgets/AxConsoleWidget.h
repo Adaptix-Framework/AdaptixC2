@@ -44,6 +44,8 @@ public:
     explicit AxConsoleWidget(AxScriptManager* m, AdaptixWidget* w);
     ~AxConsoleWidget() override;
 
+    void SetUpdatesEnabled(const bool enabled);
+
     void OutputClear() const;
     void InputFocus() const;
     void AddToHistory(const QString& command);

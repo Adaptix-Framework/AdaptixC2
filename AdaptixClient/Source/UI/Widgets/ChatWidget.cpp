@@ -32,6 +32,11 @@ ChatWidget::ChatWidget(AdaptixWidget* w) : DockTab("Chat", w->GetProfile()->GetP
 
 ChatWidget::~ChatWidget() = default;
 
+void ChatWidget::SetUpdatesEnabled(const bool enabled)
+{
+    chatTextEdit->setUpdatesEnabled(enabled);
+}
+
 void ChatWidget::createUI()
 {
     searchWidget = new QWidget(this);

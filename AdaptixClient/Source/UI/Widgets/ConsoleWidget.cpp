@@ -52,6 +52,11 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
 
 ConsoleWidget::~ConsoleWidget() {}
 
+void ConsoleWidget::SetUpdatesEnabled(const bool enabled)
+{
+    OutputTextEdit->setUpdatesEnabled(enabled);
+}
+
 void ConsoleWidget::createUI()
 {
     searchWidget = new QWidget(this);
