@@ -24,7 +24,6 @@ DialogAgent::~DialogAgent() = default;
 
 void DialogAgent::createUI()
 {
-    this->resize( 550, 450 );
     this->setWindowTitle( "Generate Agent" );
     this->setProperty("Main", "base");
 
@@ -106,21 +105,21 @@ void DialogAgent::Start()
     this->show();
 }
 
-void DialogAgent::AddExAgents(const QStringList &agents, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers)
+void DialogAgent::AddExAgents(const QStringList &agents, const QMap<QString, AxUI> &uis)
 {
     agentCombobox->clear();
 
-    this->agents     = agents;
-    this->widgets    = widgets;
-    this->containers = containers;
+    this->agents = agents;
+    this->ax_uis = uis;
 
     for (auto agent : agents) {
-        widgets[agent]->setParent(nullptr);
-        widgets[agent]->setParent(this);
-        containers[agent]->setParent(nullptr);
-        containers[agent]->setParent(this);
+        auto ax_ui = &this->ax_uis[agent];
+        ax_ui->widget->setParent(nullptr);
+        ax_ui->widget->setParent(this);
+        ax_ui->container->setParent(nullptr);
+        ax_ui->container->setParent(this);
 
-        configStackWidget->addWidget(widgets[agent]);
+        configStackWidget->addWidget(ax_ui->widget);
 
         agentCombobox->addItem(agent);
     }
@@ -132,8 +131,9 @@ void DialogAgent::onButtonGenerate()
 {
     QString agentName  = agentCombobox->currentText();
     auto configData = QString();
-    if (containers[agentName])
-        configData = containers[agentName]->toJson();
+
+    if (ax_uis.contains(agentName) && ax_uis[agentName].container)
+        configData = ax_uis[agentName].container->toJson();
 
     QString message = QString();
     bool ok = false;
@@ -233,7 +233,8 @@ void DialogAgent::onButtonLoad()
             this->changeConfig(agentType);
 
             QString configData = jsonObject["config"].toString();
-            containers[agentType]->fromJson(configData);
+
+            ax_uis[agentType].container->fromJson(configData);
     });
 }
 
@@ -241,8 +242,8 @@ void DialogAgent::onButtonSave()
 {
     QString configType = agentCombobox->currentText();
     auto configData = QString();
-    if (containers[configType])
-        configData = containers[configType]->toJson();
+    if (ax_uis.contains(configType) && ax_uis[configType].container)
+        configData = ax_uis[configType].container->toJson();
 
     QJsonObject dataJson;
     dataJson["listener_type"] = listenerType;
@@ -280,6 +281,10 @@ void DialogAgent::onButtonClose() { this->close(); }
 
 void DialogAgent::changeConfig(const QString &agentName)
 {
-    if (widgets.contains(agentName))
-        configStackWidget->setCurrentWidget(widgets[agentName]);
+    if (ax_uis.contains(agentName)) {
+        auto ax_ui = &ax_uis[agentName];
+        if (ax_ui)
+            configStackWidget->setCurrentWidget(ax_ui->widget);
+        this->resize(ax_ui->width, ax_ui->height);
+    }
 }

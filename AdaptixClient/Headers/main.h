@@ -179,6 +179,10 @@
 
 //////////
 
+class AxContainerWrapper;
+
+//////////
+
 typedef struct SettingsData {
     QString MainTheme;
     QString FontFamily;
@@ -198,6 +202,16 @@ typedef struct SettingsData {
 
     bool TasksTableColumns[11];
 } SettingsData;
+
+typedef struct AxUI
+{
+    AxContainerWrapper* container;
+    QWidget*            widget;
+    int                 height;
+    int                 width;
+} AxUI;
+
+/// Object Data
 
 typedef struct ListenerData
 {

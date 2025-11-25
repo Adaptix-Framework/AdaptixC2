@@ -153,6 +153,8 @@ function ListenerUI(mode_create)
 
     return {
         ui_panel: panel,
-        ui_container: container
+        ui_container: container,
+        ui_height: 650,
+        ui_width: 650
     }
 }
