@@ -12,6 +12,10 @@ ifeq ($(UNAME_S),Darwin)
   NPROC := $(shell sysctl -n hw.ncpu)
 endif
 
+
+
+### CLEAN ###
+
 prepare:
 	@if [ ! -d "$(DIST_DIR)" ]; then \
 		mkdir "$(DIST_DIR)"; \
@@ -21,6 +25,33 @@ prepare:
 clean:
 	@ rm -rf $(DIST_DIR)
 
+clean-all: clean
+	@ echo "[*] Cleaning all build artifacts..."
+	@ find . -name "*.o" -delete
+	@ find . -name "*.so" -delete
+	@ find . -name "*.a" -delete
+	@ find . -name "build_error.log" -delete
+	@ find . -name "cmake_error.log" -delete
+	@ echo "[+] All artifacts cleaned"
+
+
+
+### EXTENDERS ###
+
+EXTENDER_DIRS := $(shell find AdaptixServer/extenders -maxdepth 1 -type d -not -path "$(DIST_DIR)" -exec test -f {}/Makefile \; -print)
+
+extenders: prepare
+	@ echo "[*] Building default extenders"
+	@ mkdir -p $(DIST_DIR)/extenders
+	@ for dir in $(EXTENDER_DIRS); do \
+		(cd $$dir && $(MAKE) --no-print-directory); \
+		plugin_name=$$(basename $$dir); \
+		mv $$dir/dist $(DIST_DIR)/extenders/$$plugin_name; \
+	done
+	@ echo "[+] done"
+
+
+### SERVER ###
 
 server: prepare
 	@ echo "[*] Building adaptixserver..."
@@ -28,6 +59,12 @@ server: prepare
 	@ mv AdaptixServer/adaptixserver ./$(DIST_DIR)/
 	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.json AdaptixServer/404page.html ./$(DIST_DIR)/
 	@ echo "[+] done"
+
+server-ext: clean server extenders
+
+
+
+### CLIENT ###
 
 client: prepare
 	@ echo "[*] Building AdaptixClient..."
@@ -43,45 +80,24 @@ client-fast: prepare
 	@ mv ./AdaptixClient/AdaptixClient ./$(DIST_DIR)/
 	@ echo "[+] done"
 
-### Extenders here
 
-EXTENDER_DIRS := $(shell find Extenders -maxdepth 1 -type d -not -path "." -exec test -f {}/Makefile \; -print)
 
-extenders: prepare
-	@ echo "[*] Building default extenders"
-	@ mkdir -p $(DIST_DIR)/extenders
-	@ for dir in $(EXTENDER_DIRS); do \
-		(cd $$dir && $(MAKE) --no-print-directory); \
-		plugin_name=$$(basename $$dir); \
-		mv $$dir/dist $(DIST_DIR)/extenders/$$plugin_name; \
-	done
-	@ echo "[+] done"
-
-server-ext: clean server extenders
-
-clean-all: clean
-	@ echo "[*] Cleaning all build artifacts..."
-	@ find . -name "*.o" -delete
-	@ find . -name "*.so" -delete
-	@ find . -name "*.a" -delete
-	@ find . -name "build_error.log" -delete
-	@ find . -name "cmake_error.log" -delete
-	@ echo "[+] All artifacts cleaned"
+### HELP ###
 
 help:
 	@ echo "AdaptixC2 Build System"
 	@ echo ""
 	@ echo "Available targets:"
 	@ echo "  all         - Build everything (server, client, extenders)"
-	@ echo "  server      - Build only the server"
-	@ echo "  server-ext  - Build server and extenders (no client, ideal for VPS)"
-	@ echo "  client      - Build only the client in multithread mode (fast build)"
-	@ echo "  client-fast - Build only the client"
 	@ echo "  extenders   - Build only the extenders"
+	@ echo "  server-ext  - Build server and extenders (no client, ideal for VPS)"
+	@ echo "  server      - Build only the server"
+	@ echo "  client-fast - Build only the client in multithread mode (fast build)"
+	@ echo "  client      - Build only the client"
 	@ echo "  clean       - Remove dist directory"
 	@ echo "  clean-all   - Remove all build artifacts"
 	@ echo "  help        - Show this help message"
 	@ echo ""
 	@ echo "Platform: $(UNAME_S) [$(NPROC) proc]"
 
-.PHONY: all server server-ext client extenders clean clean-all help prepare
+.PHONY: all extenders server-ext server client clean clean-all help prepare
