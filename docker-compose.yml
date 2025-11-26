@@ -1,0 +1,38 @@
+services:
+  adaptix-server:
+    # 1. Build context must be the project root to access both AdaptixServer and Extenders
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    container_name: adaptix-server
+    
+    # 2. Port mapping (C2, HTTP/S, payload delivery)
+    ports:
+      - "8443:8443"
+      - "8082:8082"
+      - "80:80"
+      - "443:443"
+      - "4321:4321"
+
+    # 3. Persistence for data, logs, and certificates
+    volumes:
+      - ./AdaptixServer/data:/app/AdaptixServer/data
+      - ./AdaptixServer/logs:/app/AdaptixServer/logs
+      - ./AdaptixServer/certs:/app/AdaptixServer/certs
+      # Mount profile read-only
+      - ./AdaptixServer/profile.json:/app/AdaptixServer/profile.json:ro
+
+    environment:
+      - TZ=UTC
+    restart: unless-stopped
+    
+    # 4. Resource limits (recommended)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
