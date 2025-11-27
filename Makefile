@@ -34,6 +34,18 @@ clean-all: clean
 	@ find . -name "cmake_error.log" -delete
 	@ echo "[+] All artifacts cleaned"
 
+docker-clean:
+	@ echo "[*] Cleaning Docker containers and images..."
+	@ docker compose --profile build-server --profile build-extenders --profile build-server-ext down --rmi local 2>/dev/null || true
+	@ echo "[+] Docker containers and images cleaned"
+
+docker-clean-all: docker-clean
+	@ echo "[*] Cleaning all Docker artifacts (containers, images, volumes, networks)..."
+	@ docker compose --profile build-server --profile build-extenders --profile build-server-ext --profile runtime down --rmi all --volumes 2>/dev/null || true
+	@ echo "[*] Cleaning build output directories..."
+	@ rm -rf AdaptixServer/server-dist 2>/dev/null || true
+	@ echo "[+] All Docker artifacts cleaned"
+
 
 
 ### EXTENDERS ###
@@ -94,10 +106,12 @@ help:
 	@ echo "  server      - Build only the server"
 	@ echo "  client-fast - Build only the client in multithread mode (fast build)"
 	@ echo "  client      - Build only the client"
-	@ echo "  clean       - Remove dist directory"
-	@ echo "  clean-all   - Remove all build artifacts"
-	@ echo "  help        - Show this help message"
+	@ echo "  clean            - Remove dist directory"
+	@ echo "  clean-all        - Remove all build artifacts"
+	@ echo "  docker-clean     - Remove Docker containers and images (builders only)"
+	@ echo "  docker-clean-all - Remove all Docker artifacts (containers, images, volumes, networks)"
+	@ echo "  help             - Show this help message"
 	@ echo ""
 	@ echo "Platform: $(UNAME_S) [$(NPROC) proc]"
 
-.PHONY: all extenders server-ext server client clean clean-all help prepare
+.PHONY: all extenders server-ext server client clean clean-all docker-clean docker-clean-all help prepare
