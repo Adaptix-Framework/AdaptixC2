@@ -95,13 +95,10 @@ void Button::paintEvent(QPaintEvent *)
 
 QSize Button::sizeHint() const
 {
-    // Pass an opt so it scales against the logical dpi of the correct screen (since Qt 5.14) even
-    // if the HDPI Qt::AA_ attributes are off.
-    QStyleOption opt;
-    opt.initFrom(this);
-
-    const int m = style()->pixelMetric(QStyle::PM_SmallIconSize, &opt, this);
-    return QSize(m, m);
+    // Используем высоту родителя (TitleBar) для размера кнопки
+    int h = parentWidget() ? parentWidget()->height() : 24;
+    if (h <= 0) h = 24;
+    return QSize(h, h);
 }
 
 bool Button::event(QEvent *ev)
