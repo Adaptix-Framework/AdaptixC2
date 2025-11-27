@@ -1,0 +1,66 @@
+name: AdaptixC2
+
+services:
+  # Build server only
+  server-builder:
+    profiles:
+      - build-server
+    build:
+      context: .
+      target: build-server
+    container_name: adaptix-server-builder
+    volumes:
+      - ./AdaptixServer/server-dist:/server-dist
+    command: sh -c "mkdir -p /server-dist && cp /app/dist/adaptixserver /app/dist/ssl_gen.sh /app/dist/profile.json /app/dist/404page.html /server-dist/ || true"
+
+  # Build extenders only
+  extenders-builder:
+    profiles:
+      - build-extenders
+    build:
+      context: .
+      target: build-extenders
+    container_name: adaptix-extenders-builder
+    volumes:
+      - ./AdaptixServer/server-dist:/server-dist
+    command: sh -c "mkdir -p /server-dist/extenders && cp -r /app/dist/extenders/* /server-dist/extenders/ || true"
+
+  # Build server + extenders
+  server-ext-builder:
+    profiles:
+      - build-server-ext
+    build:
+      context: .
+      target: build-server-ext
+    container_name: adaptix-server-ext-builder
+    volumes:
+      - ./AdaptixServer/server-dist:/server-dist
+    command: sh -c "mkdir -p /server-dist && cp /app/dist/adaptixserver /app/dist/ssl_gen.sh /app/dist/profile.json /app/dist/404page.html /server-dist/ && cp -r /app/dist/extenders /server-dist/ || true"
+
+  # Run server (runtime)
+  adaptix-server-runtime:
+    profiles:
+      - runtime
+    build:
+      context: .
+      target: runtime
+    container_name: adaptix-server-runtime
+    network_mode: host
+    volumes:
+      - ./AdaptixServer/server-dist/data:/app/data
+      - ./AdaptixServer/server-dist/profile.json:/app/profile.json:ro
+    environment:
+      - TZ=${TZ:-UTC}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+volumes:
+  adaptix-data:
+    driver: local
