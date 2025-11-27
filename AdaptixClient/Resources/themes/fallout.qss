@@ -1,4 +1,5 @@
 /* Fallout Pip-Boy Theme - Enhanced & Complete */
+/* @theme-type: dark */
 
 QWidget[Main="base"] {
     background-color: #111111;
@@ -258,27 +259,57 @@ QMenuBar:disabled {
     color: #004400;
 }
 
-/* Tab Widget */
-QTabWidget::pane {
-    border: 1px solid #006600;
+/* KDDockWidgets TitleBar */
+#KDDWTitleBar {
     background-color: #0A0A0A;
-    top: -1px;
+    color: #00FF00;
+    border-bottom: 1px solid #006600;
+}
+
+#KDDWTitleBar QLabel {
+    color: #00FF00;
+    background-color: transparent;
+}
+
+/* Tab Widget */
+QTabWidget {
+    background-color: #0A0A0A;
+}
+
+QTabWidget::pane {
+    border: none;
+    background-color: #0A0A0A;
+    padding: 0px;
+    margin: 0px;
+}
+
+QTabWidget::tab-bar {
+    background-color: #0A0A0A;
+}
+
+QTabBar {
+    background-color: #0A0A0A;
 }
 
 QTabBar::tab {
-    background-color: #1A1A1A;
-    color: #00FF00;
-    padding: 4px;
-    border: 1px solid #006600;
-    border-top-left-radius: 2px;
-    border-top-right-radius: 2px;
-    margin-right: 1px;
+    background-color: #050505;
+    color: #004400;
+    padding: 6px 12px;
+    border: 1px solid #003300;
+    border-bottom: none;
+    margin-right: 2px;
 }
 
 QTabBar::tab:selected {
     background-color: #0A0A0A;
     color: #00FF00;
-    border-bottom: 1px solid #0A0A0A;
+    border: 1px solid #006600;
+    border-bottom: none;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #0A0A0A;
+    color: #00AA00;
 }
 
 QTabBar::tab:hover {
