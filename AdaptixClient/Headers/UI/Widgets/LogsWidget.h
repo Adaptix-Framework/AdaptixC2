@@ -41,10 +41,10 @@ public:
     explicit LogsWidget(AdaptixWidget* w);
     ~LogsWidget() override;
 
+    void SetUpdatesEnabled(bool enabled);
+
      void AddLogs( int type, qint64 time, const QString &Message) const;
      void Clear() const;
-
-    TextEditConsole* GetLogsConsoleTextEdit() const { return logsConsoleTextEdit; }
 
 public Q_SLOTS:
     void toggleSearchPanel();

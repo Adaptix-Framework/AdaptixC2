@@ -32,8 +32,7 @@ class DialogAgent : public QDialog
     QString     listenerType;
 
     QStringList agents;
-    QMap<QString, QWidget*> widgets;
-    QMap<QString, AxContainerWrapper*> containers;
+    QMap<QString, AxUI> ax_uis;
 
     void createUI();
 
@@ -41,7 +40,7 @@ public:
     explicit DialogAgent(const QString &listenerName, const QString &listenerType);
     ~DialogAgent() override;
 
-    void AddExAgents(const QStringList &agents, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers);
+    void AddExAgents(const QStringList &agents, const QMap<QString, AxUI> &uis);
     void SetProfile(const AuthProfile &profile);
     void Start();
 

@@ -232,6 +232,8 @@ public:
     explicit CredentialsWidget(AdaptixWidget* w);
     ~CredentialsWidget() override;
 
+    void SetUpdatesEnabled(const bool enabled);
+
     void AddCredentialsItems(QList<CredentialData> credsList) const;
     void EditCredentialsItem(const CredentialData &newCredentials) const;
     void RemoveCredentialsItem(const QStringList &credsId) const;

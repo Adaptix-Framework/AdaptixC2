@@ -19,6 +19,11 @@ ListenersWidget::ListenersWidget(AdaptixWidget* w) : DockTab("Listeners", w->Get
 
 ListenersWidget::~ListenersWidget() = default;
 
+void ListenersWidget::SetUpdatesEnabled(const bool enabled)
+{
+    tableWidget->setUpdatesEnabled(enabled);
+}
+
 void ListenersWidget::createUI()
 {
     tableWidget = new QTableWidget( this );
@@ -198,8 +203,7 @@ void ListenersWidget::handleListenersMenu(const QPoint &pos ) const
 void ListenersWidget::onCreateListener() const
 {
     QList<RegListenerConfig> listeners;
-    QMap<QString, QWidget*> widgets;
-    QMap<QString, AxContainerWrapper*> containers;
+    QMap<QString, AxUI> ax_uis;
 
     auto listenersList = adaptixWidget->ScriptManager->ListenerScriptList();
 
@@ -231,10 +235,12 @@ void ListenersWidget::onCreateListener() const
         }
 
         QJSValue ui_container = result.property("ui_container");
-        QJSValue ui_panel = result.property("ui_panel");
+        QJSValue ui_panel     = result.property("ui_panel");
+        QJSValue ui_height    = result.property("ui_height");
+        QJSValue ui_width     = result.property("ui_width");
+
         if ( ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject()) {
             adaptixWidget->ScriptManager->consolePrintError(listener + " - function ListenerUI must return panel and container objects");
-
             continue;
         }
 
@@ -252,17 +258,26 @@ void ListenersWidget::onCreateListener() const
             continue;
         }
 
+        int h = 650;
+        if (ui_height.isNumber() && ui_height.toInt() > 0) {
+            h = ui_height.toInt();
+        }
+
+        int w = 650;
+        if (ui_width.isNumber() && ui_width.toInt() > 0) {
+            w = ui_width.toInt();
+        }
+
         auto regListener = adaptixWidget->GetRegListener(listener);
 
         listeners.append(regListener);
-        widgets[listener] = formElement->widget();
-        containers[listener] = container;
+        ax_uis[listener] = { container, formElement->widget(), h, w };
     }
 
     DialogListener* dialogListener = new DialogListener();
     dialogListener->setAttribute(Qt::WA_DeleteOnClose);
     dialogListener->SetProfile( *(adaptixWidget->GetProfile()) );
-    dialogListener->AddExListeners(listeners, widgets, containers);
+    dialogListener->AddExListeners(listeners, ax_uis);
     dialogListener->Start();
 }
 
@@ -283,8 +298,7 @@ void ListenersWidget::onEditListener() const
     }
 
     QList<RegListenerConfig> listeners;
-    QMap<QString, QWidget*>  widgets;
-    QMap<QString, AxContainerWrapper*> containers;
+    QMap<QString, AxUI> ax_uis;
 
     auto engine = adaptixWidget->ScriptManager->ListenerScriptEngine(listenerRegName);
     if (engine == nullptr) {
@@ -313,7 +327,10 @@ void ListenersWidget::onEditListener() const
     }
 
     QJSValue ui_container = result.property("ui_container");
-    QJSValue ui_panel = result.property("ui_panel");
+    QJSValue ui_panel     = result.property("ui_panel");
+    QJSValue ui_height    = result.property("ui_height");
+    QJSValue ui_width     = result.property("ui_width");
+
     if ( ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject()) {
         adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function ListenerUI must return panel and container objects");
         return;
@@ -333,9 +350,18 @@ void ListenersWidget::onEditListener() const
         return;
     }
 
+    int h = 650;
+    if (ui_height.isNumber() && ui_height.toInt() > 0) {
+        h = ui_height.toInt();
+    }
+
+    int w = 650;
+    if (ui_width.isNumber() && ui_width.toInt() > 0) {
+        w = ui_width.toInt();
+    }
+
     listeners.append(adaptixWidget->GetRegListener(listenerRegName));
-    widgets[listenerRegName] = formElement->widget();
-    containers[listenerRegName] = container;
+    ax_uis[listenerRegName] = { container, formElement->widget(), h, w };
 
     container->fromJson(listenerData);
 
@@ -343,7 +369,7 @@ void ListenersWidget::onEditListener() const
     dialogListener->setAttribute(Qt::WA_DeleteOnClose);
     dialogListener->SetEditMode(listenerName);
     dialogListener->SetProfile( *(adaptixWidget->GetProfile()) );
-    dialogListener->AddExListeners(listeners, widgets, containers);
+    dialogListener->AddExListeners(listeners, ax_uis);
     dialogListener->Start();
 }
 
@@ -386,8 +412,7 @@ void ListenersWidget::onGenerateAgent() const
     QList<QString> agentNames = adaptixWidget->GetAgentNames(listenerRegName);
 
     QStringList agents;
-    QMap<QString, QWidget*> widgets;
-    QMap<QString, AxContainerWrapper*> containers;
+    QMap<QString, AxUI> ax_uis;
 
     for (auto agent : agentNames) {
         auto engine = adaptixWidget->ScriptManager->AgentScriptEngine(agent);
@@ -417,7 +442,10 @@ void ListenersWidget::onGenerateAgent() const
         }
 
         QJSValue ui_container = result.property("ui_container");
-        QJSValue ui_panel = result.property("ui_panel");
+        QJSValue ui_panel     = result.property("ui_panel");
+        QJSValue ui_height    = result.property("ui_height");
+        QJSValue ui_width     = result.property("ui_width");
+
         if ( ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject()) {
             adaptixWidget->ScriptManager->consolePrintError(listenerName + " - function GenerateUI must return panel and container objects");
             return;
@@ -437,14 +465,23 @@ void ListenersWidget::onGenerateAgent() const
             return;
         }
 
+        int h = 550;
+        if (ui_height.isNumber() && ui_height.toInt() > 0) {
+            h = ui_height.toInt();
+        }
+
+        int w = 550;
+        if (ui_width.isNumber() && ui_width.toInt() > 0) {
+            w = ui_width.toInt();
+        }
+
         agents.append(agent);
-        widgets[agent] = formElement->widget();
-        containers[agent] = container;
+        ax_uis[agent] = { container, formElement->widget(), h, w };
     }
 
     DialogAgent* dialogListener = new DialogAgent(listenerName, listenerRegName);
     dialogListener->setAttribute(Qt::WA_DeleteOnClose);
     dialogListener->SetProfile( *(adaptixWidget->GetProfile()) );
-    dialogListener->AddExAgents(agents, widgets, containers);
+    dialogListener->AddExAgents(agents, ax_uis);
     dialogListener->Start();
 }

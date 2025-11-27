@@ -55,6 +55,11 @@ void DownloadsWidget::createUI()
 
 DownloadsWidget::~DownloadsWidget() = default;
 
+void DownloadsWidget::SetUpdatesEnabled(const bool enabled)
+{
+    tableWidget->setUpdatesEnabled(enabled);
+}
+
 void DownloadsWidget::Clear() const
 {
     adaptixWidget->Downloads.clear();

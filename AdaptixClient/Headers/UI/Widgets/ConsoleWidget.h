@@ -58,6 +58,8 @@ public:
     explicit ConsoleWidget(AdaptixWidget* w, Agent* a, Commander* c);
     ~ConsoleWidget() override;
 
+    void SetUpdatesEnabled(const bool enabled);
+
     void ProcessCmdResult(const QString &commandLine, const CommanderResult &cmdResult, bool UI);
 
     void InputFocus() const;

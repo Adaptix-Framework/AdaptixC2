@@ -52,6 +52,11 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
 
 ConsoleWidget::~ConsoleWidget() {}
 
+void ConsoleWidget::SetUpdatesEnabled(const bool enabled)
+{
+    OutputTextEdit->setUpdatesEnabled(enabled);
+}
+
 void ConsoleWidget::createUI()
 {
     searchWidget = new QWidget(this);
@@ -379,7 +384,7 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
             QByteArray json2Data = QJsonDocument(data2Json).toJson();
 
             sUrl = agent->adaptixWidget->GetProfile()->GetURL() + "/agent/command/file";
-            QJsonObject jsonObject = HttpReq(sUrl, json2Data, agent->adaptixWidget->GetProfile()->GetAccessToken(), 10000);
+            QJsonObject jsonObject = HttpReq(sUrl, json2Data, agent->adaptixWidget->GetProfile()->GetAccessToken(), 0);
             if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
                 if (jsonObject["ok"].toBool() == false) {
                     if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))

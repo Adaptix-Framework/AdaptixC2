@@ -23,12 +23,13 @@ QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QStri
     QObject::connect(reply, &QNetworkReply::finished, &eventLoop, &QEventLoop::quit);
 
     QTimer timeoutTimer;
-    QObject::connect(&timeoutTimer, &QTimer::timeout, [&]() {
-        reply->abort();
-        eventLoop.quit();
-    });
-    timeoutTimer.start(timeout);
-
+    if (timeout > 0) {
+        QObject::connect(&timeoutTimer, &QTimer::timeout, [&]() {
+            reply->abort();
+            eventLoop.quit();
+        });
+        timeoutTimer.start(timeout);
+    }
     eventLoop.exec();
 
     QJsonObject jsonObject;

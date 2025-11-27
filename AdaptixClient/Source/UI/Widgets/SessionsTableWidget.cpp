@@ -56,6 +56,11 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions
 
 SessionsTableWidget::~SessionsTableWidget() = default;
 
+void SessionsTableWidget::SetUpdatesEnabled(const bool enabled)
+{
+    tableView->setUpdatesEnabled(enabled);
+}
+
 void SessionsTableWidget::createUI()
 {
     auto horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);

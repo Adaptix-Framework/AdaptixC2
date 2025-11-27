@@ -152,6 +152,7 @@ SET( HEADERS
         Headers/UI/Widgets/AbstractDock.h
         Headers/Utils/NonBlockingDialogs.h
         Headers/Utils/FontManager.h
+        Headers/Utils/TitleBarStyle.h
 )
 
 add_executable(AdaptixClient
@@ -230,6 +231,7 @@ add_executable(AdaptixClient
         Source/UI/Widgets/ChatWidget.cpp
         Source/Utils/NonBlockingDialogs.cpp
         Source/Utils/FontManager.cpp
+        Source/Utils/TitleBarStyle.cpp
 )
 
 target_compile_definitions(

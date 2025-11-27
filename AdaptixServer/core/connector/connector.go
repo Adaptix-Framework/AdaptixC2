@@ -130,6 +130,19 @@ type TsConnector struct {
 	teamserver Teamserver
 }
 
+func limitTimeoutMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		handler := http.TimeoutHandler(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				c.Next()
+			}),
+			300*time.Second,
+			"504 Gateway Timeout",
+		)
+		handler.ServeHTTP(c.Writer, c.Request)
+	}
+}
+
 func default404Middleware(tsResponse profile.TsResponse) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if len(c.Errors) > 0 && !c.Writer.Written() {
@@ -177,70 +190,82 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
 
-	connector.Engine.POST(tsProfile.Endpoint+"/login", default404Middleware(tsResponse), connector.tcLogin)
-	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponse), token.RefreshTokenHandler)
-	connector.Engine.POST(tsProfile.Endpoint+"/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcSync)
+	login_group := connector.Engine.Group(tsProfile.Endpoint)
+	login_group.Use(limitTimeoutMiddleware(), default404Middleware(tsResponse))
+	{
+		login_group.POST("/login", connector.tcLogin)
+		login_group.POST("/refresh", token.RefreshTokenHandler)
+	}
 
-	connector.Engine.POST(tsProfile.Endpoint+"/otp/generate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcOTP_Generate)
-	connector.Engine.POST(tsProfile.Endpoint+"/otp/upload/temp", ts.ValidateOTP(), default404Middleware(tsResponse), connector.tcOTP_UploadTemp)
-	connector.Engine.GET(tsProfile.Endpoint+"/otp/download/sync", ts.ValidateOTP(), default404Middleware(tsResponse), connector.tcOTP_DownloadSync)
+	otp_group := connector.Engine.Group(tsProfile.Endpoint)
+	otp_group.Use(ts.ValidateOTP(), default404Middleware(tsResponse))
+	{
+		otp_group.POST("/otp/upload/temp", connector.tcOTP_UploadTemp)
+		otp_group.GET("/otp/download/sync", connector.tcOTP_DownloadSync)
+	}
 
-	connector.Engine.GET(tsProfile.Endpoint+"/connect", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcConnect)
-	connector.Engine.GET(tsProfile.Endpoint+"/channel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcChannel)
+	api_group := connector.Engine.Group(tsProfile.Endpoint)
+	api_group.Use(limitTimeoutMiddleware(), token.ValidateAccessToken(), default404Middleware(tsResponse))
+	{
+		api_group.POST("/sync", connector.tcSync)
+		api_group.GET("/connect", connector.tcConnect)
+		api_group.GET("/channel", connector.tcChannel)
+		api_group.POST("/otp/generate", connector.tcOTP_Generate)
 
-	connector.Engine.GET(tsProfile.Endpoint+"/listener/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerList)
-	connector.Engine.POST(tsProfile.Endpoint+"/listener/create", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStart)
-	connector.Engine.POST(tsProfile.Endpoint+"/listener/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerEdit)
-	connector.Engine.POST(tsProfile.Endpoint+"/listener/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcListenerStop)
+		api_group.GET("/listener/list", connector.TcListenerList)
+		api_group.POST("/listener/create", connector.TcListenerStart)
+		api_group.POST("/listener/edit", connector.TcListenerEdit)
+		api_group.POST("/listener/stop", connector.TcListenerStop)
 
-	connector.Engine.GET(tsProfile.Endpoint+"/agent/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentList)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/generate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentGenerate)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentRemove)
+		api_group.GET("/agent/list", connector.TcAgentList)
+		api_group.POST("/agent/generate", connector.TcAgentGenerate)
+		api_group.POST("/agent/remove", connector.TcAgentRemove)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/command/file", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommandFile)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/command/execute", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentCommandExecute)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/console/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentConsoleRemove)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/set/tag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetTag)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/set/mark", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetMark)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/set/color", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetColor)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/set/impersonate", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentSetImpersonate)
+		api_group.POST("/agent/command/file", connector.TcAgentCommandFile)
+		api_group.POST("/agent/command/execute", connector.TcAgentCommandExecute)
+		api_group.POST("/agent/console/remove", connector.TcAgentConsoleRemove)
+		api_group.POST("/agent/set/tag", connector.TcAgentSetTag)
+		api_group.POST("/agent/set/mark", connector.TcAgentSetMark)
+		api_group.POST("/agent/set/color", connector.TcAgentSetColor)
+		api_group.POST("/agent/set/impersonate", connector.TcAgentSetImpersonate)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/cancel", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskCancel)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskDelete)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/hook", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskHook)
-	connector.Engine.POST(tsProfile.Endpoint+"/agent/task/save", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcAgentTaskSave)
+		api_group.POST("/agent/task/cancel", connector.TcAgentTaskCancel)
+		api_group.POST("/agent/task/delete", connector.TcAgentTaskDelete)
+		api_group.POST("/agent/task/hook", connector.TcAgentTaskHook)
+		api_group.POST("/agent/task/save", connector.TcAgentTaskSave)
 
-	connector.Engine.POST(tsProfile.Endpoint+"/chat/send", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcChatSendMessage)
+		api_group.POST("/chat/send", connector.TcChatSendMessage)
 
-	connector.Engine.GET(tsProfile.Endpoint+"/download/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcDownloadList)
-	connector.Engine.POST(tsProfile.Endpoint+"/download/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadSync)
-	connector.Engine.POST(tsProfile.Endpoint+"/download/delete", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcGuiDownloadDelete)
+		api_group.GET("/download/list", connector.TcDownloadList)
+		api_group.POST("/download/sync", connector.TcGuiDownloadSync)
+		api_group.POST("/download/delete", connector.TcGuiDownloadDelete)
 
-	connector.Engine.GET(tsProfile.Endpoint+"/screen/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotList)
-	connector.Engine.POST(tsProfile.Endpoint+"/screen/setnote", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotSetNote)
-	connector.Engine.POST(tsProfile.Endpoint+"/screen/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcScreenshotRemove)
+		api_group.GET("/screen/list", connector.TcScreenshotList)
+		api_group.POST("/screen/setnote", connector.TcScreenshotSetNote)
+		api_group.POST("/screen/remove", connector.TcScreenshotRemove)
 
-	connector.Engine.GET(tsProfile.Endpoint+"/creds/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsList)
-	connector.Engine.POST(tsProfile.Endpoint+"/creds/add", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsAdd)
-	connector.Engine.POST(tsProfile.Endpoint+"/creds/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsEdit)
-	connector.Engine.POST(tsProfile.Endpoint+"/creds/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsRemove)
-	connector.Engine.POST(tsProfile.Endpoint+"/creds/set/tag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcCredentialsSetTag)
+		api_group.GET("/creds/list", connector.TcCredentialsList)
+		api_group.POST("/creds/add", connector.TcCredentialsAdd)
+		api_group.POST("/creds/edit", connector.TcCredentialsEdit)
+		api_group.POST("/creds/remove", connector.TcCredentialsRemove)
+		api_group.POST("/creds/set/tag", connector.TcCredentialsSetTag)
 
-	connector.Engine.GET(tsProfile.Endpoint+"/targets/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetsList)
-	connector.Engine.POST(tsProfile.Endpoint+"/targets/add", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetsAdd)
-	connector.Engine.POST(tsProfile.Endpoint+"/targets/edit", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetEdit)
-	connector.Engine.POST(tsProfile.Endpoint+"/targets/remove", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetRemove)
-	connector.Engine.POST(tsProfile.Endpoint+"/targets/set/tag", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTargetSetTag)
+		api_group.GET("/targets/list", connector.TcTargetsList)
+		api_group.POST("/targets/add", connector.TcTargetsAdd)
+		api_group.POST("/targets/edit", connector.TcTargetEdit)
+		api_group.POST("/targets/remove", connector.TcTargetRemove)
+		api_group.POST("/targets/set/tag", connector.TcTargetSetTag)
 
-	connector.Engine.GET(tsProfile.Endpoint+"/tunnel/list", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelList)
-	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks5", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks5)
-	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/socks4", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartSocks4)
-	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/lportfwd", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartLpf)
-	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/start/rportfwd", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStartRpf)
-	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStop)
-	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/set/info", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelSetIno)
+		api_group.GET("/tunnel/list", connector.TcTunnelList)
+		api_group.POST("/tunnel/start/socks5", connector.TcTunnelStartSocks5)
+		api_group.POST("/tunnel/start/socks4", connector.TcTunnelStartSocks4)
+		api_group.POST("/tunnel/start/lportfwd", connector.TcTunnelStartLpf)
+		api_group.POST("/tunnel/start/rportfwd", connector.TcTunnelStartRpf)
+		api_group.POST("/tunnel/stop", connector.TcTunnelStop)
+		api_group.POST("/tunnel/set/info", connector.TcTunnelSetIno)
+	}
 
-	connector.Engine.NoRoute(default404Middleware(tsResponse), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
+	connector.Engine.NoRoute(limitTimeoutMiddleware(), default404Middleware(tsResponse), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 
 	return connector, nil
 }
@@ -266,10 +291,10 @@ func (tc *TsConnector) Start(finished *chan bool) {
 		Addr:           host,
 		Handler:        tc.Engine,
 		TLSConfig:      tlsConfig,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		IdleTimeout:    30 * time.Second,
-		MaxHeaderBytes: 1 << 20, // 1MB
+		ReadTimeout:    0,
+		WriteTimeout:   0,
+		IdleTimeout:    0,
+		MaxHeaderBytes: 8192, // Apache style
 	}
 
 	err := server.ListenAndServeTLS(tc.Cert, tc.Key)

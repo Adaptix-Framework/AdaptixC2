@@ -49,10 +49,12 @@ public:
     ScreenshotsWidget(AdaptixWidget* w);
     ~ScreenshotsWidget() override;
 
-     void Clear() const;
-     void AddScreenshotItem(const ScreenData &newScreen) const;
-     void EditScreenshotItem(const QString &screenId, const QString &note) const;
-     void RemoveScreenshotItem(const QString &screenId) const;
+    void SetUpdatesEnabled(const bool enabled);
+
+    void Clear() const;
+    void AddScreenshotItem(const ScreenData &newScreen) const;
+    void EditScreenshotItem(const QString &screenId, const QString &note) const;
+    void RemoveScreenshotItem(const QString &screenId) const;
 
 public Q_SLOTS:
     void onTableItemSelection(const QModelIndex &current, const QModelIndex &previous) const;

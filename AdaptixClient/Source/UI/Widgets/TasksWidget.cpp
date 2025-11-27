@@ -93,6 +93,12 @@ KDDockWidgets::QtWidgets::DockWidget* TasksWidget::dockTasks() { return this->do
 
 KDDockWidgets::QtWidgets::DockWidget * TasksWidget::dockTasksOutput() { return this->dockWidgetOutput; }
 
+void TasksWidget::SetUpdatesEnabled(const bool enabled)
+{
+    tableView->setUpdatesEnabled(enabled);
+    taskOutputConsole->setUpdatesEnabled(enabled);
+}
+
 void TasksWidget::createUI()
 {
     auto horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);

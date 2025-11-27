@@ -10,6 +10,8 @@
 #include <QStringView>
 #include <QtDebug>
 
+using namespace Qt::Literals::StringLiterals;
+
 const ColorEntry ColorScheme::defaultTable[TABLE_COLORS] = {
     ColorEntry(QColor(0x00, 0x00, 0x00), false),
     ColorEntry(QColor(0xFF, 0xFF, 0xFF), true) ,
@@ -307,9 +309,7 @@ void ColorScheme::readColorEntry(QSettings *s, int index) {
         }
     } else {
         colorStr = colorValue.toString();
-        QRegularExpression hexColorPattern(
-            QLatin1String("^#[0-9a-f]{6}$"),
-            QRegularExpression::CaseInsensitiveOption);
+        QRegularExpression hexColorPattern( QLatin1String("^#[0-9a-f]{6}$"), QRegularExpression::CaseInsensitiveOption);
         if (hexColorPattern.match(colorStr).hasMatch()) {
             r = QStringView{colorStr}.mid(1, 2).toInt(nullptr, 16);
             g = QStringView{colorStr}.mid(3, 2).toInt(nullptr, 16);

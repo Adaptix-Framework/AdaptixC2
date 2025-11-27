@@ -357,6 +357,8 @@ public:
     explicit SessionsTableWidget( AdaptixWidget* w );
     ~SessionsTableWidget() override;
 
+    void SetUpdatesEnabled(const bool enabled);
+
     void AddAgentItem(Agent* newAgent) const;
     void UpdateAgentItem(const AgentData &oldDatam, const Agent* agent) const;
     void RemoveAgentItem(const QString &agentId) const;

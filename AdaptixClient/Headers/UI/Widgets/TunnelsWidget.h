@@ -18,6 +18,8 @@ public:
      explicit TunnelsWidget( AdaptixWidget* w );
      ~TunnelsWidget() override;
 
+     void SetUpdatesEnabled(const bool enabled);
+
      void Clear() const;
      void AddTunnelItem(TunnelData newTunnel) const;
      void EditTunnelItem(const QString &tunnelId, const QString &info) const;

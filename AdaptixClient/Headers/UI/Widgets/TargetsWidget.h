@@ -230,6 +230,8 @@ public:
     explicit TargetsWidget(AdaptixWidget* w);
     ~TargetsWidget() override;
 
+    void SetUpdatesEnabled(const bool enabled);
+
     void AddTargetsItems(QList<TargetData> targetList) const;
     void EditTargetsItem(const TargetData &newTarget) const;
     void RemoveTargetsItem(const QStringList &targetsId) const;

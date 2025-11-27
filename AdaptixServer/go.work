@@ -1,0 +1,11 @@
+go 1.25.4
+
+use (
+	.
+	./extenders/beacon_agent
+	./extenders/beacon_listener_http
+	./extenders/beacon_listener_smb
+	./extenders/beacon_listener_tcp
+	./extenders/gopher_agent
+	./extenders/gopher_listener_tcp
+)

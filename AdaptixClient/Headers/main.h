@@ -67,8 +67,8 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.10"
-#define SMALL_VERSION "v0.10"
+#define FRAMEWORK_VERSION "Adaptix Framework v0.11"
+#define SMALL_VERSION "v0.11"
 
 ///////////
 
@@ -179,6 +179,10 @@
 
 //////////
 
+class AxContainerWrapper;
+
+//////////
+
 typedef struct SettingsData {
     QString MainTheme;
     QString FontFamily;
@@ -198,6 +202,16 @@ typedef struct SettingsData {
 
     bool TasksTableColumns[11];
 } SettingsData;
+
+typedef struct AxUI
+{
+    AxContainerWrapper* container;
+    QWidget*            widget;
+    int                 height;
+    int                 width;
+} AxUI;
+
+/// Object Data
 
 typedef struct ListenerData
 {

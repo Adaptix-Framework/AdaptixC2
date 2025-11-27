@@ -17,6 +17,11 @@ TunnelsWidget::TunnelsWidget(AdaptixWidget* w) : DockTab("Tunnels", w->GetProfil
 
 TunnelsWidget::~TunnelsWidget() = default;
 
+void TunnelsWidget::SetUpdatesEnabled(const bool enabled)
+{
+     tableWidget->setUpdatesEnabled(enabled);
+}
+
 void TunnelsWidget::createUI()
 {
      tableWidget = new QTableWidget( this );

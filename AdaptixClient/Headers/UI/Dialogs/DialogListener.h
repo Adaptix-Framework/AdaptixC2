@@ -30,8 +30,7 @@ class DialogListener : public QDialog
     QStackedWidget* configStackWidget      = nullptr;
 
     QList<RegListenerConfig> listeners;
-    QMap<QString, QWidget*>  widgets;
-    QMap<QString, AxContainerWrapper*> containers;
+    QMap<QString, AxUI> ax_uis;
 
     AuthProfile authProfile;
     bool        editMode = false;
@@ -42,7 +41,7 @@ public:
     explicit DialogListener(QWidget *parent = nullptr);
     ~DialogListener() override;
 
-    void AddExListeners(const QList<RegListenerConfig> &listeners, const QMap<QString, QWidget*> &widgets, const QMap<QString, AxContainerWrapper*> &containers);
+    void AddExListeners(const QList<RegListenerConfig> &listeners, const QMap<QString, AxUI> &uis);
     void SetProfile(const AuthProfile &profile);
     void Start();
     void SetEditMode(const QString &name);
