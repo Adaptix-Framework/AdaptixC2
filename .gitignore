@@ -6,6 +6,7 @@ objects_tcp/
 .qt/
 *.so
 dist/
+AdaptixServer/server-dist/
 AdaptixClient/CMakeFiles/
 AdaptixClient/AdaptixClient_autogen/
 AdaptixClient/CMakeCache.txt
@@ -24,3 +25,7 @@ AdaptixClient/Libs/kddockwidgets/*_export.h
 
 # VSCode
 .vscode/
+
+# macOS
+.DS_Store
+**/.DS_Store
