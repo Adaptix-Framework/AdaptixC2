@@ -1,5 +1,4 @@
 /* Fallout Pip-Boy Theme - Enhanced & Complete */
-/* @theme-type: dark */
 
 QWidget[Main="base"] {
     background-color: #111111;
@@ -294,7 +293,7 @@ QTabBar {
 QTabBar::tab {
     background-color: #050505;
     color: #004400;
-    padding: 6px 12px;
+    padding: 4px;
     border: 1px solid #003300;
     border-bottom: none;
     margin-right: 2px;

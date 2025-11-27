@@ -1,5 +1,4 @@
 /* Dracula Theme */
-/* @theme-type: dark */
 
 QWidget[Main="base"] {
     background-color: #282a36;
@@ -302,7 +301,7 @@ QTabBar {
 QTabBar::tab {
     background-color: #21222c;
     color: #6272a4;
-    padding: 6px 12px;
+    padding: 4px;
     border: 1px solid #44475a;
     border-bottom: none;
     margin-right: 2px;

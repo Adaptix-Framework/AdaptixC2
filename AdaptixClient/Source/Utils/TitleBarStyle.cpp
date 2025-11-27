@@ -17,46 +17,43 @@
 
 namespace TitleBarStyle {
 
-static bool isLightTheme(const QString& themeName)
-{
-    QString themeFile = ":/themes/" + themeName;
-    QFile file(themeFile);
-    
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    static bool isLightTheme(const QString& themeName)
+    {
+        QString themeFile = ":/themes/" + themeName;
+        QFile file(themeFile);
+
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            return false;
+
+        QString content = QString::fromUtf8(file.read(500));
+        file.close();
+
+        QRegularExpression regex(R"(@theme-type:\s*(light|dark))");
+        QRegularExpressionMatch match = regex.match(content);
+
+        if (match.hasMatch())
+            return match.captured(1).toLower() == "light";
+
         return false;
-    
-    QString content = QString::fromUtf8(file.read(500));
-    file.close();
-    
-    QRegularExpression regex(R"(@theme-type:\s*(light|dark))");
-    QRegularExpressionMatch match = regex.match(content);
-    
-    if (match.hasMatch())
-        return match.captured(1).toLower() == "light";
-    
-    return false;
-}
+    }
 
-void applyForTheme(QWidget* window, const QString& themeName)
-{
-    bool light = isLightTheme(themeName);
-    
+    void applyForTheme(QWidget* window, const QString& themeName)
+    {
+        bool light = isLightTheme(themeName);
+
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-    // Qt 6.5+ — кроссплатформенный API
-    QGuiApplication::styleHints()->setColorScheme(
-        light ? Qt::ColorScheme::Light : Qt::ColorScheme::Dark
-    );
-    Q_UNUSED(window)
+        QGuiApplication::styleHints()->setColorScheme(
+            light ? Qt::ColorScheme::Light : Qt::ColorScheme::Dark
+        );
+        Q_UNUSED(window)
 #elif defined(Q_OS_WIN)
-    // Windows fallback
-    if (!window) return;
-    HWND hwnd = reinterpret_cast<HWND>(window->winId());
-    BOOL darkMode = light ? FALSE : TRUE;
-    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
+        if (!window) return;
+        HWND hwnd = reinterpret_cast<HWND>(window->winId());
+        BOOL darkMode = light ? FALSE : TRUE;
+        DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &darkMode, sizeof(darkMode));
 #else
-    Q_UNUSED(window)
-    Q_UNUSED(light)
+        Q_UNUSED(window)
+        Q_UNUSED(light)
 #endif
-}
-
+    }
 }

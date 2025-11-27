@@ -95,7 +95,6 @@ void Button::paintEvent(QPaintEvent *)
 
 QSize Button::sizeHint() const
 {
-    // Используем высоту родителя (TitleBar) для размера кнопки
     int h = parentWidget() ? parentWidget()->height() : 24;
     if (h <= 0) h = 24;
     return QSize(h, h);
@@ -275,13 +274,13 @@ void TitleBar::paintEvent(QPaintEvent *)
         return;
 
     QPainter p(this);
-    
+
     // Background is handled by QSS via WA_StyledBackground
     // Draw title text directly using palette color (respects QSS)
     QRect textRect = iconRect().isEmpty()
         ? rect().adjusted(8, 0, -buttonAreaWidth(), 0)
         : rect().adjusted(iconRect().right() + 4, 0, -buttonAreaWidth(), 0);
-    
+
     p.setPen(palette().color(QPalette::WindowText));
     p.drawText(textRect, Qt::AlignCenter, m_titleBar->title());
 }
