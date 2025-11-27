@@ -1,4 +1,5 @@
 /* Arc Light Theme */
+/* @theme-type: light */
 
 #toolbarWidget {
     background-color: #B8B8B8;

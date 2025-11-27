@@ -1,4 +1,5 @@
 /* Fallout Pip-Boy Theme - Enhanced & Complete */
+/* @theme-type: dark */
 
 QWidget[Main="base"] {
     background-color: #111111;

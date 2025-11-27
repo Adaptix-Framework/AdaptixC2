@@ -1,4 +1,5 @@
 /* Dracula Theme */
+/* @theme-type: dark */
 
 QWidget[Main="base"] {
     background-color: #282a36;

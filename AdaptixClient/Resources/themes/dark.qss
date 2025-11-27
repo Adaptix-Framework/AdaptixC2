@@ -1,4 +1,5 @@
 /* Adaptix Dark Theme */
+/* @theme-type: dark */
 
 QWidget[Main="base"] {
     background-color: #222222;
