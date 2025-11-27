@@ -68,6 +68,9 @@ RUN wget https://go.dev/dl/go1.25.4.linux-amd64.tar.gz -O /tmp/go1.25.4.linux-am
 
 RUN git clone https://github.com/Adaptix-Framework/go-win7 /tmp/go-win7 && \
     mv /tmp/go-win7 /usr/lib/ && \
+    mkdir -p /usr/lib/go-win7/pkg/include && \
+    cd /usr/lib/go-win7/src/runtime && \
+    for f in *.h; do ln -sf /usr/lib/go-win7/src/runtime/$f /usr/lib/go-win7/pkg/include/$f; done && \
     echo "[+] go-win7 library installed successfully"
 
 WORKDIR /app
