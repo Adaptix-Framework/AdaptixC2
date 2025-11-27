@@ -95,13 +95,9 @@ void Button::paintEvent(QPaintEvent *)
 
 QSize Button::sizeHint() const
 {
-    // Pass an opt so it scales against the logical dpi of the correct screen (since Qt 5.14) even
-    // if the HDPI Qt::AA_ attributes are off.
-    QStyleOption opt;
-    opt.initFrom(this);
-
-    const int m = style()->pixelMetric(QStyle::PM_SmallIconSize, &opt, this);
-    return QSize(m, m);
+    int h = parentWidget() ? parentWidget()->height() : 24;
+    if (h <= 0) h = 24;
+    return QSize(h, h);
 }
 
 bool Button::event(QEvent *ev)
@@ -151,6 +147,8 @@ TitleBar::TitleBar(Core::TitleBar *controller, Core::View *parent)
     , m_layout(new QHBoxLayout(this))
     , d(new Private())
 {
+    setAttribute(Qt::WA_StyledBackground, true);
+    setObjectName(QStringLiteral("KDDWTitleBar"));
 }
 
 TitleBar::TitleBar(QWidget *parent)
@@ -159,6 +157,8 @@ TitleBar::TitleBar(QWidget *parent)
     , m_layout(new QHBoxLayout(this))
     , d(new Private())
 {
+    setAttribute(Qt::WA_StyledBackground, true);
+    setObjectName(QStringLiteral("KDDWTitleBar"));
     m_titleBar->init();
 }
 
@@ -275,20 +275,14 @@ void TitleBar::paintEvent(QPaintEvent *)
 
     QPainter p(this);
 
-    QStyleOptionDockWidget titleOpt;
-    titleOpt.initFrom(this);
-    style()->drawPrimitive(QStyle::PE_Widget, &titleOpt, &p, this);
-    titleOpt.title = m_titleBar->title();
-    titleOpt.rect = iconRect().isEmpty()
-        ? rect().adjusted(2, 0, -buttonAreaWidth(), 0)
-        : rect().adjusted(iconRect().right(), 0, -buttonAreaWidth(), 0);
+    // Background is handled by QSS via WA_StyledBackground
+    // Draw title text directly using palette color (respects QSS)
+    QRect textRect = iconRect().isEmpty()
+        ? rect().adjusted(8, 0, -buttonAreaWidth(), 0)
+        : rect().adjusted(iconRect().right() + 4, 0, -buttonAreaWidth(), 0);
 
-    if (m_titleBar->isMDI()) {
-        const QColor c = palette().color(QPalette::Base);
-        p.fillRect(rect().adjusted(1, 1, -1, 0), c);
-    }
-
-    style()->drawControl(QStyle::CE_DockWidgetTitle, &titleOpt, &p, this);
+    p.setPen(palette().color(QPalette::WindowText));
+    p.drawText(textRect, Qt::AlignCenter, m_titleBar->title());
 }
 
 void TitleBar::updateMinimizeButton(bool visible, bool enabled)

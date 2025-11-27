@@ -267,27 +267,56 @@ QPlainTextEdit:disabled {
     color: #6272a4;
 }
 
-QTabWidget::pane {
-    border: 1px solid #6272a4;
+/* KDDockWidgets TitleBar */
+#KDDWTitleBar {
+    background-color: #44475a;
+    color: #f8f8f2;
+    border-bottom: 1px solid #6272a4;
+}
+
+#KDDWTitleBar QLabel {
+    color: #f8f8f2;
+    background-color: transparent;
+}
+
+QTabWidget {
     background-color: #282a36;
 }
 
-QTabBar::tab {
+QTabWidget::pane {
+    border: none;
     background-color: #282a36;
-    color: #f8f8f2;
+    padding: 0px;
+    margin: 0px;
+}
+
+QTabWidget::tab-bar {
+    background-color: #44475a;
+}
+
+QTabBar {
+    background-color: #44475a;
+}
+
+QTabBar::tab {
+    background-color: #21222c;
+    color: #6272a4;
     padding: 4px;
-    border: 1px solid #6272a4;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+    border: 1px solid #44475a;
+    border-bottom: none;
+    margin-right: 2px;
 }
 
 QTabBar::tab:selected {
     background-color: #44475a;
-    color: #ffffff;
+    color: #f8f8f2;
+    border: 1px solid #6272a4;
+    border-bottom: none;
 }
 
-QTabBar::tab:hover {
-    background-color: #6272a4;
+QTabBar::tab:hover:!selected {
+    background-color: #343746;
+    color: #bd93f9;
 }
 
 QTabBar::close-button {
@@ -404,11 +433,17 @@ QComboBox::down-arrow {
     height: 20px;
 }
 
+QComboBox QAbstractItemView {
+    background-color: #44475a;
+    border: 1px solid #6272a4;
+    selection-background-color: #6272a4;
+    selection-color: #ffffff;
+}
+
 QComboBox QAbstractItemView::item {
     background-color: #44475a;
     color: #f8f8f2;
-    padding: 2px;
-    border-radius: 4px;
+    padding: 4px;
 }
 
 QComboBox QAbstractItemView::item:hover {

@@ -7,6 +7,7 @@
 #include <Client/Storage.h>
 #include <Client/AuthProfile.h>
 #include <Utils/FontManager.h>
+#include <Utils/TitleBarStyle.h>
 #include <MainAdaptix.h>
 
 #include <kddockwidgets/Config.h>
@@ -20,6 +21,8 @@ MainAdaptix::MainAdaptix()
 
     mainUI   = new MainUI();
     extender = new Extender(this);
+
+    TitleBarStyle::applyForTheme(mainUI, settings->data.MainTheme);
 }
 
 MainAdaptix::~MainAdaptix()
