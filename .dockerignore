@@ -1,0 +1,27 @@
+# CMake cache files
+AdaptixClient/CMakeCache.txt
+AdaptixClient/CMakeFiles/
+AdaptixClient/cmake_install.cmake
+AdaptixClient/Makefile
+AdaptixClient/*.log
+AdaptixClient/cmake_*
+
+# Build artifacts
+dist/
+
+# IDE
+.idea/
+.vscode/
+.qt/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Other
+cmake-build-debug/
+
