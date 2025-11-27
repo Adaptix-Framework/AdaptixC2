@@ -2,6 +2,7 @@
 #include <UI/Dialogs/DialogSettings.h>
 #include <MainAdaptix.h>
 #include <Client/Settings.h>
+#include <Utils/TitleBarStyle.h>
 
 DialogSettings::DialogSettings(Settings* s)
 {
@@ -320,6 +321,8 @@ void DialogSettings::onApply() const
             QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
             app->setStyleSheet(style);
         }
+
+        TitleBarStyle::applyForTheme(settings->getMainAdaptix()->mainUI, settings->data.MainTheme);
     }
 
     if(settings->data.FontSize != fontSizeSpin->value() || settings->data.FontFamily != fontFamilyCombo->currentText()) {

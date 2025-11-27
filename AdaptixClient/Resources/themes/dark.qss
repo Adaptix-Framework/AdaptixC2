@@ -1,4 +1,5 @@
 /* Adaptix Dark Theme */
+/* @theme-type: dark */
 
 QWidget[Main="base"] {
     background-color: #222222;
@@ -310,27 +311,56 @@ QPlainTextEdit:disabled {
 
 
 
-QTabWidget::pane {
-    border: 1px solid #4A4A4A;
+/* KDDockWidgets TitleBar */
+#KDDWTitleBar {
+    background-color: #2A2A2A;
+    color: #E0E0E0;
+    border-bottom: 1px solid #4A4A4A;
+}
+
+#KDDWTitleBar QLabel {
+    color: #E0E0E0;
+    background-color: transparent;
+}
+
+QTabWidget {
     background-color: #222222;
 }
 
-QTabBar::tab {
+QTabWidget::pane {
+    border: none;
     background-color: #222222;
-    color: #E0E0E0;
-    padding: 4px;
-    border: 1px solid #4A4A4A;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
+    padding: 0px;
+    margin: 0px;
+}
+
+QTabWidget::tab-bar {
+    background-color: #2A2A2A;
+}
+
+QTabBar {
+    background-color: #2A2A2A;
+}
+
+QTabBar::tab {
+    background-color: #1A1A1A;
+    color: #888888;
+    padding: 6px 12px;
+    border: 1px solid #3A3A3A;
+    border-bottom: none;
+    margin-right: 2px;
 }
 
 QTabBar::tab:selected {
     background-color: #333333;
     color: #FFFFFF;
+    border: 1px solid #4A4A4A;
+    border-bottom: none;
 }
 
-QTabBar::tab:hover {
-    background-color: #4A4A4A;
+QTabBar::tab:hover:!selected {
+    background-color: #2A2A2A;
+    color: #CCCCCC;
 }
 
 QTabBar::close-button {
@@ -459,11 +489,17 @@ QComboBox::down-arrow {
     height: 20px;
 }
 
+QComboBox QAbstractItemView {
+    background-color: #2A2A2A;
+    border: 1px solid #4A4A4A;
+    selection-background-color: #4A4A4A;
+    selection-color: #FFFFFF;
+}
+
 QComboBox QAbstractItemView::item {
     background-color: #2A2A2A;
     color: #E0E0E0;
-    padding: 2px;
-    border-radius: 4px;
+    padding: 4px;
 }
 
 QComboBox QAbstractItemView::item:hover {
