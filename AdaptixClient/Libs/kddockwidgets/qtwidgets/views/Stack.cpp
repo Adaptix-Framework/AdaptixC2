@@ -24,6 +24,7 @@
 #include "qtwidgets/ViewFactory.h"
 
 #include <QMouseEvent>
+#include <QResizeEvent>
 #include <QTabBar>
 #include <QHBoxLayout>
 #include <QAbstractButton>
@@ -42,7 +43,8 @@ public:
     KDBindings::ScopedConnection screenChangedConnection;
     KDBindings::ScopedConnection buttonsToHideIfDisabledConnection;
 
-    QHBoxLayout *cornerWidgetLayout = nullptr;
+    QWidget *buttonsWidget = nullptr;
+    QHBoxLayout *buttonsLayout = nullptr;
     QAbstractButton *floatButton = nullptr;
     QAbstractButton *closeButton = nullptr;
 };
@@ -129,15 +131,18 @@ void Stack::setupTabBarButtons()
     d->closeButton = factory->createTitleBarButton(this, TitleBarButtonType::Close);
     d->floatButton = factory->createTitleBarButton(this, TitleBarButtonType::Float);
 
-    auto cornerWidget = new QWidget(this);
-    cornerWidget->setObjectName(QStringLiteral("Corner Widget"));
+    // Создаём виджет с кнопками как overlay (поверх TabBar)
+    d->buttonsWidget = new QWidget(this);
+    d->buttonsWidget->setObjectName(QStringLiteral("TabBar Buttons Overlay"));
+    d->buttonsWidget->setAttribute(Qt::WA_TransparentForMouseEvents, false);
+    d->buttonsWidget->raise();  // Поднимаем наверх
 
-    setCornerWidget(cornerWidget, Qt::TopRightCorner);
+    d->buttonsLayout = new QHBoxLayout(d->buttonsWidget);
+    d->buttonsLayout->setContentsMargins(0, 0, 4, 0);
+    d->buttonsLayout->setSpacing(2);
 
-    d->cornerWidgetLayout = new QHBoxLayout(cornerWidget);
-
-    d->cornerWidgetLayout->addWidget(d->floatButton);
-    d->cornerWidgetLayout->addWidget(d->closeButton);
+    d->buttonsLayout->addWidget(d->floatButton, 0, Qt::AlignVCenter);
+    d->buttonsLayout->addWidget(d->closeButton, 0, Qt::AlignVCenter);
 
     connect(d->floatButton, &QAbstractButton::clicked, this, [this] {
         Core::TitleBar *tb = m_stack->group()->titleBar();
@@ -149,10 +154,9 @@ void Stack::setupTabBarButtons()
         tb->onCloseClicked();
     });
 
-    updateMargins();
     d->screenChangedConnection = DockRegistry::self()->dptr()->windowChangedScreen.connect([this](Core::Window::Ptr w) {
         if (View::d->isInWindow(w))
-            updateMargins();
+            updateButtonsPosition();
     });
 
     d->buttonsToHideIfDisabledConnection = m_stack->d->buttonsToHideIfDisabledChanged.connect([this] {
@@ -163,6 +167,7 @@ void Stack::setupTabBarButtons()
         connect(tb, &QtWidgets::TabBar::countChanged, this, &Stack::updateTabBarButtons);
 
     updateTabBarButtons();
+    updateButtonsPosition();
 }
 
 void Stack::updateTabBarButtons()
@@ -177,9 +182,31 @@ void Stack::updateTabBarButtons()
 
 void Stack::updateMargins()
 {
-    const qreal factor = logicalDpiFactor(this);
-    d->cornerWidgetLayout->setContentsMargins(QMargins(0, 0, 2, 0) * factor);
-    d->cornerWidgetLayout->setSpacing(int(2 * factor));
+    // Deprecated - используется updateButtonsPosition()
+}
+
+void Stack::updateButtonsPosition()
+{
+    if (!d->buttonsWidget)
+        return;
+    
+    QTabBar *tb = tabBar();
+    if (!tb)
+        return;
+    
+    // Размещаем кнопки в правом верхнем углу, на уровне TabBar
+    int buttonsWidth = d->buttonsWidget->sizeHint().width();
+    int buttonsHeight = tb->height();
+    
+    d->buttonsWidget->setFixedHeight(buttonsHeight);
+    d->buttonsWidget->move(width() - buttonsWidth - 2, 0);
+    d->buttonsWidget->raise();
+}
+
+void Stack::resizeEvent(QResizeEvent *event)
+{
+    QTabWidget::resizeEvent(event);
+    updateButtonsPosition();
 }
 
 void Stack::showContextMenu(QPoint pos)

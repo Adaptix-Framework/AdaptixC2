@@ -263,7 +263,10 @@ QMenuBar:disabled {
 #KDDWTitleBar {
     background-color: #0A0A0A;
     color: #00FF00;
-    border-bottom: 1px solid #006600;
+    border: 1px solid #006600;
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
 }
 
 #KDDWTitleBar QLabel {
@@ -298,6 +301,8 @@ QTabBar::tab {
     border: 1px solid #003300;
     border-bottom: none;
     margin-right: 2px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
 }
 
 QTabBar::tab:selected {
@@ -318,7 +323,8 @@ QTabBar::tab:hover {
 
 QTabBar::close-button {
     image: url(:/icons/close);
-    subcontrol-position: right;
+    subcontrol-position: center right;
+    padding: 0px;
 }
 
 QTabBar::close-button:hover {
