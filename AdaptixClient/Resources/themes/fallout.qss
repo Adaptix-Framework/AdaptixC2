@@ -265,8 +265,6 @@ QMenuBar:disabled {
     color: #00FF00;
     border: 1px solid #006600;
     border-bottom: none;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
 }
 
 #KDDWTitleBar QLabel {
@@ -301,8 +299,6 @@ QTabBar::tab {
     border: 1px solid #003300;
     border-bottom: none;
     margin-right: 2px;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
 }
 
 QTabBar::tab:selected {

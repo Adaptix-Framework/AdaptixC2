@@ -1,4 +1,4 @@
-# AdaptixC2 v0.11
+# AdaptixC2 v1.0
 
 NOV, 28: [What has changed in version v0.11](https://adaptix-framework.gitbook.io/adaptix-framework/changelog-and-updates/v0.10-greater-than-v0.11)?
 

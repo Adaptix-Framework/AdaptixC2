@@ -95,7 +95,6 @@ void Button::paintEvent(QPaintEvent *)
 
 QSize Button::sizeHint() const
 {
-    // Размер кнопки = высота TitleBar
     int h = fontMetrics().height() + 8;
     return QSize(h, h);
 }
@@ -212,8 +211,8 @@ void TitleBar::init()
         m_layout->addWidget(m_autoHideButton, 0, Qt::AlignVCenter);
         m_layout->addWidget(m_minimizeButton, 0, Qt::AlignVCenter);
         m_layout->addWidget(m_maximizeButton, 0, Qt::AlignVCenter);
-        m_layout->addWidget(m_floatButton, 0, Qt::AlignVCenter);
-        m_layout->addWidget(m_closeButton, 0, Qt::AlignVCenter);
+        m_layout->addWidget(m_floatButton,    0, Qt::AlignVCenter);
+        m_layout->addWidget(m_closeButton,    0, Qt::AlignVCenter);
 
         m_autoHideButton->setVisible(false);
 
@@ -276,10 +275,8 @@ void TitleBar::paintEvent(QPaintEvent *)
     QPainter p(this);
 
     // Background is handled by QSS via WA_StyledBackground
-    // Центрируем текст по всей ширине TitleBar (кнопки будут поверх)
     QRect textRect = rect();
-    
-    // Добавляем отступы слева для иконки если есть
+
     if (!iconRect().isEmpty())
         textRect.setLeft(iconRect().right() + 4);
 
@@ -349,7 +346,6 @@ int TitleBar::buttonAreaWidth() const
 void TitleBar::updateMargins()
 {
     const qreal factor = logicalDpiFactor(this);
-    // Убираем вертикальные margins для фиксированной высоты как у TabBar
     m_layout->setContentsMargins(QMargins(4, 0, 4, 0) * factor);
     m_layout->setSpacing(int(2 * factor));
 }
@@ -365,7 +361,6 @@ void TitleBar::mouseDoubleClickEvent(QMouseEvent *e)
 
 QSize TitleBar::sizeHint() const
 {
-    // Высота = высота шрифта + padding (как у QTabBar::tab с padding: 4px)
     int height = fontMetrics().height() + 8;
     return QSize(0, height);
 }

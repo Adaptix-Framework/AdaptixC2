@@ -313,8 +313,6 @@ QPlainTextEdit:disabled {
     color: #2E3440;
     border: 1px solid #D0D0D0;
     border-bottom: none;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
 }
 
 #KDDWTitleBar QLabel {
@@ -348,8 +346,6 @@ QTabBar::tab {
     border: 1px solid #138496;
     border-bottom: none;
     margin-right: 2px;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
 }
 
 QTabBar::tab:selected {

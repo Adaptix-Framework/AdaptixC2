@@ -131,11 +131,10 @@ void Stack::setupTabBarButtons()
     d->closeButton = factory->createTitleBarButton(this, TitleBarButtonType::Close);
     d->floatButton = factory->createTitleBarButton(this, TitleBarButtonType::Float);
 
-    // Создаём виджет с кнопками как overlay (поверх TabBar)
     d->buttonsWidget = new QWidget(this);
     d->buttonsWidget->setObjectName(QStringLiteral("TabBar Buttons Overlay"));
     d->buttonsWidget->setAttribute(Qt::WA_TransparentForMouseEvents, false);
-    d->buttonsWidget->raise();  // Поднимаем наверх
+    d->buttonsWidget->raise();
 
     d->buttonsLayout = new QHBoxLayout(d->buttonsWidget);
     d->buttonsLayout->setContentsMargins(0, 0, 4, 0);
@@ -182,22 +181,21 @@ void Stack::updateTabBarButtons()
 
 void Stack::updateMargins()
 {
-    // Deprecated - используется updateButtonsPosition()
+    // Deprecated - used updateButtonsPosition()
 }
 
 void Stack::updateButtonsPosition()
 {
     if (!d->buttonsWidget)
         return;
-    
+
     QTabBar *tb = tabBar();
     if (!tb)
         return;
-    
-    // Размещаем кнопки в правом верхнем углу, на уровне TabBar
+
     int buttonsWidth = d->buttonsWidget->sizeHint().width();
     int buttonsHeight = tb->height();
-    
+
     d->buttonsWidget->setFixedHeight(buttonsHeight);
     d->buttonsWidget->move(width() - buttonsWidth - 2, 0);
     d->buttonsWidget->raise();
