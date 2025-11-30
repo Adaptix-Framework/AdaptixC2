@@ -389,7 +389,19 @@ void Storage::SelectSettingsConsole(SettingsData* settingsData)
         selectQuery.prepare("SELECT * FROM SettingsConsole WHERE Id = 1;" );
         if ( selectQuery.exec() && selectQuery.next()) {
             settingsData->RemoteTerminalBufferSize = selectQuery.value("terminalBuffer").toInt();
-            settingsData->ConsoleBufferSize  = selectQuery.value("consoleBuffer").toInt();
+            int consoleBufferSize = selectQuery.value("consoleBuffer").toInt();
+            
+            if (consoleBufferSize < 150000) {
+                consoleBufferSize = 150000;
+                QSqlQuery updateQuery;
+                updateQuery.prepare("UPDATE SettingsConsole SET consoleBuffer = :ConsoleBuffer WHERE Id = 1;");
+                updateQuery.bindValue(":ConsoleBuffer", consoleBufferSize);
+                if (!updateQuery.exec()) {
+                    LogError("Failed to migrate ConsoleBufferSize to 150000: %s\n", updateQuery.lastError().text().toStdString().c_str());
+                }
+            }
+            
+            settingsData->ConsoleBufferSize = consoleBufferSize;
             settingsData->ConsoleNoWrap      = selectQuery.value("noWrap").toBool();
             settingsData->ConsoleAutoScroll  = selectQuery.value("autoScroll").toBool();
         }
