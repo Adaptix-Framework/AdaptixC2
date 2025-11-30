@@ -67,16 +67,12 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 
     this->Console = new ConsoleWidget(adaptixWidget, this, this->commander);
     this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
-    adaptixWidget->PlaceDockBottom(this->Console->dock());
 
     this->FileBrowser = new BrowserFilesWidget(adaptixWidget, this);
-    adaptixWidget->PlaceDockBottom(this->FileBrowser->dock());
 
     this->ProcessBrowser = new BrowserProcessWidget(adaptixWidget, this);
-    adaptixWidget->PlaceDockBottom(this->ProcessBrowser->dock());
 
     this->Terminal = new TerminalWidget(this, adaptixWidget);
-    adaptixWidget->PlaceDockBottom(this->Terminal->dock());
 }
 
 Agent::~Agent() = default;
