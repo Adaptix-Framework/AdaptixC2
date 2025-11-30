@@ -172,6 +172,7 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, updateData adaptix.TaskData) 
 						jobs := value2.(*safe.Slice)
 						jobs.Put(hookJob)
 						jobs_array := jobs.CutArray()
+						const maxAccumulatedSize = 10 * 1024 * 1024
 						for _, job_value := range jobs_array {
 							jobData := job_value.(*HookJob)
 							if task.MessageType != CONSOLE_OUT_ERROR {
@@ -179,6 +180,12 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, updateData adaptix.TaskData) 
 							}
 							if task.Message == "" {
 								task.Message = jobData.Job.Message
+							}
+							if len(task.ClearText)+len(jobData.Job.ClearText) > maxAccumulatedSize {
+								remaining := maxAccumulatedSize - len(jobData.Job.ClearText) - 1000
+								if remaining > 0 {
+									task.ClearText = task.ClearText[len(task.ClearText)-remaining:] + "\n[EARLIER OUTPUT TRUNCATED]\n"
+								}
 							}
 							task.ClearText += jobData.Job.ClearText
 						}
