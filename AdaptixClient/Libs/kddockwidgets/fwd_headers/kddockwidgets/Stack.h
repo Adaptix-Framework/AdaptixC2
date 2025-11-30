@@ -47,6 +47,7 @@ public:
 protected:
     void mouseDoubleClickEvent(QMouseEvent *) override;
     void mousePressEvent(QMouseEvent *) override;
+    void resizeEvent(QResizeEvent *) override;
 
     /// @brief Shows the context menu. Override to implement your own context menu.
     /// By default it's used to honour Config::Flag_AllowSwitchingTabsViaMenu
@@ -56,6 +57,7 @@ private:
     void updateMargins();
     void setupTabBarButtons();
     void updateTabBarButtons();
+    void updateButtonsPosition();
 
     class Private;
     Private *const d;
