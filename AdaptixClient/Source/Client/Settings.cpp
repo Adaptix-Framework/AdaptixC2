@@ -29,7 +29,7 @@ void Settings::SetDefault()
     this->data.RemoteTerminalBufferSize = 10000;
 
     this->data.ConsoleTime = true;
-    this->data.ConsoleBufferSize = 150000;
+    this->data.ConsoleBufferSize = 50000;
     this->data.ConsoleNoWrap = true;
     this->data.ConsoleAutoScroll = false;
 

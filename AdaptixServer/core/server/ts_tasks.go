@@ -172,7 +172,7 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, updateData adaptix.TaskData) 
 						jobs := value2.(*safe.Slice)
 						jobs.Put(hookJob)
 						jobs_array := jobs.CutArray()
-						const maxAccumulatedSize = 10 * 1024 * 1024
+						const maxAccumulatedSize = 0xa00000 // 10 Mb
 						for _, job_value := range jobs_array {
 							jobData := job_value.(*HookJob)
 							if task.MessageType != CONSOLE_OUT_ERROR {

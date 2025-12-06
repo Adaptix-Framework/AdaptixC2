@@ -313,40 +313,35 @@ void AdaptixWidget::PlaceDockBottom(KDDockWidgets::QtWidgets::DockWidget* dock) 
         dock->setAsCurrentTab();
         return;
     }
-    
+
     QString previousFocusedName;
     QString dockBeingAddedName = dock->uniqueName();
     KDDockWidgets::Core::Group* dockBottomGroup = dockBottom->group();
-    
+
     if (KDDockWidgets::DockRegistry::self() && dockBottomGroup) {
         auto* previousFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
-        if (previousFocused) {
+        if (previousFocused)
             previousFocusedName = previousFocused->uniqueName();
-        }
     }
-    
+
     dockBottom->toggleAction()->trigger();
     dockBottom->addDockWidgetAsTab(dock);
     dockBottom->toggleAction()->trigger();
-    
+
     if (!previousFocusedName.isEmpty() && previousFocusedName != dockBeingAddedName && dockBottomGroup) {
         QTimer::singleShot(100, [previousFocusedName, dockBeingAddedName]() {
             if (KDDockWidgets::DockRegistry::self()) {
                 auto* currentFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
-                
-                if (currentFocused && currentFocused->uniqueName() == dockBeingAddedName) {
+
+                if (currentFocused && currentFocused->uniqueName() == dockBeingAddedName)
                     return;
-                }
-                
-                if (currentFocused && currentFocused->uniqueName() != previousFocusedName && 
-                    currentFocused->uniqueName() != dockBeingAddedName) {
+
+                if (currentFocused && currentFocused->uniqueName() != previousFocusedName && currentFocused->uniqueName() != dockBeingAddedName)
                     return;
-                }
-                
+
                 auto* coreDw = KDDockWidgets::DockRegistry::self()->dockByName(previousFocusedName);
-                if (coreDw && !coreDw->isCurrentTab()) {
+                if (coreDw && !coreDw->isCurrentTab())
                     coreDw->setAsCurrentTab();
-                }
             }
         });
     }

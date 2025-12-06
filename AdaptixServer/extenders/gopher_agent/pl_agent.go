@@ -381,28 +381,14 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 	switch command {
 
 	case "cat":
-		taskData.Type = TYPE_JOB
-		
 		path, ok := args["path"].(string)
 		if !ok {
 			err = errors.New("parameter 'path' must be set")
 			goto RET
 		}
 
-		r := make([]byte, 4)
-		_, _ = rand.Read(r)
-		taskId := binary.BigEndian.Uint32(r)
-		taskData.TaskId = fmt.Sprintf("%08x", taskId)
-
-		if agent.Os == OS_WINDOWS {
-			cmdArgs := []string{"/c", fmt.Sprintf("type %s", path)}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "C:\\Windows\\System32\\cmd.exe", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		} else {
-			cmdArgs := []string{path}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "/bin/cat", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		}
+		packerData, _ := msgpack.Marshal(ParamsCat{Path: path})
+		cmd = Command{Code: COMMAND_CAT, Data: packerData}
 
 	case "cd":
 		path, ok := args["path"].(string)
@@ -512,28 +498,13 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 		cmd = Command{Code: COMMAND_KILL, Data: packerData}
 
 	case "ls":
-		taskData.Type = TYPE_JOB
-		
 		dir, ok := args["directory"].(string)
 		if !ok {
 			err = errors.New("parameter 'directory' must be set")
 			goto RET
 		}
-
-		r := make([]byte, 4)
-		_, _ = rand.Read(r)
-		taskId := binary.BigEndian.Uint32(r)
-		taskData.TaskId = fmt.Sprintf("%08x", taskId)
-
-		if agent.Os == OS_WINDOWS {
-			cmdArgs := []string{"/c", fmt.Sprintf("dir %s", dir)}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "C:\\Windows\\System32\\cmd.exe", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		} else {
-			cmdArgs := []string{"-la", dir}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "/bin/ls", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		}
+		packerData, _ := msgpack.Marshal(ParamsLs{Path: dir})
+		cmd = Command{Code: COMMAND_LS, Data: packerData}
 
 	case "mv":
 		src, ok := args["src"].(string)
@@ -561,39 +532,10 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 		cmd = Command{Code: COMMAND_MKDIR, Data: packerData}
 
 	case "ps":
-		taskData.Type = TYPE_JOB
-		
-		r := make([]byte, 4)
-		_, _ = rand.Read(r)
-		taskId := binary.BigEndian.Uint32(r)
-		taskData.TaskId = fmt.Sprintf("%08x", taskId)
-
-		if agent.Os == OS_WINDOWS {
-			cmdArgs := []string{"/c", "tasklist"}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "C:\\Windows\\System32\\cmd.exe", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		} else {
-			cmdArgs := []string{"-ef"}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "/bin/ps", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		}
+		cmd = Command{Code: COMMAND_PS, Data: nil}
 
 	case "pwd":
-		taskData.Type = TYPE_JOB
-		
-		r := make([]byte, 4)
-		_, _ = rand.Read(r)
-		taskId := binary.BigEndian.Uint32(r)
-		taskData.TaskId = fmt.Sprintf("%08x", taskId)
-
-		if agent.Os == OS_WINDOWS {
-			cmdArgs := []string{"/c", "cd"}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "C:\\Windows\\System32\\cmd.exe", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		} else {
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "/bin/pwd", Args: []string{}, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
-		}
+		cmd = Command{Code: COMMAND_PWD, Data: nil}
 
 	case "rev2self":
 		cmd = Command{Code: COMMAND_REV2SELF, Data: nil}
@@ -630,27 +572,20 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 		cmd = Command{Code: COMMAND_RUN, Data: packerData}
 
 	case "shell":
-		taskData.Type = TYPE_JOB
-		
 		cmdParam, ok := args["cmd"].(string)
 		if !ok {
 			err = errors.New("parameter 'cmd' must be set")
 			goto RET
 		}
 
-		r := make([]byte, 4)
-		_, _ = rand.Read(r)
-		taskId := binary.BigEndian.Uint32(r)
-		taskData.TaskId = fmt.Sprintf("%08x", taskId)
-
 		if agent.Os == OS_WINDOWS {
 			cmdArgs := []string{"/c", cmdParam}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "C:\\Windows\\System32\\cmd.exe", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
+			packerData, _ := msgpack.Marshal(ParamsShell{Program: "C:\\Windows\\System32\\cmd.exe", Args: cmdArgs})
+			cmd = Command{Code: COMMAND_SHELL, Data: packerData}
 		} else {
 			cmdArgs := []string{"-c", cmdParam}
-			packerData, _ := msgpack.Marshal(ParamsRun{Program: "/bin/sh", Args: cmdArgs, Task: taskData.TaskId})
-			cmd = Command{Code: COMMAND_RUN, Data: packerData}
+			packerData, _ := msgpack.Marshal(ParamsShell{Program: "/bin/sh", Args: cmdArgs})
+			cmd = Command{Code: COMMAND_SHELL, Data: packerData}
 		}
 
 	case "screenshot":

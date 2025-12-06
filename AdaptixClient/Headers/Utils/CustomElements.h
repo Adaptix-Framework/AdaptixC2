@@ -109,11 +109,11 @@ protected:
 class TextEditConsole : public QTextEdit {
 Q_OBJECT
     QTextCursor cachedCursor;
-    int  maxLines    = 150000;
+    int  maxLines    = 50000;
     bool autoScroll  = false;
     bool noWrap      = true;
-    int  appendCount = 0;
-    
+    int appendCount  = 0;
+
     QString pendingText;
     QTimer* batchTimer = nullptr;
     QMutex* batchMutex = nullptr;
@@ -123,12 +123,12 @@ Q_OBJECT
     void trimExcessLines();
     void createContextMenu(const QPoint &pos);
     void setBufferSize(int size);
-    
+
 private Q_SLOTS:
     void flushPendingText();
 
 public:
-    explicit TextEditConsole(QWidget* parent = nullptr, int maxLines = 150000, bool noWrap = true, bool autoScroll = false);
+    explicit TextEditConsole(QWidget* parent = nullptr, int maxLines = 50000, bool noWrap = true, bool autoScroll = false);
 
     void appendPlain(const QString& text);
     void appendFormatted(const QString& text, const std::function<void(QTextCharFormat&)> &styleFn);

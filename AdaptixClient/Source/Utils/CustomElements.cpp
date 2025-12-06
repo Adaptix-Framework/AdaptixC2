@@ -1,9 +1,9 @@
-#include <Utils/CustomElements.h>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QTimer>
-#include <Utils/NonBlockingDialogs.h>
 #include <QTextBlock>
+#include <Utils/CustomElements.h>
+#include <Utils/NonBlockingDialogs.h>
 
 SpinTable::SpinTable(int rows, int columns, QWidget* parent)
 {
@@ -103,7 +103,7 @@ TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, boo
 
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &TextEditConsole::customContextMenuRequested, this, &TextEditConsole::createContextMenu);
-    
+
     batchMutex = new QMutex();
     batchTimer = new QTimer(this);
     batchTimer->setSingleShot(true);
@@ -134,7 +134,7 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
     QAction *setBufferSizeAction = menu->addAction("Set buffer size...");
     connect(setBufferSizeAction, &QAction::triggered, this, [this]() {
         bool ok;
-        int newSize = QInputDialog::getInt(this, "Set buffer size", "Enter maximum number of lines:", maxLines, 100, 1000000, 100, &ok);
+        int newSize = QInputDialog::getInt(this, "Set buffer size", "Enter maximum number of lines:", maxLines, 100, 100000, 100, &ok);
         if (ok)
             setBufferSize(newSize);
     });
@@ -187,7 +187,7 @@ void TextEditConsole::appendPlain(const QString& text)
 {
     QMutexLocker locker(batchMutex);
     pendingText += text;
-    
+
     if (pendingText.size() >= MAX_BATCH_SIZE) {
         locker.unlock();
         flushPendingText();
@@ -199,23 +199,22 @@ void TextEditConsole::appendPlain(const QString& text)
 void TextEditConsole::flushPendingText()
 {
     QMutexLocker locker(batchMutex);
-    if (pendingText.isEmpty()) {
+    if (pendingText.isEmpty())
         return;
-    }
-    
+
     QString textToAppend = pendingText;
     pendingText.clear();
     locker.unlock();
-    
+
     bool atBottom = verticalScrollBar()->value() == verticalScrollBar()->maximum();
-    
+
     cachedCursor.movePosition(QTextCursor::End);
     cachedCursor.insertText(textToAppend, QTextCharFormat());
-    
+
     auto doc = this->document();
     int currentLines = doc->blockCount();
     int trimThreshold = static_cast<int>(maxLines * 1.5);
-    
+
     if (currentLines > trimThreshold) {
         trimExcessLines();
         appendCount = 0;
@@ -234,7 +233,7 @@ void TextEditConsole::flushPendingText()
 void TextEditConsole::appendFormatted(const QString& text, const std::function<void(QTextCharFormat&)> &styleFn)
 {
     flushPendingText();
-    
+
     bool atBottom = verticalScrollBar()->value() == verticalScrollBar()->maximum();
 
     cachedCursor.movePosition(QTextCursor::End);
@@ -246,7 +245,7 @@ void TextEditConsole::appendFormatted(const QString& text, const std::function<v
     auto doc = this->document();
     int currentLines = doc->blockCount();
     int trimThreshold = static_cast<int>(maxLines * 1.5);
-    
+
     if (currentLines > trimThreshold) {
         trimExcessLines();
         appendCount = 0;
@@ -288,21 +287,20 @@ void TextEditConsole::appendColorUnderline(const QString &text, const QColor col
 void TextEditConsole::trimExcessLines() {
     auto doc = this->document();
     int blockCount = doc->blockCount();
-    if (blockCount <= maxLines) {
+    if (blockCount <= maxLines)
         return;
-    }
-    
+
     int linesToRemove = blockCount - maxLines;
-    
+
     QTextCursor c(doc);
     c.movePosition(QTextCursor::Start);
-    
+
     QTextBlock keepFromBlock = doc->findBlockByNumber(maxLines);
     if (keepFromBlock.isValid()) {
         c.movePosition(QTextCursor::Start);
         c.setPosition(keepFromBlock.position(), QTextCursor::KeepAnchor);
         c.removeSelectedText();
-        
+
         doc = this->document();
         if (doc->blockCount() > maxLines) {
             static int recursionDepth = 0;
@@ -315,16 +313,17 @@ void TextEditConsole::trimExcessLines() {
     } else {
         while (doc->blockCount() > maxLines && linesToRemove > 0) {
             QTextBlock block = doc->firstBlock();
-            if (!block.isValid()) break;
+            if (!block.isValid())
+                break;
+
             QTextCursor c(block);
             c.select(QTextCursor::BlockUnderCursor);
             c.removeSelectedText();
             c.deleteChar();
             linesToRemove--;
-            
-            if (linesToRemove > 5000) {
+
+            if (linesToRemove > 5000)
                 break;
-            }
         }
     }
 }

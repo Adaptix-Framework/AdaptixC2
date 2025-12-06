@@ -118,7 +118,7 @@ void DialogSettings::createUI()
 
     consoleSizeLabel = new QLabel("Buffer size (lines):", consoleGroup);
     consoleSizeSpin  = new QSpinBox(consoleGroup);
-    consoleSizeSpin->setMinimum(1);
+    consoleSizeSpin->setMinimum(10000);
     consoleSizeSpin->setMaximum(1000000);
 
     consoleTimeCheckbox = new QCheckBox("Print date and time", consoleGroup);

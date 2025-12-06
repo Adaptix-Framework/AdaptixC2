@@ -155,6 +155,14 @@ func taskCat(paramsData []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	if fileInfo.Size() > 0x100000 {
+		return nil, fmt.Errorf("file size exceeds 1 Mb (use download)")
+	}
+
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -863,17 +871,17 @@ func jobRun(paramsData []byte) ([]byte, error) {
 
 		done := make(chan struct{})
 		var lastOutLen, lastErrLen int
-		const maxChunkSize = 64 * 1024
+		const maxChunkSize = 0x10000 // 65 Kb
 		go func() {
-			ticker := time.NewTicker(100 * time.Millisecond)
+			ticker := time.NewTicker(1 * time.Second)
 			defer ticker.Stop()
 			for {
 				select {
 				case <-done:
 					return
+
 				case <-ticker.C:
 					ansRun := utils.AnsRun{Pid: pid}
-
 					stdoutMu.Lock()
 					out := stdoutBuf.String()
 					stdoutMu.Unlock()

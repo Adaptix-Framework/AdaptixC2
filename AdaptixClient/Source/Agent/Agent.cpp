@@ -65,14 +65,11 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     else
         this->commander = new Commander();
 
-    this->Console = new ConsoleWidget(adaptixWidget, this, this->commander);
-    this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
-
-    this->FileBrowser = new BrowserFilesWidget(adaptixWidget, this);
-
+    this->FileBrowser    = new BrowserFilesWidget(adaptixWidget, this);
     this->ProcessBrowser = new BrowserProcessWidget(adaptixWidget, this);
-
-    this->Terminal = new TerminalWidget(this, adaptixWidget);
+    this->Terminal       = new TerminalWidget(this, adaptixWidget);
+    this->Console        = new ConsoleWidget(adaptixWidget, this, this->commander);
+    this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
 }
 
 Agent::~Agent() = default;

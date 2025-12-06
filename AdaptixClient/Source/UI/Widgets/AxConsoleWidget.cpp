@@ -80,7 +80,7 @@ void AxConsoleWidget::createUI()
     searchLayout->addWidget(hideButton);
     searchLayout->addSpacerItem(spacer);
 
-    OutputTextEdit = new TextEditConsole(this, 30000, true, true);
+    OutputTextEdit = new TextEditConsole(this, 50000, true, true);
     OutputTextEdit->setReadOnly(true);
     OutputTextEdit->setProperty( "TextEditStyle", "console" );
     OutputTextEdit->setFont( FontManager::instance().getFont("Hack") );
