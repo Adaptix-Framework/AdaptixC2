@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/aes"
@@ -154,14 +153,6 @@ func taskCat(paramsData []byte) ([]byte, error) {
 	path, err := functions.NormalizePath(params.Path)
 	if err != nil {
 		return nil, err
-	}
-
-	fileInfo, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-	if fileInfo.Size() > 10*1024 {
-		return nil, fmt.Errorf("file size exceeds 10 KB")
 	}
 
 	content, err := os.ReadFile(path)
@@ -745,8 +736,6 @@ func jobRun(paramsData []byte) ([]byte, error) {
 	var stderrMu sync.Mutex
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
-	stdoutScanner := bufio.NewScanner(stdoutPipe)
-	stderrScanner := bufio.NewScanner(stderrPipe)
 
 	err = cmd.Start()
 	if err != nil {
@@ -837,48 +826,80 @@ func jobRun(paramsData []byte) ([]byte, error) {
 
 		go func() {
 			defer wg.Done()
-			for stdoutScanner.Scan() {
-				stdoutMu.Lock()
-				stdoutBuf.WriteString(stdoutScanner.Text() + "\n")
-				stdoutMu.Unlock()
+			buf := make([]byte, 2*1024)
+			for {
+				n, err := stdoutPipe.Read(buf)
+				if n > 0 {
+					stdoutMu.Lock()
+					stdoutBuf.Write(buf[:n])
+					stdoutMu.Unlock()
+				}
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					break
+				}
 			}
 		}()
 		go func() {
 			defer wg.Done()
-			for stderrScanner.Scan() {
-				stderrMu.Lock()
-				stderrBuf.WriteString(stderrScanner.Text() + "\n")
-				stderrMu.Unlock()
+			buf := make([]byte, 2*1024)
+			for {
+				n, err := stderrPipe.Read(buf)
+				if n > 0 {
+					stderrMu.Lock()
+					stderrBuf.Write(buf[:n])
+					stderrMu.Unlock()
+				}
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					break
+				}
 			}
 		}()
 
 		done := make(chan struct{})
 		var lastOutLen, lastErrLen int
+		const maxChunkSize = 64 * 1024
 		go func() {
-			ticker := time.NewTicker(5 * time.Second)
+			ticker := time.NewTicker(100 * time.Millisecond)
 			defer ticker.Stop()
 			for {
 				select {
 				case <-done:
 					return
 				case <-ticker.C:
-
 					ansRun := utils.AnsRun{Pid: pid}
 
 					stdoutMu.Lock()
 					out := stdoutBuf.String()
 					stdoutMu.Unlock()
 					if len(out) > lastOutLen {
-						ansRun.Stdout = out[lastOutLen:]
-						lastOutLen = len(out)
+						chunk := out[lastOutLen:]
+						if len(chunk) > maxChunkSize {
+							ansRun.Stdout = chunk[:maxChunkSize]
+							lastOutLen += maxChunkSize
+						} else {
+							ansRun.Stdout = chunk
+							lastOutLen = len(out)
+						}
 					}
 
 					stderrMu.Lock()
 					errOut := stderrBuf.String()
 					stderrMu.Unlock()
 					if len(errOut) > lastErrLen {
-						ansRun.Stderr = errOut[lastErrLen:]
-						lastErrLen = len(errOut)
+						chunk := errOut[lastErrLen:]
+						if len(chunk) > maxChunkSize {
+							ansRun.Stderr = chunk[:maxChunkSize]
+							lastErrLen += maxChunkSize
+						} else {
+							ansRun.Stderr = chunk
+							lastErrLen = len(errOut)
+						}
 					}
 
 					if len(ansRun.Stdout) > 0 || len(ansRun.Stderr) > 0 {
@@ -903,22 +924,61 @@ func jobRun(paramsData []byte) ([]byte, error) {
 		wg.Wait()
 		close(done)
 
-		ansRun := utils.AnsRun{Pid: pid}
-		if out := stdoutBuf.String(); len(out) > lastOutLen {
-			ansRun.Stdout = out[lastOutLen:]
+		stdoutMu.Lock()
+		finalOut := stdoutBuf.String()
+		stdoutMu.Unlock()
+		stderrMu.Lock()
+		finalErrOut := stderrBuf.String()
+		stderrMu.Unlock()
+
+		for {
+			ansRun := utils.AnsRun{Pid: pid}
+			hasMore := false
+
+			if len(finalOut) > lastOutLen {
+				chunk := finalOut[lastOutLen:]
+				if len(chunk) > maxChunkSize {
+					ansRun.Stdout = chunk[:maxChunkSize]
+					lastOutLen += maxChunkSize
+					hasMore = true
+				} else {
+					ansRun.Stdout = chunk
+					lastOutLen = len(finalOut)
+				}
+			}
+
+			if len(finalErrOut) > lastErrLen {
+				chunk := finalErrOut[lastErrLen:]
+				if len(chunk) > maxChunkSize {
+					ansRun.Stderr = chunk[:maxChunkSize]
+					lastErrLen += maxChunkSize
+					hasMore = true
+				} else {
+					ansRun.Stderr = chunk
+					lastErrLen = len(finalErrOut)
+				}
+			}
+
+			if len(ansRun.Stdout) > 0 || len(ansRun.Stderr) > 0 {
+				job.Data, _ = msgpack.Marshal(ansRun)
+				packedJob, _ = msgpack.Marshal(job)
+				message = utils.Message{
+					Type:   2,
+					Object: [][]byte{packedJob},
+				}
+				sendData, _ = msgpack.Marshal(message)
+				sendData, _ = utils.EncryptData(sendData, utils.SKey)
+				functions.SendMsg(conn, sendData)
+
+				if hasMore {
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+
+			if !hasMore {
+				break
+			}
 		}
-		if errOut := stderrBuf.String(); len(errOut) > lastErrLen {
-			ansRun.Stderr = errOut[lastErrLen:]
-		}
-		job.Data, _ = msgpack.Marshal(ansRun)
-		packedJob, _ = msgpack.Marshal(job)
-		message = utils.Message{
-			Type:   2,
-			Object: [][]byte{packedJob},
-		}
-		sendData, _ = msgpack.Marshal(message)
-		sendData, _ = utils.EncryptData(sendData, utils.SKey)
-		functions.SendMsg(conn, sendData)
 
 		/// FINISH
 

@@ -1,4 +1,5 @@
 #include <QJSEngine>
+#include <QTimer>
 #include <Agent/Agent.h>
 #include <Workers/LastTickWorker.h>
 #include <Workers/WebSocketWorker.h>
@@ -26,6 +27,7 @@
 #include <Client/TunnelEndpoint.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxCommandWrappers.h>
+#include <kddockwidgets/core/DockRegistry.h>
 
 AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
@@ -307,10 +309,47 @@ void AdaptixWidget::AddDockBottom(const KDDockWidgets::QtWidgets::DockWidget* do
 
 void AdaptixWidget::PlaceDockBottom(KDDockWidgets::QtWidgets::DockWidget* dock) const
 {
+    if (dock->isOpen()) {
+        dock->setAsCurrentTab();
+        return;
+    }
+    
+    QString previousFocusedName;
+    QString dockBeingAddedName = dock->uniqueName();
+    KDDockWidgets::Core::Group* dockBottomGroup = dockBottom->group();
+    
+    if (KDDockWidgets::DockRegistry::self() && dockBottomGroup) {
+        auto* previousFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
+        if (previousFocused) {
+            previousFocusedName = previousFocused->uniqueName();
+        }
+    }
+    
     dockBottom->toggleAction()->trigger();
     dockBottom->addDockWidgetAsTab(dock);
-    dock->toggleAction()->trigger();
     dockBottom->toggleAction()->trigger();
+    
+    if (!previousFocusedName.isEmpty() && previousFocusedName != dockBeingAddedName && dockBottomGroup) {
+        QTimer::singleShot(100, [previousFocusedName, dockBeingAddedName]() {
+            if (KDDockWidgets::DockRegistry::self()) {
+                auto* currentFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
+                
+                if (currentFocused && currentFocused->uniqueName() == dockBeingAddedName) {
+                    return;
+                }
+                
+                if (currentFocused && currentFocused->uniqueName() != previousFocusedName && 
+                    currentFocused->uniqueName() != dockBeingAddedName) {
+                    return;
+                }
+                
+                auto* coreDw = KDDockWidgets::DockRegistry::self()->dockByName(previousFocusedName);
+                if (coreDw && !coreDw->isCurrentTab()) {
+                    coreDw->setAsCurrentTab();
+                }
+            }
+        });
+    }
 }
 
 bool AdaptixWidget::AddExtension(ExtensionFile* ext)
@@ -635,7 +674,7 @@ void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
 
     auto agent = AgentsMap[AgentId];
     if (agent && agent->Console) {
-        this->AddDockBottom( AgentsMap[AgentId]->Console->dock() );
+        this->PlaceDockBottom( AgentsMap[AgentId]->Console->dock() );
         AgentsMap[AgentId]->Console->InputFocus();
     }
 
@@ -650,7 +689,7 @@ void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
 
     auto agent = AgentsMap[AgentId];
     if (agent && agent->FileBrowser)
-        this->AddDockBottom( AgentsMap[AgentId]->FileBrowser->dock() );
+        this->PlaceDockBottom( AgentsMap[AgentId]->FileBrowser->dock() );
 }
 
 void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
@@ -660,7 +699,7 @@ void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
 
     auto agent = AgentsMap[AgentId];
     if (agent && agent->ProcessBrowser)
-        this->AddDockBottom( AgentsMap[AgentId]->ProcessBrowser->dock() );
+        this->PlaceDockBottom( AgentsMap[AgentId]->ProcessBrowser->dock() );
 
 }
 
@@ -671,7 +710,7 @@ void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
 
     auto agent = AgentsMap[AgentId];
     if (agent && agent->Terminal)
-        this->AddDockBottom( AgentsMap[AgentId]->Terminal->dock() );
+        this->PlaceDockBottom( AgentsMap[AgentId]->Terminal->dock() );
 }
 
 void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd)
