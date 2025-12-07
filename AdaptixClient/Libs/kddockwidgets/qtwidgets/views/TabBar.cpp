@@ -23,8 +23,17 @@
 #include "kddockwidgets/core/DockRegistry.h"
 
 #include <QMouseEvent>
+#include <QKeyEvent>
+#include <QWheelEvent>
+#include <QScrollBar>
+#include <QAbstractButton>
+#include <QToolButton>
 #include <QApplication>
+#include <QTimer>
 #include <QProxyStyle>
+#include <QColor>
+#include <QPalette>
+#include <QTabWidget>
 
 using namespace KDDockWidgets;
 using namespace KDDockWidgets::QtWidgets;
@@ -75,6 +84,10 @@ public:
 
     Core::TabBar *const m_controller;
     KDBindings::ScopedConnection m_currentDockWidgetChangedConnection;
+    int wheelDeltaAccumulator = 0;
+    int scrollOffset = 0;
+    int targetScrollOffset = 0;
+    QTimer *scrollAnimationTimer = nullptr;
 };
 
 }
@@ -86,6 +99,14 @@ TabBar::TabBar(Core::TabBar *controller, QWidget *parent)
 {
     setShape(Config::self().tabsAtBottom() ? QTabBar::RoundedSouth : QTabBar::RoundedNorth);
     setStyle(proxyStyle());
+    
+    setUsesScrollButtons(true);
+    setExpanding(false);
+    setElideMode(Qt::ElideNone);
+    
+    d->scrollAnimationTimer = new QTimer(this);
+    d->scrollAnimationTimer->setInterval(16);
+    connect(d->scrollAnimationTimer, &QTimer::timeout, this, &TabBar::performSmoothScroll);
 }
 
 TabBar::~TabBar()
@@ -102,6 +123,11 @@ void TabBar::init()
 
     d->m_currentDockWidgetChangedConnection = d->m_controller->dptr()->currentDockWidgetChanged.connect([this](KDDockWidgets::Core::DockWidget *dw) {
         Q_EMIT currentDockWidgetChanged(dw);
+    });
+    
+    // Update scroll buttons background color
+    QTimer::singleShot(0, this, [this]() {
+        updateScrollButtonsColors();
     });
 }
 
@@ -129,6 +155,109 @@ void TabBar::mouseDoubleClickEvent(QMouseEvent *e)
     e->setAccepted(d->m_controller->onMouseDoubleClick(e->pos()));
 }
 
+void TabBar::keyPressEvent(QKeyEvent *e)
+{
+    if (e->key() == Qt::Key_Left || e->key() == Qt::Key_Right) {
+        if (count() > 0 && usesScrollButtons()) {
+            QAbstractButton *scrollLeftBtn = nullptr;
+            QAbstractButton *scrollRightBtn = nullptr;
+            
+            const auto children = findChildren<QAbstractButton *>();
+            for (QAbstractButton *btn : children) {
+                if (btn->isVisible()) {
+                    QRect btnRect = btn->geometry();
+                    QRect tabBarRect = rect();
+                    
+                    if (btnRect.left() < tabBarRect.width() / 2) {
+                        scrollLeftBtn = btn;
+                    } else {
+                        scrollRightBtn = btn;
+                    }
+                }
+            }
+            
+            if (e->key() == Qt::Key_Left && scrollLeftBtn && scrollLeftBtn->isEnabled()) {
+                scrollLeftBtn->click();
+                e->accept();
+                return;
+            } else if (e->key() == Qt::Key_Right && scrollRightBtn && scrollRightBtn->isEnabled()) {
+                scrollRightBtn->click();
+                e->accept();
+                return;
+            }
+            
+            const int scrollStep = 50;
+            if (e->key() == Qt::Key_Left) {
+                scroll(-scrollStep, 0);
+            } else {
+                scroll(scrollStep, 0);
+            }
+            e->accept();
+            return;
+        }
+    }
+    
+    QTabBar::keyPressEvent(e);
+}
+
+void TabBar::wheelEvent(QWheelEvent *e)
+{
+    int delta = e->angleDelta().y();
+    if (delta == 0) {
+        delta = -e->angleDelta().x();
+    }
+    
+    if (delta == 0) {
+        QTabBar::wheelEvent(e);
+        return;
+    }
+    
+    const int scrollAmount = delta / 8;
+    d->targetScrollOffset += scrollAmount;
+    
+    if (!d->scrollAnimationTimer->isActive()) {
+        d->scrollAnimationTimer->start();
+    }
+    
+    e->accept();
+}
+
+void TabBar::performSmoothScroll()
+{
+    const int diff = d->targetScrollOffset - d->scrollOffset;
+    
+    if (qAbs(diff) < 2) {
+        d->scrollOffset = d->targetScrollOffset;
+        d->scrollAnimationTimer->stop();
+        return;
+    }
+    
+    const int step = diff / 4;
+    const int actualStep = (step == 0) ? (diff > 0 ? 1 : -1) : step;
+    d->scrollOffset += actualStep;
+    
+    QList<QToolButton *> scrollButtons = findChildren<QToolButton *>();
+    QToolButton *leftButton = nullptr;
+    QToolButton *rightButton = nullptr;
+    
+    for (QToolButton *btn : scrollButtons) {
+        if (btn->arrowType() == Qt::LeftArrow) {
+            leftButton = btn;
+        } else if (btn->arrowType() == Qt::RightArrow) {
+            rightButton = btn;
+        }
+    }
+    
+    if (actualStep > 0 && leftButton && leftButton->isEnabled()) {
+        leftButton->click();
+    } else if (actualStep < 0 && rightButton && rightButton->isEnabled()) {
+        rightButton->click();
+    } else {
+        d->targetScrollOffset = d->scrollOffset;
+        d->scrollAnimationTimer->stop();
+    }
+}
+
 bool TabBar::event(QEvent *ev)
 {
     // Qt has a bug in QWidgetPrivate::deepestFocusProxy(), it doesn't honour visibility
@@ -148,6 +277,11 @@ bool TabBar::event(QEvent *ev)
         parent->setFocusProxy(this);
     } else if (ev->type() == QEvent::Hide) {
         parent->setFocusProxy(nullptr);
+    } else if (ev->type() == QEvent::PaletteChange || ev->type() == QEvent::StyleChange) {
+        // Update scroll buttons background color when theme changes
+        QTimer::singleShot(0, this, [this]() {
+            updateScrollButtonsColors();
+        });
     }
 
     return result;
@@ -185,6 +319,66 @@ void TabBar::tabRemoved(int index)
 void TabBar::setCurrentIndex(int index)
 {
     QTabBar::setCurrentIndex(index);
+}
+
+void TabBar::updateScrollButtonsColors()
+{
+    const auto allButtons = findChildren<QAbstractButton *>();
+    QList<QAbstractButton *> scrollButtons;
+    for (QAbstractButton *btn : allButtons) {
+        if (auto toolBtn = qobject_cast<QToolButton *>(btn)) {
+            if (toolBtn->arrowType() != Qt::NoArrow) {
+                scrollButtons.append(btn);
+            }
+        }
+    }
+    
+    QColor backgroundColor;
+    
+    QTabWidget *tabWidget = this->tabWidget();
+    if (tabWidget) {
+        QPalette tabWidgetPal = tabWidget->palette();
+        backgroundColor = tabWidgetPal.color(QPalette::Base);
+    }
+    
+    if (!backgroundColor.isValid()) {
+        QPalette tabBarPal = this->palette();
+        backgroundColor = tabBarPal.color(QPalette::Window);
+    }
+    
+    if (!backgroundColor.isValid()) {
+        QWidget *parent = this->parentWidget();
+        if (parent) {
+            QWidget *titleBar = parent->findChild<QWidget *>(QStringLiteral("KDDWTitleBar"));
+            if (!titleBar) {
+                QWidget *topLevel = QWidget::window();
+                if (topLevel) {
+                    titleBar = topLevel->findChild<QWidget *>(QStringLiteral("KDDWTitleBar"), Qt::FindChildrenRecursively);
+                }
+            }
+            if (titleBar) {
+                QPalette titleBarPal = titleBar->palette();
+                backgroundColor = titleBarPal.color(QPalette::Window);
+            }
+        }
+    }
+    
+    if (!backgroundColor.isValid()) {
+        QPalette appPal = QApplication::palette();
+        backgroundColor = appPal.color(QPalette::Window);
+    }
+    
+    for (QAbstractButton *btn : scrollButtons) {
+        btn->setAutoFillBackground(true);
+        QPalette btnPal = btn->palette();
+        btnPal.setColor(QPalette::Button, backgroundColor);
+        btnPal.setColor(QPalette::Window, backgroundColor);
+        btn->setPalette(btnPal);
+        btn->setAttribute(Qt::WA_TranslucentBackground, false);
+        btn->setAttribute(Qt::WA_OpaquePaintEvent, true);
+        QString colorStr = QString("rgb(%1, %2, %3)").arg(backgroundColor.red()).arg(backgroundColor.green()).arg(backgroundColor.blue());
+        btn->setStyleSheet(QString("background: %1; background-color: %1; border: none; border-top: 1px solid #808080;").arg(colorStr));
+    }
 }
 
 QTabWidget *TabBar::tabWidget() const
@@ -234,9 +428,6 @@ void TabBar::Private::onTabMoved(int from, int to)
     if (from == to || m_controller->isMovingTab())
         return;
 
-    // !m_controller->isMovingTab() means the move was initiated by Qt
-    // for example the user is reordering tabs with mouse
-    // We need to tell the controller we got a new order.
     m_controller->dptr()->moveTabTo(from, to);
 }
 
