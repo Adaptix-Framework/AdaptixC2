@@ -43,7 +43,7 @@ public:
 
     void SetUpdatesEnabled(bool enabled);
 
-     void AddLogs( int type, qint64 time, const QString &Message) const;
+     void AddLogs( int type, qint64 time, const QString &Message);
      void Clear() const;
 
 public Q_SLOTS:

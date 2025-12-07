@@ -198,7 +198,7 @@ void ConsoleWidget::SetInput(const QString &command) { InputLineEdit->setText(co
 
 void ConsoleWidget::Clear() { OutputTextEdit->clear(); }
 
-void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &taskId, const int type, const QString &message, const QString &text, const bool completed ) const
+void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &taskId, const int type, const QString &message, const QString &text, const bool completed )
 {
     QString promptTime = "";
     if (GlobalClient->settings->data.ConsoleTime)

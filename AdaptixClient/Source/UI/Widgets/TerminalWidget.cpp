@@ -372,4 +372,6 @@ void TerminalWidget::onProgramChanged()
 
 void TerminalWidget::onKeytabChanged() { termWidget->setKeyBindings(keytabComboBox->currentText()); }
 
-void TerminalWidget::recvDataFromSocket(const QByteArray &msg) { this->termWidget->recvData(msg.constData(), msg.size()); }
+void TerminalWidget::recvDataFromSocket(const QByteArray &msg) {
+    this->termWidget->recvData(msg.constData(), msg.size());
+}

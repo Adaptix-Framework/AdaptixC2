@@ -104,7 +104,7 @@ void ChatWidget::handleChat()
     chatInput->clear();
 }
 
-void ChatWidget::AddChatMessage(const qint64 time, const QString &username, const QString &message ) const
+void ChatWidget::AddChatMessage(const qint64 time, const QString &username, const QString &message )
 {
     chatTextEdit->appendColor(UnixTimestampGlobalToStringLocal(time), QColor(COLOR_Gray));
     chatTextEdit->appendPlain(" [");

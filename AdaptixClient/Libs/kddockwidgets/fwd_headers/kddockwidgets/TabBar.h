@@ -18,12 +18,17 @@
 #include <kddockwidgets/core/views/TabBarViewInterface.h>
 
 #include <QTabBar>
+#include <QSet>
+#include <QTimer>
+#include <QColor>
+#include <QProxyStyle>
 
 QT_BEGIN_NAMESPACE
 class QMouseEvent;
 class QTabWidget;
 class QKeyEvent;
 class QWheelEvent;
+class QPaintEvent;
 QT_END_NAMESPACE
 
 namespace KDDockWidgets::Core {
@@ -32,6 +37,18 @@ class DockWidget;
 }
 
 namespace KDDockWidgets::QtWidgets {
+
+class TabBar; 
+
+class TabBarProxyStyle : public QProxyStyle
+{
+public:
+    explicit TabBarProxyStyle(TabBar* tabBar);
+    void drawControl(ControlElement element, const QStyleOption *option,
+                     QPainter *painter, const QWidget *widget) const override;
+private:
+    TabBar* m_tabBar;
+};
 
 class DOCKS_EXPORT TabBar : public View<QTabBar>, public Core::TabBarViewInterface
 {
@@ -57,11 +74,22 @@ public:
     QTabWidget *tabWidget() const;
     void setTabsAreMovable(bool) override;
 
+    void setTabHighlighted(int index, bool highlighted);
+    
+    bool isTabHighlighted(int index) const;
+    
+    void clearAllHighlights();
+    
+    QColor currentHighlightColor() const;
+    
+    int tabIndexFromRect(const QRect& rect) const;
+
 Q_SIGNALS:
     void dockWidgetInserted(int index);
     void dockWidgetRemoved(int index);
     void countChanged();
     void currentDockWidgetChanged(KDDockWidgets::Core::DockWidget *);
+    void tabHighlightChanged(int index, bool highlighted);
 
 protected:
     void init() final;
@@ -73,9 +101,12 @@ protected:
     bool event(QEvent *) override;
     void tabInserted(int index) override;
     void tabRemoved(int index) override;
+    void paintEvent(QPaintEvent *) override;
 
 private:
     void updateScrollButtonsColors();
+    void startBlinkTimer();
+    void stopBlinkTimer();
     
 private Q_SLOTS:
     void performSmoothScroll();
@@ -83,6 +114,11 @@ private Q_SLOTS:
 private:
     class Private;
     Private *const d;
+    
+    QSet<int> m_highlightedTabs;
+    QTimer* m_blinkTimer = nullptr;
+    bool m_blinkState = false;
+    QColor m_highlightColor1{"#FF6600"};  // Heat orange highlight color
 };
 
 }
