@@ -193,6 +193,7 @@ void MainAdaptix::SetApplicationTheme() const
 
     auto flags = KDDockWidgets::Config::self().flags();
     flags |= KDDockWidgets::Config::Flag_TabsHaveCloseButton;
+    flags |= KDDockWidgets::Config::Flag_HideTitleBarWhenTabsVisible;
     flags |= KDDockWidgets::Config::Flag_ShowButtonsOnTabBarIfTitleBarHidden;
     flags |= KDDockWidgets::Config::Flag_AllowSwitchingTabsViaMenu;
     flags |= KDDockWidgets::Config::Flag_AllowReorderTabs;
