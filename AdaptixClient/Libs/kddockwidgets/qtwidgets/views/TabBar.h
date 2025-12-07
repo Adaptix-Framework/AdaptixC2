@@ -22,6 +22,8 @@
 QT_BEGIN_NAMESPACE
 class QMouseEvent;
 class QTabWidget;
+class QKeyEvent;
+class QWheelEvent;
 QT_END_NAMESPACE
 
 namespace KDDockWidgets::Core {
@@ -66,10 +68,18 @@ protected:
     void mousePressEvent(QMouseEvent *) override;
     void mouseMoveEvent(QMouseEvent *e) override;
     void mouseDoubleClickEvent(QMouseEvent *e) override;
+    void keyPressEvent(QKeyEvent *e) override;
+    void wheelEvent(QWheelEvent *e) override;
     bool event(QEvent *) override;
     void tabInserted(int index) override;
     void tabRemoved(int index) override;
 
+private:
+    void updateScrollButtonsColors();
+    
+private Q_SLOTS:
+    void performSmoothScroll();
+    
 private:
     class Private;
     Private *const d;
