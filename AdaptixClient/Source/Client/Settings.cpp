@@ -9,8 +9,6 @@ Settings::Settings(MainAdaptix* m)
 
     this->SetDefault();
     this->LoadFromDB();
-
-    dialogSettings = new DialogSettings(this);
 }
 
 Settings::~Settings() = default;
@@ -18,6 +16,14 @@ Settings::~Settings() = default;
 MainAdaptix* Settings::getMainAdaptix()
 {
     return this->mainAdaptix;
+}
+
+DialogSettings* Settings::getDialogSettings()
+{
+    if (!dialogSettings) {
+        dialogSettings = new DialogSettings(this);
+    }
+    return dialogSettings;
 }
 
 void Settings::SetDefault()
@@ -42,6 +48,8 @@ void Settings::SetDefault()
 
     for ( int i = 0; i < 11; i++)
         data.TasksTableColumns[i] = true;
+
+    this->data.TabNotificationsEnabled = true;
 }
 
 void Settings::LoadFromDB()
@@ -51,6 +59,7 @@ void Settings::LoadFromDB()
     mainAdaptix->storage->SelectSettingsSessions( &data );
     mainAdaptix->storage->SelectSettingsGraph( &data );
     mainAdaptix->storage->SelectSettingsTasks( &data );
+    mainAdaptix->storage->SelectSettingsNotifications( &data );
 }
 
 void Settings::SaveToDB() const
@@ -60,4 +69,5 @@ void Settings::SaveToDB() const
     mainAdaptix->storage->UpdateSettingsSessions( data );
     mainAdaptix->storage->UpdateSettingsGraph( data );
     mainAdaptix->storage->UpdateSettingsTasks( data );
+    mainAdaptix->storage->UpdateSettingsNotifications( data );
 }

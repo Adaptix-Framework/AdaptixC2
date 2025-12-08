@@ -20,6 +20,13 @@
 #include <QTimer>
 #include <QScrollBar>
 #include <QSet>
+#include <MainAdaptix.h>
+#include <Client/Settings.h>
+#include <typeinfo>
+#include <cstdlib>
+#ifdef __GNUC__
+#include <cxxabi.h>
+#endif
 
 /**
  * @brief Base class for all dock widgets with tab blinking support on updates.
@@ -53,6 +60,7 @@ class DockTab : public QWidget {
 Q_OBJECT
 protected:
     KDDockWidgets::QtWidgets::DockWidget* dockWidget;
+    mutable QString m_cachedClassName;
     bool m_autoNotifyEnabled = true;
     QTimer* m_debounceTimer = nullptr;
     
@@ -60,6 +68,20 @@ protected:
     int m_newTextPosition = -1;
     QSet<QAbstractItemView*> m_trackedViews;
     QSet<QAbstractScrollArea*> m_trackedTextEdits;
+    
+    QString getClassName() const {
+        if (!m_cachedClassName.isEmpty())
+            return m_cachedClassName;
+#ifdef __GNUC__
+        int status;
+        char* demangled = abi::__cxa_demangle(typeid(*this).name(), nullptr, nullptr, &status);
+        m_cachedClassName = (status == 0 && demangled) ? QString(demangled) : QString(typeid(*this).name());
+        free(demangled);
+#else
+        m_cachedClassName = QString(typeid(*this).name());
+#endif
+        return m_cachedClassName;
+    }
 
 public:
     DockTab(const QString &tabName, const QString &projectName, const QString &icon = "") {
@@ -78,12 +100,20 @@ public:
 
     KDDockWidgets::QtWidgets::DockWidget* dock() { return this->dockWidget; };
 
-    /// Enable/disable automatic notification for this widget
     void setAutoNotifyEnabled(bool enabled) { m_autoNotifyEnabled = enabled; }
-    /// Check if automatic notification is enabled
     bool isAutoNotifyEnabled() const { return m_autoNotifyEnabled; }
 
     void notifyNewContent() {
+        if (GlobalClient && GlobalClient->settings) {
+            auto& data = GlobalClient->settings->data;
+            if (!data.TabNotificationsEnabled)
+                return;
+            
+            QString className = getClassName();
+            if (data.NotifyWidgets.contains(className) && !data.NotifyWidgets[className])
+                return;
+        }
+        
         auto* coreDw = dockWidget->dockWidget();
         if (!coreDw) return;
         

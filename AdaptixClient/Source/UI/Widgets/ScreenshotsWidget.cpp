@@ -1,9 +1,12 @@
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/WidgetRegistry.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
+
+REGISTER_DOCK_WIDGET(ScreenshotsWidget, "Screenshots")
 
 ImageFrame::ImageFrame(QWidget* parent) : QWidget(parent), label(new QLabel), scrollArea(new QScrollArea(this)), ctrlPressed(false), scaleFactor(1.0)
 {

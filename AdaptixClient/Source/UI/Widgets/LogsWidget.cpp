@@ -1,7 +1,10 @@
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/WidgetRegistry.h>
 #include <Client/AuthProfile.h>
 #include <Utils/Convert.h>
+
+REGISTER_DOCK_WIDGET(LogsWidget, "Logs")
 
 LogsWidget::LogsWidget(AdaptixWidget* w) : DockTab("Logs", w->GetProfile()->GetProject(), ":/icons/logs")
 {

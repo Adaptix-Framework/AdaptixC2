@@ -4,8 +4,11 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/WidgetRegistry.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
+
+REGISTER_DOCK_WIDGET(BrowserFilesWidget, "Browser Files")
 
 void BrowserFileData::CreateBrowserFileData(const QString &path, const int os)
 {

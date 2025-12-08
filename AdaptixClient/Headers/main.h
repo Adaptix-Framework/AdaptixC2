@@ -201,6 +201,9 @@ typedef struct SettingsData {
     int    HealthOffset;
 
     bool TasksTableColumns[11];
+
+    bool TabNotificationsEnabled;
+    QMap<QString, bool> NotifyWidgets;  // className -> enabled
 } SettingsData;
 
 typedef struct AxUI

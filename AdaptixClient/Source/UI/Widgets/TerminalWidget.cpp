@@ -4,10 +4,13 @@
 #include <UI/Dialogs/DialogSaveTask.h>
 #include <UI/Widgets/TerminalWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/WidgetRegistry.h>
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
 #include <MainAdaptix.h>
+
+REGISTER_DOCK_WIDGET(TerminalWidget, "Terminal")
 
 TerminalWidget::TerminalWidget(Agent* a, AdaptixWidget* w) : DockTab(QString("Terminal [%1]").arg(a->data.Id), w->GetProfile()->GetProject())
 {

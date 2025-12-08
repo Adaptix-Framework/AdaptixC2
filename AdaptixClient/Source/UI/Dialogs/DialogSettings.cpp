@@ -1,35 +1,17 @@
 #include <UI/MainUI.h>
 #include <UI/Dialogs/DialogSettings.h>
+#include <UI/Widgets/WidgetRegistry.h>
 #include <MainAdaptix.h>
 #include <Client/Settings.h>
 #include <Utils/TitleBarStyle.h>
+#include <QShowEvent>
+#include <algorithm>
 
 DialogSettings::DialogSettings(Settings* s)
 {
     settings = s;
 
     this->createUI();
-
-    themeCombo->setCurrentText(s->data.MainTheme);
-    fontFamilyCombo->setCurrentText(s->data.FontFamily);
-    fontSizeSpin->setValue(s->data.FontSize);
-    graphCombo1->setCurrentText(s->data.GraphVersion);
-    terminalSizeSpin->setValue(s->data.RemoteTerminalBufferSize);
-
-    consoleSizeSpin->setValue(s->data.ConsoleBufferSize);
-    consoleTimeCheckbox->setChecked(s->data.ConsoleTime);
-    consoleNoWrapCheckbox->setChecked(s->data.ConsoleNoWrap);
-    consoleAutoScrollCheckbox->setChecked(s->data.ConsoleAutoScroll);
-
-    for ( int i = 0; i < 15; i++)
-        sessionsCheck[i]->setChecked(s->data.SessionsTableColumns[i]);
-
-    sessionsHealthCheck->setChecked(s->data.CheckHealth);
-    sessionsCoafSpin->setValue(s->data.HealthCoaf);
-    sessionsOffsetSpin->setValue(s->data.HealthOffset);
-
-    for ( int i = 0; i < 11; i++)
-        tasksCheck[i]->setChecked(s->data.TasksTableColumns[i]);
 
     connect(themeCombo,         &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
     connect(fontFamilyCombo,    &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
@@ -60,6 +42,19 @@ DialogSettings::DialogSettings(Settings* s)
     }
 
     connect(graphCombo1, &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    connect(notificationsEnabledCheckbox, &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+#else
+    connect(notificationsEnabledCheckbox, &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+#endif
+    for (auto* check : m_widgetChecks) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+        connect(check, &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+#else
+        connect(check, &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+#endif
+    }
 
     for ( int i = 0; i < 11; i++) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
@@ -244,11 +239,53 @@ void DialogSettings::createUI()
     tasksWidget->setLayout(tasksLayout);
 
 
+    notificationsWidget = new QWidget(this);
+    notificationsLayout = new QGridLayout(notificationsWidget);
+    
+    notificationsEnabledCheckbox = new QCheckBox("Enable tab notifications", notificationsWidget);
+    
+    QLabel* notificationsDescription = new QLabel(
+        "When enabled, inactive tabs will blink when new content arrives.\n"
+        "The notification clears when you scroll to see the new content.",
+        notificationsWidget);
+    notificationsDescription->setWordWrap(true);
+    notificationsDescription->setStyleSheet("color: gray; margin-top: 10px;");
+    
+    notificationsGroup = new QGroupBox("Widgets", notificationsWidget);
+    notificationsGroupLayout = new QGridLayout(notificationsGroup);
+    notificationsGroupLayout->setContentsMargins(15, 15, 15, 15);
+    notificationsGroupLayout->setHorizontalSpacing(40);
+    notificationsGroupLayout->setVerticalSpacing(12);
+    
+    auto widgetsList = WidgetRegistry::instance().widgets();
+    std::sort(widgetsList.begin(), widgetsList.end(), 
+        [](const auto& a, const auto& b) { return a.displayName < b.displayName; });
+    
+    // Dynamically create checkboxes from registry
+    int row = 0, col = 0;
+    for (const auto& info : widgetsList) {
+        auto* check = new QCheckBox(info.displayName, notificationsGroup);
+        notificationsGroupLayout->addWidget(check, row, col);
+        m_widgetChecks[info.className] = check;
+        
+        col++;
+        if (col > 1) { col = 0; row++; }
+    }
+    notificationsGroup->setLayout(notificationsGroupLayout);
+    
+    notificationsLayout->addWidget(notificationsEnabledCheckbox, 0, 0, 1, 1);
+    notificationsLayout->addWidget(notificationsDescription, 1, 0, 1, 1);
+    notificationsLayout->addWidget(notificationsGroup, 2, 0, 1, 1);
+    notificationsLayout->setRowStretch(3, 1);
+    notificationsWidget->setLayout(notificationsLayout);
+
+
     listSettings = new QListWidget(this);
     listSettings->setFixedWidth(150);
     listSettings->addItem("Main settings");
     listSettings->addItem("Sessions table");
     listSettings->addItem("Tasks table");
+    listSettings->addItem("Notifications");
     listSettings->setCurrentRow(0);
 
     labelHeader = new QLabel(this);
@@ -276,6 +313,7 @@ void DialogSettings::createUI()
     stackSettings->addWidget(mainSettingWidget);
     stackSettings->addWidget(sessionsWidget);
     stackSettings->addWidget(tasksWidget);
+    stackSettings->addWidget(notificationsWidget);
 
     layoutMain = new QGridLayout(this);
     layoutMain->setContentsMargins(4, 4, 4, 4);
@@ -374,10 +412,56 @@ void DialogSettings::onApply() const
     if (updateTable)
         settings->getMainAdaptix()->mainUI->UpdateTasksTableColumns();
 
+    settings->data.TabNotificationsEnabled = notificationsEnabledCheckbox->isChecked();
+    
+    // Save widget notification settings
+    for (auto it = m_widgetChecks.begin(); it != m_widgetChecks.end(); ++it) {
+        settings->data.NotifyWidgets[it.key()] = it.value()->isChecked();
+    }
+
     settings->SaveToDB();
 }
 
 void DialogSettings::onClose()
 {
     this->close();
+}
+
+void DialogSettings::loadSettings()
+{
+    themeCombo->setCurrentText(settings->data.MainTheme);
+    fontFamilyCombo->setCurrentText(settings->data.FontFamily);
+    fontSizeSpin->setValue(settings->data.FontSize);
+    graphCombo1->setCurrentText(settings->data.GraphVersion);
+    terminalSizeSpin->setValue(settings->data.RemoteTerminalBufferSize);
+
+    consoleSizeSpin->setValue(settings->data.ConsoleBufferSize);
+    consoleTimeCheckbox->setChecked(settings->data.ConsoleTime);
+    consoleNoWrapCheckbox->setChecked(settings->data.ConsoleNoWrap);
+    consoleAutoScrollCheckbox->setChecked(settings->data.ConsoleAutoScroll);
+
+    for (int i = 0; i < 15; i++)
+        sessionsCheck[i]->setChecked(settings->data.SessionsTableColumns[i]);
+
+    sessionsHealthCheck->setChecked(settings->data.CheckHealth);
+    sessionsCoafSpin->setValue(settings->data.HealthCoaf);
+    sessionsOffsetSpin->setValue(settings->data.HealthOffset);
+
+    for (int i = 0; i < 11; i++)
+        tasksCheck[i]->setChecked(settings->data.TasksTableColumns[i]);
+
+    notificationsEnabledCheckbox->setChecked(settings->data.TabNotificationsEnabled);
+    
+    for (auto it = m_widgetChecks.begin(); it != m_widgetChecks.end(); ++it) {
+        bool enabled = !settings->data.NotifyWidgets.contains(it.key()) || settings->data.NotifyWidgets[it.key()];
+        it.value()->setChecked(enabled);
+    }
+    
+    buttonApply->setEnabled(false);
+}
+
+void DialogSettings::showEvent(QShowEvent* event)
+{
+    loadSettings();
+    QWidget::showEvent(event);
 }
