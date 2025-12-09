@@ -1,11 +1,14 @@
 #include <UI/Widgets/TargetsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/WidgetRegistry.h>
 #include <UI/Dialogs/DialogTarget.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
+
+REGISTER_DOCK_WIDGET(TargetsWidget, "Targets")
 
 TargetsWidget::TargetsWidget(AdaptixWidget* w) : DockTab("Targets", w->GetProfile()->GetProject(), ":/icons/devices"), adaptixWidget(w)
 {

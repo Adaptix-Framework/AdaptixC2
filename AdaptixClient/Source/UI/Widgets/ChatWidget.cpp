@@ -1,8 +1,11 @@
 #include <UI/Widgets/ChatWidget.h>
+#include <UI/Widgets/WidgetRegistry.h>
 #include <Utils/Convert.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
+
+REGISTER_DOCK_WIDGET(ChatWidget, "Chat")
 
 ChatWidget::ChatWidget(AdaptixWidget* w) : DockTab("Chat", w->GetProfile()->GetProject(), ":/icons/chat"), adaptixWidget(w)
 {
@@ -104,7 +107,7 @@ void ChatWidget::handleChat()
     chatInput->clear();
 }
 
-void ChatWidget::AddChatMessage(const qint64 time, const QString &username, const QString &message ) const
+void ChatWidget::AddChatMessage(const qint64 time, const QString &username, const QString &message )
 {
     chatTextEdit->appendColor(UnixTimestampGlobalToStringLocal(time), QColor(COLOR_Gray));
     chatTextEdit->appendPlain(" [");

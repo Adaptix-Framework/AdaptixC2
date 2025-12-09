@@ -172,4 +172,4 @@ void MainUI::onAxScriptConsole()
 
 void MainUI::onScriptManager() { GlobalClient->extender->dialogExtender->show(); }
 
-void MainUI::onSettings() { GlobalClient->settings->dialogSettings->show(); }
+void MainUI::onSettings() { GlobalClient->settings->getDialogSettings()->show(); }

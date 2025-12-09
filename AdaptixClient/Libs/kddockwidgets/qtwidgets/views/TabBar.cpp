@@ -34,6 +34,9 @@
 #include <QColor>
 #include <QPalette>
 #include <QTabWidget>
+#include <QPainter>
+#include <QPaintEvent>
+#include <QStyleOptionTab>
 
 using namespace KDDockWidgets;
 using namespace KDDockWidgets::QtWidgets;
@@ -54,11 +57,6 @@ public:
                   QStyleHintReturn *returnData = nullptr) const override
     {
         if (hint == QStyle::SH_Widget_Animation_Duration) {
-            // QTabBar has a bug which causes the paint event to dereference a tab which was already
-            // removed. Because, after the tab being removed, the d->pressedIndex is only reset
-            // after the animation ends. So disable the animation. Crash can be repro by enabling
-            // movable tabs, and detaching a tab quickly from a floating window containing two dock
-            // widgets. Reproduced on Windows
             return 0;
         }
         return baseStyle()->styleHint(hint, option, widget, returnData);
@@ -70,6 +68,49 @@ static MyProxy *proxyStyle()
 {
     static auto *proxy = new MyProxy;
     return proxy;
+}
+
+TabBarProxyStyle::TabBarProxyStyle(TabBar* tabBar)
+    : QProxyStyle()
+    , m_tabBar(tabBar)
+{
+    setBaseStyle(proxyStyle());
+}
+
+void TabBarProxyStyle::drawControl(ControlElement element, const QStyleOption *option,
+                                    QPainter *painter, const QWidget *widget) const
+{
+    if (element == CE_TabBarTabLabel && m_tabBar) {
+        const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab*>(option);
+        if (tab) {
+            int tabIndex = m_tabBar->tabIndexFromRect(tab->rect);
+            
+            if (tabIndex >= 0 && m_tabBar->isTabHighlighted(tabIndex) && tabIndex != m_tabBar->currentIndex()) {
+                QRect textRect = subElementRect(SE_TabBarTabText, tab, widget);
+                
+                if (!tab->icon.isNull()) {
+                    QRect iconRect = subElementRect(SE_TabBarTabLeftButton, tab, widget);
+                    if (!iconRect.isValid()) {
+                        int iconSize = proxy()->pixelMetric(PM_TabBarIconSize, tab, widget);
+                        iconRect = QRect(tab->rect.left() + 6, 
+                                        tab->rect.center().y() - iconSize/2, 
+                                        iconSize, iconSize);
+                    }
+                    tab->icon.paint(painter, iconRect);
+                }
+                
+                painter->save();
+                QColor highlightColor = m_tabBar->currentHighlightColor();
+                painter->setPen(highlightColor);
+                painter->setFont(m_tabBar->font());
+                painter->drawText(textRect, Qt::AlignCenter, tab->text);
+                painter->restore();
+                return;
+            }
+        }
+    }
+    
+    QProxyStyle::drawControl(element, option, painter, widget);
 }
 
 class QtWidgets::TabBar::Private
@@ -98,7 +139,8 @@ TabBar::TabBar(Core::TabBar *controller, QWidget *parent)
     , d(new Private(controller))
 {
     setShape(Config::self().tabsAtBottom() ? QTabBar::RoundedSouth : QTabBar::RoundedNorth);
-    setStyle(proxyStyle());
+    
+    setStyle(new TabBarProxyStyle(this));
     
     setUsesScrollButtons(true);
     setExpanding(false);
@@ -125,7 +167,13 @@ void TabBar::init()
         Q_EMIT currentDockWidgetChanged(dw);
     });
     
-    // Update scroll buttons background color
+    connect(this, &QTabBar::currentChanged, this, [this](int index) {
+        Q_UNUSED(index)
+        if (!m_highlightedTabs.isEmpty()) {
+            update();
+        }
+    });
+    
     QTimer::singleShot(0, this, [this]() {
         updateScrollButtonsColors();
     });
@@ -145,7 +193,6 @@ void TabBar::mousePressEvent(QMouseEvent *e)
 void TabBar::mouseMoveEvent(QMouseEvent *e)
 {
     if (count() > 1) {
-        // Only allow to re-order tabs if we have more than 1 tab, otherwise it's just weird.
         QTabBar::mouseMoveEvent(e);
     }
 }
@@ -260,17 +307,11 @@ void TabBar::performSmoothScroll()
 
 bool TabBar::event(QEvent *ev)
 {
-    // Qt has a bug in QWidgetPrivate::deepestFocusProxy(), it doesn't honour visibility
-    // of the focus scope. Once an hidden widget is focused the chain is broken and tab
-    // stops working (#180)
-
     auto parent = parentWidget();
     if (!parent) {
-        // NOLINTNEXTLINE(bugprone-parent-virtual-call)
         return QTabBar::event(ev);
     }
 
-    // NOLINTNEXTLINE(bugprone-parent-virtual-call)
     const bool result = QTabBar::event(ev);
 
     if (ev->type() == QEvent::Show) {
@@ -278,7 +319,6 @@ bool TabBar::event(QEvent *ev)
     } else if (ev->type() == QEvent::Hide) {
         parent->setFocusProxy(nullptr);
     } else if (ev->type() == QEvent::PaletteChange || ev->type() == QEvent::StyleChange) {
-        // Update scroll buttons background color when theme changes
         QTimer::singleShot(0, this, [this]() {
             updateScrollButtonsColors();
         });
@@ -305,6 +345,17 @@ void TabBar::moveTabTo(int from, int to)
 void TabBar::tabInserted(int index)
 {
     QTabBar::tabInserted(index);
+    
+    QSet<int> newHighlighted;
+    for (int i : m_highlightedTabs) {
+        if (i >= index) {
+            newHighlighted.insert(i + 1); 
+        } else {
+            newHighlighted.insert(i);
+        }
+    }
+    m_highlightedTabs = newHighlighted;
+    
     Q_EMIT dockWidgetInserted(index);
     Q_EMIT countChanged();
 }
@@ -312,6 +363,21 @@ void TabBar::tabInserted(int index)
 void TabBar::tabRemoved(int index)
 {
     QTabBar::tabRemoved(index);
+    
+    QSet<int> newHighlighted;
+    for (int i : m_highlightedTabs) {
+        if (i < index) {
+            newHighlighted.insert(i);
+        } else if (i > index) {
+            newHighlighted.insert(i - 1); 
+        }
+    }
+    m_highlightedTabs = newHighlighted;
+    
+    if (m_highlightedTabs.isEmpty()) {
+        stopBlinkTimer();
+    }
+    
     Q_EMIT dockWidgetRemoved(index);
     Q_EMIT countChanged();
 }
@@ -429,6 +495,114 @@ void TabBar::Private::onTabMoved(int from, int to)
         return;
 
     m_controller->dptr()->moveTabTo(from, to);
+}
+
+void TabBar::paintEvent(QPaintEvent *event)
+{
+    QTabBar::paintEvent(event);
+    
+    if (!m_highlightedTabs.isEmpty()) {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::TextAntialiasing);
+        
+        QColor textColor = currentHighlightColor();
+        painter.setPen(textColor);
+        painter.setFont(font());
+        
+        for (int index : m_highlightedTabs) {
+            if (index >= 0 && index < count() && index != currentIndex()) {
+                QStyleOptionTab opt;
+                initStyleOption(&opt, index);
+                
+                // Получаем точный rect текста
+                QRect textRect = style()->subElementRect(QStyle::SE_TabBarTabText, &opt, this);
+                
+                // Рисуем текст с мигающим цветом поверх старого
+                painter.drawText(textRect, Qt::AlignCenter, opt.text);
+            }
+        }
+    }
+}
+
+QColor TabBar::currentHighlightColor() const
+{
+    return m_blinkState ? QColor("#FF6600") : QColor("#FFAA44");
+}
+
+int TabBar::tabIndexFromRect(const QRect& rect) const
+{
+    for (int i = 0; i < count(); ++i) {
+        if (tabRect(i) == rect) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void TabBar::setTabHighlighted(int index, bool highlighted)
+{
+    if (index < 0 || index >= count())
+        return;
+    
+    bool wasHighlighted = m_highlightedTabs.contains(index);
+    if (wasHighlighted == highlighted)
+        return;
+    
+    if (highlighted) {
+        if (index == currentIndex())
+            return;
+            
+        m_highlightedTabs.insert(index);
+        
+        startBlinkTimer();
+    } else {
+        m_highlightedTabs.remove(index);
+        
+        if (m_highlightedTabs.isEmpty()) {
+            stopBlinkTimer();
+        }
+    }
+    
+    update();
+    Q_EMIT tabHighlightChanged(index, highlighted);
+}
+
+bool TabBar::isTabHighlighted(int index) const
+{
+    return m_highlightedTabs.contains(index);
+}
+
+void TabBar::clearAllHighlights()
+{
+    QSet<int> tabs = m_highlightedTabs;
+    for (int index : tabs) {
+        setTabHighlighted(index, false);
+    }
+}
+
+void TabBar::startBlinkTimer()
+{
+    if (!m_blinkTimer) {
+        m_blinkTimer = new QTimer(this);
+        m_blinkTimer->setInterval(600);
+        connect(m_blinkTimer, &QTimer::timeout, this, [this]() {
+            m_blinkState = !m_blinkState;
+            repaint();
+        });
+    }
+    
+    if (!m_blinkTimer->isActive()) {
+        m_blinkState = true;
+        m_blinkTimer->start();
+    }
+}
+
+void TabBar::stopBlinkTimer()
+{
+    if (m_blinkTimer && m_blinkTimer->isActive()) {
+        m_blinkTimer->stop();
+    }
+    m_blinkState = false;
 }
 
 #include "TabBar.moc"

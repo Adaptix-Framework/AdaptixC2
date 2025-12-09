@@ -6,6 +6,7 @@
 #include <UI/Widgets/TerminalWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/TasksWidget.h>
+#include <UI/Widgets/WidgetRegistry.h>
 #include <UI/Dialogs/DialogTunnel.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/Requestor.h>
@@ -13,6 +14,8 @@
 #include <Client/TunnelEndpoint.h>
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
+
+REGISTER_DOCK_WIDGET(SessionsTableWidget, "Sessions")
 
 SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions table", w->GetProfile()->GetProject(), ":/icons/format_list")
 {

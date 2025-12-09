@@ -1,5 +1,7 @@
 #include <Client/Storage.h>
 #include <Client/AuthProfile.h>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 Storage::Storage()
 {
@@ -145,6 +147,15 @@ void Storage::checkDatabase()
     );
     if ( !querySettingsTasks.exec() )
         LogError("Table SettingsTasks not created: %s\n", querySettingsTasks.lastError().text().toStdString().c_str());
+
+    auto querySettingsNotifications = QSqlQuery();
+    querySettingsNotifications.prepare("CREATE TABLE IF NOT EXISTS SettingsNotifications ( "
+                            "id INTEGER, "
+                            "TabNotificationsEnabled BOOLEAN, "
+                            "NotifyWidgetsJson TEXT );"
+    );
+    if ( !querySettingsNotifications.exec() )
+        LogError("Table SettingsNotifications not created: %s\n", querySettingsNotifications.lastError().text().toStdString().c_str());
 }
 
 /// PROJECTS
@@ -647,6 +658,79 @@ void Storage::UpdateSettingsTasks(const SettingsData &settingsData)
 
         if ( !insertQuery.exec() ) {
             LogError("The sessions settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
+        }
+    }
+}
+
+void Storage::SelectSettingsNotifications(SettingsData* settingsData)
+{
+    QSqlQuery existsQuery;
+    existsQuery.prepare("SELECT 1 FROM SettingsNotifications WHERE Id = 1 LIMIT 1;");
+    if (!existsQuery.exec()) {
+        LogError("Failed to existsQuery notifications setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
+        return;
+    }
+    bool exists = existsQuery.next();
+
+    if(exists) {
+        QSqlQuery selectQuery;
+        selectQuery.prepare("SELECT TabNotificationsEnabled, NotifyWidgetsJson FROM SettingsNotifications WHERE Id = 1;");
+        if (selectQuery.exec() && selectQuery.next()) {
+            settingsData->TabNotificationsEnabled = selectQuery.value(0).toBool();
+            
+            QString jsonStr = selectQuery.value(1).toString();
+            if (!jsonStr.isEmpty()) {
+                QJsonDocument doc = QJsonDocument::fromJson(jsonStr.toUtf8());
+                QJsonObject json = doc.object();
+                for (auto it = json.begin(); it != json.end(); ++it) {
+                    settingsData->NotifyWidgets[it.key()] = it.value().toBool();
+                }
+            }
+        } else {
+            LogError("Failed to selectQuery notifications settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
+        }
+    }
+}
+
+void Storage::UpdateSettingsNotifications(const SettingsData &settingsData)
+{
+    QSqlQuery existsQuery;
+    existsQuery.prepare("SELECT 1 FROM SettingsNotifications WHERE Id = 1 LIMIT 1;");
+    if (!existsQuery.exec()) {
+        LogError("Failed to existsQuery notifications setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
+        return;
+    }
+    bool exists = existsQuery.next();
+
+    // Serialize NotifyWidgets to JSON
+    QJsonObject json;
+    for (auto it = settingsData.NotifyWidgets.begin(); it != settingsData.NotifyWidgets.end(); ++it) {
+        json[it.key()] = it.value();
+    }
+    QString jsonStr = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    if(exists) {
+        QSqlQuery updateQuery;
+        updateQuery.prepare("UPDATE SettingsNotifications SET "
+                            "TabNotificationsEnabled = :TabNotificationsEnabled, "
+                            "NotifyWidgetsJson = :NotifyWidgetsJson "
+                            "WHERE Id = 1;");
+        updateQuery.bindValue(":TabNotificationsEnabled", settingsData.TabNotificationsEnabled);
+        updateQuery.bindValue(":NotifyWidgetsJson", jsonStr);
+        if ( !updateQuery.exec() ) {
+            LogError("SettingsNotifications not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
+        }
+    }
+    else {
+        QSqlQuery insertQuery;
+        insertQuery.prepare("INSERT INTO SettingsNotifications (Id, TabNotificationsEnabled, NotifyWidgetsJson) "
+                            "VALUES (:Id, :TabNotificationsEnabled, :NotifyWidgetsJson);");
+        insertQuery.bindValue(":Id", 1);
+        insertQuery.bindValue(":TabNotificationsEnabled", settingsData.TabNotificationsEnabled);
+        insertQuery.bindValue(":NotifyWidgetsJson", jsonStr);
+
+        if ( !insertQuery.exec() ) {
+            LogError("The notifications settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
         }
     }
 }

@@ -1,12 +1,15 @@
 #include <Agent/Agent.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/WidgetRegistry.h>
 #include <UI/Dialogs/DialogUploader.h>
 #include <Client/Requestor.h>
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
 #include <Utils/FontManager.h>
 #include <MainAdaptix.h>
+
+REGISTER_DOCK_WIDGET(ConsoleWidget, "Agent Console")
 
 ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTab(QString("Console [%1]").arg( a->data.Id ), w->GetProfile()->GetProject())
 {
@@ -198,7 +201,7 @@ void ConsoleWidget::SetInput(const QString &command) { InputLineEdit->setText(co
 
 void ConsoleWidget::Clear() { OutputTextEdit->clear(); }
 
-void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &taskId, const int type, const QString &message, const QString &text, const bool completed ) const
+void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &taskId, const int type, const QString &message, const QString &text, const bool completed )
 {
     QString promptTime = "";
     if (GlobalClient->settings->data.ConsoleTime)
