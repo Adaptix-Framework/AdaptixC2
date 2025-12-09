@@ -49,7 +49,7 @@ void Settings::SetDefault()
     for ( int i = 0; i < 11; i++)
         data.TasksTableColumns[i] = true;
 
-    this->data.TabNotificationsEnabled = true;
+    this->data.TabBlinkEnabled = true;
 }
 
 void Settings::LoadFromDB()
@@ -59,7 +59,7 @@ void Settings::LoadFromDB()
     mainAdaptix->storage->SelectSettingsSessions( &data );
     mainAdaptix->storage->SelectSettingsGraph( &data );
     mainAdaptix->storage->SelectSettingsTasks( &data );
-    mainAdaptix->storage->SelectSettingsNotifications( &data );
+    mainAdaptix->storage->SelectSettingsTabBlink( &data );
 }
 
 void Settings::SaveToDB() const
@@ -69,5 +69,5 @@ void Settings::SaveToDB() const
     mainAdaptix->storage->UpdateSettingsSessions( data );
     mainAdaptix->storage->UpdateSettingsGraph( data );
     mainAdaptix->storage->UpdateSettingsTasks( data );
-    mainAdaptix->storage->UpdateSettingsNotifications( data );
+    mainAdaptix->storage->UpdateSettingsTabBlink( data );
 }

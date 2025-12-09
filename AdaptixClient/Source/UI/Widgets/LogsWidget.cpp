@@ -1,10 +1,10 @@
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <UI/Widgets/WidgetRegistry.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/AuthProfile.h>
 #include <Utils/Convert.h>
 
-REGISTER_DOCK_WIDGET(LogsWidget, "Logs")
+REGISTER_DOCK_WIDGET(LogsWidget, "Logs", true)
 
 LogsWidget::LogsWidget(AdaptixWidget* w) : DockTab("Logs", w->GetProfile()->GetProject(), ":/icons/logs")
 {
@@ -160,7 +160,7 @@ void LogsWidget::highlightCurrent() const
     searchLabel->setText(QString("%1 of %2").arg(currentIndex + 1).arg(sels.size()));
 }
 
-void LogsWidget::AddLogs(const int type, const qint64 time, const QString &message )
+void LogsWidget::AddLogs(const int type, const qint64 time, const QString &message)
 {
     QString sTime = UnixTimestampGlobalToStringLocal(time);
     QString logTime = QString("[%1] -> ").arg(sTime);

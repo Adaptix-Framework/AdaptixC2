@@ -60,15 +60,15 @@ Q_OBJECT
     QGridLayout* tasksGroupLayout = nullptr;
     QCheckBox*   tasksCheck[11];
 
-    QWidget*     notificationsWidget           = nullptr;
-    QGridLayout* notificationsLayout           = nullptr;
-    QCheckBox*   notificationsEnabledCheckbox  = nullptr;
-    QGroupBox*   notificationsGroup            = nullptr;
-    QGridLayout* notificationsGroupLayout      = nullptr;
-    QMap<QString, QCheckBox*> m_widgetChecks;  // className -> checkbox
+    QWidget*     tabblinkWidget          = nullptr;
+    QGridLayout* tabblinkLayout          = nullptr;
+    QCheckBox*   tabblinkEnabledCheckbox = nullptr;
+    QGroupBox*   tabblinkGroup           = nullptr;
+    QGridLayout* tabblinkGroupLayout     = nullptr;
+    QMap<QString, QCheckBox*> m_tabblinkChecks;  // className -> checkbox
 
-void createUI();
-void loadSettings();
+    void createUI();
+    void loadSettings();
 
 protected:
     void showEvent(QShowEvent* event) override;
@@ -79,6 +79,7 @@ public:
 public Q_SLOTS:
     void onStackChange(int index) const;
     void onHealthChange() const;
+    void onBlinkChange() const;
     void onApply() const;
     void onClose();
 };

@@ -47,8 +47,8 @@ public:
     static void SelectSettingsTasks(SettingsData* settingsData);
     static void UpdateSettingsTasks(const SettingsData &settingsData);
 
-    static void SelectSettingsNotifications(SettingsData* settingsData);
-    static void UpdateSettingsNotifications(const SettingsData &settingsData);
+    static void SelectSettingsTabBlink(SettingsData* settingsData);
+    static void UpdateSettingsTabBlink(const SettingsData &settingsData);
 };
 
 #endif

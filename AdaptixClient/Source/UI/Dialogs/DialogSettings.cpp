@@ -1,6 +1,6 @@
 #include <UI/MainUI.h>
 #include <UI/Dialogs/DialogSettings.h>
-#include <UI/Widgets/WidgetRegistry.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <MainAdaptix.h>
 #include <Client/Settings.h>
 #include <Utils/TitleBarStyle.h>
@@ -44,11 +44,12 @@ DialogSettings::DialogSettings(Settings* s)
     connect(graphCombo1, &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    connect(notificationsEnabledCheckbox, &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+    connect(tabblinkEnabledCheckbox, &QCheckBox::checkStateChanged, this, &DialogSettings::onBlinkChange );
 #else
-    connect(notificationsEnabledCheckbox, &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+    connect(tabblinkEnabledCheckbox, &QCheckBox::stateChanged, this, &DialogSettings::onBlinkChange );
 #endif
-    for (auto* check : m_widgetChecks) {
+
+    for (auto* check : m_tabblinkChecks) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
         connect(check, &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
 #else
@@ -116,8 +117,8 @@ void DialogSettings::createUI()
     consoleSizeSpin->setMinimum(10000);
     consoleSizeSpin->setMaximum(1000000);
 
-    consoleTimeCheckbox = new QCheckBox("Print date and time", consoleGroup);
-    consoleNoWrapCheckbox = new QCheckBox("No Wrap mode", consoleGroup);
+    consoleTimeCheckbox       = new QCheckBox("Print date and time", consoleGroup);
+    consoleNoWrapCheckbox     = new QCheckBox("No Wrap mode", consoleGroup);
     consoleAutoScrollCheckbox = new QCheckBox("Auto Scroll mode", consoleGroup);
 
     consoleGroupLayout = new QGridLayout(consoleGroup);
@@ -141,7 +142,6 @@ void DialogSettings::createUI()
     mainSettingLayout->addWidget(consoleGroup,      5, 0, 1, 2);
 
     mainSettingWidget->setLayout(mainSettingLayout);
-
 
     sessionsWidget = new QWidget(this);
     sessionsLayout = new QGridLayout(sessionsWidget);
@@ -238,54 +238,45 @@ void DialogSettings::createUI()
     tasksLayout->addWidget(tasksGroup, 0, 0, 1, 1);
     tasksWidget->setLayout(tasksLayout);
 
+    tabblinkWidget = new QWidget(this);
+    tabblinkEnabledCheckbox = new QCheckBox("Enable tab blink", tabblinkWidget);
 
-    notificationsWidget = new QWidget(this);
-    notificationsLayout = new QGridLayout(notificationsWidget);
-    
-    notificationsEnabledCheckbox = new QCheckBox("Enable tab notifications", notificationsWidget);
-    
-    QLabel* notificationsDescription = new QLabel(
-        "When enabled, inactive tabs will blink when new content arrives.\n"
-        "The notification clears when you scroll to see the new content.",
-        notificationsWidget);
-    notificationsDescription->setWordWrap(true);
-    notificationsDescription->setStyleSheet("color: gray; margin-top: 10px;");
-    
-    notificationsGroup = new QGroupBox("Widgets", notificationsWidget);
-    notificationsGroupLayout = new QGridLayout(notificationsGroup);
-    notificationsGroupLayout->setContentsMargins(15, 15, 15, 15);
-    notificationsGroupLayout->setHorizontalSpacing(40);
-    notificationsGroupLayout->setVerticalSpacing(12);
-    
+    tabblinkGroup = new QGroupBox("Blinking tabs", tabblinkWidget);
+    tabblinkGroupLayout = new QGridLayout(tabblinkGroup);
+    tabblinkGroupLayout->setContentsMargins(15, 15, 15, 15);
+    tabblinkGroupLayout->setHorizontalSpacing(40);
+    tabblinkGroupLayout->setVerticalSpacing(12);
+
     auto widgetsList = WidgetRegistry::instance().widgets();
-    std::sort(widgetsList.begin(), widgetsList.end(), 
-        [](const auto& a, const auto& b) { return a.displayName < b.displayName; });
-    
+    std::sort(widgetsList.begin(), widgetsList.end(), [](const auto& a, const auto& b) { return a.displayName < b.displayName; });
+
     // Dynamically create checkboxes from registry
     int row = 0, col = 0;
     for (const auto& info : widgetsList) {
-        auto* check = new QCheckBox(info.displayName, notificationsGroup);
-        notificationsGroupLayout->addWidget(check, row, col);
-        m_widgetChecks[info.className] = check;
-        
+        auto* check = new QCheckBox(info.displayName, tabblinkGroup);
+        check->setChecked(info.defaultState);
+        tabblinkGroupLayout->addWidget(check, row, col);
+        m_tabblinkChecks[info.className] = check;
+
         col++;
         if (col > 1) { col = 0; row++; }
     }
-    notificationsGroup->setLayout(notificationsGroupLayout);
-    
-    notificationsLayout->addWidget(notificationsEnabledCheckbox, 0, 0, 1, 1);
-    notificationsLayout->addWidget(notificationsDescription, 1, 0, 1, 1);
-    notificationsLayout->addWidget(notificationsGroup, 2, 0, 1, 1);
-    notificationsLayout->setRowStretch(3, 1);
-    notificationsWidget->setLayout(notificationsLayout);
+    tabblinkGroup->setLayout(tabblinkGroupLayout);
 
+    tabblinkLayout = new QGridLayout(tabblinkWidget);
+    tabblinkLayout->addWidget(tabblinkEnabledCheckbox, 0, 0, 1, 1);
+    tabblinkLayout->addWidget(tabblinkGroup,           1, 0, 1, 1);
+    tabblinkLayout->setRowStretch(3, 1);
+
+    tabblinkWidget->setLayout(tabblinkLayout);
 
     listSettings = new QListWidget(this);
     listSettings->setFixedWidth(150);
+    listSettings->setSpacing(3);
     listSettings->addItem("Main settings");
     listSettings->addItem("Sessions table");
     listSettings->addItem("Tasks table");
-    listSettings->addItem("Notifications");
+    listSettings->addItem("Blinking tabs");
     listSettings->setCurrentRow(0);
 
     labelHeader = new QLabel(this);
@@ -313,11 +304,11 @@ void DialogSettings::createUI()
     stackSettings->addWidget(mainSettingWidget);
     stackSettings->addWidget(sessionsWidget);
     stackSettings->addWidget(tasksWidget);
-    stackSettings->addWidget(notificationsWidget);
+    stackSettings->addWidget(tabblinkWidget);
 
     layoutMain = new QGridLayout(this);
     layoutMain->setContentsMargins(4, 4, 4, 4);
-    layoutMain->addWidget(listSettings, 0, 0, 2, 1);
+    layoutMain->addWidget(listSettings, 0, 0, 3, 1);
     layoutMain->addLayout(headerLayout, 0, 1, 1, 3);
     layoutMain->addWidget(stackSettings, 1, 1, 1, 3);
     layoutMain->addItem(hSpacer, 2, 1, 1, 1);
@@ -325,6 +316,14 @@ void DialogSettings::createUI()
     layoutMain->addWidget(buttonClose, 2, 3, 1, 1);
 
     this->setLayout(layoutMain);
+
+    int buttonWidth = buttonApply->width();
+    buttonApply->setFixedWidth(buttonWidth);
+    buttonClose->setFixedWidth(buttonWidth);
+
+    int buttonHeight = buttonClose->height();
+    buttonApply->setFixedHeight(buttonHeight);
+    buttonClose->setFixedHeight(buttonHeight);
 }
 
 void DialogSettings::onStackChange(int index) const
@@ -343,6 +342,13 @@ void DialogSettings::onHealthChange() const
     sessionsLabel3->setEnabled(active);
     sessionsCoafSpin->setEnabled(active);
     sessionsOffsetSpin->setEnabled(active);
+}
+
+void DialogSettings::onBlinkChange() const
+{
+    buttonApply->setEnabled(true);
+    bool active = tabblinkEnabledCheckbox->isChecked();
+    tabblinkGroup->setEnabled(active);
 }
 
 void DialogSettings::onApply() const
@@ -412,12 +418,8 @@ void DialogSettings::onApply() const
     if (updateTable)
         settings->getMainAdaptix()->mainUI->UpdateTasksTableColumns();
 
-    settings->data.TabNotificationsEnabled = notificationsEnabledCheckbox->isChecked();
-    
-    // Save widget notification settings
-    for (auto it = m_widgetChecks.begin(); it != m_widgetChecks.end(); ++it) {
-        settings->data.NotifyWidgets[it.key()] = it.value()->isChecked();
-    }
+    for (auto it = m_tabblinkChecks.begin(); it != m_tabblinkChecks.end(); ++it)
+        settings->data.BlinkWidgets[it.key()] = it.value()->isChecked();
 
     settings->SaveToDB();
 }
@@ -450,13 +452,15 @@ void DialogSettings::loadSettings()
     for (int i = 0; i < 11; i++)
         tasksCheck[i]->setChecked(settings->data.TasksTableColumns[i]);
 
-    notificationsEnabledCheckbox->setChecked(settings->data.TabNotificationsEnabled);
-    
-    for (auto it = m_widgetChecks.begin(); it != m_widgetChecks.end(); ++it) {
-        bool enabled = !settings->data.NotifyWidgets.contains(it.key()) || settings->data.NotifyWidgets[it.key()];
-        it.value()->setChecked(enabled);
+    tabblinkEnabledCheckbox->setChecked(settings->data.TabBlinkEnabled);
+
+    for (auto it = m_tabblinkChecks.begin(); it != m_tabblinkChecks.end(); ++it) {
+        if ( settings->data.BlinkWidgets.contains(it.key()) ) {
+            bool enabled = settings->data.BlinkWidgets[it.key()];
+            it.value()->setChecked(enabled);
+        }
     }
-    
+
     buttonApply->setEnabled(false);
 }
 

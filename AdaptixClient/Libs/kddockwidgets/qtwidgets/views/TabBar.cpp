@@ -52,9 +52,7 @@ public:
         setParent(qApp);
     }
 
-    int styleHint(QStyle::StyleHint hint, const QStyleOption *option = nullptr,
-                  const QWidget *widget = nullptr,
-                  QStyleHintReturn *returnData = nullptr) const override
+    int styleHint(QStyle::StyleHint hint, const QStyleOption *option = nullptr, const QWidget *widget = nullptr, QStyleHintReturn *returnData = nullptr) const override
     {
         if (hint == QStyle::SH_Widget_Animation_Duration) {
             return 0;
@@ -70,35 +68,32 @@ static MyProxy *proxyStyle()
     return proxy;
 }
 
-TabBarProxyStyle::TabBarProxyStyle(TabBar* tabBar)
-    : QProxyStyle()
-    , m_tabBar(tabBar)
+TabBarProxyStyle::TabBarProxyStyle(TabBar* tabBar) : QProxyStyle(), m_tabBar(tabBar)
 {
     setBaseStyle(proxyStyle());
 }
 
-void TabBarProxyStyle::drawControl(ControlElement element, const QStyleOption *option,
-                                    QPainter *painter, const QWidget *widget) const
+void TabBarProxyStyle::drawControl(ControlElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const
 {
     if (element == CE_TabBarTabLabel && m_tabBar) {
         const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab*>(option);
         if (tab) {
             int tabIndex = m_tabBar->tabIndexFromRect(tab->rect);
-            
+
             if (tabIndex >= 0 && m_tabBar->isTabHighlighted(tabIndex) && tabIndex != m_tabBar->currentIndex()) {
                 QRect textRect = subElementRect(SE_TabBarTabText, tab, widget);
-                
+
                 if (!tab->icon.isNull()) {
                     QRect iconRect = subElementRect(SE_TabBarTabLeftButton, tab, widget);
                     if (!iconRect.isValid()) {
                         int iconSize = proxy()->pixelMetric(PM_TabBarIconSize, tab, widget);
-                        iconRect = QRect(tab->rect.left() + 6, 
-                                        tab->rect.center().y() - iconSize/2, 
+                        iconRect = QRect(tab->rect.left() + 6,
+                                        tab->rect.center().y() - iconSize/2,
                                         iconSize, iconSize);
                     }
                     tab->icon.paint(painter, iconRect);
                 }
-                
+
                 painter->save();
                 QColor highlightColor = m_tabBar->currentHighlightColor();
                 painter->setPen(highlightColor);
@@ -109,7 +104,7 @@ void TabBarProxyStyle::drawControl(ControlElement element, const QStyleOption *o
             }
         }
     }
-    
+
     QProxyStyle::drawControl(element, option, painter, widget);
 }
 
@@ -139,13 +134,13 @@ TabBar::TabBar(Core::TabBar *controller, QWidget *parent)
     , d(new Private(controller))
 {
     setShape(Config::self().tabsAtBottom() ? QTabBar::RoundedSouth : QTabBar::RoundedNorth);
-    
+
     setStyle(new TabBarProxyStyle(this));
-    
+
     setUsesScrollButtons(true);
     setExpanding(false);
     setElideMode(Qt::ElideNone);
-    
+
     d->scrollAnimationTimer = new QTimer(this);
     d->scrollAnimationTimer->setInterval(16);
     connect(d->scrollAnimationTimer, &QTimer::timeout, this, &TabBar::performSmoothScroll);
@@ -166,14 +161,14 @@ void TabBar::init()
     d->m_currentDockWidgetChangedConnection = d->m_controller->dptr()->currentDockWidgetChanged.connect([this](KDDockWidgets::Core::DockWidget *dw) {
         Q_EMIT currentDockWidgetChanged(dw);
     });
-    
+
     connect(this, &QTabBar::currentChanged, this, [this](int index) {
         Q_UNUSED(index)
         if (!m_highlightedTabs.isEmpty()) {
             update();
         }
     });
-    
+
     QTimer::singleShot(0, this, [this]() {
         updateScrollButtonsColors();
     });
@@ -208,13 +203,13 @@ void TabBar::keyPressEvent(QKeyEvent *e)
         if (count() > 0 && usesScrollButtons()) {
             QAbstractButton *scrollLeftBtn = nullptr;
             QAbstractButton *scrollRightBtn = nullptr;
-            
+
             const auto children = findChildren<QAbstractButton *>();
             for (QAbstractButton *btn : children) {
                 if (btn->isVisible()) {
                     QRect btnRect = btn->geometry();
                     QRect tabBarRect = rect();
-                    
+
                     if (btnRect.left() < tabBarRect.width() / 2) {
                         scrollLeftBtn = btn;
                     } else {
@@ -222,7 +217,7 @@ void TabBar::keyPressEvent(QKeyEvent *e)
                     }
                 }
             }
-            
+
             if (e->key() == Qt::Key_Left && scrollLeftBtn && scrollLeftBtn->isEnabled()) {
                 scrollLeftBtn->click();
                 e->accept();
@@ -232,7 +227,7 @@ void TabBar::keyPressEvent(QKeyEvent *e)
                 e->accept();
                 return;
             }
-            
+
             const int scrollStep = 50;
             if (e->key() == Qt::Key_Left) {
                 scroll(-scrollStep, 0);
@@ -243,7 +238,7 @@ void TabBar::keyPressEvent(QKeyEvent *e)
             return;
         }
     }
-    
+
     QTabBar::keyPressEvent(e);
 }
 
@@ -253,40 +248,40 @@ void TabBar::wheelEvent(QWheelEvent *e)
     if (delta == 0) {
         delta = -e->angleDelta().x();
     }
-    
+
     if (delta == 0) {
         QTabBar::wheelEvent(e);
         return;
     }
-    
+
     const int scrollAmount = delta / 8;
     d->targetScrollOffset += scrollAmount;
-    
+
     if (!d->scrollAnimationTimer->isActive()) {
         d->scrollAnimationTimer->start();
     }
-    
+
     e->accept();
 }
 
 void TabBar::performSmoothScroll()
 {
     const int diff = d->targetScrollOffset - d->scrollOffset;
-    
+
     if (qAbs(diff) < 2) {
         d->scrollOffset = d->targetScrollOffset;
         d->scrollAnimationTimer->stop();
         return;
     }
-    
+
     const int step = diff / 4;
     const int actualStep = (step == 0) ? (diff > 0 ? 1 : -1) : step;
     d->scrollOffset += actualStep;
-    
+
     QList<QToolButton *> scrollButtons = findChildren<QToolButton *>();
     QToolButton *leftButton = nullptr;
     QToolButton *rightButton = nullptr;
-    
+
     for (QToolButton *btn : scrollButtons) {
         if (btn->arrowType() == Qt::LeftArrow) {
             leftButton = btn;
@@ -294,7 +289,7 @@ void TabBar::performSmoothScroll()
             rightButton = btn;
         }
     }
-    
+
     if (actualStep > 0 && leftButton && leftButton->isEnabled()) {
         leftButton->click();
     } else if (actualStep < 0 && rightButton && rightButton->isEnabled()) {
@@ -345,41 +340,39 @@ void TabBar::moveTabTo(int from, int to)
 void TabBar::tabInserted(int index)
 {
     QTabBar::tabInserted(index);
-    
+    Q_EMIT dockWidgetInserted(index);
+    Q_EMIT countChanged();
+
     QSet<int> newHighlighted;
     for (int i : m_highlightedTabs) {
         if (i >= index) {
-            newHighlighted.insert(i + 1); 
+            newHighlighted.insert(i + 1);
         } else {
             newHighlighted.insert(i);
         }
     }
     m_highlightedTabs = newHighlighted;
-    
-    Q_EMIT dockWidgetInserted(index);
-    Q_EMIT countChanged();
 }
 
 void TabBar::tabRemoved(int index)
 {
     QTabBar::tabRemoved(index);
-    
+    Q_EMIT dockWidgetRemoved(index);
+    Q_EMIT countChanged();
+
     QSet<int> newHighlighted;
     for (int i : m_highlightedTabs) {
         if (i < index) {
             newHighlighted.insert(i);
         } else if (i > index) {
-            newHighlighted.insert(i - 1); 
+            newHighlighted.insert(i - 1);
         }
     }
     m_highlightedTabs = newHighlighted;
-    
+
     if (m_highlightedTabs.isEmpty()) {
         stopBlinkTimer();
     }
-    
-    Q_EMIT dockWidgetRemoved(index);
-    Q_EMIT countChanged();
 }
 
 void TabBar::setCurrentIndex(int index)
@@ -398,20 +391,20 @@ void TabBar::updateScrollButtonsColors()
             }
         }
     }
-    
+
     QColor backgroundColor;
-    
+
     QTabWidget *tabWidget = this->tabWidget();
     if (tabWidget) {
         QPalette tabWidgetPal = tabWidget->palette();
         backgroundColor = tabWidgetPal.color(QPalette::Base);
     }
-    
+
     if (!backgroundColor.isValid()) {
         QPalette tabBarPal = this->palette();
         backgroundColor = tabBarPal.color(QPalette::Window);
     }
-    
+
     if (!backgroundColor.isValid()) {
         QWidget *parent = this->parentWidget();
         if (parent) {
@@ -428,12 +421,12 @@ void TabBar::updateScrollButtonsColors()
             }
         }
     }
-    
+
     if (!backgroundColor.isValid()) {
         QPalette appPal = QApplication::palette();
         backgroundColor = appPal.color(QPalette::Window);
     }
-    
+
     for (QAbstractButton *btn : scrollButtons) {
         btn->setAutoFillBackground(true);
         QPalette btnPal = btn->palette();
@@ -500,23 +493,23 @@ void TabBar::Private::onTabMoved(int from, int to)
 void TabBar::paintEvent(QPaintEvent *event)
 {
     QTabBar::paintEvent(event);
-    
+
     if (!m_highlightedTabs.isEmpty()) {
         QPainter painter(this);
         painter.setRenderHint(QPainter::TextAntialiasing);
-        
+
         QColor textColor = currentHighlightColor();
         painter.setPen(textColor);
         painter.setFont(font());
-        
+
         for (int index : m_highlightedTabs) {
             if (index >= 0 && index < count() && index != currentIndex()) {
                 QStyleOptionTab opt;
                 initStyleOption(&opt, index);
-                
+
                 // Получаем точный rect текста
                 QRect textRect = style()->subElementRect(QStyle::SE_TabBarTabText, &opt, this);
-                
+
                 // Рисуем текст с мигающим цветом поверх старого
                 painter.drawText(textRect, Qt::AlignCenter, opt.text);
             }
@@ -543,26 +536,26 @@ void TabBar::setTabHighlighted(int index, bool highlighted)
 {
     if (index < 0 || index >= count())
         return;
-    
+
     bool wasHighlighted = m_highlightedTabs.contains(index);
     if (wasHighlighted == highlighted)
         return;
-    
+
     if (highlighted) {
         if (index == currentIndex())
             return;
-            
+
         m_highlightedTabs.insert(index);
-        
+
         startBlinkTimer();
     } else {
         m_highlightedTabs.remove(index);
-        
+
         if (m_highlightedTabs.isEmpty()) {
             stopBlinkTimer();
         }
     }
-    
+
     update();
     Q_EMIT tabHighlightChanged(index, highlighted);
 }
@@ -590,7 +583,7 @@ void TabBar::startBlinkTimer()
             repaint();
         });
     }
-    
+
     if (!m_blinkTimer->isActive()) {
         m_blinkState = true;
         m_blinkTimer->start();

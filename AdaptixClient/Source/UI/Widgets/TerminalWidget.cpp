@@ -4,13 +4,13 @@
 #include <UI/Dialogs/DialogSaveTask.h>
 #include <UI/Widgets/TerminalWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <UI/Widgets/WidgetRegistry.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
 #include <MainAdaptix.h>
 
-REGISTER_DOCK_WIDGET(TerminalWidget, "Terminal")
+REGISTER_DOCK_WIDGET(TerminalWidget, "Remote Terminal", false)
 
 TerminalWidget::TerminalWidget(Agent* a, AdaptixWidget* w) : DockTab(QString("Terminal [%1]").arg(a->data.Id), w->GetProfile()->GetProject())
 {
@@ -375,6 +375,4 @@ void TerminalWidget::onProgramChanged()
 
 void TerminalWidget::onKeytabChanged() { termWidget->setKeyBindings(keytabComboBox->currentText()); }
 
-void TerminalWidget::recvDataFromSocket(const QByteArray &msg) {
-    this->termWidget->recvData(msg.constData(), msg.size());
-}
+void TerminalWidget::recvDataFromSocket(const QByteArray &msg) { this->termWidget->recvData(msg.constData(), msg.size()); }

@@ -38,16 +38,15 @@ class DockWidget;
 
 namespace KDDockWidgets::QtWidgets {
 
-class TabBar; 
+class TabBar;
 
 class TabBarProxyStyle : public QProxyStyle
 {
+    TabBar* m_tabBar;
+
 public:
     explicit TabBarProxyStyle(TabBar* tabBar);
-    void drawControl(ControlElement element, const QStyleOption *option,
-                     QPainter *painter, const QWidget *widget) const override;
-private:
-    TabBar* m_tabBar;
+    void drawControl(ControlElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const override;
 };
 
 class DOCKS_EXPORT TabBar : public View<QTabBar>, public Core::TabBarViewInterface
@@ -70,19 +69,15 @@ public:
     void changeTabIcon(int index, const QIcon &icon) override;
     void removeDockWidget(Core::DockWidget *) override;
     void insertDockWidget(int index, Core::DockWidget *, const QIcon &,
-                          const QString &title) override;
+        const QString &title) override;
     QTabWidget *tabWidget() const;
     void setTabsAreMovable(bool) override;
 
-    void setTabHighlighted(int index, bool highlighted);
-    
-    bool isTabHighlighted(int index) const;
-    
-    void clearAllHighlights();
-    
+    void   setTabHighlighted(int index, bool highlighted);
+    bool   isTabHighlighted(int index) const;
+    void   clearAllHighlights();
     QColor currentHighlightColor() const;
-    
-    int tabIndexFromRect(const QRect& rect) const;
+    int    tabIndexFromRect(const QRect& rect) const;
 
 Q_SIGNALS:
     void dockWidgetInserted(int index);
@@ -107,18 +102,17 @@ private:
     void updateScrollButtonsColors();
     void startBlinkTimer();
     void stopBlinkTimer();
-    
-private Q_SLOTS:
-    void performSmoothScroll();
-    
-private:
+
+    QSet<int> m_highlightedTabs;
+    QTimer*   m_blinkTimer = nullptr;
+    bool      m_blinkState = false;
+    QColor    m_highlightColor1{"#FF6600"};  // Heat orange highlight color
+
     class Private;
     Private *const d;
-    
-    QSet<int> m_highlightedTabs;
-    QTimer* m_blinkTimer = nullptr;
-    bool m_blinkState = false;
-    QColor m_highlightColor1{"#FF6600"};  // Heat orange highlight color
+
+private Q_SLOTS:
+    void performSmoothScroll();
 };
 
 }

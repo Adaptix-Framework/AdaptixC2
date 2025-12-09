@@ -2,11 +2,11 @@
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <UI/Widgets/WidgetRegistry.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-REGISTER_DOCK_WIDGET(BrowserProcessWidget, "Browser Process")
+REGISTER_DOCK_WIDGET(BrowserProcessWidget, "Browser Process", false)
 
 BrowserProcessWidget::BrowserProcessWidget(AdaptixWidget* w, Agent* a) : DockTab(QString("Processes [%1]").arg(a->data.Id), w->GetProfile()->GetProject())
 {

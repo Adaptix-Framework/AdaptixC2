@@ -153,6 +153,7 @@ SET( HEADERS
         Headers/Utils/NonBlockingDialogs.h
         Headers/Utils/FontManager.h
         Headers/Utils/TitleBarStyle.h
+        Headers/UI/Widgets/DockWidgetRegister.h
 )
 
 add_executable(AdaptixClient

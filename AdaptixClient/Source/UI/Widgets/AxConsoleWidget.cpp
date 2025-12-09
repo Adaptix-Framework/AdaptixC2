@@ -2,14 +2,14 @@
 #include <QJSValue>
 #include <UI/Widgets/AxConsoleWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <UI/Widgets/WidgetRegistry.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <Utils/KeyPressHandler.h>
 #include <Utils/CustomElements.h>
 #include <Utils/FontManager.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-REGISTER_DOCK_WIDGET(AxConsoleWidget, "Extension Console")
+REGISTER_DOCK_WIDGET(AxConsoleWidget, "Extension Console", false)
 
 AxConsoleWidget::AxConsoleWidget(AxScriptManager* m, AdaptixWidget* w) : DockTab("AxScript Console", w->GetProfile()->GetProject(), ":/icons/code_blocks"), adaptixWidget(w), scriptManager(m)
 {

@@ -51,7 +51,7 @@ public:
     QHBoxLayout *buttonsLayout = nullptr;
     QAbstractButton *floatButton = nullptr;
     QAbstractButton *closeButton = nullptr;
-    
+
     bool updatingButtons = false;
 };
 }
@@ -181,7 +181,7 @@ void Stack::setupTabBarButtons()
     }
 
     updateTabBarButtons();
-    
+
     QTimer::singleShot(0, this, [this] {
         updateTabBarButtons();
         updateButtonsPosition();
@@ -205,7 +205,7 @@ void Stack::updateTabBarButtons()
 
     const bool hideTitleBarFlag = Config::self().flags() & Config::Flag_HideTitleBarWhenTabsVisible;
     const bool titleBarShouldBeHidden = hideTitleBarFlag && group->hasTabsVisible();
-    
+
     d->buttonsWidget->setVisible(titleBarShouldBeHidden);
 
     if (d->closeButton) {
@@ -214,7 +214,7 @@ void Stack::updateTabBarButtons()
         d->closeButton->setEnabled(enabled);
         d->closeButton->setVisible(visible);
     }
-    
+
     d->updatingButtons = false;
 }
 
@@ -256,7 +256,7 @@ void Stack::showContextMenu(QPoint pos)
 
     // Convert pos to tabBar coordinates for tabAt() check
     QPoint tabBarPos = tabBar->mapFrom(this, pos);
-    
+
     // Click on a tab => No menu
     if (tabBar->tabAt(tabBarPos) >= 0)
         return;

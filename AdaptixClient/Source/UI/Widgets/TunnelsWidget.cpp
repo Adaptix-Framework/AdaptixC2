@@ -1,11 +1,11 @@
 #include <UI/Widgets/TunnelsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <UI/Widgets/WidgetRegistry.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/TunnelEndpoint.h>
 
-REGISTER_DOCK_WIDGET(TunnelsWidget, "Tunnels")
+REGISTER_DOCK_WIDGET(TunnelsWidget, "Tunnels", true)
 
 TunnelsWidget::TunnelsWidget(AdaptixWidget* w) : DockTab("Tunnels", w->GetProfile()->GetProject(), ":/icons/vpn")
 {

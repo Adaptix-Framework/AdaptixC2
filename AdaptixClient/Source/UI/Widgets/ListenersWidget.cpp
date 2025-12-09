@@ -1,6 +1,6 @@
 #include <QJSEngine>
 #include <UI/Widgets/ListenersWidget.h>
-#include <UI/Widgets/WidgetRegistry.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogListener.h>
 #include <UI/Dialogs/DialogAgent.h>
 #include <UI/Widgets/AdaptixWidget.h>
@@ -8,7 +8,7 @@
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-REGISTER_DOCK_WIDGET(ListenersWidget, "Listeners")
+REGISTER_DOCK_WIDGET(ListenersWidget, "Listeners", true)
 
 ListenersWidget::ListenersWidget(AdaptixWidget* w) : DockTab("Listeners", w->GetProfile()->GetProject(), ":/icons/listeners"), adaptixWidget(w)
 {

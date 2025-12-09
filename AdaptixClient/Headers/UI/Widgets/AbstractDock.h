@@ -30,45 +30,46 @@
 
 /**
  * @brief Base class for all dock widgets with tab blinking support on updates.
- * 
- * AUTOMATIC NOTIFICATION:
+ *
+ * AUTOMATIC BLINK:
  * - Enabled by default for QTableWidget, QTableView, QTreeWidget, QTreeView, QTextEdit, QPlainTextEdit
  * - Triggers automatically when rows are inserted into model or text changes
  * - 100ms debounce prevents too frequent triggers
- * - Notification clears when user scrolls to see new content (not just on tab switch)
- * 
+ * - blink clears when user scrolls to see new content (not just on tab switch)
+ *
  * DISABLE FOR SPECIFIC WIDGET:
  * @code
  *   // In widget constructor:
- *   setAutoNotifyEnabled(false);  // Completely disable auto-notifications
+ *   setAutoBlinkEnabled(false);  // Completely disable auto-blinks
  * @endcode
- * 
+ *
  * TEMPORARY DISABLE (e.g., during bulk data loading):
  * @code
  *   void MyWidget::loadBulkData() {
- *       AutoNotifyGuard guard(this);  // Disables notifications
+ *       AutoBlinkGuard guard(this);  // Disables blinks
  *       // ... bulk loading ...
- *   }  // Notifications are re-enabled automatically
+ *   }  // Blinks are re-enabled automatically
  * @endcode
- * 
+ *
  * MANUAL CALL (for custom widgets):
  * @code
- *   notifyNewContent();  // Highlights the tab if inactive
+ *   blinkNewContent();  // Highlights the tab if inactive
  * @endcode
  */
+
 class DockTab : public QWidget {
 Q_OBJECT
 protected:
     KDDockWidgets::QtWidgets::DockWidget* dockWidget;
     mutable QString m_cachedClassName;
-    bool m_autoNotifyEnabled = true;
+    bool m_autoBlinkEnabled = true;
     QTimer* m_debounceTimer = nullptr;
-    
+
     QSet<int> m_newTableRows;
     int m_newTextPosition = -1;
     QSet<QAbstractItemView*> m_trackedViews;
     QSet<QAbstractScrollArea*> m_trackedTextEdits;
-    
+
     QString getClassName() const {
         if (!m_cachedClassName.isEmpty())
             return m_cachedClassName;
@@ -89,34 +90,35 @@ public:
         dockWidget->setTitle(tabName);
         if (!icon.isEmpty())
             dockWidget->setIcon(QIcon(icon), KDDockWidgets::IconPlace::TabBar);
-        
+
         connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isCurrentTabChanged,
                 this, &DockTab::onCurrentTabChanged);
-        
-        QTimer::singleShot(0, this, &DockTab::setupAutoNotify);
+
+        QTimer::singleShot(0, this, &DockTab::setupAutoBlink);
     };
 
     ~DockTab() override { dockWidget->deleteLater(); };
 
     KDDockWidgets::QtWidgets::DockWidget* dock() { return this->dockWidget; };
 
-    void setAutoNotifyEnabled(bool enabled) { m_autoNotifyEnabled = enabled; }
-    bool isAutoNotifyEnabled() const { return m_autoNotifyEnabled; }
+    void setAutoBlinkEnabled(bool enabled) { m_autoBlinkEnabled = enabled; }
 
-    void notifyNewContent() {
+    bool isAutoBlinkEnabled() const { return m_autoBlinkEnabled; }
+
+    void blinkNewContent() {
         if (GlobalClient && GlobalClient->settings) {
             auto& data = GlobalClient->settings->data;
-            if (!data.TabNotificationsEnabled)
+            if (!data.TabBlinkEnabled)
                 return;
-            
+
             QString className = getClassName();
-            if (data.NotifyWidgets.contains(className) && !data.NotifyWidgets[className])
+            if (data.BlinkWidgets.contains(className) && !data.BlinkWidgets[className])
                 return;
         }
-        
+
         auto* coreDw = dockWidget->dockWidget();
         if (!coreDw) return;
-        
+
         if (!coreDw->isCurrentTab()) {
             if (auto tabBar = getTabBar()) {
                 int index = getTabIndex();
@@ -131,31 +133,31 @@ protected:
     KDDockWidgets::QtWidgets::TabBar* getTabBar() const {
         auto* group = dockWidget->group();
         if (!group) return nullptr;
-        
+
         auto* stack = group->stack();
         if (!stack) return nullptr;
-        
+
         auto* coreTabBar = stack->tabBar();
         if (!coreTabBar) return nullptr;
-        
+
         return static_cast<KDDockWidgets::QtWidgets::TabBar*>(
             KDDockWidgets::QtCommon::View_qt::asQWidget(static_cast<KDDockWidgets::Core::Controller*>(coreTabBar))
         );
     }
-    
+
     int getTabIndex() const {
         auto* coreDw = dockWidget->dockWidget();
         if (!coreDw) return -1;
-        
+
         auto* group = dockWidget->group();
         if (!group) return -1;
-        
+
         auto* stack = group->stack();
         if (!stack) return -1;
-        
+
         return stack->tabBar()->indexOfDockWidget(coreDw);
     }
-    
+
     void clearHighlight() {
         if (auto tabBar = getTabBar()) {
             int index = getTabIndex();
@@ -166,7 +168,7 @@ protected:
         m_newTableRows.clear();
         m_newTextPosition = -1;
     }
-    
+
     bool hasNewContent() const {
         return !m_newTableRows.isEmpty() || m_newTextPosition >= 0;
     }
@@ -177,57 +179,57 @@ private Q_SLOTS:
             QTimer::singleShot(150, this, &DockTab::checkNewContentVisibility);
         }
     }
-    
-    void setupAutoNotify() {
+
+    void setupAutoBlink() {
         connectChildWidgets(this);
     }
-    
+
     void onTableRowsInserted(const QModelIndex &parent, int first, int last) {
         Q_UNUSED(parent)
-        if (!m_autoNotifyEnabled) return;
-        
+        if (!m_autoBlinkEnabled) return;
+
         for (int i = first; i <= last; ++i) {
             m_newTableRows.insert(i);
         }
-        triggerNotification();
+        triggerBlink();
     }
-    
+
     void onTextChanged() {
-        if (!m_autoNotifyEnabled) return;
-        
+        if (!m_autoBlinkEnabled) return;
+
         if (auto* textEdit = qobject_cast<QTextEdit*>(sender())) {
             m_newTextPosition = textEdit->document()->blockCount() - 1;
         } else if (auto* plainTextEdit = qobject_cast<QPlainTextEdit*>(sender())) {
             m_newTextPosition = plainTextEdit->document()->blockCount() - 1;
         }
-        triggerNotification();
+        triggerBlink();
     }
-    
-    void triggerNotification() {
+
+    void triggerBlink() {
         if (!m_debounceTimer) {
             m_debounceTimer = new QTimer(this);
             m_debounceTimer->setSingleShot(true);
             connect(m_debounceTimer, &QTimer::timeout, this, [this]() {
-                notifyNewContent();
+                blinkNewContent();
             });
         }
-        
+
         if (!m_debounceTimer->isActive()) {
             m_debounceTimer->start(100);
         }
     }
-    
+
     void onScroll() {
         checkNewContentVisibility();
     }
-    
+
     void checkNewContentVisibility() {
         if (!hasNewContent()) return;
-        
+
         if (!m_newTableRows.isEmpty()) {
             for (auto* view : m_trackedViews) {
                 if (!view->isVisible()) continue;
-                
+
                 QSet<int> stillHidden;
                 for (int row : m_newTableRows) {
                     QModelIndex idx = view->model()->index(row, 0);
@@ -239,11 +241,11 @@ private Q_SLOTS:
                 m_newTableRows = stillHidden;
             }
         }
-        
+
         if (m_newTextPosition >= 0) {
             for (auto* scrollArea : m_trackedTextEdits) {
                 if (!scrollArea->isVisible()) continue;
-                
+
                 QScrollBar* vbar = scrollArea->verticalScrollBar();
                 if (vbar && vbar->value() >= vbar->maximum() - 10) {
                     m_newTextPosition = -1;
@@ -251,7 +253,7 @@ private Q_SLOTS:
                 }
             }
         }
-        
+
         if (!hasNewContent()) {
             clearHighlight();
         }
@@ -262,21 +264,21 @@ private:
     void connectItemView(T* view) {
         m_trackedViews.insert(view);
         if (auto* model = view->model()) {
-            connect(model, &QAbstractItemModel::rowsInserted, 
+            connect(model, &QAbstractItemModel::rowsInserted,
                     this, &DockTab::onTableRowsInserted, Qt::UniqueConnection);
         }
         if (auto* vbar = view->verticalScrollBar()) {
-            connect(vbar, &QScrollBar::valueChanged, 
+            connect(vbar, &QScrollBar::valueChanged,
                     this, &DockTab::onScroll, Qt::UniqueConnection);
         }
     }
-    
+
     template<typename T, typename Signal>
     void connectTextEdit(T* edit, Signal signal) {
         m_trackedTextEdits.insert(edit);
         connect(edit, signal, this, &DockTab::onTextChanged, Qt::UniqueConnection);
         if (auto* vbar = edit->verticalScrollBar()) {
-            connect(vbar, &QScrollBar::valueChanged, 
+            connect(vbar, &QScrollBar::valueChanged,
                     this, &DockTab::onScroll, Qt::UniqueConnection);
         }
     }
@@ -284,40 +286,42 @@ private:
     void connectChildWidgets(QWidget* parent) {
         for (auto* w : parent->findChildren<QTableWidget*>())
             connectItemView(w);
-        
+
         for (auto* w : parent->findChildren<QTableView*>())
             if (!qobject_cast<QTableWidget*>(w)) connectItemView(w);
-        
+
         for (auto* w : parent->findChildren<QTreeWidget*>())
             connectItemView(w);
-        
+
         for (auto* w : parent->findChildren<QTreeView*>())
             if (!qobject_cast<QTreeWidget*>(w)) connectItemView(w);
-        
+
         for (auto* w : parent->findChildren<QTextEdit*>())
             connectTextEdit(w, &QTextEdit::textChanged);
-        
+
         for (auto* w : parent->findChildren<QPlainTextEdit*>())
             connectTextEdit(w, &QPlainTextEdit::textChanged);
     }
 };
 
-/// RAII class for temporarily disabling auto-notifications
+
+
+/// RAII class for temporarily disabling auto-blinks
 /// Usage:
 ///   {
-///       AutoNotifyGuard guard(this);  // disables notifications
+///       AutoBlinkGuard guard(this);  // disables blinks
 ///       // ... data loading ...
-///   }  // notifications are re-enabled automatically
-class AutoNotifyGuard {
+///   }  // blinks are re-enabled automatically
+class AutoBlinkGuard {
 public:
-    explicit AutoNotifyGuard(DockTab* tab) : m_tab(tab), m_wasEnabled(tab->isAutoNotifyEnabled()) {
-        m_tab->setAutoNotifyEnabled(false);
+    explicit AutoBlinkGuard(DockTab* tab) : m_tab(tab), m_wasEnabled(tab->isAutoBlinkEnabled()) {
+        m_tab->setAutoBlinkEnabled(false);
     }
-    ~AutoNotifyGuard() {
-        m_tab->setAutoNotifyEnabled(m_wasEnabled);
+    ~AutoBlinkGuard() {
+        m_tab->setAutoBlinkEnabled(m_wasEnabled);
     }
-    AutoNotifyGuard(const AutoNotifyGuard&) = delete;
-    AutoNotifyGuard& operator=(const AutoNotifyGuard&) = delete;
+    AutoBlinkGuard(const AutoBlinkGuard&) = delete;
+    AutoBlinkGuard& operator=(const AutoBlinkGuard&) = delete;
 private:
     DockTab* m_tab;
     bool m_wasEnabled;

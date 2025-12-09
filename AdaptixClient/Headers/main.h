@@ -202,8 +202,8 @@ typedef struct SettingsData {
 
     bool TasksTableColumns[11];
 
-    bool TabNotificationsEnabled;
-    QMap<QString, bool> NotifyWidgets;  // className -> enabled
+    bool TabBlinkEnabled;
+    QMap<QString, bool> BlinkWidgets;  // className -> enabled
 } SettingsData;
 
 typedef struct AxUI

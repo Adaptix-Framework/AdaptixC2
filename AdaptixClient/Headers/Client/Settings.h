@@ -8,7 +8,7 @@ class MainAdaptix;
 
 class Settings
 {
-    MainAdaptix* mainAdaptix = nullptr;
+    MainAdaptix*    mainAdaptix    = nullptr;
     DialogSettings* dialogSettings = nullptr;
 
 public:
@@ -17,7 +17,7 @@ public:
 
     SettingsData data;
 
-    MainAdaptix* getMainAdaptix();
+    MainAdaptix*    getMainAdaptix();
     DialogSettings* getDialogSettings();
     void SetDefault();
     void LoadFromDB();
