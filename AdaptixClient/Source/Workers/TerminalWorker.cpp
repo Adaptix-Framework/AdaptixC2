@@ -78,9 +78,10 @@ void TerminalWorker::onWsBinaryMessageReceived(const QByteArray& msg) {
 
         connect(this->terminalWidget->Konsole(), &QTermWidget::sendData, this, [this](const char *data, int size) {
             if (websocket->state() == QAbstractSocket::ConnectedState) {
-                websocket->sendBinaryMessage(QByteArray(data, size));
+                QByteArray messageCopy = QByteArray::fromRawData(data, size);
+                websocket->sendBinaryMessage(messageCopy);
             }
-        });
+        }, Qt::DirectConnection);
     }
 
     if (!msg.isEmpty())

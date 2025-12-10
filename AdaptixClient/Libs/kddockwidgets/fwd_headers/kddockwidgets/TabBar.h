@@ -68,8 +68,7 @@ public:
     void renameTab(int index, const QString &) override;
     void changeTabIcon(int index, const QIcon &icon) override;
     void removeDockWidget(Core::DockWidget *) override;
-    void insertDockWidget(int index, Core::DockWidget *, const QIcon &,
-        const QString &title) override;
+    void insertDockWidget(int index, Core::DockWidget *, const QIcon &, const QString &title) override;
     QTabWidget *tabWidget() const;
     void setTabsAreMovable(bool) override;
 
