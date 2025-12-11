@@ -68,7 +68,8 @@ public:
     void renameTab(int index, const QString &) override;
     void changeTabIcon(int index, const QIcon &icon) override;
     void removeDockWidget(Core::DockWidget *) override;
-    void insertDockWidget(int index, Core::DockWidget *, const QIcon &, const QString &title) override;
+    void insertDockWidget(int index, Core::DockWidget *, const QIcon &,
+                          const QString &title) override;
     QTabWidget *tabWidget() const;
     void setTabsAreMovable(bool) override;
 
@@ -102,13 +103,13 @@ private:
     void startBlinkTimer();
     void stopBlinkTimer();
 
-    QSet<int> m_highlightedTabs;
-    QTimer*   m_blinkTimer = nullptr;
-    bool      m_blinkState = false;
-    QColor    m_highlightColor1{"#FF6600"};  // Heat orange highlight color
-
     class Private;
     Private *const d;
+
+    QSet<int> m_highlightedTabs;
+    QTimer* m_blinkTimer = nullptr;
+    bool m_blinkState = false;
+    QColor m_highlightColor1{"#FF6600"};  // Heat orange highlight color
 
 private Q_SLOTS:
     void performSmoothScroll();
