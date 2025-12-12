@@ -1,6 +1,7 @@
 #include <Konsole/konsole.h>
 #include <Workers/TerminalWorker.h>
 #include <UI/Widgets/TerminalWidget.h>
+#include <QMetaObject>
 
 TerminalWorker::TerminalWorker(TerminalWidget* terminalWidget, const QString &token, const QUrl& wsUrl, const QString& terminalData, QObject* parent) : QObject(parent)
 {
@@ -76,12 +77,21 @@ void TerminalWorker::onWsBinaryMessageReceived(const QByteArray& msg) {
 
         Q_EMIT connectedToTerminal();
 
-        connect(this->terminalWidget->Konsole(), &QTermWidget::sendData, this, [this](const char *data, int size) {
-            if (websocket->state() == QAbstractSocket::ConnectedState) {
-                QByteArray messageCopy = QByteArray::fromRawData(data, size);
-                websocket->sendBinaryMessage(messageCopy);
-            }
-        }, Qt::DirectConnection);
+        connect(this->terminalWidget->Konsole(), &QTermWidget::sendData, this,
+                [this](const char *data, int size) {
+                    if (stopped)
+                        return;
+
+                    const QByteArray payload(data, size);
+                    QMetaObject::invokeMethod(this, [this, payload]() {
+                        if (stopped)
+                            return;
+                        if (websocket && websocket->state() == QAbstractSocket::ConnectedState) {
+                            websocket->sendBinaryMessage(payload);
+                        }
+                    }, Qt::QueuedConnection);
+                },
+                Qt::DirectConnection);
     }
 
     if (!msg.isEmpty())

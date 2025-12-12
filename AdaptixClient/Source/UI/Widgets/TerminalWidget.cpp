@@ -292,8 +292,10 @@ void TerminalWidget::onStart()
     int sizeW = this->termWidget->columns();
     int sizeH = this->termWidget->lines();
 
-    if (sizeW < 512)
-        sizeW = 512;
+    if (sizeW <= 0 || sizeH <= 0) {
+        sizeW = 80;
+        sizeH = 24;
+    }
 
     QString terminalData = QString("%1|%2|%3|%4|%5").arg(agentId).arg(terminalId).arg(program).arg(sizeH).arg(sizeW).toUtf8().toBase64();
 
