@@ -82,7 +82,6 @@ void TerminalWorker::onWsBinaryMessageReceived(const QByteArray& msg) {
                     if (stopped)
                         return;
 
-                    // Copy the payload while we're still in the GUI thread, then post it to the worker thread.
                     const QByteArray payload(data, size);
                     QMetaObject::invokeMethod(this, [this, payload]() {
                         if (stopped)
