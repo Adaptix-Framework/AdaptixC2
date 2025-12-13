@@ -251,6 +251,7 @@ public Q_SLOTS:
     void onRemoveTarget() const;
     void onSetTag() const;
     void onExportTarget() const;
+    void onCopyToClipboard() const;
 };
 
 #endif //TARGETSWIDGET_H

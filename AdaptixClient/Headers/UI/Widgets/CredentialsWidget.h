@@ -253,6 +253,7 @@ public Q_SLOTS:
     void onRemoveCreds() const;
     void onSetTag() const;
     void onExportCreds() const;
+    void onCopyToClipboard() const;
 };
 
 #endif

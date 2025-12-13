@@ -262,8 +262,9 @@ void CredentialsWidget::handleCredentialsMenu(const QPoint &pos ) const
     if (centerCount > 0)
         ctxMenu.addSeparator();
 
-    ctxMenu.addAction("Set tag", this, &CredentialsWidget::onSetTag );
-    ctxMenu.addAction("Export",  this, &CredentialsWidget::onExportCreds );
+    ctxMenu.addAction("Set tag",           this, &CredentialsWidget::onSetTag );
+    ctxMenu.addAction("Export to file",    this, &CredentialsWidget::onExportCreds );
+    ctxMenu.addAction("Copy to clipboard", this, &CredentialsWidget::onCopyToClipboard );
 
     QPoint globalPos = tableView->mapToGlobal(pos);
     ctxMenu.exec(globalPos);
@@ -461,4 +462,45 @@ void CredentialsWidget::onSetTag() const
             return;
         }
     }
+}
+
+void CredentialsWidget::onCopyToClipboard() const
+{
+    auto idx = tableView->currentIndex();
+    if (!idx.isValid()) return;
+
+    QInputDialog dialog;
+    dialog.setWindowTitle("Format for clipboard");
+    dialog.setLabelText("Format:");
+    dialog.setTextValue("%realm%\\%username%:%password%");
+    QLineEdit *lineEdit = dialog.findChild<QLineEdit*>();
+    if (lineEdit)
+        lineEdit->setMinimumWidth(400);
+
+    bool inputOk = (dialog.exec() == QDialog::Accepted);
+    if (!inputOk)
+        return;
+
+    QString format = dialog.textValue();
+
+    QString content = "";
+    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+    for (const QModelIndex &proxyIndex : selectedRows) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (!sourceIndex.isValid()) continue;
+
+        QString realm    = credsModel->data(credsModel->index(sourceIndex.row(), CC_Realm), Qt::DisplayRole).toString();
+        QString username = credsModel->data(credsModel->index(sourceIndex.row(), CC_Username), Qt::DisplayRole).toString();
+        QString password = credsModel->data(credsModel->index(sourceIndex.row(), CC_Password), Qt::DisplayRole).toString();
+
+        QString temp = format;
+        content += temp
+        .replace("%realm%", realm)
+        .replace("%username%", username)
+        .replace("%password%", password)
+        + "\n";
+    }
+
+    QClipboard *clipboard = QApplication::clipboard();
+    clipboard->setText(content.trimmed());
 }

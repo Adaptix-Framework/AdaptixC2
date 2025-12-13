@@ -270,8 +270,9 @@ void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
     if (centerCount > 0)
         ctxMenu.addSeparator();
 
-    ctxMenu.addAction("Set tag", this, &TargetsWidget::onSetTag );
-    ctxMenu.addAction("Export",  this, &TargetsWidget::onExportTarget );
+    ctxMenu.addAction("Set tag",           this, &TargetsWidget::onSetTag );
+    ctxMenu.addAction("Export to file",    this, &TargetsWidget::onExportTarget );
+    ctxMenu.addAction("Copy to clipboard", this, &TargetsWidget::onCopyToClipboard );
     int bottomCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
 
     QPoint globalPos = tableView->mapToGlobal(pos);
@@ -470,4 +471,45 @@ void TargetsWidget::onExportTarget() const
             file.write(content.trimmed().toUtf8());
             file.close();
     });
+}
+
+void TargetsWidget::onCopyToClipboard() const
+{
+    auto idx = tableView->currentIndex();
+    if (!idx.isValid()) return;
+
+    QInputDialog dialog;
+    dialog.setWindowTitle("Format for clipboard");
+    dialog.setLabelText("Format:");
+    dialog.setTextValue("%computer%.%domain% - %address%");
+    QLineEdit *lineEdit = dialog.findChild<QLineEdit*>();
+    if (lineEdit)
+        lineEdit->setMinimumWidth(400);
+
+    bool inputOk = (dialog.exec() == QDialog::Accepted);
+    if (!inputOk)
+        return;
+
+    QString format = dialog.textValue();
+
+    QString content = "";
+    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+    for (const QModelIndex &proxyIndex : selectedRows) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (!sourceIndex.isValid()) continue;
+
+        QString computer = targetsModel->data(targetsModel->index(sourceIndex.row(), TRC_Computer), Qt::DisplayRole).toString();
+        QString domain   = targetsModel->data(targetsModel->index(sourceIndex.row(), TRC_Domain), Qt::DisplayRole).toString();
+        QString address  = targetsModel->data(targetsModel->index(sourceIndex.row(), TRC_Address), Qt::DisplayRole).toString();
+
+        QString temp = format;
+        content += temp
+        .replace("%computer%", computer)
+        .replace("%domain%", domain)
+        .replace("%address%", address)
+        + "\n";
+    }
+
+    QClipboard *clipboard = QApplication::clipboard();
+    clipboard->setText(content.trimmed());
 }

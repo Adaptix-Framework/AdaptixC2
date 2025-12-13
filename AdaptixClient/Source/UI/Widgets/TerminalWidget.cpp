@@ -17,6 +17,8 @@ TerminalWidget::TerminalWidget(Agent* a, AdaptixWidget* w) : DockTab(QString("Te
     this->agent = a;
     this->adaptixWidget = w;
     this->termWidget = new QTermWidget(this, this);
+    this->termWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    this->termWidget->setMinimumSize(100, 100);
 
     this->createUI();
 
