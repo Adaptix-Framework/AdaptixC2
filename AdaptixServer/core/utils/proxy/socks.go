@@ -125,21 +125,21 @@ func CheckSocks5(conn net.Conn) (string, int, int, error) {
 
 		break
 
-	//case 0x04: // IPv6
-	//	ipBuffer := make([]byte, 16)
-	//	_, err = io.ReadFull(conn, ipBuffer)
-	//	if err != nil {
-	//		goto RET
-	//	}
-	//	portBuf := make([]byte, 2)
-	//	_, err = io.ReadFull(conn, portBuf)
-	//	if err != nil {
-	//		goto RET
-	//	}
-	//	port = int(binary.BigEndian.Uint16(portBuf))
-	//	address = net.IP(ipBuffer).String()
-	//
-	//	break
+	case 0x04: // IPv6
+		ipBuffer := make([]byte, 16)
+		_, err = io.ReadFull(conn, ipBuffer)
+		if err != nil {
+			goto RET
+		}
+		portBuf := make([]byte, 2)
+		_, err = io.ReadFull(conn, portBuf)
+		if err != nil {
+			goto RET
+		}
+		port = int(binary.BigEndian.Uint16(portBuf))
+		address = net.IP(ipBuffer).String()
+
+		break
 
 	default:
 		err = errors.New("unsupported address format")
@@ -283,21 +283,21 @@ func CheckSocks5Auth(conn net.Conn, username string, password string) (string, i
 
 		break
 
-		//case 0x04: // IPv6
-		//	ipBuffer := make([]byte, 16)
-		//	_, err = io.ReadFull(conn, ipBuffer)
-		//	if err != nil {
-		//		goto RET
-		//	}
-		//	portBuf := make([]byte, 2)
-		//	_, err = io.ReadFull(conn, portBuf)
-		//	if err != nil {
-		//		goto RET
-		//	}
-		//	port = int(binary.BigEndian.Uint16(portBuf))
-		//	address = net.IP(ipBuffer).String()
-		//
-		//	break
+	case 0x04: // IPv6
+		ipBuffer := make([]byte, 16)
+		_, err = io.ReadFull(conn, ipBuffer)
+		if err != nil {
+			goto RET
+		}
+		portBuf := make([]byte, 2)
+		_, err = io.ReadFull(conn, portBuf)
+		if err != nil {
+			goto RET
+		}
+		port = int(binary.BigEndian.Uint16(portBuf))
+		address = net.IP(ipBuffer).String()
+
+		break
 
 	default:
 		err = errors.New("unsupported address format")

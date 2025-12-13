@@ -241,6 +241,19 @@ void TunnelEndpoint::onStartSocks5Channel()
     		dstAddress = QString::fromUtf8(request.mid(5, domainLen));
     		dstPort = (static_cast<uchar>(request[5 + domainLen]) << 8) | static_cast<uchar>(request[6 + domainLen]);
 
+    	} else if (addrType == 0x04) { /// IPv6
+    		if (request.size() < 22) {
+    			clientSock->disconnectFromHost();
+    			continue;
+    		}
+    		quint8 ipv6[16];
+    		for (int i = 0; i < 16; ++i) {
+    			ipv6[i] = static_cast<quint8>(request[4 + i]);
+    		}
+    		QHostAddress ip(ipv6);
+    		dstAddress = ip.toString();
+    		dstPort = (static_cast<uchar>(request[20]) << 8) | static_cast<uchar>(request[21]);
+
     	} else {
 	    	clientSock->disconnectFromHost();
 			continue;
@@ -379,6 +392,20 @@ void TunnelEndpoint::onStartSocks5AuthChannel()
     		}
     		dstAddress = QString::fromUtf8(request.mid(5, domainLen));
     		dstPort = (static_cast<uchar>(request[5 + domainLen]) << 8) | static_cast<uchar>(request[6 + domainLen]);
+
+    	} else if (addrType == 0x04) { /// IPv6
+    		if (request.size() < 22) {
+    			clientSock->disconnectFromHost();
+    			continue;
+    		}
+    		quint8 ipv6[16];
+    		for (int i = 0; i < 16; ++i) {
+    			ipv6[i] = static_cast<quint8>(request[4 + i]);
+    		}
+    		QHostAddress ip(ipv6);
+    		dstAddress = ip.toString();
+    		dstPort = (static_cast<uchar>(request[20]) << 8) | static_cast<uchar>(request[21]);
+
     	} else {
 	    	clientSock->disconnectFromHost();
 			continue;
