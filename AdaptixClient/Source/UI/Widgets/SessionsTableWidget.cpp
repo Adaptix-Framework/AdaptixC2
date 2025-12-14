@@ -14,6 +14,7 @@
 #include <Client/TunnelEndpoint.h>
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
+#include <Utils/TabNamesUtils.h>
 
 REGISTER_DOCK_WIDGET(SessionsTableWidget, "Sessions", true)
 
@@ -167,6 +168,9 @@ void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
     Agent* agent = adaptixWidget->AgentsMap[agentId];
     adaptixWidget->AgentsMap.remove(agentId);
 
+    QString projectName = adaptixWidget->GetProfile()->GetProject();
+    TabNamesUtils::removeAgentTabNames(agentId, projectName);
+
     if (agent->Console)
         delete agent->Console;
     if (agent->FileBrowser)
@@ -222,9 +226,14 @@ void SessionsTableWidget::UpdateData() const
 
 void SessionsTableWidget::Clear() const
 {
+    QString projectName = adaptixWidget->GetProfile()->GetProject();
+    
     for (auto agentId : adaptixWidget->AgentsMap.keys()) {
         Agent* agent = adaptixWidget->AgentsMap[agentId];
         adaptixWidget->AgentsMap.remove(agentId);
+        
+        TabNamesUtils::removeAgentTabNames(agentId, projectName);
+        
         delete agent->Console;
         delete agent->FileBrowser;
         delete agent->ProcessBrowser;

@@ -22,6 +22,7 @@
 #include <QSet>
 #include <MainAdaptix.h>
 #include <Client/Settings.h>
+#include <Utils/TabNamesUtils.h>
 #include <typeinfo>
 #include <cstdlib>
 #ifdef __GNUC__
@@ -87,7 +88,20 @@ protected:
 public:
     DockTab(const QString &tabName, const QString &projectName, const QString &icon = "") {
         dockWidget = new KDDockWidgets::QtWidgets::DockWidget(tabName + ":Dock-" + projectName, KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
-        dockWidget->setTitle(tabName);
+
+        QString displayTitle = tabName;
+        bool isRenameable = tabName.startsWith("Console [") ||
+                            tabName.startsWith("Terminal [") ||
+                            tabName.startsWith("Files [") ||
+                            tabName.startsWith("Processes [");
+        
+        if (isRenameable) {
+            QString customTitle = TabNamesUtils::getCustomTabName(tabName, projectName);
+            if (!customTitle.isEmpty())
+                displayTitle = customTitle;
+        }
+
+        dockWidget->setTitle(displayTitle);
         if (!icon.isEmpty())
             dockWidget->setIcon(QIcon(icon), KDDockWidgets::IconPlace::TabBar);
 
