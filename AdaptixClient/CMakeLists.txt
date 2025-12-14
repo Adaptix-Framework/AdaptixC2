@@ -153,7 +153,6 @@ SET( HEADERS
         Headers/Utils/NonBlockingDialogs.h
         Headers/Utils/FontManager.h
         Headers/Utils/TitleBarStyle.h
-        Headers/Utils/TabNamesUtils.h
         Headers/UI/Widgets/DockWidgetRegister.h
 )
 
@@ -234,7 +233,6 @@ add_executable(AdaptixClient
         Source/Utils/NonBlockingDialogs.cpp
         Source/Utils/FontManager.cpp
         Source/Utils/TitleBarStyle.cpp
-        Source/Utils/TabNamesUtils.cpp
 )
 
 target_compile_definitions(
