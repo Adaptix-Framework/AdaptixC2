@@ -52,7 +52,6 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions
     connect(refreshTimer, &QTimer::timeout, this, [this]() {
         if (tableView && tableView->isVisible()) {
             tableView->viewport()->update();
-
         }
     });
 }

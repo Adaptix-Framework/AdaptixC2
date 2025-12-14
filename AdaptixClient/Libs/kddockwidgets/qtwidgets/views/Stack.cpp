@@ -34,7 +34,6 @@
 #include <QSizePolicy>
 #include <QTimer>
 #include <QInputDialog>
-#include <QSettings>
 
 #include "kdbindings/signal.h"
 
@@ -265,46 +264,50 @@ void Stack::showContextMenu(QPoint pos)
         if (!coreDw)
             return;
 
+        QWidget* guestWidget = nullptr;
+        if (auto guestView = coreDw->guestView())
+            guestWidget = View_qt::asQWidget(guestView.get());
+
         QString uniqueName = QString::fromStdString(coreDw->uniqueName().toStdString());
         bool isRenameable = uniqueName.startsWith("Console [") ||
                             uniqueName.startsWith("Terminal [") ||
                             uniqueName.startsWith("Files [") ||
                             uniqueName.startsWith("Processes [");
-
         if (!isRenameable)
             return;
 
-        QSettings settings("Adaptix", "AdaptixClient");
-        bool hasCustomName = settings.contains("TabNames/" + uniqueName);
+        bool hasCustomName = false;
+        if (guestWidget) {
+            const QVariant v = guestWidget->property("adaptix.customTabTitle");
+            hasCustomName = v.isValid() && v.canConvert<QString>() && !v.toString().isEmpty();
+        }
 
         QMenu menu(this);
 
-        menu.addAction("Rename", this, [this, clickedTabIndex, coreDw]() {
+        menu.addAction("Rename", this, [this, clickedTabIndex, coreDw, guestWidget]() {
             bool ok;
             QString currentTitle = tabText(clickedTabIndex);
-            QString newTitle = QInputDialog::getText(this, "Rename Tab",
-                "Enter new name:", QLineEdit::Normal, currentTitle, &ok);
+            QString newTitle = QInputDialog::getText(this, "Rename Tab", "Enter new name:", QLineEdit::Normal, currentTitle, &ok);
 
             if (ok && !newTitle.isEmpty() && newTitle != currentTitle) {
                 setTabText(clickedTabIndex, newTitle);
                 coreDw->setTitle(newTitle);
 
-                QString uniqueName = QString::fromStdString(coreDw->uniqueName().toStdString());
-                QSettings settings("Adaptix", "AdaptixClient");
-                settings.setValue("TabNames/" + uniqueName, newTitle);
+                if (guestWidget)
+                    guestWidget->setProperty("adaptix.customTabTitle", newTitle);
             }
         });
 
         if (hasCustomName) {
-            menu.addAction("Reset Name", this, [this, clickedTabIndex, coreDw]() {
+            menu.addAction("Reset Name", this, [this, clickedTabIndex, coreDw, guestWidget]() {
                 QString uniqueName = QString::fromStdString(coreDw->uniqueName().toStdString());
                 QString originalName = uniqueName.split(":Dock-").first();
 
                 setTabText(clickedTabIndex, originalName);
                 coreDw->setTitle(originalName);
 
-                QSettings settings("Adaptix", "AdaptixClient");
-                settings.remove("TabNames/" + uniqueName);
+                if (guestWidget)
+                    guestWidget->setProperty("adaptix.customTabTitle", QVariant());
             });
         }
 
@@ -312,9 +315,14 @@ void Stack::showContextMenu(QPoint pos)
         return;
     }
 
+    if (!(Config::self().flags() & Config::Flag_AllowSwitchingTabsViaMenu))
+        return;
+
+    // We don't want context menu if there is only one tab
+    if (tabBar->count() <= 1)
+        return;
+
     // Right click is allowed only on the tabs area
-    // Create a rectangle covering the tab bar area, expanded to full width of the widget
-    // This rectangle is in widget coordinates (same as pos)
     QRect tabAreaRect = QRect(tabBar->mapTo(this, QPoint(0, 0)), tabBar->size());
     if (tabPosition() == QTabWidget::North || tabPosition() == QTabWidget::South) {
         tabAreaRect.setLeft(0);
