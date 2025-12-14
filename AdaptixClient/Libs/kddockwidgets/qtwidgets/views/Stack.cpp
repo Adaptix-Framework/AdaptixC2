@@ -33,6 +33,8 @@
 #include <QMenu>
 #include <QSizePolicy>
 #include <QTimer>
+#include <QInputDialog>
+#include <QSettings>
 
 #include "kdbindings/signal.h"
 
@@ -256,10 +258,59 @@ void Stack::showContextMenu(QPoint pos)
 
     // Convert pos to tabBar coordinates for tabAt() check
     QPoint tabBarPos = tabBar->mapFrom(this, pos);
+    int clickedTabIndex = tabBar->tabAt(tabBarPos);
 
-    // Click on a tab => No menu
-    if (tabBar->tabAt(tabBarPos) >= 0)
+    if (clickedTabIndex >= 0) {
+        auto* coreDw = m_stack->tabBar()->dockWidgetAt(clickedTabIndex);
+        if (!coreDw)
+            return;
+
+        QString uniqueName = QString::fromStdString(coreDw->uniqueName().toStdString());
+        bool isRenameable = uniqueName.startsWith("Console [") ||
+                            uniqueName.startsWith("Terminal [") ||
+                            uniqueName.startsWith("Files [") ||
+                            uniqueName.startsWith("Processes [");
+
+        if (!isRenameable)
+            return;
+
+        QSettings settings("Adaptix", "AdaptixClient");
+        bool hasCustomName = settings.contains("TabNames/" + uniqueName);
+
+        QMenu menu(this);
+
+        menu.addAction("Rename", this, [this, clickedTabIndex, coreDw]() {
+            bool ok;
+            QString currentTitle = tabText(clickedTabIndex);
+            QString newTitle = QInputDialog::getText(this, "Rename Tab",
+                "Enter new name:", QLineEdit::Normal, currentTitle, &ok);
+
+            if (ok && !newTitle.isEmpty() && newTitle != currentTitle) {
+                setTabText(clickedTabIndex, newTitle);
+                coreDw->setTitle(newTitle);
+
+                QString uniqueName = QString::fromStdString(coreDw->uniqueName().toStdString());
+                QSettings settings("Adaptix", "AdaptixClient");
+                settings.setValue("TabNames/" + uniqueName, newTitle);
+            }
+        });
+
+        if (hasCustomName) {
+            menu.addAction("Reset Name", this, [this, clickedTabIndex, coreDw]() {
+                QString uniqueName = QString::fromStdString(coreDw->uniqueName().toStdString());
+                QString originalName = uniqueName.split(":Dock-").first();
+
+                setTabText(clickedTabIndex, originalName);
+                coreDw->setTitle(originalName);
+
+                QSettings settings("Adaptix", "AdaptixClient");
+                settings.remove("TabNames/" + uniqueName);
+            });
+        }
+
+        menu.exec(mapToGlobal(pos));
         return;
+    }
 
     // Right click is allowed only on the tabs area
     // Create a rectangle covering the tab bar area, expanded to full width of the widget
