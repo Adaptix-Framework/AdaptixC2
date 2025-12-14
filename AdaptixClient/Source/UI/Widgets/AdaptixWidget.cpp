@@ -931,6 +931,8 @@ void AdaptixWidget::OnReconnect()
             QMetaObject::invokeMethod(this, [=, this]() {
                 if (!result) {
                     MessageError("Login failure");
+                    if (dialogSyncPacket && dialogSyncPacket->splashScreen)
+                        dialogSyncPacket->splashScreen->close();
                 } else {
                     this->ClearAdaptix();
 
@@ -949,7 +951,8 @@ void AdaptixWidget::OnReconnect()
             }, Qt::QueuedConnection);
         });
 
-        dialogSyncPacket->splashScreen->show();
+        if (dialogSyncPacket && dialogSyncPacket->splashScreen)
+            dialogSyncPacket->splashScreen->show();
 
         workerThread->start();
     }

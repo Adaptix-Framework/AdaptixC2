@@ -185,6 +185,30 @@ void TabBar::mousePressEvent(QMouseEvent *e)
     QTabBar::mousePressEvent(e);
 }
 
+void TabBar::mouseReleaseEvent(QMouseEvent *e)
+{
+    if (e->button() == Qt::MiddleButton) {
+        const int index = tabAt(e->pos());
+        if (index >= 0) {
+            if (auto stack = d->m_controller->stack()) {
+                if (auto dw = stack->tabBar()->dockWidgetAt(index)) {
+                    if (dw->options() & DockWidgetOption_NotClosable) {
+                        qWarning() << "TabBar::mouseReleaseEvent: Refusing to close dock widget with "
+                                      "Option_NotClosable option. name="
+                                   << dw->uniqueName();
+                    } else {
+                        dw->view()->close();
+                    }
+                }
+            }
+            e->accept();
+            return;
+        }
+    }
+
+    QTabBar::mouseReleaseEvent(e);
+}
+
 void TabBar::mouseMoveEvent(QMouseEvent *e)
 {
     if (count() > 1) {

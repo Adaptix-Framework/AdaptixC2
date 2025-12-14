@@ -109,9 +109,6 @@ protected:
 
         const AgentData &a = agent->data;
 
-        if (!searchVisible)
-            return true;
-
         if (onlyActive) {
             if (a.Mark == "Terminated" || a.Mark == "Inactive" || a.Mark == "Disconnect")
                 return false;
