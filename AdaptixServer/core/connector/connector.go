@@ -61,6 +61,7 @@ type Teamserver interface {
 	TsTaskDelete(agentId string, taskId string) error
 	TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error
 	TsTaskSave(hookData adaptix.TaskData) error
+	TsTaskListCompleted(agentId string, limit int, offset int) (string, error)
 
 	TsChatSendMessage(username string, message string)
 
@@ -229,6 +230,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 		api_group.POST("/agent/set/color", connector.TcAgentSetColor)
 		api_group.POST("/agent/set/impersonate", connector.TcAgentSetImpersonate)
 
+		api_group.GET("/agent/task/list", connector.TcAgentTaskList)
 		api_group.POST("/agent/task/cancel", connector.TcAgentTaskCancel)
 		api_group.POST("/agent/task/delete", connector.TcAgentTaskDelete)
 		api_group.POST("/agent/task/hook", connector.TcAgentTaskHook)
