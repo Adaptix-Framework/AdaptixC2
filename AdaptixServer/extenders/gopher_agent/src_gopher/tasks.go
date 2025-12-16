@@ -1015,9 +1015,22 @@ func jobTunnel(paramsData []byte) {
 
 	go func() {
 		active := true
+		reason := byte(0)
 		clientConn, err := net.DialTimeout(params.Proto, params.Address, 200*time.Millisecond)
 		if err != nil {
 			active = false
+			var opErr *net.OpError
+			if errors.As(err, &opErr) {
+				if opErr.Timeout() {
+					reason = 4
+				}
+				if errors.Is(syscall.ECONNREFUSED, opErr.Err) {
+					reason = 5
+				}
+				if errors.Is(syscall.ENETUNREACH, opErr.Err) {
+					reason = 3
+				}
+			}
 		}
 
 		var srvConn net.Conn
@@ -1050,7 +1063,7 @@ func jobTunnel(paramsData []byte) {
 		tunIv := make([]byte, 16)
 		_, _ = rand.Read(tunIv)
 
-		jobPack, _ := msgpack.Marshal(utils.TunnelPack{Id: uint(AgentId), Type: profile.Type, ChannelId: params.ChannelId, Key: tunKey, Iv: tunIv, Alive: active})
+		jobPack, _ := msgpack.Marshal(utils.TunnelPack{Id: uint(AgentId), Type: profile.Type, ChannelId: params.ChannelId, Key: tunKey, Iv: tunIv, Alive: active, Reason: reason})
 		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.JOB_TUNNEL, Data: jobPack})
 		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
 

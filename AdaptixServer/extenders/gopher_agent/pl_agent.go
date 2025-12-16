@@ -622,24 +622,28 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 					goto RET
 				}
 
-				tunnelId, err := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, true, username, password)
-				if err != nil {
+				tunnelId, err2 := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, true, username, password)
+				if err2 != nil {
+					err = err2
 					goto RET
 				}
-				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
-				if err != nil {
+				taskData.TaskId, err2 = ts.TsTunnelStart(tunnelId)
+				if err2 != nil {
+					err = err2
 					goto RET
 				}
 
 				taskData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
 
 			} else {
-				tunnelId, err := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, false, "", "")
-				if err != nil {
+				tunnelId, err2 := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, false, "", "")
+				if err2 != nil {
+					err = err2
 					goto RET
 				}
-				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
-				if err != nil {
+				taskData.TaskId, err2 = ts.TsTunnelStart(tunnelId)
+				if err2 != nil {
+					err = err2
 					goto RET
 				}
 
@@ -1501,14 +1505,14 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 /// TUNNEL
 
-func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {
+func TunnelCreateTCP(channelId int, tunnelType int, addressType int, address string, port int) ([]byte, error) {
 	addr := fmt.Sprintf("%s:%d", address, port)
 	packerData, _ := msgpack.Marshal(ParamsTunnelStart{Proto: "tcp", ChannelId: channelId, Address: addr})
 	cmd := Command{Code: COMMAND_TUNNEL_START, Data: packerData}
 	return msgpack.Marshal(cmd)
 }
 
-func TunnelCreateUDP(channelId int, address string, port int) ([]byte, error) {
+func TunnelCreateUDP(channelId int, tunnelType int, addressType int, address string, port int) ([]byte, error) {
 	addr := fmt.Sprintf("%s:%d", address, port)
 	packerData, _ := msgpack.Marshal(ParamsTunnelStart{Proto: "udp", ChannelId: channelId, Address: addr})
 	cmd := Command{Code: COMMAND_TUNNEL_START, Data: packerData}

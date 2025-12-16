@@ -24,6 +24,24 @@ const (
 	MESSAGE_INFO    = 5
 	MESSAGE_ERROR   = 6
 	MESSAGE_SUCCESS = 7
+
+	TUNNEL_TYPE_SOCKS4     = 1
+	TUNNEL_TYPE_SOCKS5     = 2
+	TUNNEL_TYPE_LOCAL_PORT = 4
+	TUNNEL_TYPE_REVERSE    = 5
+
+	ADDRESS_TYPE_IPV4   = 1
+	ADDRESS_TYPE_DOMAIN = 3
+	ADDRESS_TYPE_IPV6   = 4
+
+	SOCKS5_SERVER_FAILURE          byte = 1
+	SOCKS5_NOT_ALLOWED_RULESET     byte = 2
+	SOCKS5_NETWORK_UNREACHABLE     byte = 3
+	SOCKS5_HOST_UNREACHABLE        byte = 4
+	SOCKS5_CONNECTION_REFUSED      byte = 5
+	SOCKS5_TTL_EXPIRED             byte = 6
+	SOCKS5_COMMAND_NOT_SUPPORTED   byte = 7
+	SOCKS5_ADDR_TYPE_NOT_SUPPORTED byte = 8
 )
 
 type Teamserver interface {
@@ -71,6 +89,7 @@ type Teamserver interface {
 	TsTunnelStopRportfwd(AgentId string, Port int)
 
 	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionHalt(channelId int, errorCode byte)
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
 	TsTunnelConnectionAccept(tunnelId int, channelId int)
@@ -230,12 +249,12 @@ func SyncBrowserProcessWindows(ts Teamserver, taskData adaptix.TaskData, process
 
 /// TUNNEL
 
-func (m *ModuleExtender) AgentTunnelCallbacks() (func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {
+func (m *ModuleExtender) AgentTunnelCallbacks() (func(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData, func(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {
 	return TunnelMessageConnectTCP, TunnelMessageConnectUDP, TunnelMessageWriteTCP, TunnelMessageWriteUDP, TunnelMessageClose, TunnelMessageReverse, nil
 }
 
-func TunnelMessageConnectTCP(channelId int, address string, port int) adaptix.TaskData {
-	packData, _ := TunnelCreateTCP(channelId, address, port)
+func TunnelMessageConnectTCP(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData {
+	packData, _ := TunnelCreateTCP(channelId, tunnelType, addressType, address, port)
 
 	taskData := adaptix.TaskData{
 		Type: TYPE_PROXY_DATA,
@@ -246,8 +265,8 @@ func TunnelMessageConnectTCP(channelId int, address string, port int) adaptix.Ta
 	return taskData
 }
 
-func TunnelMessageConnectUDP(channelId int, address string, port int) adaptix.TaskData {
-	packData, _ := TunnelCreateUDP(channelId, address, port)
+func TunnelMessageConnectUDP(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData {
+	packData, _ := TunnelCreateUDP(channelId, tunnelType, addressType, address, port)
 
 	taskData := adaptix.TaskData{
 		Type: TYPE_PROXY_DATA,

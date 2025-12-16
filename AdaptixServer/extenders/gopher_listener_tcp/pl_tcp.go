@@ -94,6 +94,7 @@ type TunnelPack struct {
 	Key       []byte `msgpack:"key"`
 	Iv        []byte `msgpack:"iv"`
 	Alive     bool   `msgpack:"alive"`
+	Reason    byte   `msgpack:"reason"`
 }
 
 type TermPack struct {
@@ -322,7 +323,10 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		}
 
 		if !tunPack.Alive {
-			ts.TsTunnelConnectionClose(tunPack.ChannelId)
+			if tunPack.Reason < 1 || tunPack.Reason > 8 {
+				tunPack.Reason = 5
+			}
+			ts.TsTunnelConnectionHalt(tunPack.ChannelId, tunPack.Reason)
 			_ = conn.Close()
 			return
 		}
