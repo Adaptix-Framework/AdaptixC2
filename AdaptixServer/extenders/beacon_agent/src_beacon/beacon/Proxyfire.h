@@ -11,6 +11,9 @@
 #define COMMAND_TUNNEL_REVERSE   67
 #define COMMAND_TUNNEL_ACCEPT    68
 
+#define TUNNEL_CREATE_SUCCESS 0
+#define TUNNEL_CREATE_ERROR 1
+
 #define TUNNEL_STATE_CLOSE   0
 #define TUNNEL_STATE_READY   1
 #define TUNNEL_STATE_CONNECT 2
@@ -21,6 +24,7 @@
 
 struct TunnelData {
 	ULONG  channelID;
+	ULONG  type;
 	SOCKET sock;
 	BYTE   state;
 	BYTE   mode;
@@ -42,14 +46,14 @@ public:
 	ULONG RecvProxy(Packer* packer);
 	void  CloseProxy();
 
-	void ConnectMessageTCP(ULONG channelId, CHAR* address, WORD port, Packer* outPacker);
+	void ConnectMessageTCP(ULONG channelId, ULONG type, CHAR* address, WORD port, Packer* outPacker);
 	void ConnectMessageUDP(ULONG channelId, CHAR* address, WORD port, Packer* outPacker);
 	void ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize);
 	void ConnectWriteUDP(ULONG channelId, CHAR* data, ULONG dataSize);
 	void ConnectClose(ULONG channelId);
 	void ConnectMessageReverse(ULONG tunnelId, WORD port, Packer* outPacker);
 
-	void AddProxyData(ULONG channelId, SOCKET sock, ULONG waitTime, ULONG mode, ULONG address, WORD port, ULONG state);
+	void AddProxyData(ULONG channelId, ULONG type, SOCKET sock, ULONG waitTime, ULONG mode, ULONG address, WORD port, ULONG state);
 
 	static void* operator new(size_t sz);
 	static void operator delete(void* p) noexcept;

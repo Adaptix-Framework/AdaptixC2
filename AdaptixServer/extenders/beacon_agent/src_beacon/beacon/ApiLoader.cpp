@@ -201,6 +201,8 @@ BOOL ApiLoad()
 			ApiWin->socket			= (decltype(socket)*)          GetSymbolAddress(hWs2_32Module, HASH_FUNC_SOCKET);
 			ApiWin->ioctlsocket		= (decltype(ioctlsocket)*)     GetSymbolAddress(hWs2_32Module, HASH_FUNC_IOCTLSOCKET);
 			ApiWin->connect			= (decltype(connect)*)         GetSymbolAddress(hWs2_32Module, HASH_FUNC_CONNECT);
+			ApiWin->setsockopt      = (decltype(setsockopt)*)      GetSymbolAddress(hWs2_32Module, HASH_FUNC_SETSOCKOPT);
+			ApiWin->getsockopt	    = (decltype(getsockopt)*)      GetSymbolAddress(hWs2_32Module, HASH_FUNC_GETSOCKOPT);
 			ApiWin->closesocket		= (decltype(closesocket)*)     GetSymbolAddress(hWs2_32Module, HASH_FUNC_CLOSESOCKET);
 			ApiWin->select			= (decltype(select)*)          GetSymbolAddress(hWs2_32Module, HASH_FUNC_SELECT);
 			ApiWin->__WSAFDIsSet    = (decltype(__WSAFDIsSet)*)    GetSymbolAddress(hWs2_32Module, HASH_FUNC___WSAFDISSET);

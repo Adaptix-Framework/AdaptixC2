@@ -872,13 +872,14 @@ void Commander::CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacke
 
 void Commander::CmdTunnelMsgConnectTCP(ULONG commandId, Packer* inPacker, Packer* outPacker) 
 {
-	ULONG channelId = inPacker->Unpack32();
-	ULONG addrSize  = 0;
-	CHAR* addr      = (CHAR*)inPacker->UnpackBytes(&addrSize);
-	WORD  port      = inPacker->Unpack32();
-	ULONG taskId    = inPacker->Unpack32();
+	ULONG channelId  = inPacker->Unpack32();
+	ULONG tunnelType = inPacker->Unpack32();
+	ULONG addrSize   = 0;
+	CHAR* addr       = (CHAR*)inPacker->UnpackBytes(&addrSize);
+	WORD  port       = inPacker->Unpack32();
+	ULONG taskId     = inPacker->Unpack32();
 
-	this->agent->proxyfire->ConnectMessageTCP(channelId, addr, port, outPacker);
+	this->agent->proxyfire->ConnectMessageTCP(channelId, tunnelType, addr, port, outPacker);
 }
 
 void Commander::CmdTunnelMsgConnectUDP(ULONG commandId, Packer* inPacker, Packer* outPacker)

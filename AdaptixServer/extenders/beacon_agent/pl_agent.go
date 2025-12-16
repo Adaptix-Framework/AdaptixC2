@@ -1846,11 +1846,18 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			}
 
 			channelId := int(TaskId)
-			result := packer.ParseInt8()
+			_ = packer.ParseInt32()
+			result := packer.ParseInt32()
 			if result == 0 {
+				ts.TsTunnelConnectionResume(agentData.Id, channelId, false)
+			} else if result == 1 {
 				ts.TsTunnelConnectionClose(channelId)
 			} else {
-				ts.TsTunnelConnectionResume(agentData.Id, channelId, false)
+				errorCode := SOCKS5_HOST_UNREACHABLE
+				if result == 10061 { // WSAECONNREFUSED
+					errorCode = SOCKS5_CONNECTION_REFUSED
+				}
+				ts.TsTunnelConnectionHalt(channelId, errorCode)
 			}
 
 		case COMMAND_TUNNEL_WRITE_TCP:
@@ -1868,11 +1875,12 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			}
 			var err error
 			tunnelId := int(TaskId)
-			result := packer.ParseInt8()
+			_ = packer.ParseInt32()
+			result := packer.ParseInt32()
 			if result == 0 {
-				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, false)
-			} else {
 				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, true)
+			} else {
+				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, false)
 			}
 
 			if err != nil {
@@ -1958,12 +1966,12 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 /// TUNNELS
 
-func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {
-	array := []interface{}{COMMAND_TUNNEL_START_TCP, channelId, address, port}
+func TunnelCreateTCP(channelId int, tunnelType int, addressType int, address string, port int) ([]byte, error) {
+	array := []interface{}{COMMAND_TUNNEL_START_TCP, channelId, tunnelType, address, port}
 	return PackArray(array)
 }
 
-func TunnelCreateUDP(channelId int, address string, port int) ([]byte, error) {
+func TunnelCreateUDP(channelId int, tunnelType int, addressType int, address string, port int) ([]byte, error) {
 	array := []interface{}{COMMAND_TUNNEL_START_UDP, channelId, address, port}
 	return PackArray(array)
 }

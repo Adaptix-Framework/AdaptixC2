@@ -111,6 +111,8 @@ struct WINAPIFUNC
 	DECL_API(gethostbyname);
 	DECL_API(ioctlsocket);
 	DECL_API(connect);
+	DECL_API(setsockopt);
+	DECL_API(getsockopt);
 	DECL_API(WSAGetLastError);
 	DECL_API(closesocket);
 	DECL_API(select);

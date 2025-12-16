@@ -162,6 +162,8 @@
 #define HASH_FUNC_GETHOSTBYNAME                      0x9a3fe8fe
 #define HASH_FUNC_IOCTLSOCKET                        0xb1dc75c8
 #define HASH_FUNC_CONNECT                            0x93f5e60e
+#define HASH_FUNC_SETSOCKOPT                         0x5f873653
+#define HASH_FUNC_GETSOCKOPT                         0x2f0868c7
 #define HASH_FUNC_WSAGETLASTERROR                    0x58a1e4d
 #define HASH_FUNC_CLOSESOCKET                        0xf44c50c3
 #define HASH_FUNC_SELECT                             0xc43ef024

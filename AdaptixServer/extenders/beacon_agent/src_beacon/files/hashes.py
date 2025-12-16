@@ -188,6 +188,8 @@ socket
 gethostbyname
 ioctlsocket
 connect
+setsockopt
+getsockopt
 WSAGetLastError
 closesocket
 select
