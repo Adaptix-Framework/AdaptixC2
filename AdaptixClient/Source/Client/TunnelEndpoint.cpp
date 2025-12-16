@@ -24,10 +24,7 @@ bool TunnelEndpoint::StartTunnel(AuthProfile* profile, const QString &type, cons
         this->useAuth = obj["use_auth"].toBool();
         this->username = obj["username"].toString();
         this->password = obj["password"].toString();
-        if (this->useAuth)
-            connect(tcpServer, &QTcpServer::newConnection, this, &TunnelEndpoint::onStartSocks5AuthChannel);
-        else
-            connect(tcpServer, &QTcpServer::newConnection, this, &TunnelEndpoint::onStartSocks5Channel);
+    	connect(tcpServer, &QTcpServer::newConnection, this, &TunnelEndpoint::onStartSocks5Channel);
         return Listen(obj);
     }
     else if (type == "socks4") {
@@ -143,22 +140,21 @@ void TunnelEndpoint::onStartSocks4Channel()
         QTcpSocket* clientSock = tcpServer->nextPendingConnection();
 
         if (!clientSock->waitForReadyRead(3000) || clientSock->bytesAvailable() < 8) {
+        	clientSock->write(QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00"), 8); // socks4 error
             clientSock->disconnectFromHost();
-            return;
+            continue;
         }
-        QByteArray header = clientSock->read(8);
-        const uchar* d = reinterpret_cast<const uchar*>(header.constData());
-        if (d[0] != 0x04 || d[1] != 0x01) {  /// VER=4, CMD=1 (CONNECT)
+        QByteArray bufArray = clientSock->read(8);
+        const uchar* buf = reinterpret_cast<const uchar*>(bufArray.constData());
+        if (buf[0] != 0x04 || buf[1] != 0x01) {  /// VER=4, CMD=1 (CONNECT)
+        	clientSock->write(QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00"), 8); // socks4 error
             clientSock->disconnectFromHost();
-            return;
+            continue;
         }
 
-        int tPort = (static_cast<quint16>(d[2]) << 8) | static_cast<quint16>(d[3]);
-        QHostAddress dstIp((static_cast<quint32>(d[4]) << 24) | (static_cast<quint32>(d[5]) << 16) | (static_cast<quint32>(d[6]) <<  8) | static_cast<quint32>(d[7]));
+        int tPort = (static_cast<quint16>(buf[2]) << 8) | static_cast<quint16>(buf[3]);
+        QHostAddress dstIp((static_cast<quint32>(buf[4]) << 24) | (static_cast<quint32>(buf[5]) << 16) | (static_cast<quint32>(buf[6]) <<  8) | static_cast<quint32>(buf[7]));
         QString tHost = dstIp.toString();
-
-        QByteArray data("\x00\x5a\x00\x00\x00\x00\x00\x00", 8);
-        clientSock->write(data);
 
         QString channelId = GenerateRandomString(8, "hex");
         QString tunnelData = QString("%1|%2|%3|%4|%5").arg(this->tunnelId).arg(channelId).arg("").arg(tHost).arg(tPort).toUtf8().toBase64();
@@ -190,77 +186,162 @@ void TunnelEndpoint::onStartSocks5Channel()
     while (tcpServer->hasPendingConnections()) {
 		QTcpSocket* clientSock = tcpServer->nextPendingConnection();
 
-    	if (!clientSock->waitForReadyRead(3000)) {
-			clientSock->disconnectFromHost();
-			return;
+    	if (!clientSock->waitForReadyRead(3000) || clientSock->bytesAvailable() < 2) {
+    		clientSock->write(QByteArray("\x00\x01\x00"), 3); // invalid version of socks proxy
+    		clientSock->disconnectFromHost();
+			continue;
 		}
 
-	  	QByteArray greeting = clientSock->readAll();
-  		if (greeting.size() < 2 || static_cast<uchar>(greeting[0]) != 0x05) {
-  			clientSock->disconnectFromHost();
-	  		return;
+	  	QByteArray buf = clientSock->read(2);
+  		if (buf.size() != 2 || static_cast<uchar>(buf[0]) != 0x05) {
+    		clientSock->write(QByteArray("\x00\x01\x00"), 3); // invalid version of socks proxy
+			clientSock->disconnectFromHost();
+	  		continue;
   		}
 
-	  	QByteArray response("\x05\x00", 2);
-  		clientSock->write(response);
-
-  		if (!clientSock->waitForReadyRead(3000)) {
-	 		clientSock->disconnectFromHost();
-			return;
-  		}
-
-    	QByteArray request = clientSock->readAll();
-    	if (request.size() < 7) {
-	    	clientSock->disconnectFromHost();
-			continue;
+    	uchar socksAuthCount = static_cast<uchar>(buf[1]);
+    	buf = clientSock->read(socksAuthCount);
+    	if (buf.size() != socksAuthCount) {
+    		clientSock->write(QByteArray("\x05\xFF\x00"), 3); // no supported authentication method
+    		clientSock->disconnectFromHost();
+    		continue;
     	}
+
+    	if (this->useAuth) {
+    		if ( !buf.contains(0x02) ) {
+    			clientSock->write(QByteArray("\x05\xFF\x00"), 3); // no supported authentication method
+    			clientSock->disconnectFromHost();
+    			continue;
+    		}
+    		clientSock->write(QByteArray("\x05\x02"), 2); // version 5, auth user:pass
+
+    		/// get username
+
+    		if (!clientSock->waitForReadyRead(3000) || clientSock->bytesAvailable() < 2) {
+    			clientSock->write(QByteArray("\x01\x01"), 2); // authentication failed
+    			clientSock->disconnectFromHost();
+    			continue;
+    		}
+    		buf = clientSock->read(2);
+    		if (buf.size() != 2 || static_cast<uchar>(buf[0]) != 0x01) {
+    			clientSock->write(QByteArray("\x01\x01"), 2); // authentication failed
+				clientSock->disconnectFromHost();
+    			continue;
+    		}
+    		uchar usernameLen = static_cast<uchar>(buf[1]);
+    		buf = clientSock->read(usernameLen);
+    		if (buf.size() != usernameLen) {
+    			clientSock->write(QByteArray("\x01\x01"), 2); // authentication failed
+    			clientSock->disconnectFromHost();
+    			continue;
+    		}
+    		QString username = QString::fromUtf8(buf);
+
+			/// get password
+    		buf = clientSock->read(1);
+    		if (buf.size() != 1) {
+    			clientSock->write(QByteArray("\x01\x01"), 2); // authentication failed
+    			clientSock->disconnectFromHost();
+    			continue;
+    		}
+    		uchar passwordLen = static_cast<uchar>(buf[0]);
+    		buf = clientSock->read(passwordLen);
+    		if (buf.size() != passwordLen) {
+    			clientSock->write(QByteArray("\x01\x01"), 2); // authentication failed
+    			clientSock->disconnectFromHost();
+    			continue;
+    		}
+    		QString password = QString::fromUtf8(buf);
+
+    		if (username != this->username || password != this->password) {
+    			clientSock->write(QByteArray("\x01\x01"), 2); // authentication failed
+    			clientSock->disconnectFromHost();
+    			continue;
+    		}
+    		clientSock->write(QByteArray("\x01\x00"), 2); // auth success
+    	}
+    	else {
+    		if ( !buf.contains(0x00) ) {
+    			clientSock->write(QByteArray("\x05\xFF\x00"), 3); // no supported authentication method
+    			clientSock->disconnectFromHost();
+    			continue;
+    		}
+    		clientSock->write(QByteArray("\x05\x00"), 2); // version 5, without auth
+    	}
+
+    	/// Check command: CONNECT (1)
+
+    	if (!clientSock->waitForReadyRead(3000)) {
+    		clientSock->write(QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00"), 10); // command not supported
+    		clientSock->disconnectFromHost();
+    		continue;
+    	}
+
+    	buf = clientSock->read(4);
+    	if (buf.size() != 4 || static_cast<uchar>(buf[0]) != 0x05 || static_cast<uchar>(buf[1]) != 0x01) {
+    		clientSock->write(QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00"), 10); // command not supported
+    		clientSock->disconnectFromHost();
+    		continue;
+    	}
+    	uchar addrType = static_cast<uchar>(buf[3]);
 
     	QString mode = "tcp";
-    	if (static_cast<uchar>(request[1]) == 3)
-    		mode = "udp";
-
-    	uchar addrType = static_cast<uchar>(request[3]);
     	QString dstAddress;
-    	quint16 dstPort;
 
-    	if (addrType == 0x01) { /// IPv4
-    		if (request.size() < 10) {
+    	switch (addrType) {
+    		case 0x01: { /// IPv4
+    			buf = clientSock->read(4);
+    			if (buf.size() != 4) {
+    				clientSock->write(QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00"), 10); // command not supported
+    				clientSock->disconnectFromHost();
+    				continue;
+    			}
+    			QHostAddress ip((static_cast<uchar>(buf[0]) << 24) | (static_cast<uchar>(buf[1]) << 16) | (static_cast<uchar>(buf[2]) <<  8) | static_cast<uchar>(buf[3]));
+    			dstAddress = ip.toString();
+    			break;
+    		}
+    		case 0x03: { /// DNS
+    			buf = clientSock->read(1);
+    			if (buf.size() != 1) {
+    				clientSock->write(QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00"), 10); // command not supported
+    				clientSock->disconnectFromHost();
+    				continue;
+    			}
+    			uchar domainLen = static_cast<uchar>(buf[0]);
+    			buf = clientSock->read(domainLen);
+    			if (buf.size() != domainLen) {
+    				clientSock->write(QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00"), 10); // command not supported
+    				clientSock->disconnectFromHost();
+    				continue;
+    			}
+    			dstAddress = QString::fromUtf8(buf);
+    			break;
+    		}
+    		case 0x04: { /// IPv6
+    			buf = clientSock->read(16);
+    			if (buf.size() != 16) {
+    				clientSock->write(QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00"), 10); // command not supported
+    				clientSock->disconnectFromHost();
+    				continue;
+    			}
+    			QHostAddress ip(buf);
+    			dstAddress = ip.toString();
+    			break;
+    		}
+    		default: {
+    			clientSock->write(QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00"), 10); // command not supported
     			clientSock->disconnectFromHost();
     			continue;
     		}
-    		QHostAddress ip((static_cast<uchar>(request[4]) << 24) | (static_cast<uchar>(request[5]) << 16) | (static_cast<uchar>(request[6]) <<  8) | static_cast<uchar>(request[7]));
-    		dstAddress = ip.toString();
-    		dstPort = (static_cast<uchar>(request[8]) << 8) | static_cast<uchar>(request[9]);
-
-    	} else if (addrType == 0x03) { /// DNS
-    		uchar domainLen = static_cast<uchar>(request[4]);
-    		if (request.size() < 5 + domainLen + 2) {
-    			clientSock->disconnectFromHost();
-    			continue;
-    		}
-    		dstAddress = QString::fromUtf8(request.mid(5, domainLen));
-    		dstPort = (static_cast<uchar>(request[5 + domainLen]) << 8) | static_cast<uchar>(request[6 + domainLen]);
-
-    	} else if (addrType == 0x04) { /// IPv6
-    		if (request.size() < 22) {
-    			clientSock->disconnectFromHost();
-    			continue;
-    		}
-    		quint8 ipv6[16];
-    		for (int i = 0; i < 16; ++i) {
-    			ipv6[i] = static_cast<quint8>(request[4 + i]);
-    		}
-    		QHostAddress ip(ipv6);
-    		dstAddress = ip.toString();
-    		dstPort = (static_cast<uchar>(request[20]) << 8) | static_cast<uchar>(request[21]);
-
-    	} else {
-	    	clientSock->disconnectFromHost();
-			continue;
     	}
 
-	  	QByteArray data("\x05\x00\x00\x01\x00\x00\x00\x00\x00\x00", 10);
-  		clientSock->write(data);
+    	buf = clientSock->read(2);
+    	if (buf.size() != 2) {
+    		clientSock->write(QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00"), 10); // command not supported
+    		clientSock->disconnectFromHost();
+    		continue;
+    	}
+    	quint16 dstPort = (static_cast<uchar>(buf[0]) << 8) | static_cast<uchar>(buf[1]);
 
     	QString channelId = GenerateRandomString(8, "hex");
     	QString tunnelData = QString("%1|%2|%3|%4|%5").arg(this->tunnelId).arg(channelId).arg(mode).arg(dstAddress).arg(dstPort).toUtf8().toBase64();
@@ -274,162 +355,10 @@ void TunnelEndpoint::onStartSocks5Channel()
         worker->moveToThread(thread);
         clientSock->setParent(worker);
 
-        connect(thread, &QThread::started, worker, &TunnelWorker::start);
+        connect(thread, &QThread::started,       worker, &TunnelWorker::start);
         connect(worker, &TunnelWorker::finished, thread, &QThread::quit);
         connect(worker, &TunnelWorker::finished, worker, &TunnelWorker::deleteLater);
-        connect(thread, &QThread::finished, thread, &QThread::deleteLater);
-    	connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
-
-        thread->start();
-    }
-}
-
-void TunnelEndpoint::onStartSocks5AuthChannel()
-{
-    if (this->tunnelId.isEmpty())
-        return;
-
-    while (tcpServer->hasPendingConnections()) {
-        QTcpSocket* clientSock = tcpServer->nextPendingConnection();
-
-	    if (!clientSock->waitForReadyRead(3000)) {
-			clientSock->disconnectFromHost();
-			return;
-		}
-
-    	QByteArray greeting = clientSock->readAll();
-    	if (greeting.size() < 2 || static_cast<uchar>(greeting[0]) != 0x05) {
-    		clientSock->disconnectFromHost();
-    		return;
-    	}
-
-    	uchar nMethods = static_cast<uchar>(greeting[1]);
-    	if (greeting.size() < 2 + nMethods) {
-    		clientSock->disconnectFromHost();
-    		return;
-    	}
-
-    	QByteArray methods = greeting.mid(2, nMethods);
-		if (!methods.contains(0x02)) {
-			QByteArray response("\x05\xff", 2);
-			clientSock->write(response);
-    		clientSock->disconnectFromHost();
-    		return;
-		}
-
-    	QByteArray response("\x05\x02", 2);
-    	clientSock->write(response);
-
-    	if (!clientSock->waitForReadyRead(3000)) {
-	    	clientSock->disconnectFromHost();
-			return;
-    	}
-
-    	QByteArray authRequest = clientSock->readAll();
-    	if (authRequest.size() < 2 || static_cast<uchar>(authRequest[0]) != 0x01) {
-    		clientSock->disconnectFromHost();
-    		return;
-    	}
-
-    	uchar ulen = static_cast<uchar>(authRequest[1]);
-    	if (authRequest.size() < 2 + ulen + 1) {
-    		clientSock->disconnectFromHost();
-    		return;
-    	}
-    	QString username = QString::fromUtf8(authRequest.mid(2, ulen));
-
-    	uchar plen = static_cast<uchar>(authRequest[2 + ulen]);
-    	if (authRequest.size() < 2 + ulen + 1 + plen) {
-    		clientSock->disconnectFromHost();
-    		return;
-    	}
-    	QString password = QString::fromUtf8(authRequest.mid(3 + ulen, plen));
-
-		if (username != this->username || password != this->password) {
-			QByteArray authResponse("\x01\x01", 2);
-			clientSock->write(authResponse);
-			clientSock->disconnectFromHost();
-			return;
-		}
-
-    	QByteArray authResponse("\x01\x00", 2);
-    	clientSock->write(authResponse);
-
-    	if (!clientSock->waitForReadyRead(3000)) {
-	    	clientSock->disconnectFromHost();
-			return;
-    	}
-
-    	QByteArray request = clientSock->readAll();
-    	if (request.size() < 7) {
-    		clientSock->disconnectFromHost();
-    		return;
-    	}
-
-    	QString mode = "tcp";
-    	if (static_cast<uchar>(request[1]) == 3)
-    		mode = "udp";
-
-    	uchar addrType = static_cast<uchar>(request[3]);
-    	QString dstAddress;
-    	quint16 dstPort;
-
-    	if (addrType == 0x01) { /// IPv4
-    		if (request.size() < 10) {
-    			clientSock->disconnectFromHost();
-		    	continue;
-    		}
-
-    		QHostAddress ip((static_cast<uchar>(request[4]) << 24) | (static_cast<uchar>(request[5]) << 16) | (static_cast<uchar>(request[6]) <<  8) | static_cast<uchar>(request[7]));
-    		dstAddress = ip.toString();
-    		dstPort = (static_cast<uchar>(request[8]) << 8) | static_cast<uchar>(request[9]);
-
-    	} else if (addrType == 0x03) { /// DNS
-    		uchar domainLen = static_cast<uchar>(request[4]);
-    		if (request.size() < 5 + domainLen + 2) {
-    			clientSock->disconnectFromHost();
-    			continue;
-    		}
-    		dstAddress = QString::fromUtf8(request.mid(5, domainLen));
-    		dstPort = (static_cast<uchar>(request[5 + domainLen]) << 8) | static_cast<uchar>(request[6 + domainLen]);
-
-    	} else if (addrType == 0x04) { /// IPv6
-    		if (request.size() < 22) {
-    			clientSock->disconnectFromHost();
-    			continue;
-    		}
-    		quint8 ipv6[16];
-    		for (int i = 0; i < 16; ++i) {
-    			ipv6[i] = static_cast<quint8>(request[4 + i]);
-    		}
-    		QHostAddress ip(ipv6);
-    		dstAddress = ip.toString();
-    		dstPort = (static_cast<uchar>(request[20]) << 8) | static_cast<uchar>(request[21]);
-
-    	} else {
-	    	clientSock->disconnectFromHost();
-			continue;
-    	}
-
-    	QByteArray data("\x05\x00\x00\x01\x00\x00\x00\x00\x00\x00", 10);
-    	clientSock->write(data);
-
-	    QString channelId = GenerateRandomString(8, "hex");
-	    QString tunnelData = QString("%1|%2|%3|%4|%5").arg(this->tunnelId).arg(channelId).arg(mode).arg(dstAddress).arg(dstPort).toUtf8().toBase64();
-
-        QThread* thread = new QThread;
-        TunnelWorker* worker = new TunnelWorker(clientSock, this->profile->GetAccessToken(), this->wsUrl, tunnelData);
-
-        clientSock->setParent(nullptr);
-        clientSock->moveToThread(thread);
-
-        worker->moveToThread(thread);
-        clientSock->setParent(worker);
-
-        connect(thread, &QThread::started, worker, &TunnelWorker::start);
-        connect(worker, &TunnelWorker::finished, thread, &QThread::quit);
-        connect(worker, &TunnelWorker::finished, worker, &TunnelWorker::deleteLater);
-        connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+        connect(thread, &QThread::finished,      thread, &QThread::deleteLater);
     	connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
 
         thread->start();

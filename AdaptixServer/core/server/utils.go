@@ -134,8 +134,8 @@ type Tunnel struct {
 	listener    net.Listener
 	connections safe.Map
 
-	handlerConnectTCP func(channelId int, addr string, port int) adaptix.TaskData
-	handlerConnectUDP func(channelId int, addr string, port int) adaptix.TaskData
+	handlerConnectTCP func(channelId int, tunType int, addrType int, addr string, port int) adaptix.TaskData
+	handlerConnectUDP func(channelId int, tunType int, addrType int, addr string, port int) adaptix.TaskData
 	handlerWriteTCP   func(channelId int, data []byte) adaptix.TaskData
 	handlerWriteUDP   func(channelId int, data []byte) adaptix.TaskData
 	handlerClose      func(channelId int) adaptix.TaskData

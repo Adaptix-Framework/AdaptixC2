@@ -45,7 +45,6 @@ private Q_SLOTS:
     void onStartLpfChannel();
     void onStartSocks4Channel();
     void onStartSocks5Channel();
-    void onStartSocks5AuthChannel();
 };
 
 #endif
