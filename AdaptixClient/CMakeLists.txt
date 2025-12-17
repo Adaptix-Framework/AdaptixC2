@@ -96,6 +96,7 @@ SET( HEADERS
         Headers/Client/AuthProfile.h
         Headers/Utils/FileSystem.h
         Headers/Client/Requestor.h
+        Headers/Client/HttpRequestManager.h
         Headers/UI/MainUI.h
         Headers/UI/Widgets/AdaptixWidget.h
         Headers/UI/Widgets/LogsWidget.h
@@ -176,6 +177,7 @@ add_executable(AdaptixClient
         Source/Client/AuthProfile.cpp
         Source/Utils/FileSystem.cpp
         Source/Client/Requestor.cpp
+        Source/Client/HttpRequestManager.cpp
         Source/UI/MainUI.cpp
         Source/UI/Widgets/AdaptixWidget.cpp
         Source/UI/Widgets/LogsWidget.cpp

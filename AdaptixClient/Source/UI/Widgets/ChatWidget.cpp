@@ -93,18 +93,13 @@ void ChatWidget::createUI()
 
 void ChatWidget::handleChat()
 {
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqChatSendMessage(chatInput->text(), *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result) {
-        MessageError("Response timeout");
-        return;
-    }
-    if (!ok) {
-        MessageError(message);
-        return;
-    }
+    QString text = chatInput->text();
     chatInput->clear();
+    
+    HttpReqChatSendMessageAsync(text, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void ChatWidget::AddChatMessage(const qint64 time, const QString &username, const QString &message)

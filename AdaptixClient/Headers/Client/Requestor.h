@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_REQUESTOR_H
 
 #include <main.h>
+#include <Client/HttpRequestManager.h>
 
 class AuthProfile;
 
@@ -96,5 +97,40 @@ bool HttpReqTargetEdit(const QByteArray &jsonData, AuthProfile profile, QString*
 bool HttpReqTargetRemove(const QStringList &targetsId, AuthProfile profile, QString* message, bool* ok);
 
 bool HttpReqTargetSetTag( QStringList targetsId, const QString &tag, AuthProfile profile, QString* message, bool* ok );
+
+/// ASYNC VERSIONS
+
+void HttpReqAgentRemoveAsync(QStringList agentsId, AuthProfile& profile, HttpCallback callback);
+void HttpReqAgentSetTagAsync(QStringList agentsId, const QString &tag, AuthProfile& profile, HttpCallback callback);
+void HttpReqAgentSetMarkAsync(QStringList agentsId, const QString &mark, AuthProfile& profile, HttpCallback callback);
+void HttpReqAgentSetColorAsync(QStringList agentsId, const QString &background, const QString &foreground, bool reset, AuthProfile& profile, HttpCallback callback);
+void HttpReqConsoleRemoveAsync(QStringList agentsId, AuthProfile& profile, HttpCallback callback);
+
+void HttpReqTaskCancelAsync(const QString &agentId, QStringList tasksId, AuthProfile& profile, HttpCallback callback);
+void HttpReqTasksDeleteAsync(const QString &agentId, QStringList tasksId, AuthProfile& profile, HttpCallback callback);
+
+void HttpReqCredentialsCreateAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback);
+void HttpReqCredentialsEditAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback);
+void HttpReqCredentialsRemoveAsync(const QStringList &credsId, AuthProfile& profile, HttpCallback callback);
+void HttpReqCredentialsSetTagAsync(QStringList credsId, const QString &tag, AuthProfile& profile, HttpCallback callback);
+
+void HttpReqTargetsCreateAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback);
+void HttpReqTargetEditAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback);
+void HttpReqTargetRemoveAsync(const QStringList &targetsId, AuthProfile& profile, HttpCallback callback);
+void HttpReqTargetSetTagAsync(QStringList targetsId, const QString &tag, AuthProfile& profile, HttpCallback callback);
+
+void HttpReqListenerStartAsync(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile& profile, HttpCallback callback);
+void HttpReqListenerEditAsync(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile& profile, HttpCallback callback);
+void HttpReqListenerStopAsync(const QString &listenerName, const QString &listenerType, AuthProfile& profile, HttpCallback callback);
+
+void HttpReqDownloadActionAsync(const QString &action, const QString &fileId, AuthProfile& profile, HttpCallback callback);
+
+void HttpReqScreenSetNoteAsync(QStringList screensId, const QString &note, AuthProfile& profile, HttpCallback callback);
+void HttpReqScreenRemoveAsync(QStringList screensId, AuthProfile& profile, HttpCallback callback);
+
+void HttpReqTunnelStopAsync(const QString &tunnelId, AuthProfile& profile, HttpCallback callback);
+void HttpReqTunnelSetInfoAsync(const QString &tunnelId, const QString &info, AuthProfile& profile, HttpCallback callback);
+
+void HttpReqChatSendMessageAsync(const QString &text, AuthProfile& profile, HttpCallback callback);
 
 #endif

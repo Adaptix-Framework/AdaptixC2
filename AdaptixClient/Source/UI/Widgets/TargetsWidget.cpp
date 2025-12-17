@@ -356,14 +356,10 @@ void TargetsWidget::onEditTarget() const
 
     delete dialogTarget;
 
-    QString message = "";
-    bool ok = false;
-    bool result = HttpReqTargetEdit(jsonData, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Server is not responding");
-        return;
-    }
-    if (!ok) MessageError(message);
+    HttpReqTargetEditAsync(jsonData, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Server is not responding" : message);
+    });
 }
 
 void TargetsWidget::onRemoveTarget() const
@@ -381,9 +377,10 @@ void TargetsWidget::onRemoveTarget() const
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    HttpReqTargetRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
+    HttpReqTargetRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void TargetsWidget::onSetTag() const
@@ -409,13 +406,10 @@ void TargetsWidget::onSetTag() const
     bool inputOk;
     QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
     if ( inputOk ) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqTargetSetTag(listId, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqTargetSetTagAsync(listId, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
 }
 
@@ -450,7 +444,6 @@ void TargetsWidget::onExportTarget() const
             }
 
             QString content = "";
-            QStringList listId;
             QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
             for (const QModelIndex &proxyIndex : selectedRows) {
                 QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);

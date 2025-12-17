@@ -225,13 +225,10 @@ void TunnelsWidget::actionSetInfo() const
      bool inputOk;
      QString newInfo = QInputDialog::getText(nullptr, "Set info", "Info:", QLineEdit::Normal,info, &inputOk);
      if ( inputOk ) {
-          QString message = QString();
-          bool ok = false;
-          bool result = HttpReqTunnelSetInfo(tunnelId, newInfo, *(adaptixWidget->GetProfile()), &message, &ok);
-          if( !result ) {
-               MessageError("Response timeout");
-               return;
-          }
+          HttpReqTunnelSetInfoAsync(tunnelId, newInfo, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+               if (!success)
+                    MessageError(message.isEmpty() ? "Response timeout" : message);
+          });
      }
 }
 
@@ -249,13 +246,8 @@ void TunnelsWidget::actionStopTunnel() const
           delete tunnel;
      }
 
-     QString message = QString();
-     bool ok = false;
-     bool result = HttpReqTunnelStop( tunnelId, *(adaptixWidget->GetProfile()), &message, &ok );
-     if( !result ){
-          MessageError("Response timeout");
-          return;
-     }
-
-     if ( !ok ) MessageError(message);
+     HttpReqTunnelStopAsync(tunnelId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+          if (!success)
+               MessageError(message.isEmpty() ? "Response timeout" : message);
+     });
 }

@@ -391,17 +391,10 @@ void ListenersWidget::onRemoveListener() const
     if (reply != QMessageBox::Yes)
         return;
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqListenerStop( listenerName, listenerRegName, *(adaptixWidget->GetProfile()), &message, &ok );
-    if( !result ){
-        MessageError("Response timeout");
-        return;
-    }
-
-    if ( !ok ) {
-        MessageError(message);
-    }
+    HttpReqListenerStopAsync(listenerName, listenerRegName, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void ListenersWidget::onGenerateAgent() const

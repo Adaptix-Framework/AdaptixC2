@@ -404,13 +404,10 @@ void SessionsTableWidget::actionMarkActive() const
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentSetMark(listId, "", *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqAgentSetMarkAsync(listId, "", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void SessionsTableWidget::actionMarkInactive() const
@@ -428,13 +425,10 @@ void SessionsTableWidget::actionMarkInactive() const
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentSetMark(listId, "Inactive", *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqAgentSetMarkAsync(listId, "Inactive", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void SessionsTableWidget::actionItemColor() const
@@ -455,13 +449,10 @@ void SessionsTableWidget::actionItemColor() const
     QColor itemColor = QColorDialog::getColor(Qt::white, nullptr, "Select items color");
     if (itemColor.isValid()) {
         QString itemColorHex = itemColor.name();
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetColor(listId, itemColorHex, "", false, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentSetColorAsync(listId, itemColorHex, "", false, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
 }
 
@@ -483,13 +474,10 @@ void SessionsTableWidget::actionTextColor() const
     QColor textColor = QColorDialog::getColor(Qt::white, nullptr, "Select text color");
     if (textColor.isValid()) {
         QString textColorHex = textColor.name();
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetColor(listId, "",  textColorHex, false, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentSetColorAsync(listId, "", textColorHex, false, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
 }
 
@@ -508,13 +496,10 @@ void SessionsTableWidget::actionColorReset() const
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentSetColor(listId, "",  "", true, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqAgentSetColorAsync(listId, "", "", true, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void SessionsTableWidget::actionConsoleDelete()
@@ -544,13 +529,10 @@ void SessionsTableWidget::actionConsoleDelete()
         adaptixWidget->AgentsMap[id]->Console->Clear();
     }
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqConsoleRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqConsoleRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void SessionsTableWidget::actionAgentRemove()
@@ -577,13 +559,10 @@ void SessionsTableWidget::actionAgentRemove()
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqAgentRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void SessionsTableWidget::actionItemTag() const
@@ -609,13 +588,10 @@ void SessionsTableWidget::actionItemTag() const
     bool inputOk;
     QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
     if ( inputOk ) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetTag(listId, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentSetTagAsync(listId, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
 }
 

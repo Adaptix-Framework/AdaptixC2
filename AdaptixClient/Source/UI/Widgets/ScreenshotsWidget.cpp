@@ -281,13 +281,10 @@ void ScreenshotsWidget::actionNote() const
     bool inputOk;
     QString newNote = QInputDialog::getText(nullptr, "Set note", "New note", QLineEdit::Normal,note, &inputOk);
     if ( inputOk ) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqScreenSetNote(listId, newNote, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqScreenSetNoteAsync(listId, newNote, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
 }
 
@@ -340,13 +337,10 @@ void ScreenshotsWidget::actionDelete() const
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqScreenRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqScreenRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void ScreenshotsWidget::onTableItemSelection(const QModelIndex &current, const QModelIndex &previous) const

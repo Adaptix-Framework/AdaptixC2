@@ -379,18 +379,10 @@ void DownloadsWidget::actionSyncWget() const
 void DownloadsWidget::actionDelete() const
 {
     if( tableWidget->item( tableWidget->currentRow(), 8 )->text() == "" ) {
-
         QString fileId = tableWidget->item(tableWidget->currentRow(), 0)->text();
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqDownloadAction("delete", fileId, *(adaptixWidget->GetProfile()), &message, &ok);
-        if (!result) {
-            MessageError("Response timeout");
-            return;
-        }
-
-        if (!ok) {
-            MessageError(message);
-        }
+        HttpReqDownloadActionAsync("delete", fileId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
 }
