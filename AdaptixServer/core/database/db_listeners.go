@@ -87,22 +87,20 @@ func (dbms *DBMS) DbListenerAll() []ListenerRow {
 	if ok {
 		selectQuery := `SELECT ListenerName, ListenerRegName, ListenerConfig, Watermark, CustomData FROM Listeners;`
 		query, err := dbms.database.Query(selectQuery)
-		if err == nil {
-
-			for query.Next() {
-				listenerRow := ListenerRow{}
-				err = query.Scan(&listenerRow.ListenerName, &listenerRow.ListenerRegName, &listenerRow.ListenerConfig, &listenerRow.Watermark, &listenerRow.CustomData)
-				if err != nil {
-					continue
-				}
-				listeners = append(listeners, listenerRow)
-			}
-		} else {
+		if err != nil {
 			logs.Debug("", "Failed to query listeners: "+err.Error())
+			return listeners
 		}
-		defer func(query *sql.Rows) {
-			_ = query.Close()
-		}(query)
+		defer query.Close()
+
+		for query.Next() {
+			listenerRow := ListenerRow{}
+			err = query.Scan(&listenerRow.ListenerName, &listenerRow.ListenerRegName, &listenerRow.ListenerConfig, &listenerRow.Watermark, &listenerRow.CustomData)
+			if err != nil {
+				continue
+			}
+			listeners = append(listeners, listenerRow)
+		}
 	}
 	return listeners
 }

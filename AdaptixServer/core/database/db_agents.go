@@ -104,29 +104,26 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
                        Sleep, Jitter, Pid, Tid, Arch, Elevated, Process, Os, OsDesc, Domain, Computer, Username, Impersonated,
 					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId FROM Agents;`
 		query, err := dbms.database.Query(selectQuery)
-		if err == nil {
-
-			for query.Next() {
-				agentData := adaptix.AgentData{}
-				err = query.Scan(&agentData.Id, &agentData.Crc, &agentData.Name, &agentData.SessionKey, &agentData.Listener,
-					&agentData.Async, &agentData.ExternalIP, &agentData.InternalIP, &agentData.GmtOffset, &agentData.Sleep,
-					&agentData.Jitter, &agentData.Pid, &agentData.Tid, &agentData.Arch, &agentData.Elevated, &agentData.Process,
-					&agentData.Os, &agentData.OsDesc, &agentData.Domain, &agentData.Computer, &agentData.Username, &agentData.Impersonated,
-					&agentData.OemCP, &agentData.ACP, &agentData.CreateTime, &agentData.LastTick, &agentData.WorkingTime, &agentData.KillDate,
-					&agentData.Tags, &agentData.Mark, &agentData.Color, &agentData.TargetId,
-				)
-				if err != nil {
-					continue
-				}
-				agents = append(agents, agentData)
-			}
-		} else {
+		if err != nil {
 			logs.Debug("", "Failed to query agents: "+err.Error())
+			return agents
 		}
+		defer query.Close()
 
-		defer func(query *sql.Rows) {
-			_ = query.Close()
-		}(query)
+		for query.Next() {
+			agentData := adaptix.AgentData{}
+			err = query.Scan(&agentData.Id, &agentData.Crc, &agentData.Name, &agentData.SessionKey, &agentData.Listener,
+				&agentData.Async, &agentData.ExternalIP, &agentData.InternalIP, &agentData.GmtOffset, &agentData.Sleep,
+				&agentData.Jitter, &agentData.Pid, &agentData.Tid, &agentData.Arch, &agentData.Elevated, &agentData.Process,
+				&agentData.Os, &agentData.OsDesc, &agentData.Domain, &agentData.Computer, &agentData.Username, &agentData.Impersonated,
+				&agentData.OemCP, &agentData.ACP, &agentData.CreateTime, &agentData.LastTick, &agentData.WorkingTime, &agentData.KillDate,
+				&agentData.Tags, &agentData.Mark, &agentData.Color, &agentData.TargetId,
+			)
+			if err != nil {
+				continue
+			}
+			agents = append(agents, agentData)
+		}
 	}
 	return agents
 }

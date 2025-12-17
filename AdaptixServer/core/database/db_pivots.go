@@ -62,21 +62,20 @@ func (dbms *DBMS) DbPivotAll() []*adaptix.PivotData {
 	if ok {
 		selectQuery := `SELECT PivotId, PivotName, ParentAgentId, ChildAgentId FROM Pivots;`
 		query, err := dbms.database.Query(selectQuery)
-		if err == nil {
-			for query.Next() {
-				pivotData := &adaptix.PivotData{}
-				err = query.Scan(&pivotData.PivotId, &pivotData.PivotName, &pivotData.ParentAgentId, &pivotData.ChildAgentId)
-				if err != nil {
-					continue
-				}
-				pivots = append(pivots, pivotData)
-			}
-		} else {
+		if err != nil {
 			logs.Debug("", "Failed to query pivots: "+err.Error())
+			return pivots
 		}
-		defer func(query *sql.Rows) {
-			_ = query.Close()
-		}(query)
+		defer query.Close()
+
+		for query.Next() {
+			pivotData := &adaptix.PivotData{}
+			err = query.Scan(&pivotData.PivotId, &pivotData.PivotName, &pivotData.ParentAgentId, &pivotData.ChildAgentId)
+			if err != nil {
+				continue
+			}
+			pivots = append(pivots, pivotData)
+		}
 	}
 	return pivots
 }

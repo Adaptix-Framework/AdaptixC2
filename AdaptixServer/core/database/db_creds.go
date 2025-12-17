@@ -87,22 +87,21 @@ func (dbms *DBMS) DbCredentialsAll() []*adaptix.CredsData {
 	if ok {
 		selectQuery := `SELECT CredId, Username, Password, Realm, Type, Tag, Date, Storage, AgentId, Host FROM Credentials;`
 		query, err := dbms.database.Query(selectQuery)
-		if err == nil {
-			for query.Next() {
-				credsData := &adaptix.CredsData{}
-				err = query.Scan(&credsData.CredId, &credsData.Username, &credsData.Password, &credsData.Realm, &credsData.Type,
-					&credsData.Tag, &credsData.Date, &credsData.Storage, &credsData.AgentId, &credsData.Host)
-				if err != nil {
-					continue
-				}
-				creds = append(creds, credsData)
-			}
-		} else {
+		if err != nil {
 			logs.Debug("", "Failed to query credentials: "+err.Error())
+			return creds
 		}
-		defer func(query *sql.Rows) {
-			_ = query.Close()
-		}(query)
+		defer query.Close()
+
+		for query.Next() {
+			credsData := &adaptix.CredsData{}
+			err = query.Scan(&credsData.CredId, &credsData.Username, &credsData.Password, &credsData.Realm, &credsData.Type,
+				&credsData.Tag, &credsData.Date, &credsData.Storage, &credsData.AgentId, &credsData.Host)
+			if err != nil {
+				continue
+			}
+			creds = append(creds, credsData)
+		}
 	}
 	return creds
 }

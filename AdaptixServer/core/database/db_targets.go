@@ -88,27 +88,26 @@ func (dbms *DBMS) DbTargetsAll() []*adaptix.TargetData {
 	if ok {
 		selectQuery := `SELECT TargetId, Computer, Domain, Address, Os, OsDesk, Tag, Info, Date, Alive, Agents FROM Targets;`
 		query, err := dbms.database.Query(selectQuery)
-		if err == nil {
-			for query.Next() {
-				targetData := &adaptix.TargetData{}
-				agetns_str := ""
-				err = query.Scan(&targetData.TargetId, &targetData.Computer, &targetData.Domain, &targetData.Address, &targetData.Os,
-					&targetData.OsDesk, &targetData.Tag, &targetData.Info, &targetData.Date, &targetData.Alive, &agetns_str)
-				if err != nil {
-					continue
-				}
-				if agetns_str != "" {
-					targetData.Agents = strings.Split(agetns_str, ",")
-				}
-
-				targets = append(targets, targetData)
-			}
-		} else {
+		if err != nil {
 			logs.Debug("", "Failed to query targets: "+err.Error())
+			return targets
 		}
-		defer func(query *sql.Rows) {
-			_ = query.Close()
-		}(query)
+		defer query.Close()
+
+		for query.Next() {
+			targetData := &adaptix.TargetData{}
+			agentsStr := ""
+			err = query.Scan(&targetData.TargetId, &targetData.Computer, &targetData.Domain, &targetData.Address, &targetData.Os,
+				&targetData.OsDesk, &targetData.Tag, &targetData.Info, &targetData.Date, &targetData.Alive, &agentsStr)
+			if err != nil {
+				continue
+			}
+			if agentsStr != "" {
+				targetData.Agents = strings.Split(agentsStr, ",")
+			}
+
+			targets = append(targets, targetData)
+		}
 	}
 	return targets
 }
