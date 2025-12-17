@@ -61,7 +61,7 @@ type Teamserver interface {
 	TsTaskDelete(agentId string, taskId string) error
 	TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error
 	TsTaskSave(hookData adaptix.TaskData) error
-	TsTaskListCompleted(agentId string, limit int, offset int) (string, error)
+	TsTaskListCompleted(agentId string, limit int, offset int) ([]byte, error)
 
 	TsChatSendMessage(username string, message string)
 

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/Adaptix-Framework/axc2"
@@ -254,4 +255,52 @@ func (ts *Teamserver) TsTaskGetAvailablePivotAll(agentId string, availableSize i
 
 func (ts *Teamserver) TsProcessHookJobsForDisconnectedClient(clientName string) {
 	ts.TaskManager.ProcessDisconnectedClient(clientName)
+}
+
+type TaskListItem struct {
+	TaskType   int    `json:"a_task_type"`
+	TaskId     string `json:"a_task_id"`
+	AgentId    string `json:"a_id"`
+	Client     string `json:"a_client"`
+	User       string `json:"a_user"`
+	Computer   string `json:"a_computer"`
+	CmdLine    string `json:"a_cmdline"`
+	StartTime  int64  `json:"a_start_time"`
+	FinishTime int64  `json:"a_finish_time"`
+	MsgType    int    `json:"a_msg_type"`
+	Message    string `json:"a_message"`
+	Text       string `json:"a_text"`
+	Completed  bool   `json:"a_completed"`
+}
+
+func (ts *Teamserver) TsTaskListCompleted(agentId string, limit int, offset int) ([]byte, error) {
+	if !ts.TsAgentIsExists(agentId) {
+		return nil, fmt.Errorf("agent %v not found", agentId)
+	}
+
+	tasks, err := ts.DBMS.DbTasksListCompleted(agentId, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]TaskListItem, 0, len(tasks))
+	for _, task := range tasks {
+		items = append(items, TaskListItem{
+			TaskType:   task.Type,
+			TaskId:     task.TaskId,
+			AgentId:    task.AgentId,
+			Client:     task.Client,
+			User:       task.User,
+			Computer:   task.Computer,
+			CmdLine:    task.CommandLine,
+			StartTime:  task.StartDate,
+			FinishTime: task.FinishDate,
+			MsgType:    task.MessageType,
+			Message:    task.Message,
+			Text:       task.ClearText,
+			Completed:  true,
+		})
+	}
+
+	return json.Marshal(items)
 }

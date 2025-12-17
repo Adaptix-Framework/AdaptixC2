@@ -9,54 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (tc *TsConnector) TcAgentTaskList(ctx *gin.Context) {
-	agentId := ctx.Query("agent_id")
-	if agentId == "" {
-		ctx.JSON(http.StatusOK, gin.H{"message": "agent_id is required", "ok": false})
-		return
-	}
-
-	limit := 200
-	offset := 0
-
-	if raw := ctx.Query("limit"); raw != "" {
-		value, err := strconv.Atoi(raw)
-		if err != nil {
-			ctx.JSON(http.StatusOK, gin.H{"message": "limit must be an integer", "ok": false})
-			return
-		}
-		if value < 0 {
-			ctx.JSON(http.StatusOK, gin.H{"message": "limit must be >= 0", "ok": false})
-			return
-		}
-		if value > 1000 {
-			value = 1000
-		}
-		limit = value
-	}
-
-	if raw := ctx.Query("offset"); raw != "" {
-		value, err := strconv.Atoi(raw)
-		if err != nil {
-			ctx.JSON(http.StatusOK, gin.H{"message": "offset must be an integer", "ok": false})
-			return
-		}
-		if value < 0 {
-			ctx.JSON(http.StatusOK, gin.H{"message": "offset must be >= 0", "ok": false})
-			return
-		}
-		offset = value
-	}
-
-	jsonTasks, err := tc.teamserver.TsTaskListCompleted(agentId, limit, offset)
-	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
-		return
-	}
-
-	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonTasks))
-}
-
 type AgentTaskDelete struct {
 	AgentId string   `json:"agent_id"`
 	TasksId []string `json:"tasks_array"`
@@ -235,4 +187,52 @@ func (tc *TsConnector) TcAgentTaskSave(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}
+
+func (tc *TsConnector) TcAgentTaskList(ctx *gin.Context) {
+	agentId := ctx.Query("agent_id")
+	if agentId == "" {
+		ctx.JSON(http.StatusOK, gin.H{"message": "agent_id is required", "ok": false})
+		return
+	}
+
+	limit := 200
+	offset := 0
+
+	if raw := ctx.Query("limit"); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"message": "limit must be an integer", "ok": false})
+			return
+		}
+		if value < 0 {
+			ctx.JSON(http.StatusOK, gin.H{"message": "limit must be >= 0", "ok": false})
+			return
+		}
+		if value > 1000 {
+			value = 1000
+		}
+		limit = value
+	}
+
+	if raw := ctx.Query("offset"); raw != "" {
+		value, err := strconv.Atoi(raw)
+		if err != nil {
+			ctx.JSON(http.StatusOK, gin.H{"message": "offset must be an integer", "ok": false})
+			return
+		}
+		if value < 0 {
+			ctx.JSON(http.StatusOK, gin.H{"message": "offset must be >= 0", "ok": false})
+			return
+		}
+		offset = value
+	}
+
+	jsonTasks, err := tc.teamserver.TsTaskListCompleted(agentId, limit, offset)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", jsonTasks)
 }
