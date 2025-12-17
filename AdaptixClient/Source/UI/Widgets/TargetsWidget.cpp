@@ -246,6 +246,7 @@ void TargetsWidget::toggleSearchPanel() const
 void TargetsWidget::onFilterUpdate() const
 {
     proxyModel->setTextFilter(inputFilter->text());
+    inputFilter->setFocus();
 }
 
 void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const

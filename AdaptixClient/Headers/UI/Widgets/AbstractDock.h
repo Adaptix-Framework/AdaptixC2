@@ -284,11 +284,13 @@ private:
     void connectItemView(T* view) {
         if (!view) return;
         m_trackedViews.insert(view);
-        if (auto* model = view->model()) {
+        auto* model = view->model();
+        if (model && model->metaObject()) {
             connect(model, &QAbstractItemModel::rowsInserted,
                     this, &DockTab::onTableRowsInserted, Qt::UniqueConnection);
         }
-        if (auto* vbar = view->verticalScrollBar()) {
+        auto* vbar = view->verticalScrollBar();
+        if (vbar && vbar->metaObject()) {
             connect(vbar, &QScrollBar::valueChanged,
                     this, &DockTab::onScroll, Qt::UniqueConnection);
         }
@@ -296,10 +298,11 @@ private:
 
     template<typename T, typename Signal>
     void connectTextEdit(T* edit, Signal signal) {
-        if (!edit) return;
+        if (!edit || !edit->metaObject()) return;
         m_trackedTextEdits.insert(edit);
         connect(edit, signal, this, &DockTab::onTextChanged, Qt::UniqueConnection);
-        if (auto* vbar = edit->verticalScrollBar()) {
+        auto* vbar = edit->verticalScrollBar();
+        if (vbar && vbar->metaObject()) {
             connect(vbar, &QScrollBar::valueChanged,
                     this, &DockTab::onScroll, Qt::UniqueConnection);
         }

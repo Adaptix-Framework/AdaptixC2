@@ -88,7 +88,7 @@ protected:
 
         if (!textFilter.isEmpty()) {
             const int colCount = model->columnCount();
-            QRegularExpression re(textFilter, QRegularExpression::CaseInsensitiveOption);
+            QRegularExpression re(QRegularExpression::escape(textFilter), QRegularExpression::CaseInsensitiveOption);
             bool matched = false;
             for (int col = 0; col < colCount; ++col) {
                 QString val = model->index(row, col, parent).data().toString();

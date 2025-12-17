@@ -60,7 +60,7 @@ protected:
 
         if (!filter.isEmpty()) {
             const int colCount = model->columnCount();
-            QRegularExpression re(filter, QRegularExpression::CaseInsensitiveOption);
+            QRegularExpression re(QRegularExpression::escape(filter), QRegularExpression::CaseInsensitiveOption);
             bool matched = false;
             for (int col = 0; col < colCount; ++col) {
                 QString val = model->index(row, col, parent).data().toString();
@@ -247,10 +247,10 @@ Q_OBJECT
     CredsTableModel*       credsModel = nullptr;
     CredsFilterProxyModel* proxyModel = nullptr;
 
-    QWidget*        searchWidget    = nullptr;
-    QHBoxLayout*    searchLayout    = nullptr;
-    QLineEdit*      inputFilter     = nullptr;
-    ClickableLabel* hideButton      = nullptr;
+    QWidget*        searchWidget = nullptr;
+    QHBoxLayout*    searchLayout = nullptr;
+    QLineEdit*      inputFilter  = nullptr;
+    ClickableLabel* hideButton   = nullptr;
 
     void createUI();
 

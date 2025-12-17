@@ -45,15 +45,17 @@ public:
 
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override {
-        if (!searchVisible || filter.isEmpty())
-            return true;
-
         auto model = sourceModel();
         if (!model)
             return true;
 
+        if (!searchVisible || filter.isEmpty())
+            return true;
+
+        QRegularExpression re(QRegularExpression::escape(filter), QRegularExpression::CaseInsensitiveOption);
+
         QString note = model->index(row, SCR_Note, parent).data().toString();
-        return note.contains(filter, Qt::CaseInsensitive);
+        return note.contains(re);
     }
 };
 
@@ -113,14 +115,11 @@ public:
         if (role != Qt::DisplayRole || o != Qt::Horizontal)
             return {};
 
-        static QStringList headers = {"ID", "User", "Computer", "Note", "Date"};
+        static QStringList headers = {"Id", "User", "Computer", "Note", "Date"};
         return headers.value(section);
     }
 
     void add(const ScreenData& item) {
-        if (idToRow.contains(item.ScreenId))
-            return;
-
         const int row = screens.size();
         beginInsertRows(QModelIndex(), row, row);
         screens.append(item);

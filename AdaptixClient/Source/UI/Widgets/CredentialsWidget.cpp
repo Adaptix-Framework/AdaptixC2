@@ -242,6 +242,7 @@ void CredentialsWidget::toggleSearchPanel() const
 void CredentialsWidget::onFilterUpdate() const
 {
     proxyModel->setTextFilter(inputFilter->text());
+    inputFilter->setFocus();
 }
 
 void CredentialsWidget::handleCredentialsMenu(const QPoint &pos ) const

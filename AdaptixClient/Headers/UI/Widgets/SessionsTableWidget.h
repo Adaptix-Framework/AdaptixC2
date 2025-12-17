@@ -47,7 +47,8 @@ Q_OBJECT
 
     static bool anyFieldContains(const QStringList &fields, const QString &pattern) {
         if (pattern.isEmpty()) return true;
-        QRegularExpression re(pattern, QRegularExpression::CaseInsensitiveOption);
+
+        QRegularExpression re(QRegularExpression::escape(pattern), QRegularExpression::CaseInsensitiveOption);
         for (const QString &f : fields) {
             if (f.contains(re))
                 return true;

@@ -52,15 +52,17 @@ public:
 
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override {
-        if (!searchVisible || filter.isEmpty())
-            return true;
-
         auto model = sourceModel();
         if (!model)
             return true;
 
+        if (!searchVisible || filter.isEmpty())
+            return true;
+
+        QRegularExpression re(QRegularExpression::escape(filter), QRegularExpression::CaseInsensitiveOption);
+
         QString filename = model->index(row, DC_File, parent).data().toString();
-        return filename.contains(filter, Qt::CaseInsensitive);
+        return filename.contains(re);
     }
 };
 
@@ -69,8 +71,8 @@ protected:
 class DownloadsTableModel : public QAbstractTableModel
 {
 Q_OBJECT
-    QVector<DownloadData>  downloads;
-    QHash<QString, int>    idToRow;
+    QVector<DownloadData> downloads;
+    QHash<QString, int>   idToRow;
 
     void rebuildIndex() {
         idToRow.clear();

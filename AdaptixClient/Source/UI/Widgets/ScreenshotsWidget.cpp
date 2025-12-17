@@ -97,13 +97,15 @@ ScreenshotsWidget::ScreenshotsWidget(AdaptixWidget* w) : DockTab("Screenshots", 
     this->createUI();
 
     connect(tableView, &QTableView::customContextMenuRequested, this, &ScreenshotsWidget::handleScreenshotsMenu);
-    connect(tableView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &ScreenshotsWidget::onTableItemSelection);
-    connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection&, const QItemSelection&) {
+    connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
+        Q_UNUSED(selected)
+        Q_UNUSED(deselected)
         tableView->setFocus();
     });
-    connect(splitter, &QSplitter::splitterMoved, imageFrame, &ImageFrame::resizeImage);
+    connect(tableView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &ScreenshotsWidget::onTableItemSelection);
     connect(hideButton,  &ClickableLabel::clicked, this, &ScreenshotsWidget::toggleSearchPanel);
     connect(inputFilter, &QLineEdit::textChanged,  this, &ScreenshotsWidget::onFilterUpdate);
+    connect(splitter,    &QSplitter::splitterMoved, imageFrame, &ImageFrame::resizeImage);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -125,6 +127,7 @@ void ScreenshotsWidget::createUI()
 
     searchWidget = new QWidget(this);
     searchWidget->setVisible(false);
+    searchWidget->setMaximumHeight(30);
 
     inputFilter = new QLineEdit(searchWidget);
     inputFilter->setPlaceholderText("filter by note");
@@ -271,6 +274,7 @@ void ScreenshotsWidget::toggleSearchPanel() const
 void ScreenshotsWidget::onFilterUpdate() const
 {
     proxyModel->setTextFilter(inputFilter->text());
+    inputFilter->setFocus();
 }
 
 void ScreenshotsWidget::handleScreenshotsMenu(const QPoint &pos)
@@ -357,6 +361,8 @@ void ScreenshotsWidget::actionDelete()
 
 void ScreenshotsWidget::onTableItemSelection(const QModelIndex &current, const QModelIndex &previous)
 {
+    Q_UNUSED(previous);
+
     if (!current.isValid())
         return;
 

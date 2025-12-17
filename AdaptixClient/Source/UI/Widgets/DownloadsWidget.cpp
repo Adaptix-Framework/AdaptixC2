@@ -24,7 +24,9 @@ DownloadsWidget::DownloadsWidget(AdaptixWidget* w) : DockTab("Downloads", w->Get
     this->createUI();
 
     connect(tableView,  &QTableView::customContextMenuRequested, this, &DownloadsWidget::handleDownloadsMenu);
-    connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection&, const QItemSelection&) {
+    connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
+        Q_UNUSED(selected)
+        Q_UNUSED(deselected)
         tableView->setFocus();
     });
     connect(hideButton,  &ClickableLabel::clicked, this, &DownloadsWidget::toggleSearchPanel);
@@ -171,6 +173,7 @@ void DownloadsWidget::toggleSearchPanel() const
 void DownloadsWidget::onFilterUpdate() const
 {
     proxyModel->setTextFilter(inputFilter->text());
+    inputFilter->setFocus();
 }
 
 void DownloadsWidget::handleDownloadsMenu(const QPoint &pos)
