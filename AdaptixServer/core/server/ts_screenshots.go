@@ -40,7 +40,7 @@ func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byt
 		return err
 	}
 
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return errors.New("Agent not found: " + agentId)
 	}

@@ -48,7 +48,7 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 		return errors.New("invalid terminal data")
 	}
 
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return errors.New("agent not found")
 	}
@@ -108,7 +108,7 @@ func (ts *Teamserver) TsTerminalGetPipe(AgentId string, terminalId string) (*io.
 }
 
 func (ts *Teamserver) TsTerminalConnResume(agentId string, terminalId string) {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return
 	}

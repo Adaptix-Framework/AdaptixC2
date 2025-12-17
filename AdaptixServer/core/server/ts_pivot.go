@@ -71,14 +71,14 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId s
 		}
 	}
 
-	valueAgent, ok := ts.agents.Get(pivotData.ParentAgentId)
+	valueAgent, ok := ts.Agents.Get(pivotData.ParentAgentId)
 	if ok {
 		if parentAgent, ok := valueAgent.(*Agent); ok {
 			parentAgent.PivotChilds.Put(pivotData)
 		}
 	}
 
-	valueAgent, ok = ts.agents.Get(pivotData.ChildAgentId)
+	valueAgent, ok = ts.Agents.Get(pivotData.ChildAgentId)
 	if ok {
 		if childAgent, ok := valueAgent.(*Agent); ok {
 			childAgent.PivotParent = pivotData
@@ -109,7 +109,7 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 		return fmt.Errorf("pivotId %s does not exist", pivotId)
 	}
 
-	valueAgent, ok := ts.agents.Get(pivotData.ParentAgentId)
+	valueAgent, ok := ts.Agents.Get(pivotData.ParentAgentId)
 	if ok {
 		if parentAgent, ok := valueAgent.(*Agent); ok {
 			for i := uint(0); i < parentAgent.PivotChilds.Len(); i++ {
@@ -124,7 +124,7 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 		}
 	}
 
-	valueAgent, ok = ts.agents.Get(pivotData.ChildAgentId)
+	valueAgent, ok = ts.Agents.Get(pivotData.ChildAgentId)
 	if ok {
 		if childAgent, ok := valueAgent.(*Agent); ok {
 			childAgent.PivotParent = nil

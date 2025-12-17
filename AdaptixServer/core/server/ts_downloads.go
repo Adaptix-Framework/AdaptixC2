@@ -34,7 +34,7 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 		State:      DOWNLOAD_STATE_RUNNING,
 	}
 
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return errors.New("Agent not found: " + agentId)
 	}
@@ -151,7 +151,7 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 		State:      DOWNLOAD_STATE_FINISHED,
 	}
 
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return errors.New("Agent not found: " + agentId)
 	}

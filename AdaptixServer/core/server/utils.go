@@ -63,6 +63,8 @@ type Teamserver struct {
 	Extender      *extender.AdaptixExtender
 	Parameters    TsParameters
 
+	TaskManager *TaskManager
+
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
 
@@ -71,7 +73,7 @@ type Teamserver struct {
 
 	events      *safe.Slice // 			           : sync_packet interface{}
 	clients     safe.Map    // username string     : socket *websocket.Conn
-	agents      safe.Map    // agentId string      : agent *Agent
+	Agents      safe.Map    // agentId string      : agent *Agent
 	listeners   safe.Map    // listenerName string : listenerData ListenerData
 	messages    *safe.Slice //                     : chatData ChatData
 	downloads   safe.Map    // fileId string       : downloadData DownloadData

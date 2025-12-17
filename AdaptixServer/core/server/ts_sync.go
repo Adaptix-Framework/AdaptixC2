@@ -205,7 +205,7 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 		sortedAgents []*Agent
 	)
 
-	ts.agents.ForEach(func(key string, value interface{}) bool {
+	ts.Agents.ForEach(func(key string, value interface{}) bool {
 		agent, ok := value.(*Agent)
 		if !ok {
 			return true
@@ -218,7 +218,7 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 		return true
 	})
 
-	ts.agents.DirectLock()
+	ts.Agents.DirectLock()
 	for _, agent := range sortedAgents {
 		if agent != nil {
 			/// Agent
@@ -241,7 +241,7 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 			})
 		}
 	}
-	ts.agents.DirectUnlock()
+	ts.Agents.DirectUnlock()
 
 	for _, taskData := range sortedTasks {
 		t := CreateSpAgentTaskSync(taskData)

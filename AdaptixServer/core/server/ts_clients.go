@@ -54,6 +54,8 @@ func (ts *Teamserver) TsClientDisconnect(username string) {
 	for _, id := range tunnels {
 		_ = ts.TsTunnelStop(id)
 	}
+
+	ts.TsProcessHookJobsForDisconnectedClient(username)
 }
 
 func (ts *Teamserver) TsClientSync(username string) {

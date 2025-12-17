@@ -1,647 +1,84 @@
 package server
 
 import (
-	"AdaptixServer/core/utils/krypt"
-	"AdaptixServer/core/utils/logs"
-	"AdaptixServer/core/utils/safe"
 	"fmt"
-	"time"
 
 	"github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsTaskRunningExists(agentId string, taskId string) bool {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
-		return false
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		logs.Error("", "TsTaskUpdate: invalid agent type for %v", agentId)
-		return false
-	}
-
-	return agent.RunningTasks.Contains(taskId)
+	return ts.TaskManager.RunningExists(agentId, taskId)
 }
 
 func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData) {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		logs.Error("", "TsTaskCreate: agent %v not found", agentId)
-		return
-	}
-
-	agent, ok := value.(*Agent)
-	if !ok {
-		logs.Error("", "TsTaskCreate: invalid agent type for %v", agentId)
-		return
-	}
-	if agent.Active == false {
-		return
-	}
-
-	agentData := agent.GetData()
-	if taskData.TaskId == "" {
-		taskData.TaskId, _ = krypt.GenerateUID(8)
-	}
-	taskData.AgentId = agentId
-	taskData.CommandLine = cmdline
-	taskData.Client = client
-	taskData.Computer = agentData.Computer
-	taskData.StartDate = time.Now().Unix()
-	if taskData.Completed {
-		taskData.FinishDate = taskData.StartDate
-	}
-
-	taskData.User = agentData.Username
-	if agentData.Impersonated != "" {
-		taskData.User += fmt.Sprintf(" [%s]", agentData.Impersonated)
-	}
-
-	switch taskData.Type {
-
-	case TYPE_TASK:
-		if taskData.Sync {
-			packet_task := CreateSpAgentTaskSync(taskData)
-			ts.TsSyncAllClients(packet_task)
-
-			packet_console := CreateSpAgentConsoleTaskSync(taskData)
-			ts.TsSyncAllClients(packet_console)
-
-			agent.OutConsole.Put(packet_console)
-			_ = ts.DBMS.DbConsoleInsert(agentId, packet_console)
-		}
-		agent.HostedTasks.Push(taskData)
-
-	case TYPE_BROWSER:
-		agent.HostedTasks.Push(taskData)
-
-	case TYPE_JOB:
-		if taskData.Sync {
-			packet_task := CreateSpAgentTaskSync(taskData)
-			ts.TsSyncAllClients(packet_task)
-
-			packet_console := CreateSpAgentConsoleTaskSync(taskData)
-			ts.TsSyncAllClients(packet_console)
-
-			agent.OutConsole.Put(packet_console)
-			_ = ts.DBMS.DbConsoleInsert(agentId, packet_console)
-		}
-		agent.HostedTasks.Push(taskData)
-
-	case TYPE_TUNNEL:
-		if taskData.Sync {
-			if taskData.Completed {
-				agent.CompletedTasks.Put(taskData.TaskId, taskData)
-			} else {
-				agent.RunningTasks.Put(taskData.TaskId, taskData)
-			}
-
-			packet_task := CreateSpAgentTaskSync(taskData)
-			ts.TsSyncAllClients(packet_task)
-
-			packet_console := CreateSpAgentConsoleTaskSync(taskData)
-			ts.TsSyncAllClients(packet_console)
-
-			agent.OutConsole.Put(packet_console)
-			_ = ts.DBMS.DbConsoleInsert(agentId, packet_console)
-
-			if taskData.Completed {
-				_ = ts.DBMS.DbTaskInsert(taskData)
-			}
-		}
-
-	case TYPE_PROXY_DATA:
-		logs.Debug("", "----TYPE_PROXY_DATA----")
-
-	default:
-		break
-	}
+	ts.TaskManager.Create(agentId, cmdline, client, taskData)
 }
 
 func (ts *Teamserver) TsTaskUpdate(agentId string, updateData adaptix.TaskData) {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
-		return
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		logs.Error("", "TsTaskUpdate: invalid agent type for %v", agentId)
-		return
-	}
-
-	value, ok = agent.RunningTasks.Get(updateData.TaskId)
-	if !ok {
-		return
-	}
-	task, _ := value.(adaptix.TaskData)
-
-	task.Data = []byte("")
-
-	if task.Type == TYPE_JOB {
-		updateData.AgentId = agentId
-
-		if task.HookId != "" && task.Client != "" && ts.TsClientConnected(task.Client) {
-			updateData.HookId = task.HookId
-
-			hookJob := &HookJob{
-				Job:       updateData,
-				Processed: false,
-				Sent:      false,
-			}
-
-			num := 0
-			value2, ok := agent.RunningJobs.Get(task.TaskId)
-			if ok {
-				jobs := value2.(*safe.Slice)
-				jobs.Put(hookJob)
-				num = int(jobs.Len() - 1)
-			} else {
-				jobs := safe.NewSlice()
-				jobs.Put(hookJob)
-				agent.RunningJobs.Put(task.TaskId, jobs)
-			}
-
-			packet := CreateSpAgentTaskHook(updateData, num)
-			ts.TsSyncClient(task.Client, packet)
-
-		} else {
-			if task.Sync {
-
-				hookJob := &HookJob{
-					Job:       updateData,
-					Processed: true,
-					Sent:      true,
-				}
-
-				value2, ok := agent.RunningJobs.Get(task.TaskId)
-
-				if updateData.Completed {
-					agent.RunningTasks.Delete(updateData.TaskId)
-
-					if ok {
-						jobs := value2.(*safe.Slice)
-						jobs.Put(hookJob)
-						jobs_array := jobs.CutArray()
-						const maxAccumulatedSize = 0xa00000 // 10 Mb
-						for _, job_value := range jobs_array {
-							jobData := job_value.(*HookJob)
-							if task.MessageType != CONSOLE_OUT_ERROR {
-								task.MessageType = jobData.Job.MessageType
-							}
-							if task.Message == "" {
-								task.Message = jobData.Job.Message
-							}
-							if len(task.ClearText)+len(jobData.Job.ClearText) > maxAccumulatedSize {
-								remaining := maxAccumulatedSize - len(jobData.Job.ClearText) - 1000
-								if remaining > 0 {
-									task.ClearText = task.ClearText[len(task.ClearText)-remaining:] + "\n[EARLIER OUTPUT TRUNCATED]\n"
-								}
-							}
-							task.ClearText += jobData.Job.ClearText
-						}
-
-						agent.RunningJobs.Delete(task.TaskId)
-
-					} else {
-						task.MessageType = updateData.MessageType
-						task.Message = updateData.Message
-						task.ClearText = updateData.ClearText
-					}
-
-					task.FinishDate = updateData.FinishDate
-					task.Completed = updateData.Completed
-
-					agent.CompletedTasks.Put(task.TaskId, task)
-					_ = ts.DBMS.DbTaskInsert(task)
-
-				} else {
-					if ok {
-						jobs := value2.(*safe.Slice)
-						jobs.Put(hookJob)
-					} else {
-						jobs := safe.NewSlice()
-						jobs.Put(hookJob)
-						agent.RunningJobs.Put(task.TaskId, jobs)
-					}
-				}
-
-				packet_task_update := CreateSpAgentTaskUpdate(updateData)
-				packet_console_update := CreateSpAgentConsoleTaskUpd(updateData)
-
-				ts.TsSyncAllClients(packet_task_update)
-				ts.TsSyncAllClients(packet_console_update)
-
-				agent.OutConsole.Put(packet_console_update)
-				_ = ts.DBMS.DbConsoleInsert(agentId, packet_console_update)
-			}
-		}
-
-	} else if task.Type == TYPE_TUNNEL {
-		agent.RunningTasks.Delete(updateData.TaskId)
-
-		task.FinishDate = updateData.FinishDate
-		task.Completed = updateData.Completed
-		task.MessageType = updateData.MessageType
-
-		var tmpTask = task
-		tmpTask.Message = updateData.Message
-		tmpTask.ClearText = updateData.ClearText
-
-		if task.Message == "" {
-			task.Message = updateData.Message
-		}
-		task.ClearText += updateData.ClearText
-
-		if task.Sync {
-			if task.Completed {
-				agent.CompletedTasks.Put(task.TaskId, task)
-				_ = ts.DBMS.DbTaskInsert(task)
-			} else {
-				agent.RunningTasks.Put(task.TaskId, task)
-			}
-
-			packet_task_update := CreateSpAgentTaskUpdate(tmpTask)
-			packet_console_update := CreateSpAgentConsoleTaskUpd(tmpTask)
-
-			ts.TsSyncAllClients(packet_task_update)
-			ts.TsSyncAllClients(packet_console_update)
-
-			agent.OutConsole.Put(packet_console_update)
-			_ = ts.DBMS.DbConsoleInsert(agentId, packet_console_update)
-		}
-
-	} else if task.Type == TYPE_TASK || task.Type == TYPE_BROWSER {
-		agent.RunningTasks.Delete(updateData.TaskId)
-
-		task.FinishDate = updateData.FinishDate
-		task.Completed = updateData.Completed
-		task.MessageType = updateData.MessageType
-		task.Message = updateData.Message
-		task.ClearText = updateData.ClearText
-
-		if task.HookId != "" && task.Client != "" && ts.TsClientConnected(task.Client) {
-
-			agent.RunningTasks.Put(task.TaskId, task)
-
-			packet := CreateSpAgentTaskHook(task, 0)
-			ts.TsSyncClient(task.Client, packet)
-
-		} else {
-			if task.Sync {
-				if task.Completed {
-					agent.CompletedTasks.Put(task.TaskId, task)
-					_ = ts.DBMS.DbTaskInsert(task)
-				} else {
-					agent.RunningTasks.Put(task.TaskId, task)
-				}
-
-				packet := CreateSpAgentTaskUpdate(task)
-				ts.TsSyncAllClients(packet)
-
-				packet2 := CreateSpAgentConsoleTaskUpd(task)
-				ts.TsSyncAllClients(packet2)
-
-				agent.OutConsole.Put(packet2)
-				_ = ts.DBMS.DbConsoleInsert(agentId, packet2)
-			}
-		}
-	}
+	ts.TaskManager.Update(agentId, updateData)
 }
 
 func (ts *Teamserver) TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error {
-	value, ok := ts.agents.Get(hookData.AgentId)
-	if !ok {
-		return fmt.Errorf("agent %v not found", hookData.AgentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return fmt.Errorf("invalid agent type for %v", hookData.AgentId)
-	}
-
-	value, ok = agent.RunningTasks.Get(hookData.TaskId)
-	if !ok {
-		return fmt.Errorf("task %v not found", hookData.TaskId)
-	}
-	task, _ := value.(adaptix.TaskData)
-
-	if task.HookId == "" || task.HookId != hookData.HookId || task.Client != hookData.Client || !ts.TsClientConnected(task.Client) {
-		return fmt.Errorf("Operation not available")
-	}
-
-	if task.Type == TYPE_JOB {
-
-		if task.Sync {
-
-			value2, ok := agent.RunningJobs.Get(task.TaskId)
-			if !ok {
-				return fmt.Errorf("job %v not found", task.TaskId)
-			}
-			jobs := value2.(*safe.Slice)
-
-			jobValue, ok := jobs.Get(uint(jobIndex))
-			if !ok {
-				return fmt.Errorf("job %v not found", task.TaskId)
-			}
-			jobData := jobValue.(*HookJob)
-
-			jobData.Job.MessageType = hookData.MessageType
-			jobData.Job.Message = hookData.Message
-			jobData.Job.ClearText = hookData.ClearText
-			jobData.Processed = true
-
-			completed := false
-			sent := true
-
-			jobs.DirectLock()
-			defer jobs.DirectUnlock()
-
-			slice := jobs.DirectSlice()
-			for i := 0; i < len(slice); i++ {
-
-				hookJob := slice[i].(*HookJob)
-				if hookJob.Job.Completed {
-					completed = true
-				}
-
-				not_process_break := false
-
-				hookJob.mu.Lock()
-				if !hookJob.Sent {
-					if hookJob.Processed {
-						hookJob.Sent = true
-
-						packet_task_update := CreateSpAgentTaskUpdate(hookJob.Job)
-						packet_console_update := CreateSpAgentConsoleTaskUpd(hookJob.Job)
-
-						ts.TsSyncAllClients(packet_task_update)
-						ts.TsSyncAllClients(packet_console_update)
-
-						agent.OutConsole.Put(packet_console_update)
-						_ = ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)
-					} else {
-						not_process_break = true
-					}
-				}
-				if sent != false {
-					sent = hookJob.Sent
-				}
-
-				hookJob.mu.Unlock()
-
-				if not_process_break {
-					break
-				}
-			}
-
-			if completed && sent {
-				agent.RunningTasks.Delete(task.TaskId)
-
-				for i := 0; i < len(slice); i++ {
-					hookJob := slice[i].(*HookJob)
-					if task.MessageType != CONSOLE_OUT_ERROR {
-						task.MessageType = hookJob.Job.MessageType
-					}
-					if task.Message == "" {
-						task.Message = hookJob.Job.Message
-					}
-					task.ClearText += hookJob.Job.ClearText
-
-					task.FinishDate = hookJob.Job.FinishDate
-					task.Completed = hookJob.Job.Completed
-				}
-
-				agent.RunningJobs.Delete(task.TaskId)
-
-				agent.CompletedTasks.Put(task.TaskId, task)
-				_ = ts.DBMS.DbTaskInsert(task)
-			}
-		}
-
-	} else if task.Type == TYPE_TUNNEL {
-
-	} else if task.Type == TYPE_TASK || task.Type == TYPE_BROWSER {
-
-		_, ok = agent.RunningTasks.GetDelete(hookData.TaskId)
-		if !ok {
-			return fmt.Errorf("task %v not found", hookData.TaskId)
-		}
-
-		task.MessageType = hookData.MessageType
-		task.Message = hookData.Message
-		task.ClearText = hookData.ClearText
-
-		if task.Sync {
-			if task.Completed {
-				task.HookId = ""
-				agent.CompletedTasks.Put(task.TaskId, task)
-				_ = ts.DBMS.DbTaskInsert(task)
-			} else {
-				agent.RunningTasks.Put(task.TaskId, task)
-			}
-
-			packet := CreateSpAgentTaskUpdate(task)
-			ts.TsSyncAllClients(packet)
-
-			packet2 := CreateSpAgentConsoleTaskUpd(task)
-			ts.TsSyncAllClients(packet2)
-
-			agent.OutConsole.Put(packet2)
-			_ = ts.DBMS.DbConsoleInsert(task.AgentId, packet2)
-		}
-	}
-	return nil
+	return ts.TaskManager.PostHook(hookData, jobIndex)
 }
 
 func (ts *Teamserver) TsTaskCancel(agentId string, taskId string) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent %v not found", agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return fmt.Errorf("invalid agent type for %v", agentId)
-	}
-
-	found, retTask := agent.HostedTasks.RemoveIf(func(v interface{}) bool {
-		task, ok := v.(adaptix.TaskData)
-		return ok && task.TaskId == taskId
-	})
-
-	if found {
-		task, ok := retTask.(adaptix.TaskData)
-		if ok {
-			packet := CreateSpAgentTaskRemove(task)
-			ts.TsSyncAllClients(packet)
-		}
-	}
-	return nil
+	return ts.TaskManager.Cancel(agentId, taskId)
 }
 
 func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent %v not found", agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return fmt.Errorf("invalid agent type for %v", agentId)
-	}
-
-	found, _ := agent.HostedTasks.FindIf(func(v interface{}) bool {
-		task, ok := v.(adaptix.TaskData)
-		return ok && task.TaskId == taskId
-	})
-	if found {
-		return fmt.Errorf("task %v in process", taskId)
-	}
-
-	value, ok = agent.RunningTasks.Get(taskId)
-	if ok {
-		return fmt.Errorf("task %v in process", taskId)
-	}
-	value, ok = agent.CompletedTasks.GetDelete(taskId)
-	if !ok {
-		return fmt.Errorf("task %v not found", taskId)
-	}
-
-	task := value.(adaptix.TaskData)
-	_ = ts.DBMS.DbTaskDelete(task.TaskId, "")
-
-	packet := CreateSpAgentTaskRemove(task)
-	ts.TsSyncAllClients(packet)
-	return nil
+	return ts.TaskManager.Delete(agentId, taskId)
 }
 
 func (ts *Teamserver) TsTaskSave(taskData adaptix.TaskData) error {
-	value, ok := ts.agents.Get(taskData.AgentId)
-	if !ok {
-		return fmt.Errorf("Agent %v not found", taskData.AgentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return fmt.Errorf("invalid agent type for '%v'", taskData.AgentId)
-	}
-
-	agentData := agent.GetData()
-	taskData.Type = TYPE_TASK
-	taskData.TaskId, _ = krypt.GenerateUID(8)
-	taskData.Computer = agentData.Computer
-	taskData.User = agentData.Username
-	taskData.StartDate = time.Now().Unix()
-	taskData.FinishDate = taskData.StartDate
-	taskData.Sync = true
-	taskData.Completed = true
-
-	agent.CompletedTasks.Put(taskData.TaskId, taskData)
-
-	packet_task := CreateSpAgentTaskSync(taskData)
-	ts.TsSyncAllClients(packet_task)
-
-	_ = ts.DBMS.DbTaskInsert(taskData)
-
-	return nil
-}
-
-type TaskListItem struct {
-	TaskType   int    `json:"a_task_type"`
-	TaskId     string `json:"a_task_id"`
-	AgentId    string `json:"a_id"`
-	Client     string `json:"a_client"`
-	User       string `json:"a_user"`
-	Computer   string `json:"a_computer"`
-	CmdLine    string `json:"a_cmdline"`
-	StartTime  int64  `json:"a_start_time"`
-	FinishTime int64  `json:"a_finish_time"`
-	MsgType    int    `json:"a_msg_type"`
-	Message    string `json:"a_message"`
-	Text       string `json:"a_text"`
-	Completed  bool   `json:"a_completed"`
-}
-
-func (ts *Teamserver) TsTaskListCompleted(agentId string, limit int, offset int) (string, error) {
-	if !ts.TsAgentIsExists(agentId) {
-		return "", fmt.Errorf("agent %v not found", agentId)
-	}
-
-	tasks, err := ts.DBMS.DbTasksList(agentId, limit, offset)
-	if err != nil {
-		return "", err
-	}
-
-	items := make([]TaskListItem, 0, len(tasks))
-	for _, task := range tasks {
-		if !task.Completed {
-			continue
-		}
-		items = append(items, TaskListItem{
-			TaskType:   task.Type,
-			TaskId:     task.TaskId,
-			AgentId:    task.AgentId,
-			Client:     task.Client,
-			User:       task.User,
-			Computer:   task.Computer,
-			CmdLine:    task.CommandLine,
-			StartTime:  task.StartDate,
-			FinishTime: task.FinishDate,
-			MsgType:    task.MessageType,
-			Message:    task.Message,
-			Text:       task.ClearText,
-			Completed:  true,
-		})
-	}
-
-	blob, err := json.Marshal(items)
-	if err != nil {
-		return "", err
-	}
-	return string(blob), nil
+	return ts.TaskManager.Save(taskData)
 }
 
 ///// Get Tasks
 
-func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error) {
-	value, ok := ts.agents.Get(agentId)
+func (ts *Teamserver) getAgent(agentId string) (*Agent, error) {
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
-		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
+		return nil, fmt.Errorf("agent %v not found", agentId)
 	}
 	agent, ok := value.(*Agent)
 	if !ok {
 		return nil, fmt.Errorf("invalid agent type for '%v'", agentId)
 	}
+	return agent, nil
+}
 
-	var tasks []adaptix.TaskData
-	tasksSize := 0
-
-	/// TASKS QUEUE
-
-	var sendTasks []string
+func (ts *Teamserver) extractHostedTasks(agent *Agent, availableSize int, startSize int, maxCount int) (tasks []adaptix.TaskData, sendTasks []string, usedSize int) {
+	usedSize = startSize
+	count := 0
 	for {
+		if maxCount > 0 && count >= maxCount {
+			break
+		}
 		item, err := agent.HostedTasks.Pop()
 		if err != nil {
 			break
 		}
 		taskData := item.(adaptix.TaskData)
 
-		if tasksSize+len(taskData.Data) < availableSize {
+		if usedSize+len(taskData.Data) < availableSize {
 			tasks = append(tasks, taskData)
 			if taskData.Sync || taskData.Type == TYPE_BROWSER {
 				agent.RunningTasks.Put(taskData.TaskId, taskData)
 			}
 			sendTasks = append(sendTasks, taskData.TaskId)
-			tasksSize += len(taskData.Data)
+			usedSize += len(taskData.Data)
+			count++
 		} else {
 			agent.HostedTasks.PushFront(taskData)
 			break
 		}
 	}
-	if len(sendTasks) > 0 {
-		packet := CreateSpAgentTaskSend(sendTasks)
-		ts.TsSyncAllClients(packet)
-	}
+	return
+}
 
+func (ts *Teamserver) extractTunnelTasks(agent *Agent, availableSize int, startSize int) (tasks []adaptix.TaskData, usedSize int) {
+	usedSize = startSize
 	for {
 		item, err := agent.HostedTunnelTasks.Pop()
 		if err != nil {
@@ -649,17 +86,19 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 		}
 		taskData := item.(adaptix.TaskData)
 
-		if tasksSize+len(taskData.Data) < availableSize {
+		if usedSize+len(taskData.Data) < availableSize {
 			tasks = append(tasks, taskData)
-			tasksSize += len(taskData.Data)
+			usedSize += len(taskData.Data)
 		} else {
 			agent.HostedTunnelTasks.PushFront(taskData)
 			break
 		}
 	}
+	return
+}
 
-	/// TUNNELS QUEUE
-
+func (ts *Teamserver) extractTunnelData(agent *Agent, availableSize int, startSize int) (tasks []adaptix.TaskData, usedSize int) {
+	usedSize = startSize
 	for {
 		item, err := agent.HostedTunnelData.Pop()
 		if err != nil {
@@ -667,153 +106,121 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 		}
 		taskDataTunnel := item.(adaptix.TaskDataTunnel)
 
-		if tasksSize+len(taskDataTunnel.Data.Data) < availableSize {
+		if usedSize+len(taskDataTunnel.Data.Data) < availableSize {
 			tasks = append(tasks, taskDataTunnel.Data)
-			tasksSize += len(taskDataTunnel.Data.Data)
+			usedSize += len(taskDataTunnel.Data.Data)
 		} else {
 			agent.HostedTunnelData.PushFront(taskDataTunnel)
 			break
 		}
 	}
+	return
+}
 
-	/// PIVOTS QUEUE
-
+func (ts *Teamserver) extractPivotTasks(agent *Agent, availableSize int, startSize int) (tasks []adaptix.TaskData, usedSize int) {
+	usedSize = startSize
 	for i := uint(0); i < agent.PivotChilds.Len(); i++ {
-		value, ok = agent.PivotChilds.Get(i)
-		if ok {
-			pivotData := value.(*adaptix.PivotData)
-			lostSize := availableSize - tasksSize
-			if availableSize > 0 {
-				data, err := ts.TsAgentGetHostedAll(pivotData.ChildAgentId, lostSize)
-				if err != nil {
-					continue
-				}
-				pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.GetData().Name, pivotData.PivotId, data)
-				if err != nil {
-					continue
-				}
-				tasks = append(tasks, pivotTaskData)
-				tasksSize += len(pivotTaskData.Data)
-			}
-		} else {
+		value, ok := agent.PivotChilds.Get(i)
+		if !ok {
 			break
 		}
+		pivotData := value.(*adaptix.PivotData)
+		lostSize := availableSize - usedSize
+		if lostSize <= 0 {
+			break
+		}
+		data, err := ts.TsAgentGetHostedAll(pivotData.ChildAgentId, lostSize)
+		if err != nil {
+			continue
+		}
+		pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.GetData().Name, pivotData.PivotId, data)
+		if err != nil {
+			continue
+		}
+		tasks = append(tasks, pivotTaskData)
+		usedSize += len(pivotTaskData.Data)
 	}
+	return
+}
+
+func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error) {
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return nil, fmt.Errorf("TsTaskQueueGetAvailable: %w", err)
+	}
+
+	var tasks []adaptix.TaskData
+
+	hostedTasks, sendTasks, size := ts.extractHostedTasks(agent, availableSize, 0, -1)
+	tasks = append(tasks, hostedTasks...)
+	if len(sendTasks) > 0 {
+		packet := CreateSpAgentTaskSend(sendTasks)
+		ts.TsSyncAllClients(packet)
+	}
+
+	tunnelTasks, size := ts.extractTunnelTasks(agent, availableSize, size)
+	tasks = append(tasks, tunnelTasks...)
+
+	tunnelData, size := ts.extractTunnelData(agent, availableSize, size)
+	tasks = append(tasks, tunnelData...)
+
+	pivotTasks, _ := ts.extractPivotTasks(agent, availableSize, size)
+	tasks = append(tasks, pivotTasks...)
 
 	return tasks, nil
 }
 
 func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int) ([]adaptix.TaskData, int, error) {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return nil, 0, fmt.Errorf("invalid agent type for '%v'", agentId)
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: %w", err)
 	}
 
 	var tasks []adaptix.TaskData
-	tasksSize := 0
 
-	/// TASKS QUEUE
-
-	var sendTasks []string
-	for {
-		item, err := agent.HostedTasks.Pop()
-		if err != nil {
-			break
-		}
-		taskData := item.(adaptix.TaskData)
-
-		if tasksSize+len(taskData.Data) < availableSize {
-			tasks = append(tasks, taskData)
-			if taskData.Sync || taskData.Type == TYPE_BROWSER {
-				agent.RunningTasks.Put(taskData.TaskId, taskData)
-			}
-			sendTasks = append(sendTasks, taskData.TaskId)
-			tasksSize += len(taskData.Data)
-		} else {
-			agent.HostedTasks.PushFront(taskData)
-			break
-		}
-	}
+	hostedTasks, sendTasks, size := ts.extractHostedTasks(agent, availableSize, 0, -1)
+	tasks = append(tasks, hostedTasks...)
 	if len(sendTasks) > 0 {
 		packet := CreateSpAgentTaskSend(sendTasks)
 		ts.TsSyncAllClients(packet)
 	}
 
-	for {
-		item, err := agent.HostedTunnelTasks.Pop()
-		if err != nil {
-			break
-		}
-		taskData := item.(adaptix.TaskData)
+	tunnelTasks, size := ts.extractTunnelTasks(agent, availableSize, size)
+	tasks = append(tasks, tunnelTasks...)
 
-		if tasksSize+len(taskData.Data) < availableSize {
-			tasks = append(tasks, taskData)
-			tasksSize += len(taskData.Data)
-		} else {
-			agent.HostedTunnelTasks.PushFront(taskData)
-			break
-		}
-	}
-
-	return tasks, tasksSize, nil
+	return tasks, size, nil
 }
 
 func (ts *Teamserver) TsTaskGetAvailableTasksCount(agentId string, maxCount int, availableSize int) ([]adaptix.TaskData, int, error) {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return nil, 0, fmt.Errorf("invalid agent type for '%v'", agentId)
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: %w", err)
 	}
 
-	var tasks []adaptix.TaskData
-	tasksSize := 0
-
-	/// TASKS QUEUE
-
-	var sendTasks []string
-	for i := 0; i < maxCount; i++ {
-		item, err := agent.HostedTasks.Pop()
-		if err != nil {
-			break
-		}
-		taskData := item.(adaptix.TaskData)
-
-		if tasksSize+len(taskData.Data) < availableSize {
-			tasks = append(tasks, taskData)
-			if taskData.Sync || taskData.Type == TYPE_BROWSER {
-				agent.RunningTasks.Put(taskData.TaskId, taskData)
-			}
-			sendTasks = append(sendTasks, taskData.TaskId)
-			tasksSize += len(taskData.Data)
-		} else {
-			agent.HostedTasks.PushFront(taskData)
-			break
-		}
-	}
+	// Extract hosted tasks with count limit
+	tasks, sendTasks, size := ts.extractHostedTasks(agent, availableSize, 0, maxCount)
 	if len(sendTasks) > 0 {
 		packet := CreateSpAgentTaskSend(sendTasks)
 		ts.TsSyncAllClients(packet)
 	}
 
-	return tasks, tasksSize, nil
+	return tasks, size, nil
 }
 
 /// Get Pivot Tasks
 
 func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
+	return ts.tsTasksPivotExistsWithVisited(agentId, first, make(map[string]bool))
+}
+
+func (ts *Teamserver) tsTasksPivotExistsWithVisited(agentId string, first bool, visited map[string]bool) bool {
+	if visited[agentId] {
 		return false
 	}
-	agent, ok := value.(*Agent)
-	if !ok {
+	visited[agentId] = true
+
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
 		return false
 	}
 
@@ -824,10 +231,10 @@ func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {
 	}
 
 	for i := uint(0); i < agent.PivotChilds.Len(); i++ {
-		value, ok = agent.PivotChilds.Get(i)
+		value, ok := agent.PivotChilds.Get(i)
 		if ok {
 			pivotData := value.(*adaptix.PivotData)
-			if ts.TsTasksPivotExists(pivotData.ChildAgentId, false) {
+			if ts.tsTasksPivotExistsWithVisited(pivotData.ChildAgentId, false, visited) {
 				return true
 			}
 		}
@@ -836,41 +243,15 @@ func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {
 }
 
 func (ts *Teamserver) TsTaskGetAvailablePivotAll(agentId string, availableSize int) ([]adaptix.TaskData, error) {
-	value, ok := ts.agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return nil, fmt.Errorf("invalid agent type for '%v'", agentId)
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return nil, fmt.Errorf("TsTaskQueueGetAvailable: %w", err)
 	}
 
-	var tasks []adaptix.TaskData
-	tasksSize := 0
-
-	/// PIVOTS QUEUE
-
-	for i := uint(0); i < agent.PivotChilds.Len(); i++ {
-		value, ok = agent.PivotChilds.Get(i)
-		if ok {
-			pivotData := value.(*adaptix.PivotData)
-			lostSize := availableSize - tasksSize
-			if availableSize > 0 {
-				data, err := ts.TsAgentGetHostedAll(pivotData.ChildAgentId, lostSize)
-				if err != nil {
-					continue
-				}
-				pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.GetData().Name, pivotData.PivotId, data)
-				if err != nil {
-					continue
-				}
-				tasks = append(tasks, pivotTaskData)
-				tasksSize += len(pivotTaskData.Data)
-			}
-		} else {
-			break
-		}
-	}
-
+	tasks, _ := ts.extractPivotTasks(agent, availableSize, 0)
 	return tasks, nil
+}
+
+func (ts *Teamserver) TsProcessHookJobsForDisconnectedClient(clientName string) {
+	ts.TaskManager.ProcessDisconnectedClient(clientName)
 }

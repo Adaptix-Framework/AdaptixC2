@@ -237,7 +237,7 @@ func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
 	targets_id := make(map[string]string)
 
 	for _, agentId := range agentsId {
-		value, ok := ts.agents.Get(agentId)
+		value, ok := ts.Agents.Get(agentId)
 		if !ok {
 			continue
 		}

@@ -63,7 +63,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 		err      error
 	)
 
-	value, ok := ts.agents.Get(AgentId)
+	value, ok := ts.Agents.Get(AgentId)
 	if !ok {
 		return "", fmt.Errorf("agent '%v' does not exist", AgentId)
 	}
@@ -201,7 +201,7 @@ func (ts *Teamserver) TsTunnelClientNewChannel(TunnelData string, wsconn *websoc
 		return errors.New("invalid tunnel type")
 	}
 
-	value, ok = ts.agents.Get(tunnel.Data.AgentId)
+	value, ok = ts.Agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return errors.New("agent not found")
 	}
@@ -319,7 +319,7 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 		return "", errors.New("invalid tunnel type")
 	}
 
-	value, ok = ts.agents.Get(tunnel.Data.AgentId)
+	value, ok = ts.Agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
 	}
@@ -372,7 +372,7 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 
 func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error) {
 
-	value, ok := ts.agents.Get(AgentId)
+	value, ok := ts.Agents.Get(AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
 	}
@@ -605,7 +605,7 @@ func (ts *Teamserver) TsTunnelStopRportfwd(AgentId string, Port int) {
 		return
 	}
 
-	value, ok = ts.agents.Get(tunnel.Data.AgentId)
+	value, ok = ts.Agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return
 	}
@@ -699,7 +699,7 @@ func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int, io
 		ok         bool
 	)
 
-	value, ok := ts.agents.Get(AgentId)
+	value, ok := ts.Agents.Get(AgentId)
 	if !ok {
 		return
 	}
@@ -828,7 +828,7 @@ func (ts *Teamserver) TsTunnelConnectionAccept(tunnelId int, channelId int) {
 		return
 	}
 
-	value, ok = ts.agents.Get(tunnel.Data.AgentId)
+	value, ok = ts.Agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return
 	}

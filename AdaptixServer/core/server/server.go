@@ -32,7 +32,7 @@ func NewTeamserver() *Teamserver {
 
 		events:      safe.NewSlice(),
 		clients:     safe.NewMap(),
-		agents:      safe.NewMap(),
+		Agents:      safe.NewMap(),
 		listeners:   safe.NewMap(),
 		messages:    safe.NewSlice(),
 		downloads:   safe.NewMap(),
@@ -131,7 +131,7 @@ func (ts *Teamserver) RestoreData() {
 		}
 
 		agent.SetData(agentData)
-		ts.agents.Put(agentData.Id, agent)
+		ts.Agents.Put(agentData.Id, agent)
 
 		packet := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packet)
@@ -184,7 +184,7 @@ func (ts *Teamserver) RestoreData() {
 		countMessages++
 	}
 	logs.Success("   ", "Restored %v messages", countMessages)
-	
+
 	/// DOWNLOADS
 	countDownloads := 0
 	restoreDownloads := ts.DBMS.DbDownloadAll()

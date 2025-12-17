@@ -17,7 +17,7 @@ import (
 
 func (ts *Teamserver) TsAgentList() (string, error) {
 	var agents []adaptix.AgentData
-	ts.agents.ForEach(func(key string, value interface{}) bool {
+	ts.Agents.ForEach(func(key string, value interface{}) bool {
 		agent, ok := value.(*Agent)
 		if ok {
 			agents = append(agents, agent.GetData())
@@ -33,7 +33,7 @@ func (ts *Teamserver) TsAgentList() (string, error) {
 }
 
 func (ts *Teamserver) TsAgentIsExists(agentId string) bool {
-	return ts.agents.Contains(agentId)
+	return ts.Agents.Contains(agentId)
 }
 
 func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error) {
@@ -45,7 +45,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	if !ok {
 		return adaptix.AgentData{}, fmt.Errorf("agent type %v does not exists", agentCrc)
 	}
-	ok = ts.agents.Contains(agentId)
+	ok = ts.Agents.Contains(agentId)
 	if ok {
 		return adaptix.AgentData{}, fmt.Errorf("agent %v already exists", agentId)
 	}
@@ -100,7 +100,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	}
 	agent.SetData(agentData)
 
-	ts.agents.Put(agentData.Id, agent)
+	ts.Agents.Put(agentData.Id, agent)
 
 	packetNew := CreateSpAgentNew(agentData)
 	ts.TsSyncAllClients(packetNew)
@@ -124,7 +124,7 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 		return fmt.Errorf("agent %v not registered", agentName)
 	}
 
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
@@ -156,7 +156,7 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 
 func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error {
 
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return fmt.Errorf("agent type %v does not exists", agentId)
 	}
@@ -187,7 +187,7 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 /// Get Tasks
 
 func (ts *Teamserver) TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error) {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return nil, fmt.Errorf("agent type %v does not exists", agentId)
 	}
@@ -228,7 +228,7 @@ func (ts *Teamserver) TsAgentGetHostedAll(agentId string, maxDataSize int) ([]by
 }
 
 func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error) {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return nil, fmt.Errorf("agent type %v does not exists", agentId)
 	}
@@ -262,7 +262,7 @@ func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]
 }
 
 func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId string, count int, maxDataSize int) ([]byte, error) {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return nil, fmt.Errorf("agent type %v does not exists", agentId)
 	}
@@ -294,7 +294,7 @@ func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId string, count int, maxD
 }
 
 //func (ts *Teamserver) TsAgentGetHostedTunnels(agentId string, channelId int, maxDataSize int) ([]byte, error) {
-//	value, ok := ts.agents.Get(agentId)
+//	value, ok := ts.Agents.Get(agentId)
 //	if !ok {
 //		return nil, fmt.Errorf("agent type %v does not exists", agentId)
 //	}
@@ -338,7 +338,7 @@ func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId string, count int, maxD
 /// Data
 
 func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
-	value, ok := ts.agents.Get(newAgentData.Id)
+	value, ok := ts.Agents.Get(newAgentData.Id)
 	if !ok {
 		return errors.New("agent does not exist")
 	}
@@ -367,7 +367,7 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
 }
 
 func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) error {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return errors.New("agent does not exist")
 	}
@@ -486,7 +486,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 }
 
 func (ts *Teamserver) TsAgentConsoleRemove(agentId string) error {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
@@ -502,7 +502,7 @@ func (ts *Teamserver) TsAgentConsoleRemove(agentId string) error {
 }
 
 func (ts *Teamserver) TsAgentRemove(agentId string) error {
-	value, ok := ts.agents.GetDelete(agentId)
+	value, ok := ts.Agents.GetDelete(agentId)
 	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
@@ -571,7 +571,7 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 /// Setters
 
 func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return errors.New("agent does not exist")
 	}
@@ -598,7 +598,7 @@ func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 }
 
 func (ts *Teamserver) TsAgentSetMark(agentId string, mark string) error {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return errors.New("agent does not exist")
 	}
@@ -632,7 +632,7 @@ func (ts *Teamserver) TsAgentSetMark(agentId string, mark string) error {
 }
 
 func (ts *Teamserver) TsAgentSetColor(agentId string, background string, foreground string, reset bool) error {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return errors.New("agent does not exist")
 	}
@@ -675,7 +675,7 @@ func (ts *Teamserver) TsAgentSetColor(agentId string, background string, foregro
 }
 
 func (ts *Teamserver) TsAgentSetImpersonate(agentId string, impersonated string, elevated bool) error {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return errors.New("agent does not exist")
 	}
@@ -704,7 +704,7 @@ func (ts *Teamserver) TsAgentSetImpersonate(agentId string, impersonated string,
 }
 
 func (ts *Teamserver) TsAgentSetTick(agentId string) error {
-	value, ok := ts.agents.Get(agentId)
+	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return fmt.Errorf("agent type %v does not exists", agentId)
 	}
@@ -729,7 +729,7 @@ func (ts *Teamserver) TsAgentSetTick(agentId string) error {
 func (ts *Teamserver) TsAgentTickUpdate() {
 	for {
 		var agentSlice []string
-		ts.agents.ForEach(func(key string, value interface{}) bool {
+		ts.Agents.ForEach(func(key string, value interface{}) bool {
 			agent, ok := value.(*Agent)
 			if !ok {
 				return true
