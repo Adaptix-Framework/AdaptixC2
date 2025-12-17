@@ -40,13 +40,13 @@ func NewTeamserver() *Teamserver {
 		screenshots: safe.NewMap(),
 		credentials: safe.NewSlice(),
 		targets:     safe.NewSlice(),
-		tunnels:     safe.NewMap(),
 		terminals:   safe.NewMap(),
 		pivots:      safe.NewSlice(),
 		otps:        safe.NewMap(),
 	}
 	ts.TaskManager = NewTaskManager(ts)
 	ts.Extender = extender.NewExtender(ts)
+	ts.TunnelManager = NewTunnelManager(ts)
 	return ts
 }
 

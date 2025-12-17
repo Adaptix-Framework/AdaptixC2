@@ -181,7 +181,11 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 		return errors.New("Failed to create file: " + err.Error())
 	}
 	_, err = downloadData.File.Write(content)
-	err = downloadData.File.Close()
+	if err != nil {
+		_ = downloadData.File.Close()
+		return errors.New("Failed to write file: " + err.Error())
+	}
+	_ = downloadData.File.Close()
 
 	ts.downloads.Put(downloadData.FileId, downloadData)
 

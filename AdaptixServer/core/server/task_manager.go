@@ -273,7 +273,8 @@ func (tm *TaskManager) ProcessDisconnectedClient(clientName string) {
 			if !ok {
 				return true
 			}
-			if task.HookId != "" && task.Client == clientName {
+
+			if (task.HookId != "" && task.Client == clientName) || (task.Type == TYPE_TUNNEL && task.Client == clientName) {
 				tasksToProcess = append(tasksToProcess, taskId)
 			}
 			return true

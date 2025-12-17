@@ -124,16 +124,11 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 		return fmt.Errorf("agent %v not registered", agentName)
 	}
 
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent '%v' does not exist", agentId)
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return err
 	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return fmt.Errorf("invalid agent type for '%v'", agentId)
-	}
-
-	if agent.Active == false {
+	if !agent.Active {
 		return fmt.Errorf("agent '%v' not active", agentId)
 	}
 
@@ -155,14 +150,9 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 }
 
 func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error {
-
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent type %v does not exists", agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return fmt.Errorf("invalid agent type for '%v'", agentId)
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return err
 	}
 
 	agentData := agent.GetData()
@@ -187,13 +177,9 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 /// Get Tasks
 
 func (ts *Teamserver) TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error) {
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("agent type %v does not exists", agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return nil, fmt.Errorf("invalid agent type for '%v'", agentId)
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return nil, err
 	}
 
 	agentData := agent.GetData()
@@ -228,13 +214,9 @@ func (ts *Teamserver) TsAgentGetHostedAll(agentId string, maxDataSize int) ([]by
 }
 
 func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error) {
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("agent type %v does not exists", agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return nil, fmt.Errorf("invalid agent type for '%v'", agentId)
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return nil, err
 	}
 
 	agentData := agent.GetData()
@@ -262,13 +244,9 @@ func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]
 }
 
 func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId string, count int, maxDataSize int) ([]byte, error) {
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("agent type %v does not exists", agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return nil, fmt.Errorf("invalid agent type for '%v'", agentId)
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return nil, err
 	}
 
 	agentData := agent.GetData()
@@ -397,15 +375,14 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 
 	/// Clear Tunnels
 
-	var tunnels []string
-	ts.tunnels.ForEach(func(key string, value interface{}) bool {
-		tunnel := value.(*Tunnel)
+	var tunnelIds []string
+	ts.TunnelManager.ForEachTunnel(func(key string, tunnel *Tunnel) bool {
 		if tunnel.Data.AgentId == agentId {
-			tunnels = append(tunnels, tunnel.Data.TunnelId)
+			tunnelIds = append(tunnelIds, tunnel.Data.TunnelId)
 		}
 		return true
 	})
-	for _, id := range tunnels {
+	for _, id := range tunnelIds {
 		_ = ts.TsTunnelStop(id)
 	}
 
@@ -527,15 +504,14 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 
 	/// Clear Tunnels
 
-	var tunnels []string
-	ts.tunnels.ForEach(func(key string, value interface{}) bool {
-		tunnel := value.(*Tunnel)
+	var tunnelIds2 []string
+	ts.TunnelManager.ForEachTunnel(func(key string, tunnel *Tunnel) bool {
 		if tunnel.Data.AgentId == agentId {
-			tunnels = append(tunnels, tunnel.Data.TunnelId)
+			tunnelIds2 = append(tunnelIds2, tunnel.Data.TunnelId)
 		}
 		return true
 	})
-	for _, id := range tunnels {
+	for _, id := range tunnelIds2 {
 		_ = ts.TsTunnelStop(id)
 	}
 

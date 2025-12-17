@@ -1,6 +1,8 @@
 package server
 
 import (
+	"time"
+
 	"github.com/Adaptix-Framework/axc2"
 )
 
@@ -54,4 +56,15 @@ func (h *TunnelTaskHandler) PostHook(tm *TaskManager, agent *Agent, task *adapti
 }
 
 func (h *TunnelTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task *adaptix.TaskData, clientName string) {
+	agent.RunningTasks.Delete(task.TaskId)
+
+	task.Completed = true
+	task.FinishDate = time.Now().Unix()
+	task.MessageType = CONSOLE_OUT_INFO
+	task.Message = "Tunnel closed (client disconnected)"
+
+	if task.Sync {
+		tm.completeTask(agent, task)
+		tm.syncTaskUpdate(task.AgentId, agent, task)
+	}
 }

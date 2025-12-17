@@ -81,7 +81,6 @@ type Teamserver struct {
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
 	credentials *safe.Slice
 	targets     *safe.Slice
-	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
 	terminals   safe.Map    // terminalId string   : terminal Terminal
 	pivots      *safe.Slice // 			           : PivotData
 	otps        safe.Map    // otp string		   : Id string
