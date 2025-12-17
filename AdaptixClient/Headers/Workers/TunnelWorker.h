@@ -15,7 +15,7 @@ Q_OBJECT
 
     QMutex wsBufferMutex;
     QQueue<QByteArray> wsBuffer;
-    bool wsConnected = false;
+    std::atomic<bool> wsConnected{false};
 
 public:
     TunnelWorker(QTcpSocket* socket, const QString &token, const QUrl& wsUrl, const QString& tunnelData, QObject* parent = nullptr);
