@@ -737,6 +737,17 @@ void HttpReqAgentSetColorAsync(QStringList agentsId, const QString &background, 
     HttpRequestManager::instance().post(profile.GetURL(), "/agent/set/color", profile.GetAccessToken(), jsonData, callback);
 }
 
+void HttpReqAgentSetImpersonateAsync(const QString &agentId, const QString &impersonate, bool elevated, AuthProfile& profile, HttpCallback callback)
+{
+    QJsonObject dataJson;
+    dataJson["agent_id"] = agentId;
+    dataJson["impersonate"] = impersonate;
+    dataJson["elevated"] = elevated;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    HttpRequestManager::instance().post(profile.GetURL(), "/agent/set/impersonate", profile.GetAccessToken(), jsonData, callback);
+}
+
 void HttpReqConsoleRemoveAsync(QStringList agentsId, AuthProfile& profile, HttpCallback callback)
 {
     QJsonObject dataJson;

@@ -8,10 +8,15 @@
 
 class AxScriptEngine;
 
+class AxUiFactory;
+
 class BridgeForm : public QObject {
 Q_OBJECT
     AxScriptEngine* scriptEngine;
-    QWidget*        widget;
+    AxUiFactory*    uiFactory;
+    QWidget*        localParentWidget;
+
+    QWidget* getParentWidget() const;
 
 public:
     BridgeForm(AxScriptEngine* scriptEngine, QObject* parent = nullptr);

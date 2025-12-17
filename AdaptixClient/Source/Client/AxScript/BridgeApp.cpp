@@ -330,7 +330,7 @@ QJSValue BridgeApp::credentials() const
 
 void BridgeApp::credentials_add(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host)
 {
-    CredentialData cred = {"", username, password, realm, type, tag, 0, storage, "", host};
+    CredentialData cred = {"", username, password, realm, type, tag, "", 0, storage, "", host};
 
     QList<CredentialData> credsList;
     credsList.append(cred);
@@ -717,7 +717,7 @@ QJSValue BridgeApp::targets() const
 
 void BridgeApp::targets_add(const QString &computer, const QString &domain, const QString &address, const QString &os, const QString &osDesc, const QString &tag, const QString &info, bool alive)
 {
-    TargetData target = {"", computer, domain, address, tag, QIcon(), 0, osDesc, "", info, alive};
+    TargetData target = {"", computer, domain, address, tag, QIcon(), 0, osDesc, "", 0, info, alive};
 
     if (os == "windows")    target.Os = OS_WINDOWS;
     else if (os == "linux") target.Os = OS_LINUX;

@@ -11,6 +11,8 @@ struct ExtensionFile;
 struct AxMenuItem;
 struct AxEvent;
 class  AxScriptEngine;
+class  AxScriptWorker;
+class  AxUiFactory;
 class  AdaptixWidget;
 class  Agent;
 
@@ -42,6 +44,7 @@ class AxScriptManager : public QObject {
 Q_OBJECT
     AdaptixWidget*  adaptixWidget = nullptr;
     AxScriptEngine* mainScript    = nullptr;
+    AxUiFactory*    uiFactory     = nullptr;
     QMap<QString, AxScriptEngine*> scripts;
     QMap<QString, AxScriptEngine*> listeners_scripts;
     QMap<QString, AxScriptEngine*> agents_scripts;
@@ -51,6 +54,7 @@ public:
     ~AxScriptManager() override;
 
     QJSEngine* MainScriptEngine();
+    AxUiFactory* GetUiFactory() const;
     void ResetMain();
     void Clear();
 
@@ -79,6 +83,12 @@ public:
 
     void GlobalScriptLoad(const QString &path);
     void GlobalScriptUnload(const QString &path);
+    void GlobalScriptLoadAsync(const QString &path);
+    
+    void ExecuteAsync(const QString& code, const QString& name = "async");
+    void ExecuteSmart(const QString& code, const QString& name = "smart");
+    
+    static bool containsUiCalls(const QString& code);
 
     void        RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
     void        EventRemove(const QString &event_id);

@@ -1,21 +1,32 @@
+#include <QFile>
+#include <QTextStream>
+#include <QRegularExpression>
 #include <Agent/Agent.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptEngine.h>
+#include <Client/AxScript/AxScriptWorker.h>
+#include <Client/AxScript/AxUiFactory.h>
 #include <Client/AxScript/BridgeEvent.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/AxConsoleWidget.h>
 
 AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), adaptixWidget(main_widget) {
+    uiFactory = new AxUiFactory(this);
     mainScript = new AxScriptEngine(this, "main", this);
 }
 
-AxScriptManager::~AxScriptManager() = default;
+AxScriptManager::~AxScriptManager()
+{
+    delete uiFactory;
+}
 
 QJSEngine* AxScriptManager::MainScriptEngine() { return mainScript->engine(); }
+
+AxUiFactory* AxScriptManager::GetUiFactory() const { return uiFactory; }
 
 void AxScriptManager::Clear()
 {
@@ -167,6 +178,56 @@ void AxScriptManager::GlobalScriptLoad(const QString &path) { Q_EMIT adaptixWidg
 
 void AxScriptManager::GlobalScriptUnload(const QString &path) { Q_EMIT adaptixWidget->UnloadGlobalScriptSignal(path); }
 
+void AxScriptManager::GlobalScriptLoadAsync(const QString &path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        consolePrintError("Could not open script: " + path);
+        return;
+    }
+    QTextStream in(&file);
+    QString code = in.readAll();
+    file.close();
+
+    ExecuteAsync(code, path);
+}
+
+void AxScriptManager::ExecuteAsync(const QString& code, const QString& name)
+{
+    auto* worker = new AxScriptWorker(this, name, nullptr);
+    
+    connect(worker, &AxScriptWorker::executionFinished, this, [this, worker, name](bool success, const QString& error) {
+        if (!success && !error.isEmpty()) {
+            consolePrintError(QString("Async script '%1' error: %2").arg(name).arg(error));
+        }
+        worker->deleteLater();
+    });
+
+    worker->waitForReady();
+    worker->executeAsync(code);
+}
+
+bool AxScriptManager::containsUiCalls(const QString& code)
+{
+    static const QRegularExpression uiRegex(
+        QStringLiteral("\\b(form\\.create_|form\\.connect|ax\\.dialog|ax\\.input|"
+                       "ax\\.message|ax\\.confirm|ax\\.file_dialog|ax\\.color_dialog|"
+                       "ax\\.font_dialog|menu\\.add_|menu\\.create_)")
+    );
+    return uiRegex.match(code).hasMatch();
+}
+
+void AxScriptManager::ExecuteSmart(const QString& code, const QString& name)
+{
+    if (containsUiCalls(code)) {
+        AxScriptEngine* script = new AxScriptEngine(this, name, this);
+        script->execute(code);
+        delete script;
+    } else {
+        ExecuteAsync(code, name);
+    }
+}
+
 QList<AxScriptEngine*> AxScriptManager::getAllEngines() const
 {
     QList<AxScriptEngine*> list;
@@ -314,39 +375,29 @@ void AxScriptManager::AppAgentHide(const QStringList &agents)
 
 void AxScriptManager::AppAgentRemove(const QStringList &agents)
 {
-    QString message = "";
-    bool ok = false;
-    HttpReqAgentRemove(agents, *(adaptixWidget->GetProfile()), &message, &ok);
+    HttpReqAgentRemoveAsync(agents, *(adaptixWidget->GetProfile()), nullptr);
 }
 
 /// APP
 
 void AxScriptManager::AppAgentSetColor(const QStringList &agents, const QString &background, const QString &foreground, const bool reset)
 {
-    QString message = "";
-    bool ok = false;
-    HttpReqAgentSetColor(agents, background, foreground, reset, *(adaptixWidget->GetProfile()), &message, &ok);
+    HttpReqAgentSetColorAsync(agents, background, foreground, reset, *(adaptixWidget->GetProfile()), nullptr);
 }
 
 void AxScriptManager::AppAgentSetImpersonate(const QString &id, const QString &impersonate, const bool elevated)
 {
-    QString message = "";
-    bool ok = false;
-    HttpReqAgentSetImpersonate(id, impersonate, elevated, *(adaptixWidget->GetProfile()), &message, &ok);
+    HttpReqAgentSetImpersonateAsync(id, impersonate, elevated, *(adaptixWidget->GetProfile()), nullptr);
 }
 
 void AxScriptManager::AppAgentSetMark(const QStringList &agents, const QString &mark)
 {
-    QString message = "";
-    bool ok = false;
-    HttpReqAgentSetMark(agents, mark, *(adaptixWidget->GetProfile()), &message, &ok);
+    HttpReqAgentSetMarkAsync(agents, mark, *(adaptixWidget->GetProfile()), nullptr);
 }
 
 void AxScriptManager::AppAgentSetTag(const QStringList &agents, const QString &tag)
 {
-    QString message = "";
-    bool ok = false;
-    HttpReqAgentSetTag(agents, tag, *(adaptixWidget->GetProfile()), &message, &ok);
+    HttpReqAgentSetTagAsync(agents, tag, *(adaptixWidget->GetProfile()), nullptr);
 }
 
 /// MENU

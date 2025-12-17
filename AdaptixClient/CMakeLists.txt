@@ -139,6 +139,8 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogUploader.h
         Headers/Client/AxScript/AxScriptManager.h
         Headers/Client/AxScript/AxScriptEngine.h
+        Headers/Client/AxScript/AxScriptWorker.h
+        Headers/Client/AxScript/AxUiFactory.h
         Headers/Client/AxScript/BridgeApp.h
         Headers/Client/AxScript/BridgeEvent.h
         Headers/Client/AxScript/BridgeForm.h
@@ -221,6 +223,8 @@ add_executable(AdaptixClient
         Source/UI/Dialogs/DialogUploader.cpp
         Source/Client/AxScript/AxScriptManager.cpp
         Source/Client/AxScript/AxScriptEngine.cpp
+        Source/Client/AxScript/AxScriptWorker.cpp
+        Source/Client/AxScript/AxUiFactory.cpp
         Source/Client/AxScript/BridgeApp.cpp
         Source/Client/AxScript/BridgeEvent.cpp
         Source/Client/AxScript/BridgeForm.cpp

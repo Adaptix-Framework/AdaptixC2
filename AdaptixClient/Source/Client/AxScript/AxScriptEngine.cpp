@@ -21,8 +21,10 @@ AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &n
     jsEngine->globalObject().setProperty("event", jsEngine->newQObject(bridgeEvent.get()));
     jsEngine->globalObject().setProperty("menu",  jsEngine->newQObject(bridgeMenu.get()));
 
-    connect(bridgeApp.get(),   &BridgeApp::consoleError,   script_manager, &AxScriptManager::consolePrintError);
-    connect(bridgeApp.get(),   &BridgeApp::consoleMessage, script_manager, &AxScriptManager::consolePrintMessage);
+    if (script_manager) {
+        connect(bridgeApp.get(),   &BridgeApp::consoleError,   script_manager, &AxScriptManager::consolePrintError);
+        connect(bridgeApp.get(),   &BridgeApp::consoleMessage, script_manager, &AxScriptManager::consolePrintMessage);
+    }
     connect(bridgeApp.get(),   &BridgeApp::engineError,   this, &AxScriptEngine::engineError);
     connect(bridgeForm.get(),  &BridgeForm::scriptError,  this, &AxScriptEngine::engineError);
     connect(bridgeEvent.get(), &BridgeEvent::scriptError, this, &AxScriptEngine::engineError);
@@ -144,8 +146,13 @@ bool AxScriptEngine::execute(const QString &code)
     QJSValue result = jsEngine->evaluate(code, context.name);
     context.scriptObject = result;
     if (result.isError()) {
-        QString error = QStringLiteral("%1\n    at line %2 in %3\n    stack: %4\n").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(context.name).arg(result.property("stack").toString());
-        scriptManager->consolePrintError(error);
+        QString error = QStringLiteral("%1\n    at line %2 in %3\n    stack: %4\n")
+            .arg(result.toString())
+            .arg(result.property("lineNumber").toInt())
+            .arg(context.name)
+            .arg(result.property("stack").toString());
+        if (scriptManager)
+            scriptManager->consolePrintError(error);
         return false;
     }
     return true;
