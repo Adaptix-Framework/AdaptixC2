@@ -48,8 +48,8 @@ func NewTeamserver() *Teamserver {
 		otps:        safe.NewMap(),
 	}
 	ts.TaskManager = NewTaskManager(ts)
-	ts.Extender = extender.NewExtender(ts)
 	ts.TunnelManager = NewTunnelManager(ts)
+	ts.Extender = extender.NewExtender(ts)
 	return ts
 }
 

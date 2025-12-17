@@ -137,7 +137,6 @@ func (tm *TaskManager) Update(agentId string, updateData adaptix.TaskData) {
 		return
 	}
 
-	// Clear binary data
 	task.Data = []byte("")
 
 	handler, ok := tm.handlers[task.Type]
