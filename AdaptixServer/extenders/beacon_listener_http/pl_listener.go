@@ -187,7 +187,7 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 	var buffer bytes.Buffer
 	err = json.NewEncoder(&buffer).Encode(listener.Config)
 	if err != nil {
-		return listenerData, customdData, listener, nil
+		return listenerData, customdData, listener, err
 	}
 	customdData = buffer.Bytes()
 

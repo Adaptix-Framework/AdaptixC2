@@ -189,7 +189,7 @@ func (handler *HTTP) processRequest(ctx *gin.Context) {
 			valid = true
 		}
 	}
-	if valid == false {
+	if !valid {
 		handler.pageError(ctx)
 		return
 	}

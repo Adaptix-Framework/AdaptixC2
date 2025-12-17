@@ -450,8 +450,9 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 				err = errors.New("parameter 'bof' must be set")
 				goto RET
 			}
-			bofContent, err := base64.StdEncoding.DecodeString(bofFile)
-			if err != nil {
+			bofContent, decodeErr := base64.StdEncoding.DecodeString(bofFile)
+			if decodeErr != nil {
+				err = decodeErr
 				goto RET
 			}
 
@@ -678,13 +679,15 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			goto RET
 		}
 
-		fileContent, err := base64.StdEncoding.DecodeString(localFile)
-		if err != nil {
+		fileContent, decodeErr := base64.StdEncoding.DecodeString(localFile)
+		if decodeErr != nil {
+			err = decodeErr
 			goto RET
 		}
 
-		zipContent, err := ZipBytes(fileContent, remote_path)
-		if err != nil {
+		zipContent, zipErr := ZipBytes(fileContent, remote_path)
+		if zipErr != nil {
+			err = zipErr
 			goto RET
 		}
 
@@ -1481,7 +1484,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				if params.Stderr != "" {
 					errorStr := params.Stderr
 					if agentData.Os == OS_WINDOWS {
-						errorStr = ConvertCpToUTF8(params.Stdout, agentData.OemCP)
+						errorStr = ConvertCpToUTF8(params.Stderr, agentData.OemCP)
 					}
 					task.ClearText += fmt.Sprintf("\n --- [error] --- \n%v ", errorStr)
 				}

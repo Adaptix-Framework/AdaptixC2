@@ -184,7 +184,7 @@ func PackArray(array []interface{}) ([]byte, error) {
 			size := make([]byte, 4)
 			val := array[i].(string)
 			if len(val) != 0 {
-				if strings.HasSuffix(val, "\x00") == false {
+				if !strings.HasSuffix(val, "\x00") {
 					val += "\x00"
 				}
 			}

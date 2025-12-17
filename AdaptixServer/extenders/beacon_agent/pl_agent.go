@@ -593,8 +593,9 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			goto RET
 		}
 
-		fileId, err := strconv.ParseInt(fid, 16, 64)
-		if err != nil {
+		fileId, parseErr := strconv.ParseInt(fid, 16, 64)
+		if parseErr != nil {
+			err = parseErr
 			goto RET
 		}
 
@@ -623,8 +624,9 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 				goto RET
 			}
 
-			jobId, err := strconv.ParseInt(job, 16, 64)
-			if err != nil {
+			jobId, parseErr := strconv.ParseInt(job, 16, 64)
+			if parseErr != nil {
+				err = parseErr
 				goto RET
 			}
 
@@ -1070,8 +1072,9 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			goto RET
 		}
 
-		fileContent, err := base64.StdEncoding.DecodeString(localFile)
-		if err != nil {
+		fileContent, decodeErr := base64.StdEncoding.DecodeString(localFile)
+		if decodeErr != nil {
+			err = decodeErr
 			goto RET
 		}
 

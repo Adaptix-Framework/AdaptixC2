@@ -1269,7 +1269,6 @@ func ConvertUTF8toCp(input string, codePage int) string {
 		return input
 	}
 
-	transform.NewWriter(io.Discard, enc.NewEncoder())
 	encodedText, err := io.ReadAll(transform.NewReader(strings.NewReader(input), enc.NewEncoder()))
 	if err != nil {
 		return input
@@ -1343,10 +1342,10 @@ func UnzipBytes(zipData []byte) (map[string][]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer rc.Close()
 
 		var buf bytes.Buffer
 		_, err = io.Copy(&buf, rc)
+		rc.Close()
 		if err != nil {
 			return nil, err
 		}

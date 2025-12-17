@@ -1064,7 +1064,6 @@ func ConvertUTF8toCp(input string, codePage int) string {
 		return input
 	}
 
-	transform.NewWriter(io.Discard, enc.NewEncoder())
 	encodedText, err := io.ReadAll(transform.NewReader(strings.NewReader(input), enc.NewEncoder()))
 	if err != nil {
 		return input
