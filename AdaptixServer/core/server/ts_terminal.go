@@ -12,6 +12,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var (
+	ErrTerminalNotFound    = errors.New("terminal not found")
+	ErrInvalidTerminalType = errors.New("invalid terminal type")
+)
+
 func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error {
 	data, err := base64.StdEncoding.DecodeString(terminalData)
 	if err != nil {
@@ -47,15 +52,11 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 		return errors.New("invalid terminal data")
 	}
 
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return errors.New("agent not found")
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return err
 	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return errors.New("invalid agent type")
-	}
-	if agent.Active == false {
+	if !agent.Active {
 		return fmt.Errorf("agent '%v' not active", agentId)
 	}
 
@@ -99,24 +100,22 @@ func (ts *Teamserver) TsTerminalConnExists(terminalId string) bool {
 func (ts *Teamserver) TsTerminalGetPipe(AgentId string, terminalId string) (*io.PipeReader, *io.PipeWriter, error) {
 	value, ok := ts.terminals.Get(terminalId)
 	if !ok {
-		return nil, nil, errors.New("terminal not found")
+		return nil, nil, ErrTerminalNotFound
 	}
-	terminal, _ := value.(*Terminal)
-
+	terminal, ok := value.(*Terminal)
+	if !ok {
+		return nil, nil, ErrInvalidTerminalType
+	}
 	return terminal.prSrv, terminal.pwTun, nil
 }
 
 func (ts *Teamserver) TsTerminalConnResume(agentId string, terminalId string) {
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
 		return
 	}
 
-	value, ok = ts.terminals.Get(terminalId)
+	value, ok := ts.terminals.Get(terminalId)
 	if !ok {
 		return
 	}
@@ -125,69 +124,99 @@ func (ts *Teamserver) TsTerminalConnResume(agentId string, terminalId string) {
 		return
 	}
 
-	relayWebsocketToTerminal(agent, terminal)
+	relayWebsocketToTerminal(ts, agent, terminal, terminalId)
 }
 
 func (ts *Teamserver) TsTerminalConnClose(terminalId string, status string) error {
 	value, ok := ts.terminals.GetDelete(terminalId)
 	if !ok {
-		return errors.New("terminal not found")
+		return ErrTerminalNotFound
 	}
 	terminal, ok := value.(*Terminal)
 	if !ok {
-		return errors.New("invalid terminal type")
+		return ErrInvalidTerminalType
 	}
 
-	terminal.wsconn.Close()
-
-	terminal.prSrv.Close()
-	terminal.pwSrv.Close()
-	terminal.prTun.Close()
-	terminal.pwTun.Close()
-
+	closeTerminalResources(terminal)
 	return nil
+}
+
+func closeTerminalResources(terminal *Terminal) {
+	if terminal == nil {
+		return
+	}
+	if terminal.wsconn != nil {
+		_ = terminal.wsconn.Close()
+	}
+	if terminal.prSrv != nil {
+		_ = terminal.prSrv.Close()
+	}
+	if terminal.pwSrv != nil {
+		_ = terminal.pwSrv.Close()
+	}
+	if terminal.prTun != nil {
+		_ = terminal.prTun.Close()
+	}
+	if terminal.pwTun != nil {
+		_ = terminal.pwTun.Close()
+	}
 }
 
 ///
 
-func relayWebsocketToTerminal(agent *Agent, terminal *Terminal) {
+func relayWebsocketToTerminal(ts *Teamserver, agent *Agent, terminal *Terminal, terminalId string) {
 	var closeOnce sync.Once
-	closeChannel := func() {
+	var wsWriteMu sync.Mutex
+
+	closeAll := func() {
 		closeOnce.Do(func() {
-			_ = terminal.wsconn.Close()
+			ts.terminals.Delete(terminalId)
+			closeTerminalResources(terminal)
+
 			taskData, err := terminal.handlerClose(terminal.TerminalId)
-			if err != nil {
-				return
+			if err == nil {
+				tunnelManageTask(agent, taskData)
 			}
-			tunnelManageTask(agent, taskData)
 		})
 	}
 
 	go func() {
+		defer closeAll()
 		for {
 			_, msg, err := terminal.wsconn.ReadMessage()
 			if err != nil {
-				break
+				return
 			}
-			_, err = terminal.pwSrv.Write(msg)
-			if err != nil {
-				break
+			if terminal.pwSrv == nil {
+				return
+			}
+			if _, err = terminal.pwSrv.Write(msg); err != nil {
+				return
 			}
 		}
-		closeChannel()
 	}()
 
 	go func() {
-		buf := make([]byte, 0x8000)
+		defer closeAll()
+		buf := ts.TunnelManager.GetBuffer()
+		defer ts.TunnelManager.PutBuffer(buf)
+
 		for {
+			if terminal.prTun == nil {
+				return
+			}
 			n, err := terminal.prTun.Read(buf)
 			if err != nil {
-				break
+				return
 			}
-			if err := terminal.wsconn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
-				break
+
+			wsWriteMu.Lock()
+			writeErr := terminal.wsconn.WriteMessage(websocket.BinaryMessage, buf[:n])
+			wsWriteMu.Unlock()
+
+			if writeErr != nil {
+				return
 			}
 		}
-		closeChannel()
 	}()
 }
