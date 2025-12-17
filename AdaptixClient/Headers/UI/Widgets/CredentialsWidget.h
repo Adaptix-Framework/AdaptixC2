@@ -82,6 +82,13 @@ class CredsTableModel : public QAbstractTableModel
 {
 Q_OBJECT
     QVector<CredentialData> creds;
+    QHash<QString, int>     idToRow;
+
+    void rebuildIndex() {
+        idToRow.clear();
+        for (int i = 0; i < creds.size(); ++i)
+            idToRow[creds[i].CredId] = i;
+    }
 
 public:
     explicit CredsTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
@@ -135,6 +142,14 @@ public:
         return headers.value(section);
     }
 
+    void add(const CredentialData& item) {
+        const int row = creds.size();
+        beginInsertRows(QModelIndex(), row, row);
+        creds.append(item);
+        idToRow[item.CredId] = row;
+        endInsertRows();
+    }
+
     void add(const QList<CredentialData>& list) {
         if (list.isEmpty())
             return;
@@ -143,19 +158,21 @@ public:
         const int end   = start + list.size() - 1;
 
         beginInsertRows(QModelIndex(), start, end);
-        creds.append(list);
+        for (const auto& item : list) {
+            idToRow[item.CredId] = creds.size();
+            creds.append(item);
+        }
         endInsertRows();
     }
 
-
     void update(const QString& credId, const CredentialData& newCred) {
-        for (int i = 0; i < creds.size(); ++i) {
-            if (creds[i].CredId == credId) {
-                creds[i] = newCred;
-                Q_EMIT dataChanged(index(i, 0), index(i, CC_ColumnCount - 1));
-                break;
-            }
-        }
+        auto it = idToRow.find(credId);
+        if (it == idToRow.end())
+            return;
+
+        int row = it.value();
+        creds[row] = newCred;
+        Q_EMIT dataChanged(index(row, 0), index(row, CC_ColumnCount - 1));
     }
 
     void remove(const QList<QString>& credIds) {
@@ -163,9 +180,12 @@ public:
             return;
 
         QList<int> rowsToRemove;
-        for (int i = 0; i < creds.size(); ++i) {
-            if (credIds.contains(creds[i].CredId))
-                rowsToRemove.append(i);
+        rowsToRemove.reserve(credIds.size());
+
+        for (const QString& id : credIds) {
+            auto it = idToRow.find(id);
+            if (it != idToRow.end())
+                rowsToRemove.append(it.value());
         }
 
         if (rowsToRemove.isEmpty())
@@ -175,35 +195,33 @@ public:
 
         for (int row : rowsToRemove) {
             beginRemoveRows(QModelIndex(), row, row);
+            idToRow.remove(creds[row].CredId);
             creds.removeAt(row);
             endRemoveRows();
         }
+
+        rebuildIndex();
     }
 
     void setTag(const QStringList &credIds, const QString &tag) {
         if (credIds.isEmpty() || creds.isEmpty())
             return;
 
-        QSet<QString> idsSet(credIds.begin(), credIds.end());
-        bool anyChanged = false;
+        for (const QString& id : credIds) {
+            auto it = idToRow.find(id);
+            if (it == idToRow.end())
+                continue;
 
-        for (int i = 0; i < creds.size(); ++i) {
-            if (idsSet.contains(creds[i].CredId)) {
-                creds[i].Tag = tag;
-                anyChanged = true;
-
-                Q_EMIT dataChanged(index(i, CC_Tag), index(i, CC_Tag), {Qt::DisplayRole});
-
-                idsSet.remove(creds[i].CredId);
-                if (idsSet.isEmpty())
-                    break;
-            }
+            int row = it.value();
+            creds[row].Tag = tag;
+            Q_EMIT dataChanged(index(row, CC_Tag), index(row, CC_Tag), {Qt::DisplayRole});
         }
     }
 
     void clear() {
         beginResetModel();
         creds.clear();
+        idToRow.clear();
         endResetModel();
     }
 };

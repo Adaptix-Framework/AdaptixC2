@@ -275,10 +275,7 @@ void TasksWidget::UpdateColumnsSize() const
 
 void TasksWidget::Clear() const
 {
-    for (auto taskId : adaptixWidget->TasksMap.keys()) {
-        TaskData task = adaptixWidget->TasksMap[taskId];
-        adaptixWidget->TasksMap.remove(taskId);
-    }
+    adaptixWidget->TasksMap.clear();
 
     taskOutputConsole->SetConten("", "");
 

@@ -100,17 +100,25 @@ void TargetsWidget::createUI()
 
 void TargetsWidget::AddTargetsItems(QList<TargetData> targetList) const
 {
+    if (targetList.isEmpty())
+        return;
+
     QList<TargetData> filtered;
+    QSet<QString> existingIds;
+    for (const auto& t : adaptixWidget->Targets)
+        existingIds.insert(t.TargetId);
 
-    for (auto target : targetList) {
-        for( auto t : adaptixWidget->Targets ) {
-            if( t.TargetId == target.TargetId )
-                continue;
-        }
+    for (const auto& target : targetList) {
+        if (existingIds.contains(target.TargetId))
+            continue;
 
+        existingIds.insert(target.TargetId);
         adaptixWidget->Targets.push_back(target);
         filtered.append(target);
     }
+
+    if (filtered.isEmpty())
+        return;
 
     targetsModel->add(filtered);
 

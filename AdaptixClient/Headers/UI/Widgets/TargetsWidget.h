@@ -77,7 +77,14 @@ protected:
 
 class TargetsTableModel : public QAbstractTableModel
 {
-    QVector<TargetData> targets;
+    QVector<TargetData>   targets;
+    QHash<QString, int>   idToRow;
+
+    void rebuildIndex() {
+        idToRow.clear();
+        for (int i = 0; i < targets.size(); ++i)
+            idToRow[targets[i].TargetId] = i;
+    }
 
 public:
     explicit TargetsTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
@@ -133,6 +140,14 @@ public:
         return headers.value(section);
     }
 
+    void add(const TargetData& item) {
+        const int row = targets.size();
+        beginInsertRows(QModelIndex(), row, row);
+        targets.append(item);
+        idToRow[item.TargetId] = row;
+        endInsertRows();
+    }
+
     void add(const QList<TargetData>& list) {
         if (list.isEmpty())
             return;
@@ -141,19 +156,21 @@ public:
         const int end   = start + list.size() - 1;
 
         beginInsertRows(QModelIndex(), start, end);
-        targets.append(list);
+        for (const auto& item : list) {
+            idToRow[item.TargetId] = targets.size();
+            targets.append(item);
+        }
         endInsertRows();
     }
 
-
     void update(const QString& targetId, const TargetData& newTarget) {
-        for (int i = 0; i < targets.size(); ++i) {
-            if (targets[i].TargetId == targetId) {
-                targets[i] = newTarget;
-                Q_EMIT dataChanged(index(i, 0), index(i, TRC_ColumnCount - 1));
-                break;
-            }
-        }
+        auto it = idToRow.find(targetId);
+        if (it == idToRow.end())
+            return;
+
+        int row = it.value();
+        targets[row] = newTarget;
+        Q_EMIT dataChanged(index(row, 0), index(row, TRC_ColumnCount - 1));
     }
 
     void remove(const QList<QString>& targetIds) {
@@ -161,9 +178,12 @@ public:
             return;
 
         QList<int> rowsToRemove;
-        for (int i = 0; i < targets.size(); ++i) {
-            if (targetIds.contains(targets[i].TargetId))
-                rowsToRemove.append(i);
+        rowsToRemove.reserve(targetIds.size());
+
+        for (const QString& id : targetIds) {
+            auto it = idToRow.find(id);
+            if (it != idToRow.end())
+                rowsToRemove.append(it.value());
         }
 
         if (rowsToRemove.isEmpty())
@@ -173,35 +193,33 @@ public:
 
         for (int row : rowsToRemove) {
             beginRemoveRows(QModelIndex(), row, row);
+            idToRow.remove(targets[row].TargetId);
             targets.removeAt(row);
             endRemoveRows();
         }
+
+        rebuildIndex();
     }
 
     void setTag(const QStringList &targetIds, const QString &tag) {
         if (targetIds.isEmpty() || targets.isEmpty())
             return;
 
-        QSet<QString> idsSet(targetIds.begin(), targetIds.end());
-        bool anyChanged = false;
+        for (const QString& id : targetIds) {
+            auto it = idToRow.find(id);
+            if (it == idToRow.end())
+                continue;
 
-        for (int i = 0; i < targets.size(); ++i) {
-            if (idsSet.contains(targets[i].TargetId)) {
-                targets[i].Tag = tag;
-                anyChanged = true;
-
-                Q_EMIT dataChanged(index(i, TRC_Tag), index(i, TRC_Tag), {Qt::DisplayRole});
-
-                idsSet.remove(targets[i].TargetId);
-                if (idsSet.isEmpty())
-                    break;
-            }
+            int row = it.value();
+            targets[row].Tag = tag;
+            Q_EMIT dataChanged(index(row, TRC_Tag), index(row, TRC_Tag), {Qt::DisplayRole});
         }
     }
 
     void clear() {
         beginResetModel();
         targets.clear();
+        idToRow.clear();
         endResetModel();
     }
 };

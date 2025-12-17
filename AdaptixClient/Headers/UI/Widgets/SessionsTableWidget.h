@@ -140,8 +140,15 @@ protected:
 class AgentsTableModel : public QAbstractTableModel
 {
 Q_OBJECT
-    AdaptixWidget*   adaptixWidget;
-    QVector<QString> agentsId;
+    AdaptixWidget*        adaptixWidget;
+    QVector<QString>      agentsId;
+    QHash<QString, int>   idToRow;
+
+    void rebuildIndex() {
+        idToRow.clear();
+        for (int i = 0; i < agentsId.size(); ++i)
+            idToRow[agentsId[i]] = i;
+    }
 
 public:
     explicit AgentsTableModel(AdaptixWidget* w, QObject* parent = nullptr) : QAbstractTableModel(parent), adaptixWidget(w) {}
@@ -291,34 +298,41 @@ public:
     }
 
     void add(const QString &agentId) {
-        int rows = agentsId.size();
+        const int row = agentsId.size();
 
-        beginInsertRows(QModelIndex(), rows, rows);
+        beginInsertRows(QModelIndex(), row, row);
         agentsId.append(agentId);
+        idToRow[agentId] = row;
         endInsertRows();
     }
 
     void update(const QString &agentId) {
-        int row = agentsId.indexOf(agentId);
-        if (row < 0)
+        auto it = idToRow.find(agentId);
+        if (it == idToRow.end())
             return;
 
+        int row = it.value();
         Q_EMIT dataChanged(index(row, 0), index(row, SC_ColumnCount - 1), { Qt::DisplayRole, Qt::ForegroundRole, Qt::BackgroundRole });
     }
 
     void remove(const QString &agentId) {
-        int row = agentsId.indexOf(agentId);
-        if (row < 0)
+        auto it = idToRow.find(agentId);
+        if (it == idToRow.end())
             return;
 
+        int row = it.value();
         beginRemoveRows(QModelIndex(), row, row);
+        idToRow.remove(agentId);
         agentsId.removeAt(row);
         endRemoveRows();
+
+        rebuildIndex();
     }
 
     void clear() {
         beginResetModel();
         agentsId.clear();
+        idToRow.clear();
         endResetModel();
     }
 };

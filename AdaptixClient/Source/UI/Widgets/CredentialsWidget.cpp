@@ -99,17 +99,25 @@ void CredentialsWidget::createUI()
 
 void CredentialsWidget::AddCredentialsItems(QList<CredentialData> credsList) const
 {
+    if (credsList.isEmpty())
+        return;
+
     QList<CredentialData> filtered;
+    QSet<QString> existingIds;
+    for (const auto& c : adaptixWidget->Credentials)
+        existingIds.insert(c.CredId);
 
-    for (auto cred : credsList) {
-        for( auto c : adaptixWidget->Credentials ) {
-            if( c.CredId == cred.CredId )
-                return;
-        }
+    for (const auto& cred : credsList) {
+        if (existingIds.contains(cred.CredId))
+            continue;
 
+        existingIds.insert(cred.CredId);
         adaptixWidget->Credentials.push_back(cred);
         filtered.append(cred);
     }
+
+    if (filtered.isEmpty())
+        return;
 
     credsModel->add(filtered);
 

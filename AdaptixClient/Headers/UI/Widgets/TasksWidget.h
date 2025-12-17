@@ -109,7 +109,14 @@ protected:
 class TasksTableModel : public QAbstractTableModel
 {
 Q_OBJECT
-    QVector<TaskData> tasks;
+    QVector<TaskData>     tasks;
+    QHash<QString, int>   idToRow;
+
+    void rebuildIndex() {
+        idToRow.clear();
+        for (int i = 0; i < tasks.size(); ++i)
+            idToRow[tasks[i].TaskId] = i;
+    }
 
 public:
     explicit TasksTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
@@ -181,35 +188,56 @@ public:
     }
 
     void add(const TaskData& task) {
-        beginInsertRows(QModelIndex(), rowCount(), rowCount());
+        const int row = tasks.size();
+        beginInsertRows(QModelIndex(), row, row);
         tasks.append(task);
+        idToRow[task.TaskId] = row;
+        endInsertRows();
+    }
+
+    void add(const QList<TaskData>& list) {
+        if (list.isEmpty())
+            return;
+
+        const int start = tasks.size();
+        const int end   = start + list.size() - 1;
+
+        beginInsertRows(QModelIndex(), start, end);
+        for (const auto& item : list) {
+            idToRow[item.TaskId] = tasks.size();
+            tasks.append(item);
+        }
         endInsertRows();
     }
 
     void update(const QString& taskId, const TaskData& newData) {
-        for (int i = 0; i < tasks.size(); ++i) {
-            if (tasks[i].TaskId == taskId) {
-                tasks[i] = newData;
-                Q_EMIT dataChanged(index(i, 0), index(i, columnCount() - 1));
-                break;
-            }
-        }
+        auto it = idToRow.find(taskId);
+        if (it == idToRow.end())
+            return;
+
+        int row = it.value();
+        tasks[row] = newData;
+        Q_EMIT dataChanged(index(row, 0), index(row, columnCount() - 1));
     }
 
     void remove(const QString &taskId) {
-        for (int i = 0; i < tasks.size(); ++i) {
-            if (tasks[i].TaskId == taskId) {
-                beginRemoveRows({}, i, i);
-                tasks.remove(i);
-                endRemoveRows();
-                break;
-            }
-        }
+        auto it = idToRow.find(taskId);
+        if (it == idToRow.end())
+            return;
+
+        int row = it.value();
+        beginRemoveRows(QModelIndex(), row, row);
+        idToRow.remove(taskId);
+        tasks.remove(row);
+        endRemoveRows();
+
+        rebuildIndex();
     }
 
     void clear() {
         beginResetModel();
         tasks.clear();
+        idToRow.clear();
         endResetModel();
     }
 };
