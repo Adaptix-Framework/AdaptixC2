@@ -121,8 +121,23 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this,   &AdaptixWidget::ChannelClose );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, ScriptManager, &AxScriptManager::emitDisconnectClient );
 
-    dialogSyncPacket = new DialogSyncPacket();
+    dialogSyncPacket = new DialogSyncPacket(this);
     dialogSyncPacket->splashScreen->show();
+
+    connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, [this]() {
+        if (this->sync && dialogSyncPacket) {
+            dialogSyncPacket->error("Connection lost during synchronization");
+            this->sync = false;
+            this->setSyncUpdateUI(true);
+        }
+    });
+
+    connect( dialogSyncPacket, &DialogSyncPacket::syncCancelled, this, [this]() {
+        this->sync = false;
+        this->setSyncUpdateUI(true);
+        if (dialogSyncPacket && dialogSyncPacket->splashScreen)
+            dialogSyncPacket->splashScreen->close();
+    });
 
     SessionsTableDock->start();
     TickThread->start();

@@ -17,6 +17,26 @@
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
 
+namespace {
+    QIcon getTargetOsIcon(int os, bool owned, bool alive) {
+        if (os == OS_WINDOWS) {
+            if (owned)     return QIcon(":/icons/os_win_red");
+            if (alive)     return QIcon(":/icons/os_win_blue");
+            return QIcon(":/icons/os_win_grey");
+        }
+        if (os == OS_LINUX) {
+            if (owned)     return QIcon(":/icons/os_linux_red");
+            if (alive)     return QIcon(":/icons/os_linux_blue");
+            return QIcon(":/icons/os_linux_grey");
+        }
+        if (os == OS_MAC) {
+            if (owned)     return QIcon(":/icons/os_mac_red");
+            if (alive)     return QIcon(":/icons/os_mac_blue");
+            return QIcon(":/icons/os_mac_grey");
+        }
+        return QIcon();
+    }
+}
 
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 {
@@ -281,7 +301,6 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return true;
     }
 
-
     if ( spType == TYPE_CREDS_CREATE ) {
         if (!jsonObj.contains("c_creds") || !jsonObj["c_creds"].isArray()) return false;
         return true;
@@ -438,10 +457,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         if (dialogSyncPacket != nullptr ) {
 
             this->sync = false;
-            this->setSyncUpdateUI(true);
             dialogSyncPacket->finish();
 
-            Q_EMIT this->SyncedSignal();
+            QTimer::singleShot(100, this, [this]() {
+                this->setSyncUpdateUI(true);
+                Q_EMIT this->SyncedSignal();
+            });
         }
         return;
     }
@@ -871,31 +892,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 }
             }
 
-            bool owned = (t.Agents.size() > 0);
-            if (t.Os == OS_WINDOWS) {
-                if (owned)
-                    t.OsIcon = QIcon(":/icons/os_win_red");
-                else if(t.Alive)
-                    t.OsIcon = QIcon(":/icons/os_win_blue");
-                else
-                    t.OsIcon = QIcon(":/icons/os_win_grey");
-            }
-            else if (t.Os == OS_LINUX) {
-                if (owned)
-                    t.OsIcon = QIcon(":/icons/os_linux_red");
-                else if(t.Alive)
-                    t.OsIcon = QIcon(":/icons/os_linux_blue");
-                else
-                    t.OsIcon = QIcon(":/icons/os_linux_grey");
-            }
-            else if (t.Os == OS_MAC) {
-                if (owned)
-                    t.OsIcon = QIcon(":/icons/os_mac_red");
-                else if(t.Alive)
-                    t.OsIcon = QIcon(":/icons/os_mac_blue");
-                else
-                    t.OsIcon = QIcon(":/icons/os_mac_grey");
-            }
+            t.OsIcon = getTargetOsIcon(t.Os, !t.Agents.isEmpty(), t.Alive);
 
             targetsList.append(t);
         }
@@ -925,31 +922,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             }
         }
 
-        bool owned = (t.Agents.size() > 0);
-        if (t.Os == OS_WINDOWS) {
-            if (owned)
-                t.OsIcon = QIcon(":/icons/os_win_red");
-            else if(t.Alive)
-                t.OsIcon = QIcon(":/icons/os_win_blue");
-            else
-                t.OsIcon = QIcon(":/icons/os_win_grey");
-        }
-        else if (t.Os == OS_LINUX) {
-            if (owned)
-                t.OsIcon = QIcon(":/icons/os_linux_red");
-            else if(t.Alive)
-                t.OsIcon = QIcon(":/icons/os_linux_blue");
-            else
-                t.OsIcon = QIcon(":/icons/os_linux_grey");
-        }
-        else if (t.Os == OS_MAC) {
-            if (owned)
-                t.OsIcon = QIcon(":/icons/os_mac_red");
-            else if(t.Alive)
-                t.OsIcon = QIcon(":/icons/os_mac_blue");
-            else
-                t.OsIcon = QIcon(":/icons/os_mac_grey");
-        }
+        t.OsIcon = getTargetOsIcon(t.Os, !t.Agents.isEmpty(), t.Alive);
 
         TargetsDock->EditTargetsItem(t);
         return;
