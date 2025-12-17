@@ -89,6 +89,7 @@ Q_SIGNALS:
 protected:
     void init() final;
     void mousePressEvent(QMouseEvent *) override;
+    void mouseReleaseEvent(QMouseEvent *) override;
     void mouseMoveEvent(QMouseEvent *e) override;
     void mouseDoubleClickEvent(QMouseEvent *e) override;
     void keyPressEvent(QKeyEvent *e) override;
