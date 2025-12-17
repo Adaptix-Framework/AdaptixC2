@@ -48,7 +48,6 @@ func (ts *Teamserver) TsGetPivotById(pivotId string) *adaptix.PivotData {
 }
 
 func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId string, pivotName string, isRestore bool) error {
-
 	pivotData := &adaptix.PivotData{
 		PivotId:       pivotId,
 		PivotName:     pivotName,
@@ -103,7 +102,6 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId s
 }
 
 func (ts *Teamserver) TsPivotDelete(pivotId string) error {
-
 	pivotData := ts.TsGetPivotById(pivotId)
 	if pivotData == nil {
 		return fmt.Errorf("pivotId %s does not exist", pivotId)

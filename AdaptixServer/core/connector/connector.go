@@ -176,7 +176,6 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	}
 
 	var connector = new(TsConnector)
-	gin.SetMode(gin.ReleaseMode)
 	connector.Engine = gin.New()
 	connector.Engine.Use(gin.Recovery())
 	connector.teamserver = ts

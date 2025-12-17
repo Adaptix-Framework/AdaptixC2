@@ -84,10 +84,12 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 		ts.targets.Put(target)
 	}
 
-	_ = ts.DBMS.DbTargetsAdd(newTargets)
+	if len(newTargets) > 0 {
+		_ = ts.DBMS.DbTargetsAdd(newTargets)
 
-	packet := CreateSpTargetsAdd(newTargets)
-	ts.TsSyncAllClients(packet)
+		packet := CreateSpTargetsAdd(newTargets)
+		ts.TsSyncAllClients(packet)
+	}
 
 	return nil
 }

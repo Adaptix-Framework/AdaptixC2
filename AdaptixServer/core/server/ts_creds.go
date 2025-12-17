@@ -74,12 +74,14 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 		ts.credentials.Put(cred)
 	}
 
-	_ = ts.DBMS.DbCredentialsAdd(newCreds)
+	if len(newCreds) > 0 {
+		_ = ts.DBMS.DbCredentialsAdd(newCreds)
 
-	packet := CreateSpCredentialsAdd(newCreds)
-	ts.TsSyncAllClients(packet)
+		packet := CreateSpCredentialsAdd(newCreds)
+		ts.TsSyncAllClients(packet)
 
-	go ts.TsEventCallbackCreds(cbCredsData)
+		go ts.TsEventCallbackCreds(cbCredsData)
+	}
 
 	return nil
 }

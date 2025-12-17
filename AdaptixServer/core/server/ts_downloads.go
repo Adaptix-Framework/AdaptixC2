@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -312,7 +311,7 @@ func (ts *Teamserver) TsUploadGetFileContent(fileId string) ([]byte, error) {
 
 	path := logs.RepoLogsInstance.UploadPath + "/" + filename
 
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.New("Failed to read file: " + fileId)
 	}

@@ -45,6 +45,7 @@ func NewTeamserver() *Teamserver {
 		pivots:      safe.NewSlice(),
 		otps:        safe.NewMap(),
 	}
+	ts.TaskManager = NewTaskManager(ts)
 	ts.Extender = extender.NewExtender(ts)
 	return ts
 }

@@ -152,6 +152,7 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 	err = json.Unmarshal(content, &commandData)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
 	}
 
 	err = json.Unmarshal([]byte(commandData.Data), &args)

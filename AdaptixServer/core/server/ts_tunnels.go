@@ -175,7 +175,6 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 }
 
 func (ts *Teamserver) TsTunnelClientNewChannel(TunnelData string, wsconn *websocket.Conn) error {
-
 	data, err := base64.StdEncoding.DecodeString(TunnelData)
 	if err != nil {
 		return errors.New("invalid tunnel data")
@@ -329,7 +328,6 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 	}
 
 	if tunnel.Type == TUNNEL_RPORTFWD {
-
 		id, _ := strconv.ParseInt(TunnelId, 16, 64)
 		port, err := strconv.Atoi(tunnel.Data.Port)
 		if err != nil {
@@ -339,7 +337,6 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 		tunnelManageTask(agent, taskData)
 
 	} else {
-
 		address := tunnel.Data.Interface + ":" + tunnel.Data.Port
 		listener, listenErr := net.Listen("tcp", address)
 		if listenErr != nil {

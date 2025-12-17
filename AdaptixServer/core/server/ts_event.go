@@ -4,6 +4,7 @@ import (
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/tformat"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -172,7 +173,12 @@ func (ts *Teamserver) TsEventCallbackCreds(creds []adaptix.CredsData) {
 			}
 		} else {
 			for _, credData := range creds {
-				secret := credData.Password[:3] + "*****"
+				secret := "*****"
+				if len(credData.Password) >= 3 {
+					secret = credData.Password[:3] + "*****"
+				} else if len(credData.Password) > 0 {
+					secret = credData.Password[:1] + "*****"
+				}
 
 				msg := ts.Profile.Callbacks.NewCredMessage
 				msg = strings.ReplaceAll(msg, "%username%", credData.Username)
@@ -222,6 +228,9 @@ func (ts *Teamserver) TsEventCallbackDownloads(downloadData adaptix.DownloadData
 
 func SendTelegram(text, botToken, chatID string) {
 	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
 		url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
 		payload := map[string]string{
 			"chat_id": chatID,
@@ -229,7 +238,7 @@ func SendTelegram(text, botToken, chatID string) {
 		}
 		data, _ := json.Marshal(payload)
 
-		req, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(data))
 		if err != nil {
 			return
 		}
@@ -247,10 +256,12 @@ func SendTelegram(text, botToken, chatID string) {
 
 func SendWebhook(text string, webhook profile.WebhookConfig) {
 	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 
 		text = strings.ReplaceAll(webhook.Data, "%data%", text)
 
-		req, err := http.NewRequest(webhook.Method, webhook.URL, strings.NewReader(text))
+		req, err := http.NewRequestWithContext(ctx, webhook.Method, webhook.URL, strings.NewReader(text))
 		if err != nil {
 			return
 		}

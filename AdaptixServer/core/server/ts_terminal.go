@@ -13,10 +13,9 @@ import (
 )
 
 func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error {
-
 	data, err := base64.StdEncoding.DecodeString(terminalData)
 	if err != nil {
-		return errors.New("invalid tunnel data")
+		return errors.New("invalid terminal data")
 	}
 
 	d := strings.Split(string(data), "|")
@@ -25,8 +24,8 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 	}
 
 	agentId := d[0]
-
 	terminalId := d[1]
+
 	termId, err := strconv.ParseInt(terminalId, 16, 64)
 	if err != nil {
 		return errors.New("TerminalId not supported")
@@ -34,7 +33,7 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 
 	decProgram, err := base64.StdEncoding.DecodeString(d[2])
 	if err != nil {
-		return errors.New("invalid tunnel data")
+		return errors.New("invalid terminal data")
 	}
 	program := string(decProgram)
 
