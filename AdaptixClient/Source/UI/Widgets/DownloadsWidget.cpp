@@ -8,6 +8,14 @@
 #include <Client/AxScript/AxScriptManager.h>
 #include <Utils/NonBlockingDialogs.h>
 
+static QString extractFileName(const QString& filePath)
+{
+    QStringList pathParts = filePath.split("\\", Qt::SkipEmptyParts);
+    QString fileName = pathParts.isEmpty() ? filePath : pathParts.last();
+    pathParts = fileName.split("/", Qt::SkipEmptyParts);
+    return pathParts.isEmpty() ? fileName : pathParts.last();
+}
+
 REGISTER_DOCK_WIDGET(DownloadsWidget, "Downloads", true)
 
 DownloadsWidget::DownloadsWidget(AdaptixWidget* w) : DockTab("Downloads", w->GetProfile()->GetProject(), ":/icons/downloads")
@@ -278,11 +286,7 @@ void DownloadsWidget::actionSync() const
         return;
     }
     QString otp = message;
-
-    QStringList pathParts = filePath.split("\\", Qt::SkipEmptyParts);
-    QString fileName =  pathParts[pathParts.size()-1];
-    pathParts = fileName.split("/", Qt::SkipEmptyParts);
-    fileName = pathParts[pathParts.size()-1];
+    QString fileName = extractFileName(filePath);
 
     NonBlockingDialogs::getSaveFileName(const_cast<DownloadsWidget*>(this), "Save File", fileName, "All Files (*.*)",
         [this, otp](const QString& savedPath) {
@@ -316,12 +320,7 @@ void DownloadsWidget::actionSyncCurl() const
         return;
     }
     QString otp = message;
-
-    QStringList pathParts = filePath.split("\\", Qt::SkipEmptyParts);
-    QString fileName =  pathParts[pathParts.size()-1];
-    pathParts = fileName.split("/", Qt::SkipEmptyParts);
-    fileName = pathParts[pathParts.size()-1];
-
+    QString fileName = extractFileName(filePath);
     QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
 
     QString command = QString("curl -k %1 -H 'OTP: %2' -o %3").arg(sUrl).arg(otp).arg(fileName);
@@ -356,19 +355,14 @@ void DownloadsWidget::actionSyncWget() const
         return;
     }
     QString otp = message;
-
-    QStringList pathParts = filePath.split("\\", Qt::SkipEmptyParts);
-    QString fileName =  pathParts[pathParts.size()-1];
-    pathParts = fileName.split("/", Qt::SkipEmptyParts);
-    fileName = pathParts[pathParts.size()-1];
-
+    QString fileName = extractFileName(filePath);
     QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
 
     QString command = QString("wget --no-check-certificate %1 --header='OTP: %2' -O %3").arg(sUrl).arg(otp).arg(fileName);
 
     QInputDialog inputDialog;
-    inputDialog.setWindowTitle("Sync file as curl");
-    inputDialog.setLabelText("Curl command:");
+    inputDialog.setWindowTitle("Sync file as wget");
+    inputDialog.setLabelText("Wget command:");
     inputDialog.setTextEchoMode(QLineEdit::Normal);
     inputDialog.setTextValue(command);
     inputDialog.setFixedSize(700,60);

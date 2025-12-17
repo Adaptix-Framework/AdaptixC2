@@ -61,8 +61,10 @@ void DownloaderWorker::onProgress(const qint64 received, const qint64 total)
 {
     Q_EMIT progress(received, total);
 
-    if (timer.elapsed() >= 1000) {
-        double kbps = (received - lastBytes) / 1024.0;
+    qint64 elapsed = timer.elapsed();
+    if (elapsed >= 1000) {
+        double seconds = elapsed / 1000.0;
+        double kbps = (received - lastBytes) / 1024.0 / seconds;
         Q_EMIT speedUpdated(kbps);
         lastBytes = received;
         timer.restart();
@@ -82,6 +84,10 @@ void DownloaderWorker::onFinished()
 
 void DownloaderWorker::onError(QNetworkReply::NetworkError)
 {
+    if (this->cancelled)
+        return;
+
+    this->error = true;
     this->savedFile.close();
     this->savedFile.remove();
     Q_EMIT failed("Download error: " + this->networkReply->errorString());
