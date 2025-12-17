@@ -3,6 +3,7 @@
 #include <UI/Graph/GraphItemLink.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Graph/GraphScene.h>
+#include <UI/Widgets/AdaptixWidget.h>
 
 GraphItemNote::GraphItemNote(const QString &h, const QString &t)
 {
@@ -108,6 +109,12 @@ void GraphItem::AddLink( GraphItemLink* link )
 
 void GraphItem::mousePressEvent( QGraphicsSceneMouseEvent* event )
 {
+    if (event->button() == Qt::MiddleButton && this->agent && this->agent->Console) {
+        this->agent->adaptixWidget->LoadConsoleUI(this->agent->data.Id);
+        event->accept();
+        return;
+    }
+
     update();
     this->sessionsGraph->itemMoved();
     QGraphicsItem::mousePressEvent( event );

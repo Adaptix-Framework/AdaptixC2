@@ -137,13 +137,10 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         for (auto id : agentIds)
             adaptixWidget->AgentsMap[id]->Console->Clear();
 
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqConsoleRemove(agentIds, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqConsoleRemoveAsync(agentIds, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
     else if ( action->text() == "Remove from server" ) {
         QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "Delete Confirmation",
@@ -154,44 +151,32 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         if (reply != QMessageBox::Yes)
             return;
 
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentRemove(agentIds, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentRemoveAsync(agentIds, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
     else if ( action->text() == "Mark as Active" ) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetMark(agentIds, "", *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentSetMarkAsync(agentIds, "", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
     else if ( action->text() == "Mark as Inactive" ) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetMark(agentIds, "Inactive", *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentSetMarkAsync(agentIds, "Inactive", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
     else if ( action->text() == "Set tag" ) {
         QString tag = "";
         bool inputOk;
         QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
         if ( inputOk ) {
-            QString message = QString();
-            bool ok = false;
-            bool result = HttpReqAgentSetTag(agentIds, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
-            if( !result ) {
-                MessageError("Response timeout");
-                return;
-            }
+            HttpReqAgentSetTagAsync(agentIds, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+                if (!success)
+                    MessageError(message.isEmpty() ? "Response timeout" : message);
+            });
         }
     }
 }

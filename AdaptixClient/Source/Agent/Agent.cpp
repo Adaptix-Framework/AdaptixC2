@@ -104,9 +104,15 @@ void Agent::Update(QJsonObject jsonObjAgentData)
         }
     }
     else {
+        QString oldMark = this->data.Mark;
         this->MarkItem(mark);
-        if (mark == "Terminated")
+
+        if (mark == "Terminated" || mark == "Inactive") {
             adaptixWidget->SessionsGraphDock->RemoveAgent(this, true);
+        }
+        else if ((oldMark == "Terminated" || oldMark == "Inactive") && !this->graphItem) {
+            adaptixWidget->SessionsGraphDock->AddAgent(this, true);
+        }
     }
 }
 

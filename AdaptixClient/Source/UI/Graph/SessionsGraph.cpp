@@ -56,7 +56,7 @@ void SessionsGraph::LinkToRoot(GraphItem *item) const
 
 void SessionsGraph::AddAgent(Agent *agent, bool drawTree)
 {
-    if (agent->data.Mark == "Terminated")
+    if (agent->data.Mark == "Terminated" || agent->data.Mark == "Inactive")
         return;
 
     GraphItem* item = new GraphItem( this, agent );
@@ -130,6 +130,9 @@ void SessionsGraph::RemoveAgent(Agent* agent, bool drawTree)
 
 void SessionsGraph::RelinkAgent(const Agent* parentAgent, const Agent* childAgent, const QString &linkName, const bool drawTree) const
 {
+    if (!parentAgent || !childAgent || !parentAgent->graphItem || !childAgent->graphItem)
+        return;
+
     if (childAgent->graphItem->parentItem) {
         childAgent->graphItem->parentItem->RemoveChild(childAgent->graphItem);
         childAgent->graphItem->parentItem = nullptr;
@@ -156,6 +159,10 @@ void SessionsGraph::RelinkAgent(const Agent* parentAgent, const Agent* childAgen
 
 void SessionsGraph::UnlinkAgent(const Agent* parentAgent, const Agent* childAgent, bool drawTree) const
 {
+    Q_UNUSED(parentAgent);
+    if (!childAgent || !childAgent->graphItem)
+        return;
+
     if (childAgent->graphItem->parentItem) {
         childAgent->graphItem->parentItem->RemoveChild(childAgent->graphItem);
         childAgent->graphItem->parentItem = nullptr;
@@ -223,11 +230,13 @@ void SessionsGraph::itemMoved()
 
 void SessionsGraph::timerEvent( QTimerEvent* event )
 {
+    Q_UNUSED(event);
     bool itemsMoved = false;
 
     for ( auto item : this->items ) {
         item->calculateForces();
-        itemsMoved = item->advancePosition();
+        if (item->advancePosition())
+            itemsMoved = true;
         item->adjust();
     }
 
