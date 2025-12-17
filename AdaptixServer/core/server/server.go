@@ -20,9 +20,13 @@ func NewTeamserver() *Teamserver {
 		return nil
 	}
 
+	broker := NewMessageBroker()
+	broker.Start()
+
 	ts := &Teamserver{
 		Profile: profile.NewProfile(),
 		DBMS:    dbms,
+		Broker:  broker,
 
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
@@ -31,7 +35,6 @@ func NewTeamserver() *Teamserver {
 		wm_listeners:   make(map[string][]string),
 
 		events:      safe.NewSlice(),
-		clients:     safe.NewMap(),
 		Agents:      safe.NewMap(),
 		listeners:   safe.NewMap(),
 		messages:    safe.NewSlice(),

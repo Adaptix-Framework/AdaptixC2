@@ -43,15 +43,6 @@ const (
 
 // TeamServer
 
-type Client struct {
-	username       string
-	synced         bool
-	versionSupport bool
-	lockSocket     *sync.Mutex
-	socket         *websocket.Conn
-	tmp_store      *safe.Slice
-}
-
 type TsParameters struct {
 	Interfaces []string
 }
@@ -63,7 +54,9 @@ type Teamserver struct {
 	Extender      *extender.AdaptixExtender
 	Parameters    TsParameters
 
-	TaskManager *TaskManager
+	TaskManager   *TaskManager
+	Broker        *MessageBroker
+	TunnelManager *TunnelManager
 
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
@@ -72,7 +65,6 @@ type Teamserver struct {
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
 	events      *safe.Slice // 			           : sync_packet interface{}
-	clients     safe.Map    // username string     : socket *websocket.Conn
 	Agents      safe.Map    // agentId string      : agent *Agent
 	listeners   safe.Map    // listenerName string : listenerData ListenerData
 	messages    *safe.Slice //                     : chatData ChatData
