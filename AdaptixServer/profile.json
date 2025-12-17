@@ -36,6 +36,9 @@
       "token": "",
       "chats_id": []
     },
+    "Slack": {
+      "webhook_url": ""
+    },
     "Webhooks": [
       {
       }

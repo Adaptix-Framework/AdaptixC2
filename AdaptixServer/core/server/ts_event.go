@@ -129,104 +129,109 @@ func (ts *Teamserver) TsEventTunnelRemove(tunnel *Tunnel) {
 
 /// CALLBACKS
 
-func (ts *Teamserver) TsEventCallbackAgent(agentData adaptix.AgentData) {
-	if ts.Profile.Callbacks.NewAgentMessage != "" {
-		msg := ts.Profile.Callbacks.NewAgentMessage
-		msg = strings.ReplaceAll(msg, "%type%", agentData.Name)
-		msg = strings.ReplaceAll(msg, "%id%", agentData.Id)
-		msg = strings.ReplaceAll(msg, "%user%", agentData.Username)
-		msg = strings.ReplaceAll(msg, "%computer%", agentData.Computer)
-		msg = strings.ReplaceAll(msg, "%externalip%", agentData.ExternalIP)
-		msg = strings.ReplaceAll(msg, "%internalip%", agentData.InternalIP)
-		msg = strings.ReplaceAll(msg, "%domain%", agentData.Domain)
-		msg = strings.ReplaceAll(msg, "%elevated%", fmt.Sprintf("%v", agentData.Elevated))
-		msg = strings.ReplaceAll(msg, "%pid%", fmt.Sprintf("%v", agentData.Pid))
-
-		if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
-			for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
-				SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
-			}
+func (ts *Teamserver) hasAnyCallback() bool {
+	if ts.Profile.Callbacks == nil {
+		return false
+	}
+	if ts.Profile.Callbacks.Telegram.Token != "" && len(ts.Profile.Callbacks.Telegram.ChatsId) > 0 {
+		return true
+	}
+	if ts.Profile.Callbacks.Slack.WebhookURL != "" {
+		return true
+	}
+	for _, webhook := range ts.Profile.Callbacks.Webhooks {
+		if webhook.URL != "" {
+			return true
 		}
+	}
+	return false
+}
 
-		for _, webhook := range ts.Profile.Callbacks.Webhooks {
-			if webhook.URL != "" {
-				SendWebhook(msg, webhook)
-			}
+func (ts *Teamserver) sendToAllChannels(msg string) {
+	if ts.Profile.Callbacks.Telegram.Token != "" {
+		for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
+			sendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
+		}
+	}
+
+	if ts.Profile.Callbacks.Slack.WebhookURL != "" {
+		sendSlack(msg, ts.Profile.Callbacks.Slack.WebhookURL)
+	}
+
+	for _, webhook := range ts.Profile.Callbacks.Webhooks {
+		if webhook.URL != "" {
+			sendWebhook(msg, webhook)
 		}
 	}
 }
 
+func (ts *Teamserver) TsEventCallbackAgent(agentData adaptix.AgentData) {
+	if ts.Profile.Callbacks == nil || ts.Profile.Callbacks.NewAgentMessage == "" || !ts.hasAnyCallback() {
+		return
+	}
+
+	msg := ts.Profile.Callbacks.NewAgentMessage
+	msg = strings.ReplaceAll(msg, "%type%", agentData.Name)
+	msg = strings.ReplaceAll(msg, "%id%", agentData.Id)
+	msg = strings.ReplaceAll(msg, "%user%", agentData.Username)
+	msg = strings.ReplaceAll(msg, "%computer%", agentData.Computer)
+	msg = strings.ReplaceAll(msg, "%externalip%", agentData.ExternalIP)
+	msg = strings.ReplaceAll(msg, "%internalip%", agentData.InternalIP)
+	msg = strings.ReplaceAll(msg, "%domain%", agentData.Domain)
+	msg = strings.ReplaceAll(msg, "%elevated%", fmt.Sprintf("%v", agentData.Elevated))
+	msg = strings.ReplaceAll(msg, "%pid%", fmt.Sprintf("%v", agentData.Pid))
+
+	ts.sendToAllChannels(msg)
+}
+
 func (ts *Teamserver) TsEventCallbackCreds(creds []adaptix.CredsData) {
-	if ts.Profile.Callbacks.NewCredMessage != "" {
+	if ts.Profile.Callbacks == nil || ts.Profile.Callbacks.NewCredMessage == "" || !ts.hasAnyCallback() {
+		return
+	}
 
-		if len(creds) > 4 {
-			msg := fmt.Sprintf("Added %d new credentials", len(creds))
-			if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
-				for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
-					SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
-				}
-			}
-			for _, webhook := range ts.Profile.Callbacks.Webhooks {
-				if webhook.URL != "" {
-					SendWebhook(msg, webhook)
-				}
-			}
-		} else {
-			for _, credData := range creds {
-				secret := "*****"
-				if len(credData.Password) >= 3 {
-					secret = credData.Password[:3] + "*****"
-				} else if len(credData.Password) > 0 {
-					secret = credData.Password[:1] + "*****"
-				}
+	if len(creds) > 4 {
+		msg := fmt.Sprintf("Added %d new credentials", len(creds))
+		ts.sendToAllChannels(msg)
+		return
+	}
 
-				msg := ts.Profile.Callbacks.NewCredMessage
-				msg = strings.ReplaceAll(msg, "%username%", credData.Username)
-				msg = strings.ReplaceAll(msg, "%password%", secret)
-				msg = strings.ReplaceAll(msg, "%domain%", credData.Realm)
-				msg = strings.ReplaceAll(msg, "%type%", credData.Type)
-				msg = strings.ReplaceAll(msg, "%storage%", credData.Storage)
-				msg = strings.ReplaceAll(msg, "%host%", credData.Host)
-
-				if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
-					for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
-						SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
-					}
-				}
-				for _, webhook := range ts.Profile.Callbacks.Webhooks {
-					if webhook.URL != "" {
-						SendWebhook(msg, webhook)
-					}
-				}
-			}
+	for _, credData := range creds {
+		secret := "*****"
+		if len(credData.Password) >= 3 {
+			secret = credData.Password[:3] + "*****"
+		} else if len(credData.Password) > 0 {
+			secret = credData.Password[:1] + "*****"
 		}
+
+		msg := ts.Profile.Callbacks.NewCredMessage
+		msg = strings.ReplaceAll(msg, "%username%", credData.Username)
+		msg = strings.ReplaceAll(msg, "%password%", secret)
+		msg = strings.ReplaceAll(msg, "%domain%", credData.Realm)
+		msg = strings.ReplaceAll(msg, "%type%", credData.Type)
+		msg = strings.ReplaceAll(msg, "%storage%", credData.Storage)
+		msg = strings.ReplaceAll(msg, "%host%", credData.Host)
+
+		ts.sendToAllChannels(msg)
 	}
 }
 
 func (ts *Teamserver) TsEventCallbackDownloads(downloadData adaptix.DownloadData) {
-	if ts.Profile.Callbacks.NewDownloadMessage != "" {
-		msg := ts.Profile.Callbacks.NewDownloadMessage
-		msg = strings.ReplaceAll(msg, "%user%", downloadData.User)
-		msg = strings.ReplaceAll(msg, "%computer%", downloadData.Computer)
-		msg = strings.ReplaceAll(msg, "%path%", downloadData.RemotePath)
-		msg = strings.ReplaceAll(msg, "%size%", tformat.SizeBytesToFormat(uint64(downloadData.TotalSize)))
-
-		if ts.Profile.Callbacks.Telegram.Token != "" && ts.Profile.Callbacks.Telegram.ChatsId != nil {
-			for _, chatId := range ts.Profile.Callbacks.Telegram.ChatsId {
-				SendTelegram(msg, ts.Profile.Callbacks.Telegram.Token, chatId)
-			}
-		}
-		for _, webhook := range ts.Profile.Callbacks.Webhooks {
-			if webhook.URL != "" {
-				SendWebhook(msg, webhook)
-			}
-		}
+	if ts.Profile.Callbacks == nil || ts.Profile.Callbacks.NewDownloadMessage == "" || !ts.hasAnyCallback() {
+		return
 	}
+
+	msg := ts.Profile.Callbacks.NewDownloadMessage
+	msg = strings.ReplaceAll(msg, "%user%", downloadData.User)
+	msg = strings.ReplaceAll(msg, "%computer%", downloadData.Computer)
+	msg = strings.ReplaceAll(msg, "%path%", downloadData.RemotePath)
+	msg = strings.ReplaceAll(msg, "%size%", tformat.SizeBytesToFormat(uint64(downloadData.TotalSize)))
+
+	ts.sendToAllChannels(msg)
 }
 
 ///
 
-func SendTelegram(text, botToken, chatID string) {
+func sendTelegram(text, botToken, chatID string) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -254,7 +259,7 @@ func SendTelegram(text, botToken, chatID string) {
 	}()
 }
 
-func SendWebhook(text string, webhook profile.WebhookConfig) {
+func sendWebhook(text string, webhook profile.WebhookConfig) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -273,6 +278,32 @@ func SendWebhook(text string, webhook profile.WebhookConfig) {
 		if _, hasContentType := webhook.Headers["Content-Type"]; !hasContentType {
 			req.Header.Set("Content-Type", "text/plain")
 		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return
+		}
+		defer func(Body io.ReadCloser) {
+			_ = Body.Close()
+		}(resp.Body)
+	}()
+}
+
+func sendSlack(text, webhookURL string) {
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		payload := map[string]string{
+			"text": text,
+		}
+		data, _ := json.Marshal(payload)
+
+		req, err := http.NewRequestWithContext(ctx, "POST", webhookURL, bytes.NewBuffer(data))
+		if err != nil {
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {

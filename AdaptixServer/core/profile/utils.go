@@ -40,6 +40,10 @@ type TsCallback struct {
 		ChatsId []string `json:"chats_id"`
 	} `json:"Telegram"`
 
+	Slack struct {
+		WebhookURL string `json:"webhook_url"`
+	} `json:"Slack"`
+
 	Webhooks []WebhookConfig `json:"webhooks"`
 
 	NewAgentMessage    string `json:"new_agent_message"`
