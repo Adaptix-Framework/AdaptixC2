@@ -271,6 +271,7 @@ typedef struct DownloadData
     int     RecvSize;
     int     State;
     QString Date;
+    qint64  DateTimestamp = 0;
 } DownloadData;
 
 typedef struct ScreenData
@@ -279,6 +280,7 @@ typedef struct ScreenData
     QString    User;
     QString    Computer;
     QString    Date;
+    qint64     DateTimestamp = 0;
     QString    Note;
     QByteArray Content;
 } ScreenData;
@@ -292,6 +294,7 @@ typedef struct CredentialData
     QString Type;
     QString Tag;
     QString Date;
+    qint64  DateTimestamp = 0;
     QString Storage;
     QString AgentId;
     QString Host;
@@ -308,6 +311,7 @@ typedef struct TargetData
     int         Os;
     QString     OsDesc;
     QString     Date;
+    qint64      DateTimestamp = 0;
     QString     Info;
     bool        Alive;
     QStringList Agents;

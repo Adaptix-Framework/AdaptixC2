@@ -59,6 +59,7 @@ public:
     explicit AgentsFilterProxyModel(AdaptixWidget* adaptix, QObject* parent = nullptr) : QSortFilterProxyModel(parent), adaptixWidget(adaptix) {
         setDynamicSortFilter(true);
         setFilterCaseSensitivity(Qt::CaseInsensitive);
+        setSortRole(Qt::UserRole);
     }
 
     void setSearchVisible(bool visible) {
@@ -219,6 +220,13 @@ public:
                     }
                     return d.Mark;
                 }
+            }
+        }
+
+        if (role == Qt::UserRole) {
+            switch (index.column()) {
+                case SC_Last:  return d.LastTick;
+                default:       return data(index, Qt::DisplayRole);
             }
         }
 

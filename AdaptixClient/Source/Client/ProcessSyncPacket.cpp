@@ -716,9 +716,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newDownload.User      = jsonObj["d_user"].toString();
         newDownload.Computer  = jsonObj["d_computer"].toString();
         newDownload.Filename  = jsonObj["d_file"].toString();
-        newDownload.TotalSize = jsonObj["d_size"].toDouble();
-        newDownload.Date      = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["d_date"].toDouble()));
-        newDownload.RecvSize  = 0;
+        newDownload.TotalSize     = jsonObj["d_size"].toDouble();
+        newDownload.DateTimestamp = static_cast<qint64>(jsonObj["d_date"].toDouble());
+        newDownload.Date          = UnixTimestampGlobalToStringLocal(newDownload.DateTimestamp);
+        newDownload.RecvSize      = 0;
         newDownload.State     = DOWNLOAD_STATE_RUNNING;
 
         DownloadsDock->AddDownloadItem(newDownload);
@@ -748,9 +749,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         newScreen.ScreenId = jsonObj["s_screen_id"].toString();
         newScreen.User     = jsonObj["s_user"].toString();
         newScreen.Computer = jsonObj["s_computer"].toString();
-        newScreen.Note     = jsonObj["s_note"].toString();
-        newScreen.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["s_date"].toDouble()));
-        newScreen.Content  = QByteArray::fromBase64(jsonObj["s_content"].toString().toUtf8());
+        newScreen.Note          = jsonObj["s_note"].toString();
+        newScreen.DateTimestamp = static_cast<qint64>(jsonObj["s_date"].toDouble());
+        newScreen.Date          = UnixTimestampGlobalToStringLocal(newScreen.DateTimestamp);
+        newScreen.Content       = QByteArray::fromBase64(jsonObj["s_content"].toString().toUtf8());
 
         ScreenshotsDock->AddScreenshotItem(newScreen);
         return;
@@ -796,9 +798,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             c.Password = obj.value("c_password").toString();
             c.Realm    = obj.value("c_realm").toString();
             c.Type     = obj.value("c_type").toString();
-            c.Tag      = obj.value("c_tag").toString();
-            c.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(obj["c_date"].toDouble()));
-            c.Storage  = obj.value("c_storage").toString();
+            c.Tag           = obj.value("c_tag").toString();
+            c.DateTimestamp = static_cast<qint64>(obj["c_date"].toDouble());
+            c.Date          = UnixTimestampGlobalToStringLocal(c.DateTimestamp);
+            c.Storage       = obj.value("c_storage").toString();
             c.AgentId  = obj.value("c_agent_id").toString();
             c.Host     = obj.value("c_host").toString();
 
@@ -878,10 +881,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             t.Address  = obj.value("t_address").toString();
             t.Os       = obj.value("t_os").toInt();
             t.OsDesc   = obj.value("t_os_desk").toString();
-            t.Tag      = obj.value("t_tag").toString();
-            t.Info     = obj.value("t_info").toString();
-            t.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(obj["t_date"].toDouble()));
-            t.Alive    = obj.value("t_alive").toBool();
+            t.Tag           = obj.value("t_tag").toString();
+            t.Info          = obj.value("t_info").toString();
+            t.DateTimestamp = static_cast<qint64>(obj["t_date"].toDouble());
+            t.Date          = UnixTimestampGlobalToStringLocal(t.DateTimestamp);
+            t.Alive         = obj.value("t_alive").toBool();
 
             if (obj.value("t_agents").isArray()) {
                 QJsonArray sessions = obj.value("t_agents").toArray();
@@ -908,10 +912,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         t.Address  = jsonObj["t_address"].toString();
         t.Os       = jsonObj["t_os"].toDouble();
         t.OsDesc   = jsonObj["t_os_desk"].toString();
-        t.Tag      = jsonObj["t_tag"].toString();
-        t.Info     = jsonObj["t_info"].toString();
-        t.Date     = UnixTimestampGlobalToStringLocal(static_cast<qint64>(jsonObj["t_date"].toDouble()));
-        t.Alive    = jsonObj["t_alive"].toBool();
+        t.Tag           = jsonObj["t_tag"].toString();
+        t.Info          = jsonObj["t_info"].toString();
+        t.DateTimestamp = static_cast<qint64>(jsonObj["t_date"].toDouble());
+        t.Date          = UnixTimestampGlobalToStringLocal(t.DateTimestamp);
+        t.Alive         = jsonObj["t_alive"].toBool();
 
         if (jsonObj.value("t_agents").isArray()) {
             QJsonArray sessions = jsonObj.value("t_agents").toArray();

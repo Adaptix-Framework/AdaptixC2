@@ -92,195 +92,217 @@ void ImageFrame::clear()
 
 
 
-ScreenshotsWidget::ScreenshotsWidget(AdaptixWidget* w) : DockTab("Screenshots", w->GetProfile()->GetProject(), ":/icons/picture")
+ScreenshotsWidget::ScreenshotsWidget(AdaptixWidget* w) : DockTab("Screenshots", w->GetProfile()->GetProject(), ":/icons/picture"), adaptixWidget(w)
 {
-    this->adaptixWidget = w;
     this->createUI();
 
-    connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &ScreenshotsWidget::handleScreenshotsMenu);
-    connect(tableWidget->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &ScreenshotsWidget::onTableItemSelection);
-    connect(tableWidget, &QTableWidget::itemSelectionChanged, this, [this](){tableWidget->setFocus();});
+    connect(tableView, &QTableView::customContextMenuRequested, this, &ScreenshotsWidget::handleScreenshotsMenu);
+    connect(tableView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &ScreenshotsWidget::onTableItemSelection);
+    connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection&, const QItemSelection&) {
+        tableView->setFocus();
+    });
     connect(splitter, &QSplitter::splitterMoved, imageFrame, &ImageFrame::resizeImage);
+    connect(hideButton,  &ClickableLabel::clicked, this, &ScreenshotsWidget::toggleSearchPanel);
+    connect(inputFilter, &QLineEdit::textChanged,  this, &ScreenshotsWidget::onFilterUpdate);
+
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
+    shortcutSearch->setContext(Qt::WidgetShortcut);
+    connect(shortcutSearch, &QShortcut::activated, this, &ScreenshotsWidget::toggleSearchPanel);
 
     this->dockWidget->setWidget(this);
 }
 
 ScreenshotsWidget::~ScreenshotsWidget() = default;
 
-void ScreenshotsWidget::SetUpdatesEnabled(const bool enabled)
+void ScreenshotsWidget::SetUpdatesEnabled(bool enabled)
 {
-    tableWidget->setUpdatesEnabled(enabled);
+    tableView->setUpdatesEnabled(enabled);
 }
 
 void ScreenshotsWidget::createUI()
 {
-    tableWidget = new QTableWidget(this );
-    tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
-    tableWidget->setAutoFillBackground( false );
-    tableWidget->setShowGrid( false );
-    tableWidget->setSortingEnabled( true );
-    tableWidget->setWordWrap( true );
-    tableWidget->setCornerButtonEnabled( false );
-    tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
-    tableWidget->setFocusPolicy( Qt::NoFocus );
-    tableWidget->setAlternatingRowColors( true );
-    tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
-    tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
-    tableWidget->horizontalHeader()->setHighlightSections( false );
-    tableWidget->verticalHeader()->setVisible( false );
-    tableWidget->setColumnCount(5);
+    auto horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-    tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem( "ID" ) );
-    tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem( "User" ) );
-    tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Computer" ) );
-    tableWidget->setHorizontalHeaderItem( 3, new QTableWidgetItem( "Note" ) );
-    tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem( "Date" ) );
+    searchWidget = new QWidget(this);
+    searchWidget->setVisible(false);
 
-    tableWidget->setItemDelegate(new PaddingDelegate(tableWidget));
+    inputFilter = new QLineEdit(searchWidget);
+    inputFilter->setPlaceholderText("filter by note");
+    inputFilter->setMaximumWidth(300);
 
-    tableWidget->hideColumn( 0 );
+    hideButton = new ClickableLabel("X");
+    hideButton->setCursor(Qt::PointingHandCursor);
+
+    searchLayout = new QHBoxLayout(searchWidget);
+    searchLayout->setContentsMargins(0, 5, 0, 0);
+    searchLayout->setSpacing(4);
+    searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(hideButton);
+    searchLayout->addSpacerItem(horizontalSpacer);
+
+    screensModel = new ScreensTableModel(this);
+    proxyModel = new ScreensFilterProxyModel(this);
+    proxyModel->setSourceModel(screensModel);
+    proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+
+    tableView = new QTableView(this);
+    tableView->setModel(proxyModel);
+    tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+    tableView->setAutoFillBackground(false);
+    tableView->setShowGrid(false);
+    tableView->setSortingEnabled(true);
+    tableView->setWordWrap(true);
+    tableView->setCornerButtonEnabled(false);
+    tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->setAlternatingRowColors(true);
+    tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    tableView->horizontalHeader()->setCascadingSectionResizes(true);
+    tableView->horizontalHeader()->setHighlightSections(false);
+    tableView->verticalHeader()->setVisible(false);
+
+    proxyModel->sort(-1);
+
+    tableView->horizontalHeader()->setSectionResizeMode(SCR_Note, QHeaderView::Stretch);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+    tableView->hideColumn(SCR_ScreenId);
 
     imageFrame = new ImageFrame(this);
 
     splitter = new QSplitter(this);
     splitter->setOrientation(Qt::Horizontal);
-    splitter->addWidget(tableWidget);
+    splitter->addWidget(tableView);
     splitter->addWidget(imageFrame);
     splitter->setSizes(QList<int>() << 80 << 200);
 
-    mainGridLayout = new QGridLayout(this );
-    mainGridLayout->setContentsMargins(0, 0, 0, 0 );
-    mainGridLayout->addWidget(splitter, 0, 0, 1, 1 );
+    mainGridLayout = new QGridLayout(this);
+    mainGridLayout->setContentsMargins(0, 0, 0, 0);
+    mainGridLayout->addWidget(searchWidget, 0, 0, 1, 1);
+    mainGridLayout->addWidget(splitter, 1, 0, 1, 1);
 }
 
 void ScreenshotsWidget::Clear() const
 {
     adaptixWidget->Screenshots.clear();
 
-    QSignalBlocker blocker(tableWidget->selectionModel());
-
-    for (int index = tableWidget->rowCount(); index > 0; index-- )
-        tableWidget->removeRow(index -1 );
+    QSignalBlocker blocker(tableView->selectionModel());
+    screensModel->clear();
 
     imageFrame->clear();
-
 }
 
-void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen) const
+void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen)
 {
-    if( tableWidget->rowCount() < 1 )
-        tableWidget->setRowCount( 1 );
-    else
-        tableWidget->setRowCount( tableWidget->rowCount() + 1 );
+    if (adaptixWidget->Screenshots.contains(newScreen.ScreenId))
+        return;
 
-    auto item_ScreenId = new QTableWidgetItem( newScreen.ScreenId );
-    auto item_User     = new QTableWidgetItem( newScreen.User );
-    auto item_Computer = new QTableWidgetItem( newScreen.Computer );
-    auto item_Note     = new QTableWidgetItem( newScreen.Note );
-    auto item_Date     = new QTableWidgetItem( newScreen.Date );
-
-    item_ScreenId->setTextAlignment( Qt::AlignCenter );
-    item_ScreenId->setFlags( item_ScreenId->flags() ^ Qt::ItemIsEditable );
-
-    item_User->setTextAlignment( Qt::AlignCenter );
-    item_User->setFlags( item_User->flags() ^ Qt::ItemIsEditable );
-
-    item_Computer->setTextAlignment( Qt::AlignCenter );
-    item_Computer->setFlags( item_Computer->flags() ^ Qt::ItemIsEditable );
-
-    item_Note->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
-    item_Note->setFlags( item_Note->flags() ^ Qt::ItemIsEditable );
-
-    item_Date->setTextAlignment( Qt::AlignCenter );
-    item_Date->setFlags( item_Date->flags() ^ Qt::ItemIsEditable );
-
-    bool isSortingEnabled = tableWidget->isSortingEnabled();
-    tableWidget->setSortingEnabled( false );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 0, item_ScreenId );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 1, item_User );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 2, item_Computer );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 3, item_Note );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 4, item_Date );
-    tableWidget->setSortingEnabled( isSortingEnabled );
-
-    tableWidget->horizontalHeader()->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 3, QHeaderView::ResizeToContents );
-
-    tableWidget->verticalHeader()->setSectionResizeMode(tableWidget->rowCount() - 1, QHeaderView::ResizeToContents);
-
+    screensModel->add(newScreen);
     adaptixWidget->Screenshots[newScreen.ScreenId] = newScreen;
 }
 
-void ScreenshotsWidget::EditScreenshotItem(const QString &screenId, const QString &note) const
+void ScreenshotsWidget::EditScreenshotItem(const QString &screenId, const QString &note)
 {
     if (!adaptixWidget->Screenshots.contains(screenId))
         return;
 
     adaptixWidget->Screenshots[screenId].Note = note;
-
-    for (int row = 0; row < tableWidget->rowCount(); ++row) {
-        QTableWidgetItem *item = tableWidget->item(row, 0);
-        if ( item && item->text() == screenId ) {
-            tableWidget->item(row, 3)->setText(note);
-            break;
-        }
-    }
+    screensModel->update(screenId, note);
 }
 
-void ScreenshotsWidget::RemoveScreenshotItem(const QString &screenId) const
+void ScreenshotsWidget::RemoveScreenshotItem(const QString &screenId)
 {
     if (!adaptixWidget->Screenshots.contains(screenId))
         return;
 
     adaptixWidget->Screenshots.remove(screenId);
+    screensModel->remove(screenId);
 
-    for ( int row = 0; row < tableWidget->rowCount(); row++ ) {
-        if ( tableWidget->item( row, 0 )->text() == screenId ) {
-            tableWidget->removeRow( row );
-            break;
-        }
-    }
-
-    if (tableWidget->rowCount() == 0)
+    if (screensModel->rowCount(QModelIndex()) == 0)
         imageFrame->clear();
+}
+
+QString ScreenshotsWidget::getSelectedScreenId() const
+{
+    QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    if (selected.isEmpty())
+        return {};
+
+    QModelIndex sourceIndex = proxyModel->mapToSource(selected.first());
+    return screensModel->getScreenIdAt(sourceIndex.row());
+}
+
+const ScreenData* ScreenshotsWidget::getSelectedScreen() const
+{
+    QString screenId = getSelectedScreenId();
+    if (screenId.isEmpty())
+        return nullptr;
+    return screensModel->getById(screenId);
+}
+
+QStringList ScreenshotsWidget::getSelectedScreenIds() const
+{
+    QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    QStringList ids;
+    for (const QModelIndex& idx : selected) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(idx);
+        QString id = screensModel->getScreenIdAt(sourceIndex.row());
+        if (!id.isEmpty())
+            ids.append(id);
+    }
+    return ids;
 }
 
 /// SLOTS
 
-void ScreenshotsWidget::handleScreenshotsMenu(const QPoint &pos )
+void ScreenshotsWidget::toggleSearchPanel() const
 {
-    if ( !tableWidget->itemAt(pos) )
+    if (this->searchWidget->isVisible()) {
+        this->searchWidget->setVisible(false);
+        proxyModel->setSearchVisible(false);
+    }
+    else {
+        this->searchWidget->setVisible(true);
+        proxyModel->setSearchVisible(true);
+        inputFilter->setFocus();
+    }
+}
+
+void ScreenshotsWidget::onFilterUpdate() const
+{
+    proxyModel->setTextFilter(inputFilter->text());
+}
+
+void ScreenshotsWidget::handleScreenshotsMenu(const QPoint &pos)
+{
+    QModelIndex index = tableView->indexAt(pos);
+    if (!index.isValid())
         return;
 
     auto ctxMenu = QMenu();
-    ctxMenu.addAction("Set note", this, &ScreenshotsWidget::actionNote );
-    ctxMenu.addAction("Download", this, &ScreenshotsWidget::actionDownload );
-    ctxMenu.addAction("Delete",   this, &ScreenshotsWidget::actionDelete );
+    ctxMenu.addAction("Set note", this, &ScreenshotsWidget::actionNote);
+    ctxMenu.addAction("Download", this, &ScreenshotsWidget::actionDownload);
+    ctxMenu.addAction("Delete",   this, &ScreenshotsWidget::actionDelete);
 
-    ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos ) );
+    ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));
 }
 
-void ScreenshotsWidget::actionNote() const
+void ScreenshotsWidget::actionNote()
 {
-    QStringList listId;
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            QString screenId = tableWidget->item(rowIndex, 0)->text();
-            listId.append(screenId);
-        }
-    }
-
-    if(listId.empty())
+    QStringList listId = getSelectedScreenIds();
+    if (listId.empty())
         return;
 
     QString note = "";
-    if(listId.size() == 1)
-        note = tableWidget->item(tableWidget->currentRow(), 3)->text();
+    if (listId.size() == 1) {
+        const ScreenData* screen = getSelectedScreen();
+        if (screen)
+            note = screen->Note;
+    }
 
     bool inputOk;
-    QString newNote = QInputDialog::getText(nullptr, "Set note", "New note", QLineEdit::Normal,note, &inputOk);
-    if ( inputOk ) {
+    QString newNote = QInputDialog::getText(nullptr, "Set note", "New note", QLineEdit::Normal, note, &inputOk);
+    if (inputOk) {
         HttpReqScreenSetNoteAsync(listId, newNote, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "Response timeout" : message);
@@ -288,18 +310,15 @@ void ScreenshotsWidget::actionNote() const
     }
 }
 
-void ScreenshotsWidget::actionDownload() const
+void ScreenshotsWidget::actionDownload()
 {
-    if (tableWidget->selectionModel()->selectedRows().empty())
+    const ScreenData* screen = getSelectedScreen();
+    if (!screen)
         return;
 
-    QString screenId = tableWidget->item( tableWidget->currentRow(), 0 )->text();
-    if (!adaptixWidget->Screenshots.contains(screenId))
-        return;
+    ScreenData screenData = *screen;
 
-    ScreenData screenData = adaptixWidget->Screenshots[screenId];
-
-    NonBlockingDialogs::getSaveFileName(const_cast<ScreenshotsWidget*>(this), "Save File", "screenshot.png", "All Files (*.*)",
+    NonBlockingDialogs::getSaveFileName(this, "Save File", "screenshot.png", "All Files (*.*)",
         [this, screenData](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
@@ -310,7 +329,7 @@ void ScreenshotsWidget::actionDownload() const
                 return;
             }
 
-            file.write( screenData.Content );
+            file.write(screenData.Content);
             file.close();
 
             QInputDialog inputDialog;
@@ -324,17 +343,10 @@ void ScreenshotsWidget::actionDownload() const
     });
 }
 
-void ScreenshotsWidget::actionDelete() const
+void ScreenshotsWidget::actionDelete()
 {
-    QStringList listId;
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            QString screenId = tableWidget->item(rowIndex, 0)->text();
-            listId.append(screenId);
-        }
-    }
-
-    if(listId.empty())
+    QStringList listId = getSelectedScreenIds();
+    if (listId.empty())
         return;
 
     HttpReqScreenRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
@@ -343,19 +355,22 @@ void ScreenshotsWidget::actionDelete() const
     });
 }
 
-void ScreenshotsWidget::onTableItemSelection(const QModelIndex &current, const QModelIndex &previous) const
+void ScreenshotsWidget::onTableItemSelection(const QModelIndex &current, const QModelIndex &previous)
 {
-    int row = current.row();
-    if (row < 0)
+    if (!current.isValid())
         return;
 
-    QString screenId = tableWidget->item(row,0)->text();
+    QModelIndex sourceIndex = proxyModel->mapToSource(current);
+    QString screenId = screensModel->getScreenIdAt(sourceIndex.row());
 
-    if (!adaptixWidget->Screenshots.contains(screenId) )
+    if (screenId.isEmpty())
         return;
 
-    ScreenData screenData = adaptixWidget->Screenshots[screenId];
+    const ScreenData* screenData = screensModel->getById(screenId);
+    if (!screenData)
+        return;
+
     auto image = QPixmap();
-    if (image.loadFromData(screenData.Content))
+    if (image.loadFromData(screenData->Content))
         imageFrame->setPixmap(image);
 }

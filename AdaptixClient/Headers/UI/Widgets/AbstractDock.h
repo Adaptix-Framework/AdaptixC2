@@ -175,8 +175,8 @@ protected:
 
 private Q_SLOTS:
     void onCurrentTabChanged(bool isCurrent) {
-        if (isCurrent && hasNewContent()) {
-            QTimer::singleShot(150, this, &DockTab::checkNewContentVisibility);
+        if (isCurrent) {
+            clearHighlight();
         }
     }
 
@@ -224,11 +224,21 @@ private Q_SLOTS:
     }
 
     void checkNewContentVisibility() {
-        if (!hasNewContent()) return;
+        auto* coreDw = dockWidget->dockWidget();
+        if (!coreDw || !coreDw->isCurrentTab())
+            return;
+
+        if (!hasNewContent()) {
+            clearHighlight();
+            return;
+        }
+
+        bool hasVisibleViews = false;
 
         if (!m_newTableRows.isEmpty()) {
             for (auto* view : m_trackedViews) {
                 if (!view->isVisible()) continue;
+                hasVisibleViews = true;
 
                 QSet<int> stillHidden;
                 for (int row : m_newTableRows) {
@@ -240,17 +250,27 @@ private Q_SLOTS:
                 }
                 m_newTableRows = stillHidden;
             }
+
+            if (!hasVisibleViews && !m_trackedViews.isEmpty()) {
+                m_newTableRows.clear();
+            }
         }
 
         if (m_newTextPosition >= 0) {
+            bool hasVisibleEdits = false;
             for (auto* scrollArea : m_trackedTextEdits) {
                 if (!scrollArea->isVisible()) continue;
+                hasVisibleEdits = true;
 
                 QScrollBar* vbar = scrollArea->verticalScrollBar();
                 if (vbar && vbar->value() >= vbar->maximum() - 10) {
                     m_newTextPosition = -1;
                     break;
                 }
+            }
+
+            if (!hasVisibleEdits && !m_trackedTextEdits.isEmpty()) {
+                m_newTextPosition = -1;
             }
         }
 
@@ -262,6 +282,7 @@ private Q_SLOTS:
 private:
     template<typename T>
     void connectItemView(T* view) {
+        if (!view) return;
         m_trackedViews.insert(view);
         if (auto* model = view->model()) {
             connect(model, &QAbstractItemModel::rowsInserted,
@@ -275,6 +296,7 @@ private:
 
     template<typename T, typename Signal>
     void connectTextEdit(T* edit, Signal signal) {
+        if (!edit) return;
         m_trackedTextEdits.insert(edit);
         connect(edit, signal, this, &DockTab::onTextChanged, Qt::UniqueConnection);
         if (auto* vbar = edit->verticalScrollBar()) {

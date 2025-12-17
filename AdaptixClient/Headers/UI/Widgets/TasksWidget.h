@@ -54,7 +54,9 @@ Q_OBJECT
     QString textFilter;
 
 public:
-    explicit TasksFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {};
+    explicit TasksFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
+        setSortRole(Qt::UserRole);
+    };
 
     void setAgentFilter(const QString &agent) {
         agentFilter = agent;
@@ -148,6 +150,14 @@ public:
                 case TC_CommandLine: return t.CommandLine;
                 case TC_Result:      return t.Status;
                 case TC_Output:      return t.Message;
+            }
+        }
+
+        if (role == Qt::UserRole) {
+            switch (index.column()) {
+                case TC_StartTime:   return t.StartTime;
+                case TC_FinishTime:  return t.FinishTime;
+                default:             return data(index, Qt::DisplayRole);
             }
         }
 

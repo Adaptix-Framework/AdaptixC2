@@ -31,6 +31,7 @@ class TargetsFilterProxyModel : public QSortFilterProxyModel
 public:
     explicit TargetsFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
         setDynamicSortFilter(true);
+        setSortRole(Qt::UserRole);
     };
 
     void setSearchVisible(bool visible) {
@@ -108,6 +109,13 @@ public:
                 case TRC_Os:       return t.OsDesc;
                 case TRC_Date:     return t.Date;
                 case TRC_Info:     return t.Info;
+            }
+        }
+
+        if (role == Qt::UserRole) {
+            switch (index.column()) {
+                case TRC_Date: return t.DateTimestamp;
+                default:       return data(index, Qt::DisplayRole);
             }
         }
 

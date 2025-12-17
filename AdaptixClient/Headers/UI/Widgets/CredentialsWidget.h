@@ -34,6 +34,7 @@ Q_OBJECT
 public:
     explicit CredsFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
         setDynamicSortFilter(true);
+        setSortRole(Qt::UserRole);
     };
 
     void setSearchVisible(bool visible) {
@@ -114,6 +115,13 @@ public:
                 case CC_Storage:  return c.Storage;
                 case CC_Agent:    return c.AgentId;
                 case CC_Host:     return c.Host;
+            }
+        }
+
+        if (role == Qt::UserRole) {
+            switch (index.column()) {
+                case CC_Date: return c.DateTimestamp;
+                default:      return data(index, Qt::DisplayRole);
             }
         }
 
