@@ -35,13 +35,17 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 	}
 
 	value, ok := ts.agents.Get(agentId)
-	if ok {
-		downloadData.User = value.(*Agent).Data.Username
-		downloadData.Computer = value.(*Agent).Data.Computer
-		downloadData.AgentName = value.(*Agent).Data.Name
-	} else {
+	if !ok {
 		return errors.New("Agent not found: " + agentId)
 	}
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("Invalid agent type: " + agentId)
+	}
+	agentData := agent.GetData()
+	downloadData.User = agentData.Username
+	downloadData.Computer = agentData.Computer
+	downloadData.AgentName = agentData.Name
 
 	dirPath := logs.RepoLogsInstance.DownloadPath
 	baseName := filepath.Base(filepath.Clean(strings.ReplaceAll(fileName, `\`, `/`)))
@@ -148,13 +152,17 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 	}
 
 	value, ok := ts.agents.Get(agentId)
-	if ok {
-		downloadData.User = value.(*Agent).Data.Username
-		downloadData.Computer = value.(*Agent).Data.Computer
-		downloadData.AgentName = value.(*Agent).Data.Name
-	} else {
+	if !ok {
 		return errors.New("Agent not found: " + agentId)
 	}
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("Invalid agent type: " + agentId)
+	}
+	agentData := agent.GetData()
+	downloadData.User = agentData.Username
+	downloadData.Computer = agentData.Computer
+	downloadData.AgentName = agentData.Name
 
 	dirPath := logs.RepoLogsInstance.DownloadPath
 	baseName := filepath.Base(filepath.Clean(strings.ReplaceAll(filename, `\`, `/`)))

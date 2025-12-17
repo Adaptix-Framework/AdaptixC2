@@ -52,7 +52,10 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 	if !ok {
 		return errors.New("agent not found")
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("invalid agent type")
+	}
 	if agent.Active == false {
 		return fmt.Errorf("agent '%v' not active", agentId)
 	}
@@ -66,7 +69,7 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 	terminal.prSrv, terminal.pwSrv = io.Pipe()
 	terminal.prTun, terminal.pwTun = io.Pipe()
 
-	terminal.handlerStart, terminal.handlerWrite, terminal.handlerClose, err = ts.Extender.ExAgentTerminalCallbacks(agent.Data)
+	terminal.handlerStart, terminal.handlerWrite, terminal.handlerClose, err = ts.Extender.ExAgentTerminalCallbacks(agent.GetData())
 	if err != nil {
 		return err
 	}
@@ -109,13 +112,19 @@ func (ts *Teamserver) TsTerminalConnResume(agentId string, terminalId string) {
 	if !ok {
 		return
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return
+	}
 
 	value, ok = ts.terminals.Get(terminalId)
 	if !ok {
 		return
 	}
-	terminal, _ := value.(*Terminal)
+	terminal, ok := value.(*Terminal)
+	if !ok {
+		return
+	}
 
 	relayWebsocketToTerminal(agent, terminal)
 }
@@ -125,7 +134,10 @@ func (ts *Teamserver) TsTerminalConnClose(terminalId string, status string) erro
 	if !ok {
 		return errors.New("terminal not found")
 	}
-	terminal, _ := value.(*Terminal)
+	terminal, ok := value.(*Terminal)
+	if !ok {
+		return errors.New("invalid terminal type")
+	}
 
 	terminal.wsconn.Close()
 

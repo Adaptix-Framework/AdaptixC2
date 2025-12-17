@@ -73,12 +73,16 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId s
 
 	valueAgent, ok := ts.agents.Get(pivotData.ParentAgentId)
 	if ok {
-		valueAgent.(*Agent).PivotChilds.Put(pivotData)
+		if parentAgent, ok := valueAgent.(*Agent); ok {
+			parentAgent.PivotChilds.Put(pivotData)
+		}
 	}
 
 	valueAgent, ok = ts.agents.Get(pivotData.ChildAgentId)
 	if ok {
-		valueAgent.(*Agent).PivotParent = pivotData
+		if childAgent, ok := valueAgent.(*Agent); ok {
+			childAgent.PivotParent = pivotData
+		}
 	}
 
 	_ = ts.TsAgentSetMark(pivotData.ChildAgentId, "")
@@ -107,13 +111,14 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 
 	valueAgent, ok := ts.agents.Get(pivotData.ParentAgentId)
 	if ok {
-		parentAgent := valueAgent.(*Agent)
-		for i := uint(0); i < parentAgent.PivotChilds.Len(); i++ {
-			valuePivot, ok := parentAgent.PivotChilds.Get(i)
-			if ok {
-				if valuePivot.(*adaptix.PivotData).PivotId == pivotId {
-					parentAgent.PivotChilds.Delete(i)
-					break
+		if parentAgent, ok := valueAgent.(*Agent); ok {
+			for i := uint(0); i < parentAgent.PivotChilds.Len(); i++ {
+				valuePivot, ok := parentAgent.PivotChilds.Get(i)
+				if ok {
+					if pivot, ok := valuePivot.(*adaptix.PivotData); ok && pivot.PivotId == pivotId {
+						parentAgent.PivotChilds.Delete(i)
+						break
+					}
 				}
 			}
 		}
@@ -121,7 +126,9 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 
 	valueAgent, ok = ts.agents.Get(pivotData.ChildAgentId)
 	if ok {
-		valueAgent.(*Agent).PivotParent = nil
+		if childAgent, ok := valueAgent.(*Agent); ok {
+			childAgent.PivotParent = nil
+		}
 	}
 
 	_ = ts.TsAgentSetMark(pivotData.ChildAgentId, "Unlink")

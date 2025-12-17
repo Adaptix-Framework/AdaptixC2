@@ -4,7 +4,6 @@ import (
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -17,7 +16,11 @@ func (ts *Teamserver) TsTaskRunningExists(agentId string, taskId string) bool {
 		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
 		return false
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		logs.Error("", "TsTaskUpdate: invalid agent type for %v", agentId)
+		return false
+	}
 
 	return agent.RunningTasks.Contains(taskId)
 }
@@ -29,26 +32,31 @@ func (ts *Teamserver) TsTaskCreate(agentId string, cmdline string, client string
 		return
 	}
 
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		logs.Error("", "TsTaskCreate: invalid agent type for %v", agentId)
+		return
+	}
 	if agent.Active == false {
 		return
 	}
 
+	agentData := agent.GetData()
 	if taskData.TaskId == "" {
 		taskData.TaskId, _ = krypt.GenerateUID(8)
 	}
 	taskData.AgentId = agentId
 	taskData.CommandLine = cmdline
 	taskData.Client = client
-	taskData.Computer = agent.Data.Computer
+	taskData.Computer = agentData.Computer
 	taskData.StartDate = time.Now().Unix()
 	if taskData.Completed {
 		taskData.FinishDate = taskData.StartDate
 	}
 
-	taskData.User = agent.Data.Username
-	if agent.Data.Impersonated != "" {
-		taskData.User += fmt.Sprintf(" [%s]", agent.Data.Impersonated)
+	taskData.User = agentData.Username
+	if agentData.Impersonated != "" {
+		taskData.User += fmt.Sprintf(" [%s]", agentData.Impersonated)
 	}
 
 	switch taskData.Type {
@@ -118,7 +126,11 @@ func (ts *Teamserver) TsTaskUpdate(agentId string, updateData adaptix.TaskData) 
 		logs.Error("", "TsTaskUpdate: agent %v not found", agentId)
 		return
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		logs.Error("", "TsTaskUpdate: invalid agent type for %v", agentId)
+		return
+	}
 
 	value, ok = agent.RunningTasks.Get(updateData.TaskId)
 	if !ok {
@@ -304,7 +316,10 @@ func (ts *Teamserver) TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) er
 	if !ok {
 		return fmt.Errorf("agent %v not found", hookData.AgentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return fmt.Errorf("invalid agent type for %v", hookData.AgentId)
+	}
 
 	value, ok = agent.RunningTasks.Get(hookData.TaskId)
 	if !ok {
@@ -445,7 +460,10 @@ func (ts *Teamserver) TsTaskCancel(agentId string, taskId string) error {
 	if !ok {
 		return fmt.Errorf("agent %v not found", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return fmt.Errorf("invalid agent type for %v", agentId)
+	}
 
 	found, retTask := agent.HostedTasks.RemoveIf(func(v interface{}) bool {
 		task, ok := v.(adaptix.TaskData)
@@ -467,10 +485,13 @@ func (ts *Teamserver) TsTaskDelete(agentId string, taskId string) error {
 	if !ok {
 		return fmt.Errorf("agent %v not found", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return fmt.Errorf("invalid agent type for %v", agentId)
+	}
 
 	found, _ := agent.HostedTasks.FindIf(func(v interface{}) bool {
-		task, ok := v.(*adaptix.TaskData)
+		task, ok := v.(adaptix.TaskData)
 		return ok && task.TaskId == taskId
 	})
 	if found {
@@ -499,12 +520,16 @@ func (ts *Teamserver) TsTaskSave(taskData adaptix.TaskData) error {
 	if !ok {
 		return fmt.Errorf("Agent %v not found", taskData.AgentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return fmt.Errorf("invalid agent type for '%v'", taskData.AgentId)
+	}
 
+	agentData := agent.GetData()
 	taskData.Type = TYPE_TASK
 	taskData.TaskId, _ = krypt.GenerateUID(8)
-	taskData.Computer = agent.Data.Computer
-	taskData.User = agent.Data.Username
+	taskData.Computer = agentData.Computer
+	taskData.User = agentData.Username
 	taskData.StartDate = time.Now().Unix()
 	taskData.FinishDate = taskData.StartDate
 	taskData.Sync = true
@@ -582,7 +607,10 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 	if !ok {
 		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return nil, fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
 	var tasks []adaptix.TaskData
 	tasksSize := 0
@@ -660,7 +688,7 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 				if err != nil {
 					continue
 				}
-				pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.Data.Name, pivotData.PivotId, data)
+				pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.GetData().Name, pivotData.PivotId, data)
 				if err != nil {
 					continue
 				}
@@ -680,7 +708,10 @@ func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int)
 	if !ok {
 		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return nil, 0, fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
 	var tasks []adaptix.TaskData
 	tasksSize := 0
@@ -736,7 +767,10 @@ func (ts *Teamserver) TsTaskGetAvailableTasksCount(agentId string, maxCount int,
 	if !ok {
 		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return nil, 0, fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
 	var tasks []adaptix.TaskData
 	tasksSize := 0
@@ -778,7 +812,10 @@ func (ts *Teamserver) TsTasksPivotExists(agentId string, first bool) bool {
 	if !ok {
 		return false
 	}
-	agent := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return false
+	}
 
 	if !first {
 		if agent.HostedTasks.Len() > 0 || agent.HostedTunnelTasks.Len() > 0 || agent.HostedTunnelData.Len() > 0 {
@@ -803,7 +840,10 @@ func (ts *Teamserver) TsTaskGetAvailablePivotAll(agentId string, availableSize i
 	if !ok {
 		return nil, fmt.Errorf("TsTaskQueueGetAvailable: agent %v not found", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return nil, fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
 	var tasks []adaptix.TaskData
 	tasksSize := 0
@@ -820,7 +860,7 @@ func (ts *Teamserver) TsTaskGetAvailablePivotAll(agentId string, availableSize i
 				if err != nil {
 					continue
 				}
-				pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.Data.Name, pivotData.PivotId, data)
+				pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.GetData().Name, pivotData.PivotId, data)
 				if err != nil {
 					continue
 				}

@@ -107,7 +107,6 @@ func (ts *Teamserver) RestoreData() {
 	for _, agentData := range restoreAgents {
 
 		agent := &Agent{
-			Data:              agentData,
 			OutConsole:        safe.NewSlice(),
 			HostedTunnelData:  safe.NewSafeQueue(0x1000),
 			HostedTasks:       safe.NewSafeQueue(0x100),
@@ -121,16 +120,17 @@ func (ts *Teamserver) RestoreData() {
 			Active:            true,
 		}
 
-		if agent.Data.Mark == "Terminated" {
+		if agentData.Mark == "Terminated" {
 			agent.Active = false
 		}
 
-		if agent.Data.Mark == "" {
-			if !agent.Data.Async {
-				agent.Data.Mark = "Disconnect"
+		if agentData.Mark == "" {
+			if !agentData.Async {
+				agentData.Mark = "Disconnect"
 			}
 		}
 
+		agent.SetData(agentData)
 		ts.agents.Put(agentData.Id, agent)
 
 		packet := CreateSpAgentNew(agentData)

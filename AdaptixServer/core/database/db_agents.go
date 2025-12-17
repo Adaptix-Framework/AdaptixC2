@@ -52,16 +52,18 @@ func (dbms *DBMS) DbAgentUpdate(agentData adaptix.AgentData) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbAgentExist(agentData.Id)
-	if !ok {
-		return fmt.Errorf("agent %s does not exist", agentData.Id)
-	}
-
 	updateQuery := `UPDATE Agents SET Sleep = ?, Jitter = ?, Impersonated = ?, WorkingTime = ?, KillDate = ?, Tags = ?, Mark = ?, Color = ? WHERE Id = ?;`
-	_, err := dbms.database.Exec(updateQuery, agentData.Sleep, agentData.Jitter, agentData.Impersonated, agentData.WorkingTime, agentData.KillDate,
+	result, err := dbms.database.Exec(updateQuery, agentData.Sleep, agentData.Jitter, agentData.Impersonated, agentData.WorkingTime, agentData.KillDate,
 		agentData.Tags, agentData.Mark, agentData.Color, agentData.Id,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("agent %s does not exist", agentData.Id)
+	}
+	return nil
 }
 
 func (dbms *DBMS) DbAgentDelete(agentId string) error {
@@ -70,26 +72,22 @@ func (dbms *DBMS) DbAgentDelete(agentId string) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbAgentExist(agentId)
-	if !ok {
+	deleteQuery := `DELETE FROM Agents WHERE Id = ?;`
+	result, err := dbms.database.Exec(deleteQuery, agentId)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
 		return fmt.Errorf("agent %s does not exist", agentId)
 	}
-
-	deleteQuery := `DELETE FROM Agents WHERE Id = ?;`
-	_, err := dbms.database.Exec(deleteQuery, agentId)
-
-	return err
+	return nil
 }
 
 func (dbms *DBMS) DbAgentTick(agentData adaptix.AgentData) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database does not exist")
-	}
-
-	ok = dbms.DbAgentExist(agentData.Id)
-	if !ok {
-		return fmt.Errorf("agent %s does not exist", agentData.Id)
 	}
 
 	updateQuery := `UPDATE Agents SET LastTick = ? WHERE Id = ?;`

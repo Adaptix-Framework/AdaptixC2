@@ -41,13 +41,17 @@ func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byt
 	}
 
 	value, ok := ts.agents.Get(agentId)
-	if ok {
-		screenData.User = value.(*Agent).Data.Username
-		screenData.Computer = value.(*Agent).Data.Computer
-		screenData.ScreenId, _ = krypt.GenerateUID(8)
-	} else {
+	if !ok {
 		return errors.New("Agent not found: " + agentId)
 	}
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("Invalid agent type: " + agentId)
+	}
+	agentData := agent.GetData()
+	screenData.User = agentData.Username
+	screenData.Computer = agentData.Computer
+	screenData.ScreenId, _ = krypt.GenerateUID(8)
 
 	d := time.Now().Format("15:04:05 02.01.2006")
 	saveName := krypt.MD5(append([]byte(d), screenData.Content...)) + "." + format

@@ -86,7 +86,8 @@ type Teamserver struct {
 }
 
 type Agent struct {
-	Data   adaptix.AgentData
+	mu     sync.RWMutex
+	data   adaptix.AgentData
 	Tick   bool
 	Active bool
 
@@ -102,6 +103,24 @@ type Agent struct {
 
 	PivotParent *adaptix.PivotData
 	PivotChilds *safe.Slice
+}
+
+func (a *Agent) GetData() adaptix.AgentData {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.data
+}
+
+func (a *Agent) SetData(data adaptix.AgentData) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.data = data
+}
+
+func (a *Agent) UpdateData(fn func(*adaptix.AgentData)) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	fn(&a.data)
 }
 
 type HookJob struct {

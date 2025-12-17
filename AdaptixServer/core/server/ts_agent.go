@@ -18,7 +18,10 @@ import (
 func (ts *Teamserver) TsAgentList() (string, error) {
 	var agents []adaptix.AgentData
 	ts.agents.ForEach(func(key string, value interface{}) bool {
-		agents = append(agents, value.(*Agent).Data)
+		agent, ok := value.(*Agent)
+		if ok {
+			agents = append(agents, agent.GetData())
+		}
 		return true
 	})
 
@@ -83,7 +86,6 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	}
 
 	agent := &Agent{
-		Data:              agentData,
 		OutConsole:        safe.NewSlice(),
 		HostedTasks:       safe.NewSafeQueue(0x100),
 		HostedTunnelTasks: safe.NewSafeQueue(0x100),
@@ -96,22 +98,25 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 		Tick:              false,
 		Active:            true,
 	}
+	agent.SetData(agentData)
 
 	ts.agents.Put(agentData.Id, agent)
 
 	packetNew := CreateSpAgentNew(agentData)
 	ts.TsSyncAllClients(packetNew)
 
-	agent.Data.TargetId, _ = ts.TsTargetsCreateAlive(agentData)
+	agent.UpdateData(func(d *adaptix.AgentData) {
+		d.TargetId, _ = ts.TsTargetsCreateAlive(agentData)
+	})
 
-	err = ts.DBMS.DbAgentInsert(agent.Data)
+	err = ts.DBMS.DbAgentInsert(agent.GetData())
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	ts.TsEventAgent(false, agent.Data)
+	ts.TsEventAgent(false, agent.GetData())
 
-	return agent.Data, nil
+	return agent.GetData(), nil
 }
 
 func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error {
@@ -123,13 +128,16 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
 	if agent.Active == false {
 		return fmt.Errorf("agent '%v' not active", agentId)
 	}
 
-	taskData, messageData, err := ts.Extender.ExAgentCommand(agentName, agent.Data, args)
+	taskData, messageData, err := ts.Extender.ExAgentCommand(agentName, agent.GetData(), args)
 	if err != nil {
 		return err
 	}
@@ -152,18 +160,24 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 	if !ok {
 		return fmt.Errorf("agent type %v does not exists", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
-	if agent.Data.Mark == "Inactive" {
-		agent.Data.Mark = ""
-		err := ts.DBMS.DbAgentUpdate(agent.Data)
+	agentData := agent.GetData()
+	if agentData.Mark == "Inactive" {
+		agent.UpdateData(func(d *adaptix.AgentData) {
+			d.Mark = ""
+		})
+		err := ts.DBMS.DbAgentUpdate(agent.GetData())
 		if err != nil {
 			logs.Error("", err.Error())
 		}
 	}
 
 	if len(bodyData) > 4 {
-		_, err := ts.Extender.ExAgentProcessData(agent.Data, bodyData)
+		_, err := ts.Extender.ExAgentProcessData(agent.GetData(), bodyData)
 		return err
 	}
 
@@ -177,24 +191,28 @@ func (ts *Teamserver) TsAgentGetHostedAll(agentId string, maxDataSize int) ([]by
 	if !ok {
 		return nil, fmt.Errorf("agent type %v does not exists", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return nil, fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
+	agentData := agent.GetData()
 	tasksCount := agent.HostedTasks.Len()
 	tunnelConnectCount := agent.HostedTunnelTasks.Len()
 	tunnelTasksCount := agent.HostedTunnelData.Len()
 	pivotTasksExists := false
 	if agent.PivotChilds.Len() > 0 {
-		pivotTasksExists = ts.TsTasksPivotExists(agent.Data.Id, true)
+		pivotTasksExists = ts.TsTasksPivotExists(agentData.Id, true)
 	}
 
 	if tasksCount > 0 || tunnelConnectCount > 0 || tunnelTasksCount > 0 || pivotTasksExists {
 
-		tasks, err := ts.TsTaskGetAvailableAll(agent.Data.Id, maxDataSize)
+		tasks, err := ts.TsTaskGetAvailableAll(agentData.Id, maxDataSize)
 		if err != nil {
 			return nil, err
 		}
 
-		respData, err := ts.Extender.ExAgentPackData(agent.Data, tasks)
+		respData, err := ts.Extender.ExAgentPackData(agentData, tasks)
 		if err != nil {
 			return nil, err
 		}
@@ -214,19 +232,23 @@ func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]
 	if !ok {
 		return nil, fmt.Errorf("agent type %v does not exists", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return nil, fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
+	agentData := agent.GetData()
 	tasksCount := agent.HostedTasks.Len()
 	if tasksCount == 0 && agent.HostedTunnelTasks.Len() == 0 {
 		return []byte(""), nil
 	}
 
-	tasks, _, err := ts.TsTaskGetAvailableTasks(agent.Data.Id, maxDataSize)
+	tasks, _, err := ts.TsTaskGetAvailableTasks(agentData.Id, maxDataSize)
 	if err != nil {
 		return nil, err
 	}
 
-	respData, err := ts.Extender.ExAgentPackData(agent.Data, tasks)
+	respData, err := ts.Extender.ExAgentPackData(agentData, tasks)
 	if err != nil {
 		return nil, err
 	}
@@ -244,17 +266,21 @@ func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId string, count int, maxD
 	if !ok {
 		return nil, fmt.Errorf("agent type %v does not exists", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return nil, fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
+	agentData := agent.GetData()
 	tasksCount := agent.HostedTasks.Len()
 	if tasksCount > 0 {
 
-		tasks, _, err := ts.TsTaskGetAvailableTasksCount(agent.Data.Id, count, maxDataSize)
+		tasks, _, err := ts.TsTaskGetAvailableTasksCount(agentData.Id, count, maxDataSize)
 		if err != nil {
 			return nil, err
 		}
 
-		respData, err := ts.Extender.ExAgentPackData(agent.Data, tasks)
+		respData, err := ts.Extender.ExAgentPackData(agentData, tasks)
 		if err != nil {
 			return nil, err
 		}
@@ -316,18 +342,25 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
 	if !ok {
 		return errors.New("agent does not exist")
 	}
-	agent, _ := value.(*Agent)
-	agent.Data.Sleep = newAgentData.Sleep
-	agent.Data.Jitter = newAgentData.Jitter
-	agent.Data.WorkingTime = newAgentData.WorkingTime
-	agent.Data.KillDate = newAgentData.KillDate
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("invalid agent type")
+	}
 
-	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	agent.UpdateData(func(d *adaptix.AgentData) {
+		d.Sleep = newAgentData.Sleep
+		d.Jitter = newAgentData.Jitter
+		d.WorkingTime = newAgentData.WorkingTime
+		d.KillDate = newAgentData.KillDate
+	})
+
+	agentData := agent.GetData()
+	err := ts.DBMS.DbAgentUpdate(agentData)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	packetNew := CreateSpAgentUpdate(agent.Data)
+	packetNew := CreateSpAgentUpdate(agentData)
 	ts.TsSyncAllClients(packetNew)
 
 	return nil
@@ -339,9 +372,14 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 		return errors.New("agent does not exist")
 	}
 
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("invalid agent type")
+	}
 	agent.Active = false
-	agent.Data.Mark = "Terminated"
+	agent.UpdateData(func(d *adaptix.AgentData) {
+		d.Mark = "Terminated"
+	})
 
 	/// Clear Downloads
 
@@ -376,7 +414,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 	var terminals []int
 	ts.terminals.ForEach(func(key string, value interface{}) bool {
 		term := value.(*Terminal)
-		if term.agent.Data.Id == agentId {
+		if term.agent.GetData().Id == agentId {
 			terminals = append(terminals, term.TerminalId)
 		}
 		return true
@@ -435,12 +473,13 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 
 	/// Update
 
-	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	agentData := agent.GetData()
+	err := ts.DBMS.DbAgentUpdate(agentData)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	packetNew := CreateSpAgentUpdate(agent.Data)
+	packetNew := CreateSpAgentUpdate(agentData)
 	ts.TsSyncAllClients(packetNew)
 
 	return nil
@@ -451,7 +490,10 @@ func (ts *Teamserver) TsAgentConsoleRemove(agentId string) error {
 	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
-	agent := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 	agent.OutConsole.CutArray()
 
 	_ = ts.DBMS.DbConsoleDelete(agentId)
@@ -464,7 +506,10 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
-	agent := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
 	/// Clear Downloads
 
@@ -531,15 +576,22 @@ func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
 		return errors.New("agent does not exist")
 	}
 
-	agent, _ := value.(*Agent)
-	agent.Data.Tags = tag
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("invalid agent type")
+	}
 
-	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	agent.UpdateData(func(d *adaptix.AgentData) {
+		d.Tags = tag
+	})
+
+	agentData := agent.GetData()
+	err := ts.DBMS.DbAgentUpdate(agentData)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	packetNew := CreateSpAgentUpdate(agent.Data)
+	packetNew := CreateSpAgentUpdate(agentData)
 	ts.TsSyncAllClients(packetNew)
 
 	return nil
@@ -550,24 +602,30 @@ func (ts *Teamserver) TsAgentSetMark(agentId string, mark string) error {
 	if !ok {
 		return errors.New("agent does not exist")
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("invalid agent type")
+	}
 
-	if agent.Data.Mark == mark || agent.Data.Mark == "Terminated" {
+	agentData := agent.GetData()
+	if agentData.Mark == mark || agentData.Mark == "Terminated" {
 		return nil
 	}
 
-	agent.Data.Mark = mark
+	agent.UpdateData(func(d *adaptix.AgentData) {
+		d.Mark = mark
+		if mark == "Disconnect" {
+			d.LastTick = int(time.Now().Unix())
+		}
+	})
 
-	if mark == "Disconnect" {
-		agent.Data.LastTick = int(time.Now().Unix())
-	}
-
-	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	agentData = agent.GetData()
+	err := ts.DBMS.DbAgentUpdate(agentData)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	packetNew := CreateSpAgentUpdate(agent.Data)
+	packetNew := CreateSpAgentUpdate(agentData)
 	ts.TsSyncAllClients(packetNew)
 
 	return nil
@@ -578,33 +636,39 @@ func (ts *Teamserver) TsAgentSetColor(agentId string, background string, foregro
 	if !ok {
 		return errors.New("agent does not exist")
 	}
-	agent, _ := value.(*Agent)
-
-	if reset {
-		agent.Data.Color = ""
-	} else {
-		bcolor := ""
-		fcolor := ""
-		colors := strings.Split(agent.Data.Color, "-")
-		if len(colors) == 2 {
-			bcolor = colors[0]
-			fcolor = colors[1]
-		}
-		if isvalid.ValidColorRGB(background) {
-			bcolor = background
-		}
-		if isvalid.ValidColorRGB(foreground) {
-			fcolor = foreground
-		}
-		agent.Data.Color = bcolor + "-" + fcolor
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("invalid agent type")
 	}
 
-	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	agent.UpdateData(func(d *adaptix.AgentData) {
+		if reset {
+			d.Color = ""
+		} else {
+			bcolor := ""
+			fcolor := ""
+			colors := strings.Split(d.Color, "-")
+			if len(colors) == 2 {
+				bcolor = colors[0]
+				fcolor = colors[1]
+			}
+			if isvalid.ValidColorRGB(background) {
+				bcolor = background
+			}
+			if isvalid.ValidColorRGB(foreground) {
+				fcolor = foreground
+			}
+			d.Color = bcolor + "-" + fcolor
+		}
+	})
+
+	agentData := agent.GetData()
+	err := ts.DBMS.DbAgentUpdate(agentData)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	packetNew := CreateSpAgentUpdate(agent.Data)
+	packetNew := CreateSpAgentUpdate(agentData)
 	ts.TsSyncAllClients(packetNew)
 
 	return nil
@@ -615,19 +679,25 @@ func (ts *Teamserver) TsAgentSetImpersonate(agentId string, impersonated string,
 	if !ok {
 		return errors.New("agent does not exist")
 	}
-	agent, _ := value.(*Agent)
-
-	agent.Data.Impersonated = impersonated
-	if impersonated != "" && elevated {
-		agent.Data.Impersonated += " *"
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("invalid agent type")
 	}
 
-	err := ts.DBMS.DbAgentUpdate(agent.Data)
+	agent.UpdateData(func(d *adaptix.AgentData) {
+		d.Impersonated = impersonated
+		if impersonated != "" && elevated {
+			d.Impersonated += " *"
+		}
+	})
+
+	agentData := agent.GetData()
+	err := ts.DBMS.DbAgentUpdate(agentData)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	packetNew := CreateSpAgentUpdate(agent.Data)
+	packetNew := CreateSpAgentUpdate(agentData)
 	ts.TsSyncAllClients(packetNew)
 
 	return nil
@@ -638,11 +708,17 @@ func (ts *Teamserver) TsAgentSetTick(agentId string) error {
 	if !ok {
 		return fmt.Errorf("agent type %v does not exists", agentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return fmt.Errorf("invalid agent type for '%v'", agentId)
+	}
 
-	if agent.Data.Async {
-		agent.Data.LastTick = int(time.Now().Unix())
-		_ = ts.DBMS.DbAgentTick(agent.Data)
+	agentData := agent.GetData()
+	if agentData.Async {
+		agent.UpdateData(func(d *adaptix.AgentData) {
+			d.LastTick = int(time.Now().Unix())
+		})
+		_ = ts.DBMS.DbAgentTick(agent.GetData())
 		agent.Tick = true
 	}
 	return nil
@@ -654,11 +730,15 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 	for {
 		var agentSlice []string
 		ts.agents.ForEach(func(key string, value interface{}) bool {
-			agent := value.(*Agent)
-			if agent.Data.Async {
+			agent, ok := value.(*Agent)
+			if !ok {
+				return true
+			}
+			agentData := agent.GetData()
+			if agentData.Async {
 				if agent.Tick {
 					agent.Tick = false
-					agentSlice = append(agentSlice, agent.Data.Id)
+					agentSlice = append(agentSlice, agentData.Id)
 				}
 			}
 			return true

@@ -206,9 +206,13 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 	)
 
 	ts.agents.ForEach(func(key string, value interface{}) bool {
-		agent := value.(*Agent)
+		agent, ok := value.(*Agent)
+		if !ok {
+			return true
+		}
+		agentData := agent.GetData()
 		index := sort.Search(len(sortedAgents), func(i int) bool {
-			return sortedAgents[i].Data.CreateTime > agent.Data.CreateTime
+			return sortedAgents[i].GetData().CreateTime > agentData.CreateTime
 		})
 		sortedAgents = append(sortedAgents[:index], append([]*Agent{agent}, sortedAgents[index:]...)...)
 		return true
@@ -218,7 +222,7 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 	for _, agent := range sortedAgents {
 		if agent != nil {
 			/// Agent
-			p := CreateSpAgentNew(agent.Data)
+			p := CreateSpAgentNew(agent.GetData())
 			packets = append(packets, p)
 
 			/// Tasks

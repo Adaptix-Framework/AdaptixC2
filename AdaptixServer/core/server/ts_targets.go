@@ -241,10 +241,14 @@ func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
 		if !ok {
 			continue
 		}
-		agent, _ := value.(*Agent)
+		agent, ok := value.(*Agent)
+		if !ok {
+			continue
+		}
 
-		if agent.Data.TargetId != "" {
-			targets_id[agent.Data.TargetId] = ""
+		agentData := agent.GetData()
+		if agentData.TargetId != "" {
+			targets_id[agentData.TargetId] = ""
 		}
 	}
 

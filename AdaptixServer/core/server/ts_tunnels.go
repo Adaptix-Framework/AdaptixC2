@@ -67,7 +67,10 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 	if !ok {
 		return "", fmt.Errorf("agent '%v' does not exist", AgentId)
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return "", fmt.Errorf("invalid agent type for '%v'", AgentId)
+	}
 	if agent.Active == false {
 		return "", fmt.Errorf("agent '%v' not active", AgentId)
 	}
@@ -144,7 +147,10 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 		if !ok {
 			return "", errors.New("tunnel not found")
 		}
-		tunnel, _ := value.(*Tunnel)
+		tunnel, ok := value.(*Tunnel)
+		if !ok {
+			return "", errors.New("invalid tunnel type")
+		}
 		tunnel.Active = true
 		tunnel.TaskId, _ = krypt.GenerateUID(8)
 		taskId = tunnel.TaskId
@@ -190,13 +196,19 @@ func (ts *Teamserver) TsTunnelClientNewChannel(TunnelData string, wsconn *websoc
 	if !ok {
 		return errors.New("tunnel not found")
 	}
-	tunnel, _ := value.(*Tunnel)
+	tunnel, ok := value.(*Tunnel)
+	if !ok {
+		return errors.New("invalid tunnel type")
+	}
 
 	value, ok = ts.agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return errors.New("agent not found")
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("invalid agent type")
+	}
 
 	cid, err := strconv.ParseInt(channelId, 16, 64)
 	if err != nil {
@@ -233,7 +245,10 @@ func (ts *Teamserver) TsTunnelClientSetInfo(TunnelId string, Info string) error 
 	if !ok {
 		return errors.New("tunnel not found")
 	}
-	tunnel, _ := value.(*Tunnel)
+	tunnel, ok := value.(*Tunnel)
+	if !ok {
+		return errors.New("invalid tunnel type")
+	}
 
 	tunnel.Data.Info = Info
 
@@ -248,7 +263,10 @@ func (ts *Teamserver) TsTunnelClientStop(TunnelId string, Client string) error {
 	if !ok {
 		return errors.New("tunnel Not Found")
 	}
-	tunnel, _ := value.(*Tunnel)
+	tunnel, ok := value.(*Tunnel)
+	if !ok {
+		return errors.New("invalid tunnel type")
+	}
 
 	if tunnel.Data.Client == "" {
 		_ = ts.TsTunnelStop(TunnelId)
@@ -260,7 +278,10 @@ func (ts *Teamserver) TsTunnelClientStop(TunnelId string, Client string) error {
 		if !ok {
 			return errors.New("tunnel Not Found")
 		}
-		tunnel, _ = value.(*Tunnel)
+		tunnel, ok = value.(*Tunnel)
+		if !ok {
+			return errors.New("invalid tunnel type")
+		}
 
 		tunnel.connections.ForEach(func(key string, valueConn interface{}) bool {
 			tunChannel, _ := valueConn.(*TunnelChannel)
@@ -293,18 +314,27 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 	if !ok {
 		return "", errors.New("tunnel not found")
 	}
-	tunnel, _ := value.(*Tunnel)
+	tunnel, ok := value.(*Tunnel)
+	if !ok {
+		return "", errors.New("invalid tunnel type")
+	}
 
 	value, ok = ts.agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return "", errors.New("agent not found")
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return "", errors.New("invalid agent type")
+	}
 
 	if tunnel.Type == TUNNEL_RPORTFWD {
 
 		id, _ := strconv.ParseInt(TunnelId, 16, 64)
-		port, _ := strconv.Atoi(tunnel.Data.Port)
+		port, err := strconv.Atoi(tunnel.Data.Port)
+		if err != nil {
+			return "", fmt.Errorf("invalid port: %v", err)
+		}
 		taskData := tunnel.handlerReverse(int(id), port)
 		tunnelManageTask(agent, taskData)
 
@@ -346,17 +376,21 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 	if !ok {
 		return "", errors.New("agent not found")
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return "", errors.New("invalid agent type")
+	}
 
+	agentData := agent.GetData()
 	if Info == "" && Type == TUNNEL_SOCKS5_AUTH {
 		Info = fmt.Sprintf("Creds %s:%s", AuthUser, AuthPass)
 	}
 
 	tunnelData := adaptix.TunnelData{
-		AgentId:  agent.Data.Id,
-		Computer: agent.Data.Computer,
-		Username: agent.Data.Username,
-		Process:  agent.Data.Process,
+		AgentId:  agentData.Id,
+		Computer: agentData.Computer,
+		Username: agentData.Username,
+		Process:  agentData.Process,
 		Info:     Info,
 		Client:   Client,
 	}
@@ -368,19 +402,19 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 
 	case TUNNEL_SOCKS4:
 		tunnelData.Type = "SOCKS4 proxy"
-		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agent.Data.Id+"socks"+lport)))
+		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agentData.Id+"socks"+lport)))
 		tunnelData.Interface = Lhost
 		tunnelData.Port = lport
 
 	case TUNNEL_SOCKS5:
 		tunnelData.Type = "SOCKS5 proxy"
-		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agent.Data.Id+"socks"+lport)))
+		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agentData.Id+"socks"+lport)))
 		tunnelData.Interface = Lhost
 		tunnelData.Port = lport
 
 	case TUNNEL_SOCKS5_AUTH:
 		tunnelData.Type = "SOCKS5 Auth proxy"
-		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agent.Data.Id+"socks"+lport)))
+		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agentData.Id+"socks"+lport)))
 		tunnelData.Interface = Lhost
 		tunnelData.Port = lport
 		tunnelData.AuthUser = AuthUser
@@ -388,7 +422,7 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 
 	case TUNNEL_LPORTFWD:
 		tunnelData.Type = "Local port forward"
-		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agent.Data.Id+"lportfwd"+lport)))
+		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agentData.Id+"lportfwd"+lport)))
 		tunnelData.Interface = Lhost
 		tunnelData.Port = lport
 		tunnelData.Fhost = Thost
@@ -396,7 +430,7 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 
 	case TUNNEL_RPORTFWD:
 		tunnelData.Type = "Reverse port forward"
-		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agent.Data.Id+"rportfwd"+lport)))
+		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agentData.Id+"rportfwd"+lport)))
 		tunnelData.Port = lport
 		tunnelData.Fhost = Thost
 		tunnelData.Fport = tport
@@ -415,7 +449,7 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 		}
 	}
 
-	fConnTCP, fConnUDP, fWriteTCP, fWriteUDP, fClose, fReverse, err := ts.Extender.ExAgentTunnelCallbacks(agent.Data, Type)
+	fConnTCP, fConnUDP, fWriteTCP, fWriteUDP, fClose, fReverse, err := ts.Extender.ExAgentTunnelCallbacks(agentData, Type)
 	if err != nil {
 		return "", err
 	}
@@ -509,7 +543,10 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 	if !ok {
 		return errors.New("tunnel Not Found")
 	}
-	tunnel, _ := value.(*Tunnel)
+	tunnel, ok := value.(*Tunnel)
+	if !ok {
+		return errors.New("invalid tunnel type")
+	}
 
 	if tunnel.listener != nil {
 		_ = tunnel.listener.Close()
@@ -563,13 +600,19 @@ func (ts *Teamserver) TsTunnelStopRportfwd(AgentId string, Port int) {
 	if !ok {
 		return
 	}
-	tunnel, _ := value.(*Tunnel)
+	tunnel, ok := value.(*Tunnel)
+	if !ok {
+		return
+	}
 
 	value, ok = ts.agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return
+	}
 
 	rawTaskData := tunnel.handlerClose(int(id))
 	tunnelManageTask(agent, rawTaskData)
@@ -660,10 +703,16 @@ func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int, io
 	if !ok {
 		return
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return
+	}
 
 	ts.tunnels.ForEach(func(key string, valueTun interface{}) bool {
-		tunnel, _ = valueTun.(*Tunnel)
+		tunnel, ok = valueTun.(*Tunnel)
+		if !ok {
+			return true
+		}
 		valueConn, ok = tunnel.connections.Get(strconv.Itoa(channelId))
 		if ok {
 			tunChannel, _ = valueConn.(*TunnelChannel)
@@ -774,13 +823,19 @@ func (ts *Teamserver) TsTunnelConnectionAccept(tunnelId int, channelId int) {
 	if !ok {
 		return
 	}
-	tunnel, _ := value.(*Tunnel)
+	tunnel, ok := value.(*Tunnel)
+	if !ok {
+		return
+	}
 
 	value, ok = ts.agents.Get(tunnel.Data.AgentId)
 	if !ok {
 		return
 	}
-	agent, _ := value.(*Agent)
+	agent, ok := value.(*Agent)
+	if !ok {
+		return
+	}
 
 	if tunnel.Data.Client == "" {
 		handlerReverseAccept(agent, tunnel, channelId)
@@ -946,7 +1001,7 @@ func handlerReverseAccept(agent *Agent, tunnel *Tunnel, channelId int) {
 /// process socket
 
 func tunnelManageTask(agent *Agent, taskData adaptix.TaskData) {
-	taskData.AgentId = agent.Data.Id
+	taskData.AgentId = agent.GetData().Id
 	if taskData.TaskId == "" {
 		taskData.TaskId, _ = krypt.GenerateUID(8)
 	}
@@ -958,7 +1013,7 @@ func relayPipeToTaskData(agent *Agent, channelId int, taskData adaptix.TaskData)
 	if taskData.TaskId == "" {
 		taskData.TaskId, _ = krypt.GenerateUID(8)
 	}
-	taskData.AgentId = agent.Data.Id
+	taskData.AgentId = agent.GetData().Id
 
 	taskTunnel := adaptix.TaskDataTunnel{
 		ChannelId: channelId,
