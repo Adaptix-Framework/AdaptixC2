@@ -167,6 +167,49 @@ void AxScriptManager::GlobalScriptLoad(const QString &path) { Q_EMIT adaptixWidg
 
 void AxScriptManager::GlobalScriptUnload(const QString &path) { Q_EMIT adaptixWidget->UnloadGlobalScriptSignal(path); }
 
+QList<AxScriptEngine*> AxScriptManager::getAllEngines() const
+{
+    QList<AxScriptEngine*> list;
+    list.reserve(agents_scripts.size() + scripts.size() + 1);
+    list << agents_scripts.values() << scripts.values();
+    if (mainScript)
+        list << mainScript;
+    return list;
+}
+
+void AxScriptManager::safeCallHandler(const AxEvent& event, const QJSValueList& args)
+{
+    if (!event.jsEngine || !event.handler.isCallable())
+        return;
+
+    QJSValue result = event.handler.call(args);
+    if (result.isError()) {
+        QString error = QString("Script error in event handler: %1\n    at line %2\n    stack: %3")
+            .arg(result.toString())
+            .arg(result.property("lineNumber").toInt())
+            .arg(result.property("stack").toString());
+        consolePrintError(error);
+    }
+}
+
+int AxScriptManager::addMenuItemsToMenu(QMenu* menu, const QList<AxMenuItem>& items, const QVariantList& context)
+{
+    int count = 0;
+    for (const auto& item : items) {
+        item.menu->setContext(context);
+        if (auto* sep = dynamic_cast<AxSeparatorWrapper*>(item.menu))
+            menu->addAction(sep->action());
+        else if (auto* act = dynamic_cast<AxActionWrapper*>(item.menu))
+            menu->addAction(act->action());
+        else if (auto* sub = dynamic_cast<AxMenuWrapper*>(item.menu))
+            menu->addMenu(sub->menu());
+        else
+            continue;
+        count++;
+    }
+    return count;
+}
+
 void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os)
 {
     auto commanderList = adaptixWidget->GetCommanders(listeners, agents, os);
@@ -177,11 +220,8 @@ void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QS
 QStringList AxScriptManager::EventList()
 {
     QStringList slist;
-    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
-    list.append(this->mainScript);
-
-    for (const auto script : list) {
-        if (script != nullptr)
+    for (const auto script : getAllEngines()) {
+        if (script)
             slist += script->listEvent();
     }
     return slist;
@@ -189,11 +229,10 @@ QStringList AxScriptManager::EventList()
 
 void AxScriptManager::EventRemove(const QString &event_id)
 {
-    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
-    list.append(this->mainScript);
-
-    for (const auto script : list)
-        script->removeEvent(event_id);
+    for (const auto script : getAllEngines()) {
+        if (script)
+            script->removeEvent(event_id);
+    }
 }
 
 QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, const QString &menuType)
@@ -201,7 +240,7 @@ QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, 
     QSet<QString> agentTypes;
     QSet<QString> listenerTypes;
     QSet<int>     osTypes;
-    for (auto agent_id: agentIds) {
+    for (const auto& agent_id: agentIds) {
         if (adaptixWidget->AgentsMap.contains(agent_id)) {
             agentTypes.insert(adaptixWidget->AgentsMap[agent_id]->data.Name);
             osTypes.insert(adaptixWidget->AgentsMap[agent_id]->data.Os);
@@ -209,22 +248,19 @@ QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, 
         }
     }
 
-    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
-    list.append(this->mainScript);
-
     QList<AxMenuItem> items;
-    for (const auto script : list)
-        items += script->getMenuItems(menuType);
+    for (const auto script : getAllEngines()) {
+        if (script)
+            items += script->getMenuItems(menuType);
+    }
 
     QList<AxMenuItem> ret;
-    for (int i = 0; i < items.size(); ++i) {
-        AxMenuItem item = items[i];
-
-        if ( !item.agents.contains(agentTypes) )
+    for (const auto& item : items) {
+        if (!item.agents.contains(agentTypes))
             continue;
         if (item.os.size() > 0 && !item.os.contains(osTypes))
             continue;
-        if (item.listenerts.size() > 0 && !item.listenerts.contains(listenerTypes))
+        if (item.listeners.size() > 0 && !item.listeners.contains(listenerTypes))
             continue;
 
         ret.append(item);
@@ -236,29 +272,25 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
 {
     QList<AxEvent> ret;
 
-    if( !adaptixWidget->AgentsMap.contains(agentId) )
+    if (!adaptixWidget->AgentsMap.contains(agentId))
         return ret;
 
     QString agentType    = adaptixWidget->AgentsMap[agentId]->data.Name;
     QString listenerType = adaptixWidget->AgentsMap[agentId]->listenerType;
-    int     osType          = adaptixWidget->AgentsMap[agentId]->data.Os;
-
-    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
-    list.append(this->mainScript);
+    int     osType       = adaptixWidget->AgentsMap[agentId]->data.Os;
 
     QList<AxEvent> items;
-    for (const auto script : list) {
-        items += script->getEvents(eventType);
+    for (const auto script : getAllEngines()) {
+        if (script)
+            items += script->getEvents(eventType);
     }
 
-    for (int i = 0; i < items.size(); ++i) {
-        AxEvent event = items[i];
-
-        if ( !event.agents.contains(agentType) )
+    for (const auto& event : items) {
+        if (!event.agents.contains(agentType))
             continue;
         if (event.os.size() > 0 && !event.os.contains(osType))
             continue;
-        if (event.listenerts.size() > 0 && !event.listenerts.contains(listenerType))
+        if (event.listeners.size() > 0 && !event.listeners.contains(listenerType))
             continue;
 
         ret.append(event);
@@ -322,36 +354,19 @@ void AxScriptManager::AppAgentSetTag(const QStringList &agents, const QString &t
 int AxScriptManager::AddMenuSession(QMenu *menu, const QString &menuType, QStringList agentIds)
 {
     QVariantList context;
-    for (auto agent_id: agentIds) {
-        if (adaptixWidget->AgentsMap.contains(agent_id)) {
+    for (const auto& agent_id: agentIds) {
+        if (adaptixWidget->AgentsMap.contains(agent_id))
             context << agent_id;
-        }
     }
-    int count = 0;
-    QList<AxMenuItem> items = this->FilterMenuItems(agentIds, menuType);
-    for (int i = 0; i < items.size(); ++i) {
-        AxMenuItem item = items[i];
-
-        item.menu->setContext(context);
-        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
-            menu->addAction(item1->action());
-        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
-            menu->addAction(item2->action());
-        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
-            menu->addMenu(item3->menu());
-        else
-            continue;
-        count++;
-    }
-    return count;
+    return addMenuItemsToMenu(menu, FilterMenuItems(agentIds, menuType), context);
 }
 
 int AxScriptManager::AddMenuFileBrowser(QMenu *menu, QVector<DataMenuFileBrowser> files)
 {
     if (files.empty()) return 0;
 
-    QVariantList  context;
-    for (auto file : files) {
+    QVariantList context;
+    for (const auto& file : files) {
         if (adaptixWidget->AgentsMap.contains(file.agentId)) {
             QVariantMap map;
             map["agent_id"] = file.agentId;
@@ -361,32 +376,15 @@ int AxScriptManager::AddMenuFileBrowser(QMenu *menu, QVector<DataMenuFileBrowser
             context << map;
         }
     }
-
-    int count = 0;
-    QList<AxMenuItem> items = this->FilterMenuItems(QStringList() << files[0].agentId, "FileBrowser");
-    for (int i = 0; i < items.size(); ++i) {
-        AxMenuItem item = items[i];
-
-        item.menu->setContext(context);
-        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
-            menu->addAction(item1->action());
-        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
-            menu->addAction(item2->action());
-        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
-            menu->addMenu(item3->menu());
-        else
-            continue;
-        count++;
-    }
-    return count;
+    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << files[0].agentId, "FileBrowser"), context);
 }
 
 int AxScriptManager::AddMenuProcessBrowser(QMenu *menu, QVector<DataMenuProcessBrowser> processes)
 {
     if (processes.empty()) return 0;
 
-    QVariantList  context;
-    for (auto proc : processes) {
+    QVariantList context;
+    for (const auto& proc : processes) {
         if (adaptixWidget->AgentsMap.contains(proc.agentId)) {
             QVariantMap map;
             map["agent_id"]   = proc.agentId;
@@ -399,24 +397,7 @@ int AxScriptManager::AddMenuProcessBrowser(QMenu *menu, QVector<DataMenuProcessB
             context << map;
         }
     }
-
-    int count = 0;
-    QList<AxMenuItem> items = this->FilterMenuItems(QStringList() << processes[0].agentId, "ProcessBrowser");
-    for (int i = 0; i < items.size(); ++i) {
-        AxMenuItem item = items[i];
-
-        item.menu->setContext(context);
-        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
-            menu->addAction(item1->action());
-        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
-            menu->addAction(item2->action());
-        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
-            menu->addMenu(item3->menu());
-        else
-            continue;
-        count++;
-    }
-    return count;
+    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << processes[0].agentId, "ProcessBrowser"), context);
 }
 
 int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVector<DataMenuDownload> files)
@@ -424,7 +405,7 @@ int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVect
     if (files.empty()) return 0;
 
     QVariantList context;
-    for (auto file : files) {
+    for (const auto& file : files) {
         if (adaptixWidget->AgentsMap.contains(file.agentId)) {
             QVariantMap map;
             map["agent_id"] = file.agentId;
@@ -434,24 +415,7 @@ int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVect
             context << map;
         }
     }
-
-    int count = 0;
-    QList<AxMenuItem> items = this->FilterMenuItems(QStringList() << files[0].agentId, menuType);
-    for (int i = 0; i < items.size(); ++i) {
-        AxMenuItem item = items[i];
-
-        item.menu->setContext(context);
-        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
-            menu->addAction(item1->action());
-        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
-            menu->addAction(item2->action());
-        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
-            menu->addMenu(item3->menu());
-        else
-            continue;
-        count++;
-    }
-    return count;
+    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << files[0].agentId, menuType), context);
 }
 
 int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QStringList &tasks)
@@ -459,20 +423,19 @@ int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QSt
     if (tasks.empty()) return 0;
 
     QSet<QString> agents;
-
     QVariantList context;
-    for (auto taskId : tasks) {
+    for (const auto& taskId : tasks) {
         if (adaptixWidget->TasksMap.contains(taskId)) {
             TaskData taskData = adaptixWidget->TasksMap[taskId];
             QVariantMap map;
             map["agent_id"] = taskData.AgentId;
             map["task_id"]  = taskData.TaskId;
             map["state"]    = taskData.Status;
-            if ( taskData.TaskType == 1 )
+            if (taskData.TaskType == 1)
                 map["type"] = "TASK";
-            else if ( taskData.TaskType == 3 )
+            else if (taskData.TaskType == 3)
                 map["type"] = "JOB";
-            else if ( taskData.TaskType == 4 )
+            else if (taskData.TaskType == 4)
                 map["type"] = "TUNNEL";
             else
                 map["type"] = "unknown";
@@ -481,86 +444,35 @@ int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QSt
             agents.insert(taskData.AgentId);
         }
     }
-
-    int count = 0;
-    QList<AxMenuItem> items = this->FilterMenuItems(QList<QString>(agents.begin(), agents.end()), menuType);
-    for (int i = 0; i < items.size(); ++i) {
-        AxMenuItem item = items[i];
-
-        item.menu->setContext(context);
-        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
-            menu->addAction(item1->action());
-        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
-            menu->addAction(item2->action());
-        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
-            menu->addMenu(item3->menu());
-        else
-            continue;
-        count++;
-    }
-    return count;
+    return addMenuItemsToMenu(menu, FilterMenuItems(QList<QString>(agents.begin(), agents.end()), menuType), context);
 }
 
 int AxScriptManager::AddMenuTargets(QMenu *menu, const QString &menuType, const QStringList &targets)
 {
     QVariantList context;
-    for (auto targetId: targets)
+    for (const auto& targetId: targets)
         context << targetId;
 
-    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
-    list.append(this->mainScript);
-
     QList<AxMenuItem> items;
-    for (const auto script : list)
-        items += script->getMenuItems(menuType);
-
-    int count = 0;
-    for (int i = 0; i < items.size(); ++i) {
-        AxMenuItem item = items[i];
-
-        item.menu->setContext(context);
-        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
-            menu->addAction(item1->action());
-        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
-            menu->addAction(item2->action());
-        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
-            menu->addMenu(item3->menu());
-        else
-            continue;
-        count++;
+    for (const auto script : getAllEngines()) {
+        if (script)
+            items += script->getMenuItems(menuType);
     }
-    return count;
+    return addMenuItemsToMenu(menu, items, context);
 }
 
 int AxScriptManager::AddMenuCreds(QMenu *menu, const QString &menuType, const QStringList &creds)
 {
     QVariantList context;
-    for (auto credId: creds)
+    for (const auto& credId: creds)
         context << credId;
 
-    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
-    list.append(this->mainScript);
-
     QList<AxMenuItem> items;
-    for (const auto script : list)
-        items += script->getMenuItems(menuType);
-
-    int count = 0;
-    for (int i = 0; i < items.size(); ++i) {
-        AxMenuItem item = items[i];
-
-        item.menu->setContext(context);
-        if (auto* item1 = dynamic_cast<AxSeparatorWrapper*>(item.menu))
-            menu->addAction(item1->action());
-        else if (auto* item2 = dynamic_cast<AxActionWrapper*>(item.menu))
-            menu->addAction(item2->action());
-        else if (auto* item3 = dynamic_cast<AxMenuWrapper*>(item.menu))
-            menu->addMenu(item3->menu());
-        else
-            continue;
-        count++;
+    for (const auto script : getAllEngines()) {
+        if (script)
+            items += script->getMenuItems(menuType);
     }
-    return count;
+    return addMenuItemsToMenu(menu, items, context);
 }
 
 
@@ -568,99 +480,79 @@ int AxScriptManager::AddMenuCreds(QMenu *menu, const QString &menuType, const QS
 
 void AxScriptManager::emitNewAgent(const QString &agentId)
 {
-    QList<AxEvent> items = this->FilterEvents(agentId, "new_agent");
-    for (int i = 0; i < items.size(); ++i) {
-        AxEvent event = items[i];
+    for (const auto& event : FilterEvents(agentId, "new_agent")) {
         if (event.jsEngine) {
             QJSValue argId = event.jsEngine->toScriptValue(agentId);
-            event.handler.call(QJSValueList() << argId);
+            safeCallHandler(event, QJSValueList() << argId);
         }
     }
 }
 
 void AxScriptManager::emitFileBrowserDisks(const QString &agentId)
 {
-    QList<AxEvent> items = this->FilterEvents(agentId, "FileBroserDisks");
-    for (int i = 0; i < items.size(); ++i) {
-       AxEvent event = items[i];
+    for (const auto& event : FilterEvents(agentId, "FileBrowserDisks")) {
         if (event.jsEngine) {
             QJSValue argId = event.jsEngine->toScriptValue(agentId);
-            event.handler.call(QJSValueList() << argId);
+            safeCallHandler(event, QJSValueList() << argId);
         }
     }
 }
 
 void AxScriptManager::emitFileBrowserList(const QString &agentId, const QString &path)
 {
-    QList<AxEvent> items = this->FilterEvents(agentId, "FileBroserList");
-    for (int i = 0; i < items.size(); ++i) {
-        AxEvent event = items[i];
+    for (const auto& event : FilterEvents(agentId, "FileBrowserList")) {
         if (event.jsEngine) {
             QJSValue argId   = event.jsEngine->toScriptValue(agentId);
             QJSValue argPath = event.jsEngine->toScriptValue(path);
-            event.handler.call(QJSValueList() << argId << argPath);
+            safeCallHandler(event, QJSValueList() << argId << argPath);
         }
     }
 }
 
 void AxScriptManager::emitFileBrowserUpload(const QString &agentId, const QString &path, const QString &localFilename)
 {
-    QList<AxEvent> items = this->FilterEvents(agentId, "FileBrowserUpload");
-    for (int i = 0; i < items.size(); ++i) {
-        AxEvent event = items[i];
+    for (const auto& event : FilterEvents(agentId, "FileBrowserUpload")) {
         if (event.jsEngine) {
             QJSValue argId   = event.jsEngine->toScriptValue(agentId);
             QJSValue argPath = event.jsEngine->toScriptValue(path);
             QJSValue argFile = event.jsEngine->toScriptValue(localFilename);
-            event.handler.call(QJSValueList() << argId << argPath << argFile);
+            safeCallHandler(event, QJSValueList() << argId << argPath << argFile);
         }
     }
 }
 
 void AxScriptManager::emitProcessBrowserList(const QString &agentId)
 {
-    QList<AxEvent> items = this->FilterEvents(agentId, "ProcessBrowserList");
-    for (int i = 0; i < items.size(); ++i) {
-        AxEvent event = items[i];
+    for (const auto& event : FilterEvents(agentId, "ProcessBrowserList")) {
         if (event.jsEngine) {
             QJSValue argId = event.jsEngine->toScriptValue(agentId);
-            event.handler.call(QJSValueList() << argId);
+            safeCallHandler(event, QJSValueList() << argId);
         }
     }
 }
 
 void AxScriptManager::emitReadyClient()
 {
-    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
-    list.append(this->mainScript);
-
     QList<AxEvent> items;
-    for (const auto script : list) {
-        items += script->getEvents("ready");
+    for (const auto script : getAllEngines()) {
+        if (script)
+            items += script->getEvents("ready");
     }
 
-    for (int i = 0; i < items.size(); ++i) {
-        AxEvent event = items[i];
-        if (event.jsEngine)
-            event.handler.call();
-    }
+    for (const auto& event : items)
+        safeCallHandler(event);
 }
 
 void AxScriptManager::emitDisconnectClient()
 {
-    QList<AxScriptEngine*> list = this->agents_scripts.values() + this->scripts.values();
-    list.append(this->mainScript);
-
     QList<AxEvent> items;
-    for (const auto script : list) {
-        items += script->getEvents("disconnect");
+    for (const auto script : getAllEngines()) {
+        if (script)
+            items += script->getEvents("disconnect");
     }
 
-    for (int i = 0; i < items.size(); ++i) {
-        AxEvent event = items[i];
-        if (event.jsEngine)
-            event.handler.call();
-    }
+    for (const auto& event : items)
+        safeCallHandler(event);
 }
 
 /// SLOTS

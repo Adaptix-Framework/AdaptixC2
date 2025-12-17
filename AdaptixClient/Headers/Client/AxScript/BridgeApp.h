@@ -11,7 +11,6 @@ class Command;
 class BridgeApp : public QObject {
 Q_OBJECT
     AxScriptEngine* scriptEngine;
-    QWidget*        widget;
 
 public:
     explicit BridgeApp(AxScriptEngine* scriptEngine, QObject* parent = nullptr);

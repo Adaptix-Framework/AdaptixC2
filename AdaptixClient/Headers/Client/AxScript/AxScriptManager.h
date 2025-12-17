@@ -86,6 +86,10 @@ public:
     QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType);
     QList<AxEvent>    FilterEvents(const QString &agentId, const QString &eventType);
 
+    QList<AxScriptEngine*> getAllEngines() const;
+    void safeCallHandler(const AxEvent& event, const QJSValueList& args = QJSValueList());
+    int  addMenuItemsToMenu(QMenu* menu, const QList<AxMenuItem>& items, const QVariantList& context);
+
     void AppAgentHide(const QStringList &agents);
     void AppAgentRemove(const QStringList &agents);
     void AppAgentSetColor(const QStringList &agents, const QString &background, const QString &foreground, const bool reset);

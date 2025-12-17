@@ -458,12 +458,14 @@ void AxTableWidgetWrapper::setText(const int row, const int column, const QStrin
 void AxTableWidgetWrapper::setReadOnly(const bool read)
 {
     for(int rowIndex = 0; rowIndex < table->rowCount(); rowIndex++) {
-        for(int columnIndex = 0; columnIndex < table->rowCount(); columnIndex++) {
+        for(int columnIndex = 0; columnIndex < table->columnCount(); columnIndex++) {
             auto item = table->item(rowIndex, columnIndex);
-            if (read)
-                item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-            else
-                item->setFlags(item->flags() | Qt::ItemIsEditable);
+            if (item) {
+                if (read)
+                    item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+                else
+                    item->setFlags(item->flags() | Qt::ItemIsEditable);
+            }
         }
     }
 }

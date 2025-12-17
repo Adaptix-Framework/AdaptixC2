@@ -5,14 +5,15 @@
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxCommandWrappers.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <Client/AxScript/AxScriptUtils.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Widgets/TargetsWidget.h>
 
-BridgeApp::BridgeApp(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine), widget(new QWidget()){}
+BridgeApp::BridgeApp(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine) {}
 
-BridgeApp::~BridgeApp() { delete widget; }
+BridgeApp::~BridgeApp() = default;
 
 AxScriptEngine* BridgeApp::GetScriptEngine() const { return this->scriptEngine; }
 
@@ -115,84 +116,54 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
 
 void BridgeApp::agent_hide(const QJSValue &agents)
 {
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+    if (!AxScriptUtils::isValidArray(agents)) {
         Q_EMIT engineError("agent_hide expected array of strings in agents parameter!");
         return;
     }
 
-    QStringList list_agents;
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    scriptEngine->manager()->AppAgentHide(list_agents);
+    scriptEngine->manager()->AppAgentHide(AxScriptUtils::jsArrayToStringList(agents));
 }
 
 void BridgeApp::agent_remove(const QJSValue &agents)
 {
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+    if (!AxScriptUtils::isValidArray(agents)) {
         Q_EMIT engineError("agent_remove expected array of strings in agents parameter!");
         return;
     }
 
-    QStringList list_agents;
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    scriptEngine->manager()->AppAgentRemove(list_agents);
+    scriptEngine->manager()->AppAgentRemove(AxScriptUtils::jsArrayToStringList(agents));
 }
 
 void BridgeApp::agent_set_color(const QJSValue &agents, const QString &background, const QString &foreground, const bool reset)
 {
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+    if (!AxScriptUtils::isValidArray(agents)) {
         Q_EMIT engineError("agent_set_color expected array of strings in agents parameter!");
         return;
     }
 
-    QStringList list_agents;
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    scriptEngine->manager()->AppAgentSetColor(list_agents, background, foreground, reset);
+    scriptEngine->manager()->AppAgentSetColor(AxScriptUtils::jsArrayToStringList(agents), background, foreground, reset);
 }
 
 void BridgeApp::agent_set_impersonate(const QString &id, const QString &impersonate, const bool elevated) { scriptEngine->manager()->AppAgentSetImpersonate(id, impersonate, elevated); }
 
 void BridgeApp::agent_set_mark(const QJSValue &agents, const QString &mark)
 {
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
-        Q_EMIT engineError("agent_set_color expected array of strings in agents parameter!");
+    if (!AxScriptUtils::isValidArray(agents)) {
+        Q_EMIT engineError("agent_set_mark expected array of strings in agents parameter!");
         return;
     }
 
-    QStringList list_agents;
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    scriptEngine->manager()->AppAgentSetMark(list_agents, mark);
+    scriptEngine->manager()->AppAgentSetMark(AxScriptUtils::jsArrayToStringList(agents), mark);
 }
 
 void BridgeApp::agent_set_tag(const QJSValue &agents, const QString &tag)
 {
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
-        Q_EMIT engineError("agent_set_color expected array of strings in agents parameter!");
+    if (!AxScriptUtils::isValidArray(agents)) {
+        Q_EMIT engineError("agent_set_tag expected array of strings in agents parameter!");
         return;
     }
 
-    QStringList list_agents;
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    scriptEngine->manager()->AppAgentSetTag(list_agents, tag);
+    scriptEngine->manager()->AppAgentSetTag(AxScriptUtils::jsArrayToStringList(agents), tag);
 }
 
 QString BridgeApp::arch(const QString &id) const
@@ -375,7 +346,7 @@ void BridgeApp::credentials_add_list(const QVariantList &array)
         if (map.contains("username")) cd.Username = map["username"].toString();
         if (map.contains("password")) cd.Password = map["password"].toString();
         if (map.contains("realm"))    cd.Realm    = map["realm"].toString();
-        if (map.contains("type"))     cd.Tag      = map["type"].toString();
+        if (map.contains("type"))     cd.Type     = map["type"].toString();
         if (map.contains("tag"))      cd.Tag      = map["tag"].toString();
         if (map.contains("storage"))  cd.Storage  = map["storage"].toString();
         if (map.contains("host"))     cd.Host     = map["host"].toString();
@@ -636,40 +607,19 @@ int BridgeApp::random_int(const int min, const int max) { return GenerateRandomI
 
 void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners)
 {
-    QList<int> list_os;
-    QStringList list_agents;
-    QStringList list_listeners;
-
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+    if (!AxScriptUtils::isValidArray(agents)) {
         Q_EMIT engineError("register_commands_group expected array of strings in agents parameter!");
         return;
     }
 
-    if (os.isUndefined() && (os.isNull() || !os.isArray()) ) {
+    if (!AxScriptUtils::isOptionalValidArray(os)) {
         Q_EMIT engineError("register_commands_group expected array of strings in os parameter!");
         return;
     }
 
-    if (listeners.isUndefined() && (listeners.isNull() || !listeners.isArray())) {
+    if (!AxScriptUtils::isOptionalValidArray(listeners)) {
         Q_EMIT engineError("register_commands_group expected array of strings in listeners parameter!");
         return;
-    }
-
-    for (int i = 0; i < os.property("length").toInt(); ++i) {
-        QJSValue val = os.property(i);
-        if (val.toString() == "windows") list_os.append(1);
-        else if (val.toString() == "linux") list_os.append(2);
-        else if (val.toString() == "macos") list_os.append(3);
-    }
-
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    for (int i = 0; i < listeners.property("length").toInt(); ++i) {
-        QJSValue val = listeners.property(i);
-        list_listeners << val.toString();
     }
 
     auto wrapper = qobject_cast<AxCommandGroupWrapper*>(obj);
@@ -684,7 +634,12 @@ void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, co
     commandsGroup.engine    = wrapper->getEngine();
     commandsGroup.filepath  = scriptEngine->context.name;
 
-    scriptEngine->manager()->RegisterCommandsGroup(commandsGroup, list_listeners, list_agents, list_os);
+    scriptEngine->manager()->RegisterCommandsGroup(
+        commandsGroup,
+        AxScriptUtils::jsArrayToStringList(listeners),
+        AxScriptUtils::jsArrayToStringList(agents),
+        AxScriptUtils::parseOsList(os)
+    );
 }
 
 void BridgeApp::script_import(const QString &path)

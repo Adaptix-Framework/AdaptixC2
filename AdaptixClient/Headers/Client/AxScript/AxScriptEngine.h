@@ -20,7 +20,7 @@ struct AxEvent {
     QTimer*       timer;
     QString       event_id;
     QSet<QString> agents;
-    QSet<QString> listenerts;
+    QSet<QString> listeners;
     QSet<int>     os;
     QJSEngine*    jsEngine;
 };
@@ -28,7 +28,7 @@ struct AxEvent {
 struct AxMenuItem {
     AbstractAxMenuItem* menu;
     QSet<QString> agents;
-    QSet<QString> listenerts;
+    QSet<QString> listeners;
     QSet<int>     os;
 };
 
@@ -38,29 +38,8 @@ struct ScriptContext {
     QList<QObject*> objects;
     QList<QAction*> actions;
 
-    QList<AxEvent> eventFileBroserDisks;
-    QList<AxEvent> eventFileBroserList;
-    QList<AxEvent> eventFileBrowserUpload;
-    QList<AxEvent> eventProcessBrowserList;
-    QList<AxEvent> eventNewAgent;
-    QList<AxEvent> eventReady;
-    QList<AxEvent> eventDisconnect;
-    QList<AxEvent> eventTimer;
-
-    QList<AxMenuItem> menuSessionMain;
-    QList<AxMenuItem> menuSessionAgent;
-    QList<AxMenuItem> menuSessionBrowser;
-    QList<AxMenuItem> menuSessionAccess;
-    QList<AxMenuItem> menuFileBrowser;
-    QList<AxMenuItem> menuProcessBrowser;
-    QList<AxMenuItem> menuDownloadRunning;
-    QList<AxMenuItem> menuDownloadFinished;
-    QList<AxMenuItem> menuTasks;
-    QList<AxMenuItem> menuTasksJob;
-    QList<AxMenuItem> menuTargetsTop;
-    QList<AxMenuItem> menuTargetsBottom;
-    QList<AxMenuItem> menuTargetsCenter;
-    QList<AxMenuItem> menuCreds;
+    QHash<QString, AxEvent> events;
+    QHash<QString, QList<AxMenuItem>> menus;
 };
 
 class AxScriptEngine : public QObject {

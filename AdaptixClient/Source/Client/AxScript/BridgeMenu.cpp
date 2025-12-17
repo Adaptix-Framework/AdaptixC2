@@ -1,38 +1,20 @@
 #include <Client/AxScript/BridgeMenu.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxElementWrappers.h>
+#include <Client/AxScript/AxScriptUtils.h>
 
-BridgeMenu::BridgeMenu(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine), widget(new QWidget()) {}
+BridgeMenu::BridgeMenu(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine) {}
 
-BridgeMenu::~BridgeMenu() { delete widget; }
+BridgeMenu::~BridgeMenu() = default;
 
 void BridgeMenu::reg(const QString &type, AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners)
 {
-    QSet<QString> list_agents;
-    QSet<QString> list_os;
-    QSet<QString> list_listeners;
-
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0)
+    if (!AxScriptUtils::isValidNonEmptyArray(agents))
         return;
 
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents.insert(val.toString());
-    }
-
-    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
-        for (int i = 0; i < os.property("length").toInt(); ++i) {
-            QJSValue val = os.property(i);
-            list_os << val.toString();
-        }
-    }
-
-    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
-        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
-            QJSValue val = listeners.property(i);
-            list_listeners << val.toString();
-        }
-    }
+    QSet<QString> list_agents    = AxScriptUtils::jsArrayToStringSet(agents);
+    QSet<QString> list_os        = AxScriptUtils::jsArrayToStringSet(os);
+    QSet<QString> list_listeners = AxScriptUtils::jsArrayToStringSet(listeners);
 
     this->scriptEngine->registerMenu(type, item, list_agents, list_os, list_listeners);
 }

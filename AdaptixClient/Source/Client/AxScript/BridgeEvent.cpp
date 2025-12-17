@@ -1,6 +1,7 @@
 #include <Client/AxScript/BridgeEvent.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <Client/AxScript/AxScriptUtils.h>
 
 BridgeEvent::BridgeEvent(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine) {}
 
@@ -9,37 +10,18 @@ BridgeEvent::~BridgeEvent() {}
 void BridgeEvent::reg(const QString &event, const QString &type, const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id)
 {
     if (!handler.isCallable()) {
-        Q_EMIT scriptError( type + " -> handler in not Callable");
+        Q_EMIT scriptError(type + " -> handler is not Callable");
         return;
     }
 
-    QSet<QString> list_agents;
-    QSet<QString> list_os;
-    QSet<QString> list_listeners;
-
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray() || agents.property("length").toInt() == 0) {
-        Q_EMIT scriptError(type + " -> agents in undefined");
+    if (!AxScriptUtils::isValidNonEmptyArray(agents)) {
+        Q_EMIT scriptError(type + " -> agents is undefined or empty");
         return;
     }
 
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents.insert(val.toString());
-    }
-
-    if (!os.isUndefined() && !os.isNull() && os.isArray()) {
-        for (int i = 0; i < os.property("length").toInt(); ++i) {
-            QJSValue val = os.property(i);
-            list_os << val.toString();
-        }
-    }
-
-    if (!listeners.isUndefined() && !listeners.isNull() && listeners.isArray()) {
-        for (int i = 0; i < listeners.property("length").toInt(); ++i) {
-            QJSValue val = listeners.property(i);
-            list_listeners << val.toString();
-        }
-    }
+    QSet<QString> list_agents    = AxScriptUtils::jsArrayToStringSet(agents);
+    QSet<QString> list_os        = AxScriptUtils::jsArrayToStringSet(os);
+    QSet<QString> list_listeners = AxScriptUtils::jsArrayToStringSet(listeners);
 
     this->scriptEngine->registerEvent(event, handler, nullptr, list_agents, list_os, list_listeners, event_id);
 }
@@ -47,11 +29,11 @@ void BridgeEvent::reg(const QString &event, const QString &type, const QJSValue 
 
 
 void BridgeEvent::on_filebrowser_disks(const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id) {
-    this->reg("FileBroserDisks", "on_filebrowser_disks", handler, agents, os, listeners, event_id);
+    this->reg("FileBrowserDisks", "on_filebrowser_disks", handler, agents, os, listeners, event_id);
 }
 
 void BridgeEvent::on_filebrowser_list(const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id) {
-    this->reg("FileBroserList", "on_filebrowser_list", handler, agents, os, listeners, event_id);
+    this->reg("FileBrowserList", "on_filebrowser_list", handler, agents, os, listeners, event_id);
 }
 
 void BridgeEvent::on_filebrowser_upload(const QJSValue &handler, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners, const QString &event_id) {
@@ -68,24 +50,30 @@ void BridgeEvent::on_new_agent(const QJSValue &handler, const QJSValue &agents, 
 
 void BridgeEvent::on_ready(const QJSValue &handler, const QString &event_id)
 {
-    if (!handler.isCallable())
-        Q_EMIT scriptError("on_ready -> handler in not Callable");
+    if (!handler.isCallable()) {
+        Q_EMIT scriptError("on_ready -> handler is not Callable");
+        return;
+    }
 
     this->scriptEngine->registerEvent("ready", handler, nullptr, QSet<QString>(), QSet<QString>(), QSet<QString>(), event_id);
 }
 
 void BridgeEvent::on_disconnect(const QJSValue &handler, const QString &event_id)
 {
-    if (!handler.isCallable())
-        Q_EMIT scriptError("on_disconnect -> handler in not Callable");
+    if (!handler.isCallable()) {
+        Q_EMIT scriptError("on_disconnect -> handler is not Callable");
+        return;
+    }
 
     this->scriptEngine->registerEvent("disconnect", handler, nullptr, QSet<QString>(), QSet<QString>(), QSet<QString>(), event_id);
 }
 
 QString BridgeEvent::on_interval(const QJSValue &handler, int delay, QString event_id)
 {
-    if (!handler.isCallable())
-        Q_EMIT scriptError("on_timer -> handler in not Callable");
+    if (!handler.isCallable()) {
+        Q_EMIT scriptError("on_interval -> handler is not Callable");
+        return "";
+    }
 
     if (delay < 0) delay = 0;
     if (event_id == "") event_id = "interval_" + GenerateRandomString(8, "hex");
@@ -104,8 +92,10 @@ QString BridgeEvent::on_interval(const QJSValue &handler, int delay, QString eve
 
 QString BridgeEvent::on_timeout(const QJSValue &handler, int delay, QString event_id)
 {
-    if (!handler.isCallable())
-        Q_EMIT scriptError("on_timeout -> handler in not Callable");
+    if (!handler.isCallable()) {
+        Q_EMIT scriptError("on_timeout -> handler is not Callable");
+        return "";
+    }
 
     if (delay < 0) delay = 0;
     if (event_id == "") event_id = "timeout_" + GenerateRandomString(8, "hex");

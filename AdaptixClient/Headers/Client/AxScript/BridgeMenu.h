@@ -13,7 +13,6 @@ class AxSeparatorWrapper;
 class BridgeMenu : public QObject {
 Q_OBJECT
     AxScriptEngine* scriptEngine;
-    QWidget*        widget;
     QList<AbstractAxMenuItem*> menuItems;
 
     QList<AbstractAxMenuItem*> items() const;
