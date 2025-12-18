@@ -16,18 +16,22 @@ class DialogConnect : public QDialog
     QLabel*       label_Password      = nullptr;
     QLabel*       label_ServerDetails = nullptr;
     QLabel*       label_Project       = nullptr;
+    QLabel*       label_ProjectDir    = nullptr;
     QLabel*       label_Host          = nullptr;
     QLabel*       label_Port          = nullptr;
     QLabel*       label_Endpoint      = nullptr;
     QLineEdit*    lineEdit_User       = nullptr;
     QLineEdit*    lineEdit_Password   = nullptr;
     QLineEdit*    lineEdit_Project    = nullptr;
+    QLineEdit*    lineEdit_ProjectDir = nullptr;
     QLineEdit*    lineEdit_Host       = nullptr;
     QLineEdit*    lineEdit_Port       = nullptr;
     QLineEdit*    lineEdit_Endpoint   = nullptr;
     QPushButton*  ButtonConnect       = nullptr;
     QTableWidget* tableWidget         = nullptr;
     QMenu*        menuContex          = nullptr;
+
+    bool          projectDirTouched   = false;
 
     void createUI();
     bool checkValidInput() const;
@@ -46,6 +50,9 @@ private Q_SLOTS:
     void handleContextMenu( const QPoint &pos ) const;
     void itemSelected();
     void itemRemove() const;
+    void onProjectNameChanged(const QString &text);
+    void onProjectDirEdited(const QString &text);
+    void onSelectProjectDir();
 
 };
 

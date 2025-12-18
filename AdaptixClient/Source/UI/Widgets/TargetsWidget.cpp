@@ -441,7 +441,13 @@ void TargetsWidget::onExportTarget() const
 
     QString format = dialog.textValue();
 
-    NonBlockingDialogs::getSaveFileName(const_cast<TargetsWidget*>(this), "Save Targets", "targets.txt", "Text Files (*.txt);;All Files (*)",
+    QString baseDir;
+    if (adaptixWidget && adaptixWidget->GetProfile())
+        baseDir = adaptixWidget->GetProfile()->GetProjectDir();
+    QString initialPath = baseDir.isEmpty() ? QStringLiteral("targets.txt")
+                                            : QDir(baseDir).filePath(QStringLiteral("targets.txt"));
+
+    NonBlockingDialogs::getSaveFileName(const_cast<TargetsWidget*>(this), "Save Targets", initialPath, "Text Files (*.txt);;All Files (*)",
         [this, format](const QString& fileName) {
             if (fileName.isEmpty())
                 return;

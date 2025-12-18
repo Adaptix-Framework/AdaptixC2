@@ -34,6 +34,8 @@ public:
     void UpdateGraphIcons();
     void UpdateTasksTableColumns();
 
+    AuthProfile* GetCurrentProfile() const;
+
 protected:
     void closeEvent(QCloseEvent *event) override;
 };

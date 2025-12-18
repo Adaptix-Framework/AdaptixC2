@@ -222,7 +222,8 @@ void DialogListener::onButtonCreate()
 
 void DialogListener::onButtonLoad()
 {
-    NonBlockingDialogs::getOpenFileName(this, "Select file", QDir::homePath(), "JSON files (*.json)",
+    QString baseDir = authProfile.GetProjectDir();
+    NonBlockingDialogs::getOpenFileName(this, "Select file", baseDir, "JSON files (*.json)",
         [this](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
@@ -284,7 +285,9 @@ void DialogListener::onButtonSave()
     QByteArray fileContent = QJsonDocument(dataJson).toJson();
 
     QString tmpFilename = configName + "_listener_config.json";
-    NonBlockingDialogs::getSaveFileName(this, "Save File", tmpFilename, "JSON files (*.json)",
+    QString baseDir = authProfile.GetProjectDir();
+    QString initialPath = QDir(baseDir).filePath(tmpFilename);
+    NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "JSON files (*.json)",
         [this, fileContent](const QString& filePath) {
             if (filePath.isEmpty())
                 return;

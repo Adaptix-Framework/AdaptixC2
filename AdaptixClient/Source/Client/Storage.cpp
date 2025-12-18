@@ -87,7 +87,8 @@ QVector<AuthProfile> Storage::ListProjects()
                                 json["password"].toString(),
                                 json["host"].toString(),
                                 json["port"].toString(),
-                                json["endpoint"].toString());
+                                json["endpoint"].toString(),
+                                json["projectDir"].toString());
             list.push_back(profile);
         }
     }
@@ -117,6 +118,7 @@ void Storage::AddProject(AuthProfile profile)
     json["endpoint"] = profile.GetEndpoint();
     json["username"] = profile.GetUsername();
     json["password"] = profile.GetPassword();
+    json["projectDir"] = profile.GetProjectDir();
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
     QSqlQuery query;
@@ -135,6 +137,7 @@ void Storage::UpdateProject(AuthProfile profile)
     json["endpoint"] = profile.GetEndpoint();
     json["username"] = profile.GetUsername();
     json["password"] = profile.GetPassword();
+    json["projectDir"] = profile.GetProjectDir();
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
     QSqlQuery query;
