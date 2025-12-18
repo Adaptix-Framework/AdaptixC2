@@ -3,6 +3,14 @@
 #include <Client/Storage.h>
 #include <MainAdaptix.h>
 
+static QString defaultProjectDir(const QString &projectName)
+{
+    QDir home(QDir::homePath());
+    QString basePath = home.filePath("AdaptixProjects");
+    QDir baseDir(basePath);
+    return baseDir.filePath(projectName.trimmed());
+}
+
 DialogConnect::DialogConnect()
 {
     this->createUI();
@@ -193,12 +201,8 @@ AuthProfile* DialogConnect::StartDialog()
     this->exec();
     if( this->toConnect ) {
         QString projectDir = lineEdit_ProjectDir ? lineEdit_ProjectDir->text().trimmed() : QString();
-        if (projectDir.isEmpty()) {
-            QDir home(QDir::homePath());
-            QString basePath = home.filePath("AdaptixProjects");
-            QDir baseDir(basePath);
-            projectDir = baseDir.filePath(lineEdit_Project->text().trimmed());
-        }
+        if (projectDir.isEmpty())
+            projectDir = defaultProjectDir(lineEdit_Project->text());
 
         AuthProfile* newProfile = new AuthProfile(
                     lineEdit_Project->text(),
@@ -324,9 +328,6 @@ void DialogConnect::onButton_Clear()
 
 void DialogConnect::onProjectNameChanged(const QString &text)
 {
-    if (!lineEdit_ProjectDir)
-        return;
-
     // Не трогаем путь, если пользователь уже его правил вручную
     if (projectDirTouched)
         return;
@@ -337,12 +338,7 @@ void DialogConnect::onProjectNameChanged(const QString &text)
         return;
     }
 
-    QDir home(QDir::homePath());
-    QString basePath = home.filePath("AdaptixProjects");
-    QDir baseDir(basePath);
-    const QString newDir = baseDir.filePath(name);
-
-    lineEdit_ProjectDir->setText(newDir);
+    lineEdit_ProjectDir->setText(defaultProjectDir(name));
 }
 
 void DialogConnect::onProjectDirEdited(const QString &)
@@ -352,15 +348,9 @@ void DialogConnect::onProjectDirEdited(const QString &)
 
 void DialogConnect::onSelectProjectDir()
 {
-    if (!lineEdit_ProjectDir)
-        return;
-
     QString current = lineEdit_ProjectDir->text().trimmed();
     if (current.isEmpty()) {
-        QDir home(QDir::homePath());
-        QString basePath = home.filePath("AdaptixProjects");
-        QDir baseDir(basePath);
-        current = baseDir.filePath(lineEdit_Project ? lineEdit_Project->text().trimmed() : QString());
+        current = defaultProjectDir(lineEdit_Project ? lineEdit_Project->text() : QString());
     }
 
     QString dir = QFileDialog::getExistingDirectory(this, "Select project directory", current);
