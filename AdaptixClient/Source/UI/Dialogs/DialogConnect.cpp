@@ -131,26 +131,35 @@ void DialogConnect::createUI()
     tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Project" ) );
     tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Host" ) );
 
+    auto formWidget = new QWidget(this);
+    auto formLayout = new QGridLayout(formWidget);
+    formLayout->setContentsMargins(0, 0, 0, 0);
+
+    formLayout->addWidget( label_UserInfo,      0, 0, 1, 2 );
+    formLayout->addWidget( label_User,          1, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_User,       1, 1, 1, 1 );
+    formLayout->addWidget( label_Password,      2, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_Password,   2, 1, 1, 1 );
+
+    formLayout->addWidget( label_ServerDetails, 4, 0, 1, 2 );
+    formLayout->addWidget( label_Project,       5, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_Project,    5, 1, 1, 1 );
+    formLayout->addWidget( label_ProjectDir,    6, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_ProjectDir, 6, 1, 1, 1 );
+    formLayout->addWidget( label_Host,          7, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_Host,       7, 1, 1, 1 );
+    formLayout->addWidget( label_Port,          8, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_Port,       8, 1, 1, 1 );
+    formLayout->addWidget( label_Endpoint,      9, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_Endpoint,   9, 1, 1, 1 );
+
+    formLayout->addWidget( ButtonClear,        10, 0, 1, 1 );
+    formLayout->addWidget( ButtonConnect,      10, 1, 1, 1 );
+    formLayout->setRowStretch(11, 1);
+
     gridLayout = new QGridLayout( this );
-    gridLayout->addWidget( tableWidget,         0, 2, 11, 1 );
-    gridLayout->addWidget( label_UserInfo,      0, 1, 1, 1 );
-    gridLayout->addWidget( label_User,          1, 0, 1, 1 );
-    gridLayout->addWidget( label_Password,      2, 0, 1, 1 );
-    gridLayout->addWidget( label_ServerDetails, 4, 1, 1, 1 );
-    gridLayout->addWidget( label_Project,       5, 0, 1, 1 );
-    gridLayout->addWidget( label_ProjectDir,    6, 0, 1, 1 );
-    gridLayout->addWidget( label_Host,          7, 0, 1, 1 );
-    gridLayout->addWidget( label_Port,          8, 0, 1, 1 );
-    gridLayout->addWidget( label_Endpoint,      9, 0, 1, 1 );
-    gridLayout->addWidget( lineEdit_User,       1, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_Password,   2, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_Project,    5, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_ProjectDir, 6, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_Host,       7, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_Port,       8, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_Endpoint,   9, 1, 1, 1 );
-    gridLayout->addWidget( ButtonClear,        10, 0, 1, 1 );
-    gridLayout->addWidget( ButtonConnect,      10, 1, 1, 1 );
+    gridLayout->addWidget( formWidget,  0, 0, 11, 2 );
+    gridLayout->addWidget( tableWidget, 0, 2, 11, 1 );
 }
 
 void DialogConnect::loadProjects()
