@@ -28,6 +28,7 @@ class DialogConnect : public QDialog
     QLineEdit*    lineEdit_Port       = nullptr;
     QLineEdit*    lineEdit_Endpoint   = nullptr;
     QPushButton*  ButtonConnect       = nullptr;
+    QPushButton*  ButtonClear         = nullptr;
     QTableWidget* tableWidget         = nullptr;
     QMenu*        menuContex          = nullptr;
 
@@ -47,6 +48,7 @@ public:
 
 private Q_SLOTS:
     void onButton_Connect();
+    void onButton_Clear();
     void handleContextMenu( const QPoint &pos ) const;
     void itemSelected();
     void itemRemove() const;

@@ -19,6 +19,7 @@ DialogConnect::DialogConnect()
     connect( lineEdit_User,     &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect );
     connect( lineEdit_Password, &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect );
     connect( ButtonConnect,     &QPushButton::clicked,     this, &DialogConnect::onButton_Connect );
+    connect( ButtonClear,       &QPushButton::clicked,     this, &DialogConnect::onButton_Clear );
 
     if (lineEdit_Project) {
         connect(lineEdit_Project, &QLineEdit::textChanged,
@@ -98,6 +99,10 @@ void DialogConnect::createUI()
     ButtonConnect->setText("Connect");
     ButtonConnect->setFocus();
 
+    ButtonClear = new QPushButton(this);
+    ButtonClear->setProperty("ButtonStyle", "dialog");
+    ButtonClear->setText("Clear");
+
 
     menuContex = new QMenu( this );
     menuContex->addAction( "Remove", this, &DialogConnect::itemRemove );
@@ -144,7 +149,8 @@ void DialogConnect::createUI()
     gridLayout->addWidget( lineEdit_Host,       7, 1, 1, 1 );
     gridLayout->addWidget( lineEdit_Port,       8, 1, 1, 1 );
     gridLayout->addWidget( lineEdit_Endpoint,   9, 1, 1, 1 );
-    gridLayout->addWidget( ButtonConnect,       10, 1, 1, 1 );
+    gridLayout->addWidget( ButtonClear,        10, 0, 1, 1 );
+    gridLayout->addWidget( ButtonConnect,      10, 1, 1, 1 );
 }
 
 void DialogConnect::loadProjects()
@@ -285,6 +291,26 @@ void DialogConnect::onButton_Connect()
         this->toConnect = true;
         close();
     }
+}
+
+void DialogConnect::onButton_Clear()
+{
+    if (lineEdit_User)        lineEdit_User->clear();
+    if (lineEdit_Password)    lineEdit_Password->clear();
+    if (lineEdit_Project)     lineEdit_Project->clear();
+    if (lineEdit_ProjectDir)  lineEdit_ProjectDir->clear();
+    if (lineEdit_Host)        lineEdit_Host->clear();
+    if (lineEdit_Port)        lineEdit_Port->clear();
+    if (lineEdit_Endpoint)    lineEdit_Endpoint->clear();
+
+    if (tableWidget)
+        tableWidget->clearSelection();
+
+    isNewProject = true;
+    projectDirTouched = false;
+
+    if (lineEdit_Project)
+        lineEdit_Project->setFocus();
 }
 
 void DialogConnect::onProjectNameChanged(const QString &text)
