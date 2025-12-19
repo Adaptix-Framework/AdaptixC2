@@ -156,7 +156,10 @@ void DialogAgent::onButtonGenerate()
     QString filename = QString( QByteArray::fromBase64(parts[0].toUtf8()));
     QByteArray content = QByteArray::fromBase64(parts[1].toUtf8());
 
-    NonBlockingDialogs::getSaveFileName(this, "Save File", filename, "All Files (*.*)",
+    QString baseDir = authProfile.GetProjectDir();
+    QString initialPath = QDir(baseDir).filePath(filename);
+
+    NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "All Files (*.*)",
         [this, content](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
@@ -185,7 +188,8 @@ void DialogAgent::onButtonGenerate()
 
 void DialogAgent::onButtonLoad()
 {
-    NonBlockingDialogs::getOpenFileName(this, "Select file", QDir::homePath(), "JSON files (*.json)",
+    QString baseDir = authProfile.GetProjectDir();
+    NonBlockingDialogs::getOpenFileName(this, "Select file", baseDir, "JSON files (*.json)",
         [this](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
@@ -252,7 +256,9 @@ void DialogAgent::onButtonSave()
     QByteArray fileContent = QJsonDocument(dataJson).toJson();
 
     QString tmpFilename = QString("%1_config.json").arg(configType);
-    NonBlockingDialogs::getSaveFileName(this, "Save File", tmpFilename, "JSON files (*.json)",
+    QString baseDir = authProfile.GetProjectDir();
+    QString initialPath = QDir(baseDir).filePath(tmpFilename);
+    NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "JSON files (*.json)",
         [this, fileContent](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
