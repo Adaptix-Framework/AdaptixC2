@@ -583,7 +583,11 @@ void BrowserFilesWidget::onUpload() const
     else
         remotePath += "/";
 
-    NonBlockingDialogs::getOpenFileName(const_cast<BrowserFilesWidget*>(this), "Select file", QDir::homePath(), "All Files (*.*)",
+    QString baseDir;
+    if (agent && agent->adaptixWidget && agent->adaptixWidget->GetProfile())
+        baseDir = agent->adaptixWidget->GetProfile()->GetProjectDir();
+
+    NonBlockingDialogs::getOpenFileName(const_cast<BrowserFilesWidget*>(this), "Select file", baseDir, "All Files (*.*)",
         [this, remotePath](const QString& filePath) {
             if (filePath.isEmpty())
                 return;

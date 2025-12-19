@@ -402,7 +402,13 @@ void CredentialsWidget::onExportCreds() const
 
     QString format = dialog.textValue();
 
-    NonBlockingDialogs::getSaveFileName(const_cast<CredentialsWidget*>(this), "Save credentials", "creds.txt", "Text Files (*.txt);;All Files (*)",
+    QString baseDir;
+    if (adaptixWidget && adaptixWidget->GetProfile())
+        baseDir = adaptixWidget->GetProfile()->GetProjectDir();
+    QString initialPath = baseDir.isEmpty() ? QStringLiteral("creds.txt")
+                                            : QDir(baseDir).filePath(QStringLiteral("creds.txt"));
+
+    NonBlockingDialogs::getSaveFileName(const_cast<CredentialsWidget*>(this), "Save credentials", initialPath, "Text Files (*.txt);;All Files (*)",
         [this, format](const QString& fileName) {
             if (fileName.isEmpty())
                 return;

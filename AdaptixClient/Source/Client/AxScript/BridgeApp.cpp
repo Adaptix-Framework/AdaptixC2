@@ -1,6 +1,7 @@
 #include <main.h>
 #include <QTimeZone>
 #include <Agent/Agent.h>
+#include <Client/AuthProfile.h>
 #include <Client/AxScript/BridgeApp.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxCommandWrappers.h>
@@ -595,11 +596,45 @@ bool BridgeApp::prompt_confirm(const QString &title, const QString &text)
     return (reply == QMessageBox::Yes);
 }
 
-QString BridgeApp::prompt_open_file(const QString &caption, const QString &filter) { return QFileDialog::getOpenFileName(nullptr, caption, QDir::homePath(), filter); }
+QString BridgeApp::prompt_open_file(const QString &caption, const QString &filter)
+{
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    QString baseDir;
+    if (adaptix && adaptix->GetProfile())
+        baseDir = adaptix->GetProfile()->GetProjectDir();
+    if (baseDir.isEmpty())
+        baseDir = QDir::homePath();
 
-QString BridgeApp::prompt_open_dir(const QString &caption) { return QFileDialog::getExistingDirectory(nullptr, caption, QDir::homePath()); }
+    return QFileDialog::getOpenFileName(nullptr, caption, baseDir, filter);
+}
 
-QString BridgeApp::prompt_save_file(const QString &filename, const QString &caption, const QString &filter) { return QFileDialog::getSaveFileName(nullptr, caption, filename,  filter); }
+QString BridgeApp::prompt_open_dir(const QString &caption)
+{
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    QString baseDir;
+    if (adaptix && adaptix->GetProfile())
+        baseDir = adaptix->GetProfile()->GetProjectDir();
+    if (baseDir.isEmpty())
+        baseDir = QDir::homePath();
+
+    return QFileDialog::getExistingDirectory(nullptr, caption, baseDir);
+}
+
+QString BridgeApp::prompt_save_file(const QString &filename, const QString &caption, const QString &filter)
+{
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    QString baseDir;
+    if (adaptix && adaptix->GetProfile())
+        baseDir = adaptix->GetProfile()->GetProjectDir();
+    if (baseDir.isEmpty())
+        baseDir = QDir::homePath();
+
+    QString initialPath = filename;
+    if (!QDir::isAbsolutePath(initialPath))
+        initialPath = QDir(baseDir).filePath(initialPath);
+
+    return QFileDialog::getSaveFileName(nullptr, caption, initialPath,  filter);
+}
 
 QString BridgeApp::random_string(const int length, const QString &setname) { return GenerateRandomString(length, setname); }
 

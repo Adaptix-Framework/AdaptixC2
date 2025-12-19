@@ -137,6 +137,14 @@ void MainUI::UpdateTasksTableColumns()
     }
 }
 
+AuthProfile* MainUI::GetCurrentProfile() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainuiTabWidget->currentWidget() );
+    if (!adaptixWidget)
+        return nullptr;
+    return adaptixWidget->GetProfile();
+}
+
 /// Actions
 
 void MainUI::onNewProject() { GlobalClient->NewProject(); }

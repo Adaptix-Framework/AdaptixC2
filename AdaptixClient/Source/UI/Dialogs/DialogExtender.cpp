@@ -2,6 +2,9 @@
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
 #include <Client/Extender.h>
+#include <Client/AuthProfile.h>
+#include <MainAdaptix.h>
+#include <UI/MainUI.h>
 
 DialogExtender::DialogExtender(Extender* e)
 {
@@ -176,7 +179,13 @@ void DialogExtender::handleMenu(const QPoint &pos ) const
 
 void DialogExtender::onActionLoad() const
 {
-    NonBlockingDialogs::getOpenFileName(const_cast<DialogExtender*>(this), "Load Script", "", "AxScript Files (*.axs)",
+    QString baseDir;
+    if (GlobalClient && GlobalClient->mainUI) {
+        if (auto profile = GlobalClient->mainUI->GetCurrentProfile())
+            baseDir = profile->GetProjectDir();
+    }
+
+    NonBlockingDialogs::getOpenFileName(const_cast<DialogExtender*>(this), "Load Script", baseDir, "AxScript Files (*.axs)",
         [this](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
