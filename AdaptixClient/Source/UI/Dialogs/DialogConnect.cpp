@@ -3,6 +3,14 @@
 #include <Client/Storage.h>
 #include <MainAdaptix.h>
 
+static QString defaultProjectDir(const QString &projectName)
+{
+    QDir home(QDir::homePath());
+    QString basePath = home.filePath("AdaptixProjects");
+    QDir baseDir(basePath);
+    return baseDir.filePath(projectName.trimmed());
+}
+
 DialogConnect::DialogConnect()
 {
     this->createUI();
@@ -19,6 +27,21 @@ DialogConnect::DialogConnect()
     connect( lineEdit_User,     &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect );
     connect( lineEdit_Password, &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect );
     connect( ButtonConnect,     &QPushButton::clicked,     this, &DialogConnect::onButton_Connect );
+    connect( ButtonClear,       &QPushButton::clicked,     this, &DialogConnect::onButton_Clear );
+
+    if (lineEdit_Project) {
+        connect(lineEdit_Project, &QLineEdit::textChanged,
+                this, &DialogConnect::onProjectNameChanged);
+    }
+    if (lineEdit_ProjectDir) {
+        connect(lineEdit_ProjectDir, &QLineEdit::textEdited,
+                this, &DialogConnect::onProjectDirEdited);
+
+        auto action = lineEdit_ProjectDir->addAction(QIcon(":/icons/folder"),
+                                                     QLineEdit::TrailingPosition);
+        connect(action, &QAction::triggered,
+                this, &DialogConnect::onSelectProjectDir);
+    }
 }
 
 DialogConnect::~DialogConnect() = default;
@@ -49,6 +72,9 @@ void DialogConnect::createUI()
     label_Project = new QLabel( this );
     label_Project->setText( "Project:" );
 
+    label_ProjectDir = new QLabel( this );
+    label_ProjectDir->setText( "Project directory:" );
+
     label_Host = new QLabel( this );
     label_Host->setText( "Host:" );
 
@@ -66,6 +92,8 @@ void DialogConnect::createUI()
 
     lineEdit_Project = new QLineEdit( this );
 
+    lineEdit_ProjectDir = new QLineEdit( this );
+
     lineEdit_Host = new QLineEdit( this );
 
     lineEdit_Port = new QLineEdit( this );
@@ -78,6 +106,10 @@ void DialogConnect::createUI()
     ButtonConnect->setProperty("ButtonStyle", "dialog");
     ButtonConnect->setText("Connect");
     ButtonConnect->setFocus();
+
+    ButtonClear = new QPushButton(this);
+    ButtonClear->setProperty("ButtonStyle", "dialog");
+    ButtonClear->setText("Clear");
 
 
     menuContex = new QMenu( this );
@@ -107,23 +139,35 @@ void DialogConnect::createUI()
     tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Project" ) );
     tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "Host" ) );
 
+    auto formWidget = new QWidget(this);
+    auto formLayout = new QGridLayout(formWidget);
+    formLayout->setContentsMargins(0, 0, 0, 0);
+
+    formLayout->addWidget( label_UserInfo,      0, 0, 1, 2 );
+    formLayout->addWidget( label_User,          1, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_User,       1, 1, 1, 1 );
+    formLayout->addWidget( label_Password,      2, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_Password,   2, 1, 1, 1 );
+
+    formLayout->addWidget( label_ServerDetails, 4, 0, 1, 2 );
+    formLayout->addWidget( label_Project,       5, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_Project,    5, 1, 1, 1 );
+    formLayout->addWidget( label_ProjectDir,    6, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_ProjectDir, 6, 1, 1, 1 );
+    formLayout->addWidget( label_Host,          7, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_Host,       7, 1, 1, 1 );
+    formLayout->addWidget( label_Port,          8, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_Port,       8, 1, 1, 1 );
+    formLayout->addWidget( label_Endpoint,      9, 0, 1, 1 );
+    formLayout->addWidget( lineEdit_Endpoint,   9, 1, 1, 1 );
+
+    formLayout->addWidget( ButtonClear,        10, 0, 1, 1 );
+    formLayout->addWidget( ButtonConnect,      10, 1, 1, 1 );
+    formLayout->setRowStretch(11, 1);
+
     gridLayout = new QGridLayout( this );
-    gridLayout->addWidget( tableWidget,         0, 2, 10, 1 );
-    gridLayout->addWidget( label_UserInfo,      0, 1, 1, 1 );
-    gridLayout->addWidget( label_User,          1, 0, 1, 1 );
-    gridLayout->addWidget( label_Password,      2, 0, 1, 1 );
-    gridLayout->addWidget( label_ServerDetails, 4, 1, 1, 1 );
-    gridLayout->addWidget( label_Project,       5, 0, 1, 1 );
-    gridLayout->addWidget( label_Host,          6, 0, 1, 1 );
-    gridLayout->addWidget( label_Port,          7, 0, 1, 1 );
-    gridLayout->addWidget( label_Endpoint,      8, 0, 1, 1 );
-    gridLayout->addWidget( lineEdit_User,       1, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_Password,   2, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_Project,    5, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_Host,       6, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_Port,       7, 1, 1, 1 );
-    gridLayout->addWidget( lineEdit_Endpoint,   8, 1, 1, 1 );
-    gridLayout->addWidget( ButtonConnect,       9, 1, 1, 1 );
+    gridLayout->addWidget( formWidget,  0, 0, 11, 2 );
+    gridLayout->addWidget( tableWidget, 0, 2, 11, 1 );
 }
 
 void DialogConnect::loadProjects()
@@ -156,7 +200,18 @@ AuthProfile* DialogConnect::StartDialog()
     this->toConnect = false;
     this->exec();
     if( this->toConnect ) {
-        AuthProfile* newProfile = new AuthProfile(lineEdit_Project->text(), lineEdit_User->text(),lineEdit_Password->text(),lineEdit_Host->text(),lineEdit_Port->text(), lineEdit_Endpoint->text());
+        QString projectDir = lineEdit_ProjectDir ? lineEdit_ProjectDir->text().trimmed() : QString();
+        if (projectDir.isEmpty())
+            projectDir = defaultProjectDir(lineEdit_Project->text());
+
+        AuthProfile* newProfile = new AuthProfile(
+                    lineEdit_Project->text(),
+                    lineEdit_User->text(),
+                    lineEdit_Password->text(),
+                    lineEdit_Host->text(),
+                    lineEdit_Port->text(),
+                    lineEdit_Endpoint->text(),
+                    projectDir);
 
         if( GlobalClient->storage->ExistsProject(lineEdit_Project->text()) ) {
             GlobalClient->storage->UpdateProject(*newProfile);
@@ -183,9 +238,12 @@ void DialogConnect::itemSelected()
 {
     QString project = tableWidget->item(tableWidget->currentRow(), 1)->text();
     this->isNewProject = false;
+    this->projectDirTouched = true;
     for ( auto profile : this->listProjects ) {
         if ( profile.GetProject() == project ) {
             lineEdit_Project->setText( profile.GetProject() );
+            if (lineEdit_ProjectDir)
+                lineEdit_ProjectDir->setText( profile.GetProjectDir() );
             lineEdit_Host->setText( profile.GetHost() );
             lineEdit_Port->setText( profile.GetPort() );
             lineEdit_Endpoint->setText( profile.GetEndpoint() );
@@ -246,4 +304,59 @@ void DialogConnect::onButton_Connect()
         this->toConnect = true;
         close();
     }
+}
+
+void DialogConnect::onButton_Clear()
+{
+    if (lineEdit_User)        lineEdit_User->clear();
+    if (lineEdit_Password)    lineEdit_Password->clear();
+    if (lineEdit_Project)     lineEdit_Project->clear();
+    if (lineEdit_ProjectDir)  lineEdit_ProjectDir->clear();
+    if (lineEdit_Host)        lineEdit_Host->clear();
+    if (lineEdit_Port)        lineEdit_Port->clear();
+    if (lineEdit_Endpoint)    lineEdit_Endpoint->clear();
+
+    if (tableWidget)
+        tableWidget->clearSelection();
+
+    isNewProject = true;
+    projectDirTouched = false;
+
+    if (lineEdit_Project)
+        lineEdit_Project->setFocus();
+}
+
+void DialogConnect::onProjectNameChanged(const QString &text)
+{
+    // Не трогаем путь, если пользователь уже его правил вручную
+    if (projectDirTouched)
+        return;
+
+    const QString name = text.trimmed();
+    if (name.isEmpty()) {
+        lineEdit_ProjectDir->clear();
+        return;
+    }
+
+    lineEdit_ProjectDir->setText(defaultProjectDir(name));
+}
+
+void DialogConnect::onProjectDirEdited(const QString &)
+{
+    projectDirTouched = true;
+}
+
+void DialogConnect::onSelectProjectDir()
+{
+    QString current = lineEdit_ProjectDir->text().trimmed();
+    if (current.isEmpty()) {
+        current = defaultProjectDir(lineEdit_Project ? lineEdit_Project->text() : QString());
+    }
+
+    QString dir = QFileDialog::getExistingDirectory(this, "Select project directory", current);
+    if (dir.isEmpty())
+        return;
+
+    lineEdit_ProjectDir->setText(dir);
+    projectDirTouched = true;
 }
