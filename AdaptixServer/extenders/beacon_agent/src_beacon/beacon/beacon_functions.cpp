@@ -472,3 +472,20 @@ void AxDownloadMemory(char* filename, char* data, int len)
 		bofOutputPacker->PackBytes((PBYTE)data, len);
 	}
 }
+
+void AxAddTarget(char* computer, char* domain, char* address, int os, char* os_desk, char* tag, char* info, int alive)
+{
+	if (bofOutputPacker) {
+		bofOutputPacker->Pack32(bofTaskId);
+		bofOutputPacker->Pack32(51);			// COMMAND_EXEC_BOF_OUT
+		bofOutputPacker->Pack32(CALLBACK_AX_TARGET_ADD);
+		bofOutputPacker->PackStringA(computer ? computer : "");
+		bofOutputPacker->PackStringA(domain   ? domain   : "");
+		bofOutputPacker->PackStringA(address  ? address  : "");
+		bofOutputPacker->Pack32(os);
+		bofOutputPacker->PackStringA(os_desk  ? os_desk  : "");
+		bofOutputPacker->PackStringA(tag      ? tag      : "");
+		bofOutputPacker->PackStringA(info     ? info     : "");
+		bofOutputPacker->Pack32(alive ? 1 : 0);
+	}
+}

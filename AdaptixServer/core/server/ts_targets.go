@@ -57,14 +57,63 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 		}
 
 		found := false
+		var existingTarget *adaptix.TargetData
 		for t_value := range ts.targets.Iterator() {
 			t := t_value.Item.(*adaptix.TargetData)
 			if (t.Address == target.Address && t.Address != "") || (strings.EqualFold(t.Computer, target.Computer) && std.DomainsEqual(t.Domain, target.Domain)) {
 				found = true
+				existingTarget = t
 				break
 			}
 		}
 		if found {
+			updated := false
+			if target.Computer != "" && existingTarget.Computer != target.Computer {
+				existingTarget.Computer = target.Computer
+				updated = true
+			}
+			if target.Domain != "" && existingTarget.Domain != target.Domain {
+				existingTarget.Domain = target.Domain
+				updated = true
+			}
+			if target.Address != "" && existingTarget.Address != target.Address {
+				existingTarget.Address = target.Address
+				updated = true
+			}
+			if target.Os != 0 && existingTarget.Os != target.Os {
+				existingTarget.Os = target.Os
+				updated = true
+			}
+			if target.OsDesk != "" && existingTarget.OsDesk != target.OsDesk {
+				existingTarget.OsDesk = target.OsDesk
+				updated = true
+			}
+			if target.Info != "" && existingTarget.Info != target.Info {
+				existingTarget.Info = target.Info
+				updated = true
+			}
+			if existingTarget.Alive != target.Alive {
+				existingTarget.Alive = target.Alive
+				updated = true
+			}
+			if existingTarget.OsDesk == "" {
+				if existingTarget.Os == 1 {
+					existingTarget.OsDesk = "Windows"
+					updated = true
+				} else if existingTarget.Os == 2 {
+					existingTarget.OsDesk = "Linux"
+					updated = true
+				} else if existingTarget.Os == 3 {
+					existingTarget.OsDesk = "MacOS"
+					updated = true
+				}
+			}
+			if updated {
+				existingTarget.Date = time.Now().Unix()
+				_ = ts.DBMS.DbTargetUpdate(existingTarget)
+				packet := CreateSpTargetUpdate(*existingTarget)
+				ts.TsSyncAllClients(packet)
+			}
 			continue
 		}
 

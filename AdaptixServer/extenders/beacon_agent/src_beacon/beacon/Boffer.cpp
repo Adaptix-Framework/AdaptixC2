@@ -32,7 +32,7 @@ void InitBofOutputData()
 		bofOutputPacker = new Packer();
 }
 
-#define BEACON_FUNCTIONS_COUNT 28
+#define BEACON_FUNCTIONS_COUNT 29
 
 BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 
@@ -75,9 +75,10 @@ BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 	{ HASH_FUNC_BEACONGETVALUE,               BeaconGetValue },
 	{ HASH_FUNC_BEACONREMOVEVALUE,            BeaconRemoveValue },
 
-	/// 2 - Adaptix APIs
+	/// 3 - Adaptix APIs
 	{ HASH_FUNC_AXADDSCREENSHOT,  AxAddScreenshot },
 	{ HASH_FUNC_AXDOWNLOADMEMORY, AxDownloadMemory },
+	{ HASH_FUNC_AXADDTARGET,      AxAddTarget },
 
 	/// 5 - Other APIs
 

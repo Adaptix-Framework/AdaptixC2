@@ -77,6 +77,8 @@ type Teamserver interface {
 
 	TsScreenshotAdd(agentId string, Note string, Content []byte) error
 
+	TsTargetsAdd(targets []map[string]interface{}) error
+
 	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
 	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)

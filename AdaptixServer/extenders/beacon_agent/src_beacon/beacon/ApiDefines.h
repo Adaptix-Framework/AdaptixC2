@@ -142,6 +142,7 @@
 #define HASH_FUNC___C_SPECIFIC_HANDLER               0x6d7af307
 #define HASH_FUNC_AXADDSCREENSHOT                    0x495c25a4
 #define HASH_FUNC_AXDOWNLOADMEMORY                   0x5c8fc8ce
+#define HASH_FUNC_AXADDTARGET                        0x97cdca0d
 
 // wininet
 #define HASH_FUNC_INTERNETOPENA                      0x4c383c80

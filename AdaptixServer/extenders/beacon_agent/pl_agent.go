@@ -1372,6 +1372,37 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 				_ = ts.TsDownloadSave(agentData.Id, fileId, filename, data)
 
+			} else if outputType == CALLBACK_AX_TARGET_ADD {
+				if false == packer.CheckPacker([]string{"array", "array", "array", "int", "array", "array", "array", "int"}) {
+					return outTasks
+				}
+				computer := packer.ParseString()
+				domain := packer.ParseString()
+				address := packer.ParseString()
+				os := int(packer.ParseInt32())
+				osDesk := packer.ParseString()
+				tag := packer.ParseString()
+				info := packer.ParseString()
+				aliveInt := int(packer.ParseInt32())
+				alive := aliveInt != 0
+
+				// Convert to map format expected by TsTargetsAdd (same as HTTP /targets/add)
+				targets := []map[string]interface{}{
+					{
+						"computer": computer,
+						"domain":   domain,
+						"address":  address,
+						"os":       float64(os), // TsTargetsAdd expects float64
+						"os_desk":  osDesk,
+						"tag":      tag,
+						"info":     info,
+						"alive":    alive,
+					},
+				}
+
+				// Use the same logic as HTTP /targets/add endpoint
+				_ = ts.TsTargetsAdd(targets)
+
 			} else {
 				if false == packer.CheckPacker([]string{"array"}) {
 					return outTasks
