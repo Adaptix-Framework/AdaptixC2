@@ -25,7 +25,7 @@ QJSValue BridgeApp::agents() const
     QVariantMap list;
     auto mapAgents = scriptEngine->manager()->GetAgents();
 
-    for (auto agent : mapAgents) {
+    for (const auto& agent : mapAgents) {
         QVariantMap map;
         map["id"]           = agent->data.Id;
         map["type"]         = agent->data.Name;
@@ -73,9 +73,9 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
         return QJSValue(info.Name);
     if (property == "listener")
         return QJSValue(info.Listener);
-    if (property == "externalIP")
+    if (property == "external_ip")
         return QJSValue(info.ExternalIP);
-    if (property == "internalIP")
+    if (property == "internal_ip")
         return QJSValue(info.InternalIP);
     if (property == "domain")
         return QJSValue(info.Domain);
@@ -308,7 +308,7 @@ QJSValue BridgeApp::credentials() const
     QVariantMap list;
     auto vecCreds = scriptEngine->manager()->GetCredentials();
 
-    for (auto cred : vecCreds) {
+    for (const auto& cred : vecCreds) {
         QVariantMap map;
         map["id"]       = cred.CredId;
         map["username"] = cred.Username;
@@ -380,7 +380,7 @@ QJSValue BridgeApp::downloads() const
     QVariantMap list;
     auto mapDownloads = scriptEngine->manager()->GetDownloads();
 
-    for (auto download : mapDownloads) {
+    for (const auto& download : mapDownloads) {
         QVariantMap map;
         map["id"]         = download.FileId;
         map["agent_id"]   = download.AgentId;
@@ -529,7 +529,7 @@ QJSValue BridgeApp::ids() const
     QVariantList list;
     auto mapAgents = scriptEngine->manager()->GetAgents();
 
-    for (auto agent : mapAgents)
+    for (const auto& agent : mapAgents)
         list.append(agent->data.Id);
 
     return this->scriptEngine->engine()->toScriptValue(list);
@@ -540,7 +540,7 @@ QJSValue BridgeApp::interfaces() const
     QVariantList list;
     auto interfaces = scriptEngine->manager()->GetInterfaces();
 
-    for (auto addr : interfaces)
+    for (const auto& addr : interfaces)
         list.append(addr);
 
     return this->scriptEngine->engine()->toScriptValue(list);
@@ -692,7 +692,7 @@ QJSValue BridgeApp::screenshots()
     QVariantMap list;
     auto screenshots = scriptEngine->manager()->GetScreenshots();
 
-    for (auto screen : screenshots) {
+    for (const auto& screen : screenshots) {
         QVariantMap map;
         map["id"]       = screen.ScreenId;
         map["user"]     = screen.User;
@@ -712,10 +712,9 @@ QJSValue BridgeApp::targets() const
     QVariantMap list;
     auto targets = scriptEngine->manager()->GetTargets();
 
-    for (auto target : targets) {
-
+    for (const auto& target : targets) {
         QVariantList sessions;
-        for (auto agent : target.Agents)
+        for (const auto& agent : target.Agents)
             sessions << agent;
 
         QVariantMap map;
@@ -792,7 +791,7 @@ QJSValue BridgeApp::tunnels()
     QVariantMap list;
     auto tunnels = scriptEngine->manager()->GetTunnels();
 
-    for (auto tun : tunnels) {
+    for (const auto& tun : tunnels) {
         QVariantMap map;
         map["id"]        = tun.TunnelId;
         map["agent_id"]  = tun.AgentId;

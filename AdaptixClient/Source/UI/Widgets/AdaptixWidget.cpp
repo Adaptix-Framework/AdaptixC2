@@ -391,17 +391,45 @@ bool AdaptixWidget::IsSynchronized() { return this->synchronized; }
 
 void AdaptixWidget::Close()
 {
-    TickThread->quit();
-    TickThread->wait();
+    if (TickWorker)
+        disconnect(TickWorker, nullptr, this, nullptr);
+
+    if (TickThread) {
+        TickThread->quit();
+        TickThread->wait();
+    }
+
+    delete TickWorker;
+    TickWorker = nullptr;
+
     delete TickThread;
+    TickThread = nullptr;
 
-    ChannelThread->quit();
-    ChannelThread->wait();
+    if (ChannelWsWorker) {
+        disconnect(ChannelWsWorker, nullptr, this, nullptr);
+        disconnect(ChannelWsWorker, nullptr, ScriptManager, nullptr);
+        if (ChannelWsWorker->webSocket)
+            ChannelWsWorker->webSocket->close();
+    }
+
+    if (ChannelThread) {
+        ChannelThread->quit();
+        ChannelThread->wait();
+    }
+
+    delete ChannelWsWorker;
+    ChannelWsWorker = nullptr;
+
     delete ChannelThread;
-
-    ChannelWsWorker->webSocket->close();
+    ChannelThread = nullptr;
 
     this->ClearAdaptix();
+
+    delete dialogSyncPacket;
+    dialogSyncPacket = nullptr;
+
+    delete profile;
+    profile = nullptr;
 }
 
 void AdaptixWidget::ClearAdaptix()

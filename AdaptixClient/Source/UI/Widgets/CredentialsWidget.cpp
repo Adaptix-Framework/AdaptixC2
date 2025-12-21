@@ -247,33 +247,33 @@ void CredentialsWidget::onFilterUpdate() const
 
 void CredentialsWidget::handleCredentialsMenu(const QPoint &pos ) const
 {
-    QModelIndex index = tableView->indexAt(pos);
-    if (!index.isValid()) return;
-
-    QStringList creds;
-    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
-    for (const QModelIndex &proxyIndex : selectedRows) {
-        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
-        if (!sourceIndex.isValid()) continue;
-
-        QString taskId = credsModel->data(credsModel->index(sourceIndex.row(), CC_Id), Qt::DisplayRole).toString();
-        creds.append(taskId);
-    }
-
     auto ctxMenu = QMenu();
-
     ctxMenu.addAction("Create", this, &CredentialsWidget::onCreateCreds );
-    ctxMenu.addAction("Edit",   this, &CredentialsWidget::onEditCreds );
-    ctxMenu.addAction("Remove", this, &CredentialsWidget::onRemoveCreds );
-    ctxMenu.addSeparator();
 
-    int centerCount = adaptixWidget->ScriptManager->AddMenuCreds(&ctxMenu, "Creds", creds);
-    if (centerCount > 0)
+    QModelIndex index = tableView->indexAt(pos);
+    if (index.isValid()) {
+        QStringList creds;
+        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+        for (const QModelIndex &proxyIndex : selectedRows) {
+            QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+            if (!sourceIndex.isValid()) continue;
+
+            QString taskId = credsModel->data(credsModel->index(sourceIndex.row(), CC_Id), Qt::DisplayRole).toString();
+            creds.append(taskId);
+        }
+
+        ctxMenu.addAction("Edit",   this, &CredentialsWidget::onEditCreds );
+        ctxMenu.addAction("Remove", this, &CredentialsWidget::onRemoveCreds );
         ctxMenu.addSeparator();
 
-    ctxMenu.addAction("Set tag",           this, &CredentialsWidget::onSetTag );
-    ctxMenu.addAction("Export to file",    this, &CredentialsWidget::onExportCreds );
-    ctxMenu.addAction("Copy to clipboard", this, &CredentialsWidget::onCopyToClipboard );
+        int centerCount = adaptixWidget->ScriptManager->AddMenuCreds(&ctxMenu, "Creds", creds);
+        if (centerCount > 0)
+            ctxMenu.addSeparator();
+
+        ctxMenu.addAction("Set tag",           this, &CredentialsWidget::onSetTag );
+        ctxMenu.addAction("Export to file",    this, &CredentialsWidget::onExportCreds );
+        ctxMenu.addAction("Copy to clipboard", this, &CredentialsWidget::onCopyToClipboard );
+    }
 
     QPoint globalPos = tableView->mapToGlobal(pos);
     ctxMenu.exec(globalPos);
@@ -401,14 +401,11 @@ void CredentialsWidget::onExportCreds() const
         return;
 
     QString format = dialog.textValue();
-
-    QString baseDir;
+    QString baseDir = QStringLiteral("creds.txt");
     if (adaptixWidget && adaptixWidget->GetProfile())
-        baseDir = adaptixWidget->GetProfile()->GetProjectDir();
-    QString initialPath = baseDir.isEmpty() ? QStringLiteral("creds.txt")
-                                            : QDir(baseDir).filePath(QStringLiteral("creds.txt"));
+        baseDir = QDir(adaptixWidget->GetProfile()->GetProjectDir()).filePath(QStringLiteral("creds.txt"));
 
-    NonBlockingDialogs::getSaveFileName(const_cast<CredentialsWidget*>(this), "Save credentials", initialPath, "Text Files (*.txt);;All Files (*)",
+    NonBlockingDialogs::getSaveFileName(const_cast<CredentialsWidget*>(this), "Save credentials", baseDir, "Text Files (*.txt);;All Files (*)",
         [this, format](const QString& fileName) {
             if (fileName.isEmpty())
                 return;

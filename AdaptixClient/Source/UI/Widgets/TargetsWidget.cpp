@@ -251,39 +251,39 @@ void TargetsWidget::onFilterUpdate() const
 
 void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
 {
-    QModelIndex index = tableView->indexAt(pos);
-    if (!index.isValid()) return;
-
-    QStringList targets;
-    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
-    for (const QModelIndex &proxyIndex : selectedRows) {
-        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
-        if (!sourceIndex.isValid()) continue;
-
-        QString taskId = targetsModel->data(targetsModel->index(sourceIndex.row(), TRC_Id), Qt::DisplayRole).toString();
-        targets.append(taskId);
-    }
-
     auto ctxMenu = QMenu();
-
-    int topCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsTop", targets);
-    if (topCount > 0)
-        ctxMenu.addSeparator();
-
     ctxMenu.addAction("Create", this, &TargetsWidget::onCreateTarget );
-    ctxMenu.addAction("Edit",   this, &TargetsWidget::onEditTarget );
-    ctxMenu.addAction("Remove", this, &TargetsWidget::onRemoveTarget );
-    ctxMenu.addSeparator();
 
-    int centerCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsCenter", targets);
-    if (centerCount > 0)
+    QModelIndex index = tableView->indexAt(pos);
+    if (index.isValid()) {
+
+        QStringList targets;
+        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+        for (const QModelIndex &proxyIndex : selectedRows) {
+            QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+            if (!sourceIndex.isValid()) continue;
+
+            QString taskId = targetsModel->data(targetsModel->index(sourceIndex.row(), TRC_Id), Qt::DisplayRole).toString();
+            targets.append(taskId);
+        }
+
+        int topCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsTop", targets);
+        if (topCount > 0)
+            ctxMenu.addSeparator();
+
+        ctxMenu.addAction("Edit",   this, &TargetsWidget::onEditTarget );
+        ctxMenu.addAction("Remove", this, &TargetsWidget::onRemoveTarget );
         ctxMenu.addSeparator();
 
-    ctxMenu.addAction("Set tag",           this, &TargetsWidget::onSetTag );
-    ctxMenu.addAction("Export to file",    this, &TargetsWidget::onExportTarget );
-    ctxMenu.addAction("Copy to clipboard", this, &TargetsWidget::onCopyToClipboard );
-    int bottomCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
+        int centerCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsCenter", targets);
+        if (centerCount > 0)
+            ctxMenu.addSeparator();
 
+        ctxMenu.addAction("Set tag",           this, &TargetsWidget::onSetTag );
+        ctxMenu.addAction("Export to file",    this, &TargetsWidget::onExportTarget );
+        ctxMenu.addAction("Copy to clipboard", this, &TargetsWidget::onCopyToClipboard );
+        int bottomCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
+    }
     QPoint globalPos = tableView->mapToGlobal(pos);
     ctxMenu.exec(globalPos);
 }

@@ -221,6 +221,8 @@ void SessionsTableWidget::UpdateData() const
 
 void SessionsTableWidget::Clear() const
 {
+    refreshTimer->stop();
+    
     for (auto agentId : adaptixWidget->AgentsMap.keys()) {
         Agent* agent = adaptixWidget->AgentsMap[agentId];
         adaptixWidget->AgentsMap.remove(agentId);
@@ -280,6 +282,8 @@ void SessionsTableWidget::onFilterChanged() const
 
 void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 {
+    auto ctxMenu = QMenu();
+
     QModelIndex index = tableView->indexAt(pos);
     if (!index.isValid()) return;
 
@@ -315,7 +319,6 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     sessionMenu.addSeparator();
     sessionMenu.addAction( "Hide on client", this, &SessionsTableWidget::actionItemHide);
 
-    auto ctxMenu = QMenu();
     ctxMenu.addAction("Console", this, &SessionsTableWidget::actionConsoleOpen);
     ctxMenu.addSeparator();
     ctxMenu.addMenu(&agentMenu);

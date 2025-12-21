@@ -325,7 +325,7 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
         currenFileData->TreeItem->takeChildren();
         currenFileData->Files.clear();
 
-        for ( QJsonValue value : jsonArray ) {
+        for ( const QJsonValue& value : jsonArray ) {
             QJsonObject jsonObject = value.toObject();
             QString filename = jsonObject["b_filename"].toString();
             qint64  b_size   = jsonObject["b_size"].toDouble();
@@ -355,8 +355,8 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
             currenFileData->Files.push_back(childData);
         }
 
-        for( QString oldPath : oldFiles.keys() ) {
-            BrowserFileData data = oldFiles[oldPath];
+        for( const QString& oldPath : oldFiles.keys() ) {
+            const BrowserFileData& data = oldFiles[oldPath];
 
             QString oldFullpath = data.Fullpath + "\\";
 
@@ -375,7 +375,7 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
         currenFileData->TreeItem->takeChildren();
         currenFileData->Files.clear();
 
-        for ( QJsonValue value : jsonArray ) {
+        for ( const QJsonValue& value : jsonArray ) {
             QJsonObject jsonObject = value.toObject();
             int     b_type   = jsonObject["b_is_dir"].toBool();
             QString filename = jsonObject["b_filename"].toString();
@@ -415,8 +415,8 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
             currenFileData->Files.push_back(childData);
         }
 
-        for( QString oldPath : oldFiles.keys() ) {
-            BrowserFileData data = oldFiles[oldPath];
+        for( const QString& oldPath : oldFiles.keys() ) {
+            const BrowserFileData& data = oldFiles[oldPath];
 
             QString oldFullpath = data.Fullpath + "/";
 
@@ -471,10 +471,10 @@ void BrowserFilesWidget::tableShowItems(QVector<BrowserFileData*> files ) const
             item_Mode->setFlags( item_Mode->flags() ^ Qt::ItemIsEditable );
 
             QTableWidgetItem* item_User = new QTableWidgetItem(files[row]->User);
-            item_User->setFlags( item_Mode->flags() ^ Qt::ItemIsEditable );
+            item_User->setFlags( item_User->flags() ^ Qt::ItemIsEditable );
 
             QTableWidgetItem* item_Group = new QTableWidgetItem(files[row]->Group);
-            item_Group->setFlags( item_Mode->flags() ^ Qt::ItemIsEditable );
+            item_Group->setFlags( item_Group->flags() ^ Qt::ItemIsEditable );
 
             tableWidget->setItem(row, 0, item_Name);
             tableWidget->setItem(row, 1, item_Mode);

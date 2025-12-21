@@ -132,7 +132,7 @@ void BrowserProcessWidget::SetProcess(int msgType, const QString &data) const
 
     if (agent->data.Os == OS_WINDOWS) {
         QMap<int, BrowserProcessDataWin> processMap;
-        for ( QJsonValue value : jsonArray ) {
+        for ( const QJsonValue& value : jsonArray ) {
             QJsonObject jsonObject = value.toObject();
 
             BrowserProcessDataWin processData = {0};
@@ -150,7 +150,7 @@ void BrowserProcessWidget::SetProcess(int msgType, const QString &data) const
     }
     else {
         QMap<int, BrowserProcessDataUnix> processMap;
-        for ( QJsonValue value : jsonArray ) {
+        for ( const QJsonValue& value : jsonArray ) {
             QJsonObject jsonObject = value.toObject();
 
             BrowserProcessDataUnix processData = {0};
@@ -171,7 +171,7 @@ void BrowserProcessWidget::SetProcess(int msgType, const QString &data) const
 
 /// PRIVATE
 
-void BrowserProcessWidget::setTableProcessDataWin(QMap<int, BrowserProcessDataWin> processMap) const
+void BrowserProcessWidget::setTableProcessDataWin(const QMap<int, BrowserProcessDataWin>& processMap) const
 {
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
@@ -180,7 +180,7 @@ void BrowserProcessWidget::setTableProcessDataWin(QMap<int, BrowserProcessDataWi
     tableWidget->setSortingEnabled( false );
 
     int row = 0;
-    for (auto item : processMap) {
+    for (const auto& item : processMap) {
         auto item_Pid = new QTableWidgetItem( QString::number(item.pid) );
         item_Pid->setTextAlignment( Qt::AlignCenter );
         item_Pid->setFlags(item_Pid->flags() ^ Qt::ItemIsEditable);
@@ -233,7 +233,7 @@ void BrowserProcessWidget::setTableProcessDataWin(QMap<int, BrowserProcessDataWi
     tableWidget->setSortingEnabled( true );
 }
 
-void BrowserProcessWidget::setTableProcessDataUnix(QMap<int, BrowserProcessDataUnix> processMap) const
+void BrowserProcessWidget::setTableProcessDataUnix(const QMap<int, BrowserProcessDataUnix>& processMap) const
 {
     for (int index = tableWidget->rowCount(); index > 0; index-- )
         tableWidget->removeRow(index -1 );
@@ -242,7 +242,7 @@ void BrowserProcessWidget::setTableProcessDataUnix(QMap<int, BrowserProcessDataU
     tableWidget->setSortingEnabled( false );
 
     int row = 0;
-    for (auto item : processMap) {
+    for (const auto& item : processMap) {
         auto item_Pid = new QTableWidgetItem( QString::number(item.pid) );
         item_Pid->setTextAlignment( Qt::AlignCenter );
         item_Pid->setFlags(item_Pid->flags() ^ Qt::ItemIsEditable);

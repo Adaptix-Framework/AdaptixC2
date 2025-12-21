@@ -24,13 +24,20 @@ AxScriptManager::~AxScriptManager()
     delete uiFactory;
 }
 
-QJSEngine* AxScriptManager::MainScriptEngine() { return mainScript->engine(); }
+QJSEngine* AxScriptManager::MainScriptEngine() { return mainScript ? mainScript->engine() : nullptr; }
 
 AxUiFactory* AxScriptManager::GetUiFactory() const { return uiFactory; }
 
 void AxScriptManager::Clear()
 {
-    ResetMain();
+    if (mainScript) {
+        auto commanderList = adaptixWidget->GetCommandersAll();
+        for (const auto& commander : commanderList)
+            commander->RemoveAxCommands(mainScript->context.name);
+
+        delete mainScript;
+        mainScript = nullptr;
+    }
 
     qDeleteAll(agents_scripts);
     agents_scripts.clear();
@@ -43,7 +50,7 @@ void AxScriptManager::Clear()
 void AxScriptManager::ResetMain()
 {
     auto commanderList = adaptixWidget->GetCommandersAll();
-    for (auto commander : commanderList)
+    for (const auto& commander : commanderList)
         commander->RemoveAxCommands(mainScript->context.name);
 
     if (mainScript)
@@ -166,7 +173,7 @@ void AxScriptManager::ScriptRemove(const ExtensionFile &ext)
     auto scriptEngine = scripts.take(ext.FilePath);
 
     auto commanderList = adaptixWidget->GetCommandersAll();
-    for (auto commander : commanderList)
+    for (const auto& commander : commanderList)
         commander->RemoveAxCommands(ext.FilePath);
 
     delete scriptEngine;
@@ -274,14 +281,14 @@ int AxScriptManager::addMenuItemsToMenu(QMenu* menu, const QList<AxMenuItem>& it
 void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os)
 {
     auto commanderList = adaptixWidget->GetCommanders(listeners, agents, os);
-    for (auto commander : commanderList)
+    for (const auto& commander : commanderList)
         commander->AddAxCommands(group);
 }
 
 QStringList AxScriptManager::EventList()
 {
     QStringList slist;
-    for (const auto script : getAllEngines()) {
+    for (const auto& script : getAllEngines()) {
         if (script)
             slist += script->listEvent();
     }
@@ -290,7 +297,7 @@ QStringList AxScriptManager::EventList()
 
 void AxScriptManager::EventRemove(const QString &event_id)
 {
-    for (const auto script : getAllEngines()) {
+    for (const auto& script : getAllEngines()) {
         if (script)
             script->removeEvent(event_id);
     }
@@ -303,14 +310,15 @@ QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, 
     QSet<int>     osTypes;
     for (const auto& agent_id: agentIds) {
         if (adaptixWidget->AgentsMap.contains(agent_id)) {
-            agentTypes.insert(adaptixWidget->AgentsMap[agent_id]->data.Name);
-            osTypes.insert(adaptixWidget->AgentsMap[agent_id]->data.Os);
-            listenerTypes.insert(adaptixWidget->AgentsMap[agent_id]->listenerType);
+            const auto& agent = adaptixWidget->AgentsMap[agent_id];
+            agentTypes.insert(agent->data.Name);
+            osTypes.insert(agent->data.Os);
+            listenerTypes.insert(agent->listenerType);
         }
     }
 
     QList<AxMenuItem> items;
-    for (const auto script : getAllEngines()) {
+    for (const auto& script : getAllEngines()) {
         if (script)
             items += script->getMenuItems(menuType);
     }
@@ -341,7 +349,7 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
     int     osType       = adaptixWidget->AgentsMap[agentId]->data.Os;
 
     QList<AxEvent> items;
-    for (const auto script : getAllEngines()) {
+    for (const auto& script : getAllEngines()) {
         if (script)
             items += script->getEvents(eventType);
     }
@@ -362,7 +370,7 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
 void AxScriptManager::AppAgentHide(const QStringList &agents)
 {
     bool updated = false;
-    for (auto agentId : agents) {
+    for (const auto& agentId : agents) {
         if (adaptixWidget->AgentsMap.contains(agentId)) {
             adaptixWidget->AgentsMap[agentId]->show = false;
             updated = true;

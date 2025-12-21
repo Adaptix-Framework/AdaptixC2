@@ -40,8 +40,10 @@ namespace {
 
 bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 {
-    if ( !jsonObj.contains("type") || !jsonObj["type"].isDouble() )
+    if (!jsonObj.contains("type") || !jsonObj["type"].isDouble()) {
+        qWarning() << "[SyncPacket] Invalid packet: missing or invalid 'type' field";
         return false;
+    }
 
     int spType = jsonObj["type"].toDouble();
 
@@ -438,16 +440,14 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 processSyncPacket(packetObj);
             }
         }
-
-        if( this->sync && dialogSyncPacket != nullptr ) {
+        if (this->sync && dialogSyncPacket) {
             dialogSyncPacket->receivedLogs += packetsArray.size();
             dialogSyncPacket->upgrade();
         }
-
         return;
     }
 
-    if( this->sync && dialogSyncPacket != nullptr && spType != TYPE_SYNC_BATCH ) {
+    if (this->sync && dialogSyncPacket && spType != TYPE_SYNC_BATCH) {
         dialogSyncPacket->receivedLogs++;
         dialogSyncPacket->upgrade();
     }
@@ -458,7 +458,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
             this->sync = false;
             dialogSyncPacket->finish();
-
             QTimer::singleShot(100, this, [this]() {
                 this->setSyncUpdateUI(true);
                 Q_EMIT this->SyncedSignal();
@@ -516,7 +515,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         Agent* newAgent = new Agent(jsonObj, this);
         SessionsTableDock->AddAgentItem( newAgent );
         SessionsGraphDock->AddAgent(newAgent, this->synchronized);
-
         if (synchronized)
             Q_EMIT eventNewAgent(newAgent->data.Id);
 
@@ -525,12 +523,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if( spType == TYPE_AGENT_UPDATE )
     {
         QString agentId = jsonObj["a_id"].toString();
-
         Agent* agent = AgentsMap.value(agentId, nullptr);
         if(agent) {
             auto oldData = agent->data;
             agent->Update(jsonObj);
-
             SessionsTableDock->UpdateAgentItem(oldData, agent);
         }
         return;
@@ -589,11 +585,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
         if(TasksMap.contains(taskId)) {
             TaskData* task = &TasksMap[taskId];
-
             task->Completed = jsonObj["a_completed"].toBool();
             if (task->Completed) {
                 task->FinishTime = jsonObj["a_finish_time"].toDouble();
-
                 task->MessageType = jsonObj["a_msg_type"].toDouble();
                 if ( task->MessageType == CONSOLE_OUT_ERROR || task->MessageType == CONSOLE_OUT_LOCAL_ERROR ) {
                     task->Status = "Error";
@@ -609,7 +603,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             if ( task->Message.isEmpty() )
                 task->Message = jsonObj["a_message"].toString();
             task->Output += jsonObj["a_text"].toString();
-
             TasksDock->UpdateTaskItem(taskId, *task);
         }
         return;
@@ -895,12 +888,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                     }
                 }
             }
-
             t.OsIcon = getTargetOsIcon(t.Os, !t.Agents.isEmpty(), t.Alive);
-
             targetsList.append(t);
         }
-
         TargetsDock->AddTargetsItems(targetsList);
         return;
     }
@@ -926,9 +916,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 }
             }
         }
-
         t.OsIcon = getTargetOsIcon(t.Os, !t.Agents.isEmpty(), t.Alive);
-
         TargetsDock->EditTargetsItem(t);
         return;
     }
@@ -1073,12 +1061,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         if( AgentsMap.contains(pivotData.ParentAgentId) && AgentsMap.contains(pivotData.ChildAgentId) ) {
             Agent* parentAgent = AgentsMap[pivotData.ParentAgentId];
             Agent* childAgent  = AgentsMap[pivotData.ChildAgentId];
-
             parentAgent->AddChild(pivotData);
             childAgent->SetParent(pivotData);
-
             Pivots[pivotData.PivotId] = pivotData;
-
             SessionsGraphDock->RelinkAgent(parentAgent, childAgent, pivotData.PivotName, this->synchronized);
             SessionsTableDock->UpdateAgentItem(childAgent->data, childAgent);
         }
@@ -1087,7 +1072,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     if (spType == TYPE_PIVOT_DELETE)
     {
         QString pivotId = jsonObj["p_pivot_id"].toString();
-
         if (Pivots.contains(pivotId)) {
             PivotData pivotData = Pivots[pivotId];
             Pivots.remove(pivotId);
@@ -1095,10 +1079,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             if( AgentsMap.contains(pivotData.ParentAgentId) && AgentsMap.contains(pivotData.ChildAgentId) ) {
                 Agent* parentAgent = AgentsMap[pivotData.ParentAgentId];
                 Agent* childAgent  = AgentsMap[pivotData.ChildAgentId];
-
                 parentAgent->RemoveChild(pivotData);
                 childAgent->UnsetParent(pivotData);
-
                 SessionsGraphDock->UnlinkAgent(parentAgent, childAgent, this->synchronized);
                 SessionsTableDock->UpdateAgentItem(childAgent->data, childAgent);
             }

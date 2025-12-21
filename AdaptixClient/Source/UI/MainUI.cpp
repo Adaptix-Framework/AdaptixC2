@@ -56,6 +56,12 @@ MainUI::MainUI()
 
 MainUI::~MainUI()
 {
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget) {
+            disconnect(adaptixWidget, nullptr, nullptr, nullptr);
+            adaptixWidget->Close();
+        }
+    }
     qDeleteAll(AdaptixProjects);
     AdaptixProjects.clear();
 }

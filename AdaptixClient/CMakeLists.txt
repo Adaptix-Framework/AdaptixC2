@@ -131,7 +131,7 @@ SET( HEADERS
         Headers/Client/TunnelEndpoint.h
         Headers/Workers/TunnelWorker.h
         Headers/Workers/SocksHandshakeWorker.h
-        Headers/UI/Widgets/TerminalWidget.h
+        Headers/UI/Widgets/TerminalContainerWidget.h
         Headers/Workers/TerminalWorker.h
         Headers/UI/Dialogs/DialogDownloader.h
         Headers/Workers/DownloaderWorker.h
@@ -215,7 +215,7 @@ add_executable(AdaptixClient
         Source/Client/TunnelEndpoint.cpp
         Source/Workers/TunnelWorker.cpp
         Source/Workers/SocksHandshakeWorker.cpp
-        Source/UI/Widgets/TerminalWidget.cpp
+        Source/UI/Widgets/TerminalContainerWidget.cpp
         Source/Workers/TerminalWorker.cpp
         Source/UI/Dialogs/DialogDownloader.cpp
         Source/Workers/DownloaderWorker.cpp
