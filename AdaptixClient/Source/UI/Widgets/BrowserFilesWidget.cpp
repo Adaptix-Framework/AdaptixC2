@@ -360,12 +360,14 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
 
             QString oldFullpath = data.Fullpath + "\\";
 
-            for(QString storeKey : browserStore.keys())
+            QStringList keysToRemove;
+            for(const QString& storeKey : browserStore.keys())
                 if (storeKey.startsWith(oldFullpath, Qt::CaseInsensitive))
-                    browserStore.remove(storeKey);
+                    keysToRemove.append(storeKey);
+            for(const QString& key : keysToRemove)
+                browserStore.remove(key);
 
             browserStore.remove(data.Fullpath);
-            oldFiles.remove(oldPath);
         }
     }
     else {
@@ -420,12 +422,14 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
 
             QString oldFullpath = data.Fullpath + "/";
 
-            for(QString storeKey : browserStore.keys())
+            QStringList keysToRemove;
+            for(const QString& storeKey : browserStore.keys())
                 if (storeKey.startsWith(oldFullpath, Qt::CaseSensitive))
-                    browserStore.remove(storeKey);
+                    keysToRemove.append(storeKey);
+            for(const QString& key : keysToRemove)
+                browserStore.remove(key);
 
             browserStore.remove(data.Fullpath);
-            oldFiles.remove(oldPath);
         }
     }
 }
