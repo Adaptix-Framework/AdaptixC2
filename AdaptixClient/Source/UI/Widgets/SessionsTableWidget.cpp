@@ -3,7 +3,7 @@
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
-#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/TerminalContainerWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>

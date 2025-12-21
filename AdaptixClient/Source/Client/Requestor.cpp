@@ -895,6 +895,11 @@ void HttpReqScreenRemoveAsync(QStringList screensId, AuthProfile& profile, HttpC
     HttpRequestManager::instance().post(profile.GetURL(), "/screen/remove", profile.GetAccessToken(), jsonData, callback);
 }
 
+void HttpReqTunnelStartServerAsync(const QString &tunnelType, const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback)
+{
+    HttpRequestManager::instance().post(profile.GetURL(), "/tunnel/start/" + tunnelType, profile.GetAccessToken(), jsonData, callback);
+}
+
 void HttpReqTunnelStopAsync(const QString &tunnelId, AuthProfile& profile, HttpCallback callback)
 {
     QJsonObject dataJson;

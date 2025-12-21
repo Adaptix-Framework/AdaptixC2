@@ -1,11 +1,11 @@
 #include <Konsole/konsole.h>
 #include <Workers/TerminalWorker.h>
-#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/TerminalContainerWidget.h>
 #include <QMetaObject>
 
-TerminalWorker::TerminalWorker(TerminalWidget* terminalWidget, const QString &token, const QUrl& wsUrl, const QString& terminalData, QObject* parent) : QObject(parent)
+TerminalWorker::TerminalWorker(TerminalTab* terminalTab, const QString &token, const QUrl& wsUrl, const QString& terminalData, QObject* parent) : QObject(parent)
 {
-    this->terminalWidget = terminalWidget;
+    this->terminalTab = terminalTab;
     this->token = token;
     this->wsUrl = wsUrl;
     this->terminalData = terminalData;
@@ -77,21 +77,25 @@ void TerminalWorker::onWsBinaryMessageReceived(const QByteArray& msg) {
 
         Q_EMIT connectedToTerminal();
 
-        connect(this->terminalWidget->Konsole(), &QTermWidget::sendData, this,
-                [this](const char *data, int size) {
-                    if (stopped)
-                        return;
+        QTermWidget* konsole = terminalTab ? terminalTab->Konsole() : nullptr;
 
-                    const QByteArray payload(data, size);
-                    QMetaObject::invokeMethod(this, [this, payload]() {
+        if (konsole) {
+            connect(konsole, &QTermWidget::sendData, this,
+                    [this](const char *data, int size) {
                         if (stopped)
                             return;
-                        if (websocket && websocket->state() == QAbstractSocket::ConnectedState) {
-                            websocket->sendBinaryMessage(payload);
-                        }
-                    }, Qt::QueuedConnection);
-                },
-                Qt::DirectConnection);
+
+                        const QByteArray payload(data, size);
+                        QMetaObject::invokeMethod(this, [this, payload]() {
+                            if (stopped)
+                                return;
+                            if (websocket && websocket->state() == QAbstractSocket::ConnectedState) {
+                                websocket->sendBinaryMessage(payload);
+                            }
+                        }, Qt::QueuedConnection);
+                    },
+                    Qt::DirectConnection);
+        }
     }
 
     if (!msg.isEmpty())

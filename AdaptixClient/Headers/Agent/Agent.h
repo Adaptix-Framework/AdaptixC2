@@ -7,7 +7,7 @@ class Commander;
 class ConsoleWidget;
 class BrowserFilesWidget;
 class BrowserProcessWidget;
-class TerminalWidget;
+class TerminalContainerWidget;
 class AdaptixWidget;
 class AgentTableWidgetItem;
 class GraphItem;
@@ -38,7 +38,7 @@ public:
     ConsoleWidget*        Console        = nullptr;
     BrowserFilesWidget*   FileBrowser    = nullptr;
     BrowserProcessWidget* ProcessBrowser = nullptr;
-    TerminalWidget*       Terminal       = nullptr;
+    TerminalContainerWidget* Terminal    = nullptr;
 
     bool active = true;
     bool show   = true;

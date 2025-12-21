@@ -67,24 +67,6 @@ public:
 
 
 
-class FileSelector : public QWidget
-{
-Q_OBJECT
-public:
-    QVBoxLayout* layout = nullptr;
-    QLineEdit*   input  = nullptr;
-    QPushButton* button = nullptr;
-
-    QString content;
-
-    explicit FileSelector(QWidget* parent = nullptr);
-    ~FileSelector() override = default;
-};
-
-
-
-
-
 class ClickableLabel : public QLabel {
     Q_OBJECT
 

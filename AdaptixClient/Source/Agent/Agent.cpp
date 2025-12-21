@@ -1,7 +1,7 @@
 #include <Agent/Agent.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
-#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/TerminalContainerWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Graph/GraphItem.h>
@@ -67,7 +67,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 
     this->FileBrowser    = new BrowserFilesWidget(adaptixWidget, this);
     this->ProcessBrowser = new BrowserProcessWidget(adaptixWidget, this);
-    this->Terminal       = new TerminalWidget(this, adaptixWidget);
+    this->Terminal       = new TerminalContainerWidget(this, adaptixWidget);
     this->Console        = new ConsoleWidget(adaptixWidget, this, this->commander);
     this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
 }

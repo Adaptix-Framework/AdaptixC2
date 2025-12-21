@@ -2,7 +2,7 @@
 #include <Konsole/konsole.h>
 #include <Workers/TerminalWorker.h>
 #include <UI/Dialogs/DialogSaveTask.h>
-#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/TerminalContainerWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/Settings.h>
@@ -10,9 +10,9 @@
 #include <Client/Requestor.h>
 #include <MainAdaptix.h>
 
-REGISTER_DOCK_WIDGET(TerminalWidget, "Remote Terminal", false)
+REGISTER_DOCK_WIDGET(TerminalContainerWidget, "Remote Terminal", false)
 
-TerminalWidget::TerminalWidget(Agent* a, AdaptixWidget* w) : DockTab(QString("Terminal [%1]").arg(a->data.Id), w->GetProfile()->GetProject())
+TerminalTab::TerminalTab(Agent* a, AdaptixWidget* w, QWidget* parent) : QWidget(parent)
 {
     this->agent = a;
     this->adaptixWidget = w;
@@ -26,21 +26,22 @@ TerminalWidget::TerminalWidget(Agent* a, AdaptixWidget* w) : DockTab(QString("Te
     SetSettings();
     SetKeys();
 
-    connect(termWidget, &QWidget::customContextMenuRequested, this, &TerminalWidget::handleTerminalMenu);
-
-    connect(programComboBox, &QComboBox::currentTextChanged, this, &TerminalWidget::onProgramChanged);
-    connect(keytabComboBox,  &QComboBox::currentTextChanged, this, &TerminalWidget::onKeytabChanged);
-    connect(startButton,     &QPushButton::clicked,          this, &TerminalWidget::onStart);
-    connect(stopButton,      &QPushButton::clicked,          this, &TerminalWidget::onStop);
-
-    this->dockWidget->setWidget(this);
+    connect(termWidget,      &QWidget::customContextMenuRequested, this, &TerminalTab::handleTerminalMenu);
+    connect(programComboBox, &QComboBox::currentTextChanged,       this, &TerminalTab::onProgramChanged);
+    connect(keytabComboBox,  &QComboBox::currentTextChanged,       this, &TerminalTab::onKeytabChanged);
+    connect(startButton,     &QPushButton::clicked,                this, &TerminalTab::onStart);
+    connect(stopButton,      &QPushButton::clicked,                this, &TerminalTab::onStop);
 }
 
-TerminalWidget::~TerminalWidget() = default;
-
-void TerminalWidget::createUI()
+TerminalTab::~TerminalTab()
 {
-    auto topWidget = new QWidget(this);
+    if (terminalWorker)
+        QMetaObject::invokeMethod(terminalWorker, "stop", Qt::QueuedConnection);
+}
+
+void TerminalTab::createUI()
+{
+    topWidget = new QWidget(this);
 
     programInput = new QLineEdit(this);
     programInput->setEnabled(false);
@@ -142,7 +143,7 @@ void TerminalWidget::createUI()
     this->setLayout( mainGridLayout );
 }
 
-void TerminalWidget::setStatus(const QString &text)
+void TerminalTab::setStatus(const QString &text)
 {
     this->statusLabel->setText(text);
 
@@ -154,12 +155,9 @@ void TerminalWidget::setStatus(const QString &text)
     }
 }
 
-QTermWidget* TerminalWidget::Konsole()
-{
-    return this->termWidget;
-}
+QTermWidget* TerminalTab::Konsole() { return this->termWidget; }
 
-void TerminalWidget::SetFont()
+void TerminalTab::SetFont()
 {
     QFont font = QApplication::font();
 
@@ -177,7 +175,7 @@ void TerminalWidget::SetFont()
     termWidget->setTerminalFont(font);
 }
 
-void TerminalWidget::SetSettings()
+void TerminalTab::SetSettings()
 {
     termWidget->setScrollBarPosition(QTermWidget::ScrollBarRight);
     termWidget->setBlinkingCursor(true);
@@ -204,7 +202,7 @@ void TerminalWidget::SetSettings()
     termWidget->setContextMenuPolicy(Qt::CustomContextMenu);
 }
 
-void TerminalWidget::handleTerminalMenu(const QPoint &pos)
+void TerminalTab::handleTerminalMenu(const QPoint &pos)
 {
     QMenu menu(this->termWidget);
     menu.addAction("Copy  (Ctrl+Shift+C)", this->termWidget, &QTermWidget::copyClipboard);
@@ -243,36 +241,31 @@ void TerminalWidget::handleTerminalMenu(const QPoint &pos)
         TaskData taskData = dialogTask->GetData();
         delete dialogTask;
 
-        QString message = "";
-        bool ok = false;
-        bool result = HttpReqTasksSave(agent->data.Id, taskData.CommandLine, taskData.MessageType, taskData.Message, taskData.Output, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Server is not responding");
-            return;
-        }
-        if (!ok) MessageError(message);
+        HttpReqTasksSaveAsync(agent->data.Id, taskData.CommandLine, taskData.MessageType, taskData.Message, taskData.Output, *(adaptixWidget->GetProfile()), [](bool success, const QString &message, const QJsonObject&) {
+            if (!success)
+                MessageError(message);
+        });
     });
 
     menu.exec(this->termWidget->mapToGlobal(pos));
 }
 
-void TerminalWidget::SetKeys()
+void TerminalTab::SetKeys()
 {
-    /* Ctrl+Shift+C: Copy */
     QShortcut *copyShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C), this->termWidget);
     connect(copyShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::copyClipboard);
-    /* Ctrl+Shift+V: Paste */
+
     QShortcut *pasteShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V), this->termWidget);
     connect(pasteShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::pasteClipboard);
-    /* Ctrl+Shift+F: Find */
+
     QShortcut *findShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F), this->termWidget);
     connect(findShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::toggleShowSearchBar);
-    /* Ctrl+Shift+L: Clear */
+
     QShortcut *clearShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_L), this->termWidget);
     connect(clearShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::clear);
 }
 
-void TerminalWidget::onStart()
+void TerminalTab::onStart()
 {
     if ( !adaptixWidget )
         return;
@@ -314,17 +307,12 @@ void TerminalWidget::onStart()
     connect(terminalWorker, &TerminalWorker::errorStop, this, [this]() { onStop(); }, Qt::QueuedConnection);
 
     connect(terminalWorker, &TerminalWorker::connectedToTerminal,     this, [this]() { setStatus("Running"); }, Qt::QueuedConnection);
-    connect(terminalWorker, &TerminalWorker::binaryMessageToTerminal, this, &TerminalWidget::recvDataFromSocket, Qt::QueuedConnection);
+    connect(terminalWorker, &TerminalWorker::binaryMessageToTerminal, this, &TerminalTab::recvDataFromSocket, Qt::QueuedConnection);
 
     terminalThread->start();
 }
 
-void TerminalWidget::onRestart()
-{
-
-}
-
-void TerminalWidget::onStop()
+void TerminalTab::onStop()
 {
     if (!terminalWorker || !terminalThread)
         return;
@@ -349,34 +337,119 @@ void TerminalWidget::onStop()
     QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
 }
 
-void TerminalWidget::onProgramChanged()
+void TerminalTab::onProgramChanged()
 {
-    if (programComboBox->currentText() == "Custom program") {
+    QString program = programComboBox->currentText();
+    if (program == "Custom program") {
         programInput->setEnabled(true);
+        programInput->clear();
         programInput->setFocus();
     }
-    else if (programComboBox->currentText() == "Shell") {
-        programInput->setText("/bin/sh");
+    else {
         programInput->setEnabled(false);
-    }
-    else if (programComboBox->currentText() == "Bash") {
-        programInput->setText("/bin/bash");
-        programInput->setEnabled(false);
-    }
-    else if (programComboBox->currentText() == "ZSH") {
-        programInput->setText("/bin/zsh");
-        programInput->setEnabled(false);
-    }
-    else if (programComboBox->currentText() == "Cmd") {
-        programInput->setText("C:\\Windows\\System32\\cmd.exe");
-        programInput->setEnabled(false);
-    }
-    else if (programComboBox->currentText() == "Powershell") {
-        programInput->setText("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
-        programInput->setEnabled(false);
+
+        if (this->agent && this->agent->data.Os == OS_WINDOWS) {
+            if (program == "Cmd")
+                programInput->setText("C:\\Windows\\System32\\cmd.exe");
+            else if (program == "Powershell")
+                programInput->setText("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
+        }
+        else if (this->agent && this->agent->data.Os == OS_LINUX) {
+            if (program == "Shell")
+                programInput->setText("/bin/sh");
+            else if (program == "Bash")
+                programInput->setText("/bin/bash");
+        }
+        else {
+            if (program == "ZSH")
+                programInput->setText("/bin/zsh");
+            else if (program == "Shell")
+                programInput->setText("/bin/sh");
+            else if (program == "Bash")
+                programInput->setText("/bin/bash");
+        }
     }
 }
 
-void TerminalWidget::onKeytabChanged() { termWidget->setKeyBindings(keytabComboBox->currentText()); }
+void TerminalTab::onKeytabChanged()
+{
+    QString keytab = keytabComboBox->currentText();
+    termWidget->setKeyBindings(keytab);
+}
 
-void TerminalWidget::recvDataFromSocket(const QByteArray &msg) { this->termWidget->recvData(msg.constData(), msg.size()); }
+void TerminalTab::recvDataFromSocket(const QByteArray &msg) { termWidget->recvData(msg.data(), msg.size()); }
+
+bool TerminalTab::isRunning() const { return terminalWorker != nullptr; }
+
+
+
+
+
+TerminalContainerWidget::TerminalContainerWidget(Agent* a, AdaptixWidget* w) : DockTab(QString("Terminal [%1]").arg(a->data.Id), w->GetProfile()->GetProject())
+{
+    this->agent = a;
+    this->adaptixWidget = w;
+
+    mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
+
+    tabWidget = new QTabWidget(this);
+    tabWidget->setTabPosition(QTabWidget::West);
+    tabWidget->setTabsClosable(true);
+    tabWidget->setMovable(true);
+
+    addTabButton = new QPushButton("+", this);
+    addTabButton->setFixedSize(30, 30);
+    addTabButton->setToolTip("Add new terminal");
+    tabWidget->setCornerWidget(addTabButton, Qt::BottomLeftCorner);
+
+    connect(addTabButton, &QPushButton::clicked,          this, &TerminalContainerWidget::addNewTerminal);
+    connect(tabWidget,    &QTabWidget::tabCloseRequested, this, &TerminalContainerWidget::onTabCloseRequested);
+
+    mainLayout->addWidget(tabWidget);
+    this->setLayout(mainLayout);
+
+    addNewTerminal();
+
+    this->dockWidget->setWidget(this);
+}
+
+TerminalContainerWidget::~TerminalContainerWidget() = default;
+
+void TerminalContainerWidget::addNewTerminal()
+{
+    tabCounter++;
+    TerminalTab* terminalTab = new TerminalTab(agent, adaptixWidget, this);
+    int index = tabWidget->addTab(terminalTab, QString("Term %1").arg(tabCounter));
+    tabWidget->setCurrentIndex(index);
+}
+
+void TerminalContainerWidget::closeTab(int index)
+{
+    if (tabWidget->count() > 1) {
+        TerminalTab* tab = qobject_cast<TerminalTab*>(tabWidget->widget(index));
+        if (tab) {
+            tab->onStop();
+        }
+        tabWidget->removeTab(index);
+        if (tab) {
+            tab->deleteLater();
+        }
+    }
+}
+
+void TerminalContainerWidget::onTabCloseRequested(int index)
+{
+    TerminalTab* tab = qobject_cast<TerminalTab*>(tabWidget->widget(index));
+    if (tab && tab->isRunning()) {
+        QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "Close Confirmation",
+                                          "Terminal is still running. Stop and close it?",
+                                          QMessageBox::Yes | QMessageBox::No,
+                                          QMessageBox::No);
+        if (reply != QMessageBox::Yes)
+            return;
+    }
+
+    closeTab(index);
+}
