@@ -306,7 +306,7 @@ bool AxCheckBoxWrapper::isChecked() const { return check->isChecked(); }
 
 void AxCheckBoxWrapper::setChecked(const bool checked) const { check->setChecked(checked); }
 
-void AxSelectorFile::setPlaceholder(const QString& text) const { selector->input->setPlaceholderText(text); }
+void AxSelectorFile::setPlaceholder(const QString& text) const { lineEdit->setPlaceholderText(text); }
 
 /// LABEL
 
@@ -910,11 +910,17 @@ void AxDialogWrapper::setButtonsText(const QString &ok_text, const QString &canc
 
 /// FILE SELECTOR
 
-AxSelectorFile::AxSelectorFile(FileSelector* selector, QObject* parent) : QObject(parent), selector(selector) {}
+AxSelectorFile::AxSelectorFile(QLineEdit* edit, QObject* parent) : QObject(parent), lineEdit(edit)
+{
+    lineEdit->setReadOnly(true);
 
-FileSelector* AxSelectorFile::widget() const { return selector; }
+    auto action = lineEdit->addAction(QIcon(":/icons/folder"), QLineEdit::TrailingPosition);
+    connect(action, &QAction::triggered, this, &AxSelectorFile::onSelectFile);
+}
 
-QVariant AxSelectorFile::jsonMarshal() const { return selector->content; }
+QLineEdit* AxSelectorFile::widget() const { return lineEdit; }
+
+QVariant AxSelectorFile::jsonMarshal() const { return content; }
 
 void AxSelectorFile::jsonUnmarshal(const QVariant& value)
 {

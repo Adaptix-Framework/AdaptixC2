@@ -227,8 +227,8 @@ QObject* BridgeForm::create_table(const QJSValue &headers)
 
 QObject* BridgeForm::create_selector_file()
 {
-    auto fileSelector = new FileSelector(getParentWidget());
-    auto* wrapper = new AxSelectorFile(fileSelector, this);
+    auto* lineEdit = new QLineEdit(getParentWidget());
+    auto* wrapper = new AxSelectorFile(lineEdit, this);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }

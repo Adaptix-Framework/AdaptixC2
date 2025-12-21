@@ -116,7 +116,7 @@ QDialog* AxUiFactory::createDialog(const QString& title)
     return dialog;
 }
 
-FileSelector* AxUiFactory::createFileSelector()
+QLineEdit* AxUiFactory::createFileSelector()
 {
-    return new FileSelector(parentWidget);
+    return new QLineEdit(parentWidget);
 }

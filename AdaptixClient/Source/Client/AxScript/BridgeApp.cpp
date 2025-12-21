@@ -121,7 +121,6 @@ void BridgeApp::agent_hide(const QJSValue &agents)
         Q_EMIT engineError("agent_hide expected array of strings in agents parameter!");
         return;
     }
-
     scriptEngine->manager()->AppAgentHide(AxScriptUtils::jsArrayToStringList(agents));
 }
 
@@ -141,7 +140,6 @@ void BridgeApp::agent_set_color(const QJSValue &agents, const QString &backgroun
         Q_EMIT engineError("agent_set_color expected array of strings in agents parameter!");
         return;
     }
-
     scriptEngine->manager()->AppAgentSetColor(AxScriptUtils::jsArrayToStringList(agents), background, foreground, reset);
 }
 
@@ -421,9 +419,8 @@ void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const Q
 
     auto cmdResult = agent->commander->ProcessInput(id, command);
     if (!cmdResult.is_pre_hook) {
-        if (!message.isEmpty()) {
+        if (!message.isEmpty())
             cmdResult.data["message"] = message;
-        }
 
         if (!hook.isUndefined() && !hook.isNull() && hook.isCallable())
             cmdResult.post_hook = {true, scriptEngine->context.name, hook};
@@ -599,11 +596,9 @@ bool BridgeApp::prompt_confirm(const QString &title, const QString &text)
 QString BridgeApp::prompt_open_file(const QString &caption, const QString &filter)
 {
     auto adaptix = scriptEngine->manager()->GetAdaptix();
-    QString baseDir;
+    QString baseDir = QDir::homePath();
     if (adaptix && adaptix->GetProfile())
         baseDir = adaptix->GetProfile()->GetProjectDir();
-    if (baseDir.isEmpty())
-        baseDir = QDir::homePath();
 
     return QFileDialog::getOpenFileName(nullptr, caption, baseDir, filter);
 }
@@ -611,11 +606,9 @@ QString BridgeApp::prompt_open_file(const QString &caption, const QString &filte
 QString BridgeApp::prompt_open_dir(const QString &caption)
 {
     auto adaptix = scriptEngine->manager()->GetAdaptix();
-    QString baseDir;
+    QString baseDir = QDir::homePath();
     if (adaptix && adaptix->GetProfile())
         baseDir = adaptix->GetProfile()->GetProjectDir();
-    if (baseDir.isEmpty())
-        baseDir = QDir::homePath();
 
     return QFileDialog::getExistingDirectory(nullptr, caption, baseDir);
 }
@@ -623,11 +616,9 @@ QString BridgeApp::prompt_open_dir(const QString &caption)
 QString BridgeApp::prompt_save_file(const QString &filename, const QString &caption, const QString &filter)
 {
     auto adaptix = scriptEngine->manager()->GetAdaptix();
-    QString baseDir;
+    QString baseDir = QDir::homePath();
     if (adaptix && adaptix->GetProfile())
         baseDir = adaptix->GetProfile()->GetProjectDir();
-    if (baseDir.isEmpty())
-        baseDir = QDir::homePath();
 
     QString initialPath = filename;
     if (!QDir::isAbsolutePath(initialPath))

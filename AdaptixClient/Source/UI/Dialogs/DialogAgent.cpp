@@ -256,7 +256,7 @@ void DialogAgent::onButtonSave()
     QByteArray fileContent = QJsonDocument(dataJson).toJson();
 
     QString tmpFilename = QString("%1_config.json").arg(configType);
-    QString baseDir = authProfile.GetProjectDir();
+    QString baseDir     = authProfile.GetProjectDir();
     QString initialPath = QDir(baseDir).filePath(tmpFilename);
     NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "JSON files (*.json)",
         [this, fileContent](const QString& filePath) {

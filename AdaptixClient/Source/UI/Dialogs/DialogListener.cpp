@@ -173,8 +173,8 @@ void DialogListener::changeType(const QString &type)
 
 void DialogListener::onButtonCreate()
 {
-    auto configName= inputListenerName->text();
-    auto configType= listenerCombobox->currentText();
+    auto configName = inputListenerName->text();
+    auto configType = listenerCombobox->currentText();
     auto configData = QString();
     if (ax_uis.contains(configType) && ax_uis[configType].container)
         configData = ax_uis[configType].container->toJson();

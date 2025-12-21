@@ -56,7 +56,7 @@ public Q_SLOTS:
     QScrollArea* createScrollArea();
     QStackedWidget* createStackedWidget();
     QDialog* createDialog(const QString& title);
-    FileSelector* createFileSelector();
+    QLineEdit* createFileSelector();
 };
 
 #endif
