@@ -583,7 +583,7 @@ void BrowserFilesWidget::onUpload() const
     else
         remotePath += "/";
 
-    QString baseDir;
+    QString baseDir = QDir::homePath();
     if (agent && agent->adaptixWidget && agent->adaptixWidget->GetProfile())
         baseDir = agent->adaptixWidget->GetProfile()->GetProjectDir();
 

@@ -2,6 +2,7 @@
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Agent/Agent.h>
+#include <Utils/NonBlockingDialogs.h>
 
 #include <QJSEngine>
 #include <QJsonObject>
@@ -917,8 +918,28 @@ QVariant AxSelectorFile::jsonMarshal() const { return selector->content; }
 
 void AxSelectorFile::jsonUnmarshal(const QVariant& value)
 {
-    selector->content = value.toString();
-    selector->input->setText("Selected...");
+    content = value.toString();
+    lineEdit->setText("Selected...");
+}
+
+void AxSelectorFile::onSelectFile()
+{
+    NonBlockingDialogs::getOpenFileName(lineEdit, "Select a file", "", "All Files (*.*)",
+        [this](const QString& selectedFile) {
+            if (selectedFile.isEmpty())
+                return;
+
+            lineEdit->setText(selectedFile);
+
+            QFile file(selectedFile);
+            if (!file.open(QIODevice::ReadOnly))
+                return;
+
+            QByteArray fileData = file.readAll();
+            file.close();
+
+            content = QString::fromUtf8(fileData.toBase64());
+        });
 }
 
 /// SELECTOR CREDENTIALS

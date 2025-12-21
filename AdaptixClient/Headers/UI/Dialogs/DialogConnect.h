@@ -32,7 +32,7 @@ class DialogConnect : public QDialog
     QTableWidget* tableWidget         = nullptr;
     QMenu*        menuContex          = nullptr;
 
-    bool          projectDirTouched   = false;
+    bool projectDirTouched = false;
 
     void createUI();
     bool checkValidInput() const;
@@ -55,7 +55,6 @@ private Q_SLOTS:
     void onProjectNameChanged(const QString &text);
     void onProjectDirEdited(const QString &text);
     void onSelectProjectDir();
-
 };
 
 #endif

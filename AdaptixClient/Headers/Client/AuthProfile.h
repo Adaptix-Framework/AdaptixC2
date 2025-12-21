@@ -8,30 +8,24 @@ class AuthProfile
     QString project;
     QString username;
     QString password;
-    QString projectDir;
     QString host;
     QString port;
     QString endpoint;
     QString accessToken;
     QString refreshToken;
+    QString projectDir;
 
 public:
     bool valid;
 
     AuthProfile();
-    AuthProfile(const QString &project,
-                const QString &username,
-                const QString &password,
-                const QString &host,
-                const QString &port,
-                const QString &endpoint,
-                const QString &projectDir = QString());
+    AuthProfile(const QString &project, const QString &username, const QString &password, const QString &host, const QString &port, const QString &endpoint, const QString &projectDir = QString());
     ~AuthProfile();
 
     QString GetProject();
+    QString GetProjectDir() const;
     QString GetUsername();
     QString GetPassword();
-    QString GetProjectDir() const;
     QString GetHost();
     QString GetPort();
     QString GetEndpoint();

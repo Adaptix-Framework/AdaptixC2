@@ -3,8 +3,8 @@
 #include <Utils/NonBlockingDialogs.h>
 #include <Client/Extender.h>
 #include <Client/AuthProfile.h>
-#include <MainAdaptix.h>
 #include <UI/MainUI.h>
+#include <MainAdaptix.h>
 
 DialogExtender::DialogExtender(Extender* e)
 {

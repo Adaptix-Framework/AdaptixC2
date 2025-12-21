@@ -247,12 +247,11 @@ void DownloadsWidget::actionSync()
     QString otp = message;
     QString fileName = extractFileName(filePath);
 
-    QString baseDir;
+    QString baseDir = fileName;
     if (adaptixWidget && adaptixWidget->GetProfile())
-        baseDir = adaptixWidget->GetProfile()->GetProjectDir();
-    QString initialPath = baseDir.isEmpty() ? fileName : QDir(baseDir).filePath(fileName);
+        baseDir = QDir(adaptixWidget->GetProfile()->GetProjectDir()).filePath(fileName);
 
-    NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "All Files (*.*)",
+    NonBlockingDialogs::getSaveFileName(this, "Save File", baseDir, "All Files (*.*)",
         [this, otp](const QString& savedPath) {
             if (savedPath.isEmpty())
                 return;

@@ -402,8 +402,8 @@ void ListenersWidget::onGenerateAgent() const
     if (tableWidget->selectionModel()->selectedRows().empty())
         return;
 
-    auto listenerName     = tableWidget->item( tableWidget->currentRow(), ColumnName )->text();
-    auto listenerRegName  = tableWidget->item( tableWidget->currentRow(), ColumnRegName )->text();
+    auto listenerName    = tableWidget->item( tableWidget->currentRow(), ColumnName )->text();
+    auto listenerRegName = tableWidget->item( tableWidget->currentRow(), ColumnRegName )->text();
 
     QList<QString> agentNames = adaptixWidget->GetAgentNames(listenerRegName);
 

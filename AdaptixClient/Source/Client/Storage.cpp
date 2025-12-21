@@ -113,11 +113,11 @@ bool Storage::ExistsProject(const QString &project)
 void Storage::AddProject(AuthProfile profile)
 {
     QJsonObject json;
-    json["host"]     = profile.GetHost();
-    json["port"]     = profile.GetPort();
-    json["endpoint"] = profile.GetEndpoint();
-    json["username"] = profile.GetUsername();
-    json["password"] = profile.GetPassword();
+    json["host"]       = profile.GetHost();
+    json["port"]       = profile.GetPort();
+    json["endpoint"]   = profile.GetEndpoint();
+    json["username"]   = profile.GetUsername();
+    json["password"]   = profile.GetPassword();
     json["projectDir"] = profile.GetProjectDir();
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
@@ -132,11 +132,11 @@ void Storage::AddProject(AuthProfile profile)
 void Storage::UpdateProject(AuthProfile profile)
 {
     QJsonObject json;
-    json["host"]     = profile.GetHost();
-    json["port"]     = profile.GetPort();
-    json["endpoint"] = profile.GetEndpoint();
-    json["username"] = profile.GetUsername();
-    json["password"] = profile.GetPassword();
+    json["host"]       = profile.GetHost();
+    json["port"]       = profile.GetPort();
+    json["endpoint"]   = profile.GetEndpoint();
+    json["username"]   = profile.GetUsername();
+    json["password"]   = profile.GetPassword();
     json["projectDir"] = profile.GetProjectDir();
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 

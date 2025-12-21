@@ -1,23 +1,16 @@
 #include <Client/AuthProfile.h>
-#include <QDir>
 
 AuthProfile::AuthProfile()
 {
     this->valid = false;
 }
 
-AuthProfile::AuthProfile(const QString &project,
-                         const QString &username,
-                         const QString &password,
-                         const QString &host,
-                         const QString &port,
-                         const QString &endpoint,
-                         const QString &projectDir)
+AuthProfile::AuthProfile(const QString &project, const QString &username, const QString &password, const QString &host, const QString &port, const QString &endpoint, const QString &projectDir)
 {
     this->project = project.trimmed();
+    this->projectDir = QDir::fromNativeSeparators(projectDir.trimmed());
     this->username = username.trimmed();
     this->password = password;
-    this->projectDir = QDir::fromNativeSeparators(projectDir.trimmed());
     this->host = host.trimmed();
     this->port = port.trimmed();
     this->endpoint = endpoint.trimmed();
