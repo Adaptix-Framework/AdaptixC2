@@ -26,6 +26,7 @@ public Q_SLOTS:
     void     agent_set_impersonate(const QString &id, const QString &impersonate, const bool elevated);
     void     agent_set_mark(const QJSValue& agents, const QString &mark);
     void     agent_set_tag(const QJSValue& agents, const QString &tag);
+    void     agent_update_data(const QString &id, const QJSValue &data);
     QString  arch(const QString &id) const;
     QString  bof_pack(const QString &types, const QJSValue &args);
     void     copy_to_clipboard(const QString &text);

@@ -97,15 +97,17 @@ public:
     QList<AxEvent>    FilterEvents(const QString &agentId, const QString &eventType);
 
     QList<AxScriptEngine*> getAllEngines() const;
+    QList<AxMenuItem> collectMenuItems(const QString &menuType) const;
+    QList<AxEvent> collectEvents(const QString &eventType) const;
     void safeCallHandler(const AxEvent& event, const QJSValueList& args = QJSValueList());
     int  addMenuItemsToMenu(QMenu* menu, const QList<AxMenuItem>& items, const QVariantList& context);
 
     void AppAgentHide(const QStringList &agents);
     void AppAgentRemove(const QStringList &agents);
     void AppAgentSetColor(const QStringList &agents, const QString &background, const QString &foreground, const bool reset);
-    void AppAgentSetImpersonate(const QString &id, const QString &impersonate, const bool elevated);
     void AppAgentSetMark(const QStringList &agents, const QString &mark);
     void AppAgentSetTag(const QStringList &agents, const QString &tag);
+    void AppAgentUpdateData(const QString &id, const QJsonObject &updateData);
 
     int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds);
     int AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files);

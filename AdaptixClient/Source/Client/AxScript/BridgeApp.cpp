@@ -1,5 +1,6 @@
 #include <main.h>
 #include <QTimeZone>
+#include <QJSValueIterator>
 #include <Agent/Agent.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/BridgeApp.h>
@@ -11,6 +12,26 @@
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Widgets/TargetsWidget.h>
+
+namespace {
+
+QString osToString(int os) {
+    switch (os) {
+        case OS_WINDOWS: return "windows";
+        case OS_LINUX:   return "linux";
+        case OS_MAC:     return "macos";
+        default:         return "unknown";
+    }
+}
+
+int stringToOs(const QString &os) {
+    if (os == "windows") return OS_WINDOWS;
+    if (os == "linux")   return OS_LINUX;
+    if (os == "macos")   return OS_MAC;
+    return OS_UNKNOWN;
+}
+
+} // namespace
 
 BridgeApp::BridgeApp(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine) {}
 
@@ -41,16 +62,14 @@ QJSValue BridgeApp::agents() const
         map["pid"]          = agent->data.Pid.toInt();
         map["tid"]          = agent->data.Tid.toInt();
         map["gmt"]          = agent->data.GmtOffset;
+        map["acp"]          = agent->data.ACP;
+        map["oemcp"]        = agent->data.OemCP;
         map["elevated"]     = agent->data.Elevated;
         map["tags"]         = agent->data.Tags;
         map["async"]        = agent->data.Async;
         map["sleep"]        = agent->data.Sleep;
         map["os_full"]      = agent->data.OsDesc;
-
-        if (agent->data.Os == OS_WINDOWS)    map["os"] = "windows";
-        else if (agent->data.Os == OS_LINUX) map["os"] = "linux";
-        else if (agent->data.Os == OS_MAC)   map["os"] = "macos";
-        else                                 map["os"] = "unknown";
+        map["os"]           = osToString(agent->data.Os);
 
         list[agent->data.Id] = map;
     }
@@ -95,6 +114,10 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
         return QJSValue(info.Tid.toInt());
     if (property == "gmt")
         return QJSValue(info.GmtOffset);
+    if (property == "acp")
+        return QJSValue(info.ACP);
+    if (property == "oemcp")
+        return QJSValue(info.OemCP);
     if (property == "elevated")
         return QJSValue(info.Elevated);
     if (property == "tags")
@@ -105,12 +128,8 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
         return QJSValue(info.Sleep);
     if (property == "os_full")
         return QJSValue(info.OsDesc);
-    if (property == "os") {
-        if (info.Os == OS_WINDOWS) return "windows";
-        else if (info.Os == OS_LINUX) return "linux";
-        else if (info.Os == OS_MAC) return "macos";
-        else return "unknown";
-    }
+    if (property == "os")
+        return QJSValue(osToString(info.Os));
 
     return QJSValue::UndefinedValue;
 }
@@ -143,7 +162,19 @@ void BridgeApp::agent_set_color(const QJSValue &agents, const QString &backgroun
     scriptEngine->manager()->AppAgentSetColor(AxScriptUtils::jsArrayToStringList(agents), background, foreground, reset);
 }
 
-void BridgeApp::agent_set_impersonate(const QString &id, const QString &impersonate, const bool elevated) { scriptEngine->manager()->AppAgentSetImpersonate(id, impersonate, elevated); }
+void BridgeApp::agent_set_impersonate(const QString &id, const QString &impersonate, const bool elevated)
+{
+    QJsonObject updateData;
+    if (impersonate.isEmpty())
+        return;
+
+    if (elevated)
+        updateData["impersonated"] = impersonate + " *";
+    else
+        updateData["impersonated"] = impersonate;
+
+    scriptEngine->manager()->AppAgentUpdateData(id, updateData);
+}
 
 void BridgeApp::agent_set_mark(const QJSValue &agents, const QString &mark)
 {
@@ -163,6 +194,68 @@ void BridgeApp::agent_set_tag(const QJSValue &agents, const QString &tag)
     }
 
     scriptEngine->manager()->AppAgentSetTag(AxScriptUtils::jsArrayToStringList(agents), tag);
+}
+
+void BridgeApp::agent_update_data(const QString &id, const QJSValue &data)
+{
+    if (!data.isObject()) {
+        Q_EMIT engineError("agent_update_data expected object in data parameter!");
+        return;
+    }
+
+    QJsonObject updateData;
+    QJSValueIterator it(data);
+    while (it.hasNext()) {
+        it.next();
+        QString key = it.name();
+        QJSValue val = it.value();
+
+        if (key == "internal_ip" && val.isString())
+            updateData["internal_ip"] = val.toString();
+        else if (key == "external_ip" && val.isString())
+            updateData["external_ip"] = val.toString();
+        else if (key == "gmt_offset" && val.isNumber())
+            updateData["gmt_offset"] = val.toInt();
+        else if (key == "acp" && val.isNumber())
+            updateData["acp"] = val.toInt();
+        else if (key == "oemcp" && val.isNumber())
+            updateData["oemcp"] = val.toInt();
+        else if (key == "pid" && val.isString())
+            updateData["pid"] = val.toString();
+        else if (key == "tid" && val.isString())
+            updateData["tid"] = val.toString();
+        else if (key == "arch" && val.isString())
+            updateData["arch"] = val.toString();
+        else if (key == "elevated" && val.isBool())
+            updateData["elevated"] = val.toBool();
+        else if (key == "process" && val.isString())
+            updateData["process"] = val.toString();
+        else if (key == "os" && val.isNumber())
+            updateData["os"] = val.toInt();
+        else if (key == "os_desc" && val.isString())
+            updateData["os_desc"] = val.toString();
+        else if (key == "domain" && val.isString())
+            updateData["domain"] = val.toString();
+        else if (key == "computer" && val.isString())
+            updateData["computer"] = val.toString();
+        else if (key == "username" && val.isString())
+            updateData["username"] = val.toString();
+        else if (key == "impersonated" && val.isString())
+            updateData["impersonated"] = val.toString();
+        else if (key == "tags" && val.isString())
+            updateData["tags"] = val.toString();
+        else if (key == "mark" && val.isString())
+            updateData["mark"] = val.toString();
+        else if (key == "color" && val.isString())
+            updateData["color"] = val.toString();
+    }
+
+    if (updateData.isEmpty()) {
+        Q_EMIT engineError("agent_update_data: no valid fields provided!");
+        return;
+    }
+
+    scriptEngine->manager()->AppAgentUpdateData(id, updateData);
 }
 
 QString BridgeApp::arch(const QString &id) const
@@ -392,14 +485,12 @@ QJSValue BridgeApp::downloads() const
         map["total_size"] = download.TotalSize;
         map["date"]       = download.Date;
 
-        if (download.State == DOWNLOAD_STATE_RUNNING)
-            map["state"] = "running";
-        else if (download.State == DOWNLOAD_STATE_STOPPED)
-            map["state"] = "stopped";
-        else if (download.State == DOWNLOAD_STATE_FINISHED)
-            map["state"] = "finished";
-        else
-            map["state"] = "canceled";
+        switch (download.State) {
+            case DOWNLOAD_STATE_RUNNING:  map["state"] = "running";  break;
+            case DOWNLOAD_STATE_STOPPED:  map["state"] = "stopped";  break;
+            case DOWNLOAD_STATE_FINISHED: map["state"] = "finished"; break;
+            default:                      map["state"] = "canceled"; break;
+        }
 
         list[download.FileId] = map;
     }
@@ -728,11 +819,7 @@ QJSValue BridgeApp::targets() const
         map["alive"]    = target.Alive;
         map["agents"]   = sessions;
         map["os_desc"]  = target.OsDesc;
-
-        if (target.Os == OS_WINDOWS)    map["os"] = "windows";
-        else if (target.Os == OS_LINUX) map["os"] = "linux";
-        else if (target.Os == OS_MAC)   map["os"] = "macos";
-        else                            map["os"] = "unknown";
+        map["os"]       = osToString(target.Os);
 
         list[target.TargetId] = map;
     }
@@ -744,10 +831,7 @@ void BridgeApp::targets_add(const QString &computer, const QString &domain, cons
 {
     TargetData target = {"", computer, domain, address, tag, QIcon(), 0, osDesc, "", 0, info, alive};
 
-    if (os == "windows")    target.Os = OS_WINDOWS;
-    else if (os == "linux") target.Os = OS_LINUX;
-    else if (os == "macos") target.Os = OS_MAC;
-    else                    target.Os = OS_UNKNOWN;
+    target.Os = stringToOs(os);
 
     QList<TargetData> targets;
     targets.append(target);
@@ -768,13 +852,8 @@ void BridgeApp::targets_add_list(const QVariantList &array)
         if (map.contains("info")) td.Info = map["info"].toString();
         if (map.contains("alive")) td.Alive = map["alive"].toBool();
         if (map.contains("os_desc")) td.OsDesc = map["os_desc"].toString();
-        if (map.contains("os")) {
-            QString os = map["os"].toString();
-            if (os == "windows")    td.Os = OS_WINDOWS;
-            else if (os == "linux") td.Os = OS_LINUX;
-            else if (os == "macos") td.Os = OS_MAC;
-            else                    td.Os = OS_UNKNOWN;
-        }
+        if (map.contains("os"))
+            td.Os = stringToOs(map["os"].toString());
         targets.append(td);
     }
 

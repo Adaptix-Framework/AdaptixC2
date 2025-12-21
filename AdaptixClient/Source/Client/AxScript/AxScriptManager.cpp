@@ -14,6 +14,19 @@
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/AxConsoleWidget.h>
 
+namespace {
+
+QString taskTypeToString(int type) {
+    switch (type) {
+        case 1:  return "TASK";
+        case 3:  return "JOB";
+        case 4:  return "TUNNEL";
+        default: return "unknown";
+    }
+}
+
+} // namespace
+
 AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): QObject(parent), adaptixWidget(main_widget) {
     uiFactory = new AxUiFactory(this);
     mainScript = new AxScriptEngine(this, "main", this);
@@ -245,6 +258,26 @@ QList<AxScriptEngine*> AxScriptManager::getAllEngines() const
     return list;
 }
 
+QList<AxMenuItem> AxScriptManager::collectMenuItems(const QString &menuType) const
+{
+    QList<AxMenuItem> items;
+    for (const auto& script : getAllEngines()) {
+        if (script)
+            items += script->getMenuItems(menuType);
+    }
+    return items;
+}
+
+QList<AxEvent> AxScriptManager::collectEvents(const QString &eventType) const
+{
+    QList<AxEvent> items;
+    for (const auto& script : getAllEngines()) {
+        if (script)
+            items += script->getEvents(eventType);
+    }
+    return items;
+}
+
 void AxScriptManager::safeCallHandler(const AxEvent& event, const QJSValueList& args)
 {
     if (!event.jsEngine || !event.handler.isCallable())
@@ -393,11 +426,6 @@ void AxScriptManager::AppAgentSetColor(const QStringList &agents, const QString 
     HttpReqAgentSetColorAsync(agents, background, foreground, reset, *(adaptixWidget->GetProfile()), nullptr);
 }
 
-void AxScriptManager::AppAgentSetImpersonate(const QString &id, const QString &impersonate, const bool elevated)
-{
-    HttpReqAgentSetImpersonateAsync(id, impersonate, elevated, *(adaptixWidget->GetProfile()), nullptr);
-}
-
 void AxScriptManager::AppAgentSetMark(const QStringList &agents, const QString &mark)
 {
     HttpReqAgentSetMarkAsync(agents, mark, *(adaptixWidget->GetProfile()), nullptr);
@@ -406,6 +434,11 @@ void AxScriptManager::AppAgentSetMark(const QStringList &agents, const QString &
 void AxScriptManager::AppAgentSetTag(const QStringList &agents, const QString &tag)
 {
     HttpReqAgentSetTagAsync(agents, tag, *(adaptixWidget->GetProfile()), nullptr);
+}
+
+void AxScriptManager::AppAgentUpdateData(const QString &id, const QJsonObject &updateData)
+{
+    HttpReqAgentUpdateDataAsync(id, updateData, *(adaptixWidget->GetProfile()), nullptr);
 }
 
 /// MENU
@@ -490,14 +523,7 @@ int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QSt
             map["agent_id"] = taskData.AgentId;
             map["task_id"]  = taskData.TaskId;
             map["state"]    = taskData.Status;
-            if (taskData.TaskType == 1)
-                map["type"] = "TASK";
-            else if (taskData.TaskType == 3)
-                map["type"] = "JOB";
-            else if (taskData.TaskType == 4)
-                map["type"] = "TUNNEL";
-            else
-                map["type"] = "unknown";
+            map["type"] = taskTypeToString(taskData.TaskType);
 
             context << map;
             agents.insert(taskData.AgentId);
@@ -511,13 +537,7 @@ int AxScriptManager::AddMenuTargets(QMenu *menu, const QString &menuType, const 
     QVariantList context;
     for (const auto& targetId: targets)
         context << targetId;
-
-    QList<AxMenuItem> items;
-    for (const auto script : getAllEngines()) {
-        if (script)
-            items += script->getMenuItems(menuType);
-    }
-    return addMenuItemsToMenu(menu, items, context);
+    return addMenuItemsToMenu(menu, collectMenuItems(menuType), context);
 }
 
 int AxScriptManager::AddMenuCreds(QMenu *menu, const QString &menuType, const QStringList &creds)
@@ -525,13 +545,7 @@ int AxScriptManager::AddMenuCreds(QMenu *menu, const QString &menuType, const QS
     QVariantList context;
     for (const auto& credId: creds)
         context << credId;
-
-    QList<AxMenuItem> items;
-    for (const auto script : getAllEngines()) {
-        if (script)
-            items += script->getMenuItems(menuType);
-    }
-    return addMenuItemsToMenu(menu, items, context);
+    return addMenuItemsToMenu(menu, collectMenuItems(menuType), context);
 }
 
 
@@ -592,25 +606,13 @@ void AxScriptManager::emitProcessBrowserList(const QString &agentId)
 
 void AxScriptManager::emitReadyClient()
 {
-    QList<AxEvent> items;
-    for (const auto script : getAllEngines()) {
-        if (script)
-            items += script->getEvents("ready");
-    }
-
-    for (const auto& event : items)
+    for (const auto& event : collectEvents("ready"))
         safeCallHandler(event);
 }
 
 void AxScriptManager::emitDisconnectClient()
 {
-    QList<AxEvent> items;
-    for (const auto script : getAllEngines()) {
-        if (script)
-            items += script->getEvents("disconnect");
-    }
-
-    for (const auto& event : items)
+    for (const auto& event : collectEvents("disconnect"))
         safeCallHandler(event);
 }
 
