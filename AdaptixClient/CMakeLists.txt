@@ -191,6 +191,7 @@ add_executable(AdaptixClient
         Source/UI/Dialogs/DialogListener.cpp
         Source/UI/Widgets/SessionsTableWidget.cpp
         Source/UI/Dialogs/DialogAgent.cpp
+        Source/UI/Dialogs/DialogAgentData.cpp
         Source/UI/Widgets/ConsoleWidget.cpp
         Source/Agent/Agent.cpp
         Source/Workers/LastTickWorker.cpp

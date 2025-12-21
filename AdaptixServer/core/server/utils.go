@@ -262,6 +262,8 @@ type SyncPackerAgentNew struct {
 	KillDate     int    `json:"a_killdate"`
 	Sleep        uint   `json:"a_sleep"`
 	Jitter       uint   `json:"a_jitter"`
+	ACP          int    `json:"a_acp"`
+	OemCP        int    `json:"a_oemcp"`
 	Pid          string `json:"a_pid"`
 	Tid          string `json:"a_tid"`
 	Arch         string `json:"a_arch"`
@@ -282,15 +284,30 @@ type SyncPackerAgentNew struct {
 type SyncPackerAgentUpdate struct {
 	SpType int `json:"type"`
 
-	Id           string `json:"a_id"`
-	Sleep        uint   `json:"a_sleep"`
-	Jitter       uint   `json:"a_jitter"`
-	WorkingTime  int    `json:"a_workingtime"`
-	KillDate     int    `json:"a_killdate"`
-	Impersonated string `json:"a_impersonated"`
-	Tags         string `json:"a_tags"`
-	Mark         string `json:"a_mark"`
-	Color        string `json:"a_color"`
+	Id           string  `json:"a_id"`
+	Sleep        *uint   `json:"a_sleep,omitempty"`
+	Jitter       *uint   `json:"a_jitter,omitempty"`
+	WorkingTime  *int    `json:"a_workingtime,omitempty"`
+	KillDate     *int    `json:"a_killdate,omitempty"`
+	Impersonated *string `json:"a_impersonated,omitempty"`
+	Tags         *string `json:"a_tags,omitempty"`
+	Mark         *string `json:"a_mark,omitempty"`
+	Color        *string `json:"a_color,omitempty"`
+	InternalIP   *string `json:"a_internal_ip,omitempty"`
+	ExternalIP   *string `json:"a_external_ip,omitempty"`
+	GmtOffset    *int    `json:"a_gmt_offset,omitempty"`
+	ACP          *int    `json:"a_acp,omitempty"`
+	OemCP        *int    `json:"a_oemcp,omitempty"`
+	Pid          *string `json:"a_pid,omitempty"`
+	Tid          *string `json:"a_tid,omitempty"`
+	Arch         *string `json:"a_arch,omitempty"`
+	Elevated     *bool   `json:"a_elevated,omitempty"`
+	Process      *string `json:"a_process,omitempty"`
+	Os           *int    `json:"a_os,omitempty"`
+	OsDesc       *string `json:"a_os_desc,omitempty"`
+	Domain       *string `json:"a_domain,omitempty"`
+	Computer     *string `json:"a_computer,omitempty"`
+	Username     *string `json:"a_username,omitempty"`
 }
 
 type SyncPackerAgentTick struct {

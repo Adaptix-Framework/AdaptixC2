@@ -1380,7 +1380,10 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 			case COMMAND_REV2SELF:
 				task.Message = "Token reverted successfully"
-				_ = ts.TsAgentSetImpersonate(agentData.Id, "", false)
+				emptyImpersonate := ""
+				_ = ts.TsAgentUpdateDataPartial(agentData.Id, struct {
+					Impersonated *string `json:"impersonated"`
+				}{Impersonated: &emptyImpersonate})
 
 			case COMMAND_RM:
 				task.Message = "Object deleted successfully"

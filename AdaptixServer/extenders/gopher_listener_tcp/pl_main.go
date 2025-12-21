@@ -34,8 +34,7 @@ type Teamserver interface {
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
-	//TsAgentGetHostedTunnels(agentId string, channelId int, maxDataSize int) ([]byte, error)
-	TsAgentSetMark(agentId string, makr string) error
+	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
 
 	TsTaskRunningExists(agentId string, taskId string) bool
 	TsTunnelChannelExists(channelId int) bool

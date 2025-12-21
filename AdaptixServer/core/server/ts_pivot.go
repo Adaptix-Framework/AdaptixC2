@@ -84,7 +84,10 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId s
 		childAgent.PivotParent = pivotData
 	}
 
-	_ = ts.TsAgentSetMark(pivotData.ChildAgentId, "")
+	emptyMark := ""
+	_ = ts.TsAgentUpdateDataPartial(pivotData.ChildAgentId, struct {
+		Mark *string `json:"mark"`
+	}{Mark: &emptyMark})
 
 	ts.pivots.Put(pivotData)
 
@@ -123,7 +126,10 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 		childAgent.PivotParent = nil
 	}
 
-	_ = ts.TsAgentSetMark(pivotData.ChildAgentId, "Unlink")
+	unlinkMark := "Unlink"
+	_ = ts.TsAgentUpdateDataPartial(pivotData.ChildAgentId, struct {
+		Mark *string `json:"mark"`
+	}{Mark: &unlinkMark})
 
 	for i := uint(0); i < ts.pivots.Len(); i++ {
 		valuePivot, ok := ts.pivots.Get(i)

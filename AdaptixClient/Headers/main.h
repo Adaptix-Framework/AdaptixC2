@@ -238,6 +238,8 @@ typedef struct AgentData
     QString     ExternalIP;
     QString     InternalIP;
     int         GmtOffset;
+    int         ACP;
+    int         OemCP;
     uint        KillDate;
     uint        WorkingTime;
     int         Sleep;

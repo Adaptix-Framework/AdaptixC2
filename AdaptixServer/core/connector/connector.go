@@ -42,13 +42,10 @@ type Teamserver interface {
 	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
+	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentRemove(agentId string) error
 	TsAgentConsoleRemove(agentId string) error
-	TsAgentSetTag(agentId string, tag string) error
-	TsAgentSetMark(agentId string, makr string) error
-	TsAgentSetColor(agentId string, background string, foreground string, reset bool) error
-	TsAgentSetImpersonate(agentId string, impersonated string, elevated bool) error
 	TsAgentSetTick(agentId string) error
 	TsAgentTickUpdate()
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
@@ -228,7 +225,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 		api_group.POST("/agent/set/tag", connector.TcAgentSetTag)
 		api_group.POST("/agent/set/mark", connector.TcAgentSetMark)
 		api_group.POST("/agent/set/color", connector.TcAgentSetColor)
-		api_group.POST("/agent/set/impersonate", connector.TcAgentSetImpersonate)
+		api_group.POST("/agent/update/data", connector.TcAgentUpdateData)
 
 		api_group.GET("/agent/task/list", connector.TcAgentTaskList)
 		api_group.POST("/agent/task/cancel", connector.TcAgentTaskCancel)

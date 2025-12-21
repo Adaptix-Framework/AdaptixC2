@@ -48,11 +48,11 @@ public:
     explicit Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w );
     ~Agent();
 
-    void    Update(QJsonObject jsonObjAgentData);
+    void    Update(const QJsonObject &jsonObjAgentData);
     void    MarkItem(const QString &mark);
     void    UpdateImage();
-    QString TasksCancel(const QStringList &tasks) const;
-    QString TasksDelete(const QStringList &tasks) const;
+    void TasksCancel(const QStringList &tasks) const;
+    void TasksDelete(const QStringList &tasks) const;
 
     void SetParent(const PivotData &pivotData);
     void UnsetParent(const PivotData &pivotData);

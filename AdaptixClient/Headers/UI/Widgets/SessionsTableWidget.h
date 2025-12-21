@@ -409,6 +409,7 @@ public Q_SLOTS:
     void actionItemTag() const;
     void actionItemHide() const;
     void actionItemsShowAll() const;
+    void actionSetData() const;
 };
 
 #endif

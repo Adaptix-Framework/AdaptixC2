@@ -26,6 +26,8 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->data.KillDate     = jsonObjAgentData["a_killdate"].toDouble();
     this->data.Sleep        = jsonObjAgentData["a_sleep"].toDouble();
     this->data.Jitter       = jsonObjAgentData["a_jitter"].toDouble();
+    this->data.ACP          = jsonObjAgentData["a_acp"].toDouble();
+    this->data.OemCP        = jsonObjAgentData["a_oemcp"].toDouble();
     this->data.Pid          = jsonObjAgentData["a_pid"].toString();
     this->data.Tid          = jsonObjAgentData["a_tid"].toString();
     this->data.Arch         = jsonObjAgentData["a_arch"].toString();
@@ -74,18 +76,110 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 
 Agent::~Agent() = default;
 
-void Agent::Update(QJsonObject jsonObjAgentData)
+void Agent::Update(const QJsonObject &jsonObjAgentData)
 {
     QString old_Color = this->data.Color;
+    bool needUpdateImage = false;
 
-    this->data.Sleep        = jsonObjAgentData["a_sleep"].toDouble();
-    this->data.Jitter       = jsonObjAgentData["a_jitter"].toDouble();
-    this->data.WorkingTime  = jsonObjAgentData["a_workingtime"].toDouble();
-    this->data.KillDate     = jsonObjAgentData["a_killdate"].toDouble();
-    this->data.Tags         = jsonObjAgentData["a_tags"].toString();
-    this->data.Color        = jsonObjAgentData["a_color"].toString();
-    this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
-    QString mark            = jsonObjAgentData["a_mark"].toString();
+    QJsonValue val = jsonObjAgentData.value("a_sleep");
+    if (val.isDouble())
+        this->data.Sleep = val.toDouble();
+
+    val = jsonObjAgentData.value("a_jitter");
+    if (val.isDouble())
+        this->data.Jitter = val.toDouble();
+
+    val = jsonObjAgentData.value("a_workingtime");
+    if (val.isDouble())
+        this->data.WorkingTime = val.toDouble();
+
+    val = jsonObjAgentData.value("a_killdate");
+    if (val.isDouble())
+        this->data.KillDate = val.toDouble();
+
+    val = jsonObjAgentData.value("a_impersonated");
+    if (val.isString())
+        this->data.Impersonated = val.toString();
+
+    val = jsonObjAgentData.value("a_tags");
+    if (val.isString())
+        this->data.Tags = val.toString();
+
+    val = jsonObjAgentData.value("a_color");
+    if (val.isString())
+        this->data.Color = val.toString();
+
+    val = jsonObjAgentData.value("a_internal_ip");
+    if (val.isString())
+        this->data.InternalIP = val.toString();
+
+    val = jsonObjAgentData.value("a_external_ip");
+    if (val.isString())
+        this->data.ExternalIP = val.toString();
+
+    val = jsonObjAgentData.value("a_gmt_offset");
+    if (val.isDouble())
+        this->data.GmtOffset = val.toDouble();
+
+    val = jsonObjAgentData.value("a_acp");
+    if (val.isDouble())
+        this->data.ACP = val.toDouble();
+
+    val = jsonObjAgentData.value("a_oemcp");
+    if (val.isDouble())
+        this->data.OemCP = val.toDouble();
+
+    val = jsonObjAgentData.value("a_pid");
+    if (val.isString())
+        this->data.Pid = val.toString();
+
+    val = jsonObjAgentData.value("a_tid");
+    if (val.isString())
+        this->data.Tid = val.toString();
+
+    val = jsonObjAgentData.value("a_arch");
+    if (val.isString())
+        this->data.Arch = val.toString();
+
+    val = jsonObjAgentData.value("a_elevated");
+    if (val.isBool()) {
+        this->data.Elevated = val.toBool();
+        needUpdateImage = true;
+    }
+
+    val = jsonObjAgentData.value("a_process");
+    if (val.isString())
+        this->data.Process = val.toString();
+
+    val = jsonObjAgentData.value("a_os");
+    if (val.isDouble()) {
+        this->data.Os = val.toDouble();
+        needUpdateImage = true;
+    }
+
+    val = jsonObjAgentData.value("a_os_desc");
+    if (val.isString())
+        this->data.OsDesc = val.toString();
+
+    val = jsonObjAgentData.value("a_domain");
+    if (val.isString())
+        this->data.Domain = val.toString();
+
+    val = jsonObjAgentData.value("a_computer");
+    if (val.isString())
+        this->data.Computer = val.toString();
+
+    val = jsonObjAgentData.value("a_username");
+    if (val.isString())
+        this->data.Username = val.toString();
+
+    if (needUpdateImage)
+        this->UpdateImage();
+
+    QString mark = this->data.Mark;
+    val = jsonObjAgentData.value("a_mark");
+    if (val.isString())
+        mark = val.toString();
 
     if (this->data.Mark == mark) {
         if (this->data.Color != old_Color) {

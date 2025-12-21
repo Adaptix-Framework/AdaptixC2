@@ -315,6 +315,25 @@ func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId string, count int, maxD
 
 /// Data
 
+type AgentUpdateFields struct {
+	InternalIP   *string
+	ExternalIP   *string
+	GmtOffset    *int
+	ACP          *int
+	OemCP        *int
+	Pid          *string
+	Tid          *string
+	Arch         *string
+	Elevated     *bool
+	Process      *string
+	Os           *int
+	OsDesc       *string
+	Domain       *string
+	Computer     *string
+	Username     *string
+	Impersonated *string
+}
+
 func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
 	value, ok := ts.Agents.Get(newAgentData.Id)
 	if !ok {
@@ -342,6 +361,174 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
 	ts.TsSyncAllClients(packetNew)
 
 	return nil
+}
+
+func (ts *Teamserver) TsAgentUpdateDataPartial(agentId string, updateData interface{}) error {
+	value, ok := ts.Agents.Get(agentId)
+	if !ok {
+		return errors.New("agent does not exist")
+	}
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("invalid agent type")
+	}
+
+	syncPacket := SyncPackerAgentUpdate{
+		SpType: TYPE_AGENT_UPDATE,
+		Id:     agentId,
+	}
+
+	ts.applyAgentUpdate(agent, updateData, &syncPacket)
+
+	agentData := agent.GetData()
+	err := ts.DBMS.DbAgentUpdate(agentData)
+	if err != nil {
+		logs.Error("", err.Error())
+	}
+
+	ts.TsSyncAllClients(syncPacket)
+
+	return nil
+}
+
+func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syncPacket *SyncPackerAgentUpdate) {
+	type fieldAccessor struct {
+		InternalIP   *string `json:"internal_ip,omitempty"`
+		ExternalIP   *string `json:"external_ip,omitempty"`
+		GmtOffset    *int    `json:"gmt_offset,omitempty"`
+		ACP          *int    `json:"acp,omitempty"`
+		OemCP        *int    `json:"oemcp,omitempty"`
+		Pid          *string `json:"pid,omitempty"`
+		Tid          *string `json:"tid,omitempty"`
+		Arch         *string `json:"arch,omitempty"`
+		Elevated     *bool   `json:"elevated,omitempty"`
+		Process      *string `json:"process,omitempty"`
+		Os           *int    `json:"os,omitempty"`
+		OsDesc       *string `json:"os_desc,omitempty"`
+		Domain       *string `json:"domain,omitempty"`
+		Computer     *string `json:"computer,omitempty"`
+		Username     *string `json:"username,omitempty"`
+		Impersonated *string `json:"impersonated,omitempty"`
+		Tags         *string `json:"tags,omitempty"`
+		Mark         *string `json:"mark,omitempty"`
+		Color        *string `json:"color,omitempty"`
+	}
+
+	jsonBytes, err := json.Marshal(updateData)
+	if err != nil {
+		return
+	}
+
+	var fields fieldAccessor
+	if err := json.Unmarshal(jsonBytes, &fields); err != nil {
+		return
+	}
+
+	agent.UpdateData(func(d *adaptix.AgentData) {
+		if fields.InternalIP != nil {
+			d.InternalIP = *fields.InternalIP
+			syncPacket.InternalIP = fields.InternalIP
+		}
+		if fields.ExternalIP != nil {
+			d.ExternalIP = *fields.ExternalIP
+			syncPacket.ExternalIP = fields.ExternalIP
+		}
+		if fields.GmtOffset != nil {
+			d.GmtOffset = *fields.GmtOffset
+			syncPacket.GmtOffset = fields.GmtOffset
+		}
+		if fields.ACP != nil {
+			d.ACP = *fields.ACP
+			syncPacket.ACP = fields.ACP
+		}
+		if fields.OemCP != nil {
+			d.OemCP = *fields.OemCP
+			syncPacket.OemCP = fields.OemCP
+		}
+		if fields.Pid != nil {
+			d.Pid = *fields.Pid
+			syncPacket.Pid = fields.Pid
+		}
+		if fields.Tid != nil {
+			d.Tid = *fields.Tid
+			syncPacket.Tid = fields.Tid
+		}
+		if fields.Arch != nil {
+			d.Arch = *fields.Arch
+			syncPacket.Arch = fields.Arch
+		}
+		if fields.Elevated != nil {
+			d.Elevated = *fields.Elevated
+			syncPacket.Elevated = fields.Elevated
+		}
+		if fields.Process != nil {
+			d.Process = *fields.Process
+			syncPacket.Process = fields.Process
+		}
+		if fields.Os != nil {
+			d.Os = *fields.Os
+			syncPacket.Os = fields.Os
+		}
+		if fields.OsDesc != nil {
+			d.OsDesc = *fields.OsDesc
+			syncPacket.OsDesc = fields.OsDesc
+		}
+		if fields.Domain != nil {
+			d.Domain = *fields.Domain
+			syncPacket.Domain = fields.Domain
+		}
+		if fields.Computer != nil {
+			d.Computer = *fields.Computer
+			syncPacket.Computer = fields.Computer
+		}
+		if fields.Username != nil {
+			d.Username = *fields.Username
+			syncPacket.Username = fields.Username
+		}
+		if fields.Impersonated != nil {
+			d.Impersonated = *fields.Impersonated
+			syncPacket.Impersonated = fields.Impersonated
+		}
+		if fields.Tags != nil {
+			d.Tags = *fields.Tags
+			syncPacket.Tags = fields.Tags
+		}
+		if fields.Mark != nil {
+			if d.Mark != "Terminated" && d.Mark != *fields.Mark {
+				d.Mark = *fields.Mark
+				syncPacket.Mark = fields.Mark
+				if *fields.Mark == "Disconnect" {
+					d.LastTick = int(time.Now().Unix())
+				}
+			}
+		}
+		if fields.Color != nil {
+
+			if *fields.Color != "" {
+				bcolor := ""
+				fcolor := ""
+				colors := strings.Split(d.Color, "-")
+				if len(colors) == 2 {
+					bcolor = colors[0]
+					fcolor = colors[1]
+				}
+
+				newcolors := strings.Split(*fields.Color, "-")
+				if len(newcolors) == 2 {
+					if isvalid.ValidColorRGB(newcolors[0]) {
+						bcolor = newcolors[0]
+					}
+					if isvalid.ValidColorRGB(newcolors[1]) {
+						fcolor = newcolors[1]
+					}
+				}
+				*fields.Color = bcolor + "-" + fcolor
+			}
+
+			d.Color = *fields.Color
+			syncPacket.Color = fields.Color
+		}
+	})
 }
 
 func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) error {
@@ -540,141 +727,6 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 
 	packet := CreateSpAgentRemove(agentId)
 	ts.TsSyncAllClients(packet)
-
-	return nil
-}
-
-/// Setters
-
-func (ts *Teamserver) TsAgentSetTag(agentId string, tag string) error {
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return errors.New("agent does not exist")
-	}
-
-	agent, ok := value.(*Agent)
-	if !ok {
-		return errors.New("invalid agent type")
-	}
-
-	agent.UpdateData(func(d *adaptix.AgentData) {
-		d.Tags = tag
-	})
-
-	agentData := agent.GetData()
-	err := ts.DBMS.DbAgentUpdate(agentData)
-	if err != nil {
-		logs.Error("", err.Error())
-	}
-
-	packetNew := CreateSpAgentUpdate(agentData)
-	ts.TsSyncAllClients(packetNew)
-
-	return nil
-}
-
-func (ts *Teamserver) TsAgentSetMark(agentId string, mark string) error {
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return errors.New("agent does not exist")
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return errors.New("invalid agent type")
-	}
-
-	agentData := agent.GetData()
-	if agentData.Mark == mark || agentData.Mark == "Terminated" {
-		return nil
-	}
-
-	agent.UpdateData(func(d *adaptix.AgentData) {
-		d.Mark = mark
-		if mark == "Disconnect" {
-			d.LastTick = int(time.Now().Unix())
-		}
-	})
-
-	agentData = agent.GetData()
-	err := ts.DBMS.DbAgentUpdate(agentData)
-	if err != nil {
-		logs.Error("", err.Error())
-	}
-
-	packetNew := CreateSpAgentUpdate(agentData)
-	ts.TsSyncAllClients(packetNew)
-
-	return nil
-}
-
-func (ts *Teamserver) TsAgentSetColor(agentId string, background string, foreground string, reset bool) error {
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return errors.New("agent does not exist")
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return errors.New("invalid agent type")
-	}
-
-	agent.UpdateData(func(d *adaptix.AgentData) {
-		if reset {
-			d.Color = ""
-		} else {
-			bcolor := ""
-			fcolor := ""
-			colors := strings.Split(d.Color, "-")
-			if len(colors) == 2 {
-				bcolor = colors[0]
-				fcolor = colors[1]
-			}
-			if isvalid.ValidColorRGB(background) {
-				bcolor = background
-			}
-			if isvalid.ValidColorRGB(foreground) {
-				fcolor = foreground
-			}
-			d.Color = bcolor + "-" + fcolor
-		}
-	})
-
-	agentData := agent.GetData()
-	err := ts.DBMS.DbAgentUpdate(agentData)
-	if err != nil {
-		logs.Error("", err.Error())
-	}
-
-	packetNew := CreateSpAgentUpdate(agentData)
-	ts.TsSyncAllClients(packetNew)
-
-	return nil
-}
-
-func (ts *Teamserver) TsAgentSetImpersonate(agentId string, impersonated string, elevated bool) error {
-	value, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return errors.New("agent does not exist")
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return errors.New("invalid agent type")
-	}
-
-	agent.UpdateData(func(d *adaptix.AgentData) {
-		d.Impersonated = impersonated
-		if impersonated != "" && elevated {
-			d.Impersonated += " *"
-		}
-	})
-
-	agentData := agent.GetData()
-	err := ts.DBMS.DbAgentUpdate(agentData)
-	if err != nil {
-		logs.Error("", err.Error())
-	}
-
-	packetNew := CreateSpAgentUpdate(agentData)
-	ts.TsSyncAllClients(packetNew)
 
 	return nil
 }

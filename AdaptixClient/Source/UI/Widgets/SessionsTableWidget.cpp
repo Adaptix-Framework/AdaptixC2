@@ -8,6 +8,7 @@
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogTunnel.h>
+#include <UI/Dialogs/DialogAgentData.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/Requestor.h>
 #include <Client/Settings.h>
@@ -313,6 +314,10 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
     sessionMenu.addAction("Mark as Active",   this, &SessionsTableWidget::actionMarkActive);
     sessionMenu.addAction("Mark as Inactive", this, &SessionsTableWidget::actionMarkInactive);
     sessionMenu.addSeparator();
+    if ( agentIds.size() == 1 )
+        sessionMenu.addAction("Set data", this, &SessionsTableWidget::actionSetData);
+    sessionMenu.addAction("Set tag", this, &SessionsTableWidget::actionItemTag);
+    sessionMenu.addSeparator();
     sessionMenu.addAction("Set items color", this, &SessionsTableWidget::actionItemColor);
     sessionMenu.addAction("Set text color",  this, &SessionsTableWidget::actionTextColor);
     sessionMenu.addAction("Reset color",     this, &SessionsTableWidget::actionColorReset);
@@ -337,7 +342,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 
     ctxMenu.addSeparator();
     ctxMenu.addMenu(&sessionMenu);
-    ctxMenu.addAction("Set tag", this, &SessionsTableWidget::actionItemTag);
+
     ctxMenu.addAction("Show all items", this, &SessionsTableWidget::actionItemsShowAll);
 
     ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));
@@ -627,4 +632,26 @@ void SessionsTableWidget::actionItemsShowAll() const
     }
 
     if (refact) this->UpdateData();
+}
+
+void SessionsTableWidget::actionSetData() const
+{
+    auto idx = tableView->currentIndex();
+    if (!idx.isValid())
+        return;
+
+    QModelIndex sourceIndex = proxyModel->mapToSource(idx);
+    if (!sourceIndex.isValid())
+        return;
+
+    QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
+    if (!adaptixWidget->AgentsMap.contains(agentId))
+        return;
+
+    Agent* agent = adaptixWidget->AgentsMap[agentId];
+
+    auto* dialog = new DialogAgentData();
+    dialog->SetProfile(*(adaptixWidget->GetProfile()));
+    dialog->SetAgentData(agent->data);
+    dialog->Start();
 }

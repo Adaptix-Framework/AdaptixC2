@@ -7,6 +7,7 @@
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <UI/Dialogs/DialogAgentData.h>
 
 
 GraphScene::GraphScene(const int gridSize, QWidget* m, QObject* parent) : QGraphicsScene(parent)
@@ -70,7 +71,10 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     auto sessionMenu = QMenu("Session");
     sessionMenu.addAction("Mark as Active");
     sessionMenu.addAction("Mark as Inactive");
-
+    sessionMenu.addSeparator();
+    sessionMenu.addAction("Set tag");
+    if (agentIds.size() == 1 )
+        sessionMenu.addAction("Set data");
 
 
     auto ctxMenu = QMenu();
@@ -92,7 +96,6 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
     ctxMenu.addSeparator();
     ctxMenu.addMenu(&sessionMenu);
-    ctxMenu.addAction("Set tag");
 
     const auto action = ctxMenu.exec( event->screenPos() );
     if ( !action )
@@ -174,5 +177,20 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
                     MessageError(message.isEmpty() ? "Response timeout" : message);
             });
         }
+    }
+    else if ( action->text() == "Set data" ) {
+        if (agentIds.isEmpty())
+            return;
+
+        QString agentId = agentIds.first();
+        if (!adaptixWidget->AgentsMap.contains(agentId))
+            return;
+
+        Agent* agent = adaptixWidget->AgentsMap[agentId];
+
+        auto* dialog = new DialogAgentData();
+        dialog->SetProfile(*(adaptixWidget->GetProfile()));
+        dialog->SetAgentData(agent->data);
+        dialog->Start();
     }
 }

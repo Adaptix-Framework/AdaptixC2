@@ -51,7 +51,7 @@ type Teamserver interface {
 
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
-	TsAgentSetImpersonate(agentId string, impersonated string, elevated bool) error
+	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
 
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
