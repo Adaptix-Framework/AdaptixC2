@@ -248,6 +248,8 @@ void Agent::UpdateImage()
     QString v = "v1";
     if (GlobalClient->settings->data.GraphVersion == "Version 2")
         v = "v2";
+    if (GlobalClient->settings->data.GraphVersion == "Version 3")
+        v = "v3";
 
     if (data.Os == OS_WINDOWS) {
         if (data.Elevated) {

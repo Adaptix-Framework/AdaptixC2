@@ -70,7 +70,7 @@ QRectF GraphItem::boundingRect() const
 void GraphItem::paint( QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
     if ( this->sessionsGraph->IsRootItem(this) )
-        painter->drawImage(rect, QImage(":/graph/v2/firewall"));
+        painter->drawImage(rect, QImage(":/graph/v1/firewall"));
     else
         painter->drawImage(rect, this->agent->graphImage);
 

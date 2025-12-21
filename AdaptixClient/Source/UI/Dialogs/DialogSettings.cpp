@@ -81,10 +81,12 @@ void DialogSettings::createUI()
 
     themeLabel = new QLabel("Main theme: ", mainSettingWidget);
     themeCombo = new QComboBox(mainSettingWidget);
-    themeCombo->addItem("Light_Arc");
     themeCombo->addItem("Dark");
+    themeCombo->addItem("Light");
     themeCombo->addItem("Dracula");
     themeCombo->addItem("Fallout");
+    themeCombo->addItem("Dark_Old");
+    themeCombo->addItem("Light_Arc");
 
     fontSizeLabel = new QLabel("Font size: ", mainSettingWidget);
     fontSizeSpin  = new QSpinBox(mainSettingWidget);
@@ -104,6 +106,7 @@ void DialogSettings::createUI()
     graphCombo1 = new QComboBox(mainSettingWidget);
     graphCombo1->addItem("Version 1");
     graphCombo1->addItem("Version 2");
+    graphCombo1->addItem("Version 3");
 
     terminalSizeLabel = new QLabel("RemoteTerminal buffer (lines):", mainSettingWidget);
     terminalSizeSpin  = new QSpinBox(mainSettingWidget);
