@@ -72,8 +72,9 @@ Q_OBJECT
     QVector<CommandsGroup> axCommandsGroup;
 
     QString         ProcessPreHook(QJSEngine *engine, const Command &command, const QString &agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args);
-    CommanderResult ProcessCommand(Command command, QStringList args, QJsonObject jsonObj);
+    CommanderResult ProcessCommand(const Command &command, const QString &commandName, QStringList args, QJsonObject jsonObj);
     CommanderResult ProcessHelp(QStringList commandParts);
+    QString         GenerateCommandHelp(const Command &command, const QString &parentCommand = "");
 
 public:
     explicit Commander();
