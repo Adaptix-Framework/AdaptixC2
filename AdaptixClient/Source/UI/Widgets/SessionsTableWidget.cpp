@@ -283,66 +283,69 @@ void SessionsTableWidget::onFilterChanged() const
 
 void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 {
-    auto ctxMenu = QMenu();
+    QMenu ctxMenu;
 
     QModelIndex index = tableView->indexAt(pos);
-    if (!index.isValid()) return;
+    if (index.isValid()) {
+        QStringList agentIds;
+        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+        for (const QModelIndex &proxyIndex : selectedRows) {
+            QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+            if (!sourceIndex.isValid()) continue;
 
-    QStringList agentIds;
-    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
-    for (const QModelIndex &proxyIndex : selectedRows) {
-        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
-        if (!sourceIndex.isValid()) continue;
+            QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
+            agentIds.append(agentId);
+        }
 
-        QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
-        agentIds.append(agentId);
+        auto agentMenu = ctxMenu.addMenu("Agent");
+        agentMenu->addAction("Execute command", this, &SessionsTableWidget::actionExecuteCommand);
+        agentMenu->addAction("Task manager", this, &SessionsTableWidget::actionTasksBrowserOpen);
+        agentMenu->addSeparator();
+
+        int agentCount = adaptixWidget->ScriptManager->AddMenuSession(agentMenu, "SessionAgent", agentIds);
+        if (agentCount > 0)
+            agentMenu->addSeparator();
+
+        agentMenu->addAction("Remove console data", this, &SessionsTableWidget::actionConsoleDelete);
+        agentMenu->addAction("Remove from server", this, &SessionsTableWidget::actionAgentRemove);
+
+        auto sessionMenu = ctxMenu.addMenu("Session");
+        sessionMenu->addAction("Mark as Active",   this, &SessionsTableWidget::actionMarkActive);
+        sessionMenu->addAction("Mark as Inactive", this, &SessionsTableWidget::actionMarkInactive);
+        sessionMenu->addSeparator();
+        if ( agentIds.size() == 1 )
+            sessionMenu->addAction("Set data", this, &SessionsTableWidget::actionSetData);
+        sessionMenu->addAction("Set tag", this, &SessionsTableWidget::actionItemTag);
+        sessionMenu->addSeparator();
+        sessionMenu->addAction("Set items color", this, &SessionsTableWidget::actionItemColor);
+        sessionMenu->addAction("Set text color",  this, &SessionsTableWidget::actionTextColor);
+        sessionMenu->addAction("Reset color",     this, &SessionsTableWidget::actionColorReset);
+        sessionMenu->addSeparator();
+        sessionMenu->addAction("Hide on client", this, &SessionsTableWidget::actionItemHide);
+
+        ctxMenu.addAction("Console", this, &SessionsTableWidget::actionConsoleOpen);
+        ctxMenu.addSeparator();
+        ctxMenu.addMenu(agentMenu);
+
+        auto browserMenu = ctxMenu.addMenu("Browsers");
+        int browserCount = adaptixWidget->ScriptManager->AddMenuSession(browserMenu, "SessionBrowser", agentIds);
+        if (browserCount > 0)
+            ctxMenu.addMenu(browserMenu);
+        else
+            ctxMenu.removeAction(browserMenu->menuAction());
+
+        auto accessMenu = ctxMenu.addMenu("Access");
+        int accessCount = adaptixWidget->ScriptManager->AddMenuSession(accessMenu, "SessionAccess", agentIds);
+        if (accessCount > 0)
+            ctxMenu.addMenu(accessMenu);
+        else
+            ctxMenu.removeAction(accessMenu->menuAction());
+
+        adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
+
+        ctxMenu.addSeparator();
+        ctxMenu.addMenu(sessionMenu);
     }
-
-    auto agentMenu = QMenu("Agent");
-    agentMenu.addAction("Execute command", this, &SessionsTableWidget::actionExecuteCommand);
-    agentMenu.addAction("Task manager", this, &SessionsTableWidget::actionTasksBrowserOpen);
-    agentMenu.addSeparator();
-
-    int agentCount = adaptixWidget->ScriptManager->AddMenuSession(&agentMenu, "SessionAgent", agentIds);
-    if (agentCount > 0)
-        agentMenu.addSeparator();
-
-    agentMenu.addAction("Remove console data", this, &SessionsTableWidget::actionConsoleDelete);
-    agentMenu.addAction("Remove from server", this, &SessionsTableWidget::actionAgentRemove);
-
-    auto sessionMenu = QMenu("Session");
-    sessionMenu.addAction("Mark as Active",   this, &SessionsTableWidget::actionMarkActive);
-    sessionMenu.addAction("Mark as Inactive", this, &SessionsTableWidget::actionMarkInactive);
-    sessionMenu.addSeparator();
-    if ( agentIds.size() == 1 )
-        sessionMenu.addAction("Set data", this, &SessionsTableWidget::actionSetData);
-    sessionMenu.addAction("Set tag", this, &SessionsTableWidget::actionItemTag);
-    sessionMenu.addSeparator();
-    sessionMenu.addAction("Set items color", this, &SessionsTableWidget::actionItemColor);
-    sessionMenu.addAction("Set text color",  this, &SessionsTableWidget::actionTextColor);
-    sessionMenu.addAction("Reset color",     this, &SessionsTableWidget::actionColorReset);
-    sessionMenu.addSeparator();
-    sessionMenu.addAction( "Hide on client", this, &SessionsTableWidget::actionItemHide);
-
-    ctxMenu.addAction("Console", this, &SessionsTableWidget::actionConsoleOpen);
-    ctxMenu.addSeparator();
-    ctxMenu.addMenu(&agentMenu);
-
-    auto browserMenu = QMenu("Browsers");
-    int browserCount = adaptixWidget->ScriptManager->AddMenuSession(&browserMenu, "SessionBrowser", agentIds);
-    if (browserCount > 0)
-        ctxMenu.addMenu(&browserMenu);
-
-    auto accessMenu = QMenu("Access");
-    int accessCount = adaptixWidget->ScriptManager->AddMenuSession(&accessMenu, "SessionAccess", agentIds);
-    if (accessCount > 0)
-        ctxMenu.addMenu(&accessMenu);
-
-    adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
-
-    ctxMenu.addSeparator();
-    ctxMenu.addMenu(&sessionMenu);
-
     ctxMenu.addAction("Show all items", this, &SessionsTableWidget::actionItemsShowAll);
 
     ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));
