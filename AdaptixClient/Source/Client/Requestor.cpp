@@ -737,15 +737,13 @@ void HttpReqAgentSetColorAsync(QStringList agentsId, const QString &background, 
     HttpRequestManager::instance().post(profile.GetURL(), "/agent/set/color", profile.GetAccessToken(), jsonData, callback);
 }
 
-void HttpReqAgentSetImpersonateAsync(const QString &agentId, const QString &impersonate, bool elevated, AuthProfile& profile, HttpCallback callback)
+void HttpReqAgentUpdateDataAsync(const QString &agentId, const QJsonObject &updateData, AuthProfile& profile, HttpCallback callback)
 {
-    QJsonObject dataJson;
+    QJsonObject dataJson = updateData;
     dataJson["agent_id"] = agentId;
-    dataJson["impersonate"] = impersonate;
-    dataJson["elevated"] = elevated;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/set/impersonate", profile.GetAccessToken(), jsonData, callback);
+    HttpRequestManager::instance().post(profile.GetURL(), "/agent/update/data", profile.GetAccessToken(), jsonData, callback);
 }
 
 void HttpReqConsoleRemoveAsync(QStringList agentsId, AuthProfile& profile, HttpCallback callback)
@@ -755,6 +753,23 @@ void HttpReqConsoleRemoveAsync(QStringList agentsId, AuthProfile& profile, HttpC
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     HttpRequestManager::instance().post(profile.GetURL(), "/agent/console/remove", profile.GetAccessToken(), jsonData, callback);
+}
+
+void HttpReqAgentCommandAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback)
+{
+    HttpRequestManager::instance().post(profile.GetURL(), "/agent/command/execute", profile.GetAccessToken(), jsonData, callback);
+}
+
+void HttpReqAgentGenerateAsync(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &configData, AuthProfile& profile, HttpCallback callback)
+{
+    QJsonObject dataJson;
+    dataJson["listener_name"] = listenerName;
+    dataJson["listener_type"] = listenerType;
+    dataJson["agent"]         = agentName;
+    dataJson["config"]        = configData;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    HttpRequestManager::instance().post(profile.GetURL(), "/agent/generate", profile.GetAccessToken(), jsonData, callback, 30000);
 }
 
 void HttpReqTaskCancelAsync(const QString &agentId, QStringList tasksId, AuthProfile& profile, HttpCallback callback)
@@ -775,6 +790,24 @@ void HttpReqTasksDeleteAsync(const QString &agentId, QStringList tasksId, AuthPr
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     HttpRequestManager::instance().post(profile.GetURL(), "/agent/task/delete", profile.GetAccessToken(), jsonData, callback);
+}
+
+void HttpReqTasksHookAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback)
+{
+    HttpRequestManager::instance().post(profile.GetURL(), "/agent/task/hook", profile.GetAccessToken(), jsonData, callback);
+}
+
+void HttpReqTasksSaveAsync(const QString &agentId, const QString &CommandLine, int MessageType, const QString &Message, const QString &ClearText, AuthProfile& profile, HttpCallback callback)
+{
+    QJsonObject dataJson;
+    dataJson["agent_id"]     = agentId;
+    dataJson["command_line"] = CommandLine;
+    dataJson["message_type"] = MessageType;
+    dataJson["message"]      = Message;
+    dataJson["clear_text"]   = ClearText;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    HttpRequestManager::instance().post(profile.GetURL(), "/agent/task/save", profile.GetAccessToken(), jsonData, callback);
 }
 
 void HttpReqCredentialsCreateAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback)

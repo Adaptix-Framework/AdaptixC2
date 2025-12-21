@@ -104,11 +104,15 @@ void HttpReqAgentRemoveAsync(QStringList agentsId, AuthProfile& profile, HttpCal
 void HttpReqAgentSetTagAsync(QStringList agentsId, const QString &tag, AuthProfile& profile, HttpCallback callback);
 void HttpReqAgentSetMarkAsync(QStringList agentsId, const QString &mark, AuthProfile& profile, HttpCallback callback);
 void HttpReqAgentSetColorAsync(QStringList agentsId, const QString &background, const QString &foreground, bool reset, AuthProfile& profile, HttpCallback callback);
-void HttpReqAgentSetImpersonateAsync(const QString &agentId, const QString &impersonate, bool elevated, AuthProfile& profile, HttpCallback callback);
+void HttpReqAgentUpdateDataAsync(const QString &agentId, const QJsonObject &updateData, AuthProfile& profile, HttpCallback callback);
+void HttpReqAgentGenerateAsync(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &configData, AuthProfile& profile, HttpCallback callback);
+void HttpReqAgentCommandAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback);
 void HttpReqConsoleRemoveAsync(QStringList agentsId, AuthProfile& profile, HttpCallback callback);
 
 void HttpReqTaskCancelAsync(const QString &agentId, QStringList tasksId, AuthProfile& profile, HttpCallback callback);
 void HttpReqTasksDeleteAsync(const QString &agentId, QStringList tasksId, AuthProfile& profile, HttpCallback callback);
+void HttpReqTasksHookAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback);
+void HttpReqTasksSaveAsync(const QString &agentId, const QString &CommandLine, int MessageType, const QString &Message, const QString &ClearText, AuthProfile& profile, HttpCallback callback);
 
 void HttpReqCredentialsCreateAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback);
 void HttpReqCredentialsEditAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback);

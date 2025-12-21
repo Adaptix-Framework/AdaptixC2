@@ -215,14 +215,10 @@ void CredentialsWidget::CredentialsAdd(QList<CredentialData> credsList)
     dataJson["creds"] = jsonArray;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString message = "";
-    bool ok = false;
-    bool result = HttpReqCredentialsCreate(jsonData, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Server is not responding");
-        return;
-    }
-    if (!ok) MessageError(message);
+    HttpReqCredentialsCreateAsync(jsonData, *(adaptixWidget->GetProfile()), [](bool success, const QString &message, const QJsonObject&) {
+        if (!success)
+            MessageError(message);
+    });
 }
 
 /// Slots

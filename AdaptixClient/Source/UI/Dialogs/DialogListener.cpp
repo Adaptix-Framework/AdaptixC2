@@ -180,44 +180,22 @@ void DialogListener::onButtonCreate()
         configData = ax_uis[configType].container->toJson();
 
     buttonCreate->setEnabled(false);
-    buttonCreate->setText("Creating...");
+    buttonCreate->setText(editMode ? "Editing..." : "Creating...");
 
-    QThread* workerThread = new QThread();
-    QObject* worker = new QObject();
-    worker->moveToThread(workerThread);
+    auto callback = [this](bool success, const QString &message, const QJsonObject&) {
+        if (!success) {
+            MessageError(message);
+            buttonCreate->setEnabled(true);
+            buttonCreate->setText(editMode ? "Edit" : "Create");
+        } else {
+            this->close();
+        }
+    };
 
-    connect(workerThread, &QThread::started, worker, [=, this]() {
-        QString message = QString();
-        bool result, ok = false;
-
-        if ( editMode )
-            result = HttpReqListenerEdit(configName, configType, configData, authProfile, &message, &ok);
-        else
-            result = HttpReqListenerStart(configName, configType, configData, authProfile, &message, &ok);
-
-        QMetaObject::invokeMethod(this, [=, this]() {
-            if( !result ) {
-                MessageError("Response timeout");
-                buttonCreate->setEnabled(true);
-                buttonCreate->setText(editMode ? "Edit" : "Create");
-            }
-            else if ( !ok ) {
-                MessageError(message);
-                buttonCreate->setEnabled(true);
-                buttonCreate->setText(editMode ? "Edit" : "Create");
-            }
-            else {
-                this->close();
-            }
-
-            workerThread->quit();
-            workerThread->wait();
-            worker->deleteLater();
-            workerThread->deleteLater();
-        }, Qt::QueuedConnection);
-    });
-
-    workerThread->start();
+    if (editMode)
+        HttpReqListenerEditAsync(configName, configType, configData, authProfile, callback);
+    else
+        HttpReqListenerStartAsync(configName, configType, configData, authProfile, callback);
 }
 
 void DialogListener::onButtonLoad()

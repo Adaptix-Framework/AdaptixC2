@@ -219,14 +219,10 @@ void TargetsWidget::TargetsAdd(QList<TargetData> targetList)
     dataJson["targets"] = jsonArray;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString message = "";
-    bool ok = false;
-    bool result = HttpReqTargetsCreate(jsonData, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Server is not responding");
-        return;
-    }
-    if (!ok) MessageError(message);
+    HttpReqTargetsCreateAsync(jsonData, *(adaptixWidget->GetProfile()), [](bool success, const QString &message, const QJsonObject&) {
+        if (!success)
+            MessageError(message);
+    });
 }
 
 /// Slots

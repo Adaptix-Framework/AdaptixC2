@@ -135,54 +135,49 @@ void DialogAgent::onButtonGenerate()
     if (ax_uis.contains(agentName) && ax_uis[agentName].container)
         configData = ax_uis[agentName].container->toJson();
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentGenerate(listenerName, listenerType, agentName, configData, authProfile, &message, &ok);
-    if( !result ){
-        MessageError("Server is not responding");
-        return;
-    }
-    if ( !ok ) {
-        MessageError(message);
-        return;
-    }
-
-    QStringList parts = message.split(":");
-    if (parts.size() != 2) {
-        MessageError("The response format is not supported");
-        return;
-    }
-
-    QString filename = QString( QByteArray::fromBase64(parts[0].toUtf8()));
-    QByteArray content = QByteArray::fromBase64(parts[1].toUtf8());
-
     QString baseDir = authProfile.GetProjectDir();
-    QString initialPath = QDir(baseDir).filePath(filename);
 
-    NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "All Files (*.*)",
-        [this, content](const QString& filePath) {
-            if (filePath.isEmpty())
-                return;
+    HttpReqAgentGenerateAsync(listenerName, listenerType, agentName, configData, authProfile, [this, baseDir](bool success, const QString &message, const QJsonObject&) {
+        if (!success) {
+            MessageError(message);
+            return;
+        }
 
-            QFile file(filePath);
-            if (!file.open(QIODevice::WriteOnly)) {
-                MessageError("Failed to open file for writing");
-                return;
-            }
+        QStringList parts = message.split(":");
+        if (parts.size() != 2) {
+            MessageError("The response format is not supported");
+            return;
+        }
 
-            file.write(content);
-            file.close();
+        QByteArray content     = QByteArray::fromBase64(parts[1].toUtf8());
+        QString    filename    = QString( QByteArray::fromBase64(parts[0].toUtf8()));
+        QString    initialPath = QDir(baseDir).filePath(filename);
 
-            QInputDialog inputDialog;
-            inputDialog.setWindowTitle("Save agent");
-            inputDialog.setLabelText("File saved to:");
-            inputDialog.setTextEchoMode(QLineEdit::Normal);
-            inputDialog.setTextValue(filePath);
-            inputDialog.adjustSize();
-            inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
-            inputDialog.exec();
+        NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "All Files (*.*)",
+            [this, content](const QString& filePath) {
+                if (filePath.isEmpty())
+                    return;
 
-            this->close();
+                QFile file(filePath);
+                if (!file.open(QIODevice::WriteOnly)) {
+                    MessageError("Failed to open file for writing");
+                    return;
+                }
+
+                file.write(content);
+                file.close();
+
+                QInputDialog inputDialog;
+                inputDialog.setWindowTitle("Save agent");
+                inputDialog.setLabelText("File saved to:");
+                inputDialog.setTextEchoMode(QLineEdit::Normal);
+                inputDialog.setTextValue(filePath);
+                inputDialog.adjustSize();
+                inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
+                inputDialog.exec();
+
+                this->close();
+            });
     });
 }
 

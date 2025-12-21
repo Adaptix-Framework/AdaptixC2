@@ -8,7 +8,7 @@
 #include <UI/Widgets/AxConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
-#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/TerminalContainerWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ChatWidget.h>
@@ -147,22 +147,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     keysButton->setVisible(false);
 
     QTimer::singleShot(100, this, [this]() {
-        QThread* workerThread = new QThread();
-        QObject* worker = new QObject();
-        worker->moveToThread(workerThread);
-
-        connect(workerThread, &QThread::started, worker, [=, this]() {
-            HttpReqSync( *profile );
-
-            QMetaObject::invokeMethod(qApp, [=]() {
-                workerThread->quit();
-                workerThread->wait();
-                worker->deleteLater();
-                workerThread->deleteLater();
-            }, Qt::QueuedConnection);
-        });
-
-        workerThread->start();
+        QByteArray jsonData = QJsonDocument(QJsonObject()).toJson();
+        HttpRequestManager::instance().post(profile->GetURL(), "/sync", profile->GetAccessToken(), jsonData, [](bool, const QString&, const QJsonObject&) {});
     });
 }
 
@@ -693,14 +679,10 @@ void AdaptixWidget::PostHookProcess(QJsonObject jsonHookObj)
 
     QByteArray jsonData = QJsonDocument(jsonHookObj).toJson();
 
-    QString message = "";
-    bool ok = false;
-    bool result = HttpReqTasksHook(jsonData, *profile, &message, &ok);
-    if( !result ) {
-        MessageError("Server is not responding");
-        return;
-    }
-    if (!ok) MessageError(message);
+    HttpReqTasksHookAsync(jsonData, *profile, [](bool success, const QString &message, const QJsonObject&) {
+        if (!success)
+            MessageError(message);
+    });
 }
 
 /// SHOW PANELS
@@ -774,71 +756,28 @@ void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4,
     QByteArray tunnelData = dialogTunnel->GetTunnelData();
 
     if ( endpoint == "Teamserver" ) {
-        QThread* workerThread = new QThread();
-        QObject* worker = new QObject();
-        worker->moveToThread(workerThread);
-
-        connect(workerThread, &QThread::started, worker, [=, this]() {
-            QString message = "";
-            bool ok = false;
-            bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *profile, &message, &ok);
-
-            QMetaObject::invokeMethod(this, [=, this]() {
-                if( !result ) {
-                    MessageError("Server is not responding");
-                } else if (!ok) {
-                    MessageError(message);
-                }
-
-                delete dialogTunnel;
-
-                workerThread->quit();
-                workerThread->wait();
-                worker->deleteLater();
-                workerThread->deleteLater();
-            }, Qt::QueuedConnection);
+        HttpReqTunnelStartServerAsync(tunnelType, tunnelData, *profile, [dialogTunnel](bool success, const QString &message, const QJsonObject&) {
+            if (!success)
+                MessageError(message);
+            delete dialogTunnel;
         });
-
-        workerThread->start();
     }
     else {
         auto tunnelEndpoint = new TunnelEndpoint();
         bool started = tunnelEndpoint->StartTunnel(profile, tunnelType, tunnelData);
         if (started) {
-            QThread* workerThread = new QThread();
-            QObject* worker = new QObject();
-            worker->moveToThread(workerThread);
-
-            connect(workerThread, &QThread::started, worker, [=, this]() {
-                QString message = "";
-                bool ok = false;
-                bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *profile, &message, &ok);
-
-                QMetaObject::invokeMethod(this, [=, this]() {
-                    if( !result ) {
-                        MessageError("Server is not responding");
-                        delete tunnelEndpoint;
-                        delete dialogTunnel;
-                    } else if ( !ok ) {
-                        MessageError(message);
-                        delete tunnelEndpoint;
-                        delete dialogTunnel;
-                    } else {
-                        QString tunnelId = message;
-                        tunnelEndpoint->SetTunnelId(tunnelId);
-                        this->ClientTunnels[tunnelId] = tunnelEndpoint;
-                        MessageSuccess("Tunnel " + tunnelId + " started");
-                        delete dialogTunnel;
-                    }
-
-                    workerThread->quit();
-                    workerThread->wait();
-                    worker->deleteLater();
-                    workerThread->deleteLater();
-                }, Qt::QueuedConnection);
+            HttpReqTunnelStartServerAsync(tunnelType, tunnelData, *profile, [this, tunnelEndpoint, dialogTunnel](bool success, const QString &message, const QJsonObject&) {
+                if (!success) {
+                    MessageError(message);
+                    delete tunnelEndpoint;
+                } else {
+                    QString tunnelId = message;
+                    tunnelEndpoint->SetTunnelId(tunnelId);
+                    this->ClientTunnels[tunnelId] = tunnelEndpoint;
+                    MessageSuccess("Tunnel " + tunnelId + " started");
+                }
+                delete dialogTunnel;
             });
-
-            workerThread->start();
         }
         else {
             delete tunnelEndpoint;
@@ -883,22 +822,8 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
 
 void AdaptixWidget::OnWebSocketConnected()
 {
-    QThread* workerThread = new QThread();
-    QObject* worker = new QObject();
-    worker->moveToThread(workerThread);
-
-    connect(workerThread, &QThread::started, worker, [=, this]() {
-        HttpReqSync( *profile );
-
-        QMetaObject::invokeMethod(qApp, [=]() {
-            workerThread->quit();
-            workerThread->wait();
-            worker->deleteLater();
-            workerThread->deleteLater();
-        }, Qt::QueuedConnection);
-    });
-
-    workerThread->start();
+    QByteArray jsonData = QJsonDocument(QJsonObject()).toJson();
+    HttpRequestManager::instance().post(profile->GetURL(), "/sync", profile->GetAccessToken(), jsonData, [](bool, const QString&, const QJsonObject&) {});
 }
 
 void AdaptixWidget::OnSynced()

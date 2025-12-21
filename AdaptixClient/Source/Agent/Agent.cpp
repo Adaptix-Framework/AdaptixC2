@@ -204,26 +204,14 @@ void Agent::UpdateImage()
 
 /// TASK
 
-QString Agent::TasksCancel(const QStringList &tasks) const
+void Agent::TasksCancel(const QStringList &tasks) const
 {
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqTaskCancel( data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
+    HttpReqTaskCancelAsync(data.Id, tasks, *(adaptixWidget->GetProfile()), [](bool, const QString&, const QJsonObject&) {});
 }
 
-QString Agent::TasksDelete(const QStringList &tasks) const
+void Agent::TasksDelete(const QStringList &tasks) const
 {
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqTasksDelete(data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
+    HttpReqTasksDeleteAsync(data.Id, tasks, *(adaptixWidget->GetProfile()), [](bool, const QString&, const QJsonObject&) {});
 }
 
 /// PIVOT
