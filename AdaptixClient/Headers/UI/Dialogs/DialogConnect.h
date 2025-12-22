@@ -2,8 +2,27 @@
 #define ADAPTIXCLIENT_DIALOGCONNECT_H
 
 #include <main.h>
+#include <QApplication>
+#include <QFontMetrics>
+#include <QPainter>
+#include <QStyle>
+#include <QStyledItemDelegate>
+
+class QStyleOptionViewItem;
+class QModelIndex;
 
 class AuthProfile;
+
+class ProfileListDelegate : public QStyledItemDelegate
+{
+public:
+    explicit ProfileListDelegate(QObject *parent = nullptr);
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
+
+private:
+    QFont getFont(const QWidget *widget) const;
+};
 
 class DialogConnect : public QDialog
 {
@@ -29,7 +48,11 @@ class DialogConnect : public QDialog
     QLineEdit*    lineEdit_Endpoint   = nullptr;
     QPushButton*  ButtonConnect       = nullptr;
     QPushButton*  ButtonClear         = nullptr;
-    QTableWidget* tableWidget         = nullptr;
+    QListWidget*  listWidget          = nullptr;
+    QPushButton*  ButtonNewProfile    = nullptr;
+    QPushButton*  ButtonLoad         = nullptr;
+    QPushButton*  ButtonSave         = nullptr;
+    QLabel*       label_Profiles      = nullptr;
     QMenu*        menuContex          = nullptr;
 
     bool projectDirTouched = false;
@@ -37,6 +60,7 @@ class DialogConnect : public QDialog
     void createUI();
     bool checkValidInput() const;
     void loadProjects();
+    void clearFields();
 
 public:
     QVector<AuthProfile> listProjects;
@@ -51,10 +75,13 @@ private Q_SLOTS:
     void onButton_Clear();
     void handleContextMenu( const QPoint &pos ) const;
     void itemSelected();
-    void itemRemove() const;
+    void itemRemove();
     void onProjectNameChanged(const QString &text);
     void onProjectDirEdited(const QString &text);
     void onSelectProjectDir();
+    void onButton_NewProfile();
+    void onButton_Load();
+    void onButton_Save();
 };
 
 #endif
