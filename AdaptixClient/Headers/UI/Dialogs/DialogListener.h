@@ -35,6 +35,7 @@ class DialogListener : public QDialog
     QGroupBox*           profilesGroupbox         = nullptr;
     QListWidget*         listWidgetProfiles      = nullptr;
     QMenu*               menuContext            = nullptr;
+    QAction*             actionResetBackgroundColor = nullptr;
     ProfileListDelegate* profileDelegate        = nullptr;
 
     QList<RegListenerConfig> listeners;
@@ -72,6 +73,7 @@ protected Q_SLOTS:
     void handleProfileContextMenu(const QPoint &pos);
     void onProfileRemove();
     void onSetBackgroundColor();
+    void onResetBackgroundColor();
     void onToggleRightPanel();
 };
 
