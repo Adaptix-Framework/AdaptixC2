@@ -65,6 +65,16 @@ void Storage::checkDatabase()
     );
     if ( !querySettings.exec() )
         LogError("Table Settings not created: %s\n", querySettings.lastError().text().toStdString().c_str());
+
+    auto queryAgentProfiles = QSqlQuery();
+    queryAgentProfiles.prepare("CREATE TABLE IF NOT EXISTS AgentProfiles ( "
+                            "project TEXT, "
+                            "name TEXT, "
+                            "data TEXT, "
+                            "PRIMARY KEY (project, name) );"
+    );
+    if ( !queryAgentProfiles.exec() )
+        LogError("Table AgentProfiles not created: %s\n", queryAgentProfiles.lastError().text().toStdString().c_str());
 }
 
 /// PROJECTS
@@ -417,4 +427,58 @@ void Storage::UpdateSettingsTabBlink(const SettingsData &settingsData)
     query.bindValue(":Data", data);
     if (!query.exec())
         LogError("SettingsTablBlink not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+/// AGENT PROFILES
+
+QVector<QPair<QString, QString>> Storage::ListAgentProfiles(const QString &project)
+{
+    auto list = QVector<QPair<QString, QString>>();
+    QSqlQuery query;
+    query.prepare("SELECT name, data FROM AgentProfiles WHERE project = :Project;");
+    query.bindValue(":Project", project);
+    if (query.exec()) {
+        while (query.next()) {
+            QString name = query.value("name").toString();
+            QString data = query.value("data").toString();
+            list.push_back(QPair<QString, QString>(name, data));
+        }
+    }
+    else {
+        LogError("Failed to query agent profiles from database: %s\n", query.lastError().text().toStdString().c_str());
+    }
+    return list;
+}
+
+void Storage::AddAgentProfile(const QString &project, const QString &name, const QString &data)
+{
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO AgentProfiles (project, name, data) VALUES (:Project, :Name, :Data);");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("The agent profile has not been added to the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::RemoveAgentProfile(const QString &project, const QString &name)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM AgentProfiles WHERE project = :Project AND name = :Name;");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    if (!query.exec())
+        LogError("The agent profile has not been removed from the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+QString Storage::GetAgentProfile(const QString &project, const QString &name)
+{
+    QSqlQuery query;
+    query.prepare("SELECT data FROM AgentProfiles WHERE project = :Project AND name = :Name LIMIT 1;");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    if (query.exec() && query.next()) {
+        return query.value("data").toString();
+    }
+    return QString();
 }
