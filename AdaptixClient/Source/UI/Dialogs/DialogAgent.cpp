@@ -143,6 +143,7 @@ void DialogAgent::createUI()
 
     menuContext = new QMenu(this);
     menuContext->addAction("Set Background Color", this, &DialogAgent::onSetBackgroundColor);
+    actionResetBackgroundColor = menuContext->addAction("Reset Background Color", this, &DialogAgent::onResetBackgroundColor);
     menuContext->addSeparator();
     menuContext->addAction("Remove", this, &DialogAgent::onProfileRemove);
     listWidgetProfiles->addAction(menuContext->menuAction());
@@ -578,6 +579,23 @@ void DialogAgent::onProfileSelected()
 
 void DialogAgent::handleProfileContextMenu(const QPoint &pos)
 {
+    auto* item = listWidgetProfiles->itemAt(pos);
+    bool hasColor = false;
+    
+    if (item) {
+        QVariant bgColorVariant = item->data(Qt::BackgroundRole);
+        if (bgColorVariant.isValid() && bgColorVariant.canConvert<QBrush>()) {
+            QBrush brush = bgColorVariant.value<QBrush>();
+            if (brush.style() != Qt::NoBrush) {
+                hasColor = true;
+            }
+        }
+    }
+    
+    if (actionResetBackgroundColor) {
+        actionResetBackgroundColor->setEnabled(hasColor);
+    }
+    
     QPoint globalPos = listWidgetProfiles->mapToGlobal(pos);
     menuContext->exec(globalPos);
 }
@@ -637,6 +655,48 @@ void DialogAgent::onSetBackgroundColor()
                 QString updatedProfileData = QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
                 Storage::AddAgentProfile(project, profileName, updatedProfileData);
             }
+        }
+    }
+}
+
+void DialogAgent::onResetBackgroundColor()
+{
+    auto* item = listWidgetProfiles->currentItem();
+    if (!item)
+        return;
+    
+    QString profileName = item->data(Qt::UserRole + 1).toString();
+    if (profileName.isEmpty())
+        return;
+    
+    QString project = authProfile.GetProject();
+    if (project.isEmpty())
+        return;
+    
+    QVariant bgColorVariant = item->data(Qt::BackgroundRole);
+    bool hasColor = false;
+    if (bgColorVariant.isValid() && bgColorVariant.canConvert<QBrush>()) {
+        QBrush brush = bgColorVariant.value<QBrush>();
+        if (brush.style() != Qt::NoBrush) {
+            hasColor = true;
+        }
+    }
+    
+    if (!hasColor)
+        return;
+    
+    item->setData(Qt::BackgroundRole, QVariant());
+    listWidgetProfiles->viewport()->update();
+    
+    QString profileData = Storage::GetAgentProfile(project, profileName);
+    if (!profileData.isEmpty()) {
+        QJsonParseError parseError;
+        QJsonDocument document = QJsonDocument::fromJson(profileData.toUtf8(), &parseError);
+        if (parseError.error == QJsonParseError::NoError && document.isObject()) {
+            QJsonObject jsonObject = document.object();
+            jsonObject.remove("backgroundColor");
+            QString updatedProfileData = QJsonDocument(jsonObject).toJson(QJsonDocument::Compact);
+            Storage::AddAgentProfile(project, profileName, updatedProfileData);
         }
     }
 }
