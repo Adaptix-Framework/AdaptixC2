@@ -98,6 +98,10 @@ type Teamserver interface {
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
 	TsTunnelConnectionAccept(tunnelId int, channelId int)
+
+	TsConvertCpToUTF8(input string, codePage int) string
+	TsConvertUTF8toCp(input string, codePage int) string
+	TsWin32Error(errorCode uint) string
 }
 
 type ModuleExtender struct {

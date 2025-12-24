@@ -856,16 +856,16 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 						if _, err := buf.Read(data); err != nil {
 							continue
 						}
-						name := ConvertCpToUTF8(string(filename), agentData.ACP)
+						name := ts.TsConvertCpToUTF8(string(filename), agentData.ACP)
 						fileId := fmt.Sprintf("%08x", mrand.Uint32())
 						_ = ts.TsDownloadSave(agentData.Id, fileId, name, data)
 
 					} else if msg.Type == CALLBACK_ERROR {
 						task.MessageType = MESSAGE_ERROR
 						task.Message = "BOF error"
-						task.ClearText += ConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
+						task.ClearText += ts.TsConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
 					} else {
-						task.ClearText += ConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
+						task.ClearText += ts.TsConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
 					}
 				}
 
@@ -1373,7 +1373,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 				task.Message = "Command output:"
 				if agentData.Os == OS_WINDOWS {
-					task.ClearText = ConvertCpToUTF8(params.Output, agentData.OemCP)
+					task.ClearText = ts.TsConvertCpToUTF8(params.Output, agentData.OemCP)
 				} else {
 					task.ClearText = params.Output
 				}
@@ -1479,7 +1479,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 
 				if agentData.Os == OS_WINDOWS {
-					task.ClearText = ConvertCpToUTF8(params.Stdout, agentData.OemCP)
+					task.ClearText = ts.TsConvertCpToUTF8(params.Stdout, agentData.OemCP)
 				} else {
 					task.ClearText = params.Stdout
 				}
@@ -1487,7 +1487,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				if params.Stderr != "" {
 					errorStr := params.Stderr
 					if agentData.Os == OS_WINDOWS {
-						errorStr = ConvertCpToUTF8(params.Stderr, agentData.OemCP)
+						errorStr = ts.TsConvertCpToUTF8(params.Stderr, agentData.OemCP)
 					}
 					task.ClearText += fmt.Sprintf("\n --- [error] --- \n%v ", errorStr)
 				}
