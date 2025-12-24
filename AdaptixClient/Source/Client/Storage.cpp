@@ -66,6 +66,8 @@ void Storage::checkDatabase()
     if ( !querySettings.exec() )
         LogError("Table Settings not created: %s\n", querySettings.lastError().text().toStdString().c_str());
 
+
+
     auto queryListenerProfiles = QSqlQuery();
     queryListenerProfiles.prepare("CREATE TABLE IF NOT EXISTS ListenerProfiles ( "
                             "project TEXT, "
@@ -75,6 +77,16 @@ void Storage::checkDatabase()
     );
     if ( !queryListenerProfiles.exec() )
         LogError("Table ListenerProfiles not created: %s\n", queryListenerProfiles.lastError().text().toStdString().c_str());
+
+    auto queryAgentProfiles = QSqlQuery();
+    queryAgentProfiles.prepare("CREATE TABLE IF NOT EXISTS AgentProfiles ( "
+                            "project TEXT, "
+                            "name TEXT, "
+                            "data TEXT, "
+                            "PRIMARY KEY (project, name) );"
+    );
+    if ( !queryAgentProfiles.exec() )
+        LogError("Table AgentProfiles not created: %s\n", queryAgentProfiles.lastError().text().toStdString().c_str());
 }
 
 /// PROJECTS
@@ -392,8 +404,6 @@ void Storage::UpdateSettingsTasks(const SettingsData &settingsData)
         LogError("SettingsTasks not updated in database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
-
-
 void Storage::SelectSettingsTabBlink(SettingsData* settingsData)
 {
     QSqlQuery query;
@@ -428,6 +438,8 @@ void Storage::UpdateSettingsTabBlink(const SettingsData &settingsData)
     if (!query.exec())
         LogError("SettingsTablBlink not updated in database: %s\n", query.lastError().text().toStdString().c_str());
 }
+
+
 
 /// LISTENER PROFILES
 

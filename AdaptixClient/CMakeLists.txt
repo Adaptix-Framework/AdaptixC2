@@ -188,7 +188,6 @@ add_executable(AdaptixClient
         Source/UI/Dialogs/DialogSyncPacket.cpp
         Source/Client/ProcessSyncPacket.cpp
         Source/UI/Widgets/ListenersWidget.cpp
-        Source/UI/Dialogs/ProfileListDelegate.cpp
         Source/UI/Dialogs/DialogListener.cpp
         Source/UI/Widgets/SessionsTableWidget.cpp
         Source/UI/Dialogs/DialogAgent.cpp

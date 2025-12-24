@@ -47,6 +47,14 @@ QPushButton[ButtonStyle="dialog"] {
     color: #E0E0E0;
 }
 
+QPushButton[ButtonStyle="dialog_apply"] {
+    background-color: #333333;
+    border: 1px solid #4A4A4A;
+    padding: 8px;
+    border-radius: 4px;
+    color: #E0E0E0;
+}
+
 QPushButton {
     background-color: #333333;
     border: 1px solid #4A4A4A;
@@ -850,4 +858,34 @@ QListWidget::item:selected {
 
 QListWidget:focus {
     outline: none;
+}
+
+
+
+CardListWidget {
+    background-color: #2A2A2A;
+    border: 1px solid #4A4A4A;
+    border-radius: 4px;
+    padding: 4px;
+
+    qproperty-itemBackground: #3A3A3A;
+    qproperty-itemBackgroundHover: #454545;
+    qproperty-itemBackgroundSelected: #4A4A4A;
+    qproperty-titleColor: #E0E0E0;
+    qproperty-titleColorSelected: #FFFFFF;
+    qproperty-subtitleColor: #909090;
+    qproperty-subtitleColorSelected: #C0C0C0;
+}
+
+CardListWidget::item {
+    border: none;
+    border-radius: 4px;
+}
+
+CardListWidget::item:selected {
+    background: transparent;
+}
+
+CardListWidget::item:hover {
+    background: transparent;
 }
