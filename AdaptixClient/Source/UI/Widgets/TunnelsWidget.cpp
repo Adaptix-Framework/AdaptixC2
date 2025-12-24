@@ -4,6 +4,8 @@
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/TunnelEndpoint.h>
+#include <Agent/Agent.h>
+#include <UI/Graph/GraphItem.h>
 
 REGISTER_DOCK_WIDGET(TunnelsWidget, "Tunnels", true)
 
@@ -156,6 +158,14 @@ void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
     tableWidget->horizontalHeader()->setSectionResizeMode( 11, QHeaderView::ResizeToContents );
 
     adaptixWidget->Tunnels.push_back(newTunnel);
+
+    if (adaptixWidget->AgentsMap.contains(newTunnel.AgentId)) {
+        Agent* agent = adaptixWidget->AgentsMap[newTunnel.AgentId];
+        if (agent && agent->graphItem) {
+            TunnelMarkType markType = newTunnel.Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
+            agent->graphItem->AddTunnel(markType);
+        }
+    }
 }
 
 void TunnelsWidget::EditTunnelItem(const QString &tunnelId, const QString &info) const
@@ -178,10 +188,21 @@ void TunnelsWidget::EditTunnelItem(const QString &tunnelId, const QString &info)
 
 void TunnelsWidget::RemoveTunnelItem(const QString &tunnelId) const
 {
+     QString agentId;
+     TunnelMarkType markType = TunnelMarkNone;
      for ( int i = 0; i < adaptixWidget->Tunnels.size(); i++ ) {
           if( adaptixWidget->Tunnels[i].TunnelId == tunnelId ) {
+               agentId = adaptixWidget->Tunnels[i].AgentId;
+               markType = adaptixWidget->Tunnels[i].Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
                adaptixWidget->Tunnels.erase( adaptixWidget->Tunnels.begin() + i );
                break;
+          }
+     }
+
+     if (!agentId.isEmpty() && adaptixWidget->AgentsMap.contains(agentId)) {
+          Agent* agent = adaptixWidget->AgentsMap[agentId];
+          if (agent && agent->graphItem && markType != TunnelMarkNone) {
+               agent->graphItem->RemoveTunnel(markType);
           }
      }
 

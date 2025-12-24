@@ -2,6 +2,7 @@
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Graph/GraphItemLink.h>
 #include <UI/Graph/LayoutTreeLeft.h>
+#include <UI/Graph/LayoutTreeTop.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/GraphScene.h>
 #include <UI/Widgets/AdaptixWidget.h>
@@ -26,7 +27,7 @@ SessionsGraph::SessionsGraph(QWidget* parent) : QGraphicsView(parent)
     this->scaleView( 0.8 );
 
     this->graphScene = new GraphScene( 10, this->mainWidget, this );
-    this->graphScene->setItemIndexMethod( QGraphicsScene::BspTreeIndex );
+    this->graphScene->setItemIndexMethod( QGraphicsScene::NoIndex );
     setScene( this->graphScene );
 
     this->RootInit();
@@ -185,7 +186,16 @@ void SessionsGraph::UnlinkAgent(const Agent* parentAgent, const Agent* childAgen
 
 void SessionsGraph::TreeDraw() const
 {
-    LayoutTreeLeft::draw(this->rootItem);
+    if (layoutDirection == LayoutTopToBottom)
+        LayoutTreeTop::draw(this->rootItem);
+    else
+        LayoutTreeLeft::draw(this->rootItem);
+}
+
+void SessionsGraph::SetLayoutDirection(GraphLayoutDirection direction)
+{
+    layoutDirection = direction;
+    TreeDraw();
 }
 
 void SessionsGraph::UpdateIcons() const
@@ -237,7 +247,6 @@ void SessionsGraph::timerEvent( QTimerEvent* event )
         item->calculateForces();
         if (item->advancePosition())
             itemsMoved = true;
-        item->adjust();
     }
 
     if ( !itemsMoved ) {
@@ -248,12 +257,16 @@ void SessionsGraph::timerEvent( QTimerEvent* event )
 
 void SessionsGraph::wheelEvent( QWheelEvent* event )
 {
-    if ( QApplication::keyboardModifiers() & Qt::ShiftModifier )
+    if ( QApplication::keyboardModifiers() & Qt::ShiftModifier ) {
         horizontalScrollBar()->event( event );
-    else if ( QApplication::keyboardModifiers() & Qt::ControlModifier )
+    }
+    else if ( QApplication::keyboardModifiers() & Qt::ControlModifier ) {
         scaleView( pow( 2., event->angleDelta().y() / 500.0 ) );
-    else
+        event->accept();
+        return;
+    }
+    else {
         verticalScrollBar()->event( event );
-
-    event->ignore();
+    }
+    event->accept();
 }

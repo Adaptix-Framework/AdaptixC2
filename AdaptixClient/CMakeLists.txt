@@ -126,6 +126,7 @@ SET( HEADERS
         Headers/UI/Graph/GraphItemLink.h
         Headers/UI/Graph/GraphScene.h
         Headers/UI/Graph/LayoutTreeLeft.h
+        Headers/UI/Graph/LayoutTreeTop.h
         Headers/UI/Widgets/ScreenshotsWidget.h
         Headers/UI/Dialogs/DialogTunnel.h
         Headers/Client/TunnelEndpoint.h
@@ -211,6 +212,7 @@ add_executable(AdaptixClient
         Source/UI/Graph/GraphItemLink.cpp
         Source/UI/Graph/GraphScene.cpp
         Source/UI/Graph/LayoutTreeLeft.cpp
+        Source/UI/Graph/LayoutTreeTop.cpp
         Source/UI/Widgets/ScreenshotsWidget.cpp
         Source/UI/Dialogs/DialogTunnel.cpp
         Source/Client/TunnelEndpoint.cpp

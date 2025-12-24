@@ -38,17 +38,23 @@ void GraphItemLink::adjust()
     QLineF line(srcLine, dstLine);
     double lineLength = line.length();
 
-    this->prepareGeometryChange();
+    QPointF newSrcPoint, newDstPoint;
 
     if ( lineLength > 20.0 ) {
         auto edgeSpace  = 65;
         auto edgeOffset = QPointF( ( ( line.dx() * edgeSpace ) / lineLength ), ( ( line.dy() * edgeSpace ) / lineLength ) - 10 );
 
-        this->srcPoint = line.p1() + edgeOffset;
-        this->dstPoint = line.p2() - edgeOffset;
+        newSrcPoint = line.p1() + edgeOffset;
+        newDstPoint = line.p2() - edgeOffset;
     } else {
-        this->srcPoint = line.p1();
-        this->dstPoint = line.p2();
+        newSrcPoint = line.p1();
+        newDstPoint = line.p2();
+    }
+
+    if (newSrcPoint != this->srcPoint || newDstPoint != this->dstPoint) {
+        this->prepareGeometryChange();
+        this->srcPoint = newSrcPoint;
+        this->dstPoint = newDstPoint;
     }
 }
 

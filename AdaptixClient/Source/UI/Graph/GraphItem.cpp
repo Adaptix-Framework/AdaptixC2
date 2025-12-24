@@ -40,7 +40,7 @@ GraphItem::GraphItem( SessionsGraph* graphView, Agent* agent )
     this->rect          = QRectF( 0, 0, 100, 100 );
 
     this->setZValue( -1 );
-    this->setCacheMode( QGraphicsItem::DeviceCoordinateCache );
+    this->setCacheMode( QGraphicsItem::ItemCoordinateCache );
     this->setFlag( QGraphicsItem::ItemIsMovable );
     this->setFlag( QGraphicsItem::ItemSendsGeometryChanges );
     this->setFlag( QGraphicsItem::ItemIsSelectable );
@@ -67,12 +67,30 @@ QRectF GraphItem::boundingRect() const
     return this->rect;
 }
 
+static QImage s_firewallImage;
+
 void GraphItem::paint( QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
-    if ( this->sessionsGraph->IsRootItem(this) )
-        painter->drawImage(rect, QImage(":/graph/v1/firewall"));
+    if ( this->sessionsGraph->IsRootItem(this) ) {
+        if (s_firewallImage.isNull())
+            s_firewallImage = QImage(":/graph/v1/firewall");
+        painter->drawImage(rect, s_firewallImage);
+    }
     else
         painter->drawImage(rect, this->agent->graphImage);
+
+    if (HasTunnel()) {
+        painter->save();
+        QRectF badgeRect(rect.right() - 38, rect.top() - 6, 42, 24);
+        painter->setBrush(QColor(0, 200, 0));
+        painter->setPen(QPen(QColor(0, 0, 0), 2));
+        painter->drawRoundedRect(badgeRect, 10, 10);
+        painter->setPen(QColor(0, 0, 0));
+        painter->setFont(QFont("Arial", 11, QFont::Bold));
+        QString label = (GetTunnelType() == TunnelMarkServer) ? "TunS" : "TunC";
+        painter->drawText(badgeRect, Qt::AlignCenter, label);
+        painter->restore();
+    }
 
     if ( this->isSelected() ) {
         painter->setPen( QPen( QBrush( COLOR_BrightOrange ), 1, Qt::DotLine ) );
@@ -114,49 +132,49 @@ void GraphItem::mousePressEvent( QGraphicsSceneMouseEvent* event )
         event->accept();
         return;
     }
-
-    update();
-    this->sessionsGraph->itemMoved();
     QGraphicsItem::mousePressEvent( event );
 }
 
 void GraphItem::mouseReleaseEvent( QGraphicsSceneMouseEvent* event )
 {
-    update();
-    this->sessionsGraph->itemMoved();
     QGraphicsItem::mouseReleaseEvent( event );
 }
 
 void GraphItem::mouseMoveEvent( QGraphicsSceneMouseEvent* event )
 {
-    update();
-    this->sessionsGraph->itemMoved();
     QGraphicsItem::mouseMoveEvent( event );
 }
 
 void GraphItem::adjust()
 {
+    if ( this->parentLink )
+        this->parentLink->adjust();
+
     for ( auto link : this->childLinks )
         link->adjust();
 }
 
 void GraphItem::calculateForces()
 {
-    if ( !this->scene() || this->scene()->mouseGrabberItem() == this ) {
-        this->point = this->pos();
-        return;
-    }
+    this->point = this->pos();
+}
 
-    QPointF newPos   = this->pos();
-    QRectF sceneRect = this->scene()->sceneRect();
+void GraphItem::AddTunnel(TunnelMarkType type)
+{
+    if (type == TunnelMarkServer)
+        serverTunnelCount++;
+    else if (type == TunnelMarkClient)
+        clientTunnelCount++;
+    update();
+}
 
-    qreal leftBound   = sceneRect.left() + 10;
-    qreal rightBound  = sceneRect.right() - 10;
-    qreal topBound    = sceneRect.top() + 10;
-    qreal bottomBound = sceneRect.bottom() - 10;
-
-    this->point.setX( std::clamp(newPos.x(), leftBound, rightBound) );
-    this->point.setY( std::clamp(newPos.y(), topBound, bottomBound) );
+void GraphItem::RemoveTunnel(TunnelMarkType type)
+{
+    if (type == TunnelMarkServer && serverTunnelCount > 0)
+        serverTunnelCount--;
+    else if (type == TunnelMarkClient && clientTunnelCount > 0)
+        clientTunnelCount--;
+    update();
 }
 
 bool GraphItem::advancePosition()
@@ -171,9 +189,6 @@ bool GraphItem::advancePosition()
 QVariant GraphItem::itemChange( GraphicsItemChange change, const QVariant& value )
 {
     if ( change == ItemPositionChange ) {
-        this->adjust();
-        this->sessionsGraph->itemMoved();
-
         if ( this->note ) {
             QRectF  rect     = this->boundingRect();
             QRectF  noteRect = this->note->boundingRect();
@@ -182,6 +197,9 @@ QVariant GraphItem::itemChange( GraphicsItemChange change, const QVariant& value
 
             this->note->setPos(posRect);
         }
+    }
+    else if ( change == ItemPositionHasChanged ) {
+        this->adjust();
     }
 
     return QGraphicsItem::itemChange( change, value );

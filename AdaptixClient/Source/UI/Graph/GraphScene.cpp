@@ -8,6 +8,7 @@
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <UI/Dialogs/DialogAgentData.h>
+#include <UI/Graph/SessionsGraph.h>
 
 
 GraphScene::GraphScene(const int gridSize, QWidget* m, QObject* parent) : QGraphicsScene(parent)
@@ -41,8 +42,31 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
     auto graphics_items = selectedItems();
     if(graphics_items.empty()) {
-        if( (graphics_items = items(event->scenePos())).empty() )
-            return QGraphicsScene::contextMenuEvent( event );
+        if( (graphics_items = items(event->scenePos())).empty() ) {
+            auto* sessionsGraph = qobject_cast<SessionsGraph*>(parent());
+            if (!sessionsGraph)
+                return QGraphicsScene::contextMenuEvent( event );
+
+            auto layoutMenu = QMenu("Layout");
+            auto* actionLeftToRight = layoutMenu.addAction("Left to Right");
+            auto* actionTopToBottom = layoutMenu.addAction("Top to Bottom");
+
+            actionLeftToRight->setCheckable(true);
+            actionTopToBottom->setCheckable(true);
+            actionLeftToRight->setChecked(sessionsGraph->GetLayoutDirection() == LayoutLeftToRight);
+            actionTopToBottom->setChecked(sessionsGraph->GetLayoutDirection() == LayoutTopToBottom);
+
+            auto ctxMenu = QMenu();
+            ctxMenu.addMenu(&layoutMenu);
+
+            const auto action = ctxMenu.exec(event->screenPos());
+            if (action == actionLeftToRight) {
+                sessionsGraph->SetLayoutDirection(LayoutLeftToRight);
+            } else if (action == actionTopToBottom) {
+                sessionsGraph->SetLayoutDirection(LayoutTopToBottom);
+            }
+            return;
+        }
     }
 
     QStringList agentIds;
@@ -75,7 +99,6 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     sessionMenu.addAction("Set tag");
     if (agentIds.size() == 1 )
         sessionMenu.addAction("Set data");
-
 
     auto ctxMenu = QMenu();
     ctxMenu.addAction("Console");
