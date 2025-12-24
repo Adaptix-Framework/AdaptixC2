@@ -66,15 +66,15 @@ void Storage::checkDatabase()
     if ( !querySettings.exec() )
         LogError("Table Settings not created: %s\n", querySettings.lastError().text().toStdString().c_str());
 
-    auto queryAgentProfiles = QSqlQuery();
-    queryAgentProfiles.prepare("CREATE TABLE IF NOT EXISTS AgentProfiles ( "
+    auto queryListenerProfiles = QSqlQuery();
+    queryListenerProfiles.prepare("CREATE TABLE IF NOT EXISTS ListenerProfiles ( "
                             "project TEXT, "
                             "name TEXT, "
                             "data TEXT, "
                             "PRIMARY KEY (project, name) );"
     );
-    if ( !queryAgentProfiles.exec() )
-        LogError("Table AgentProfiles not created: %s\n", queryAgentProfiles.lastError().text().toStdString().c_str());
+    if ( !queryListenerProfiles.exec() )
+        LogError("Table ListenerProfiles not created: %s\n", queryListenerProfiles.lastError().text().toStdString().c_str());
 }
 
 /// PROJECTS
@@ -427,6 +427,60 @@ void Storage::UpdateSettingsTabBlink(const SettingsData &settingsData)
     query.bindValue(":Data", data);
     if (!query.exec())
         LogError("SettingsTablBlink not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+/// LISTENER PROFILES
+
+QVector<QPair<QString, QString>> Storage::ListListenerProfiles(const QString &project)
+{
+    auto list = QVector<QPair<QString, QString>>();
+    QSqlQuery query;
+    query.prepare("SELECT name, data FROM ListenerProfiles WHERE project = :Project;");
+    query.bindValue(":Project", project);
+    if (query.exec()) {
+        while (query.next()) {
+            QString name = query.value("name").toString();
+            QString data = query.value("data").toString();
+            list.push_back(QPair<QString, QString>(name, data));
+        }
+    }
+    else {
+        LogError("Failed to query listener profiles from database: %s\n", query.lastError().text().toStdString().c_str());
+    }
+    return list;
+}
+
+void Storage::AddListenerProfile(const QString &project, const QString &name, const QString &data)
+{
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO ListenerProfiles (project, name, data) VALUES (:Project, :Name, :Data);");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("The listener profile has not been added to the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::RemoveListenerProfile(const QString &project, const QString &name)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM ListenerProfiles WHERE project = :Project AND name = :Name;");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    if (!query.exec())
+        LogError("The listener profile has not been removed from the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+QString Storage::GetListenerProfile(const QString &project, const QString &name)
+{
+    QSqlQuery query;
+    query.prepare("SELECT data FROM ListenerProfiles WHERE project = :Project AND name = :Name LIMIT 1;");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    if (query.exec() && query.next()) {
+        return query.value("data").toString();
+    }
+    return QString();
 }
 
 /// AGENT PROFILES
