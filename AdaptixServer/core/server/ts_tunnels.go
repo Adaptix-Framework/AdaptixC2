@@ -663,7 +663,6 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 		if cid == 0 {
 			continue
 		}
-
 		if !tm.ChannelExistsInTunnel(tunnel, cid) {
 			channelId = cid
 			break

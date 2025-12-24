@@ -141,7 +141,7 @@ func (m *ModuleExtender) AgentGenerate(config string, listenerWM string, listene
 }
 
 func (m *ModuleExtender) AgentCreate(beat []byte) (adaptix.AgentData, error) {
-	return CreateAgent(beat)
+	return CreateAgent(m.ts, beat)
 }
 
 func (m *ModuleExtender) AgentCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {

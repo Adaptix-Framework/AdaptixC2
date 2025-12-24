@@ -345,7 +345,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	}
 }
 
-func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
+func CreateAgent(ts Teamserver, initialData []byte) (adaptix.AgentData, error) {
 	var agent adaptix.AgentData
 
 	/// START CODE HERE

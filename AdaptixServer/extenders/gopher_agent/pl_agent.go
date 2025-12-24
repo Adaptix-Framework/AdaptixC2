@@ -188,13 +188,13 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 		return nil, "", err
 	}
 
-	cmdBuild := fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
+	cmdBuild := fmt.Sprintf("GOWORK=off CGO_ENABLED=0 GOOS=%s GOARCH=%s go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
 	if generateConfig.Os == "windows" && generateConfig.Win7support {
 		_, err := os.Stat("/usr/lib/go-win7/go")
 		if os.IsNotExist(err) {
 			return nil, "", errors.New("go-win7 not installed")
 		}
-		cmdBuild = fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s GOROOT=/usr/lib/go-win7/ /usr/lib/go-win7/go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
+		cmdBuild = fmt.Sprintf("GOWORK=off CGO_ENABLED=0 GOOS=%s GOARCH=%s GOROOT=/usr/lib/go-win7/ /usr/lib/go-win7/go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
 	}
 	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
 	runnerCmdBuild.Dir = currentDir + "/" + SrcPath
@@ -215,7 +215,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	return buildContent, Filename, nil
 }
 
-func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
+func CreateAgent(ts Teamserver, initialData []byte) (adaptix.AgentData, error) {
 	var agent adaptix.AgentData
 
 	/// START CODE HERE

@@ -801,7 +801,7 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
 
     if ( parseError.error != QJsonParseError::NoError || !jsonDoc.isObject() ) {
-        LogError("Error parsing JSON data: %s", parseError.errorString().toStdString().c_str());
+        LogError("Error parsing JSON data: %s\nRaw data: %s", parseError.errorString().toStdString().c_str(), data.left(1024).toStdString().c_str());
         return;
     }
 

@@ -156,6 +156,7 @@ void TasksWidget::createUI()
     tableView->horizontalHeader()->setCascadingSectionResizes( true );
     tableView->horizontalHeader()->setHighlightSections( false );
     tableView->verticalHeader()->setVisible( false );
+    tableView->verticalHeader()->setSectionResizeMode( QHeaderView::ResizeToContents );
 
     proxyModel->sort(-1);
 

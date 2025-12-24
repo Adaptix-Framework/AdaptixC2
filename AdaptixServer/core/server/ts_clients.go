@@ -51,8 +51,7 @@ func (ts *Teamserver) TsClientSync(username string) {
 			buffered := client.GetAndClearBuffer()
 			if len(buffered) > 0 {
 				for _, v := range buffered {
-					data := serializePacket(v)
-					if data != nil {
+					if data, ok := v.([]byte); ok {
 						client.SendSync(data)
 					}
 				}

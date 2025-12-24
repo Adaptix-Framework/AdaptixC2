@@ -33,24 +33,24 @@ func channelKey(tunnelId string, channelId int) string {
 }
 
 type ChannelEntry struct {
-	TunnelId  string
-	Tunnel    *Tunnel
-	Channel   *TunnelChannel
+	TunnelId string
+	Tunnel   *Tunnel
+	Channel  *TunnelChannel
 }
 
 type TunnelStats struct {
-	ActiveTunnels   atomic.Int64
-	ActiveChannels  atomic.Int64
-	TotalBytesSent  atomic.Uint64
-	TotalBytesRecv  atomic.Uint64
+	ActiveTunnels  atomic.Int64
+	ActiveChannels atomic.Int64
+	TotalBytesSent atomic.Uint64
+	TotalBytesRecv atomic.Uint64
 }
 
 type TunnelChannelSafe struct {
 	TunnelChannel
-	mu       sync.Mutex
-	closed   atomic.Bool
-	ctx      context.Context
-	cancel   context.CancelFunc
+	mu     sync.Mutex
+	closed atomic.Bool
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 func NewTunnelManager(ts *Teamserver) *TunnelManager {
