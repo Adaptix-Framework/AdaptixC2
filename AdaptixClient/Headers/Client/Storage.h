@@ -49,6 +49,11 @@ public:
 
     static void SelectSettingsTabBlink(SettingsData* settingsData);
     static void UpdateSettingsTabBlink(const SettingsData &settingsData);
+
+    static QVector<QPair<QString, QString>> ListAgentProfiles(const QString &project);
+    static void AddAgentProfile(const QString &project, const QString &name, const QString &data);
+    static void RemoveAgentProfile(const QString &project, const QString &name);
+    static QString GetAgentProfile(const QString &project, const QString &name);
 };
 
 #endif

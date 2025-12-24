@@ -7,6 +7,8 @@
 
 class AxContainerWrapper;
 
+class ProfileListDelegate;
+
 class DialogAgent : public QDialog
 {
     QGridLayout*    mainGridLayout      = nullptr;
@@ -24,17 +26,33 @@ class DialogAgent : public QDialog
     QPushButton*    buttonSave          = nullptr;
     QPushButton*    closeButton         = nullptr;
     QPushButton*    generateButton      = nullptr;
+    QWidget*        rightPanelWidget    = nullptr;
+    QWidget*        collapsibleDivider   = nullptr;
+    QPushButton*    buttonToggleRightPanel = nullptr;
+    QFrame*         line_2              = nullptr;
+    QGroupBox*      profilesGroupbox     = nullptr;
+    QListWidget*    listWidgetProfiles  = nullptr;
+    QMenu*          menuContext         = nullptr;
+    QAction*        actionResetBackgroundColor = nullptr;
     QGroupBox*      agentConfigGroupbox = nullptr;
     QStackedWidget* configStackWidget   = nullptr;
 
     AuthProfile authProfile;
     QString     listenerName;
     QString     listenerType;
+    QString     currentProfileName;
+    bool        rightPanelCollapsed = false;
+    QSize       collapsedSize;
+    int         panelWidth = 0;
 
     QStringList agents;
     QMap<QString, AxUI> ax_uis;
 
     void createUI();
+    void loadProfiles();
+    bool eventFilter(QObject *obj, QEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+    void updateButtonPosition();
 
 public:
     explicit DialogAgent(const QString &listenerName, const QString &listenerType);
@@ -48,8 +66,14 @@ protected Q_SLOTS:
     void onButtonLoad();
     void onButtonSave();
     void changeConfig(const QString &agentName);
-    void onButtonGenerate();
+    void onButtonGenerateAgent();
     void onButtonClose();
+    void onProfileSelected();
+    void handleProfileContextMenu(const QPoint &pos);
+    void onProfileRemove();
+    void onSetBackgroundColor();
+    void onResetBackgroundColor();
+    void onToggleRightPanel();
 };
 
 #endif
