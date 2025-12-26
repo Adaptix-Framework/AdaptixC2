@@ -227,7 +227,7 @@ void Agent::MarkItem(const QString &mark)
     }
 
     if (this->graphItem)
-        this->graphItem->update();
+        this->graphItem->invalidateCache();
 
     if (color.isEmpty()) {
         this->bg_color = QColor();

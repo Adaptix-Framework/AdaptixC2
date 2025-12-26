@@ -483,6 +483,15 @@ void Storage::RemoveListenerProfile(const QString &project, const QString &name)
         LogError("The listener profile has not been removed from the database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
+void Storage::RemoveAllListenerProfiles(const QString &project)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM ListenerProfiles WHERE project = :Project;");
+    query.bindValue(":Project", project);
+    if (!query.exec())
+        LogError("Listener profiles have not been removed from the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
 QString Storage::GetListenerProfile(const QString &project, const QString &name)
 {
     QSqlQuery query;
@@ -535,6 +544,15 @@ void Storage::RemoveAgentProfile(const QString &project, const QString &name)
     query.bindValue(":Name", name);
     if (!query.exec())
         LogError("The agent profile has not been removed from the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::RemoveAllAgentProfiles(const QString &project)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM AgentProfiles WHERE project = :Project;");
+    query.bindValue(":Project", project);
+    if (!query.exec())
+        LogError("Agent profiles have not been removed from the database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
 QString Storage::GetAgentProfile(const QString &project, const QString &name)

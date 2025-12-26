@@ -259,7 +259,10 @@ void DialogConnect::itemRemove()
     if (!item)
         return;
 
-    GlobalClient->storage->RemoveProject(item->data(CardListWidget::TitleRole).toString());
+    QString project = item->data(CardListWidget::TitleRole).toString();
+    Storage::RemoveAllListenerProfiles(project);
+    Storage::RemoveAllAgentProfiles(project);
+    GlobalClient->storage->RemoveProject(project);
     delete cardWidget->takeItem(cardWidget->row(item));
     loadProjects();
 }

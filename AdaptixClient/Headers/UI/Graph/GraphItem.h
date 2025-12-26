@@ -73,6 +73,8 @@ public:
     bool HasTunnel() const { return (serverTunnelCount + clientTunnelCount) > 0; }
     TunnelMarkType GetTunnelType() const { return serverTunnelCount > 0 ? TunnelMarkServer : (clientTunnelCount > 0 ? TunnelMarkClient : TunnelMarkNone); }
 
+    void invalidateCache();
+
 protected:
     QRectF boundingRect() const override;
     void   paint( QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;

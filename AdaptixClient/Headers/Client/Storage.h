@@ -53,11 +53,13 @@ public:
     static QVector<QPair<QString, QString>> ListListenerProfiles(const QString &project);
     static void AddListenerProfile(const QString &project, const QString &name, const QString &data);
     static void RemoveListenerProfile(const QString &project, const QString &name);
+    static void RemoveAllListenerProfiles(const QString &project);
     static QString GetListenerProfile(const QString &project, const QString &name);
 
     static QVector<QPair<QString, QString>> ListAgentProfiles(const QString &project);
     static void AddAgentProfile(const QString &project, const QString &name, const QString &data);
     static void RemoveAgentProfile(const QString &project, const QString &name);
+    static void RemoveAllAgentProfiles(const QString &project);
     static QString GetAgentProfile(const QString &project, const QString &name);
 };
 

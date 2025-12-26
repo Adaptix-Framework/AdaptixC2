@@ -40,7 +40,7 @@ GraphItem::GraphItem( SessionsGraph* graphView, Agent* agent )
     this->rect          = QRectF( 0, 0, 100, 100 );
 
     this->setZValue( -1 );
-    this->setCacheMode( QGraphicsItem::ItemCoordinateCache );
+    this->setCacheMode( QGraphicsItem::NoCache );
     this->setFlag( QGraphicsItem::ItemIsMovable );
     this->setFlag( QGraphicsItem::ItemSendsGeometryChanges );
     this->setFlag( QGraphicsItem::ItemIsSelectable );
@@ -184,6 +184,11 @@ bool GraphItem::advancePosition()
 
     setPos( this->point );
     return true;
+}
+
+void GraphItem::invalidateCache()
+{
+    update();
 }
 
 QVariant GraphItem::itemChange( GraphicsItemChange change, const QVariant& value )
