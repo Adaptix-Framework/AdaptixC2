@@ -2004,14 +2004,23 @@ func TunnelReverse(tunnelId int, port int) ([]byte, error) {
 
 /// TERMINAL
 
-func TerminalStart(terminalId int, program string, sizeH int, sizeW int) ([]byte, error) {
-	return nil, errors.New("Function Remote Terminal not supported")
+func TerminalStart(terminalId int, program string, sizeH int, sizeW int, oemCP int) ([]byte, error) {
+	programArgs := ModuleObject.ts.TsConvertUTF8toCp(program, oemCP)
+	array := []interface{}{COMMAND_SHELL_START, terminalId, programArgs}
+	return PackArray(array)
 }
 
-func TerminalWrite(terminalId int, data []byte) ([]byte, error) {
-	return nil, errors.New("Function Remote Terminal not supported")
+func TerminalWrite(terminalId int, oemCP int, data []byte) ([]byte, error) {
+	dataEncode := ModuleObject.ts.TsConvertUTF8toCp(string(data), oemCP)
+	if oemCP > 0 {
+		dataEncode = strings.ReplaceAll(dataEncode, "\n", "\r\n")
+	}
+
+	array := []interface{}{COMMAND_SHELL_WRITE, terminalId, len(dataEncode), []byte(dataEncode)}
+	return PackArray(array)
 }
 
 func TerminalClose(terminalId int) ([]byte, error) {
-	return nil, errors.New("Function Remote Terminal not supported")
+	array := []interface{}{COMMAND_JOBS_KILL, terminalId}
+	return PackArray(array)
 }

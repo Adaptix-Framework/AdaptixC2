@@ -401,7 +401,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 			return
 		}
 
-		ts.TsTerminalConnResume(agentId, terminalId)
+		ts.TsTerminalConnResume(agentId, terminalId, true)
 
 		pr, pw, err := ModuleObject.ts.TsTerminalGetPipe(agentId, terminalId)
 		if err != nil {

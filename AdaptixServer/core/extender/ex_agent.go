@@ -64,7 +64,7 @@ func (ex *AdaptixExtender) ExAgentTunnelCallbacks(agentData adaptix.AgentData, t
 	return module.AgentTunnelCallbacks()
 }
 
-func (ex *AdaptixExtender) ExAgentTerminalCallbacks(agentData adaptix.AgentData) (func(int, string, int, int) (adaptix.TaskData, error), func(int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error) {
+func (ex *AdaptixExtender) ExAgentTerminalCallbacks(agentData adaptix.AgentData) (func(int, string, int, int, int) (adaptix.TaskData, error), func(int, int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error) {
 
 	module, ok := ex.agentModules[agentData.Name]
 	if !ok {

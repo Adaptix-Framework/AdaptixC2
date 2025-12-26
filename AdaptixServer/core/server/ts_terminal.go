@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -80,7 +81,7 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 		return err
 	}
 
-	taskData, err := terminal.handlerStart(terminal.TerminalId, program, sizeH, sizeW)
+	taskData, err := terminal.handlerStart(terminal.TerminalId, program, sizeH, sizeW, OemCP)
 	if err != nil {
 		return err
 	}
@@ -115,7 +116,7 @@ func (ts *Teamserver) TsTerminalGetPipe(AgentId string, terminalId string) (*io.
 	return terminal.prSrv, terminal.pwTun, nil
 }
 
-func (ts *Teamserver) TsTerminalConnResume(agentId string, terminalId string) {
+func (ts *Teamserver) TsTerminalConnResume(agentId string, terminalId string, ioDirect bool) {
 	agent, err := ts.getAgent(agentId)
 	if err != nil {
 		return
@@ -130,7 +131,26 @@ func (ts *Teamserver) TsTerminalConnResume(agentId string, terminalId string) {
 		return
 	}
 
-	relayWebsocketToTerminal(ts, agent, terminal, terminalId)
+	relayWebsocketToTerminal(ts, agent, terminal, terminalId, ioDirect)
+}
+
+func (ts *Teamserver) TsTerminalConnData(terminalId string, data []byte) {
+	value, ok := ts.terminals.Get(terminalId)
+	if !ok {
+		return
+	}
+	terminal, ok := value.(*Terminal)
+	if !ok {
+		return
+	}
+
+	terminal.mu.Lock()
+	defer terminal.mu.Unlock()
+
+	if terminal.closed || terminal.pwTun == nil {
+		return
+	}
+	_, _ = terminal.pwTun.Write(data)
 }
 
 func (ts *Teamserver) TsTerminalConnClose(terminalId string, status string) error {
@@ -151,31 +171,41 @@ func closeTerminalResources(terminal *Terminal) {
 	if terminal == nil {
 		return
 	}
+
+	terminal.mu.Lock()
+	if terminal.closed {
+		terminal.mu.Unlock()
+		return
+	}
+	terminal.closed = true
+	terminal.mu.Unlock()
+
 	if terminal.wsconn != nil {
 		_ = terminal.wsconn.Close()
 	}
-	if terminal.prSrv != nil {
-		_ = terminal.prSrv.Close()
-	}
-	if terminal.pwSrv != nil {
-		_ = terminal.pwSrv.Close()
+	if terminal.pwTun != nil {
+		_ = terminal.pwTun.Close()
 	}
 	if terminal.prTun != nil {
 		_ = terminal.prTun.Close()
 	}
-	if terminal.pwTun != nil {
-		_ = terminal.pwTun.Close()
+	if terminal.pwSrv != nil {
+		_ = terminal.pwSrv.Close()
+	}
+	if terminal.prSrv != nil {
+		_ = terminal.prSrv.Close()
 	}
 }
 
 ///
 
-func relayWebsocketToTerminal(ts *Teamserver, agent *Agent, terminal *Terminal, terminalId string) {
-	var closeOnce sync.Once
+func relayWebsocketToTerminal(ts *Teamserver, agent *Agent, terminal *Terminal, terminalId string, direct bool) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var once sync.Once
 	var wsWriteMu sync.Mutex
-
-	closeAll := func() {
-		closeOnce.Do(func() {
+	finish := func() {
+		once.Do(func() {
+			cancel()
 			ts.terminals.Delete(terminalId)
 			closeTerminalResources(terminal)
 
@@ -187,42 +217,67 @@ func relayWebsocketToTerminal(ts *Teamserver, agent *Agent, terminal *Terminal, 
 	}
 
 	go func() {
-		defer closeAll()
+		defer finish()
+		if terminal.wsconn == nil || terminal.pwSrv == nil {
+			return
+		}
 		for {
 			_, msg, err := terminal.wsconn.ReadMessage()
 			if err != nil {
-				return
+				break
 			}
-			if terminal.pwSrv == nil {
-				return
-			}
-			if _, err = terminal.pwSrv.Write(msg); err != nil {
-				return
+			if _, err := terminal.pwSrv.Write(msg); err != nil {
+				break
 			}
 		}
+		_ = terminal.pwSrv.Close()
 	}()
 
 	go func() {
-		defer closeAll()
+		defer finish()
+		if terminal.wsconn == nil || terminal.prTun == nil {
+			return
+		}
 		buf := ts.TunnelManager.GetBuffer()
 		defer ts.TunnelManager.PutBuffer(buf)
-
 		for {
-			if terminal.prTun == nil {
-				return
-			}
 			n, err := terminal.prTun.Read(buf)
-			if err != nil {
-				return
+			if n > 0 {
+				wsWriteMu.Lock()
+				writeErr := terminal.wsconn.WriteMessage(websocket.BinaryMessage, buf[:n])
+				wsWriteMu.Unlock()
+				if writeErr != nil {
+					break
+				}
 			}
-
-			wsWriteMu.Lock()
-			writeErr := terminal.wsconn.WriteMessage(websocket.BinaryMessage, buf[:n])
-			wsWriteMu.Unlock()
-
-			if writeErr != nil {
-				return
+			if err != nil {
+				break
 			}
 		}
 	}()
+
+	if !direct {
+		go func() {
+			buf := ts.TunnelManager.GetBuffer()
+			defer ts.TunnelManager.PutBuffer(buf)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					n, err := terminal.prSrv.Read(buf)
+					if n > 0 {
+						taskData, writeErr := terminal.handlerWrite(terminal.TerminalId, terminal.CodePage, buf[:n])
+						if writeErr == nil {
+							tunnelManageTask(agent, taskData)
+						}
+						relayPipeToTaskData(agent, terminal.TerminalId, taskData)
+					}
+					if err != nil {
+						return
+					}
+				}
+			}
+		}()
+	}
 }

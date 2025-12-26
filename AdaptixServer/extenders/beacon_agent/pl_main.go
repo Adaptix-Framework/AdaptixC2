@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"math/rand"
 	"time"
 
@@ -98,6 +99,12 @@ type Teamserver interface {
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
 	TsTunnelConnectionAccept(tunnelId int, channelId int)
+
+	TsTerminalConnExists(terminalId string) bool
+	TsTerminalGetPipe(AgentId string, terminalId string) (*io.PipeReader, *io.PipeWriter, error)
+	TsTerminalConnResume(agentId string, terminalId string, ioDirect bool)
+	TsTerminalConnData(terminalId string, data []byte)
+	TsTerminalConnClose(terminalId string, status string) error
 
 	TsConvertCpToUTF8(input string, codePage int) string
 	TsConvertUTF8toCp(input string, codePage int) string
@@ -318,12 +325,12 @@ func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
 
 /// TERMINAL
 
-func (m *ModuleExtender) AgentTerminalCallbacks() (func(int, string, int, int) (adaptix.TaskData, error), func(int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error) {
+func (m *ModuleExtender) AgentTerminalCallbacks() (func(int, string, int, int, int) (adaptix.TaskData, error), func(int, int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error) {
 	return TerminalMessageStart, TerminalMessageWrite, TerminalMessageClose, nil
 }
 
-func TerminalMessageStart(terminalId int, program string, sizeH int, sizeW int) (adaptix.TaskData, error) {
-	packData, err := TerminalStart(terminalId, program, sizeH, sizeW)
+func TerminalMessageStart(terminalId int, program string, sizeH int, sizeW int, oemCP int) (adaptix.TaskData, error) {
+	packData, err := TerminalStart(terminalId, program, sizeH, sizeW, oemCP)
 	if err != nil {
 		return adaptix.TaskData{}, err
 	}
@@ -337,8 +344,8 @@ func TerminalMessageStart(terminalId int, program string, sizeH int, sizeW int) 
 	return taskData, nil
 }
 
-func TerminalMessageWrite(channelId int, data []byte) (adaptix.TaskData, error) {
-	packData, err := TerminalWrite(channelId, data)
+func TerminalMessageWrite(terminalId int, oemCP int, data []byte) (adaptix.TaskData, error) {
+	packData, err := TerminalWrite(terminalId, oemCP, data)
 	if err != nil {
 		return adaptix.TaskData{}, err
 	}

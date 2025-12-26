@@ -159,7 +159,9 @@ type Terminal struct {
 	TerminalId int
 	CodePage   int
 
-	agent *Agent
+	agent  *Agent
+	mu     sync.Mutex
+	closed bool
 
 	wsconn *websocket.Conn
 
@@ -169,8 +171,8 @@ type Terminal struct {
 	pwTun *io.PipeWriter
 	prTun *io.PipeReader
 
-	handlerStart func(terminalId int, program string, sizeH int, sizeW int) (adaptix.TaskData, error)
-	handlerWrite func(terminalId int, data []byte) (adaptix.TaskData, error)
+	handlerStart func(terminalId int, program string, sizeH int, sizeW int, oemCP int) (adaptix.TaskData, error)
+	handlerWrite func(terminalId int, oemCP int, data []byte) (adaptix.TaskData, error)
 	handlerClose func(terminalId int) (adaptix.TaskData, error)
 }
 

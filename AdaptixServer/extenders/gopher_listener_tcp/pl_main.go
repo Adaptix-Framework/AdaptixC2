@@ -41,7 +41,7 @@ type Teamserver interface {
 
 	TsAgentTerminalCloseChannel(terminalId string, status string) error
 	TsTerminalConnExists(terminalId string) bool
-	TsTerminalConnResume(agentId string, terminalId string)
+	TsTerminalConnResume(agentId string, terminalId string, ioDirect bool)
 	TsTerminalGetPipe(AgentId string, terminalId string) (*io.PipeReader, *io.PipeWriter, error)
 
 	TsTunnelGetPipe(AgentId string, channelId int) (*io.PipeReader, *io.PipeWriter, error)

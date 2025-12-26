@@ -1545,14 +1545,14 @@ func TunnelReverse(tunnelId int, port int) ([]byte, error) {
 
 /// TERMINAL
 
-func TerminalStart(terminalId int, program string, sizeH int, sizeW int) ([]byte, error) {
+func TerminalStart(terminalId int, program string, sizeH int, sizeW int, oemCP int) ([]byte, error) {
 	packerData, _ := msgpack.Marshal(ParamsTerminalStart{TermId: terminalId, Program: program, Height: sizeH, Width: sizeW})
 	cmd := Command{Code: COMMAND_TERMINAL_START, Data: packerData}
 	return msgpack.Marshal(cmd)
 }
 
-func TerminalWrite(terminalId int, data []byte) ([]byte, error) {
-	return nil, nil
+func TerminalWrite(terminalId int, oemCP int, data []byte) ([]byte, error) {
+	return data, nil
 }
 
 func TerminalClose(terminalId int) ([]byte, error) {
