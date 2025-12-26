@@ -104,6 +104,7 @@
 #define HASH_FUNC_PRINTF                             0xbe293817
 #endif
 #define HASH_FUNC_VSNPRINTF                          0xc4e4280e
+#define HASH_FUNC__SNPRINTF                          0x4db600f7
 
 // BOF
 #define HASH_FUNC_BEACONDATAPARSE                    0x3a3f9b41

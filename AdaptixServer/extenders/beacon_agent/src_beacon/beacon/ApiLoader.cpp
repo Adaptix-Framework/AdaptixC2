@@ -174,7 +174,8 @@ BOOL ApiLoad()
 #if defined(DEBUG)
 			ApiWin->printf = (printf_t)GetSymbolAddress(hMsvcrtModule, HASH_FUNC_PRINTF);
 #endif
-			ApiWin->vsnprintf = (vsnprintf_t)GetSymbolAddress(hMsvcrtModule, HASH_FUNC_VSNPRINTF);
+			ApiWin->vsnprintf = (vsnprintf_t) GetSymbolAddress(hMsvcrtModule, HASH_FUNC_VSNPRINTF);
+			ApiWin->snprintf   = (snprintf_t) GetSymbolAddress(hMsvcrtModule, HASH_FUNC__SNPRINTF);
 		}
 
 		// Ws2_32

@@ -132,6 +132,7 @@ SetSecurityDescriptorDacl
 // msvcrt
 printf
 vsnprintf
+_snprintf
 
 // BOF
 BeaconDataParse

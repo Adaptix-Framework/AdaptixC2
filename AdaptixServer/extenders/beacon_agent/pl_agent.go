@@ -1414,26 +1414,55 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			task.Message = message
 
 		case COMMAND_JOB:
-			if false == packer.CheckPacker([]string{"byte"}) {
+			if false == packer.CheckPacker([]string{"byte", "byte"}) {
 				return outTasks
 			}
 
+			jobType := packer.ParseInt8()
 			state := packer.ParseInt8()
-			if state == JOB_STATE_RUNNING {
-				if false == packer.CheckPacker([]string{"array"}) {
-					return outTasks
+
+			if jobType == JOB_TYPE_SHELL {
+				tunnelId := task.TaskId
+
+				if state == JOB_STATE_STARTING {
+					ts.TsTerminalConnResume(agentData.Id, tunnelId, false)
+
+				} else if state == JOB_STATE_RUNNING {
+					if false == packer.CheckPacker([]string{"array"}) {
+						return outTasks
+					}
+					data := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.OemCP)
+					ts.TsTerminalConnData(tunnelId, []byte(data))
+
+				} else if state == JOB_STATE_KILLED {
+					_ = ts.TsTerminalConnClose(tunnelId, "Terminal stopped")
+
+				} else if state == JOB_STATE_FINISHED {
+					if false == packer.CheckPacker([]string{"int"}) {
+						return outTasks
+					}
+					errorCode := packer.ParseInt32()
+					status := fmt.Sprintf("Error [%d]: %s", errorCode, ts.TsWin32Error(errorCode))
+					_ = ts.TsTerminalConnClose(tunnelId, status)
 				}
-				task.Completed = false
-				jobOutput := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.OemCP)
-				task.Message = fmt.Sprintf("Job [%v] output:", task.TaskId)
-				task.ClearText = jobOutput
-			} else if state == JOB_STATE_KILLED {
-				task.Completed = true
-				task.MessageType = MESSAGE_INFO
-				task.Message = fmt.Sprintf("Job [%v] canceled", task.TaskId)
-			} else if state == JOB_STATE_FINISHED {
-				task.Completed = true
-				task.Message = fmt.Sprintf("Job [%v] finished", task.TaskId)
+
+			} else {
+				if state == JOB_STATE_RUNNING {
+					if false == packer.CheckPacker([]string{"array"}) {
+						return outTasks
+					}
+					task.Completed = false
+					jobOutput := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.OemCP)
+					task.Message = fmt.Sprintf("Job [%v] output:", task.TaskId)
+					task.ClearText = jobOutput
+				} else if state == JOB_STATE_KILLED {
+					task.Completed = true
+					task.MessageType = MESSAGE_INFO
+					task.Message = fmt.Sprintf("Job [%v] canceled", task.TaskId)
+				} else if state == JOB_STATE_FINISHED {
+					task.Completed = true
+					task.Message = fmt.Sprintf("Job [%v] finished", task.TaskId)
+				}
 			}
 
 		case COMMAND_JOB_LIST:
@@ -1461,6 +1490,8 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 						stringType = "Remote"
 					} else if jobType == 0x3 {
 						stringType = "Process"
+					} else if jobType == 0x4 {
+						stringType = "Shell"
 					}
 					Output += fmt.Sprintf("\n %-10v  %-5v  %-13s", jobId, pid, stringType)
 				}
