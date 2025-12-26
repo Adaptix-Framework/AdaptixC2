@@ -175,6 +175,8 @@ void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
         delete agent->ProcessBrowser;
     if (agent->Terminal)
         delete agent->Terminal;
+    if (agent->Shell)
+        delete agent->Shell;
     delete agent;
 
     agentsModel->remove(agentId);
@@ -231,6 +233,7 @@ void SessionsTableWidget::Clear() const
         delete agent->FileBrowser;
         delete agent->ProcessBrowser;
         delete agent->Terminal;
+        delete agent->Shell;
         delete agent;
     }
 

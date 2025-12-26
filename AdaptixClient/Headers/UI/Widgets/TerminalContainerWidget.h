@@ -4,6 +4,11 @@
 #include <main.h>
 #include <UI/Widgets/AbstractDock.h>
 
+enum TerminalMode {
+    TerminalModePTY,
+    TerminalModeShell
+};
+
 class Agent;
 class QTermWidget;
 class TerminalWorker;
@@ -21,6 +26,7 @@ Q_OBJECT
     QFrame*        line_1          = nullptr;
     QFrame*        line_2          = nullptr;
     QFrame*        line_3          = nullptr;
+    QFrame*        line_4          = nullptr;
     QPushButton*   startButton     = nullptr;
     QPushButton*   stopButton      = nullptr;
     QComboBox*     programComboBox = nullptr;
@@ -28,6 +34,18 @@ Q_OBJECT
     QComboBox*     keytabComboBox  = nullptr;
     QLineEdit*     programInput    = nullptr;
     QSpacerItem*   spacer          = nullptr;
+
+    TerminalMode   terminalMode    = TerminalModePTY;
+    QByteArray     shellInputBuffer;
+
+    QCheckBox*     smartOutputCheckBox = nullptr;
+    bool           smartOutputEnabled  = false;
+    QByteArray     lastSentCommand;
+    QByteArray     outputBuffer;
+    QByteArray     lastPrompt;
+    int            filterPhase = 0;
+
+    QByteArray processSmartOutput(const QByteArray &data);
 
     QTermWidget*    termWidget      = nullptr;
     QThread*        terminalThread  = nullptr;
@@ -42,7 +60,7 @@ Q_OBJECT
     void SetKeys();
 
 public:
-    explicit TerminalTab(Agent* a, AdaptixWidget* w, QWidget* parent = nullptr);
+    explicit TerminalTab(Agent* a, AdaptixWidget* w, TerminalMode mode, QWidget* parent = nullptr);
     ~TerminalTab() override;
 
     void setStatus(const QString& text);
@@ -56,6 +74,7 @@ public Q_SLOTS:
     void onProgramChanged();
     void onKeytabChanged();
     void recvDataFromSocket(const QByteArray &msg);
+    void sendDataToSocket(const char* data, int size);
 };
 
 
@@ -71,10 +90,11 @@ Q_OBJECT
 
     AdaptixWidget* adaptixWidget = nullptr;
     Agent*         agent         = nullptr;
+    TerminalMode   terminalMode  = TerminalModePTY;
     int            tabCounter    = 0;
 
 public:
-    explicit TerminalContainerWidget(Agent* a, AdaptixWidget* w);
+    explicit TerminalContainerWidget(Agent* a, AdaptixWidget* w, TerminalMode mode = TerminalModePTY);
     ~TerminalContainerWidget() override;
 
     void addNewTerminal();

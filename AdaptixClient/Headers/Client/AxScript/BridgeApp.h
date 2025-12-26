@@ -60,6 +60,7 @@ public Q_SLOTS:
     void     open_browser_files(const QString &id);
     void     open_browser_process(const QString &id);
     void     open_remote_terminal(const QString &id);
+    void     open_remote_shell(const QString &id);
     bool     prompt_confirm(const QString &title, const QString &text);
     QString  prompt_open_file(const QString &caption = "Select file", const QString &filter = QString());
     QString  prompt_open_dir(const QString &caption = "Select directory");

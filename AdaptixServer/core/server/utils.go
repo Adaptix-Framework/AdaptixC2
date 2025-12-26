@@ -157,6 +157,7 @@ type Tunnel struct {
 type Terminal struct {
 	TaskId     string
 	TerminalId int
+	CodePage   int
 
 	agent *Agent
 

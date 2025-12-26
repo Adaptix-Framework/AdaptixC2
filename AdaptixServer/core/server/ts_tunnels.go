@@ -902,7 +902,6 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 }
 
 func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunChannel *TunnelChannel, direct bool) {
-	var taskData adaptix.TaskData
 	ctx, cancel := context.WithCancel(context.Background())
 	tunnelId := tunnel.Data.TunnelId
 	var once sync.Once
@@ -910,7 +909,7 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 		once.Do(func() {
 			cancel()
 			tm.CloseChannel(tunnelId, tunChannel.channelId)
-			taskData = tunnel.handlerClose(tunChannel.channelId)
+			taskData := tunnel.handlerClose(tunChannel.channelId)
 			tunnelManageTask(agent, taskData)
 		})
 	}

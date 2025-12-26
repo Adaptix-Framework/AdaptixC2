@@ -733,6 +733,16 @@ void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
         this->PlaceDockBottom( AgentsMap[AgentId]->Terminal->dock() );
 }
 
+void AdaptixWidget::LoadShellUI(const QString &AgentId)
+{
+    if( !AgentsMap.contains(AgentId) )
+        return;
+
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->Shell)
+        this->PlaceDockBottom( AgentsMap[AgentId]->Shell->dock() );
+}
+
 void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd)
 {
     DialogTunnel* dialogTunnel = new DialogTunnel(AgentId, socks4, socks5, lportfwd, rportfwd);

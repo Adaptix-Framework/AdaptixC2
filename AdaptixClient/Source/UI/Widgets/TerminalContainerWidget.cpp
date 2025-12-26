@@ -12,10 +12,11 @@
 
 REGISTER_DOCK_WIDGET(TerminalContainerWidget, "Remote Terminal", false)
 
-TerminalTab::TerminalTab(Agent* a, AdaptixWidget* w, QWidget* parent) : QWidget(parent)
+TerminalTab::TerminalTab(Agent* a, AdaptixWidget* w, TerminalMode mode, QWidget* parent) : QWidget(parent)
 {
     this->agent = a;
     this->adaptixWidget = w;
+    this->terminalMode = mode;
     this->termWidget = new QTermWidget(this, this);
     this->termWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     this->termWidget->setMinimumSize(100, 100);
@@ -103,6 +104,22 @@ void TerminalTab::createUI()
     line_3->setFrameShape(QFrame::VLine);
     line_3->setMinimumHeight(20);
 
+    smartOutputCheckBox = new QCheckBox("Smart Output", this);
+    smartOutputCheckBox->setToolTip("Filter duplicated output in Shell mode");
+    smartOutputCheckBox->setVisible(terminalMode == TerminalModeShell);
+    connect(smartOutputCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+        smartOutputEnabled = checked;
+        filterPhase = 0;
+        outputBuffer.clear();
+        lastSentCommand.clear();
+        lastPrompt.clear();
+    });
+
+    line_4 = new QFrame(this);
+    line_4->setFrameShape(QFrame::VLine);
+    line_4->setMinimumHeight(20);
+    line_4->setVisible(terminalMode == TerminalModeShell);
+
     statusDescLabel = new QLabel(this);
     statusDescLabel->setText("status:");
 
@@ -123,6 +140,8 @@ void TerminalTab::createUI()
     topHBoxLayout->addWidget(startButton);
     topHBoxLayout->addWidget(stopButton);
     topHBoxLayout->addWidget(line_3);
+    topHBoxLayout->addWidget(smartOutputCheckBox);
+    topHBoxLayout->addWidget(line_4);
     topHBoxLayout->addWidget(statusDescLabel);
     topHBoxLayout->addWidget(statusLabel);
     topHBoxLayout->addItem(spacer);
@@ -284,15 +303,16 @@ void TerminalTab::onStart()
     QString agentId = this->agent->data.Id;
     QString terminalId = GenerateRandomString(8, "hex");
     QString program    = programInput->text().toUtf8().toBase64();
-    int sizeW = this->termWidget->columns();
-    int sizeH = this->termWidget->lines();
+    int sizeW  = this->termWidget->columns();
+    int sizeH  = this->termWidget->lines();
+    int OecmCP = this->agent->data.OemCP;
 
     if (sizeW <= 0 || sizeH <= 0) {
         sizeW = 80;
         sizeH = 24;
     }
 
-    QString terminalData = QString("%1|%2|%3|%4|%5").arg(agentId).arg(terminalId).arg(program).arg(sizeH).arg(sizeW).toUtf8().toBase64();
+    QString terminalData = QString("%1|%2|%3|%4|%5|%6").arg(agentId).arg(terminalId).arg(program).arg(sizeH).arg(sizeW).arg(OecmCP).toUtf8().toBase64();
 
     terminalThread = new QThread;
     terminalWorker = new TerminalWorker(this, profile->GetAccessToken(), sUrl, terminalData);
@@ -308,6 +328,8 @@ void TerminalTab::onStart()
 
     connect(terminalWorker, &TerminalWorker::connectedToTerminal,     this, [this]() { setStatus("Running"); }, Qt::QueuedConnection);
     connect(terminalWorker, &TerminalWorker::binaryMessageToTerminal, this, &TerminalTab::recvDataFromSocket, Qt::QueuedConnection);
+
+    connect(termWidget, SIGNAL(sendData(const char*,int)), this, SLOT(sendDataToSocket(const char*,int)), Qt::UniqueConnection);
 
     terminalThread->start();
 }
@@ -377,7 +399,188 @@ void TerminalTab::onKeytabChanged()
     termWidget->setKeyBindings(keytab);
 }
 
-void TerminalTab::recvDataFromSocket(const QByteArray &msg) { termWidget->recvData(msg.data(), msg.size()); }
+void TerminalTab::recvDataFromSocket(const QByteArray &msg)
+{
+    if (smartOutputEnabled && terminalMode == TerminalModeShell && !lastSentCommand.isEmpty()) {
+        QByteArray filtered = processSmartOutput(msg);
+        if (!filtered.isEmpty())
+            termWidget->recvData(filtered.data(), filtered.size());
+    }
+    else {
+        termWidget->recvData(msg.data(), msg.size());
+    }
+}
+
+QByteArray TerminalTab::processSmartOutput(const QByteArray &data)
+{
+    outputBuffer.append(data);
+    QByteArray result;
+
+    bool emptyCommandMode = (lastSentCommand == QByteArray("\x01"));
+    
+    while (true) {
+        int nlPos = outputBuffer.indexOf('\n');
+        if (nlPos == -1) {
+            // No newline - check if it's a prompt (ends with >)
+            QByteArray trimmedBuf = outputBuffer.trimmed();
+            if (trimmedBuf.endsWith(">")) {
+                if (filterPhase == 2) {
+                    // Clean prompt without newline - show it and move to phase 3
+                    result.append(outputBuffer);
+                    outputBuffer.clear();
+                    filterPhase = 3;
+                }
+                else if (emptyCommandMode && filterPhase == 1) {
+                    // Empty command mode - check for duplicate prompt
+                    if (lastPrompt.isEmpty() || trimmedBuf != lastPrompt) {
+                        lastPrompt = trimmedBuf;
+                        result.append(outputBuffer);
+                    }
+                    outputBuffer.clear();
+                    filterPhase = 3;
+                }
+                else if (filterPhase >= 1 && filterPhase != 2) {
+                    result.append(outputBuffer);
+                    outputBuffer.clear();
+                }
+            }
+            else if (filterPhase >= 1 && filterPhase != 2) {
+                result.append(outputBuffer);
+                outputBuffer.clear();
+            }
+            break;
+        }
+        
+        QByteArray line = outputBuffer.left(nlPos + 1);
+        outputBuffer.remove(0, nlPos + 1);
+        
+        QByteArray trimmedLine = line.trimmed();
+        
+        // Build pattern: ">command" to detect "prompt>command" line
+        QByteArray promptCmdPattern = ">" + lastSentCommand;
+        
+        switch (filterPhase) {
+            case 0:
+                // Phase 0: Skip echo of command
+                if (trimmedLine == lastSentCommand) {
+                    filterPhase = 1;
+                }
+                else {
+                    result.append(line);
+                }
+                break;
+                
+            case 1:
+                if (emptyCommandMode) {
+                    // Empty command mode - skip prompts with newline, keep only last one (without \n)
+                    if (trimmedLine.endsWith(">")) {
+                        // Skip prompts with newline - we'll show the last one without \n
+                    }
+                    else {
+                        result.append(line);
+                    }
+                }
+                else {
+                    // Normal mode: Show result until we see "prompt>command" line
+                    if (trimmedLine.contains(promptCmdPattern)) {
+                        // Found duplicate marker, start skipping
+                        filterPhase = 2;
+                    }
+                    else {
+                        result.append(line);
+                    }
+                }
+                break;
+                
+            case 2:
+                // Phase 2: Skip duplicates until clean prompt (ends with > but no command after)
+                if (trimmedLine.endsWith(">") && !trimmedLine.contains(promptCmdPattern)) {
+                    result.append(line);
+                    filterPhase = 3;
+                }
+                break;
+                
+            default:
+                result.append(line);
+                break;
+        }
+    }
+    
+    return result;
+}
+
+void TerminalTab::sendDataToSocket(const char* data, int size)
+{
+    if (!terminalWorker)
+        return;
+
+    if (terminalMode == TerminalModeShell) {
+        for (int i = 0; i < size; i++) {
+            char ch = data[i];
+
+            if (ch == '\r' || ch == '\n') {
+                shellInputBuffer.append('\n');
+                termWidget->recvData("\r\n", 2);
+
+                if (!shellInputBuffer.isEmpty()) {
+                    QByteArray payload = shellInputBuffer;
+                    
+                    if (smartOutputEnabled) {
+                        QByteArray trimmedCmd = shellInputBuffer.trimmed();
+                        if (!trimmedCmd.isEmpty()) {
+                            lastSentCommand = trimmedCmd;
+                            filterPhase = 0;
+                        } else {
+                            // Empty command - use special marker to filter duplicate prompts
+                            lastSentCommand = QByteArray("\x01");  // Special marker for empty command
+                            filterPhase = 1;
+                        }
+                        outputBuffer.clear();
+                        lastPrompt.clear();
+                    }
+                    
+                    shellInputBuffer.clear();
+                    terminalWorker->sendData(payload);
+                }
+            }
+            else if (ch == 0x03) {
+                shellInputBuffer.clear();
+                termWidget->recvData("^C\r\n", 4);
+                QByteArray ctrlC(1, 0x03);
+                terminalWorker->sendData(ctrlC);
+            }
+            else if (ch == 0x7f || ch == '\b') {
+                if (!shellInputBuffer.isEmpty()) {
+                    // Remove full UTF-8 character (may be multiple bytes)
+                    // UTF-8 continuation bytes: 10xxxxxx (0x80-0xBF)
+                    int bytesToRemove = 1;
+                    while (shellInputBuffer.size() > bytesToRemove) {
+                        unsigned char prevByte = static_cast<unsigned char>(shellInputBuffer[shellInputBuffer.size() - bytesToRemove]);
+                        if ((prevByte & 0xC0) == 0x80) {
+                            // This is a continuation byte, need to remove more
+                            bytesToRemove++;
+                        } else {
+                            break;
+                        }
+                    }
+                    shellInputBuffer.chop(bytesToRemove);
+                    termWidget->recvData("\b \b", 3);
+                }
+            }
+            else {
+                unsigned char uch = static_cast<unsigned char>(ch);
+                if (uch >= 0x20 || ch == '\t') {
+                    shellInputBuffer.append(ch);
+                    termWidget->recvData(&ch, 1);
+                }
+            }
+        }
+    }
+    else {
+        QByteArray payload(data, size);
+        terminalWorker->sendData(payload);
+    }
+}
 
 bool TerminalTab::isRunning() const { return terminalWorker != nullptr; }
 
@@ -385,10 +588,11 @@ bool TerminalTab::isRunning() const { return terminalWorker != nullptr; }
 
 
 
-TerminalContainerWidget::TerminalContainerWidget(Agent* a, AdaptixWidget* w) : DockTab(QString("Terminal [%1]").arg(a->data.Id), w->GetProfile()->GetProject())
+TerminalContainerWidget::TerminalContainerWidget(Agent* a, AdaptixWidget* w, TerminalMode mode) : DockTab(QString("%1 [%2]").arg(mode == TerminalModeShell ? "Shell" : "Terminal").arg(a->data.Id), w->GetProfile()->GetProject())
 {
     this->agent = a;
     this->adaptixWidget = w;
+    this->terminalMode = mode;
 
     mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -420,8 +624,9 @@ TerminalContainerWidget::~TerminalContainerWidget() = default;
 void TerminalContainerWidget::addNewTerminal()
 {
     tabCounter++;
-    TerminalTab* terminalTab = new TerminalTab(agent, adaptixWidget, this);
-    int index = tabWidget->addTab(terminalTab, QString("Term %1").arg(tabCounter));
+    TerminalTab* terminalTab = new TerminalTab(agent, adaptixWidget, terminalMode, this);
+    QString tabName = (terminalMode == TerminalModeShell) ? QString("Shell %1").arg(tabCounter) : QString("Term %1").arg(tabCounter);
+    int index = tabWidget->addTab(terminalTab, tabName);
     tabWidget->setCurrentIndex(index);
 }
 

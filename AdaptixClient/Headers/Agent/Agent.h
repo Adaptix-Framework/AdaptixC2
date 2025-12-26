@@ -34,11 +34,12 @@ public:
     GraphItem* graphItem  = nullptr;
     QImage     graphImage = QImage();
 
-    Commander*            commander      = nullptr;
-    ConsoleWidget*        Console        = nullptr;
-    BrowserFilesWidget*   FileBrowser    = nullptr;
-    BrowserProcessWidget* ProcessBrowser = nullptr;
-    TerminalContainerWidget* Terminal    = nullptr;
+    Commander*               commander      = nullptr;
+    ConsoleWidget*           Console        = nullptr;
+    BrowserFilesWidget*      FileBrowser    = nullptr;
+    BrowserProcessWidget*    ProcessBrowser = nullptr;
+    TerminalContainerWidget* Terminal       = nullptr;
+    TerminalContainerWidget* Shell          = nullptr;
 
     bool active = true;
     bool show   = true;

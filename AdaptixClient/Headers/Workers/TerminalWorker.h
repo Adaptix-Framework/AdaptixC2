@@ -30,6 +30,7 @@ Q_SIGNALS:
 public Q_SLOTS:
      void start();
      void stop();
+     void sendData(const QByteArray& data);
 
 private Q_SLOTS:
      void onWsConnected();

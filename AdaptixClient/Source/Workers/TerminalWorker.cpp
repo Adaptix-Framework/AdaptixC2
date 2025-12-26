@@ -1,4 +1,3 @@
-#include <Konsole/konsole.h>
 #include <Workers/TerminalWorker.h>
 #include <UI/Widgets/TerminalContainerWidget.h>
 #include <QMetaObject>
@@ -74,28 +73,7 @@ void TerminalWorker::onWsBinaryMessageReceived(const QByteArray& msg) {
 
     if (!started) {
         started = true;
-
         Q_EMIT connectedToTerminal();
-
-        QTermWidget* konsole = terminalTab ? terminalTab->Konsole() : nullptr;
-
-        if (konsole) {
-            connect(konsole, &QTermWidget::sendData, this,
-                    [this](const char *data, int size) {
-                        if (stopped)
-                            return;
-
-                        const QByteArray payload(data, size);
-                        QMetaObject::invokeMethod(this, [this, payload]() {
-                            if (stopped)
-                                return;
-                            if (websocket && websocket->state() == QAbstractSocket::ConnectedState) {
-                                websocket->sendBinaryMessage(payload);
-                            }
-                        }, Qt::QueuedConnection);
-                    },
-                    Qt::DirectConnection);
-        }
     }
 
     if (!msg.isEmpty())
@@ -105,4 +83,18 @@ void TerminalWorker::onWsBinaryMessageReceived(const QByteArray& msg) {
 void TerminalWorker::onWsError(QAbstractSocket::SocketError error)
 {
     Q_EMIT errorStop();
+}
+
+void TerminalWorker::sendData(const QByteArray& data)
+{
+    if (stopped)
+        return;
+
+    QMetaObject::invokeMethod(this, [this, data]() {
+        if (stopped)
+            return;
+        if (websocket && websocket->state() == QAbstractSocket::ConnectedState) {
+            websocket->sendBinaryMessage(data);
+        }
+    }, Qt::QueuedConnection);
 }

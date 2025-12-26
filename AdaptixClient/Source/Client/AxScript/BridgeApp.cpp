@@ -678,6 +678,8 @@ void BridgeApp::open_browser_process(const QString &id) { scriptEngine->manager(
 
 void BridgeApp::open_remote_terminal(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id); }
 
+void BridgeApp::open_remote_shell(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadShellUI(id); }
+
 bool BridgeApp::prompt_confirm(const QString &title, const QString &text)
 {
     QMessageBox::StandardButton reply = QMessageBox::question(nullptr, title, text, QMessageBox::Yes | QMessageBox::No, QMessageBox::No);

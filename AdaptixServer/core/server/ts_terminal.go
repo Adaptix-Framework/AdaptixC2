@@ -24,7 +24,7 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 	}
 
 	d := strings.Split(string(data), "|")
-	if len(d) != 5 {
+	if len(d) != 6 {
 		return errors.New("invalid terminal data")
 	}
 
@@ -52,6 +52,11 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 		return errors.New("invalid terminal data")
 	}
 
+	OemCP, err := strconv.Atoi(d[5])
+	if err != nil {
+		return errors.New("invalid terminal data")
+	}
+
 	agent, err := ts.getAgent(agentId)
 	if err != nil {
 		return err
@@ -64,6 +69,7 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 		TerminalId: int(termId),
 		agent:      agent,
 		wsconn:     wsconn,
+		CodePage:   OemCP,
 	}
 
 	terminal.prSrv, terminal.pwSrv = io.Pipe()

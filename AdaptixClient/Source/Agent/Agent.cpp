@@ -70,6 +70,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->FileBrowser    = new BrowserFilesWidget(adaptixWidget, this);
     this->ProcessBrowser = new BrowserProcessWidget(adaptixWidget, this);
     this->Terminal       = new TerminalContainerWidget(this, adaptixWidget);
+    this->Shell          = new TerminalContainerWidget(this, adaptixWidget, TerminalModeShell);
     this->Console        = new ConsoleWidget(adaptixWidget, this, this->commander);
     this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
 }
