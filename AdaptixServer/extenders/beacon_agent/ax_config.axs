@@ -261,7 +261,7 @@ function RegisterCommands(listenerType)
         ax.execute_alias(id, cmdline, "sleep 0");
     });
 
-    if(listenerType == "BeaconHTTP") {
+    if(listenerType == "BeaconHTTP" || listenerType == "BeaconDNS") {
         let commands_external = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
             cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
             cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact] );
@@ -281,6 +281,8 @@ function RegisterCommands(listenerType)
 
 function GenerateUI(listenerType)
 {
+    let spacer1 = form.create_vspacer();
+
     let labelArch = form.create_label("Arch:");
     let comboArch = form.create_combo()
     comboArch.addItems(["x64", "x86"]);
@@ -296,10 +298,19 @@ function GenerateUI(listenerType)
     spinJitter.setRange(0, 100);
     spinJitter.setValue(0);
 
-    if(listenerType != "BeaconHTTP") {
+    if(listenerType != "BeaconHTTP" && listenerType != "BeaconDNS") {
         labelSleep.setVisible(false);
         textSleep.setVisible(false);
         spinJitter.setVisible(false);
+    }
+
+    let labelDnsResolvers = form.create_label("DNS Resolvers:");
+    let textDnsResolvers = form.create_textline("");
+    textDnsResolvers.setPlaceholder("Comma-separated: 8.8.8.8,1.1.1.1,9.9.9.9");
+
+    if(listenerType != "BeaconDNS") {
+        labelDnsResolvers.setVisible(false);
+        textDnsResolvers.setVisible(false);
     }
 
     let checkKilldate = form.create_check("Set 'killdate'");
@@ -320,24 +331,30 @@ function GenerateUI(listenerType)
     let sideloadingSelector = form.create_selector_file();
     sideloadingSelector.setVisible(false);
 
+    let spacer2 = form.create_vspacer();
+
     let layout = form.create_gridlayout();
-    layout.addWidget(labelArch, 0, 0, 1, 1);
-    layout.addWidget(comboArch, 0, 1, 1, 2);
-    layout.addWidget(labelFormat, 1, 0, 1, 1);
-    layout.addWidget(comboFormat, 1, 1, 1, 2);
-    layout.addWidget(labelSleep, 2, 0, 1, 1);
-    layout.addWidget(textSleep, 2, 1, 1, 1);
-    layout.addWidget(spinJitter, 2, 2, 1, 1);
-    layout.addWidget(checkKilldate, 3, 0, 1, 1);
-    layout.addWidget(dateKill, 3, 1, 1, 1);
-    layout.addWidget(timeKill, 3, 2, 1, 1);
-    layout.addWidget(checkWorkingTime, 4, 0, 1, 1);
-    layout.addWidget(timeStart, 4, 1, 1, 1);
-    layout.addWidget(timeFinish, 4, 2, 1, 1);
-    layout.addWidget(labelSvcName, 5, 0, 1, 1);
-    layout.addWidget(textSvcName, 5, 1, 1, 2);
-    layout.addWidget(checkSideloading, 6, 0, 1, 1);
-    layout.addWidget(sideloadingSelector, 6, 1, 1, 2);
+    layout.addWidget(spacer1, 0, 0, 1, 3);
+    layout.addWidget(labelArch, 1, 0, 1, 1);
+    layout.addWidget(comboArch, 1, 1, 1, 2);
+    layout.addWidget(labelFormat, 2, 0, 1, 1);
+    layout.addWidget(comboFormat, 2, 1, 1, 2);
+    layout.addWidget(labelSleep, 3, 0, 1, 1);
+    layout.addWidget(textSleep, 3, 1, 1, 1);
+    layout.addWidget(spinJitter, 3, 2, 1, 1);
+    layout.addWidget(labelDnsResolvers, 4, 0, 1, 1);
+    layout.addWidget(textDnsResolvers, 4, 1, 1, 2);
+    layout.addWidget(checkKilldate, 5, 0, 1, 1);
+    layout.addWidget(dateKill, 5, 1, 1, 1);
+    layout.addWidget(timeKill, 5, 2, 1, 1);
+    layout.addWidget(checkWorkingTime, 6, 0, 1, 1);
+    layout.addWidget(timeStart, 6, 1, 1, 1);
+    layout.addWidget(timeFinish, 6, 2, 1, 1);
+    layout.addWidget(labelSvcName, 7, 0, 1, 1);
+    layout.addWidget(textSvcName, 7, 1, 1, 2);
+    layout.addWidget(checkSideloading, 8, 0, 1, 1);
+    layout.addWidget(sideloadingSelector, 8, 1, 1, 2);
+    layout.addWidget(spacer2, 9, 0, 1, 3);
 
     form.connect(comboFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
@@ -361,6 +378,7 @@ function GenerateUI(listenerType)
     container.put("format", comboFormat)
     container.put("sleep", textSleep)
     container.put("jitter", spinJitter)
+    container.put("dns_resolvers", textDnsResolvers)
     container.put("is_killdate", checkKilldate)
     container.put("kill_date", dateKill)
     container.put("kill_time", timeKill)
@@ -378,6 +396,6 @@ function GenerateUI(listenerType)
         ui_panel: panel,
         ui_container: container,
         ui_height: 450,
-        ui_width: 550
+        ui_width: 500
     }
 }

@@ -35,12 +35,15 @@ type GenerateConfig struct {
 	EndTime            string `json:"end_time"`
 	IsSideloading      bool   `json:"is_sideloading"`
 	SideloadingContent string `json:"sideloading_content"`
+	// DNS-specific fields
+	DnsResolvers  string `json:"dns_resolvers"`  // e.g. "8.8.8.8,1.1.1.1,9.9.9.9"
 }
 
 var (
 	ObjectDir_http = "objects_http"
 	ObjectDir_smb  = "objects_smb"
 	ObjectDir_tcp  = "objects_tcp"
+	ObjectDir_dns  = "objects_dns"
 	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
 	CFlags         = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
@@ -171,6 +174,51 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 		params = append(params, int(lWatermark))
 		params = append(params, kill_date)
 
+	case "dns":
+		// Pure DNS beacon
+		domain, _ := listenerMap["domain"].(string)
+
+		resolvers := generateConfig.DnsResolvers
+		if resolvers == "" {
+			resolvers, _ = listenerMap["resolvers"].(string)
+		}
+		qtype, _ := listenerMap["qtype"].(string)
+
+		pkt_size_f, _ := listenerMap["pkt_size"].(float64)
+		ttl_f, _ := listenerMap["ttl"].(float64)
+		label_size_f, _ := listenerMap["label_size"].(float64)
+
+		pkt_size := int(pkt_size_f)
+		ttl := int(ttl_f)
+		label_size := int(label_size_f)
+		if label_size <= 0 || label_size > 63 {
+			label_size = 48
+		}
+
+		seconds, err := parseDurationToSeconds(generateConfig.Sleep)
+		if err != nil {
+			return nil, err
+		}
+
+		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
+
+		params = append(params, int(agentWatermark))
+
+		// --- ProfileDNS ---
+		params = append(params, domain)
+		params = append(params, resolvers)
+		params = append(params, qtype)
+		params = append(params, pkt_size)
+		params = append(params, label_size)
+		params = append(params, ttl)
+
+		// --- Common tail ---
+		params = append(params, int(lWatermark))
+		params = append(params, kill_date)
+		params = append(params, working_time)
+		params = append(params, seconds)
+		params = append(params, generateConfig.Jitter)
+
 	default:
 		return nil, errors.New("protocol unknown")
 	}
@@ -210,6 +258,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 		Filename       string
 		buildPath      string
 		cmdConfig      string
+		extraLibs      string
 		stdout         bytes.Buffer
 		stderr         bytes.Buffer
 	)
@@ -238,6 +287,10 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	} else if protocol == "bind_tcp" {
 		ObjectDir = ObjectDir_tcp
 		ConnectorFile = "ConnectorTCP"
+	} else if protocol == "dns" {
+		ObjectDir = ObjectDir_dns
+		ConnectorFile = "ConnectorDNS"
+		extraLibs = "-lws2_32"
 	} else {
 		return nil, "", errors.New("protocol unknown")
 	}
@@ -280,6 +333,12 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	for _, ofile := range ObjectFiles {
 		Files += ObjectDir + "/" + ofile + Ext + " "
 	}
+	// DNS beacon requires compression module and utilities
+	if protocol == "dns" {
+		Files += ObjectDir + "/DnsCompression" + Ext + " "
+		Files += ObjectDir + "/miniz" + Ext + " "
+		Files += ObjectDir + "/DnsUtils" + Ext + " "
+	}
 
 	if generateConfig.Format == "Exe" {
 		Files += ObjectDir + "/main" + Ext
@@ -315,7 +374,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 		return nil, "", errors.New("unknown file format")
 	}
 
-	cmdBuild := fmt.Sprintf("%s %s %s -o %s", Compiler, lFlags, Files, buildPath)
+	cmdBuild := fmt.Sprintf("%s %s %s %s -o %s", Compiler, lFlags, Files, extraLibs, buildPath)
 	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
 	runnerCmdBuild.Dir = currentDir
 	runnerCmdBuild.Stdout = &stdout

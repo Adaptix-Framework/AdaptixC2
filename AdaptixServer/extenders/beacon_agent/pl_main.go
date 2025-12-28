@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"compress/zlib"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"math/rand"
 	"time"
 
@@ -183,6 +186,46 @@ func (m *ModuleExtender) AgentProcessData(agentData adaptix.AgentData, packedDat
 		return nil, err
 	}
 
+	var plain []byte
+
+	// Parse session framing: [flags:1][orig_len_le:4][payload]
+	// DNS agents send data with this header for compression support.
+	// If validation fails, fallback to old format (raw decryptData for HTTP/TCP/SMB).
+	if len(decryptData) >= 5 {
+		flags := decryptData[0]
+		origLen := int(decryptData[1]) |
+			int(decryptData[2])<<8 |
+			int(decryptData[3])<<16 |
+			int(decryptData[4])<<24
+
+		if origLen > 0 {
+			payload := decryptData[5:]
+
+			if (flags & 0x1) != 0 {
+				// Compressed: use zlib to decompress (compatible with C++ miniz compress2/uncompress)
+				if r, errR := zlib.NewReader(bytes.NewReader(payload)); errR == nil {
+					var buf bytes.Buffer
+					_, err = io.Copy(&buf, r)
+					_ = r.Close()
+					if err == nil && buf.Len() == origLen {
+						plain = buf.Bytes()
+					}
+				}
+			} else {
+				// Uncompressed: payload length must match origLen
+				if len(payload) == origLen {
+					plain = payload
+				}
+			}
+		}
+	}
+
+	// Fallback to old format if session header parsing failed
+	// This maintains compatibility with HTTP/TCP/SMB agents that don't use session framing
+	if plain == nil {
+		plain = decryptData
+	}
+
 	taskData := adaptix.TaskData{
 		Type:        TYPE_TASK,
 		AgentId:     agentData.Id,
@@ -192,7 +235,7 @@ func (m *ModuleExtender) AgentProcessData(agentData adaptix.AgentData, packedDat
 		Sync:        true,
 	}
 
-	resultTasks := ProcessTasksResult(m.ts, agentData, taskData, decryptData)
+	resultTasks := ProcessTasksResult(m.ts, agentData, taskData, plain)
 
 	for _, task := range resultTasks {
 		m.ts.TsTaskUpdate(agentData.Id, task)
