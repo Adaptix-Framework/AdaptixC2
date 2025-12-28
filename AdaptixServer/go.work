@@ -6,6 +6,7 @@ use (
 	./extenders/beacon_listener_http
 	./extenders/beacon_listener_smb
 	./extenders/beacon_listener_tcp
+	./extenders/beacon_listener_dns
 	./extenders/gopher_agent
 	./extenders/gopher_listener_tcp
 )
