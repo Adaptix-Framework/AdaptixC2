@@ -15,6 +15,7 @@
       "extenders/beacon_listener_http/config.json",
       "extenders/beacon_listener_smb/config.json",
       "extenders/beacon_listener_tcp/config.json",
+      "extenders/beacon_listener_dns/config.json",
       "extenders/beacon_agent/config.json",
       "extenders/gopher_listener_tcp/config.json",
       "extenders/gopher_agent/config.json"
