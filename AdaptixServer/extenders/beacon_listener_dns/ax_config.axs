@@ -17,7 +17,7 @@ function ListenerUI(mode_create)
 
     let labelDomain = form.create_label("Authoritative Domain(s):");
     let textDomain = form.create_textline("");
-    textDomain.setPlaceholder("Comma-separated: ns1.c2.com,ns2.backup.com");
+    textDomain.setPlaceholder("ns1.c2.com,ns2.backup.com");
 
     let labelPktSize = form.create_label("Max Payload (bytes):");
     let spinPktSize = form.create_spin();
@@ -68,7 +68,7 @@ function ListenerUI(mode_create)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 400,
+        ui_height: 300,
         ui_width: 500
     }
 }

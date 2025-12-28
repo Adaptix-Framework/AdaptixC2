@@ -306,7 +306,7 @@ function GenerateUI(listenerType)
 
     let labelDnsResolvers = form.create_label("DNS Resolvers:");
     let textDnsResolvers = form.create_textline("");
-    textDnsResolvers.setPlaceholder("Comma-separated: 8.8.8.8,1.1.1.1,9.9.9.9");
+    textDnsResolvers.setPlaceholder("8.8.8.8,1.1.1.1,9.9.9.9");
 
     if(listenerType != "BeaconDNS") {
         labelDnsResolvers.setVisible(false);
@@ -395,7 +395,7 @@ function GenerateUI(listenerType)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 450,
+        ui_height: 380,
         ui_width: 500
     }
 }
