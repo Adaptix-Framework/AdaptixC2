@@ -5,5 +5,5 @@
 
   "agent_name": "beacon",
   "agent_watermark": "be4c0149",
-  "listeners": [ "BeaconHTTP",  "BeaconTCP",  "BeaconSMB"]
+  "listeners": [ "BeaconHTTP",  "BeaconTCP",  "BeaconSMB", "BeaconDoH", "BeaconDNS"]
 }

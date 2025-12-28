@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/zlib"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -194,6 +196,13 @@ func (m *ModuleExtender) AgentProcessData(agentData adaptix.AgentData, packedDat
 		return nil, err
 	}
 
+	// Try to decompress DNS agent data with session framing.
+	// Falls back to raw data for HTTP/TCP/SMB agents.
+	plain, ok := decompressAgentData(decryptData)
+	if !ok {
+		plain = decryptData
+	}
+
 	taskData := adaptix.TaskData{
 		Type:        TYPE_TASK,
 		AgentId:     agentData.Id,
@@ -203,7 +212,7 @@ func (m *ModuleExtender) AgentProcessData(agentData adaptix.AgentData, packedDat
 		Sync:        true,
 	}
 
-	resultTasks := ProcessTasksResult(m.ts, agentData, taskData, decryptData)
+	resultTasks := ProcessTasksResult(m.ts, agentData, taskData, plain)
 
 	for _, task := range resultTasks {
 		m.ts.TsTaskUpdate(agentData.Id, task)
@@ -371,4 +380,48 @@ func TerminalMessageClose(terminalId int) (adaptix.TaskData, error) {
 	}
 
 	return taskData, nil
+}
+
+// DNS Helper Functions
+
+// decompressAgentData attempts to decompress DNS agent data with session framing.
+// Returns the decompressed data and true if successful, or original data and false otherwise.
+func decompressAgentData(data []byte) ([]byte, bool) {
+	if len(data) < dnsFrameHeaderSize {
+		return data, false
+	}
+
+	flags := data[0]
+	origLen := int(data[1]) |
+		int(data[2])<<8 |
+		int(data[3])<<16 |
+		int(data[4])<<24
+
+	if origLen <= 0 {
+		return data, false
+	}
+
+	payload := data[dnsFrameHeaderSize:]
+
+	if (flags & dnsCompressFlag) != 0 {
+		// Compressed: use zlib to decompress
+		r, err := zlib.NewReader(bytes.NewReader(payload))
+		if err != nil {
+			return data, false
+		}
+		var buf bytes.Buffer
+		_, err = io.Copy(&buf, r)
+		_ = r.Close()
+		if err == nil && buf.Len() == origLen {
+			return buf.Bytes(), true
+		}
+		return data, false
+	}
+
+	// Uncompressed: payload length must match origLen
+	if len(payload) == origLen {
+		return payload, true
+	}
+
+	return data, false
 }
