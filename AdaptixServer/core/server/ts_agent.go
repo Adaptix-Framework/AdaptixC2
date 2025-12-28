@@ -2,6 +2,7 @@ package server
 
 import (
 	"AdaptixServer/core/extender"
+	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"AdaptixServer/core/utils/tformat"
@@ -9,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -86,17 +88,18 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	}
 
 	agent := &Agent{
-		OutConsole:        safe.NewSlice(),
-		HostedTasks:       safe.NewSafeQueue(0x100),
-		HostedTunnelTasks: safe.NewSafeQueue(0x100),
-		HostedTunnelData:  safe.NewSafeQueue(0x1000),
-		RunningTasks:      safe.NewMap(),
-		RunningJobs:       safe.NewMap(),
-		CompletedTasks:    safe.NewMap(),
-		PivotParent:       nil,
-		PivotChilds:       safe.NewSlice(),
-		Tick:              false,
-		Active:            true,
+		OutConsole:         safe.NewSlice(),
+		HostedTasks:        safe.NewSafeQueue(0x100),
+		HostedTunnelTasks:  safe.NewSafeQueue(0x100),
+		HostedTunnelData:   safe.NewSafeQueue(0x1000),
+		InflightDeliveries: safe.NewMap(),
+		RunningTasks:       safe.NewMap(),
+		RunningJobs:        safe.NewMap(),
+		CompletedTasks:     safe.NewMap(),
+		PivotParent:        nil,
+		PivotChilds:        safe.NewSlice(),
+		Tick:               false,
+		Active:             true,
 	}
 	agent.SetData(agentData)
 
@@ -175,6 +178,190 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 }
 
 /// Get Tasks
+
+type inflightDelivery struct {
+	nonce     uint32
+	createdAt time.Time
+	attempts  int
+	tasks     []adaptix.TaskData
+}
+
+func (ts *Teamserver) tsGetOrCreateInflight(agent *Agent, maxDataSize int) ([]byte, uint32, error) {
+	// Prefer resending the oldest inflight delivery (for listener restart / downFrags loss).
+	var (
+		oldestKey string
+		oldest    *inflightDelivery
+	)
+	agent.InflightDeliveries.ForEach(func(key string, value interface{}) bool {
+		d, ok := value.(*inflightDelivery)
+		if !ok || d == nil {
+			return true
+		}
+		if oldest == nil || d.createdAt.Before(oldest.createdAt) {
+			oldest = d
+			oldestKey = key
+		}
+		return true
+	})
+	if oldest != nil {
+		oldest.attempts++
+		agent.InflightDeliveries.Put(oldestKey, oldest)
+		respData, err := ts.Extender.ExAgentPackData(agent.GetData(), oldest.tasks)
+		return respData, oldest.nonce, err
+	}
+
+	// No inflight; create a new delivery if there is something to send.
+	tasksCount := agent.HostedTasks.Len()
+	tunnelConnectCount := agent.HostedTunnelTasks.Len()
+	tunnelTasksCount := agent.HostedTunnelData.Len()
+	pivotTasksExists := false
+	if agent.PivotChilds.Len() > 0 {
+		pivotTasksExists = ts.TsTasksPivotExists(agent.GetData().Id, true)
+	}
+	if !(tasksCount > 0 || tunnelConnectCount > 0 || tunnelTasksCount > 0 || pivotTasksExists) {
+		return []byte(""), 0, nil
+	}
+
+	tasks, err := ts.TsTaskGetAvailableAll(agent.GetData().Id, maxDataSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(tasks) == 0 {
+		return []byte(""), 0, nil
+	}
+
+	// Create delivery nonce (8 hex chars -> uint32).
+	uid, err := krypt.GenerateUID(8)
+	if err != nil {
+		return nil, 0, err
+	}
+	n64, err := strconv.ParseUint(uid, 16, 32)
+	if err != nil {
+		return nil, 0, err
+	}
+	nonce := uint32(n64)
+	key := fmt.Sprintf("%08x", nonce)
+
+	d := &inflightDelivery{nonce: nonce, createdAt: time.Now(), attempts: 1, tasks: tasks}
+	agent.InflightDeliveries.Put(key, d)
+
+	respData, err := ts.Extender.ExAgentPackData(agent.GetData(), tasks)
+	if err != nil {
+		// If pack fails, roll tasks back to HostedTasks to avoid loss.
+		for i := len(tasks) - 1; i >= 0; i-- {
+			agent.HostedTasks.PushFront(tasks[i])
+		}
+		agent.InflightDeliveries.Delete(key)
+		return nil, 0, err
+	}
+
+	if tasksCount > 0 {
+		message := fmt.Sprintf("Agent called server, sent [%v]", tformat.SizeBytesToFormat(uint64(len(respData))))
+		ts.TsAgentConsoleOutput(agent.GetData().Id, CONSOLE_OUT_INFO, message, "", false)
+	}
+	return respData, nonce, nil
+}
+
+// TsAgentGetHostedAllDelivery returns packed tasks plus a delivery nonce which must be ACKed
+// by the listener once the agent confirms full receipt (e.g., via DNS/DoH HB ackTaskNonce).
+func (ts *Teamserver) TsAgentGetHostedAllDelivery(agentId string, maxDataSize int) ([]byte, uint32, error) {
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return nil, 0, err
+	}
+	return ts.tsGetOrCreateInflight(agent, maxDataSize)
+}
+
+// TsAgentAckDelivery is called by a listener when the agent has ACKed a full delivery.
+func (ts *Teamserver) TsAgentAckDelivery(agentId string, deliveryNonce uint32) error {
+	agent, err := ts.getAgent(agentId)
+	if err != nil {
+		return err
+	}
+
+	key := fmt.Sprintf("%08x", deliveryNonce)
+	v, found := agent.InflightDeliveries.GetDelete(key)
+	if !found {
+		return nil
+	}
+	d, ok := v.(*inflightDelivery)
+	if !ok || d == nil {
+		return nil
+	}
+
+	// Only now promote sync/browser tasks to RunningTasks.
+	for _, taskData := range d.tasks {
+		if taskData.Sync || taskData.Type == TYPE_BROWSER {
+			agent.RunningTasks.Put(taskData.TaskId, taskData)
+		}
+	}
+	return nil
+}
+
+// TsInflightRequeueLoop requeues timed-out deliveries back into HostedTasks.
+func (ts *Teamserver) TsInflightRequeueLoop() {
+	const (
+		tickSeconds      = 10
+		deliveryTimeout  = 90 * time.Second
+		maxAttempt       = 10
+		maxRequeuePerRun = 64
+	)
+
+	ticker := time.NewTicker(time.Duration(tickSeconds) * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		requeued := 0
+		now := time.Now()
+
+		ts.Agents.ForEach(func(_ string, value interface{}) bool {
+			if requeued >= maxRequeuePerRun {
+				return false
+			}
+			agent, ok := value.(*Agent)
+			if !ok || agent == nil {
+				return true
+			}
+			// collect keys first to avoid holding safe.Map locks while pushing tasks
+			var toRequeue []string
+			agent.InflightDeliveries.ForEach(func(k string, v interface{}) bool {
+				d, ok := v.(*inflightDelivery)
+				if !ok || d == nil {
+					toRequeue = append(toRequeue, k)
+					return true
+				}
+				age := now.Sub(d.createdAt)
+				if age >= deliveryTimeout || d.attempts >= maxAttempt {
+					toRequeue = append(toRequeue, k)
+				}
+				return true
+			})
+
+			for _, k := range toRequeue {
+				if requeued >= maxRequeuePerRun {
+					break
+				}
+				v, found := agent.InflightDeliveries.GetDelete(k)
+				if !found {
+					continue
+				}
+				d, ok := v.(*inflightDelivery)
+				if !ok || d == nil {
+					continue
+				}
+				// requeue tasks to the front (reverse order preserves original order)
+				for i := len(d.tasks) - 1; i >= 0; i-- {
+					agent.HostedTasks.PushFront(d.tasks[i])
+				}
+				requeued++
+			}
+
+			return true
+		})
+
+		_ = requeued
+	}
+}
 
 func (ts *Teamserver) TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error) {
 	agent, err := ts.getAgent(agentId)
