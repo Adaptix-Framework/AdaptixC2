@@ -307,9 +307,7 @@ QObject* BridgeForm::create_dialog(const QString& title) const
 QObject* BridgeForm::create_selector_credentials(const QJSValue &headers) const
 {
     auto* parentW = getParentWidget();
-    auto* table = new QTableWidget(parentW);
-    auto* button = new QPushButton(parentW);
-    auto* wrapper = new AxSelectorCreds(headers, table, button, scriptEngine, parentW);
+    auto* wrapper = new AxSelectorCreds(headers, scriptEngine, parentW);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }
@@ -317,9 +315,7 @@ QObject* BridgeForm::create_selector_credentials(const QJSValue &headers) const
 QObject * BridgeForm::create_selector_agents(const QJSValue &headers) const
 {
     auto* parentW = getParentWidget();
-    auto* table = new QTableWidget(parentW);
-    auto* button = new QPushButton(parentW);
-    auto* wrapper = new AxSelectorAgents(headers, table, button, scriptEngine, parentW);
+    auto* wrapper = new AxSelectorAgents(headers, scriptEngine, parentW);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }

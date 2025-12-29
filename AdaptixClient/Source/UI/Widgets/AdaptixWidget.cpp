@@ -871,8 +871,11 @@ void AdaptixWidget::OnSynced()
 
     this->SessionsGraphDock->TreeDraw();
     this->TasksDock->UpdateColumnsSize();
+    this->TasksDock->UpdateFilterComboBoxes();
     this->SessionsTableDock->UpdateColumnsSize();
+    this->SessionsTableDock->UpdateAgentTypeComboBox();
     this->CredentialsDock->UpdateColumnsSize();
+    this->CredentialsDock->UpdateFilterComboBoxes();
     this->TargetsDock->UpdateColumnsSize();
 
     Q_EMIT SyncedOnReloadSignal(profile->GetProject());

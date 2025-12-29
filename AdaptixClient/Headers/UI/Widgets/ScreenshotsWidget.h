@@ -25,6 +25,63 @@ Q_OBJECT
     QString filter;
     bool    searchVisible = false;
 
+    bool matchesTerm(const QString &term, const QString &rowData) const {
+        if (term.isEmpty())
+            return true;
+        QRegularExpression re(QRegularExpression::escape(term.trimmed()), QRegularExpression::CaseInsensitiveOption);
+        return rowData.contains(re);
+    }
+
+    bool evaluateExpression(const QString &expr, const QString &rowData) const {
+        QString e = expr.trimmed();
+        if (e.isEmpty())
+            return true;
+
+        int depth = 0;
+        int lastOr = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '|') {
+                lastOr = i;
+                break;
+            }
+        }
+        if (lastOr != -1) {
+            QString left = e.left(lastOr).trimmed();
+            QString right = e.mid(lastOr + 1).trimmed();
+            return evaluateExpression(left, rowData) || evaluateExpression(right, rowData);
+        }
+
+        depth = 0;
+        int lastAnd = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '&') {
+                lastAnd = i;
+                break;
+            }
+        }
+        if (lastAnd != -1) {
+            QString left = e.left(lastAnd).trimmed();
+            QString right = e.mid(lastAnd + 1).trimmed();
+            return evaluateExpression(left, rowData) && evaluateExpression(right, rowData);
+        }
+
+        if (e.startsWith("^(") && e.endsWith(')')) {
+            return !evaluateExpression(e.mid(2, e.length() - 3), rowData);
+        }
+
+        if (e.startsWith('(') && e.endsWith(')')) {
+            return evaluateExpression(e.mid(1, e.length() - 2), rowData);
+        }
+
+        return matchesTerm(e, rowData);
+    }
+
 public:
     explicit ScreensFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
         setDynamicSortFilter(true);
@@ -49,13 +106,20 @@ protected:
         if (!model)
             return true;
 
-        if (!searchVisible || filter.isEmpty())
+        if (!searchVisible)
             return true;
 
-        QRegularExpression re(QRegularExpression::escape(filter), QRegularExpression::CaseInsensitiveOption);
+        if (!filter.isEmpty()) {
+            const int colCount = model->columnCount();
+            QString rowData;
+            for (int col = 0; col < colCount; ++col) {
+                rowData += model->index(row, col, parent).data().toString() + " ";
+            }
+            if (!evaluateExpression(filter, rowData))
+                return false;
+        }
 
-        QString note = model->index(row, SCR_Note, parent).data().toString();
-        return note.contains(re);
+        return true;
     }
 };
 
@@ -224,10 +288,11 @@ Q_OBJECT
     ScreensTableModel*       screensModel = nullptr;
     ScreensFilterProxyModel* proxyModel   = nullptr;
 
-    QWidget*        searchWidget = nullptr;
-    QHBoxLayout*    searchLayout = nullptr;
-    QLineEdit*      inputFilter  = nullptr;
-    ClickableLabel* hideButton   = nullptr;
+    QWidget*        searchWidget    = nullptr;
+    QHBoxLayout*    searchLayout    = nullptr;
+    QLineEdit*      inputFilter     = nullptr;
+    QCheckBox*      autoSearchCheck = nullptr;
+    ClickableLabel* hideButton      = nullptr;
 
     void createUI();
 

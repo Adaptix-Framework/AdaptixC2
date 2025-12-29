@@ -50,8 +50,66 @@ class TasksFilterProxyModel : public QSortFilterProxyModel
 {
 Q_OBJECT
     QString agentFilter;
+    QString typeFilter;
     QString statusFilter;
     QString textFilter;
+
+    bool matchesTerm(const QString &term, const QString &rowData) const {
+        if (term.isEmpty())
+            return true;
+        QRegularExpression re(QRegularExpression::escape(term.trimmed()), QRegularExpression::CaseInsensitiveOption);
+        return rowData.contains(re);
+    }
+
+    bool evaluateExpression(const QString &expr, const QString &rowData) const {
+        QString e = expr.trimmed();
+        if (e.isEmpty())
+            return true;
+
+        int depth = 0;
+        int lastOr = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '|') {
+                lastOr = i;
+                break;
+            }
+        }
+        if (lastOr != -1) {
+            QString left = e.left(lastOr).trimmed();
+            QString right = e.mid(lastOr + 1).trimmed();
+            return evaluateExpression(left, rowData) || evaluateExpression(right, rowData);
+        }
+
+        depth = 0;
+        int lastAnd = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '&') {
+                lastAnd = i;
+                break;
+            }
+        }
+        if (lastAnd != -1) {
+            QString left = e.left(lastAnd).trimmed();
+            QString right = e.mid(lastAnd + 1).trimmed();
+            return evaluateExpression(left, rowData) && evaluateExpression(right, rowData);
+        }
+
+        if (e.startsWith("^(") && e.endsWith(')')) {
+            return !evaluateExpression(e.mid(2, e.length() - 3), rowData);
+        }
+
+        if (e.startsWith('(') && e.endsWith(')')) {
+            return evaluateExpression(e.mid(1, e.length() - 2), rowData);
+        }
+
+        return matchesTerm(e, rowData);
+    }
 
 public:
     explicit TasksFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
@@ -60,6 +118,10 @@ public:
 
     void setAgentFilter(const QString &agent) {
         agentFilter = agent;
+        invalidateFilter();
+    }
+    void setTypeFilter(const QString &type) {
+        typeFilter = type;
         invalidateFilter();
     }
     void setStatusFilter(const QString &status) {
@@ -78,26 +140,25 @@ protected:
             return true;
 
         QString agent  = model->index(row, TC_AgentId, parent).data().toString();
+        QString type   = model->index(row, TC_TaskType, parent).data().toString();
         QString status = model->index(row, TC_Result, parent).data().toString();
 
         if (!agentFilter.isEmpty() && agentFilter != "All agents" && agent != agentFilter)
+            return false;
+
+        if (!typeFilter.isEmpty() && typeFilter != "All types" && type != typeFilter)
             return false;
 
         if (!statusFilter.isEmpty() && statusFilter != "Any status" && status != statusFilter)
             return false;
 
         if (!textFilter.isEmpty()) {
-            const int colCount = model->columnCount();
-            QRegularExpression re(QRegularExpression::escape(textFilter), QRegularExpression::CaseInsensitiveOption);
-            bool matched = false;
-            for (int col = 0; col < colCount; ++col) {
-                QString val = model->index(row, col, parent).data().toString();
-                if (val.contains(re)) {
-                    matched = true;
-                    break;
-                }
-            }
-            if (!matched)
+            QString rowData;
+            rowData += model->index(row, TC_Client, parent).data().toString() + " ";
+            rowData += model->index(row, TC_User, parent).data().toString() + " ";
+            rowData += model->index(row, TC_CommandLine, parent).data().toString() + " ";
+            rowData += model->index(row, TC_Output, parent).data().toString() + " ";
+            if (!evaluateExpression(textFilter, rowData))
                 return false;
         }
 
@@ -269,12 +330,14 @@ Q_OBJECT
     TasksTableModel*       tasksModel = nullptr;
     TasksFilterProxyModel* proxyModel = nullptr;
 
-    QWidget*        searchWidget = nullptr;
-    QHBoxLayout*    searchLayout = nullptr;
-    QComboBox*      comboAgent   = nullptr;
-    QComboBox*      comboStatus  = nullptr;
-    QLineEdit*      inputFilter  = nullptr;
-    ClickableLabel* hideButton   = nullptr;
+    QWidget*        searchWidget    = nullptr;
+    QHBoxLayout*    searchLayout    = nullptr;
+    QLineEdit*      inputFilter     = nullptr;
+    QCheckBox*      autoSearchCheck = nullptr;
+    QComboBox*      comboAgent      = nullptr;
+    QComboBox*      comboType       = nullptr;
+    QComboBox*      comboStatus     = nullptr;
+    ClickableLabel* hideButton      = nullptr;
 
     bool showPanel = false;
 
@@ -306,6 +369,7 @@ public Q_SLOTS:
     void handleTasksMenu( const QPoint &pos );
     void onTableItemSelection(const QModelIndex &current, const QModelIndex &previous) const;
     void onFilterChanged() const;
+    void UpdateFilterComboBoxes() const;
     void actionCopyTaskId() const;
     void actionCopyCmd() const;
     void actionOpenConsole() const;

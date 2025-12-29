@@ -21,12 +21,17 @@ TargetsWidget::TargetsWidget(AdaptixWidget* w) : DockTab("Targets", w->GetProfil
         Q_UNUSED(deselected)
         tableView->setFocus();
     });
-    connect(hideButton,   &ClickableLabel::clicked, this, &TargetsWidget::toggleSearchPanel);
-    connect(inputFilter,  &QLineEdit::textChanged,  this, &TargetsWidget::onFilterUpdate);
+    connect(hideButton,   &ClickableLabel::clicked,  this, &TargetsWidget::toggleSearchPanel);
+    connect(inputFilter,  &QLineEdit::textChanged,   this, &TargetsWidget::onFilterUpdate);
+    connect(inputFilter,  &QLineEdit::returnPressed, this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
 
-    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
-    shortcutSearch->setContext(Qt::WidgetShortcut);
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
+    shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &TargetsWidget::toggleSearchPanel);
+
+    auto shortcutEsc = new QShortcut(QKeySequence(Qt::Key_Escape), inputFilter);
+    shortcutEsc->setContext(Qt::WidgetShortcut);
+    connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 
     this->dockWidget->setWidget(this);
 }
@@ -46,16 +51,23 @@ void TargetsWidget::createUI()
     searchWidget->setVisible(false);
 
     inputFilter = new QLineEdit(searchWidget);
-    inputFilter->setPlaceholderText("filter");
+    inputFilter->setPlaceholderText("filter: (win | linux) & ^(test)");
     inputFilter->setMaximumWidth(300);
 
-    hideButton = new ClickableLabel("X");
-    hideButton->setCursor( Qt::PointingHandCursor );
+    autoSearchCheck = new QCheckBox("auto", searchWidget);
+    autoSearchCheck->setChecked(true);
+    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
+
+    hideButton = new ClickableLabel("  x  ");
+    hideButton->setCursor(Qt::PointingHandCursor);
+    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 5, 0, 0);
     searchLayout->setSpacing(4);
     searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(autoSearchCheck);
+    searchLayout->addSpacing(8);
     searchLayout->addWidget(hideButton);
     searchLayout->addSpacerItem(horizontalSpacer2);
 
@@ -241,8 +253,11 @@ void TargetsWidget::toggleSearchPanel() const
 
 void TargetsWidget::onFilterUpdate() const
 {
-    proxyModel->setTextFilter(inputFilter->text());
+    if (autoSearchCheck->isChecked()) {
+        proxyModel->setTextFilter(inputFilter->text());
+    }
     inputFilter->setFocus();
+    UpdateColumnsSize();
 }
 
 void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const

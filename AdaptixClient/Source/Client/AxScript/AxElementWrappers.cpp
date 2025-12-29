@@ -950,24 +950,30 @@ void AxSelectorFile::onSelectFile()
 
 /// SELECTOR CREDENTIALS
 
-AxDialogCreds::AxDialogCreds(const QJSValue &headers, QVector<CredentialData> vecCreds, QTableWidget *tableWidget, QPushButton *button, QWidget *parent) : tableWidget(tableWidget), chooseButton(button)
+AxDialogCreds::AxDialogCreds(const QJSValue &headers, QVector<CredentialData> vecCreds, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
-    tableWidget->setAlternatingRowColors( true );
-    tableWidget->setAutoFillBackground( false );
-    tableWidget->setShowGrid( false );
-    tableWidget->setSortingEnabled( true );
-    tableWidget->setWordWrap( true );
-    tableWidget->setCornerButtonEnabled( true );
-    tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
-    tableWidget->setFocusPolicy( Qt::NoFocus );
-    tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
-    tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
-    tableWidget->horizontalHeader()->setHighlightSections( false );
-    tableWidget->verticalHeader()->setVisible( false );
+    tableView = new QTableView(this);
+    tableView->setAlternatingRowColors(true);
+    tableView->setShowGrid(false);
+    tableView->setSortingEnabled(true);
+    tableView->setWordWrap(true);
+    tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tableView->horizontalHeader()->setCascadingSectionResizes(true);
+    tableView->horizontalHeader()->setHighlightSections(false);
+    tableView->verticalHeader()->setVisible(false);
+    tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-    chooseButton->setText("Choose");
+    tableModel = new AxCredsTableModel(this);
+    proxyModel = new AxCredsFilterProxyModel(this);
+    proxyModel->setSourceModel(tableModel);
+    tableView->setModel(proxyModel);
+
+    chooseButton = new QPushButton("Choose", this);
 
     spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
     spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
@@ -983,7 +989,7 @@ AxDialogCreds::AxDialogCreds(const QJSValue &headers, QVector<CredentialData> ve
     searchLineEdit->setPlaceholderText("filter");
 
     hideButton = new ClickableLabel("X");
-    hideButton->setCursor( Qt::PointingHandCursor );
+    hideButton->setCursor(Qt::PointingHandCursor);
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 0, 0, 0);
@@ -993,7 +999,7 @@ AxDialogCreds::AxDialogCreds(const QJSValue &headers, QVector<CredentialData> ve
 
     mainLayout = new QVBoxLayout();
     mainLayout->addWidget(searchWidget);
-    mainLayout->addWidget(tableWidget);
+    mainLayout->addWidget(tableView);
     mainLayout->addLayout(bottomLayout);
 
     setLayout(mainLayout);
@@ -1002,58 +1008,31 @@ AxDialogCreds::AxDialogCreds(const QJSValue &headers, QVector<CredentialData> ve
     connect(chooseButton,   &QPushButton::clicked,    this, &AxDialogCreds::onClicked);
     connect(hideButton,     &ClickableLabel::clicked, this, &AxDialogCreds::clearSearch);
 
-    for (auto cred : vecCreds) {
-        QMap<QString, QString> map;
-        map["id"]       = cred.CredId;
-        map["username"] = cred.Username;
-        map["password"] = cred.Password;
-        map["realm"]    = cred.Realm;
-        map["type"]     = cred.Type;
-        map["tag"]      = cred.Tag;
-        map["date"]     = cred.Date;
-        map["storage"]  = cred.Storage;
-        map["agent_id"] = cred.AgentId;
-        map["host"]     = cred.Host;
-        credList.append(map);
-        allData[cred.CredId] = cred;
-    }
-
-    int columns = 0;
-    tableWidget->setColumnCount(columns);
+    QVector<QString> headerLabels;
+    QVector<QString> fieldKeys;
 
     const int length = headers.property("length").toInt();
     for (int i = 0; i < length; ++i) {
         QString val = headers.property(i).toString();
         if (FIELD_MAP_CREDS.contains(val)) {
-            columns += 1;
-            tableWidget->setColumnCount(columns);
-            tableWidget->setHorizontalHeaderItem(columns - 1, new QTableWidgetItem(FIELD_MAP_CREDS[val]));
-            table_headers.append(val);
+            headerLabels.append(FIELD_MAP_CREDS[val]);
+            fieldKeys.append(val);
         }
     }
-    columns += 1;
-    tableWidget->setColumnCount(columns);
-    tableWidget->setHorizontalHeaderItem(columns - 1, new QTableWidgetItem("CredId"));
-    table_headers.append("id");
-    tableWidget->hideColumn(columns - 1);
+    headerLabels.append("CredId");
+    fieldKeys.append("id");
 
-    if (columns > 2) {
-        for (int i = 0 ; i < columns-2; ++i) {
-            tableWidget->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+    tableModel->setHeaders(headerLabels, fieldKeys);
+    tableModel->setData(vecCreds);
+
+    int lastCol = headerLabels.size() - 1;
+    tableView->hideColumn(lastCol);
+
+    if (headerLabels.size() > 2) {
+        for (int i = 0; i < headerLabels.size() - 2; ++i) {
+            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
         }
     }
-
-    tableWidget->setRowCount(credList.size());
-    for (int col = 0; col < table_headers.size(); ++col) {
-        for (int row = 0; row < credList.size(); row++) {
-            auto header = table_headers[col];
-            auto item = new QTableWidgetItem(credList[row][header]);
-            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-            tableWidget->setItem(row, col, item);
-        }
-    }
-
-    handleSearch();
 }
 
 QVector<CredentialData> AxDialogCreds::data() { return selectedData; }
@@ -1061,11 +1040,11 @@ QVector<CredentialData> AxDialogCreds::data() { return selectedData; }
 void AxDialogCreds::onClicked()
 {
     selectedData.clear();
-    int columns = tableWidget->columnCount();
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            QString id = tableWidget->item(rowIndex, columns-1)->text();
-            selectedData.append(allData[id]);
+    QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    for (const auto& proxyIndex : selected) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (sourceIndex.isValid()) {
+            selectedData.append(tableModel->getCredential(sourceIndex.row()));
         }
     }
     this->accept();
@@ -1073,18 +1052,7 @@ void AxDialogCreds::onClicked()
 
 void AxDialogCreds::handleSearch()
 {
-    QString filterText = searchLineEdit->text();
-
-    for (int row = 0; row < tableWidget->rowCount(); row++) {
-        bool match = false;
-        for (int col = 0; col < tableWidget->columnCount()-1; ++col) {
-            if (tableWidget->item(row, col) && tableWidget->item(row, col)->text().contains(filterText, Qt::CaseInsensitive)) {
-                match = true;
-                break;
-            }
-        }
-        tableWidget->setRowHidden(row, !match);
-    }
+    proxyModel->setFilterText(searchLineEdit->text());
 }
 
 void AxDialogCreds::clearSearch()
@@ -1093,11 +1061,11 @@ void AxDialogCreds::clearSearch()
     handleSearch();
 }
 
-AxSelectorCreds::AxSelectorCreds(const QJSValue &headers, QTableWidget* tableWidget, QPushButton* button, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
+AxSelectorCreds::AxSelectorCreds(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
 {
     auto vecCreds = scriptEngine->manager()->GetCredentials();
 
-    dialog = new AxDialogCreds(headers, vecCreds, tableWidget, button);
+    dialog = new AxDialogCreds(headers, vecCreds);
     dialog->setWindowTitle("Choose credentials");
 }
 
@@ -1132,24 +1100,30 @@ void AxSelectorCreds::close() const { dialog->close(); }
 
 /// SELECTOR AGENTS
 
-AxDialogAgents::AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QTableWidget *tableWidget, QPushButton *button, QWidget *parent) : tableWidget(tableWidget), chooseButton(button)
+AxDialogAgents::AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
-    tableWidget->setAlternatingRowColors( true );
-    tableWidget->setAutoFillBackground( false );
-    tableWidget->setShowGrid( false );
-    tableWidget->setSortingEnabled( true );
-    tableWidget->setWordWrap( true );
-    tableWidget->setCornerButtonEnabled( true );
-    tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
-    tableWidget->setFocusPolicy( Qt::NoFocus );
-    tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
-    tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
-    tableWidget->horizontalHeader()->setHighlightSections( false );
-    tableWidget->verticalHeader()->setVisible( false );
+    tableView = new QTableView(this);
+    tableView->setAlternatingRowColors(true);
+    tableView->setShowGrid(false);
+    tableView->setSortingEnabled(true);
+    tableView->setWordWrap(true);
+    tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tableView->horizontalHeader()->setCascadingSectionResizes(true);
+    tableView->horizontalHeader()->setHighlightSections(false);
+    tableView->verticalHeader()->setVisible(false);
+    tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-    chooseButton->setText("Choose");
+    tableModel = new AxAgentsTableModel(this);
+    proxyModel = new AxAgentsFilterProxyModel(this);
+    proxyModel->setSourceModel(tableModel);
+    tableView->setModel(proxyModel);
+
+    chooseButton = new QPushButton("Choose", this);
 
     spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
     spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
@@ -1165,7 +1139,7 @@ AxDialogAgents::AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAg
     searchLineEdit->setPlaceholderText("filter");
 
     hideButton = new ClickableLabel("X");
-    hideButton->setCursor( Qt::PointingHandCursor );
+    hideButton->setCursor(Qt::PointingHandCursor);
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 0, 0, 0);
@@ -1175,7 +1149,7 @@ AxDialogAgents::AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAg
 
     mainLayout = new QVBoxLayout();
     mainLayout->addWidget(searchWidget);
-    mainLayout->addWidget(tableWidget);
+    mainLayout->addWidget(tableView);
     mainLayout->addLayout(bottomLayout);
 
     setLayout(mainLayout);
@@ -1184,75 +1158,31 @@ AxDialogAgents::AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAg
     connect(chooseButton,   &QPushButton::clicked,    this, &AxDialogAgents::onClicked);
     connect(hideButton,     &ClickableLabel::clicked, this, &AxDialogAgents::clearSearch);
 
-    for (auto agentData : vecAgents) {
-        QString username = agentData.Username;
-        if ( agentData.Elevated )
-            username = "* " + username;
-        if ( !agentData.Impersonated.isEmpty() )
-            username += " [" + agentData.Impersonated + "]";
-
-        QString process  = QString("%1 (%2)").arg(agentData.Process).arg(agentData.Arch);
-
-        QString os = "unknown";
-        if (agentData.Os == OS_WINDOWS)    os = "windows";
-        else if (agentData.Os == OS_LINUX) os = "linux";
-        else if (agentData.Os == OS_MAC)   os = "macos";
-
-        QMap<QString, QString> map;
-        map["id"]          = agentData.Id;
-        map["type"]        = agentData.Name;
-        map["listener"]    = agentData.Listener;
-        map["external_ip"] = agentData.ExternalIP;
-        map["internal_ip"] = agentData.InternalIP;
-        map["domain"]      = agentData.Domain;
-        map["computer"]    = agentData.Computer;
-        map["username"]    = username;
-        map["process"]     = process;
-        map["pid"]         = agentData.Pid;
-        map["tid"]         = agentData.Tid;
-        map["os"]          = os;
-        map["tags"]        = agentData.Tags;
-
-        agentsList.append(map);
-        allData[agentData.Id] = agentData;
-    }
-
-    int columns = 0;
-    tableWidget->setColumnCount(columns);
+    QVector<QString> headerLabels;
+    QVector<QString> fieldKeys;
 
     const int length = headers.property("length").toInt();
     for (int i = 0; i < length; ++i) {
         QString val = headers.property(i).toString();
         if (FIELD_MAP_AGENTS.contains(val)) {
-            columns += 1;
-            tableWidget->setColumnCount(columns);
-            tableWidget->setHorizontalHeaderItem(columns - 1, new QTableWidgetItem(FIELD_MAP_AGENTS[val]));
-            table_headers.append(val);
+            headerLabels.append(FIELD_MAP_AGENTS[val]);
+            fieldKeys.append(val);
         }
     }
-    columns += 1;
-    tableWidget->setColumnCount(columns);
-    tableWidget->setHorizontalHeaderItem(columns - 1, new QTableWidgetItem("Agent ID"));
-    table_headers.append("id");
-    tableWidget->hideColumn(columns - 1);
+    headerLabels.append("Agent ID");
+    fieldKeys.append("id");
 
-    if (columns > 2) {
-        for (int i = 0 ; i < columns-2; ++i) {
-            tableWidget->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+    tableModel->setHeaders(headerLabels, fieldKeys);
+    tableModel->setData(vecAgents);
+
+    int lastCol = headerLabels.size() - 1;
+    tableView->hideColumn(lastCol);
+
+    if (headerLabels.size() > 2) {
+        for (int i = 0; i < headerLabels.size() - 2; ++i) {
+            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
         }
     }
-
-    tableWidget->setRowCount(agentsList.size());
-    for (int col = 0; col < table_headers.size(); ++col) {
-        for (int row = 0; row < agentsList.size(); row++) {
-            auto header = table_headers[col];
-            auto item = new QTableWidgetItem(agentsList[row][header]);
-            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-            tableWidget->setItem(row, col, item);
-        }
-    }
-
-    handleSearch();
 }
 
 QVector<AgentData> AxDialogAgents::data() { return selectedData; }
@@ -1260,11 +1190,11 @@ QVector<AgentData> AxDialogAgents::data() { return selectedData; }
 void AxDialogAgents::onClicked()
 {
     selectedData.clear();
-    int columns = tableWidget->columnCount();
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
-            QString id = tableWidget->item(rowIndex, columns-1)->text();
-            selectedData.append(allData[id]);
+    QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    for (const auto& proxyIndex : selected) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (sourceIndex.isValid()) {
+            selectedData.append(tableModel->getAgent(sourceIndex.row()));
         }
     }
     this->accept();
@@ -1272,18 +1202,7 @@ void AxDialogAgents::onClicked()
 
 void AxDialogAgents::handleSearch()
 {
-    QString filterText = searchLineEdit->text();
-
-    for (int row = 0; row < tableWidget->rowCount(); row++) {
-        bool match = false;
-        for (int col = 0; col < tableWidget->columnCount()-1; ++col) {
-            if (tableWidget->item(row, col) && tableWidget->item(row, col)->text().contains(filterText, Qt::CaseInsensitive)) {
-                match = true;
-                break;
-            }
-        }
-        tableWidget->setRowHidden(row, !match);
-    }
+    proxyModel->setFilterText(searchLineEdit->text());
 }
 
 void AxDialogAgents::clearSearch()
@@ -1292,7 +1211,7 @@ void AxDialogAgents::clearSearch()
     handleSearch();
 }
 
-AxSelectorAgents::AxSelectorAgents(const QJSValue &headers, QTableWidget* tableWidget, QPushButton* button, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
+AxSelectorAgents::AxSelectorAgents(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
 {
     QVector<AgentData> vecAgents;
 
@@ -1300,7 +1219,7 @@ AxSelectorAgents::AxSelectorAgents(const QJSValue &headers, QTableWidget* tableW
     for (auto agent : agents)
         vecAgents.append(agent->data);
 
-    dialog = new AxDialogAgents(headers, vecAgents, tableWidget, button);
+    dialog = new AxDialogAgents(headers, vecAgents);
     dialog->setWindowTitle("Choose agent");
 }
 

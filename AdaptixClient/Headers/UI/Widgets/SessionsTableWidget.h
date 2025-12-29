@@ -28,6 +28,7 @@ enum SessionsColumns {
     SC_Pid,
     SC_Tid,
     SC_Tags,
+    SC_Created,
     SC_Last,
     SC_Sleep,
     SC_ColumnCount
@@ -41,19 +42,64 @@ Q_OBJECT
     AdaptixWidget* adaptixWidget = nullptr;
     bool    searchVisible  = false;
     bool    onlyActive     = false;
-    QString filter1;
-    QString filter2;
-    QString filter3;
+    QString textFilter;
+    QSet<QString> agentTypes;
 
-    static bool anyFieldContains(const QStringList &fields, const QString &pattern) {
-        if (pattern.isEmpty()) return true;
+    bool matchesTerm(const QString &term, const QString &rowData) const {
+        if (term.isEmpty())
+            return true;
+        QRegularExpression re(QRegularExpression::escape(term.trimmed()), QRegularExpression::CaseInsensitiveOption);
+        return rowData.contains(re);
+    }
 
-        QRegularExpression re(QRegularExpression::escape(pattern), QRegularExpression::CaseInsensitiveOption);
-        for (const QString &f : fields) {
-            if (f.contains(re))
-                return true;
+    bool evaluateExpression(const QString &expr, const QString &rowData) const {
+        QString e = expr.trimmed();
+        if (e.isEmpty())
+            return true;
+
+        int depth = 0;
+        int lastOr = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '|') {
+                lastOr = i;
+                break;
+            }
         }
-        return false;
+        if (lastOr != -1) {
+            QString left = e.left(lastOr).trimmed();
+            QString right = e.mid(lastOr + 1).trimmed();
+            return evaluateExpression(left, rowData) || evaluateExpression(right, rowData);
+        }
+
+        depth = 0;
+        int lastAnd = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '&') {
+                lastAnd = i;
+                break;
+            }
+        }
+        if (lastAnd != -1) {
+            QString left = e.left(lastAnd).trimmed();
+            QString right = e.mid(lastAnd + 1).trimmed();
+            return evaluateExpression(left, rowData) && evaluateExpression(right, rowData);
+        }
+
+        if (e.startsWith("^(") && e.endsWith(')')) {
+            return !evaluateExpression(e.mid(2, e.length() - 3), rowData);
+        }
+
+        if (e.startsWith('(') && e.endsWith(')')) {
+            return evaluateExpression(e.mid(1, e.length() - 2), rowData);
+        }
+
+        return matchesTerm(e, rowData);
     }
 
 public:
@@ -68,24 +114,19 @@ public:
         searchVisible = visible;
         invalidateFilter();
     }
-    void setOnlyActive(bool onlyActive) {
-        if (this->onlyActive == onlyActive) return;
-        this->onlyActive = onlyActive;
+    void setOnlyActive(bool active) {
+        if (onlyActive == active) return;
+        onlyActive = active;
         invalidateFilter();
     }
-    void setFilter1(const QString& text) {
-        if (filter1 == text) return;
-        filter1 = text;
+    void setTextFilter(const QString& text) {
+        if (textFilter == text) return;
+        textFilter = text;
         invalidateFilter();
     }
-    void setFilter2(const QString& text) {
-        if (filter2 == text) return;
-        filter2 = text;
-        invalidateFilter();
-    }
-    void setFilter3(const QString& text) {
-        if (filter3 == text) return;
-        filter3 = text;
+    void setAgentTypes(const QSet<QString>& types) {
+        if (agentTypes == types) return;
+        agentTypes = types;
         invalidateFilter();
     }
     void updateVisible() {
@@ -116,24 +157,24 @@ protected:
                 return false;
         }
 
+        if (!agentTypes.isEmpty() && !agentTypes.contains(a.Name))
+            return false;
+
         QString username = a.Username;
         if (a.Elevated)
             username = "* " + username;
         if (!a.Impersonated.isEmpty())
             username += " [" + a.Impersonated + "]";
 
-        QStringList searchable = { a.Id, a.Name, a.Listener, a.ExternalIP, a.InternalIP, a.Process, a.OsDesc, a.Domain, a.Computer, username, a.Tags };
+        if (!textFilter.isEmpty()) {
+            QString rowData = a.Id + " " + a.Name + " " + a.Listener + " " + a.ExternalIP + " " +
+                              a.InternalIP + " " + a.Process + " " + a.OsDesc + " " + a.Domain + " " +
+                              a.Computer + " " + username + " " + a.Tags;
+            if (!evaluateExpression(textFilter, rowData))
+                return false;
+        }
 
-        bool matches = true;
-
-        if (!filter1.isEmpty() && !anyFieldContains(searchable, filter1))
-            matches = false;
-        if (!filter2.isEmpty() && !anyFieldContains(searchable, filter2))
-            matches = false;
-        if (!filter3.isEmpty() && !anyFieldContains(searchable, filter3))
-            matches = false;
-
-        return matches;
+        return true;
     }
 };
 
@@ -201,6 +242,7 @@ public:
                 case SC_Pid:       return d.Pid;
                 case SC_Tid:       return d.Tid;
                 case SC_Tags:      return d.Tags;
+                case SC_Created:   return d.Date;
                 case SC_Last:
                 {
                     if ( d.Mark.isEmpty() || d.Mark == "No response" || d.Mark == "No worktime" ) {
@@ -226,8 +268,9 @@ public:
 
         if (role == Qt::UserRole) {
             switch (index.column()) {
-                case SC_Last:  return d.LastTick;
-                default:       return data(index, Qt::DisplayRole);
+                case SC_Last:    return d.LastTick;
+                case SC_Created: return d.DateTimestamp;
+                default:         return data(index, Qt::DisplayRole);
             }
         }
 
@@ -245,6 +288,7 @@ public:
                 // case SC_Process:
                 case SC_Pid:
                 case SC_Tid:
+                case SC_Created:
                 case SC_Last:
                 case SC_Sleep:
                     return Qt::AlignCenter;
@@ -300,7 +344,7 @@ public:
         static QStringList headers = {
             "Agent Id", "Type", "External", "Listener", "Internal",
             "Domain", "Computer", "User", "OS", "Process",
-            "PID", "TID", "Tags", "Last", "Sleep"
+            "PID", "TID", "Tags", "Created", "Last", "Sleep"
         };
 
         return headers.value(section);
@@ -363,10 +407,10 @@ Q_OBJECT
 
     QWidget*        searchWidget    = nullptr;
     QHBoxLayout*    searchLayout    = nullptr;
+    QLineEdit*      inputFilter     = nullptr;
+    QCheckBox*      autoSearchCheck = nullptr;
+    QComboBox*      comboAgentType  = nullptr;
     QCheckBox*      checkOnlyActive = nullptr;
-    QLineEdit*      inputFilter1    = nullptr;
-    QLineEdit*      inputFilter2    = nullptr;
-    QLineEdit*      inputFilter3    = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
     void createUI();
@@ -386,6 +430,7 @@ public:
     void UpdateColumnsVisible() const;
     void UpdateColumnsSize() const;
     void UpdateData() const;
+    void UpdateAgentTypeComboBox() const;
     void Clear() const;
 
     void start() const;

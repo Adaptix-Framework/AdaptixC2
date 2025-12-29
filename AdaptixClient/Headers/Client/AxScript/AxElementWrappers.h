@@ -19,6 +19,9 @@
 #include <Utils/CustomElements.h>
 #include <QAction>
 #include <QPointer>
+#include <QTableView>
+#include <QAbstractTableModel>
+#include <QSortFilterProxyModel>
 
 class AxScriptEngine;
 
@@ -770,10 +773,100 @@ private Q_SLOTS:
 
 /// SELECTOR CREDENTIALS
 
+class AxCredsTableModel : public QAbstractTableModel {
+Q_OBJECT
+    QVector<CredentialData> m_data;
+    QVector<QString> m_headers;
+    QVector<QString> m_fieldKeys;
+
+public:
+    explicit AxCredsTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
+
+    void setHeaders(const QVector<QString>& headers, const QVector<QString>& fieldKeys) {
+        beginResetModel();
+        m_headers = headers;
+        m_fieldKeys = fieldKeys;
+        endResetModel();
+    }
+
+    void setData(const QVector<CredentialData>& data) {
+        beginResetModel();
+        m_data = data;
+        endResetModel();
+    }
+
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_data.size();
+    }
+
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_headers.size();
+    }
+
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override {
+        if (!index.isValid() || index.row() >= m_data.size() || index.column() >= m_fieldKeys.size())
+            return QVariant();
+
+        if (role == Qt::DisplayRole || role == Qt::UserRole) {
+            const auto& cred = m_data[index.row()];
+            const QString& key = m_fieldKeys[index.column()];
+            if (key == "id")       return cred.CredId;
+            if (key == "username") return cred.Username;
+            if (key == "password") return cred.Password;
+            if (key == "realm")    return cred.Realm;
+            if (key == "type")     return cred.Type;
+            if (key == "tag")      return cred.Tag;
+            if (key == "date")     return cred.Date;
+            if (key == "storage")  return cred.Storage;
+            if (key == "agent_id") return cred.AgentId;
+            if (key == "host")     return cred.Host;
+        }
+        return QVariant();
+    }
+
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override {
+        if (role == Qt::DisplayRole && orientation == Qt::Horizontal && section < m_headers.size())
+            return m_headers[section];
+        return QVariant();
+    }
+
+    CredentialData getCredential(int row) const {
+        if (row >= 0 && row < m_data.size())
+            return m_data[row];
+        return CredentialData();
+    }
+};
+
+class AxCredsFilterProxyModel : public QSortFilterProxyModel {
+Q_OBJECT
+    QString m_filterText;
+
+public:
+    explicit AxCredsFilterProxyModel(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
+
+    void setFilterText(const QString& text) {
+        m_filterText = text;
+        invalidateFilter();
+    }
+
+protected:
+    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override {
+        if (m_filterText.isEmpty())
+            return true;
+
+        for (int col = 0; col < sourceModel()->columnCount(); ++col) {
+            QModelIndex idx = sourceModel()->index(sourceRow, col, sourceParent);
+            if (idx.data().toString().contains(m_filterText, Qt::CaseInsensitive))
+                return true;
+        }
+        return false;
+    }
+};
+
 class AxDialogCreds : public QDialog {
 Q_OBJECT
     QVBoxLayout*  mainLayout   = nullptr;
-    QTableWidget* tableWidget  = nullptr;
+    QTableView*   tableView    = nullptr;
     QHBoxLayout*  bottomLayout = nullptr;
     QPushButton*  chooseButton = nullptr;
     QSpacerItem*  spacer_1     = nullptr;
@@ -784,13 +877,13 @@ Q_OBJECT
     QLineEdit*      searchLineEdit = nullptr;
     ClickableLabel* hideButton     = nullptr;
 
-    QVector<QString> table_headers;
-    QVector<QMap<QString, QString> > credList;
-    QMap<QString, CredentialData>    allData;
+    AxCredsTableModel*       tableModel = nullptr;
+    AxCredsFilterProxyModel* proxyModel = nullptr;
+
     QVector<CredentialData> selectedData;
 
 public:
-    explicit AxDialogCreds(const QJSValue &headers, QVector<CredentialData> vecCreds, QTableWidget* tableWidget, QPushButton* button, QWidget* parent = nullptr);
+    explicit AxDialogCreds(const QJSValue &headers, QVector<CredentialData> vecCreds, QWidget* parent = nullptr);
 
     QVector<CredentialData> data();
 
@@ -804,10 +897,9 @@ class AxSelectorCreds : public QObject {
 Q_OBJECT
     AxDialogCreds*  dialog;
     AxScriptEngine* scriptEngine;
-    QMap<QString, CredentialData> creds;
 
 public:
-    explicit AxSelectorCreds(const QJSValue &headers, QTableWidget* tableWidget, QPushButton* button, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    explicit AxSelectorCreds(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
 
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;
@@ -816,12 +908,119 @@ public:
 
 
 
-/// SELECTOR CREDENTIALS
+/// SELECTOR AGENTS
+
+class AxAgentsTableModel : public QAbstractTableModel {
+Q_OBJECT
+    QVector<AgentData> m_data;
+    QVector<QString> m_headers;
+    QVector<QString> m_fieldKeys;
+
+public:
+    explicit AxAgentsTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
+
+    void setHeaders(const QVector<QString>& headers, const QVector<QString>& fieldKeys) {
+        beginResetModel();
+        m_headers = headers;
+        m_fieldKeys = fieldKeys;
+        endResetModel();
+    }
+
+    void setData(const QVector<AgentData>& data) {
+        beginResetModel();
+        m_data = data;
+        endResetModel();
+    }
+
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_data.size();
+    }
+
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_headers.size();
+    }
+
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override {
+        if (!index.isValid() || index.row() >= m_data.size() || index.column() >= m_fieldKeys.size())
+            return QVariant();
+
+        if (role == Qt::DisplayRole || role == Qt::UserRole) {
+            const auto& agent = m_data[index.row()];
+            const QString& key = m_fieldKeys[index.column()];
+
+            QString username = agent.Username;
+            if (agent.Elevated)
+                username = "* " + username;
+            if (!agent.Impersonated.isEmpty())
+                username += " [" + agent.Impersonated + "]";
+
+            QString process = QString("%1 (%2)").arg(agent.Process).arg(agent.Arch);
+
+            QString os = "unknown";
+            if (agent.Os == OS_WINDOWS)    os = "windows";
+            else if (agent.Os == OS_LINUX) os = "linux";
+            else if (agent.Os == OS_MAC)   os = "macos";
+
+            if (key == "id")          return agent.Id;
+            if (key == "type")        return agent.Name;
+            if (key == "listener")    return agent.Listener;
+            if (key == "external_ip") return agent.ExternalIP;
+            if (key == "internal_ip") return agent.InternalIP;
+            if (key == "domain")      return agent.Domain;
+            if (key == "computer")    return agent.Computer;
+            if (key == "username")    return username;
+            if (key == "process")     return process;
+            if (key == "pid")         return agent.Pid;
+            if (key == "tid")         return agent.Tid;
+            if (key == "os")          return os;
+            if (key == "tags")        return agent.Tags;
+        }
+        return QVariant();
+    }
+
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override {
+        if (role == Qt::DisplayRole && orientation == Qt::Horizontal && section < m_headers.size())
+            return m_headers[section];
+        return QVariant();
+    }
+
+    AgentData getAgent(int row) const {
+        if (row >= 0 && row < m_data.size())
+            return m_data[row];
+        return AgentData();
+    }
+};
+
+class AxAgentsFilterProxyModel : public QSortFilterProxyModel {
+Q_OBJECT
+    QString m_filterText;
+
+public:
+    explicit AxAgentsFilterProxyModel(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
+
+    void setFilterText(const QString& text) {
+        m_filterText = text;
+        invalidateFilter();
+    }
+
+protected:
+    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override {
+        if (m_filterText.isEmpty())
+            return true;
+
+        for (int col = 0; col < sourceModel()->columnCount(); ++col) {
+            QModelIndex idx = sourceModel()->index(sourceRow, col, sourceParent);
+            if (idx.data().toString().contains(m_filterText, Qt::CaseInsensitive))
+                return true;
+        }
+        return false;
+    }
+};
 
 class AxDialogAgents : public QDialog {
 Q_OBJECT
     QVBoxLayout*  mainLayout   = nullptr;
-    QTableWidget* tableWidget  = nullptr;
+    QTableView*   tableView    = nullptr;
     QHBoxLayout*  bottomLayout = nullptr;
     QPushButton*  chooseButton = nullptr;
     QSpacerItem*  spacer_1     = nullptr;
@@ -832,13 +1031,13 @@ Q_OBJECT
     QLineEdit*      searchLineEdit = nullptr;
     ClickableLabel* hideButton     = nullptr;
 
-    QVector<QString> table_headers;
-    QVector<QMap<QString, QString> > agentsList;
-    QMap<QString, AgentData>    allData;
+    AxAgentsTableModel*       tableModel = nullptr;
+    AxAgentsFilterProxyModel* proxyModel = nullptr;
+
     QVector<AgentData> selectedData;
 
 public:
-    explicit AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QTableWidget* tableWidget, QPushButton* button, QWidget* parent = nullptr);
+    explicit AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QWidget* parent = nullptr);
 
     QVector<AgentData> data();
 
@@ -852,10 +1051,9 @@ class AxSelectorAgents : public QObject {
 Q_OBJECT
     AxDialogAgents*  dialog;
     AxScriptEngine* scriptEngine;
-    QMap<QString, AgentData> agents;
 
 public:
-    explicit AxSelectorAgents(const QJSValue &headers, QTableWidget* tableWidget, QPushButton* button, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    explicit AxSelectorAgents(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
 
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;

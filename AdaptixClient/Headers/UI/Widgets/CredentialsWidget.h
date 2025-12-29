@@ -29,7 +29,66 @@ class CredsFilterProxyModel : public QSortFilterProxyModel
 {
 Q_OBJECT
     QString filter;
+    QString typeFilter;
+    QString storageFilter;
     bool    searchVisible = false;
+
+    bool matchesTerm(const QString &term, const QString &rowData) const {
+        if (term.isEmpty())
+            return true;
+        QRegularExpression re(QRegularExpression::escape(term.trimmed()), QRegularExpression::CaseInsensitiveOption);
+        return rowData.contains(re);
+    }
+
+    bool evaluateExpression(const QString &expr, const QString &rowData) const {
+        QString e = expr.trimmed();
+        if (e.isEmpty())
+            return true;
+
+        int depth = 0;
+        int lastOr = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '|') {
+                lastOr = i;
+                break;
+            }
+        }
+        if (lastOr != -1) {
+            QString left = e.left(lastOr).trimmed();
+            QString right = e.mid(lastOr + 1).trimmed();
+            return evaluateExpression(left, rowData) || evaluateExpression(right, rowData);
+        }
+
+        depth = 0;
+        int lastAnd = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '&') {
+                lastAnd = i;
+                break;
+            }
+        }
+        if (lastAnd != -1) {
+            QString left = e.left(lastAnd).trimmed();
+            QString right = e.mid(lastAnd + 1).trimmed();
+            return evaluateExpression(left, rowData) && evaluateExpression(right, rowData);
+        }
+
+        if (e.startsWith("^(") && e.endsWith(')')) {
+            return !evaluateExpression(e.mid(2, e.length() - 3), rowData);
+        }
+
+        if (e.startsWith('(') && e.endsWith(')')) {
+            return evaluateExpression(e.mid(1, e.length() - 2), rowData);
+        }
+
+        return matchesTerm(e, rowData);
+    }
 
 public:
     explicit CredsFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
@@ -49,6 +108,18 @@ public:
         invalidateFilter();
     }
 
+    void setTypeFilter(const QString &type) {
+        if (typeFilter == type) return;
+        typeFilter = type;
+        invalidateFilter();
+    }
+
+    void setStorageFilter(const QString &storage) {
+        if (storageFilter == storage) return;
+        storageFilter = storage;
+        invalidateFilter();
+    }
+
 protected:
     bool filterAcceptsRow(const int row, const QModelIndex &parent) const override {
         auto model = sourceModel();
@@ -58,18 +129,25 @@ protected:
         if (!searchVisible)
             return true;
 
+        if (!typeFilter.isEmpty()) {
+            QString typeVal = model->index(row, CC_Type, parent).data().toString();
+            if (typeVal != typeFilter)
+                return false;
+        }
+
+        if (!storageFilter.isEmpty()) {
+            QString storageVal = model->index(row, CC_Storage, parent).data().toString();
+            if (storageVal != storageFilter)
+                return false;
+        }
+
         if (!filter.isEmpty()) {
             const int colCount = model->columnCount();
-            QRegularExpression re(QRegularExpression::escape(filter), QRegularExpression::CaseInsensitiveOption);
-            bool matched = false;
+            QString rowData;
             for (int col = 0; col < colCount; ++col) {
-                QString val = model->index(row, col, parent).data().toString();
-                if (val.contains(re)) {
-                    matched = true;
-                    break;
-                }
+                rowData += model->index(row, col, parent).data().toString() + " ";
             }
-            if (!matched)
+            if (!evaluateExpression(filter, rowData))
                 return false;
         }
 
@@ -247,10 +325,13 @@ Q_OBJECT
     CredsTableModel*       credsModel = nullptr;
     CredsFilterProxyModel* proxyModel = nullptr;
 
-    QWidget*        searchWidget = nullptr;
-    QHBoxLayout*    searchLayout = nullptr;
-    QLineEdit*      inputFilter  = nullptr;
-    ClickableLabel* hideButton   = nullptr;
+    QWidget*        searchWidget    = nullptr;
+    QHBoxLayout*    searchLayout    = nullptr;
+    QLineEdit*      inputFilter     = nullptr;
+    QCheckBox*      autoSearchCheck = nullptr;
+    QComboBox*      typeComboBox    = nullptr;
+    QComboBox*      storageComboBox = nullptr;
+    ClickableLabel* hideButton      = nullptr;
 
     void createUI();
 
@@ -266,6 +347,7 @@ public:
     void CredsSetTag(const QStringList &credsIds, const QString &tag) const;
 
     void UpdateColumnsSize() const;
+    void UpdateFilterComboBoxes() const;
     void Clear() const;
 
     void CredentialsAdd(QList<CredentialData> credsList);
@@ -273,6 +355,8 @@ public:
 public Q_SLOTS:
     void toggleSearchPanel() const;
     void onFilterUpdate() const;
+    void onTypeFilterUpdate(const QString &text) const;
+    void onStorageFilterUpdate(const QString &text) const;
     void handleCredentialsMenu( const QPoint &pos ) const;
     void onCreateCreds();
     void onEditCreds() const;

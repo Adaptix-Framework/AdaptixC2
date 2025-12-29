@@ -147,12 +147,13 @@ void Stack::setupTabBarButtons()
     d->buttonsLayout = new QHBoxLayout(d->buttonsWidget);
     d->buttonsLayout->setContentsMargins(0, 0, 4, 0);
     d->buttonsLayout->setSpacing(2);
+    d->buttonsLayout->setAlignment(Qt::AlignVCenter);
 
-    d->floatButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-    d->closeButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+    d->floatButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    d->closeButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    d->buttonsLayout->addWidget(d->floatButton);
-    d->buttonsLayout->addWidget(d->closeButton);
+    d->buttonsLayout->addWidget(d->floatButton, 0, Qt::AlignVCenter);
+    d->buttonsLayout->addWidget(d->closeButton, 0, Qt::AlignVCenter);
 
     setCornerWidget(d->buttonsWidget, Qt::TopRightCorner);
 
@@ -226,17 +227,8 @@ void Stack::updateMargins()
 
 void Stack::updateButtonsPosition()
 {
-    if (!d->buttonsWidget)
-        return;
-
-    QTabBar *tb = tabBar();
-    if (!tb)
-        return;
-
-    int tabBarHeight = tb->height();
-    if (tabBarHeight > 0) {
-        d->buttonsWidget->setFixedHeight(tabBarHeight);
-    }
+    // Buttons size is now fixed via sizeHint() and SizePolicy::Fixed
+    // No need to adjust height dynamically
 }
 
 void Stack::resizeEvent(QResizeEvent *event)

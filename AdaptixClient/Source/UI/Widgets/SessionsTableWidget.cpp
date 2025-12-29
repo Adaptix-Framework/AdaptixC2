@@ -32,20 +32,23 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions
         tableView->setFocus();
     });
 
+    connect(inputFilter,    &QLineEdit::textChanged,        this, &SessionsTableWidget::onFilterChanged);
+    connect(inputFilter,    &QLineEdit::returnPressed,      this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
+    connect(comboAgentType, &QComboBox::currentTextChanged, this, &SessionsTableWidget::onFilterChanged);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    connect( checkOnlyActive, &QCheckBox::checkStateChanged, this, &SessionsTableWidget::onFilterChanged);
+    connect(checkOnlyActive, &QCheckBox::checkStateChanged, this, &SessionsTableWidget::onFilterChanged);
 #else
-    connect( checkOnlyActive, &QCheckBox::stateChanged, this, &SessionsTableWidget::onFilterChanged);
+    connect(checkOnlyActive, &QCheckBox::stateChanged, this, &SessionsTableWidget::onFilterChanged);
 #endif
+    connect(hideButton, &ClickableLabel::clicked, this, &SessionsTableWidget::toggleSearchPanel);
 
-    connect( inputFilter1, &QLineEdit::textChanged,  this, &SessionsTableWidget::onFilterChanged);
-    connect( inputFilter2, &QLineEdit::textChanged,  this, &SessionsTableWidget::onFilterChanged);
-    connect( inputFilter3, &QLineEdit::textChanged,  this, &SessionsTableWidget::onFilterChanged);
-    connect( hideButton,   &ClickableLabel::clicked, this, &SessionsTableWidget::toggleSearchPanel);
-
-    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
-    shortcutSearch->setContext(Qt::WidgetShortcut);
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
+    shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &SessionsTableWidget::toggleSearchPanel);
+
+    auto shortcutEsc = new QShortcut(QKeySequence(Qt::Key_Escape), inputFilter);
+    shortcutEsc->setContext(Qt::WidgetShortcut);
+    connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 
     this->dockWidget->setWidget(this);
 
@@ -66,39 +69,41 @@ void SessionsTableWidget::SetUpdatesEnabled(const bool enabled)
 
 void SessionsTableWidget::createUI()
 {
-    auto horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    auto horizontalSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    auto horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     searchWidget = new QWidget(this);
     searchWidget->setVisible(false);
 
-    checkOnlyActive = new QCheckBox("Only active");
+    inputFilter = new QLineEdit(searchWidget);
+    inputFilter->setPlaceholderText("filter: (admin | root) & ^(test)");
+    inputFilter->setMaximumWidth(300);
 
-    inputFilter1 = new QLineEdit(searchWidget);
-    inputFilter1->setPlaceholderText("filter1");
-    inputFilter1->setMaximumWidth(200);
+    autoSearchCheck = new QCheckBox("auto", searchWidget);
+    autoSearchCheck->setChecked(true);
+    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
 
-    inputFilter2 = new QLineEdit(searchWidget);
-    inputFilter2->setPlaceholderText("or filter2");
-    inputFilter2->setMaximumWidth(200);
+    comboAgentType = new QComboBox(searchWidget);
+    comboAgentType->setMinimumWidth(150);
+    comboAgentType->addItem("All types");
 
-    inputFilter3 = new QLineEdit(searchWidget);
-    inputFilter3->setPlaceholderText("or filter3");
-    inputFilter3->setMaximumWidth(200);
+    checkOnlyActive = new QCheckBox("only active", searchWidget);
 
-    hideButton = new ClickableLabel("X");
-    hideButton->setCursor( Qt::PointingHandCursor );
+    hideButton = new ClickableLabel("  x  ");
+    hideButton->setCursor(Qt::PointingHandCursor);
+    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 4, 0, 0);
     searchLayout->setSpacing(4);
-    searchLayout->addSpacerItem(horizontalSpacer1);
+    searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(autoSearchCheck);
+    searchLayout->addSpacing(8);
+    searchLayout->addWidget(comboAgentType);
+    searchLayout->addSpacing(8);
     searchLayout->addWidget(checkOnlyActive);
-    searchLayout->addWidget(inputFilter1);
-    searchLayout->addWidget(inputFilter2);
-    searchLayout->addWidget(inputFilter3);
+    searchLayout->addSpacing(8);
     searchLayout->addWidget(hideButton);
-    searchLayout->addSpacerItem(horizontalSpacer2);
+    searchLayout->addSpacerItem(horizontalSpacer);
 
     agentsModel = new AgentsTableModel(adaptixWidget, this);
     proxyModel  = new AgentsFilterProxyModel(adaptixWidget, this);
@@ -222,6 +227,29 @@ void SessionsTableWidget::UpdateData() const
     f->updateVisible();
 }
 
+void SessionsTableWidget::UpdateAgentTypeComboBox() const
+{
+    QSet<QString> types;
+    for (const auto& agent : adaptixWidget->AgentsMap) {
+        if (agent && !agent->data.Name.isEmpty())
+            types.insert(agent->data.Name);
+    }
+
+    QString currentType = comboAgentType->currentText();
+
+    comboAgentType->blockSignals(true);
+    comboAgentType->clear();
+    comboAgentType->addItem("All types");
+    QStringList typeList = types.values();
+    typeList.sort();
+    comboAgentType->addItems(typeList);
+
+    int idx = comboAgentType->findText(currentType);
+    if (idx >= 0)
+        comboAgentType->setCurrentIndex(idx);
+    comboAgentType->blockSignals(false);
+}
+
 void SessionsTableWidget::Clear() const
 {
     refreshTimer->stop();
@@ -240,9 +268,9 @@ void SessionsTableWidget::Clear() const
     agentsModel->clear();
 
     checkOnlyActive->setChecked(false);
-    inputFilter1->clear();
-    inputFilter2->clear();
-    inputFilter3->clear();
+    inputFilter->clear();
+    comboAgentType->clear();
+    comboAgentType->addItem("All types");
 }
 
 
@@ -276,10 +304,17 @@ void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index) con
 
 void SessionsTableWidget::onFilterChanged() const
 {
-    proxyModel->setFilter1(inputFilter1->text());
-    proxyModel->setFilter2(inputFilter2->text());
-    proxyModel->setFilter3(inputFilter3->text());
+    if (autoSearchCheck->isChecked()) {
+        proxyModel->setTextFilter(inputFilter->text());
+    }
     proxyModel->setOnlyActive(checkOnlyActive->isChecked());
+
+    QSet<QString> selectedTypes;
+    QString currentType = comboAgentType->currentText();
+    if (currentType != "All types" && !currentType.isEmpty()) {
+        selectedTypes.insert(currentType);
+    }
+    proxyModel->setAgentTypes(selectedTypes);
 }
 
 /// Menu

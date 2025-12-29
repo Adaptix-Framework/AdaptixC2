@@ -30,7 +30,65 @@ class DownloadsFilterProxyModel : public QSortFilterProxyModel
 {
 Q_OBJECT
     QString filter;
+    int     stateFilter = -1;
     bool    searchVisible = false;
+
+    bool matchesTerm(const QString &term, const QString &rowData) const {
+        if (term.isEmpty())
+            return true;
+        QRegularExpression re(QRegularExpression::escape(term.trimmed()), QRegularExpression::CaseInsensitiveOption);
+        return rowData.contains(re);
+    }
+
+    bool evaluateExpression(const QString &expr, const QString &rowData) const {
+        QString e = expr.trimmed();
+        if (e.isEmpty())
+            return true;
+
+        int depth = 0;
+        int lastOr = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '|') {
+                lastOr = i;
+                break;
+            }
+        }
+        if (lastOr != -1) {
+            QString left = e.left(lastOr).trimmed();
+            QString right = e.mid(lastOr + 1).trimmed();
+            return evaluateExpression(left, rowData) || evaluateExpression(right, rowData);
+        }
+
+        depth = 0;
+        int lastAnd = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '&') {
+                lastAnd = i;
+                break;
+            }
+        }
+        if (lastAnd != -1) {
+            QString left = e.left(lastAnd).trimmed();
+            QString right = e.mid(lastAnd + 1).trimmed();
+            return evaluateExpression(left, rowData) && evaluateExpression(right, rowData);
+        }
+
+        if (e.startsWith("^(") && e.endsWith(')')) {
+            return !evaluateExpression(e.mid(2, e.length() - 3), rowData);
+        }
+
+        if (e.startsWith('(') && e.endsWith(')')) {
+            return evaluateExpression(e.mid(1, e.length() - 2), rowData);
+        }
+
+        return matchesTerm(e, rowData);
+    }
 
 public:
     explicit DownloadsFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
@@ -50,19 +108,40 @@ public:
         invalidateFilter();
     }
 
+    void setStateFilter(int state) {
+        if (stateFilter == state) return;
+        stateFilter = state;
+        invalidateFilter();
+    }
+
 protected:
     bool filterAcceptsRow(int row, const QModelIndex &parent) const override {
         auto model = sourceModel();
         if (!model)
             return true;
 
-        if (!searchVisible || filter.isEmpty())
+        if (!searchVisible)
             return true;
 
-        QRegularExpression re(QRegularExpression::escape(filter), QRegularExpression::CaseInsensitiveOption);
+        if (stateFilter > 0) {
+            int state = model->index(row, DC_Progress, parent).data(Qt::UserRole).toInt();
+            if (state != stateFilter)
+                return false;
+        }
 
-        QString filename = model->index(row, DC_File, parent).data().toString();
-        return filename.contains(re);
+        if (!filter.isEmpty()) {
+            QString rowData;
+            rowData += model->index(row, DC_AgentName, parent).data().toString() + " ";
+            rowData += model->index(row, DC_AgentId, parent).data().toString() + " ";
+            rowData += model->index(row, DC_User, parent).data().toString() + " ";
+            rowData += model->index(row, DC_Computer, parent).data().toString() + " ";
+            rowData += model->index(row, DC_File, parent).data().toString() + " ";
+            rowData += model->index(row, DC_Date, parent).data().toString() + " ";
+            if (!evaluateExpression(filter, rowData))
+                return false;
+        }
+
+        return true;
     }
 };
 
@@ -264,10 +343,12 @@ Q_OBJECT
     DownloadsTableModel*       downloadsModel = nullptr;
     DownloadsFilterProxyModel* proxyModel     = nullptr;
 
-    QWidget*        searchWidget = nullptr;
-    QHBoxLayout*    searchLayout = nullptr;
-    QLineEdit*      inputFilter  = nullptr;
-    ClickableLabel* hideButton   = nullptr;
+    QWidget*        searchWidget    = nullptr;
+    QHBoxLayout*    searchLayout    = nullptr;
+    QLineEdit*      inputFilter     = nullptr;
+    QCheckBox*      autoSearchCheck = nullptr;
+    QComboBox*      stateComboBox   = nullptr;
+    ClickableLabel* hideButton      = nullptr;
 
     void createUI();
 
@@ -288,6 +369,7 @@ public:
 public Q_SLOTS:
     void toggleSearchPanel() const;
     void onFilterUpdate() const;
+    void onStateFilterUpdate() const;
     void handleDownloadsMenu(const QPoint &pos);
     void actionSync();
     void actionSyncCurl();

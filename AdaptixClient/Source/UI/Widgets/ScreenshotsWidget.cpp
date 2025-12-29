@@ -103,20 +103,25 @@ ScreenshotsWidget::ScreenshotsWidget(AdaptixWidget* w) : DockTab("Screenshots", 
         tableView->setFocus();
     });
     connect(tableView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &ScreenshotsWidget::onTableItemSelection);
-    connect(hideButton,  &ClickableLabel::clicked, this, &ScreenshotsWidget::toggleSearchPanel);
-    connect(inputFilter, &QLineEdit::textChanged,  this, &ScreenshotsWidget::onFilterUpdate);
+    connect(hideButton,  &ClickableLabel::clicked,  this, &ScreenshotsWidget::toggleSearchPanel);
+    connect(inputFilter, &QLineEdit::textChanged,   this, &ScreenshotsWidget::onFilterUpdate);
+    connect(inputFilter, &QLineEdit::returnPressed, this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
     connect(splitter,    &QSplitter::splitterMoved, imageFrame, &ImageFrame::resizeImage);
 
-    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
-    shortcutSearch->setContext(Qt::WidgetShortcut);
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
+    shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &ScreenshotsWidget::toggleSearchPanel);
+
+    auto shortcutEsc = new QShortcut(QKeySequence(Qt::Key_Escape), inputFilter);
+    shortcutEsc->setContext(Qt::WidgetShortcut);
+    connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 
     this->dockWidget->setWidget(this);
 }
 
 ScreenshotsWidget::~ScreenshotsWidget() = default;
 
-void ScreenshotsWidget::SetUpdatesEnabled(bool enabled)
+void ScreenshotsWidget::SetUpdatesEnabled(const bool enabled)
 {
     tableView->setUpdatesEnabled(enabled);
 }
@@ -130,16 +135,23 @@ void ScreenshotsWidget::createUI()
     searchWidget->setMaximumHeight(30);
 
     inputFilter = new QLineEdit(searchWidget);
-    inputFilter->setPlaceholderText("filter by note");
+    inputFilter->setPlaceholderText("filter: (admin | root) & ^(test)");
     inputFilter->setMaximumWidth(300);
 
-    hideButton = new ClickableLabel("X");
+    autoSearchCheck = new QCheckBox("auto", searchWidget);
+    autoSearchCheck->setChecked(true);
+    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
+
+    hideButton = new ClickableLabel("  x  ");
     hideButton->setCursor(Qt::PointingHandCursor);
+    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 5, 0, 0);
     searchLayout->setSpacing(4);
     searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(autoSearchCheck);
+    searchLayout->addSpacing(8);
     searchLayout->addWidget(hideButton);
     searchLayout->addSpacerItem(horizontalSpacer);
 
@@ -273,7 +285,9 @@ void ScreenshotsWidget::toggleSearchPanel() const
 
 void ScreenshotsWidget::onFilterUpdate() const
 {
-    proxyModel->setTextFilter(inputFilter->text());
+    if (autoSearchCheck->isChecked()) {
+        proxyModel->setTextFilter(inputFilter->text());
+    }
     inputFilter->setFocus();
 }
 

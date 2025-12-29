@@ -1,7 +1,7 @@
 #include <UI/Graph/LayoutTreeTop.h>
 
-double LayoutTreeTop::X_SEP = 200;
-double LayoutTreeTop::Y_SEP = 450;
+double LayoutTreeTop::X_SEP = 230;
+double LayoutTreeTop::Y_SEP = 330;
 
 void LayoutTreeTop::draw( GraphItem* item )
 {

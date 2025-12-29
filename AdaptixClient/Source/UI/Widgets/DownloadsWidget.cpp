@@ -29,12 +29,18 @@ DownloadsWidget::DownloadsWidget(AdaptixWidget* w) : DockTab("Downloads", w->Get
         Q_UNUSED(deselected)
         tableView->setFocus();
     });
-    connect(hideButton,  &ClickableLabel::clicked, this, &DownloadsWidget::toggleSearchPanel);
-    connect(inputFilter, &QLineEdit::textChanged,  this, &DownloadsWidget::onFilterUpdate);
+    connect(hideButton,     &ClickableLabel::clicked,        this, &DownloadsWidget::toggleSearchPanel);
+    connect(inputFilter,     &QLineEdit::textChanged,        this, &DownloadsWidget::onFilterUpdate);
+    connect(inputFilter,     &QLineEdit::returnPressed,      this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
+    connect(stateComboBox,   &QComboBox::currentTextChanged, this, &DownloadsWidget::onStateFilterUpdate);
 
-    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
-    shortcutSearch->setContext(Qt::WidgetShortcut);
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
+    shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &DownloadsWidget::toggleSearchPanel);
+
+    auto shortcutEsc = new QShortcut(QKeySequence(Qt::Key_Escape), inputFilter);
+    shortcutEsc->setContext(Qt::WidgetShortcut);
+    connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 
     this->dockWidget->setWidget(this);
 }
@@ -47,16 +53,29 @@ void DownloadsWidget::createUI()
     searchWidget->setVisible(false);
 
     inputFilter = new QLineEdit(searchWidget);
-    inputFilter->setPlaceholderText("filter by filename");
+    inputFilter->setPlaceholderText("filter: (exe | dll) & ^(temp)");
     inputFilter->setMaximumWidth(300);
 
-    hideButton = new ClickableLabel("X");
+    autoSearchCheck = new QCheckBox("auto", searchWidget);
+    autoSearchCheck->setChecked(true);
+    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
+
+    stateComboBox = new QComboBox(searchWidget);
+    stateComboBox->setMinimumWidth(100);
+    stateComboBox->addItems(QStringList() << "Any state" << "Running" << "Stopped" << "Finished");
+
+    hideButton = new ClickableLabel("  x  ");
     hideButton->setCursor(Qt::PointingHandCursor);
+    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 5, 0, 0);
     searchLayout->setSpacing(4);
     searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(autoSearchCheck);
+    searchLayout->addSpacing(8);
+    searchLayout->addWidget(stateComboBox);
+    searchLayout->addSpacing(8);
     searchLayout->addWidget(hideButton);
     searchLayout->addSpacerItem(horizontalSpacer);
 
@@ -125,7 +144,9 @@ void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int 
 
     if (state == DOWNLOAD_STATE_CANCELED) {
         adaptixWidget->Downloads.remove(fileId);
-        downloadsModel->remove(fileId);
+        QStringList fileIds;
+        fileIds.append(fileId);
+        downloadsModel->remove(fileIds);
     } else {
         downloadsModel->update(fileId, recvSize, state);
     }
@@ -178,8 +199,23 @@ void DownloadsWidget::toggleSearchPanel() const
 
 void DownloadsWidget::onFilterUpdate() const
 {
-    proxyModel->setTextFilter(inputFilter->text());
+    if (autoSearchCheck->isChecked()) {
+        proxyModel->setTextFilter(inputFilter->text());
+    }
     inputFilter->setFocus();
+    tableView->horizontalHeader()->resizeSections(QHeaderView::ResizeToContents);
+    tableView->horizontalHeader()->setSectionResizeMode(DC_File, QHeaderView::Stretch);
+}
+
+void DownloadsWidget::onStateFilterUpdate() const
+{
+    int idx = stateComboBox->currentIndex();
+    if (idx == 0)
+        proxyModel->setStateFilter(-1);
+    else
+        proxyModel->setStateFilter(idx);
+    tableView->horizontalHeader()->resizeSections(QHeaderView::ResizeToContents);
+    tableView->horizontalHeader()->setSectionResizeMode(DC_File, QHeaderView::Stretch);
 }
 
 void DownloadsWidget::handleDownloadsMenu(const QPoint &pos)

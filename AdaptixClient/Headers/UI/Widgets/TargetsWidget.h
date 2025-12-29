@@ -28,6 +28,63 @@ class TargetsFilterProxyModel : public QSortFilterProxyModel
     QString filter;
     bool    searchVisible = false;
 
+    bool matchesTerm(const QString &term, const QString &rowData) const {
+        if (term.isEmpty())
+            return true;
+        QRegularExpression re(QRegularExpression::escape(term.trimmed()), QRegularExpression::CaseInsensitiveOption);
+        return rowData.contains(re);
+    }
+
+    bool evaluateExpression(const QString &expr, const QString &rowData) const {
+        QString e = expr.trimmed();
+        if (e.isEmpty())
+            return true;
+
+        int depth = 0;
+        int lastOr = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '|') {
+                lastOr = i;
+                break;
+            }
+        }
+        if (lastOr != -1) {
+            QString left = e.left(lastOr).trimmed();
+            QString right = e.mid(lastOr + 1).trimmed();
+            return evaluateExpression(left, rowData) || evaluateExpression(right, rowData);
+        }
+
+        depth = 0;
+        int lastAnd = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '&') {
+                lastAnd = i;
+                break;
+            }
+        }
+        if (lastAnd != -1) {
+            QString left = e.left(lastAnd).trimmed();
+            QString right = e.mid(lastAnd + 1).trimmed();
+            return evaluateExpression(left, rowData) && evaluateExpression(right, rowData);
+        }
+
+        if (e.startsWith("^(") && e.endsWith(')')) {
+            return !evaluateExpression(e.mid(2, e.length() - 3), rowData);
+        }
+
+        if (e.startsWith('(') && e.endsWith(')')) {
+            return evaluateExpression(e.mid(1, e.length() - 2), rowData);
+        }
+
+        return matchesTerm(e, rowData);
+    }
+
 public:
     explicit TargetsFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
         setDynamicSortFilter(true);
@@ -56,17 +113,14 @@ protected:
             return true;
 
         if (!filter.isEmpty()) {
-            const int colCount = model->columnCount();
-            QRegularExpression re(QRegularExpression::escape(filter), QRegularExpression::CaseInsensitiveOption);
-            bool matched = false;
-            for (int col = 0; col < colCount; ++col) {
-                QString val = model->index(row, col, parent).data().toString();
-                if (val.contains(re)) {
-                    matched = true;
-                    break;
-                }
-            }
-            if (!matched)
+            QString rowData;
+            rowData += model->index(row, TRC_Computer, parent).data().toString() + " ";
+            rowData += model->index(row, TRC_Domain, parent).data().toString() + " ";
+            rowData += model->index(row, TRC_Address, parent).data().toString() + " ";
+            rowData += model->index(row, TRC_Tag, parent).data().toString() + " ";
+            rowData += model->index(row, TRC_Os, parent).data().toString() + " ";
+            rowData += model->index(row, TRC_Info, parent).data().toString() + " ";
+            if (!evaluateExpression(filter, rowData))
                 return false;
         }
 
@@ -245,10 +299,11 @@ class TargetsWidget : public DockTab
     TargetsTableModel*       targetsModel = nullptr;
     TargetsFilterProxyModel* proxyModel   = nullptr;
 
-    QWidget*        searchWidget = nullptr;
-    QHBoxLayout*    searchLayout = nullptr;
-    QLineEdit*      inputFilter  = nullptr;
-    ClickableLabel* hideButton   = nullptr;
+    QWidget*        searchWidget    = nullptr;
+    QHBoxLayout*    searchLayout    = nullptr;
+    QLineEdit*      inputFilter     = nullptr;
+    QCheckBox*      autoSearchCheck = nullptr;
+    ClickableLabel* hideButton      = nullptr;
 
     void createUI();
 

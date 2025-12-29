@@ -11,153 +11,117 @@ REGISTER_DOCK_WIDGET(TunnelsWidget, "Tunnels", true)
 
 TunnelsWidget::TunnelsWidget(AdaptixWidget* w) : DockTab("Tunnels", w->GetProfile()->GetProject(), ":/icons/vpn")
 {
-     this->adaptixWidget = w;
+    this->adaptixWidget = w;
 
-     this->createUI();
+    this->createUI();
 
-     connect( tableWidget, &QTableWidget::customContextMenuRequested, this, &TunnelsWidget::handleTunnelsMenu );
+    connect(tableView, &QTableView::customContextMenuRequested, this, &TunnelsWidget::handleTunnelsMenu);
+    connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
+            Q_UNUSED(selected)
+            Q_UNUSED(deselected)
+            tableView->setFocus();
+    });
+    connect(inputFilter, &QLineEdit::textChanged,   this, &TunnelsWidget::onFilterUpdate);
+    connect(inputFilter, &QLineEdit::returnPressed, this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
+    connect(hideButton,  &ClickableLabel::clicked,  this, &TunnelsWidget::toggleSearchPanel);
 
-     this->dockWidget->setWidget(this);
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
+    shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(shortcutSearch, &QShortcut::activated, this, &TunnelsWidget::toggleSearchPanel);
+
+    auto shortcutEsc = new QShortcut(QKeySequence(Qt::Key_Escape), inputFilter);
+    shortcutEsc->setContext(Qt::WidgetShortcut);
+    connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
+
+    this->dockWidget->setWidget(this);
 }
 
 TunnelsWidget::~TunnelsWidget() = default;
 
 void TunnelsWidget::SetUpdatesEnabled(const bool enabled)
 {
-     tableWidget->setUpdatesEnabled(enabled);
+    tableView->setUpdatesEnabled(enabled);
 }
 
 void TunnelsWidget::createUI()
 {
-     tableWidget = new QTableWidget( this );
-     tableWidget->setColumnCount( 12 );
-     tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
-     tableWidget->setAutoFillBackground( false );
-     tableWidget->setShowGrid( false );
-     tableWidget->setSortingEnabled( true );
-     tableWidget->setWordWrap( true );
-     tableWidget->setCornerButtonEnabled( false );
-     tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
-     tableWidget->setSelectionMode( QAbstractItemView::SingleSelection );
-     tableWidget->setFocusPolicy( Qt::NoFocus );
-     tableWidget->setAlternatingRowColors( true );
-     tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
-     tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
-     tableWidget->horizontalHeader()->setHighlightSections( false );
-     tableWidget->verticalHeader()->setVisible( false );
+    auto horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-     tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem("Tunnel ID"));
-     tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem("Agent ID"));
-     tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem("Computer"));
-     tableWidget->setHorizontalHeaderItem( 3, new QTableWidgetItem("User"));
-     tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem("Process"));
-     tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem("Type"));
-     tableWidget->setHorizontalHeaderItem( 6, new QTableWidgetItem("Info"));
-     tableWidget->setHorizontalHeaderItem( 7, new QTableWidgetItem("Interface"));
-     tableWidget->setHorizontalHeaderItem( 8, new QTableWidgetItem("Listen port"));
-     tableWidget->setHorizontalHeaderItem( 9, new QTableWidgetItem("Client"));
-     tableWidget->setHorizontalHeaderItem( 10, new QTableWidgetItem("Target host"));
-     tableWidget->setHorizontalHeaderItem( 11, new QTableWidgetItem("Target port"));
-     tableWidget->hideColumn( 0 );
+    searchWidget = new QWidget(this);
+    searchWidget->setVisible(false);
 
-     mainGridLayout = new QGridLayout( this );
-     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
-     mainGridLayout->addWidget( tableWidget, 0, 0, 1, 1);
+    inputFilter = new QLineEdit(searchWidget);
+    inputFilter->setPlaceholderText("filter: (socks | forward) & ^(test)");
+    inputFilter->setMaximumWidth(300);
+
+    autoSearchCheck = new QCheckBox("auto", searchWidget);
+    autoSearchCheck->setChecked(true);
+    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
+
+    hideButton = new ClickableLabel("  x  ");
+    hideButton->setCursor(Qt::PointingHandCursor);
+    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
+
+    searchLayout = new QHBoxLayout(searchWidget);
+    searchLayout->setContentsMargins(0, 4, 0, 0);
+    searchLayout->setSpacing(4);
+    searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(autoSearchCheck);
+    searchLayout->addSpacing(8);
+    searchLayout->addWidget(hideButton);
+    searchLayout->addSpacerItem(horizontalSpacer);
+
+    tunnelsModel = new TunnelsTableModel(this);
+    proxyModel = new TunnelsFilterProxyModel(this);
+    proxyModel->setSourceModel(tunnelsModel);
+    proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+
+    tableView = new QTableView(this);
+    tableView->setModel(proxyModel);
+    tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+    tableView->setAutoFillBackground(false);
+    tableView->setShowGrid(false);
+    tableView->setSortingEnabled(true);
+    tableView->setWordWrap(true);
+    tableView->setCornerButtonEnabled(false);
+    tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableView->setSelectionMode(QAbstractItemView::SingleSelection);
+    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->setAlternatingRowColors(true);
+    tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tableView->horizontalHeader()->setCascadingSectionResizes(true);
+    tableView->horizontalHeader()->setHighlightSections(false);
+    tableView->verticalHeader()->setVisible(false);
+
+    tableView->hideColumn(TUC_TunnelId);
+
+    mainGridLayout = new QGridLayout(this);
+    mainGridLayout->setContentsMargins(0, 0, 0, 0);
+    mainGridLayout->addWidget(searchWidget, 0, 0, 1, 1);
+    mainGridLayout->addWidget(tableView,    1, 0, 1, 1);
 }
 
 void TunnelsWidget::Clear() const
 {
-     adaptixWidget->Tunnels.clear();
-     for (int index = tableWidget->rowCount(); index > 0; index-- )
-         tableWidget->removeRow(index -1 );
+    adaptixWidget->Tunnels.clear();
+    tunnelsModel->clear();
+    inputFilter->clear();
 }
 
 void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
 {
-     for( auto tunnel : adaptixWidget->Tunnels ) {
-          if( tunnel.TunnelId == newTunnel.TunnelId )
-               return;
-     }
+    if (tunnelsModel->contains(newTunnel.TunnelId))
+        return;
 
-     auto item_TunnelId  = new QTableWidgetItem( newTunnel.TunnelId );
-     auto item_AgentId   = new QTableWidgetItem( newTunnel.AgentId );
-     auto item_Computer  = new QTableWidgetItem( newTunnel.Computer );
-     auto item_User      = new QTableWidgetItem( newTunnel.Username );
-     auto item_Process   = new QTableWidgetItem( newTunnel.Process );
-     auto item_Type      = new QTableWidgetItem( newTunnel.Type );
-     auto item_Info      = new QTableWidgetItem( newTunnel.Info );
-     auto item_Interface = new QTableWidgetItem( newTunnel.Interface );
-     auto item_Port      = new QTableWidgetItem( newTunnel.Port );
-     auto item_Client    = new QTableWidgetItem( newTunnel.Client );
-     auto item_Fhost     = new QTableWidgetItem( newTunnel.Fhost );
-     auto item_Fport     = new QTableWidgetItem( newTunnel.Fport );
-
-     item_TunnelId->setFlags( item_TunnelId->flags() ^ Qt::ItemIsEditable );
-     item_TunnelId->setTextAlignment( Qt::AlignCenter );
-
-     item_AgentId->setFlags( item_AgentId->flags() ^ Qt::ItemIsEditable );
-     item_AgentId->setTextAlignment( Qt::AlignCenter );
-
-     item_Computer->setFlags( item_Computer->flags() ^ Qt::ItemIsEditable );
-     item_Computer->setTextAlignment( Qt::AlignCenter );
-
-     item_User->setFlags( item_User->flags() ^ Qt::ItemIsEditable );
-     item_User->setTextAlignment( Qt::AlignCenter );
-
-     item_Process->setFlags( item_Process->flags() ^ Qt::ItemIsEditable );
-     item_Process->setTextAlignment( Qt::AlignCenter );
-
-     item_Type->setFlags( item_Type->flags() ^ Qt::ItemIsEditable );
-     item_Type->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
-
-     item_Info->setFlags( item_Info->flags() ^ Qt::ItemIsEditable );
-     item_Info->setTextAlignment( Qt::AlignLeft | Qt::AlignVCenter );
-
-     item_Interface->setFlags( item_Interface->flags() ^ Qt::ItemIsEditable );
-     item_Interface->setTextAlignment( Qt::AlignCenter );
-
-     item_Port->setFlags( item_Port->flags() ^ Qt::ItemIsEditable );
-     item_Port->setTextAlignment( Qt::AlignCenter );
-
-     item_Client->setFlags( item_Client->flags() ^ Qt::ItemIsEditable );
-     item_Client->setTextAlignment( Qt::AlignCenter );
-
-     item_Fhost->setFlags( item_Fhost->flags() ^ Qt::ItemIsEditable );
-     item_Fhost->setTextAlignment( Qt::AlignCenter );
-
-     item_Fport->setFlags( item_Fport->flags() ^ Qt::ItemIsEditable );
-     item_Fport->setTextAlignment( Qt::AlignCenter );
-
-     if( tableWidget->rowCount() < 1 )
-          tableWidget->setRowCount( 1 );
-     else
-          tableWidget->setRowCount( tableWidget->rowCount() + 1 );
-
-     bool isSortingEnabled = tableWidget->isSortingEnabled();
-     tableWidget->setSortingEnabled( false );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 0, item_TunnelId );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 1, item_AgentId );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 2, item_Computer );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 3, item_User );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 4, item_Process );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 5, item_Type );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 6, item_Info );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 7, item_Interface );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 8, item_Port );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 9, item_Client );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 10, item_Fhost );
-     tableWidget->setItem( tableWidget->rowCount() - 1, 11, item_Fport );
-
-     tableWidget->setSortingEnabled( isSortingEnabled );
-
-    tableWidget->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 7, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 8, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 10, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 11, QHeaderView::ResizeToContents );
-
+    tunnelsModel->add(newTunnel);
     adaptixWidget->Tunnels.push_back(newTunnel);
+
+    tableView->horizontalHeader()->setSectionResizeMode(TUC_TunnelId,  QHeaderView::ResizeToContents);
+    tableView->horizontalHeader()->setSectionResizeMode(TUC_AgentId,   QHeaderView::ResizeToContents);
+    tableView->horizontalHeader()->setSectionResizeMode(TUC_Interface, QHeaderView::ResizeToContents);
+    tableView->horizontalHeader()->setSectionResizeMode(TUC_Port,      QHeaderView::ResizeToContents);
+    tableView->horizontalHeader()->setSectionResizeMode(TUC_Fhost,     QHeaderView::ResizeToContents);
+    tableView->horizontalHeader()->setSectionResizeMode(TUC_Fport,     QHeaderView::ResizeToContents);
 
     if (adaptixWidget->AgentsMap.contains(newTunnel.AgentId)) {
         Agent* agent = adaptixWidget->AgentsMap[newTunnel.AgentId];
@@ -170,105 +134,120 @@ void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
 
 void TunnelsWidget::EditTunnelItem(const QString &tunnelId, const QString &info) const
 {
-     for ( int i = 0; i < adaptixWidget->Tunnels.size(); i++ ) {
-          if( adaptixWidget->Tunnels[i].TunnelId == tunnelId ) {
-               adaptixWidget->Tunnels[i].Info = info;
-               break;
-          }
-     }
+    for (int i = 0; i < adaptixWidget->Tunnels.size(); i++) {
+        if (adaptixWidget->Tunnels[i].TunnelId == tunnelId) {
+            adaptixWidget->Tunnels[i].Info = info;
+            break;
+        }
+    }
 
-     for ( int row = 0; row < tableWidget->rowCount(); ++row ) {
-          QTableWidgetItem *item = tableWidget->item(row, 0);
-          if ( item && item->text() == tunnelId ) {
-               tableWidget->item(row, 6)->setText(info);
-               break;
-          }
-     }
+    tunnelsModel->updateInfo(tunnelId, info);
 }
 
 void TunnelsWidget::RemoveTunnelItem(const QString &tunnelId) const
 {
-     QString agentId;
-     TunnelMarkType markType = TunnelMarkNone;
-     for ( int i = 0; i < adaptixWidget->Tunnels.size(); i++ ) {
-          if( adaptixWidget->Tunnels[i].TunnelId == tunnelId ) {
-               agentId = adaptixWidget->Tunnels[i].AgentId;
-               markType = adaptixWidget->Tunnels[i].Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
-               adaptixWidget->Tunnels.erase( adaptixWidget->Tunnels.begin() + i );
-               break;
-          }
-     }
+    QString agentId;
+    TunnelMarkType markType = TunnelMarkNone;
+    for (int i = 0; i < adaptixWidget->Tunnels.size(); i++) {
+        if (adaptixWidget->Tunnels[i].TunnelId == tunnelId) {
+            agentId = adaptixWidget->Tunnels[i].AgentId;
+            markType = adaptixWidget->Tunnels[i].Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
+            adaptixWidget->Tunnels.erase(adaptixWidget->Tunnels.begin() + i);
+            break;
+        }
+    }
 
-     if (!agentId.isEmpty() && adaptixWidget->AgentsMap.contains(agentId)) {
-          Agent* agent = adaptixWidget->AgentsMap[agentId];
-          if (agent && agent->graphItem && markType != TunnelMarkNone) {
-               agent->graphItem->RemoveTunnel(markType);
-          }
-     }
+    if (!agentId.isEmpty() && adaptixWidget->AgentsMap.contains(agentId)) {
+        Agent* agent = adaptixWidget->AgentsMap[agentId];
+        if (agent && agent->graphItem && markType != TunnelMarkNone)
+            agent->graphItem->RemoveTunnel(markType);
+    }
 
-     for ( int row = 0; row < tableWidget->rowCount(); ++row ) {
-          QTableWidgetItem *item = tableWidget->item(row, 0);
-          if ( item && item->text() == tunnelId ) {
-               tableWidget->removeRow(row);
-               break;
-         }
-     }
+    tunnelsModel->remove(tunnelId);
 
-     if (adaptixWidget->ClientTunnels.contains(tunnelId)) {
-          auto tunnel = adaptixWidget->ClientTunnels[tunnelId];
-          adaptixWidget->ClientTunnels.remove(tunnelId);
-          tunnel->Stop();
-          delete tunnel;
-     }
+    if (adaptixWidget->ClientTunnels.contains(tunnelId)) {
+        auto tunnel = adaptixWidget->ClientTunnels[tunnelId];
+        adaptixWidget->ClientTunnels.remove(tunnelId);
+        tunnel->Stop();
+        delete tunnel;
+    }
 }
 
 /// Slots
 
-void TunnelsWidget::handleTunnelsMenu(const QPoint &pos ) const
+void TunnelsWidget::toggleSearchPanel() const
 {
-     QMenu tunnelsMenu = QMenu();
+    if (searchWidget->isVisible()) {
+        searchWidget->setVisible(false);
+    } else {
+        searchWidget->setVisible(true);
+        inputFilter->setFocus();
+    }
+}
 
-     tunnelsMenu.addAction("Set info", this, &TunnelsWidget::actionSetInfo);
-     tunnelsMenu.addAction("Stop",     this, &TunnelsWidget::actionStopTunnel);
+void TunnelsWidget::onFilterUpdate() const
+{
+    if (autoSearchCheck->isChecked()) {
+        proxyModel->setTextFilter(inputFilter->text());
+    }
+    inputFilter->setFocus();
+}
 
-     QPoint globalPos = tableWidget->mapToGlobal( pos );
-     tunnelsMenu.exec(globalPos);
+void TunnelsWidget::handleTunnelsMenu(const QPoint &pos) const
+{
+    QMenu tunnelsMenu = QMenu();
+
+    tunnelsMenu.addAction("Set info", this, &TunnelsWidget::actionSetInfo);
+    tunnelsMenu.addAction("Stop",     this, &TunnelsWidget::actionStopTunnel);
+
+    QPoint globalPos = tableView->mapToGlobal(pos);
+    tunnelsMenu.exec(globalPos);
 }
 
 void TunnelsWidget::actionSetInfo() const
 {
-     if (tableWidget->selectionModel()->selectedRows().empty())
-          return;
+    if (tableView->selectionModel()->selectedRows().empty())
+        return;
 
-     QString tunnelId = tableWidget->item( tableWidget->currentRow(), 0 )->text();
-     QString info     = tableWidget->item( tableWidget->currentRow(), 6 )->text();
+    QModelIndex currentIndex = tableView->currentIndex();
+    QModelIndex sourceIndex = proxyModel->mapToSource(currentIndex);
+    if (!sourceIndex.isValid())
+        return;
 
-     bool inputOk;
-     QString newInfo = QInputDialog::getText(nullptr, "Set info", "Info:", QLineEdit::Normal,info, &inputOk);
-     if ( inputOk ) {
-          HttpReqTunnelSetInfoAsync(tunnelId, newInfo, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-               if (!success)
-                    MessageError(message.isEmpty() ? "Response timeout" : message);
-          });
-     }
+    QString tunnelId = tunnelsModel->data(tunnelsModel->index(sourceIndex.row(), TUC_TunnelId), Qt::DisplayRole).toString();
+    QString info     = tunnelsModel->data(tunnelsModel->index(sourceIndex.row(), TUC_Info),     Qt::DisplayRole).toString();
+
+    bool inputOk;
+    QString newInfo = QInputDialog::getText(nullptr, "Set info", "Info:", QLineEdit::Normal, info, &inputOk);
+    if (inputOk) {
+        HttpReqTunnelSetInfoAsync(tunnelId, newInfo, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
+    }
 }
 
 void TunnelsWidget::actionStopTunnel() const
 {
-     if (tableWidget->selectionModel()->selectedRows().empty())
-          return;
+    if (tableView->selectionModel()->selectedRows().empty())
+        return;
 
-     auto tunnelId = tableWidget->item( tableWidget->currentRow(), 0 )->text();
+    QModelIndex currentIndex = tableView->currentIndex();
+    QModelIndex sourceIndex = proxyModel->mapToSource(currentIndex);
+    if (!sourceIndex.isValid())
+        return;
 
-     if (adaptixWidget->ClientTunnels.contains(tunnelId)) {
-          auto tunnel = adaptixWidget->ClientTunnels[tunnelId];
-          adaptixWidget->ClientTunnels.remove(tunnelId);
-          tunnel->Stop();
-          delete tunnel;
-     }
+    QString tunnelId = tunnelsModel->data(tunnelsModel->index(sourceIndex.row(), TUC_TunnelId), Qt::DisplayRole).toString();
 
-     HttpReqTunnelStopAsync(tunnelId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-          if (!success)
-               MessageError(message.isEmpty() ? "Response timeout" : message);
-     });
+    if (adaptixWidget->ClientTunnels.contains(tunnelId)) {
+        auto tunnel = adaptixWidget->ClientTunnels[tunnelId];
+        adaptixWidget->ClientTunnels.remove(tunnelId);
+        tunnel->Stop();
+        delete tunnel;
+    }
+
+    HttpReqTunnelStopAsync(tunnelId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
