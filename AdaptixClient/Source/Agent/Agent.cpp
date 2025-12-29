@@ -15,34 +15,36 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 {
     this->adaptixWidget = w;
 
-    this->data.Id           = jsonObjAgentData["a_id"].toString();
-    this->data.Name         = jsonObjAgentData["a_name"].toString();
-    this->data.Listener     = jsonObjAgentData["a_listener"].toString();
-    this->data.Async        = jsonObjAgentData["a_async"].toBool();
-    this->data.ExternalIP   = jsonObjAgentData["a_external_ip"].toString();
-    this->data.InternalIP   = jsonObjAgentData["a_internal_ip"].toString();
-    this->data.GmtOffset    = jsonObjAgentData["a_gmt_offset"].toDouble();
-    this->data.WorkingTime  = jsonObjAgentData["a_workingtime"].toDouble();
-    this->data.KillDate     = jsonObjAgentData["a_killdate"].toDouble();
-    this->data.Sleep        = jsonObjAgentData["a_sleep"].toDouble();
-    this->data.Jitter       = jsonObjAgentData["a_jitter"].toDouble();
-    this->data.ACP          = jsonObjAgentData["a_acp"].toDouble();
-    this->data.OemCP        = jsonObjAgentData["a_oemcp"].toDouble();
-    this->data.Pid          = jsonObjAgentData["a_pid"].toString();
-    this->data.Tid          = jsonObjAgentData["a_tid"].toString();
-    this->data.Arch         = jsonObjAgentData["a_arch"].toString();
-    this->data.Elevated     = jsonObjAgentData["a_elevated"].toBool();
-    this->data.Process      = jsonObjAgentData["a_process"].toString();
-    this->data.Os           = jsonObjAgentData["a_os"].toDouble();
-    this->data.OsDesc       = jsonObjAgentData["a_os_desc"].toString();
-    this->data.Domain       = jsonObjAgentData["a_domain"].toString();
-    this->data.Computer     = jsonObjAgentData["a_computer"].toString();
-    this->data.Username     = jsonObjAgentData["a_username"].toString();
-    this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
-    this->data.LastTick     = jsonObjAgentData["a_last_tick"].toDouble();
-    this->data.Tags         = jsonObjAgentData["a_tags"].toString();
-    this->data.Color        = jsonObjAgentData["a_color"].toString();
-    this->data.Mark         = jsonObjAgentData["a_mark"].toString();
+    this->data.Id            = jsonObjAgentData["a_id"].toString();
+    this->data.Name          = jsonObjAgentData["a_name"].toString();
+    this->data.Listener      = jsonObjAgentData["a_listener"].toString();
+    this->data.Async         = jsonObjAgentData["a_async"].toBool();
+    this->data.ExternalIP    = jsonObjAgentData["a_external_ip"].toString();
+    this->data.InternalIP    = jsonObjAgentData["a_internal_ip"].toString();
+    this->data.GmtOffset     = jsonObjAgentData["a_gmt_offset"].toDouble();
+    this->data.WorkingTime   = jsonObjAgentData["a_workingtime"].toDouble();
+    this->data.KillDate      = jsonObjAgentData["a_killdate"].toDouble();
+    this->data.Sleep         = jsonObjAgentData["a_sleep"].toDouble();
+    this->data.Jitter        = jsonObjAgentData["a_jitter"].toDouble();
+    this->data.ACP           = jsonObjAgentData["a_acp"].toDouble();
+    this->data.OemCP         = jsonObjAgentData["a_oemcp"].toDouble();
+    this->data.Pid           = jsonObjAgentData["a_pid"].toString();
+    this->data.Tid           = jsonObjAgentData["a_tid"].toString();
+    this->data.Arch          = jsonObjAgentData["a_arch"].toString();
+    this->data.Elevated      = jsonObjAgentData["a_elevated"].toBool();
+    this->data.Process       = jsonObjAgentData["a_process"].toString();
+    this->data.Os            = jsonObjAgentData["a_os"].toDouble();
+    this->data.OsDesc        = jsonObjAgentData["a_os_desc"].toString();
+    this->data.Domain        = jsonObjAgentData["a_domain"].toString();
+    this->data.Computer      = jsonObjAgentData["a_computer"].toString();
+    this->data.Username      = jsonObjAgentData["a_username"].toString();
+    this->data.Impersonated  = jsonObjAgentData["a_impersonated"].toString();
+    this->data.LastTick      = jsonObjAgentData["a_last_tick"].toDouble();
+    this->data.DateTimestamp = static_cast<qint64>(jsonObjAgentData["a_create_time"].toDouble());
+    this->data.Date          = UnixTimestampGlobalToStringLocalSmall(data.DateTimestamp);
+    this->data.Tags          = jsonObjAgentData["a_tags"].toString();
+    this->data.Color         = jsonObjAgentData["a_color"].toString();
+    this->data.Mark          = jsonObjAgentData["a_mark"].toString();
 
     for ( auto listenerData : this->adaptixWidget->Listeners) {
         if ( listenerData.Name == this->data.Listener ) {

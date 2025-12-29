@@ -47,6 +47,8 @@ namespace {
         data.BindHost         = json["l_bind_host"].toString();
         data.BindPort         = json["l_bind_port"].toString();
         data.AgentAddresses   = json["l_agent_addr"].toString();
+        data.DateTimestamp    = static_cast<qint64>(json["l_create_time"].toDouble());
+        data.Date             = UnixTimestampGlobalToStringLocalSmall(data.DateTimestamp);
         data.Status           = json["l_status"].toString();
         data.Data             = json["l_data"].toString();
         return data;
@@ -183,6 +185,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
                checkField("l_bind_host", isStr) &&
                checkField("l_bind_port", isStr) &&
                checkField("l_agent_addr", isStr) &&
+               checkField("l_create_time", isNum) &&
                checkField("l_status", isStr) &&
                checkField("l_data", isStr);
 
@@ -220,6 +223,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
                checkField("a_tags", isStr) &&
                checkField("a_mark", isStr) &&
                checkField("a_color", isStr) &&
+               checkField("a_create_time", isNum) &&
                checkField("a_last_tick", isNum);
 
     case TYPE_AGENT_TICK:

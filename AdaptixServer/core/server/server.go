@@ -251,7 +251,7 @@ func (ts *Teamserver) RestoreData() {
 	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
-		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.Watermark, restoreListener.CustomData)
+		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.CreateTime, restoreListener.Watermark, restoreListener.CustomData)
 		if err != nil {
 			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {

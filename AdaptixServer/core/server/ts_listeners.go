@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Adaptix-Framework/axc2"
 )
@@ -26,7 +27,7 @@ func (ts *Teamserver) TsListenerList() (string, error) {
 	return string(jsonListeners), nil
 }
 
-func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName string, listenerConfig string, listenerWatermark string, listenerCustomData []byte) error {
+func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName string, listenerConfig string, createTime int64, listenerWatermark string, listenerCustomData []byte) error {
 	value, ok := ts.listener_configs.Get(listenerRegName)
 	if !ok {
 		return fmt.Errorf("listener %v does not register", listenerRegName)
@@ -51,6 +52,11 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 	}
 	if listenerData.Watermark == "" {
 		listenerData.Watermark = listenerWatermark
+	}
+	if createTime == 0 {
+		listenerData.CreateTime = time.Now().Unix()
+	} else {
+		listenerData.CreateTime = createTime
 	}
 
 	if !isvalid.ValidHex8(listenerData.Watermark) {

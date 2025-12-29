@@ -39,7 +39,7 @@ void Settings::SetDefault()
     this->data.ConsoleNoWrap = true;
     this->data.ConsoleAutoScroll = false;
 
-    for ( int i = 0; i < 15; i++)
+    for ( int i = 0; i < 16; i++)
         data.SessionsTableColumns[i] = true;
 
     this->data.CheckHealth = true;

@@ -321,7 +321,7 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
         settingsData->HealthOffset = json["healthOffset"].toInt();
 
         QJsonArray columns = json["columns"].toArray();
-        for (int i = 0; i < 15 && i < columns.size(); i++)
+        for (int i = 0; i < 16 && i < columns.size(); i++)
             settingsData->SessionsTableColumns[i] = columns[i].toBool();
     }
 }
@@ -329,7 +329,7 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
 void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
 {
     QJsonArray columns;
-    for (int i = 0 ; i < 15; i++)
+    for (int i = 0 ; i < 16; i++)
         columns.append(settingsData.SessionsTableColumns[i]);
 
     QJsonObject json;

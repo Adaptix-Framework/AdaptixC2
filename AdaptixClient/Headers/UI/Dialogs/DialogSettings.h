@@ -46,7 +46,8 @@ Q_OBJECT
     QGridLayout* sessionsLayout       = nullptr;
     QGroupBox*   sessionsGroup        = nullptr;
     QGridLayout* sessionsGroupLayout  = nullptr;
-    QCheckBox*   sessionsCheck[15];
+    int          sessionsCheckCount   = 16;
+    QCheckBox*   sessionsCheck[16];
     QCheckBox*   sessionsHealthCheck  = nullptr;
     QLabel*      sessionsLabel1       = nullptr;
     QLabel*      sessionsLabel2       = nullptr;

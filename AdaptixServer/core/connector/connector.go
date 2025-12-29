@@ -27,7 +27,7 @@ type Teamserver interface {
 	TsClientConnect(username string, version string, socket *websocket.Conn)
 
 	TsListenerList() (string, error)
-	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error
+	TsListenerStart(listenerName string, configType string, config string, createTime int64, watermark string, customData []byte) error
 	TsListenerEdit(listenerName string, configType string, config string) error
 	TsListenerStop(listenerName string, configType string) error
 	TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error)

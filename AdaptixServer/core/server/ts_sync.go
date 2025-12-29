@@ -148,13 +148,21 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncListeners() []interface{} {
-	var packets []interface{}
+	var sortedListeners []adaptix.ListenerData
 	ts.listeners.ForEach(func(key string, value interface{}) bool {
 		listenerData := value.(adaptix.ListenerData)
-		p := CreateSpListenerStart(listenerData)
-		packets = append(packets, p)
+		index := sort.Search(len(sortedListeners), func(i int) bool {
+			return sortedListeners[i].CreateTime > listenerData.CreateTime
+		})
+		sortedListeners = append(sortedListeners[:index], append([]adaptix.ListenerData{listenerData}, sortedListeners[index:]...)...)
 		return true
 	})
+
+	var packets []interface{}
+	for _, listenerData := range sortedListeners {
+		t := CreateSpListenerStart(listenerData)
+		packets = append(packets, t)
+	}
 	return packets
 }
 

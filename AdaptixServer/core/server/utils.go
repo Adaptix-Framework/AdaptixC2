@@ -231,6 +231,7 @@ type SyncPackerListenerStart struct {
 	BindHost         string `json:"l_bind_host"`
 	BindPort         string `json:"l_bind_port"`
 	AgentAddrs       string `json:"l_agent_addr"`
+	CreateTime       int64  `json:"l_create_time"`
 	ListenerStatus   string `json:"l_status"`
 	Data             string `json:"l_data"`
 }
@@ -278,6 +279,7 @@ type SyncPackerAgentNew struct {
 	Computer     string `json:"a_computer"`
 	Username     string `json:"a_username"`
 	Impersonated string `json:"a_impersonated"`
+	CreateTime   int64  `json:"a_create_time"`
 	LastTick     int    `json:"a_last_tick"`
 	Tags         string `json:"a_tags"`
 	Mark         string `json:"a_mark"`

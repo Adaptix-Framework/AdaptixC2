@@ -149,6 +149,7 @@ func CreateSpListenerStart(listenerData adaptix.ListenerData) SyncPackerListener
 		BindHost:         listenerData.BindHost,
 		BindPort:         listenerData.BindPort,
 		AgentAddrs:       listenerData.AgentAddr,
+		CreateTime:       listenerData.CreateTime,
 		ListenerStatus:   listenerData.Status,
 		Data:             listenerData.Data,
 	}
@@ -209,6 +210,7 @@ func CreateSpAgentNew(agentData adaptix.AgentData) SyncPackerAgentNew {
 		Username:     agentData.Username,
 		Impersonated: agentData.Impersonated,
 		LastTick:     agentData.LastTick,
+		CreateTime:   agentData.CreateTime,
 		Tags:         agentData.Tags,
 		Mark:         agentData.Mark,
 		Color:        agentData.Color,

@@ -34,14 +34,14 @@ func (dbms *DBMS) DbAgentInsert(agentData adaptix.AgentData) error {
 
 	insertQuery := `INSERT INTO Agents (Id, Crc, Name, SessionKey, Listener, Async, ExternalIP, InternalIP, GmtOffset, 
                        Sleep, Jitter, Pid, Tid, Arch, Elevated, Process, Os, OsDesc, Domain, Computer, Username, Impersonated,
-					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId
-				   ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, ?);`
+					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId, CustomData
+				   ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);`
 	_, err := dbms.database.Exec(insertQuery,
 		agentData.Id, agentData.Crc, agentData.Name, agentData.SessionKey, agentData.Listener, agentData.Async, agentData.ExternalIP,
 		agentData.InternalIP, agentData.GmtOffset, agentData.Sleep, agentData.Jitter, agentData.Pid, agentData.Tid, agentData.Arch,
 		agentData.Elevated, agentData.Process, agentData.Os, agentData.OsDesc, agentData.Domain, agentData.Computer, agentData.Username,
 		agentData.Impersonated, agentData.OemCP, agentData.ACP, agentData.CreateTime, agentData.LastTick, agentData.WorkingTime, agentData.KillDate, agentData.Tags, agentData.Mark,
-		agentData.Color, agentData.TargetId,
+		agentData.Color, agentData.TargetId, agentData.CustomData,
 	)
 	return err
 }
@@ -102,7 +102,7 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 	if ok {
 		selectQuery := `SELECT Id, Crc, Name, SessionKey, Listener, Async, ExternalIP, InternalIP, GmtOffset, 
                        Sleep, Jitter, Pid, Tid, Arch, Elevated, Process, Os, OsDesc, Domain, Computer, Username, Impersonated,
-					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId FROM Agents;`
+					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId, CustomData FROM Agents;`
 		query, err := dbms.database.Query(selectQuery)
 		if err != nil {
 			logs.Debug("", "Failed to query agents: "+err.Error())
@@ -117,7 +117,7 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 				&agentData.Jitter, &agentData.Pid, &agentData.Tid, &agentData.Arch, &agentData.Elevated, &agentData.Process,
 				&agentData.Os, &agentData.OsDesc, &agentData.Domain, &agentData.Computer, &agentData.Username, &agentData.Impersonated,
 				&agentData.OemCP, &agentData.ACP, &agentData.CreateTime, &agentData.LastTick, &agentData.WorkingTime, &agentData.KillDate,
-				&agentData.Tags, &agentData.Mark, &agentData.Color, &agentData.TargetId,
+				&agentData.Tags, &agentData.Mark, &agentData.Color, &agentData.TargetId, &agentData.CustomData,
 			)
 			if err != nil {
 				continue

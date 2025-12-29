@@ -84,10 +84,10 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId s
 		childAgent.PivotParent = pivotData
 	}
 
-	emptyMark := ""
-	_ = ts.TsAgentUpdateDataPartial(pivotData.ChildAgentId, struct {
-		Mark *string `json:"mark"`
-	}{Mark: &emptyMark})
+	//emptyMark := ""
+	//_ = ts.TsAgentUpdateDataPartial(pivotData.ChildAgentId, struct {
+	//	Mark *string `json:"mark"`
+	//}{Mark: &emptyMark})
 
 	ts.pivots.Put(pivotData)
 

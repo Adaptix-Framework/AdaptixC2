@@ -195,7 +195,7 @@ typedef struct SettingsData {
     bool ConsoleNoWrap;
     bool ConsoleAutoScroll;
 
-    bool   SessionsTableColumns[15];
+    bool   SessionsTableColumns[16];
     bool   CheckHealth;
     double HealthCoaf;
     int    HealthOffset;
@@ -225,40 +225,44 @@ typedef struct ListenerData
     QString BindHost;
     QString BindPort;
     QString AgentAddresses;
+    QString Date;
+    qint64  DateTimestamp = 0;
     QString Status;
     QString Data;
 } ListenerData;
 
 typedef struct AgentData
 {
-    QString     Id;
-    QString     Name;
-    QString     Listener;
-    bool        Async;
-    QString     ExternalIP;
-    QString     InternalIP;
-    int         GmtOffset;
-    int         ACP;
-    int         OemCP;
-    uint        KillDate;
-    uint        WorkingTime;
-    int         Sleep;
-    int         Jitter;
-    QString     Pid;
-    QString     Tid;
-    QString     Arch;
-    bool        Elevated;
-    QString     Process;
-    int         Os;
-    QString     OsDesc;
-    QString     Domain;
-    QString     Computer;
-    QString     Username;
-    QString     Impersonated;
-    QString     Tags;
-    QString     Mark;
-    QString     Color;
-    int         LastTick;
+    QString Id;
+    QString Name;
+    QString Listener;
+    bool    Async;
+    QString ExternalIP;
+    QString InternalIP;
+    int     GmtOffset;
+    int     ACP;
+    int     OemCP;
+    uint    KillDate;
+    uint    WorkingTime;
+    int     Sleep;
+    int     Jitter;
+    QString Pid;
+    QString Tid;
+    QString Arch;
+    bool    Elevated;
+    QString Process;
+    int     Os;
+    QString OsDesc;
+    QString Domain;
+    QString Computer;
+    QString Username;
+    QString Impersonated;
+    QString Tags;
+    QString Mark;
+    QString Color;
+    int     LastTick;
+    QString Date;
+    qint64  DateTimestamp = 0;
 } AgentData;
 
 typedef struct DownloadData
