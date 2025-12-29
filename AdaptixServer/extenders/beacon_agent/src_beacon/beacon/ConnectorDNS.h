@@ -98,6 +98,14 @@ private:
     BOOL  hasPendingTasks = FALSE;
     BOOL  forcePoll = FALSE;
 
+    // Upload fragment tracking for reliability
+    static const ULONG kMaxTrackedOffsets = 256;
+    ULONG confirmedOffsets[kMaxTrackedOffsets] = { 0 };
+    ULONG confirmedCount = 0;
+    ULONG lastAckNextExpected = 0;
+    BOOL  uploadNeedsReset = FALSE;
+    ULONG uploadStartTime = 0;
+
     DNSFUNC* functions = NULL;
 
     // Private helper methods
@@ -114,6 +122,12 @@ private:
     BOOL  ProcessDownloadChunk(BYTE* binBuf, int binLen);
     void  FinalizeDownload();
     void  ResetDownload();
+
+    // Upload reliability helpers
+    BOOL  ParsePutAckResponse(BYTE* response, ULONG respLen, ULONG* outNextExpected, BOOL* outComplete, BOOL* outNeedsReset);
+    BOOL  IsOffsetConfirmed(ULONG offset);
+    void  MarkOffsetConfirmed(ULONG offset);
+    void  ResetUploadState();
 
 public:
     ConnectorDNS();
