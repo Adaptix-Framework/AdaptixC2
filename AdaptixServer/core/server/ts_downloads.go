@@ -249,31 +249,37 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 	return filename, content, err
 }
 
-func (ts *Teamserver) TsDownloadDelete(fileId string) error {
-	value, ok := ts.downloads.Get(fileId)
-	if !ok {
-		return errors.New("File not found: " + fileId)
+func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
+
+	var deleteFiles []string
+
+	for _, id := range fileId {
+
+		value, ok := ts.downloads.Get(id)
+		if !ok {
+			continue
+		}
+		downloadData := value.(adaptix.DownloadData)
+
+		if downloadData.State != DOWNLOAD_STATE_FINISHED && downloadData.State != DOWNLOAD_STATE_CANCELED {
+			continue
+		}
+
+		if downloadData.State == DOWNLOAD_STATE_CANCELED {
+			_ = downloadData.File.Close()
+		}
+		_ = os.Remove(downloadData.LocalPath)
+
+		deleteFiles = append(deleteFiles, id)
+
+		if downloadData.State == DOWNLOAD_STATE_FINISHED {
+			_ = ts.DBMS.DbDownloadDelete(id)
+		}
+		ts.downloads.Delete(id)
 	}
-	downloadData := value.(adaptix.DownloadData)
 
-	if downloadData.State != DOWNLOAD_STATE_FINISHED && downloadData.State != DOWNLOAD_STATE_CANCELED {
-		return errors.New("download not finished")
-	}
-
-	if downloadData.State == DOWNLOAD_STATE_CANCELED {
-		_ = downloadData.File.Close()
-	}
-
-	_ = os.Remove(downloadData.LocalPath)
-
-	if downloadData.State == DOWNLOAD_STATE_FINISHED {
-		_ = ts.DBMS.DbDownloadDelete(fileId)
-	}
-
-	packet := CreateSpDownloadDelete(downloadData.FileId)
+	packet := CreateSpDownloadDelete(fileId)
 	ts.TsSyncAllClients(packet)
-
-	ts.downloads.Delete(fileId)
 
 	return nil
 }

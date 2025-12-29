@@ -472,7 +472,7 @@ type SyncPackerDownloadUpdate struct {
 type SyncPackerDownloadDelete struct {
 	SpType int `json:"type"`
 
-	FileId string `json:"d_file_id"`
+	FileId []string `json:"d_files_id"`
 }
 
 /// SCREEN

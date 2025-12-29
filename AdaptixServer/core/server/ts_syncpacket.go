@@ -431,7 +431,7 @@ func CreateSpDownloadUpdate(downloadData adaptix.DownloadData) SyncPackerDownloa
 	}
 }
 
-func CreateSpDownloadDelete(fileId string) SyncPackerDownloadDelete {
+func CreateSpDownloadDelete(fileId []string) SyncPackerDownloadDelete {
 	return SyncPackerDownloadDelete{
 		SpType: TYPE_DOWNLOAD_DELETE,
 

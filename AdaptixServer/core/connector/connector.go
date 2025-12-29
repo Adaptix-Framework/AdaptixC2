@@ -68,7 +68,7 @@ type Teamserver interface {
 
 	TsDownloadList() (string, error)
 	TsDownloadSync(fileId string) (string, []byte, error)
-	TsDownloadDelete(fileId string) error
+	TsDownloadDelete(fileId []string) error
 	TsDownloadGetFilepath(fileId string) (string, error)
 	TsUploadGetFilepath(fileId string) (string, error)
 	TsUploadGetFileContent(fileId string) ([]byte, error)

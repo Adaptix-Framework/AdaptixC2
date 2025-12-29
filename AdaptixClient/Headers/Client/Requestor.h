@@ -47,9 +47,10 @@ void HttpReqListenerEditAsync(const QString &listenerName, const QString &config
 void HttpReqListenerStopAsync(const QString &listenerName, const QString &listenerType, AuthProfile& profile, HttpCallback callback);
 
 void HttpReqDownloadActionAsync(const QString &action, const QString &fileId, AuthProfile& profile, HttpCallback callback);
+void HttpReqDownloadDelete(const QStringList &fileId, AuthProfile& profile, HttpCallback callback);
 
-void HttpReqScreenSetNoteAsync(QStringList screensId, const QString &note, AuthProfile& profile, HttpCallback callback);
-void HttpReqScreenRemoveAsync(QStringList screensId, AuthProfile& profile, HttpCallback callback);
+void HttpReqScreenSetNoteAsync(const QStringList &screensId, const QString &note, AuthProfile& profile, HttpCallback callback);
+void HttpReqScreenRemoveAsync(const QStringList &screensId, AuthProfile& profile, HttpCallback callback);
 
 void HttpReqTunnelStartServerAsync(const QString &tunnelType, const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback);
 void HttpReqTunnelStopAsync(const QString &tunnelId, AuthProfile& profile, HttpCallback callback);

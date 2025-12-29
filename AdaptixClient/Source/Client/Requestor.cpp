@@ -310,7 +310,16 @@ void HttpReqDownloadActionAsync(const QString &action, const QString &fileId, Au
     HttpRequestManager::instance().post(profile.GetURL(), "/download/" + action, profile.GetAccessToken(), jsonData, callback);
 }
 
-void HttpReqScreenSetNoteAsync(QStringList screensId, const QString &note, AuthProfile& profile, HttpCallback callback)
+void HttpReqDownloadDelete(const QStringList &fileId, AuthProfile& profile, HttpCallback callback)
+{
+    QJsonObject dataJson;
+    dataJson["file_id_array"] = toJsonArray(fileId);
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    HttpRequestManager::instance().post(profile.GetURL(), "/download/delete", profile.GetAccessToken(), jsonData, callback);
+}
+
+void HttpReqScreenSetNoteAsync(const QStringList &screensId, const QString &note, AuthProfile& profile, HttpCallback callback)
 {
     QJsonObject dataJson;
     dataJson["screen_id_array"] = toJsonArray(screensId);
@@ -320,7 +329,7 @@ void HttpReqScreenSetNoteAsync(QStringList screensId, const QString &note, AuthP
     HttpRequestManager::instance().post(profile.GetURL(), "/screen/setnote", profile.GetAccessToken(), jsonData, callback);
 }
 
-void HttpReqScreenRemoveAsync(QStringList screensId, AuthProfile& profile, HttpCallback callback)
+void HttpReqScreenRemoveAsync(const QStringList &screensId, AuthProfile& profile, HttpCallback callback)
 {
     QJsonObject dataJson;
     dataJson["screen_id_array"] = toJsonArray(screensId);

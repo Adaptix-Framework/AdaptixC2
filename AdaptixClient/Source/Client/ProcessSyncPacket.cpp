@@ -321,7 +321,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
                checkField("d_state", isNum);
 
     case TYPE_DOWNLOAD_DELETE:
-        return checkField("d_file_id", isStr);
+            return checkField("d_files_id", isArr);
 
     case TYPE_TUNNEL_CREATE:
         return checkField("p_tunnel_id", isStr) &&
@@ -685,9 +685,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         );
         break;
 
-    case TYPE_DOWNLOAD_DELETE:
-        DownloadsDock->RemoveDownloadItem(jsonObj["d_file_id"].toString());
-        break;
+        case TYPE_DOWNLOAD_DELETE: {
+            QStringList ids;
+            for (const QJsonValue &val : jsonObj["d_files_id"].toArray())
+                if (val.isString()) ids.append(val.toString());
+            DownloadsDock->RemoveDownloadItem(ids);
+            break;
+        }
 
     case TYPE_SCREEN_CREATE:
         ScreenshotsDock->AddScreenshotItem(parseScreenData(jsonObj));

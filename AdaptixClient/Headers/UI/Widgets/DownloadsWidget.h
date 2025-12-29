@@ -167,15 +167,30 @@ public:
         Q_EMIT dataChanged(index(row, 0), index(row, DC_ColumnCount - 1));
     }
 
-    void remove(const QString& fileId) {
-        auto it = idToRow.find(fileId);
-        if (it == idToRow.end())
+    void remove(const QStringList& fileIds) {
+        if (fileIds.isEmpty() || downloads.isEmpty())
             return;
 
-        int row = it.value();
-        beginRemoveRows(QModelIndex(), row, row);
-        downloads.removeAt(row);
-        endRemoveRows();
+        QList<int> rowsToRemove;
+        rowsToRemove.reserve(fileIds.size());
+
+        for (const QString& id : fileIds) {
+            auto it = idToRow.find(id);
+            if (it != idToRow.end())
+                rowsToRemove.append(it.value());
+        }
+
+        if (rowsToRemove.isEmpty())
+            return;
+
+        std::sort(rowsToRemove.begin(), rowsToRemove.end(), std::greater<int>());
+
+        for (int row : rowsToRemove) {
+            beginRemoveRows(QModelIndex(), row, row);
+            idToRow.remove(downloads[row].FileId);
+            downloads.removeAt(row);
+            endRemoveRows();
+        }
         rebuildIndex();
     }
 
@@ -265,7 +280,7 @@ public:
     void Clear() const;
     void AddDownloadItem(const DownloadData &newDownload);
     void EditDownloadItem(const QString &fileId, int recvSize, int state);
-    void RemoveDownloadItem(const QString &fileId);
+    void RemoveDownloadItem(const QStringList &filesId);
 
     QString getSelectedFileId() const;
     const DownloadData* getSelectedDownload() const;

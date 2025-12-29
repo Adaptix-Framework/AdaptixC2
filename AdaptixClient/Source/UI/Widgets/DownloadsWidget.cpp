@@ -131,10 +131,16 @@ void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int 
     }
 }
 
-void DownloadsWidget::RemoveDownloadItem(const QString &fileId)
+void DownloadsWidget::RemoveDownloadItem(const QStringList &filesId)
 {
-    adaptixWidget->Downloads.remove(fileId);
-    downloadsModel->remove(fileId);
+    QStringList filtered;
+    for (auto fileId : filesId) {
+        if (adaptixWidget->Downloads.contains(fileId)) {
+            adaptixWidget->Downloads.remove(fileId);
+            filtered.append(fileId);
+        }
+    }
+    downloadsModel->remove(filtered);
 }
 
 QString DownloadsWidget::getSelectedFileId() const
@@ -337,12 +343,24 @@ void DownloadsWidget::actionSyncWget()
 
 void DownloadsWidget::actionDelete()
 {
-    const DownloadData* download = getSelectedDownload();
-    if (!download || download->State != DOWNLOAD_STATE_FINISHED)
+    QStringList files;
+    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+    for (const QModelIndex &proxyIndex : selectedRows) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (!sourceIndex.isValid()) continue;
+
+        QString fileId = downloadsModel->data(downloadsModel->index(sourceIndex.row(), DC_FileId), Qt::DisplayRole).toString();
+        files.append(fileId);
+    }
+
+    for (auto fileId : files) {
+        if ( downloadsModel->getById(fileId)->State != DOWNLOAD_STATE_FINISHED)
+            files.removeAll(fileId);
+    }
+    if (files.isEmpty())
         return;
 
-    QString fileId = download->FileId;
-    HttpReqDownloadActionAsync("delete", fileId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+    HttpReqDownloadDelete(files, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
         if (!success)
             MessageError(message.isEmpty() ? "Response timeout" : message);
     });
