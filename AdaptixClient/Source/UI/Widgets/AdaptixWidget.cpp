@@ -628,12 +628,12 @@ void AdaptixWidget::PostHookProcess(QJsonObject jsonHookObj)
     bool completed = jsonHookObj["a_completed"].toBool();
 
     if (PostHooksJS.contains(hookId)) {
-        PostHook post_hooks = PostHooksJS[hookId];
+        AxExecutor post_hooks = PostHooksJS[hookId];
         if (completed)
             PostHooksJS.remove(hookId);
 
         auto jsEngine = ScriptManager->GetEngine(post_hooks.engineName);
-        if (jsEngine && post_hooks.hook.isCallable()) {
+        if (jsEngine && post_hooks.executor.isCallable()) {
 
             int jobIndex = jsonHookObj["a_job_index"].toDouble();
 
@@ -654,7 +654,7 @@ void AdaptixWidget::PostHookProcess(QJsonObject jsonHookObj)
             else
                 obj["type"] = "";
 
-            QJSValue result = post_hooks.hook.call(QJSValueList() << jsEngine->toScriptValue(obj));
+            QJSValue result = post_hooks.executor.call(QJSValueList() << jsEngine->toScriptValue(obj));
             if (result.isObject()) {
                 QJsonObject modifiedObj = result.toVariant().toJsonObject();
 
@@ -683,6 +683,35 @@ void AdaptixWidget::PostHookProcess(QJsonObject jsonHookObj)
         if (!success)
             MessageError(message);
     });
+}
+
+void AdaptixWidget::PostHandlerProcess(const QString &handlerId, const TaskData &taskData)
+{
+    if (PostHandlersJS.contains(handlerId)) {
+        AxExecutor post_handler = PostHandlersJS.take(handlerId);
+        auto jsEngine = ScriptManager->GetEngine(post_handler.engineName);
+        if (jsEngine && post_handler.executor.isCallable()) {
+
+            QJsonObject obj;
+            obj["id"]      = taskData.TaskId;
+            obj["agent"]   = taskData.AgentId;
+            obj["cmdline"] = taskData.CommandLine;
+            obj["message"] = taskData.Message;
+            obj["text"]    = taskData.Output;
+
+            int msgType = taskData.MessageType;
+            if (msgType == CONSOLE_OUT_LOCAL_INFO || msgType == CONSOLE_OUT_INFO)
+                obj["type"] = "info";
+            else if (msgType == CONSOLE_OUT_LOCAL_ERROR || msgType == CONSOLE_OUT_ERROR)
+                obj["type"] = "error";
+            else if (msgType == CONSOLE_OUT_LOCAL_SUCCESS || msgType == CONSOLE_OUT_SUCCESS)
+                obj["type"] = "success";
+            else
+                obj["type"] = "";
+
+            post_handler.executor.call(QJSValueList() << jsEngine->toScriptValue(obj));
+        }
+    }
 }
 
 /// SHOW PANELS

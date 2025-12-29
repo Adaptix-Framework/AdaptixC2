@@ -119,7 +119,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	return agent.GetData(), nil
 }
 
-func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error {
+func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error {
 	if !ts.agent_configs.Contains(agentName) {
 		return fmt.Errorf("agent %v not registered", agentName)
 	}
@@ -137,6 +137,7 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 		return err
 	}
 	taskData.HookId = hookId
+	taskData.HandlerId = handlerId
 	if taskData.Type == TYPE_TASK && ui {
 		taskData.Type = TYPE_BROWSER
 	}

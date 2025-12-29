@@ -38,7 +38,7 @@ type Teamserver interface {
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
-	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error
+	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error
 	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error

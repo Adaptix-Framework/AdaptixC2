@@ -33,6 +33,7 @@ func (h *TaskTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.Ta
 	if task.Sync {
 		if task.Completed {
 			tm.completeTask(agent, task)
+			updateData.HandlerId = task.HandlerId
 		} else {
 			agent.RunningTasks.Put(task.TaskId, *task)
 		}

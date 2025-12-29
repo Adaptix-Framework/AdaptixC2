@@ -587,6 +587,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 task->Message = jsonObj["a_message"].toString();
             task->Output += jsonObj["a_text"].toString();
             TasksDock->UpdateTaskItem(taskId, *task);
+
+            if ( task->Completed && jsonObj.contains("a_handler_id") && jsonObj["a_handler_id"].isString() ) {
+                QString handlerId = jsonObj["a_handler_id"].toString();
+                if (!handlerId.isEmpty() && PostHandlersJS.contains(handlerId))
+                    this->PostHandlerProcess(handlerId, *task);
+            }
         }
         break;
     }

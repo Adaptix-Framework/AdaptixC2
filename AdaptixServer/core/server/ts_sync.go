@@ -46,6 +46,10 @@ func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
 	ts.Broker.PublishTo(username, packet)
 }
 
+func (ts *Teamserver) TsSyncExcludeClient(username string, packet interface{}) {
+	ts.Broker.PublishExclude(username, packet)
+}
+
 func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
 	ts.Broker.Publish(packet)
 }

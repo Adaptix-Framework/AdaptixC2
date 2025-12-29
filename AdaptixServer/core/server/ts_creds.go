@@ -124,7 +124,6 @@ func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password 
 }
 
 func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
-
 	for _, id := range credsId {
 		for i := uint(0); i < ts.credentials.Len(); i++ {
 			valuePivot, ok := ts.credentials.Get(i)

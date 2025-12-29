@@ -118,7 +118,8 @@ public:
     QMap<QString, PivotData>       Pivots;
     QMap<QString, TaskData>        TasksMap;
     QMap<QString, Agent*>          AgentsMap;
-    QMap<QString, PostHook>        PostHooksJS;
+    QMap<QString, AxExecutor>      PostHooksJS;
+    QMap<QString, AxExecutor>      PostHandlersJS;
     QMap<QString, TunnelEndpoint*> ClientTunnels;
     QStringList addresses;
 
@@ -146,6 +147,7 @@ public:
     QList<Commander*> GetCommandersAll() const;
 
     void PostHookProcess(QJsonObject jsonHookObj);
+    void PostHandlerProcess(const QString &handlerId, const TaskData &taskData);
 
     void LoadConsoleUI(const QString &AgentId);
     void LoadTasksOutput() const;

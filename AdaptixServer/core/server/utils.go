@@ -354,6 +354,7 @@ type SyncPackerAgentTaskUpdate struct {
 
 	AgentId     string `json:"a_id"`
 	TaskId      string `json:"a_task_id"`
+	HandlerId   string `json:"a_handler_id"`
 	TaskType    int    `json:"a_task_type"`
 	FinishTime  int64  `json:"a_finish_time"`
 	MessageType int    `json:"a_msg_type"`

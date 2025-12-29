@@ -68,6 +68,7 @@ type CommandData struct {
 	CmdLine   string `json:"cmdline"`
 	Data      string `json:"data"`
 	HookId    string `json:"ax_hook_id"`
+	HandlerId string `json:"ax_handler_id"`
 }
 
 func (tc *TsConnector) TcAgentCommandExecute(ctx *gin.Context) {
@@ -102,7 +103,7 @@ func (tc *TsConnector) TcAgentCommandExecute(ctx *gin.Context) {
 		logs.Debug("", "Error parsing commands JSON: %s\n", err.Error())
 	}
 
-	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.CmdLine, commandData.UI, args)
+	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.HandlerId, commandData.CmdLine, commandData.UI, args)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -160,7 +161,7 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 		logs.Debug("", "Error parsing commands JSON: %s\n", err.Error())
 	}
 
-	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.CmdLine, commandData.UI, args)
+	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.HandlerId, commandData.CmdLine, commandData.UI, args)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

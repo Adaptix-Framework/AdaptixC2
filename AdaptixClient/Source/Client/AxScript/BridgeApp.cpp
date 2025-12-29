@@ -498,7 +498,7 @@ QJSValue BridgeApp::downloads() const
     return this->scriptEngine->engine()->toScriptValue(list);
 }
 
-void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const
+void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook, const QJSValue &handler) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))
@@ -516,8 +516,19 @@ void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const Q
         if (!hook.isUndefined() && !hook.isNull() && hook.isCallable())
             cmdResult.post_hook = {true, scriptEngine->context.name, hook};
 
+        if (!handler.isUndefined() && !handler.isNull() && handler.isCallable())
+            cmdResult.handler = {true, scriptEngine->context.name, handler};
+
         agent->Console->ProcessCmdResult(cmdline, cmdResult, false);
     }
+}
+
+void BridgeApp::execute_alias_hook(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const {
+    execute_alias(id, cmdline, command, message, hook, QJSValue());
+}
+
+void BridgeApp::execute_alias_handler(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &handler) const {
+    execute_alias(id, cmdline, command, message,  QJSValue(), handler);
 }
 
 void BridgeApp::execute_browser(const QString &id, const QString &command) const
@@ -534,7 +545,7 @@ void BridgeApp::execute_browser(const QString &id, const QString &command) const
     agent->Console->ProcessCmdResult(command, cmdResult, true);
 }
 
-void BridgeApp::execute_command(const QString &id, const QString &command, const QJSValue &hook) const
+void BridgeApp::execute_command(const QString &id, const QString &command, const QJSValue &hook, const QJSValue &handler) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))
@@ -550,8 +561,19 @@ void BridgeApp::execute_command(const QString &id, const QString &command, const
         if (!hook.isUndefined() && !hook.isNull() && hook.isCallable())
             cmdResult.post_hook = {true, scriptEngine->context.name, hook};
 
+        if (!handler.isUndefined() && !handler.isNull() && handler.isCallable())
+            cmdResult.handler = {true, scriptEngine->context.name, handler};
+
         agent->Console->ProcessCmdResult(command, cmdResult, false);
     }
+}
+
+void BridgeApp::execute_command_hook(const QString &id, const QString &command, const QJSValue &hook) const {
+    execute_command(id, command, hook, QJSValue());
+}
+
+void BridgeApp::execute_command_handler(const QString &id, const QString &command, const QJSValue &handler) const {
+    execute_command(id, command, QJSValue(), handler);
 }
 
 QString BridgeApp::file_basename(const QString &path) const
@@ -909,6 +931,7 @@ QJSValue BridgeApp::validate_command(const QString &id, const QString &command) 
     result["is_pre_hook"]   = cmdResult.is_pre_hook;
     result["has_output"]    = cmdResult.output;
     result["has_post_hook"] = cmdResult.post_hook.isSet;
+    result["has_handler"]   = cmdResult.handler.isSet;
     if (!cmdResult.error)
         result["parsed"] = cmdResult.data.toVariantMap();
 

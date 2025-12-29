@@ -27,6 +27,7 @@ const (
 type BrokerMessage struct {
 	Data     []byte
 	Target   string
+	Exclude  string
 	Priority int
 }
 
@@ -142,11 +143,13 @@ func (mb *MessageBroker) dispatch(msg *BrokerMessage) {
 		return
 	}
 
-	for _, client := range mb.clients {
-		if client.synced.Load() {
-			client.Send(msg.Data, msg.Priority)
-		} else {
-			client.BufferForSync(msg.Data)
+	for operator, client := range mb.clients {
+		if msg.Exclude != operator {
+			if client.synced.Load() {
+				client.Send(msg.Data, msg.Priority)
+			} else {
+				client.BufferForSync(msg.Data)
+			}
 		}
 	}
 }
@@ -177,6 +180,24 @@ func (mb *MessageBroker) PublishTo(username string, packet interface{}) {
 	msg := &BrokerMessage{
 		Data:     data,
 		Target:   username,
+		Priority: PriorityNormal,
+	}
+
+	select {
+	case mb.broadcast <- msg:
+	default:
+	}
+}
+
+func (mb *MessageBroker) PublishExclude(username string, packet interface{}) {
+	data := serializePacket(packet)
+	if data == nil {
+		return
+	}
+
+	msg := &BrokerMessage{
+		Data:     data,
+		Exclude:  username,
 		Priority: PriorityNormal,
 	}
 

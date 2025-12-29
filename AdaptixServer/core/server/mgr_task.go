@@ -82,8 +82,16 @@ func (tm *TaskManager) syncTaskCreate(agentId string, agent *Agent, taskData *ad
 }
 
 func (tm *TaskManager) syncTaskUpdate(agentId string, agent *Agent, taskData *adaptix.TaskData) {
+
 	packet_task := CreateSpAgentTaskUpdate(*taskData)
-	tm.ts.TsSyncAllClients(packet_task)
+	if taskData.HandlerId == "" {
+		tm.ts.TsSyncAllClients(packet_task)
+	} else {
+		handlerClient := taskData.Client
+		tm.ts.TsSyncExcludeClient(handlerClient, packet_task)
+		packet_task.HandlerId = taskData.HandlerId
+		tm.ts.TsSyncClient(handlerClient, packet_task)
+	}
 
 	packet_console := CreateSpAgentConsoleTaskUpd(*taskData)
 	tm.ts.TsSyncAllClients(packet_console)

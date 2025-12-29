@@ -83,6 +83,8 @@ func (h *JobTaskHandler) updateWithoutHook(tm *TaskManager, agent *Agent, task *
 		task.FinishDate = updateData.FinishDate
 		task.Completed = updateData.Completed
 
+		updateData.HandlerId = task.HandlerId
+
 		tm.completeTask(agent, task)
 	} else {
 		if ok {

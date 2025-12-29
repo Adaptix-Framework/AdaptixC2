@@ -43,6 +43,7 @@ func (h *TunnelTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.
 	if task.Sync {
 		if task.Completed {
 			tm.completeTask(agent, task)
+			updateData.HandlerId = task.HandlerId
 		} else {
 			agent.RunningTasks.Put(task.TaskId, *task)
 		}

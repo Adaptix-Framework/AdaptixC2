@@ -37,9 +37,13 @@ public Q_SLOTS:
     QObject* create_command(const QString &name, const QString &description, const QString &example = "", const QString &message = "");
     QObject* create_commands_group(const QString &name, const QJSValue& array);
     QJSValue downloads() const;
-    void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "", const QJSValue &hook = QJSValue()) const;
+    void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "", const QJSValue &hook = QJSValue(), const QJSValue &handler = QJSValue()) const;
+    void     execute_alias_hook(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const;
+    void     execute_alias_handler(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &handler) const;
     void     execute_browser(const QString &id, const QString &command) const;
-    void     execute_command(const QString &id, const QString &command, const QJSValue &hook = QJSValue()) const;
+    void     execute_command(const QString &id, const QString &command, const QJSValue &hook = QJSValue(), const QJSValue &handler = QJSValue()) const;
+    void     execute_command_hook(const QString &id, const QString &command, const QJSValue &hook) const;
+    void     execute_command_handler(const QString &id, const QString &command, const QJSValue &handler) const;
     QString  file_basename(const QString &path) const;
     bool     file_exists(const QString &path) const;
     QString  file_read(QString path) const;

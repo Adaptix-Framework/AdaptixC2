@@ -41,11 +41,11 @@ struct CommandsGroup
     QJSEngine*     engine;
 };
 
-struct PostHook
+struct AxExecutor
 {
     bool     isSet;
     QString  engineName;
-    QJSValue hook;
+    QJSValue executor;
 };
 
 struct CommanderResult
@@ -55,7 +55,8 @@ struct CommanderResult
     QString     message;
     QJsonObject data;
     bool        is_pre_hook;
-    PostHook    post_hook;
+    AxExecutor  post_hook;
+    AxExecutor  handler;
 };
 
 
