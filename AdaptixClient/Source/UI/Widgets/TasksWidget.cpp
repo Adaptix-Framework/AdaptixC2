@@ -22,7 +22,7 @@ void TaskOutputWidget::createUI()
 
     outputTextEdit = new QTextEdit(this);
     outputTextEdit->setReadOnly(true);
-    outputTextEdit->setLineWrapMode(QTextEdit::LineWrapMode::NoWrap );
+    outputTextEdit->setWordWrapMode(QTextOption::WrapAnywhere);
     outputTextEdit->setProperty("TextEditStyle", "console" );
 
     mainGridLayout = new QGridLayout(this );
@@ -181,6 +181,8 @@ void TasksWidget::createUI()
     tableView->horizontalHeader()->setSectionResizeMode( TC_Output,      QHeaderView::Stretch );
 
     tableView->setItemDelegate(new PaddingDelegate(tableView));
+    tableView->setItemDelegateForColumn(TC_CommandLine, new WrapAnywhereDelegate(tableView));
+    tableView->setItemDelegateForColumn(TC_Output, new WrapAnywhereDelegate(tableView));
 
     this->UpdateColumnsVisible();
 

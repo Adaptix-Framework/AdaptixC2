@@ -213,6 +213,8 @@ void SessionsGraph::Clear()
                 delete this->items[i]->parentLink;
                 this->items[i]->parentLink = nullptr;
             }
+            if (this->items[i]->agent)
+                this->items[i]->agent->graphItem = nullptr;
             this->graphScene->removeItem( this->items[ i ] );
             delete this->items[ i ];
             this->items[ i ] = nullptr;

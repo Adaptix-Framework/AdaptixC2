@@ -183,6 +183,8 @@ TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, boo
 
     if (noWrap)
         setLineWrapMode( QTextEdit::LineWrapMode::NoWrap );
+    else
+        setWordWrapMode( QTextOption::WrapAnywhere );
 
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &TextEditConsole::customContextMenuRequested, this, &TextEditConsole::createContextMenu);
@@ -227,7 +229,12 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
     noWrapAction->setChecked(noWrap);
     connect(noWrapAction, &QAction::toggled, this, [this](bool checked) {
         noWrap = checked;
-        setLineWrapMode(checked ? QTextEdit::NoWrap : QTextEdit::WidgetWidth);
+        if (checked) {
+            setLineWrapMode(QTextEdit::NoWrap);
+        } else {
+            setLineWrapMode(QTextEdit::WidgetWidth);
+            setWordWrapMode(QTextOption::WrapAnywhere);
+        }
     });
     
     QAction *autoScrollAction = menu->addAction("Auto scroll");

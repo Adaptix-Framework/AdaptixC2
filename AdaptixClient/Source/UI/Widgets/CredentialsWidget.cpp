@@ -115,6 +115,7 @@ void CredentialsWidget::createUI()
     tableView->horizontalHeader()->setSectionResizeMode( CC_Password, QHeaderView::Stretch );
 
     tableView->setItemDelegate(new PaddingDelegate(tableView));
+    tableView->setItemDelegateForColumn(CC_Password, new WrapAnywhereDelegate(tableView));
 
     tableView->hideColumn(0);
 

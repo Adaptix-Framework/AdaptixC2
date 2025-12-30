@@ -2,6 +2,8 @@
 #define ADAPTIXCLIENT_CUSTOMELEMENTS_H
 
 #include <main.h>
+#include <QTextLayout>
+#include <QToolTip>
 
 class QTimer;
 class QMutex;
@@ -103,6 +105,156 @@ public:
         optFull.state &= ~QStyle::State_HasFocus;
 
         QStyledItemDelegate::paint(painter, optFull, index);
+    }
+};
+
+class WrapAnywhereDelegate : public PaddingDelegate {
+    static constexpr int maxLines = 5;
+public:
+    explicit WrapAnywhereDelegate(QObject* parent = nullptr) : PaddingDelegate(parent) {}
+
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+
+        // Background (same as PaddingDelegate)
+        QVariant bgVar = index.data(Qt::BackgroundRole);
+        if (bgVar.isValid())
+            painter->fillRect(opt.rect, bgVar.value<QBrush>());
+
+        opt.state &= ~QStyle::State_HasFocus;
+
+        // Draw everything except text using style
+        const QWidget* widget = option.widget;
+        QStyle* style = widget ? widget->style() : QApplication::style();
+
+        // Draw background/selection
+        style->drawPrimitive(QStyle::PE_PanelItemViewItem, &opt, painter, widget);
+
+        // Draw text with WrapAnywhere (max 5 lines)
+        painter->save();
+        QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &opt, widget);
+
+        QString text = opt.text;
+        QFontMetrics fm(opt.font);
+        int lineHeight = fm.height();
+        int maxHeight = lineHeight * maxLines;
+
+        // Truncate text if it exceeds maxLines
+        QString displayText = text;
+        QTextOption layoutOpt(Qt::Alignment(opt.displayAlignment));
+        layoutOpt.setWrapMode(QTextOption::WrapAnywhere);
+        QTextLayout layout(text, opt.font);
+        layout.setTextOption(layoutOpt);
+        layout.beginLayout();
+        int lineCount = 0;
+        int lastLineEnd = 0;
+        while (lineCount < maxLines) {
+            QTextLine line = layout.createLine();
+            if (!line.isValid()) break;
+            line.setLineWidth(textRect.width());
+            lastLineEnd = line.textStart() + line.textLength();
+            lineCount++;
+        }
+        layout.endLayout();
+
+        bool truncated = (lastLineEnd < text.length());
+        if (truncated) {
+            displayText = text.left(lastLineEnd).trimmed() + "...";
+        }
+
+        QTextOption textOption;
+        textOption.setWrapMode(QTextOption::WrapAnywhere);
+        textOption.setAlignment(Qt::Alignment(opt.displayAlignment));
+
+        if (opt.state & QStyle::State_Selected)
+            painter->setPen(opt.palette.highlightedText().color());
+        else {
+            QVariant fgVar = index.data(Qt::ForegroundRole);
+            if (fgVar.isValid())
+                painter->setPen(fgVar.value<QColor>());
+            else
+                painter->setPen(opt.palette.text().color());
+        }
+
+        painter->setFont(opt.font);
+        painter->drawText(textRect, displayText, textOption);
+        painter->restore();
+    }
+
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+
+        QString text = index.data(Qt::DisplayRole).toString();
+        int width = opt.rect.width() > 0 ? opt.rect.width() - 8 : 100;
+
+        QFontMetrics fm(opt.font);
+        int lineHeight = fm.height();
+        QRect bound = fm.boundingRect(QRect(0, 0, width, 10000), Qt::TextWrapAnywhere, text);
+
+        int maxHeight = lineHeight * maxLines + 8;
+        return QSize(opt.rect.width(), qMin(bound.height() + 8, maxHeight));
+    }
+
+    QString displayText(const QVariant& value, const QLocale& locale) const override {
+        return PaddingDelegate::displayText(value, locale);
+    }
+
+    bool helpEvent(QHelpEvent* event, QAbstractItemView* view, const QStyleOptionViewItem& option, const QModelIndex& index) override {
+        if (event->type() == QEvent::ToolTip) {
+            QString text = index.data(Qt::DisplayRole).toString();
+            QStyleOptionViewItem opt = option;
+            initStyleOption(&opt, index);
+
+            QFontMetrics fm(opt.font);
+            int width = opt.rect.width() - 8;
+            if (width <= 0) width = 100;
+
+            QTextOption layoutOpt;
+            layoutOpt.setWrapMode(QTextOption::WrapAnywhere);
+            QTextLayout layout(text, opt.font);
+            layout.setTextOption(layoutOpt);
+            layout.beginLayout();
+            int lineCount = 0;
+            while (true) {
+                QTextLine line = layout.createLine();
+                if (!line.isValid()) break;
+                line.setLineWidth(width);
+                lineCount++;
+            }
+            layout.endLayout();
+
+            if (lineCount > maxLines) {
+                // Wrap text manually to limit tooltip width
+                QFontMetrics tooltipFm(QToolTip::font());
+                QString wrappedText;
+                int maxWidth = 1000;
+                int pos = 0;
+                while (pos < text.length()) {
+                    int lineEnd = text.indexOf('\n', pos);
+                    if (lineEnd == -1) lineEnd = text.length();
+                    QString line = text.mid(pos, lineEnd - pos);
+                    
+                    while (!line.isEmpty()) {
+                        QString chunk;
+                        int i = 1;
+                        while (i <= line.length() && tooltipFm.horizontalAdvance(line.left(i)) < maxWidth)
+                            i++;
+                        chunk = line.left(i - 1);
+                        if (chunk.isEmpty()) chunk = line.left(1);
+                        wrappedText += chunk.toHtmlEscaped() + "<br>";
+                        line = line.mid(chunk.length());
+                    }
+                    pos = lineEnd + 1;
+                }
+                if (wrappedText.endsWith("<br>"))
+                    wrappedText.chop(4);
+                QToolTip::showText(event->globalPos(), wrappedText, view);
+                return true;
+            }
+        }
+        return PaddingDelegate::helpEvent(event, view, option, index);
     }
 };
 
