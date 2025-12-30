@@ -7,10 +7,7 @@ import (
 	"github.com/Adaptix-Framework/axc2"
 )
 
-// =============================================================================
 // Teamserver Interface
-// =============================================================================
-
 type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
@@ -19,10 +16,7 @@ type Teamserver interface {
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
 }
 
-// =============================================================================
 // Module
-// =============================================================================
-
 type ModuleExtender struct {
 	ts Teamserver
 }
@@ -34,10 +28,7 @@ var (
 	ListenersObject []*DNSListener
 )
 
-// =============================================================================
 // Plugin Entry Point
-// =============================================================================
-
 func InitPlugin(ts any, moduleDir string, listenerDir string) any {
 	ModuleDir = moduleDir
 	ListenerDataDir = listenerDir
@@ -48,10 +39,7 @@ func InitPlugin(ts any, moduleDir string, listenerDir string) any {
 	return ModuleObject
 }
 
-// =============================================================================
 // Listener Management
-// =============================================================================
-
 func (m *ModuleExtender) ListenerValid(data string) error {
 	return m.HandlerListenerValid(data)
 }

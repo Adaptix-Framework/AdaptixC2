@@ -23,19 +23,16 @@ import (
 	"github.com/miekg/dns"
 )
 
-// =============================================================================
 // Constants
-// =============================================================================
-
 const (
-	seqXorMask       	= 0x39913991
-	maxUploadSize    	= 4 << 20 // 4 MB
-	maxDownloadSize  	= 4 << 20 // 4 MB
-	minCompressSize  	= 2048
-	dnsSafeChunkSize 	= 280
-	defaultChunkSize 	= 4096
-	metaV1Size       	= 8
-	frameHeaderSize  	= 9 // flags:1 + nonce:4 + origLen:4
+	seqXorMask       = 0x39913991
+	maxUploadSize    = 4 << 20 // 4 MB
+	maxDownloadSize  = 4 << 20 // 4 MB
+	minCompressSize  = 2048
+	dnsSafeChunkSize = 280
+	defaultChunkSize = 4096
+	metaV1Size       = 8
+	frameHeaderSize  = 9 // flags:1 + nonce:4 + origLen:4
 
 	staleTimeout        = 5 * time.Minute
 	dedupTimeout        = 5 * time.Minute
@@ -46,21 +43,18 @@ const (
 	shutdownTimeout     = 2 * time.Second
 )
 
-// =============================================================================
 // Types
-// =============================================================================
-
 type dnsFragBuf struct {
-	total            uint32
-	buf              []byte
-	filled           uint32
-	highWater        uint32
-	expectedOff      uint32
-	lastUpdate       time.Time
-	seenOffsets      map[uint32]bool
-	lastReceivedOff  uint32
-	nextExpectedOff  uint32
-	chunkSize        uint32
+	total           uint32
+	buf             []byte
+	filled          uint32
+	highWater       uint32
+	expectedOff     uint32
+	lastUpdate      time.Time
+	seenOffsets     map[uint32]bool
+	lastReceivedOff uint32
+	nextExpectedOff uint32
+	chunkSize       uint32
 }
 
 type dnsDownBuf struct {
@@ -108,12 +102,12 @@ type dnsRequest struct {
 }
 
 type putAckInfo struct {
-	lastReceivedOff  uint32
-	nextExpectedOff  uint32
-	total            uint32
-	filled           uint32
-	needsReset       bool
-	complete         bool
+	lastReceivedOff uint32
+	nextExpectedOff uint32
+	total           uint32
+	filled          uint32
+	needsReset      bool
+	complete        bool
 }
 
 type DNSListener struct {
@@ -134,10 +128,7 @@ type DNSListener struct {
 	rng            *rand.Rand
 }
 
-// =============================================================================
 // Constructors
-// =============================================================================
-
 func newFragBuf(total uint32) *dnsFragBuf {
 	fb := new(dnsFragBuf)
 	fb.total = total
@@ -175,10 +166,7 @@ func newUpDone(total uint32) *dnsUpDone {
 	return ud
 }
 
-// =============================================================================
 // Utility Functions
-// =============================================================================
-
 func rc4Crypt(data []byte, keyHex string) []byte {
 	if len(data) == 0 {
 		return data
@@ -332,10 +320,7 @@ func extractExternalIP(addr net.Addr) string {
 	return ip.String()
 }
 
-// =============================================================================
 // DNSListener Lifecycle
-// =============================================================================
-
 func (d *DNSListener) Start(ts Teamserver) error {
 	if d.Config.TTL <= 0 {
 		d.Config.TTL = 10
@@ -462,10 +447,7 @@ func (d *DNSListener) cleanupStaleEntries() {
 	// This is handled implicitly - markers are deleted when PUT is received
 }
 
-// =============================================================================
 // Persistence
-// =============================================================================
-
 func (d *DNSListener) inflightPersistPath() string {
 	dir := ListenerDataDir
 	if dir == "" {
@@ -535,10 +517,7 @@ func (d *DNSListener) loadInflights() {
 	_ = os.Remove(d.inflightPersistPath())
 }
 
-// =============================================================================
 // Request Parsing
-// =============================================================================
-
 func (d *DNSListener) parseRequest(q dns.Question) *dnsRequest {
 	labels := dns.SplitDomainName(q.Name)
 	base := labels
@@ -605,10 +584,7 @@ func (d *DNSListener) parseRequest(q dns.Question) *dnsRequest {
 	return req
 }
 
-// =============================================================================
 // Task Fetching (unified for GET and HB)
-// =============================================================================
-
 func (d *DNSListener) fetchOrRetryTasks(sid string) ([]byte, uint32) {
 	d.mu.Lock()
 	existingInflight, hasInflight := d.localInflights[sid]
@@ -656,10 +632,7 @@ func (d *DNSListener) ackDelivery(sid string, ackTaskNonce uint32) {
 	}
 }
 
-// =============================================================================
 // Operation Handlers
-// =============================================================================
-
 func (d *DNSListener) handleHI(req *dnsRequest, w dns.ResponseWriter) {
 	if len(req.data) < 8 {
 		return
@@ -816,10 +789,7 @@ func (d *DNSListener) handleHB(req *dnsRequest) (needsReset bool, hasPendingTask
 	return needsReset, hasPendingTasks
 }
 
-// =============================================================================
 // Fragment Management
-// =============================================================================
-
 func (d *DNSListener) handlePutFragment(sid string, seq int, data []byte, ack putAckInfo) putAckInfo {
 	_ = seq
 
@@ -972,10 +942,7 @@ func (d *DNSListener) computeNextExpectedOffset(fb *dnsFragBuf) uint32 {
 	return fb.total
 }
 
-// =============================================================================
 // Main DNS Handler
-// =============================================================================
-
 func (d *DNSListener) handleDNS(w dns.ResponseWriter, r *dns.Msg) {
 	m := new(dns.Msg)
 	m.SetReply(r)

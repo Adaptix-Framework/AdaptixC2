@@ -13,10 +13,7 @@ import (
 	"github.com/Adaptix-Framework/axc2"
 )
 
-// =============================================================================
 // Configuration
-// =============================================================================
-
 type DNSConfig struct {
 	HostBind   string   `json:"host_bind"`
 	PortBind   int      `json:"port_bind"`
@@ -28,10 +25,7 @@ type DNSConfig struct {
 	Protocol   string   `json:"protocol"`
 }
 
-// =============================================================================
 // Constructors
-// =============================================================================
-
 func NewDNSListener(name string, conf DNSConfig) *DNSListener {
 	listener := new(DNSListener)
 	listener.Name = name
@@ -59,10 +53,7 @@ func encodeConfig(conf DNSConfig) []byte {
 	return buf.Bytes()
 }
 
-// =============================================================================
 // Utility Functions
-// =============================================================================
-
 func parseDomains(domain string) []string {
 	var domains []string
 	for _, d := range strings.Split(domain, ",") {
@@ -97,10 +88,7 @@ func normalizeEncryptKey(key string) string {
 	return hex.EncodeToString(hash[:16])
 }
 
-// =============================================================================
 // Handler Methods
-// =============================================================================
-
 func (m *ModuleExtender) HandlerListenerValid(data string) error {
 	conf := new(DNSConfig)
 	if err := json.Unmarshal([]byte(data), conf); err != nil {
