@@ -1,4 +1,5 @@
 #include <QJSEngine>
+#include <QTimer>
 #include <Agent/Agent.h>
 #include <Workers/LastTickWorker.h>
 #include <Workers/WebSocketWorker.h>
@@ -7,7 +8,7 @@
 #include <UI/Widgets/AxConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
-#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/TerminalContainerWidget.h>
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ChatWidget.h>
@@ -26,6 +27,7 @@
 #include <Client/TunnelEndpoint.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxCommandWrappers.h>
+#include <kddockwidgets/core/DockRegistry.h>
 
 AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
@@ -119,8 +121,23 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this,   &AdaptixWidget::ChannelClose );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, ScriptManager, &AxScriptManager::emitDisconnectClient );
 
-    dialogSyncPacket = new DialogSyncPacket();
+    dialogSyncPacket = new DialogSyncPacket(this);
     dialogSyncPacket->splashScreen->show();
+
+    connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, [this]() {
+        if (this->sync && dialogSyncPacket) {
+            dialogSyncPacket->error("Connection lost during synchronization");
+            this->sync = false;
+            this->setSyncUpdateUI(true);
+        }
+    });
+
+    connect( dialogSyncPacket, &DialogSyncPacket::syncCancelled, this, [this]() {
+        this->sync = false;
+        this->setSyncUpdateUI(true);
+        if (dialogSyncPacket && dialogSyncPacket->splashScreen)
+            dialogSyncPacket->splashScreen->close();
+    });
 
     SessionsTableDock->start();
     TickThread->start();
@@ -130,22 +147,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     keysButton->setVisible(false);
 
     QTimer::singleShot(100, this, [this]() {
-        QThread* workerThread = new QThread();
-        QObject* worker = new QObject();
-        worker->moveToThread(workerThread);
-
-        connect(workerThread, &QThread::started, worker, [=, this]() {
-            HttpReqSync( *profile );
-
-            QMetaObject::invokeMethod(qApp, [=]() {
-                workerThread->quit();
-                workerThread->wait();
-                worker->deleteLater();
-                workerThread->deleteLater();
-            }, Qt::QueuedConnection);
-        });
-
-        workerThread->start();
+        QByteArray jsonData = QJsonDocument(QJsonObject()).toJson();
+        HttpRequestManager::instance().post(profile->GetURL(), "/sync", profile->GetAccessToken(), jsonData, [](bool, const QString&, const QJsonObject&) {});
     });
 }
 
@@ -307,10 +310,42 @@ void AdaptixWidget::AddDockBottom(const KDDockWidgets::QtWidgets::DockWidget* do
 
 void AdaptixWidget::PlaceDockBottom(KDDockWidgets::QtWidgets::DockWidget* dock) const
 {
+    if (dock->isOpen()) {
+        dock->setAsCurrentTab();
+        return;
+    }
+
+    QString previousFocusedName;
+    QString dockBeingAddedName = dock->uniqueName();
+    KDDockWidgets::Core::Group* dockBottomGroup = dockBottom->group();
+
+    if (KDDockWidgets::DockRegistry::self() && dockBottomGroup) {
+        auto* previousFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
+        if (previousFocused)
+            previousFocusedName = previousFocused->uniqueName();
+    }
+
     dockBottom->toggleAction()->trigger();
     dockBottom->addDockWidgetAsTab(dock);
-    dock->toggleAction()->trigger();
     dockBottom->toggleAction()->trigger();
+
+    if (!previousFocusedName.isEmpty() && previousFocusedName != dockBeingAddedName && dockBottomGroup) {
+        QTimer::singleShot(100, [previousFocusedName, dockBeingAddedName]() {
+            if (KDDockWidgets::DockRegistry::self()) {
+                auto* currentFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
+
+                if (currentFocused && currentFocused->uniqueName() == dockBeingAddedName)
+                    return;
+
+                if (currentFocused && currentFocused->uniqueName() != previousFocusedName && currentFocused->uniqueName() != dockBeingAddedName)
+                    return;
+
+                auto* coreDw = KDDockWidgets::DockRegistry::self()->dockByName(previousFocusedName);
+                if (coreDw && !coreDw->isCurrentTab())
+                    coreDw->setAsCurrentTab();
+            }
+        });
+    }
 }
 
 bool AdaptixWidget::AddExtension(ExtensionFile* ext)
@@ -342,17 +377,45 @@ bool AdaptixWidget::IsSynchronized() { return this->synchronized; }
 
 void AdaptixWidget::Close()
 {
-    TickThread->quit();
-    TickThread->wait();
+    if (TickWorker)
+        disconnect(TickWorker, nullptr, this, nullptr);
+
+    if (TickThread) {
+        TickThread->quit();
+        TickThread->wait();
+    }
+
+    delete TickWorker;
+    TickWorker = nullptr;
+
     delete TickThread;
+    TickThread = nullptr;
 
-    ChannelThread->quit();
-    ChannelThread->wait();
+    if (ChannelWsWorker) {
+        disconnect(ChannelWsWorker, nullptr, this, nullptr);
+        disconnect(ChannelWsWorker, nullptr, ScriptManager, nullptr);
+        if (ChannelWsWorker->webSocket)
+            ChannelWsWorker->webSocket->close();
+    }
+
+    if (ChannelThread) {
+        ChannelThread->quit();
+        ChannelThread->wait();
+    }
+
+    delete ChannelWsWorker;
+    ChannelWsWorker = nullptr;
+
     delete ChannelThread;
-
-    ChannelWsWorker->webSocket->close();
+    ChannelThread = nullptr;
 
     this->ClearAdaptix();
+
+    delete dialogSyncPacket;
+    dialogSyncPacket = nullptr;
+
+    delete profile;
+    profile = nullptr;
 }
 
 void AdaptixWidget::ClearAdaptix()
@@ -565,12 +628,12 @@ void AdaptixWidget::PostHookProcess(QJsonObject jsonHookObj)
     bool completed = jsonHookObj["a_completed"].toBool();
 
     if (PostHooksJS.contains(hookId)) {
-        PostHook post_hooks = PostHooksJS[hookId];
+        AxExecutor post_hooks = PostHooksJS[hookId];
         if (completed)
             PostHooksJS.remove(hookId);
 
         auto jsEngine = ScriptManager->GetEngine(post_hooks.engineName);
-        if (jsEngine && post_hooks.hook.isCallable()) {
+        if (jsEngine && post_hooks.executor.isCallable()) {
 
             int jobIndex = jsonHookObj["a_job_index"].toDouble();
 
@@ -591,7 +654,7 @@ void AdaptixWidget::PostHookProcess(QJsonObject jsonHookObj)
             else
                 obj["type"] = "";
 
-            QJSValue result = post_hooks.hook.call(QJSValueList() << jsEngine->toScriptValue(obj));
+            QJSValue result = post_hooks.executor.call(QJSValueList() << jsEngine->toScriptValue(obj));
             if (result.isObject()) {
                 QJsonObject modifiedObj = result.toVariant().toJsonObject();
 
@@ -616,14 +679,39 @@ void AdaptixWidget::PostHookProcess(QJsonObject jsonHookObj)
 
     QByteArray jsonData = QJsonDocument(jsonHookObj).toJson();
 
-    QString message = "";
-    bool ok = false;
-    bool result = HttpReqTasksHook(jsonData, *profile, &message, &ok);
-    if( !result ) {
-        MessageError("Server is not responding");
-        return;
+    HttpReqTasksHookAsync(jsonData, *profile, [](bool success, const QString &message, const QJsonObject&) {
+        if (!success)
+            MessageError(message);
+    });
+}
+
+void AdaptixWidget::PostHandlerProcess(const QString &handlerId, const TaskData &taskData)
+{
+    if (PostHandlersJS.contains(handlerId)) {
+        AxExecutor post_handler = PostHandlersJS.take(handlerId);
+        auto jsEngine = ScriptManager->GetEngine(post_handler.engineName);
+        if (jsEngine && post_handler.executor.isCallable()) {
+
+            QJsonObject obj;
+            obj["id"]      = taskData.TaskId;
+            obj["agent"]   = taskData.AgentId;
+            obj["cmdline"] = taskData.CommandLine;
+            obj["message"] = taskData.Message;
+            obj["text"]    = taskData.Output;
+
+            int msgType = taskData.MessageType;
+            if (msgType == CONSOLE_OUT_LOCAL_INFO || msgType == CONSOLE_OUT_INFO)
+                obj["type"] = "info";
+            else if (msgType == CONSOLE_OUT_LOCAL_ERROR || msgType == CONSOLE_OUT_ERROR)
+                obj["type"] = "error";
+            else if (msgType == CONSOLE_OUT_LOCAL_SUCCESS || msgType == CONSOLE_OUT_SUCCESS)
+                obj["type"] = "success";
+            else
+                obj["type"] = "";
+
+            post_handler.executor.call(QJSValueList() << jsEngine->toScriptValue(obj));
+        }
     }
-    if (!ok) MessageError(message);
 }
 
 /// SHOW PANELS
@@ -635,7 +723,7 @@ void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
 
     auto agent = AgentsMap[AgentId];
     if (agent && agent->Console) {
-        this->AddDockBottom( AgentsMap[AgentId]->Console->dock() );
+        this->PlaceDockBottom( AgentsMap[AgentId]->Console->dock() );
         AgentsMap[AgentId]->Console->InputFocus();
     }
 
@@ -650,7 +738,7 @@ void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
 
     auto agent = AgentsMap[AgentId];
     if (agent && agent->FileBrowser)
-        this->AddDockBottom( AgentsMap[AgentId]->FileBrowser->dock() );
+        this->PlaceDockBottom( AgentsMap[AgentId]->FileBrowser->dock() );
 }
 
 void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
@@ -660,7 +748,7 @@ void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
 
     auto agent = AgentsMap[AgentId];
     if (agent && agent->ProcessBrowser)
-        this->AddDockBottom( AgentsMap[AgentId]->ProcessBrowser->dock() );
+        this->PlaceDockBottom( AgentsMap[AgentId]->ProcessBrowser->dock() );
 
 }
 
@@ -671,7 +759,17 @@ void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
 
     auto agent = AgentsMap[AgentId];
     if (agent && agent->Terminal)
-        this->AddDockBottom( AgentsMap[AgentId]->Terminal->dock() );
+        this->PlaceDockBottom( AgentsMap[AgentId]->Terminal->dock() );
+}
+
+void AdaptixWidget::LoadShellUI(const QString &AgentId)
+{
+    if( !AgentsMap.contains(AgentId) )
+        return;
+
+    auto agent = AgentsMap[AgentId];
+    if (agent && agent->Shell)
+        this->PlaceDockBottom( AgentsMap[AgentId]->Shell->dock() );
 }
 
 void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd)
@@ -697,71 +795,28 @@ void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4,
     QByteArray tunnelData = dialogTunnel->GetTunnelData();
 
     if ( endpoint == "Teamserver" ) {
-        QThread* workerThread = new QThread();
-        QObject* worker = new QObject();
-        worker->moveToThread(workerThread);
-
-        connect(workerThread, &QThread::started, worker, [=, this]() {
-            QString message = "";
-            bool ok = false;
-            bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *profile, &message, &ok);
-
-            QMetaObject::invokeMethod(this, [=, this]() {
-                if( !result ) {
-                    MessageError("Server is not responding");
-                } else if (!ok) {
-                    MessageError(message);
-                }
-
-                delete dialogTunnel;
-
-                workerThread->quit();
-                workerThread->wait();
-                worker->deleteLater();
-                workerThread->deleteLater();
-            }, Qt::QueuedConnection);
+        HttpReqTunnelStartServerAsync(tunnelType, tunnelData, *profile, [dialogTunnel](bool success, const QString &message, const QJsonObject&) {
+            if (!success)
+                MessageError(message);
+            delete dialogTunnel;
         });
-
-        workerThread->start();
     }
     else {
         auto tunnelEndpoint = new TunnelEndpoint();
         bool started = tunnelEndpoint->StartTunnel(profile, tunnelType, tunnelData);
         if (started) {
-            QThread* workerThread = new QThread();
-            QObject* worker = new QObject();
-            worker->moveToThread(workerThread);
-
-            connect(workerThread, &QThread::started, worker, [=, this]() {
-                QString message = "";
-                bool ok = false;
-                bool result = HttpReqTunnelStartServer(tunnelType, tunnelData, *profile, &message, &ok);
-
-                QMetaObject::invokeMethod(this, [=, this]() {
-                    if( !result ) {
-                        MessageError("Server is not responding");
-                        delete tunnelEndpoint;
-                        delete dialogTunnel;
-                    } else if ( !ok ) {
-                        MessageError(message);
-                        delete tunnelEndpoint;
-                        delete dialogTunnel;
-                    } else {
-                        QString tunnelId = message;
-                        tunnelEndpoint->SetTunnelId(tunnelId);
-                        this->ClientTunnels[tunnelId] = tunnelEndpoint;
-                        MessageSuccess("Tunnel " + tunnelId + " started");
-                        delete dialogTunnel;
-                    }
-
-                    workerThread->quit();
-                    workerThread->wait();
-                    worker->deleteLater();
-                    workerThread->deleteLater();
-                }, Qt::QueuedConnection);
+            HttpReqTunnelStartServerAsync(tunnelType, tunnelData, *profile, [this, tunnelEndpoint, dialogTunnel](bool success, const QString &message, const QJsonObject&) {
+                if (!success) {
+                    MessageError(message);
+                    delete tunnelEndpoint;
+                } else {
+                    QString tunnelId = message;
+                    tunnelEndpoint->SetTunnelId(tunnelId);
+                    this->ClientTunnels[tunnelId] = tunnelEndpoint;
+                    MessageSuccess("Tunnel " + tunnelId + " started");
+                }
+                delete dialogTunnel;
             });
-
-            workerThread->start();
         }
         else {
             delete tunnelEndpoint;
@@ -785,7 +840,7 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
 
     if ( parseError.error != QJsonParseError::NoError || !jsonDoc.isObject() ) {
-        LogError("Error parsing JSON data: %s", parseError.errorString().toStdString().c_str());
+        LogError("Error parsing JSON data: %s\nRaw data: %s", parseError.errorString().toStdString().c_str(), data.left(1024).toStdString().c_str());
         return;
     }
 
@@ -806,22 +861,8 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
 
 void AdaptixWidget::OnWebSocketConnected()
 {
-    QThread* workerThread = new QThread();
-    QObject* worker = new QObject();
-    worker->moveToThread(workerThread);
-
-    connect(workerThread, &QThread::started, worker, [=, this]() {
-        HttpReqSync( *profile );
-
-        QMetaObject::invokeMethod(qApp, [=]() {
-            workerThread->quit();
-            workerThread->wait();
-            worker->deleteLater();
-            workerThread->deleteLater();
-        }, Qt::QueuedConnection);
-    });
-
-    workerThread->start();
+    QByteArray jsonData = QJsonDocument(QJsonObject()).toJson();
+    HttpRequestManager::instance().post(profile->GetURL(), "/sync", profile->GetAccessToken(), jsonData, [](bool, const QString&, const QJsonObject&) {});
 }
 
 void AdaptixWidget::OnSynced()
@@ -830,8 +871,11 @@ void AdaptixWidget::OnSynced()
 
     this->SessionsGraphDock->TreeDraw();
     this->TasksDock->UpdateColumnsSize();
+    this->TasksDock->UpdateFilterComboBoxes();
     this->SessionsTableDock->UpdateColumnsSize();
+    this->SessionsTableDock->UpdateAgentTypeComboBox();
     this->CredentialsDock->UpdateColumnsSize();
+    this->CredentialsDock->UpdateFilterComboBoxes();
     this->TargetsDock->UpdateColumnsSize();
 
     Q_EMIT SyncedOnReloadSignal(profile->GetProject());
@@ -897,6 +941,8 @@ void AdaptixWidget::OnReconnect()
             QMetaObject::invokeMethod(this, [=, this]() {
                 if (!result) {
                     MessageError("Login failure");
+                    if (dialogSyncPacket && dialogSyncPacket->splashScreen)
+                        dialogSyncPacket->splashScreen->close();
                 } else {
                     this->ClearAdaptix();
 
@@ -915,7 +961,8 @@ void AdaptixWidget::OnReconnect()
             }, Qt::QueuedConnection);
         });
 
-        dialogSyncPacket->splashScreen->show();
+        if (dialogSyncPacket && dialogSyncPacket->splashScreen)
+            dialogSyncPacket->splashScreen->show();
 
         workerThread->start();
     }

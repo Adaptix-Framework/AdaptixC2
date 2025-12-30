@@ -45,14 +45,13 @@ void NonBlockingDialogs::getSaveFileName(QWidget* parent, const QString& caption
     dialog->setNameFilter(filter);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
 
-    QObject::connect(dialog, &QFileDialog::fileSelected, [callback](const QString& file) {
+    QObject::connect(dialog, &QFileDialog::finished, [dialog, callback](int result) {
         stopKeepAlive();
-        callback(file);
-    });
-
-    QObject::connect(dialog, &QFileDialog::rejected, [callback]() {
-        stopKeepAlive();
-        callback(QString());
+        if (result == QDialog::Accepted && !dialog->selectedFiles().isEmpty()) {
+            callback(dialog->selectedFiles().first());
+        } else {
+            callback(QString());
+        }
     });
 
     startKeepAlive();
@@ -69,14 +68,13 @@ void NonBlockingDialogs::getOpenFileName(QWidget* parent, const QString& caption
     dialog->setNameFilter(filter);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
 
-    QObject::connect(dialog, &QFileDialog::fileSelected, [callback](const QString& file) {
+    QObject::connect(dialog, &QFileDialog::finished, [dialog, callback](int result) {
         stopKeepAlive();
-        callback(file);
-    });
-
-    QObject::connect(dialog, &QFileDialog::rejected, [callback]() {
-        stopKeepAlive();
-        callback(QString());
+        if (result == QDialog::Accepted && !dialog->selectedFiles().isEmpty()) {
+            callback(dialog->selectedFiles().first());
+        } else {
+            callback(QString());
+        }
     });
 
     startKeepAlive();
@@ -93,14 +91,13 @@ void NonBlockingDialogs::getExistingDirectory(QWidget* parent, const QString& ca
     dialog->setDirectory(dir);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
 
-    QObject::connect(dialog, &QFileDialog::fileSelected, [callback](const QString& dir) {
+    QObject::connect(dialog, &QFileDialog::finished, [dialog, callback](int result) {
         stopKeepAlive();
-        callback(dir);
-    });
-
-    QObject::connect(dialog, &QFileDialog::rejected, [callback]() {
-        stopKeepAlive();
-        callback(QString());
+        if (result == QDialog::Accepted && !dialog->selectedFiles().isEmpty()) {
+            callback(dialog->selectedFiles().first());
+        } else {
+            callback(QString());
+        }
     });
 
     startKeepAlive();

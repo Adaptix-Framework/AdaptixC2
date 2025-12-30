@@ -20,9 +20,13 @@ func NewTeamserver() *Teamserver {
 		return nil
 	}
 
+	broker := NewMessageBroker()
+	broker.Start()
+
 	ts := &Teamserver{
 		Profile: profile.NewProfile(),
 		DBMS:    dbms,
+		Broker:  broker,
 
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
@@ -31,8 +35,7 @@ func NewTeamserver() *Teamserver {
 		wm_listeners:   make(map[string][]string),
 
 		events:      safe.NewSlice(),
-		clients:     safe.NewMap(),
-		agents:      safe.NewMap(),
+		Agents:      safe.NewMap(),
 		listeners:   safe.NewMap(),
 		messages:    safe.NewSlice(),
 		downloads:   safe.NewMap(),
@@ -40,11 +43,12 @@ func NewTeamserver() *Teamserver {
 		screenshots: safe.NewMap(),
 		credentials: safe.NewSlice(),
 		targets:     safe.NewSlice(),
-		tunnels:     safe.NewMap(),
 		terminals:   safe.NewMap(),
 		pivots:      safe.NewSlice(),
 		otps:        safe.NewMap(),
 	}
+	ts.TaskManager = NewTaskManager(ts)
+	ts.TunnelManager = NewTunnelManager(ts)
 	ts.Extender = extender.NewExtender(ts)
 	return ts
 }
@@ -107,7 +111,6 @@ func (ts *Teamserver) RestoreData() {
 	for _, agentData := range restoreAgents {
 
 		agent := &Agent{
-			Data:              agentData,
 			OutConsole:        safe.NewSlice(),
 			HostedTunnelData:  safe.NewSafeQueue(0x1000),
 			HostedTasks:       safe.NewSafeQueue(0x100),
@@ -121,17 +124,18 @@ func (ts *Teamserver) RestoreData() {
 			Active:            true,
 		}
 
-		if agent.Data.Mark == "Terminated" {
+		if agentData.Mark == "Terminated" {
 			agent.Active = false
 		}
 
-		if agent.Data.Mark == "" {
-			if !agent.Data.Async {
-				agent.Data.Mark = "Disconnect"
+		if agentData.Mark == "" {
+			if !agentData.Async {
+				agentData.Mark = "Disconnect"
 			}
 		}
 
-		ts.agents.Put(agentData.Id, agent)
+		agent.SetData(agentData)
+		ts.Agents.Put(agentData.Id, agent)
 
 		packet := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packet)
@@ -184,7 +188,7 @@ func (ts *Teamserver) RestoreData() {
 		countMessages++
 	}
 	logs.Success("   ", "Restored %v messages", countMessages)
-	
+
 	/// DOWNLOADS
 	countDownloads := 0
 	restoreDownloads := ts.DBMS.DbDownloadAll()
@@ -247,7 +251,7 @@ func (ts *Teamserver) RestoreData() {
 	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
-		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.Watermark, restoreListener.CustomData)
+		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.CreateTime, restoreListener.Watermark, restoreListener.CustomData)
 		if err != nil {
 			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {

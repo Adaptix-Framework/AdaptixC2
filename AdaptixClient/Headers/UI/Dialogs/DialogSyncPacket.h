@@ -3,25 +3,29 @@
 
 #include <main.h>
 
+class DialogSyncPacket;
+
 class CustomSplashScreen : public QSplashScreen
 {
 Q_OBJECT
+    DialogSyncPacket* dialog = nullptr;
+
+public:
+    explicit CustomSplashScreen(DialogSyncPacket* d) : dialog(d) {}
 
 protected:
-    void mousePressEvent(QMouseEvent *event) override {
-        event->ignore();
-    }
-
-    void keyPressEvent(QKeyEvent *event) override {
-        event->ignore();
-    }
+    void mousePressEvent(QMouseEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 };
 
-class DialogSyncPacket
+class DialogSyncPacket : public QObject
 {
+Q_OBJECT
+
     QLabel*       logNameLabel       = nullptr;
     QLabel*       logProgressLabel   = nullptr;
     QProgressBar* progressBar        = nullptr;
+    QPushButton*  cancelButton       = nullptr;
     QVBoxLayout*  layout             = nullptr;
 
 public:
@@ -29,13 +33,22 @@ public:
     int totalLogs    = 0;
     int receivedLogs = 0;
     qint64 startTime = 0;
+    bool cancelled   = false;
 
-    explicit DialogSyncPacket();
-    ~DialogSyncPacket();
+    explicit DialogSyncPacket(QObject* parent = nullptr);
+    ~DialogSyncPacket() override;
 
     void init(int count);
-    void upgrade() const;
-    void finish() const;
+    void upgrade();
+    void finish();
+    void error(const QString& message);
+
+Q_SIGNALS:
+    void syncCancelled();
+    void syncFinished();
+
+public Q_SLOTS:
+    void onCancel();
 };
 
 #endif

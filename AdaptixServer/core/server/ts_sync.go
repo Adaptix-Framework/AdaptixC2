@@ -2,17 +2,13 @@ package server
 
 import (
 	"AdaptixServer/core/extender"
-	"bytes"
-	"encoding/json"
 	"sort"
 
 	"github.com/Adaptix-Framework/axc2"
-	"github.com/gorilla/websocket"
 )
 
 func (ts *Teamserver) TsClientConnected(username string) bool {
-	_, found := ts.clients.Get(username)
-	return found
+	return ts.Broker.ClientExists(username)
 }
 
 func getPacketCategory(packet interface{}) string {
@@ -47,51 +43,18 @@ func getPacketCategory(packet interface{}) string {
 }
 
 func (ts *Teamserver) TsSyncClient(username string, packet interface{}) {
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	err := encoder.Encode(packet)
-	if err != nil {
-		return
-	}
+	ts.Broker.PublishTo(username, packet)
+}
 
-	value, found := ts.clients.Get(username)
-	if found {
-		client := value.(*Client)
-		client.lockSocket.Lock()
-		err = client.socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
-		client.lockSocket.Unlock()
-		if err != nil {
-			return
-		}
-	}
+func (ts *Teamserver) TsSyncExcludeClient(username string, packet interface{}) {
+	ts.Broker.PublishExclude(username, packet)
 }
 
 func (ts *Teamserver) TsSyncAllClients(packet interface{}) {
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	err := encoder.Encode(packet)
-
-	if err != nil {
-		return
-	}
-	data := buffer.Bytes()
-
-	ts.clients.ForEach(func(key string, value interface{}) bool {
-		client := value.(*Client)
-		if client.synced {
-			client.lockSocket.Lock()
-			_ = client.socket.WriteMessage(websocket.BinaryMessage, data)
-			client.lockSocket.Unlock()
-		} else {
-			client.tmp_store.Put(packet)
-		}
-		return true
-	})
+	ts.Broker.Publish(packet)
 }
 
-func (ts *Teamserver) TsSyncStored(client *Client) {
+func (ts *Teamserver) TsSyncStored(client *ClientHandler) {
 	var packets []interface{}
 
 	packets = append(packets, ts.TsPresyncExtenders()...)
@@ -107,21 +70,21 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 	packets = append(packets, ts.TsPresyncTargets()...)
 
 	startPacket := CreateSpSyncStart(len(packets), ts.Parameters.Interfaces)
-	var startBuffer bytes.Buffer
-	_ = json.NewEncoder(&startBuffer).Encode(startPacket)
+	startData := serializePacket(startPacket)
 
 	var serializedPackets [][]byte
 
-	if !client.versionSupport {
+	if !client.VersionSupport() {
 		for _, p := range packets {
-			var pBuffer bytes.Buffer
-			_ = json.NewEncoder(&pBuffer).Encode(p)
-			serializedPackets = append(serializedPackets, pBuffer.Bytes())
+			data := serializePacket(p)
+			if data != nil {
+				serializedPackets = append(serializedPackets, data)
+			}
 		}
 	} else {
 		const BATCH_SIZE = 100
 		categoryMap := make(map[string][]interface{})
-		categoryOrder := []string{} // Preserve order
+		categoryOrder := []string{}
 
 		for _, p := range packets {
 			category := getPacketCategory(p)
@@ -143,27 +106,24 @@ func (ts *Teamserver) TsSyncStored(client *Client) {
 				batch := categoryPackets[i:end]
 				batchPacket := CreateSpSyncCategoryBatch(category, batch)
 
-				var pBuffer bytes.Buffer
-				_ = json.NewEncoder(&pBuffer).Encode(batchPacket)
-				serializedPackets = append(serializedPackets, pBuffer.Bytes())
+				data := serializePacket(batchPacket)
+				if data != nil {
+					serializedPackets = append(serializedPackets, data)
+				}
 			}
 		}
 	}
 
 	finishPacket := CreateSpSyncFinish()
-	var finishBuffer bytes.Buffer
-	_ = json.NewEncoder(&finishBuffer).Encode(finishPacket)
+	finishData := serializePacket(finishPacket)
 
-	client.lockSocket.Lock()
-	defer client.lockSocket.Unlock()
-
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, startBuffer.Bytes())
+	client.SendSync(startData)
 
 	for _, serialized := range serializedPackets {
-		_ = client.socket.WriteMessage(websocket.BinaryMessage, serialized)
+		client.SendSync(serialized)
 	}
 
-	_ = client.socket.WriteMessage(websocket.BinaryMessage, finishBuffer.Bytes())
+	client.SendSync(finishData)
 }
 
 ///////////////
@@ -188,13 +148,21 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncListeners() []interface{} {
-	var packets []interface{}
+	var sortedListeners []adaptix.ListenerData
 	ts.listeners.ForEach(func(key string, value interface{}) bool {
 		listenerData := value.(adaptix.ListenerData)
-		p := CreateSpListenerStart(listenerData)
-		packets = append(packets, p)
+		index := sort.Search(len(sortedListeners), func(i int) bool {
+			return sortedListeners[i].CreateTime > listenerData.CreateTime
+		})
+		sortedListeners = append(sortedListeners[:index], append([]adaptix.ListenerData{listenerData}, sortedListeners[index:]...)...)
 		return true
 	})
+
+	var packets []interface{}
+	for _, listenerData := range sortedListeners {
+		t := CreateSpListenerStart(listenerData)
+		packets = append(packets, t)
+	}
 	return packets
 }
 
@@ -205,20 +173,24 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 		sortedAgents []*Agent
 	)
 
-	ts.agents.ForEach(func(key string, value interface{}) bool {
-		agent := value.(*Agent)
+	ts.Agents.ForEach(func(key string, value interface{}) bool {
+		agent, ok := value.(*Agent)
+		if !ok {
+			return true
+		}
+		agentData := agent.GetData()
 		index := sort.Search(len(sortedAgents), func(i int) bool {
-			return sortedAgents[i].Data.CreateTime > agent.Data.CreateTime
+			return sortedAgents[i].GetData().CreateTime > agentData.CreateTime
 		})
 		sortedAgents = append(sortedAgents[:index], append([]*Agent{agent}, sortedAgents[index:]...)...)
 		return true
 	})
 
-	ts.agents.DirectLock()
+	ts.Agents.DirectLock()
 	for _, agent := range sortedAgents {
 		if agent != nil {
 			/// Agent
-			p := CreateSpAgentNew(agent.Data)
+			p := CreateSpAgentNew(agent.GetData())
 			packets = append(packets, p)
 
 			/// Tasks
@@ -237,7 +209,7 @@ func (ts *Teamserver) TsPresyncAgents() []interface{} {
 			})
 		}
 	}
-	ts.agents.DirectUnlock()
+	ts.Agents.DirectUnlock()
 
 	for _, taskData := range sortedTasks {
 		t := CreateSpAgentTaskSync(taskData)
@@ -342,8 +314,7 @@ func (ts *Teamserver) TsPresyncTargets() []interface{} {
 
 func (ts *Teamserver) TsPresyncTunnels() []interface{} {
 	var packets []interface{}
-	ts.tunnels.ForEach(func(key string, value interface{}) bool {
-		tunnel := value.(*Tunnel)
+	ts.TunnelManager.ForEachTunnel(func(key string, tunnel *Tunnel) bool {
 		t := CreateSpTunnelCreate(tunnel.Data)
 		packets = append(packets, t)
 		return true

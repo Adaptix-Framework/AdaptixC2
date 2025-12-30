@@ -32,8 +32,8 @@ func (dbms *DBMS) DbListenerInsert(listenerData adaptix.ListenerData, customData
 		return fmt.Errorf("listener %s already exists", listenerData.Name)
 	}
 
-	insertQuery := `INSERT INTO Listeners (ListenerName, ListenerRegName, ListenerConfig, Watermark, CustomData) values(?,?,?,?,?);`
-	_, err := dbms.database.Exec(insertQuery, listenerData.Name, listenerData.RegName, listenerData.Data, listenerData.Watermark, customData)
+	insertQuery := `INSERT INTO Listeners (ListenerName, ListenerRegName, ListenerConfig, CreateTime, Watermark, CustomData) values(?,?,?,?,?,?);`
+	_, err := dbms.database.Exec(insertQuery, listenerData.Name, listenerData.RegName, listenerData.Data, listenerData.CreateTime, listenerData.Watermark, customData)
 
 	return err
 }
@@ -77,6 +77,7 @@ type ListenerRow struct {
 	ListenerRegName string
 	ListenerConfig  string
 	Watermark       string
+	CreateTime      int64
 	CustomData      []byte
 }
 
@@ -85,24 +86,22 @@ func (dbms *DBMS) DbListenerAll() []ListenerRow {
 
 	ok := dbms.DatabaseExists()
 	if ok {
-		selectQuery := `SELECT ListenerName, ListenerRegName, ListenerConfig, Watermark, CustomData FROM Listeners;`
+		selectQuery := `SELECT ListenerName, ListenerRegName, ListenerConfig, CreateTime, Watermark, CustomData FROM Listeners;`
 		query, err := dbms.database.Query(selectQuery)
-		if err == nil {
-
-			for query.Next() {
-				listenerRow := ListenerRow{}
-				err = query.Scan(&listenerRow.ListenerName, &listenerRow.ListenerRegName, &listenerRow.ListenerConfig, &listenerRow.Watermark, &listenerRow.CustomData)
-				if err != nil {
-					continue
-				}
-				listeners = append(listeners, listenerRow)
-			}
-		} else {
+		if err != nil {
 			logs.Debug("", "Failed to query listeners: "+err.Error())
+			return listeners
 		}
-		defer func(query *sql.Rows) {
-			_ = query.Close()
-		}(query)
+		defer query.Close()
+
+		for query.Next() {
+			listenerRow := ListenerRow{}
+			err = query.Scan(&listenerRow.ListenerName, &listenerRow.ListenerRegName, &listenerRow.ListenerConfig, &listenerRow.CreateTime, &listenerRow.Watermark, &listenerRow.CustomData)
+			if err != nil {
+				continue
+			}
+			listeners = append(listeners, listenerRow)
+		}
 	}
 	return listeners
 }

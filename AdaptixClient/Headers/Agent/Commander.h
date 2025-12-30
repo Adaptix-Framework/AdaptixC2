@@ -41,11 +41,11 @@ struct CommandsGroup
     QJSEngine*     engine;
 };
 
-struct PostHook
+struct AxExecutor
 {
     bool     isSet;
     QString  engineName;
-    QJSValue hook;
+    QJSValue executor;
 };
 
 struct CommanderResult
@@ -55,7 +55,8 @@ struct CommanderResult
     QString     message;
     QJsonObject data;
     bool        is_pre_hook;
-    PostHook    post_hook;
+    AxExecutor  post_hook;
+    AxExecutor  handler;
 };
 
 
@@ -72,8 +73,9 @@ Q_OBJECT
     QVector<CommandsGroup> axCommandsGroup;
 
     QString         ProcessPreHook(QJSEngine *engine, const Command &command, const QString &agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args);
-    CommanderResult ProcessCommand(Command command, QStringList args, QJsonObject jsonObj);
+    CommanderResult ProcessCommand(const Command &command, const QString &commandName, QStringList args, QJsonObject jsonObj);
     CommanderResult ProcessHelp(QStringList commandParts);
+    QString         GenerateCommandHelp(const Command &command, const QString &parentCommand = "");
 
 public:
     explicit Commander();

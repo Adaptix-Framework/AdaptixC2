@@ -94,6 +94,7 @@ type TunnelPack struct {
 	Key       []byte `msgpack:"key"`
 	Iv        []byte `msgpack:"iv"`
 	Alive     bool   `msgpack:"alive"`
+	Reason    byte   `msgpack:"reason"`
 }
 
 type TermPack struct {
@@ -213,7 +214,10 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 				goto ERR
 			}
 		} else {
-			_ = ModuleObject.ts.TsAgentSetMark(agentId, "")
+			emptyMark := ""
+			_ = ModuleObject.ts.TsAgentUpdateDataPartial(agentId, struct {
+				Mark *string `json:"mark"`
+			}{Mark: &emptyMark})
 		}
 
 		handler.AgentConnects.Put(agentId, connection)
@@ -245,7 +249,10 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 			}
 		}
 
-		_ = ts.TsAgentSetMark(agentId, "Disconnect")
+		disconnectMark := "Disconnect"
+		_ = ts.TsAgentUpdateDataPartial(agentId, struct {
+			Mark *string `json:"mark"`
+		}{Mark: &disconnectMark})
 		handler.AgentConnects.Delete(agentId)
 		_ = conn.Close()
 
@@ -322,7 +329,10 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		}
 
 		if !tunPack.Alive {
-			ts.TsTunnelConnectionClose(tunPack.ChannelId)
+			if tunPack.Reason < 1 || tunPack.Reason > 8 {
+				tunPack.Reason = 5
+			}
+			ts.TsTunnelConnectionHalt(tunPack.ChannelId, tunPack.Reason)
 			_ = conn.Close()
 			return
 		}
@@ -391,7 +401,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 			return
 		}
 
-		ts.TsTerminalConnResume(agentId, terminalId)
+		ts.TsTerminalConnResume(agentId, terminalId, true)
 
 		pr, pw, err := ModuleObject.ts.TsTerminalGetPipe(agentId, terminalId)
 		if err != nil {

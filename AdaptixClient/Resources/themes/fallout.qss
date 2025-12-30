@@ -38,6 +38,15 @@ QPushButton[ButtonStyle="dialog"] {
     font-weight: bold;
 }
 
+QPushButton[ButtonStyle="dialog_apply"] {
+    background-color: #1A1A1A;
+    border: 2px solid #00AA00;
+    padding: 8px;
+    border-radius: 2px;
+    color: #00FF00;
+    font-weight: bold;
+}
+
 QPushButton[ButtonStyle="dialog"]:hover {
     background-color: #2D4D2D; /* Dark olive green */
     border: 2px solid #00FF00;
@@ -263,7 +272,8 @@ QMenuBar:disabled {
 #KDDWTitleBar {
     background-color: #0A0A0A;
     color: #00FF00;
-    border-bottom: 1px solid #006600;
+    border: 1px solid #006600;
+    border-bottom: none;
 }
 
 #KDDWTitleBar QLabel {
@@ -318,7 +328,8 @@ QTabBar::tab:hover {
 
 QTabBar::close-button {
     image: url(:/icons/close);
-    subcontrol-position: right;
+    subcontrol-position: center right;
+    padding: 0px;
 }
 
 QTabBar::close-button:hover {
@@ -668,6 +679,36 @@ QListWidget::item:selected {
 
 QListWidget:focus {
     outline: none;
+}
+
+
+
+CardListWidget {
+    background-color: #0A0A0A;
+    border: 1px solid #006600;
+    border-radius: 4px;
+    padding: 4px;
+
+    qproperty-itemBackground: #0F1F0F;
+    qproperty-itemBackgroundHover: #1A3A1A;
+    qproperty-itemBackgroundSelected: #006600;
+    qproperty-titleColor: #00FF00;
+    qproperty-titleColorSelected: #00FF00;
+    qproperty-subtitleColor: #00AA00;
+    qproperty-subtitleColorSelected: #00FF00;
+}
+
+CardListWidget::item {
+    border: none;
+    border-radius: 4px;
+}
+
+CardListWidget::item:selected {
+    background: transparent;
+}
+
+CardListWidget::item:hover {
+    background: transparent;
 }
 
 /* Radio Buttons */

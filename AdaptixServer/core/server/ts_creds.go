@@ -74,12 +74,14 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 		ts.credentials.Put(cred)
 	}
 
-	_ = ts.DBMS.DbCredentialsAdd(newCreds)
+	if len(newCreds) > 0 {
+		_ = ts.DBMS.DbCredentialsAdd(newCreds)
 
-	packet := CreateSpCredentialsAdd(newCreds)
-	ts.TsSyncAllClients(packet)
+		packet := CreateSpCredentialsAdd(newCreds)
+		ts.TsSyncAllClients(packet)
 
-	go ts.TsEventCallbackCreds(cbCredsData)
+		go ts.TsEventCallbackCreds(cbCredsData)
+	}
 
 	return nil
 }
@@ -122,7 +124,6 @@ func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password 
 }
 
 func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
-
 	for _, id := range credsId {
 		for i := uint(0); i < ts.credentials.Len(); i++ {
 			valuePivot, ok := ts.credentials.Get(i)

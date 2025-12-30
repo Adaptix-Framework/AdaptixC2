@@ -28,9 +28,67 @@ class TargetsFilterProxyModel : public QSortFilterProxyModel
     QString filter;
     bool    searchVisible = false;
 
+    bool matchesTerm(const QString &term, const QString &rowData) const {
+        if (term.isEmpty())
+            return true;
+        QRegularExpression re(QRegularExpression::escape(term.trimmed()), QRegularExpression::CaseInsensitiveOption);
+        return rowData.contains(re);
+    }
+
+    bool evaluateExpression(const QString &expr, const QString &rowData) const {
+        QString e = expr.trimmed();
+        if (e.isEmpty())
+            return true;
+
+        int depth = 0;
+        int lastOr = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '|') {
+                lastOr = i;
+                break;
+            }
+        }
+        if (lastOr != -1) {
+            QString left = e.left(lastOr).trimmed();
+            QString right = e.mid(lastOr + 1).trimmed();
+            return evaluateExpression(left, rowData) || evaluateExpression(right, rowData);
+        }
+
+        depth = 0;
+        int lastAnd = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '&') {
+                lastAnd = i;
+                break;
+            }
+        }
+        if (lastAnd != -1) {
+            QString left = e.left(lastAnd).trimmed();
+            QString right = e.mid(lastAnd + 1).trimmed();
+            return evaluateExpression(left, rowData) && evaluateExpression(right, rowData);
+        }
+
+        if (e.startsWith("^(") && e.endsWith(')')) {
+            return !evaluateExpression(e.mid(2, e.length() - 3), rowData);
+        }
+
+        if (e.startsWith('(') && e.endsWith(')')) {
+            return evaluateExpression(e.mid(1, e.length() - 2), rowData);
+        }
+
+        return matchesTerm(e, rowData);
+    }
+
 public:
     explicit TargetsFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
         setDynamicSortFilter(true);
+        setSortRole(Qt::UserRole);
     };
 
     void setSearchVisible(bool visible) {
@@ -55,17 +113,14 @@ protected:
             return true;
 
         if (!filter.isEmpty()) {
-            const int colCount = model->columnCount();
-            QRegularExpression re(filter, QRegularExpression::CaseInsensitiveOption);
-            bool matched = false;
-            for (int col = 0; col < colCount; ++col) {
-                QString val = model->index(row, col, parent).data().toString();
-                if (val.contains(re)) {
-                    matched = true;
-                    break;
-                }
-            }
-            if (!matched)
+            QString rowData;
+            rowData += model->index(row, TRC_Computer, parent).data().toString() + " ";
+            rowData += model->index(row, TRC_Domain, parent).data().toString() + " ";
+            rowData += model->index(row, TRC_Address, parent).data().toString() + " ";
+            rowData += model->index(row, TRC_Tag, parent).data().toString() + " ";
+            rowData += model->index(row, TRC_Os, parent).data().toString() + " ";
+            rowData += model->index(row, TRC_Info, parent).data().toString() + " ";
+            if (!evaluateExpression(filter, rowData))
                 return false;
         }
 
@@ -77,7 +132,14 @@ protected:
 
 class TargetsTableModel : public QAbstractTableModel
 {
-    QVector<TargetData> targets;
+    QVector<TargetData>   targets;
+    QHash<QString, int>   idToRow;
+
+    void rebuildIndex() {
+        idToRow.clear();
+        for (int i = 0; i < targets.size(); ++i)
+            idToRow[targets[i].TargetId] = i;
+    }
 
 public:
     explicit TargetsTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
@@ -101,6 +163,13 @@ public:
                 case TRC_Os:       return t.OsDesc;
                 case TRC_Date:     return t.Date;
                 case TRC_Info:     return t.Info;
+            }
+        }
+
+        if (role == Qt::UserRole) {
+            switch (index.column()) {
+                case TRC_Date: return t.DateTimestamp;
+                default:       return data(index, Qt::DisplayRole);
             }
         }
 
@@ -133,6 +202,14 @@ public:
         return headers.value(section);
     }
 
+    void add(const TargetData& item) {
+        const int row = targets.size();
+        beginInsertRows(QModelIndex(), row, row);
+        targets.append(item);
+        idToRow[item.TargetId] = row;
+        endInsertRows();
+    }
+
     void add(const QList<TargetData>& list) {
         if (list.isEmpty())
             return;
@@ -141,19 +218,21 @@ public:
         const int end   = start + list.size() - 1;
 
         beginInsertRows(QModelIndex(), start, end);
-        targets.append(list);
+        for (const auto& item : list) {
+            idToRow[item.TargetId] = targets.size();
+            targets.append(item);
+        }
         endInsertRows();
     }
 
-
     void update(const QString& targetId, const TargetData& newTarget) {
-        for (int i = 0; i < targets.size(); ++i) {
-            if (targets[i].TargetId == targetId) {
-                targets[i] = newTarget;
-                Q_EMIT dataChanged(index(i, 0), index(i, TRC_ColumnCount - 1));
-                break;
-            }
-        }
+        auto it = idToRow.find(targetId);
+        if (it == idToRow.end())
+            return;
+
+        int row = it.value();
+        targets[row] = newTarget;
+        Q_EMIT dataChanged(index(row, 0), index(row, TRC_ColumnCount - 1));
     }
 
     void remove(const QList<QString>& targetIds) {
@@ -161,9 +240,12 @@ public:
             return;
 
         QList<int> rowsToRemove;
-        for (int i = 0; i < targets.size(); ++i) {
-            if (targetIds.contains(targets[i].TargetId))
-                rowsToRemove.append(i);
+        rowsToRemove.reserve(targetIds.size());
+
+        for (const QString& id : targetIds) {
+            auto it = idToRow.find(id);
+            if (it != idToRow.end())
+                rowsToRemove.append(it.value());
         }
 
         if (rowsToRemove.isEmpty())
@@ -173,35 +255,33 @@ public:
 
         for (int row : rowsToRemove) {
             beginRemoveRows(QModelIndex(), row, row);
+            idToRow.remove(targets[row].TargetId);
             targets.removeAt(row);
             endRemoveRows();
         }
+
+        rebuildIndex();
     }
 
     void setTag(const QStringList &targetIds, const QString &tag) {
         if (targetIds.isEmpty() || targets.isEmpty())
             return;
 
-        QSet<QString> idsSet(targetIds.begin(), targetIds.end());
-        bool anyChanged = false;
+        for (const QString& id : targetIds) {
+            auto it = idToRow.find(id);
+            if (it == idToRow.end())
+                continue;
 
-        for (int i = 0; i < targets.size(); ++i) {
-            if (idsSet.contains(targets[i].TargetId)) {
-                targets[i].Tag = tag;
-                anyChanged = true;
-
-                Q_EMIT dataChanged(index(i, TRC_Tag), index(i, TRC_Tag), {Qt::DisplayRole});
-
-                idsSet.remove(targets[i].TargetId);
-                if (idsSet.isEmpty())
-                    break;
-            }
+            int row = it.value();
+            targets[row].Tag = tag;
+            Q_EMIT dataChanged(index(row, TRC_Tag), index(row, TRC_Tag), {Qt::DisplayRole});
         }
     }
 
     void clear() {
         beginResetModel();
         targets.clear();
+        idToRow.clear();
         endResetModel();
     }
 };
@@ -219,10 +299,11 @@ class TargetsWidget : public DockTab
     TargetsTableModel*       targetsModel = nullptr;
     TargetsFilterProxyModel* proxyModel   = nullptr;
 
-    QWidget*        searchWidget = nullptr;
-    QHBoxLayout*    searchLayout = nullptr;
-    QLineEdit*      inputFilter  = nullptr;
-    ClickableLabel* hideButton   = nullptr;
+    QWidget*        searchWidget    = nullptr;
+    QHBoxLayout*    searchLayout    = nullptr;
+    QLineEdit*      inputFilter     = nullptr;
+    QCheckBox*      autoSearchCheck = nullptr;
+    ClickableLabel* hideButton      = nullptr;
 
     void createUI();
 
@@ -251,6 +332,7 @@ public Q_SLOTS:
     void onRemoveTarget() const;
     void onSetTag() const;
     void onExportTarget() const;
+    void onCopyToClipboard() const;
 };
 
 #endif //TARGETSWIDGET_H

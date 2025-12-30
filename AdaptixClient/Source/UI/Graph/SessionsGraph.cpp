@@ -2,6 +2,7 @@
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Graph/GraphItemLink.h>
 #include <UI/Graph/LayoutTreeLeft.h>
+#include <UI/Graph/LayoutTreeTop.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/GraphScene.h>
 #include <UI/Widgets/AdaptixWidget.h>
@@ -26,7 +27,7 @@ SessionsGraph::SessionsGraph(QWidget* parent) : QGraphicsView(parent)
     this->scaleView( 0.8 );
 
     this->graphScene = new GraphScene( 10, this->mainWidget, this );
-    this->graphScene->setItemIndexMethod( QGraphicsScene::BspTreeIndex );
+    this->graphScene->setItemIndexMethod( QGraphicsScene::NoIndex );
     setScene( this->graphScene );
 
     this->RootInit();
@@ -56,7 +57,7 @@ void SessionsGraph::LinkToRoot(GraphItem *item) const
 
 void SessionsGraph::AddAgent(Agent *agent, bool drawTree)
 {
-    if (agent->data.Mark == "Terminated")
+    if (agent->data.Mark == "Terminated" || agent->data.Mark == "Inactive")
         return;
 
     GraphItem* item = new GraphItem( this, agent );
@@ -130,6 +131,9 @@ void SessionsGraph::RemoveAgent(Agent* agent, bool drawTree)
 
 void SessionsGraph::RelinkAgent(const Agent* parentAgent, const Agent* childAgent, const QString &linkName, const bool drawTree) const
 {
+    if (!parentAgent || !childAgent || !parentAgent->graphItem || !childAgent->graphItem)
+        return;
+
     if (childAgent->graphItem->parentItem) {
         childAgent->graphItem->parentItem->RemoveChild(childAgent->graphItem);
         childAgent->graphItem->parentItem = nullptr;
@@ -156,6 +160,10 @@ void SessionsGraph::RelinkAgent(const Agent* parentAgent, const Agent* childAgen
 
 void SessionsGraph::UnlinkAgent(const Agent* parentAgent, const Agent* childAgent, bool drawTree) const
 {
+    Q_UNUSED(parentAgent);
+    if (!childAgent || !childAgent->graphItem)
+        return;
+
     if (childAgent->graphItem->parentItem) {
         childAgent->graphItem->parentItem->RemoveChild(childAgent->graphItem);
         childAgent->graphItem->parentItem = nullptr;
@@ -178,7 +186,16 @@ void SessionsGraph::UnlinkAgent(const Agent* parentAgent, const Agent* childAgen
 
 void SessionsGraph::TreeDraw() const
 {
-    LayoutTreeLeft::draw(this->rootItem);
+    if (layoutDirection == LayoutTopToBottom)
+        LayoutTreeTop::draw(this->rootItem);
+    else
+        LayoutTreeLeft::draw(this->rootItem);
+}
+
+void SessionsGraph::SetLayoutDirection(GraphLayoutDirection direction)
+{
+    layoutDirection = direction;
+    TreeDraw();
 }
 
 void SessionsGraph::UpdateIcons() const
@@ -196,6 +213,8 @@ void SessionsGraph::Clear()
                 delete this->items[i]->parentLink;
                 this->items[i]->parentLink = nullptr;
             }
+            if (this->items[i]->agent)
+                this->items[i]->agent->graphItem = nullptr;
             this->graphScene->removeItem( this->items[ i ] );
             delete this->items[ i ];
             this->items[ i ] = nullptr;
@@ -223,12 +242,13 @@ void SessionsGraph::itemMoved()
 
 void SessionsGraph::timerEvent( QTimerEvent* event )
 {
+    Q_UNUSED(event);
     bool itemsMoved = false;
 
     for ( auto item : this->items ) {
         item->calculateForces();
-        itemsMoved = item->advancePosition();
-        item->adjust();
+        if (item->advancePosition())
+            itemsMoved = true;
     }
 
     if ( !itemsMoved ) {
@@ -239,12 +259,16 @@ void SessionsGraph::timerEvent( QTimerEvent* event )
 
 void SessionsGraph::wheelEvent( QWheelEvent* event )
 {
-    if ( QApplication::keyboardModifiers() & Qt::ShiftModifier )
+    if ( QApplication::keyboardModifiers() & Qt::ShiftModifier ) {
         horizontalScrollBar()->event( event );
-    else if ( QApplication::keyboardModifiers() & Qt::ControlModifier )
+    }
+    else if ( QApplication::keyboardModifiers() & Qt::ControlModifier ) {
         scaleView( pow( 2., event->angleDelta().y() / 500.0 ) );
-    else
+        event->accept();
+        return;
+    }
+    else {
         verticalScrollBar()->event( event );
-
-    event->ignore();
+    }
+    event->accept();
 }

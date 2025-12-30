@@ -2,6 +2,9 @@
 #define KEYPRESSHANDLER_H
 
 #include <main.h>
+#include <MainAdaptix.h>
+#include <UI/MainUI.h>
+#include <Client/AuthProfile.h>
 
 class KPH_SearchInput : public QObject
 {
@@ -101,7 +104,12 @@ protected:
 
             if (keyEvent->key() == Qt::Key_Tab) {
                 if (keyEvent->modifiers() & Qt::ControlModifier) {
-                    QString filePath = QFileDialog::getOpenFileName(nullptr, "Select file");
+                    QString baseDir;
+                    if (GlobalClient && GlobalClient->mainUI) {
+                        if (auto profile = GlobalClient->mainUI->GetCurrentProfile())
+                            baseDir = profile->GetProjectDir();
+                    }
+                    QString filePath = QFileDialog::getOpenFileName(nullptr, "Select file", baseDir);
                     if (!filePath.isEmpty()) {
                         int cursorPos = inputLineEdit->cursorPosition();
                         QString text = inputLineEdit->text();

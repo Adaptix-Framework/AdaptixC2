@@ -1,7 +1,7 @@
 #include <UI/Graph/LayoutTreeLeft.h>
 
-double LayoutTreeLeft::X_SEP = 450;
-double LayoutTreeLeft::Y_SEP = 150;
+double LayoutTreeLeft::X_SEP = 380;
+double LayoutTreeLeft::Y_SEP = 160;
 
 void LayoutTreeLeft::draw( GraphItem* item )
 {

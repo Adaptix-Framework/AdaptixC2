@@ -1,35 +1,17 @@
 #include <UI/MainUI.h>
 #include <UI/Dialogs/DialogSettings.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <MainAdaptix.h>
 #include <Client/Settings.h>
 #include <Utils/TitleBarStyle.h>
+#include <QShowEvent>
+#include <algorithm>
 
 DialogSettings::DialogSettings(Settings* s)
 {
     settings = s;
 
     this->createUI();
-
-    themeCombo->setCurrentText(s->data.MainTheme);
-    fontFamilyCombo->setCurrentText(s->data.FontFamily);
-    fontSizeSpin->setValue(s->data.FontSize);
-    graphCombo1->setCurrentText(s->data.GraphVersion);
-    terminalSizeSpin->setValue(s->data.RemoteTerminalBufferSize);
-
-    consoleSizeSpin->setValue(s->data.ConsoleBufferSize);
-    consoleTimeCheckbox->setChecked(s->data.ConsoleTime);
-    consoleNoWrapCheckbox->setChecked(s->data.ConsoleNoWrap);
-    consoleAutoScrollCheckbox->setChecked(s->data.ConsoleAutoScroll);
-
-    for ( int i = 0; i < 15; i++)
-        sessionsCheck[i]->setChecked(s->data.SessionsTableColumns[i]);
-
-    sessionsHealthCheck->setChecked(s->data.CheckHealth);
-    sessionsCoafSpin->setValue(s->data.HealthCoaf);
-    sessionsOffsetSpin->setValue(s->data.HealthOffset);
-
-    for ( int i = 0; i < 11; i++)
-        tasksCheck[i]->setChecked(s->data.TasksTableColumns[i]);
 
     connect(themeCombo,         &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
     connect(fontFamilyCombo,    &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
@@ -51,7 +33,7 @@ DialogSettings::DialogSettings(Settings* s)
     connect(sessionsHealthCheck,       &QCheckBox::stateChanged, this, &DialogSettings::onHealthChange );
 #endif
 
-    for ( int i = 0; i < 15; i++) {
+    for ( int i = 0; i < sessionsCheckCount; i++) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
         connect(sessionsCheck[i],  &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
 #else
@@ -60,6 +42,20 @@ DialogSettings::DialogSettings(Settings* s)
     }
 
     connect(graphCombo1, &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    connect(tabblinkEnabledCheckbox, &QCheckBox::checkStateChanged, this, &DialogSettings::onBlinkChange );
+#else
+    connect(tabblinkEnabledCheckbox, &QCheckBox::stateChanged, this, &DialogSettings::onBlinkChange );
+#endif
+
+    for (auto* check : m_tabblinkChecks) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+        connect(check, &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+#else
+        connect(check, &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+#endif
+    }
 
     for ( int i = 0; i < 11; i++) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
@@ -85,10 +81,12 @@ void DialogSettings::createUI()
 
     themeLabel = new QLabel("Main theme: ", mainSettingWidget);
     themeCombo = new QComboBox(mainSettingWidget);
-    themeCombo->addItem("Light_Arc");
     themeCombo->addItem("Dark");
+    themeCombo->addItem("Light");
     themeCombo->addItem("Dracula");
     themeCombo->addItem("Fallout");
+    themeCombo->addItem("Dark_Old");
+    themeCombo->addItem("Light_Arc");
 
     fontSizeLabel = new QLabel("Font size: ", mainSettingWidget);
     fontSizeSpin  = new QSpinBox(mainSettingWidget);
@@ -108,6 +106,7 @@ void DialogSettings::createUI()
     graphCombo1 = new QComboBox(mainSettingWidget);
     graphCombo1->addItem("Version 1");
     graphCombo1->addItem("Version 2");
+    graphCombo1->addItem("Version 3");
 
     terminalSizeLabel = new QLabel("RemoteTerminal buffer (lines):", mainSettingWidget);
     terminalSizeSpin  = new QSpinBox(mainSettingWidget);
@@ -118,11 +117,11 @@ void DialogSettings::createUI()
 
     consoleSizeLabel = new QLabel("Buffer size (lines):", consoleGroup);
     consoleSizeSpin  = new QSpinBox(consoleGroup);
-    consoleSizeSpin->setMinimum(1);
-    consoleSizeSpin->setMaximum(100000);
+    consoleSizeSpin->setMinimum(10000);
+    consoleSizeSpin->setMaximum(1000000);
 
-    consoleTimeCheckbox = new QCheckBox("Print date and time", consoleGroup);
-    consoleNoWrapCheckbox = new QCheckBox("No Wrap mode", consoleGroup);
+    consoleTimeCheckbox       = new QCheckBox("Print date and time", consoleGroup);
+    consoleNoWrapCheckbox     = new QCheckBox("No Wrap mode", consoleGroup);
     consoleAutoScrollCheckbox = new QCheckBox("Auto Scroll mode", consoleGroup);
 
     consoleGroupLayout = new QGridLayout(consoleGroup);
@@ -147,7 +146,6 @@ void DialogSettings::createUI()
 
     mainSettingWidget->setLayout(mainSettingLayout);
 
-
     sessionsWidget = new QWidget(this);
     sessionsLayout = new QGridLayout(sessionsWidget);
     sessionsGroup  = new QGroupBox("Columns", sessionsWidget);
@@ -155,28 +153,29 @@ void DialogSettings::createUI()
     QStringList sessionsCheckboxLabels = {
         "Agent ID", "Agent Type", "External", "Listener", "Internal",
         "Domain", "Computer", "User", "OS", "Process",
-        "PID", "TID", "Tags", "Last", "Sleep"
+        "PID", "TID", "Tags", "Created", "Last", "Sleep"
     };
 
-    for (int i = 0; i < 15; ++i)
+    for (int i = 0; i < sessionsCheckCount; ++i)
         sessionsCheck[i] = new QCheckBox(sessionsCheckboxLabels[i], sessionsGroup);
 
     sessionsGroupLayout = new QGridLayout(sessionsGroup);
-    sessionsGroupLayout->addWidget(sessionsCheck[0], 0, 0, 1, 1);
-    sessionsGroupLayout->addWidget(sessionsCheck[1], 0, 1, 1, 1);
-    sessionsGroupLayout->addWidget(sessionsCheck[2], 1, 0, 1, 1);
-    sessionsGroupLayout->addWidget(sessionsCheck[3], 1, 1, 1, 1);
-    sessionsGroupLayout->addWidget(sessionsCheck[4], 2, 0, 1, 1);
-    sessionsGroupLayout->addWidget(sessionsCheck[5], 2, 1, 1, 1);
-    sessionsGroupLayout->addWidget(sessionsCheck[6], 3, 0, 1, 1);
-    sessionsGroupLayout->addWidget(sessionsCheck[7], 3, 1, 1, 1);
-    sessionsGroupLayout->addWidget(sessionsCheck[8], 4, 0, 1, 1);
-    sessionsGroupLayout->addWidget(sessionsCheck[9], 4, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[0],  0, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[1],  0, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[2],  1, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[3],  1, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[4],  2, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[5],  2, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[6],  3, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[7],  3, 1, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[8],  4, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[9],  4, 1, 1, 1);
     sessionsGroupLayout->addWidget(sessionsCheck[10], 5, 0, 1, 1);
     sessionsGroupLayout->addWidget(sessionsCheck[11], 5, 1, 1, 1);
     sessionsGroupLayout->addWidget(sessionsCheck[12], 6, 0, 1, 1);
     sessionsGroupLayout->addWidget(sessionsCheck[13], 6, 1, 1, 1);
     sessionsGroupLayout->addWidget(sessionsCheck[14], 7, 0, 1, 1);
+    sessionsGroupLayout->addWidget(sessionsCheck[15], 7, 1, 1, 1);
     sessionsGroup->setLayout(sessionsGroupLayout);
 
     sessionsHealthCheck = new QCheckBox("Check Health", sessionsWidget);
@@ -243,12 +242,45 @@ void DialogSettings::createUI()
     tasksLayout->addWidget(tasksGroup, 0, 0, 1, 1);
     tasksWidget->setLayout(tasksLayout);
 
+    tabblinkWidget = new QWidget(this);
+    tabblinkEnabledCheckbox = new QCheckBox("Enable tab blink", tabblinkWidget);
+
+    tabblinkGroup = new QGroupBox("Blinking tabs", tabblinkWidget);
+    tabblinkGroupLayout = new QGridLayout(tabblinkGroup);
+    tabblinkGroupLayout->setContentsMargins(15, 15, 15, 15);
+    tabblinkGroupLayout->setHorizontalSpacing(40);
+    tabblinkGroupLayout->setVerticalSpacing(12);
+
+    auto widgetsList = WidgetRegistry::instance().widgets();
+    std::sort(widgetsList.begin(), widgetsList.end(), [](const auto& a, const auto& b) { return a.displayName < b.displayName; });
+
+    // Dynamically create checkboxes from registry
+    int row = 0, col = 0;
+    for (const auto& info : widgetsList) {
+        auto* check = new QCheckBox(info.displayName, tabblinkGroup);
+        check->setChecked(info.defaultState);
+        tabblinkGroupLayout->addWidget(check, row, col);
+        m_tabblinkChecks[info.className] = check;
+
+        col++;
+        if (col > 1) { col = 0; row++; }
+    }
+    tabblinkGroup->setLayout(tabblinkGroupLayout);
+
+    tabblinkLayout = new QGridLayout(tabblinkWidget);
+    tabblinkLayout->addWidget(tabblinkEnabledCheckbox, 0, 0, 1, 1);
+    tabblinkLayout->addWidget(tabblinkGroup,           1, 0, 1, 1);
+    tabblinkLayout->setRowStretch(3, 1);
+
+    tabblinkWidget->setLayout(tabblinkLayout);
 
     listSettings = new QListWidget(this);
     listSettings->setFixedWidth(150);
+    listSettings->setSpacing(3);
     listSettings->addItem("Main settings");
     listSettings->addItem("Sessions table");
     listSettings->addItem("Tasks table");
+    listSettings->addItem("Blinking tabs");
     listSettings->setCurrentRow(0);
 
     labelHeader = new QLabel(this);
@@ -276,10 +308,11 @@ void DialogSettings::createUI()
     stackSettings->addWidget(mainSettingWidget);
     stackSettings->addWidget(sessionsWidget);
     stackSettings->addWidget(tasksWidget);
+    stackSettings->addWidget(tabblinkWidget);
 
     layoutMain = new QGridLayout(this);
     layoutMain->setContentsMargins(4, 4, 4, 4);
-    layoutMain->addWidget(listSettings, 0, 0, 2, 1);
+    layoutMain->addWidget(listSettings, 0, 0, 3, 1);
     layoutMain->addLayout(headerLayout, 0, 1, 1, 3);
     layoutMain->addWidget(stackSettings, 1, 1, 1, 3);
     layoutMain->addItem(hSpacer, 2, 1, 1, 1);
@@ -287,6 +320,14 @@ void DialogSettings::createUI()
     layoutMain->addWidget(buttonClose, 2, 3, 1, 1);
 
     this->setLayout(layoutMain);
+
+    int buttonWidth = buttonApply->width();
+    buttonApply->setFixedWidth(buttonWidth);
+    buttonClose->setFixedWidth(buttonWidth);
+
+    int buttonHeight = buttonClose->height();
+    buttonApply->setFixedHeight(buttonHeight);
+    buttonClose->setFixedHeight(buttonHeight);
 }
 
 void DialogSettings::onStackChange(int index) const
@@ -305,6 +346,13 @@ void DialogSettings::onHealthChange() const
     sessionsLabel3->setEnabled(active);
     sessionsCoafSpin->setEnabled(active);
     sessionsOffsetSpin->setEnabled(active);
+}
+
+void DialogSettings::onBlinkChange() const
+{
+    buttonApply->setEnabled(true);
+    bool active = tabblinkEnabledCheckbox->isChecked();
+    tabblinkGroup->setEnabled(active);
 }
 
 void DialogSettings::onApply() const
@@ -351,7 +399,7 @@ void DialogSettings::onApply() const
     settings->data.ConsoleAutoScroll = consoleAutoScrollCheckbox->isChecked();
 
     bool updateTable = false;
-    for ( int i = 0; i < 15; i++) {
+    for ( int i = 0; i < sessionsCheckCount; i++) {
         if (settings->data.SessionsTableColumns[i] != sessionsCheck[i]->isChecked()) {
             settings->data.SessionsTableColumns[i] = sessionsCheck[i]->isChecked();
             updateTable = true;
@@ -374,10 +422,54 @@ void DialogSettings::onApply() const
     if (updateTable)
         settings->getMainAdaptix()->mainUI->UpdateTasksTableColumns();
 
+    for (auto it = m_tabblinkChecks.begin(); it != m_tabblinkChecks.end(); ++it)
+        settings->data.BlinkWidgets[it.key()] = it.value()->isChecked();
+
     settings->SaveToDB();
 }
 
 void DialogSettings::onClose()
 {
     this->close();
+}
+
+void DialogSettings::loadSettings()
+{
+    themeCombo->setCurrentText(settings->data.MainTheme);
+    fontFamilyCombo->setCurrentText(settings->data.FontFamily);
+    fontSizeSpin->setValue(settings->data.FontSize);
+    graphCombo1->setCurrentText(settings->data.GraphVersion);
+    terminalSizeSpin->setValue(settings->data.RemoteTerminalBufferSize);
+
+    consoleSizeSpin->setValue(settings->data.ConsoleBufferSize);
+    consoleTimeCheckbox->setChecked(settings->data.ConsoleTime);
+    consoleNoWrapCheckbox->setChecked(settings->data.ConsoleNoWrap);
+    consoleAutoScrollCheckbox->setChecked(settings->data.ConsoleAutoScroll);
+
+    for (int i = 0; i < sessionsCheckCount; i++)
+        sessionsCheck[i]->setChecked(settings->data.SessionsTableColumns[i]);
+
+    sessionsHealthCheck->setChecked(settings->data.CheckHealth);
+    sessionsCoafSpin->setValue(settings->data.HealthCoaf);
+    sessionsOffsetSpin->setValue(settings->data.HealthOffset);
+
+    for (int i = 0; i < 11; i++)
+        tasksCheck[i]->setChecked(settings->data.TasksTableColumns[i]);
+
+    tabblinkEnabledCheckbox->setChecked(settings->data.TabBlinkEnabled);
+
+    for (auto it = m_tabblinkChecks.begin(); it != m_tabblinkChecks.end(); ++it) {
+        if ( settings->data.BlinkWidgets.contains(it.key()) ) {
+            bool enabled = settings->data.BlinkWidgets[it.key()];
+            it.value()->setChecked(enabled);
+        }
+    }
+
+    buttonApply->setEnabled(false);
+}
+
+void DialogSettings::showEvent(QShowEvent* event)
+{
+    loadSettings();
+    QWidget::showEvent(event);
 }

@@ -1,11 +1,14 @@
 #include <UI/Widgets/TargetsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogTarget.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
+
+REGISTER_DOCK_WIDGET(TargetsWidget, "Targets", true)
 
 TargetsWidget::TargetsWidget(AdaptixWidget* w) : DockTab("Targets", w->GetProfile()->GetProject(), ":/icons/devices"), adaptixWidget(w)
 {
@@ -18,12 +21,17 @@ TargetsWidget::TargetsWidget(AdaptixWidget* w) : DockTab("Targets", w->GetProfil
         Q_UNUSED(deselected)
         tableView->setFocus();
     });
-    connect(hideButton,   &ClickableLabel::clicked, this, &TargetsWidget::toggleSearchPanel);
-    connect(inputFilter,  &QLineEdit::textChanged,  this, &TargetsWidget::onFilterUpdate);
+    connect(hideButton,   &ClickableLabel::clicked,  this, &TargetsWidget::toggleSearchPanel);
+    connect(inputFilter,  &QLineEdit::textChanged,   this, &TargetsWidget::onFilterUpdate);
+    connect(inputFilter,  &QLineEdit::returnPressed, this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
 
-    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
-    shortcutSearch->setContext(Qt::WidgetShortcut);
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
+    shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &TargetsWidget::toggleSearchPanel);
+
+    auto shortcutEsc = new QShortcut(QKeySequence(Qt::Key_Escape), inputFilter);
+    shortcutEsc->setContext(Qt::WidgetShortcut);
+    connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 
     this->dockWidget->setWidget(this);
 }
@@ -43,16 +51,23 @@ void TargetsWidget::createUI()
     searchWidget->setVisible(false);
 
     inputFilter = new QLineEdit(searchWidget);
-    inputFilter->setPlaceholderText("filter");
+    inputFilter->setPlaceholderText("filter: (win | linux) & ^(test)");
     inputFilter->setMaximumWidth(300);
 
-    hideButton = new ClickableLabel("X");
-    hideButton->setCursor( Qt::PointingHandCursor );
+    autoSearchCheck = new QCheckBox("auto", searchWidget);
+    autoSearchCheck->setChecked(true);
+    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
+
+    hideButton = new ClickableLabel("  x  ");
+    hideButton->setCursor(Qt::PointingHandCursor);
+    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 5, 0, 0);
     searchLayout->setSpacing(4);
     searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(autoSearchCheck);
+    searchLayout->addSpacing(8);
     searchLayout->addWidget(hideButton);
     searchLayout->addSpacerItem(horizontalSpacer2);
 
@@ -97,17 +112,25 @@ void TargetsWidget::createUI()
 
 void TargetsWidget::AddTargetsItems(QList<TargetData> targetList) const
 {
+    if (targetList.isEmpty())
+        return;
+
     QList<TargetData> filtered;
+    QSet<QString> existingIds;
+    for (const auto& t : adaptixWidget->Targets)
+        existingIds.insert(t.TargetId);
 
-    for (auto target : targetList) {
-        for( auto t : adaptixWidget->Targets ) {
-            if( t.TargetId == target.TargetId )
-                continue;
-        }
+    for (const auto& target : targetList) {
+        if (existingIds.contains(target.TargetId))
+            continue;
 
+        existingIds.insert(target.TargetId);
         adaptixWidget->Targets.push_back(target);
         filtered.append(target);
     }
+
+    if (filtered.isEmpty())
+        return;
 
     targetsModel->add(filtered);
 
@@ -208,14 +231,10 @@ void TargetsWidget::TargetsAdd(QList<TargetData> targetList)
     dataJson["targets"] = jsonArray;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString message = "";
-    bool ok = false;
-    bool result = HttpReqTargetsCreate(jsonData, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Server is not responding");
-        return;
-    }
-    if (!ok) MessageError(message);
+    HttpReqTargetsCreateAsync(jsonData, *(adaptixWidget->GetProfile()), [](bool success, const QString &message, const QJsonObject&) {
+        if (!success)
+            MessageError(message);
+    });
 }
 
 /// Slots
@@ -234,43 +253,48 @@ void TargetsWidget::toggleSearchPanel() const
 
 void TargetsWidget::onFilterUpdate() const
 {
-    proxyModel->setTextFilter(inputFilter->text());
+    if (autoSearchCheck->isChecked()) {
+        proxyModel->setTextFilter(inputFilter->text());
+    }
+    inputFilter->setFocus();
+    UpdateColumnsSize();
 }
 
 void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
 {
-    QModelIndex index = tableView->indexAt(pos);
-    if (!index.isValid()) return;
-
-    QStringList targets;
-    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
-    for (const QModelIndex &proxyIndex : selectedRows) {
-        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
-        if (!sourceIndex.isValid()) continue;
-
-        QString taskId = targetsModel->data(targetsModel->index(sourceIndex.row(), TRC_Id), Qt::DisplayRole).toString();
-        targets.append(taskId);
-    }
-
     auto ctxMenu = QMenu();
-
-    int topCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsTop", targets);
-    if (topCount > 0)
-        ctxMenu.addSeparator();
-
     ctxMenu.addAction("Create", this, &TargetsWidget::onCreateTarget );
-    ctxMenu.addAction("Edit",   this, &TargetsWidget::onEditTarget );
-    ctxMenu.addAction("Remove", this, &TargetsWidget::onRemoveTarget );
-    ctxMenu.addSeparator();
 
-    int centerCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsCenter", targets);
-    if (centerCount > 0)
+    QModelIndex index = tableView->indexAt(pos);
+    if (index.isValid()) {
+
+        QStringList targets;
+        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+        for (const QModelIndex &proxyIndex : selectedRows) {
+            QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+            if (!sourceIndex.isValid()) continue;
+
+            QString taskId = targetsModel->data(targetsModel->index(sourceIndex.row(), TRC_Id), Qt::DisplayRole).toString();
+            targets.append(taskId);
+        }
+
+        int topCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsTop", targets);
+        if (topCount > 0)
+            ctxMenu.addSeparator();
+
+        ctxMenu.addAction("Edit",   this, &TargetsWidget::onEditTarget );
+        ctxMenu.addAction("Remove", this, &TargetsWidget::onRemoveTarget );
         ctxMenu.addSeparator();
 
-    ctxMenu.addAction("Set tag", this, &TargetsWidget::onSetTag );
-    ctxMenu.addAction("Export",  this, &TargetsWidget::onExportTarget );
-    int bottomCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
+        int centerCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsCenter", targets);
+        if (centerCount > 0)
+            ctxMenu.addSeparator();
 
+        ctxMenu.addAction("Set tag",           this, &TargetsWidget::onSetTag );
+        ctxMenu.addAction("Export to file",    this, &TargetsWidget::onExportTarget );
+        ctxMenu.addAction("Copy to clipboard", this, &TargetsWidget::onCopyToClipboard );
+        int bottomCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
+    }
     QPoint globalPos = tableView->mapToGlobal(pos);
     ctxMenu.exec(globalPos);
 }
@@ -352,14 +376,10 @@ void TargetsWidget::onEditTarget() const
 
     delete dialogTarget;
 
-    QString message = "";
-    bool ok = false;
-    bool result = HttpReqTargetEdit(jsonData, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Server is not responding");
-        return;
-    }
-    if (!ok) MessageError(message);
+    HttpReqTargetEditAsync(jsonData, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Server is not responding" : message);
+    });
 }
 
 void TargetsWidget::onRemoveTarget() const
@@ -377,9 +397,10 @@ void TargetsWidget::onRemoveTarget() const
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    HttpReqTargetRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
+    HttpReqTargetRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void TargetsWidget::onSetTag() const
@@ -405,13 +426,10 @@ void TargetsWidget::onSetTag() const
     bool inputOk;
     QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
     if ( inputOk ) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqTargetSetTag(listId, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqTargetSetTagAsync(listId, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
 }
 
@@ -434,7 +452,11 @@ void TargetsWidget::onExportTarget() const
 
     QString format = dialog.textValue();
 
-    NonBlockingDialogs::getSaveFileName(const_cast<TargetsWidget*>(this), "Save Targets", "targets.txt", "Text Files (*.txt);;All Files (*)",
+    QString baseDir = QStringLiteral("targets.txt");
+    if (adaptixWidget && adaptixWidget->GetProfile())
+        baseDir = QDir(adaptixWidget->GetProfile()->GetProjectDir()).filePath(QStringLiteral("targets.txt"));
+
+    NonBlockingDialogs::getSaveFileName(const_cast<TargetsWidget*>(this), "Save Targets", baseDir, "Text Files (*.txt);;All Files (*)",
         [this, format](const QString& fileName) {
             if (fileName.isEmpty())
                 return;
@@ -446,7 +468,6 @@ void TargetsWidget::onExportTarget() const
             }
 
             QString content = "";
-            QStringList listId;
             QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
             for (const QModelIndex &proxyIndex : selectedRows) {
                 QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
@@ -467,4 +488,45 @@ void TargetsWidget::onExportTarget() const
             file.write(content.trimmed().toUtf8());
             file.close();
     });
+}
+
+void TargetsWidget::onCopyToClipboard() const
+{
+    auto idx = tableView->currentIndex();
+    if (!idx.isValid()) return;
+
+    QInputDialog dialog;
+    dialog.setWindowTitle("Format for clipboard");
+    dialog.setLabelText("Format:");
+    dialog.setTextValue("%computer%.%domain% - %address%");
+    QLineEdit *lineEdit = dialog.findChild<QLineEdit*>();
+    if (lineEdit)
+        lineEdit->setMinimumWidth(400);
+
+    bool inputOk = (dialog.exec() == QDialog::Accepted);
+    if (!inputOk)
+        return;
+
+    QString format = dialog.textValue();
+
+    QString content = "";
+    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+    for (const QModelIndex &proxyIndex : selectedRows) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (!sourceIndex.isValid()) continue;
+
+        QString computer = targetsModel->data(targetsModel->index(sourceIndex.row(), TRC_Computer), Qt::DisplayRole).toString();
+        QString domain   = targetsModel->data(targetsModel->index(sourceIndex.row(), TRC_Domain), Qt::DisplayRole).toString();
+        QString address  = targetsModel->data(targetsModel->index(sourceIndex.row(), TRC_Address), Qt::DisplayRole).toString();
+
+        QString temp = format;
+        content += temp
+        .replace("%computer%", computer)
+        .replace("%domain%", domain)
+        .replace("%address%", address)
+        + "\n";
+    }
+
+    QClipboard *clipboard = QApplication::clipboard();
+    clipboard->setText(content.trimmed());
 }

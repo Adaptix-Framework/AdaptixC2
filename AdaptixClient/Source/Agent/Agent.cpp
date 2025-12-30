@@ -1,7 +1,7 @@
 #include <Agent/Agent.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
-#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/TerminalContainerWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Graph/GraphItem.h>
@@ -15,32 +15,36 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 {
     this->adaptixWidget = w;
 
-    this->data.Id           = jsonObjAgentData["a_id"].toString();
-    this->data.Name         = jsonObjAgentData["a_name"].toString();
-    this->data.Listener     = jsonObjAgentData["a_listener"].toString();
-    this->data.Async        = jsonObjAgentData["a_async"].toBool();
-    this->data.ExternalIP   = jsonObjAgentData["a_external_ip"].toString();
-    this->data.InternalIP   = jsonObjAgentData["a_internal_ip"].toString();
-    this->data.GmtOffset    = jsonObjAgentData["a_gmt_offset"].toDouble();
-    this->data.WorkingTime  = jsonObjAgentData["a_workingtime"].toDouble();
-    this->data.KillDate     = jsonObjAgentData["a_killdate"].toDouble();
-    this->data.Sleep        = jsonObjAgentData["a_sleep"].toDouble();
-    this->data.Jitter       = jsonObjAgentData["a_jitter"].toDouble();
-    this->data.Pid          = jsonObjAgentData["a_pid"].toString();
-    this->data.Tid          = jsonObjAgentData["a_tid"].toString();
-    this->data.Arch         = jsonObjAgentData["a_arch"].toString();
-    this->data.Elevated     = jsonObjAgentData["a_elevated"].toBool();
-    this->data.Process      = jsonObjAgentData["a_process"].toString();
-    this->data.Os           = jsonObjAgentData["a_os"].toDouble();
-    this->data.OsDesc       = jsonObjAgentData["a_os_desc"].toString();
-    this->data.Domain       = jsonObjAgentData["a_domain"].toString();
-    this->data.Computer     = jsonObjAgentData["a_computer"].toString();
-    this->data.Username     = jsonObjAgentData["a_username"].toString();
-    this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
-    this->data.LastTick     = jsonObjAgentData["a_last_tick"].toDouble();
-    this->data.Tags         = jsonObjAgentData["a_tags"].toString();
-    this->data.Color        = jsonObjAgentData["a_color"].toString();
-    this->data.Mark         = jsonObjAgentData["a_mark"].toString();
+    this->data.Id            = jsonObjAgentData["a_id"].toString();
+    this->data.Name          = jsonObjAgentData["a_name"].toString();
+    this->data.Listener      = jsonObjAgentData["a_listener"].toString();
+    this->data.Async         = jsonObjAgentData["a_async"].toBool();
+    this->data.ExternalIP    = jsonObjAgentData["a_external_ip"].toString();
+    this->data.InternalIP    = jsonObjAgentData["a_internal_ip"].toString();
+    this->data.GmtOffset     = jsonObjAgentData["a_gmt_offset"].toDouble();
+    this->data.WorkingTime   = jsonObjAgentData["a_workingtime"].toDouble();
+    this->data.KillDate      = jsonObjAgentData["a_killdate"].toDouble();
+    this->data.Sleep         = jsonObjAgentData["a_sleep"].toDouble();
+    this->data.Jitter        = jsonObjAgentData["a_jitter"].toDouble();
+    this->data.ACP           = jsonObjAgentData["a_acp"].toDouble();
+    this->data.OemCP         = jsonObjAgentData["a_oemcp"].toDouble();
+    this->data.Pid           = jsonObjAgentData["a_pid"].toString();
+    this->data.Tid           = jsonObjAgentData["a_tid"].toString();
+    this->data.Arch          = jsonObjAgentData["a_arch"].toString();
+    this->data.Elevated      = jsonObjAgentData["a_elevated"].toBool();
+    this->data.Process       = jsonObjAgentData["a_process"].toString();
+    this->data.Os            = jsonObjAgentData["a_os"].toDouble();
+    this->data.OsDesc        = jsonObjAgentData["a_os_desc"].toString();
+    this->data.Domain        = jsonObjAgentData["a_domain"].toString();
+    this->data.Computer      = jsonObjAgentData["a_computer"].toString();
+    this->data.Username      = jsonObjAgentData["a_username"].toString();
+    this->data.Impersonated  = jsonObjAgentData["a_impersonated"].toString();
+    this->data.LastTick      = jsonObjAgentData["a_last_tick"].toDouble();
+    this->data.DateTimestamp = static_cast<qint64>(jsonObjAgentData["a_create_time"].toDouble());
+    this->data.Date          = UnixTimestampGlobalToStringLocalSmall(data.DateTimestamp);
+    this->data.Tags          = jsonObjAgentData["a_tags"].toString();
+    this->data.Color         = jsonObjAgentData["a_color"].toString();
+    this->data.Mark          = jsonObjAgentData["a_mark"].toString();
 
     for ( auto listenerData : this->adaptixWidget->Listeners) {
         if ( listenerData.Name == this->data.Listener ) {
@@ -65,34 +69,120 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     else
         this->commander = new Commander();
 
-    this->Console = new ConsoleWidget(adaptixWidget, this, this->commander);
-    this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
-    adaptixWidget->PlaceDockBottom(this->Console->dock());
-
-    this->FileBrowser = new BrowserFilesWidget(adaptixWidget, this);
-    adaptixWidget->PlaceDockBottom(this->FileBrowser->dock());
-
+    this->FileBrowser    = new BrowserFilesWidget(adaptixWidget, this);
     this->ProcessBrowser = new BrowserProcessWidget(adaptixWidget, this);
-    adaptixWidget->PlaceDockBottom(this->ProcessBrowser->dock());
-
-    this->Terminal = new TerminalWidget(this, adaptixWidget);
-    adaptixWidget->PlaceDockBottom(this->Terminal->dock());
+    this->Terminal       = new TerminalContainerWidget(this, adaptixWidget);
+    this->Shell          = new TerminalContainerWidget(this, adaptixWidget, TerminalModeShell);
+    this->Console        = new ConsoleWidget(adaptixWidget, this, this->commander);
+    this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
 }
 
 Agent::~Agent() = default;
 
-void Agent::Update(QJsonObject jsonObjAgentData)
+void Agent::Update(const QJsonObject &jsonObjAgentData)
 {
     QString old_Color = this->data.Color;
+    bool needUpdateImage = false;
 
-    this->data.Sleep        = jsonObjAgentData["a_sleep"].toDouble();
-    this->data.Jitter       = jsonObjAgentData["a_jitter"].toDouble();
-    this->data.WorkingTime  = jsonObjAgentData["a_workingtime"].toDouble();
-    this->data.KillDate     = jsonObjAgentData["a_killdate"].toDouble();
-    this->data.Tags         = jsonObjAgentData["a_tags"].toString();
-    this->data.Color        = jsonObjAgentData["a_color"].toString();
-    this->data.Impersonated = jsonObjAgentData["a_impersonated"].toString();
-    QString mark            = jsonObjAgentData["a_mark"].toString();
+    QJsonValue val = jsonObjAgentData.value("a_sleep");
+    if (val.isDouble())
+        this->data.Sleep = val.toDouble();
+
+    val = jsonObjAgentData.value("a_jitter");
+    if (val.isDouble())
+        this->data.Jitter = val.toDouble();
+
+    val = jsonObjAgentData.value("a_workingtime");
+    if (val.isDouble())
+        this->data.WorkingTime = val.toDouble();
+
+    val = jsonObjAgentData.value("a_killdate");
+    if (val.isDouble())
+        this->data.KillDate = val.toDouble();
+
+    val = jsonObjAgentData.value("a_impersonated");
+    if (val.isString())
+        this->data.Impersonated = val.toString();
+
+    val = jsonObjAgentData.value("a_tags");
+    if (val.isString())
+        this->data.Tags = val.toString();
+
+    val = jsonObjAgentData.value("a_color");
+    if (val.isString())
+        this->data.Color = val.toString();
+
+    val = jsonObjAgentData.value("a_internal_ip");
+    if (val.isString())
+        this->data.InternalIP = val.toString();
+
+    val = jsonObjAgentData.value("a_external_ip");
+    if (val.isString())
+        this->data.ExternalIP = val.toString();
+
+    val = jsonObjAgentData.value("a_gmt_offset");
+    if (val.isDouble())
+        this->data.GmtOffset = val.toDouble();
+
+    val = jsonObjAgentData.value("a_acp");
+    if (val.isDouble())
+        this->data.ACP = val.toDouble();
+
+    val = jsonObjAgentData.value("a_oemcp");
+    if (val.isDouble())
+        this->data.OemCP = val.toDouble();
+
+    val = jsonObjAgentData.value("a_pid");
+    if (val.isString())
+        this->data.Pid = val.toString();
+
+    val = jsonObjAgentData.value("a_tid");
+    if (val.isString())
+        this->data.Tid = val.toString();
+
+    val = jsonObjAgentData.value("a_arch");
+    if (val.isString())
+        this->data.Arch = val.toString();
+
+    val = jsonObjAgentData.value("a_elevated");
+    if (val.isBool()) {
+        this->data.Elevated = val.toBool();
+        needUpdateImage = true;
+    }
+
+    val = jsonObjAgentData.value("a_process");
+    if (val.isString())
+        this->data.Process = val.toString();
+
+    val = jsonObjAgentData.value("a_os");
+    if (val.isDouble()) {
+        this->data.Os = val.toDouble();
+        needUpdateImage = true;
+    }
+
+    val = jsonObjAgentData.value("a_os_desc");
+    if (val.isString())
+        this->data.OsDesc = val.toString();
+
+    val = jsonObjAgentData.value("a_domain");
+    if (val.isString())
+        this->data.Domain = val.toString();
+
+    val = jsonObjAgentData.value("a_computer");
+    if (val.isString())
+        this->data.Computer = val.toString();
+
+    val = jsonObjAgentData.value("a_username");
+    if (val.isString())
+        this->data.Username = val.toString();
+
+    if (needUpdateImage)
+        this->UpdateImage();
+
+    QString mark = this->data.Mark;
+    val = jsonObjAgentData.value("a_mark");
+    if (val.isString())
+        mark = val.toString();
 
     if (this->data.Mark == mark) {
         if (this->data.Color != old_Color) {
@@ -111,9 +201,15 @@ void Agent::Update(QJsonObject jsonObjAgentData)
         }
     }
     else {
+        QString oldMark = this->data.Mark;
         this->MarkItem(mark);
-        if (mark == "Terminated")
+
+        if (mark == "Terminated" || mark == "Inactive") {
             adaptixWidget->SessionsGraphDock->RemoveAgent(this, true);
+        }
+        else if ((oldMark == "Terminated" || oldMark == "Inactive") && !this->graphItem) {
+            adaptixWidget->SessionsGraphDock->AddAgent(this, true);
+        }
     }
 }
 
@@ -134,7 +230,7 @@ void Agent::MarkItem(const QString &mark)
     }
 
     if (this->graphItem)
-        this->graphItem->update();
+        this->graphItem->invalidateCache();
 
     if (color.isEmpty()) {
         this->bg_color = QColor();
@@ -155,6 +251,8 @@ void Agent::UpdateImage()
     QString v = "v1";
     if (GlobalClient->settings->data.GraphVersion == "Version 2")
         v = "v2";
+    if (GlobalClient->settings->data.GraphVersion == "Version 3")
+        v = "v3";
 
     if (data.Os == OS_WINDOWS) {
         if (data.Elevated) {
@@ -205,26 +303,14 @@ void Agent::UpdateImage()
 
 /// TASK
 
-QString Agent::TasksCancel(const QStringList &tasks) const
+void Agent::TasksCancel(const QStringList &tasks) const
 {
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqTaskCancel( data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
+    HttpReqTaskCancelAsync(data.Id, tasks, *(adaptixWidget->GetProfile()), [](bool, const QString&, const QJsonObject&) {});
 }
 
-QString Agent::TasksDelete(const QStringList &tasks) const
+void Agent::TasksDelete(const QStringList &tasks) const
 {
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqTasksDelete(data.Id, tasks, *(adaptixWidget->GetProfile()), &message, &ok);
-    if (!result)
-        return "Response timeout";
-
-    return message;
+    HttpReqTasksDeleteAsync(data.Id, tasks, *(adaptixWidget->GetProfile()), [](bool, const QString&, const QJsonObject&) {});
 }
 
 /// PIVOT

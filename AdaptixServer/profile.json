@@ -27,7 +27,7 @@
     "headers": {
       "Content-Type": "text/html; charset=UTF-8",
       "Server": "AdaptixC2",
-      "Adaptix Version": "v0.11"
+      "Adaptix Version": "v1.0"
     },
     "page": "404page.html"
   },
@@ -35,6 +35,9 @@
     "Telegram": {
       "token": "",
       "chats_id": []
+    },
+    "Slack": {
+      "webhook_url": ""
     },
     "Webhooks": [
       {

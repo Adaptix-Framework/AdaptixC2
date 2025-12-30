@@ -50,14 +50,78 @@ class TasksFilterProxyModel : public QSortFilterProxyModel
 {
 Q_OBJECT
     QString agentFilter;
+    QString typeFilter;
     QString statusFilter;
     QString textFilter;
 
+    bool matchesTerm(const QString &term, const QString &rowData) const {
+        if (term.isEmpty())
+            return true;
+        QRegularExpression re(QRegularExpression::escape(term.trimmed()), QRegularExpression::CaseInsensitiveOption);
+        return rowData.contains(re);
+    }
+
+    bool evaluateExpression(const QString &expr, const QString &rowData) const {
+        QString e = expr.trimmed();
+        if (e.isEmpty())
+            return true;
+
+        int depth = 0;
+        int lastOr = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '|') {
+                lastOr = i;
+                break;
+            }
+        }
+        if (lastOr != -1) {
+            QString left = e.left(lastOr).trimmed();
+            QString right = e.mid(lastOr + 1).trimmed();
+            return evaluateExpression(left, rowData) || evaluateExpression(right, rowData);
+        }
+
+        depth = 0;
+        int lastAnd = -1;
+        for (int i = e.length() - 1; i >= 0; --i) {
+            QChar c = e[i];
+            if (c == ')') depth++;
+            else if (c == '(') depth--;
+            else if (depth == 0 && c == '&') {
+                lastAnd = i;
+                break;
+            }
+        }
+        if (lastAnd != -1) {
+            QString left = e.left(lastAnd).trimmed();
+            QString right = e.mid(lastAnd + 1).trimmed();
+            return evaluateExpression(left, rowData) && evaluateExpression(right, rowData);
+        }
+
+        if (e.startsWith("^(") && e.endsWith(')')) {
+            return !evaluateExpression(e.mid(2, e.length() - 3), rowData);
+        }
+
+        if (e.startsWith('(') && e.endsWith(')')) {
+            return evaluateExpression(e.mid(1, e.length() - 2), rowData);
+        }
+
+        return matchesTerm(e, rowData);
+    }
+
 public:
-    explicit TasksFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {};
+    explicit TasksFilterProxyModel(QObject *parent = nullptr) : QSortFilterProxyModel(parent) {
+        setSortRole(Qt::UserRole);
+    };
 
     void setAgentFilter(const QString &agent) {
         agentFilter = agent;
+        invalidateFilter();
+    }
+    void setTypeFilter(const QString &type) {
+        typeFilter = type;
         invalidateFilter();
     }
     void setStatusFilter(const QString &status) {
@@ -76,26 +140,25 @@ protected:
             return true;
 
         QString agent  = model->index(row, TC_AgentId, parent).data().toString();
+        QString type   = model->index(row, TC_TaskType, parent).data().toString();
         QString status = model->index(row, TC_Result, parent).data().toString();
 
         if (!agentFilter.isEmpty() && agentFilter != "All agents" && agent != agentFilter)
+            return false;
+
+        if (!typeFilter.isEmpty() && typeFilter != "All types" && type != typeFilter)
             return false;
 
         if (!statusFilter.isEmpty() && statusFilter != "Any status" && status != statusFilter)
             return false;
 
         if (!textFilter.isEmpty()) {
-            const int colCount = model->columnCount();
-            QRegularExpression re(textFilter, QRegularExpression::CaseInsensitiveOption);
-            bool matched = false;
-            for (int col = 0; col < colCount; ++col) {
-                QString val = model->index(row, col, parent).data().toString();
-                if (val.contains(re)) {
-                    matched = true;
-                    break;
-                }
-            }
-            if (!matched)
+            QString rowData;
+            rowData += model->index(row, TC_Client, parent).data().toString() + " ";
+            rowData += model->index(row, TC_User, parent).data().toString() + " ";
+            rowData += model->index(row, TC_CommandLine, parent).data().toString() + " ";
+            rowData += model->index(row, TC_Output, parent).data().toString() + " ";
+            if (!evaluateExpression(textFilter, rowData))
                 return false;
         }
 
@@ -109,7 +172,14 @@ protected:
 class TasksTableModel : public QAbstractTableModel
 {
 Q_OBJECT
-    QVector<TaskData> tasks;
+    QVector<TaskData>     tasks;
+    QHash<QString, int>   idToRow;
+
+    void rebuildIndex() {
+        idToRow.clear();
+        for (int i = 0; i < tasks.size(); ++i)
+            idToRow[tasks[i].TaskId] = i;
+    }
 
 public:
     explicit TasksTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
@@ -141,6 +211,14 @@ public:
                 case TC_CommandLine: return t.CommandLine;
                 case TC_Result:      return t.Status;
                 case TC_Output:      return t.Message;
+            }
+        }
+
+        if (role == Qt::UserRole) {
+            switch (index.column()) {
+                case TC_StartTime:   return t.StartTime;
+                case TC_FinishTime:  return t.FinishTime;
+                default:             return data(index, Qt::DisplayRole);
             }
         }
 
@@ -181,35 +259,56 @@ public:
     }
 
     void add(const TaskData& task) {
-        beginInsertRows(QModelIndex(), rowCount(), rowCount());
+        const int row = tasks.size();
+        beginInsertRows(QModelIndex(), row, row);
         tasks.append(task);
+        idToRow[task.TaskId] = row;
+        endInsertRows();
+    }
+
+    void add(const QList<TaskData>& list) {
+        if (list.isEmpty())
+            return;
+
+        const int start = tasks.size();
+        const int end   = start + list.size() - 1;
+
+        beginInsertRows(QModelIndex(), start, end);
+        for (const auto& item : list) {
+            idToRow[item.TaskId] = tasks.size();
+            tasks.append(item);
+        }
         endInsertRows();
     }
 
     void update(const QString& taskId, const TaskData& newData) {
-        for (int i = 0; i < tasks.size(); ++i) {
-            if (tasks[i].TaskId == taskId) {
-                tasks[i] = newData;
-                Q_EMIT dataChanged(index(i, 0), index(i, columnCount() - 1));
-                break;
-            }
-        }
+        auto it = idToRow.find(taskId);
+        if (it == idToRow.end())
+            return;
+
+        int row = it.value();
+        tasks[row] = newData;
+        Q_EMIT dataChanged(index(row, 0), index(row, columnCount() - 1));
     }
 
     void remove(const QString &taskId) {
-        for (int i = 0; i < tasks.size(); ++i) {
-            if (tasks[i].TaskId == taskId) {
-                beginRemoveRows({}, i, i);
-                tasks.remove(i);
-                endRemoveRows();
-                break;
-            }
-        }
+        auto it = idToRow.find(taskId);
+        if (it == idToRow.end())
+            return;
+
+        int row = it.value();
+        beginRemoveRows(QModelIndex(), row, row);
+        idToRow.remove(taskId);
+        tasks.remove(row);
+        endRemoveRows();
+
+        rebuildIndex();
     }
 
     void clear() {
         beginResetModel();
         tasks.clear();
+        idToRow.clear();
         endResetModel();
     }
 };
@@ -231,12 +330,14 @@ Q_OBJECT
     TasksTableModel*       tasksModel = nullptr;
     TasksFilterProxyModel* proxyModel = nullptr;
 
-    QWidget*        searchWidget = nullptr;
-    QHBoxLayout*    searchLayout = nullptr;
-    QComboBox*      comboAgent   = nullptr;
-    QComboBox*      comboStatus  = nullptr;
-    QLineEdit*      inputFilter  = nullptr;
-    ClickableLabel* hideButton   = nullptr;
+    QWidget*        searchWidget    = nullptr;
+    QHBoxLayout*    searchLayout    = nullptr;
+    QLineEdit*      inputFilter     = nullptr;
+    QCheckBox*      autoSearchCheck = nullptr;
+    QComboBox*      comboAgent      = nullptr;
+    QComboBox*      comboType       = nullptr;
+    QComboBox*      comboStatus     = nullptr;
+    ClickableLabel* hideButton      = nullptr;
 
     bool showPanel = false;
 
@@ -268,6 +369,7 @@ public Q_SLOTS:
     void handleTasksMenu( const QPoint &pos );
     void onTableItemSelection(const QModelIndex &current, const QModelIndex &previous) const;
     void onFilterChanged() const;
+    void UpdateFilterComboBoxes() const;
     void actionCopyTaskId() const;
     void actionCopyCmd() const;
     void actionOpenConsole() const;

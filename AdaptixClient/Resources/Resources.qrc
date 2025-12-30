@@ -31,7 +31,9 @@
     </qresource>
 
     <qresource prefix="/themes">
-        <file alias="Dark">themes/dark.qss</file>
+        <file alias="Dark">themes/ax-dark.qss</file>
+        <file alias="Light">themes/ax-light.qss</file>
+        <file alias="Dark_Old">themes/dark.qss</file>
         <file alias="Dracula">themes/dracula.qss</file>
         <file alias="Fallout">themes/fallout.qss</file>
         <file alias="Light_Arc">themes/light_arc.qss</file>
@@ -122,4 +124,20 @@
         <file alias="unknown_red">icons/graph/v2/unknown-100-red.png</file>
     </qresource>
 
+    <qresource prefix="/graph/v3">
+        <file alias="cloud">icons/graph/v3/cloud-100.png</file>
+        <file alias="firewall">icons/graph/v3/firewall-100.png</file>
+        <file alias="win_blue">icons/graph/v3/windows-100-blue.png</file>
+        <file alias="win_grey">icons/graph/v3/windows-100-grey.png</file>
+        <file alias="win_red">icons/graph/v3/windows-100-red.png</file>
+        <file alias="linux_blue">icons/graph/v3/linux-100-blue.png</file>
+        <file alias="linux_grey">icons/graph/v3/linux-100-grey.png</file>
+        <file alias="linux_red">icons/graph/v3/linux-100-red.png</file>
+        <file alias="mac_blue">icons/graph/v3/mac-100-blue.png</file>
+        <file alias="mac_grey">icons/graph/v3/mac-100-grey.png</file>
+        <file alias="mac_red">icons/graph/v3/mac-100-red.png</file>
+        <file alias="unknown_blue">icons/graph/v3/unknown-100-blue.png</file>
+        <file alias="unknown_grey">icons/graph/v3/unknown-100-grey.png</file>
+        <file alias="unknown_red">icons/graph/v3/unknown-100-red.png</file>
+    </qresource>
 </RCC>

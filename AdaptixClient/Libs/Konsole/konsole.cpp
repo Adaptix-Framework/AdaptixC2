@@ -68,10 +68,12 @@ QTermWidget::QTermWidget(QWidget *messageParentWidget, QWidget *parent)
     connect(m_emulation, &Emulation::zmodemSendDetected, this, &QTermWidget::zmodemSendDetected);
     connect(m_emulation, &Emulation::titleChanged, this, &QTermWidget::titleChanged);
     connect(m_emulation, &Emulation::sendData, this, [this](const char *buff, int len) {
+        QByteArray data(buff, len);
         if (m_echo) {
             recvData(buff, len);
         }
-        Q_EMIT sendData(buff, len);
+        QByteArray dataCopy(buff, len);
+        Q_EMIT sendData(dataCopy.constData(), dataCopy.length());
     });
     connect( m_emulation, &Emulation::dupDisplayOutput, this, &QTermWidget::dupDisplayOutput);
     connect( m_emulation, &Emulation::changeTabTextColorRequest, this, &QTermWidget::changeTabTextColorRequest);

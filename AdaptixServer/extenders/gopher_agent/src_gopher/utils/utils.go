@@ -53,6 +53,7 @@ type TunnelPack struct {
 	Key       []byte `msgpack:"key"`
 	Iv        []byte `msgpack:"iv"`
 	Alive     bool   `msgpack:"alive"`
+	Reason    byte   `msgpack:"reason"`
 }
 
 type TermPack struct {

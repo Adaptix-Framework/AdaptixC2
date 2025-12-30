@@ -1,6 +1,131 @@
+#include <QMutex>
+#include <QMutexLocker>
+#include <QTimer>
+#include <QTextBlock>
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
-#include <QTextBlock>
+
+
+
+CardListWidget::CardListWidget(QWidget *parent) : QListWidget(parent)
+{
+    setMouseTracking(true);
+    setSpacing(1);
+    setItemDelegate(new CardListDelegate(this));
+}
+
+void CardListWidget::addCard(const QString &title, const QString &text)
+{
+    auto* item = new QListWidgetItem(this);
+    item->setData(TitleRole, title);
+    item->setData(TextRole, text);
+}
+
+CardListDelegate::CardListDelegate(QObject *parent) : QStyledItemDelegate(parent) {}
+
+void CardListDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setRenderHint(QPainter::TextAntialiasing, true);
+
+    QString title = index.data(CardListWidget::TitleRole).toString();
+    QString text = index.data(CardListWidget::TextRole).toString();
+
+    const bool isSelected = option.state & QStyle::State_Selected;
+    const bool isHovered = option.state & QStyle::State_MouseOver;
+
+    auto* cardList = qobject_cast<const CardListWidget*>(option.widget);
+
+    constexpr int cardMargin = 3;
+    QRect cardRect = option.rect.adjusted(cardMargin, 2, -cardMargin, -2);
+
+    QColor bgColor, titleColor, subtitleColor;
+
+    if (cardList) {
+        if (isSelected) {
+            bgColor = cardList->itemBackgroundSelected();
+            titleColor = cardList->titleColorSelected();
+            subtitleColor = cardList->subtitleColorSelected();
+        } else if (isHovered) {
+            bgColor = cardList->itemBackgroundHover();
+            titleColor = cardList->titleColor();
+            subtitleColor = cardList->subtitleColor();
+        } else {
+            bgColor = cardList->itemBackground();
+            titleColor = cardList->titleColor();
+            subtitleColor = cardList->subtitleColor();
+        }
+    } else {
+        bgColor = isSelected ? option.palette.highlight().color() : option.palette.mid().color();
+        if (!isSelected) bgColor.setAlpha(40);
+        titleColor = isSelected ? option.palette.highlightedText().color() : option.palette.text().color();
+        subtitleColor = titleColor;
+        subtitleColor.setAlpha(isSelected ? 200 : 140);
+    }
+
+    painter->fillRect(cardRect, bgColor);
+
+    constexpr int hPadding = 12;
+    constexpr int vPadding = 10;
+    constexpr int lineSpacing = 4;
+
+    QRect contentRect = cardRect.adjusted(hPadding, vPadding, -hPadding, -vPadding);
+
+    QFont titleFont = option.font;
+    titleFont.setWeight(QFont::Bold);
+    QFontMetrics titleFm(titleFont);
+
+    painter->setFont(titleFont);
+    painter->setPen(titleColor);
+
+    QRect titleRect = contentRect;
+    titleRect.setHeight(titleFm.height());
+    QString elidedTitle = titleFm.elidedText(title, Qt::ElideRight, titleRect.width());
+    painter->drawText(titleRect, Qt::AlignLeft | Qt::AlignVCenter, elidedTitle);
+
+    if (!text.isEmpty()) {
+        QFont subtitleFont = option.font;
+        int subtitleSize = qMax(subtitleFont.pointSize() - 1, 8);
+        subtitleFont.setPointSize(subtitleSize);
+        QFontMetrics subtitleFm(subtitleFont);
+
+        painter->setFont(subtitleFont);
+        painter->setPen(subtitleColor);
+
+        QRect subtitleRect = contentRect;
+        subtitleRect.setTop(titleRect.bottom() + lineSpacing);
+        subtitleRect.setHeight(subtitleFm.height());
+        QString elidedSubtitle = subtitleFm.elidedText(text, Qt::ElideRight, subtitleRect.width());
+        painter->drawText(subtitleRect, Qt::AlignLeft | Qt::AlignVCenter, elidedSubtitle);
+    }
+
+    painter->restore();
+}
+
+QSize CardListDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    Q_UNUSED(index)
+
+    constexpr int cardMargin = 3;
+    constexpr int vPadding = 10;
+    constexpr int lineSpacing = 4;
+
+    QFont titleFont = option.font;
+    titleFont.setWeight(QFont::Medium);
+    QFontMetrics titleFm(titleFont);
+
+    QFont subtitleFont = option.font;
+    int subtitleSize = qMax(subtitleFont.pointSize() - 1, 8);
+    subtitleFont.setPointSize(subtitleSize);
+    QFontMetrics subtitleFm(subtitleFont);
+
+    int totalHeight = cardMargin + vPadding + titleFm.height() + lineSpacing + subtitleFm.height() + vPadding + cardMargin;
+
+    return QSize(190, totalHeight);
+}
+
+
 
 SpinTable::SpinTable(int rows, int columns, QWidget* parent)
 {
@@ -50,45 +175,6 @@ SpinTable::SpinTable(int rows, int columns, QWidget* parent)
 
 
 
-FileSelector::FileSelector(QWidget* parent) : QWidget(parent)
-{
-    input = new QLineEdit(this);
-    input->setReadOnly(true);
-
-    button = new QPushButton(this);
-    button->setIcon(QIcon::fromTheme("folder"));
-
-    QHBoxLayout* layout = new QHBoxLayout(this);
-    layout->addWidget(input);
-    layout->addWidget(button);
-    layout->setContentsMargins(0, 0, 0, 0);
-    this->setLayout(layout);
-
-    connect(button, &QPushButton::clicked, this, [&]()
-    {
-        NonBlockingDialogs::getOpenFileName(this, "Select a file", "", "All Files (*.*)",
-            [this](const QString& selectedFile) {
-                if (selectedFile.isEmpty())
-                    return;
-
-                QString filePath = selectedFile;
-                input->setText(filePath);
-
-                QFile file(filePath);
-                if (!file.open(QIODevice::ReadOnly))
-                    return;
-
-                QByteArray fileData = file.readAll();
-                file.close();
-
-                content = QString::fromUtf8(fileData.toBase64());
-        });
-    });
-}
-
-
-
-
 
 
 TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, bool autoScroll) : QTextEdit(parent), cachedCursor(this->textCursor()), maxLines(maxLines), noWrap(noWrap), autoScroll(autoScroll)
@@ -97,9 +183,17 @@ TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, boo
 
     if (noWrap)
         setLineWrapMode( QTextEdit::LineWrapMode::NoWrap );
+    else
+        setWordWrapMode( QTextOption::WrapAnywhere );
 
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &TextEditConsole::customContextMenuRequested, this, &TextEditConsole::createContextMenu);
+
+    batchMutex = new QMutex();
+    batchTimer = new QTimer(this);
+    batchTimer->setSingleShot(true);
+    batchTimer->setInterval(BATCH_INTERVAL_MS);
+    connect(batchTimer, &QTimer::timeout, this, &TextEditConsole::flushPendingText);
 }
 
 void TextEditConsole::createContextMenu(const QPoint &pos) {
@@ -135,7 +229,12 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
     noWrapAction->setChecked(noWrap);
     connect(noWrapAction, &QAction::toggled, this, [this](bool checked) {
         noWrap = checked;
-        setLineWrapMode(checked ? QTextEdit::NoWrap : QTextEdit::WidgetWidth);
+        if (checked) {
+            setLineWrapMode(QTextEdit::NoWrap);
+        } else {
+            setLineWrapMode(QTextEdit::WidgetWidth);
+            setWordWrapMode(QTextOption::WrapAnywhere);
+        }
     });
     
     QAction *autoScrollAction = menu->addAction("Auto scroll");
@@ -176,12 +275,46 @@ bool TextEditConsole::isNoWrapEnabled() const {
 
 void TextEditConsole::appendPlain(const QString& text)
 {
+    QMutexLocker locker(batchMutex);
+    pendingText += text;
+
+    if (pendingText.size() >= MAX_BATCH_SIZE) {
+        locker.unlock();
+        flushPendingText();
+    } else if (!batchTimer->isActive()) {
+        batchTimer->start();
+    }
+}
+
+void TextEditConsole::flushPendingText()
+{
+    QMutexLocker locker(batchMutex);
+    if (pendingText.isEmpty())
+        return;
+
+    QString textToAppend = pendingText;
+    pendingText.clear();
+    locker.unlock();
+
     bool atBottom = verticalScrollBar()->value() == verticalScrollBar()->maximum();
-    
+
     cachedCursor.movePosition(QTextCursor::End);
-    cachedCursor.insertText(text, QTextCharFormat());
-    
-    trimExcessLines();
+    cachedCursor.insertText(textToAppend, QTextCharFormat());
+
+    auto doc = this->document();
+    int currentLines = doc->blockCount();
+    int trimThreshold = static_cast<int>(maxLines * 1.5);
+
+    if (currentLines > trimThreshold) {
+        trimExcessLines();
+        appendCount = 0;
+    } else {
+        appendCount++;
+        if (appendCount >= 200 && currentLines > static_cast<int>(maxLines * 0.9)) {
+            trimExcessLines();
+            appendCount = 0;
+        }
+    }
 
     if (autoScroll || atBottom)
         verticalScrollBar()->setValue(verticalScrollBar()->maximum());
@@ -189,6 +322,8 @@ void TextEditConsole::appendPlain(const QString& text)
 
 void TextEditConsole::appendFormatted(const QString& text, const std::function<void(QTextCharFormat&)> &styleFn)
 {
+    flushPendingText();
+
     bool atBottom = verticalScrollBar()->value() == verticalScrollBar()->maximum();
 
     cachedCursor.movePosition(QTextCursor::End);
@@ -196,7 +331,18 @@ void TextEditConsole::appendFormatted(const QString& text, const std::function<v
     styleFn(fmt);
     cachedCursor.insertText(text, fmt);
 
-    trimExcessLines();
+    appendCount++;
+    auto doc = this->document();
+    int currentLines = doc->blockCount();
+    int trimThreshold = static_cast<int>(maxLines * 1.5);
+
+    if (currentLines > trimThreshold) {
+        trimExcessLines();
+        appendCount = 0;
+    } else if (appendCount >= 200 && currentLines > static_cast<int>(maxLines * 0.9)) {
+        trimExcessLines();
+        appendCount = 0;
+    }
 
     if (autoScroll || atBottom)
         verticalScrollBar()->setValue(verticalScrollBar()->maximum());
@@ -230,11 +376,44 @@ void TextEditConsole::appendColorUnderline(const QString &text, const QColor col
 
 void TextEditConsole::trimExcessLines() {
     auto doc = this->document();
-    while (doc->blockCount() > maxLines) {
-        QTextBlock block = doc->firstBlock();
-        QTextCursor c(block);
-        c.select(QTextCursor::BlockUnderCursor);
+    int blockCount = doc->blockCount();
+    if (blockCount <= maxLines)
+        return;
+
+    int linesToRemove = blockCount - maxLines;
+
+    QTextCursor c(doc);
+    c.movePosition(QTextCursor::Start);
+
+    QTextBlock keepFromBlock = doc->findBlockByNumber(maxLines);
+    if (keepFromBlock.isValid()) {
+        c.movePosition(QTextCursor::Start);
+        c.setPosition(keepFromBlock.position(), QTextCursor::KeepAnchor);
         c.removeSelectedText();
-        c.deleteChar();
+
+        doc = this->document();
+        if (doc->blockCount() > maxLines) {
+            static int recursionDepth = 0;
+            if (recursionDepth < 3) {
+                recursionDepth++;
+                trimExcessLines();
+                recursionDepth--;
+            }
+        }
+    } else {
+        while (doc->blockCount() > maxLines && linesToRemove > 0) {
+            QTextBlock block = doc->firstBlock();
+            if (!block.isValid())
+                break;
+
+            QTextCursor c(block);
+            c.select(QTextCursor::BlockUnderCursor);
+            c.removeSelectedText();
+            c.deleteChar();
+            linesToRemove--;
+
+            if (linesToRemove > 5000)
+                break;
+        }
     }
 }

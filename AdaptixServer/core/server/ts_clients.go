@@ -1,82 +1,62 @@
 package server
 
 import (
-	"AdaptixServer/core/utils/safe"
-	"bytes"
-	"encoding/json"
-	"sync"
-
 	"github.com/gorilla/websocket"
 )
 
-const SMALL_VERSION = "v0.11"
+const SMALL_VERSION = "v1.0"
 
 func (ts *Teamserver) TsClientExists(username string) bool {
-	return ts.clients.Contains(username)
+	return ts.Broker.ClientExists(username)
 }
 
 func (ts *Teamserver) TsClientConnect(username string, version string, socket *websocket.Conn) {
-
 	supportsBatchSync := version == SMALL_VERSION
 
-	client := &Client{
-		username:       username,
-		synced:         false,
-		versionSupport: supportsBatchSync,
-		lockSocket:     &sync.Mutex{},
-		socket:         socket,
-		tmp_store:      safe.NewSlice(),
-	}
+	client := NewClientHandler(username, socket, supportsBatchSync, ts.Broker)
+	client.Start()
 
-	ts.clients.Put(username, client)
+	ts.Broker.Register(client)
 }
 
 func (ts *Teamserver) TsClientDisconnect(username string) {
-	value, ok := ts.clients.GetDelete(username)
-	if !ok {
-		return
-	}
-	client := value.(*Client)
-
-	client.synced = false
-	client.socket.Close()
+	ts.Broker.Unregister(username)
 
 	ts.TsEventClient(false, username)
 
-	var tunnels []string
-	ts.tunnels.ForEach(func(key string, value interface{}) bool {
-		tunnel := value.(*Tunnel)
+	var tunnelIds []string
+	ts.TunnelManager.ForEachTunnel(func(key string, tunnel *Tunnel) bool {
 		if tunnel.Data.Client == username {
-			tunnels = append(tunnels, tunnel.Data.TunnelId)
+			tunnelIds = append(tunnelIds, tunnel.Data.TunnelId)
 		}
 		return true
 	})
-	for _, id := range tunnels {
+	for _, id := range tunnelIds {
 		_ = ts.TsTunnelStop(id)
 	}
+
+	ts.TsProcessHookJobsForDisconnectedClient(username)
 }
 
 func (ts *Teamserver) TsClientSync(username string) {
-	value, ok := ts.clients.Get(username)
+	client, ok := ts.Broker.GetClient(username)
 	if !ok {
 		return
 	}
-	client := value.(*Client)
-	socket := client.socket
 
-	if !client.synced {
+	if !client.IsSynced() {
 		ts.TsSyncStored(client)
 
 		for {
-			if client.tmp_store.Len() > 0 {
-				arr := client.tmp_store.CutArray()
-				for _, v := range arr {
-					var buffer bytes.Buffer
-					_ = json.NewEncoder(&buffer).Encode(v)
-					_ = socket.WriteMessage(websocket.BinaryMessage, buffer.Bytes())
+			buffered := client.GetAndClearBuffer()
+			if len(buffered) > 0 {
+				for _, v := range buffered {
+					if data, ok := v.([]byte); ok {
+						client.SendSync(data)
+					}
 				}
 			} else {
-				client.synced = true
+				client.SetSynced(true)
 				break
 			}
 		}

@@ -24,12 +24,12 @@ func (dbms *DBMS) DbPivotExist(pivotId string) bool {
 func (dbms *DBMS) DbPivotInsert(pivotData adaptix.PivotData) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbPivotExist(pivotData.PivotId)
 	if ok {
-		return fmt.Errorf("pivot %s alredy exists", pivotData.PivotId)
+		return fmt.Errorf("pivot %s already exists", pivotData.PivotId)
 	}
 
 	insertQuery := `INSERT INTO Pivots (PivotId, PivotName, ParentAgentId, ChildAgentId) values(?,?,?,?);`
@@ -41,12 +41,12 @@ func (dbms *DBMS) DbPivotInsert(pivotData adaptix.PivotData) error {
 func (dbms *DBMS) DbPivotDelete(pivotId string) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
-		return errors.New("database not exists")
+		return errors.New("database does not exist")
 	}
 
 	ok = dbms.DbPivotExist(pivotId)
 	if !ok {
-		return fmt.Errorf("pivot %s not exists", pivotId)
+		return fmt.Errorf("pivot %s does not exist", pivotId)
 	}
 
 	deleteQuery := `DELETE FROM Pivots WHERE PivotId = ?;`
@@ -62,21 +62,20 @@ func (dbms *DBMS) DbPivotAll() []*adaptix.PivotData {
 	if ok {
 		selectQuery := `SELECT PivotId, PivotName, ParentAgentId, ChildAgentId FROM Pivots;`
 		query, err := dbms.database.Query(selectQuery)
-		if err == nil {
-			for query.Next() {
-				pivotData := &adaptix.PivotData{}
-				err = query.Scan(&pivotData.PivotId, &pivotData.PivotName, &pivotData.ParentAgentId, &pivotData.ChildAgentId)
-				if err != nil {
-					continue
-				}
-				pivots = append(pivots, pivotData)
-			}
-		} else {
+		if err != nil {
 			logs.Debug("", "Failed to query pivots: "+err.Error())
+			return pivots
 		}
-		defer func(query *sql.Rows) {
-			_ = query.Close()
-		}(query)
+		defer query.Close()
+
+		for query.Next() {
+			pivotData := &adaptix.PivotData{}
+			err = query.Scan(&pivotData.PivotId, &pivotData.PivotName, &pivotData.ParentAgentId, &pivotData.ChildAgentId)
+			if err != nil {
+				continue
+			}
+			pivots = append(pivots, pivotData)
+		}
 	}
 	return pivots
 }

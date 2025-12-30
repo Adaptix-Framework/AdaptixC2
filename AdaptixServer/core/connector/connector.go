@@ -27,7 +27,7 @@ type Teamserver interface {
 	TsClientConnect(username string, version string, socket *websocket.Conn)
 
 	TsListenerList() (string, error)
-	TsListenerStart(listenerName string, configType string, config string, watermark string, customData []byte) error
+	TsListenerStart(listenerName string, configType string, config string, createTime int64, watermark string, customData []byte) error
 	TsListenerEdit(listenerName string, configType string, config string) error
 	TsListenerStop(listenerName string, configType string) error
 	TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error)
@@ -38,17 +38,14 @@ type Teamserver interface {
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
-	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, cmdline string, ui bool, args map[string]any) error
+	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error
 	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
 
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
+	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentRemove(agentId string) error
 	TsAgentConsoleRemove(agentId string) error
-	TsAgentSetTag(agentId string, tag string) error
-	TsAgentSetMark(agentId string, makr string) error
-	TsAgentSetColor(agentId string, background string, foreground string, reset bool) error
-	TsAgentSetImpersonate(agentId string, impersonated string, elevated bool) error
 	TsAgentSetTick(agentId string) error
 	TsAgentTickUpdate()
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
@@ -61,6 +58,7 @@ type Teamserver interface {
 	TsTaskDelete(agentId string, taskId string) error
 	TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error
 	TsTaskSave(hookData adaptix.TaskData) error
+	TsTaskListCompleted(agentId string, limit int, offset int) ([]byte, error)
 
 	TsChatSendMessage(username string, message string)
 
@@ -70,7 +68,7 @@ type Teamserver interface {
 
 	TsDownloadList() (string, error)
 	TsDownloadSync(fileId string) (string, []byte, error)
-	TsDownloadDelete(fileId string) error
+	TsDownloadDelete(fileId []string) error
 	TsDownloadGetFilepath(fileId string) (string, error)
 	TsUploadGetFilepath(fileId string) (string, error)
 	TsUploadGetFileContent(fileId string) ([]byte, error)
@@ -112,6 +110,7 @@ type Teamserver interface {
 	TsTunnelStopLportfwd(AgentId string, Port int)
 	TsTunnelStopRportfwd(AgentId string, Port int)
 	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionHalt(channelId int, errorCode byte)
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
 }
@@ -174,7 +173,6 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	}
 
 	var connector = new(TsConnector)
-	gin.SetMode(gin.ReleaseMode)
 	connector.Engine = gin.New()
 	connector.Engine.Use(gin.Recovery())
 	connector.teamserver = ts
@@ -227,8 +225,9 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 		api_group.POST("/agent/set/tag", connector.TcAgentSetTag)
 		api_group.POST("/agent/set/mark", connector.TcAgentSetMark)
 		api_group.POST("/agent/set/color", connector.TcAgentSetColor)
-		api_group.POST("/agent/set/impersonate", connector.TcAgentSetImpersonate)
+		api_group.POST("/agent/update/data", connector.TcAgentUpdateData)
 
+		api_group.GET("/agent/task/list", connector.TcAgentTaskList)
 		api_group.POST("/agent/task/cancel", connector.TcAgentTaskCancel)
 		api_group.POST("/agent/task/delete", connector.TcAgentTaskDelete)
 		api_group.POST("/agent/task/hook", connector.TcAgentTaskHook)

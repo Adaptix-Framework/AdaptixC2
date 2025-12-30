@@ -8,7 +8,9 @@
 #define JOB_TYPE_LOCAL   0x1
 #define JOB_TYPE_REMOTE  0x2
 #define JOB_TYPE_PROCESS 0x3
+#define JOB_TYPE_SHELL   0x4
 
+#define JOB_STATE_STARTING 0x0
 #define JOB_STATE_RUNNING  0x1
 #define JOB_STATE_FINISHED 0x2
 #define JOB_STATE_KILLED   0x3

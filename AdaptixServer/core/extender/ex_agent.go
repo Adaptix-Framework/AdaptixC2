@@ -56,7 +56,7 @@ func (ex *AdaptixExtender) ExAgentPivotPackData(agentName string, pivotId string
 
 /// Tunnels
 
-func (ex *AdaptixExtender) ExAgentTunnelCallbacks(agentData adaptix.AgentData, tunnelType int) (func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {
+func (ex *AdaptixExtender) ExAgentTunnelCallbacks(agentData adaptix.AgentData, tunnelType int) (func(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData, func(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {
 	module, ok := ex.agentModules[agentData.Name]
 	if !ok {
 		return nil, nil, nil, nil, nil, nil, errors.New("module not found")
@@ -64,7 +64,7 @@ func (ex *AdaptixExtender) ExAgentTunnelCallbacks(agentData adaptix.AgentData, t
 	return module.AgentTunnelCallbacks()
 }
 
-func (ex *AdaptixExtender) ExAgentTerminalCallbacks(agentData adaptix.AgentData) (func(int, string, int, int) (adaptix.TaskData, error), func(int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error) {
+func (ex *AdaptixExtender) ExAgentTerminalCallbacks(agentData adaptix.AgentData) (func(int, string, int, int, int) (adaptix.TaskData, error), func(int, int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error) {
 
 	module, ok := ex.agentModules[agentData.Name]
 	if !ok {

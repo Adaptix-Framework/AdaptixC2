@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/rc4"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
@@ -122,8 +123,32 @@ func (handler *HTTP) Start(ts Teamserver) error {
 			}
 		}
 
+		cert, err := tls.LoadX509KeyPair(handler.Config.SslCertPath, handler.Config.SslKeyPath)
+		if err != nil {
+			handler.Active = false
+			return fmt.Errorf("failed to load certificate: %v", err)
+		}
+
+		handler.Server.TLSConfig = &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			MinVersion:   tls.VersionTLS10,
+			MaxVersion:   tls.VersionTLS13,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
+				tls.TLS_RSA_WITH_AES_128_CBC_SHA,
+				tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
+		}
+
 		go func() {
-			err = handler.Server.ListenAndServeTLS(handler.Config.SslCertPath, handler.Config.SslKeyPath)
+			err = handler.Server.ListenAndServeTLS("", "")
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				fmt.Printf("Error starting HTTPS server: %v\n", err)
 				return
@@ -189,7 +214,7 @@ func (handler *HTTP) processRequest(ctx *gin.Context) {
 			valid = true
 		}
 	}
-	if valid == false {
+	if !valid {
 		handler.pageError(ctx)
 		return
 	}

@@ -94,6 +94,55 @@ client-fast: prepare
 
 
 
+### DOCKER BUILD ###
+
+docker-build-server:
+	@ echo "[*] Building server via Docker..."
+	@ docker compose --profile build-server build
+	@ docker compose --profile build-server up --abort-on-container-exit
+	@ docker compose --profile build-server down
+	@ echo "[+] Server built via Docker"
+
+docker-build-extenders:
+	@ echo "[*] Building extenders via Docker..."
+	@ docker compose --profile build-extenders build
+	@ docker compose --profile build-extenders up --abort-on-container-exit
+	@ docker compose --profile build-extenders down
+	@ echo "[+] Extenders built via Docker"
+
+docker-build-server-ext:
+	@ echo "[*] Building server and extenders via Docker..."
+	@ docker compose --profile build-server-ext build
+	@ docker compose --profile build-server-ext up --abort-on-container-exit
+	@ docker compose --profile build-server-ext down
+	@ echo "[+] Server and extenders built via Docker"
+
+docker-build-all: docker-build-server-ext
+	@ echo "[+] All Docker builds completed"
+
+
+
+### DOCKER RUNTIME ###
+
+docker-up:
+	@ echo "[*] Starting Adaptix server runtime container..."
+	@ docker compose --profile runtime up -d
+	@ echo "[+] Runtime container started"
+	@ echo "[*] Use 'make docker-logs' to view logs"
+	@ echo "[*] Use 'make docker-down' to stop container"
+
+docker-down:
+	@ echo "[*] Stopping Adaptix server runtime container..."
+	@ docker compose --profile runtime down
+	@ echo "[+] Runtime container stopped"
+
+docker-logs:
+	@ docker compose --profile runtime logs -f
+
+docker-restart: docker-down docker-up
+
+
+
 ### HELP ###
 
 help:
@@ -108,10 +157,21 @@ help:
 	@ echo "  client           - Build only the client"
 	@ echo "  clean            - Remove dist directory"
 	@ echo "  clean-all        - Remove all build artifacts"
-	@ echo "  docker-clean     - Remove Docker containers and images (builders only)"
-	@ echo "  docker-clean-all - Remove all Docker artifacts (containers, images, volumes, networks)"
+	@ echo ""
+	@ echo "Docker commands:"
+	@ echo "  docker-build-server     - Build server via Docker Compose"
+	@ echo "  docker-build-extenders  - Build extenders via Docker Compose"
+	@ echo "  docker-build-server-ext - Build server and extenders via Docker Compose"
+	@ echo "  docker-build-all        - Build server and extenders via Docker Compose (alias)"
+	@ echo "  docker-up               - Start runtime container (detached)"
+	@ echo "  docker-down             - Stop runtime container"
+	@ echo "  docker-logs             - View runtime container logs (follow mode)"
+	@ echo "  docker-restart          - Restart runtime container"
+	@ echo "  docker-clean            - Remove Docker containers and images (builders only)"
+	@ echo "  docker-clean-all        - Remove all Docker artifacts (containers, images, volumes, networks)"
+	@ echo ""
 	@ echo "  help             - Show this help message"
 	@ echo ""
 	@ echo "Platform: $(UNAME_S) [$(NPROC) proc]"
 
-.PHONY: all extenders server-ext server client clean clean-all docker-clean docker-clean-all help prepare
+.PHONY: all extenders server-ext server client clean clean-all docker-build-server docker-build-extenders docker-build-server-ext docker-build-all docker-up docker-down docker-logs docker-restart docker-clean docker-clean-all help prepare

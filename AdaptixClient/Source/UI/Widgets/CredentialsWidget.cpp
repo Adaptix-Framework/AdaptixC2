@@ -1,11 +1,14 @@
 #include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogCredential.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
+
+REGISTER_DOCK_WIDGET(CredentialsWidget, "Credentials", true)
 
 CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : DockTab("Credentials", w->GetProfile()->GetProject(), ":/icons/key"), adaptixWidget(w)
 {
@@ -18,12 +21,19 @@ CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : DockTab("Credentials", 
         Q_UNUSED(deselected)
         tableView->setFocus();
     });
-    connect(hideButton,  &ClickableLabel::clicked, this, &CredentialsWidget::toggleSearchPanel);
-    connect(inputFilter, &QLineEdit::textChanged,  this, &CredentialsWidget::onFilterUpdate);
+    connect(hideButton,      &ClickableLabel::clicked,       this, &CredentialsWidget::toggleSearchPanel);
+    connect(inputFilter,     &QLineEdit::textChanged,        this, &CredentialsWidget::onFilterUpdate);
+    connect(inputFilter,     &QLineEdit::returnPressed,      this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
+    connect(typeComboBox,    &QComboBox::currentTextChanged, this, &CredentialsWidget::onTypeFilterUpdate);
+    connect(storageComboBox, &QComboBox::currentTextChanged, this, &CredentialsWidget::onStorageFilterUpdate);
 
-    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
-    shortcutSearch->setContext(Qt::WidgetShortcut);
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
+    shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &CredentialsWidget::toggleSearchPanel);
+
+    auto shortcutEsc = new QShortcut(QKeySequence(Qt::Key_Escape), inputFilter);
+    shortcutEsc->setContext(Qt::WidgetShortcut);
+    connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); proxyModel->setSearchVisible(false); });
 
     this->dockWidget->setWidget(this);
 }
@@ -43,16 +53,39 @@ void CredentialsWidget::createUI()
     searchWidget->setVisible(false);
 
     inputFilter = new QLineEdit(searchWidget);
-    inputFilter->setPlaceholderText("filter");
+    inputFilter->setPlaceholderText("filter: (adm | user) & aes256");
     inputFilter->setMaximumWidth(300);
 
-    hideButton = new ClickableLabel("X");
-    hideButton->setCursor( Qt::PointingHandCursor );
+    autoSearchCheck = new QCheckBox("auto", searchWidget);
+    autoSearchCheck->setChecked(true);
+    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
+
+    typeComboBox = new QComboBox(searchWidget);
+    typeComboBox->setMinimumWidth(150);
+    typeComboBox->setEditable(true);
+    typeComboBox->setInsertPolicy(QComboBox::NoInsert);
+    typeComboBox->addItem("All Types");
+
+    storageComboBox = new QComboBox(searchWidget);
+    storageComboBox->setMinimumWidth(150);
+    storageComboBox->setEditable(true);
+    storageComboBox->setInsertPolicy(QComboBox::NoInsert);
+    storageComboBox->addItem("All Storages");
+
+    hideButton = new ClickableLabel("  x  ");
+    hideButton->setCursor(Qt::PointingHandCursor);
+    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 5, 0, 0);
     searchLayout->setSpacing(4);
     searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(autoSearchCheck);
+    searchLayout->addSpacing(8);
+    searchLayout->addWidget(typeComboBox);
+    searchLayout->addSpacing(8);
+    searchLayout->addWidget(storageComboBox);
+    searchLayout->addSpacing(8);
     searchLayout->addWidget(hideButton);
     searchLayout->addSpacerItem(horizontalSpacer2);
 
@@ -80,9 +113,9 @@ void CredentialsWidget::createUI()
     proxyModel->sort(-1);
 
     tableView->horizontalHeader()->setSectionResizeMode( CC_Password, QHeaderView::Stretch );
-    tableView->horizontalHeader()->setSectionResizeMode( CC_Tag,     QHeaderView::Stretch );
 
     tableView->setItemDelegate(new PaddingDelegate(tableView));
+    tableView->setItemDelegateForColumn(CC_Password, new WrapAnywhereDelegate(tableView));
 
     tableView->hideColumn(0);
 
@@ -96,22 +129,32 @@ void CredentialsWidget::createUI()
 
 void CredentialsWidget::AddCredentialsItems(QList<CredentialData> credsList) const
 {
+    if (credsList.isEmpty())
+        return;
+
     QList<CredentialData> filtered;
+    QSet<QString> existingIds;
+    for (const auto& c : adaptixWidget->Credentials)
+        existingIds.insert(c.CredId);
 
-    for (auto cred : credsList) {
-        for( auto c : adaptixWidget->Credentials ) {
-            if( c.CredId == cred.CredId )
-                return;
-        }
+    for (const auto& cred : credsList) {
+        if (existingIds.contains(cred.CredId))
+            continue;
 
+        existingIds.insert(cred.CredId);
         adaptixWidget->Credentials.push_back(cred);
         filtered.append(cred);
     }
 
+    if (filtered.isEmpty())
+        return;
+
     credsModel->add(filtered);
 
-    if (adaptixWidget->IsSynchronized())
+    if (adaptixWidget->IsSynchronized()) {
         this->UpdateColumnsSize();
+        this->UpdateFilterComboBoxes();
+    }
 }
 
 void CredentialsWidget::EditCredentialsItem(const CredentialData &newCredentials) const
@@ -132,6 +175,7 @@ void CredentialsWidget::EditCredentialsItem(const CredentialData &newCredentials
     }
 
     credsModel->update(newCredentials.CredId, newCredentials);
+    this->UpdateFilterComboBoxes();
 }
 
 void CredentialsWidget::RemoveCredentialsItem(const QStringList &credsId) const
@@ -147,6 +191,7 @@ void CredentialsWidget::RemoveCredentialsItem(const QStringList &credsId) const
         }
     }
     credsModel->remove(filtered);
+    this->UpdateFilterComboBoxes();
 }
 
 void CredentialsWidget::CredsSetTag(const QStringList &credsIds, const QString &tag) const
@@ -171,9 +216,56 @@ void CredentialsWidget::UpdateColumnsSize() const
     tableView->resizeColumnToContents(CC_Realm);
     tableView->resizeColumnToContents(CC_Type);
     tableView->resizeColumnToContents(CC_Date);
+    tableView->resizeColumnToContents(CC_Tag);
     tableView->resizeColumnToContents(CC_Storage);
     tableView->resizeColumnToContents(CC_Agent);
     tableView->resizeColumnToContents(CC_Host);
+}
+
+void CredentialsWidget::UpdateFilterComboBoxes() const
+{
+    QSet<QString> types;
+    QSet<QString> storages;
+
+    for (const auto& cred : adaptixWidget->Credentials) {
+        if (!cred.Type.isEmpty())
+            types.insert(cred.Type);
+        if (!cred.Storage.isEmpty())
+            storages.insert(cred.Storage);
+    }
+
+    QString currentType = typeComboBox->currentText();
+    QString currentStorage = storageComboBox->currentText();
+
+    typeComboBox->blockSignals(true);
+    storageComboBox->blockSignals(true);
+
+    typeComboBox->clear();
+    typeComboBox->addItem("All Types");
+    QStringList typeList = types.values();
+    typeList.sort();
+    typeComboBox->addItems(typeList);
+
+    storageComboBox->clear();
+    storageComboBox->addItem("All Storages");
+    QStringList storageList = storages.values();
+    storageList.sort();
+    storageComboBox->addItems(storageList);
+
+    int typeIdx = typeComboBox->findText(currentType);
+    if (typeIdx >= 0)
+        typeComboBox->setCurrentIndex(typeIdx);
+    else
+        typeComboBox->setCurrentText(currentType);
+
+    int storageIdx = storageComboBox->findText(currentStorage);
+    if (storageIdx >= 0)
+        storageComboBox->setCurrentIndex(storageIdx);
+    else
+        storageComboBox->setCurrentText(currentStorage);
+
+    typeComboBox->blockSignals(false);
+    storageComboBox->blockSignals(false);
 }
 
 void CredentialsWidget::Clear() const
@@ -204,14 +296,10 @@ void CredentialsWidget::CredentialsAdd(QList<CredentialData> credsList)
     dataJson["creds"] = jsonArray;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    QString message = "";
-    bool ok = false;
-    bool result = HttpReqCredentialsCreate(jsonData, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Server is not responding");
-        return;
-    }
-    if (!ok) MessageError(message);
+    HttpReqCredentialsCreateAsync(jsonData, *(adaptixWidget->GetProfile()), [](bool success, const QString &message, const QJsonObject&) {
+        if (!success)
+            MessageError(message);
+    });
 }
 
 /// Slots
@@ -230,37 +318,57 @@ void CredentialsWidget::toggleSearchPanel() const
 
 void CredentialsWidget::onFilterUpdate() const
 {
-    proxyModel->setTextFilter(inputFilter->text());
+    if (autoSearchCheck->isChecked()) {
+        proxyModel->setTextFilter(inputFilter->text());
+    }
+    inputFilter->setFocus();
+}
+
+void CredentialsWidget::onTypeFilterUpdate(const QString &text) const
+{
+    QString filterText = text;
+    if (filterText == "All Types")
+        filterText.clear();
+    proxyModel->setTypeFilter(filterText);
+}
+
+void CredentialsWidget::onStorageFilterUpdate(const QString &text) const
+{
+    QString filterText = text;
+    if (filterText == "All Storages")
+        filterText.clear();
+    proxyModel->setStorageFilter(filterText);
 }
 
 void CredentialsWidget::handleCredentialsMenu(const QPoint &pos ) const
 {
-    QModelIndex index = tableView->indexAt(pos);
-    if (!index.isValid()) return;
-
-    QStringList creds;
-    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
-    for (const QModelIndex &proxyIndex : selectedRows) {
-        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
-        if (!sourceIndex.isValid()) continue;
-
-        QString taskId = credsModel->data(credsModel->index(sourceIndex.row(), CC_Id), Qt::DisplayRole).toString();
-        creds.append(taskId);
-    }
-
     auto ctxMenu = QMenu();
-
     ctxMenu.addAction("Create", this, &CredentialsWidget::onCreateCreds );
-    ctxMenu.addAction("Edit",   this, &CredentialsWidget::onEditCreds );
-    ctxMenu.addAction("Remove", this, &CredentialsWidget::onRemoveCreds );
-    ctxMenu.addSeparator();
 
-    int centerCount = adaptixWidget->ScriptManager->AddMenuCreds(&ctxMenu, "Creds", creds);
-    if (centerCount > 0)
+    QModelIndex index = tableView->indexAt(pos);
+    if (index.isValid()) {
+        QStringList creds;
+        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+        for (const QModelIndex &proxyIndex : selectedRows) {
+            QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+            if (!sourceIndex.isValid()) continue;
+
+            QString taskId = credsModel->data(credsModel->index(sourceIndex.row(), CC_Id), Qt::DisplayRole).toString();
+            creds.append(taskId);
+        }
+
+        ctxMenu.addAction("Edit",   this, &CredentialsWidget::onEditCreds );
+        ctxMenu.addAction("Remove", this, &CredentialsWidget::onRemoveCreds );
         ctxMenu.addSeparator();
 
-    ctxMenu.addAction("Set tag", this, &CredentialsWidget::onSetTag );
-    ctxMenu.addAction("Export",  this, &CredentialsWidget::onExportCreds );
+        int centerCount = adaptixWidget->ScriptManager->AddMenuCreds(&ctxMenu, "Creds", creds);
+        if (centerCount > 0)
+            ctxMenu.addSeparator();
+
+        ctxMenu.addAction("Set tag",           this, &CredentialsWidget::onSetTag );
+        ctxMenu.addAction("Export to file",    this, &CredentialsWidget::onExportCreds );
+        ctxMenu.addAction("Copy to clipboard", this, &CredentialsWidget::onCopyToClipboard );
+    }
 
     QPoint globalPos = tableView->mapToGlobal(pos);
     ctxMenu.exec(globalPos);
@@ -342,14 +450,10 @@ void CredentialsWidget::onEditCreds() const
 
     delete dialogCreds;
 
-    QString message = "";
-    bool ok = false;
-    bool result = HttpReqCredentialsEdit(jsonData, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Server is not responding");
-        return;
-    }
-    if (!ok) MessageError(message);
+    HttpReqCredentialsEditAsync(jsonData, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Server is not responding" : message);
+    });
 }
 
 void CredentialsWidget::onRemoveCreds() const
@@ -367,9 +471,10 @@ void CredentialsWidget::onRemoveCreds() const
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    HttpReqCredentialsRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
+    HttpReqCredentialsRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void CredentialsWidget::onExportCreds() const
@@ -391,8 +496,11 @@ void CredentialsWidget::onExportCreds() const
         return;
 
     QString format = dialog.textValue();
+    QString baseDir = QStringLiteral("creds.txt");
+    if (adaptixWidget && adaptixWidget->GetProfile())
+        baseDir = QDir(adaptixWidget->GetProfile()->GetProjectDir()).filePath(QStringLiteral("creds.txt"));
 
-    NonBlockingDialogs::getSaveFileName(const_cast<CredentialsWidget*>(this), "Save credentials", "creds.txt", "Text Files (*.txt);;All Files (*)",
+    NonBlockingDialogs::getSaveFileName(const_cast<CredentialsWidget*>(this), "Save credentials", baseDir, "Text Files (*.txt);;All Files (*)",
         [this, format](const QString& fileName) {
             if (fileName.isEmpty())
                 return;
@@ -404,7 +512,6 @@ void CredentialsWidget::onExportCreds() const
             }
 
             QString content = "";
-            QStringList listId;
             QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
             for (const QModelIndex &proxyIndex : selectedRows) {
                 QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
@@ -450,12 +557,64 @@ void CredentialsWidget::onSetTag() const
     bool inputOk;
     QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
     if ( inputOk ) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqCredentialsSetTag(listId, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqCredentialsSetTagAsync(listId, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
+}
+
+void CredentialsWidget::onCopyToClipboard() const
+{
+    auto idx = tableView->currentIndex();
+    if (!idx.isValid()) return;
+
+    QInputDialog dialog;
+    dialog.setWindowTitle("Format for clipboard");
+    dialog.setComboBoxEditable(true);
+    dialog.setTextValue("%realm%\\%username%:%password%");
+    dialog.setComboBoxItems(QStringList()
+        << "%realm%\\%username%:%password%"
+        << "%username%"
+        << "%password%"
+        << "'%realm%/%username%:%password%' (impacket)"
+        << "-hashes :%password% '%realm%/%username%' (impacket)"
+        << "-u '%username%' -p '%password%' (netexec)"
+        << "-u '%username%' -H '%password%' (netexec)"
+        << "-u '%username%@%realm%' -p '%password%' (certipy)"
+    );
+    dialog.setLabelText("Format:");
+    QLineEdit *lineEdit = dialog.findChild<QLineEdit*>();
+    if (lineEdit)
+        lineEdit->setMinimumWidth(400);
+
+    bool inputOk = (dialog.exec() == QDialog::Accepted);
+    if (!inputOk)
+        return;
+
+    QString format = dialog.textValue();
+
+    QString content = "";
+    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+    for (const QModelIndex &proxyIndex : selectedRows) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (!sourceIndex.isValid()) continue;
+
+        QString realm    = credsModel->data(credsModel->index(sourceIndex.row(), CC_Realm), Qt::DisplayRole).toString();
+        QString username = credsModel->data(credsModel->index(sourceIndex.row(), CC_Username), Qt::DisplayRole).toString();
+        QString password = credsModel->data(credsModel->index(sourceIndex.row(), CC_Password), Qt::DisplayRole).toString();
+
+        QString temp = format;
+        content += temp
+        .replace("%realm%", realm)
+        .replace("%username%", username)
+        .replace("%password%", password)
+        .replace(" (impacket)", "")
+        .replace(" (netexec)", "")
+        .replace(" (certipy)", "")
+        + "\n";
+    }
+
+    QClipboard *clipboard = QApplication::clipboard();
+    clipboard->setText(content.trimmed());
 }

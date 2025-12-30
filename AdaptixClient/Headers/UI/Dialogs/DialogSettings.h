@@ -46,7 +46,8 @@ Q_OBJECT
     QGridLayout* sessionsLayout       = nullptr;
     QGroupBox*   sessionsGroup        = nullptr;
     QGridLayout* sessionsGroupLayout  = nullptr;
-    QCheckBox*   sessionsCheck[15];
+    int          sessionsCheckCount   = 16;
+    QCheckBox*   sessionsCheck[16];
     QCheckBox*   sessionsHealthCheck  = nullptr;
     QLabel*      sessionsLabel1       = nullptr;
     QLabel*      sessionsLabel2       = nullptr;
@@ -60,7 +61,18 @@ Q_OBJECT
     QGridLayout* tasksGroupLayout = nullptr;
     QCheckBox*   tasksCheck[11];
 
-void createUI();
+    QWidget*     tabblinkWidget          = nullptr;
+    QGridLayout* tabblinkLayout          = nullptr;
+    QCheckBox*   tabblinkEnabledCheckbox = nullptr;
+    QGroupBox*   tabblinkGroup           = nullptr;
+    QGridLayout* tabblinkGroupLayout     = nullptr;
+    QMap<QString, QCheckBox*> m_tabblinkChecks;  // className -> checkbox
+
+    void createUI();
+    void loadSettings();
+
+protected:
+    void showEvent(QShowEvent* event) override;
 
 public:
     DialogSettings(Settings* s);
@@ -68,6 +80,7 @@ public:
 public Q_SLOTS:
     void onStackChange(int index) const;
     void onHealthChange() const;
+    void onBlinkChange() const;
     void onApply() const;
     void onClose();
 };

@@ -119,7 +119,7 @@ void Emulation::setCodec(QStringEncoder qtc) {
         setCodec(LocaleCodec);
 
     _toUtf16 = QStringDecoder{utf8() ? QStringConverter::Encoding::Utf8
-                                    : QStringConverter::Encoding::System};
+                                     : QStringConverter::Encoding::System};
     Q_EMIT useUtf8Request(utf8());
 }
 

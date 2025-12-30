@@ -3,16 +3,20 @@
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
-#include <UI/Widgets/TerminalWidget.h>
+#include <UI/Widgets/TerminalContainerWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/TasksWidget.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogTunnel.h>
+#include <UI/Dialogs/DialogAgentData.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/Requestor.h>
 #include <Client/Settings.h>
 #include <Client/TunnelEndpoint.h>
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
+
+REGISTER_DOCK_WIDGET(SessionsTableWidget, "Sessions", true)
 
 SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions table", w->GetProfile()->GetProject(), ":/icons/format_list")
 {
@@ -28,20 +32,23 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions
         tableView->setFocus();
     });
 
+    connect(inputFilter,    &QLineEdit::textChanged,        this, &SessionsTableWidget::onFilterChanged);
+    connect(inputFilter,    &QLineEdit::returnPressed,      this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
+    connect(comboAgentType, &QComboBox::currentTextChanged, this, &SessionsTableWidget::onFilterChanged);
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    connect( checkOnlyActive, &QCheckBox::checkStateChanged, this, &SessionsTableWidget::onFilterChanged);
+    connect(checkOnlyActive, &QCheckBox::checkStateChanged, this, &SessionsTableWidget::onFilterChanged);
 #else
-    connect( checkOnlyActive, &QCheckBox::stateChanged, this, &SessionsTableWidget::onFilterChanged);
+    connect(checkOnlyActive, &QCheckBox::stateChanged, this, &SessionsTableWidget::onFilterChanged);
 #endif
+    connect(hideButton, &ClickableLabel::clicked, this, &SessionsTableWidget::toggleSearchPanel);
 
-    connect( inputFilter1, &QLineEdit::textChanged,  this, &SessionsTableWidget::onFilterChanged);
-    connect( inputFilter2, &QLineEdit::textChanged,  this, &SessionsTableWidget::onFilterChanged);
-    connect( inputFilter3, &QLineEdit::textChanged,  this, &SessionsTableWidget::onFilterChanged);
-    connect( hideButton,   &ClickableLabel::clicked, this, &SessionsTableWidget::toggleSearchPanel);
-
-    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
-    shortcutSearch->setContext(Qt::WidgetShortcut);
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
+    shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &SessionsTableWidget::toggleSearchPanel);
+
+    auto shortcutEsc = new QShortcut(QKeySequence(Qt::Key_Escape), inputFilter);
+    shortcutEsc->setContext(Qt::WidgetShortcut);
+    connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 
     this->dockWidget->setWidget(this);
 
@@ -49,7 +56,6 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions
     connect(refreshTimer, &QTimer::timeout, this, [this]() {
         if (tableView && tableView->isVisible()) {
             tableView->viewport()->update();
-
         }
     });
 }
@@ -63,39 +69,41 @@ void SessionsTableWidget::SetUpdatesEnabled(const bool enabled)
 
 void SessionsTableWidget::createUI()
 {
-    auto horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    auto horizontalSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    auto horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     searchWidget = new QWidget(this);
     searchWidget->setVisible(false);
 
-    checkOnlyActive = new QCheckBox("Only active");
+    inputFilter = new QLineEdit(searchWidget);
+    inputFilter->setPlaceholderText("filter: (admin | root) & ^(test)");
+    inputFilter->setMaximumWidth(300);
 
-    inputFilter1 = new QLineEdit(searchWidget);
-    inputFilter1->setPlaceholderText("filter1");
-    inputFilter1->setMaximumWidth(200);
+    autoSearchCheck = new QCheckBox("auto", searchWidget);
+    autoSearchCheck->setChecked(true);
+    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
 
-    inputFilter2 = new QLineEdit(searchWidget);
-    inputFilter2->setPlaceholderText("or filter2");
-    inputFilter2->setMaximumWidth(200);
+    comboAgentType = new QComboBox(searchWidget);
+    comboAgentType->setMinimumWidth(150);
+    comboAgentType->addItem("All types");
 
-    inputFilter3 = new QLineEdit(searchWidget);
-    inputFilter3->setPlaceholderText("or filter3");
-    inputFilter3->setMaximumWidth(200);
+    checkOnlyActive = new QCheckBox("only active", searchWidget);
 
-    hideButton = new ClickableLabel("X");
-    hideButton->setCursor( Qt::PointingHandCursor );
+    hideButton = new ClickableLabel("  x  ");
+    hideButton->setCursor(Qt::PointingHandCursor);
+    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 4, 0, 0);
     searchLayout->setSpacing(4);
-    searchLayout->addSpacerItem(horizontalSpacer1);
+    searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(autoSearchCheck);
+    searchLayout->addSpacing(8);
+    searchLayout->addWidget(comboAgentType);
+    searchLayout->addSpacing(8);
     searchLayout->addWidget(checkOnlyActive);
-    searchLayout->addWidget(inputFilter1);
-    searchLayout->addWidget(inputFilter2);
-    searchLayout->addWidget(inputFilter3);
+    searchLayout->addSpacing(8);
     searchLayout->addWidget(hideButton);
-    searchLayout->addSpacerItem(horizontalSpacer2);
+    searchLayout->addSpacerItem(horizontalSpacer);
 
     agentsModel = new AgentsTableModel(adaptixWidget, this);
     proxyModel  = new AgentsFilterProxyModel(adaptixWidget, this);
@@ -172,6 +180,8 @@ void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
         delete agent->ProcessBrowser;
     if (agent->Terminal)
         delete agent->Terminal;
+    if (agent->Shell)
+        delete agent->Shell;
     delete agent;
 
     agentsModel->remove(agentId);
@@ -217,8 +227,33 @@ void SessionsTableWidget::UpdateData() const
     f->updateVisible();
 }
 
+void SessionsTableWidget::UpdateAgentTypeComboBox() const
+{
+    QSet<QString> types;
+    for (const auto& agent : adaptixWidget->AgentsMap) {
+        if (agent && !agent->data.Name.isEmpty())
+            types.insert(agent->data.Name);
+    }
+
+    QString currentType = comboAgentType->currentText();
+
+    comboAgentType->blockSignals(true);
+    comboAgentType->clear();
+    comboAgentType->addItem("All types");
+    QStringList typeList = types.values();
+    typeList.sort();
+    comboAgentType->addItems(typeList);
+
+    int idx = comboAgentType->findText(currentType);
+    if (idx >= 0)
+        comboAgentType->setCurrentIndex(idx);
+    comboAgentType->blockSignals(false);
+}
+
 void SessionsTableWidget::Clear() const
 {
+    refreshTimer->stop();
+    
     for (auto agentId : adaptixWidget->AgentsMap.keys()) {
         Agent* agent = adaptixWidget->AgentsMap[agentId];
         adaptixWidget->AgentsMap.remove(agentId);
@@ -226,15 +261,16 @@ void SessionsTableWidget::Clear() const
         delete agent->FileBrowser;
         delete agent->ProcessBrowser;
         delete agent->Terminal;
+        delete agent->Shell;
         delete agent;
     }
 
     agentsModel->clear();
 
     checkOnlyActive->setChecked(false);
-    inputFilter1->clear();
-    inputFilter2->clear();
-    inputFilter3->clear();
+    inputFilter->clear();
+    comboAgentType->clear();
+    comboAgentType->addItem("All types");
 }
 
 
@@ -268,71 +304,86 @@ void SessionsTableWidget::handleTableDoubleClicked(const QModelIndex &index) con
 
 void SessionsTableWidget::onFilterChanged() const
 {
-    proxyModel->setFilter1(inputFilter1->text());
-    proxyModel->setFilter2(inputFilter2->text());
-    proxyModel->setFilter3(inputFilter3->text());
+    if (autoSearchCheck->isChecked()) {
+        proxyModel->setTextFilter(inputFilter->text());
+    }
     proxyModel->setOnlyActive(checkOnlyActive->isChecked());
+
+    QSet<QString> selectedTypes;
+    QString currentType = comboAgentType->currentText();
+    if (currentType != "All types" && !currentType.isEmpty()) {
+        selectedTypes.insert(currentType);
+    }
+    proxyModel->setAgentTypes(selectedTypes);
 }
 
 /// Menu
 
 void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
 {
+    QMenu ctxMenu;
+
     QModelIndex index = tableView->indexAt(pos);
-    if (!index.isValid()) return;
+    if (index.isValid()) {
+        QStringList agentIds;
+        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+        for (const QModelIndex &proxyIndex : selectedRows) {
+            QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+            if (!sourceIndex.isValid()) continue;
 
-    QStringList agentIds;
-    QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
-    for (const QModelIndex &proxyIndex : selectedRows) {
-        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
-        if (!sourceIndex.isValid()) continue;
+            QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
+            agentIds.append(agentId);
+        }
 
-        QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
-        agentIds.append(agentId);
+        auto agentMenu = ctxMenu.addMenu("Agent");
+        agentMenu->addAction("Execute command", this, &SessionsTableWidget::actionExecuteCommand);
+        agentMenu->addAction("Task manager", this, &SessionsTableWidget::actionTasksBrowserOpen);
+        agentMenu->addSeparator();
+
+        int agentCount = adaptixWidget->ScriptManager->AddMenuSession(agentMenu, "SessionAgent", agentIds);
+        if (agentCount > 0)
+            agentMenu->addSeparator();
+
+        agentMenu->addAction("Remove console data", this, &SessionsTableWidget::actionConsoleDelete);
+        agentMenu->addAction("Remove from server", this, &SessionsTableWidget::actionAgentRemove);
+
+        auto sessionMenu = ctxMenu.addMenu("Session");
+        sessionMenu->addAction("Mark as Active",   this, &SessionsTableWidget::actionMarkActive);
+        sessionMenu->addAction("Mark as Inactive", this, &SessionsTableWidget::actionMarkInactive);
+        sessionMenu->addSeparator();
+        if ( agentIds.size() == 1 )
+            sessionMenu->addAction("Set data", this, &SessionsTableWidget::actionSetData);
+        sessionMenu->addAction("Set tag", this, &SessionsTableWidget::actionItemTag);
+        sessionMenu->addSeparator();
+        sessionMenu->addAction("Set items color", this, &SessionsTableWidget::actionItemColor);
+        sessionMenu->addAction("Set text color",  this, &SessionsTableWidget::actionTextColor);
+        sessionMenu->addAction("Reset color",     this, &SessionsTableWidget::actionColorReset);
+        sessionMenu->addSeparator();
+        sessionMenu->addAction("Hide on client", this, &SessionsTableWidget::actionItemHide);
+
+        ctxMenu.addAction("Console", this, &SessionsTableWidget::actionConsoleOpen);
+        ctxMenu.addSeparator();
+        ctxMenu.addMenu(agentMenu);
+
+        auto browserMenu = ctxMenu.addMenu("Browsers");
+        int browserCount = adaptixWidget->ScriptManager->AddMenuSession(browserMenu, "SessionBrowser", agentIds);
+        if (browserCount > 0)
+            ctxMenu.addMenu(browserMenu);
+        else
+            ctxMenu.removeAction(browserMenu->menuAction());
+
+        auto accessMenu = ctxMenu.addMenu("Access");
+        int accessCount = adaptixWidget->ScriptManager->AddMenuSession(accessMenu, "SessionAccess", agentIds);
+        if (accessCount > 0)
+            ctxMenu.addMenu(accessMenu);
+        else
+            ctxMenu.removeAction(accessMenu->menuAction());
+
+        adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
+
+        ctxMenu.addSeparator();
+        ctxMenu.addMenu(sessionMenu);
     }
-
-    auto agentMenu = QMenu("Agent");
-    agentMenu.addAction("Execute command", this, &SessionsTableWidget::actionExecuteCommand);
-    agentMenu.addAction("Task manager", this, &SessionsTableWidget::actionTasksBrowserOpen);
-    agentMenu.addSeparator();
-
-    int agentCount = adaptixWidget->ScriptManager->AddMenuSession(&agentMenu, "SessionAgent", agentIds);
-    if (agentCount > 0)
-        agentMenu.addSeparator();
-
-    agentMenu.addAction("Remove console data", this, &SessionsTableWidget::actionConsoleDelete);
-    agentMenu.addAction("Remove from server", this, &SessionsTableWidget::actionAgentRemove);
-
-    auto sessionMenu = QMenu("Session");
-    sessionMenu.addAction("Mark as Active",   this, &SessionsTableWidget::actionMarkActive);
-    sessionMenu.addAction("Mark as Inactive", this, &SessionsTableWidget::actionMarkInactive);
-    sessionMenu.addSeparator();
-    sessionMenu.addAction("Set items color", this, &SessionsTableWidget::actionItemColor);
-    sessionMenu.addAction("Set text color",  this, &SessionsTableWidget::actionTextColor);
-    sessionMenu.addAction("Reset color",     this, &SessionsTableWidget::actionColorReset);
-    sessionMenu.addSeparator();
-    sessionMenu.addAction( "Hide on client", this, &SessionsTableWidget::actionItemHide);
-
-    auto ctxMenu = QMenu();
-    ctxMenu.addAction("Console", this, &SessionsTableWidget::actionConsoleOpen);
-    ctxMenu.addSeparator();
-    ctxMenu.addMenu(&agentMenu);
-
-    auto browserMenu = QMenu("Browsers");
-    int browserCount = adaptixWidget->ScriptManager->AddMenuSession(&browserMenu, "SessionBrowser", agentIds);
-    if (browserCount > 0)
-        ctxMenu.addMenu(&browserMenu);
-
-    auto accessMenu = QMenu("Access");
-    int accessCount = adaptixWidget->ScriptManager->AddMenuSession(&accessMenu, "SessionAccess", agentIds);
-    if (accessCount > 0)
-        ctxMenu.addMenu(&accessMenu);
-
-    adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
-
-    ctxMenu.addSeparator();
-    ctxMenu.addMenu(&sessionMenu);
-    ctxMenu.addAction("Set tag", this, &SessionsTableWidget::actionItemTag);
     ctxMenu.addAction("Show all items", this, &SessionsTableWidget::actionItemsShowAll);
 
     ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));
@@ -402,13 +453,10 @@ void SessionsTableWidget::actionMarkActive() const
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentSetMark(listId, "", *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqAgentSetMarkAsync(listId, "", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void SessionsTableWidget::actionMarkInactive() const
@@ -426,13 +474,10 @@ void SessionsTableWidget::actionMarkInactive() const
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentSetMark(listId, "Inactive", *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqAgentSetMarkAsync(listId, "Inactive", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void SessionsTableWidget::actionItemColor() const
@@ -453,13 +498,10 @@ void SessionsTableWidget::actionItemColor() const
     QColor itemColor = QColorDialog::getColor(Qt::white, nullptr, "Select items color");
     if (itemColor.isValid()) {
         QString itemColorHex = itemColor.name();
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetColor(listId, itemColorHex, "", false, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentSetColorAsync(listId, itemColorHex, "", false, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
 }
 
@@ -481,13 +523,10 @@ void SessionsTableWidget::actionTextColor() const
     QColor textColor = QColorDialog::getColor(Qt::white, nullptr, "Select text color");
     if (textColor.isValid()) {
         QString textColorHex = textColor.name();
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetColor(listId, "",  textColorHex, false, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentSetColorAsync(listId, "", textColorHex, false, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
 }
 
@@ -506,13 +545,10 @@ void SessionsTableWidget::actionColorReset() const
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentSetColor(listId, "",  "", true, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqAgentSetColorAsync(listId, "", "", true, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void SessionsTableWidget::actionConsoleDelete()
@@ -542,13 +578,10 @@ void SessionsTableWidget::actionConsoleDelete()
         adaptixWidget->AgentsMap[id]->Console->Clear();
     }
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqConsoleRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqConsoleRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void SessionsTableWidget::actionAgentRemove()
@@ -575,13 +608,10 @@ void SessionsTableWidget::actionAgentRemove()
     if(listId.empty())
         return;
 
-    QString message = QString();
-    bool ok = false;
-    bool result = HttpReqAgentRemove(listId, *(adaptixWidget->GetProfile()), &message, &ok);
-    if( !result ) {
-        MessageError("Response timeout");
-        return;
-    }
+    HttpReqAgentRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
 }
 
 void SessionsTableWidget::actionItemTag() const
@@ -607,13 +637,10 @@ void SessionsTableWidget::actionItemTag() const
     bool inputOk;
     QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
     if ( inputOk ) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetTag(listId, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentSetTagAsync(listId, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
 }
 
@@ -646,4 +673,26 @@ void SessionsTableWidget::actionItemsShowAll() const
     }
 
     if (refact) this->UpdateData();
+}
+
+void SessionsTableWidget::actionSetData() const
+{
+    auto idx = tableView->currentIndex();
+    if (!idx.isValid())
+        return;
+
+    QModelIndex sourceIndex = proxyModel->mapToSource(idx);
+    if (!sourceIndex.isValid())
+        return;
+
+    QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
+    if (!adaptixWidget->AgentsMap.contains(agentId))
+        return;
+
+    Agent* agent = adaptixWidget->AgentsMap[agentId];
+
+    auto* dialog = new DialogAgentData();
+    dialog->SetProfile(*(adaptixWidget->GetProfile()));
+    dialog->SetAgentData(agent->data);
+    dialog->Start();
 }

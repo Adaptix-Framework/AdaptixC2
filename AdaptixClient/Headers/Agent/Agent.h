@@ -7,7 +7,7 @@ class Commander;
 class ConsoleWidget;
 class BrowserFilesWidget;
 class BrowserProcessWidget;
-class TerminalWidget;
+class TerminalContainerWidget;
 class AdaptixWidget;
 class AgentTableWidgetItem;
 class GraphItem;
@@ -34,11 +34,12 @@ public:
     GraphItem* graphItem  = nullptr;
     QImage     graphImage = QImage();
 
-    Commander*            commander      = nullptr;
-    ConsoleWidget*        Console        = nullptr;
-    BrowserFilesWidget*   FileBrowser    = nullptr;
-    BrowserProcessWidget* ProcessBrowser = nullptr;
-    TerminalWidget*       Terminal       = nullptr;
+    Commander*               commander      = nullptr;
+    ConsoleWidget*           Console        = nullptr;
+    BrowserFilesWidget*      FileBrowser    = nullptr;
+    BrowserProcessWidget*    ProcessBrowser = nullptr;
+    TerminalContainerWidget* Terminal       = nullptr;
+    TerminalContainerWidget* Shell          = nullptr;
 
     bool active = true;
     bool show   = true;
@@ -48,11 +49,11 @@ public:
     explicit Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w );
     ~Agent();
 
-    void    Update(QJsonObject jsonObjAgentData);
+    void    Update(const QJsonObject &jsonObjAgentData);
     void    MarkItem(const QString &mark);
     void    UpdateImage();
-    QString TasksCancel(const QStringList &tasks) const;
-    QString TasksDelete(const QStringList &tasks) const;
+    void TasksCancel(const QStringList &tasks) const;
+    void TasksDelete(const QStringList &tasks) const;
 
     void SetParent(const PivotData &pivotData);
     void UnsetParent(const PivotData &pivotData);

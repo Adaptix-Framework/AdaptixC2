@@ -63,8 +63,8 @@ type ExtAgent interface {
 	AgentPackData(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error)
 	AgentPivotPackData(pivotId string, data []byte) (adaptix.TaskData, error)
 
-	AgentTunnelCallbacks() (func(int, string, int) adaptix.TaskData, func(int, string, int) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int) adaptix.TaskData, func(int, int) adaptix.TaskData, error)
-	AgentTerminalCallbacks() (func(int, string, int, int) (adaptix.TaskData, error), func(int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error)
+	AgentTunnelCallbacks() (func(int, int, int, string, int) adaptix.TaskData, func(int, int, int, string, int) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int) adaptix.TaskData, func(int, int) adaptix.TaskData, error)
+	AgentTerminalCallbacks() (func(int, string, int, int, int) (adaptix.TaskData, error), func(int, int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error)
 }
 
 type AdaptixExtender struct {

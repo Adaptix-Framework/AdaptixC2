@@ -5,9 +5,10 @@ AuthProfile::AuthProfile()
     this->valid = false;
 }
 
-AuthProfile::AuthProfile(const QString &project, const QString &username, const QString &password, const QString &host, const QString &port, const QString &endpoint)
+AuthProfile::AuthProfile(const QString &project, const QString &username, const QString &password, const QString &host, const QString &port, const QString &endpoint, const QString &projectDir)
 {
     this->project = project.trimmed();
+    this->projectDir = QDir::fromNativeSeparators(projectDir.trimmed());
     this->username = username.trimmed();
     this->password = password;
     this->host = host.trimmed();
@@ -19,6 +20,20 @@ AuthProfile::AuthProfile(const QString &project, const QString &username, const 
 AuthProfile::~AuthProfile() {}
 
 QString AuthProfile::GetProject() { return this->project; };
+
+QString AuthProfile::GetProjectDir() const
+{
+    QString dirPath = this->projectDir.trimmed();
+    if (dirPath.isEmpty()) {
+        QDir home(QDir::homePath());
+        QString basePath = home.filePath("AdaptixProjects");
+        QDir baseDir(basePath);
+        dirPath = baseDir.filePath(this->project.trimmed());
+    }
+
+    QDir().mkpath(dirPath);
+    return dirPath;
+}
 
 QString AuthProfile::GetUsername() { return this->username; };
 

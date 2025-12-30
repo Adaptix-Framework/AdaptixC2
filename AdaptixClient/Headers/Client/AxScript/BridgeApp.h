@@ -11,7 +11,6 @@ class Command;
 class BridgeApp : public QObject {
 Q_OBJECT
     AxScriptEngine* scriptEngine;
-    QWidget*        widget;
 
 public:
     explicit BridgeApp(AxScriptEngine* scriptEngine, QObject* parent = nullptr);
@@ -27,6 +26,7 @@ public Q_SLOTS:
     void     agent_set_impersonate(const QString &id, const QString &impersonate, const bool elevated);
     void     agent_set_mark(const QJSValue& agents, const QString &mark);
     void     agent_set_tag(const QJSValue& agents, const QString &tag);
+    void     agent_update_data(const QString &id, const QJSValue &data);
     QString  arch(const QString &id) const;
     QString  bof_pack(const QString &types, const QJSValue &args);
     void     copy_to_clipboard(const QString &text);
@@ -37,9 +37,13 @@ public Q_SLOTS:
     QObject* create_command(const QString &name, const QString &description, const QString &example = "", const QString &message = "");
     QObject* create_commands_group(const QString &name, const QJSValue& array);
     QJSValue downloads() const;
-    void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "", const QJSValue &hook = QJSValue()) const;
+    void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "", const QJSValue &hook = QJSValue(), const QJSValue &handler = QJSValue()) const;
+    void     execute_alias_hook(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const;
+    void     execute_alias_handler(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &handler) const;
     void     execute_browser(const QString &id, const QString &command) const;
-    void     execute_command(const QString &id, const QString &command, const QJSValue &hook = QJSValue()) const;
+    void     execute_command(const QString &id, const QString &command, const QJSValue &hook = QJSValue(), const QJSValue &handler = QJSValue()) const;
+    void     execute_command_hook(const QString &id, const QString &command, const QJSValue &hook) const;
+    void     execute_command_handler(const QString &id, const QString &command, const QJSValue &handler) const;
     QString  file_basename(const QString &path) const;
     bool     file_exists(const QString &path) const;
     QString  file_read(QString path) const;
@@ -60,6 +64,7 @@ public Q_SLOTS:
     void     open_browser_files(const QString &id);
     void     open_browser_process(const QString &id);
     void     open_remote_terminal(const QString &id);
+    void     open_remote_shell(const QString &id);
     bool     prompt_confirm(const QString &title, const QString &text);
     QString  prompt_open_file(const QString &caption = "Select file", const QString &filter = QString());
     QString  prompt_open_dir(const QString &caption = "Select directory");

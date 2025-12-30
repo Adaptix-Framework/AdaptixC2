@@ -47,7 +47,16 @@ DialogDownloader::DialogDownloader(const QString &url, const QString &otp, const
     connect(worker, &DownloaderWorker::progress, this, [this](const qint64 received, const qint64 total) {
         int percent = (total > 0) ? static_cast<int>((received * 100) / total) : 0;
         progressBar->setValue(percent);
-        statusLabel->setText(QString("Downloaded %1 / %2 MB").arg(received / (1024*1024)).arg(total / (1024*1024)));
+
+        QString recvStr, totalStr;
+        if (total >= 1024 * 1024) {
+            recvStr = QString::number(received / (1024.0 * 1024.0), 'f', 2) + " MB";
+            totalStr = QString::number(total / (1024.0 * 1024.0), 'f', 2) + " MB";
+        } else {
+            recvStr = QString::number(received / 1024.0, 'f', 1) + " KB";
+            totalStr = QString::number(total / 1024.0, 'f', 1) + " KB";
+        }
+        statusLabel->setText(QString("Downloaded %1 / %2").arg(recvStr).arg(totalStr));
     });
 
     connect(worker, &DownloaderWorker::speedUpdated, this, [this](const double kbps) {
@@ -82,9 +91,10 @@ DialogDownloader::DialogDownloader(const QString &url, const QString &otp, const
 
 DialogDownloader::~DialogDownloader()
 {
-    if (workerThread->isRunning()) {
-        worker->cancel();
+    if (workerThread && workerThread->isRunning()) {
+        if (worker)
+            QMetaObject::invokeMethod(worker, "cancel", Qt::QueuedConnection);
         workerThread->quit();
-        workerThread->wait();
+        workerThread->wait(3000);
     }
 }

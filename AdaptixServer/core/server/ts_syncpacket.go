@@ -149,6 +149,7 @@ func CreateSpListenerStart(listenerData adaptix.ListenerData) SyncPackerListener
 		BindHost:         listenerData.BindHost,
 		BindPort:         listenerData.BindPort,
 		AgentAddrs:       listenerData.AgentAddr,
+		CreateTime:       listenerData.CreateTime,
 		ListenerStatus:   listenerData.Status,
 		Data:             listenerData.Data,
 	}
@@ -195,6 +196,8 @@ func CreateSpAgentNew(agentData adaptix.AgentData) SyncPackerAgentNew {
 		KillDate:     agentData.KillDate,
 		Sleep:        agentData.Sleep,
 		Jitter:       agentData.Jitter,
+		ACP:          agentData.ACP,
+		OemCP:        agentData.OemCP,
 		Pid:          agentData.Pid,
 		Tid:          agentData.Tid,
 		Arch:         agentData.Arch,
@@ -207,6 +210,7 @@ func CreateSpAgentNew(agentData adaptix.AgentData) SyncPackerAgentNew {
 		Username:     agentData.Username,
 		Impersonated: agentData.Impersonated,
 		LastTick:     agentData.LastTick,
+		CreateTime:   agentData.CreateTime,
 		Tags:         agentData.Tags,
 		Mark:         agentData.Mark,
 		Color:        agentData.Color,
@@ -218,14 +222,29 @@ func CreateSpAgentUpdate(agentData adaptix.AgentData) SyncPackerAgentUpdate {
 		SpType: TYPE_AGENT_UPDATE,
 
 		Id:           agentData.Id,
-		Sleep:        agentData.Sleep,
-		Jitter:       agentData.Jitter,
-		WorkingTime:  agentData.WorkingTime,
-		KillDate:     agentData.KillDate,
-		Impersonated: agentData.Impersonated,
-		Tags:         agentData.Tags,
-		Mark:         agentData.Mark,
-		Color:        agentData.Color,
+		Sleep:        &agentData.Sleep,
+		Jitter:       &agentData.Jitter,
+		WorkingTime:  &agentData.WorkingTime,
+		KillDate:     &agentData.KillDate,
+		Impersonated: &agentData.Impersonated,
+		Tags:         &agentData.Tags,
+		Mark:         &agentData.Mark,
+		Color:        &agentData.Color,
+		InternalIP:   &agentData.InternalIP,
+		ExternalIP:   &agentData.ExternalIP,
+		GmtOffset:    &agentData.GmtOffset,
+		ACP:          &agentData.ACP,
+		OemCP:        &agentData.OemCP,
+		Pid:          &agentData.Pid,
+		Tid:          &agentData.Tid,
+		Arch:         &agentData.Arch,
+		Elevated:     &agentData.Elevated,
+		Process:      &agentData.Process,
+		Os:           &agentData.Os,
+		OsDesc:       &agentData.OsDesc,
+		Domain:       &agentData.Domain,
+		Computer:     &agentData.Computer,
+		Username:     &agentData.Username,
 	}
 }
 
@@ -414,7 +433,7 @@ func CreateSpDownloadUpdate(downloadData adaptix.DownloadData) SyncPackerDownloa
 	}
 }
 
-func CreateSpDownloadDelete(fileId string) SyncPackerDownloadDelete {
+func CreateSpDownloadDelete(fileId []string) SyncPackerDownloadDelete {
 	return SyncPackerDownloadDelete{
 		SpType: TYPE_DOWNLOAD_DELETE,
 

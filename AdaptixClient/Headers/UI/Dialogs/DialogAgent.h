@@ -4,28 +4,32 @@
 #include <main.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
+#include <Utils/CustomElements.h>
 
 class AxContainerWrapper;
 
 class DialogAgent : public QDialog
 {
-    QGridLayout*    mainGridLayout      = nullptr;
-    QGridLayout*    stackGridLayout     = nullptr;
-    QHBoxLayout*    hLayoutBottom       = nullptr;
-    QFrame*         line_1              = nullptr;
-    QSpacerItem*    horizontalSpacer    = nullptr;
-    QSpacerItem*    horizontalSpacer_2  = nullptr;
-    QSpacerItem*    horizontalSpacer_3  = nullptr;
+Q_OBJECT
+
     QLabel*         listenerLabel       = nullptr;
     QLineEdit*      listenerInput       = nullptr;
     QLabel*         agentLabel          = nullptr;
     QComboBox*      agentCombobox       = nullptr;
-    QPushButton*    buttonLoad          = nullptr;
-    QPushButton*    buttonSave          = nullptr;
-    QPushButton*    closeButton         = nullptr;
+    QLabel*         profileLabel        = nullptr;
+    QAction*        actionSaveProfile   = nullptr;
+    QLineEdit*      inputProfileName    = nullptr;
+    bool            profileNameManuallyEdited = false;
     QPushButton*    generateButton      = nullptr;
     QGroupBox*      agentConfigGroupbox = nullptr;
     QStackedWidget* configStackWidget   = nullptr;
+
+    QLabel*           label_Profiles    = nullptr;
+    CardListWidget*   cardWidget        = nullptr;
+    QMenu*            menuContext       = nullptr;
+    QPushButton*      buttonNewProfile  = nullptr;
+    QPushButton*      buttonLoad        = nullptr;
+    QPushButton*      buttonSave        = nullptr;
 
     AuthProfile authProfile;
     QString     listenerName;
@@ -35,6 +39,9 @@ class DialogAgent : public QDialog
     QMap<QString, AxUI> ax_uis;
 
     void createUI();
+    void loadProfiles();
+    void saveProfile(const QString &profileName, const QString &agentName, const QString &configData);
+    QString generateUniqueProfileName(const QString &baseName);
 
 public:
     explicit DialogAgent(const QString &listenerName, const QString &listenerType);
@@ -49,7 +56,13 @@ protected Q_SLOTS:
     void onButtonSave();
     void changeConfig(const QString &agentName);
     void onButtonGenerate();
-    void onButtonClose();
+    void onButtonNewProfile();
+    void onProfileSelected();
+    void handleProfileContextMenu(const QPoint &pos);
+    void onProfileRemove();
+    void onProfileRename();
+    void onProfileNameEdited(const QString &text);
+    void onSaveProfileToggled(bool checked);
 };
 
 #endif

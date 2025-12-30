@@ -67,8 +67,8 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v0.11"
-#define SMALL_VERSION "v0.11"
+#define FRAMEWORK_VERSION "Adaptix Framework v1.0"
+#define SMALL_VERSION     "v1.0"
 
 ///////////
 
@@ -195,12 +195,15 @@ typedef struct SettingsData {
     bool ConsoleNoWrap;
     bool ConsoleAutoScroll;
 
-    bool   SessionsTableColumns[15];
+    bool   SessionsTableColumns[16];
     bool   CheckHealth;
     double HealthCoaf;
     int    HealthOffset;
 
     bool TasksTableColumns[11];
+
+    bool TabBlinkEnabled;
+    QMap<QString, bool> BlinkWidgets;  // className -> enabled
 } SettingsData;
 
 typedef struct AxUI
@@ -222,38 +225,44 @@ typedef struct ListenerData
     QString BindHost;
     QString BindPort;
     QString AgentAddresses;
+    QString Date;
+    qint64  DateTimestamp = 0;
     QString Status;
     QString Data;
 } ListenerData;
 
 typedef struct AgentData
 {
-    QString     Id;
-    QString     Name;
-    QString     Listener;
-    bool        Async;
-    QString     ExternalIP;
-    QString     InternalIP;
-    int         GmtOffset;
-    uint        KillDate;
-    uint        WorkingTime;
-    int         Sleep;
-    int         Jitter;
-    QString     Pid;
-    QString     Tid;
-    QString     Arch;
-    bool        Elevated;
-    QString     Process;
-    int         Os;
-    QString     OsDesc;
-    QString     Domain;
-    QString     Computer;
-    QString     Username;
-    QString     Impersonated;
-    QString     Tags;
-    QString     Mark;
-    QString     Color;
-    int         LastTick;
+    QString Id;
+    QString Name;
+    QString Listener;
+    bool    Async;
+    QString ExternalIP;
+    QString InternalIP;
+    int     GmtOffset;
+    int     ACP;
+    int     OemCP;
+    uint    KillDate;
+    uint    WorkingTime;
+    int     Sleep;
+    int     Jitter;
+    QString Pid;
+    QString Tid;
+    QString Arch;
+    bool    Elevated;
+    QString Process;
+    int     Os;
+    QString OsDesc;
+    QString Domain;
+    QString Computer;
+    QString Username;
+    QString Impersonated;
+    QString Tags;
+    QString Mark;
+    QString Color;
+    int     LastTick;
+    QString Date;
+    qint64  DateTimestamp = 0;
 } AgentData;
 
 typedef struct DownloadData
@@ -268,6 +277,7 @@ typedef struct DownloadData
     int     RecvSize;
     int     State;
     QString Date;
+    qint64  DateTimestamp = 0;
 } DownloadData;
 
 typedef struct ScreenData
@@ -276,6 +286,7 @@ typedef struct ScreenData
     QString    User;
     QString    Computer;
     QString    Date;
+    qint64     DateTimestamp = 0;
     QString    Note;
     QByteArray Content;
 } ScreenData;
@@ -289,6 +300,7 @@ typedef struct CredentialData
     QString Type;
     QString Tag;
     QString Date;
+    qint64  DateTimestamp = 0;
     QString Storage;
     QString AgentId;
     QString Host;
@@ -305,6 +317,7 @@ typedef struct TargetData
     int         Os;
     QString     OsDesc;
     QString     Date;
+    qint64      DateTimestamp = 0;
     QString     Info;
     bool        Alive;
     QStringList Agents;

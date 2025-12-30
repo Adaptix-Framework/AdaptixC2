@@ -49,25 +49,23 @@ func (tc *TsConnector) TcGuiDownloadSync(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, answer)
 }
 
-func (tc *TsConnector) TcGuiDownloadDelete(ctx *gin.Context) {
-	var (
-		downloadFid DownloadFileId
-		answer      gin.H
-		err         error
-	)
+type DownloadsDelete struct {
+	FilesId []string `json:"file_id_array"`
+}
 
-	err = ctx.ShouldBindJSON(&downloadFid)
+func (tc *TsConnector) TcGuiDownloadDelete(ctx *gin.Context) {
+	var downloadsDelete DownloadsDelete
+	err := ctx.ShouldBindJSON(&downloadsDelete)
 	if err != nil {
-		_ = ctx.Error(errors.New("invalid action"))
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
-	err = tc.teamserver.TsDownloadDelete(downloadFid.File)
+	err = tc.teamserver.TsDownloadDelete(downloadsDelete.FilesId)
 	if err != nil {
-		answer = gin.H{"message": err.Error(), "ok": false}
-	} else {
-		answer = gin.H{"message": "file delete", "ok": true}
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
 	}
 
-	ctx.JSON(http.StatusOK, answer)
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }

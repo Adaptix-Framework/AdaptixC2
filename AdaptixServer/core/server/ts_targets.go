@@ -84,10 +84,12 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 		ts.targets.Put(target)
 	}
 
-	_ = ts.DBMS.DbTargetsAdd(newTargets)
+	if len(newTargets) > 0 {
+		_ = ts.DBMS.DbTargetsAdd(newTargets)
 
-	packet := CreateSpTargetsAdd(newTargets)
-	ts.TsSyncAllClients(packet)
+		packet := CreateSpTargetsAdd(newTargets)
+		ts.TsSyncAllClients(packet)
+	}
 
 	return nil
 }
@@ -237,14 +239,18 @@ func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
 	targets_id := make(map[string]string)
 
 	for _, agentId := range agentsId {
-		value, ok := ts.agents.Get(agentId)
+		value, ok := ts.Agents.Get(agentId)
 		if !ok {
 			continue
 		}
-		agent, _ := value.(*Agent)
+		agent, ok := value.(*Agent)
+		if !ok {
+			continue
+		}
 
-		if agent.Data.TargetId != "" {
-			targets_id[agent.Data.TargetId] = ""
+		agentData := agent.GetData()
+		if agentData.TargetId != "" {
+			targets_id[agentData.TargetId] = ""
 		}
 	}
 

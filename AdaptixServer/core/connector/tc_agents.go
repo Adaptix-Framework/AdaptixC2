@@ -68,6 +68,7 @@ type CommandData struct {
 	CmdLine   string `json:"cmdline"`
 	Data      string `json:"data"`
 	HookId    string `json:"ax_hook_id"`
+	HandlerId string `json:"ax_handler_id"`
 }
 
 func (tc *TsConnector) TcAgentCommandExecute(ctx *gin.Context) {
@@ -102,7 +103,7 @@ func (tc *TsConnector) TcAgentCommandExecute(ctx *gin.Context) {
 		logs.Debug("", "Error parsing commands JSON: %s\n", err.Error())
 	}
 
-	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.CmdLine, commandData.UI, args)
+	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.HandlerId, commandData.CmdLine, commandData.UI, args)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -152,6 +153,7 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 	err = json.Unmarshal(content, &commandData)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
 	}
 
 	err = json.Unmarshal([]byte(commandData.Data), &args)
@@ -159,7 +161,7 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 		logs.Debug("", "Error parsing commands JSON: %s\n", err.Error())
 	}
 
-	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.CmdLine, commandData.UI, args)
+	err = tc.teamserver.TsAgentCommand(commandData.AgentName, commandData.AgentId, username, commandData.HookId, commandData.HandlerId, commandData.CmdLine, commandData.UI, args)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return
@@ -240,8 +242,6 @@ func (tc *TsConnector) TcAgentRemove(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }
 
-/// Setters
-
 type AgentTag struct {
 	AgentIdArray []string `json:"agent_id_array"`
 	Tag          string   `json:"tag"`
@@ -261,7 +261,10 @@ func (tc *TsConnector) TcAgentSetTag(ctx *gin.Context) {
 
 	var errorsSlice []string
 	for _, agentId := range agentTag.AgentIdArray {
-		err = tc.teamserver.TsAgentSetTag(agentId, agentTag.Tag)
+		updateData := struct {
+			Tags *string `json:"tags"`
+		}{Tags: &agentTag.Tag}
+		err = tc.teamserver.TsAgentUpdateDataPartial(agentId, updateData)
 		if err != nil {
 			errorsSlice = append(errorsSlice, err.Error())
 		}
@@ -299,7 +302,10 @@ func (tc *TsConnector) TcAgentSetMark(ctx *gin.Context) {
 
 	var errorsSlice []string
 	for _, agentId := range agentMark.AgentIdArray {
-		err = tc.teamserver.TsAgentSetMark(agentId, agentMark.Mark)
+		updateData := struct {
+			Mark *string `json:"mark"`
+		}{Mark: &agentMark.Mark}
+		err = tc.teamserver.TsAgentUpdateDataPartial(agentId, updateData)
 		if err != nil {
 			errorsSlice = append(errorsSlice, err.Error())
 		}
@@ -337,9 +343,17 @@ func (tc *TsConnector) TcAgentSetColor(ctx *gin.Context) {
 		return
 	}
 
+	newcolor := ""
+	if !agentColor.Reset {
+		newcolor = agentColor.Background + "-" + agentColor.Foreground
+	}
+
 	var errorsSlice []string
 	for _, agentId := range agentColor.AgentIdArray {
-		err = tc.teamserver.TsAgentSetColor(agentId, agentColor.Background, agentColor.Foreground, agentColor.Reset)
+		updateData := struct {
+			Color *string `json:"color"`
+		}{Color: &newcolor}
+		err = tc.teamserver.TsAgentUpdateDataPartial(agentId, updateData)
 		if err != nil {
 			errorsSlice = append(errorsSlice, err.Error())
 		}
@@ -358,25 +372,51 @@ func (tc *TsConnector) TcAgentSetColor(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }
 
-type AgentImpersonate struct {
-	AgentId     string `json:"agent_id"`
-	Impersonate string `json:"impersonate"`
-	Elevated    bool   `json:"elevated"`
+type AgentUpdateData struct {
+	AgentId      string  `json:"agent_id"`
+	InternalIP   *string `json:"internal_ip,omitempty"`
+	ExternalIP   *string `json:"external_ip,omitempty"`
+	GmtOffset    *int    `json:"gmt_offset,omitempty"`
+	ACP          *int    `json:"acp,omitempty"`
+	OemCP        *int    `json:"oemcp,omitempty"`
+	Pid          *string `json:"pid,omitempty"`
+	Tid          *string `json:"tid,omitempty"`
+	Arch         *string `json:"arch,omitempty"`
+	Elevated     *bool   `json:"elevated,omitempty"`
+	Process      *string `json:"process,omitempty"`
+	Os           *int    `json:"os,omitempty"`
+	OsDesc       *string `json:"os_desc,omitempty"`
+	Domain       *string `json:"domain,omitempty"`
+	Computer     *string `json:"computer,omitempty"`
+	Username     *string `json:"username,omitempty"`
+	Impersonated *string `json:"impersonated,omitempty"`
+	Tags         *string `json:"tags,omitempty"`
+	Mark         *string `json:"mark,omitempty"`
+	Color        *string `json:"color,omitempty"`
 }
 
-func (tc *TsConnector) TcAgentSetImpersonate(ctx *gin.Context) {
+func (tc *TsConnector) TcAgentUpdateData(ctx *gin.Context) {
 	var (
-		agentImpersonate AgentImpersonate
-		err              error
+		agentUpdateData AgentUpdateData
+		err             error
 	)
 
-	err = ctx.ShouldBindJSON(&agentImpersonate)
+	err = ctx.ShouldBindJSON(&agentUpdateData)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
 		return
 	}
 
-	_ = tc.teamserver.TsAgentSetImpersonate(agentImpersonate.AgentId, agentImpersonate.Impersonate, agentImpersonate.Elevated)
+	if agentUpdateData.AgentId == "" {
+		ctx.JSON(http.StatusOK, gin.H{"message": "agent_id is required", "ok": false})
+		return
+	}
+
+	err = tc.teamserver.TsAgentUpdateDataPartial(agentUpdateData.AgentId, agentUpdateData)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }

@@ -9,8 +9,6 @@ Settings::Settings(MainAdaptix* m)
 
     this->SetDefault();
     this->LoadFromDB();
-
-    dialogSettings = new DialogSettings(this);
 }
 
 Settings::~Settings() = default;
@@ -18,6 +16,14 @@ Settings::~Settings() = default;
 MainAdaptix* Settings::getMainAdaptix()
 {
     return this->mainAdaptix;
+}
+
+DialogSettings* Settings::getDialogSettings()
+{
+    if (!dialogSettings) {
+        dialogSettings = new DialogSettings(this);
+    }
+    return dialogSettings;
 }
 
 void Settings::SetDefault()
@@ -29,11 +35,11 @@ void Settings::SetDefault()
     this->data.RemoteTerminalBufferSize = 10000;
 
     this->data.ConsoleTime = true;
-    this->data.ConsoleBufferSize = 30000;
+    this->data.ConsoleBufferSize = 50000;
     this->data.ConsoleNoWrap = true;
     this->data.ConsoleAutoScroll = false;
 
-    for ( int i = 0; i < 15; i++)
+    for ( int i = 0; i < 16; i++)
         data.SessionsTableColumns[i] = true;
 
     this->data.CheckHealth = true;
@@ -42,6 +48,8 @@ void Settings::SetDefault()
 
     for ( int i = 0; i < 11; i++)
         data.TasksTableColumns[i] = true;
+
+    this->data.TabBlinkEnabled = true;
 }
 
 void Settings::LoadFromDB()
@@ -51,6 +59,7 @@ void Settings::LoadFromDB()
     mainAdaptix->storage->SelectSettingsSessions( &data );
     mainAdaptix->storage->SelectSettingsGraph( &data );
     mainAdaptix->storage->SelectSettingsTasks( &data );
+    mainAdaptix->storage->SelectSettingsTabBlink( &data );
 }
 
 void Settings::SaveToDB() const
@@ -60,4 +69,5 @@ void Settings::SaveToDB() const
     mainAdaptix->storage->UpdateSettingsSessions( data );
     mainAdaptix->storage->UpdateSettingsGraph( data );
     mainAdaptix->storage->UpdateSettingsTasks( data );
+    mainAdaptix->storage->UpdateSettingsTabBlink( data );
 }

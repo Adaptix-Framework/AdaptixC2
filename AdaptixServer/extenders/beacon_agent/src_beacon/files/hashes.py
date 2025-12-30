@@ -132,6 +132,7 @@ SetSecurityDescriptorDacl
 // msvcrt
 printf
 vsnprintf
+_snprintf
 
 // BOF
 BeaconDataParse
@@ -188,6 +189,8 @@ socket
 gethostbyname
 ioctlsocket
 connect
+setsockopt
+getsockopt
 WSAGetLastError
 closesocket
 select

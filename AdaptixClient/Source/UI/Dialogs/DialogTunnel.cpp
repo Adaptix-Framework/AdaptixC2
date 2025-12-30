@@ -8,8 +8,8 @@ DialogTunnel::DialogTunnel(const QString &agentId, const bool s4, const bool s5,
     tunnelTypeCombo->clear();
     this->AgentId = agentId;
 
-    if (s4)  tunnelTypeCombo->addItem("Socks4");
     if (s5)  tunnelTypeCombo->addItem("Socks5");
+    if (s4)  tunnelTypeCombo->addItem("Socks4");
     if (lpf) tunnelTypeCombo->addItem("Local port forwarding");
     if (rpf) tunnelTypeCombo->addItem("Reverse port forwarding");
 

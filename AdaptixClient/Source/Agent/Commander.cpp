@@ -124,7 +124,7 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
 
                 if ( command.subcommands.isEmpty() ) {
 
-                    auto cmdResult = ProcessCommand(command, parts, jsonObj);
+                    auto cmdResult = ProcessCommand(command, "", parts, jsonObj);
                     if ( !cmdResult.output && command.is_pre_hook) {
                         QString hook_result = ProcessPreHook(script_group.engine, command, agentId, cmdline, cmdResult.data, parts);
                         if (hook_result.isEmpty()) {
@@ -140,7 +140,7 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
                 }
                 else {
                     if ( parts.isEmpty() )
-                        return CommanderResult{true, true, "Subcommand must be set", {}, false, {}};
+                        return CommanderResult{true, true, "Subcommand must be set" + GenerateCommandHelp(command), {}, false, {}};
 
                     QString subCommandName = parts[0];
                     parts.removeAt(0);
@@ -149,7 +149,7 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
                         if (subCommandName == subcommand.name) {
                             jsonObj["subcommand"] = subcommand.name;
 
-                            auto cmdResult = ProcessCommand(subcommand, parts, jsonObj);
+                            auto cmdResult = ProcessCommand(subcommand, command.name, parts, jsonObj);
                             if ( !cmdResult.output && subcommand.is_pre_hook) {
                                 QString hook_result = ProcessPreHook(script_group.engine, subcommand, agentId, cmdline, cmdResult.data, parts);
                                 if (hook_result.isEmpty()) {
@@ -176,7 +176,7 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
 
             if ( command.subcommands.isEmpty() ) {
 
-                auto cmdResult = ProcessCommand(command, parts, jsonObj);
+                auto cmdResult = ProcessCommand(command, "", parts, jsonObj);
                 if ( !cmdResult.output && command.is_pre_hook) {
                     QString hook_result = ProcessPreHook(regCommandsGroup.engine, command, agentId, cmdline, cmdResult.data, parts);
                     if (hook_result.isEmpty()) {
@@ -191,7 +191,7 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
 
             } else {
                 if ( parts.isEmpty() )
-                    return CommanderResult{true, true, "Subcommand must be set", {}, false, {} };
+                    return CommanderResult{true, true, "Subcommand must be set" + GenerateCommandHelp(command), {}, false, {} };
 
                 QString subCommandName = parts[0];
                 parts.removeAt(0);
@@ -200,7 +200,7 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
                     if (subCommandName == subcommand.name) {
                         jsonObj["subcommand"] = subcommand.name;
 
-                        auto cmdResult = ProcessCommand(subcommand, parts, jsonObj);
+                        auto cmdResult = ProcessCommand(subcommand, command.name, parts, jsonObj);
                         if ( !cmdResult.output && subcommand.is_pre_hook) {
                             QString hook_result = ProcessPreHook(regCommandsGroup.engine, subcommand, agentId, cmdline, cmdResult.data, parts);
                             if (hook_result.isEmpty()) {
@@ -243,7 +243,50 @@ QString Commander::ProcessPreHook(QJSEngine *engine, const Command &command, con
     return "";
 }
 
-CommanderResult Commander::ProcessCommand(Command command, QStringList args, QJsonObject jsonObj)
+QString Commander::GenerateCommandHelp(const Command &command, const QString &parentCommand)
+{
+    QString result;
+    QTextStream output(&result);
+
+    QString fullName = parentCommand.isEmpty() ? command.name : parentCommand + " " + command.name;
+
+    if (!command.subcommands.isEmpty()) {
+        output << "\n\n";
+        output << "  SubCommands:\n";
+        for (const auto &subcmd : command.subcommands) {
+            int TotalWidth = 20;
+            int cmdWidth = qMin(subcmd.name.size(), TotalWidth);
+            QString tab = QString(TotalWidth - cmdWidth, ' ');
+            output << "    " + subcmd.name + tab + "  " + subcmd.description + "\n";
+        }
+    }
+    else if (!command.args.isEmpty()) {
+        QString usageHelp;
+        QTextStream usageStream(&usageHelp);
+        usageStream << fullName;
+
+        int maxArgLength = 0;
+        for (const auto &arg : command.args) {
+            QString fullarg = ((arg.required && !arg.defaultUsed) ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + ((arg.required && !arg.defaultUsed) ? ">" : "]");
+            maxArgLength = qMax(maxArgLength, fullarg.size());
+            usageStream << " " + fullarg;
+        }
+
+        output << "\n\n";
+        output << "  Usage: " + usageHelp + "\n\n";
+        output << "  Arguments:\n";
+
+        for (const auto &arg : command.args) {
+            QString fullarg = ((arg.required && !arg.defaultUsed) ? "<" : "[") + arg.mark + (arg.mark.isEmpty() || arg.name.isEmpty() ? "" : " ") + arg.name + ((arg.required && !arg.defaultUsed) ? ">" : "]");
+            QString padding = QString(maxArgLength - fullarg.size(), ' ');
+            output << "    " + fullarg + padding + "  : " + (arg.type + ".").leftJustified(9, ' ') + (arg.defaultUsed ? " (default: '" + arg.defaultValue.toString() + "'). " : " ") + arg.description + "\n";
+        }
+    }
+
+    return result;
+}
+
+CommanderResult Commander::ProcessCommand(const Command &command, const QString &commandName, QStringList args, QJsonObject jsonObj)
 {
     QMap<QString, QString> parsedArgsMap;
     QString wideKey;
@@ -312,7 +355,7 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args, QJs
             }
         } else if (commandArg.required) {
             if ( (commandArg.defaultValue.isNull() || !commandArg.defaultValue.isValid()) && !commandArg.defaultUsed) {
-                return CommanderResult{true, true, "Missing required argument: " + commandArg.name, {}, false, {}};
+                return CommanderResult{true, true, "Missing required argument: " + commandArg.name + GenerateCommandHelp(command, commandName), {}, false, {}};
             }
             else {
                 if (commandArg.type == "STRING" && commandArg.defaultValue.typeId() == QMetaType::QString) {
@@ -323,7 +366,7 @@ CommanderResult Commander::ProcessCommand(Command command, QStringList args, QJs
                     jsonObj[commandArg.mark] = commandArg.defaultValue.toBool();
                 }
                 else {
-                    return CommanderResult{true, true, "Missing required argument: " + commandArg.name, {}, false, {}};
+                    return CommanderResult{true, true, "Missing required argument: " + commandArg.name + GenerateCommandHelp(command, commandName), {}, false, {}};
                 }
             }
         }

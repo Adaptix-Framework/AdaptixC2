@@ -1,18 +1,41 @@
 #include <main.h>
 #include <QTimeZone>
+#include <QJSValueIterator>
 #include <Agent/Agent.h>
+#include <Client/AuthProfile.h>
 #include <Client/AxScript/BridgeApp.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxCommandWrappers.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <Client/AxScript/AxScriptUtils.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Widgets/TargetsWidget.h>
 
-BridgeApp::BridgeApp(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine), widget(new QWidget()){}
+namespace {
 
-BridgeApp::~BridgeApp() { delete widget; }
+QString osToString(int os) {
+    switch (os) {
+        case OS_WINDOWS: return "windows";
+        case OS_LINUX:   return "linux";
+        case OS_MAC:     return "macos";
+        default:         return "unknown";
+    }
+}
+
+int stringToOs(const QString &os) {
+    if (os == "windows") return OS_WINDOWS;
+    if (os == "linux")   return OS_LINUX;
+    if (os == "macos")   return OS_MAC;
+    return OS_UNKNOWN;
+}
+
+} // namespace
+
+BridgeApp::BridgeApp(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine) {}
+
+BridgeApp::~BridgeApp() = default;
 
 AxScriptEngine* BridgeApp::GetScriptEngine() const { return this->scriptEngine; }
 
@@ -23,7 +46,7 @@ QJSValue BridgeApp::agents() const
     QVariantMap list;
     auto mapAgents = scriptEngine->manager()->GetAgents();
 
-    for (auto agent : mapAgents) {
+    for (const auto& agent : mapAgents) {
         QVariantMap map;
         map["id"]           = agent->data.Id;
         map["type"]         = agent->data.Name;
@@ -39,16 +62,14 @@ QJSValue BridgeApp::agents() const
         map["pid"]          = agent->data.Pid.toInt();
         map["tid"]          = agent->data.Tid.toInt();
         map["gmt"]          = agent->data.GmtOffset;
+        map["acp"]          = agent->data.ACP;
+        map["oemcp"]        = agent->data.OemCP;
         map["elevated"]     = agent->data.Elevated;
         map["tags"]         = agent->data.Tags;
         map["async"]        = agent->data.Async;
         map["sleep"]        = agent->data.Sleep;
         map["os_full"]      = agent->data.OsDesc;
-
-        if (agent->data.Os == OS_WINDOWS)    map["os"] = "windows";
-        else if (agent->data.Os == OS_LINUX) map["os"] = "linux";
-        else if (agent->data.Os == OS_MAC)   map["os"] = "macos";
-        else                                 map["os"] = "unknown";
+        map["os"]           = osToString(agent->data.Os);
 
         list[agent->data.Id] = map;
     }
@@ -71,9 +92,9 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
         return QJSValue(info.Name);
     if (property == "listener")
         return QJSValue(info.Listener);
-    if (property == "externalIP")
+    if (property == "external_ip")
         return QJSValue(info.ExternalIP);
-    if (property == "internalIP")
+    if (property == "internal_ip")
         return QJSValue(info.InternalIP);
     if (property == "domain")
         return QJSValue(info.Domain);
@@ -93,6 +114,10 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
         return QJSValue(info.Tid.toInt());
     if (property == "gmt")
         return QJSValue(info.GmtOffset);
+    if (property == "acp")
+        return QJSValue(info.ACP);
+    if (property == "oemcp")
+        return QJSValue(info.OemCP);
     if (property == "elevated")
         return QJSValue(info.Elevated);
     if (property == "tags")
@@ -103,96 +128,134 @@ QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
         return QJSValue(info.Sleep);
     if (property == "os_full")
         return QJSValue(info.OsDesc);
-    if (property == "os") {
-        if (info.Os == OS_WINDOWS) return "windows";
-        else if (info.Os == OS_LINUX) return "linux";
-        else if (info.Os == OS_MAC) return "macos";
-        else return "unknown";
-    }
+    if (property == "os")
+        return QJSValue(osToString(info.Os));
 
     return QJSValue::UndefinedValue;
 }
 
 void BridgeApp::agent_hide(const QJSValue &agents)
 {
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+    if (!AxScriptUtils::isValidArray(agents)) {
         Q_EMIT engineError("agent_hide expected array of strings in agents parameter!");
         return;
     }
-
-    QStringList list_agents;
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    scriptEngine->manager()->AppAgentHide(list_agents);
+    scriptEngine->manager()->AppAgentHide(AxScriptUtils::jsArrayToStringList(agents));
 }
 
 void BridgeApp::agent_remove(const QJSValue &agents)
 {
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+    if (!AxScriptUtils::isValidArray(agents)) {
         Q_EMIT engineError("agent_remove expected array of strings in agents parameter!");
         return;
     }
 
-    QStringList list_agents;
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    scriptEngine->manager()->AppAgentRemove(list_agents);
+    scriptEngine->manager()->AppAgentRemove(AxScriptUtils::jsArrayToStringList(agents));
 }
 
 void BridgeApp::agent_set_color(const QJSValue &agents, const QString &background, const QString &foreground, const bool reset)
 {
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+    if (!AxScriptUtils::isValidArray(agents)) {
         Q_EMIT engineError("agent_set_color expected array of strings in agents parameter!");
         return;
     }
-
-    QStringList list_agents;
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    scriptEngine->manager()->AppAgentSetColor(list_agents, background, foreground, reset);
+    scriptEngine->manager()->AppAgentSetColor(AxScriptUtils::jsArrayToStringList(agents), background, foreground, reset);
 }
 
-void BridgeApp::agent_set_impersonate(const QString &id, const QString &impersonate, const bool elevated) { scriptEngine->manager()->AppAgentSetImpersonate(id, impersonate, elevated); }
+void BridgeApp::agent_set_impersonate(const QString &id, const QString &impersonate, const bool elevated)
+{
+    QJsonObject updateData;
+    if (impersonate.isEmpty())
+        return;
+
+    if (elevated)
+        updateData["impersonated"] = impersonate + " *";
+    else
+        updateData["impersonated"] = impersonate;
+
+    scriptEngine->manager()->AppAgentUpdateData(id, updateData);
+}
 
 void BridgeApp::agent_set_mark(const QJSValue &agents, const QString &mark)
 {
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
-        Q_EMIT engineError("agent_set_color expected array of strings in agents parameter!");
+    if (!AxScriptUtils::isValidArray(agents)) {
+        Q_EMIT engineError("agent_set_mark expected array of strings in agents parameter!");
         return;
     }
 
-    QStringList list_agents;
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    scriptEngine->manager()->AppAgentSetMark(list_agents, mark);
+    scriptEngine->manager()->AppAgentSetMark(AxScriptUtils::jsArrayToStringList(agents), mark);
 }
 
 void BridgeApp::agent_set_tag(const QJSValue &agents, const QString &tag)
 {
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
-        Q_EMIT engineError("agent_set_color expected array of strings in agents parameter!");
+    if (!AxScriptUtils::isValidArray(agents)) {
+        Q_EMIT engineError("agent_set_tag expected array of strings in agents parameter!");
         return;
     }
 
-    QStringList list_agents;
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
+    scriptEngine->manager()->AppAgentSetTag(AxScriptUtils::jsArrayToStringList(agents), tag);
+}
+
+void BridgeApp::agent_update_data(const QString &id, const QJSValue &data)
+{
+    if (!data.isObject()) {
+        Q_EMIT engineError("agent_update_data expected object in data parameter!");
+        return;
     }
 
-    scriptEngine->manager()->AppAgentSetTag(list_agents, tag);
+    QJsonObject updateData;
+    QJSValueIterator it(data);
+    while (it.hasNext()) {
+        it.next();
+        QString key = it.name();
+        QJSValue val = it.value();
+
+        if (key == "internal_ip" && val.isString())
+            updateData["internal_ip"] = val.toString();
+        else if (key == "external_ip" && val.isString())
+            updateData["external_ip"] = val.toString();
+        else if (key == "gmt_offset" && val.isNumber())
+            updateData["gmt_offset"] = val.toInt();
+        else if (key == "acp" && val.isNumber())
+            updateData["acp"] = val.toInt();
+        else if (key == "oemcp" && val.isNumber())
+            updateData["oemcp"] = val.toInt();
+        else if (key == "pid" && val.isString())
+            updateData["pid"] = val.toString();
+        else if (key == "tid" && val.isString())
+            updateData["tid"] = val.toString();
+        else if (key == "arch" && val.isString())
+            updateData["arch"] = val.toString();
+        else if (key == "elevated" && val.isBool())
+            updateData["elevated"] = val.toBool();
+        else if (key == "process" && val.isString())
+            updateData["process"] = val.toString();
+        else if (key == "os" && val.isNumber())
+            updateData["os"] = val.toInt();
+        else if (key == "os_desc" && val.isString())
+            updateData["os_desc"] = val.toString();
+        else if (key == "domain" && val.isString())
+            updateData["domain"] = val.toString();
+        else if (key == "computer" && val.isString())
+            updateData["computer"] = val.toString();
+        else if (key == "username" && val.isString())
+            updateData["username"] = val.toString();
+        else if (key == "impersonated" && val.isString())
+            updateData["impersonated"] = val.toString();
+        else if (key == "tags" && val.isString())
+            updateData["tags"] = val.toString();
+        else if (key == "mark" && val.isString())
+            updateData["mark"] = val.toString();
+        else if (key == "color" && val.isString())
+            updateData["color"] = val.toString();
+    }
+
+    if (updateData.isEmpty()) {
+        Q_EMIT engineError("agent_update_data: no valid fields provided!");
+        return;
+    }
+
+    scriptEngine->manager()->AppAgentUpdateData(id, updateData);
 }
 
 QString BridgeApp::arch(const QString &id) const
@@ -338,7 +401,7 @@ QJSValue BridgeApp::credentials() const
     QVariantMap list;
     auto vecCreds = scriptEngine->manager()->GetCredentials();
 
-    for (auto cred : vecCreds) {
+    for (const auto& cred : vecCreds) {
         QVariantMap map;
         map["id"]       = cred.CredId;
         map["username"] = cred.Username;
@@ -359,7 +422,7 @@ QJSValue BridgeApp::credentials() const
 
 void BridgeApp::credentials_add(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host)
 {
-    CredentialData cred = {"", username, password, realm, type, tag, 0, storage, "", host};
+    CredentialData cred = {"", username, password, realm, type, tag, "", 0, storage, "", host};
 
     QList<CredentialData> credsList;
     credsList.append(cred);
@@ -375,7 +438,7 @@ void BridgeApp::credentials_add_list(const QVariantList &array)
         if (map.contains("username")) cd.Username = map["username"].toString();
         if (map.contains("password")) cd.Password = map["password"].toString();
         if (map.contains("realm"))    cd.Realm    = map["realm"].toString();
-        if (map.contains("type"))     cd.Tag      = map["type"].toString();
+        if (map.contains("type"))     cd.Type     = map["type"].toString();
         if (map.contains("tag"))      cd.Tag      = map["tag"].toString();
         if (map.contains("storage"))  cd.Storage  = map["storage"].toString();
         if (map.contains("host"))     cd.Host     = map["host"].toString();
@@ -410,7 +473,7 @@ QJSValue BridgeApp::downloads() const
     QVariantMap list;
     auto mapDownloads = scriptEngine->manager()->GetDownloads();
 
-    for (auto download : mapDownloads) {
+    for (const auto& download : mapDownloads) {
         QVariantMap map;
         map["id"]         = download.FileId;
         map["agent_id"]   = download.AgentId;
@@ -422,14 +485,12 @@ QJSValue BridgeApp::downloads() const
         map["total_size"] = download.TotalSize;
         map["date"]       = download.Date;
 
-        if (download.State == DOWNLOAD_STATE_RUNNING)
-            map["state"] = "running";
-        else if (download.State == DOWNLOAD_STATE_STOPPED)
-            map["state"] = "stopped";
-        else if (download.State == DOWNLOAD_STATE_FINISHED)
-            map["state"] = "finished";
-        else
-            map["state"] = "canceled";
+        switch (download.State) {
+            case DOWNLOAD_STATE_RUNNING:  map["state"] = "running";  break;
+            case DOWNLOAD_STATE_STOPPED:  map["state"] = "stopped";  break;
+            case DOWNLOAD_STATE_FINISHED: map["state"] = "finished"; break;
+            default:                      map["state"] = "canceled"; break;
+        }
 
         list[download.FileId] = map;
     }
@@ -437,7 +498,7 @@ QJSValue BridgeApp::downloads() const
     return this->scriptEngine->engine()->toScriptValue(list);
 }
 
-void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const
+void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook, const QJSValue &handler) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))
@@ -449,15 +510,25 @@ void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const Q
 
     auto cmdResult = agent->commander->ProcessInput(id, command);
     if (!cmdResult.is_pre_hook) {
-        if (!message.isEmpty()) {
+        if (!message.isEmpty())
             cmdResult.data["message"] = message;
-        }
 
         if (!hook.isUndefined() && !hook.isNull() && hook.isCallable())
             cmdResult.post_hook = {true, scriptEngine->context.name, hook};
 
+        if (!handler.isUndefined() && !handler.isNull() && handler.isCallable())
+            cmdResult.handler = {true, scriptEngine->context.name, handler};
+
         agent->Console->ProcessCmdResult(cmdline, cmdResult, false);
     }
+}
+
+void BridgeApp::execute_alias_hook(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const {
+    execute_alias(id, cmdline, command, message, hook, QJSValue());
+}
+
+void BridgeApp::execute_alias_handler(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &handler) const {
+    execute_alias(id, cmdline, command, message,  QJSValue(), handler);
 }
 
 void BridgeApp::execute_browser(const QString &id, const QString &command) const
@@ -474,7 +545,7 @@ void BridgeApp::execute_browser(const QString &id, const QString &command) const
     agent->Console->ProcessCmdResult(command, cmdResult, true);
 }
 
-void BridgeApp::execute_command(const QString &id, const QString &command, const QJSValue &hook) const
+void BridgeApp::execute_command(const QString &id, const QString &command, const QJSValue &hook, const QJSValue &handler) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
     if (!mapAgents.contains(id))
@@ -490,8 +561,19 @@ void BridgeApp::execute_command(const QString &id, const QString &command, const
         if (!hook.isUndefined() && !hook.isNull() && hook.isCallable())
             cmdResult.post_hook = {true, scriptEngine->context.name, hook};
 
+        if (!handler.isUndefined() && !handler.isNull() && handler.isCallable())
+            cmdResult.handler = {true, scriptEngine->context.name, handler};
+
         agent->Console->ProcessCmdResult(command, cmdResult, false);
     }
+}
+
+void BridgeApp::execute_command_hook(const QString &id, const QString &command, const QJSValue &hook) const {
+    execute_command(id, command, hook, QJSValue());
+}
+
+void BridgeApp::execute_command_handler(const QString &id, const QString &command, const QJSValue &handler) const {
+    execute_command(id, command, QJSValue(), handler);
 }
 
 QString BridgeApp::file_basename(const QString &path) const
@@ -560,7 +642,7 @@ QJSValue BridgeApp::ids() const
     QVariantList list;
     auto mapAgents = scriptEngine->manager()->GetAgents();
 
-    for (auto agent : mapAgents)
+    for (const auto& agent : mapAgents)
         list.append(agent->data.Id);
 
     return this->scriptEngine->engine()->toScriptValue(list);
@@ -571,7 +653,7 @@ QJSValue BridgeApp::interfaces() const
     QVariantList list;
     auto interfaces = scriptEngine->manager()->GetInterfaces();
 
-    for (auto addr : interfaces)
+    for (const auto& addr : interfaces)
         list.append(addr);
 
     return this->scriptEngine->engine()->toScriptValue(list);
@@ -618,17 +700,47 @@ void BridgeApp::open_browser_process(const QString &id) { scriptEngine->manager(
 
 void BridgeApp::open_remote_terminal(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id); }
 
+void BridgeApp::open_remote_shell(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadShellUI(id); }
+
 bool BridgeApp::prompt_confirm(const QString &title, const QString &text)
 {
     QMessageBox::StandardButton reply = QMessageBox::question(nullptr, title, text, QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     return (reply == QMessageBox::Yes);
 }
 
-QString BridgeApp::prompt_open_file(const QString &caption, const QString &filter) { return QFileDialog::getOpenFileName(nullptr, caption, QDir::homePath(), filter); }
+QString BridgeApp::prompt_open_file(const QString &caption, const QString &filter)
+{
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    QString baseDir = QDir::homePath();
+    if (adaptix && adaptix->GetProfile())
+        baseDir = adaptix->GetProfile()->GetProjectDir();
 
-QString BridgeApp::prompt_open_dir(const QString &caption) { return QFileDialog::getExistingDirectory(nullptr, caption, QDir::homePath()); }
+    return QFileDialog::getOpenFileName(nullptr, caption, baseDir, filter);
+}
 
-QString BridgeApp::prompt_save_file(const QString &filename, const QString &caption, const QString &filter) { return QFileDialog::getSaveFileName(nullptr, caption, filename,  filter); }
+QString BridgeApp::prompt_open_dir(const QString &caption)
+{
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    QString baseDir = QDir::homePath();
+    if (adaptix && adaptix->GetProfile())
+        baseDir = adaptix->GetProfile()->GetProjectDir();
+
+    return QFileDialog::getExistingDirectory(nullptr, caption, baseDir);
+}
+
+QString BridgeApp::prompt_save_file(const QString &filename, const QString &caption, const QString &filter)
+{
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    QString baseDir = QDir::homePath();
+    if (adaptix && adaptix->GetProfile())
+        baseDir = adaptix->GetProfile()->GetProjectDir();
+
+    QString initialPath = filename;
+    if (!QDir::isAbsolutePath(initialPath))
+        initialPath = QDir(baseDir).filePath(initialPath);
+
+    return QFileDialog::getSaveFileName(nullptr, caption, initialPath,  filter);
+}
 
 QString BridgeApp::random_string(const int length, const QString &setname) { return GenerateRandomString(length, setname); }
 
@@ -636,40 +748,19 @@ int BridgeApp::random_int(const int min, const int max) { return GenerateRandomI
 
 void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners)
 {
-    QList<int> list_os;
-    QStringList list_agents;
-    QStringList list_listeners;
-
-    if (agents.isUndefined() || agents.isNull() || !agents.isArray()) {
+    if (!AxScriptUtils::isValidArray(agents)) {
         Q_EMIT engineError("register_commands_group expected array of strings in agents parameter!");
         return;
     }
 
-    if (os.isUndefined() && (os.isNull() || !os.isArray()) ) {
+    if (!AxScriptUtils::isOptionalValidArray(os)) {
         Q_EMIT engineError("register_commands_group expected array of strings in os parameter!");
         return;
     }
 
-    if (listeners.isUndefined() && (listeners.isNull() || !listeners.isArray())) {
+    if (!AxScriptUtils::isOptionalValidArray(listeners)) {
         Q_EMIT engineError("register_commands_group expected array of strings in listeners parameter!");
         return;
-    }
-
-    for (int i = 0; i < os.property("length").toInt(); ++i) {
-        QJSValue val = os.property(i);
-        if (val.toString() == "windows") list_os.append(1);
-        else if (val.toString() == "linux") list_os.append(2);
-        else if (val.toString() == "macos") list_os.append(3);
-    }
-
-    for (int i = 0; i < agents.property("length").toInt(); ++i) {
-        QJSValue val = agents.property(i);
-        list_agents << val.toString();
-    }
-
-    for (int i = 0; i < listeners.property("length").toInt(); ++i) {
-        QJSValue val = listeners.property(i);
-        list_listeners << val.toString();
     }
 
     auto wrapper = qobject_cast<AxCommandGroupWrapper*>(obj);
@@ -684,7 +775,12 @@ void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, co
     commandsGroup.engine    = wrapper->getEngine();
     commandsGroup.filepath  = scriptEngine->context.name;
 
-    scriptEngine->manager()->RegisterCommandsGroup(commandsGroup, list_listeners, list_agents, list_os);
+    scriptEngine->manager()->RegisterCommandsGroup(
+        commandsGroup,
+        AxScriptUtils::jsArrayToStringList(listeners),
+        AxScriptUtils::jsArrayToStringList(agents),
+        AxScriptUtils::parseOsList(os)
+    );
 }
 
 void BridgeApp::script_import(const QString &path)
@@ -711,7 +807,7 @@ QJSValue BridgeApp::screenshots()
     QVariantMap list;
     auto screenshots = scriptEngine->manager()->GetScreenshots();
 
-    for (auto screen : screenshots) {
+    for (const auto& screen : screenshots) {
         QVariantMap map;
         map["id"]       = screen.ScreenId;
         map["user"]     = screen.User;
@@ -731,10 +827,9 @@ QJSValue BridgeApp::targets() const
     QVariantMap list;
     auto targets = scriptEngine->manager()->GetTargets();
 
-    for (auto target : targets) {
-
+    for (const auto& target : targets) {
         QVariantList sessions;
-        for (auto agent : target.Agents)
+        for (const auto& agent : target.Agents)
             sessions << agent;
 
         QVariantMap map;
@@ -748,11 +843,7 @@ QJSValue BridgeApp::targets() const
         map["alive"]    = target.Alive;
         map["agents"]   = sessions;
         map["os_desc"]  = target.OsDesc;
-
-        if (target.Os == OS_WINDOWS)    map["os"] = "windows";
-        else if (target.Os == OS_LINUX) map["os"] = "linux";
-        else if (target.Os == OS_MAC)   map["os"] = "macos";
-        else                            map["os"] = "unknown";
+        map["os"]       = osToString(target.Os);
 
         list[target.TargetId] = map;
     }
@@ -762,12 +853,9 @@ QJSValue BridgeApp::targets() const
 
 void BridgeApp::targets_add(const QString &computer, const QString &domain, const QString &address, const QString &os, const QString &osDesc, const QString &tag, const QString &info, bool alive)
 {
-    TargetData target = {"", computer, domain, address, tag, QIcon(), 0, osDesc, "", info, alive};
+    TargetData target = {"", computer, domain, address, tag, QIcon(), 0, osDesc, "", 0, info, alive};
 
-    if (os == "windows")    target.Os = OS_WINDOWS;
-    else if (os == "linux") target.Os = OS_LINUX;
-    else if (os == "macos") target.Os = OS_MAC;
-    else                    target.Os = OS_UNKNOWN;
+    target.Os = stringToOs(os);
 
     QList<TargetData> targets;
     targets.append(target);
@@ -788,13 +876,8 @@ void BridgeApp::targets_add_list(const QVariantList &array)
         if (map.contains("info")) td.Info = map["info"].toString();
         if (map.contains("alive")) td.Alive = map["alive"].toBool();
         if (map.contains("os_desc")) td.OsDesc = map["os_desc"].toString();
-        if (map.contains("os")) {
-            QString os = map["os"].toString();
-            if (os == "windows")    td.Os = OS_WINDOWS;
-            else if (os == "linux") td.Os = OS_LINUX;
-            else if (os == "macos") td.Os = OS_MAC;
-            else                    td.Os = OS_UNKNOWN;
-        }
+        if (map.contains("os"))
+            td.Os = stringToOs(map["os"].toString());
         targets.append(td);
     }
 
@@ -811,7 +894,7 @@ QJSValue BridgeApp::tunnels()
     QVariantMap list;
     auto tunnels = scriptEngine->manager()->GetTunnels();
 
-    for (auto tun : tunnels) {
+    for (const auto& tun : tunnels) {
         QVariantMap map;
         map["id"]        = tun.TunnelId;
         map["agent_id"]  = tun.AgentId;
@@ -848,6 +931,7 @@ QJSValue BridgeApp::validate_command(const QString &id, const QString &command) 
     result["is_pre_hook"]   = cmdResult.is_pre_hook;
     result["has_output"]    = cmdResult.output;
     result["has_post_hook"] = cmdResult.post_hook.isSet;
+    result["has_handler"]   = cmdResult.handler.isSet;
     if (!cmdResult.error)
         result["parsed"] = cmdResult.data.toVariantMap();
 

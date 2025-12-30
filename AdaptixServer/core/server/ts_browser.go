@@ -9,7 +9,7 @@ import (
 /// SYNC
 
 func (ts *Teamserver) TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string) {
-	value, ok := ts.agents.Get(taskData.AgentId)
+	value, ok := ts.Agents.Get(taskData.AgentId)
 	if !ok {
 		return
 	}
@@ -36,7 +36,7 @@ func (ts *Teamserver) TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives str
 }
 
 func (ts *Teamserver) TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string) {
-	value, ok := ts.agents.Get(taskData.AgentId)
+	value, ok := ts.Agents.Get(taskData.AgentId)
 	if !ok {
 		return
 	}
@@ -67,7 +67,7 @@ func (ts *Teamserver) TsClientGuiFiles(taskData adaptix.TaskData, path string, j
 }
 
 func (ts *Teamserver) TsClientGuiFilesStatus(taskData adaptix.TaskData) {
-	value, ok := ts.agents.Get(taskData.AgentId)
+	value, ok := ts.Agents.Get(taskData.AgentId)
 	if !ok {
 		return
 	}
@@ -90,7 +90,7 @@ func (ts *Teamserver) TsClientGuiFilesStatus(taskData adaptix.TaskData) {
 }
 
 func (ts *Teamserver) TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string) {
-	value, ok := ts.agents.Get(taskData.AgentId)
+	value, ok := ts.Agents.Get(taskData.AgentId)
 	if !ok {
 		return
 	}

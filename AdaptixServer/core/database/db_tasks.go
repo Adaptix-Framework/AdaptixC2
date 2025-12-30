@@ -79,22 +79,45 @@ func (dbms *DBMS) DbTasksAll(agentId string) []adaptix.TaskData {
 	if ok {
 		selectQuery := `SELECT TaskId, AgentId, TaskType, Client, User, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed FROM Tasks WHERE AgentId = ? ORDER BY StartDate;`
 		query, err := dbms.database.Query(selectQuery, agentId)
-		if err == nil {
-
-			for query.Next() {
-				taskData := adaptix.TaskData{}
-				err = query.Scan(&taskData.TaskId, &taskData.AgentId, &taskData.Type, &taskData.Client, &taskData.User, &taskData.Computer, &taskData.StartDate, &taskData.FinishDate, &taskData.CommandLine, &taskData.MessageType, &taskData.Message, &taskData.ClearText, &taskData.Completed)
-				if err != nil {
-					continue
-				}
-				tasks = append(tasks, taskData)
-			}
-		} else {
+		if err != nil {
 			logs.Debug("", "Failed to query tasks: "+err.Error())
+			return tasks
 		}
-		defer func(query *sql.Rows) {
-			_ = query.Close()
-		}(query)
+		defer query.Close()
+
+		for query.Next() {
+			taskData := adaptix.TaskData{}
+			err = query.Scan(&taskData.TaskId, &taskData.AgentId, &taskData.Type, &taskData.Client, &taskData.User, &taskData.Computer, &taskData.StartDate, &taskData.FinishDate, &taskData.CommandLine, &taskData.MessageType, &taskData.Message, &taskData.ClearText, &taskData.Completed)
+			if err != nil {
+				continue
+			}
+			tasks = append(tasks, taskData)
+		}
 	}
 	return tasks
+}
+
+func (dbms *DBMS) DbTasksListCompleted(agentId string, limit int, offset int) ([]adaptix.TaskData, error) {
+	if !dbms.DatabaseExists() {
+		return nil, errors.New("database does not exist")
+	}
+
+	selectQuery := `SELECT TaskId, AgentId, TaskType, Client, User, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed FROM Tasks WHERE AgentId = ? AND Completed = 1 ORDER BY StartDate DESC LIMIT ? OFFSET ?;`
+	rows, err := dbms.database.Query(selectQuery, agentId, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tasks := make([]adaptix.TaskData, 0, limit)
+	for rows.Next() {
+		var taskData adaptix.TaskData
+		err = rows.Scan(&taskData.TaskId, &taskData.AgentId, &taskData.Type, &taskData.Client, &taskData.User, &taskData.Computer, &taskData.StartDate, &taskData.FinishDate, &taskData.CommandLine, &taskData.MessageType, &taskData.Message, &taskData.ClearText, &taskData.Completed)
+		if err != nil {
+			continue
+		}
+		tasks = append(tasks, taskData)
+	}
+
+	return tasks, nil
 }

@@ -24,11 +24,19 @@ public:
 
 
 
+enum TunnelMarkType {
+    TunnelMarkNone   = 0,
+    TunnelMarkServer = 1,
+    TunnelMarkClient = 2
+};
+
 class GraphItem : public QGraphicsItem
 {
     SessionsGraph* sessionsGraph = nullptr;
     QRectF  rect;
     QPointF point;
+    int serverTunnelCount = 0;
+    int clientTunnelCount = 0;
 
 public:
     GraphItem*     parentItem = nullptr;
@@ -59,6 +67,13 @@ public:
 
     void calculateForces();
     bool advancePosition();
+
+    void AddTunnel(TunnelMarkType type);
+    void RemoveTunnel(TunnelMarkType type);
+    bool HasTunnel() const { return (serverTunnelCount + clientTunnelCount) > 0; }
+    TunnelMarkType GetTunnelType() const { return serverTunnelCount > 0 ? TunnelMarkServer : (clientTunnelCount > 0 ? TunnelMarkClient : TunnelMarkNone); }
+
+    void invalidateCache();
 
 protected:
     QRectF boundingRect() const override;

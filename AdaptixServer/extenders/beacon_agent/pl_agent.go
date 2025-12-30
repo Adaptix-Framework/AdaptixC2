@@ -345,7 +345,7 @@ func AgentGenerateBuild(agentConfig string, agentProfile []byte, listenerMap map
 	}
 }
 
-func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
+func CreateAgent(ts Teamserver, initialData []byte) (adaptix.AgentData, error) {
 	var agent adaptix.AgentData
 
 	/// START CODE HERE
@@ -398,8 +398,8 @@ func CreateAgent(initialData []byte) (adaptix.AgentData, error) {
 	agent.SessionKey = packer.ParseBytes()
 	agent.Domain = string(packer.ParseBytes())
 	agent.Computer = string(packer.ParseBytes())
-	agent.Username = ConvertCpToUTF8(string(packer.ParseBytes()), agent.ACP)
-	agent.Process = ConvertCpToUTF8(string(packer.ParseBytes()), agent.ACP)
+	agent.Username = ts.TsConvertCpToUTF8(string(packer.ParseBytes()), agent.ACP)
+	agent.Process = ts.TsConvertCpToUTF8(string(packer.ParseBytes()), agent.ACP)
 
 	/// END CODE
 
@@ -522,7 +522,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			err = errors.New("parameter 'path' must be set")
 			goto RET
 		}
-		array = []interface{}{COMMAND_CAT, ConvertUTF8toCp(path, agent.ACP)}
+		array = []interface{}{COMMAND_CAT, ts.TsConvertUTF8toCp(path, agent.ACP)}
 
 	case "cd":
 		path, ok := args["path"].(string)
@@ -530,7 +530,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			err = errors.New("parameter 'path' must be set")
 			goto RET
 		}
-		array = []interface{}{COMMAND_CD, ConvertUTF8toCp(path, agent.ACP)}
+		array = []interface{}{COMMAND_CD, ts.TsConvertUTF8toCp(path, agent.ACP)}
 
 	case "cp":
 		src, ok := args["src"].(string)
@@ -543,7 +543,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			err = errors.New("parameter 'dst' must be set")
 			goto RET
 		}
-		array = []interface{}{COMMAND_COPY, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
+		array = []interface{}{COMMAND_COPY, ts.TsConvertUTF8toCp(src, agent.ACP), ts.TsConvertUTF8toCp(dst, agent.ACP)}
 
 	case "disks":
 		array = []interface{}{COMMAND_DISKS}
@@ -554,7 +554,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			err = errors.New("parameter 'file' must be set")
 			goto RET
 		}
-		array = []interface{}{COMMAND_DOWNLOAD, ConvertUTF8toCp(path, agent.ACP)}
+		array = []interface{}{COMMAND_DOWNLOAD, ts.TsConvertUTF8toCp(path, agent.ACP)}
 
 	case "execute":
 		if subcommand == "bof" {
@@ -593,8 +593,9 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			goto RET
 		}
 
-		fileId, err := strconv.ParseInt(fid, 16, 64)
-		if err != nil {
+		fileId, parseErr := strconv.ParseInt(fid, 16, 64)
+		if parseErr != nil {
+			err = parseErr
 			goto RET
 		}
 
@@ -623,8 +624,9 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 				goto RET
 			}
 
-			jobId, err := strconv.ParseInt(job, 16, 64)
-			if err != nil {
+			jobId, parseErr := strconv.ParseInt(job, 16, 64)
+			if parseErr != nil {
+				err = parseErr
 				goto RET
 			}
 
@@ -677,7 +679,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			err = errors.New("parameter 'directory' must be set")
 			goto RET
 		}
-		dir = ConvertUTF8toCp(dir, agent.ACP)
+		dir = ts.TsConvertUTF8toCp(dir, agent.ACP)
 
 		array = []interface{}{COMMAND_LS, dir}
 
@@ -751,7 +753,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			err = errors.New("parameter 'dst' must be set")
 			goto RET
 		}
-		array = []interface{}{COMMAND_MV, ConvertUTF8toCp(src, agent.ACP), ConvertUTF8toCp(dst, agent.ACP)}
+		array = []interface{}{COMMAND_MV, ts.TsConvertUTF8toCp(src, agent.ACP), ts.TsConvertUTF8toCp(dst, agent.ACP)}
 
 	case "mkdir":
 		path, ok := args["path"].(string)
@@ -759,7 +761,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			err = errors.New("parameter 'path' must be set")
 			goto RET
 		}
-		array = []interface{}{COMMAND_MKDIR, ConvertUTF8toCp(path, agent.ACP)}
+		array = []interface{}{COMMAND_MKDIR, ts.TsConvertUTF8toCp(path, agent.ACP)}
 
 	case "profile":
 		if subcommand == "download.chunksize" {
@@ -833,7 +835,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			}
 			programArgs, ok := args["args"].(string)
 			if ok {
-				programArgs = ConvertUTF8toCp(programArgs, agent.ACP)
+				programArgs = ts.TsConvertUTF8toCp(programArgs, agent.ACP)
 			}
 
 			array = []interface{}{COMMAND_PS_RUN, output, programState, programArgs}
@@ -855,7 +857,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			err = errors.New("parameter 'path' must be set")
 			goto RET
 		}
-		array = []interface{}{COMMAND_RM, ConvertUTF8toCp(path, agent.ACP)}
+		array = []interface{}{COMMAND_RM, ts.TsConvertUTF8toCp(path, agent.ACP)}
 
 	case "rportfwd":
 		taskData.Type = TYPE_TUNNEL
@@ -1070,14 +1072,15 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 			goto RET
 		}
 
-		fileContent, err := base64.StdEncoding.DecodeString(localFile)
-		if err != nil {
+		fileContent, decodeErr := base64.StdEncoding.DecodeString(localFile)
+		if decodeErr != nil {
+			err = decodeErr
 			goto RET
 		}
 
 		memoryId := CreateTaskCommandSaveMemory(ts, agent.Id, fileContent)
 
-		array = []interface{}{COMMAND_UPLOAD, memoryId, ConvertUTF8toCp(fileName, agent.ACP)}
+		array = []interface{}{COMMAND_UPLOAD, memoryId, ts.TsConvertUTF8toCp(fileName, agent.ACP)}
 
 	default:
 		err = errors.New(fmt.Sprintf("Command '%v' not found", command))
@@ -1130,7 +1133,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			if false == packer.CheckPacker([]string{"array", "array"}) {
 				return outTasks
 			}
-			path := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			path := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			fileContent := packer.ParseBytes()
 			task.Message = fmt.Sprintf("'%v' file content:", path)
 			task.ClearText = string(fileContent)
@@ -1139,7 +1142,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			if false == packer.CheckPacker([]string{"array"}) {
 				return outTasks
 			}
-			path := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			path := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			task.Message = "Current working directory:"
 			task.ClearText = path
 
@@ -1155,7 +1158,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 			if result == 0 {
 				errorCode := packer.ParseInt32()
-				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
+				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, ts.TsWin32Error(errorCode))
 				task.MessageType = MESSAGE_ERROR
 
 			} else {
@@ -1207,7 +1210,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					return outTasks
 				}
 				fileSize := packer.ParseInt32()
-				fileName := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+				fileName := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 				task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %v]", fileName, fileSize, fileId)
 				task.Completed = false
 				_ = ts.TsDownloadAdd(agentData.Id, fileId, fileName, int(fileSize))
@@ -1314,7 +1317,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 				task.MessageType = MESSAGE_ERROR
 				task.Message = "BOF output"
-				task.ClearText = ConvertCpToUTF8(output, agentData.ACP)
+				task.ClearText = ts.TsConvertCpToUTF8(output, agentData.ACP)
 
 			} else if outputType == CALLBACK_OUTPUT_OEM {
 				if false == packer.CheckPacker([]string{"array"}) {
@@ -1331,7 +1334,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 
 				task.MessageType = MESSAGE_SUCCESS
-				task.ClearText = ConvertCpToUTF8(output, agentData.OemCP)
+				task.ClearText = ts.TsConvertCpToUTF8(output, agentData.OemCP)
 
 			} else if outputType == CALLBACK_OUTPUT_UTF8 {
 				if false == packer.CheckPacker([]string{"array"}) {
@@ -1363,7 +1366,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				if false == packer.CheckPacker([]string{"array", "array"}) {
 					return outTasks
 				}
-				filename := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+				filename := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 				data := packer.ParseBytes()
 				fileId := fmt.Sprintf("%08x", rand.Uint32())
 
@@ -1384,7 +1387,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 
 				task.MessageType = MESSAGE_SUCCESS
-				task.ClearText = ConvertCpToUTF8(output, agentData.ACP)
+				task.ClearText = ts.TsConvertCpToUTF8(output, agentData.ACP) + "\n"
 			}
 
 			task.Completed = false
@@ -1395,8 +1398,8 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			}
 
 			high := packer.ParseInt8()
-			domain := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
-			username := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			domain := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			username := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			message := ""
 
 			if username != "" {
@@ -1411,26 +1414,55 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			task.Message = message
 
 		case COMMAND_JOB:
-			if false == packer.CheckPacker([]string{"byte"}) {
+			if false == packer.CheckPacker([]string{"byte", "byte"}) {
 				return outTasks
 			}
 
+			jobType := packer.ParseInt8()
 			state := packer.ParseInt8()
-			if state == JOB_STATE_RUNNING {
-				if false == packer.CheckPacker([]string{"array"}) {
-					return outTasks
+
+			if jobType == JOB_TYPE_SHELL {
+				tunnelId := task.TaskId
+
+				if state == JOB_STATE_STARTING {
+					ts.TsTerminalConnResume(agentData.Id, tunnelId, false)
+
+				} else if state == JOB_STATE_RUNNING {
+					if false == packer.CheckPacker([]string{"array"}) {
+						return outTasks
+					}
+					data := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.OemCP)
+					ts.TsTerminalConnData(tunnelId, []byte(data))
+
+				} else if state == JOB_STATE_KILLED {
+					_ = ts.TsTerminalConnClose(tunnelId, "Terminal stopped")
+
+				} else if state == JOB_STATE_FINISHED {
+					if false == packer.CheckPacker([]string{"int"}) {
+						return outTasks
+					}
+					errorCode := packer.ParseInt32()
+					status := fmt.Sprintf("Error [%d]: %s", errorCode, ts.TsWin32Error(errorCode))
+					_ = ts.TsTerminalConnClose(tunnelId, status)
 				}
-				task.Completed = false
-				jobOutput := ConvertCpToUTF8(packer.ParseString(), agentData.OemCP)
-				task.Message = fmt.Sprintf("Job [%v] output:", task.TaskId)
-				task.ClearText = jobOutput
-			} else if state == JOB_STATE_KILLED {
-				task.Completed = true
-				task.MessageType = MESSAGE_INFO
-				task.Message = fmt.Sprintf("Job [%v] canceled", task.TaskId)
-			} else if state == JOB_STATE_FINISHED {
-				task.Completed = true
-				task.Message = fmt.Sprintf("Job [%v] finished", task.TaskId)
+
+			} else {
+				if state == JOB_STATE_RUNNING {
+					if false == packer.CheckPacker([]string{"array"}) {
+						return outTasks
+					}
+					task.Completed = false
+					jobOutput := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.OemCP)
+					task.Message = fmt.Sprintf("Job [%v] output:", task.TaskId)
+					task.ClearText = jobOutput
+				} else if state == JOB_STATE_KILLED {
+					task.Completed = true
+					task.MessageType = MESSAGE_INFO
+					task.Message = fmt.Sprintf("Job [%v] canceled", task.TaskId)
+				} else if state == JOB_STATE_FINISHED {
+					task.Completed = true
+					task.Message = fmt.Sprintf("Job [%v] finished", task.TaskId)
+				}
 			}
 
 		case COMMAND_JOB_LIST:
@@ -1458,6 +1490,8 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 						stringType = "Remote"
 					} else if jobType == 0x3 {
 						stringType = "Process"
+					} else if jobType == 0x4 {
+						stringType = "Shell"
 					}
 					Output += fmt.Sprintf("\n %-10v  %-5v  %-13s", jobId, pid, stringType)
 				}
@@ -1515,14 +1549,14 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					return outTasks
 				}
 				errorCode := packer.ParseInt32()
-				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
+				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, ts.TsWin32Error(errorCode))
 				task.MessageType = MESSAGE_ERROR
 
 			} else {
 				if false == packer.CheckPacker([]string{"array", "int"}) {
 					return outTasks
 				}
-				rootPath = ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+				rootPath = ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 				rootPath, _ = strings.CutSuffix(rootPath, "\\*")
 
 				filesCount := int(packer.ParseInt32())
@@ -1543,7 +1577,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 							IsDir:    false,
 							Size:     int64(packer.ParseInt64()),
 							Date:     int64(packer.ParseInt32()),
-							Filename: ConvertCpToUTF8(packer.ParseString(), agentData.ACP),
+							Filename: ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP),
 						}
 						if isDir > 0 {
 							fileData.IsDir = true
@@ -1579,7 +1613,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			if false == packer.CheckPacker([]string{"array"}) {
 				return outTasks
 			}
-			path := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			path := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			task.Message = fmt.Sprintf("Directory '%v' created successfully", path)
 
 		case COMMAND_MV:
@@ -1659,7 +1693,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 			if result == 0 {
 				errorCode := packer.ParseInt32()
-				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
+				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, ts.TsWin32Error(errorCode))
 				task.MessageType = MESSAGE_ERROR
 
 			} else {
@@ -1692,8 +1726,8 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 					}
 
 					elevated := packer.ParseInt8()
-					domain := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
-					username := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+					domain := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+					username := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 
 					if username != "" {
 						procData.Context = username
@@ -1709,7 +1743,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 						}
 					}
 
-					procData.ProcessName = ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+					procData.ProcessName = ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 					proclist = append(proclist, procData)
 				}
 
@@ -1807,7 +1841,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			}
 			pid := packer.ParseInt32()
 			isOutput := packer.ParseInt8()
-			prog := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			prog := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 
 			status := "no output"
 			if isOutput > 0 {
@@ -1821,13 +1855,16 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			if false == packer.CheckPacker([]string{"array"}) {
 				return outTasks
 			}
-			path := ConvertCpToUTF8(packer.ParseString(), agentData.ACP)
+			path := ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 			task.Message = "Current working directory:"
 			task.ClearText = path
 
 		case COMMAND_REV2SELF:
 			task.Message = "Token reverted successfully"
-			_ = ts.TsAgentSetImpersonate(agentData.Id, "", false)
+			emptyImpersonate := ""
+			_ = ts.TsAgentUpdateDataPartial(agentData.Id, struct {
+				Impersonated *string `json:"impersonated"`
+			}{Impersonated: &emptyImpersonate})
 
 		case COMMAND_RM:
 			if false == packer.CheckPacker([]string{"byte"}) {
@@ -1846,11 +1883,18 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			}
 
 			channelId := int(TaskId)
-			result := packer.ParseInt8()
+			_ = packer.ParseInt32()
+			result := packer.ParseInt32()
 			if result == 0 {
+				ts.TsTunnelConnectionResume(agentData.Id, channelId, false)
+			} else if result == 1 {
 				ts.TsTunnelConnectionClose(channelId)
 			} else {
-				ts.TsTunnelConnectionResume(agentData.Id, channelId, false)
+				errorCode := SOCKS5_HOST_UNREACHABLE
+				if result == 10061 { // WSAECONNREFUSED
+					errorCode = SOCKS5_CONNECTION_REFUSED
+				}
+				ts.TsTunnelConnectionHalt(channelId, errorCode)
 			}
 
 		case COMMAND_TUNNEL_WRITE_TCP:
@@ -1868,11 +1912,12 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			}
 			var err error
 			tunnelId := int(TaskId)
-			result := packer.ParseInt8()
+			_ = packer.ParseInt32()
+			result := packer.ParseInt32()
 			if result == 0 {
-				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, false)
-			} else {
 				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, true)
+			} else {
+				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, false)
 			}
 
 			if err != nil {
@@ -1944,7 +1989,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				return outTasks
 			}
 			errorCode := packer.ParseInt32()
-			task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, win32ErrorCodes[errorCode])
+			task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, ts.TsWin32Error(errorCode))
 			task.MessageType = MESSAGE_ERROR
 
 		default:
@@ -1958,12 +2003,12 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 
 /// TUNNELS
 
-func TunnelCreateTCP(channelId int, address string, port int) ([]byte, error) {
-	array := []interface{}{COMMAND_TUNNEL_START_TCP, channelId, address, port}
+func TunnelCreateTCP(channelId int, tunnelType int, addressType int, address string, port int) ([]byte, error) {
+	array := []interface{}{COMMAND_TUNNEL_START_TCP, channelId, tunnelType, address, port}
 	return PackArray(array)
 }
 
-func TunnelCreateUDP(channelId int, address string, port int) ([]byte, error) {
+func TunnelCreateUDP(channelId int, tunnelType int, addressType int, address string, port int) ([]byte, error) {
 	array := []interface{}{COMMAND_TUNNEL_START_UDP, channelId, address, port}
 	return PackArray(array)
 }
@@ -1990,14 +2035,23 @@ func TunnelReverse(tunnelId int, port int) ([]byte, error) {
 
 /// TERMINAL
 
-func TerminalStart(terminalId int, program string, sizeH int, sizeW int) ([]byte, error) {
-	return nil, errors.New("Function Remote Terminal not supported")
+func TerminalStart(terminalId int, program string, sizeH int, sizeW int, oemCP int) ([]byte, error) {
+	programArgs := ModuleObject.ts.TsConvertUTF8toCp(program, oemCP)
+	array := []interface{}{COMMAND_SHELL_START, terminalId, programArgs}
+	return PackArray(array)
 }
 
-func TerminalWrite(terminalId int, data []byte) ([]byte, error) {
-	return nil, errors.New("Function Remote Terminal not supported")
+func TerminalWrite(terminalId int, oemCP int, data []byte) ([]byte, error) {
+	dataEncode := ModuleObject.ts.TsConvertUTF8toCp(string(data), oemCP)
+	if oemCP > 0 {
+		dataEncode = strings.ReplaceAll(dataEncode, "\n", "\r\n")
+	}
+
+	array := []interface{}{COMMAND_SHELL_WRITE, terminalId, len(dataEncode), []byte(dataEncode)}
+	return PackArray(array)
 }
 
 func TerminalClose(terminalId int) ([]byte, error) {
-	return nil, errors.New("Function Remote Terminal not supported")
+	array := []interface{}{COMMAND_JOBS_KILL, terminalId}
+	return PackArray(array)
 }

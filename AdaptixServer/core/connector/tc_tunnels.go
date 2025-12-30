@@ -261,7 +261,7 @@ func (tc *TsConnector) TcTunnelStartRpf(ctx *gin.Context) {
 		goto ERR
 	}
 
-	_, err = tc.teamserver.TsTunnelClientStart(ta.AgentId, ta.Listen, 5, ta.Description, "", ta.Port, clientName, ta.Thost, ta.Tport, "", "")
+	tunnelId, err = tc.teamserver.TsTunnelClientStart(ta.AgentId, ta.Listen, 5, ta.Description, "", ta.Port, clientName, ta.Thost, ta.Tport, "", "")
 	if err != nil {
 		goto ERR
 	}
@@ -324,5 +324,5 @@ func (tc *TsConnector) TcTunnelSetIno(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Tunnel stopped", "ok": true})
+	ctx.JSON(http.StatusOK, gin.H{"message": "Tunnel info updated", "ok": true})
 }

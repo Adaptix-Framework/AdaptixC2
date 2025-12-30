@@ -3,13 +3,13 @@
 
 #include <main.h>
 
-class TerminalWidget;
+class TerminalTab;
 
 class TerminalWorker : public QObject
 {
 Q_OBJECT
 
-     TerminalWidget* terminalWidget = nullptr;
+     TerminalTab* terminalTab = nullptr;
      QWebSocket* websocket = nullptr;
      QUrl        wsUrl;
      QString     token;
@@ -18,7 +18,7 @@ Q_OBJECT
      std::atomic<bool> stopped = false;
 
 public:
-     TerminalWorker(TerminalWidget* terminalWidget, const QString &token, const QUrl& wsUrl, const QString& terminalData, QObject* parent = nullptr);
+     TerminalWorker(TerminalTab* terminalTab, const QString &token, const QUrl& wsUrl, const QString& terminalData, QObject* parent = nullptr);
      ~TerminalWorker() override;
 
 Q_SIGNALS:
@@ -30,6 +30,7 @@ Q_SIGNALS:
 public Q_SLOTS:
      void start();
      void stop();
+     void sendData(const QByteArray& data);
 
 private Q_SLOTS:
      void onWsConnected();

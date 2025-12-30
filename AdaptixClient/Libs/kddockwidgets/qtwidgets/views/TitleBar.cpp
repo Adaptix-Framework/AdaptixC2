@@ -95,8 +95,11 @@ void Button::paintEvent(QPaintEvent *)
 
 QSize Button::sizeHint() const
 {
-    int h = parentWidget() ? parentWidget()->height() : 24;
-    if (h <= 0) h = 24;
+    const int baseSize = 24;
+    const qreal dpr = devicePixelRatioF();
+    int h = qRound(baseSize / dpr);
+    h = qMax(h, 16);
+    h = qMin(h, 28);
     return QSize(h, h);
 }
 
@@ -198,7 +201,7 @@ void TitleBar::init()
 
     if (!hasCustomLayout()) {
         m_dockWidgetIcon = new QLabel(this);
-        m_layout->addWidget(m_dockWidgetIcon);
+        m_layout->addWidget(m_dockWidgetIcon, 0, Qt::AlignVCenter);
         m_layout->addStretch();
         updateMargins();
 
@@ -209,11 +212,11 @@ void TitleBar::init()
         m_closeButton = factory->createTitleBarButton(this, TitleBarButtonType::Close);
         m_autoHideButton = factory->createTitleBarButton(this, TitleBarButtonType::AutoHide);
 
-        m_layout->addWidget(m_autoHideButton);
-        m_layout->addWidget(m_minimizeButton);
-        m_layout->addWidget(m_maximizeButton);
-        m_layout->addWidget(m_floatButton);
-        m_layout->addWidget(m_closeButton);
+        m_layout->addWidget(m_autoHideButton, 0, Qt::AlignVCenter);
+        m_layout->addWidget(m_minimizeButton, 0, Qt::AlignVCenter);
+        m_layout->addWidget(m_maximizeButton, 0, Qt::AlignVCenter);
+        m_layout->addWidget(m_floatButton,    0, Qt::AlignVCenter);
+        m_layout->addWidget(m_closeButton,    0, Qt::AlignVCenter);
 
         m_autoHideButton->setVisible(false);
 
@@ -276,10 +279,10 @@ void TitleBar::paintEvent(QPaintEvent *)
     QPainter p(this);
 
     // Background is handled by QSS via WA_StyledBackground
-    // Draw title text directly using palette color (respects QSS)
-    QRect textRect = iconRect().isEmpty()
-        ? rect().adjusted(8, 0, -buttonAreaWidth(), 0)
-        : rect().adjusted(iconRect().right() + 4, 0, -buttonAreaWidth(), 0);
+    QRect textRect = rect();
+
+    if (!iconRect().isEmpty())
+        textRect.setLeft(iconRect().right() + 4);
 
     p.setPen(palette().color(QPalette::WindowText));
     p.drawText(textRect, Qt::AlignCenter, m_titleBar->title());
@@ -347,7 +350,7 @@ int TitleBar::buttonAreaWidth() const
 void TitleBar::updateMargins()
 {
     const qreal factor = logicalDpiFactor(this);
-    m_layout->setContentsMargins(QMargins(2, 2, 2, 2) * factor);
+    m_layout->setContentsMargins(QMargins(4, 0, 4, 0) * factor);
     m_layout->setSpacing(int(2 * factor));
 }
 
@@ -362,14 +365,7 @@ void TitleBar::mouseDoubleClickEvent(QMouseEvent *e)
 
 QSize TitleBar::sizeHint() const
 {
-    // Pass an opt so it scales against the logical dpi of the correct screen (since Qt 5.14) even
-    // if the HDPI Qt::AA_ attributes are off.
-    QStyleOption opt;
-    opt.initFrom(this);
-
-    const int height =
-        style()->pixelMetric(QStyle::PM_HeaderDefaultSectionSizeVertical, &opt, this);
-
+    int height = fontMetrics().height() + 8;
     return QSize(0, height);
 }
 

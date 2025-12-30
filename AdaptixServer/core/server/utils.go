@@ -43,15 +43,6 @@ const (
 
 // TeamServer
 
-type Client struct {
-	username       string
-	synced         bool
-	versionSupport bool
-	lockSocket     *sync.Mutex
-	socket         *websocket.Conn
-	tmp_store      *safe.Slice
-}
-
 type TsParameters struct {
 	Interfaces []string
 }
@@ -63,6 +54,10 @@ type Teamserver struct {
 	Extender      *extender.AdaptixExtender
 	Parameters    TsParameters
 
+	TaskManager   *TaskManager
+	Broker        *MessageBroker
+	TunnelManager *TunnelManager
+
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
 
@@ -70,8 +65,7 @@ type Teamserver struct {
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
 	events      *safe.Slice // 			           : sync_packet interface{}
-	clients     safe.Map    // username string     : socket *websocket.Conn
-	agents      safe.Map    // agentId string      : agent *Agent
+	Agents      safe.Map    // agentId string      : agent *Agent
 	listeners   safe.Map    // listenerName string : listenerData ListenerData
 	messages    *safe.Slice //                     : chatData ChatData
 	downloads   safe.Map    // fileId string       : downloadData DownloadData
@@ -79,14 +73,14 @@ type Teamserver struct {
 	screenshots safe.Map    // screeId string      : screenData ScreenDataData
 	credentials *safe.Slice
 	targets     *safe.Slice
-	tunnels     safe.Map    // tunnelId string     : tunnel Tunnel
 	terminals   safe.Map    // terminalId string   : terminal Terminal
 	pivots      *safe.Slice // 			           : PivotData
 	otps        safe.Map    // otp string		   : Id string
 }
 
 type Agent struct {
-	Data   adaptix.AgentData
+	mu     sync.RWMutex
+	data   adaptix.AgentData
 	Tick   bool
 	Active bool
 
@@ -102,6 +96,24 @@ type Agent struct {
 
 	PivotParent *adaptix.PivotData
 	PivotChilds *safe.Slice
+}
+
+func (a *Agent) GetData() adaptix.AgentData {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.data
+}
+
+func (a *Agent) SetData(data adaptix.AgentData) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.data = data
+}
+
+func (a *Agent) UpdateData(fn func(*adaptix.AgentData)) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	fn(&a.data)
 }
 
 type HookJob struct {
@@ -134,8 +146,8 @@ type Tunnel struct {
 	listener    net.Listener
 	connections safe.Map
 
-	handlerConnectTCP func(channelId int, addr string, port int) adaptix.TaskData
-	handlerConnectUDP func(channelId int, addr string, port int) adaptix.TaskData
+	handlerConnectTCP func(channelId int, tunType int, addrType int, addr string, port int) adaptix.TaskData
+	handlerConnectUDP func(channelId int, tunType int, addrType int, addr string, port int) adaptix.TaskData
 	handlerWriteTCP   func(channelId int, data []byte) adaptix.TaskData
 	handlerWriteUDP   func(channelId int, data []byte) adaptix.TaskData
 	handlerClose      func(channelId int) adaptix.TaskData
@@ -145,8 +157,11 @@ type Tunnel struct {
 type Terminal struct {
 	TaskId     string
 	TerminalId int
+	CodePage   int
 
-	agent *Agent
+	agent  *Agent
+	mu     sync.Mutex
+	closed bool
 
 	wsconn *websocket.Conn
 
@@ -156,8 +171,8 @@ type Terminal struct {
 	pwTun *io.PipeWriter
 	prTun *io.PipeReader
 
-	handlerStart func(terminalId int, program string, sizeH int, sizeW int) (adaptix.TaskData, error)
-	handlerWrite func(terminalId int, data []byte) (adaptix.TaskData, error)
+	handlerStart func(terminalId int, program string, sizeH int, sizeW int, oemCP int) (adaptix.TaskData, error)
+	handlerWrite func(terminalId int, oemCP int, data []byte) (adaptix.TaskData, error)
 	handlerClose func(terminalId int) (adaptix.TaskData, error)
 }
 
@@ -216,6 +231,7 @@ type SyncPackerListenerStart struct {
 	BindHost         string `json:"l_bind_host"`
 	BindPort         string `json:"l_bind_port"`
 	AgentAddrs       string `json:"l_agent_addr"`
+	CreateTime       int64  `json:"l_create_time"`
 	ListenerStatus   string `json:"l_status"`
 	Data             string `json:"l_data"`
 }
@@ -250,6 +266,8 @@ type SyncPackerAgentNew struct {
 	KillDate     int    `json:"a_killdate"`
 	Sleep        uint   `json:"a_sleep"`
 	Jitter       uint   `json:"a_jitter"`
+	ACP          int    `json:"a_acp"`
+	OemCP        int    `json:"a_oemcp"`
 	Pid          string `json:"a_pid"`
 	Tid          string `json:"a_tid"`
 	Arch         string `json:"a_arch"`
@@ -261,6 +279,7 @@ type SyncPackerAgentNew struct {
 	Computer     string `json:"a_computer"`
 	Username     string `json:"a_username"`
 	Impersonated string `json:"a_impersonated"`
+	CreateTime   int64  `json:"a_create_time"`
 	LastTick     int    `json:"a_last_tick"`
 	Tags         string `json:"a_tags"`
 	Mark         string `json:"a_mark"`
@@ -270,15 +289,30 @@ type SyncPackerAgentNew struct {
 type SyncPackerAgentUpdate struct {
 	SpType int `json:"type"`
 
-	Id           string `json:"a_id"`
-	Sleep        uint   `json:"a_sleep"`
-	Jitter       uint   `json:"a_jitter"`
-	WorkingTime  int    `json:"a_workingtime"`
-	KillDate     int    `json:"a_killdate"`
-	Impersonated string `json:"a_impersonated"`
-	Tags         string `json:"a_tags"`
-	Mark         string `json:"a_mark"`
-	Color        string `json:"a_color"`
+	Id           string  `json:"a_id"`
+	Sleep        *uint   `json:"a_sleep,omitempty"`
+	Jitter       *uint   `json:"a_jitter,omitempty"`
+	WorkingTime  *int    `json:"a_workingtime,omitempty"`
+	KillDate     *int    `json:"a_killdate,omitempty"`
+	Impersonated *string `json:"a_impersonated,omitempty"`
+	Tags         *string `json:"a_tags,omitempty"`
+	Mark         *string `json:"a_mark,omitempty"`
+	Color        *string `json:"a_color,omitempty"`
+	InternalIP   *string `json:"a_internal_ip,omitempty"`
+	ExternalIP   *string `json:"a_external_ip,omitempty"`
+	GmtOffset    *int    `json:"a_gmt_offset,omitempty"`
+	ACP          *int    `json:"a_acp,omitempty"`
+	OemCP        *int    `json:"a_oemcp,omitempty"`
+	Pid          *string `json:"a_pid,omitempty"`
+	Tid          *string `json:"a_tid,omitempty"`
+	Arch         *string `json:"a_arch,omitempty"`
+	Elevated     *bool   `json:"a_elevated,omitempty"`
+	Process      *string `json:"a_process,omitempty"`
+	Os           *int    `json:"a_os,omitempty"`
+	OsDesc       *string `json:"a_os_desc,omitempty"`
+	Domain       *string `json:"a_domain,omitempty"`
+	Computer     *string `json:"a_computer,omitempty"`
+	Username     *string `json:"a_username,omitempty"`
 }
 
 type SyncPackerAgentTick struct {
@@ -322,6 +356,7 @@ type SyncPackerAgentTaskUpdate struct {
 
 	AgentId     string `json:"a_id"`
 	TaskId      string `json:"a_task_id"`
+	HandlerId   string `json:"a_handler_id"`
 	TaskType    int    `json:"a_task_type"`
 	FinishTime  int64  `json:"a_finish_time"`
 	MessageType int    `json:"a_msg_type"`
@@ -439,7 +474,7 @@ type SyncPackerDownloadUpdate struct {
 type SyncPackerDownloadDelete struct {
 	SpType int `json:"type"`
 
-	FileId string `json:"d_file_id"`
+	FileId []string `json:"d_files_id"`
 }
 
 /// SCREEN

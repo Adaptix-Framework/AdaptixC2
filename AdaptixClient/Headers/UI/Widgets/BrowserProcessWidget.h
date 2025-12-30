@@ -22,7 +22,7 @@ typedef struct BrowserProcessDataUnix {
     QString tty;
     QString context;
     QString process;
-} BrowserProcessDataWinUnix;
+} BrowserProcessDataUnix;
 
 class BrowserProcessWidget : public DockTab
 {
@@ -40,8 +40,8 @@ class BrowserProcessWidget : public DockTab
     Agent*  agent;
 
     void createUI();
-    void setTableProcessDataWin(QMap<int, BrowserProcessDataWin> processMap) const;
-    void setTableProcessDataUnix(QMap<int, BrowserProcessDataUnix> processMap) const;
+    void setTableProcessDataWin(const QMap<int, BrowserProcessDataWin>& processMap) const;
+    void setTableProcessDataUnix(const QMap<int, BrowserProcessDataUnix>& processMap) const;
     void setTreeProcessDataWin(QMap<int, BrowserProcessDataWin> processMap) const;
     static void addProcessToTreeWin(QTreeWidgetItem* parent, int parentPID, QMap<int, BrowserProcessDataWin> processMap, QMap<int, QTreeWidgetItem*> *nodeMap);
     void setTreeProcessDataUnix(QMap<int, BrowserProcessDataUnix> processMap) const;

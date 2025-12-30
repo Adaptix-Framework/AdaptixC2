@@ -11,6 +11,8 @@ struct ExtensionFile;
 struct AxMenuItem;
 struct AxEvent;
 class  AxScriptEngine;
+class  AxScriptWorker;
+class  AxUiFactory;
 class  AdaptixWidget;
 class  Agent;
 
@@ -42,6 +44,7 @@ class AxScriptManager : public QObject {
 Q_OBJECT
     AdaptixWidget*  adaptixWidget = nullptr;
     AxScriptEngine* mainScript    = nullptr;
+    AxUiFactory*    uiFactory     = nullptr;
     QMap<QString, AxScriptEngine*> scripts;
     QMap<QString, AxScriptEngine*> listeners_scripts;
     QMap<QString, AxScriptEngine*> agents_scripts;
@@ -51,6 +54,7 @@ public:
     ~AxScriptManager() override;
 
     QJSEngine* MainScriptEngine();
+    AxUiFactory* GetUiFactory() const;
     void ResetMain();
     void Clear();
 
@@ -79,6 +83,12 @@ public:
 
     void GlobalScriptLoad(const QString &path);
     void GlobalScriptUnload(const QString &path);
+    void GlobalScriptLoadAsync(const QString &path);
+    
+    void ExecuteAsync(const QString& code, const QString& name = "async");
+    void ExecuteSmart(const QString& code, const QString& name = "smart");
+    
+    static bool containsUiCalls(const QString& code);
 
     void        RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
     void        EventRemove(const QString &event_id);
@@ -86,12 +96,18 @@ public:
     QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType);
     QList<AxEvent>    FilterEvents(const QString &agentId, const QString &eventType);
 
+    QList<AxScriptEngine*> getAllEngines() const;
+    QList<AxMenuItem> collectMenuItems(const QString &menuType) const;
+    QList<AxEvent> collectEvents(const QString &eventType) const;
+    void safeCallHandler(const AxEvent& event, const QJSValueList& args = QJSValueList());
+    int  addMenuItemsToMenu(QMenu* menu, const QList<AxMenuItem>& items, const QVariantList& context);
+
     void AppAgentHide(const QStringList &agents);
     void AppAgentRemove(const QStringList &agents);
     void AppAgentSetColor(const QStringList &agents, const QString &background, const QString &foreground, const bool reset);
-    void AppAgentSetImpersonate(const QString &id, const QString &impersonate, const bool elevated);
     void AppAgentSetMark(const QStringList &agents, const QString &mark);
     void AppAgentSetTag(const QStringList &agents, const QString &tag);
+    void AppAgentUpdateData(const QString &id, const QJsonObject &updateData);
 
     int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds);
     int AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files);

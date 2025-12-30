@@ -10,8 +10,10 @@ menu.add_session_agent(exit_menu, ["beacon"])
 
 let file_browser_action    = menu.create_action("File Browser",    function(value) { value.forEach(v => ax.open_browser_files(v)) });
 let process_browser_action = menu.create_action("Process Browser", function(value) { value.forEach(v => ax.open_browser_process(v)) });
+let shell_browser_action   = menu.create_action("Remote Shell",    function(value) { value.forEach(v => ax.open_remote_shell(v)) });
 menu.add_session_browser(file_browser_action, ["beacon"])
 menu.add_session_browser(process_browser_action, ["beacon"])
+menu.add_session_browser(shell_browser_action, ["beacon"])
 
 
 let tunnel_access_action = menu.create_action("Create Tunnel", function(value) { ax.open_access_tunnel(value[0], true, true, true, true) });

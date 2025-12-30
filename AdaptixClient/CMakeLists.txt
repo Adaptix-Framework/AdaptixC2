@@ -96,6 +96,7 @@ SET( HEADERS
         Headers/Client/AuthProfile.h
         Headers/Utils/FileSystem.h
         Headers/Client/Requestor.h
+        Headers/Client/HttpRequestManager.h
         Headers/UI/MainUI.h
         Headers/UI/Widgets/AdaptixWidget.h
         Headers/UI/Widgets/LogsWidget.h
@@ -125,11 +126,13 @@ SET( HEADERS
         Headers/UI/Graph/GraphItemLink.h
         Headers/UI/Graph/GraphScene.h
         Headers/UI/Graph/LayoutTreeLeft.h
+        Headers/UI/Graph/LayoutTreeTop.h
         Headers/UI/Widgets/ScreenshotsWidget.h
         Headers/UI/Dialogs/DialogTunnel.h
         Headers/Client/TunnelEndpoint.h
         Headers/Workers/TunnelWorker.h
-        Headers/UI/Widgets/TerminalWidget.h
+        Headers/Workers/SocksHandshakeWorker.h
+        Headers/UI/Widgets/TerminalContainerWidget.h
         Headers/Workers/TerminalWorker.h
         Headers/UI/Dialogs/DialogDownloader.h
         Headers/Workers/DownloaderWorker.h
@@ -137,6 +140,8 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogUploader.h
         Headers/Client/AxScript/AxScriptManager.h
         Headers/Client/AxScript/AxScriptEngine.h
+        Headers/Client/AxScript/AxScriptWorker.h
+        Headers/Client/AxScript/AxUiFactory.h
         Headers/Client/AxScript/BridgeApp.h
         Headers/Client/AxScript/BridgeEvent.h
         Headers/Client/AxScript/BridgeForm.h
@@ -153,6 +158,7 @@ SET( HEADERS
         Headers/Utils/NonBlockingDialogs.h
         Headers/Utils/FontManager.h
         Headers/Utils/TitleBarStyle.h
+        Headers/UI/Widgets/DockWidgetRegister.h
 )
 
 add_executable(AdaptixClient
@@ -175,6 +181,7 @@ add_executable(AdaptixClient
         Source/Client/AuthProfile.cpp
         Source/Utils/FileSystem.cpp
         Source/Client/Requestor.cpp
+        Source/Client/HttpRequestManager.cpp
         Source/UI/MainUI.cpp
         Source/UI/Widgets/AdaptixWidget.cpp
         Source/UI/Widgets/LogsWidget.cpp
@@ -185,6 +192,7 @@ add_executable(AdaptixClient
         Source/UI/Dialogs/DialogListener.cpp
         Source/UI/Widgets/SessionsTableWidget.cpp
         Source/UI/Dialogs/DialogAgent.cpp
+        Source/UI/Dialogs/DialogAgentData.cpp
         Source/UI/Widgets/ConsoleWidget.cpp
         Source/Agent/Agent.cpp
         Source/Workers/LastTickWorker.cpp
@@ -204,11 +212,13 @@ add_executable(AdaptixClient
         Source/UI/Graph/GraphItemLink.cpp
         Source/UI/Graph/GraphScene.cpp
         Source/UI/Graph/LayoutTreeLeft.cpp
+        Source/UI/Graph/LayoutTreeTop.cpp
         Source/UI/Widgets/ScreenshotsWidget.cpp
         Source/UI/Dialogs/DialogTunnel.cpp
         Source/Client/TunnelEndpoint.cpp
         Source/Workers/TunnelWorker.cpp
-        Source/UI/Widgets/TerminalWidget.cpp
+        Source/Workers/SocksHandshakeWorker.cpp
+        Source/UI/Widgets/TerminalContainerWidget.cpp
         Source/Workers/TerminalWorker.cpp
         Source/UI/Dialogs/DialogDownloader.cpp
         Source/Workers/DownloaderWorker.cpp
@@ -216,6 +226,8 @@ add_executable(AdaptixClient
         Source/UI/Dialogs/DialogUploader.cpp
         Source/Client/AxScript/AxScriptManager.cpp
         Source/Client/AxScript/AxScriptEngine.cpp
+        Source/Client/AxScript/AxScriptWorker.cpp
+        Source/Client/AxScript/AxUiFactory.cpp
         Source/Client/AxScript/BridgeApp.cpp
         Source/Client/AxScript/BridgeEvent.cpp
         Source/Client/AxScript/BridgeForm.cpp

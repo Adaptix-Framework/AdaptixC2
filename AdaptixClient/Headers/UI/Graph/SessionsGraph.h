@@ -4,6 +4,11 @@
 #include <main.h>
 #include <UI/Widgets/AbstractDock.h>
 
+enum GraphLayoutDirection {
+    LayoutLeftToRight,
+    LayoutTopToBottom
+};
+
 class Agent;
 class GraphItem;
 class GraphScene;
@@ -18,6 +23,7 @@ Q_OBJECT
     GraphScene* graphScene = nullptr;
     GraphItem*  rootItem   = nullptr;
     int timerId = 0;
+    GraphLayoutDirection layoutDirection = LayoutLeftToRight;
 
 public:
     explicit SessionsGraph( QWidget *parent = nullptr );
@@ -37,6 +43,8 @@ public:
 
     void Clear();
     void TreeDraw() const;
+    void SetLayoutDirection(GraphLayoutDirection direction);
+    GraphLayoutDirection GetLayoutDirection() const { return layoutDirection; }
     void UpdateIcons() const;
     void scaleView(qreal scaleFactor);
     void itemMoved();

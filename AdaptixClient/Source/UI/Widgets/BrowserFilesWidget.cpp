@@ -4,8 +4,11 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
+
+REGISTER_DOCK_WIDGET(BrowserFilesWidget, "Browser Files", false)
 
 void BrowserFileData::CreateBrowserFileData(const QString &path, const int os)
 {
@@ -322,7 +325,7 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
         currenFileData->TreeItem->takeChildren();
         currenFileData->Files.clear();
 
-        for ( QJsonValue value : jsonArray ) {
+        for ( const QJsonValue& value : jsonArray ) {
             QJsonObject jsonObject = value.toObject();
             QString filename = jsonObject["b_filename"].toString();
             qint64  b_size   = jsonObject["b_size"].toDouble();
@@ -352,17 +355,19 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
             currenFileData->Files.push_back(childData);
         }
 
-        for( QString oldPath : oldFiles.keys() ) {
-            BrowserFileData data = oldFiles[oldPath];
+        for( const QString& oldPath : oldFiles.keys() ) {
+            const BrowserFileData& data = oldFiles[oldPath];
 
             QString oldFullpath = data.Fullpath + "\\";
 
-            for(QString storeKey : browserStore.keys())
+            QStringList keysToRemove;
+            for(const QString& storeKey : browserStore.keys())
                 if (storeKey.startsWith(oldFullpath, Qt::CaseInsensitive))
-                    browserStore.remove(storeKey);
+                    keysToRemove.append(storeKey);
+            for(const QString& key : keysToRemove)
+                browserStore.remove(key);
 
             browserStore.remove(data.Fullpath);
-            oldFiles.remove(oldPath);
         }
     }
     else {
@@ -372,7 +377,7 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
         currenFileData->TreeItem->takeChildren();
         currenFileData->Files.clear();
 
-        for ( QJsonValue value : jsonArray ) {
+        for ( const QJsonValue& value : jsonArray ) {
             QJsonObject jsonObject = value.toObject();
             int     b_type   = jsonObject["b_is_dir"].toBool();
             QString filename = jsonObject["b_filename"].toString();
@@ -412,17 +417,19 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
             currenFileData->Files.push_back(childData);
         }
 
-        for( QString oldPath : oldFiles.keys() ) {
-            BrowserFileData data = oldFiles[oldPath];
+        for( const QString& oldPath : oldFiles.keys() ) {
+            const BrowserFileData& data = oldFiles[oldPath];
 
             QString oldFullpath = data.Fullpath + "/";
 
-            for(QString storeKey : browserStore.keys())
+            QStringList keysToRemove;
+            for(const QString& storeKey : browserStore.keys())
                 if (storeKey.startsWith(oldFullpath, Qt::CaseSensitive))
-                    browserStore.remove(storeKey);
+                    keysToRemove.append(storeKey);
+            for(const QString& key : keysToRemove)
+                browserStore.remove(key);
 
             browserStore.remove(data.Fullpath);
-            oldFiles.remove(oldPath);
         }
     }
 }
@@ -468,10 +475,10 @@ void BrowserFilesWidget::tableShowItems(QVector<BrowserFileData*> files ) const
             item_Mode->setFlags( item_Mode->flags() ^ Qt::ItemIsEditable );
 
             QTableWidgetItem* item_User = new QTableWidgetItem(files[row]->User);
-            item_User->setFlags( item_Mode->flags() ^ Qt::ItemIsEditable );
+            item_User->setFlags( item_User->flags() ^ Qt::ItemIsEditable );
 
             QTableWidgetItem* item_Group = new QTableWidgetItem(files[row]->Group);
-            item_Group->setFlags( item_Mode->flags() ^ Qt::ItemIsEditable );
+            item_Group->setFlags( item_Group->flags() ^ Qt::ItemIsEditable );
 
             tableWidget->setItem(row, 0, item_Name);
             tableWidget->setItem(row, 1, item_Mode);
@@ -580,7 +587,11 @@ void BrowserFilesWidget::onUpload() const
     else
         remotePath += "/";
 
-    NonBlockingDialogs::getOpenFileName(const_cast<BrowserFilesWidget*>(this), "Select file", QDir::homePath(), "All Files (*.*)",
+    QString baseDir = QDir::homePath();
+    if (agent && agent->adaptixWidget && agent->adaptixWidget->GetProfile())
+        baseDir = agent->adaptixWidget->GetProfile()->GetProjectDir();
+
+    NonBlockingDialogs::getOpenFileName(const_cast<BrowserFilesWidget*>(this), "Select file", baseDir, "All Files (*.*)",
         [this, remotePath](const QString& filePath) {
             if (filePath.isEmpty())
                 return;

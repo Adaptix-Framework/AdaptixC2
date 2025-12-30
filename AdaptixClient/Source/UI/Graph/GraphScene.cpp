@@ -7,6 +7,8 @@
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <UI/Dialogs/DialogAgentData.h>
+#include <UI/Graph/SessionsGraph.h>
 
 
 GraphScene::GraphScene(const int gridSize, QWidget* m, QObject* parent) : QGraphicsScene(parent)
@@ -40,8 +42,31 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
     auto graphics_items = selectedItems();
     if(graphics_items.empty()) {
-        if( (graphics_items = items(event->scenePos())).empty() )
-            return QGraphicsScene::contextMenuEvent( event );
+        if( (graphics_items = items(event->scenePos())).empty() ) {
+            auto* sessionsGraph = qobject_cast<SessionsGraph*>(parent());
+            if (!sessionsGraph)
+                return QGraphicsScene::contextMenuEvent( event );
+
+            auto layoutMenu = QMenu("Layout");
+            auto* actionLeftToRight = layoutMenu.addAction("Left to Right");
+            auto* actionTopToBottom = layoutMenu.addAction("Top to Bottom");
+
+            actionLeftToRight->setCheckable(true);
+            actionTopToBottom->setCheckable(true);
+            actionLeftToRight->setChecked(sessionsGraph->GetLayoutDirection() == LayoutLeftToRight);
+            actionTopToBottom->setChecked(sessionsGraph->GetLayoutDirection() == LayoutTopToBottom);
+
+            auto ctxMenu = QMenu();
+            ctxMenu.addMenu(&layoutMenu);
+
+            const auto action = ctxMenu.exec(event->screenPos());
+            if (action == actionLeftToRight) {
+                sessionsGraph->SetLayoutDirection(LayoutLeftToRight);
+            } else if (action == actionTopToBottom) {
+                sessionsGraph->SetLayoutDirection(LayoutTopToBottom);
+            }
+            return;
+        }
     }
 
     QStringList agentIds;
@@ -52,9 +77,6 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     }
     if (agentIds.size() == 0)
         return;
-
-
-
 
 
     auto agentMenu = QMenu("Agent");
@@ -70,12 +92,13 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     agentMenu.addAction("Remove from server");
 
 
-
     auto sessionMenu = QMenu("Session");
     sessionMenu.addAction("Mark as Active");
     sessionMenu.addAction("Mark as Inactive");
-
-
+    sessionMenu.addSeparator();
+    sessionMenu.addAction("Set tag");
+    if (agentIds.size() == 1 )
+        sessionMenu.addAction("Set data");
 
     auto ctxMenu = QMenu();
     ctxMenu.addAction("Console");
@@ -96,7 +119,6 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
     ctxMenu.addSeparator();
     ctxMenu.addMenu(&sessionMenu);
-    ctxMenu.addAction("Set tag");
 
     const auto action = ctxMenu.exec( event->screenPos() );
     if ( !action )
@@ -137,13 +159,10 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         for (auto id : agentIds)
             adaptixWidget->AgentsMap[id]->Console->Clear();
 
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqConsoleRemove(agentIds, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqConsoleRemoveAsync(agentIds, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
     else if ( action->text() == "Remove from server" ) {
         QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "Delete Confirmation",
@@ -154,44 +173,47 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         if (reply != QMessageBox::Yes)
             return;
 
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentRemove(agentIds, *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentRemoveAsync(agentIds, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
     else if ( action->text() == "Mark as Active" ) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetMark(agentIds, "", *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentSetMarkAsync(agentIds, "", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
     else if ( action->text() == "Mark as Inactive" ) {
-        QString message = QString();
-        bool ok = false;
-        bool result = HttpReqAgentSetMark(agentIds, "Inactive", *(adaptixWidget->GetProfile()), &message, &ok);
-        if( !result ) {
-            MessageError("Response timeout");
-            return;
-        }
+        HttpReqAgentSetMarkAsync(agentIds, "Inactive", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
     }
     else if ( action->text() == "Set tag" ) {
         QString tag = "";
         bool inputOk;
         QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
         if ( inputOk ) {
-            QString message = QString();
-            bool ok = false;
-            bool result = HttpReqAgentSetTag(agentIds, newTag, *(adaptixWidget->GetProfile()), &message, &ok);
-            if( !result ) {
-                MessageError("Response timeout");
-                return;
-            }
+            HttpReqAgentSetTagAsync(agentIds, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+                if (!success)
+                    MessageError(message.isEmpty() ? "Response timeout" : message);
+            });
         }
+    }
+    else if ( action->text() == "Set data" ) {
+        if (agentIds.isEmpty())
+            return;
+
+        QString agentId = agentIds.first();
+        if (!adaptixWidget->AgentsMap.contains(agentId))
+            return;
+
+        Agent* agent = adaptixWidget->AgentsMap[agentId];
+
+        auto* dialog = new DialogAgentData();
+        dialog->SetProfile(*(adaptixWidget->GetProfile()));
+        dialog->SetAgentData(agent->data);
+        dialog->Start();
     }
 }

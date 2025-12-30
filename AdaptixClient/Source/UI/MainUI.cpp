@@ -56,6 +56,12 @@ MainUI::MainUI()
 
 MainUI::~MainUI()
 {
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget) {
+            disconnect(adaptixWidget, nullptr, nullptr, nullptr);
+            adaptixWidget->Close();
+        }
+    }
     qDeleteAll(AdaptixProjects);
     AdaptixProjects.clear();
 }
@@ -137,6 +143,14 @@ void MainUI::UpdateTasksTableColumns()
     }
 }
 
+AuthProfile* MainUI::GetCurrentProfile() const
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainuiTabWidget->currentWidget() );
+    if (!adaptixWidget)
+        return nullptr;
+    return adaptixWidget->GetProfile();
+}
+
 /// Actions
 
 void MainUI::onNewProject() { GlobalClient->NewProject(); }
@@ -172,4 +186,4 @@ void MainUI::onAxScriptConsole()
 
 void MainUI::onScriptManager() { GlobalClient->extender->dialogExtender->show(); }
 
-void MainUI::onSettings() { GlobalClient->settings->dialogSettings->show(); }
+void MainUI::onSettings() { GlobalClient->settings->getDialogSettings()->show(); }

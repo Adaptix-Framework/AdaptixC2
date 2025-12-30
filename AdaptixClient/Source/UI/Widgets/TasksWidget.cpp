@@ -22,7 +22,7 @@ void TaskOutputWidget::createUI()
 
     outputTextEdit = new QTextEdit(this);
     outputTextEdit->setReadOnly(true);
-    outputTextEdit->setLineWrapMode(QTextEdit::LineWrapMode::NoWrap );
+    outputTextEdit->setWordWrapMode(QTextOption::WrapAnywhere);
     outputTextEdit->setProperty("TextEditStyle", "console" );
 
     mainGridLayout = new QGridLayout(this );
@@ -77,14 +77,20 @@ TasksWidget::TasksWidget( AdaptixWidget* w )
     });
 
     connect(tableView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &TasksWidget::onTableItemSelection);
-    connect(comboAgent,  &QComboBox::currentTextChanged, this, &TasksWidget::onFilterChanged);
-    connect(comboStatus, &QComboBox::currentTextChanged, this, &TasksWidget::onFilterChanged);
-    connect(inputFilter, &QLineEdit::textChanged,        this, &TasksWidget::onFilterChanged);
-    connect(hideButton,  &ClickableLabel::clicked,       this, &TasksWidget::toggleSearchPanel);
+    connect(inputFilter,    &QLineEdit::textChanged,         this, &TasksWidget::onFilterChanged);
+    connect(inputFilter,    &QLineEdit::returnPressed,       this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
+    connect(comboAgent,     &QComboBox::currentTextChanged,  this, &TasksWidget::onFilterChanged);
+    connect(comboType,      &QComboBox::currentTextChanged,  this, &TasksWidget::onFilterChanged);
+    connect(comboStatus,    &QComboBox::currentTextChanged,  this, &TasksWidget::onFilterChanged);
+    connect(hideButton,     &ClickableLabel::clicked,        this, &TasksWidget::toggleSearchPanel);
 
-    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), tableView);
-    shortcutSearch->setContext(Qt::WidgetShortcut);
+    shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
+    shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);
     connect(shortcutSearch, &QShortcut::activated, this, &TasksWidget::toggleSearchPanel);
+
+    auto shortcutEsc = new QShortcut(QKeySequence(Qt::Key_Escape), inputFilter);
+    shortcutEsc->setContext(Qt::WidgetShortcut);
+    connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 }
 
 TasksWidget::~TasksWidget() = default;
@@ -101,40 +107,51 @@ void TasksWidget::SetUpdatesEnabled(const bool enabled)
 
 void TasksWidget::createUI()
 {
-    auto horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    auto horizontalSpacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    auto horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     searchWidget = new QWidget(this);
     searchWidget->setVisible(false);
 
+    inputFilter = new QLineEdit(searchWidget);
+    inputFilter->setPlaceholderText("filter: (adm | user) & cmd");
+    inputFilter->setMaximumWidth(250);
+
+    autoSearchCheck = new QCheckBox("auto", searchWidget);
+    autoSearchCheck->setChecked(true);
+    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
+
     comboAgent = new QComboBox(searchWidget);
-    comboAgent->addItem( "All agents" );
-    comboAgent->setCurrentIndex(0);
-    comboAgent->setMaximumWidth(200);
-    comboAgent->setFixedWidth(200);
+    comboAgent->setMinimumWidth(120);
+    comboAgent->setEditable(true);
+    comboAgent->setInsertPolicy(QComboBox::NoInsert);
+    comboAgent->addItem("All agents");
+
+    comboType = new QComboBox(searchWidget);
+    comboType->setMinimumWidth(100);
+    comboType->addItem("All types");
 
     comboStatus = new QComboBox(searchWidget);
-    comboStatus->addItems( QStringList() << "Any status" << "Hosted" << "Running" << "Success" << "Error" << "Canceled" );
-    comboStatus->setCurrentIndex(0);
-    comboStatus->setMaximumWidth(200);
-    comboStatus->setFixedWidth(200);
+    comboStatus->setMinimumWidth(100);
+    comboStatus->addItems(QStringList() << "Any status" << "Hosted" << "Running" << "Success" << "Error" << "Canceled");
 
-    inputFilter = new QLineEdit(searchWidget);
-    inputFilter->setPlaceholderText("filter");
-    inputFilter->setMaximumWidth(200);
-
-    hideButton = new ClickableLabel("X");
-    hideButton->setCursor( Qt::PointingHandCursor );
+    hideButton = new ClickableLabel("  x  ");
+    hideButton->setCursor(Qt::PointingHandCursor);
+    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 4, 0, 0);
     searchLayout->setSpacing(4);
-    searchLayout->addSpacerItem(horizontalSpacer1);
-    searchLayout->addWidget(comboAgent);
-    searchLayout->addWidget(comboStatus);
     searchLayout->addWidget(inputFilter);
+    searchLayout->addWidget(autoSearchCheck);
+    searchLayout->addSpacing(8);
+    searchLayout->addWidget(comboAgent);
+    searchLayout->addSpacing(8);
+    searchLayout->addWidget(comboType);
+    searchLayout->addSpacing(8);
+    searchLayout->addWidget(comboStatus);
+    searchLayout->addSpacing(8);
     searchLayout->addWidget(hideButton);
-    searchLayout->addSpacerItem(horizontalSpacer2);
+    searchLayout->addSpacerItem(horizontalSpacer);
 
     tasksModel = new TasksTableModel(this);
     proxyModel = new TasksFilterProxyModel(this);
@@ -156,6 +173,7 @@ void TasksWidget::createUI()
     tableView->horizontalHeader()->setCascadingSectionResizes( true );
     tableView->horizontalHeader()->setHighlightSections( false );
     tableView->verticalHeader()->setVisible( false );
+    tableView->verticalHeader()->setSectionResizeMode( QHeaderView::ResizeToContents );
 
     proxyModel->sort(-1);
 
@@ -163,6 +181,8 @@ void TasksWidget::createUI()
     tableView->horizontalHeader()->setSectionResizeMode( TC_Output,      QHeaderView::Stretch );
 
     tableView->setItemDelegate(new PaddingDelegate(tableView));
+    tableView->setItemDelegateForColumn(TC_CommandLine, new WrapAnywhereDelegate(tableView));
+    tableView->setItemDelegateForColumn(TC_Output, new WrapAnywhereDelegate(tableView));
 
     this->UpdateColumnsVisible();
 
@@ -275,16 +295,15 @@ void TasksWidget::UpdateColumnsSize() const
 
 void TasksWidget::Clear() const
 {
-    for (auto taskId : adaptixWidget->TasksMap.keys()) {
-        TaskData task = adaptixWidget->TasksMap[taskId];
-        adaptixWidget->TasksMap.remove(taskId);
-    }
+    adaptixWidget->TasksMap.clear();
 
     taskOutputConsole->SetConten("", "");
 
     tasksModel->clear();
     comboAgent->clear();
     comboAgent->addItem("All agents");
+    comboType->clear();
+    comboType->addItem("All types");
     comboStatus->setCurrentIndex(0);
     inputFilter->clear();
 }
@@ -381,8 +400,60 @@ void TasksWidget::onFilterChanged() const
     if (!f) return;
 
     f->setAgentFilter(comboAgent->currentText());
+    f->setTypeFilter(comboType->currentText());
     f->setStatusFilter(comboStatus->currentText());
-    f->setTextFilter(inputFilter->text());
+    if (autoSearchCheck->isChecked()) {
+        f->setTextFilter(inputFilter->text());
+    }
+    UpdateColumnsSize();
+}
+
+void TasksWidget::UpdateFilterComboBoxes() const
+{
+    QSet<QString> agents;
+    QSet<QString> types;
+
+    for (const auto& task : adaptixWidget->TasksMap) {
+        if (!task.AgentId.isEmpty())
+            agents.insert(task.AgentId);
+        QString typeStr = task.TaskType == 1 ? "TASK" :
+                          task.TaskType == 3 ? "JOB" :
+                          task.TaskType == 4 ? "TUNNEL" : "unknown";
+        types.insert(typeStr);
+    }
+
+    QString currentAgent = comboAgent->currentText();
+    QString currentType = comboType->currentText();
+
+    comboAgent->blockSignals(true);
+    comboType->blockSignals(true);
+
+    comboAgent->clear();
+    comboAgent->addItem("All agents");
+    QStringList agentList = agents.values();
+    agentList.sort();
+    comboAgent->addItems(agentList);
+
+    comboType->clear();
+    comboType->addItem("All types");
+    QStringList typeList = types.values();
+    typeList.sort();
+    comboType->addItems(typeList);
+
+    int agentIdx = comboAgent->findText(currentAgent);
+    if (agentIdx >= 0)
+        comboAgent->setCurrentIndex(agentIdx);
+    else
+        comboAgent->setCurrentText(currentAgent);
+
+    int typeIdx = comboType->findText(currentType);
+    if (typeIdx >= 0)
+        comboType->setCurrentIndex(typeIdx);
+    else
+        comboType->setCurrentText(currentType);
+
+    comboAgent->blockSignals(false);
+    comboType->blockSignals(false);
 }
 
 void TasksWidget::actionCopyTaskId() const

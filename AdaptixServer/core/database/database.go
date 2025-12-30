@@ -42,6 +42,7 @@ func (dbms *DBMS) DatabaseInit() error {
     	"ListenerName" TEXT NOT NULL UNIQUE, 
     	"ListenerRegName" TEXT NOT NULL,
     	"ListenerConfig" TEXT NOT NULL,
+    	"CreateTime" BIGINT,
     	"Watermark" TEXT NOT NULL,
     	"CustomData" BLOB
     );`
@@ -112,7 +113,8 @@ func (dbms *DBMS) DatabaseInit() error {
     	"Tags" TEXT,
     	"Mark" TEXT,
     	"Color" TEXT,
-    	"TargetId" TEXT
+    	"TargetId" TEXT,
+    	"CustomData" BLOB
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 

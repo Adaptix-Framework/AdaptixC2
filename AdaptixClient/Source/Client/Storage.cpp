@@ -1,5 +1,7 @@
 #include <Client/Storage.h>
 #include <Client/AuthProfile.h>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 Storage::Storage()
 {
@@ -11,25 +13,20 @@ Storage::Storage()
     if ( appDir.exists() ) {
         appDirExists = true;
     } else {
-        if (appDir.mkpath(appDirPath)) {
+        if (appDir.mkpath(appDirPath))
             appDirExists = true;
-        }
-        else {
+        else
             LogError("Adaptix directory %s not created!\n", appDirPath.toStdString().c_str());
-        }
     }
 
     if( appDirExists ) {
-        dbFilePath = QDir(appDirPath).filePath("storage.db");
+        dbFilePath = QDir(appDirPath).filePath("storage-v1.db");
         db = QSqlDatabase::addDatabase( "QSQLITE" );
         db.setDatabaseName(dbFilePath);
-
-        if ( db.open() ) {
+        if (db.open())
             this->checkDatabase();
-        }
-        else {
+        else
             LogError("Adaptix Database did not opened: %s\n", db.lastError().text().toStdString().c_str());
-        }
     }
 }
 
@@ -44,11 +41,7 @@ void Storage::checkDatabase()
     auto queryProjects = QSqlQuery();
     queryProjects.prepare("CREATE TABLE IF NOT EXISTS Projects ( "
             "project TEXT UNIQUE PRIMARY KEY, "
-            "host TEXT, "
-            "port INTEGER, "
-            "endpoint TEXT, "
-            "username TEXT, "
-            "password TEXT );"
+            "data TEXT );"
     );
     if ( !queryProjects.exec() )
         LogError("Table PROJECTS not created: %s\n", queryProjects.lastError().text().toStdString().c_str());
@@ -65,86 +58,35 @@ void Storage::checkDatabase()
 
 
 
-    auto querySettingsMain = QSqlQuery();
-    querySettingsMain.prepare("CREATE TABLE IF NOT EXISTS SettingsMain ( "
-                            "id INTEGER, "
-                            "theme TEXT, "
-                            "fontFamily TEXT, "
-                            "fontSize INTEGER, "
-                            "consoleTime BOOLEAN );"
+    auto querySettings = QSqlQuery();
+    querySettings.prepare("CREATE TABLE IF NOT EXISTS Settings ( "
+                            "key TEXT UNIQUE PRIMARY KEY, "
+                            "data TEXT );"
     );
-    if ( !querySettingsMain.exec() )
-        LogError("Table SettingsMain not created: %s\n", querySettingsMain.lastError().text().toStdString().c_str());
+    if ( !querySettings.exec() )
+        LogError("Table Settings not created: %s\n", querySettings.lastError().text().toStdString().c_str());
 
 
 
-    auto querySettingsConsole = QSqlQuery();
-    querySettingsConsole.prepare("CREATE TABLE IF NOT EXISTS SettingsConsole ( "
-                            "id INTEGER, "
-                            "terminalBuffer INTEGER, "
-                            "consoleBuffer INTEGER, "
-                            "noWrap BOOLEAN, "
-                            "autoScroll BOOLEAN );"
+    auto queryListenerProfiles = QSqlQuery();
+    queryListenerProfiles.prepare("CREATE TABLE IF NOT EXISTS ListenerProfiles ( "
+                            "project TEXT, "
+                            "name TEXT, "
+                            "data TEXT, "
+                            "PRIMARY KEY (project, name) );"
     );
-    if ( !querySettingsConsole.exec() )
-        LogError("Table SettingsConsole not created: %s\n", querySettingsConsole.lastError().text().toStdString().c_str());
+    if ( !queryListenerProfiles.exec() )
+        LogError("Table ListenerProfiles not created: %s\n", queryListenerProfiles.lastError().text().toStdString().c_str());
 
-
-
-    auto querySettingsSessions = QSqlQuery();
-    querySettingsSessions.prepare("CREATE TABLE IF NOT EXISTS SettingsSessions ( "
-                            "id INTEGER, "
-                            "healthCheck BOOLEAN, "
-                            "healthCoaf REAL, "
-                            "healthOffset INTEGER, "
-                            "column0 BOOLEAN, "
-                            "column1 BOOLEAN, "
-                            "column2 BOOLEAN, "
-                            "column3 BOOLEAN, "
-                            "column4 BOOLEAN, "
-                            "column5 BOOLEAN, "
-                            "column6 BOOLEAN, "
-                            "column7 BOOLEAN, "
-                            "column8 BOOLEAN, "
-                            "column9 BOOLEAN, "
-                            "column10 BOOLEAN, "
-                            "column11 BOOLEAN, "
-                            "column12 BOOLEAN, "
-                            "column13 BOOLEAN, "
-                            "column14 BOOLEAN );"
+    auto queryAgentProfiles = QSqlQuery();
+    queryAgentProfiles.prepare("CREATE TABLE IF NOT EXISTS AgentProfiles ( "
+                            "project TEXT, "
+                            "name TEXT, "
+                            "data TEXT, "
+                            "PRIMARY KEY (project, name) );"
     );
-    if ( !querySettingsSessions.exec() )
-        LogError("Table SettingsSessions not created: %s\n", querySettingsSessions.lastError().text().toStdString().c_str());
-
-
-
-    auto querySettingsGraph = QSqlQuery();
-    querySettingsGraph.prepare("CREATE TABLE IF NOT EXISTS SettingsGraph ( "
-                            "id INTEGER, "
-                            "version TEXT );"
-    );
-    if ( !querySettingsGraph.exec() )
-        LogError("Table SettingsGraph not created: %s\n", querySettingsGraph.lastError().text().toStdString().c_str());
-
-
-
-    auto querySettingsTasks = QSqlQuery();
-    querySettingsTasks.prepare("CREATE TABLE IF NOT EXISTS SettingsTasks ( "
-                            "id INTEGER, "
-                            "column0 BOOLEAN, "
-                            "column1 BOOLEAN, "
-                            "column2 BOOLEAN, "
-                            "column3 BOOLEAN, "
-                            "column4 BOOLEAN, "
-                            "column5 BOOLEAN, "
-                            "column6 BOOLEAN, "
-                            "column7 BOOLEAN, "
-                            "column8 BOOLEAN, "
-                            "column9 BOOLEAN, "
-                            "column10 BOOLEAN );"
-    );
-    if ( !querySettingsTasks.exec() )
-        LogError("Table SettingsTasks not created: %s\n", querySettingsTasks.lastError().text().toStdString().c_str());
+    if ( !queryAgentProfiles.exec() )
+        LogError("Table AgentProfiles not created: %s\n", queryAgentProfiles.lastError().text().toStdString().c_str());
 }
 
 /// PROJECTS
@@ -153,72 +95,79 @@ QVector<AuthProfile> Storage::ListProjects()
 {
     auto list = QVector<AuthProfile>();
     QSqlQuery query;
+    query.prepare( "SELECT project, data FROM Projects;" );
+    if (query.exec()) {
+        while (query.next()) {
+            QString project = query.value("project").toString();
+            QString data    = query.value("data").toString();
 
-    query.prepare( "SELECT * FROM Projects;" );
-    if ( query.exec() ) {
-        while ( query.next() ) {
-            AuthProfile profile(query.value( "project" ).toString(),
-                                query.value( "username" ).toString(),
-                                query.value( "password" ).toString(),
-                                query.value( "host" ).toString(),
-                                query.value( "port" ).toString(),
-                                query.value( "endpoint" ).toString() );
+            QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+            QJsonObject   json = doc.object();
+
+            AuthProfile profile(project,
+                                json["username"].toString(),
+                                json["password"].toString(),
+                                json["host"].toString(),
+                                json["port"].toString(),
+                                json["endpoint"].toString(),
+                                json["projectDir"].toString());
             list.push_back(profile);
         }
     }
     else {
         LogError("Failed to query projects from database: %s\n", query.lastError().text().toStdString().c_str());
     }
-
     return list;
 }
 
 bool Storage::ExistsProject(const QString &project)
 {
     QSqlQuery query;
-
     query.prepare("SELECT 1 FROM Projects WHERE project = :Project LIMIT 1;");
     query.bindValue(":Project", project);
     if (!query.exec()) {
         LogError("Failed to query projects from database: %s\n", query.lastError().text().toStdString().c_str());
         return false;
     }
-
     return query.next();
 }
 
 void Storage::AddProject(AuthProfile profile)
 {
+    QJsonObject json;
+    json["host"]       = profile.GetHost();
+    json["port"]       = profile.GetPort();
+    json["endpoint"]   = profile.GetEndpoint();
+    json["username"]   = profile.GetUsername();
+    json["password"]   = profile.GetPassword();
+    json["projectDir"] = profile.GetProjectDir();
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
     QSqlQuery query;
-    query.prepare( "INSERT INTO Projects (project, host, port, endpoint, username, password) VALUES (:Project, :Host, :Port, :Endpoint, :Username, :Password);");
-
-    query.bindValue(":Project", profile.GetProject().toStdString().c_str());
-    query.bindValue(":Host", profile.GetHost().toStdString().c_str());
-    query.bindValue(":Port", profile.GetPort().toStdString().c_str());
-    query.bindValue(":Endpoint", profile.GetEndpoint().toStdString().c_str());
-    query.bindValue(":Username", profile.GetUsername().toStdString().c_str());
-    query.bindValue(":Password", profile.GetPassword().toStdString().c_str());
-
-    if ( !query.exec() ) {
+    query.prepare( "INSERT INTO Projects (project, data) VALUES (:Project, :Data);");
+    query.bindValue(":Project", profile.GetProject());
+    query.bindValue(":Data", data);
+    if (!query.exec())
         LogError("The project has not been added to the database: %s\n", query.lastError().text().toStdString().c_str());
-    }
 }
 
 void Storage::UpdateProject(AuthProfile profile)
 {
+    QJsonObject json;
+    json["host"]       = profile.GetHost();
+    json["port"]       = profile.GetPort();
+    json["endpoint"]   = profile.GetEndpoint();
+    json["username"]   = profile.GetUsername();
+    json["password"]   = profile.GetPassword();
+    json["projectDir"] = profile.GetProjectDir();
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
     QSqlQuery query;
-    query.prepare("UPDATE Projects SET host = :Host, port = :Port, endpoint = :Endpoint, username = :Username, password = :Password WHERE project = :Project;");
-
-    query.bindValue(":Project", profile.GetProject().toStdString().c_str());
-    query.bindValue(":Host", profile.GetHost().toStdString().c_str());
-    query.bindValue(":Port", profile.GetPort().toStdString().c_str());
-    query.bindValue(":Endpoint", profile.GetEndpoint().toStdString().c_str());
-    query.bindValue(":Username", profile.GetUsername().toStdString().c_str());
-    query.bindValue(":Password", profile.GetPassword().toStdString().c_str());
-
-    if ( !query.exec() ) {
+    query.prepare("UPDATE Projects SET data = :Data WHERE project = :Project;");
+    query.bindValue(":Project", profile.GetProject());
+    query.bindValue(":Data", data);
+    if (!query.exec())
         LogError("The project has not been updated in the database: %s\n", query.lastError().text().toStdString().c_str());
-    }
 }
 
 void Storage::RemoveProject(const QString &project)
@@ -226,9 +175,8 @@ void Storage::RemoveProject(const QString &project)
     QSqlQuery query;
     query.prepare("DELETE FROM Projects WHERE project = :Project");
     query.bindValue(":Project", project);
-    if (!query.exec()) {
+    if (!query.exec())
         LogError("Failed to delete project from database: %s\n", query.lastError().text().toStdString().c_str());
-    }
 }
 
 /// EXTENSIONS
@@ -237,8 +185,7 @@ QVector<ExtensionFile> Storage::ListExtensions()
 {
     auto list = QVector<ExtensionFile>();
     QSqlQuery query;
-
-    query.prepare( "SELECT * FROM Extensions;" );
+    query.prepare( "SELECT filepath, enabled FROM Extensions;" );
     if ( query.exec() ) {
         while ( query.next() ) {
             ExtensionFile ext = {};
@@ -250,7 +197,6 @@ QVector<ExtensionFile> Storage::ListExtensions()
     else {
         LogError("Failed to query extensions from database: %s\n", query.lastError().text().toStdString().c_str());
     }
-
     return list;
 }
 
@@ -263,7 +209,6 @@ bool Storage::ExistsExtension(const QString &path)
         LogError("Failed to query extension from database: %s\n", query.lastError().text().toStdString().c_str());
         return false;
     }
-
     return query.next();
 }
 
@@ -271,26 +216,20 @@ void Storage::AddExtension(const ExtensionFile &extFile)
 {
     QSqlQuery query;
     query.prepare( "INSERT INTO Extensions (filepath, enabled) VALUES (:Filepath, :Enabled);");
-
     query.bindValue(":Filepath", extFile.FilePath.toStdString().c_str());
     query.bindValue(":Enabled", extFile.Enabled);
-
-    if ( !query.exec() ) {
+    if (!query.exec())
         LogError("The extension has not been added to the database: %s\n", query.lastError().text().toStdString().c_str());
-    }
 }
 
 void Storage::UpdateExtension(const ExtensionFile &extFile)
 {
     QSqlQuery query;
     query.prepare( "UPDATE Extensions SET enabled = :Enabled WHERE filepath = :Filepath;");
-
     query.bindValue(":Filepath", extFile.FilePath.toStdString().c_str());
     query.bindValue(":Enabled", extFile.Enabled);
-
-    if ( !query.exec() ) {
+    if (!query.exec())
         LogError("Extension not updated in database: %s\n", query.lastError().text().toStdString().c_str());
-    }
 }
 
 void Storage::RemoveExtension(const QString &filepath)
@@ -298,355 +237,332 @@ void Storage::RemoveExtension(const QString &filepath)
     QSqlQuery query;
     query.prepare("DELETE FROM Extensions WHERE filepath = :Filepath");
     query.bindValue(":Filepath", filepath);
-    if (!query.exec()) {
+    if (!query.exec())
         LogError("Failed to delete extension from database: %s\n", query.lastError().text().toStdString().c_str());
-    }
 }
 
 /// SETTINGS
 
 void Storage::SelectSettingsMain(SettingsData* settingsData)
 {
-    QSqlQuery existsQuery;
-    existsQuery.prepare("SELECT 1 FROM SettingsMain WHERE Id = 1 LIMIT 1;");
-    if (!existsQuery.exec()) {
-        LogError("Failed to existsQuery main setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
-        return;
-    }
-    bool exists = existsQuery.next();
+    QSqlQuery query;
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsMain' LIMIT 1;" );
+    if ( query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
 
-    if(exists) {
-        QSqlQuery selectQuery;
-        selectQuery.prepare("SELECT * FROM SettingsMain WHERE Id = 1;" );
-        if ( selectQuery.exec() && selectQuery.next()) {
-            settingsData->MainTheme   = selectQuery.value("theme").toString();
-            settingsData->FontFamily  = selectQuery.value("fontFamily").toString();
-            settingsData->FontSize    = selectQuery.value("fontSize").toInt();
-            settingsData->ConsoleTime = selectQuery.value("consoleTime").toBool();
-        }
-        else {
-            LogError("Failed to selectQuery main settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
-        }
+        settingsData->MainTheme   = json["theme"].toString();
+        settingsData->FontFamily  = json["fontFamily"].toString();
+        settingsData->FontSize    = json["fontSize"].toInt();
+        settingsData->ConsoleTime = json["consoleTime"].toBool();
     }
 }
 
 void Storage::UpdateSettingsMain(const SettingsData &settingsData)
 {
-    QSqlQuery existsQuery;
-    existsQuery.prepare("SELECT 1 FROM SettingsMain WHERE Id = 1 LIMIT 1;");
-    if (!existsQuery.exec()) {
-        LogError("Failed to existsQuery main setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
-        return;
-    }
-    bool exists = existsQuery.next();
+    QJsonObject json;
+    json["theme"]       = settingsData.MainTheme;
+    json["fontFamily"]  = settingsData.FontFamily;
+    json["fontSize"]    = settingsData.FontSize;
+    json["consoleTime"] = settingsData.ConsoleTime;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    if(exists) {
-        QSqlQuery updateQuery;
-        updateQuery.prepare("UPDATE SettingsMain SET "
-                            "theme = :Theme, "
-                            "fontFamily = :FontFamily, "
-                            "fontSize = :FontSize, "
-                            "consoleTime = :ConsoleTime "
-                            "WHERE Id = 1;");
-
-        updateQuery.bindValue(":Theme", settingsData.MainTheme.toStdString().c_str());
-        updateQuery.bindValue(":FontFamily", settingsData.FontFamily.toStdString().c_str());
-        updateQuery.bindValue(":FontSize", settingsData.FontSize);
-        updateQuery.bindValue(":ConsoleTime", settingsData.ConsoleTime);
-
-        if ( !updateQuery.exec() ) {
-            LogError("SettingsMain not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
-        }
-    }
-    else {
-        QSqlQuery insertQuery;
-        insertQuery.prepare("INSERT INTO SettingsMain (id, theme, fontFamily, fontSize, consoleTime) VALUES (:Id, :Theme, :FontFamily, :FontSize, :ConsoleTime);");
-
-        insertQuery.bindValue(":Id", 1);
-        insertQuery.bindValue(":Theme", settingsData.MainTheme.toStdString().c_str());
-        insertQuery.bindValue(":FontFamily", settingsData.FontFamily.toStdString().c_str());
-        insertQuery.bindValue(":FontSize", settingsData.FontSize);
-        insertQuery.bindValue(":ConsoleTime", settingsData.ConsoleTime);
-
-        if ( !insertQuery.exec() ) {
-            LogError("The main settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
-        }
-    }
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsMain', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsMain not updated in database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
 void Storage::SelectSettingsConsole(SettingsData* settingsData)
 {
-    QSqlQuery existsQuery;
-    existsQuery.prepare("SELECT 1 FROM SettingsConsole WHERE Id = 1 LIMIT 1;");
-    if (!existsQuery.exec()) {
-        LogError("Failed to existsQuery console setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
-        return;
-    }
-    bool exists = existsQuery.next();
+    QSqlQuery query;
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsConsole' LIMIT 1;" );
+    if ( query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
 
-    if(exists) {
-        QSqlQuery selectQuery;
-        selectQuery.prepare("SELECT * FROM SettingsConsole WHERE Id = 1;" );
-        if ( selectQuery.exec() && selectQuery.next()) {
-            settingsData->RemoteTerminalBufferSize = selectQuery.value("terminalBuffer").toInt();
-            settingsData->ConsoleBufferSize  = selectQuery.value("consoleBuffer").toInt();
-            settingsData->ConsoleNoWrap      = selectQuery.value("noWrap").toBool();
-            settingsData->ConsoleAutoScroll  = selectQuery.value("autoScroll").toBool();
-        }
-        else {
-            LogError("Failed to selectQuery console settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
-        }
+        settingsData->RemoteTerminalBufferSize = json["terminalBuffer"].toInt();
+        settingsData->ConsoleBufferSize        = json["consoleBuffer"].toInt();
+        settingsData->ConsoleNoWrap            = json["noWrap"].toBool();
+        settingsData->ConsoleAutoScroll        = json["autoScroll"].toBool();
     }
 }
 
 void Storage::UpdateSettingsConsole(const SettingsData &settingsData)
 {
-    QSqlQuery existsQuery;
-    existsQuery.prepare("SELECT 1 FROM SettingsConsole WHERE Id = 1 LIMIT 1;");
-    if (!existsQuery.exec()) {
-        LogError("Failed to existsQuery console setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
-        return;
-    }
-    bool exists = existsQuery.next();
+    QJsonObject json;
+    json["terminalBuffer"] = settingsData.RemoteTerminalBufferSize;
+    json["consoleBuffer"]  = settingsData.ConsoleBufferSize;
+    json["noWrap"]         = settingsData.ConsoleNoWrap;
+    json["autoScroll"]     = settingsData.ConsoleAutoScroll;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    if(exists) {
-        QSqlQuery updateQuery;
-        updateQuery.prepare("UPDATE SettingsConsole SET "
-                            "terminalBuffer = :TerminalBuffer, "
-                            "consoleBuffer = :ConsoleBuffer, "
-                            "noWrap = :NoWrap, "
-                            "autoScroll = :AutoScroll "
-                            "WHERE Id = 1;");
-
-        updateQuery.bindValue(":TerminalBuffer", settingsData.RemoteTerminalBufferSize);
-        updateQuery.bindValue(":ConsoleBuffer", settingsData.ConsoleBufferSize);
-        updateQuery.bindValue(":NoWrap", settingsData.ConsoleNoWrap);
-        updateQuery.bindValue(":AutoScroll", settingsData.ConsoleAutoScroll);
-
-        if ( !updateQuery.exec() )
-            LogError("SettingsConsole not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
-    }
-    else {
-        QSqlQuery insertQuery;
-        insertQuery.prepare("INSERT INTO SettingsConsole (id, terminalBuffer, consoleBuffer, noWrap, autoScroll) VALUES (:Id, :TerminalBuffer, :ConsoleBuffer, :NoWrap, :AutoScroll);");
-
-        insertQuery.bindValue(":Id", 1);
-        insertQuery.bindValue(":TerminalBuffer", settingsData.RemoteTerminalBufferSize);
-        insertQuery.bindValue(":ConsoleBuffer", settingsData.ConsoleBufferSize);
-        insertQuery.bindValue(":NoWrap", settingsData.ConsoleNoWrap);
-        insertQuery.bindValue(":AutoScroll", settingsData.ConsoleAutoScroll);
-
-        if ( !insertQuery.exec() )
-            LogError("The console settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
-    }
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsConsole', :Data);");
+    query.bindValue(":Data", data);
+    if ( !query.exec() )
+        LogError("SettingsConsole not updated in database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
 void Storage::SelectSettingsSessions(SettingsData* settingsData)
 {
-    QSqlQuery existsQuery;
-    existsQuery.prepare("SELECT 1 FROM SettingsSessions WHERE Id = 1 LIMIT 1;");
-    if (!existsQuery.exec()) {
-        LogError("Failed to existsQuery sessions setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
-        return;
-    }
-    bool exists = existsQuery.next();
+    QSqlQuery query;
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsSessions' LIMIT 1;" );
+    if ( query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
 
-    if(exists) {
-        QSqlQuery selectQuery;
-        selectQuery.prepare("SELECT * FROM SettingsSessions WHERE Id = 1;" );
-        if ( selectQuery.exec() && selectQuery.next()) {
+        settingsData->CheckHealth  = json["healthCheck"].toBool();
+        settingsData->HealthCoaf   = json["healthCoaf"].toDouble();
+        settingsData->HealthOffset = json["healthOffset"].toInt();
 
-            settingsData->CheckHealth = selectQuery.value("healthCheck").toBool();
-            settingsData->HealthCoaf = selectQuery.value("healthCoaf").toDouble();
-            settingsData->HealthOffset = selectQuery.value("healthOffset").toInt();
-
-            for (int i = 0; i < 15; i++) {
-                QString columnName = "column" + QString::number(i);
-                settingsData->SessionsTableColumns[i] = selectQuery.value(columnName).toBool();
-            }
-        }
-        else
-            LogError("Failed to selectQuery sessions settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
+        QJsonArray columns = json["columns"].toArray();
+        for (int i = 0; i < 16 && i < columns.size(); i++)
+            settingsData->SessionsTableColumns[i] = columns[i].toBool();
     }
 }
 
 void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
 {
-    QSqlQuery existsQuery;
-    existsQuery.prepare("SELECT 1 FROM SettingsSessions WHERE Id = 1 LIMIT 1;");
-    if (!existsQuery.exec()) {
-        LogError("Failed to existsQuery sessions setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
-        return;
-    }
-    bool exists = existsQuery.next();
+    QJsonArray columns;
+    for (int i = 0 ; i < 16; i++)
+        columns.append(settingsData.SessionsTableColumns[i]);
 
-    if(exists) {
-        QString strQuery = "UPDATE SettingsSessions SET healthCheck = :HealthCheck, healthCoaf = :HealthCoaf, healthOffset = :HealthOffset, column0 = :Column0";
-        for (int i = 1 ; i < 15; i++)
-            strQuery += QString(", column%1 = :Column%2").arg(i).arg(i);
-        strQuery += " WHERE Id = 1;";
+    QJsonObject json;
+    json["healthCheck"]  = settingsData.CheckHealth;
+    json["healthCoaf"]   = settingsData.HealthCoaf;
+    json["healthOffset"] = settingsData.HealthOffset;
+    json["columns"]      = columns;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-        QSqlQuery updateQuery;
-        updateQuery.prepare(strQuery);
-        updateQuery.bindValue(":HealthCheck", settingsData.CheckHealth);
-        updateQuery.bindValue(":HealthCoaf", settingsData.HealthCoaf);
-        updateQuery.bindValue(":HealthOffset", settingsData.HealthOffset);
-        for (int i = 0 ; i < 15; i++) {
-            QString column = ":Column" + QString::number(i);
-            updateQuery.bindValue(column, settingsData.SessionsTableColumns[i]);
-        }
-        if ( !updateQuery.exec() )
-            LogError("SettingsSessions not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
-    }
-    else {
-        QString strQuery = "INSERT INTO SettingsSessions (id, healthCheck, healthCoaf, healthOffset, column0";
-        for (int i = 1 ; i < 15; i++)
-            strQuery += QString(", column%1").arg(i);
-        strQuery += ") VALUES (:Id, :HealthCheck, :HealthCoaf, :HealthOffset, :Column0";
-        for (int i = 1 ; i < 15; i++)
-            strQuery += QString(", :Column%1").arg(i);
-        strQuery += ");";
-
-        QSqlQuery insertQuery;
-        insertQuery.prepare(strQuery);
-        insertQuery.bindValue(":Id", 1);
-        insertQuery.bindValue(":HealthCheck", settingsData.CheckHealth);
-        insertQuery.bindValue(":HealthCoaf", settingsData.HealthCoaf);
-        insertQuery.bindValue(":HealthOffset", settingsData.HealthOffset);
-        for (int i = 0 ; i < 15; i++) {
-            QString column = ":Column" + QString::number(i);
-            insertQuery.bindValue(column, settingsData.SessionsTableColumns[i]);
-        }
-
-        if ( !insertQuery.exec() )
-            LogError("The sessions settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
-    }
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsSessions', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsSessions not updated in database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
 void Storage::SelectSettingsGraph(SettingsData* settingsData)
 {
-    QSqlQuery existsQuery;
-    existsQuery.prepare("SELECT 1 FROM SettingsGraph WHERE Id = 1 LIMIT 1;");
-    if (!existsQuery.exec()) {
-        LogError("Failed to existsQuery graph setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
-        return;
-    }
-    bool exists = existsQuery.next();
+    QSqlQuery query;
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsGraph' LIMIT 1;" );
+    if ( query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject  json  = doc.object();
 
-    if(exists) {
-        QSqlQuery selectQuery;
-        selectQuery.prepare("SELECT * FROM SettingsGraph WHERE Id = 1;" );
-        if ( selectQuery.exec() && selectQuery.next())
-            settingsData->GraphVersion = selectQuery.value("version").toString();
-        else
-            LogError("Failed to selectQuery graph settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
+        settingsData->GraphVersion = json["version"].toString();
     }
 }
 
 void Storage::UpdateSettingsGraph(const SettingsData &settingsData)
 {
-    QSqlQuery existsQuery;
-    existsQuery.prepare("SELECT 1 FROM SettingsGraph WHERE Id = 1 LIMIT 1;");
-    if (!existsQuery.exec()) {
-        LogError("Failed to existsQuery graph setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
-        return;
-    }
-    bool exists = existsQuery.next();
+    QJsonObject json;
+    json["version"] = settingsData.GraphVersion;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    if(exists) {
-        QSqlQuery updateQuery;
-        updateQuery.prepare("UPDATE SettingsGraph SET version = :Version;");
-
-        updateQuery.bindValue(":Version", settingsData.GraphVersion.toStdString().c_str());
-
-        if ( !updateQuery.exec() ) {
-            LogError("SettingsGraph not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
-        }
-    }
-    else {
-        QSqlQuery insertQuery;
-        insertQuery.prepare("INSERT INTO SettingsGraph (id, version) VALUES (:Id, :Version);");
-
-        insertQuery.bindValue(":Id", 1);
-        insertQuery.bindValue(":Version", settingsData.GraphVersion.toStdString().c_str());
-
-        if ( !insertQuery.exec() ) {
-            LogError("The graph settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
-        }
-    }
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsGraph', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsGraph not updated in database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
 void Storage::SelectSettingsTasks(SettingsData* settingsData)
 {
-    QSqlQuery existsQuery;
-    existsQuery.prepare("SELECT 1 FROM SettingsTasks WHERE Id = 1 LIMIT 1;");
-    if (!existsQuery.exec()) {
-        LogError("Failed to existsQuery sessions setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
-        return;
-    }
-    bool exists = existsQuery.next();
+    QSqlQuery query;
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsTasks' LIMIT 1;" );
+    if ( query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
 
-    if(exists) {
-        QSqlQuery selectQuery;
-        selectQuery.prepare("SELECT * FROM SettingsTasks WHERE Id = 1;" );
-        if ( selectQuery.exec() && selectQuery.next()) {
-
-            for (int i = 0; i < 11; i++) {
-                QString columnName = "column" + QString::number(i);
-                settingsData->TasksTableColumns[i] = selectQuery.value(columnName).toBool();
-            }
-        }
-        else {
-            LogError("Failed to selectQuery sessions settings from database: %s\n", selectQuery.lastError().text().toStdString().c_str());
-        }
+        QJsonArray columns = json["columns"].toArray();
+        for (int i = 0; i < 11 && i < columns.size(); i++)
+            settingsData->TasksTableColumns[i] = columns[i].toBool();
     }
 }
 
 void Storage::UpdateSettingsTasks(const SettingsData &settingsData)
 {
-    QSqlQuery existsQuery;
-    existsQuery.prepare("SELECT 1 FROM SettingsTasks WHERE Id = 1 LIMIT 1;");
-    if (!existsQuery.exec()) {
-        LogError("Failed to existsQuery sessions setting from database: %s\n", existsQuery.lastError().text().toStdString().c_str());
-        return;
+    QJsonArray columns;
+    for (int i = 0 ; i < 11; i++)
+        columns.append(settingsData.TasksTableColumns[i]);
+
+    QJsonObject json;
+    json["columns"] = columns;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsTasks', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsTasks not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::SelectSettingsTabBlink(SettingsData* settingsData)
+{
+    QSqlQuery query;
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsTablBlink' LIMIT 1;");
+    if (query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
+
+        settingsData->TabBlinkEnabled = json["TabBlinkEnabled"].toBool();
+
+        QJsonObject widgets = json["BlinkWidgets"].toObject();
+        for (auto it = widgets.begin(); it != widgets.end(); ++it)
+            settingsData->BlinkWidgets[it.key()] = it.value().toBool();
     }
-    bool exists = existsQuery.next();
+}
 
-    if(exists) {
-        QString strQuery = "UPDATE SettingsTasks SET column0 = :Column0";
-        for (int i = 1 ; i < 11; i++)
-            strQuery += QString(", column%1 = :Column%2").arg(i).arg(i);
-        strQuery += " WHERE Id = 1;";
+void Storage::UpdateSettingsTabBlink(const SettingsData &settingsData)
+{
+    QJsonObject widgets;
+    for (auto it = settingsData.BlinkWidgets.begin(); it != settingsData.BlinkWidgets.end(); ++it)
+        widgets[it.key()] = it.value();
 
-        QSqlQuery updateQuery;
-        updateQuery.prepare(strQuery);
-        for (int i = 0 ; i < 11; i++) {
-            QString column = ":Column" + QString::number(i);
-            updateQuery.bindValue(column, settingsData.TasksTableColumns[i]);
-        }
-        if ( !updateQuery.exec() ) {
-            LogError("SettingsTasks not updated in database: %s\n", updateQuery.lastError().text().toStdString().c_str());
+    QJsonObject json;
+    json["TabBlinkEnabled"] = settingsData.TabBlinkEnabled;
+    json["BlinkWidgets"] = widgets;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsTablBlink', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsTablBlink not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+
+
+/// LISTENER PROFILES
+
+QVector<QPair<QString, QString>> Storage::ListListenerProfiles(const QString &project)
+{
+    auto list = QVector<QPair<QString, QString>>();
+    QSqlQuery query;
+    query.prepare("SELECT name, data FROM ListenerProfiles WHERE project = :Project;");
+    query.bindValue(":Project", project);
+    if (query.exec()) {
+        while (query.next()) {
+            QString name = query.value("name").toString();
+            QString data = query.value("data").toString();
+            list.push_back(QPair<QString, QString>(name, data));
         }
     }
     else {
-        QString strQuery = "INSERT INTO SettingsTasks (id, column0";
-        for (int i = 1 ; i < 11; i++)
-            strQuery += QString(", column%1").arg(i);
-        strQuery += ") VALUES (:Id, :Column0";
-        for (int i = 1 ; i < 11; i++)
-            strQuery += QString(", :Column%1").arg(i);
-        strQuery += ");";
+        LogError("Failed to query listener profiles from database: %s\n", query.lastError().text().toStdString().c_str());
+    }
+    return list;
+}
 
-        QSqlQuery insertQuery;
-        insertQuery.prepare(strQuery);
-        insertQuery.bindValue(":Id", 1);
-        for (int i = 0 ; i < 11; i++) {
-            QString column = ":Column" + QString::number(i);
-            insertQuery.bindValue(column, settingsData.TasksTableColumns[i]);
-        }
+void Storage::AddListenerProfile(const QString &project, const QString &name, const QString &data)
+{
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO ListenerProfiles (project, name, data) VALUES (:Project, :Name, :Data);");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("The listener profile has not been added to the database: %s\n", query.lastError().text().toStdString().c_str());
+}
 
-        if ( !insertQuery.exec() ) {
-            LogError("The sessions settings has not been added to the database: %s\n", insertQuery.lastError().text().toStdString().c_str());
+void Storage::RemoveListenerProfile(const QString &project, const QString &name)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM ListenerProfiles WHERE project = :Project AND name = :Name;");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    if (!query.exec())
+        LogError("The listener profile has not been removed from the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::RemoveAllListenerProfiles(const QString &project)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM ListenerProfiles WHERE project = :Project;");
+    query.bindValue(":Project", project);
+    if (!query.exec())
+        LogError("Listener profiles have not been removed from the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+QString Storage::GetListenerProfile(const QString &project, const QString &name)
+{
+    QSqlQuery query;
+    query.prepare("SELECT data FROM ListenerProfiles WHERE project = :Project AND name = :Name LIMIT 1;");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    if (query.exec() && query.next()) {
+        return query.value("data").toString();
+    }
+    return QString();
+}
+
+/// AGENT PROFILES
+
+QVector<QPair<QString, QString>> Storage::ListAgentProfiles(const QString &project)
+{
+    auto list = QVector<QPair<QString, QString>>();
+    QSqlQuery query;
+    query.prepare("SELECT name, data FROM AgentProfiles WHERE project = :Project;");
+    query.bindValue(":Project", project);
+    if (query.exec()) {
+        while (query.next()) {
+            QString name = query.value("name").toString();
+            QString data = query.value("data").toString();
+            list.push_back(QPair<QString, QString>(name, data));
         }
     }
+    else {
+        LogError("Failed to query agent profiles from database: %s\n", query.lastError().text().toStdString().c_str());
+    }
+    return list;
+}
+
+void Storage::AddAgentProfile(const QString &project, const QString &name, const QString &data)
+{
+    QSqlQuery query;
+    query.prepare("INSERT OR REPLACE INTO AgentProfiles (project, name, data) VALUES (:Project, :Name, :Data);");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("The agent profile has not been added to the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::RemoveAgentProfile(const QString &project, const QString &name)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM AgentProfiles WHERE project = :Project AND name = :Name;");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    if (!query.exec())
+        LogError("The agent profile has not been removed from the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::RemoveAllAgentProfiles(const QString &project)
+{
+    QSqlQuery query;
+    query.prepare("DELETE FROM AgentProfiles WHERE project = :Project;");
+    query.bindValue(":Project", project);
+    if (!query.exec())
+        LogError("Agent profiles have not been removed from the database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+QString Storage::GetAgentProfile(const QString &project, const QString &name)
+{
+    QSqlQuery query;
+    query.prepare("SELECT data FROM AgentProfiles WHERE project = :Project AND name = :Name LIMIT 1;");
+    query.bindValue(":Project", project);
+    query.bindValue(":Name", name);
+    if (query.exec() && query.next()) {
+        return query.value("data").toString();
+    }
+    return QString();
 }

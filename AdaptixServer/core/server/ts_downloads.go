@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -34,14 +33,18 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 		State:      DOWNLOAD_STATE_RUNNING,
 	}
 
-	value, ok := ts.agents.Get(agentId)
-	if ok {
-		downloadData.User = value.(*Agent).Data.Username
-		downloadData.Computer = value.(*Agent).Data.Computer
-		downloadData.AgentName = value.(*Agent).Data.Name
-	} else {
+	value, ok := ts.Agents.Get(agentId)
+	if !ok {
 		return errors.New("Agent not found: " + agentId)
 	}
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("Invalid agent type: " + agentId)
+	}
+	agentData := agent.GetData()
+	downloadData.User = agentData.Username
+	downloadData.Computer = agentData.Computer
+	downloadData.AgentName = agentData.Name
 
 	dirPath := logs.RepoLogsInstance.DownloadPath
 	baseName := filepath.Base(filepath.Clean(strings.ReplaceAll(fileName, `\`, `/`)))
@@ -147,14 +150,18 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 		State:      DOWNLOAD_STATE_FINISHED,
 	}
 
-	value, ok := ts.agents.Get(agentId)
-	if ok {
-		downloadData.User = value.(*Agent).Data.Username
-		downloadData.Computer = value.(*Agent).Data.Computer
-		downloadData.AgentName = value.(*Agent).Data.Name
-	} else {
+	value, ok := ts.Agents.Get(agentId)
+	if !ok {
 		return errors.New("Agent not found: " + agentId)
 	}
+	agent, ok := value.(*Agent)
+	if !ok {
+		return errors.New("Invalid agent type: " + agentId)
+	}
+	agentData := agent.GetData()
+	downloadData.User = agentData.Username
+	downloadData.Computer = agentData.Computer
+	downloadData.AgentName = agentData.Name
 
 	dirPath := logs.RepoLogsInstance.DownloadPath
 	baseName := filepath.Base(filepath.Clean(strings.ReplaceAll(filename, `\`, `/`)))
@@ -174,7 +181,11 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 		return errors.New("Failed to create file: " + err.Error())
 	}
 	_, err = downloadData.File.Write(content)
-	err = downloadData.File.Close()
+	if err != nil {
+		_ = downloadData.File.Close()
+		return errors.New("Failed to write file: " + err.Error())
+	}
+	_ = downloadData.File.Close()
 
 	ts.downloads.Put(downloadData.FileId, downloadData)
 
@@ -238,31 +249,37 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 	return filename, content, err
 }
 
-func (ts *Teamserver) TsDownloadDelete(fileId string) error {
-	value, ok := ts.downloads.Get(fileId)
-	if !ok {
-		return errors.New("File not found: " + fileId)
+func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
+
+	var deleteFiles []string
+
+	for _, id := range fileId {
+
+		value, ok := ts.downloads.Get(id)
+		if !ok {
+			continue
+		}
+		downloadData := value.(adaptix.DownloadData)
+
+		if downloadData.State != DOWNLOAD_STATE_FINISHED && downloadData.State != DOWNLOAD_STATE_CANCELED {
+			continue
+		}
+
+		if downloadData.State == DOWNLOAD_STATE_CANCELED {
+			_ = downloadData.File.Close()
+		}
+		_ = os.Remove(downloadData.LocalPath)
+
+		deleteFiles = append(deleteFiles, id)
+
+		if downloadData.State == DOWNLOAD_STATE_FINISHED {
+			_ = ts.DBMS.DbDownloadDelete(id)
+		}
+		ts.downloads.Delete(id)
 	}
-	downloadData := value.(adaptix.DownloadData)
 
-	if downloadData.State != DOWNLOAD_STATE_FINISHED && downloadData.State != DOWNLOAD_STATE_CANCELED {
-		return errors.New("download not finished")
-	}
-
-	if downloadData.State == DOWNLOAD_STATE_CANCELED {
-		_ = downloadData.File.Close()
-	}
-
-	_ = os.Remove(downloadData.LocalPath)
-
-	if downloadData.State == DOWNLOAD_STATE_FINISHED {
-		_ = ts.DBMS.DbDownloadDelete(fileId)
-	}
-
-	packet := CreateSpDownloadDelete(downloadData.FileId)
+	packet := CreateSpDownloadDelete(fileId)
 	ts.TsSyncAllClients(packet)
-
-	ts.downloads.Delete(fileId)
 
 	return nil
 }
@@ -304,7 +321,7 @@ func (ts *Teamserver) TsUploadGetFileContent(fileId string) ([]byte, error) {
 
 	path := logs.RepoLogsInstance.UploadPath + "/" + filename
 
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errors.New("Failed to read file: " + fileId)
 	}

@@ -15,6 +15,8 @@
 #include "core/Controller.h"
 #include "core/Stack.h"
 #include "core/TitleBar.h"
+#include "core/Group.h"
+#include "core/Group_p.h"
 #include "core/Window_p.h"
 #include "core/DockRegistry_p.h"
 #include "core/Stack_p.h"
@@ -24,10 +26,14 @@
 #include "qtwidgets/ViewFactory.h"
 
 #include <QMouseEvent>
+#include <QResizeEvent>
 #include <QTabBar>
 #include <QHBoxLayout>
 #include <QAbstractButton>
 #include <QMenu>
+#include <QSizePolicy>
+#include <QTimer>
+#include <QInputDialog>
 
 #include "kdbindings/signal.h"
 
@@ -39,12 +45,15 @@ class Stack::Private
 {
 public:
     KDBindings::ScopedConnection tabBarAutoHideChanged;
-    KDBindings::ScopedConnection screenChangedConnection;
     KDBindings::ScopedConnection buttonsToHideIfDisabledConnection;
+    KDBindings::ScopedConnection titleBarVisibilityConnection;
 
-    QHBoxLayout *cornerWidgetLayout = nullptr;
+    QWidget *buttonsWidget = nullptr;
+    QHBoxLayout *buttonsLayout = nullptr;
     QAbstractButton *floatButton = nullptr;
     QAbstractButton *closeButton = nullptr;
+
+    bool updatingButtons = false;
 };
 }
 
@@ -125,19 +134,28 @@ void Stack::setupTabBarButtons()
     if (!(Config::self().flags() & Config::Flag_ShowButtonsOnTabBarIfTitleBarHidden))
         return;
 
+    if (d->buttonsWidget != nullptr)
+        return;
+
     auto factory = static_cast<ViewFactory *>(Config::self().viewFactory());
     d->closeButton = factory->createTitleBarButton(this, TitleBarButtonType::Close);
     d->floatButton = factory->createTitleBarButton(this, TitleBarButtonType::Float);
 
-    auto cornerWidget = new QWidget(this);
-    cornerWidget->setObjectName(QStringLiteral("Corner Widget"));
+    d->buttonsWidget = new QWidget(this);
+    d->buttonsWidget->setObjectName(QStringLiteral("TabBar Buttons"));
 
-    setCornerWidget(cornerWidget, Qt::TopRightCorner);
+    d->buttonsLayout = new QHBoxLayout(d->buttonsWidget);
+    d->buttonsLayout->setContentsMargins(0, 0, 4, 0);
+    d->buttonsLayout->setSpacing(2);
+    d->buttonsLayout->setAlignment(Qt::AlignVCenter);
 
-    d->cornerWidgetLayout = new QHBoxLayout(cornerWidget);
+    d->floatButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    d->closeButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
-    d->cornerWidgetLayout->addWidget(d->floatButton);
-    d->cornerWidgetLayout->addWidget(d->closeButton);
+    d->buttonsLayout->addWidget(d->floatButton, 0, Qt::AlignVCenter);
+    d->buttonsLayout->addWidget(d->closeButton, 0, Qt::AlignVCenter);
+
+    setCornerWidget(d->buttonsWidget, Qt::TopRightCorner);
 
     connect(d->floatButton, &QAbstractButton::clicked, this, [this] {
         Core::TitleBar *tb = m_stack->group()->titleBar();
@@ -149,37 +167,74 @@ void Stack::setupTabBarButtons()
         tb->onCloseClicked();
     });
 
-    updateMargins();
-    d->screenChangedConnection = DockRegistry::self()->dptr()->windowChangedScreen.connect([this](Core::Window::Ptr w) {
-        if (View::d->isInWindow(w))
-            updateMargins();
-    });
-
     d->buttonsToHideIfDisabledConnection = m_stack->d->buttonsToHideIfDisabledChanged.connect([this] {
         updateTabBarButtons();
     });
 
-    if (auto tb = qobject_cast<QtWidgets::TabBar *>(tabBar()))
+    auto tb = qobject_cast<QtWidgets::TabBar *>(tabBar());
+    if (tb) {
         connect(tb, &QtWidgets::TabBar::countChanged, this, &Stack::updateTabBarButtons);
+    }
+
+    if (auto group = m_stack->group()) {
+        d->titleBarVisibilityConnection = group->dptr()->actualTitleBarChanged.connect([this] {
+            QTimer::singleShot(0, this, &Stack::updateTabBarButtons);
+        });
+    }
 
     updateTabBarButtons();
+
+    QTimer::singleShot(0, this, [this] {
+        updateTabBarButtons();
+        updateButtonsPosition();
+    });
 }
 
 void Stack::updateTabBarButtons()
 {
+    if (!d->buttonsWidget)
+        return;
+
+    if (d->updatingButtons)
+        return;
+    d->updatingButtons = true;
+
+    auto group = m_stack->group();
+    if (!group) {
+        d->updatingButtons = false;
+        return;
+    }
+
+    const bool hideTitleBarFlag = Config::self().flags() & Config::Flag_HideTitleBarWhenTabsVisible;
+    const bool titleBarShouldBeHidden = hideTitleBarFlag && group->hasTabsVisible();
+
+    d->buttonsWidget->setVisible(titleBarShouldBeHidden);
+
     if (d->closeButton) {
-        const bool enabled = !m_stack->group()->anyNonClosable();
+        const bool enabled = !group->anyNonClosable();
         const bool visible = enabled || !m_stack->buttonHidesIfDisabled(TitleBarButtonType::Close);
         d->closeButton->setEnabled(enabled);
         d->closeButton->setVisible(visible);
     }
+
+    d->updatingButtons = false;
 }
 
 void Stack::updateMargins()
 {
-    const qreal factor = logicalDpiFactor(this);
-    d->cornerWidgetLayout->setContentsMargins(QMargins(0, 0, 2, 0) * factor);
-    d->cornerWidgetLayout->setSpacing(int(2 * factor));
+    // Deprecated - used updateButtonsPosition()
+}
+
+void Stack::updateButtonsPosition()
+{
+    // Buttons size is now fixed via sizeHint() and SizePolicy::Fixed
+    // No need to adjust height dynamically
+}
+
+void Stack::resizeEvent(QResizeEvent *event)
+{
+    QTabWidget::resizeEvent(event);
+    updateButtonsPosition();
 }
 
 void Stack::showContextMenu(QPoint pos)
@@ -192,13 +247,79 @@ void Stack::showContextMenu(QPoint pos)
     if (tabBar->count() <= 1)
         return;
 
-    // Click on a tab => No menu
-    if (tabBar->tabAt(pos) >= 0)
+    // Convert pos to tabBar coordinates for tabAt() check
+    QPoint tabBarPos = tabBar->mapFrom(this, pos);
+    int clickedTabIndex = tabBar->tabAt(tabBarPos);
+
+    if (clickedTabIndex >= 0) {
+        auto* coreDw = m_stack->tabBar()->dockWidgetAt(clickedTabIndex);
+        if (!coreDw)
+            return;
+
+        QWidget* guestWidget = nullptr;
+        if (auto guestView = coreDw->guestView())
+            guestWidget = View_qt::asQWidget(guestView.get());
+
+        QString uniqueName = QString::fromStdString(coreDw->uniqueName().toStdString());
+        bool isRenameable = uniqueName.startsWith("Console [") ||
+                            uniqueName.startsWith("Terminal [") ||
+                            uniqueName.startsWith("Files [") ||
+                            uniqueName.startsWith("Processes [");
+        if (!isRenameable)
+            return;
+
+        bool hasCustomName = false;
+        if (guestWidget) {
+            const QVariant v = guestWidget->property("adaptix.customTabTitle");
+            hasCustomName = v.isValid() && v.canConvert<QString>() && !v.toString().isEmpty();
+        }
+
+        QMenu menu(this);
+
+        menu.addAction("Rename", this, [this, clickedTabIndex, coreDw, guestWidget]() {
+            bool ok;
+            QString currentTitle = tabText(clickedTabIndex);
+            QString newTitle = QInputDialog::getText(this, "Rename Tab", "Enter new name:", QLineEdit::Normal, currentTitle, &ok);
+
+            if (ok && !newTitle.isEmpty() && newTitle != currentTitle) {
+                setTabText(clickedTabIndex, newTitle);
+                coreDw->setTitle(newTitle);
+
+                if (guestWidget)
+                    guestWidget->setProperty("adaptix.customTabTitle", newTitle);
+            }
+        });
+
+        if (hasCustomName) {
+            menu.addAction("Reset Name", this, [this, clickedTabIndex, coreDw, guestWidget]() {
+                QString uniqueName = QString::fromStdString(coreDw->uniqueName().toStdString());
+                QString originalName = uniqueName.split(":Dock-").first();
+
+                setTabText(clickedTabIndex, originalName);
+                coreDw->setTitle(originalName);
+
+                if (guestWidget)
+                    guestWidget->setProperty("adaptix.customTabTitle", QVariant());
+            });
+        }
+
+        menu.exec(mapToGlobal(pos));
+        return;
+    }
+
+    if (!(Config::self().flags() & Config::Flag_AllowSwitchingTabsViaMenu))
+        return;
+
+    // We don't want context menu if there is only one tab
+    if (tabBar->count() <= 1)
         return;
 
     // Right click is allowed only on the tabs area
-    QRect tabAreaRect = tabBar->rect();
-    tabAreaRect.setWidth(this->width());
+    QRect tabAreaRect = QRect(tabBar->mapTo(this, QPoint(0, 0)), tabBar->size());
+    if (tabPosition() == QTabWidget::North || tabPosition() == QTabWidget::South) {
+        tabAreaRect.setLeft(0);
+        tabAreaRect.setRight(width());
+    }
     if (!tabAreaRect.contains(pos))
         return;
 
