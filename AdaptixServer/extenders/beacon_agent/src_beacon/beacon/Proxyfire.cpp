@@ -86,7 +86,7 @@ void Proxyfire::ConnectMessageTCP(ULONG channelId, ULONG type, CHAR* address, WO
 		if (sock != -1) {
 			hostent* host = ApiWin->gethostbyname(address);
 			if (host) {
-				sockaddr_in socketAddress;
+				sockaddr_in socketAddress = { 0 };
 				memcpy(&socketAddress.sin_addr, *(const void**)host->h_addr_list, host->h_length); 				//memmove
 				socketAddress.sin_family = AF_INET;
 				socketAddress.sin_port = _htons(port);
@@ -127,6 +127,7 @@ void Proxyfire::ConnectMessageTCP(ULONG channelId, ULONG type, CHAR* address, WO
 
 					if (sockError == 0) {
 						this->AddProxyData(channelId, type, sock, 30000, TUNNEL_MODE_SEND_TCP, 0, 0, TUNNEL_STATE_CONNECT);
+						return;
 					}
 					else {
 						ApiWin->closesocket(sock);
@@ -161,7 +162,7 @@ void Proxyfire::ConnectMessageUDP(ULONG channelId, CHAR* address, WORD port, Pac
 			if (host) {
 				ULONG addr = 0;
 				memcpy(&addr, *(const void**)host->h_addr_list, 4); 				//memmove
-				sockaddr_in socketAddress;
+				sockaddr_in socketAddress = { 0 };
 				socketAddress.sin_family = AF_INET;
 				if (ApiWin->bind(sock, (sockaddr*)&socketAddress, sizeof(socketAddress)) < 0) {
 					u_long mode = 1;
@@ -416,6 +417,14 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 							++count;
 						}
 						MemFreeLocal(&buffer, dataLength);
+					}
+					else {
+						char peekBuf[1];
+						int peekResult = ApiWin->recv(tunnelData->sock, peekBuf, 1, MSG_PEEK);
+						if (peekResult == 0) {
+							tunnelData->state = TUNNEL_STATE_CLOSE;
+							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
+						}
 					}
 				}
 			}
