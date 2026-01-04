@@ -15,14 +15,17 @@ import (
 
 // Configuration
 type DNSConfig struct {
-	HostBind   string   `json:"host_bind"`
-	PortBind   int      `json:"port_bind"`
-	Domain     string   `json:"domain"`
-	Domains    []string `json:"-"`
-	PktSize    int      `json:"pkt_size"`
-	TTL        int      `json:"ttl"`
-	EncryptKey string   `json:"encrypt_key"`
-	Protocol   string   `json:"protocol"`
+	HostBind     string   `json:"host_bind"`
+	PortBind     int      `json:"port_bind"`
+	Domain       string   `json:"domain"`
+	Domains      []string `json:"-"`
+	PktSize      int      `json:"pkt_size"`
+	TTL          int      `json:"ttl"`
+	EncryptKey   string   `json:"encrypt_key"`
+	Protocol     string   `json:"protocol"`
+	BurstEnabled bool     `json:"burst_enabled"`
+	BurstSleep   int      `json:"burst_sleep"`
+	BurstJitter  int      `json:"burst_jitter"`
 }
 
 // Constructors
@@ -134,6 +137,13 @@ func (m *ModuleExtender) HandlerCreateListenerDataAndStart(name string, configDa
 		conf.Protocol = "dns"
 	}
 	conf.Domains = parseDomains(conf.Domain)
+	
+	if conf.BurstSleep <= 0 {
+		conf.BurstSleep = 50
+	}
+	if conf.BurstJitter < 0 || conf.BurstJitter > 90 {
+		conf.BurstJitter = 0
+	}
 
 	listener := NewDNSListener(name, *conf)
 	if err := listener.Start(m.ts); err != nil {
@@ -167,6 +177,13 @@ func (m *ModuleExtender) HandlerEditListenerData(name string, listenerObject any
 	if conf.PktSize != 0 {
 		listener.Config.PktSize = conf.PktSize
 	}
+	if conf.BurstSleep > 0 {
+		listener.Config.BurstSleep = conf.BurstSleep
+	}
+	if conf.BurstJitter >= 0 {
+		listener.Config.BurstJitter = conf.BurstJitter
+	}
+	listener.Config.BurstEnabled = conf.BurstEnabled
 
 	listenerData := buildListenerData(listener)
 	customData := encodeConfig(listener.Config)

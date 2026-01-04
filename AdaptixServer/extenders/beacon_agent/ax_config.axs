@@ -218,6 +218,14 @@ function RegisterCommands(listenerType)
     cmd_sleep.addArgString("sleep", true, "Time in '%h%m%s' format or number of seconds");
     cmd_sleep.addArgInt("jitter", false, "Max random amount of time in % added to sleep");
 
+    let _cmd_burst_show = ax.create_command("show", "Show burst config", "burst show");
+    let _cmd_burst_set = ax.create_command("set", "Set burst config", "burst set 1 50 10");
+    _cmd_burst_set.addArgInt("enabled", true, "1=on, 0=off");
+    _cmd_burst_set.addArgInt("sleep", false, "Sleep in ms (default 50)");
+    _cmd_burst_set.addArgInt("jitter", false, "Jitter % 0-90 (default 0)");
+    let cmd_burst = ax.create_command("burst", "DNS burst mode");
+    cmd_burst.addSubCommands([_cmd_burst_show, _cmd_burst_set]);
+
     let _cmd_socks_start = ax.create_command("start", "Start a SOCKS(4a/5) proxy server and listen on a specified port", "socks start 1080 -auth user pass");
     _cmd_socks_start.addArgFlagString("-h", "address", "Listening interface address", "0.0.0.0");
     _cmd_socks_start.addArgInt("port", true, "Listen port");
@@ -263,12 +271,19 @@ function RegisterCommands(listenerType)
         ax.execute_alias(id, cmdline, "sleep 0");
     });
 
-    if(listenerType == "BeaconHTTP" || listenerType == "BeaconDNS") {
-        let commands_external = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
+    if(listenerType == "BeaconDNS") {
+        let commands_dns = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
+            cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
+            cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact, cmd_burst] );
+
+        return { commands_windows: commands_dns }
+    }
+    else if(listenerType == "BeaconHTTP") {
+        let commands_http = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
             cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
             cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact] );
 
-        return { commands_windows: commands_external }
+        return { commands_windows: commands_http }
     }
     else if (listenerType == "BeaconSMB" || listenerType == "BeaconTCP") {
         let commands_internal = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,

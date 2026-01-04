@@ -34,7 +34,32 @@ function ListenerUI(mode_create)
     textEncryptKey.setEnabled(mode_create);
     let buttonEncryptKey = form.create_button("Generate");
     buttonEncryptKey.setEnabled(mode_create);
+
+    let checkBurstEnabled = form.create_check("Enable Burst Mode");
+    checkBurstEnabled.setChecked(false);
+
+    let labelBurstSleep = form.create_label("Burst Sleep (ms):");
+    let spinBurstSleep = form.create_spin();
+    spinBurstSleep.setRange(10, 1000);
+    spinBurstSleep.setValue(50);
+    spinBurstSleep.setEnabled(false);
+
+    let labelBurstJitter = form.create_label("Burst Jitter (%):");
+    let spinBurstJitter = form.create_spin();
+    spinBurstJitter.setRange(0, 90);
+    spinBurstJitter.setValue(0);
+    spinBurstJitter.setEnabled(false);
+
     form.connect(buttonEncryptKey, "clicked", function() { textEncryptKey.setText(ax.random_string(32, "hex")); });
+    form.connect(checkBurstEnabled, "stateChanged", function() {
+        if(spinBurstSleep.getEnabled()) {
+            spinBurstSleep.setEnabled(false);
+            spinBurstJitter.setEnabled(false);
+        } else {
+            spinBurstSleep.setEnabled(true);
+            spinBurstJitter.setEnabled(true);
+        }
+    });
 
     let spacer2 = form.create_vspacer();
 
@@ -52,15 +77,23 @@ function ListenerUI(mode_create)
     layout.addWidget(labelEncryptKey,  5, 0, 1, 1);
     layout.addWidget(textEncryptKey,   5, 1, 1, 1);
     layout.addWidget(buttonEncryptKey, 5, 2, 1, 1);
-    layout.addWidget(spacer2,          6, 0, 1, 3);
+    layout.addWidget(checkBurstEnabled, 6, 0, 1, 3);
+    layout.addWidget(labelBurstSleep,  7, 0, 1, 1);
+    layout.addWidget(spinBurstSleep,   7, 1, 1, 2);
+    layout.addWidget(labelBurstJitter, 8, 0, 1, 1);
+    layout.addWidget(spinBurstJitter,  8, 1, 1, 2);
+    layout.addWidget(spacer2,          9, 0, 1, 3);
 
     let container = form.create_container();
-    container.put("host_bind",   comboHostBind);
-    container.put("port_bind",   spinPortBind);
-    container.put("domain",      textDomain);
-    container.put("pkt_size",    spinPktSize);
-    container.put("ttl",         spinTTL);
-    container.put("encrypt_key", textEncryptKey);
+    container.put("host_bind",     comboHostBind);
+    container.put("port_bind",     spinPortBind);
+    container.put("domain",        textDomain);
+    container.put("pkt_size",      spinPktSize);
+    container.put("ttl",           spinTTL);
+    container.put("encrypt_key",   textEncryptKey);
+    container.put("burst_enabled", checkBurstEnabled);
+    container.put("burst_sleep",   spinBurstSleep);
+    container.put("burst_jitter",  spinBurstJitter);
 
     let panel = form.create_panel();
     panel.setLayout(layout);
@@ -68,63 +101,7 @@ function ListenerUI(mode_create)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 300,
+        ui_height: 400,
         ui_width: 500
     }
-}
-
-function GetConfig()
-{
-    var config = {
-        "name": "Beacon DNS",
-        "type": "listener",
-        "author": "Adaptix",
-        "version": "1.0",
-        "description": "Direct DNS tunneling listener. Agent connects directly to this DNS server.",
-        "options": [
-            {
-                "name": "host_bind",
-                "description": "Local interface to bind for DNS server",
-                "type": "string",
-                "default": "0.0.0.0",
-                "required": true
-            },
-            {
-                "name": "port_bind",
-                "description": "DNS port (usually 53)",
-                "type": "int",
-                "default": "53",
-                "required": true
-            },
-            {
-                "name": "domain",
-                "description": "Authoritative Domain(s) (comma-separated for failover)",
-                "type": "string",
-                "default": "",
-                "required": true
-            },
-            {
-                "name": "pkt_size",
-                "description": "Max DNS Payload Size (bytes)",
-                "type": "int",
-                "default": "4096",
-                "required": true
-            },
-            {
-                "name": "ttl",
-                "description": "DNS TTL (seconds)",
-                "type": "int",
-                "default": "5",
-                "required": true
-            },
-            {
-                "name": "encrypt_key",
-                "description": "Encryption Key (32 hex chars or any string)",
-                "type": "string",
-                "default": "random_hex_32",
-                "required": true
-            }
-        ]
-    };
-    return config;
 }

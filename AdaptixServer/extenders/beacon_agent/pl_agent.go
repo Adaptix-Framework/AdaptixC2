@@ -976,6 +976,51 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 
 		array = []interface{}{COMMAND_PROFILE, 1, sleepTime, jitterTime}
 
+	case "burst":
+		if subcommand == "show" {
+			array = []interface{}{COMMAND_PROFILE, 6}
+			messageData.Message = "Task: show burst config"
+		} else if subcommand == "set" {
+			enabled, enabledOk := args["enabled"].(float64)
+			if !enabledOk {
+				err = errors.New("parameter 'enabled' must be set (1=on, 0=off)")
+				goto RET
+			}
+			burstEnabled := int(enabled)
+			if burstEnabled != 0 && burstEnabled != 1 {
+				err = errors.New("parameter 'enabled' must be 0 or 1")
+				goto RET
+			}
+
+			burstSleep := 50
+			if sleepVal, ok := args["sleep"].(float64); ok {
+				burstSleep = int(sleepVal)
+				if burstSleep < 0 || burstSleep > 10000 {
+					err = errors.New("burst sleep must be from 0 to 10000 ms")
+					goto RET
+				}
+			}
+
+			burstJitter := 0
+			if jitterVal, ok := args["jitter"].(float64); ok {
+				burstJitter = int(jitterVal)
+				if burstJitter < 0 || burstJitter > 90 {
+					err = errors.New("burst jitter must be from 0 to 90%%")
+					goto RET
+				}
+			}
+
+			status := "off"
+			if burstEnabled == 1 {
+				status = fmt.Sprintf("on (sleep=%dms, jitter=%d%%)", burstSleep, burstJitter)
+			}
+			messageData.Message = fmt.Sprintf("Task: set burst config - %s", status)
+			array = []interface{}{COMMAND_PROFILE, 5, burstEnabled, burstSleep, burstJitter}
+		} else {
+			err = errors.New("subcommand for 'burst' must be 'show' or 'set'")
+			goto RET
+		}
+
 	case "socks":
 		taskData.Type = TYPE_TUNNEL
 
@@ -1706,6 +1751,36 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				}
 
 				_ = ts.TsAgentUpdateData(agentData)
+
+			} else if subcommand == 5 {
+				// Burst set response
+				if false == packer.CheckPacker([]string{"int", "int", "int"}) {
+					return outTasks
+				}
+				burstEnabled := packer.ParseInt32()
+				burstSleep := packer.ParseInt32()
+				burstJitter := packer.ParseInt32()
+
+				status := "off"
+				if burstEnabled == 1 {
+					status = fmt.Sprintf("on (sleep=%dms, jitter=%d%%)", burstSleep, burstJitter)
+				}
+				task.Message = fmt.Sprintf("Burst config updated: %s", status)
+
+			} else if subcommand == 6 {
+				// Burst show response
+				if false == packer.CheckPacker([]string{"int", "int", "int"}) {
+					return outTasks
+				}
+				burstEnabled := packer.ParseInt32()
+				burstSleep := packer.ParseInt32()
+				burstJitter := packer.ParseInt32()
+
+				status := "off"
+				if burstEnabled == 1 {
+					status = fmt.Sprintf("on (sleep=%dms, jitter=%d%%)", burstSleep, burstJitter)
+				}
+				task.Message = fmt.Sprintf("Burst config: %s", status)
 			}
 
 		case COMMAND_PS_LIST:
@@ -2113,6 +2188,23 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 
 	lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
 
+	burstEnabledF, _ := listenerMap["burst_enabled"].(bool)
+	burstSleepF, _ := listenerMap["burst_sleep"].(float64)
+	burstJitterF, _ := listenerMap["burst_jitter"].(float64)
+
+	burstEnabled := 0
+	if burstEnabledF {
+		burstEnabled = 1
+	}
+	burstSleep := int(burstSleepF)
+	if burstSleep <= 0 {
+		burstSleep = 50
+	}
+	burstJitter := int(burstJitterF)
+	if burstJitter < 0 || burstJitter > 90 {
+		burstJitter = 0
+	}
+
 	params := []interface{}{
 		int(agentWatermark),
 		// ProfileDNS
@@ -2122,6 +2214,9 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 		pktSize,
 		labelSize,
 		ttl,
+		burstEnabled,
+		burstSleep,
+		burstJitter,
 		// Common tail
 		int(lWatermark),
 		killDate,

@@ -38,6 +38,9 @@ typedef struct {
 	ULONG label_size;   // max Base32 chars per DNS label (<=63)
 	ULONG ttl;          // response TTL
 	BYTE* encrypt_key;  // RC4 key, same as listener_encrypt_key
+	ULONG burst_enabled;  // 1 = enabled, 0 = disabled
+	ULONG burst_sleep;    // sleep in ms during burst mode
+	ULONG burst_jitter;   // jitter percentage (0-90)
 } ProfileDNS;
 
 #endif

