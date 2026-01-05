@@ -1010,11 +1010,7 @@ func CreateTask(ts Teamserver, agent adaptix.AgentData, args map[string]any) (ad
 				}
 			}
 
-			status := "off"
-			if burstEnabled == 1 {
-				status = fmt.Sprintf("on (sleep=%dms, jitter=%d%%)", burstSleep, burstJitter)
-			}
-			messageData.Message = fmt.Sprintf("Task: set burst config - %s", status)
+			messageData.Message = fmt.Sprintf("Task: set burst config - %s", formatBurstStatus(burstEnabled, burstSleep, burstJitter))
 			array = []interface{}{COMMAND_PROFILE, 5, burstEnabled, burstSleep, burstJitter}
 		} else {
 			err = errors.New("subcommand for 'burst' must be 'show' or 'set'")
@@ -1761,11 +1757,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				burstSleep := packer.ParseInt32()
 				burstJitter := packer.ParseInt32()
 
-				status := "off"
-				if burstEnabled == 1 {
-					status = fmt.Sprintf("on (sleep=%dms, jitter=%d%%)", burstSleep, burstJitter)
-				}
-				task.Message = fmt.Sprintf("Burst config updated: %s", status)
+				task.Message = fmt.Sprintf("Burst config updated: %s", formatBurstStatus(int(burstEnabled), int(burstSleep), int(burstJitter)))
 
 			} else if subcommand == 6 {
 				// Burst show response
@@ -1776,11 +1768,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 				burstSleep := packer.ParseInt32()
 				burstJitter := packer.ParseInt32()
 
-				status := "off"
-				if burstEnabled == 1 {
-					status = fmt.Sprintf("on (sleep=%dms, jitter=%d%%)", burstSleep, burstJitter)
-				}
-				task.Message = fmt.Sprintf("Burst config: %s", status)
+				task.Message = fmt.Sprintf("Burst config: %s", formatBurstStatus(int(burstEnabled), int(burstSleep), int(burstJitter)))
 			}
 
 		case COMMAND_PS_LIST:

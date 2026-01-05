@@ -229,3 +229,10 @@ func parseStringToWorkingTime(WorkingTime string) (int, error) {
 
 	return IntWorkingTime, nil
 }
+
+func formatBurstStatus(enabled int, sleepMs int, jitterPct int) string {
+	if enabled == 0 {
+		return "off"
+	}
+	return fmt.Sprintf("on (sleep=%dms, jitter=%d%%)", sleepMs, jitterPct)
+}

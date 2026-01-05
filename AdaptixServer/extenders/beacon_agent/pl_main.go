@@ -254,6 +254,21 @@ func SyncBrowserProcess(ts Teamserver, taskData adaptix.TaskData, processlist []
 	ts.TsClientGuiProcess(taskData, string(jsonProcess))
 }
 
+func wrapProxyData(packData []byte) adaptix.TaskData {
+	return adaptix.TaskData{
+		Type: TYPE_PROXY_DATA,
+		Data: packData,
+		Sync: false,
+	}
+}
+
+func wrapProxyDataWithError(packData []byte, err error) (adaptix.TaskData, error) {
+	if err != nil {
+		return adaptix.TaskData{}, err
+	}
+	return wrapProxyData(packData), nil
+}
+
 /// TUNNEL
 
 func (m *ModuleExtender) AgentTunnelCallbacks() (func(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData, func(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int, data []byte) adaptix.TaskData, func(channelId int) adaptix.TaskData, func(tunnelId int, port int) adaptix.TaskData, error) {
@@ -262,74 +277,32 @@ func (m *ModuleExtender) AgentTunnelCallbacks() (func(channelId int, tunnelType 
 
 func TunnelMessageConnectTCP(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData {
 	packData, _ := TunnelCreateTCP(channelId, tunnelType, addressType, address, port)
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_PROXY_DATA,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData
+	return wrapProxyData(packData)
 }
 
 func TunnelMessageConnectUDP(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData {
 	packData, _ := TunnelCreateUDP(channelId, tunnelType, addressType, address, port)
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_PROXY_DATA,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData
+	return wrapProxyData(packData)
 }
 
 func TunnelMessageWriteTCP(channelId int, data []byte) adaptix.TaskData {
 	packData, _ := TunnelWriteTCP(channelId, data)
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_PROXY_DATA,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData
+	return wrapProxyData(packData)
 }
 
 func TunnelMessageWriteUDP(channelId int, data []byte) adaptix.TaskData {
 	packData, _ := TunnelWriteUDP(channelId, data)
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_PROXY_DATA,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData
+	return wrapProxyData(packData)
 }
 
 func TunnelMessageClose(channelId int) adaptix.TaskData {
 	packData, _ := TunnelClose(channelId)
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_PROXY_DATA,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData
+	return wrapProxyData(packData)
 }
 
 func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
 	packData, _ := TunnelReverse(tunnelId, port)
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_PROXY_DATA,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData
+	return wrapProxyData(packData)
 }
 
 /// TERMINAL
@@ -339,47 +312,15 @@ func (m *ModuleExtender) AgentTerminalCallbacks() (func(int, string, int, int, i
 }
 
 func TerminalMessageStart(terminalId int, program string, sizeH int, sizeW int, oemCP int) (adaptix.TaskData, error) {
-	packData, err := TerminalStart(terminalId, program, sizeH, sizeW, oemCP)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_PROXY_DATA,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
+	return wrapProxyDataWithError(TerminalStart(terminalId, program, sizeH, sizeW, oemCP))
 }
 
 func TerminalMessageWrite(terminalId int, oemCP int, data []byte) (adaptix.TaskData, error) {
-	packData, err := TerminalWrite(terminalId, oemCP, data)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-	taskData := adaptix.TaskData{
-		Type: TYPE_PROXY_DATA,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
+	return wrapProxyDataWithError(TerminalWrite(terminalId, oemCP, data))
 }
 
 func TerminalMessageClose(terminalId int) (adaptix.TaskData, error) {
-	packData, err := TerminalClose(terminalId)
-	if err != nil {
-		return adaptix.TaskData{}, err
-	}
-
-	taskData := adaptix.TaskData{
-		Type: TYPE_PROXY_DATA,
-		Data: packData,
-		Sync: false,
-	}
-
-	return taskData, nil
+	return wrapProxyDataWithError(TerminalClose(terminalId))
 }
 
 // DNS Helper Functions

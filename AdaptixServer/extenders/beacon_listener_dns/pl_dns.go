@@ -398,50 +398,50 @@ func (d *DNSListener) cleanupLoop() {
 		d.cleanupStaleEntries()
 		d.saveInflights()
 	}
-		}
+}
 
 func (d *DNSListener) cleanupStaleEntries() {
-		now := time.Now()
+	now := time.Now()
 
-		d.mu.Lock()
+	d.mu.Lock()
 	defer d.mu.Unlock()
 
-		for sid, fb := range d.upFrags {
-			if now.Sub(fb.lastUpdate) > staleTimeout {
+	for sid, fb := range d.upFrags {
+		if now.Sub(fb.lastUpdate) > staleTimeout {
 			// Mark this SID as needing reset - the agent will be notified on next PUT/HB
 			if fb.filled > 0 && fb.filled < fb.total {
 				d.needsReset[sid] = true
 			}
-				delete(d.upFrags, sid)
-			}
+			delete(d.upFrags, sid)
 		}
+	}
 
-		for sid, done := range d.upDoneCache {
-			if now.Sub(done.doneAt) > dedupTimeout {
-				delete(d.upDoneCache, sid)
-			}
+	for sid, done := range d.upDoneCache {
+		if now.Sub(done.doneAt) > dedupTimeout {
+			delete(d.upDoneCache, sid)
 		}
+	}
 
-		for sid, db := range d.downFrags {
-			if db == nil {
-				delete(d.downFrags, sid)
-				continue
-			}
-			if !db.lastUpdate.IsZero() && now.Sub(db.lastUpdate) > downTimeout {
-				delete(d.downFrags, sid)
-			}
+	for sid, db := range d.downFrags {
+		if db == nil {
+			delete(d.downFrags, sid)
+			continue
 		}
+		if !db.lastUpdate.IsZero() && now.Sub(db.lastUpdate) > downTimeout {
+			delete(d.downFrags, sid)
+		}
+	}
 
-		for sid, inf := range d.localInflights {
-			if inf == nil {
-				delete(d.localInflights, sid)
-				continue
-			}
-			if now.Sub(inf.createdAt) > inflightTimeout || inf.attempts >= maxInflightAttempts {
-				delete(d.localInflights, sid)
-				delete(d.downFrags, sid)
-			}
+	for sid, inf := range d.localInflights {
+		if inf == nil {
+			delete(d.localInflights, sid)
+			continue
 		}
+		if now.Sub(inf.createdAt) > inflightTimeout || inf.attempts >= maxInflightAttempts {
+			delete(d.localInflights, sid)
+			delete(d.downFrags, sid)
+		}
+	}
 
 	// Clean up old reset markers (after 10 minutes, agent should have received them)
 	// This is handled implicitly - markers are deleted when PUT is received
@@ -698,32 +698,28 @@ func (d *DNSListener) handleGET(req *dnsRequest, w dns.ResponseWriter) []byte {
 
 	decrypted := rc4Crypt(req.data, d.Config.EncryptKey)
 
-	var reqOffset, reqNonce uint32
+	var reqOffset uint32
 	if len(decrypted) >= 4 {
 		reqOffset = binary.BigEndian.Uint32(decrypted[0:4])
 	}
-	if len(decrypted) >= 8 {
-		reqNonce = binary.BigEndian.Uint32(decrypted[4:8])
-	}
-	_ = reqNonce
 
-				d.mu.Lock()
+	d.mu.Lock()
 	df, exists := d.downFrags[req.sid]
 	if exists && df != nil {
-						df.lastUpdate = time.Now()
-						if reqOffset > 0 && reqOffset <= df.total && reqOffset > df.off {
-							df.off = reqOffset
-					}
-				}
-				d.mu.Unlock()
+		df.lastUpdate = time.Now()
+		if reqOffset > 0 && reqOffset <= df.total && reqOffset > df.off {
+			df.off = reqOffset
+		}
+	}
+	d.mu.Unlock()
 
-			if df == nil || df.off >= df.total {
-				if df != nil && df.off >= df.total {
-					d.mu.Lock()
+	if df == nil || df.off >= df.total {
+		if df != nil && df.off >= df.total {
+			d.mu.Lock()
 			delete(d.downFrags, req.sid)
-					d.mu.Unlock()
-					df = nil
-				}
+			d.mu.Unlock()
+			df = nil
+		}
 
 		taskData, taskNonce := d.fetchOrRetryTasks(req.sid)
 		if len(taskData) > 0 {
@@ -744,12 +740,12 @@ func (d *DNSListener) handleHB(req *dnsRequest) (needsReset bool, hasPendingTask
 	}
 
 	// Check if this SID needs reset
-				d.mu.Lock()
+	d.mu.Lock()
 	if d.needsReset[req.sid] {
 		needsReset = true
 		delete(d.needsReset, req.sid)
 	}
-				d.mu.Unlock()
+	d.mu.Unlock()
 
 	decrypted := rc4Crypt(req.data, d.Config.EncryptKey)
 
@@ -980,15 +976,19 @@ func (d *DNSListener) handleDNS(w dns.ResponseWriter, r *dns.Msg) {
 			m.Answer = append(m.Answer, d.buildHBResponse(req, needsReset, hasPendingTasks, ttl))
 
 		default:
-			rr := &dns.TXT{
-				Hdr: dns.RR_Header{Name: req.qname, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: ttl},
-				Txt: []string{"OK"},
-			}
-			m.Answer = append(m.Answer, rr)
+			m.Answer = append(m.Answer, buildOKResponse(req.qname, ttl))
 		}
 	}
 
 	_ = w.WriteMsg(m)
+}
+
+// buildOKResponse creates a standard TXT "OK" response for default cases
+func buildOKResponse(qname string, ttl uint32) *dns.TXT {
+	return &dns.TXT{
+		Hdr: dns.RR_Header{Name: qname, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: ttl},
+		Txt: []string{"OK"},
+	}
 }
 
 func (d *DNSListener) buildAckResponse(req *dnsRequest, ttl uint32) dns.RR {
@@ -1004,10 +1004,7 @@ func (d *DNSListener) buildAckResponse(req *dnsRequest, ttl uint32) dns.RR {
 			AAAA: net.ParseIP("::1").To16(),
 		}
 	default:
-		return &dns.TXT{
-			Hdr: dns.RR_Header{Name: req.qname, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: ttl},
-			Txt: []string{"OK"},
-		}
+		return buildOKResponse(req.qname, ttl)
 	}
 }
 
@@ -1060,10 +1057,7 @@ func (d *DNSListener) buildPutAckResponse(req *dnsRequest, ack putAckInfo, ttl u
 			AAAA: ip,
 		}
 	default:
-		return &dns.TXT{
-			Hdr: dns.RR_Header{Name: req.qname, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: ttl},
-			Txt: []string{"OK"},
-		}
+		return buildOKResponse(req.qname, ttl)
 	}
 }
 
@@ -1104,10 +1098,7 @@ func (d *DNSListener) buildHBResponse(req *dnsRequest, needsReset bool, hasPendi
 			AAAA: ip,
 		}
 	default:
-		return &dns.TXT{
-			Hdr: dns.RR_Header{Name: req.qname, Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: ttl},
-			Txt: []string{"OK"},
-		}
+		return buildOKResponse(req.qname, ttl)
 	}
 }
 
