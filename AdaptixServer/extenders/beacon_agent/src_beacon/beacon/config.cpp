@@ -42,4 +42,16 @@ unsigned int getProfileSize()
 	return 41;
 }
 
+#elif defined(BEACON_DNS)
+
+char* getProfile()
+{
+	return (char*)"\x00";
+}
+
+unsigned int getProfileSize()
+{
+	return 1;
+}
+
 #endif
