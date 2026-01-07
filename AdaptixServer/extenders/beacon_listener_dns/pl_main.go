@@ -1,13 +1,17 @@
 package main
 
 import (
-	"errors"
-	"slices"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"math/rand"
+	"strconv"
+	"strings"
+	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
-// Teamserver Interface
 type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
@@ -16,84 +20,206 @@ type Teamserver interface {
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
 }
 
-// Module
-type ModuleExtender struct {
-	ts Teamserver
-}
+type PluginListener struct{}
 
 var (
-	ModuleObject    *ModuleExtender
 	ModuleDir       string
 	ListenerDataDir string
-	ListenersObject []*DNSListener
+	Ts              Teamserver
 )
 
-// Plugin Entry Point
-func InitPlugin(ts any, moduleDir string, listenerDir string) any {
+func InitPlugin(ts any, moduleDir string, listenerDir string) adaptix.PluginListener {
 	ModuleDir = moduleDir
 	ListenerDataDir = listenerDir
-
-	ModuleObject = new(ModuleExtender)
-	ModuleObject.ts = ts.(Teamserver)
-
-	return ModuleObject
+	Ts = ts.(Teamserver)
+	return &PluginListener{}
 }
 
-// Listener Management
-func (m *ModuleExtender) ListenerValid(data string) error {
-	return m.HandlerListenerValid(data)
-}
+func (p *PluginListener) Create(name string, config string, customData []byte) (adaptix.ExtenderListener, adaptix.ListenerData, []byte, error) {
+	var (
+		listener     *Listener
+		listenerData adaptix.ListenerData
+		conf         TransportConfig
+		customdData  []byte
+		err          error
+	)
 
-func (m *ModuleExtender) ListenerStart(name string, data string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error) {
-	listenerData, customData, listener, err := m.HandlerCreateListenerDataAndStart(name, data, listenerCustomData)
+	/// START CODE HERE
+
+	if customData == nil {
+		if err = validConfig(config); err != nil {
+			return nil, listenerData, customdData, err
+		}
+		err = json.Unmarshal([]byte(config), &conf)
+		if err != nil {
+			return nil, listenerData, customdData, err
+		}
+		//conf.EncryptKey = normalizeEncryptKey(conf.EncryptKey)
+	} else {
+		err = json.Unmarshal(customData, &conf)
+		if err != nil {
+			return nil, listenerData, customdData, err
+		}
+	}
+	conf.Protocol = "dns"
+	for _, d := range strings.Split(conf.Domain, ",") {
+		d = strings.TrimSpace(d)
+		d = strings.ToLower(d)
+		d = strings.TrimSuffix(d, ".")
+		if d != "" {
+			conf.Domains = append(conf.Domains, d)
+		}
+	}
+	if conf.BurstSleep <= 0 {
+		conf.BurstSleep = 50
+	}
+	if conf.BurstJitter < 0 || conf.BurstJitter > 90 {
+		conf.BurstJitter = 0
+	}
+	if conf.TTL <= 0 {
+		conf.TTL = 10
+	}
+	if conf.PktSize <= 0 || conf.PktSize > 64000 {
+		conf.PktSize = defaultChunkSize
+	}
+
+	transport := &TransportDNS{
+		//ts:             Ts,
+		Name:           name,
+		Config:         conf,
+		rng:            rand.New(rand.NewSource(time.Now().UnixNano())),
+		upFrags:        make(map[string]*dnsFragBuf),
+		downFrags:      make(map[string]*dnsDownBuf),
+		upDoneCache:    make(map[string]*dnsUpDone),
+		localInflights: make(map[string]*localInflight),
+		needsReset:     make(map[string]bool),
+	}
+
+	listenerData = adaptix.ListenerData{
+		BindHost:  transport.Config.HostBind,
+		BindPort:  strconv.Itoa(transport.Config.PortBind),
+		AgentAddr: fmt.Sprintf("%s:%d", transport.Config.HostBind, transport.Config.PortBind),
+		Status:    "Stopped",
+		Protocol:  "dns",
+	}
+
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(transport.Config)
 	if err != nil {
-		return listenerData, customData, err
+		return nil, listenerData, customdData, err
 	}
+	customdData = buffer.Bytes()
 
-	if l, ok := listener.(*DNSListener); ok {
-		ListenersObject = append(ListenersObject, l)
-	}
+	listener = &Listener{transport: transport}
 
-	return listenerData, customData, nil
+	/// END CODE HERE
+
+	return listener, listenerData, customdData, nil
 }
 
-func (m *ModuleExtender) ListenerEdit(name string, data string) (adaptix.ListenerData, []byte, error) {
-	for _, listener := range ListenersObject {
-		listenerData, customData, ok := m.HandlerEditListenerData(name, listener, data)
-		if ok {
-			return listenerData, customData, nil
+func (l *Listener) Start() error {
+
+	/// START CODE HERE
+
+	return l.transport.Start(Ts)
+
+	/// END CODE HERE
+}
+
+func (l *Listener) Edit(config string) (adaptix.ListenerData, []byte, error) {
+	var (
+		listenerData adaptix.ListenerData
+		conf         TransportConfig
+		customdData  []byte
+		err          error
+	)
+
+	err = json.Unmarshal([]byte(config), &conf)
+	if err != nil {
+		return listenerData, customdData, err
+	}
+
+	/// START CODE HERE
+
+	if conf.Domain != "" {
+		l.transport.Config.Domain = conf.Domain
+		for _, d := range strings.Split(conf.Domain, ",") {
+			d = strings.TrimSpace(d)
+			d = strings.ToLower(d)
+			d = strings.TrimSuffix(d, ".")
+			if d != "" {
+				l.transport.Config.Domains = append(l.transport.Config.Domains, d)
+			}
 		}
 	}
-	return adaptix.ListenerData{}, nil, errors.New("listener not found")
-}
+	if conf.TTL != 0 {
+		l.transport.Config.TTL = conf.TTL
+	}
+	if conf.PktSize != 0 {
+		l.transport.Config.PktSize = conf.PktSize
+	}
+	if conf.BurstSleep > 0 {
+		l.transport.Config.BurstSleep = conf.BurstSleep
+	}
+	if conf.BurstJitter >= 0 {
+		l.transport.Config.BurstJitter = conf.BurstJitter
+	}
+	l.transport.Config.BurstEnabled = conf.BurstEnabled
 
-func (m *ModuleExtender) ListenerStop(name string) error {
-	idx := slices.IndexFunc(ListenersObject, func(l *DNSListener) bool {
-		return l.Name == name
-	})
+	/////
 
-	if idx == -1 {
-		return errors.New("listener not found")
+	listenerData = adaptix.ListenerData{
+		BindHost:  l.transport.Config.HostBind,
+		BindPort:  strconv.Itoa(l.transport.Config.PortBind),
+		AgentAddr: fmt.Sprintf("%s:%d", l.transport.Config.HostBind, l.transport.Config.PortBind),
+		Status:    "Listen",
+		Protocol:  "dns",
+	}
+	if !l.transport.Active {
+		listenerData.Status = "Closed"
 	}
 
-	err := ListenersObject[idx].Stop()
-	ListenersObject = slices.Delete(ListenersObject, idx, idx+1)
-
-	return err
-}
-
-func (m *ModuleExtender) ListenerGetProfile(name string) ([]byte, error) {
-	for _, listener := range ListenersObject {
-		profile, ok := m.HandlerListenerGetProfile(name, listener)
-		if ok {
-			return profile, nil
-		}
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(l.transport.Config)
+	if err != nil {
+		return listenerData, customdData, err
 	}
-	return nil, errors.New("listener not found")
+	customdData = buffer.Bytes()
+
+	/// END CODE HERE
+
+	return listenerData, customdData, nil
 }
 
-func (m *ModuleExtender) ListenerInteralHandler(name string, data []byte) (string, error) {
-	_ = name
-	_ = data
-	return "", errors.New("listener not found")
+func (l *Listener) Stop() error {
+
+	/// START CODE HERE
+
+	return l.transport.Stop()
+
+	/// END CODE HERE
+}
+
+func (l *Listener) GetProfile() ([]byte, error) {
+	var buffer bytes.Buffer
+
+	/// START CODE HERE
+
+	err := json.NewEncoder(&buffer).Encode(l.transport.Config)
+	if err != nil {
+		return nil, err
+	}
+	/// END CODE HERE
+
+	return buffer.Bytes(), nil
+}
+
+func (l *Listener) InternalHandler(data []byte) (string, error) {
+	var agentId = ""
+
+	/// START CODE HERE
+
+	/// END CODE HERE
+
+	return agentId, nil
 }
