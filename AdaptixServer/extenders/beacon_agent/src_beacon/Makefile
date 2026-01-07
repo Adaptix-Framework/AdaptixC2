@@ -114,7 +114,6 @@ x86: $(HTTP_OBJECTS_X86) $(SMB_OBJECTS_X86) $(TCP_OBJECTS_X86) $(DNS_OBJECTS_X86
 	@rm -f $(DNS_DIST_DIR)/ConnectorHTTP.x86.o $(DNS_DIST_DIR)/ConnectorSMB.x86.o $(DNS_DIST_DIR)/ConnectorTCP.x86.o
 
 
-
 $(HTTP_DIST_DIR)/%.x64.o: beacon/%.cpp
 	@x86_64-w64-mingw32-g++ -c $(COMMON_FLAGS) -D BEACON_HTTP -c $< -o $@
 
@@ -136,6 +135,8 @@ $(TCP_DIST_DIR)/%.x64.o: beacon/%.cpp
 
 $(TCP_DIST_DIR)/%.x86.o: beacon/%.cpp
 	@i686-w64-mingw32-g++ -c $(COMMON_FLAGS) -D BEACON_TCP -c $< -o $@
+
+
 
 $(DNS_DIST_DIR)/%.x64.o: beacon/%.cpp
 	@x86_64-w64-mingw32-g++ -c $(COMMON_FLAGS) -D BEACON_DNS -c $< -o $@

@@ -55,6 +55,12 @@
     <Filter Include="Headers\Connectors">
       <UniqueIdentifier>{c7e8b0b0-37fd-4e3d-8561-9569fda4fa5b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\utils\dns">
+      <UniqueIdentifier>{39e9ee80-0802-47a1-801e-20dfbe08f786}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\utils\dns">
+      <UniqueIdentifier>{9cce93ae-d7e9-4d72-93e2-142e09bf5cac}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -131,6 +137,15 @@
     </ClCompile>
     <ClCompile Include="ConnectorTCP.cpp">
       <Filter>Source\Connectors</Filter>
+    </ClCompile>
+    <ClCompile Include="miniz.cpp">
+      <Filter>Source\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="ConnectorDNS.cpp">
+      <Filter>Source\Connectors</Filter>
+    </ClCompile>
+    <ClCompile Include="DnsCodec.cpp">
+      <Filter>Source\utils\dns</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -214,6 +229,15 @@
     </ClInclude>
     <ClInclude Include="adaptix.h">
       <Filter>Headers\Commander\BOF</Filter>
+    </ClInclude>
+    <ClInclude Include="miniz.h">
+      <Filter>Headers\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="ConnectorDNS.h">
+      <Filter>Headers\Connectors</Filter>
+    </ClInclude>
+    <ClInclude Include="DnsCodec.h">
+      <Filter>Headers\utils\dns</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

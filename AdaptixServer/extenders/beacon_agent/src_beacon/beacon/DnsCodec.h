@@ -25,11 +25,9 @@ public:
 
     // DNS Name building
     static void ToHex32(ULONG value, CHAR out[9]);
-    static void BuildQName(const CHAR* sid, const CHAR* op, ULONG seq, ULONG idx,
-                           const CHAR* dataLabel, const CHAR* domain, CHAR* out, ULONG outSize);
+    static void BuildQName(const CHAR* sid, const CHAR* op, ULONG seq, ULONG idx, const CHAR* dataLabel, const CHAR* domain, CHAR* out, ULONG outSize);
     static int  EncodeName(const CHAR* host, BYTE* buf, int bufSize);
-    static BOOL BuildDataLabels(const BYTE* src, ULONG srcLen, ULONG labelSize,
-                                CHAR* out, ULONG outSize);
+    static BOOL BuildDataLabels(const BYTE* src, ULONG srcLen, ULONG labelSize, CHAR* out, ULONG outSize);
 
     // Compression (miniz)
     static BOOL Compress(const BYTE* inBuf, ULONG inLen, BYTE** outBuf, ULONG* outLen);
@@ -41,10 +39,9 @@ public:
 
 private:
     // Private constants
-    static const CHAR  kBase32Alphabet[];
-    static const int   kBase64DecodeTable[];
+    static const CHAR kBase32Alphabet[];
+    static const int  kBase64DecodeTable[];
 
     DNSCODECFUNC* functions = NULL;
 };
-
 

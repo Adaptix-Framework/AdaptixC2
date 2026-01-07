@@ -71,6 +71,8 @@ CHAR* StrTokA(CHAR* str, CHAR* delim);
 
 DWORD StrIndexA(CHAR* str, CHAR target);
 
+LPSTR StrLCopyA(LPSTR dst, LPCSTR src, int iMaxLength);
+
 DWORD StrLenA(const CHAR* str);
 
 DWORD StrCmpA(const CHAR* str1, const CHAR* str2);

