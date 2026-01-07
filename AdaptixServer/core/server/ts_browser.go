@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/Adaptix-Framework/axc2"
@@ -8,7 +9,13 @@ import (
 
 /// SYNC
 
-func (ts *Teamserver) TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string) {
+func (ts *Teamserver) TsClientGuiDisksWindows(taskData adaptix.TaskData, drives []adaptix.ListingDrivesDataWin) {
+
+	jsonDrives, err := json.Marshal(drives)
+	if err != nil {
+		return
+	}
+
 	value, ok := ts.Agents.Get(taskData.AgentId)
 	if !ok {
 		return
@@ -31,8 +38,25 @@ func (ts *Teamserver) TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives str
 		taskData.Message = "Status: OK"
 	}
 
-	packet := CreateSpBrowserDisks(taskData, jsonDrives)
+	packet := CreateSpBrowserDisks(taskData, string(jsonDrives))
 	ts.TsSyncClient(task.Client, packet)
+}
+
+func (ts *Teamserver) TsClientGuiFilesWindows(taskData adaptix.TaskData, path string, files []adaptix.ListingFileDataWin) {
+	jsonFiles, err := json.Marshal(files)
+	if err != nil {
+		return
+	}
+
+	ts.TsClientGuiFiles(taskData, path, string(jsonFiles))
+}
+
+func (ts *Teamserver) TsClientGuiFilesUnix(taskData adaptix.TaskData, path string, files []adaptix.ListingFileDataUnix) {
+	jsonFiles, err := json.Marshal(files)
+	if err != nil {
+		return
+	}
+	ts.TsClientGuiFiles(taskData, path, string(jsonFiles))
 }
 
 func (ts *Teamserver) TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string) {
@@ -87,6 +111,24 @@ func (ts *Teamserver) TsClientGuiFilesStatus(taskData adaptix.TaskData) {
 
 	packet := CreateSpBrowserFilesStatus(taskData)
 	ts.TsSyncClient(task.Client, packet)
+}
+
+func (ts *Teamserver) TsClientGuiProcessWindows(taskData adaptix.TaskData, process []adaptix.ListingProcessDataWin) {
+	jsonProcess, err := json.Marshal(process)
+	if err != nil {
+		return
+	}
+
+	ts.TsClientGuiProcess(taskData, string(jsonProcess))
+}
+
+func (ts *Teamserver) TsClientGuiProcessUnix(taskData adaptix.TaskData, process []adaptix.ListingProcessDataUnix) {
+	jsonProcess, err := json.Marshal(process)
+	if err != nil {
+		return
+	}
+
+	ts.TsClientGuiProcess(taskData, string(jsonProcess))
 }
 
 func (ts *Teamserver) TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string) {

@@ -90,10 +90,12 @@ type Teamserver interface {
 	TsTargetSetTag(targetsId []string, tag string) error
 	TsTargetRemoveSessions(agentsId []string) error
 
-	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
-	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
+	TsClientGuiDisksWindows(taskData adaptix.TaskData, drives []adaptix.ListingDrivesDataWin)
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
-	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
+	TsClientGuiFilesWindows(taskData adaptix.TaskData, path string, files []adaptix.ListingFileDataWin)
+	TsClientGuiFilesUnix(taskData adaptix.TaskData, path string, files []adaptix.ListingFileDataUnix)
+	TsClientGuiProcessWindows(taskData adaptix.TaskData, process []adaptix.ListingProcessDataWin)
+	TsClientGuiProcessUnix(taskData adaptix.TaskData, process []adaptix.ListingProcessDataUnix)
 
 	TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error
 
