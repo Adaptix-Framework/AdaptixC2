@@ -37,54 +37,49 @@ void InitBofOutputData()
 BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 
 	/// 5 - Data Parser API
-
-	{ HASH_FUNC_BEACONDATAPARSE,              BeaconDataParse },
-	{ HASH_FUNC_BEACONDATAINT,                BeaconDataInt },
-	{ HASH_FUNC_BEACONDATASHORT,              BeaconDataShort },
-	{ HASH_FUNC_BEACONDATALENGTH,             BeaconDataLength },
-	{ HASH_FUNC_BEACONDATAEXTRACT,            BeaconDataExtract },
+	{ HASH_FUNC_BEACONDATAPARSE,              (LPVOID)BeaconDataParse },
+	{ HASH_FUNC_BEACONDATAINT,                (LPVOID)BeaconDataInt },
+	{ HASH_FUNC_BEACONDATASHORT,              (LPVOID)BeaconDataShort },
+	{ HASH_FUNC_BEACONDATALENGTH,             (LPVOID)BeaconDataLength },
+	{ HASH_FUNC_BEACONDATAEXTRACT,            (LPVOID)BeaconDataExtract },
 
 	/// 2 - Output API
-
-	{ HASH_FUNC_BEACONOUTPUT,                 BeaconOutput },
-	{ HASH_FUNC_BEACONPRINTF,                 BeaconPrintf },
+	{ HASH_FUNC_BEACONOUTPUT,                 (LPVOID)BeaconOutput },
+	{ HASH_FUNC_BEACONPRINTF,                 (LPVOID)BeaconPrintf },
 
 	/// 7 - Format API
-
-	{ HASH_FUNC_BEACONFORMATALLOC,            BeaconFormatAlloc },
-	{ HASH_FUNC_BEACONFORMATRESET,            BeaconFormatReset },
-	{ HASH_FUNC_BEACONFORMATAPPEND,           BeaconFormatAppend },
-	{ HASH_FUNC_BEACONFORMATPRINTF,           BeaconFormatPrintf },
-	{ HASH_FUNC_BEACONFORMATTOSTRING,         BeaconFormatToString },
-	{ HASH_FUNC_BEACONFORMATFREE,             BeaconFormatFree },
-	{ HASH_FUNC_BEACONFORMATINT,              BeaconFormatInt },
+	{ HASH_FUNC_BEACONFORMATALLOC,            (LPVOID)BeaconFormatAlloc },
+	{ HASH_FUNC_BEACONFORMATRESET,            (LPVOID)BeaconFormatReset },
+	{ HASH_FUNC_BEACONFORMATAPPEND,           (LPVOID)BeaconFormatAppend },
+	{ HASH_FUNC_BEACONFORMATPRINTF,           (LPVOID)BeaconFormatPrintf },
+	{ HASH_FUNC_BEACONFORMATTOSTRING,         (LPVOID)BeaconFormatToString },
+	{ HASH_FUNC_BEACONFORMATFREE,             (LPVOID)BeaconFormatFree },
+	{ HASH_FUNC_BEACONFORMATINT,              (LPVOID)BeaconFormatInt },
 
 	/// 7 - Internal APIs
-
-	{ HASH_FUNC_BEACONUSETOKEN,               BeaconUseToken },
-	{ HASH_FUNC_BEACONREVERTTOKEN,            BeaconRevertToken },
-	{ HASH_FUNC_BEACONISADMIN,                BeaconIsAdmin },
+	{ HASH_FUNC_BEACONUSETOKEN,               (LPVOID)BeaconUseToken },
+	{ HASH_FUNC_BEACONREVERTTOKEN,            (LPVOID)BeaconRevertToken },
+	{ HASH_FUNC_BEACONISADMIN,                (LPVOID)BeaconIsAdmin },
 	//{ HASH_FUNC_BEACONGETSPAWNTO,             BeaconGetSpawnTo },
 	//{ HASH_FUNC_BEACONSPAWNTEMPORARYPROCESS,  BeaconSpawnTemporaryProcess },
 	//{ HASH_FUNC_BEACONINJECTPROCESS,          BeaconInjectProcess },
 	//{ HASH_FUNC_BEACONINJECTTEMPORARYPROCESS, BeaconInjectTemporaryProcess },
 	//{ HASH_FUNC_BEACONCLEANUPPROCESS,         BeaconCleanupProcess },
 	//{ HASH_FUNC_BEACONINFORMATION,            BeaconInformation },
-	{ HASH_FUNC_TOWIDECHAR,					  toWideChar },
-	{ HASH_FUNC_BEACONADDVALUE,               BeaconAddValue },
-	{ HASH_FUNC_BEACONGETVALUE,               BeaconGetValue },
-	{ HASH_FUNC_BEACONREMOVEVALUE,            BeaconRemoveValue },
+	{ HASH_FUNC_TOWIDECHAR,					  (LPVOID)toWideChar },
+	{ HASH_FUNC_BEACONADDVALUE,               (LPVOID)BeaconAddValue },
+	{ HASH_FUNC_BEACONGETVALUE,               (LPVOID)BeaconGetValue },
+	{ HASH_FUNC_BEACONREMOVEVALUE,            (LPVOID)BeaconRemoveValue },
 
 	/// 2 - Adaptix APIs
-	{ HASH_FUNC_AXADDSCREENSHOT,  AxAddScreenshot },
-	{ HASH_FUNC_AXDOWNLOADMEMORY, AxDownloadMemory },
+	{ HASH_FUNC_AXADDSCREENSHOT,  (LPVOID)AxAddScreenshot },
+	{ HASH_FUNC_AXDOWNLOADMEMORY, (LPVOID)AxDownloadMemory },
 
 	/// 5 - Other APIs
-
-	{ HASH_FUNC_LOADLIBRARYA,                 proxy_LoadLibraryA },
-	{ HASH_FUNC_GETMODULEHANDLEA,             proxy_GetModuleHandleA },
-	{ HASH_FUNC_FREELIBRARY,                  proxy_FreeLibrary },
-	{ HASH_FUNC_GETPROCADDRESS,				  proxy_GetProcAddress },
+	{ HASH_FUNC_LOADLIBRARYA,                 (LPVOID)proxy_LoadLibraryA },
+	{ HASH_FUNC_GETMODULEHANDLEA,             (LPVOID)proxy_GetModuleHandleA },
+	{ HASH_FUNC_FREELIBRARY,                  (LPVOID)proxy_FreeLibrary },
+	{ HASH_FUNC_GETPROCADDRESS,				  (LPVOID)proxy_GetProcAddress },
 	{ HASH_FUNC___C_SPECIFIC_HANDLER,         NULL }, // GetProcAddress(kern, "__C_specific_handler");
 };
 

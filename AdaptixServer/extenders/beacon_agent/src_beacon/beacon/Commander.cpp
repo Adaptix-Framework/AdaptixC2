@@ -705,8 +705,8 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 				ConvertUnicodeStringToChar(spi->ImageName.Buffer, spi->ImageName.Length, processName, sizeof(processName));
 
-				outPacker->Pack16((WORD)spi->UniqueProcessId);
-				outPacker->Pack16((WORD)spi->InheritedFromUniqueProcessId);
+				outPacker->Pack16((WORD) (uintptr_t) spi->UniqueProcessId);
+				outPacker->Pack16((WORD) (uintptr_t) spi->InheritedFromUniqueProcessId);
 				outPacker->Pack16((WORD)spi->SessionId);
 				outPacker->Pack8(arch64);
 				outPacker->Pack8(elevated);
