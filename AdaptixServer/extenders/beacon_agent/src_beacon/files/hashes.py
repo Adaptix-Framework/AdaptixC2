@@ -169,6 +169,7 @@ FreeLibrary
 __C_specific_handler
 AxAddScreenshot
 AxDownloadMemory
+BeaconJobRegister
 
 // wininet
 InternetOpenA

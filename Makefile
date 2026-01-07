@@ -16,6 +16,13 @@ endif
 
 ### CLEAN ###
 
+### DEPS ###
+deps:
+	@if [ ! -d "AdaptixClient/Libs/donut" ]; then \
+		echo "[*] Cloning donut library..."; \
+		git clone https://github.com/TheWover/donut AdaptixClient/Libs/donut; \
+	fi
+
 prepare:
 	@if [ ! -d "$(DIST_DIR)" ]; then \
 		mkdir "$(DIST_DIR)"; \
@@ -78,14 +85,14 @@ server-ext: clean server extenders
 
 ### CLIENT ###
 
-client: prepare
+client: prepare deps
 	@ echo "[*] Building AdaptixClient..."
 	@ cd AdaptixClient && cmake . > /dev/null 2>cmake_error.log || { echo "[ERROR] CMake failed:"; cat cmake_error.log >&2; exit 1; }
 	@ cd AdaptixClient && make --no-print-directory
 	@ mv ./AdaptixClient/AdaptixClient ./$(DIST_DIR)/
 	@ echo "[+] done"
 
-client-fast: prepare
+client-fast: prepare deps
 	@ echo "[*] Building AdaptixClient in $(NPROC) threads..."
 	@ cd AdaptixClient && cmake . > /dev/null 2>cmake_error.log || { echo "[ERROR] CMake failed:"; cat cmake_error.log >&2; exit 1; }
 	@ cd AdaptixClient && make --no-print-directory -j$(NPROC)

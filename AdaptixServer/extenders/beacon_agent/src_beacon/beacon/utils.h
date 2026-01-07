@@ -21,7 +21,6 @@ int ReadFromPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
 int ReadDataFromPipe(HANDLE hPipe, LPVOID* buffer, ULONG* bufferSize);
 
 BOOL WriteToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
-
 BOOL WriteDataToPipe(HANDLE hPipe, BYTE* buffer, ULONG bufferSize);
 
 

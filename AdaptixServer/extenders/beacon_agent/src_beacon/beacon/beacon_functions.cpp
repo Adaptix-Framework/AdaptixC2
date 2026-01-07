@@ -393,6 +393,25 @@ PCHAR BeaconGetCustomUserData()
 	return NULL;
 }
 
+// Register a job with the native JobsController for automatic output polling
+// Returns TRUE if job was registered successfully
+// taskId: the task ID to associate with this job
+// hProcess: handle to the process
+// pid: process ID
+// hPipeRead: read end of output pipe
+// hPipeWrite: write end of output pipe
+BOOL BeaconJobRegister(ULONG taskId, HANDLE hProcess, WORD pid, HANDLE hPipeRead, HANDLE hPipeWrite)
+{
+	if (!g_Agent || !g_Agent->jober)
+		return FALSE;
+	
+    // Use bofTaskId (current execution context output ID) instead of the generated/passed timestamp ID
+    // This ensures output packets are routed to the command's task window in the client UI.
+	// Register with JobsController as a process job
+	g_Agent->jober->CreateJobData(bofTaskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, hProcess, pid, hPipeRead, hPipeWrite);
+	return TRUE;
+}
+
 /// System Call API
 
 BOOL BeaconGetSyscallInformation(PBEACON_SYSCALLS info, BOOL resolveIfNotInitialized)

@@ -30,6 +30,7 @@ find_package(Qt6
 include_directories(
         Headers
         Libs
+        Libs/donut/include
 )
 
 ### KDDOCKWIDGETS
@@ -244,6 +245,14 @@ add_executable(AdaptixClient
         Source/Utils/NonBlockingDialogs.cpp
         Source/Utils/FontManager.cpp
         Source/Utils/TitleBarStyle.cpp
+        Source/Utils/FontManager.cpp
+        Source/Utils/TitleBarStyle.cpp
+
+        Libs/donut/donut.c
+        Libs/donut/hash.c
+        Libs/donut/encrypt.c
+        Libs/donut/format.c
+        Libs/donut/loader/clib.c
 )
 
 target_compile_definitions(
@@ -267,6 +276,7 @@ if(UNIX)
 
             kddockwidgets
 
+            ${CMAKE_CURRENT_SOURCE_DIR}/Libs/donut/lib/aplib64.a
             pthread dl
     )
 elseif(APPLE)

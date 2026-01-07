@@ -28,12 +28,24 @@ void JobsController::ProcessJobs(Packer* packer)
 
         ULONG  available = 0;
 		LPVOID buffer    = ReadDataFromAnonPipe(this->jobs[i].pipeRead, &available);
+        
         if (available > 0) {
-			packer->Pack32(jobs[i].jobId);
-			packer->Pack32(COMMAND_JOB);
-			packer->Pack8(jobs[i].jobType);
-			packer->Pack8(JOB_STATE_RUNNING);
-			packer->PackBytes((BYTE*)buffer, available);
+            // "Console Bridge": Route async process output as COMMAND_EXEC_BOF_OUT (51)
+            // This mimics the original BOF output stream and ensures it appears in the
+            // correct task window, bypassing potential issues with COMMAND_JOB handling.
+            if (jobs[i].jobType == JOB_TYPE_PROCESS) {
+                packer->Pack32(jobs[i].jobId); // bofTaskId
+                packer->Pack32(51); // COMMAND_EXEC_BOF_OUT
+                packer->Pack32(32); // CALLBACK_OUTPUT_UTF8
+                packer->PackBytes((BYTE*)buffer, available);
+            } else {
+                // Legacy support for other job types
+                packer->Pack32(jobs[i].jobId);
+                packer->Pack32(COMMAND_JOB);
+                packer->Pack8(jobs[i].jobType);
+                packer->Pack8(JOB_STATE_RUNNING);
+                packer->PackBytes((BYTE*)buffer, available);
+            }
 			
 			MemFreeLocal(&buffer, available);
         }
