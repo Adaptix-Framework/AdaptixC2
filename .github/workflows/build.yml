@@ -1,0 +1,40 @@
+name: build-adaptix
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  server:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build server + extenders
+        run: docker compose --profile build-server-ext up --build --abort-on-container-exit
+      - name: Upload server artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptix-server-dist
+          path: AdaptixServer/server-dist
+
+  client:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt update
+          sudo apt install -y ninja-build qt6-base-dev qt6-websockets-dev qt6-declarative-dev libssl-dev build-essential
+      - name: Configure
+        run: cmake -S AdaptixClient -B build-client -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="/usr/lib/qt6"
+      - name: Build
+        run: cmake --build build-client
+      - name: Upload client artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: adaptix-client
+          path: build-client/AdaptixClient
+
+          
