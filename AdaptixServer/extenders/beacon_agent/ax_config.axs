@@ -275,7 +275,6 @@ function RegisterCommands(listenerType)
         let commands_dns = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
             cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
             cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact, cmd_burst] );
-
         return { commands_windows: commands_dns }
     }
     else if(listenerType == "BeaconHTTP") {
@@ -324,7 +323,6 @@ function GenerateUI(listenerType)
     let labelDnsResolvers = form.create_label("DNS Resolvers:");
     let textDnsResolvers = form.create_textline("");
     textDnsResolvers.setPlaceholder("8.8.8.8,1.1.1.1,9.9.9.9");
-
     if(listenerType != "BeaconDNS") {
         labelDnsResolvers.setVisible(false);
         textDnsResolvers.setVisible(false);
@@ -351,27 +349,27 @@ function GenerateUI(listenerType)
     let spacer2 = form.create_vspacer();
 
     let layout = form.create_gridlayout();
-    layout.addWidget(spacer1, 0, 0, 1, 3);
-    layout.addWidget(labelArch, 1, 0, 1, 1);
-    layout.addWidget(comboArch, 1, 1, 1, 2);
-    layout.addWidget(labelFormat, 2, 0, 1, 1);
-    layout.addWidget(comboFormat, 2, 1, 1, 2);
-    layout.addWidget(labelSleep, 3, 0, 1, 1);
-    layout.addWidget(textSleep, 3, 1, 1, 1);
-    layout.addWidget(spinJitter, 3, 2, 1, 1);
-    layout.addWidget(labelDnsResolvers, 4, 0, 1, 1);
-    layout.addWidget(textDnsResolvers, 4, 1, 1, 2);
-    layout.addWidget(checkKilldate, 5, 0, 1, 1);
-    layout.addWidget(dateKill, 5, 1, 1, 1);
-    layout.addWidget(timeKill, 5, 2, 1, 1);
-    layout.addWidget(checkWorkingTime, 6, 0, 1, 1);
-    layout.addWidget(timeStart, 6, 1, 1, 1);
-    layout.addWidget(timeFinish, 6, 2, 1, 1);
-    layout.addWidget(labelSvcName, 7, 0, 1, 1);
-    layout.addWidget(textSvcName, 7, 1, 1, 2);
-    layout.addWidget(checkSideloading, 8, 0, 1, 1);
+    layout.addWidget(spacer1,             0, 0, 1, 3);
+    layout.addWidget(labelArch,           1, 0, 1, 1);
+    layout.addWidget(comboArch,           1, 1, 1, 2);
+    layout.addWidget(labelFormat,         2, 0, 1, 1);
+    layout.addWidget(comboFormat,         2, 1, 1, 2);
+    layout.addWidget(labelSleep,          3, 0, 1, 1);
+    layout.addWidget(textSleep,           3, 1, 1, 1);
+    layout.addWidget(spinJitter,          3, 2, 1, 1);
+    layout.addWidget(labelDnsResolvers,   4, 0, 1, 1);
+    layout.addWidget(textDnsResolvers,    4, 1, 1, 2);
+    layout.addWidget(checkKilldate,       5, 0, 1, 1);
+    layout.addWidget(dateKill,            5, 1, 1, 1);
+    layout.addWidget(timeKill,            5, 2, 1, 1);
+    layout.addWidget(checkWorkingTime,    6, 0, 1, 1);
+    layout.addWidget(timeStart,           6, 1, 1, 1);
+    layout.addWidget(timeFinish,          6, 2, 1, 1);
+    layout.addWidget(labelSvcName,        7, 0, 1, 1);
+    layout.addWidget(textSvcName,         7, 1, 1, 2);
+    layout.addWidget(checkSideloading,    8, 0, 1, 1);
     layout.addWidget(sideloadingSelector, 8, 1, 1, 2);
-    layout.addWidget(spacer2, 9, 0, 1, 3);
+    layout.addWidget(spacer2,             9, 0, 1, 3);
 
     form.connect(comboFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
