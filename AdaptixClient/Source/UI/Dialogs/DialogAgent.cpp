@@ -210,16 +210,18 @@ void DialogAgent::onButtonGenerate()
 
     QString baseDir = authProfile.GetProjectDir();
 
+    QPointer<DialogAgent> safeThis = this;
+
     HttpReqAgentGenerateAsync(listenerName, listenerType, agentName, configData, authProfile, 
-        [this, baseDir, agentName, configData, profileName, shouldSaveProfile](bool success, const QString &message, const QJsonObject&) {
+        [safeThis, baseDir, agentName, configData, profileName, shouldSaveProfile](bool success, const QString &message, const QJsonObject&) {
         if (!success) {
             MessageError(message);
             return;
         }
 
-        if (shouldSaveProfile) {
-            saveProfile(profileName, agentName, configData);
-            loadProfiles();
+        if (safeThis && shouldSaveProfile) {
+            safeThis->saveProfile(profileName, agentName, configData);
+            safeThis->loadProfiles();
         }
 
         QStringList parts = message.split(":");
@@ -232,8 +234,8 @@ void DialogAgent::onButtonGenerate()
         QString    filename    = QString( QByteArray::fromBase64(parts[0].toUtf8()));
         QString    initialPath = QDir(baseDir).filePath(filename);
 
-        NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "All Files (*.*)",
-            [this, content](const QString& filePath) {
+        NonBlockingDialogs::getSaveFileName(safeThis, "Save File", initialPath, "All Files (*.*)",
+            [safeThis, content](const QString& filePath) {
                 if (filePath.isEmpty())
                     return;
 
@@ -255,7 +257,8 @@ void DialogAgent::onButtonGenerate()
                 inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
                 inputDialog.exec();
 
-                this->close();
+                if (safeThis)
+                    safeThis->close();
             });
     });
 }
@@ -263,8 +266,11 @@ void DialogAgent::onButtonGenerate()
 void DialogAgent::onButtonLoad()
 {
     QString baseDir = authProfile.GetProjectDir();
+    QPointer<DialogAgent> safeThis = this;
+    QString currentListenerType = listenerType;
+
     NonBlockingDialogs::getOpenFileName(this, "Select file", baseDir, "JSON files (*.json)",
-        [this](const QString& filePath) {
+        [safeThis, currentListenerType](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
 
@@ -296,23 +302,26 @@ void DialogAgent::onButtonLoad()
                 return;
             }
 
-            if(listenerType != jsonObject["listener_type"].toString()) {
+            if(currentListenerType != jsonObject["listener_type"].toString()) {
                 MessageError("Listener type mismatch");
                 return;
             }
 
+            if (!safeThis)
+                return;
+
             QString agentType = jsonObject["agent"].toString();
-            int typeIndex = agentCombobox->findText( agentType );
+            int typeIndex = safeThis->agentCombobox->findText( agentType );
             if ( typeIndex == -1 ) {
                 MessageError("No such agent exists");
                 return;
             }
-            agentCombobox->setCurrentIndex(typeIndex);
-            this->changeConfig(agentType);
+            safeThis->agentCombobox->setCurrentIndex(typeIndex);
+            safeThis->changeConfig(agentType);
 
             QString configData = jsonObject["config"].toString();
 
-            ax_uis[agentType].container->fromJson(configData);
+            safeThis->ax_uis[agentType].container->fromJson(configData);
     });
 }
 

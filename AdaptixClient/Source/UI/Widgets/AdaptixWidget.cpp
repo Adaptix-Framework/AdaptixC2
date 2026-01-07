@@ -805,14 +805,20 @@ void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4,
         auto tunnelEndpoint = new TunnelEndpoint();
         bool started = tunnelEndpoint->StartTunnel(profile, tunnelType, tunnelData);
         if (started) {
-            HttpReqTunnelStartServerAsync(tunnelType, tunnelData, *profile, [this, tunnelEndpoint, dialogTunnel](bool success, const QString &message, const QJsonObject&) {
+            QPointer<AdaptixWidget> safeThis = this;
+            HttpReqTunnelStartServerAsync(tunnelType, tunnelData, *profile, [safeThis, tunnelEndpoint, dialogTunnel](bool success, const QString &message, const QJsonObject&) {
                 if (!success) {
                     MessageError(message);
                     delete tunnelEndpoint;
                 } else {
                     QString tunnelId = message;
                     tunnelEndpoint->SetTunnelId(tunnelId);
-                    this->ClientTunnels[tunnelId] = tunnelEndpoint;
+                    if (safeThis) {
+                        safeThis->ClientTunnels[tunnelId] = tunnelEndpoint;
+                    } else {
+                        tunnelEndpoint->Stop();
+                        delete tunnelEndpoint;
+                    }
                     MessageSuccess("Tunnel " + tunnelId + " started");
                 }
                 delete dialogTunnel;
