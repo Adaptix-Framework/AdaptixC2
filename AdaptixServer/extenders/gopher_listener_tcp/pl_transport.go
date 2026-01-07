@@ -9,11 +9,14 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,7 +24,20 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-type TCPConfig struct {
+type Listener struct {
+	transport *TransportTCP
+}
+
+type TransportTCP struct {
+	AgentConnects Map
+	JobConnects   Map
+	Listener      net.Listener
+	Config        TransportConfig
+	Name          string
+	Active        bool
+}
+
+type TransportConfig struct {
 	HostBind           string `json:"host_bind"`
 	PortBind           int    `json:"port_bind"`
 	Callback_addresses string `json:"callback_addresses"`
@@ -45,15 +61,6 @@ type Connection struct {
 	conn         net.Conn
 	ctx          context.Context
 	handleCancel context.CancelFunc
-}
-
-type TCP struct {
-	AgentConnects Map
-	JobConnects   Map
-	Listener      net.Listener
-	Config        TCPConfig
-	Name          string
-	Active        bool
 }
 
 const (
@@ -106,27 +113,88 @@ type TermPack struct {
 	Status string `msgpack:"status"`
 }
 
-func (handler *TCP) Start(ts Teamserver) error {
-	var err error = nil
-	address := fmt.Sprintf("%s:%d", handler.Config.HostBind, handler.Config.PortBind)
+func validConfig(config string) error {
+	var conf TransportConfig
+	err := json.Unmarshal([]byte(config), &conf)
+	if err != nil {
+		return err
+	}
 
-	if handler.Config.Ssl {
+	if conf.HostBind == "" {
+		return errors.New("HostBind is required")
+	}
+
+	if conf.PortBind < 1 || conf.PortBind > 65535 {
+		return errors.New("PortBind must be in the range 1-65535")
+	}
+
+	if conf.Callback_addresses == "" {
+		return errors.New("callback_servers is required")
+	}
+	lines := strings.Split(strings.TrimSpace(conf.Callback_addresses), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		host, portStr, err := net.SplitHostPort(line)
+		if err != nil {
+			return fmt.Errorf("Invalid address (cannot split host:port): %s\n", line)
+		}
+
+		port, err := strconv.Atoi(portStr)
+		if err != nil || port < 1 || port > 65535 {
+			return fmt.Errorf("Invalid port: %s\n", line)
+		}
+
+		ip := net.ParseIP(host)
+		if ip == nil {
+			if len(host) == 0 || len(host) > 253 {
+				return fmt.Errorf("Invalid host: %s\n", line)
+			}
+			parts := strings.Split(host, ".")
+			for _, part := range parts {
+				if len(part) == 0 || len(part) > 63 {
+					return fmt.Errorf("Invalid host: %s\n", line)
+				}
+			}
+		}
+	}
+
+	if conf.Timeout < 1 {
+		return errors.New("Timeout must be greater than 0")
+	}
+
+	match, _ := regexp.MatchString("^[0-9a-f]{32}$", conf.EncryptKey)
+	if len(conf.EncryptKey) != 32 || !match {
+		return errors.New("encrypt_key must be 32 hex characters")
+	}
+
+	return nil
+}
+
+func (t *TransportTCP) Start(ts Teamserver) error {
+	var err error = nil
+	address := fmt.Sprintf("%s:%d", t.Config.HostBind, t.Config.PortBind)
+
+	if t.Config.Ssl {
 		fmt.Println("  ", "Started mTLS listener: "+address)
 
-		cert, err := tls.X509KeyPair(handler.Config.ServerCert, handler.Config.ServerKey)
+		cert, err := tls.X509KeyPair(t.Config.ServerCert, t.Config.ServerKey)
 		if err != nil {
 			return err
 		}
 
 		caCertPool := x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(handler.Config.CaCert)
+		caCertPool.AppendCertsFromPEM(t.Config.CaCert)
 		config := &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			ClientAuth:   tls.RequireAndVerifyClientCert, // Require client verification
 			ClientCAs:    caCertPool,
 		}
 
-		handler.Listener, err = tls.Listen("tcp", address, config)
+		t.Listener, err = tls.Listen("tcp", address, config)
 		if err != nil {
 			return err
 		}
@@ -134,7 +202,7 @@ func (handler *TCP) Start(ts Teamserver) error {
 	} else {
 		fmt.Println("  ", "Started TCP listener: "+address)
 
-		handler.Listener, err = net.Listen("tcp", address)
+		t.Listener, err = net.Listen("tcp", address)
 		if err != nil {
 			return err
 		}
@@ -142,20 +210,20 @@ func (handler *TCP) Start(ts Teamserver) error {
 
 	go func() {
 		for {
-			conn, err := handler.Listener.Accept()
+			conn, err := t.Listener.Accept()
 			if err != nil {
 				return
 			}
-			go handler.handleConnection(conn, ts)
+			go t.handleConnection(conn, ts)
 		}
 	}()
-	handler.Active = true
+	t.Active = true
 
 	time.Sleep(500 * time.Millisecond)
 	return err
 }
 
-func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
+func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 	var (
 		sendData []byte
 		recvData []byte
@@ -164,8 +232,8 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		initMsg  StartMsg
 	)
 
-	if len(handler.Config.TcpBanner) > 0 {
-		_, _ = conn.Write([]byte(handler.Config.TcpBanner))
+	if len(t.Config.TcpBanner) > 0 {
+		_, _ = conn.Write([]byte(t.Config.TcpBanner))
 	}
 
 	connection := Connection{
@@ -180,7 +248,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		goto ERR
 	}
 
-	encKey, err = hex.DecodeString(handler.Config.EncryptKey)
+	encKey, err = hex.DecodeString(t.Config.EncryptKey)
 	if err != nil {
 		goto ERR
 	}
@@ -208,22 +276,22 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		agentType := fmt.Sprintf("%08x", initPack.Type)
 		ExternalIP := strings.Split(conn.RemoteAddr().String(), ":")[0]
 
-		if !ModuleObject.ts.TsAgentIsExists(agentId) {
-			_, err = ModuleObject.ts.TsAgentCreate(agentType, agentId, initPack.Data, handler.Name, ExternalIP, false)
+		if !Ts.TsAgentIsExists(agentId) {
+			_, err = Ts.TsAgentCreate(agentType, agentId, initPack.Data, t.Name, ExternalIP, false)
 			if err != nil {
 				goto ERR
 			}
 		} else {
 			emptyMark := ""
-			_ = ModuleObject.ts.TsAgentUpdateDataPartial(agentId, struct {
+			_ = Ts.TsAgentUpdateDataPartial(agentId, struct {
 				Mark *string `json:"mark"`
 			}{Mark: &emptyMark})
 		}
 
-		handler.AgentConnects.Put(agentId, connection)
+		t.AgentConnects.Put(agentId, connection)
 
 		for {
-			sendData, err = ModuleObject.ts.TsAgentGetHostedTasks(agentId, 0x1900000)
+			sendData, err = Ts.TsAgentGetHostedTasks(agentId, 0x1900000)
 			if err != nil {
 				break
 			}
@@ -239,11 +307,11 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 					break
 				}
 
-				_ = ModuleObject.ts.TsAgentSetTick(agentId)
+				_ = Ts.TsAgentSetTick(agentId)
 
-				_ = ModuleObject.ts.TsAgentProcessData(agentId, recvData)
+				_ = Ts.TsAgentProcessData(agentId, recvData)
 			} else {
-				if !isClientConnected(conn, handler.Config.Ssl) {
+				if !isClientConnected(conn, t.Config.Ssl) {
 					break
 				}
 			}
@@ -253,7 +321,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		_ = ts.TsAgentUpdateDataPartial(agentId, struct {
 			Mark *string `json:"mark"`
 		}{Mark: &disconnectMark})
-		handler.AgentConnects.Delete(agentId)
+		t.AgentConnects.Delete(agentId)
 		_ = conn.Close()
 
 	case EXFIL_PACK:
@@ -266,23 +334,23 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 
 		agentId := fmt.Sprintf("%08x", exfilPack.Id)
 
-		if !ModuleObject.ts.TsTaskRunningExists(agentId, exfilPack.Task) {
+		if !Ts.TsTaskRunningExists(agentId, exfilPack.Task) {
 			goto ERR
 		}
 
 		jcId := agentId + "-" + exfilPack.Task
 
-		handler.JobConnects.Put(jcId, connection)
+		t.JobConnects.Put(jcId, connection)
 
 		for {
 			recvData, err = recvMsg(conn)
 			if err != nil {
 				break
 			}
-			_ = ModuleObject.ts.TsAgentProcessData(agentId, recvData)
+			_ = Ts.TsAgentProcessData(agentId, recvData)
 		}
 
-		handler.JobConnects.Delete(jcId)
+		t.JobConnects.Delete(jcId)
 		_ = conn.Close()
 
 	case JOB_PACK:
@@ -295,23 +363,23 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 
 		agentId := fmt.Sprintf("%08x", jobPack.Id)
 
-		if !ModuleObject.ts.TsTaskRunningExists(agentId, jobPack.Task) {
+		if !Ts.TsTaskRunningExists(agentId, jobPack.Task) {
 			goto ERR
 		}
 
 		jcId := agentId + "-" + jobPack.Task
 
-		handler.JobConnects.Put(jcId, connection)
+		t.JobConnects.Put(jcId, connection)
 
 		for {
 			recvData, err = recvMsg(conn)
 			if err != nil {
 				break
 			}
-			_ = ModuleObject.ts.TsAgentProcessData(agentId, recvData)
+			_ = Ts.TsAgentProcessData(agentId, recvData)
 		}
 
-		handler.JobConnects.Delete(jcId)
+		t.JobConnects.Delete(jcId)
 		_ = conn.Close()
 
 	case TUNNEL_PACK:
@@ -324,7 +392,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 
 		agentId := fmt.Sprintf("%08x", tunPack.Id)
 
-		if !ModuleObject.ts.TsTunnelChannelExists(tunPack.ChannelId) {
+		if !Ts.TsTunnelChannelExists(tunPack.ChannelId) {
 			goto ERR
 		}
 
@@ -339,7 +407,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 
 		ts.TsTunnelConnectionResume(agentId, tunPack.ChannelId, true)
 
-		pr, pw, err := ModuleObject.ts.TsTunnelGetPipe(agentId, tunPack.ChannelId)
+		pr, pw, err := Ts.TsTunnelGetPipe(agentId, tunPack.ChannelId)
 		if err != nil {
 			goto ERR
 		}
@@ -391,7 +459,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 		agentId := fmt.Sprintf("%08x", termPack.Id)
 		terminalId := fmt.Sprintf("%08x", termPack.TermId)
 
-		if !ModuleObject.ts.TsTerminalConnExists(terminalId) {
+		if !Ts.TsTerminalConnExists(terminalId) {
 			goto ERR
 		}
 
@@ -403,7 +471,7 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 
 		ts.TsTerminalConnResume(agentId, terminalId, true)
 
-		pr, pw, err := ModuleObject.ts.TsTerminalGetPipe(agentId, terminalId)
+		pr, pw, err := Ts.TsTerminalGetPipe(agentId, terminalId)
 		if err != nil {
 			goto ERR
 		}
@@ -448,21 +516,21 @@ func (handler *TCP) handleConnection(conn net.Conn, ts Teamserver) {
 	return
 
 ERR:
-	_ = sendMsg(conn, []byte(handler.Config.ErrorAnswer))
+	_ = sendMsg(conn, []byte(t.Config.ErrorAnswer))
 	_ = conn.Close()
 }
 
-func (handler *TCP) Stop() error {
+func (t *TransportTCP) Stop() error {
 	var (
 		err          error = nil
-		listenerPath       = ListenerDataDir + "/" + handler.Name
+		listenerPath       = ListenerDataDir + "/" + t.Name
 	)
 
-	if handler.Listener != nil {
-		_ = handler.Listener.Close()
+	if t.Listener != nil {
+		_ = t.Listener.Close()
 	}
 
-	handler.AgentConnects.ForEach(func(key string, valueConn interface{}) bool {
+	t.AgentConnects.ForEach(func(key string, valueConn interface{}) bool {
 		connection, _ := valueConn.(Connection)
 		if connection.conn != nil {
 			connection.handleCancel()
@@ -482,8 +550,8 @@ func (handler *TCP) Stop() error {
 	return nil
 }
 
-func (handler *TCP) bannerError(conn net.Conn) {
-	_, _ = conn.Write([]byte(handler.Config.ErrorAnswer))
+func (t *TransportTCP) bannerError(conn net.Conn) {
+	_, _ = conn.Write([]byte(t.Config.ErrorAnswer))
 	_ = conn.Close()
 }
 

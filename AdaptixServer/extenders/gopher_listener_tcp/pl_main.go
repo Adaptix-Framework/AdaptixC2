@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
+	"strconv"
+	"strings"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 const (
@@ -51,86 +55,170 @@ type Teamserver interface {
 	TsTunnelConnectionData(channelId int, data []byte)
 }
 
-type ModuleExtender struct {
-	ts Teamserver
-}
+type PluginListener struct{}
 
 var (
-	ModuleObject    *ModuleExtender
 	ModuleDir       string
 	ListenerDataDir string
-	ListenersObject []any //*TCP
+	Ts              Teamserver
 )
 
-func InitPlugin(ts any, moduleDir string, listenerDir string) any {
+func InitPlugin(ts any, moduleDir string, listenerDir string) adaptix.PluginListener {
 	ModuleDir = moduleDir
 	ListenerDataDir = listenerDir
-
-	ModuleObject = &ModuleExtender{
-		ts: ts.(Teamserver),
-	}
-	return ModuleObject
+	Ts = ts.(Teamserver)
+	return &PluginListener{}
 }
 
-func (m *ModuleExtender) ListenerValid(data string) error {
-	return m.HandlerListenerValid(data)
-}
-
-func (m *ModuleExtender) ListenerStart(name string, data string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error) {
-	listenerData, customData, listener, err := m.HandlerCreateListenerDataAndStart(name, data, listenerCustomData)
-	if err != nil {
-		return listenerData, customData, err
-	}
-
-	ListenersObject = append(ListenersObject, listener)
-
-	return listenerData, customData, nil
-}
-
-func (m *ModuleExtender) ListenerEdit(name string, data string) (adaptix.ListenerData, []byte, error) {
-	for _, value := range ListenersObject {
-		listenerData, customData, ok := m.HandlerEditListenerData(name, value, data)
-		if ok {
-			return listenerData, customData, nil
-		}
-	}
-	return adaptix.ListenerData{}, nil, errors.New("listener not found")
-}
-
-func (m *ModuleExtender) ListenerStop(name string) error {
+func (p *PluginListener) Create(name string, config string, customData []byte) (adaptix.ExtenderListener, adaptix.ListenerData, []byte, error) {
 	var (
-		index int
-		err   error
-		ok    bool
+		listener     *Listener
+		listenerData adaptix.ListenerData
+		customdData  []byte
+		conf         TransportConfig
+		err          error
 	)
 
-	for ind, value := range ListenersObject {
-		ok, err = m.HandlerListenerStop(name, value)
-		if ok {
-			index = ind
-			break
-		}
-	}
+	/// START CODE HERE
 
-	if ok {
-		ListenersObject = append(ListenersObject[:index], ListenersObject[index+1:]...)
+	if customData == nil {
+		if err = validConfig(config); err != nil {
+			return nil, listenerData, customdData, err
+		}
+
+		err = json.Unmarshal([]byte(config), &conf)
+		if err != nil {
+			return nil, listenerData, customdData, err
+		}
+
+		conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, " ", "")
+		conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, "\n", ", ")
+		conf.Callback_addresses = strings.TrimSuffix(conf.Callback_addresses, ", ")
+
+		conf.Protocol = "tcp"
 	} else {
-		return errors.New("listener not found")
-	}
-
-	return err
-}
-
-func (m *ModuleExtender) ListenerGetProfile(name string) ([]byte, error) {
-	for _, value := range ListenersObject {
-		profile, ok := m.HandlerListenerGetProfile(name, value)
-		if ok {
-			return profile, nil
+		err = json.Unmarshal(customData, &conf)
+		if err != nil {
+			return nil, listenerData, customdData, err
 		}
 	}
-	return nil, errors.New("listener not found")
+
+	transport := &TransportTCP{
+		Name:          name,
+		Config:        conf,
+		AgentConnects: NewMap(),
+		JobConnects:   NewMap(),
+		Active:        false,
+	}
+
+	listenerData = adaptix.ListenerData{
+		BindHost:  transport.Config.HostBind,
+		BindPort:  strconv.Itoa(transport.Config.PortBind),
+		AgentAddr: conf.Callback_addresses,
+		Status:    "Stopped",
+	}
+
+	if transport.Config.Ssl {
+		listenerData.Protocol = "mtls"
+	}
+
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(transport.Config)
+	if err != nil {
+		return nil, listenerData, customdData, err
+	}
+	customdData = buffer.Bytes()
+
+	listener = &Listener{transport: transport}
+
+	/// END CODE HERE
+
+	return listener, listenerData, customdData, nil
 }
 
-func (m *ModuleExtender) ListenerInteralHandler(name string, data []byte) (string, error) {
-	return "", errors.New("listener not found")
+func (l *Listener) Start() error {
+	/// START CODE HERE
+
+	return l.transport.Start(Ts)
+
+	/// END CODE HERE
+}
+
+func (l *Listener) Edit(config string) (adaptix.ListenerData, []byte, error) {
+	var (
+		listenerData adaptix.ListenerData
+		customdData  []byte
+		conf         TransportConfig
+		err          error
+	)
+
+	err = json.Unmarshal([]byte(config), &conf)
+	if err != nil {
+		return listenerData, customdData, err
+	}
+
+	/// START CODE HERE
+
+	conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, " ", "")
+	conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, "\n", ", ")
+	conf.Callback_addresses = strings.TrimSuffix(conf.Callback_addresses, ", ")
+
+	l.transport.Config.Callback_addresses = conf.Callback_addresses
+	l.transport.Config.TcpBanner = conf.TcpBanner
+	l.transport.Config.ErrorAnswer = conf.ErrorAnswer
+	l.transport.Config.Timeout = conf.Timeout
+
+	listenerData = adaptix.ListenerData{
+		BindHost:  l.transport.Config.HostBind,
+		BindPort:  strconv.Itoa(l.transport.Config.PortBind),
+		AgentAddr: l.transport.Config.Callback_addresses,
+		Status:    "Listen",
+	}
+	if !l.transport.Active {
+		listenerData.Status = "Closed"
+	}
+
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(l.transport.Config)
+	if err != nil {
+		return listenerData, customdData, err
+	}
+	customdData = buffer.Bytes()
+
+	/// END CODE HERE
+
+	return listenerData, customdData, nil
+}
+
+func (l *Listener) Stop() error {
+	/// START CODE HERE
+
+	return l.transport.Stop()
+
+	/// END CODE HERE
+}
+
+func (l *Listener) GetProfile() ([]byte, error) {
+	var buffer bytes.Buffer
+
+	/// START CODE HERE
+
+	err := json.NewEncoder(&buffer).Encode(l.transport.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	/// END CODE HERE
+
+	return buffer.Bytes(), nil
+}
+
+func (l *Listener) InternalHandler(data []byte) (string, error) {
+	var agentId = ""
+
+	/// START CODE HERE
+
+	/// END CODE HERE
+
+	return agentId, errors.New("not implemented")
 }
