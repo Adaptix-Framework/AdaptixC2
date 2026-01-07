@@ -383,7 +383,6 @@ func SizeBytesToFormat(bytes int64) string {
 		return fmt.Sprintf("%.2f Gb", size/GB)
 	} else if size >= MB {
 		return fmt.Sprintf("%.2f Mb", size/MB)
-	} else {
-		return fmt.Sprintf("%.2f Kb", size/KB)
 	}
+	return fmt.Sprintf("%.2f Kb", size/KB)
 }
