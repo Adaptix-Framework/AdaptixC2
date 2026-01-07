@@ -290,7 +290,7 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("invalid port: %v", err)
 		}
-		taskData := tunnel.handlerReverse(int(id), port)
+		taskData := tunnel.Callbacks.Reverse(int(id), port)
 		tunnelManageTask(agent, taskData)
 
 	} else {
@@ -396,23 +396,12 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 		}
 	}
 
-	fConnTCP, fConnUDP, fWriteTCP, fWriteUDP, fClose, fReverse, err := ts.Extender.ExAgentTunnelCallbacks(agentData, Type)
-	if err != nil {
-		return "", err
-	}
-
 	tunnel := &Tunnel{
 		connections: safe.NewMap(),
 		Data:        tunnelData,
 		Type:        Type,
 		Active:      false,
-
-		handlerConnectTCP: fConnTCP,
-		handlerConnectUDP: fConnUDP,
-		handlerWriteTCP:   fWriteTCP,
-		handlerWriteUDP:   fWriteUDP,
-		handlerClose:      fClose,
-		handlerReverse:    fReverse,
+		Callbacks:   agent.TunnelCallbacks(),
 	}
 
 	ts.TunnelManager.PutTunnel(tunnel)
@@ -536,7 +525,7 @@ func (ts *Teamserver) TsTunnelStopRportfwd(AgentId string, Port int) {
 		return
 	}
 
-	rawTaskData := tunnel.handlerClose(int(id))
+	rawTaskData := tunnel.Callbacks.Close(int(id))
 	tunnelManageTask(agent, rawTaskData)
 
 	_ = ts.TsTunnelStop(TunnelId)
@@ -692,7 +681,7 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 			tm.closeChannelInternal(tunnel, tunChannel)
 			return
 		}
-		taskData = tunnel.handlerConnectTCP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
+		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
 
 	case TUNNEL_SOCKS5:
 		proxySock, err := proxy.CheckSocks5(conn, false, "", "")
@@ -702,10 +691,10 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 			return
 		}
 		if proxySock.SocksCommand == 3 {
-			taskData = tunnel.handlerConnectUDP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
+			taskData = tunnel.Callbacks.ConnectUDP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
 			tunChannel.protocol = "UDP"
 		} else {
-			taskData = tunnel.handlerConnectTCP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
+			taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
 		}
 
 	case TUNNEL_SOCKS5_AUTH:
@@ -716,15 +705,15 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 			return
 		}
 		if proxySock.SocksCommand == 3 {
-			taskData = tunnel.handlerConnectUDP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
+			taskData = tunnel.Callbacks.ConnectUDP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
 			tunChannel.protocol = "UDP"
 		} else {
-			taskData = tunnel.handlerConnectTCP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
+			taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
 		}
 
 	case TUNNEL_LPORTFWD:
 		tport, _ := strconv.Atoi(tunnel.Data.Fport)
-		taskData = tunnel.handlerConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_LOCAL_PORT, proxy.ADDRESS_TYPE_IPV4, tunnel.Data.Fhost, tport)
+		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_LOCAL_PORT, proxy.ADDRESS_TYPE_IPV4, tunnel.Data.Fhost, tport)
 
 	default:
 		tm.closeChannelInternal(tunnel, tunChannel)
@@ -753,27 +742,27 @@ func handleTunChannelCreateClient(tm *TunnelManager, agent *Agent, tunnel *Tunne
 	switch tunnel.Type {
 
 	case TUNNEL_SOCKS4:
-		taskData = tunnel.handlerConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS4, addressType, targetAddress, targetPort)
+		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS4, addressType, targetAddress, targetPort)
 
 	case TUNNEL_SOCKS5:
 		if protocol == "udp" {
-			taskData = tunnel.handlerConnectUDP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
+			taskData = tunnel.Callbacks.ConnectUDP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
 			tunChannel.protocol = "UDP"
 		} else {
-			taskData = tunnel.handlerConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
+			taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
 		}
 
 	case TUNNEL_SOCKS5_AUTH:
 		if protocol == "udp" {
-			taskData = tunnel.handlerConnectUDP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
+			taskData = tunnel.Callbacks.ConnectUDP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
 			tunChannel.protocol = "UDP"
 		} else {
-			taskData = tunnel.handlerConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
+			taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
 		}
 
 	case TUNNEL_LPORTFWD:
 		tport, _ := strconv.Atoi(tunnel.Data.Fport)
-		taskData = tunnel.handlerConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_LOCAL_PORT, addressType, tunnel.Data.Fhost, tport)
+		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_LOCAL_PORT, addressType, tunnel.Data.Fhost, tport)
 
 	default:
 		tm.closeChannelInternal(tunnel, tunChannel)
@@ -789,7 +778,7 @@ func handlerReverseAccept(tm *TunnelManager, agent *Agent, tunnel *Tunnel, chann
 	target := tunnel.Data.Fhost + ":" + tunnel.Data.Fport
 	fwdConn, err := net.Dial("tcp", target)
 	if err != nil {
-		rawTaskData := tunnel.handlerClose(channelId)
+		rawTaskData := tunnel.Callbacks.Close(channelId)
 		tunnelManageTask(agent, rawTaskData)
 		return
 	}
@@ -842,7 +831,7 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 		once.Do(func() {
 			cancel()
 			tm.CloseChannel(tunnelId, tunChannel.channelId)
-			taskData = tunnel.handlerClose(tunChannel.channelId)
+			taskData = tunnel.Callbacks.Close(tunChannel.channelId)
 			tunnelManageTask(agent, taskData)
 		})
 	}
@@ -886,9 +875,9 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 					if n > 0 {
 						var td adaptix.TaskData
 						if tunChannel.protocol == "UDP" {
-							td = tunnel.handlerWriteUDP(tunChannel.channelId, buf[:n])
+							td = tunnel.Callbacks.WriteUDP(tunChannel.channelId, buf[:n])
 						} else {
-							td = tunnel.handlerWriteTCP(tunChannel.channelId, buf[:n])
+							td = tunnel.Callbacks.WriteTCP(tunChannel.channelId, buf[:n])
 						}
 						relayPipeToTaskData(agent, tunChannel.channelId, td)
 					}
@@ -909,7 +898,7 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 		once.Do(func() {
 			cancel()
 			tm.CloseChannel(tunnelId, tunChannel.channelId)
-			taskData := tunnel.handlerClose(tunChannel.channelId)
+			taskData := tunnel.Callbacks.Close(tunChannel.channelId)
 			tunnelManageTask(agent, taskData)
 		})
 	}
@@ -964,9 +953,9 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 					if n > 0 {
 						var td adaptix.TaskData
 						if tunChannel.protocol == "UDP" {
-							td = tunnel.handlerWriteUDP(tunChannel.channelId, buf[:n])
+							td = tunnel.Callbacks.WriteUDP(tunChannel.channelId, buf[:n])
 						} else {
-							td = tunnel.handlerWriteTCP(tunChannel.channelId, buf[:n])
+							td = tunnel.Callbacks.WriteTCP(tunChannel.channelId, buf[:n])
 						}
 						relayPipeToTaskData(agent, tunChannel.channelId, td)
 					}

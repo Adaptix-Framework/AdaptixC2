@@ -91,7 +91,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string
 		return fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
-	listenerData, customData, err := ts.Extender.ExListenerEdit(listenerName, listenerRegName, listenerConfig)
+	listenerData, customData, err := ts.Extender.ExListenerEdit(listenerName, listenerConfig)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 		return fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
-	err := ts.Extender.ExListenerStop(listenerName, listenerType)
+	err := ts.Extender.ExListenerStop(listenerName)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (ts *Teamserver) TsListenerGetProfile(listenerName string, listenerType str
 
 	value, _ := ts.listeners.Get(listenerName)
 	watermark := value.(adaptix.ListenerData).Watermark
-	data, err := ts.Extender.ExListenerGetProfile(listenerName, listenerType)
+	data, err := ts.Extender.ExListenerGetProfile(listenerName)
 	return watermark, data, err
 }
 
@@ -171,5 +171,5 @@ func (ts *Teamserver) TsListenerInteralHandler(watermark string, data []byte) (s
 		return "", fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
-	return ts.Extender.ExListenerInteralHandler(listenerName, listenerType, data)
+	return ts.Extender.ExListenerInternalHandler(listenerName, data)
 }

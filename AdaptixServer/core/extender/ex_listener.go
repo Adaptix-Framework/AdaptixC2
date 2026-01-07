@@ -1,51 +1,61 @@
 package extender
 
-import (
-	"errors"
-
-	"github.com/Adaptix-Framework/axc2"
-)
+import adaptix "github.com/Adaptix-Framework/axc2"
 
 func (ex *AdaptixExtender) ExListenerStart(listenerName string, configType string, config string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error) {
-	module, ok := ex.listenerModules[configType]
-	if !ok {
-		return adaptix.ListenerData{}, nil, errors.New("module not found")
-	}
-	err := module.ListenerValid(config)
+	module, err := ex.getListenerModule(configType)
 	if err != nil {
 		return adaptix.ListenerData{}, nil, err
 	}
-	return module.ListenerStart(listenerName, config, listenerCustomData)
+
+	listener, listenerData, customData, err := module.Create(listenerName, config, listenerCustomData)
+	if err != nil {
+		return listenerData, customData, err
+	}
+
+	err = listener.Start()
+	if err != nil {
+		return listenerData, customData, err
+	}
+
+	listenerData.Status = "Listen"
+	ex.activeListeners[listenerName] = listener
+
+	return listenerData, customData, nil
 }
 
-func (ex *AdaptixExtender) ExListenerEdit(listenerName string, configType string, config string) (adaptix.ListenerData, []byte, error) {
-	module, ok := ex.listenerModules[configType]
-	if !ok {
-		return adaptix.ListenerData{}, nil, errors.New("module not found")
+func (ex *AdaptixExtender) ExListenerEdit(listenerName string, config string) (adaptix.ListenerData, []byte, error) {
+	listener, err := ex.getActiveListener(listenerName)
+	if err != nil {
+		return adaptix.ListenerData{}, nil, err
 	}
-	return module.ListenerEdit(listenerName, config)
+	return listener.Edit(config)
 }
 
-func (ex *AdaptixExtender) ExListenerStop(listenerName string, configType string) error {
-	module, ok := ex.listenerModules[configType]
-	if !ok {
-		return errors.New("module not found")
+func (ex *AdaptixExtender) ExListenerStop(listenerName string) error {
+	listener, err := ex.getActiveListener(listenerName)
+	if err != nil {
+		return err
 	}
-	return module.ListenerStop(listenerName)
+
+	err = listener.Stop()
+	delete(ex.activeListeners, listenerName)
+
+	return err
 }
 
-func (ex *AdaptixExtender) ExListenerGetProfile(listenerName string, configType string) ([]byte, error) {
-	module, ok := ex.listenerModules[configType]
-	if !ok {
-		return nil, errors.New("module not found")
+func (ex *AdaptixExtender) ExListenerGetProfile(listenerName string) ([]byte, error) {
+	listener, err := ex.getActiveListener(listenerName)
+	if err != nil {
+		return nil, err
 	}
-	return module.ListenerGetProfile(listenerName)
+	return listener.GetProfile()
 }
 
-func (ex *AdaptixExtender) ExListenerInteralHandler(listenerName string, configType string, data []byte) (string, error) {
-	module, ok := ex.listenerModules[configType]
-	if !ok {
-		return "", errors.New("module not found")
+func (ex *AdaptixExtender) ExListenerInternalHandler(listenerName string, data []byte) (string, error) {
+	listener, err := ex.getActiveListener(listenerName)
+	if err != nil {
+		return "", err
 	}
-	return module.ListenerInteralHandler(listenerName, data)
+	return listener.InternalHandler(data)
 }

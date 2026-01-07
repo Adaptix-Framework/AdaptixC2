@@ -41,8 +41,6 @@ const (
 	TUNNEL_RPORTFWD    = 5
 )
 
-// TeamServer
-
 type TsParameters struct {
 	Interfaces []string
 }
@@ -79,10 +77,11 @@ type Teamserver struct {
 }
 
 type Agent struct {
-	mu     sync.RWMutex
-	data   adaptix.AgentData
-	Tick   bool
-	Active bool
+	mu      sync.RWMutex
+	data    adaptix.AgentData
+	Handler adaptix.AgentHandler
+	Tick    bool
+	Active  bool
 
 	OutConsole *safe.Slice //  sync_packet interface{}
 
@@ -116,6 +115,40 @@ func (a *Agent) UpdateData(fn func(*adaptix.AgentData)) {
 	fn(&a.data)
 }
 
+func (a *Agent) Command(args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
+	return a.Handler.CreateCommand(a.GetData(), args)
+}
+
+func (a *Agent) ProcessData(packedData []byte) error {
+	data := a.GetData()
+	decrypted, err := a.Handler.Decrypt(packedData, data.SessionKey)
+	if err != nil {
+		return err
+	}
+	return a.Handler.ProcessData(data, decrypted)
+}
+
+func (a *Agent) PackData(tasks []adaptix.TaskData) ([]byte, error) {
+	data := a.GetData()
+	packed, err := a.Handler.PackTasks(data, tasks)
+	if err != nil {
+		return nil, err
+	}
+	return a.Handler.Encrypt(packed, data.SessionKey)
+}
+
+func (a *Agent) PivotPackData(pivotId string, data []byte) (adaptix.TaskData, error) {
+	return a.Handler.PivotPackData(pivotId, data)
+}
+
+func (a *Agent) TunnelCallbacks() adaptix.TunnelCallbacks {
+	return a.Handler.TunnelCallbacks()
+}
+
+func (a *Agent) TerminalCallbacks() adaptix.TerminalCallbacks {
+	return a.Handler.TerminalCallbacks()
+}
+
 type HookJob struct {
 	Sent      bool
 	Processed bool
@@ -146,12 +179,7 @@ type Tunnel struct {
 	listener    net.Listener
 	connections safe.Map
 
-	handlerConnectTCP func(channelId int, tunType int, addrType int, addr string, port int) adaptix.TaskData
-	handlerConnectUDP func(channelId int, tunType int, addrType int, addr string, port int) adaptix.TaskData
-	handlerWriteTCP   func(channelId int, data []byte) adaptix.TaskData
-	handlerWriteUDP   func(channelId int, data []byte) adaptix.TaskData
-	handlerClose      func(channelId int) adaptix.TaskData
-	handlerReverse    func(tunnelId int, port int) adaptix.TaskData
+	Callbacks adaptix.TunnelCallbacks
 }
 
 type Terminal struct {
@@ -171,9 +199,7 @@ type Terminal struct {
 	pwTun *io.PipeWriter
 	prTun *io.PipeReader
 
-	handlerStart func(terminalId int, program string, sizeH int, sizeW int, oemCP int) (adaptix.TaskData, error)
-	handlerWrite func(terminalId int, oemCP int, data []byte) (adaptix.TaskData, error)
-	handlerClose func(terminalId int) (adaptix.TaskData, error)
+	Callbacks adaptix.TerminalCallbacks
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

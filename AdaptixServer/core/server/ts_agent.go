@@ -50,7 +50,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 		return adaptix.AgentData{}, fmt.Errorf("agent %v already exists", agentId)
 	}
 
-	agentData, err := ts.Extender.ExAgentCreate(agentName, beat)
+	agentData, handler, err := ts.Extender.ExAgentCreate(agentName, beat)
 	if err != nil {
 		return adaptix.AgentData{}, err
 	}
@@ -86,6 +86,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	}
 
 	agent := &Agent{
+		Handler:           handler,
 		OutConsole:        safe.NewSlice(),
 		HostedTasks:       safe.NewSafeQueue(0x100),
 		HostedTunnelTasks: safe.NewSafeQueue(0x100),
@@ -132,7 +133,7 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 		return fmt.Errorf("agent '%v' not active", agentId)
 	}
 
-	taskData, messageData, err := ts.Extender.ExAgentCommand(agentName, agent.GetData(), args)
+	taskData, messageData, err := agent.Command(args)
 	if err != nil {
 		return err
 	}
@@ -168,8 +169,7 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 	}
 
 	if len(bodyData) > 4 {
-		_, err := ts.Extender.ExAgentProcessData(agent.GetData(), bodyData)
-		return err
+		return agent.ProcessData(bodyData)
 	}
 
 	return nil
@@ -199,7 +199,7 @@ func (ts *Teamserver) TsAgentGetHostedAll(agentId string, maxDataSize int) ([]by
 			return nil, err
 		}
 
-		respData, err := ts.Extender.ExAgentPackData(agentData, tasks)
+		respData, err := agent.PackData(tasks)
 		if err != nil {
 			return nil, err
 		}
@@ -231,7 +231,7 @@ func (ts *Teamserver) TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]
 		return nil, err
 	}
 
-	respData, err := ts.Extender.ExAgentPackData(agentData, tasks)
+	respData, err := agent.PackData(tasks)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId string, count int, maxD
 			return nil, err
 		}
 
-		respData, err := ts.Extender.ExAgentPackData(agentData, tasks)
+		respData, err := agent.PackData(tasks)
 		if err != nil {
 			return nil, err
 		}

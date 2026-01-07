@@ -1,6 +1,15 @@
 package extender
 
-import "github.com/Adaptix-Framework/axc2"
+import (
+	"errors"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
+)
+
+var (
+	ErrModuleNotFound   = errors.New("module not found")
+	ErrListenerNotFound = errors.New("listener not found")
+)
 
 /// ExConfig Listener
 
@@ -46,29 +55,35 @@ type Teamserver interface {
 	TsAgentReg(agentInfo AgentInfo) error
 }
 
-type ExtListener interface {
-	ListenerValid(config string) error
-	ListenerStart(name string, data string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error)
-	ListenerEdit(name string, data string) (adaptix.ListenerData, []byte, error)
-	ListenerStop(name string) error
-	ListenerGetProfile(name string) ([]byte, error)
-	ListenerInteralHandler(name string, data []byte) (string, error)
-}
-
-type ExtAgent interface {
-	AgentGenerate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
-	AgentCreate(beat []byte) (adaptix.AgentData, error)
-	AgentCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error)
-	AgentProcessData(agentData adaptix.AgentData, packedData []byte) ([]byte, error)
-	AgentPackData(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error)
-	AgentPivotPackData(pivotId string, data []byte) (adaptix.TaskData, error)
-
-	AgentTunnelCallbacks() (func(int, int, int, string, int) adaptix.TaskData, func(int, int, int, string, int) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int) adaptix.TaskData, func(int, int) adaptix.TaskData, error)
-	AgentTerminalCallbacks() (func(int, string, int, int, int) (adaptix.TaskData, error), func(int, int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error)
-}
-
 type AdaptixExtender struct {
 	ts              Teamserver
-	listenerModules map[string]ExtListener
-	agentModules    map[string]ExtAgent
+	listenerModules map[string]adaptix.PluginListener
+	agentModules    map[string]adaptix.PluginAgent
+	activeListeners map[string]adaptix.ExtenderListener
+}
+
+/// Helper methods
+
+func (ex *AdaptixExtender) getListenerModule(configType string) (adaptix.PluginListener, error) {
+	module, ok := ex.listenerModules[configType]
+	if !ok {
+		return nil, ErrModuleNotFound
+	}
+	return module, nil
+}
+
+func (ex *AdaptixExtender) getActiveListener(name string) (adaptix.ExtenderListener, error) {
+	listener, ok := ex.activeListeners[name]
+	if !ok {
+		return nil, ErrListenerNotFound
+	}
+	return listener, nil
+}
+
+func (ex *AdaptixExtender) getAgentFactory(agentName string) (adaptix.PluginAgent, error) {
+	module, ok := ex.agentModules[agentName]
+	if !ok {
+		return nil, ErrModuleNotFound
+	}
+	return module, nil
 }

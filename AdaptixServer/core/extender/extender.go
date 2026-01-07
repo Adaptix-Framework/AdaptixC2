@@ -6,13 +6,16 @@ import (
 	"os"
 	"path/filepath"
 	"plugin"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func NewExtender(teamserver Teamserver) *AdaptixExtender {
 	return &AdaptixExtender{
 		ts:              teamserver,
-		listenerModules: make(map[string]ExtListener),
-		agentModules:    make(map[string]ExtAgent),
+		listenerModules: make(map[string]adaptix.PluginListener),
+		agentModules:    make(map[string]adaptix.PluginAgent),
+		activeListeners: make(map[string]adaptix.ExtenderListener),
 	}
 }
 
@@ -74,15 +77,15 @@ func (ex *AdaptixExtender) LoadPluginListener(config_path string, config_data []
 		return
 	}
 
-	pl_InitPlugin, ok := sym.(func(ts any, moduleDir string, listenerDir string) any)
+	pl_InitPlugin, ok := sym.(func(ts any, moduleDir string, listenerDir string) adaptix.PluginListener)
 	if !ok {
 		logs.Error("", "unexpected signature from InitPlugin in %s", plugin_path)
 		return
 	}
 
-	module, ok := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), logs.RepoLogsInstance.ListenerPath).(ExtListener)
-	if !ok {
-		logs.Error("", "plugin %s does not implement the ExtListener interface", plugin_path)
+	pl_listener := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), logs.RepoLogsInstance.ListenerPath)
+	if pl_listener == nil {
+		logs.Error("", "plugin %s returned nil", plugin_path)
 		return
 	}
 
@@ -106,7 +109,7 @@ func (ex *AdaptixExtender) LoadPluginListener(config_path string, config_data []
 		return
 	}
 
-	ex.listenerModules[listenerInfo.Name] = module
+	ex.listenerModules[listenerInfo.Name] = pl_listener
 }
 
 func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byte) {
@@ -144,15 +147,15 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 		return
 	}
 
-	pl_InitPlugin, ok := sym.(func(ts any, moduleDir string, watermark string) any)
+	pl_InitPlugin, ok := sym.(func(ts any, moduleDir string, watermark string) adaptix.PluginAgent)
 	if !ok {
 		logs.Error("", "unexpected signature from InitPlugin in %s", plugin_path)
 		return
 	}
 
-	module, ok := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), agentInfo.Watermark).(ExtAgent)
-	if !ok {
-		logs.Error("", "plugin %s does not implement the ExtAgent interface", plugin_path)
+	pl_agent := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), agentInfo.Watermark)
+	if pl_agent == nil {
+		logs.Error("", "plugin %s returned nil", plugin_path)
 		return
 	}
 
@@ -162,5 +165,5 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 		return
 	}
 
-	ex.agentModules[agentInfo.Name] = module
+	ex.agentModules[agentInfo.Name] = pl_agent
 }
