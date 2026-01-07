@@ -1,9 +1,15 @@
 package main
 
 import (
-	"errors"
+	"bytes"
+	"crypto/rc4"
+	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"strconv"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 type Teamserver interface {
@@ -11,92 +17,181 @@ type Teamserver interface {
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
 }
 
-type ModuleExtender struct {
-	ts Teamserver
-}
+type PluginListener struct{}
 
 var (
-	ModuleObject    *ModuleExtender
 	ModuleDir       string
 	ListenerDataDir string
-	ListenersObject []any //*SMB
+	Ts              Teamserver
 )
 
-func InitPlugin(ts any, moduleDir string, listenerDir string) any {
+func InitPlugin(ts any, moduleDir string, listenerDir string) adaptix.PluginListener {
 	ModuleDir = moduleDir
 	ListenerDataDir = listenerDir
-
-	ModuleObject = &ModuleExtender{
-		ts: ts.(Teamserver),
-	}
-	return ModuleObject
+	Ts = ts.(Teamserver)
+	return &PluginListener{}
 }
 
-func (m *ModuleExtender) ListenerValid(data string) error {
-	return m.HandlerListenerValid(data)
-}
-
-func (m *ModuleExtender) ListenerStart(name string, data string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error) {
-	listenerData, customData, listener, err := m.HandlerCreateListenerDataAndStart(name, data, listenerCustomData)
-	if err != nil {
-		return listenerData, customData, err
-	}
-
-	ListenersObject = append(ListenersObject, listener)
-
-	return listenerData, customData, nil
-}
-
-func (m *ModuleExtender) ListenerEdit(name string, data string) (adaptix.ListenerData, []byte, error) {
-	for _, value := range ListenersObject {
-		listenerData, customData, ok := m.HandlerEditListenerData(name, value, data)
-		if ok {
-			return listenerData, customData, nil
-		}
-	}
-	return adaptix.ListenerData{}, nil, errors.New("listener not found")
-}
-
-func (m *ModuleExtender) ListenerStop(name string) error {
+func (p *PluginListener) Create(name string, config string, customData []byte) (adaptix.ExtenderListener, adaptix.ListenerData, []byte, error) {
 	var (
-		index int
-		err   error
-		ok    bool
+		listener     *Listener
+		listenerData adaptix.ListenerData
+		customdData  []byte
+		conf         TransportConfig
+		err          error
 	)
 
-	for ind, value := range ListenersObject {
-		ok, err = m.HandlerListenerStop(name, value)
-		if ok {
-			index = ind
-			break
-		}
-	}
+	/// START CODE HERE
 
-	if ok {
-		ListenersObject = append(ListenersObject[:index], ListenersObject[index+1:]...)
+	if customData == nil {
+		if err = validConfig(config); err != nil {
+			return nil, listenerData, customdData, err
+		}
+
+		err = json.Unmarshal([]byte(config), &conf)
+		if err != nil {
+			return nil, listenerData, customdData, err
+		}
+
+		conf.Prepend, err = strconv.Unquote(`"` + conf.Prepend + `"`)
+		if err != nil {
+			return nil, listenerData, customdData, err
+		}
+
+		conf.Protocol = "bind_tcp"
 	} else {
-		return errors.New("listener not found")
-	}
-
-	return err
-}
-
-func (m *ModuleExtender) ListenerGetProfile(name string) ([]byte, error) {
-	for _, value := range ListenersObject {
-		profile, ok := m.HandlerListenerGetProfile(name, value)
-		if ok {
-			return profile, nil
+		err = json.Unmarshal(customData, &conf)
+		if err != nil {
+			return nil, listenerData, customdData, err
 		}
 	}
-	return nil, errors.New("listener not found")
+
+	transport := &TransportTCP{
+		Name:   name,
+		Config: conf,
+		Active: false,
+	}
+
+	listenerData = adaptix.ListenerData{
+		BindHost:  "",
+		BindPort:  "",
+		AgentAddr: fmt.Sprintf("0.0.0.0:%d", transport.Config.Port),
+		Status:    "Stopped",
+	}
+
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(transport.Config)
+	if err != nil {
+		return nil, listenerData, customdData, err
+	}
+	customdData = buffer.Bytes()
+
+	listener = &Listener{transport: transport}
+
+	/// END CODE HERE
+
+	return listener, listenerData, customdData, nil
 }
 
-func (m *ModuleExtender) ListenerInteralHandler(name string, data []byte) (string, error) {
-	for _, value := range ListenersObject {
-		id, err, ok := m.HandlerListenerInteralHandler(name, data, value)
-		if ok {
-			return id, err
+func (l *Listener) Start() error {
+
+	/// START CODE HERE
+
+	l.transport.Active = true
+	return nil
+
+	/// END CODE HERE
+}
+
+func (l *Listener) Edit(config string) (adaptix.ListenerData, []byte, error) {
+	var (
+		listenerData adaptix.ListenerData
+		customdData  []byte
+		conf         TransportConfig
+		err          error
+	)
+
+	err = json.Unmarshal([]byte(config), &conf)
+	if err != nil {
+		return listenerData, customdData, err
+	}
+
+	/// START CODE HERE
+
+	listenerData = adaptix.ListenerData{
+		BindHost:  "",
+		BindPort:  "",
+		AgentAddr: fmt.Sprintf("0.0.0.0:%d", l.transport.Config.Port),
+		Status:    "Listen",
+	}
+
+	var buffer bytes.Buffer
+	err = json.NewEncoder(&buffer).Encode(l.transport.Config)
+	if err != nil {
+		return listenerData, customdData, err
+	}
+	customdData = buffer.Bytes()
+
+	/// END CODE HERE
+
+	return listenerData, customdData, nil
+}
+
+func (l *Listener) Stop() error {
+
+	/// START CODE HERE
+
+	l.transport.Active = false
+	return nil
+
+	/// END CODE HERE
+}
+
+func (l *Listener) GetProfile() ([]byte, error) {
+	var buffer bytes.Buffer
+
+	/// START CODE HERE
+
+	err := json.NewEncoder(&buffer).Encode(l.transport.Config)
+	if err != nil {
+		return nil, err
+	}
+
+	/// END CODE HERE
+
+	return buffer.Bytes(), nil
+}
+
+func (l *Listener) InternalHandler(data []byte) (string, error) {
+	var agentId = ""
+
+	/// START CODE HERE
+
+	encKey, err := hex.DecodeString(l.transport.Config.EncryptKey)
+	if err != nil {
+		return "", err
+	}
+	rc4crypt, err := rc4.NewCipher(encKey)
+	if err != nil {
+		return "", err
+	}
+
+	agentInfo := make([]byte, len(data))
+	rc4crypt.XORKeyStream(agentInfo, data)
+
+	agentType := fmt.Sprintf("%08x", uint(binary.BigEndian.Uint32(agentInfo[:4])))
+	agentInfo = agentInfo[4:]
+	agentId = fmt.Sprintf("%08x", uint(binary.BigEndian.Uint32(agentInfo[:4])))
+	agentInfo = agentInfo[4:]
+
+	if !Ts.TsAgentIsExists(agentId) {
+		_, err = Ts.TsAgentCreate(agentType, agentId, agentInfo, l.transport.Name, "", false)
+		if err != nil {
+			return agentId, err
 		}
 	}
-	return "", errors.New("listener not found")
+
+	/// END CODE HERE
+
+	return agentId, nil
 }
