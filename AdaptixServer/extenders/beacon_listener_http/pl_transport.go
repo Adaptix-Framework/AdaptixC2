@@ -11,21 +11,37 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"math/big"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-type HTTPConfig struct {
+type Listener struct {
+	transport *TransportHTTP
+}
+
+type TransportHTTP struct {
+	GinEngine *gin.Engine
+	Server    *http.Server
+	Config    TransportConfig
+	Name      string
+	Active    bool
+}
+
+type TransportConfig struct {
 	HostBind           string `json:"host_bind"`
 	PortBind           int    `json:"port_bind"`
 	Callback_addresses string `json:"callback_addresses"`
@@ -55,45 +71,115 @@ type HTTPConfig struct {
 	Protocol       string `json:"protocol"`
 }
 
-type HTTP struct {
-	GinEngine *gin.Engine
-	Server    *http.Server
-	Config    HTTPConfig
-	Name      string
-	Active    bool
+func validConfig(config string) error {
+	var conf TransportConfig
+	err := json.Unmarshal([]byte(config), &conf)
+	if err != nil {
+		return err
+	}
+
+	if conf.HostBind == "" {
+		return errors.New("HostBind is required")
+	}
+
+	if conf.PortBind < 1 || conf.PortBind > 65535 {
+		return errors.New("PortBind must be in the range 1-65535")
+	}
+
+	if conf.Callback_addresses == "" {
+		return errors.New("callback_servers is required")
+	}
+	lines := strings.Split(strings.TrimSpace(conf.Callback_addresses), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		host, portStr, err := net.SplitHostPort(line)
+		if err != nil {
+			return fmt.Errorf("Invalid address (cannot split host:port): %s\n", line)
+		}
+
+		port, err := strconv.Atoi(portStr)
+		if err != nil || port < 1 || port > 65535 {
+			return fmt.Errorf("Invalid port: %s\n", line)
+		}
+
+		ip := net.ParseIP(host)
+		if ip == nil {
+			if len(host) == 0 || len(host) > 253 {
+				return fmt.Errorf("Invalid host: %s\n", line)
+			}
+			parts := strings.Split(host, ".")
+			for _, part := range parts {
+				if len(part) == 0 || len(part) > 63 {
+					return fmt.Errorf("Invalid host: %s\n", line)
+				}
+			}
+		}
+	}
+
+	matched, err := regexp.MatchString(`^/[a-zA-Z0-9\.\=\-]+(/[a-zA-Z0-9\.\=\-]+)*$`, conf.Uri)
+	if err != nil || !matched {
+		return errors.New("uri invalid")
+	}
+
+	if conf.HttpMethod == "" {
+		return errors.New("http_method is required")
+	}
+
+	if conf.ParameterName == "" {
+		return errors.New("hb_header is required")
+	}
+
+	if conf.UserAgent == "" {
+		return errors.New("user_agent is required")
+	}
+
+	match, _ := regexp.MatchString("^[0-9a-f]{32}$", conf.EncryptKey)
+	if len(conf.EncryptKey) != 32 || !match {
+		return errors.New("encrypt_key must be 32 hex characters")
+	}
+
+	if !strings.Contains(conf.WebPageOutput, "<<<PAYLOAD_DATA>>>") {
+		return errors.New("page-payload must contain '<<<PAYLOAD_DATA>>>' template")
+	}
+
+	return nil
 }
 
-func (handler *HTTP) Start(ts Teamserver) error {
+func (t *TransportHTTP) Start(ts Teamserver) error {
 	var err error = nil
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	router.NoRoute(handler.pageError)
+	router.NoRoute(t.pageError)
 
 	router.Use(func(c *gin.Context) {
-		for header, value := range handler.Config.ResponseHeaders {
+		for header, value := range t.Config.ResponseHeaders {
 			c.Header(header, value)
 		}
 		c.Next()
 	})
 
-	if handler.Config.HttpMethod == "POST" {
-		router.POST("/*endpoint", handler.processRequest)
-	} else if handler.Config.HttpMethod == "GET" {
-		router.GET("/*endpoint", handler.processRequest)
+	if t.Config.HttpMethod == "POST" {
+		router.POST("/*endpoint", t.processRequest)
+	} else if t.Config.HttpMethod == "GET" {
+		router.GET("/*endpoint", t.processRequest)
 	}
 
-	handler.Active = true
+	t.Active = true
 
-	handler.Server = &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", handler.Config.HostBind, handler.Config.PortBind),
+	t.Server = &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", t.Config.HostBind, t.Config.PortBind),
 		Handler: router,
 	}
 
-	if handler.Config.Ssl {
-		fmt.Printf("   Started listener: https://%s:%d\n", handler.Config.HostBind, handler.Config.PortBind)
+	if t.Config.Ssl {
+		fmt.Printf("   Started listener: https://%s:%d\n", t.Config.HostBind, t.Config.PortBind)
 
-		listenerPath := ListenerDataDir + "/" + handler.Name
+		listenerPath := ListenerDataDir + "/" + t.Name
 		_, err = os.Stat(listenerPath)
 		if os.IsNotExist(err) {
 			err = os.Mkdir(listenerPath, os.ModePerm)
@@ -102,34 +188,34 @@ func (handler *HTTP) Start(ts Teamserver) error {
 			}
 		}
 
-		handler.Config.SslCertPath = listenerPath + "/listener.crt"
-		handler.Config.SslKeyPath = listenerPath + "/listener.key"
+		t.Config.SslCertPath = listenerPath + "/listener.crt"
+		t.Config.SslKeyPath = listenerPath + "/listener.key"
 
-		if len(handler.Config.SslCert) == 0 || len(handler.Config.SslKey) == 0 {
-			err = handler.generateSelfSignedCert(handler.Config.SslCertPath, handler.Config.SslKeyPath)
+		if len(t.Config.SslCert) == 0 || len(t.Config.SslKey) == 0 {
+			err = t.generateSelfSignedCert(t.Config.SslCertPath, t.Config.SslKeyPath)
 			if err != nil {
-				handler.Active = false
+				t.Active = false
 				fmt.Println("Error generating self-signed certificate:", err)
 				return err
 			}
 		} else {
-			err = os.WriteFile(handler.Config.SslCertPath, handler.Config.SslCert, 0600)
+			err = os.WriteFile(t.Config.SslCertPath, t.Config.SslCert, 0600)
 			if err != nil {
 				return err
 			}
-			err = os.WriteFile(handler.Config.SslKeyPath, handler.Config.SslKey, 0600)
+			err = os.WriteFile(t.Config.SslKeyPath, t.Config.SslKey, 0600)
 			if err != nil {
 				return err
 			}
 		}
 
-		cert, err := tls.LoadX509KeyPair(handler.Config.SslCertPath, handler.Config.SslKeyPath)
+		cert, err := tls.LoadX509KeyPair(t.Config.SslCertPath, t.Config.SslKeyPath)
 		if err != nil {
-			handler.Active = false
+			t.Active = false
 			return fmt.Errorf("failed to load certificate: %v", err)
 		}
 
-		handler.Server.TLSConfig = &tls.Config{
+		t.Server.TLSConfig = &tls.Config{
 			Certificates: []tls.Certificate{cert},
 			MinVersion:   tls.VersionTLS10,
 			MaxVersion:   tls.VersionTLS13,
@@ -148,24 +234,24 @@ func (handler *HTTP) Start(ts Teamserver) error {
 		}
 
 		go func() {
-			err = handler.Server.ListenAndServeTLS("", "")
+			err = t.Server.ListenAndServeTLS("", "")
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				fmt.Printf("Error starting HTTPS server: %v\n", err)
 				return
 			}
-			handler.Active = true
+			t.Active = true
 		}()
 
 	} else {
-		fmt.Printf("   Started listener: http://%s:%d\n", handler.Config.HostBind, handler.Config.PortBind)
+		fmt.Printf("   Started listener: http://%s:%d\n", t.Config.HostBind, t.Config.PortBind)
 
 		go func() {
-			err = handler.Server.ListenAndServe()
+			err = t.Server.ListenAndServe()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
 				fmt.Printf("Error starting HTTP server: %v\n", err)
 				return
 			}
-			handler.Active = true
+			t.Active = true
 		}()
 	}
 
@@ -173,12 +259,12 @@ func (handler *HTTP) Start(ts Teamserver) error {
 	return err
 }
 
-func (handler *HTTP) Stop() error {
+func (t *TransportHTTP) Stop() error {
 	var (
 		ctx          context.Context
 		cancel       context.CancelFunc
 		err          error = nil
-		listenerPath       = ListenerDataDir + "/" + handler.Name
+		listenerPath       = ListenerDataDir + "/" + t.Name
 	)
 
 	ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
@@ -192,11 +278,11 @@ func (handler *HTTP) Stop() error {
 		}
 	}
 
-	err = handler.Server.Shutdown(ctx)
+	err = t.Server.Shutdown(ctx)
 	return err
 }
 
-func (handler *HTTP) processRequest(ctx *gin.Context) {
+func (t *TransportHTTP) processRequest(ctx *gin.Context) {
 	var (
 		ExternalIP   string
 		err          error
@@ -210,59 +296,58 @@ func (handler *HTTP) processRequest(ctx *gin.Context) {
 	valid := false
 	u, err := url.Parse(ctx.Request.RequestURI)
 	if err == nil {
-		if handler.Config.Uri == u.Path {
+		if t.Config.Uri == u.Path {
 			valid = true
 		}
 	}
 	if !valid {
-		handler.pageError(ctx)
+		t.pageError(ctx)
 		return
 	}
 
-	if len(handler.Config.HostHeader) > 0 {
+	if len(t.Config.HostHeader) > 0 {
 		requestHost := ctx.Request.Host
-		if handler.Config.HostHeader != requestHost {
-			handler.pageError(ctx)
+		if t.Config.HostHeader != requestHost {
+			t.pageError(ctx)
 			return
 		}
 	}
 
-	if handler.Config.UserAgent != ctx.Request.UserAgent() {
-		handler.pageError(ctx)
+	if t.Config.UserAgent != ctx.Request.UserAgent() {
+		t.pageError(ctx)
 		return
 	}
 
-	if handler.Config.TrustXForwardedFor && ctx.Request.Header.Get("X-Forwarded-For") != "" {
+	if t.Config.TrustXForwardedFor && ctx.Request.Header.Get("X-Forwarded-For") != "" {
 		ExternalIP = ctx.Request.Header.Get("X-Forwarded-For")
 	} else {
 		ExternalIP = strings.Split(ctx.Request.RemoteAddr, ":")[0]
 	}
 
-	agentType, agentId, beat, bodyData, err = handler.parseBeatAndData(ctx)
+	agentType, agentId, beat, bodyData, err = t.parseBeatAndData(ctx)
 	if err != nil {
 		goto ERR
 	}
 
-	if !ModuleObject.ts.TsAgentIsExists(agentId) {
-		_, err = ModuleObject.ts.TsAgentCreate(agentType, agentId, beat, handler.Name, ExternalIP, true)
+	if !Ts.TsAgentIsExists(agentId) {
+		_, err = Ts.TsAgentCreate(agentType, agentId, beat, t.Name, ExternalIP, true)
 		if err != nil {
 			goto ERR
 		}
 	}
 
-	_ = ModuleObject.ts.TsAgentSetTick(agentId)
+	_ = Ts.TsAgentSetTick(agentId)
 
-	_ = ModuleObject.ts.TsAgentProcessData(agentId, bodyData)
+	_ = Ts.TsAgentProcessData(agentId, bodyData)
 
-	responseData, err = ModuleObject.ts.TsAgentGetHostedAll(agentId, 0x1900000) // 25 Mb
+	responseData, err = Ts.TsAgentGetHostedAll(agentId, 0x1900000) // 25 Mb
 	if err != nil {
 		goto ERR
 	} else {
-		html := []byte(strings.ReplaceAll(handler.Config.WebPageOutput, "<<<PAYLOAD_DATA>>>", string(responseData)))
+		html := []byte(strings.ReplaceAll(t.Config.WebPageOutput, "<<<PAYLOAD_DATA>>>", string(responseData)))
 		_, err = ctx.Writer.Write(html)
 		if err != nil {
-			//fmt.Println("Failed to write to request: " + err.Error())
-			handler.pageError(ctx)
+			t.pageError(ctx)
 			return
 		}
 	}
@@ -271,11 +356,10 @@ func (handler *HTTP) processRequest(ctx *gin.Context) {
 	return
 
 ERR:
-	//fmt.Println("Error: " + err.Error())
-	handler.pageError(ctx)
+	t.pageError(ctx)
 }
 
-func (handler *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte, []byte, error) {
+func (t *TransportHTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte, []byte, error) {
 	var (
 		beat           string
 		agentType      uint
@@ -286,7 +370,7 @@ func (handler *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte,
 		err            error
 	)
 
-	params := ctx.Request.Header.Get(handler.Config.ParameterName)
+	params := ctx.Request.Header.Get(t.Config.ParameterName)
 	if len(params) > 0 {
 		beat = params
 	} else {
@@ -298,7 +382,7 @@ func (handler *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte,
 		return "", "", nil, nil, errors.New("failed decrypt beat")
 	}
 
-	encKey, err := hex.DecodeString(handler.Config.EncryptKey)
+	encKey, err := hex.DecodeString(t.Config.EncryptKey)
 	if err != nil {
 		return "", "", nil, nil, errors.New("failed decrypt beat")
 	}
@@ -322,7 +406,7 @@ func (handler *HTTP) parseBeatAndData(ctx *gin.Context) (string, string, []byte,
 	return fmt.Sprintf("%08x", agentType), fmt.Sprintf("%08x", agentId), agentInfo, bodyData, nil
 }
 
-func (handler *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
+func (t *TransportHTTP) generateSelfSignedCert(certFile, keyFile string) error {
 	var (
 		certData   []byte
 		keyData    []byte
@@ -353,7 +437,7 @@ func (handler *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 		BasicConstraintsValid: true,
 	}
 
-	template.DNSNames = []string{handler.Config.HostBind}
+	template.DNSNames = []string{t.Config.HostBind}
 
 	certData, err = x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {
@@ -365,8 +449,8 @@ func (handler *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 		return fmt.Errorf("failed to write certificate: %v", err)
 	}
 
-	handler.Config.SslCert = certBuffer.Bytes()
-	err = os.WriteFile(certFile, handler.Config.SslCert, 0644)
+	t.Config.SslCert = certBuffer.Bytes()
+	err = os.WriteFile(certFile, t.Config.SslCert, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create certificate file: %v", err)
 	}
@@ -377,8 +461,8 @@ func (handler *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 		return fmt.Errorf("failed to write private key: %v", err)
 	}
 
-	handler.Config.SslKey = keyBuffer.Bytes()
-	err = os.WriteFile(keyFile, handler.Config.SslKey, 0644)
+	t.Config.SslKey = keyBuffer.Bytes()
+	err = os.WriteFile(keyFile, t.Config.SslKey, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to create key file: %v", err)
 	}
@@ -386,8 +470,8 @@ func (handler *HTTP) generateSelfSignedCert(certFile, keyFile string) error {
 	return nil
 }
 
-func (handler *HTTP) pageError(ctx *gin.Context) {
+func (t *TransportHTTP) pageError(ctx *gin.Context) {
 	ctx.Writer.WriteHeader(http.StatusNotFound)
-	html := []byte(handler.Config.WebPageError)
+	html := []byte(t.Config.WebPageError)
 	_, _ = ctx.Writer.Write(html)
 }
