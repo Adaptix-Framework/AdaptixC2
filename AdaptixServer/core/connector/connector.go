@@ -30,6 +30,8 @@ type Teamserver interface {
 	TsListenerStart(listenerName string, configType string, config string, createTime int64, watermark string, customData []byte) error
 	TsListenerEdit(listenerName string, configType string, config string) error
 	TsListenerStop(listenerName string, configType string) error
+	TsListenerPause(listenerName string, configType string) error
+	TsListenerResume(listenerName string, configType string) error
 	TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error)
 	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
@@ -216,6 +218,8 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 		api_group.POST("/listener/create", connector.TcListenerStart)
 		api_group.POST("/listener/edit", connector.TcListenerEdit)
 		api_group.POST("/listener/stop", connector.TcListenerStop)
+		api_group.POST("/listener/pause", connector.TcListenerPause)
+		api_group.POST("/listener/resume", connector.TcListenerResume)
 
 		api_group.GET("/agent/list", connector.TcAgentList)
 		api_group.POST("/agent/generate", connector.TcAgentGenerate)

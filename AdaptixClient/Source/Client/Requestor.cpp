@@ -302,6 +302,26 @@ void HttpReqListenerStopAsync(const QString &listenerName, const QString &listen
     HttpRequestManager::instance().post(profile.GetURL(), "/listener/stop", profile.GetAccessToken(), jsonData, callback);
 }
 
+void HttpReqListenerPauseAsync(const QString &listenerName, const QString &listenerType, AuthProfile& profile, HttpCallback callback)
+{
+    QJsonObject dataJson;
+    dataJson["name"] = listenerName;
+    dataJson["type"] = listenerType;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    HttpRequestManager::instance().post(profile.GetURL(), "/listener/pause", profile.GetAccessToken(), jsonData, callback);
+}
+
+void HttpReqListenerResumeAsync(const QString &listenerName, const QString &listenerType, AuthProfile& profile, HttpCallback callback)
+{
+    QJsonObject dataJson;
+    dataJson["name"] = listenerName;
+    dataJson["type"] = listenerType;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    HttpRequestManager::instance().post(profile.GetURL(), "/listener/resume", profile.GetAccessToken(), jsonData, callback);
+}
+
 void HttpReqDownloadActionAsync(const QString &action, const QString &fileId, AuthProfile& profile, HttpCallback callback)
 {
     QJsonObject dataJson;

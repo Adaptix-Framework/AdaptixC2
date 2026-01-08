@@ -85,8 +85,6 @@ func validConfig(config string) error {
 }
 
 func (t *TransportDNS) Start(ts Teamserver) error {
-	//t.loadInflights()
-
 	addr := net.JoinHostPort(t.Config.HostBind, strconv.Itoa(t.Config.PortBind))
 	mux := dns.NewServeMux()
 	mux.HandleFunc(".", t.handleDNS)
@@ -125,7 +123,6 @@ func (t *TransportDNS) Start(ts Teamserver) error {
 func (t *TransportDNS) Stop() error {
 
 	t.Active = false
-	//t.saveInflights()
 
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()

@@ -180,6 +180,9 @@ void ListenersWidget::handleListenersMenu(const QPoint &pos) const
     listenerMenu.addAction("Edit",   this, &ListenersWidget::onEditListener);
     listenerMenu.addAction("Remove", this, &ListenersWidget::onRemoveListener);
     listenerMenu.addSeparator();
+    listenerMenu.addAction("Pause",  this, &ListenersWidget::onPauseListener);
+    listenerMenu.addAction("Resume", this, &ListenersWidget::onResumeListener);
+    listenerMenu.addSeparator();
     listenerMenu.addAction("Generate agent", this, &ListenersWidget::onGenerateAgent);
 
     QPoint globalPos = tableView->mapToGlobal(pos);
@@ -385,6 +388,44 @@ void ListenersWidget::onRemoveListener() const
         return;
 
     HttpReqListenerStopAsync(listenerName, listenerRegName, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
+}
+
+void ListenersWidget::onPauseListener() const
+{
+    if (tableView->selectionModel()->selectedRows().empty())
+        return;
+
+    QModelIndex currentIndex = tableView->currentIndex();
+    QModelIndex sourceIndex = proxyModel->mapToSource(currentIndex);
+    if (!sourceIndex.isValid())
+        return;
+
+    auto listenerName    = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_Name), Qt::DisplayRole).toString();
+    auto listenerRegName = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_RegName), Qt::DisplayRole).toString();
+
+    HttpReqListenerPauseAsync(listenerName, listenerRegName, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
+}
+
+void ListenersWidget::onResumeListener() const
+{
+    if (tableView->selectionModel()->selectedRows().empty())
+        return;
+
+    QModelIndex currentIndex = tableView->currentIndex();
+    QModelIndex sourceIndex = proxyModel->mapToSource(currentIndex);
+    if (!sourceIndex.isValid())
+        return;
+
+    auto listenerName    = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_Name), Qt::DisplayRole).toString();
+    auto listenerRegName = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_RegName), Qt::DisplayRole).toString();
+
+    HttpReqListenerResumeAsync(listenerName, listenerRegName, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
         if (!success)
             MessageError(message.isEmpty() ? "Response timeout" : message);
     });

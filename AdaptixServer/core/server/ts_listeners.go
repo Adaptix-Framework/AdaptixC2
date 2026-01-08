@@ -141,6 +141,62 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 	return nil
 }
 
+func (ts *Teamserver) TsListenerPause(listenerName string, listenerType string) error {
+	if !ts.listener_configs.Contains(listenerType) {
+		return fmt.Errorf("listener %v does not exist", listenerType)
+	}
+	if !ts.listeners.Contains(listenerName) {
+		return fmt.Errorf("listener '%v' does not exist", listenerName)
+	}
+
+	value, _ := ts.listeners.Get(listenerName)
+	listenerData := value.(adaptix.ListenerData)
+	if listenerData.Status == "Paused" {
+		return fmt.Errorf("listener '%v' is already paused", listenerName)
+	}
+
+	err := ts.Extender.ExListenerPause(listenerName)
+	if err != nil {
+		return err
+	}
+
+	listenerData.Status = "Paused"
+	ts.listeners.Put(listenerName, listenerData)
+
+	packet := CreateSpListenerEdit(listenerData)
+	ts.TsSyncAllClients(packet)
+
+	return nil
+}
+
+func (ts *Teamserver) TsListenerResume(listenerName string, listenerType string) error {
+	if !ts.listener_configs.Contains(listenerType) {
+		return fmt.Errorf("listener %v does not exist", listenerType)
+	}
+	if !ts.listeners.Contains(listenerName) {
+		return fmt.Errorf("listener '%v' does not exist", listenerName)
+	}
+
+	value, _ := ts.listeners.Get(listenerName)
+	listenerData := value.(adaptix.ListenerData)
+	if listenerData.Status == "Listen" {
+		return fmt.Errorf("listener '%v' is already running", listenerName)
+	}
+
+	err := ts.Extender.ExListenerResume(listenerName)
+	if err != nil {
+		return err
+	}
+
+	listenerData.Status = "Listen"
+	ts.listeners.Put(listenerName, listenerData)
+
+	packet := CreateSpListenerEdit(listenerData)
+	ts.TsSyncAllClients(packet)
+
+	return nil
+}
+
 func (ts *Teamserver) TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error) {
 	if !ts.listener_configs.Contains(listenerType) {
 		return "", nil, fmt.Errorf("listener '%v' does not exist", listenerType)

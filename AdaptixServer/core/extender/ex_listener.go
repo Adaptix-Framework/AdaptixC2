@@ -15,6 +15,7 @@ func (ex *AdaptixExtender) ExListenerStart(listenerName string, configType strin
 
 	err = listener.Start()
 	if err != nil {
+		listenerData.Status = "Stopped"
 		return listenerData, customData, err
 	}
 
@@ -42,6 +43,22 @@ func (ex *AdaptixExtender) ExListenerStop(listenerName string) error {
 	delete(ex.activeListeners, listenerName)
 
 	return err
+}
+
+func (ex *AdaptixExtender) ExListenerPause(listenerName string) error {
+	listener, err := ex.getActiveListener(listenerName)
+	if err != nil {
+		return err
+	}
+	return listener.Stop()
+}
+
+func (ex *AdaptixExtender) ExListenerResume(listenerName string) error {
+	listener, err := ex.getActiveListener(listenerName)
+	if err != nil {
+		return err
+	}
+	return listener.Start()
 }
 
 func (ex *AdaptixExtender) ExListenerGetProfile(listenerName string) ([]byte, error) {

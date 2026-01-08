@@ -45,6 +45,8 @@ void HttpReqTargetSetTagAsync(QStringList targetsId, const QString &tag, AuthPro
 void HttpReqListenerStartAsync(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile& profile, HttpCallback callback);
 void HttpReqListenerEditAsync(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile& profile, HttpCallback callback);
 void HttpReqListenerStopAsync(const QString &listenerName, const QString &listenerType, AuthProfile& profile, HttpCallback callback);
+void HttpReqListenerPauseAsync(const QString &listenerName, const QString &listenerType, AuthProfile& profile, HttpCallback callback);
+void HttpReqListenerResumeAsync(const QString &listenerName, const QString &listenerType, AuthProfile& profile, HttpCallback callback);
 
 void HttpReqDownloadActionAsync(const QString &action, const QString &fileId, AuthProfile& profile, HttpCallback callback);
 void HttpReqDownloadDelete(const QStringList &fileId, AuthProfile& profile, HttpCallback callback);
