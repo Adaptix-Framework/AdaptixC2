@@ -134,7 +134,7 @@ func (ts *Teamserver) extractPivotTasks(agent *Agent, availableSize int, startSi
 		if err != nil {
 			continue
 		}
-		pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.GetData().Name, pivotData.PivotId, data)
+		pivotTaskData, err := agent.PivotPackData(pivotData.PivotId, data)
 		if err != nil {
 			continue
 		}
@@ -198,7 +198,6 @@ func (ts *Teamserver) TsTaskGetAvailableTasksCount(agentId string, maxCount int,
 		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: %w", err)
 	}
 
-	// Extract hosted tasks with count limit
 	tasks, sendTasks, size := ts.extractHostedTasks(agent, availableSize, 0, maxCount)
 	if len(sendTasks) > 0 {
 		packet := CreateSpAgentTaskSend(sendTasks)
