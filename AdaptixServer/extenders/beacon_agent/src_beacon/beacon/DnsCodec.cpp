@@ -46,6 +46,11 @@ ULONG DnsCodec::Base32Encode(const BYTE* src, ULONG srcLen, CHAR* dst, ULONG dst
     if (!src || !dst || !srcLen || !dstSize)
         return 0;
 
+    // Calculate max output size: ceil(srcLen * 8 / 5)
+    ULONG maxOut = (srcLen * 8 + 4) / 5;
+    if (maxOut >= dstSize)
+        return 0;
+
     ULONG bitBuffer = 0;
     int   bitCount = 0;
     ULONG outLen = 0;
@@ -55,22 +60,14 @@ ULONG DnsCodec::Base32Encode(const BYTE* src, ULONG srcLen, CHAR* dst, ULONG dst
         bitCount += 8;
         while (bitCount >= 5) {
             bitCount -= 5;
-            if (outLen + 1 >= dstSize)
-                return 0;
-            ULONG index = (bitBuffer >> bitCount) & 0x1F;
-            dst[outLen++] = kBase32Alphabet[index];
+            dst[outLen++] = kBase32Alphabet[(bitBuffer >> bitCount) & 0x1F];
         }
     }
 
-    if (bitCount > 0) {
-        if (outLen + 1 >= dstSize)
-            return 0;
-        ULONG index = (bitBuffer << (5 - bitCount)) & 0x1F;
-        dst[outLen++] = kBase32Alphabet[index];
-    }
+    if (bitCount > 0)
+        dst[outLen++] = kBase32Alphabet[(bitBuffer << (5 - bitCount)) & 0x1F];
 
-    if (outLen < dstSize)
-        dst[outLen] = '\0';
+    dst[outLen] = '\0';
     return outLen;
 }
 
@@ -198,27 +195,26 @@ BOOL DnsCodec::BuildDataLabels(const BYTE* src, ULONG srcLen, ULONG labelSize, C
         return FALSE;
 
     CHAR encoded[kBase32BufSize];
-    memset(encoded, 0, sizeof(encoded));
     ULONG encLen = Base32Encode(src, srcLen, encoded, sizeof(encoded));
     if (encLen == 0)
+        return FALSE;
+
+    // Calculate required output size: encLen + (encLen / labelSize) dots + null
+    ULONG numLabels = (encLen + labelSize - 1) / labelSize;
+    ULONG requiredSize = encLen + (numLabels > 1 ? numLabels - 1 : 0) + 1;
+    if (requiredSize > outSize)
         return FALSE;
 
     ULONG written = 0;
     ULONG i = 0;
     while (i < encLen) {
-        ULONG chunk = labelSize;
-        if (chunk > encLen - i)
-            chunk = encLen - i;
-        if (written + chunk + 1 >= outSize)
-            return FALSE;
+        ULONG chunk = (encLen - i > labelSize) ? labelSize : encLen - i;
         memcpy(out + written, encoded + i, chunk);
         written += chunk;
         i += chunk;
         if (i < encLen)
             out[written++] = '.';
     }
-    if (written >= outSize)
-        return FALSE;
     out[written] = '\0';
     return TRUE;
 }

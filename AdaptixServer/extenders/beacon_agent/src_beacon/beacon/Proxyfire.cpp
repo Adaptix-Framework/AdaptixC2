@@ -164,7 +164,7 @@ void Proxyfire::ConnectMessageUDP(ULONG channelId, CHAR* address, WORD port, Pac
 				memcpy(&addr, *(const void**)host->h_addr_list, 4); 				//memmove
 				sockaddr_in socketAddress = { 0 };
 				socketAddress.sin_family = AF_INET;
-				if (ApiWin->bind(sock, (sockaddr*)&socketAddress, sizeof(socketAddress)) < 0) {
+				if (ApiWin->bind(sock, (sockaddr*)&socketAddress, sizeof(socketAddress)) == 0) {
 					u_long mode = 1;
 					if (ApiWin->ioctlsocket(sock, FIONBIO, &mode) != -1) {
 						this->AddProxyData(channelId, 2, sock, 30000, TUNNEL_MODE_SEND_UDP, addr, port, TUNNEL_STATE_CONNECT);
@@ -344,17 +344,18 @@ void Proxyfire::CheckProxy(Packer* packer)
 							continue;
 						}
 						if (ApiWin->__WSAFDIsSet(tunnelData->sock, &readfds)) {
-							SOCKET tmp_sock_2 = ApiWin->accept(tunnelData->sock, 0, 0);
-							tunnelData->sock = tmp_sock_2;
+							SOCKET listenSock = tunnelData->sock;
+							SOCKET tmp_sock_2 = ApiWin->accept(listenSock, 0, 0);
 							if (tmp_sock_2 == -1) {
 								tunnelData->state = TUNNEL_STATE_CLOSE;
 								PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
 							}
 							else {
+								tunnelData->sock = tmp_sock_2;
 								tunnelData->state = TUNNEL_STATE_READY;
 								PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_SUCCESS);
 							}
-							ApiWin->closesocket(tunnelData->sock);
+							ApiWin->closesocket(listenSock);
 							continue;
 						}
 					}

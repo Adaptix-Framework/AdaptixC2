@@ -1,4 +1,5 @@
 #include <QJSEngine>
+#include <QPointer>
 #include <QTimer>
 #include <Agent/Agent.h>
 #include <Workers/LastTickWorker.h>

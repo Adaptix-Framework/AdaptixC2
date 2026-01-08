@@ -115,7 +115,7 @@ func (t *TransportDNS) Start(ts Teamserver) error {
 		}
 	}()
 
-	//go t.cleanupLoop()
+	go t.cleanupLoop()
 
 	time.Sleep(500 * time.Millisecond)
 
@@ -481,13 +481,13 @@ func (t *TransportDNS) handlePutFragment(sid string, seq int, data []byte, ack p
 	}
 
 	t.mu.Lock()
-	defer t.mu.Unlock()
 
 	if done, exists := t.upDoneCache[sid]; exists && done.total == total {
 		ack.complete = true
 		ack.filled = done.total
 		ack.lastReceivedOff = done.total
 		ack.nextExpectedOff = done.total
+		t.mu.Unlock()
 		return ack
 	}
 
@@ -509,6 +509,7 @@ func (t *TransportDNS) handlePutFragment(sid string, seq int, data []byte, ack p
 		ack.lastReceivedOff = fb.lastReceivedOff
 		ack.nextExpectedOff = t.computeNextExpectedOffset(fb)
 		ack.filled = fb.filled
+		t.mu.Unlock()
 		return ack
 	}
 
@@ -537,11 +538,19 @@ func (t *TransportDNS) handlePutFragment(sid string, seq int, data []byte, ack p
 	ack.nextExpectedOff = fb.nextExpectedOff
 	ack.filled = fb.filled
 
+	var completeBuf []byte
 	if fb.filled >= fb.total {
-		_ = Ts.TsAgentProcessData(sid, decompressUpstream(fb.buf))
+		completeBuf = make([]byte, len(fb.buf))
+		copy(completeBuf, fb.buf)
 		t.upDoneCache[sid] = newUpDone(fb.total)
 		delete(t.upFrags, sid)
 		ack.complete = true
+	}
+	t.mu.Unlock()
+
+	// Process data outside of lock to avoid blocking other goroutines
+	if completeBuf != nil {
+		_ = Ts.TsAgentProcessData(sid, decompressUpstream(completeBuf))
 	}
 
 	return ack
@@ -781,6 +790,55 @@ func (t *TransportDNS) computeNextExpectedOffset(fb *dnsFragBuf) uint32 {
 		}
 	}
 	return fb.total
+}
+
+/// CLEANUP
+
+func (t *TransportDNS) cleanupLoop() {
+	ticker := time.NewTicker(cleanupInterval)
+	defer ticker.Stop()
+
+	for t.Active {
+		select {
+		case <-ticker.C:
+			t.cleanupStaleEntries()
+		}
+	}
+}
+
+func (t *TransportDNS) cleanupStaleEntries() {
+	now := time.Now()
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	// Cleanup stale upload fragments
+	for sid, fb := range t.upFrags {
+		if now.Sub(fb.lastUpdate) > staleTimeout {
+			delete(t.upFrags, sid)
+		}
+	}
+
+	// Cleanup stale download buffers
+	for sid, db := range t.downFrags {
+		if now.Sub(db.lastUpdate) > downTimeout {
+			delete(t.downFrags, sid)
+		}
+	}
+
+	// Cleanup expired dedup cache
+	for sid, done := range t.upDoneCache {
+		if now.Sub(done.doneAt) > dedupTimeout {
+			delete(t.upDoneCache, sid)
+		}
+	}
+
+	// Cleanup stale inflights
+	for sid, inf := range t.localInflights {
+		if now.Sub(inf.createdAt) > inflightTimeout || inf.attempts > maxInflightAttempts {
+			delete(t.localInflights, sid)
+		}
+	}
 }
 
 /// UTILS
