@@ -77,11 +77,11 @@ type Teamserver struct {
 }
 
 type Agent struct {
-	mu      sync.RWMutex
-	data    adaptix.AgentData
-	Handler adaptix.AgentHandler
-	Tick    bool
-	Active  bool
+	mu       sync.RWMutex
+	data     adaptix.AgentData
+	Extender adaptix.ExtenderAgent
+	Tick     bool
+	Active   bool
 
 	OutConsole *safe.Slice //  sync_packet interface{}
 
@@ -116,37 +116,37 @@ func (a *Agent) UpdateData(fn func(*adaptix.AgentData)) {
 }
 
 func (a *Agent) Command(args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
-	return a.Handler.CreateCommand(a.GetData(), args)
+	return a.Extender.CreateCommand(a.GetData(), args)
 }
 
 func (a *Agent) ProcessData(packedData []byte) error {
 	data := a.GetData()
-	decrypted, err := a.Handler.Decrypt(packedData, data.SessionKey)
+	decrypted, err := a.Extender.Decrypt(packedData, data.SessionKey)
 	if err != nil {
 		return err
 	}
-	return a.Handler.ProcessData(data, decrypted)
+	return a.Extender.ProcessData(data, decrypted)
 }
 
 func (a *Agent) PackData(tasks []adaptix.TaskData) ([]byte, error) {
 	data := a.GetData()
-	packed, err := a.Handler.PackTasks(data, tasks)
+	packed, err := a.Extender.PackTasks(data, tasks)
 	if err != nil {
 		return nil, err
 	}
-	return a.Handler.Encrypt(packed, data.SessionKey)
+	return a.Extender.Encrypt(packed, data.SessionKey)
 }
 
 func (a *Agent) PivotPackData(pivotId string, data []byte) (adaptix.TaskData, error) {
-	return a.Handler.PivotPackData(pivotId, data)
+	return a.Extender.PivotPackData(pivotId, data)
 }
 
 func (a *Agent) TunnelCallbacks() adaptix.TunnelCallbacks {
-	return a.Handler.TunnelCallbacks()
+	return a.Extender.TunnelCallbacks()
 }
 
 func (a *Agent) TerminalCallbacks() adaptix.TerminalCallbacks {
-	return a.Handler.TerminalCallbacks()
+	return a.Extender.TerminalCallbacks()
 }
 
 type HookJob struct {

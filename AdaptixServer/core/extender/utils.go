@@ -80,7 +80,7 @@ func (ex *AdaptixExtender) getActiveListener(name string) (adaptix.ExtenderListe
 	return listener, nil
 }
 
-func (ex *AdaptixExtender) getAgentFactory(agentName string) (adaptix.PluginAgent, error) {
+func (ex *AdaptixExtender) getAgentModule(agentName string) (adaptix.PluginAgent, error) {
 	module, ok := ex.agentModules[agentName]
 	if !ok {
 		return nil, ErrModuleNotFound

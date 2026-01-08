@@ -118,7 +118,7 @@ type Teamserver interface {
 
 type PluginAgent struct{}
 
-type AgentHandler struct{}
+type ExtenderAgent struct{}
 
 var (
 	Ts             Teamserver
@@ -160,7 +160,7 @@ func getBoolArg(args map[string]any, key string) bool {
 
 /// TUNNEL
 
-func (h *AgentHandler) TunnelCallbacks() adaptix.TunnelCallbacks {
+func (ext *ExtenderAgent) TunnelCallbacks() adaptix.TunnelCallbacks {
 	return adaptix.TunnelCallbacks{
 		ConnectTCP: TunnelMessageConnectTCP,
 		ConnectUDP: TunnelMessageConnectUDP,
@@ -224,7 +224,7 @@ func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
 
 /// TERMINAL
 
-func (h *AgentHandler) TerminalCallbacks() adaptix.TerminalCallbacks {
+func (ext *ExtenderAgent) TerminalCallbacks() adaptix.TerminalCallbacks {
 	return adaptix.TerminalCallbacks{
 		Start: TerminalMessageStart,
 		Write: TerminalMessageWrite,
@@ -362,8 +362,8 @@ func (p *PluginAgent) GenerateConfig(config string, listenerWM string, listenerP
 		return nil, errors.New("protocol unknown")
 	}
 
-	agentHandler := AgentHandler{}
-	profileData, _ = agentHandler.Encrypt(profileData, encryptKey)
+	extHandler := ExtenderAgent{}
+	profileData, _ = extHandler.Encrypt(profileData, encryptKey)
 	profileData = append(encryptKey, profileData...)
 
 	profileString := ""
@@ -473,7 +473,7 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	return Payload, Filename, nil
 }
 
-func (p *PluginAgent) CreateAgent(beat []byte) (adaptix.AgentData, adaptix.AgentHandler, error) {
+func (p *PluginAgent) CreateAgent(beat []byte) (adaptix.AgentData, adaptix.ExtenderAgent, error) {
 	var agentData adaptix.AgentData
 
 	/// START CODE HERE
@@ -514,12 +514,12 @@ func (p *PluginAgent) CreateAgent(beat []byte) (adaptix.AgentData, adaptix.Agent
 
 	/// END CODE
 
-	return agentData, &AgentHandler{}, nil
+	return agentData, &ExtenderAgent{}, nil
 }
 
 /// AGENT HANDLER
 
-func (h *AgentHandler) Encrypt(data []byte, key []byte) ([]byte, error) {
+func (ext *ExtenderAgent) Encrypt(data []byte, key []byte) ([]byte, error) {
 
 	/// START CODE
 
@@ -545,7 +545,7 @@ func (h *AgentHandler) Encrypt(data []byte, key []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func (h *AgentHandler) Decrypt(data []byte, key []byte) ([]byte, error) {
+func (ext *ExtenderAgent) Decrypt(data []byte, key []byte) ([]byte, error) {
 
 	/// START CODE
 
@@ -576,7 +576,7 @@ func (h *AgentHandler) Decrypt(data []byte, key []byte) ([]byte, error) {
 	return plaintext, nil
 }
 
-func (h *AgentHandler) PackTasks(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error) {
+func (ext *ExtenderAgent) PackTasks(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error) {
 
 	var packData []byte
 
@@ -611,7 +611,7 @@ func (h *AgentHandler) PackTasks(agentData adaptix.AgentData, tasks []adaptix.Ta
 	return packData, nil
 }
 
-func (h *AgentHandler) PivotPackData(pivotId string, data []byte) (adaptix.TaskData, error) {
+func (ext *ExtenderAgent) PivotPackData(pivotId string, data []byte) (adaptix.TaskData, error) {
 	var (
 		packData []byte
 		err      error = nil
@@ -633,7 +633,7 @@ func (h *AgentHandler) PivotPackData(pivotId string, data []byte) (adaptix.TaskD
 	return taskData, err
 }
 
-func (h *AgentHandler) CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
+func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
 	var (
 		taskData    adaptix.TaskData
 		messageData adaptix.ConsoleMessageData
@@ -1008,7 +1008,7 @@ RET:
 	return taskData, messageData, err
 }
 
-func (h *AgentHandler) ProcessData(agentData adaptix.AgentData, decryptedData []byte) error {
+func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData []byte) error {
 	var outTasks []adaptix.TaskData
 
 	taskData := adaptix.TaskData{
