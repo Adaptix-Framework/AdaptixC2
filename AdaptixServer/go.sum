@@ -1,5 +1,5 @@
-github.com/Adaptix-Framework/axc2 v1.1.0 h1:bV86FGougUBX7rPJeel6o9+l3gsAONJDP/z4wO+/JCY=
-github.com/Adaptix-Framework/axc2 v1.1.0/go.mod h1:3oJyFeRVIql1RTsNa0meEqK3+P+6JTAMMjMdVyXhbaQ=
+github.com/Adaptix-Framework/axc2 v1.1.1-0.20260108073934-980b63e0fb75 h1:Wr9jPEIS41qKa5LmBfqc9MlD2gkiOVPgO0vDXT5/QVQ=
+github.com/Adaptix-Framework/axc2 v1.1.1-0.20260108073934-980b63e0fb75/go.mod h1:3oJyFeRVIql1RTsNa0meEqK3+P+6JTAMMjMdVyXhbaQ=
 github.com/bytedance/gopkg v0.1.3 h1:TPBSwH8RsouGCBcMBktLt1AymVo2TVsBVCY4b6TnZ/M=
 github.com/bytedance/gopkg v0.1.3/go.mod h1:576VvJ+eJgyCzdjS+c4+77QF3p7ubbtiKARP3TxducM=
 github.com/bytedance/sonic v1.14.2 h1:k1twIoe97C1DtYUo+fZQy865IuHia4PR5RPiuGPPIIE=
