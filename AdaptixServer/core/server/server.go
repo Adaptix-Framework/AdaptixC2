@@ -110,7 +110,14 @@ func (ts *Teamserver) RestoreData() {
 	restoreAgents := ts.DBMS.DbAgentAll()
 	for _, agentData := range restoreAgents {
 
+		extender, err := ts.Extender.ExAgentGetExtender(agentData.Name)
+		if err != nil {
+			logs.Warn("   ", "Failed to get extender for agent %v (%v): %v", agentData.Id, agentData.Name, err.Error())
+			continue
+		}
+
 		agent := &Agent{
+			Extender:          extender,
 			OutConsole:        safe.NewSlice(),
 			HostedTunnelData:  safe.NewSafeQueue(0x1000),
 			HostedTasks:       safe.NewSafeQueue(0x100),

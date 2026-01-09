@@ -133,6 +133,10 @@ func InitPlugin(ts any, moduleDir string, watermark string) adaptix.PluginAgent 
 	return &PluginAgent{}
 }
 
+func (p *PluginAgent) GetExtender() adaptix.ExtenderAgent {
+	return &ExtenderAgent{}
+}
+
 func makeProxyTask(packData []byte) adaptix.TaskData {
 	return adaptix.TaskData{Type: TYPE_PROXY_DATA, Data: packData, Sync: false}
 }

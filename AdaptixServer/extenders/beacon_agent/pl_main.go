@@ -141,6 +141,10 @@ func InitPlugin(ts any, moduleDir string, watermark string) adaptix.PluginAgent 
 	return &PluginAgent{}
 }
 
+func (p *PluginAgent) GetExtender() adaptix.ExtenderAgent {
+	return &ExtenderAgent{}
+}
+
 func makeProxyTask(packData []byte) adaptix.TaskData {
 	return adaptix.TaskData{Type: TYPE_PROXY_DATA, Data: packData, Sync: false}
 }
@@ -610,8 +614,12 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 		return nil, "", errors.New("unknown file format")
 	}
 
-	cmdBuild := fmt.Sprintf("%s %s %s -o %s", Compiler, lFlags, Files, buildPath)
-	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
+	var buildArgs []string
+	buildArgs = append(buildArgs, strings.Fields(lFlags)...)
+	buildArgs = append(buildArgs, strings.Fields(Files)...)
+	buildArgs = append(buildArgs, "-o", buildPath)
+	runnerCmdBuild := exec.Command(Compiler, buildArgs...)
+
 	runnerCmdBuild.Dir = currentDir
 	runnerCmdBuild.Stdout = &stdout
 	runnerCmdBuild.Stderr = &stderr

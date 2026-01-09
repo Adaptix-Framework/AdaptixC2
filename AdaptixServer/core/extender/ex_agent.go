@@ -23,3 +23,11 @@ func (ex *AdaptixExtender) ExAgentCreate(agentName string, beat []byte) (adaptix
 	}
 	return module.CreateAgent(beat)
 }
+
+func (ex *AdaptixExtender) ExAgentGetExtender(agentName string) (adaptix.ExtenderAgent, error) {
+	module, err := ex.getAgentModule(agentName)
+	if err != nil {
+		return nil, err
+	}
+	return module.GetExtender(), nil
+}
