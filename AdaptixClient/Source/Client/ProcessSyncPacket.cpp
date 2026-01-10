@@ -870,8 +870,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentId = jsonObj["b_agent_id"].toString();
         if (AgentsMap.contains(agentId)) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->FileBrowser)
-                agent->FileBrowser->SetDisksWin(
+            if (agent && agent->HasFileBrowser())
+                agent->GetFileBrowser()->SetDisksWin(
                     jsonObj["b_time"].toDouble(),
                     jsonObj["b_msg_type"].toDouble(),
                     jsonObj["b_message"].toString(),
@@ -885,8 +885,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentId = jsonObj["b_agent_id"].toString();
         if (AgentsMap.contains(agentId)) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->FileBrowser)
-                agent->FileBrowser->AddFiles(
+            if (agent && agent->HasFileBrowser())
+                agent->GetFileBrowser()->AddFiles(
                     jsonObj["b_time"].toDouble(),
                     jsonObj["b_msg_type"].toDouble(),
                     jsonObj["b_message"].toString(),
@@ -901,13 +901,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentId = jsonObj["b_agent_id"].toString();
         if (AgentsMap.contains(agentId)) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->ProcessBrowser) {
-                agent->ProcessBrowser->SetStatus(
+            if (agent && agent->HasProcessBrowser()) {
+                agent->GetProcessBrowser()->SetStatus(
                     jsonObj["b_time"].toDouble(),
                     jsonObj["b_msg_type"].toDouble(),
                     jsonObj["b_message"].toString()
                 );
-                agent->ProcessBrowser->SetProcess(
+                agent->GetProcessBrowser()->SetProcess(
                     jsonObj["b_msg_type"].toDouble(),
                     jsonObj["b_data"].toString()
                 );
@@ -920,8 +920,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentId = jsonObj["b_agent_id"].toString();
         if (AgentsMap.contains(agentId)) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->FileBrowser)
-                agent->FileBrowser->SetStatus(
+            if (agent && agent->HasFileBrowser())
+                agent->GetFileBrowser()->SetStatus(
                     jsonObj["b_time"].toDouble(),
                     jsonObj["b_msg_type"].toDouble(),
                     jsonObj["b_message"].toString()

@@ -171,17 +171,6 @@ void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
 
     Agent* agent = adaptixWidget->AgentsMap[agentId];
     adaptixWidget->AgentsMap.remove(agentId);
-
-    if (agent->Console)
-        delete agent->Console;
-    if (agent->FileBrowser)
-        delete agent->FileBrowser;
-    if (agent->ProcessBrowser)
-        delete agent->ProcessBrowser;
-    if (agent->Terminal)
-        delete agent->Terminal;
-    if (agent->Shell)
-        delete agent->Shell;
     delete agent;
 
     agentsModel->remove(agentId);
@@ -257,11 +246,6 @@ void SessionsTableWidget::Clear() const
     for (auto agentId : adaptixWidget->AgentsMap.keys()) {
         Agent* agent = adaptixWidget->AgentsMap[agentId];
         adaptixWidget->AgentsMap.remove(agentId);
-        delete agent->Console;
-        delete agent->FileBrowser;
-        delete agent->ProcessBrowser;
-        delete agent->Terminal;
-        delete agent->Shell;
         delete agent;
     }
 

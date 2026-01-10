@@ -110,6 +110,11 @@ public:
     /// use MainWindowOption_ManualInit
     void manualInit();
 
+    /// Returns the central group
+    /// Only makes sense if using MainWindowOption_HasCentralGroup
+    /// The return value is aKDDockWidgets::QtWidgets::Group*, which is private API, hence returning QWidget here.
+    const QWidget *centralGroup() const;
+
 Q_SIGNALS:
     void groupCountChanged(int);
 

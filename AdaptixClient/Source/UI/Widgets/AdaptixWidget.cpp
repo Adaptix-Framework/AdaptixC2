@@ -738,8 +738,8 @@ void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
         return;
 
     auto agent = AgentsMap[AgentId];
-    if (agent && agent->FileBrowser)
-        this->PlaceDockBottom( AgentsMap[AgentId]->FileBrowser->dock() );
+    if (agent)
+        this->PlaceDockBottom( agent->GetFileBrowser()->dock() );
 }
 
 void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
@@ -748,9 +748,8 @@ void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
         return;
 
     auto agent = AgentsMap[AgentId];
-    if (agent && agent->ProcessBrowser)
-        this->PlaceDockBottom( AgentsMap[AgentId]->ProcessBrowser->dock() );
-
+    if (agent)
+        this->PlaceDockBottom( agent->GetProcessBrowser()->dock() );
 }
 
 void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
@@ -759,8 +758,8 @@ void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
         return;
 
     auto agent = AgentsMap[AgentId];
-    if (agent && agent->Terminal)
-        this->PlaceDockBottom( AgentsMap[AgentId]->Terminal->dock() );
+    if (agent)
+        this->PlaceDockBottom( agent->GetTerminal()->dock() );
 }
 
 void AdaptixWidget::LoadShellUI(const QString &AgentId)
@@ -769,8 +768,8 @@ void AdaptixWidget::LoadShellUI(const QString &AgentId)
         return;
 
     auto agent = AgentsMap[AgentId];
-    if (agent && agent->Shell)
-        this->PlaceDockBottom( AgentsMap[AgentId]->Shell->dock() );
+    if (agent)
+        this->PlaceDockBottom( agent->GetShell()->dock() );
 }
 
 void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd)
