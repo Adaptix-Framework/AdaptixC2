@@ -277,6 +277,7 @@ if(UNIX)
             kddockwidgets
 
             ${CMAKE_CURRENT_SOURCE_DIR}/Libs/donut/lib/aplib64.a
+            
             pthread dl
     )
 elseif(APPLE)
@@ -292,6 +293,8 @@ elseif(APPLE)
             OpenSSL::Crypto
 
             kddockwidgets
+            
+            ${CMAKE_CURRENT_SOURCE_DIR}/Libs/donut/lib/aplib64.a
 
             pthread dl
     )
@@ -307,6 +310,8 @@ else()
             Qt6::Qml
 
             kddockwidgets
+
+            ${CMAKE_CURRENT_SOURCE_DIR}/Libs/donut/lib/aplib64.lib
 
             wsock32 ws2_32 crypt32 iphlpapi netapi32 version winmm userenv dwmapi
     )
