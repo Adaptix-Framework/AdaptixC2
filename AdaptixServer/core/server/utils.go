@@ -58,6 +58,7 @@ type Teamserver struct {
 	terminals   safe.Map    // terminalId string   : terminal Terminal
 	pivots      *safe.Slice // 			           : PivotData
 	otps        safe.Map    // otp string		   : Id string
+	builders    safe.Map    // buildId string      : build Build
 }
 
 type Agent struct {
@@ -184,6 +185,18 @@ type Terminal struct {
 	prTun *io.PipeReader
 
 	Callbacks adaptix.TerminalCallbacks
+}
+
+type AgentBuilder struct {
+	Id           string
+	Name         string
+	ListenerName string
+	ListenerType string
+	Config       string
+
+	wsconn *websocket.Conn
+	mu     sync.Mutex
+	closed bool
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

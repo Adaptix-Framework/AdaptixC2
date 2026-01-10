@@ -14,7 +14,6 @@ import (
 	"io"
 	mrand "math/rand"
 	"os"
-	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,6 +32,9 @@ type Teamserver interface {
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
+
+	TsAgentBuildExecute(builderId string, workingDir string, program string, args ...string) error
+	TsAgentBuildLog(builderId string, status int, message string) error
 
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 
@@ -364,8 +366,6 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 		GoArch         string
 		GoOs           string
 		buildPath      string
-		stdout         bytes.Buffer
-		stderr         bytes.Buffer
 	)
 
 	err := json.Unmarshal([]byte(agentConfig), &generateConfig)
@@ -405,6 +405,8 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	}
 	buildPath = tempDir + "/" + Filename
 
+	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Target: %s/%s, Output: %s", GoOs, GoArch, Filename))
+
 	config := fmt.Sprintf("package main\n\nvar encProfile = []byte(\"%s\")\n", string(agentProfile))
 	configPath := currentDir + "/" + SrcPath + "/config.go"
 	err = os.WriteFile(configPath, []byte(config), 0644)
@@ -420,12 +422,14 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 			return nil, "", errors.New("go-win7 not installed")
 		}
 		cmdBuild = fmt.Sprintf("GOWORK=off CGO_ENABLED=0 GOOS=%s GOARCH=%s GOROOT=/usr/lib/go-win7/ /usr/lib/go-win7/go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
+		_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, "Using go-win7 for Windows 7 support")
+
 	}
-	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
-	runnerCmdBuild.Dir = currentDir + "/" + SrcPath
-	runnerCmdBuild.Stdout = &stdout
-	runnerCmdBuild.Stderr = &stderr
-	err = runnerCmdBuild.Run()
+	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, "Starting build process...")
+
+	var buildArgs []string
+	buildArgs = append(buildArgs, "-c", cmdBuild)
+	err = Ts.TsAgentBuildExecute(builderId, currentDir+"/"+SrcPath, "sh", buildArgs...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", err
@@ -436,6 +440,7 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 		return nil, "", err
 	}
 	_ = os.RemoveAll(tempDir)
+	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Payload size: %d bytes", len(Payload)))
 
 	/// END CODE HERE
 

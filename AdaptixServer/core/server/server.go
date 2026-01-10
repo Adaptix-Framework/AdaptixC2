@@ -46,6 +46,7 @@ func NewTeamserver() *Teamserver {
 		terminals:   safe.NewMap(),
 		pivots:      safe.NewSlice(),
 		otps:        safe.NewMap(),
+		builders:    safe.NewMap(),
 	}
 	ts.TaskManager = NewTaskManager(ts)
 	ts.TunnelManager = NewTunnelManager(ts)

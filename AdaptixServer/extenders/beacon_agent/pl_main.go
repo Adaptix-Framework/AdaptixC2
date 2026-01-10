@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -13,7 +12,6 @@ import (
 	"math/rand/v2"
 	"net"
 	"os"
-	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,6 +28,9 @@ type Teamserver interface {
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
+
+	TsAgentBuildExecute(builderId string, workingDir string, program string, args ...string) error
+	TsAgentBuildLog(builderId string, status int, message string) error
 
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 
@@ -463,8 +464,6 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 		stubPath       string
 		buildPath      string
 		cmdConfig      string
-		stdout         bytes.Buffer
-		stderr         bytes.Buffer
 	)
 
 	cFlags := CFlags
@@ -497,6 +496,7 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	} else {
 		return nil, "", errors.New("protocol unknown")
 	}
+	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Protocol: %s, Connector: %s", protocol, ConnectorFile))
 
 	if generateConfig.Arch == "x86" {
 		Compiler = "i686-w64-mingw32-g++"
@@ -521,15 +521,16 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	} else {
 		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, cFlags, ObjectDir, string(agentProfile), agentProfileSize, tempDir)
 	}
-	runnerCmdConfig := exec.Command("sh", "-c", cmdConfig)
-	runnerCmdConfig.Dir = currentDir
-	runnerCmdConfig.Stdout = &stdout
-	runnerCmdConfig.Stderr = &stderr
-	err = runnerCmdConfig.Run()
+	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, "Compiling configuration...")
+
+	var buildArgsConfig []string
+	buildArgsConfig = append(buildArgsConfig, "-c", cmdConfig)
+	err = Ts.TsAgentBuildExecute(builderId, currentDir, "sh", buildArgsConfig...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
-		return nil, "", errors.New(string(stderr.Bytes()))
+		return nil, "", err
 	}
+	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_SUCCESS, "Configuration compiled successfully")
 
 	Files := tempDir + "/config.o "
 	Files += ObjectDir + "/" + ConnectorFile + Ext + " "
@@ -573,20 +574,18 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 		_ = os.RemoveAll(tempDir)
 		return nil, "", errors.New("unknown file format")
 	}
+	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Output format: %s, Filename: %s", generateConfig.Format, Filename))
+	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, "Linking payload...")
 
 	var buildArgs []string
 	buildArgs = append(buildArgs, strings.Fields(lFlags)...)
 	buildArgs = append(buildArgs, strings.Fields(Files)...)
 	buildArgs = append(buildArgs, "-o", buildPath)
-	runnerCmdBuild := exec.Command(Compiler, buildArgs...)
 
-	runnerCmdBuild.Dir = currentDir
-	runnerCmdBuild.Stdout = &stdout
-	runnerCmdBuild.Stderr = &stderr
-	err = runnerCmdBuild.Run()
+	err = Ts.TsAgentBuildExecute(builderId, currentDir, Compiler, buildArgs...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
-		return nil, "", fmt.Errorf("%v: %s", err, stderr.String())
+		return nil, "", err
 	}
 
 	buildContent, err := os.ReadFile(buildPath)
@@ -601,10 +600,10 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 			return nil, "", err
 		}
 		Payload = append(stubContent, buildContent...)
-
 	} else {
 		Payload = buildContent
 	}
+	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Payload size: %d bytes", len(Payload)))
 
 	/// END CODE HERE
 

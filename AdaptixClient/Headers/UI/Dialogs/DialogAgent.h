@@ -7,6 +7,7 @@
 #include <Utils/CustomElements.h>
 
 class AxContainerWrapper;
+class BuildWorker;
 
 class DialogAgent : public QDialog
 {
@@ -20,9 +21,15 @@ Q_OBJECT
     QAction*        actionSaveProfile   = nullptr;
     QLineEdit*      inputProfileName    = nullptr;
     bool            profileNameManuallyEdited = false;
-    QPushButton*    generateButton      = nullptr;
+    QPushButton*    buildButton         = nullptr;
     QGroupBox*      agentConfigGroupbox = nullptr;
     QStackedWidget* configStackWidget   = nullptr;
+
+    QWidget*        buildLogPanel       = nullptr;
+    QPushButton*    collapseButton      = nullptr;
+    QTextEdit*      buildLogOutput      = nullptr;
+    QThread*        buildThread         = nullptr;
+    BuildWorker*    buildWorker         = nullptr;
 
     QLabel*           label_Profiles    = nullptr;
     CardListWidget*   cardWidget        = nullptr;
@@ -55,7 +62,6 @@ protected Q_SLOTS:
     void onButtonLoad();
     void onButtonSave();
     void changeConfig(const QString &agentName);
-    void onButtonGenerate();
     void onButtonNewProfile();
     void onProfileSelected();
     void handleProfileContextMenu(const QPoint &pos);
@@ -63,6 +69,11 @@ protected Q_SLOTS:
     void onProfileRename();
     void onProfileNameEdited(const QString &text);
     void onSaveProfileToggled(bool checked);
+    void onButtonBuild();
+    void onBuildConnected();
+    void onBuildMessage(const QString &msg);
+    void onBuildFinished();
+    void stopBuild();
 };
 
 #endif

@@ -782,10 +782,6 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 	}
 }
 
-func (ts *Teamserver) TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
-	return ts.Extender.ExAgentGenerate(agentName, config, listenerWM, listenerProfile)
-}
-
 /// Console
 
 func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool) {
