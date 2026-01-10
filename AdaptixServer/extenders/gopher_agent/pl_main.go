@@ -1680,7 +1680,6 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					_ = Ts.TsDownloadAdd(agentData.Id, fileId, params.Path, params.Size)
 				}
 
-				task.Completed = false
 				_ = Ts.TsDownloadUpdate(fileId, 1, params.Content)
 
 				if params.Finish {
@@ -1693,6 +1692,8 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 						task.Message = fmt.Sprintf("File download complete: [fid %v]", fileId)
 						_ = Ts.TsDownloadClose(fileId, 3)
 					}
+				} else {
+					goto HANDLER
 				}
 
 			case COMMAND_RUN:

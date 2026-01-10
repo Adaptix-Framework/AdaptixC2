@@ -15,10 +15,10 @@ const (
 	PriorityHigh   = 1
 
 	SendBufferSize     = 1024
-	SyncBufferSize     = 256
+	SyncBufferSize     = 1024
 	BroadcastQueueSize = 4096
 
-	WriteTimeout      = 10 * time.Second
+	WriteTimeout      = 60 * time.Second
 	BackpressureWarn  = 0.75
 	BackpressureDrop  = 0.90
 	BackpressureClose = 1.0

@@ -145,7 +145,7 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 
 	exists = tc.teamserver.TsClientExists(username)
 	if !exists {
-		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: client not connected", "ok": false})
 		return
 	}
 
@@ -167,7 +167,6 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 	ChannelType := ctx.GetHeader("Channel-Type")
 
 	switch ChannelType {
-
 	case "tunnel":
 		tunnelData := ctx.GetHeader("Channel-Data")
 		_ = tc.teamserver.TsTunnelClientNewChannel(tunnelData, wsConn)
