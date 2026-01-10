@@ -491,7 +491,7 @@ void Group::updateFloatingActions()
 
 bool Group::containsMouse(Point globalPos) const
 {
-    return rect().contains(view()->mapFromGlobal(globalPos));
+    return view()->d->globalGeometry().contains(globalPos);
 }
 
 Core::TitleBar *Group::titleBar() const
