@@ -3,7 +3,7 @@ package server
 import (
 	"AdaptixServer/core/utils/safe"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 const maxAccumulatedSize = 0xa00000 // 10 MB
@@ -72,7 +72,7 @@ func (h *JobTaskHandler) updateWithoutHook(tm *TaskManager, agent *Agent, task *
 		if ok {
 			jobs := value.(*safe.Slice)
 			jobs.Put(hookJob)
-			h.aggregateJobResults(task, jobs)
+			h.aggregateJobResults(tm, agent, task, jobs)
 			agent.RunningJobs.Delete(task.TaskId)
 		} else {
 			task.MessageType = updateData.MessageType
@@ -100,7 +100,7 @@ func (h *JobTaskHandler) updateWithoutHook(tm *TaskManager, agent *Agent, task *
 	tm.syncTaskUpdate(task.AgentId, agent, updateData)
 }
 
-func (h *JobTaskHandler) aggregateJobResults(task *adaptix.TaskData, jobs *safe.Slice) {
+func (h *JobTaskHandler) aggregateJobResults(tm *TaskManager, agent *Agent, task *adaptix.TaskData, jobs *safe.Slice) {
 	jobsArray := jobs.CutArray()
 
 	for _, jobValue := range jobsArray {

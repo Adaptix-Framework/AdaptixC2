@@ -4,6 +4,6 @@
 
 extern Agent* g_Agent;
 
-void AgentMain(); 
+DWORD WINAPI AgentMain(LPVOID lpParam);
 
 void AgentClear(int method);

