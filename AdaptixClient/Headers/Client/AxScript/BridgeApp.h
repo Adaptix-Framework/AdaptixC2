@@ -38,7 +38,7 @@ public Q_SLOTS:
     QObject* create_commands_group(const QString &name, const QJSValue& array);
     QJSValue downloads() const;
     QString  donut_generate(const QString &file, const QString &params, const QString &arch, const QString &payload_type = "exe");
-    QString  donut_generate_with_pipe(const QString &file, const QString &params, const QString &arch, const QString &pipeName);
+    QString  donut_generate_with_pipe(const QString &file, const QString &params, const QString &arch, const QString &pipeName, const QString &stubBase64);
     void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "", const QJSValue &hook = QJSValue(), const QJSValue &handler = QJSValue()) const;
     void     execute_alias_hook(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const;
     void     execute_alias_handler(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &handler) const;
