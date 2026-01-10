@@ -13,7 +13,7 @@ func (ex *AdaptixExtender) ExAgentGenerate(agentName string, config string, list
 		return nil, "", err
 	}
 
-	return module.BuildPayload(config, agentConfig, listenerProfile)
+	return module.BuildPayload(config, agentConfig, listenerProfile, "")
 }
 
 func (ex *AdaptixExtender) ExAgentCreate(agentName string, beat []byte) (adaptix.AgentData, adaptix.ExtenderAgent, error) {

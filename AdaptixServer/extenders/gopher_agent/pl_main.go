@@ -346,7 +346,7 @@ func (p *PluginAgent) GenerateConfig(config string, listenerWM string, listenerP
 	return payloadConfig, nil
 }
 
-func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, listenerProfile []byte) ([]byte, string, error) {
+func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, listenerProfile []byte, builderId string) ([]byte, string, error) {
 	var (
 		listenerMap map[string]any
 		Filename    string
