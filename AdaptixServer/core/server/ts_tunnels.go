@@ -22,26 +22,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const (
-	TUNNEL_TYPE_SOCKS4     = 1
-	TUNNEL_TYPE_SOCKS5     = 2
-	TUNNEL_TYPE_LOCAL_PORT = 4
-	TUNNEL_TYPE_REVERSE    = 5
-
-	ADDRESS_TYPE_IPV4   = 1
-	ADDRESS_TYPE_DOMAIN = 3
-	ADDRESS_TYPE_IPV6   = 4
-
-	SOCKS5_SERVER_FAILURE          byte = 1
-	SOCKS5_NOT_ALLOWED_RULESET     byte = 2
-	SOCKS5_NETWORK_UNREACHABLE     byte = 3
-	SOCKS5_HOST_UNREACHABLE        byte = 4
-	SOCKS5_CONNECTION_REFUSED      byte = 5
-	SOCKS5_TTL_EXPIRED             byte = 6
-	SOCKS5_COMMAND_NOT_SUPPORTED   byte = 7
-	SOCKS5_ADDR_TYPE_NOT_SUPPORTED byte = 8
-)
-
 func (ts *Teamserver) TsTunnelList() (string, error) {
 	tunnels := ts.TunnelManager.ListTunnels()
 	jsonTunnel, err := json.Marshal(tunnels)
@@ -74,7 +54,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 	message := ""
 	switch Type {
 
-	case TUNNEL_SOCKS4:
+	case adaptix.TUNNEL_TYPE_SOCKS4:
 		if Listen {
 			commandline = fmt.Sprintf("[from browser] socks4 start %v:%v", Lhost, Lport)
 			message = fmt.Sprintf("SOCKS4 server started on '%v:%v'", Lhost, Lport)
@@ -83,7 +63,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 			message = fmt.Sprintf("SOCKS4 server started on (client '%v') '%v:%v'", Client, Lhost, Lport)
 		}
 
-	case TUNNEL_SOCKS5:
+	case adaptix.TUNNEL_TYPE_SOCKS5:
 		if Listen {
 			commandline = fmt.Sprintf("[from browser] socks5 start %v:%v", Lhost, Lport)
 			message = fmt.Sprintf("SOCKS5 server started on '%v:%v'", Lhost, Lport)
@@ -92,7 +72,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 			message = fmt.Sprintf("SOCKS5 server started on (client '%v') '%v:%v'", Client, Lhost, Lport)
 		}
 
-	case TUNNEL_SOCKS5_AUTH:
+	case adaptix.TUNNEL_TYPE_SOCKS5_AUTH:
 		if Listen {
 			commandline = fmt.Sprintf("[from browser] socks5 start %v:%v -auth %v %v", Lhost, Lport, AuthUser, AuthPass)
 			message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%v:%v'", Lhost, Lport)
@@ -101,7 +81,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 			message = fmt.Sprintf("SOCKS5 (with Auth) server started on (client '%v') '%v:%v'", Client, Lhost, Lport)
 		}
 
-	case TUNNEL_LPORTFWD:
+	case adaptix.TUNNEL_TYPE_LOCAL_PORT:
 		if Listen {
 			commandline = fmt.Sprintf("[from browser] local_port_fwd start %v:%v %v:%v", Lhost, Lport, Thost, Tport)
 			message = fmt.Sprintf("Started local port forwarding on %v:%v to %v:%v", Lhost, Lport, Thost, Tport)
@@ -110,7 +90,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 			message = fmt.Sprintf("Started local port forwarding on (client '%v') %v:%v to %v:%v", Client, Lhost, Lport, Thost, Tport)
 		}
 
-	case TUNNEL_RPORTFWD:
+	case adaptix.TUNNEL_TYPE_REVERSE:
 		if Listen {
 			commandline = fmt.Sprintf("[from browser] reverse_port_fwd start %v %v:%v", Lport, Thost, Tport)
 			message = fmt.Sprintf("Starting reverse port forwarding %v to %v:%v", Lport, Thost, Tport)
@@ -154,7 +134,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 
 	taskData := adaptix.TaskData{
 		TaskId:      taskId,
-		Type:        TYPE_TUNNEL,
+		Type:        adaptix.TASK_TYPE_TUNNEL,
 		Sync:        true,
 		Message:     message,
 		MessageType: CONSOLE_OUT_SUCCESS,
@@ -198,7 +178,7 @@ func (ts *Teamserver) TsTunnelClientNewChannel(TunnelData string, wsconn *websoc
 	}
 
 	port := 0
-	if tunnel.Type == TUNNEL_SOCKS4 || tunnel.Type == TUNNEL_SOCKS5 || tunnel.Type == TUNNEL_SOCKS5_AUTH {
+	if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
 		port, err = strconv.Atoi(tPort)
 		if err != nil {
 			return errors.New("Invalid port number")
@@ -211,7 +191,7 @@ func (ts *Teamserver) TsTunnelClientNewChannel(TunnelData string, wsconn *websoc
 		}
 	}
 
-	if tunnel.Type == TUNNEL_SOCKS5 || tunnel.Type == TUNNEL_SOCKS5_AUTH {
+	if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
 		if mode != "tcp" && mode != "udp" {
 			return errors.New("invalid mode")
 		}
@@ -284,7 +264,7 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 		return "", ErrAgentNotFound
 	}
 
-	if tunnel.Type == TUNNEL_RPORTFWD {
+	if tunnel.Type == adaptix.TUNNEL_TYPE_REVERSE {
 		id, _ := strconv.ParseInt(TunnelId, 16, 64)
 		port, err := strconv.Atoi(tunnel.Data.Port)
 		if err != nil {
@@ -331,7 +311,7 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 	}
 
 	agentData := agent.GetData()
-	if Info == "" && Type == TUNNEL_SOCKS5_AUTH {
+	if Info == "" && Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
 		Info = fmt.Sprintf("Creds %s:%s", AuthUser, AuthPass)
 	}
 
@@ -349,19 +329,19 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 
 	switch Type {
 
-	case TUNNEL_SOCKS4:
+	case adaptix.TUNNEL_TYPE_SOCKS4:
 		tunnelData.Type = "SOCKS4 proxy"
 		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agentData.Id+"socks"+lport)))
 		tunnelData.Interface = Lhost
 		tunnelData.Port = lport
 
-	case TUNNEL_SOCKS5:
+	case adaptix.TUNNEL_TYPE_SOCKS5:
 		tunnelData.Type = "SOCKS5 proxy"
 		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agentData.Id+"socks"+lport)))
 		tunnelData.Interface = Lhost
 		tunnelData.Port = lport
 
-	case TUNNEL_SOCKS5_AUTH:
+	case adaptix.TUNNEL_TYPE_SOCKS5_AUTH:
 		tunnelData.Type = "SOCKS5 Auth proxy"
 		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agentData.Id+"socks"+lport)))
 		tunnelData.Interface = Lhost
@@ -369,7 +349,7 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 		tunnelData.AuthUser = AuthUser
 		tunnelData.AuthPass = AuthPass
 
-	case TUNNEL_LPORTFWD:
+	case adaptix.TUNNEL_TYPE_LOCAL_PORT:
 		tunnelData.Type = "Local port forward"
 		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agentData.Id+"lportfwd"+lport)))
 		tunnelData.Interface = Lhost
@@ -377,7 +357,7 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 		tunnelData.Fhost = Thost
 		tunnelData.Fport = tport
 
-	case TUNNEL_RPORTFWD:
+	case adaptix.TUNNEL_TYPE_REVERSE:
 		tunnelData.Type = "Reverse port forward"
 		tunnelData.TunnelId = fmt.Sprintf("%08x", krypt.CRC32([]byte(Client+agentData.Id+"rportfwd"+lport)))
 		tunnelData.Port = lport
@@ -410,23 +390,23 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 }
 
 func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Info string, Lhost string, Lport int) (string, error) {
-	return ts.TsTunnelCreate(AgentId, TUNNEL_SOCKS4, Info, Lhost, Lport, "", "", 0, "", "")
+	return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_SOCKS4, Info, Lhost, Lport, "", "", 0, "", "")
 }
 
 func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (string, error) {
 	if UseAuth {
-		return ts.TsTunnelCreate(AgentId, TUNNEL_SOCKS5_AUTH, Info, Lhost, Lport, "", "", 0, Username, Password)
+		return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_SOCKS5_AUTH, Info, Lhost, Lport, "", "", 0, Username, Password)
 	} else {
-		return ts.TsTunnelCreate(AgentId, TUNNEL_SOCKS5, Info, Lhost, Lport, "", "", 0, "", "")
+		return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_SOCKS5, Info, Lhost, Lport, "", "", 0, "", "")
 	}
 }
 
 func (ts *Teamserver) TsTunnelCreateLportfwd(AgentId string, Info string, Lhost string, Lport int, Thost string, Tport int) (string, error) {
-	return ts.TsTunnelCreate(AgentId, TUNNEL_LPORTFWD, Info, Lhost, Lport, "", Thost, Tport, "", "")
+	return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_LOCAL_PORT, Info, Lhost, Lport, "", Thost, Tport, "", "")
 }
 
 func (ts *Teamserver) TsTunnelCreateRportfwd(AgentId string, Info string, Lport int, Thost string, Tport int) (string, error) {
-	return ts.TsTunnelCreate(AgentId, TUNNEL_RPORTFWD, Info, "", Lport, "", Thost, Tport, "", "")
+	return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_REVERSE, Info, "", Lport, "", Thost, Tport, "", "")
 }
 
 func (ts *Teamserver) TsTunnelUpdateRportfwd(tunnelId int, result bool) (string, string, error) {
@@ -562,9 +542,9 @@ func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int, io
 
 	if tunnel.Data.Client == "" {
 		if tunChannel.conn != nil {
-			if tunnel.Type == TUNNEL_SOCKS5 || tunnel.Type == TUNNEL_SOCKS5_AUTH {
-				proxy.ReplySocks5StatusConn(tunChannel.conn, proxy.SOCKS5_SUCCESS)
-			} else if tunnel.Type == TUNNEL_SOCKS4 {
+			if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
+				proxy.ReplySocks5StatusConn(tunChannel.conn, adaptix.SOCKS5_SUCCESS)
+			} else if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 {
 				proxy.ReplySocks4StatusConn(tunChannel.conn, true)
 			}
 			relaySocketToTunnel(ts.TunnelManager, agent, tunnel, tunChannel, ioDirect)
@@ -573,9 +553,9 @@ func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int, io
 		}
 	} else {
 		if tunChannel.wsconn != nil {
-			if tunnel.Type == TUNNEL_SOCKS5 || tunnel.Type == TUNNEL_SOCKS5_AUTH {
-				proxy.ReplySocks5StatusWs(tunChannel.wsconn, proxy.SOCKS5_SUCCESS)
-			} else if tunnel.Type == TUNNEL_SOCKS4 {
+			if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
+				proxy.ReplySocks5StatusWs(tunChannel.wsconn, adaptix.SOCKS5_SUCCESS)
+			} else if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 {
 				proxy.ReplySocks4StatusWs(tunChannel.wsconn, true)
 			}
 			relayWebsocketToTunnel(ts.TunnelManager, agent, tunnel, tunChannel, ioDirect)
@@ -600,23 +580,23 @@ func (ts *Teamserver) TsTunnelConnectionHalt(channelId int, errorCode byte) {
 
 	if tunnel.Data.Client == "" {
 		if tunChannel.conn != nil {
-			if tunnel.Type == TUNNEL_SOCKS5 || tunnel.Type == TUNNEL_SOCKS5_AUTH {
+			if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
 				if errorCode < 1 || errorCode > 8 {
-					errorCode = SOCKS5_CONNECTION_REFUSED
+					errorCode = adaptix.SOCKS5_CONNECTION_REFUSED
 				}
 				proxy.ReplySocks5StatusConn(tunChannel.conn, errorCode)
-			} else if tunnel.Type == TUNNEL_SOCKS4 {
+			} else if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 {
 				proxy.ReplySocks4StatusConn(tunChannel.conn, false)
 			}
 		}
 	} else {
 		if tunChannel.wsconn != nil {
-			if tunnel.Type == TUNNEL_SOCKS5 || tunnel.Type == TUNNEL_SOCKS5_AUTH {
+			if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
 				if errorCode < 1 || errorCode > 8 {
-					errorCode = SOCKS5_CONNECTION_REFUSED
+					errorCode = adaptix.SOCKS5_CONNECTION_REFUSED
 				}
 				proxy.ReplySocks5StatusWs(tunChannel.wsconn, errorCode)
-			} else if tunnel.Type == TUNNEL_SOCKS4 {
+			} else if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 {
 				proxy.ReplySocks4StatusWs(tunChannel.wsconn, false)
 			}
 		}
@@ -674,7 +654,7 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 	var taskData adaptix.TaskData
 	switch tunnel.Type {
 
-	case TUNNEL_SOCKS4:
+	case adaptix.TUNNEL_TYPE_SOCKS4:
 		proxySock, err := proxy.CheckSocks4(conn)
 		if err != nil {
 			logs.Debug("", "[ERROR] Socks4 proxy error: %v", err)
@@ -683,7 +663,7 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 		}
 		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
 
-	case TUNNEL_SOCKS5:
+	case adaptix.TUNNEL_TYPE_SOCKS5:
 		proxySock, err := proxy.CheckSocks5(conn, false, "", "")
 		if err != nil {
 			logs.Debug("", "[ERROR] Socks5 proxy error: %v", err)
@@ -697,7 +677,7 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 			taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
 		}
 
-	case TUNNEL_SOCKS5_AUTH:
+	case adaptix.TUNNEL_TYPE_SOCKS5_AUTH:
 		proxySock, err := proxy.CheckSocks5(conn, true, tunnel.Data.AuthUser, tunnel.Data.AuthPass)
 		if err != nil {
 			logs.Debug("", "Socks5 proxy error: %v", err)
@@ -711,9 +691,9 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 			taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxySock.SocksType, proxySock.AddressType, proxySock.Address, proxySock.Port)
 		}
 
-	case TUNNEL_LPORTFWD:
+	case adaptix.TUNNEL_TYPE_LOCAL_PORT:
 		tport, _ := strconv.Atoi(tunnel.Data.Fport)
-		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_LOCAL_PORT, proxy.ADDRESS_TYPE_IPV4, tunnel.Data.Fhost, tport)
+		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, adaptix.TUNNEL_TYPE_LOCAL_PORT, adaptix.ADDRESS_TYPE_IPV4, tunnel.Data.Fhost, tport)
 
 	default:
 		tm.closeChannelInternal(tunnel, tunChannel)
@@ -741,28 +721,28 @@ func handleTunChannelCreateClient(tm *TunnelManager, agent *Agent, tunnel *Tunne
 	var taskData adaptix.TaskData
 	switch tunnel.Type {
 
-	case TUNNEL_SOCKS4:
-		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS4, addressType, targetAddress, targetPort)
+	case adaptix.TUNNEL_TYPE_SOCKS4:
+		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, adaptix.TUNNEL_TYPE_SOCKS4, addressType, targetAddress, targetPort)
 
-	case TUNNEL_SOCKS5:
+	case adaptix.TUNNEL_TYPE_SOCKS5:
 		if protocol == "udp" {
-			taskData = tunnel.Callbacks.ConnectUDP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
+			taskData = tunnel.Callbacks.ConnectUDP(tunChannel.channelId, adaptix.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
 			tunChannel.protocol = "UDP"
 		} else {
-			taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
+			taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, adaptix.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
 		}
 
-	case TUNNEL_SOCKS5_AUTH:
+	case adaptix.TUNNEL_TYPE_SOCKS5_AUTH:
 		if protocol == "udp" {
-			taskData = tunnel.Callbacks.ConnectUDP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
+			taskData = tunnel.Callbacks.ConnectUDP(tunChannel.channelId, adaptix.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
 			tunChannel.protocol = "UDP"
 		} else {
-			taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
+			taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, adaptix.TUNNEL_TYPE_SOCKS5, addressType, targetAddress, targetPort)
 		}
 
-	case TUNNEL_LPORTFWD:
+	case adaptix.TUNNEL_TYPE_LOCAL_PORT:
 		tport, _ := strconv.Atoi(tunnel.Data.Fport)
-		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, proxy.TUNNEL_TYPE_LOCAL_PORT, addressType, tunnel.Data.Fhost, tport)
+		taskData = tunnel.Callbacks.ConnectTCP(tunChannel.channelId, adaptix.TUNNEL_TYPE_LOCAL_PORT, addressType, tunnel.Data.Fhost, tport)
 
 	default:
 		tm.closeChannelInternal(tunnel, tunChannel)

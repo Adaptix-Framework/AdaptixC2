@@ -139,13 +139,13 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 	}
 	taskData.HookId = hookId
 	taskData.HandlerId = handlerId
-	if taskData.Type == TYPE_TASK && ui {
-		taskData.Type = TYPE_BROWSER
+	if taskData.Type == adaptix.TASK_TYPE_TASK && ui {
+		taskData.Type = adaptix.TASK_TYPE_BROWSER
 	}
 
 	ts.TsTaskCreate(agentId, cmdline, clientName, taskData)
 
-	if (taskData.Type != TYPE_BROWSER) && (len(messageData.Message) > 0 || len(messageData.Text) > 0) {
+	if (taskData.Type != adaptix.TASK_TYPE_BROWSER) && (len(messageData.Message) > 0 || len(messageData.Text) > 0) {
 		ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text, false)
 	}
 	return nil
@@ -552,13 +552,13 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 	var downloads []string
 	ts.downloads.ForEach(func(key string, value interface{}) bool {
 		downloadData := value.(adaptix.DownloadData)
-		if downloadData.AgentId == agentId && downloadData.State != DOWNLOAD_STATE_FINISHED {
+		if downloadData.AgentId == agentId && downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
 			downloads = append(downloads, downloadData.FileId)
 		}
 		return true
 	})
 	for _, id := range downloads {
-		_ = ts.TsDownloadClose(id, DOWNLOAD_STATE_CANCELED)
+		_ = ts.TsDownloadClose(id, adaptix.DOWNLOAD_STATE_CANCELED)
 	}
 
 	/// Clear Tunnels
@@ -616,7 +616,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 			ts.TsSyncAllClients(packet)
 		}
 
-		if task.Type == TYPE_JOB {
+		if task.Type == adaptix.TASK_TYPE_JOB {
 			agent.RunningJobs.Delete(task.TaskId)
 		}
 	}
@@ -681,13 +681,13 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	var downloads []string
 	ts.downloads.ForEach(func(key string, value interface{}) bool {
 		downloadData := value.(adaptix.DownloadData)
-		if downloadData.AgentId == agentId && downloadData.State != DOWNLOAD_STATE_FINISHED {
+		if downloadData.AgentId == agentId && downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
 			downloads = append(downloads, downloadData.FileId)
 		}
 		return true
 	})
 	for _, id := range downloads {
-		_ = ts.TsDownloadClose(id, DOWNLOAD_STATE_CANCELED)
+		_ = ts.TsDownloadClose(id, adaptix.DOWNLOAD_STATE_CANCELED)
 	}
 
 	/// Clear Tunnels

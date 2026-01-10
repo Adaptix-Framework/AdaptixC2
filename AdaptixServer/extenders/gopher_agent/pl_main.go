@@ -25,41 +25,6 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-const (
-	OS_UNKNOWN = 0
-	OS_WINDOWS = 1
-	OS_LINUX   = 2
-	OS_MAC     = 3
-
-	TYPE_TASK       = 1
-	TYPE_BROWSER    = 2
-	TYPE_JOB        = 3
-	TYPE_TUNNEL     = 4
-	TYPE_PROXY_DATA = 5
-
-	MESSAGE_INFO    = 5
-	MESSAGE_ERROR   = 6
-	MESSAGE_SUCCESS = 7
-
-	TUNNEL_TYPE_SOCKS4     = 1
-	TUNNEL_TYPE_SOCKS5     = 2
-	TUNNEL_TYPE_LOCAL_PORT = 4
-	TUNNEL_TYPE_REVERSE    = 5
-
-	ADDRESS_TYPE_IPV4   = 1
-	ADDRESS_TYPE_DOMAIN = 3
-	ADDRESS_TYPE_IPV6   = 4
-
-	SOCKS5_SERVER_FAILURE          byte = 1
-	SOCKS5_NOT_ALLOWED_RULESET     byte = 2
-	SOCKS5_NETWORK_UNREACHABLE     byte = 3
-	SOCKS5_HOST_UNREACHABLE        byte = 4
-	SOCKS5_CONNECTION_REFUSED      byte = 5
-	SOCKS5_TTL_EXPIRED             byte = 6
-	SOCKS5_COMMAND_NOT_SUPPORTED   byte = 7
-	SOCKS5_ADDR_TYPE_NOT_SUPPORTED byte = 8
-)
-
 type Teamserver interface {
 	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
@@ -138,7 +103,7 @@ func (p *PluginAgent) GetExtender() adaptix.ExtenderAgent {
 }
 
 func makeProxyTask(packData []byte) adaptix.TaskData {
-	return adaptix.TaskData{Type: TYPE_PROXY_DATA, Data: packData, Sync: false}
+	return adaptix.TaskData{Type: adaptix.TASK_TYPE_PROXY_DATA, Data: packData, Sync: false}
 }
 
 func getStringArg(args map[string]any, key string) (string, error) {
@@ -497,16 +462,16 @@ func (p *PluginAgent) CreateAgent(beat []byte) (adaptix.AgentData, adaptix.Exten
 	agentData.InternalIP = sessionInfo.Ipaddr
 
 	if sessionInfo.Os == "linux" {
-		agentData.Os = OS_LINUX
+		agentData.Os = adaptix.OS_LINUX
 		agentData.OsDesc = sessionInfo.OSVersion
 	} else if sessionInfo.Os == "windows" {
-		agentData.Os = OS_WINDOWS
+		agentData.Os = adaptix.OS_WINDOWS
 		agentData.OsDesc = sessionInfo.OSVersion
 	} else if sessionInfo.Os == "darwin" {
-		agentData.Os = OS_MAC
+		agentData.Os = adaptix.OS_MAC
 		agentData.OsDesc = sessionInfo.OSVersion
 	} else {
-		agentData.Os = OS_UNKNOWN
+		agentData.Os = adaptix.OS_UNKNOWN
 		return agentData, nil, errors.New("unknown OS")
 	}
 
@@ -629,7 +594,7 @@ func (ext *ExtenderAgent) PivotPackData(pivotId string, data []byte) (adaptix.Ta
 
 	taskData := adaptix.TaskData{
 		TaskId: fmt.Sprintf("%08x", mrand.Uint32()),
-		Type:   TYPE_PROXY_DATA,
+		Type:   adaptix.TASK_TYPE_PROXY_DATA,
 		Data:   packData,
 		Sync:   false,
 	}
@@ -651,12 +616,12 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 	subcommand, _ := args["subcommand"].(string)
 
 	taskData = adaptix.TaskData{
-		Type: TYPE_TASK,
+		Type: adaptix.TASK_TYPE_TASK,
 		Sync: true,
 	}
 
 	messageData = adaptix.ConsoleMessageData{
-		Status: MESSAGE_INFO,
+		Status: adaptix.MESSAGE_INFO,
 		Text:   "",
 	}
 	messageData.Message, _ = args["message"].(string)
@@ -711,12 +676,12 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		cmd = Command{Code: COMMAND_DOWNLOAD, Data: packerData}
 
 	case "execute":
-		if agentData.Os != OS_WINDOWS {
+		if agentData.Os != adaptix.OS_WINDOWS {
 			goto RET
 		}
 
 		if subcommand == "bof" {
-			taskData.Type = TYPE_JOB
+			taskData.Type = adaptix.TASK_TYPE_JOB
 
 			r := make([]byte, 4)
 			_, _ = rand.Read(r)
@@ -820,7 +785,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		cmd = Command{Code: COMMAND_RM, Data: packerData}
 
 	case "run":
-		taskData.Type = TYPE_JOB
+		taskData.Type = adaptix.TASK_TYPE_JOB
 
 		prog, err := getStringArg(args, "program")
 		if err != nil {
@@ -844,7 +809,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			goto RET
 		}
 
-		if agentData.Os == OS_WINDOWS {
+		if agentData.Os == adaptix.OS_WINDOWS {
 			cmdArgs := []string{"/c", cmdParam}
 			packerData, _ := msgpack.Marshal(ParamsShell{Program: "C:\\Windows\\System32\\cmd.exe", Args: cmdArgs})
 			cmd = Command{Code: COMMAND_SHELL, Data: packerData}
@@ -858,7 +823,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		cmd = Command{Code: COMMAND_SCREENSHOT, Data: nil}
 
 	case "socks":
-		taskData.Type = TYPE_TUNNEL
+		taskData.Type = adaptix.TASK_TYPE_TUNNEL
 
 		portNumber, ok := args["port"].(float64)
 		port := int(portNumber)
@@ -912,7 +877,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 				taskData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
 			}
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.ClearText = "\n"
 
 		} else if subcommand == "stop" {
@@ -920,7 +885,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 			Ts.TsTunnelStopSocks(agentData.Id, port)
 
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.Message = "Socks5 server has been stopped"
 			taskData.ClearText = "\n"
 
@@ -955,7 +920,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		bufferSize := len(zipContent)
 
 		inTaskData := adaptix.TaskData{
-			Type:    TYPE_TASK,
+			Type:    adaptix.TASK_TYPE_TASK,
 			AgentId: agentData.Id,
 			Sync:    false,
 		}
@@ -1016,10 +981,10 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 	var outTasks []adaptix.TaskData
 
 	taskData := adaptix.TaskData{
-		Type:        TYPE_TASK,
+		Type:        adaptix.TASK_TYPE_TASK,
 		AgentId:     agentData.Id,
 		FinishDate:  time.Now().Unix(),
-		MessageType: MESSAGE_SUCCESS,
+		MessageType: adaptix.MESSAGE_SUCCESS,
 		Completed:   true,
 		Sync:        true,
 	}
@@ -1127,7 +1092,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 						_ = Ts.TsDownloadSave(agentData.Id, fileId, name, data)
 
 					} else if msg.Type == CALLBACK_ERROR {
-						task.MessageType = MESSAGE_ERROR
+						task.MessageType = adaptix.MESSAGE_ERROR
 						task.Message = "BOF error"
 						task.ClearText += Ts.TsConvertCpToUTF8(string(msg.Data), agentData.ACP) + "\n"
 					} else {
@@ -1184,13 +1149,13 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					continue
 				}
 
-				if agentData.Os == OS_WINDOWS {
+				if agentData.Os == adaptix.OS_WINDOWS {
 
 					var items []adaptix.ListingFileDataWin
 
 					if !params.Result {
 						task.Message = params.Status
-						task.MessageType = MESSAGE_ERROR
+						task.MessageType = adaptix.MESSAGE_ERROR
 					} else {
 						var Files []FileInfo
 						err := msgpack.Unmarshal(params.Files, &Files)
@@ -1256,7 +1221,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 					if !params.Result {
 						task.Message = params.Status
-						task.MessageType = MESSAGE_ERROR
+						task.MessageType = adaptix.MESSAGE_ERROR
 					} else {
 						var Files []FileInfo
 						err := msgpack.Unmarshal(params.Files, &Files)
@@ -1337,13 +1302,13 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					continue
 				}
 
-				if agentData.Os == OS_WINDOWS {
+				if agentData.Os == adaptix.OS_WINDOWS {
 
 					var proclist []adaptix.ListingProcessDataWin
 
 					if !params.Result {
 						task.Message = params.Status
-						task.MessageType = MESSAGE_ERROR
+						task.MessageType = adaptix.MESSAGE_ERROR
 					} else {
 						var Processes []PsInfo
 						err := msgpack.Unmarshal(params.Processes, &Processes)
@@ -1354,7 +1319,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 						procCount := len(Processes)
 						if procCount == 0 {
 							task.Message = "Failed to get process list"
-							task.MessageType = MESSAGE_ERROR
+							task.MessageType = adaptix.MESSAGE_ERROR
 							break
 						} else {
 
@@ -1470,7 +1435,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 					if !params.Result {
 						task.Message = params.Status
-						task.MessageType = MESSAGE_ERROR
+						task.MessageType = adaptix.MESSAGE_ERROR
 					} else {
 						var Processes []PsInfo
 						err := msgpack.Unmarshal(params.Processes, &Processes)
@@ -1481,7 +1446,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 						procCount := len(Processes)
 						if procCount == 0 {
 							task.Message = "Failed to get process list"
-							task.MessageType = MESSAGE_ERROR
+							task.MessageType = adaptix.MESSAGE_ERROR
 							break
 						} else {
 							pidFsize := 3
@@ -1638,7 +1603,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 
 				task.Message = "Command output:"
-				if agentData.Os == OS_WINDOWS {
+				if agentData.Os == adaptix.OS_WINDOWS {
 					task.ClearText = Ts.TsConvertCpToUTF8(params.Output, agentData.OemCP)
 				} else {
 					task.ClearText = params.Output
@@ -1670,7 +1635,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					continue
 				}
 				task.Message = fmt.Sprintf("Archive '%s' successfully created", params.Path)
-				task.MessageType = MESSAGE_SUCCESS
+				task.MessageType = adaptix.MESSAGE_SUCCESS
 
 			case COMMAND_ERROR:
 				var params AnsError
@@ -1679,7 +1644,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					continue
 				}
 				task.Message = fmt.Sprintf("Error %s", params.Error)
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 
 			default:
 				continue
@@ -1744,7 +1709,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					task.Message = fmt.Sprintf("Run process [%v] with pid '%v'", task.TaskId, params.Pid)
 				}
 
-				if agentData.Os == OS_WINDOWS {
+				if agentData.Os == adaptix.OS_WINDOWS {
 					task.ClearText = Ts.TsConvertCpToUTF8(params.Stdout, agentData.OemCP)
 				} else {
 					task.ClearText = params.Stdout
@@ -1752,7 +1717,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 				if params.Stderr != "" {
 					errorStr := params.Stderr
-					if agentData.Os == OS_WINDOWS {
+					if agentData.Os == adaptix.OS_WINDOWS {
 						errorStr = Ts.TsConvertCpToUTF8(params.Stderr, agentData.OemCP)
 					}
 					task.ClearText += fmt.Sprintf("\n --- [error] --- \n%v ", errorStr)

@@ -25,22 +25,6 @@ const (
 	CONSOLE_OUT               = 10
 )
 
-const (
-	TYPE_TASK       = 1
-	TYPE_BROWSER    = 2
-	TYPE_JOB        = 3
-	TYPE_TUNNEL     = 4
-	TYPE_PROXY_DATA = 5
-)
-
-const (
-	TUNNEL_SOCKS4      = 1
-	TUNNEL_SOCKS5      = 2
-	TUNNEL_SOCKS5_AUTH = 3
-	TUNNEL_LPORTFWD    = 4
-	TUNNEL_RPORTFWD    = 5
-)
-
 type TsParameters struct {
 	Interfaces []string
 }

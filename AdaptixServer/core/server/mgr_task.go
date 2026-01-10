@@ -28,10 +28,10 @@ func NewTaskManager(ts *Teamserver) *TaskManager {
 	}
 
 	taskHandler := &TaskTaskHandler{}
-	tm.handlers[TYPE_TASK] = taskHandler
-	tm.handlers[TYPE_BROWSER] = taskHandler
-	tm.handlers[TYPE_JOB] = &JobTaskHandler{}
-	tm.handlers[TYPE_TUNNEL] = &TunnelTaskHandler{}
+	tm.handlers[adaptix.TASK_TYPE_TASK] = taskHandler
+	tm.handlers[adaptix.TASK_TYPE_BROWSER] = taskHandler
+	tm.handlers[adaptix.TASK_TYPE_JOB] = &JobTaskHandler{}
+	tm.handlers[adaptix.TASK_TYPE_TUNNEL] = &TunnelTaskHandler{}
 
 	return tm
 }
@@ -248,7 +248,7 @@ func (tm *TaskManager) Save(taskData adaptix.TaskData) error {
 	}
 
 	agentData := agent.GetData()
-	taskData.Type = TYPE_TASK
+	taskData.Type = adaptix.TASK_TYPE_TASK
 	taskData.TaskId, _ = krypt.GenerateUID(8)
 	taskData.Computer = agentData.Computer
 	taskData.User = agentData.Username
@@ -281,7 +281,7 @@ func (tm *TaskManager) ProcessDisconnectedClient(clientName string) {
 				return true
 			}
 
-			if (task.HookId != "" && task.Client == clientName) || (task.Type == TYPE_TUNNEL && task.Client == clientName) {
+			if (task.HookId != "" && task.Client == clientName) || (task.Type == adaptix.TASK_TYPE_TUNNEL && task.Client == clientName) {
 				tasksToProcess = append(tasksToProcess, taskId)
 			}
 			return true

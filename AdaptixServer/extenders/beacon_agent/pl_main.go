@@ -22,46 +22,6 @@ import (
 	"github.com/Adaptix-Framework/axc2"
 )
 
-const (
-	OS_UNKNOWN = 0
-	OS_WINDOWS = 1
-	OS_LINUX   = 2
-	OS_MAC     = 3
-
-	TYPE_TASK       = 1
-	TYPE_BROWSER    = 2
-	TYPE_JOB        = 3
-	TYPE_TUNNEL     = 4
-	TYPE_PROXY_DATA = 5
-
-	MESSAGE_INFO    = 5
-	MESSAGE_ERROR   = 6
-	MESSAGE_SUCCESS = 7
-
-	DOWNLOAD_STATE_RUNNING  = 1
-	DOWNLOAD_STATE_STOPPED  = 2
-	DOWNLOAD_STATE_FINISHED = 3
-	DOWNLOAD_STATE_CANCELED = 4
-
-	TUNNEL_TYPE_SOCKS4     = 1
-	TUNNEL_TYPE_SOCKS5     = 2
-	TUNNEL_TYPE_LOCAL_PORT = 4
-	TUNNEL_TYPE_REVERSE    = 5
-
-	ADDRESS_TYPE_IPV4   = 1
-	ADDRESS_TYPE_DOMAIN = 3
-	ADDRESS_TYPE_IPV6   = 4
-
-	SOCKS5_SERVER_FAILURE          byte = 1
-	SOCKS5_NOT_ALLOWED_RULESET     byte = 2
-	SOCKS5_NETWORK_UNREACHABLE     byte = 3
-	SOCKS5_HOST_UNREACHABLE        byte = 4
-	SOCKS5_CONNECTION_REFUSED      byte = 5
-	SOCKS5_TTL_EXPIRED             byte = 6
-	SOCKS5_COMMAND_NOT_SUPPORTED   byte = 7
-	SOCKS5_ADDR_TYPE_NOT_SUPPORTED byte = 8
-)
-
 type Teamserver interface {
 	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
@@ -146,7 +106,7 @@ func (p *PluginAgent) GetExtender() adaptix.ExtenderAgent {
 }
 
 func makeProxyTask(packData []byte) adaptix.TaskData {
-	return adaptix.TaskData{Type: TYPE_PROXY_DATA, Data: packData, Sync: false}
+	return adaptix.TaskData{Type: adaptix.TASK_TYPE_PROXY_DATA, Data: packData, Sync: false}
 }
 
 func getStringArg(args map[string]any, key string) (string, error) {
@@ -776,7 +736,7 @@ func (ext *ExtenderAgent) PivotPackData(pivotId string, data []byte) (adaptix.Ta
 
 	taskData := adaptix.TaskData{
 		TaskId: fmt.Sprintf("%08x", mrand.Uint32()),
-		Type:   TYPE_PROXY_DATA,
+		Type:   adaptix.TASK_TYPE_PROXY_DATA,
 		Data:   packData,
 		Sync:   false,
 	}
@@ -798,12 +758,12 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 	subcommand, _ := args["subcommand"].(string)
 
 	taskData = adaptix.TaskData{
-		Type: TYPE_TASK,
+		Type: adaptix.TASK_TYPE_TASK,
 		Sync: true,
 	}
 
 	messageData = adaptix.ConsoleMessageData{
-		Status: MESSAGE_INFO,
+		Status: adaptix.MESSAGE_INFO,
 		Text:   "",
 	}
 	messageData.Message, _ = args["message"].(string)
@@ -851,7 +811,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 	case "execute":
 		if subcommand == "bof" {
-			taskData.Type = TYPE_JOB
+			taskData.Type = adaptix.TASK_TYPE_JOB
 
 			bofFile, err := getStringArg(args, "bof")
 			if err != nil {
@@ -891,11 +851,11 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 		if subcommand == "cancel" {
-			array = []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_CANCELED, int(fileId)}
+			array = []interface{}{COMMAND_EXFIL, adaptix.DOWNLOAD_STATE_CANCELED, int(fileId)}
 		} else if subcommand == "stop" {
-			array = []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_STOPPED, int(fileId)}
+			array = []interface{}{COMMAND_EXFIL, adaptix.DOWNLOAD_STATE_STOPPED, int(fileId)}
 		} else if subcommand == "start" {
-			array = []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_RUNNING, int(fileId)}
+			array = []interface{}{COMMAND_EXFIL, adaptix.DOWNLOAD_STATE_RUNNING, int(fileId)}
 		} else {
 			err = errors.New("subcommand must be 'cancel', 'start' or 'stop'")
 			goto RET
@@ -967,7 +927,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		array = []interface{}{COMMAND_LS, Ts.TsConvertUTF8toCp(dir, agentData.ACP)}
 
 	case "lportfwd":
-		taskData.Type = TYPE_TUNNEL
+		taskData.Type = adaptix.TASK_TYPE_TUNNEL
 
 		lportNumber, _ := getFloatArg(args, "lport")
 		lport := int(lportNumber)
@@ -1002,7 +962,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			}
 
 			taskData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, fhost, fport)
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.ClearText = "\n"
 
 		} else if subcommand == "stop" {
@@ -1011,7 +971,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			Ts.TsTunnelStopLportfwd(agentData.Id, lport)
 
 			taskData.Message = fmt.Sprintf("Local port forwarding on %d stopped", lport)
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.ClearText = "\n"
 
 		} else {
@@ -1095,7 +1055,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			array = []interface{}{COMMAND_PS_KILL, int(pid)}
 
 		} else if subcommand == "run" {
-			taskData.Type = TYPE_JOB
+			taskData.Type = adaptix.TASK_TYPE_JOB
 
 			output := getBoolArg(args, "-o")
 			suspend := getBoolArg(args, "-s")
@@ -1127,7 +1087,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		array = []interface{}{COMMAND_RM, Ts.TsConvertUTF8toCp(path, agentData.ACP)}
 
 	case "rportfwd":
-		taskData.Type = TYPE_TUNNEL
+		taskData.Type = adaptix.TASK_TYPE_TUNNEL
 
 		lportNumber, _ := getFloatArg(args, "lport")
 		lport := int(lportNumber)
@@ -1158,14 +1118,14 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			}
 
 			messageData.Message = fmt.Sprintf("Starting reverse port forwarding %d to %s:%d", lport, fhost, fport)
-			messageData.Status = MESSAGE_INFO
+			messageData.Status = adaptix.MESSAGE_INFO
 
 		} else if subcommand == "stop" {
 			taskData.Completed = true
 
 			Ts.TsTunnelStopRportfwd(agentData.Id, lport)
 
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.Message = "Reverse port forwarding has been stopped"
 
 		} else {
@@ -1252,7 +1212,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 	case "socks":
-		taskData.Type = TYPE_TUNNEL
+		taskData.Type = adaptix.TASK_TYPE_TUNNEL
 
 		portNumber, err := getFloatArg(args, "port")
 		port := int(portNumber)
@@ -1314,7 +1274,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 					taskData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
 				}
 			}
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.ClearText = "\n"
 
 		} else if subcommand == "stop" {
@@ -1322,7 +1282,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 			Ts.TsTunnelStopSocks(agentData.Id, port)
 
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.Message = "Socks5 server has been stopped"
 			taskData.ClearText = "\n"
 
@@ -1393,10 +1353,10 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 	var outTasks []adaptix.TaskData
 
 	taskData := adaptix.TaskData{
-		Type:        TYPE_TASK,
+		Type:        adaptix.TASK_TYPE_TASK,
 		AgentId:     agentData.Id,
 		FinishDate:  time.Now().Unix(),
-		MessageType: MESSAGE_SUCCESS,
+		MessageType: adaptix.MESSAGE_SUCCESS,
 		Completed:   true,
 		Sync:        true,
 	}
@@ -1461,7 +1421,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			if result == 0 {
 				errorCode := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, Ts.TsWin32Error(errorCode))
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 
 			} else {
 				drivesCount := int(packer.ParseInt32())
@@ -1523,12 +1483,12 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				fileContent := packer.ParseBytes()
 				task.Completed = false
-				_ = Ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, fileContent)
+				_ = Ts.TsDownloadUpdate(fileId, adaptix.DOWNLOAD_STATE_RUNNING, fileContent)
 				continue
 
 			} else if downloadCommand == DOWNLOAD_FINISH {
 				task.Message = fmt.Sprintf("File download complete: [fid %v]", fileId)
-				_ = Ts.TsDownloadClose(fileId, DOWNLOAD_STATE_FINISHED)
+				_ = Ts.TsDownloadClose(fileId, adaptix.DOWNLOAD_STATE_FINISHED)
 			}
 
 		case COMMAND_EXFIL:
@@ -1538,17 +1498,17 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			fileId := fmt.Sprintf("%08x", packer.ParseInt32())
 			downloadState := packer.ParseInt8()
 
-			if downloadState == DOWNLOAD_STATE_STOPPED {
+			if downloadState == adaptix.DOWNLOAD_STATE_STOPPED {
 				task.Message = fmt.Sprintf("Download '%v' successful stopped", fileId)
-				_ = Ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_STOPPED, []byte(""))
+				_ = Ts.TsDownloadUpdate(fileId, adaptix.DOWNLOAD_STATE_STOPPED, []byte(""))
 
-			} else if downloadState == DOWNLOAD_STATE_RUNNING {
+			} else if downloadState == adaptix.DOWNLOAD_STATE_RUNNING {
 				task.Message = fmt.Sprintf("Download '%v' successful resumed", fileId)
-				_ = Ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, []byte(""))
+				_ = Ts.TsDownloadUpdate(fileId, adaptix.DOWNLOAD_STATE_RUNNING, []byte(""))
 
-			} else if downloadState == DOWNLOAD_STATE_CANCELED {
+			} else if downloadState == adaptix.DOWNLOAD_STATE_CANCELED {
 				task.Message = fmt.Sprintf("Download '%v' successful canceled", fileId)
-				_ = Ts.TsDownloadClose(fileId, DOWNLOAD_STATE_CANCELED)
+				_ = Ts.TsDownloadClose(fileId, adaptix.DOWNLOAD_STATE_CANCELED)
 			}
 
 		case COMMAND_EXEC_BOF:
@@ -1567,7 +1527,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				_ = packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Parse BOF error"
 
@@ -1577,7 +1537,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				_ = packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "The number of functions in the BOF file exceeds 512"
 
@@ -1587,7 +1547,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				_ = packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Entry function not found"
 
@@ -1597,7 +1557,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				_ = packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Error allocation of BOF memory"
 
@@ -1607,7 +1567,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				output := packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Symbol not found: " + output + "\n"
 
@@ -1617,7 +1577,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				output := packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF output"
 				task.ClearText = Ts.TsConvertCpToUTF8(output, agentData.ACP)
 
@@ -1635,7 +1595,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					task.Message = "BOF output"
 				}
 
-				task.MessageType = MESSAGE_SUCCESS
+				task.MessageType = adaptix.MESSAGE_SUCCESS
 				task.ClearText = Ts.TsConvertCpToUTF8(output, agentData.OemCP)
 
 			} else if outputType == CALLBACK_OUTPUT_UTF8 {
@@ -1652,7 +1612,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					task.Message = "BOF output"
 				}
 
-				task.MessageType = MESSAGE_SUCCESS
+				task.MessageType = adaptix.MESSAGE_SUCCESS
 				task.ClearText = output
 
 			} else if outputType == CALLBACK_AX_SCREENSHOT {
@@ -1688,7 +1648,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					task.Message = "BOF output"
 				}
 
-				task.MessageType = MESSAGE_SUCCESS
+				task.MessageType = adaptix.MESSAGE_SUCCESS
 				task.ClearText = Ts.TsConvertCpToUTF8(output, agentData.ACP) + "\n"
 			}
 
@@ -1759,7 +1719,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					task.ClearText = jobOutput
 				} else if state == JOB_STATE_KILLED {
 					task.Completed = true
-					task.MessageType = MESSAGE_INFO
+					task.MessageType = adaptix.MESSAGE_INFO
 					task.Message = fmt.Sprintf("Job [%v] canceled", task.TaskId)
 				} else if state == JOB_STATE_FINISHED {
 					task.Completed = true
@@ -1811,7 +1771,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			jobId := packer.ParseInt32()
 
 			if result == 0 {
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = fmt.Sprintf("Job %v not found", jobId)
 			} else {
 				task.Message = fmt.Sprintf("Job %v mark as Killed", jobId)
@@ -1831,10 +1791,10 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 			if linkType == 1 {
 				task.Message = fmt.Sprintf("----- New SMB pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
-				Ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, task.Message, "\n", true)
+				Ts.TsAgentConsoleOutput(childAgentId, adaptix.MESSAGE_SUCCESS, task.Message, "\n", true)
 			} else if linkType == 2 {
 				task.Message = fmt.Sprintf("----- New TCP pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
-				Ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, task.Message, "\n", true)
+				Ts.TsAgentConsoleOutput(childAgentId, adaptix.MESSAGE_SUCCESS, task.Message, "\n", true)
 			}
 
 		case COMMAND_LS:
@@ -1852,7 +1812,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				errorCode := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, Ts.TsWin32Error(errorCode))
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 
 			} else {
 				if false == packer.CheckPacker([]string{"array", "int"}) {
@@ -2016,14 +1976,14 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			if result == 0 {
 				errorCode := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, Ts.TsWin32Error(errorCode))
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 
 			} else {
 				processCount := int(packer.ParseInt32())
 
 				if processCount == 0 {
 					task.Message = "Failed to get process list"
-					task.MessageType = MESSAGE_ERROR
+					task.MessageType = adaptix.MESSAGE_ERROR
 					break
 				}
 
@@ -2211,9 +2171,9 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			} else if result == 1 {
 				Ts.TsTunnelConnectionClose(channelId)
 			} else {
-				errorCode := SOCKS5_HOST_UNREACHABLE
+				errorCode := adaptix.SOCKS5_HOST_UNREACHABLE
 				if result == 10061 { // WSAECONNREFUSED
-					errorCode = SOCKS5_CONNECTION_REFUSED
+					errorCode = adaptix.SOCKS5_CONNECTION_REFUSED
 				}
 				Ts.TsTunnelConnectionHalt(channelId, errorCode)
 			}
@@ -2242,9 +2202,9 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			}
 
 			if err != nil {
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 			} else {
-				task.MessageType = MESSAGE_SUCCESS
+				task.MessageType = adaptix.MESSAGE_SUCCESS
 			}
 
 		case COMMAND_TUNNEL_ACCEPT:
@@ -2294,11 +2254,11 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			if pivotType != 0 {
 				_ = Ts.TsPivotDelete(pivotId)
 				if TaskId == 0 {
-					Ts.TsAgentConsoleOutput(parentAgentId, MESSAGE_SUCCESS, messageParent, "\n", true)
+					Ts.TsAgentConsoleOutput(parentAgentId, adaptix.MESSAGE_SUCCESS, messageParent, "\n", true)
 				} else {
 					task.Message = messageParent
 				}
-				Ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, messageChild, "\n", true)
+				Ts.TsAgentConsoleOutput(childAgentId, adaptix.MESSAGE_SUCCESS, messageChild, "\n", true)
 			}
 
 		case COMMAND_UPLOAD:
@@ -2311,7 +2271,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			}
 			errorCode := packer.ParseInt32()
 			task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, Ts.TsWin32Error(errorCode))
-			task.MessageType = MESSAGE_ERROR
+			task.MessageType = adaptix.MESSAGE_ERROR
 
 		default:
 			continue

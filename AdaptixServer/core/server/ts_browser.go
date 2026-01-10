@@ -28,7 +28,7 @@ func (ts *Teamserver) TsClientGuiDisksWindows(taskData adaptix.TaskData, drives 
 	}
 	task := value.(adaptix.TaskData)
 
-	if task.Type != TYPE_BROWSER {
+	if task.Type != adaptix.TASK_TYPE_BROWSER {
 		return
 	}
 
@@ -72,7 +72,7 @@ func (ts *Teamserver) TsClientGuiFiles(taskData adaptix.TaskData, path string, j
 	}
 	task := value.(adaptix.TaskData)
 
-	if task.Type != TYPE_BROWSER {
+	if task.Type != adaptix.TASK_TYPE_BROWSER {
 		return
 	}
 
@@ -103,7 +103,7 @@ func (ts *Teamserver) TsClientGuiFilesStatus(taskData adaptix.TaskData) {
 	}
 	task := value.(adaptix.TaskData)
 
-	if task.Type != TYPE_BROWSER {
+	if task.Type != adaptix.TASK_TYPE_BROWSER {
 		return
 	}
 
@@ -144,7 +144,7 @@ func (ts *Teamserver) TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles st
 	}
 	task := value.(adaptix.TaskData)
 
-	if task.Type != TYPE_BROWSER {
+	if task.Type != adaptix.TASK_TYPE_BROWSER {
 		return
 	}
 

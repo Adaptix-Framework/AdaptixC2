@@ -115,7 +115,7 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 	bufferSize := len(buffer)
 
 	taskData := adaptix.TaskData{
-		Type:    TYPE_TASK,
+		Type:    adaptix.TASK_TYPE_TASK,
 		AgentId: agentId,
 		Sync:    false,
 	}
@@ -138,7 +138,7 @@ func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) i
 func GetOsVersion(majorVersion uint8, minorVersion uint8, buildNumber uint, isServer bool, systemArch string) (int, string) {
 	var (
 		desc string
-		os   = OS_UNKNOWN
+		os   = adaptix.OS_UNKNOWN
 	)
 
 	osVersion := "unknown"
@@ -170,7 +170,7 @@ func GetOsVersion(majorVersion uint8, minorVersion uint8, buildNumber uint, isSe
 
 	desc = osVersion + " " + systemArch
 	if strings.Contains(osVersion, "Win") {
-		os = OS_WINDOWS
+		os = adaptix.OS_WINDOWS
 	}
 	return os, desc
 }

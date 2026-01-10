@@ -83,15 +83,15 @@ func (ts *Teamserver) TsEventTunnelAdd(tunnel *Tunnel) {
 	if tunnel.Data.Client == "" {
 		message := ""
 		switch tunnel.Type {
-		case TUNNEL_SOCKS4:
+		case adaptix.TUNNEL_TYPE_SOCKS4:
 			message = fmt.Sprintf("SOCKS4 server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-		case TUNNEL_SOCKS5:
+		case adaptix.TUNNEL_TYPE_SOCKS5:
 			message = fmt.Sprintf("SOCKS5 server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-		case TUNNEL_SOCKS5_AUTH:
+		case adaptix.TUNNEL_TYPE_SOCKS5_AUTH:
 			message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-		case TUNNEL_LPORTFWD:
+		case adaptix.TUNNEL_TYPE_LOCAL_PORT:
 			message = fmt.Sprintf("Local port forward started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-		case TUNNEL_RPORTFWD:
+		case adaptix.TUNNEL_TYPE_REVERSE:
 			message = fmt.Sprintf("Reverse port forward '%s' to '%s:%s'", tunnel.Data.Port, tunnel.Data.Fhost, tunnel.Data.Fport)
 		default:
 			return
@@ -107,15 +107,15 @@ func (ts *Teamserver) TsEventTunnelRemove(tunnel *Tunnel) {
 	if tunnel.Data.Client == "" {
 		message := ""
 		switch tunnel.Type {
-		case TUNNEL_SOCKS4:
+		case adaptix.TUNNEL_TYPE_SOCKS4:
 			message = fmt.Sprintf("SOCKS4 server ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_SOCKS5:
+		case adaptix.TUNNEL_TYPE_SOCKS5:
 			message = fmt.Sprintf("SOCKS5 server ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_SOCKS5_AUTH:
+		case adaptix.TUNNEL_TYPE_SOCKS5_AUTH:
 			message = fmt.Sprintf("SOCKS5 (with Auth) server ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_LPORTFWD:
+		case adaptix.TUNNEL_TYPE_LOCAL_PORT:
 			message = fmt.Sprintf("Local port forward on ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_RPORTFWD:
+		case adaptix.TUNNEL_TYPE_REVERSE:
 			message = fmt.Sprintf("Remote port forward to '%s:%s' stopped", tunnel.Data.Fhost, tunnel.Data.Fport)
 		default:
 			return

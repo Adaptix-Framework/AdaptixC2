@@ -15,13 +15,6 @@ import (
 	"github.com/Adaptix-Framework/axc2"
 )
 
-const (
-	DOWNLOAD_STATE_RUNNING  = 0x1
-	DOWNLOAD_STATE_STOPPED  = 0x2
-	DOWNLOAD_STATE_FINISHED = 0x3
-	DOWNLOAD_STATE_CANCELED = 0x4
-)
-
 func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error {
 	downloadData := adaptix.DownloadData{
 		AgentId:    agentId,
@@ -30,7 +23,7 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 		TotalSize:  fileSize,
 		RecvSize:   0,
 		Date:       time.Now().Unix(),
-		State:      DOWNLOAD_STATE_RUNNING,
+		State:      adaptix.DOWNLOAD_STATE_RUNNING,
 	}
 
 	value, ok := ts.Agents.Get(agentId)
@@ -116,8 +109,8 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 		logs.Debug("", fmt.Sprintf("Failed to finish download [%x] file: %v", downloadData.FileId, err))
 	}
 
-	if reason == DOWNLOAD_STATE_FINISHED {
-		downloadData.State = DOWNLOAD_STATE_FINISHED
+	if reason == adaptix.DOWNLOAD_STATE_FINISHED {
+		downloadData.State = adaptix.DOWNLOAD_STATE_FINISHED
 		ts.downloads.Put(downloadData.FileId, downloadData)
 		err = ts.DBMS.DbDownloadInsert(downloadData)
 		if err != nil {
@@ -127,7 +120,7 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 		go ts.TsEventCallbackDownloads(downloadData)
 
 	} else {
-		downloadData.State = DOWNLOAD_STATE_CANCELED
+		downloadData.State = adaptix.DOWNLOAD_STATE_CANCELED
 		_ = os.Remove(downloadData.LocalPath)
 		ts.downloads.Delete(fileId)
 	}
@@ -147,7 +140,7 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 		TotalSize:  len(content),
 		RecvSize:   len(content),
 		Date:       time.Now().Unix(),
-		State:      DOWNLOAD_STATE_FINISHED,
+		State:      adaptix.DOWNLOAD_STATE_FINISHED,
 	}
 
 	value, ok := ts.Agents.Get(agentId)
@@ -240,7 +233,7 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 	}
 	downloadData := value.(adaptix.DownloadData)
 
-	if downloadData.State != DOWNLOAD_STATE_FINISHED {
+	if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
 		return "", nil, errors.New("download not finished")
 	}
 
@@ -261,18 +254,18 @@ func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
 		}
 		downloadData := value.(adaptix.DownloadData)
 
-		if downloadData.State != DOWNLOAD_STATE_FINISHED && downloadData.State != DOWNLOAD_STATE_CANCELED {
+		if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED && downloadData.State != adaptix.DOWNLOAD_STATE_CANCELED {
 			continue
 		}
 
-		if downloadData.State == DOWNLOAD_STATE_CANCELED {
+		if downloadData.State == adaptix.DOWNLOAD_STATE_CANCELED {
 			_ = downloadData.File.Close()
 		}
 		_ = os.Remove(downloadData.LocalPath)
 
 		deleteFiles = append(deleteFiles, id)
 
-		if downloadData.State == DOWNLOAD_STATE_FINISHED {
+		if downloadData.State == adaptix.DOWNLOAD_STATE_FINISHED {
 			_ = ts.DBMS.DbDownloadDelete(id)
 		}
 		ts.downloads.Delete(id)
@@ -293,7 +286,7 @@ func (ts *Teamserver) TsDownloadGetFilepath(fileId string) (string, error) {
 	}
 	downloadData := value.(adaptix.DownloadData)
 
-	if downloadData.State != DOWNLOAD_STATE_FINISHED {
+	if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
 		return "", errors.New("Download not finished")
 	}
 
