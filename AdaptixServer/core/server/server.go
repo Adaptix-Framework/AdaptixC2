@@ -35,18 +35,18 @@ func NewTeamserver() *Teamserver {
 		wm_listeners:   make(map[string][]string),
 
 		notifications: safe.NewSlice(),
-		Agents:      safe.NewMap(),
-		listeners:   safe.NewMap(),
-		messages:    safe.NewSlice(),
-		downloads:   safe.NewMap(),
-		tmp_uploads: safe.NewMap(),
-		screenshots: safe.NewMap(),
-		credentials: safe.NewSlice(),
-		targets:     safe.NewSlice(),
-		terminals:   safe.NewMap(),
-		pivots:      safe.NewSlice(),
-		otps:        safe.NewMap(),
-		builders:    safe.NewMap(),
+		Agents:        safe.NewMap(),
+		listeners:     safe.NewMap(),
+		messages:      safe.NewSlice(),
+		downloads:     safe.NewMap(),
+		tmp_uploads:   safe.NewMap(),
+		screenshots:   safe.NewMap(),
+		credentials:   safe.NewSlice(),
+		targets:       safe.NewSlice(),
+		terminals:     safe.NewMap(),
+		pivots:        safe.NewSlice(),
+		otps:          safe.NewMap(),
+		builders:      safe.NewMap(),
 	}
 	ts.TaskManager = NewTaskManager(ts)
 	ts.TunnelManager = NewTunnelManager(ts)
@@ -111,14 +111,14 @@ func (ts *Teamserver) RestoreData() {
 	restoreAgents := ts.DBMS.DbAgentAll()
 	for _, agentData := range restoreAgents {
 
-		extender, err := ts.Extender.ExAgentGetExtender(agentData.Name)
+		extenderAgent, err := ts.Extender.ExAgentGetExtender(agentData.Name)
 		if err != nil {
-			logs.Warn("   ", "Failed to get extender for agent %v (%v): %v", agentData.Id, agentData.Name, err.Error())
+			logs.Warn("   ", "Failed to get extenderAgent for agent %v (%v): %v", agentData.Id, agentData.Name, err.Error())
 			continue
 		}
 
 		agent := &Agent{
-			Extender:          extender,
+			Extender:          extenderAgent,
 			OutConsole:        safe.NewSlice(),
 			HostedTunnelData:  safe.NewSafeQueue(0x1000),
 			HostedTasks:       safe.NewSafeQueue(0x100),

@@ -243,11 +243,11 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 }
 
 func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
-
 	var deleteFiles []string
+	var dbDeleteIds []string
+	var filesToRemove []string
 
 	for _, id := range fileId {
-
 		value, ok := ts.downloads.Get(id)
 		if !ok {
 			continue
@@ -261,15 +261,21 @@ func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
 		if downloadData.State == adaptix.DOWNLOAD_STATE_CANCELED {
 			_ = downloadData.File.Close()
 		}
-		_ = os.Remove(downloadData.LocalPath)
-
+		filesToRemove = append(filesToRemove, downloadData.LocalPath)
 		deleteFiles = append(deleteFiles, id)
 
 		if downloadData.State == adaptix.DOWNLOAD_STATE_FINISHED {
-			_ = ts.DBMS.DbDownloadDelete(id)
+			dbDeleteIds = append(dbDeleteIds, id)
 		}
 		ts.downloads.Delete(id)
 	}
+
+	go func(paths []string, ids []string) {
+		for _, path := range paths {
+			_ = os.Remove(path)
+		}
+		_ = ts.DBMS.DbDownloadDeleteBatch(ids)
+	}(filesToRemove, dbDeleteIds)
 
 	packet := CreateSpDownloadDelete(fileId)
 	ts.TsSyncAllClients(packet)

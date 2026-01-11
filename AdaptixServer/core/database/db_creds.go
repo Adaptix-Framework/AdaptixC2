@@ -1,10 +1,12 @@
 package database
 
 import (
-	"AdaptixServer/core/utils/logs"
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+
+	"AdaptixServer/core/utils/logs"
 
 	adaptix "github.com/Adaptix-Framework/axc2"
 )
@@ -70,13 +72,30 @@ func (dbms *DBMS) DbCredentialsDelete(credId string) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbCredentialsExist(credId)
-	if !ok {
-		return fmt.Errorf("creds %s does not exist", credId)
-	}
-
 	deleteQuery := `DELETE FROM Credentials WHERE CredId = ?;`
 	_, err := dbms.database.Exec(deleteQuery, credId)
+	return err
+}
+
+func (dbms *DBMS) DbCredentialsDeleteBatch(credIds []string) error {
+	if len(credIds) == 0 {
+		return nil
+	}
+
+	ok := dbms.DatabaseExists()
+	if !ok {
+		return errors.New("database does not exist")
+	}
+
+	placeholders := make([]string, len(credIds))
+	args := make([]interface{}, len(credIds))
+	for i, id := range credIds {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	deleteQuery := fmt.Sprintf("DELETE FROM Credentials WHERE CredId IN (%s);", strings.Join(placeholders, ","))
+	_, err := dbms.database.Exec(deleteQuery, args...)
 	return err
 }
 

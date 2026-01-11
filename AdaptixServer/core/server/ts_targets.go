@@ -4,7 +4,7 @@ import (
 	"AdaptixServer/core/utils/std"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strings"
 	"time"
 
@@ -183,20 +183,23 @@ func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain str
 }
 
 func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
-
+	deleteSet := make(map[string]struct{}, len(targetsId))
 	for _, id := range targetsId {
-		for i := uint(0); i < ts.targets.Len(); i++ {
-			valueTarget, ok := ts.targets.Get(i)
-			if ok {
-				if valueTarget.(*adaptix.TargetData).TargetId == id {
-					ts.targets.Delete(i)
-					break
-				}
+		deleteSet[id] = struct{}{}
+	}
+
+	for i := ts.targets.Len(); i > 0; i-- {
+		valueTarget, ok := ts.targets.Get(i - 1)
+		if ok {
+			if _, exists := deleteSet[valueTarget.(*adaptix.TargetData).TargetId]; exists {
+				ts.targets.Delete(i - 1)
 			}
 		}
-
-		_ = ts.DBMS.DbTargetDelete(id)
 	}
+
+	go func(ids []string) {
+		_ = ts.DBMS.DbTargetDeleteBatch(ids)
+	}(targetsId)
 
 	packet := CreateSpTargetDelete(targetsId)
 	ts.TsSyncAllClients(packet)
@@ -207,26 +210,29 @@ func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
 /// Setters
 
 func (ts *Teamserver) TsTargetSetTag(targetsId []string, tag string) error {
+	updateSet := make(map[string]struct{}, len(targetsId))
+	for _, id := range targetsId {
+		updateSet[id] = struct{}{}
+	}
 
-	var ids []string
+	var updatedTargets []*adaptix.TargetData
 	for valueTarget := range ts.targets.Iterator() {
 		target := valueTarget.Item.(*adaptix.TargetData)
-		found := false
-
-		for i := len(targetsId) - 1; i >= 0; i-- {
-			if target.TargetId == targetsId[i] {
-				target.Tag = tag
-				found = true
-				_ = ts.DBMS.DbTargetUpdate(target)
-				ids = append(ids, target.TargetId)
-				targetsId = append(targetsId[:i], targetsId[i+1:]...)
-				break
-			}
+		if _, exists := updateSet[target.TargetId]; exists {
+			target.Tag = tag
+			updatedTargets = append(updatedTargets, target)
 		}
+	}
 
-		if found && len(targetsId) == 0 {
-			break
+	go func(targets []*adaptix.TargetData) {
+		for _, t := range targets {
+			_ = ts.DBMS.DbTargetUpdate(t)
 		}
+	}(updatedTargets)
+
+	var ids []string
+	for _, t := range updatedTargets {
+		ids = append(ids, t.TargetId)
 	}
 
 	packet := CreateSpTargetSetTag(ids, tag)
@@ -236,7 +242,7 @@ func (ts *Teamserver) TsTargetSetTag(targetsId []string, tag string) error {
 }
 
 func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
-	targets_id := make(map[string]string)
+	targetsIdSet := make(map[string]struct{})
 
 	for _, agentId := range agentsId {
 		value, ok := ts.Agents.Get(agentId)
@@ -250,23 +256,31 @@ func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
 
 		agentData := agent.GetData()
 		if agentData.TargetId != "" {
-			targets_id[agentData.TargetId] = ""
+			targetsIdSet[agentData.TargetId] = struct{}{}
 		}
 	}
 
-	for targetId, _ := range targets_id {
-		for t_value := range ts.targets.Iterator() {
-			t := t_value.Item.(*adaptix.TargetData)
-			if t.TargetId == targetId {
+	var updatedTargets []*adaptix.TargetData
+	var packets []interface{}
 
-				t.Agents = std.DifferenceStringsArray(t.Agents, agentsId)
-
-				_ = ts.DBMS.DbTargetUpdate(t)
-
-				packet := CreateSpTargetUpdate(*t)
-				ts.TsSyncAllClients(packet)
-			}
+	for t_value := range ts.targets.Iterator() {
+		t := t_value.Item.(*adaptix.TargetData)
+		if _, exists := targetsIdSet[t.TargetId]; exists {
+			t.Agents = std.DifferenceStringsArray(t.Agents, agentsId)
+			updatedTargets = append(updatedTargets, t)
+			packets = append(packets, CreateSpTargetUpdate(*t))
 		}
+	}
+
+	go func(targets []*adaptix.TargetData) {
+		for _, t := range targets {
+			_ = ts.DBMS.DbTargetUpdate(t)
+		}
+	}(updatedTargets)
+
+
+	for _, packet := range packets {
+		ts.TsSyncAllClients(packet)
 	}
 
 	return nil

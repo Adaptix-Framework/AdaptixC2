@@ -12,7 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	mrand "math/rand"
+	mrand "math/rand/v2"
 	"net"
 	"regexp"
 	"strconv"
@@ -152,7 +152,7 @@ func (t *TransportDNS) handleDNS(w dns.ResponseWriter, r *dns.Msg) {
 	if baseTTL == 0 {
 		baseTTL = 10
 	}
-	ttl := baseTTL + uint32(t.rng.Intn(60))
+	ttl := baseTTL + uint32(t.rng.IntN(60))
 
 	for _, q := range r.Question {
 		req := t.parseRequest(q)

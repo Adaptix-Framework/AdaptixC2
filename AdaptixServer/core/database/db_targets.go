@@ -71,13 +71,31 @@ func (dbms *DBMS) DbTargetDelete(targetId string) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbTargetExist(targetId)
-	if !ok {
-		return fmt.Errorf("target %s does not exist", targetId)
-	}
-
 	deleteQuery := `DELETE FROM Targets WHERE TargetId = ?;`
 	_, err := dbms.database.Exec(deleteQuery, targetId)
+	return err
+}
+
+func (dbms *DBMS) DbTargetDeleteBatch(targetIds []string) error {
+	if len(targetIds) == 0 {
+		return nil
+	}
+
+	ok := dbms.DatabaseExists()
+	if !ok {
+		return errors.New("database does not exist")
+	}
+
+	placeholders := make([]string, len(targetIds))
+	args := make([]interface{}, len(targetIds))
+	for i, id := range targetIds {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	deleteQuery := fmt.Sprintf("DELETE FROM Targets WHERE TargetId IN (%s);",
+		strings.Join(placeholders, ","))
+	_, err := dbms.database.Exec(deleteQuery, args...)
 	return err
 }
 

@@ -47,18 +47,18 @@ type Teamserver struct {
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
 	notifications *safe.Slice // 			       : sync_packet interface{}
-	Agents      safe.Map    // agentId string      : agent *Agent
-	listeners   safe.Map    // listenerName string : listenerData ListenerData
-	messages    *safe.Slice //                     : chatData ChatData
-	downloads   safe.Map    // fileId string       : downloadData DownloadData
-	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
-	screenshots safe.Map    // screeId string      : screenData ScreenDataData
-	credentials *safe.Slice
-	targets     *safe.Slice
-	terminals   safe.Map    // terminalId string   : terminal Terminal
-	pivots      *safe.Slice // 			           : PivotData
-	otps        safe.Map    // otp string		   : Id string
-	builders    safe.Map    // buildId string      : build Build
+	Agents        safe.Map    // agentId string      : agent *Agent
+	listeners     safe.Map    // listenerName string : listenerData ListenerData
+	messages      *safe.Slice //                     : chatData ChatData
+	downloads     safe.Map    // fileId string       : downloadData DownloadData
+	tmp_uploads   safe.Map    // fileId string       : uploadData UploadData
+	screenshots   safe.Map    // screeId string      : screenData ScreenDataData
+	credentials   *safe.Slice
+	targets       *safe.Slice
+	terminals     safe.Map    // terminalId string   : terminal Terminal
+	pivots        *safe.Slice // 			           : PivotData
+	otps          safe.Map    // otp string		   : Id string
+	builders      safe.Map    // buildId string      : build Build
 }
 
 type Agent struct {

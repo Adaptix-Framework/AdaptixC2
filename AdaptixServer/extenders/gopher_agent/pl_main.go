@@ -12,7 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	mrand "math/rand"
+	mrand "math/rand/v2"
 	"os"
 	"sort"
 	"strconv"

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	mrand "math/rand"
 	"math/rand/v2"
 	"net"
 	"os"
@@ -734,7 +733,7 @@ func (ext *ExtenderAgent) PivotPackData(pivotId string, data []byte) (adaptix.Ta
 	/// END CODE
 
 	taskData := adaptix.TaskData{
-		TaskId: fmt.Sprintf("%08x", mrand.Uint32()),
+		TaskId: fmt.Sprintf("%08x", rand.Uint32()),
 		Type:   adaptix.TASK_TYPE_PROXY_DATA,
 		Data:   packData,
 		Sync:   false,

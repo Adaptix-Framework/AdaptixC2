@@ -3,7 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"time"
 
 	adaptix "github.com/Adaptix-Framework/axc2"
@@ -135,8 +135,9 @@ func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
 			}
 		}
 
-		_ = ts.DBMS.DbCredentialsDelete(id)
-	}
+	go func(ids []string) {
+		_ = ts.DBMS.DbCredentialsDeleteBatch(ids)
+	}(credsId)
 
 	packet := CreateSpCredentialsDelete(credsId)
 	ts.TsSyncAllClients(packet)
@@ -148,25 +149,24 @@ func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
 
 func (ts *Teamserver) TsCredentialsSetTag(credsId []string, tag string) error {
 
-	var ids []string
+	var updatedCreds []adaptix.CredsData
 	for valueCred := range ts.credentials.Iterator() {
 		cred := valueCred.Item.(*adaptix.CredsData)
-		found := false
-
-		for i := len(credsId) - 1; i >= 0; i-- {
-			if cred.CredId == credsId[i] {
-				cred.Tag = tag
-				found = true
-				_ = ts.DBMS.DbCredentialsUpdate(*cred)
-				ids = append(ids, cred.CredId)
-				credsId = append(credsId[:i], credsId[i+1:]...)
-				break
-			}
+		if _, exists := updateSet[cred.CredId]; exists {
+			cred.Tag = tag
+			updatedCreds = append(updatedCreds, *cred)
 		}
+	}
 
-		if found && len(credsId) == 0 {
-			break
+	go func(creds []adaptix.CredsData) {
+		for _, cred := range creds {
+			_ = ts.DBMS.DbCredentialsUpdate(cred)
 		}
+	}(updatedCreds)
+
+	var ids []string
+	for _, c := range updatedCreds {
+		ids = append(ids, c.CredId)
 	}
 
 	packet := CreateSpCredentialsSetTag(ids, tag)
