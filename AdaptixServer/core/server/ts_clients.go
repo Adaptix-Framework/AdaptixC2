@@ -22,7 +22,7 @@ func (ts *Teamserver) TsClientConnect(username string, version string, socket *w
 func (ts *Teamserver) TsClientDisconnect(username string) {
 	ts.Broker.Unregister(username)
 
-	ts.TsEventClient(false, username)
+	ts.TsNotifyClient(false, username)
 
 	var tunnelIds []string
 	ts.TunnelManager.ForEachTunnel(func(key string, tunnel *Tunnel) bool {
@@ -62,5 +62,5 @@ func (ts *Teamserver) TsClientSync(username string) {
 		}
 	}
 
-	ts.TsEventClient(true, username)
+	ts.TsNotifyClient(true, username)
 }

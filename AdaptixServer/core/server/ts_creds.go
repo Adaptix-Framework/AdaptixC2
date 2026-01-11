@@ -80,7 +80,7 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 		packet := CreateSpCredentialsAdd(newCreds)
 		ts.TsSyncAllClients(packet)
 
-		go ts.TsEventCallbackCreds(cbCredsData)
+		go ts.TsNotifyCallbackCreds(cbCredsData)
 	}
 
 	return nil

@@ -117,7 +117,7 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 			logs.Error("", err.Error())
 		}
 
-		go ts.TsEventCallbackDownloads(downloadData)
+		go ts.TsNotifyCallbackDownloads(downloadData)
 
 	} else {
 		downloadData.State = adaptix.DOWNLOAD_STATE_CANCELED
@@ -193,7 +193,7 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 		logs.Error("", err.Error())
 	}
 
-	go ts.TsEventCallbackDownloads(downloadData)
+	go ts.TsNotifyCallbackDownloads(downloadData)
 
 	return nil
 }

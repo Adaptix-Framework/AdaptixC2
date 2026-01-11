@@ -46,7 +46,7 @@ type Teamserver struct {
 	wm_agent_types map[string]string   // agentMark string : agentName string
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
-	events      *safe.Slice // 			           : sync_packet interface{}
+	notifications *safe.Slice // 			       : sync_packet interface{}
 	Agents      safe.Map    // agentId string      : agent *Agent
 	listeners   safe.Map    // listenerName string : listenerData ListenerData
 	messages    *safe.Slice //                     : chatData ChatData
@@ -225,12 +225,12 @@ type SyncPackerCategoryBatch struct {
 	Packets  []interface{} `json:"packets"`
 }
 
-type SpEvent struct {
+type SpNotification struct {
 	Type int `json:"type"`
 
-	EventType int    `json:"event_type"`
-	Date      int64  `json:"date"`
-	Message   string `json:"message"`
+	NotifyType int    `json:"event_type"`
+	Date       int64  `json:"date"`
+	Message    string `json:"message"`
 }
 
 /// LISTENER

@@ -115,7 +115,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 		logs.Error("", err.Error())
 	}
 
-	ts.TsEventAgent(false, agent.GetData())
+	ts.TsNotifyAgent(false, agent.GetData())
 
 	return agent.GetData(), nil
 }

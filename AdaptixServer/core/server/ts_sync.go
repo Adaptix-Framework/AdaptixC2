@@ -21,8 +21,8 @@ func getPacketCategory(packet interface{}) string {
 		return "console"
 	case SyncPackerAgentTaskSync, SyncPackerAgentTaskUpdate:
 		return "tasks"
-	case SpEvent:
-		return "events"
+	case SpNotification:
+		return "notifications"
 	case SyncPackerChatMessage:
 		return "chat"
 	case SyncPackerDownloadCreate, SyncPackerDownloadUpdate:
@@ -64,7 +64,7 @@ func (ts *Teamserver) TsSyncStored(client *ClientHandler) {
 	packets = append(packets, ts.TsPresyncDownloads()...)
 	packets = append(packets, ts.TsPresyncScreenshots()...)
 	packets = append(packets, ts.TsPresyncTunnels()...)
-	packets = append(packets, ts.TsPresyncEvents()...)
+	packets = append(packets, ts.TsPresyncNotifications()...)
 	packets = append(packets, ts.TsPresyncPivots()...)
 	packets = append(packets, ts.TsPresyncCredentials()...)
 	packets = append(packets, ts.TsPresyncTargets()...)
@@ -322,9 +322,9 @@ func (ts *Teamserver) TsPresyncTunnels() []interface{} {
 	return packets
 }
 
-func (ts *Teamserver) TsPresyncEvents() []interface{} {
+func (ts *Teamserver) TsPresyncNotifications() []interface{} {
 	var packets []interface{}
-	ts.events.DirectAccess(func(item interface{}) {
+	ts.notifications.DirectAccess(func(item interface{}) {
 		packets = append(packets, item)
 	})
 	return packets

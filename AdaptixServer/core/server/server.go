@@ -34,7 +34,7 @@ func NewTeamserver() *Teamserver {
 		wm_agent_types: make(map[string]string),
 		wm_listeners:   make(map[string][]string),
 
-		events:      safe.NewSlice(),
+		notifications: safe.NewSlice(),
 		Agents:      safe.NewMap(),
 		listeners:   safe.NewMap(),
 		messages:    safe.NewSlice(),
@@ -148,7 +148,7 @@ func (ts *Teamserver) RestoreData() {
 		packet := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packet)
 
-		ts.TsEventAgent(true, agentData)
+		ts.TsNotifyAgent(true, agentData)
 
 		/// Tasks
 		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)

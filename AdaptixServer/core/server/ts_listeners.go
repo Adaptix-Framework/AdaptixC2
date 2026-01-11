@@ -73,7 +73,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 	packet := CreateSpListenerStart(listenerData)
 	ts.TsSyncAllClients(packet)
 
-	ts.TsEventListenerStart(false, listenerName, listenerRegName)
+	ts.TsNotifyListenerStart(false, listenerName, listenerRegName)
 
 	_ = ts.DBMS.DbListenerInsert(listenerData, customData)
 
@@ -109,7 +109,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string
 	packet := CreateSpListenerEdit(listenerData)
 	ts.TsSyncAllClients(packet)
 
-	ts.TsEventListenerStart(true, listenerName, listenerRegName)
+	ts.TsNotifyListenerStart(true, listenerName, listenerRegName)
 
 	_ = ts.DBMS.DbListenerUpdate(listenerName, listenerConfig, customData)
 
@@ -134,7 +134,7 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 	packet := CreateSpListenerStop(listenerName)
 	ts.TsSyncAllClients(packet)
 
-	ts.TsEventListenerStop(listenerName, listenerType)
+	ts.TsNotifyListenerStop(listenerName, listenerType)
 
 	_ = ts.DBMS.DbListenerDelete(listenerName)
 

@@ -129,7 +129,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 		packet := CreateSpTunnelCreate(tunnel.Data)
 		ts.TsSyncAllClients(packet)
 
-		ts.TsEventTunnelAdd(tunnel)
+		ts.TsNotifyTunnelAdd(tunnel)
 	}
 
 	taskData := adaptix.TaskData{
@@ -299,7 +299,7 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 	packet := CreateSpTunnelCreate(tunnel.Data)
 	ts.TsSyncAllClients(packet)
 
-	ts.TsEventTunnelAdd(tunnel)
+	ts.TsNotifyTunnelAdd(tunnel)
 
 	return tunnel.TaskId, nil
 }
@@ -418,7 +418,7 @@ func (ts *Teamserver) TsTunnelUpdateRportfwd(tunnelId int, result bool) (string,
 			packet := CreateSpTunnelCreate(tunnel.Data)
 			ts.TsSyncAllClients(packet)
 
-			ts.TsEventTunnelAdd(tunnel)
+			ts.TsNotifyTunnelAdd(tunnel)
 
 			message := fmt.Sprintf("Reverse port forward '%s' to '%s:%s'", tunnel.Data.Port, tunnel.Data.Fhost, tunnel.Data.Fport)
 
@@ -469,7 +469,7 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 
 	ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
 
-	ts.TsEventTunnelRemove(tunnel)
+	ts.TsNotifyTunnelRemove(tunnel)
 
 	return nil
 }
