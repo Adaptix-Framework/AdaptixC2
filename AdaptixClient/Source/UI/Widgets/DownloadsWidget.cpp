@@ -100,6 +100,8 @@ void DownloadsWidget::createUI()
     tableView->horizontalHeader()->setHighlightSections(false);
     tableView->verticalHeader()->setVisible(false);
 
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+
     proxyModel->sort(-1);
 
     tableView->horizontalHeader()->setSectionResizeMode(DC_File, QHeaderView::Stretch);

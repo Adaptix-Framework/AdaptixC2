@@ -93,6 +93,8 @@ void ListenersWidget::createUI()
     tableView->horizontalHeader()->setHighlightSections(false);
     tableView->verticalHeader()->setVisible(false);
 
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(0, 0, 0, 0);
     mainGridLayout->addWidget(searchWidget, 0, 0, 1, 1);
