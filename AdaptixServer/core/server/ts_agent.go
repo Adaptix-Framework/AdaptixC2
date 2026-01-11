@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
@@ -101,6 +102,16 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	}
 	agent.SetData(agentData)
 
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataAgentNew{Agent: agentData, Restore: false}
+	if !ts.EventManager.Emit(eventing.EventAgentNew, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return adaptix.AgentData{}, preEvent.Error
+		}
+		return adaptix.AgentData{}, fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	ts.Agents.Put(agentData.Id, agent)
 
 	packetNew := CreateSpAgentNew(agentData)
@@ -116,6 +127,11 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	}
 
 	ts.TsNotifyAgent(false, agent.GetData())
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataAgentNew{Agent: agent.GetData(), Restore: false}
+	ts.EventManager.EmitAsync(eventing.EventAgentNew, postEvent)
+	// -----------------
 
 	return agent.GetData(), nil
 }
@@ -533,6 +549,16 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 }
 
 func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataAgentTerminate{AgentId: agentId, TaskId: terminateTaskId}
+	if !ts.EventManager.Emit(eventing.EventAgentTerminate, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return errors.New("agent does not exist")
@@ -647,6 +673,11 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 	packetNew := CreateSpAgentUpdate(agentData)
 	ts.TsSyncAllClients(packetNew)
 
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataAgentTerminate{AgentId: agentId, TaskId: terminateTaskId}
+	ts.EventManager.EmitAsync(eventing.EventAgentTerminate, postEvent)
+	// -----------------
+
 	return nil
 }
 
@@ -667,6 +698,21 @@ func (ts *Teamserver) TsAgentConsoleRemove(agentId string) error {
 }
 
 func (ts *Teamserver) TsAgentRemove(agentId string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataAgentRemove{}
+	if value, ok := ts.Agents.Get(agentId); ok {
+		if agent, ok := value.(*Agent); ok {
+			preEvent.Agent = agent.GetData()
+		}
+	}
+	if !ts.EventManager.Emit(eventing.EventAgentRemove, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	value, ok := ts.Agents.GetDelete(agentId)
 	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
@@ -728,6 +774,11 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 
 	packet := CreateSpAgentRemove(agentId)
 	ts.TsSyncAllClients(packet)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataAgentRemove{Agent: agent.GetData()}
+	ts.EventManager.EmitAsync(eventing.EventAgentRemove, postEvent)
+	// -----------------
 
 	return nil
 }

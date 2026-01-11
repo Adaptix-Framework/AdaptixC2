@@ -3,6 +3,7 @@ package server
 import (
 	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/logs"
@@ -24,9 +25,10 @@ func NewTeamserver() *Teamserver {
 	broker.Start()
 
 	ts := &Teamserver{
-		Profile: profile.NewProfile(),
-		DBMS:    dbms,
-		Broker:  broker,
+		Profile:      profile.NewProfile(),
+		DBMS:         dbms,
+		Broker:       broker,
+		EventManager: eventing.NewEventManager(),
 
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),

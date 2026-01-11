@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"fmt"
@@ -103,6 +104,14 @@ func (tm *TaskManager) syncTaskUpdate(agentId string, agent *Agent, taskData *ad
 func (tm *TaskManager) completeTask(agent *Agent, taskData *adaptix.TaskData) {
 	agent.CompletedTasks.Put(taskData.TaskId, *taskData)
 	_ = tm.ts.DBMS.DbTaskInsert(*taskData)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTaskComplete{
+		AgentId: taskData.AgentId,
+		Task:    *taskData,
+	}
+	tm.ts.EventManager.EmitAsync(eventing.EventTaskComplete, postEvent)
+	// -----------------
 }
 
 func (tm *TaskManager) Create(agentId string, cmdline string, client string, taskData adaptix.TaskData) {
@@ -118,6 +127,18 @@ func (tm *TaskManager) Create(agentId string, cmdline string, client string, tas
 
 	tm.prepareTaskData(agent, cmdline, client, &taskData)
 
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataTaskCreate{
+		AgentId: agentId,
+		Task:    taskData,
+		Cmdline: cmdline,
+		Client:  client,
+	}
+	if !tm.ts.EventManager.Emit(eventing.EventTaskCreate, eventing.HookPre, preEvent) {
+		return
+	}
+	// ----------------
+
 	handler, ok := tm.handlers[taskData.Type]
 	if !ok {
 		logs.Debug("", "Unknown task type: %d", taskData.Type)
@@ -125,6 +146,16 @@ func (tm *TaskManager) Create(agentId string, cmdline string, client string, tas
 	}
 
 	handler.Create(tm, agent, &taskData)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTaskCreate{
+		AgentId: agentId,
+		Task:    taskData,
+		Cmdline: cmdline,
+		Client:  client,
+	}
+	tm.ts.EventManager.EmitAsync(eventing.EventTaskCreate, postEvent)
+	// -----------------
 }
 
 func (tm *TaskManager) Update(agentId string, updateData adaptix.TaskData) {

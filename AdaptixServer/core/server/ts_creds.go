@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
@@ -26,6 +27,7 @@ func (ts *Teamserver) TsCredentilsList() (string, error) {
 func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 	var newCreds []*adaptix.CredsData
 	var cbCredsData []adaptix.CredsData
+	var inputCreds []adaptix.CredsData
 
 	for _, value := range creds {
 		cred := &adaptix.CredsData{}
@@ -69,9 +71,28 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 		cred.CredId = fmt.Sprintf("%08x", rand.Uint32())
 		cred.Date = time.Now().Unix()
 
-		cbCredsData = append(cbCredsData, *cred)
-		newCreds = append(newCreds, cred)
-		ts.credentials.Put(cred)
+		inputCreds = append(inputCreds, *cred)
+	}
+
+	if len(inputCreds) == 0 {
+		return nil
+	}
+
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventCredentialsAdd{Credentials: inputCreds}
+	if !ts.EventManager.Emit(eventing.EventCredsAdd, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	inputCreds = preEvent.Credentials /// can be modified by hooks
+	// ----------------
+
+	for i := range inputCreds {
+		cbCredsData = append(cbCredsData, inputCreds[i])
+		newCreds = append(newCreds, &inputCreds[i])
+		ts.credentials.Put(&inputCreds[i])
 	}
 
 	if len(newCreds) > 0 {
@@ -79,6 +100,11 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 
 		packet := CreateSpCredentialsAdd(newCreds)
 		ts.TsSyncAllClients(packet)
+
+		// --- POST HOOK ---
+		postEvent := &eventing.EventCredentialsAdd{Credentials: cbCredsData}
+		ts.EventManager.EmitAsync(eventing.EventCredsAdd, postEvent)
+		// -----------------
 
 		go ts.TsNotifyCallbackCreds(cbCredsData)
 	}
@@ -89,6 +115,7 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error {
 
 	var cred *adaptix.CredsData
+	var oldCred adaptix.CredsData
 	found := false
 	for value := range ts.credentials.Iterator() {
 		cred = value.Item.(*adaptix.CredsData)
@@ -99,6 +126,7 @@ func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password 
 			}
 
 			found = true
+			oldCred = *cred
 
 			cred.Username = username
 			cred.Password = password
@@ -115,25 +143,63 @@ func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password 
 		return fmt.Errorf("creds %s not exists", credId)
 	}
 
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventCredentialsEdit{
+		CredId:  credId,
+		OldCred: oldCred,
+		NewCred: *cred,
+	}
+	if !ts.EventManager.Emit(eventing.EventCredsEdit, eventing.HookPre, preEvent) {
+		*cred = oldCred
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	_ = ts.DBMS.DbCredentialsUpdate(*cred)
 
 	packet := CreateSpCredentialsUpdate(*cred)
 	ts.TsSyncAllClients(packet)
 
+	// --- POST HOOK ---
+	postEvent := &eventing.EventCredentialsEdit{
+		CredId:  credId,
+		OldCred: oldCred,
+		NewCred: *cred,
+	}
+	ts.EventManager.EmitAsync(eventing.EventCredsEdit, postEvent)
+	// -----------------
+
 	return nil
 }
 
 func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventCredentialsRemove{CredIds: credsId}
+	if !ts.EventManager.Emit(eventing.EventCredsRemove, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	credsId = preEvent.CredIds /// can be modified by hooks
+	// ----------------
+
+	deleteSet := make(map[string]struct{}, len(credsId))
 	for _, id := range credsId {
-		for i := uint(0); i < ts.credentials.Len(); i++ {
-			valuePivot, ok := ts.credentials.Get(i)
-			if ok {
-				if valuePivot.(*adaptix.CredsData).CredId == id {
-					ts.credentials.Delete(i)
-					break
-				}
+		deleteSet[id] = struct{}{}
+	}
+
+	for i := ts.credentials.Len(); i > 0; i-- {
+		valueCred, ok := ts.credentials.Get(i - 1)
+		if ok {
+			if _, exists := deleteSet[valueCred.(*adaptix.CredsData).CredId]; exists {
+				ts.credentials.Delete(i - 1)
 			}
 		}
+	}
 
 	go func(ids []string) {
 		_ = ts.DBMS.DbCredentialsDeleteBatch(ids)
@@ -142,10 +208,13 @@ func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
 	packet := CreateSpCredentialsDelete(credsId)
 	ts.TsSyncAllClients(packet)
 
+	// --- POST HOOK ---
+	postEvent := &eventing.EventCredentialsRemove{CredIds: credsId}
+	ts.EventManager.EmitAsync(eventing.EventCredsRemove, postEvent)
+	// -----------------
+
 	return nil
 }
-
-/// Setters
 
 func (ts *Teamserver) TsCredentialsSetTag(credsId []string, tag string) error {
 	updateSet := make(map[string]struct{}, len(credsId))

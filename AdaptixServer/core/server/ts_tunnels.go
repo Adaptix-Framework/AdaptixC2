@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/proxy"
@@ -264,6 +265,23 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 		return "", ErrAgentNotFound
 	}
 
+	port, _ := strconv.Atoi(tunnel.Data.Port)
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataTunnelStart{
+		AgentId:    tunnel.Data.AgentId,
+		TunnelId:   TunnelId,
+		TunnelType: tunnel.Type,
+		Port:       port,
+		Info:       tunnel.Data.Info,
+	}
+	if !ts.EventManager.Emit(eventing.EventTunnelStart, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return "", preEvent.Error
+		}
+		return "", fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	if tunnel.Type == adaptix.TUNNEL_TYPE_REVERSE {
 		id, _ := strconv.ParseInt(TunnelId, 16, 64)
 		port, err := strconv.Atoi(tunnel.Data.Port)
@@ -300,6 +318,17 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 	ts.TsSyncAllClients(packet)
 
 	ts.TsNotifyTunnelAdd(tunnel)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTunnelStart{
+		AgentId:    tunnel.Data.AgentId,
+		TunnelId:   TunnelId,
+		TunnelType: tunnel.Type,
+		Port:       port,
+		Info:       tunnel.Data.Info,
+	}
+	ts.EventManager.EmitAsync(eventing.EventTunnelStart, postEvent)
+	// -----------------
 
 	return tunnel.TaskId, nil
 }
@@ -447,7 +476,28 @@ func (ts *Teamserver) TsTunnelUpdateRportfwd(tunnelId int, result bool) (string,
 /// Tunnel Stop
 
 func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
-	tunnel, ok := ts.TunnelManager.DeleteTunnel(TunnelId)
+	tunnel, ok := ts.TunnelManager.GetTunnel(TunnelId)
+	if !ok {
+		return ErrTunnelNotFound
+	}
+
+	port, _ := strconv.Atoi(tunnel.Data.Port)
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataTunnelStop{
+		AgentId:    tunnel.Data.AgentId,
+		TunnelId:   TunnelId,
+		TunnelType: tunnel.Type,
+		Port:       port,
+	}
+	if !ts.EventManager.Emit(eventing.EventTunnelStop, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
+	tunnel, ok = ts.TunnelManager.DeleteTunnel(TunnelId)
 	if !ok {
 		return ErrTunnelNotFound
 	}
@@ -470,6 +520,16 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 	ts.TsTaskUpdate(tunnel.Data.AgentId, taskData)
 
 	ts.TsNotifyTunnelRemove(tunnel)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTunnelStop{
+		AgentId:    tunnel.Data.AgentId,
+		TunnelId:   TunnelId,
+		TunnelType: tunnel.Type,
+		Port:       port,
+	}
+	ts.EventManager.EmitAsync(eventing.EventTunnelStop, postEvent)
+	// -----------------
 
 	return nil
 }

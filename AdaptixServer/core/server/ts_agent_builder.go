@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -93,6 +94,24 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 
 	_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_INFO, "Building agent...")
 
+	var postEvent *eventing.EventDataAgentGenerate
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataAgentGenerate{
+		AgentName:    builder.Name,
+		ListenerName: builder.ListenerName,
+		ListenerType: builder.ListenerType,
+		Config:       builder.Config,
+	}
+	if !ts.EventManager.Emit(eventing.EventAgentGenerate, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, "Error: "+preEvent.Error.Error())
+		} else {
+			_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, "Error: operation cancelled by hook")
+		}
+		goto RET
+	}
+	// ----------------
+
 	listenerWM, listenerProfile, err = ts.TsListenerGetProfile(builder.ListenerName, builder.ListenerType)
 	if err != nil {
 		_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, "Error: invalid listener profile")
@@ -106,6 +125,18 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 		goto RET
 	}
 	_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_SUCCESS, "Agent built successfully")
+
+	// --- POST HOOK ---
+	postEvent = &eventing.EventDataAgentGenerate{
+		AgentName:    builder.Name,
+		ListenerName: builder.ListenerName,
+		ListenerType: builder.ListenerType,
+		Config:       builder.Config,
+		FileName:     fileName,
+		FileContent:  fileContent,
+	}
+	ts.EventManager.EmitAsync(eventing.EventAgentGenerate, postEvent)
+	// -----------------
 
 	_ = ts.TsAgentBuildSendFile(builder.Id, fileName, fileContent)
 

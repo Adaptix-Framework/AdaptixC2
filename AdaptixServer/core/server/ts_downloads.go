@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"encoding/json"
@@ -16,6 +17,21 @@ import (
 )
 
 func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataDownloadStart{
+		AgentId:  agentId,
+		FileId:   fileId,
+		FileName: fileName,
+		FileSize: fileSize,
+	}
+	if !ts.EventManager.Emit(eventing.EventDownloadStart, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	downloadData := adaptix.DownloadData{
 		AgentId:    agentId,
 		FileId:     fileId,
@@ -62,6 +78,16 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 	packet := CreateSpDownloadCreate(downloadData)
 	ts.TsSyncAllClients(packet)
 
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataDownloadStart{
+		AgentId:  agentId,
+		FileId:   fileId,
+		FileName: fileName,
+		FileSize: fileSize,
+	}
+	ts.EventManager.EmitAsync(eventing.EventDownloadStart, postEvent)
+	// -----------------
+
 	return nil
 }
 
@@ -104,6 +130,18 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 	}
 	downloadData := value.(adaptix.DownloadData)
 
+	canceled := reason != adaptix.DOWNLOAD_STATE_FINISHED
+
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataDownloadFinish{Download: downloadData, Canceled: canceled}
+	if !ts.EventManager.Emit(eventing.EventDownloadFinish, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	err := downloadData.File.Close()
 	if err != nil {
 		logs.Debug("", fmt.Sprintf("Failed to finish download [%x] file: %v", downloadData.FileId, err))
@@ -127,6 +165,11 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 
 	packet := CreateSpDownloadUpdate(downloadData)
 	ts.TsSyncAllClients(packet)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataDownloadFinish{Download: downloadData, Canceled: canceled}
+	ts.EventManager.EmitAsync(eventing.EventDownloadFinish, postEvent)
+	// -----------------
 
 	return nil
 }
@@ -243,6 +286,17 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 }
 
 func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataDownloadRemove{FileIds: fileId}
+	if !ts.EventManager.Emit(eventing.EventDownloadRemove, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	fileId = preEvent.FileIds
+	// ----------------
+
 	var deleteFiles []string
 	var dbDeleteIds []string
 	var filesToRemove []string
@@ -279,6 +333,11 @@ func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
 
 	packet := CreateSpDownloadDelete(fileId)
 	ts.TsSyncAllClients(packet)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataDownloadRemove{FileIds: deleteFiles}
+	ts.EventManager.EmitAsync(eventing.EventDownloadRemove, postEvent)
+	// -----------------
 
 	return nil
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/std"
 	"encoding/json"
 	"fmt"
@@ -85,10 +86,29 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 	}
 
 	if len(newTargets) > 0 {
+		// --- PRE HOOK ---
+		var inputTargets []adaptix.TargetData
+		for _, t := range newTargets {
+			inputTargets = append(inputTargets, *t)
+		}
+		preEvent := &eventing.EventDataTargetAdd{Targets: inputTargets}
+		if !ts.EventManager.Emit(eventing.EventTargetAdd, eventing.HookPre, preEvent) {
+			if preEvent.Error != nil {
+				return preEvent.Error
+			}
+			return fmt.Errorf("operation cancelled by hook")
+		}
+		// ----------------
+
 		_ = ts.DBMS.DbTargetsAdd(newTargets)
 
 		packet := CreateSpTargetsAdd(newTargets)
 		ts.TsSyncAllClients(packet)
+
+		// --- POST HOOK ---
+		postEvent := &eventing.EventDataTargetAdd{Targets: inputTargets}
+		ts.EventManager.EmitAsync(eventing.EventTargetAdd, postEvent)
+		// -----------------
 	}
 
 	return nil
@@ -144,6 +164,25 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string,
 }
 
 func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataTargetEdit{Target: adaptix.TargetData{
+		TargetId: targetId,
+		Computer: computer,
+		Domain:   domain,
+		Address:  address,
+		Os:       os,
+		OsDesk:   osDesk,
+		Tag:      tag,
+		Info:     info,
+		Alive:    alive,
+	}}
+	if !ts.EventManager.Emit(eventing.EventTargetEdit, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
 
 	var target *adaptix.TargetData
 
@@ -179,10 +218,26 @@ func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain str
 	packet := CreateSpTargetUpdate(*target)
 	ts.TsSyncAllClients(packet)
 
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTargetEdit{Target: *target}
+	ts.EventManager.EmitAsync(eventing.EventTargetEdit, postEvent)
+	// -----------------
+
 	return nil
 }
 
 func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataTargetRemove{TargetIds: targetsId}
+	if !ts.EventManager.Emit(eventing.EventTargetRemove, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	targetsId = preEvent.TargetIds
+	// ----------------
+
 	deleteSet := make(map[string]struct{}, len(targetsId))
 	for _, id := range targetsId {
 		deleteSet[id] = struct{}{}
@@ -203,6 +258,11 @@ func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
 
 	packet := CreateSpTargetDelete(targetsId)
 	ts.TsSyncAllClients(packet)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTargetRemove{TargetIds: targetsId}
+	ts.EventManager.EmitAsync(eventing.EventTargetRemove, postEvent)
+	// -----------------
 
 	return nil
 }
