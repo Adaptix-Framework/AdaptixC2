@@ -99,6 +99,40 @@ func (dbms *DBMS) DbTargetDeleteBatch(targetIds []string) error {
 	return err
 }
 
+func (dbms *DBMS) DbTargetUpdateBatch(targets []*adaptix.TargetData) error {
+	if len(targets) == 0 {
+		return nil
+	}
+
+	ok := dbms.DatabaseExists()
+	if !ok {
+		return errors.New("database does not exist")
+	}
+
+	tx, err := dbms.database.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateQuery := `UPDATE Targets SET Computer = ?, Domain = ?, Address = ?, Os = ?, OsDesk = ?, Tag = ?, Info = ?, Alive = ?, Agents = ? WHERE TargetId = ?;`
+	stmt, err := tx.Prepare(updateQuery)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	for _, t := range targets {
+		_, err = stmt.Exec(t.Computer, t.Domain, t.Address, t.Os, t.OsDesk, t.Tag, t.Info, t.Alive, strings.Join(t.Agents, ","), t.TargetId)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (dbms *DBMS) DbTargetsAll() []*adaptix.TargetData {
 	var targets []*adaptix.TargetData
 

@@ -225,9 +225,7 @@ func (ts *Teamserver) TsTargetSetTag(targetsId []string, tag string) error {
 	}
 
 	go func(targets []*adaptix.TargetData) {
-		for _, t := range targets {
-			_ = ts.DBMS.DbTargetUpdate(t)
-		}
+		_ = ts.DBMS.DbTargetUpdateBatch(targets)
 	}(updatedTargets)
 
 	var ids []string
@@ -273,11 +271,8 @@ func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
 	}
 
 	go func(targets []*adaptix.TargetData) {
-		for _, t := range targets {
-			_ = ts.DBMS.DbTargetUpdate(t)
-		}
+		_ = ts.DBMS.DbTargetUpdateBatch(targets)
 	}(updatedTargets)
-
 
 	for _, packet := range packets {
 		ts.TsSyncAllClients(packet)

@@ -148,6 +148,10 @@ func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
 /// Setters
 
 func (ts *Teamserver) TsCredentialsSetTag(credsId []string, tag string) error {
+	updateSet := make(map[string]struct{}, len(credsId))
+	for _, id := range credsId {
+		updateSet[id] = struct{}{}
+	}
 
 	var updatedCreds []adaptix.CredsData
 	for valueCred := range ts.credentials.Iterator() {
@@ -159,9 +163,7 @@ func (ts *Teamserver) TsCredentialsSetTag(credsId []string, tag string) error {
 	}
 
 	go func(creds []adaptix.CredsData) {
-		for _, cred := range creds {
-			_ = ts.DBMS.DbCredentialsUpdate(cred)
-		}
+		_ = ts.DBMS.DbCredentialsUpdateBatch(creds)
 	}(updatedCreds)
 
 	var ids []string
