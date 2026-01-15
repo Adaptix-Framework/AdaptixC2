@@ -18,12 +18,17 @@ func NewDatabase(dbPath string) (*DBMS, error) {
 		exists: true,
 	}
 
-	dbms.database, err = sql.Open("sqlite3", dbPath)
+	// Enable WAL mode and other performance optimizations via connection string
+	connStr := dbPath + "?_journal_mode=WAL&_synchronous=NORMAL&_busy_timeout=10000&_cache_size=-64000"
+	dbms.database, err = sql.Open("sqlite3", connStr)
 	if err != nil {
 		dbms.exists = false
 	}
 
 	if dbms.exists {
+		dbms.database.SetMaxOpenConns(1)
+		dbms.database.SetMaxIdleConns(1)
+
 		err = dbms.DatabaseInit()
 		if err != nil {
 			dbms.exists = false
@@ -181,6 +186,22 @@ func (dbms *DBMS) DatabaseInit() error {
 		"Agents" TEXT
     );`
 	_, err = dbms.database.Exec(createTableQuery)
+
+	indexQueries := []string{
+		`CREATE INDEX IF NOT EXISTS idx_tasks_agentid ON Tasks(AgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_tasks_startdate ON Tasks(StartDate);`,
+		`CREATE INDEX IF NOT EXISTS idx_tasks_completed ON Tasks(Completed);`,
+		`CREATE INDEX IF NOT EXISTS idx_consoles_agentid ON Consoles(AgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_downloads_agentid ON Downloads(AgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_downloads_date ON Downloads(Date);`,
+		`CREATE INDEX IF NOT EXISTS idx_screenshots_date ON Screenshots(Date);`,
+		`CREATE INDEX IF NOT EXISTS idx_credentials_agentid ON Credentials(AgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_pivots_parentagentid ON Pivots(ParentAgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_pivots_childagentid ON Pivots(ChildAgentId);`,
+	}
+	for _, indexQuery := range indexQueries {
+		_, _ = dbms.database.Exec(indexQuery)
+	}
 
 	return err
 }
