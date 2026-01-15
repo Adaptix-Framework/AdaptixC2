@@ -11,6 +11,8 @@ import (
 	"encoding/json"
 	"net"
 	"os"
+
+	"github.com/goccy/go-yaml"
 )
 
 func NewTeamserver() *Teamserver {
@@ -87,7 +89,7 @@ func (ts *Teamserver) SetProfile(path string) error {
 		return err
 	}
 
-	err = json.Unmarshal(fileContent, &ts.Profile)
+	err = yaml.Unmarshal(fileContent, ts.Profile)
 	if err != nil {
 		return err
 	}

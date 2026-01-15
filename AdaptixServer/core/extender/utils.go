@@ -14,24 +14,24 @@ var (
 /// ExConfig Listener
 
 type ExConfigListener struct {
-	ExtenderType string `json:"extender_type"`
-	ExtenderFile string `json:"extender_file"`
-	AxFile       string `json:"ax_file"`
-	ListenerName string `json:"listener_name"`
-	ListenerType string `json:"listener_type"`
-	Protocol     string `json:"protocol"`
+	ExtenderType string `yaml:"extender_type"`
+	ExtenderFile string `yaml:"extender_file"`
+	AxFile       string `yaml:"ax_file"`
+	ListenerName string `yaml:"listener_name"`
+	ListenerType string `yaml:"listener_type"`
+	Protocol     string `yaml:"protocol"`
 }
 
 /// ExConfig Agent
 
 type ExConfigAgent struct {
-	ExtenderType   string   `json:"extender_type"`
-	ExtenderFile   string   `json:"extender_file"`
-	AxFile         string   `json:"ax_file"`
-	AgentName      string   `json:"agent_name"`
-	AgentWatermark string   `json:"agent_watermark"`
-	Listeners      []string `json:"listeners"`
-	MultiListeners bool     `json:"multi_listeners"`
+	ExtenderType   string   `yaml:"extender_type"`
+	ExtenderFile   string   `yaml:"extender_file"`
+	AxFile         string   `yaml:"ax_file"`
+	AgentName      string   `yaml:"agent_name"`
+	AgentWatermark string   `yaml:"agent_watermark"`
+	Listeners      []string `yaml:"listeners"`
+	MultiListeners bool     `yaml:"multi_listeners"`
 }
 
 /// Info
