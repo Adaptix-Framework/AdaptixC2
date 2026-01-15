@@ -8,16 +8,38 @@
 LastTickWorker::LastTickWorker(AdaptixWidget *w)
 {
     mainWidget = w;
-    timer = new QTimer(this);
 }
 
-LastTickWorker::~LastTickWorker() = default;
+LastTickWorker::~LastTickWorker()
+{
+    if (isRunning()) {
+        QMetaObject::invokeMethod(this, "stopWorker", Qt::QueuedConnection);
+        wait(5000);
+        if (isRunning()) {
+            terminate();
+            wait();
+        }
+    }
+}
 
 void LastTickWorker::run()
 {
+    timer = new QTimer();
     QObject::connect( timer, &QTimer::timeout, this, &LastTickWorker::updateLastItems );
     timer->start( 500 );
+
     exec();
+}
+
+void LastTickWorker::stopWorker()
+{
+    if (timer) {
+        timer->stop();
+        disconnect(timer, nullptr, nullptr, nullptr);
+        delete timer;
+        timer = nullptr;
+    }
+    quit();
 }
 
 void LastTickWorker::updateLastItems()

@@ -33,6 +33,7 @@ public Q_SLOTS:
     void is_error(QAbstractSocket::SocketError error);
     void is_pong(quint64 elapsedTime, const QByteArray &payload);
     void sendPing();
+    void stopWorker();
 
 Q_SIGNALS:
     void connected();

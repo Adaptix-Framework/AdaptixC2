@@ -344,17 +344,15 @@ void AdaptixWidget::Close()
     if (ChannelWsWorker) {
         disconnect(ChannelWsWorker, nullptr, this, nullptr);
         disconnect(ChannelWsWorker, nullptr, ScriptManager, nullptr);
-        if (ChannelWsWorker->webSocket)
-            ChannelWsWorker->webSocket->close();
     }
+
+    delete ChannelWsWorker;
+    ChannelWsWorker = nullptr;
 
     if (ChannelThread) {
         ChannelThread->quit();
         ChannelThread->wait();
     }
-
-    delete ChannelWsWorker;
-    ChannelWsWorker = nullptr;
 
     delete ChannelThread;
     ChannelThread = nullptr;

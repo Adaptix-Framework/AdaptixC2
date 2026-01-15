@@ -8,13 +8,15 @@ WebSocketWorker::WebSocketWorker(AuthProfile* authProfile)
 
 WebSocketWorker::~WebSocketWorker()
 {
-    if (pingTimer) {
-        pingTimer->stop();
-        delete pingTimer;
-        pingTimer = nullptr;
+    if (isRunning()) {
+        QMetaObject::invokeMethod(this, "stopWorker", Qt::QueuedConnection);
+        wait(5000);
+        if (isRunning()) {
+            terminate();
+            wait();
+        }
     }
-    delete webSocket;
-};
+}
 
 void WebSocketWorker::run()
 {
@@ -51,7 +53,7 @@ void WebSocketWorker::run()
 void WebSocketWorker::startPingTimer()
 {
     if (!pingTimer) {
-        pingTimer = new QTimer(this);
+        pingTimer = new QTimer();
         connect(pingTimer, &QTimer::timeout, this, &WebSocketWorker::sendPing);
     }
     pingTimer->start(PING_INTERVAL_MS);
@@ -113,4 +115,21 @@ void WebSocketWorker::is_disconnected()
 void WebSocketWorker::is_binaryMessageReceived(const QByteArray &data)
 {
     Q_EMIT this->received_data( data );
+}
+
+void WebSocketWorker::stopWorker()
+{
+    if (pingTimer) {
+        pingTimer->stop();
+        disconnect(pingTimer, nullptr, nullptr, nullptr);
+        delete pingTimer;
+        pingTimer = nullptr;
+    }
+    if (webSocket) {
+        disconnect(webSocket, nullptr, nullptr, nullptr);
+        webSocket->abort();
+        delete webSocket;
+        webSocket = nullptr;
+    }
+    quit();
 }
