@@ -88,17 +88,35 @@ QJSEngine* AxScriptManager::GetEngine(const QString &name)
 
 AdaptixWidget* AxScriptManager::GetAdaptix() const { return adaptixWidget; }
 
-QMap<QString, Agent*> AxScriptManager::GetAgents() const { return adaptixWidget->AgentsMap; }
+QMap<QString, Agent*> AxScriptManager::GetAgents() const {
+    QReadLocker locker(&adaptixWidget->AgentsMapLock);
+    return adaptixWidget->AgentsMap;
+}
 
-QVector<CredentialData> AxScriptManager::GetCredentials() const { return adaptixWidget->Credentials; }
+QVector<CredentialData> AxScriptManager::GetCredentials() const {
+    QReadLocker locker(&adaptixWidget->CredentialsLock);
+    return adaptixWidget->Credentials;
+}
 
-QMap<QString, DownloadData> AxScriptManager::GetDownloads() const { return adaptixWidget->Downloads; }
+QMap<QString, DownloadData> AxScriptManager::GetDownloads() const {
+    QReadLocker locker(&adaptixWidget->DownloadsLock);
+    return adaptixWidget->Downloads;
+}
 
-QMap<QString, ScreenData> AxScriptManager::GetScreenshots() const { return adaptixWidget->Screenshots; }
+QMap<QString, ScreenData> AxScriptManager::GetScreenshots() const {
+    QReadLocker locker(&adaptixWidget->ScreenshotsLock);
+    return adaptixWidget->Screenshots;
+}
 
-QVector<TargetData> AxScriptManager::GetTargets() const { return adaptixWidget->Targets; }
+QVector<TargetData> AxScriptManager::GetTargets() const {
+    QReadLocker locker(&adaptixWidget->TargetsLock);
+    return adaptixWidget->Targets;
+}
 
-QVector<TunnelData> AxScriptManager::GetTunnels() const { return adaptixWidget->Tunnels; }
+QVector<TunnelData> AxScriptManager::GetTunnels() const {
+    QReadLocker locker(&adaptixWidget->TunnelsLock);
+    return adaptixWidget->Tunnels;
+}
 
 QStringList AxScriptManager::GetInterfaces() const { return adaptixWidget->addresses; }
 
@@ -341,12 +359,15 @@ QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, 
     QSet<QString> agentTypes;
     QSet<QString> listenerTypes;
     QSet<int>     osTypes;
-    for (const auto& agent_id: agentIds) {
-        if (adaptixWidget->AgentsMap.contains(agent_id)) {
-            const auto& agent = adaptixWidget->AgentsMap[agent_id];
-            agentTypes.insert(agent->data.Name);
-            osTypes.insert(agent->data.Os);
-            listenerTypes.insert(agent->listenerType);
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (const auto& agent_id: agentIds) {
+            if (adaptixWidget->AgentsMap.contains(agent_id)) {
+                const auto& agent = adaptixWidget->AgentsMap[agent_id];
+                agentTypes.insert(agent->data.Name);
+                osTypes.insert(agent->data.Os);
+                listenerTypes.insert(agent->listenerType);
+            }
         }
     }
 
@@ -374,12 +395,18 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
 {
     QList<AxEvent> ret;
 
-    if (!adaptixWidget->AgentsMap.contains(agentId))
-        return ret;
+    QString agentType;
+    QString listenerType;
+    int     osType;
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        if (!adaptixWidget->AgentsMap.contains(agentId))
+            return ret;
 
-    QString agentType    = adaptixWidget->AgentsMap[agentId]->data.Name;
-    QString listenerType = adaptixWidget->AgentsMap[agentId]->listenerType;
-    int     osType       = adaptixWidget->AgentsMap[agentId]->data.Os;
+        agentType    = adaptixWidget->AgentsMap[agentId]->data.Name;
+        listenerType = adaptixWidget->AgentsMap[agentId]->listenerType;
+        osType       = adaptixWidget->AgentsMap[agentId]->data.Os;
+    }
 
     QList<AxEvent> items;
     for (const auto& script : getAllEngines()) {
@@ -403,10 +430,13 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
 void AxScriptManager::AppAgentHide(const QStringList &agents)
 {
     bool updated = false;
-    for (const auto& agentId : agents) {
-        if (adaptixWidget->AgentsMap.contains(agentId)) {
-            adaptixWidget->AgentsMap[agentId]->show = false;
-            updated = true;
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (const auto& agentId : agents) {
+            if (adaptixWidget->AgentsMap.contains(agentId)) {
+                adaptixWidget->AgentsMap[agentId]->show = false;
+                updated = true;
+            }
         }
     }
 
@@ -446,9 +476,12 @@ void AxScriptManager::AppAgentUpdateData(const QString &id, const QJsonObject &u
 int AxScriptManager::AddMenuSession(QMenu *menu, const QString &menuType, QStringList agentIds)
 {
     QVariantList context;
-    for (const auto& agent_id: agentIds) {
-        if (adaptixWidget->AgentsMap.contains(agent_id))
-            context << agent_id;
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (const auto& agent_id: agentIds) {
+            if (adaptixWidget->AgentsMap.contains(agent_id))
+                context << agent_id;
+        }
     }
     return addMenuItemsToMenu(menu, FilterMenuItems(agentIds, menuType), context);
 }
@@ -458,14 +491,17 @@ int AxScriptManager::AddMenuFileBrowser(QMenu *menu, QVector<DataMenuFileBrowser
     if (files.empty()) return 0;
 
     QVariantList context;
-    for (const auto& file : files) {
-        if (adaptixWidget->AgentsMap.contains(file.agentId)) {
-            QVariantMap map;
-            map["agent_id"] = file.agentId;
-            map["path"]     = file.path;
-            map["name"]     = file.name;
-            map["type"]     = file.type;
-            context << map;
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (const auto& file : files) {
+            if (adaptixWidget->AgentsMap.contains(file.agentId)) {
+                QVariantMap map;
+                map["agent_id"] = file.agentId;
+                map["path"]     = file.path;
+                map["name"]     = file.name;
+                map["type"]     = file.type;
+                context << map;
+            }
         }
     }
     return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << files[0].agentId, "FileBrowser"), context);
@@ -476,17 +512,20 @@ int AxScriptManager::AddMenuProcessBrowser(QMenu *menu, QVector<DataMenuProcessB
     if (processes.empty()) return 0;
 
     QVariantList context;
-    for (const auto& proc : processes) {
-        if (adaptixWidget->AgentsMap.contains(proc.agentId)) {
-            QVariantMap map;
-            map["agent_id"]   = proc.agentId;
-            map["pid"]        = proc.pid;
-            map["ppid"]       = proc.ppid;
-            map["arch"]       = proc.arch;
-            map["session_id"] = proc.session_id;
-            map["context"]    = proc.context;
-            map["process"]    = proc.process;
-            context << map;
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (const auto& proc : processes) {
+            if (adaptixWidget->AgentsMap.contains(proc.agentId)) {
+                QVariantMap map;
+                map["agent_id"]   = proc.agentId;
+                map["pid"]        = proc.pid;
+                map["ppid"]       = proc.ppid;
+                map["arch"]       = proc.arch;
+                map["session_id"] = proc.session_id;
+                map["context"]    = proc.context;
+                map["process"]    = proc.process;
+                context << map;
+            }
         }
     }
     return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << processes[0].agentId, "ProcessBrowser"), context);
@@ -497,14 +536,17 @@ int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVect
     if (files.empty()) return 0;
 
     QVariantList context;
-    for (const auto& file : files) {
-        if (adaptixWidget->AgentsMap.contains(file.agentId)) {
-            QVariantMap map;
-            map["agent_id"] = file.agentId;
-            map["file_id"]  = file.fileId;
-            map["path"]     = file.path;
-            map["state"]    = file.state;
-            context << map;
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (const auto& file : files) {
+            if (adaptixWidget->AgentsMap.contains(file.agentId)) {
+                QVariantMap map;
+                map["agent_id"] = file.agentId;
+                map["file_id"]  = file.fileId;
+                map["path"]     = file.path;
+                map["state"]    = file.state;
+                context << map;
+            }
         }
     }
     return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << files[0].agentId, menuType), context);

@@ -675,55 +675,64 @@ void AdaptixWidget::PostHandlerProcess(const QString &handlerId, const TaskData 
 
 void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
 {
+    QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
         return;
 
     auto agent = AgentsMap[AgentId];
     if (agent && agent->Console) {
-        this->PlaceDockBottom( AgentsMap[AgentId]->Console->dock() );
-        AgentsMap[AgentId]->Console->InputFocus();
+        locker.unlock();
+        this->PlaceDock(dockBottom, agent->Console->dock() );
+        agent->Console->InputFocus();
     }
-
 }
 
 void AdaptixWidget::LoadTasksOutput() const { this->PlaceDock(dockBottom, TasksDock->dockTasksOutput() ); }
 
 void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
 {
+    QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
         return;
 
     auto agent = AgentsMap[AgentId];
+    locker.unlock();
     if (agent)
         this->PlaceDock(dockBottom, agent->GetFileBrowser()->dock() );
 }
 
 void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
 {
+    QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
         return;
 
     auto agent = AgentsMap[AgentId];
+    locker.unlock();
     if (agent)
         this->PlaceDock(dockBottom, agent->GetProcessBrowser()->dock() );
 }
 
 void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
 {
+    QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
         return;
 
     auto agent = AgentsMap[AgentId];
+    locker.unlock();
     if (agent)
         this->PlaceDock(dockBottom, agent->GetTerminal()->dock() );
 }
 
 void AdaptixWidget::LoadShellUI(const QString &AgentId)
 {
+    QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
         return;
 
     auto agent = AgentsMap[AgentId];
+    locker.unlock();
     if (agent)
         this->PlaceDock(dockBottom, agent->GetShell()->dock() );
 }
@@ -890,7 +899,6 @@ void AdaptixWidget::OnReconnect()
         });
 
         workerThread->start();
-        return;
     }
     else {
         QThread* workerThread = new QThread();
@@ -929,4 +937,3 @@ void AdaptixWidget::OnReconnect()
         workerThread->start();
     }
 }
-

@@ -8,6 +8,7 @@
 #include <kddockwidgets/qtwidgets/views/MainWindow.h>
 
 #include <QJSValue>
+#include <QReadWriteLock>
 
 class Task;
 class Agent;
@@ -122,6 +123,13 @@ public:
     QMap<QString, PivotData>       Pivots;
     QMap<QString, TaskData>        TasksMap;
     QMap<QString, Agent*>          AgentsMap;
+    mutable QReadWriteLock         AgentsMapLock;
+    mutable QReadWriteLock         TasksMapLock;
+    mutable QReadWriteLock         CredentialsLock;
+    mutable QReadWriteLock         DownloadsLock;
+    mutable QReadWriteLock         ScreenshotsLock;
+    mutable QReadWriteLock         TargetsLock;
+    mutable QReadWriteLock         TunnelsLock;
     QMap<QString, AxExecutor>      PostHooksJS;
     QMap<QString, AxExecutor>      PostHandlersJS;
     QMap<QString, TunnelEndpoint*> ClientTunnels;

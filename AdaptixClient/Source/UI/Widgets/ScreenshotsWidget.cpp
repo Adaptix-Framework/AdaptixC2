@@ -199,7 +199,10 @@ void ScreenshotsWidget::createUI()
 
 void ScreenshotsWidget::Clear() const
 {
-    adaptixWidget->Screenshots.clear();
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        adaptixWidget->Screenshots.clear();
+    }
 
     QSignalBlocker blocker(tableView->selectionModel());
     screensModel->clear();
@@ -209,28 +212,36 @@ void ScreenshotsWidget::Clear() const
 
 void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen)
 {
+    QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
     if (adaptixWidget->Screenshots.contains(newScreen.ScreenId))
         return;
 
-    screensModel->add(newScreen);
     adaptixWidget->Screenshots[newScreen.ScreenId] = newScreen;
+    locker.unlock();
+    screensModel->add(newScreen);
 }
 
 void ScreenshotsWidget::EditScreenshotItem(const QString &screenId, const QString &note)
 {
-    if (!adaptixWidget->Screenshots.contains(screenId))
-        return;
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        if (!adaptixWidget->Screenshots.contains(screenId))
+            return;
 
-    adaptixWidget->Screenshots[screenId].Note = note;
+        adaptixWidget->Screenshots[screenId].Note = note;
+    }
     screensModel->update(screenId, note);
 }
 
 void ScreenshotsWidget::RemoveScreenshotItem(const QString &screenId)
 {
-    if (!adaptixWidget->Screenshots.contains(screenId))
-        return;
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        if (!adaptixWidget->Screenshots.contains(screenId))
+            return;
 
-    adaptixWidget->Screenshots.remove(screenId);
+        adaptixWidget->Screenshots.remove(screenId);
+    }
     screensModel->remove(screenId);
 
     if (screensModel->rowCount(QModelIndex()) == 0)

@@ -24,6 +24,7 @@ void LastTickWorker::updateLastItems()
 {
     QStringList updatedAgents;
 
+    QReadLocker locker(&mainWidget->AgentsMapLock);
     for ( auto agent : mainWidget->AgentsMap ) {
         if ( agent->data.Async && agent->active ) {
             int current = QDateTime::currentSecsSinceEpoch();

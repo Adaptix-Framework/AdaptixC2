@@ -535,10 +535,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_UPDATE: {
         QString agentId = jsonObj["a_id"].toString();
+        QReadLocker locker(&AgentsMapLock);
         Agent* agent = AgentsMap.value(agentId, nullptr);
         if (agent) {
             auto oldData = agent->data;
             agent->Update(jsonObj);
+            locker.unlock();
             SessionsTableDock->UpdateAgentItem(oldData, agent);
         }
         break;
@@ -546,6 +548,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_TICK: {
         QJsonArray agentIDs = jsonObj["a_id"].toArray();
+        QReadLocker locker(&AgentsMapLock);
         for (const QJsonValue &idValue : agentIDs) {
             Agent* agent = AgentsMap.value(idValue.toString(), nullptr);
             if (agent) {
@@ -559,8 +562,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_REMOVE: {
         QString agentId = jsonObj["a_id"].toString();
-        if (this->AgentsMap.contains(agentId)) {
-            SessionsGraphDock->RemoveAgent(this->AgentsMap[agentId], this->synchronized);
+        Agent* agentToRemove = nullptr;
+        {
+            QReadLocker locker(&AgentsMapLock);
+            agentToRemove = this->AgentsMap.value(agentId, nullptr);
+        }
+        if (agentToRemove) {
+            SessionsGraphDock->RemoveAgent(agentToRemove, this->synchronized);
             SessionsTableDock->RemoveAgentItem(agentId);
             TasksDock->RemoveAgentTasksItem(agentId);
         }
@@ -627,6 +635,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_CONSOLE_OUT: {
         QString agentId = jsonObj["a_id"].toString();
+        QReadLocker locker(&AgentsMapLock);
         if (AgentsMap.contains(agentId)) {
             AgentsMap[agentId]->Console->ConsoleOutputMessage(
                 static_cast<qint64>(jsonObj["time"].toDouble()), "",
@@ -640,6 +649,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_CONSOLE_TASK_SYNC: {
         QString agentId = jsonObj["a_id"].toString();
+        QReadLocker locker(&AgentsMapLock);
         if (AgentsMap.contains(agentId)) {
             qint64 startTime = jsonObj["a_start_time"].toDouble();
             qint64 finishTime = jsonObj["a_finish_time"].toDouble();
@@ -663,6 +673,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_CONSOLE_TASK_UPD: {
         QString agentId = jsonObj["a_id"].toString();
+        QReadLocker locker(&AgentsMapLock);
         if (AgentsMap.contains(agentId)) {
             AgentsMap[agentId]->Console->ConsoleOutputMessage(
                 jsonObj["a_finish_time"].toDouble(),
