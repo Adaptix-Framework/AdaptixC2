@@ -295,7 +295,7 @@ function RegisterCommands(listenerType)
     return ax.create_commands_group("none",[]);
 }
 
-function GenerateUI(listenerType)
+function GenerateUI(listeners_type)
 {
     let spacer1 = form.create_vspacer();
 
@@ -314,7 +314,7 @@ function GenerateUI(listenerType)
     spinJitter.setRange(0, 100);
     spinJitter.setValue(0);
 
-    if(listenerType != "BeaconHTTP" && listenerType != "BeaconDNS") {
+    if( !listeners_type.includes("BeaconHTTP") && !listeners_type.includes("BeaconDNS") ) {
         labelSleep.setVisible(false);
         textSleep.setVisible(false);
         spinJitter.setVisible(false);
@@ -323,7 +323,7 @@ function GenerateUI(listenerType)
     let labelDnsResolvers = form.create_label("DNS Resolvers:");
     let textDnsResolvers = form.create_textline("");
     textDnsResolvers.setPlaceholder("8.8.8.8,1.1.1.1,9.9.9.9");
-    if(listenerType != "BeaconDNS") {
+    if(!listeners_type.includes("BeaconDNS")) {
         labelDnsResolvers.setVisible(false);
         textDnsResolvers.setVisible(false);
     }

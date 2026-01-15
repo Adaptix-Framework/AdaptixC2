@@ -191,7 +191,7 @@ function RegisterCommands(listenerType)
     }
 }
 
-function GenerateUI(listenerType)
+function GenerateUI(listeners_type)
 {
     let labelOS = form.create_label("OS:");
     let comboOS = form.create_combo()

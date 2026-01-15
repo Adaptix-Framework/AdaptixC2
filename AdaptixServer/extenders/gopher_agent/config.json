@@ -5,5 +5,6 @@
 
   "agent_name": "gopher",
   "agent_watermark": "904e5493",
-  "listeners": ["GopherTCP"]
+  "listeners": ["GopherTCP"],
+  "multi_listeners": true
 }

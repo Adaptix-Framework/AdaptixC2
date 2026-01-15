@@ -240,124 +240,121 @@ type GenerateConfig struct {
 
 var SrcPath = "src_gopher"
 
-func (p *PluginAgent) GenerateConfig(config string, listenerWM string, listenerProfile []byte) ([]byte, error) {
-	var (
-		listenerMap   map[string]any
-		payloadConfig []byte
-	)
+func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, error) {
+	var agentProfiles [][]byte
 
-	if err := json.Unmarshal(listenerProfile, &listenerMap); err != nil {
-		return nil, err
-	}
+	for _, transportProfile := range profile.ListenerProfiles {
 
-	/// START CODE HERE
-
-	var (
-		generateConfig GenerateConfig
-		profileData    []byte
-	)
-
-	err := json.Unmarshal([]byte(config), &generateConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	agentWatermark, err := strconv.ParseInt(AgentWatermark, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	encrypt_key, _ := listenerMap["encrypt_key"].(string)
-	encryptKey, err := hex.DecodeString(encrypt_key)
-	if err != nil {
-		return nil, err
-	}
-
-	reconnectTimeout, err := parseDurationToSeconds(generateConfig.ReconnectTimeout)
-	if err != nil {
-		return nil, err
-	}
-
-	protocol, _ := listenerMap["protocol"].(string)
-	switch protocol {
-
-	case "tcp":
-
-		tcp_banner, _ := listenerMap["tcp_banner"].(string)
-
-		servers, _ := listenerMap["callback_addresses"].(string)
-
-		servers = strings.ReplaceAll(servers, " ", "")
-		servers = strings.ReplaceAll(servers, "\n", ",")
-		servers = strings.TrimSuffix(servers, ",")
-		addresses := strings.Split(servers, ",")
-
-		var sslKey []byte
-		var sslCert []byte
-		var caCert []byte
-		Ssl, _ := listenerMap["ssl"].(bool)
-		if Ssl {
-			ssl_key, _ := listenerMap["client_key"].(string)
-			sslKey, err = base64.StdEncoding.DecodeString(ssl_key)
-			if err != nil {
-				return nil, err
-			}
-
-			ssl_cert, _ := listenerMap["client_cert"].(string)
-			sslCert, err = base64.StdEncoding.DecodeString(ssl_cert)
-			if err != nil {
-				return nil, err
-			}
-
-			ca_cert, _ := listenerMap["ca_cert"].(string)
-			caCert, err = base64.StdEncoding.DecodeString(ca_cert)
-			if err != nil {
-				return nil, err
-			}
+		var listenerMap map[string]any
+		if err := json.Unmarshal(transportProfile.Profile, &listenerMap); err != nil {
+			return nil, err
 		}
 
-		profile := Profile{
-			Type:        uint(agentWatermark),
-			Addresses:   addresses,
-			BannerSize:  len(tcp_banner),
-			ConnTimeout: reconnectTimeout,
-			ConnCount:   generateConfig.ReconnectCount,
-			UseSSL:      Ssl,
-			SslCert:     sslCert,
-			SslKey:      sslKey,
-			CaCert:      caCert,
+		/// START CODE HERE
+
+		var (
+			generateConfig GenerateConfig
+			profileData    []byte
+		)
+
+		err := json.Unmarshal([]byte(profile.AgentConfig), &generateConfig)
+		if err != nil {
+			return nil, err
 		}
-		profileData, _ = msgpack.Marshal(profile)
 
-	default:
-		return nil, errors.New("protocol unknown")
+		agentWatermark, err := strconv.ParseInt(AgentWatermark, 16, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		encrypt_key, _ := listenerMap["encrypt_key"].(string)
+		encryptKey, err := hex.DecodeString(encrypt_key)
+		if err != nil {
+			return nil, err
+		}
+
+		reconnectTimeout, err := parseDurationToSeconds(generateConfig.ReconnectTimeout)
+		if err != nil {
+			return nil, err
+		}
+
+		protocol, _ := listenerMap["protocol"].(string)
+		switch protocol {
+
+		case "tcp":
+
+			tcp_banner, _ := listenerMap["tcp_banner"].(string)
+
+			servers, _ := listenerMap["callback_addresses"].(string)
+
+			servers = strings.ReplaceAll(servers, " ", "")
+			servers = strings.ReplaceAll(servers, "\n", ",")
+			servers = strings.TrimSuffix(servers, ",")
+			addresses := strings.Split(servers, ",")
+
+			var sslKey []byte
+			var sslCert []byte
+			var caCert []byte
+			Ssl, _ := listenerMap["ssl"].(bool)
+			if Ssl {
+				ssl_key, _ := listenerMap["client_key"].(string)
+				sslKey, err = base64.StdEncoding.DecodeString(ssl_key)
+				if err != nil {
+					return nil, err
+				}
+
+				ssl_cert, _ := listenerMap["client_cert"].(string)
+				sslCert, err = base64.StdEncoding.DecodeString(ssl_cert)
+				if err != nil {
+					return nil, err
+				}
+
+				ca_cert, _ := listenerMap["ca_cert"].(string)
+				caCert, err = base64.StdEncoding.DecodeString(ca_cert)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			profile := Profile{
+				Type:        uint(agentWatermark),
+				Addresses:   addresses,
+				BannerSize:  len(tcp_banner),
+				ConnTimeout: reconnectTimeout,
+				ConnCount:   generateConfig.ReconnectCount,
+				UseSSL:      Ssl,
+				SslCert:     sslCert,
+				SslKey:      sslKey,
+				CaCert:      caCert,
+			}
+			profileData, _ = msgpack.Marshal(profile)
+
+		default:
+			return nil, errors.New("protocol unknown")
+		}
+
+		extHandler := ExtenderAgent{}
+		profileData, _ = extHandler.Encrypt(profileData, encryptKey)
+		profileData = append(encryptKey, profileData...)
+
+		profileString := ""
+		for _, b := range profileData {
+			profileString += fmt.Sprintf("\\x%02x", b)
+		}
+		agentProfiles = append(agentProfiles, []byte(profileString))
+
+		fmt.Println(profileString)
+
+		/// END CODE HERE
 	}
-
-	extHandler := ExtenderAgent{}
-	profileData, _ = extHandler.Encrypt(profileData, encryptKey)
-	profileData = append(encryptKey, profileData...)
-
-	profileString := ""
-	for _, b := range profileData {
-		profileString += fmt.Sprintf("\\x%02x", b)
-	}
-	payloadConfig = []byte(profileString)
-
-	/// END CODE HERE
-
-	return payloadConfig, nil
+	return agentProfiles, nil
 }
 
-func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, listenerProfile []byte, builderId string) ([]byte, string, error) {
+func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [][]byte) ([]byte, string, error) {
 	var (
-		listenerMap map[string]any
-		Filename    string
-		Payload     []byte
+		Filename string
+		Payload  []byte
 	)
-
-	if err := json.Unmarshal(listenerProfile, &listenerMap); err != nil {
-		return nil, "", err
-	}
 
 	/// START CODE HERE
 
@@ -368,7 +365,7 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 		buildPath      string
 	)
 
-	err := json.Unmarshal([]byte(agentConfig), &generateConfig)
+	err := json.Unmarshal([]byte(profile.AgentConfig), &generateConfig)
 	if err != nil {
 		return nil, "", err
 	}
@@ -405,9 +402,14 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	}
 	buildPath = tempDir + "/" + Filename
 
-	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Target: %s/%s, Output: %s", GoOs, GoArch, Filename))
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Target: %s/%s, Output: %s", GoOs, GoArch, Filename))
 
-	config := fmt.Sprintf("package main\n\nvar encProfile = []byte(\"%s\")\n", string(agentProfile))
+	config := "package main\n\nvar encProfiles = [][]byte{"
+	for _, profile := range agentProfiles {
+		config += fmt.Sprintf("    []byte(\"%s\")\n", profile)
+	}
+	config += "}\n"
+
 	configPath := currentDir + "/" + SrcPath + "/config.go"
 	err = os.WriteFile(configPath, []byte(config), 0644)
 	if err != nil {
@@ -422,14 +424,14 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 			return nil, "", errors.New("go-win7 not installed")
 		}
 		cmdBuild = fmt.Sprintf("GOWORK=off CGO_ENABLED=0 GOOS=%s GOARCH=%s GOROOT=/usr/lib/go-win7/ /usr/lib/go-win7/go build -trimpath -ldflags=\"%s\" -o %s", GoOs, GoArch, LdFlags, buildPath)
-		_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, "Using go-win7 for Windows 7 support")
+		_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Using go-win7 for Windows 7 support")
 
 	}
-	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, "Starting build process...")
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Starting build process...")
 
 	var buildArgs []string
 	buildArgs = append(buildArgs, "-c", cmdBuild)
-	err = Ts.TsAgentBuildExecute(builderId, currentDir+"/"+SrcPath, "sh", buildArgs...)
+	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir+"/"+SrcPath, "sh", buildArgs...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", err
@@ -440,7 +442,7 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 		return nil, "", err
 	}
 	_ = os.RemoveAll(tempDir)
-	_ = Ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Payload size: %d bytes", len(Payload)))
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Payload size: %d bytes", len(Payload)))
 
 	/// END CODE HERE
 
