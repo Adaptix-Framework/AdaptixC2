@@ -58,13 +58,9 @@ void DialogAgent::createUI()
     popupLayout->addWidget(listenerListWidget);
     popupLayout->addLayout(btnLayout);
 
-    auto popupWidget = new QWidget();
-    popupWidget->setLayout(popupLayout);
-
-    listenerPopupMenu = new QMenu(this);
-    auto widgetAction = new QWidgetAction(listenerPopupMenu);
-    widgetAction->setDefaultWidget(popupWidget);
-    listenerPopupMenu->addAction(widgetAction);
+    listenerPopupDialog = new QDialog(this, Qt::Popup | Qt::FramelessWindowHint);
+    listenerPopupDialog->setLayout(popupLayout);
+    listenerPopupDialog->setProperty("Main", "base");
 
     listenerSelectionWidget = new QWidget(this);
     auto listenerSelectionLayout = new QHBoxLayout(listenerSelectionWidget);
@@ -1077,7 +1073,10 @@ void DialogAgent::regenerateAgentUI(const QString &agentName, const QStringList 
 void DialogAgent::showListenerPopup()
 {
     QPoint pos = listenerSelectBtn->mapToGlobal(QPoint(0, listenerSelectBtn->height()));
-    listenerPopupMenu->exec(pos);
+    listenerPopupDialog->move(pos);
+    listenerPopupDialog->show();
+    listenerPopupDialog->raise();
+    listenerPopupDialog->activateWindow();
 }
 
 void DialogAgent::updateListenerDisplay()
