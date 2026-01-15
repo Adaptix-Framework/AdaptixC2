@@ -128,10 +128,11 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 	}
 
 	agentInfo := AgentInfo{
-		Name:      configAgent.AgentName,
-		Watermark: configAgent.AgentWatermark,
-		AX:        string(ax_content),
-		Listeners: configAgent.Listeners,
+		Name:           configAgent.AgentName,
+		Watermark:      configAgent.AgentWatermark,
+		AX:             string(ax_content),
+		Listeners:      configAgent.Listeners,
+		MultiListeners: configAgent.MultiListeners,
 	}
 
 	plugin_path := filepath.Dir(config_path) + "/" + configAgent.ExtenderFile

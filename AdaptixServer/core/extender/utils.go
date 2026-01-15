@@ -31,6 +31,7 @@ type ExConfigAgent struct {
 	AgentName      string   `json:"agent_name"`
 	AgentWatermark string   `json:"agent_watermark"`
 	Listeners      []string `json:"listeners"`
+	MultiListeners bool     `json:"multi_listeners"`
 }
 
 /// Info
@@ -43,10 +44,11 @@ type ListenerInfo struct {
 }
 
 type AgentInfo struct {
-	Name      string
-	Watermark string
-	AX        string
-	Listeners []string
+	Name           string
+	Watermark      string
+	AX             string
+	Listeners      []string
+	MultiListeners bool
 }
 
 type Teamserver interface {

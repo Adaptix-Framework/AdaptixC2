@@ -190,11 +190,10 @@ type Terminal struct {
 }
 
 type AgentBuilder struct {
-	Id           string
-	Name         string
-	ListenerName string
-	ListenerType string
-	Config       string
+	Id            string
+	Name          string
+	ListenersName []string
+	Config        string
 
 	wsconn *websocket.Conn
 	mu     sync.Mutex
@@ -272,9 +271,10 @@ type SyncPackerListenerStop struct {
 type SyncPackerAgentReg struct {
 	SpType int `json:"type"`
 
-	Agent     string   `json:"agent"`
-	AX        string   `json:"ax"`
-	Listeners []string `json:"listeners"`
+	Agent          string   `json:"agent"`
+	AX             string   `json:"ax"`
+	Listeners      []string `json:"listeners"`
+	MultiListeners bool     `json:"multi_listeners"`
 }
 
 type SyncPackerAgentNew struct {

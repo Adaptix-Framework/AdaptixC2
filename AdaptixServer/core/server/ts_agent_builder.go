@@ -16,8 +16,28 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (ts *Teamserver) TsAgentBuildSyncOnce(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error) {
-	return ts.Extender.ExAgentGenerate(agentName, config, listenerWM, listenerProfile, "")
+func (ts *Teamserver) TsAgentBuildSyncOnce(agentName string, config string, listenersName []string) ([]byte, string, error) {
+
+	conf := adaptix.BuildProfile{
+		BuilderId:   "",
+		AgentConfig: config,
+	}
+
+	for _, listener := range listenersName {
+		listenerWM, listenerProfile, err := ts.TsListenerGetProfile(listener)
+		if err != nil {
+			return nil, "", err
+		}
+
+		transport := adaptix.TransportProfile{
+			Watermark: listenerWM,
+			Profile:   listenerProfile,
+		}
+
+		conf.ListenerProfiles = append(conf.ListenerProfiles, transport)
+	}
+
+	return ts.Extender.ExAgentGenerate(agentName, conf)
 }
 
 func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websocket.Conn) error {
@@ -31,7 +51,7 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 	}
 
 	d := strings.Split(string(data), "|")
-	if len(d) != 3 {
+	if len(d) < 2 {
 		if wsconn != nil {
 			_ = wsconn.WriteMessage(websocket.TextMessage, []byte("invalid build data"))
 			wsconn.Close()
@@ -39,31 +59,27 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 		return errors.New("invalid build data")
 	}
 
-	decListenerName, err := base64.StdEncoding.DecodeString(d[0])
-	if err != nil {
-		if wsconn != nil {
-			_ = wsconn.WriteMessage(websocket.TextMessage, []byte("invalid build data: listenerName"))
-			wsconn.Close()
-		}
-		return errors.New("invalid build data: listenerName")
-	}
-
-	decListenerType, err := base64.StdEncoding.DecodeString(d[1])
-	if err != nil {
-		if wsconn != nil {
-			_ = wsconn.WriteMessage(websocket.TextMessage, []byte("invalid build data: listenerType"))
-			wsconn.Close()
-		}
-		return errors.New("invalid build data: listenerType")
-	}
-
-	decAgentName, err := base64.StdEncoding.DecodeString(d[2])
+	decAgentName, err := base64.StdEncoding.DecodeString(d[0])
 	if err != nil {
 		if wsconn != nil {
 			_ = wsconn.WriteMessage(websocket.TextMessage, []byte("invalid build data: agentName"))
 			wsconn.Close()
 		}
 		return errors.New("invalid build data: agentName")
+	}
+
+	var listenersName []string
+
+	for _, encListenerName := range d[1:] {
+		decListenerName, err := base64.StdEncoding.DecodeString(encListenerName)
+		if err != nil {
+			if wsconn != nil {
+				_ = wsconn.WriteMessage(websocket.TextMessage, []byte("invalid build data: listenerName"))
+				wsconn.Close()
+			}
+			return errors.New("invalid build data: listenerName")
+		}
+		listenersName = append(listenersName, string(decListenerName))
 	}
 
 	_, wsMsg, err := wsconn.ReadMessage()
@@ -74,22 +90,20 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 	}
 
 	builder := &AgentBuilder{
-		Id:           fmt.Sprintf("%08x", rand.Uint32()),
-		Name:         string(decAgentName),
-		ListenerName: string(decListenerName),
-		ListenerType: string(decListenerType),
-		Config:       string(wsMsg),
-		wsconn:       wsconn,
-		mu:           sync.Mutex{},
-		closed:       false,
+		Id:            fmt.Sprintf("%08x", rand.Uint32()),
+		Name:          string(decAgentName),
+		ListenersName: listenersName,
+		Config:        string(wsMsg),
+		wsconn:        wsconn,
+		mu:            sync.Mutex{},
+		closed:        false,
 	}
 	ts.builders.Put(builder.Id, builder)
 
 	var (
-		listenerWM      string
-		listenerProfile []byte
-		fileContent     []byte
-		fileName        string
+		fileContent []byte
+		fileName    string
+		conf        adaptix.BuildProfile
 	)
 
 	_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_INFO, "Building agent...")
@@ -97,10 +111,9 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 	var postEvent *eventing.EventDataAgentGenerate
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataAgentGenerate{
-		AgentName:    builder.Name,
-		ListenerName: builder.ListenerName,
-		ListenerType: builder.ListenerType,
-		Config:       builder.Config,
+		AgentName:     builder.Name,
+		ListenersName: builder.ListenersName,
+		Config:        builder.Config,
 	}
 	if !ts.EventManager.Emit(eventing.EventAgentGenerate, eventing.HookPre, preEvent) {
 		if preEvent.Error != nil {
@@ -112,14 +125,28 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 	}
 	// ----------------
 
-	listenerWM, listenerProfile, err = ts.TsListenerGetProfile(builder.ListenerName, builder.ListenerType)
-	if err != nil {
-		_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, "Error: invalid listener profile")
-		goto RET
+	conf = adaptix.BuildProfile{
+		BuilderId:   builder.Id,
+		AgentConfig: builder.Config,
 	}
-	_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_INFO, "Listener profile created")
 
-	fileContent, fileName, err = ts.Extender.ExAgentGenerate(builder.Name, builder.Config, listenerWM, listenerProfile, builder.Id)
+	for _, listener := range listenersName {
+		listenerWM, listenerProfile, err := ts.TsListenerGetProfile(listener)
+		if err != nil {
+			_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, fmt.Sprintf("Error: invalid '%s' listener profile", listener))
+			goto RET
+		}
+
+		_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Listener '%s' profile created", listener))
+
+		transport := adaptix.TransportProfile{
+			Watermark: listenerWM,
+			Profile:   listenerProfile,
+		}
+		conf.ListenerProfiles = append(conf.ListenerProfiles, transport)
+	}
+
+	fileContent, fileName, err = ts.Extender.ExAgentGenerate(builder.Name, conf)
 	if err != nil {
 		_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, "Error: agent builder failed")
 		goto RET
@@ -128,12 +155,11 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 
 	// --- POST HOOK ---
 	postEvent = &eventing.EventDataAgentGenerate{
-		AgentName:    builder.Name,
-		ListenerName: builder.ListenerName,
-		ListenerType: builder.ListenerType,
-		Config:       builder.Config,
-		FileName:     fileName,
-		FileContent:  fileContent,
+		AgentName:     builder.Name,
+		ListenersName: builder.ListenersName,
+		Config:        builder.Config,
+		FileName:      fileName,
+		FileContent:   fileContent,
 	}
 	ts.EventManager.EmitAsync(eventing.EventAgentGenerate, postEvent)
 	// -----------------

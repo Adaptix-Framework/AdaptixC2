@@ -15,6 +15,13 @@ Q_OBJECT
 
     QLabel*         listenerLabel       = nullptr;
     QLineEdit*      listenerInput       = nullptr;
+    QLineEdit*      listenerDisplayEdit = nullptr;
+    QPushButton*    listenerSelectBtn   = nullptr;
+    QMenu*          listenerPopupMenu   = nullptr;
+    QListWidget*    listenerListWidget  = nullptr;
+    QPushButton*    btnMoveUp           = nullptr;
+    QPushButton*    btnMoveDown         = nullptr;
+    QWidget*        listenerSelectionWidget = nullptr;
     QLabel*         agentLabel          = nullptr;
     QComboBox*      agentCombobox       = nullptr;
     QLabel*         profileLabel        = nullptr;
@@ -38,12 +45,17 @@ Q_OBJECT
     QPushButton*      buttonLoad        = nullptr;
     QPushButton*      buttonSave        = nullptr;
 
+    AdaptixWidget* adaptixWidget = nullptr;
     AuthProfile authProfile;
     QString     listenerName;
     QString     listenerType;
+    QVector<ListenerData> availableListeners;
+    QMap<QString, AgentTypeInfo> agentTypes;
 
     QStringList agents;
     QMap<QString, AxUI> ax_uis;
+
+    void regenerateAgentUI(const QString &agentName, const QStringList &selectedListeners);
 
     void createUI();
     void loadProfiles();
@@ -51,11 +63,13 @@ Q_OBJECT
     QString generateUniqueProfileName(const QString &baseName);
 
 public:
-    explicit DialogAgent(const QString &listenerName, const QString &listenerType);
+    explicit DialogAgent(AdaptixWidget* adaptixWidget, const QString &listenerName, const QString &listenerType);
     ~DialogAgent() override;
 
     void AddExAgents(const QStringList &agents, const QMap<QString, AxUI> &uis);
     void SetProfile(const AuthProfile &profile);
+    void SetAvailableListeners(const QVector<ListenerData> &listeners);
+    void SetAgentTypes(const QMap<QString, AgentTypeInfo> &types);
     void Start();
 
 protected Q_SLOTS:
@@ -74,6 +88,11 @@ protected Q_SLOTS:
     void onBuildMessage(const QString &msg);
     void onBuildFinished();
     void stopBuild();
+    void onListenerSelectionChanged(QListWidgetItem *item);
+    void onMoveListenerUp();
+    void onMoveListenerDown();
+    void showListenerPopup();
+    void updateListenerDisplay();
 };
 
 #endif

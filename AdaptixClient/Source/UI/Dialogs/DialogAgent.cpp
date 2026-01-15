@@ -5,32 +5,10 @@
 #include <Client/AuthProfile.h>
 #include <Client/Storage.h>
 #include <Client/AxScript/AxElementWrappers.h>
+#include <Client/AxScript/AxScriptManager.h>
 #include <Workers/BuildWorker.h>
-
-DialogAgent::DialogAgent(const QString &listenerName, const QString &listenerType)
-{
-    this->createUI();
-
-    this->listenerInput->setText(listenerName);
-
-    this->listenerName = listenerName;
-    this->listenerType = listenerType;
-
-    connect(cardWidget,       &QListWidget::itemPressed,                this, &DialogAgent::onProfileSelected);
-    connect(cardWidget,       &QListWidget::customContextMenuRequested, this, &DialogAgent::handleProfileContextMenu);
-    connect(agentCombobox,    &QComboBox::currentTextChanged,           this, &DialogAgent::changeConfig);
-    connect(buildButton,      &QPushButton::clicked,                    this, &DialogAgent::onButtonBuild);
-    connect(buttonNewProfile, &QPushButton::clicked,                    this, &DialogAgent::onButtonNewProfile);
-    connect(buttonLoad,       &QPushButton::clicked,                    this, &DialogAgent::onButtonLoad);
-    connect(buttonSave,       &QPushButton::clicked,                    this, &DialogAgent::onButtonSave);
-    connect(inputProfileName, &QLineEdit::textEdited,                   this, &DialogAgent::onProfileNameEdited);
-    connect(actionSaveProfile,&QAction::toggled,                        this, &DialogAgent::onSaveProfileToggled);
-}
-
-DialogAgent::~DialogAgent()
-{
-    stopBuild();
-}
+#include <QJSEngine>
+#include <QWidgetAction>
 
 void DialogAgent::createUI()
 {
@@ -40,6 +18,61 @@ void DialogAgent::createUI()
     listenerLabel = new QLabel("Listener:", this);
     listenerInput = new QLineEdit(this);
     listenerInput->setReadOnly(true);
+
+    listenerDisplayEdit = new QLineEdit(this);
+    listenerDisplayEdit->setReadOnly(true);
+    listenerDisplayEdit->setPlaceholderText("Click to select listeners...");
+
+    listenerSelectBtn = new QPushButton("...", this);
+    listenerSelectBtn->setFixedWidth(30);
+    listenerSelectBtn->setToolTip("Select listeners");
+
+    listenerListWidget = new QListWidget();
+    listenerListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    listenerListWidget->setDragDropMode(QAbstractItemView::InternalMove);
+    listenerListWidget->setDefaultDropAction(Qt::MoveAction);
+    listenerListWidget->setMinimumWidth(250);
+    listenerListWidget->setMinimumHeight(150);
+    listenerListWidget->setStyleSheet(
+        "QListWidget::item { padding: 3px 4px; margin: 1px 0px; }"
+        "QListWidget::indicator { width: 14px; height: 14px; }"
+    );
+
+    btnMoveUp = new QPushButton("↑");
+    btnMoveUp->setFixedWidth(30);
+    btnMoveUp->setToolTip("Move selected listener up");
+    btnMoveDown = new QPushButton("↓");
+    btnMoveDown->setFixedWidth(30);
+    btnMoveDown->setToolTip("Move selected listener down");
+
+    auto btnLayout = new QVBoxLayout();
+    btnLayout->setContentsMargins(0, 0, 0, 0);
+    btnLayout->setSpacing(4);
+    btnLayout->addWidget(btnMoveUp);
+    btnLayout->addWidget(btnMoveDown);
+    btnLayout->addStretch();
+
+    auto popupLayout = new QHBoxLayout();
+    popupLayout->setContentsMargins(8, 8, 8, 8);
+    popupLayout->setSpacing(4);
+    popupLayout->addWidget(listenerListWidget);
+    popupLayout->addLayout(btnLayout);
+
+    auto popupWidget = new QWidget();
+    popupWidget->setLayout(popupLayout);
+
+    listenerPopupMenu = new QMenu(this);
+    auto widgetAction = new QWidgetAction(listenerPopupMenu);
+    widgetAction->setDefaultWidget(popupWidget);
+    listenerPopupMenu->addAction(widgetAction);
+
+    listenerSelectionWidget = new QWidget(this);
+    auto listenerSelectionLayout = new QHBoxLayout(listenerSelectionWidget);
+    listenerSelectionLayout->setContentsMargins(0, 0, 0, 0);
+    listenerSelectionLayout->setSpacing(4);
+    listenerSelectionLayout->addWidget(listenerDisplayEdit);
+    listenerSelectionLayout->addWidget(listenerSelectBtn);
+    listenerSelectionWidget->setVisible(false);
 
     agentLabel    = new QLabel("Agent:", this);
     agentCombobox = new QComboBox(this);
@@ -108,8 +141,9 @@ void DialogAgent::createUI()
     leftPanelLayout->setHorizontalSpacing(8);
     leftPanelLayout->setContentsMargins(5, 5, 5, 5);
 
-    leftPanelLayout->addWidget(listenerLabel,       0, 0);
-    leftPanelLayout->addWidget(listenerInput,       0, 1);
+    leftPanelLayout->addWidget(listenerLabel,            0, 0);
+    leftPanelLayout->addWidget(listenerInput,            0, 1);
+    leftPanelLayout->addWidget(listenerSelectionWidget,  0, 1);
 
     leftPanelLayout->addWidget(agentLabel,          1, 0);
     leftPanelLayout->addWidget(agentCombobox,       1, 1);
@@ -207,10 +241,34 @@ void DialogAgent::createUI()
     this->setLayout(mainLayout);
 }
 
-void DialogAgent::Start()
+DialogAgent::DialogAgent(AdaptixWidget* adaptixWidget, const QString &listenerName, const QString &listenerType)
 {
-    this->setModal(true);
-    this->show();
+    this->adaptixWidget = adaptixWidget;
+    this->createUI();
+
+    this->listenerName = listenerName;
+    this->listenerType = listenerType;
+
+    connect(cardWidget,         &QListWidget::itemPressed,                this, &DialogAgent::onProfileSelected);
+    connect(cardWidget,         &QListWidget::customContextMenuRequested, this, &DialogAgent::handleProfileContextMenu);
+    connect(agentCombobox,      &QComboBox::currentTextChanged,           this, &DialogAgent::changeConfig);
+    connect(buildButton,        &QPushButton::clicked,                    this, &DialogAgent::onButtonBuild);
+    connect(buttonNewProfile,   &QPushButton::clicked,                    this, &DialogAgent::onButtonNewProfile);
+    connect(buttonLoad,         &QPushButton::clicked,                    this, &DialogAgent::onButtonLoad);
+    connect(buttonSave,         &QPushButton::clicked,                    this, &DialogAgent::onButtonSave);
+    connect(inputProfileName,   &QLineEdit::textEdited,                   this, &DialogAgent::onProfileNameEdited);
+    connect(actionSaveProfile,  &QAction::toggled,                        this, &DialogAgent::onSaveProfileToggled);
+    connect(listenerListWidget, &QListWidget::itemChanged,                this, &DialogAgent::onListenerSelectionChanged);
+    connect(btnMoveUp,          &QPushButton::clicked,                    this, &DialogAgent::onMoveListenerUp);
+    connect(btnMoveDown,        &QPushButton::clicked,                    this, &DialogAgent::onMoveListenerDown);
+    connect(listenerSelectBtn,  &QPushButton::clicked,                    this, &DialogAgent::showListenerPopup);
+
+    this->listenerInput->setText(listenerName);
+}
+
+DialogAgent::~DialogAgent()
+{
+    stopBuild();
 }
 
 void DialogAgent::AddExAgents(const QStringList &agents, const QMap<QString, AxUI> &uis)
@@ -231,12 +289,28 @@ void DialogAgent::AddExAgents(const QStringList &agents, const QMap<QString, AxU
 
         agentCombobox->addItem(agent);
     }
- }
+}
 
 void DialogAgent::SetProfile(const AuthProfile &profile)
 {
     this->authProfile = profile;
     loadProfiles();
+}
+
+void DialogAgent::SetAvailableListeners(const QVector<ListenerData> &listeners)
+{
+    this->availableListeners = listeners;
+}
+
+void DialogAgent::SetAgentTypes(const QMap<QString, AgentTypeInfo> &types)
+{
+    this->agentTypes = types;
+}
+
+void DialogAgent::Start()
+{
+    this->setModal(true);
+    this->show();
 }
 
 // void DialogAgent::onButtonGenerate()
@@ -252,8 +326,8 @@ void DialogAgent::SetProfile(const AuthProfile &profile)
 //     QString baseDir = authProfile.GetProjectDir();
 //
 //     QPointer<DialogAgent> safeThis = this;
-//
-//     HttpReqAgentGenerateAsync(listenerName, listenerType, agentName, configData, authProfile,
+//      /// ToDo: listenersName array
+//     HttpReqAgentGenerateAsync(listenerName, agentName, configData, authProfile,
 //         [safeThis, baseDir, agentName, configData, profileName, shouldSaveProfile](bool success, const QString &message, const QJsonObject&) {
 //         if (!success) {
 //             MessageError(message);
@@ -411,9 +485,36 @@ void DialogAgent::changeConfig(const QString &agentName)
 {
     if (ax_uis.contains(agentName)) {
         auto ax_ui = &ax_uis[agentName];
-        if (ax_ui)
+        if (ax_ui) {
             configStackWidget->setCurrentWidget(ax_ui->widget);
-        this->resize(ax_ui->width, ax_ui->height);
+            this->resize(ax_ui->width, ax_ui->height);
+        }
+    }
+
+    AgentTypeInfo typeInfo = agentTypes.value(agentName, AgentTypeInfo{false, QStringList()});
+    bool isMultiListeners = typeInfo.multiListeners;
+    listenerSelectionWidget->setVisible(isMultiListeners);
+    listenerInput->setVisible(!isMultiListeners);
+    listenerLabel->setText(isMultiListeners ? "Listeners:" : "Listener:");
+
+    if (isMultiListeners) {
+        QStringList supportedTypes = typeInfo.listenerTypes;
+
+        listenerListWidget->blockSignals(true);
+        listenerListWidget->clear();
+
+        for (const auto &listener : availableListeners) {
+            if (!supportedTypes.contains(listener.ListenerRegName))
+                continue;
+
+            auto *item = new QListWidgetItem(listener.Name);
+            item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+            item->setCheckState(listener.Name == listenerName ? Qt::Checked : Qt::Unchecked);
+            item->setData(Qt::UserRole, listener.Name);
+            listenerListWidget->addItem(item);
+        }
+
+        listenerListWidget->blockSignals(false);
     }
 
     QString baseName = agentName;
@@ -442,18 +543,15 @@ void DialogAgent::loadProfiles()
         QJsonObject jsonObject = document.object();
 
         QString profileListenerType = jsonObject.contains("listener_type") && jsonObject["listener_type"].isString()
-                                      ? jsonObject["listener_type"].toString()
-                                      : "";
+                                      ? jsonObject["listener_type"].toString() : "";
 
         if (profileListenerType != listenerType)
             continue;
 
         QString profileListener = jsonObject.contains("listener") && jsonObject["listener"].isString()
-                                  ? jsonObject["listener"].toString()
-                                  : "";
+                                  ? jsonObject["listener"].toString() : "";
         QString timestamp = jsonObject.contains("timestamp") && jsonObject["timestamp"].isString()
-                            ? jsonObject["timestamp"].toString()
-                            : "";
+                            ? jsonObject["timestamp"].toString() : "";
 
         QString subtitle = profileListener;
         if (!timestamp.isEmpty())
@@ -654,6 +752,23 @@ void DialogAgent::onButtonBuild()
         loadProfiles();
     }
 
+    QStringList selectedListeners;
+    bool isMultiListeners = agentTypes.value(agentName, AgentTypeInfo{false, QStringList()}).multiListeners;
+    if (isMultiListeners) {
+        for (int i = 0; i < listenerListWidget->count(); ++i) {
+            auto *item = listenerListWidget->item(i);
+            if (item->checkState() == Qt::Checked) {
+                selectedListeners.append(item->data(Qt::UserRole).toString());
+            }
+        }
+        if (selectedListeners.isEmpty()) {
+            MessageError("Please select at least one listener");
+            return;
+        }
+    } else {
+        selectedListeners.append(listenerName);
+    }
+
     buildLogOutput->clear();
     buildLogPanel->setVisible(true);
     buildLogOutput->setVisible(true);
@@ -667,11 +782,10 @@ void DialogAgent::onButtonBuild()
     QString urlTemplate = "wss://%1:%2%3/channel";
     QString sUrl = urlTemplate.arg(authProfile.GetHost()).arg(authProfile.GetPort()).arg(authProfile.GetEndpoint());
 
-    QString buildData = (QString("%1|%2|%3")
-        .arg(QString(listenerName.toUtf8().toBase64()))
-        .arg(QString(listenerType.toUtf8().toBase64()))
-        .arg(QString(agentName.toUtf8().toBase64())))
-        .toUtf8().toBase64();
+    QString data = agentName.toUtf8().toBase64();
+    for (const QString &listener : selectedListeners)
+        data += "|" + listener.toUtf8().toBase64();
+    QString buildData = data.toUtf8().toBase64();
 
     buildThread = new QThread;
     buildWorker = new BuildWorker(authProfile.GetAccessToken(), sUrl, buildData, configData);
@@ -809,4 +923,171 @@ void DialogAgent::stopBuild()
     });
 
     QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
+}
+
+void DialogAgent::onListenerSelectionChanged(QListWidgetItem *item)
+{
+    Q_UNUSED(item);
+
+    updateListenerDisplay();
+
+    QString agentName = agentCombobox->currentText();
+    if (agentName.isEmpty() || !agentTypes.value(agentName, AgentTypeInfo{false, QStringList()}).multiListeners)
+        return;
+
+    QStringList selectedListeners;
+    for (int i = 0; i < listenerListWidget->count(); ++i) {
+        auto *listItem = listenerListWidget->item(i);
+        if (listItem->checkState() == Qt::Checked) {
+            selectedListeners.append(listItem->data(Qt::UserRole).toString());
+        }
+    }
+
+    regenerateAgentUI(agentName, selectedListeners);
+}
+
+void DialogAgent::onMoveListenerUp()
+{
+    int currentRow = listenerListWidget->currentRow();
+    if (currentRow <= 0)
+        return;
+
+    listenerListWidget->blockSignals(true);
+    QListWidgetItem *item = listenerListWidget->takeItem(currentRow);
+    listenerListWidget->insertItem(currentRow - 1, item);
+    listenerListWidget->setCurrentRow(currentRow - 1);
+    listenerListWidget->blockSignals(false);
+
+    updateListenerDisplay();
+
+    QString agentName = agentCombobox->currentText();
+    if (!agentName.isEmpty()) {
+        QStringList selectedListeners;
+        for (int i = 0; i < listenerListWidget->count(); ++i) {
+            auto *listItem = listenerListWidget->item(i);
+            if (listItem->checkState() == Qt::Checked) {
+                selectedListeners.append(listItem->data(Qt::UserRole).toString());
+            }
+        }
+        regenerateAgentUI(agentName, selectedListeners);
+    }
+}
+
+void DialogAgent::onMoveListenerDown()
+{
+    int currentRow = listenerListWidget->currentRow();
+    if (currentRow < 0 || currentRow >= listenerListWidget->count() - 1)
+        return;
+
+    listenerListWidget->blockSignals(true);
+    QListWidgetItem *item = listenerListWidget->takeItem(currentRow);
+    listenerListWidget->insertItem(currentRow + 1, item);
+    listenerListWidget->setCurrentRow(currentRow + 1);
+    listenerListWidget->blockSignals(false);
+
+    updateListenerDisplay();
+
+    QString agentName = agentCombobox->currentText();
+    if (!agentName.isEmpty()) {
+        QStringList selectedListeners;
+        for (int i = 0; i < listenerListWidget->count(); ++i) {
+            auto *listItem = listenerListWidget->item(i);
+            if (listItem->checkState() == Qt::Checked) {
+                selectedListeners.append(listItem->data(Qt::UserRole).toString());
+            }
+        }
+        regenerateAgentUI(agentName, selectedListeners);
+    }
+}
+
+void DialogAgent::regenerateAgentUI(const QString &agentName, const QStringList &selectedListeners)
+{
+    if (!adaptixWidget || agentName.isEmpty())
+        return;
+
+    auto engine = adaptixWidget->ScriptManager->AgentScriptEngine(agentName);
+    if (engine == nullptr)
+        return;
+
+    QJSValue func = engine->globalObject().property("GenerateUI");
+    if (!func.isCallable())
+        return;
+
+    QJSValue jsListeners = engine->newArray(selectedListeners.size());
+    for (int i = 0; i < selectedListeners.size(); ++i) {
+        jsListeners.setProperty(i, selectedListeners[i]);
+    }
+
+    QJSValueList args;
+    args << jsListeners;
+    QJSValue result = func.call(args);
+    if (result.isError()) {
+        QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4")
+            .arg(result.toString())
+            .arg(result.property("lineNumber").toInt())
+            .arg(agentName)
+            .arg(result.property("stack").toString());
+        adaptixWidget->ScriptManager->consolePrintError(error);
+        return;
+    }
+
+    if (!result.isObject())
+        return;
+
+    QJSValue ui_container = result.property("ui_container");
+    QJSValue ui_panel     = result.property("ui_panel");
+    QJSValue ui_height    = result.property("ui_height");
+    QJSValue ui_width     = result.property("ui_width");
+
+    if (ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject())
+        return;
+
+    QObject* objPanel = ui_panel.toQObject();
+    auto* formElement = dynamic_cast<AxPanelWrapper*>(objPanel);
+    if (!formElement)
+        return;
+
+    QObject* objContainer = ui_container.toQObject();
+    auto* container = dynamic_cast<AxContainerWrapper*>(objContainer);
+    if (!container)
+        return;
+
+    int h = 550;
+    if (ui_height.isNumber() && ui_height.toInt() > 0)
+        h = ui_height.toInt();
+
+    int w = 550;
+    if (ui_width.isNumber() && ui_width.toInt() > 0)
+        w = ui_width.toInt();
+
+    if (ax_uis.contains(agentName)) {
+        auto &oldUi = ax_uis[agentName];
+        if (oldUi.widget) {
+            configStackWidget->removeWidget(oldUi.widget);
+            oldUi.widget->deleteLater();
+        }
+    }
+
+    ax_uis[agentName] = { container, formElement->widget(), h, w };
+    configStackWidget->addWidget(formElement->widget());
+    configStackWidget->setCurrentWidget(formElement->widget());
+    this->resize(w, h);
+}
+
+void DialogAgent::showListenerPopup()
+{
+    QPoint pos = listenerSelectBtn->mapToGlobal(QPoint(0, listenerSelectBtn->height()));
+    listenerPopupMenu->exec(pos);
+}
+
+void DialogAgent::updateListenerDisplay()
+{
+    QStringList selectedNames;
+    for (int i = 0; i < listenerListWidget->count(); ++i) {
+        auto *item = listenerListWidget->item(i);
+        if (item->checkState() == Qt::Checked) {
+            selectedNames.append(item->text());
+        }
+    }
+    listenerDisplayEdit->setText(selectedNames.join(", "));
 }

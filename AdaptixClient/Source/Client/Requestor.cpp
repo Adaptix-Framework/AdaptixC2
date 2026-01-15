@@ -162,11 +162,10 @@ void HttpReqAgentCommandAsync(const QByteArray &jsonData, AuthProfile& profile, 
     HttpRequestManager::instance().post(profile.GetURL(), "/agent/command/execute", profile.GetAccessToken(), jsonData, callback);
 }
 
-void HttpReqAgentGenerateAsync(const QString &listenerName, const QString &listenerType, const QString &agentName, const QString &configData, AuthProfile& profile, HttpCallback callback)
+void HttpReqAgentGenerateAsync(const QString &listenerName, const QString &agentName, const QString &configData, AuthProfile& profile, HttpCallback callback)
 {
     QJsonObject dataJson;
     dataJson["listener_name"] = listenerName;
-    dataJson["listener_type"] = listenerType;
     dataJson["agent"]         = agentName;
     dataJson["config"]        = configData;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();

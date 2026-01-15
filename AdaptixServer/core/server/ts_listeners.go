@@ -286,14 +286,10 @@ func (ts *Teamserver) TsListenerResume(listenerName string, listenerType string)
 	return nil
 }
 
-func (ts *Teamserver) TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error) {
-	if !ts.listener_configs.Contains(listenerType) {
-		return "", nil, fmt.Errorf("listener '%v' does not exist", listenerType)
-	}
+func (ts *Teamserver) TsListenerGetProfile(listenerName string) (string, []byte, error) {
 	if !ts.listeners.Contains(listenerName) {
 		return "", nil, fmt.Errorf("listener %v does not exist", listenerName)
 	}
-
 	value, _ := ts.listeners.Get(listenerName)
 	watermark := value.(adaptix.ListenerData).Watermark
 	data, err := ts.Extender.ExListenerGetProfile(listenerName)

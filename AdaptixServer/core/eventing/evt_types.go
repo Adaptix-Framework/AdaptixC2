@@ -99,12 +99,11 @@ type EventDataAgentNew struct {
 
 type EventDataAgentGenerate struct {
 	BaseEvent
-	AgentName    string
-	ListenerName string
-	ListenerType string
-	Config       string
-	FileName     string
-	FileContent  []byte
+	AgentName     string
+	ListenersName []string
+	Config        string
+	FileName      string
+	FileContent   []byte
 }
 
 type EventDataAgentCheckin struct {

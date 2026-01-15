@@ -44,7 +44,10 @@ typedef struct RegAgentConfig {
     bool           valid;
 } RegAgentConfig;
 
-
+typedef struct AgentTypeInfo {
+    bool        multiListeners;
+    QStringList listenerTypes;
+} AgentTypeInfo;
 
 class AdaptixWidget : public QWidget
 {
@@ -109,6 +112,7 @@ public:
 
     QVector<RegListenerConfig>     RegisterListeners;
     QVector<RegAgentConfig>        RegisterAgents;
+    QMap<QString, AgentTypeInfo>   AgentTypes;
     QVector<ListenerData>          Listeners;
     QVector<TunnelData>            Tunnels;
     QMap<QString, DownloadData>    Downloads;
@@ -139,10 +143,11 @@ public:
     void ClearAdaptix();
 
     void RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script);
-    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners);
+    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listenersconst, const bool &multiListeners);
     RegListenerConfig GetRegListener(const QString &listenerName);
     QList<QString>    GetAgentNames(const QString &listenerType) const;
     RegAgentConfig    GetRegAgent(const QString &agentName, const QString &listenerName, int os);
+    AgentTypeInfo     GetAgentTypeInfo(const QString &agentName) const;
     QList<Commander*> GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const;
     QList<Commander*> GetCommandersAll() const;
 

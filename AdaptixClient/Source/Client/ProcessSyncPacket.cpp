@@ -196,6 +196,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return checkField("agent", isStr) &&
                checkField("ax", isStr) &&
                checkField("listeners", isArr);
+               checkField("multi_listeners", isBl);
 
     case TYPE_AGENT_NEW:
         return checkField("a_id", isStr) &&

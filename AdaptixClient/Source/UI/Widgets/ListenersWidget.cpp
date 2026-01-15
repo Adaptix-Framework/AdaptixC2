@@ -464,8 +464,11 @@ void ListenersWidget::onGenerateAgent() const
             return;
         }
 
+        QJSValue jsListeners = engine->newArray(1);
+        jsListeners.setProperty(0, listenerRegName);
+
         QJSValueList args;
-        args << QJSValue(listenerRegName);
+        args << jsListeners;
         QJSValue result = func.call(args);
         if (result.isError()) {
             QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(listenerName).arg(result.property("stack").toString());
@@ -516,9 +519,16 @@ void ListenersWidget::onGenerateAgent() const
         ax_uis[agent] = { container, formElement->widget(), h, w };
     }
 
-    DialogAgent* dialogListener = new DialogAgent(listenerName, listenerRegName);
+    QMap<QString, AgentTypeInfo> agentTypesMap;
+    for (const auto &agentItem : agents) {
+        agentTypesMap[agentItem] = adaptixWidget->GetAgentTypeInfo(agentItem);
+    }
+
+    DialogAgent* dialogListener = new DialogAgent(adaptixWidget, listenerName, listenerRegName);
     dialogListener->setAttribute(Qt::WA_DeleteOnClose);
     dialogListener->SetProfile( *(adaptixWidget->GetProfile()) );
+    dialogListener->SetAvailableListeners(adaptixWidget->Listeners);
+    dialogListener->SetAgentTypes(agentTypesMap);
     dialogListener->AddExAgents(agents, ax_uis);
     dialogListener->Start();
 }

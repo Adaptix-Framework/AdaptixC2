@@ -459,8 +459,10 @@ void AdaptixWidget::RegisterListenerConfig(const QString &name, const QString &p
     RegisterListeners.push_back(config);
 }
 
-void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners)
+void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners, const bool &multiListeners)
 {
+    AgentTypes[agentName] = AgentTypeInfo{multiListeners, listeners};
+
     ScriptManager->AgentScriptAdd(agentName, ax_script);
 
     QJSEngine* engine = ScriptManager->AgentScriptEngine(agentName);
@@ -573,6 +575,11 @@ QList<QString> AdaptixWidget::GetAgentNames(const QString &listenerType) const
             names.insert(regAgent.name);
     }
     return names.values();
+}
+
+AgentTypeInfo AdaptixWidget::GetAgentTypeInfo(const QString &agentName) const
+{
+    return AgentTypes.value(agentName, AgentTypeInfo{false, QStringList()});
 }
 
 RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QString &listenerName, const int os)
