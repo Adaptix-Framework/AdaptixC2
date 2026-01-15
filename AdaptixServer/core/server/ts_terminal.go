@@ -214,6 +214,12 @@ func relayWebsocketToTerminal(ts *Teamserver, agent *Agent, terminal *Terminal, 
 			return
 		}
 		for {
+			terminal.mu.Lock()
+			closed := terminal.closed
+			terminal.mu.Unlock()
+			if closed {
+				break
+			}
 			_, msg, err := terminal.wsconn.ReadMessage()
 			if err != nil {
 				break
