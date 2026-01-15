@@ -22,6 +22,8 @@ void LastTickWorker::run()
 
 void LastTickWorker::updateLastItems()
 {
+    QStringList updatedAgents;
+
     for ( auto agent : mainWidget->AgentsMap ) {
         if ( agent->data.Async && agent->active ) {
             int current = QDateTime::currentSecsSinceEpoch();
@@ -59,6 +61,7 @@ void LastTickWorker::updateLastItems()
                     if (agent->data.Mark != "No response")
                         agent->MarkItem("No response");
 
+                    updatedAgents.append(agent->data.Id);
                     continue;
                 }
                 else {
@@ -66,7 +69,10 @@ void LastTickWorker::updateLastItems()
                 }
             }
             agent->LastMark = FormatSecToStr(diff);
+            updatedAgents.append(agent->data.Id);
         }
     }
 
+    if (!updatedAgents.isEmpty())
+        Q_EMIT agentsUpdated(updatedAgents);
 }

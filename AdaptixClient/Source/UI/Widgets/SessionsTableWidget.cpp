@@ -51,13 +51,6 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions
     connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 
     this->dockWidget->setWidget(this);
-
-    this->refreshTimer = new QTimer(this);
-    connect(refreshTimer, &QTimer::timeout, this, [this]() {
-        if (tableView && tableView->isVisible()) {
-            tableView->viewport()->update();
-        }
-    });
 }
 
 SessionsTableWidget::~SessionsTableWidget() = default;
@@ -136,11 +129,6 @@ void SessionsTableWidget::createUI()
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
     mainGridLayout->addWidget( searchWidget, 0, 0, 1, 1);
     mainGridLayout->addWidget( tableView,    1, 0, 1, 1);
-}
-
-void SessionsTableWidget::start() const
-{
-    this->refreshTimer->start(1000);
 }
 
 void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
@@ -241,8 +229,6 @@ void SessionsTableWidget::UpdateAgentTypeComboBox() const
 
 void SessionsTableWidget::Clear() const
 {
-    refreshTimer->stop();
-    
     for (auto agentId : adaptixWidget->AgentsMap.keys()) {
         Agent* agent = adaptixWidget->AgentsMap[agentId];
         adaptixWidget->AgentsMap.remove(agentId);

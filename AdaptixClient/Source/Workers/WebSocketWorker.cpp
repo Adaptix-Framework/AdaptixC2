@@ -28,6 +28,7 @@ void WebSocketWorker::run()
     connect( webSocket, &QWebSocket::connected,             this, &WebSocketWorker::is_connected );
     connect( webSocket, &QWebSocket::disconnected,          this, &WebSocketWorker::is_disconnected );
     connect( webSocket, &QWebSocket::binaryMessageReceived, this, &WebSocketWorker::is_binaryMessageReceived );
+    connect( webSocket, &QWebSocket::pong,                  this, &WebSocketWorker::is_pong );
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
         connect( webSocket, &QWebSocket::errorOccurred, this, &WebSocketWorker::is_error);
