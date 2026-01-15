@@ -14,13 +14,13 @@ const (
 	PriorityNormal = 0
 	PriorityHigh   = 1
 
-	SendBufferSize     = 1024
-	SyncBufferSize     = 1024
-	BroadcastQueueSize = 4096
+	SendBufferSize     = 4096
+	SyncBufferSize     = 8192
+	BroadcastQueueSize = 8192
 
-	WriteTimeout      = 60 * time.Second
+	WriteTimeout      = 300 * time.Second
 	BackpressureWarn  = 0.75
-	BackpressureDrop  = 0.90
+	BackpressureDrop  = 0.95
 	BackpressureClose = 1.0
 )
 
@@ -400,6 +400,10 @@ func (ch *ClientHandler) SendSync(data []byte) {
 	select {
 	case ch.syncChan <- data:
 	case <-ch.done:
+	case <-time.After(30 * time.Second):
+		// Use timeout to prevent infinite blocking when buffer is full
+		// If we can't send within 30 seconds, the client is likely too slow
+		ch.stats.MessagesDropped.Add(1)
 	}
 }
 

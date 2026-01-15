@@ -456,9 +456,15 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if (spType == TYPE_SYNC_BATCH || spType == TYPE_SYNC_CATEGORY_BATCH) {
         QJsonArray packetsArray = jsonObj["packets"].toArray();
+        int processedCount = 0;
         for (const QJsonValue &packetValue : packetsArray) {
             if (packetValue.isObject())
                 processSyncPacket(packetValue.toObject());
+            
+            processedCount++;
+            if (processedCount % 50 == 0) {
+                QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+            }
         }
         if (this->sync && dialogSyncPacket) {
             dialogSyncPacket->receivedLogs += packetsArray.size();
@@ -565,7 +571,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QStringList listeners;
         for (const QJsonValue &listener : jsonObj["listeners"].toArray())
             listeners.append(listener.toString());
-        this->RegisterAgentConfig(jsonObj["agent"].toString(), jsonObj["ax"].toString(), listeners);
+        this->RegisterAgentConfig(jsonObj["agent"].toString(), jsonObj["ax"].toString(), listeners, jsonObj["multi_listeners"].toBool());
         break;
     }
 
@@ -991,6 +997,4 @@ void AdaptixWidget::setSyncUpdateUI(const bool enabled)
 
     for (const auto agent : AgentsMap.values())
         agent->Console->SetUpdatesEnabled(enabled);
-
-    this->setEnabled(enabled);
 }

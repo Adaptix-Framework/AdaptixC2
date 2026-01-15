@@ -3,8 +3,15 @@ package server
 import (
 	"AdaptixServer/core/extender"
 	"sort"
+	"time"
 
 	"github.com/Adaptix-Framework/axc2"
+)
+
+const (
+	MaxConsoleEntriesPerAgent = 500
+	MaxTasksPerAgent          = 500
+	SyncBatchPauseMs          = 5
 )
 
 func (ts *Teamserver) TsClientConnected(username string) bool {
@@ -84,7 +91,7 @@ func (ts *Teamserver) TsSyncStored(client *ClientHandler) {
 	} else {
 		const BATCH_SIZE = 100
 		categoryMap := make(map[string][]interface{})
-		categoryOrder := []string{}
+		var categoryOrder []string
 
 		for _, p := range packets {
 			category := getPacketCategory(p)
@@ -119,8 +126,11 @@ func (ts *Teamserver) TsSyncStored(client *ClientHandler) {
 
 	client.SendSync(startData)
 
-	for _, serialized := range serializedPackets {
+	for i, serialized := range serializedPackets {
 		client.SendSync(serialized)
+		if i > 0 && i%50 == 0 {
+			time.Sleep(time.Duration(SyncBatchPauseMs) * time.Millisecond)
+		}
 	}
 
 	client.SendSync(finishData)

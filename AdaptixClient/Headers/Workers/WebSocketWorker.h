@@ -3,12 +3,15 @@
 
 #include <main.h>
 
+#define PING_INTERVAL_MS 15000
+
 class AuthProfile;
 
 class WebSocketWorker : public QThread
 {
 Q_OBJECT
     AuthProfile* profile;
+    QTimer* pingTimer = nullptr;
 
 public:
     QWebSocket* webSocket = nullptr;
@@ -20,12 +23,16 @@ public:
 
     void run() override;
     void SetProfile(AuthProfile* authProfile);
+    void startPingTimer();
+    void stopPingTimer();
 
 public Q_SLOTS:
     void is_connected();
     void is_disconnected();
     void is_binaryMessageReceived( const QByteArray &data );
     void is_error(QAbstractSocket::SocketError error);
+    void is_pong(quint64 elapsedTime, const QByteArray &payload);
+    void sendPing();
 
 Q_SIGNALS:
     void connected();

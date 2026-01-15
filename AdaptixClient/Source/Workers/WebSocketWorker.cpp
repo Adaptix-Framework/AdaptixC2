@@ -8,6 +8,11 @@ WebSocketWorker::WebSocketWorker(AuthProfile* authProfile)
 
 WebSocketWorker::~WebSocketWorker()
 {
+    if (pingTimer) {
+        pingTimer->stop();
+        delete pingTimer;
+        pingTimer = nullptr;
+    }
     delete webSocket;
 };
 
@@ -42,6 +47,35 @@ void WebSocketWorker::run()
     exec();
 }
 
+void WebSocketWorker::startPingTimer()
+{
+    if (!pingTimer) {
+        pingTimer = new QTimer(this);
+        connect(pingTimer, &QTimer::timeout, this, &WebSocketWorker::sendPing);
+    }
+    pingTimer->start(PING_INTERVAL_MS);
+}
+
+void WebSocketWorker::stopPingTimer()
+{
+    if (pingTimer) {
+        pingTimer->stop();
+    }
+}
+
+void WebSocketWorker::sendPing()
+{
+    if (webSocket && webSocket->state() == QAbstractSocket::ConnectedState) {
+        webSocket->ping();
+    }
+}
+
+void WebSocketWorker::is_pong(quint64 elapsedTime, const QByteArray &payload)
+{
+    Q_UNUSED(elapsedTime)
+    Q_UNUSED(payload)
+}
+
 void WebSocketWorker::is_error(QAbstractSocket::SocketError error)
 {
     QString errMsg = webSocket->errorString();
@@ -63,11 +97,13 @@ void WebSocketWorker::is_connected()
 {
     this->ok = true;
     this->message = "";
+    startPingTimer();
     Q_EMIT this->connected();
 }
 
 void WebSocketWorker::is_disconnected()
 {
+    stopPingTimer();
     this->ok = false;
     this->message = "Disconnected from server";
     Q_EMIT this->websocket_closed();
