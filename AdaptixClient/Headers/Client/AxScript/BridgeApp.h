@@ -30,6 +30,8 @@ public Q_SLOTS:
     QString  arch(const QString &id) const;
     QString  bof_pack(const QString &types, const QJSValue &args);
     void     copy_to_clipboard(const QString &text);
+    // Code conversion (language: "c", "csharp", "python", "golang", "vbs", "nim", "rust", "powershell")
+    QString  convert_to_code(const QString &language, const QString &base64Data, const QString &varName = "shellcode") const;
     void     console_message(const QString &id, const QString &message, const QString &type = "", const QString &text = "");
     QJSValue credentials() const;
     void     credentials_add(const QString &username, const QString &password, const QString &realm = "", const QString &type = "password", const QString &tag = "", const QString &storage = "manual", const QString &host = "");
@@ -37,6 +39,11 @@ public Q_SLOTS:
     QObject* create_command(const QString &name, const QString &description, const QString &example = "", const QString &message = "");
     QObject* create_commands_group(const QString &name, const QJSValue& array);
     QJSValue downloads() const;
+    // (algorithm: "hex", "base64", "base32", "zip", "xor")
+    QString  decode_data(const QString &algorithm, const QString &data, const QString &key = QString()) const;
+    QString  decode_file(const QString &algorithm, const QString &path, const QString &key = QString()) const;
+    QString  encode_data(const QString &algorithm, const QString &data, const QString &key = QString()) const;
+    QString  encode_file(const QString &algorithm, const QString &path, const QString &key = QString()) const;
     void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "", const QJSValue &hook = QJSValue(), const QJSValue &handler = QJSValue()) const;
     void     execute_alias_hook(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const;
     void     execute_alias_handler(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &handler) const;
@@ -45,9 +52,13 @@ public Q_SLOTS:
     void     execute_command_hook(const QString &id, const QString &command, const QJSValue &hook) const;
     void     execute_command_handler(const QString &id, const QString &command, const QJSValue &handler) const;
     QString  file_basename(const QString &path) const;
+    QString  file_dirname(const QString &path) const;
+    QString  file_extension(const QString &path) const;
     bool     file_exists(const QString &path) const;
     QString  file_read(QString path) const;
+    qint64   file_size(const QString &path) const;
     bool     file_write_text(QString path, const QString &content, bool append = false) const;
+    bool     file_write_binary(QString path, const QString &base64Content) const;
     QString  format_size(const int &size) const;
     QString  format_time(const QString &format, const int &time) const;
     QJSValue get_commands(const QString &id) const;

@@ -21,7 +21,7 @@ MainUI::MainUI()
     auto closeProjectAction = new QAction("Close Project", this);
     connect(closeProjectAction, &QAction::triggered, this, &MainUI::onCloseProject);
 
-    auto menuProject = new QMenu("Projects", this);
+    menuProject = new QMenu("Projects", this);
     menuProject->addAction(newProjectAction);
     menuProject->addAction(closeProjectAction);
 
@@ -30,18 +30,20 @@ MainUI::MainUI()
     auto scriptManagerAction = new QAction("Script manager", this);
     connect(scriptManagerAction, &QAction::triggered, this, &MainUI::onScriptManager);
 
-    auto menuExtender = new QMenu("AxScript", this);
-    menuExtender->addAction(axConsoleAction);
-    menuExtender->addAction(scriptManagerAction);
+    menuExtensions = new QMenu("Extensions", this);
+    menuExtensions->addAction(axConsoleAction);
+    menuExtensions->addAction(scriptManagerAction);
+    extDocksSeparator = menuExtensions->addSeparator();
+    extDocksSeparator->setVisible(false);
 
-    auto menuSettings = new QMenu("Settings", this);
+    menuSettings = new QMenu("Settings", this);
     auto settingsAction = new QAction("Open settings", this);
     connect(settingsAction, &QAction::triggered, this, &MainUI::onSettings);
     menuSettings->addAction(settingsAction);
 
     auto mainMenuBar = new QMenuBar(this);
     mainMenuBar->addMenu(menuProject);
-    mainMenuBar->addMenu(menuExtender);
+    mainMenuBar->addMenu(menuExtensions);
     mainMenuBar->addMenu(menuSettings);
 
     this->setMenuBar(mainMenuBar);
@@ -187,3 +189,46 @@ void MainUI::onAxScriptConsole()
 void MainUI::onScriptManager() { GlobalClient->extender->dialogExtender->show(); }
 
 void MainUI::onSettings() { GlobalClient->settings->getDialogSettings()->show(); }
+
+/// EXT MENU
+
+QMenu* MainUI::getMenuProject() const { return menuProject; }
+
+QMenu* MainUI::getMenuAxScript() const { return menuExtensions; }
+
+QMenu* MainUI::getMenuSettings() const { return menuSettings; }
+
+void MainUI::addExtDockAction(const QString &id, const QString &title, bool checked, const std::function<void(bool)> &callback)
+{
+    if (extDockActions.contains(id))
+        return;
+
+    auto *action = new QAction(title, this);
+    action->setCheckable(true);
+    action->setChecked(checked);
+    connect(action, &QAction::toggled, this, callback);
+    menuExtensions->addAction(action);
+    extDockActions[id] = action;
+
+    if (extDocksSeparator && !extDocksSeparator->isVisible())
+        extDocksSeparator->setVisible(true);
+}
+
+void MainUI::removeExtDockAction(const QString &id)
+{
+    if (!extDockActions.contains(id))
+        return;
+
+    auto *action = extDockActions.take(id);
+    menuExtensions->removeAction(action);
+    delete action;
+
+    if (extDockActions.isEmpty() && extDocksSeparator)
+        extDocksSeparator->setVisible(false);
+}
+
+void MainUI::setExtDockChecked(const QString &id, bool checked)
+{
+    if (extDockActions.contains(id))
+        extDockActions[id]->setChecked(checked);
+}

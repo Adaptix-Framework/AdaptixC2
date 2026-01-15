@@ -17,7 +17,7 @@ Q_OBJECT
     QLineEdit*      listenerInput       = nullptr;
     QLineEdit*      listenerDisplayEdit = nullptr;
     QPushButton*    listenerSelectBtn   = nullptr;
-    QMenu*          listenerPopupMenu   = nullptr;
+    QDialog*        listenerPopupDialog = nullptr;
     QListWidget*    listenerListWidget  = nullptr;
     QPushButton*    btnMoveUp           = nullptr;
     QPushButton*    btnMoveDown         = nullptr;

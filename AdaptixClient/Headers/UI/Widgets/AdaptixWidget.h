@@ -132,9 +132,9 @@ public:
 
     AuthProfile* GetProfile() const;
 
-    void AddDockTop(const KDDockWidgets::QtWidgets::DockWidget* dock) const;
-    void AddDockBottom(const KDDockWidgets::QtWidgets::DockWidget* dock) const;
-    void PlaceDockBottom(KDDockWidgets::QtWidgets::DockWidget* dock) const;
+    void PlaceDock(KDDockWidgets::QtWidgets::DockWidget* parentDock, KDDockWidgets::QtWidgets::DockWidget* dock) const;
+    KDDockWidgets::QtWidgets::DockWidget* get_dockTop() {return dockTop;}
+    KDDockWidgets::QtWidgets::DockWidget* get_dockBottom() {return dockBottom;}
 
     bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);

@@ -4,6 +4,9 @@
 #include <Client/AxScript/BridgeForm.h>
 #include <Client/AxScript/BridgeEvent.h>
 #include <Client/AxScript/BridgeMenu.h>
+#include <Client/AxScript/AxElementWrappers.h>
+#include <UI/MainUI.h>
+#include <MainAdaptix.h>
 #include <main.h>
 
 AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &name, QObject *parent) : QObject(parent), scriptManager(script_manager)
@@ -47,6 +50,41 @@ AxScriptEngine::~AxScriptEngine()
         }
     }
     context.events.clear();
+
+    // Remove main menu items
+    if (GlobalClient && GlobalClient->mainUI) {
+        for (const QString& type : {"MainMenu", "MainProjects", "MainAxScript", "MainSettings"}) {
+            for (const auto& item : context.menus.value(type)) {
+                if (auto* act = dynamic_cast<AxActionWrapper*>(item.menu)) {
+                    if (type == "MainProjects")
+                        GlobalClient->mainUI->getMenuProject()->removeAction(act->action());
+                    else if (type == "MainAxScript")
+                        GlobalClient->mainUI->getMenuAxScript()->removeAction(act->action());
+                    else if (type == "MainSettings")
+                        GlobalClient->mainUI->getMenuSettings()->removeAction(act->action());
+                }
+                else if (auto* sep = dynamic_cast<AxSeparatorWrapper*>(item.menu)) {
+                    if (type == "MainProjects")
+                        GlobalClient->mainUI->getMenuProject()->removeAction(sep->action());
+                    else if (type == "MainAxScript")
+                        GlobalClient->mainUI->getMenuAxScript()->removeAction(sep->action());
+                    else if (type == "MainSettings")
+                        GlobalClient->mainUI->getMenuSettings()->removeAction(sep->action());
+                }
+                else if (auto* sub = dynamic_cast<AxMenuWrapper*>(item.menu)) {
+                    if (type == "MainMenu")
+                        GlobalClient->mainUI->menuBar()->removeAction(sub->menu()->menuAction());
+                    else if (type == "MainProjects")
+                        GlobalClient->mainUI->getMenuProject()->removeAction(sub->menu()->menuAction());
+                    else if (type == "MainAxScript")
+                        GlobalClient->mainUI->getMenuAxScript()->removeAction(sub->menu()->menuAction());
+                    else if (type == "MainSettings")
+                        GlobalClient->mainUI->getMenuSettings()->removeAction(sub->menu()->menuAction());
+                }
+            }
+        }
+    }
+    context.menus.clear();
 
     bridgeApp.reset();
     bridgeForm.reset();
@@ -132,6 +170,30 @@ void AxScriptEngine::registerMenu(const QString &type, AbstractAxMenuItem *menu,
 
     AxMenuItem item = {menu, list_agents, list_listeners, os};
     context.menus[type].append(item);
+
+    if (type.startsWith("Main") && GlobalClient && GlobalClient->mainUI) {
+        menu->setContext(QVariantList());
+
+        QMenu* targetMenu = nullptr;
+        if (type == "MainProjects")
+            targetMenu = GlobalClient->mainUI->getMenuProject();
+        else if (type == "MainAxScript")
+            targetMenu = GlobalClient->mainUI->getMenuAxScript();
+        else if (type == "MainSettings")
+            targetMenu = GlobalClient->mainUI->getMenuSettings();
+
+        if (targetMenu) {
+            if (auto* sep = dynamic_cast<AxSeparatorWrapper*>(menu))
+                targetMenu->addAction(sep->action());
+            else if (auto* act = dynamic_cast<AxActionWrapper*>(menu))
+                targetMenu->addAction(act->action());
+            else if (auto* sub = dynamic_cast<AxMenuWrapper*>(menu))
+                targetMenu->addMenu(sub->menu());
+        } else if (type == "MainMenu") {
+            if (auto* sub = dynamic_cast<AxMenuWrapper*>(menu))
+                GlobalClient->mainUI->menuBar()->addMenu(sub->menu());
+        }
+    }
 }
 
 QList<AxMenuItem> AxScriptEngine::getMenuItems(const QString &type)
