@@ -34,6 +34,7 @@ func NewTeamserver() *Teamserver {
 
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
+		service_configs:  safe.NewMap(),
 
 		wm_agent_types: make(map[string]string),
 		wm_listeners:   make(map[string][]string),

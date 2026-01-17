@@ -118,6 +118,11 @@ type Teamserver interface {
 	TsTunnelConnectionHalt(channelId int, errorCode byte)
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
+
+	TsServiceLoad(configPath string) error
+	TsServiceUnload(serviceName string) error
+	TsServiceCall(serviceName string, operator string, function string, args string)
+	TsServiceList() (string, error)
 }
 
 type TsConnector struct {
@@ -269,6 +274,11 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 		api_group.POST("/tunnel/start/rportfwd", connector.TcTunnelStartRpf)
 		api_group.POST("/tunnel/stop", connector.TcTunnelStop)
 		api_group.POST("/tunnel/set/info", connector.TcTunnelSetIno)
+
+		api_group.GET("/service/list", connector.TcServiceList)
+		api_group.POST("/service/load", connector.TcServiceLoad)
+		api_group.POST("/service/unload", connector.TcServiceUnload)
+		api_group.POST("/service/call", connector.TcServiceCall)
 	}
 
 	connector.Engine.NoRoute(limitTimeoutMiddleware(), default404Middleware(tsResponse), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
