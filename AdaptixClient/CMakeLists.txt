@@ -252,7 +252,7 @@ add_executable(AdaptixClient
         Libs/donut/hash.c
         Libs/donut/encrypt.c
         Libs/donut/format.c
-        Libs/donut/loader/clib.c
+
 )
 
 target_compile_definitions(
