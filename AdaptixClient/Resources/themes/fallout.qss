@@ -805,3 +805,15 @@ QStatusBar {
 QStatusBar::item {
     border: none;
 }
+
+
+
+QFrame[frameShape="4"], QFrame[frameShape="5"] {
+    color: rgba(0, 255, 0, 80);
+    background-color: rgba(0, 255, 0, 80);
+}
+
+QFrame[frameShape="4"]:disabled, QFrame[frameShape="5"]:disabled {
+    color: rgba(0, 102, 0, 50);
+    background-color: rgba(0, 102, 0, 50);
+}

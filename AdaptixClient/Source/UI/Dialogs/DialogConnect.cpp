@@ -200,7 +200,6 @@ void DialogConnect::createUI()
     auto separatorLine = new QFrame(this);
     separatorLine->setFrameShape(QFrame::VLine);
     separatorLine->setFrameShadow(QFrame::Sunken);
-    separatorLine->setStyleSheet("QFrame { color: rgba(100, 100, 100, 50); background-color: rgba(100, 100, 100, 50); }");
 
     gridLayout = new QGridLayout(this);
     gridLayout->setContentsMargins(5, 5, 5, 5);

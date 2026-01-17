@@ -821,3 +821,15 @@ CardListWidget::item:selected {
 CardListWidget::item:hover {
     background: transparent;
 }
+
+
+
+QFrame[frameShape="4"], QFrame[frameShape="5"] {
+    color: rgba(98, 114, 164, 120);
+    background-color: rgba(98, 114, 164, 120);
+}
+
+QFrame[frameShape="4"]:disabled, QFrame[frameShape="5"]:disabled {
+    color: rgba(68, 71, 90, 80);
+    background-color: rgba(68, 71, 90, 80);
+}
