@@ -3,6 +3,7 @@ package server
 import (
 	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/logs"
@@ -10,6 +11,8 @@ import (
 	"encoding/json"
 	"net"
 	"os"
+
+	"github.com/goccy/go-yaml"
 )
 
 func NewTeamserver() *Teamserver {
@@ -24,9 +27,10 @@ func NewTeamserver() *Teamserver {
 	broker.Start()
 
 	ts := &Teamserver{
-		Profile: profile.NewProfile(),
-		DBMS:    dbms,
-		Broker:  broker,
+		Profile:      profile.NewProfile(),
+		DBMS:         dbms,
+		Broker:       broker,
+		EventManager: eventing.NewEventManager(),
 
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
@@ -34,18 +38,19 @@ func NewTeamserver() *Teamserver {
 		wm_agent_types: make(map[string]string),
 		wm_listeners:   make(map[string][]string),
 
-		events:      safe.NewSlice(),
-		Agents:      safe.NewMap(),
-		listeners:   safe.NewMap(),
-		messages:    safe.NewSlice(),
-		downloads:   safe.NewMap(),
-		tmp_uploads: safe.NewMap(),
-		screenshots: safe.NewMap(),
-		credentials: safe.NewSlice(),
-		targets:     safe.NewSlice(),
-		terminals:   safe.NewMap(),
-		pivots:      safe.NewSlice(),
-		otps:        safe.NewMap(),
+		notifications: safe.NewSlice(),
+		Agents:        safe.NewMap(),
+		listeners:     safe.NewMap(),
+		messages:      safe.NewSlice(),
+		downloads:     safe.NewMap(),
+		tmp_uploads:   safe.NewMap(),
+		screenshots:   safe.NewMap(),
+		credentials:   safe.NewSlice(),
+		targets:       safe.NewSlice(),
+		terminals:     safe.NewMap(),
+		pivots:        safe.NewSlice(),
+		otps:          safe.NewMap(),
+		builders:      safe.NewMap(),
 	}
 	ts.TaskManager = NewTaskManager(ts)
 	ts.TunnelManager = NewTunnelManager(ts)
@@ -84,7 +89,7 @@ func (ts *Teamserver) SetProfile(path string) error {
 		return err
 	}
 
-	err = json.Unmarshal(fileContent, &ts.Profile)
+	err = yaml.Unmarshal(fileContent, ts.Profile)
 	if err != nil {
 		return err
 	}
@@ -110,7 +115,14 @@ func (ts *Teamserver) RestoreData() {
 	restoreAgents := ts.DBMS.DbAgentAll()
 	for _, agentData := range restoreAgents {
 
+		extenderAgent, err := ts.Extender.ExAgentGetExtender(agentData.Name)
+		if err != nil {
+			logs.Warn("   ", "Failed to get extenderAgent for agent %v (%v): %v", agentData.Id, agentData.Name, err.Error())
+			continue
+		}
+
 		agent := &Agent{
+			Extender:          extenderAgent,
 			OutConsole:        safe.NewSlice(),
 			HostedTunnelData:  safe.NewSafeQueue(0x1000),
 			HostedTasks:       safe.NewSafeQueue(0x100),
@@ -140,7 +152,7 @@ func (ts *Teamserver) RestoreData() {
 		packet := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packet)
 
-		ts.TsEventAgent(true, agentData)
+		ts.TsNotifyAgent(true, agentData)
 
 		/// Tasks
 		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)

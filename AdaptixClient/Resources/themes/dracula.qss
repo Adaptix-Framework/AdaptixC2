@@ -751,9 +751,29 @@ QListWidget {
 }
 
 QListWidget::item {
-    padding: 2px;
+    padding: 6px 4px;
+    margin: 2px 0px;
     border-radius: 4px;
     color: #f8f8f2;
+}
+
+QListWidget::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #6272a4;
+    border-radius: 3px;
+    background-color: #44475a;
+}
+
+QListWidget::indicator:checked {
+    background-color: #50fa7b;
+    border: 1px solid #50fa7b;
+    image: url(:/icons/check);
+}
+
+QListWidget::indicator:unchecked:hover {
+    border: 1px solid #bd93f9;
+    background-color: #4a4d64;
 }
 
 QListWidget::item:hover {

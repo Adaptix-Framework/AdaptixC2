@@ -1,6 +1,8 @@
 #ifndef AXELEMENTWRAPPERS_H
 #define AXELEMENTWRAPPERS_H
 
+#include <UI/Widgets/AbstractDock.h>
+
 #include <QVariant>
 #include <QJSValue>
 #include <QBoxLayout>
@@ -24,6 +26,7 @@
 #include <QSortFilterProxyModel>
 
 class AxScriptEngine;
+class AdaptixWidget;
 
 inline const QMap<QString, QString> FIELD_MAP_CREDS = {
     {"username", "Username"},
@@ -1058,6 +1061,38 @@ public:
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;
     Q_INVOKABLE void     close() const;
+};
+
+
+
+/// DOCK WIDGET
+
+namespace KDDockWidgets::QtWidgets { class DockWidget; }
+
+class AxDockWrapper : public DockTab {
+Q_OBJECT
+    QString dockId;
+    QString dockTitle;
+    QWidget* contentWidget = nullptr;
+
+public:
+    explicit AxDockWrapper(AdaptixWidget* w, const QString& id, const QString& title, const QString& location);
+    ~AxDockWrapper() override;
+
+    QString id() const { return dockId; }
+
+    Q_INVOKABLE void setLayout(QObject* layoutWrapper);
+    Q_INVOKABLE void setSize(int w, int h) const;
+    Q_INVOKABLE void show();
+    Q_INVOKABLE void hide();
+    Q_INVOKABLE void close();
+    Q_INVOKABLE bool isVisible() const;
+    Q_INVOKABLE void setTitle(const QString& title);
+
+Q_SIGNALS:
+    void closed();
+    void shown();
+    void hidden();
 };
 
 #endif

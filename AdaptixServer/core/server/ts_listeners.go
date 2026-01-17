@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
@@ -28,6 +29,21 @@ func (ts *Teamserver) TsListenerList() (string, error) {
 }
 
 func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName string, listenerConfig string, createTime int64, listenerWatermark string, listenerCustomData []byte) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataListenerStart{
+		ListenerName: listenerName,
+		ListenerType: listenerRegName,
+		Config:       listenerConfig,
+		Restart:      false,
+	}
+	if !ts.EventManager.Emit(eventing.EventListenerStart, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	value, ok := ts.listener_configs.Get(listenerRegName)
 	if !ok {
 		return fmt.Errorf("listener %v does not register", listenerRegName)
@@ -73,9 +89,19 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 	packet := CreateSpListenerStart(listenerData)
 	ts.TsSyncAllClients(packet)
 
-	ts.TsEventListenerStart(false, listenerName, listenerRegName)
+	ts.TsNotifyListenerStart(false, listenerName, listenerRegName)
 
 	_ = ts.DBMS.DbListenerInsert(listenerData, customData)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataListenerStart{
+		ListenerName: listenerName,
+		ListenerType: listenerRegName,
+		Config:       listenerConfig,
+		Restart:      false,
+	}
+	ts.EventManager.EmitAsync(eventing.EventListenerStart, postEvent)
+	// -----------------
 
 	return nil
 }
@@ -109,7 +135,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string
 	packet := CreateSpListenerEdit(listenerData)
 	ts.TsSyncAllClients(packet)
 
-	ts.TsEventListenerStart(true, listenerName, listenerRegName)
+	ts.TsNotifyListenerStart(true, listenerName, listenerRegName)
 
 	_ = ts.DBMS.DbListenerUpdate(listenerName, listenerConfig, customData)
 
@@ -117,6 +143,19 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string
 }
 
 func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataListenerStop{
+		ListenerName: listenerName,
+		ListenerType: listenerType,
+	}
+	if !ts.EventManager.Emit(eventing.EventListenerStop, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	if !ts.listener_configs.Contains(listenerType) {
 		return fmt.Errorf("listener %v does not exist", listenerType)
 	}
@@ -134,14 +173,35 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 	packet := CreateSpListenerStop(listenerName)
 	ts.TsSyncAllClients(packet)
 
-	ts.TsEventListenerStop(listenerName, listenerType)
+	ts.TsNotifyListenerStop(listenerName, listenerType)
 
 	_ = ts.DBMS.DbListenerDelete(listenerName)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataListenerStop{
+		ListenerName: listenerName,
+		ListenerType: listenerType,
+	}
+	ts.EventManager.EmitAsync(eventing.EventListenerStop, postEvent)
+	// -----------------
 
 	return nil
 }
 
 func (ts *Teamserver) TsListenerPause(listenerName string, listenerType string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataListenerPause{
+		ListenerName: listenerName,
+		ListenerType: listenerType,
+	}
+	if !ts.EventManager.Emit(eventing.EventListenerPause, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	if !ts.listener_configs.Contains(listenerType) {
 		return fmt.Errorf("listener %v does not exist", listenerType)
 	}
@@ -166,10 +226,31 @@ func (ts *Teamserver) TsListenerPause(listenerName string, listenerType string) 
 	packet := CreateSpListenerEdit(listenerData)
 	ts.TsSyncAllClients(packet)
 
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataListenerPause{
+		ListenerName: listenerName,
+		ListenerType: listenerType,
+	}
+	ts.EventManager.EmitAsync(eventing.EventListenerPause, postEvent)
+	// -----------------
+
 	return nil
 }
 
 func (ts *Teamserver) TsListenerResume(listenerName string, listenerType string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataListenerResume{
+		ListenerName: listenerName,
+		ListenerType: listenerType,
+	}
+	if !ts.EventManager.Emit(eventing.EventListenerResume, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	if !ts.listener_configs.Contains(listenerType) {
 		return fmt.Errorf("listener %v does not exist", listenerType)
 	}
@@ -194,17 +275,21 @@ func (ts *Teamserver) TsListenerResume(listenerName string, listenerType string)
 	packet := CreateSpListenerEdit(listenerData)
 	ts.TsSyncAllClients(packet)
 
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataListenerResume{
+		ListenerName: listenerName,
+		ListenerType: listenerType,
+	}
+	ts.EventManager.EmitAsync(eventing.EventListenerResume, postEvent)
+	// -----------------
+
 	return nil
 }
 
-func (ts *Teamserver) TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error) {
-	if !ts.listener_configs.Contains(listenerType) {
-		return "", nil, fmt.Errorf("listener '%v' does not exist", listenerType)
-	}
+func (ts *Teamserver) TsListenerGetProfile(listenerName string) (string, []byte, error) {
 	if !ts.listeners.Contains(listenerName) {
 		return "", nil, fmt.Errorf("listener %v does not exist", listenerName)
 	}
-
 	value, _ := ts.listeners.Get(listenerName)
 	watermark := value.(adaptix.ListenerData).Watermark
 	data, err := ts.Extender.ExListenerGetProfile(listenerName)

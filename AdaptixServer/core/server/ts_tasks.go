@@ -64,7 +64,7 @@ func (ts *Teamserver) extractHostedTasks(agent *Agent, availableSize int, startS
 
 		if usedSize+len(taskData.Data) < availableSize {
 			tasks = append(tasks, taskData)
-			if taskData.Sync || taskData.Type == TYPE_BROWSER {
+			if taskData.Sync || taskData.Type == adaptix.TASK_TYPE_BROWSER {
 				agent.RunningTasks.Put(taskData.TaskId, taskData)
 			}
 			sendTasks = append(sendTasks, taskData.TaskId)

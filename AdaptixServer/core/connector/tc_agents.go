@@ -22,20 +22,17 @@ func (tc *TsConnector) TcAgentList(ctx *gin.Context) {
 }
 
 type AgentConfig struct {
-	ListenerName string `json:"listener_name"`
-	ListenerType string `json:"listener_type"`
-	AgentName    string `json:"agent"`
-	Config       string `json:"config"`
+	ListenerName []string `json:"listener_name"`
+	AgentName    string   `json:"agent"`
+	Config       string   `json:"config"`
 }
 
 func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
 	var (
-		agentConfig     AgentConfig
-		err             error
-		listenerProfile []byte
-		listenerWM      string
-		fileContent     []byte
-		fileName        string
+		agentConfig AgentConfig
+		err         error
+		fileContent []byte
+		fileName    string
 	)
 
 	err = ctx.ShouldBindJSON(&agentConfig)
@@ -44,13 +41,7 @@ func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
 		return
 	}
 
-	listenerWM, listenerProfile, err = tc.teamserver.TsListenerGetProfile(agentConfig.ListenerName, agentConfig.ListenerType)
-	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
-		return
-	}
-
-	fileContent, fileName, err = tc.teamserver.TsAgentGenerate(agentConfig.AgentName, agentConfig.Config, listenerWM, listenerProfile)
+	fileContent, fileName, err = tc.teamserver.TsAgentBuildSyncOnce(agentConfig.AgentName, agentConfig.Config, agentConfig.ListenerName)
 	if err != nil {
 		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
 		return

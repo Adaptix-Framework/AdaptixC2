@@ -133,17 +133,20 @@ void CredentialsWidget::AddCredentialsItems(QList<CredentialData> credsList) con
         return;
 
     QList<CredentialData> filtered;
-    QSet<QString> existingIds;
-    for (const auto& c : adaptixWidget->Credentials)
-        existingIds.insert(c.CredId);
+    {
+        QWriteLocker locker(&adaptixWidget->CredentialsLock);
+        QSet<QString> existingIds;
+        for (const auto& c : adaptixWidget->Credentials)
+            existingIds.insert(c.CredId);
 
-    for (const auto& cred : credsList) {
-        if (existingIds.contains(cred.CredId))
-            continue;
+        for (const auto& cred : credsList) {
+            if (existingIds.contains(cred.CredId))
+                continue;
 
-        existingIds.insert(cred.CredId);
-        adaptixWidget->Credentials.push_back(cred);
-        filtered.append(cred);
+            existingIds.insert(cred.CredId);
+            adaptixWidget->Credentials.push_back(cred);
+            filtered.append(cred);
+        }
     }
 
     if (filtered.isEmpty())
@@ -159,18 +162,21 @@ void CredentialsWidget::AddCredentialsItems(QList<CredentialData> credsList) con
 
 void CredentialsWidget::EditCredentialsItem(const CredentialData &newCredentials) const
 {
-    for ( int i = 0; i < adaptixWidget->Credentials.size(); i++ ) {
-        if( adaptixWidget->Credentials[i].CredId == newCredentials.CredId ) {
-            CredentialData* cd = &adaptixWidget->Credentials[i];
+    {
+        QWriteLocker locker(&adaptixWidget->CredentialsLock);
+        for ( int i = 0; i < adaptixWidget->Credentials.size(); i++ ) {
+            if( adaptixWidget->Credentials[i].CredId == newCredentials.CredId ) {
+                CredentialData* cd = &adaptixWidget->Credentials[i];
 
-            cd->Username = newCredentials.Username;
-            cd->Password = newCredentials.Password;
-            cd->Realm    = newCredentials.Realm;
-            cd->Type     = newCredentials.Type;
-            cd->Tag      = newCredentials.Tag;
-            cd->Storage  = newCredentials.Storage;
-            cd->Host     = newCredentials.Host;
-            break;
+                cd->Username = newCredentials.Username;
+                cd->Password = newCredentials.Password;
+                cd->Realm    = newCredentials.Realm;
+                cd->Type     = newCredentials.Type;
+                cd->Tag      = newCredentials.Tag;
+                cd->Storage  = newCredentials.Storage;
+                cd->Host     = newCredentials.Host;
+                break;
+            }
         }
     }
 
@@ -181,12 +187,15 @@ void CredentialsWidget::EditCredentialsItem(const CredentialData &newCredentials
 void CredentialsWidget::RemoveCredentialsItem(const QStringList &credsId) const
 {
     QStringList filtered;
-    for (auto credId : credsId) {
-        for ( int i = 0; i < adaptixWidget->Credentials.size(); i++ ) {
-            if( adaptixWidget->Credentials[i].CredId == credId ) {
-                filtered.append(credId);
-                adaptixWidget->Credentials.erase( adaptixWidget->Credentials.begin() + i );
-                break;
+    {
+        QWriteLocker locker(&adaptixWidget->CredentialsLock);
+        for (auto credId : credsId) {
+            for ( int i = 0; i < adaptixWidget->Credentials.size(); i++ ) {
+                if( adaptixWidget->Credentials[i].CredId == credId ) {
+                    filtered.append(credId);
+                    adaptixWidget->Credentials.erase( adaptixWidget->Credentials.begin() + i );
+                    break;
+                }
             }
         }
     }
@@ -196,14 +205,17 @@ void CredentialsWidget::RemoveCredentialsItem(const QStringList &credsId) const
 
 void CredentialsWidget::CredsSetTag(const QStringList &credsIds, const QString &tag) const
 {
-    QSet<QString> set1 = QSet<QString>(credsIds.begin(), credsIds.end());
-    for ( int i = 0; i < adaptixWidget->Credentials.size(); i++ ) {
-        if( set1.contains(adaptixWidget->Credentials[i].CredId) ) {
-            adaptixWidget->Credentials[i].Tag = tag;
-            set1.remove(adaptixWidget->Credentials[i].CredId);
+    {
+        QWriteLocker locker(&adaptixWidget->CredentialsLock);
+        QSet<QString> set1 = QSet<QString>(credsIds.begin(), credsIds.end());
+        for ( int i = 0; i < adaptixWidget->Credentials.size(); i++ ) {
+            if( set1.contains(adaptixWidget->Credentials[i].CredId) ) {
+                adaptixWidget->Credentials[i].Tag = tag;
+                set1.remove(adaptixWidget->Credentials[i].CredId);
 
-            if (set1.size() == 0)
-                break;
+                if (set1.size() == 0)
+                    break;
+            }
         }
     }
 
@@ -227,11 +239,14 @@ void CredentialsWidget::UpdateFilterComboBoxes() const
     QSet<QString> types;
     QSet<QString> storages;
 
-    for (const auto& cred : adaptixWidget->Credentials) {
-        if (!cred.Type.isEmpty())
-            types.insert(cred.Type);
-        if (!cred.Storage.isEmpty())
-            storages.insert(cred.Storage);
+    {
+        QReadLocker locker(&adaptixWidget->CredentialsLock);
+        for (const auto& cred : adaptixWidget->Credentials) {
+            if (!cred.Type.isEmpty())
+                types.insert(cred.Type);
+            if (!cred.Storage.isEmpty())
+                storages.insert(cred.Storage);
+        }
     }
 
     QString currentType = typeComboBox->currentText();
@@ -270,7 +285,10 @@ void CredentialsWidget::UpdateFilterComboBoxes() const
 
 void CredentialsWidget::Clear() const
 {
-    adaptixWidget->Credentials.clear();
+    {
+        QWriteLocker locker(&adaptixWidget->CredentialsLock);
+        adaptixWidget->Credentials.clear();
+    }
     credsModel->clear();
     inputFilter->clear();
 }

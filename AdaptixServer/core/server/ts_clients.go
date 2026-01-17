@@ -1,6 +1,8 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -11,18 +13,35 @@ func (ts *Teamserver) TsClientExists(username string) bool {
 }
 
 func (ts *Teamserver) TsClientConnect(username string, version string, socket *websocket.Conn) {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataClientConnect{Username: username}
+	if !ts.EventManager.Emit(eventing.EventClientConnect, eventing.HookPre, preEvent) {
+		return
+	}
+	// ----------------
+
 	supportsBatchSync := version == SMALL_VERSION
 
 	client := NewClientHandler(username, socket, supportsBatchSync, ts.Broker)
 	client.Start()
 
 	ts.Broker.Register(client)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataClientConnect{Username: username}
+	ts.EventManager.EmitAsync(eventing.EventClientConnect, postEvent)
+	// -----------------
 }
 
 func (ts *Teamserver) TsClientDisconnect(username string) {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataClientDisconnect{Username: username}
+	ts.EventManager.Emit(eventing.EventClientDisconnect, eventing.HookPre, preEvent)
+	// ----------------
+
 	ts.Broker.Unregister(username)
 
-	ts.TsEventClient(false, username)
+	ts.TsNotifyClient(false, username)
 
 	var tunnelIds []string
 	ts.TunnelManager.ForEachTunnel(func(key string, tunnel *Tunnel) bool {
@@ -36,6 +55,11 @@ func (ts *Teamserver) TsClientDisconnect(username string) {
 	}
 
 	ts.TsProcessHookJobsForDisconnectedClient(username)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataClientDisconnect{Username: username}
+	ts.EventManager.EmitAsync(eventing.EventClientDisconnect, postEvent)
+	// -----------------
 }
 
 func (ts *Teamserver) TsClientSync(username string) {
@@ -62,5 +86,5 @@ func (ts *Teamserver) TsClientSync(username string) {
 		}
 	}
 
-	ts.TsEventClient(true, username)
+	ts.TsNotifyClient(true, username)
 }

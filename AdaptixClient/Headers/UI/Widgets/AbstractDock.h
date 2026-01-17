@@ -91,8 +91,7 @@ public:
         if (!icon.isEmpty())
             dockWidget->setIcon(QIcon(icon), KDDockWidgets::IconPlace::TabBar);
 
-        connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isCurrentTabChanged,
-                this, &DockTab::onCurrentTabChanged);
+        connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isCurrentTabChanged, this, &DockTab::onCurrentTabChanged);
 
         QTimer::singleShot(0, this, &DockTab::setupAutoBlink);
     };

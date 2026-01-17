@@ -23,18 +23,17 @@ AxScriptWorker::AxScriptWorker(AxScriptManager* manager, const QString& name, QO
 AxScriptWorker::~AxScriptWorker()
 {
     if (workerThread && workerThread->isRunning()) {
-        if (scriptEngine) {
-            scriptEngine->deleteLater();
-            scriptEngine = nullptr;
-        }
         workerThread->quit();
         workerThread->wait();
-    } else if (scriptEngine) {
+    }
+
+    if (scriptEngine) {
         delete scriptEngine;
         scriptEngine = nullptr;
     }
-    
+
     delete workerThread;
+    workerThread = nullptr;
 }
 
 AxScriptEngine* AxScriptWorker::engine() const

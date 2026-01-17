@@ -1,52 +1,52 @@
 package profile
 
 type AdaptixProfile struct {
-	Server         *TsProfile  `json:"Teamserver"`
-	ServerResponse *TsResponse `json:"ServerResponse"`
-	Callbacks      *TsCallback `json:"EventCallback"`
+	Server         *TsProfile  `yaml:"Teamserver"`
+	ServerResponse *TsResponse `yaml:"ServerResponse"`
+	Callbacks      *TsCallback `yaml:"EventCallback"`
 }
 
 type TsProfile struct {
-	Interface    string            `json:"interface"`
-	Port         int               `json:"port"`
-	Endpoint     string            `json:"endpoint"`
-	Password     string            `json:"password"`
-	OnlyPassword bool              `json:"only_password"`
-	Operators    map[string]string `json:"operators"`
-	Cert         string            `json:"cert"`
-	Key          string            `json:"key"`
-	Extenders    []string          `json:"extenders"`
-	ATokenLive   int               `json:"access_token_live_hours"`
-	RTokenLive   int               `json:"refresh_token_live_hours"`
+	Interface    string            `yaml:"interface"`
+	Port         int               `yaml:"port"`
+	Endpoint     string            `yaml:"endpoint"`
+	Password     string            `yaml:"password"`
+	OnlyPassword bool              `yaml:"only_password"`
+	Operators    map[string]string `yaml:"operators"`
+	Cert         string            `yaml:"cert"`
+	Key          string            `yaml:"key"`
+	Extenders    []string          `yaml:"extenders"`
+	ATokenLive   int               `yaml:"access_token_live_hours"`
+	RTokenLive   int               `yaml:"refresh_token_live_hours"`
 }
 
 type TsResponse struct {
-	Status      int               `json:"status"`
-	Headers     map[string]string `json:"headers"`
-	PagePath    string            `json:"page"`
+	Status      int               `yaml:"status"`
+	Headers     map[string]string `yaml:"headers"`
+	PagePath    string            `yaml:"page"`
 	PageContent string
 }
 
 type WebhookConfig struct {
-	URL     string            `json:"url"`
-	Method  string            `json:"method"`
-	Headers map[string]string `json:"headers"`
-	Data    string            `json:"data"`
+	URL     string            `yaml:"url"`
+	Method  string            `yaml:"method"`
+	Headers map[string]string `yaml:"headers"`
+	Data    string            `yaml:"data"`
 }
 
 type TsCallback struct {
 	Telegram struct {
-		Token   string   `json:"token"`
-		ChatsId []string `json:"chats_id"`
-	} `json:"Telegram"`
+		Token   string   `yaml:"token"`
+		ChatsId []string `yaml:"chats_id"`
+	} `yaml:"Telegram"`
 
 	Slack struct {
-		WebhookURL string `json:"webhook_url"`
-	} `json:"Slack"`
+		WebhookURL string `yaml:"webhook_url"`
+	} `yaml:"Slack"`
 
-	Webhooks []WebhookConfig `json:"webhooks"`
+	Webhooks []WebhookConfig `yaml:"Webhooks"`
 
-	NewAgentMessage    string `json:"new_agent_message"`
-	NewCredMessage     string `json:"new_cred_message"`
-	NewDownloadMessage string `json:"new_download_message"`
+	NewAgentMessage    string `yaml:"new_agent_message"`
+	NewCredMessage     string `yaml:"new_cred_message"`
+	NewDownloadMessage string `yaml:"new_download_message"`
 }

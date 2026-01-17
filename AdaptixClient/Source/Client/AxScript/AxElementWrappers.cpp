@@ -12,8 +12,6 @@
 #include <QDialog>
 #include <QMenu>
 
-
-
 /// MENU
 
 AxActionWrapper::AxActionWrapper(const QString& text, const QJSValue& handler, QJSEngine* engine, QObject* parent) : AbstractAxMenuItem(parent), handler(handler), engine(engine) { pAction = new QAction(text, this); }
@@ -1267,3 +1265,115 @@ QJSValue AxSelectorAgents::exec() const
 }
 
 void AxSelectorAgents::close() const { dialog->close(); }
+
+
+
+/// DOCK WIDGET
+
+#include <UI/Widgets/AdaptixWidget.h>
+#include <Client/AuthProfile.h>
+#include <MainAdaptix.h>
+#include <UI/MainUI.h>
+
+AxDockWrapper::AxDockWrapper(AdaptixWidget* w, const QString& id, const QString& title, const QString& location): DockTab(title, w->GetProfile()->GetProject())
+{
+    QString project = w->GetProfile()->GetProject();
+
+    contentWidget = new QWidget();
+    contentWidget->setProperty("Main", "base");
+
+    dockWidget->setWidget(contentWidget);
+
+    dockId = id + "-" + project;
+
+    if (GlobalClient && GlobalClient->mainUI) {
+        QString actionTitle = QString("%1 (%2)").arg(title).arg(project);
+        GlobalClient->mainUI->addExtDockAction(dockId, actionTitle, false, [this](bool checked) {
+            dockWidget->toggleAction()->trigger();
+        });
+    }
+
+    if (location == "top") {
+        w->PlaceDock(w->get_dockTop() , dockWidget);
+        dockWidget->toggleAction()->trigger();
+    }
+    else if (location == "bottom") {
+        w->PlaceDock(w->get_dockBottom() , dockWidget);
+        dockWidget->toggleAction()->trigger();
+    }
+    else {
+        dockWidget->open();
+    }
+    GlobalClient->mainUI->setExtDockChecked(dockId, false);
+
+    connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isOpenChanged, this, [this](bool open) {
+        if (!open) {
+            Q_EMIT hidden();
+            if (GlobalClient && GlobalClient->mainUI)
+                GlobalClient->mainUI->setExtDockChecked(dockId, false);
+        } else {
+            Q_EMIT shown();
+            if (GlobalClient && GlobalClient->mainUI)
+                GlobalClient->mainUI->setExtDockChecked(dockId, true);
+        }
+    });
+}
+
+AxDockWrapper::~AxDockWrapper()
+{
+    if (GlobalClient && GlobalClient->mainUI)
+        GlobalClient->mainUI->removeExtDockAction(dockId);
+
+    if (dockWidget) {
+        dockWidget->close();
+        dockWidget->deleteLater();
+    }
+}
+
+void AxDockWrapper::setLayout(QObject* layoutWrapper)
+{
+    if (auto* lw = dynamic_cast<AbstractAxLayout*>(layoutWrapper)) {
+        if (contentWidget->layout())
+            delete contentWidget->layout();
+        contentWidget->setLayout(lw->layout());
+    }
+}
+
+void AxDockWrapper::setSize(const int w, const int h) const
+{
+    if (contentWidget)
+        contentWidget->resize(w, h);
+}
+
+void AxDockWrapper::show()
+{
+    if (!dockWidget)
+        return;
+
+    if ( !dockWidget->isOpen() )
+        dockWidget->toggleAction()->trigger();
+}
+
+void AxDockWrapper::hide()
+{
+    if (dockWidget)
+        dockWidget->close();
+}
+
+void AxDockWrapper::close()
+{
+    hide();
+    Q_EMIT closed();
+}
+
+bool AxDockWrapper::isVisible() const
+{
+    return dockWidget && dockWidget->isOpen();
+}
+
+void AxDockWrapper::setTitle(const QString& title)
+{
+    dockTitle = title;
+    if (dockWidget)
+        dockWidget->setTitle(title);
+}

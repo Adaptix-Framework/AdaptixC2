@@ -8,6 +8,7 @@
 #include <kddockwidgets/qtwidgets/views/MainWindow.h>
 
 #include <QJSValue>
+#include <QReadWriteLock>
 
 class Task;
 class Agent;
@@ -44,7 +45,10 @@ typedef struct RegAgentConfig {
     bool           valid;
 } RegAgentConfig;
 
-
+typedef struct AgentTypeInfo {
+    bool        multiListeners;
+    QStringList listenerTypes;
+} AgentTypeInfo;
 
 class AdaptixWidget : public QWidget
 {
@@ -109,6 +113,7 @@ public:
 
     QVector<RegListenerConfig>     RegisterListeners;
     QVector<RegAgentConfig>        RegisterAgents;
+    QMap<QString, AgentTypeInfo>   AgentTypes;
     QVector<ListenerData>          Listeners;
     QVector<TunnelData>            Tunnels;
     QMap<QString, DownloadData>    Downloads;
@@ -118,6 +123,13 @@ public:
     QMap<QString, PivotData>       Pivots;
     QMap<QString, TaskData>        TasksMap;
     QMap<QString, Agent*>          AgentsMap;
+    mutable QReadWriteLock         AgentsMapLock;
+    mutable QReadWriteLock         TasksMapLock;
+    mutable QReadWriteLock         CredentialsLock;
+    mutable QReadWriteLock         DownloadsLock;
+    mutable QReadWriteLock         ScreenshotsLock;
+    mutable QReadWriteLock         TargetsLock;
+    mutable QReadWriteLock         TunnelsLock;
     QMap<QString, AxExecutor>      PostHooksJS;
     QMap<QString, AxExecutor>      PostHandlersJS;
     QMap<QString, TunnelEndpoint*> ClientTunnels;
@@ -128,9 +140,9 @@ public:
 
     AuthProfile* GetProfile() const;
 
-    void AddDockTop(const KDDockWidgets::QtWidgets::DockWidget* dock) const;
-    void AddDockBottom(const KDDockWidgets::QtWidgets::DockWidget* dock) const;
-    void PlaceDockBottom(KDDockWidgets::QtWidgets::DockWidget* dock) const;
+    void PlaceDock(KDDockWidgets::QtWidgets::DockWidget* parentDock, KDDockWidgets::QtWidgets::DockWidget* dock) const;
+    KDDockWidgets::QtWidgets::DockWidget* get_dockTop() {return dockTop;}
+    KDDockWidgets::QtWidgets::DockWidget* get_dockBottom() {return dockBottom;}
 
     bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);
@@ -139,10 +151,11 @@ public:
     void ClearAdaptix();
 
     void RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script);
-    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners);
+    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listenersconst, const bool &multiListeners);
     RegListenerConfig GetRegListener(const QString &listenerName);
     QList<QString>    GetAgentNames(const QString &listenerType) const;
     RegAgentConfig    GetRegAgent(const QString &agentName, const QString &listenerName, int os);
+    AgentTypeInfo     GetAgentTypeInfo(const QString &agentName) const;
     QList<Commander*> GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const;
     QList<Commander*> GetCommandersAll() const;
 

@@ -3,8 +3,15 @@ package server
 import (
 	"AdaptixServer/core/extender"
 	"sort"
+	"time"
 
 	"github.com/Adaptix-Framework/axc2"
+)
+
+const (
+	MaxConsoleEntriesPerAgent = 500
+	MaxTasksPerAgent          = 500
+	SyncBatchPauseMs          = 5
 )
 
 func (ts *Teamserver) TsClientConnected(username string) bool {
@@ -21,8 +28,8 @@ func getPacketCategory(packet interface{}) string {
 		return "console"
 	case SyncPackerAgentTaskSync, SyncPackerAgentTaskUpdate:
 		return "tasks"
-	case SpEvent:
-		return "events"
+	case SpNotification:
+		return "notifications"
 	case SyncPackerChatMessage:
 		return "chat"
 	case SyncPackerDownloadCreate, SyncPackerDownloadUpdate:
@@ -64,7 +71,7 @@ func (ts *Teamserver) TsSyncStored(client *ClientHandler) {
 	packets = append(packets, ts.TsPresyncDownloads()...)
 	packets = append(packets, ts.TsPresyncScreenshots()...)
 	packets = append(packets, ts.TsPresyncTunnels()...)
-	packets = append(packets, ts.TsPresyncEvents()...)
+	packets = append(packets, ts.TsPresyncNotifications()...)
 	packets = append(packets, ts.TsPresyncPivots()...)
 	packets = append(packets, ts.TsPresyncCredentials()...)
 	packets = append(packets, ts.TsPresyncTargets()...)
@@ -84,7 +91,7 @@ func (ts *Teamserver) TsSyncStored(client *ClientHandler) {
 	} else {
 		const BATCH_SIZE = 100
 		categoryMap := make(map[string][]interface{})
-		categoryOrder := []string{}
+		var categoryOrder []string
 
 		for _, p := range packets {
 			category := getPacketCategory(p)
@@ -119,8 +126,11 @@ func (ts *Teamserver) TsSyncStored(client *ClientHandler) {
 
 	client.SendSync(startData)
 
-	for _, serialized := range serializedPackets {
+	for i, serialized := range serializedPackets {
 		client.SendSync(serialized)
+		if i > 0 && i%50 == 0 {
+			time.Sleep(time.Duration(SyncBatchPauseMs) * time.Millisecond)
+		}
 	}
 
 	client.SendSync(finishData)
@@ -139,7 +149,7 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 
 	ts.agent_configs.ForEach(func(key string, value interface{}) bool {
 		agentInfo := value.(extender.AgentInfo)
-		p := CreateSpAgentReg(agentInfo.Name, agentInfo.AX, agentInfo.Listeners)
+		p := CreateSpAgentReg(agentInfo.Name, agentInfo.AX, agentInfo.Listeners, agentInfo.MultiListeners)
 		packets = append(packets, p)
 		return true
 	})
@@ -322,9 +332,9 @@ func (ts *Teamserver) TsPresyncTunnels() []interface{} {
 	return packets
 }
 
-func (ts *Teamserver) TsPresyncEvents() []interface{} {
+func (ts *Teamserver) TsPresyncNotifications() []interface{} {
 	var packets []interface{}
-	ts.events.DirectAccess(func(item interface{}) {
+	ts.notifications.DirectAccess(func(item interface{}) {
 		packets = append(packets, item)
 	})
 	return packets

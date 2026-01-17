@@ -145,7 +145,7 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 
 	exists = tc.teamserver.TsClientExists(username)
 	if !exists {
-		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: client not connected", "ok": false})
 		return
 	}
 
@@ -165,15 +165,30 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 	}
 
 	ChannelType := ctx.GetHeader("Channel-Type")
+	ChannelData := ctx.GetHeader("Channel-Data")
 
 	switch ChannelType {
-
 	case "tunnel":
-		tunnelData := ctx.GetHeader("Channel-Data")
-		_ = tc.teamserver.TsTunnelClientNewChannel(tunnelData, wsConn)
+		if err := tc.teamserver.TsTunnelClientNewChannel(ChannelData, wsConn); err != nil {
+			logs.Error("", "Tunnel channel error: "+err.Error())
+			wsConn.Close()
+		}
 
 	case "terminal":
-		terminalData := ctx.GetHeader("Channel-Data")
-		_ = tc.teamserver.TsAgentTerminalCreateChannel(terminalData, wsConn)
+		if err := tc.teamserver.TsAgentTerminalCreateChannel(ChannelData, wsConn); err != nil {
+			logs.Error("", "Terminal channel error: "+err.Error())
+			wsConn.Close()
+		}
+
+	case "agent_build":
+		go func() {
+			if err := tc.teamserver.TsAgentBuildCreateChannel(ChannelData, wsConn); err != nil {
+				logs.Error("", "Agent build channel error: "+err.Error())
+			}
+		}()
+
+	default:
+		logs.Error("", "Unknown channel type: "+ChannelType)
+		wsConn.Close()
 	}
 }

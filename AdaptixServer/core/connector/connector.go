@@ -32,7 +32,7 @@ type Teamserver interface {
 	TsListenerStop(listenerName string, configType string) error
 	TsListenerPause(listenerName string, configType string) error
 	TsListenerResume(listenerName string, configType string) error
-	TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error)
+	TsListenerGetProfile(listenerName string) (string, []byte, error)
 	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
 	TsAgentList() (string, error)
@@ -41,7 +41,7 @@ type Teamserver interface {
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error
-	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
+	TsAgentBuildSyncOnce(agentName string, config string, listenersName []string) ([]byte, string, error)
 
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
 	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
@@ -100,6 +100,7 @@ type Teamserver interface {
 	TsClientGuiProcessUnix(taskData adaptix.TaskData, process []adaptix.ListingProcessDataUnix)
 
 	TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error
+	TsAgentBuildCreateChannel(buildData string, wsconn *websocket.Conn) error
 
 	TsTunnelList() (string, error)
 	TsTunnelClientStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error)

@@ -140,6 +140,9 @@ public:
     /// Returns the current drop location
     /// The user needs to be dragging a window and be over a drop indicator, otherwise DropLocation_None is returned
     DropLocation currentDropLocation() const;
+
+    Core::Group *centralGroup() const;
+
 #if defined(DOCKS_DEVELOPER_MODE)
 public:
 #else
@@ -153,9 +156,7 @@ private:
     friend class AnimatedIndicators;
 
     // For debug/hardening
-    bool validateInputs(View *widget, KDDockWidgets::Location location,
-                        const Core::Item *relativeToItem, const InitialOption &option) const;
-
+    bool validateInputs(View *widget, KDDockWidgets::Location location, const Core::Item *relativeToItem, const InitialOption &option) const;
 
     void setRootItem(Core::ItemBoxContainer *);
 
@@ -175,10 +176,8 @@ private:
     template<typename T>
     bool validateAffinity(T *, Core::Group *acceptingGroup = nullptr) const;
     bool drop(WindowBeingDragged *draggedWindow, Core::Group *acceptingGroup, DropLocation);
-    bool drop(View *droppedwindow, KDDockWidgets::Location location,
-              Core::Group *relativeTo);
+    bool drop(View *droppedwindow, KDDockWidgets::Location location, Core::Group *relativeTo);
     Core::Group *groupContainingPos(Point globalPos) const;
-    Core::Group *centralGroup() const;
     void updateFloatingActions();
 
     class Private;

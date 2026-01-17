@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	mrand "math/rand/v2"
 	"strconv"
 	"strings"
 	"time"
@@ -87,7 +87,7 @@ func (p *PluginListener) Create(name string, config string, customData []byte) (
 		//ts:             Ts,
 		Name:           name,
 		Config:         conf,
-		rng:            rand.New(rand.NewSource(time.Now().UnixNano())),
+		rng:            mrand.New(mrand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano()))),
 		upFrags:        make(map[string]*dnsFragBuf),
 		downFrags:      make(map[string]*dnsDownBuf),
 		upDoneCache:    make(map[string]*dnsUpDone),

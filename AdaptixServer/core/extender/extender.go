@@ -2,12 +2,12 @@ package extender
 
 import (
 	"AdaptixServer/core/utils/logs"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"plugin"
 
 	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/goccy/go-yaml"
 )
 
 func NewExtender(teamserver Teamserver) *AdaptixExtender {
@@ -35,7 +35,7 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFiles []string) {
 		}
 
 		var config_map map[string]any
-		err = json.Unmarshal(config_data, &config_map)
+		err = yaml.Unmarshal(config_data, &config_map)
 		if err != nil {
 			logs.Error("", "Error config %s parse: %s", path, err.Error())
 			continue
@@ -58,7 +58,7 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFiles []string) {
 
 func (ex *AdaptixExtender) LoadPluginListener(config_path string, config_data []byte) {
 	var configListener ExConfigListener
-	err := json.Unmarshal(config_data, &configListener)
+	err := yaml.Unmarshal(config_data, &configListener)
 	if err != nil {
 		logs.Error("", "Error config parse: %s", err.Error())
 		return
@@ -114,7 +114,7 @@ func (ex *AdaptixExtender) LoadPluginListener(config_path string, config_data []
 
 func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byte) {
 	var configAgent ExConfigAgent
-	err := json.Unmarshal(config_data, &configAgent)
+	err := yaml.Unmarshal(config_data, &configAgent)
 	if err != nil {
 		logs.Error("", "Error config parse: %s", err.Error())
 		return
@@ -128,10 +128,11 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 	}
 
 	agentInfo := AgentInfo{
-		Name:      configAgent.AgentName,
-		Watermark: configAgent.AgentWatermark,
-		AX:        string(ax_content),
-		Listeners: configAgent.Listeners,
+		Name:           configAgent.AgentName,
+		Watermark:      configAgent.AgentWatermark,
+		AX:             string(ax_content),
+		Listeners:      configAgent.Listeners,
+		MultiListeners: configAgent.MultiListeners,
 	}
 
 	plugin_path := filepath.Dir(config_path) + "/" + configAgent.ExtenderFile

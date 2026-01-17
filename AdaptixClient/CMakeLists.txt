@@ -135,6 +135,7 @@ SET( HEADERS
         Headers/Workers/SocksHandshakeWorker.h
         Headers/UI/Widgets/TerminalContainerWidget.h
         Headers/Workers/TerminalWorker.h
+        Headers/Workers/BuildWorker.h
         Headers/UI/Dialogs/DialogDownloader.h
         Headers/Workers/DownloaderWorker.h
         Headers/Workers/UploaderWorker.h
@@ -221,6 +222,7 @@ add_executable(AdaptixClient
         Source/Workers/SocksHandshakeWorker.cpp
         Source/UI/Widgets/TerminalContainerWidget.cpp
         Source/Workers/TerminalWorker.cpp
+        Source/Workers/BuildWorker.cpp
         Source/UI/Dialogs/DialogDownloader.cpp
         Source/Workers/DownloaderWorker.cpp
         Source/Workers/UploaderWorker.cpp

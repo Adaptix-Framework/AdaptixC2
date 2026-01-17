@@ -368,6 +368,28 @@ public:
         Q_EMIT dataChanged(index(row, 0), index(row, SC_ColumnCount - 1), { Qt::DisplayRole, Qt::ForegroundRole, Qt::BackgroundRole });
     }
 
+    void updateLastColumn(const QStringList &agentIds) {
+        if (agentIds.isEmpty())
+            return;
+
+        int minRow = INT_MAX;
+        int maxRow = -1;
+
+        for (const QString &agentId : agentIds) {
+            auto it = idToRow.find(agentId);
+            if (it == idToRow.end())
+                continue;
+
+            int row = it.value();
+            if (row < minRow) minRow = row;
+            if (row > maxRow) maxRow = row;
+        }
+
+        if (maxRow >= 0) {
+            Q_EMIT dataChanged(index(minRow, 0), index(maxRow, SC_ColumnCount - 1), { Qt::DisplayRole, Qt::ForegroundRole, Qt::BackgroundRole });
+        }
+    }
+
     void remove(const QString &agentId) {
         auto it = idToRow.find(agentId);
         if (it == idToRow.end())
@@ -402,7 +424,6 @@ Q_OBJECT
     QMenu*        menuSessions   = nullptr;
     QShortcut*    shortcutSearch = nullptr;
 
-    AgentsTableModel*       agentsModel = nullptr;
     AgentsFilterProxyModel* proxyModel  = nullptr;
 
     QWidget*        searchWidget    = nullptr;
@@ -416,8 +437,7 @@ Q_OBJECT
     void createUI();
 
 public:
-    QTimer* refreshTimer = nullptr;
-
+    AgentsTableModel* agentsModel = nullptr;
     explicit SessionsTableWidget( AdaptixWidget* w );
     ~SessionsTableWidget() override;
 
@@ -432,8 +452,6 @@ public:
     void UpdateData() const;
     void UpdateAgentTypeComboBox() const;
     void Clear() const;
-
-    void start() const;
 
 public Q_SLOTS:
     void toggleSearchPanel() const;

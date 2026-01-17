@@ -59,6 +59,8 @@ public Q_SLOTS:
     QObject* create_selector_credentials(const QJSValue &headers) const;
     QObject* create_selector_agents(const QJSValue &headers) const;
 
+    QObject* create_dock(const QString &id, const QString &title, const QString &location = "");
+
 Q_SIGNALS:
     void scriptError(const QString &msg);
 };

@@ -40,9 +40,9 @@ function ListenerUI(mode_create)
     buttonEncryptKey.setEnabled(mode_create)
 
     let certSelector = form.create_selector_file();
-    certSelector.setPlaceholder("SSL certificate");
+    certSelector.setPlaceholder("SSL Certificate (optional, auto-generate if empty)");
     let keySelector = form.create_selector_file();
-    keySelector.setPlaceholder("SSL key");
+    keySelector.setPlaceholder("SSL Key (optional, auto-generate if empty)");
     let layout_group = form.create_vlayout();
     layout_group.addWidget(certSelector);
     layout_group.addWidget(keySelector);
@@ -55,26 +55,27 @@ function ListenerUI(mode_create)
     form.connect(buttonEncryptKey, "clicked", function() { textlineEncryptKey.setText( ax.random_string(32, "hex") ); });
 
     let layoutMain = form.create_gridlayout();
-    layoutMain.addWidget(labelHost, 0, 0, 1, 1);
-    layoutMain.addWidget(comboHostBind, 0, 1, 1, 1);
-    layoutMain.addWidget(spinPortBind, 0, 2, 1, 1);
-    layoutMain.addWidget(labelCallback, 1, 0, 1, 1);
-    layoutMain.addWidget(textCallback, 1, 1, 1, 2);
-    layoutMain.addWidget(labelMethod, 2, 0, 1, 1);
-    layoutMain.addWidget(comboMethod, 2, 1, 1, 2);
-    layoutMain.addWidget(labelUri, 3, 0, 1, 1);
-    layoutMain.addWidget(textlineUri, 3, 1, 1, 2);
-    layoutMain.addWidget(labelUserAgent, 4, 0, 1, 1 );
-    layoutMain.addWidget(textlineUserAgent, 4, 1, 1, 2);
-    layoutMain.addWidget(labelHB, 5, 0, 1, 1);
-    layoutMain.addWidget(textlineHB, 5, 1, 1, 2);
-    layoutMain.addWidget(labelEncryptKey, 6, 0, 1, 1);
+    layoutMain.addWidget(labelHost,          0, 0, 1, 1);
+    layoutMain.addWidget(comboHostBind,      0, 1, 1, 1);
+    layoutMain.addWidget(spinPortBind,       0, 2, 1, 1);
+    layoutMain.addWidget(labelCallback,      1, 0, 1, 1);
+    layoutMain.addWidget(textCallback,       1, 1, 1, 2);
+    layoutMain.addWidget(labelMethod,        2, 0, 1, 1);
+    layoutMain.addWidget(comboMethod,        2, 1, 1, 2);
+    layoutMain.addWidget(labelUri,           3, 0, 1, 1);
+    layoutMain.addWidget(textlineUri,        3, 1, 1, 2);
+    layoutMain.addWidget(labelUserAgent,     4, 0, 1, 1 );
+    layoutMain.addWidget(textlineUserAgent,  4, 1, 1, 2);
+    layoutMain.addWidget(labelHB,            5, 0, 1, 1);
+    layoutMain.addWidget(textlineHB,         5, 1, 1, 2);
+    layoutMain.addWidget(labelEncryptKey,    6, 0, 1, 1);
     layoutMain.addWidget(textlineEncryptKey, 6, 1, 1, 1);
-    layoutMain.addWidget(buttonEncryptKey, 6, 2, 1, 1);
-    layoutMain.addWidget(ssl_group, 7, 0, 1, 3);
+    layoutMain.addWidget(buttonEncryptKey,   6, 2, 1, 1);
+    layoutMain.addWidget(ssl_group,          7, 0, 1, 3);
 
     let panelMain = form.create_panel();
     panelMain.setLayout(layoutMain);
+
 
     // HTTP HEADERS
     let checkTrust = form.create_check("Trust X-Forwarded-For");
@@ -101,7 +102,7 @@ function ListenerUI(mode_create)
     let panelHeaders = form.create_panel();
     panelHeaders.setLayout(layoutHeaders);
 
-    // HTTP HEADERS
+    // ERROR PAGE
     let textError = form.create_textmulti("<!DOCTYPE html>\n<html>\n<head>\n<title>ERROR 404 - Nothing Found</title>\n</head>\n<body>\n<h1 class=\"cover-heading\">ERROR 404 - PAGE NOT FOUND</h1>\n</div>\n</div>\n</div>\n</body>\n</html>");
 
     let layoutError = form.create_gridlayout();

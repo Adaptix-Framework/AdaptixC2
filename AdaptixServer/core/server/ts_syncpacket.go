@@ -7,17 +7,17 @@ import (
 )
 
 const (
-	SP_TYPE_EVENT = 0x13
+	SP_TYPE_NOTIFICATION = 0x13
 )
 
 const (
-	EVENT_CLIENT_CONNECT    = 1
-	EVENT_CLIENT_DISCONNECT = 2
-	EVENT_LISTENER_START    = 3
-	EVENT_LISTENER_STOP     = 4
-	EVENT_AGENT_NEW         = 5
-	EVENT_TUNNEL_START      = 6
-	EVENT_TUNNEL_STOP       = 7
+	NOTIFY_CLIENT_CONNECT    = 1
+	NOTIFY_CLIENT_DISCONNECT = 2
+	NOTIFY_LISTENER_START    = 3
+	NOTIFY_LISTENER_STOP     = 4
+	NOTIFY_AGENT_NEW         = 5
+	NOTIFY_TUNNEL_START      = 6
+	NOTIFY_TUNNEL_STOP       = 7
 )
 
 const (
@@ -81,13 +81,13 @@ const (
 	TYPE_TARGETS_SET_TAG = 0x8a
 )
 
-func CreateSpEvent(event int, message string) SpEvent {
-	return SpEvent{
-		Type: SP_TYPE_EVENT,
+func CreateSpNotification(notifyType int, message string) SpNotification {
+	return SpNotification{
+		Type: SP_TYPE_NOTIFICATION,
 
-		EventType: event,
-		Message:   message,
-		Date:      time.Now().UTC().Unix(),
+		NotifyType: notifyType,
+		Message:    message,
+		Date:       time.Now().UTC().Unix(),
 	}
 }
 
@@ -171,13 +171,14 @@ func CreateSpListenerStop(name string) SyncPackerListenerStop {
 
 /// AGENT
 
-func CreateSpAgentReg(agent string, ax string, listeners []string) SyncPackerAgentReg {
+func CreateSpAgentReg(agent string, ax string, listeners []string, multiListeners bool) SyncPackerAgentReg {
 	return SyncPackerAgentReg{
 		SpType: TYPE_AGENT_REG,
 
-		Agent:     agent,
-		AX:        ax,
-		Listeners: listeners,
+		Agent:          agent,
+		AX:             ax,
+		Listeners:      listeners,
+		MultiListeners: multiListeners,
 	}
 }
 

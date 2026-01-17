@@ -1,7 +1,10 @@
 #include <Client/AxScript/BridgeMenu.h>
 #include <Client/AxScript/AxScriptEngine.h>
+#include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptUtils.h>
+#include <UI/MainUI.h>
+#include <MainAdaptix.h>
 
 BridgeMenu::BridgeMenu(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine) {}
 
@@ -103,4 +106,20 @@ void BridgeMenu::add_targets(AbstractAxMenuItem *item, const QString &position)
 
 void BridgeMenu::add_credentials(AbstractAxMenuItem *item) {
     this->scriptEngine->registerMenu("Creds", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
+}
+
+void BridgeMenu::add_main(AbstractAxMenuItem* item) {
+    this->scriptEngine->registerMenu("MainMenu", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
+}
+
+void BridgeMenu::add_main_projects(AbstractAxMenuItem* item) {
+    this->scriptEngine->registerMenu("MainProjects", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
+}
+
+void BridgeMenu::add_main_axscript(AbstractAxMenuItem* item) {
+    this->scriptEngine->registerMenu("MainAxScript", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
+}
+
+void BridgeMenu::add_main_settings(AbstractAxMenuItem* item) {
+    this->scriptEngine->registerMenu("MainSettings", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
 }

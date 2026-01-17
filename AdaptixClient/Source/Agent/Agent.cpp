@@ -69,15 +69,18 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     else
         this->commander = new Commander();
 
-    this->FileBrowser    = new BrowserFilesWidget(adaptixWidget, this);
-    this->ProcessBrowser = new BrowserProcessWidget(adaptixWidget, this);
-    this->Terminal       = new TerminalContainerWidget(this, adaptixWidget);
-    this->Shell          = new TerminalContainerWidget(this, adaptixWidget, TerminalModeShell);
     this->Console        = new ConsoleWidget(adaptixWidget, this, this->commander);
     this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
 }
 
-Agent::~Agent() = default;
+Agent::~Agent()
+{
+    delete Console;
+    delete fileBrowser;
+    delete processBrowser;
+    delete terminal;
+    delete shell;
+}
 
 void Agent::Update(const QJsonObject &jsonObjAgentData)
 {
@@ -339,4 +342,32 @@ void Agent::RemoveChild(const PivotData &pivotData)
             break;
         }
     }
+}
+
+BrowserFilesWidget* Agent::GetFileBrowser()
+{
+    if (!fileBrowser)
+        fileBrowser = new BrowserFilesWidget(adaptixWidget, this);
+    return fileBrowser;
+}
+
+BrowserProcessWidget* Agent::GetProcessBrowser()
+{
+    if (!processBrowser)
+        processBrowser = new BrowserProcessWidget(adaptixWidget, this);
+    return processBrowser;
+}
+
+TerminalContainerWidget* Agent::GetTerminal()
+{
+    if (!terminal)
+        terminal = new TerminalContainerWidget(this, adaptixWidget);
+    return terminal;
+}
+
+TerminalContainerWidget* Agent::GetShell()
+{
+    if (!shell)
+        shell = new TerminalContainerWidget(this, adaptixWidget, TerminalModeShell);
+    return shell;
 }

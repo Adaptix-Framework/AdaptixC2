@@ -15,22 +15,22 @@ import (
 	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
-func (ts *Teamserver) TsEventClient(connected bool, username string) {
-	var packet SpEvent
+func (ts *Teamserver) TsNotifyClient(connected bool, username string) {
+	var packet SpNotification
 
 	if connected {
 		message := fmt.Sprintf("Operator '%v' connected to teamserver", username)
-		packet = CreateSpEvent(EVENT_CLIENT_CONNECT, message)
+		packet = CreateSpNotification(NOTIFY_CLIENT_CONNECT, message)
 	} else {
 		message := fmt.Sprintf("Operator '%v' disconnected from teamserver", username)
-		packet = CreateSpEvent(EVENT_CLIENT_DISCONNECT, message)
+		packet = CreateSpNotification(NOTIFY_CLIENT_DISCONNECT, message)
 	}
 
 	ts.TsSyncAllClients(packet)
-	ts.events.Put(packet)
+	ts.notifications.Put(packet)
 }
 
-func (ts *Teamserver) TsEventListenerStart(restart bool, listenerName string, listenerType string) {
+func (ts *Teamserver) TsNotifyListenerStart(restart bool, listenerName string, listenerType string) {
 	var message string
 	if restart {
 		message = fmt.Sprintf("Listener '%v' reconfigured", listenerName)
@@ -38,19 +38,19 @@ func (ts *Teamserver) TsEventListenerStart(restart bool, listenerName string, li
 		message = fmt.Sprintf("Listener '%v' (%v) started", listenerName, listenerType)
 	}
 
-	packet := CreateSpEvent(EVENT_LISTENER_START, message)
+	packet := CreateSpNotification(NOTIFY_LISTENER_START, message)
 	ts.TsSyncAllClients(packet)
-	ts.events.Put(packet)
+	ts.notifications.Put(packet)
 }
 
-func (ts *Teamserver) TsEventListenerStop(listenerName string, listenerType string) {
+func (ts *Teamserver) TsNotifyListenerStop(listenerName string, listenerType string) {
 	message := fmt.Sprintf("Listener '%v' stopped", listenerName)
-	packet := CreateSpEvent(EVENT_LISTENER_STOP, message)
+	packet := CreateSpNotification(NOTIFY_LISTENER_STOP, message)
 	ts.TsSyncAllClients(packet)
-	ts.events.Put(packet)
+	ts.notifications.Put(packet)
 }
 
-func (ts *Teamserver) TsEventAgent(restore bool, agentData adaptix.AgentData) {
+func (ts *Teamserver) TsNotifyAgent(restore bool, agentData adaptix.AgentData) {
 	message := "New "
 	postMsg := agentData.Computer
 
@@ -70,60 +70,60 @@ func (ts *Teamserver) TsEventAgent(restore bool, agentData adaptix.AgentData) {
 
 	message += fmt.Sprintf("'%v' (%v) executed on '%v @ %v", agentData.Name, agentData.Id, agentData.Username, postMsg)
 
-	packet := CreateSpEvent(EVENT_AGENT_NEW, message)
+	packet := CreateSpNotification(NOTIFY_AGENT_NEW, message)
 	ts.TsSyncAllClients(packet)
-	ts.events.Put(packet)
+	ts.notifications.Put(packet)
 
 	if !restore {
-		go ts.TsEventCallbackAgent(agentData)
+		go ts.TsNotifyCallbackAgent(agentData)
 	}
 }
 
-func (ts *Teamserver) TsEventTunnelAdd(tunnel *Tunnel) {
+func (ts *Teamserver) TsNotifyTunnelAdd(tunnel *Tunnel) {
 	if tunnel.Data.Client == "" {
 		message := ""
 		switch tunnel.Type {
-		case TUNNEL_SOCKS4:
+		case adaptix.TUNNEL_TYPE_SOCKS4:
 			message = fmt.Sprintf("SOCKS4 server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-		case TUNNEL_SOCKS5:
+		case adaptix.TUNNEL_TYPE_SOCKS5:
 			message = fmt.Sprintf("SOCKS5 server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-		case TUNNEL_SOCKS5_AUTH:
+		case adaptix.TUNNEL_TYPE_SOCKS5_AUTH:
 			message = fmt.Sprintf("SOCKS5 (with Auth) server started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-		case TUNNEL_LPORTFWD:
+		case adaptix.TUNNEL_TYPE_LOCAL_PORT:
 			message = fmt.Sprintf("Local port forward started on '%s:%s'", tunnel.Data.Interface, tunnel.Data.Port)
-		case TUNNEL_RPORTFWD:
+		case adaptix.TUNNEL_TYPE_REVERSE:
 			message = fmt.Sprintf("Reverse port forward '%s' to '%s:%s'", tunnel.Data.Port, tunnel.Data.Fhost, tunnel.Data.Fport)
 		default:
 			return
 		}
 
-		packet := CreateSpEvent(EVENT_TUNNEL_START, message)
+		packet := CreateSpNotification(NOTIFY_TUNNEL_START, message)
 		ts.TsSyncAllClients(packet)
-		ts.events.Put(packet)
+		ts.notifications.Put(packet)
 	}
 }
 
-func (ts *Teamserver) TsEventTunnelRemove(tunnel *Tunnel) {
+func (ts *Teamserver) TsNotifyTunnelRemove(tunnel *Tunnel) {
 	if tunnel.Data.Client == "" {
 		message := ""
 		switch tunnel.Type {
-		case TUNNEL_SOCKS4:
+		case adaptix.TUNNEL_TYPE_SOCKS4:
 			message = fmt.Sprintf("SOCKS4 server ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_SOCKS5:
+		case adaptix.TUNNEL_TYPE_SOCKS5:
 			message = fmt.Sprintf("SOCKS5 server ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_SOCKS5_AUTH:
+		case adaptix.TUNNEL_TYPE_SOCKS5_AUTH:
 			message = fmt.Sprintf("SOCKS5 (with Auth) server ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_LPORTFWD:
+		case adaptix.TUNNEL_TYPE_LOCAL_PORT:
 			message = fmt.Sprintf("Local port forward on ':%s' stopped", tunnel.Data.Port)
-		case TUNNEL_RPORTFWD:
+		case adaptix.TUNNEL_TYPE_REVERSE:
 			message = fmt.Sprintf("Remote port forward to '%s:%s' stopped", tunnel.Data.Fhost, tunnel.Data.Fport)
 		default:
 			return
 		}
 
-		packet := CreateSpEvent(EVENT_TUNNEL_STOP, message)
+		packet := CreateSpNotification(NOTIFY_TUNNEL_STOP, message)
 		ts.TsSyncAllClients(packet)
-		ts.events.Put(packet)
+		ts.notifications.Put(packet)
 	}
 }
 
@@ -165,7 +165,7 @@ func (ts *Teamserver) sendToAllChannels(msg string) {
 	}
 }
 
-func (ts *Teamserver) TsEventCallbackAgent(agentData adaptix.AgentData) {
+func (ts *Teamserver) TsNotifyCallbackAgent(agentData adaptix.AgentData) {
 	if ts.Profile.Callbacks == nil || ts.Profile.Callbacks.NewAgentMessage == "" || !ts.hasAnyCallback() {
 		return
 	}
@@ -184,7 +184,7 @@ func (ts *Teamserver) TsEventCallbackAgent(agentData adaptix.AgentData) {
 	ts.sendToAllChannels(msg)
 }
 
-func (ts *Teamserver) TsEventCallbackCreds(creds []adaptix.CredsData) {
+func (ts *Teamserver) TsNotifyCallbackCreds(creds []adaptix.CredsData) {
 	if ts.Profile.Callbacks == nil || ts.Profile.Callbacks.NewCredMessage == "" || !ts.hasAnyCallback() {
 		return
 	}
@@ -215,7 +215,7 @@ func (ts *Teamserver) TsEventCallbackCreds(creds []adaptix.CredsData) {
 	}
 }
 
-func (ts *Teamserver) TsEventCallbackDownloads(downloadData adaptix.DownloadData) {
+func (ts *Teamserver) TsNotifyCallbackDownloads(downloadData adaptix.DownloadData) {
 	if ts.Profile.Callbacks == nil || ts.Profile.Callbacks.NewDownloadMessage == "" || !ts.hasAnyCallback() {
 		return
 	}

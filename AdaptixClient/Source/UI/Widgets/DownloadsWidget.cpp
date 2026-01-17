@@ -100,6 +100,8 @@ void DownloadsWidget::createUI()
     tableView->horizontalHeader()->setHighlightSections(false);
     tableView->verticalHeader()->setVisible(false);
 
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+
     proxyModel->sort(-1);
 
     tableView->horizontalHeader()->setSectionResizeMode(DC_File, QHeaderView::Stretch);
@@ -121,29 +123,42 @@ void DownloadsWidget::SetUpdatesEnabled(bool enabled)
 
 void DownloadsWidget::Clear() const
 {
-    adaptixWidget->Downloads.clear();
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        adaptixWidget->Downloads.clear();
+    }
     downloadsModel->clear();
 }
 
 void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload)
 {
+    QWriteLocker locker(&adaptixWidget->DownloadsLock);
     if (adaptixWidget->Downloads.contains(newDownload.FileId))
         return;
 
-    downloadsModel->add(newDownload);
     adaptixWidget->Downloads[newDownload.FileId] = newDownload;
+    locker.unlock();
+    downloadsModel->add(newDownload);
 }
 
 void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int state)
 {
-    adaptixWidget->Downloads[fileId].RecvSize = recvSize;
-    adaptixWidget->Downloads[fileId].State = state;
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        if (!adaptixWidget->Downloads.contains(fileId))
+            return;
 
-    if (state == DOWNLOAD_STATE_FINISHED)
-        adaptixWidget->Downloads[fileId].RecvSize = adaptixWidget->Downloads[fileId].TotalSize;
+        adaptixWidget->Downloads[fileId].RecvSize = recvSize;
+        adaptixWidget->Downloads[fileId].State = state;
+
+        if (state == DOWNLOAD_STATE_FINISHED)
+            adaptixWidget->Downloads[fileId].RecvSize = adaptixWidget->Downloads[fileId].TotalSize;
+
+        if (state == DOWNLOAD_STATE_CANCELED)
+            adaptixWidget->Downloads.remove(fileId);
+    }
 
     if (state == DOWNLOAD_STATE_CANCELED) {
-        adaptixWidget->Downloads.remove(fileId);
         QStringList fileIds;
         fileIds.append(fileId);
         downloadsModel->remove(fileIds);
@@ -155,10 +170,13 @@ void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int 
 void DownloadsWidget::RemoveDownloadItem(const QStringList &filesId)
 {
     QStringList filtered;
-    for (auto fileId : filesId) {
-        if (adaptixWidget->Downloads.contains(fileId)) {
-            adaptixWidget->Downloads.remove(fileId);
-            filtered.append(fileId);
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        for (auto fileId : filesId) {
+            if (adaptixWidget->Downloads.contains(fileId)) {
+                adaptixWidget->Downloads.remove(fileId);
+                filtered.append(fileId);
+            }
         }
     }
     downloadsModel->remove(filtered);

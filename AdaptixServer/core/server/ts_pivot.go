@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/logs"
 	"fmt"
 
@@ -48,6 +49,21 @@ func (ts *Teamserver) TsGetPivotById(pivotId string) *adaptix.PivotData {
 }
 
 func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId string, pivotName string, isRestore bool) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataPivotCreate{
+		PivotId:       pivotId,
+		ParentAgentId: pAgentId,
+		ChildAgentId:  chAgentId,
+		PivotName:     pivotName,
+	}
+	if !ts.EventManager.Emit(eventing.EventPivotCreate, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	pivotData := &adaptix.PivotData{
 		PivotId:       pivotId,
 		PivotName:     pivotName,
@@ -101,10 +117,30 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId s
 	packet := CreateSpPivotCreate(*pivotData)
 	ts.TsSyncAllClients(packet)
 
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataPivotCreate{
+		PivotId:       pivotData.PivotId,
+		ParentAgentId: pivotData.ParentAgentId,
+		ChildAgentId:  pivotData.ChildAgentId,
+		PivotName:     pivotData.PivotName,
+	}
+	ts.EventManager.EmitAsync(eventing.EventPivotCreate, postEvent)
+	// -----------------
+
 	return nil
 }
 
 func (ts *Teamserver) TsPivotDelete(pivotId string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataPivotRemove{PivotId: pivotId}
+	if !ts.EventManager.Emit(eventing.EventPivotRemove, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	pivotData := ts.TsGetPivotById(pivotId)
 	if pivotData == nil {
 		return fmt.Errorf("pivotId %s does not exist", pivotId)
@@ -148,6 +184,11 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 
 	packet := CreateSpPivotDelete(pivotId)
 	ts.TsSyncAllClients(packet)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataPivotRemove{PivotId: pivotId}
+	ts.EventManager.EmitAsync(eventing.EventPivotRemove, postEvent)
+	// -----------------
 
 	return nil
 }

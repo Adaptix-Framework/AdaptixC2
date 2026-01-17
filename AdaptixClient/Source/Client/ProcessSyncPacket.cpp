@@ -196,6 +196,7 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return checkField("agent", isStr) &&
                checkField("ax", isStr) &&
                checkField("listeners", isArr);
+               checkField("multi_listeners", isBl);
 
     case TYPE_AGENT_NEW:
         return checkField("a_id", isStr) &&
@@ -455,9 +456,15 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     if (spType == TYPE_SYNC_BATCH || spType == TYPE_SYNC_CATEGORY_BATCH) {
         QJsonArray packetsArray = jsonObj["packets"].toArray();
+        int processedCount = 0;
         for (const QJsonValue &packetValue : packetsArray) {
             if (packetValue.isObject())
                 processSyncPacket(packetValue.toObject());
+            
+            processedCount++;
+            if (processedCount % 50 == 0) {
+                QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+            }
         }
         if (this->sync && dialogSyncPacket) {
             dialogSyncPacket->receivedLogs += packetsArray.size();
@@ -528,10 +535,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_UPDATE: {
         QString agentId = jsonObj["a_id"].toString();
+        QReadLocker locker(&AgentsMapLock);
         Agent* agent = AgentsMap.value(agentId, nullptr);
         if (agent) {
             auto oldData = agent->data;
             agent->Update(jsonObj);
+            locker.unlock();
             SessionsTableDock->UpdateAgentItem(oldData, agent);
         }
         break;
@@ -539,6 +548,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_TICK: {
         QJsonArray agentIDs = jsonObj["a_id"].toArray();
+        QReadLocker locker(&AgentsMapLock);
         for (const QJsonValue &idValue : agentIDs) {
             Agent* agent = AgentsMap.value(idValue.toString(), nullptr);
             if (agent) {
@@ -552,8 +562,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_REMOVE: {
         QString agentId = jsonObj["a_id"].toString();
-        if (this->AgentsMap.contains(agentId)) {
-            SessionsGraphDock->RemoveAgent(this->AgentsMap[agentId], this->synchronized);
+        Agent* agentToRemove = nullptr;
+        {
+            QReadLocker locker(&AgentsMapLock);
+            agentToRemove = this->AgentsMap.value(agentId, nullptr);
+        }
+        if (agentToRemove) {
+            SessionsGraphDock->RemoveAgent(agentToRemove, this->synchronized);
             SessionsTableDock->RemoveAgentItem(agentId);
             TasksDock->RemoveAgentTasksItem(agentId);
         }
@@ -564,7 +579,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QStringList listeners;
         for (const QJsonValue &listener : jsonObj["listeners"].toArray())
             listeners.append(listener.toString());
-        this->RegisterAgentConfig(jsonObj["agent"].toString(), jsonObj["ax"].toString(), listeners);
+        this->RegisterAgentConfig(jsonObj["agent"].toString(), jsonObj["ax"].toString(), listeners, jsonObj["multi_listeners"].toBool());
         break;
     }
 
@@ -620,6 +635,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_CONSOLE_OUT: {
         QString agentId = jsonObj["a_id"].toString();
+        QReadLocker locker(&AgentsMapLock);
         if (AgentsMap.contains(agentId)) {
             AgentsMap[agentId]->Console->ConsoleOutputMessage(
                 static_cast<qint64>(jsonObj["time"].toDouble()), "",
@@ -633,6 +649,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_CONSOLE_TASK_SYNC: {
         QString agentId = jsonObj["a_id"].toString();
+        QReadLocker locker(&AgentsMapLock);
         if (AgentsMap.contains(agentId)) {
             qint64 startTime = jsonObj["a_start_time"].toDouble();
             qint64 finishTime = jsonObj["a_finish_time"].toDouble();
@@ -656,6 +673,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_CONSOLE_TASK_UPD: {
         QString agentId = jsonObj["a_id"].toString();
+        QReadLocker locker(&AgentsMapLock);
         if (AgentsMap.contains(agentId)) {
             AgentsMap[agentId]->Console->ConsoleOutputMessage(
                 jsonObj["a_finish_time"].toDouble(),
@@ -870,8 +888,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentId = jsonObj["b_agent_id"].toString();
         if (AgentsMap.contains(agentId)) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->FileBrowser)
-                agent->FileBrowser->SetDisksWin(
+            if (agent && agent->HasFileBrowser())
+                agent->GetFileBrowser()->SetDisksWin(
                     jsonObj["b_time"].toDouble(),
                     jsonObj["b_msg_type"].toDouble(),
                     jsonObj["b_message"].toString(),
@@ -885,8 +903,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentId = jsonObj["b_agent_id"].toString();
         if (AgentsMap.contains(agentId)) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->FileBrowser)
-                agent->FileBrowser->AddFiles(
+            if (agent && agent->HasFileBrowser())
+                agent->GetFileBrowser()->AddFiles(
                     jsonObj["b_time"].toDouble(),
                     jsonObj["b_msg_type"].toDouble(),
                     jsonObj["b_message"].toString(),
@@ -901,13 +919,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentId = jsonObj["b_agent_id"].toString();
         if (AgentsMap.contains(agentId)) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->ProcessBrowser) {
-                agent->ProcessBrowser->SetStatus(
+            if (agent && agent->HasProcessBrowser()) {
+                agent->GetProcessBrowser()->SetStatus(
                     jsonObj["b_time"].toDouble(),
                     jsonObj["b_msg_type"].toDouble(),
                     jsonObj["b_message"].toString()
                 );
-                agent->ProcessBrowser->SetProcess(
+                agent->GetProcessBrowser()->SetProcess(
                     jsonObj["b_msg_type"].toDouble(),
                     jsonObj["b_data"].toString()
                 );
@@ -920,8 +938,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentId = jsonObj["b_agent_id"].toString();
         if (AgentsMap.contains(agentId)) {
             auto agent = AgentsMap[agentId];
-            if (agent && agent->FileBrowser)
-                agent->FileBrowser->SetStatus(
+            if (agent && agent->HasFileBrowser())
+                agent->GetFileBrowser()->SetStatus(
                     jsonObj["b_time"].toDouble(),
                     jsonObj["b_msg_type"].toDouble(),
                     jsonObj["b_message"].toString()
@@ -990,6 +1008,4 @@ void AdaptixWidget::setSyncUpdateUI(const bool enabled)
 
     for (const auto agent : AgentsMap.values())
         agent->Console->SetUpdatesEnabled(enabled);
-
-    this->setEnabled(enabled);
 }

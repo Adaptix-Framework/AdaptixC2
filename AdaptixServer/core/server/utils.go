@@ -3,6 +3,7 @@ package server
 import (
 	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
@@ -25,22 +26,6 @@ const (
 	CONSOLE_OUT               = 10
 )
 
-const (
-	TYPE_TASK       = 1
-	TYPE_BROWSER    = 2
-	TYPE_JOB        = 3
-	TYPE_TUNNEL     = 4
-	TYPE_PROXY_DATA = 5
-)
-
-const (
-	TUNNEL_SOCKS4      = 1
-	TUNNEL_SOCKS5      = 2
-	TUNNEL_SOCKS5_AUTH = 3
-	TUNNEL_LPORTFWD    = 4
-	TUNNEL_RPORTFWD    = 5
-)
-
 type TsParameters struct {
 	Interfaces []string
 }
@@ -55,6 +40,7 @@ type Teamserver struct {
 	TaskManager   *TaskManager
 	Broker        *MessageBroker
 	TunnelManager *TunnelManager
+	EventManager  *eventing.EventManager
 
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
@@ -62,18 +48,19 @@ type Teamserver struct {
 	wm_agent_types map[string]string   // agentMark string : agentName string
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
-	events      *safe.Slice // 			           : sync_packet interface{}
-	Agents      safe.Map    // agentId string      : agent *Agent
-	listeners   safe.Map    // listenerName string : listenerData ListenerData
-	messages    *safe.Slice //                     : chatData ChatData
-	downloads   safe.Map    // fileId string       : downloadData DownloadData
-	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
-	screenshots safe.Map    // screeId string      : screenData ScreenDataData
-	credentials *safe.Slice
-	targets     *safe.Slice
-	terminals   safe.Map    // terminalId string   : terminal Terminal
-	pivots      *safe.Slice // 			           : PivotData
-	otps        safe.Map    // otp string		   : Id string
+	notifications *safe.Slice // 			       : sync_packet interface{}
+	Agents        safe.Map    // agentId string      : agent *Agent
+	listeners     safe.Map    // listenerName string : listenerData ListenerData
+	messages      *safe.Slice //                     : chatData ChatData
+	downloads     safe.Map    // fileId string       : downloadData DownloadData
+	tmp_uploads   safe.Map    // fileId string       : uploadData UploadData
+	screenshots   safe.Map    // screeId string      : screenData ScreenDataData
+	credentials   *safe.Slice
+	targets       *safe.Slice
+	terminals     safe.Map    // terminalId string   : terminal Terminal
+	pivots        *safe.Slice // 			           : PivotData
+	otps          safe.Map    // otp string		   : Id string
+	builders      safe.Map    // buildId string      : build Build
 }
 
 type Agent struct {
@@ -202,6 +189,17 @@ type Terminal struct {
 	Callbacks adaptix.TerminalCallbacks
 }
 
+type AgentBuilder struct {
+	Id            string
+	Name          string
+	ListenersName []string
+	Config        string
+
+	wsconn *websocket.Conn
+	mu     sync.Mutex
+	closed bool
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 // SyncPacket
@@ -228,12 +226,12 @@ type SyncPackerCategoryBatch struct {
 	Packets  []interface{} `json:"packets"`
 }
 
-type SpEvent struct {
+type SpNotification struct {
 	Type int `json:"type"`
 
-	EventType int    `json:"event_type"`
-	Date      int64  `json:"date"`
-	Message   string `json:"message"`
+	NotifyType int    `json:"event_type"`
+	Date       int64  `json:"date"`
+	Message    string `json:"message"`
 }
 
 /// LISTENER
@@ -273,9 +271,10 @@ type SyncPackerListenerStop struct {
 type SyncPackerAgentReg struct {
 	SpType int `json:"type"`
 
-	Agent     string   `json:"agent"`
-	AX        string   `json:"ax"`
-	Listeners []string `json:"listeners"`
+	Agent          string   `json:"agent"`
+	AX             string   `json:"ax"`
+	Listeners      []string `json:"listeners"`
+	MultiListeners bool     `json:"multi_listeners"`
 }
 
 type SyncPackerAgentNew struct {

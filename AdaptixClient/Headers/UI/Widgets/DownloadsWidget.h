@@ -322,9 +322,9 @@ public:
         progressBar.textVisible = false;
 
         if (state == DOWNLOAD_STATE_STOPPED)
-            progressBar.state = QStyle::State_None;
+            progressBar.state = QStyle::State_Horizontal;
         else
-            progressBar.state = QStyle::State_Enabled;
+            progressBar.state = QStyle::State_Enabled | QStyle::State_Horizontal;
 
         QApplication::style()->drawControl(QStyle::CE_ProgressBar, &progressBar, painter);
     }

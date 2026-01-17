@@ -7,28 +7,8 @@ import (
 	"io"
 	"net"
 
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
-)
-
-const (
-	TUNNEL_TYPE_SOCKS4     = 1
-	TUNNEL_TYPE_SOCKS5     = 2
-	TUNNEL_TYPE_LOCAL_PORT = 4
-	TUNNEL_TYPE_REVERSE    = 5
-
-	ADDRESS_TYPE_IPV4   = 1
-	ADDRESS_TYPE_DOMAIN = 3
-	ADDRESS_TYPE_IPV6   = 4
-
-	SOCKS5_SUCCESS                 byte = 0
-	SOCKS5_SERVER_FAILURE          byte = 1
-	SOCKS5_NOT_ALLOWED_RULESET     byte = 2
-	SOCKS5_NETWORK_UNREACHABLE     byte = 3
-	SOCKS5_HOST_UNREACHABLE        byte = 4
-	SOCKS5_CONNECTION_REFUSED      byte = 5
-	SOCKS5_TTL_EXPIRED             byte = 6
-	SOCKS5_COMMAND_NOT_SUPPORTED   byte = 7
-	SOCKS5_ADDR_TYPE_NOT_SUPPORTED byte = 8
 )
 
 type ProxySocks struct {
@@ -43,11 +23,11 @@ func DetectAddrType(s string) int {
 	ip := net.ParseIP(s)
 	if ip != nil {
 		if ip.To4() != nil {
-			return ADDRESS_TYPE_IPV4
+			return adaptix.ADDRESS_TYPE_IPV4
 		}
-		return ADDRESS_TYPE_IPV6
+		return adaptix.ADDRESS_TYPE_IPV6
 	}
-	return ADDRESS_TYPE_DOMAIN
+	return adaptix.ADDRESS_TYPE_DOMAIN
 }
 
 func ReplySocks4StatusConn(conn net.Conn, success bool) {
@@ -77,8 +57,8 @@ func ReplySocks5StatusWs(wsconn *websocket.Conn, rep byte) {
 func CheckSocks4(conn net.Conn) (ProxySocks, error) {
 
 	proxySocks := ProxySocks{
-		SocksType:   TUNNEL_TYPE_SOCKS4,
-		AddressType: ADDRESS_TYPE_IPV4,
+		SocksType:   adaptix.TUNNEL_TYPE_SOCKS4,
+		AddressType: adaptix.ADDRESS_TYPE_IPV4,
 	}
 
 	buf := make([]byte, 8)
@@ -103,7 +83,7 @@ func CheckSocks5(conn net.Conn, auth bool, username string, password string) (Pr
 
 	proxySocks := ProxySocks{
 		SocksCommand: 1,
-		SocksType:    TUNNEL_TYPE_SOCKS5,
+		SocksType:    adaptix.TUNNEL_TYPE_SOCKS5,
 	}
 
 	buf := make([]byte, 2)
@@ -187,7 +167,7 @@ func CheckSocks5(conn net.Conn, auth bool, username string, password string) (Pr
 	buf = make([]byte, 4)
 	_, err = io.ReadFull(conn, buf)
 	if err != nil || buf[0] != 0x05 || buf[1] != 0x01 {
-		ReplySocks5StatusConn(conn, SOCKS5_COMMAND_NOT_SUPPORTED)
+		ReplySocks5StatusConn(conn, adaptix.SOCKS5_COMMAND_NOT_SUPPORTED)
 		err = errors.New("no supported command")
 		return proxySocks, err
 	}
@@ -199,49 +179,49 @@ func CheckSocks5(conn net.Conn, auth bool, username string, password string) (Pr
 	addressType := buf[3]
 	switch addressType {
 
-	case ADDRESS_TYPE_IPV4:
+	case adaptix.ADDRESS_TYPE_IPV4:
 		ipBuffer := make([]byte, 4)
 		_, err = io.ReadFull(conn, ipBuffer)
 		if err != nil {
-			ReplySocks5StatusConn(conn, SOCKS5_COMMAND_NOT_SUPPORTED)
+			ReplySocks5StatusConn(conn, adaptix.SOCKS5_COMMAND_NOT_SUPPORTED)
 			return proxySocks, err
 		}
 		proxySocks.Address = net.IP(ipBuffer).String()
 
-	case ADDRESS_TYPE_DOMAIN:
+	case adaptix.ADDRESS_TYPE_DOMAIN:
 		domainLen := make([]byte, 1)
 		_, err = io.ReadFull(conn, domainLen)
 		if err != nil {
-			ReplySocks5StatusConn(conn, SOCKS5_COMMAND_NOT_SUPPORTED)
+			ReplySocks5StatusConn(conn, adaptix.SOCKS5_COMMAND_NOT_SUPPORTED)
 			return proxySocks, err
 		}
 		domain := make([]byte, domainLen[0])
 		_, err = io.ReadFull(conn, domain)
 		if err != nil {
-			ReplySocks5StatusConn(conn, SOCKS5_COMMAND_NOT_SUPPORTED)
+			ReplySocks5StatusConn(conn, adaptix.SOCKS5_COMMAND_NOT_SUPPORTED)
 			return proxySocks, err
 		}
 		proxySocks.Address = string(domain)
 
-	case ADDRESS_TYPE_IPV6:
+	case adaptix.ADDRESS_TYPE_IPV6:
 		ipBuffer := make([]byte, 16)
 		_, err = io.ReadFull(conn, ipBuffer)
 		if err != nil {
-			ReplySocks5StatusConn(conn, SOCKS5_COMMAND_NOT_SUPPORTED)
+			ReplySocks5StatusConn(conn, adaptix.SOCKS5_COMMAND_NOT_SUPPORTED)
 			return proxySocks, err
 		}
 		proxySocks.Address = net.IP(ipBuffer).String()
 
 	default:
 		err = errors.New("unsupported address format")
-		ReplySocks5StatusConn(conn, SOCKS5_COMMAND_NOT_SUPPORTED)
+		ReplySocks5StatusConn(conn, adaptix.SOCKS5_COMMAND_NOT_SUPPORTED)
 		return proxySocks, err
 	}
 
 	portBuf := make([]byte, 2)
 	_, err = io.ReadFull(conn, portBuf)
 	if err != nil {
-		ReplySocks5StatusConn(conn, SOCKS5_COMMAND_NOT_SUPPORTED)
+		ReplySocks5StatusConn(conn, adaptix.SOCKS5_COMMAND_NOT_SUPPORTED)
 		return proxySocks, err
 	}
 	proxySocks.Port = int(binary.BigEndian.Uint16(portBuf))

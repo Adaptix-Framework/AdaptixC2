@@ -45,56 +45,23 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect(this, &AdaptixWidget::eventFileBrowserUpload,  ScriptManager, &AxScriptManager::emitFileBrowserUpload);
     connect(this, &AdaptixWidget::eventProcessBrowserList, ScriptManager, &AxScriptManager::emitProcessBrowserList);
 
-    AxConsoleDock = new AxConsoleWidget(ScriptManager, this);
-    dockBottom->addDockWidgetAsTab( AxConsoleDock->dock() );
-    AxConsoleDock->dock()->toggleAction()->trigger();
-
-    LogsDock = new LogsWidget(this);
-    dockBottom->addDockWidgetAsTab( LogsDock->dock() );
-
-    ChatDock = new ChatWidget(this);
-    dockBottom->addDockWidgetAsTab( ChatDock->dock() );
-    ChatDock->dock()->toggleAction()->trigger();
-
-    ListenersDock = new ListenersWidget(this);
-    dockBottom->addDockWidgetAsTab( ListenersDock->dock() );
-    ListenersDock->dock()->toggleAction()->trigger();
-
+    AxConsoleDock     = new AxConsoleWidget(ScriptManager, this);
+    LogsDock          = new LogsWidget(this);
+    ChatDock          = new ChatWidget(this);
+    ListenersDock     = new ListenersWidget(this);
     SessionsTableDock = new SessionsTableWidget(this);
-    dockTop->addDockWidgetAsTab( SessionsTableDock->dock() );
-
     SessionsGraphDock = new SessionsGraph(this);
-    dockTop->addDockWidgetAsTab( SessionsGraphDock->dock() );
-    SessionsGraphDock->dock()->toggleAction()->trigger();
-
-    TasksDock = new TasksWidget(this);
-    dockTop->addDockWidgetAsTab( TasksDock->dockTasks() );
-    TasksDock->dockTasks()->toggleAction()->trigger();
-    dockBottom->addDockWidgetAsTab( TasksDock->dockTasksOutput() );
-    TasksDock->dockTasksOutput()->toggleAction()->trigger();
-
-    TunnelsDock = new TunnelsWidget(this);
-    dockBottom->addDockWidgetAsTab( TunnelsDock->dock() );
-    TunnelsDock->dock()->toggleAction()->trigger();
-
-    DownloadsDock = new DownloadsWidget(this);
-    dockBottom->addDockWidgetAsTab( DownloadsDock->dock() );
-    DownloadsDock->dock()->toggleAction()->trigger();
-
-    ScreenshotsDock = new ScreenshotsWidget(this);
-    dockBottom->addDockWidgetAsTab( ScreenshotsDock->dock() );
-    ScreenshotsDock->dock()->toggleAction()->trigger();
-
-    CredentialsDock = new CredentialsWidget(this);
-    dockBottom->addDockWidgetAsTab( CredentialsDock->dock() );
-    CredentialsDock->dock()->toggleAction()->trigger();
-
-    TargetsDock = new TargetsWidget(this);
-    dockBottom->addDockWidgetAsTab( TargetsDock->dock() );
-    TargetsDock->dock()->toggleAction()->trigger();
+    TasksDock         = new TasksWidget(this);
+    TunnelsDock       = new TunnelsWidget(this);
+    DownloadsDock     = new DownloadsWidget(this);
+    ScreenshotsDock   = new ScreenshotsWidget(this);
+    CredentialsDock   = new CredentialsWidget(this);
+    TargetsDock       = new TargetsWidget(this);
 
     dockTop->toggleAction()->trigger();
+    this->PlaceDock( dockTop, SessionsTableDock->dock() );
     dockBottom->toggleAction()->trigger();
+    this->PlaceDock( dockBottom, LogsDock->dock() );
 
     TickThread = new QThread;
     TickWorker = new LastTickWorker( this );
@@ -117,6 +84,9 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( reconnectButton, &QPushButton::clicked, this, &AdaptixWidget::OnReconnect);
 
     connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
+    connect( TickWorker, &LastTickWorker::agentsUpdated, this, [this](const QStringList &agentIds) {
+        SessionsTableDock->agentsModel->updateLastColumn(agentIds);
+    }, Qt::QueuedConnection);
 
     connect( ChannelWsWorker, &WebSocketWorker::received_data,    this,   &AdaptixWidget::DataHandler );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this,   &AdaptixWidget::ChannelClose );
@@ -140,7 +110,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
             dialogSyncPacket->splashScreen->close();
     });
 
-    SessionsTableDock->start();
     TickThread->start();
     ChannelThread->start();
 
@@ -289,27 +258,7 @@ void AdaptixWidget::createUI()
 
 AuthProfile* AdaptixWidget::GetProfile() const { return this->profile; }
 
-void AdaptixWidget::AddDockTop(const KDDockWidgets::QtWidgets::DockWidget *dock) const
-{
-    if (dock->isOpen()) {
-        dock->toggleAction()->trigger();
-        dock->toggleAction()->trigger();
-    } else {
-        dock->toggleAction()->trigger();
-    }
-}
-
-void AdaptixWidget::AddDockBottom(const KDDockWidgets::QtWidgets::DockWidget* dock) const
-{
-    if (dock->isOpen()) {
-        dock->toggleAction()->trigger();
-        dock->toggleAction()->trigger();
-    } else {
-        dock->toggleAction()->trigger();
-    }
-}
-
-void AdaptixWidget::PlaceDockBottom(KDDockWidgets::QtWidgets::DockWidget* dock) const
+void AdaptixWidget::PlaceDock(KDDockWidgets::QtWidgets::DockWidget* parentDock, KDDockWidgets::QtWidgets::DockWidget* dock) const
 {
     if (dock->isOpen()) {
         dock->setAsCurrentTab();
@@ -318,19 +267,19 @@ void AdaptixWidget::PlaceDockBottom(KDDockWidgets::QtWidgets::DockWidget* dock) 
 
     QString previousFocusedName;
     QString dockBeingAddedName = dock->uniqueName();
-    KDDockWidgets::Core::Group* dockBottomGroup = dockBottom->group();
+    KDDockWidgets::Core::Group* parentDockGroup = parentDock->group();
 
-    if (KDDockWidgets::DockRegistry::self() && dockBottomGroup) {
+    if (KDDockWidgets::DockRegistry::self() && parentDockGroup) {
         auto* previousFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
         if (previousFocused)
             previousFocusedName = previousFocused->uniqueName();
     }
 
-    dockBottom->toggleAction()->trigger();
-    dockBottom->addDockWidgetAsTab(dock);
-    dockBottom->toggleAction()->trigger();
+    parentDock->toggleAction()->trigger();
+    parentDock->addDockWidgetAsTab(dock);
+    parentDock->toggleAction()->trigger();
 
-    if (!previousFocusedName.isEmpty() && previousFocusedName != dockBeingAddedName && dockBottomGroup) {
+    if (!previousFocusedName.isEmpty() && previousFocusedName != dockBeingAddedName && parentDockGroup) {
         QTimer::singleShot(100, [previousFocusedName, dockBeingAddedName]() {
             if (KDDockWidgets::DockRegistry::self()) {
                 auto* currentFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
@@ -395,17 +344,15 @@ void AdaptixWidget::Close()
     if (ChannelWsWorker) {
         disconnect(ChannelWsWorker, nullptr, this, nullptr);
         disconnect(ChannelWsWorker, nullptr, ScriptManager, nullptr);
-        if (ChannelWsWorker->webSocket)
-            ChannelWsWorker->webSocket->close();
     }
+
+    delete ChannelWsWorker;
+    ChannelWsWorker = nullptr;
 
     if (ChannelThread) {
         ChannelThread->quit();
         ChannelThread->wait();
     }
-
-    delete ChannelWsWorker;
-    ChannelWsWorker = nullptr;
 
     delete ChannelThread;
     ChannelThread = nullptr;
@@ -459,8 +406,10 @@ void AdaptixWidget::RegisterListenerConfig(const QString &name, const QString &p
     RegisterListeners.push_back(config);
 }
 
-void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners)
+void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners, const bool &multiListeners)
 {
+    AgentTypes[agentName] = AgentTypeInfo{multiListeners, listeners};
+
     ScriptManager->AgentScriptAdd(agentName, ax_script);
 
     QJSEngine* engine = ScriptManager->AgentScriptEngine(agentName);
@@ -573,6 +522,11 @@ QList<QString> AdaptixWidget::GetAgentNames(const QString &listenerType) const
             names.insert(regAgent.name);
     }
     return names.values();
+}
+
+AgentTypeInfo AdaptixWidget::GetAgentTypeInfo(const QString &agentName) const
+{
+    return AgentTypes.value(agentName, AgentTypeInfo{false, QStringList()});
 }
 
 RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QString &listenerName, const int os)
@@ -719,58 +673,66 @@ void AdaptixWidget::PostHandlerProcess(const QString &handlerId, const TaskData 
 
 void AdaptixWidget::LoadConsoleUI(const QString &AgentId)
 {
+    QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
         return;
 
     auto agent = AgentsMap[AgentId];
     if (agent && agent->Console) {
-        this->PlaceDockBottom( AgentsMap[AgentId]->Console->dock() );
-        AgentsMap[AgentId]->Console->InputFocus();
+        locker.unlock();
+        this->PlaceDock(dockBottom, agent->Console->dock() );
+        agent->Console->InputFocus();
     }
-
 }
 
-void AdaptixWidget::LoadTasksOutput() const { this->AddDockBottom( TasksDock->dockTasksOutput() ); }
+void AdaptixWidget::LoadTasksOutput() const { this->PlaceDock(dockBottom, TasksDock->dockTasksOutput() ); }
 
 void AdaptixWidget::LoadFileBrowserUI(const QString &AgentId)
 {
+    QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
         return;
 
     auto agent = AgentsMap[AgentId];
-    if (agent && agent->FileBrowser)
-        this->PlaceDockBottom( AgentsMap[AgentId]->FileBrowser->dock() );
+    locker.unlock();
+    if (agent)
+        this->PlaceDock(dockBottom, agent->GetFileBrowser()->dock() );
 }
 
 void AdaptixWidget::LoadProcessBrowserUI(const QString &AgentId)
 {
+    QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
         return;
 
     auto agent = AgentsMap[AgentId];
-    if (agent && agent->ProcessBrowser)
-        this->PlaceDockBottom( AgentsMap[AgentId]->ProcessBrowser->dock() );
-
+    locker.unlock();
+    if (agent)
+        this->PlaceDock(dockBottom, agent->GetProcessBrowser()->dock() );
 }
 
 void AdaptixWidget::LoadTerminalUI(const QString &AgentId)
 {
+    QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
         return;
 
     auto agent = AgentsMap[AgentId];
-    if (agent && agent->Terminal)
-        this->PlaceDockBottom( AgentsMap[AgentId]->Terminal->dock() );
+    locker.unlock();
+    if (agent)
+        this->PlaceDock(dockBottom, agent->GetTerminal()->dock() );
 }
 
 void AdaptixWidget::LoadShellUI(const QString &AgentId)
 {
+    QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
         return;
 
     auto agent = AgentsMap[AgentId];
-    if (agent && agent->Shell)
-        this->PlaceDockBottom( AgentsMap[AgentId]->Shell->dock() );
+    locker.unlock();
+    if (agent)
+        this->PlaceDock(dockBottom, agent->GetShell()->dock() );
 }
 
 void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd)
@@ -888,29 +850,29 @@ void AdaptixWidget::OnSynced()
     Q_EMIT SyncedOnReloadSignal(profile->GetProject());
 }
 
-void AdaptixWidget::SetSessionsTableUI() const { this->AddDockTop( SessionsTableDock->dock() ); }
+void AdaptixWidget::SetSessionsTableUI() const { this->PlaceDock(dockTop, SessionsTableDock->dock() ); }
 
-void AdaptixWidget::SetGraphUI() const { this->AddDockTop( SessionsGraphDock->dock() ); }
+void AdaptixWidget::SetGraphUI() const { this->PlaceDock(dockTop, SessionsGraphDock->dock() ); }
 
-void AdaptixWidget::SetTasksUI() const { this->AddDockTop( TasksDock->dockTasks() ); }
+void AdaptixWidget::SetTasksUI() const { this->PlaceDock(dockTop, TasksDock->dockTasks() ); }
 
-void AdaptixWidget::LoadAxConsoleUI() const { this->AddDockBottom( AxConsoleDock->dock() ); }
+void AdaptixWidget::LoadAxConsoleUI() const { this->PlaceDock(dockBottom, AxConsoleDock->dock() ); }
 
-void AdaptixWidget::LoadLogsUI() const { this->AddDockBottom( LogsDock->dock() ); }
+void AdaptixWidget::LoadLogsUI() const { this->PlaceDock(dockBottom, LogsDock->dock() ); }
 
-void AdaptixWidget::LoadChatUI() const { this->AddDockBottom( ChatDock->dock() ); }
+void AdaptixWidget::LoadChatUI() const { this->PlaceDock(dockBottom, ChatDock->dock() ); }
 
-void AdaptixWidget::LoadListenersUI() const { this->AddDockBottom( ListenersDock->dock() ); }
+void AdaptixWidget::LoadListenersUI() const { this->PlaceDock(dockBottom, ListenersDock->dock() ); }
 
-void AdaptixWidget::LoadTunnelsUI() const { this->AddDockBottom( TunnelsDock->dock() ); }
+void AdaptixWidget::LoadTunnelsUI() const { this->PlaceDock(dockBottom, TunnelsDock->dock() ); }
 
-void AdaptixWidget::LoadDownloadsUI() const { this->AddDockBottom( DownloadsDock->dock() ); }
+void AdaptixWidget::LoadDownloadsUI() const { this->PlaceDock(dockBottom, DownloadsDock->dock() ); }
 
-void AdaptixWidget::LoadScreenshotsUI() const { this->AddDockBottom( ScreenshotsDock->dock() ); }
+void AdaptixWidget::LoadScreenshotsUI() const { this->PlaceDock(dockBottom, ScreenshotsDock->dock() ); }
 
-void AdaptixWidget::LoadCredentialsUI() const { this->AddDockBottom( CredentialsDock->dock() ); }
+void AdaptixWidget::LoadCredentialsUI() const { this->PlaceDock(dockBottom, CredentialsDock->dock() ); }
 
-void AdaptixWidget::LoadTargetsUI() const { this->AddDockBottom( TargetsDock->dock() ); }
+void AdaptixWidget::LoadTargetsUI() const { this->PlaceDock(dockBottom, TargetsDock->dock() ); }
 
 void AdaptixWidget::OnReconnect()
 {
@@ -935,7 +897,6 @@ void AdaptixWidget::OnReconnect()
         });
 
         workerThread->start();
-        return;
     }
     else {
         QThread* workerThread = new QThread();
@@ -974,4 +935,3 @@ void AdaptixWidget::OnReconnect()
         workerThread->start();
     }
 }
-
