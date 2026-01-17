@@ -43,7 +43,7 @@ public:
     void UpdateTasksTableColumns();
 
     AuthProfile* GetCurrentProfile() const;
-    
+
     QMenu* getMenuProject() const;
     QMenu* getMenuAxScript() const;
     QMenu* getMenuSettings() const;

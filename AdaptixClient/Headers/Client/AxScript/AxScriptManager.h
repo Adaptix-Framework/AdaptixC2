@@ -62,6 +62,7 @@ public:
     AdaptixWidget*              GetAdaptix() const;
     QMap<QString, Agent*>       GetAgents() const;
     QVector<CredentialData>     GetCredentials() const;
+    QVector<ListenerData>       GetListeners() const;
     QMap<QString, DownloadData> GetDownloads() const;
     QMap<QString, ScreenData>   GetScreenshots() const;
     QVector<TargetData>         GetTargets() const;
@@ -76,6 +77,11 @@ public:
     void        AgentScriptAdd(const QString &name, const QString &ax_script);
     QJSEngine*  AgentScriptEngine(const QString &name);
     QJSValue    AgentScriptExecute(const QString &name, const QString &code);
+
+    QStringList ServiceScriptList();
+    void        ServiceScriptAdd(const QString &name, const QString &ax_script);
+    QJSEngine*  ServiceScriptEngine(const QString &name);
+    void        ServiceScriptDataHandler(const QString &name, const QString &data);
 
     QStringList ScriptList();
     bool        ScriptAdd(ExtensionFile* ext);
@@ -93,7 +99,7 @@ public:
     void        RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
     void        EventRemove(const QString &event_id);
     QStringList EventList();
-    QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType);
+    QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType, const bool &agentsNeed);
     QList<AxEvent>    FilterEvents(const QString &agentId, const QString &eventType);
 
     QList<AxScriptEngine*> getAllEngines() const;
@@ -112,7 +118,7 @@ public:
     int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds);
     int AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files);
     int AddMenuProcessBrowser(QMenu* menu, QVector<DataMenuProcessBrowser> processes);
-    int AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files);
+    int AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files, const bool &agnetNeed);
     int AddMenuTask(QMenu* menu, const QString &menuType, const QStringList &tasks);
     int AddMenuTargets(QMenu* menu, const QString &menuType, const QStringList &targets);
     int AddMenuCreds(QMenu* menu, const QString &menuType, const QStringList &creds);

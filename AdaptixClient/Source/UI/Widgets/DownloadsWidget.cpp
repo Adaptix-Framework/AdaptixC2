@@ -265,7 +265,7 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos)
 
         data.state = "finished";
         files.append(data);
-        int menuCount = adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadFinished", files);
+        int menuCount = adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadFinished", files, false);
         if (menuCount > 0)
             ctxMenu.addSeparator();
 
@@ -278,7 +278,7 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos)
             data.state = "stopped";
         }
         files.append(data);
-        adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadRunning", files);
+        adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadRunning", files, true);
     }
 
     ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));

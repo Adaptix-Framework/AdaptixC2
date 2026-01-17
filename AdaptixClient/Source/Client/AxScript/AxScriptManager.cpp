@@ -98,6 +98,10 @@ QVector<CredentialData> AxScriptManager::GetCredentials() const {
     return adaptixWidget->Credentials;
 }
 
+QVector<ListenerData> AxScriptManager::GetListeners() const {
+    return adaptixWidget->Listeners;
+}
+
 QMap<QString, DownloadData> AxScriptManager::GetDownloads() const {
     QReadLocker locker(&adaptixWidget->DownloadsLock);
     return adaptixWidget->Downloads;
@@ -354,7 +358,7 @@ void AxScriptManager::EventRemove(const QString &event_id)
     }
 }
 
-QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, const QString &menuType)
+QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, const QString &menuType, const bool &agentsNeed)
 {
     QSet<QString> agentTypes;
     QSet<QString> listenerTypes;
@@ -379,8 +383,13 @@ QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, 
 
     QList<AxMenuItem> ret;
     for (const auto& item : items) {
-        if (!item.agents.contains(agentTypes))
-            continue;
+        if (agentsNeed) {
+            if (!item.agents.contains(agentTypes))
+                continue;
+        } else {
+            if (item.agents.size() > 0 && !item.agents.contains(agentTypes))
+                continue;
+        }
         if (item.os.size() > 0 && !item.os.contains(osTypes))
             continue;
         if (item.listeners.size() > 0 && !item.listeners.contains(listenerTypes))
@@ -483,7 +492,7 @@ int AxScriptManager::AddMenuSession(QMenu *menu, const QString &menuType, QStrin
                 context << agent_id;
         }
     }
-    return addMenuItemsToMenu(menu, FilterMenuItems(agentIds, menuType), context);
+    return addMenuItemsToMenu(menu, FilterMenuItems(agentIds, menuType, true), context);
 }
 
 int AxScriptManager::AddMenuFileBrowser(QMenu *menu, QVector<DataMenuFileBrowser> files)
@@ -504,7 +513,7 @@ int AxScriptManager::AddMenuFileBrowser(QMenu *menu, QVector<DataMenuFileBrowser
             }
         }
     }
-    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << files[0].agentId, "FileBrowser"), context);
+    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << files[0].agentId, "FileBrowser", true), context);
 }
 
 int AxScriptManager::AddMenuProcessBrowser(QMenu *menu, QVector<DataMenuProcessBrowser> processes)
@@ -528,10 +537,10 @@ int AxScriptManager::AddMenuProcessBrowser(QMenu *menu, QVector<DataMenuProcessB
             }
         }
     }
-    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << processes[0].agentId, "ProcessBrowser"), context);
+    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << processes[0].agentId, "ProcessBrowser", true), context);
 }
 
-int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVector<DataMenuDownload> files)
+int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVector<DataMenuDownload> files, const bool &agnetNeed)
 {
     if (files.empty()) return 0;
 
@@ -539,17 +548,15 @@ int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVect
     {
         QReadLocker locker(&adaptixWidget->AgentsMapLock);
         for (const auto& file : files) {
-            if (adaptixWidget->AgentsMap.contains(file.agentId)) {
-                QVariantMap map;
-                map["agent_id"] = file.agentId;
-                map["file_id"]  = file.fileId;
-                map["path"]     = file.path;
-                map["state"]    = file.state;
-                context << map;
-            }
+            QVariantMap map;
+            map["agent_id"] = file.agentId;
+            map["file_id"]  = file.fileId;
+            map["path"]     = file.path;
+            map["state"]    = file.state;
+            context << map;
         }
     }
-    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << files[0].agentId, menuType), context);
+    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << files[0].agentId, menuType, false), context);
 }
 
 int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QStringList &tasks)
@@ -571,7 +578,7 @@ int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QSt
             agents.insert(taskData.AgentId);
         }
     }
-    return addMenuItemsToMenu(menu, FilterMenuItems(QList<QString>(agents.begin(), agents.end()), menuType), context);
+    return addMenuItemsToMenu(menu, FilterMenuItems(QList<QString>(agents.begin(), agents.end()), menuType, true), context);
 }
 
 int AxScriptManager::AddMenuTargets(QMenu *menu, const QString &menuType, const QStringList &targets)

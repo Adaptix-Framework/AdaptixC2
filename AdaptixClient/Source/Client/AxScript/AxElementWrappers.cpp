@@ -1268,6 +1268,476 @@ void AxSelectorAgents::close() const { dialog->close(); }
 
 
 
+/// SELECTOR LISTENERS
+
+AxDialogListeners::AxDialogListeners(const QJSValue &headers, QVector<ListenerData> vecListeners, QWidget *parent)
+{
+    this->setProperty("Main", "base");
+
+    tableView = new QTableView(this);
+    tableView->setAlternatingRowColors(true);
+    tableView->setShowGrid(false);
+    tableView->setSortingEnabled(true);
+    tableView->setWordWrap(true);
+    tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tableView->horizontalHeader()->setCascadingSectionResizes(true);
+    tableView->horizontalHeader()->setHighlightSections(false);
+    tableView->verticalHeader()->setVisible(false);
+    tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    tableModel = new AxListenersTableModel(this);
+    proxyModel = new AxListenersFilterProxyModel(this);
+    proxyModel->setSourceModel(tableModel);
+    tableView->setModel(proxyModel);
+
+    chooseButton = new QPushButton("Choose", this);
+
+    spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
+    spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
+
+    bottomLayout = new QHBoxLayout();
+    bottomLayout->addItem(spacer_1);
+    bottomLayout->addWidget(chooseButton);
+    bottomLayout->addItem(spacer_2);
+
+    searchWidget = new QWidget(this);
+
+    searchLineEdit = new QLineEdit(searchWidget);
+    searchLineEdit->setPlaceholderText("filter");
+
+    hideButton = new ClickableLabel("X");
+    hideButton->setCursor(Qt::PointingHandCursor);
+
+    searchLayout = new QHBoxLayout(searchWidget);
+    searchLayout->setContentsMargins(0, 0, 0, 0);
+    searchLayout->setSpacing(4);
+    searchLayout->addWidget(searchLineEdit);
+    searchLayout->addWidget(hideButton);
+
+    mainLayout = new QVBoxLayout();
+    mainLayout->addWidget(searchWidget);
+    mainLayout->addWidget(tableView);
+    mainLayout->addLayout(bottomLayout);
+
+    setLayout(mainLayout);
+
+    connect(searchLineEdit, &QLineEdit::textEdited,   this, &AxDialogListeners::handleSearch);
+    connect(chooseButton,   &QPushButton::clicked,    this, &AxDialogListeners::onClicked);
+    connect(hideButton,     &ClickableLabel::clicked, this, &AxDialogListeners::clearSearch);
+
+    QVector<QString> headerLabels;
+    QVector<QString> fieldKeys;
+
+    const int length = headers.property("length").toInt();
+    for (int i = 0; i < length; ++i) {
+        QString val = headers.property(i).toString();
+        if (FIELD_MAP_LISTENERS.contains(val)) {
+            headerLabels.append(FIELD_MAP_LISTENERS[val]);
+            fieldKeys.append(val);
+        }
+    }
+    headerLabels.append("Name");
+    fieldKeys.append("name");
+
+    tableModel->setHeaders(headerLabels, fieldKeys);
+    tableModel->setData(vecListeners);
+
+    int lastCol = headerLabels.size() - 1;
+    tableView->hideColumn(lastCol);
+
+    if (headerLabels.size() > 2) {
+        for (int i = 0; i < headerLabels.size() - 2; ++i) {
+            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+        }
+    }
+}
+
+QVector<ListenerData> AxDialogListeners::data() { return selectedData; }
+
+void AxDialogListeners::onClicked()
+{
+    selectedData.clear();
+    QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    for (const auto& proxyIndex : selected) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (sourceIndex.isValid()) {
+            selectedData.append(tableModel->getListener(sourceIndex.row()));
+        }
+    }
+    this->accept();
+}
+
+void AxDialogListeners::handleSearch()
+{
+    proxyModel->setFilterText(searchLineEdit->text());
+}
+
+void AxDialogListeners::clearSearch()
+{
+    searchLineEdit->clear();
+    handleSearch();
+}
+
+AxSelectorListeners::AxSelectorListeners(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
+{
+    auto vecListeners = scriptEngine->manager()->GetListeners();
+
+    dialog = new AxDialogListeners(headers, vecListeners);
+    dialog->setWindowTitle("Choose listener");
+}
+
+void AxSelectorListeners::setSize(const int w, const int h ) const { dialog->resize(w, h); }
+
+QJSValue AxSelectorListeners::exec() const
+{
+    QVector<ListenerData> vecListeners;
+    if (dialog->exec() == QDialog::Accepted) {
+        vecListeners = dialog->data();
+    }
+
+    QVariantList list;
+    for (auto listener : vecListeners) {
+        QVariantMap map;
+        map["name"]       = listener.Name;
+        map["type"]       = listener.ListenerType;
+        map["protocol"]   = listener.ListenerProtocol;
+        map["bind_host"]  = listener.BindHost;
+        map["bind_port"]  = listener.BindPort;
+        map["agent_addr"] = listener.AgentAddresses;
+        map["status"]     = listener.Status;
+        map["date"]       = listener.Date;
+        list.append(map);
+    }
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+void AxSelectorListeners::close() const { dialog->close(); }
+
+
+
+/// SELECTOR TARGETS
+
+AxDialogTargets::AxDialogTargets(const QJSValue &headers, QVector<TargetData> vecTargets, QWidget *parent)
+{
+    this->setProperty("Main", "base");
+
+    tableView = new QTableView(this);
+    tableView->setAlternatingRowColors(true);
+    tableView->setShowGrid(false);
+    tableView->setSortingEnabled(true);
+    tableView->setWordWrap(true);
+    tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tableView->horizontalHeader()->setCascadingSectionResizes(true);
+    tableView->horizontalHeader()->setHighlightSections(false);
+    tableView->verticalHeader()->setVisible(false);
+    tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    tableModel = new AxTargetsTableModel(this);
+    proxyModel = new AxTargetsFilterProxyModel(this);
+    proxyModel->setSourceModel(tableModel);
+    tableView->setModel(proxyModel);
+
+    chooseButton = new QPushButton("Choose", this);
+
+    spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
+    spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
+
+    bottomLayout = new QHBoxLayout();
+    bottomLayout->addItem(spacer_1);
+    bottomLayout->addWidget(chooseButton);
+    bottomLayout->addItem(spacer_2);
+
+    searchWidget = new QWidget(this);
+
+    searchLineEdit = new QLineEdit(searchWidget);
+    searchLineEdit->setPlaceholderText("filter");
+
+    hideButton = new ClickableLabel("X");
+    hideButton->setCursor(Qt::PointingHandCursor);
+
+    searchLayout = new QHBoxLayout(searchWidget);
+    searchLayout->setContentsMargins(0, 0, 0, 0);
+    searchLayout->setSpacing(4);
+    searchLayout->addWidget(searchLineEdit);
+    searchLayout->addWidget(hideButton);
+
+    mainLayout = new QVBoxLayout();
+    mainLayout->addWidget(searchWidget);
+    mainLayout->addWidget(tableView);
+    mainLayout->addLayout(bottomLayout);
+
+    setLayout(mainLayout);
+
+    connect(searchLineEdit, &QLineEdit::textEdited,   this, &AxDialogTargets::handleSearch);
+    connect(chooseButton,   &QPushButton::clicked,    this, &AxDialogTargets::onClicked);
+    connect(hideButton,     &ClickableLabel::clicked, this, &AxDialogTargets::clearSearch);
+
+    QVector<QString> headerLabels;
+    QVector<QString> fieldKeys;
+
+    const int length = headers.property("length").toInt();
+    for (int i = 0; i < length; ++i) {
+        QString val = headers.property(i).toString();
+        if (FIELD_MAP_TARGETS.contains(val)) {
+            headerLabels.append(FIELD_MAP_TARGETS[val]);
+            fieldKeys.append(val);
+        }
+    }
+    headerLabels.append("Target ID");
+    fieldKeys.append("id");
+
+    tableModel->setHeaders(headerLabels, fieldKeys);
+    tableModel->setData(vecTargets);
+
+    int lastCol = headerLabels.size() - 1;
+    tableView->hideColumn(lastCol);
+
+    if (headerLabels.size() > 2) {
+        for (int i = 0; i < headerLabels.size() - 2; ++i) {
+            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+        }
+    }
+}
+
+QVector<TargetData> AxDialogTargets::data() { return selectedData; }
+
+void AxDialogTargets::onClicked()
+{
+    selectedData.clear();
+    QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    for (const auto& proxyIndex : selected) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (sourceIndex.isValid()) {
+            selectedData.append(tableModel->getTarget(sourceIndex.row()));
+        }
+    }
+    this->accept();
+}
+
+void AxDialogTargets::handleSearch()
+{
+    proxyModel->setFilterText(searchLineEdit->text());
+}
+
+void AxDialogTargets::clearSearch()
+{
+    searchLineEdit->clear();
+    handleSearch();
+}
+
+AxSelectorTargets::AxSelectorTargets(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
+{
+    auto vecTargets = scriptEngine->manager()->GetTargets();
+
+    dialog = new AxDialogTargets(headers, vecTargets);
+    dialog->setWindowTitle("Choose target");
+}
+
+void AxSelectorTargets::setSize(const int w, const int h ) const { dialog->resize(w, h); }
+
+QJSValue AxSelectorTargets::exec() const
+{
+    QVector<TargetData> vecTargets;
+    if (dialog->exec() == QDialog::Accepted) {
+        vecTargets = dialog->data();
+    }
+
+    QVariantList list;
+    for (auto target : vecTargets) {
+        QString os = "unknown";
+        if (target.Os == OS_WINDOWS)    os = "windows";
+        else if (target.Os == OS_LINUX) os = "linux";
+        else if (target.Os == OS_MAC)   os = "macos";
+
+        QVariantMap map;
+        map["id"]       = target.TargetId;
+        map["computer"] = target.Computer;
+        map["domain"]   = target.Domain;
+        map["address"]  = target.Address;
+        map["tag"]      = target.Tag;
+        map["os"]       = os;
+        map["os_desc"]  = target.OsDesc;
+        map["info"]     = target.Info;
+        map["date"]     = target.Date;
+        map["alive"]    = target.Alive;
+        list.append(map);
+    }
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+void AxSelectorTargets::close() const { dialog->close(); }
+
+
+
+/// SELECTOR DOWNLOADS
+
+AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, QVector<DownloadData> vecDownloads, QWidget *parent)
+{
+    this->setProperty("Main", "base");
+
+    tableView = new QTableView(this);
+    tableView->setAlternatingRowColors(true);
+    tableView->setShowGrid(false);
+    tableView->setSortingEnabled(true);
+    tableView->setWordWrap(true);
+    tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tableView->horizontalHeader()->setCascadingSectionResizes(true);
+    tableView->horizontalHeader()->setHighlightSections(false);
+    tableView->verticalHeader()->setVisible(false);
+    tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+    tableModel = new AxDownloadsTableModel(this);
+    proxyModel = new AxDownloadsFilterProxyModel(this);
+    proxyModel->setSourceModel(tableModel);
+    tableView->setModel(proxyModel);
+
+    chooseButton = new QPushButton("Choose", this);
+
+    spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
+    spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
+
+    bottomLayout = new QHBoxLayout();
+    bottomLayout->addItem(spacer_1);
+    bottomLayout->addWidget(chooseButton);
+    bottomLayout->addItem(spacer_2);
+
+    searchWidget = new QWidget(this);
+
+    searchLineEdit = new QLineEdit(searchWidget);
+    searchLineEdit->setPlaceholderText("filter");
+
+    hideButton = new ClickableLabel("X");
+    hideButton->setCursor(Qt::PointingHandCursor);
+
+    searchLayout = new QHBoxLayout(searchWidget);
+    searchLayout->setContentsMargins(0, 0, 0, 0);
+    searchLayout->setSpacing(4);
+    searchLayout->addWidget(searchLineEdit);
+    searchLayout->addWidget(hideButton);
+
+    mainLayout = new QVBoxLayout();
+    mainLayout->addWidget(searchWidget);
+    mainLayout->addWidget(tableView);
+    mainLayout->addLayout(bottomLayout);
+
+    setLayout(mainLayout);
+
+    connect(searchLineEdit, &QLineEdit::textEdited,   this, &AxDialogDownloads::handleSearch);
+    connect(chooseButton,   &QPushButton::clicked,    this, &AxDialogDownloads::onClicked);
+    connect(hideButton,     &ClickableLabel::clicked, this, &AxDialogDownloads::clearSearch);
+
+    QVector<QString> headerLabels;
+    QVector<QString> fieldKeys;
+
+    const int length = headers.property("length").toInt();
+    for (int i = 0; i < length; ++i) {
+        QString val = headers.property(i).toString();
+        if (FIELD_MAP_DOWNLOADS.contains(val)) {
+            headerLabels.append(FIELD_MAP_DOWNLOADS[val]);
+            fieldKeys.append(val);
+        }
+    }
+    headerLabels.append("File ID");
+    fieldKeys.append("id");
+
+    tableModel->setHeaders(headerLabels, fieldKeys);
+    tableModel->setData(vecDownloads);
+
+    int lastCol = headerLabels.size() - 1;
+    tableView->hideColumn(lastCol);
+
+    if (headerLabels.size() > 2) {
+        for (int i = 0; i < headerLabels.size() - 2; ++i) {
+            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+        }
+    }
+}
+
+QVector<DownloadData> AxDialogDownloads::data() { return selectedData; }
+
+void AxDialogDownloads::onClicked()
+{
+    selectedData.clear();
+    QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    for (const auto& proxyIndex : selected) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+        if (sourceIndex.isValid()) {
+            selectedData.append(tableModel->getDownload(sourceIndex.row()));
+        }
+    }
+    this->accept();
+}
+
+void AxDialogDownloads::handleSearch()
+{
+    proxyModel->setFilterText(searchLineEdit->text());
+}
+
+void AxDialogDownloads::clearSearch()
+{
+    searchLineEdit->clear();
+    handleSearch();
+}
+
+AxSelectorDownloads::AxSelectorDownloads(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
+{
+    auto mapDownloads = scriptEngine->manager()->GetDownloads();
+    QVector<DownloadData> vecDownloads;
+    for (const auto& download : mapDownloads)
+        vecDownloads.append(download);
+
+    dialog = new AxDialogDownloads(headers, vecDownloads);
+    dialog->setWindowTitle("Choose download");
+}
+
+void AxSelectorDownloads::setSize(const int w, const int h ) const { dialog->resize(w, h); }
+
+QJSValue AxSelectorDownloads::exec() const
+{
+    QVector<DownloadData> vecDownloads;
+    if (dialog->exec() == QDialog::Accepted) {
+        vecDownloads = dialog->data();
+    }
+
+    QVariantList list;
+    for (auto download : vecDownloads) {
+        QString state;
+        switch (download.State) {
+            case DOWNLOAD_STATE_RUNNING:  state = "running";  break;
+            case DOWNLOAD_STATE_STOPPED:  state = "stopped";  break;
+            case DOWNLOAD_STATE_FINISHED: state = "finished"; break;
+            default:                      state = "canceled"; break;
+        }
+
+        QVariantMap map;
+        map["id"]         = download.FileId;
+        map["agent_id"]   = download.AgentId;
+        map["agent_name"] = download.AgentName;
+        map["user"]       = download.User;
+        map["computer"]   = download.Computer;
+        map["filename"]   = download.Filename;
+        map["total_size"] = download.TotalSize;
+        map["recv_size"]  = download.RecvSize;
+        map["state"]      = state;
+        map["date"]       = download.Date;
+        list.append(map);
+    }
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+void AxSelectorDownloads::close() const { dialog->close(); }
+
+
+
 /// DOCK WIDGET
 
 #include <UI/Widgets/AdaptixWidget.h>

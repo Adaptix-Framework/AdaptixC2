@@ -38,7 +38,7 @@ public Q_SLOTS:
     void add_processbrowser(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue());
 
     void add_downloads_running(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue());
-    void add_downloads_finished(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue());
+    void add_downloads_finished(AbstractAxMenuItem* item, const QJSValue &agents = QJSValue(), const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue());
 
     void add_tasks(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue());
     void add_tasks_job(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue());
