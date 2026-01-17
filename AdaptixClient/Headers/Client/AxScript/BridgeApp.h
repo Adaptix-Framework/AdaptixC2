@@ -39,6 +39,18 @@ public Q_SLOTS:
     QObject* create_command(const QString &name, const QString &description, const QString &example = "", const QString &message = "");
     QObject* create_commands_group(const QString &name, const QJSValue& array);
     QJSValue downloads() const;
+    QString  donut_generate(
+        const QString &file, 
+        const QString &params, 
+        const QString &arch, 
+        const QString &pipeName = "", 
+        const QString &stubBase64 = "", 
+        int compress = 1, 
+        int entropy = 3, 
+        int exit_opt = 2, 
+        int bypass = 3, 
+        int headers = 1
+    );
     // (algorithm: "hex", "base64", "base32", "zip", "xor")
     QString  decode_data(const QString &algorithm, const QString &data, const QString &key = QString()) const;
     QString  decode_file(const QString &algorithm, const QString &path, const QString &key = QString()) const;

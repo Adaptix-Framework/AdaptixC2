@@ -9,6 +9,7 @@
 #include <Client/AxScript/AxCommandWrappers.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxScriptUtils.h>
+#include <donut.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/CredentialsWidget.h>
@@ -467,6 +468,101 @@ QObject* BridgeApp::create_commands_group(const QString &name, const QJSValue &a
     wrapper->SetParams(name, array);
     scriptEngine->registerObject(wrapper);
     return wrapper;
+}
+
+// Unified Donut Generator
+QString BridgeApp::donut_generate(
+    const QString &file, 
+    const QString &params, 
+    const QString &arch, 
+    const QString &pipeName, 
+    const QString &stubBase64, 
+    int compress, 
+    int entropy, 
+    int exit_opt, 
+    int bypass, 
+    int headers
+)
+{
+    QString resolvedFile = file;
+    if (resolvedFile.startsWith("~/"))
+        resolvedFile = QDir::home().filePath(resolvedFile.mid(2));
+
+    DONUT_CONFIG c;
+    memset(&c, 0, sizeof(c));
+
+    c.inst_type = DONUT_INSTANCE_EMBED;
+    c.format    = DONUT_FORMAT_BINARY; // Force binary internally
+
+    // Apply User Options
+    c.compress  = compress; // 1=None, 2=aPLib, (3=LZNT1, 4=Xpress [Windows Only Options]) 
+    c.entropy   = entropy;  // 1=None, 2=Random, 3=Default (Random+Symmetric)
+    c.exit_opt  = exit_opt; // 1=Thread, 2=Process, 3=Block
+    c.bypass    = bypass;   // 1=None, 2=Abort, 3=Continue
+    c.headers   = headers;  // 1=Overwrite, 2=Keep
+
+    if (arch == "x86")
+        c.arch = DONUT_ARCH_X86;
+    else if (arch == "x64")
+        c.arch = DONUT_ARCH_X64;
+    else
+        c.arch = DONUT_ARCH_ANY;
+
+    QByteArray fileBytes = resolvedFile.toUtf8();
+    if (fileBytes.size() >= DONUT_MAX_NAME) {
+         Q_EMIT engineError("donut_generate: File path too long");
+         return "";
+    }
+    strncpy(c.input, fileBytes.constData(), DONUT_MAX_NAME - 1);
+
+    if (!params.isEmpty()) {
+        QByteArray paramBytes = params.toUtf8();
+        if (paramBytes.size() >= DONUT_MAX_NAME) {
+            Q_EMIT engineError("donut_generate: Params too long");
+            return "";
+        }
+        strncpy(c.args, paramBytes.constData(), DONUT_MAX_NAME - 1);
+    }
+    
+    // Attempt to generate
+    int err = DonutCreate(&c);
+    if (err != DONUT_ERROR_OK) {
+        Q_EMIT engineError("donut_generate failed: " + QString(DonutError(err)));
+        return "";
+    }
+
+    QByteArray donutShellcode((const char*)c.pic, c.pic_len);
+    DonutDelete(&c);
+
+    // --- Pipe Patching (PPID Mode) ---
+    if (!pipeName.isEmpty() && !stubBase64.isEmpty()) {
+        QByteArray stub = QByteArray::fromBase64(stubBase64.toUtf8());
+        
+        // Auto-detect pipe name offset
+        int offset = stub.indexOf("\\\\.\\pipe\\dnt_");
+        if (offset == -1) {
+             Q_EMIT engineError("donut_generate: Stub does not contain pipe name placeholder (\\\\.\\pipe\\dnt_)");
+             return "";
+        }
+
+        // Patch the pipe name into the stub
+        QByteArray pipeNameBytes = pipeName.toUtf8();
+        if (pipeNameBytes.size() > 32) {
+            pipeNameBytes = pipeNameBytes.left(32);  // Truncate if too long
+        }
+        
+        // Copy pipe name into stub at the detected offset (overwrite the placeholder)
+        for (int i = 0; i < pipeNameBytes.size() && (offset + i) < stub.size(); i++) {
+            stub[offset + i] = pipeNameBytes[i];
+        }
+        
+        // Append donut shellcode to stub
+        QByteArray combined = stub + donutShellcode;
+        return combined.toBase64();
+    }
+
+    // Standard Mode (No Pipe)
+    return donutShellcode.toBase64();
 }
 
 QJSValue BridgeApp::downloads() const

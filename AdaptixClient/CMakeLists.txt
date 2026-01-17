@@ -30,6 +30,7 @@ find_package(Qt6
 include_directories(
         Headers
         Libs
+        Libs/donut/include
 )
 
 ### KDDOCKWIDGETS
@@ -246,6 +247,14 @@ add_executable(AdaptixClient
         Source/Utils/NonBlockingDialogs.cpp
         Source/Utils/FontManager.cpp
         Source/Utils/TitleBarStyle.cpp
+        Source/Utils/FontManager.cpp
+        Source/Utils/TitleBarStyle.cpp
+
+        Libs/donut/donut.c
+        Libs/donut/hash.c
+        Libs/donut/encrypt.c
+        Libs/donut/format.c
+
 )
 
 target_compile_definitions(
@@ -269,6 +278,8 @@ if(UNIX)
 
             kddockwidgets
 
+            ${CMAKE_CURRENT_SOURCE_DIR}/Libs/donut/lib/aplib64.a
+            
             pthread dl
     )
 elseif(APPLE)
@@ -284,6 +295,8 @@ elseif(APPLE)
             OpenSSL::Crypto
 
             kddockwidgets
+            
+            ${CMAKE_CURRENT_SOURCE_DIR}/Libs/donut/lib/aplib64.a
 
             pthread dl
     )
@@ -299,6 +312,8 @@ else()
             Qt6::Qml
 
             kddockwidgets
+
+            ${CMAKE_CURRENT_SOURCE_DIR}/Libs/donut/lib/aplib64.lib
 
             wsock32 ws2_32 crypt32 iphlpapi netapi32 version winmm userenv dwmapi
     )
