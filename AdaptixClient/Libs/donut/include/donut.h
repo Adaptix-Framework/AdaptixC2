@@ -173,7 +173,7 @@ typedef struct _GUID {
 #define DONUT_HEADERS_OVERWRITE          1  // Overwrite PE headers
 #define DONUT_HEADERS_KEEP               2  // Preserve PE headers
 
-#define DONUT_MAX_NAME                 256  // maximum length of string for domain, class, method and parameter names
+#define DONUT_MAX_NAME                 2560  // maximum length of string for domain, class, method and parameter names
 #define DONUT_MAX_DLL                    8  // maximum number of DLL supported by instance
 #define DONUT_MAX_MODNAME                8
 #define DONUT_SIG_LEN                    8  // 64-bit string to verify decryption ok
