@@ -48,6 +48,7 @@ Q_OBJECT
     QMap<QString, AxScriptEngine*> scripts;
     QMap<QString, AxScriptEngine*> listeners_scripts;
     QMap<QString, AxScriptEngine*> agents_scripts;
+    QMap<QString, AxScriptEngine*> services_scripts;
 
 public:
     AxScriptManager(AdaptixWidget* main_widget, QObject *parent = nullptr);

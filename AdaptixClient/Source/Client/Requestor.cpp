@@ -390,3 +390,14 @@ void HttpReqChatSendMessageAsync(const QString &text, AuthProfile& profile, Http
 
     HttpRequestManager::instance().post(profile.GetURL(), "/chat/send", profile.GetAccessToken(), jsonData, callback);
 }
+
+void HttpReqServiceCallAsync(const QString &service, const QString &command, const QString &args, AuthProfile& profile, HttpCallback callback)
+{
+    QJsonObject dataJson;
+    dataJson["service"] = service;
+    dataJson["command"] = command;
+    dataJson["args"] = args;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    HttpRequestManager::instance().post(profile.GetURL(), "/service/call", profile.GetAccessToken(), jsonData, callback);
+}

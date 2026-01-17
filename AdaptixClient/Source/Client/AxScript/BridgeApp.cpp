@@ -3,6 +3,7 @@
 #include <QJSValueIterator>
 #include <Agent/Agent.h>
 #include <Client/AuthProfile.h>
+#include <Client/Requestor.h>
 #include <Client/AxScript/BridgeApp.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxCommandWrappers.h>
@@ -1132,6 +1133,27 @@ QJSValue BridgeApp::screenshots()
     }
 
     return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+void BridgeApp::service_command(const QString &service, const QString &command, const QJSValue &args)
+{
+    QString argsStr;
+    if (!args.isUndefined() && !args.isNull()) {
+        if (!args.isObject()) {
+            Q_EMIT engineError("service_command expected object in args parameter!");
+            return;
+        }
+        QJsonObject argsObj = QJsonObject::fromVariantMap(args.toVariant().toMap());
+        argsStr = QString::fromUtf8(QJsonDocument(argsObj).toJson(QJsonDocument::Compact));
+    }
+
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    if (!adaptix || !adaptix->GetProfile()) {
+        Q_EMIT engineError("service_command: no active profile!");
+        return;
+    }
+
+    HttpReqServiceCallAsync(service, command, argsStr, *adaptix->GetProfile(), [](bool, const QString&, const QJsonObject&) {});
 }
 
 void BridgeApp::show_message(const QString &title, const QString &text) { QMessageBox::information(nullptr, title, text); }

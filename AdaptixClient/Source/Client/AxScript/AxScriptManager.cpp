@@ -52,6 +52,8 @@ void AxScriptManager::Clear()
         mainScript = nullptr;
     }
 
+    qDeleteAll(services_scripts);
+    services_scripts.clear();
     qDeleteAll(agents_scripts);
     agents_scripts.clear();
     qDeleteAll(listeners_scripts);
@@ -79,6 +81,9 @@ QJSEngine* AxScriptManager::GetEngine(const QString &name)
 
     if (scripts.contains(name) && scripts[name])
         return scripts[name]->engine();
+
+    if (services_scripts.contains(name) && services_scripts[name])
+        return services_scripts[name]->engine();
 
     if (name == "main" && mainScript)
         return mainScript->engine();
@@ -164,6 +169,52 @@ QJSEngine* AxScriptManager::AgentScriptEngine(const QString &name)
     if (!agents_scripts.contains(name)) return nullptr;
     return agents_scripts[name]->engine();
 }
+
+
+
+QStringList AxScriptManager::ServiceScriptList() { return services_scripts.keys(); }
+
+void AxScriptManager::ServiceScriptAdd(const QString &name, const QString &ax_script)
+{
+    if (services_scripts.contains(name)) return;
+
+    AxScriptEngine* script = new AxScriptEngine(this, name, this);
+    script->execute(ax_script);
+
+    services_scripts[name] = script;
+
+    QJSValue func = script->engine()->globalObject().property("InitService");
+    if (func.isCallable())
+        func.call();
+}
+
+QJSEngine* AxScriptManager::ServiceScriptEngine(const QString &name)
+{
+    if (!services_scripts.contains(name)) return nullptr;
+    return services_scripts[name]->engine();
+}
+
+void AxScriptManager::ServiceScriptDataHandler(const QString &name, const QString &data)
+{
+    if (!services_scripts.contains(name)) return;
+
+    QJSValue func = services_scripts[name]->engine()->globalObject().property("data_handler");
+    if (!func.isCallable()) {
+        // consolePrintError(name + " - function data_handler is not registered");
+        return;
+    }
+
+    QJSValueList args;
+    args << QJSValue(data);
+    func.call(args);
+    // QJSValue result = func.call(args);
+    // if (result.isError()) {
+    //     QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(name).arg(result.property("stack").toString());
+    //     consolePrintError(error);
+    // }
+}
+
+
 
 QJSValue AxScriptManager::AgentScriptExecute(const QString &name, const QString &code)
 {
@@ -273,8 +324,8 @@ void AxScriptManager::ExecuteSmart(const QString& code, const QString& name)
 QList<AxScriptEngine*> AxScriptManager::getAllEngines() const
 {
     QList<AxScriptEngine*> list;
-    list.reserve(agents_scripts.size() + scripts.size() + 1);
-    list << agents_scripts.values() << scripts.values();
+    list.reserve(agents_scripts.size() + services_scripts.size() + scripts.size() + 1);
+    list << agents_scripts.values() << services_scripts.values() << scripts.values();
     if (mainScript)
         list << mainScript;
     return list;

@@ -1,4 +1,5 @@
 #include <Agent/Agent.h>
+#include <Client/AxScript/AxScriptManager.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
@@ -169,6 +170,14 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return checkField("event_type", isNum) &&
                checkField("date", isNum) &&
                checkField("message", isStr);
+
+    case TYPE_SERVICE_REG:
+        return checkField("service", isStr) &&
+               checkField("ax", isStr);
+
+    case TYPE_SERVICE_DATA:
+        return checkField("service", isStr) &&
+               checkField("data", isStr);
 
     case TYPE_LISTENER_REG:
         return checkField("l_name", isStr) &&
@@ -513,6 +522,14 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_LISTENER_STOP:
         ListenersDock->RemoveListenerItem(jsonObj["l_name"].toString());
+        break;
+
+    case TYPE_SERVICE_REG:
+        this->RegisterServiceConfig( jsonObj["service"].toString(), jsonObj["ax"].toString() );
+        break;
+
+    case TYPE_SERVICE_DATA:
+        ScriptManager->ServiceScriptDataHandler( jsonObj["service"].toString(), jsonObj["data"].toString() );
         break;
 
     case TYPE_LISTENER_REG:
