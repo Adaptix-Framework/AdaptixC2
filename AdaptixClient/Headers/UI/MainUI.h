@@ -54,6 +54,13 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
+
+private Q_SLOTS:
+    void onOpenProjectDirectory();
+    void onTabChanged(int index);
+
+private:
+    void updateTabButton(int index, const QString& tabName, bool showButton = false);
 };
 
 #endif
