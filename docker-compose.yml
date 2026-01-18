@@ -11,7 +11,7 @@ services:
     container_name: adaptix-server-builder
     volumes:
       - ./AdaptixServer/server-dist:/server-dist
-    command: sh -c "mkdir -p /server-dist && cp /app/dist/adaptixserver /app/dist/ssl_gen.sh /app/dist/profile.json /app/dist/404page.html /server-dist/ || true"
+    command: sh -c "mkdir -p /server-dist && cp /app/dist/adaptixserver /app/dist/ssl_gen.sh /app/dist/profile.yaml /app/dist/404page.html /server-dist/ || true"
 
   # Build extenders only
   extenders-builder:
@@ -35,7 +35,7 @@ services:
     container_name: adaptix-server-ext-builder
     volumes:
       - ./AdaptixServer/server-dist:/server-dist
-    command: sh -c "mkdir -p /server-dist && cp /app/dist/adaptixserver /app/dist/ssl_gen.sh /app/dist/profile.json /app/dist/404page.html /server-dist/ && cp -r /app/dist/extenders /server-dist/ || true"
+    command: sh -c "mkdir -p /server-dist && cp /app/dist/adaptixserver /app/dist/ssl_gen.sh /app/dist/profile.yaml /app/dist/404page.html /server-dist/ && cp -r /app/dist/extenders /server-dist/ || true"
 
   # Run server (runtime)
   adaptix-server-runtime:
@@ -48,7 +48,7 @@ services:
     network_mode: host
     volumes:
       - ./AdaptixServer/server-dist/data:/app/data
-      - ./AdaptixServer/server-dist/profile.json:/app/profile.json:ro
+      - ./AdaptixServer/server-dist/profile.yaml:/app/profile.yaml:ro
     environment:
       - TZ=${TZ:-UTC}
     restart: unless-stopped
