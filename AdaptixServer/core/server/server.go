@@ -308,6 +308,8 @@ func (ts *Teamserver) Start() {
 		return
 	}
 
+	ts.Extender.LoadPlugins(ts.Profile.Server.Extenders)
+
 	go ts.AdaptixServer.Start(&stopped)
 	logs.Success("", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
 

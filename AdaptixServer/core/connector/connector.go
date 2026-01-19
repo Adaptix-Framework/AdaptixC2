@@ -135,8 +135,12 @@ type TsConnector struct {
 	Cert      string
 	Key       string
 
-	Engine     *gin.Engine
-	teamserver Teamserver
+	Engine             *gin.Engine
+	teamserver         Teamserver
+	apiGroup           *gin.RouterGroup
+	publicGroup        *gin.RouterGroup
+	dynamicEndpoints   map[string]gin.HandlerFunc
+	dynamicPublicEndpoints map[string]gin.HandlerFunc
 }
 
 func limitTimeoutMiddleware() gin.HandlerFunc {
@@ -197,6 +201,12 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	}
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
+	connector.dynamicEndpoints = make(map[string]gin.HandlerFunc)
+	connector.dynamicPublicEndpoints = make(map[string]gin.HandlerFunc)
+
+	public_group := connector.Engine.Group(tsProfile.Endpoint)
+	public_group.Use(limitTimeoutMiddleware(), default404Middleware(tsResponse))
+	connector.publicGroup = public_group
 
 	login_group := connector.Engine.Group(tsProfile.Endpoint)
 	login_group.Use(limitTimeoutMiddleware(), default404Middleware(tsResponse))
@@ -214,6 +224,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 
 	api_group := connector.Engine.Group(tsProfile.Endpoint)
 	api_group.Use(limitTimeoutMiddleware(), token.ValidateAccessToken(), default404Middleware(tsResponse))
+	connector.apiGroup = api_group
 	{
 		api_group.POST("/sync", connector.tcSync)
 		api_group.GET("/connect", connector.tcConnect)
@@ -284,6 +295,112 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.NoRoute(limitTimeoutMiddleware(), default404Middleware(tsResponse), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 
 	return connector, nil
+}
+
+func (tc *TsConnector) endpointKey(method string, path string) string {
+	return method + ":" + path
+}
+
+func (tc *TsConnector) RegisterEndpoint(method string, path string, handler func(c *gin.Context)) error {
+	if tc.apiGroup == nil {
+		return errors.New("api group not initialized")
+	}
+
+	key := tc.endpointKey(method, path)
+
+	if _, exists := tc.dynamicEndpoints[key]; !exists {
+		dispatcher := func(c *gin.Context) {
+			if h, ok := tc.dynamicEndpoints[key]; ok {
+				h(c)
+			} else {
+				c.JSON(404, gin.H{"error": "endpoint not found"})
+			}
+		}
+
+		switch method {
+		case "GET":
+			tc.apiGroup.GET(path, dispatcher)
+		case "POST":
+			tc.apiGroup.POST(path, dispatcher)
+		case "PUT":
+			tc.apiGroup.PUT(path, dispatcher)
+		case "DELETE":
+			tc.apiGroup.DELETE(path, dispatcher)
+		case "PATCH":
+			tc.apiGroup.PATCH(path, dispatcher)
+		default:
+			return errors.New("unsupported HTTP method: " + method)
+		}
+	}
+
+	tc.dynamicEndpoints[key] = handler
+	return nil
+}
+
+func (tc *TsConnector) UnregisterEndpoint(method string, path string) error {
+	key := tc.endpointKey(method, path)
+	if _, exists := tc.dynamicEndpoints[key]; !exists {
+		return errors.New("endpoint not registered: " + key)
+	}
+	delete(tc.dynamicEndpoints, key)
+	return nil
+}
+
+func (tc *TsConnector) EndpointExists(method string, path string) bool {
+	key := tc.endpointKey(method, path)
+	_, exists := tc.dynamicEndpoints[key]
+	return exists
+}
+
+func (tc *TsConnector) RegisterPublicEndpoint(method string, path string, handler func(c *gin.Context)) error {
+	if tc.publicGroup == nil {
+		return errors.New("public group not initialized")
+	}
+
+	key := tc.endpointKey(method, path)
+
+	if _, exists := tc.dynamicPublicEndpoints[key]; !exists {
+		dispatcher := func(c *gin.Context) {
+			if h, ok := tc.dynamicPublicEndpoints[key]; ok {
+				h(c)
+			} else {
+				c.JSON(404, gin.H{"error": "endpoint not found"})
+			}
+		}
+
+		switch method {
+		case "GET":
+			tc.publicGroup.GET(path, dispatcher)
+		case "POST":
+			tc.publicGroup.POST(path, dispatcher)
+		case "PUT":
+			tc.publicGroup.PUT(path, dispatcher)
+		case "DELETE":
+			tc.publicGroup.DELETE(path, dispatcher)
+		case "PATCH":
+			tc.publicGroup.PATCH(path, dispatcher)
+		default:
+			return errors.New("unsupported HTTP method: " + method)
+		}
+	}
+
+	tc.dynamicPublicEndpoints[key] = handler
+	return nil
+}
+
+func (tc *TsConnector) UnregisterPublicEndpoint(method string, path string) error {
+	key := tc.endpointKey(method, path)
+	if _, exists := tc.dynamicPublicEndpoints[key]; !exists {
+		return errors.New("public endpoint not registered: " + key)
+	}
+	delete(tc.dynamicPublicEndpoints, key)
+	return nil
+}
+
+func (tc *TsConnector) PublicEndpointExists(method string, path string) bool {
+	key := tc.endpointKey(method, path)
+	_, exists := tc.dynamicPublicEndpoints[key]
+	return exists
 }
 
 func (tc *TsConnector) Start(finished *chan bool) {

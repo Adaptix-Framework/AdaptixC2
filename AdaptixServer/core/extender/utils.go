@@ -76,6 +76,20 @@ type Teamserver interface {
 	TsAgentReg(agentInfo AgentInfo) error
 	TsServiceReg(serviceInfo ServiceInfo) error
 	TsServiceUnreg(serviceName string) error
+
+	TsExtenderDataSave(extenderName string, key string, value []byte) error
+	TsExtenderDataLoad(extenderName string, key string) ([]byte, error)
+	TsExtenderDataDelete(extenderName string, key string) error
+	TsExtenderDataKeys(extenderName string) ([]string, error)
+	TsExtenderDataDeleteAll(extenderName string) error
+
+	TsEndpointRegister(method string, path string, handler func(username string, body []byte) (int, []byte)) error
+	TsEndpointUnregister(method string, path string) error
+	TsEndpointExists(method string, path string) bool
+
+	TsEndpointRegisterPublic(method string, path string, handler func(body []byte) (int, []byte)) error
+	TsEndpointUnregisterPublic(method string, path string) error
+	TsEndpointExistsPublic(method string, path string) bool
 }
 
 type AdaptixExtender struct {
