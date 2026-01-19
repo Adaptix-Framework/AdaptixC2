@@ -179,8 +179,7 @@ func (t *TransportTCP) Start(ts Teamserver) error {
 	address := fmt.Sprintf("%s:%d", t.Config.HostBind, t.Config.PortBind)
 
 	if t.Config.Ssl {
-		fmt.Println("  ", "Started mTLS listener: "+address)
-
+		fmt.Printf("  Started mTLS listener '%s': %s\n", t.Name, address)
 		cert, err := tls.X509KeyPair(t.Config.ServerCert, t.Config.ServerKey)
 		if err != nil {
 			return err
@@ -200,8 +199,7 @@ func (t *TransportTCP) Start(ts Teamserver) error {
 		}
 
 	} else {
-		fmt.Println("  ", "Started TCP listener: "+address)
-
+		fmt.Printf("  Started TCP listener '%s': %s\n", t.Name, address)
 		t.Listener, err = net.Listen("tcp", address)
 		if err != nil {
 			return err
