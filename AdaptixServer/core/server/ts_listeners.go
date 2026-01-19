@@ -34,7 +34,6 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 		ListenerName: listenerName,
 		ListenerType: listenerRegName,
 		Config:       listenerConfig,
-		Restart:      false,
 	}
 	if !ts.EventManager.Emit(eventing.EventListenerStart, eventing.HookPre, preEvent) {
 		if preEvent.Error != nil {
@@ -98,7 +97,6 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 		ListenerName: listenerName,
 		ListenerType: listenerRegName,
 		Config:       listenerConfig,
-		Restart:      false,
 	}
 	ts.EventManager.EmitAsync(eventing.EventListenerStart, postEvent)
 	// -----------------
@@ -190,11 +188,11 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 
 func (ts *Teamserver) TsListenerPause(listenerName string, listenerType string) error {
 	// --- PRE HOOK ---
-	preEvent := &eventing.EventDataListenerPause{
+	preEvent := &eventing.EventDataListenerStop{
 		ListenerName: listenerName,
 		ListenerType: listenerType,
 	}
-	if !ts.EventManager.Emit(eventing.EventListenerPause, eventing.HookPre, preEvent) {
+	if !ts.EventManager.Emit(eventing.EventListenerStop, eventing.HookPre, preEvent) {
 		if preEvent.Error != nil {
 			return preEvent.Error
 		}
@@ -227,11 +225,11 @@ func (ts *Teamserver) TsListenerPause(listenerName string, listenerType string) 
 	ts.TsSyncAllClients(packet)
 
 	// --- POST HOOK ---
-	postEvent := &eventing.EventDataListenerPause{
+	postEvent := &eventing.EventDataListenerStop{
 		ListenerName: listenerName,
 		ListenerType: listenerType,
 	}
-	ts.EventManager.EmitAsync(eventing.EventListenerPause, postEvent)
+	ts.EventManager.EmitAsync(eventing.EventListenerStop, postEvent)
 	// -----------------
 
 	return nil
@@ -239,11 +237,11 @@ func (ts *Teamserver) TsListenerPause(listenerName string, listenerType string) 
 
 func (ts *Teamserver) TsListenerResume(listenerName string, listenerType string) error {
 	// --- PRE HOOK ---
-	preEvent := &eventing.EventDataListenerResume{
+	preEvent := &eventing.EventDataListenerStart{
 		ListenerName: listenerName,
 		ListenerType: listenerType,
 	}
-	if !ts.EventManager.Emit(eventing.EventListenerResume, eventing.HookPre, preEvent) {
+	if !ts.EventManager.Emit(eventing.EventListenerStart, eventing.HookPre, preEvent) {
 		if preEvent.Error != nil {
 			return preEvent.Error
 		}
@@ -276,11 +274,11 @@ func (ts *Teamserver) TsListenerResume(listenerName string, listenerType string)
 	ts.TsSyncAllClients(packet)
 
 	// --- POST HOOK ---
-	postEvent := &eventing.EventDataListenerResume{
+	postEvent := &eventing.EventDataListenerStart{
 		ListenerName: listenerName,
 		ListenerType: listenerType,
 	}
-	ts.EventManager.EmitAsync(eventing.EventListenerResume, postEvent)
+	ts.EventManager.EmitAsync(eventing.EventListenerStart, postEvent)
 	// -----------------
 
 	return nil
