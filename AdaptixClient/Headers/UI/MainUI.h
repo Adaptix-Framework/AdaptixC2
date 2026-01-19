@@ -21,6 +21,10 @@ class MainUI : public QMainWindow
 
     QMap<QString, QAction*> extDockActions;
 
+    void onOpenProjectDirectory();
+    void onTabChanged(int index);
+    void updateTabButton(int index, const QString& tabName, bool showButton = false);
+
 public:
     explicit MainUI();
     ~MainUI() override;
@@ -54,11 +58,6 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *event) override;
-
-private:
-    void onOpenProjectDirectory();
-    void onTabChanged(int index);
-    void updateTabButton(int index, const QString& tabName, bool showButton = false);
 };
 
 #endif

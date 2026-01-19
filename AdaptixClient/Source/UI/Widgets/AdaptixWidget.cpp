@@ -344,20 +344,38 @@ void AdaptixWidget::Close()
     if (ChannelWsWorker) {
         disconnect(ChannelWsWorker, nullptr, this, nullptr);
         disconnect(ChannelWsWorker, nullptr, ScriptManager, nullptr);
+        QMetaObject::invokeMethod(ChannelWsWorker, "stopWorker", Qt::BlockingQueuedConnection);
     }
-
-    delete ChannelWsWorker;
-    ChannelWsWorker = nullptr;
 
     if (ChannelThread) {
         ChannelThread->quit();
         ChannelThread->wait();
     }
 
+    delete ChannelWsWorker;
+    ChannelWsWorker = nullptr;
+
     delete ChannelThread;
     ChannelThread = nullptr;
 
     this->ClearAdaptix();
+
+    delete AxConsoleDock;
+    delete LogsDock;
+    delete ChatDock;
+    delete ListenersDock;
+    delete SessionsTableDock;
+    delete SessionsGraphDock;
+    delete TasksDock;
+    delete TunnelsDock;
+    delete DownloadsDock;
+    delete ScreenshotsDock;
+    delete CredentialsDock;
+    delete TargetsDock;
+
+    delete dockTop;
+    delete dockBottom;
+    delete mainDockWidget;
 
     delete dialogSyncPacket;
     dialogSyncPacket = nullptr;

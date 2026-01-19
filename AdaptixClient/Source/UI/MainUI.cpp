@@ -10,6 +10,7 @@
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
+
 #include <QDesktopServices>
 #include <QUrl>
 #include <QPushButton>
@@ -59,10 +60,10 @@ MainUI::MainUI()
     mainuiTabWidget->setTabPosition(QTabWidget::South);
     mainuiTabWidget->tabBar()->setMovable(false);
     mainuiTabWidget->setMovable(false);
-    mainuiTabWidget->tabBar()->setFixedHeight(18);
-    mainuiTabWidget->tabBar()->setMinimumHeight(18);
-    mainuiTabWidget->tabBar()->setMaximumHeight(18);
-    mainuiTabWidget->tabBar()->setStyleSheet("QTabBar::tab { height: 18px; padding: 0px; margin: 0px; }");
+    mainuiTabWidget->tabBar()->setFixedHeight(20);
+    mainuiTabWidget->tabBar()->setMinimumHeight(20);
+    mainuiTabWidget->tabBar()->setMaximumHeight(20);
+    mainuiTabWidget->tabBar()->setStyleSheet("QTabBar::tab { height: 20px; padding: 0px; margin: 0px; }");
 
     connect(mainuiTabWidget, &QTabWidget::currentChanged, this, &MainUI::onTabChanged);
 
@@ -322,9 +323,9 @@ void MainUI::updateTabButton(int index, const QString& tabName, bool showButton)
         auto* folderButton = new QPushButton(tabWidget);
         folderButton->setIcon(QIcon(":/icons/folder"));
 
-        const int iconSize = 14;
-        const int buttonHeight = 16;
-        const int buttonWidth = 24;
+        constexpr int iconSize = 14;
+        constexpr int buttonHeight = 16;
+        constexpr int buttonWidth = 24;
 
         folderButton->setIconSize(QSize(iconSize, iconSize));
         folderButton->setFixedSize(buttonWidth, buttonHeight);
