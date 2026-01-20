@@ -68,7 +68,5 @@ func main() {
 
 	token.InitJWT(ts.Profile.Server.ATokenLive, ts.Profile.Server.RTokenLive)
 
-	ts.Extender.LoadPlugins(ts.Profile.Server.Extenders)
-
 	ts.Start()
 }

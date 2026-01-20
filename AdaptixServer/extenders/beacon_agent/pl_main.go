@@ -2192,7 +2192,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			Ts.TsTunnelConnectionData(channelId, data)
 
 		case COMMAND_TUNNEL_REVERSE:
-			if false == packer.CheckPacker([]string{"byte"}) {
+			if false == packer.CheckPacker([]string{"int", "int"}) {
 				goto HANDLER
 			}
 			var err error
@@ -2200,9 +2200,9 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			_ = packer.ParseInt32()
 			result := packer.ParseInt32()
 			if result == 0 {
-				task.TaskId, task.Message, err = Ts.TsTunnelUpdateRportfwd(tunnelId, true)
-			} else {
 				task.TaskId, task.Message, err = Ts.TsTunnelUpdateRportfwd(tunnelId, false)
+			} else {
+				task.TaskId, task.Message, err = Ts.TsTunnelUpdateRportfwd(tunnelId, true)
 			}
 
 			if err != nil {
