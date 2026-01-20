@@ -1907,7 +1907,7 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			ts.TsTunnelConnectionData(channelId, data)
 
 		case COMMAND_TUNNEL_REVERSE:
-			if false == packer.CheckPacker([]string{"byte"}) {
+			if false == packer.CheckPacker([]string{"int", "int"}) {
 				return outTasks
 			}
 			var err error
@@ -1915,9 +1915,9 @@ func ProcessTasksResult(ts Teamserver, agentData adaptix.AgentData, taskData ada
 			_ = packer.ParseInt32()
 			result := packer.ParseInt32()
 			if result == 0 {
-				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, true)
-			} else {
 				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, false)
+			} else {
+				task.TaskId, task.Message, err = ts.TsTunnelUpdateRportfwd(tunnelId, true)
 			}
 
 			if err != nil {
