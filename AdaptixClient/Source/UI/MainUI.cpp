@@ -11,6 +11,14 @@
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
 
+#include <QDesktopServices>
+#include <QUrl>
+#include <QPushButton>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QFont>
+#include <QApplication>
+
 MainUI::MainUI()
 {
     this->setWindowTitle( FRAMEWORK_VERSION );
@@ -50,8 +58,14 @@ MainUI::MainUI()
 
     mainuiTabWidget = new QTabWidget();
     mainuiTabWidget->setTabPosition(QTabWidget::South);
-    mainuiTabWidget->tabBar()->setMovable(true);
-    mainuiTabWidget->setMovable(true);
+    mainuiTabWidget->tabBar()->setMovable(false);
+    mainuiTabWidget->setMovable(false);
+    mainuiTabWidget->tabBar()->setFixedHeight(20);
+    mainuiTabWidget->tabBar()->setMinimumHeight(20);
+    mainuiTabWidget->tabBar()->setMaximumHeight(20);
+    mainuiTabWidget->tabBar()->setStyleSheet("QTabBar::tab { height: 20px; padding: 0px; margin: 0px; }");
+
+    connect(mainuiTabWidget, &QTabWidget::currentChanged, this, &MainUI::onTabChanged);
 
     this->setCentralWidget(mainuiTabWidget);
 }
@@ -81,11 +95,14 @@ void MainUI::AddNewProject(AuthProfile* profile, QThread* channelThread, WebSock
     connect(adaptixWidget, &AdaptixWidget::LoadGlobalScriptSignal, GlobalClient->extender, &Extender::loadGlobalScript);
     connect(adaptixWidget, &AdaptixWidget::UnloadGlobalScriptSignal, GlobalClient->extender, &Extender::unloadGlobalScript);
 
-    QString tabName = "   " + profile->GetProject() + "   " ;
-    int id = mainuiTabWidget->addTab( adaptixWidget, tabName);
+    QString tabName = profile->GetProject();
+    int id = mainuiTabWidget->addTab(adaptixWidget, tabName);
+    mainuiTabWidget->setTabToolTip(id, tabName);
     mainuiTabWidget->setCurrentIndex( id );
 
     AdaptixProjects.append(adaptixWidget);
+
+    updateTabButton(id, tabName, true);
 }
 
 bool MainUI::AddNewExtension(ExtensionFile *extFile)
@@ -231,4 +248,97 @@ void MainUI::setExtDockChecked(const QString &id, bool checked)
 {
     if (extDockActions.contains(id))
         extDockActions[id]->setChecked(checked);
+}
+
+void MainUI::onOpenProjectDirectory()
+{
+    AuthProfile* profile = GetCurrentProfile();
+    if (!profile)
+        return;
+
+    QString projectDir = profile->GetProjectDir();
+    if (projectDir.isEmpty())
+        return;
+
+    QDesktopServices::openUrl(QUrl::fromLocalFile(projectDir));
+}
+
+void MainUI::onTabChanged(int index)
+{
+    for (int i = 0; i < mainuiTabWidget->count(); ++i) {
+        auto adaptixWidget = qobject_cast<AdaptixWidget*>(mainuiTabWidget->widget(i));
+        if (adaptixWidget) {
+            QString tabName = adaptixWidget->GetProfile()->GetProject();
+            bool showButton = (i == index);
+            updateTabButton(i, tabName, showButton);
+        }
+    }
+}
+
+void MainUI::updateTabButton(int index, const QString& tabName, bool showButton)
+{
+    if (index < 0 || index >= mainuiTabWidget->count())
+        return;
+
+    QTabBar* tabBar = mainuiTabWidget->tabBar();
+
+    QString realName = mainuiTabWidget->tabText(index);
+    if (realName.isEmpty())
+        realName = tabName;
+
+    tabBar->setTabText(index, "");
+
+    QWidget* existingWidget = tabBar->tabButton(index, QTabBar::RightSide);
+    if (existingWidget) {
+        existingWidget->deleteLater();
+        tabBar->setTabButton(index, QTabBar::RightSide, nullptr);
+    }
+
+    auto* tabWidget = new QWidget();
+    auto* layout = new QHBoxLayout(tabWidget);
+    layout->setContentsMargins(showButton ? 12 : 16, 0, showButton ? 6 : 12, 0);
+    layout->setSpacing(1);
+    layout->setSizeConstraint(QLayout::SetFixedSize);
+    tabWidget->setFixedHeight(24);
+    tabWidget->setMinimumHeight(24);
+    tabWidget->setMaximumHeight(24);
+    tabWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+    auto* label = new QLabel(realName);
+    label->setAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+    label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    label->setFixedHeight(24);
+    label->setMinimumHeight(24);
+    label->setMaximumHeight(24);
+    QFont labelFont = label->font();
+    QFont appFont = QApplication::font();
+    labelFont.setFamily(appFont.family());
+    labelFont.setPointSize(appFont.pointSize());
+    label->setFont(labelFont);
+    label->setStyleSheet("QLabel { background: transparent; padding: 0px 4px; margin: 0px; border: none; }");
+
+    layout->addWidget(label, 1, Qt::AlignCenter);
+
+    if (showButton) {
+        auto* folderButton = new QPushButton(tabWidget);
+        folderButton->setIcon(QIcon(":/icons/folder"));
+
+        constexpr int iconSize = 14;
+        constexpr int buttonHeight = 16;
+        constexpr int buttonWidth = 24;
+
+        folderButton->setIconSize(QSize(iconSize, iconSize));
+        folderButton->setFixedSize(buttonWidth, buttonHeight);
+        folderButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+        folderButton->setToolTip("Open project directory");
+        folderButton->setFlat(true);
+        folderButton->setStyleSheet("QPushButton { background: transparent; border: none; padding: 0px; } QPushButton:hover { background-color: rgba(128, 128, 128, 80); border-radius: 2px; }");
+
+        connect(folderButton, &QPushButton::clicked, this, &MainUI::onOpenProjectDirectory);
+
+        layout->addWidget(folderButton, 0, Qt::AlignRight);
+    }
+
+    tabBar->setTabButton(index, QTabBar::RightSide, tabWidget);
 }

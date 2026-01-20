@@ -158,7 +158,6 @@ void DialogListener::createUI()
     auto separatorLine = new QFrame(this);
     separatorLine->setFrameShape(QFrame::VLine);
     separatorLine->setFrameShadow(QFrame::Sunken);
-    separatorLine->setStyleSheet("QFrame { color: rgba(100, 100, 100, 50); background-color: rgba(100, 100, 100, 50); }");
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(5, 5, 5, 5);

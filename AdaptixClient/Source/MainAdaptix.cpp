@@ -186,19 +186,23 @@ AuthProfile* MainAdaptix::Login()
 
 void MainAdaptix::SetApplicationTheme() const
 {
+    static bool kddwInitialized = false;
+    if (!kddwInitialized) {
+        KDDockWidgets::initFrontend(KDDockWidgets::FrontendType::QtWidgets);
+        KDDockWidgets::Config::self().setSeparatorThickness(5);
+
+        auto flags = KDDockWidgets::Config::self().flags();
+        flags |= KDDockWidgets::Config::Flag_HideTitleBarWhenTabsVisible;
+        flags |= KDDockWidgets::Config::Flag_TabsHaveCloseButton;
+        flags |= KDDockWidgets::Config::Flag_ShowButtonsOnTabBarIfTitleBarHidden;
+        flags |= KDDockWidgets::Config::Flag_AllowSwitchingTabsViaMenu;
+        flags |= KDDockWidgets::Config::Flag_AllowReorderTabs;
+        flags |= KDDockWidgets::Config::Flag_DoubleClickMaximizes;
+        KDDockWidgets::Config::self().setFlags(flags);
+        kddwInitialized = true;
+    }
+
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
-
-    KDDockWidgets::initFrontend(KDDockWidgets::FrontendType::QtWidgets);
-    KDDockWidgets::Config::self().setSeparatorThickness(5);
-
-    auto flags = KDDockWidgets::Config::self().flags();
-    flags |= KDDockWidgets::Config::Flag_HideTitleBarWhenTabsVisible;
-    flags |= KDDockWidgets::Config::Flag_TabsHaveCloseButton;
-    flags |= KDDockWidgets::Config::Flag_ShowButtonsOnTabBarIfTitleBarHidden;
-    flags |= KDDockWidgets::Config::Flag_AllowSwitchingTabsViaMenu;
-    flags |= KDDockWidgets::Config::Flag_AllowReorderTabs;
-    flags |= KDDockWidgets::Config::Flag_DoubleClickMaximizes;
-    KDDockWidgets::Config::self().setFlags(flags);
 
     FontManager::instance().initialize();
 
@@ -213,6 +217,10 @@ void MainAdaptix::SetApplicationTheme() const
     QString appTheme = ":/themes/" + settings->data.MainTheme;
     bool result = false;
     QString style = ReadFileString(appTheme, &result);
+    if (!result) {
+        appTheme = ":/themes/Adaptix_Dark";
+        style = ReadFileString(appTheme, &result);
+    }
     if (result) {
         QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
         app->setStyleSheet(style);

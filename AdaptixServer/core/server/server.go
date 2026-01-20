@@ -34,6 +34,7 @@ func NewTeamserver() *Teamserver {
 
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
+		service_configs:  safe.NewMap(),
 
 		wm_agent_types: make(map[string]string),
 		wm_listeners:   make(map[string][]string),
@@ -306,6 +307,8 @@ func (ts *Teamserver) Start() {
 		logs.Error("", "Failed to init HTTP handler: "+err.Error())
 		return
 	}
+
+	ts.Extender.LoadPlugins(ts.Profile.Server.Extenders)
 
 	go ts.AdaptixServer.Start(&stopped)
 	logs.Success("", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)

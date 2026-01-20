@@ -817,3 +817,15 @@ QDoubleSpinBox:disabled {
     color: #A0A0A0;
     border: 1px solid #E0E0E0;
 }
+
+
+
+QFrame[frameShape="4"], QFrame[frameShape="5"] {
+    color: rgba(82, 148, 226, 100);
+    background-color: rgba(82, 148, 226, 100);
+}
+
+QFrame[frameShape="4"]:disabled, QFrame[frameShape="5"]:disabled {
+    color: rgba(180, 180, 180, 80);
+    background-color: rgba(180, 180, 180, 80);
+}

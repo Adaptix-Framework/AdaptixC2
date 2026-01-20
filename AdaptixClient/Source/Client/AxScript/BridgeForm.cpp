@@ -323,6 +323,30 @@ QObject* BridgeForm::create_selector_agents(const QJSValue &headers) const
     return wrapper;
 }
 
+QObject* BridgeForm::create_selector_listeners(const QJSValue &headers) const
+{
+    auto* parentW = getParentWidget();
+    auto* wrapper = new AxSelectorListeners(headers, scriptEngine, parentW);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_selector_targets(const QJSValue &headers) const
+{
+    auto* parentW = getParentWidget();
+    auto* wrapper = new AxSelectorTargets(headers, scriptEngine, parentW);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_selector_downloads(const QJSValue &headers) const
+{
+    auto* parentW = getParentWidget();
+    auto* wrapper = new AxSelectorDownloads(headers, scriptEngine, parentW);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
 QObject* BridgeForm::create_dock(const QString &id, const QString &title, const QString &location)
 {
     AdaptixWidget* adaptixWidget = scriptEngine->manager()->GetAdaptix();

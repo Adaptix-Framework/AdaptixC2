@@ -177,7 +177,7 @@ func (t *TransportHTTP) Start(ts Teamserver) error {
 	}
 
 	if t.Config.Ssl {
-		fmt.Printf("   Started listener: https://%s:%d\n", t.Config.HostBind, t.Config.PortBind)
+		fmt.Printf("   Started listener '%s': https://%s:%d\n", t.Name, t.Config.HostBind, t.Config.PortBind)
 
 		listenerPath := ListenerDataDir + "/" + t.Name
 		_, err = os.Stat(listenerPath)
@@ -243,7 +243,7 @@ func (t *TransportHTTP) Start(ts Teamserver) error {
 		}()
 
 	} else {
-		fmt.Printf("   Started listener: http://%s:%d\n", t.Config.HostBind, t.Config.PortBind)
+		fmt.Printf("   Started listener '%s': http://%s:%d\n", t.Name, t.Config.HostBind, t.Config.PortBind)
 
 		go func() {
 			err = t.Server.ListenAndServe()

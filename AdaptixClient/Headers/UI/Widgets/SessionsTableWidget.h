@@ -434,6 +434,8 @@ Q_OBJECT
     QCheckBox*      checkOnlyActive = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
+    mutable bool columnStateReady = false;
+
     void createUI();
 
 public:
@@ -452,6 +454,10 @@ public:
     void UpdateData() const;
     void UpdateAgentTypeComboBox() const;
     void Clear() const;
+
+    void RestoreColumnState() const;
+    void SaveColumnOrder() const;
+    void AutoFitColumnToContents(int logicalIndex) const;
 
 public Q_SLOTS:
     void toggleSearchPanel() const;

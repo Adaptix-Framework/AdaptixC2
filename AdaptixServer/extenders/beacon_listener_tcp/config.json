@@ -1,9 +1,0 @@
-{
-  "extender_type": "listener",
-  "extender_file": "listener_beacon_tcp.so",
-  "ax_file": "ax_config.axs",
-
-  "listener_name": "BeaconTCP",
-  "listener_type": "internal",
-  "protocol": "bind_tcp"
-}

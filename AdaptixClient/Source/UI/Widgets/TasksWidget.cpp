@@ -93,7 +93,19 @@ TasksWidget::TasksWidget( AdaptixWidget* w )
     connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 }
 
-TasksWidget::~TasksWidget() = default;
+TasksWidget::~TasksWidget()
+{
+    if (dockWidgetTable) {
+        dockWidgetTable->setWidget(nullptr);
+        delete dockWidgetTable;
+        dockWidgetTable = nullptr;
+    }
+    if (dockWidgetOutput) {
+        dockWidgetOutput->setWidget(nullptr);
+        delete dockWidgetOutput;
+        dockWidgetOutput = nullptr;
+    }
+}
 
 KDDockWidgets::QtWidgets::DockWidget* TasksWidget::dockTasks() { return this->dockWidgetTable; }
 

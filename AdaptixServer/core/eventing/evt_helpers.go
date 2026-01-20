@@ -202,17 +202,6 @@ func (em *EventManager) OnTaskComplete(name string, handler func(*EventDataTaskC
 
 /// listeners
 
-func (em *EventManager) OnListenerCreate(name string, phase HookPhase, handler func(*EventDataListenerCreate) error) string {
-	return em.Register(EventListenerCreate, &Hook{
-		Name:     name,
-		Phase:    phase,
-		Priority: DefaultPriority,
-		Handler: func(event any) error {
-			return handler(event.(*EventDataListenerCreate))
-		},
-	})
-}
-
 func (em *EventManager) OnListenerStart(name string, phase HookPhase, handler func(*EventDataListenerStart) error) string {
 	return em.Register(EventListenerStart, &Hook{
 		Name:     name,
@@ -231,17 +220,6 @@ func (em *EventManager) OnListenerStop(name string, phase HookPhase, handler fun
 		Priority: DefaultPriority,
 		Handler: func(event any) error {
 			return handler(event.(*EventDataListenerStop))
-		},
-	})
-}
-
-func (em *EventManager) OnListenerRemove(name string, phase HookPhase, handler func(*EventDataListenerRemove) error) string {
-	return em.Register(EventListenerRemove, &Hook{
-		Name:     name,
-		Phase:    phase,
-		Priority: DefaultPriority,
-		Handler: func(event any) error {
-			return handler(event.(*EventDataListenerRemove))
 		},
 	})
 }

@@ -28,6 +28,9 @@ const (
 
 	TYPE_CHAT_MESSAGE = 0x18
 
+	TYPE_SERVICE_REG  = 0x21
+	TYPE_SERVICE_DATA = 0x22
+
 	TYPE_LISTENER_REG   = 0x31
 	TYPE_LISTENER_START = 0x32
 	TYPE_LISTENER_STOP  = 0x33
@@ -681,5 +684,25 @@ func CreateSpTunnelDelete(tunnelData adaptix.TunnelData) SyncPackerTunnelDelete 
 		SpType: TYPE_TUNNEL_DELETE,
 
 		TunnelId: tunnelData.TunnelId,
+	}
+}
+
+/// SERVICE
+
+func CreateSpServiceReg(name string, ax string) SyncPackerServiceReg {
+	return SyncPackerServiceReg{
+		SpType: TYPE_SERVICE_REG,
+
+		Name: name,
+		AX:   ax,
+	}
+}
+
+func CreateSpServiceData(service string, data string) SyncPackerServiceData {
+	return SyncPackerServiceData{
+		SpType: TYPE_SERVICE_DATA,
+
+		Service: service,
+		Data:    data,
 	}
 }

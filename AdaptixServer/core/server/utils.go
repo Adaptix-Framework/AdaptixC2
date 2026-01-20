@@ -44,6 +44,7 @@ type Teamserver struct {
 
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
+	service_configs  safe.Map // serviceName string      : serviceInfo extender.ServiceInfo
 
 	wm_agent_types map[string]string   // agentMark string : agentName string
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
@@ -275,6 +276,22 @@ type SyncPackerAgentReg struct {
 	AX             string   `json:"ax"`
 	Listeners      []string `json:"listeners"`
 	MultiListeners bool     `json:"multi_listeners"`
+}
+
+/// SERVICE
+
+type SyncPackerServiceReg struct {
+	SpType int `json:"type"`
+
+	Name string `json:"service"`
+	AX   string `json:"ax"`
+}
+
+type SyncPackerServiceData struct {
+	SpType int `json:"type"`
+
+	Service string `json:"service"`
+	Data    string `json:"data"`
 }
 
 type SyncPackerAgentNew struct {

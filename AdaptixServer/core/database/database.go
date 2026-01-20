@@ -187,6 +187,15 @@ func (dbms *DBMS) DatabaseInit() error {
     );`
 	_, err = dbms.database.Exec(createTableQuery)
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "ExtenderData" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"ExtenderName" TEXT NOT NULL,
+    	"Key" TEXT NOT NULL,
+    	"Value" BLOB,
+		UNIQUE("ExtenderName", "Key")
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
 	indexQueries := []string{
 		`CREATE INDEX IF NOT EXISTS idx_tasks_agentid ON Tasks(AgentId);`,
 		`CREATE INDEX IF NOT EXISTS idx_tasks_startdate ON Tasks(StartDate);`,

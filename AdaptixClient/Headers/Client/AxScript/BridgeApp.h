@@ -100,6 +100,7 @@ public Q_SLOTS:
     void     script_unload(const QString &path);
     QString  script_dir();
     QJSValue screenshots();
+    void     service_command(const QString &service, const QString &command, const QJSValue &args = QJSValue());
     void     show_message(const QString &title, const QString &text);
     QJSValue targets() const;
     void     targets_add(const QString &computer, const QString &domain, const QString &address, const QString &os = "unknown", const QString &osDesc = "", const QString &tag = "", const QString &info = "", bool alive = true);

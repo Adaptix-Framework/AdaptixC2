@@ -13,23 +13,20 @@ const (
 	EventAgentNew       EventType = "agent.new"
 	EventAgentGenerate  EventType = "agent.generate"
 	EventAgentCheckin   EventType = "agent.checkin" // todo
-	EventAgentUpdate    EventType = "agent.update"  //todo
+	EventAgentActivate  EventType = "agent.activate"
+	EventAgentUpdate    EventType = "agent.update" //todo
 	EventAgentTerminate EventType = "agent.terminate"
 	EventAgentRemove    EventType = "agent.remove"
 
-	EventListenerCreate EventType = "listener.create"
-	EventListenerStart  EventType = "listener.start"
-	EventListenerStop   EventType = "listener.stop"
-	EventListenerPause  EventType = "listener.pause"
-	EventListenerResume EventType = "listener.resume"
-	EventListenerRemove EventType = "listener.remove"
+	EventListenerStart EventType = "listener.start"
+	EventListenerStop  EventType = "listener.stop"
 
 	EventCredsAdd    EventType = "credentials.add"
 	EventCredsEdit   EventType = "credentials.edit"
 	EventCredsRemove EventType = "credentials.remove"
 
 	EventTaskCreate    EventType = "task.create"
-	EventTaskStart     EventType = "task.start"      // todo
+	EventTaskStart     EventType = "task.start" // todo
 	EventTaskUpdateJob EventType = "task.update_job"
 	EventTaskComplete  EventType = "task.complete"
 
@@ -116,6 +113,11 @@ type EventDataAgentUpdate struct {
 	Agent adaptix.AgentData
 }
 
+type EventDataAgentActivate struct {
+	BaseEvent
+	Agent adaptix.AgentData
+}
+
 type EventDataAgentTerminate struct {
 	BaseEvent
 	AgentId string
@@ -157,40 +159,14 @@ type EventDataTaskComplete struct {
 
 /// LISTENER
 
-type EventDataListenerCreate struct {
-	BaseEvent
-	ListenerName string
-	ListenerType string
-	Config       string
-}
-
 type EventDataListenerStart struct {
 	BaseEvent
 	ListenerName string
 	ListenerType string
 	Config       string
-	Restart      bool
 }
 
 type EventDataListenerStop struct {
-	BaseEvent
-	ListenerName string
-	ListenerType string
-}
-
-type EventDataListenerPause struct {
-	BaseEvent
-	ListenerName string
-	ListenerType string
-}
-
-type EventDataListenerResume struct {
-	BaseEvent
-	ListenerName string
-	ListenerType string
-}
-
-type EventDataListenerRemove struct {
 	BaseEvent
 	ListenerName string
 	ListenerType string

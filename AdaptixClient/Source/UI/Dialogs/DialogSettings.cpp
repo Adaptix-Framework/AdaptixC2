@@ -81,11 +81,15 @@ void DialogSettings::createUI()
 
     themeLabel = new QLabel("Main theme: ", mainSettingWidget);
     themeCombo = new QComboBox(mainSettingWidget);
-    themeCombo->addItem("Dark");
-    themeCombo->addItem("Light");
-    themeCombo->addItem("Dracula");
-    themeCombo->addItem("Fallout");
+    themeCombo->addItem("Adaptix_Dark");
+    themeCombo->addItem("Adaptix_Light");
+    themeCombo->addItem("Adaptix_Dracula");
+    themeCombo->addItem("Dark_Ice");
+    themeCombo->addItem("Glass_Morph");
+    themeCombo->addItem("Hacker_Tech");
     themeCombo->addItem("Dark_Old");
+    themeCombo->addItem("Dracula_Old");
+    themeCombo->addItem("Fallout");
     themeCombo->addItem("Light_Arc");
 
     fontSizeLabel = new QLabel("Font size: ", mainSettingWidget);

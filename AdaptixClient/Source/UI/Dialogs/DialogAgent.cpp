@@ -174,7 +174,6 @@ void DialogAgent::createUI()
     auto separatorLine = new QFrame(this);
     separatorLine->setFrameShape(QFrame::VLine);
     separatorLine->setFrameShadow(QFrame::Sunken);
-    separatorLine->setStyleSheet("QFrame { color: rgba(100, 100, 100, 50); background-color: rgba(100, 100, 100, 50); }");
 
     auto profileButtonsLayout = new QHBoxLayout();
     profileButtonsLayout->setContentsMargins(0, 0, 0, 0);

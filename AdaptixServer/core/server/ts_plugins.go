@@ -57,3 +57,28 @@ func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {
 
 	return nil
 }
+
+func (ts *Teamserver) TsServiceReg(serviceInfo extender.ServiceInfo) error {
+
+	if !isvalid.ValidSBNString(serviceInfo.Name) {
+		return errors.New("invalid service name (must only contain letters and numbers): " + serviceInfo.Name)
+	}
+
+	if ts.service_configs.Contains(serviceInfo.Name) {
+		return fmt.Errorf("service %v already exists", serviceInfo.Name)
+	}
+
+	ts.service_configs.Put(serviceInfo.Name, serviceInfo)
+
+	return nil
+}
+
+func (ts *Teamserver) TsServiceUnreg(serviceName string) error {
+	if !ts.service_configs.Contains(serviceName) {
+		return fmt.Errorf("service %v not found", serviceName)
+	}
+
+	ts.service_configs.Delete(serviceName)
+
+	return nil
+}

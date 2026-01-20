@@ -21,6 +21,10 @@ class MainUI : public QMainWindow
 
     QMap<QString, QAction*> extDockActions;
 
+    void onOpenProjectDirectory();
+    void onTabChanged(int index);
+    void updateTabButton(int index, const QString& tabName, bool showButton = false);
+
 public:
     explicit MainUI();
     ~MainUI() override;
@@ -43,7 +47,7 @@ public:
     void UpdateTasksTableColumns();
 
     AuthProfile* GetCurrentProfile() const;
-    
+
     QMenu* getMenuProject() const;
     QMenu* getMenuAxScript() const;
     QMenu* getMenuSettings() const;

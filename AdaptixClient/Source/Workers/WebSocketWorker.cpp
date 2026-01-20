@@ -20,6 +20,17 @@ WebSocketWorker::~WebSocketWorker()
 
 void WebSocketWorker::run()
 {
+    if (pingTimer) {
+        pingTimer->stop();
+        delete pingTimer;
+        pingTimer = nullptr;
+    }
+    if (webSocket) {
+        webSocket->abort();
+        delete webSocket;
+        webSocket = nullptr;
+    }
+
     webSocket = new QWebSocket;
     auto SslConf = webSocket->sslConfiguration();
     SslConf.setPeerVerifyMode( QSslSocket::VerifyNone );

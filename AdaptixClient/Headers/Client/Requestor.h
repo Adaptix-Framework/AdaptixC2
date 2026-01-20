@@ -60,4 +60,6 @@ void HttpReqTunnelSetInfoAsync(const QString &tunnelId, const QString &info, Aut
 
 void HttpReqChatSendMessageAsync(const QString &text, AuthProfile& profile, HttpCallback callback);
 
+void HttpReqServiceCallAsync(const QString &service, const QString &command, const QString &args, AuthProfile& profile, HttpCallback callback);
+
 #endif

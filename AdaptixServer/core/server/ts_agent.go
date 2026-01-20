@@ -2,7 +2,6 @@ package server
 
 import (
 	"AdaptixServer/core/eventing"
-	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
 	"AdaptixServer/core/utils/tformat"
@@ -79,11 +78,6 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	value, ok = ts.listener_configs.Get(regName)
 	if !ok {
 		return agentData, fmt.Errorf("listener %v does not register", regName)
-	}
-
-	listenerInfo, _ := value.(extender.ListenerInfo)
-	if listenerInfo.Type == "internal" {
-		agentData.Mark = "Unlink"
 	}
 
 	agent := &Agent{
@@ -182,6 +176,15 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 		if err != nil {
 			logs.Error("", err.Error())
 		}
+
+		updatedAgentData := agent.GetData()
+		//packetUpdate := CreateSpAgentUpdate(updatedAgentData)
+		//ts.TsSyncAllClients(packetUpdate)
+
+		// --- POST HOOK ---
+		postEvent := &eventing.EventDataAgentActivate{Agent: updatedAgentData}
+		ts.EventManager.EmitAsync(eventing.EventAgentActivate, postEvent)
+		// -----------------
 	}
 
 	if len(bodyData) > 4 {

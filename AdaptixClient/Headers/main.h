@@ -67,8 +67,8 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v1.0"
-#define SMALL_VERSION     "v1.0"
+#define FRAMEWORK_VERSION "Adaptix Framework v1.1"
+#define SMALL_VERSION     "v1.1"
 
 ///////////
 
@@ -97,6 +97,9 @@
 #define TYPE_SYNC_CATEGORY_BATCH 0x15
 
 #define TYPE_CHAT_MESSAGE 0x18
+
+#define TYPE_SERVICE_REG  0x21
+#define TYPE_SERVICE_DATA 0x22
 
 #define TYPE_LISTENER_REG   0x31
 #define TYPE_LISTENER_START 0x32
@@ -196,6 +199,7 @@ typedef struct SettingsData {
     bool ConsoleAutoScroll;
 
     bool   SessionsTableColumns[16];
+    int    SessionsColumnOrder[16];
     bool   CheckHealth;
     double HealthCoaf;
     int    HealthOffset;

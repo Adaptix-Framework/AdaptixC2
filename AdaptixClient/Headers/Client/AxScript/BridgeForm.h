@@ -58,6 +58,9 @@ public Q_SLOTS:
     QObject* create_selector_file();
     QObject* create_selector_credentials(const QJSValue &headers) const;
     QObject* create_selector_agents(const QJSValue &headers) const;
+    QObject* create_selector_listeners(const QJSValue &headers) const;
+    QObject* create_selector_targets(const QJSValue &headers) const;
+    QObject* create_selector_downloads(const QJSValue &headers) const;
 
     QObject* create_dock(const QString &id, const QString &title, const QString &location = "");
 

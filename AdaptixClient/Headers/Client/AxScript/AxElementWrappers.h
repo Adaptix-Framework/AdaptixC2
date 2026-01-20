@@ -56,6 +56,43 @@ inline const QMap<QString, QString> FIELD_MAP_AGENTS = {
     {"tags",        "Tags"},
 };
 
+inline const QMap<QString, QString> FIELD_MAP_LISTENERS = {
+    {"name",       "Name"},
+    {"type",       "Type"},
+    {"protocol",   "Protocol"},
+    {"bind_host",  "Bind Host"},
+    {"bind_port",  "Bind Port"},
+    {"agent_addr", "Agent Addresses"},
+    {"status",     "Status"},
+    {"date",       "Date"},
+};
+
+inline const QMap<QString, QString> FIELD_MAP_TARGETS = {
+    {"id",       "Target ID"},
+    {"computer", "Computer"},
+    {"domain",   "Domain"},
+    {"address",  "Address"},
+    {"tag",      "Tag"},
+    {"os",       "OS"},
+    {"os_desc",  "OS Description"},
+    {"info",     "Info"},
+    {"date",     "Date"},
+    {"alive",    "Alive"},
+};
+
+inline const QMap<QString, QString> FIELD_MAP_DOWNLOADS = {
+    {"id",         "File ID"},
+    {"agent_id",   "Agent ID"},
+    {"agent_name", "Agent"},
+    {"user",       "User"},
+    {"computer",   "Computer"},
+    {"filename",   "Filename"},
+    {"total_size", "Total Size"},
+    {"recv_size",  "Received"},
+    {"state",      "State"},
+    {"date",       "Date"},
+};
+
 /// ABSTRACT
 
 class AbstractAxLayout {
@@ -1057,6 +1094,431 @@ Q_OBJECT
 
 public:
     explicit AxSelectorAgents(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+
+    Q_INVOKABLE void     setSize(int w, int h) const;
+    Q_INVOKABLE QJSValue exec() const;
+    Q_INVOKABLE void     close() const;
+};
+
+
+
+/// SELECTOR LISTENERS
+
+class AxListenersTableModel : public QAbstractTableModel {
+Q_OBJECT
+    QVector<ListenerData> m_data;
+    QVector<QString> m_headers;
+    QVector<QString> m_fieldKeys;
+
+public:
+    explicit AxListenersTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
+
+    void setHeaders(const QVector<QString>& headers, const QVector<QString>& fieldKeys) {
+        beginResetModel();
+        m_headers = headers;
+        m_fieldKeys = fieldKeys;
+        endResetModel();
+    }
+
+    void setData(const QVector<ListenerData>& data) {
+        beginResetModel();
+        m_data = data;
+        endResetModel();
+    }
+
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_data.size();
+    }
+
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_headers.size();
+    }
+
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override {
+        if (!index.isValid() || index.row() >= m_data.size() || index.column() >= m_fieldKeys.size())
+            return QVariant();
+
+        if (role == Qt::DisplayRole || role == Qt::UserRole) {
+            const auto& listener = m_data[index.row()];
+            const QString& key = m_fieldKeys[index.column()];
+
+            if (key == "name")       return listener.Name;
+            if (key == "type")       return listener.ListenerType;
+            if (key == "protocol")   return listener.ListenerProtocol;
+            if (key == "bind_host")  return listener.BindHost;
+            if (key == "bind_port")  return listener.BindPort;
+            if (key == "agent_addr") return listener.AgentAddresses;
+            if (key == "status")     return listener.Status;
+            if (key == "date")       return listener.Date;
+        }
+        return QVariant();
+    }
+
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override {
+        if (role == Qt::DisplayRole && orientation == Qt::Horizontal && section < m_headers.size())
+            return m_headers[section];
+        return QVariant();
+    }
+
+    ListenerData getListener(int row) const {
+        if (row >= 0 && row < m_data.size())
+            return m_data[row];
+        return ListenerData();
+    }
+};
+
+class AxListenersFilterProxyModel : public QSortFilterProxyModel {
+Q_OBJECT
+    QString m_filterText;
+
+public:
+    explicit AxListenersFilterProxyModel(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
+
+    void setFilterText(const QString& text) {
+        m_filterText = text;
+        invalidateFilter();
+    }
+
+protected:
+    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override {
+        if (m_filterText.isEmpty())
+            return true;
+
+        for (int col = 0; col < sourceModel()->columnCount(); ++col) {
+            QModelIndex idx = sourceModel()->index(sourceRow, col, sourceParent);
+            if (idx.data().toString().contains(m_filterText, Qt::CaseInsensitive))
+                return true;
+        }
+        return false;
+    }
+};
+
+class AxDialogListeners : public QDialog {
+Q_OBJECT
+    QVBoxLayout*  mainLayout   = nullptr;
+    QTableView*   tableView    = nullptr;
+    QHBoxLayout*  bottomLayout = nullptr;
+    QPushButton*  chooseButton = nullptr;
+    QSpacerItem*  spacer_1     = nullptr;
+    QSpacerItem*  spacer_2     = nullptr;
+
+    QWidget*        searchWidget   = nullptr;
+    QHBoxLayout*    searchLayout   = nullptr;
+    QLineEdit*      searchLineEdit = nullptr;
+    ClickableLabel* hideButton     = nullptr;
+
+    AxListenersTableModel*       tableModel = nullptr;
+    AxListenersFilterProxyModel* proxyModel = nullptr;
+
+    QVector<ListenerData> selectedData;
+
+public:
+    explicit AxDialogListeners(const QJSValue &headers, QVector<ListenerData> vecListeners, QWidget* parent = nullptr);
+
+    QVector<ListenerData> data();
+
+public Q_SLOTS:
+    void onClicked();
+    void handleSearch();
+    void clearSearch();
+};
+
+class AxSelectorListeners : public QObject {
+Q_OBJECT
+    AxDialogListeners* dialog;
+    AxScriptEngine*    scriptEngine;
+
+public:
+    explicit AxSelectorListeners(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+
+    Q_INVOKABLE void     setSize(int w, int h) const;
+    Q_INVOKABLE QJSValue exec() const;
+    Q_INVOKABLE void     close() const;
+};
+
+
+
+/// SELECTOR TARGETS
+
+class AxTargetsTableModel : public QAbstractTableModel {
+Q_OBJECT
+    QVector<TargetData> m_data;
+    QVector<QString> m_headers;
+    QVector<QString> m_fieldKeys;
+
+public:
+    explicit AxTargetsTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
+
+    void setHeaders(const QVector<QString>& headers, const QVector<QString>& fieldKeys) {
+        beginResetModel();
+        m_headers = headers;
+        m_fieldKeys = fieldKeys;
+        endResetModel();
+    }
+
+    void setData(const QVector<TargetData>& data) {
+        beginResetModel();
+        m_data = data;
+        endResetModel();
+    }
+
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_data.size();
+    }
+
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_headers.size();
+    }
+
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override {
+        if (!index.isValid() || index.row() >= m_data.size() || index.column() >= m_fieldKeys.size())
+            return QVariant();
+
+        if (role == Qt::DisplayRole || role == Qt::UserRole) {
+            const auto& target = m_data[index.row()];
+            const QString& key = m_fieldKeys[index.column()];
+
+            QString os = "unknown";
+            if (target.Os == OS_WINDOWS)    os = "windows";
+            else if (target.Os == OS_LINUX) os = "linux";
+            else if (target.Os == OS_MAC)   os = "macos";
+
+            if (key == "id")       return target.TargetId;
+            if (key == "computer") return target.Computer;
+            if (key == "domain")   return target.Domain;
+            if (key == "address")  return target.Address;
+            if (key == "tag")      return target.Tag;
+            if (key == "os")       return os;
+            if (key == "os_desc")  return target.OsDesc;
+            if (key == "info")     return target.Info;
+            if (key == "date")     return target.Date;
+            if (key == "alive")    return target.Alive ? "Yes" : "No";
+        }
+        return QVariant();
+    }
+
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override {
+        if (role == Qt::DisplayRole && orientation == Qt::Horizontal && section < m_headers.size())
+            return m_headers[section];
+        return QVariant();
+    }
+
+    TargetData getTarget(int row) const {
+        if (row >= 0 && row < m_data.size())
+            return m_data[row];
+        return TargetData();
+    }
+};
+
+class AxTargetsFilterProxyModel : public QSortFilterProxyModel {
+Q_OBJECT
+    QString m_filterText;
+
+public:
+    explicit AxTargetsFilterProxyModel(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
+
+    void setFilterText(const QString& text) {
+        m_filterText = text;
+        invalidateFilter();
+    }
+
+protected:
+    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override {
+        if (m_filterText.isEmpty())
+            return true;
+
+        for (int col = 0; col < sourceModel()->columnCount(); ++col) {
+            QModelIndex idx = sourceModel()->index(sourceRow, col, sourceParent);
+            if (idx.data().toString().contains(m_filterText, Qt::CaseInsensitive))
+                return true;
+        }
+        return false;
+    }
+};
+
+class AxDialogTargets : public QDialog {
+Q_OBJECT
+    QVBoxLayout*  mainLayout   = nullptr;
+    QTableView*   tableView    = nullptr;
+    QHBoxLayout*  bottomLayout = nullptr;
+    QPushButton*  chooseButton = nullptr;
+    QSpacerItem*  spacer_1     = nullptr;
+    QSpacerItem*  spacer_2     = nullptr;
+
+    QWidget*        searchWidget   = nullptr;
+    QHBoxLayout*    searchLayout   = nullptr;
+    QLineEdit*      searchLineEdit = nullptr;
+    ClickableLabel* hideButton     = nullptr;
+
+    AxTargetsTableModel*       tableModel = nullptr;
+    AxTargetsFilterProxyModel* proxyModel = nullptr;
+
+    QVector<TargetData> selectedData;
+
+public:
+    explicit AxDialogTargets(const QJSValue &headers, QVector<TargetData> vecTargets, QWidget* parent = nullptr);
+
+    QVector<TargetData> data();
+
+public Q_SLOTS:
+    void onClicked();
+    void handleSearch();
+    void clearSearch();
+};
+
+class AxSelectorTargets : public QObject {
+Q_OBJECT
+    AxDialogTargets* dialog;
+    AxScriptEngine*  scriptEngine;
+
+public:
+    explicit AxSelectorTargets(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+
+    Q_INVOKABLE void     setSize(int w, int h) const;
+    Q_INVOKABLE QJSValue exec() const;
+    Q_INVOKABLE void     close() const;
+};
+
+
+
+/// SELECTOR DOWNLOADS
+
+class AxDownloadsTableModel : public QAbstractTableModel {
+Q_OBJECT
+    QVector<DownloadData> m_data;
+    QVector<QString> m_headers;
+    QVector<QString> m_fieldKeys;
+
+public:
+    explicit AxDownloadsTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
+
+    void setHeaders(const QVector<QString>& headers, const QVector<QString>& fieldKeys) {
+        beginResetModel();
+        m_headers = headers;
+        m_fieldKeys = fieldKeys;
+        endResetModel();
+    }
+
+    void setData(const QVector<DownloadData>& data) {
+        beginResetModel();
+        m_data = data;
+        endResetModel();
+    }
+
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_data.size();
+    }
+
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_headers.size();
+    }
+
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override {
+        if (!index.isValid() || index.row() >= m_data.size() || index.column() >= m_fieldKeys.size())
+            return QVariant();
+
+        if (role == Qt::DisplayRole || role == Qt::UserRole) {
+            const auto& download = m_data[index.row()];
+            const QString& key = m_fieldKeys[index.column()];
+
+            QString state;
+            switch (download.State) {
+                case DOWNLOAD_STATE_RUNNING:  state = "running";  break;
+                case DOWNLOAD_STATE_STOPPED:  state = "stopped";  break;
+                case DOWNLOAD_STATE_FINISHED: state = "finished"; break;
+                default:                      state = "canceled"; break;
+            }
+
+            if (key == "id")         return download.FileId;
+            if (key == "agent_id")   return download.AgentId;
+            if (key == "agent_name") return download.AgentName;
+            if (key == "user")       return download.User;
+            if (key == "computer")   return download.Computer;
+            if (key == "filename")   return download.Filename;
+            if (key == "total_size") return download.TotalSize;
+            if (key == "recv_size")  return download.RecvSize;
+            if (key == "state")      return state;
+            if (key == "date")       return download.Date;
+        }
+        return QVariant();
+    }
+
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override {
+        if (role == Qt::DisplayRole && orientation == Qt::Horizontal && section < m_headers.size())
+            return m_headers[section];
+        return QVariant();
+    }
+
+    DownloadData getDownload(int row) const {
+        if (row >= 0 && row < m_data.size())
+            return m_data[row];
+        return DownloadData();
+    }
+};
+
+class AxDownloadsFilterProxyModel : public QSortFilterProxyModel {
+Q_OBJECT
+    QString m_filterText;
+
+public:
+    explicit AxDownloadsFilterProxyModel(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
+
+    void setFilterText(const QString& text) {
+        m_filterText = text;
+        invalidateFilter();
+    }
+
+protected:
+    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override {
+        if (m_filterText.isEmpty())
+            return true;
+
+        for (int col = 0; col < sourceModel()->columnCount(); ++col) {
+            QModelIndex idx = sourceModel()->index(sourceRow, col, sourceParent);
+            if (idx.data().toString().contains(m_filterText, Qt::CaseInsensitive))
+                return true;
+        }
+        return false;
+    }
+};
+
+class AxDialogDownloads : public QDialog {
+Q_OBJECT
+    QVBoxLayout*  mainLayout   = nullptr;
+    QTableView*   tableView    = nullptr;
+    QHBoxLayout*  bottomLayout = nullptr;
+    QPushButton*  chooseButton = nullptr;
+    QSpacerItem*  spacer_1     = nullptr;
+    QSpacerItem*  spacer_2     = nullptr;
+
+    QWidget*        searchWidget   = nullptr;
+    QHBoxLayout*    searchLayout   = nullptr;
+    QLineEdit*      searchLineEdit = nullptr;
+    ClickableLabel* hideButton     = nullptr;
+
+    AxDownloadsTableModel*       tableModel = nullptr;
+    AxDownloadsFilterProxyModel* proxyModel = nullptr;
+
+    QVector<DownloadData> selectedData;
+
+public:
+    explicit AxDialogDownloads(const QJSValue &headers, QVector<DownloadData> vecDownloads, QWidget* parent = nullptr);
+
+    QVector<DownloadData> data();
+
+public Q_SLOTS:
+    void onClicked();
+    void handleSearch();
+    void clearSearch();
+};
+
+class AxSelectorDownloads : public QObject {
+Q_OBJECT
+    AxDialogDownloads* dialog;
+    AxScriptEngine*    scriptEngine;
+
+public:
+    explicit AxSelectorDownloads(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
 
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;

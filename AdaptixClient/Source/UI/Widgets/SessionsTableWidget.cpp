@@ -117,13 +117,41 @@ void SessionsTableWidget::createUI()
     tableView->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
     tableView->horizontalHeader()->setCascadingSectionResizes( true );
     tableView->horizontalHeader()->setHighlightSections( false );
+    tableView->horizontalHeader()->setSectionsMovable( true );
+    tableView->horizontalHeader()->setFirstSectionMovable( false );
     tableView->verticalHeader()->setVisible( false );
+
+    columnStateReady = false;
+
+    connect(tableView->horizontalHeader(), &QHeaderView::sectionMoved, this, [this](int, int) {
+        if (!columnStateReady)
+            return;
+        this->SaveColumnOrder();
+    });
+
+    auto* header = tableView->horizontalHeader();
+    header->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(header, &QWidget::customContextMenuRequested, this, [this, header](const QPoint &pos) {
+        const int logical = header->logicalIndexAt(pos);
+        if (logical < 0 || logical >= SC_ColumnCount)
+            return;
+
+        QMenu menu(this);
+        QAction* actAutoFit = menu.addAction("Auto fit this column");
+        QAction* chosen = menu.exec(header->mapToGlobal(pos));
+        if (chosen == actAutoFit)
+            this->AutoFitColumnToContents(logical);
+    });
 
     proxyModel->sort(-1);
 
     tableView->setItemDelegate(new PaddingDelegate(tableView));
 
     this->UpdateColumnsVisible();
+    this->RestoreColumnState();
+    QTimer::singleShot(0, this, [this]() {
+        columnStateReady = true;
+    });
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
@@ -694,4 +722,60 @@ void SessionsTableWidget::actionSetData() const
     dialog->SetProfile(*(adaptixWidget->GetProfile()));
     dialog->SetAgentData(agentData);
     dialog->Start();
+}
+
+void SessionsTableWidget::RestoreColumnState() const
+{
+    QHeaderView* header = tableView->horizontalHeader();
+
+    for (int logicalIndex = 0; logicalIndex < SC_ColumnCount; logicalIndex++) {
+        int savedVisualIndex = GlobalClient->settings->data.SessionsColumnOrder[logicalIndex];
+        if (savedVisualIndex >= 0 && savedVisualIndex < SC_ColumnCount) {
+            int currentVisualIndex = header->visualIndex(logicalIndex);
+            if (currentVisualIndex != savedVisualIndex) {
+                header->moveSection(currentVisualIndex, savedVisualIndex);
+            }
+        }
+    }
+}
+
+void SessionsTableWidget::SaveColumnOrder() const
+{
+    QHeaderView* header = tableView->horizontalHeader();
+
+    for (int logicalIndex = 0; logicalIndex < SC_ColumnCount; logicalIndex++) {
+        GlobalClient->settings->data.SessionsColumnOrder[logicalIndex] = header->visualIndex(logicalIndex);
+    }
+
+    GlobalClient->settings->SaveToDB();
+}
+
+void SessionsTableWidget::AutoFitColumnToContents(const int logicalIndex) const
+{
+    if (!tableView || !proxyModel)
+        return;
+
+    if (logicalIndex < 0 || logicalIndex >= SC_ColumnCount)
+        return;
+
+    if (tableView->isColumnHidden(logicalIndex))
+        return;
+
+    const int rowCount = proxyModel->rowCount();
+    int maxWidth = 0;
+
+    for (int row = 0; row < rowCount; row++) {
+        const QModelIndex idx = proxyModel->index(row, logicalIndex);
+        if (!idx.isValid())
+            continue;
+        const QSize hint = tableView->sizeHintForIndex(idx);
+        maxWidth = qMax(maxWidth, hint.width());
+    }
+
+    maxWidth += 24;
+    if (maxWidth < 50)
+        maxWidth = 50;
+
+    tableView->horizontalHeader()->setSectionResizeMode(logicalIndex, QHeaderView::Interactive);
+    tableView->setColumnWidth(logicalIndex, maxWidth);
 }

@@ -76,7 +76,7 @@ RUN git clone https://github.com/Adaptix-Framework/go-win7 /tmp/go-win7 && \
 WORKDIR /app
 
 COPY ./AdaptixServer/server-dist/adaptixserver /app/adaptixserver
-COPY ./AdaptixServer/server-dist/profile.json /app/profile.json
+COPY ./AdaptixServer/server-dist/profile.yaml /app/profile.yaml
 COPY ./AdaptixServer/server-dist/404page.html /app/404page.html
 COPY ./AdaptixServer/server-dist/ssl_gen.sh /app/ssl_gen.sh
 COPY ./AdaptixServer/server-dist/extenders /app/extenders
@@ -97,4 +97,4 @@ exec "$@"' > /app/entrypoint.sh && \
 EXPOSE 4321 80 443 8080 8443 8000 8888 50050-50055 9000-9002 7000-7010
 
 ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["/app/adaptixserver", "-profile", "/app/profile.json"]
+CMD ["/app/adaptixserver", "-profile", "/app/profile.yaml"]
