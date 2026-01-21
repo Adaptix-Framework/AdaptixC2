@@ -346,6 +346,54 @@ function GenerateUI(listeners_type)
     let sideloadingSelector = form.create_selector_file();
     sideloadingSelector.setVisible(false);
 
+    // Proxy settings (only for HTTP beacon)
+    let checkUseProxy = form.create_check("Use HTTP/HTTPS Proxy");
+    let labelProxyType = form.create_label("Proxy Type:");
+    let comboProxyType = form.create_combo();
+    comboProxyType.addItems(["http", "https"]);
+    let labelProxyHost = form.create_label("Proxy Host:");
+    let textProxyHost = form.create_textline("");
+    textProxyHost.setPlaceholder("192.168.1.1");
+    let labelProxyPort = form.create_label("Proxy Port:");
+    let spinProxyPort = form.create_spin();
+    spinProxyPort.setRange(1, 65535);
+    spinProxyPort.setValue(8080);
+    let labelProxyUsername = form.create_label("Proxy Username:");
+    let textProxyUsername = form.create_textline("");
+    textProxyUsername.setPlaceholder("(optional)");
+    let labelProxyPassword = form.create_label("Proxy Password:");
+    let textProxyPassword = form.create_textline("");
+    textProxyPassword.setPlaceholder("(optional)");
+
+    // Initially hide proxy settings
+    let showProxySettings = listeners_type.includes("BeaconHTTP");
+    checkUseProxy.setVisible(showProxySettings);
+    labelProxyType.setVisible(false);
+    comboProxyType.setVisible(false);
+    labelProxyHost.setVisible(false);
+    textProxyHost.setVisible(false);
+    labelProxyPort.setVisible(false);
+    spinProxyPort.setVisible(false);
+    labelProxyUsername.setVisible(false);
+    textProxyUsername.setVisible(false);
+    labelProxyPassword.setVisible(false);
+    textProxyPassword.setVisible(false);
+
+    // Connect checkbox to show/hide proxy details
+    form.connect(checkUseProxy, "stateChanged", function() {
+        let checked = checkUseProxy.isChecked();
+        labelProxyType.setVisible(checked);
+        comboProxyType.setVisible(checked);
+        labelProxyHost.setVisible(checked);
+        textProxyHost.setVisible(checked);
+        labelProxyPort.setVisible(checked);
+        spinProxyPort.setVisible(checked);
+        labelProxyUsername.setVisible(checked);
+        textProxyUsername.setVisible(checked);
+        labelProxyPassword.setVisible(checked);
+        textProxyPassword.setVisible(checked);
+    });
+
     let spacer2 = form.create_vspacer();
 
     let layout = form.create_gridlayout();
@@ -369,7 +417,19 @@ function GenerateUI(listeners_type)
     layout.addWidget(textSvcName,         7, 1, 1, 2);
     layout.addWidget(checkSideloading,    8, 0, 1, 1);
     layout.addWidget(sideloadingSelector, 8, 1, 1, 2);
-    layout.addWidget(spacer2,             9, 0, 1, 3);
+    // Proxy settings rows
+    layout.addWidget(checkUseProxy,       9, 0, 1, 3);
+    layout.addWidget(labelProxyType,      10, 0, 1, 1);
+    layout.addWidget(comboProxyType,      10, 1, 1, 2);
+    layout.addWidget(labelProxyHost,      11, 0, 1, 1);
+    layout.addWidget(textProxyHost,       11, 1, 1, 2);
+    layout.addWidget(labelProxyPort,      12, 0, 1, 1);
+    layout.addWidget(spinProxyPort,       12, 1, 1, 2);
+    layout.addWidget(labelProxyUsername,  13, 0, 1, 1);
+    layout.addWidget(textProxyUsername,   13, 1, 1, 2);
+    layout.addWidget(labelProxyPassword,  14, 0, 1, 1);
+    layout.addWidget(textProxyPassword,   14, 1, 1, 2);
+    layout.addWidget(spacer2,             15, 0, 1, 3);
 
     form.connect(comboFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
@@ -403,6 +463,13 @@ function GenerateUI(listeners_type)
     container.put("svcname", textSvcName)
     container.put("is_sideloading",checkSideloading)
     container.put("sideloading_content",sideloadingSelector)
+    // Proxy settings
+    container.put("use_proxy", checkUseProxy)
+    container.put("proxy_type", comboProxyType)
+    container.put("proxy_host", textProxyHost)
+    container.put("proxy_port", spinProxyPort)
+    container.put("proxy_username", textProxyUsername)
+    container.put("proxy_password", textProxyPassword)
 
     let panel = form.create_panel()
     panel.setLayout(layout)
@@ -410,7 +477,7 @@ function GenerateUI(listeners_type)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 380,
+        ui_height: 480,
         ui_width: 500
     }
 }

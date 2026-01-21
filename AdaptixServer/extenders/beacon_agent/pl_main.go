@@ -257,6 +257,13 @@ type GenerateConfig struct {
 	IsSideloading      bool   `json:"is_sideloading"`
 	SideloadingContent string `json:"sideloading_content"`
 	DnsResolvers       string `json:"dns_resolvers"`
+	// Proxy settings
+	UseProxy      bool   `json:"use_proxy"`
+	ProxyType     string `json:"proxy_type"`     // "http" or "https"
+	ProxyHost     string `json:"proxy_host"`
+	ProxyPort     int    `json:"proxy_port"`
+	ProxyUsername string `json:"proxy_username"`
+	ProxyPassword string `json:"proxy_password"`
 }
 
 var (
@@ -375,6 +382,22 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 			params = append(params, RequestHeaders)
 			params = append(params, ansOffset1)
 			params = append(params, ansOffset2)
+
+			// Add proxy settings
+			proxyType := 0 // 0=none, 1=http, 2=https
+			if generateConfig.UseProxy {
+				if generateConfig.ProxyType == "https" {
+					proxyType = 2
+				} else {
+					proxyType = 1 // default to http
+				}
+			}
+			params = append(params, proxyType)
+			params = append(params, generateConfig.ProxyHost)
+			params = append(params, generateConfig.ProxyPort)
+			params = append(params, generateConfig.ProxyUsername)
+			params = append(params, generateConfig.ProxyPassword)
+
 			params = append(params, kill_date)
 			params = append(params, working_time)
 			params = append(params, seconds)
