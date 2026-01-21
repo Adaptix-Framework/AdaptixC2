@@ -305,7 +305,7 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 					break
 				}
 
-				_ = Ts.TsAgentSetTick(agentId)
+				_ = Ts.TsAgentSetTick(agentId, t.Name)
 
 				_ = Ts.TsAgentProcessData(agentId, recvData)
 			} else {

@@ -877,7 +877,9 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 	}
 
 	go func() {
-		defer finish()
+		if direct {
+			defer finish()
+		}
 		if tunChannel.pwSrv == nil || tunChannel.conn == nil {
 			logs.Debug("", "[ERROR relaySocketToTunnel] pwSrv or conn == nil — copy (pwSrv <- conn)")
 			return
@@ -889,7 +891,9 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 	}()
 
 	go func() {
-		defer finish()
+		if direct {
+			defer finish()
+		}
 		if tunChannel.prTun == nil || tunChannel.conn == nil {
 			logs.Debug("", "[ERROR relaySocketToTunnel] prTun or conn == nil — copy (conn <- prTun)")
 			return
@@ -904,6 +908,7 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 
 	if !direct {
 		go func() {
+			defer finish()
 			buf := tm.GetBuffer()
 			defer tm.PutBuffer(buf)
 			for {
@@ -944,7 +949,9 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 	}
 
 	go func() {
-		defer finish()
+		if direct {
+			defer finish()
+		}
 		if tunChannel.wsconn == nil || tunChannel.pwSrv == nil {
 			return
 		}
@@ -961,7 +968,9 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 	}()
 
 	go func() {
-		defer finish()
+		if direct {
+			defer finish()
+		}
 		if tunChannel.wsconn == nil || tunChannel.prTun == nil {
 			return
 		}
@@ -982,6 +991,7 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 
 	if !direct {
 		go func() {
+			defer finish()
 			buf := tm.GetBuffer()
 			defer tm.PutBuffer(buf)
 			for {

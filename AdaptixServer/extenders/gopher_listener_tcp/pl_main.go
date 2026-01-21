@@ -14,7 +14,7 @@ import (
 type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
-	TsAgentSetTick(agentId string) error
+	TsAgentSetTick(agentId string, listenerName string) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)

@@ -786,7 +786,7 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	return nil
 }
 
-func (ts *Teamserver) TsAgentSetTick(agentId string) error {
+func (ts *Teamserver) TsAgentSetTick(agentId string, listenerName string) error {
 	value, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return fmt.Errorf("agent type %v does not exists", agentId)
@@ -797,12 +797,34 @@ func (ts *Teamserver) TsAgentSetTick(agentId string) error {
 	}
 
 	agentData := agent.GetData()
+
+	listenerChanged := listenerName != "" && agentData.Listener != listenerName
+
 	if agentData.Async {
-		agent.UpdateData(func(d *adaptix.AgentData) {
-			d.LastTick = int(time.Now().Unix())
-		})
-		_ = ts.DBMS.DbAgentTick(agent.GetData())
+		if listenerChanged {
+			agent.UpdateData(func(d *adaptix.AgentData) {
+				d.LastTick = int(time.Now().Unix())
+				d.Listener = listenerName
+			})
+			updatedAgentData := agent.GetData()
+			packet := CreateSpAgentUpdate(updatedAgentData)
+			ts.TsSyncAllClients(packet)
+			_ = ts.DBMS.DbAgentUpdate(updatedAgentData)
+		} else {
+			agent.UpdateData(func(d *adaptix.AgentData) {
+				d.LastTick = int(time.Now().Unix())
+			})
+			_ = ts.DBMS.DbAgentTick(agent.GetData())
+		}
 		agent.Tick = true
+	} else if listenerChanged {
+		agent.UpdateData(func(d *adaptix.AgentData) {
+			d.Listener = listenerName
+		})
+		updatedAgentData := agent.GetData()
+		packet := CreateSpAgentUpdate(updatedAgentData)
+		ts.TsSyncAllClients(packet)
+		_ = ts.DBMS.DbAgentUpdate(updatedAgentData)
 	}
 	return nil
 }

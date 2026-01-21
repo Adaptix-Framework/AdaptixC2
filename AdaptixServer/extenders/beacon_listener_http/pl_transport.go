@@ -336,7 +336,7 @@ func (t *TransportHTTP) processRequest(ctx *gin.Context) {
 		}
 	}
 
-	_ = Ts.TsAgentSetTick(agentId)
+	_ = Ts.TsAgentSetTick(agentId, t.Name)
 
 	_ = Ts.TsAgentProcessData(agentId, bodyData)
 

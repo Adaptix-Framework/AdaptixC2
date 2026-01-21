@@ -48,7 +48,7 @@ type Teamserver interface {
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentRemove(agentId string) error
 	TsAgentConsoleRemove(agentId string) error
-	TsAgentSetTick(agentId string) error
+	TsAgentSetTick(agentId string, listenerName string) error
 	TsAgentTickUpdate()
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
