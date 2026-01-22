@@ -172,12 +172,18 @@ func (tm *TunnelManager) CloseChannel(tunnelId string, channelId int) {
 	tm.closeChannelInternal(entry.Tunnel, entry.Channel)
 }
 
-func (tm *TunnelManager) CloseChannelByIdOnly(channelId int) {
+func (tm *TunnelManager) CloseChannelByIdOnly(channelId int, writeOnly bool) {
 	entry, ok := tm.GetChannelByIdOnly(channelId)
 	if !ok {
 		return
 	}
-	tm.closeChannelInternal(entry.Tunnel, entry.Channel)
+	if writeOnly {
+		if entry.Channel != nil && entry.Channel.pwTun != nil {
+			_ = entry.Channel.pwTun.Close()
+		}
+	} else {
+		tm.closeChannelInternal(entry.Tunnel, entry.Channel)
+	}
 }
 
 func (tm *TunnelManager) closeChannelInternal(tunnel *Tunnel, channel *TunnelChannel) {

@@ -625,8 +625,8 @@ func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int, io
 	}
 }
 
-func (ts *Teamserver) TsTunnelConnectionClose(channelId int) {
-	ts.TunnelManager.CloseChannelByIdOnly(channelId)
+func (ts *Teamserver) TsTunnelConnectionClose(channelId int, writeOnly bool) {
+	ts.TunnelManager.CloseChannelByIdOnly(channelId, writeOnly)
 }
 
 func (ts *Teamserver) TsTunnelConnectionHalt(channelId int, errorCode byte) {
@@ -661,7 +661,7 @@ func (ts *Teamserver) TsTunnelConnectionHalt(channelId int, errorCode byte) {
 			}
 		}
 	}
-	ts.TunnelManager.CloseChannelByIdOnly(channelId)
+	ts.TunnelManager.CloseChannelByIdOnly(channelId, false)
 }
 
 func (ts *Teamserver) TsTunnelConnectionAccept(tunnelId int, channelId int) {
@@ -854,12 +854,7 @@ func relayPipeToTaskData(agent *Agent, channelId int, taskData adaptix.TaskData)
 	}
 	taskData.AgentId = agent.GetData().Id
 
-	taskTunnel := adaptix.TaskDataTunnel{
-		ChannelId: channelId,
-		Data:      taskData,
-	}
-
-	agent.HostedTunnelData.Push(taskTunnel)
+	agent.HostedTunnelTasks.Push(taskData)
 }
 
 func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunChannel *TunnelChannel, direct bool) {
@@ -891,16 +886,13 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 	}()
 
 	go func() {
-		if direct {
-			defer finish()
-		}
 		if tunChannel.prTun == nil || tunChannel.conn == nil {
 			logs.Debug("", "[ERROR relaySocketToTunnel] prTun or conn == nil — copy (conn <- prTun)")
 			return
 		}
 		buf := tm.GetBuffer()
 		defer tm.PutBuffer(buf)
-		io.CopyBuffer(tunChannel.conn, tunChannel.prTun, buf)
+		_, _ = io.CopyBuffer(tunChannel.conn, tunChannel.prTun, buf)
 		if tcp, ok := tunChannel.conn.(*net.TCPConn); ok {
 			_ = tcp.CloseWrite()
 		}
@@ -968,9 +960,6 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 	}()
 
 	go func() {
-		if direct {
-			defer finish()
-		}
 		if tunChannel.wsconn == nil || tunChannel.prTun == nil {
 			return
 		}

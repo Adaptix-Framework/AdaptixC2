@@ -444,7 +444,7 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 
 		wg.Wait()
 
-		ts.TsTunnelConnectionClose(tunPack.ChannelId)
+		ts.TsTunnelConnectionClose(tunPack.ChannelId, false)
 
 	case TERMINAL_PACK:
 

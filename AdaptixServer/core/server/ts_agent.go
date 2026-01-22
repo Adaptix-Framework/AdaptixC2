@@ -84,7 +84,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 		Extender:          handler,
 		OutConsole:        safe.NewSlice(),
 		HostedTasks:       safe.NewSafeQueue(0x100),
-		HostedTunnelTasks: safe.NewSafeQueue(0x100),
+		HostedTunnelTasks: safe.NewSafeQueue(0x1000),
 		HostedTunnelData:  safe.NewSafeQueue(0x1000),
 		RunningTasks:      safe.NewMap(),
 		RunningJobs:       safe.NewMap(),

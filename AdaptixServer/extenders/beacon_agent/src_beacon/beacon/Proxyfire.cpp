@@ -373,8 +373,12 @@ void Proxyfire::CheckProxy(Packer* packer)
 ULONG Proxyfire::RecvProxy(Packer* packer)
 {
 	ULONG count = 0;
+	LPVOID buffer = MemAllocLocal(0x10000);
 	TunnelData* tunnelData;
-	for ( int i = 0; i < this->tunnels.size(); i++ ) {
+	for (int i = 0; i < this->tunnels.size(); i++) {
+		// Limit total data per tick to prevent blocking heartbeat (~4MB)
+		if (packer->datasize() > 0x400000)
+			break;
 		tunnelData = &(this->tunnels[i]);
 		if (tunnelData->state == TUNNEL_STATE_READY) {
 			if (tunnelData->mode == TUNNEL_MODE_SEND_UDP) {
@@ -397,40 +401,32 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 				MemFreeLocal(&buffer, 0xFFFFC);
 			}
 			else {
-				ULONG dataLength = 0;
-				int result = ApiWin->ioctlsocket(tunnelData->sock, FIONREAD, &dataLength);
-				if (dataLength > 0xFFFFC)
-					dataLength = 0xFFFFC;
-				if (result == -1) {
-					tunnelData->state = TUNNEL_STATE_CLOSE;
-					PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
-				}
-				else {
-					if (dataLength) {
-						LPVOID buffer = MemAllocLocal(dataLength);
-						ULONG readed = ReadFromSocket(tunnelData->sock, (PCHAR)buffer, dataLength);
-						if (readed == -1) {
-							tunnelData->state = TUNNEL_STATE_CLOSE;
-							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
-						}
-						if (readed == dataLength) {
-							PackProxyData(packer, tunnelData->channelID, (PBYTE)buffer, dataLength);
-							++count;
-						}
-						MemFreeLocal(&buffer, dataLength);
+				int max_reads = 16;
+				while (max_reads-- > 0) {
+					int readed = ApiWin->recv(tunnelData->sock, (char*)buffer, 0x10000, 0);
+
+					if (readed > 0) {
+						PackProxyData(packer, tunnelData->channelID, (PBYTE)buffer, readed);
+						++count;
 					}
-					else {
-						char peekBuf[1];
-						int peekResult = ApiWin->recv(tunnelData->sock, peekBuf, 1, MSG_PEEK);
-						if (peekResult == 0) {
+					else if (readed == 0) {
+						tunnelData->state = TUNNEL_STATE_CLOSE;
+						PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
+						break;
+					}
+					else if (readed == -1) {
+						int err = ApiWin->WSAGetLastError();
+						if (err != WSAEWOULDBLOCK) {
 							tunnelData->state = TUNNEL_STATE_CLOSE;
 							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
 						}
+						break; // WOULDBLOCK or Error, stop reading this tunnel for now
 					}
 				}
 			}
 		}
 	}
+	MemFreeLocal(&buffer, 0x10000);
 	tunnelData = NULL;
 	return count;
 }

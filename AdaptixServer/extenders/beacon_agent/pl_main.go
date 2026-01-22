@@ -67,7 +67,7 @@ type Teamserver interface {
 	TsTunnelStopLportfwd(AgentId string, Port int)
 	TsTunnelStopRportfwd(AgentId string, Port int)
 
-	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionClose(channelId int, writeOnly bool)
 	TsTunnelConnectionHalt(channelId int, errorCode byte)
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
@@ -2173,7 +2173,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			if result == 0 {
 				Ts.TsTunnelConnectionResume(agentData.Id, channelId, false)
 			} else if result == 1 {
-				Ts.TsTunnelConnectionClose(channelId)
+				Ts.TsTunnelConnectionClose(channelId, true)
 			} else {
 				errorCode := adaptix.SOCKS5_HOST_UNREACHABLE
 				if result == 10061 { // WSAECONNREFUSED

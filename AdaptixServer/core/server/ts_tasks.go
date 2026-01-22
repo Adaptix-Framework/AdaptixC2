@@ -159,9 +159,6 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 		ts.TsSyncAllClients(packet)
 	}
 
-	tunnelData, size := ts.extractTunnelData(agent, availableSize, size)
-	tasks = append(tasks, tunnelData...)
-
 	tunnelTasks, size := ts.extractTunnelTasks(agent, availableSize, size)
 	tasks = append(tasks, tunnelTasks...)
 

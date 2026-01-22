@@ -114,7 +114,7 @@ type Teamserver interface {
 	TsTunnelStopSocks(AgentId string, Port int)
 	TsTunnelStopLportfwd(AgentId string, Port int)
 	TsTunnelStopRportfwd(AgentId string, Port int)
-	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionClose(channelId int, writeOnly bool)
 	TsTunnelConnectionHalt(channelId int, errorCode byte)
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
