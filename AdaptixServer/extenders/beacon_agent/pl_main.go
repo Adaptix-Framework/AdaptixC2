@@ -257,6 +257,8 @@ type GenerateConfig struct {
 	IsSideloading      bool   `json:"is_sideloading"`
 	SideloadingContent string `json:"sideloading_content"`
 	DnsResolvers       string `json:"dns_resolvers"`
+	DohResolvers       string `json:"doh_resolvers"`
+	DnsMode            string `json:"dns_mode"`
 }
 
 var (

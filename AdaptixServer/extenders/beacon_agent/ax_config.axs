@@ -320,13 +320,59 @@ function GenerateUI(listeners_type)
         spinJitter.setVisible(false);
     }
 
+    let labelDnsMode = form.create_label("DNS Mode:");
+    let comboDnsMode = form.create_combo();
+    comboDnsMode.addItems(["DNS (Direct UDP)", "DoH (DNS over HTTPS)", "DNS -> DoH fallback", "DoH -> DNS fallback"]);
+    comboDnsMode.setCurrentIndex(0);
+    if(!listeners_type.includes("BeaconDNS")) {
+        labelDnsMode.setVisible(false);
+        comboDnsMode.setVisible(false);
+    }
+
     let labelDnsResolvers = form.create_label("DNS Resolvers:");
     let textDnsResolvers = form.create_textline("");
     textDnsResolvers.setPlaceholder("8.8.8.8,1.1.1.1,9.9.9.9");
-    if(!listeners_type.includes("BeaconDNS")) {
-        labelDnsResolvers.setVisible(false);
-        textDnsResolvers.setVisible(false);
+
+    let labelDohResolvers = form.create_label("DoH Resolvers:");
+    let textDohResolvers = form.create_textline("");
+    textDohResolvers.setPlaceholder("https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query");
+
+    // Function to update DNS fields visibility based on selected mode
+    function updateDnsFieldsVisibility() {
+        let mode = comboDnsMode.currentText();
+        let isDns = listeners_type.includes("BeaconDNS");
+        
+        if(!isDns) {
+            labelDnsResolvers.setVisible(false);
+            textDnsResolvers.setVisible(false);
+            labelDohResolvers.setVisible(false);
+            textDohResolvers.setVisible(false);
+        } else if(mode == "DNS (Direct UDP)") {
+            labelDnsResolvers.setVisible(true);
+            textDnsResolvers.setVisible(true);
+            labelDohResolvers.setVisible(false);
+            textDohResolvers.setVisible(false);
+        } else if(mode == "DoH (DNS over HTTPS)") {
+            labelDnsResolvers.setVisible(false);
+            textDnsResolvers.setVisible(false);
+            labelDohResolvers.setVisible(true);
+            textDohResolvers.setVisible(true);
+        } else {
+            // Fallback modes - show both
+            labelDnsResolvers.setVisible(true);
+            textDnsResolvers.setVisible(true);
+            labelDohResolvers.setVisible(true);
+            textDohResolvers.setVisible(true);
+        }
     }
+
+    // Initial visibility update
+    updateDnsFieldsVisibility();
+
+    // Connect mode change to update visibility
+    form.connect(comboDnsMode, "currentTextChanged", function(text) {
+        updateDnsFieldsVisibility();
+    });
 
     let checkKilldate = form.create_check("Set 'killdate'");
     let dateKill = form.create_dateline("dd.MM.yyyy");
@@ -357,19 +403,23 @@ function GenerateUI(listeners_type)
     layout.addWidget(labelSleep,          3, 0, 1, 1);
     layout.addWidget(textSleep,           3, 1, 1, 1);
     layout.addWidget(spinJitter,          3, 2, 1, 1);
-    layout.addWidget(labelDnsResolvers,   4, 0, 1, 1);
-    layout.addWidget(textDnsResolvers,    4, 1, 1, 2);
-    layout.addWidget(checkKilldate,       5, 0, 1, 1);
-    layout.addWidget(dateKill,            5, 1, 1, 1);
-    layout.addWidget(timeKill,            5, 2, 1, 1);
-    layout.addWidget(checkWorkingTime,    6, 0, 1, 1);
-    layout.addWidget(timeStart,           6, 1, 1, 1);
-    layout.addWidget(timeFinish,          6, 2, 1, 1);
-    layout.addWidget(labelSvcName,        7, 0, 1, 1);
-    layout.addWidget(textSvcName,         7, 1, 1, 2);
-    layout.addWidget(checkSideloading,    8, 0, 1, 1);
-    layout.addWidget(sideloadingSelector, 8, 1, 1, 2);
-    layout.addWidget(spacer2,             9, 0, 1, 3);
+    layout.addWidget(labelDnsMode,        4, 0, 1, 1);
+    layout.addWidget(comboDnsMode,        4, 1, 1, 2);
+    layout.addWidget(labelDnsResolvers,   5, 0, 1, 1);
+    layout.addWidget(textDnsResolvers,    5, 1, 1, 2);
+    layout.addWidget(labelDohResolvers,   6, 0, 1, 1);
+    layout.addWidget(textDohResolvers,    6, 1, 1, 2);
+    layout.addWidget(checkKilldate,       7, 0, 1, 1);
+    layout.addWidget(dateKill,            7, 1, 1, 1);
+    layout.addWidget(timeKill,            7, 2, 1, 1);
+    layout.addWidget(checkWorkingTime,    8, 0, 1, 1);
+    layout.addWidget(timeStart,           8, 1, 1, 1);
+    layout.addWidget(timeFinish,          8, 2, 1, 1);
+    layout.addWidget(labelSvcName,        9, 0, 1, 1);
+    layout.addWidget(textSvcName,         9, 1, 1, 2);
+    layout.addWidget(checkSideloading,    10, 0, 1, 1);
+    layout.addWidget(sideloadingSelector, 10, 1, 1, 2);
+    layout.addWidget(spacer2,             11, 0, 1, 3);
 
     form.connect(comboFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
@@ -394,6 +444,8 @@ function GenerateUI(listeners_type)
     container.put("sleep", textSleep)
     container.put("jitter", spinJitter)
     container.put("dns_resolvers", textDnsResolvers)
+    container.put("dns_mode", comboDnsMode)
+    container.put("doh_resolvers", textDohResolvers)
     container.put("is_killdate", checkKilldate)
     container.put("kill_date", dateKill)
     container.put("kill_time", timeKill)
@@ -410,7 +462,7 @@ function GenerateUI(listeners_type)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 380,
+        ui_height: 450,
         ui_width: 500
     }
 }
