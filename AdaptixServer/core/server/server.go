@@ -196,8 +196,6 @@ func (ts *Teamserver) RestoreData() {
 	restoreChat := ts.DBMS.DbChatAll()
 	for _, restoreMessage := range restoreChat {
 		ts.messages.Put(restoreMessage)
-		packet := CreateSpChatMessage(restoreMessage)
-		ts.TsSyncAllClients(packet)
 		countMessages++
 	}
 	logs.Success("   ", "Restored %v messages", countMessages)
@@ -207,12 +205,6 @@ func (ts *Teamserver) RestoreData() {
 	restoreDownloads := ts.DBMS.DbDownloadAll()
 	for _, restoreDownload := range restoreDownloads {
 		ts.downloads.Put(restoreDownload.FileId, restoreDownload)
-
-		packetRes1 := CreateSpDownloadCreate(restoreDownload)
-		ts.TsSyncAllClients(packetRes1)
-
-		packetRes2 := CreateSpDownloadUpdate(restoreDownload)
-		ts.TsSyncAllClients(packetRes2)
 
 		countDownloads++
 	}
@@ -230,9 +222,6 @@ func (ts *Teamserver) RestoreData() {
 
 		ts.screenshots.Put(restoreScreen.ScreenId, restoreScreen)
 
-		packet := CreateSpScreenshotCreate(restoreScreen)
-		ts.TsSyncAllClients(packet)
-
 		countScreenshots++
 	}
 	logs.Success("   ", "Restored %v screens", countScreenshots)
@@ -245,8 +234,6 @@ func (ts *Teamserver) RestoreData() {
 		ts.credentials.Put(restoreCredential)
 		countCredentials++
 	}
-	packetCreds := CreateSpCredentialsAdd(restoreCredentials)
-	ts.TsSyncAllClients(packetCreds)
 	logs.Success("   ", "Restored %v credentials", countCredentials)
 
 	/// TARGETS
@@ -256,8 +243,6 @@ func (ts *Teamserver) RestoreData() {
 		ts.targets.Put(restoreTarget)
 		countTargets++
 	}
-	packetTargets := CreateSpTargetsAdd(restoreTargets)
-	ts.TsSyncAllClients(packetTargets)
 	logs.Success("   ", "Restored %v targets", countTargets)
 
 	/// LISTENERS

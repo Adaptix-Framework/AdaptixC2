@@ -128,7 +128,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 		taskId = tunnel.TaskId
 
 		packet := CreateSpTunnelCreate(tunnel.Data)
-		ts.TsSyncAllClients(packet)
+		ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 
 		ts.TsNotifyTunnelAdd(tunnel)
 	}
@@ -212,7 +212,7 @@ func (ts *Teamserver) TsTunnelClientSetInfo(TunnelId string, Info string) error 
 	tunnel.Data.Info = Info
 
 	packet := CreateSpTunnelEdit(tunnel.Data)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncStateWithCategory(packet, "tunnel:"+tunnel.Data.TunnelId, SyncCategoryTunnels)
 
 	return nil
 }
@@ -237,7 +237,7 @@ func (ts *Teamserver) TsTunnelClientStop(TunnelId string, Client string) error {
 		ts.TunnelManager.CloseAllChannels(tunnel)
 
 		packet := CreateSpTunnelDelete(tunnel.Data)
-		ts.TsSyncAllClients(packet)
+		ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 
 		taskData := adaptix.TaskData{
 			TaskId:     tunnel.TaskId,
@@ -315,7 +315,7 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 	tunnel.TaskId, _ = krypt.GenerateUID(8)
 
 	packet := CreateSpTunnelCreate(tunnel.Data)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 
 	ts.TsNotifyTunnelAdd(tunnel)
 
@@ -445,7 +445,7 @@ func (ts *Teamserver) TsTunnelUpdateRportfwd(tunnelId int, result bool) (string,
 		tunnel, ok := ts.TunnelManager.GetTunnel(tunId)
 		if ok {
 			packet := CreateSpTunnelCreate(tunnel.Data)
-			ts.TsSyncAllClients(packet)
+			ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 
 			ts.TsNotifyTunnelAdd(tunnel)
 
@@ -509,7 +509,7 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 	ts.TunnelManager.CloseAllChannels(tunnel)
 
 	packet := CreateSpTunnelDelete(tunnel.Data)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 
 	taskData := adaptix.TaskData{
 		TaskId:     tunnel.TaskId,

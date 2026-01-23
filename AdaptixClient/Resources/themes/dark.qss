@@ -859,6 +859,12 @@ QListWidget::indicator:checked {
     image: url(:/icons/check);
 }
 
+QListWidget::indicator:indeterminate {
+    background-color: #4A7A4A;
+    border: 1px solid #5A8A5A;
+    image: url(:/icons/close);
+}
+
 QListWidget::indicator:unchecked:hover {
     border: 1px solid #7A7A7A;
     background-color: #4A4A4A;

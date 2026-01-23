@@ -73,32 +73,36 @@ func (tm *TaskManager) prepareTaskData(agent *Agent, cmdline string, client stri
 
 func (tm *TaskManager) syncTaskCreate(agentId string, agent *Agent, taskData *adaptix.TaskData) {
 	packet_task := CreateSpAgentTaskSync(*taskData)
-	tm.ts.TsSyncAllClients(packet_task)
+	tm.ts.TsSyncAllClientsWithCategory(packet_task, SyncCategoryTasksManager)
 
-	packet_console := CreateSpAgentConsoleTaskSync(*taskData)
-	tm.ts.TsSyncAllClients(packet_console)
+	if taskData.Type != adaptix.TASK_TYPE_BROWSER {
+		packet_console := CreateSpAgentConsoleTaskSync(*taskData)
+		tm.ts.TsSyncConsole(packet_console, taskData.Client)
 
-	agent.OutConsole.Put(packet_console)
-	_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
+		agent.OutConsole.Put(packet_console)
+		_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
+	}
 }
 
 func (tm *TaskManager) syncTaskUpdate(agentId string, agent *Agent, taskData *adaptix.TaskData) {
 
 	packet_task := CreateSpAgentTaskUpdate(*taskData)
 	if taskData.HandlerId == "" {
-		tm.ts.TsSyncAllClients(packet_task)
+		tm.ts.TsSyncAllClientsWithCategory(packet_task, SyncCategoryTasksManager)
 	} else {
 		handlerClient := taskData.Client
-		tm.ts.TsSyncExcludeClient(handlerClient, packet_task)
+		tm.ts.TsSyncExcludeClientWithCategory(handlerClient, packet_task, SyncCategoryTasksManager)
 		packet_task.HandlerId = taskData.HandlerId
 		tm.ts.TsSyncClient(handlerClient, packet_task)
 	}
 
-	packet_console := CreateSpAgentConsoleTaskUpd(*taskData)
-	tm.ts.TsSyncAllClients(packet_console)
+	if taskData.Type != adaptix.TASK_TYPE_BROWSER {
+		packet_console := CreateSpAgentConsoleTaskUpd(*taskData)
+		tm.ts.TsSyncConsole(packet_console, taskData.Client)
 
-	agent.OutConsole.Put(packet_console)
-	_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
+		agent.OutConsole.Put(packet_console)
+		_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
+	}
 }
 
 func (tm *TaskManager) completeTask(agent *Agent, taskData *adaptix.TaskData) {

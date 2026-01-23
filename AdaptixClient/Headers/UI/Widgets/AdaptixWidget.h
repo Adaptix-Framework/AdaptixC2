@@ -8,7 +8,9 @@
 #include <kddockwidgets/qtwidgets/views/MainWindow.h>
 
 #include <QJSValue>
+#include <QQueue>
 #include <QReadWriteLock>
+#include <QElapsedTimer>
 
 class Task;
 class Agent;
@@ -80,13 +82,26 @@ Q_OBJECT
 
     bool              synchronized     = false;
     bool              sync             = false;
+    bool              syncFinishReceived = false;
+    int               syncTotalBatches = 0;
+    int               syncProcessingBatchIndex = 0;
+    int               syncProcessingBatchTotal = 0;
+    int               syncProcessingBatchProcessed = 0;
+    QElapsedTimer     syncProcessingUiTimer;
     AuthProfile*      profile          = nullptr;
     DialogSyncPacket* dialogSyncPacket = nullptr;
+
+    QQueue<QJsonObject> pendingPackets;
+    QTimer*             pendingPacketsTimer = nullptr;
 
     void createUI();
 
     static bool isValidSyncPacket(QJsonObject jsonObj);
+    void enqueueSyncPacket(const QJsonObject &jsonObj);
+    void processPendingSyncPackets();
     void processSyncPacket(QJsonObject jsonObj);
+
+    void finalizeSyncIfReady();
 
     void setSyncUpdateUI(bool enabled);
 
@@ -149,6 +164,9 @@ public:
     bool IsSynchronized();
     void Close();
     void ClearAdaptix();
+    void ClearChatStream();
+    void ClearConsoleStreams();
+    void ClearNotificationsStream();
 
     void RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script);
     void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listenersconst, const bool &multiListeners);

@@ -23,8 +23,9 @@ type Teamserver interface {
 
 	TsClientExists(username string) bool
 	TsClientDisconnect(username string)
+	TsClientConnect(username string, version string, socket *websocket.Conn, clientType uint8, consoleTeamMode bool, subscriptions []string)
 	TsClientSync(username string)
-	TsClientConnect(username string, version string, socket *websocket.Conn)
+	TsClientSubscribe(username string, categories []string, consoleTeamMode *bool)
 
 	TsListenerList() (string, error)
 	TsListenerStart(listenerName string, configType string, config string, createTime int64, watermark string, customData []byte) error
@@ -135,11 +136,11 @@ type TsConnector struct {
 	Cert      string
 	Key       string
 
-	Engine             *gin.Engine
-	teamserver         Teamserver
-	apiGroup           *gin.RouterGroup
-	publicGroup        *gin.RouterGroup
-	dynamicEndpoints   map[string]gin.HandlerFunc
+	Engine                 *gin.Engine
+	teamserver             Teamserver
+	apiGroup               *gin.RouterGroup
+	publicGroup            *gin.RouterGroup
+	dynamicEndpoints       map[string]gin.HandlerFunc
 	dynamicPublicEndpoints map[string]gin.HandlerFunc
 }
 
@@ -227,6 +228,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.apiGroup = api_group
 	{
 		api_group.POST("/sync", connector.tcSync)
+		api_group.POST("/subscribe", connector.tcSubscribe)
 		api_group.GET("/connect", connector.tcConnect)
 		api_group.GET("/channel", connector.tcChannel)
 		api_group.POST("/otp/generate", connector.tcOTP_Generate)

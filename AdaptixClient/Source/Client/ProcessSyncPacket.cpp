@@ -464,27 +464,23 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     int spType = jsonObj["type"].toDouble();
 
     if (spType == TYPE_SYNC_BATCH || spType == TYPE_SYNC_CATEGORY_BATCH) {
-        QJsonArray packetsArray = jsonObj["packets"].toArray();
-        int processedCount = 0;
-        for (const QJsonValue &packetValue : packetsArray) {
-            if (packetValue.isObject())
-                processSyncPacket(packetValue.toObject());
-            
-            processedCount++;
-            if (processedCount % 50 == 0) {
-                QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
-            }
-        }
         if (this->sync && dialogSyncPacket) {
-            dialogSyncPacket->receivedLogs += packetsArray.size();
+            dialogSyncPacket->receivedLogs++;
             dialogSyncPacket->upgrade();
         }
-        return;
-    }
 
-    if (this->sync && dialogSyncPacket && spType != TYPE_SYNC_BATCH) {
-        dialogSyncPacket->receivedLogs++;
-        dialogSyncPacket->upgrade();
+        QJsonArray packetsArray = jsonObj["packets"].toArray();
+
+        QJsonObject marker;
+        marker.insert("__ax_batch_marker", true);
+        marker.insert("__ax_batch_size", packetsArray.size());
+        enqueueSyncPacket(marker);
+
+        for (const QJsonValue &packetValue : packetsArray) {
+            if (packetValue.isObject())
+                enqueueSyncPacket(packetValue.toObject());
+        }
+        return;
     }
 
     switch (spType) {
@@ -495,21 +491,40 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         this->addresses.clear();
         for (const QJsonValue &addrValue : interfaces)
             this->addresses.append(addrValue.toString());
+
+        if (count <= 0) {
+            this->sync = false;
+            this->syncFinishReceived = false;
+            this->syncTotalBatches = 0;
+            this->syncProcessingBatchIndex = 0;
+            this->syncProcessingBatchTotal = 0;
+            this->syncProcessingBatchProcessed = 0;
+            break;
+        }
+
         this->sync = true;
+        this->syncFinishReceived = false;
+        this->syncTotalBatches = count;
+        this->syncProcessingBatchIndex = 0;
+        this->syncProcessingBatchTotal = 0;
+        this->syncProcessingBatchProcessed = 0;
         this->setSyncUpdateUI(false);
-        dialogSyncPacket->init(count);
+        if (dialogSyncPacket && dialogSyncPacket->splashScreen) {
+            dialogSyncPacket->splashScreen->show();
+            dialogSyncPacket->splashScreen->raise();
+            dialogSyncPacket->splashScreen->activateWindow();
+        }
+        if (dialogSyncPacket)
+            dialogSyncPacket->init(count);
         break;
     }
 
     case TYPE_SYNC_FINISH:
-        if (dialogSyncPacket) {
-            this->sync = false;
-            dialogSyncPacket->finish();
-            QTimer::singleShot(100, this, [this]() {
-                this->setSyncUpdateUI(true);
-                Q_EMIT this->SyncedSignal();
-            });
-        }
+        if (!this->sync)
+            break;
+
+        this->syncFinishReceived = true;
+        finalizeSyncIfReady();
         break;
 
     case TYPE_LISTENER_START:
@@ -542,6 +557,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         break;
 
     case TYPE_AGENT_NEW: {
+        QString agentId = jsonObj["a_id"].toString();
+        {
+            QReadLocker locker(&AgentsMapLock);
+            if (AgentsMap.contains(agentId))
+                break;
+        }
         Agent* newAgent = new Agent(jsonObj, this);
         SessionsTableDock->AddAgentItem(newAgent);
         SessionsGraphDock->AddAgent(newAgent, this->synchronized);

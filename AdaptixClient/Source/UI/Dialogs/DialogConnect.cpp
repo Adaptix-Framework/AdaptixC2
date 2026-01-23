@@ -63,6 +63,10 @@ DialogConnect::DialogConnect()
 
     auto action = lineEdit_ProjectDir->addAction(QIcon(":/icons/folder"), QLineEdit::TrailingPosition);
     connect(action, &QAction::triggered, this, &DialogConnect::onSelectProjectDir);
+
+    connect(subsSelectBtn,   &QPushButton::clicked,     this, &DialogConnect::showSubsPopup);
+    connect(dataListWidget,  &QListWidget::itemChanged, this, &DialogConnect::onSubsSelectionChanged);
+    connect(agentListWidget, &QListWidget::itemChanged, this, &DialogConnect::onSubsSelectionChanged);
 }
 
 DialogConnect::~DialogConnect() = default;
@@ -127,10 +131,113 @@ void DialogConnect::createUI()
     lineEdit_ProjectDir = new QLineEdit(this);
     lineEdit_ProjectDir->setToolTip("Enter path to project directory (auto-generated if empty)");
 
-    projectLayout->addWidget(label_Project,      0, 0);
-    projectLayout->addWidget(lineEdit_Project,   0, 1);
-    projectLayout->addWidget(label_ProjectDir,   1, 0);
-    projectLayout->addWidget(lineEdit_ProjectDir,1, 1);
+    subsSelectBtn = new QPushButton(QIcon(":/icons/settings_account"), "", this);
+    subsSelectBtn->setFixedWidth(30);
+    subsSelectBtn->setToolTip("Select subscriptions");
+
+    auto historyLabel = new QLabel("History:");
+    historyLabel->setStyleSheet("font-weight: bold;");
+    dataListWidget = new QListWidget();
+    dataListWidget->setSelectionMode(QAbstractItemView::NoSelection);
+    dataListWidget->setStyleSheet(
+        "QListWidget::item { padding: 3px 4px; margin: 1px 0px; }"
+        "QListWidget::indicator { width: 14px; height: 14px; }"
+    );
+    auto makeSectionHeader = [](const QString &title) -> QListWidgetItem* {
+        auto *item = new QListWidgetItem(title);
+        QFont f = item->font();
+        f.setBold(true);
+        item->setFont(f);
+        item->setFlags(Qt::ItemIsEnabled);
+        item->setData(Qt::UserRole, true);
+        return item;
+    };
+
+    dataListWidget->addItem(makeSectionHeader("Data"));
+    for (const QString &cat : {"chat_history", "downloads_history", "screenshot_history", "credentials_history", "targets_history"}) {
+        auto *item = new QListWidgetItem(cat);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Checked);
+        dataListWidget->addItem(item);
+    }
+    dataListWidget->addItem(makeSectionHeader("Agent"));
+    for (const QString &cat : {"console_history", "tasks_history"}) {
+        auto *item = new QListWidgetItem(cat);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Checked);
+        dataListWidget->addItem(item);
+    }
+
+    auto realtimeLabel = new QLabel("RealTime:");
+    realtimeLabel->setStyleSheet("font-weight: bold;");
+    agentListWidget = new QListWidget();
+    agentListWidget->setSelectionMode(QAbstractItemView::NoSelection);
+    agentListWidget->setStyleSheet(
+        "QListWidget::item { padding: 3px 4px; margin: 1px 0px; }"
+        "QListWidget::indicator { width: 14px; height: 14px; }"
+    );
+
+    agentListWidget->addItem(makeSectionHeader("Data"));
+    for (const QString &cat : {"chat_realtime", "downloads_realtime", "screenshot_realtime", "credentials_realtime", "targets_realtime", "notifications", "tunnels"}) {
+        auto *item = new QListWidgetItem(cat);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Checked);
+        agentListWidget->addItem(item);
+    }
+    agentListWidget->addItem(makeSectionHeader("Agent"));
+    for (const QString &cat : {"tasks_manager"}) {
+        auto *item = new QListWidgetItem(cat);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Checked);
+        agentListWidget->addItem(item);
+    }
+
+    multiuserCheck = new QCheckBox("Console Team Mode", this);
+    multiuserCheck->setChecked(true);
+    multiuserCheck->setToolTip("See console output from all operators");
+
+    auto agentsOnlyActiveCheck = new QCheckBox("Only active agents", this);
+    agentsOnlyActiveCheck->setChecked(false);
+    agentsOnlyActiveCheck->setToolTip("Synchronize only active agents");
+
+    auto tasksOnlyJobsCheck = new QCheckBox("Only JOB tasks", this);
+    tasksOnlyJobsCheck->setChecked(false);
+    tasksOnlyJobsCheck->setToolTip("Synchronize only jobs");
+
+    auto leftCol = new QVBoxLayout();
+    leftCol->setSpacing(6);
+    leftCol->addWidget(historyLabel);
+    leftCol->addWidget(dataListWidget);
+
+    auto rightCol = new QVBoxLayout();
+    rightCol->setSpacing(6);
+    rightCol->addWidget(realtimeLabel);
+    rightCol->addWidget(agentListWidget);
+    rightCol->addWidget(multiuserCheck);
+    rightCol->addWidget(agentsOnlyActiveCheck);
+    rightCol->addWidget(tasksOnlyJobsCheck);
+
+    auto popupLayout = new QHBoxLayout();
+    popupLayout->setContentsMargins(8, 8, 8, 8);
+    popupLayout->setSpacing(12);
+    popupLayout->addLayout(leftCol, 1);
+    popupLayout->addLayout(rightCol, 1);
+
+    subsPopupDialog = new QDialog(this, Qt::Popup | Qt::FramelessWindowHint);
+    subsPopupDialog->setLayout(popupLayout);
+    subsPopupDialog->setProperty("Main", "base");
+    subsPopupDialog->setMinimumWidth(600);
+
+    connect(agentsOnlyActiveCheck, &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
+    connect(tasksOnlyJobsCheck, &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
+    agentsOnlyActiveCheck->setObjectName("agentsOnlyActiveCheck");
+    tasksOnlyJobsCheck->setObjectName("tasksOnlyJobsCheck");
+
+    projectLayout->addWidget(label_Project,      0, 0, 1, 1);
+    projectLayout->addWidget(lineEdit_Project,   0, 1, 1, 1);
+    projectLayout->addWidget(subsSelectBtn,      0, 2, 1, 1);
+    projectLayout->addWidget(label_ProjectDir,   1, 0, 1, 1);
+    projectLayout->addWidget(lineEdit_ProjectDir,1, 1, 1, 2);
     projectLayout->setColumnMinimumWidth(0, 100);
 
     buttonConnect = new QPushButton(this);
@@ -244,12 +351,71 @@ AuthProfile* DialogConnect::StartDialog()
 
     auto* newProfile = new AuthProfile(lineEdit_Project->text(), lineEdit_User->text(), lineEdit_Password->text(), host, port, endpoint, projectDir);
 
+    QStringList selectedSubs;
+    for (int i = 0; i < dataListWidget->count(); ++i) {
+        auto *item = dataListWidget->item(i);
+        if (item && item->data(Qt::UserRole).toBool())
+            continue;
+        if (item->checkState() == Qt::Checked)
+            selectedSubs.append(item->text());
+    }
+    for (int i = 0; i < agentListWidget->count(); ++i) {
+        auto *item = agentListWidget->item(i);
+        if (item && item->data(Qt::UserRole).toBool())
+            continue;
+        if (item->checkState() == Qt::Checked)
+            selectedSubs.append(item->text());
+    }
+
+    auto agentsOnlyActiveCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("agentsOnlyActiveCheck") : nullptr;
+    if (agentsOnlyActiveCheck && agentsOnlyActiveCheck->isChecked())
+        selectedSubs.append("agents_only_active");
+
+    auto tasksOnlyJobsCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("tasksOnlyJobsCheck") : nullptr;
+    if (tasksOnlyJobsCheck && tasksOnlyJobsCheck->isChecked())
+        selectedSubs.append("tasks_only_jobs");
+
+    newProfile->SetSubscriptions(selectedSubs);
+    newProfile->SetRegisteredCategories(selectedSubs);
+
+    updateSubsDisplay();
+    newProfile->SetConsoleMultiuser(multiuserCheck->isChecked());
+
     if (GlobalClient->storage->ExistsProject(lineEdit_Project->text()))
         GlobalClient->storage->UpdateProject(*newProfile);
     else
         GlobalClient->storage->AddProject(*newProfile);
 
     return newProfile;
+}
+
+void DialogConnect::updateSubsDisplay()
+{
+    QStringList selectedSubs;
+    for (int i = 0; i < dataListWidget->count(); ++i) {
+        auto *item = dataListWidget->item(i);
+        if (item && item->data(Qt::UserRole).toBool())
+            continue;
+        if (item->checkState() == Qt::Checked)
+            selectedSubs.append(item->text());
+    }
+    for (int i = 0; i < agentListWidget->count(); ++i) {
+        auto *item = agentListWidget->item(i);
+        if (item && item->data(Qt::UserRole).toBool())
+            continue;
+        if (item->checkState() == Qt::Checked)
+            selectedSubs.append(item->text());
+    }
+
+    auto agentsOnlyActiveCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("agentsOnlyActiveCheck") : nullptr;
+    if (agentsOnlyActiveCheck && agentsOnlyActiveCheck->isChecked())
+        selectedSubs.append("agents_only_active");
+
+    auto tasksOnlyJobsCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("tasksOnlyJobsCheck") : nullptr;
+    if (tasksOnlyJobsCheck && tasksOnlyJobsCheck->isChecked())
+        selectedSubs.append("tasks_only_jobs");
+
+    subsSelectBtn->setToolTip(selectedSubs.isEmpty() ? "Select subscriptions" : selectedSubs.join(", "));
 }
 
 void DialogConnect::itemRemove()
@@ -283,6 +449,34 @@ void DialogConnect::onProfileSelected()
             lineEdit_Url->setText(buildUrl(p.GetHost(), p.GetPort(), p.GetEndpoint()));
             lineEdit_User->setText(p.GetUsername());
             lineEdit_Password->setText(p.GetPassword());
+
+            QStringList subs = p.GetSubscriptions();
+            dataListWidget->blockSignals(true);
+            for (int i = 0; i < dataListWidget->count(); ++i) {
+                auto *subItem = dataListWidget->item(i);
+                if (subItem && subItem->data(Qt::UserRole).toBool())
+                    continue;
+                subItem->setCheckState(subs.contains(subItem->text()) ? Qt::Checked : Qt::Unchecked);
+            }
+            dataListWidget->blockSignals(false);
+            agentListWidget->blockSignals(true);
+            for (int i = 0; i < agentListWidget->count(); ++i) {
+                auto *subItem = agentListWidget->item(i);
+                if (subItem && subItem->data(Qt::UserRole).toBool())
+                    continue;
+                subItem->setCheckState(subs.contains(subItem->text()) ? Qt::Checked : Qt::Unchecked);
+            }
+            agentListWidget->blockSignals(false);
+            multiuserCheck->setChecked(p.GetConsoleMultiuser());
+
+            auto agentsOnlyActiveCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("agentsOnlyActiveCheck") : nullptr;
+            if (agentsOnlyActiveCheck)
+                agentsOnlyActiveCheck->setChecked(subs.contains("agents_only_active"));
+
+            auto tasksOnlyJobsCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("tasksOnlyJobsCheck") : nullptr;
+            if (tasksOnlyJobsCheck)
+                tasksOnlyJobsCheck->setChecked(subs.contains("tasks_only_jobs"));
+
             return;
         }
     }
@@ -339,6 +533,17 @@ void DialogConnect::clearFields()
     lineEdit_ProjectDir->clear();
     lineEdit_Url->clear();
     cardWidget->clearSelection();
+
+    dataListWidget->blockSignals(true);
+    for (int i = 0; i < dataListWidget->count(); ++i)
+        dataListWidget->item(i)->setCheckState(Qt::Checked);
+    dataListWidget->blockSignals(false);
+    agentListWidget->blockSignals(true);
+    for (int i = 0; i < agentListWidget->count(); ++i)
+        agentListWidget->item(i)->setCheckState(Qt::Checked);
+    agentListWidget->blockSignals(false);
+    multiuserCheck->setChecked(true);
+
     lineEdit_Project->setFocus();
 }
 
@@ -492,4 +697,18 @@ void DialogConnect::onButton_Save()
             file.close();
             MessageSuccess("Profile saved successfully");
         });
+}
+
+void DialogConnect::showSubsPopup()
+{
+    QPoint pos = subsSelectBtn->mapToGlobal(QPoint(0, subsSelectBtn->height()));
+    subsPopupDialog->move(pos);
+    subsPopupDialog->show();
+    subsPopupDialog->raise();
+    subsPopupDialog->activateWindow();
+}
+
+void DialogConnect::onSubsSelectionChanged()
+{
+    updateSubsDisplay();
 }

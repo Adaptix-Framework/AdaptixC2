@@ -94,6 +94,7 @@ void ListenersWidget::createUI()
     tableView->verticalHeader()->setVisible(false);
 
     tableView->setItemDelegate(new PaddingDelegate(tableView));
+    tableView->sortByColumn(LC_Date, Qt::DescendingOrder);
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(0, 0, 0, 0);

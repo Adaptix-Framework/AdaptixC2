@@ -1,5 +1,6 @@
 #include <QJSEngine>
 #include <QPointer>
+#include <QElapsedTimer>
 #include <QTimer>
 #include <Agent/Agent.h>
 #include <Workers/LastTickWorker.h>
@@ -37,6 +38,10 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     this->createUI();
     this->ChannelThread   = channelThread;
     this->ChannelWsWorker = channelWsWorker;
+
+    pendingPacketsTimer = new QTimer(this);
+    pendingPacketsTimer->setInterval(0);
+    connect(pendingPacketsTimer, &QTimer::timeout, this, &AdaptixWidget::processPendingSyncPackets);
 
     ScriptManager = new AxScriptManager(this, this);
     connect(this, &AdaptixWidget::eventNewAgent,           ScriptManager, &AxScriptManager::emitNewAgent);
@@ -93,18 +98,28 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, ScriptManager, &AxScriptManager::emitDisconnectClient );
 
     dialogSyncPacket = new DialogSyncPacket(this);
+
+    ChannelWsWorker->setHandlerReady();
     dialogSyncPacket->splashScreen->show();
 
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this, [this]() {
         if (this->sync && dialogSyncPacket) {
             dialogSyncPacket->error("Connection lost during synchronization");
             this->sync = false;
+            this->syncFinishReceived = false;
+            this->pendingPackets.clear();
+            if (pendingPacketsTimer)
+                pendingPacketsTimer->stop();
             this->setSyncUpdateUI(true);
         }
     });
 
     connect( dialogSyncPacket, &DialogSyncPacket::syncCancelled, this, [this]() {
         this->sync = false;
+        this->syncFinishReceived = false;
+        this->pendingPackets.clear();
+        if (pendingPacketsTimer)
+            pendingPacketsTimer->stop();
         this->setSyncUpdateUI(true);
         if (dialogSyncPacket && dialogSyncPacket->splashScreen)
             dialogSyncPacket->splashScreen->close();
@@ -124,6 +139,117 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
 
 AdaptixWidget::~AdaptixWidget() = default;
 
+void AdaptixWidget::finalizeSyncIfReady()
+{
+    if (!this->syncFinishReceived)
+        return;
+    if (!this->pendingPackets.isEmpty())
+        return;
+
+    this->syncFinishReceived = false;
+    this->sync = false;
+
+    if (dialogSyncPacket)
+        dialogSyncPacket->finish();
+
+    QTimer::singleShot(0, this, [this]() {
+        if (dialogSyncPacket) {
+            dialogSyncPacket->setPhase("Applying UI updates...", true);
+            if (dialogSyncPacket->splashScreen)
+                dialogSyncPacket->splashScreen->repaint();
+        }
+
+        QTimer::singleShot(50, this, [this]() {
+            this->setSyncUpdateUI(true);
+
+            QTimer::singleShot(200, this, [this]() {
+                if (dialogSyncPacket && dialogSyncPacket->splashScreen)
+                    dialogSyncPacket->splashScreen->close();
+                Q_EMIT this->SyncedSignal();
+            });
+        });
+    });
+}
+
+void AdaptixWidget::enqueueSyncPacket(const QJsonObject &jsonObj)
+{
+    pendingPackets.enqueue(jsonObj);
+    if (pendingPacketsTimer && !pendingPacketsTimer->isActive())
+        pendingPacketsTimer->start();
+}
+
+void AdaptixWidget::processPendingSyncPackets()
+{
+    if (!pendingPacketsTimer)
+        return;
+
+    QElapsedTimer timer;
+    timer.start();
+
+    while (!pendingPackets.isEmpty()) {
+        if (dialogSyncPacket && dialogSyncPacket->cancelled) {
+            pendingPackets.clear();
+            pendingPacketsTimer->stop();
+            this->syncFinishReceived = false;
+            this->syncTotalBatches = 0;
+            this->syncProcessingBatchIndex = 0;
+            this->syncProcessingBatchTotal = 0;
+            this->syncProcessingBatchProcessed = 0;
+            return;
+        }
+
+        QJsonObject obj = pendingPackets.dequeue();
+
+        if (obj.contains("__ax_batch_marker") && obj.value("__ax_batch_marker").toBool()) {
+            this->syncProcessingBatchIndex++;
+            this->syncProcessingBatchTotal = obj.value("__ax_batch_size").toInt();
+            this->syncProcessingBatchProcessed = 0;
+            if (this->sync && dialogSyncPacket) {
+                dialogSyncPacket->setProcessingProgress(
+                    this->syncProcessingBatchIndex,
+                    this->syncTotalBatches,
+                    this->syncProcessingBatchProcessed,
+                    this->syncProcessingBatchTotal
+                );
+            }
+
+            this->syncProcessingUiTimer.restart();
+        } else {
+            this->processSyncPacket(obj);
+            if (this->sync && this->syncProcessingBatchTotal > 0) {
+                this->syncProcessingBatchProcessed++;
+                bool shouldUpdate = false;
+                if (!this->syncProcessingUiTimer.isValid()) {
+                    shouldUpdate = true;
+                    this->syncProcessingUiTimer.start();
+                } else if (this->syncProcessingUiTimer.elapsed() >= 75) {
+                    shouldUpdate = true;
+                    this->syncProcessingUiTimer.restart();
+                } else if (this->syncProcessingBatchProcessed >= this->syncProcessingBatchTotal) {
+                    shouldUpdate = true;
+                }
+
+                if (shouldUpdate && dialogSyncPacket) {
+                    dialogSyncPacket->setProcessingProgress(
+                        this->syncProcessingBatchIndex,
+                        this->syncTotalBatches,
+                        this->syncProcessingBatchProcessed,
+                        this->syncProcessingBatchTotal
+                    );
+                }
+            }
+        }
+
+        if (timer.elapsed() >= 8)
+            break;
+    }
+
+    if (pendingPackets.isEmpty())
+        pendingPacketsTimer->stop();
+
+    finalizeSyncIfReady();
+}
+
 void AdaptixWidget::createUI()
 {
     listenersButton = new QPushButton( QIcon(":/icons/listeners"), "", this );
@@ -134,7 +260,7 @@ void AdaptixWidget::createUI()
     logsButton = new QPushButton(QIcon(":/icons/logs"), "", this );
     logsButton->setIconSize( QSize( 24,24 ));
     logsButton->setFixedSize(37, 28);
-    logsButton->setToolTip("Logs");
+    logsButton->setToolTip("Notifications");
 
     line_1 = new QFrame(this);
     line_1->setFrameShape(QFrame::VLine);
@@ -413,6 +539,30 @@ void AdaptixWidget::ClearAdaptix()
         delete regAgent.commander;
 
     RegisterAgents.clear();
+}
+
+void AdaptixWidget::ClearChatStream()
+{
+    if (ChatDock)
+        ChatDock->Clear();
+}
+
+void AdaptixWidget::ClearConsoleStreams()
+{
+    if (AxConsoleDock)
+        AxConsoleDock->OutputClear();
+
+    QReadLocker locker(&AgentsMapLock);
+    for (const auto agent : AgentsMap.values()) {
+        if (agent && agent->Console)
+            agent->Console->Clear();
+    }
+}
+
+void AdaptixWidget::ClearNotificationsStream()
+{
+    if (LogsDock)
+        LogsDock->Clear();
 }
 
 /// REGISTER
@@ -848,7 +998,7 @@ void AdaptixWidget::DataHandler(const QByteArray &data)
         return;
     }
 
-    this->processSyncPacket(jsonObj);
+    this->enqueueSyncPacket(jsonObj);
 }
 
 void AdaptixWidget::OnWebSocketConnected()

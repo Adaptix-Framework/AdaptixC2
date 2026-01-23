@@ -143,7 +143,7 @@ void SessionsTableWidget::createUI()
             this->AutoFitColumnToContents(logical);
     });
 
-    proxyModel->sort(-1);
+    tableView->sortByColumn(SC_Created, Qt::AscendingOrder);
 
     tableView->setItemDelegate(new PaddingDelegate(tableView));
 
