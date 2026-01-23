@@ -337,7 +337,6 @@ function GenerateUI(listeners_type)
     let textDohResolvers = form.create_textline("");
     textDohResolvers.setPlaceholder("https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query");
 
-    // Function to update DNS fields visibility based on selected mode
     function updateDnsFieldsVisibility() {
         let mode = comboDnsMode.currentText();
         let isDns = listeners_type.includes("BeaconDNS");
@@ -358,7 +357,6 @@ function GenerateUI(listeners_type)
             labelDohResolvers.setVisible(true);
             textDohResolvers.setVisible(true);
         } else {
-            // Fallback modes - show both
             labelDnsResolvers.setVisible(true);
             textDnsResolvers.setVisible(true);
             labelDohResolvers.setVisible(true);
@@ -366,10 +364,8 @@ function GenerateUI(listeners_type)
         }
     }
 
-    // Initial visibility update
     updateDnsFieldsVisibility();
 
-    // Connect mode change to update visibility
     form.connect(comboDnsMode, "currentTextChanged", function(text) {
         updateDnsFieldsVisibility();
     });

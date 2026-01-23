@@ -25,7 +25,6 @@ struct DNSFUNC {
     DECL_API(GetLastError);
 };
 
-// DoH function pointers structure (for DNS over HTTPS)
 struct DOHFUNC {
     DECL_API(InternetOpenA);
     DECL_API(InternetConnectA);
@@ -39,11 +38,10 @@ struct DOHFUNC {
     DECL_API(InternetReadFile);
 };
 
-// DoH resolver info structure
 struct DohResolverInfo {
-    CHAR host[256];      // e.g., "cloudflare-dns.com"
-    CHAR path[128];      // e.g., "/dns-query"
-    WORD port;           // usually 443
+    CHAR host[256];
+    CHAR path[128];
+    WORD port;
 };
 
 // DNS protocol metadata header
@@ -121,7 +119,7 @@ private:
 
     BOOL  hasPendingTasks = FALSE;
     BOOL  forcePoll = FALSE;
-    ULONG consecutiveFailures = 0;  // Track consecutive failures for recovery
+    ULONG consecutiveFailures = 0;
 
     // Upload fragment tracking for reliability
     static const ULONG kMaxTrackedOffsets = 256;
@@ -133,7 +131,6 @@ private:
 
     DNSFUNC* functions = NULL;
 
-    // DoH (DNS over HTTPS) support
     DOHFUNC* dohFunctions = NULL;
     BOOL     dohInitialized = FALSE;
     HINTERNET hInternet = NULL;
@@ -142,7 +139,7 @@ private:
     ULONG currentDohResolverIndex = 0;
     ULONG dohResolverFailCount[kMaxResolvers] = { 0 };
     ULONG dohResolverDisabledUntil[kMaxResolvers] = { 0 };
-    ULONG dnsMode = DNS_MODE_UDP;  // Default to UDP
+    ULONG dnsMode = DNS_MODE_UDP;
 
     // WSA and socket caching (optimization)
     BOOL   wsaInitialized = FALSE;
@@ -178,7 +175,6 @@ private:
     void  MarkOffsetConfirmed(ULONG offset);
     void  ResetUploadState();
 
-    // DoH (DNS over HTTPS) methods
     BOOL  InitDoH();
     void  CleanupDoH();
     void  ParseDohResolvers(const CHAR* dohResolvers);

@@ -27,16 +27,15 @@ typedef struct {
 	WORD  port;
 } ProfileTCP;
 
-// DNS mode constants
-#define DNS_MODE_UDP           0  // Only UDP DNS
-#define DNS_MODE_DOH           1  // Only DoH (DNS over HTTPS)
-#define DNS_MODE_UDP_FALLBACK  2  // UDP first, fallback to DoH on failure
-#define DNS_MODE_DOH_FALLBACK  3  // DoH first, fallback to UDP on failure
+#define DNS_MODE_UDP           0
+#define DNS_MODE_DOH           1
+#define DNS_MODE_UDP_FALLBACK  2
+#define DNS_MODE_DOH_FALLBACK  3
 
 typedef struct {
 	BYTE* domain;
-	BYTE* resolvers;        // UDP DNS resolvers (IP addresses, comma-separated)
-	BYTE* doh_resolvers;    // DoH resolver URLs (comma-separated)
+	BYTE* resolvers;
+	BYTE* doh_resolvers;
 	BYTE* qtype;       
 	ULONG pkt_size;     
 	ULONG label_size;   
@@ -45,7 +44,7 @@ typedef struct {
 	ULONG burst_enabled;
 	ULONG burst_sleep;
 	ULONG burst_jitter;
-	ULONG dns_mode;         // DNS_MODE_* constant
+	ULONG dns_mode;
 } ProfileDNS;
 
 #endif

@@ -288,14 +288,12 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 		resolvers, _ = listenerMap["resolvers"].(string)
 	}
 
-	// DoH resolvers - use config value or default public resolvers
 	dohResolvers := generateConfig.DohResolvers
 	if dohResolvers == "" {
 		dohResolvers = "https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query"
 	}
 
 	// DNS mode: 0=UDP, 1=DoH, 2=UDP->DoH fallback, 3=DoH->UDP fallback
-	// Parse string from combo box to int
 	dnsMode := 0 // Default to UDP
 	switch generateConfig.DnsMode {
 	case "DNS (Direct UDP)":
@@ -350,7 +348,7 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 		// ProfileDNS
 		domain,
 		resolvers,
-		dohResolvers, // NEW: DoH resolver URLs
+		dohResolvers,
 		qtype,
 		pktSize,
 		labelSize,
@@ -358,8 +356,7 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 		burstEnabled,
 		burstSleep,
 		burstJitter,
-		dnsMode, // NEW: DNS mode (0=UDP, 1=DoH, 2=UDP->DoH, 3=DoH->UDP)
-		// Common tail
+		dnsMode, // DNS mode (0=UDP, 1=DoH, 2=UDP->DoH, 3=DoH->UDP)
 		int(lWatermark),
 		killDate,
 		workingTime,
