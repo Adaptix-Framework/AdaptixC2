@@ -45,6 +45,7 @@ typedef struct {
 	ULONG burst_sleep;
 	ULONG burst_jitter;
 	ULONG dns_mode;
+	BYTE* user_agent;
 } ProfileDNS;
 
 #endif

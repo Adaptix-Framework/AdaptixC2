@@ -158,8 +158,13 @@ BOOL ConnectorDNS::InitDoH()
     if (!this->dohFunctions->InternetOpenA || !this->dohFunctions->HttpSendRequestA)
         return FALSE;
 
-    // Create Internet handle with DoH-appropriate user agent
-    CHAR userAgent[] = "Mozilla/5.0";
+    // Create Internet handle with user agent from profile
+    CHAR* userAgent = (CHAR*)this->profile.user_agent;
+    if (!userAgent || !userAgent[0]) {
+        // Default user agent if not configured (same as HTTP listener default)
+        static CHAR defaultUserAgent[] = "Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0";
+        userAgent = defaultUserAgent;
+    }
     this->hInternet = this->dohFunctions->InternetOpenA(userAgent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
     if (!this->hInternet)
         return FALSE;

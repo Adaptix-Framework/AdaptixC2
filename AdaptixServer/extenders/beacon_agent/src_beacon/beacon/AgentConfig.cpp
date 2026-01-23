@@ -86,6 +86,7 @@ AgentConfig::AgentConfig()
 	this->profile.burst_sleep   = packer->Unpack32();
 	this->profile.burst_jitter  = packer->Unpack32();
 	this->profile.dns_mode      = packer->Unpack32();
+	this->profile.user_agent    = packer->UnpackBytesCopy(&length);
 
 	this->listener_type = packer->Unpack32();
 	this->kill_date     = packer->Unpack32();

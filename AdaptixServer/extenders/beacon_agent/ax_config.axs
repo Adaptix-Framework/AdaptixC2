@@ -337,6 +337,10 @@ function GenerateUI(listeners_type)
     let textDohResolvers = form.create_textline("");
     textDohResolvers.setPlaceholder("https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query");
 
+    let labelUserAgent = form.create_label("User-Agent:");
+    let textUserAgent = form.create_textline("");
+    textUserAgent.setPlaceholder("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
+
     function updateDnsFieldsVisibility() {
         let mode = comboDnsMode.currentText();
         let isDns = listeners_type.includes("BeaconDNS");
@@ -346,21 +350,29 @@ function GenerateUI(listeners_type)
             textDnsResolvers.setVisible(false);
             labelDohResolvers.setVisible(false);
             textDohResolvers.setVisible(false);
+            labelUserAgent.setVisible(false);
+            textUserAgent.setVisible(false);
         } else if(mode == "DNS (Direct UDP)") {
             labelDnsResolvers.setVisible(true);
             textDnsResolvers.setVisible(true);
             labelDohResolvers.setVisible(false);
             textDohResolvers.setVisible(false);
+            labelUserAgent.setVisible(false);
+            textUserAgent.setVisible(false);
         } else if(mode == "DoH (DNS over HTTPS)") {
             labelDnsResolvers.setVisible(false);
             textDnsResolvers.setVisible(false);
             labelDohResolvers.setVisible(true);
             textDohResolvers.setVisible(true);
+            labelUserAgent.setVisible(true);
+            textUserAgent.setVisible(true);
         } else {
             labelDnsResolvers.setVisible(true);
             textDnsResolvers.setVisible(true);
             labelDohResolvers.setVisible(true);
             textDohResolvers.setVisible(true);
+            labelUserAgent.setVisible(true);
+            textUserAgent.setVisible(true);
         }
     }
 
@@ -405,17 +417,19 @@ function GenerateUI(listeners_type)
     layout.addWidget(textDnsResolvers,    5, 1, 1, 2);
     layout.addWidget(labelDohResolvers,   6, 0, 1, 1);
     layout.addWidget(textDohResolvers,    6, 1, 1, 2);
-    layout.addWidget(checkKilldate,       7, 0, 1, 1);
-    layout.addWidget(dateKill,            7, 1, 1, 1);
-    layout.addWidget(timeKill,            7, 2, 1, 1);
-    layout.addWidget(checkWorkingTime,    8, 0, 1, 1);
-    layout.addWidget(timeStart,           8, 1, 1, 1);
-    layout.addWidget(timeFinish,          8, 2, 1, 1);
-    layout.addWidget(labelSvcName,        9, 0, 1, 1);
-    layout.addWidget(textSvcName,         9, 1, 1, 2);
-    layout.addWidget(checkSideloading,    10, 0, 1, 1);
-    layout.addWidget(sideloadingSelector, 10, 1, 1, 2);
-    layout.addWidget(spacer2,             11, 0, 1, 3);
+    layout.addWidget(labelUserAgent,      7, 0, 1, 1);
+    layout.addWidget(textUserAgent,       7, 1, 1, 2);
+    layout.addWidget(checkKilldate,       8, 0, 1, 1);
+    layout.addWidget(dateKill,            8, 1, 1, 1);
+    layout.addWidget(timeKill,            8, 2, 1, 1);
+    layout.addWidget(checkWorkingTime,    9, 0, 1, 1);
+    layout.addWidget(timeStart,           9, 1, 1, 1);
+    layout.addWidget(timeFinish,          9, 2, 1, 1);
+    layout.addWidget(labelSvcName,        10, 0, 1, 1);
+    layout.addWidget(textSvcName,         10, 1, 1, 2);
+    layout.addWidget(checkSideloading,    11, 0, 1, 1);
+    layout.addWidget(sideloadingSelector, 11, 1, 1, 2);
+    layout.addWidget(spacer2,             12, 0, 1, 3);
 
     form.connect(comboFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
@@ -442,6 +456,7 @@ function GenerateUI(listeners_type)
     container.put("dns_resolvers", textDnsResolvers)
     container.put("dns_mode", comboDnsMode)
     container.put("doh_resolvers", textDohResolvers)
+    container.put("user_agent", textUserAgent)
     container.put("is_killdate", checkKilldate)
     container.put("kill_date", dateKill)
     container.put("kill_time", timeKill)
@@ -458,7 +473,7 @@ function GenerateUI(listeners_type)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 450,
+        ui_height: 480,
         ui_width: 500
     }
 }
