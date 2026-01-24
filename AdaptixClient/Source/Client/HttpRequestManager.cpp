@@ -53,6 +53,23 @@ int HttpRequestManager::post(const QString& baseUrl, const QString& endpoint, co
     return postWithRetry(baseUrl, endpoint, accessToken, jsonData, callback, 0, timeout);
 }
 
+void HttpRequestManager::postFireAndForget(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData)
+{
+    QString fullUrl = buildFullUrl(baseUrl, endpoint);
+    QNetworkRequest request = createRequest(fullUrl, accessToken);
+
+    QNetworkReply* reply = m_manager->post(request, jsonData);
+    if (!reply)
+        return;
+
+    connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
+    connect(reply, &QNetworkReply::sslErrors, this, [reply](const QList<QSslError>& errors) {
+        Q_UNUSED(errors)
+        if (reply)
+            reply->ignoreSslErrors();
+    });
+}
+
 int HttpRequestManager::postWithRetry(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData, HttpCallback callback, int maxRetries, int timeout)
 {
     int requestId = ++m_requestIdCounter;

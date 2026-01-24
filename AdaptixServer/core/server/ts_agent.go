@@ -147,17 +147,25 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 	if err != nil {
 		return err
 	}
-	taskData.HookId = hookId
-	taskData.HandlerId = handlerId
-	if taskData.Type == adaptix.TASK_TYPE_TASK && ui {
-		taskData.Type = adaptix.TASK_TYPE_BROWSER
+	if taskData.Type == adaptix.TASK_TYPE_LOCAL {
+		if taskData.Message != "" || taskData.ClearText != "" {
+			ts.TsAgentConsoleLocalCommand(agentId, clientName, cmdline, taskData.Message, taskData.ClearText)
+		}
+	} else {
+		taskData.HookId = hookId
+		taskData.HandlerId = handlerId
+		if taskData.Type == adaptix.TASK_TYPE_TASK && ui {
+			taskData.Type = adaptix.TASK_TYPE_BROWSER
+		}
+
+		ts.TsTaskCreate(agentId, cmdline, clientName, taskData)
+
+		if (taskData.Type != adaptix.TASK_TYPE_BROWSER) && (len(messageData.Message) > 0 || len(messageData.Text) > 0) {
+			ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text, false)
+		}
+
 	}
 
-	ts.TsTaskCreate(agentId, cmdline, clientName, taskData)
-
-	if (taskData.Type != adaptix.TASK_TYPE_BROWSER) && (len(messageData.Message) > 0 || len(messageData.Text) > 0) {
-		ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text, false)
-	}
 	return nil
 }
 
@@ -872,5 +880,15 @@ func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, mess
 
 func (ts *Teamserver) TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string) {
 	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
+	ts.TsSyncConsole(packet, client)
+}
+
+func (ts *Teamserver) TsAgentConsoleErrorCommand(agentId string, client string, cmdline string, message string, HookId string, HandlerId string) {
+	packet := CreateSpAgentErrorCommand(agentId, cmdline, message, HookId, HandlerId)
+	ts.TsSyncConsole(packet, client)
+}
+
+func (ts *Teamserver) TsAgentConsoleLocalCommand(agentId string, client string, cmdline string, message string, text string) {
+	packet := CreateSpAgentLocalCommand(agentId, cmdline, message, text)
 	ts.TsSyncConsole(packet, client)
 }

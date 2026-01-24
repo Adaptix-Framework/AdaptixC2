@@ -436,6 +436,26 @@ type SyncPackerAgentConsoleOutput struct {
 	ClearText   string `json:"a_text"`
 }
 
+type SyncPackerAgentErrorCommand struct {
+	SpType int `json:"type"`
+
+	AgentId   string `json:"a_id"`
+	Cmdline   string `json:"a_cmdline"`
+	Message   string `json:"a_message"`
+	HookId    string `json:"ax_hook_id"`
+	HandlerId string `json:"ax_handler_id"`
+}
+
+type SyncPackerAgentLocalCommand struct {
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+
+	AgentId string `json:"a_id"`
+	Cmdline string `json:"a_cmdline"`
+	Message string `json:"a_message"`
+	Text    string `json:"a_text"`
+}
+
 type SyncPackerAgentConsoleTaskSync struct {
 	SpType int `json:"type"`
 

@@ -51,8 +51,10 @@ type Teamserver interface {
 	TsAgentConsoleRemove(agentId string) error
 	TsAgentSetTick(agentId string, listenerName string) error
 	TsAgentTickUpdate()
+
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
+	TsAgentConsoleErrorCommand(agentId string, client string, cmdline string, message string, HookId string, HandlerId string)
 
 	TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData)
 	TsTaskUpdate(agentId string, data adaptix.TaskData)

@@ -293,6 +293,20 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
                checkField("a_message", isStr) &&
                checkField("a_msg_type", isNum);
 
+    case TYPE_AGENT_CONSOLE_LOCAL:
+        return checkField("time", isNum) &&
+                checkField("a_id", isStr) &&
+                checkField("a_cmdline", isStr) &&
+                checkField("a_text", isStr) &&
+                checkField("a_message", isStr);
+
+    case TYPE_AGENT_CONSOLE_ERROR:
+        return checkField("a_id", isStr) &&
+               checkField("a_cmdline", isStr) &&
+               checkField("a_message", isStr) &&
+               checkField("ax_hook_id", isStr) &&
+               checkField("ax_handler_id", isStr);
+
     case TYPE_AGENT_CONSOLE_TASK_SYNC:
         return checkField("a_id", isStr) &&
                checkField("a_task_id", isStr) &&
@@ -675,12 +689,31 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QString agentId = jsonObj["a_id"].toString();
         QReadLocker locker(&AgentsMapLock);
         if (AgentsMap.contains(agentId)) {
-            AgentsMap[agentId]->Console->ConsoleOutputMessage(
-                static_cast<qint64>(jsonObj["time"].toDouble()), "",
-                jsonObj["a_msg_type"].toDouble(),
-                jsonObj["a_message"].toString(),
-                jsonObj["a_text"].toString(), false
-            );
+            AgentsMap[agentId]->Console->ConsoleOutputMessage( static_cast<qint64>(jsonObj["time"].toDouble()), "", jsonObj["a_msg_type"].toDouble(), jsonObj["a_message"].toString(), jsonObj["a_text"].toString(), false );
+        }
+        break;
+    }
+
+    case TYPE_AGENT_CONSOLE_LOCAL: {
+        QString agentId = jsonObj["a_id"].toString();
+        QReadLocker locker(&AgentsMapLock);
+        if (AgentsMap.contains(agentId)) {
+            AgentsMap[agentId]->Console->ConsoleOutputPrompt(0, "", "", jsonObj["a_cmdline"].toString());
+            AgentsMap[agentId]->Console->ConsoleOutputMessage( static_cast<qint64>(jsonObj["time"].toDouble()), "", CONSOLE_OUT_LOCAL_INFO, jsonObj["a_message"].toString(), jsonObj["a_text"].toString(), false );
+        }
+        break;
+    }
+
+    case TYPE_AGENT_CONSOLE_ERROR: {
+        QString agentId = jsonObj["a_id"].toString();
+
+        this->PostHooksJS.remove(jsonObj["ax_hook_id"].toString());
+        this->PostHandlersJS.remove(jsonObj["ax_handler_id"].toString());
+
+        QReadLocker locker(&AgentsMapLock);
+        if (AgentsMap.contains(agentId)) {
+            AgentsMap[agentId]->Console->ConsoleOutputPrompt(0, "", "", jsonObj["a_cmdline"].toString());
+            AgentsMap[agentId]->Console->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, jsonObj["a_message"].toString(), "", true);
         }
         break;
     }

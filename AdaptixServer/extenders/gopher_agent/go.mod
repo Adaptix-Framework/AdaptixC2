@@ -3,7 +3,7 @@ module adaptix_agent_gopher
 go 1.25.4
 
 require (
-	github.com/Adaptix-Framework/axc2 v1.1.1
+	github.com/Adaptix-Framework/axc2 v1.1.2
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/vmihailenco/msgpack/v5 v5.4.1
 )

@@ -157,9 +157,14 @@ void HttpReqConsoleRemoveAsync(QStringList agentsId, AuthProfile& profile, HttpC
     HttpRequestManager::instance().post(profile.GetURL(), "/agent/console/remove", profile.GetAccessToken(), jsonData, callback);
 }
 
-void HttpReqAgentCommandAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback)
+void HttpReqAgentCommandAsync(const QByteArray &jsonData, AuthProfile& profile)
 {
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/command/execute", profile.GetAccessToken(), jsonData, callback);
+    HttpRequestManager::instance().postFireAndForget(profile.GetURL(), "/agent/command/execute", profile.GetAccessToken(), jsonData);
+}
+
+void HttpReqAgentCommandFileAsync(const QByteArray &jsonData, AuthProfile& profile)
+{
+    HttpRequestManager::instance().postFireAndForget(profile.GetURL(), "/agent/command/file", profile.GetAccessToken(), jsonData);
 }
 
 void HttpReqAgentGenerateAsync(const QString &listenerName, const QString &agentName, const QString &configData, AuthProfile& profile, HttpCallback callback)

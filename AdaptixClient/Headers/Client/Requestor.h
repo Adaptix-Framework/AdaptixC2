@@ -24,7 +24,8 @@ void HttpReqAgentSetMarkAsync(QStringList agentsId, const QString &mark, AuthPro
 void HttpReqAgentSetColorAsync(QStringList agentsId, const QString &background, const QString &foreground, bool reset, AuthProfile& profile, HttpCallback callback);
 void HttpReqAgentUpdateDataAsync(const QString &agentId, const QJsonObject &updateData, AuthProfile& profile, HttpCallback callback);
 void HttpReqAgentGenerateAsync(const QString &listenerName, const QString &agentName, const QString &configData, AuthProfile& profile, HttpCallback callback);
-void HttpReqAgentCommandAsync(const QByteArray &jsonData, AuthProfile& profile, HttpCallback callback);
+void HttpReqAgentCommandAsync(const QByteArray &jsonData, AuthProfile& profile);
+void HttpReqAgentCommandFileAsync(const QByteArray &jsonData, AuthProfile& profile);
 void HttpReqConsoleRemoveAsync(QStringList agentsId, AuthProfile& profile, HttpCallback callback);
 
 void HttpReqTaskCancelAsync(const QString &agentId, QStringList tasksId, AuthProfile& profile, HttpCallback callback);

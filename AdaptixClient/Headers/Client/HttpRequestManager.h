@@ -52,6 +52,8 @@ public:
     int post(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData, HttpCallback callback, int timeout = 8000);
     int postWithRetry(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData, HttpCallback callback, int maxRetries = 3, int timeout = 8000);
 
+    void postFireAndForget(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData);
+
     bool cancel(int requestId);
     void cancelAll();
 
