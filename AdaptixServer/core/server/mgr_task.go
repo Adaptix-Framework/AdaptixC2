@@ -316,8 +316,24 @@ func (tm *TaskManager) ProcessDisconnectedClient(clientName string) {
 				return true
 			}
 
-			if (task.HookId != "" && task.Client == clientName) || (task.Type == adaptix.TASK_TYPE_TUNNEL && task.Client == clientName) {
+			if task.HookId != "" && task.Client == clientName {
 				tasksToProcess = append(tasksToProcess, taskId)
+				return true
+			}
+
+			if task.Type == adaptix.TASK_TYPE_TUNNEL && task.Client == clientName {
+				clientHostedTunnel := false
+				tm.ts.TunnelManager.ForEachTunnel(func(_ string, tunnel *Tunnel) bool {
+					if tunnel != nil && tunnel.TaskId == task.TaskId && tunnel.Data.Client == clientName {
+						clientHostedTunnel = true
+						return false
+					}
+					return true
+				})
+
+				if clientHostedTunnel {
+					tasksToProcess = append(tasksToProcess, taskId)
+				}
 			}
 			return true
 		})

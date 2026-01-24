@@ -33,6 +33,8 @@ struct TunnelData {
 	ULONG  waitTime;
 	ULONG  startTick;
 	ULONG  closeTimer;
+	CHAR*  writeBuffer;
+	ULONG  writeBufferSize;
 };
 
 class Proxyfire
@@ -44,11 +46,13 @@ public:
 
 	void  CheckProxy(Packer* packer);
 	ULONG RecvProxy(Packer* packer);
+	void  FlushProxy(Packer* packer);
 	void  CloseProxy();
 
 	void ConnectMessageTCP(ULONG channelId, ULONG type, CHAR* address, WORD port, Packer* outPacker);
 	void ConnectMessageUDP(ULONG channelId, CHAR* address, WORD port, Packer* outPacker);
-	void ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize);
+	void ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize, Packer* outPacker);
+
 	void ConnectWriteUDP(ULONG channelId, CHAR* data, ULONG dataSize);
 	void ConnectClose(ULONG channelId);
 	void ConnectMessageReverse(ULONG tunnelId, WORD port, Packer* outPacker);

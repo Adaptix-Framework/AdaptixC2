@@ -1013,7 +1013,7 @@ void Commander::CmdTunnelMsgWriteTCP(ULONG commandId, Packer* inPacker, Packer* 
 	CHAR* data      = (CHAR*)inPacker->UnpackBytes(&dataSize);
 	ULONG taskId	= inPacker->Unpack32();
 
-	this->agent->proxyfire->ConnectWriteTCP(channelId, data, dataSize);
+	this->agent->proxyfire->ConnectWriteTCP(channelId, data, dataSize, outPacker);
 }
 
 void Commander::CmdTunnelMsgWriteUDP(ULONG commandId, Packer* inPacker, Packer* outPacker)
