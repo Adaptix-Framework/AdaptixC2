@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/Adaptix-Framework/axc2"
 	"github.com/goccy/go-yaml"
 )
 
@@ -255,6 +256,21 @@ func (ts *Teamserver) RestoreData() {
 		if err != nil {
 			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {
+			if restoreListener.ListenerStatus == "Paused" {
+				err = ts.Extender.ExListenerPause(restoreListener.ListenerName)
+				if err != nil {
+					logs.Error("", "Failed to pause restored listener %s: %s", restoreListener.ListenerName, err.Error())
+				} else {
+					value, ok := ts.listeners.Get(restoreListener.ListenerName)
+					if ok {
+						listenerData := value.(adaptix.ListenerData)
+						listenerData.Status = "Paused"
+						ts.listeners.Put(restoreListener.ListenerName, listenerData)
+						packet := CreateSpListenerEdit(listenerData)
+						ts.TsSyncAllClients(packet)
+					}
+				}
+			}
 			countListeners++
 		}
 	}
