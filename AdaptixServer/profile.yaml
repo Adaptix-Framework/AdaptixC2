@@ -20,13 +20,35 @@ Teamserver:
   access_token_live_hours: 12
   refresh_token_live_hours: 168
 
-ServerResponse:
-  status: 404
-  headers:
-    Content-Type: "text/html; charset=UTF-8"
-    Server: "AdaptixC2"
-    Adaptix Version: "v1.1"
-  page: "404page.html"
+HttpServer:
+  error:
+    status: 404
+    headers:
+      Content-Type: "text/html; charset=UTF-8"
+      Server: "AdaptixC2"
+      Adaptix-Version: "v1.1"
+    page: "404page.html"
+  http:
+    max_header_bytes: 8192
+    read_header_timeout_sec: 0
+    read_timeout_sec: 0
+    write_timeout_sec: 0
+    idle_timeout_sec: 0
+    request_timeout_sec: 300
+    request_timeout_message: "504 Gateway Timeout"
+    disable_keep_alives: false
+    enable_http2: true
+  tls:
+    min_version: "TLS1.2"
+    max_version: "TLS1.3"
+    prefer_server_cipher_suites: false
+    cipher_suites:
+      - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+      - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+      - "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
+      - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+      - "TLS_RSA_WITH_AES_128_GCM_SHA256"
+      - "TLS_RSA_WITH_AES_256_GCM_SHA384"
 
 EventCallback:
   Telegram:

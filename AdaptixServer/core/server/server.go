@@ -71,11 +71,13 @@ func (ts *Teamserver) SetSettings(host string, port int, endpoint string, passwo
 		ATokenLive: 12,
 		RTokenLive: 168,
 	}
-	ts.Profile.ServerResponse = &profile.TsResponse{
-		Status:      404,
-		Headers:     map[string]string{},
-		PagePath:    "",
-		PageContent: "",
+	ts.Profile.HttpServer = &profile.TsHttpServer{
+		Error: &profile.TsHttpError{
+			Status:      404,
+			Headers:     map[string]string{},
+			PagePath:    "",
+			PageContent: "",
+		},
 	}
 }
 
@@ -287,7 +289,7 @@ func (ts *Teamserver) Start() {
 		ts.Parameters.Interfaces = append(ts.Parameters.Interfaces, "127.0.0.1")
 	}
 
-	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server, *ts.Profile.ServerResponse)
+	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server, *ts.Profile.HttpServer)
 	if err != nil {
 		logs.Error("", "Failed to init HTTP handler: "+err.Error())
 		return
