@@ -920,7 +920,7 @@ void DialogAgent::stopBuild()
     QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
 }
 
-void DialogAgent::onListenerSelectionChanged(QListWidgetItem *item)
+void DialogAgent::onListenerSelectionChanged(const QListWidgetItem *item)
 {
     Q_UNUSED(item);
 

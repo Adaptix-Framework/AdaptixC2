@@ -499,7 +499,6 @@ var ErrChannelNotFound = errorString("tunnel channel not found")
 var ErrTunnelNotFound = errorString("tunnel not found")
 var ErrAgentNotFound = errorString("agent not found")
 var ErrTunnelAlreadyActive = errorString("tunnel already active")
-var ErrInvalidTunnelType = errorString("invalid tunnel type")
 
 type errorString string
 

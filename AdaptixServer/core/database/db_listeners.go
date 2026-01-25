@@ -92,7 +92,9 @@ func (dbms *DBMS) DbListenerAll() []ListenerRow {
 			logs.Debug("", "Failed to query listeners: "+err.Error())
 			return listeners
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			listenerRow := ListenerRow{}

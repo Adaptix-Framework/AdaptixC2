@@ -108,7 +108,9 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 			logs.Debug("", "Failed to query agents: "+err.Error())
 			return agents
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			agentData := adaptix.AgentData{}

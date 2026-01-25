@@ -400,9 +400,8 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 	if existingTunnel, ok := ts.TunnelManager.GetTunnel(tunnelData.TunnelId); ok {
 		if existingTunnel.Active {
 			return "", ErrTunnelAlreadyActive
-		} else {
-			ts.TunnelManager.DeleteTunnel(tunnelData.TunnelId)
 		}
+		ts.TunnelManager.DeleteTunnel(tunnelData.TunnelId)
 	}
 
 	tunnel := &Tunnel{
@@ -425,9 +424,8 @@ func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Info string, Lhost st
 func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (string, error) {
 	if UseAuth {
 		return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_SOCKS5_AUTH, Info, Lhost, Lport, "", "", 0, Username, Password)
-	} else {
-		return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_SOCKS5, Info, Lhost, Lport, "", "", 0, "", "")
 	}
+	return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_SOCKS5, Info, Lhost, Lport, "", "", 0, "", "")
 }
 
 func (ts *Teamserver) TsTunnelCreateLportfwd(AgentId string, Info string, Lhost string, Lport int, Thost string, Tport int) (string, error) {
@@ -870,7 +868,7 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 		}
 		buf := tm.GetBuffer()
 		defer tm.PutBuffer(buf)
-		io.CopyBuffer(tunChannel.pwSrv, tunChannel.conn, buf)
+		_, _ = io.CopyBuffer(tunChannel.pwSrv, tunChannel.conn, buf)
 		_ = tunChannel.pwSrv.Close()
 	}()
 

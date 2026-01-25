@@ -570,7 +570,7 @@ func (ch *ClientHandler) writeToSocket(data []byte) error {
 	ch.socketMu.Lock()
 	defer ch.socketMu.Unlock()
 
-	ch.socket.SetWriteDeadline(time.Now().Add(WriteTimeout))
+	_ = ch.socket.SetWriteDeadline(time.Now().Add(WriteTimeout))
 	err := ch.socket.WriteMessage(websocket.BinaryMessage, data)
 	if err == nil {
 		ch.stats.MessagesSent.Add(1)

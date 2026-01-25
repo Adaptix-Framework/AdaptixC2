@@ -163,6 +163,7 @@ public:
                 case TRC_Os:       return t.OsDesc;
                 case TRC_Date:     return t.Date;
                 case TRC_Info:     return t.Info;
+                default: ;
             }
         }
 
@@ -178,6 +179,7 @@ public:
                 case TRC_Address:
                 case TRC_Date:
                     return Qt::AlignCenter;
+                default: ;
             }
         }
 
@@ -251,7 +253,7 @@ public:
         if (rowsToRemove.isEmpty())
             return;
 
-        std::sort(rowsToRemove.begin(), rowsToRemove.end(), std::greater<int>());
+        std::ranges::sort(rowsToRemove, std::greater<int>());
 
         for (int row : rowsToRemove) {
             beginRemoveRows(QModelIndex(), row, row);

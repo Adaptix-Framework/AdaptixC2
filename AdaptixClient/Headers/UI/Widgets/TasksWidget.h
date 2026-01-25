@@ -211,6 +211,7 @@ public:
                 case TC_CommandLine: return t.CommandLine;
                 case TC_Result:      return t.Status;
                 case TC_Output:      return t.Message;
+                default: ;
             }
         }
 
@@ -234,6 +235,7 @@ public:
                 case TC_FinishTime:
                 case TC_Result:
                     return Qt::AlignCenter;
+                default: ;
             }
         }
 

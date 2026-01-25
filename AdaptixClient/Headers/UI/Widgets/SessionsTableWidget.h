@@ -263,6 +263,7 @@ public:
                     }
                     return d.Mark;
                 }
+                default: ;
             }
         }
 
@@ -292,6 +293,7 @@ public:
                 case SC_Last:
                 case SC_Sleep:
                     return Qt::AlignCenter;
+                default: ;
             }
         }
 

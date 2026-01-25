@@ -87,7 +87,9 @@ func (dbms *DBMS) DbDownloadAll() []adaptix.DownloadData {
 			logs.Debug("", "Failed to query downloads: "+err.Error())
 			return downloads
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			downloadData := adaptix.DownloadData{}

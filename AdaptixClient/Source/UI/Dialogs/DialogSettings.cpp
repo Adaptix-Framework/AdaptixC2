@@ -256,7 +256,7 @@ void DialogSettings::createUI()
     tabblinkGroupLayout->setVerticalSpacing(12);
 
     auto widgetsList = WidgetRegistry::instance().widgets();
-    std::sort(widgetsList.begin(), widgetsList.end(), [](const auto& a, const auto& b) { return a.displayName < b.displayName; });
+    std::ranges::sort(widgetsList, [](const auto& a, const auto& b) { return a.displayName < b.displayName; });
 
     // Dynamically create checkboxes from registry
     int row = 0, col = 0;

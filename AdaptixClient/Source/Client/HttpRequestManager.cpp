@@ -48,7 +48,7 @@ QNetworkRequest HttpRequestManager::createRequest(const QString& url, const QStr
     return request;
 }
 
-int HttpRequestManager::post(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData, HttpCallback callback, int timeout)
+int HttpRequestManager::post(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData, const HttpCallback &callback, int timeout)
 {
     return postWithRetry(baseUrl, endpoint, accessToken, jsonData, callback, 0, timeout);
 }
@@ -70,7 +70,7 @@ void HttpRequestManager::postFireAndForget(const QString& baseUrl, const QString
     });
 }
 
-int HttpRequestManager::postWithRetry(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData, HttpCallback callback, int maxRetries, int timeout)
+int HttpRequestManager::postWithRetry(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData, const HttpCallback &callback, const int maxRetries, const int timeout)
 {
     int requestId = ++m_requestIdCounter;
 

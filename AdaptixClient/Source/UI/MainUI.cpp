@@ -297,7 +297,7 @@ void MainUI::onTabChanged(int index)
     }
 }
 
-void MainUI::updateTabButton(int index, const QString& tabName, bool showButton)
+void MainUI::updateTabButton(const int index, const QString& tabName, const bool showButton)
 {
     if (index < 0 || index >= mainuiTabWidget->count())
         return;

@@ -432,14 +432,14 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			io.Copy(encWriter, pr)
+			_, _ = io.Copy(encWriter, pr)
 			closeAll()
 		}()
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			io.Copy(decWriter, conn)
+			_, _ = io.Copy(decWriter, conn)
 			closeAll()
 		}()
 
@@ -496,14 +496,14 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			io.Copy(encWriter, pr)
+			_, _ = io.Copy(encWriter, pr)
 			closeAll()
 		}()
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			io.Copy(decWriter, conn)
+			_, _ = io.Copy(decWriter, conn)
 			closeAll()
 		}()
 

@@ -410,7 +410,7 @@ function GenerateUI(listeners_type)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 380,
+        ui_height: 400,
         ui_width: 500
     }
 }

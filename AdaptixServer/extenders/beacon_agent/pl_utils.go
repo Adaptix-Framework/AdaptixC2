@@ -178,13 +178,13 @@ func GetOsVersion(majorVersion uint8, minorVersion uint8, buildNumber uint, isSe
 }
 
 func int32ToIPv4(ip uint) string {
-	bytes := []byte{
+	b := []byte{
 		byte(ip),
 		byte(ip >> 8),
 		byte(ip >> 16),
 		byte(ip >> 24),
 	}
-	return net.IP(bytes).String()
+	return net.IP(b).String()
 }
 
 func SizeBytesToFormat(bytes int64) string {
@@ -200,9 +200,8 @@ func SizeBytesToFormat(bytes int64) string {
 		return fmt.Sprintf("%.2f Gb", size/GB)
 	} else if size >= MB {
 		return fmt.Sprintf("%.2f Mb", size/MB)
-	} else {
-		return fmt.Sprintf("%.2f Kb", size/KB)
 	}
+	return fmt.Sprintf("%.2f Kb", size/KB)
 }
 
 func RC4Crypt(data []byte, key []byte) ([]byte, error) {

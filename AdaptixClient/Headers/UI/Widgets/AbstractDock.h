@@ -313,7 +313,7 @@ private:
         }
     }
 
-    void connectChildWidgets(QWidget* parent) {
+    void connectChildWidgets(const QWidget* parent) {
         for (auto* w : parent->findChildren<QTableWidget*>())
             connectItemView(w);
 

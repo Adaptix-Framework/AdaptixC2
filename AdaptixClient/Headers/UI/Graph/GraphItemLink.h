@@ -18,7 +18,7 @@ class GraphItemLink final : public QGraphicsItem
     QPointF dstPoint;
 
 public:
-    explicit GraphItemLink(GraphItem* src, GraphItem* dst, QString linkName);
+    explicit GraphItemLink(GraphItem* src, GraphItem* dst, const QString &linkName);
     ~GraphItemLink() override;
 
     void adjust();

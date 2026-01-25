@@ -53,7 +53,7 @@ DialogConnect::DialogConnect()
     connect(lineEdit_ProjectDir, &QLineEdit::textEdited,                   this, &DialogConnect::onProjectDirEdited);
     connect(buttonConnect,       &QPushButton::clicked,                    this, &DialogConnect::onButton_Connect);
 
-    auto connectReturnPressed = [this](QLineEdit* edit) {
+    auto connectReturnPressed = [this](const QLineEdit* edit) {
         connect(edit, &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect);
     };
     connectReturnPressed(lineEdit_Project);
@@ -490,7 +490,7 @@ void DialogConnect::handleContextMenu(const QPoint &pos)
 
 bool DialogConnect::checkValidInput() const
 {
-    const auto checkEmpty = [](QLineEdit* edit, const QString& msg) {
+    const auto checkEmpty = [](const QLineEdit* edit, const QString& msg) {
         if (edit->text().isEmpty()) {
             MessageError(msg);
             return false;

@@ -308,7 +308,7 @@ void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
         ctxMenu.addAction("Set tag",           this, &TargetsWidget::onSetTag );
         ctxMenu.addAction("Export to file",    this, &TargetsWidget::onExportTarget );
         ctxMenu.addAction("Copy to clipboard", this, &TargetsWidget::onCopyToClipboard );
-        int bottomCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
+        adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
     }
     QPoint globalPos = tableView->mapToGlobal(pos);
     ctxMenu.exec(globalPos);

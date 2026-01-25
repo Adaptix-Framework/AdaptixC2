@@ -193,6 +193,7 @@ public:
                 case CC_Storage:  return c.Storage;
                 case CC_Agent:    return c.AgentId;
                 case CC_Host:     return c.Host;
+                default: ;
             }
         }
 
@@ -210,6 +211,7 @@ public:
                 case CC_Storage:
                 case CC_Agent:
                     return Qt::AlignCenter;
+                default: ;
             }
         }
 
@@ -277,9 +279,9 @@ public:
         if (rowsToRemove.isEmpty())
             return;
 
-        std::sort(rowsToRemove.begin(), rowsToRemove.end(), std::greater<int>());
+        std::ranges::sort(rowsToRemove, std::greater<int>());
 
-        for (int row : rowsToRemove) {
+        for (const int row : rowsToRemove) {
             beginRemoveRows(QModelIndex(), row, row);
             idToRow.remove(creds[row].CredId);
             creds.removeAt(row);

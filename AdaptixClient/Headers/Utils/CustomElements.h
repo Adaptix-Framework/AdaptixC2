@@ -312,8 +312,8 @@ Q_OBJECT
     QString pendingText;
     QTimer* batchTimer = nullptr;
     QMutex* batchMutex = nullptr;
-    static const int BATCH_INTERVAL_MS = 100;
-    static const int MAX_BATCH_SIZE = 64 * 1024;
+    static constexpr int BATCH_INTERVAL_MS = 100;
+    static constexpr int MAX_BATCH_SIZE = 64 * 1024;
 
     void trimExcessLines();
     void createContextMenu(const QPoint &pos);

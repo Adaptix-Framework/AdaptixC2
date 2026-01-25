@@ -250,8 +250,6 @@ func (p *AdaptixProfile) IsValid() error {
 
 	if valid {
 		return nil
-	} else {
-		return errors.New("Invalid profile\n")
 	}
-
+	return errors.New("Invalid profile\n")
 }

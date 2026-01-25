@@ -3,11 +3,11 @@
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/SessionsGraph.h>
 
-GraphItemLink::GraphItemLink( GraphItem* src, GraphItem* dst, QString linkName)
+GraphItemLink::GraphItemLink( GraphItem* src, GraphItem* dst, const QString &linkName)
 {
     this->src = src;
     this->dst = dst;
-    this->linkName     = linkName;
+    this->linkName = linkName;
 
     this->color = QColor(COLOR_KellyGreen);
 
