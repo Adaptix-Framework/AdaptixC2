@@ -55,6 +55,22 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
 
 ConsoleWidget::~ConsoleWidget() {}
 
+void ConsoleWidget::SetCommander(Commander* c)
+{
+    if (commander == c)
+        return;
+
+    if (commander)
+        disconnect(commander, &Commander::commandsUpdated, this, &ConsoleWidget::upgradeCompleter);
+
+    commander = c;
+
+    if (commander)
+        connect(commander, &Commander::commandsUpdated, this, &ConsoleWidget::upgradeCompleter);
+
+    upgradeCompleter();
+}
+
 void ConsoleWidget::SetUpdatesEnabled(const bool enabled)
 {
     OutputTextEdit->setUpdatesEnabled(enabled);

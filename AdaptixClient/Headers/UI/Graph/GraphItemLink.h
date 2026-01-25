@@ -12,8 +12,6 @@ class GraphItemLink final : public QGraphicsItem
     GraphItem* src = nullptr;
     GraphItem* dst = nullptr;
     QColor  color;
-    QString listenerName;
-    QString listenerType;
     QString linkName;
     QString status;
     QPointF srcPoint;

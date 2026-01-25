@@ -251,6 +251,7 @@ func CreateSpAgentUpdate(agentData adaptix.AgentData) SyncPackerAgentUpdate {
 		Domain:       &agentData.Domain,
 		Computer:     &agentData.Computer,
 		Username:     &agentData.Username,
+		Listener:     &agentData.Listener,
 	}
 }
 

@@ -355,6 +355,7 @@ type SyncPackerAgentUpdate struct {
 	Domain       *string `json:"a_domain,omitempty"`
 	Computer     *string `json:"a_computer,omitempty"`
 	Username     *string `json:"a_username,omitempty"`
+	Listener     *string `json:"a_listener,omitempty"`
 }
 
 type SyncPackerAgentTick struct {

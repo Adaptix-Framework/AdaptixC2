@@ -441,6 +441,7 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 		Tags         *string `json:"tags,omitempty"`
 		Mark         *string `json:"mark,omitempty"`
 		Color        *string `json:"color,omitempty"`
+		Listener     *string `json:"listener,omitempty"`
 	}
 
 	jsonBytes, err := json.Marshal(updateData)
@@ -521,6 +522,10 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 		if fields.Tags != nil {
 			d.Tags = *fields.Tags
 			syncPacket.Tags = fields.Tags
+		}
+		if fields.Listener != nil {
+			d.Listener = *fields.Listener
+			syncPacket.Listener = fields.Listener
 		}
 		if fields.Mark != nil {
 			if d.Mark != "Terminated" && d.Mark != *fields.Mark {
@@ -807,7 +812,7 @@ func (ts *Teamserver) TsAgentSetTick(agentId string, listenerName string) error 
 
 	agentData := agent.GetData()
 
-	listenerChanged := listenerName != "" && agentData.Listener != listenerName
+	listenerChanged := (listenerName != "") && (agentData.Listener != listenerName)
 
 	if agentData.Async {
 		if listenerChanged {
