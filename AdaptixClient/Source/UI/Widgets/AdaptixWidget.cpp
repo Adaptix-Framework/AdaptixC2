@@ -93,6 +93,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
         SessionsTableDock->agentsModel->updateLastColumn(agentIds);
     }, Qt::QueuedConnection);
 
+    connect( ChannelWsWorker, &WebSocketWorker::received_json,    this,   &AdaptixWidget::DataHandlerJson );
     connect( ChannelWsWorker, &WebSocketWorker::received_data,    this,   &AdaptixWidget::DataHandler );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, this,   &AdaptixWidget::ChannelClose );
     connect( ChannelWsWorker, &WebSocketWorker::websocket_closed, ScriptManager, &AxScriptManager::emitDisconnectClient );
@@ -152,23 +153,18 @@ void AdaptixWidget::finalizeSyncIfReady()
     if (dialogSyncPacket)
         dialogSyncPacket->finish();
 
-    QTimer::singleShot(0, this, [this]() {
-        if (dialogSyncPacket) {
-            dialogSyncPacket->setPhase("Applying UI updates...", true);
-            if (dialogSyncPacket->splashScreen)
-                dialogSyncPacket->splashScreen->repaint();
-        }
+    if (dialogSyncPacket) {
+        dialogSyncPacket->setPhase("Applying UI updates...", true);
+        if (dialogSyncPacket->splashScreen)
+            dialogSyncPacket->splashScreen->repaint();
+    }
 
-        QTimer::singleShot(50, this, [this]() {
-            this->setSyncUpdateUI(true);
+    this->setSyncUpdateUI(true);
 
-            QTimer::singleShot(200, this, [this]() {
-                if (dialogSyncPacket && dialogSyncPacket->splashScreen)
-                    dialogSyncPacket->splashScreen->close();
-                Q_EMIT this->SyncedSignal();
-            });
-        });
-    });
+    if (dialogSyncPacket && dialogSyncPacket->splashScreen)
+        dialogSyncPacket->splashScreen->close();
+
+    Q_EMIT this->SyncedSignal();
 }
 
 void AdaptixWidget::enqueueSyncPacket(const QJsonObject &jsonObj)
@@ -185,6 +181,8 @@ void AdaptixWidget::processPendingSyncPackets()
 
     QElapsedTimer timer;
     timer.start();
+
+    const int timeBudgetMs = this->sync ? 30 : 8;
 
     while (!pendingPackets.isEmpty()) {
         if (dialogSyncPacket && dialogSyncPacket->cancelled) {
@@ -240,7 +238,7 @@ void AdaptixWidget::processPendingSyncPackets()
             }
         }
 
-        if (timer.elapsed() >= 8)
+        if (timer.elapsed() >= timeBudgetMs)
             break;
     }
 
@@ -978,19 +976,14 @@ void AdaptixWidget::ChannelClose() const
 
 void AdaptixWidget::DataHandler(const QByteArray &data)
 {
-    QJsonParseError parseError;
-    QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
+    LogError("Unexpected non-JSON websocket payload (len=%d).", static_cast<int>(data.size()));
+}
 
-    if ( parseError.error != QJsonParseError::NoError || !jsonDoc.isObject() ) {
-        LogError("Error parsing JSON data: %s\nRaw data: %s", parseError.errorString().toStdString().c_str(), data.left(1024).toStdString().c_str());
-        return;
-    }
-
-    QJsonObject jsonObj = jsonDoc.object();
-    if( !this->isValidSyncPacket(jsonObj) ) {
-
+void AdaptixWidget::DataHandlerJson(const QJsonObject &jsonObj)
+{
+    if (!this->isValidSyncPacket(jsonObj)) {
         QString msg = "Invalid SyncPacket";
-        if ( jsonObj.contains("type") && jsonObj["type"].isDouble() ) {
+        if (jsonObj.contains("type") && jsonObj["type"].isDouble()) {
             int spType = jsonObj["type"].toDouble();
             msg.append(": 0x" + QString::number(spType, 16).toUpper() + " (" + QString::number(spType) + ")");
         }
@@ -1011,16 +1004,18 @@ void AdaptixWidget::OnSynced()
 {
     synchronized = true;
 
-    this->SessionsGraphDock->TreeDraw();
-    this->TasksDock->UpdateColumnsSize();
-    this->TasksDock->UpdateFilterComboBoxes();
-    this->SessionsTableDock->UpdateColumnsSize();
-    this->SessionsTableDock->UpdateAgentTypeComboBox();
-    this->CredentialsDock->UpdateColumnsSize();
-    this->CredentialsDock->UpdateFilterComboBoxes();
-    this->TargetsDock->UpdateColumnsSize();
+    QTimer::singleShot(0, this, [this]() {
+        this->SessionsGraphDock->TreeDraw();
+        this->TasksDock->UpdateColumnsSize();
+        this->TasksDock->UpdateFilterComboBoxes();
+        this->SessionsTableDock->UpdateColumnsSize();
+        this->SessionsTableDock->UpdateAgentTypeComboBox();
+        this->CredentialsDock->UpdateColumnsSize();
+        this->CredentialsDock->UpdateFilterComboBoxes();
+        this->TargetsDock->UpdateColumnsSize();
 
-    Q_EMIT SyncedOnReloadSignal(profile->GetProject());
+        Q_EMIT SyncedOnReloadSignal(profile->GetProject());
+    });
 }
 
 void AdaptixWidget::SetSessionsTableUI() const { this->PlaceDock(dockTop, SessionsTableDock->dock() ); }

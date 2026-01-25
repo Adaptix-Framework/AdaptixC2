@@ -361,6 +361,21 @@ public:
         endInsertRows();
     }
 
+    void add(const QStringList &ids) {
+        if (ids.isEmpty())
+            return;
+
+        const int start = agentsId.size();
+        const int end   = start + ids.size() - 1;
+
+        beginInsertRows(QModelIndex(), start, end);
+        for (const QString& id : ids) {
+            idToRow[id] = agentsId.size();
+            agentsId.append(id);
+        }
+        endInsertRows();
+    }
+
     void update(const QString &agentId) {
         auto it = idToRow.find(agentId);
         if (it == idToRow.end())
@@ -437,8 +452,11 @@ Q_OBJECT
     ClickableLabel* hideButton      = nullptr;
 
     mutable bool columnStateReady = false;
+    bool bufferingEnabled = false;
+    QList<Agent*> pendingAgents;
 
     void createUI();
+    void flushPendingAgents();
 
 public:
     AgentsTableModel* agentsModel = nullptr;
@@ -447,7 +465,7 @@ public:
 
     void SetUpdatesEnabled(const bool enabled);
 
-    void AddAgentItem(Agent* newAgent) const;
+    void AddAgentItem(Agent* newAgent);
     void UpdateAgentItem(const AgentData &oldDatam, const Agent* agent) const;
     void RemoveAgentItem(const QString &agentId) const;
 

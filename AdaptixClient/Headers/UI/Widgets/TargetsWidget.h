@@ -307,7 +307,11 @@ class TargetsWidget : public DockTab
     QCheckBox*      autoSearchCheck = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
+    bool bufferingEnabled = false;
+    QList<TargetData> pendingTargets;
+
     void createUI();
+    void flushPendingTargets();
 
 public:
     explicit TargetsWidget(AdaptixWidget* w);
@@ -315,7 +319,7 @@ public:
 
     void SetUpdatesEnabled(const bool enabled);
 
-    void AddTargetsItems(QList<TargetData> targetList) const;
+    void AddTargetsItems(QList<TargetData> targetList);
     void EditTargetsItem(const TargetData &newTarget) const;
     void RemoveTargetsItem(const QStringList &targetsId) const;
     void TargetsSetTag(const QStringList &targetIds, const QString &tag) const;

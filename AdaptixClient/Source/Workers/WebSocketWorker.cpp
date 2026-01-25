@@ -1,6 +1,10 @@
 #include <Workers/WebSocketWorker.h>
 #include <Client/AuthProfile.h>
 
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
+
 WebSocketWorker::WebSocketWorker(AuthProfile* authProfile)
 {
     profile = authProfile;
@@ -133,7 +137,13 @@ void WebSocketWorker::is_binaryMessageReceived(const QByteArray &data)
 {
     QMutexLocker locker(&bufferMutex);
     if (handlerReady) {
-        Q_EMIT this->received_data(data);
+        QJsonParseError parseError;
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
+        if (parseError.error == QJsonParseError::NoError && jsonDoc.isObject()) {
+            Q_EMIT this->received_json(jsonDoc.object());
+        } else {
+            Q_EMIT this->received_data(data);
+        }
     } else {
         dataBuffer.append(data);
     }
@@ -144,7 +154,13 @@ void WebSocketWorker::setHandlerReady()
     QMutexLocker locker(&bufferMutex);
     handlerReady = true;
     for (const QByteArray &data : dataBuffer) {
-        Q_EMIT this->received_data(data);
+        QJsonParseError parseError;
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
+        if (parseError.error == QJsonParseError::NoError && jsonDoc.isObject()) {
+            Q_EMIT this->received_json(jsonDoc.object());
+        } else {
+            Q_EMIT this->received_data(data);
+        }
     }
     dataBuffer.clear();
 }

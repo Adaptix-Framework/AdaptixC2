@@ -204,6 +204,7 @@ Q_SIGNALS:
 public Q_SLOTS:
     void ChannelClose() const;
     void DataHandler(const QByteArray& data);
+    void DataHandlerJson(const QJsonObject& jsonObj);
 
     void OnWebSocketConnected();
     void OnSynced();

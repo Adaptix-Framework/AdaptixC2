@@ -342,8 +342,11 @@ Q_OBJECT
     ClickableLabel* hideButton      = nullptr;
 
     bool showPanel = false;
+    bool bufferingEnabled = false;
+    QList<TaskData> pendingTasks;
 
     void createUI();
+    void flushPendingTasks();
 
 public:
     TaskOutputWidget* taskOutputConsole = nullptr;
@@ -356,7 +359,7 @@ public:
 
     void SetUpdatesEnabled(const bool enabled);
 
-    void AddTaskItem(TaskData newTask) const;
+    void AddTaskItem(TaskData newTask);
     void UpdateTaskItem(const QString &taskId, const TaskData &task) const;
     void RemoveTaskItem(const QString &taskId) const;
     void RemoveAgentTasksItem(const QString &agentId) const;

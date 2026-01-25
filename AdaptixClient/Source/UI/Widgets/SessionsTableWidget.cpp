@@ -57,7 +57,42 @@ SessionsTableWidget::~SessionsTableWidget() = default;
 
 void SessionsTableWidget::SetUpdatesEnabled(const bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingAgents();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
+}
+
+void SessionsTableWidget::flushPendingAgents()
+{
+    if (pendingAgents.isEmpty())
+        return;
+
+    QStringList ids;
+    {
+        QWriteLocker locker(&adaptixWidget->AgentsMapLock);
+        for (Agent* agent : pendingAgents) {
+            if (adaptixWidget->AgentsMap.contains(agent->data.Id))
+                continue;
+
+            adaptixWidget->AgentsMap[agent->data.Id] = agent;
+            ids.append(agent->data.Id);
+        }
+    }
+
+    if (!ids.isEmpty())
+        agentsModel->add(ids);
+
+    pendingAgents.clear();
 }
 
 void SessionsTableWidget::createUI()
@@ -159,8 +194,13 @@ void SessionsTableWidget::createUI()
     mainGridLayout->addWidget( tableView,    1, 0, 1, 1);
 }
 
-void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
+void SessionsTableWidget::AddAgentItem( Agent* newAgent )
 {
+    if (bufferingEnabled) {
+        pendingAgents.append(newAgent);
+        return;
+    }
+
     {
         QWriteLocker locker(&adaptixWidget->AgentsMapLock);
         if ( adaptixWidget->AgentsMap.contains(newAgent->data.Id) )

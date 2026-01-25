@@ -335,7 +335,11 @@ Q_OBJECT
     QComboBox*      storageComboBox = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
+    bool bufferingEnabled = false;
+    QList<CredentialData> pendingCreds;
+
     void createUI();
+    void flushPendingCreds();
 
 public:
     explicit CredentialsWidget(AdaptixWidget* w);
@@ -343,7 +347,7 @@ public:
 
     void SetUpdatesEnabled(const bool enabled);
 
-    void AddCredentialsItems(QList<CredentialData> credsList) const;
+    void AddCredentialsItems(QList<CredentialData> credsList);
     void EditCredentialsItem(const CredentialData &newCredentials) const;
     void RemoveCredentialsItem(const QStringList &credsId) const;
     void CredsSetTag(const QStringList &credsIds, const QString &tag) const;

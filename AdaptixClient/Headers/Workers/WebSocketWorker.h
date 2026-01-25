@@ -44,6 +44,7 @@ Q_SIGNALS:
     void connected();
     void ws_error();
     void received_data( QByteArray data );
+    void received_json( QJsonObject json );
     void websocket_closed();
 };
 
