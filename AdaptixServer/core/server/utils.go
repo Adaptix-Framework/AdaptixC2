@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
@@ -156,6 +157,10 @@ type TunnelChannel struct {
 
 	pwTun *io.PipeWriter
 	prTun *io.PipeReader
+
+	ingressChan chan []byte
+	paused      atomic.Bool
+	flowPaused  atomic.Bool
 }
 
 type Tunnel struct {

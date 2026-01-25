@@ -629,6 +629,14 @@ func (ts *Teamserver) TsTunnelConnectionClose(channelId int, writeOnly bool) {
 	ts.TunnelManager.CloseChannelByIdOnly(channelId, writeOnly)
 }
 
+func (ts *Teamserver) TsTunnelPause(channelId int) {
+	ts.TunnelManager.PauseChannel(channelId)
+}
+
+func (ts *Teamserver) TsTunnelResume(channelId int) {
+	ts.TunnelManager.ResumeChannel(channelId)
+}
+
 func (ts *Teamserver) TsTunnelConnectionHalt(channelId int, errorCode byte) {
 	entry, ok := ts.TunnelManager.GetChannelByIdOnly(channelId)
 	if !ok {
@@ -702,14 +710,8 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 		return
 	}
 
-	tunChannel := &TunnelChannel{
-		channelId: channelId,
-		conn:      conn,
-		protocol:  "TCP",
-	}
-
-	tunChannel.prSrv, tunChannel.pwSrv = io.Pipe()
-	tunChannel.prTun, tunChannel.pwTun = io.Pipe()
+	stc := NewSafeTunnelChannel(tm, channelId, conn, nil, "TCP")
+	tunChannel := stc.TunnelChannel
 
 	var taskData adaptix.TaskData
 	switch tunnel.Type {
@@ -766,15 +768,8 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 }
 
 func handleTunChannelCreateClient(tm *TunnelManager, agent *Agent, tunnel *Tunnel, wsconn *websocket.Conn, channelId int, targetAddress string, targetPort int, protocol string) {
-	tunChannel := &TunnelChannel{
-		channelId: channelId,
-		conn:      nil,
-		wsconn:    wsconn,
-		protocol:  "TCP",
-	}
-
-	tunChannel.prSrv, tunChannel.pwSrv = io.Pipe()
-	tunChannel.prTun, tunChannel.pwTun = io.Pipe()
+	stc := NewSafeTunnelChannel(tm, channelId, nil, wsconn, "TCP")
+	tunChannel := stc.TunnelChannel
 
 	addressType := proxy.DetectAddrType(targetAddress)
 
@@ -823,14 +818,8 @@ func handlerReverseAccept(tm *TunnelManager, agent *Agent, tunnel *Tunnel, chann
 		return
 	}
 
-	tunChannel := &TunnelChannel{
-		channelId: channelId,
-		conn:      fwdConn,
-		protocol:  "TCP",
-	}
-
-	tunChannel.prSrv, tunChannel.pwSrv = io.Pipe()
-	tunChannel.prTun, tunChannel.pwTun = io.Pipe()
+	stc := NewSafeTunnelChannel(tm, channelId, fwdConn, nil, "TCP")
+	tunChannel := stc.TunnelChannel
 
 	tm.RegisterChannel(tunnel.Data.TunnelId, tunnel, tunChannel)
 
@@ -885,31 +874,38 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 		_ = tunChannel.pwSrv.Close()
 	}()
 
-	go func() {
-		if tunChannel.prTun == nil || tunChannel.conn == nil {
-			logs.Debug("", "[ERROR relaySocketToTunnel] prTun or conn == nil — copy (conn <- prTun)")
-			return
-		}
-		buf := tm.GetBuffer()
-		defer tm.PutBuffer(buf)
-		_, _ = io.CopyBuffer(tunChannel.conn, tunChannel.prTun, buf)
-		if tcp, ok := tunChannel.conn.(*net.TCPConn); ok {
-			_ = tcp.CloseWrite()
-		}
-	}()
-
 	if !direct {
 		go func() {
 			defer finish()
 			buf := tm.GetBuffer()
 			defer tm.PutBuffer(buf)
+
+			backoff := time.Duration(1) * time.Millisecond
+			const maxBackoff = 50 * time.Millisecond
+			const minBackoff = 1 * time.Millisecond
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
+					if tunChannel.paused.Load() {
+						time.Sleep(backoff)
+						if backoff < maxBackoff {
+							backoff *= 2
+						}
+						continue
+					}
+					if agent.HostedTunnelTasks != nil && agent.HostedTunnelTasks.Len() > 128 {
+						time.Sleep(backoff)
+						if backoff < maxBackoff {
+							backoff *= 2
+						}
+						continue
+					}
+
 					n, err := tunChannel.prSrv.Read(buf)
 					if n > 0 {
+						backoff = minBackoff
 						var td adaptix.TaskData
 						if tunChannel.protocol == "UDP" {
 							td = tunnel.Callbacks.WriteUDP(tunChannel.channelId, buf[:n])
@@ -959,37 +955,38 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 		_ = tunChannel.pwSrv.Close()
 	}()
 
-	go func() {
-		if tunChannel.wsconn == nil || tunChannel.prTun == nil {
-			return
-		}
-		buf := tm.GetBuffer()
-		defer tm.PutBuffer(buf)
-		for {
-			n, err := tunChannel.prTun.Read(buf)
-			if n > 0 {
-				if err := tunChannel.wsconn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
-					break
-				}
-			}
-			if err != nil {
-				break
-			}
-		}
-	}()
-
 	if !direct {
 		go func() {
 			defer finish()
 			buf := tm.GetBuffer()
 			defer tm.PutBuffer(buf)
+
+			backoff := time.Duration(1) * time.Millisecond
+			const maxBackoff = 50 * time.Millisecond
+			const minBackoff = 1 * time.Millisecond
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
+					if tunChannel.paused.Load() {
+						time.Sleep(backoff)
+						if backoff < maxBackoff {
+							backoff *= 2
+						}
+						continue
+					}
+					if agent.HostedTunnelTasks != nil && agent.HostedTunnelTasks.Len() > 128 {
+						time.Sleep(backoff)
+						if backoff < maxBackoff {
+							backoff *= 2
+						}
+						continue
+					}
+
 					n, err := tunChannel.prSrv.Read(buf)
 					if n > 0 {
+						backoff = minBackoff
 						var td adaptix.TaskData
 						if tunChannel.protocol == "UDP" {
 							td = tunnel.Callbacks.WriteUDP(tunChannel.channelId, buf[:n])

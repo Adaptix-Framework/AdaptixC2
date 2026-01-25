@@ -72,6 +72,8 @@ type Teamserver interface {
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
 	TsTunnelConnectionAccept(tunnelId int, channelId int)
+	TsTunnelPause(channelId int)
+	TsTunnelResume(channelId int)
 
 	TsTerminalConnExists(terminalId string) bool
 	TsTerminalGetPipe(AgentId string, terminalId string) (*io.PipeReader, *io.PipeWriter, error)
@@ -138,6 +140,8 @@ func (ext *ExtenderAgent) TunnelCallbacks() adaptix.TunnelCallbacks {
 		ConnectUDP: TunnelMessageConnectUDP,
 		WriteTCP:   TunnelMessageWriteTCP,
 		WriteUDP:   TunnelMessageWriteUDP,
+		Pause:      TunnelMessagePause,
+		Resume:     TunnelMessageResume,
 		Close:      TunnelMessageClose,
 		Reverse:    TunnelMessageReverse,
 	}
@@ -174,6 +178,24 @@ func TunnelMessageWriteUDP(channelId int, data []byte) adaptix.TaskData {
 	var packData []byte
 	/// START CODE HERE
 	array := []interface{}{COMMAND_TUNNEL_WRITE_UDP, channelId, len(data), data}
+	packData, _ = PackArray(array)
+	/// END CODE HERE
+	return makeProxyTask(packData)
+}
+
+func TunnelMessagePause(channelId int) adaptix.TaskData {
+	var packData []byte
+	/// START CODE HERE
+	array := []interface{}{COMMAND_TUNNEL_PAUSE, channelId}
+	packData, _ = PackArray(array)
+	/// END CODE HERE
+	return makeProxyTask(packData)
+}
+
+func TunnelMessageResume(channelId int) adaptix.TaskData {
+	var packData []byte
+	/// START CODE HERE
+	array := []interface{}{COMMAND_TUNNEL_RESUME, channelId}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
 	return makeProxyTask(packData)
@@ -2257,6 +2279,23 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			tunnelId := int(TaskId)
 			channelId := int(packer.ParseInt32())
 			Ts.TsTunnelConnectionAccept(tunnelId, channelId)
+
+		case COMMAND_TUNNEL_PAUSE:
+			channelId := int(TaskId)
+			Ts.TsTunnelPause(channelId)
+
+		case COMMAND_TUNNEL_RESUME:
+			channelId := int(TaskId)
+			Ts.TsTunnelResume(channelId)
+
+		case COMMAND_TUNNEL_CLOSE:
+			if false == packer.CheckPacker([]string{"int", "int"}) {
+				goto HANDLER
+			}
+			_ = packer.ParseInt32()
+			_ = packer.ParseInt32()
+			channelId := int(TaskId)
+			Ts.TsTunnelConnectionClose(channelId, false)
 
 		case COMMAND_TERMINATE:
 			if false == packer.CheckPacker([]string{"int"}) {
