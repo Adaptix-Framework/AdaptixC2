@@ -75,6 +75,8 @@ public:
 	void CmdTunnelMsgConnectUDP(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTunnelMsgWriteTCP(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTunnelMsgWriteUDP(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdTunnelMsgResume(ULONG commandId, Packer* inPacker, Packer* outPacker);
+	void CmdTunnelMsgPause(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTunnelMsgClose(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdTunnelMsgReverse(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdUnlink(ULONG commandId, Packer* inPacker, Packer* outPacker);

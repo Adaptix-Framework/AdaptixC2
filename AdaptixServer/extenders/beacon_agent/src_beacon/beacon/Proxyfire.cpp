@@ -19,6 +19,12 @@ void PackProxyStatus(Packer* packer, ULONG channelId, ULONG commandId, ULONG typ
 	packer->Pack32(result);
 }
 
+void PackProxyControl(Packer* packer, ULONG channelId, ULONG commandId)
+{
+	packer->Pack32(channelId);
+	packer->Pack32(commandId);
+}
+
 void PackProxyData(Packer* packer, ULONG channelId, BYTE* data, ULONG dataSize )
 {
 	packer->Pack32(channelId);
@@ -40,6 +46,8 @@ void Proxyfire::AddProxyData(ULONG channelId, ULONG type, SOCKET sock, ULONG wai
 	tunnelData.startTick       = ApiWin->GetTickCount();
 	tunnelData.writeBuffer     = NULL;
 	tunnelData.writeBufferSize = 0;
+	tunnelData.paused          = FALSE;
+	tunnelData.server_paused   = FALSE;
 	this->tunnels.push_back(tunnelData);
 }
 
@@ -184,7 +192,6 @@ void Proxyfire::ConnectMessageUDP(ULONG channelId, CHAR* address, WORD port, Pac
 
 void Proxyfire::ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize, Packer* outPacker)
 {
-	const ULONG TUNNEL_BUFFER_HARD_CAP = 0x1000000;
 	if (data == NULL || dataSize == 0)
 		return;
 
@@ -227,6 +234,11 @@ void Proxyfire::ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize, Pac
 			tunnelData->writeBuffer = newBuf;
 			memcpy(tunnelData->writeBuffer + tunnelData->writeBufferSize, data, dataSize);
 			tunnelData->writeBufferSize += dataSize;
+
+			if (outPacker && tunnelData->writeBufferSize > TUNNEL_BUFFER_HIGH_WATERMARK && !tunnelData->paused) {
+				tunnelData->paused = TRUE;
+				PackProxyControl(outPacker, channelId, COMMAND_TUNNEL_PAUSE);
+			}
 			return;
 		}
 
@@ -270,6 +282,11 @@ void Proxyfire::ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize, Pac
 
 			memcpy(tunnelData->writeBuffer, data + sent, remain);
 			tunnelData->writeBufferSize = remain;
+
+			if (outPacker && tunnelData->writeBufferSize > TUNNEL_BUFFER_HIGH_WATERMARK && !tunnelData->paused) {
+				tunnelData->paused = TRUE;
+				PackProxyControl(outPacker, channelId, COMMAND_TUNNEL_PAUSE);
+			}
 		}
 		return;
 	}
@@ -307,6 +324,28 @@ void Proxyfire::ConnectWriteUDP(ULONG channelId, CHAR* data, ULONG dataSize)
 		}
 	}
 	tunnelData = NULL;
+}
+
+void Proxyfire::ConnectPause(ULONG channelId)
+{
+	for (int i = 0; i < tunnels.size(); i++) {
+		TunnelData* t = &(tunnels[i]);
+		if (t->channelID == channelId) {
+			t->server_paused = TRUE;
+			return;
+		}
+	}
+}
+
+void Proxyfire::ConnectResume(ULONG channelId)
+{
+	for (int i = 0; i < tunnels.size(); i++) {
+		TunnelData* t = &(tunnels[i]);
+		if (t->channelID == channelId) {
+			t->server_paused = FALSE;
+			return;
+		}
+	}
 }
 
 void Proxyfire::ConnectClose(ULONG channelId)
@@ -441,11 +480,19 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 	LPVOID buffer = MemAllocLocal(0x10000);
 	TunnelData* tunnelData;
 	for (int i = 0; i < this->tunnels.size(); i++) {
-		// Limit total data per tick to prevent blocking heartbeat (~4MB)
+
 		if (packer->datasize() > 0x400000)
 			break;
+
 		tunnelData = &(this->tunnels[i]);
 		if (tunnelData->state == TUNNEL_STATE_READY) {
+
+			if (tunnelData->server_paused)
+				continue;
+
+			if (tunnelData->writeBufferSize > TUNNEL_BUFFER_HIGH_WATERMARK)
+				continue;
+
 			if (tunnelData->mode == TUNNEL_MODE_SEND_UDP) {
 
 				LPVOID buffer = MemAllocLocal(0xFFFFC);
@@ -485,7 +532,7 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 							tunnelData->state = TUNNEL_STATE_CLOSE;
 							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
 						}
-						break; // WOULDBLOCK or Error, stop reading this tunnel for now
+						break;
 					}
 				}
 			}
@@ -527,6 +574,10 @@ void Proxyfire::FlushProxy(Packer* packer)
 				MemFreeLocal((LPVOID*) &tunnelData->writeBuffer, tunnelData->writeBufferSize);
 				tunnelData->writeBuffer = NULL;
 				tunnelData->writeBufferSize = 0;
+				if (packer && tunnelData->paused) {
+					tunnelData->paused = FALSE;
+					PackProxyControl(packer, tunnelData->channelID, COMMAND_TUNNEL_RESUME);
+				}
 			}
 			else {
 				ULONG remain = tunnelData->writeBufferSize - (ULONG)sent;
@@ -550,6 +601,10 @@ void Proxyfire::FlushProxy(Packer* packer)
 
 				tunnelData->writeBuffer = newBuf;
 				tunnelData->writeBufferSize = remain;
+				if (packer && tunnelData->paused && tunnelData->writeBufferSize < TUNNEL_BUFFER_LOW_WATERMARK) {
+					tunnelData->paused = FALSE;
+					PackProxyControl(packer, tunnelData->channelID, COMMAND_TUNNEL_RESUME);
+				}
 			}
 		}
 		else if (sent == -1) {
