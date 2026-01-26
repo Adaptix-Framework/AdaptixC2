@@ -159,8 +159,8 @@ function RegisterCommands(listenerType)
     let cmd_link = ax.create_command("link", "Connect to an pivot agents");
     cmd_link.addSubCommands([_cmd_link_smb, _cmd_link_tcp]);
 
-    let cmd_ls = ax.create_command("ls", "Lists files in a folder", "ls C:\\Windows", "Task: list of files in a folder");
-    cmd_ls.addArgString("directory", "", ".");
+    let cmd_ls = ax.create_command("ls", "List contents of a directory or details of a file", "ls C:\\Windows", "Task: list files");
+    cmd_ls.addArgString("path", "", ".");
 
     let _cmd_lportfwd_start = ax.create_command("start", "Start local port forwarding from server via agent", "lportfwd start 127.0.0.1 8080 192.168.1.1 8080");
     _cmd_lportfwd_start.addArgString("lhost", "Listening interface address on server", "0.0.0.0");
