@@ -470,12 +470,23 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		}
 	}
 
-	fullpath[fullpathSize]   = '\\';
-	fullpath[++fullpathSize] = '*';
-	fullpath[++fullpathSize] = 0;
+	DWORD fileAttribs = ApiWin->GetFileAttributesA(fullpath);
+	BOOL isFile = (fileAttribs != INVALID_FILE_ATTRIBUTES) && 
+	              !(fileAttribs & FILE_ATTRIBUTE_DIRECTORY);
 
 	WIN32_FIND_DATAA findData = { 0 };
-	HANDLE File = ApiWin->FindFirstFileA(fullpath, &findData);
+	HANDLE File = INVALID_HANDLE_VALUE;
+
+	if (isFile) {
+		File = ApiWin->FindFirstFileA(fullpath, &findData);
+	}
+	else {
+		fullpath[fullpathSize]   = '\\';
+		fullpath[++fullpathSize] = '*';
+		fullpath[++fullpathSize] = 0;
+		File = ApiWin->FindFirstFileA(fullpath, &findData);
+	}
+
 	if ( File != INVALID_HANDLE_VALUE ) {
 		outPacker->Pack8(TRUE);
 		outPacker->PackStringA(fullpath);
@@ -505,7 +516,7 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 			count++;
 
-		} while (ApiWin->FindNextFileA(File, &findData));
+		} while (!isFile && ApiWin->FindNextFileA(File, &findData));
 		ApiWin->FindClose(File);
 		outPacker->Set32(indexCount, count);
 	}
