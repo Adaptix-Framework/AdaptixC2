@@ -220,6 +220,7 @@ func (ts *Teamserver) TsListenerPause(listenerName string, listenerType string) 
 
 	listenerData.Status = "Paused"
 	ts.listeners.Put(listenerName, listenerData)
+	_ = ts.DBMS.DbListenerUpdateStatus(listenerName, "Paused")
 
 	packet := CreateSpListenerEdit(listenerData)
 	ts.TsSyncAllClients(packet)
@@ -269,6 +270,7 @@ func (ts *Teamserver) TsListenerResume(listenerName string, listenerType string)
 
 	listenerData.Status = "Listen"
 	ts.listeners.Put(listenerName, listenerData)
+	_ = ts.DBMS.DbListenerUpdateStatus(listenerName, "Listen")
 
 	packet := CreateSpListenerEdit(listenerData)
 	ts.TsSyncAllClients(packet)

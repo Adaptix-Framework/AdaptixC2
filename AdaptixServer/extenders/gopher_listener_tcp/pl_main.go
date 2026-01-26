@@ -14,7 +14,7 @@ import (
 type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
-	TsAgentSetTick(agentId string) error
+	TsAgentSetTick(agentId string, listenerName string) error
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
@@ -30,7 +30,7 @@ type Teamserver interface {
 
 	TsTunnelGetPipe(AgentId string, channelId int) (*io.PipeReader, *io.PipeWriter, error)
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
-	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionClose(channelId int, writeOnly bool)
 	TsTunnelConnectionHalt(channelId int, errorCode byte)
 	TsTunnelConnectionData(channelId int, data []byte)
 }

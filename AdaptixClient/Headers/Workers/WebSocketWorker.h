@@ -7,11 +7,15 @@
 
 class AuthProfile;
 
+
 class WebSocketWorker : public QThread
 {
 Q_OBJECT
     AuthProfile* profile;
     QTimer* pingTimer = nullptr;
+    QList<QByteArray> dataBuffer;
+    bool handlerReady = false;
+    QMutex bufferMutex;
 
 public:
     QWebSocket* webSocket = nullptr;
@@ -25,6 +29,7 @@ public:
     void SetProfile(AuthProfile* authProfile);
     void startPingTimer();
     void stopPingTimer();
+    void setHandlerReady();
 
 public Q_SLOTS:
     void is_connected();
@@ -39,6 +44,7 @@ Q_SIGNALS:
     void connected();
     void ws_error();
     void received_data( QByteArray data );
+    void received_json( QJsonObject json );
     void websocket_closed();
 };
 

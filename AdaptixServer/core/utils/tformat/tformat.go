@@ -3,11 +3,12 @@ package tformat
 import (
 	"bytes"
 	"fmt"
-	_ "golang.org/x/image/bmp"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
+
+	_ "golang.org/x/image/bmp"
 )
 
 const (
@@ -46,10 +47,8 @@ func SizeBytesToFormat(bytes uint64) string {
 		return fmt.Sprintf("%.2f Mb", size/MB)
 	} else if size >= 1000 {
 		return fmt.Sprintf("%.2f Kb", size/KB)
-	} else {
-		return fmt.Sprintf("%v bytes", size)
-
 	}
+	return fmt.Sprintf("%v bytes", size)
 }
 
 func DetectImageFormat(data []byte) (string, error) {

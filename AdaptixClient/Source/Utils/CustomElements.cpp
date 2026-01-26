@@ -177,7 +177,7 @@ SpinTable::SpinTable(int rows, int columns, QWidget* parent)
 
 
 
-TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, bool autoScroll) : QTextEdit(parent), cachedCursor(this->textCursor()), maxLines(maxLines), noWrap(noWrap), autoScroll(autoScroll)
+TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, bool autoScroll) : QTextEdit(parent), cachedCursor(this->textCursor()), maxLines(maxLines), autoScroll(autoScroll), noWrap(noWrap)
 {
     cachedCursor.movePosition(QTextCursor::End);
 

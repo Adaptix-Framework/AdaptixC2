@@ -266,7 +266,6 @@ func relayWebsocketToTerminal(ts *Teamserver, agent *Agent, terminal *Terminal, 
 					n, err := terminal.prSrv.Read(buf)
 					if n > 0 {
 						taskData := terminal.Callbacks.Write(terminal.TerminalId, terminal.CodePage, buf[:n])
-						tunnelManageTask(agent, taskData)
 						relayPipeToTaskData(agent, terminal.TerminalId, taskData)
 					}
 					if err != nil {

@@ -2,6 +2,7 @@
 #define AXCONSOLEWIDGET_H
 
 #include <main.h>
+#include <QPointer>
 #include <UI/Widgets/AbstractDock.h>
 
 class AdaptixWidget;
@@ -13,7 +14,7 @@ class KPH_ConsoleInput;
 class AxConsoleWidget : public DockTab
 {
     AdaptixWidget*   adaptixWidget = nullptr;
-    AxScriptManager* scriptManager = nullptr;
+    QPointer<AxScriptManager> scriptManager;
 
     QGridLayout*     MainGridLayout = nullptr;
     QLabel*          CmdLabel       = nullptr;

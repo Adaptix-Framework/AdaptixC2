@@ -99,7 +99,7 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 		_ = ts.DBMS.DbCredentialsAdd(newCreds)
 
 		packet := CreateSpCredentialsAdd(newCreds)
-		ts.TsSyncAllClients(packet)
+		ts.TsSyncAllClientsWithCategory(packet, SyncCategoryCredentialsRealtime)
 
 		// --- POST HOOK ---
 		postEvent := &eventing.EventCredentialsAdd{Credentials: cbCredsData}
@@ -161,7 +161,7 @@ func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password 
 	_ = ts.DBMS.DbCredentialsUpdate(*cred)
 
 	packet := CreateSpCredentialsUpdate(*cred)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncStateWithCategory(packet, "cred:"+credId, SyncCategoryCredentialsRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventCredentialsEdit{
@@ -206,7 +206,7 @@ func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
 	}(credsId)
 
 	packet := CreateSpCredentialsDelete(credsId)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryCredentialsRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventCredentialsRemove{CredIds: credsId}
@@ -241,7 +241,7 @@ func (ts *Teamserver) TsCredentialsSetTag(credsId []string, tag string) error {
 	}
 
 	packet := CreateSpCredentialsSetTag(ids, tag)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryCredentialsRealtime)
 
 	return nil
 }

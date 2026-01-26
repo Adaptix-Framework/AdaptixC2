@@ -17,7 +17,9 @@ func CreateDefinitionFile(content []byte, tempDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to open DLL: %v", err)
 	}
-	defer file.Close()
+	defer func(file *pe.File) {
+		_ = file.Close()
+	}(file)
 
 	exports, dllName, err := getExports(file)
 	if err != nil {
@@ -33,11 +35,13 @@ func CreateDefinitionFile(content []byte, tempDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed to create def file: %v", err)
 	}
-	defer defFile.Close()
+	defer func(defFile *os.File) {
+		_ = defFile.Close()
+	}(defFile)
 
-	fmt.Fprintf(defFile, "EXPORTS\n")
+	_, _ = fmt.Fprintf(defFile, "EXPORTS\n")
 	for i, exportName := range exports {
-		fmt.Fprintf(defFile, "%s=%s.%s @%v\n", exportName, baseName, exportName, i+1)
+		_, _ = fmt.Fprintf(defFile, "%s=%s.%s @%v\n", exportName, baseName, exportName, i+1)
 	}
 
 	return defFileName, nil

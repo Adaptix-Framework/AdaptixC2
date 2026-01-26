@@ -6,7 +6,7 @@
 
 REGISTER_DOCK_WIDGET(LogsWidget, "Logs", true)
 
-LogsWidget::LogsWidget(AdaptixWidget* w) : DockTab("Logs", w->GetProfile()->GetProject(), ":/icons/logs")
+LogsWidget::LogsWidget(const AdaptixWidget* w) : DockTab("Logs", w->GetProfile()->GetProject(), ":/icons/logs")
 {
     this->createUI();
 

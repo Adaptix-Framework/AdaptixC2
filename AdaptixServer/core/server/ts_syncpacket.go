@@ -66,6 +66,8 @@ const (
 	TYPE_BROWSER_FILES_STATUS = 0x63
 	TYPE_BROWSER_PROCESS      = 0x64
 
+	TYPE_AGENT_CONSOLE_LOCAL     = 0x67
+	TYPE_AGENT_CONSOLE_ERROR     = 0x68
 	TYPE_AGENT_CONSOLE_OUT       = 0x69
 	TYPE_AGENT_CONSOLE_TASK_SYNC = 0x6a
 	TYPE_AGENT_CONSOLE_TASK_UPD  = 0x6b
@@ -249,6 +251,7 @@ func CreateSpAgentUpdate(agentData adaptix.AgentData) SyncPackerAgentUpdate {
 		Domain:       &agentData.Domain,
 		Computer:     &agentData.Computer,
 		Username:     &agentData.Username,
+		Listener:     &agentData.Listener,
 	}
 }
 
@@ -343,6 +346,30 @@ func CreateSpAgentConsoleOutput(agentId string, messageType int, message string,
 		MessageType: messageType,
 		Message:     message,
 		ClearText:   text,
+	}
+}
+
+func CreateSpAgentErrorCommand(agentId string, cmdline string, message string, HookId string, HandlerId string) SyncPackerAgentErrorCommand {
+	return SyncPackerAgentErrorCommand{
+		SpType: TYPE_AGENT_CONSOLE_ERROR,
+
+		AgentId:   agentId,
+		Cmdline:   cmdline,
+		Message:   message,
+		HookId:    HookId,
+		HandlerId: HandlerId,
+	}
+}
+
+func CreateSpAgentLocalCommand(agentId string, cmdline string, message string, text string) SyncPackerAgentLocalCommand {
+	return SyncPackerAgentLocalCommand{
+		SpCreateTime: time.Now().UTC().Unix(),
+		SpType:       TYPE_AGENT_CONSOLE_LOCAL,
+
+		AgentId: agentId,
+		Cmdline: cmdline,
+		Message: message,
+		Text:    text,
 	}
 }
 

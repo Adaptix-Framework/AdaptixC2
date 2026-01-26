@@ -149,11 +149,11 @@ func (p *Packer) ParseBytes() []byte {
 
 	if p.Size() < size {
 		return make([]byte, 0)
-	} else {
-		b := p.buffer[:size]
-		p.buffer = p.buffer[size:]
-		return b
 	}
+
+	b := p.buffer[:size]
+	p.buffer = p.buffer[size:]
+	return b
 }
 
 func (p *Packer) ParseString() string {
@@ -161,11 +161,11 @@ func (p *Packer) ParseString() string {
 
 	if p.Size() < size {
 		return ""
-	} else {
-		b := p.buffer[:size]
-		p.buffer = p.buffer[size:]
-		return string(bytes.Trim(b, "\x00"))
 	}
+
+	b := p.buffer[:size]
+	p.buffer = p.buffer[size:]
+	return string(bytes.Trim(b, "\x00"))
 }
 
 func PackArray(array []interface{}) ([]byte, error) {

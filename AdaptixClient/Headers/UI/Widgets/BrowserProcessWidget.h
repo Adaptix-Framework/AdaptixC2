@@ -51,7 +51,7 @@ class BrowserProcessWidget : public DockTab
     void filterTableWidget(const QString &filterText) const;
 
 public:
-    BrowserProcessWidget(AdaptixWidget* w, Agent* a);
+    BrowserProcessWidget(const AdaptixWidget* w, Agent* a);
     ~BrowserProcessWidget() override;
 
     void SetProcess(int msgType, const QString &data) const;

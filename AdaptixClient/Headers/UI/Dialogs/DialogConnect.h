@@ -25,6 +25,11 @@ Q_OBJECT
     QLineEdit*    lineEdit_User       = nullptr;
     QLineEdit*    lineEdit_Password   = nullptr;
     QLineEdit*    lineEdit_Project    = nullptr;
+    QPushButton*  subsSelectBtn       = nullptr;
+    QDialog*      subsPopupDialog     = nullptr;
+    QListWidget*  dataListWidget      = nullptr;
+    QListWidget*  agentListWidget     = nullptr;
+    QCheckBox*    multiuserCheck      = nullptr;
     QLineEdit*    lineEdit_ProjectDir = nullptr;
     QLineEdit*    lineEdit_Url        = nullptr;
     QPushButton*  buttonConnect       = nullptr;
@@ -33,7 +38,7 @@ Q_OBJECT
     QPushButton*  buttonSave          = nullptr;
     QLabel*       label_Profiles      = nullptr;
     QMenu*        menuContext         = nullptr;
-    CardListWidget* cardWidget     = nullptr;
+    CardListWidget* cardWidget        = nullptr;
 
     bool parseUrl(QString &host, QString &port, QString &endpoint) const;
     QString buildUrl(const QString &host, const QString &port, const QString &endpoint) const;
@@ -63,6 +68,9 @@ private Q_SLOTS:
     void onButton_NewProfile();
     void onButton_Load();
     void onButton_Save();
+    void showSubsPopup();
+    void onSubsSelectionChanged();
+    void updateSubsDisplay();
 };
 
 #endif

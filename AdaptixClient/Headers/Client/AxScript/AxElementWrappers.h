@@ -923,7 +923,7 @@ Q_OBJECT
     QVector<CredentialData> selectedData;
 
 public:
-    explicit AxDialogCreds(const QJSValue &headers, QVector<CredentialData> vecCreds, QWidget* parent = nullptr);
+    explicit AxDialogCreds(const QJSValue &headers, const QVector<CredentialData> &vecCreds, QWidget* parent = nullptr);
 
     QVector<CredentialData> data();
 
@@ -1077,7 +1077,7 @@ Q_OBJECT
     QVector<AgentData> selectedData;
 
 public:
-    explicit AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QWidget* parent = nullptr);
+    explicit AxDialogAgents(const QJSValue &headers, const QVector<AgentData> &vecAgents, QWidget* parent = nullptr);
 
     QVector<AgentData> data();
 
@@ -1213,7 +1213,7 @@ Q_OBJECT
     QVector<ListenerData> selectedData;
 
 public:
-    explicit AxDialogListeners(const QJSValue &headers, QVector<ListenerData> vecListeners, QWidget* parent = nullptr);
+    explicit AxDialogListeners(const QJSValue &headers, const QVector<ListenerData> &vecListeners, QWidget* parent = nullptr);
 
     QVector<ListenerData> data();
 
@@ -1356,7 +1356,7 @@ Q_OBJECT
     QVector<TargetData> selectedData;
 
 public:
-    explicit AxDialogTargets(const QJSValue &headers, QVector<TargetData> vecTargets, QWidget* parent = nullptr);
+    explicit AxDialogTargets(const QJSValue &headers, const QVector<TargetData> &vecTargets, QWidget* parent = nullptr);
 
     QVector<TargetData> data();
 
@@ -1502,7 +1502,7 @@ Q_OBJECT
     QVector<DownloadData> selectedData;
 
 public:
-    explicit AxDialogDownloads(const QJSValue &headers, QVector<DownloadData> vecDownloads, QWidget* parent = nullptr);
+    explicit AxDialogDownloads(const QJSValue &headers, const QVector<DownloadData> &vecDownloads, QWidget* parent = nullptr);
 
     QVector<DownloadData> data();
 

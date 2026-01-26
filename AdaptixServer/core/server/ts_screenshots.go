@@ -92,7 +92,7 @@ func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byt
 	_ = ts.DBMS.DbScreenshotInsert(screenData)
 
 	packet := CreateSpScreenshotCreate(screenData)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryScreenshotRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataScreenshotAdd{
@@ -118,7 +118,7 @@ func (ts *Teamserver) TsScreenshotNote(screenId string, note string) error {
 
 	_ = ts.DBMS.DbScreenshotUpdate(screenId, note)
 	packet := CreateSpScreenshotUpdate(screenId, note)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncStateWithCategory(packet, "screenshot:"+screenId, SyncCategoryScreenshotRealtime)
 
 	return nil
 }
@@ -144,7 +144,7 @@ func (ts *Teamserver) TsScreenshotDelete(screenId string) error {
 
 	_ = ts.DBMS.DbScreenshotDelete(screenId)
 	packet := CreateSpScreenshotDelete(screenId)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryScreenshotRealtime)
 
 	ts.screenshots.Delete(screenId)
 

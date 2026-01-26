@@ -27,7 +27,7 @@ func (dbms *DBMS) DbExtenderDataLoad(extenderName string, key string) ([]byte, e
 	query := `SELECT Value FROM ExtenderData WHERE ExtenderName = ? AND Key = ?;`
 	err := dbms.database.QueryRow(query, extenderName, key).Scan(&value)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -58,7 +58,9 @@ func (dbms *DBMS) DbExtenderDataKeys(extenderName string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
 
 	for rows.Next() {
 		var key string

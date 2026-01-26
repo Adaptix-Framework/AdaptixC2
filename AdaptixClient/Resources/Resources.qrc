@@ -76,6 +76,7 @@
         <file alias="start">icons/start_64dp.png</file>
         <file alias="restart">icons/restart_64dp.png</file>
         <file alias="stop">icons/stop_64dp.png</file>
+        <file alias="settings_account">icons/settings_account_64dp.png</file>
 
         <file alias="fs_ssd">icons/filesystem/ssd_64dp.png</file>
         <file alias="fs_document">icons/filesystem/document_64dp.png</file>

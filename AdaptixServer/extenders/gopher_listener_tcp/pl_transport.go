@@ -282,8 +282,9 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 		} else {
 			emptyMark := ""
 			_ = Ts.TsAgentUpdateDataPartial(agentId, struct {
-				Mark *string `json:"mark"`
-			}{Mark: &emptyMark})
+				Mark     *string `json:"mark"`
+				Listener *string `json:"listener"`
+			}{Mark: &emptyMark, Listener: &t.Name})
 		}
 
 		t.AgentConnects.Put(agentId, connection)
@@ -305,7 +306,7 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 					break
 				}
 
-				_ = Ts.TsAgentSetTick(agentId)
+				_ = Ts.TsAgentSetTick(agentId, t.Name)
 
 				_ = Ts.TsAgentProcessData(agentId, recvData)
 			} else {
@@ -431,20 +432,20 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			io.Copy(encWriter, pr)
+			_, _ = io.Copy(encWriter, pr)
 			closeAll()
 		}()
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			io.Copy(decWriter, conn)
+			_, _ = io.Copy(decWriter, conn)
 			closeAll()
 		}()
 
 		wg.Wait()
 
-		ts.TsTunnelConnectionClose(tunPack.ChannelId)
+		ts.TsTunnelConnectionClose(tunPack.ChannelId, false)
 
 	case TERMINAL_PACK:
 
@@ -495,14 +496,14 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			io.Copy(encWriter, pr)
+			_, _ = io.Copy(encWriter, pr)
 			closeAll()
 		}()
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			io.Copy(decWriter, conn)
+			_, _ = io.Copy(decWriter, conn)
 			closeAll()
 		}()
 

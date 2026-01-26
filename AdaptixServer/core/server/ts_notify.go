@@ -26,7 +26,7 @@ func (ts *Teamserver) TsNotifyClient(connected bool, username string) {
 		packet = CreateSpNotification(NOTIFY_CLIENT_DISCONNECT, message)
 	}
 
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryNotifications)
 	ts.notifications.Put(packet)
 }
 
@@ -39,14 +39,14 @@ func (ts *Teamserver) TsNotifyListenerStart(restart bool, listenerName string, l
 	}
 
 	packet := CreateSpNotification(NOTIFY_LISTENER_START, message)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryNotifications)
 	ts.notifications.Put(packet)
 }
 
 func (ts *Teamserver) TsNotifyListenerStop(listenerName string, listenerType string) {
 	message := fmt.Sprintf("Listener '%v' stopped", listenerName)
 	packet := CreateSpNotification(NOTIFY_LISTENER_STOP, message)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryNotifications)
 	ts.notifications.Put(packet)
 }
 
@@ -71,7 +71,7 @@ func (ts *Teamserver) TsNotifyAgent(restore bool, agentData adaptix.AgentData) {
 	message += fmt.Sprintf("'%v' (%v) executed on '%v @ %v", agentData.Name, agentData.Id, agentData.Username, postMsg)
 
 	packet := CreateSpNotification(NOTIFY_AGENT_NEW, message)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryNotifications)
 	ts.notifications.Put(packet)
 
 	if !restore {
@@ -98,7 +98,7 @@ func (ts *Teamserver) TsNotifyTunnelAdd(tunnel *Tunnel) {
 		}
 
 		packet := CreateSpNotification(NOTIFY_TUNNEL_START, message)
-		ts.TsSyncAllClients(packet)
+		ts.TsSyncAllClientsWithCategory(packet, SyncCategoryNotifications)
 		ts.notifications.Put(packet)
 	}
 }
@@ -122,7 +122,7 @@ func (ts *Teamserver) TsNotifyTunnelRemove(tunnel *Tunnel) {
 		}
 
 		packet := CreateSpNotification(NOTIFY_TUNNEL_STOP, message)
-		ts.TsSyncAllClients(packet)
+		ts.TsSyncAllClientsWithCategory(packet, SyncCategoryNotifications)
 		ts.notifications.Put(packet)
 	}
 }

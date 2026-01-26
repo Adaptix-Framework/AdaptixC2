@@ -128,7 +128,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 		taskId = tunnel.TaskId
 
 		packet := CreateSpTunnelCreate(tunnel.Data)
-		ts.TsSyncAllClients(packet)
+		ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 
 		ts.TsNotifyTunnelAdd(tunnel)
 	}
@@ -212,7 +212,7 @@ func (ts *Teamserver) TsTunnelClientSetInfo(TunnelId string, Info string) error 
 	tunnel.Data.Info = Info
 
 	packet := CreateSpTunnelEdit(tunnel.Data)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncStateWithCategory(packet, "tunnel:"+tunnel.Data.TunnelId, SyncCategoryTunnels)
 
 	return nil
 }
@@ -237,7 +237,7 @@ func (ts *Teamserver) TsTunnelClientStop(TunnelId string, Client string) error {
 		ts.TunnelManager.CloseAllChannels(tunnel)
 
 		packet := CreateSpTunnelDelete(tunnel.Data)
-		ts.TsSyncAllClients(packet)
+		ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 
 		taskData := adaptix.TaskData{
 			TaskId:     tunnel.TaskId,
@@ -315,7 +315,7 @@ func (ts *Teamserver) TsTunnelStart(TunnelId string) (string, error) {
 	tunnel.TaskId, _ = krypt.GenerateUID(8)
 
 	packet := CreateSpTunnelCreate(tunnel.Data)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 
 	ts.TsNotifyTunnelAdd(tunnel)
 
@@ -400,9 +400,8 @@ func (ts *Teamserver) TsTunnelCreate(AgentId string, Type int, Info string, Lhos
 	if existingTunnel, ok := ts.TunnelManager.GetTunnel(tunnelData.TunnelId); ok {
 		if existingTunnel.Active {
 			return "", ErrTunnelAlreadyActive
-		} else {
-			ts.TunnelManager.DeleteTunnel(tunnelData.TunnelId)
 		}
+		ts.TunnelManager.DeleteTunnel(tunnelData.TunnelId)
 	}
 
 	tunnel := &Tunnel{
@@ -425,9 +424,8 @@ func (ts *Teamserver) TsTunnelCreateSocks4(AgentId string, Info string, Lhost st
 func (ts *Teamserver) TsTunnelCreateSocks5(AgentId string, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (string, error) {
 	if UseAuth {
 		return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_SOCKS5_AUTH, Info, Lhost, Lport, "", "", 0, Username, Password)
-	} else {
-		return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_SOCKS5, Info, Lhost, Lport, "", "", 0, "", "")
 	}
+	return ts.TsTunnelCreate(AgentId, adaptix.TUNNEL_TYPE_SOCKS5, Info, Lhost, Lport, "", "", 0, "", "")
 }
 
 func (ts *Teamserver) TsTunnelCreateLportfwd(AgentId string, Info string, Lhost string, Lport int, Thost string, Tport int) (string, error) {
@@ -445,7 +443,7 @@ func (ts *Teamserver) TsTunnelUpdateRportfwd(tunnelId int, result bool) (string,
 		tunnel, ok := ts.TunnelManager.GetTunnel(tunId)
 		if ok {
 			packet := CreateSpTunnelCreate(tunnel.Data)
-			ts.TsSyncAllClients(packet)
+			ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 
 			ts.TsNotifyTunnelAdd(tunnel)
 
@@ -509,7 +507,7 @@ func (ts *Teamserver) TsTunnelStop(TunnelId string) error {
 	ts.TunnelManager.CloseAllChannels(tunnel)
 
 	packet := CreateSpTunnelDelete(tunnel.Data)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 
 	taskData := adaptix.TaskData{
 		TaskId:     tunnel.TaskId,
@@ -625,8 +623,16 @@ func (ts *Teamserver) TsTunnelConnectionResume(AgentId string, channelId int, io
 	}
 }
 
-func (ts *Teamserver) TsTunnelConnectionClose(channelId int) {
-	ts.TunnelManager.CloseChannelByIdOnly(channelId)
+func (ts *Teamserver) TsTunnelConnectionClose(channelId int, writeOnly bool) {
+	ts.TunnelManager.CloseChannelByIdOnly(channelId, writeOnly)
+}
+
+func (ts *Teamserver) TsTunnelPause(channelId int) {
+	ts.TunnelManager.PauseChannel(channelId)
+}
+
+func (ts *Teamserver) TsTunnelResume(channelId int) {
+	ts.TunnelManager.ResumeChannel(channelId)
 }
 
 func (ts *Teamserver) TsTunnelConnectionHalt(channelId int, errorCode byte) {
@@ -661,7 +667,7 @@ func (ts *Teamserver) TsTunnelConnectionHalt(channelId int, errorCode byte) {
 			}
 		}
 	}
-	ts.TunnelManager.CloseChannelByIdOnly(channelId)
+	ts.TunnelManager.CloseChannelByIdOnly(channelId, false)
 }
 
 func (ts *Teamserver) TsTunnelConnectionAccept(tunnelId int, channelId int) {
@@ -702,14 +708,8 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 		return
 	}
 
-	tunChannel := &TunnelChannel{
-		channelId: channelId,
-		conn:      conn,
-		protocol:  "TCP",
-	}
-
-	tunChannel.prSrv, tunChannel.pwSrv = io.Pipe()
-	tunChannel.prTun, tunChannel.pwTun = io.Pipe()
+	stc := NewSafeTunnelChannel(tm, channelId, conn, nil, "TCP")
+	tunChannel := stc.TunnelChannel
 
 	var taskData adaptix.TaskData
 	switch tunnel.Type {
@@ -766,15 +766,8 @@ func handleTunChannelCreate(tm *TunnelManager, agent *Agent, tunnel *Tunnel, con
 }
 
 func handleTunChannelCreateClient(tm *TunnelManager, agent *Agent, tunnel *Tunnel, wsconn *websocket.Conn, channelId int, targetAddress string, targetPort int, protocol string) {
-	tunChannel := &TunnelChannel{
-		channelId: channelId,
-		conn:      nil,
-		wsconn:    wsconn,
-		protocol:  "TCP",
-	}
-
-	tunChannel.prSrv, tunChannel.pwSrv = io.Pipe()
-	tunChannel.prTun, tunChannel.pwTun = io.Pipe()
+	stc := NewSafeTunnelChannel(tm, channelId, nil, wsconn, "TCP")
+	tunChannel := stc.TunnelChannel
 
 	addressType := proxy.DetectAddrType(targetAddress)
 
@@ -823,14 +816,8 @@ func handlerReverseAccept(tm *TunnelManager, agent *Agent, tunnel *Tunnel, chann
 		return
 	}
 
-	tunChannel := &TunnelChannel{
-		channelId: channelId,
-		conn:      fwdConn,
-		protocol:  "TCP",
-	}
-
-	tunChannel.prSrv, tunChannel.pwSrv = io.Pipe()
-	tunChannel.prTun, tunChannel.pwTun = io.Pipe()
+	stc := NewSafeTunnelChannel(tm, channelId, fwdConn, nil, "TCP")
+	tunChannel := stc.TunnelChannel
 
 	tm.RegisterChannel(tunnel.Data.TunnelId, tunnel, tunChannel)
 
@@ -854,12 +841,7 @@ func relayPipeToTaskData(agent *Agent, channelId int, taskData adaptix.TaskData)
 	}
 	taskData.AgentId = agent.GetData().Id
 
-	taskTunnel := adaptix.TaskDataTunnel{
-		ChannelId: channelId,
-		Data:      taskData,
-	}
-
-	agent.HostedTunnelData.Push(taskTunnel)
+	agent.HostedTunnelTasks.Push(taskData)
 }
 
 func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunChannel *TunnelChannel, direct bool) {
@@ -877,42 +859,51 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 	}
 
 	go func() {
-		defer finish()
+		if direct {
+			defer finish()
+		}
 		if tunChannel.pwSrv == nil || tunChannel.conn == nil {
 			logs.Debug("", "[ERROR relaySocketToTunnel] pwSrv or conn == nil — copy (pwSrv <- conn)")
 			return
 		}
 		buf := tm.GetBuffer()
 		defer tm.PutBuffer(buf)
-		io.CopyBuffer(tunChannel.pwSrv, tunChannel.conn, buf)
+		_, _ = io.CopyBuffer(tunChannel.pwSrv, tunChannel.conn, buf)
 		_ = tunChannel.pwSrv.Close()
-	}()
-
-	go func() {
-		defer finish()
-		if tunChannel.prTun == nil || tunChannel.conn == nil {
-			logs.Debug("", "[ERROR relaySocketToTunnel] prTun or conn == nil — copy (conn <- prTun)")
-			return
-		}
-		buf := tm.GetBuffer()
-		defer tm.PutBuffer(buf)
-		io.CopyBuffer(tunChannel.conn, tunChannel.prTun, buf)
-		if tcp, ok := tunChannel.conn.(*net.TCPConn); ok {
-			_ = tcp.CloseWrite()
-		}
 	}()
 
 	if !direct {
 		go func() {
+			defer finish()
 			buf := tm.GetBuffer()
 			defer tm.PutBuffer(buf)
+
+			backoff := time.Duration(1) * time.Millisecond
+			const maxBackoff = 50 * time.Millisecond
+			const minBackoff = 1 * time.Millisecond
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
+					if tunChannel.paused.Load() {
+						time.Sleep(backoff)
+						if backoff < maxBackoff {
+							backoff *= 2
+						}
+						continue
+					}
+					if agent.HostedTunnelTasks != nil && agent.HostedTunnelTasks.Len() > 128 {
+						time.Sleep(backoff)
+						if backoff < maxBackoff {
+							backoff *= 2
+						}
+						continue
+					}
+
 					n, err := tunChannel.prSrv.Read(buf)
 					if n > 0 {
+						backoff = minBackoff
 						var td adaptix.TaskData
 						if tunChannel.protocol == "UDP" {
 							td = tunnel.Callbacks.WriteUDP(tunChannel.channelId, buf[:n])
@@ -944,7 +935,9 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 	}
 
 	go func() {
-		defer finish()
+		if direct {
+			defer finish()
+		}
 		if tunChannel.wsconn == nil || tunChannel.pwSrv == nil {
 			return
 		}
@@ -960,37 +953,38 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 		_ = tunChannel.pwSrv.Close()
 	}()
 
-	go func() {
-		defer finish()
-		if tunChannel.wsconn == nil || tunChannel.prTun == nil {
-			return
-		}
-		buf := tm.GetBuffer()
-		defer tm.PutBuffer(buf)
-		for {
-			n, err := tunChannel.prTun.Read(buf)
-			if n > 0 {
-				if err := tunChannel.wsconn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
-					break
-				}
-			}
-			if err != nil {
-				break
-			}
-		}
-	}()
-
 	if !direct {
 		go func() {
+			defer finish()
 			buf := tm.GetBuffer()
 			defer tm.PutBuffer(buf)
+
+			backoff := time.Duration(1) * time.Millisecond
+			const maxBackoff = 50 * time.Millisecond
+			const minBackoff = 1 * time.Millisecond
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
+					if tunChannel.paused.Load() {
+						time.Sleep(backoff)
+						if backoff < maxBackoff {
+							backoff *= 2
+						}
+						continue
+					}
+					if agent.HostedTunnelTasks != nil && agent.HostedTunnelTasks.Len() > 128 {
+						time.Sleep(backoff)
+						if backoff < maxBackoff {
+							backoff *= 2
+						}
+						continue
+					}
+
 					n, err := tunChannel.prSrv.Read(buf)
 					if n > 0 {
+						backoff = minBackoff
 						var td adaptix.TaskData
 						if tunChannel.protocol == "UDP" {
 							td = tunnel.Callbacks.WriteUDP(tunChannel.channelId, buf[:n])

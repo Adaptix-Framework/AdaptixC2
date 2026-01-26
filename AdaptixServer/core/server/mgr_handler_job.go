@@ -185,8 +185,8 @@ func (h *JobTaskHandler) processReadyJobs(tm *TaskManager, agent *Agent, task *a
 				packet_task_update := CreateSpAgentTaskUpdate(hookJob.Job)
 				packet_console_update := CreateSpAgentConsoleTaskUpd(hookJob.Job)
 
-				tm.ts.TsSyncAllClients(packet_task_update)
-				tm.ts.TsSyncAllClients(packet_console_update)
+				tm.ts.TsSyncAllClientsWithCategory(packet_task_update, SyncCategoryTasksManager)
+				tm.ts.TsSyncConsole(packet_console_update, hookJob.Job.Client)
 
 				agent.OutConsole.Put(packet_console_update)
 				_ = tm.ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)
@@ -260,8 +260,8 @@ func (h *JobTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task 
 			packet_task_update := CreateSpAgentTaskUpdate(hookJob.Job)
 			packet_console_update := CreateSpAgentConsoleTaskUpd(hookJob.Job)
 
-			tm.ts.TsSyncAllClients(packet_task_update)
-			tm.ts.TsSyncAllClients(packet_console_update)
+			tm.ts.TsSyncAllClientsWithCategory(packet_task_update, SyncCategoryTasksManager)
+			tm.ts.TsSyncConsole(packet_console_update, hookJob.Job.Client)
 
 			agent.OutConsole.Put(packet_console_update)
 			_ = tm.ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)

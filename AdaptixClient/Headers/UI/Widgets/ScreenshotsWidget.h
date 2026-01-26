@@ -156,6 +156,7 @@ public:
                 case SCR_Computer: return s.Computer;
                 case SCR_Note:     return s.Note;
                 case SCR_Date:     return s.Date;
+                default: ;
             }
         }
 

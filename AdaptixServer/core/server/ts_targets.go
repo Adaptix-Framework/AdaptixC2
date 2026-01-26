@@ -103,7 +103,7 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 		_ = ts.DBMS.DbTargetsAdd(newTargets)
 
 		packet := CreateSpTargetsAdd(newTargets)
-		ts.TsSyncAllClients(packet)
+		ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
 
 		// --- POST HOOK ---
 		postEvent := &eventing.EventDataTargetAdd{Targets: inputTargets}
@@ -135,7 +135,7 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string,
 			_ = ts.DBMS.DbTargetUpdate(t)
 
 			packet := CreateSpTargetUpdate(*t)
-			ts.TsSyncAllClients(packet)
+			ts.TsSyncStateWithCategory(packet, "target:"+t.TargetId, SyncCategoryTargetsRealtime)
 
 			return t.TargetId, nil
 		}
@@ -158,7 +158,7 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string,
 	_ = ts.DBMS.DbTargetsAdd(newTargets)
 
 	packet := CreateSpTargetsAdd(newTargets)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
 
 	return target.TargetId, nil
 }
@@ -216,7 +216,7 @@ func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain str
 	_ = ts.DBMS.DbTargetUpdate(target)
 
 	packet := CreateSpTargetUpdate(*target)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncStateWithCategory(packet, "target:"+target.TargetId, SyncCategoryTargetsRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataTargetEdit{Target: *target}
@@ -257,7 +257,7 @@ func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
 	}(targetsId)
 
 	packet := CreateSpTargetDelete(targetsId)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataTargetRemove{TargetIds: targetsId}
@@ -294,7 +294,7 @@ func (ts *Teamserver) TsTargetSetTag(targetsId []string, tag string) error {
 	}
 
 	packet := CreateSpTargetSetTag(ids, tag)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
 
 	return nil
 }
@@ -335,7 +335,11 @@ func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
 	}(updatedTargets)
 
 	for _, packet := range packets {
-		ts.TsSyncAllClients(packet)
+		if upd, ok := packet.(SyncPackerTargetUpdate); ok {
+			ts.TsSyncStateWithCategory(upd, "target:"+upd.TargetId, SyncCategoryTargetsRealtime)
+		} else {
+			ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
+		}
 	}
 
 	return nil
