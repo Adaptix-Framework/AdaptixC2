@@ -31,6 +31,7 @@ public:
 
     static void onNewProject();
     void onCloseProject();
+    void onProjectSubscriptions();
     void onAxScriptConsole();
 
     static void onScriptManager();

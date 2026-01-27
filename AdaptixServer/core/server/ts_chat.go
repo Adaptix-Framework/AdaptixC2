@@ -19,5 +19,5 @@ func (ts *Teamserver) TsChatSendMessage(username string, message string) {
 		logs.Error("", err.Error())
 	}
 	packet := CreateSpChatMessage(chatData)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryChatRealtime)
 }

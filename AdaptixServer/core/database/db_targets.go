@@ -120,7 +120,9 @@ func (dbms *DBMS) DbTargetUpdateBatch(targets []*adaptix.TargetData) error {
 		_ = tx.Rollback()
 		return err
 	}
-	defer stmt.Close()
+	defer func(stmt *sql.Stmt) {
+		_ = stmt.Close()
+	}(stmt)
 
 	for _, t := range targets {
 		_, err = stmt.Exec(t.Computer, t.Domain, t.Address, t.Os, t.OsDesk, t.Tag, t.Info, t.Alive, strings.Join(t.Agents, ","), t.TargetId)
@@ -144,7 +146,9 @@ func (dbms *DBMS) DbTargetsAll() []*adaptix.TargetData {
 			logs.Debug("", "Failed to query targets: "+err.Error())
 			return targets
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			targetData := &adaptix.TargetData{}

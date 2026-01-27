@@ -437,7 +437,15 @@ func (t *TransportHTTP) generateSelfSignedCert(certFile, keyFile string) error {
 		BasicConstraintsValid: true,
 	}
 
-	template.DNSNames = []string{t.Config.HostBind}
+	hostBind := strings.TrimSpace(t.Config.HostBind)
+	if hostBind == "" || hostBind == "0.0.0.0" || hostBind == "::" {
+		template.DNSNames = []string{"localhost"}
+		template.IPAddresses = []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")}
+	} else if ip := net.ParseIP(hostBind); ip != nil {
+		template.IPAddresses = []net.IP{ip}
+	} else {
+		template.DNSNames = []string{hostBind}
+	}
 
 	certData, err = x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {

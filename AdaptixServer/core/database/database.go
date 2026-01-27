@@ -47,11 +47,16 @@ func (dbms *DBMS) DatabaseInit() error {
     	"ListenerName" TEXT NOT NULL UNIQUE, 
     	"ListenerRegName" TEXT NOT NULL,
     	"ListenerConfig" TEXT NOT NULL,
+		"ListenerStatus" TEXT,
     	"CreateTime" BIGINT,
     	"Watermark" TEXT NOT NULL,
     	"CustomData" BLOB
     );`
 	_, err = dbms.database.Exec(createTableQuery)
+
+	// TODO CLEAR: Soft migration for old databases
+	_, _ = dbms.database.Exec(`ALTER TABLE "Listeners" ADD COLUMN "ListenerStatus" TEXT;`)
+	_, _ = dbms.database.Exec(`UPDATE "Listeners" SET "ListenerStatus" = 'Listen' WHERE "ListenerStatus" IS NULL;`)
 
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Chat" (
     	"Id" INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -76,7 +76,7 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 	ts.downloads.Put(downloadData.FileId, downloadData)
 
 	packet := CreateSpDownloadCreate(downloadData)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryDownloadsRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataDownloadStart{
@@ -118,7 +118,7 @@ func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) er
 	ts.downloads.Put(downloadData.FileId, downloadData)
 
 	packet := CreateSpDownloadUpdate(downloadData)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncStateWithCategory(packet, "download:"+downloadData.FileId, SyncCategoryDownloadsRealtime)
 
 	return nil
 }
@@ -164,7 +164,7 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 	}
 
 	packet := CreateSpDownloadUpdate(downloadData)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncStateWithCategory(packet, "download:"+downloadData.FileId, SyncCategoryDownloadsRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataDownloadFinish{Download: downloadData, Canceled: canceled}
@@ -226,10 +226,10 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 	ts.downloads.Put(downloadData.FileId, downloadData)
 
 	packetRes1 := CreateSpDownloadCreate(downloadData)
-	ts.TsSyncAllClients(packetRes1)
+	ts.TsSyncAllClientsWithCategory(packetRes1, SyncCategoryDownloadsRealtime)
 
 	packetRes2 := CreateSpDownloadUpdate(downloadData)
-	ts.TsSyncAllClients(packetRes2)
+	ts.TsSyncStateWithCategory(packetRes2, "download:"+downloadData.FileId, SyncCategoryDownloadsRealtime)
 
 	err = ts.DBMS.DbDownloadInsert(downloadData)
 	if err != nil {
@@ -332,7 +332,7 @@ func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
 	}(filesToRemove, dbDeleteIds)
 
 	packet := CreateSpDownloadDelete(fileId)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryDownloadsRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataDownloadRemove{FileIds: deleteFiles}

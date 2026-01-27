@@ -12,15 +12,13 @@ class GraphItemLink final : public QGraphicsItem
     GraphItem* src = nullptr;
     GraphItem* dst = nullptr;
     QColor  color;
-    QString listenerName;
-    QString listenerType;
     QString linkName;
     QString status;
     QPointF srcPoint;
     QPointF dstPoint;
 
 public:
-    explicit GraphItemLink(GraphItem* src, GraphItem* dst, QString linkName);
+    explicit GraphItemLink(GraphItem* src, GraphItem* dst, const QString &linkName);
     ~GraphItemLink() override;
 
     void adjust();

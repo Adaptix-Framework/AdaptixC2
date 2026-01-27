@@ -38,7 +38,7 @@ class LogsWidget : public DockTab
     void highlightCurrent() const;
 
 public:
-    explicit LogsWidget(AdaptixWidget* w);
+    explicit LogsWidget(const AdaptixWidget* w);
     ~LogsWidget() override;
 
     void SetUpdatesEnabled(bool enabled);

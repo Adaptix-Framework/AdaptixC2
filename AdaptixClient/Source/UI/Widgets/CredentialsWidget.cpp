@@ -42,7 +42,47 @@ CredentialsWidget::~CredentialsWidget() = default;
 
 void CredentialsWidget::SetUpdatesEnabled(const bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingCreds();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
+}
+
+void CredentialsWidget::flushPendingCreds()
+{
+    if (pendingCreds.isEmpty())
+        return;
+
+    QList<CredentialData> filtered;
+    {
+        QWriteLocker locker(&adaptixWidget->CredentialsLock);
+        QSet<QString> existingIds;
+        for (const auto& c : adaptixWidget->Credentials)
+            existingIds.insert(c.CredId);
+
+        for (const auto& cred : pendingCreds) {
+            if (existingIds.contains(cred.CredId))
+                continue;
+
+            existingIds.insert(cred.CredId);
+            adaptixWidget->Credentials.push_back(cred);
+            filtered.append(cred);
+        }
+    }
+
+    if (!filtered.isEmpty())
+        credsModel->add(filtered);
+
+    pendingCreds.clear();
 }
 
 void CredentialsWidget::createUI()
@@ -127,10 +167,15 @@ void CredentialsWidget::createUI()
 
 /// Main
 
-void CredentialsWidget::AddCredentialsItems(QList<CredentialData> credsList) const
+void CredentialsWidget::AddCredentialsItems(QList<CredentialData> credsList)
 {
     if (credsList.isEmpty())
         return;
+
+    if (bufferingEnabled) {
+        pendingCreds.append(credsList);
+        return;
+    }
 
     QList<CredentialData> filtered;
     {

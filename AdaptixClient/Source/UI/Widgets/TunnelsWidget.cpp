@@ -94,6 +94,7 @@ void TunnelsWidget::createUI()
     tableView->verticalHeader()->setVisible(false);
 
     tableView->hideColumn(TUC_TunnelId);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(0, 0, 0, 0);
@@ -111,7 +112,7 @@ void TunnelsWidget::Clear() const
     inputFilter->clear();
 }
 
-void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
+void TunnelsWidget::AddTunnelItem(const TunnelData &newTunnel) const
 {
     if (tunnelsModel->contains(newTunnel.TunnelId))
         return;

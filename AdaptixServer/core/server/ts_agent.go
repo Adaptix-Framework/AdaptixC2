@@ -109,7 +109,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 	ts.Agents.Put(agentData.Id, agent)
 
 	packetNew := CreateSpAgentNew(agentData)
-	ts.TsSyncAllClients(packetNew)
+	ts.TsSyncAllClientsWithCategory(packetNew, SyncCategoryAgents)
 
 	agent.UpdateData(func(d *adaptix.AgentData) {
 		d.TargetId, _ = ts.TsTargetsCreateAlive(agentData)
@@ -147,17 +147,25 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 	if err != nil {
 		return err
 	}
-	taskData.HookId = hookId
-	taskData.HandlerId = handlerId
-	if taskData.Type == adaptix.TASK_TYPE_TASK && ui {
-		taskData.Type = adaptix.TASK_TYPE_BROWSER
+	if taskData.Type == adaptix.TASK_TYPE_LOCAL {
+		if taskData.Message != "" || taskData.ClearText != "" {
+			ts.TsAgentConsoleLocalCommand(agentId, clientName, cmdline, taskData.Message, taskData.ClearText)
+		}
+	} else {
+		taskData.HookId = hookId
+		taskData.HandlerId = handlerId
+		if taskData.Type == adaptix.TASK_TYPE_TASK && ui {
+			taskData.Type = adaptix.TASK_TYPE_BROWSER
+		}
+
+		ts.TsTaskCreate(agentId, cmdline, clientName, taskData)
+
+		if (taskData.Type != adaptix.TASK_TYPE_BROWSER) && (len(messageData.Message) > 0 || len(messageData.Text) > 0) {
+			ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text, false)
+		}
+
 	}
 
-	ts.TsTaskCreate(agentId, cmdline, clientName, taskData)
-
-	if (taskData.Type != adaptix.TASK_TYPE_BROWSER) && (len(messageData.Message) > 0 || len(messageData.Text) > 0) {
-		ts.TsAgentConsoleOutput(agentId, messageData.Status, messageData.Message, messageData.Text, false)
-	}
 	return nil
 }
 
@@ -178,8 +186,9 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 		}
 
 		updatedAgentData := agent.GetData()
-		//packetUpdate := CreateSpAgentUpdate(updatedAgentData)
-		//ts.TsSyncAllClients(packetUpdate)
+
+		//packetNew := CreateSpAgentNew(updatedAgentData)
+		//ts.TsSyncAgentActivated(packetNew)
 
 		// --- POST HOOK ---
 		postEvent := &eventing.EventDataAgentActivate{Agent: updatedAgentData}
@@ -378,7 +387,7 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
 	}
 
 	packetNew := CreateSpAgentUpdate(agentData)
-	ts.TsSyncAllClients(packetNew)
+	ts.TsSyncStateWithCategory(packetNew, "agent:"+agentData.Id, SyncCategoryAgents)
 
 	return nil
 }
@@ -432,6 +441,7 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 		Tags         *string `json:"tags,omitempty"`
 		Mark         *string `json:"mark,omitempty"`
 		Color        *string `json:"color,omitempty"`
+		Listener     *string `json:"listener,omitempty"`
 	}
 
 	jsonBytes, err := json.Marshal(updateData)
@@ -512,6 +522,10 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 		if fields.Tags != nil {
 			d.Tags = *fields.Tags
 			syncPacket.Tags = fields.Tags
+		}
+		if fields.Listener != nil {
+			d.Listener = *fields.Listener
+			syncPacket.Listener = fields.Listener
 		}
 		if fields.Mark != nil {
 			if d.Mark != "Terminated" && d.Mark != *fields.Mark {
@@ -674,7 +688,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 	}
 
 	packetNew := CreateSpAgentUpdate(agentData)
-	ts.TsSyncAllClients(packetNew)
+	ts.TsSyncStateWithCategory(packetNew, "agent:"+agentId, SyncCategoryAgents)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataAgentTerminate{AgentId: agentId, TaskId: terminateTaskId}
@@ -776,7 +790,7 @@ func (ts *Teamserver) TsAgentRemove(agentId string) error {
 	}
 
 	packet := CreateSpAgentRemove(agentId)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryAgents)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataAgentRemove{Agent: agent.GetData()}
@@ -798,7 +812,7 @@ func (ts *Teamserver) TsAgentSetTick(agentId string, listenerName string) error 
 
 	agentData := agent.GetData()
 
-	listenerChanged := listenerName != "" && agentData.Listener != listenerName
+	listenerChanged := (listenerName != "") && (agentData.Listener != listenerName)
 
 	if agentData.Async {
 		if listenerChanged {
@@ -808,7 +822,7 @@ func (ts *Teamserver) TsAgentSetTick(agentId string, listenerName string) error 
 			})
 			updatedAgentData := agent.GetData()
 			packet := CreateSpAgentUpdate(updatedAgentData)
-			ts.TsSyncAllClients(packet)
+			ts.TsSyncStateWithCategory(packet, "agent:"+agentId, SyncCategoryAgents)
 			_ = ts.DBMS.DbAgentUpdate(updatedAgentData)
 		} else {
 			agent.UpdateData(func(d *adaptix.AgentData) {
@@ -823,7 +837,7 @@ func (ts *Teamserver) TsAgentSetTick(agentId string, listenerName string) error 
 		})
 		updatedAgentData := agent.GetData()
 		packet := CreateSpAgentUpdate(updatedAgentData)
-		ts.TsSyncAllClients(packet)
+		ts.TsSyncStateWithCategory(packet, "agent:"+agentId, SyncCategoryAgents)
 		_ = ts.DBMS.DbAgentUpdate(updatedAgentData)
 	}
 	return nil
@@ -851,7 +865,7 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 
 		if len(agentSlice) > 0 {
 			packetTick := CreateSpAgentTick(agentSlice)
-			ts.TsSyncAllClients(packetTick)
+			ts.TsSyncStateWithCategory(packetTick, "tick", SyncCategoryAgents)
 		}
 
 		time.Sleep(800 * time.Millisecond)
@@ -862,7 +876,7 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 
 func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool) {
 	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncConsole(packet, "")
 
 	if store {
 		_ = ts.DBMS.DbConsoleInsert(agentId, packet)
@@ -871,5 +885,15 @@ func (ts *Teamserver) TsAgentConsoleOutput(agentId string, messageType int, mess
 
 func (ts *Teamserver) TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string) {
 	packet := CreateSpAgentConsoleOutput(agentId, messageType, message, clearText)
-	ts.TsSyncClient(client, packet)
+	ts.TsSyncConsole(packet, client)
+}
+
+func (ts *Teamserver) TsAgentConsoleErrorCommand(agentId string, client string, cmdline string, message string, HookId string, HandlerId string) {
+	packet := CreateSpAgentErrorCommand(agentId, cmdline, message, HookId, HandlerId)
+	ts.TsSyncConsole(packet, client)
+}
+
+func (ts *Teamserver) TsAgentConsoleLocalCommand(agentId string, client string, cmdline string, message string, text string) {
+	packet := CreateSpAgentLocalCommand(agentId, cmdline, message, text)
+	ts.TsSyncConsole(packet, client)
 }

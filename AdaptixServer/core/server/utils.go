@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
@@ -156,6 +157,10 @@ type TunnelChannel struct {
 
 	pwTun *io.PipeWriter
 	prTun *io.PipeReader
+
+	ingressChan chan []byte
+	paused      atomic.Bool
+	flowPaused  atomic.Bool
 }
 
 type Tunnel struct {
@@ -355,6 +360,7 @@ type SyncPackerAgentUpdate struct {
 	Domain       *string `json:"a_domain,omitempty"`
 	Computer     *string `json:"a_computer,omitempty"`
 	Username     *string `json:"a_username,omitempty"`
+	Listener     *string `json:"a_listener,omitempty"`
 }
 
 type SyncPackerAgentTick struct {
@@ -434,6 +440,26 @@ type SyncPackerAgentConsoleOutput struct {
 	MessageType int    `json:"a_msg_type"`
 	Message     string `json:"a_message"`
 	ClearText   string `json:"a_text"`
+}
+
+type SyncPackerAgentErrorCommand struct {
+	SpType int `json:"type"`
+
+	AgentId   string `json:"a_id"`
+	Cmdline   string `json:"a_cmdline"`
+	Message   string `json:"a_message"`
+	HookId    string `json:"ax_hook_id"`
+	HandlerId string `json:"ax_handler_id"`
+}
+
+type SyncPackerAgentLocalCommand struct {
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+
+	AgentId string `json:"a_id"`
+	Cmdline string `json:"a_cmdline"`
+	Message string `json:"a_message"`
+	Text    string `json:"a_text"`
 }
 
 type SyncPackerAgentConsoleTaskSync struct {

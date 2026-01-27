@@ -184,7 +184,18 @@ void AxConsoleWidget::processInput()
     OutputTextEdit->appendColor(" >>> ", QColor(COLOR_LightGray));
     OutputTextEdit->appendColorBold(code + "\n", QColor(COLOR_White));
 
-    QJSValue result = scriptManager->MainScriptEngine()->evaluate(code);
+    if (!scriptManager) {
+        OutputTextEdit->appendColor("Script engine is not available\n", QColor(COLOR_ChiliPepper));
+        return;
+    }
+
+    QJSEngine* engine = scriptManager->MainScriptEngine();
+    if (!engine) {
+        OutputTextEdit->appendColor("Script engine is not initialized\n", QColor(COLOR_ChiliPepper));
+        return;
+    }
+
+    QJSValue result = engine->evaluate(code);
     if (result.isError()) {
         QString errorString = QString("%1\n").arg(result.toString());
         OutputTextEdit->appendColor(errorString, QColor(COLOR_ChiliPepper));
@@ -310,6 +321,7 @@ void AxConsoleWidget::handleShowHistory()
 
 void AxConsoleWidget::onResetScript()
 {
-    scriptManager->ResetMain();
+    if (scriptManager)
+        scriptManager->ResetMain();
     OutputTextEdit->clear();
 }

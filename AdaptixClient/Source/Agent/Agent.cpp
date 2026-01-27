@@ -87,6 +87,8 @@ void Agent::Update(const QJsonObject &jsonObjAgentData)
     QString old_Color = this->data.Color;
     bool needUpdateImage = false;
 
+    QString oldListener = this->data.Listener;
+
     QJsonValue val = jsonObjAgentData.value("a_sleep");
     if (val.isDouble())
         this->data.Sleep = val.toDouble();
@@ -178,6 +180,37 @@ void Agent::Update(const QJsonObject &jsonObjAgentData)
     val = jsonObjAgentData.value("a_username");
     if (val.isString())
         this->data.Username = val.toString();
+
+    val = jsonObjAgentData.value("a_listener");
+    if (val.isString()) {
+        this->data.Listener = val.toString();
+    }
+
+    if (oldListener != this->data.Listener) {
+        this->listenerType = "";
+        this->connType = "";
+
+        for (auto listenerData : this->adaptixWidget->Listeners) {
+            if (listenerData.Name == this->data.Listener) {
+                this->listenerType = listenerData.ListenerRegName;
+                if (listenerData.ListenerType == "internal")
+                    this->connType = "internal";
+                else
+                    this->connType = "external";
+                break;
+            }
+        }
+
+        auto regAgent = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
+        if (regAgent.commander && regAgent.commander != this->commander) {
+            this->commander = regAgent.commander;
+            if (this->Console)
+                this->Console->SetCommander(this->commander);
+        }
+
+        if (this->graphItem)
+            this->graphItem->invalidateCache();
+    }
 
     if (needUpdateImage)
         this->UpdateImage();

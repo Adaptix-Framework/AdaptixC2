@@ -556,7 +556,7 @@ QJSValue AxListWidgetWrapper::items()
     for (int i = 0; i < list->count(); ++i) {
         QListWidgetItem* item = list->item(i);
         if (item)
-             jsArray.setProperty(i, item->text());
+            jsArray.setProperty(i, item->text());
     }
     return jsArray;
 }
@@ -589,9 +589,13 @@ void AxListWidgetWrapper::addItems(const QJSValue &items)
     }
 }
 
-void AxListWidgetWrapper::clear() { list->clear(); }
-
 void AxListWidgetWrapper::removeItem(const int index) { delete list->takeItem(index); }
+
+QString AxListWidgetWrapper::itemText(const int index) const
+{
+    QListWidgetItem* item = list->item(index);
+    return item ? item->text() : QString();
+}
 
 void AxListWidgetWrapper::setItemText(const int index, const QString& text)
 {
@@ -600,11 +604,7 @@ void AxListWidgetWrapper::setItemText(const int index, const QString& text)
         item->setText(text);
 }
 
-QString AxListWidgetWrapper::itemText(const int index) const
-{
-    QListWidgetItem* item = list->item(index);
-    return item ? item->text() : QString();
-}
+void AxListWidgetWrapper::clear() { list->clear(); }
 
 int AxListWidgetWrapper::count() const { return list->count(); }
 
@@ -948,7 +948,7 @@ void AxSelectorFile::onSelectFile()
 
 /// SELECTOR CREDENTIALS
 
-AxDialogCreds::AxDialogCreds(const QJSValue &headers, QVector<CredentialData> vecCreds, QWidget *parent)
+AxDialogCreds::AxDialogCreds(const QJSValue &headers, const QVector<CredentialData> &vecCreds, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
@@ -1098,7 +1098,7 @@ void AxSelectorCreds::close() const { dialog->close(); }
 
 /// SELECTOR AGENTS
 
-AxDialogAgents::AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QWidget *parent)
+AxDialogAgents::AxDialogAgents(const QJSValue &headers, const QVector<AgentData> &vecAgents, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
@@ -1270,7 +1270,7 @@ void AxSelectorAgents::close() const { dialog->close(); }
 
 /// SELECTOR LISTENERS
 
-AxDialogListeners::AxDialogListeners(const QJSValue &headers, QVector<ListenerData> vecListeners, QWidget *parent)
+AxDialogListeners::AxDialogListeners(const QJSValue &headers, const QVector<ListenerData> &vecListeners, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
@@ -1420,7 +1420,7 @@ void AxSelectorListeners::close() const { dialog->close(); }
 
 /// SELECTOR TARGETS
 
-AxDialogTargets::AxDialogTargets(const QJSValue &headers, QVector<TargetData> vecTargets, QWidget *parent)
+AxDialogTargets::AxDialogTargets(const QJSValue &headers, const QVector<TargetData> &vecTargets, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
@@ -1577,7 +1577,7 @@ void AxSelectorTargets::close() const { dialog->close(); }
 
 /// SELECTOR DOWNLOADS
 
-AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, QVector<DownloadData> vecDownloads, QWidget *parent)
+AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, const QVector<DownloadData> &vecDownloads, QWidget *parent)
 {
     this->setProperty("Main", "base");
 

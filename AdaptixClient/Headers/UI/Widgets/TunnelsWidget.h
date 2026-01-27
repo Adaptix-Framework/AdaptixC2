@@ -160,6 +160,7 @@ public:
                 case TUC_Client:    return t.Client;
                 case TUC_Fhost:     return t.Fhost;
                 case TUC_Fport:     return t.Fport;
+                default: ;
             }
         }
 
@@ -182,7 +183,8 @@ public:
                     return Qt::AlignCenter;
                 case TUC_Type:
                 case TUC_Info:
-                    return int(Qt::AlignLeft | Qt::AlignVCenter);
+                    return static_cast<int>(Qt::AlignLeft | Qt::AlignVCenter);
+                default: ;
             }
         }
 
@@ -280,7 +282,7 @@ public:
     void SetUpdatesEnabled(const bool enabled);
 
     void Clear() const;
-    void AddTunnelItem(TunnelData newTunnel) const;
+    void AddTunnelItem(const TunnelData &newTunnel) const;
     void EditTunnelItem(const QString &tunnelId, const QString &info) const;
     void RemoveTunnelItem(const QString &tunnelId) const;
 

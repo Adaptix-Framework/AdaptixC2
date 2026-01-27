@@ -146,13 +146,31 @@ ULONG Packer::datasize()
 
 VOID Packer::Clear(BOOL renew)
 {
-    MemFreeLocal((LPVOID*)&this->buffer, this->capacity);
-    this->index = 0;
-    this->size = 0;
-    this->capacity = 0;
-    if (renew) {
-        this->capacity = 4096;
-        this->buffer = (BYTE*)MemAllocLocal(this->capacity);
+    if (!renew) {
+        if (this->buffer)
+            MemFreeLocal((LPVOID*)&this->buffer, this->capacity);
+        this->buffer   = NULL;
+        this->capacity = 0;
+        this->size     = 0;
+        this->index    = 0;
+        return;
+    }
+    else {
+        if (this->buffer == NULL) {
+            this->capacity = 4096;
+            this->buffer = (BYTE*)MemAllocLocal(this->capacity);
+        } 
+        else if (this->capacity > 0x100000) { // 1MB
+            MemFreeLocal((LPVOID*)&this->buffer, this->capacity);
+            this->capacity = 4096;
+            this->buffer = (BYTE*)MemAllocLocal(this->capacity);
+        }
+        else {
+            memset(this->buffer, 0, this->capacity);
+        }
+
+        this->index = 0;
+        this->size = 0;
     }
 }
 

@@ -79,7 +79,7 @@ class BrowserFilesWidget : public DockTab
     BrowserFileData* getFileData(const QString &path);
 
 public:
-    BrowserFilesWidget(AdaptixWidget* w, Agent* a);
+    BrowserFilesWidget(const AdaptixWidget* w, Agent* a);
     ~BrowserFilesWidget() override;
 
     void SetDisksWin(qint64 time, int msgType, const QString &message, const QString &data);

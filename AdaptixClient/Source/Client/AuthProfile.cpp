@@ -57,3 +57,15 @@ QString AuthProfile::GetURL() const
 void AuthProfile::SetAccessToken(const QString &token) { this->accessToken = token; };
 
 void AuthProfile::SetRefreshToken(const QString &token) { this->refreshToken = token; }
+
+QStringList AuthProfile::GetSubscriptions() const { return this->subscriptions; }
+
+void AuthProfile::SetSubscriptions(const QStringList &subs) { this->subscriptions = subs; }
+
+QStringList AuthProfile::GetRegisteredCategories() const { return this->registeredCategories; }
+
+void AuthProfile::SetRegisteredCategories(const QStringList &cats) { this->registeredCategories = cats; }
+
+bool AuthProfile::GetConsoleMultiuser() const { return this->consoleMultiuser; }
+
+void AuthProfile::SetConsoleMultiuser(bool multiuser) { this->consoleMultiuser = multiuser; }

