@@ -404,9 +404,9 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 
 	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Target: %s/%s, Output: %s", GoOs, GoArch, Filename))
 
-	config := "package main\n\nvar encProfiles = [][]byte{"
+	config := "package main\n\nvar encProfiles = [][]byte{\n"
 	for _, profile := range agentProfiles {
-		config += fmt.Sprintf("    []byte(\"%s\")\n", profile)
+		config += fmt.Sprintf("    []byte(\"%s\"),\n", profile)
 	}
 	config += "}\n"
 
