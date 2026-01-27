@@ -320,39 +320,58 @@ function GenerateUI(listeners_type)
         spinJitter.setVisible(false);
     }
 
+    let checkKilldate = form.create_check("Set 'killdate'");
+    let dateKill = form.create_dateline("dd.MM.yyyy");
+    let timeKill = form.create_timeline("HH:mm:ss");
+
+    let checkWorkingTime = form.create_check("Set 'workingtime'");
+    let timeStart = form.create_timeline("HH:mm");
+    let timeFinish = form.create_timeline("HH:mm");
+
+    let labelSvcName = form.create_label("Service Name:");
+    labelSvcName.setVisible(false)
+    let textSvcName = form.create_textline("AgentService");
+    textSvcName.setVisible(false);
+
+    let checkSideloading = form.create_check("Legit-DLL:");
+    checkSideloading.setVisible(false);
+    let sideloadingSelector = form.create_selector_file();
+    sideloadingSelector.setVisible(false);
+
+    //////////////////// DNS Settings
+
     let labelDnsMode = form.create_label("DNS Mode:");
     let comboDnsMode = form.create_combo();
     comboDnsMode.addItems(["DNS (Direct UDP)", "DoH (DNS over HTTPS)", "DNS -> DoH fallback", "DoH -> DNS fallback"]);
     comboDnsMode.setCurrentIndex(0);
-    if(!listeners_type.includes("BeaconDNS")) {
-        labelDnsMode.setVisible(false);
-        comboDnsMode.setVisible(false);
-    }
 
     let labelDnsResolvers = form.create_label("DNS Resolvers:");
-    let textDnsResolvers = form.create_textline("");
-    textDnsResolvers.setPlaceholder("8.8.8.8,1.1.1.1,9.9.9.9");
+    let textDnsResolvers = form.create_textline("8.8.8.8,1.1.1.1,9.9.9.9");
 
     let labelDohResolvers = form.create_label("DoH Resolvers:");
-    let textDohResolvers = form.create_textline("");
-    textDohResolvers.setPlaceholder("https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query");
+    let textDohResolvers = form.create_textline("https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query");
 
     let labelUserAgent = form.create_label("User-Agent:");
-    let textUserAgent = form.create_textline("");
-    textUserAgent.setPlaceholder("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
+    let textUserAgent = form.create_textline("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
+
+    let layout_group_dns = form.create_gridlayout();
+    layout_group_dns.addWidget(labelDnsMode,      0, 0, 1, 1);
+    layout_group_dns.addWidget(comboDnsMode,      0, 1, 1, 1);
+    layout_group_dns.addWidget(labelDnsResolvers, 1, 0, 1, 1);
+    layout_group_dns.addWidget(textDnsResolvers,  1, 1, 1, 1);
+    layout_group_dns.addWidget(labelDohResolvers, 2, 0, 1, 1);
+    layout_group_dns.addWidget(textDohResolvers,  2, 1, 1, 1);
+    layout_group_dns.addWidget(labelUserAgent,    3, 0, 1, 1);
+    layout_group_dns.addWidget(textUserAgent,     3, 1, 1, 1);
+
+    let panel_group_dns = form.create_panel();
+    panel_group_dns.setLayout(layout_group_dns);
+    let group_dns = form.create_groupbox("DNS settings")
+    group_dns.setPanel(panel_group_dns);
 
     function updateDnsFieldsVisibility() {
         let mode = comboDnsMode.currentText();
-        let isDns = listeners_type.includes("BeaconDNS");
-        
-        if(!isDns) {
-            labelDnsResolvers.setVisible(false);
-            textDnsResolvers.setVisible(false);
-            labelDohResolvers.setVisible(false);
-            textDohResolvers.setVisible(false);
-            labelUserAgent.setVisible(false);
-            textUserAgent.setVisible(false);
-        } else if(mode == "DNS (Direct UDP)") {
+        if(mode == "DNS (Direct UDP)") {
             labelDnsResolvers.setVisible(true);
             textDnsResolvers.setVisible(true);
             labelDohResolvers.setVisible(false);
@@ -377,78 +396,58 @@ function GenerateUI(listeners_type)
     }
 
     updateDnsFieldsVisibility();
-
     form.connect(comboDnsMode, "currentTextChanged", function(text) {
         updateDnsFieldsVisibility();
     });
 
-    let checkKilldate = form.create_check("Set 'killdate'");
-    let dateKill = form.create_dateline("dd.MM.yyyy");
-    let timeKill = form.create_timeline("HH:mm:ss");
+    //////////////////// HTTP Settings
 
-    let checkWorkingTime = form.create_check("Set 'workingtime'");
-    let timeStart = form.create_timeline("HH:mm");
-    let timeFinish = form.create_timeline("HH:mm");
-
-    let labelSvcName = form.create_label("Service Name:");
-    labelSvcName.setVisible(false)
-    let textSvcName = form.create_textline("AgentService");
-    textSvcName.setVisible(false);
-
-    let checkSideloading = form.create_check("Legit-DLL:");
-    checkSideloading.setVisible(false);
-    let sideloadingSelector = form.create_selector_file();
-    sideloadingSelector.setVisible(false);
-
-    // Proxy settings (only for HTTP beacon)
-    let checkUseProxy = form.create_check("Use HTTP/HTTPS Proxy");
-    let labelProxyType = form.create_label("Proxy Type:");
+    let labelProxyType = form.create_label("Type:");
     let comboProxyType = form.create_combo();
     comboProxyType.addItems(["http", "https"]);
-    let labelProxyHost = form.create_label("Proxy Host:");
-    let textProxyHost = form.create_textline("");
-    textProxyHost.setPlaceholder("192.168.1.1");
-    let labelProxyPort = form.create_label("Proxy Port:");
+
+    let labelProxyServer = form.create_label("Server:");
+    let textProxyServer = form.create_textline("");
+    textProxyServer.setPlaceholder("192.168.1.1");
     let spinProxyPort = form.create_spin();
     spinProxyPort.setRange(1, 65535);
-    spinProxyPort.setValue(8080);
-    let labelProxyUsername = form.create_label("Proxy Username:");
+    spinProxyPort.setValue(3128);
+
+    let labelProxyUsername = form.create_label("Username:");
     let textProxyUsername = form.create_textline("");
     textProxyUsername.setPlaceholder("(optional)");
-    let labelProxyPassword = form.create_label("Proxy Password:");
+
+    let labelProxyPassword = form.create_label("Password:");
     let textProxyPassword = form.create_textline("");
     textProxyPassword.setPlaceholder("(optional)");
 
-    // Initially hide proxy settings
-    let showProxySettings = listeners_type.includes("BeaconHTTP");
-    checkUseProxy.setVisible(showProxySettings);
-    labelProxyType.setVisible(false);
-    comboProxyType.setVisible(false);
-    labelProxyHost.setVisible(false);
-    textProxyHost.setVisible(false);
-    labelProxyPort.setVisible(false);
-    spinProxyPort.setVisible(false);
-    labelProxyUsername.setVisible(false);
-    textProxyUsername.setVisible(false);
-    labelProxyPassword.setVisible(false);
-    textProxyPassword.setVisible(false);
+    let layout_group_proxy = form.create_gridlayout();
+    layout_group_proxy.addWidget(labelProxyType,     0, 0, 1, 1);
+    layout_group_proxy.addWidget(comboProxyType,     0, 1, 1, 2);
+    layout_group_proxy.addWidget(labelProxyServer,   1, 0, 1, 1);
+    layout_group_proxy.addWidget(textProxyServer,    1, 1, 1, 1);
+    layout_group_proxy.addWidget(spinProxyPort,      1, 2, 1, 1);
+    layout_group_proxy.addWidget(labelProxyUsername, 2, 0, 1, 1);
+    layout_group_proxy.addWidget(textProxyUsername,  2, 1, 1, 2);
+    layout_group_proxy.addWidget(labelProxyPassword, 3, 0, 1, 1);
+    layout_group_proxy.addWidget(textProxyPassword,  3, 1, 1, 2);
 
-    // Connect checkbox to show/hide proxy details
-    form.connect(checkUseProxy, "stateChanged", function() {
-        let checked = checkUseProxy.isChecked();
-        labelProxyType.setVisible(checked);
-        comboProxyType.setVisible(checked);
-        labelProxyHost.setVisible(checked);
-        textProxyHost.setVisible(checked);
-        labelProxyPort.setVisible(checked);
-        spinProxyPort.setVisible(checked);
-        labelProxyUsername.setVisible(checked);
-        textProxyUsername.setVisible(checked);
-        labelProxyPassword.setVisible(checked);
-        textProxyPassword.setVisible(checked);
-    });
+    let panel_group_proxy = form.create_panel();
+    panel_group_proxy.setLayout(layout_group_proxy);
+    let group_proxy = form.create_groupbox("Use HTTP/HTTPS proxy", true)
+    group_proxy.setPanel(panel_group_proxy);
+    group_proxy.setChecked(false);
+
+    /////////////////////////
 
     let spacer2 = form.create_vspacer();
+
+    if(!listeners_type.includes("BeaconDNS")) {
+        group_dns.setVisible(false);
+    }
+    if(!listeners_type.includes("BeaconHTTP")) {
+        group_proxy.setVisible(false);
+    }
 
     let layout = form.create_gridlayout();
     layout.addWidget(spacer1,             0, 0, 1, 3);
@@ -459,50 +458,19 @@ function GenerateUI(listeners_type)
     layout.addWidget(labelSleep,          3, 0, 1, 1);
     layout.addWidget(textSleep,           3, 1, 1, 1);
     layout.addWidget(spinJitter,          3, 2, 1, 1);
-    layout.addWidget(labelDnsMode,        4, 0, 1, 1);
-    layout.addWidget(comboDnsMode,        4, 1, 1, 2);
-    layout.addWidget(labelDnsResolvers,   5, 0, 1, 1);
-    layout.addWidget(textDnsResolvers,    5, 1, 1, 2);
-    layout.addWidget(labelDohResolvers,   6, 0, 1, 1);
-    layout.addWidget(textDohResolvers,    6, 1, 1, 2);
-    layout.addWidget(labelUserAgent,      7, 0, 1, 1);
-    layout.addWidget(textUserAgent,       7, 1, 1, 2);
-    layout.addWidget(checkKilldate,       8, 0, 1, 1);
-    layout.addWidget(dateKill,            8, 1, 1, 1);
-    layout.addWidget(timeKill,            8, 2, 1, 1);
-    layout.addWidget(checkWorkingTime,    9, 0, 1, 1);
-    layout.addWidget(timeStart,           9, 1, 1, 1);
-    layout.addWidget(timeFinish,          9, 2, 1, 1);
-    layout.addWidget(labelSvcName,        10, 0, 1, 1);
-    layout.addWidget(textSvcName,         10, 1, 1, 2);
-    layout.addWidget(checkSideloading,    11, 0, 1, 1);
-    layout.addWidget(sideloadingSelector, 11, 1, 1, 2);
-    layout.addWidget(spacer2,             12, 0, 1, 3);
-    layout.addWidget(labelDnsResolvers,   4, 0, 1, 1);
-    layout.addWidget(textDnsResolvers,    4, 1, 1, 2);
-    layout.addWidget(checkKilldate,       5, 0, 1, 1);
-    layout.addWidget(dateKill,            5, 1, 1, 1);
-    layout.addWidget(timeKill,            5, 2, 1, 1);
-    layout.addWidget(checkWorkingTime,    6, 0, 1, 1);
-    layout.addWidget(timeStart,           6, 1, 1, 1);
-    layout.addWidget(timeFinish,          6, 2, 1, 1);
-    layout.addWidget(labelSvcName,        7, 0, 1, 1);
-    layout.addWidget(textSvcName,         7, 1, 1, 2);
-    layout.addWidget(checkSideloading,    8, 0, 1, 1);
-    layout.addWidget(sideloadingSelector, 8, 1, 1, 2);
-    // Proxy settings rows
-    layout.addWidget(checkUseProxy,       9, 0, 1, 3);
-    layout.addWidget(labelProxyType,      10, 0, 1, 1);
-    layout.addWidget(comboProxyType,      10, 1, 1, 2);
-    layout.addWidget(labelProxyHost,      11, 0, 1, 1);
-    layout.addWidget(textProxyHost,       11, 1, 1, 2);
-    layout.addWidget(labelProxyPort,      12, 0, 1, 1);
-    layout.addWidget(spinProxyPort,       12, 1, 1, 2);
-    layout.addWidget(labelProxyUsername,  13, 0, 1, 1);
-    layout.addWidget(textProxyUsername,   13, 1, 1, 2);
-    layout.addWidget(labelProxyPassword,  14, 0, 1, 1);
-    layout.addWidget(textProxyPassword,   14, 1, 1, 2);
-    layout.addWidget(spacer2,             15, 0, 1, 3);
+    layout.addWidget(checkKilldate,       4, 0, 1, 1);
+    layout.addWidget(dateKill,            4, 1, 1, 1);
+    layout.addWidget(timeKill,            4, 2, 1, 1);
+    layout.addWidget(checkWorkingTime,    5, 0, 1, 1);
+    layout.addWidget(timeStart,           5, 1, 1, 1);
+    layout.addWidget(timeFinish,          5, 2, 1, 1);
+    layout.addWidget(labelSvcName,        6, 0, 1, 1);
+    layout.addWidget(textSvcName,         6, 1, 1, 2);
+    layout.addWidget(checkSideloading,    7, 0, 1, 1);
+    layout.addWidget(sideloadingSelector, 7, 1, 1, 2);
+    layout.addWidget(group_proxy,         8, 0, 1, 3);
+    layout.addWidget(group_dns,           9, 0, 1, 3);
+    layout.addWidget(spacer2,            10, 0, 1, 3);
 
     form.connect(comboFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
@@ -522,30 +490,29 @@ function GenerateUI(listeners_type)
     });
 
     let container = form.create_container()
-    container.put("arch", comboArch)
-    container.put("format", comboFormat)
-    container.put("sleep", textSleep)
-    container.put("jitter", spinJitter)
-    container.put("dns_resolvers", textDnsResolvers)
-    container.put("dns_mode", comboDnsMode)
-    container.put("doh_resolvers", textDohResolvers)
-    container.put("user_agent", textUserAgent)
-    container.put("is_killdate", checkKilldate)
-    container.put("kill_date", dateKill)
-    container.put("kill_time", timeKill)
-    container.put("is_workingtime", checkWorkingTime)
-    container.put("start_time", timeStart)
-    container.put("end_time", timeFinish)
-    container.put("svcname", textSvcName)
-    container.put("is_sideloading",checkSideloading)
-    container.put("sideloading_content",sideloadingSelector)
-    // Proxy settings
-    container.put("use_proxy", checkUseProxy)
-    container.put("proxy_type", comboProxyType)
-    container.put("proxy_host", textProxyHost)
-    container.put("proxy_port", spinProxyPort)
-    container.put("proxy_username", textProxyUsername)
-    container.put("proxy_password", textProxyPassword)
+    container.put("arch",                comboArch)
+    container.put("format",              comboFormat)
+    container.put("sleep",               textSleep)
+    container.put("jitter",              spinJitter)
+    container.put("dns_resolvers",       textDnsResolvers)
+    container.put("dns_mode",            comboDnsMode)
+    container.put("doh_resolvers",       textDohResolvers)
+    container.put("user_agent",          textUserAgent)
+    container.put("is_killdate",         checkKilldate)
+    container.put("kill_date",           dateKill)
+    container.put("kill_time",           timeKill)
+    container.put("is_workingtime",      checkWorkingTime)
+    container.put("start_time",          timeStart)
+    container.put("end_time",            timeFinish)
+    container.put("svcname",             textSvcName)
+    container.put("is_sideloading",      checkSideloading)
+    container.put("sideloading_content", sideloadingSelector)
+    container.put("use_proxy",           group_proxy)
+    container.put("proxy_type",          comboProxyType)
+    container.put("proxy_host",          textProxyServer)
+    container.put("proxy_port",          spinProxyPort)
+    container.put("proxy_username",      textProxyUsername)
+    container.put("proxy_password",      textProxyPassword)
 
     let panel = form.create_panel()
     panel.setLayout(layout)

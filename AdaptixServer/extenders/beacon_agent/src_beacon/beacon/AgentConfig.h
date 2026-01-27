@@ -22,7 +22,6 @@ typedef struct {
 	BYTE*  http_headers;
 	ULONG  ans_pre_size;
 	ULONG  ans_size;
-	// Proxy settings
 	BYTE   proxy_type;      // 0=none, 1=http, 2=https
 	BYTE*  proxy_host;
 	WORD   proxy_port;

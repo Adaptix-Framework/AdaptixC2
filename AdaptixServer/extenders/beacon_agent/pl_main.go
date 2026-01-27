@@ -282,13 +282,12 @@ type GenerateConfig struct {
 	DohResolvers       string `json:"doh_resolvers"`
 	DnsMode            string `json:"dns_mode"`
 	UserAgent          string `json:"user_agent"`
-	// Proxy settings
-	UseProxy      bool   `json:"use_proxy"`
-	ProxyType     string `json:"proxy_type"`     // "http" or "https"
-	ProxyHost     string `json:"proxy_host"`
-	ProxyPort     int    `json:"proxy_port"`
-	ProxyUsername string `json:"proxy_username"`
-	ProxyPassword string `json:"proxy_password"`
+	UseProxy           bool   `json:"use_proxy"`
+	ProxyType          string `json:"proxy_type"`
+	ProxyHost          string `json:"proxy_host"`
+	ProxyPort          int    `json:"proxy_port"`
+	ProxyUsername      string `json:"proxy_username"`
+	ProxyPassword      string `json:"proxy_password"`
 }
 
 var (
@@ -407,8 +406,6 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 			params = append(params, RequestHeaders)
 			params = append(params, ansOffset1)
 			params = append(params, ansOffset2)
-
-			// Add proxy settings
 			proxyType := 0 // 0=none, 1=http, 2=https
 			if generateConfig.UseProxy {
 				if generateConfig.ProxyType == "https" {
@@ -422,7 +419,6 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 			params = append(params, generateConfig.ProxyPort)
 			params = append(params, generateConfig.ProxyUsername)
 			params = append(params, generateConfig.ProxyPassword)
-
 			params = append(params, kill_date)
 			params = append(params, working_time)
 			params = append(params, seconds)
