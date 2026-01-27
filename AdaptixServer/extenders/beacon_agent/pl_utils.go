@@ -280,7 +280,7 @@ func formatBurstStatus(enabled int, sleepMs int, jitterPct int) string {
 }
 
 func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string]any,
-	listenerWM string, agentWatermark int64, killDate int, workingTime int) ([]interface{}, error) {
+	listenerWM string, agentWatermark int64, killDate int, workingTime int, userAgent string) ([]interface{}, error) {
 
 	domain, _ := listenerMap["domain"].(string)
 
@@ -288,6 +288,25 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 	if resolvers == "" {
 		resolvers, _ = listenerMap["resolvers"].(string)
 	}
+
+	dohResolvers := generateConfig.DohResolvers
+	if dohResolvers == "" {
+		dohResolvers = "https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query"
+	}
+
+	// DNS mode: 0=UDP, 1=DoH, 2=UDP->DoH fallback, 3=DoH->UDP fallback
+	dnsMode := 0 // Default to UDP
+	switch generateConfig.DnsMode {
+	case "DNS (Direct UDP)":
+		dnsMode = 0
+	case "DoH (DNS over HTTPS)":
+		dnsMode = 1
+	case "DNS -> DoH fallback":
+		dnsMode = 2
+	case "DoH -> DNS fallback":
+		dnsMode = 3
+	}
+
 	qtype, _ := listenerMap["qtype"].(string)
 
 	pktSizeF, _ := listenerMap["pkt_size"].(float64)
@@ -330,6 +349,7 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 		// ProfileDNS
 		domain,
 		resolvers,
+		dohResolvers,
 		qtype,
 		pktSize,
 		labelSize,
@@ -337,7 +357,8 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 		burstEnabled,
 		burstSleep,
 		burstJitter,
-		// Common tail
+		dnsMode, // DNS mode (0=UDP, 1=DoH, 2=UDP->DoH, 3=DoH->UDP)
+		userAgent,
 		int(lWatermark),
 		killDate,
 		workingTime,

@@ -279,6 +279,9 @@ type GenerateConfig struct {
 	IsSideloading      bool   `json:"is_sideloading"`
 	SideloadingContent string `json:"sideloading_content"`
 	DnsResolvers       string `json:"dns_resolvers"`
+	DohResolvers       string `json:"doh_resolvers"`
+	DnsMode            string `json:"dns_mode"`
+	UserAgent          string `json:"user_agent"`
 	// Proxy settings
 	UseProxy      bool   `json:"use_proxy"`
 	ProxyType     string `json:"proxy_type"`     // "http" or "https"
@@ -450,7 +453,11 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 			params = append(params, kill_date)
 
 		case "dns":
-			params, err = buildDNSProfileParams(generateConfig, listenerMap, transportProfile.Watermark, agentWatermark, kill_date, working_time)
+			userAgent := generateConfig.UserAgent
+			if userAgent == "" {
+				userAgent = "Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0"
+			}
+			params, err = buildDNSProfileParams(generateConfig, listenerMap, transportProfile.Watermark, agentWatermark, kill_date, working_time, userAgent)
 			if err != nil {
 				return nil, err
 			}

