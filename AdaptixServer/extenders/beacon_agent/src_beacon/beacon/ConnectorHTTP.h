@@ -6,7 +6,6 @@
 #ifndef PROFILE_STRUCT
 #define PROFILE_STRUCT
 
-// Proxy type definitions
 #define PROXY_TYPE_NONE     0
 #define PROXY_TYPE_HTTP     1
 #define PROXY_TYPE_HTTPS    2
@@ -23,7 +22,6 @@ typedef struct {
 	BYTE*  http_headers;
 	ULONG  ans_pre_size;
 	ULONG  ans_size;
-	// Proxy settings
 	BYTE   proxy_type;      // 0=none, 1=http, 2=https
 	BYTE*  proxy_host;
 	WORD   proxy_port;
@@ -77,15 +75,13 @@ class ConnectorHTTP
 	ULONG  ans_size       = 0;
 	ULONG  ans_pre_size   = 0;
 
-	// Proxy settings
-	BYTE   proxy_type     = PROXY_TYPE_NONE;
-	CHAR*  proxy_host     = NULL;
-	WORD   proxy_port     = 0;
-	CHAR*  proxy_username = NULL;
-	CHAR*  proxy_password = NULL;
-
 	BYTE* recvData = NULL;
 	int   recvSize = 0;
+
+	BYTE  proxy_type     = PROXY_TYPE_NONE;
+	CHAR* proxy_url      = NULL;
+	CHAR* proxy_username = NULL;
+	CHAR* proxy_password = NULL;
 
 	HTTPFUNC* functions = NULL;
 

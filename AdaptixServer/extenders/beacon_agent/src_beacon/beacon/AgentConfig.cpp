@@ -49,7 +49,6 @@ AgentConfig::AgentConfig()
 	this->profile.ans_pre_size = packer->Unpack32();
 	this->profile.ans_size     = packer->Unpack32() + this->profile.ans_pre_size;
 
-	// Parse proxy settings
 	this->profile.proxy_type     = (BYTE) packer->Unpack32();
 	this->profile.proxy_host     = packer->UnpackBytesCopy(&length);
 	this->profile.proxy_port     = (WORD) packer->Unpack32();
