@@ -228,8 +228,8 @@ void DialogConnect::createUI()
     subsPopupDialog->setProperty("Main", "base");
     subsPopupDialog->setMinimumWidth(600);
 
-    connect(agentsOnlyActiveCheck, &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
-    connect(tasksOnlyJobsCheck, &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
+    connect(agentsOnlyActiveCheck, &QCheckBox::checkStateChanged, this, [this](Qt::CheckState) { onSubsSelectionChanged(); });
+    connect(tasksOnlyJobsCheck, &QCheckBox::checkStateChanged, this, [this](Qt::CheckState) { onSubsSelectionChanged(); });
     agentsOnlyActiveCheck->setObjectName("agentsOnlyActiveCheck");
     tasksOnlyJobsCheck->setObjectName("tasksOnlyJobsCheck");
 
