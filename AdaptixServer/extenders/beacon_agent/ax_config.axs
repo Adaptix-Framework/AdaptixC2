@@ -303,9 +303,9 @@ function GenerateUI(listeners_type)
     let comboArch = form.create_combo()
     comboArch.addItems(["x64", "x86"]);
 
-    let labelFormat = form.create_label("Format:");
-    let comboFormat = form.create_combo()
-    comboFormat.addItems(["Exe", "Service Exe", "DLL", "Shellcode"]);
+    let labelAgentFormat = form.create_label("Format:");
+    let comboAgentFormat = form.create_combo()
+    comboAgentFormat.addItems(["Exe", "Service Exe", "DLL", "Shellcode"]);
 
     let labelSleep = form.create_label("Sleep (Jitter %):");
     let textSleep = form.create_textline("4s");
@@ -453,8 +453,8 @@ function GenerateUI(listeners_type)
     layout.addWidget(spacer1,             0, 0, 1, 3);
     layout.addWidget(labelArch,           1, 0, 1, 1);
     layout.addWidget(comboArch,           1, 1, 1, 2);
-    layout.addWidget(labelFormat,         2, 0, 1, 1);
-    layout.addWidget(comboFormat,         2, 1, 1, 2);
+    layout.addWidget(labelAgentFormat,         2, 0, 1, 1);
+    layout.addWidget(comboAgentFormat,         2, 1, 1, 2);
     layout.addWidget(labelSleep,          3, 0, 1, 1);
     layout.addWidget(textSleep,           3, 1, 1, 1);
     layout.addWidget(spinJitter,          3, 2, 1, 1);
@@ -472,7 +472,7 @@ function GenerateUI(listeners_type)
     layout.addWidget(group_dns,           9, 0, 1, 3);
     layout.addWidget(spacer2,            10, 0, 1, 3);
 
-    form.connect(comboFormat, "currentTextChanged", function(text) {
+    form.connect(comboAgentFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
             labelSvcName.setVisible(true)
             textSvcName.setVisible(true);
@@ -491,7 +491,7 @@ function GenerateUI(listeners_type)
 
     let container = form.create_container()
     container.put("arch",                comboArch)
-    container.put("format",              comboFormat)
+    container.put("format",              comboAgentFormat)
     container.put("sleep",               textSleep)
     container.put("jitter",              spinJitter)
     container.put("dns_resolvers",       textDnsResolvers)

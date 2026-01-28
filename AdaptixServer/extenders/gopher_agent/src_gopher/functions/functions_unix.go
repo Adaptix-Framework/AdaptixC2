@@ -135,6 +135,7 @@ func GetListing(path string) ([]utils.FileInfo, error) {
 		if err != nil {
 			return Files, err
 		}
+
 		Files = append(Files, buildFileInfo(fullPath, info, entry.Name()))
 	}
 	return Files, nil

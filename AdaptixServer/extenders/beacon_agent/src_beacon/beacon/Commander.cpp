@@ -471,22 +471,15 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 
 	DWORD fileAttribs = ApiWin->GetFileAttributesA(fullpath);
-	BOOL isFile = (fileAttribs != INVALID_FILE_ATTRIBUTES) && 
-	              !(fileAttribs & FILE_ATTRIBUTE_DIRECTORY);
-
-	WIN32_FIND_DATAA findData = { 0 };
-	HANDLE File = INVALID_HANDLE_VALUE;
-
-	if (isFile) {
-		File = ApiWin->FindFirstFileA(fullpath, &findData);
-	}
-	else {
-		fullpath[fullpathSize]   = '\\';
+	BOOL isFile = (fileAttribs != INVALID_FILE_ATTRIBUTES) && !(fileAttribs & FILE_ATTRIBUTE_DIRECTORY);
+	if (!isFile) {
+		fullpath[fullpathSize] = '\\';
 		fullpath[++fullpathSize] = '*';
 		fullpath[++fullpathSize] = 0;
-		File = ApiWin->FindFirstFileA(fullpath, &findData);
 	}
 
+	WIN32_FIND_DATAA findData = { 0 };
+	HANDLE File = ApiWin->FindFirstFileA(fullpath, &findData);
 	if ( File != INVALID_HANDLE_VALUE ) {
 		outPacker->Pack8(TRUE);
 		outPacker->PackStringA(fullpath);

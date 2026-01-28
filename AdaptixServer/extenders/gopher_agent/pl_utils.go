@@ -296,11 +296,6 @@ const (
 	CALLBACK_AX_DOWNLOAD_MEM = 0x82
 )
 
-// COMMAND_GETUID       = 22
-// COMMAND_LINK         = 38
-// COMMAND_PIVOT_EXEC   = 37
-// COMMAND_UNLINK       = 39
-
 func parseDurationToSeconds(input string) (int, error) {
 	re := regexp.MustCompile(`(\d+)(h|m|s)`)
 	matches := re.FindAllStringSubmatch(input, -1)

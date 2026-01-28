@@ -301,6 +301,14 @@ type AnsExecBof struct {
 	Msgs []byte `msgpack:"msgs"`
 }
 
+type ParamsTunnelPause struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
+type ParamsTunnelResume struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
 const (
 	COMMAND_ERROR      = 0
 	COMMAND_PWD        = 1
@@ -335,11 +343,3 @@ const (
 	COMMAND_EXEC_BOF     = 50
 	COMMAND_EXEC_BOF_OUT = 51
 )
-
-type ParamsTunnelPause struct {
-	ChannelId int `msgpack:"channel_id"`
-}
-
-type ParamsTunnelResume struct {
-	ChannelId int `msgpack:"channel_id"`
-}
