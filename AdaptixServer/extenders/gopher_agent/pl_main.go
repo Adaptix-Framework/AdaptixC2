@@ -747,7 +747,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		cmd = Command{Code: COMMAND_KILL, Data: packerData}
 
 	case "ls":
-		dir, err := getStringArg(args, "directory")
+		dir, err := getStringArg(args, "path")
 		if err != nil {
 			goto RET
 		}
@@ -1215,7 +1215,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 									OutputText += fmt.Sprintf("\n %-8s %-14s %-20s  %-8v", "", SizeBytesToFormat(item.Size), lastWrite, item.Filename)
 								}
 							}
-							task.Message = fmt.Sprintf("List of files in the '%s' directory", params.Path)
+							task.Message = fmt.Sprintf("Listing '%s'", params.Path)
 							task.ClearText = OutputText
 
 						}
@@ -1289,7 +1289,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 								items = append(items, fileData)
 							}
 
-							task.Message = fmt.Sprintf("List of files in the '%s' directory", params.Path)
+							task.Message = fmt.Sprintf("Listing '%s'", params.Path)
 							task.ClearText = OutputText
 						}
 					}
