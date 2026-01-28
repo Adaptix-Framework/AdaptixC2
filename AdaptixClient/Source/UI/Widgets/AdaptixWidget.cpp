@@ -250,24 +250,24 @@ void AdaptixWidget::processPendingSyncPackets()
 
 void AdaptixWidget::createUI()
 {
-    listenersButton = new QPushButton( QIcon(":/icons/listeners"), "", this );
-    listenersButton->setIconSize( QSize( 24,24 ));
-    listenersButton->setFixedSize(37, 28);
-    listenersButton->setToolTip("Listeners & Sites");
-
     logsButton = new QPushButton(QIcon(":/icons/logs"), "", this );
     logsButton->setIconSize( QSize( 24,24 ));
     logsButton->setFixedSize(37, 28);
     logsButton->setToolTip("Notifications");
 
+    listenersButton = new QPushButton( QIcon(":/icons/listeners"), "", this );
+    listenersButton->setIconSize( QSize( 24,24 ));
+    listenersButton->setFixedSize(37, 28);
+    listenersButton->setToolTip("Listeners & Sites");
+
+    extDocksButton = new QPushButton(QIcon(":/icons/extension"), "", this);
+    extDocksButton->setIconSize(QSize(24, 24));
+    extDocksButton->setFixedSize(37, 28);
+    extDocksButton->setToolTip("Extensions Docks");
+
     line_1 = new QFrame(this);
     line_1->setFrameShape(QFrame::VLine);
     line_1->setMinimumHeight(25);
-
-    chatButton = new QPushButton(QIcon(":/icons/chat"), "", this );
-    chatButton->setIconSize( QSize( 24,24 ));
-    chatButton->setFixedSize(37, 28);
-    chatButton->setToolTip("Chat");
 
     sessionsButton = new QPushButton( QIcon(":/icons/format_list"), "", this );
     sessionsButton->setIconSize( QSize( 24,24 ));
@@ -279,14 +279,19 @@ void AdaptixWidget::createUI()
     graphButton->setFixedSize(37, 28);
     graphButton->setToolTip("Session graph");
 
-    line_2 = new QFrame(this);
-    line_2->setFrameShape(QFrame::VLine);
-    line_2->setMinimumHeight(25);
-
     tasksButton = new QPushButton(QIcon(":/icons/job"), "", this );
     tasksButton->setIconSize(QSize(24, 24 ));
     tasksButton->setFixedSize(37, 28);
     tasksButton->setToolTip("Jobs & Tasks");
+
+    line_2 = new QFrame(this);
+    line_2->setFrameShape(QFrame::VLine);
+    line_2->setMinimumHeight(25);
+
+    chatButton = new QPushButton(QIcon(":/icons/chat"), "", this );
+    chatButton->setIconSize( QSize( 24,24 ));
+    chatButton->setFixedSize(37, 28);
+    chatButton->setToolTip("Chat");
 
     tunnelButton = new QPushButton( QIcon(":/icons/vpn"), "", this );
     tunnelButton->setIconSize( QSize( 24,24 ));
@@ -327,7 +332,7 @@ void AdaptixWidget::createUI()
     line_4->setMinimumHeight(25);
 
     reconnectButton = new QPushButton(QIcon(":/icons/link"), "");
-    reconnectButton->setIconSize( QSize( 24,24 ));
+    reconnectButton->setIconSize(QSize(24,24));
     reconnectButton->setFixedSize(37, 28);
     reconnectButton->setToolTip("Reconnect to C2");
     QIcon onReconnectButton = RecolorIcon(reconnectButton->icon(), COLOR_NeonGreen);
@@ -370,14 +375,15 @@ void AdaptixWidget::createUI()
     topHLayout->setSpacing(10);
     topHLayout->setAlignment(Qt::AlignLeft);
 
-    topHLayout->addWidget(listenersButton);
     topHLayout->addWidget(logsButton);
-    topHLayout->addWidget(chatButton);
+    topHLayout->addWidget(listenersButton);
+    topHLayout->addWidget(extDocksButton);
     topHLayout->addWidget(line_1);
     topHLayout->addWidget(sessionsButton);
     topHLayout->addWidget(graphButton);
     topHLayout->addWidget(tasksButton);
     topHLayout->addWidget(line_2);
+    topHLayout->addWidget(chatButton);
     topHLayout->addWidget(tunnelButton);
     topHLayout->addWidget(line_3);
     topHLayout->addWidget(downloadsButton);

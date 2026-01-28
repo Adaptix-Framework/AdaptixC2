@@ -1828,6 +1828,7 @@ void AxSelectorDownloads::close() const { dialog->close(); }
 
 AxDockWrapper::AxDockWrapper(AdaptixWidget* w, const QString& id, const QString& title, const QString& location): DockTab(title, w->GetProfile()->GetProject())
 {
+    adaptixWidget = w;
     QString project = w->GetProfile()->GetProject();
 
     contentWidget = new QWidget();
@@ -1836,11 +1837,11 @@ AxDockWrapper::AxDockWrapper(AdaptixWidget* w, const QString& id, const QString&
     dockWidget->setWidget(contentWidget);
 
     dockId = id + "-" + project;
+    dockTitle = title;
 
-    if (GlobalClient && GlobalClient->mainUI) {
-        QString actionTitle = QString("%1 (%2)").arg(title).arg(project);
-        GlobalClient->mainUI->addExtDockAction(dockId, actionTitle, false, [this](bool checked) {
-            dockWidget->toggleAction()->trigger();
+    if (adaptixWidget) {
+        adaptixWidget->AddExtDock(dockId, title, [this]() {
+            show();
         });
     }
 
@@ -1855,25 +1856,20 @@ AxDockWrapper::AxDockWrapper(AdaptixWidget* w, const QString& id, const QString&
     else {
         dockWidget->open();
     }
-    GlobalClient->mainUI->setExtDockChecked(dockId, false);
 
     connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isOpenChanged, this, [this](bool open) {
         if (!open) {
             Q_EMIT hidden();
-            if (GlobalClient && GlobalClient->mainUI)
-                GlobalClient->mainUI->setExtDockChecked(dockId, false);
         } else {
             Q_EMIT shown();
-            if (GlobalClient && GlobalClient->mainUI)
-                GlobalClient->mainUI->setExtDockChecked(dockId, true);
         }
     });
 }
 
 AxDockWrapper::~AxDockWrapper()
 {
-    if (GlobalClient && GlobalClient->mainUI)
-        GlobalClient->mainUI->removeExtDockAction(dockId);
+    if (adaptixWidget)
+        adaptixWidget->RemoveExtDock(dockId);
 
     if (dockWidget) {
         dockWidget->close();
