@@ -139,7 +139,25 @@ func (ext *ExtenderAgent) TunnelCallbacks() adaptix.TunnelCallbacks {
 		WriteUDP:   TunnelMessageWriteUDP,
 		Close:      TunnelMessageClose,
 		Reverse:    TunnelMessageReverse,
+		Pause:      TunnelMessagePause,
+		Resume:     TunnelMessageResume,
 	}
+}
+
+func TunnelMessagePause(channelId int) adaptix.TaskData {
+	var packData []byte
+	packerData, _ := msgpack.Marshal(ParamsTunnelPause{ChannelId: channelId})
+	cmd := Command{Code: COMMAND_TUNNEL_PAUSE, Data: packerData}
+	packData, _ = msgpack.Marshal(cmd)
+	return makeProxyTask(packData)
+}
+
+func TunnelMessageResume(channelId int) adaptix.TaskData {
+	var packData []byte
+	packerData, _ := msgpack.Marshal(ParamsTunnelResume{ChannelId: channelId})
+	cmd := Command{Code: COMMAND_TUNNEL_RESUME, Data: packerData}
+	packData, _ = msgpack.Marshal(cmd)
+	return makeProxyTask(packData)
 }
 
 func TunnelMessageConnectTCP(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData {

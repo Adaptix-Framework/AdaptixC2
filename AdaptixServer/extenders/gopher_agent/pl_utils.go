@@ -217,6 +217,14 @@ type ParamsTunnelStop struct {
 	ChannelId int `msgpack:"channel_id"`
 }
 
+type ParamsTunnelPause struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
+type ParamsTunnelResume struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
 type ParamsTerminalStart struct {
 	TermId  int    `msgpack:"term_id"`
 	Program string `msgpack:"program"`
@@ -266,8 +274,10 @@ const (
 	COMMAND_JOB_KILL   = 19
 	COMMAND_REV2SELF   = 20
 
-	COMMAND_TUNNEL_START = 31
-	COMMAND_TUNNEL_STOP  = 32
+	COMMAND_TUNNEL_START  = 31
+	COMMAND_TUNNEL_STOP   = 32
+	COMMAND_TUNNEL_PAUSE  = 33
+	COMMAND_TUNNEL_RESUME = 34
 
 	COMMAND_TERMINAL_START = 35
 	COMMAND_TERMINAL_STOP  = 36

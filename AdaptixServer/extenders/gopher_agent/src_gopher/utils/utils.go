@@ -324,8 +324,10 @@ const (
 	COMMAND_JOB_KILL   = 19
 	COMMAND_REV2SELF   = 20
 
-	COMMAND_TUNNEL_START = 31
-	COMMAND_TUNNEL_STOP  = 32
+	COMMAND_TUNNEL_START  = 31
+	COMMAND_TUNNEL_STOP   = 32
+	COMMAND_TUNNEL_PAUSE  = 33
+	COMMAND_TUNNEL_RESUME = 34
 
 	COMMAND_TERMINAL_START = 35
 	COMMAND_TERMINAL_STOP  = 36
@@ -333,3 +335,11 @@ const (
 	COMMAND_EXEC_BOF     = 50
 	COMMAND_EXEC_BOF_OUT = 51
 )
+
+type ParamsTunnelPause struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
+type ParamsTunnelResume struct {
+	ChannelId int `msgpack:"channel_id"`
+}

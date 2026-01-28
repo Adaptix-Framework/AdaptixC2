@@ -415,9 +415,11 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 		encStream := cipher.NewCTR(blockEnc, tunPack.Iv)
 		encWriter := &cipher.StreamWriter{S: encStream, W: conn}
 
-		blockDec, _ := aes.NewCipher(tunPack.Key)
-		decStream := cipher.NewCTR(blockDec, tunPack.Iv)
-		decWriter := &cipher.StreamWriter{S: decStream, W: pw}
+		decCipher, _ := aes.NewCipher(tunPack.Key)
+		decStream := cipher.NewCTR(decCipher, tunPack.Iv)
+		decReader := &cipher.StreamReader{S: decStream, R: conn}
+
+		_ = pw.Close()
 
 		var closeOnce sync.Once
 		closeAll := func() {
@@ -439,7 +441,18 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, _ = io.Copy(decWriter, conn)
+			buf := make([]byte, 0x8000)
+			for {
+				n, err := decReader.Read(buf)
+				if n > 0 {
+					data := make([]byte, n)
+					copy(data, buf[:n])
+					ts.TsTunnelConnectionData(tunPack.ChannelId, data)
+				}
+				if err != nil {
+					break
+				}
+			}
 			closeAll()
 		}()
 
