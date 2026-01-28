@@ -1,5 +1,6 @@
 #include <UI/Dialogs/DialogSubscriptions.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <QPointer>
 #include <Client/AuthProfile.h>
 #include <Client/HttpRequestManager.h>
 #include <Client/Storage.h>
