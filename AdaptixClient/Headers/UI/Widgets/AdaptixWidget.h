@@ -11,6 +11,9 @@
 #include <QQueue>
 #include <QReadWriteLock>
 #include <QElapsedTimer>
+#include <QListWidget>
+#include <QDialog>
+#include <functional>
 
 class Task;
 class Agent;
@@ -70,11 +73,16 @@ Q_OBJECT
     QPushButton*    screensButton     = nullptr;
     QPushButton*    keysButton        = nullptr;
     QPushButton*    reconnectButton   = nullptr;
+    QPushButton*    extDocksButton    = nullptr;
     QSpacerItem*    horizontalSpacer1 = nullptr;
     QFrame*         line_1            = nullptr;
     QFrame*         line_2            = nullptr;
     QFrame*         line_3            = nullptr;
     QFrame*         line_4            = nullptr;
+
+    QDialog*        extDocksPopup     = nullptr;
+    QListWidget*    extDocksListWidget = nullptr;
+    QLabel*         extDocksEmptyLabel = nullptr;
 
     KDDockWidgets::QtWidgets::MainWindow* mainDockWidget;
     KDDockWidgets::QtWidgets::DockWidget* dockTop;
@@ -150,6 +158,13 @@ public:
     QMap<QString, TunnelEndpoint*> ClientTunnels;
     QStringList addresses;
 
+    struct ExtDockEntry {
+        QString id;
+        QString title;
+        std::function<void()> showCallback;
+    };
+    QMap<QString, ExtDockEntry> extDocksMap;
+
     explicit AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker);
     ~AdaptixWidget() override;
 
@@ -180,6 +195,10 @@ public:
 
     void PostHookProcess(QJsonObject jsonHookObj);
     void PostHandlerProcess(const QString &handlerId, const TaskData &taskData);
+
+    void AddExtDock(const QString &id, const QString &title, const std::function<void()> &showCallback);
+    void RemoveExtDock(const QString &id);
+    void ShowExtDocksPopup();
 
     void LoadConsoleUI(const QString &AgentId);
     void LoadTasksOutput() const;

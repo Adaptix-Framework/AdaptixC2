@@ -1117,6 +1117,14 @@ void BridgeApp::script_unload(const QString &path) { scriptEngine->manager()->Gl
 
 QString BridgeApp::script_dir() { return GetParentPathUnix(scriptEngine->context.name) + "/"; }
 
+QString BridgeApp::get_project() const
+{
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    if (adaptix && adaptix->GetProfile())
+        return adaptix->GetProfile()->GetProject();
+    return QString();
+}
+
 QJSValue BridgeApp::screenshots()
 {
     QVariantMap list;

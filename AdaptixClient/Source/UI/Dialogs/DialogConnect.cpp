@@ -230,10 +230,10 @@ void DialogConnect::createUI()
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
     connect(agentsOnlyActiveCheck, &QCheckBox::checkStateChanged, this, &DialogConnect::onSubsSelectionChanged);
-    connect(tasksOnlyJobsCheck, &QCheckBox::checkStateChanged, this, &DialogConnect::onSubsSelectionChanged);
+    connect(tasksOnlyJobsCheck,    &QCheckBox::checkStateChanged, this, &DialogConnect::onSubsSelectionChanged);
 #else
     connect(agentsOnlyActiveCheck, &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
-    connect(tasksOnlyJobsCheck, &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
+    connect(tasksOnlyJobsCheck,    &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
 #endif
     agentsOnlyActiveCheck->setObjectName("agentsOnlyActiveCheck");
     tasksOnlyJobsCheck->setObjectName("tasksOnlyJobsCheck");

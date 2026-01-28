@@ -784,6 +784,30 @@ public:
 
 
 
+class AxExtDialogWrapper : public QObject {
+Q_OBJECT
+    QString dialogId;
+    QString dialogTitle;
+    QDialog* dialog;
+    QVBoxLayout* layout;
+    QLayout* userLayout = nullptr;
+    QDialogButtonBox* buttons;
+    AdaptixWidget* adaptixWidget = nullptr;
+
+public:
+    explicit AxExtDialogWrapper(AdaptixWidget* w, const QString& title);
+    ~AxExtDialogWrapper() override;
+
+    Q_INVOKABLE void setLayout(QObject* layoutWrapper);
+    Q_INVOKABLE void setSize(int w, int h) const;
+    Q_INVOKABLE bool exec() const;
+    Q_INVOKABLE void show() const;
+    Q_INVOKABLE void close() const;
+    Q_INVOKABLE void setButtonsText(const QString& ok_text, const QString& cancel_text) const;
+};
+
+
+
 /// SELECTOR FILE
 
 class AxSelectorFile : public QObject, public AbstractAxElement, public AbstractAxVisualElement {
@@ -1536,6 +1560,7 @@ Q_OBJECT
     QString dockId;
     QString dockTitle;
     QWidget* contentWidget = nullptr;
+    AdaptixWidget* adaptixWidget = nullptr;
 
 public:
     explicit AxDockWrapper(AdaptixWidget* w, const QString& id, const QString& title, const QString& location);

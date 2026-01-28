@@ -906,6 +906,87 @@ void AxDialogWrapper::setButtonsText(const QString &ok_text, const QString &canc
     }
 }
 
+
+
+#include <UI/Widgets/AdaptixWidget.h>
+#include <Client/AuthProfile.h>
+
+AxExtDialogWrapper::AxExtDialogWrapper(AdaptixWidget* w, const QString& title) : QObject(nullptr)
+{
+    adaptixWidget = w;
+    QString project = w->GetProfile()->GetProject();
+
+    dialogId = title + "-" + project;
+    dialogTitle = title;
+
+    dialog = new QDialog();
+    dialog->setWindowTitle(title);
+    dialog->setProperty("Main", "base");
+    layout = new QVBoxLayout(dialog);
+
+    buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+
+    layout->addWidget(buttons);
+    dialog->setLayout(layout);
+
+    connect(buttons, &QDialogButtonBox::accepted, dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
+
+    if (adaptixWidget) {
+        adaptixWidget->AddExtDock(dialogId, title, [this]() {
+            show();
+        });
+    }
+}
+
+AxExtDialogWrapper::~AxExtDialogWrapper()
+{
+    if (adaptixWidget)
+        adaptixWidget->RemoveExtDock(dialogId);
+
+    if (dialog) {
+        dialog->close();
+        dialog->deleteLater();
+    }
+}
+
+void AxExtDialogWrapper::setLayout(QObject* layoutWrapper)
+{
+    if (userLayout) {
+        layout->removeItem(userLayout);
+        delete userLayout;
+        userLayout = nullptr;
+    }
+
+    if (auto* grid = qobject_cast<AxGridLayoutWrapper*>(layoutWrapper))
+        userLayout = grid->layout();
+    else if (auto* box = qobject_cast<AxBoxLayoutWrapper*>(layoutWrapper))
+        userLayout = box->layout();
+
+    if (userLayout)
+        layout->insertLayout(0, userLayout);
+}
+
+void AxExtDialogWrapper::setSize(const int w, const int h) const { dialog->resize(w, h); }
+
+bool AxExtDialogWrapper::exec() const { return dialog->exec() == QDialog::Accepted; }
+
+void AxExtDialogWrapper::show() const { dialog->show(); }
+
+void AxExtDialogWrapper::close() const { dialog->close(); }
+
+void AxExtDialogWrapper::setButtonsText(const QString &ok_text, const QString &cancel_text) const
+{
+    QPushButton *okButton = buttons->button(QDialogButtonBox::Ok);
+    if (okButton) {
+        okButton->setText(ok_text);
+    }
+    QPushButton *cancelButton = buttons->button(QDialogButtonBox::Cancel);
+    if (cancelButton) {
+        cancelButton->setText(cancel_text);
+    }
+}
+
 /// FILE SELECTOR
 
 AxSelectorFile::AxSelectorFile(QLineEdit* edit, QObject* parent) : QObject(parent), lineEdit(edit)

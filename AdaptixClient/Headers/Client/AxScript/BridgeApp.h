@@ -62,6 +62,7 @@ public Q_SLOTS:
     QString  format_size(const int &size) const;
     QString  format_time(const QString &format, const int &time) const;
     QJSValue get_commands(const QString &id) const;
+    QString  get_project() const;
     QString  hash(const QString &algorithm, int length, const QString &input);
     QJSValue ids() const;
     QJSValue interfaces() const;

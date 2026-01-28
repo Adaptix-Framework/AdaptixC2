@@ -333,6 +333,36 @@ void AdaptixWidget::createUI()
     QIcon onReconnectButton = RecolorIcon(reconnectButton->icon(), COLOR_NeonGreen);
     reconnectButton->setIcon(onReconnectButton);
 
+    extDocksListWidget = new QListWidget();
+    extDocksListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    extDocksListWidget->setStyleSheet(
+        "QListWidget::item { padding: 6px 10px; margin: 1px 0px; }"
+    );
+
+    extDocksEmptyLabel = new QLabel("No loaded extenders docks");
+    extDocksEmptyLabel->setAlignment(Qt::AlignCenter);
+    extDocksEmptyLabel->setStyleSheet("color: gray; padding: 20px;");
+
+    auto extDocksLayout = new QVBoxLayout();
+    extDocksLayout->setContentsMargins(8, 8, 8, 8);
+    extDocksLayout->setSpacing(6);
+    extDocksLayout->addWidget(extDocksListWidget);
+    extDocksLayout->addWidget(extDocksEmptyLabel);
+
+    extDocksPopup = new QDialog(this, Qt::Popup | Qt::FramelessWindowHint);
+    extDocksPopup->setLayout(extDocksLayout);
+    extDocksPopup->setProperty("Main", "base");
+    extDocksPopup->setMinimumWidth(250);
+
+    connect(extDocksButton, &QPushButton::clicked, this, &AdaptixWidget::ShowExtDocksPopup);
+    connect(extDocksListWidget, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
+        QString id = item->data(Qt::UserRole).toString();
+        if (extDocksMap.contains(id) && extDocksMap[id].showCallback) {
+            extDocksMap[id].showCallback();
+        }
+        extDocksPopup->hide();
+    });
+
     horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     topHLayout = new QHBoxLayout();
@@ -1102,4 +1132,59 @@ void AdaptixWidget::OnReconnect()
 
         workerThread->start();
     }
+}
+
+void AdaptixWidget::AddExtDock(const QString &id, const QString &title, const std::function<void()> &showCallback)
+{
+    if (extDocksMap.contains(id))
+        return;
+
+    ExtDockEntry entry;
+    entry.id = id;
+    entry.title = title;
+    entry.showCallback = showCallback;
+    extDocksMap[id] = entry;
+
+    auto* item = new QListWidgetItem(title);
+    item->setData(Qt::UserRole, id);
+    extDocksListWidget->addItem(item);
+
+    extDocksListWidget->setVisible(true);
+    extDocksEmptyLabel->setVisible(false);
+}
+
+void AdaptixWidget::RemoveExtDock(const QString &id)
+{
+    if (!extDocksMap.contains(id))
+        return;
+
+    extDocksMap.remove(id);
+
+    for (int i = 0; i < extDocksListWidget->count(); ++i) {
+        auto* item = extDocksListWidget->item(i);
+        if (item && item->data(Qt::UserRole).toString() == id) {
+            delete extDocksListWidget->takeItem(i);
+            break;
+        }
+    }
+
+    bool empty = extDocksListWidget->count() == 0;
+    extDocksListWidget->setVisible(!empty);
+    extDocksEmptyLabel->setVisible(empty);
+}
+
+void AdaptixWidget::ShowExtDocksPopup()
+{
+    if (!extDocksPopup || !extDocksButton)
+        return;
+
+    bool empty = extDocksListWidget->count() == 0;
+    extDocksListWidget->setVisible(!empty);
+    extDocksEmptyLabel->setVisible(empty);
+
+    QPoint pos = extDocksButton->mapToGlobal(QPoint(0, extDocksButton->height()));
+    extDocksPopup->move(pos);
+    extDocksPopup->show();
+    extDocksPopup->raise();
+    extDocksPopup->activateWindow();
 }
