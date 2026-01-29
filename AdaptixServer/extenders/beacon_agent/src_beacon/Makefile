@@ -37,6 +37,9 @@ COMMON_FLAGS := -I $(BEACON_DIR) \
                 $(SECURITY_FLAGS) \
                 $(OPTIMIZATION_FLAGS)
 
+# Miniz trim for DNS only: disable archive/ZIP APIs; keep zlib compress/uncompress for DnsCodec
+MINIZ_DNS_FLAGS := -DMINIZ_NO_STDIO -DMINIZ_NO_ARCHIVE_APIS -DMINIZ_NO_ARCHIVE_WRITING_APIS -DMINIZ_NO_TIME
+
 .PHONY: all clean pre x64 x86
 
 NPROC := $(shell nproc)
@@ -143,3 +146,10 @@ $(DNS_DIST_DIR)/%.x64.o: beacon/%.cpp
 
 $(DNS_DIST_DIR)/%.x86.o: beacon/%.cpp
 	@i686-w64-mingw32-g++ -c $(COMMON_FLAGS) -D BEACON_DNS -c $< -o $@
+
+# DNS miniz: compile with trim macros so archive/ZIP code is excluded (smaller binary)
+$(DNS_DIST_DIR)/miniz.x64.o: beacon/miniz.cpp
+	@x86_64-w64-mingw32-g++ -c $(COMMON_FLAGS) -D BEACON_DNS $(MINIZ_DNS_FLAGS) -c $< -o $@
+
+$(DNS_DIST_DIR)/miniz.x86.o: beacon/miniz.cpp
+	@i686-w64-mingw32-g++ -c $(COMMON_FLAGS) -D BEACON_DNS $(MINIZ_DNS_FLAGS) -c $< -o $@
