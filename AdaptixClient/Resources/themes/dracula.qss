@@ -751,9 +751,35 @@ QListWidget {
 }
 
 QListWidget::item {
-    padding: 2px;
+    padding: 6px 4px;
+    margin: 2px 0px;
     border-radius: 4px;
     color: #f8f8f2;
+}
+
+QListWidget::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #6272a4;
+    border-radius: 3px;
+    background-color: #44475a;
+}
+
+QListWidget::indicator:checked {
+    background-color: #50fa7b;
+    border: 1px solid #50fa7b;
+    image: url(:/icons/check);
+}
+
+QListWidget::indicator:indeterminate {
+    background-color: #50fa7b;
+    border: 1px solid #50fa7b;
+    image: url(:/icons/close);
+}
+
+QListWidget::indicator:unchecked:hover {
+    border: 1px solid #bd93f9;
+    background-color: #4a4d64;
 }
 
 QListWidget::item:hover {
@@ -800,4 +826,16 @@ CardListWidget::item:selected {
 
 CardListWidget::item:hover {
     background: transparent;
+}
+
+
+
+QFrame[frameShape="4"], QFrame[frameShape="5"] {
+    color: rgba(98, 114, 164, 120);
+    background-color: rgba(98, 114, 164, 120);
+}
+
+QFrame[frameShape="4"]:disabled, QFrame[frameShape="5"]:disabled {
+    color: rgba(68, 71, 90, 80);
+    background-color: rgba(68, 71, 90, 80);
 }

@@ -1,27 +1,49 @@
 package extender
 
-import "github.com/Adaptix-Framework/axc2"
+import (
+	"errors"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
+)
+
+var (
+	ErrModuleNotFound       = errors.New("module not found")
+	ErrListenerNotFound     = errors.New("listener not found")
+	ErrServiceNotFound      = errors.New("service not found")
+	ErrServiceAlreadyLoaded = errors.New("service already loaded")
+)
 
 /// ExConfig Listener
 
 type ExConfigListener struct {
-	ExtenderType string `json:"extender_type"`
-	ExtenderFile string `json:"extender_file"`
-	AxFile       string `json:"ax_file"`
-	ListenerName string `json:"listener_name"`
-	ListenerType string `json:"listener_type"`
-	Protocol     string `json:"protocol"`
+	ExtenderType string `yaml:"extender_type"`
+	ExtenderFile string `yaml:"extender_file"`
+	AxFile       string `yaml:"ax_file"`
+	ListenerName string `yaml:"listener_name"`
+	ListenerType string `yaml:"listener_type"`
+	Protocol     string `yaml:"protocol"`
 }
 
 /// ExConfig Agent
 
 type ExConfigAgent struct {
-	ExtenderType   string   `json:"extender_type"`
-	ExtenderFile   string   `json:"extender_file"`
-	AxFile         string   `json:"ax_file"`
-	AgentName      string   `json:"agent_name"`
-	AgentWatermark string   `json:"agent_watermark"`
-	Listeners      []string `json:"listeners"`
+	ExtenderType   string   `yaml:"extender_type"`
+	ExtenderFile   string   `yaml:"extender_file"`
+	AxFile         string   `yaml:"ax_file"`
+	AgentName      string   `yaml:"agent_name"`
+	AgentWatermark string   `yaml:"agent_watermark"`
+	Listeners      []string `yaml:"listeners"`
+	MultiListeners bool     `yaml:"multi_listeners"`
+}
+
+/// ExConfig Service
+
+type ExConfigService struct {
+	ExtenderType  string `yaml:"extender_type"`
+	ExtenderFile  string `yaml:"extender_file"`
+	AxFile        string `yaml:"ax_file"`
+	ServiceName   string `yaml:"service_name"`
+	ServiceConfig string `yaml:"service_config"`
 }
 
 /// Info
@@ -34,41 +56,80 @@ type ListenerInfo struct {
 }
 
 type AgentInfo struct {
-	Name      string
-	Watermark string
-	AX        string
-	Listeners []string
+	Name           string
+	Watermark      string
+	AX             string
+	Listeners      []string
+	MultiListeners bool
 }
+
+type ServiceInfo struct {
+	Name string
+	AX   string
+}
+
+/// Plugin Interfaces
 
 type Teamserver interface {
 	TsListenerReg(listenerInfo ListenerInfo) error
 	TsListenerRegByName(listenerName string) (string, error)
 	TsAgentReg(agentInfo AgentInfo) error
-}
+	TsServiceReg(serviceInfo ServiceInfo) error
+	TsServiceUnreg(serviceName string) error
 
-type ExtListener interface {
-	ListenerValid(config string) error
-	ListenerStart(name string, data string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error)
-	ListenerEdit(name string, data string) (adaptix.ListenerData, []byte, error)
-	ListenerStop(name string) error
-	ListenerGetProfile(name string) ([]byte, error)
-	ListenerInteralHandler(name string, data []byte) (string, error)
-}
+	TsExtenderDataSave(extenderName string, key string, value []byte) error
+	TsExtenderDataLoad(extenderName string, key string) ([]byte, error)
+	TsExtenderDataDelete(extenderName string, key string) error
+	TsExtenderDataKeys(extenderName string) ([]string, error)
+	TsExtenderDataDeleteAll(extenderName string) error
 
-type ExtAgent interface {
-	AgentGenerate(config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
-	AgentCreate(beat []byte) (adaptix.AgentData, error)
-	AgentCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error)
-	AgentProcessData(agentData adaptix.AgentData, packedData []byte) ([]byte, error)
-	AgentPackData(agentData adaptix.AgentData, tasks []adaptix.TaskData) ([]byte, error)
-	AgentPivotPackData(pivotId string, data []byte) (adaptix.TaskData, error)
+	TsEndpointRegister(method string, path string, handler func(username string, body []byte) (int, []byte)) error
+	TsEndpointUnregister(method string, path string) error
+	TsEndpointExists(method string, path string) bool
 
-	AgentTunnelCallbacks() (func(int, int, int, string, int) adaptix.TaskData, func(int, int, int, string, int) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int, []byte) adaptix.TaskData, func(int) adaptix.TaskData, func(int, int) adaptix.TaskData, error)
-	AgentTerminalCallbacks() (func(int, string, int, int, int) (adaptix.TaskData, error), func(int, int, []byte) (adaptix.TaskData, error), func(int) (adaptix.TaskData, error), error)
+	TsEndpointRegisterPublic(method string, path string, handler func(body []byte) (int, []byte)) error
+	TsEndpointUnregisterPublic(method string, path string) error
+	TsEndpointExistsPublic(method string, path string) bool
 }
 
 type AdaptixExtender struct {
 	ts              Teamserver
-	listenerModules map[string]ExtListener
-	agentModules    map[string]ExtAgent
+	listenerModules map[string]adaptix.PluginListener
+	agentModules    map[string]adaptix.PluginAgent
+	serviceModules  map[string]adaptix.PluginService
+	activeListeners map[string]adaptix.ExtenderListener
+}
+
+/// Helper methods
+
+func (ex *AdaptixExtender) getListenerModule(configType string) (adaptix.PluginListener, error) {
+	module, ok := ex.listenerModules[configType]
+	if !ok {
+		return nil, ErrModuleNotFound
+	}
+	return module, nil
+}
+
+func (ex *AdaptixExtender) getActiveListener(name string) (adaptix.ExtenderListener, error) {
+	listener, ok := ex.activeListeners[name]
+	if !ok {
+		return nil, ErrListenerNotFound
+	}
+	return listener, nil
+}
+
+func (ex *AdaptixExtender) getAgentModule(agentName string) (adaptix.PluginAgent, error) {
+	module, ok := ex.agentModules[agentName]
+	if !ok {
+		return nil, ErrModuleNotFound
+	}
+	return module, nil
+}
+
+func (ex *AdaptixExtender) getServiceModule(serviceName string) (adaptix.PluginService, error) {
+	module, ok := ex.serviceModules[serviceName]
+	if !ok {
+		return nil, ErrServiceNotFound
+	}
+	return module, nil
 }

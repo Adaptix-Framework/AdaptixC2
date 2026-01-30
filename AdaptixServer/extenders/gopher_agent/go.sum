@@ -1,5 +1,4 @@
-github.com/Adaptix-Framework/axc2 v1.0.0 h1:W/BeBP51xW+ND3kHBj4Z2aztm7QshDQDrPsPLZXKORo=
-github.com/Adaptix-Framework/axc2 v1.0.0/go.mod h1:jQ9Yca/qAs1xnMseCH4zGAeV4r0xps/xmXq5B6f9jog=
+github.com/Adaptix-Framework/axc2 v1.1.3 h1:2Y28y0PMiX2v1EReK95Qe2TYoaOJfeYNfiMP/L8WGYE=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 h1:El6M4kTTCOh6aBiKaUGG7oYTSPP8MxqL4YI3kZKwcP4=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=

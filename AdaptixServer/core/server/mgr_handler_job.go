@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/safe"
 
 	"github.com/Adaptix-Framework/axc2"
@@ -19,6 +20,14 @@ func (h *JobTaskHandler) Create(tm *TaskManager, agent *Agent, taskData *adaptix
 
 func (h *JobTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
 	updateData.AgentId = task.AgentId
+
+	// --- EVENT ---
+	event := &eventing.EventDataTaskUpdateJob{
+		AgentId: task.AgentId,
+		Task:    *updateData,
+	}
+	tm.ts.EventManager.EmitAsync(eventing.EventTaskUpdateJob, event)
+	// -------------
 
 	if task.HookId != "" && task.Client != "" && tm.ts.TsClientConnected(task.Client) {
 		h.updateWithHook(tm, agent, task, updateData)
@@ -176,8 +185,8 @@ func (h *JobTaskHandler) processReadyJobs(tm *TaskManager, agent *Agent, task *a
 				packet_task_update := CreateSpAgentTaskUpdate(hookJob.Job)
 				packet_console_update := CreateSpAgentConsoleTaskUpd(hookJob.Job)
 
-				tm.ts.TsSyncAllClients(packet_task_update)
-				tm.ts.TsSyncAllClients(packet_console_update)
+				tm.ts.TsSyncAllClientsWithCategory(packet_task_update, SyncCategoryTasksManager)
+				tm.ts.TsSyncConsole(packet_console_update, hookJob.Job.Client)
 
 				agent.OutConsole.Put(packet_console_update)
 				_ = tm.ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)
@@ -251,8 +260,8 @@ func (h *JobTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task 
 			packet_task_update := CreateSpAgentTaskUpdate(hookJob.Job)
 			packet_console_update := CreateSpAgentConsoleTaskUpd(hookJob.Job)
 
-			tm.ts.TsSyncAllClients(packet_task_update)
-			tm.ts.TsSyncAllClients(packet_console_update)
+			tm.ts.TsSyncAllClientsWithCategory(packet_task_update, SyncCategoryTasksManager)
+			tm.ts.TsSyncConsole(packet_console_update, hookJob.Job.Client)
 
 			agent.OutConsole.Put(packet_console_update)
 			_ = tm.ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)

@@ -3,6 +3,7 @@
 #include <QJSValueIterator>
 #include <Agent/Agent.h>
 #include <Client/AuthProfile.h>
+#include <Client/Requestor.h>
 #include <Client/AxScript/BridgeApp.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxCommandWrappers.h>
@@ -582,6 +583,18 @@ QString BridgeApp::file_basename(const QString &path) const
     return path.mid(slash + 1);
 }
 
+QString BridgeApp::file_dirname(const QString &path) const
+{
+    QFileInfo fi(path);
+    return fi.absolutePath();
+}
+
+QString BridgeApp::file_extension(const QString &path) const
+{
+    QFileInfo fi(path);
+    return fi.suffix();
+}
+
 bool BridgeApp::file_exists(const QString &path) const { return QFile::exists(path); }
 
 QString BridgeApp::file_read(QString path) const
@@ -594,9 +607,14 @@ QString BridgeApp::file_read(QString path) const
         QByteArray fileData = file.readAll();
         file.close();
         return QString::fromLatin1(fileData.toBase64());
-    } else {
-        return "";
     }
+    return "";
+}
+
+qint64 BridgeApp::file_size(const QString &path) const
+{
+    QFileInfo fi(path);
+    return fi.size();
 }
 
 bool BridgeApp::file_write_text(QString path, const QString &content, bool append) const
@@ -613,6 +631,303 @@ bool BridgeApp::file_write_text(QString path, const QString &content, bool appen
         return true;
     }
     return false;
+}
+
+bool BridgeApp::file_write_binary(QString path, const QString &base64Content) const
+{
+    if (path.startsWith("~/"))
+        path = QDir::home().filePath(path.mid(2));
+
+    QByteArray data = QByteArray::fromBase64(base64Content.toLatin1());
+    QFile file(path);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(data);
+        file.close();
+        return true;
+    }
+    return false;
+}
+
+// Encoding methods
+
+static QByteArray applyXor(const QByteArray &data, const QByteArray &key)
+{
+    if (key.isEmpty())
+        return data;
+    QByteArray result;
+    result.reserve(data.size());
+    for (int i = 0; i < data.size(); ++i)
+        result.append(data[i] ^ key[i % key.size()]);
+    return result;
+}
+
+static QByteArray encodeBase32(const QByteArray &data)
+{
+    static const char* alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    QByteArray result;
+    int buffer = 0, bitsLeft = 0;
+    for (int i = 0; i < data.size(); ++i) {
+        buffer = (buffer << 8) | static_cast<unsigned char>(data[i]);
+        bitsLeft += 8;
+        while (bitsLeft >= 5) {
+            result.append(alphabet[(buffer >> (bitsLeft - 5)) & 0x1F]);
+            bitsLeft -= 5;
+        }
+    }
+    if (bitsLeft > 0)
+        result.append(alphabet[(buffer << (5 - bitsLeft)) & 0x1F]);
+    while (result.size() % 8 != 0)
+        result.append('=');
+    return result;
+}
+
+static QByteArray decodeBase32(const QByteArray &data)
+{
+    static constexpr int lookup[256] = {
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,26,27,28,29,30,31,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,
+        -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+        -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+    };
+    QByteArray result;
+    int buffer = 0, bitsLeft = 0;
+    for (int i = 0; i < data.size(); ++i) {
+        if (data[i] == '=') break;
+        int val = lookup[static_cast<unsigned char>(data[i])];
+        if (val < 0) continue;
+        buffer = (buffer << 5) | val;
+        bitsLeft += 5;
+        if (bitsLeft >= 8) {
+            result.append(static_cast<char>((buffer >> (bitsLeft - 8)) & 0xFF));
+            bitsLeft -= 8;
+        }
+    }
+    return result;
+}
+
+QString BridgeApp::encode_data(const QString &algorithm, const QString &data, const QString &key) const
+{
+    QByteArray bytes = data.toUtf8();
+    QString alg = algorithm.toLower();
+
+    if (alg == "hex")
+        return QString::fromLatin1(bytes.toHex());
+    if (alg == "base64")
+        return QString::fromLatin1(bytes.toBase64());
+    if (alg == "base32")
+        return QString::fromLatin1(encodeBase32(bytes));
+    if (alg == "zip")
+        return QString::fromLatin1(qCompress(bytes).toBase64());
+    if (alg == "xor")
+        return QString::fromLatin1(applyXor(bytes, key.toUtf8()).toBase64());
+
+    return data;
+}
+
+QString BridgeApp::decode_data(const QString &algorithm, const QString &data, const QString &key) const
+{
+    QString alg = algorithm.toLower();
+
+    if (alg == "hex")
+        return QString::fromUtf8(QByteArray::fromHex(data.toLatin1()));
+    if (alg == "base64")
+        return QString::fromUtf8(QByteArray::fromBase64(data.toLatin1()));
+    if (alg == "base32")
+        return QString::fromUtf8(decodeBase32(data.toLatin1()));
+    if (alg == "zip")
+        return QString::fromUtf8(qUncompress(QByteArray::fromBase64(data.toLatin1())));
+    if (alg == "xor")
+        return QString::fromUtf8(applyXor(QByteArray::fromBase64(data.toLatin1()), key.toUtf8()));
+
+    return data;
+}
+
+QString BridgeApp::encode_file(const QString &algorithm, const QString &path, const QString &key) const
+{
+    QString filePath = path;
+    if (filePath.startsWith("~/"))
+        filePath = QDir::home().filePath(filePath.mid(2));
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly))
+        return "";
+
+    QByteArray bytes = file.readAll();
+    file.close();
+
+    QString alg = algorithm.toLower();
+
+    if (alg == "hex")
+        return QString::fromLatin1(bytes.toHex());
+    if (alg == "base64")
+        return QString::fromLatin1(bytes.toBase64());
+    if (alg == "base32")
+        return QString::fromLatin1(encodeBase32(bytes));
+    if (alg == "zip")
+        return QString::fromLatin1(qCompress(bytes).toBase64());
+    if (alg == "xor")
+        return QString::fromLatin1(applyXor(bytes, key.toUtf8()).toBase64());
+
+    return QString::fromLatin1(bytes.toBase64());
+}
+
+QString BridgeApp::decode_file(const QString &algorithm, const QString &path, const QString &key) const
+{
+    QString filePath = path;
+    if (filePath.startsWith("~/"))
+        filePath = QDir::home().filePath(filePath.mid(2));
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly))
+        return "";
+
+    QByteArray encodedBytes = file.readAll();
+    file.close();
+
+    QString alg = algorithm.toLower();
+
+    if (alg == "hex")
+        return QString::fromLatin1(QByteArray::fromHex(encodedBytes).toBase64());
+    if (alg == "base64")
+        return QString::fromLatin1(QByteArray::fromBase64(encodedBytes).toBase64());
+    if (alg == "base32")
+        return QString::fromLatin1(decodeBase32(encodedBytes).toBase64());
+    if (alg == "zip")
+        return QString::fromLatin1(qUncompress(QByteArray::fromBase64(encodedBytes)).toBase64());
+    if (alg == "xor")
+        return QString::fromLatin1(applyXor(QByteArray::fromBase64(encodedBytes), key.toUtf8()).toBase64());
+
+    return QString::fromLatin1(encodedBytes.toBase64());
+}
+
+// Code conversion
+
+static QString bytesToCode_C(const QByteArray &data, const QString &varName)
+{
+    QString result = QString("unsigned char %1[%2] = {\n    ").arg(varName).arg(data.size());
+    for (int i = 0; i < data.size(); ++i) {
+        result += QString("0x%1").arg(static_cast<unsigned char>(data[i]), 2, 16, QChar('0'));
+        if (i < data.size() - 1) {
+            result += ", ";
+            if ((i + 1) % 12 == 0) result += "\n    ";
+        }
+    }
+    return result + "\n};";
+}
+
+static QString bytesToCode_CSharp(const QByteArray &data, const QString &varName)
+{
+    QString result = QString("byte[] %1 = new byte[%2] {\n    ").arg(varName).arg(data.size());
+    for (int i = 0; i < data.size(); ++i) {
+        result += QString("0x%1").arg(static_cast<unsigned char>(data[i]), 2, 16, QChar('0'));
+        if (i < data.size() - 1) {
+            result += ", ";
+            if ((i + 1) % 12 == 0) result += "\n    ";
+        }
+    }
+    return result + "\n};";
+}
+
+static QString bytesToCode_Python(const QByteArray &data, const QString &varName)
+{
+    QString result = QString("%1 = b\"").arg(varName);
+    for (int i = 0; i < data.size(); ++i)
+        result += QString("\\x%1").arg(static_cast<unsigned char>(data[i]), 2, 16, QChar('0'));
+    return result + "\"";
+}
+
+static QString bytesToCode_Golang(const QByteArray &data, const QString &varName)
+{
+    QString result = QString("%1 := []byte{\n    ").arg(varName);
+    for (int i = 0; i < data.size(); ++i) {
+        result += QString("0x%1").arg(static_cast<unsigned char>(data[i]), 2, 16, QChar('0'));
+        if (i < data.size() - 1) {
+            result += ", ";
+            if ((i + 1) % 12 == 0) result += "\n    ";
+        }
+    }
+    return result + "\n}";
+}
+
+static QString bytesToCode_VBS(const QByteArray &data, const QString &varName)
+{
+    QString result = QString("%1 = Array(").arg(varName);
+    for (int i = 0; i < data.size(); ++i) {
+        result += QString("&H%1").arg(static_cast<unsigned char>(data[i]), 2, 16, QChar('0')).toUpper();
+        if (i < data.size() - 1) {
+            result += ", ";
+            if ((i + 1) % 10 == 0) result += " _\n    ";
+        }
+    }
+    return result + ")";
+}
+
+static QString bytesToCode_Nim(const QByteArray &data, const QString &varName)
+{
+    QString result = QString("var %1: array[%2, byte] = [\n    byte ").arg(varName).arg(data.size());
+    for (int i = 0; i < data.size(); ++i) {
+        result += QString("0x%1").arg(static_cast<unsigned char>(data[i]), 2, 16, QChar('0'));
+        if (i < data.size() - 1) {
+            result += ", ";
+            if ((i + 1) % 12 == 0) result += "\n    ";
+        }
+    }
+    return result + "\n]";
+}
+
+static QString bytesToCode_Rust(const QByteArray &data, const QString &varName)
+{
+    QString result = QString("let %1: [u8; %2] = [\n    ").arg(varName).arg(data.size());
+    for (int i = 0; i < data.size(); ++i) {
+        result += QString("0x%1").arg(static_cast<unsigned char>(data[i]), 2, 16, QChar('0'));
+        if (i < data.size() - 1) {
+            result += ", ";
+            if ((i + 1) % 12 == 0) result += "\n    ";
+        }
+    }
+    return result + "\n];";
+}
+
+static QString bytesToCode_PowerShell(const QByteArray &data, const QString &varName)
+{
+    QString result = QString("[Byte[]] $%1 = @(\n    ").arg(varName);
+    for (int i = 0; i < data.size(); ++i) {
+        result += QString("0x%1").arg(static_cast<unsigned char>(data[i]), 2, 16, QChar('0'));
+        if (i < data.size() - 1) {
+            result += ", ";
+            if ((i + 1) % 12 == 0) result += "\n    ";
+        }
+    }
+    return result + "\n)";
+}
+
+QString BridgeApp::convert_to_code(const QString &language, const QString &base64Data, const QString &varName) const
+{
+    QByteArray data = QByteArray::fromBase64(base64Data.toLatin1());
+    QString lang = language.toLower();
+
+    if (lang == "c" || lang == "cpp" || lang == "c++")
+        return bytesToCode_C(data, varName);
+    if (lang == "csharp" || lang == "cs" || lang == "c#")
+        return bytesToCode_CSharp(data, varName);
+    if (lang == "python" || lang == "py")
+        return bytesToCode_Python(data, varName);
+    if (lang == "golang" || lang == "go")
+        return bytesToCode_Golang(data, varName);
+    if (lang == "vbs" || lang == "vbscript")
+        return bytesToCode_VBS(data, varName);
+    if (lang == "nim")
+        return bytesToCode_Nim(data, varName);
+    if (lang == "rust" || lang == "rs")
+        return bytesToCode_Rust(data, varName);
+    if (lang == "powershell" || lang == "ps" || lang == "ps1")
+        return bytesToCode_PowerShell(data, varName);
+
+    return "";
 }
 
 QString BridgeApp::format_size(const int &size) const { return BytesToFormat(size); }
@@ -802,6 +1117,14 @@ void BridgeApp::script_unload(const QString &path) { scriptEngine->manager()->Gl
 
 QString BridgeApp::script_dir() { return GetParentPathUnix(scriptEngine->context.name) + "/"; }
 
+QString BridgeApp::get_project() const
+{
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    if (adaptix && adaptix->GetProfile())
+        return adaptix->GetProfile()->GetProject();
+    return QString();
+}
+
 QJSValue BridgeApp::screenshots()
 {
     QVariantMap list;
@@ -818,6 +1141,27 @@ QJSValue BridgeApp::screenshots()
     }
 
     return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+void BridgeApp::service_command(const QString &service, const QString &command, const QJSValue &args)
+{
+    QString argsStr;
+    if (!args.isUndefined() && !args.isNull()) {
+        if (!args.isObject()) {
+            Q_EMIT engineError("service_command expected object in args parameter!");
+            return;
+        }
+        QJsonObject argsObj = QJsonObject::fromVariantMap(args.toVariant().toMap());
+        argsStr = QString::fromUtf8(QJsonDocument(argsObj).toJson(QJsonDocument::Compact));
+    }
+
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    if (!adaptix || !adaptix->GetProfile()) {
+        Q_EMIT engineError("service_command: no active profile!");
+        return;
+    }
+
+    HttpReqServiceCallAsync(service, command, argsStr, *adaptix->GetProfile(), [](bool, const QString&, const QJsonObject&) {});
 }
 
 void BridgeApp::show_message(const QString &title, const QString &text) { QMessageBox::information(nullptr, title, text); }

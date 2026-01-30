@@ -83,7 +83,9 @@ func (dbms *DBMS) DbTasksAll(agentId string) []adaptix.TaskData {
 			logs.Debug("", "Failed to query tasks: "+err.Error())
 			return tasks
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			taskData := adaptix.TaskData{}
@@ -107,7 +109,9 @@ func (dbms *DBMS) DbTasksListCompleted(agentId string, limit int, offset int) ([
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
 
 	tasks := make([]adaptix.TaskData, 0, limit)
 	for rows.Next() {
@@ -120,4 +124,49 @@ func (dbms *DBMS) DbTasksListCompleted(agentId string, limit int, offset int) ([
 	}
 
 	return tasks, nil
+}
+
+func (dbms *DBMS) DbTasksLimited(agentId string, limit int) []adaptix.TaskData {
+	var tasks []adaptix.TaskData
+
+	ok := dbms.DatabaseExists()
+	if ok {
+		selectQuery := `SELECT TaskId, AgentId, TaskType, Client, User, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed FROM Tasks WHERE AgentId = ? ORDER BY StartDate DESC LIMIT ?;`
+		query, err := dbms.database.Query(selectQuery, agentId, limit)
+		if err != nil {
+			logs.Debug("", "Failed to query tasks: "+err.Error())
+			return tasks
+		}
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
+
+		for query.Next() {
+			taskData := adaptix.TaskData{}
+			err = query.Scan(&taskData.TaskId, &taskData.AgentId, &taskData.Type, &taskData.Client, &taskData.User, &taskData.Computer, &taskData.StartDate, &taskData.FinishDate, &taskData.CommandLine, &taskData.MessageType, &taskData.Message, &taskData.ClearText, &taskData.Completed)
+			if err != nil {
+				continue
+			}
+			tasks = append(tasks, taskData)
+		}
+	}
+	for i, j := 0, len(tasks)-1; i < j; i, j = i+1, j-1 {
+		tasks[i], tasks[j] = tasks[j], tasks[i]
+	}
+	return tasks
+}
+
+func (dbms *DBMS) DbTasksCount(agentId string) int {
+	ok := dbms.DatabaseExists()
+	if !ok {
+		return 0
+	}
+
+	var count int
+	selectQuery := `SELECT COUNT(*) FROM Tasks WHERE AgentId = ?;`
+	err := dbms.database.QueryRow(selectQuery, agentId).Scan(&count)
+	if err != nil {
+		return 0
+	}
+	return count
 }

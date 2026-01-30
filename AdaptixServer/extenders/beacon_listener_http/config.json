@@ -1,9 +1,0 @@
-{
-  "extender_type": "listener",
-  "extender_file": "listener_beacon_http.so",
-  "ax_file": "ax_config.axs",
-
-  "listener_name": "BeaconHTTP",
-  "listener_type": "external",
-  "protocol": "http"
-}

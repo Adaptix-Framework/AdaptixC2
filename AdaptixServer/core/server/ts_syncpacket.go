@@ -7,17 +7,17 @@ import (
 )
 
 const (
-	SP_TYPE_EVENT = 0x13
+	SP_TYPE_NOTIFICATION = 0x13
 )
 
 const (
-	EVENT_CLIENT_CONNECT    = 1
-	EVENT_CLIENT_DISCONNECT = 2
-	EVENT_LISTENER_START    = 3
-	EVENT_LISTENER_STOP     = 4
-	EVENT_AGENT_NEW         = 5
-	EVENT_TUNNEL_START      = 6
-	EVENT_TUNNEL_STOP       = 7
+	NOTIFY_CLIENT_CONNECT    = 1
+	NOTIFY_CLIENT_DISCONNECT = 2
+	NOTIFY_LISTENER_START    = 3
+	NOTIFY_LISTENER_STOP     = 4
+	NOTIFY_AGENT_NEW         = 5
+	NOTIFY_TUNNEL_START      = 6
+	NOTIFY_TUNNEL_STOP       = 7
 )
 
 const (
@@ -27,6 +27,9 @@ const (
 	TYPE_SYNC_CATEGORY_BATCH = 0x15
 
 	TYPE_CHAT_MESSAGE = 0x18
+
+	TYPE_SERVICE_REG  = 0x21
+	TYPE_SERVICE_DATA = 0x22
 
 	TYPE_LISTENER_REG   = 0x31
 	TYPE_LISTENER_START = 0x32
@@ -63,6 +66,8 @@ const (
 	TYPE_BROWSER_FILES_STATUS = 0x63
 	TYPE_BROWSER_PROCESS      = 0x64
 
+	TYPE_AGENT_CONSOLE_LOCAL     = 0x67
+	TYPE_AGENT_CONSOLE_ERROR     = 0x68
 	TYPE_AGENT_CONSOLE_OUT       = 0x69
 	TYPE_AGENT_CONSOLE_TASK_SYNC = 0x6a
 	TYPE_AGENT_CONSOLE_TASK_UPD  = 0x6b
@@ -81,13 +86,13 @@ const (
 	TYPE_TARGETS_SET_TAG = 0x8a
 )
 
-func CreateSpEvent(event int, message string) SpEvent {
-	return SpEvent{
-		Type: SP_TYPE_EVENT,
+func CreateSpNotification(notifyType int, message string) SpNotification {
+	return SpNotification{
+		Type: SP_TYPE_NOTIFICATION,
 
-		EventType: event,
-		Message:   message,
-		Date:      time.Now().UTC().Unix(),
+		NotifyType: notifyType,
+		Message:    message,
+		Date:       time.Now().UTC().Unix(),
 	}
 }
 
@@ -171,13 +176,14 @@ func CreateSpListenerStop(name string) SyncPackerListenerStop {
 
 /// AGENT
 
-func CreateSpAgentReg(agent string, ax string, listeners []string) SyncPackerAgentReg {
+func CreateSpAgentReg(agent string, ax string, listeners []string, multiListeners bool) SyncPackerAgentReg {
 	return SyncPackerAgentReg{
 		SpType: TYPE_AGENT_REG,
 
-		Agent:     agent,
-		AX:        ax,
-		Listeners: listeners,
+		Agent:          agent,
+		AX:             ax,
+		Listeners:      listeners,
+		MultiListeners: multiListeners,
 	}
 }
 
@@ -245,6 +251,7 @@ func CreateSpAgentUpdate(agentData adaptix.AgentData) SyncPackerAgentUpdate {
 		Domain:       &agentData.Domain,
 		Computer:     &agentData.Computer,
 		Username:     &agentData.Username,
+		Listener:     &agentData.Listener,
 	}
 }
 
@@ -339,6 +346,30 @@ func CreateSpAgentConsoleOutput(agentId string, messageType int, message string,
 		MessageType: messageType,
 		Message:     message,
 		ClearText:   text,
+	}
+}
+
+func CreateSpAgentErrorCommand(agentId string, cmdline string, message string, HookId string, HandlerId string) SyncPackerAgentErrorCommand {
+	return SyncPackerAgentErrorCommand{
+		SpType: TYPE_AGENT_CONSOLE_ERROR,
+
+		AgentId:   agentId,
+		Cmdline:   cmdline,
+		Message:   message,
+		HookId:    HookId,
+		HandlerId: HandlerId,
+	}
+}
+
+func CreateSpAgentLocalCommand(agentId string, cmdline string, message string, text string) SyncPackerAgentLocalCommand {
+	return SyncPackerAgentLocalCommand{
+		SpCreateTime: time.Now().UTC().Unix(),
+		SpType:       TYPE_AGENT_CONSOLE_LOCAL,
+
+		AgentId: agentId,
+		Cmdline: cmdline,
+		Message: message,
+		Text:    text,
 	}
 }
 
@@ -680,5 +711,25 @@ func CreateSpTunnelDelete(tunnelData adaptix.TunnelData) SyncPackerTunnelDelete 
 		SpType: TYPE_TUNNEL_DELETE,
 
 		TunnelId: tunnelData.TunnelId,
+	}
+}
+
+/// SERVICE
+
+func CreateSpServiceReg(name string, ax string) SyncPackerServiceReg {
+	return SyncPackerServiceReg{
+		SpType: TYPE_SERVICE_REG,
+
+		Name: name,
+		AX:   ax,
+	}
+}
+
+func CreateSpServiceData(service string, data string) SyncPackerServiceData {
+	return SyncPackerServiceData{
+		SpType: TYPE_SERVICE_DATA,
+
+		Service: service,
+		Data:    data,
 	}
 }

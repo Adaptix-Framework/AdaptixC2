@@ -3,20 +3,13 @@
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/SessionsGraph.h>
 
-GraphItemLink::GraphItemLink( GraphItem* src, GraphItem* dst, QString linkName)
+GraphItemLink::GraphItemLink( GraphItem* src, GraphItem* dst, const QString &linkName)
 {
     this->src = src;
     this->dst = dst;
-    this->listenerName = dst->agent->data.Listener;
-    this->listenerType = dst->agent->connType;
-    this->linkName     = linkName;
+    this->linkName = linkName;
 
-    if (listenerType == "external") {
-        this->color = QColor(COLOR_KellyGreen);
-    }
-    else if (listenerType == "internal") {
-        this->color = QColor(COLOR_PastelYellow);
-    }
+    this->color = QColor(COLOR_KellyGreen);
 
     setAcceptedMouseButtons( Qt::NoButton );
 
@@ -77,6 +70,17 @@ void GraphItemLink::paint( QPainter* painter, const QStyleOptionGraphicsItem* op
     if ( !this->src || !this->dst )
         return;
 
+    QString listenerName;
+    QString listenerType;
+    if (this->dst->agent) {
+        listenerName = this->dst->agent->data.Listener;
+        listenerType = this->dst->agent->connType;
+    }
+
+    QColor color = QColor(COLOR_KellyGreen);
+    if (listenerType == "internal")
+        color = QColor(COLOR_PastelYellow);
+
     QLineF line = QLineF( this->srcPoint, this->dstPoint );
     if ( qFuzzyCompare(line.length(), static_cast<qreal>(0.)) )
         return;
@@ -90,36 +94,36 @@ void GraphItemLink::paint( QPainter* painter, const QStyleOptionGraphicsItem* op
 
     if ( this->src->agent == nullptr && this->dst->agent )
     {
-        if (this->listenerType == "external") {
+        if (listenerType == "external") {
             if (this->dst->agent->data.Async)
-                painter->setPen( QPen( this->color, 3, Qt::DotLine, Qt::RoundCap, Qt::RoundJoin ) );
+                painter->setPen( QPen( color, 3, Qt::DotLine, Qt::RoundCap, Qt::RoundJoin ) );
             else
-                painter->setPen( QPen( this->color, 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin ) );
-            painter->setBrush( this->color );
+                painter->setPen( QPen( color, 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin ) );
+            painter->setBrush( color );
             painter->drawPolygon( QPolygonF() << line.p1() << sourceArrowP1 << sourceArrowP2 );
 
-            paintLineText(painter, angle, line, this->listenerName, this->color);
+            paintLineText(painter, angle, line, listenerName, color);
         }
-        else if (this->listenerType == "internal") {
+        else if (listenerType == "internal") {
             QColor greyColor(COLOR_SaturGray);
 
             painter->setPen( QPen( greyColor, 3, Qt::DashLine, Qt::RoundCap, Qt::RoundJoin ) );
             painter->setBrush( greyColor );
 
-            QString linkText = QString("UNLINK [%1]").arg(this->listenerName);;
+            QString linkText = QString("UNLINK [%1]").arg(listenerName);
             paintLineText(painter, angle, line, linkText, greyColor);
         }
     }
     else {
-        painter->setPen( QPen( this->color, 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin ) );
-        painter->setBrush( this->color  );
+        painter->setPen( QPen( color, 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin ) );
+        painter->setBrush( color  );
         painter->drawPolygon( QPolygonF() << line.p2() << destArrowP1 << destArrowP2 );
 
-        QString linkText = this->listenerName;
+        QString linkText = listenerName;
         if (!this->linkName.isEmpty())
-            linkText = QString("%1 (%2)").arg(this->listenerName).arg(this->linkName);
+            linkText = QString("%1 (%2)").arg(listenerName).arg(this->linkName);
 
-        paintLineText(painter, angle, line, linkText, this->color);
+        paintLineText(painter, angle, line, linkText, color);
     }
 }
 

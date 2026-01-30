@@ -231,6 +231,19 @@ public:
         endInsertRows();
     }
 
+    void addBatch(const QList<DownloadData>& items) {
+        if (items.isEmpty())
+            return;
+        const int first = downloads.size();
+        const int last = first + items.size() - 1;
+        beginInsertRows(QModelIndex(), first, last);
+        for (const auto& item : items) {
+            idToRow[item.FileId] = downloads.size();
+            downloads.append(item);
+        }
+        endInsertRows();
+    }
+
     void update(const QString& fileId, int recvSize, int state) {
         auto it = idToRow.find(fileId);
         if (it == idToRow.end())
@@ -322,9 +335,9 @@ public:
         progressBar.textVisible = false;
 
         if (state == DOWNLOAD_STATE_STOPPED)
-            progressBar.state = QStyle::State_None;
+            progressBar.state = QStyle::State_Horizontal;
         else
-            progressBar.state = QStyle::State_Enabled;
+            progressBar.state = QStyle::State_Enabled | QStyle::State_Horizontal;
 
         QApplication::style()->drawControl(QStyle::CE_ProgressBar, &progressBar, painter);
     }
@@ -350,7 +363,11 @@ Q_OBJECT
     QComboBox*      stateComboBox   = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
+    bool bufferingEnabled = false;
+    QList<DownloadData> pendingDownloads;
+
     void createUI();
+    void flushPendingDownloads();
 
 public:
     explicit DownloadsWidget(AdaptixWidget* w);

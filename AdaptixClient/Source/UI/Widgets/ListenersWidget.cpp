@@ -93,6 +93,9 @@ void ListenersWidget::createUI()
     tableView->horizontalHeader()->setHighlightSections(false);
     tableView->verticalHeader()->setVisible(false);
 
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+    tableView->sortByColumn(LC_Date, Qt::DescendingOrder);
+
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(0, 0, 0, 0);
     mainGridLayout->addWidget(searchWidget, 0, 0, 1, 1);
@@ -179,6 +182,9 @@ void ListenersWidget::handleListenersMenu(const QPoint &pos) const
     listenerMenu.addAction("Create", this, &ListenersWidget::onCreateListener);
     listenerMenu.addAction("Edit",   this, &ListenersWidget::onEditListener);
     listenerMenu.addAction("Remove", this, &ListenersWidget::onRemoveListener);
+    listenerMenu.addSeparator();
+    listenerMenu.addAction("Pause",  this, &ListenersWidget::onPauseListener);
+    listenerMenu.addAction("Resume", this, &ListenersWidget::onResumeListener);
     listenerMenu.addSeparator();
     listenerMenu.addAction("Generate agent", this, &ListenersWidget::onGenerateAgent);
 
@@ -390,6 +396,44 @@ void ListenersWidget::onRemoveListener() const
     });
 }
 
+void ListenersWidget::onPauseListener() const
+{
+    if (tableView->selectionModel()->selectedRows().empty())
+        return;
+
+    QModelIndex currentIndex = tableView->currentIndex();
+    QModelIndex sourceIndex = proxyModel->mapToSource(currentIndex);
+    if (!sourceIndex.isValid())
+        return;
+
+    auto listenerName    = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_Name), Qt::DisplayRole).toString();
+    auto listenerRegName = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_RegName), Qt::DisplayRole).toString();
+
+    HttpReqListenerPauseAsync(listenerName, listenerRegName, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
+}
+
+void ListenersWidget::onResumeListener() const
+{
+    if (tableView->selectionModel()->selectedRows().empty())
+        return;
+
+    QModelIndex currentIndex = tableView->currentIndex();
+    QModelIndex sourceIndex = proxyModel->mapToSource(currentIndex);
+    if (!sourceIndex.isValid())
+        return;
+
+    auto listenerName    = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_Name), Qt::DisplayRole).toString();
+    auto listenerRegName = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_RegName), Qt::DisplayRole).toString();
+
+    HttpReqListenerResumeAsync(listenerName, listenerRegName, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "Response timeout" : message);
+    });
+}
+
 void ListenersWidget::onGenerateAgent() const
 {
     if (tableView->selectionModel()->selectedRows().empty())
@@ -421,8 +465,11 @@ void ListenersWidget::onGenerateAgent() const
             return;
         }
 
+        QJSValue jsListeners = engine->newArray(1);
+        jsListeners.setProperty(0, listenerRegName);
+
         QJSValueList args;
-        args << QJSValue(listenerRegName);
+        args << jsListeners;
         QJSValue result = func.call(args);
         if (result.isError()) {
             QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(listenerName).arg(result.property("stack").toString());
@@ -473,9 +520,16 @@ void ListenersWidget::onGenerateAgent() const
         ax_uis[agent] = { container, formElement->widget(), h, w };
     }
 
-    DialogAgent* dialogListener = new DialogAgent(listenerName, listenerRegName);
+    QMap<QString, AgentTypeInfo> agentTypesMap;
+    for (const auto &agentItem : agents) {
+        agentTypesMap[agentItem] = adaptixWidget->GetAgentTypeInfo(agentItem);
+    }
+
+    DialogAgent* dialogListener = new DialogAgent(adaptixWidget, listenerName, listenerRegName);
     dialogListener->setAttribute(Qt::WA_DeleteOnClose);
     dialogListener->SetProfile( *(adaptixWidget->GetProfile()) );
+    dialogListener->SetAvailableListeners(adaptixWidget->Listeners);
+    dialogListener->SetAgentTypes(agentTypesMap);
     dialogListener->AddExAgents(agents, ax_uis);
     dialogListener->Start();
 }

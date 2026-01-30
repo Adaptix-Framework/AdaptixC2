@@ -79,3 +79,37 @@ func (tc *TsConnector) TcListenerEdit(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "Listener Edited", "ok": true})
 }
+
+func (tc *TsConnector) TcListenerPause(ctx *gin.Context) {
+	var listener ListenerConfig
+	err := ctx.ShouldBindJSON(&listener)
+	if err != nil {
+		_ = ctx.Error(errors.New("invalid listener"))
+		return
+	}
+
+	err = tc.teamserver.TsListenerPause(listener.ListenerName, listener.ConfigType)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Listener paused", "ok": true})
+}
+
+func (tc *TsConnector) TcListenerResume(ctx *gin.Context) {
+	var listener ListenerConfig
+	err := ctx.ShouldBindJSON(&listener)
+	if err != nil {
+		_ = ctx.Error(errors.New("invalid listener"))
+		return
+	}
+
+	err = tc.teamserver.TsListenerResume(listener.ListenerName, listener.ConfigType)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "Listener resumed", "ok": true})
+}

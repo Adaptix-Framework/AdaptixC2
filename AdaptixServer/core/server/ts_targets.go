@@ -1,10 +1,11 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/std"
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strings"
 	"time"
 
@@ -85,10 +86,29 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 	}
 
 	if len(newTargets) > 0 {
+		// --- PRE HOOK ---
+		var inputTargets []adaptix.TargetData
+		for _, t := range newTargets {
+			inputTargets = append(inputTargets, *t)
+		}
+		preEvent := &eventing.EventDataTargetAdd{Targets: inputTargets}
+		if !ts.EventManager.Emit(eventing.EventTargetAdd, eventing.HookPre, preEvent) {
+			if preEvent.Error != nil {
+				return preEvent.Error
+			}
+			return fmt.Errorf("operation cancelled by hook")
+		}
+		// ----------------
+
 		_ = ts.DBMS.DbTargetsAdd(newTargets)
 
 		packet := CreateSpTargetsAdd(newTargets)
-		ts.TsSyncAllClients(packet)
+		ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
+
+		// --- POST HOOK ---
+		postEvent := &eventing.EventDataTargetAdd{Targets: inputTargets}
+		ts.EventManager.EmitAsync(eventing.EventTargetAdd, postEvent)
+		// -----------------
 	}
 
 	return nil
@@ -115,7 +135,7 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string,
 			_ = ts.DBMS.DbTargetUpdate(t)
 
 			packet := CreateSpTargetUpdate(*t)
-			ts.TsSyncAllClients(packet)
+			ts.TsSyncStateWithCategory(packet, "target:"+t.TargetId, SyncCategoryTargetsRealtime)
 
 			return t.TargetId, nil
 		}
@@ -138,12 +158,31 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string,
 	_ = ts.DBMS.DbTargetsAdd(newTargets)
 
 	packet := CreateSpTargetsAdd(newTargets)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
 
 	return target.TargetId, nil
 }
 
 func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataTargetEdit{Target: adaptix.TargetData{
+		TargetId: targetId,
+		Computer: computer,
+		Domain:   domain,
+		Address:  address,
+		Os:       os,
+		OsDesk:   osDesk,
+		Tag:      tag,
+		Info:     info,
+		Alive:    alive,
+	}}
+	if !ts.EventManager.Emit(eventing.EventTargetEdit, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
 
 	var target *adaptix.TargetData
 
@@ -177,29 +216,53 @@ func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain str
 	_ = ts.DBMS.DbTargetUpdate(target)
 
 	packet := CreateSpTargetUpdate(*target)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncStateWithCategory(packet, "target:"+target.TargetId, SyncCategoryTargetsRealtime)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTargetEdit{Target: *target}
+	ts.EventManager.EmitAsync(eventing.EventTargetEdit, postEvent)
+	// -----------------
 
 	return nil
 }
 
 func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
-
-	for _, id := range targetsId {
-		for i := uint(0); i < ts.targets.Len(); i++ {
-			valueTarget, ok := ts.targets.Get(i)
-			if ok {
-				if valueTarget.(*adaptix.TargetData).TargetId == id {
-					ts.targets.Delete(i)
-					break
-				}
-			}
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataTargetRemove{TargetIds: targetsId}
+	if !ts.EventManager.Emit(eventing.EventTargetRemove, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
 		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	targetsId = preEvent.TargetIds
+	// ----------------
 
-		_ = ts.DBMS.DbTargetDelete(id)
+	deleteSet := make(map[string]struct{}, len(targetsId))
+	for _, id := range targetsId {
+		deleteSet[id] = struct{}{}
 	}
 
+	for i := ts.targets.Len(); i > 0; i-- {
+		valueTarget, ok := ts.targets.Get(i - 1)
+		if ok {
+			if _, exists := deleteSet[valueTarget.(*adaptix.TargetData).TargetId]; exists {
+				ts.targets.Delete(i - 1)
+			}
+		}
+	}
+
+	go func(ids []string) {
+		_ = ts.DBMS.DbTargetDeleteBatch(ids)
+	}(targetsId)
+
 	packet := CreateSpTargetDelete(targetsId)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTargetRemove{TargetIds: targetsId}
+	ts.EventManager.EmitAsync(eventing.EventTargetRemove, postEvent)
+	// -----------------
 
 	return nil
 }
@@ -207,36 +270,37 @@ func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
 /// Setters
 
 func (ts *Teamserver) TsTargetSetTag(targetsId []string, tag string) error {
+	updateSet := make(map[string]struct{}, len(targetsId))
+	for _, id := range targetsId {
+		updateSet[id] = struct{}{}
+	}
 
-	var ids []string
+	var updatedTargets []*adaptix.TargetData
 	for valueTarget := range ts.targets.Iterator() {
 		target := valueTarget.Item.(*adaptix.TargetData)
-		found := false
-
-		for i := len(targetsId) - 1; i >= 0; i-- {
-			if target.TargetId == targetsId[i] {
-				target.Tag = tag
-				found = true
-				_ = ts.DBMS.DbTargetUpdate(target)
-				ids = append(ids, target.TargetId)
-				targetsId = append(targetsId[:i], targetsId[i+1:]...)
-				break
-			}
-		}
-
-		if found && len(targetsId) == 0 {
-			break
+		if _, exists := updateSet[target.TargetId]; exists {
+			target.Tag = tag
+			updatedTargets = append(updatedTargets, target)
 		}
 	}
 
+	go func(targets []*adaptix.TargetData) {
+		_ = ts.DBMS.DbTargetUpdateBatch(targets)
+	}(updatedTargets)
+
+	var ids []string
+	for _, t := range updatedTargets {
+		ids = append(ids, t.TargetId)
+	}
+
 	packet := CreateSpTargetSetTag(ids, tag)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
 
 	return nil
 }
 
 func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
-	targets_id := make(map[string]string)
+	targetsIdSet := make(map[string]struct{})
 
 	for _, agentId := range agentsId {
 		value, ok := ts.Agents.Get(agentId)
@@ -250,22 +314,31 @@ func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
 
 		agentData := agent.GetData()
 		if agentData.TargetId != "" {
-			targets_id[agentData.TargetId] = ""
+			targetsIdSet[agentData.TargetId] = struct{}{}
 		}
 	}
 
-	for targetId, _ := range targets_id {
-		for t_value := range ts.targets.Iterator() {
-			t := t_value.Item.(*adaptix.TargetData)
-			if t.TargetId == targetId {
+	var updatedTargets []*adaptix.TargetData
+	var packets []interface{}
 
-				t.Agents = std.DifferenceStringsArray(t.Agents, agentsId)
+	for t_value := range ts.targets.Iterator() {
+		t := t_value.Item.(*adaptix.TargetData)
+		if _, exists := targetsIdSet[t.TargetId]; exists {
+			t.Agents = std.DifferenceStringsArray(t.Agents, agentsId)
+			updatedTargets = append(updatedTargets, t)
+			packets = append(packets, CreateSpTargetUpdate(*t))
+		}
+	}
 
-				_ = ts.DBMS.DbTargetUpdate(t)
+	go func(targets []*adaptix.TargetData) {
+		_ = ts.DBMS.DbTargetUpdateBatch(targets)
+	}(updatedTargets)
 
-				packet := CreateSpTargetUpdate(*t)
-				ts.TsSyncAllClients(packet)
-			}
+	for _, packet := range packets {
+		if upd, ok := packet.(SyncPackerTargetUpdate); ok {
+			ts.TsSyncStateWithCategory(upd, "target:"+upd.TargetId, SyncCategoryTargetsRealtime)
+		} else {
+			ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
 		}
 	}
 

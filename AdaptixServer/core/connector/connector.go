@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/Adaptix-Framework/axc2"
@@ -23,14 +23,17 @@ type Teamserver interface {
 
 	TsClientExists(username string) bool
 	TsClientDisconnect(username string)
+	TsClientConnect(username string, version string, socket *websocket.Conn, clientType uint8, consoleTeamMode bool, subscriptions []string)
 	TsClientSync(username string)
-	TsClientConnect(username string, version string, socket *websocket.Conn)
+	TsClientSubscribe(username string, categories []string, consoleTeamMode *bool)
 
 	TsListenerList() (string, error)
 	TsListenerStart(listenerName string, configType string, config string, createTime int64, watermark string, customData []byte) error
 	TsListenerEdit(listenerName string, configType string, config string) error
 	TsListenerStop(listenerName string, configType string) error
-	TsListenerGetProfile(listenerName string, listenerType string) (string, []byte, error)
+	TsListenerPause(listenerName string, configType string) error
+	TsListenerResume(listenerName string, configType string) error
+	TsListenerGetProfile(listenerName string) (string, []byte, error)
 	TsListenerInteralHandler(watermark string, data []byte) (string, error)
 
 	TsAgentList() (string, error)
@@ -39,17 +42,19 @@ type Teamserver interface {
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
 	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error
-	TsAgentGenerate(agentName string, config string, listenerWM string, listenerProfile []byte) ([]byte, string, error)
+	TsAgentBuildSyncOnce(agentName string, config string, listenersName []string) ([]byte, string, error)
 
 	TsAgentUpdateData(newAgentData adaptix.AgentData) error
 	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
 	TsAgentTerminate(agentId string, terminateTaskId string) error
 	TsAgentRemove(agentId string) error
 	TsAgentConsoleRemove(agentId string) error
-	TsAgentSetTick(agentId string) error
+	TsAgentSetTick(agentId string, listenerName string) error
 	TsAgentTickUpdate()
+
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
+	TsAgentConsoleErrorCommand(agentId string, client string, cmdline string, message string, HookId string, HandlerId string)
 
 	TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData)
 	TsTaskUpdate(agentId string, data adaptix.TaskData)
@@ -90,12 +95,15 @@ type Teamserver interface {
 	TsTargetSetTag(targetsId []string, tag string) error
 	TsTargetRemoveSessions(agentsId []string) error
 
-	TsClientGuiDisks(taskData adaptix.TaskData, jsonDrives string)
-	TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string)
+	TsClientGuiDisksWindows(taskData adaptix.TaskData, drives []adaptix.ListingDrivesDataWin)
 	TsClientGuiFilesStatus(taskData adaptix.TaskData)
-	TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string)
+	TsClientGuiFilesWindows(taskData adaptix.TaskData, path string, files []adaptix.ListingFileDataWin)
+	TsClientGuiFilesUnix(taskData adaptix.TaskData, path string, files []adaptix.ListingFileDataUnix)
+	TsClientGuiProcessWindows(taskData adaptix.TaskData, process []adaptix.ListingProcessDataWin)
+	TsClientGuiProcessUnix(taskData adaptix.TaskData, process []adaptix.ListingProcessDataUnix)
 
 	TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error
+	TsAgentBuildCreateChannel(buildData string, wsconn *websocket.Conn) error
 
 	TsTunnelList() (string, error)
 	TsTunnelClientStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error)
@@ -109,10 +117,15 @@ type Teamserver interface {
 	TsTunnelStopSocks(AgentId string, Port int)
 	TsTunnelStopLportfwd(AgentId string, Port int)
 	TsTunnelStopRportfwd(AgentId string, Port int)
-	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionClose(channelId int, writeOnly bool)
 	TsTunnelConnectionHalt(channelId int, errorCode byte)
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
+
+	TsServiceLoad(configPath string) error
+	TsServiceUnload(serviceName string) error
+	TsServiceCall(serviceName string, operator string, function string, args string)
+	TsServiceList() (string, error)
 }
 
 type TsConnector struct {
@@ -125,30 +138,89 @@ type TsConnector struct {
 	Cert      string
 	Key       string
 
-	Engine     *gin.Engine
-	teamserver Teamserver
+	httpServer *profile.TsHttpServer
+
+	Engine                 *gin.Engine
+	teamserver             Teamserver
+	apiGroup               *gin.RouterGroup
+	publicGroup            *gin.RouterGroup
+	dynamicEndpoints       map[string]gin.HandlerFunc
+	dynamicPublicEndpoints map[string]gin.HandlerFunc
 }
 
-func limitTimeoutMiddleware() gin.HandlerFunc {
+func tlsVersionFromString(v string) (uint16, error) {
+	s := strings.TrimSpace(strings.ToUpper(v))
+	s = strings.ReplaceAll(s, "_", "")
+	s = strings.ReplaceAll(s, "-", "")
+
+	switch s {
+	case "", "DEFAULT":
+		return 0, nil
+	case "TLS10", "TLS1.0":
+		return tls.VersionTLS10, nil
+	case "TLS11", "TLS1.1":
+		return tls.VersionTLS11, nil
+	case "TLS12", "TLS1.2":
+		return tls.VersionTLS12, nil
+	case "TLS13", "TLS1.3":
+		return tls.VersionTLS13, nil
+	default:
+		return 0, errors.New("unsupported TLS version: " + v)
+	}
+}
+
+func tlsCipherSuiteFromString(name string) (uint16, error) {
+	key := strings.TrimSpace(strings.ToUpper(name))
+	key = strings.ReplaceAll(key, "-", "_")
+	key = strings.ReplaceAll(key, " ", "_")
+
+	switch key {
+	case "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256":
+		return tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, nil
+	case "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384":
+		return tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, nil
+	case "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256":
+		return tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, nil
+	case "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384":
+		return tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, nil
+	case "TLS_RSA_WITH_AES_128_GCM_SHA256":
+		return tls.TLS_RSA_WITH_AES_128_GCM_SHA256, nil
+	case "TLS_RSA_WITH_AES_256_GCM_SHA384":
+		return tls.TLS_RSA_WITH_AES_256_GCM_SHA384, nil
+	default:
+		return 0, errors.New("unsupported cipher suite: " + name)
+	}
+}
+
+func limitTimeoutMiddleware(cfg profile.TsHTTPConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		timeout := time.Duration(cfg.RequestTimeoutSec) * time.Second
+		if timeout <= 0 {
+			timeout = 300 * time.Second
+		}
+		msg := cfg.RequestTimeoutMessage
+		if msg == "" {
+			msg = "504 Gateway Timeout"
+		}
+
 		handler := http.TimeoutHandler(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				c.Next()
 			}),
-			300*time.Second,
-			"504 Gateway Timeout",
+			timeout,
+			msg,
 		)
 		handler.ServeHTTP(c.Writer, c.Request)
 	}
 }
 
-func default404Middleware(tsResponse profile.TsResponse) gin.HandlerFunc {
+func default404Middleware(httpError profile.TsHttpError) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if len(c.Errors) > 0 && !c.Writer.Written() {
-			for header, value := range tsResponse.Headers {
+			for header, value := range httpError.Headers {
 				c.Header(header, value)
 			}
-			c.String(tsResponse.Status, tsResponse.PageContent)
+			c.String(httpError.Status, httpError.PageContent)
 			c.Abort()
 			return
 		}
@@ -156,21 +228,16 @@ func default404Middleware(tsResponse profile.TsResponse) gin.HandlerFunc {
 		c.Next()
 
 		if len(c.Errors) > 0 && !c.Writer.Written() {
-			for header, value := range tsResponse.Headers {
+			for header, value := range httpError.Headers {
 				c.Header(header, value)
 			}
-			c.String(tsResponse.Status, tsResponse.PageContent)
+			c.String(httpError.Status, httpError.PageContent)
 		}
 	}
 }
 
-func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profile.TsResponse) (*TsConnector, error) {
+func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profile.TsHttpServer) (*TsConnector, error) {
 	gin.SetMode(gin.ReleaseMode)
-
-	if tsResponse.PagePath != "" {
-		fileContent, _ := os.ReadFile(tsResponse.PagePath)
-		tsResponse.PageContent = string(fileContent)
-	}
 
 	var connector = new(TsConnector)
 	connector.Engine = gin.New()
@@ -188,24 +255,70 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
 
+	if httpServer.Error == nil {
+		httpServer.Error = &profile.TsHttpError{}
+	}
+	if httpServer.Error.Status == 0 {
+		httpServer.Error.Status = 404
+	}
+	if httpServer.Error.Headers == nil {
+		httpServer.Error.Headers = map[string]string{}
+	}
+
+	if httpServer.HTTP == nil {
+		httpServer.HTTP = &profile.TsHTTPConfig{}
+	}
+	if httpServer.HTTP.MaxHeaderBytes == 0 {
+		httpServer.HTTP.MaxHeaderBytes = 8192
+	}
+	if httpServer.HTTP.RequestTimeoutSec == 0 {
+		httpServer.HTTP.RequestTimeoutSec = 300
+	}
+	if httpServer.HTTP.RequestTimeoutMessage == "" {
+		httpServer.HTTP.RequestTimeoutMessage = "504 Gateway Timeout"
+	}
+
+	if httpServer.TLS == nil {
+		httpServer.TLS = &profile.TsTLSConfig{}
+	}
+	if httpServer.TLS.MinVersion == "" {
+		httpServer.TLS.MinVersion = "TLS1.2"
+	}
+	if httpServer.TLS.MaxVersion == "" {
+		httpServer.TLS.MaxVersion = "TLS1.3"
+	}
+
+	connector.httpServer = &httpServer
+	connector.dynamicEndpoints = make(map[string]gin.HandlerFunc)
+	connector.dynamicPublicEndpoints = make(map[string]gin.HandlerFunc)
+
+	httpCfg := *httpServer.HTTP
+	httpErr := *httpServer.Error
+
+	public_group := connector.Engine.Group(tsProfile.Endpoint)
+	public_group.Use(limitTimeoutMiddleware(httpCfg), default404Middleware(httpErr))
+	connector.publicGroup = public_group
+
 	login_group := connector.Engine.Group(tsProfile.Endpoint)
-	login_group.Use(limitTimeoutMiddleware(), default404Middleware(tsResponse))
+	login_group.Use(limitTimeoutMiddleware(httpCfg), default404Middleware(httpErr))
 	{
 		login_group.POST("/login", connector.tcLogin)
 		login_group.POST("/refresh", token.RefreshTokenHandler)
 	}
 
 	otp_group := connector.Engine.Group(tsProfile.Endpoint)
-	otp_group.Use(ts.ValidateOTP(), default404Middleware(tsResponse))
+	otp_group.Use(ts.ValidateOTP(), default404Middleware(httpErr))
 	{
 		otp_group.POST("/otp/upload/temp", connector.tcOTP_UploadTemp)
 		otp_group.GET("/otp/download/sync", connector.tcOTP_DownloadSync)
 	}
 
 	api_group := connector.Engine.Group(tsProfile.Endpoint)
-	api_group.Use(limitTimeoutMiddleware(), token.ValidateAccessToken(), default404Middleware(tsResponse))
+	api_group.Use(limitTimeoutMiddleware(httpCfg), token.ValidateAccessToken(), default404Middleware(httpErr))
+	connector.apiGroup = api_group
 	{
 		api_group.POST("/sync", connector.tcSync)
+		api_group.POST("/subscribe", connector.tcSubscribe)
 		api_group.GET("/connect", connector.tcConnect)
 		api_group.GET("/channel", connector.tcChannel)
 		api_group.POST("/otp/generate", connector.tcOTP_Generate)
@@ -214,6 +327,8 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 		api_group.POST("/listener/create", connector.TcListenerStart)
 		api_group.POST("/listener/edit", connector.TcListenerEdit)
 		api_group.POST("/listener/stop", connector.TcListenerStop)
+		api_group.POST("/listener/pause", connector.TcListenerPause)
+		api_group.POST("/listener/resume", connector.TcListenerResume)
 
 		api_group.GET("/agent/list", connector.TcAgentList)
 		api_group.POST("/agent/generate", connector.TcAgentGenerate)
@@ -262,41 +377,197 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 		api_group.POST("/tunnel/start/rportfwd", connector.TcTunnelStartRpf)
 		api_group.POST("/tunnel/stop", connector.TcTunnelStop)
 		api_group.POST("/tunnel/set/info", connector.TcTunnelSetIno)
+
+		api_group.GET("/service/list", connector.TcServiceList)
+		api_group.POST("/service/load", connector.TcServiceLoad)
+		api_group.POST("/service/unload", connector.TcServiceUnload)
+		api_group.POST("/service/call", connector.TcServiceCall)
 	}
 
-	connector.Engine.NoRoute(limitTimeoutMiddleware(), default404Middleware(tsResponse), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
+	connector.Engine.NoRoute(limitTimeoutMiddleware(httpCfg), default404Middleware(httpErr), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 
 	return connector, nil
+}
+
+func (tc *TsConnector) endpointKey(method string, path string) string {
+	return method + ":" + path
+}
+
+func (tc *TsConnector) RegisterEndpoint(method string, path string, handler func(c *gin.Context)) error {
+	if tc.apiGroup == nil {
+		return errors.New("api group not initialized")
+	}
+
+	key := tc.endpointKey(method, path)
+
+	if _, exists := tc.dynamicEndpoints[key]; !exists {
+		dispatcher := func(c *gin.Context) {
+			if h, ok := tc.dynamicEndpoints[key]; ok {
+				h(c)
+			} else {
+				c.JSON(404, gin.H{"error": "endpoint not found"})
+			}
+		}
+
+		switch method {
+		case "GET":
+			tc.apiGroup.GET(path, dispatcher)
+		case "POST":
+			tc.apiGroup.POST(path, dispatcher)
+		case "PUT":
+			tc.apiGroup.PUT(path, dispatcher)
+		case "DELETE":
+			tc.apiGroup.DELETE(path, dispatcher)
+		case "PATCH":
+			tc.apiGroup.PATCH(path, dispatcher)
+		default:
+			return errors.New("unsupported HTTP method: " + method)
+		}
+	}
+
+	tc.dynamicEndpoints[key] = handler
+	return nil
+}
+
+func (tc *TsConnector) UnregisterEndpoint(method string, path string) error {
+	key := tc.endpointKey(method, path)
+	if _, exists := tc.dynamicEndpoints[key]; !exists {
+		return errors.New("endpoint not registered: " + key)
+	}
+	delete(tc.dynamicEndpoints, key)
+	return nil
+}
+
+func (tc *TsConnector) EndpointExists(method string, path string) bool {
+	key := tc.endpointKey(method, path)
+	_, exists := tc.dynamicEndpoints[key]
+	return exists
+}
+
+func (tc *TsConnector) RegisterPublicEndpoint(method string, path string, handler func(c *gin.Context)) error {
+	if tc.publicGroup == nil {
+		return errors.New("public group not initialized")
+	}
+
+	key := tc.endpointKey(method, path)
+
+	if _, exists := tc.dynamicPublicEndpoints[key]; !exists {
+		dispatcher := func(c *gin.Context) {
+			if h, ok := tc.dynamicPublicEndpoints[key]; ok {
+				h(c)
+			} else {
+				c.JSON(404, gin.H{"error": "endpoint not found"})
+			}
+		}
+
+		switch method {
+		case "GET":
+			tc.publicGroup.GET(path, dispatcher)
+		case "POST":
+			tc.publicGroup.POST(path, dispatcher)
+		case "PUT":
+			tc.publicGroup.PUT(path, dispatcher)
+		case "DELETE":
+			tc.publicGroup.DELETE(path, dispatcher)
+		case "PATCH":
+			tc.publicGroup.PATCH(path, dispatcher)
+		default:
+			return errors.New("unsupported HTTP method: " + method)
+		}
+	}
+
+	tc.dynamicPublicEndpoints[key] = handler
+	return nil
+}
+
+func (tc *TsConnector) UnregisterPublicEndpoint(method string, path string) error {
+	key := tc.endpointKey(method, path)
+	if _, exists := tc.dynamicPublicEndpoints[key]; !exists {
+		return errors.New("public endpoint not registered: " + key)
+	}
+	delete(tc.dynamicPublicEndpoints, key)
+	return nil
+}
+
+func (tc *TsConnector) PublicEndpointExists(method string, path string) bool {
+	key := tc.endpointKey(method, path)
+	_, exists := tc.dynamicPublicEndpoints[key]
+	return exists
 }
 
 func (tc *TsConnector) Start(finished *chan bool) {
 	host := fmt.Sprintf("%s:%d", tc.Interface, tc.Port)
 
+	if tc.httpServer == nil || tc.httpServer.HTTP == nil || tc.httpServer.TLS == nil {
+		logs.Error("", "HTTP server configuration is not initialized")
+		return
+	}
+
+	httpCfg := *tc.httpServer.HTTP
+	tlsCfgProfile := *tc.httpServer.TLS
+
+	minTLS, err := tlsVersionFromString(tlsCfgProfile.MinVersion)
+	if err != nil {
+		logs.Error("", "Invalid TLS min_version: "+err.Error())
+		return
+	}
+	maxTLS, err := tlsVersionFromString(tlsCfgProfile.MaxVersion)
+	if err != nil {
+		logs.Error("", "Invalid TLS max_version: "+err.Error())
+		return
+	}
+	if minTLS != 0 && maxTLS != 0 && minTLS > maxTLS {
+		logs.Error("", "Invalid TLS version range: min_version (%v) must be <= max_version (%v)", tlsCfgProfile.MinVersion, tlsCfgProfile.MaxVersion)
+		return
+	}
+
+	var cipherSuites []uint16
+	if tlsCfgProfile.CipherSuites != nil {
+		cipherSuites = make([]uint16, 0, len(tlsCfgProfile.CipherSuites))
+		for _, cs := range tlsCfgProfile.CipherSuites {
+			id, err := tlsCipherSuiteFromString(cs)
+			if err != nil {
+				logs.Error("", "Invalid TLS cipher_suites: "+err.Error())
+				return
+			}
+			cipherSuites = append(cipherSuites, id)
+		}
+	}
+
 	tlsConfig := &tls.Config{
-		MinVersion: tls.VersionTLS12,
-		MaxVersion: tls.VersionTLS13,
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-		},
 		PreferServerCipherSuites: false,
+	}
+	if minTLS != 0 {
+		tlsConfig.MinVersion = minTLS
+	}
+	if maxTLS != 0 {
+		tlsConfig.MaxVersion = maxTLS
+	}
+	if cipherSuites != nil {
+		tlsConfig.CipherSuites = cipherSuites
+	}
+	if tlsCfgProfile.PreferServerCipherSuites != nil {
+		tlsConfig.PreferServerCipherSuites = *tlsCfgProfile.PreferServerCipherSuites
 	}
 
 	server := &http.Server{
 		Addr:           host,
 		Handler:        tc.Engine,
 		TLSConfig:      tlsConfig,
-		ReadTimeout:    0,
-		WriteTimeout:   0,
-		IdleTimeout:    0,
-		MaxHeaderBytes: 8192, // Apache style
+		ReadTimeout:    time.Duration(httpCfg.ReadTimeoutSec) * time.Second,
+		WriteTimeout:   time.Duration(httpCfg.WriteTimeoutSec) * time.Second,
+		IdleTimeout:    time.Duration(httpCfg.IdleTimeoutSec) * time.Second,
+		MaxHeaderBytes: httpCfg.MaxHeaderBytes,
+	}
+	if httpCfg.ReadHeaderTimeoutSec > 0 {
+		server.ReadHeaderTimeout = time.Duration(httpCfg.ReadHeaderTimeoutSec) * time.Second
+	}
+	server.SetKeepAlivesEnabled(!httpCfg.DisableKeepAlives)
+	if httpCfg.EnableHTTP2 != nil && !*httpCfg.EnableHTTP2 {
+		server.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler))
 	}
 
-	err := server.ListenAndServeTLS(tc.Cert, tc.Key)
+	err = server.ListenAndServeTLS(tc.Cert, tc.Key)
 	//err := tc.Engine.RunTLS(host, tc.Cert, tc.Key)
 	if err != nil {
 		logs.Error("", "Failed to start HTTP Server: "+err.Error())

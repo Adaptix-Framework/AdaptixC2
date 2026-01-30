@@ -33,7 +33,14 @@ SessionsGraph::SessionsGraph(QWidget* parent) : QGraphicsView(parent)
     this->RootInit();
 }
 
-SessionsGraph::~SessionsGraph() = default;
+SessionsGraph::~SessionsGraph()
+{
+    if (dockWidget) {
+        dockWidget->setWidget(nullptr);
+        delete dockWidget;
+        dockWidget = nullptr;
+    }
+}
 
 void SessionsGraph::RootInit()
 {

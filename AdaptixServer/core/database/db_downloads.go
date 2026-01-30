@@ -1,10 +1,12 @@
 package database
 
 import (
-	"AdaptixServer/core/utils/logs"
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+
+	"AdaptixServer/core/utils/logs"
 
 	"github.com/Adaptix-Framework/axc2"
 )
@@ -46,14 +48,31 @@ func (dbms *DBMS) DbDownloadDelete(fileId string) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbDownloadExist(fileId)
-	if !ok {
-		return fmt.Errorf("download %s does not exist", fileId)
-	}
-
 	deleteQuery := `DELETE FROM Downloads WHERE FileId = ?;`
 	_, err := dbms.database.Exec(deleteQuery, fileId)
+	return err
+}
 
+func (dbms *DBMS) DbDownloadDeleteBatch(fileIds []string) error {
+	if len(fileIds) == 0 {
+		return nil
+	}
+
+	ok := dbms.DatabaseExists()
+	if !ok {
+		return errors.New("database does not exist")
+	}
+
+	placeholders := make([]string, len(fileIds))
+	args := make([]interface{}, len(fileIds))
+	for i, id := range fileIds {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	deleteQuery := fmt.Sprintf("DELETE FROM Downloads WHERE FileId IN (%s);",
+		strings.Join(placeholders, ","))
+	_, err := dbms.database.Exec(deleteQuery, args...)
 	return err
 }
 
@@ -68,7 +87,9 @@ func (dbms *DBMS) DbDownloadAll() []adaptix.DownloadData {
 			logs.Debug("", "Failed to query downloads: "+err.Error())
 			return downloads
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			downloadData := adaptix.DownloadData{}

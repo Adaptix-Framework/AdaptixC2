@@ -3,12 +3,14 @@ package server
 import (
 	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
@@ -25,24 +27,6 @@ const (
 	CONSOLE_OUT               = 10
 )
 
-const (
-	TYPE_TASK       = 1
-	TYPE_BROWSER    = 2
-	TYPE_JOB        = 3
-	TYPE_TUNNEL     = 4
-	TYPE_PROXY_DATA = 5
-)
-
-const (
-	TUNNEL_SOCKS4      = 1
-	TUNNEL_SOCKS5      = 2
-	TUNNEL_SOCKS5_AUTH = 3
-	TUNNEL_LPORTFWD    = 4
-	TUNNEL_RPORTFWD    = 5
-)
-
-// TeamServer
-
 type TsParameters struct {
 	Interfaces []string
 }
@@ -57,32 +41,36 @@ type Teamserver struct {
 	TaskManager   *TaskManager
 	Broker        *MessageBroker
 	TunnelManager *TunnelManager
+	EventManager  *eventing.EventManager
 
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
+	service_configs  safe.Map // serviceName string      : serviceInfo extender.ServiceInfo
 
 	wm_agent_types map[string]string   // agentMark string : agentName string
 	wm_listeners   map[string][]string // watermark string : ListenerName string, ListenerType string
 
-	events      *safe.Slice // 			           : sync_packet interface{}
-	Agents      safe.Map    // agentId string      : agent *Agent
-	listeners   safe.Map    // listenerName string : listenerData ListenerData
-	messages    *safe.Slice //                     : chatData ChatData
-	downloads   safe.Map    // fileId string       : downloadData DownloadData
-	tmp_uploads safe.Map    // fileId string       : uploadData UploadData
-	screenshots safe.Map    // screeId string      : screenData ScreenDataData
-	credentials *safe.Slice
-	targets     *safe.Slice
-	terminals   safe.Map    // terminalId string   : terminal Terminal
-	pivots      *safe.Slice // 			           : PivotData
-	otps        safe.Map    // otp string		   : Id string
+	notifications *safe.Slice // 			       : sync_packet interface{}
+	Agents        safe.Map    // agentId string      : agent *Agent
+	listeners     safe.Map    // listenerName string : listenerData ListenerData
+	messages      *safe.Slice //                     : chatData ChatData
+	downloads     safe.Map    // fileId string       : downloadData DownloadData
+	tmp_uploads   safe.Map    // fileId string       : uploadData UploadData
+	screenshots   safe.Map    // screeId string      : screenData ScreenDataData
+	credentials   *safe.Slice
+	targets       *safe.Slice
+	terminals     safe.Map    // terminalId string   : terminal Terminal
+	pivots        *safe.Slice // 			           : PivotData
+	otps          safe.Map    // otp string		   : Id string
+	builders      safe.Map    // buildId string      : build Build
 }
 
 type Agent struct {
-	mu     sync.RWMutex
-	data   adaptix.AgentData
-	Tick   bool
-	Active bool
+	mu       sync.RWMutex
+	data     adaptix.AgentData
+	Extender adaptix.ExtenderAgent
+	Tick     bool
+	Active   bool
 
 	OutConsole *safe.Slice //  sync_packet interface{}
 
@@ -116,6 +104,40 @@ func (a *Agent) UpdateData(fn func(*adaptix.AgentData)) {
 	fn(&a.data)
 }
 
+func (a *Agent) Command(args map[string]any) (adaptix.TaskData, adaptix.ConsoleMessageData, error) {
+	return a.Extender.CreateCommand(a.GetData(), args)
+}
+
+func (a *Agent) ProcessData(packedData []byte) error {
+	data := a.GetData()
+	decrypted, err := a.Extender.Decrypt(packedData, data.SessionKey)
+	if err != nil {
+		return err
+	}
+	return a.Extender.ProcessData(data, decrypted)
+}
+
+func (a *Agent) PackData(tasks []adaptix.TaskData) ([]byte, error) {
+	data := a.GetData()
+	packed, err := a.Extender.PackTasks(data, tasks)
+	if err != nil {
+		return nil, err
+	}
+	return a.Extender.Encrypt(packed, data.SessionKey)
+}
+
+func (a *Agent) PivotPackData(pivotId string, data []byte) (adaptix.TaskData, error) {
+	return a.Extender.PivotPackData(pivotId, data)
+}
+
+func (a *Agent) TunnelCallbacks() adaptix.TunnelCallbacks {
+	return a.Extender.TunnelCallbacks()
+}
+
+func (a *Agent) TerminalCallbacks() adaptix.TerminalCallbacks {
+	return a.Extender.TerminalCallbacks()
+}
+
 type HookJob struct {
 	Sent      bool
 	Processed bool
@@ -135,6 +157,10 @@ type TunnelChannel struct {
 
 	pwTun *io.PipeWriter
 	prTun *io.PipeReader
+
+	ingressChan chan []byte
+	paused      atomic.Bool
+	flowPaused  atomic.Bool
 }
 
 type Tunnel struct {
@@ -146,12 +172,7 @@ type Tunnel struct {
 	listener    net.Listener
 	connections safe.Map
 
-	handlerConnectTCP func(channelId int, tunType int, addrType int, addr string, port int) adaptix.TaskData
-	handlerConnectUDP func(channelId int, tunType int, addrType int, addr string, port int) adaptix.TaskData
-	handlerWriteTCP   func(channelId int, data []byte) adaptix.TaskData
-	handlerWriteUDP   func(channelId int, data []byte) adaptix.TaskData
-	handlerClose      func(channelId int) adaptix.TaskData
-	handlerReverse    func(tunnelId int, port int) adaptix.TaskData
+	Callbacks adaptix.TunnelCallbacks
 }
 
 type Terminal struct {
@@ -171,9 +192,18 @@ type Terminal struct {
 	pwTun *io.PipeWriter
 	prTun *io.PipeReader
 
-	handlerStart func(terminalId int, program string, sizeH int, sizeW int, oemCP int) (adaptix.TaskData, error)
-	handlerWrite func(terminalId int, oemCP int, data []byte) (adaptix.TaskData, error)
-	handlerClose func(terminalId int) (adaptix.TaskData, error)
+	Callbacks adaptix.TerminalCallbacks
+}
+
+type AgentBuilder struct {
+	Id            string
+	Name          string
+	ListenersName []string
+	Config        string
+
+	wsconn *websocket.Conn
+	mu     sync.Mutex
+	closed bool
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -202,12 +232,12 @@ type SyncPackerCategoryBatch struct {
 	Packets  []interface{} `json:"packets"`
 }
 
-type SpEvent struct {
+type SpNotification struct {
 	Type int `json:"type"`
 
-	EventType int    `json:"event_type"`
-	Date      int64  `json:"date"`
-	Message   string `json:"message"`
+	NotifyType int    `json:"event_type"`
+	Date       int64  `json:"date"`
+	Message    string `json:"message"`
 }
 
 /// LISTENER
@@ -247,9 +277,26 @@ type SyncPackerListenerStop struct {
 type SyncPackerAgentReg struct {
 	SpType int `json:"type"`
 
-	Agent     string   `json:"agent"`
-	AX        string   `json:"ax"`
-	Listeners []string `json:"listeners"`
+	Agent          string   `json:"agent"`
+	AX             string   `json:"ax"`
+	Listeners      []string `json:"listeners"`
+	MultiListeners bool     `json:"multi_listeners"`
+}
+
+/// SERVICE
+
+type SyncPackerServiceReg struct {
+	SpType int `json:"type"`
+
+	Name string `json:"service"`
+	AX   string `json:"ax"`
+}
+
+type SyncPackerServiceData struct {
+	SpType int `json:"type"`
+
+	Service string `json:"service"`
+	Data    string `json:"data"`
 }
 
 type SyncPackerAgentNew struct {
@@ -313,6 +360,7 @@ type SyncPackerAgentUpdate struct {
 	Domain       *string `json:"a_domain,omitempty"`
 	Computer     *string `json:"a_computer,omitempty"`
 	Username     *string `json:"a_username,omitempty"`
+	Listener     *string `json:"a_listener,omitempty"`
 }
 
 type SyncPackerAgentTick struct {
@@ -392,6 +440,26 @@ type SyncPackerAgentConsoleOutput struct {
 	MessageType int    `json:"a_msg_type"`
 	Message     string `json:"a_message"`
 	ClearText   string `json:"a_text"`
+}
+
+type SyncPackerAgentErrorCommand struct {
+	SpType int `json:"type"`
+
+	AgentId   string `json:"a_id"`
+	Cmdline   string `json:"a_cmdline"`
+	Message   string `json:"a_message"`
+	HookId    string `json:"ax_hook_id"`
+	HandlerId string `json:"ax_handler_id"`
+}
+
+type SyncPackerAgentLocalCommand struct {
+	SpCreateTime int64 `json:"time"`
+	SpType       int   `json:"type"`
+
+	AgentId string `json:"a_id"`
+	Cmdline string `json:"a_cmdline"`
+	Message string `json:"a_message"`
+	Text    string `json:"a_text"`
 }
 
 type SyncPackerAgentConsoleTaskSync struct {

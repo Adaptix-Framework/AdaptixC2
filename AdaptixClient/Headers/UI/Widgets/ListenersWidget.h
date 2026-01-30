@@ -295,6 +295,8 @@ public Q_SLOTS:
     void onCreateListener() const;
     void onEditListener() const;
     void onRemoveListener() const;
+    void onPauseListener() const;
+    void onResumeListener() const;
     void onGenerateAgent() const;
 };
 

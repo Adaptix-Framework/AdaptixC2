@@ -551,6 +551,22 @@ DWORD StrIndexA(CHAR* str, CHAR target)
     return -1;
 }
 
+LPSTR StrLCopyA(LPSTR dst, LPCSTR src, int iMaxLength) 
+{
+    if (!dst || !src || iMaxLength <= 0)
+        return NULL;
+
+    LPSTR d  = dst;
+    LPCSTR s = src;
+    int n    = iMaxLength;
+
+    while (--n > 0 && *s)
+        *d++ = *s++;
+    *d = '\0';
+
+    return dst;
+}
+
 ULONG FileTimeToUnixTimestamp(FILETIME ft) 
 {
     ULARGE_INTEGER uli;

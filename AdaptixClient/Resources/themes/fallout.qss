@@ -660,9 +660,35 @@ QListWidget {
 }
 
 QListWidget::item {
-    padding: 2px;
+    padding: 6px 4px;
+    margin: 2px 0px;
     border-radius: 2px;
     color: #00FF00;
+}
+
+QListWidget::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #006600;
+    border-radius: 3px;
+    background-color: #0A0A0A;
+}
+
+QListWidget::indicator:checked {
+    background-color: #006400;
+    border: 1px solid #00AA00;
+    image: url(:/icons/check);
+}
+
+QListWidget::indicator:indeterminate {
+    background-color: #006400;
+    border: 1px solid #00AA00;
+    image: url(:/icons/close);
+}
+
+QListWidget::indicator:unchecked:hover {
+    border: 1px solid #00AA00;
+    background-color: #1A2B1A;
 }
 
 QListWidget::item:hover {
@@ -784,4 +810,16 @@ QStatusBar {
 
 QStatusBar::item {
     border: none;
+}
+
+
+
+QFrame[frameShape="4"], QFrame[frameShape="5"] {
+    color: rgba(0, 255, 0, 80);
+    background-color: rgba(0, 255, 0, 80);
+}
+
+QFrame[frameShape="4"]:disabled, QFrame[frameShape="5"]:disabled {
+    color: rgba(0, 102, 0, 50);
+    background-color: rgba(0, 102, 0, 50);
 }

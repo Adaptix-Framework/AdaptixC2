@@ -235,7 +235,7 @@ public:
                     int lineEnd = text.indexOf('\n', pos);
                     if (lineEnd == -1) lineEnd = text.length();
                     QString line = text.mid(pos, lineEnd - pos);
-                    
+
                     while (!line.isEmpty()) {
                         QString chunk;
                         int i = 1;
@@ -303,17 +303,24 @@ protected:
 
 class TextEditConsole : public QTextEdit {
 Q_OBJECT
+    struct FormattedChunk {
+        QString text;
+        QTextCharFormat format;
+    };
+
     QTextCursor cachedCursor;
     int  maxLines    = 50000;
     bool autoScroll  = false;
     bool noWrap      = true;
+    bool syncMode    = false;
     int appendCount  = 0;
 
     QString pendingText;
+    QList<FormattedChunk> pendingFormatted;
     QTimer* batchTimer = nullptr;
     QMutex* batchMutex = nullptr;
-    static const int BATCH_INTERVAL_MS = 100;
-    static const int MAX_BATCH_SIZE = 64 * 1024;
+    static constexpr int BATCH_INTERVAL_MS = 100;
+    static constexpr int MAX_BATCH_SIZE = 64 * 1024;
 
     void trimExcessLines();
     void createContextMenu(const QPoint &pos);
@@ -338,6 +345,9 @@ public:
     void setAutoScrollEnabled(bool enabled);
     bool isAutoScrollEnabled() const;
     bool isNoWrapEnabled() const;
+
+    void setSyncMode(bool enabled);
+    void flushAll();
 
 Q_SIGNALS:
     void ctx_find();

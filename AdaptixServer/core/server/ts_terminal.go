@@ -76,15 +76,9 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 	terminal.prSrv, terminal.pwSrv = io.Pipe()
 	terminal.prTun, terminal.pwTun = io.Pipe()
 
-	terminal.handlerStart, terminal.handlerWrite, terminal.handlerClose, err = ts.Extender.ExAgentTerminalCallbacks(agent.GetData())
-	if err != nil {
-		return err
-	}
+	terminal.Callbacks = agent.TerminalCallbacks()
 
-	taskData, err := terminal.handlerStart(terminal.TerminalId, program, sizeH, sizeW, OemCP)
-	if err != nil {
-		return err
-	}
+	taskData := terminal.Callbacks.Start(terminal.TerminalId, program, sizeH, sizeW, OemCP)
 
 	tunnelManageTask(agent, taskData)
 
@@ -209,10 +203,8 @@ func relayWebsocketToTerminal(ts *Teamserver, agent *Agent, terminal *Terminal, 
 			ts.terminals.Delete(terminalId)
 			closeTerminalResources(terminal)
 
-			taskData, err := terminal.handlerClose(terminal.TerminalId)
-			if err == nil {
-				tunnelManageTask(agent, taskData)
-			}
+			taskData := terminal.Callbacks.Close(terminal.TerminalId)
+			tunnelManageTask(agent, taskData)
 		})
 	}
 
@@ -222,6 +214,12 @@ func relayWebsocketToTerminal(ts *Teamserver, agent *Agent, terminal *Terminal, 
 			return
 		}
 		for {
+			terminal.mu.Lock()
+			closed := terminal.closed
+			terminal.mu.Unlock()
+			if closed {
+				break
+			}
 			_, msg, err := terminal.wsconn.ReadMessage()
 			if err != nil {
 				break
@@ -267,10 +265,7 @@ func relayWebsocketToTerminal(ts *Teamserver, agent *Agent, terminal *Terminal, 
 				default:
 					n, err := terminal.prSrv.Read(buf)
 					if n > 0 {
-						taskData, writeErr := terminal.handlerWrite(terminal.TerminalId, terminal.CodePage, buf[:n])
-						if writeErr == nil {
-							tunnelManageTask(agent, taskData)
-						}
+						taskData := terminal.Callbacks.Write(terminal.TerminalId, terminal.CodePage, buf[:n])
 						relayPipeToTaskData(agent, terminal.TerminalId, taskData)
 					}
 					if err != nil {

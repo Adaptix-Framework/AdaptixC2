@@ -585,10 +585,36 @@ QListWidget {
 }
 
 QListWidget::item {
-    padding: 2px;
+    padding: 6px 4px;
+    margin: 2px 0px;
     /*border-radius: 4px;*/
     background-color: #FFFFFF;
     color: #2E3440;
+}
+
+QListWidget::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #C0C0C0;
+    border-radius: 3px;
+    background-color: #FFFFFF;
+}
+
+QListWidget::indicator:checked {
+    background-color: #17A2B8;
+    border: 1px solid #17A2B8;
+    image: url(:/icons/check);
+}
+
+QListWidget::indicator:indeterminate {
+    background-color: #17A2B8;
+    border: 1px solid #17A2B8;
+    image: url(:/icons/close);
+}
+
+QListWidget::indicator:unchecked:hover {
+    border: 1px solid #17A2B8;
+    background-color: #F0F0F0;
 }
 
 QListWidget::item:hover {
@@ -796,4 +822,16 @@ QDoubleSpinBox:disabled {
     background-color: #E8E8E8;
     color: #A0A0A0;
     border: 1px solid #E0E0E0;
+}
+
+
+
+QFrame[frameShape="4"], QFrame[frameShape="5"] {
+    color: rgba(82, 148, 226, 100);
+    background-color: rgba(82, 148, 226, 100);
+}
+
+QFrame[frameShape="4"]:disabled, QFrame[frameShape="5"]:disabled {
+    color: rgba(180, 180, 180, 80);
+    background-color: rgba(180, 180, 180, 80);
 }

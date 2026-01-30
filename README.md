@@ -1,6 +1,6 @@
-# AdaptixC2 v1.0
+# AdaptixC2 v1.1
 
-DEC, 30: [What has changed in version v1.0](https://adaptix-framework.gitbook.io/adaptix-framework/changelog-and-updates/version-1.0)?
+JAN, 30: [What has changed in version v1.1](https://adaptix-framework.gitbook.io/adaptix-framework/changelog-and-updates/version-1.0)?
 
 Adaptix is an extensible post-exploitation and adversarial emulation framework made for authorized penetration testing. The Adaptix server is written in Golang and to allow operator flexibility. The GUI Client is written in C++ QT, allowing it to be used on Linux, Windows, and MacOS operating systems. [Full documentation is available here](https://adaptix-framework.gitbook.io/adaptix-framework).
 
@@ -40,25 +40,27 @@ Please checkout the [wiki](https://adaptix-framework.gitbook.io/adaptix-framewor
 * Windows/Linux/MacOs agents support
 
 
-## Extension-Kit
-
-Official [Extension-Kit](https://github.com/Adaptix-Framework/Extension-Kit) on GitHub
-
-![](https://adaptix-framework.gitbook.io/adaptix-framework/~gitbook/image?url=https%3A%2F%2F2104178602-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FS8p8XLFtLmf0NkofQvoa%252Fuploads%252Fjba7VSrtb0HI1wNwVTNy%252FScreenshot_20251230_181657.png%3Falt%3Dmedia%26token%3D4661e811-b8af-470c-a950-bef628e8ea47&width=768&dpr=4&quality=100&sign=6088a470&sv=2)
-
-![](https://adaptix-framework.gitbook.io/adaptix-framework/~gitbook/image?url=https%3A%2F%2F2104178602-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FS8p8XLFtLmf0NkofQvoa%252Fuploads%252FWHxjfPw9MKUCRrGtiJ5O%252FScreenshot_20251230_181710.png%3Falt%3Dmedia%26token%3D68ce570e-3a31-4ce5-b704-316499527b87&width=768&dpr=4&quality=100&sign=76751eaa&sv=2)
-
-![](https://adaptix-framework.gitbook.io/adaptix-framework/~gitbook/image?url=https%3A%2F%2F2104178602-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FS8p8XLFtLmf0NkofQvoa%252Fuploads%252F7JM5M91Wldnm8BqaiE1Y%252FScreenshot_20251230_181724.png%3Falt%3Dmedia%26token%3D937dbf83-de41-4f6b-9c9d-002ab0e30a6d&width=768&dpr=4&quality=100&sign=52a21bf5&sv=2)
-
-
-
 ## Current Extenders
-* HTTP/S Beacon Listener 
+* HTTP/S Beacon Listener
+* DNS/DoH Beacon Listener
 * SMB Beacon Listener
 * TCP Beacon Listener
 * Beacon Agent
 * TCP/mTLS Gopher Listener
 * Gopher Agent
+
+
+
+## Extension-Kit
+
+Official [Extension-Kit](https://github.com/Adaptix-Framework/Extension-Kit) on GitHub
+
+![](https://adaptix-framework.gitbook.io/adaptix-framework/~gitbook/image?url=https%3A%2F%2F2104178602-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FS8p8XLFtLmf0NkofQvoa%252Fuploads%252FyRPFnlkvGJr2UEE1uzA2%252FScreenshot_20260129_233929.png%3Falt%3Dmedia%26token%3D61c90128-20f4-4756-80f4-24e7122c7c10&width=768&dpr=3&quality=100&sign=f15a166a&sv=2)
+
+![](https://adaptix-framework.gitbook.io/adaptix-framework/~gitbook/image?url=https%3A%2F%2F2104178602-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FS8p8XLFtLmf0NkofQvoa%252Fuploads%252FnAVr0nfGpuQkiSYSPQvU%252FScreenshot_20260129_233944.png%3Falt%3Dmedia%26token%3Dd98dfda1-1607-45ba-9a92-deb420293335&width=768&dpr=3&quality=100&sign=7c1d6ea&sv=2)
+
+![](https://adaptix-framework.gitbook.io/adaptix-framework/~gitbook/image?url=https%3A%2F%2F2104178602-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FS8p8XLFtLmf0NkofQvoa%252Fuploads%252Fxxn9BnUfG0byuRamOy4y%252FScreenshot_20260129_233957.png%3Falt%3Dmedia%26token%3D053c7d47-39af-433b-a2d2-87a1b8dec7bb&width=768&dpr=3&quality=100&sign=f1581010&sv=2)
+
 
 
 

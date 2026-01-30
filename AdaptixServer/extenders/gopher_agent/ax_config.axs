@@ -117,10 +117,10 @@ function RegisterCommands(listenerType)
     let cmd_kill = ax.create_command("kill", "Kill a process with a given PID", "kill 7865", "Task: kill process");
     cmd_kill.addArgInt("pid", true);
 
-    let cmd_ls_win = ax.create_command("ls", "Lists files in a folder", "ls C:\\Windows", "Task: list of files in a folder");
-    cmd_ls_win.addArgString("directory", "", ".");
-    let cmd_ls_unix = ax.create_command("ls", "Lists files in a folder", "ls /home/", "Task: list of files in a folder");
-    cmd_ls_unix.addArgString("directory", "", ".");
+    let cmd_ls_win = ax.create_command("ls", "List contents of a directory or details of a file", "ls C:\\Windows", "Task: list files");
+    cmd_ls_win.addArgString("path", "", ".");
+    let cmd_ls_unix = ax.create_command("ls", "List contents of a directory or details of a file", "ls /home/", "Task: list files");
+    cmd_ls_unix.addArgString("path", "", ".");
 
     let cmd_mv = ax.create_command("mv", "Move file or directory", "mv src.txt dst.txt", "Task: move file or directory");
     cmd_mv.addArgString("src", true);
@@ -191,7 +191,7 @@ function RegisterCommands(listenerType)
     }
 }
 
-function GenerateUI(listenerType)
+function GenerateUI(listeners_type)
 {
     let labelOS = form.create_label("OS:");
     let comboOS = form.create_combo()

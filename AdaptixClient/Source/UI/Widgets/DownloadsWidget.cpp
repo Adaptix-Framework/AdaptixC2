@@ -100,6 +100,8 @@ void DownloadsWidget::createUI()
     tableView->horizontalHeader()->setHighlightSections(false);
     tableView->verticalHeader()->setVisible(false);
 
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+
     proxyModel->sort(-1);
 
     tableView->horizontalHeader()->setSectionResizeMode(DC_File, QHeaderView::Stretch);
@@ -116,34 +118,88 @@ DownloadsWidget::~DownloadsWidget() = default;
 
 void DownloadsWidget::SetUpdatesEnabled(bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingDownloads();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
+}
+
+void DownloadsWidget::flushPendingDownloads()
+{
+    if (pendingDownloads.isEmpty())
+        return;
+
+    QList<DownloadData> filtered;
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        int count = 0;
+        for (const auto& download : pendingDownloads) {
+            if (adaptixWidget->Downloads.contains(download.FileId))
+                continue;
+
+            adaptixWidget->Downloads[download.FileId] = download;
+            filtered.append(download);
+        }
+    }
+
+    if (!filtered.isEmpty())
+        downloadsModel->addBatch(filtered);
+
+    pendingDownloads.clear();
 }
 
 void DownloadsWidget::Clear() const
 {
-    adaptixWidget->Downloads.clear();
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        adaptixWidget->Downloads.clear();
+    }
     downloadsModel->clear();
 }
 
 void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload)
 {
+    if (bufferingEnabled) {
+        pendingDownloads.append(newDownload);
+        return;
+    }
+
+    QWriteLocker locker(&adaptixWidget->DownloadsLock);
     if (adaptixWidget->Downloads.contains(newDownload.FileId))
         return;
 
-    downloadsModel->add(newDownload);
     adaptixWidget->Downloads[newDownload.FileId] = newDownload;
+    locker.unlock();
+    downloadsModel->add(newDownload);
 }
 
 void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int state)
 {
-    adaptixWidget->Downloads[fileId].RecvSize = recvSize;
-    adaptixWidget->Downloads[fileId].State = state;
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        if (!adaptixWidget->Downloads.contains(fileId))
+            return;
 
-    if (state == DOWNLOAD_STATE_FINISHED)
-        adaptixWidget->Downloads[fileId].RecvSize = adaptixWidget->Downloads[fileId].TotalSize;
+        adaptixWidget->Downloads[fileId].RecvSize = recvSize;
+        adaptixWidget->Downloads[fileId].State = state;
+
+        if (state == DOWNLOAD_STATE_FINISHED)
+            adaptixWidget->Downloads[fileId].RecvSize = adaptixWidget->Downloads[fileId].TotalSize;
+
+        if (state == DOWNLOAD_STATE_CANCELED)
+            adaptixWidget->Downloads.remove(fileId);
+    }
 
     if (state == DOWNLOAD_STATE_CANCELED) {
-        adaptixWidget->Downloads.remove(fileId);
         QStringList fileIds;
         fileIds.append(fileId);
         downloadsModel->remove(fileIds);
@@ -155,10 +211,13 @@ void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int 
 void DownloadsWidget::RemoveDownloadItem(const QStringList &filesId)
 {
     QStringList filtered;
-    for (auto fileId : filesId) {
-        if (adaptixWidget->Downloads.contains(fileId)) {
-            adaptixWidget->Downloads.remove(fileId);
-            filtered.append(fileId);
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        for (auto fileId : filesId) {
+            if (adaptixWidget->Downloads.contains(fileId)) {
+                adaptixWidget->Downloads.remove(fileId);
+                filtered.append(fileId);
+            }
         }
     }
     downloadsModel->remove(filtered);
@@ -247,7 +306,7 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos)
 
         data.state = "finished";
         files.append(data);
-        int menuCount = adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadFinished", files);
+        int menuCount = adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadFinished", files, false);
         if (menuCount > 0)
             ctxMenu.addSeparator();
 
@@ -260,7 +319,7 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos)
             data.state = "stopped";
         }
         files.append(data);
-        adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadRunning", files);
+        adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadRunning", files, true);
     }
 
     ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));

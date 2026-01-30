@@ -95,7 +95,7 @@ void ChatWidget::handleChat()
 {
     QString text = chatInput->text();
     chatInput->clear();
-    
+
     HttpReqChatSendMessageAsync(text, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
         if (!success)
             MessageError(message.isEmpty() ? "Response timeout" : message);

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"fmt"
@@ -28,10 +29,10 @@ func NewTaskManager(ts *Teamserver) *TaskManager {
 	}
 
 	taskHandler := &TaskTaskHandler{}
-	tm.handlers[TYPE_TASK] = taskHandler
-	tm.handlers[TYPE_BROWSER] = taskHandler
-	tm.handlers[TYPE_JOB] = &JobTaskHandler{}
-	tm.handlers[TYPE_TUNNEL] = &TunnelTaskHandler{}
+	tm.handlers[adaptix.TASK_TYPE_TASK] = taskHandler
+	tm.handlers[adaptix.TASK_TYPE_BROWSER] = taskHandler
+	tm.handlers[adaptix.TASK_TYPE_JOB] = &JobTaskHandler{}
+	tm.handlers[adaptix.TASK_TYPE_TUNNEL] = &TunnelTaskHandler{}
 
 	return tm
 }
@@ -72,37 +73,49 @@ func (tm *TaskManager) prepareTaskData(agent *Agent, cmdline string, client stri
 
 func (tm *TaskManager) syncTaskCreate(agentId string, agent *Agent, taskData *adaptix.TaskData) {
 	packet_task := CreateSpAgentTaskSync(*taskData)
-	tm.ts.TsSyncAllClients(packet_task)
+	tm.ts.TsSyncAllClientsWithCategory(packet_task, SyncCategoryTasksManager)
 
-	packet_console := CreateSpAgentConsoleTaskSync(*taskData)
-	tm.ts.TsSyncAllClients(packet_console)
+	if taskData.Type != adaptix.TASK_TYPE_BROWSER {
+		packet_console := CreateSpAgentConsoleTaskSync(*taskData)
+		tm.ts.TsSyncConsole(packet_console, taskData.Client)
 
-	agent.OutConsole.Put(packet_console)
-	_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
+		agent.OutConsole.Put(packet_console)
+		_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
+	}
 }
 
 func (tm *TaskManager) syncTaskUpdate(agentId string, agent *Agent, taskData *adaptix.TaskData) {
 
 	packet_task := CreateSpAgentTaskUpdate(*taskData)
 	if taskData.HandlerId == "" {
-		tm.ts.TsSyncAllClients(packet_task)
+		tm.ts.TsSyncAllClientsWithCategory(packet_task, SyncCategoryTasksManager)
 	} else {
 		handlerClient := taskData.Client
-		tm.ts.TsSyncExcludeClient(handlerClient, packet_task)
+		tm.ts.TsSyncExcludeClientWithCategory(handlerClient, packet_task, SyncCategoryTasksManager)
 		packet_task.HandlerId = taskData.HandlerId
 		tm.ts.TsSyncClient(handlerClient, packet_task)
 	}
 
-	packet_console := CreateSpAgentConsoleTaskUpd(*taskData)
-	tm.ts.TsSyncAllClients(packet_console)
+	if taskData.Type != adaptix.TASK_TYPE_BROWSER {
+		packet_console := CreateSpAgentConsoleTaskUpd(*taskData)
+		tm.ts.TsSyncConsole(packet_console, taskData.Client)
 
-	agent.OutConsole.Put(packet_console)
-	_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
+		agent.OutConsole.Put(packet_console)
+		_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
+	}
 }
 
 func (tm *TaskManager) completeTask(agent *Agent, taskData *adaptix.TaskData) {
 	agent.CompletedTasks.Put(taskData.TaskId, *taskData)
 	_ = tm.ts.DBMS.DbTaskInsert(*taskData)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTaskComplete{
+		AgentId: taskData.AgentId,
+		Task:    *taskData,
+	}
+	tm.ts.EventManager.EmitAsync(eventing.EventTaskComplete, postEvent)
+	// -----------------
 }
 
 func (tm *TaskManager) Create(agentId string, cmdline string, client string, taskData adaptix.TaskData) {
@@ -118,6 +131,18 @@ func (tm *TaskManager) Create(agentId string, cmdline string, client string, tas
 
 	tm.prepareTaskData(agent, cmdline, client, &taskData)
 
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataTaskCreate{
+		AgentId: agentId,
+		Task:    taskData,
+		Cmdline: cmdline,
+		Client:  client,
+	}
+	if !tm.ts.EventManager.Emit(eventing.EventTaskCreate, eventing.HookPre, preEvent) {
+		return
+	}
+	// ----------------
+
 	handler, ok := tm.handlers[taskData.Type]
 	if !ok {
 		logs.Debug("", "Unknown task type: %d", taskData.Type)
@@ -125,6 +150,16 @@ func (tm *TaskManager) Create(agentId string, cmdline string, client string, tas
 	}
 
 	handler.Create(tm, agent, &taskData)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTaskCreate{
+		AgentId: agentId,
+		Task:    taskData,
+		Cmdline: cmdline,
+		Client:  client,
+	}
+	tm.ts.EventManager.EmitAsync(eventing.EventTaskCreate, postEvent)
+	// -----------------
 }
 
 func (tm *TaskManager) Update(agentId string, updateData adaptix.TaskData) {
@@ -248,7 +283,7 @@ func (tm *TaskManager) Save(taskData adaptix.TaskData) error {
 	}
 
 	agentData := agent.GetData()
-	taskData.Type = TYPE_TASK
+	taskData.Type = adaptix.TASK_TYPE_TASK
 	taskData.TaskId, _ = krypt.GenerateUID(8)
 	taskData.Computer = agentData.Computer
 	taskData.User = agentData.Username
@@ -281,8 +316,24 @@ func (tm *TaskManager) ProcessDisconnectedClient(clientName string) {
 				return true
 			}
 
-			if (task.HookId != "" && task.Client == clientName) || (task.Type == TYPE_TUNNEL && task.Client == clientName) {
+			if task.HookId != "" && task.Client == clientName {
 				tasksToProcess = append(tasksToProcess, taskId)
+				return true
+			}
+
+			if task.Type == adaptix.TASK_TYPE_TUNNEL && task.Client == clientName {
+				clientHostedTunnel := false
+				tm.ts.TunnelManager.ForEachTunnel(func(_ string, tunnel *Tunnel) bool {
+					if tunnel != nil && tunnel.TaskId == task.TaskId && tunnel.Data.Client == clientName {
+						clientHostedTunnel = true
+						return false
+					}
+					return true
+				})
+
+				if clientHostedTunnel {
+					tasksToProcess = append(tasksToProcess, taskId)
+				}
 			}
 			return true
 		})

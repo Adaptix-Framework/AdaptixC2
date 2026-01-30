@@ -64,7 +64,7 @@ func (ts *Teamserver) extractHostedTasks(agent *Agent, availableSize int, startS
 
 		if usedSize+len(taskData.Data) < availableSize {
 			tasks = append(tasks, taskData)
-			if taskData.Sync || taskData.Type == TYPE_BROWSER {
+			if taskData.Sync || taskData.Type == adaptix.TASK_TYPE_BROWSER {
 				agent.RunningTasks.Put(taskData.TaskId, taskData)
 			}
 			sendTasks = append(sendTasks, taskData.TaskId)
@@ -134,7 +134,7 @@ func (ts *Teamserver) extractPivotTasks(agent *Agent, availableSize int, startSi
 		if err != nil {
 			continue
 		}
-		pivotTaskData, err := ts.Extender.ExAgentPivotPackData(agent.GetData().Name, pivotData.PivotId, data)
+		pivotTaskData, err := agent.PivotPackData(pivotData.PivotId, data)
 		if err != nil {
 			continue
 		}
@@ -161,9 +161,6 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 
 	tunnelTasks, size := ts.extractTunnelTasks(agent, availableSize, size)
 	tasks = append(tasks, tunnelTasks...)
-
-	tunnelData, size := ts.extractTunnelData(agent, availableSize, size)
-	tasks = append(tasks, tunnelData...)
 
 	pivotTasks, _ := ts.extractPivotTasks(agent, availableSize, size)
 	tasks = append(tasks, pivotTasks...)
@@ -198,7 +195,6 @@ func (ts *Teamserver) TsTaskGetAvailableTasksCount(agentId string, maxCount int,
 		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: %w", err)
 	}
 
-	// Extract hosted tasks with count limit
 	tasks, sendTasks, size := ts.extractHostedTasks(agent, availableSize, 0, maxCount)
 	if len(sendTasks) > 0 {
 		packet := CreateSpAgentTaskSend(sendTasks)

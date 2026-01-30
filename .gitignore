@@ -1,4 +1,5 @@
 cmake-build-debug/
+objects_dns/
 objects_http/
 objects_smb/
 objects_tcp/

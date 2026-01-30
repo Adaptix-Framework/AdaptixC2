@@ -71,14 +71,68 @@ func (dbms *DBMS) DbTargetDelete(targetId string) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbTargetExist(targetId)
-	if !ok {
-		return fmt.Errorf("target %s does not exist", targetId)
-	}
-
 	deleteQuery := `DELETE FROM Targets WHERE TargetId = ?;`
 	_, err := dbms.database.Exec(deleteQuery, targetId)
 	return err
+}
+
+func (dbms *DBMS) DbTargetDeleteBatch(targetIds []string) error {
+	if len(targetIds) == 0 {
+		return nil
+	}
+
+	ok := dbms.DatabaseExists()
+	if !ok {
+		return errors.New("database does not exist")
+	}
+
+	placeholders := make([]string, len(targetIds))
+	args := make([]interface{}, len(targetIds))
+	for i, id := range targetIds {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	deleteQuery := fmt.Sprintf("DELETE FROM Targets WHERE TargetId IN (%s);",
+		strings.Join(placeholders, ","))
+	_, err := dbms.database.Exec(deleteQuery, args...)
+	return err
+}
+
+func (dbms *DBMS) DbTargetUpdateBatch(targets []*adaptix.TargetData) error {
+	if len(targets) == 0 {
+		return nil
+	}
+
+	ok := dbms.DatabaseExists()
+	if !ok {
+		return errors.New("database does not exist")
+	}
+
+	tx, err := dbms.database.Begin()
+	if err != nil {
+		return err
+	}
+
+	updateQuery := `UPDATE Targets SET Computer = ?, Domain = ?, Address = ?, Os = ?, OsDesk = ?, Tag = ?, Info = ?, Alive = ?, Agents = ? WHERE TargetId = ?;`
+	stmt, err := tx.Prepare(updateQuery)
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	defer func(stmt *sql.Stmt) {
+		_ = stmt.Close()
+	}(stmt)
+
+	for _, t := range targets {
+		_, err = stmt.Exec(t.Computer, t.Domain, t.Address, t.Os, t.OsDesk, t.Tag, t.Info, t.Alive, strings.Join(t.Agents, ","), t.TargetId)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (dbms *DBMS) DbTargetsAll() []*adaptix.TargetData {
@@ -92,7 +146,9 @@ func (dbms *DBMS) DbTargetsAll() []*adaptix.TargetData {
 			logs.Debug("", "Failed to query targets: "+err.Error())
 			return targets
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			targetData := &adaptix.TargetData{}

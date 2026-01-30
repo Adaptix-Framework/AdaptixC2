@@ -217,6 +217,14 @@ type ParamsTunnelStop struct {
 	ChannelId int `msgpack:"channel_id"`
 }
 
+type ParamsTunnelPause struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
+type ParamsTunnelResume struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
 type ParamsTerminalStart struct {
 	TermId  int    `msgpack:"term_id"`
 	Program string `msgpack:"program"`
@@ -266,8 +274,10 @@ const (
 	COMMAND_JOB_KILL   = 19
 	COMMAND_REV2SELF   = 20
 
-	COMMAND_TUNNEL_START = 31
-	COMMAND_TUNNEL_STOP  = 32
+	COMMAND_TUNNEL_START  = 31
+	COMMAND_TUNNEL_STOP   = 32
+	COMMAND_TUNNEL_PAUSE  = 33
+	COMMAND_TUNNEL_RESUME = 34
 
 	COMMAND_TERMINAL_START = 35
 	COMMAND_TERMINAL_STOP  = 36
@@ -285,11 +295,6 @@ const (
 	CALLBACK_AX_SCREENSHOT   = 0x81
 	CALLBACK_AX_DOWNLOAD_MEM = 0x82
 )
-
-// COMMAND_GETUID       = 22
-// COMMAND_LINK         = 38
-// COMMAND_PIVOT_EXEC   = 37
-// COMMAND_UNLINK       = 39
 
 func parseDurationToSeconds(input string) (int, error) {
 	re := regexp.MustCompile(`(\d+)(h|m|s)`)
@@ -383,7 +388,6 @@ func SizeBytesToFormat(bytes int64) string {
 		return fmt.Sprintf("%.2f Gb", size/GB)
 	} else if size >= MB {
 		return fmt.Sprintf("%.2f Mb", size/MB)
-	} else {
-		return fmt.Sprintf("%.2f Kb", size/KB)
 	}
+	return fmt.Sprintf("%.2f Kb", size/KB)
 }

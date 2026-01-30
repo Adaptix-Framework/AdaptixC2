@@ -47,7 +47,6 @@ void BeaconDataParse(datap* parser, char* buffer, int size)
 	parser->length = size - 4;
 	parser->size = size - 4;
 	parser->buffer += 4;
-	return;
 }
 
 int BeaconDataInt(datap* parser)
@@ -168,7 +167,6 @@ void BeaconFormatAlloc(formatp* format, int maxsz)
 	format->buffer = format->original;
 	format->length = 0;
 	format->size = maxsz;
-	return;
 }
 
 void BeaconFormatReset(formatp* format)
@@ -178,8 +176,7 @@ void BeaconFormatReset(formatp* format)
 
 	memset(format->original, 0, format->size);
 	format->buffer = format->original;
-	format->length = format->size;
-	return;
+	format->length = 0;
 }
 
 void BeaconFormatAppend(formatp* format, const char* text, int len)
@@ -190,7 +187,6 @@ void BeaconFormatAppend(formatp* format, const char* text, int len)
 	memcpy(format->buffer, text, len);
 	format->buffer += len;
 	format->length += len;
-	return;
 }
 
 void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
@@ -205,7 +201,7 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 	length = ApiWin->vsnprintf(NULL, 0, fmt, args);
 	va_end(args);
 
-	if (length == -1)
+	if (length <= 0)
 		return;
 
 	if (format->length + length > format->size) {
@@ -213,24 +209,18 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 	}
 
 	va_start(args, fmt);
-	ApiWin->vsnprintf(format->buffer, length, fmt, args);
+	ApiWin->vsnprintf(format->buffer, length + 1, fmt, args);
 	va_end(args);
 	format->length += length;
 	format->buffer += length;
-	return;
 }
 
 char* BeaconFormatToString(formatp* format, int* size)
 {
-	if (format == NULL || size == NULL)
+	if (format == NULL)
 		return NULL;
-
-	if(size != NULL)
+	if (size != NULL)
 		*size = format->length;
-
-	format->buffer[0] = '\0';
-	format->buffer += 1;
-	format->length += 1;
 	return format->original;
 }
 
@@ -245,7 +235,6 @@ void BeaconFormatFree(formatp* format)
 	format->buffer = NULL;
 	format->length = 0;
 	format->size = 0;
-	return;
 }
 
 void BeaconFormatInt(formatp* format, int value)
@@ -262,7 +251,6 @@ void BeaconFormatInt(formatp* format, int value)
 	memcpy(format->buffer, &outdata, 4);
 	format->length += 4;
 	format->buffer += 4;
-	return;
 }
 
 

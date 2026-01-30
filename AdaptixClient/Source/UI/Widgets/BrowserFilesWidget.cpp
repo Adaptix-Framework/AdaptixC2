@@ -49,7 +49,7 @@ void BrowserFileData::SetStored(const bool stored)
 
 
 
-BrowserFilesWidget::BrowserFilesWidget(AdaptixWidget* w, Agent* a) : DockTab(QString("Files [%1]").arg( a->data.Id ), w->GetProfile()->GetProject())
+BrowserFilesWidget::BrowserFilesWidget(const AdaptixWidget* w, Agent* a) : DockTab(QString("Files [%1]").arg( a->data.Id ), w->GetProfile()->GetProject())
 {
     agent = a;
     this->createUI();

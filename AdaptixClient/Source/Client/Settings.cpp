@@ -39,8 +39,10 @@ void Settings::SetDefault()
     this->data.ConsoleNoWrap = true;
     this->data.ConsoleAutoScroll = false;
 
-    for ( int i = 0; i < 16; i++)
+    for ( int i = 0; i < 16; i++) {
         data.SessionsTableColumns[i] = true;
+        data.SessionsColumnOrder[i] = i;
+    }
 
     this->data.CheckHealth = true;
     this->data.HealthCoaf = 2.0;

@@ -94,6 +94,7 @@ void TunnelsWidget::createUI()
     tableView->verticalHeader()->setVisible(false);
 
     tableView->hideColumn(TUC_TunnelId);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(0, 0, 0, 0);
@@ -103,18 +104,24 @@ void TunnelsWidget::createUI()
 
 void TunnelsWidget::Clear() const
 {
-    adaptixWidget->Tunnels.clear();
+    {
+        QWriteLocker locker(&adaptixWidget->TunnelsLock);
+        adaptixWidget->Tunnels.clear();
+    }
     tunnelsModel->clear();
     inputFilter->clear();
 }
 
-void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
+void TunnelsWidget::AddTunnelItem(const TunnelData &newTunnel) const
 {
     if (tunnelsModel->contains(newTunnel.TunnelId))
         return;
 
+    {
+        QWriteLocker locker(&adaptixWidget->TunnelsLock);
+        adaptixWidget->Tunnels.push_back(newTunnel);
+    }
     tunnelsModel->add(newTunnel);
-    adaptixWidget->Tunnels.push_back(newTunnel);
 
     tableView->horizontalHeader()->setSectionResizeMode(TUC_TunnelId,  QHeaderView::ResizeToContents);
     tableView->horizontalHeader()->setSectionResizeMode(TUC_AgentId,   QHeaderView::ResizeToContents);
@@ -123,21 +130,27 @@ void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
     tableView->horizontalHeader()->setSectionResizeMode(TUC_Fhost,     QHeaderView::ResizeToContents);
     tableView->horizontalHeader()->setSectionResizeMode(TUC_Fport,     QHeaderView::ResizeToContents);
 
-    if (adaptixWidget->AgentsMap.contains(newTunnel.AgentId)) {
-        Agent* agent = adaptixWidget->AgentsMap[newTunnel.AgentId];
-        if (agent && agent->graphItem) {
-            TunnelMarkType markType = newTunnel.Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
-            agent->graphItem->AddTunnel(markType);
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        if (adaptixWidget->AgentsMap.contains(newTunnel.AgentId)) {
+            Agent* agent = adaptixWidget->AgentsMap[newTunnel.AgentId];
+            if (agent && agent->graphItem) {
+                TunnelMarkType markType = newTunnel.Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
+                agent->graphItem->AddTunnel(markType);
+            }
         }
     }
 }
 
 void TunnelsWidget::EditTunnelItem(const QString &tunnelId, const QString &info) const
 {
-    for (int i = 0; i < adaptixWidget->Tunnels.size(); i++) {
-        if (adaptixWidget->Tunnels[i].TunnelId == tunnelId) {
-            adaptixWidget->Tunnels[i].Info = info;
-            break;
+    {
+        QWriteLocker locker(&adaptixWidget->TunnelsLock);
+        for (int i = 0; i < adaptixWidget->Tunnels.size(); i++) {
+            if (adaptixWidget->Tunnels[i].TunnelId == tunnelId) {
+                adaptixWidget->Tunnels[i].Info = info;
+                break;
+            }
         }
     }
 
@@ -148,19 +161,25 @@ void TunnelsWidget::RemoveTunnelItem(const QString &tunnelId) const
 {
     QString agentId;
     TunnelMarkType markType = TunnelMarkNone;
-    for (int i = 0; i < adaptixWidget->Tunnels.size(); i++) {
-        if (adaptixWidget->Tunnels[i].TunnelId == tunnelId) {
-            agentId = adaptixWidget->Tunnels[i].AgentId;
-            markType = adaptixWidget->Tunnels[i].Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
-            adaptixWidget->Tunnels.erase(adaptixWidget->Tunnels.begin() + i);
-            break;
+    {
+        QWriteLocker locker(&adaptixWidget->TunnelsLock);
+        for (int i = 0; i < adaptixWidget->Tunnels.size(); i++) {
+            if (adaptixWidget->Tunnels[i].TunnelId == tunnelId) {
+                agentId = adaptixWidget->Tunnels[i].AgentId;
+                markType = adaptixWidget->Tunnels[i].Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
+                adaptixWidget->Tunnels.erase(adaptixWidget->Tunnels.begin() + i);
+                break;
+            }
         }
     }
 
-    if (!agentId.isEmpty() && adaptixWidget->AgentsMap.contains(agentId)) {
-        Agent* agent = adaptixWidget->AgentsMap[agentId];
-        if (agent && agent->graphItem && markType != TunnelMarkNone)
-            agent->graphItem->RemoveTunnel(markType);
+    if (!agentId.isEmpty()) {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        if (adaptixWidget->AgentsMap.contains(agentId)) {
+            Agent* agent = adaptixWidget->AgentsMap[agentId];
+            if (agent && agent->graphItem && markType != TunnelMarkNone)
+                agent->graphItem->RemoveTunnel(markType);
+        }
     }
 
     tunnelsModel->remove(tunnelId);

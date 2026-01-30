@@ -40,7 +40,47 @@ TargetsWidget::~TargetsWidget() = default;
 
 void TargetsWidget::SetUpdatesEnabled(const bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingTargets();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
+}
+
+void TargetsWidget::flushPendingTargets()
+{
+    if (pendingTargets.isEmpty())
+        return;
+
+    QList<TargetData> filtered;
+    {
+        QWriteLocker locker(&adaptixWidget->TargetsLock);
+        QSet<QString> existingIds;
+        for (const auto& t : adaptixWidget->Targets)
+            existingIds.insert(t.TargetId);
+
+        for (const auto& target : pendingTargets) {
+            if (existingIds.contains(target.TargetId))
+                continue;
+
+            existingIds.insert(target.TargetId);
+            adaptixWidget->Targets.push_back(target);
+            filtered.append(target);
+        }
+    }
+
+    if (!filtered.isEmpty())
+        targetsModel->add(filtered);
+
+    pendingTargets.clear();
 }
 
 void TargetsWidget::createUI()
@@ -110,23 +150,31 @@ void TargetsWidget::createUI()
 
 /// Main
 
-void TargetsWidget::AddTargetsItems(QList<TargetData> targetList) const
+void TargetsWidget::AddTargetsItems(QList<TargetData> targetList)
 {
     if (targetList.isEmpty())
         return;
 
+    if (bufferingEnabled) {
+        pendingTargets.append(targetList);
+        return;
+    }
+
     QList<TargetData> filtered;
-    QSet<QString> existingIds;
-    for (const auto& t : adaptixWidget->Targets)
-        existingIds.insert(t.TargetId);
+    {
+        QWriteLocker locker(&adaptixWidget->TargetsLock);
+        QSet<QString> existingIds;
+        for (const auto& t : adaptixWidget->Targets)
+            existingIds.insert(t.TargetId);
 
-    for (const auto& target : targetList) {
-        if (existingIds.contains(target.TargetId))
-            continue;
+        for (const auto& target : targetList) {
+            if (existingIds.contains(target.TargetId))
+                continue;
 
-        existingIds.insert(target.TargetId);
-        adaptixWidget->Targets.push_back(target);
-        filtered.append(target);
+            existingIds.insert(target.TargetId);
+            adaptixWidget->Targets.push_back(target);
+            filtered.append(target);
+        }
     }
 
     if (filtered.isEmpty())
@@ -140,22 +188,25 @@ void TargetsWidget::AddTargetsItems(QList<TargetData> targetList) const
 
 void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
 {
-    for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
-        if( adaptixWidget->Targets[i].TargetId == newTarget.TargetId ) {
-            TargetData* td = &adaptixWidget->Targets[i];
+    {
+        QWriteLocker locker(&adaptixWidget->TargetsLock);
+        for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
+            if( adaptixWidget->Targets[i].TargetId == newTarget.TargetId ) {
+                TargetData* td = &adaptixWidget->Targets[i];
 
-            td->Computer = newTarget.Computer;
-            td->Domain   = newTarget.Domain;
-            td->Address  = newTarget.Address;
-            td->Tag      = newTarget.Tag;
-            td->Os       = newTarget.Os;
-            td->OsIcon   = newTarget.OsIcon;
-            td->OsDesc   = newTarget.OsDesc;
-            td->Date     = newTarget.Date;
-            td->Info     = newTarget.Info;
-            td->Alive    = newTarget.Alive;
-            td->Agents   = newTarget.Agents;
-            break;
+                td->Computer = newTarget.Computer;
+                td->Domain   = newTarget.Domain;
+                td->Address  = newTarget.Address;
+                td->Tag      = newTarget.Tag;
+                td->Os       = newTarget.Os;
+                td->OsIcon   = newTarget.OsIcon;
+                td->OsDesc   = newTarget.OsDesc;
+                td->Date     = newTarget.Date;
+                td->Info     = newTarget.Info;
+                td->Alive    = newTarget.Alive;
+                td->Agents   = newTarget.Agents;
+                break;
+            }
         }
     }
 
@@ -165,12 +216,15 @@ void TargetsWidget::EditTargetsItem(const TargetData &newTarget) const
 void TargetsWidget::RemoveTargetsItem(const QStringList &targetsId) const
 {
     QStringList filtered;
-    for (auto targetId : targetsId) {
-        for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
-            if( adaptixWidget->Targets[i].TargetId == targetId ) {
-                filtered.append(targetId);
-                adaptixWidget->Targets.erase( adaptixWidget->Targets.begin() + i );
-                break;
+    {
+        QWriteLocker locker(&adaptixWidget->TargetsLock);
+        for (auto targetId : targetsId) {
+            for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
+                if( adaptixWidget->Targets[i].TargetId == targetId ) {
+                    filtered.append(targetId);
+                    adaptixWidget->Targets.erase( adaptixWidget->Targets.begin() + i );
+                    break;
+                }
             }
         }
     }
@@ -179,14 +233,17 @@ void TargetsWidget::RemoveTargetsItem(const QStringList &targetsId) const
 
 void TargetsWidget::TargetsSetTag(const QStringList &targetIds, const QString &tag) const
 {
-    QSet<QString> set1 = QSet<QString>(targetIds.begin(), targetIds.end());
-    for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
-        if( set1.contains(adaptixWidget->Targets[i].TargetId) ) {
-            adaptixWidget->Targets[i].Tag = tag;
-            set1.remove(adaptixWidget->Targets[i].TargetId);
+    {
+        QWriteLocker locker(&adaptixWidget->TargetsLock);
+        QSet<QString> set1 = QSet<QString>(targetIds.begin(), targetIds.end());
+        for ( int i = 0; i < adaptixWidget->Targets.size(); i++ ) {
+            if( set1.contains(adaptixWidget->Targets[i].TargetId) ) {
+                adaptixWidget->Targets[i].Tag = tag;
+                set1.remove(adaptixWidget->Targets[i].TargetId);
 
-            if (set1.size() == 0)
-                break;
+                if (set1.size() == 0)
+                    break;
+            }
         }
     }
 
@@ -204,7 +261,10 @@ void TargetsWidget::UpdateColumnsSize() const
 
 void TargetsWidget::Clear() const
 {
-    adaptixWidget->Targets.clear();
+    {
+        QWriteLocker locker(&adaptixWidget->TargetsLock);
+        adaptixWidget->Targets.clear();
+    }
     targetsModel->clear();
     inputFilter->clear();
 }
@@ -293,7 +353,7 @@ void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
         ctxMenu.addAction("Set tag",           this, &TargetsWidget::onSetTag );
         ctxMenu.addAction("Export to file",    this, &TargetsWidget::onExportTarget );
         ctxMenu.addAction("Copy to clipboard", this, &TargetsWidget::onCopyToClipboard );
-        int bottomCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
+        adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
     }
     QPoint globalPos = tableView->mapToGlobal(pos);
     ctxMenu.exec(globalPos);

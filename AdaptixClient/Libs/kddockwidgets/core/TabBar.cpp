@@ -85,6 +85,13 @@ bool Core::TabBar::dragCanStart(Point pressPos, Point pos) const
         return true;
     }
 
+    // Also detach if cursor moves outside the tab bar bounds (allows horizontal splitting)
+    const Point localPos = view()->mapFromGlobal(pos);
+    const Rect tabBarRect = view()->rect();
+    if (!tabBarRect.contains(localPos)) {
+        return true;
+    }
+
     return false;
 }
 

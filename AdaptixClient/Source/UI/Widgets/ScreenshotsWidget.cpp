@@ -123,7 +123,43 @@ ScreenshotsWidget::~ScreenshotsWidget() = default;
 
 void ScreenshotsWidget::SetUpdatesEnabled(const bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingScreens();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
+}
+
+void ScreenshotsWidget::flushPendingScreens()
+{
+    if (pendingScreens.isEmpty())
+        return;
+
+    QList<ScreenData> filtered;
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        int count = 0;
+        for (const auto& screen : pendingScreens) {
+            if (adaptixWidget->Screenshots.contains(screen.ScreenId))
+                continue;
+
+            adaptixWidget->Screenshots[screen.ScreenId] = screen;
+            filtered.append(screen);
+        }
+    }
+
+    if (!filtered.isEmpty())
+        screensModel->addBatch(filtered);
+
+    pendingScreens.clear();
 }
 
 void ScreenshotsWidget::createUI()
@@ -199,7 +235,10 @@ void ScreenshotsWidget::createUI()
 
 void ScreenshotsWidget::Clear() const
 {
-    adaptixWidget->Screenshots.clear();
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        adaptixWidget->Screenshots.clear();
+    }
 
     QSignalBlocker blocker(tableView->selectionModel());
     screensModel->clear();
@@ -209,28 +248,41 @@ void ScreenshotsWidget::Clear() const
 
 void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen)
 {
+    if (bufferingEnabled) {
+        pendingScreens.append(newScreen);
+        return;
+    }
+
+    QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
     if (adaptixWidget->Screenshots.contains(newScreen.ScreenId))
         return;
 
-    screensModel->add(newScreen);
     adaptixWidget->Screenshots[newScreen.ScreenId] = newScreen;
+    locker.unlock();
+    screensModel->add(newScreen);
 }
 
 void ScreenshotsWidget::EditScreenshotItem(const QString &screenId, const QString &note)
 {
-    if (!adaptixWidget->Screenshots.contains(screenId))
-        return;
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        if (!adaptixWidget->Screenshots.contains(screenId))
+            return;
 
-    adaptixWidget->Screenshots[screenId].Note = note;
+        adaptixWidget->Screenshots[screenId].Note = note;
+    }
     screensModel->update(screenId, note);
 }
 
 void ScreenshotsWidget::RemoveScreenshotItem(const QString &screenId)
 {
-    if (!adaptixWidget->Screenshots.contains(screenId))
-        return;
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        if (!adaptixWidget->Screenshots.contains(screenId))
+            return;
 
-    adaptixWidget->Screenshots.remove(screenId);
+        adaptixWidget->Screenshots.remove(screenId);
+    }
     screensModel->remove(screenId);
 
     if (screensModel->rowCount(QModelIndex()) == 0)

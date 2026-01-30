@@ -193,6 +193,7 @@ public:
                 case CC_Storage:  return c.Storage;
                 case CC_Agent:    return c.AgentId;
                 case CC_Host:     return c.Host;
+                default: ;
             }
         }
 
@@ -210,6 +211,7 @@ public:
                 case CC_Storage:
                 case CC_Agent:
                     return Qt::AlignCenter;
+                default: ;
             }
         }
 
@@ -277,9 +279,9 @@ public:
         if (rowsToRemove.isEmpty())
             return;
 
-        std::sort(rowsToRemove.begin(), rowsToRemove.end(), std::greater<int>());
+        std::ranges::sort(rowsToRemove, std::greater<int>());
 
-        for (int row : rowsToRemove) {
+        for (const int row : rowsToRemove) {
             beginRemoveRows(QModelIndex(), row, row);
             idToRow.remove(creds[row].CredId);
             creds.removeAt(row);
@@ -333,7 +335,11 @@ Q_OBJECT
     QComboBox*      storageComboBox = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
+    bool bufferingEnabled = false;
+    QList<CredentialData> pendingCreds;
+
     void createUI();
+    void flushPendingCreds();
 
 public:
     explicit CredentialsWidget(AdaptixWidget* w);
@@ -341,7 +347,7 @@ public:
 
     void SetUpdatesEnabled(const bool enabled);
 
-    void AddCredentialsItems(QList<CredentialData> credsList) const;
+    void AddCredentialsItems(QList<CredentialData> credsList);
     void EditCredentialsItem(const CredentialData &newCredentials) const;
     void RemoveCredentialsItem(const QStringList &credsId) const;
     void CredsSetTag(const QStringList &credsIds, const QString &tag) const;

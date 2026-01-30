@@ -3,6 +3,7 @@ package server
 import (
 	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/logs"
@@ -10,6 +11,9 @@ import (
 	"encoding/json"
 	"net"
 	"os"
+
+	"github.com/Adaptix-Framework/axc2"
+	"github.com/goccy/go-yaml"
 )
 
 func NewTeamserver() *Teamserver {
@@ -24,28 +28,31 @@ func NewTeamserver() *Teamserver {
 	broker.Start()
 
 	ts := &Teamserver{
-		Profile: profile.NewProfile(),
-		DBMS:    dbms,
-		Broker:  broker,
+		Profile:      profile.NewProfile(),
+		DBMS:         dbms,
+		Broker:       broker,
+		EventManager: eventing.NewEventManager(),
 
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
+		service_configs:  safe.NewMap(),
 
 		wm_agent_types: make(map[string]string),
 		wm_listeners:   make(map[string][]string),
 
-		events:      safe.NewSlice(),
-		Agents:      safe.NewMap(),
-		listeners:   safe.NewMap(),
-		messages:    safe.NewSlice(),
-		downloads:   safe.NewMap(),
-		tmp_uploads: safe.NewMap(),
-		screenshots: safe.NewMap(),
-		credentials: safe.NewSlice(),
-		targets:     safe.NewSlice(),
-		terminals:   safe.NewMap(),
-		pivots:      safe.NewSlice(),
-		otps:        safe.NewMap(),
+		notifications: safe.NewSlice(),
+		Agents:        safe.NewMap(),
+		listeners:     safe.NewMap(),
+		messages:      safe.NewSlice(),
+		downloads:     safe.NewMap(),
+		tmp_uploads:   safe.NewMap(),
+		screenshots:   safe.NewMap(),
+		credentials:   safe.NewSlice(),
+		targets:       safe.NewSlice(),
+		terminals:     safe.NewMap(),
+		pivots:        safe.NewSlice(),
+		otps:          safe.NewMap(),
+		builders:      safe.NewMap(),
 	}
 	ts.TaskManager = NewTaskManager(ts)
 	ts.TunnelManager = NewTunnelManager(ts)
@@ -65,11 +72,13 @@ func (ts *Teamserver) SetSettings(host string, port int, endpoint string, passwo
 		ATokenLive: 12,
 		RTokenLive: 168,
 	}
-	ts.Profile.ServerResponse = &profile.TsResponse{
-		Status:      404,
-		Headers:     map[string]string{},
-		PagePath:    "",
-		PageContent: "",
+	ts.Profile.HttpServer = &profile.TsHttpServer{
+		Error: &profile.TsHttpError{
+			Status:      404,
+			Headers:     map[string]string{},
+			PagePath:    "",
+			PageContent: "",
+		},
 	}
 }
 
@@ -84,7 +93,7 @@ func (ts *Teamserver) SetProfile(path string) error {
 		return err
 	}
 
-	err = json.Unmarshal(fileContent, &ts.Profile)
+	err = yaml.Unmarshal(fileContent, ts.Profile)
 	if err != nil {
 		return err
 	}
@@ -110,7 +119,14 @@ func (ts *Teamserver) RestoreData() {
 	restoreAgents := ts.DBMS.DbAgentAll()
 	for _, agentData := range restoreAgents {
 
+		extenderAgent, err := ts.Extender.ExAgentGetExtender(agentData.Name)
+		if err != nil {
+			logs.Warn("   ", "Failed to get extenderAgent for agent %v (%v): %v", agentData.Id, agentData.Name, err.Error())
+			continue
+		}
+
 		agent := &Agent{
+			Extender:          extenderAgent,
 			OutConsole:        safe.NewSlice(),
 			HostedTunnelData:  safe.NewSafeQueue(0x1000),
 			HostedTasks:       safe.NewSafeQueue(0x100),
@@ -140,7 +156,7 @@ func (ts *Teamserver) RestoreData() {
 		packet := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packet)
 
-		ts.TsEventAgent(true, agentData)
+		ts.TsNotifyAgent(true, agentData)
 
 		/// Tasks
 		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)
@@ -183,8 +199,6 @@ func (ts *Teamserver) RestoreData() {
 	restoreChat := ts.DBMS.DbChatAll()
 	for _, restoreMessage := range restoreChat {
 		ts.messages.Put(restoreMessage)
-		packet := CreateSpChatMessage(restoreMessage)
-		ts.TsSyncAllClients(packet)
 		countMessages++
 	}
 	logs.Success("   ", "Restored %v messages", countMessages)
@@ -194,12 +208,6 @@ func (ts *Teamserver) RestoreData() {
 	restoreDownloads := ts.DBMS.DbDownloadAll()
 	for _, restoreDownload := range restoreDownloads {
 		ts.downloads.Put(restoreDownload.FileId, restoreDownload)
-
-		packetRes1 := CreateSpDownloadCreate(restoreDownload)
-		ts.TsSyncAllClients(packetRes1)
-
-		packetRes2 := CreateSpDownloadUpdate(restoreDownload)
-		ts.TsSyncAllClients(packetRes2)
 
 		countDownloads++
 	}
@@ -217,9 +225,6 @@ func (ts *Teamserver) RestoreData() {
 
 		ts.screenshots.Put(restoreScreen.ScreenId, restoreScreen)
 
-		packet := CreateSpScreenshotCreate(restoreScreen)
-		ts.TsSyncAllClients(packet)
-
 		countScreenshots++
 	}
 	logs.Success("   ", "Restored %v screens", countScreenshots)
@@ -232,8 +237,6 @@ func (ts *Teamserver) RestoreData() {
 		ts.credentials.Put(restoreCredential)
 		countCredentials++
 	}
-	packetCreds := CreateSpCredentialsAdd(restoreCredentials)
-	ts.TsSyncAllClients(packetCreds)
 	logs.Success("   ", "Restored %v credentials", countCredentials)
 
 	/// TARGETS
@@ -243,8 +246,6 @@ func (ts *Teamserver) RestoreData() {
 		ts.targets.Put(restoreTarget)
 		countTargets++
 	}
-	packetTargets := CreateSpTargetsAdd(restoreTargets)
-	ts.TsSyncAllClients(packetTargets)
 	logs.Success("   ", "Restored %v targets", countTargets)
 
 	/// LISTENERS
@@ -255,6 +256,21 @@ func (ts *Teamserver) RestoreData() {
 		if err != nil {
 			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {
+			if restoreListener.ListenerStatus == "Paused" {
+				err = ts.Extender.ExListenerPause(restoreListener.ListenerName)
+				if err != nil {
+					logs.Error("", "Failed to pause restored listener %s: %s", restoreListener.ListenerName, err.Error())
+				} else {
+					value, ok := ts.listeners.Get(restoreListener.ListenerName)
+					if ok {
+						listenerData := value.(adaptix.ListenerData)
+						listenerData.Status = "Paused"
+						ts.listeners.Put(restoreListener.ListenerName, listenerData)
+						packet := CreateSpListenerEdit(listenerData)
+						ts.TsSyncAllClients(packet)
+					}
+				}
+			}
 			countListeners++
 		}
 	}
@@ -289,11 +305,13 @@ func (ts *Teamserver) Start() {
 		ts.Parameters.Interfaces = append(ts.Parameters.Interfaces, "127.0.0.1")
 	}
 
-	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server, *ts.Profile.ServerResponse)
+	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server, *ts.Profile.HttpServer)
 	if err != nil {
 		logs.Error("", "Failed to init HTTP handler: "+err.Error())
 		return
 	}
+
+	ts.Extender.LoadPlugins(ts.Profile.Server.Extenders)
 
 	go ts.AdaptixServer.Start(&stopped)
 	logs.Success("", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)

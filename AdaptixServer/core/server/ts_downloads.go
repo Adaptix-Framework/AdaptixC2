@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/krypt"
 	"AdaptixServer/core/utils/logs"
 	"encoding/json"
@@ -15,14 +16,22 @@ import (
 	"github.com/Adaptix-Framework/axc2"
 )
 
-const (
-	DOWNLOAD_STATE_RUNNING  = 0x1
-	DOWNLOAD_STATE_STOPPED  = 0x2
-	DOWNLOAD_STATE_FINISHED = 0x3
-	DOWNLOAD_STATE_CANCELED = 0x4
-)
-
 func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataDownloadStart{
+		AgentId:  agentId,
+		FileId:   fileId,
+		FileName: fileName,
+		FileSize: fileSize,
+	}
+	if !ts.EventManager.Emit(eventing.EventDownloadStart, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	downloadData := adaptix.DownloadData{
 		AgentId:    agentId,
 		FileId:     fileId,
@@ -30,7 +39,7 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 		TotalSize:  fileSize,
 		RecvSize:   0,
 		Date:       time.Now().Unix(),
-		State:      DOWNLOAD_STATE_RUNNING,
+		State:      adaptix.DOWNLOAD_STATE_RUNNING,
 	}
 
 	value, ok := ts.Agents.Get(agentId)
@@ -67,7 +76,17 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 	ts.downloads.Put(downloadData.FileId, downloadData)
 
 	packet := CreateSpDownloadCreate(downloadData)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryDownloadsRealtime)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataDownloadStart{
+		AgentId:  agentId,
+		FileId:   fileId,
+		FileName: fileName,
+		FileSize: fileSize,
+	}
+	ts.EventManager.EmitAsync(eventing.EventDownloadStart, postEvent)
+	// -----------------
 
 	return nil
 }
@@ -99,7 +118,7 @@ func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) er
 	ts.downloads.Put(downloadData.FileId, downloadData)
 
 	packet := CreateSpDownloadUpdate(downloadData)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncStateWithCategory(packet, "download:"+downloadData.FileId, SyncCategoryDownloadsRealtime)
 
 	return nil
 }
@@ -111,29 +130,46 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 	}
 	downloadData := value.(adaptix.DownloadData)
 
+	canceled := reason != adaptix.DOWNLOAD_STATE_FINISHED
+
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataDownloadFinish{Download: downloadData, Canceled: canceled}
+	if !ts.EventManager.Emit(eventing.EventDownloadFinish, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
 	err := downloadData.File.Close()
 	if err != nil {
 		logs.Debug("", fmt.Sprintf("Failed to finish download [%x] file: %v", downloadData.FileId, err))
 	}
 
-	if reason == DOWNLOAD_STATE_FINISHED {
-		downloadData.State = DOWNLOAD_STATE_FINISHED
+	if reason == adaptix.DOWNLOAD_STATE_FINISHED {
+		downloadData.State = adaptix.DOWNLOAD_STATE_FINISHED
 		ts.downloads.Put(downloadData.FileId, downloadData)
 		err = ts.DBMS.DbDownloadInsert(downloadData)
 		if err != nil {
 			logs.Error("", err.Error())
 		}
 
-		go ts.TsEventCallbackDownloads(downloadData)
+		go ts.TsNotifyCallbackDownloads(downloadData)
 
 	} else {
-		downloadData.State = DOWNLOAD_STATE_CANCELED
+		downloadData.State = adaptix.DOWNLOAD_STATE_CANCELED
 		_ = os.Remove(downloadData.LocalPath)
 		ts.downloads.Delete(fileId)
 	}
 
 	packet := CreateSpDownloadUpdate(downloadData)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncStateWithCategory(packet, "download:"+downloadData.FileId, SyncCategoryDownloadsRealtime)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataDownloadFinish{Download: downloadData, Canceled: canceled}
+	ts.EventManager.EmitAsync(eventing.EventDownloadFinish, postEvent)
+	// -----------------
 
 	return nil
 }
@@ -147,7 +183,7 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 		TotalSize:  len(content),
 		RecvSize:   len(content),
 		Date:       time.Now().Unix(),
-		State:      DOWNLOAD_STATE_FINISHED,
+		State:      adaptix.DOWNLOAD_STATE_FINISHED,
 	}
 
 	value, ok := ts.Agents.Get(agentId)
@@ -190,17 +226,17 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 	ts.downloads.Put(downloadData.FileId, downloadData)
 
 	packetRes1 := CreateSpDownloadCreate(downloadData)
-	ts.TsSyncAllClients(packetRes1)
+	ts.TsSyncAllClientsWithCategory(packetRes1, SyncCategoryDownloadsRealtime)
 
 	packetRes2 := CreateSpDownloadUpdate(downloadData)
-	ts.TsSyncAllClients(packetRes2)
+	ts.TsSyncStateWithCategory(packetRes2, "download:"+downloadData.FileId, SyncCategoryDownloadsRealtime)
 
 	err = ts.DBMS.DbDownloadInsert(downloadData)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 
-	go ts.TsEventCallbackDownloads(downloadData)
+	go ts.TsNotifyCallbackDownloads(downloadData)
 
 	return nil
 }
@@ -240,7 +276,7 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 	}
 	downloadData := value.(adaptix.DownloadData)
 
-	if downloadData.State != DOWNLOAD_STATE_FINISHED {
+	if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
 		return "", nil, errors.New("download not finished")
 	}
 
@@ -250,36 +286,58 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 }
 
 func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataDownloadRemove{FileIds: fileId}
+	if !ts.EventManager.Emit(eventing.EventDownloadRemove, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	fileId = preEvent.FileIds
+	// ----------------
 
 	var deleteFiles []string
+	var dbDeleteIds []string
+	var filesToRemove []string
 
 	for _, id := range fileId {
-
 		value, ok := ts.downloads.Get(id)
 		if !ok {
 			continue
 		}
 		downloadData := value.(adaptix.DownloadData)
 
-		if downloadData.State != DOWNLOAD_STATE_FINISHED && downloadData.State != DOWNLOAD_STATE_CANCELED {
+		if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED && downloadData.State != adaptix.DOWNLOAD_STATE_CANCELED {
 			continue
 		}
 
-		if downloadData.State == DOWNLOAD_STATE_CANCELED {
+		if downloadData.State == adaptix.DOWNLOAD_STATE_CANCELED {
 			_ = downloadData.File.Close()
 		}
-		_ = os.Remove(downloadData.LocalPath)
-
+		filesToRemove = append(filesToRemove, downloadData.LocalPath)
 		deleteFiles = append(deleteFiles, id)
 
-		if downloadData.State == DOWNLOAD_STATE_FINISHED {
-			_ = ts.DBMS.DbDownloadDelete(id)
+		if downloadData.State == adaptix.DOWNLOAD_STATE_FINISHED {
+			dbDeleteIds = append(dbDeleteIds, id)
 		}
 		ts.downloads.Delete(id)
 	}
 
+	go func(paths []string, ids []string) {
+		for _, path := range paths {
+			_ = os.Remove(path)
+		}
+		_ = ts.DBMS.DbDownloadDeleteBatch(ids)
+	}(filesToRemove, dbDeleteIds)
+
 	packet := CreateSpDownloadDelete(fileId)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryDownloadsRealtime)
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataDownloadRemove{FileIds: deleteFiles}
+	ts.EventManager.EmitAsync(eventing.EventDownloadRemove, postEvent)
+	// -----------------
 
 	return nil
 }
@@ -293,7 +351,7 @@ func (ts *Teamserver) TsDownloadGetFilepath(fileId string) (string, error) {
 	}
 	downloadData := value.(adaptix.DownloadData)
 
-	if downloadData.State != DOWNLOAD_STATE_FINISHED {
+	if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
 		return "", errors.New("Download not finished")
 	}
 

@@ -23,7 +23,7 @@ class AxScriptWorker : public QObject {
     bool             ready = false;
 
 public:
-    explicit AxScriptWorker(AxScriptManager* manager, const QString& name, QObject* parent = nullptr);
+    explicit AxScriptWorker(AxScriptManager* manager, const QString& name, const QObject* parent = nullptr);
     ~AxScriptWorker() override;
 
     AxScriptEngine* engine() const;

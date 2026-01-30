@@ -3,11 +3,14 @@
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxUiFactory.h>
+
 #include <QMessageBox>
 #include <QMetaMethod>
 #include <QJsonDocument>
 #include <QThread>
 #include <QApplication>
+
+
 
 BridgeForm::BridgeForm(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine), uiFactory(nullptr), localParentWidget(nullptr)
 {
@@ -312,10 +315,52 @@ QObject* BridgeForm::create_selector_credentials(const QJSValue &headers) const
     return wrapper;
 }
 
-QObject * BridgeForm::create_selector_agents(const QJSValue &headers) const
+QObject* BridgeForm::create_selector_agents(const QJSValue &headers) const
 {
     auto* parentW = getParentWidget();
     auto* wrapper = new AxSelectorAgents(headers, scriptEngine, parentW);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_selector_listeners(const QJSValue &headers) const
+{
+    auto* parentW = getParentWidget();
+    auto* wrapper = new AxSelectorListeners(headers, scriptEngine, parentW);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_selector_targets(const QJSValue &headers) const
+{
+    auto* parentW = getParentWidget();
+    auto* wrapper = new AxSelectorTargets(headers, scriptEngine, parentW);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_selector_downloads(const QJSValue &headers) const
+{
+    auto* parentW = getParentWidget();
+    auto* wrapper = new AxSelectorDownloads(headers, scriptEngine, parentW);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_ext_dock(const QString &id, const QString &title, const QString &location)
+{
+    AdaptixWidget* adaptixWidget = scriptEngine->manager()->GetAdaptix();
+
+    auto* wrapper = new AxDockWrapper(adaptixWidget, id, title, location);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_ext_dialog(const QString &title)
+{
+    AdaptixWidget* adaptixWidget = scriptEngine->manager()->GetAdaptix();
+
+    auto* wrapper = new AxExtDialogWrapper(adaptixWidget, title);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }

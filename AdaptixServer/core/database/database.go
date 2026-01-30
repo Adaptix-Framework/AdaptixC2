@@ -18,12 +18,17 @@ func NewDatabase(dbPath string) (*DBMS, error) {
 		exists: true,
 	}
 
-	dbms.database, err = sql.Open("sqlite3", dbPath)
+	// Enable WAL mode and other performance optimizations via connection string
+	connStr := dbPath + "?_journal_mode=WAL&_synchronous=NORMAL&_busy_timeout=10000&_cache_size=-64000"
+	dbms.database, err = sql.Open("sqlite3", connStr)
 	if err != nil {
 		dbms.exists = false
 	}
 
 	if dbms.exists {
+		dbms.database.SetMaxOpenConns(1)
+		dbms.database.SetMaxIdleConns(1)
+
 		err = dbms.DatabaseInit()
 		if err != nil {
 			dbms.exists = false
@@ -42,11 +47,16 @@ func (dbms *DBMS) DatabaseInit() error {
     	"ListenerName" TEXT NOT NULL UNIQUE, 
     	"ListenerRegName" TEXT NOT NULL,
     	"ListenerConfig" TEXT NOT NULL,
+		"ListenerStatus" TEXT,
     	"CreateTime" BIGINT,
     	"Watermark" TEXT NOT NULL,
     	"CustomData" BLOB
     );`
 	_, err = dbms.database.Exec(createTableQuery)
+
+	// TODO CLEAR: Soft migration for old databases
+	_, _ = dbms.database.Exec(`ALTER TABLE "Listeners" ADD COLUMN "ListenerStatus" TEXT;`)
+	_, _ = dbms.database.Exec(`UPDATE "Listeners" SET "ListenerStatus" = 'Listen' WHERE "ListenerStatus" IS NULL;`)
 
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Chat" (
     	"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -181,6 +191,31 @@ func (dbms *DBMS) DatabaseInit() error {
 		"Agents" TEXT
     );`
 	_, err = dbms.database.Exec(createTableQuery)
+
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "ExtenderData" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"ExtenderName" TEXT NOT NULL,
+    	"Key" TEXT NOT NULL,
+    	"Value" BLOB,
+		UNIQUE("ExtenderName", "Key")
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+
+	indexQueries := []string{
+		`CREATE INDEX IF NOT EXISTS idx_tasks_agentid ON Tasks(AgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_tasks_startdate ON Tasks(StartDate);`,
+		`CREATE INDEX IF NOT EXISTS idx_tasks_completed ON Tasks(Completed);`,
+		`CREATE INDEX IF NOT EXISTS idx_consoles_agentid ON Consoles(AgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_downloads_agentid ON Downloads(AgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_downloads_date ON Downloads(Date);`,
+		`CREATE INDEX IF NOT EXISTS idx_screenshots_date ON Screenshots(Date);`,
+		`CREATE INDEX IF NOT EXISTS idx_credentials_agentid ON Credentials(AgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_pivots_parentagentid ON Pivots(ParentAgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_pivots_childagentid ON Pivots(ChildAgentId);`,
+	}
+	for _, indexQuery := range indexQueries {
+		_, _ = dbms.database.Exec(indexQuery)
+	}
 
 	return err
 }

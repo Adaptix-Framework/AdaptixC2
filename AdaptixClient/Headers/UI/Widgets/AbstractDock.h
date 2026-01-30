@@ -91,13 +91,18 @@ public:
         if (!icon.isEmpty())
             dockWidget->setIcon(QIcon(icon), KDDockWidgets::IconPlace::TabBar);
 
-        connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isCurrentTabChanged,
-                this, &DockTab::onCurrentTabChanged);
+        connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isCurrentTabChanged, this, &DockTab::onCurrentTabChanged);
 
         QTimer::singleShot(0, this, &DockTab::setupAutoBlink);
     };
 
-    ~DockTab() override { dockWidget->deleteLater(); };
+    ~DockTab() override {
+        if (dockWidget) {
+            dockWidget->setWidget(nullptr);
+            delete dockWidget;
+            dockWidget = nullptr;
+        }
+    };
 
     KDDockWidgets::QtWidgets::DockWidget* dock() { return this->dockWidget; };
 
@@ -308,7 +313,7 @@ private:
         }
     }
 
-    void connectChildWidgets(QWidget* parent) {
+    void connectChildWidgets(const QWidget* parent) {
         for (auto* w : parent->findChildren<QTableWidget*>())
             connectItemView(w);
 
