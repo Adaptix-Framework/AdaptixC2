@@ -276,6 +276,17 @@ bool TextEditConsole::isNoWrapEnabled() const {
 void TextEditConsole::appendPlain(const QString& text)
 {
     QMutexLocker locker(batchMutex);
+    
+    if (syncMode) {
+        static QTextCharFormat plainFormat;
+        if (!pendingFormatted.isEmpty() && pendingFormatted.last().format == plainFormat) {
+            pendingFormatted.last().text += text;
+        } else {
+            pendingFormatted.append({text, plainFormat});
+        }
+        return;
+    }
+
     pendingText += text;
 
     if (pendingText.size() >= MAX_BATCH_SIZE) {
@@ -322,13 +333,24 @@ void TextEditConsole::flushPendingText()
 
 void TextEditConsole::appendFormatted(const QString& text, const std::function<void(QTextCharFormat&)> &styleFn)
 {
+    QTextCharFormat fmt;
+    styleFn(fmt);
+
+    if (syncMode) {
+        QMutexLocker locker(batchMutex);
+        if (!pendingFormatted.isEmpty() && pendingFormatted.last().format == fmt) {
+            pendingFormatted.last().text += text;
+        } else {
+            pendingFormatted.append({text, fmt});
+        }
+        return;
+    }
+
     flushPendingText();
 
     bool atBottom = verticalScrollBar()->value() == verticalScrollBar()->maximum();
 
     cachedCursor.movePosition(QTextCursor::End);
-    QTextCharFormat fmt;
-    styleFn(fmt);
     cachedCursor.insertText(text, fmt);
 
     appendCount++;
@@ -342,6 +364,49 @@ void TextEditConsole::appendFormatted(const QString& text, const std::function<v
     } else if (appendCount >= 200 && currentLines > static_cast<int>(maxLines * 0.9)) {
         trimExcessLines();
         appendCount = 0;
+    }
+
+    if (autoScroll || atBottom)
+        verticalScrollBar()->setValue(verticalScrollBar()->maximum());
+}
+
+void TextEditConsole::setSyncMode(bool enabled)
+{
+    syncMode = enabled;
+    if (!enabled)
+        flushAll();
+}
+
+void TextEditConsole::flushAll()
+{
+    QMutexLocker locker(batchMutex);
+    
+    if (!pendingText.isEmpty()) {
+        pendingFormatted.append({pendingText, QTextCharFormat()});
+        pendingText.clear();
+    }
+    
+    if (pendingFormatted.isEmpty())
+        return;
+
+    QList<FormattedChunk> chunks = std::move(pendingFormatted);
+    pendingFormatted.clear();
+    locker.unlock();
+
+    bool atBottom = verticalScrollBar()->value() == verticalScrollBar()->maximum();
+    cachedCursor.movePosition(QTextCursor::End);
+
+    int count = 0;
+    for (const auto &chunk : chunks) {
+        cachedCursor.insertText(chunk.text, chunk.format);
+        if (++count % 50 == 0)
+            QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    }
+
+    auto doc = this->document();
+    int currentLines = doc->blockCount();
+    if (currentLines > maxLines * 1.5) {
+        trimExcessLines();
     }
 
     if (autoScroll || atBottom)

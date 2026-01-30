@@ -74,6 +74,7 @@ void ConsoleWidget::SetCommander(Commander* c)
 void ConsoleWidget::SetUpdatesEnabled(const bool enabled)
 {
     OutputTextEdit->setUpdatesEnabled(enabled);
+    OutputTextEdit->setSyncMode(!enabled);
 }
 
 void ConsoleWidget::createUI()

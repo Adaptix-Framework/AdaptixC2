@@ -79,13 +79,10 @@ void SessionsTableWidget::flushPendingAgents()
 
     QStringList ids;
     {
-        QWriteLocker locker(&adaptixWidget->AgentsMapLock);
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
         for (Agent* agent : pendingAgents) {
             if (adaptixWidget->AgentsMap.contains(agent->data.Id))
-                continue;
-
-            adaptixWidget->AgentsMap[agent->data.Id] = agent;
-            ids.append(agent->data.Id);
+                ids.append(agent->data.Id);
         }
     }
 
@@ -199,14 +196,6 @@ void SessionsTableWidget::AddAgentItem( Agent* newAgent )
     if (bufferingEnabled) {
         pendingAgents.append(newAgent);
         return;
-    }
-
-    {
-        QWriteLocker locker(&adaptixWidget->AgentsMapLock);
-        if ( adaptixWidget->AgentsMap.contains(newAgent->data.Id) )
-            return;
-
-        adaptixWidget->AgentsMap[ newAgent->data.Id ] = newAgent;
     }
 
     agentsModel->add(newAgent->data.Id);

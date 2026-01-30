@@ -192,6 +192,19 @@ public:
         endInsertRows();
     }
 
+    void addBatch(const QList<ScreenData>& items) {
+        if (items.isEmpty())
+            return;
+        const int first = screens.size();
+        const int last = first + items.size() - 1;
+        beginInsertRows(QModelIndex(), first, last);
+        for (const auto& item : items) {
+            idToRow[item.ScreenId] = screens.size();
+            screens.append(item);
+        }
+        endInsertRows();
+    }
+
     void update(const QString& screenId, const QString& note) {
         auto it = idToRow.find(screenId);
         if (it == idToRow.end())
@@ -295,7 +308,11 @@ Q_OBJECT
     QCheckBox*      autoSearchCheck = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
+    bool bufferingEnabled = false;
+    QList<ScreenData> pendingScreens;
+
     void createUI();
+    void flushPendingScreens();
 
 public:
     explicit ScreenshotsWidget(AdaptixWidget* w);

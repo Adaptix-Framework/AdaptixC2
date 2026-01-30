@@ -91,6 +91,8 @@ void DialogAgent::createUI()
 
     configStackWidget = new QStackedWidget(this);
     stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1);
+    // stackGridLayout->setRowStretch(0, 1);
+    // stackGridLayout->setColumnStretch(0, 1);
 
     agentConfigGroupbox = new QGroupBox("Agent config", this);
     agentConfigGroupbox->setLayout(stackGridLayout);
@@ -164,8 +166,7 @@ void DialogAgent::createUI()
     auto formLayout = new QVBoxLayout();
     formLayout->setContentsMargins(10, 10, 10, 10);
     formLayout->setSpacing(10);
-    formLayout->addLayout(leftPanelLayout);
-    formLayout->addStretch(1);
+    formLayout->addLayout(leftPanelLayout, 1);
     formLayout->addLayout(actionButtonsLayout);
 
     auto formWidget = new QWidget(this);

@@ -182,7 +182,7 @@ void AdaptixWidget::processPendingSyncPackets()
     QElapsedTimer timer;
     timer.start();
 
-    const int timeBudgetMs = this->sync ? 30 : 8;
+    const int timeBudgetMs = this->sync ? 50 : 8;
 
     while (!pendingPackets.isEmpty()) {
         if (dialogSyncPacket && dialogSyncPacket->cancelled) {
@@ -220,7 +220,7 @@ void AdaptixWidget::processPendingSyncPackets()
                 if (!this->syncProcessingUiTimer.isValid()) {
                     shouldUpdate = true;
                     this->syncProcessingUiTimer.start();
-                } else if (this->syncProcessingUiTimer.elapsed() >= 75) {
+                } else if (this->syncProcessingUiTimer.elapsed() >= 150) {
                     shouldUpdate = true;
                     this->syncProcessingUiTimer.restart();
                 } else if (this->syncProcessingBatchProcessed >= this->syncProcessingBatchTotal) {
@@ -234,6 +234,7 @@ void AdaptixWidget::processPendingSyncPackets()
                         this->syncProcessingBatchProcessed,
                         this->syncProcessingBatchTotal
                     );
+                    QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
                 }
             }
         }
@@ -393,6 +394,7 @@ void AdaptixWidget::createUI()
     topHLayout->addWidget(keysButton);
     topHLayout->addWidget(line_4);
     topHLayout->addWidget(reconnectButton);
+    // topHLayout->addWidget(line_5);
     topHLayout->addItem(horizontalSpacer1);
 
     dockTop = new KDDockWidgets::QtWidgets::DockWidget(this->profile->GetProject()+"-Dock-Top", KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);

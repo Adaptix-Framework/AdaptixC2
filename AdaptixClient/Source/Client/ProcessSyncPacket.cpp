@@ -578,6 +578,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 break;
         }
         Agent* newAgent = new Agent(jsonObj, this);
+        {
+            QWriteLocker locker(&AgentsMapLock);
+            AgentsMap[agentId] = newAgent;
+        }
         SessionsTableDock->AddAgentItem(newAgent);
         SessionsGraphDock->AddAgent(newAgent, this->synchronized);
         if (synchronized)
