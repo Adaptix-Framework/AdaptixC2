@@ -442,6 +442,7 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 		Mark         *string `json:"mark,omitempty"`
 		Color        *string `json:"color,omitempty"`
 		Listener     *string `json:"listener,omitempty"`
+		CustomData   *string `json:"custom_data,omitempty"`
 	}
 
 	jsonBytes, err := json.Marshal(updateData)
@@ -561,6 +562,9 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 
 			d.Color = *fields.Color
 			syncPacket.Color = fields.Color
+		}
+		if fields.CustomData != nil {
+			d.CustomData = []byte(*fields.CustomData)
 		}
 	})
 }
