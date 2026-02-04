@@ -288,6 +288,7 @@ type GenerateConfig struct {
 	ProxyPort          int    `json:"proxy_port"`
 	ProxyUsername      string `json:"proxy_username"`
 	ProxyPassword      string `json:"proxy_password"`
+	RotationMode       string `json:"rotation_mode"`
 }
 
 var (
@@ -378,14 +379,63 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 
 			HttpMethod, _ := listenerMap["http_method"].(string)
 			Ssl, _ := listenerMap["ssl"].(bool)
-			Uri, _ := listenerMap["uri"].(string)
+			UriRaw, _ := listenerMap["uri"].(string)
 			ParameterName, _ := listenerMap["hb_header"].(string)
-			UserAgent, _ := listenerMap["user_agent"].(string)
+			UserAgentRaw, _ := listenerMap["user_agent"].(string)
 			RequestHeaders, _ := listenerMap["request_headers"].(string)
+			HostHeaderRaw, _ := listenerMap["host_header"].(string)
+
+			// Parse multi-value fields (newline-separated)
+			var Uris []string
+			for _, u := range strings.Split(UriRaw, "\n") {
+				u = strings.TrimSpace(u)
+				if u != "" {
+					Uris = append(Uris, u)
+				}
+			}
+			if len(Uris) == 0 {
+				Uris = append(Uris, UriRaw)
+			}
+
+			var UserAgents []string
+			for _, ua := range strings.Split(UserAgentRaw, "\n") {
+				ua = strings.TrimSpace(ua)
+				if ua != "" {
+					UserAgents = append(UserAgents, ua)
+				}
+			}
+			if len(UserAgents) == 0 {
+				UserAgents = append(UserAgents, UserAgentRaw)
+			}
+
+			var HostHeaders []string
+			for _, hh := range strings.Split(HostHeaderRaw, "\n") {
+				hh = strings.TrimSpace(hh)
+				if hh != "" {
+					HostHeaders = append(HostHeaders, hh)
+				}
+			}
+
+			// Strip "Host: ...\r\n" from RequestHeaders (agent handles host header separately)
+			if len(HostHeaders) > 0 {
+				lines := strings.Split(RequestHeaders, "\r\n")
+				var filtered []string
+				for _, line := range lines {
+					if !strings.HasPrefix(strings.ToLower(line), "host:") {
+						filtered = append(filtered, line)
+					}
+				}
+				RequestHeaders = strings.Join(filtered, "\r\n")
+			}
 
 			WebPageOutput, _ := listenerMap["page-payload"].(string)
 			ansOffset1 := strings.Index(WebPageOutput, "<<<PAYLOAD_DATA>>>")
 			ansOffset2 := len(WebPageOutput[ansOffset1+len("<<<PAYLOAD_DATA>>>"):])
+
+			rotationMode := 0 // 0=sequential, 1=random
+			if generateConfig.RotationMode == "random" {
+				rotationMode = 1
+			}
 
 			seconds, err := parseDurationToSeconds(generateConfig.Sleep)
 			if err != nil {
@@ -400,12 +450,23 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 				params = append(params, Ports[i])
 			}
 			params = append(params, HttpMethod)
-			params = append(params, Uri)
+			params = append(params, len(Uris))
+			for _, u := range Uris {
+				params = append(params, u)
+			}
 			params = append(params, ParameterName)
-			params = append(params, UserAgent)
+			params = append(params, len(UserAgents))
+			for _, ua := range UserAgents {
+				params = append(params, ua)
+			}
 			params = append(params, RequestHeaders)
 			params = append(params, ansOffset1)
 			params = append(params, ansOffset2)
+			params = append(params, len(HostHeaders))
+			for _, hh := range HostHeaders {
+				params = append(params, hh)
+			}
+			params = append(params, rotationMode)
 			proxyType := 0 // 0=none, 1=http, 2=https
 			if generateConfig.UseProxy {
 				if generateConfig.ProxyType == "https" {
