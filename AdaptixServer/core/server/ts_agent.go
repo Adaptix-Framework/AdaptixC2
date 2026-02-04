@@ -378,6 +378,7 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
 		d.Jitter = newAgentData.Jitter
 		d.WorkingTime = newAgentData.WorkingTime
 		d.KillDate = newAgentData.KillDate
+		d.CustomData = NewAgentMessage.CustomData
 	})
 
 	agentData := agent.GetData()
