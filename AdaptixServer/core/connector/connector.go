@@ -79,6 +79,7 @@ type Teamserver interface {
 	TsUploadGetFileContent(fileId string) ([]byte, error)
 
 	TsScreenshotList() (string, error)
+	TsScreenshotGetImage(screenId string) ([]byte, error)
 	TsScreenshotDelete(screenId string) error
 	TsScreenshotNote(screenId string, note string) error
 
