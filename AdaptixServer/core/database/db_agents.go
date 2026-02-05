@@ -52,9 +52,9 @@ func (dbms *DBMS) DbAgentUpdate(agentData adaptix.AgentData) error {
 		return errors.New("database does not exist")
 	}
 
-	updateQuery := `UPDATE Agents SET Sleep = ?, Jitter = ?, Impersonated = ?, WorkingTime = ?, KillDate = ?, Tags = ?, Mark = ?, Color = ? WHERE Id = ?;`
+	updateQuery := `UPDATE Agents SET Sleep = ?, Jitter = ?, Impersonated = ?, WorkingTime = ?, KillDate = ?, Tags = ?, Mark = ?, Color = ?, CustomData = ? WHERE Id = ?;`
 	result, err := dbms.database.Exec(updateQuery, agentData.Sleep, agentData.Jitter, agentData.Impersonated, agentData.WorkingTime, agentData.KillDate,
-		agentData.Tags, agentData.Mark, agentData.Color, agentData.Id,
+		agentData.Tags, agentData.Mark, agentData.Color, agentData.CustomData, agentData.Id,
 	)
 	if err != nil {
 		return err
