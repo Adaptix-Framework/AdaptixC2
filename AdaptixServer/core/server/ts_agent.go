@@ -407,7 +407,10 @@ func (ts *Teamserver) TsAgentUpdateDataPartial(agentId string, updateData interf
 		Id:     agentId,
 	}
 
-	ts.applyAgentUpdate(agent, updateData, &syncPacket)
+	updated := ts.applyAgentUpdate(agent, updateData, &syncPacket)
+	if !updated {
+		return nil
+	}
 
 	agentData := agent.GetData()
 	err := ts.DBMS.DbAgentUpdate(agentData)
@@ -420,7 +423,9 @@ func (ts *Teamserver) TsAgentUpdateDataPartial(agentId string, updateData interf
 	return nil
 }
 
-func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syncPacket *SyncPackerAgentUpdate) {
+func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syncPacket *SyncPackerAgentUpdate) bool {
+	updated := false
+
 	type fieldAccessor struct {
 		InternalIP   *string `json:"internal_ip,omitempty"`
 		ExternalIP   *string `json:"external_ip,omitempty"`
@@ -447,86 +452,104 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 
 	jsonBytes, err := json.Marshal(updateData)
 	if err != nil {
-		return
+		return false
 	}
 
 	var fields fieldAccessor
 	if err := json.Unmarshal(jsonBytes, &fields); err != nil {
-		return
+		return false
 	}
 
 	agent.UpdateData(func(d *adaptix.AgentData) {
 		if fields.InternalIP != nil {
 			d.InternalIP = *fields.InternalIP
 			syncPacket.InternalIP = fields.InternalIP
+			updated = true
 		}
 		if fields.ExternalIP != nil {
 			d.ExternalIP = *fields.ExternalIP
 			syncPacket.ExternalIP = fields.ExternalIP
+			updated = true
 		}
 		if fields.GmtOffset != nil {
 			d.GmtOffset = *fields.GmtOffset
 			syncPacket.GmtOffset = fields.GmtOffset
+			updated = true
 		}
 		if fields.ACP != nil {
 			d.ACP = *fields.ACP
 			syncPacket.ACP = fields.ACP
+			updated = true
 		}
 		if fields.OemCP != nil {
 			d.OemCP = *fields.OemCP
 			syncPacket.OemCP = fields.OemCP
+			updated = true
 		}
 		if fields.Pid != nil {
 			d.Pid = *fields.Pid
 			syncPacket.Pid = fields.Pid
+			updated = true
 		}
 		if fields.Tid != nil {
 			d.Tid = *fields.Tid
 			syncPacket.Tid = fields.Tid
+			updated = true
 		}
 		if fields.Arch != nil {
 			d.Arch = *fields.Arch
 			syncPacket.Arch = fields.Arch
+			updated = true
 		}
 		if fields.Elevated != nil {
 			d.Elevated = *fields.Elevated
 			syncPacket.Elevated = fields.Elevated
+			updated = true
 		}
 		if fields.Process != nil {
 			d.Process = *fields.Process
 			syncPacket.Process = fields.Process
+			updated = true
 		}
 		if fields.Os != nil {
 			d.Os = *fields.Os
 			syncPacket.Os = fields.Os
+			updated = true
 		}
 		if fields.OsDesc != nil {
 			d.OsDesc = *fields.OsDesc
 			syncPacket.OsDesc = fields.OsDesc
+			updated = true
 		}
 		if fields.Domain != nil {
 			d.Domain = *fields.Domain
 			syncPacket.Domain = fields.Domain
+			updated = true
 		}
 		if fields.Computer != nil {
 			d.Computer = *fields.Computer
 			syncPacket.Computer = fields.Computer
+			updated = true
 		}
 		if fields.Username != nil {
 			d.Username = *fields.Username
 			syncPacket.Username = fields.Username
+			updated = true
 		}
 		if fields.Impersonated != nil {
 			d.Impersonated = *fields.Impersonated
 			syncPacket.Impersonated = fields.Impersonated
+			updated = true
 		}
 		if fields.Tags != nil {
 			d.Tags = *fields.Tags
 			syncPacket.Tags = fields.Tags
+			updated = true
 		}
 		if fields.Listener != nil {
 			d.Listener = *fields.Listener
 			syncPacket.Listener = fields.Listener
+			updated = true
 		}
 		if fields.Mark != nil {
 			if d.Mark != "Terminated" && d.Mark != *fields.Mark {
@@ -535,6 +558,7 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 				if *fields.Mark == "Disconnect" {
 					d.LastTick = int(time.Now().Unix())
 				}
+				updated = true
 			}
 		}
 		if fields.Color != nil {
@@ -562,11 +586,15 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 
 			d.Color = *fields.Color
 			syncPacket.Color = fields.Color
+			updated = true
 		}
 		if fields.CustomData != nil {
 			d.CustomData = []byte(*fields.CustomData)
+			updated = true
 		}
 	})
+
+	return updated
 }
 
 func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) error {
