@@ -355,6 +355,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profi
 		api_group.POST("/download/delete", connector.TcGuiDownloadDelete)
 
 		api_group.GET("/screen/list", connector.TcScreenshotList)
+		api_group.GET("/screen/image", connector.TcScreenshotGetImage)
 		api_group.POST("/screen/setnote", connector.TcScreenshotSetNote)
 		api_group.POST("/screen/remove", connector.TcScreenshotRemove)
 

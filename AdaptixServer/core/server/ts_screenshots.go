@@ -19,6 +19,7 @@ func (ts *Teamserver) TsScreenshotList() (string, error) {
 	ts.screenshots.ForEach(func(key string, value interface{}) bool {
 		screenData := value.(adaptix.ScreenData)
 		screenData.LocalPath = "******"
+		screenData.Content = nil
 		screens = append(screens, screenData)
 		return true
 	})
@@ -28,6 +29,15 @@ func (ts *Teamserver) TsScreenshotList() (string, error) {
 		return "", err
 	}
 	return string(jsonScreenshot), nil
+}
+
+func (ts *Teamserver) TsScreenshotGetImage(screenId string) ([]byte, error) {
+	value, ok := ts.screenshots.Get(screenId)
+	if !ok {
+		return []byte(""), errors.New("Screen not found: " + screenId)
+	}
+	screenData := value.(adaptix.ScreenData)
+	return screenData.Content, nil
 }
 
 func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byte) error {

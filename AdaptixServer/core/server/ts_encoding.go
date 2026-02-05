@@ -13,7 +13,7 @@ import (
 )
 
 var codePageMapping = map[int]encoding.Encoding{
-	037:   charmap.CodePage037,       // IBM EBCDIC US-Canada
+	37:    charmap.CodePage037,       // IBM EBCDIC US-Canada
 	437:   charmap.CodePage437,       // OEM United States
 	850:   charmap.CodePage850,       // Western European (DOS)
 	852:   charmap.CodePage852,       // Central European (DOS)
