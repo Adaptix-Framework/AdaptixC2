@@ -338,6 +338,11 @@ function GenerateUI(listeners_type)
     let sideloadingSelector = form.create_selector_file();
     sideloadingSelector.setVisible(false);
 
+    let checkIatHiding = form.create_check("IAT Hiding (empty import table)");
+    if( !listeners_type.includes("BeaconHTTP") && !listeners_type.includes("BeaconDNS") ) {
+        checkIatHiding.setVisible(false);
+    }
+
     //////////////////// DNS Settings
 
     let labelDnsMode = form.create_label("DNS Mode:");
@@ -468,9 +473,10 @@ function GenerateUI(listeners_type)
     layout.addWidget(textSvcName,         6, 1, 1, 2);
     layout.addWidget(checkSideloading,    7, 0, 1, 1);
     layout.addWidget(sideloadingSelector, 7, 1, 1, 2);
-    layout.addWidget(group_proxy,         8, 0, 1, 3);
-    layout.addWidget(group_dns,           9, 0, 1, 3);
-    layout.addWidget(spacer2,            10, 0, 1, 3);
+    layout.addWidget(checkIatHiding,        8, 0, 1, 3);
+    layout.addWidget(group_proxy,            9, 0, 1, 3);
+    layout.addWidget(group_dns,             10, 0, 1, 3);
+    layout.addWidget(spacer2,               11, 0, 1, 3);
 
     form.connect(comboAgentFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
@@ -507,6 +513,7 @@ function GenerateUI(listeners_type)
     container.put("svcname",             textSvcName)
     container.put("is_sideloading",      checkSideloading)
     container.put("sideloading_content", sideloadingSelector)
+    container.put("iat_hiding",          checkIatHiding)
     container.put("use_proxy",           group_proxy)
     container.put("proxy_type",          comboProxyType)
     container.put("proxy_host",          textProxyServer)

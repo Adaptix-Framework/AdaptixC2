@@ -7,3 +7,5 @@ char* getServiceName();
 char* getProfile();
 
 unsigned int getProfileSize();
+
+int isIatHidingEnabled();
