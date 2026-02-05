@@ -347,11 +347,20 @@ QObject* BridgeForm::create_selector_downloads(const QJSValue &headers) const
     return wrapper;
 }
 
-QObject* BridgeForm::create_dock(const QString &id, const QString &title, const QString &location)
+QObject* BridgeForm::create_ext_dock(const QString &id, const QString &title, const QString &location)
 {
     AdaptixWidget* adaptixWidget = scriptEngine->manager()->GetAdaptix();
 
     auto* wrapper = new AxDockWrapper(adaptixWidget, id, title, location);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_ext_dialog(const QString &title)
+{
+    AdaptixWidget* adaptixWidget = scriptEngine->manager()->GetAdaptix();
+
+    auto* wrapper = new AxExtDialogWrapper(adaptixWidget, title);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }

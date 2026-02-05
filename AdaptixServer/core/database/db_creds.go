@@ -120,7 +120,9 @@ func (dbms *DBMS) DbCredentialsUpdateBatch(credsData []adaptix.CredsData) error 
 		_ = tx.Rollback()
 		return err
 	}
-	defer stmt.Close()
+	defer func(stmt *sql.Stmt) {
+		_ = stmt.Close()
+	}(stmt)
 
 	for _, cred := range credsData {
 		_, err = stmt.Exec(cred.Username, cred.Password, cred.Realm, cred.Type, cred.Tag, cred.Storage, cred.Host, cred.CredId)
@@ -144,7 +146,9 @@ func (dbms *DBMS) DbCredentialsAll() []*adaptix.CredsData {
 			logs.Debug("", "Failed to query credentials: "+err.Error())
 			return creds
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			credsData := &adaptix.CredsData{}

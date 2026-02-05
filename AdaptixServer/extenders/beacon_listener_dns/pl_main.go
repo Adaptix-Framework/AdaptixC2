@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	mrand "math/rand/v2"
 	"strconv"
 	"strings"
@@ -16,7 +15,7 @@ type Teamserver interface {
 	TsAgentIsExists(agentId string) bool
 	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
 	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentSetTick(agentId string) error
+	TsAgentSetTick(agentId string, listenerName string) error
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
 }
 
@@ -98,7 +97,7 @@ func (p *PluginListener) Create(name string, config string, customData []byte) (
 	listenerData = adaptix.ListenerData{
 		BindHost:  transport.Config.HostBind,
 		BindPort:  strconv.Itoa(transport.Config.PortBind),
-		AgentAddr: fmt.Sprintf("%s:%d", transport.Config.HostBind, transport.Config.PortBind),
+		AgentAddr: transport.Config.Domain,
 		Status:    "Stopped",
 		Protocol:  "dns",
 	}
@@ -171,7 +170,7 @@ func (l *Listener) Edit(config string) (adaptix.ListenerData, []byte, error) {
 	listenerData = adaptix.ListenerData{
 		BindHost:  l.transport.Config.HostBind,
 		BindPort:  strconv.Itoa(l.transport.Config.PortBind),
-		AgentAddr: fmt.Sprintf("%s:%d", l.transport.Config.HostBind, l.transport.Config.PortBind),
+		AgentAddr: l.transport.Config.Domain,
 		Status:    "Listen",
 		Protocol:  "dns",
 	}

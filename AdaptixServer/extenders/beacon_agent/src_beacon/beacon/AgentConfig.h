@@ -4,6 +4,12 @@
 
 #ifndef PROFILE_STRUCT
 #define PROFILE_STRUCT
+
+// Proxy type definitions
+#define PROXY_TYPE_NONE     0
+#define PROXY_TYPE_HTTP     1
+#define PROXY_TYPE_HTTPS    2
+
 typedef struct {
 	ULONG  servers_count;
 	BYTE** servers;
@@ -16,6 +22,11 @@ typedef struct {
 	BYTE*  http_headers;
 	ULONG  ans_pre_size;
 	ULONG  ans_size;
+	BYTE   proxy_type;      // 0=none, 1=http, 2=https
+	BYTE*  proxy_host;
+	WORD   proxy_port;
+	BYTE*  proxy_username;
+	BYTE*  proxy_password;
 } ProfileHTTP;
 
 typedef struct {
@@ -27,9 +38,15 @@ typedef struct {
 	WORD  port;
 } ProfileTCP;
 
+#define DNS_MODE_UDP           0
+#define DNS_MODE_DOH           1
+#define DNS_MODE_UDP_FALLBACK  2
+#define DNS_MODE_DOH_FALLBACK  3
+
 typedef struct {
 	BYTE* domain;
 	BYTE* resolvers;
+	BYTE* doh_resolvers;
 	BYTE* qtype;       
 	ULONG pkt_size;     
 	ULONG label_size;   
@@ -38,6 +55,8 @@ typedef struct {
 	ULONG burst_enabled;
 	ULONG burst_sleep;
 	ULONG burst_jitter;
+	ULONG dns_mode;
+	BYTE* user_agent;
 } ProfileDNS;
 
 #endif

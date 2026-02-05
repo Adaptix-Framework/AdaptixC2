@@ -88,7 +88,7 @@ protected Q_SLOTS:
     void onBuildMessage(const QString &msg);
     void onBuildFinished();
     void stopBuild();
-    void onListenerSelectionChanged(QListWidgetItem *item);
+    void onListenerSelectionChanged(const QListWidgetItem *item);
     void onMoveListenerUp();
     void onMoveListenerDown();
     void showListenerPopup();

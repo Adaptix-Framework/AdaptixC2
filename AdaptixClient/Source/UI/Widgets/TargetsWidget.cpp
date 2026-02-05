@@ -40,7 +40,47 @@ TargetsWidget::~TargetsWidget() = default;
 
 void TargetsWidget::SetUpdatesEnabled(const bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingTargets();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
+}
+
+void TargetsWidget::flushPendingTargets()
+{
+    if (pendingTargets.isEmpty())
+        return;
+
+    QList<TargetData> filtered;
+    {
+        QWriteLocker locker(&adaptixWidget->TargetsLock);
+        QSet<QString> existingIds;
+        for (const auto& t : adaptixWidget->Targets)
+            existingIds.insert(t.TargetId);
+
+        for (const auto& target : pendingTargets) {
+            if (existingIds.contains(target.TargetId))
+                continue;
+
+            existingIds.insert(target.TargetId);
+            adaptixWidget->Targets.push_back(target);
+            filtered.append(target);
+        }
+    }
+
+    if (!filtered.isEmpty())
+        targetsModel->add(filtered);
+
+    pendingTargets.clear();
 }
 
 void TargetsWidget::createUI()
@@ -110,10 +150,15 @@ void TargetsWidget::createUI()
 
 /// Main
 
-void TargetsWidget::AddTargetsItems(QList<TargetData> targetList) const
+void TargetsWidget::AddTargetsItems(QList<TargetData> targetList)
 {
     if (targetList.isEmpty())
         return;
+
+    if (bufferingEnabled) {
+        pendingTargets.append(targetList);
+        return;
+    }
 
     QList<TargetData> filtered;
     {
@@ -308,7 +353,7 @@ void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
         ctxMenu.addAction("Set tag",           this, &TargetsWidget::onSetTag );
         ctxMenu.addAction("Export to file",    this, &TargetsWidget::onExportTarget );
         ctxMenu.addAction("Copy to clipboard", this, &TargetsWidget::onCopyToClipboard );
-        int bottomCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
+        adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
     }
     QPoint globalPos = tableView->mapToGlobal(pos);
     ctxMenu.exec(globalPos);

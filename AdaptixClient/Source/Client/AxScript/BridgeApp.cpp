@@ -779,7 +779,7 @@ static QByteArray encodeBase32(const QByteArray &data)
 
 static QByteArray decodeBase32(const QByteArray &data)
 {
-    static const int lookup[256] = {
+    static constexpr int lookup[256] = {
         -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
         -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,26,27,28,29,30,31,-1,-1,-1,-1,-1,-1,-1,-1,
         -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,
@@ -1212,6 +1212,14 @@ void BridgeApp::script_load(const QString &path) { scriptEngine->manager()->Glob
 void BridgeApp::script_unload(const QString &path) { scriptEngine->manager()->GlobalScriptUnload(path); }
 
 QString BridgeApp::script_dir() { return GetParentPathUnix(scriptEngine->context.name) + "/"; }
+
+QString BridgeApp::get_project() const
+{
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    if (adaptix && adaptix->GetProfile())
+        return adaptix->GetProfile()->GetProject();
+    return QString();
+}
 
 QJSValue BridgeApp::screenshots()
 {

@@ -118,7 +118,43 @@ DownloadsWidget::~DownloadsWidget() = default;
 
 void DownloadsWidget::SetUpdatesEnabled(bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingDownloads();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
+}
+
+void DownloadsWidget::flushPendingDownloads()
+{
+    if (pendingDownloads.isEmpty())
+        return;
+
+    QList<DownloadData> filtered;
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        int count = 0;
+        for (const auto& download : pendingDownloads) {
+            if (adaptixWidget->Downloads.contains(download.FileId))
+                continue;
+
+            adaptixWidget->Downloads[download.FileId] = download;
+            filtered.append(download);
+        }
+    }
+
+    if (!filtered.isEmpty())
+        downloadsModel->addBatch(filtered);
+
+    pendingDownloads.clear();
 }
 
 void DownloadsWidget::Clear() const
@@ -132,6 +168,11 @@ void DownloadsWidget::Clear() const
 
 void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload)
 {
+    if (bufferingEnabled) {
+        pendingDownloads.append(newDownload);
+        return;
+    }
+
     QWriteLocker locker(&adaptixWidget->DownloadsLock);
     if (adaptixWidget->Downloads.contains(newDownload.FileId))
         return;

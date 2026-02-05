@@ -6,6 +6,7 @@
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogExtender.h>
 #include <UI/Dialogs/DialogSettings.h>
+#include <UI/Dialogs/DialogSubscriptions.h>
 #include <Client/Extender.h>
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
@@ -29,9 +30,14 @@ MainUI::MainUI()
     auto closeProjectAction = new QAction("Close Project", this);
     connect(closeProjectAction, &QAction::triggered, this, &MainUI::onCloseProject);
 
+    auto projectSettingsAction = new QAction("Subscriptions", this);
+    connect(projectSettingsAction, &QAction::triggered, this, &MainUI::onProjectSubscriptions);
+
     menuProject = new QMenu("Projects", this);
     menuProject->addAction(newProjectAction);
     menuProject->addAction(closeProjectAction);
+    menuProject->addSeparator();
+    menuProject->addAction(projectSettingsAction);
 
     auto axConsoleAction = new QAction("AxScript console ", this);
     connect(axConsoleAction, &QAction::triggered, this, &MainUI::onAxScriptConsole);
@@ -58,6 +64,8 @@ MainUI::MainUI()
 
     mainuiTabWidget = new QTabWidget();
     mainuiTabWidget->setTabPosition(QTabWidget::South);
+    mainuiTabWidget->tabBar()->setMovable(true);
+    mainuiTabWidget->setMovable(true);
     mainuiTabWidget->tabBar()->setMovable(false);
     mainuiTabWidget->setMovable(false);
     mainuiTabWidget->tabBar()->setFixedHeight(20);
@@ -207,6 +215,20 @@ void MainUI::onScriptManager() { GlobalClient->extender->dialogExtender->show();
 
 void MainUI::onSettings() { GlobalClient->settings->getDialogSettings()->show(); }
 
+void MainUI::onProjectSubscriptions()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>(mainuiTabWidget->currentWidget());
+    if (!adaptixWidget)
+        return;
+
+    auto dialog = new DialogSubscriptions(adaptixWidget, this);
+    dialog->SetRegisteredCategories(adaptixWidget->GetProfile()->GetRegisteredCategories());
+    dialog->SetCurrentSubscriptions(adaptixWidget->GetProfile()->GetSubscriptions());
+    dialog->SetConsoleMultiuser(adaptixWidget->GetProfile()->GetConsoleMultiuser());
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->show();
+}
+
 /// EXT MENU
 
 QMenu* MainUI::getMenuProject() const { return menuProject; }
@@ -275,7 +297,7 @@ void MainUI::onTabChanged(int index)
     }
 }
 
-void MainUI::updateTabButton(int index, const QString& tabName, bool showButton)
+void MainUI::updateTabButton(const int index, const QString& tabName, const bool showButton)
 {
     if (index < 0 || index >= mainuiTabWidget->count())
         return;

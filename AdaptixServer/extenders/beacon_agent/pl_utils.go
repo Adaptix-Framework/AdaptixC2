@@ -51,6 +51,8 @@ const (
 	COMMAND_TUNNEL_CLOSE     = 66
 	COMMAND_TUNNEL_REVERSE   = 67
 	COMMAND_TUNNEL_ACCEPT    = 68
+	COMMAND_TUNNEL_PAUSE     = 69
+	COMMAND_TUNNEL_RESUME    = 70
 
 	COMMAND_SHELL_START  = 71
 	COMMAND_SHELL_WRITE  = 72
@@ -176,13 +178,13 @@ func GetOsVersion(majorVersion uint8, minorVersion uint8, buildNumber uint, isSe
 }
 
 func int32ToIPv4(ip uint) string {
-	bytes := []byte{
+	b := []byte{
 		byte(ip),
 		byte(ip >> 8),
 		byte(ip >> 16),
 		byte(ip >> 24),
 	}
-	return net.IP(bytes).String()
+	return net.IP(b).String()
 }
 
 func SizeBytesToFormat(bytes int64) string {
@@ -198,9 +200,8 @@ func SizeBytesToFormat(bytes int64) string {
 		return fmt.Sprintf("%.2f Gb", size/GB)
 	} else if size >= MB {
 		return fmt.Sprintf("%.2f Mb", size/MB)
-	} else {
-		return fmt.Sprintf("%.2f Kb", size/KB)
 	}
+	return fmt.Sprintf("%.2f Kb", size/KB)
 }
 
 func RC4Crypt(data []byte, key []byte) ([]byte, error) {
@@ -278,8 +279,7 @@ func formatBurstStatus(enabled int, sleepMs int, jitterPct int) string {
 	return fmt.Sprintf("on (sleep=%dms, jitter=%d%%)", sleepMs, jitterPct)
 }
 
-func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string]any,
-	listenerWM string, agentWatermark int64, killDate int, workingTime int) ([]interface{}, error) {
+func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string]any, listenerWM string, agentWatermark int64, killDate int, workingTime int, userAgent string) ([]interface{}, error) {
 
 	domain, _ := listenerMap["domain"].(string)
 
@@ -287,6 +287,25 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 	if resolvers == "" {
 		resolvers, _ = listenerMap["resolvers"].(string)
 	}
+
+	dohResolvers := generateConfig.DohResolvers
+	if dohResolvers == "" {
+		dohResolvers = "https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query"
+	}
+
+	// DNS mode: 0=UDP, 1=DoH, 2=UDP->DoH fallback, 3=DoH->UDP fallback
+	dnsMode := 0 // Default to UDP
+	switch generateConfig.DnsMode {
+	case "DNS (Direct UDP)":
+		dnsMode = 0
+	case "DoH (DNS over HTTPS)":
+		dnsMode = 1
+	case "DNS -> DoH fallback":
+		dnsMode = 2
+	case "DoH -> DNS fallback":
+		dnsMode = 3
+	}
+
 	qtype, _ := listenerMap["qtype"].(string)
 
 	pktSizeF, _ := listenerMap["pkt_size"].(float64)
@@ -329,6 +348,7 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 		// ProfileDNS
 		domain,
 		resolvers,
+		dohResolvers,
 		qtype,
 		pktSize,
 		labelSize,
@@ -336,7 +356,8 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 		burstEnabled,
 		burstSleep,
 		burstJitter,
-		// Common tail
+		dnsMode, // DNS mode (0=UDP, 1=DoH, 2=UDP->DoH, 3=DoH->UDP)
+		userAgent,
 		int(lWatermark),
 		killDate,
 		workingTime,

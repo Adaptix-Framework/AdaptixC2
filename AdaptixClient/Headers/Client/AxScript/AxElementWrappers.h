@@ -784,6 +784,30 @@ public:
 
 
 
+class AxExtDialogWrapper : public QObject {
+Q_OBJECT
+    QString dialogId;
+    QString dialogTitle;
+    QDialog* dialog;
+    QVBoxLayout* layout;
+    QLayout* userLayout = nullptr;
+    QDialogButtonBox* buttons;
+    AdaptixWidget* adaptixWidget = nullptr;
+
+public:
+    explicit AxExtDialogWrapper(AdaptixWidget* w, const QString& title);
+    ~AxExtDialogWrapper() override;
+
+    Q_INVOKABLE void setLayout(QObject* layoutWrapper);
+    Q_INVOKABLE void setSize(int w, int h) const;
+    Q_INVOKABLE bool exec() const;
+    Q_INVOKABLE void show() const;
+    Q_INVOKABLE void close() const;
+    Q_INVOKABLE void setButtonsText(const QString& ok_text, const QString& cancel_text) const;
+};
+
+
+
 /// SELECTOR FILE
 
 class AxSelectorFile : public QObject, public AbstractAxElement, public AbstractAxVisualElement {
@@ -923,7 +947,7 @@ Q_OBJECT
     QVector<CredentialData> selectedData;
 
 public:
-    explicit AxDialogCreds(const QJSValue &headers, QVector<CredentialData> vecCreds, QWidget* parent = nullptr);
+    explicit AxDialogCreds(const QJSValue &headers, const QVector<CredentialData> &vecCreds, QWidget* parent = nullptr);
 
     QVector<CredentialData> data();
 
@@ -1077,7 +1101,7 @@ Q_OBJECT
     QVector<AgentData> selectedData;
 
 public:
-    explicit AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QWidget* parent = nullptr);
+    explicit AxDialogAgents(const QJSValue &headers, const QVector<AgentData> &vecAgents, QWidget* parent = nullptr);
 
     QVector<AgentData> data();
 
@@ -1213,7 +1237,7 @@ Q_OBJECT
     QVector<ListenerData> selectedData;
 
 public:
-    explicit AxDialogListeners(const QJSValue &headers, QVector<ListenerData> vecListeners, QWidget* parent = nullptr);
+    explicit AxDialogListeners(const QJSValue &headers, const QVector<ListenerData> &vecListeners, QWidget* parent = nullptr);
 
     QVector<ListenerData> data();
 
@@ -1356,7 +1380,7 @@ Q_OBJECT
     QVector<TargetData> selectedData;
 
 public:
-    explicit AxDialogTargets(const QJSValue &headers, QVector<TargetData> vecTargets, QWidget* parent = nullptr);
+    explicit AxDialogTargets(const QJSValue &headers, const QVector<TargetData> &vecTargets, QWidget* parent = nullptr);
 
     QVector<TargetData> data();
 
@@ -1502,7 +1526,7 @@ Q_OBJECT
     QVector<DownloadData> selectedData;
 
 public:
-    explicit AxDialogDownloads(const QJSValue &headers, QVector<DownloadData> vecDownloads, QWidget* parent = nullptr);
+    explicit AxDialogDownloads(const QJSValue &headers, const QVector<DownloadData> &vecDownloads, QWidget* parent = nullptr);
 
     QVector<DownloadData> data();
 
@@ -1536,6 +1560,7 @@ Q_OBJECT
     QString dockId;
     QString dockTitle;
     QWidget* contentWidget = nullptr;
+    AdaptixWidget* adaptixWidget = nullptr;
 
 public:
     explicit AxDockWrapper(AdaptixWidget* w, const QString& id, const QString& title, const QString& location);

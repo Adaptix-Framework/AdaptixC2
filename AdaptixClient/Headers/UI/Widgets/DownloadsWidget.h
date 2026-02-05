@@ -231,6 +231,19 @@ public:
         endInsertRows();
     }
 
+    void addBatch(const QList<DownloadData>& items) {
+        if (items.isEmpty())
+            return;
+        const int first = downloads.size();
+        const int last = first + items.size() - 1;
+        beginInsertRows(QModelIndex(), first, last);
+        for (const auto& item : items) {
+            idToRow[item.FileId] = downloads.size();
+            downloads.append(item);
+        }
+        endInsertRows();
+    }
+
     void update(const QString& fileId, int recvSize, int state) {
         auto it = idToRow.find(fileId);
         if (it == idToRow.end())
@@ -350,7 +363,11 @@ Q_OBJECT
     QComboBox*      stateComboBox   = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
+    bool bufferingEnabled = false;
+    QList<DownloadData> pendingDownloads;
+
     void createUI();
+    void flushPendingDownloads();
 
 public:
     explicit DownloadsWidget(AdaptixWidget* w);

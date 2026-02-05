@@ -263,6 +263,7 @@ public:
                     }
                     return d.Mark;
                 }
+                default: ;
             }
         }
 
@@ -292,6 +293,7 @@ public:
                 case SC_Last:
                 case SC_Sleep:
                     return Qt::AlignCenter;
+                default: ;
             }
         }
 
@@ -356,6 +358,21 @@ public:
         beginInsertRows(QModelIndex(), row, row);
         agentsId.append(agentId);
         idToRow[agentId] = row;
+        endInsertRows();
+    }
+
+    void add(const QStringList &ids) {
+        if (ids.isEmpty())
+            return;
+
+        const int start = agentsId.size();
+        const int end   = start + ids.size() - 1;
+
+        beginInsertRows(QModelIndex(), start, end);
+        for (const QString& id : ids) {
+            idToRow[id] = agentsId.size();
+            agentsId.append(id);
+        }
         endInsertRows();
     }
 
@@ -435,8 +452,11 @@ Q_OBJECT
     ClickableLabel* hideButton      = nullptr;
 
     mutable bool columnStateReady = false;
+    bool bufferingEnabled = false;
+    QList<Agent*> pendingAgents;
 
     void createUI();
+    void flushPendingAgents();
 
 public:
     AgentsTableModel* agentsModel = nullptr;
@@ -445,7 +465,7 @@ public:
 
     void SetUpdatesEnabled(const bool enabled);
 
-    void AddAgentItem(Agent* newAgent) const;
+    void AddAgentItem(Agent* newAgent);
     void UpdateAgentItem(const AgentData &oldDatam, const Agent* agent) const;
     void RemoveAgentItem(const QString &agentId) const;
 

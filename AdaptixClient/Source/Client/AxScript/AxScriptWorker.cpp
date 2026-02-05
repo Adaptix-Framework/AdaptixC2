@@ -2,11 +2,11 @@
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-AxScriptWorker::AxScriptWorker(AxScriptManager* manager, const QString& name, QObject* parent)
+AxScriptWorker::AxScriptWorker(AxScriptManager* manager, const QString& name, const QObject* parent)
     : QObject(nullptr)
+    , scriptEngine(nullptr)
     , scriptManager(manager)
     , scriptName(name)
-    , scriptEngine(nullptr)
 {
     Q_UNUSED(parent);
     

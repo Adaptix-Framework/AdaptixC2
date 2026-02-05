@@ -158,6 +158,7 @@ SET( HEADERS
         Headers/UI/Widgets/ChatWidget.h
         Headers/UI/Widgets/AbstractDock.h
         Headers/Utils/NonBlockingDialogs.h
+        Headers/UI/Dialogs/DialogSubscriptions.h
         Headers/Utils/FontManager.h
         Headers/Utils/TitleBarStyle.h
         Headers/UI/Widgets/DockWidgetRegister.h
@@ -177,6 +178,7 @@ add_executable(AdaptixClient
 
         Source/Utils/Logs.cpp
         Source/UI/Dialogs/DialogConnect.cpp
+        Source/UI/Dialogs/DialogSubscriptions.cpp
         Source/Utils/Convert.cpp
         Source/MainAdaptix.cpp
         Source/Client/Storage.cpp

@@ -72,7 +72,7 @@ type Teamserver interface {
 	TsTunnelStopLportfwd(AgentId string, Port int)
 	TsTunnelStopRportfwd(AgentId string, Port int)
 
-	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionClose(channelId int, writeOnly bool)
 	TsTunnelConnectionHalt(channelId int, errorCode byte)
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
@@ -139,6 +139,8 @@ func (ext *ExtenderAgent) TunnelCallbacks() adaptix.TunnelCallbacks {
 		WriteUDP:   TunnelMessageWriteUDP,
 		Close:      TunnelMessageClose,
 		Reverse:    TunnelMessageReverse,
+		Pause:      TunnelMessagePause,
+		Resume:     TunnelMessageResume,
 	}
 }
 
@@ -190,6 +192,22 @@ func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
 	var packData []byte
 	/// START CODE HERE
 	/// END CODE HERE
+	return makeProxyTask(packData)
+}
+
+func TunnelMessagePause(channelId int) adaptix.TaskData {
+	var packData []byte
+	packerData, _ := msgpack.Marshal(ParamsTunnelPause{ChannelId: channelId})
+	cmd := Command{Code: COMMAND_TUNNEL_PAUSE, Data: packerData}
+	packData, _ = msgpack.Marshal(cmd)
+	return makeProxyTask(packData)
+}
+
+func TunnelMessageResume(channelId int) adaptix.TaskData {
+	var packData []byte
+	packerData, _ := msgpack.Marshal(ParamsTunnelResume{ChannelId: channelId})
+	cmd := Command{Code: COMMAND_TUNNEL_RESUME, Data: packerData}
+	packData, _ = msgpack.Marshal(cmd)
 	return makeProxyTask(packData)
 }
 
@@ -404,9 +422,9 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 
 	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Target: %s/%s, Output: %s", GoOs, GoArch, Filename))
 
-	config := "package main\n\nvar encProfiles = [][]byte{"
+	config := "package main\n\nvar encProfiles = [][]byte{\n"
 	for _, profile := range agentProfiles {
-		config += fmt.Sprintf("    []byte(\"%s\")\n", profile)
+		config += fmt.Sprintf("    []byte(\"%s\"),\n", profile)
 	}
 	config += "}\n"
 
@@ -747,7 +765,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		cmd = Command{Code: COMMAND_KILL, Data: packerData}
 
 	case "ls":
-		dir, err := getStringArg(args, "directory")
+		dir, err := getStringArg(args, "path")
 		if err != nil {
 			goto RET
 		}
@@ -1215,7 +1233,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 									OutputText += fmt.Sprintf("\n %-8s %-14s %-20s  %-8v", "", SizeBytesToFormat(item.Size), lastWrite, item.Filename)
 								}
 							}
-							task.Message = fmt.Sprintf("List of files in the '%s' directory", params.Path)
+							task.Message = fmt.Sprintf("Listing '%s'", params.Path)
 							task.ClearText = OutputText
 
 						}
@@ -1289,7 +1307,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 								items = append(items, fileData)
 							}
 
-							task.Message = fmt.Sprintf("List of files in the '%s' directory", params.Path)
+							task.Message = fmt.Sprintf("Listing '%s'", params.Path)
 							task.ClearText = OutputText
 						}
 					}

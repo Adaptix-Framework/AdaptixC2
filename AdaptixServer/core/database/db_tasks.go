@@ -83,7 +83,9 @@ func (dbms *DBMS) DbTasksAll(agentId string) []adaptix.TaskData {
 			logs.Debug("", "Failed to query tasks: "+err.Error())
 			return tasks
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			taskData := adaptix.TaskData{}
@@ -107,7 +109,9 @@ func (dbms *DBMS) DbTasksListCompleted(agentId string, limit int, offset int) ([
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func(rows *sql.Rows) {
+		_ = rows.Close()
+	}(rows)
 
 	tasks := make([]adaptix.TaskData, 0, limit)
 	for rows.Next() {
@@ -133,7 +137,9 @@ func (dbms *DBMS) DbTasksLimited(agentId string, limit int) []adaptix.TaskData {
 			logs.Debug("", "Failed to query tasks: "+err.Error())
 			return tasks
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			taskData := adaptix.TaskData{}

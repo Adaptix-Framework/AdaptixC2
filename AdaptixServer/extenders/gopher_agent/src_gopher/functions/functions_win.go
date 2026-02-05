@@ -82,8 +82,30 @@ func NormalizePath(relPath string) (string, error) {
 	return path, nil
 }
 
+func buildFileInfo(info os.FileInfo, displayName string) utils.FileInfo {
+	return utils.FileInfo{
+		Mode:     "",
+		Nlink:    0,
+		User:     "",
+		Group:    "",
+		Size:     info.Size(),
+		Date:     info.ModTime().Format("02/01/2006 15:04"),
+		Filename: displayName,
+		IsDir:    info.IsDir(),
+	}
+}
+
 func GetListing(path string) ([]utils.FileInfo, error) {
 	var Files []utils.FileInfo
+
+	pathInfo, err := os.Stat(path)
+	if err != nil {
+		return Files, err
+	}
+
+	if !pathInfo.IsDir() {
+		return []utils.FileInfo{buildFileInfo(pathInfo, filepath.Base(path))}, nil
+	}
 
 	entries, err := os.ReadDir(path)
 	if err != nil {
@@ -96,17 +118,7 @@ func GetListing(path string) ([]utils.FileInfo, error) {
 			return Files, err
 		}
 
-		fileInfo := utils.FileInfo{
-			Mode:     "",
-			Nlink:    0,
-			User:     "",
-			Group:    "",
-			Size:     info.Size(),
-			Date:     info.ModTime().Format("02/01/2006 15:04"),
-			Filename: entry.Name(),
-			IsDir:    info.IsDir(),
-		}
-		Files = append(Files, fileInfo)
+		Files = append(Files, buildFileInfo(info, entry.Name()))
 	}
 	return Files, nil
 }

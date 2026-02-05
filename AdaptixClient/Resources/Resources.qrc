@@ -44,14 +44,14 @@
     </qresource>
 
     <qresource prefix="/icons">
-        <file alias="code_blocks">icons/code_blocks_64dp.png</file>
+        <file alias="logs">icons/news_64dp.png</file>
         <file alias="listeners">icons/headphones_64dp.png</file>
-        <file alias="logs">icons/notes_64dp.png</file>
-        <file alias="chat">icons/chat_64dp.png</file>
+        <file alias="extension">icons/extension_64dp.png</file>
         <file alias="format_list">icons/format_list_bulleted_64dp.png</file>
         <file alias="graph">icons/hub_64dp.png</file>
         <file alias="job">icons/job_64dp.png</file>
         <file alias="devices">icons/devices_64dp.png</file>
+        <file alias="chat">icons/forum_64dp.png</file>
         <file alias="vpn">icons/vpn_64dp.png</file>
         <file alias="downloads">icons/downloads_64.png</file>
         <file alias="key">icons/key_64dp.png</file>
@@ -76,6 +76,7 @@
         <file alias="start">icons/start_64dp.png</file>
         <file alias="restart">icons/restart_64dp.png</file>
         <file alias="stop">icons/stop_64dp.png</file>
+        <file alias="settings_account">icons/settings_account_64dp.png</file>
 
         <file alias="fs_ssd">icons/filesystem/ssd_64dp.png</file>
         <file alias="fs_document">icons/filesystem/document_64dp.png</file>

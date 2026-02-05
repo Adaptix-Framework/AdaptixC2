@@ -67,11 +67,13 @@ type Teamserver interface {
 	TsTunnelStopLportfwd(AgentId string, Port int)
 	TsTunnelStopRportfwd(AgentId string, Port int)
 
-	TsTunnelConnectionClose(channelId int)
+	TsTunnelConnectionClose(channelId int, writeOnly bool)
 	TsTunnelConnectionHalt(channelId int, errorCode byte)
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
 	TsTunnelConnectionAccept(tunnelId int, channelId int)
+	TsTunnelPause(channelId int)
+	TsTunnelResume(channelId int)
 
 	TsTerminalConnExists(terminalId string) bool
 	TsTerminalGetPipe(AgentId string, terminalId string) (*io.PipeReader, *io.PipeWriter, error)
@@ -138,6 +140,8 @@ func (ext *ExtenderAgent) TunnelCallbacks() adaptix.TunnelCallbacks {
 		ConnectUDP: TunnelMessageConnectUDP,
 		WriteTCP:   TunnelMessageWriteTCP,
 		WriteUDP:   TunnelMessageWriteUDP,
+		Pause:      TunnelMessagePause,
+		Resume:     TunnelMessageResume,
 		Close:      TunnelMessageClose,
 		Reverse:    TunnelMessageReverse,
 	}
@@ -174,6 +178,24 @@ func TunnelMessageWriteUDP(channelId int, data []byte) adaptix.TaskData {
 	var packData []byte
 	/// START CODE HERE
 	array := []interface{}{COMMAND_TUNNEL_WRITE_UDP, channelId, len(data), data}
+	packData, _ = PackArray(array)
+	/// END CODE HERE
+	return makeProxyTask(packData)
+}
+
+func TunnelMessagePause(channelId int) adaptix.TaskData {
+	var packData []byte
+	/// START CODE HERE
+	array := []interface{}{COMMAND_TUNNEL_PAUSE, channelId}
+	packData, _ = PackArray(array)
+	/// END CODE HERE
+	return makeProxyTask(packData)
+}
+
+func TunnelMessageResume(channelId int) adaptix.TaskData {
+	var packData []byte
+	/// START CODE HERE
+	array := []interface{}{COMMAND_TUNNEL_RESUME, channelId}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
 	return makeProxyTask(packData)
@@ -257,6 +279,15 @@ type GenerateConfig struct {
 	IsSideloading      bool   `json:"is_sideloading"`
 	SideloadingContent string `json:"sideloading_content"`
 	DnsResolvers       string `json:"dns_resolvers"`
+	DohResolvers       string `json:"doh_resolvers"`
+	DnsMode            string `json:"dns_mode"`
+	UserAgent          string `json:"user_agent"`
+	UseProxy           bool   `json:"use_proxy"`
+	ProxyType          string `json:"proxy_type"`
+	ProxyHost          string `json:"proxy_host"`
+	ProxyPort          int    `json:"proxy_port"`
+	ProxyUsername      string `json:"proxy_username"`
+	ProxyPassword      string `json:"proxy_password"`
 }
 
 var (
@@ -375,6 +406,19 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 			params = append(params, RequestHeaders)
 			params = append(params, ansOffset1)
 			params = append(params, ansOffset2)
+			proxyType := 0 // 0=none, 1=http, 2=https
+			if generateConfig.UseProxy {
+				if generateConfig.ProxyType == "https" {
+					proxyType = 2
+				} else {
+					proxyType = 1 // default to http
+				}
+			}
+			params = append(params, proxyType)
+			params = append(params, generateConfig.ProxyHost)
+			params = append(params, generateConfig.ProxyPort)
+			params = append(params, generateConfig.ProxyUsername)
+			params = append(params, generateConfig.ProxyPassword)
 			params = append(params, kill_date)
 			params = append(params, working_time)
 			params = append(params, seconds)
@@ -405,7 +449,11 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 			params = append(params, kill_date)
 
 		case "dns":
-			params, err = buildDNSProfileParams(generateConfig, listenerMap, transportProfile.Watermark, agentWatermark, kill_date, working_time)
+			userAgent := generateConfig.UserAgent
+			if userAgent == "" {
+				userAgent = "Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0"
+			}
+			params, err = buildDNSProfileParams(generateConfig, listenerMap, transportProfile.Watermark, agentWatermark, kill_date, working_time, userAgent)
 			if err != nil {
 				return nil, err
 			}
@@ -779,25 +827,29 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 	switch command {
 
 	case "cat":
-		path, err := getStringArg(args, "path")
+		var path string
+		path, err = getStringArg(args, "path")
 		if err != nil {
 			goto RET
 		}
 		array = []interface{}{COMMAND_CAT, Ts.TsConvertUTF8toCp(path, agentData.ACP)}
 
 	case "cd":
-		path, err := getStringArg(args, "path")
+		var path string
+		path, err = getStringArg(args, "path")
 		if err != nil {
 			goto RET
 		}
 		array = []interface{}{COMMAND_CD, Ts.TsConvertUTF8toCp(path, agentData.ACP)}
 
 	case "cp":
-		src, err := getStringArg(args, "src")
+		var src string
+		var dst string
+		src, err = getStringArg(args, "src")
 		if err != nil {
 			goto RET
 		}
-		dst, err := getStringArg(args, "dst")
+		dst, err = getStringArg(args, "dst")
 		if err != nil {
 			goto RET
 		}
@@ -807,7 +859,8 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		array = []interface{}{COMMAND_DISKS}
 
 	case "download":
-		path, err := getStringArg(args, "file")
+		var path string
+		path, err = getStringArg(args, "file")
 		if err != nil {
 			goto RET
 		}
@@ -815,9 +868,13 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 	case "execute":
 		if subcommand == "bof" {
+			var bofFile string
+			var bofContent []byte
+			var params []byte
+
 			taskData.Type = adaptix.TASK_TYPE_JOB
 
-			bofFile, err := getStringArg(args, "bof")
+			bofFile, err = getStringArg(args, "bof")
 			if err != nil {
 				goto RET
 			}
@@ -826,7 +883,6 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 				goto RET
 			}
 
-			var params []byte
 			paramData, ok := args["param_data"].(string)
 			if ok {
 				params, err = base64.StdEncoding.DecodeString(paramData)
@@ -843,14 +899,15 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 	case "exfil":
-		fid, err := getStringArg(args, "file_id")
+		var fid string
+		var fileId int64
+
+		fid, err = getStringArg(args, "file_id")
 		if err != nil {
 			goto RET
 		}
-
-		fileId, parseErr := strconv.ParseInt(fid, 16, 64)
-		if parseErr != nil {
-			err = parseErr
+		fileId, err = strconv.ParseInt(fid, 16, 64)
+		if err != nil {
 			goto RET
 		}
 
@@ -873,14 +930,15 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			array = []interface{}{COMMAND_JOB_LIST}
 
 		} else if subcommand == "kill" {
-			job, err := getStringArg(args, "task_id")
+			var job string
+			var jobId int64
+
+			job, err = getStringArg(args, "task_id")
 			if err != nil {
 				goto RET
 			}
-
-			jobId, parseErr := strconv.ParseInt(job, 16, 64)
-			if parseErr != nil {
-				err = parseErr
+			jobId, err = strconv.ParseInt(job, 16, 64)
+			if err != nil {
 				goto RET
 			}
 
@@ -891,15 +949,14 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 	case "link":
-		//if subcommand == "list" {
-		//	//array = []interface{}{COMMAND_PS_LIST}
-		//} else
 		if subcommand == "smb" {
-			target, err := getStringArg(args, "target")
+			var target string
+			var pipename string
+			target, err = getStringArg(args, "target")
 			if err != nil {
 				goto RET
 			}
-			pipename, err := getStringArg(args, "pipename")
+			pipename, err = getStringArg(args, "pipename")
 			if err != nil {
 				goto RET
 			}
@@ -908,11 +965,13 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			array = []interface{}{COMMAND_LINK, 1, pipe}
 
 		} else if subcommand == "tcp" {
-			target, err := getStringArg(args, "target")
+			var target string
+			var port float64
+			target, err = getStringArg(args, "target")
 			if err != nil {
 				goto RET
 			}
-			port, err := getFloatArg(args, "port")
+			port, err = getFloatArg(args, "port")
 			if err != nil {
 				goto RET
 			}
@@ -924,7 +983,8 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 	case "ls":
-		dir, err := getStringArg(args, "directory")
+		var dir string
+		dir, err = getStringArg(args, "path")
 		if err != nil {
 			goto RET
 		}
@@ -941,11 +1001,14 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 		if subcommand == "start" {
-			lhost, err := getStringArg(args, "lhost")
+			var lhost string
+			var fhost string
+			var tunnelId string
+			lhost, err = getStringArg(args, "lhost")
 			if err != nil {
 				goto RET
 			}
-			fhost, err := getStringArg(args, "fwdhost")
+			fhost, err = getStringArg(args, "fwdhost")
 			if err != nil {
 				goto RET
 			}
@@ -956,7 +1019,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 				goto RET
 			}
 
-			tunnelId, err := Ts.TsTunnelCreateLportfwd(agentData.Id, "", lhost, lport, fhost, fport)
+			tunnelId, err = Ts.TsTunnelCreateLportfwd(agentData.Id, "", lhost, lport, fhost, fport)
 			if err != nil {
 				goto RET
 			}
@@ -984,18 +1047,21 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 	case "mv":
-		src, err := getStringArg(args, "src")
+		var src string
+		var dst string
+		src, err = getStringArg(args, "src")
 		if err != nil {
 			goto RET
 		}
-		dst, err := getStringArg(args, "dst")
+		dst, err = getStringArg(args, "dst")
 		if err != nil {
 			goto RET
 		}
 		array = []interface{}{COMMAND_MV, Ts.TsConvertUTF8toCp(src, agentData.ACP), Ts.TsConvertUTF8toCp(dst, agentData.ACP)}
 
 	case "mkdir":
-		path, err := getStringArg(args, "path")
+		var path string
+		path, err = getStringArg(args, "path")
 		if err != nil {
 			goto RET
 		}
@@ -1003,32 +1069,35 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 	case "profile":
 		if subcommand == "download.chunksize" {
-			size, err := getFloatArg(args, "size")
+			var size float64
+			size, err = getFloatArg(args, "size")
 			if err != nil {
 				goto RET
 			}
 			array = []interface{}{COMMAND_PROFILE, 2, int(size)}
 
 		} else if subcommand == "killdate" {
-			dt, err := getStringArg(args, "datetime")
+			var dt string
+			dt, err = getStringArg(args, "datetime")
 			if err != nil {
 				goto RET
 			}
 
 			killDate := 0
 			if dt != "0" {
-				t, err := time.Parse("02.01.2006 15:04:05", dt)
+				var t time.Time
+				t, err = time.Parse("02.01.2006 15:04:05", dt)
 				if err != nil {
 					err = errors.New("Invalid date format, use: 'DD.MM.YYYY hh:mm:ss'")
 					goto RET
 				}
 				killDate = int(t.Unix())
-				// KillDate = utils.EpochTimeToSystemTime(KillDate)
 			}
 			array = []interface{}{COMMAND_PROFILE, 3, killDate}
 
 		} else if subcommand == "workingtime" {
-			t, err := getStringArg(args, "time")
+			var t string
+			t, err = getStringArg(args, "time")
 			if err != nil {
 				goto RET
 			}
@@ -1052,7 +1121,8 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			array = []interface{}{COMMAND_PS_LIST}
 
 		} else if subcommand == "kill" {
-			pid, err := getFloatArg(args, "pid")
+			var pid float64
+			pid, err = getFloatArg(args, "pid")
 			if err != nil {
 				goto RET
 			}
@@ -1084,7 +1154,8 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		array = []interface{}{COMMAND_REV2SELF}
 
 	case "rm":
-		path, err := getStringArg(args, "path")
+		var path string
+		path, err = getStringArg(args, "path")
 		if err != nil {
 			goto RET
 		}
@@ -1101,7 +1172,8 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 		if subcommand == "start" {
-			fhost, err := getStringArg(args, "fwdhost")
+			var fhost string
+			fhost, err = getStringArg(args, "fwdhost")
 			if err != nil {
 				goto RET
 			}
@@ -1112,7 +1184,8 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 				goto RET
 			}
 
-			tunnelId, err := Ts.TsTunnelCreateRportfwd(agentData.Id, "", lport, fhost, fport)
+			var tunnelId string
+			tunnelId, err = Ts.TsTunnelCreateRportfwd(agentData.Id, "", lport, fhost, fport)
 			if err != nil {
 				goto RET
 			}
@@ -1139,7 +1212,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 	case "sleep":
 		var sleepTime int
-
+		var sleepInt int
 		sleep, err := getStringArg(args, "sleep")
 		if err != nil {
 			goto RET
@@ -1147,11 +1220,12 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		jitter, _ := getFloatArg(args, "jitter")
 		jitterTime := int(jitter)
 
-		sleepInt, err := strconv.Atoi(sleep)
+		sleepInt, err = strconv.Atoi(sleep)
 		if err == nil {
 			sleepTime = sleepInt
 		} else {
-			t, err := time.ParseDuration(sleep)
+			var t time.Duration
+			t, err = time.ParseDuration(sleep)
 			if err == nil {
 				sleepTime = int(t.Seconds())
 			} else {
@@ -1175,9 +1249,12 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		if subcommand == "show" {
 			array = []interface{}{COMMAND_PROFILE, 6}
 			messageData.Message = "Task: show burst config"
-		} else if subcommand == "set" {
 
-			enabled, err := getFloatArg(args, "enabled")
+		} else if subcommand == "set" {
+			var enabled float64
+			var sleepVal float64
+			var jitterVal float64
+			enabled, err = getFloatArg(args, "enabled")
 			if err != nil {
 				err = errors.New("parameter 'enabled' must be set (1=on, 0=off)")
 				goto RET
@@ -1189,7 +1266,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			}
 
 			burstSleep := 50
-			sleepVal, err := getFloatArg(args, "sleep")
+			sleepVal, err = getFloatArg(args, "sleep")
 			if err == nil {
 				burstSleep = int(sleepVal)
 				if burstSleep < 0 || burstSleep > 10000 {
@@ -1199,7 +1276,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			}
 
 			burstJitter := 0
-			jitterVal, err := getFloatArg(args, "jitter")
+			jitterVal, err = getFloatArg(args, "jitter")
 			if err == nil {
 				burstJitter = int(jitterVal)
 				if burstJitter < 0 || burstJitter > 90 {
@@ -1210,15 +1287,18 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 			messageData.Message = fmt.Sprintf("Task: set burst config - %s", formatBurstStatus(burstEnabled, burstSleep, burstJitter))
 			array = []interface{}{COMMAND_PROFILE, 5, burstEnabled, burstSleep, burstJitter}
+
 		} else {
 			err = errors.New("subcommand for 'burst' must be 'show' or 'set'")
 			goto RET
 		}
 
 	case "socks":
+		var portNumber float64
+
 		taskData.Type = adaptix.TASK_TYPE_TUNNEL
 
-		portNumber, err := getFloatArg(args, "port")
+		portNumber, err = getFloatArg(args, "port")
 		port := int(portNumber)
 		if port < 1 || port > 65535 || err != nil {
 			err = errors.New("port must be from 1 to 65535")
@@ -1226,14 +1306,16 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 		if subcommand == "start" {
-			address, err := getStringArg(args, "address")
+			var address string
+			var tunnelId string
+			address, err = getStringArg(args, "address")
 			if err != nil {
 				goto RET
 			}
 
 			version4 := getBoolArg(args, "-socks4")
 			if version4 {
-				tunnelId, err := Ts.TsTunnelCreateSocks4(agentData.Id, "", address, port)
+				tunnelId, err = Ts.TsTunnelCreateSocks4(agentData.Id, "", address, port)
 				if err != nil {
 					goto RET
 				}
@@ -1246,15 +1328,17 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			} else {
 				auth := getBoolArg(args, "-auth")
 				if auth {
-					username, err := getStringArg(args, "username")
+					var username string
+					var password string
+					username, err = getStringArg(args, "username")
 					if err != nil {
 						goto RET
 					}
-					password, err := getStringArg(args, "password")
+					password, err = getStringArg(args, "password")
 					if err != nil {
 						goto RET
 					}
-					tunnelId, err := Ts.TsTunnelCreateSocks5(agentData.Id, "", address, port, true, username, password)
+					tunnelId, err = Ts.TsTunnelCreateSocks5(agentData.Id, "", address, port, true, username, password)
 					if err != nil {
 						goto RET
 					}
@@ -1266,7 +1350,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 					taskData.Message = fmt.Sprintf("Socks5 (with Auth) server running on port %d", port)
 
 				} else {
-					tunnelId, err := Ts.TsTunnelCreateSocks5(agentData.Id, "", address, port, false, "", "")
+					tunnelId, err = Ts.TsTunnelCreateSocks5(agentData.Id, "", address, port, false, "", "")
 					if err != nil {
 						goto RET
 					}
@@ -1306,7 +1390,8 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 
 	case "unlink":
-		pivotName, err := getStringArg(args, "id")
+		var pivotName string
+		pivotName, err = getStringArg(args, "id")
 		if err != nil {
 			goto RET
 		}
@@ -1321,18 +1406,20 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		array = []interface{}{COMMAND_UNLINK, int(id)}
 
 	case "upload":
-		fileName, err := getStringArg(args, "remote_path")
-		if err != nil {
-			goto RET
-		}
-		localFile, err := getStringArg(args, "local_file")
-		if err != nil {
-			goto RET
-		}
+		var fileName string
+		var localFile string
+		var fileContent []byte
 
-		fileContent, decodeErr := base64.StdEncoding.DecodeString(localFile)
-		if decodeErr != nil {
-			err = decodeErr
+		fileName, err = getStringArg(args, "remote_path")
+		if err != nil {
+			goto RET
+		}
+		localFile, err = getStringArg(args, "local_file")
+		if err != nil {
+			goto RET
+		}
+		fileContent, err = base64.StdEncoding.DecodeString(localFile)
+		if err != nil {
 			goto RET
 		}
 
@@ -1868,7 +1955,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 							OutputText += fmt.Sprintf("\n %-8s %-14s %-20s  %-8v", "", SizeBytesToFormat(item.Size), lastWrite, item.Filename)
 						}
 					}
-					task.Message = fmt.Sprintf("List of files in the '%s' directory", rootPath)
+					task.Message = fmt.Sprintf("Listing '%s'", rootPath)
 					task.ClearText = OutputText
 				}
 			}
@@ -2173,7 +2260,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			if result == 0 {
 				Ts.TsTunnelConnectionResume(agentData.Id, channelId, false)
 			} else if result == 1 {
-				Ts.TsTunnelConnectionClose(channelId)
+				Ts.TsTunnelConnectionClose(channelId, true)
 			} else {
 				errorCode := adaptix.SOCKS5_HOST_UNREACHABLE
 				if result == 10061 { // WSAECONNREFUSED
@@ -2218,6 +2305,23 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			tunnelId := int(TaskId)
 			channelId := int(packer.ParseInt32())
 			Ts.TsTunnelConnectionAccept(tunnelId, channelId)
+
+		case COMMAND_TUNNEL_PAUSE:
+			channelId := int(TaskId)
+			Ts.TsTunnelPause(channelId)
+
+		case COMMAND_TUNNEL_RESUME:
+			channelId := int(TaskId)
+			Ts.TsTunnelResume(channelId)
+
+		case COMMAND_TUNNEL_CLOSE:
+			if false == packer.CheckPacker([]string{"int", "int"}) {
+				goto HANDLER
+			}
+			_ = packer.ParseInt32()
+			_ = packer.ParseInt32()
+			channelId := int(TaskId)
+			Ts.TsTunnelConnectionClose(channelId, false)
 
 		case COMMAND_TERMINATE:
 			if false == packer.CheckPacker([]string{"int"}) {

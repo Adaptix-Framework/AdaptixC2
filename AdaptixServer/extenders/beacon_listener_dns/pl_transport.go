@@ -287,12 +287,12 @@ func (t *TransportDNS) handleHI(req *dnsRequest, w dns.ResponseWriter) {
 		externalIP := "" // extractExternalIP(w.RemoteAddr())
 		_, _ = Ts.TsAgentCreate(agentType, agentId, beat, t.Name, externalIP, true)
 	}
-	_ = Ts.TsAgentSetTick(agentId)
+	_ = Ts.TsAgentSetTick(agentId, t.Name)
 }
 
 func (t *TransportDNS) handleHB(req *dnsRequest) (needsReset bool, hasPendingTasks bool) {
 	if req.sid != "" {
-		_ = Ts.TsAgentSetTick(req.sid)
+		_ = Ts.TsAgentSetTick(req.sid, t.Name)
 	}
 
 	// Check if this SID needs reset
@@ -343,7 +343,7 @@ func (t *TransportDNS) handleHB(req *dnsRequest) (needsReset bool, hasPendingTas
 
 func (t *TransportDNS) handleGET(req *dnsRequest, w dns.ResponseWriter) []byte {
 	if req.sid != "" {
-		_ = Ts.TsAgentSetTick(req.sid)
+		_ = Ts.TsAgentSetTick(req.sid, t.Name)
 	}
 
 	decrypted := rc4Crypt(req.data, t.Config.EncryptKey)
@@ -402,7 +402,7 @@ func (t *TransportDNS) handlePUT(req *dnsRequest) putAckInfo {
 	ack = t.handlePutFragment(req.sid, req.seq, decrypted, ack)
 
 	if req.sid != "" {
-		_ = Ts.TsAgentSetTick(req.sid)
+		_ = Ts.TsAgentSetTick(req.sid, t.Name)
 	}
 	return ack
 }

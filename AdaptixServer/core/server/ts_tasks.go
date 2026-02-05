@@ -162,9 +162,6 @@ func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) (
 	tunnelTasks, size := ts.extractTunnelTasks(agent, availableSize, size)
 	tasks = append(tasks, tunnelTasks...)
 
-	tunnelData, size := ts.extractTunnelData(agent, availableSize, size)
-	tasks = append(tasks, tunnelData...)
-
 	pivotTasks, _ := ts.extractPivotTasks(agent, availableSize, size)
 	tasks = append(tasks, pivotTasks...)
 

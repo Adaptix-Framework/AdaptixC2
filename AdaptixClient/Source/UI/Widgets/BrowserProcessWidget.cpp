@@ -8,7 +8,7 @@
 
 REGISTER_DOCK_WIDGET(BrowserProcessWidget, "Browser Process", false)
 
-BrowserProcessWidget::BrowserProcessWidget(AdaptixWidget* w, Agent* a) : DockTab(QString("Processes [%1]").arg(a->data.Id), w->GetProfile()->GetProject())
+BrowserProcessWidget::BrowserProcessWidget(const AdaptixWidget* w, Agent* a) : DockTab(QString("Processes [%1]").arg(a->data.Id), w->GetProfile()->GetProject())
 {
     agent = a;
     this->createUI();

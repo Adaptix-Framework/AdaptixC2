@@ -113,8 +113,39 @@ KDDockWidgets::QtWidgets::DockWidget * TasksWidget::dockTasksOutput() { return t
 
 void TasksWidget::SetUpdatesEnabled(const bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingTasks();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
     taskOutputConsole->setUpdatesEnabled(enabled);
+}
+
+void TasksWidget::flushPendingTasks()
+{
+    if (pendingTasks.isEmpty())
+        return;
+
+    tasksModel->add(pendingTasks);
+
+    QSet<QString> agents;
+    for (const auto& task : pendingTasks)
+        agents.insert(task.AgentId);
+
+    for (const QString& agentId : agents) {
+        if (comboAgent->findText(agentId) == -1)
+            comboAgent->addItem(agentId);
+    }
+
+    pendingTasks.clear();
 }
 
 void TasksWidget::createUI()
@@ -211,7 +242,7 @@ void TasksWidget::createUI()
 
 
 
-void TasksWidget::AddTaskItem(TaskData newTask) const
+void TasksWidget::AddTaskItem(TaskData newTask)
 {
     if ( adaptixWidget->TasksMap.contains(newTask.TaskId) )
         return;
@@ -233,13 +264,17 @@ void TasksWidget::AddTaskItem(TaskData newTask) const
     }
     adaptixWidget->TasksMap[newTask.TaskId] = newTask;
 
-    tasksModel->add(newTask);
+    if (bufferingEnabled) {
+        pendingTasks.append(newTask);
+    } else {
+        tasksModel->add(newTask);
 
-    if (comboAgent->findText(newTask.AgentId) == -1)
-        comboAgent->addItem(newTask.AgentId);
+        if (comboAgent->findText(newTask.AgentId) == -1)
+            comboAgent->addItem(newTask.AgentId);
 
-    if (adaptixWidget->IsSynchronized())
-        this->UpdateColumnsSize();
+        if (adaptixWidget->IsSynchronized())
+            this->UpdateColumnsSize();
+    }
 }
 
 void TasksWidget::UpdateTaskItem(const QString &taskId, const TaskData &task) const

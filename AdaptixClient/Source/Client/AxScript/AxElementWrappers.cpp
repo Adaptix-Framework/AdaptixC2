@@ -556,7 +556,7 @@ QJSValue AxListWidgetWrapper::items()
     for (int i = 0; i < list->count(); ++i) {
         QListWidgetItem* item = list->item(i);
         if (item)
-             jsArray.setProperty(i, item->text());
+            jsArray.setProperty(i, item->text());
     }
     return jsArray;
 }
@@ -589,9 +589,13 @@ void AxListWidgetWrapper::addItems(const QJSValue &items)
     }
 }
 
-void AxListWidgetWrapper::clear() { list->clear(); }
-
 void AxListWidgetWrapper::removeItem(const int index) { delete list->takeItem(index); }
+
+QString AxListWidgetWrapper::itemText(const int index) const
+{
+    QListWidgetItem* item = list->item(index);
+    return item ? item->text() : QString();
+}
 
 void AxListWidgetWrapper::setItemText(const int index, const QString& text)
 {
@@ -600,11 +604,7 @@ void AxListWidgetWrapper::setItemText(const int index, const QString& text)
         item->setText(text);
 }
 
-QString AxListWidgetWrapper::itemText(const int index) const
-{
-    QListWidgetItem* item = list->item(index);
-    return item ? item->text() : QString();
-}
+void AxListWidgetWrapper::clear() { list->clear(); }
 
 int AxListWidgetWrapper::count() const { return list->count(); }
 
@@ -906,6 +906,87 @@ void AxDialogWrapper::setButtonsText(const QString &ok_text, const QString &canc
     }
 }
 
+
+
+#include <UI/Widgets/AdaptixWidget.h>
+#include <Client/AuthProfile.h>
+
+AxExtDialogWrapper::AxExtDialogWrapper(AdaptixWidget* w, const QString& title) : QObject(nullptr)
+{
+    adaptixWidget = w;
+    QString project = w->GetProfile()->GetProject();
+
+    dialogId = title + "-" + project;
+    dialogTitle = title;
+
+    dialog = new QDialog();
+    dialog->setWindowTitle(title);
+    dialog->setProperty("Main", "base");
+    layout = new QVBoxLayout(dialog);
+
+    buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+
+    layout->addWidget(buttons);
+    dialog->setLayout(layout);
+
+    connect(buttons, &QDialogButtonBox::accepted, dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
+
+    if (adaptixWidget) {
+        adaptixWidget->AddExtDock(dialogId, title, [this]() {
+            show();
+        });
+    }
+}
+
+AxExtDialogWrapper::~AxExtDialogWrapper()
+{
+    if (adaptixWidget)
+        adaptixWidget->RemoveExtDock(dialogId);
+
+    if (dialog) {
+        dialog->close();
+        dialog->deleteLater();
+    }
+}
+
+void AxExtDialogWrapper::setLayout(QObject* layoutWrapper)
+{
+    if (userLayout) {
+        layout->removeItem(userLayout);
+        delete userLayout;
+        userLayout = nullptr;
+    }
+
+    if (auto* grid = qobject_cast<AxGridLayoutWrapper*>(layoutWrapper))
+        userLayout = grid->layout();
+    else if (auto* box = qobject_cast<AxBoxLayoutWrapper*>(layoutWrapper))
+        userLayout = box->layout();
+
+    if (userLayout)
+        layout->insertLayout(0, userLayout);
+}
+
+void AxExtDialogWrapper::setSize(const int w, const int h) const { dialog->resize(w, h); }
+
+bool AxExtDialogWrapper::exec() const { return dialog->exec() == QDialog::Accepted; }
+
+void AxExtDialogWrapper::show() const { dialog->show(); }
+
+void AxExtDialogWrapper::close() const { dialog->close(); }
+
+void AxExtDialogWrapper::setButtonsText(const QString &ok_text, const QString &cancel_text) const
+{
+    QPushButton *okButton = buttons->button(QDialogButtonBox::Ok);
+    if (okButton) {
+        okButton->setText(ok_text);
+    }
+    QPushButton *cancelButton = buttons->button(QDialogButtonBox::Cancel);
+    if (cancelButton) {
+        cancelButton->setText(cancel_text);
+    }
+}
+
 /// FILE SELECTOR
 
 AxSelectorFile::AxSelectorFile(QLineEdit* edit, QObject* parent) : QObject(parent), lineEdit(edit)
@@ -948,7 +1029,7 @@ void AxSelectorFile::onSelectFile()
 
 /// SELECTOR CREDENTIALS
 
-AxDialogCreds::AxDialogCreds(const QJSValue &headers, QVector<CredentialData> vecCreds, QWidget *parent)
+AxDialogCreds::AxDialogCreds(const QJSValue &headers, const QVector<CredentialData> &vecCreds, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
@@ -1098,7 +1179,7 @@ void AxSelectorCreds::close() const { dialog->close(); }
 
 /// SELECTOR AGENTS
 
-AxDialogAgents::AxDialogAgents(const QJSValue &headers, QVector<AgentData> vecAgents, QWidget *parent)
+AxDialogAgents::AxDialogAgents(const QJSValue &headers, const QVector<AgentData> &vecAgents, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
@@ -1270,7 +1351,7 @@ void AxSelectorAgents::close() const { dialog->close(); }
 
 /// SELECTOR LISTENERS
 
-AxDialogListeners::AxDialogListeners(const QJSValue &headers, QVector<ListenerData> vecListeners, QWidget *parent)
+AxDialogListeners::AxDialogListeners(const QJSValue &headers, const QVector<ListenerData> &vecListeners, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
@@ -1420,7 +1501,7 @@ void AxSelectorListeners::close() const { dialog->close(); }
 
 /// SELECTOR TARGETS
 
-AxDialogTargets::AxDialogTargets(const QJSValue &headers, QVector<TargetData> vecTargets, QWidget *parent)
+AxDialogTargets::AxDialogTargets(const QJSValue &headers, const QVector<TargetData> &vecTargets, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
@@ -1577,7 +1658,7 @@ void AxSelectorTargets::close() const { dialog->close(); }
 
 /// SELECTOR DOWNLOADS
 
-AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, QVector<DownloadData> vecDownloads, QWidget *parent)
+AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, const QVector<DownloadData> &vecDownloads, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
@@ -1747,6 +1828,7 @@ void AxSelectorDownloads::close() const { dialog->close(); }
 
 AxDockWrapper::AxDockWrapper(AdaptixWidget* w, const QString& id, const QString& title, const QString& location): DockTab(title, w->GetProfile()->GetProject())
 {
+    adaptixWidget = w;
     QString project = w->GetProfile()->GetProject();
 
     contentWidget = new QWidget();
@@ -1755,11 +1837,11 @@ AxDockWrapper::AxDockWrapper(AdaptixWidget* w, const QString& id, const QString&
     dockWidget->setWidget(contentWidget);
 
     dockId = id + "-" + project;
+    dockTitle = title;
 
-    if (GlobalClient && GlobalClient->mainUI) {
-        QString actionTitle = QString("%1 (%2)").arg(title).arg(project);
-        GlobalClient->mainUI->addExtDockAction(dockId, actionTitle, false, [this](bool checked) {
-            dockWidget->toggleAction()->trigger();
+    if (adaptixWidget) {
+        adaptixWidget->AddExtDock(dockId, title, [this]() {
+            show();
         });
     }
 
@@ -1774,25 +1856,20 @@ AxDockWrapper::AxDockWrapper(AdaptixWidget* w, const QString& id, const QString&
     else {
         dockWidget->open();
     }
-    GlobalClient->mainUI->setExtDockChecked(dockId, false);
 
     connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isOpenChanged, this, [this](bool open) {
         if (!open) {
             Q_EMIT hidden();
-            if (GlobalClient && GlobalClient->mainUI)
-                GlobalClient->mainUI->setExtDockChecked(dockId, false);
         } else {
             Q_EMIT shown();
-            if (GlobalClient && GlobalClient->mainUI)
-                GlobalClient->mainUI->setExtDockChecked(dockId, true);
         }
     });
 }
 
 AxDockWrapper::~AxDockWrapper()
 {
-    if (GlobalClient && GlobalClient->mainUI)
-        GlobalClient->mainUI->removeExtDockAction(dockId);
+    if (adaptixWidget)
+        adaptixWidget->RemoveExtDock(dockId);
 
     if (dockWidget) {
         dockWidget->close();

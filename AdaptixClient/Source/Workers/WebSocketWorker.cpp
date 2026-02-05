@@ -1,6 +1,10 @@
 #include <Workers/WebSocketWorker.h>
 #include <Client/AuthProfile.h>
 
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
+
 WebSocketWorker::WebSocketWorker(AuthProfile* authProfile)
 {
     profile = authProfile;
@@ -55,6 +59,12 @@ void WebSocketWorker::run()
     QNetworkRequest request;
     request.setUrl(QUrl(sUrl));
     request.setRawHeader("Authorization", "Bearer " + profile->GetAccessToken().toUtf8());
+    request.setRawHeader("Client-Type", "1");
+    request.setRawHeader("Console-Team-Mode", profile->GetConsoleMultiuser() ? "true" : "false");
+
+    QStringList subs = profile->GetSubscriptions();
+    if (!subs.isEmpty())
+        request.setRawHeader("Subscriptions", subs.join(",").toUtf8());
 
     webSocket->open(request);
 
@@ -125,7 +135,34 @@ void WebSocketWorker::is_disconnected()
 
 void WebSocketWorker::is_binaryMessageReceived(const QByteArray &data)
 {
-    Q_EMIT this->received_data( data );
+    QMutexLocker locker(&bufferMutex);
+    if (handlerReady) {
+        QJsonParseError parseError;
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
+        if (parseError.error == QJsonParseError::NoError && jsonDoc.isObject()) {
+            Q_EMIT this->received_json(jsonDoc.object());
+        } else {
+            Q_EMIT this->received_data(data);
+        }
+    } else {
+        dataBuffer.append(data);
+    }
+}
+
+void WebSocketWorker::setHandlerReady()
+{
+    QMutexLocker locker(&bufferMutex);
+    handlerReady = true;
+    for (const QByteArray &data : dataBuffer) {
+        QJsonParseError parseError;
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(data, &parseError);
+        if (parseError.error == QJsonParseError::NoError && jsonDoc.isObject()) {
+            Q_EMIT this->received_json(jsonDoc.object());
+        } else {
+            Q_EMIT this->received_data(data);
+        }
+    }
+    dataBuffer.clear();
 }
 
 void WebSocketWorker::stopWorker()

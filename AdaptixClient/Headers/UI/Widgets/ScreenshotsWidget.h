@@ -156,6 +156,7 @@ public:
                 case SCR_Computer: return s.Computer;
                 case SCR_Note:     return s.Note;
                 case SCR_Date:     return s.Date;
+                default: ;
             }
         }
 
@@ -188,6 +189,19 @@ public:
         beginInsertRows(QModelIndex(), row, row);
         screens.append(item);
         idToRow[item.ScreenId] = row;
+        endInsertRows();
+    }
+
+    void addBatch(const QList<ScreenData>& items) {
+        if (items.isEmpty())
+            return;
+        const int first = screens.size();
+        const int last = first + items.size() - 1;
+        beginInsertRows(QModelIndex(), first, last);
+        for (const auto& item : items) {
+            idToRow[item.ScreenId] = screens.size();
+            screens.append(item);
+        }
         endInsertRows();
     }
 
@@ -294,7 +308,11 @@ Q_OBJECT
     QCheckBox*      autoSearchCheck = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
+    bool bufferingEnabled = false;
+    QList<ScreenData> pendingScreens;
+
     void createUI();
+    void flushPendingScreens();
 
 public:
     explicit ScreenshotsWidget(AdaptixWidget* w);
