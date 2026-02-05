@@ -23,12 +23,12 @@ function ListenerUI(mode_create)
     comboMethod.addItems(["POST", "GET"]);
     comboMethod.setEnabled(mode_create)
 
-    let labelUri = form.create_label("URI:");
-    let textlineUri = form.create_textline();
-    textlineUri.setPlaceholder("/uri.php");
+    let labelUri = form.create_label("URIs (one per line):");
+    let textUri = form.create_textmulti();
+    textUri.setPlaceholder("/api/v1/status\n/updates/check\n/content/load");
 
-    let labelUserAgent = form.create_label("User-Agent:");
-    let textlineUserAgent = form.create_textline("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
+    let labelUserAgent = form.create_label("User-Agents (one per line):");
+    let textUserAgent = form.create_textmulti("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
 
     let labelHB = form.create_label("Heartbeat Header:");
     let textlineHB = form.create_textline("X-Beacon-Id");
@@ -63,9 +63,9 @@ function ListenerUI(mode_create)
     layoutMain.addWidget(labelMethod,        2, 0, 1, 1);
     layoutMain.addWidget(comboMethod,        2, 1, 1, 2);
     layoutMain.addWidget(labelUri,           3, 0, 1, 1);
-    layoutMain.addWidget(textlineUri,        3, 1, 1, 2);
-    layoutMain.addWidget(labelUserAgent,     4, 0, 1, 1 );
-    layoutMain.addWidget(textlineUserAgent,  4, 1, 1, 2);
+    layoutMain.addWidget(textUri,            3, 1, 1, 2);
+    layoutMain.addWidget(labelUserAgent,     4, 0, 1, 1);
+    layoutMain.addWidget(textUserAgent,      4, 1, 1, 2);
     layoutMain.addWidget(labelHB,            5, 0, 1, 1);
     layoutMain.addWidget(textlineHB,         5, 1, 1, 2);
     layoutMain.addWidget(labelEncryptKey,    6, 0, 1, 1);
@@ -80,8 +80,8 @@ function ListenerUI(mode_create)
     // HTTP HEADERS
     let checkTrust = form.create_check("Trust X-Forwarded-For");
 
-    let labelHostHeader = form.create_label("Host Header:");
-    let textlineHostHeader = form.create_textline();
+    let labelHostHeader = form.create_label("Host Headers (one per line):");
+    let textHostHeader = form.create_textmulti();
 
     let labelRequestHeaders = form.create_label("Request Headers:");
     let textRequestHeaders = form.create_textmulti();
@@ -93,7 +93,7 @@ function ListenerUI(mode_create)
     let layoutHeaders = form.create_gridlayout();
     layoutHeaders.addWidget(checkTrust, 0, 0, 1, 2);
     layoutHeaders.addWidget(labelHostHeader, 1, 0, 1, 1);
-    layoutHeaders.addWidget(textlineHostHeader, 1, 1, 1, 1);
+    layoutHeaders.addWidget(textHostHeader, 1, 1, 1, 1);
     layoutHeaders.addWidget(labelRequestHeaders, 2, 0, 1, 1);
     layoutHeaders.addWidget(textRequestHeaders, 2, 1, 1, 1);
     layoutHeaders.addWidget(labelServerHeaders, 3, 0, 1, 1);
@@ -135,15 +135,15 @@ function ListenerUI(mode_create)
     container.put("port_bind", spinPortBind);
     container.put("callback_addresses", textCallback);
     container.put("http_method", comboMethod);
-    container.put("uri", textlineUri);
-    container.put("user_agent", textlineUserAgent);
+    container.put("uri", textUri);
+    container.put("user_agent", textUserAgent);
     container.put("hb_header", textlineHB);
     container.put("encrypt_key", textlineEncryptKey);
     container.put("ssl", ssl_group);
     container.put("ssl_cert", certSelector);
     container.put("ssl_key", keySelector);
     container.put("x-forwarded-for", checkTrust);
-    container.put("host_header", textlineHostHeader);
+    container.put("host_header", textHostHeader);
     container.put("request_headers", textRequestHeaders);
     container.put("server_headers", textServerHeaders);
     container.put("page-error", textError);

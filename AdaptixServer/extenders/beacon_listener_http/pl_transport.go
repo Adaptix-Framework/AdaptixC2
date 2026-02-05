@@ -120,9 +120,19 @@ func validConfig(config string) error {
 		}
 	}
 
-	matched, err := regexp.MatchString(`^/[a-zA-Z0-9\.\=\-]+(/[a-zA-Z0-9\.\=\-]+)*$`, conf.Uri)
-	if err != nil || !matched {
-		return errors.New("uri invalid")
+	if conf.Uri == "" {
+		return errors.New("uri is required")
+	}
+	uriLines := strings.Split(strings.TrimSpace(conf.Uri), "\n")
+	for _, uriLine := range uriLines {
+		uriLine = strings.TrimSpace(uriLine)
+		if uriLine == "" {
+			continue
+		}
+		matched, err := regexp.MatchString(`^/[a-zA-Z0-9\.\=\-]+(/[a-zA-Z0-9\.\=\-]+)*$`, uriLine)
+		if err != nil || !matched {
+			return fmt.Errorf("uri invalid: %s", uriLine)
+		}
 	}
 
 	if conf.HttpMethod == "" {
@@ -293,27 +303,51 @@ func (t *TransportHTTP) processRequest(ctx *gin.Context) {
 		responseData []byte
 	)
 
-	valid := false
+	// Validate URI against configured URIs (newline-separated)
+	uriValid := false
 	u, err := url.Parse(ctx.Request.RequestURI)
 	if err == nil {
-		if t.Config.Uri == u.Path {
-			valid = true
+		for _, configUri := range strings.Split(t.Config.Uri, "\n") {
+			configUri = strings.TrimSpace(configUri)
+			if configUri != "" && configUri == u.Path {
+				uriValid = true
+				break
+			}
 		}
 	}
-	if !valid {
+	if !uriValid {
 		t.pageError(ctx)
 		return
 	}
 
-	if len(t.Config.HostHeader) > 0 {
+	// Validate Host Header against configured headers (newline-separated)
+	if len(strings.TrimSpace(t.Config.HostHeader)) > 0 {
 		requestHost := ctx.Request.Host
-		if t.Config.HostHeader != requestHost {
+		hhValid := false
+		for _, configHH := range strings.Split(t.Config.HostHeader, "\n") {
+			configHH = strings.TrimSpace(configHH)
+			if configHH != "" && configHH == requestHost {
+				hhValid = true
+				break
+			}
+		}
+		if !hhValid {
 			t.pageError(ctx)
 			return
 		}
 	}
 
-	if t.Config.UserAgent != ctx.Request.UserAgent() {
+	// Validate User-Agent against configured UAs (newline-separated)
+	requestUA := ctx.Request.UserAgent()
+	uaValid := false
+	for _, configUA := range strings.Split(t.Config.UserAgent, "\n") {
+		configUA = strings.TrimSpace(configUA)
+		if configUA != "" && configUA == requestUA {
+			uaValid = true
+			break
+		}
+	}
+	if !uaValid {
 		t.pageError(ctx)
 		return
 	}
