@@ -58,14 +58,11 @@ HMODULE GetModuleAddress(ULONG modHash)
 LPVOID GetSymbolAddress(HANDLE hModule, ULONG symbHash)
 {
     static int recursionDepth = 0;
-
-    if (recursionDepth > 6) {
+    if (recursionDepth > 6)
         return NULL;
-    }
 
-    if (hModule == NULL) {
+    if (hModule == NULL)
         return 0;
-    }
 
     recursionDepth++;
 
@@ -105,12 +102,10 @@ LPVOID GetSymbolAddress(HANDLE hModule, ULONG symbHash)
                     memcpy(funcName, symbol + index, StrLenA(symbol) - index + 1);
 
                     BOOL isApiSetDll = FALSE;
-                    if (StrLenA(moduleName) > 11 && memcmp(moduleName, "api-ms-win-", 11) == 0) {
+                    if (StrLenA(moduleName) > 11 && StrNCmpA(moduleName, (char*)"api-ms-win-", 11) == 0) 
                         isApiSetDll = TRUE;
-                    }
-                    else if (StrLenA(moduleName) > 7 && memcmp(moduleName, "ext-ms-", 7) == 0) {
+                    else if (StrLenA(moduleName) > 7 && StrNCmpA(moduleName, (char*)"ext-ms-", 7) == 0)
                         isApiSetDll = TRUE;
-                    }
 
                     HMODULE hForwardModule = ApiWin->LoadLibraryA(moduleName);
 

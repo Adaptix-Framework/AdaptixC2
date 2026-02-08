@@ -464,8 +464,8 @@ function GenerateUI(listeners_type)
     layout.addWidget(spacer1,             0, 0, 1, 3);
     layout.addWidget(labelArch,           1, 0, 1, 1);
     layout.addWidget(comboArch,           1, 1, 1, 2);
-    layout.addWidget(labelAgentFormat,         2, 0, 1, 1);
-    layout.addWidget(comboAgentFormat,         2, 1, 1, 2);
+    layout.addWidget(labelAgentFormat,    2, 0, 1, 1);
+    layout.addWidget(comboAgentFormat,    2, 1, 1, 2);
     layout.addWidget(labelSleep,          3, 0, 1, 1);
     layout.addWidget(textSleep,           3, 1, 1, 1);
     layout.addWidget(spinJitter,          3, 2, 1, 1);
@@ -528,7 +528,7 @@ function GenerateUI(listeners_type)
     container.put("proxy_port",          spinProxyPort)
     container.put("proxy_username",      textProxyUsername)
     container.put("proxy_password",      textProxyPassword)
-    container.put("rotation_mode",      comboRotation)
+    container.put("rotation_mode",       comboRotation)
 
     let panel = form.create_panel()
     panel.setLayout(layout)

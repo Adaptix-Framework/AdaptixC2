@@ -29,8 +29,8 @@ AgentInfo::AgentInfo()
 	this->acp           = ApiWin->GetACP();
 	this->oemcp         = ApiWin->GetOEMCP();
 	this->gmt_offest    = GetGmtOffset();
-	this->pid           = (WORD) NtCurrentTeb()->ClientId.UniqueProcess;
-	this->tid           = (WORD)NtCurrentTeb()->ClientId.UniqueThread;
+	this->pid           = (WORD)(ULONG_PTR) NtCurrentTeb()->ClientId.UniqueProcess;
+	this->tid           = (WORD)(ULONG_PTR) NtCurrentTeb()->ClientId.UniqueThread;
 	this->elevated      = IsElevate();
 	this->arch64        = (sizeof(void*) != 4);
 	this->sys64         = this->arch64 || isWow64;

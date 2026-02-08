@@ -144,16 +144,16 @@ BOOL ConnectorDNS::InitDoH()
     if (!hWininetModule)
         return FALSE;
 
-    this->dohFunctions->InternetOpenA              = (decltype(InternetOpenA)*)             GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);
-    this->dohFunctions->InternetConnectA           = (decltype(InternetConnectA)*)          GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCONNECTA);
-    this->dohFunctions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)          GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPOPENREQUESTA);
-    this->dohFunctions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)          GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPSENDREQUESTA);
-    this->dohFunctions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)        GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETSETOPTIONA);
-    this->dohFunctions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)      GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYOPTIONA);
-    this->dohFunctions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)            GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPQUERYINFOA);
-    this->dohFunctions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*)GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYDATAAVAILABLE);
-    this->dohFunctions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)       GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCLOSEHANDLE);
-    this->dohFunctions->InternetReadFile           = (decltype(InternetReadFile)*)          GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETREADFILE);
+    this->dohFunctions->InternetOpenA              = (decltype(InternetOpenA)*)              GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);
+    this->dohFunctions->InternetConnectA           = (decltype(InternetConnectA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCONNECTA);
+    this->dohFunctions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPOPENREQUESTA);
+    this->dohFunctions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPSENDREQUESTA);
+    this->dohFunctions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)         GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETSETOPTIONA);
+    this->dohFunctions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)       GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYOPTIONA);
+    this->dohFunctions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)             GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPQUERYINFOA);
+    this->dohFunctions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*) GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYDATAAVAILABLE);
+    this->dohFunctions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)        GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCLOSEHANDLE);
+    this->dohFunctions->InternetReadFile           = (decltype(InternetReadFile)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETREADFILE);
 
     if (!this->dohFunctions->InternetOpenA || !this->dohFunctions->HttpSendRequestA)
         return FALSE;
@@ -232,7 +232,7 @@ void ConnectorDNS::ParseDohResolvers(const CHAR* dohResolvers)
                 info->port = info->port * 10 + (*pathStart - '0');
                 pathStart++;
             }
-            if (info->port == 0)
+            if (info->port == 0) 
                 info->port = 443;
         }
         else {
@@ -621,7 +621,7 @@ void ConnectorDNS::ParseResolvers(const CHAR* resolvers)
     CHAR* p = this->rawResolvers;
     while (*p && this->resolverCount < kMaxResolvers) {
         while (*p == ' ' || *p == '\t' || *p == ',' || *p == ';' || *p == '\r' || *p == '\n') ++p;
-        if (!*p)
+        if (!*p) 
             break;
         this->resolverList[this->resolverCount++] = p;
         while (*p && *p != ',' && *p != ';' && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n') ++p;

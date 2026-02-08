@@ -5,7 +5,7 @@
 
 int main()
 {
-    AgentMain();
+    AgentMain(NULL);
     return 0;
 }
 
@@ -31,7 +31,7 @@ void ServiceMain(int argc, char** argv)
     ServiceStatus.dwCurrentState = SERVICE_RUNNING;
     SetServiceStatus(hStatus, &ServiceStatus);
 
-    AgentMain();
+    AgentMain(NULL);
 
     ServiceStatus.dwCurrentState = SERVICE_STOPPED;
     SetServiceStatus(hStatus, &ServiceStatus);
@@ -158,15 +158,14 @@ __declspec(dllexport) void GetVersions() {};
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
 {
-    AgentMain();
+    AgentMain(NULL);
     return TRUE;
 }
-
 #else
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    AgentMain();
+    AgentMain(NULL);
     return 0;
 }
 

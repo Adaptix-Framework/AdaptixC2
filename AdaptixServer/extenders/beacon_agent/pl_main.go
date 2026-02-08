@@ -942,6 +942,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		if err != nil {
 			goto RET
 		}
+
 		array = []interface{}{COMMAND_CD, Ts.TsConvertUTF8toCp(path, agentData.ACP)}
 
 	case "cp":

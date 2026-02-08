@@ -17,8 +17,8 @@ LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize)
 
 void MemFreeLocal(LPVOID* buffer, DWORD bufferSize) 
 {
-    if (bufferSize < 0)
-        bufferSize = 0;
+    if (*buffer == NULL)
+        return;
 
     memset((PBYTE)*buffer, 0, bufferSize);
 	ApiWin->LocalFree(*buffer);
@@ -528,7 +528,7 @@ DWORD StrCmpLowW(WCHAR* str1, WCHAR* str2)
         ++str2;
     }
 
-    if (*str1 == L'0' && *str2 == L'0')
+    if (*str1 == L'\0' && *str2 == L'\0')
         return 0;
 
     return *str1 - *str2;

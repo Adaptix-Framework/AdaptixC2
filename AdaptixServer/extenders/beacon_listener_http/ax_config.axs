@@ -91,13 +91,13 @@ function ListenerUI(mode_create)
     textServerHeaders.setEnabled(mode_create)
 
     let layoutHeaders = form.create_gridlayout();
-    layoutHeaders.addWidget(checkTrust, 0, 0, 1, 2);
-    layoutHeaders.addWidget(labelHostHeader, 1, 0, 1, 1);
-    layoutHeaders.addWidget(textHostHeader, 1, 1, 1, 1);
+    layoutHeaders.addWidget(checkTrust,          0, 0, 1, 2);
+    layoutHeaders.addWidget(labelHostHeader,     1, 0, 1, 1);
+    layoutHeaders.addWidget(textHostHeader,      1, 1, 1, 1);
     layoutHeaders.addWidget(labelRequestHeaders, 2, 0, 1, 1);
-    layoutHeaders.addWidget(textRequestHeaders, 2, 1, 1, 1);
-    layoutHeaders.addWidget(labelServerHeaders, 3, 0, 1, 1);
-    layoutHeaders.addWidget(textServerHeaders, 3, 1, 1, 1);
+    layoutHeaders.addWidget(textRequestHeaders,  2, 1, 1, 1);
+    layoutHeaders.addWidget(labelServerHeaders,  3, 0, 1, 1);
+    layoutHeaders.addWidget(textServerHeaders,   3, 1, 1, 1);
 
     let panelHeaders = form.create_panel();
     panelHeaders.setLayout(layoutHeaders);
@@ -131,23 +131,23 @@ function ListenerUI(mode_create)
     layout.addWidget(tabs);
 
     let container = form.create_container();
-    container.put("host_bind", comboHostBind);
-    container.put("port_bind", spinPortBind);
+    container.put("host_bind",          comboHostBind);
+    container.put("port_bind",          spinPortBind);
     container.put("callback_addresses", textCallback);
-    container.put("http_method", comboMethod);
-    container.put("uri", textUri);
-    container.put("user_agent", textUserAgent);
-    container.put("hb_header", textlineHB);
-    container.put("encrypt_key", textlineEncryptKey);
-    container.put("ssl", ssl_group);
-    container.put("ssl_cert", certSelector);
-    container.put("ssl_key", keySelector);
-    container.put("x-forwarded-for", checkTrust);
-    container.put("host_header", textHostHeader);
-    container.put("request_headers", textRequestHeaders);
-    container.put("server_headers", textServerHeaders);
-    container.put("page-error", textError);
-    container.put("page-payload", textPayload);
+    container.put("http_method",        comboMethod);
+    container.put("uri",                textUri);
+    container.put("user_agent",         textUserAgent);
+    container.put("hb_header",          textlineHB);
+    container.put("encrypt_key",        textlineEncryptKey);
+    container.put("ssl",                ssl_group);
+    container.put("ssl_cert",           certSelector);
+    container.put("ssl_key",            keySelector);
+    container.put("x-forwarded-for",    checkTrust);
+    container.put("host_header",        textHostHeader);
+    container.put("request_headers",    textRequestHeaders);
+    container.put("server_headers",     textServerHeaders);
+    container.put("page-error",         textError);
+    container.put("page-payload",       textPayload);
 
     let panel = form.create_panel();
     panel.setLayout(layout);

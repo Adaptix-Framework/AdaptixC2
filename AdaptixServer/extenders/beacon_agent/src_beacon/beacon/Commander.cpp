@@ -30,7 +30,7 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		return;
 	}
 
-	while ( packerSize + 4 > inPacker->datasize())
+	while ( inPacker->datasize() < packerSize + 4 )
 	{	
 		ULONG CommandId = inPacker->Unpack32();
 		switch ( CommandId )
@@ -715,8 +715,8 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 				ConvertUnicodeStringToChar(spi->ImageName.Buffer, spi->ImageName.Length, processName, sizeof(processName));
 
-				outPacker->Pack16((WORD)spi->UniqueProcessId);
-				outPacker->Pack16((WORD)spi->InheritedFromUniqueProcessId);
+				outPacker->Pack16((WORD)(ULONG_PTR)spi->UniqueProcessId);
+				outPacker->Pack16((WORD)(ULONG_PTR)spi->InheritedFromUniqueProcessId);
 				outPacker->Pack16((WORD)spi->SessionId);
 				outPacker->Pack8(arch64);
 				outPacker->Pack8(elevated);
