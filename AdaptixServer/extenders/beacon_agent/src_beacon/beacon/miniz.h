@@ -606,7 +606,9 @@ extern "C"
 
 
 #pragma once
+#ifndef MINIZ_NO_ASSERT
 #include <assert.h>
+#endif
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -651,7 +653,13 @@ typedef struct mz_dummy_time_t_tag
 #define MZ_TIME_T time_t
 #endif
 
+#ifndef MZ_ASSERT
+#ifdef MINIZ_NO_ASSERT
+#define MZ_ASSERT(x) ((void)0)
+#else
 #define MZ_ASSERT(x) assert(x)
+#endif
+#endif
 
 #ifdef MINIZ_NO_MALLOC
 #define MZ_MALLOC(x) NULL

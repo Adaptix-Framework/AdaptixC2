@@ -14,3 +14,12 @@ unsigned int getProfileSize()
 {
 	return PROFILE_SIZE;
 }
+
+int isIatHidingEnabled()
+{
+#if defined(IAT_HIDING)
+	return 1;
+#else
+	return 0;
+#endif
+}

