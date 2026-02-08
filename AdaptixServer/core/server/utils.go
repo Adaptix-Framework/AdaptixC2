@@ -545,6 +545,21 @@ type SyncPackerDownloadDelete struct {
 	FileId []string `json:"d_files_id"`
 }
 
+type SyncPackerDownloadActual struct {
+	SpType int `json:"type"`
+
+	FileId    string `json:"d_file_id"`
+	AgentId   string `json:"d_agent_id"`
+	AgentName string `json:"d_agent_name"`
+	User      string `json:"d_user"`
+	Computer  string `json:"d_computer"`
+	File      string `json:"d_file"`
+	Size      int    `json:"d_size"`
+	Date      int64  `json:"d_date"`
+	RecvSize  int    `json:"d_recv_size"`
+	State     int    `json:"d_state"`
+}
+
 /// SCREEN
 
 type SyncPackerScreenshotCreate struct {

@@ -52,6 +52,7 @@ const (
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
 	TYPE_DOWNLOAD_DELETE = 0x53
+	TYPE_DOWNLOAD_ACTUAL = 0x54
 
 	TYPE_TUNNEL_CREATE = 0x57
 	TYPE_TUNNEL_EDIT   = 0x58
@@ -469,6 +470,23 @@ func CreateSpDownloadDelete(fileId []string) SyncPackerDownloadDelete {
 		SpType: TYPE_DOWNLOAD_DELETE,
 
 		FileId: fileId,
+	}
+}
+
+func CreateSpDownloadActual(downloadData adaptix.DownloadData) SyncPackerDownloadActual {
+	return SyncPackerDownloadActual{
+		SpType: TYPE_DOWNLOAD_ACTUAL,
+
+		AgentId:   downloadData.AgentId,
+		AgentName: downloadData.AgentName,
+		FileId:    downloadData.FileId,
+		User:      downloadData.User,
+		Computer:  downloadData.Computer,
+		File:      downloadData.RemotePath,
+		Size:      downloadData.TotalSize,
+		Date:      downloadData.Date,
+		RecvSize:  downloadData.RecvSize,
+		State:     downloadData.State,
 	}
 }
 

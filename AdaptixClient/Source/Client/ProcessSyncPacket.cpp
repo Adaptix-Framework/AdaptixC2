@@ -89,6 +89,22 @@ namespace {
         return data;
     }
 
+    DownloadData parseDownloadDataActual(const QJsonObject &json) {
+        DownloadData data = {};
+        data.FileId        = json["d_file_id"].toString();
+        data.AgentId       = json["d_agent_id"].toString();
+        data.AgentName     = json["d_agent_name"].toString();
+        data.User          = json["d_user"].toString();
+        data.Computer      = json["d_computer"].toString();
+        data.Filename      = json["d_file"].toString();
+        data.TotalSize     = json["d_size"].toDouble();
+        data.DateTimestamp = static_cast<qint64>(json["d_date"].toDouble());
+        data.Date          = UnixTimestampGlobalToStringLocal(data.DateTimestamp);
+        data.RecvSize      = json["d_recv_size"].toDouble();
+        data.State         = json["d_state"].toDouble();
+        return data;
+    }
+
     ScreenData parseScreenData(const QJsonObject &json) {
         ScreenData data = {};
         data.ScreenId      = json["s_screen_id"].toString();
@@ -350,6 +366,18 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
 
     case TYPE_DOWNLOAD_DELETE:
             return checkField("d_files_id", isArr);
+
+    case TYPE_DOWNLOAD_ACTUAL:
+        return checkField("d_file_id", isStr) &&
+               checkField("d_agent_id", isStr) &&
+               checkField("d_agent_name", isStr) &&
+               checkField("d_user", isStr) &&
+               checkField("d_computer", isStr) &&
+               checkField("d_file", isStr) &&
+               checkField("d_size", isNum) &&
+               checkField("d_date", isNum) &&
+               checkField("d_recv_size", isNum) &&
+               checkField("d_state", isNum);
 
     case TYPE_TUNNEL_CREATE:
         return checkField("p_tunnel_id", isStr) &&
@@ -789,6 +817,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             DownloadsDock->RemoveDownloadItem(ids);
             break;
         }
+
+    case TYPE_DOWNLOAD_ACTUAL:
+        DownloadsDock->AddDownloadItem(parseDownloadDataActual(jsonObj));
+        break;
 
     case TYPE_SCREEN_CREATE:
         ScreenshotsDock->AddScreenshotItem(parseScreenData(jsonObj));
