@@ -17,6 +17,22 @@ func (tc *TsConnector) TcScreenshotList(ctx *gin.Context) {
 	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonScreen))
 }
 
+func (tc *TsConnector) TcScreenshotGetImage(ctx *gin.Context) {
+	screenId := ctx.Query("screen_id")
+	if screenId == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "screen_id is required", "ok": false})
+		return
+	}
+
+	content, err := tc.teamserver.TsScreenshotGetImage(screenId)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
+	ctx.Data(http.StatusOK, "image/png", content)
+}
+
 type ScreenRemove struct {
 	ScreenIdArray []string `json:"screen_id_array"`
 }

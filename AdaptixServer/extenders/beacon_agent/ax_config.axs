@@ -445,6 +445,10 @@ function GenerateUI(listeners_type)
 
     /////////////////////////
 
+    let labelRotation = form.create_label("Rotation Mode:");
+    let comboRotation = form.create_combo();
+    comboRotation.addItems(["sequential", "random"]);
+
     let spacer2 = form.create_vspacer();
 
     if(!listeners_type.includes("BeaconDNS")) {
@@ -452,6 +456,8 @@ function GenerateUI(listeners_type)
     }
     if(!listeners_type.includes("BeaconHTTP")) {
         group_proxy.setVisible(false);
+        labelRotation.setVisible(false);
+        comboRotation.setVisible(false);
     }
 
     let layout = form.create_gridlayout();
@@ -473,10 +479,12 @@ function GenerateUI(listeners_type)
     layout.addWidget(textSvcName,         6, 1, 1, 2);
     layout.addWidget(checkSideloading,    7, 0, 1, 1);
     layout.addWidget(sideloadingSelector, 7, 1, 1, 2);
-    layout.addWidget(checkIatHiding,        8, 0, 1, 3);
-    layout.addWidget(group_proxy,            9, 0, 1, 3);
-    layout.addWidget(group_dns,             10, 0, 1, 3);
-    layout.addWidget(spacer2,               11, 0, 1, 3);
+    layout.addWidget(labelRotation,       8, 0, 1, 1);
+    layout.addWidget(comboRotation,       8, 1, 1, 2);
+    layout.addWidget(checkIatHiding,      9, 0, 1, 3);
+    layout.addWidget(group_proxy,        10, 0, 1, 3);
+    layout.addWidget(group_dns,          12, 0, 1, 3);
+    layout.addWidget(spacer2,            12, 0, 1, 3);
 
     form.connect(comboAgentFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
@@ -520,6 +528,7 @@ function GenerateUI(listeners_type)
     container.put("proxy_port",          spinProxyPort)
     container.put("proxy_username",      textProxyUsername)
     container.put("proxy_password",      textProxyPassword)
+    container.put("rotation_mode",      comboRotation)
 
     let panel = form.create_panel()
     panel.setLayout(layout)

@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -61,9 +60,7 @@ func (p *PluginListener) Create(name string, config string, customData []byte) (
 
 		conf.RequestHeaders = strings.TrimRight(conf.RequestHeaders, " \n\t\r") + "\n"
 		conf.RequestHeaders = strings.ReplaceAll(conf.RequestHeaders, "\n", "\r\n")
-		if len(conf.HostHeader) > 0 {
-			conf.RequestHeaders = fmt.Sprintf("Host: %s\r\n%s", conf.HostHeader, conf.RequestHeaders)
-		}
+		// Host header is handled separately by the agent for rotation support
 
 		conf.ResponseHeaders = make(map[string]string)
 		headerLine := strings.Split(conf.Server_headers, "\n")
@@ -153,9 +150,7 @@ func (l *Listener) Edit(config string) (adaptix.ListenerData, []byte, error) {
 
 	conf.RequestHeaders = strings.TrimRight(conf.RequestHeaders, " \n\t\r") + "\n"
 	conf.RequestHeaders = strings.ReplaceAll(conf.RequestHeaders, "\n", "\r\n")
-	if len(conf.HostHeader) > 0 {
-		conf.RequestHeaders = fmt.Sprintf("Host: %s\r\n%s", conf.HostHeader, conf.RequestHeaders)
-	}
+	// Host header is handled separately by the agent for rotation support
 
 	l.transport.Config.Callback_addresses = conf.Callback_addresses
 	l.transport.Config.UserAgent = conf.UserAgent

