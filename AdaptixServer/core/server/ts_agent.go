@@ -592,6 +592,9 @@ func (ts *Teamserver) applyAgentUpdate(agent *Agent, updateData interface{}, syn
 			d.CustomData = []byte(*fields.CustomData)
 			updated = true
 		}
+		if fields.CustomData != nil {
+			d.CustomData = []byte(*fields.CustomData)
+		}
 	})
 
 	return updated
