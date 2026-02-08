@@ -6,11 +6,27 @@
 void* __cdecl memset(void* Destination, int Value, size_t Size)
 {
 	unsigned char* p = (unsigned char*)Destination;
-	while (Size > 0) {
-		*p = (unsigned char)Value;
-		p++;
-		Size--;
+	unsigned char val = (unsigned char)Value;
+	
+	// Word-aligned fill for larger blocks
+	if (Size >= sizeof(size_t)) {
+		size_t pattern = val;
+		for (size_t i = 1; i < sizeof(size_t); i++)
+			pattern |= (pattern << 8);
+		
+		while (((size_t)p & (sizeof(size_t) - 1)) && Size) {
+			*p++ = val;
+			Size--;
+		}
+		while (Size >= sizeof(size_t)) {
+			*(size_t*)p = pattern;
+			p += sizeof(size_t);
+			Size -= sizeof(size_t);
+		}
 	}
+	while (Size--)
+		*p++ = val;
+	
 	return Destination;
 }
 
@@ -18,12 +34,21 @@ void* __cdecl memset(void* Destination, int Value, size_t Size)
 #pragma function(memcpy)
 void* __cdecl memcpy(void* Dst, const void* Src, size_t Size)
 {
-	unsigned char* p = (unsigned char*)Dst;
-	unsigned char* q = (unsigned char*)Src;
-	while (Size > 0) {
-		*p++ = *q++;
-		Size--;
+	unsigned char* d = (unsigned char*)Dst;
+	const unsigned char* s = (const unsigned char*)Src;
+	
+	// Word-aligned copy for larger blocks
+	if (Size >= sizeof(size_t) && (((size_t)d | (size_t)s) & (sizeof(size_t) - 1)) == 0) {
+		while (Size >= sizeof(size_t)) {
+			*(size_t*)d = *(const size_t*)s;
+			d += sizeof(size_t);
+			s += sizeof(size_t);
+			Size -= sizeof(size_t);
+		}
 	}
+	while (Size--)
+		*d++ = *s++;
+	
 	return Dst;
 }
 

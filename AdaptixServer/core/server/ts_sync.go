@@ -31,7 +31,7 @@ func getPacketCategory(packet interface{}) string {
 		return "notifications"
 	case SyncPackerChatMessage:
 		return SyncCategoryChatHistory
-	case SyncPackerDownloadCreate, SyncPackerDownloadUpdate:
+	case SyncPackerDownloadCreate, SyncPackerDownloadUpdate, SyncPackerDownloadActual:
 		return SyncCategoryDownloadsHistory
 	case SyncPackerScreenshotCreate:
 		return SyncCategoryScreenshotHistory
@@ -492,11 +492,10 @@ func (ts *Teamserver) TsPresyncDownloads() []interface{} {
 		return sortedDownloads[i].Date < sortedDownloads[j].Date
 	})
 
-	packets := make([]interface{}, 0, len(sortedDownloads)*2)
+	packets := make([]interface{}, 0, len(sortedDownloads))
 	for _, downloadData := range sortedDownloads {
-		d1 := CreateSpDownloadCreate(downloadData)
-		d2 := CreateSpDownloadUpdate(downloadData)
-		packets = append(packets, d1, d2)
+		d := CreateSpDownloadActual(downloadData)
+		packets = append(packets, d)
 	}
 
 	return packets
