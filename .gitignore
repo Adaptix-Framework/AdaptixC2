@@ -27,6 +27,9 @@ AdaptixClient/Libs/kddockwidgets/*_export.h
 # VSCode
 .vscode/
 
+# claude
+CLAUDE.md
+.claude
 # macOS
 .DS_Store
 **/.DS_Store
