@@ -45,14 +45,14 @@ COMMON_FLAGS := -I $(BEACON_DIR) \
 # Keeps zlib compress/uncompress for DnsCodec.
 MINIZ_TRIM_FLAGS := -DMINIZ_NO_STDIO -DMINIZ_NO_ARCHIVE_APIS -DMINIZ_NO_ARCHIVE_WRITING_APIS -DMINIZ_NO_TIME -DMINIZ_NO_ASSERT
 
-.PHONY: all clean pre x64 x86
+.PHONY: all clean pre x64 x86 shellcode
 
 NPROC := $(shell nproc)
 ifeq ($(MAKELEVEL), 0)
     MAKEFLAGS += -j$(NPROC) --no-print-directory
 endif
 
-all: clean pre x64 x86
+all: clean shellcode pre x64 x86
 
 pre:
 	@mkdir -p $(HTTP_DIST_DIR) $(SMB_DIST_DIR) $(TCP_DIST_DIR) $(DNS_DIST_DIR)
@@ -72,6 +72,11 @@ pre:
 	@ cp $(FILES_DIR)/config.tpl $(DNS_DIST_DIR)/config.cpp
 	@ cp $(FILES_DIR)/stub.x64.bin $(DNS_DIST_DIR)/stub.x64.bin
 	@ cp $(FILES_DIR)/stub.x86.bin $(DNS_DIST_DIR)/stub.x86.bin
+
+shellcode:
+	@ echo "      Building shellcode loader..."
+	@ (cd shellcode && $(MAKE) --no-print-directory)
+	@ echo "      Shellcode built"
 
 clean:
 	@rm -rf $(HTTP_DIST_DIR) $(SMB_DIST_DIR) $(TCP_DIST_DIR) $(DNS_DIST_DIR)

