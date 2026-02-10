@@ -1,77 +1,75 @@
 #pragma once
-#include "adaptix.h"
-#include "ApiLoader.h"
-#include "ApiDefines.h"
+
+#include "std.cpp"
 #include "Packer.h"
+#include "ApiLoader.h"
 
-#define MAX_SECTIONS	   25
-#define MAP_FUNCTIONS_SIZE 4096
+#define ASYNC_BOF_STATE_PENDING   0x0
+#define ASYNC_BOF_STATE_RUNNING   0x1
+#define ASYNC_BOF_STATE_FINISHED  0x2
+#define ASYNC_BOF_STATE_STOPPED   0x3
 
-#define IMAGE_REL_AMD64_ADDR64   0x0001
-#define IMAGE_REL_AMD64_ADDR32NB 0x0003
-#define IMAGE_REL_AMD64_REL32    0x0004
-#define HASH_KEY 13
+#define ASYNC_BOF_OUTPUT_BUFFER_SIZE 0x10000
 
-#define BOF_ERROR_PARSE	    0x101
-#define BOF_ERROR_SYMBOL    0x102
-#define BOF_ERROR_MAX_FUNCS 0x103
-#define BOF_ERROR_ENTRY     0x104
-#define BOF_ERROR_ALLOC     0x105
+struct AsyncBofContext {
+    ULONG   taskId;
+    ULONG   state;
+    HANDLE  hThread;
+    DWORD   threadId;
+    HANDLE  hStopEvent;
+    
+    BYTE*   coffFile;
+    ULONG   coffFileSize;
+    BYTE*   args;
+    ULONG   argsSize;
+    CHAR*   entryName;
+    
+    CRITICAL_SECTION outputLock;
+    Packer* outputBuffer;
+    
+    PCHAR   mapSections[25];
+    LPVOID* mapFunctions;
+};
 
-typedef struct {
-	ULONG  hash;
-	LPVOID proc;
-} BOF_API;
+extern __declspec(thread) AsyncBofContext* tls_CurrentBofContext;
 
-extern Packer* bofOutputPacker;
-extern int     bofOutputCount;
-extern ULONG   bofTaskId;
 
-typedef struct COF_HEADER {
-	short Machine;
-	short NumberOfSections;
-	int   TimeDateStamp;
-	int   PointerToSymbolTable;
-	int   NumberOfSymbols;
-	short SizeOfOptionalHeader;
-	short Characteristics;
-} COF_HEADER;
 
-#pragma pack(push,1)
+class Boffer
+{
+public:
+    Vector<AsyncBofContext*> asyncBofs;
+    
+    HANDLE  wakeupEvent;
+    CRITICAL_SECTION managerLock;
+    
+    Boffer();
+    ~Boffer();
+    
+    BOOL Initialize();
+    
+    AsyncBofContext* CreateAsyncBof(ULONG taskId, CHAR* entryName, BYTE* coffFile, ULONG coffFileSize, BYTE* args, ULONG argsSize);
+    
+    BOOL StartAsyncBof(AsyncBofContext* ctx);
+    
+    BOOL StopAsyncBof(ULONG taskId);
+    
+    void ProcessAsyncBofs(Packer* outPacker);
+    
+    void CleanupFinishedBofs();
+    
+    AsyncBofContext* FindBofByThreadId(DWORD threadId);
+    
+    HANDLE GetWakeupEvent();
+    
+    void SignalWakeup();
+        
+    static void* operator new(size_t sz);
+    static void operator delete(void* p) noexcept;
+    
+private:
+    void CleanupBofContext(AsyncBofContext* ctx);
+};
 
-typedef struct COF_SECTION {
-	char  Name[8];
-	int   VirtualSize;
-	int   VirtualAddress;
-	int   SizeOfRawData;
-	int   PointerToRawData;
-	int   PointerToRelocations;
-	int   PointerToLineNumbers;
-	short NumberOfRelocations;
-	short NumberOfLinenumbers;
-	int   Characteristics;
-} COF_SECTION;
+extern Boffer* g_AsyncBofManager;
 
-typedef struct COF_RELOCATION {
-	int   VirtualAddress;
-	int   SymbolTableIndex;
-	short Type;
-} COF_RELOCATION;
-
-typedef struct COF_SYMBOL {
-	union {
-		char cName[8];
-		int  dwName[2];
-	}     Name;
-	int   Value;
-	short SectionNumber;
-	short Type;
-	char  StorageClass;
-	char  NumberOfAuxSymbols;
-} COF_SYMBOL;
-
-#pragma pack(pop)
-
-void InitBofOutputData();
-
-Packer* ObjectExecute(ULONG taskId, char* targetFuncName, unsigned char* coffFile, unsigned int cofFileSize, unsigned char* args, int argsSize);

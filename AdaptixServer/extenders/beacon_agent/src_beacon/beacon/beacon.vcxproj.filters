@@ -37,12 +37,6 @@
     <Filter Include="Headers\Commander">
       <UniqueIdentifier>{aab2f128-c956-4338-8112-eb6add9224a0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Headers\Commander\BOF">
-      <UniqueIdentifier>{b0e0adee-9aa6-42f6-ab51-45c63118e2e7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Commander\BOF">
-      <UniqueIdentifier>{d5a9b678-296c-452a-aa31-c4262d91d985}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Headers\ApiLoader">
       <UniqueIdentifier>{105ed7ee-3bc4-4b29-bad4-30dac5b9460a}</UniqueIdentifier>
     </Filter>
@@ -60,6 +54,12 @@
     </Filter>
     <Filter Include="Headers\utils\dns">
       <UniqueIdentifier>{9cce93ae-d7e9-4d72-93e2-142e09bf5cac}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\Commander\Boffer">
+      <UniqueIdentifier>{b0e0adee-9aa6-42f6-ab51-45c63118e2e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Commander\Boffer">
+      <UniqueIdentifier>{d5a9b678-296c-452a-aa31-c4262d91d985}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -99,11 +99,8 @@
     <ClCompile Include="JobsController.cpp">
       <Filter>Source\Commander</Filter>
     </ClCompile>
-    <ClCompile Include="Boffer.cpp">
-      <Filter>Source\Commander\BOF</Filter>
-    </ClCompile>
     <ClCompile Include="beacon_functions.cpp">
-      <Filter>Source\Commander\BOF</Filter>
+      <Filter>Source\Commander\Boffer</Filter>
     </ClCompile>
     <ClCompile Include="Crypt.cpp">
       <Filter>Source\Encrypt</Filter>
@@ -147,6 +144,12 @@
     <ClCompile Include="DnsCodec.cpp">
       <Filter>Source\utils\dns</Filter>
     </ClCompile>
+    <ClCompile Include="Boffer.cpp">
+      <Filter>Source\Commander</Filter>
+    </ClCompile>
+    <ClCompile Include="bof_loader.cpp">
+      <Filter>Source\Commander\Boffer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h">
@@ -188,11 +191,8 @@
     <ClInclude Include="JobsController.h">
       <Filter>Headers\Commander</Filter>
     </ClInclude>
-    <ClInclude Include="Boffer.h">
-      <Filter>Headers\Commander\BOF</Filter>
-    </ClInclude>
     <ClInclude Include="beacon.h">
-      <Filter>Headers\Commander\BOF</Filter>
+      <Filter>Headers\Commander\Boffer</Filter>
     </ClInclude>
     <ClInclude Include="Crypt.h">
       <Filter>Headers\Encrypt</Filter>
@@ -228,7 +228,7 @@
       <Filter>Headers\Connectors</Filter>
     </ClInclude>
     <ClInclude Include="adaptix.h">
-      <Filter>Headers\Commander\BOF</Filter>
+      <Filter>Headers\Commander\Boffer</Filter>
     </ClInclude>
     <ClInclude Include="miniz.h">
       <Filter>Headers\utils</Filter>
@@ -239,5 +239,19 @@
     <ClInclude Include="DnsCodec.h">
       <Filter>Headers\utils\dns</Filter>
     </ClInclude>
+    <ClInclude Include="Boffer.h">
+      <Filter>Headers\Commander</Filter>
+    </ClInclude>
+    <ClInclude Include="bof_loader.h">
+      <Filter>Headers\Commander\Boffer</Filter>
+    </ClInclude>
+    <ClInclude Include="Connector.h">
+      <Filter>Headers\Connectors</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="chkstk_x64.asm">
+      <Filter>Source</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

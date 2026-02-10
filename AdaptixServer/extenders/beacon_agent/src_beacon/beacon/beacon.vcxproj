@@ -472,6 +472,7 @@
     <ClCompile Include="ApiLoader.cpp" />
     <ClCompile Include="beacon_functions.cpp" />
     <ClCompile Include="Boffer.cpp" />
+    <ClCompile Include="bof_loader.cpp" />
     <ClCompile Include="Commander.cpp" />
     <ClCompile Include="config.cpp" />
     <ClCompile Include="ConnectorDNS.cpp" />
@@ -504,6 +505,7 @@
     <ClInclude Include="ApiLoader.h" />
     <ClInclude Include="beacon.h" />
     <ClInclude Include="Boffer.h" />
+    <ClInclude Include="bof_loader.h" />
     <ClInclude Include="Commander.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="Connector.h" />

