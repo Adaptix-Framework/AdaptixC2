@@ -57,12 +57,16 @@ NtFlushInstructionCache
 ConnectNamedPipe
 CopyFileA
 CreateDirectoryA
+CreateEventA
 CreateFileA
 CreateNamedPipeA
 CreatePipe
 CreateProcessA
+CreateThread
+DeleteCriticalSection
 DeleteFileA
 DisconnectNamedPipe
+EnterCriticalSection
 FindClose
 FindFirstFileA
 FindNextFileA
@@ -94,11 +98,13 @@ HeapCreate
 HeapDestroy
 HeapReAlloc
 HeapFree
+InitializeCriticalSection
 IsWow64Process
 LoadLibraryA
 LocalAlloc
 LocalFree
 LocalReAlloc
+LeaveCriticalSection
 MoveFileA
 MultiByteToWideChar
 PeekNamedPipe
@@ -106,10 +112,12 @@ ReadFile
 RemoveDirectoryA
 RtlCaptureContext
 SetCurrentDirectoryA
+SetEvent
 SetNamedPipeHandleState
 Sleep
 VirtualAlloc
 VirtualFree
+WaitForSingleObject
 WaitNamedPipeA
 WideCharToMultiByte
 WriteFile
@@ -128,6 +136,8 @@ RevertToSelf
 SetThreadToken
 SetEntriesInAclA
 SetSecurityDescriptorDacl
+DuplicateTokenEx
+CreateProcessAsUserA
 
 // msvcrt
 printf
@@ -169,6 +179,10 @@ FreeLibrary
 __C_specific_handler
 AxAddScreenshot
 AxDownloadMemory
+// Async BOF
+BeaconRegisterThreadCallback
+BeaconUnregisterThreadCallback
+BeaconWakeup
 
 // wininet
 InternetOpenA

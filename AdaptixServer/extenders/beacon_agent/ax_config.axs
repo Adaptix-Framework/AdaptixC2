@@ -194,6 +194,7 @@ function RegisterCommands(listenerType)
     let _cmd_ps_run = ax.create_command("run", "Run a program", "run -s cmd.exe /c whoami /all", "Task: create new process");
     _cmd_ps_run.addArgBool("-s", "Suspend process");
     _cmd_ps_run.addArgBool("-o", "Output to console");
+    _cmd_ps_run.addArgBool("-i", "Use impersonation");
     _cmd_ps_run.addArgString("args", true);
     let cmd_ps = ax.create_command("ps", "Process manager");
     cmd_ps.addSubCommands([_cmd_ps_list, _cmd_ps_kill, _cmd_ps_run]);

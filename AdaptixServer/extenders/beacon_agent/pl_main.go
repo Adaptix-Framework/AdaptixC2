@@ -1235,6 +1235,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			taskData.Type = adaptix.TASK_TYPE_JOB
 
 			output := getBoolArg(args, "-o")
+			impersonation := getBoolArg(args, "-i")
 			suspend := getBoolArg(args, "-s")
 			programState := 0
 			if suspend {
@@ -1243,7 +1244,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 			programArgs, _ := args["args"].(string)
 			programArgs = Ts.TsConvertUTF8toCp(programArgs, agentData.ACP)
 
-			array = []interface{}{COMMAND_PS_RUN, output, programState, programArgs}
+			array = []interface{}{COMMAND_PS_RUN, output, impersonation, programState, programArgs}
 
 		} else {
 			err = errors.New("subcommand must be 'list', 'kill' or 'run'")

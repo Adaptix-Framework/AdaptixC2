@@ -81,8 +81,13 @@ BOOL ApiLoad()
 		ApiWin->CreateNamedPipeA        = (decltype(CreateNamedPipeA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATENAMEDPIPEA);
 		ApiWin->CreatePipe				= (decltype(CreatePipe)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATEPIPE);
 		ApiWin->CreateProcessA			= (decltype(CreateProcessA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATEPROCESSA);
+		ApiWin->CreateEventA            = (decltype(CreateEventA)*)            GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATEEVENTA);
+		ApiWin->CreateThread            = (decltype(CreateThread)*)            GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATETHREAD);
 		ApiWin->DisconnectNamedPipe     = (decltype(DisconnectNamedPipe)*)     GetSymbolAddress(hKernel32Module, HASH_FUNC_DISCONNECTNAMEDPIPE);
+		ApiWin->DeleteCriticalSection   = (decltype(DeleteCriticalSection)*)   GetSymbolAddress(hKernel32Module, HASH_FUNC_DELETECRITICALSECTION);
 		ApiWin->DeleteFileA				= (decltype(DeleteFileA)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_DELETEFILEA);
+		ApiWin->EnterCriticalSection    = (decltype(EnterCriticalSection)*)    GetSymbolAddress(hKernel32Module, HASH_FUNC_ENTERCRITICALSECTION);
+		ApiWin->TryEnterCriticalSection = (decltype(TryEnterCriticalSection)*) GetSymbolAddress(hKernel32Module, HASH_FUNC_TRYENTERCRITICALSECTION);
 		ApiWin->GetExitCodeProcess		= (decltype(GetExitCodeProcess)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETEXITCODEPROCESS);
 		ApiWin->GetExitCodeThread		= (decltype(GetExitCodeThread)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETEXITCODETHREAD);
 		ApiWin->FindClose				= (decltype(FindClose)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_FINDCLOSE);
@@ -111,21 +116,26 @@ BOOL ApiLoad()
 		ApiWin->HeapDestroy				= (decltype(HeapDestroy)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_HEAPDESTROY);
 		ApiWin->HeapReAlloc				= (decltype(HeapReAlloc)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_HEAPREALLOC);
 		ApiWin->HeapFree				= (decltype(HeapFree)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_HEAPFREE);
+		ApiWin->InitializeCriticalSection = (decltype(InitializeCriticalSection)*) GetSymbolAddress(hKernel32Module, HASH_FUNC_INITIALIZECRITICALSECTION);
 		ApiWin->IsWow64Process			= (decltype(IsWow64Process)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_ISWOW64PROCESS);
 		ApiWin->LocalAlloc				= allocProc;
 		ApiWin->LocalFree				= (decltype(LocalFree)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_LOCALFREE);
 		ApiWin->LocalReAlloc			= (decltype(LocalReAlloc)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_LOCALREALLOC);
+		ApiWin->LeaveCriticalSection    = (decltype(LeaveCriticalSection)*)    GetSymbolAddress(hKernel32Module, HASH_FUNC_LEAVECRITICALSECTION);
 		ApiWin->MoveFileA				= (decltype(MoveFileA)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_MOVEFILEA);
 		ApiWin->MultiByteToWideChar		= (decltype(MultiByteToWideChar)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_MULTIBYTETOWIDECHAR);
 		ApiWin->PeekNamedPipe			= (decltype(PeekNamedPipe)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_PEEKNAMEDPIPE);
 		ApiWin->ReadFile                = (decltype(ReadFile)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_READFILE);
 		ApiWin->RemoveDirectoryA        = (decltype(RemoveDirectoryA)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_REMOVEDIRECTORYA);
 		ApiWin->RtlCaptureContext       = (decltype(RtlCaptureContext)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_RTLCAPTURECONTEXT);
+		ApiWin->SetEvent                = (decltype(SetEvent)*)	               GetSymbolAddress(hKernel32Module, HASH_FUNC_SETEVENT);
+		ApiWin->ResetEvent              = (decltype(ResetEvent)*)               GetSymbolAddress(hKernel32Module, HASH_FUNC_RESETEVENT);
 		ApiWin->SetCurrentDirectoryA    = (decltype(SetCurrentDirectoryA)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_SETCURRENTDIRECTORYA);
 		ApiWin->SetNamedPipeHandleState = (decltype(SetNamedPipeHandleState)*) GetSymbolAddress(hKernel32Module, HASH_FUNC_SETNAMEDPIPEHANDLESTATE);
 		ApiWin->Sleep					= (decltype(Sleep)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_SLEEP);
 		ApiWin->VirtualAlloc			= (decltype(VirtualAlloc)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALALLOC);
 		ApiWin->VirtualFree				= (decltype(VirtualFree)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALFREE);
+		ApiWin->WaitForSingleObject     = (decltype(WaitForSingleObject)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITFORSINGLEOBJECT);
 		ApiWin->WaitNamedPipeA          = (decltype(WaitNamedPipeA)*)	       GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITNAMEDPIPEA);
 		ApiWin->WideCharToMultiByte		= (decltype(WideCharToMultiByte)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_WIDECHARTOMULTIBYTE);
 		ApiWin->WriteFile				= (decltype(WriteFile)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_WRITEFILE);
@@ -177,6 +187,9 @@ BOOL ApiLoad()
 			ApiWin->RevertToSelf			= (decltype(RevertToSelf)*)		       GetSymbolAddress(hAdvapi32Module, HASH_FUNC_REVERTTOSELF );
 			ApiWin->SetThreadToken			= (decltype(SetThreadToken)*)		   GetSymbolAddress(hAdvapi32Module, HASH_FUNC_SETTHREADTOKEN);
 			ApiWin->ImpersonateLoggedOnUser = (decltype(ImpersonateLoggedOnUser)*) GetSymbolAddress(hAdvapi32Module, HASH_FUNC_IMPERSONATELOGGEDONUSER);
+			ApiWin->DuplicateTokenEx        = (decltype(DuplicateTokenEx)*)        GetSymbolAddress(hAdvapi32Module, HASH_FUNC_DUPLICATETOKENEX);
+			ApiWin->CreateProcessAsUserA    = (decltype(CreateProcessAsUserA)*)    GetSymbolAddress(hAdvapi32Module, HASH_FUNC_CREATEPROCESSASUSERA);
+			ApiWin->CreateProcessWithTokenW = (decltype(CreateProcessWithTokenW)*) GetSymbolAddress(hAdvapi32Module, HASH_FUNC_CREATEPROCESSWITHTOKENW);
 		}
 
 		// msvcrt

