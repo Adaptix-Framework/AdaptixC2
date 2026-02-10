@@ -506,6 +506,7 @@
     <ClInclude Include="Boffer.h" />
     <ClInclude Include="Commander.h" />
     <ClInclude Include="config.h" />
+    <ClInclude Include="Connector.h" />
     <ClInclude Include="ConnectorDNS.h" />
     <ClInclude Include="ConnectorHTTP.h" />
     <ClInclude Include="ConnectorSMB.h" />

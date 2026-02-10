@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <wininet.h>
+#include "Connector.h"
 
 #ifndef PROFILE_STRUCT
 #define PROFILE_STRUCT
@@ -66,7 +67,7 @@ struct HTTPFUNC {
 	DECL_API(InternetReadFile);
 };
 
-class ConnectorHTTP
+class ConnectorHTTP : public Connector
 {
 	ULONG  ua_count       = 0;
 	CHAR** user_agents    = NULL;
@@ -105,14 +106,17 @@ class ConnectorHTTP
 public:
 	ConnectorHTTP();
 
-	BOOL SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize);
-	void CloseConnector();
+	BOOL SetProfile(void* profile, BYTE* beat, ULONG beatSize) override;
+	void Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey) override;
+	void CloseConnector() override;
 
-	void  SendData(BYTE* data, ULONG data_size);
-	BYTE* RecvData();
-	int   RecvSize();
-	void  RecvClear();
+	BYTE* RecvData() override;
+	int   RecvSize() override;
+	void  RecvClear() override;
 
 	static void* operator new(size_t sz);
 	static void operator delete(void* p) noexcept;
+
+private:
+	void SendData(BYTE* data, ULONG data_size);
 };

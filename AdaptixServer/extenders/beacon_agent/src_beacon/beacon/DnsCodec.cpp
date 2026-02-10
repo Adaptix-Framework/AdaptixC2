@@ -19,18 +19,6 @@ const int DnsCodec::kBase64DecodeTable[] = {
     41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1
 };
 
-// Operators
-void* DnsCodec::operator new(size_t sz)
-{
-    void* p = MemAllocLocal(sz);
-    return p;
-}
-
-void DnsCodec::operator delete(void* p) noexcept
-{
-    MemFreeLocal(&p, sizeof(DnsCodec));
-}
-
 void DnsCodec::ToHex32(ULONG value, CHAR out[9])
 {
     static const CHAR hex[] = "0123456789abcdef";

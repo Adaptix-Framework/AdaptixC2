@@ -391,6 +391,9 @@ extern "C" {
         asm volatile("jmp ___chkstk_ms\n");
     }
 
+#ifdef _alloca
+#undef _alloca
+#endif
     NAKED_FUNC void _alloca(void)
     {
         asm volatile("jmp ___chkstk_ms\n");

@@ -3,14 +3,6 @@
 #include <windows.h>
 #include "ApiDefines.h"
 
-#define DECL_API(x) decltype(x) * x
-
-// DNS Codec function pointers structure
-struct DNSCODECFUNC {
-    DECL_API(LocalAlloc);
-    DECL_API(LocalFree);
-};
-
 class DnsCodec {
 public:
     // Constants
@@ -33,15 +25,8 @@ public:
     static BOOL Compress(const BYTE* inBuf, ULONG inLen, BYTE** outBuf, ULONG* outLen);
     static BOOL Decompress(const BYTE* inBuf, ULONG inLen, BYTE** outBuf, ULONG expectedLen);
 
-    // Operators
-    static void* operator new(size_t sz);
-    static void operator delete(void* p) noexcept;
-
 private:
-    // Private constants
     static const CHAR kBase32Alphabet[];
     static const int  kBase64DecodeTable[];
-
-    DNSCODECFUNC* functions = NULL;
 };
 

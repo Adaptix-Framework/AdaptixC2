@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include "Connector.h"
 #include <aclapi.h>
 
 #define _NO_NTDLL_CRT_
@@ -61,32 +62,43 @@ struct SMBFUNC {
 	DECL_API(SetSecurityDescriptorDacl);
 };
 
-class ConnectorSMB
+class ConnectorSMB : public Connector
 {
-	CHAR* pipename = NULL;
+	CHAR* pipename = nullptr;
 
-	BYTE* recvData   = NULL;
+	BYTE* recvData   = nullptr;
 	int   recvSize   = 0;
 	ULONG allocaSize = 0;
 
-	SMBFUNC* functions = NULL;
+	SMBFUNC* functions = nullptr;
 
-	HANDLE hChannel = NULL;
+	HANDLE hChannel = nullptr;
+
+	BYTE* beat     = nullptr;
+	ULONG beatSize = 0;
+	BOOL  connected = FALSE;
 
 public:
 	ConnectorSMB();
 
-	BOOL SetConfig(ProfileSMB profile, BYTE* beat, ULONG beatSize);
+	BOOL SetProfile(void* profile, BYTE* beat, ULONG beatSize) override;
+	BOOL WaitForConnection() override;
+	BOOL IsConnected() override;
+	void Disconnect() override;
+	void Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey) override;
+	void CloseConnector() override;
 
-	void Listen();
-	void Disconnect();
-	void CloseConnector();
+	BYTE* RecvData() override;
+	int   RecvSize() override;
+	void  RecvClear() override;
 
-	void  SendData(BYTE* data, ULONG data_size);
-	BYTE* RecvData();
-	int RecvSize();
-	void  RecvClear();
+	void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput) override {}
 
 	static void* operator new(size_t sz);
 	static void operator delete(void* p) noexcept;
+
+private:
+	void SendData(BYTE* data, ULONG data_size);
+	void Listen();
+	void DisconnectInternal();
 };
