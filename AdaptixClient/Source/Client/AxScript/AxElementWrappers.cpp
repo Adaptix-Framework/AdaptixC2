@@ -514,18 +514,44 @@ QJSValue AxTableWidgetWrapper::selectedRows()
 
 /// LIST
 
-AxListWidgetWrapper::AxListWidgetWrapper(QListWidget* widget, QJSEngine* engine, QObject* parent) : QObject(parent), list(widget), engine(engine)
+class CompactListDelegate : public QStyledItemDelegate {
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+        QLineEdit* editor = new QLineEdit(parent);
+        editor->setContentsMargins(0, 0, 0, 0);
+        return editor;
+    }
+
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+        return QStyledItemDelegate::sizeHint(option, index);
+    }
+};
+
+AxListWidgetWrapper::AxListWidgetWrapper(QWidget* container, QListWidget* widget, QPushButton* btnAdd, QPushButton* btnRemove, QJSEngine* engine, QObject* parent)
+    : QObject(parent), container(container), list(widget), btnAdd(btnAdd), btnRemove(btnRemove), engine(engine)
 {
+    list->setObjectName("AxCompactList");
     list->setAlternatingRowColors(true);
     list->setSelectionMode(QAbstractItemView::ExtendedSelection);
     list->setEditTriggers(QAbstractItemView::DoubleClicked);
 
-    list->setItemDelegate(new ListDelegate(list));
+    list->setItemDelegate(new CompactListDelegate(list));
+    list->setSpacing(0);
+
+    list->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
 
     connect(list, &QListWidget::currentTextChanged, this, &AxListWidgetWrapper::currentTextChanged);
     connect(list, &QListWidget::currentRowChanged,  this, &AxListWidgetWrapper::currentRowChanged);
     connect(list, &QListWidget::itemClicked,        this, [this](const QListWidgetItem* item) { if (item) Q_EMIT itemClickedText(item->text()); });
     connect(list, &QListWidget::itemDoubleClicked,  this, [this](const QListWidgetItem* item) { if (item) Q_EMIT itemDoubleClickedText(item->text()); });
+
+    btnAdd->setVisible(false);
+    btnRemove->setVisible(false);
+    connect(btnAdd,    &QPushButton::clicked, this, &AxListWidgetWrapper::onAddClicked);
+    connect(btnRemove, &QPushButton::clicked, this, &AxListWidgetWrapper::onRemoveClicked);
 }
 
 QVariant AxListWidgetWrapper::jsonMarshal() const
@@ -548,7 +574,7 @@ void AxListWidgetWrapper::jsonUnmarshal(const QVariant& value)
     }
 }
 
-QListWidget* AxListWidgetWrapper::widget() const { return list; }
+QWidget* AxListWidgetWrapper::widget() const { return container; }
 
 QJSValue AxListWidgetWrapper::items()
 {
@@ -632,6 +658,63 @@ void AxListWidgetWrapper::setReadOnly(const bool readonly)
         else
             item->setFlags(item->flags() | Qt::ItemIsEditable);
     }
+}
+
+void AxListWidgetWrapper::setDragDropEnabled(const bool enabled)
+{
+    if (enabled) {
+        list->setDragDropMode(QAbstractItemView::InternalMove);
+        list->setDefaultDropAction(Qt::MoveAction);
+    } else {
+        list->setDragDropMode(QAbstractItemView::NoDragDrop);
+    }
+}
+
+void AxListWidgetWrapper::setMenuEnabled(const bool enabled)
+{
+    this->menuEnabled = enabled;
+    if (enabled) {
+        list->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
+    } else {
+        list->setContextMenuPolicy(Qt::DefaultContextMenu);
+        disconnect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
+    }
+}
+
+void AxListWidgetWrapper::showContextMenu(const QPoint &pos)
+{
+    QMenu menu(list);
+
+    QAction* addAction = menu.addAction("Add");
+    QAction* removeAction = menu.addAction("Remove");
+
+    QAction* selected = menu.exec(list->viewport()->mapToGlobal(pos));
+    if (selected == addAction) {
+        onAddClicked();
+    } else if (selected == removeAction) {
+        onRemoveClicked();
+    }
+}
+
+void AxListWidgetWrapper::setButtonsEnabled(const bool enabled)
+{
+    btnAdd->setVisible(enabled);
+    btnRemove->setVisible(enabled);
+}
+
+void AxListWidgetWrapper::onAddClicked()
+{
+    addItem("");
+    list->setCurrentRow(list->count() - 1);
+    list->editItem(list->item(list->count() - 1));
+}
+
+void AxListWidgetWrapper::onRemoveClicked()
+{
+    QList<QListWidgetItem*> selectedItems = list->selectedItems();
+    for (QListWidgetItem* item : selectedItems)
+        delete item;
 }
 
 /// BUTTON

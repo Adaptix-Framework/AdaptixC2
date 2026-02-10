@@ -557,22 +557,26 @@ Q_SIGNALS:
 
 class AxListWidgetWrapper : public QObject, public AbstractAxElement, public AbstractAxVisualElement {
 Q_OBJECT
-    QListWidget* list;
-    QJSEngine*   engine;
+    QWidget*      container;
+    QListWidget*  list;
+    QPushButton*  btnAdd;
+    QPushButton*  btnRemove;
+    QJSEngine*    engine;
 
-    bool readonly = false;
+    bool readonly    = false;
+    bool menuEnabled = true;
 
 public:
-    explicit AxListWidgetWrapper(QListWidget* widget, QJSEngine* engine, QObject* parent = nullptr);
+    explicit AxListWidgetWrapper(QWidget* container, QListWidget* widget, QPushButton* btnAdd, QPushButton* btnRemove, QJSEngine* engine, QObject* parent = nullptr);
 
     QVariant jsonMarshal() const override;
     void jsonUnmarshal(const QVariant& value) override;
 
-    QListWidget* widget() const override;
-    Q_INVOKABLE void setEnabled(const bool enable) const override { widget()->setEnabled(enable); }
-    Q_INVOKABLE void setVisible(const bool enable) const override { widget()->setVisible(enable); }
-    Q_INVOKABLE bool getEnabled() const override { return widget()->isEnabled(); }
-    Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
+    QWidget* widget() const override;
+    Q_INVOKABLE void setEnabled(const bool enable) const override { container->setEnabled(enable); }
+    Q_INVOKABLE void setVisible(const bool enable) const override { container->setVisible(enable); }
+    Q_INVOKABLE bool getEnabled() const override { return container->isEnabled(); }
+    Q_INVOKABLE bool getVisible() const override { return container->isVisible(); }
 
     Q_INVOKABLE QJSValue items();
     Q_INVOKABLE void     addItem(const QString& text);
@@ -586,6 +590,14 @@ public:
     Q_INVOKABLE void     setCurrentRow(int row);
     Q_INVOKABLE QJSValue selectedRows() const;
     Q_INVOKABLE void     setReadOnly(bool readonly);
+    Q_INVOKABLE void     setDragDropEnabled(bool enabled);
+    Q_INVOKABLE void     setMenuEnabled(bool enabled);
+    Q_INVOKABLE void     setButtonsEnabled(bool enabled);
+
+private Q_SLOTS:
+    void showContextMenu(const QPoint &pos);
+    void onAddClicked();
+    void onRemoveClicked();
 
 Q_SIGNALS:
     void currentTextChanged(const QString &currentText);

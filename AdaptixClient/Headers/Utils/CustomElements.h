@@ -81,7 +81,7 @@ public:
 
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
         QSize size = QStyledItemDelegate::sizeHint(option, index);
-        return QSize(size.width(), size.height() + 10);
+        return QSize(size.width(), size.height() + 4);
     }
 };
 

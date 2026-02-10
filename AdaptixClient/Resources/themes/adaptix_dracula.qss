@@ -898,6 +898,17 @@ QListWidget:focus {
     outline: none;
 }
 
+QListWidget#AxCompactList {
+    padding: 0px;
+    border: 1px solid #5a5e7a;
+}
+
+QListWidget#AxCompactList::item {
+    padding: 0px 2px;
+    margin: 0px;
+    border-radius: 0px;
+}
+
 
 
 CardListWidget {
