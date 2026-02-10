@@ -76,7 +76,6 @@ typedef struct
 UINT_PTR GetRIP( VOID );
 VOID     KaynLdrReloc( PVOID KaynImage, PVOID ImageBase, PVOID BaseRelocDir, DWORD KHdrSize );
 VOID Rc4( PBYTE Data, DWORD DataLen, PBYTE Key, DWORD KeyLen );
-LPVOID DecryptDllBase( PINSTANCE pInstance, LPVOID pDllBase );
 
 #pragma pack(1)
 typedef struct

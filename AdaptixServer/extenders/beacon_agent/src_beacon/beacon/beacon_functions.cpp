@@ -373,7 +373,7 @@ PVOID BeaconGetValue(const char* key)
 
 BOOL BeaconRemoveValue(const char* key)
 {
-	if (!key || StrLenA(key) == 0)
+	if (!key || strlen(key) == 0)
 		return FALSE;
 
 	for (auto it = g_Agent->Values.begin(); it != g_Agent->Values.end(); ++it) {

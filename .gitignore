@@ -6,6 +6,8 @@ objects_tcp/
 .idea/
 .qt/
 *.so
+*.bin
+*.exe
 dist/
 AdaptixServer/server-dist/
 AdaptixClient/CMakeFiles/
@@ -27,9 +29,6 @@ AdaptixClient/Libs/kddockwidgets/*_export.h
 # VSCode
 .vscode/
 
-# claude
-CLAUDE.md
-.claude
 # macOS
 .DS_Store
 **/.DS_Store
