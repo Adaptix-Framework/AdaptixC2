@@ -53,7 +53,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 		return errors.New("listener already exists")
 	}
 
-	listenerData, customData, err := ts.Extender.ExListenerStart(listenerName, listenerRegName, listenerConfig, listenerCustomData)
+	listenerData, customData, err := ts.Extender.ExListenerCreate(listenerName, listenerRegName, listenerConfig, listenerCustomData)
 	if err != nil {
 		return err
 	}
@@ -79,6 +79,14 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 			logs.Error("", "Listener %s is invalid watermark. Set random...", listenerName)
 		}
 		listenerData.Watermark, _ = krypt.GenerateUID(8)
+	}
+
+	err = ts.Extender.ExListenerStart(listenerName)
+	if err != nil {
+		listenerData.Status = "Stopped"
+		logs.Error("", "Listener %s created but failed to start: %s", listenerName, err.Error())
+	} else {
+		listenerData.Status = "Listen"
 	}
 
 	ts.listeners.Put(listenerName, listenerData)
@@ -161,10 +169,7 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 		return fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
-	err := ts.Extender.ExListenerStop(listenerName)
-	if err != nil {
-		return err
-	}
+	_ = ts.Extender.ExListenerStop(listenerName)
 
 	ts.listeners.Delete(listenerName)
 

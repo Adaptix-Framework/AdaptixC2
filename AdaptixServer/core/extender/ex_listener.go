@@ -2,7 +2,7 @@ package extender
 
 import adaptix "github.com/Adaptix-Framework/axc2"
 
-func (ex *AdaptixExtender) ExListenerStart(listenerName string, configType string, config string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error) {
+func (ex *AdaptixExtender) ExListenerCreate(listenerName string, configType string, config string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error) {
 	module, err := ex.getListenerModule(configType)
 	if err != nil {
 		return adaptix.ListenerData{}, nil, err
@@ -13,16 +13,17 @@ func (ex *AdaptixExtender) ExListenerStart(listenerName string, configType strin
 		return listenerData, customData, err
 	}
 
-	err = listener.Start()
-	if err != nil {
-		listenerData.Status = "Stopped"
-		return listenerData, customData, err
-	}
-
-	listenerData.Status = "Listen"
 	ex.activeListeners[listenerName] = listener
 
 	return listenerData, customData, nil
+}
+
+func (ex *AdaptixExtender) ExListenerStart(listenerName string) error {
+	listener, err := ex.getActiveListener(listenerName)
+	if err != nil {
+		return err
+	}
+	return listener.Start()
 }
 
 func (ex *AdaptixExtender) ExListenerEdit(listenerName string, config string) (adaptix.ListenerData, []byte, error) {
