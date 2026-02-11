@@ -256,8 +256,8 @@ func (tm *TaskManager) Delete(agentId string, taskId string) error {
 		return fmt.Errorf("task %v in process", taskId)
 	}
 
-	value, ok := agent.CompletedTasks.GetDelete(taskId)
-	if !ok {
+	task, err := tm.ts.DBMS.DbTaskGet(taskId)
+	if err != nil {
 		return fmt.Errorf("task %v not found", taskId)
 	}
 

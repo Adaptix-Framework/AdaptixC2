@@ -15,14 +15,13 @@ import (
 )
 
 func (ts *Teamserver) TsScreenshotList() (string, error) {
-	var screens []adaptix.ScreenData
-	ts.screenshots.ForEach(func(key string, value interface{}) bool {
-		screenData := value.(adaptix.ScreenData)
-		screenData.LocalPath = "******"
-		screenData.Content = nil
-		screens = append(screens, screenData)
-		return true
-	})
+	dbScreens := ts.DBMS.DbScreenshotAll()
+	screens := make([]adaptix.ScreenData, 0, len(dbScreens))
+	for _, s := range dbScreens {
+		s.LocalPath = "******"
+		s.Content = nil
+		screens = append(screens, s)
+	}
 
 	jsonScreenshot, err := json.Marshal(screens)
 	if err != nil {
@@ -32,12 +31,15 @@ func (ts *Teamserver) TsScreenshotList() (string, error) {
 }
 
 func (ts *Teamserver) TsScreenshotGetImage(screenId string) ([]byte, error) {
-	value, ok := ts.screenshots.Get(screenId)
-	if !ok {
+	screenData, err := ts.DBMS.DbScreenshotById(screenId)
+	if err != nil {
 		return []byte(""), errors.New("Screen not found: " + screenId)
 	}
-	screenData := value.(adaptix.ScreenData)
-	return screenData.Content, nil
+	content, err := os.ReadFile(screenData.LocalPath)
+	if err != nil {
+		return []byte(""), errors.New("Failed to read screenshot file: " + err.Error())
+	}
+	return content, nil
 }
 
 func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byte) error {
@@ -116,8 +118,8 @@ func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byt
 }
 
 func (ts *Teamserver) TsScreenshotNote(screenId string, note string) error {
-	value, ok := ts.screenshots.Get(screenId)
-	if !ok {
+	_, err := ts.DBMS.DbScreenshotById(screenId)
+	if err != nil {
 		return errors.New("Screen not found: " + screenId)
 	}
 
@@ -139,8 +141,8 @@ func (ts *Teamserver) TsScreenshotDelete(screenId string) error {
 	}
 	// ----------------
 
-	value, ok := ts.screenshots.Get(screenId)
-	if !ok {
+	screenData, err := ts.DBMS.DbScreenshotById(screenId)
+	if err != nil {
 		return errors.New("Screen not found: " + screenId)
 	}
 

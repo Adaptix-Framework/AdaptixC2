@@ -9,6 +9,11 @@ import (
 type DBMS struct {
 	database *sql.DB
 	exists   bool
+
+	stmtAgentTick     *sql.Stmt
+	stmtConsoleInsert *sql.Stmt
+	stmtTaskInsert    *sql.Stmt
+	stmtTaskUpdate    *sql.Stmt
 }
 
 func NewDatabase(dbPath string) (*DBMS, error) {
@@ -34,7 +39,36 @@ func NewDatabase(dbPath string) (*DBMS, error) {
 			dbms.exists = false
 		}
 	}
+
+	if dbms.exists {
+		dbms.prepareStatements()
+	}
+
 	return dbms, err
+}
+
+func (dbms *DBMS) prepareStatements() {
+	var err error
+
+	dbms.stmtAgentTick, err = dbms.database.Prepare(`UPDATE Agents SET LastTick = ? WHERE Id = ?;`)
+	if err != nil {
+		dbms.stmtAgentTick = nil
+	}
+
+	dbms.stmtConsoleInsert, err = dbms.database.Prepare(`INSERT INTO Consoles (AgentId, Packet) values(?,?);`)
+	if err != nil {
+		dbms.stmtConsoleInsert = nil
+	}
+
+	dbms.stmtTaskInsert, err = dbms.database.Prepare(`INSERT OR IGNORE INTO Tasks (TaskId, AgentId, TaskType, Client, User, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed) values(?,?,?,?,?,?,?,?,?,?,?,?,?);`)
+	if err != nil {
+		dbms.stmtTaskInsert = nil
+	}
+
+	dbms.stmtTaskUpdate, err = dbms.database.Prepare(`UPDATE Tasks SET FinishDate = ?, MessageType = ?, Message = ?, ClearText = ?, Completed = ? WHERE TaskId = ?;`)
+	if err != nil {
+		dbms.stmtTaskUpdate = nil
+	}
 }
 
 func (dbms *DBMS) DatabaseInit() error {
@@ -210,6 +244,11 @@ func (dbms *DBMS) DatabaseInit() error {
 		`CREATE INDEX IF NOT EXISTS idx_downloads_date ON Downloads(Date);`,
 		`CREATE INDEX IF NOT EXISTS idx_screenshots_date ON Screenshots(Date);`,
 		`CREATE INDEX IF NOT EXISTS idx_credentials_agentid ON Credentials(AgentId);`,
+		`CREATE INDEX IF NOT EXISTS idx_credentials_credid ON Credentials(CredId);`,
+		`CREATE INDEX IF NOT EXISTS idx_credentials_dup ON Credentials(Username, Realm, Password);`,
+		`CREATE INDEX IF NOT EXISTS idx_targets_targetid ON Targets(TargetId);`,
+		`CREATE INDEX IF NOT EXISTS idx_targets_address ON Targets(Address);`,
+		`CREATE INDEX IF NOT EXISTS idx_targets_computer_domain ON Targets(Computer, Domain);`,
 		`CREATE INDEX IF NOT EXISTS idx_pivots_parentagentid ON Pivots(ParentAgentId);`,
 		`CREATE INDEX IF NOT EXISTS idx_pivots_childagentid ON Pivots(ChildAgentId);`,
 	}
@@ -222,4 +261,20 @@ func (dbms *DBMS) DatabaseInit() error {
 
 func (dbms *DBMS) DatabaseExists() bool {
 	return dbms.exists
+}
+
+func (dbms *DBMS) DbTableCount(table string) int {
+	if !dbms.exists {
+		return 0
+	}
+	allowed := map[string]bool{
+		"Screenshots": true, "Tasks": true, "Consoles": true,
+		"Downloads": true, "Credentials": true, "Targets": true, "Chat": true,
+	}
+	if !allowed[table] {
+		return 0
+	}
+	var count int
+	_ = dbms.database.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&count)
+	return count
 }

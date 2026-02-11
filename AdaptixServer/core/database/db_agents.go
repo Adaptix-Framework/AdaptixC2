@@ -10,15 +10,9 @@ import (
 )
 
 func (dbms *DBMS) DbAgentExist(agentId string) bool {
-	rows, err := dbms.database.Query("SELECT Id FROM Agents WHERE Id = ?;", agentId)
-	if err != nil {
-		return false
-	}
-	defer func(rows *sql.Rows) {
-		_ = rows.Close()
-	}(rows)
-
-	return rows.Next()
+	var id string
+	err := dbms.database.QueryRow("SELECT Id FROM Agents WHERE Id = ? LIMIT 1;", agentId).Scan(&id)
+	return err == nil
 }
 
 func (dbms *DBMS) DbAgentInsert(agentData adaptix.AgentData) error {
@@ -27,23 +21,25 @@ func (dbms *DBMS) DbAgentInsert(agentData adaptix.AgentData) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbAgentExist(agentData.Id)
-	if ok {
-		return fmt.Errorf("agent %s already exists", agentData.Id)
-	}
-
-	insertQuery := `INSERT INTO Agents (Id, Crc, Name, SessionKey, Listener, Async, ExternalIP, InternalIP, GmtOffset, 
+	insertQuery := `INSERT OR IGNORE INTO Agents (Id, Crc, Name, SessionKey, Listener, Async, ExternalIP, InternalIP, GmtOffset, 
                        Sleep, Jitter, Pid, Tid, Arch, Elevated, Process, Os, OsDesc, Domain, Computer, Username, Impersonated,
 					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId, CustomData
 				   ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);`
-	_, err := dbms.database.Exec(insertQuery,
+	result, err := dbms.database.Exec(insertQuery,
 		agentData.Id, agentData.Crc, agentData.Name, agentData.SessionKey, agentData.Listener, agentData.Async, agentData.ExternalIP,
 		agentData.InternalIP, agentData.GmtOffset, agentData.Sleep, agentData.Jitter, agentData.Pid, agentData.Tid, agentData.Arch,
 		agentData.Elevated, agentData.Process, agentData.Os, agentData.OsDesc, agentData.Domain, agentData.Computer, agentData.Username,
 		agentData.Impersonated, agentData.OemCP, agentData.ACP, agentData.CreateTime, agentData.LastTick, agentData.WorkingTime, agentData.KillDate, agentData.Tags, agentData.Mark,
 		agentData.Color, agentData.TargetId, agentData.CustomData,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("agent %s already exists", agentData.Id)
+	}
+	return nil
 }
 
 func (dbms *DBMS) DbAgentUpdate(agentData adaptix.AgentData) error {
@@ -90,8 +86,11 @@ func (dbms *DBMS) DbAgentTick(agentData adaptix.AgentData) error {
 		return errors.New("database does not exist")
 	}
 
-	updateQuery := `UPDATE Agents SET LastTick = ? WHERE Id = ?;`
-	_, err := dbms.database.Exec(updateQuery, agentData.LastTick, agentData.Id)
+	if dbms.stmtAgentTick != nil {
+		_, err := dbms.stmtAgentTick.Exec(agentData.LastTick, agentData.Id)
+		return err
+	}
+	_, err := dbms.database.Exec(`UPDATE Agents SET LastTick = ? WHERE Id = ?;`, agentData.LastTick, agentData.Id)
 	return err
 }
 

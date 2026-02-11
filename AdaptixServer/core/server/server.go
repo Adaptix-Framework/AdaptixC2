@@ -8,7 +8,6 @@ import (
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
-	"encoding/json"
 	"net"
 	"os"
 
@@ -152,29 +151,6 @@ func (ts *Teamserver) RestoreData() {
 
 		ts.TsNotifyAgent(true, agentData)
 
-		/// Tasks
-		restoreTasks := ts.DBMS.DbTasksAll(agentData.Id)
-		for _, taskData := range restoreTasks {
-			agent.CompletedTasks.Put(taskData.TaskId, taskData)
-
-			packet2 := CreateSpAgentTaskSync(taskData)
-			ts.TsSyncAllClients(packet2)
-		}
-
-		/// Consoles
-		restoreConsoles := ts.DBMS.DbConsoleAll(agentData.Id)
-		for _, message := range restoreConsoles {
-			var packet3 map[string]any
-			err = json.Unmarshal(message, &packet3)
-			if err != nil {
-				continue
-			}
-
-			agent.OutConsole.Put(packet3)
-
-			ts.TsSyncAllClients(packet3)
-		}
-
 		countAgents++
 	}
 	logs.Success("   ", "Restored %v agents", countAgents)
@@ -188,59 +164,11 @@ func (ts *Teamserver) RestoreData() {
 	}
 	logs.Success("   ", "Restored %v pivots", countPivots)
 
-	/// CHAT
-	countMessages := 0
-	restoreChat := ts.DBMS.DbChatAll()
-	for _, restoreMessage := range restoreChat {
-		ts.messages.Put(restoreMessage)
-		countMessages++
-	}
-	logs.Success("   ", "Restored %v messages", countMessages)
-
-	/// DOWNLOADS
-	countDownloads := 0
-	restoreDownloads := ts.DBMS.DbDownloadAll()
-	for _, restoreDownload := range restoreDownloads {
-		ts.downloads.Put(restoreDownload.FileId, restoreDownload)
-
-		countDownloads++
-	}
-	logs.Success("   ", "Restored %v downloads", countDownloads)
-
-	/// SCREENSHOTS
-	countScreenshots := 0
-	restoreScreenshots := ts.DBMS.DbScreenshotAll()
-	for _, restoreScreen := range restoreScreenshots {
-
-		restoreScreen.Content, err = os.ReadFile(restoreScreen.LocalPath)
-		if err != nil {
-			continue
-		}
-
-		ts.screenshots.Put(restoreScreen.ScreenId, restoreScreen)
-
-		countScreenshots++
-	}
-	logs.Success("   ", "Restored %v screens", countScreenshots)
-
-	/// CREDENTIALS
-	countCredentials := 0
-	restoreCredentials := ts.DBMS.DbCredentialsAll()
-	for _, restoreCredential := range restoreCredentials {
-
-		ts.credentials.Put(restoreCredential)
-		countCredentials++
-	}
-	logs.Success("   ", "Restored %v credentials", countCredentials)
-
-	/// TARGETS
-	countTargets := 0
-	restoreTargets := ts.DBMS.DbTargetsAll()
-	for _, restoreTarget := range restoreTargets {
-		ts.targets.Put(restoreTarget)
-		countTargets++
-	}
-	logs.Success("   ", "Restored %v targets", countTargets)
+	logs.Success("   ", "Restored %v listeners", ts.DBMS.DbTableCount("Listeners"))
+	logs.Success("   ", "Restored %v screenshots", ts.DBMS.DbTableCount("Screenshots"))
+	logs.Success("   ", "Restored %v downloads", ts.DBMS.DbTableCount("Downloads"))
+	logs.Success("   ", "Restored %v credentials", ts.DBMS.DbTableCount("Credentials"))
+	logs.Success("   ", "Restored %v targets", ts.DBMS.DbTableCount("Targets"))
 
 	/// LISTENERS
 	restoreListeners := ts.DBMS.DbListenerAll()
@@ -249,14 +177,15 @@ func (ts *Teamserver) RestoreData() {
 		if err != nil {
 			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {
-			if restoreListener.ListenerStatus == "Paused" {
-				err = ts.Extender.ExListenerPause(restoreListener.ListenerName)
-				if err != nil {
-					logs.Error("", "Failed to pause restored listener %s: %s", restoreListener.ListenerName, err.Error())
-				} else {
-					value, ok := ts.listeners.Get(restoreListener.ListenerName)
-					if ok {
-						listenerData := value.(adaptix.ListenerData)
+			value, ok := ts.listeners.Get(restoreListener.ListenerName)
+			if ok {
+				listenerData := value.(adaptix.ListenerData)
+
+				if restoreListener.ListenerStatus == "Paused" && listenerData.Status == "Listen" {
+					err = ts.Extender.ExListenerPause(restoreListener.ListenerName)
+					if err != nil {
+						logs.Error("", "Failed to pause restored listener %s: %s", restoreListener.ListenerName, err.Error())
+					} else {
 						listenerData.Status = "Paused"
 						ts.listeners.Put(restoreListener.ListenerName, listenerData)
 						packet := CreateSpListenerEdit(listenerData)

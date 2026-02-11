@@ -11,10 +11,10 @@ import (
 )
 
 func (ts *Teamserver) TsCredentilsList() (string, error) {
-	var creds []adaptix.CredsData
-	for value := range ts.credentials.Iterator() {
-		c := *value.Item.(*adaptix.CredsData)
-		creds = append(creds, c)
+	dbCreds := ts.DBMS.DbCredentialsAll()
+	creds := make([]adaptix.CredsData, 0, len(dbCreds))
+	for _, c := range dbCreds {
+		creds = append(creds, *c)
 	}
 
 	jsonCreds, err := json.Marshal(creds)
@@ -56,15 +56,7 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 			cred.Host = v
 		}
 
-		found := false
-		for c_value := range ts.credentials.Iterator() {
-			c := c_value.Item.(*adaptix.CredsData)
-			if c.Username == cred.Username && c.Realm == cred.Realm && c.Password == cred.Password {
-				found = true
-				break
-			}
-		}
-		if found {
+		if ts.DBMS.DbCredentialsFindDuplicate(cred.Username, cred.Realm, cred.Password) {
 			continue
 		}
 
@@ -113,12 +105,10 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 
 func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error {
 
-	var cred *adaptix.CredsData
-	var oldCred adaptix.CredsData
-	found := false
-	for value := range ts.credentials.Iterator() {
-		cred = value.Item.(*adaptix.CredsData)
-		if cred.CredId == credId {
+	cred, err := ts.DBMS.DbCredentialById(credId)
+	if err != nil {
+		return fmt.Errorf("creds %s not exists", credId)
+	}
 
 	if cred.Username == username && cred.Realm == realm && cred.Password == password && cred.Type == credType && cred.Tag == tag && cred.Storage == storage && cred.Host == host {
 		return nil
@@ -194,30 +184,11 @@ func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
 }
 
 func (ts *Teamserver) TsCredentialsSetTag(credsId []string, tag string) error {
-	updateSet := make(map[string]struct{}, len(credsId))
-	for _, id := range credsId {
-		updateSet[id] = struct{}{}
-	}
+	go func(ids []string, t string) {
+		_ = ts.DBMS.DbCredentialsSetTagBatch(ids, t)
+	}(credsId, tag)
 
-	var updatedCreds []adaptix.CredsData
-	for valueCred := range ts.credentials.Iterator() {
-		cred := valueCred.Item.(*adaptix.CredsData)
-		if _, exists := updateSet[cred.CredId]; exists {
-			cred.Tag = tag
-			updatedCreds = append(updatedCreds, *cred)
-		}
-	}
-
-	go func(creds []adaptix.CredsData) {
-		_ = ts.DBMS.DbCredentialsUpdateBatch(creds)
-	}(updatedCreds)
-
-	var ids []string
-	for _, c := range updatedCreds {
-		ids = append(ids, c.CredId)
-	}
-
-	packet := CreateSpCredentialsSetTag(ids, tag)
+	packet := CreateSpCredentialsSetTag(credsId, tag)
 	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryCredentialsRealtime)
 
 	return nil

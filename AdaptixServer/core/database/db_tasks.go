@@ -10,15 +10,9 @@ import (
 )
 
 func (dbms *DBMS) DbTaskExist(taskId string) bool {
-	rows, err := dbms.database.Query("SELECT TaskId FROM Tasks WHERE TaskId = ?;", taskId)
-	if err != nil {
-		return false
-	}
-	defer func(rows *sql.Rows) {
-		_ = rows.Close()
-	}(rows)
-
-	return rows.Next()
+	var id string
+	err := dbms.database.QueryRow("SELECT TaskId FROM Tasks WHERE TaskId = ? LIMIT 1;", taskId).Scan(&id)
+	return err == nil
 }
 
 func (dbms *DBMS) DbTaskInsert(taskData adaptix.TaskData) error {
@@ -27,14 +21,23 @@ func (dbms *DBMS) DbTaskInsert(taskData adaptix.TaskData) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbTaskExist(taskData.TaskId)
-	if ok {
+	var (
+		result sql.Result
+		err    error
+	)
+	if dbms.stmtTaskInsert != nil {
+		result, err = dbms.stmtTaskInsert.Exec(taskData.TaskId, taskData.AgentId, taskData.Type, taskData.Client, taskData.User, taskData.Computer, taskData.StartDate, taskData.FinishDate, taskData.CommandLine, taskData.MessageType, taskData.Message, taskData.ClearText, taskData.Completed)
+	} else {
+		result, err = dbms.database.Exec(`INSERT OR IGNORE INTO Tasks (TaskId, AgentId, TaskType, Client, User, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed) values(?,?,?,?,?,?,?,?,?,?,?,?,?);`, taskData.TaskId, taskData.AgentId, taskData.Type, taskData.Client, taskData.User, taskData.Computer, taskData.StartDate, taskData.FinishDate, taskData.CommandLine, taskData.MessageType, taskData.Message, taskData.ClearText, taskData.Completed)
+	}
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
 		return fmt.Errorf("task %s already exists", taskData.TaskId)
 	}
-
-	insertQuery := `INSERT INTO Tasks (TaskId, AgentId, TaskType, Client, User, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed) values(?,?,?,?,?,?,?,?,?,?,?,?,?);`
-	_, err := dbms.database.Exec(insertQuery, taskData.TaskId, taskData.AgentId, taskData.Type, taskData.Client, taskData.User, taskData.Computer, taskData.StartDate, taskData.FinishDate, taskData.CommandLine, taskData.MessageType, taskData.Message, taskData.ClearText, taskData.Completed)
-	return err
+	return nil
 }
 
 func (dbms *DBMS) DbTaskUpdate(taskData adaptix.TaskData) error {
@@ -43,14 +46,23 @@ func (dbms *DBMS) DbTaskUpdate(taskData adaptix.TaskData) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbTaskExist(taskData.TaskId)
-	if !ok {
+	var (
+		result sql.Result
+		err    error
+	)
+	if dbms.stmtTaskUpdate != nil {
+		result, err = dbms.stmtTaskUpdate.Exec(taskData.FinishDate, taskData.MessageType, taskData.Message, taskData.ClearText, taskData.Completed, taskData.TaskId)
+	} else {
+		result, err = dbms.database.Exec(`UPDATE Tasks SET FinishDate = ?, MessageType = ?, Message = ?, ClearText = ?, Completed = ? WHERE TaskId = ?;`, taskData.FinishDate, taskData.MessageType, taskData.Message, taskData.ClearText, taskData.Completed, taskData.TaskId)
+	}
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
 		return fmt.Errorf("task %s does not exist", taskData.TaskId)
 	}
-
-	updateQuery := `UPDATE Tasks SET FinishDate = ?, MessageType = ?, Message = ?, ClearText = ?, Completed = ? WHERE TaskId = ?;`
-	_, err := dbms.database.Exec(updateQuery, taskData.FinishDate, taskData.MessageType, taskData.Message, taskData.ClearText, taskData.Completed, taskData.TaskId)
-	return err
+	return nil
 }
 
 func (dbms *DBMS) DbTaskDelete(taskId string, agentId string) error {
@@ -70,6 +82,21 @@ func (dbms *DBMS) DbTaskDelete(taskId string, agentId string) error {
 	}
 
 	return err
+}
+
+func (dbms *DBMS) DbTaskGet(taskId string) (adaptix.TaskData, error) {
+	var taskData adaptix.TaskData
+
+	if !dbms.DatabaseExists() {
+		return taskData, errors.New("database does not exist")
+	}
+
+	selectQuery := `SELECT TaskId, AgentId, TaskType, Client, User, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed FROM Tasks WHERE TaskId = ?;`
+	err := dbms.database.QueryRow(selectQuery, taskId).Scan(&taskData.TaskId, &taskData.AgentId, &taskData.Type, &taskData.Client, &taskData.User, &taskData.Computer, &taskData.StartDate, &taskData.FinishDate, &taskData.CommandLine, &taskData.MessageType, &taskData.Message, &taskData.ClearText, &taskData.Completed)
+	if err != nil {
+		return taskData, fmt.Errorf("task %s not found", taskId)
+	}
+	return taskData, nil
 }
 
 func (dbms *DBMS) DbTasksAll(agentId string) []adaptix.TaskData {

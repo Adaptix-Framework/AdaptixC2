@@ -10,15 +10,9 @@ import (
 )
 
 func (dbms *DBMS) DbScreenshotExist(screenId string) bool {
-	rows, err := dbms.database.Query("SELECT ScreenId FROM Screenshots WHERE ScreenId = ?;", screenId)
-	if err != nil {
-		return false
-	}
-	defer func(rows *sql.Rows) {
-		_ = rows.Close()
-	}(rows)
-
-	return rows.Next()
+	var id string
+	err := dbms.database.QueryRow("SELECT ScreenId FROM Screenshots WHERE ScreenId = ? LIMIT 1;", screenId).Scan(&id)
+	return err == nil
 }
 
 func (dbms *DBMS) DbScreenshotInsert(screenData adaptix.ScreenData) error {
@@ -27,31 +21,34 @@ func (dbms *DBMS) DbScreenshotInsert(screenData adaptix.ScreenData) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbScreenshotExist(screenData.ScreenId)
-	if ok {
+	insertQuery := `INSERT OR IGNORE INTO Screenshots (ScreenId, User, Computer, LocalPath, Note, Date) values(?,?,?,?,?,?);`
+	result, err := dbms.database.Exec(insertQuery, screenData.ScreenId, screenData.User, screenData.Computer, screenData.LocalPath, screenData.Note, screenData.Date)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
 		return fmt.Errorf("screen %s already exists", screenData.ScreenId)
 	}
-
-	insertQuery := `INSERT INTO Screenshots (ScreenId, User, Computer, LocalPath, Note, Date) values(?,?,?,?,?,?);`
-	_, err := dbms.database.Exec(insertQuery, screenData.ScreenId, screenData.User, screenData.Computer, screenData.LocalPath, screenData.Note, screenData.Date)
-	return err
+	return nil
 }
 
 func (dbms *DBMS) DbScreenshotUpdate(screenId string, note string) error {
-
 	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbScreenshotExist(screenId)
-	if !ok {
+	updateQuery := `UPDATE Screenshots SET Note = ? WHERE ScreenId = ?;`
+	result, err := dbms.database.Exec(updateQuery, note, screenId)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
 		return fmt.Errorf("screen %s does not exist", screenId)
 	}
-
-	updateQuery := `UPDATE Screenshots SET Note = ? WHERE ScreenId = ?;`
-	_, err := dbms.database.Exec(updateQuery, screenId, note)
-	return err
+	return nil
 }
 
 func (dbms *DBMS) DbScreenshotDelete(screenId string) error {
@@ -60,14 +57,33 @@ func (dbms *DBMS) DbScreenshotDelete(screenId string) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbScreenshotExist(screenId)
-	if !ok {
+	deleteQuery := `DELETE FROM Screenshots WHERE ScreenId = ?;`
+	result, err := dbms.database.Exec(deleteQuery, screenId)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
 		return fmt.Errorf("screen %s does not exist", screenId)
 	}
+	return nil
+}
 
-	deleteQuery := `DELETE FROM Screenshots WHERE ScreenId = ?;`
-	_, err := dbms.database.Exec(deleteQuery, screenId)
-	return err
+func (dbms *DBMS) DbScreenshotById(screenId string) (*adaptix.ScreenData, error) {
+	ok := dbms.DatabaseExists()
+	if !ok {
+		return nil, errors.New("database does not exist")
+	}
+
+	selectQuery := `SELECT ScreenId, User, Computer, LocalPath, Note, Date FROM Screenshots WHERE ScreenId = ?;`
+	row := dbms.database.QueryRow(selectQuery, screenId)
+
+	screenData := &adaptix.ScreenData{}
+	err := row.Scan(&screenData.ScreenId, &screenData.User, &screenData.Computer, &screenData.LocalPath, &screenData.Note, &screenData.Date)
+	if err != nil {
+		return nil, fmt.Errorf("screen %s not found", screenId)
+	}
+	return screenData, nil
 }
 
 func (dbms *DBMS) DbScreenshotAll() []adaptix.ScreenData {
@@ -75,7 +91,7 @@ func (dbms *DBMS) DbScreenshotAll() []adaptix.ScreenData {
 
 	ok := dbms.DatabaseExists()
 	if ok {
-		selectQuery := `SELECT ScreenId, User, Computer, LocalPath, Note, Date FROM Screenshots;`
+		selectQuery := `SELECT ScreenId, User, Computer, LocalPath, Note, Date FROM Screenshots ORDER BY Date;`
 		query, err := dbms.database.Query(selectQuery)
 		if err == nil {
 			for query.Next() {

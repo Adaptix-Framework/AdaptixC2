@@ -12,15 +12,9 @@ import (
 )
 
 func (dbms *DBMS) DbDownloadExist(fileId string) bool {
-	rows, err := dbms.database.Query("SELECT FileId FROM Downloads WHERE FileId = ?;", fileId)
-	if err != nil {
-		return false
-	}
-	defer func(rows *sql.Rows) {
-		_ = rows.Close()
-	}(rows)
-
-	return rows.Next()
+	var id string
+	err := dbms.database.QueryRow("SELECT FileId FROM Downloads WHERE FileId = ? LIMIT 1;", fileId).Scan(&id)
+	return err == nil
 }
 
 func (dbms *DBMS) DbDownloadInsert(downloadData adaptix.DownloadData) error {
@@ -29,17 +23,19 @@ func (dbms *DBMS) DbDownloadInsert(downloadData adaptix.DownloadData) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbDownloadExist(downloadData.FileId)
-	if ok {
-		return fmt.Errorf("download %s already exists", downloadData.FileId)
-	}
-
-	insertQuery := `INSERT INTO Downloads (FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State) values(?,?,?,?,?,?,?,?,?,?,?);`
-	_, err := dbms.database.Exec(insertQuery,
+	insertQuery := `INSERT OR IGNORE INTO Downloads (FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State) values(?,?,?,?,?,?,?,?,?,?,?);`
+	result, err := dbms.database.Exec(insertQuery,
 		downloadData.FileId, downloadData.AgentId, downloadData.AgentName, downloadData.User, downloadData.Computer, downloadData.RemotePath,
 		downloadData.LocalPath, downloadData.TotalSize, downloadData.RecvSize, downloadData.Date, downloadData.State,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("download %s already exists", downloadData.FileId)
+	}
+	return nil
 }
 
 func (dbms *DBMS) DbDownloadDelete(fileId string) error {
@@ -76,12 +72,29 @@ func (dbms *DBMS) DbDownloadDeleteBatch(fileIds []string) error {
 	return err
 }
 
+func (dbms *DBMS) DbDownloadGet(fileId string) (adaptix.DownloadData, error) {
+	var downloadData adaptix.DownloadData
+
+	if !dbms.DatabaseExists() {
+		return downloadData, errors.New("database does not exist")
+	}
+
+	selectQuery := `SELECT FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State FROM Downloads WHERE FileId = ?;`
+	err := dbms.database.QueryRow(selectQuery, fileId).Scan(&downloadData.FileId, &downloadData.AgentId, &downloadData.AgentName, &downloadData.User, &downloadData.Computer, &downloadData.RemotePath,
+		&downloadData.LocalPath, &downloadData.TotalSize, &downloadData.RecvSize, &downloadData.Date, &downloadData.State,
+	)
+	if err != nil {
+		return downloadData, fmt.Errorf("download %s not found", fileId)
+	}
+	return downloadData, nil
+}
+
 func (dbms *DBMS) DbDownloadAll() []adaptix.DownloadData {
 	var downloads []adaptix.DownloadData
 
 	ok := dbms.DatabaseExists()
 	if ok {
-		selectQuery := `SELECT FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State FROM Downloads;`
+		selectQuery := `SELECT FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State FROM Downloads ORDER BY Date;`
 		query, err := dbms.database.Query(selectQuery)
 		if err != nil {
 			logs.Debug("", "Failed to query downloads: "+err.Error())

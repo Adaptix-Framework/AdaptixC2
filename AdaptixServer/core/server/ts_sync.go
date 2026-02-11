@@ -3,6 +3,8 @@ package server
 import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/safe"
+	"encoding/json"
+	"os"
 	"sort"
 
 	"github.com/Adaptix-Framework/axc2"
@@ -43,6 +45,8 @@ func getPacketCategory(packet interface{}) string {
 		return SyncCategoryCredentialsHistory
 	case SyncPackerTargetsAdd:
 		return SyncCategoryTargetsHistory
+	case json.RawMessage:
+		return SyncCategoryConsoleHistory
 	default:
 		return "misc"
 	}
@@ -368,15 +372,12 @@ func (ts *Teamserver) TsPresyncTasks() []interface{} {
 	var sortedTasks []adaptix.TaskData
 
 	ts.Agents.ForEach(func(key string, value interface{}) bool {
-		agent, ok := value.(*Agent)
+		_, ok := value.(*Agent)
 		if !ok {
 			return true
 		}
-		agent.CompletedTasks.ForEach(func(key2 string, value2 interface{}) bool {
-			taskData := value2.(adaptix.TaskData)
-			sortedTasks = append(sortedTasks, taskData)
-			return true
-		})
+		agentTasks := ts.DBMS.DbTasksAll(key)
+		sortedTasks = append(sortedTasks, agentTasks...)
 		return true
 	})
 
@@ -410,16 +411,20 @@ func (ts *Teamserver) TsPresyncConsole(client *ClientHandler) []interface{} {
 				return true
 			}
 		}
-		agent.OutConsole.DirectAccess(func(item interface{}) {
+		restoreConsoles := ts.DBMS.DbConsoleAll(key)
+		for _, message := range restoreConsoles {
 			if !consoleTeamMode {
-				if consoleTask, ok := item.(SyncPackerAgentConsoleTaskSync); ok {
-					if consoleTask.Client != username {
-						return
-					}
+				var check struct {
+					Client string `json:"Client"`
+					TaskId string `json:"TaskId"`
+				}
+				_ = json.Unmarshal(message, &check)
+				if check.TaskId != "" && check.Client != username {
+					continue
 				}
 			}
-			packets = append(packets, item)
-		})
+			packets = append(packets, json.RawMessage(message))
+		}
 		return true
 	})
 
@@ -440,16 +445,20 @@ func (ts *Teamserver) TsPresyncConsoleInactive(client *ClientHandler) []interfac
 		if !ts.isAgentInactive(agentData.Mark) {
 			return true
 		}
-		agent.OutConsole.DirectAccess(func(item interface{}) {
+		restoreConsoles := ts.DBMS.DbConsoleAll(key)
+		for _, message := range restoreConsoles {
 			if !consoleTeamMode {
-				if consoleTask, ok := item.(SyncPackerAgentConsoleTaskSync); ok {
-					if consoleTask.Client != username {
-						return
-					}
+				var check struct {
+					Client string `json:"Client"`
+					TaskId string `json:"TaskId"`
+				}
+				_ = json.Unmarshal(message, &check)
+				if check.TaskId != "" && check.Client != username {
+					continue
 				}
 			}
-			packets = append(packets, item)
-		})
+			packets = append(packets, json.RawMessage(message))
+		}
 		return true
 	})
 
@@ -468,25 +477,26 @@ func (ts *Teamserver) TsPresyncPivots() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncChat() []interface{} {
-	count := ts.messages.Len()
-	packets := make([]interface{}, 0, count)
-	ts.messages.DirectAccess(func(item interface{}) {
-		message := item.(adaptix.ChatData)
+	dbMessages := ts.DBMS.DbChatAll()
+	packets := make([]interface{}, 0, len(dbMessages))
+	for _, message := range dbMessages {
 		p := CreateSpChatMessage(message)
 		packets = append(packets, p)
-	})
+	}
 	return packets
 }
 
 func (ts *Teamserver) TsPresyncDownloads() []interface{} {
-	count := ts.downloads.Len()
-	sortedDownloads := make([]adaptix.DownloadData, 0, count)
+	var sortedDownloads []adaptix.DownloadData
 
 	ts.downloads.ForEach(func(key string, value interface{}) bool {
 		downloadData := value.(adaptix.DownloadData)
 		sortedDownloads = append(sortedDownloads, downloadData)
 		return true
 	})
+
+	dbDownloads := ts.DBMS.DbDownloadAll()
+	sortedDownloads = append(sortedDownloads, dbDownloads...)
 
 	sort.Slice(sortedDownloads, func(i, j int) bool {
 		return sortedDownloads[i].Date < sortedDownloads[j].Date
@@ -502,21 +512,17 @@ func (ts *Teamserver) TsPresyncDownloads() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
-	count := ts.screenshots.Len()
-	sortedScreens := make([]adaptix.ScreenData, 0, count)
+	dbScreens := ts.DBMS.DbScreenshotAll()
+	if len(dbScreens) == 0 {
+		return nil
+	}
 
-	ts.screenshots.ForEach(func(key string, value interface{}) bool {
-		screenData := value.(adaptix.ScreenData)
-		sortedScreens = append(sortedScreens, screenData)
-		return true
-	})
-
-	sort.Slice(sortedScreens, func(i, j int) bool {
-		return sortedScreens[i].Date < sortedScreens[j].Date
-	})
-
-	packets := make([]interface{}, 0, len(sortedScreens))
-	for _, screenData := range sortedScreens {
+	packets := make([]interface{}, 0, len(dbScreens))
+	for _, screenData := range dbScreens {
+		content, err := os.ReadFile(screenData.LocalPath)
+		if err == nil {
+			screenData.Content = content
+		}
 		t := CreateSpScreenshotCreate(screenData)
 		packets = append(packets, t)
 	}
@@ -524,13 +530,7 @@ func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncCredentials() []interface{} {
-	count := ts.credentials.Len()
-	creds := make([]*adaptix.CredsData, 0, count)
-	ts.credentials.DirectAccess(func(item interface{}) {
-		c := item.(*adaptix.CredsData)
-		creds = append(creds, c)
-	})
-
+	creds := ts.DBMS.DbCredentialsAll()
 	if len(creds) == 0 {
 		return nil
 	}
@@ -539,13 +539,7 @@ func (ts *Teamserver) TsPresyncCredentials() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncTargets() []interface{} {
-	count := ts.targets.Len()
-	targets := make([]*adaptix.TargetData, 0, count)
-	ts.targets.DirectAccess(func(item interface{}) {
-		target := item.(*adaptix.TargetData)
-		targets = append(targets, target)
-	})
-
+	targets := ts.DBMS.DbTargetsAll()
 	if len(targets) == 0 {
 		return nil
 	}

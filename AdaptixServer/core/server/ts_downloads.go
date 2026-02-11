@@ -251,6 +251,12 @@ func (ts *Teamserver) TsDownloadList() (string, error) {
 		return true
 	})
 
+	dbDownloads := ts.DBMS.DbDownloadAll()
+	for _, data := range dbDownloads {
+		data.LocalPath = "******"
+		downloads = append(downloads, data)
+	}
+
 	jsonDownloads, err := json.Marshal(downloads)
 	if err != nil {
 		return "", err
@@ -260,15 +266,20 @@ func (ts *Teamserver) TsDownloadList() (string, error) {
 
 func (ts *Teamserver) TsDownloadGet(fileId string) (adaptix.DownloadData, error) {
 	value, ok := ts.downloads.Get(fileId)
-	if !ok {
+	if ok {
+		return value.(adaptix.DownloadData), nil
+	}
+
+	downloadData, err := ts.DBMS.DbDownloadGet(fileId)
+	if err != nil {
 		return adaptix.DownloadData{}, errors.New("File not found: " + fileId)
 	}
 	return downloadData, nil
 }
 
 func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
-	value, ok := ts.downloads.Get(fileId)
-	if !ok {
+	downloadData, err := ts.TsDownloadGet(fileId)
+	if err != nil {
 		return "", nil, errors.New("File not found: " + fileId)
 	}
 
@@ -299,22 +310,31 @@ func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
 
 	for _, id := range fileId {
 		value, ok := ts.downloads.Get(id)
-		if !ok {
-			continue
-		}
-		downloadData := value.(adaptix.DownloadData)
+		if ok {
+			downloadData := value.(adaptix.DownloadData)
 
-		if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED && downloadData.State != adaptix.DOWNLOAD_STATE_CANCELED {
-			continue
-		}
+			if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED && downloadData.State != adaptix.DOWNLOAD_STATE_CANCELED {
+				continue
+			}
 
-		if downloadData.State == adaptix.DOWNLOAD_STATE_CANCELED {
-			_ = downloadData.File.Close()
-		}
-		filesToRemove = append(filesToRemove, downloadData.LocalPath)
-		deleteFiles = append(deleteFiles, id)
+			if downloadData.State == adaptix.DOWNLOAD_STATE_CANCELED {
+				_ = downloadData.File.Close()
+			}
+			filesToRemove = append(filesToRemove, downloadData.LocalPath)
+			deleteFiles = append(deleteFiles, id)
+			ts.downloads.Delete(id)
+		} else {
+			downloadData, err := ts.DBMS.DbDownloadGet(id)
+			if err != nil {
+				continue
+			}
 
-		if downloadData.State == adaptix.DOWNLOAD_STATE_FINISHED {
+			if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
+				continue
+			}
+
+			filesToRemove = append(filesToRemove, downloadData.LocalPath)
+			deleteFiles = append(deleteFiles, id)
 			dbDeleteIds = append(dbDeleteIds, id)
 		}
 	}
@@ -340,8 +360,8 @@ func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
 ///
 
 func (ts *Teamserver) TsDownloadGetFilepath(fileId string) (string, error) {
-	value, ok := ts.downloads.Get(fileId)
-	if !ok {
+	downloadData, err := ts.TsDownloadGet(fileId)
+	if err != nil {
 		return "", errors.New("File not found: " + fileId)
 	}
 

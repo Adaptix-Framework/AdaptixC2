@@ -2,23 +2,27 @@ package database
 
 import (
 	"AdaptixServer/core/utils/logs"
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
 )
 
 func (dbms *DBMS) DbConsoleInsert(agentId string, packet interface{}) error {
-	var buffer bytes.Buffer
-	_ = json.NewEncoder(&buffer).Encode(packet)
-
 	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database does not exist")
 	}
 
-	insertQuery := `INSERT INTO Consoles (AgentId, Packet) values(?,?);`
-	_, err := dbms.database.Exec(insertQuery, agentId, buffer.Bytes())
+	data, err := json.Marshal(packet)
+	if err != nil {
+		return err
+	}
+
+	if dbms.stmtConsoleInsert != nil {
+		_, err = dbms.stmtConsoleInsert.Exec(agentId, data)
+		return err
+	}
+	_, err = dbms.database.Exec(`INSERT INTO Consoles (AgentId, Packet) values(?,?);`, agentId, data)
 	return err
 }
 
