@@ -559,7 +559,7 @@ QVariant AxListWidgetWrapper::jsonMarshal() const
     QVariantList listData;
     for (int i = 0; i < list->count(); ++i) {
         QListWidgetItem* item = list->item(i);
-        if (item)
+        if (item && item->text() != "")
             listData << item->text();
     }
     return listData;
