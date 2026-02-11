@@ -54,13 +54,8 @@ func (p *PluginListener) Create(name string, config string, customData []byte) (
 			return nil, listenerData, customdData, err
 		}
 
-		conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, " ", "")
-		conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, "\n", ", ")
-		conf.Callback_addresses = strings.TrimSuffix(conf.Callback_addresses, ", ")
-
 		conf.RequestHeaders = strings.TrimRight(conf.RequestHeaders, " \n\t\r") + "\n"
 		conf.RequestHeaders = strings.ReplaceAll(conf.RequestHeaders, "\n", "\r\n")
-		// Host header is handled separately by the agent for rotation support
 
 		conf.ResponseHeaders = make(map[string]string)
 		headerLine := strings.Split(conf.Server_headers, "\n")
@@ -98,7 +93,7 @@ func (p *PluginListener) Create(name string, config string, customData []byte) (
 	listenerData = adaptix.ListenerData{
 		BindHost:  transport.Config.HostBind,
 		BindPort:  strconv.Itoa(transport.Config.PortBind),
-		AgentAddr: conf.Callback_addresses,
+		AgentAddr: strings.Join(conf.Callback_addresses, ", "),
 		Status:    "Stopped",
 	}
 
@@ -144,13 +139,8 @@ func (l *Listener) Edit(config string) (adaptix.ListenerData, []byte, error) {
 
 	/// START CODE HERE
 
-	conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, " ", "")
-	conf.Callback_addresses = strings.ReplaceAll(conf.Callback_addresses, "\n", ", ")
-	conf.Callback_addresses = strings.TrimSuffix(conf.Callback_addresses, ", ")
-
 	conf.RequestHeaders = strings.TrimRight(conf.RequestHeaders, " \n\t\r") + "\n"
 	conf.RequestHeaders = strings.ReplaceAll(conf.RequestHeaders, "\n", "\r\n")
-	// Host header is handled separately by the agent for rotation support
 
 	l.transport.Config.Callback_addresses = conf.Callback_addresses
 	l.transport.Config.UserAgent = conf.UserAgent
@@ -165,7 +155,7 @@ func (l *Listener) Edit(config string) (adaptix.ListenerData, []byte, error) {
 	listenerData = adaptix.ListenerData{
 		BindHost:  l.transport.Config.HostBind,
 		BindPort:  strconv.Itoa(l.transport.Config.PortBind),
-		AgentAddr: l.transport.Config.Callback_addresses,
+		AgentAddr: strings.Join(l.transport.Config.Callback_addresses, ", "),
 		Status:    "Listen",
 	}
 	if !l.transport.Active {
@@ -195,15 +185,12 @@ func (l *Listener) Stop() error {
 
 func (l *Listener) GetProfile() ([]byte, error) {
 	var buffer bytes.Buffer
-
 	/// START CODE HERE
-
 	err := json.NewEncoder(&buffer).Encode(l.transport.Config)
 	if err != nil {
 		return nil, err
 	}
 	/// END CODE HERE
-
 	return buffer.Bytes(), nil
 }
 

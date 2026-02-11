@@ -15,20 +15,24 @@ function ListenerUI(mode_create)
     spinPortBind.setEnabled(mode_create)
 
     let labelCallback = form.create_label("Callback addresses:");
-    let textCallback = form.create_textmulti();
-    textCallback.setPlaceholder("192.168.1.1:443\nserver2.com:8080");
+    let textCallback = form.create_list();
+    textCallback.setButtonsEnabled(true);
+    textCallback.addItem("address:port");
 
     let labelMethod = form.create_label("Method:");
     let comboMethod = form.create_combo();
     comboMethod.addItems(["POST", "GET"]);
     comboMethod.setEnabled(mode_create)
 
-    let labelUri = form.create_label("URIs (one per line):");
-    let textUri = form.create_textmulti();
-    textUri.setPlaceholder("/api/v1/status\n/updates/check\n/content/load");
+    let labelUri = form.create_label("URIs:");
+    let textUri = form.create_list();
+    textUri.setButtonsEnabled(true);
+    textUri.addItems(["/api/v1/status", "/updates/check.php", "/content.html"]);
 
-    let labelUserAgent = form.create_label("User-Agents (one per line):");
-    let textUserAgent = form.create_textmulti("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
+    let labelUserAgent = form.create_label("User-Agents:");
+    let textUserAgent = form.create_list();
+    textUserAgent.setButtonsEnabled(true);
+    textUserAgent.addItem("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
 
     let labelHB = form.create_label("Heartbeat Header:");
     let textlineHB = form.create_textline("X-Beacon-Id");
@@ -80,8 +84,9 @@ function ListenerUI(mode_create)
     // HTTP HEADERS
     let checkTrust = form.create_check("Trust X-Forwarded-For");
 
-    let labelHostHeader = form.create_label("Host Headers (one per line):");
-    let textHostHeader = form.create_textmulti();
+    let labelHostHeader = form.create_label("Host Headers:");
+    let textHostHeader = form.create_list();
+    textHostHeader.setButtonsEnabled(true);
 
     let labelRequestHeaders = form.create_label("Request Headers:");
     let textRequestHeaders = form.create_textmulti();
@@ -155,7 +160,7 @@ function ListenerUI(mode_create)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 650,
-        ui_width: 650
+        ui_height: 750,
+        ui_width: 750
     }
 }
