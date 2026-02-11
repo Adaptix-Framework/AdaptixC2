@@ -79,7 +79,6 @@ func (tm *TaskManager) syncTaskCreate(agentId string, agent *Agent, taskData *ad
 		packet_console := CreateSpAgentConsoleTaskSync(*taskData)
 		tm.ts.TsSyncConsole(packet_console, taskData.Client)
 
-		agent.OutConsole.Put(packet_console)
 		_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
 	}
 }
@@ -100,13 +99,11 @@ func (tm *TaskManager) syncTaskUpdate(agentId string, agent *Agent, taskData *ad
 		packet_console := CreateSpAgentConsoleTaskUpd(*taskData)
 		tm.ts.TsSyncConsole(packet_console, taskData.Client)
 
-		agent.OutConsole.Put(packet_console)
 		_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
 	}
 }
 
 func (tm *TaskManager) completeTask(agent *Agent, taskData *adaptix.TaskData) {
-	agent.CompletedTasks.Put(taskData.TaskId, *taskData)
 	_ = tm.ts.DBMS.DbTaskInsert(*taskData)
 
 	// --- POST HOOK ---
@@ -264,11 +261,6 @@ func (tm *TaskManager) Delete(agentId string, taskId string) error {
 		return fmt.Errorf("task %v not found", taskId)
 	}
 
-	task, ok := value.(adaptix.TaskData)
-	if !ok {
-		return fmt.Errorf("invalid task type for %v", taskId)
-	}
-
 	_ = tm.ts.DBMS.DbTaskDelete(task.TaskId, "")
 
 	packet := CreateSpAgentTaskRemove(task)
@@ -291,8 +283,6 @@ func (tm *TaskManager) Save(taskData adaptix.TaskData) error {
 	taskData.FinishDate = taskData.StartDate
 	taskData.Sync = true
 	taskData.Completed = true
-
-	agent.CompletedTasks.Put(taskData.TaskId, taskData)
 
 	packet_task := CreateSpAgentTaskSync(taskData)
 	tm.ts.TsSyncAllClients(packet_task)

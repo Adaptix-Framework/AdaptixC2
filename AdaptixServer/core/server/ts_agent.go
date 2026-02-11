@@ -82,13 +82,11 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 
 	agent := &Agent{
 		Extender:          handler,
-		OutConsole:        safe.NewSlice(),
 		HostedTasks:       safe.NewSafeQueue(0x100),
 		HostedTunnelTasks: safe.NewSafeQueue(0x1000),
 		HostedTunnelData:  safe.NewSafeQueue(0x1000),
 		RunningTasks:      safe.NewMap(),
 		RunningJobs:       safe.NewMap(),
-		CompletedTasks:    safe.NewMap(),
 		PivotParent:       nil,
 		PivotChilds:       safe.NewSlice(),
 		Tick:              false,
@@ -731,16 +729,10 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 }
 
 func (ts *Teamserver) TsAgentConsoleRemove(agentId string) error {
-	value, ok := ts.Agents.Get(agentId)
+	_, ok := ts.Agents.Get(agentId)
 	if !ok {
 		return fmt.Errorf("agent '%v' does not exist", agentId)
 	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return fmt.Errorf("invalid agent type for '%v'", agentId)
-	}
-	agent.OutConsole.CutArray()
-
 	_ = ts.DBMS.DbConsoleDelete(agentId)
 
 	return nil

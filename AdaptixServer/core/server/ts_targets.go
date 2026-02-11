@@ -82,7 +82,6 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 		}
 
 		newTargets = append(newTargets, target)
-		ts.targets.Put(target)
 	}
 
 	if len(newTargets) > 0 {
@@ -153,7 +152,6 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string,
 
 	var newTargets []*adaptix.TargetData
 	newTargets = append(newTargets, target)
-	ts.targets.Put(target)
 
 	_ = ts.DBMS.DbTargetsAdd(newTargets)
 
@@ -182,36 +180,24 @@ func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain str
 		}
 		return fmt.Errorf("operation cancelled by hook")
 	}
+	modified := preEvent.Target /// can be modified by hooks
 	// ----------------
 
 	var target *adaptix.TargetData
 
-	found := false
-	for t_value := range ts.targets.Iterator() {
-		target = t_value.Item.(*adaptix.TargetData)
-		if target.TargetId == targetId {
-			if target.Computer == computer && target.Domain == domain && target.Address == address && target.Os == os && target.OsDesk == osDesk && target.Tag == tag && target.Info == info && target.Alive == alive {
-				return nil
-			}
-
-			found = true
-
-			target.Computer = computer
-			target.Domain = domain
-			target.Address = address
-			target.Os = os
-			target.OsDesk = osDesk
-			target.Tag = tag
-			target.Info = info
-			target.Alive = alive
-			target.Date = time.Now().Unix()
-			break
-		}
+	if target.Computer == modified.Computer && target.Domain == modified.Domain && target.Address == modified.Address && target.Os == modified.Os && target.OsDesk == modified.OsDesk && target.Tag == modified.Tag && target.Info == modified.Info && target.Alive == modified.Alive {
+		return nil
 	}
 
-	if !found {
-		return fmt.Errorf("target %s not exists", targetId)
-	}
+	target.Computer = modified.Computer
+	target.Domain = modified.Domain
+	target.Address = modified.Address
+	target.Os = modified.Os
+	target.OsDesk = modified.OsDesk
+	target.Tag = modified.Tag
+	target.Info = modified.Info
+	target.Alive = modified.Alive
+	target.Date = time.Now().Unix()
 
 	_ = ts.DBMS.DbTargetUpdate(target)
 
@@ -237,20 +223,6 @@ func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
 	}
 	targetsId = preEvent.TargetIds
 	// ----------------
-
-	deleteSet := make(map[string]struct{}, len(targetsId))
-	for _, id := range targetsId {
-		deleteSet[id] = struct{}{}
-	}
-
-	for i := ts.targets.Len(); i > 0; i-- {
-		valueTarget, ok := ts.targets.Get(i - 1)
-		if ok {
-			if _, exists := deleteSet[valueTarget.(*adaptix.TargetData).TargetId]; exists {
-				ts.targets.Delete(i - 1)
-			}
-		}
-	}
 
 	go func(ids []string) {
 		_ = ts.DBMS.DbTargetDeleteBatch(ids)

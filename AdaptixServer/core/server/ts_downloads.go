@@ -149,11 +149,11 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 
 	if reason == adaptix.DOWNLOAD_STATE_FINISHED {
 		downloadData.State = adaptix.DOWNLOAD_STATE_FINISHED
-		ts.downloads.Put(downloadData.FileId, downloadData)
 		err = ts.DBMS.DbDownloadInsert(downloadData)
 		if err != nil {
 			logs.Error("", err.Error())
 		}
+		ts.downloads.Delete(fileId)
 
 		go ts.TsNotifyCallbackDownloads(downloadData)
 
@@ -223,8 +223,6 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 	}
 	_ = downloadData.File.Close()
 
-	ts.downloads.Put(downloadData.FileId, downloadData)
-
 	packetRes1 := CreateSpDownloadCreate(downloadData)
 	ts.TsSyncAllClientsWithCategory(packetRes1, SyncCategoryDownloadsRealtime)
 
@@ -245,6 +243,7 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 
 func (ts *Teamserver) TsDownloadList() (string, error) {
 	var downloads []adaptix.DownloadData
+
 	ts.downloads.ForEach(func(key string, value interface{}) bool {
 		data := value.(adaptix.DownloadData)
 		data.LocalPath = "******"
@@ -264,8 +263,6 @@ func (ts *Teamserver) TsDownloadGet(fileId string) (adaptix.DownloadData, error)
 	if !ok {
 		return adaptix.DownloadData{}, errors.New("File not found: " + fileId)
 	}
-	downloadData := value.(adaptix.DownloadData)
-
 	return downloadData, nil
 }
 
@@ -274,7 +271,6 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 	if !ok {
 		return "", nil, errors.New("File not found: " + fileId)
 	}
-	downloadData := value.(adaptix.DownloadData)
 
 	if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
 		return "", nil, errors.New("download not finished")
@@ -321,7 +317,6 @@ func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
 		if downloadData.State == adaptix.DOWNLOAD_STATE_FINISHED {
 			dbDeleteIds = append(dbDeleteIds, id)
 		}
-		ts.downloads.Delete(id)
 	}
 
 	go func(paths []string, ids []string) {
@@ -349,7 +344,6 @@ func (ts *Teamserver) TsDownloadGetFilepath(fileId string) (string, error) {
 	if !ok {
 		return "", errors.New("File not found: " + fileId)
 	}
-	downloadData := value.(adaptix.DownloadData)
 
 	if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
 		return "", errors.New("Download not finished")

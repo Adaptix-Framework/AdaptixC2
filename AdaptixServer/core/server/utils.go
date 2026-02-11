@@ -53,12 +53,8 @@ type Teamserver struct {
 	notifications *safe.Slice // 			       : sync_packet interface{}
 	Agents        safe.Map    // agentId string      : agent *Agent
 	listeners     safe.Map    // listenerName string : listenerData ListenerData
-	messages      *safe.Slice //                     : chatData ChatData
-	downloads     safe.Map    // fileId string       : downloadData DownloadData
+	downloads     safe.Map    // fileId string       : downloadData DownloadData (only active)
 	tmp_uploads   safe.Map    // fileId string       : uploadData UploadData
-	screenshots   safe.Map    // screeId string      : screenData ScreenDataData
-	credentials   *safe.Slice
-	targets       *safe.Slice
 	terminals     safe.Map    // terminalId string   : terminal Terminal
 	pivots        *safe.Slice // 			           : PivotData
 	otps          safe.Map    // otp string		   : Id string
@@ -72,15 +68,12 @@ type Agent struct {
 	Tick     bool
 	Active   bool
 
-	OutConsole *safe.Slice //  sync_packet interface{}
-
 	HostedTasks       *safe.Queue // taskData TaskData
 	HostedTunnelTasks *safe.Queue // taskData TaskData
 	HostedTunnelData  *safe.Queue // taskData TaskDataTunnel
 
-	RunningTasks   safe.Map // taskId string, taskData TaskData
-	RunningJobs    safe.Map // taskId string, list []TaskData
-	CompletedTasks safe.Map // taskId string, taskData TaskData
+	RunningTasks safe.Map // taskId string, taskData TaskData
+	RunningJobs  safe.Map // taskId string, list []TaskData
 
 	PivotParent *adaptix.PivotData
 	PivotChilds *safe.Slice

@@ -43,12 +43,8 @@ func NewTeamserver() *Teamserver {
 		notifications: safe.NewSlice(),
 		Agents:        safe.NewMap(),
 		listeners:     safe.NewMap(),
-		messages:      safe.NewSlice(),
 		downloads:     safe.NewMap(),
 		tmp_uploads:   safe.NewMap(),
-		screenshots:   safe.NewMap(),
-		credentials:   safe.NewSlice(),
-		targets:       safe.NewSlice(),
 		terminals:     safe.NewMap(),
 		pivots:        safe.NewSlice(),
 		otps:          safe.NewMap(),
@@ -127,13 +123,11 @@ func (ts *Teamserver) RestoreData() {
 
 		agent := &Agent{
 			Extender:          extenderAgent,
-			OutConsole:        safe.NewSlice(),
 			HostedTunnelData:  safe.NewSafeQueue(0x1000),
 			HostedTasks:       safe.NewSafeQueue(0x100),
 			HostedTunnelTasks: safe.NewSafeQueue(0x100),
 			RunningTasks:      safe.NewMap(),
 			RunningJobs:       safe.NewMap(),
-			CompletedTasks:    safe.NewMap(),
 			PivotParent:       nil,
 			PivotChilds:       safe.NewSlice(),
 			Tick:              false,
@@ -249,7 +243,6 @@ func (ts *Teamserver) RestoreData() {
 	logs.Success("   ", "Restored %v targets", countTargets)
 
 	/// LISTENERS
-	countListeners := 0
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
 		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.CreateTime, restoreListener.Watermark, restoreListener.CustomData)
@@ -271,10 +264,8 @@ func (ts *Teamserver) RestoreData() {
 					}
 				}
 			}
-			countListeners++
 		}
 	}
-	logs.Success("   ", "Restored %v listeners", countListeners)
 }
 
 func (ts *Teamserver) Start() {

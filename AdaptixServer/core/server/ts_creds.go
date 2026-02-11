@@ -92,7 +92,6 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 	for i := range inputCreds {
 		cbCredsData = append(cbCredsData, inputCreds[i])
 		newCreds = append(newCreds, &inputCreds[i])
-		ts.credentials.Put(&inputCreds[i])
 	}
 
 	if len(newCreds) > 0 {
@@ -121,27 +120,19 @@ func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password 
 		cred = value.Item.(*adaptix.CredsData)
 		if cred.CredId == credId {
 
-			if cred.Username == username && cred.Realm == realm && cred.Password == password && cred.Type == credType && cred.Tag == tag && cred.Storage == storage && cred.Host == host {
-				return nil
-			}
-
-			found = true
-			oldCred = *cred
-
-			cred.Username = username
-			cred.Password = password
-			cred.Realm = realm
-			cred.Type = credType
-			cred.Tag = tag
-			cred.Storage = storage
-			cred.Host = host
-			break
-		}
+	if cred.Username == username && cred.Realm == realm && cred.Password == password && cred.Type == credType && cred.Tag == tag && cred.Storage == storage && cred.Host == host {
+		return nil
 	}
 
-	if !found {
-		return fmt.Errorf("creds %s not exists", credId)
-	}
+	oldCred := *cred
+
+	cred.Username = username
+	cred.Password = password
+	cred.Realm = realm
+	cred.Type = credType
+	cred.Tag = tag
+	cred.Storage = storage
+	cred.Host = host
 
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventCredentialsEdit{
@@ -150,12 +141,12 @@ func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password 
 		NewCred: *cred,
 	}
 	if !ts.EventManager.Emit(eventing.EventCredsEdit, eventing.HookPre, preEvent) {
-		*cred = oldCred
 		if preEvent.Error != nil {
 			return preEvent.Error
 		}
 		return fmt.Errorf("operation cancelled by hook")
 	}
+	*cred = preEvent.NewCred /// can be modified by hooks
 	// ----------------
 
 	_ = ts.DBMS.DbCredentialsUpdate(*cred)
@@ -186,20 +177,6 @@ func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
 	}
 	credsId = preEvent.CredIds /// can be modified by hooks
 	// ----------------
-
-	deleteSet := make(map[string]struct{}, len(credsId))
-	for _, id := range credsId {
-		deleteSet[id] = struct{}{}
-	}
-
-	for i := ts.credentials.Len(); i > 0; i-- {
-		valueCred, ok := ts.credentials.Get(i - 1)
-		if ok {
-			if _, exists := deleteSet[valueCred.(*adaptix.CredsData).CredId]; exists {
-				ts.credentials.Delete(i - 1)
-			}
-		}
-	}
 
 	go func(ids []string) {
 		_ = ts.DBMS.DbCredentialsDeleteBatch(ids)
