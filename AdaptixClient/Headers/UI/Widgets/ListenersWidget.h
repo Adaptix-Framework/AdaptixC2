@@ -159,7 +159,10 @@ public:
         }
 
         if (role == Qt::UserRole) {
-            return data(index, Qt::DisplayRole);
+            switch (index.column()) {
+                case LC_Date: return l.DateTimestamp;
+                default:      return data(index, Qt::DisplayRole);
+            }
         }
 
         if (role == Qt::TextAlignmentRole) {

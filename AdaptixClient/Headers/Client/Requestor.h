@@ -15,6 +15,8 @@ bool HttpReqLogin(AuthProfile* profile);
 bool HttpReqJwtUpdate(AuthProfile* profile);
 
 bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile profile, QString* message, bool* ok);
+bool HttpReqGetOTP(const QString &type, const QJsonObject &data, const QString &baseUrl, const QString &accessToken, QString* otp);
+bool HttpReqGetOTP(const QString &type, const QString &objectId, const QString &baseUrl, const QString &accessToken, QString* otp);
 
 /// ASYNC VERSIONS
 

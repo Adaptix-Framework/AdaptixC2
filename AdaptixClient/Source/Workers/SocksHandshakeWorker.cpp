@@ -1,8 +1,9 @@
 #include <Workers/SocksHandshakeWorker.h>
 #include <Workers/TunnelWorker.h>
+#include <Client/Requestor.h>
 
-SocksHandshakeWorker::SocksHandshakeWorker(QTcpSocket* sock, const QString& tunnelId, const QString& type, bool useAuth, const QString& username, const QString& password, const QString& accessToken, const QUrl& wsUrl)
-    : clientSock(sock), tunnelId(tunnelId), tunnelType(type), useAuth(useAuth), username(username), password(password), accessToken(accessToken), wsUrl(wsUrl)
+SocksHandshakeWorker::SocksHandshakeWorker(QTcpSocket* sock, const QString& tunnelId, const QString& type, bool useAuth, const QString& username, const QString& password, const QString& accessToken, const QString& baseUrl, const QUrl& wsUrl)
+    : clientSock(sock), tunnelId(tunnelId), tunnelType(type), useAuth(useAuth), username(username), password(password), accessToken(accessToken), baseUrl(baseUrl), wsUrl(wsUrl)
 {
 }
 
@@ -17,13 +18,14 @@ void SocksHandshakeWorker::rejectAndClose(QTcpSocket* sock, const QByteArray& re
 
 void SocksHandshakeWorker::process()
 {
-    QString tunnelData;
+    QJsonObject otpData;
+    QString channelId;
     bool success = false;
 
     if (tunnelType == "socks4") {
-        success = processSocks4(tunnelData);
+        success = processSocks4(otpData, channelId);
     } else if (tunnelType == "socks5") {
-        success = processSocks5(tunnelData);
+        success = processSocks5(otpData, channelId);
     }
 
     if (!success) {
@@ -34,14 +36,22 @@ void SocksHandshakeWorker::process()
         return;
     }
 
-    QString channelId = tunnelData.section('|', 1, 1);
-    TunnelWorker* worker = new TunnelWorker(clientSock, accessToken, wsUrl, QString(tunnelData.toUtf8().toBase64()));
+    QString otp;
+    bool otpResult = HttpReqGetOTP("channel_tunnel", otpData, baseUrl, accessToken, &otp);
+    if (!otpResult) {
+        if (clientSock)
+            clientSock->deleteLater();
+        Q_EMIT handshakeFailed();
+        return;
+    }
+
+    TunnelWorker* worker = new TunnelWorker(clientSock, otp, wsUrl);
     clientSock->setParent(worker);
 
     Q_EMIT workerReady(worker, channelId);
 }
 
-bool SocksHandshakeWorker::processSocks4(QString& outTunnelData)
+bool SocksHandshakeWorker::processSocks4(QJsonObject& otpData, QString& channelId)
 {
     if (!clientSock->waitForReadyRead(3000) || clientSock->bytesAvailable() < 8) {
         rejectAndClose(clientSock, QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00", 8));
@@ -58,15 +68,18 @@ bool SocksHandshakeWorker::processSocks4(QString& outTunnelData)
     int tPort = (static_cast<quint16>(buf[2]) << 8) | static_cast<quint16>(buf[3]);
     QHostAddress dstIp((static_cast<quint32>(buf[4]) << 24) | (static_cast<quint32>(buf[5]) << 16) |
                        (static_cast<quint32>(buf[6]) << 8) | static_cast<quint32>(buf[7]));
-    QString tHost = dstIp.toString();
 
-    QString channelId = GenerateRandomString(8, "hex");
-    outTunnelData = QString("%1|%2|%3|%4|%5").arg(tunnelId, channelId, QString(), tHost, QString::number(tPort));
+    channelId = GenerateRandomString(8, "hex");
+
+    otpData["tunnel_id"]  = tunnelId;
+    otpData["channel_id"] = channelId;
+    otpData["host"]       = dstIp.toString();
+    otpData["port"]       = QString::number(tPort);
 
     return true;
 }
 
-bool SocksHandshakeWorker::processSocks5(QString& outTunnelData)
+bool SocksHandshakeWorker::processSocks5(QJsonObject& otpData, QString& channelId)
 {
     if (!clientSock->waitForReadyRead(3000) || clientSock->bytesAvailable() < 2) {
         rejectAndClose(clientSock, QByteArray("\x00\x01\x00", 3));
@@ -205,8 +218,13 @@ bool SocksHandshakeWorker::processSocks5(QString& outTunnelData)
     }
     quint16 dstPort = (static_cast<uchar>(buf[0]) << 8) | static_cast<uchar>(buf[1]);
 
-    QString channelId = GenerateRandomString(8, "hex");
-    outTunnelData = QString("%1|%2|%3|%4|%5").arg(tunnelId, channelId, mode, dstAddress, QString::number(dstPort));
+    channelId = GenerateRandomString(8, "hex");
+
+    otpData["tunnel_id"]  = tunnelId;
+    otpData["channel_id"] = channelId;
+    otpData["mode"]       = mode;
+    otpData["host"]       = dstAddress;
+    otpData["port"]       = QString::number(dstPort);
 
     return true;
 }

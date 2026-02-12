@@ -213,7 +213,7 @@ void ScreenshotsWidget::createUI()
     tableView->horizontalHeader()->setHighlightSections(false);
     tableView->verticalHeader()->setVisible(false);
 
-    proxyModel->sort(-1);
+    tableView->sortByColumn(SCR_Date, Qt::AscendingOrder);
 
     tableView->horizontalHeader()->setSectionResizeMode(SCR_Note, QHeaderView::Stretch);
     tableView->setItemDelegate(new PaddingDelegate(tableView));

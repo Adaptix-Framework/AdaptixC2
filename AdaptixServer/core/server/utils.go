@@ -7,6 +7,7 @@ import (
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/safe"
+	"AdaptixServer/core/utils/token"
 	"io"
 	"net"
 	"sync"
@@ -57,8 +58,8 @@ type Teamserver struct {
 	tmp_uploads   safe.Map    // fileId string       : uploadData UploadData
 	terminals     safe.Map    // terminalId string   : terminal Terminal
 	pivots        *safe.Slice // 			           : PivotData
-	otps          safe.Map    // otp string		   : Id string
-	builders      safe.Map    // buildId string      : build Build
+	OTPManager    *token.OTPManager
+	builders      safe.Map // buildId string      : build Build
 }
 
 type Agent struct {

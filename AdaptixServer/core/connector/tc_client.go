@@ -6,7 +6,6 @@ import (
 	"AdaptixServer/core/utils/token"
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -75,65 +74,6 @@ func (tc *TsConnector) tcLogin(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"access_token": accessToken, "refresh_token": refreshToken})
 }
 
-func (tc *TsConnector) tcConnect(ctx *gin.Context) {
-	value, exists := ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-	username, ok := value.(string)
-	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
-		return
-	}
-
-	versionValue, _ := ctx.Get("version")
-	version, _ := versionValue.(string)
-
-	exists = tc.teamserver.TsClientExists(username)
-	if exists {
-		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: invalid username type in context", "ok": false})
-		return
-	}
-
-	clientTypeHeader := ctx.GetHeader("Client-Type")
-	clientType := ClientTypeUI
-	if clientTypeHeader != "" {
-		if ct, err := strconv.Atoi(clientTypeHeader); err == nil {
-			clientType = uint8(ct)
-		}
-	}
-
-	teamModeHeader := ctx.GetHeader("Console-Team-Mode")
-	consoleTeamMode := teamModeHeader == "true" || teamModeHeader == "1"
-
-	subscriptionsHeader := ctx.GetHeader("Subscriptions")
-	var subscriptions []string
-	if subscriptionsHeader != "" {
-		subscriptions = strings.Split(subscriptionsHeader, ",")
-		for i := range subscriptions {
-			subscriptions[i] = strings.TrimSpace(subscriptions[i])
-		}
-	}
-
-	var wsUpgrader websocket.Upgrader
-	wsUpgrader.CheckOrigin = func(r *http.Request) bool {
-		return true
-	}
-	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
-	if err != nil {
-		logs.Error("", "WebSocket upgrade error: "+err.Error())
-		return
-	}
-
-	if wsConn == nil {
-		logs.Error("", "WebSocket is nil")
-		return
-	}
-
-	go tc.tcWebsocketConnect(username, version, wsConn, clientType, consoleTeamMode, subscriptions)
-}
-
 func (tc *TsConnector) tcWebsocketConnect(username string, version string, wsConn *websocket.Conn, clientType uint8, consoleTeamMode bool, subscriptions []string) {
 	tc.teamserver.TsClientConnect(username, version, wsConn, clientType, consoleTeamMode, subscriptions)
 	for {
@@ -192,19 +132,67 @@ func (tc *TsConnector) tcSubscribe(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "subscribe started", "ok": true})
 }
 
-func (tc *TsConnector) tcChannel(ctx *gin.Context) {
-	value, exists := ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-	username, ok := value.(string)
-	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+/// OTP
+
+func (tc *TsConnector) tcConnectOTP(ctx *gin.Context) {
+	otpType, _ := ctx.Get("otpType")
+	if otpType != "connect" {
+		_ = ctx.Error(errors.New("invalid OTP type"))
 		return
 	}
 
-	exists = tc.teamserver.TsClientExists(username)
+	data, _ := ctx.Get("otpData")
+	wsData, ok := data.(ConnectOTPData)
+	if !ok {
+		_ = ctx.Error(errors.New("invalid OTP data"))
+		return
+	}
+
+	exists := tc.teamserver.TsClientExists(wsData.Username)
+	if exists {
+		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Client already connected", "ok": false})
+		return
+	}
+
+	clientType := wsData.ClientType
+	if clientType == 0 {
+		clientType = ClientTypeUI
+	}
+
+	var wsUpgrader websocket.Upgrader
+	wsUpgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
+	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+	if err != nil {
+		logs.Error("", "WebSocket upgrade error: "+err.Error())
+		return
+	}
+
+	if wsConn == nil {
+		logs.Error("", "WebSocket is nil")
+		return
+	}
+
+	go tc.tcWebsocketConnect(wsData.Username, wsData.Version, wsConn, clientType, wsData.ConsoleTeamMode, wsData.Subscriptions)
+}
+
+func (tc *TsConnector) tcChannelOTP(ctx *gin.Context) {
+	otpTypeVal, _ := ctx.Get("otpType")
+	otpType, _ := otpTypeVal.(string)
+	if !strings.HasPrefix(otpType, "channel_") {
+		_ = ctx.Error(errors.New("invalid OTP type"))
+		return
+	}
+
+	data, _ := ctx.Get("otpData")
+	wsData, ok := data.(*ChannelOTPData)
+	if !ok || wsData == nil {
+		_ = ctx.Error(errors.New("invalid OTP data"))
+		return
+	}
+
+	exists := tc.teamserver.TsClientExists(wsData.Username)
 	if !exists {
 		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: client not connected", "ok": false})
 		return
@@ -225,31 +213,30 @@ func (tc *TsConnector) tcChannel(ctx *gin.Context) {
 		return
 	}
 
-	ChannelType := ctx.GetHeader("Channel-Type")
-	ChannelData := ctx.GetHeader("Channel-Data")
+	channelDataStr := string(wsData.ChannelData)
 
-	switch ChannelType {
-	case "tunnel":
-		if err := tc.teamserver.TsTunnelClientNewChannel(ChannelData, wsConn); err != nil {
+	switch otpType {
+	case "channel_tunnel":
+		if err := tc.teamserver.TsTunnelClientNewChannel(channelDataStr, wsConn); err != nil {
 			logs.Error("", "Tunnel channel error: "+err.Error())
 			wsConn.Close()
 		}
 
-	case "terminal":
-		if err := tc.teamserver.TsAgentTerminalCreateChannel(ChannelData, wsConn); err != nil {
+	case "channel_terminal":
+		if err := tc.teamserver.TsAgentTerminalCreateChannel(channelDataStr, wsConn); err != nil {
 			logs.Error("", "Terminal channel error: "+err.Error())
 			wsConn.Close()
 		}
 
-	case "agent_build":
+	case "channel_agent_build":
 		go func() {
-			if err := tc.teamserver.TsAgentBuildCreateChannel(ChannelData, wsConn); err != nil {
+			if err := tc.teamserver.TsAgentBuildCreateChannel(channelDataStr, wsConn); err != nil {
 				logs.Error("", "Agent build channel error: "+err.Error())
 			}
 		}()
 
 	default:
-		logs.Error("", "Unknown channel type: "+ChannelType)
+		logs.Error("", "Unknown channel type: "+otpType)
 		wsConn.Close()
 	}
 }

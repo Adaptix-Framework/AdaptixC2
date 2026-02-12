@@ -1,4 +1,5 @@
 #include <Workers/DownloaderWorker.h>
+#include <QUrlQuery>
 
 
 DownloaderWorker::DownloaderWorker(const QUrl &url, const QString &otp, const QString &savedPath)
@@ -23,8 +24,12 @@ void DownloaderWorker::start()
 {
     this->networkManager = new QNetworkAccessManager(this);
 
-    QNetworkRequest request(this->url);
-    request.setRawHeader("OTP", this->otp.toUtf8());
+    QUrl requestUrl(this->url);
+    QUrlQuery query;
+    query.addQueryItem("otp", this->otp);
+    requestUrl.setQuery(query);
+
+    QNetworkRequest request(requestUrl);
 
     this->networkReply = this->networkManager->get(request);
 

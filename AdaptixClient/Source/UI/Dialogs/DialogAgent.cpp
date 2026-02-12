@@ -778,13 +778,27 @@ void DialogAgent::onButtonBuild()
     QString urlTemplate = "wss://%1:%2%3/channel";
     QString sUrl = urlTemplate.arg(authProfile.GetHost()).arg(authProfile.GetPort()).arg(authProfile.GetEndpoint());
 
-    QString data = agentName.toUtf8().toBase64();
+    QJsonArray listenersArray;
     for (const QString &listener : selectedListeners)
-        data += "|" + listener.toUtf8().toBase64();
-    QString buildData = data.toUtf8().toBase64();
+        listenersArray.append(listener);
+
+    QJsonObject otpData;
+    otpData["agent_name"] = agentName;
+    otpData["listeners_name"] = listenersArray;
+
+    QString otp;
+    bool otpResult = HttpReqGetOTP("channel_agent_build", otpData, authProfile.GetURL(), authProfile.GetAccessToken(), &otp);
+    if (!otpResult) {
+        buildButton->setText("Build");
+        buildButton->setProperty("ButtonStyle", "dialog_apply");
+        buildButton->style()->unpolish(buildButton);
+        buildButton->style()->polish(buildButton);
+        MessageError("Failed to generate OTP for build");
+        return;
+    }
 
     buildThread = new QThread;
-    buildWorker = new BuildWorker(authProfile.GetAccessToken(), sUrl, buildData, configData);
+    buildWorker = new BuildWorker(otp, sUrl, configData);
     buildWorker->moveToThread(buildThread);
 
     connect(buildThread, &QThread::started,              buildWorker, &BuildWorker::start);

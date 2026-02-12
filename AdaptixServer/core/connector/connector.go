@@ -18,8 +18,8 @@ import (
 )
 
 type Teamserver interface {
-	CreateOTP(otpType string, id string) (string, error)
-	ValidateOTP() gin.HandlerFunc
+	CreateOTP(otpType string, data interface{}) (string, error)
+	ValidateOTP(token string) (string, interface{}, bool)
 
 	TsClientExists(username string) bool
 	TsClientDisconnect(username string)
@@ -308,10 +308,12 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profi
 	}
 
 	otp_group := connector.Engine.Group(tsProfile.Endpoint)
-	otp_group.Use(ts.ValidateOTP(), default404Middleware(httpErr))
+	otp_group.Use(connector.validateOTPMiddleware(), default404Middleware(httpErr))
 	{
 		otp_group.POST("/otp/upload/temp", connector.tcOTP_UploadTemp)
 		otp_group.GET("/otp/download/sync", connector.tcOTP_DownloadSync)
+		otp_group.GET("/connect", connector.tcConnectOTP)
+		otp_group.GET("/channel", connector.tcChannelOTP)
 	}
 
 	api_group := connector.Engine.Group(tsProfile.Endpoint)
@@ -320,8 +322,6 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profi
 	{
 		api_group.POST("/sync", connector.tcSync)
 		api_group.POST("/subscribe", connector.tcSubscribe)
-		api_group.GET("/connect", connector.tcConnect)
-		api_group.GET("/channel", connector.tcChannel)
 		api_group.POST("/otp/generate", connector.tcOTP_Generate)
 
 		api_group.GET("/listener/list", connector.TcListenerList)

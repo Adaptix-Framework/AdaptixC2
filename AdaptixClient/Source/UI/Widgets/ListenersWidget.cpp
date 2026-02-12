@@ -40,6 +40,11 @@ ListenersWidget::~ListenersWidget() = default;
 
 void ListenersWidget::SetUpdatesEnabled(const bool enabled)
 {
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
 }
 
@@ -94,7 +99,7 @@ void ListenersWidget::createUI()
     tableView->verticalHeader()->setVisible(false);
 
     tableView->setItemDelegate(new PaddingDelegate(tableView));
-    tableView->sortByColumn(LC_Date, Qt::DescendingOrder);
+    tableView->sortByColumn(LC_Date, Qt::AscendingOrder);
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(0, 0, 0, 0);

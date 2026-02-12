@@ -132,7 +132,7 @@ void TargetsWidget::createUI()
     tableView->horizontalHeader()->setHighlightSections( false );
     tableView->verticalHeader()->setVisible( false );
 
-    proxyModel->sort(-1);
+    tableView->sortByColumn(TRC_Date, Qt::AscendingOrder);
 
     tableView->horizontalHeader()->setSectionResizeMode( TRC_Tag,  QHeaderView::Stretch );
     tableView->horizontalHeader()->setSectionResizeMode( TRC_Os,   QHeaderView::Stretch );

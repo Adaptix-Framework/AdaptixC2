@@ -7,7 +7,6 @@ import (
 	"AdaptixServer/core/utils/proxy"
 	"AdaptixServer/core/utils/safe"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +14,6 @@ import (
 	"math/rand/v2"
 	"net"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -146,24 +144,21 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 	return tunnelId, nil
 }
 
+type TunnelChannelData struct {
+	TunnelId  string `json:"tunnel_id"`
+	ChannelId string `json:"channel_id"`
+	Mode      string `json:"mode,omitempty"`
+	Host      string `json:"host,omitempty"`
+	Port      string `json:"port,omitempty"`
+}
+
 func (ts *Teamserver) TsTunnelClientNewChannel(TunnelData string, wsconn *websocket.Conn) error {
-	data, err := base64.StdEncoding.DecodeString(TunnelData)
-	if err != nil {
+	var td TunnelChannelData
+	if err := json.Unmarshal([]byte(TunnelData), &td); err != nil {
 		return errors.New("invalid tunnel data")
 	}
 
-	d := strings.Split(string(data), "|")
-	if len(d) != 5 {
-		return errors.New("invalid tunnel data")
-	}
-
-	tunnelId := d[0]
-	channelId := d[1]
-	mode := d[2]
-	host := d[3]
-	tPort := d[4]
-
-	tunnel, ok := ts.TunnelManager.GetTunnel(tunnelId)
+	tunnel, ok := ts.TunnelManager.GetTunnel(td.TunnelId)
 	if !ok {
 		return ErrTunnelNotFound
 	}
@@ -173,32 +168,32 @@ func (ts *Teamserver) TsTunnelClientNewChannel(TunnelData string, wsconn *websoc
 		return ErrAgentNotFound
 	}
 
-	cid, err := strconv.ParseInt(channelId, 16, 64)
+	cid, err := strconv.ParseInt(td.ChannelId, 16, 64)
 	if err != nil {
 		return errors.New("channelId not supported")
 	}
 
 	port := 0
 	if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
-		port, err = strconv.Atoi(tPort)
+		port, err = strconv.Atoi(td.Port)
 		if err != nil {
 			return errors.New("Invalid port number")
 		}
 		if port < 1 || port > 65535 {
 			return errors.New("Invalid port number")
 		}
-		if host == "" {
+		if td.Host == "" {
 			return errors.New("Invalid host")
 		}
 	}
 
 	if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
-		if mode != "tcp" && mode != "udp" {
-			return errors.New("invalid mode")
+		if td.Mode != "tcp" && td.Mode != "udp" {
+			return errors.New("invalid td.Mode")
 		}
 	}
 
-	go handleTunChannelCreateClient(ts.TunnelManager, agent, tunnel, wsconn, int(cid), host, port, mode)
+	go handleTunChannelCreateClient(ts.TunnelManager, agent, tunnel, wsconn, int(cid), td.Host, port, td.Mode)
 
 	return nil
 }

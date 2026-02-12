@@ -2,7 +2,6 @@ package server
 
 import (
 	"AdaptixServer/core/eventing"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,9 +39,14 @@ func (ts *Teamserver) TsAgentBuildSyncOnce(agentName string, config string, list
 	return ts.Extender.ExAgentGenerate(agentName, conf)
 }
 
+type BuildChannelData struct {
+	AgentName     string   `json:"agent_name"`
+	ListenersName []string `json:"listeners_name"`
+}
+
 func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websocket.Conn) error {
-	data, err := base64.StdEncoding.DecodeString(buildData)
-	if err != nil {
+	var bd BuildChannelData
+	if err := json.Unmarshal([]byte(buildData), &bd); err != nil {
 		if wsconn != nil {
 			_ = wsconn.WriteMessage(websocket.TextMessage, []byte("invalid build data"))
 			wsconn.Close()
@@ -50,8 +54,7 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 		return errors.New("invalid build data")
 	}
 
-	d := strings.Split(string(data), "|")
-	if len(d) < 2 {
+	if bd.AgentName == "" || len(bd.ListenersName) == 0 {
 		if wsconn != nil {
 			_ = wsconn.WriteMessage(websocket.TextMessage, []byte("invalid build data"))
 			wsconn.Close()
@@ -59,28 +62,7 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 		return errors.New("invalid build data")
 	}
 
-	decAgentName, err := base64.StdEncoding.DecodeString(d[0])
-	if err != nil {
-		if wsconn != nil {
-			_ = wsconn.WriteMessage(websocket.TextMessage, []byte("invalid build data: agentName"))
-			wsconn.Close()
-		}
-		return errors.New("invalid build data: agentName")
-	}
-
-	var listenersName []string
-
-	for _, encListenerName := range d[1:] {
-		decListenerName, err := base64.StdEncoding.DecodeString(encListenerName)
-		if err != nil {
-			if wsconn != nil {
-				_ = wsconn.WriteMessage(websocket.TextMessage, []byte("invalid build data: listenerName"))
-				wsconn.Close()
-			}
-			return errors.New("invalid build data: listenerName")
-		}
-		listenersName = append(listenersName, string(decListenerName))
-	}
+	listenersName := bd.ListenersName
 
 	_, wsMsg, err := wsconn.ReadMessage()
 	if err != nil {
@@ -91,7 +73,7 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 
 	builder := &AgentBuilder{
 		Id:            fmt.Sprintf("%08x", rand.Uint32()),
-		Name:          string(decAgentName),
+		Name:          bd.AgentName,
 		ListenersName: listenersName,
 		Config:        string(wsMsg),
 		wsconn:        wsconn,

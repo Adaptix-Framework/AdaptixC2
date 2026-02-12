@@ -150,7 +150,7 @@ void CredentialsWidget::createUI()
     tableView->horizontalHeader()->setHighlightSections( false );
     tableView->verticalHeader()->setVisible( false );
 
-    proxyModel->sort(-1);
+    tableView->sortByColumn(CC_Date, Qt::AscendingOrder);
 
     tableView->horizontalHeader()->setSectionResizeMode( CC_Password, QHeaderView::Stretch );
 

@@ -302,7 +302,7 @@ void TerminalTab::onStart()
 
     QString agentId = this->agent->data.Id;
     QString terminalId = GenerateRandomString(8, "hex");
-    QString program    = programInput->text().toUtf8().toBase64();
+    QString program    = programInput->text();
     int sizeW  = this->termWidget->columns();
     int sizeH  = this->termWidget->lines();
     int OecmCP = this->agent->data.OemCP;
@@ -312,10 +312,27 @@ void TerminalTab::onStart()
         sizeH = 24;
     }
 
-    QString terminalData = QString("%1|%2|%3|%4|%5|%6").arg(agentId).arg(terminalId).arg(program).arg(sizeH).arg(sizeW).arg(OecmCP).toUtf8().toBase64();
+    QJsonObject otpData;
+    otpData["agent_id"]     = agentId;
+    otpData["terminal_id"]  = terminalId;
+    otpData["program"]      = program;
+    otpData["size_h"]       = sizeH;
+    otpData["size_w"]       = sizeW;
+    otpData["oem_cp"]       = OecmCP;
+
+    QString otp;
+    bool otpResult = HttpReqGetOTP("channel_terminal", otpData, profile->GetURL(), profile->GetAccessToken(), &otp);
+    if (!otpResult) {
+        programInput->setEnabled(true);
+        programComboBox->setEnabled(true);
+        startButton->setEnabled(true);
+        stopButton->setEnabled(false);
+        this->setStatus("OTP error");
+        return;
+    }
 
     terminalThread = new QThread;
-    terminalWorker = new TerminalWorker(this, profile->GetAccessToken(), sUrl, terminalData);
+    terminalWorker = new TerminalWorker(this, otp, sUrl);
     terminalWorker->moveToThread(terminalThread);
 
     connect(terminalThread, &QThread::started,         terminalWorker, &TerminalWorker::start);

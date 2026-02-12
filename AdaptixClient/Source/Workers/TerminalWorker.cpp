@@ -1,13 +1,13 @@
 #include <Workers/TerminalWorker.h>
 #include <UI/Widgets/TerminalContainerWidget.h>
 #include <QMetaObject>
+#include <QUrlQuery>
 
-TerminalWorker::TerminalWorker(TerminalTab* terminalTab, const QString &token, const QUrl& wsUrl, const QString& terminalData, QObject* parent) : QObject(parent)
+TerminalWorker::TerminalWorker(TerminalTab* terminalTab, const QString &otp, const QUrl& wsUrl, QObject* parent) : QObject(parent)
 {
     this->terminalTab = terminalTab;
-    this->token = token;
+    this->otp = otp;
     this->wsUrl = wsUrl;
-    this->terminalData = terminalData;
 }
 
 TerminalWorker::~TerminalWorker() = default;
@@ -34,11 +34,12 @@ void TerminalWorker::start()
     connect(websocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &TerminalWorker::onWsError, Qt::DirectConnection);
 #endif
 
-    QNetworkRequest request(wsUrl);
-    request.setRawHeader("Authorization", QString("Bearer " + token).toUtf8());
-    request.setRawHeader("Channel-Type",  QString("terminal").toUtf8());
-    request.setRawHeader("Channel-Data",  QString(this->terminalData).toUtf8());
+    QUrl url(wsUrl);
+    QUrlQuery query;
+    query.addQueryItem("otp", otp);
+    url.setQuery(query);
 
+    QNetworkRequest request(url);
     websocket->open(request);
 }
 

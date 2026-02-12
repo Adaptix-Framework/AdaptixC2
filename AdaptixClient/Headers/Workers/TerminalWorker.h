@@ -12,13 +12,12 @@ Q_OBJECT
      TerminalTab* terminalTab = nullptr;
      QWebSocket* websocket = nullptr;
      QUrl        wsUrl;
-     QString     token;
-     QString     terminalData;
+     QString     otp;
      bool        started = false;
      std::atomic<bool> stopped = false;
 
 public:
-     TerminalWorker(TerminalTab* terminalTab, const QString &token, const QUrl& wsUrl, const QString& terminalData, QObject* parent = nullptr);
+     TerminalWorker(TerminalTab* terminalTab, const QString &otp, const QUrl& wsUrl, QObject* parent = nullptr);
      ~TerminalWorker() override;
 
 Q_SIGNALS:

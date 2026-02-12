@@ -81,9 +81,12 @@ bool HttpReqJwtUpdate(AuthProfile* profile)
 
 bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile profile, QString* message, bool* ok)
 {
+    QJsonObject innerData;
+    innerData["id"] = objectId;
+
     QJsonObject dataJson;
     dataJson["type"] = type;
-    dataJson["id"]   = objectId;
+    dataJson["data"] = innerData;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/otp/generate";
@@ -91,6 +94,41 @@ bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile pro
     if ( jsonObject.contains("message") && jsonObject.contains("ok") ) {
         *message = jsonObject["message"].toString();
         *ok = jsonObject["ok"].toBool();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqGetOTP(const QString &type, const QJsonObject &data, const QString &baseUrl, const QString &accessToken, QString* otp)
+{
+    QJsonObject dataJson;
+    dataJson["type"] = type;
+    dataJson["data"] = data;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = baseUrl + "/otp/generate";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, accessToken);
+    if ( jsonObject.contains("ok") && jsonObject["ok"].toBool() && jsonObject.contains("message") ) {
+        *otp = jsonObject["message"].toString();
+        return true;
+    }
+    return false;
+}
+
+bool HttpReqGetOTP(const QString &type, const QString &objectId, const QString &baseUrl, const QString &accessToken, QString* otp)
+{
+    QJsonObject innerData;
+    innerData["id"] = objectId;
+
+    QJsonObject dataJson;
+    dataJson["type"] = type;
+    dataJson["data"] = innerData;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    QString sUrl = baseUrl + "/otp/generate";
+    QJsonObject jsonObject = HttpReq(sUrl, jsonData, accessToken);
+    if ( jsonObject.contains("ok") && jsonObject["ok"].toBool() && jsonObject.contains("message") ) {
+        *otp = jsonObject["message"].toString();
         return true;
     }
     return false;

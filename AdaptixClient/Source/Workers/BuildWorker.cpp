@@ -1,10 +1,11 @@
 #include <Workers/BuildWorker.h>
 
-BuildWorker::BuildWorker(const QString &token, const QUrl& wsUrl, const QString& buildData, const QString& configData, QObject* parent) : QObject(parent)
+#include <QUrlQuery>
+
+BuildWorker::BuildWorker(const QString &otp, const QUrl& wsUrl, const QString& configData, QObject* parent) : QObject(parent)
 {
-    this->token = token;
+    this->otp = otp;
     this->wsUrl = wsUrl;
-    this->buildData = buildData;
     this->configData = configData;
 }
 
@@ -34,11 +35,12 @@ void BuildWorker::start()
     connect(websocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &BuildWorker::onWsError, Qt::DirectConnection);
 #endif
 
-    QNetworkRequest request(wsUrl);
-    request.setRawHeader("Authorization", QString("Bearer " + token).toUtf8());
-    request.setRawHeader("Channel-Type",  QString("agent_build").toUtf8());
-    request.setRawHeader("Channel-Data",  QString(this->buildData).toUtf8());
+    QUrl url(wsUrl);
+    QUrlQuery query;
+    query.addQueryItem("otp", otp);
+    url.setQuery(query);
 
+    QNetworkRequest request(url);
     websocket->open(request);
 }
 

@@ -218,7 +218,7 @@ void TasksWidget::createUI()
     tableView->verticalHeader()->setVisible( false );
     tableView->verticalHeader()->setSectionResizeMode( QHeaderView::ResizeToContents );
 
-    proxyModel->sort(-1);
+    tableView->sortByColumn(TC_StartTime, Qt::AscendingOrder);
 
     tableView->horizontalHeader()->setSectionResizeMode( TC_CommandLine, QHeaderView::Stretch );
     tableView->horizontalHeader()->setSectionResizeMode( TC_Output,      QHeaderView::Stretch );

@@ -2,12 +2,11 @@ package server
 
 import (
 	"context"
-	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -18,59 +17,39 @@ var (
 	ErrInvalidTerminalType = errors.New("invalid terminal type")
 )
 
+type TerminalChannelData struct {
+	AgentId    string `json:"agent_id"`
+	TerminalId string `json:"terminal_id"`
+	Program    string `json:"program"`
+	SizeH      int    `json:"size_h"`
+	SizeW      int    `json:"size_w"`
+	OemCP      int    `json:"oem_cp"`
+}
+
 func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error {
-	data, err := base64.StdEncoding.DecodeString(terminalData)
-	if err != nil {
+	var td TerminalChannelData
+	if err := json.Unmarshal([]byte(terminalData), &td); err != nil {
 		return errors.New("invalid terminal data")
 	}
 
-	d := strings.Split(string(data), "|")
-	if len(d) != 6 {
-		return errors.New("invalid terminal data")
-	}
-
-	agentId := d[0]
-	terminalId := d[1]
-
-	termId, err := strconv.ParseInt(terminalId, 16, 64)
+	termId, err := strconv.ParseInt(td.TerminalId, 16, 64)
 	if err != nil {
 		return errors.New("TerminalId not supported")
 	}
 
-	decProgram, err := base64.StdEncoding.DecodeString(d[2])
-	if err != nil {
-		return errors.New("invalid terminal data")
-	}
-	program := string(decProgram)
-
-	sizeH, err := strconv.Atoi(d[3])
-	if err != nil {
-		return errors.New("invalid terminal data")
-	}
-
-	sizeW, err := strconv.Atoi(d[4])
-	if err != nil {
-		return errors.New("invalid terminal data")
-	}
-
-	OemCP, err := strconv.Atoi(d[5])
-	if err != nil {
-		return errors.New("invalid terminal data")
-	}
-
-	agent, err := ts.getAgent(agentId)
+	agent, err := ts.getAgent(td.AgentId)
 	if err != nil {
 		return err
 	}
 	if !agent.Active {
-		return fmt.Errorf("agent '%v' not active", agentId)
+		return fmt.Errorf("agent '%v' not active", td.AgentId)
 	}
 
 	terminal := &Terminal{
 		TerminalId: int(termId),
 		agent:      agent,
 		wsconn:     wsconn,
-		CodePage:   OemCP,
+		CodePage:   td.OemCP,
 	}
 
 	terminal.prSrv, terminal.pwSrv = io.Pipe()
@@ -78,11 +57,11 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 
 	terminal.Callbacks = agent.TerminalCallbacks()
 
-	taskData := terminal.Callbacks.Start(terminal.TerminalId, program, sizeH, sizeW, OemCP)
+	taskData := terminal.Callbacks.Start(terminal.TerminalId, td.Program, td.SizeH, td.SizeW, td.OemCP)
 
 	tunnelManageTask(agent, taskData)
 
-	ts.terminals.Put(terminalId, terminal)
+	ts.terminals.Put(td.TerminalId, terminal)
 
 	return nil
 }

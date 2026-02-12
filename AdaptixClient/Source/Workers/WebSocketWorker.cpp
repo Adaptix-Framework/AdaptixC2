@@ -1,9 +1,11 @@
 #include <Workers/WebSocketWorker.h>
 #include <Client/AuthProfile.h>
+#include <Client/Requestor.h>
 
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
+#include <QUrlQuery>
 
 WebSocketWorker::WebSocketWorker(AuthProfile* authProfile)
 {
@@ -53,18 +55,33 @@ void WebSocketWorker::run()
         connect( webSocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &WebSocketWorker::is_error);
 #endif
 
+    QJsonObject otpData;
+    otpData["client_type"] = 1;
+    otpData["console_team_mode"] = profile->GetConsoleMultiuser();
+    QJsonArray subsArray;
+    for (const QString &sub : profile->GetSubscriptions())
+        subsArray.append(sub);
+    otpData["subscriptions"] = subsArray;
+
+    QString otp;
+    bool otpResult = HttpReqGetOTP("connect", otpData, profile->GetURL(), profile->GetAccessToken(), &otp);
+    if (!otpResult) {
+        this->ok = false;
+        this->message = "Failed to generate OTP for connect";
+        Q_EMIT ws_error();
+        return;
+    }
+
     QString urlTemplate = "wss://%1:%2%3/connect";
     QString sUrl = urlTemplate.arg( profile->GetHost() ).arg( profile->GetPort() ).arg( profile->GetEndpoint() );
 
-    QNetworkRequest request;
-    request.setUrl(QUrl(sUrl));
-    request.setRawHeader("Authorization", "Bearer " + profile->GetAccessToken().toUtf8());
-    request.setRawHeader("Client-Type", "1");
-    request.setRawHeader("Console-Team-Mode", profile->GetConsoleMultiuser() ? "true" : "false");
+    QUrl url(sUrl);
+    QUrlQuery query;
+    query.addQueryItem("otp", otp);
+    url.setQuery(query);
 
-    QStringList subs = profile->GetSubscriptions();
-    if (!subs.isEmpty())
-        request.setRawHeader("Subscriptions", subs.join(",").toUtf8());
+    QNetworkRequest request;
+    request.setUrl(url);
 
     webSocket->open(request);
 

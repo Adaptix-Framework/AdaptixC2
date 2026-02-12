@@ -2,6 +2,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QFileInfo>
+#include <QUrlQuery>
 
 UploaderWorker::UploaderWorker(const QUrl &uploadUrl, const QString &otp, const QByteArray &data) : url(uploadUrl), otp(otp), data(data) {}
 
@@ -26,8 +27,12 @@ void UploaderWorker::start() {
 
     multiPart->append(filePart);
 
-    QNetworkRequest request(url);
-    request.setRawHeader("OTP", this->otp.toUtf8());
+    QUrl requestUrl(url);
+    QUrlQuery query;
+    query.addQueryItem("otp", this->otp);
+    requestUrl.setQuery(query);
+
+    QNetworkRequest request(requestUrl);
     networkReply = networkManager->post(request, multiPart);
     multiPart->setParent(networkReply);
 

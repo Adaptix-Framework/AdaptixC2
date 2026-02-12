@@ -1,11 +1,12 @@
 #include <Workers/TunnelWorker.h>
 
-TunnelWorker::TunnelWorker(QTcpSocket* socket, const QString &token, const QUrl& wsUrl, const QString& tunnelData, QObject* parent) : QObject(parent)
+#include <QUrlQuery>
+
+TunnelWorker::TunnelWorker(QTcpSocket* socket, const QString &otp, const QUrl& wsUrl, QObject* parent) : QObject(parent)
 {
-    this->token = token;
+    this->otp = otp;
     this->wsUrl = wsUrl;
     this->tcpSocket = socket;
-    this->tunnelData = tunnelData;
 }
 
 TunnelWorker::~TunnelWorker() = default;
@@ -35,11 +36,12 @@ void TunnelWorker::start()
     connect(websocket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error), this, &TunnelWorker::onWsError, Qt::DirectConnection);
 #endif
 
-    QNetworkRequest request(wsUrl);
-    request.setRawHeader("Authorization", QString("Bearer " + token).toUtf8());
-    request.setRawHeader("Channel-Type",  QString("tunnel").toUtf8());
-    request.setRawHeader("Channel-Data",  QString(this->tunnelData).toUtf8());
+    QUrl url(wsUrl);
+    QUrlQuery query;
+    query.addQueryItem("otp", otp);
+    url.setQuery(query);
 
+    QNetworkRequest request(url);
     websocket->open(request);
 }
 

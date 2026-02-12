@@ -8,8 +8,10 @@ import (
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/safe"
+	"AdaptixServer/core/utils/token"
 	"net"
 	"os"
+	"time"
 
 	"github.com/Adaptix-Framework/axc2"
 	"github.com/goccy/go-yaml"
@@ -31,6 +33,7 @@ func NewTeamserver() *Teamserver {
 		DBMS:         dbms,
 		Broker:       broker,
 		EventManager: eventing.NewEventManager(),
+		OTPManager:   token.NewOTPManager(60*time.Second, 30*time.Second),
 
 		listener_configs: safe.NewMap(),
 		agent_configs:    safe.NewMap(),
@@ -46,7 +49,6 @@ func NewTeamserver() *Teamserver {
 		tmp_uploads:   safe.NewMap(),
 		terminals:     safe.NewMap(),
 		pivots:        safe.NewSlice(),
-		otps:          safe.NewMap(),
 		builders:      safe.NewMap(),
 	}
 	ts.TaskManager = NewTaskManager(ts)

@@ -2,6 +2,7 @@
 #include <Workers/SocksHandshakeWorker.h>
 #include <Client/TunnelEndpoint.h>
 #include <Client/AuthProfile.h>
+#include <Client/Requestor.h>
 
 TunnelEndpoint::TunnelEndpoint(QObject* parent) : QObject(parent), tcpServer(new QTcpServer(this)){}
 
@@ -87,12 +88,17 @@ void TunnelEndpoint::Stop()
     }
 }
 
-void TunnelEndpoint::startWorker(QTcpSocket* clientSock, const QString& tunnelData)
+void TunnelEndpoint::startWorker(QTcpSocket* clientSock, const QJsonObject& otpData, const QString& channelId)
 {
-    QString channelId = tunnelData.section('|', 1, 1);
+    QString otp;
+    bool otpResult = HttpReqGetOTP("channel_tunnel", otpData, profile->GetURL(), profile->GetAccessToken(), &otp);
+    if (!otpResult) {
+        clientSock->deleteLater();
+        return;
+    }
 
     QThread* thread = new QThread;
-    TunnelWorker* worker = new TunnelWorker(clientSock, this->profile->GetAccessToken(), this->wsUrl, QString(tunnelData.toUtf8().toBase64()));
+    TunnelWorker* worker = new TunnelWorker(clientSock, otp, this->wsUrl);
 
     clientSock->setParent(nullptr);
     clientSock->moveToThread(thread);
@@ -119,16 +125,19 @@ void TunnelEndpoint::onStartLpfChannel()
         QTcpSocket* clientSock = tcpServer->nextPendingConnection();
 
         QString channelId = GenerateRandomString(8, "hex");
-        QString tunnelData = QString("%1|%2|%3|%4|%5").arg(this->tunnelId, channelId, QString(), QString(), QString());
 
-        startWorker(clientSock, tunnelData);
+        QJsonObject otpData;
+        otpData["tunnel_id"]  = this->tunnelId;
+        otpData["channel_id"] = channelId;
+
+        startWorker(clientSock, otpData, channelId);
     }
 }
 
 void TunnelEndpoint::startHandshakeWorker(QTcpSocket* clientSock, const QString& type)
 {
     QThread* thread = new QThread;
-    SocksHandshakeWorker* worker = new SocksHandshakeWorker(clientSock, this->tunnelId, type, this->useAuth, this->username, this->password, this->profile->GetAccessToken(), this->wsUrl);
+    SocksHandshakeWorker* worker = new SocksHandshakeWorker(clientSock, this->tunnelId, type, this->useAuth, this->username, this->password, this->profile->GetAccessToken(), this->profile->GetURL(), this->wsUrl);
 
     clientSock->setParent(nullptr);
     clientSock->moveToThread(thread);

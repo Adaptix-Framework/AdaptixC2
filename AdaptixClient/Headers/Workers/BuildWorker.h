@@ -9,13 +9,12 @@ Q_OBJECT
 
     QWebSocket* websocket = nullptr;
     QUrl        wsUrl;
-    QString     token;
-    QString     buildData;
+    QString     otp;
     QString     configData;
     std::atomic<bool> stopped = false;
 
 public:
-    BuildWorker(const QString &token, const QUrl& wsUrl, const QString& buildData, const QString& configData, QObject* parent = nullptr);
+    BuildWorker(const QString &otp, const QUrl& wsUrl, const QString& configData, QObject* parent = nullptr);
     ~BuildWorker() override;
 
 Q_SIGNALS:

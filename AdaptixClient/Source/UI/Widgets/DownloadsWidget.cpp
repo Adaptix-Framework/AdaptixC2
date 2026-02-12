@@ -102,7 +102,7 @@ void DownloadsWidget::createUI()
 
     tableView->setItemDelegate(new PaddingDelegate(tableView));
 
-    proxyModel->sort(-1);
+    tableView->sortByColumn(DC_Date, Qt::AscendingOrder);
 
     tableView->horizontalHeader()->setSectionResizeMode(DC_File, QHeaderView::Stretch);
     tableView->setItemDelegateForColumn(DC_Progress, new ProgressBarDelegate(this));
@@ -388,7 +388,7 @@ void DownloadsWidget::actionSyncCurl()
     QString fileName = extractFileName(filePath);
     QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
 
-    QString command = QString("curl -k %1 -H 'OTP: %2' -o %3").arg(sUrl).arg(otp).arg(fileName);
+    QString command = QString("curl -k '%1?otp=%2' -o %3").arg(sUrl).arg(otp).arg(fileName);
 
     QInputDialog inputDialog;
     inputDialog.setWindowTitle("Sync file as curl");
@@ -424,7 +424,7 @@ void DownloadsWidget::actionSyncWget()
     QString fileName = extractFileName(filePath);
     QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
 
-    QString command = QString("wget --no-check-certificate %1 --header='OTP: %2' -O %3").arg(sUrl).arg(otp).arg(fileName);
+    QString command = QString("wget --no-check-certificate '%1?otp=%2' -O %3").arg(sUrl).arg(otp).arg(fileName);
 
     QInputDialog inputDialog;
     inputDialog.setWindowTitle("Sync file as wget");

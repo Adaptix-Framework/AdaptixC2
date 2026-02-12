@@ -15,14 +15,15 @@ Q_OBJECT
     QString     username;
     QString     password;
     QString     accessToken;
+    QString     baseUrl;
     QUrl        wsUrl;
 
-    bool processSocks4(QString& tunnelData);
-    bool processSocks5(QString& tunnelData);
+    bool processSocks4(QJsonObject& otpData, QString& channelId);
+    bool processSocks5(QJsonObject& otpData, QString& channelId);
     static void rejectAndClose(QTcpSocket* sock, const QByteArray& response);
 
 public:
-    SocksHandshakeWorker(QTcpSocket* sock, const QString& tunnelId, const QString& type, bool useAuth, const QString& username, const QString& password, const QString& accessToken, const QUrl& wsUrl);
+    SocksHandshakeWorker(QTcpSocket* sock, const QString& tunnelId, const QString& type, bool useAuth, const QString& username, const QString& password, const QString& accessToken, const QString& baseUrl, const QUrl& wsUrl);
     ~SocksHandshakeWorker() override;
 
 Q_SIGNALS:
