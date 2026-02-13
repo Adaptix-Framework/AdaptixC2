@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const SMALL_VERSION = "v1.1"
+const SMALL_VERSION = "v1.2"
 
 func (ts *Teamserver) TsClientExists(username string) bool {
 	return ts.Broker.ClientExists(username)
