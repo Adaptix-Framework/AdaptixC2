@@ -19,7 +19,8 @@ TargetsWidget::TargetsWidget(AdaptixWidget* w) : DockTab("Targets", w->GetProfil
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
         Q_UNUSED(selected)
         Q_UNUSED(deselected)
-        tableView->setFocus();
+        if (!inputFilter->hasFocus())
+            tableView->setFocus();
     });
     connect(hideButton,   &ClickableLabel::clicked,  this, &TargetsWidget::toggleSearchPanel);
     connect(inputFilter,  &QLineEdit::textChanged,   this, &TargetsWidget::onFilterUpdate);
@@ -308,6 +309,7 @@ void TargetsWidget::toggleSearchPanel() const
     else {
         this->searchWidget->setVisible(true);
         proxyModel->setSearchVisible(true);
+        inputFilter->setFocus();
     }
 }
 

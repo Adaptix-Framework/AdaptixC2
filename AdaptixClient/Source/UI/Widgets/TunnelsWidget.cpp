@@ -19,7 +19,8 @@ TunnelsWidget::TunnelsWidget(AdaptixWidget* w) : DockTab("Tunnels", w->GetProfil
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
             Q_UNUSED(selected)
             Q_UNUSED(deselected)
-            tableView->setFocus();
+            if (!inputFilter->hasFocus())
+                tableView->setFocus();
     });
     connect(inputFilter, &QLineEdit::textChanged,   this, &TunnelsWidget::onFilterUpdate);
     connect(inputFilter, &QLineEdit::returnPressed, this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });

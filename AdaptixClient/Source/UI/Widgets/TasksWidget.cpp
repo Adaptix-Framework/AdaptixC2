@@ -73,7 +73,8 @@ TasksWidget::TasksWidget( AdaptixWidget* w )
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
         Q_UNUSED(selected)
         Q_UNUSED(deselected)
-        tableView->setFocus();
+        if (!inputFilter->hasFocus())
+            tableView->setFocus();
     });
 
     connect(tableView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &TasksWidget::onTableItemSelection);
@@ -368,6 +369,7 @@ void TasksWidget::toggleSearchPanel()
     else {
         this->showPanel = true;
         this->searchWidget->setVisible(true);
+        inputFilter->setFocus();
     }
 }
 

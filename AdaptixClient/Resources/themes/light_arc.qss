@@ -112,7 +112,8 @@ QTableWidget {
 
 QHeaderView::section {
     color: #2E3440;
-    padding: 4px;
+    padding: 2px 6px;
+    min-height: 24px;
     background: qlineargradient(
     x1: 0, y1: 0, x2: 0, y2: 1,
     stop: 0 #E5E5E5,
@@ -681,7 +682,8 @@ QComboBox {
     background-color: #F0F0F0;
     color: #2E3440;
     border: 1px solid #D0D0D0;
-    padding: 4px;
+    padding: 4px 8px;
+    height: 20px;
     border-radius: 4px;
 }
 
@@ -706,7 +708,8 @@ QComboBox QAbstractItemView {
 QComboBox QAbstractItemView::item {
     background-color: #FFFFFF;
     color: #2E3440;
-    padding: 4px;
+    padding: 3px 8px;
+    height: 16px;
 }
 
 QComboBox QAbstractItemView::item:hover {
@@ -732,7 +735,7 @@ QSpinBox {
     background-color: #F0F0F0;
     color: #2E3440;
     border: 1px solid #D0D0D0;
-    padding: 4px;
+    height: 16px;
     border-radius: 4px;
 }
 
@@ -787,7 +790,7 @@ QDoubleSpinBox {
     background-color: #F0F0F0;
     color: #2E3440;
     border: 1px solid #D0D0D0;
-    padding: 4px;
+    height: 16px;
     border-radius: 4px;
 }
 

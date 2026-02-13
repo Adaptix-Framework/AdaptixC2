@@ -19,7 +19,8 @@ CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : DockTab("Credentials", 
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
         Q_UNUSED(selected)
         Q_UNUSED(deselected)
-        tableView->setFocus();
+        if (!inputFilter->hasFocus())
+            tableView->setFocus();
     });
     connect(hideButton,      &ClickableLabel::clicked,       this, &CredentialsWidget::toggleSearchPanel);
     connect(inputFilter,     &QLineEdit::textChanged,        this, &CredentialsWidget::onFilterUpdate);
@@ -376,6 +377,7 @@ void CredentialsWidget::toggleSearchPanel() const
     else {
         this->searchWidget->setVisible(true);
         proxyModel->setSearchVisible(true);
+        inputFilter->setFocus();
     }
 }
 

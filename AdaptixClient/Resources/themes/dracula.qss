@@ -93,7 +93,8 @@ QTableWidget {
 
 QHeaderView::section {
     color: #f8f8f2;
-    padding: 4px;
+    padding: 2px 6px;
+    min-height: 24px;
     background: qlineargradient(
     x1: 0, y1: 0, x2: 0, y2: 1,
     stop: 0 #4d516f,
@@ -429,7 +430,8 @@ QComboBox {
     background-color: #44475a;
     color: #f8f8f2;
     border: 1px solid #6272a4;
-    padding: 4px;
+    padding: 4px 8px;
+    height: 20px;
     border-radius: 4px;
 }
 
@@ -454,7 +456,8 @@ QComboBox QAbstractItemView {
 QComboBox QAbstractItemView::item {
     background-color: #44475a;
     color: #f8f8f2;
-    padding: 4px;
+    padding: 3px 8px;
+    height: 16px;
 }
 
 QComboBox QAbstractItemView::item:hover {
@@ -477,7 +480,7 @@ QSpinBox {
     background-color: #44475a;
     color: #f8f8f2;
     border: 1px solid #6272a4;
-    padding: 4px;
+    height: 16px;
     border-radius: 4px;
 }
 
@@ -529,7 +532,7 @@ QDoubleSpinBox {
     background-color: #44475a;
     color: #f8f8f2;
     border: 1px solid #6272a4;
-    padding: 4px;
+    height: 16px;
     border-radius: 4px;
 }
 
@@ -581,7 +584,7 @@ QTimeEdit {
     background-color: #44475a;
     color: #f8f8f2;
     border: 1px solid #6272a4;
-    padding: 4px;
+    height: 16px;
     border-radius: 4px;
 }
 
@@ -633,7 +636,7 @@ QDateEdit {
     background-color: #44475a;
     color: #f8f8f2;
     border: 1px solid #6272a4;
-    padding: 4px;
+    height: 16px;
     border-radius: 4px;
 }
 
