@@ -26,7 +26,7 @@ HttpServer:
     headers:
       Content-Type: "text/html; charset=UTF-8"
       Server: "AdaptixC2"
-      Adaptix-Version: "v1.1"
+      Adaptix-Version: "v1.2"
     page: "404page.html"
   http:
     max_header_bytes: 8192
@@ -49,18 +49,3 @@ HttpServer:
       - "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
       - "TLS_RSA_WITH_AES_128_GCM_SHA256"
       - "TLS_RSA_WITH_AES_256_GCM_SHA384"
-
-EventCallback:
-  Telegram:
-    token: ""
-    chats_id: []
-  Slack:
-    webhook_url: ""
-  Webhooks:
-    - url: ""
-      method: "POST"
-      headers: {}
-      data: "%data%"
-  new_agent_message: "New agent: %type% (%id%)\n\n%user% @ %computer% (%internalip%)\nelevated: %elevated%\nfrom: %externalip%\ndomain: %domain%"
-  new_cred_message: "New secret [%type%]:\n\n%username% : %password% (%domain%)\n\nStorage: %storage%\nHost: %host%"
-  new_download_message: "File saved: %path% [%size%] from %computer% (%user%)"

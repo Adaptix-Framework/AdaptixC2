@@ -96,10 +96,7 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 		postEvent := &eventing.EventCredentialsAdd{Credentials: cbCredsData}
 		ts.EventManager.EmitAsync(eventing.EventCredsAdd, postEvent)
 		// -----------------
-
-		go ts.TsNotifyCallbackCreds(cbCredsData)
 	}
-
 	return nil
 }
 

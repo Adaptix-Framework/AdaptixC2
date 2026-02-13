@@ -3,7 +3,6 @@ package profile
 type AdaptixProfile struct {
 	Server     *TsProfile    `yaml:"Teamserver"`
 	HttpServer *TsHttpServer `yaml:"HttpServer"`
-	Callbacks  *TsCallback   `yaml:"EventCallback"`
 }
 
 type TsProfile struct {
@@ -50,28 +49,4 @@ type TsTLSConfig struct {
 	MaxVersion               string   `yaml:"max_version"`
 	PreferServerCipherSuites *bool    `yaml:"prefer_server_cipher_suites"`
 	CipherSuites             []string `yaml:"cipher_suites"`
-}
-
-type WebhookConfig struct {
-	URL     string            `yaml:"url"`
-	Method  string            `yaml:"method"`
-	Headers map[string]string `yaml:"headers"`
-	Data    string            `yaml:"data"`
-}
-
-type TsCallback struct {
-	Telegram struct {
-		Token   string   `yaml:"token"`
-		ChatsId []string `yaml:"chats_id"`
-	} `yaml:"Telegram"`
-
-	Slack struct {
-		WebhookURL string `yaml:"webhook_url"`
-	} `yaml:"Slack"`
-
-	Webhooks []WebhookConfig `yaml:"Webhooks"`
-
-	NewAgentMessage    string `yaml:"new_agent_message"`
-	NewCredMessage     string `yaml:"new_cred_message"`
-	NewDownloadMessage string `yaml:"new_download_message"`
 }
