@@ -16,7 +16,7 @@ import (
 	"github.com/Adaptix-Framework/axc2"
 )
 
-func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error {
+func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int64) error {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataDownloadStart{
 		AgentId:  agentId,
@@ -112,7 +112,7 @@ func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) er
 				return errors.New("Failed to write file '" + downloadData.LocalPath + "': " + err.Error())
 			}
 		}
-		downloadData.RecvSize += len(data)
+		downloadData.RecvSize += int64(len(data))
 	}
 
 	ts.downloads.Put(downloadData.FileId, downloadData)
@@ -180,8 +180,8 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 		AgentId:    agentId,
 		FileId:     fileId,
 		RemotePath: filename,
-		TotalSize:  len(content),
-		RecvSize:   len(content),
+		TotalSize:  int64(len(content)),
+		RecvSize:   int64(len(content)),
 		Date:       time.Now().Unix(),
 		State:      adaptix.DOWNLOAD_STATE_FINISHED,
 	}

@@ -280,8 +280,8 @@ typedef struct DownloadData
     QString User;
     QString Computer;
     QString Filename;
-    int     TotalSize;
-    int     RecvSize;
+    qint64  TotalSize;
+    qint64  RecvSize;
     int     State;
     QString Date;
     qint64  DateTimestamp = 0;

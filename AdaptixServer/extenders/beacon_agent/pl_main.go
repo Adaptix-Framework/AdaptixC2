@@ -42,7 +42,7 @@ type Teamserver interface {
 	TsTaskUpdate(agentId string, data adaptix.TaskData)
 	TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
 
-	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
+	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int64) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
 	TsDownloadSave(agentId string, fileId string, filename string, content []byte) error
@@ -1664,14 +1664,14 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			fileId := fmt.Sprintf("%08x", packer.ParseInt32())
 			downloadCommand := packer.ParseInt8()
 			if downloadCommand == DOWNLOAD_START {
-				if false == packer.CheckPacker([]string{"int", "array"}) {
+				if false == packer.CheckPacker([]string{"long", "array"}) {
 					goto HANDLER
 				}
-				fileSize := packer.ParseInt32()
+				fileSize := packer.ParseInt64()
 				fileName := Ts.TsConvertCpToUTF8(packer.ParseString(), agentData.ACP)
 				task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %v]", fileName, fileSize, fileId)
 				task.Completed = false
-				_ = Ts.TsDownloadAdd(agentData.Id, fileId, fileName, int(fileSize))
+				_ = Ts.TsDownloadAdd(agentData.Id, fileId, fileName, int64(fileSize))
 
 			} else if downloadCommand == DOWNLOAD_CONTINUE {
 				if false == packer.CheckPacker([]string{"array"}) {

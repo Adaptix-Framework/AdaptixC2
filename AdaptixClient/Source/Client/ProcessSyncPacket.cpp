@@ -81,7 +81,7 @@ namespace {
         data.User          = json["d_user"].toString();
         data.Computer      = json["d_computer"].toString();
         data.Filename      = json["d_file"].toString();
-        data.TotalSize     = json["d_size"].toDouble();
+        data.TotalSize     = static_cast<qint64>(json["d_size"].toDouble());
         data.DateTimestamp = static_cast<qint64>(json["d_date"].toDouble());
         data.Date          = UnixTimestampGlobalToStringLocal(data.DateTimestamp);
         data.RecvSize      = 0;
@@ -97,11 +97,11 @@ namespace {
         data.User          = json["d_user"].toString();
         data.Computer      = json["d_computer"].toString();
         data.Filename      = json["d_file"].toString();
-        data.TotalSize     = json["d_size"].toDouble();
+        data.TotalSize     = static_cast<qint64>(json["d_size"].toDouble());
         data.DateTimestamp = static_cast<qint64>(json["d_date"].toDouble());
         data.Date          = UnixTimestampGlobalToStringLocal(data.DateTimestamp);
-        data.RecvSize      = json["d_recv_size"].toDouble();
-        data.State         = json["d_state"].toDouble();
+        data.RecvSize      = static_cast<qint64>(json["d_recv_size"].toDouble());
+        data.State         = static_cast<int>(json["d_state"].toDouble());
         return data;
     }
 
@@ -805,8 +805,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     case TYPE_DOWNLOAD_UPDATE:
         DownloadsDock->EditDownloadItem(
             jsonObj["d_file_id"].toString(),
-            jsonObj["d_recv_size"].toDouble(),
-            jsonObj["d_state"].toDouble()
+            static_cast<qint64>(jsonObj["d_recv_size"].toDouble()),
+            static_cast<int>(jsonObj["d_state"].toDouble())
         );
         break;
 

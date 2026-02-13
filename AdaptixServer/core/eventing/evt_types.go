@@ -179,7 +179,7 @@ type EventDataDownloadStart struct {
 	AgentId  string
 	FileId   string
 	FileName string
-	FileSize int
+	FileSize int64
 }
 
 type EventDataDownloadFinish struct {

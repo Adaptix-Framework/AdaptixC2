@@ -521,7 +521,7 @@ type SyncPackerDownloadCreate struct {
 	User      string `json:"d_user"`
 	Computer  string `json:"d_computer"`
 	File      string `json:"d_file"`
-	Size      int    `json:"d_size"`
+	Size      int64  `json:"d_size"`
 	Date      int64  `json:"d_date"`
 }
 
@@ -529,7 +529,7 @@ type SyncPackerDownloadUpdate struct {
 	SpType int `json:"type"`
 
 	FileId   string `json:"d_file_id"`
-	RecvSize int    `json:"d_recv_size"`
+	RecvSize int64  `json:"d_recv_size"`
 	State    int    `json:"d_state"`
 }
 
@@ -548,9 +548,9 @@ type SyncPackerDownloadActual struct {
 	User      string `json:"d_user"`
 	Computer  string `json:"d_computer"`
 	File      string `json:"d_file"`
-	Size      int    `json:"d_size"`
+	Size      int64  `json:"d_size"`
 	Date      int64  `json:"d_date"`
-	RecvSize  int    `json:"d_recv_size"`
+	RecvSize  int64  `json:"d_recv_size"`
 	State     int    `json:"d_state"`
 }
 

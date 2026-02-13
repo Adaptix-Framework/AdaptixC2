@@ -108,8 +108,8 @@ func (dbms *DBMS) DatabaseInit() error {
     	"Computer" TEXT NOT NULL,
     	"RemotePath" TEXT NOT NULL,
     	"LocalPath" TEXT NOT NULL,
-    	"TotalSize" INTEGER,
-    	"RecvSize" INTEGER,
+    	"TotalSize" BIGINT,
+    	"RecvSize" BIGINT,
     	"Date" BIGINT,
     	"State" INTEGER
     );`

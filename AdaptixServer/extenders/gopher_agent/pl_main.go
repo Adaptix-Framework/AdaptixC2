@@ -47,7 +47,7 @@ type Teamserver interface {
 	TsTaskUpdate(agentId string, data adaptix.TaskData)
 	TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
 
-	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
+	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int64) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
 	TsDownloadSave(agentId string, fileId string, filename string, content []byte) error
@@ -1702,7 +1702,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 				if params.Start {
 					task.Message = fmt.Sprintf("The download of the '%s' file (%v bytes) has started: [fid %v]", params.Path, params.Size, fileId)
-					_ = Ts.TsDownloadAdd(agentData.Id, fileId, params.Path, params.Size)
+					_ = Ts.TsDownloadAdd(agentData.Id, fileId, params.Path, int64(params.Size))
 				}
 
 				_ = Ts.TsDownloadUpdate(fileId, 1, params.Content)

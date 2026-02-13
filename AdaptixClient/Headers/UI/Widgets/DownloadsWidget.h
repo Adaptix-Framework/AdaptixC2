@@ -244,7 +244,7 @@ public:
         endInsertRows();
     }
 
-    void update(const QString& fileId, int recvSize, int state) {
+    void update(const QString& fileId, qint64 recvSize, int state) {
         auto it = idToRow.find(fileId);
         if (it == idToRow.end())
             return;
@@ -377,7 +377,7 @@ public:
 
     void Clear() const;
     void AddDownloadItem(const DownloadData &newDownload);
-    void EditDownloadItem(const QString &fileId, int recvSize, int state);
+    void EditDownloadItem(const QString &fileId, qint64 recvSize, int state);
     void RemoveDownloadItem(const QStringList &filesId);
 
     QString getSelectedFileId() const;

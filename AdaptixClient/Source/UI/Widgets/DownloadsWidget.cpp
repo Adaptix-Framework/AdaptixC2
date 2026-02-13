@@ -182,7 +182,7 @@ void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload)
     downloadsModel->add(newDownload);
 }
 
-void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int state)
+void DownloadsWidget::EditDownloadItem(const QString &fileId, qint64 recvSize, int state)
 {
     {
         QWriteLocker locker(&adaptixWidget->DownloadsLock);
