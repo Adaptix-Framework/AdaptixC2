@@ -6,6 +6,8 @@ objects_tcp/
 .idea/
 .qt/
 *.so
+*.bin
+*.exe
 dist/
 AdaptixServer/server-dist/
 AdaptixClient/CMakeFiles/
