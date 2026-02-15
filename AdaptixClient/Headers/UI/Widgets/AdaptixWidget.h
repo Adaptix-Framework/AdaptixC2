@@ -136,6 +136,7 @@ public:
 
     QVector<RegListenerConfig>     RegisterListeners;
     QVector<RegAgentConfig>        RegisterAgents;
+    QVector<RegAgentConfig>        ServerRegAgents;
     QMap<QString, AgentTypeInfo>   AgentTypes;
     QVector<ListenerData>          Listeners;
     QVector<TunnelData>            Tunnels;
@@ -186,6 +187,7 @@ public:
     void RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script);
     void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listenersconst, const bool &multiListeners);
     void RegisterServiceConfig(const QString &serviceName, const QString &ax_script);
+    void ProcessAxScriptCommands(const QString &agentName, const QString &listenerType, int os, const QString &commandsJson);
     RegListenerConfig GetRegListener(const QString &listenerName);
     QList<QString>    GetAgentNames(const QString &listenerType) const;
     RegAgentConfig    GetRegAgent(const QString &agentName, const QString &listenerName, int os);

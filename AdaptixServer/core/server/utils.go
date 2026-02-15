@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/axscript"
 	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
 	"AdaptixServer/core/eventing"
@@ -43,6 +44,7 @@ type Teamserver struct {
 	Broker        *MessageBroker
 	TunnelManager *TunnelManager
 	EventManager  *eventing.EventManager
+	ScriptManager *axscript.ScriptManager
 
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo
@@ -750,4 +752,13 @@ type SyncPackerTunnelDelete struct {
 	SpType int `json:"type"`
 
 	TunnelId string `json:"p_tunnel_id"`
+}
+
+type SyncPackerAxScriptCommands struct {
+	SpType int `json:"type"`
+
+	Agent    string `json:"agent"`
+	Listener string `json:"listener"`
+	Os       int    `json:"os"`
+	Commands string `json:"commands"`
 }

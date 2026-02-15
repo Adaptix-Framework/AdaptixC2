@@ -574,6 +574,10 @@ void AdaptixWidget::ClearAdaptix()
     for (auto regAgent : RegisterAgents)
         delete regAgent.commander;
     RegisterAgents.clear();
+
+    for (auto regAgent : ServerRegAgents)
+        delete regAgent.commander;
+    ServerRegAgents.clear();
 }
 
 void AdaptixWidget::ClearChatStream()
@@ -624,93 +628,106 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
     if (!engine)
         return;
 
-    QJSValue func = engine->globalObject().property("RegisterCommands");
-    if (!func.isCallable()) {
-        ScriptManager->consolePrintError(agentName + " - function RegisterCommands is not registered");
+
+void AdaptixWidget::ProcessAxScriptCommands(const QString &agentName, const QString &listenerType, int os, const QString &commandsJson)
+{
+    /// Remove existing server commands for this agent/listener/os
+    for (int i = ServerRegAgents.size() - 1; i >= 0; --i) {
+        if (ServerRegAgents[i].name == agentName && ServerRegAgents[i].listenerType == listenerType && ServerRegAgents[i].os == os) {
+            delete ServerRegAgents[i].commander;
+            ServerRegAgents.removeAt(i);
+        }
+    }
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(commandsJson.toUtf8(), &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isArray())
         return;
-    }
 
-    for (auto listener : listeners) {
+    QJsonArray groupsArray = doc.array();
+    QList<Command> allCommands;
 
-        QJSValueList args;
-        args << QJSValue(listener);
-        QJSValue registerResult = func.call(args);
-        if (registerResult.isError()) {
-            QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(registerResult.toString()).arg(registerResult.property("lineNumber").toInt()).arg(agentName).arg(registerResult.property("stack").toString());
-            ScriptManager->consolePrintError(error);
-            return;
-        }
-        if (!registerResult.isObject()) {
-            ScriptManager->consolePrintError(agentName + " - function RegisterCommands must return CommandsGroup objects");
-            return;
-        }
+    for (const QJsonValue &groupVal : groupsArray) {
+        if (!groupVal.isObject()) continue;
+        QJsonObject groupObj = groupVal.toObject();
+        QJsonArray cmdsArray = groupObj["commands"].toArray();
 
-        QJSValue commands_windows = registerResult.property("commands_windows");
-        if ( !commands_windows.isUndefined() && commands_windows.isQObject()) {
-            QObject* objPanel = commands_windows.toQObject();
-            auto* wrapper = dynamic_cast<AxCommandGroupWrapper*>(objPanel);
-            if (wrapper) {
-                CommandsGroup commandsGroup = {};
-                commandsGroup.groupName = wrapper->getName();
-                commandsGroup.commands  = wrapper->getCommands();
-                commandsGroup.engine    = wrapper->getEngine();
-                commandsGroup.filepath  = "";
+        for (const QJsonValue &cmdVal : cmdsArray) {
+            if (!cmdVal.isObject()) continue;
+            QJsonObject cmdObj = cmdVal.toObject();
 
-                Commander* commander = new Commander();
-                commander->AddRegCommands(commandsGroup);
+            Command cmd;
+            cmd.name        = cmdObj["name"].toString();
+            cmd.message     = cmdObj["message"].toString();
+            cmd.description = cmdObj["description"].toString();
+            cmd.example     = cmdObj["example"].toString();
+            cmd.is_pre_hook = cmdObj["has_pre_hook"].toBool();
 
-                RegAgentConfig config = {agentName, listener, OS_WINDOWS, commander, true};
-                RegisterAgents.push_back(config);
+            QJsonArray argsArray = cmdObj["args"].toArray();
+            for (const QJsonValue &argVal : argsArray) {
+                if (!argVal.isObject()) continue;
+                QJsonObject argObj = argVal.toObject();
+                Argument arg;
+                arg.type         = argObj["type"].toString();
+                arg.name         = argObj["name"].toString();
+                arg.required     = argObj["required"].toBool();
+                arg.flag         = argObj["flag"].toBool();
+                arg.mark         = argObj["mark"].toString();
+                arg.description  = argObj["description"].toString();
+                arg.defaultUsed  = argObj["default_used"].toBool();
+                if (arg.defaultUsed)
+                    arg.defaultValue = argObj["default_value"].toVariant();
+                cmd.args.append(arg);
             }
-            else {
-                ScriptManager->consolePrintError(agentName + " - commands_windows must return CommandsGroup object");
+
+            QJsonArray subsArray = cmdObj["subcommands"].toArray();
+            for (const QJsonValue &subVal : subsArray) {
+                if (!subVal.isObject()) continue;
+                QJsonObject subObj = subVal.toObject();
+                Command sub;
+                sub.name        = subObj["name"].toString();
+                sub.message     = subObj["message"].toString();
+                sub.description = subObj["description"].toString();
+                sub.example     = subObj["example"].toString();
+                sub.is_pre_hook = subObj["has_pre_hook"].toBool();
+
+                QJsonArray subArgsArray = subObj["args"].toArray();
+                for (const QJsonValue &saVal : subArgsArray) {
+                    if (!saVal.isObject()) continue;
+                    QJsonObject saObj = saVal.toObject();
+                    Argument sa;
+                    sa.type         = saObj["type"].toString();
+                    sa.name         = saObj["name"].toString();
+                    sa.required     = saObj["required"].toBool();
+                    sa.flag         = saObj["flag"].toBool();
+                    sa.mark         = saObj["mark"].toString();
+                    sa.description  = saObj["description"].toString();
+                    sa.defaultUsed  = saObj["default_used"].toBool();
+                    if (sa.defaultUsed)
+                        sa.defaultValue = saObj["default_value"].toVariant();
+                    sub.args.append(sa);
+                }
+                cmd.subcommands.append(sub);
             }
-        }
 
-        QJSValue commands_linux = registerResult.property("commands_linux");
-        if ( !commands_linux.isUndefined() && commands_linux.isQObject()) {
-            QObject* objPanel = commands_linux.toQObject();
-            auto* wrapper = dynamic_cast<AxCommandGroupWrapper*>(objPanel);
-            if (wrapper) {
-                CommandsGroup commandsGroup = {};
-                commandsGroup.groupName = wrapper->getName();
-                commandsGroup.commands  = wrapper->getCommands();
-                commandsGroup.engine    = wrapper->getEngine();
-                commandsGroup.filepath  = "";
-
-                Commander* commander = new Commander();
-                commander->AddRegCommands(commandsGroup);
-
-                RegAgentConfig config = {agentName, listener, OS_LINUX, commander, true};
-                RegisterAgents.push_back(config);
-            }
-            else {
-                ScriptManager->consolePrintError(agentName + " - commands_linux must return CommandsGroup object");
-            }
-        }
-
-        QJSValue commands_macos = registerResult.property("commands_macos");
-        if ( !commands_macos.isUndefined() && commands_macos.isQObject()) {
-            QObject* objPanel = commands_macos.toQObject();
-            auto* wrapper = dynamic_cast<AxCommandGroupWrapper*>(objPanel);
-            if (wrapper) {
-                CommandsGroup commandsGroup = {};
-                commandsGroup.groupName = wrapper->getName();
-                commandsGroup.commands  = wrapper->getCommands();
-                commandsGroup.engine    = wrapper->getEngine();
-                commandsGroup.filepath  = "";
-
-                Commander* commander = new Commander();
-                commander->AddRegCommands(commandsGroup);
-
-                RegAgentConfig config = {agentName, listener, OS_MAC, commander, true};
-                RegisterAgents.push_back(config);
-            }
-            else {
-                ScriptManager->consolePrintError(agentName + " - commands_macos must return CommandsGroup object");
-            }
+            allCommands.append(cmd);
         }
     }
+
+    if (allCommands.isEmpty())
+        return;
+
+    CommandsGroup group;
+    group.groupName = agentName;
+    group.commands  = allCommands;
+    group.engine    = nullptr;
+    group.filepath  = "";
+
+    Commander* commander = new Commander();
+    commander->AddRegCommands(group);
+
+    RegAgentConfig config = {agentName, listenerType, os, commander, true};
+    ServerRegAgents.push_back(config);
 }
 
 RegListenerConfig AdaptixWidget::GetRegListener(const QString &listenerName)
@@ -725,9 +742,9 @@ RegListenerConfig AdaptixWidget::GetRegListener(const QString &listenerName)
 QList<QString> AdaptixWidget::GetAgentNames(const QString &listenerType) const
 {
     QSet<QString> names;
-    for (auto regAgent : this->RegisterAgents) {
-        if (regAgent.listenerType == listenerType)
-            names.insert(regAgent.name);
+    for (auto it = AgentTypes.constBegin(); it != AgentTypes.constEnd(); ++it) {
+        if (it.value().listenerTypes.contains(listenerType))
+            names.insert(it.key());
     }
     return names.values();
 }
@@ -747,7 +764,14 @@ RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QStrin
                 break;
             }
         }
-
+        for (auto regAgent : this->ServerRegAgents) {
+            if (regAgent.name == agentName && regAgent.listenerType == listener && regAgent.os == os)
+                return regAgent;
+        }
+        for (auto regAgent : this->ServerRegAgents) {
+            if (regAgent.name == agentName && regAgent.listenerType.isEmpty() && regAgent.os == os)
+                return regAgent;
+        }
         for (auto regAgent : this->RegisterAgents) {
             if (regAgent.name == agentName && regAgent.listenerType == listener && regAgent.os == os)
                 return regAgent;
@@ -767,7 +791,12 @@ QList<Commander*> AdaptixWidget::GetCommanders(const QStringList &listeners, con
         if ( !agents.contains(regAgent.name) ) continue;
         if ( !listeners.empty() && !listeners.contains(regAgent.listenerType)) continue;
         if ( !os.empty() && !os.contains(regAgent.os) ) continue;
-
+        commanders.append(regAgent.commander);
+    }
+    for (auto regAgent : this->ServerRegAgents) {
+        if ( !agents.contains(regAgent.name) ) continue;
+        if ( !listeners.empty() && !regAgent.listenerType.isEmpty() && !listeners.contains(regAgent.listenerType)) continue;
+        if ( !os.empty() && !os.contains(regAgent.os) ) continue;
         commanders.append(regAgent.commander);
     }
     return commanders;
@@ -777,6 +806,8 @@ QList<Commander*> AdaptixWidget::GetCommandersAll() const
 {
     QList<Commander*> commanders;
     for (auto regAgent : this->RegisterAgents)
+        commanders.append(regAgent.commander);
+    for (auto regAgent : this->ServerRegAgents)
         commanders.append(regAgent.commander);
     return commanders;
 }

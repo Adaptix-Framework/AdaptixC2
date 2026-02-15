@@ -21,9 +21,11 @@ func (ts *Teamserver) TsClientConnected(username string) bool {
 
 func getPacketCategory(packet interface{}) string {
 	switch packet.(type) {
-	case SyncPackerListenerReg, SyncPackerListenerStart:
+	case SyncPackerListenerReg, SyncPackerAgentReg, SyncPackerServiceReg, SyncPackerAxScriptCommands:
+		return "extenders"
+	case SyncPackerListenerStart:
 		return "listeners"
-	case SyncPackerAgentReg, SyncPackerAgentNew, SyncPackerAgentUpdate:
+	case SyncPackerAgentNew, SyncPackerAgentUpdate:
 		return "agents"
 	case SyncPackerAgentConsoleOutput, SyncPackerAgentConsoleTaskSync, SyncPackerAgentConsoleTaskUpd:
 		return SyncCategoryConsoleHistory
@@ -99,6 +101,7 @@ func (ts *Teamserver) TsSyncCategories(client *ClientHandler, categories []strin
 	if requested[SyncCategoryExtenders] {
 		delete(requested, SyncCategoryExtenders)
 		packets = append(packets, ts.TsPresyncExtenders()...)
+		packets = append(packets, ts.TsPresyncAxScriptCommands()...)
 	}
 	if requested[SyncCategoryListeners] {
 		delete(requested, SyncCategoryListeners)

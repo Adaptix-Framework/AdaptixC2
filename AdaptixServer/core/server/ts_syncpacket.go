@@ -85,6 +85,8 @@ const (
 	TYPE_TARGETS_EDIT    = 0x88
 	TYPE_TARGETS_DELETE  = 0x89
 	TYPE_TARGETS_SET_TAG = 0x8a
+
+	TYPE_AXSCRIPT_COMMANDS = 0x91
 )
 
 func CreateSpNotification(notifyType int, message string) SpNotification {
@@ -749,5 +751,18 @@ func CreateSpServiceData(service string, data string) SyncPackerServiceData {
 
 		Service: service,
 		Data:    data,
+	}
+}
+
+/// AXSCRIPT
+
+func CreateSpAxScriptCommands(agent string, listener string, osType int, commandsJson string) SyncPackerAxScriptCommands {
+	return SyncPackerAxScriptCommands{
+		SpType: TYPE_AXSCRIPT_COMMANDS,
+
+		Agent:    agent,
+		Listener: listener,
+		Os:       osType,
+		Commands: commandsJson,
 	}
 }

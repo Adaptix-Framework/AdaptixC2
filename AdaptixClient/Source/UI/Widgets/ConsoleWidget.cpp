@@ -427,7 +427,6 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
     QString commandData = jsonDoc.toJson();
 
     QJsonObject dataJson;
-    dataJson["name"]          = agent->data.Name;
     dataJson["id"]            = agent->data.Id;
     dataJson["ui"]            = UI;
     dataJson["cmdline"]       = commandLine;

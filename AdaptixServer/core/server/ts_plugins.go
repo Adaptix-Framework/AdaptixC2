@@ -55,6 +55,15 @@ func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {
 	ts.wm_agent_types[agentInfo.Watermark] = agentInfo.Name
 	ts.agent_configs.Put(agentInfo.Name, agentInfo)
 
+	if ts.ScriptManager != nil && agentInfo.AX != "" {
+		err := ts.TsAxScriptLoadAgent(agentInfo.Name, agentInfo.AX, agentInfo.Listeners)
+		if err != nil {
+			logs.Warn("", "Agent %s: AxScript load failed (commands will come from client): %v", agentInfo.Name, err)
+		} else {
+			ts.TsAxScriptBroadcastCommands()
+		}
+	}
+
 	return nil
 }
 

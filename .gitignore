@@ -26,6 +26,8 @@ AdaptixClient/Libs/kddockwidgets/*_export.h
 
 # VSCode
 .vscode/
+#JB
+.cache/
 
 # macOS
 .DS_Store

@@ -51,6 +51,7 @@ func NewTeamserver() *Teamserver {
 		pivots:        safe.NewSlice(),
 		builders:      safe.NewMap(),
 	}
+	ts.ScriptManager = axscript.NewScriptManager(ts)
 	ts.TaskManager = NewTaskManager(ts)
 	ts.TunnelManager = NewTunnelManager(ts)
 	ts.Extender = extender.NewExtender(ts)

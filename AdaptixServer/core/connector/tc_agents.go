@@ -53,7 +53,6 @@ func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
 }
 
 type CommandData struct {
-	AgentName  string `json:"name"`
 	AgentId    string `json:"id"`
 	UI         bool   `json:"ui"`
 	CmdLine    string `json:"cmdline"`

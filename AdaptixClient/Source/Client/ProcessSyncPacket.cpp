@@ -495,6 +495,13 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     case TYPE_PIVOT_DELETE:
         return checkField("p_pivot_id", isStr);
 
+
+    case TYPE_AXSCRIPT_COMMANDS:
+        return checkField("agent", isStr) &&
+               checkField("listener", isStr) &&
+               checkField("os", isNum) &&
+               checkField("commands", isStr);
+
     default:
         qWarning() << "[SyncPacket] Unknown packet type:" << spType;
         return false;
@@ -1085,6 +1092,15 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         }
         break;
     }
+
+    case TYPE_AXSCRIPT_COMMANDS:
+        this->ProcessAxScriptCommands(
+            jsonObj["agent"].toString(),
+            jsonObj["listener"].toString(),
+            static_cast<int>(jsonObj["os"].toDouble()),
+            jsonObj["commands"].toString()
+        );
+        break;
 
     case SP_TYPE_EVENT:
         LogsDock->AddLogs(
