@@ -15,6 +15,7 @@ type TsProfile struct {
 	Cert         string            `yaml:"cert"`
 	Key          string            `yaml:"key"`
 	Extenders    []string          `yaml:"extenders"`
+	AxScripts    []string          `yaml:"axscripts"`
 	ATokenLive   int               `yaml:"access_token_live_hours"`
 	RTokenLive   int               `yaml:"refresh_token_live_hours"`
 }
