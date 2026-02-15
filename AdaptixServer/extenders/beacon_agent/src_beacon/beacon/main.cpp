@@ -1,4 +1,4 @@
-﻿#include "main.h"
+#include "main.h"
 #include "config.h"
 
 #if defined(DEBUG)
@@ -85,7 +85,6 @@ void InitializeSynchronization()
         InitializeCriticalSection(&g_InitLock);
 }
 
-// Internal function to run agent with proper synchronization
 void run()
 {
     // Initialize synchronization if needed

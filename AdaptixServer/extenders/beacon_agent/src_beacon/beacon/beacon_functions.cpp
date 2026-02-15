@@ -20,7 +20,7 @@ void BofOutputToTask(int type, PBYTE data, int dataSize)
 		AsyncBofOutput(type, data, dataSize);
 		return;
 	}
-
+	
 	if (bofOutputPacker) {
 		bofOutputPacker->Pack32(bofTaskId);
 		bofOutputPacker->Pack32(51); // COMMAND_EXEC_BOF_OUT
@@ -72,7 +72,7 @@ void BeaconDataParse(datap* parser, char* buffer, int size)
 {
 	if (parser == NULL || buffer == NULL)
 		return;
-
+	
 	parser->original = buffer;
 	parser->buffer = buffer;
 	parser->length = size - 4;
@@ -84,7 +84,7 @@ int BeaconDataInt(datap* parser)
 {
 	if (parser == NULL)
 		return 0;
-
+	
 	int fourbyteint = 0;
 	if (parser->length < 4) {
 		return 0;
@@ -231,7 +231,7 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 	va_start(args, fmt);
 	length = ApiWin->vsnprintf(NULL, 0, fmt, args);
 	va_end(args);
-
+	
 	if (length <= 0)
 		return;
 
@@ -248,10 +248,10 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 
 char* BeaconFormatToString(formatp* format, int* size)
 {
-	if (format == NULL)
-		return NULL;
-	if (size != NULL)
-		*size = format->length;
+	if (format == NULL) 		
+		return NULL;  	
+	if (size != NULL) 		
+		*size = format->length;  	
 	return format->original;
 }
 
@@ -259,7 +259,7 @@ void BeaconFormatFree(formatp* format)
 {
 	if (format == NULL)
 		return;
-
+	
 	if (format->original) {
 		MemFreeLocal((LPVOID*) &format->original, format->size);
 	}
@@ -349,12 +349,12 @@ PDATA_STORE_OBJECT BeaconDataStoreGetItem(SIZE_T index)
 	return NULL;
 }
 
-VOID BeaconDataStoreProtectItem(SIZE_T index)
+VOID BeaconDataStoreProtectItem(SIZE_T index) 
 {
 
 }
 
-VOID BeaconDataStoreUnprotectItem(SIZE_T index)
+VOID BeaconDataStoreUnprotectItem(SIZE_T index) 
 {
 
 }

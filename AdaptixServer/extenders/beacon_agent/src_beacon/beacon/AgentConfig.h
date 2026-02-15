@@ -71,8 +71,6 @@ typedef struct {
 class AgentConfig
 {
 public:
-	BOOL active;
-
 	ULONG agent_type;
 	ULONG listener_type;
 	BYTE* encrypt_key;

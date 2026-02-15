@@ -429,3 +429,44 @@ extern "C" {
 #endif // COMPILER_MSVC
 
 } // extern "C"
+
+//=============================================================================
+// Minimal RTTI type_info stubs for -nostdlib linking.
+// The Itanium C++ ABI (GCC/MinGW) emits RTTI references for classes with
+// virtual methods.  Without libstdc++ we must provide the vtables ourselves.
+//   __class_type_info    – classes with no base (Connector)
+//   __si_class_type_info – single-inheritance derived classes (ConnectorHTTP…)
+//=============================================================================
+
+#if COMPILER_GCC || COMPILER_CLANG
+
+void operator delete(void* p, unsigned long long) noexcept { free(p); }
+void operator delete(void* p) noexcept { free(p); }
+
+namespace std {
+    class type_info {
+    public:
+        virtual ~type_info();
+    protected:
+        const char* __name;
+    };
+    type_info::~type_info() {}
+}
+
+namespace __cxxabiv1 {
+
+    class __class_type_info : public std::type_info {
+    public:
+        virtual ~__class_type_info();
+    };
+    __class_type_info::~__class_type_info() {}
+
+    class __si_class_type_info : public __class_type_info {
+    public:
+        virtual ~__si_class_type_info();
+    };
+    __si_class_type_info::~__si_class_type_info() {}
+
+}
+
+#endif // COMPILER_GCC || COMPILER_CLANG

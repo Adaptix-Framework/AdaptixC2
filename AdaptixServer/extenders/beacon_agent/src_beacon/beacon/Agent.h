@@ -29,10 +29,10 @@ public:
 	Map<CHAR*, LPVOID> Values;
 
 	BYTE* SessionKey = NULL;
+	BOOL  Active     = TRUE;
 
 	Agent();
 
-	void  SetActive(BOOL state);
 	BOOL  IsActive();
 	ULONG GetWorkingSleep();
 	BYTE* BuildBeat(ULONG* size);

@@ -349,11 +349,25 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 			}
 		}
 
+		sleepSeconds, err := parseDurationToSeconds(generateConfig.Sleep)
+		if err != nil {
+			return nil, err
+		}
+
+		lWatermark, _ := strconv.ParseInt(transportProfile.Watermark, 16, 64)
+
 		encrypt_key, _ := listenerMap["encrypt_key"].(string)
 		encryptKey, err := hex.DecodeString(encrypt_key)
 		if err != nil {
 			return nil, err
 		}
+
+		params = append(params, int(agentWatermark))
+		params = append(params, kill_date)
+		params = append(params, working_time)
+		params = append(params, sleepSeconds)
+		params = append(params, generateConfig.Jitter)
+		params = append(params, int(lWatermark))
 
 		protocol, _ := listenerMap["protocol"].(string)
 		switch protocol {
@@ -386,7 +400,6 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 			RequestHeaders, _ := listenerMap["request_headers"].(string)
 			HostHeaderRaw, _ := listenerMap["host_header"].(string)
 
-			// Parse multi-value fields (newline-separated)
 			var Uris []string
 			for _, u := range strings.Split(UriRaw, "\n") {
 				u = strings.TrimSpace(u)
@@ -417,7 +430,6 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 				}
 			}
 
-			// Strip "Host: ...\r\n" from RequestHeaders (agent handles host header separately)
 			if len(HostHeaders) > 0 {
 				lines := strings.Split(RequestHeaders, "\r\n")
 				var filtered []string
@@ -438,12 +450,6 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 				rotationMode = 1
 			}
 
-			seconds, err := parseDurationToSeconds(generateConfig.Sleep)
-			if err != nil {
-				return nil, err
-			}
-
-			params = append(params, int(agentWatermark))
 			params = append(params, Ssl)
 			params = append(params, c2Count)
 			for i := 0; i < c2Count; i++ {
@@ -481,41 +487,27 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 			params = append(params, generateConfig.ProxyPort)
 			params = append(params, generateConfig.ProxyUsername)
 			params = append(params, generateConfig.ProxyPassword)
-			params = append(params, kill_date)
-			params = append(params, working_time)
-			params = append(params, seconds)
-			params = append(params, generateConfig.Jitter)
 
 		case "bind_smb":
 
 			pipename, _ := listenerMap["pipename"].(string)
 			pipename = "\\\\.\\pipe\\" + pipename
 
-			lWatermark, _ := strconv.ParseInt(transportProfile.Watermark, 16, 64)
-
-			params = append(params, int(agentWatermark))
 			params = append(params, pipename)
-			params = append(params, int(lWatermark))
-			params = append(params, kill_date)
 
 		case "bind_tcp":
 			prepend, _ := listenerMap["prepend_data"].(string)
 			port, _ := listenerMap["port_bind"].(float64)
 
-			lWatermark, _ := strconv.ParseInt(transportProfile.Watermark, 16, 64)
-
-			params = append(params, int(agentWatermark))
 			params = append(params, prepend)
 			params = append(params, int(port))
-			params = append(params, int(lWatermark))
-			params = append(params, kill_date)
 
 		case "dns":
 			userAgent := generateConfig.UserAgent
 			if userAgent == "" {
 				userAgent = "Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0"
 			}
-			params, err = buildDNSProfileParams(generateConfig, listenerMap, transportProfile.Watermark, agentWatermark, kill_date, working_time, userAgent)
+			params, err = buildDNSProfileParams(generateConfig, listenerMap, userAgent)
 			if err != nil {
 				return nil, err
 			}
