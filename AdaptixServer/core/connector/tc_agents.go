@@ -216,6 +216,49 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 	tc.dispatchAgentCommand(ctx, username, &commandData, args)
 }
 
+
+type CommandDataRaw struct {
+	AgentId string `json:"id"`
+	CmdLine string `json:"cmdline"`
+}
+
+func (tc *TsConnector) TcAgentCommandRaw(ctx *gin.Context) {
+	var (
+		username string
+		rawData  CommandDataRaw
+		ok       bool
+		err      error
+	)
+
+	value, exists := ctx.Get("username")
+	if !exists {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
+		return
+	}
+
+	username, ok = value.(string)
+	if !ok {
+		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
+		return
+	}
+
+	err = ctx.ShouldBindJSON(&rawData)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
+		return
+	}
+
+	if rawData.AgentId == "" || rawData.CmdLine == "" {
+		ctx.JSON(http.StatusOK, gin.H{"message": "id and cmdline are required", "ok": false})
+		return
+	}
+
+	err = tc.teamserver.TsAxScriptParseAndExecute(rawData.AgentId, username, rawData.CmdLine)
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		return
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 }
 

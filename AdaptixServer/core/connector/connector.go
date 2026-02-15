@@ -127,6 +127,16 @@ type Teamserver interface {
 	TsServiceUnload(serviceName string) error
 	TsServiceCall(serviceName string, operator string, function string, args string)
 	TsServiceList() (string, error)
+
+	TsAxScriptLoadUser(name string, script string) error
+	TsAxScriptUnloadUser(name string) error
+	TsAxScriptList() (string, error)
+	TsAxScriptCommands() (string, error)
+	TsAxScriptResolveHooks(agentName string, agentId string, listenerRegName string, os int, cmdline string, args map[string]interface{}) (string, string, bool, error)
+	TsAxScriptIsServerHook(id string) bool
+	TsAxScriptParseAndExecute(agentId string, username string, cmdline string) error
+	AxGetAgentNameById(agentId string) (string, int, error)
+	AxGetAgentListenerRegName(agentId string) (string, error)
 }
 
 type TsConnector struct {
@@ -337,6 +347,7 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profi
 
 		api_group.POST("/agent/command/file", connector.TcAgentCommandFile)
 		api_group.POST("/agent/command/execute", connector.TcAgentCommandExecute)
+		api_group.POST("/agent/command/raw", connector.TcAgentCommandRaw)
 		api_group.POST("/agent/console/remove", connector.TcAgentConsoleRemove)
 		api_group.POST("/agent/set/tag", connector.TcAgentSetTag)
 		api_group.POST("/agent/set/mark", connector.TcAgentSetMark)
