@@ -18,6 +18,8 @@ bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile pro
 bool HttpReqGetOTP(const QString &type, const QJsonObject &data, const QString &baseUrl, const QString &accessToken, QString* otp);
 bool HttpReqGetOTP(const QString &type, const QString &objectId, const QString &baseUrl, const QString &accessToken, QString* otp);
 
+void HttpReqGetOTPAsync(const QString &type, const QString &objectId, AuthProfile& profile, const HttpCallback &callback);
+
 /// ASYNC VERSIONS
 
 void HttpReqAgentRemoveAsync(const QStringList &agentsId, AuthProfile& profile, const HttpCallback &callback);

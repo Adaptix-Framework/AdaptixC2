@@ -23,7 +23,11 @@ class DialogUploader : public QDialog {
 
 public:
     explicit DialogUploader(const QUrl &uploadUrl, const QString &otp, const QByteArray &data, QWidget *parent = nullptr);
+    explicit DialogUploader(const QUrl &uploadUrl, const QString &otp, const QString &filePath, QWidget *parent = nullptr);
     ~DialogUploader() override;
+
+Q_SIGNALS:
+    void uploadFinished(bool success);
 };
 
 #endif

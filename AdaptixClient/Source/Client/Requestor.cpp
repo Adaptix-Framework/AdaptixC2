@@ -134,6 +134,19 @@ bool HttpReqGetOTP(const QString &type, const QString &objectId, const QString &
     return false;
 }
 
+void HttpReqGetOTPAsync(const QString &type, const QString &objectId, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject innerData;
+    innerData["id"] = objectId;
+
+    QJsonObject dataJson;
+    dataJson["type"] = type;
+    dataJson["data"] = innerData;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    HttpRequestManager::instance().post(profile.GetURL(), "/otp/generate", profile.GetAccessToken(), jsonData, callback);
+}
+
 /// ASYNC VERSIONS
 
 void HttpReqAgentRemoveAsync(const QStringList &agentsId, AuthProfile& profile, const HttpCallback &callback)

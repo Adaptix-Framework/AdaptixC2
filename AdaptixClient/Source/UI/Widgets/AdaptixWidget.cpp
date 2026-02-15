@@ -573,7 +573,6 @@ void AdaptixWidget::ClearAdaptix()
 
     for (auto regAgent : RegisterAgents)
         delete regAgent.commander;
-
     RegisterAgents.clear();
 }
 
@@ -753,13 +752,11 @@ RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QStrin
             if (regAgent.name == agentName && regAgent.listenerType == listener && regAgent.os == os)
                 return regAgent;
         }
-
         for (auto regAgent : this->RegisterAgents) {
             if (regAgent.name == agentName && regAgent.os == os)
                 return regAgent;
         }
     }
-
     return {};
 }
 
@@ -768,9 +765,7 @@ QList<Commander*> AdaptixWidget::GetCommanders(const QStringList &listeners, con
     QList<Commander*> commanders;
     for (auto regAgent : this->RegisterAgents) {
         if ( !agents.contains(regAgent.name) ) continue;
-
         if ( !listeners.empty() && !listeners.contains(regAgent.listenerType)) continue;
-
         if ( !os.empty() && !os.contains(regAgent.os) ) continue;
 
         commanders.append(regAgent.commander);

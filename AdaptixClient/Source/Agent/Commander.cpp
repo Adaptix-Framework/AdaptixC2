@@ -344,13 +344,26 @@ CommanderResult Commander::ProcessCommand(const Command &command, const QString 
                 if (path.startsWith("~/"))
                     path = QDir::home().filePath(path.mid(2));
 
-                QFile file(path);
-                if (file.open(QIODevice::ReadOnly)) {
-                    QByteArray fileData = file.readAll();
-                    jsonObj[commandArg.name] = QString::fromLatin1(fileData.toBase64());
-                    file.close();
+                QFileInfo fileInfo(path);
+                if (!fileInfo.exists() || !fileInfo.isFile()) {
+                    return CommanderResult{true, true, "File not found: " + path, {}, false, {}};
+                }
+
+                /// 3 Mb
+                if (fileInfo.size() < 3 * 1024 * 1024) {
+                    QFile file(path);
+                    if (file.open(QIODevice::ReadOnly)) {
+                        QByteArray fileData = file.readAll();
+                        jsonObj[commandArg.name] = QString::fromLatin1(fileData.toBase64());
+                        file.close();
+                    } else {
+                        return CommanderResult{true, true, "Failed to open file: " + path, {}, false, {}};
+                    }
                 } else {
-                    return CommanderResult{true, true, "Failed to open file: " + path, {}, false, {}};
+                    QJsonObject fileRef;
+                    fileRef["__file_path"] = path;
+                    fileRef["__file_size"] = fileInfo.size();
+                    jsonObj[commandArg.name] = fileRef;
                 }
             }
         } else if (commandArg.required) {

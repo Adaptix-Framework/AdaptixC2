@@ -281,6 +281,82 @@ void ConsoleWidget::ConsoleOutputPrompt(const qint64 timestamp, const QString &t
     }
 }
 
+void ConsoleWidget::cleanupHooksOnError(const QString& hookId, const QString& handlerId, bool hasHook, bool hasHandler)
+{
+    if (hasHook && adaptixWidget->PostHooksJS.contains(hookId))
+        adaptixWidget->PostHooksJS.remove(hookId);
+    if (hasHandler && adaptixWidget->PostHandlersJS.contains(handlerId))
+        adaptixWidget->PostHandlersJS.remove(handlerId);
+}
+
+void ConsoleWidget::processFileUploads(const QList<QPair<QString, QString>>& fileTasks, int index,
+    QJsonObject data, const QString& commandLine, bool UI,
+    const QString& hookId, const QString& handlerId, bool hasHook, bool hasHandler)
+{
+    if (index >= fileTasks.size()) {
+        QJsonDocument jsonDoc(data);
+        QString commandData = jsonDoc.toJson();
+
+        QJsonObject dataJson;
+        dataJson["id"]            = agent->data.Id;
+        dataJson["ui"]            = UI;
+        dataJson["cmdline"]       = commandLine;
+        dataJson["data"]          = commandData;
+        dataJson["ax_hook_id"]    = hookId;
+        dataJson["ax_handler_id"] = handlerId;
+        dataJson["wait_answer"]   = false;
+        QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+        HttpReqAgentCommandAsync(jsonData, *(agent->adaptixWidget->GetProfile()));
+        return;
+    }
+
+    QString argName  = fileTasks[index].first;
+    QString filePath = fileTasks[index].second;
+    QString objId    = GenerateRandomString(8, "hex");
+
+    /// 1. Get OTP asynchronously
+
+    HttpReqGetOTPAsync("tmp_upload", objId, *(agent->adaptixWidget->GetProfile()),
+        [this, fileTasks, index, data, commandLine, UI, hookId, handlerId, hasHook, hasHandler, argName, filePath, objId]
+        (bool success, const QString& message, const QJsonObject& response) mutable {
+
+            if (!success || !response.contains("ok") || !response["ok"].toBool()) {
+                cleanupHooksOnError(hookId, handlerId, hasHook, hasHandler);
+                QString errMsg = response.contains("message") ? response["message"].toString() : message;
+                MessageError(errMsg.isEmpty() ? "OTP request failed" : errMsg);
+                return;
+            }
+
+            QString otp  = response["message"].toString();
+            QString sUrl = agent->adaptixWidget->GetProfile()->GetURL() + "/otp/upload/temp";
+
+            /// 2. Stream file upload (non-blocking dialog)
+
+            auto* uploaderDialog = new DialogUploader(sUrl, otp, filePath);
+            uploaderDialog->setAttribute(Qt::WA_DeleteOnClose);
+
+            connect(uploaderDialog, &DialogUploader::uploadFinished, this,
+                [this, fileTasks, index, data, commandLine, UI, hookId, handlerId, hasHook, hasHandler, argName, objId]
+                (bool uploadSuccess) mutable {
+                    if (!uploadSuccess) {
+                        cleanupHooksOnError(hookId, handlerId, hasHook, hasHandler);
+                        return;
+                    }
+
+                    /// Replace __file_path marker with __file_ref
+                    QJsonObject fileRef;
+                    fileRef["__file_ref"] = objId;
+                    data[argName] = fileRef;
+
+                    /// Process next file or send command
+                    processFileUploads(fileTasks, index + 1, data, commandLine, UI, hookId, handlerId, hasHook, hasHandler);
+                });
+
+            uploaderDialog->show();
+        });
+}
+
 void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const CommanderResult &cmdResult, const bool UI)
 {
     if ( cmdResult.output ) {
@@ -326,6 +402,27 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
         adaptixWidget->PostHandlersJS[handlerId] = cmdResult.handler;
     }
 
+    /// Check for __file_path markers (large files >= 3 Mb)
+    QList<QPair<QString, QString>> fileTasks;
+    for (auto it = cmdResult.data.begin(); it != cmdResult.data.end(); ++it) {
+        if (it.value().isObject()) {
+            QJsonObject obj = it.value().toObject();
+            if (obj.contains("__file_path"))
+                fileTasks.append({it.key(), obj["__file_path"].toString()});
+        }
+    }
+
+    if (!fileTasks.isEmpty()) {
+        /// Async file upload flow — non-blocking
+        this->ConsoleOutputPrompt(0, "", "", commandLine);
+        this->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_INFO, "Uploading file(s) to server...", "", false);
+
+        processFileUploads(fileTasks, 0, cmdResult.data, commandLine, UI,
+            hookId, handlerId, cmdResult.post_hook.isSet, cmdResult.handler.isSet);
+        return;
+    }
+
+    /// Standard flow for commands without large file markers
     QJsonDocument jsonDoc(cmdResult.data);
     QString commandData = jsonDoc.toJson();
 
@@ -340,12 +437,11 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
     dataJson["wait_answer"]   = false;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-    /// 5 Mb
+    /// 5 Mb fallback for non-file large commands (e.g. from scripts)
     if (commandData.size() < 0x500000) {
         HttpReqAgentCommandAsync(jsonData, *(agent->adaptixWidget->GetProfile()));
     }
     else {
-
         /// 1. Get OTP
 
         QString message = QString();
@@ -353,18 +449,12 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
         QString objId = GenerateRandomString(8, "hex");
         bool result = HttpReqGetOTP("tmp_upload", objId, *(agent->adaptixWidget->GetProfile()), &message, &ok);
         if (!result) {
-            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
-                adaptixWidget->PostHooksJS.remove(hookId);
-            if (cmdResult.handler.isSet && adaptixWidget->PostHandlersJS.contains(handlerId))
-                adaptixWidget->PostHandlersJS.remove(handlerId);
+            cleanupHooksOnError(hookId, handlerId, cmdResult.post_hook.isSet, cmdResult.handler.isSet);
             MessageError("Response timeout");
             return;
         }
         if (!ok) {
-            if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
-                adaptixWidget->PostHooksJS.remove(hookId);
-            if (cmdResult.handler.isSet && adaptixWidget->PostHandlersJS.contains(handlerId))
-                adaptixWidget->PostHandlersJS.remove(handlerId);
+            cleanupHooksOnError(hookId, handlerId, cmdResult.post_hook.isSet, cmdResult.handler.isSet);
             MessageError(message);
             return;
         }
@@ -377,24 +467,21 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
         auto* uploaderDialog = new DialogUploader(sUrl, otp, jsonData);
         uploaderDialog->setAttribute(Qt::WA_DeleteOnClose);
 
-        connect(uploaderDialog, &DialogUploader::finished, [&](const bool success) {
-            if (!success) {
-                if (cmdResult.post_hook.isSet && adaptixWidget->PostHooksJS.contains(hookId))
-                    adaptixWidget->PostHooksJS.remove(hookId);
-                if (cmdResult.handler.isSet && adaptixWidget->PostHandlersJS.contains(handlerId))
-                    adaptixWidget->PostHandlersJS.remove(handlerId);
-                return;
-            }
+        connect(uploaderDialog, &DialogUploader::uploadFinished, this,
+            [this, hookId, handlerId, objId, cmdResult](const bool success) {
+                if (!success) {
+                    cleanupHooksOnError(hookId, handlerId, cmdResult.post_hook.isSet, cmdResult.handler.isSet);
+                    return;
+                }
 
-            /// 3. Send Command
+                /// 3. Send Command
+                QJsonObject data2Json;
+                data2Json["object_id"] = objId;
+                QByteArray json2Data = QJsonDocument(data2Json).toJson();
+                HttpReqAgentCommandFileAsync(json2Data, *(agent->adaptixWidget->GetProfile()));
+            });
 
-            QJsonObject data2Json;
-            data2Json["object_id"] = objId;
-            QByteArray json2Data = QJsonDocument(data2Json).toJson();
-            HttpReqAgentCommandFileAsync(json2Data, *(agent->adaptixWidget->GetProfile()));
-        });
-
-        uploaderDialog->exec();
+        uploaderDialog->show();
     }
 }
 
