@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/axscript"
 	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
 	"AdaptixServer/core/eventing"
@@ -235,6 +236,8 @@ func (ts *Teamserver) Start() {
 	}
 
 	ts.Extender.LoadPlugins(ts.Profile.Server.Extenders)
+
+	ts.TsAxScriptLoadFromProfile()
 
 	go ts.AdaptixServer.Start(&stopped)
 	logs.Success("", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)

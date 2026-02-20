@@ -2,11 +2,12 @@ package server
 
 import (
 	"AdaptixServer/core/extender"
+	"AdaptixServer/core/utils/logs"
 	isvalid "AdaptixServer/core/utils/valid"
 	"errors"
 	"fmt"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
@@ -59,11 +60,8 @@ func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {
 		err := ts.TsAxScriptLoadAgent(agentInfo.Name, agentInfo.AX, agentInfo.Listeners)
 		if err != nil {
 			logs.Warn("", "Agent %s: AxScript load failed (commands will come from client): %v", agentInfo.Name, err)
-		} else {
-			ts.TsAxScriptBroadcastCommands()
 		}
 	}
-
 	return nil
 }
 

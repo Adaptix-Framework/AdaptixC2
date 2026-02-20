@@ -6,7 +6,6 @@ import (
 	"github.com/dop251/goja"
 )
 
-// newStubWidget creates a generic no-op widget object with common methods.
 func newStubWidget(rt *goja.Runtime) *goja.Object {
 	obj := rt.NewObject()
 	obj.Set("setEnabled", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
@@ -189,7 +188,6 @@ func registerEventStubs(engine *ScriptEngine) {
 	rt.Set("event", eventObj)
 }
 
-// fileBasename returns the last component of a path (used by ax.file_basename).
 func fileBasename(path string) string {
 	return filepath.Base(path)
 }

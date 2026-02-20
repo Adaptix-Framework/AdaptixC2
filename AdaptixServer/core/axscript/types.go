@@ -45,9 +45,12 @@ type CommandDef struct {
 }
 
 type CommandGroup struct {
-	GroupName  string       `json:"group_name"`
-	ScriptName string       `json:"script_name"`
-	Commands   []CommandDef `json:"commands"`
+	GroupName        string        `json:"group_name"`
+	GroupDescription string        `json:"group_description,omitempty"`
+	ScriptName       string        `json:"script_name"`
+	Commands         []CommandDef  `json:"commands"`
+	Source           string        `json:"source,omitempty"`
+	Engine           *ScriptEngine `json:"-"`
 }
 
 type RegisterCommandsResult struct {
@@ -61,6 +64,13 @@ type ResolvedCommand struct {
 	Command    *CommandDef
 	Subcommand *CommandDef
 	Engine     *ScriptEngine
+}
+
+func (r *ResolvedCommand) GetEffectiveCommand() *CommandDef {
+	if r.Subcommand != nil {
+		return r.Subcommand
+	}
+	return r.Command
 }
 
 type ParsedCommand struct {
@@ -90,6 +100,11 @@ type ScriptInfo struct {
 	ScriptType string `json:"type"`
 	AgentName  string `json:"agent_name,omitempty"`
 	Path       string `json:"path,omitempty"`
+}
+
+type ScriptWithContent struct {
+	Name   string `json:"name"`
+	Script string `json:"script"`
 }
 
 func OsFromString(s string) int {

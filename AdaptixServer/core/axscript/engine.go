@@ -1,8 +1,8 @@
 package axscript
 
 import (
+	"AdaptixServer/core/utils/fsystem"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -15,11 +15,12 @@ type ScriptEngine struct {
 	runtime *goja.Runtime
 	name    string
 
-	manager      *ScriptManager
-	functions    map[string]goja.Callable
-	scriptPath   string   // absolute path to the .axs file
-	scriptDir    string   // directory containing the .axs file (with trailing /)
-	allowedRoots []string // resolved absolute paths allowed for file access
+	manager       *ScriptManager
+	functions     map[string]goja.Callable
+	scriptPath    string
+	scriptDir     string
+	allowedRoots  []string
+	importedFiles []string
 }
 
 func NewScriptEngine(name string, manager *ScriptManager) *ScriptEngine {
@@ -50,7 +51,7 @@ func NewScriptEngineFromPath(scriptPath string, manager *ScriptManager) (*Script
 		return nil, fmt.Errorf("invalid script path: %w", err)
 	}
 
-	resolved, err := resolveRealPath(abs)
+	resolved, err := fsystem.ResolveRealPath(abs)
 	if err != nil {
 		return nil, fmt.Errorf("cannot resolve script path: %w", err)
 	}
@@ -71,10 +72,25 @@ func NewScriptEngineFromPath(scriptPath string, manager *ScriptManager) (*Script
 	return engine, nil
 }
 
+func (e *ScriptEngine) Execute(script string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	_, err := e.runtime.RunString(script)
+	if err != nil {
+		return fmt.Errorf("script execution error in '%s': %w", e.name, err)
+	}
+	return nil
+}
+
+//////////
+
+// /---
 func (e *ScriptEngine) ScriptDir() string {
 	return e.scriptDir
 }
 
+// /---
 func (e *ScriptEngine) ScriptPath() string {
 	return e.scriptPath
 }
@@ -85,7 +101,7 @@ func (e *ScriptEngine) ValidatePath(path string) (string, error) {
 		return "", fmt.Errorf("invalid path: %w", err)
 	}
 
-	real, err := resolveRealPath(abs)
+	real, err := fsystem.ResolveRealPath(abs)
 	if err != nil {
 		return "", fmt.Errorf("cannot resolve path: %w", err)
 	}
@@ -99,42 +115,32 @@ func (e *ScriptEngine) ValidatePath(path string) (string, error) {
 	return "", fmt.Errorf("access denied: %s is outside allowed directories", path)
 }
 
-func resolveRealPath(path string) (string, error) {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return filepath.Clean(path), nil
-	}
-
-	if info.Mode()&os.ModeSymlink != 0 {
-		resolved, err := filepath.EvalSymlinks(path)
-		if err != nil {
-			return "", err
+func (e *ScriptEngine) AddImportedFile(path string) {
+	for _, p := range e.importedFiles {
+		if p == path {
+			return
 		}
-		return filepath.Clean(resolved), nil
 	}
-
-	return filepath.Clean(path), nil
+	e.importedFiles = append(e.importedFiles, path)
 }
 
+func (e *ScriptEngine) GetImportedFiles() []string {
+	result := make([]string, len(e.importedFiles))
+	copy(result, e.importedFiles)
+	return result
+}
+
+// /---
 func (e *ScriptEngine) Name() string {
 	return e.name
 }
 
+// /---
 func (e *ScriptEngine) Runtime() *goja.Runtime {
 	return e.runtime
 }
 
-func (e *ScriptEngine) Execute(script string) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	_, err := e.runtime.RunString(script)
-	if err != nil {
-		return fmt.Errorf("script execution error in '%s': %w", e.name, err)
-	}
-	return nil
-}
-
+// /---
 func (e *ScriptEngine) CallFunction(name string, args ...goja.Value) (goja.Value, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -162,12 +168,14 @@ func (e *ScriptEngine) CallCallable(fn goja.Callable, args ...goja.Value) (goja.
 	return result, nil
 }
 
+// /---
 func (e *ScriptEngine) StoreFunctionRef(id string, fn goja.Callable) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.functions[id] = fn
 }
 
+// /---
 func (e *ScriptEngine) GetFunctionRef(id string) (goja.Callable, bool) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -175,6 +183,7 @@ func (e *ScriptEngine) GetFunctionRef(id string) (goja.Callable, bool) {
 	return fn, ok
 }
 
+// /---
 func (e *ScriptEngine) RemoveFunctionRef(id string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -185,6 +194,39 @@ func (e *ScriptEngine) ToValue(v interface{}) goja.Value {
 	return e.runtime.ToValue(v)
 }
 
+// /---
 func (e *ScriptEngine) SetGlobal(name string, value interface{}) {
 	e.runtime.Set(name, value)
+}
+
+func (e *ScriptEngine) GetMetadataName() string {
+	metaVal := e.runtime.Get("metadata")
+	if metaVal == nil || goja.IsUndefined(metaVal) || goja.IsNull(metaVal) {
+		return ""
+	}
+	metaObj := metaVal.ToObject(e.runtime)
+	if metaObj == nil {
+		return ""
+	}
+	nameVal := metaObj.Get("name")
+	if nameVal == nil || goja.IsUndefined(nameVal) || goja.IsNull(nameVal) {
+		return ""
+	}
+	return nameVal.String()
+}
+
+func (e *ScriptEngine) GetMetadataNoSave() bool {
+	metaVal := e.runtime.Get("metadata")
+	if metaVal == nil || goja.IsUndefined(metaVal) || goja.IsNull(metaVal) {
+		return false
+	}
+	metaObj := metaVal.ToObject(e.runtime)
+	if metaObj == nil {
+		return false
+	}
+	nosaveVal := metaObj.Get("nosave")
+	if nosaveVal == nil || goja.IsUndefined(nosaveVal) || goja.IsNull(nosaveVal) {
+		return false
+	}
+	return nosaveVal.ToBoolean()
 }

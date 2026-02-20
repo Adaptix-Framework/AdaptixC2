@@ -67,4 +67,9 @@ void HttpReqChatSendMessageAsync(const QString &text, AuthProfile& profile, cons
 
 void HttpReqServiceCallAsync(const QString &service, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback);
 
+void HttpReqAxScriptListAsync(AuthProfile& profile, const HttpCallback &callback);
+void HttpReqAxScriptCommandsAsync(AuthProfile& profile, const HttpCallback &callback);
+void HttpReqAxScriptLoadAsync(const QString &name, const QString &script, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqAxScriptUnloadAsync(const QString &name, AuthProfile& profile, const HttpCallback &callback);
+
 #endif

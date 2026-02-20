@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// /---
 func bytesToCode(language string, data []byte, varName string) string {
 	if len(data) == 0 {
 		return ""
@@ -94,6 +95,7 @@ func bytesToCode(language string, data []byte, varName string) string {
 	}
 }
 
+// /---
 func encodeData(alg string, data []byte, key string) string {
 	switch alg {
 	case "base64":
@@ -115,6 +117,7 @@ func encodeData(alg string, data []byte, key string) string {
 	}
 }
 
+// /---
 func decodeData(alg string, data string, key string) string {
 	switch alg {
 	case "base64":
@@ -148,6 +151,7 @@ func decodeData(alg string, data string, key string) string {
 	}
 }
 
+// /---
 func decodeRawData(alg string, rawData []byte, key string) []byte {
 	switch alg {
 	case "xor":

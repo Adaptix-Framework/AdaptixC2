@@ -39,6 +39,7 @@ QNetworkRequest HttpRequestManager::createRequest(const QString& url, const QStr
     QNetworkRequest request{QUrl(url)};
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setSslConfiguration(m_sslConfig);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
 
     if (!accessToken.isEmpty()) {
         QString bearerToken = "Bearer " + accessToken;
@@ -252,6 +253,7 @@ void HttpRequestManager::cleanupRequest(int requestId)
     if (m_pendingRequests.contains(requestId)) {
         QNetworkReply* reply = m_pendingRequests[requestId].reply;
         if (reply) {
+            disconnect(reply, nullptr, this, nullptr);
             m_replyToRequestId.remove(reply);
         }
         m_pendingRequests.remove(requestId);

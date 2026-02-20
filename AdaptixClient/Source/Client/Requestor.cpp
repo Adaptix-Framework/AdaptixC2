@@ -13,6 +13,7 @@ QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QStri
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setSslConfiguration(sslConfig);
+    request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
     if( !token.isEmpty() ) {
         QString bearerToken = "Bearer " + token;
         request.setRawHeader("Authorization", bearerToken.toUtf8());
@@ -456,4 +457,35 @@ void HttpReqServiceCallAsync(const QString &service, const QString &command, con
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     HttpRequestManager::instance().post(profile.GetURL(), "/service/call", profile.GetAccessToken(), jsonData, callback);
+}
+
+void HttpReqAxScriptListAsync(AuthProfile& profile, const HttpCallback &callback)
+{
+    QByteArray jsonData = QJsonDocument(QJsonObject()).toJson();
+    HttpRequestManager::instance().post(profile.GetURL(), "/axscript/list", profile.GetAccessToken(), jsonData, callback);
+}
+
+void HttpReqAxScriptCommandsAsync(AuthProfile& profile, const HttpCallback &callback)
+{
+    QByteArray jsonData = QJsonDocument(QJsonObject()).toJson();
+    HttpRequestManager::instance().post(profile.GetURL(), "/axscript/commands", profile.GetAccessToken(), jsonData, callback);
+}
+
+void HttpReqAxScriptLoadAsync(const QString &name, const QString &script, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["name"] = name;
+    dataJson["script"] = script;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    HttpRequestManager::instance().post(profile.GetURL(), "/axscript/load", profile.GetAccessToken(), jsonData, callback);
+}
+
+void HttpReqAxScriptUnloadAsync(const QString &name, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["name"] = name;
+    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+
+    HttpRequestManager::instance().post(profile.GetURL(), "/axscript/unload", profile.GetAccessToken(), jsonData, callback);
 }

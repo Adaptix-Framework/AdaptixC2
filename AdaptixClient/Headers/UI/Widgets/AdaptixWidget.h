@@ -35,6 +35,7 @@ class TunnelEndpoint;
 class DialogSyncPacket;
 class AuthProfile;
 class AxScriptManager;
+struct ServerScriptGroup;
 
 typedef struct RegListenerConfig {
     QString name;
@@ -54,6 +55,12 @@ typedef struct AgentTypeInfo {
     bool        multiListeners;
     QStringList listenerTypes;
 } AgentTypeInfo;
+
+struct ServerScriptInfo {
+    QString name;
+    QString description;
+    bool    enabled;
+};
 
 class AdaptixWidget : public QWidget
 {
@@ -134,29 +141,28 @@ public:
     TasksWidget*         TasksDock         = nullptr;
     TargetsWidget*       TargetsDock       = nullptr;
 
-    QVector<RegListenerConfig>     RegisterListeners;
-    QVector<RegAgentConfig>        RegisterAgents;
-    QVector<RegAgentConfig>        ServerRegAgents;
-    QMap<QString, AgentTypeInfo>   AgentTypes;
-    QVector<ListenerData>          Listeners;
-    QVector<TunnelData>            Tunnels;
-    QMap<QString, DownloadData>    Downloads;
-    QMap<QString, ScreenData>      Screenshots;
-    QVector<CredentialData>        Credentials;
-    QVector<TargetData>            Targets;
-    QMap<QString, PivotData>       Pivots;
-    QMap<QString, TaskData>        TasksMap;
-    QMap<QString, Agent*>          AgentsMap;
-    mutable QReadWriteLock         AgentsMapLock;
-    mutable QReadWriteLock         TasksMapLock;
-    mutable QReadWriteLock         CredentialsLock;
-    mutable QReadWriteLock         DownloadsLock;
-    mutable QReadWriteLock         ScreenshotsLock;
-    mutable QReadWriteLock         TargetsLock;
-    mutable QReadWriteLock         TunnelsLock;
-    QMap<QString, AxExecutor>      PostHooksJS;
-    QMap<QString, AxExecutor>      PostHandlersJS;
-    QMap<QString, TunnelEndpoint*> ClientTunnels;
+    QVector<RegListenerConfig>       RegisterListeners;
+    QVector<RegAgentConfig>          RegisterAgents;
+    QMap<QString, AgentTypeInfo>     AgentTypes;
+    QVector<ListenerData>            Listeners;
+    QVector<TunnelData>              Tunnels;
+    QMap<QString, DownloadData>      Downloads;
+    QMap<QString, ScreenData>        Screenshots;
+    QVector<CredentialData>          Credentials;
+    QVector<TargetData>              Targets;
+    QMap<QString, PivotData>         Pivots;
+    QMap<QString, TaskData>          TasksMap;
+    QMap<QString, Agent*>            AgentsMap;
+    mutable QReadWriteLock           AgentsMapLock;
+    mutable QReadWriteLock           TasksMapLock;
+    mutable QReadWriteLock           CredentialsLock;
+    mutable QReadWriteLock           DownloadsLock;
+    mutable QReadWriteLock           ScreenshotsLock;
+    mutable QReadWriteLock           TargetsLock;
+    mutable QReadWriteLock           TunnelsLock;
+    QMap<QString, AxExecutor>        PostHooksJS;
+    QMap<QString, AxExecutor>        PostHandlersJS;
+    QMap<QString, TunnelEndpoint*>   ClientTunnels;
     QStringList addresses;
 
     struct ExtDockEntry {
@@ -185,15 +191,20 @@ public:
     void ClearNotificationsStream();
 
     void RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script);
-    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listenersconst, const bool &multiListeners);
+    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listenersconst, const bool &multiListeners, const QJsonArray &groups);
     void RegisterServiceConfig(const QString &serviceName, const QString &ax_script);
-    void ProcessAxScriptCommands(const QString &agentName, const QString &listenerType, int os, const QString &commandsJson);
+    void ProcessAxScriptPacket(const QString &name, const QString &content, const QJsonArray &groups);
+    void registerServerCommandGroups(const QString &scriptName, const QList<ServerScriptGroup> &groups, QJSEngine* engine);
+    void EnableServerScript(const QString &name);
+    void DisableServerScript(const QString &name);
+    QList<ServerScriptInfo> GetServerScripts() const;
     RegListenerConfig GetRegListener(const QString &listenerName);
     QList<QString>    GetAgentNames(const QString &listenerType) const;
     RegAgentConfig    GetRegAgent(const QString &agentName, const QString &listenerName, int os);
     AgentTypeInfo     GetAgentTypeInfo(const QString &agentName) const;
     QList<Commander*> GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const;
     QList<Commander*> GetCommandersAll() const;
+    void              AddCommandsToCommanders(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
 
     void PostHookProcess(QJsonObject jsonHookObj);
     void PostHandlerProcess(const QString &handlerId, const TaskData &taskData);

@@ -1,6 +1,6 @@
 package extender
 
-import adaptix "github.com/Adaptix-Framework/axc2"
+import "github.com/Adaptix-Framework/axc2"
 
 func (ex *AdaptixExtender) ExAgentGenerate(agentName string, generateConfig adaptix.BuildProfile) ([]byte, string, error) {
 	module, err := ex.getAgentModule(agentName)

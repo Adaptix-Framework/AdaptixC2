@@ -4,7 +4,7 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"time"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsChatSendMessage(username string, message string) {

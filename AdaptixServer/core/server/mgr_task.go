@@ -115,6 +115,25 @@ func (tm *TaskManager) completeTask(agent *Agent, taskData *adaptix.TaskData) {
 	// -----------------
 }
 
+func (tm *TaskManager) executeServerHandler(taskData *adaptix.TaskData) {
+	if taskData.HandlerId == "" {
+		return
+	}
+	if !tm.ts.TsAxScriptIsServerHook(taskData.HandlerId) {
+		return
+	}
+	handlerData := map[string]interface{}{
+		"agent":   taskData.AgentId,
+		"task_id": taskData.TaskId,
+		"cmdline": taskData.CommandLine,
+		"message": taskData.Message,
+		"text":    taskData.ClearText,
+		"type":    taskData.MessageType,
+	}
+	_ = tm.ts.TsAxScriptExecHandler(taskData.HandlerId, handlerData)
+	taskData.HandlerId = ""
+}
+
 func (tm *TaskManager) Create(agentId string, cmdline string, client string, taskData adaptix.TaskData) {
 	agent, err := tm.getAgent(agentId)
 	if err != nil {
@@ -230,6 +249,12 @@ func (tm *TaskManager) Cancel(agentId string, taskId string) error {
 	if found {
 		task, ok := retTask.(adaptix.TaskData)
 		if ok {
+			if task.HookId != "" && tm.ts.TsAxScriptIsServerHook(task.HookId) {
+				tm.ts.TsAxScriptRemovePostHook(task.HookId)
+			}
+			if task.HandlerId != "" && tm.ts.TsAxScriptIsServerHook(task.HandlerId) {
+				tm.ts.TsAxScriptRemoveHandler(task.HandlerId)
+			}
 			packet := CreateSpAgentTaskRemove(task)
 			tm.ts.TsSyncAllClients(packet)
 		}

@@ -2,6 +2,7 @@ package connector
 
 import (
 	"AdaptixServer/core/utils/logs"
+	"AdaptixServer/core/utils/std"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -82,9 +83,9 @@ func (tc *TsConnector) resolveFileRefs(args map[string]any) error {
 }
 
 func (tc *TsConnector) dispatchAgentCommand(ctx *gin.Context, username string, commandData *CommandData, args map[string]any) {
-	agentName, agentOs, nameErr := tc.teamserver.AxGetAgentNameById(commandData.AgentId)
-	if nameErr != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("agent not found: %v", nameErr), "ok": false})
+	agentName, listenerRegName, agentOs, ctxErr := tc.teamserver.AxGetAgentContext(commandData.AgentId)
+	if ctxErr != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("agent not found: %v", ctxErr), "ok": false})
 		return
 	}
 
@@ -96,14 +97,13 @@ func (tc *TsConnector) dispatchAgentCommand(ctx *gin.Context, username string, c
 
 	/// Resolve server-side hooks if client did not provide any
 	if commandData.HookId == "" && commandData.HandlerId == "" {
-		listenerRegName, _ := tc.teamserver.AxGetAgentListenerRegName(commandData.AgentId)
 		srvHookId, srvHandlerId, preHookHandled, hookErr := tc.teamserver.TsAxScriptResolveHooks(agentName, commandData.AgentId, listenerRegName, agentOs, commandData.CmdLine, args)
 		if hookErr != nil {
-			ctx.JSON(http.StatusOK, gin.H{"message": hookErr.Error(), "ok": false})
+			tc.teamserver.TsAgentConsoleErrorCommand(commandData.AgentId, username, commandData.CmdLine, std.ExtractJsErrorMessage(hookErr), "", "")
+			ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 			return
 		}
 		if preHookHandled {
-			tc.teamserver.TsAgentConsoleOutputClient(commandData.AgentId, username, 0, fmt.Sprintf("[AxScript] %s", commandData.CmdLine), "")
 			ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
 			return
 		}
@@ -215,7 +215,6 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 
 	tc.dispatchAgentCommand(ctx, username, &commandData, args)
 }
-
 
 type CommandDataRaw struct {
 	AgentId string `json:"id"`

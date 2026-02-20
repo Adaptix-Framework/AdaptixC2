@@ -2,6 +2,7 @@ package server
 
 import (
 	"AdaptixServer/core/utils/logs"
+	"AdaptixServer/core/utils/std"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -9,26 +10,23 @@ import (
 	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
-func (ts *Teamserver) AxGetAgentNameById(agentId string) (string, int, error) {
-	agent, err := ts.getAgent(agentId)
-	if err != nil {
-		return "", 0, err
+func (ts *Teamserver) TsAxScriptLoadAgent(agentName string, axScript string, listeners []string) error {
+	if ts.ScriptManager == nil {
+		return fmt.Errorf("script manager not initialized")
 	}
-	data := agent.GetData()
-	return data.Name, data.Os, nil
+	return ts.ScriptManager.LoadAgentScript(agentName, axScript, listeners)
 }
 
-func (ts *Teamserver) AxGetAgentListenerRegName(agentId string) (string, error) {
+////////////////////
+
+func (ts *Teamserver) AxGetAgentContext(agentId string) (agentName string, listenerRegName string, osType int, err error) {
 	agent, err := ts.getAgent(agentId)
 	if err != nil {
-		return "", err
+		return "", "", 0, err
 	}
 	data := agent.GetData()
-	regName, err := ts.TsListenerRegByName(data.Listener)
-	if err != nil {
-		return "", nil
-	}
-	return regName, nil
+	regName, _ := ts.TsListenerRegByName(data.Listener)
+	return data.Name, regName, data.Os, nil
 }
 
 func (ts *Teamserver) AxGetAgents() map[string]interface{} {
@@ -128,6 +126,7 @@ func (ts *Teamserver) AxGetAgentInfo(agentId string, property string) interface{
 	}
 }
 
+// /---
 func (ts *Teamserver) AxGetAgentIds() []string {
 	var ids []string
 	ts.Agents.ForEach(func(key string, value interface{}) bool {
@@ -137,6 +136,7 @@ func (ts *Teamserver) AxGetAgentIds() []string {
 	return ids
 }
 
+// /---
 func (ts *Teamserver) AxGetCredentials() []interface{} {
 	jsonStr, err := ts.TsCredentilsList()
 	if err != nil {
@@ -150,6 +150,7 @@ func (ts *Teamserver) AxGetCredentials() []interface{} {
 	return result
 }
 
+// /---
 func (ts *Teamserver) AxGetTargets() []interface{} {
 	jsonStr, err := ts.TsTargetsList()
 	if err != nil {
@@ -163,13 +164,7 @@ func (ts *Teamserver) AxGetTargets() []interface{} {
 	return result
 }
 
-func (ts *Teamserver) TsAxScriptLoadAgent(agentName string, axScript string, listeners []string) error {
-	if ts.ScriptManager == nil {
-		return fmt.Errorf("script manager not initialized")
-	}
-	return ts.ScriptManager.LoadAgentScript(agentName, axScript, listeners)
-}
-
+// /---
 func (ts *Teamserver) TsAxScriptLoadUser(name string, script string) error {
 	if ts.ScriptManager == nil {
 		return fmt.Errorf("script manager not initialized")
@@ -177,6 +172,7 @@ func (ts *Teamserver) TsAxScriptLoadUser(name string, script string) error {
 	return ts.ScriptManager.LoadUserScript(name, script)
 }
 
+// /---
 func (ts *Teamserver) TsAxScriptUnloadUser(name string) error {
 	if ts.ScriptManager == nil {
 		return fmt.Errorf("script manager not initialized")
@@ -184,6 +180,7 @@ func (ts *Teamserver) TsAxScriptUnloadUser(name string) error {
 	return ts.ScriptManager.UnloadUserScript(name)
 }
 
+// /---
 func (ts *Teamserver) TsAxScriptList() (string, error) {
 	if ts.ScriptManager == nil {
 		return "[]", nil
@@ -196,6 +193,7 @@ func (ts *Teamserver) TsAxScriptList() (string, error) {
 	return string(data), nil
 }
 
+// /---
 func (ts *Teamserver) TsAxScriptCommands() (string, error) {
 	if ts.ScriptManager == nil {
 		return "{}", nil
@@ -203,19 +201,18 @@ func (ts *Teamserver) TsAxScriptCommands() (string, error) {
 	return ts.ScriptManager.GetCommandsJSON()
 }
 
+// /---
 func (ts *Teamserver) TsAxScriptParseAndExecute(agentId string, username string, cmdline string) error {
 	if ts.ScriptManager == nil {
 		return fmt.Errorf("script manager not initialized")
 	}
 
-	agentName, agentOs, err := ts.AxGetAgentNameById(agentId)
+	agentName, listenerRegName, agentOs, err := ts.AxGetAgentContext(agentId)
 	if err != nil {
 		return fmt.Errorf("agent not found: %w", err)
 	}
 
-	listenerRegName, _ := ts.AxGetAgentListenerRegName(agentId)
-
-	resolved, resolveErr := ts.ScriptManager.Registry.ResolveFromCmdline(agentName, listenerRegName, agentOs, cmdline)
+	resolved, resolveErr := ts.ScriptManager.CommandStore.ResolveFromCmdline(agentName, listenerRegName, agentOs, cmdline)
 	if resolveErr != nil {
 		return fmt.Errorf("unknown command: %w", resolveErr)
 	}
@@ -239,9 +236,10 @@ func (ts *Teamserver) TsAxScriptParseAndExecute(agentId string, username string,
 	if cmdDef.HasPreHook && cmdDef.PreHookFunc != nil && resolved.Engine != nil {
 		preHookErr := ts.ScriptManager.ExecutePreHookPublic(resolved.Engine, cmdDef.PreHookFunc, agentId, cmdline, parsed.Args)
 		if preHookErr != nil {
-			return preHookErr
+			ts.TsAgentConsoleOutputClient(agentId, username, CONSOLE_OUT_LOCAL_ERROR, cmdline, std.ExtractJsErrorMessage(preHookErr))
+			return nil
 		}
-		ts.TsAgentConsoleOutputClient(agentId, username, 0, fmt.Sprintf("[AxScript] %s", cmdline), "")
+		//ts.TsAgentConsoleOutputClient(agentId, username, 0, fmt.Sprintf("[AxScript] %s", cmdline), "")
 		return nil
 	}
 
@@ -272,6 +270,7 @@ func (ts *Teamserver) TsAxScriptExecPostHook(hookId string, data map[string]inte
 	return ts.ScriptManager.HookStore.ExecutePostHook(hookId, data)
 }
 
+// /---
 func (ts *Teamserver) TsAxScriptExecHandler(handlerId string, data map[string]interface{}) error {
 	if ts.ScriptManager == nil {
 		return nil
@@ -286,6 +285,7 @@ func (ts *Teamserver) TsAxScriptRemovePostHook(hookId string) {
 	ts.ScriptManager.HookStore.RemovePostHook(hookId)
 }
 
+// /---
 func (ts *Teamserver) TsAxScriptRemoveHandler(handlerId string) {
 	if ts.ScriptManager == nil {
 		return
@@ -300,45 +300,122 @@ func (ts *Teamserver) TsAxScriptIsServerHook(id string) bool {
 	return ts.ScriptManager.HookStore.IsServerHook(id)
 }
 
-func (ts *Teamserver) TsPresyncAxScriptCommands() []interface{} {
+func (ts *Teamserver) TsPresyncAxScriptData() []interface{} {
 	if ts.ScriptManager == nil {
 		return nil
 	}
 
-	allCommands := ts.ScriptManager.Registry.GetAllCommands()
-	var packets []interface{}
+	scripts := ts.ScriptManager.ListProfileScriptsWithContent()
+	batches := ts.ScriptManager.CommandStore.GetProfileAndUserCommands()
 
-	for agentName, listenerMap := range allCommands {
-		for listener, osMap := range listenerMap {
-			for osType, groups := range osMap {
-				data, err := json.Marshal(groups)
-				if err != nil {
-					continue
-				}
-				p := CreateSpAxScriptCommands(agentName, listener, osType, string(data))
-				packets = append(packets, p)
-			}
+	if len(scripts) == 0 && len(batches) == 0 {
+		return nil
+	}
+
+	type scriptData struct {
+		content string
+		groups  []AxCommandBatch
+	}
+	scriptsMap := make(map[string]*scriptData)
+
+	for _, s := range scripts {
+		scriptsMap[s.Name] = &scriptData{
+			content: s.Script,
+			groups:  []AxCommandBatch{},
 		}
 	}
 
+	for _, batch := range batches {
+		if len(batch.Groups) == 0 {
+			continue
+		}
+
+		for _, group := range batch.Groups {
+			scriptName := group.ScriptName
+			if scriptName == "" {
+				scriptName = "_unknown_"
+			}
+
+			data, err := json.Marshal([]interface{}{group})
+			if err != nil {
+				logs.Error("", "Presync marshal error for group '%s': %v", group.GroupName, err)
+				continue
+			}
+
+			entry, exists := scriptsMap[scriptName]
+			if !exists {
+				entry = &scriptData{
+					content: "",
+					groups:  []AxCommandBatch{},
+				}
+				scriptsMap[scriptName] = entry
+			}
+
+			entry.groups = append(entry.groups, AxCommandBatch{
+				Agent:    batch.Agent,
+				Listener: batch.Listener,
+				Os:       batch.Os,
+				Commands: string(data),
+			})
+		}
+	}
+
+	var packets []interface{}
+	for name, data := range scriptsMap {
+		packets = append(packets, CreateSpAxScriptData(name, data.content, data.groups))
+	}
 	return packets
 }
 
-func (ts *Teamserver) TsAxScriptBroadcastCommands() {
-	packets := ts.TsPresyncAxScriptCommands()
+// /---
+func (ts *Teamserver) TsAxScriptBroadcastData() {
+	packets := ts.TsPresyncAxScriptData()
 	for _, p := range packets {
 		ts.TsSyncAllClients(p)
 	}
 }
 
+func (ts *Teamserver) TsGetAgentCommandGroups(agentName string) []AxCommandBatch {
+	if ts.ScriptManager == nil {
+		return nil
+	}
+
+	batches := ts.ScriptManager.CommandStore.GetAgentCommandBatches(agentName)
+	var result []AxCommandBatch
+
+	for _, batch := range batches {
+		if len(batch.Groups) == 0 {
+			continue
+		}
+
+		data, err := json.Marshal(batch.Groups)
+		if err != nil {
+			logs.Error("", "Marshal error for agent '%s': %v", agentName, err)
+			continue
+		}
+
+		result = append(result, AxCommandBatch{
+			Agent:    batch.Agent,
+			Listener: batch.Listener,
+			Os:       batch.Os,
+			Commands: string(data),
+		})
+	}
+
+	return result
+}
+
+// /---
 func (ts *Teamserver) AxCredentialsAdd(creds []map[string]interface{}) error {
 	return ts.TsCredentilsAdd(creds)
 }
 
+// /---
 func (ts *Teamserver) AxTargetsAdd(targets []map[string]interface{}) error {
 	return ts.TsTargetsAdd(targets)
 }
 
+// /---
 func (ts *Teamserver) AxAgentRemove(agentIds []string) error {
 	for _, id := range agentIds {
 		_ = ts.TsAgentRemove(id)
@@ -346,6 +423,7 @@ func (ts *Teamserver) AxAgentRemove(agentIds []string) error {
 	return nil
 }
 
+// /---
 func (ts *Teamserver) AxAgentSetTag(agentIds []string, tag string) error {
 	for _, id := range agentIds {
 		updateData := map[string]interface{}{"tags": tag}
@@ -354,6 +432,7 @@ func (ts *Teamserver) AxAgentSetTag(agentIds []string, tag string) error {
 	return nil
 }
 
+// /---
 func (ts *Teamserver) AxAgentSetMark(agentIds []string, mark string) error {
 	for _, id := range agentIds {
 		updateData := map[string]interface{}{"mark": mark}
@@ -362,6 +441,7 @@ func (ts *Teamserver) AxAgentSetMark(agentIds []string, mark string) error {
 	return nil
 }
 
+// /---
 func (ts *Teamserver) AxAgentSetColor(agentIds []string, background string, foreground string, reset bool) error {
 	// Agent color is a client-only visual property, no server-side storage
 	return nil
@@ -383,13 +463,12 @@ func (ts *Teamserver) TsAxScriptLoadFromProfile() {
 	for _, scriptPath := range ts.Profile.Server.AxScripts {
 		err := ts.ScriptManager.LoadAxScript(scriptPath)
 		if err != nil {
-			logs.Error("AxScript", "Failed to load profile axscript '%s': %v", scriptPath, err)
+			logs.Error("", "Failed to load profile axscript '%s': %v", scriptPath, err)
 		}
 	}
-
-	ts.TsAxScriptBroadcastCommands()
 }
 
+// /---
 func (ts *Teamserver) AxGetDownloads() []interface{} {
 	jsonStr, err := ts.TsDownloadList()
 	if err != nil {
@@ -403,6 +482,7 @@ func (ts *Teamserver) AxGetDownloads() []interface{} {
 	return result
 }
 
+// /---
 func (ts *Teamserver) AxGetScreenshots() []interface{} {
 	jsonStr, err := ts.TsScreenshotList()
 	if err != nil {
@@ -416,6 +496,7 @@ func (ts *Teamserver) AxGetScreenshots() []interface{} {
 	return result
 }
 
+// /---
 func (ts *Teamserver) AxGetTunnels() []interface{} {
 	jsonStr, err := ts.TsTunnelList()
 	if err != nil {
@@ -429,6 +510,7 @@ func (ts *Teamserver) AxGetTunnels() []interface{} {
 	return result
 }
 
+// /---
 func (ts *Teamserver) AxGetInterfaces() []string {
 	var result []string
 	ifaces, err := net.Interfaces()
@@ -456,6 +538,7 @@ func (ts *Teamserver) AxGetInterfaces() []string {
 	return result
 }
 
+// /---
 func (ts *Teamserver) AxGetAgentMark(agentId string) string {
 	agent, err := ts.getAgent(agentId)
 	if err != nil {
@@ -465,6 +548,7 @@ func (ts *Teamserver) AxGetAgentMark(agentId string) string {
 	return data.Mark
 }
 
+// /---
 func (ts *Teamserver) AxUnloadAxScript(name string) error {
 	if ts.ScriptManager == nil {
 		return fmt.Errorf("script manager not initialized")

@@ -15,6 +15,7 @@ func (ts *Teamserver) TsClientExists(username string) bool {
 
 var InitialSyncCategories = []string{
 	SyncCategoryExtenders,
+	SyncCategoryScripts,
 	SyncCategoryListeners,
 	SyncCategoryAgents,
 	SyncCategoryPivots,

@@ -21,7 +21,7 @@ func (ts *Teamserver) TsClientConnected(username string) bool {
 
 func getPacketCategory(packet interface{}) string {
 	switch packet.(type) {
-	case SyncPackerListenerReg, SyncPackerAgentReg, SyncPackerServiceReg, SyncPackerAxScriptCommands:
+	case SyncPackerListenerReg, SyncPackerAgentReg, SyncPackerServiceReg, SyncPackerAxScriptData:
 		return "extenders"
 	case SyncPackerListenerStart:
 		return "listeners"
@@ -101,13 +101,15 @@ func (ts *Teamserver) TsSyncCategories(client *ClientHandler, categories []strin
 	if requested[SyncCategoryExtenders] {
 		delete(requested, SyncCategoryExtenders)
 		packets = append(packets, ts.TsPresyncExtenders()...)
-		packets = append(packets, ts.TsPresyncAxScriptCommands()...)
+	}
+	if requested[SyncCategoryScripts] {
+		delete(requested, SyncCategoryScripts)
+		packets = append(packets, ts.TsPresyncAxScriptData()...)
 	}
 	if requested[SyncCategoryListeners] {
 		delete(requested, SyncCategoryListeners)
 		packets = append(packets, ts.TsPresyncListeners()...)
 	}
-
 	if requested[SyncCategoryAgents] {
 		delete(requested, SyncCategoryAgents)
 		delete(requested, SyncCategoryAgentsOnlyActive)
@@ -255,7 +257,8 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 
 	ts.agent_configs.ForEach(func(key string, value interface{}) bool {
 		agentInfo := value.(extender.AgentInfo)
-		p := CreateSpAgentReg(agentInfo.Name, agentInfo.AX, agentInfo.Listeners, agentInfo.MultiListeners)
+		groups := ts.TsGetAgentCommandGroups(agentInfo.Name)
+		p := CreateSpAgentReg(agentInfo.Name, agentInfo.AX, agentInfo.Listeners, agentInfo.MultiListeners, groups)
 		packets = append(packets, p)
 		return true
 	})

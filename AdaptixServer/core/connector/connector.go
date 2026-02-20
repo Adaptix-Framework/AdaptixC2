@@ -135,19 +135,19 @@ type Teamserver interface {
 	TsAxScriptResolveHooks(agentName string, agentId string, listenerRegName string, os int, cmdline string, args map[string]interface{}) (string, string, bool, error)
 	TsAxScriptIsServerHook(id string) bool
 	TsAxScriptParseAndExecute(agentId string, username string, cmdline string) error
-	AxGetAgentNameById(agentId string) (string, int, error)
-	AxGetAgentListenerRegName(agentId string) (string, error)
+	AxGetAgentContext(agentId string) (agentName string, listenerRegName string, osType int, err error)
 }
 
 type TsConnector struct {
-	Interface string
-	Port      int
-	Hash      string
-	OnlyHash  bool
-	Operators map[string]string
-	Endpoint  string
-	Cert      string
-	Key       string
+	Interface          string
+	Port               int
+	Hash               string
+	OnlyHash           bool
+	Operators          map[string]string
+	Endpoint           string
+	Cert               string
+	Key                string
+	ManagePasswordHash string
 
 	httpServer *profile.TsHttpServer
 
@@ -265,6 +265,9 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profi
 	}
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
+	if tsProfile.ManagePassword != "" {
+		connector.ManagePasswordHash = krypt.SHA256([]byte(tsProfile.ManagePassword))
+	}
 
 	if httpServer.Error == nil {
 		httpServer.Error = &profile.TsHttpError{}
@@ -392,9 +395,14 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profi
 		api_group.POST("/tunnel/set/info", connector.TcTunnelSetIno)
 
 		api_group.GET("/service/list", connector.TcServiceList)
-		api_group.POST("/service/load", connector.TcServiceLoad)
-		api_group.POST("/service/unload", connector.TcServiceUnload)
+		//api_group.POST("/service/load", connector.TcServiceLoad)
+		//api_group.POST("/service/unload", connector.TcServiceUnload)
 		api_group.POST("/service/call", connector.TcServiceCall)
+
+		//api_group.POST("/axscript/list", connector.TcAxScriptList)
+		//api_group.POST("/axscript/commands", connector.TcAxScriptCommands)
+		//api_group.POST("/axscript/load", connector.TcAxScriptLoad)
+		//api_group.POST("/axscript/unload", connector.TcAxScriptUnload)
 	}
 
 	connector.Engine.NoRoute(limitTimeoutMiddleware(httpCfg), default404Middleware(httpErr), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })

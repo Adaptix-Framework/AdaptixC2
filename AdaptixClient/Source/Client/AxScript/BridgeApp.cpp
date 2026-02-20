@@ -1063,6 +1063,9 @@ int BridgeApp::random_int(const int min, const int max) { return GenerateRandomI
 
 void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners)
 {
+    if (scriptEngine->isServerMode())
+        return;
+
     if (!AxScriptUtils::isValidArray(agents)) {
         Q_EMIT engineError("register_commands_group expected array of strings in agents parameter!");
         return;
@@ -1100,6 +1103,9 @@ void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, co
 
 void BridgeApp::script_import(const QString &path)
 {
+    if (scriptEngine->isServerMode())
+        return;
+
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return scriptEngine->engine()->throwError("Could not open script: " + path);
@@ -1111,9 +1117,21 @@ void BridgeApp::script_import(const QString &path)
     scriptEngine->engine()->evaluate(code, path);
 }
 
-void BridgeApp::script_load(const QString &path) { scriptEngine->manager()->GlobalScriptLoad(path); }
+void BridgeApp::script_load(const QString &path)
+{
+    if (scriptEngine->isServerMode())
+        return;
 
-void BridgeApp::script_unload(const QString &path) { scriptEngine->manager()->GlobalScriptUnload(path); }
+    scriptEngine->manager()->GlobalScriptLoad(path);
+}
+
+void BridgeApp::script_unload(const QString &path)
+{
+    if (scriptEngine->isServerMode())
+        return;
+
+    scriptEngine->manager()->GlobalScriptUnload(path);
+}
 
 QString BridgeApp::script_dir() { return GetParentPathUnix(scriptEngine->context.name) + "/"; }
 

@@ -6,18 +6,19 @@ type AdaptixProfile struct {
 }
 
 type TsProfile struct {
-	Interface    string            `yaml:"interface"`
-	Port         int               `yaml:"port"`
-	Endpoint     string            `yaml:"endpoint"`
-	Password     string            `yaml:"password"`
-	OnlyPassword bool              `yaml:"only_password"`
-	Operators    map[string]string `yaml:"operators"`
-	Cert         string            `yaml:"cert"`
-	Key          string            `yaml:"key"`
-	Extenders    []string          `yaml:"extenders"`
-	AxScripts    []string          `yaml:"axscripts"`
-	ATokenLive   int               `yaml:"access_token_live_hours"`
-	RTokenLive   int               `yaml:"refresh_token_live_hours"`
+	Interface      string            `yaml:"interface"`
+	Port           int               `yaml:"port"`
+	Endpoint       string            `yaml:"endpoint"`
+	Password       string            `yaml:"password"`
+	ManagePassword string            `yaml:"manage_password"`
+	OnlyPassword   bool              `yaml:"only_password"`
+	Operators      map[string]string `yaml:"operators"`
+	Cert           string            `yaml:"cert"`
+	Key            string            `yaml:"key"`
+	Extenders      []string          `yaml:"extenders"`
+	AxScripts      []string          `yaml:"axscripts"`
+	ATokenLive     int               `yaml:"access_token_live_hours"`
+	RTokenLive     int               `yaml:"refresh_token_live_hours"`
 }
 
 type TsHttpServer struct {

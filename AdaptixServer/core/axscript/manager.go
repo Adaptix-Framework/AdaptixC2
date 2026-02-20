@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/dop251/goja"
@@ -17,8 +18,7 @@ type TeamserverBridge interface {
 	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 	TsAgentConsoleErrorCommand(agentId string, client string, cmdline string, message string, HookId string, HandlerId string)
 
-	AxGetAgentNameById(agentId string) (string, int, error)
-	AxGetAgentListenerRegName(agentId string) (string, error)
+	AxGetAgentContext(agentId string) (agentName string, listenerRegName string, osType int, err error)
 	AxGetAgents() map[string]interface{}
 	AxGetAgentInfo(agentId string, property string) interface{}
 	AxGetAgentIds() []string
@@ -44,9 +44,9 @@ type TeamserverBridge interface {
 type ScriptManager struct {
 	mu sync.RWMutex
 
-	teamserver TeamserverBridge
-	Registry   *CommandRegistry
-	HookStore  *HookStore
+	teamserver   TeamserverBridge
+	CommandStore *CommandStore
+	HookStore    *HookStore
 
 	agentEngines       map[string]*ScriptEngine
 	userEngines        map[string]*ScriptEngine
@@ -58,13 +58,15 @@ type ScriptManager struct {
 func NewScriptManager(ts TeamserverBridge) *ScriptManager {
 	return &ScriptManager{
 		teamserver:      ts,
-		Registry:        NewCommandRegistry(),
+		CommandStore:    NewCommandStore(),
 		HookStore:       NewHookStore(),
 		agentEngines:    make(map[string]*ScriptEngine),
 		userEngines:     make(map[string]*ScriptEngine),
 		axscriptEngines: make(map[string]*ScriptEngine),
 	}
 }
+
+/// LOAD SCRIPTS
 
 func (sm *ScriptManager) LoadAgentScript(agentName string, axScript string, listeners []string) error {
 	engine := NewScriptEngine("agent:"+agentName, sm)
@@ -91,14 +93,157 @@ func (sm *ScriptManager) LoadAgentScript(agentName string, axScript string, list
 	for _, listenerType := range listeners {
 		sm.executeRegisterCommands(engine, agentName, listenerType)
 	}
-
 	if len(listeners) == 0 {
 		sm.executeRegisterCommands(engine, agentName, "")
 	}
-
-	logs.Success("AxScript", "Loaded agent script for '%s'", agentName)
 	return nil
 }
+
+func (sm *ScriptManager) LoadAxScript(scriptPath string) error {
+	abs, err := filepath.Abs(scriptPath)
+	if err != nil {
+		return fmt.Errorf("invalid script path '%s': %w", scriptPath, err)
+	}
+
+	_, err = os.Stat(abs)
+	if err != nil {
+		return fmt.Errorf("script file not found: %s", abs)
+	}
+
+	content, err := os.ReadFile(abs)
+	if err != nil {
+		return fmt.Errorf("failed to read script '%s': %w", abs, err)
+	}
+
+	engine, err := NewScriptEngineFromPath(abs, sm)
+	if err != nil {
+		return fmt.Errorf("failed to create engine for '%s': %w", abs, err)
+	}
+
+	registerFormStubs(engine)
+	registerMenuStubs(engine)
+	registerEventStubs(engine)
+	registerAxBridge(engine)
+
+	err = engine.Execute(string(content))
+	if err != nil {
+		return fmt.Errorf("failed to execute script '%s': %w", abs, err)
+	}
+
+	if engine.GetMetadataNoSave() {
+		logs.Success("", "Executed axscript '%s' (nosave)", scriptPath)
+		return nil
+	}
+
+	scriptName := engine.GetMetadataName()
+	if scriptName == "" {
+		scriptName = filepath.Base(abs)
+	}
+
+	sm.mu.Lock()
+	sm.axscriptEngines[abs] = engine
+	sm.scriptInfos = append(sm.scriptInfos, ScriptInfo{
+		Name:       scriptName,
+		ScriptType: "axscript",
+		Path:       abs,
+	})
+	sm.mu.Unlock()
+
+	logs.Success("", "Loaded axscript '%s'", scriptPath)
+	return nil
+}
+
+func (sm *ScriptManager) LoadAxScriptChild(parentEngine *ScriptEngine, scriptPath string) error {
+	abs, err := filepath.Abs(scriptPath)
+	if err != nil {
+		return fmt.Errorf("invalid script path '%s': %w", scriptPath, err)
+	}
+
+	if _, err := os.Stat(abs); err != nil {
+		return fmt.Errorf("script file not found: %s", abs)
+	}
+
+	content, err := os.ReadFile(abs)
+	if err != nil {
+		return fmt.Errorf("failed to read script '%s': %w", abs, err)
+	}
+
+	engine, err := NewScriptEngineFromPath(abs, sm)
+	if err != nil {
+		return fmt.Errorf("failed to create engine for '%s': %w", abs, err)
+	}
+
+	for _, root := range parentEngine.allowedRoots {
+		found := false
+		for _, r := range engine.allowedRoots {
+			if r == root {
+				found = true
+				break
+			}
+		}
+		if !found {
+			engine.allowedRoots = append(engine.allowedRoots, root)
+		}
+	}
+
+	registerFormStubs(engine)
+	registerMenuStubs(engine)
+	registerEventStubs(engine)
+	registerAxBridge(engine)
+
+	err = engine.Execute(string(content))
+	if err != nil {
+		return fmt.Errorf("failed to execute script '%s': %w", abs, err)
+	}
+
+	if engine.GetMetadataNoSave() {
+		logs.Success("", "Executed axscript '%s' (nosave)", abs)
+		return nil
+	}
+
+	scriptName := engine.GetMetadataName()
+	if scriptName == "" {
+		scriptName = filepath.Base(abs)
+	}
+
+	sm.mu.Lock()
+	sm.axscriptEngines[abs] = engine
+	sm.scriptInfos = append(sm.scriptInfos, ScriptInfo{
+		Name:       scriptName,
+		ScriptType: "axscript",
+		Path:       abs,
+	})
+	sm.mu.Unlock()
+
+	logs.Success("", "Loaded axscript '%s'", abs)
+	return nil
+}
+
+func (sm *ScriptManager) ImportAxScript(engine *ScriptEngine, scriptPath string) (string, error) {
+	abs, err := filepath.Abs(scriptPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid script path '%s': %w", scriptPath, err)
+	}
+
+	_, err = engine.ValidatePath(abs)
+	if err != nil {
+		return "", err
+	}
+
+	content, err := os.ReadFile(abs)
+	if err != nil {
+		return "", fmt.Errorf("failed to read script '%s': %w", abs, err)
+	}
+
+	_, execErr := engine.runtime.RunString(string(content))
+	if execErr != nil {
+		return "", fmt.Errorf("failed to import script '%s': %w", abs, execErr)
+	}
+
+	return abs, nil
+}
+
+///
 
 func (sm *ScriptManager) executeRegisterCommands(engine *ScriptEngine, agentName string, listenerType string) {
 	engine.mu.Lock()
@@ -107,27 +252,25 @@ func (sm *ScriptManager) executeRegisterCommands(engine *ScriptEngine, agentName
 	fn := rt.Get("RegisterCommands")
 	if fn == nil || goja.IsUndefined(fn) {
 		engine.mu.Unlock()
-		logs.Warn("AxScript", "No RegisterCommands function found in script for '%s'", agentName)
+		logs.Warn("", "No RegisterCommands function found in script for '%s'", agentName)
 		return
 	}
 
 	registerFn, ok := goja.AssertFunction(fn)
 	if !ok {
 		engine.mu.Unlock()
-		logs.Error("AxScript", "RegisterCommands is not a function in script for '%s'", agentName)
+		logs.Error("", "RegisterCommands is not a function in script for '%s'", agentName)
 		return
 	}
 
 	result, err := registerFn(goja.Undefined(), rt.ToValue(listenerType))
 	engine.mu.Unlock()
-
 	if err != nil {
-		logs.Error("AxScript", "Error calling RegisterCommands for '%s': %v", agentName, err)
+		logs.Error("", "Error calling RegisterCommands for '%s': %v", agentName, err)
 		return
 	}
-
 	if result == nil || goja.IsUndefined(result) || goja.IsNull(result) {
-		logs.Warn("AxScript", "RegisterCommands returned nil for '%s'", agentName)
+		logs.Warn("", "RegisterCommands returned nil for '%s'", agentName)
 		return
 	}
 
@@ -171,15 +314,18 @@ func (sm *ScriptManager) extractCommandsFromResult(engine *ScriptEngine, agentNa
 	}
 
 	if groupBuilder == nil {
-		logs.Warn("AxScript", "Property '%s' for agent '%s' is not a CommandGroup", propName, agentName)
+		logs.Warn("", "Property '%s' for agent '%s' is not a CommandGroup", propName, agentName)
 		return
 	}
 
 	group := groupBuilder.ToCommandGroup(agentName)
-	sm.Registry.RegisterGroups(agentName, listenerType, osType, []CommandGroup{group}, engine)
-	logs.Debug("AxScript", "Registered %d commands for '%s' listener='%s' os=%s", len(group.Commands), agentName, listenerType, OsToString(osType))
+	group.Source = "agent"
+	sm.CommandStore.RegisterGroups(SourceAgent, agentName, listenerType, osType, []CommandGroup{group}, engine)
 }
 
+////////////////////
+
+// /---
 func (sm *ScriptManager) LoadUserScript(name string, script string) error {
 	engine := NewScriptEngine("user:"+name, sm)
 
@@ -201,10 +347,10 @@ func (sm *ScriptManager) LoadUserScript(name string, script string) error {
 	})
 	sm.mu.Unlock()
 
-	logs.Success("AxScript", "Loaded user script '%s'", name)
 	return nil
 }
 
+// /---
 func (sm *ScriptManager) UnloadUserScript(name string) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -215,6 +361,8 @@ func (sm *ScriptManager) UnloadUserScript(name string) error {
 
 	delete(sm.userEngines, name)
 
+	sm.CommandStore.UnregisterByScriptName(SourceUser, name)
+
 	for i, info := range sm.scriptInfos {
 		if info.Name == name && info.ScriptType == "user" {
 			sm.scriptInfos = append(sm.scriptInfos[:i], sm.scriptInfos[i+1:]...)
@@ -222,10 +370,10 @@ func (sm *ScriptManager) UnloadUserScript(name string) error {
 		}
 	}
 
-	logs.Success("AxScript", "Unloaded user script '%s'", name)
 	return nil
 }
 
+// /---
 func (sm *ScriptManager) ListScripts() []ScriptInfo {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
@@ -235,16 +383,54 @@ func (sm *ScriptManager) ListScripts() []ScriptInfo {
 	return result
 }
 
+func (sm *ScriptManager) ListProfileScriptsWithContent() []ScriptWithContent {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	var result []ScriptWithContent
+	for _, info := range sm.scriptInfos {
+		if info.ScriptType == "axscript" && info.Path != "" {
+			engine, ok := sm.axscriptEngines[info.Path]
+			if !ok {
+				continue
+			}
+
+			var combined strings.Builder
+
+			importedFiles := engine.GetImportedFiles()
+			for _, importPath := range importedFiles {
+				importContent, err := os.ReadFile(importPath)
+				if err != nil {
+					combined.WriteString(fmt.Sprintf("/* import error: %s */\n", importPath))
+					continue
+				}
+				combined.WriteString(fmt.Sprintf("/* inlined: %s */\n", filepath.Base(importPath)))
+				combined.Write(importContent)
+				combined.WriteString(fmt.Sprintf("\n/* end: %s */\n\n", filepath.Base(importPath)))
+			}
+
+			mainContent, err := os.ReadFile(info.Path)
+			if err != nil {
+				continue
+			}
+			combined.Write(mainContent)
+
+			result = append(result, ScriptWithContent{
+				Name:   info.Name,
+				Script: combined.String(),
+			})
+		}
+	}
+	return result
+}
+
 func (sm *ScriptManager) ResolveAndExecutePreHook(agentName string, agentId string, listenerRegName string, os int, cmdline string, args map[string]interface{}) (hookId string, handlerId string, preHookHandled bool, err error) {
-	resolved, resolveErr := sm.Registry.ResolveFromCmdline(agentName, listenerRegName, os, cmdline)
+	resolved, resolveErr := sm.CommandStore.ResolveFromCmdline(agentName, listenerRegName, os, cmdline)
 	if resolveErr != nil {
 		return "", "", false, nil
 	}
 
-	cmdDef := resolved.Command
-	if resolved.Subcommand != nil {
-		cmdDef = resolved.Subcommand
-	}
+	cmdDef := resolved.GetEffectiveCommand()
 
 	if cmdDef.HasPreHook && cmdDef.PreHookFunc != nil && resolved.Engine != nil {
 		preHookErr := sm.executePreHook(resolved.Engine, cmdDef.PreHookFunc, agentId, cmdline, args)
@@ -265,14 +451,17 @@ func (sm *ScriptManager) ResolveAndExecutePreHook(agentName string, agentId stri
 	return hookId, handlerId, false, nil
 }
 
+// /---
 func (sm *ScriptManager) ParseCommandPublic(cmdline string, resolved *ResolvedCommand) (*ParsedCommand, error) {
 	return ParseCommand(cmdline, resolved)
 }
 
+// /---
 func (sm *ScriptManager) ExecutePreHookPublic(engine *ScriptEngine, fn goja.Callable, agentId string, cmdline string, args map[string]interface{}) error {
 	return sm.executePreHook(engine, fn, agentId, cmdline, args)
 }
 
+// /---
 func (sm *ScriptManager) ResolveFileArgsPublic(engine *ScriptEngine, parsed *ParsedCommand) error {
 	return sm.resolveFileArgs(engine, parsed)
 }
@@ -311,30 +500,48 @@ func (sm *ScriptManager) resolveFileArgs(engine *ScriptEngine, parsed *ParsedCom
 	return nil
 }
 
-func (sm *ScriptManager) ExecuteCommand(fromEngine *ScriptEngine, agentId string, cmdline string, postHookFn goja.Callable, handlerFn goja.Callable) error {
+type agentCommandContext struct {
+	agentName string
+	resolved  *ResolvedCommand
+	parsed    *ParsedCommand
+}
+
+func (sm *ScriptManager) resolveAgentCommand(agentId string, cmdline string) (*agentCommandContext, error) {
 	if sm.teamserver == nil {
-		return fmt.Errorf("teamserver not available")
+		return nil, fmt.Errorf("teamserver not available")
 	}
 
-	agentName, os, err := sm.teamserver.AxGetAgentNameById(agentId)
+	agentName, listenerRegName, os, err := sm.teamserver.AxGetAgentContext(agentId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	listenerRegName, _ := sm.teamserver.AxGetAgentListenerRegName(agentId)
-
-	resolved, resolveErr := sm.Registry.ResolveFromCmdline(agentName, listenerRegName, os, cmdline)
+	resolved, resolveErr := sm.CommandStore.ResolveFromCmdline(agentName, listenerRegName, os, cmdline)
 	if resolveErr != nil {
-		return resolveErr
+		return nil, resolveErr
 	}
 
 	parsed, parseErr := ParseCommand(cmdline, resolved)
 	if parseErr != nil {
-		return parseErr
+		return nil, parseErr
+	}
+
+	return &agentCommandContext{
+		agentName: agentName,
+		resolved:  resolved,
+		parsed:    parsed,
+	}, nil
+}
+
+// /---
+func (sm *ScriptManager) ExecuteCommand(fromEngine *ScriptEngine, agentId string, cmdline string, postHookFn goja.Callable, handlerFn goja.Callable) error {
+	ctx, err := sm.resolveAgentCommand(agentId, cmdline)
+	if err != nil {
+		return err
 	}
 
 	if fromEngine != nil {
-		if fileErr := sm.resolveFileArgs(fromEngine, parsed); fileErr != nil {
+		if fileErr := sm.resolveFileArgs(fromEngine, ctx.parsed); fileErr != nil {
 			return fileErr
 		}
 	}
@@ -349,44 +556,26 @@ func (sm *ScriptManager) ExecuteCommand(fromEngine *ScriptEngine, agentId string
 		handlerId = sm.HookStore.RegisterHandler(fromEngine, handlerFn, agentId, "server")
 	}
 
-	return sm.teamserver.TsAgentCommand(agentName, agentId, "server", hookId, handlerId, cmdline, false, parsed.Args)
+	return sm.teamserver.TsAgentCommand(ctx.agentName, agentId, "server", hookId, handlerId, cmdline, false, ctx.parsed.Args)
 }
 
+// /---
 func (sm *ScriptManager) ExecuteAlias(fromEngine *ScriptEngine, agentId string, aliasCmdline string) error {
-	if sm.teamserver == nil {
-		return fmt.Errorf("teamserver not available")
-	}
-
-	agentName, os, err := sm.teamserver.AxGetAgentNameById(agentId)
+	ctx, err := sm.resolveAgentCommand(agentId, aliasCmdline)
 	if err != nil {
 		return err
 	}
 
-	listenerRegName, _ := sm.teamserver.AxGetAgentListenerRegName(agentId)
-
-	resolved, resolveErr := sm.Registry.ResolveFromCmdline(agentName, listenerRegName, os, aliasCmdline)
-	if resolveErr != nil {
-		return resolveErr
-	}
-
-	parsed, parseErr := ParseCommand(aliasCmdline, resolved)
-	if parseErr != nil {
-		return parseErr
-	}
-
 	if fromEngine != nil {
-		if fileErr := sm.resolveFileArgs(fromEngine, parsed); fileErr != nil {
+		if fileErr := sm.resolveFileArgs(fromEngine, ctx.parsed); fileErr != nil {
 			return fileErr
 		}
 	}
 
-	cmdDef := resolved.Command
-	if resolved.Subcommand != nil {
-		cmdDef = resolved.Subcommand
-	}
+	cmdDef := ctx.resolved.GetEffectiveCommand()
 
-	if cmdDef.HasPreHook && cmdDef.PreHookFunc != nil && resolved.Engine != nil {
-		preHookErr := sm.executePreHook(resolved.Engine, cmdDef.PreHookFunc, agentId, aliasCmdline, parsed.Args)
+	if cmdDef.HasPreHook && cmdDef.PreHookFunc != nil && ctx.resolved.Engine != nil {
+		preHookErr := sm.executePreHook(ctx.resolved.Engine, cmdDef.PreHookFunc, agentId, aliasCmdline, ctx.parsed.Args)
 		if preHookErr != nil {
 			return preHookErr
 		}
@@ -396,51 +585,32 @@ func (sm *ScriptManager) ExecuteAlias(fromEngine *ScriptEngine, agentId string, 
 	hookId := ""
 	handlerId := ""
 
-	if cmdDef.HasPostHook && cmdDef.PostHookFunc != nil && resolved.Engine != nil {
-		hookId = sm.HookStore.RegisterPostHook(resolved.Engine, cmdDef.PostHookFunc, agentId, "server")
+	if cmdDef.HasPostHook && cmdDef.PostHookFunc != nil && ctx.resolved.Engine != nil {
+		hookId = sm.HookStore.RegisterPostHook(ctx.resolved.Engine, cmdDef.PostHookFunc, agentId, "server")
 	}
-	if cmdDef.HasHandler && cmdDef.HandlerFunc != nil && resolved.Engine != nil {
-		handlerId = sm.HookStore.RegisterHandler(resolved.Engine, cmdDef.HandlerFunc, agentId, "server")
+	if cmdDef.HasHandler && cmdDef.HandlerFunc != nil && ctx.resolved.Engine != nil {
+		handlerId = sm.HookStore.RegisterHandler(ctx.resolved.Engine, cmdDef.HandlerFunc, agentId, "server")
 	}
 
-	return sm.teamserver.TsAgentCommand(agentName, agentId, "server", hookId, handlerId, aliasCmdline, false, parsed.Args)
+	return sm.teamserver.TsAgentCommand(ctx.agentName, agentId, "server", hookId, handlerId, aliasCmdline, false, ctx.parsed.Args)
 }
 
-func (sm *ScriptManager) ExecuteAliasWithHooks(fromEngine *ScriptEngine, agentId string, aliasCmdline string, postHookFn goja.Callable, handlerFn goja.Callable) error {
-	if sm.teamserver == nil {
-		return fmt.Errorf("teamserver not available")
-	}
-
-	agentName, os, err := sm.teamserver.AxGetAgentNameById(agentId)
+func (sm *ScriptManager) ExecuteAliasWithHooks(fromEngine *ScriptEngine, agentId string, displayCmdline string, aliasCmdline string, message string, postHookFn goja.Callable, handlerFn goja.Callable) error {
+	ctx, err := sm.resolveAgentCommand(agentId, aliasCmdline)
 	if err != nil {
 		return err
 	}
 
-	listenerRegName, _ := sm.teamserver.AxGetAgentListenerRegName(agentId)
-
-	resolved, resolveErr := sm.Registry.ResolveFromCmdline(agentName, listenerRegName, os, aliasCmdline)
-	if resolveErr != nil {
-		return resolveErr
-	}
-
-	parsed, parseErr := ParseCommand(aliasCmdline, resolved)
-	if parseErr != nil {
-		return parseErr
-	}
-
 	if fromEngine != nil {
-		if fileErr := sm.resolveFileArgs(fromEngine, parsed); fileErr != nil {
+		if fileErr := sm.resolveFileArgs(fromEngine, ctx.parsed); fileErr != nil {
 			return fileErr
 		}
 	}
 
-	cmdDef := resolved.Command
-	if resolved.Subcommand != nil {
-		cmdDef = resolved.Subcommand
-	}
+	cmdDef := ctx.resolved.GetEffectiveCommand()
 
-	if cmdDef.HasPreHook && cmdDef.PreHookFunc != nil && resolved.Engine != nil {
-		preHookErr := sm.executePreHook(resolved.Engine, cmdDef.PreHookFunc, agentId, aliasCmdline, parsed.Args)
+	if cmdDef.HasPreHook && cmdDef.PreHookFunc != nil && ctx.resolved.Engine != nil {
+		preHookErr := sm.executePreHook(ctx.resolved.Engine, cmdDef.PreHookFunc, agentId, aliasCmdline, ctx.parsed.Args)
 		if preHookErr != nil {
 			return preHookErr
 		}
@@ -450,20 +620,27 @@ func (sm *ScriptManager) ExecuteAliasWithHooks(fromEngine *ScriptEngine, agentId
 	hookId := ""
 	handlerId := ""
 
-	// Explicit hook/handler from caller take priority over command definition
 	if postHookFn != nil {
 		hookId = sm.HookStore.RegisterPostHook(fromEngine, postHookFn, agentId, "server")
-	} else if cmdDef.HasPostHook && cmdDef.PostHookFunc != nil && resolved.Engine != nil {
-		hookId = sm.HookStore.RegisterPostHook(resolved.Engine, cmdDef.PostHookFunc, agentId, "server")
+	} else if cmdDef.HasPostHook && cmdDef.PostHookFunc != nil && ctx.resolved.Engine != nil {
+		hookId = sm.HookStore.RegisterPostHook(ctx.resolved.Engine, cmdDef.PostHookFunc, agentId, "server")
 	}
 
 	if handlerFn != nil {
 		handlerId = sm.HookStore.RegisterHandler(fromEngine, handlerFn, agentId, "server")
-	} else if cmdDef.HasHandler && cmdDef.HandlerFunc != nil && resolved.Engine != nil {
-		handlerId = sm.HookStore.RegisterHandler(resolved.Engine, cmdDef.HandlerFunc, agentId, "server")
+	} else if cmdDef.HasHandler && cmdDef.HandlerFunc != nil && ctx.resolved.Engine != nil {
+		handlerId = sm.HookStore.RegisterHandler(ctx.resolved.Engine, cmdDef.HandlerFunc, agentId, "server")
 	}
 
-	return sm.teamserver.TsAgentCommand(agentName, agentId, "server", hookId, handlerId, aliasCmdline, false, parsed.Args)
+	cmdlineForDisplay := displayCmdline
+	if cmdlineForDisplay == "" {
+		cmdlineForDisplay = aliasCmdline
+	}
+	if message != "" {
+		ctx.parsed.Args["message"] = message
+	}
+
+	return sm.teamserver.TsAgentCommand(ctx.agentName, agentId, "server", hookId, handlerId, cmdlineForDisplay, false, ctx.parsed.Args)
 }
 
 func (sm *ScriptManager) GetAgents() map[string]interface{} {
@@ -480,6 +657,7 @@ func (sm *ScriptManager) GetAgentInfo(agentId string, property string) interface
 	return sm.teamserver.AxGetAgentInfo(agentId, property)
 }
 
+// /---
 func (sm *ScriptManager) GetAgentIds() []string {
 	if sm.teamserver == nil {
 		return []string{}
@@ -487,6 +665,7 @@ func (sm *ScriptManager) GetAgentIds() []string {
 	return sm.teamserver.AxGetAgentIds()
 }
 
+// /---
 func (sm *ScriptManager) GetCredentials() []interface{} {
 	if sm.teamserver == nil {
 		return []interface{}{}
@@ -494,6 +673,7 @@ func (sm *ScriptManager) GetCredentials() []interface{} {
 	return sm.teamserver.AxGetCredentials()
 }
 
+// /---
 func (sm *ScriptManager) GetTargets() []interface{} {
 	if sm.teamserver == nil {
 		return []interface{}{}
@@ -505,11 +685,12 @@ func (sm *ScriptManager) ConsoleMessage(agentId string, msgType int, message str
 	if sm.teamserver == nil {
 		return
 	}
-	sm.teamserver.TsAgentConsoleOutput(agentId, msgType, message, clearText, false)
+	sm.teamserver.TsAgentConsoleOutput(agentId, msgType, message, clearText, false) // todo underlaycopy
 }
 
+// /---
 func (sm *ScriptManager) GetCommandsJSON() (string, error) {
-	allCommands := sm.Registry.GetAllCommands()
+	allCommands := sm.CommandStore.GetAllCommandsOrdered()
 	data, err := json.Marshal(allCommands)
 	if err != nil {
 		return "", err
@@ -517,138 +698,9 @@ func (sm *ScriptManager) GetCommandsJSON() (string, error) {
 	return string(data), nil
 }
 
+// /---
 func (sm *ScriptManager) SetGlobalAllowedRoots(roots []string) {
 	sm.globalAllowedRoots = roots
-}
-
-func (sm *ScriptManager) LoadAxScript(scriptPath string) error {
-	abs, err := filepath.Abs(scriptPath)
-	if err != nil {
-		return fmt.Errorf("invalid script path '%s': %w", scriptPath, err)
-	}
-
-	if _, err := os.Stat(abs); err != nil {
-		return fmt.Errorf("script file not found: %s", abs)
-	}
-
-	content, err := os.ReadFile(abs)
-	if err != nil {
-		return fmt.Errorf("failed to read script '%s': %w", abs, err)
-	}
-
-	engine, err := NewScriptEngineFromPath(abs, sm)
-	if err != nil {
-		return fmt.Errorf("failed to create engine for '%s': %w", abs, err)
-	}
-
-	registerFormStubs(engine)
-	registerMenuStubs(engine)
-	registerEventStubs(engine)
-	registerAxBridge(engine)
-
-	err = engine.Execute(string(content))
-	if err != nil {
-		return fmt.Errorf("failed to execute script '%s': %w", abs, err)
-	}
-
-	sm.mu.Lock()
-	sm.axscriptEngines[abs] = engine
-	sm.scriptInfos = append(sm.scriptInfos, ScriptInfo{
-		Name:       filepath.Base(abs),
-		ScriptType: "axscript",
-		Path:       abs,
-	})
-	sm.mu.Unlock()
-
-	logs.Success("AxScript", "Loaded axscript '%s'", abs)
-	return nil
-}
-
-func (sm *ScriptManager) LoadAxScriptChild(parentEngine *ScriptEngine, scriptPath string) error {
-	abs, err := filepath.Abs(scriptPath)
-	if err != nil {
-		return fmt.Errorf("invalid script path '%s': %w", scriptPath, err)
-	}
-
-	if _, err := os.Stat(abs); err != nil {
-		return fmt.Errorf("script file not found: %s", abs)
-	}
-
-	content, err := os.ReadFile(abs)
-	if err != nil {
-		return fmt.Errorf("failed to read script '%s': %w", abs, err)
-	}
-
-	engine, err := NewScriptEngineFromPath(abs, sm)
-	if err != nil {
-		return fmt.Errorf("failed to create engine for '%s': %w", abs, err)
-	}
-
-	// Child inherits parent's allowed roots
-	for _, root := range parentEngine.allowedRoots {
-		found := false
-		for _, r := range engine.allowedRoots {
-			if r == root {
-				found = true
-				break
-			}
-		}
-		if !found {
-			engine.allowedRoots = append(engine.allowedRoots, root)
-		}
-	}
-
-	registerFormStubs(engine)
-	registerMenuStubs(engine)
-	registerEventStubs(engine)
-	registerAxBridge(engine)
-
-	err = engine.Execute(string(content))
-	if err != nil {
-		return fmt.Errorf("failed to execute script '%s': %w", abs, err)
-	}
-
-	sm.mu.Lock()
-	sm.axscriptEngines[abs] = engine
-	sm.scriptInfos = append(sm.scriptInfos, ScriptInfo{
-		Name:       filepath.Base(abs),
-		ScriptType: "axscript",
-		Path:       abs,
-	})
-	sm.mu.Unlock()
-
-	logs.Success("AxScript", "Loaded axscript '%s'", abs)
-	return nil
-}
-
-func (sm *ScriptManager) ImportAxScript(engine *ScriptEngine, scriptPath string) error {
-	abs, err := filepath.Abs(scriptPath)
-	if err != nil {
-		return fmt.Errorf("invalid script path '%s': %w", scriptPath, err)
-	}
-
-	// Validate path is within engine's allowed roots
-	_, err = engine.ValidatePath(abs)
-	if err != nil {
-		return err
-	}
-
-	content, err := os.ReadFile(abs)
-	if err != nil {
-		return fmt.Errorf("failed to read script '%s': %w", abs, err)
-	}
-
-	// Execute in the SAME engine context
-	engine.mu.Lock()
-	_, execErr := engine.runtime.RunString(string(content))
-	engine.mu.Unlock()
-
-	if execErr != nil {
-		return fmt.Errorf("failed to import script '%s': %w", abs, execErr)
-	}
-
-	logs.Debug("AxScript", "Imported '%s' into engine '%s'", abs, engine.name)
-	return nil
 }
 
 func (sm *ScriptManager) ReadFileSandboxed(engine *ScriptEngine, path string) ([]byte, error) {
@@ -659,6 +711,7 @@ func (sm *ScriptManager) ReadFileSandboxed(engine *ScriptEngine, path string) ([
 	return os.ReadFile(validated)
 }
 
+// /---
 func (sm *ScriptManager) WriteFileSandboxed(engine *ScriptEngine, path string, data []byte, append_ bool) error {
 	validated, err := engine.ValidatePath(path)
 	if err != nil {
@@ -683,6 +736,7 @@ func (sm *ScriptManager) WriteFileSandboxed(engine *ScriptEngine, path string, d
 	return err
 }
 
+// /---
 func (sm *ScriptManager) GetDownloads() []interface{} {
 	if sm.teamserver == nil {
 		return []interface{}{}
@@ -690,6 +744,7 @@ func (sm *ScriptManager) GetDownloads() []interface{} {
 	return sm.teamserver.AxGetDownloads()
 }
 
+// /---
 func (sm *ScriptManager) GetScreenshots() []interface{} {
 	if sm.teamserver == nil {
 		return []interface{}{}
@@ -697,6 +752,7 @@ func (sm *ScriptManager) GetScreenshots() []interface{} {
 	return sm.teamserver.AxGetScreenshots()
 }
 
+// /---
 func (sm *ScriptManager) GetTunnels() []interface{} {
 	if sm.teamserver == nil {
 		return []interface{}{}
@@ -704,6 +760,7 @@ func (sm *ScriptManager) GetTunnels() []interface{} {
 	return sm.teamserver.AxGetTunnels()
 }
 
+// /---
 func (sm *ScriptManager) GetInterfaces() []string {
 	if sm.teamserver == nil {
 		return []string{}
@@ -711,6 +768,7 @@ func (sm *ScriptManager) GetInterfaces() []string {
 	return sm.teamserver.AxGetInterfaces()
 }
 
+// /---
 func (sm *ScriptManager) GetAgentMark(agentId string) string {
 	if sm.teamserver == nil {
 		return ""
@@ -718,6 +776,7 @@ func (sm *ScriptManager) GetAgentMark(agentId string) string {
 	return sm.teamserver.AxGetAgentMark(agentId)
 }
 
+// /---
 func (sm *ScriptManager) UnloadAxScript(name string) error {
 	if sm.teamserver == nil {
 		return fmt.Errorf("teamserver not available")
@@ -725,19 +784,18 @@ func (sm *ScriptManager) UnloadAxScript(name string) error {
 	return sm.teamserver.AxUnloadAxScript(name)
 }
 
+// /---
 func (sm *ScriptManager) ValidateCommand(agentId string, cmdline string) (map[string]interface{}, error) {
 	if sm.teamserver == nil {
 		return nil, fmt.Errorf("teamserver not available")
 	}
 
-	agentName, osType, err := sm.teamserver.AxGetAgentNameById(agentId)
+	agentName, listenerRegName, osType, err := sm.teamserver.AxGetAgentContext(agentId)
 	if err != nil {
 		return map[string]interface{}{"valid": false, "message": "Agent not found"}, nil
 	}
 
-	listenerRegName, _ := sm.teamserver.AxGetAgentListenerRegName(agentId)
-
-	resolved, resolveErr := sm.Registry.ResolveFromCmdline(agentName, listenerRegName, osType, cmdline)
+	resolved, resolveErr := sm.CommandStore.ResolveFromCmdline(agentName, listenerRegName, osType, cmdline)
 	if resolveErr != nil {
 		return map[string]interface{}{"valid": false, "message": resolveErr.Error()}, nil
 	}
@@ -747,10 +805,7 @@ func (sm *ScriptManager) ValidateCommand(agentId string, cmdline string) (map[st
 		return map[string]interface{}{"valid": false, "message": parseErr.Error()}, nil
 	}
 
-	cmdDef := resolved.Command
-	if resolved.Subcommand != nil {
-		cmdDef = resolved.Subcommand
-	}
+	cmdDef := resolved.GetEffectiveCommand()
 
 	result := map[string]interface{}{
 		"valid":         true,
@@ -763,19 +818,18 @@ func (sm *ScriptManager) ValidateCommand(agentId string, cmdline string) (map[st
 	return result, nil
 }
 
+// /---
 func (sm *ScriptManager) GetCommandNames(agentId string) ([]string, error) {
 	if sm.teamserver == nil {
 		return nil, fmt.Errorf("teamserver not available")
 	}
 
-	agentName, osType, err := sm.teamserver.AxGetAgentNameById(agentId)
+	agentName, listenerRegName, osType, err := sm.teamserver.AxGetAgentContext(agentId)
 	if err != nil {
 		return nil, err
 	}
 
-	listenerRegName, _ := sm.teamserver.AxGetAgentListenerRegName(agentId)
-
-	groups := sm.Registry.GetCommandsForAgent(agentName, listenerRegName, osType)
+	groups := sm.CommandStore.GetCommandsForAgent(agentName, listenerRegName, osType)
 	var names []string
 	for _, g := range groups {
 		for _, cmd := range g.Commands {

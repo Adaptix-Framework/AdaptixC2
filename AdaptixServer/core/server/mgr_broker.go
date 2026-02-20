@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -41,6 +41,7 @@ const (
 
 const (
 	SyncCategoryExtenders           = "extenders"
+	SyncCategoryScripts             = "scripts"
 	SyncCategoryListeners           = "listeners"
 	SyncCategoryAgents              = "agents"
 	SyncCategoryAgentsOnlyActive    = "agents_only_active"

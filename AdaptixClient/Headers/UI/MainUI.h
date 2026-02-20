@@ -34,7 +34,7 @@ public:
     void onProjectSubscriptions();
     void onAxScriptConsole();
 
-    static void onScriptManager();
+    void onScriptManager();
     static void onSettings();
 
     void AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker);
@@ -48,6 +48,7 @@ public:
     void UpdateTasksTableColumns();
 
     AuthProfile* GetCurrentProfile() const;
+    QVector<AdaptixWidget*> GetAdaptixProjects() const;
 
     QMenu* getMenuProject() const;
     QMenu* getMenuAxScript() const;

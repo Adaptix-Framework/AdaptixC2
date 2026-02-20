@@ -575,9 +575,9 @@ void AdaptixWidget::ClearAdaptix()
         delete regAgent.commander;
     RegisterAgents.clear();
 
-    for (auto regAgent : ServerRegAgents)
-        delete regAgent.commander;
-    ServerRegAgents.clear();
+    RegisterListeners.clear();
+    AgentTypes.clear();
+    Listeners.clear();
 }
 
 void AdaptixWidget::ClearChatStream()
@@ -618,116 +618,228 @@ void AdaptixWidget::RegisterServiceConfig(const QString &serviceName, const QStr
     ScriptManager->ServiceScriptAdd(serviceName, ax_script);
 }
 
-void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners, const bool &multiListeners)
+static Argument parseArgument(const QJsonObject &argObj)
+{
+    Argument arg;
+    arg.type         = argObj["type"].toString();
+    arg.name         = argObj["name"].toString();
+    arg.required     = argObj["required"].toBool();
+    arg.flag         = argObj["flag"].toBool();
+    arg.mark         = argObj["mark"].toString();
+    arg.description  = argObj["description"].toString();
+    arg.defaultUsed  = argObj["default_used"].toBool();
+    if (arg.defaultUsed)
+        arg.defaultValue = argObj["default_value"].toVariant();
+    return arg;
+}
+
+static Command parseCommand(const QJsonObject &cmdObj)
+{
+    Command cmd;
+    cmd.name        = cmdObj["name"].toString();
+    cmd.message     = cmdObj["message"].toString();
+    cmd.description = cmdObj["description"].toString();
+    cmd.example     = cmdObj["example"].toString();
+    cmd.is_pre_hook = cmdObj["has_pre_hook"].toBool();
+
+    for (const QJsonValue &argVal : cmdObj["args"].toArray()) {
+        if (argVal.isObject())
+            cmd.args.append(parseArgument(argVal.toObject()));
+    }
+
+    for (const QJsonValue &subVal : cmdObj["subcommands"].toArray()) {
+        if (subVal.isObject())
+            cmd.subcommands.append(parseCommand(subVal.toObject()));
+    }
+    return cmd;
+}
+
+static CommandsGroup parseCommandsGroup(const QString &scriptName, const QJsonArray &cmdsArray)
+{
+    QList<Command> commands;
+    for (const QJsonValue &cmdVal : cmdsArray) {
+        if (cmdVal.isObject())
+            commands.append(parseCommand(cmdVal.toObject()));
+    }
+
+    CommandsGroup cg;
+    cg.groupName = scriptName;
+    cg.commands  = commands;
+    cg.engine    = nullptr;
+    cg.filepath  = QStringLiteral("__server__:") + scriptName;
+    return cg;
+}
+
+void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners, const bool &multiListeners, const QJsonArray &groups)
 {
     AgentTypes[agentName] = AgentTypeInfo{multiListeners, listeners};
 
     ScriptManager->AgentScriptAdd(agentName, ax_script);
 
+    for (const auto &listener : listeners) {
+        for (int os : {OS_WINDOWS, OS_LINUX, OS_MAC}) {
+            Commander* commander = new Commander();
+            commander->SetAgentType(agentName);
+
+            RegAgentConfig config = {agentName, listener, os, commander, true};
+            RegisterAgents.push_back(config);
+        }
+    }
+
     QJSEngine* engine = ScriptManager->AgentScriptEngine(agentName);
-    if (!engine)
-        return;
 
+    for (const QJsonValue &groupVal : groups) {
+        if (!groupVal.isObject())
+            continue;
 
-void AdaptixWidget::ProcessAxScriptCommands(const QString &agentName, const QString &listenerType, int os, const QString &commandsJson)
-{
-    /// Remove existing server commands for this agent/listener/os
-    for (int i = ServerRegAgents.size() - 1; i >= 0; --i) {
-        if (ServerRegAgents[i].name == agentName && ServerRegAgents[i].listenerType == listenerType && ServerRegAgents[i].os == os) {
-            delete ServerRegAgents[i].commander;
-            ServerRegAgents.removeAt(i);
-        }
-    }
-
-    QJsonParseError parseError;
-    QJsonDocument doc = QJsonDocument::fromJson(commandsJson.toUtf8(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isArray())
-        return;
-
-    QJsonArray groupsArray = doc.array();
-    QList<Command> allCommands;
-
-    for (const QJsonValue &groupVal : groupsArray) {
-        if (!groupVal.isObject()) continue;
         QJsonObject groupObj = groupVal.toObject();
-        QJsonArray cmdsArray = groupObj["commands"].toArray();
+        QString gAgent = groupObj["agent"].toString();
+        QString gListener = groupObj["listener"].toString();
+        int gOs = static_cast<int>(groupObj["os"].toDouble());
+        QString commandsJson = groupObj["commands"].toString();
 
-        for (const QJsonValue &cmdVal : cmdsArray) {
-            if (!cmdVal.isObject()) continue;
-            QJsonObject cmdObj = cmdVal.toObject();
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(commandsJson.toUtf8(), &parseError);
+        if (parseError.error != QJsonParseError::NoError || !doc.isArray())
+            continue;
 
-            Command cmd;
-            cmd.name        = cmdObj["name"].toString();
-            cmd.message     = cmdObj["message"].toString();
-            cmd.description = cmdObj["description"].toString();
-            cmd.example     = cmdObj["example"].toString();
-            cmd.is_pre_hook = cmdObj["has_pre_hook"].toBool();
+        QJsonArray commandGroupsArray = doc.array();
+        for (const QJsonValue &cgVal : commandGroupsArray) {
+            if (!cgVal.isObject())
+                continue;
 
-            QJsonArray argsArray = cmdObj["args"].toArray();
-            for (const QJsonValue &argVal : argsArray) {
-                if (!argVal.isObject()) continue;
-                QJsonObject argObj = argVal.toObject();
-                Argument arg;
-                arg.type         = argObj["type"].toString();
-                arg.name         = argObj["name"].toString();
-                arg.required     = argObj["required"].toBool();
-                arg.flag         = argObj["flag"].toBool();
-                arg.mark         = argObj["mark"].toString();
-                arg.description  = argObj["description"].toString();
-                arg.defaultUsed  = argObj["default_used"].toBool();
-                if (arg.defaultUsed)
-                    arg.defaultValue = argObj["default_value"].toVariant();
-                cmd.args.append(arg);
-            }
+            QJsonObject cgObj = cgVal.toObject();
+            QString groupName = cgObj["groupName"].toString();
+            QString groupDesc = cgObj["groupDescription"].toString();
+            QJsonArray cmdsArray = cgObj["commands"].toArray();
 
-            QJsonArray subsArray = cmdObj["subcommands"].toArray();
-            for (const QJsonValue &subVal : subsArray) {
-                if (!subVal.isObject()) continue;
-                QJsonObject subObj = subVal.toObject();
-                Command sub;
-                sub.name        = subObj["name"].toString();
-                sub.message     = subObj["message"].toString();
-                sub.description = subObj["description"].toString();
-                sub.example     = subObj["example"].toString();
-                sub.is_pre_hook = subObj["has_pre_hook"].toBool();
+            if (groupName.isEmpty())
+                groupName = agentName;
 
-                QJsonArray subArgsArray = subObj["args"].toArray();
-                for (const QJsonValue &saVal : subArgsArray) {
-                    if (!saVal.isObject()) continue;
-                    QJsonObject saObj = saVal.toObject();
-                    Argument sa;
-                    sa.type         = saObj["type"].toString();
-                    sa.name         = saObj["name"].toString();
-                    sa.required     = saObj["required"].toBool();
-                    sa.flag         = saObj["flag"].toBool();
-                    sa.mark         = saObj["mark"].toString();
-                    sa.description  = saObj["description"].toString();
-                    sa.defaultUsed  = saObj["default_used"].toBool();
-                    if (sa.defaultUsed)
-                        sa.defaultValue = saObj["default_value"].toVariant();
-                    sub.args.append(sa);
+            CommandsGroup cg = parseCommandsGroup(groupName, cmdsArray);
+            if (cg.commands.isEmpty())
+                continue;
+
+            cg.engine = engine;
+
+            for (auto &regAgent : this->RegisterAgents) {
+                if (regAgent.name != gAgent || regAgent.os != gOs)
+                    continue;
+                bool listenerMatch = gListener.isEmpty() || regAgent.listenerType.isEmpty() || regAgent.listenerType == gListener;
+                if (listenerMatch) {
+                    regAgent.commander->SetMainCommands(cg);
                 }
-                cmd.subcommands.append(sub);
+            }
+        }
+    }
+}
+
+void AdaptixWidget::registerServerCommandGroups(const QString &scriptName, const QList<ServerScriptGroup> &groups, QJSEngine* engine)
+{
+    for (const auto &group : groups) {
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(group.commandsJson.toUtf8(), &parseError);
+        if (parseError.error != QJsonParseError::NoError || !doc.isArray())
+            continue;
+
+        for (const QJsonValue &groupVal : doc.array()) {
+            if (!groupVal.isObject())
+                continue;
+
+            QJsonObject groupObj = groupVal.toObject();
+            QString groupName = groupObj["groupName"].toString();
+            QString groupDesc = groupObj["groupDescription"].toString();
+
+            if (groupName.isEmpty())
+                groupName = scriptName;
+
+            CommandsGroup cg = parseCommandsGroup(groupName, groupObj["commands"].toArray());
+            if (cg.commands.isEmpty())
+                continue;
+
+            cg.engine = engine;
+
+            for (auto &regAgent : this->RegisterAgents) {
+                if (regAgent.name != group.agentName || regAgent.os != group.os)
+                    continue;
+                bool listenerMatch = group.listenerType.isEmpty() || regAgent.listenerType.isEmpty() || regAgent.listenerType == group.listenerType;
+                if (listenerMatch)
+                    regAgent.commander->AddServerGroup(groupName, groupDesc, cg);
             }
 
-            allCommands.append(cmd);
+            QReadLocker locker(&AgentsMapLock);
+            for (auto agent : AgentsMap) {
+                if (agent->data.Name != group.agentName || agent->data.Os != group.os)
+                    continue;
+                bool lMatch = group.listenerType.isEmpty() || agent->listenerType.isEmpty() || agent->listenerType == group.listenerType;
+                if (lMatch)
+                    agent->commander->AddServerGroup(groupName, groupDesc, cg);
+            }
         }
     }
 
-    if (allCommands.isEmpty())
+    if (engine) {
+        for (auto &regAgent : this->RegisterAgents)
+            regAgent.commander->SetServerGroupEngine(scriptName, engine);
+
+        QReadLocker locker(&AgentsMapLock);
+        for (auto agent : AgentsMap)
+            agent->commander->SetServerGroupEngine(scriptName, engine);
+    }
+}
+
+void AdaptixWidget::ProcessAxScriptPacket(const QString &name, const QString &content, const QJsonArray &groups)
+{
+    ServerScriptData scriptData;
+    scriptData.name = name;
+    scriptData.code = content;
+    scriptData.enabled = true;
+
+    for (const QJsonValue &groupVal : groups) {
+        if (!groupVal.isObject())
+            continue;
+
+        QJsonObject groupObj = groupVal.toObject();
+        ServerScriptGroup sg;
+        sg.agentName    = groupObj["agent"].toString();
+        sg.listenerType = groupObj["listener"].toString();
+        sg.os           = static_cast<int>(groupObj["os"].toDouble());
+        sg.commandsJson = groupObj["commands"].toString();
+        scriptData.groups.append(sg);
+    }
+
+    ScriptManager->ServerScriptAdd(scriptData);
+    registerServerCommandGroups(name, scriptData.groups, ScriptManager->ServerScriptEngine(name));
+}
+
+void AdaptixWidget::EnableServerScript(const QString &name)
+{
+    ServerScriptData data = ScriptManager->ServerScriptGet(name);
+    if (data.name.isEmpty())
         return;
 
-    CommandsGroup group;
-    group.groupName = agentName;
-    group.commands  = allCommands;
-    group.engine    = nullptr;
-    group.filepath  = "";
+    ScriptManager->ServerScriptSetEnabled(name, true);
+    registerServerCommandGroups(name, data.groups, ScriptManager->ServerScriptEngine(name));
+}
 
-    Commander* commander = new Commander();
-    commander->AddRegCommands(group);
+void AdaptixWidget::DisableServerScript(const QString &name)
+{
+    ScriptManager->ServerScriptSetEnabled(name, false);
 
-    RegAgentConfig config = {agentName, listenerType, os, commander, true};
-    ServerRegAgents.push_back(config);
+    for (auto &regAgent : this->RegisterAgents)
+        regAgent.commander->RemoveServerGroup(name);
+
+    QReadLocker locker(&AgentsMapLock);
+    for (auto agent : AgentsMap)
+        agent->commander->RemoveServerGroup(name);
+}
+
+QList<ServerScriptInfo> AdaptixWidget::GetServerScripts() const
+{
+    QList<ServerScriptInfo> result;
+    for (const auto &data : ScriptManager->ServerScriptList())
+        result.append({data.name, data.description, data.enabled});
+    return result;
 }
 
 RegListenerConfig AdaptixWidget::GetRegListener(const QString &listenerName)
@@ -764,16 +876,12 @@ RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QStrin
                 break;
             }
         }
-        for (auto regAgent : this->ServerRegAgents) {
+        for (auto regAgent : this->RegisterAgents) {
             if (regAgent.name == agentName && regAgent.listenerType == listener && regAgent.os == os)
-                return regAgent;
-        }
-        for (auto regAgent : this->ServerRegAgents) {
-            if (regAgent.name == agentName && regAgent.listenerType.isEmpty() && regAgent.os == os)
                 return regAgent;
         }
         for (auto regAgent : this->RegisterAgents) {
-            if (regAgent.name == agentName && regAgent.listenerType == listener && regAgent.os == os)
+            if (regAgent.name == agentName && regAgent.listenerType.isEmpty() && regAgent.os == os)
                 return regAgent;
         }
         for (auto regAgent : this->RegisterAgents) {
@@ -789,12 +897,6 @@ QList<Commander*> AdaptixWidget::GetCommanders(const QStringList &listeners, con
     QList<Commander*> commanders;
     for (auto regAgent : this->RegisterAgents) {
         if ( !agents.contains(regAgent.name) ) continue;
-        if ( !listeners.empty() && !listeners.contains(regAgent.listenerType)) continue;
-        if ( !os.empty() && !os.contains(regAgent.os) ) continue;
-        commanders.append(regAgent.commander);
-    }
-    for (auto regAgent : this->ServerRegAgents) {
-        if ( !agents.contains(regAgent.name) ) continue;
         if ( !listeners.empty() && !regAgent.listenerType.isEmpty() && !listeners.contains(regAgent.listenerType)) continue;
         if ( !os.empty() && !os.contains(regAgent.os) ) continue;
         commanders.append(regAgent.commander);
@@ -807,9 +909,40 @@ QList<Commander*> AdaptixWidget::GetCommandersAll() const
     QList<Commander*> commanders;
     for (auto regAgent : this->RegisterAgents)
         commanders.append(regAgent.commander);
-    for (auto regAgent : this->ServerRegAgents)
-        commanders.append(regAgent.commander);
     return commanders;
+}
+
+void AdaptixWidget::AddCommandsToCommanders(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &osList)
+{
+    QList<int> effectiveOs = osList.isEmpty() ? QList<int>{OS_WINDOWS, OS_LINUX, OS_MAC} : osList;
+    QStringList effectiveListeners = listeners.isEmpty() ? QStringList{""} : listeners;
+
+    for (const QString &agentName : agents) {
+        for (int os : effectiveOs) {
+            for (const QString &listener : effectiveListeners) {
+                Commander* targetCommander = nullptr;
+
+                for (auto &regAgent : this->RegisterAgents) {
+                    if (regAgent.name == agentName && regAgent.os == os) {
+                        bool listenerMatch = listener.isEmpty() || regAgent.listenerType.isEmpty() || regAgent.listenerType == listener;
+                        if (listenerMatch) {
+                            targetCommander = regAgent.commander;
+                            break;
+                        }
+                    }
+                }
+
+                if (!targetCommander) {
+                    targetCommander = new Commander();
+                    targetCommander->SetAgentType(agentName);
+                    RegAgentConfig config = {agentName, listener, os, targetCommander, true};
+                    RegisterAgents.push_back(config);
+                }
+
+                targetCommander->AddClientGroup(group);
+            }
+        }
+    }
 }
 
 void AdaptixWidget::PostHookProcess(QJsonObject jsonHookObj)

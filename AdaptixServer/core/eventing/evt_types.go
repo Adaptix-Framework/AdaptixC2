@@ -1,8 +1,6 @@
 package eventing
 
-import (
-	adaptix "github.com/Adaptix-Framework/axc2"
-)
+import "github.com/Adaptix-Framework/axc2"
 
 type EventType string
 

@@ -64,6 +64,7 @@ func (hs *HookStore) GetPostHook(hookId string) *PendingHook {
 	return hs.pendingPostHooks[hookId]
 }
 
+// /---
 func (hs *HookStore) GetHandler(handlerId string) *PendingHook {
 	hs.mu.RLock()
 	defer hs.mu.RUnlock()
@@ -78,6 +79,7 @@ func (hs *HookStore) RemovePostHook(hookId string) {
 	delete(hs.pendingPostHooks, hookId)
 }
 
+// /---
 func (hs *HookStore) RemoveHandler(handlerId string) {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
@@ -107,6 +109,7 @@ func (hs *HookStore) ExecutePostHook(hookId string, data map[string]interface{})
 	return data, nil
 }
 
+// /---
 func (hs *HookStore) ExecuteHandler(handlerId string, data map[string]interface{}) error {
 	hook := hs.GetHandler(handlerId)
 	if hook == nil {

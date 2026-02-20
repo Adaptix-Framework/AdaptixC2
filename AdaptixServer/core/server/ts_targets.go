@@ -8,7 +8,7 @@ import (
 	"math/rand/v2"
 	"time"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsTargetsList() (string, error) {

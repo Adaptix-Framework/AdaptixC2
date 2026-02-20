@@ -6,6 +6,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(QT_NO_PRIVATE_MODULE_WARNING ON)
+
 add_subdirectory(Libs/kddockwidgets)
 
 if(UNIX)

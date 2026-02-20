@@ -29,9 +29,45 @@ func (h *JobTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.Tas
 	tm.ts.EventManager.EmitAsync(eventing.EventTaskUpdateJob, event)
 	// -------------
 
+	/// Server-side hook: execute directly
+	if task.HookId != "" && tm.ts.TsAxScriptIsServerHook(task.HookId) {
+		h.updateWithServerHook(tm, agent, task, updateData)
+		return
+	}
+
+	/// Client-side hook: send to client
 	if task.HookId != "" && task.Client != "" && tm.ts.TsClientConnected(task.Client) {
 		h.updateWithHook(tm, agent, task, updateData)
 		return
+	}
+
+	h.updateWithoutHook(tm, agent, task, updateData)
+}
+
+func (h *JobTaskHandler) updateWithServerHook(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
+	hookData := map[string]interface{}{
+		"agent":     task.AgentId,
+		"task_id":   task.TaskId,
+		"message":   updateData.Message,
+		"text":      updateData.ClearText,
+		"type":      updateData.MessageType,
+		"completed": updateData.Completed,
+	}
+	result, _ := tm.ts.TsAxScriptExecPostHook(task.HookId, hookData)
+	if result != nil {
+		if msg, ok := result["message"].(string); ok {
+			updateData.Message = msg
+		}
+		if txt, ok := result["text"].(string); ok {
+			updateData.ClearText = txt
+		}
+		if mt, ok := result["type"].(int); ok {
+			updateData.MessageType = mt
+		}
+	}
+
+	if updateData.Completed {
+		tm.ts.TsAxScriptRemovePostHook(task.HookId)
 	}
 
 	h.updateWithoutHook(tm, agent, task, updateData)
@@ -229,6 +265,7 @@ func (h *JobTaskHandler) finalizeJob(tm *TaskManager, agent *Agent, task *adapti
 
 	agent.RunningJobs.Delete(task.TaskId)
 	tm.completeTask(agent, task)
+	tm.executeServerHandler(task)
 }
 
 func (h *JobTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task *adaptix.TaskData, clientName string) {

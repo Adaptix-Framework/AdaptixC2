@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsScreenshotList() (string, error) {

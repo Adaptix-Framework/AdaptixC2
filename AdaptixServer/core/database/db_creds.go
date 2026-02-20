@@ -8,7 +8,7 @@ import (
 
 	"AdaptixServer/core/utils/logs"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (dbms *DBMS) DbCredentialsExist(credsId string) bool {

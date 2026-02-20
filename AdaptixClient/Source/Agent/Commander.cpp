@@ -79,29 +79,132 @@ QStringList unserializeParams(const QString &commandline)
 
 Commander::Commander()
 {
-    regCommandsGroup = {};
-    axCommandsGroup  = {};
+    mainCommandsGroup = {};
+    serverGroups      = {};
+    clientGroups      = {};
 }
 
 Commander::~Commander() = default;
 
-void Commander::AddRegCommands(const CommandsGroup &group) { regCommandsGroup = group; }
+void Commander::SetAgentType(const QString &type) { agentType = type; }
 
-void Commander::AddAxCommands(const CommandsGroup &group)
+void Commander::SetMainCommands(const CommandsGroup &group) { mainCommandsGroup = group; }
+
+void Commander::AddServerGroup(const QString &scriptName, const QString &description, const CommandsGroup &group)
 {
-    axCommandsGroup.append(group);
+    ServerCommandsGroup sg;
+    sg.scriptName  = scriptName;
+    sg.description = description;
+    sg.enabled     = true;
+    sg.group       = group;
+    serverGroups[scriptName] = sg;
     Q_EMIT commandsUpdated();
 }
 
-void Commander::RemoveAxCommands(const QString &filepath)
+void Commander::RemoveServerGroup(const QString &scriptName)
 {
-    for (int i = 0; i < axCommandsGroup.size(); ++i) {
-        if (axCommandsGroup[i].filepath == filepath) {
-            axCommandsGroup.removeAt(i);
+    if (serverGroups.remove(scriptName) > 0)
+        Q_EMIT commandsUpdated();
+}
+
+void Commander::SetServerGroupEnabled(const QString &scriptName, bool enabled)
+{
+    if (!serverGroups.contains(scriptName))
+        return;
+    if (serverGroups[scriptName].enabled == enabled)
+        return;
+    serverGroups[scriptName].enabled = enabled;
+    Q_EMIT commandsUpdated();
+}
+
+void Commander::SetServerGroupEngine(const QString &scriptName, QJSEngine* engine)
+{
+    if (!serverGroups.contains(scriptName))
+        return;
+    serverGroups[scriptName].group.engine = engine;
+}
+
+bool Commander::IsServerGroupEnabled(const QString &scriptName) const
+{
+    if (!serverGroups.contains(scriptName))
+        return false;
+    return serverGroups[scriptName].enabled;
+}
+
+QStringList Commander::GetServerGroupNames() const
+{
+    return serverGroups.keys();
+}
+
+ServerCommandsGroup Commander::GetServerGroup(const QString &scriptName) const
+{
+    return serverGroups.value(scriptName);
+}
+
+void Commander::AddClientGroup(const CommandsGroup &group)
+{
+    clientGroups.append(group);
+    Q_EMIT commandsUpdated();
+}
+
+void Commander::RemoveClientGroup(const QString &filepath)
+{
+    for (int i = 0; i < clientGroups.size(); ++i) {
+        if (clientGroups[i].filepath == filepath) {
+            clientGroups.removeAt(i);
             i--;
         }
     }
     Q_EMIT commandsUpdated();
+}
+
+CommanderResult Commander::ProcessInputForGroup(const CommandsGroup &group, const QString &commandName, QStringList args, const QString &agentId, const QString &cmdline)
+{
+    for (const Command &command : group.commands) {
+        if (command.name != commandName)
+            continue;
+
+        QJsonObject jsonObj;
+        jsonObj["command"] = command.name;
+
+        if (command.subcommands.isEmpty()) {
+            auto cmdResult = ProcessCommand(command, "", args, jsonObj);
+            if (!cmdResult.output && command.is_pre_hook && group.engine && command.pre_hook.isCallable()) {
+                QString hook_result = ProcessPreHook(group.engine, command, agentId, cmdline, cmdResult.data, args);
+                if (hook_result.isEmpty())
+                    return CommanderResult{false, false, "", {}, true, {}};
+                cmdResult.output = true;
+                cmdResult.error = true;
+                cmdResult.message = hook_result;
+            }
+            return cmdResult;
+        }
+
+        if (args.isEmpty())
+            return CommanderResult{true, true, "Subcommand must be set" + GenerateCommandHelp(command), {}, false, {}};
+
+        QString subCommandName = args[0];
+        args.removeAt(0);
+
+        for (const Command &subcommand : command.subcommands) {
+            if (subCommandName != subcommand.name)
+                continue;
+
+            jsonObj["subcommand"] = subcommand.name;
+            auto cmdResult = ProcessCommand(subcommand, command.name, args, jsonObj);
+            if (!cmdResult.output && subcommand.is_pre_hook && group.engine && subcommand.pre_hook.isCallable()) {
+                QString hook_result = ProcessPreHook(group.engine, subcommand, agentId, cmdline, cmdResult.data, args);
+                if (hook_result.isEmpty())
+                    return CommanderResult{false, false, "", {}, true, {}};
+                cmdResult.output = true;
+                cmdResult.error = true;
+                cmdResult.message = hook_result;
+            }
+            return cmdResult;
+        }
+        return CommanderResult{true, true, "Subcommand not found", {}, false, {}};
+    }
+    return CommanderResult{false, false, "__not_found__", {}, false, {}};
 }
 
 CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
@@ -113,112 +216,26 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
     QString commandName = parts[0];
     parts.removeAt(0);
 
-    if( commandName == "help")
+    if (commandName == "help")
         return this->ProcessHelp(parts);
 
-    for ( auto script_group : axCommandsGroup ) {
-        for (Command command : script_group.commands) {
-            if (command.name == commandName) {
-                QJsonObject jsonObj;
-                jsonObj["command"] = command.name;
-
-                if ( command.subcommands.isEmpty() ) {
-
-                    auto cmdResult = ProcessCommand(command, "", parts, jsonObj);
-                    if ( !cmdResult.output && command.is_pre_hook) {
-                        QString hook_result = ProcessPreHook(script_group.engine, command, agentId, cmdline, cmdResult.data, parts);
-                        if (hook_result.isEmpty()) {
-                            return CommanderResult{false, false, "", {}, true, {} };
-                        } else {
-                            cmdResult.output = true;
-                            cmdResult.error = true;
-                            cmdResult.message = hook_result;
-                        }
-                    }
-                    return cmdResult;
-
-                }
-                else {
-                    if ( parts.isEmpty() )
-                        return CommanderResult{true, true, "Subcommand must be set" + GenerateCommandHelp(command), {}, false, {}};
-
-                    QString subCommandName = parts[0];
-                    parts.removeAt(0);
-
-                    for (Command subcommand : command.subcommands) {
-                        if (subCommandName == subcommand.name) {
-                            jsonObj["subcommand"] = subcommand.name;
-
-                            auto cmdResult = ProcessCommand(subcommand, command.name, parts, jsonObj);
-                            if ( !cmdResult.output && subcommand.is_pre_hook) {
-                                QString hook_result = ProcessPreHook(script_group.engine, subcommand, agentId, cmdline, cmdResult.data, parts);
-                                if (hook_result.isEmpty()) {
-                                    return CommanderResult{false, false, "", {}, true, {} };
-                                } else {
-                                    cmdResult.output = true;
-                                    cmdResult.error = true;
-                                    cmdResult.message = hook_result;
-                                }
-                            }
-                            return cmdResult;
-                        }
-                    }
-                    return CommanderResult{true, true, "Subcommand not found", {}, false, {}};
-                }
-            }
-        }
+    for (const auto &client_group : clientGroups) {
+        auto result = ProcessInputForGroup(client_group, commandName, parts, agentId, cmdline);
+        if (result.message != "__not_found__")
+            return result;
     }
 
-    for (Command command : regCommandsGroup.commands) {
-        if (command.name == commandName) {
-            QJsonObject jsonObj;
-            jsonObj["command"] = command.name;
-
-            if ( command.subcommands.isEmpty() ) {
-
-                auto cmdResult = ProcessCommand(command, "", parts, jsonObj);
-                if ( !cmdResult.output && command.is_pre_hook) {
-                    QString hook_result = ProcessPreHook(regCommandsGroup.engine, command, agentId, cmdline, cmdResult.data, parts);
-                    if (hook_result.isEmpty()) {
-                        return CommanderResult{false, false, "", {}, true, {} };
-                    } else {
-                        cmdResult.output = true;
-                        cmdResult.error = true;
-                        cmdResult.message = hook_result;
-                    }
-                }
-                return cmdResult;
-
-            } else {
-                if ( parts.isEmpty() )
-                    return CommanderResult{true, true, "Subcommand must be set" + GenerateCommandHelp(command), {}, false, {} };
-
-                QString subCommandName = parts[0];
-                parts.removeAt(0);
-
-                for (Command subcommand : command.subcommands) {
-                    if (subCommandName == subcommand.name) {
-                        jsonObj["subcommand"] = subcommand.name;
-
-                        auto cmdResult = ProcessCommand(subcommand, command.name, parts, jsonObj);
-                        if ( !cmdResult.output && subcommand.is_pre_hook) {
-                            QString hook_result = ProcessPreHook(regCommandsGroup.engine, subcommand, agentId, cmdline, cmdResult.data, parts);
-                            if (hook_result.isEmpty()) {
-                                return CommanderResult{false, false, "", {}, true, {} };
-                            } else {
-                                cmdResult.output = true;
-                                cmdResult.error = true;
-                                cmdResult.message = hook_result;
-                            }
-
-                        }
-                        return cmdResult;
-                    }
-                }
-                return CommanderResult{true, true, "Subcommand not found", {}, false, {} };
-            }
-        }
+    for (const auto &server_group : serverGroups) {
+        if (!server_group.enabled)
+            continue;
+        auto result = ProcessInputForGroup(server_group.group, commandName, parts, agentId, cmdline);
+        if (result.message != "__not_found__")
+            return result;
     }
+
+    auto result = ProcessInputForGroup(mainCommandsGroup, commandName, parts, agentId, cmdline);
+    if (result.message != "__not_found__")
+        return result;
 
     return CommanderResult{true, true, "Command not found", {}, false, {}};
 }
@@ -367,15 +384,15 @@ CommanderResult Commander::ProcessCommand(const Command &command, const QString 
                 }
             }
         } else if (commandArg.required) {
-            if ( (commandArg.defaultValue.isNull() || !commandArg.defaultValue.isValid()) && !commandArg.defaultUsed) {
+            if (!commandArg.defaultUsed) {
                 return CommanderResult{true, true, "Missing required argument: " + commandArg.name + GenerateCommandHelp(command, commandName), {}, false, {}};
             }
             else {
-                if (commandArg.type == "STRING" && commandArg.defaultValue.typeId() == QMetaType::QString) {
+                if (commandArg.type == "STRING" && commandArg.defaultValue.canConvert<QString>()) {
                     jsonObj[commandArg.name] = commandArg.defaultValue.toString();
-                } else if (commandArg.type == "INT" && commandArg.defaultValue.typeId() == QMetaType::Int) {
+                } else if (commandArg.type == "INT" && commandArg.defaultValue.canConvert<int>()) {
                     jsonObj[commandArg.name] = commandArg.defaultValue.toInt();
-                } else if (commandArg.type == "BOOL" && commandArg.defaultValue.typeId() == QMetaType::Bool) {
+                } else if (commandArg.type == "BOOL" && commandArg.defaultValue.canConvert<bool>()) {
                     jsonObj[commandArg.mark] = commandArg.defaultValue.toBool();
                 }
                 else {
@@ -410,7 +427,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
         output << QString("  Command                       Description\n");
         output << QString("  -------                       -----------\n");
 
-        for (auto command : regCommandsGroup.commands) {
+        for (auto command : mainCommandsGroup.commands) {
             QString commandName = command.name;
             if (!command.subcommands.isEmpty())
                 commandName += '*';
@@ -419,19 +436,64 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
             output << "  " + commandName + tab + "      " + command.description + "\n";
         }
 
-        for ( auto script_group : axCommandsGroup ){
-            output << QString("\n");
-            output << QString("  Group - " + script_group.groupName + "\n");
-            output << QString("  =====================================\n");
+        for (const auto &server_group : serverGroups) {
+            if (!server_group.enabled)
+                continue;
+            if (server_group.group.groupName != agentType)
+                continue;
 
-            for ( auto command : script_group.commands ) {
+            for (const auto &command : server_group.group.commands) {
                 QString commandName = command.name;
-                if ( command.subcommands.isEmpty() ) {
+                if (command.subcommands.isEmpty()) {
                     QString tab = QString(TotalWidth - commandName.size(), ' ');
                     output << "  " + commandName + tab + "      " + command.description + "\n";
+                } else {
+                    for (const auto &subcmd : command.subcommands) {
+                        QString subcmdName = commandName + " " + subcmd.name;
+                        QString tab = QString(TotalWidth - subcmdName.size(), ' ');
+                        output << "  " + subcmdName + tab + "      " + subcmd.description + "\n";
+                    }
                 }
-                else {
-                    for ( auto subcmd : command.subcommands ) {
+            }
+        }
+
+        for (const auto &server_group : serverGroups) {
+            if (!server_group.enabled)
+                continue;
+            if (server_group.group.groupName == agentType)
+                continue;
+
+            output << QString("\n");
+            output << QString("  Group - " + server_group.group.groupName + "\n");
+            output << QString("  =====================================\n");
+
+            for (const auto &command : server_group.group.commands) {
+                QString commandName = command.name;
+                if (command.subcommands.isEmpty()) {
+                    QString tab = QString(TotalWidth - commandName.size(), ' ');
+                    output << "  " + commandName + tab + "      " + command.description + "\n";
+                } else {
+                    for (const auto &subcmd : command.subcommands) {
+                        QString subcmdName = commandName + " " + subcmd.name;
+                        QString tab = QString(TotalWidth - subcmdName.size(), ' ');
+                        output << "  " + subcmdName + tab + "      " + subcmd.description + "\n";
+                    }
+                }
+            }
+        }
+
+        for (const auto &client_group : clientGroups) {
+            output << QString("\n");
+            output << QString("  Group - " + client_group.groupName + " (client)\n");
+            output << QString("  =====================================\n");
+
+            for (const auto &command : client_group.commands) {
+                QString commandName = command.name;
+                if (command.subcommands.isEmpty()) {
+                    QString tab = QString(TotalWidth - commandName.size(), ' ');
+                    output << "  " + commandName + tab + "      " + command.description + "\n";
+                } else {
+                    for (const auto &subcmd : command.subcommands) {
                         QString subcmdName = commandName + " " + subcmd.name;
                         QString tab = QString(TotalWidth - subcmdName.size(), ' ');
                         output << "  " + subcmdName + tab + "      " + subcmd.description + "\n";
@@ -446,18 +508,32 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
         Command foundCommand;
         QString commandName = commandParts[0];
 
-        for (Command cmd : regCommandsGroup.commands) {
+        for (Command cmd : mainCommandsGroup.commands) {
             if (cmd.name == commandName) {
                 foundCommand = cmd;
                 break;
             }
         }
 
-        for(auto script_group : axCommandsGroup) {
+        for (const auto &server_group : serverGroups) {
+            if ( !foundCommand.name.isEmpty() )
+                break;
+            if (!server_group.enabled)
+                continue;
+
+            for (Command cmd : server_group.group.commands) {
+                if (cmd.name == commandName) {
+                    foundCommand = cmd;
+                    break;
+                }
+            }
+        }
+
+        for (const auto &client_group : clientGroups) {
             if ( !foundCommand.name.isEmpty() )
                 break;
 
-            for (Command cmd : script_group.commands) {
+            for (Command cmd : client_group.commands) {
                 if (cmd.name == commandName) {
                     foundCommand = cmd;
                     break;
@@ -558,39 +634,36 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
     }
 }
 
+static void collectCommandsFromGroup(const QList<Command> &commands, QStringList &cmdList, QStringList &helpList)
+{
+    for (const Command &cmd : commands) {
+        helpList << "help " + cmd.name;
+        if (cmd.subcommands.isEmpty()) {
+            cmdList << cmd.name;
+        } else {
+            for (const Command &subcmd : cmd.subcommands) {
+                cmdList << cmd.name + " " + subcmd.name;
+                helpList << "help " + cmd.name + " " + subcmd.name;
+            }
+        }
+    }
+}
+
 QStringList Commander::GetCommands()
 {
     QStringList commandList;
     QStringList helpCommandList;
 
-    for (Command cmd : regCommandsGroup.commands) {
+    collectCommandsFromGroup(mainCommandsGroup.commands, commandList, helpCommandList);
 
-        helpCommandList << "help " + cmd.name;
-        if (cmd.subcommands.isEmpty())
-            commandList << cmd.name;
-
-        for (Command subcmd : cmd.subcommands) {
-            commandList << cmd.name + " " + subcmd.name;
-            helpCommandList << "help " + cmd.name + " " + subcmd.name;
-        }
+    for (const auto &server_group : serverGroups) {
+        if (server_group.enabled)
+            collectCommandsFromGroup(server_group.group.commands, commandList, helpCommandList);
     }
 
-    for( auto script_group : axCommandsGroup) {
-        for (Command cmd : script_group.commands) {
+    for (const auto &client_group : clientGroups)
+        collectCommandsFromGroup(client_group.commands, commandList, helpCommandList);
 
-            helpCommandList << "help " + cmd.name;
-            if (cmd.subcommands.isEmpty())
-                commandList << cmd.name;
-
-            for (Command subcmd : cmd.subcommands) {
-                commandList << cmd.name + " " + subcmd.name;
-                helpCommandList << "help " + cmd.name + " " + subcmd.name;
-            }
-        }
-    }
-
-    for( QString cmd : helpCommandList)
-        commandList << cmd;
-
+    commandList << helpCommandList;
     return commandList;
 }

@@ -273,10 +273,11 @@ type SyncPackerListenerStop struct {
 type SyncPackerAgentReg struct {
 	SpType int `json:"type"`
 
-	Agent          string   `json:"agent"`
-	AX             string   `json:"ax"`
-	Listeners      []string `json:"listeners"`
-	MultiListeners bool     `json:"multi_listeners"`
+	Agent          string           `json:"agent"`
+	AX             string           `json:"ax"`
+	Listeners      []string         `json:"listeners"`
+	MultiListeners bool             `json:"multi_listeners"`
+	Groups         []AxCommandBatch `json:"groups"`
 }
 
 /// SERVICE
@@ -754,9 +755,14 @@ type SyncPackerTunnelDelete struct {
 	TunnelId string `json:"p_tunnel_id"`
 }
 
-type SyncPackerAxScriptCommands struct {
-	SpType int `json:"type"`
+type SyncPackerAxScriptData struct {
+	SpType  int              `json:"type"`
+	Name    string           `json:"name"`
+	Content string           `json:"content"`
+	Groups  []AxCommandBatch `json:"groups"`
+}
 
+type AxCommandBatch struct {
 	Agent    string `json:"agent"`
 	Listener string `json:"listener"`
 	Os       int    `json:"os"`

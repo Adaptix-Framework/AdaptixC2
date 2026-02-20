@@ -17,6 +17,10 @@ void Extender::LoadFromDB()
 {
     auto list = mainAdaptix->storage->ListExtensions();
     for(auto ext : list) {
+        if (ext.FilePath.startsWith("__server__:")) {
+            mainAdaptix->storage->RemoveExtension(ext.FilePath);
+            continue;
+        }
 
         QFile file(ext.FilePath);
         if (!file.open(QIODevice::ReadOnly)) {

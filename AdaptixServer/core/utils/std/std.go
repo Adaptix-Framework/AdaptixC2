@@ -34,3 +34,19 @@ func DifferenceStringsArray(a, b []string) []string {
 	}
 	return result
 }
+
+func ExtractJsErrorMessage(err error) string {
+	if err == nil {
+		return ""
+	}
+	msg := err.Error()
+	if idx := strings.Index(msg, "Error: "); idx != -1 {
+		msg = msg[idx+7:]
+	} else if idx := strings.LastIndex(msg, "GoError: "); idx != -1 {
+		msg = msg[idx+9:]
+	}
+	if idx := strings.Index(msg, " at "); idx != -1 {
+		msg = msg[:idx]
+	}
+	return msg
+}

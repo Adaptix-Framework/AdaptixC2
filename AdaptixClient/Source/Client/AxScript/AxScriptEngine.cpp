@@ -105,6 +105,14 @@ BridgeMenu* AxScriptEngine::menu() const { return bridgeMenu.get(); }
 
 AxScriptManager* AxScriptEngine::manager() const { return this->scriptManager; }
 
+void AxScriptEngine::setServerMode(bool enabled) { serverMode = enabled; }
+
+bool AxScriptEngine::isServerMode() const { return serverMode; }
+
+void AxScriptEngine::setEnabled(bool enabled) { scriptEnabled = enabled; }
+
+bool AxScriptEngine::isEnabled() const { return scriptEnabled; }
+
 void AxScriptEngine::registerObject(QObject *obj) { context.objects.append(obj); }
 
 void AxScriptEngine::registerAction(QAction *action) { context.actions.append(action); }

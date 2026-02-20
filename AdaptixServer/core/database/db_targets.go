@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (dbms *DBMS) DbTargetExist(targetId string) bool {

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"plugin"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 	"github.com/goccy/go-yaml"
 )
 

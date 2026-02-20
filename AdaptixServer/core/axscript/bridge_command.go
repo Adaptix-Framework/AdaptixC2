@@ -6,6 +6,8 @@ import (
 	"github.com/dop251/goja"
 )
 
+/// Command
+
 type jsCommandBuilder struct {
 	engine  *ScriptEngine
 	command CommandDef
@@ -242,18 +244,23 @@ func (b *jsCommandBuilder) SetPreHook(call goja.FunctionCall) goja.Value {
 	return goja.Undefined()
 }
 
+/// CommandGroup
+
 type jsCommandGroupBuilder struct {
-	engine   *ScriptEngine
-	name     string
-	commands []CommandDef
+	engine      *ScriptEngine
+	name        string
+	description string
+	commands    []CommandDef
 }
 
+// /---
 func newJsCommandGroupBuilder(engine *ScriptEngine) *jsCommandGroupBuilder {
 	return &jsCommandGroupBuilder{
 		engine: engine,
 	}
 }
 
+// /---
 func (g *jsCommandGroupBuilder) SetParams(call goja.FunctionCall) goja.Value {
 	g.name = call.Argument(0).String()
 
@@ -299,6 +306,7 @@ func (g *jsCommandGroupBuilder) SetParamsFromValue(name string, val goja.Value) 
 	}
 }
 
+// /---
 func (g *jsCommandGroupBuilder) Add(call goja.FunctionCall) goja.Value {
 	val := call.Argument(0)
 	if goja.IsUndefined(val) || goja.IsNull(val) {
@@ -326,9 +334,10 @@ func (g *jsCommandGroupBuilder) Add(call goja.FunctionCall) goja.Value {
 
 func (g *jsCommandGroupBuilder) ToCommandGroup(scriptName string) CommandGroup {
 	return CommandGroup{
-		GroupName:  g.name,
-		ScriptName: scriptName,
-		Commands:   g.commands,
+		GroupName:        g.name,
+		GroupDescription: g.description,
+		ScriptName:       scriptName,
+		Commands:         g.commands,
 	}
 }
 

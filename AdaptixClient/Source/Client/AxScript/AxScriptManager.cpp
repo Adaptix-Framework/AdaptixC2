@@ -46,27 +46,26 @@ void AxScriptManager::Clear()
     if (mainScript) {
         auto commanderList = adaptixWidget->GetCommandersAll();
         for (const auto& commander : commanderList)
-            commander->RemoveAxCommands(mainScript->context.name);
+            commander->RemoveClientGroup(mainScript->context.name);
 
         delete mainScript;
         mainScript = nullptr;
     }
 
-    qDeleteAll(services_scripts);
-    services_scripts.clear();
-    qDeleteAll(agents_scripts);
-    agents_scripts.clear();
-    qDeleteAll(listeners_scripts);
-    listeners_scripts.clear();
+    for (auto &entry : config_scripts)
+        delete entry.engine;
+    config_scripts.clear();
     qDeleteAll(scripts);
     scripts.clear();
+    qDeleteAll(server_scripts);
+    server_scripts.clear();
 }
 
 void AxScriptManager::ResetMain()
 {
     auto commanderList = adaptixWidget->GetCommandersAll();
     for (const auto& commander : commanderList)
-        commander->RemoveAxCommands(mainScript->context.name);
+        commander->RemoveClientGroup(mainScript->context.name);
 
     if (mainScript)
         delete mainScript;
@@ -76,14 +75,11 @@ void AxScriptManager::ResetMain()
 
 QJSEngine* AxScriptManager::GetEngine(const QString &name)
 {
-    if (agents_scripts.contains(name) && agents_scripts[name])
-        return agents_scripts[name]->engine();
+    if (config_scripts.contains(name) && config_scripts[name].engine)
+        return config_scripts[name].engine->engine();
 
     if (scripts.contains(name) && scripts[name])
         return scripts[name]->engine();
-
-    if (services_scripts.contains(name) && services_scripts[name])
-        return services_scripts[name]->engine();
 
     if (name == "main" && mainScript)
         return mainScript->engine();
@@ -129,59 +125,66 @@ QVector<TunnelData> AxScriptManager::GetTunnels() const {
 
 QStringList AxScriptManager::GetInterfaces() const { return adaptixWidget->addresses; }
 
-/// MAIN
+/// CONFIG SCRIPTS (Listener, Agent, Service)
 
-QStringList AxScriptManager::ListenerScriptList() { return listeners_scripts.keys(); }
+static QStringList configScriptListByType(const QMap<QString, ConfigScriptEntry> &map, ConfigScriptType type)
+{
+    QStringList result;
+    for (auto it = map.begin(); it != map.end(); ++it) {
+        if (it.value().type == type)
+            result.append(it.key());
+    }
+    return result;
+}
+
+QStringList AxScriptManager::ListenerScriptList() { return configScriptListByType(config_scripts, ConfigScriptType::Listener); }
 
 void AxScriptManager::ListenerScriptAdd(const QString &name, const QString &ax_script)
 {
-    if (listeners_scripts.contains(name))
+    if (config_scripts.contains(name))
         return;
 
     AxScriptEngine* script = new AxScriptEngine(this, name, this);
     script->execute(ax_script);
-
-    listeners_scripts[name] = script;
+    config_scripts[name] = {ConfigScriptType::Listener, script};
 }
 
 QJSEngine* AxScriptManager::ListenerScriptEngine(const QString &name)
 {
-    if (!listeners_scripts.contains(name)) return nullptr;
-    return listeners_scripts[name]->engine();
+    if (!config_scripts.contains(name) || config_scripts[name].type != ConfigScriptType::Listener)
+        return nullptr;
+    return config_scripts[name].engine->engine();
 }
 
-
-
-QStringList AxScriptManager::AgentScriptList() { return agents_scripts.keys(); }
+QStringList AxScriptManager::AgentScriptList() { return configScriptListByType(config_scripts, ConfigScriptType::Agent); }
 
 void AxScriptManager::AgentScriptAdd(const QString &name, const QString &ax_script)
 {
-    if (agents_scripts.contains(name)) return;
+    if (config_scripts.contains(name))
+        return;
 
     AxScriptEngine* script = new AxScriptEngine(this, name, this);
     script->execute(ax_script);
-
-    agents_scripts[name] = script;
+    config_scripts[name] = {ConfigScriptType::Agent, script};
 }
 
 QJSEngine* AxScriptManager::AgentScriptEngine(const QString &name)
 {
-    if (!agents_scripts.contains(name)) return nullptr;
-    return agents_scripts[name]->engine();
+    if (!config_scripts.contains(name) || config_scripts[name].type != ConfigScriptType::Agent)
+        return nullptr;
+    return config_scripts[name].engine->engine();
 }
 
-
-
-QStringList AxScriptManager::ServiceScriptList() { return services_scripts.keys(); }
+QStringList AxScriptManager::ServiceScriptList() { return configScriptListByType(config_scripts, ConfigScriptType::Service); }
 
 void AxScriptManager::ServiceScriptAdd(const QString &name, const QString &ax_script)
 {
-    if (services_scripts.contains(name)) return;
+    if (config_scripts.contains(name))
+        return;
 
     AxScriptEngine* script = new AxScriptEngine(this, name, this);
     script->execute(ax_script);
-
-    services_scripts[name] = script;
+    config_scripts[name] = {ConfigScriptType::Service, script};
 
     QJSValue func = script->engine()->globalObject().property("InitService");
     if (func.isCallable())
@@ -190,37 +193,28 @@ void AxScriptManager::ServiceScriptAdd(const QString &name, const QString &ax_sc
 
 QJSEngine* AxScriptManager::ServiceScriptEngine(const QString &name)
 {
-    if (!services_scripts.contains(name)) return nullptr;
-    return services_scripts[name]->engine();
+    if (!config_scripts.contains(name) || config_scripts[name].type != ConfigScriptType::Service)
+        return nullptr;
+    return config_scripts[name].engine->engine();
 }
 
 void AxScriptManager::ServiceScriptDataHandler(const QString &name, const QString &data)
 {
-    if (!services_scripts.contains(name)) return;
-
-    QJSValue func = services_scripts[name]->engine()->globalObject().property("data_handler");
-    if (!func.isCallable()) {
-        // consolePrintError(name + " - function data_handler is not registered");
+    if (!config_scripts.contains(name) || config_scripts[name].type != ConfigScriptType::Service)
         return;
-    }
 
-    QJSValueList args;
-    args << QJSValue(data);
-    func.call(args);
-    // QJSValue result = func.call(args);
-    // if (result.isError()) {
-    //     QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(name).arg(result.property("stack").toString());
-    //     consolePrintError(error);
-    // }
+    QJSValue func = config_scripts[name].engine->engine()->globalObject().property("data_handler");
+    if (!func.isCallable())
+        return;
+
+    func.call(QJSValueList() << QJSValue(data));
 }
-
-
 
 QJSValue AxScriptManager::AgentScriptExecute(const QString &name, const QString &code)
 {
     QJSValue result;
-    if (agents_scripts.contains(name)) {
-        QJSValue func = agents_scripts[name]->engine()->globalObject().property(code);
+    if (config_scripts.contains(name) && config_scripts[name].type == ConfigScriptType::Agent) {
+        QJSValue func = config_scripts[name].engine->engine()->globalObject().property(code);
         if (func.isCallable()) {
             QJSValueList args;
             args << QJSValue("BeaconHTTP");
@@ -260,12 +254,93 @@ void AxScriptManager::ScriptRemove(const ExtensionFile &ext)
 
     auto commanderList = adaptixWidget->GetCommandersAll();
     for (const auto& commander : commanderList)
-        commander->RemoveAxCommands(ext.FilePath);
+        commander->RemoveClientGroup(ext.FilePath);
 
     delete scriptEngine;
 }
 
+void AxScriptManager::ServerScriptAdd(const ServerScriptData &data)
+{
+    if (server_scripts.contains(data.name)) {
+        delete server_scripts.take(data.name);
+    }
 
+    ServerScriptData scriptData = data;
+    scriptData.enabled = true;
+
+    if (!data.code.isEmpty()) {
+        AxScriptEngine* scriptEngine = new AxScriptEngine(this, "__server__:" + data.name, this);
+        scriptEngine->setServerMode(true);
+        scriptEngine->execute(data.code);
+        server_scripts[data.name] = scriptEngine;
+
+        QJSValue metadata = scriptEngine->engine()->globalObject().property("metadata");
+        if (metadata.isObject() && scriptData.description.isEmpty())
+            scriptData.description = metadata.property("description").toString();
+    }
+
+    server_scripts_data[data.name] = scriptData;
+}
+
+void AxScriptManager::ServerScriptRemove(const QString &name)
+{
+    if (server_scripts.contains(name)) {
+        delete server_scripts.take(name);
+    }
+    server_scripts_data.remove(name);
+}
+
+void AxScriptManager::ServerScriptSetEnabled(const QString &name, bool enabled)
+{
+    if (!server_scripts_data.contains(name))
+        return;
+
+    if (server_scripts_data[name].enabled == enabled)
+        return;
+
+    server_scripts_data[name].enabled = enabled;
+
+    if (enabled) {
+        if (server_scripts.contains(name))
+            return;
+
+        const QString &code = server_scripts_data[name].code;
+        if (!code.isEmpty()) {
+            AxScriptEngine* scriptEngine = new AxScriptEngine(this, "__server__:" + name, this);
+            scriptEngine->setServerMode(true);
+            scriptEngine->execute(code);
+            server_scripts[name] = scriptEngine;
+        }
+    } else {
+        if (server_scripts.contains(name)) {
+            delete server_scripts.take(name);
+        }
+    }
+}
+
+bool AxScriptManager::ServerScriptIsEnabled(const QString &name) const
+{
+    if (!server_scripts_data.contains(name))
+        return false;
+    return server_scripts_data[name].enabled;
+}
+
+QJSEngine* AxScriptManager::ServerScriptEngine(const QString &name)
+{
+    if (!server_scripts.contains(name))
+        return nullptr;
+    return server_scripts[name]->engine();
+}
+
+QList<ServerScriptData> AxScriptManager::ServerScriptList() const
+{
+    return server_scripts_data.values();
+}
+
+ServerScriptData AxScriptManager::ServerScriptGet(const QString &name) const
+{
+    return server_scripts_data.value(name);
+}
 
 void AxScriptManager::GlobalScriptLoad(const QString &path) { Q_EMIT adaptixWidget->LoadGlobalScriptSignal(path); }
 
@@ -324,8 +399,13 @@ void AxScriptManager::ExecuteSmart(const QString& code, const QString& name)
 QList<AxScriptEngine*> AxScriptManager::getAllEngines() const
 {
     QList<AxScriptEngine*> list;
-    list.reserve(agents_scripts.size() + services_scripts.size() + scripts.size() + 1);
-    list << agents_scripts.values() << services_scripts.values() << scripts.values();
+    list.reserve(config_scripts.size() + scripts.size() + server_scripts.size() + 1);
+
+    for (const auto &entry : config_scripts)
+        list << entry.engine;
+
+    list << scripts.values() << server_scripts.values();
+
     if (mainScript)
         list << mainScript;
     return list;
@@ -386,9 +466,7 @@ int AxScriptManager::addMenuItemsToMenu(QMenu* menu, const QList<AxMenuItem>& it
 
 void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os)
 {
-    auto commanderList = adaptixWidget->GetCommanders(listeners, agents, os);
-    for (const auto& commander : commanderList)
-        commander->AddAxCommands(group);
+    adaptixWidget->AddCommandsToCommanders(group, listeners, agents, os);
 }
 
 QStringList AxScriptManager::EventList()

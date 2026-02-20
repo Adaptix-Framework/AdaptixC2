@@ -40,15 +40,37 @@ struct DataMenuDownload {
     QString state;
 };
 
+struct ServerScriptGroup {
+    QString agentName;
+    QString listenerType;
+    int     os;
+    QString commandsJson;
+};
+
+struct ServerScriptData {
+    QString name;
+    QString description;
+    QString code;
+    bool    enabled;
+    QList<ServerScriptGroup> groups;
+};
+
+enum class ConfigScriptType { Listener, Agent, Service };
+
+struct ConfigScriptEntry {
+    ConfigScriptType type;
+    AxScriptEngine*  engine;
+};
+
 class AxScriptManager : public QObject {
 Q_OBJECT
     AdaptixWidget*  adaptixWidget = nullptr;
     AxScriptEngine* mainScript    = nullptr;
     AxUiFactory*    uiFactory     = nullptr;
-    QMap<QString, AxScriptEngine*> scripts;
-    QMap<QString, AxScriptEngine*> listeners_scripts;
-    QMap<QString, AxScriptEngine*> agents_scripts;
-    QMap<QString, AxScriptEngine*> services_scripts;
+    QMap<QString, AxScriptEngine*>   scripts;
+    QMap<QString, ConfigScriptEntry> config_scripts;
+    QMap<QString, AxScriptEngine*>   server_scripts;
+    QMap<QString, ServerScriptData>  server_scripts_data;
 
 public:
     AxScriptManager(AdaptixWidget* main_widget, QObject *parent = nullptr);
@@ -87,6 +109,14 @@ public:
     QStringList ScriptList();
     bool        ScriptAdd(ExtensionFile* ext);
     void        ScriptRemove(const ExtensionFile &ext);
+
+    void        ServerScriptAdd(const ServerScriptData &data);
+    void        ServerScriptRemove(const QString &name);
+    void        ServerScriptSetEnabled(const QString &name, bool enabled);
+    bool        ServerScriptIsEnabled(const QString &name) const;
+    QJSEngine*  ServerScriptEngine(const QString &name);
+    QList<ServerScriptData> ServerScriptList() const;
+    ServerScriptData ServerScriptGet(const QString &name) const;
 
     void GlobalScriptLoad(const QString &path);
     void GlobalScriptUnload(const QString &path);

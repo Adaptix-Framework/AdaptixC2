@@ -178,6 +178,11 @@ AuthProfile* MainUI::GetCurrentProfile() const
     return adaptixWidget->GetProfile();
 }
 
+QVector<AdaptixWidget*> MainUI::GetAdaptixProjects() const
+{
+    return AdaptixProjects;
+}
+
 /// Actions
 
 void MainUI::onNewProject() { GlobalClient->NewProject(); }
@@ -211,7 +216,11 @@ void MainUI::onAxScriptConsole()
     adaptixWidget->LoadAxConsoleUI();
 }
 
-void MainUI::onScriptManager() { GlobalClient->extender->dialogExtender->show(); }
+void MainUI::onScriptManager()
+{
+    GlobalClient->extender->dialogExtender->SetMainUI(this);
+    GlobalClient->extender->dialogExtender->show();
+}
 
 void MainUI::onSettings() { GlobalClient->settings->getDialogSettings()->show(); }
 

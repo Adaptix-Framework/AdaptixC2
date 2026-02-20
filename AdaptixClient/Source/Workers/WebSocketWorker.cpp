@@ -32,6 +32,7 @@ void WebSocketWorker::run()
         pingTimer = nullptr;
     }
     if (webSocket) {
+        webSocket->blockSignals(true);
         webSocket->abort();
         delete webSocket;
         webSocket = nullptr;
@@ -191,7 +192,7 @@ void WebSocketWorker::stopWorker()
         pingTimer = nullptr;
     }
     if (webSocket) {
-        disconnect(webSocket, nullptr, nullptr, nullptr);
+        webSocket->blockSignals(true);
         webSocket->abort();
         delete webSocket;
         webSocket = nullptr;

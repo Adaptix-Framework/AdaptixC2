@@ -1,6 +1,6 @@
 package extender
 
-import adaptix "github.com/Adaptix-Framework/axc2"
+import "github.com/Adaptix-Framework/axc2"
 
 func (ex *AdaptixExtender) ExListenerCreate(listenerName string, configType string, config string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error) {
 	module, err := ex.getListenerModule(configType)
