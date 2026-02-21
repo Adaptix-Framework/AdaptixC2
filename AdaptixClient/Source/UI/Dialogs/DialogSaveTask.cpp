@@ -31,9 +31,8 @@ void DialogSaveTask::createUI()
     spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
 
     createButton = new QPushButton("Save", this);
-    createButton->setProperty("ButtonStyle", "dialog");
+    createButton->setDefault(true);
     cancelButton = new QPushButton("Cancel", this);
-    cancelButton->setProperty("ButtonStyle", "dialog");
 
     hLayoutBottom = new QHBoxLayout();
     hLayoutBottom->addItem(spacer_1);

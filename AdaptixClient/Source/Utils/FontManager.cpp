@@ -43,7 +43,11 @@ void FontManager::loadApplicationFonts()
         {":/fonts/SpaceMono", "Space Mono"},
         {":/fonts/SpaceMono_B", "Space Mono"},
         {":/fonts/SpaceMono_BI", "Space Mono"},
-        {":/fonts/SpaceMono_I", "Space Mono"}
+        {":/fonts/SpaceMono_I", "Space Mono"},
+        {":/fonts/JetBrainsMono", "JetBrains Mono"},
+        {":/fonts/JetBrainsMono_B", "JetBrains Mono"},
+        {":/fonts/JetBrainsMono_BI", "JetBrains Mono"},
+        {":/fonts/JetBrainsMono_I", "JetBrains Mono"}
     };
 
     for (const auto& fontRes : fonts) {

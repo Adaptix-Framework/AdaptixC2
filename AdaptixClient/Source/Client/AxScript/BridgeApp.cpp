@@ -1103,8 +1103,9 @@ void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, co
 
 void BridgeApp::script_import(const QString &path)
 {
-    if (scriptEngine->isServerMode())
-        return;
+    if (scriptEngine->isServerMode()) {
+        return; //scriptEngine->engine()->throwError(QStringLiteral("script_import is not available for server scripts"));
+    }
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -1119,17 +1120,17 @@ void BridgeApp::script_import(const QString &path)
 
 void BridgeApp::script_load(const QString &path)
 {
-    if (scriptEngine->isServerMode())
-        return;
-
+    if (scriptEngine->isServerMode()) {
+        return; //scriptEngine->engine()->throwError(QStringLiteral("script_load is not available for server scripts"));
+    }
     scriptEngine->manager()->GlobalScriptLoad(path);
 }
 
 void BridgeApp::script_unload(const QString &path)
 {
-    if (scriptEngine->isServerMode())
-        return;
-
+    if (scriptEngine->isServerMode()) {
+        return; // scriptEngine->engine()->throwError(QStringLiteral("script_unload is not available for server scripts"));
+    }
     scriptEngine->manager()->GlobalScriptUnload(path);
 }
 

@@ -341,13 +341,9 @@ void AdaptixWidget::createUI()
 
     extDocksListWidget = new QListWidget();
     extDocksListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
-    extDocksListWidget->setStyleSheet(
-        "QListWidget::item { padding: 6px 10px; margin: 1px 0px; }"
-    );
 
     extDocksEmptyLabel = new QLabel("No loaded extenders docks");
     extDocksEmptyLabel->setAlignment(Qt::AlignCenter);
-    extDocksEmptyLabel->setStyleSheet("color: gray; padding: 20px;");
 
     auto extDocksLayout = new QVBoxLayout();
     extDocksLayout->setContentsMargins(8, 8, 8, 8);

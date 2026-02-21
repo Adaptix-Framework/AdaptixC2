@@ -95,11 +95,7 @@ void Button::paintEvent(QPaintEvent *)
 
 QSize Button::sizeHint() const
 {
-    const int baseSize = 24;
-    const qreal dpr = devicePixelRatioF();
-    int h = qRound(baseSize / dpr);
-    h = qMax(h, 16);
-    h = qMin(h, 28);
+    const int h = 24;
     return QSize(h, h);
 }
 

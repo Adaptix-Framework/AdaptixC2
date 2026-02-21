@@ -71,18 +71,15 @@ void DialogListener::createUI()
     cardWidget->setFocusPolicy(Qt::NoFocus);
 
     buttonNewProfile = new QPushButton(this);
-    buttonNewProfile->setProperty("ButtonStyle", "dialog");
     buttonNewProfile->setText("New Profile");
     buttonNewProfile->setMinimumSize(QSize(10, 30));
 
     buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
-    buttonLoad->setProperty("ButtonStyle", "dialog");
     buttonLoad->setIconSize(QSize(20, 20));
     buttonLoad->setFixedSize(QSize(30, 30));
     buttonLoad->setToolTip("Load profile from file");
 
     buttonSave = new QPushButton(QIcon(":/icons/save_as"), "", this);
-    buttonSave->setProperty("ButtonStyle", "dialog");
     buttonSave->setIconSize(QSize(20, 20));
     buttonSave->setFixedSize(QSize(30, 30));
     buttonSave->setToolTip("Save profile to file");
@@ -107,10 +104,11 @@ void DialogListener::createUI()
 
     listenerConfigGroupbox = new QGroupBox(this);
     listenerConfigGroupbox->setTitle("Listener config");
+    listenerConfigGroupbox->setAlignment(Qt::AlignHCenter);
     listenerConfigGroupbox->setLayout(stackGridLayout);
 
     buttonCreate = new QPushButton(this);
-    buttonCreate->setProperty("ButtonStyle", "dialog_apply");
+    buttonCreate->setDefault(true);
     buttonCreate->setText("Create");
     buttonCreate->setFixedWidth(160);
     buttonCreate->setFocus();

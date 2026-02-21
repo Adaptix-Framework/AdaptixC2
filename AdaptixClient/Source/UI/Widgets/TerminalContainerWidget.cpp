@@ -615,18 +615,12 @@ TerminalContainerWidget::TerminalContainerWidget(Agent* a, AdaptixWidget* w, Ter
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    tabWidget = new QTabWidget(this);
-    tabWidget->setTabPosition(QTabWidget::West);
+    tabWidget = new VerticalTabWidget(this);
     tabWidget->setTabsClosable(true);
-    tabWidget->setMovable(true);
+    tabWidget->tabBar()->setShowAddButton(true);
 
-    addTabButton = new QPushButton("+", this);
-    addTabButton->setFixedSize(30, 30);
-    addTabButton->setToolTip("Add new terminal");
-    tabWidget->setCornerWidget(addTabButton, Qt::BottomLeftCorner);
-
-    connect(addTabButton, &QPushButton::clicked,          this, &TerminalContainerWidget::addNewTerminal);
-    connect(tabWidget,    &QTabWidget::tabCloseRequested, this, &TerminalContainerWidget::onTabCloseRequested);
+    connect(tabWidget->tabBar(), &VerticalTabBar::addTabRequested,      this, &TerminalContainerWidget::addNewTerminal);
+    connect(tabWidget,                 &VerticalTabWidget::tabCloseRequested, this, &TerminalContainerWidget::onTabCloseRequested);
 
     mainLayout->addWidget(tabWidget);
     this->setLayout(mainLayout);

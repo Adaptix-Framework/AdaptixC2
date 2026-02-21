@@ -219,9 +219,6 @@ QObject* BridgeForm::create_list()
     auto* btnAdd = new QPushButton("+");
     auto* btnRemove = new QPushButton("-");
 
-    btnAdd->setFixedSize(24, 24);
-    btnRemove->setFixedSize(24, 24);
-
     auto* btnLayout = new QVBoxLayout();
     btnLayout->setContentsMargins(0, 0, 0, 0);
     btnLayout->setSpacing(2);

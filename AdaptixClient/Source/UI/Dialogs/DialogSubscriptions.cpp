@@ -38,24 +38,18 @@ void DialogSubscriptions::createUI()
     mainLayout->setSpacing(10);
 
     auto historyLabel = new QLabel("History:", this);
-    historyLabel->setStyleSheet("font-weight: bold;");
+    QFont boldFont = historyLabel->font();
+    boldFont.setBold(true);
+    historyLabel->setFont(boldFont);
 
     auto realtimeLabel = new QLabel("RealTime:", this);
-    realtimeLabel->setStyleSheet("font-weight: bold;");
+    realtimeLabel->setFont(boldFont);
 
     historyListWidget = new QListWidget(this);
     historyListWidget->setSelectionMode(QAbstractItemView::NoSelection);
-    historyListWidget->setStyleSheet(
-        "QListWidget::item { padding: 4px 6px; margin: 1px 0px; }"
-        "QListWidget::indicator { width: 14px; height: 14px; }"
-    );
 
     realtimeListWidget = new QListWidget(this);
     realtimeListWidget->setSelectionMode(QAbstractItemView::NoSelection);
-    realtimeListWidget->setStyleSheet(
-        "QListWidget::item { padding: 4px 6px; margin: 1px 0px; }"
-        "QListWidget::indicator { width: 14px; height: 14px; }"
-    );
 
     historyListWidget->addItem(makeSectionHeader("Data"));
     for (const QString &cat : {"chat_history", "downloads_history", "screenshot_history", "credentials_history", "targets_history"}) {
@@ -100,7 +94,6 @@ void DialogSubscriptions::createUI()
     tasksOnlyJobsCheck->setEnabled(false);
 
     syncInactiveAgentsButton = new QPushButton("Sync inactive agents", this);
-    syncInactiveAgentsButton->setProperty("ButtonStyle", "dialog");
     syncInactiveAgentsButton->setEnabled(false);
     syncInactiveAgentsButton->setVisible(false);
 
@@ -108,11 +101,10 @@ void DialogSubscriptions::createUI()
     buttonLayout->setSpacing(10);
 
     applyButton = new QPushButton("Apply", this);
-    applyButton->setProperty("ButtonStyle", "dialog_apply");
+    applyButton->setDefault(true);
     applyButton->setFixedWidth(100);
 
     closeButton = new QPushButton("Close", this);
-    closeButton->setProperty("ButtonStyle", "dialog");
     closeButton->setFixedWidth(100);
 
     buttonLayout->addStretch();

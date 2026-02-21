@@ -119,10 +119,9 @@ void DialogAgentData::createUI()
     layoutContext->addWidget(inputImpersonated, 1, 3);
 
     buttonUpdate = new QPushButton("Update", this);
-    buttonUpdate->setProperty("ButtonStyle", "dialog");
+    buttonUpdate->setDefault(true);
 
     buttonCancel = new QPushButton("Cancel", this);
-    buttonCancel->setProperty("ButtonStyle", "dialog");
 
     horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 

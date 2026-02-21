@@ -28,7 +28,7 @@ DialogSettings* Settings::getDialogSettings()
 
 void Settings::SetDefault()
 {
-    this->data.MainTheme    = "Dark";
+    this->data.MainTheme    = "Adaptix_Dark";
     this->data.FontFamily   = "Adaptix - DejaVu Sans Mono";
     this->data.FontSize     = 10;
     this->data.GraphVersion = "Version 1";

@@ -22,6 +22,7 @@
 #include <QTimer>
 #include <QColor>
 #include <QProxyStyle>
+#include <QPointer>
 
 QT_BEGIN_NAMESPACE
 class QMouseEvent;
@@ -42,7 +43,7 @@ class TabBar;
 
 class TabBarProxyStyle : public QProxyStyle
 {
-    TabBar* m_tabBar;
+    QPointer<TabBar> m_tabBar;
 
 public:
     explicit TabBarProxyStyle(TabBar* tabBar);

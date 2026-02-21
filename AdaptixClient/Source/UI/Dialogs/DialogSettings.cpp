@@ -6,6 +6,7 @@
 #include <Utils/TitleBarStyle.h>
 #include <QShowEvent>
 #include <algorithm>
+#include <oclero/qlementine.hpp>
 
 DialogSettings::DialogSettings(Settings* s)
 {
@@ -87,10 +88,10 @@ void DialogSettings::createUI()
     themeCombo->addItem("Dark_Ice");
     themeCombo->addItem("Glass_Morph");
     themeCombo->addItem("Hacker_Tech");
-    themeCombo->addItem("Dark_Old");
-    themeCombo->addItem("Dracula_Old");
     themeCombo->addItem("Fallout");
     themeCombo->addItem("Light_Arc");
+    themeCombo->addItem("Dark_Classic");
+    themeCombo->addItem("Dracula");
 
     fontSizeLabel = new QLabel("Font size: ", mainSettingWidget);
     fontSizeSpin  = new QSpinBox(mainSettingWidget);
@@ -105,6 +106,7 @@ void DialogSettings::createUI()
     fontFamilyCombo->addItem("Adaptix - Hack");
     fontFamilyCombo->addItem("Adaptix - Anonymous Pro");
     fontFamilyCombo->addItem("Adaptix - Space Mono");
+    fontFamilyCombo->addItem("Adaptix - JetBrains Mono");
 
     graphLabel1 = new QLabel("Session Graph version:", mainSettingWidget);
     graphCombo1 = new QComboBox(mainSettingWidget);
@@ -288,7 +290,11 @@ void DialogSettings::createUI()
     listSettings->setCurrentRow(0);
 
     labelHeader = new QLabel(this);
-    labelHeader->setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;");
+    QFont headerFont = labelHeader->font();
+    headerFont.setPointSize(14);
+    headerFont.setBold(true);
+    labelHeader->setFont(headerFont);
+    labelHeader->setContentsMargins(0, 0, 0, 10);
     labelHeader->setText("Main settings");
 
     lineFrame = new QFrame(this);
@@ -302,10 +308,9 @@ void DialogSettings::createUI()
 
     hSpacer     = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     buttonClose = new QPushButton("Close", this);
-    buttonClose->setProperty("ButtonStyle", "dialog");
 
     buttonApply = new QPushButton("Apply ", this);
-    buttonApply->setProperty("ButtonStyle", "dialog");
+    buttonApply->setDefault(true);
     buttonApply->setEnabled(false);
 
     stackSettings = new QStackedWidget(this);
@@ -365,15 +370,12 @@ void DialogSettings::onApply() const
 
     if(settings->data.MainTheme != themeCombo->currentText()) {
         settings->data.MainTheme = themeCombo->currentText();
-
-        QString appTheme = ":/themes/" + settings->data.MainTheme;
-        bool result = false;
-        QString style = ReadFileString(appTheme, &result);
-        if (result) {
-            QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
-            app->setStyleSheet(style);
+        
+        if (auto* style = settings->getMainAdaptix()->qlementineStyle) {
+            QString themePath = QString(":/qlementine-themes/%1").arg(settings->data.MainTheme);
+            style->setThemeJsonPath(themePath);
         }
-
+        
         TitleBarStyle::applyForTheme(settings->getMainAdaptix()->mainUI, settings->data.MainTheme);
     }
 

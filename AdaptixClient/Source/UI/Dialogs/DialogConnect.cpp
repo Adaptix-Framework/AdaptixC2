@@ -135,14 +135,14 @@ void DialogConnect::createUI()
     subsSelectBtn->setFixedWidth(30);
     subsSelectBtn->setToolTip("Select subscriptions");
 
-    auto historyLabel = new QLabel("History:");
-    historyLabel->setStyleSheet("font-weight: bold;");
+    auto historyLabel = new QLabel("History:", this);
+    QFont boldFont = historyLabel->font();
+    boldFont.setBold(true);
+    historyLabel->setFont(boldFont);
+
     dataListWidget = new QListWidget();
     dataListWidget->setSelectionMode(QAbstractItemView::NoSelection);
-    dataListWidget->setStyleSheet(
-        "QListWidget::item { padding: 3px 4px; margin: 1px 0px; }"
-        "QListWidget::indicator { width: 14px; height: 14px; }"
-    );
+
     auto makeSectionHeader = [](const QString &title) -> QListWidgetItem* {
         auto *item = new QListWidgetItem(title);
         QFont f = item->font();
@@ -168,14 +168,13 @@ void DialogConnect::createUI()
         dataListWidget->addItem(item);
     }
 
-    auto realtimeLabel = new QLabel("RealTime:");
-    realtimeLabel->setStyleSheet("font-weight: bold;");
+    auto realtimeLabel = new QLabel("RealTime:", this);
+    QFont boldFont2 = realtimeLabel->font();
+    boldFont2.setBold(true);
+    realtimeLabel->setFont(boldFont2);
+
     agentListWidget = new QListWidget();
     agentListWidget->setSelectionMode(QAbstractItemView::NoSelection);
-    agentListWidget->setStyleSheet(
-        "QListWidget::item { padding: 3px 4px; margin: 1px 0px; }"
-        "QListWidget::indicator { width: 14px; height: 14px; }"
-    );
 
     agentListWidget->addItem(makeSectionHeader("Data"));
     for (const QString &cat : {"chat_realtime", "downloads_realtime", "screenshot_realtime", "credentials_realtime", "targets_realtime", "notifications", "tunnels"}) {
@@ -246,7 +245,7 @@ void DialogConnect::createUI()
     projectLayout->setColumnMinimumWidth(0, 100);
 
     buttonConnect = new QPushButton(this);
-    buttonConnect->setProperty("ButtonStyle", "dialog_apply");
+    buttonConnect->setDefault(true);
     buttonConnect->setText("Connect");
     buttonConnect->setFixedWidth(160);
     buttonConnect->setFocus();
@@ -283,18 +282,15 @@ void DialogConnect::createUI()
     cardWidget->setFocusPolicy(Qt::NoFocus);
 
     buttonNewProfile = new QPushButton(this);
-    buttonNewProfile->setProperty("ButtonStyle", "dialog");
     buttonNewProfile->setText("New Profile");
     buttonNewProfile->setMinimumSize(QSize(10, 30));
 
     buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
-    buttonLoad->setProperty("ButtonStyle", "dialog");
     buttonLoad->setIconSize(QSize(20, 20));
     buttonLoad->setFixedSize(QSize(30, 30));
     buttonLoad->setToolTip("Load profile from file");
 
     buttonSave = new QPushButton(QIcon(":/icons/save_as"), "", this);
-    buttonSave->setProperty("ButtonStyle", "dialog");
     buttonSave->setIconSize(QSize(20, 20));
     buttonSave->setFixedSize(QSize(30, 30));
     buttonSave->setToolTip("Save profile to file");

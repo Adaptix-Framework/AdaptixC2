@@ -308,7 +308,15 @@ void ViewWrapper::setWindowTitle(const QString &title)
 
 QPoint ViewWrapper::mapTo(Core::View *someAncestor, QPoint pos) const
 {
-    return m_widget->mapTo(View_qt::asQWidget(someAncestor), pos);
+    auto *ancestorWidget = View_qt::asQWidget(someAncestor);
+    if (ancestorWidget && m_widget->isAncestorOf(ancestorWidget)) {
+    } else if (ancestorWidget) {
+        for (auto *w = m_widget->parentWidget(); w; w = w->parentWidget()) {
+            if (w == ancestorWidget)
+                return m_widget->mapTo(ancestorWidget, pos);
+        }
+    }
+    return ancestorWidget ? ancestorWidget->mapFromGlobal(m_widget->mapToGlobal(pos)) : pos;
 }
 
 bool ViewWrapper::hasAttribute(Qt::WidgetAttribute attr) const

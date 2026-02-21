@@ -28,19 +28,24 @@
         <file alias="SpaceMono_B">fonts/Space-Mono/SpaceMono-Bold.ttf</file>
         <file alias="SpaceMono_BI">fonts/Space-Mono/SpaceMono-BoldItalic.ttf</file>
         <file alias="SpaceMono_I">fonts/Space-Mono/SpaceMono-Italic.ttf</file>
+
+        <file alias="JetBrainsMono">fonts/JetBrains-Mono/JetBrainsMono-Regular.ttf</file>
+        <file alias="JetBrainsMono_B">fonts/JetBrains-Mono/JetBrainsMono-Bold.ttf</file>
+        <file alias="JetBrainsMono_BI">fonts/JetBrains-Mono/JetBrainsMono-BoldItalic.ttf</file>
+        <file alias="JetBrainsMono_I">fonts/JetBrains-Mono/JetBrainsMono-Italic.ttf</file>
     </qresource>
 
-    <qresource prefix="/themes">
-        <file alias="Adaptix_Dark">themes/adaptix_dark.qss</file>
-        <file alias="Adaptix_Light">themes/adaptix_light.qss</file>
-        <file alias="Adaptix_Dracula">themes/adaptix_dracula.qss</file>
-        <file alias="Dark_Ice">themes/dark_ice.qss</file>
-        <file alias="Glass_Morph">themes/glass_morphism.qss</file>
-        <file alias="Hacker_Tech">themes/hacker_tech.qss</file>
-        <file alias="Dark_Old">themes/dark.qss</file>
-        <file alias="Dracula_Old">themes/dracula.qss</file>
-        <file alias="Fallout">themes/fallout.qss</file>
-        <file alias="Light_Arc">themes/light_arc.qss</file>
+    <qresource prefix="/qlementine-themes">
+        <file alias="Adaptix_Dark">themes/adaptix_dark.json</file>
+        <file alias="Adaptix_Light">themes/adaptix_light.json</file>
+        <file alias="Adaptix_Dracula">themes/adaptix_dracula.json</file>
+        <file alias="Dark_Ice">themes/dark_ice.json</file>
+        <file alias="Glass_Morph">themes/glass_morph.json</file>
+        <file alias="Hacker_Tech">themes/hacker_tech.json</file>
+        <file alias="Fallout">themes/fallout.json</file>
+        <file alias="Light_Arc">themes/light_arc.json</file>
+        <file alias="Dark_Classic">themes/dark.json</file>
+        <file alias="Dracula">themes/dracula.json</file>
     </qresource>
 
     <qresource prefix="/icons">

@@ -24,7 +24,6 @@ void DialogAgent::createUI()
     listenerDisplayEdit->setPlaceholderText("Click to select listeners...");
 
     listenerSelectBtn = new QPushButton("...", this);
-    listenerSelectBtn->setFixedWidth(30);
     listenerSelectBtn->setToolTip("Select listeners");
 
     listenerListWidget = new QListWidget();
@@ -33,16 +32,10 @@ void DialogAgent::createUI()
     listenerListWidget->setDefaultDropAction(Qt::MoveAction);
     listenerListWidget->setMinimumWidth(250);
     listenerListWidget->setMinimumHeight(150);
-    listenerListWidget->setStyleSheet(
-        "QListWidget::item { padding: 3px 4px; margin: 1px 0px; }"
-        "QListWidget::indicator { width: 14px; height: 14px; }"
-    );
 
     btnMoveUp = new QPushButton("↑");
-    btnMoveUp->setFixedWidth(30);
     btnMoveUp->setToolTip("Move selected listener up");
     btnMoveDown = new QPushButton("↓");
-    btnMoveDown->setFixedWidth(30);
     btnMoveDown->setToolTip("Move selected listener down");
 
     auto btnLayout = new QVBoxLayout();
@@ -95,10 +88,11 @@ void DialogAgent::createUI()
     // stackGridLayout->setColumnStretch(0, 1);
 
     agentConfigGroupbox = new QGroupBox("Agent config", this);
+    agentConfigGroupbox->setAlignment(Qt::AlignHCenter);
     agentConfigGroupbox->setLayout(stackGridLayout);
 
     buildButton = new QPushButton("Generate", this);
-    buildButton->setProperty("ButtonStyle", "dialog_apply");
+    buildButton->setDefault(true);
     buildButton->setFixedWidth(160);
     buildButton->setFocus();
 
@@ -118,18 +112,15 @@ void DialogAgent::createUI()
     cardWidget->setFocusPolicy(Qt::NoFocus);
 
     buttonNewProfile = new QPushButton(this);
-    buttonNewProfile->setProperty("ButtonStyle", "dialog");
     buttonNewProfile->setText("New Profile");
     buttonNewProfile->setMinimumSize(QSize(10, 30));
 
     buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
-    buttonLoad->setProperty("ButtonStyle", "dialog");
     buttonLoad->setIconSize(QSize(20, 20));
     buttonLoad->setFixedSize(QSize(30, 30));
     buttonLoad->setToolTip("Load profile from file");
 
     buttonSave = new QPushButton(QIcon(":/icons/save_as"), "", this);
-    buttonSave->setProperty("ButtonStyle", "dialog");
     buttonSave->setIconSize(QSize(20, 20));
     buttonSave->setFixedSize(QSize(30, 30));
     buttonSave->setToolTip("Save profile to file");
@@ -194,7 +185,7 @@ void DialogAgent::createUI()
     profilesPanel->setLayout(profilesLayout);
 
     collapseButton = new QPushButton(QIcon(":/icons/arrow_drop_down"), " build log", this);
-    collapseButton->setProperty("ButtonStyle", "transparent");
+    collapseButton->setFlat(true);
     collapseButton->setIconSize(QSize(16, 16));
     collapseButton->setFixedHeight(24);
     collapseButton->setCursor(Qt::PointingHandCursor);
@@ -771,9 +762,6 @@ void DialogAgent::onButtonBuild()
     collapseButton->setIcon(QIcon(":/icons/arrow_drop_down"));
 
     buildButton->setText("Stop");
-    buildButton->setProperty("ButtonStyle", "dialog_apply");
-    buildButton->style()->unpolish(buildButton);
-    buildButton->style()->polish(buildButton);
 
     QString urlTemplate = "wss://%1:%2%3/channel";
     QString sUrl = urlTemplate.arg(authProfile.GetHost()).arg(authProfile.GetPort()).arg(authProfile.GetEndpoint());
@@ -790,9 +778,6 @@ void DialogAgent::onButtonBuild()
     bool otpResult = HttpReqGetOTP("channel_agent_build", otpData, authProfile.GetURL(), authProfile.GetAccessToken(), &otp);
     if (!otpResult) {
         buildButton->setText("Build");
-        buildButton->setProperty("ButtonStyle", "dialog_apply");
-        buildButton->style()->unpolish(buildButton);
-        buildButton->style()->polish(buildButton);
         MessageError("Failed to generate OTP for build");
         return;
     }
@@ -899,9 +884,6 @@ void DialogAgent::onBuildFinished()
     buildLogOutput->append("----- Build process finished -----");
 
     buildButton->setText("Build");
-    buildButton->setProperty("ButtonStyle", "dialog_apply");
-    buildButton->style()->unpolish(buildButton);
-    buildButton->style()->polish(buildButton);
 
     buildWorker = nullptr;
     buildThread = nullptr;
@@ -927,9 +909,6 @@ void DialogAgent::stopBuild()
         buildLogPanel->setVisible(false);
 
         buildButton->setText("Build");
-        buildButton->setProperty("ButtonStyle", "dialog_apply");
-        buildButton->style()->unpolish(buildButton);
-        buildButton->style()->polish(buildButton);
     });
 
     QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);

@@ -143,6 +143,7 @@ void Stack::setupTabBarButtons()
 
     d->buttonsWidget = new QWidget(this);
     d->buttonsWidget->setObjectName(QStringLiteral("TabBar Buttons"));
+    d->buttonsWidget->setAttribute(Qt::WA_TransparentForMouseEvents, false);
 
     d->buttonsLayout = new QHBoxLayout(d->buttonsWidget);
     d->buttonsLayout->setContentsMargins(0, 0, 4, 0);
@@ -155,7 +156,7 @@ void Stack::setupTabBarButtons()
     d->buttonsLayout->addWidget(d->floatButton, 0, Qt::AlignVCenter);
     d->buttonsLayout->addWidget(d->closeButton, 0, Qt::AlignVCenter);
 
-    setCornerWidget(d->buttonsWidget, Qt::TopRightCorner);
+    d->buttonsWidget->raise();
 
     connect(d->floatButton, &QAbstractButton::clicked, this, [this] {
         Core::TitleBar *tb = m_stack->group()->titleBar();
@@ -174,6 +175,7 @@ void Stack::setupTabBarButtons()
     auto tb = qobject_cast<QtWidgets::TabBar *>(tabBar());
     if (tb) {
         connect(tb, &QtWidgets::TabBar::countChanged, this, &Stack::updateTabBarButtons);
+        connect(tb, &QtWidgets::TabBar::countChanged, this, &Stack::updateButtonsPosition);
     }
 
     if (auto group = m_stack->group()) {
@@ -227,14 +229,40 @@ void Stack::updateMargins()
 
 void Stack::updateButtonsPosition()
 {
-    // Buttons size is now fixed via sizeHint() and SizePolicy::Fixed
-    // No need to adjust height dynamically
+    if (!d->buttonsWidget)
+        return;
+
+    QTabBar *tb = QTabWidget::tabBar();
+    if (!tb || !tb->isVisible())
+        return;
+
+    const int tabBarHeight = tb->height();
+    if (tabBarHeight <= 0)
+        return;
+
+    d->buttonsWidget->adjustSize();
+    const QSize btnSize = d->buttonsWidget->sizeHint();
+    const int w = btnSize.width();
+    const int h = qMin(btnSize.height(), tabBarHeight);
+    const int x = width() - w;
+    const int y = tb->y() + (tabBarHeight - h) / 2;
+
+    d->buttonsWidget->setGeometry(x, y, w, h);
+    d->buttonsWidget->raise();
 }
 
 void Stack::resizeEvent(QResizeEvent *event)
 {
     QTabWidget::resizeEvent(event);
     updateButtonsPosition();
+}
+
+bool Stack::event(QEvent *e)
+{
+    if (e->type() == QEvent::LayoutRequest || e->type() == QEvent::Show) {
+        QTimer::singleShot(0, this, &Stack::updateButtonsPosition);
+    }
+    return QTabWidget::event(e);
 }
 
 void Stack::showContextMenu(QPoint pos)
@@ -248,7 +276,7 @@ void Stack::showContextMenu(QPoint pos)
         return;
 
     // Convert pos to tabBar coordinates for tabAt() check
-    QPoint tabBarPos = tabBar->mapFrom(this, pos);
+    QPoint tabBarPos = tabBar->mapFromGlobal(mapToGlobal(pos));
     int clickedTabIndex = tabBar->tabAt(tabBarPos);
 
     if (clickedTabIndex >= 0) {
@@ -315,7 +343,7 @@ void Stack::showContextMenu(QPoint pos)
         return;
 
     // Right click is allowed only on the tabs area
-    QRect tabAreaRect = QRect(tabBar->mapTo(this, QPoint(0, 0)), tabBar->size());
+    QRect tabAreaRect = QRect(mapFromGlobal(tabBar->mapToGlobal(QPoint(0, 0))), tabBar->size());
     if (tabPosition() == QTabWidget::North || tabPosition() == QTabWidget::South) {
         tabAreaRect.setLeft(0);
         tabAreaRect.setRight(width());

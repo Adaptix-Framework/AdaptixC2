@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(QT_NO_PRIVATE_MODULE_WARNING ON)
 
 add_subdirectory(Libs/kddockwidgets)
+add_subdirectory(Libs/qlementine)
 
 if(UNIX)
     find_package( OpenSSL REQUIRED )
@@ -272,6 +273,7 @@ if(UNIX)
             OpenSSL::Crypto
 
             kddockwidgets
+            qlementine
 
             pthread dl
     )
@@ -288,6 +290,7 @@ elseif(APPLE)
             OpenSSL::Crypto
 
             kddockwidgets
+            qlementine
 
             pthread dl
     )
@@ -303,6 +306,7 @@ else()
             Qt6::Qml
 
             kddockwidgets
+            qlementine
 
             wsock32 ws2_32 crypt32 iphlpapi netapi32 version winmm userenv dwmapi
     )

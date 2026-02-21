@@ -730,9 +730,7 @@ QPushButton* AxButtonWrapper::widget() const { return button; }
 AxGroupBoxWrapper::AxGroupBoxWrapper(const bool checkable, QGroupBox* box, QObject *parent) : QObject(parent), groupBox(box)
 {
     groupBox->setCheckable(checkable);
-
     groupBox->setLayout(new QHBoxLayout());
-    groupBox->setStyleSheet("QGroupBox { border: 1px solid; margin-top: 14px; padding: 0px; } QGroupBox::title { subcontrol-position: top left; }");
     connect(groupBox, &QGroupBox::clicked, this, &AxGroupBoxWrapper::clicked);
 }
 

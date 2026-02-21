@@ -75,12 +75,12 @@ TabBarProxyStyle::TabBarProxyStyle(TabBar* tabBar) : QProxyStyle(), m_tabBar(tab
 
 void TabBarProxyStyle::drawControl(ControlElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const
 {
-    if (element == CE_TabBarTabLabel && m_tabBar) {
+    if (element == CE_TabBarTabLabel && m_tabBar && m_tabBar->count() > 0) {
         const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab*>(option);
         if (tab) {
             int tabIndex = m_tabBar->tabIndexFromRect(tab->rect);
 
-            if (tabIndex >= 0 && m_tabBar->isTabHighlighted(tabIndex) && tabIndex != m_tabBar->currentIndex()) {
+            if (tabIndex >= 0 && tabIndex < m_tabBar->count() && m_tabBar->isTabHighlighted(tabIndex) && tabIndex != m_tabBar->currentIndex()) {
                 QRect textRect = subElementRect(SE_TabBarTabText, tab, widget);
 
                 if (!tab->icon.isNull()) {

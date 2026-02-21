@@ -56,11 +56,10 @@ void DialogTunnel::createUI()
 
     buttonCreate = new QPushButton(this);
     buttonCreate->setText("Create");
-    buttonCreate->setProperty("ButtonStyle", "dialog");
+    buttonCreate->setDefault(true);
 
     buttonCancel = new QPushButton(this);
     buttonCancel->setText("Cancel");
-    buttonCancel->setProperty("ButtonStyle", "dialog");
 
     horizontalSpacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);

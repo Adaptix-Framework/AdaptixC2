@@ -11,6 +11,7 @@
 #include <MainAdaptix.h>
 
 #include <kddockwidgets/Config.h>
+#include <oclero/qlementine.hpp>
 
 MainAdaptix::MainAdaptix()
 {
@@ -204,6 +205,12 @@ void MainAdaptix::SetApplicationTheme() const
 
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
 
+    auto* style = new oclero::qlementine::QlementineStyle(qApp);
+    QString themePath = QString(":/qlementine-themes/%1").arg(settings->data.MainTheme);
+    style->setThemeJsonPath(themePath);
+    const_cast<MainAdaptix*>(this)->qlementineStyle = style;
+    QApplication::setStyle(style);
+
     FontManager::instance().initialize();
 
     QString appFontFamily = settings->data.FontFamily;
@@ -214,15 +221,35 @@ void MainAdaptix::SetApplicationTheme() const
     appFont.setPointSize( settings->data.FontSize );
     QApplication::setFont( appFont );
 
-    QString appTheme = ":/themes/" + settings->data.MainTheme;
-    bool result = false;
-    QString style = ReadFileString(appTheme, &result);
-    if (!result) {
-        appTheme = ":/themes/Adaptix_Dark";
-        style = ReadFileString(appTheme, &result);
-    }
-    if (result) {
-        QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
-        app->setStyleSheet(style);
-    }
+    QString additionalStyles = R"(
+        QLabel[LabelStyle="console"] {
+            padding: 4px;
+            color: #BEBEBE;
+            background-color: transparent;
+        }
+        QLineEdit[LineEditStyle="console"] {
+            background-color: #151515;
+            color: #BEBEBE;
+            border: 1px solid #2A2A2A;
+            padding: 4px;
+            border-radius: 4px;
+        }
+        QLineEdit[LineEditStyle="console"]:focus {
+            border: 1px solid #3D8B6A;
+        }
+        QTextEdit[TextEditStyle="console"], QPlainTextEdit[TextEditStyle="console"] {
+            background-color: #151515;
+            color: #BEBEBE;
+            border: 1px solid #2A2A2A;
+            border-radius: 4px;
+        }
+
+        QMenu::separator {
+            height: 1px;
+            background-color: #3A3A3A;
+            margin: 4px 8px;
+        }
+    )";
+    QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
+    app->setStyleSheet(additionalStyles);
 }
