@@ -143,6 +143,10 @@ ServerCommandsGroup Commander::GetServerGroup(const QString &scriptName) const
 
 void Commander::AddClientGroup(const CommandsGroup &group)
 {
+    for (const auto &existing : clientGroups) {
+        if (existing.filepath == group.filepath && existing.groupName == group.groupName)
+            return;
+    }
     clientGroups.append(group);
     Q_EMIT commandsUpdated();
 }

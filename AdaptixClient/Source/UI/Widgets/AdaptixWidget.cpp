@@ -929,6 +929,12 @@ void AdaptixWidget::AddCommandsToCommanders(const CommandsGroup &group, const QS
                     RegisterAgents.push_back(config);
                     targetCommander->AddClientGroup(group);
                 }
+
+                QReadLocker locker(&AgentsMapLock);
+                for (auto agent : AgentsMap) {
+                    if (agent->data.Name == agentName && agent->data.Os == os)
+                        agent->commander->AddClientGroup(group);
+                }
             } else {
                 for (const QString &listener : listeners) {
                     Commander* targetCommander = nullptr;
@@ -951,6 +957,23 @@ void AdaptixWidget::AddCommandsToCommanders(const CommandsGroup &group, const QS
                     }
 
                     targetCommander->AddClientGroup(group);
+                }
+
+                QReadLocker locker(&AgentsMapLock);
+                for (auto agent : AgentsMap) {
+                    if (agent->data.Name != agentName || agent->data.Os != os)
+                        continue;
+                    bool listenerMatch = listeners.isEmpty() || agent->listenerType.isEmpty();
+                    if (!listenerMatch) {
+                        for (const QString &listener : listeners) {
+                            if (agent->listenerType == listener) {
+                                listenerMatch = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (listenerMatch)
+                        agent->commander->AddClientGroup(group);
                 }
             }
         }
