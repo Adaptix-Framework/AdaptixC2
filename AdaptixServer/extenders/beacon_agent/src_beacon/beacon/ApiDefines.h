@@ -93,9 +93,11 @@
 #define HASH_FUNC_VIRTUALALLOC                       0x63ce6376
 #define HASH_FUNC_VIRTUALFREE                        0xbd37a32d
 #define HASH_FUNC_WAITFORSINGLEOBJECT                0x471fd0f9
+#define HASH_FUNC_WAITFORMULTIPLEOBJECTS             0xa8544ad6
 #define HASH_FUNC_WAITNAMEDPIPEA                     0x8a2ba58d
 #define HASH_FUNC_WIDECHARTOMULTIBYTE                0x12d4f52d
 #define HASH_FUNC_WRITEFILE                          0xd4a33cef
+
 
 // iphlpapi
 #define HASH_FUNC_GETADAPTERSINFO                    0xa1376764

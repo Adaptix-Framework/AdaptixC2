@@ -81,7 +81,14 @@ DWORD WINAPI AgentMain(LPVOID lpParam)
 			g_AsyncBofManager->ProcessAsyncBofs(packerOut);
 
 			if (g_Agent->IsActive()) {
-				const BOOL hasOutput = (packerOut->datasize() >= 8);
+				BOOL hasOutput = (packerOut->datasize() >= 8);
+				if (!hasOutput) {
+					hasOutput = (g_Agent->pivotter->pivots.size() > 0)
+					         || (g_Agent->proxyfire->tunnels.size() > 0)
+					         || (g_Agent->jober->jobs.size() > 0)
+					         || (g_Agent->downloader->downloads.size() > 0);
+				}
+
 				g_Connector->Sleep(g_AsyncBofManager->GetWakeupEvent(), g_Agent->GetWorkingSleep(), g_Agent->config->sleep_delay, g_Agent->config->jitter_delay, hasOutput);
 			}
 

