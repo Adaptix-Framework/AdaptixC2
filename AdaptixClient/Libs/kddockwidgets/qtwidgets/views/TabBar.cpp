@@ -699,10 +699,24 @@ void TabBar::paintEvent(QPaintEvent *event)
                 QStyleOptionTab opt;
                 initStyleOption(&opt, index);
 
-                // Получаем точный rect текста
                 QRect textRect = style()->subElementRect(QStyle::SE_TabBarTabText, &opt, this);
 
-                // Рисуем текст с мигающим цветом поверх старого
+                if (!opt.icon.isNull()) {
+                    QRect iconRect = style()->subElementRect(QStyle::SE_TabBarTabLeftButton, &opt, this);
+                    if (iconRect.isValid()) {
+                        int iconRight = iconRect.right() + style()->pixelMetric(QStyle::PM_TabBarTabHSpace, &opt, this) / 2;
+                        if (textRect.left() < iconRight) {
+                            textRect.setLeft(iconRight);
+                        }
+                    } else {
+                        int iconWidth = opt.iconSize.width();
+                        if (iconWidth <= 0)
+                            iconWidth = style()->pixelMetric(QStyle::PM_TabBarIconSize, &opt, this);
+                        int spacing = style()->pixelMetric(QStyle::PM_TabBarTabHSpace, &opt, this) / 2;
+                        textRect.setLeft(textRect.left() + iconWidth + spacing);
+                    }
+                }
+
                 painter.drawText(textRect, Qt::AlignCenter, opt.text);
             }
         }

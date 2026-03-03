@@ -79,75 +79,33 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         return;
 
 
-    auto agentMenu = QMenu("Agent");
-    agentMenu.addAction("Execute command");
-    agentMenu.addAction("Task manager");
-    agentMenu.addSeparator();
+    QMenu ctxMenu;
 
-    int agentCount = adaptixWidget->ScriptManager->AddMenuSession(&agentMenu, "SessionAgent", agentIds);
-    if (agentCount > 0)
-        agentMenu.addSeparator();
-
-    agentMenu.addAction("Remove console data");
-    agentMenu.addAction("Remove from server");
-
-
-    auto sessionMenu = QMenu("Session");
-    sessionMenu.addAction("Mark as Active");
-    sessionMenu.addAction("Mark as Inactive");
-    sessionMenu.addSeparator();
-    sessionMenu.addAction("Set tag");
-    if (agentIds.size() == 1 )
-        sessionMenu.addAction("Set data");
-
-    auto ctxMenu = QMenu();
-    ctxMenu.addAction("Console");
-    ctxMenu.addSeparator();
-    ctxMenu.addMenu(&agentMenu);
-
-    auto browserMenu = QMenu("Browsers");
-    int browserCount = adaptixWidget->ScriptManager->AddMenuSession(&browserMenu, "SessionBrowser", agentIds);
-    if (browserCount > 0)
-        ctxMenu.addMenu(&browserMenu);
-
-    auto accessMenu = QMenu("Access");
-    int accessCount = adaptixWidget->ScriptManager->AddMenuSession(&accessMenu, "SessionAccess", agentIds);
-    if (accessCount > 0)
-        ctxMenu.addMenu(&accessMenu);
-
-    adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
-
-    ctxMenu.addSeparator();
-    ctxMenu.addMenu(&sessionMenu);
-
-    const auto action = ctxMenu.exec( event->screenPos() );
-    if ( !action )
-        return;
-
-    if ( action->text() == "Console" ) {
-        for (QString agentId : agentIds) {
-            adaptixWidget->LoadConsoleUI(agentId);
-        }
-    }
-    else if ( action->text() == "Execute command") {
+    auto agentMenu = ctxMenu.addMenu("Agent");
+    agentMenu->addAction("Execute command", this, [graphics_items]() {
         bool ok = false;
-        QString cmd = QInputDialog::getText(nullptr,"Execute Command", "Command", QLineEdit::Normal, "", &ok);
+        QString cmd = QInputDialog::getText(nullptr, "Execute Command", "Command", QLineEdit::Normal, "", &ok);
         if (!ok)
             return;
-
-        const auto item = dynamic_cast<GraphItem*>( graphics_items[0] );
-        if ( item && item->agent) {
+        const auto item = dynamic_cast<GraphItem*>(graphics_items[0]);
+        if (item && item->agent) {
             item->agent->Console->SetInput(cmd);
             item->agent->Console->processInput();
         }
-    }
-    else if ( action->text() == "Task manager") {
-        for (QString agentId : agentIds) {
+    });
+    agentMenu->addAction("Task manager", this, [adaptixWidget, agentIds]() {
+        for (const QString& agentId : agentIds) {
             adaptixWidget->TasksDock->SetAgentFilter(agentId);
             adaptixWidget->SetTasksUI();
         }
-    }
-    else if ( action->text() == "Remove console data" ) {
+    });
+    agentMenu->addSeparator();
+
+    int agentCount = adaptixWidget->ScriptManager->AddMenuSession(agentMenu, "SessionAgent", agentIds);
+    if (agentCount > 0)
+        agentMenu->addSeparator();
+
+    agentMenu->addAction("Remove console data", this, [adaptixWidget, agentIds]() {
         QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "Clear Confirmation",
                                           "Are you sure you want to delete all agent console data and history from server (tasks will not be deleted from TaskManager)?\n\n"
                                           "If you want to temporarily hide the contents of the agent console, do so through the agent console menu.",
@@ -156,15 +114,15 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         if (reply != QMessageBox::Yes)
             return;
 
-        for (auto id : agentIds)
+        for (const auto& id : agentIds)
             adaptixWidget->AgentsMap[id]->Console->Clear();
 
         HttpReqConsoleRemoveAsync(agentIds, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "Response timeout" : message);
         });
-    }
-    else if ( action->text() == "Remove from server" ) {
+    });
+    agentMenu->addAction("Remove from server", this, [adaptixWidget, agentIds]() {
         QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "Delete Confirmation",
                                           "Are you sure you want to delete all information about the selected agents from the server?\n\n"
                                           "If you want to hide the record, simply choose: 'Item -> Hide on Client'.",
@@ -177,43 +135,73 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
             if (!success)
                 MessageError(message.isEmpty() ? "Response timeout" : message);
         });
-    }
-    else if ( action->text() == "Mark as Active" ) {
+    });
+
+    auto sessionMenu = ctxMenu.addMenu("Session");
+    sessionMenu->addAction("Mark as Active", this, [adaptixWidget, agentIds]() {
         HttpReqAgentSetMarkAsync(agentIds, "", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "Response timeout" : message);
         });
-    }
-    else if ( action->text() == "Mark as Inactive" ) {
+    });
+    sessionMenu->addAction("Mark as Inactive", this, [adaptixWidget, agentIds]() {
         HttpReqAgentSetMarkAsync(agentIds, "Inactive", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "Response timeout" : message);
         });
-    }
-    else if ( action->text() == "Set tag" ) {
-        QString tag = "";
+    });
+    sessionMenu->addSeparator();
+    sessionMenu->addAction("Set tag", this, [adaptixWidget, agentIds]() {
         bool inputOk;
-        QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal,tag, &inputOk);
-        if ( inputOk ) {
+        QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal, "", &inputOk);
+        if (inputOk) {
             HttpReqAgentSetTagAsync(agentIds, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
                 if (!success)
                     MessageError(message.isEmpty() ? "Response timeout" : message);
             });
         }
+    });
+    if (agentIds.size() == 1) {
+        sessionMenu->addAction("Set data", this, [adaptixWidget, agentIds]() {
+            QString agentId = agentIds.first();
+            if (!adaptixWidget->AgentsMap.contains(agentId))
+                return;
+
+            Agent* agent = adaptixWidget->AgentsMap[agentId];
+
+            auto* dialog = new DialogAgentData();
+            dialog->SetProfile(*(adaptixWidget->GetProfile()));
+            dialog->SetAgentData(agent->data);
+            dialog->Start();
+        });
     }
-    else if ( action->text() == "Set data" ) {
-        if (agentIds.isEmpty())
-            return;
 
-        QString agentId = agentIds.first();
-        if (!adaptixWidget->AgentsMap.contains(agentId))
-            return;
+    ctxMenu.addAction("Console", this, [adaptixWidget, agentIds]() {
+        for (const QString& agentId : agentIds) {
+            adaptixWidget->LoadConsoleUI(agentId);
+        }
+    });
+    ctxMenu.addSeparator();
+    ctxMenu.addMenu(agentMenu);
 
-        Agent* agent = adaptixWidget->AgentsMap[agentId];
+    auto browserMenu = ctxMenu.addMenu("Browsers");
+    int browserCount = adaptixWidget->ScriptManager->AddMenuSession(browserMenu, "SessionBrowser", agentIds);
+    if (browserCount > 0)
+        ctxMenu.addMenu(browserMenu);
+    else
+        ctxMenu.removeAction(browserMenu->menuAction());
 
-        auto* dialog = new DialogAgentData();
-        dialog->SetProfile(*(adaptixWidget->GetProfile()));
-        dialog->SetAgentData(agent->data);
-        dialog->Start();
-    }
+    auto accessMenu = ctxMenu.addMenu("Access");
+    int accessCount = adaptixWidget->ScriptManager->AddMenuSession(accessMenu, "SessionAccess", agentIds);
+    if (accessCount > 0)
+        ctxMenu.addMenu(accessMenu);
+    else
+        ctxMenu.removeAction(accessMenu->menuAction());
+
+    adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
+
+    ctxMenu.addSeparator();
+    ctxMenu.addMenu(sessionMenu);
+
+    ctxMenu.exec(event->screenPos());
 }
