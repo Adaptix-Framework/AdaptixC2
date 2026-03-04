@@ -253,12 +253,50 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 						CHAR* currentHH = this->host_headers[this->hh_index];
 						ULONG hhLen = StrLenA(currentHH);
 						ULONG baseLen = StrLenA(this->headers);
-						// "Host: " (6) + hhLen + "\r\n" (2) + baseLen + null (1)
-						tmpHeaders = (CHAR*)this->functions->LocalAlloc(LPTR, 6 + hhLen + 2 + baseLen + 1);
+						WORD currentPort = this->server_ports[this->server_index];
+
+						BOOL hasPort = FALSE;
+						for (ULONG i = 0; i < hhLen; i++) {
+							if (currentHH[i] == ':') {
+								hasPort = TRUE;
+								break;
+							}
+						}
+
+						BOOL needPort = FALSE;
+						CHAR portStr[6] = {0};
+						ULONG portLen = 0;
+						if (!hasPort) {
+							if ((this->ssl && currentPort != 443) || (!this->ssl && currentPort != 80)) {
+								needPort = TRUE;
+								WORD port = currentPort;
+								if (port == 0) {
+									portStr[portLen++] = '0';
+								} else {
+									CHAR temp[6];
+									int tempIdx = 0;
+									while (port > 0) {
+										temp[tempIdx++] = '0' + (port % 10);
+										port /= 10;
+									}
+									for (int i = tempIdx - 1; i >= 0; i--) {
+										portStr[portLen++] = temp[i];
+									}
+								}
+								portStr[portLen] = 0;
+							}
+						}
+
+						ULONG allocSize = 6 + hhLen + (needPort ? 1 + portLen : 0) + 2 + baseLen + 1;
+						tmpHeaders = (CHAR*)this->functions->LocalAlloc(LPTR, allocSize);
 						ULONG off = 0;
 						tmpHeaders[off++] = 'H'; tmpHeaders[off++] = 'o'; tmpHeaders[off++] = 's';
 						tmpHeaders[off++] = 't'; tmpHeaders[off++] = ':'; tmpHeaders[off++] = ' ';
 						memcpy(tmpHeaders + off, currentHH, hhLen); off += hhLen;
+						if (needPort) {
+							tmpHeaders[off++] = ':';
+							memcpy(tmpHeaders + off, portStr, portLen); off += portLen;
+						}
 						tmpHeaders[off++] = '\r'; tmpHeaders[off++] = '\n';
 						memcpy(tmpHeaders + off, this->headers, baseLen); off += baseLen;
 						tmpHeaders[off] = 0;
