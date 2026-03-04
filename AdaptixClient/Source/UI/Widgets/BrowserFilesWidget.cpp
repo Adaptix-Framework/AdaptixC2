@@ -173,6 +173,7 @@ void BrowserFilesWidget::createUI()
 
     treeBrowserWidget = new QTreeWidget();
     treeBrowserWidget->setSortingEnabled(false);
+    treeBrowserWidget->setExpandsOnDoubleClick(false);
     treeBrowserWidget->headerItem()->setText( 0, "Directory Tree" );
     treeBrowserWidget->setIconSize(QSize(25, 25));
 
@@ -233,11 +234,11 @@ void BrowserFilesWidget::AddFiles(const qint64 time, const int msgType, const QS
     status = TextColorHtml(message, COLOR_NeonGreen) + " >> " + sTime;
     statusLabel->setText(status);
 
-    QString fPath = "";
+    QString fPath;
     if (this->agent->data.Os == OS_WINDOWS)
         fPath = path;
     else
-        fPath = "/" + path;
+        fPath = path.startsWith("/") ? path : ("/" + path);
 
     BrowserFileData* currentFileData = this->getFileData(fPath);
     currentFileData->SetStored(true);
@@ -246,7 +247,7 @@ void BrowserFilesWidget::AddFiles(const qint64 time, const int msgType, const QS
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data.toUtf8());
     if (jsonDoc.isArray()) {
         QJsonArray jsonArray = jsonDoc.array();
-        this->updateFileData(currentFileData, path, jsonArray);
+        this->updateFileData(currentFileData, fPath, jsonArray);
     }
 
     this->tableShowItems(currentFileData->Files);
@@ -254,7 +255,7 @@ void BrowserFilesWidget::AddFiles(const qint64 time, const int msgType, const QS
     treeBrowserWidget->setCurrentItem(currentFileData->TreeItem);
     currentFileData->TreeItem->setExpanded(true);
 
-    currentPath = path;
+    currentPath = fPath;
     inputPath->setText(currentPath);
 }
 
@@ -301,7 +302,7 @@ BrowserFileData* BrowserFilesWidget::getFileData(const QString &path)
     if(browserStore.contains(fPath))
         return this->getBrowserStore(fPath);
 
-    BrowserFileData fileData = this->createFileData(path);
+    BrowserFileData fileData = this->createFileData(fPath);
     this->setBrowserStore(fPath, fileData);
 
     QString parentPath;
@@ -310,14 +311,14 @@ BrowserFileData* BrowserFilesWidget::getFileData(const QString &path)
             treeBrowserWidget->addTopLevelItem(fileData.TreeItem);
             return this->getBrowserStore(fPath);
         }
-        parentPath = GetParentPathWindows(path);
+        parentPath = GetParentPathWindows(fPath);
     }
     else {
         if (fileData.Type == TYPE_ROOTDIR) {
             treeBrowserWidget->addTopLevelItem(fileData.TreeItem);
             return this->getBrowserStore(fPath);
         }
-        parentPath = GetParentPathUnix(path);
+        parentPath = GetParentPathUnix(fPath);
     }
 
     BrowserFileData* parentFileData = this->getFileData(parentPath);
@@ -400,9 +401,9 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
 
             QString fullname;
             if (path == "/")
-                fullname = "//" + filename;
+                fullname = "/" + filename;
             else
-                fullname = "/" + path + "/" + filename;
+                fullname = path + "/" + filename;
 
             BrowserFileData* childData = this->getFileData(fullname);
             childData->Modified = b_date;
@@ -506,24 +507,26 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
     QString fPath;
     if ( this->agent->data.Os == OS_WINDOWS ) {
         fPath = path.toLower();
-        if ( !browserStore.contains(fPath) )
-            return;
     }
     else {
-        fPath = path;
-        if ( !browserStore.contains(fPath) )
-            return;
+        if (path.startsWith("//"))
+            fPath = path.mid(1);
+        else
+            fPath = path;
     }
+
+    if ( !browserStore.contains(fPath) )
+        return;
 
     BrowserFileData fileData = *this->getBrowserStore(fPath);
     if (fileData.Type == TYPE_FILE)
         return;
 
     if (fileData.Stored) {
-        this->setStoredFileData(path, fileData);
+        this->setStoredFileData(fPath, fileData);
     } else {
         statusLabel->setText("");
-        Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
+        Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, fPath);
     }
 }
 
@@ -592,10 +595,14 @@ void BrowserFilesWidget::onUpload() const
         return;
 
     QString remotePath = currentPath;
-    if (this->agent->data.Os == OS_WINDOWS)
-        remotePath += "\\";
-    else
-        remotePath += "/";
+    if (this->agent->data.Os == OS_WINDOWS) {
+        if (!remotePath.endsWith("\\"))
+            remotePath += "\\";
+    }
+    else {
+        if (!remotePath.endsWith("/"))
+            remotePath += "/";
+    }
 
     QString baseDir = QDir::homePath();
     if (agent && agent->adaptixWidget && agent->adaptixWidget->GetProfile())
