@@ -19,7 +19,9 @@ QString ReadFileString(const QString &filePath, bool* result)
 QString GetBasenameWindows(const QString& path)
 {
     QStringList pathParts = path.split("\\", Qt::SkipEmptyParts);
-    return  pathParts[pathParts.size()-1];
+    if (pathParts.isEmpty())
+        return path;
+    return pathParts[pathParts.size()-1];
 }
 
 QString GetBasenameUnix(const QString& path)
@@ -28,6 +30,8 @@ QString GetBasenameUnix(const QString& path)
         return path;
 
     QStringList pathParts = path.split("/", Qt::SkipEmptyParts);
+    if (pathParts.isEmpty())
+        return "/";
     return pathParts[pathParts.size()-1];
 }
 
