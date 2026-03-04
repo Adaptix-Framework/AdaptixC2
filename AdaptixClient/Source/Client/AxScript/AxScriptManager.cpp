@@ -466,6 +466,48 @@ int AxScriptManager::addMenuItemsToMenu(QMenu* menu, const QList<AxMenuItem>& it
 
 void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os)
 {
+    auto commanders = adaptixWidget->GetCommanders(listeners, agents, os);
+    if (commanders.isEmpty())
+        commanders = adaptixWidget->GetCommandersAll();
+
+    QSet<QString> conflictingCommands;
+    QSet<QString> conflictingGroups;
+
+    for (auto* commander : commanders) {
+        for (const auto& serverGroupName : commander->GetServerGroupNames()) {
+            auto serverGroup = commander->GetServerGroup(serverGroupName);
+            if (!serverGroup.enabled)
+                continue;
+
+            if (serverGroup.group.groupName == group.groupName) {
+                conflictingGroups.insert(group.groupName);
+            }
+
+            for (const auto& clientCmd : group.commands) {
+                for (const auto& serverCmd : serverGroup.group.commands) {
+                    if (clientCmd.name == serverCmd.name) {
+                        conflictingCommands.insert(clientCmd.name);
+                    }
+                }
+            }
+        }
+    }
+
+    if (!conflictingGroups.isEmpty()) {
+        QString error = "Command group '" + group.groupName + "' is already registered by server script. Skipping registration.";
+        if (adaptixWidget->AxConsoleDock)
+            adaptixWidget->AxConsoleDock->PrintError(error);
+        return;
+    }
+
+    if (!conflictingCommands.isEmpty()) {
+        QString cmdList = conflictingCommands.values().join("', '");
+        QString error = "Commands '" + cmdList + "' from group '" + group.groupName + "' are already registered by server script. Skipping registration.";
+        if (adaptixWidget->AxConsoleDock)
+            adaptixWidget->AxConsoleDock->PrintError(error);
+        return;
+    }
+
     adaptixWidget->AddCommandsToCommanders(group, listeners, agents, os);
 }
 
