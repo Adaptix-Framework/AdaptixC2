@@ -1,5 +1,5 @@
 @echo off
-set "PATH=C:\msys64\mingw64\bin;%%PATH%%"
+set "PATH=C:\msys64\mingw64\bin;%PATH%"
 echo [1/4] Build Release...
 cmake -S . -B cmake-build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build cmake-build-release --config Release
