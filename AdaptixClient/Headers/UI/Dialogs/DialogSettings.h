@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_DIALOGSETTINGS_H
 
 #include <main.h>
+#include <oclero/qlementine/widgets/Switch.hpp>
 
 class Settings;
 
@@ -39,10 +40,10 @@ Q_OBJECT
     QGridLayout* consoleGroupLayout        = nullptr;
     QLabel*      consoleSizeLabel          = nullptr;
     QSpinBox*    consoleSizeSpin           = nullptr;
-    QCheckBox*   consoleTimeCheckbox           = nullptr;
-    QCheckBox*   consoleNoWrapCheckbox         = nullptr;
-    QCheckBox*   consoleAutoScrollCheckbox     = nullptr;
-    QCheckBox*   consoleShowBackgroundCheckbox = nullptr;
+    oclero::qlementine::Switch* consoleTimeCheckbox           = nullptr;
+    oclero::qlementine::Switch* consoleNoWrapCheckbox         = nullptr;
+    oclero::qlementine::Switch* consoleAutoScrollCheckbox     = nullptr;
+    oclero::qlementine::Switch* consoleShowBackgroundCheckbox = nullptr;
     QLabel*      consoleThemeLabel         = nullptr;
     QComboBox*   consoleThemeCombo         = nullptr;
     QPushButton* consoleThemeImportBtn     = nullptr;
@@ -53,7 +54,7 @@ Q_OBJECT
     QGridLayout* sessionsGroupLayout  = nullptr;
     int          sessionsCheckCount   = 16;
     QCheckBox*   sessionsCheck[16];
-    QCheckBox*   sessionsHealthCheck  = nullptr;
+    oclero::qlementine::Switch* sessionsHealthCheck = nullptr;
     QLabel*      sessionsLabel1       = nullptr;
     QLabel*      sessionsLabel2       = nullptr;
     QLabel*      sessionsLabel3       = nullptr;
@@ -68,7 +69,7 @@ Q_OBJECT
 
     QWidget*     tabblinkWidget          = nullptr;
     QGridLayout* tabblinkLayout          = nullptr;
-    QCheckBox*   tabblinkEnabledCheckbox = nullptr;
+    oclero::qlementine::Switch* tabblinkEnabledCheckbox = nullptr;
     QGroupBox*   tabblinkGroup           = nullptr;
     QGridLayout* tabblinkGroupLayout     = nullptr;
     QMap<QString, QCheckBox*> m_tabblinkChecks;  // className -> checkbox

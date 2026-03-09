@@ -24,7 +24,7 @@ namespace oclero::qlementine {
 constexpr auto openAnimationDurationFactor = .75;
 constexpr auto closeAnimationDurationFactor = .9;
 
-constexpr auto defaultFramePadding = 16;
+constexpr auto defaultFramePadding = 6;
 
 #ifdef __APPLE__
 const bool Popover::_shouldDrawDropShadow = false;
@@ -137,10 +137,10 @@ Popover::Popover(QWidget* parent)
   _opacityAnimation.setDuration(opacityAnimDuration);
   _opacityAnimation.setStartValue(startOpacityVar);
   _opacityAnimation.setEndValue(startOpacityVar);
-  setWindowOpacity(startOpacity);
+  _currentOpacity = startOpacity;
   QObject::connect(&_opacityAnimation, &QVariantAnimation::valueChanged, this, [this]() {
-    const auto currentOpacity = _opacityAnimation.currentValue().toDouble();
-    setWindowOpacity(currentOpacity);
+    _currentOpacity = _opacityAnimation.currentValue().toDouble();
+    update();
   });
   QObject::connect(&_opacityAnimation, &QVariantAnimation::finished, this, [this]() {
     if (_opened) {
@@ -511,6 +511,7 @@ void Popover::adjustSizeToContent() {
 void Popover::paintEvent(QPaintEvent*) {
   QPainter p(this);
   p.setRenderHint(QPainter::Antialiasing, true);
+  p.setOpacity(_currentOpacity);
 
   const auto shapePixmap = getFrameShape();
 

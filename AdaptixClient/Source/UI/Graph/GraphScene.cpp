@@ -1,4 +1,5 @@
 #include <Agent/Agent.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Graph/GraphScene.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Widgets/AdaptixWidget.h>
@@ -47,7 +48,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
             if (!sessionsGraph)
                 return QGraphicsScene::contextMenuEvent( event );
 
-            auto layoutMenu = QMenu("Layout");
+            oclero::qlementine::Menu layoutMenu("Layout");
             auto* actionLeftToRight = layoutMenu.addAction("Left to Right");
             auto* actionTopToBottom = layoutMenu.addAction("Top to Bottom");
 
@@ -56,7 +57,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
             actionLeftToRight->setChecked(sessionsGraph->GetLayoutDirection() == LayoutLeftToRight);
             actionTopToBottom->setChecked(sessionsGraph->GetLayoutDirection() == LayoutTopToBottom);
 
-            auto ctxMenu = QMenu();
+            oclero::qlementine::Menu ctxMenu;
             ctxMenu.addMenu(&layoutMenu);
 
             const auto action = ctxMenu.exec(event->screenPos());
@@ -79,7 +80,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         return;
 
 
-    QMenu ctxMenu;
+    oclero::qlementine::Menu ctxMenu;
 
     auto agentMenu = ctxMenu.addMenu("Agent");
     agentMenu->addAction("Execute command", this, [graphics_items]() {

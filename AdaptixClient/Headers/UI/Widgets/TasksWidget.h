@@ -5,6 +5,7 @@
 #include <Utils/CustomElements.h>
 #include <UI/Widgets/AbstractDock.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <oclero/qlementine/widgets/LineEdit.hpp>
 
 #include <QSortFilterProxyModel>
 
@@ -334,7 +335,7 @@ Q_OBJECT
 
     QWidget*        searchWidget    = nullptr;
     QHBoxLayout*    searchLayout    = nullptr;
-    QLineEdit*      inputFilter     = nullptr;
+    oclero::qlementine::LineEdit* inputFilter = nullptr;
     QCheckBox*      autoSearchCheck = nullptr;
     QComboBox*      comboAgent      = nullptr;
     QComboBox*      comboType       = nullptr;

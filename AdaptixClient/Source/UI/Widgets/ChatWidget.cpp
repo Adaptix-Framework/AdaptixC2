@@ -52,7 +52,8 @@ void ChatWidget::createUI()
     nextButton->setCursor( Qt::PointingHandCursor );
 
     searchLabel    = new QLabel("0 of 0");
-    searchLineEdit = new QLineEdit();
+    searchLineEdit = new oclero::qlementine::LineEdit();
+    searchLineEdit->setIcon(QIcon(":/icons/search"));
     searchLineEdit->setPlaceholderText("Find");
     searchLineEdit->setMaximumWidth(300);
 

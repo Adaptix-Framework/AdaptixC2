@@ -1,4 +1,5 @@
 #include <UI/Widgets/ScreenshotsWidget.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/Requestor.h>
@@ -350,7 +351,7 @@ void ScreenshotsWidget::handleScreenshotsMenu(const QPoint &pos)
     if (!index.isValid())
         return;
 
-    auto ctxMenu = QMenu();
+    oclero::qlementine::Menu ctxMenu;
     ctxMenu.addAction("Set note", this, &ScreenshotsWidget::actionNote);
     ctxMenu.addAction("Download", this, &ScreenshotsWidget::actionDownload);
     ctxMenu.addAction("Delete",   this, &ScreenshotsWidget::actionDelete);

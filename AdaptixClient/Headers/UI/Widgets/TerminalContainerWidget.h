@@ -4,6 +4,8 @@
 #include <main.h>
 #include <UI/Widgets/AbstractDock.h>
 #include <Utils/CustomElements.h>
+#include <oclero/qlementine/widgets/Switch.hpp>
+#include <oclero/qlementine/widgets/LoadingSpinner.hpp>
 
 enum TerminalMode {
     TerminalModePTY,
@@ -39,7 +41,8 @@ Q_OBJECT
     TerminalMode   terminalMode    = TerminalModePTY;
     QByteArray     shellInputBuffer;
 
-    QCheckBox*     smartOutputCheckBox = nullptr;
+    oclero::qlementine::Switch* smartOutputCheckBox = nullptr;
+    oclero::qlementine::LoadingSpinner* loadingSpinner = nullptr;
     bool           smartOutputEnabled  = false;
     QByteArray     lastSentCommand;
     QByteArray     outputBuffer;

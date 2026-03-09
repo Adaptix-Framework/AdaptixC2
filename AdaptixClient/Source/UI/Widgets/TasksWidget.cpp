@@ -1,4 +1,5 @@
 #include <Agent/Agent.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
@@ -156,7 +157,8 @@ void TasksWidget::createUI()
     searchWidget = new QWidget(this);
     searchWidget->setVisible(false);
 
-    inputFilter = new QLineEdit(searchWidget);
+    inputFilter = new oclero::qlementine::LineEdit(searchWidget);
+    inputFilter->setIcon(QIcon(":/icons/search"));
     inputFilter->setPlaceholderText("filter: (adm | user) & cmd");
     inputFilter->setMaximumWidth(250);
 
@@ -401,7 +403,7 @@ void TasksWidget::handleTasksMenu( const QPoint &pos )
             remove = true;
     }
 
-    auto ctxMenu = QMenu();
+    oclero::qlementine::Menu ctxMenu;
     ctxMenu.addAction("Copy taskID", this, &TasksWidget::actionCopyTaskId);
     ctxMenu.addAction("Copy commandLine", this, &TasksWidget::actionCopyCmd);
     ctxMenu.addSeparator();

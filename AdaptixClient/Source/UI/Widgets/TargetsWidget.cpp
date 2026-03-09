@@ -1,4 +1,5 @@
 #include <UI/Widgets/TargetsWidget.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogTarget.h>
@@ -324,7 +325,7 @@ void TargetsWidget::onFilterUpdate() const
 
 void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
 {
-    auto ctxMenu = QMenu();
+    oclero::qlementine::Menu ctxMenu;
     ctxMenu.addAction("Create", this, &TargetsWidget::onCreateTarget );
 
     QModelIndex index = tableView->indexAt(pos);

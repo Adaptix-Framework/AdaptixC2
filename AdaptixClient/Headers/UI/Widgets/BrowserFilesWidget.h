@@ -3,6 +3,7 @@
 
 #include <main.h>
 #include <UI/Widgets/AbstractDock.h>
+#include <oclero/qlementine/widgets/LoadingSpinner.hpp>
 
 class Agent;
 class FileBrowserTreeItem;
@@ -53,6 +54,7 @@ class BrowserFilesWidget : public DockTab
     QTableView*         tableView       = nullptr;
     QStandardItemModel* tableModel        = nullptr;
     QLabel*             statusLabel       = nullptr;
+    oclero::qlementine::LoadingSpinner* loadingSpinner = nullptr;
     QSplitter*          splitter          = nullptr;
     QLineEdit*          inputPath         = nullptr;
     QPushButton*        buttonParent      = nullptr;

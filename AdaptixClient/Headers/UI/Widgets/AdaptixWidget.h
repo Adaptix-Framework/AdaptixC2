@@ -14,6 +14,8 @@
 #include <QListWidget>
 #include <QDialog>
 #include <functional>
+#include <oclero/qlementine/widgets/PopoverButton.hpp>
+#include <oclero/qlementine/widgets/Popover.hpp>
 
 class Task;
 class Agent;
@@ -80,14 +82,14 @@ Q_OBJECT
     QPushButton*    screensButton     = nullptr;
     QPushButton*    keysButton        = nullptr;
     QPushButton*    reconnectButton   = nullptr;
-    QPushButton*    extDocksButton    = nullptr;
+    oclero::qlementine::PopoverButton* extDocksButton = nullptr;
     QSpacerItem*    horizontalSpacer1 = nullptr;
     QFrame*         line_1            = nullptr;
     QFrame*         line_2            = nullptr;
     QFrame*         line_3            = nullptr;
     QFrame*         line_4            = nullptr;
 
-    QDialog*        extDocksPopup     = nullptr;
+    oclero::qlementine::Popover* extDocksPopover = nullptr;
     QListWidget*    extDocksListWidget = nullptr;
     QLabel*         extDocksEmptyLabel = nullptr;
 

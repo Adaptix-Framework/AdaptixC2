@@ -37,6 +37,8 @@ public Q_SLOTS:
     QObject* create_textline(const QString &text = "");
     QObject* create_combo();
     QObject* create_check(const QString& label= "");
+    QObject* create_switch(const QString& label= "");
+    QObject* create_segcontrol();
     QObject* create_spin();
     QObject* create_dateline(const QString& format = "dd.MM.yyyy");
     QObject* create_timeline(const QString& format = "HH:mm:ss");

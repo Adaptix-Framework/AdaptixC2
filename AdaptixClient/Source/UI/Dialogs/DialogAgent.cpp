@@ -23,7 +23,7 @@ void DialogAgent::createUI()
     listenerDisplayEdit->setReadOnly(true);
     listenerDisplayEdit->setPlaceholderText("Click to select listeners...");
 
-    listenerSelectBtn = new QPushButton("...", this);
+    listenerSelectBtn = new oclero::qlementine::PopoverButton("", this);
     listenerSelectBtn->setToolTip("Select listeners");
 
     listenerListWidget = new QListWidget();
@@ -51,9 +51,13 @@ void DialogAgent::createUI()
     popupLayout->addWidget(listenerListWidget);
     popupLayout->addLayout(btnLayout);
 
-    listenerPopupDialog = new QDialog(this, Qt::Popup | Qt::FramelessWindowHint);
-    listenerPopupDialog->setLayout(popupLayout);
-    listenerPopupDialog->setProperty("Main", "base");
+    auto* listenerPopupContent = new QWidget();
+    listenerPopupContent->setLayout(popupLayout);
+
+    listenerPopover = listenerSelectBtn->popover();
+    listenerPopover->setPreferredPosition(oclero::qlementine::Popover::Position::Bottom);
+    listenerPopover->setPreferredAlignment(oclero::qlementine::Popover::Alignment::Begin);
+    listenerSelectBtn->setPopoverContentWidget(listenerPopupContent);
 
     listenerSelectionWidget = new QWidget(this);
     auto listenerSelectionLayout = new QHBoxLayout(listenerSelectionWidget);
@@ -96,7 +100,7 @@ void DialogAgent::createUI()
     buildButton->setFixedWidth(160);
     buildButton->setFocus();
 
-    menuContext = new QMenu(this);
+    menuContext = new oclero::qlementine::Menu(this);
     menuContext->addAction("Rename", this, &DialogAgent::onProfileRename);
     menuContext->addAction("Remove", this, &DialogAgent::onProfileRemove);
 
@@ -189,24 +193,29 @@ void DialogAgent::createUI()
     collapseButton->setIconSize(QSize(16, 16));
     collapseButton->setFixedHeight(24);
     collapseButton->setCursor(Qt::PointingHandCursor);
-    connect(collapseButton, &QPushButton::clicked, this, [this]() {
-        bool visible = buildLogOutput->isVisible();
-        buildLogOutput->setVisible(!visible);
-        collapseButton->setIcon(QIcon(visible ? ":/icons/arrow_right" : ":/icons/arrow_drop_down"));
-    });
 
     buildLogOutput = new QTextEdit(this);
     buildLogOutput->setReadOnly(true);
     buildLogOutput->setMinimumHeight(150);
-    buildLogOutput->setVisible(false);
     buildLogOutput->setStyleSheet("background-color: #151515; color: #BEBEBE; border: 1px solid #2A2A2A; border-radius: 4px;");
     buildLogOutput->setFont(FontManager::instance().getFont("Hack"));
+
+    buildLogExpander = new oclero::qlementine::Expander(this);
+    buildLogExpander->setContent(buildLogOutput);
+    buildLogExpander->setExpanded(false);
+
+    connect(collapseButton, &QPushButton::clicked, this, [this]() {
+        buildLogExpander->toggleExpanded();
+    });
+    connect(buildLogExpander, &oclero::qlementine::Expander::expandedChanged, this, [this]() {
+        collapseButton->setIcon(QIcon(buildLogExpander->expanded() ? ":/icons/arrow_drop_down" : ":/icons/arrow_right"));
+    });
 
     auto buildLogLayout = new QVBoxLayout();
     buildLogLayout->setContentsMargins(5, 0, 5, 5);
     buildLogLayout->setSpacing(2);
     buildLogLayout->addWidget(collapseButton);
-    buildLogLayout->addWidget(buildLogOutput, 1);
+    buildLogLayout->addWidget(buildLogExpander, 1);
 
     buildLogPanel = new QWidget(this);
     buildLogPanel->setLayout(buildLogLayout);
@@ -502,6 +511,7 @@ void DialogAgent::changeConfig(const QString &agentName)
         }
 
         listenerListWidget->blockSignals(false);
+        updateListenerDisplay();
     }
 
     QString baseName = agentName;
@@ -758,7 +768,7 @@ void DialogAgent::onButtonBuild()
 
     buildLogOutput->clear();
     buildLogPanel->setVisible(true);
-    buildLogOutput->setVisible(true);
+    buildLogExpander->setExpanded(true);
     collapseButton->setIcon(QIcon(":/icons/arrow_drop_down"));
 
     buildButton->setText("Stop");
@@ -1065,11 +1075,7 @@ void DialogAgent::regenerateAgentUI(const QString &agentName, const QStringList 
 
 void DialogAgent::showListenerPopup()
 {
-    QPoint pos = listenerSelectBtn->mapToGlobal(QPoint(0, listenerSelectBtn->height()));
-    listenerPopupDialog->move(pos);
-    listenerPopupDialog->show();
-    listenerPopupDialog->raise();
-    listenerPopupDialog->activateWindow();
+    listenerSelectBtn->setPopoverOpened(true);
 }
 
 void DialogAgent::updateListenerDisplay()

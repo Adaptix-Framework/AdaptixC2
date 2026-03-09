@@ -25,19 +25,11 @@ DialogSettings::DialogSettings(Settings* s)
     connect(consoleSizeSpin,    &QSpinBox::valueChanged,        buttonApply, [this](int){buttonApply->setEnabled(true);} );
     connect(consoleThemeCombo, &QComboBox::currentTextChanged, buttonApply, [this](const QString &){buttonApply->setEnabled(true);} );
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    connect(consoleTimeCheckbox,           &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-    connect(consoleNoWrapCheckbox,         &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-    connect(consoleAutoScrollCheckbox,     &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-    connect(consoleShowBackgroundCheckbox, &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-    connect(sessionsHealthCheck,           &QCheckBox::checkStateChanged, this, &DialogSettings::onHealthChange );
-#else
-    connect(consoleTimeCheckbox,           &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-    connect(consoleNoWrapCheckbox,         &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-    connect(consoleAutoScrollCheckbox,     &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-    connect(consoleShowBackgroundCheckbox, &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-    connect(sessionsHealthCheck,           &QCheckBox::stateChanged, this, &DialogSettings::onHealthChange );
-#endif
+    connect(consoleTimeCheckbox,           &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);} );
+    connect(consoleNoWrapCheckbox,         &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);} );
+    connect(consoleAutoScrollCheckbox,     &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);} );
+    connect(consoleShowBackgroundCheckbox, &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);} );
+    connect(sessionsHealthCheck,           &oclero::qlementine::Switch::toggled, this, &DialogSettings::onHealthChange );
 
     for ( int i = 0; i < sessionsCheckCount; i++) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
@@ -49,11 +41,7 @@ DialogSettings::DialogSettings(Settings* s)
 
     connect(graphCombo1, &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    connect(tabblinkEnabledCheckbox, &QCheckBox::checkStateChanged, this, &DialogSettings::onBlinkChange );
-#else
-    connect(tabblinkEnabledCheckbox, &QCheckBox::stateChanged, this, &DialogSettings::onBlinkChange );
-#endif
+    connect(tabblinkEnabledCheckbox, &oclero::qlementine::Switch::toggled, this, &DialogSettings::onBlinkChange );
 
     for (auto* check : m_tabblinkChecks) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
@@ -131,10 +119,14 @@ void DialogSettings::createUI()
     consoleSizeSpin->setMinimum(10000);
     consoleSizeSpin->setMaximum(1000000);
 
-    consoleTimeCheckbox           = new QCheckBox("Print date and time", consoleGroup);
-    consoleNoWrapCheckbox         = new QCheckBox("No Wrap mode", consoleGroup);
-    consoleAutoScrollCheckbox     = new QCheckBox("Auto Scroll mode", consoleGroup);
-    consoleShowBackgroundCheckbox = new QCheckBox("Show background image", consoleGroup);
+    consoleTimeCheckbox           = new oclero::qlementine::Switch(consoleGroup);
+    consoleTimeCheckbox->setText("Print date and time");
+    consoleNoWrapCheckbox         = new oclero::qlementine::Switch(consoleGroup);
+    consoleNoWrapCheckbox->setText("No Wrap mode");
+    consoleAutoScrollCheckbox     = new oclero::qlementine::Switch(consoleGroup);
+    consoleAutoScrollCheckbox->setText("Auto Scroll mode");
+    consoleShowBackgroundCheckbox = new oclero::qlementine::Switch(consoleGroup);
+    consoleShowBackgroundCheckbox->setText("Show background image");
 
     consoleThemeLabel = new QLabel("Console theme:", consoleGroup);
     consoleThemeCombo = new QComboBox(consoleGroup);
@@ -211,7 +203,8 @@ void DialogSettings::createUI()
     sessionsGroupLayout->addWidget(sessionsCheck[15], 7, 1, 1, 1);
     sessionsGroup->setLayout(sessionsGroupLayout);
 
-    sessionsHealthCheck = new QCheckBox("Check Health", sessionsWidget);
+    sessionsHealthCheck = new oclero::qlementine::Switch(sessionsWidget);
+    sessionsHealthCheck->setText("Check Health");
 
     QSpacerItem* horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
@@ -276,7 +269,8 @@ void DialogSettings::createUI()
     tasksWidget->setLayout(tasksLayout);
 
     tabblinkWidget = new QWidget(this);
-    tabblinkEnabledCheckbox = new QCheckBox("Enable tab blink", tabblinkWidget);
+    tabblinkEnabledCheckbox = new oclero::qlementine::Switch(tabblinkWidget);
+    tabblinkEnabledCheckbox->setText("Enable tab blink");
 
     tabblinkGroup = new QGroupBox("Blinking tabs", tabblinkWidget);
     tabblinkGroupLayout = new QGridLayout(tabblinkGroup);

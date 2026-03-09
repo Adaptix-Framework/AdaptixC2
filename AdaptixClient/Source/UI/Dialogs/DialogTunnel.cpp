@@ -17,11 +17,7 @@ DialogTunnel::DialogTunnel(const QString &agentId, const bool s4, const bool s5,
     connect(buttonCreate,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCreate);
     connect(buttonCancel,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCancel);
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    connect(socks5UseAuth, &QCheckBox::checkStateChanged, this, &DialogTunnel::onSocks5AuthCheckChange );
-#else
-    connect(socks5UseAuth, &QCheckBox::stateChanged, this, &DialogTunnel::onSocks5AuthCheckChange );
-#endif
+    connect(socks5UseAuth, &oclero::qlementine::Switch::toggled, this, &DialogTunnel::onSocks5AuthCheckChange );
 }
 
 DialogTunnel::~DialogTunnel() = default;
@@ -97,7 +93,8 @@ void DialogTunnel::createUI()
     socks5LocalPortSpin->setMinimum(1);
     socks5LocalPortSpin->setMaximum(65535);
     socks5LocalPortSpin->setValue(1080);
-    socks5UseAuth       = new QCheckBox("Use authentication", socks5Widget);
+    socks5UseAuth       = new oclero::qlementine::Switch(socks5Widget);
+    socks5UseAuth->setText("Use authentication");
     socks5AuthUserLabel = new QLabel("Username:", socks5Widget);
     socks5AuthUserInput = new QLineEdit(socks5Widget);
     socks5AuthUserInput->setEnabled(false);

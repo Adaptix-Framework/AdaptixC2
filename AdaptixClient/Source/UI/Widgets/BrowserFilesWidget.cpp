@@ -1,4 +1,5 @@
 #include <Agent/Agent.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <Utils/FileSystem.h>
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
@@ -114,6 +115,10 @@ void BrowserFilesWidget::createUI()
     statusLabel = new QLabel(this);
     statusLabel->setText("Status: ");
 
+    loadingSpinner = new oclero::qlementine::LoadingSpinner(this);
+    loadingSpinner->setFixedSize(16, 16);
+    loadingSpinner->setVisible(false);
+
     tableModel = new QStandardItemModel(this);
 
     tableView = new QTableView(this );
@@ -164,9 +169,10 @@ void BrowserFilesWidget::createUI()
     listGridLayout->addWidget( line_1,       0, 8,  1, 1  );
     listGridLayout->addWidget( buttonUpload, 0, 9,  1, 1  );
     listGridLayout->addWidget( buttonDisks,  0, 10, 1, 1  );
-    listGridLayout->addWidget( line_2,       0, 11, 1, 1  );
-    listGridLayout->addWidget( statusLabel,  0, 12, 1, 1  );
-    listGridLayout->addWidget( tableView,  1, 0,  1, 13 );
+    listGridLayout->addWidget( line_2,          0, 11, 1, 1  );
+    listGridLayout->addWidget( loadingSpinner,   0, 12, 1, 1  );
+    listGridLayout->addWidget( statusLabel,      0, 13, 1, 1  );
+    listGridLayout->addWidget( tableView,  1, 0,  1, 14 );
 
     listBrowserWidget = new QWidget(this);
     listBrowserWidget->setLayout(listGridLayout);
@@ -192,6 +198,9 @@ void BrowserFilesWidget::createUI()
 
 void BrowserFilesWidget::SetDisksWin(const qint64 time, const int msgType, const QString &message, const QString &data)
 {
+    loadingSpinner->setSpinning(false);
+    loadingSpinner->setVisible(false);
+
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
     if( msgType == CONSOLE_OUT_LOCAL_ERROR || msgType == CONSOLE_OUT_ERROR )
@@ -224,6 +233,9 @@ void BrowserFilesWidget::SetDisksWin(const qint64 time, const int msgType, const
 
 void BrowserFilesWidget::AddFiles(const qint64 time, const int msgType, const QString &message, const QString &path, const QString &data)
 {
+    loadingSpinner->setSpinning(false);
+    loadingSpinner->setVisible(false);
+
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
     if( msgType == CONSOLE_OUT_LOCAL_ERROR || msgType == CONSOLE_OUT_ERROR ) {
@@ -261,6 +273,9 @@ void BrowserFilesWidget::AddFiles(const qint64 time, const int msgType, const QS
 
 void BrowserFilesWidget::SetStatus(const qint64 time, const int msgType, const QString &message ) const
 {
+    loadingSpinner->setSpinning(false);
+    loadingSpinner->setVisible(false);
+
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
     if( msgType == CONSOLE_OUT_LOCAL_ERROR || msgType == CONSOLE_OUT_ERROR ) {
@@ -580,10 +595,14 @@ void BrowserFilesWidget::onReload() const
             path = "./";
 
         statusLabel->setText("");
+        loadingSpinner->setVisible(true);
+        loadingSpinner->setSpinning(true);
         Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
     }
     else {
         statusLabel->setText("");
+        loadingSpinner->setVisible(true);
+        loadingSpinner->setSpinning(true);
         Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, currentPath);
     }
 }
@@ -614,6 +633,8 @@ void BrowserFilesWidget::onUpload() const
                 return;
 
             statusLabel->setText("");
+            loadingSpinner->setVisible(true);
+            loadingSpinner->setSpinning(true);
             Q_EMIT agent->adaptixWidget->eventFileBrowserUpload(agent->data.Id, remotePath, filePath);
     });
 }
@@ -686,7 +707,7 @@ void BrowserFilesWidget::handleTableMenu(const QPoint &pos)
         }
     }
 
-    auto ctxMenu = QMenu();
+    oclero::qlementine::Menu ctxMenu;
 
     agent->adaptixWidget->ScriptManager->AddMenuFileBrowser(&ctxMenu, items);
 

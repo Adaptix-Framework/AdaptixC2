@@ -4,6 +4,7 @@
 #include <main.h>
 #include <QPointer>
 #include <UI/Widgets/AbstractDock.h>
+#include <oclero/qlementine/widgets/LineEdit.hpp>
 
 class AdaptixWidget;
 class AxScriptManager;
@@ -27,7 +28,7 @@ class AxConsoleWidget : public DockTab
     ClickableLabel* prevButton     = nullptr;
     ClickableLabel* nextButton     = nullptr;
     QLabel*         searchLabel    = nullptr;
-    QLineEdit*      searchLineEdit = nullptr;
+    oclero::qlementine::LineEdit* searchLineEdit = nullptr;
     ClickableLabel* hideButton     = nullptr;
     QSpacerItem*    spacer         = nullptr;
     QShortcut*      shortcutSearch = nullptr;

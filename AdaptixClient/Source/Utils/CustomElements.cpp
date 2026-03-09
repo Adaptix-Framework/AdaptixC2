@@ -7,6 +7,7 @@
 #include <QPainter>
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 
 
 VerticalTabBar::VerticalTabBar(QWidget *parent) : QWidget(parent)
@@ -525,7 +526,7 @@ TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, boo
 }
 
 void TextEditConsole::createContextMenu(const QPoint &pos) {
-    QMenu *menu = new QMenu(this);
+    auto *menu = new oclero::qlementine::Menu(this);
     
     QAction *copyAction = menu->addAction("Copy         (Ctrl + C)");
     connect(copyAction, &QAction::triggered, this, [this]() { copy(); });

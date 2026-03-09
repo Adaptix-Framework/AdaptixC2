@@ -81,15 +81,18 @@ void DialogSubscriptions::createUI()
         realtimeListWidget->addItem(item);
     }
 
-    consoleTeammodeCheck = new QCheckBox("Console Team Mode", this);
+    consoleTeammodeCheck = new oclero::qlementine::Switch(this);
+    consoleTeammodeCheck->setText("Console Team Mode");
     consoleTeammodeCheck->setChecked(true);
     consoleTeammodeCheck->setToolTip("See console output from all operators");
 
-    agentsOnlyActiveCheck = new QCheckBox("Only active agents", this);
+    agentsOnlyActiveCheck = new oclero::qlementine::Switch(this);
+    agentsOnlyActiveCheck->setText("Only active agents");
     agentsOnlyActiveCheck->setToolTip("Synchronize only active agents");
     agentsOnlyActiveCheck->setEnabled(false);
 
-    tasksOnlyJobsCheck = new QCheckBox("Only JOB tasks", this);
+    tasksOnlyJobsCheck = new oclero::qlementine::Switch(this);
+    tasksOnlyJobsCheck->setText("Only JOB tasks");
     tasksOnlyJobsCheck->setToolTip("Synchronize only jobs");
     tasksOnlyJobsCheck->setEnabled(false);
 

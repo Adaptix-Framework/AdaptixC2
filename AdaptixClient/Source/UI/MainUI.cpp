@@ -33,7 +33,7 @@ MainUI::MainUI()
     auto projectSettingsAction = new QAction("Subscriptions", this);
     connect(projectSettingsAction, &QAction::triggered, this, &MainUI::onProjectSubscriptions);
 
-    menuProject = new QMenu("Projects", this);
+    menuProject = new oclero::qlementine::Menu("Projects", this);
     menuProject->addAction(newProjectAction);
     menuProject->addAction(closeProjectAction);
     menuProject->addSeparator();
@@ -44,13 +44,13 @@ MainUI::MainUI()
     auto scriptManagerAction = new QAction("Script manager", this);
     connect(scriptManagerAction, &QAction::triggered, this, &MainUI::onScriptManager);
 
-    menuExtensions = new QMenu("Extensions", this);
+    menuExtensions = new oclero::qlementine::Menu("Extensions", this);
     menuExtensions->addAction(axConsoleAction);
     menuExtensions->addAction(scriptManagerAction);
     extDocksSeparator = menuExtensions->addSeparator();
     extDocksSeparator->setVisible(false);
 
-    menuSettings = new QMenu("Settings", this);
+    menuSettings = new oclero::qlementine::Menu("Settings", this);
     auto settingsAction = new QAction("Open settings", this);
     connect(settingsAction, &QAction::triggered, this, &MainUI::onSettings);
     menuSettings->addAction(settingsAction);

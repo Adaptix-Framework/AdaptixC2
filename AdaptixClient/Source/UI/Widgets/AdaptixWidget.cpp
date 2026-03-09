@@ -261,10 +261,11 @@ void AdaptixWidget::createUI()
     listenersButton->setFixedSize(37, 28);
     listenersButton->setToolTip("Listeners & Sites");
 
-    extDocksButton = new QPushButton(QIcon(":/icons/extension"), "", this);
+    extDocksButton = new oclero::qlementine::PopoverButton("", QIcon(":/icons/extension"), this);
     extDocksButton->setIconSize(QSize(24, 24));
     extDocksButton->setFixedSize(37, 28);
     extDocksButton->setToolTip("Extensions Docks");
+    extDocksButton->setShowArrowIndicator(false);
 
     line_1 = new QFrame(this);
     line_1->setFrameShape(QFrame::VLine);
@@ -345,24 +346,25 @@ void AdaptixWidget::createUI()
     extDocksEmptyLabel = new QLabel("No loaded extenders docks");
     extDocksEmptyLabel->setAlignment(Qt::AlignCenter);
 
-    auto extDocksLayout = new QVBoxLayout();
+    auto* extDocksContent = new QWidget();
+    auto extDocksLayout = new QVBoxLayout(extDocksContent);
     extDocksLayout->setContentsMargins(8, 8, 8, 8);
     extDocksLayout->setSpacing(6);
     extDocksLayout->addWidget(extDocksListWidget);
     extDocksLayout->addWidget(extDocksEmptyLabel);
+    extDocksContent->setMinimumWidth(250);
 
-    extDocksPopup = new QDialog(this, Qt::Popup | Qt::FramelessWindowHint);
-    extDocksPopup->setLayout(extDocksLayout);
-    extDocksPopup->setProperty("Main", "base");
-    extDocksPopup->setMinimumWidth(250);
+    extDocksPopover = extDocksButton->popover();
+    extDocksPopover->setPreferredPosition(oclero::qlementine::Popover::Position::Bottom);
+    extDocksPopover->setPreferredAlignment(oclero::qlementine::Popover::Alignment::Begin);
+    extDocksButton->setPopoverContentWidget(extDocksContent);
 
-    connect(extDocksButton, &QPushButton::clicked, this, &AdaptixWidget::ShowExtDocksPopup);
     connect(extDocksListWidget, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
         QString id = item->data(Qt::UserRole).toString();
         if (extDocksMap.contains(id) && extDocksMap[id].showCallback) {
             extDocksMap[id].showCallback();
         }
-        extDocksPopup->hide();
+        extDocksButton->setPopoverOpened(false);
     });
 
     horizontalSpacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
@@ -1377,16 +1379,12 @@ void AdaptixWidget::RemoveExtDock(const QString &id)
 
 void AdaptixWidget::ShowExtDocksPopup()
 {
-    if (!extDocksPopup || !extDocksButton)
+    if (!extDocksButton)
         return;
 
     bool empty = extDocksListWidget->count() == 0;
     extDocksListWidget->setVisible(!empty);
     extDocksEmptyLabel->setVisible(empty);
 
-    QPoint pos = extDocksButton->mapToGlobal(QPoint(0, extDocksButton->height()));
-    extDocksPopup->move(pos);
-    extDocksPopup->show();
-    extDocksPopup->raise();
-    extDocksPopup->activateWindow();
+    extDocksButton->setPopoverOpened(true);
 }

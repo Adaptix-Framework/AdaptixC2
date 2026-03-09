@@ -4,6 +4,7 @@
 #include <main.h>
 #include <UI/Widgets/AbstractDock.h>
 #include <Utils/CustomElements.h>
+#include <oclero/qlementine/widgets/LineEdit.hpp>
 
 class AdaptixWidget;
 
@@ -20,10 +21,10 @@ class ChatWidget : public DockTab
     ClickableLabel* prevButton     = nullptr;
     ClickableLabel* nextButton     = nullptr;
     QLabel*         searchLabel    = nullptr;
-    QLineEdit*      searchLineEdit = nullptr;
     ClickableLabel* hideButton     = nullptr;
     QSpacerItem*    spacer         = nullptr;
     QShortcut*      shortcutSearch = nullptr;
+    oclero::qlementine::LineEdit* searchLineEdit = nullptr;
 
     int  currentIndex = -1;
     QVector<QTextEdit::ExtraSelection> allSelections;

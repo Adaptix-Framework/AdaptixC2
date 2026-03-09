@@ -43,6 +43,17 @@ void PopoverButton::setPopoverContentWidget(QWidget* widget) {
   _popover->setContentWidget(widget);
 }
 
+bool PopoverButton::showArrowIndicator() const {
+  return _showArrowIndicator;
+}
+
+void PopoverButton::setShowArrowIndicator(bool show) {
+  if (show != _showArrowIndicator) {
+    _showArrowIndicator = show;
+    update();
+  }
+}
+
 void PopoverButton::setPopoverOpened(bool opened) {
   _popover->setOpened(opened);
 }
@@ -58,23 +69,26 @@ void PopoverButton::paintEvent(QPaintEvent* /*e*/) {
   // Background.
   QStyleOptionButton bgOpt;
   initStyleOption(&bgOpt);
-  bgOpt.features.setFlag(QStyleOptionButton::ButtonFeature::HasMenu, true);
+  bgOpt.features.setFlag(QStyleOptionButton::ButtonFeature::HasMenu, _showArrowIndicator);
   const auto isPressed = bgOpt.state.testFlag(QStyle::State_Sunken);
   bgOpt.state.setFlag(QStyle::State_Sunken, isPressed || _popover->isOpened());
   style->drawControl(QStyle::CE_PushButtonBevel, &bgOpt, &p, this);
 
   // Foreground.
-  QStyleOptionComboBox fgOpt;
-  fgOpt.currentText = text();
-  fgOpt.currentIcon = icon();
-  fgOpt.editable = false;
-  fgOpt.frame = false;
-  fgOpt.iconSize = iconSize();
-  fgOpt.subControls = QStyle::SC_ComboBoxFrame | QStyle::SC_ComboBoxArrow;
-  fgOpt.activeSubControls = QStyle::SC_ComboBoxFrame;
-  fgOpt.rect = bgOpt.rect;
-  fgOpt.state = bgOpt.state;
-  //fgOpt.fo
-  style->drawControl(QStyle::CE_ComboBoxLabel, &fgOpt, &p, this);
+  if (_showArrowIndicator) {
+    QStyleOptionComboBox fgOpt;
+    fgOpt.currentText = text();
+    fgOpt.currentIcon = icon();
+    fgOpt.editable = false;
+    fgOpt.frame = false;
+    fgOpt.iconSize = iconSize();
+    fgOpt.subControls = QStyle::SC_ComboBoxFrame | QStyle::SC_ComboBoxArrow;
+    fgOpt.activeSubControls = QStyle::SC_ComboBoxFrame;
+    fgOpt.rect = bgOpt.rect;
+    fgOpt.state = bgOpt.state;
+    style->drawControl(QStyle::CE_ComboBoxLabel, &fgOpt, &p, this);
+  } else {
+    style->drawControl(QStyle::CE_PushButtonLabel, &bgOpt, &p, this);
+  }
 }
 } // namespace oclero::qlementine

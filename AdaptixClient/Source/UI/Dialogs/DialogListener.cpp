@@ -55,7 +55,7 @@ void DialogListener::createUI()
     listenerLabel->setText("Config:");
     listenerCombobox = new QComboBox(this);
 
-    menuContext = new QMenu(this);
+    menuContext = new oclero::qlementine::Menu(this);
     menuContext->addAction("Rename", this, &DialogListener::onProfileRename);
     menuContext->addAction("Remove", this, &DialogListener::onProfileRemove);
 

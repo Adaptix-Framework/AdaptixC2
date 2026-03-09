@@ -125,15 +125,23 @@ function ListenerUI(mode_create)
     let panelPayload = form.create_panel();
     panelPayload.setLayout(layoutPayload);
 
-    //
-    let tabs = form.create_tabs();
-    tabs.addTab(panelMain, "Main settings");
-    tabs.addTab(panelHeaders, "HTTP Headers");
-    tabs.addTab(panelError, "Page Error");
-    tabs.addTab(panelPayload, "Page Payload");
+    /// MAIN
 
-    let layout = form.create_hlayout();
-    layout.addWidget(tabs);
+    let controller = form.create_segcontrol();
+    controller.addItems(["Main settings", "HTTP Headers", "Page Error", "Page Payload"]);
+
+    let stack = form.create_stack();
+    stack.addPage(panelMain);
+    stack.addPage(panelHeaders);
+    stack.addPage(panelError);
+    stack.addPage(panelPayload);
+    stack.setCurrentIndex(0);
+
+    form.connect(controller, "currentIndexChanged", function() { stack.setCurrentIndex( controller.currentIndex() ); });
+
+    let layout = form.create_vlayout();
+    layout.addWidget(controller);
+    layout.addWidget(stack);
 
     let container = form.create_container();
     container.put("host_bind",          comboHostBind);

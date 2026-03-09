@@ -1,5 +1,6 @@
 #include <QJSEngine>
 #include <UI/Widgets/ListenersWidget.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogListener.h>
 #include <UI/Dialogs/DialogAgent.h>
@@ -183,16 +184,37 @@ void ListenersWidget::onFilterUpdate() const
 
 void ListenersWidget::handleListenersMenu(const QPoint &pos) const
 {
-    QMenu listenerMenu = QMenu();
+    oclero::qlementine::Menu listenerMenu;
+
+    QModelIndex index = tableView->indexAt(pos);
+    bool hasSelection = index.isValid();
+    bool allListening = true;
+    bool allPaused = true;
+
+    if (hasSelection) {
+        QModelIndex sourceIndex = proxyModel->mapToSource(index);
+        if (sourceIndex.isValid()) {
+            QString status = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_Status), Qt::DisplayRole).toString();
+            if (status == "Listen")
+                allPaused = false;
+            else
+                allListening = false;
+        }
+    }
 
     listenerMenu.addAction("Create", this, &ListenersWidget::onCreateListener);
-    listenerMenu.addAction("Edit",   this, &ListenersWidget::onEditListener);
-    listenerMenu.addAction("Remove", this, &ListenersWidget::onRemoveListener);
+    auto* editAction = listenerMenu.addAction("Edit",   this, &ListenersWidget::onEditListener);
+    editAction->setEnabled(hasSelection);
+    auto* removeAction = listenerMenu.addAction("Remove", this, &ListenersWidget::onRemoveListener);
+    removeAction->setEnabled(hasSelection);
     listenerMenu.addSeparator();
-    listenerMenu.addAction("Pause",  this, &ListenersWidget::onPauseListener);
-    listenerMenu.addAction("Resume", this, &ListenersWidget::onResumeListener);
+    auto* pauseAction = listenerMenu.addAction("Pause",  this, &ListenersWidget::onPauseListener);
+    pauseAction->setEnabled(hasSelection && !allPaused);
+    auto* resumeAction = listenerMenu.addAction("Resume", this, &ListenersWidget::onResumeListener);
+    resumeAction->setEnabled(hasSelection && !allListening);
     listenerMenu.addSeparator();
-    listenerMenu.addAction("Generate agent", this, &ListenersWidget::onGenerateAgent);
+    auto* generateAction = listenerMenu.addAction("Generate agent", this, &ListenersWidget::onGenerateAgent);
+    generateAction->setEnabled(hasSelection);
 
     QPoint globalPos = tableView->mapToGlobal(pos);
     listenerMenu.exec(globalPos);

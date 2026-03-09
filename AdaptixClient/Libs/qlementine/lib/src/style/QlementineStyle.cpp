@@ -6215,7 +6215,23 @@ QPalette QlementineStyle::paletteForTextRole(TextRole role) const {
 }
 
 QColor const& QlementineStyle::switchGrooveColor(MouseState const mouse, CheckState const checked) const {
-  return checkButtonBackgroundColor(mouse, checked);
+  switch (checked) {
+    case CheckState::Checked:
+    case CheckState::Indeterminate:
+      return buttonBackgroundColor(mouse, ColorRole::Primary);
+    case CheckState::NotChecked:
+    default:
+      switch (mouse) {
+        case MouseState::Hovered:
+          return _impl->theme.borderColorHovered;
+        case MouseState::Pressed:
+          return _impl->theme.borderColorPressed;
+        case MouseState::Disabled:
+          return _impl->theme.borderColorDisabled;
+        default:
+          return _impl->theme.borderColor;
+      }
+  }
 }
 
 QColor const& QlementineStyle::switchGrooveBorderColor(

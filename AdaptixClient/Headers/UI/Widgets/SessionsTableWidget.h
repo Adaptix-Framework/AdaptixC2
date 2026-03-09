@@ -5,6 +5,7 @@
 #include <MainAdaptix.h>
 #include <Utils/CustomElements.h>
 #include <UI/Widgets/AbstractDock.h>
+#include <oclero/qlementine/widgets/LineEdit.hpp>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Agent/Agent.h>
 #include <Client/Settings.h>
@@ -445,11 +446,11 @@ Q_OBJECT
 
     QWidget*        searchWidget    = nullptr;
     QHBoxLayout*    searchLayout    = nullptr;
-    QLineEdit*      inputFilter     = nullptr;
     QCheckBox*      autoSearchCheck = nullptr;
     QComboBox*      comboAgentType  = nullptr;
     QCheckBox*      checkOnlyActive = nullptr;
     ClickableLabel* hideButton      = nullptr;
+    oclero::qlementine::LineEdit* inputFilter = nullptr;
 
     mutable bool columnStateReady = false;
     bool bufferingEnabled = false;

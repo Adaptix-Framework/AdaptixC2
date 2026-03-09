@@ -226,16 +226,6 @@ void MainAdaptix::SetApplicationTheme() const
     ApplyApplicationFont();
 
     QApplication::setStyle(style);
-
-    QString additionalStyles = R"(
-        QMenu::separator {
-            height: 1px;
-            background-color: #3A3A3A;
-            margin: 4px 8px;
-        }
-    )";
-    QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
-    app->setStyleSheet(additionalStyles);
 }
 
 void MainAdaptix::ApplyApplicationFont() const

@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_DIALOGSUBSCRIPTIONS_H
 
 #include <main.h>
+#include <oclero/qlementine/widgets/Switch.hpp>
 
 class AdaptixWidget;
 class AuthProfile;
@@ -13,9 +14,9 @@ Q_OBJECT
     AdaptixWidget* adaptixWidget = nullptr;
     QListWidget*   historyListWidget = nullptr;
     QListWidget*   realtimeListWidget = nullptr;
-    QCheckBox*     consoleTeammodeCheck = nullptr;
-    QCheckBox*     agentsOnlyActiveCheck = nullptr;
-    QCheckBox*     tasksOnlyJobsCheck = nullptr;
+    oclero::qlementine::Switch* consoleTeammodeCheck = nullptr;
+    oclero::qlementine::Switch* agentsOnlyActiveCheck = nullptr;
+    oclero::qlementine::Switch* tasksOnlyJobsCheck = nullptr;
     QPushButton*   syncInactiveAgentsButton = nullptr;
     QPushButton*   applyButton = nullptr;
     QPushButton*   closeButton = nullptr;

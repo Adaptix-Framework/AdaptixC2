@@ -18,5 +18,6 @@ protected: // Inherited via AbstractItemListWidget
   const QColor& getItemFgColor(MouseState mouse, bool selected, const Theme& theme) const override;
   const QColor& getItemBadgeBgColor(MouseState mouse, bool selected, const Theme& theme) const override;
   const QColor& getItemBadgeFgColor(MouseState mouse, bool selected, const Theme& theme) const override;
+  double getItemRadius() const override;
 };
 } // namespace oclero::qlementine

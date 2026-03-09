@@ -9,6 +9,8 @@
 #include <QJsonDocument>
 #include <QThread>
 #include <QApplication>
+#include <oclero/qlementine/widgets/Switch.hpp>
+#include <oclero/qlementine/widgets/SegmentedControl.hpp>
 
 
 
@@ -168,6 +170,23 @@ QObject* BridgeForm::create_check(const QString& label)
 {
     auto* check = new QCheckBox(label, getParentWidget());
     auto* wrapper = new AxCheckBoxWrapper(check, this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_switch(const QString& label)
+{
+    auto* sw = new oclero::qlementine::Switch(getParentWidget());
+    sw->setText(label);
+    auto* wrapper = new AxSwitchWrapper(sw, this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_segcontrol()
+{
+    auto* sc = new oclero::qlementine::SegmentedControl(getParentWidget());
+    auto* wrapper = new AxSegmentedControlWrapper(sc, this);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }

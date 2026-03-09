@@ -64,7 +64,6 @@ DialogConnect::DialogConnect()
     auto action = lineEdit_ProjectDir->addAction(QIcon(":/icons/folder"), QLineEdit::TrailingPosition);
     connect(action, &QAction::triggered, this, &DialogConnect::onSelectProjectDir);
 
-    connect(subsSelectBtn,   &QPushButton::clicked,     this, &DialogConnect::showSubsPopup);
     connect(dataListWidget,  &QListWidget::itemChanged, this, &DialogConnect::onSubsSelectionChanged);
     connect(agentListWidget, &QListWidget::itemChanged, this, &DialogConnect::onSubsSelectionChanged);
 }
@@ -131,8 +130,7 @@ void DialogConnect::createUI()
     lineEdit_ProjectDir = new QLineEdit(this);
     lineEdit_ProjectDir->setToolTip("Enter path to project directory (auto-generated if empty)");
 
-    subsSelectBtn = new QPushButton(QIcon(":/icons/settings_account"), "", this);
-    subsSelectBtn->setFixedWidth(30);
+    subsSelectBtn = new oclero::qlementine::PopoverButton("", QIcon(":/icons/settings_account"), this);
     subsSelectBtn->setToolTip("Select subscriptions");
 
     auto historyLabel = new QLabel("History:", this);
@@ -191,15 +189,18 @@ void DialogConnect::createUI()
         agentListWidget->addItem(item);
     }
 
-    multiuserCheck = new QCheckBox("Console Team Mode", this);
+    multiuserCheck = new oclero::qlementine::Switch(this);
+    multiuserCheck->setText("Console Team Mode");
     multiuserCheck->setChecked(true);
     multiuserCheck->setToolTip("See console output from all operators");
 
-    auto agentsOnlyActiveCheck = new QCheckBox("Only active agents", this);
+    auto agentsOnlyActiveCheck = new oclero::qlementine::Switch(this);
+    agentsOnlyActiveCheck->setText("Only active agents");
     agentsOnlyActiveCheck->setChecked(false);
     agentsOnlyActiveCheck->setToolTip("Synchronize only active agents");
 
-    auto tasksOnlyJobsCheck = new QCheckBox("Only JOB tasks", this);
+    auto tasksOnlyJobsCheck = new oclero::qlementine::Switch(this);
+    tasksOnlyJobsCheck->setText("Only JOB tasks");
     tasksOnlyJobsCheck->setChecked(false);
     tasksOnlyJobsCheck->setToolTip("Synchronize only jobs");
 
@@ -222,18 +223,17 @@ void DialogConnect::createUI()
     popupLayout->addLayout(leftCol, 1);
     popupLayout->addLayout(rightCol, 1);
 
-    subsPopupDialog = new QDialog(this, Qt::Popup | Qt::FramelessWindowHint);
-    subsPopupDialog->setLayout(popupLayout);
-    subsPopupDialog->setProperty("Main", "base");
-    subsPopupDialog->setMinimumWidth(600);
+    auto* subsPopupContent = new QWidget();
+    subsPopupContent->setLayout(popupLayout);
+    subsPopupContent->setMinimumWidth(600);
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
-    connect(agentsOnlyActiveCheck, &QCheckBox::checkStateChanged, this, &DialogConnect::onSubsSelectionChanged);
-    connect(tasksOnlyJobsCheck,    &QCheckBox::checkStateChanged, this, &DialogConnect::onSubsSelectionChanged);
-#else
-    connect(agentsOnlyActiveCheck, &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
-    connect(tasksOnlyJobsCheck,    &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
-#endif
+    subsPopover = subsSelectBtn->popover();
+    subsPopover->setPreferredPosition(oclero::qlementine::Popover::Position::Bottom);
+    subsPopover->setPreferredAlignment(oclero::qlementine::Popover::Alignment::End);
+    subsSelectBtn->setPopoverContentWidget(subsPopupContent);
+
+    connect(agentsOnlyActiveCheck, &oclero::qlementine::Switch::toggled, this, &DialogConnect::onSubsSelectionChanged);
+    connect(tasksOnlyJobsCheck,    &oclero::qlementine::Switch::toggled, this, &DialogConnect::onSubsSelectionChanged);
     agentsOnlyActiveCheck->setObjectName("agentsOnlyActiveCheck");
     tasksOnlyJobsCheck->setObjectName("tasksOnlyJobsCheck");
 
@@ -267,7 +267,7 @@ void DialogConnect::createUI()
     auto formWidget = new QWidget(this);
     formWidget->setLayout(formLayout);
 
-    menuContext = new QMenu(this);
+    menuContext = new oclero::qlementine::Menu(this);
     menuContext->addAction("Remove", this, &DialogConnect::itemRemove);
 
     label_Profiles = new QLabel(this);
@@ -368,11 +368,11 @@ AuthProfile* DialogConnect::StartDialog()
             selectedSubs.append(item->text());
     }
 
-    auto agentsOnlyActiveCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("agentsOnlyActiveCheck") : nullptr;
+    auto agentsOnlyActiveCheck = subsPopover ? subsPopover->findChild<oclero::qlementine::Switch*>("agentsOnlyActiveCheck") : nullptr;
     if (agentsOnlyActiveCheck && agentsOnlyActiveCheck->isChecked())
         selectedSubs.append("agents_only_active");
 
-    auto tasksOnlyJobsCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("tasksOnlyJobsCheck") : nullptr;
+    auto tasksOnlyJobsCheck = subsPopover ? subsPopover->findChild<oclero::qlementine::Switch*>("tasksOnlyJobsCheck") : nullptr;
     if (tasksOnlyJobsCheck && tasksOnlyJobsCheck->isChecked())
         selectedSubs.append("tasks_only_jobs");
 
@@ -408,11 +408,11 @@ void DialogConnect::updateSubsDisplay()
             selectedSubs.append(item->text());
     }
 
-    auto agentsOnlyActiveCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("agentsOnlyActiveCheck") : nullptr;
+    auto agentsOnlyActiveCheck = subsPopover ? subsPopover->findChild<oclero::qlementine::Switch*>("agentsOnlyActiveCheck") : nullptr;
     if (agentsOnlyActiveCheck && agentsOnlyActiveCheck->isChecked())
         selectedSubs.append("agents_only_active");
 
-    auto tasksOnlyJobsCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("tasksOnlyJobsCheck") : nullptr;
+    auto tasksOnlyJobsCheck = subsPopover ? subsPopover->findChild<oclero::qlementine::Switch*>("tasksOnlyJobsCheck") : nullptr;
     if (tasksOnlyJobsCheck && tasksOnlyJobsCheck->isChecked())
         selectedSubs.append("tasks_only_jobs");
 
@@ -470,11 +470,11 @@ void DialogConnect::onProfileSelected()
             agentListWidget->blockSignals(false);
             multiuserCheck->setChecked(p.GetConsoleMultiuser());
 
-            auto agentsOnlyActiveCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("agentsOnlyActiveCheck") : nullptr;
+            auto agentsOnlyActiveCheck = subsPopover ? subsPopover->findChild<oclero::qlementine::Switch*>("agentsOnlyActiveCheck") : nullptr;
             if (agentsOnlyActiveCheck)
                 agentsOnlyActiveCheck->setChecked(subs.contains("agents_only_active"));
 
-            auto tasksOnlyJobsCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("tasksOnlyJobsCheck") : nullptr;
+            auto tasksOnlyJobsCheck = subsPopover ? subsPopover->findChild<oclero::qlementine::Switch*>("tasksOnlyJobsCheck") : nullptr;
             if (tasksOnlyJobsCheck)
                 tasksOnlyJobsCheck->setChecked(subs.contains("tasks_only_jobs"));
 
@@ -702,11 +702,7 @@ void DialogConnect::onButton_Save()
 
 void DialogConnect::showSubsPopup()
 {
-    QPoint pos = subsSelectBtn->mapToGlobal(QPoint(0, subsSelectBtn->height()));
-    subsPopupDialog->move(pos);
-    subsPopupDialog->show();
-    subsPopupDialog->raise();
-    subsPopupDialog->activateWindow();
+    subsSelectBtn->setPopoverOpened(true);
 }
 
 void DialogConnect::onSubsSelectionChanged()

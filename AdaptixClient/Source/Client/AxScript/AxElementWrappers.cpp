@@ -12,6 +12,8 @@
 #include <QDateEdit>
 #include <QDialog>
 #include <QMenu>
+#include <oclero/qlementine/widgets/Switch.hpp>
+#include <oclero/qlementine/widgets/SegmentedControl.hpp>
 
 /// MENU
 
@@ -306,6 +308,69 @@ bool AxCheckBoxWrapper::isChecked() const { return check->isChecked(); }
 void AxCheckBoxWrapper::setChecked(const bool checked) const { check->setChecked(checked); }
 
 void AxSelectorFile::setPlaceholder(const QString& text) const { lineEdit->setPlaceholderText(text); }
+
+/// SWITCH
+
+AxSwitchWrapper::AxSwitchWrapper(oclero::qlementine::Switch* sw, QObject* parent) : QObject(parent), sw(sw)
+{
+    connect(sw, &oclero::qlementine::Switch::toggled, this, &AxSwitchWrapper::toggled);
+}
+
+QVariant AxSwitchWrapper::jsonMarshal() const { return isChecked(); }
+
+void AxSwitchWrapper::jsonUnmarshal(const QVariant& value) { setChecked(value.toBool()); }
+
+QWidget* AxSwitchWrapper::widget() const { return sw; }
+
+bool AxSwitchWrapper::isChecked() const { return sw->isChecked(); }
+
+void AxSwitchWrapper::setChecked(const bool checked) const { sw->setChecked(checked); }
+
+void AxSwitchWrapper::setText(const QString& text) const { sw->setText(text); }
+
+QString AxSwitchWrapper::text() const { return sw->text(); }
+
+/// SEGMENTED CONTROL
+
+AxSegmentedControlWrapper::AxSegmentedControlWrapper(oclero::qlementine::SegmentedControl* sc, QObject* parent) : QObject(parent), segControl(sc)
+{
+    connect(sc, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, &AxSegmentedControlWrapper::currentIndexChanged);
+}
+
+QVariant AxSegmentedControlWrapper::jsonMarshal() const { return currentIndex(); }
+
+void AxSegmentedControlWrapper::jsonUnmarshal(const QVariant& value) { setCurrentIndex(value.toInt()); }
+
+QWidget* AxSegmentedControlWrapper::widget() const { return segControl; }
+
+void AxSegmentedControlWrapper::addItem(const QString& text) const { segControl->addItem(text); }
+
+void AxSegmentedControlWrapper::addItems(const QJSValue& array) const
+{
+    if (!array.isArray())
+        return;
+    const int length = array.property("length").toInt();
+    for (int i = 0; i < length; ++i)
+        segControl->addItem(array.property(i).toString());
+}
+
+int AxSegmentedControlWrapper::currentIndex() const { return segControl->currentIndex(); }
+
+void AxSegmentedControlWrapper::setCurrentIndex(const int index) const { segControl->setCurrentIndex(index); }
+
+QString AxSegmentedControlWrapper::currentText() const
+{
+    int idx = segControl->currentIndex();
+    return idx >= 0 ? segControl->getItemText(idx) : QString();
+}
+
+int AxSegmentedControlWrapper::count() const { return segControl->itemCount(); }
+
+void AxSegmentedControlWrapper::removeItem(const int index) const { segControl->removeItem(index); }
+
+QString AxSegmentedControlWrapper::itemText(const int index) const { return segControl->getItemText(index); }
+
+void AxSegmentedControlWrapper::setItemText(const int index, const QString& text) const { segControl->setItemText(index, text); }
 
 /// LABEL
 

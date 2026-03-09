@@ -28,7 +28,7 @@ HttpServer:
     headers:
       Content-Type: "text/html; charset=UTF-8"
       Server: "AdaptixC2"
-      Adaptix-Version: "v1.2"
+      Adaptix-Version: "v1.3"
     page: "404page.html"
   http:
     max_header_bytes: 8192

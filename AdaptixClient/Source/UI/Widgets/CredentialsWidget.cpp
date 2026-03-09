@@ -1,4 +1,5 @@
 #include <UI/Widgets/CredentialsWidget.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogCredential.h>
@@ -407,7 +408,7 @@ void CredentialsWidget::onStorageFilterUpdate(const QString &text) const
 
 void CredentialsWidget::handleCredentialsMenu(const QPoint &pos ) const
 {
-    auto ctxMenu = QMenu();
+    oclero::qlementine::Menu ctxMenu;
     ctxMenu.addAction("Create", this, &CredentialsWidget::onCreateCreds );
 
     QModelIndex index = tableView->indexAt(pos);

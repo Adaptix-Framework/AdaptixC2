@@ -1,4 +1,5 @@
 #include <UI/Widgets/TunnelsWidget.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/Requestor.h>
@@ -215,7 +216,11 @@ void TunnelsWidget::onFilterUpdate() const
 
 void TunnelsWidget::handleTunnelsMenu(const QPoint &pos) const
 {
-    QMenu tunnelsMenu = QMenu();
+    QModelIndex index = tableView->indexAt(pos);
+    if (!index.isValid())
+        return;
+
+    oclero::qlementine::Menu tunnelsMenu;
 
     tunnelsMenu.addAction("Set info", this, &TunnelsWidget::actionSetInfo);
     tunnelsMenu.addAction("Stop",     this, &TunnelsWidget::actionStopTunnel);

@@ -1,5 +1,6 @@
 #include <Agent/Agent.h>
 #include <UI/Widgets/DownloadsWidget.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogDownloader.h>
@@ -294,12 +295,12 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos)
     data.fileId  = download->FileId;
     data.path    = download->Filename;
 
-    auto ctxMenu = QMenu();
+    oclero::qlementine::Menu ctxMenu;
 
     if (download->State == DOWNLOAD_STATE_FINISHED) {
         ctxMenu.addAction("Sync file to client", this, &DownloadsWidget::actionSync);
 
-        auto syncMenu = new QMenu("Sync as ...", &ctxMenu);
+        auto syncMenu = new oclero::qlementine::Menu("Sync as ...", &ctxMenu);
         syncMenu->addAction("Curl command", this, &DownloadsWidget::actionSyncCurl);
         syncMenu->addAction("Wget command", this, &DownloadsWidget::actionSyncWget);
         ctxMenu.addMenu(syncMenu);

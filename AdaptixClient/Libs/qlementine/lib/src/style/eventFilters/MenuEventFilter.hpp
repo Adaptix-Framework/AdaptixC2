@@ -86,9 +86,16 @@ public:
             return true;
 
           if (action->menu() == nullptr) {
-            // Trigger action directly without flash animation for reliability
             action->trigger();
-            _menu->close();
+            for (QWidget* w = _menu; w != nullptr; ) {
+              auto* m = qobject_cast<QMenu*>(w);
+              if (m) {
+                m->close();
+                w = m->parentWidget();
+              } else {
+                break;
+              }
+            }
             return true;
           }
         } else if (_menu->rect().contains(mousePos)) {

@@ -5,6 +5,7 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
 #include <Utils/CustomElements.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 
 class AxContainerWrapper;
 
@@ -34,7 +35,7 @@ Q_OBJECT
     // Profile management block
     QLabel*           label_Profiles     = nullptr;
     CardListWidget*   cardWidget         = nullptr;
-    QMenu*            menuContext        = nullptr;
+    oclero::qlementine::Menu* menuContext = nullptr;
 
     QList<RegListenerConfig> listeners;
     QMap<QString, AxUI> ax_uis;

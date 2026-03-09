@@ -74,6 +74,7 @@
         <file alias="upload">icons/upload_file_64dp.png</file>
         <file alias="arrow_right">icons/arrow_right_alt_64dp.png</file>
         <file alias="storage">icons/storage_64dp.png</file>
+        <file alias="search">icons/search_64dp.png</file>
 
         <file alias="file_open">icons/file_open_64dp.png</file>
         <file alias="save_as">icons/save_as_64dp.png</file>

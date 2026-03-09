@@ -5,6 +5,10 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
 #include <Utils/CustomElements.h>
+#include <oclero/qlementine/widgets/PopoverButton.hpp>
+#include <oclero/qlementine/widgets/Popover.hpp>
+#include <oclero/qlementine/widgets/Menu.hpp>
+#include <oclero/qlementine/widgets/Expander.hpp>
 
 class AxContainerWrapper;
 class BuildWorker;
@@ -16,8 +20,8 @@ Q_OBJECT
     QLabel*         listenerLabel       = nullptr;
     QLineEdit*      listenerInput       = nullptr;
     QLineEdit*      listenerDisplayEdit = nullptr;
-    QPushButton*    listenerSelectBtn   = nullptr;
-    QDialog*        listenerPopupDialog = nullptr;
+    oclero::qlementine::PopoverButton* listenerSelectBtn   = nullptr;
+    oclero::qlementine::Popover*       listenerPopover     = nullptr;
     QListWidget*    listenerListWidget  = nullptr;
     QPushButton*    btnMoveUp           = nullptr;
     QPushButton*    btnMoveDown         = nullptr;
@@ -34,13 +38,14 @@ Q_OBJECT
 
     QWidget*        buildLogPanel       = nullptr;
     QPushButton*    collapseButton      = nullptr;
+    oclero::qlementine::Expander* buildLogExpander = nullptr;
     QTextEdit*      buildLogOutput      = nullptr;
     QThread*        buildThread         = nullptr;
     BuildWorker*    buildWorker         = nullptr;
 
     QLabel*           label_Profiles    = nullptr;
     CardListWidget*   cardWidget        = nullptr;
-    QMenu*            menuContext       = nullptr;
+    oclero::qlementine::Menu* menuContext = nullptr;
     QPushButton*      buttonNewProfile  = nullptr;
     QPushButton*      buttonLoad        = nullptr;
     QPushButton*      buttonSave        = nullptr;

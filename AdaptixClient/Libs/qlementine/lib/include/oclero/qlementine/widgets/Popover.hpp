@@ -217,6 +217,7 @@ private:
   QPointF _dropShadowOffset{ 0., 4. };
   qreal _borderWidth{ 1. };
   qreal _radius{ 8. };
+  qreal _currentOpacity{ 0. };
   QColor _backgroundColor{};
   QColor _borderColor{};
   std::function<QPoint(const QSize&)> _manualPositioningCb;

@@ -2,6 +2,7 @@
 #define DIALOGTUNNEL_H
 
 #include <main.h>
+#include <oclero/qlementine/widgets/Switch.hpp>
 
 class DialogTunnel : public QDialog
 {
@@ -26,7 +27,7 @@ class DialogTunnel : public QDialog
      QLabel*         socks5LocalAddrLabel = nullptr;
      QLineEdit*      socks5LocalAddrInput = nullptr;
      QSpinBox*       socks5LocalPortSpin  = nullptr;
-     QCheckBox*      socks5UseAuth        = nullptr;
+     oclero::qlementine::Switch* socks5UseAuth = nullptr;
      QLabel*         socks5AuthUserLabel  = nullptr;
      QLineEdit*      socks5AuthUserInput  = nullptr;
      QLabel*         socks5AuthPassLabel  = nullptr;

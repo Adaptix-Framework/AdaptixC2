@@ -3,6 +3,10 @@
 
 #include <main.h>
 #include <Utils/CustomElements.h>
+#include <oclero/qlementine/widgets/PopoverButton.hpp>
+#include <oclero/qlementine/widgets/Popover.hpp>
+#include <oclero/qlementine/widgets/Switch.hpp>
+#include <oclero/qlementine/widgets/Menu.hpp>
 
 class AuthProfile;
 
@@ -25,11 +29,11 @@ Q_OBJECT
     QLineEdit*    lineEdit_User       = nullptr;
     QLineEdit*    lineEdit_Password   = nullptr;
     QLineEdit*    lineEdit_Project    = nullptr;
-    QPushButton*  subsSelectBtn       = nullptr;
-    QDialog*      subsPopupDialog     = nullptr;
+    oclero::qlementine::PopoverButton* subsSelectBtn   = nullptr;
+    oclero::qlementine::Popover*       subsPopover     = nullptr;
     QListWidget*  dataListWidget      = nullptr;
     QListWidget*  agentListWidget     = nullptr;
-    QCheckBox*    multiuserCheck      = nullptr;
+    oclero::qlementine::Switch* multiuserCheck = nullptr;
     QLineEdit*    lineEdit_ProjectDir = nullptr;
     QLineEdit*    lineEdit_Url        = nullptr;
     QPushButton*  buttonConnect       = nullptr;
@@ -37,7 +41,7 @@ Q_OBJECT
     QPushButton*  buttonLoad          = nullptr;
     QPushButton*  buttonSave          = nullptr;
     QLabel*       label_Profiles      = nullptr;
-    QMenu*        menuContext         = nullptr;
+    oclero::qlementine::Menu* menuContext = nullptr;
     CardListWidget* cardWidget        = nullptr;
 
     bool parseUrl(QString &host, QString &port, QString &endpoint) const;

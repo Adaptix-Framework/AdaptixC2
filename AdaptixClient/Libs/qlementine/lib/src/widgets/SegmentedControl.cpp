@@ -9,7 +9,7 @@
 
 namespace oclero::qlementine {
 const QColor& SegmentedControl::getBgColor(const Theme& theme) const {
-  return isEnabled() ? theme.backgroundColorMain4 : theme.backgroundColorMain2;
+  return isEnabled() ? theme.borderColor : theme.borderColorDisabled;
 }
 
 const QColor& SegmentedControl::getItemBgColor(MouseState mouse, const Theme& theme) const {
@@ -48,6 +48,11 @@ const QColor& SegmentedControl::getItemBadgeFgColor(MouseState mouse, bool selec
     return selected ? theme.primaryColorForegroundDisabled : theme.secondaryColorForegroundDisabled;
   else
     return selected ? theme.primaryColorForeground : theme.secondaryColorForeground;
+}
+
+double SegmentedControl::getItemRadius() const {
+  const auto* qlementineStyle = qobject_cast<const QlementineStyle*>(style());
+  return qlementineStyle ? qlementineStyle->theme().controlHeightMedium / 2.0 : 8.0;
 }
 
 void SegmentedControl::initStyleOptionFocus(QStyleOptionFocusRoundedRect& opt) const {

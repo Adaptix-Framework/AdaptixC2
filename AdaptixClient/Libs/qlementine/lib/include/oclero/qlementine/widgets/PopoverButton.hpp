@@ -22,6 +22,9 @@ public:
   void setPopoverContentWidget(QWidget* widget);
   Q_SIGNAL void popoverContentWidgetChanged();
 
+  bool showArrowIndicator() const;
+  void setShowArrowIndicator(bool show);
+
   Popover* popover() const;
 
 public Q_SLOTS:
@@ -35,5 +38,6 @@ protected:
 
 private:
   Popover* _popover{ nullptr };
+  bool _showArrowIndicator{ true };
 };
 } // namespace oclero::qlementine

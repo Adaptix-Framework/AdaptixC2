@@ -3,6 +3,7 @@
 
 #include <main.h>
 #include <functional>
+#include <oclero/qlementine/widgets/Menu.hpp>
 
 class AuthProfile;
 class AdaptixWidget;
@@ -14,9 +15,9 @@ class MainUI : public QMainWindow
 
     QVector<AdaptixWidget*> AdaptixProjects;
 
-    QMenu* menuProject   = nullptr;
-    QMenu* menuExtensions  = nullptr;
-    QMenu* menuSettings  = nullptr;
+    oclero::qlementine::Menu* menuProject    = nullptr;
+    oclero::qlementine::Menu* menuExtensions = nullptr;
+    oclero::qlementine::Menu* menuSettings   = nullptr;
     QAction* extDocksSeparator = nullptr;
 
     QMap<QString, QAction*> extDockActions;

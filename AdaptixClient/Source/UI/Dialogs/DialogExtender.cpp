@@ -1,4 +1,5 @@
 #include <UI/Dialogs/DialogExtender.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
@@ -110,9 +111,18 @@ void DialogExtender::createUI()
     serverLayout->addWidget(serverProjectCombo);
     serverLayout->addWidget(serverSplitter, 1);
 
-    tabWidget = new QTabWidget(this);
-    tabWidget->addTab(splitter, "Local Scripts");
-    tabWidget->addTab(serverTab, "Server Scripts");
+    segmentedControl = new oclero::qlementine::SegmentedControl(this);
+    segmentedControl->addItem("Local Scripts");
+    segmentedControl->addItem("Server Scripts");
+    segmentedControl->setCurrentIndex(0);
+
+    stackWidget = new QStackedWidget(this);
+    stackWidget->addWidget(splitter);
+    stackWidget->addWidget(serverTab);
+
+    connect(segmentedControl, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this]() {
+        stackWidget->setCurrentIndex(segmentedControl->currentIndex());
+    });
 
     spacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     spacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
@@ -122,10 +132,11 @@ void DialogExtender::createUI()
 
     layout = new QGridLayout(this);
     layout->setContentsMargins(4, 4, 4, 4);
-    layout->addWidget(tabWidget,   0, 0, 1, 3);
-    layout->addItem(  spacer1,     1, 0, 1, 1);
-    layout->addWidget(buttonClose, 1, 1, 1, 1);
-    layout->addItem(  spacer2,     1, 2, 1, 1);
+    layout->addWidget(segmentedControl, 0, 0, 1, 3, Qt::AlignCenter);
+    layout->addWidget(stackWidget,      1, 0, 1, 3);
+    layout->addItem(  spacer1,          2, 0, 1, 1);
+    layout->addWidget(buttonClose,      2, 1, 1, 1);
+    layout->addItem(  spacer2,          2, 2, 1, 1);
 
     this->setLayout(layout);
 }
@@ -217,15 +228,36 @@ void DialogExtender::RemoveExtenderItem(const ExtensionFile &extenderItem) const
 
 void DialogExtender::handleMenu(const QPoint &pos ) const
 {
-    QMenu menu = QMenu();
+    oclero::qlementine::Menu menu;
 
     menu.addAction("Load new", this, &DialogExtender::onActionLoad );
-    menu.addAction("Reload",   this, &DialogExtender::onActionReload );
+
+    bool hasSelection = tableView->selectionModel()->hasSelection();
+    bool allEnabled = true;
+    bool allDisabled = true;
+
+    if (hasSelection) {
+        for (int rowIndex = 0; rowIndex < tableModel->rowCount(); rowIndex++) {
+            if (tableView->selectionModel()->isSelected(tableModel->index(rowIndex, 0))) {
+                QString status = tableModel->item(rowIndex, 2)->text();
+                if (status == "Enable")
+                    allDisabled = false;
+                else
+                    allEnabled = false;
+            }
+        }
+    }
+
+    auto* reloadAction = menu.addAction("Reload", this, &DialogExtender::onActionReload );
+    reloadAction->setEnabled(hasSelection);
     menu.addSeparator();
-    menu.addAction("Enable",  this, &DialogExtender::onActionEnable );
-    menu.addAction("Disable", this, &DialogExtender::onActionDisable );
+    auto* enableAction = menu.addAction("Enable",  this, &DialogExtender::onActionEnable );
+    enableAction->setEnabled(hasSelection && !allEnabled);
+    auto* disableAction = menu.addAction("Disable", this, &DialogExtender::onActionDisable );
+    disableAction->setEnabled(hasSelection && !allDisabled);
     menu.addSeparator();
-    menu.addAction("Remove", this, &DialogExtender::onActionRemove );
+    auto* removeAction = menu.addAction("Remove", this, &DialogExtender::onActionRemove );
+    removeAction->setEnabled(hasSelection);
 
     QPoint globalPos = tableView->mapToGlobal(pos);
     menu.exec(globalPos);
@@ -387,9 +419,28 @@ void DialogExtender::RefreshServerScripts()
 
 void DialogExtender::handleServerMenu(const QPoint &pos)
 {
-    QMenu menu;
-    menu.addAction("Enable",  this, &DialogExtender::onServerActionEnable);
-    menu.addAction("Disable", this, &DialogExtender::onServerActionDisable);
+    oclero::qlementine::Menu menu;
+
+    bool hasSelection = serverTableWidget->selectionModel()->hasSelection();
+    bool allEnabled = true;
+    bool allDisabled = true;
+
+    if (hasSelection) {
+        for (int rowIndex = 0; rowIndex < serverTableModel->rowCount(); rowIndex++) {
+            if (serverTableWidget->selectionModel()->isSelected(serverTableModel->index(rowIndex, 0))) {
+                QString status = serverTableModel->item(rowIndex, 1)->text();
+                if (status == "Enable")
+                    allDisabled = false;
+                else
+                    allEnabled = false;
+            }
+        }
+    }
+
+    auto* enableAction = menu.addAction("Enable",  this, &DialogExtender::onServerActionEnable);
+    enableAction->setEnabled(hasSelection && !allEnabled);
+    auto* disableAction = menu.addAction("Disable", this, &DialogExtender::onServerActionDisable);
+    disableAction->setEnabled(hasSelection && !allDisabled);
 
     QPoint globalPos = serverTableWidget->mapToGlobal(pos);
     menu.exec(globalPos);

@@ -1,4 +1,5 @@
 #include <Agent/Agent.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <Utils/CustomElements.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
@@ -47,6 +48,10 @@ void BrowserProcessWidget::createUI()
     statusLabel = new QLabel(this);
     statusLabel->setText("Status: ");
 
+    loadingSpinner = new oclero::qlementine::LoadingSpinner(this);
+    loadingSpinner->setFixedSize(16, 16);
+    loadingSpinner->setVisible(false);
+
     tableModel = new QStandardItemModel(this);
 
     tableView = new QTableView(this );
@@ -90,11 +95,12 @@ void BrowserProcessWidget::createUI()
     listGridLayout->setVerticalSpacing(4);
     listGridLayout->setHorizontalSpacing(8);
 
-    listGridLayout->addWidget( buttonReload, 0, 0, 1, 1 );
-    listGridLayout->addWidget( inputFilter,  0, 1, 1, 5 );
-    listGridLayout->addWidget( line_1,       0, 6, 1, 1 );
-    listGridLayout->addWidget( statusLabel,  0, 7, 1, 1 );
-    listGridLayout->addWidget( tableView,  1, 0, 1, 8 );
+    listGridLayout->addWidget( buttonReload,   0, 0, 1, 1 );
+    listGridLayout->addWidget( inputFilter,     0, 1, 1, 5 );
+    listGridLayout->addWidget( line_1,          0, 6, 1, 1 );
+    listGridLayout->addWidget( loadingSpinner,  0, 7, 1, 1 );
+    listGridLayout->addWidget( statusLabel,     0, 8, 1, 1 );
+    listGridLayout->addWidget( tableView,  1, 0, 1, 9 );
 
     listBrowserWidget = new QWidget(this);
     listBrowserWidget->setLayout(listGridLayout);
@@ -119,6 +125,9 @@ void BrowserProcessWidget::createUI()
 
 void BrowserProcessWidget::SetStatus(qint64 time, int msgType, const QString &message) const
 {
+    loadingSpinner->setSpinning(false);
+    loadingSpinner->setVisible(false);
+
     QString sTime  = UnixTimestampGlobalToStringLocal(time);
     QString status;
     if( msgType == CONSOLE_OUT_LOCAL_ERROR || msgType == CONSOLE_OUT_ERROR ) {
@@ -133,6 +142,9 @@ void BrowserProcessWidget::SetStatus(qint64 time, int msgType, const QString &me
 
 void BrowserProcessWidget::SetProcess(int msgType, const QString &data) const
 {
+    loadingSpinner->setSpinning(false);
+    loadingSpinner->setVisible(false);
+
     if( msgType == CONSOLE_OUT_LOCAL_ERROR || msgType == CONSOLE_OUT_ERROR )
         return;
 
@@ -437,6 +449,8 @@ void BrowserProcessWidget::filterTableWidget(const QString &filterText) const
 void BrowserProcessWidget::onReload() const
 {
     statusLabel->setText("");
+    loadingSpinner->setVisible(true);
+    loadingSpinner->setSpinning(true);
     Q_EMIT agent->adaptixWidget->eventProcessBrowserList(agent->data.Id);
 }
 
@@ -476,7 +490,7 @@ void BrowserProcessWidget::handleTableMenu(const QPoint &pos)
         }
     }
 
-    auto ctxMenu = QMenu();
+    oclero::qlementine::Menu ctxMenu;
 
     int count = agent->adaptixWidget->ScriptManager->AddMenuProcessBrowser(&ctxMenu, items);
     if (count) {

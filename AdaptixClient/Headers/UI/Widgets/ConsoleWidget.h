@@ -6,6 +6,7 @@
 #include <Utils/KeyPressHandler.h>
 #include <Utils/CustomElements.h>
 #include <Agent/Commander.h>
+#include <oclero/qlementine/widgets/LineEdit.hpp>
 
 class Agent;
 class AdaptixWidget;
@@ -36,11 +37,11 @@ class ConsoleWidget : public DockTab
     ClickableLabel* prevButton     = nullptr;
     ClickableLabel* nextButton     = nullptr;
     QLabel*         searchLabel    = nullptr;
-    QLineEdit*      searchLineEdit = nullptr;
     ClickableLabel* hideButton     = nullptr;
     QSpacerItem*    spacer         = nullptr;
     QShortcut*      shortcutSearch = nullptr;
     KPH_SearchInput* searchInput   = nullptr;
+    oclero::qlementine::LineEdit* searchLineEdit = nullptr;
 
     bool userSelectedCompletion = false;
     int  currentIndex = -1;

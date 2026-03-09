@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_DIALOGEXTENDER_H
 
 #include <main.h>
+#include <oclero/qlementine/widgets/SegmentedControl.hpp>
 
 class Extender;
 class AdaptixWidget;
@@ -13,7 +14,8 @@ Q_OBJECT
 
     Extender*     extender  = nullptr;
     QGridLayout*  layout    = nullptr;
-    QTabWidget*   tabWidget = nullptr;
+    oclero::qlementine::SegmentedControl* segmentedControl = nullptr;
+    QStackedWidget* stackWidget = nullptr;
 
     QTableView*         tableView   = nullptr;
     QStandardItemModel* tableModel  = nullptr;

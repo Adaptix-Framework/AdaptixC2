@@ -3,6 +3,7 @@
 #include <Workers/TerminalWorker.h>
 #include <UI/Dialogs/DialogSaveTask.h>
 #include <UI/Widgets/TerminalContainerWidget.h>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/Settings.h>
@@ -105,10 +106,11 @@ void TerminalTab::createUI()
     line_3->setFrameShape(QFrame::VLine);
     line_3->setMinimumHeight(20);
 
-    smartOutputCheckBox = new QCheckBox("Smart Output", this);
+    smartOutputCheckBox = new oclero::qlementine::Switch(this);
+    smartOutputCheckBox->setText("Smart Output");
     smartOutputCheckBox->setToolTip("Filter duplicated output in Shell mode");
     smartOutputCheckBox->setVisible(terminalMode == TerminalModeShell);
-    connect(smartOutputCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+    connect(smartOutputCheckBox, &oclero::qlementine::Switch::toggled, this, [this](bool checked) {
         smartOutputEnabled = checked;
         filterPhase = 0;
         outputBuffer.clear();
@@ -127,6 +129,10 @@ void TerminalTab::createUI()
     statusLabel = new QLabel(this);
     statusLabel->setText("Stopped");
 
+    loadingSpinner = new oclero::qlementine::LoadingSpinner(this);
+    loadingSpinner->setFixedSize(16, 16);
+    loadingSpinner->setVisible(false);
+
     spacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     topHBoxLayout = new QHBoxLayout(this);
@@ -144,6 +150,7 @@ void TerminalTab::createUI()
     topHBoxLayout->addWidget(smartOutputCheckBox);
     topHBoxLayout->addWidget(line_4);
     topHBoxLayout->addWidget(statusDescLabel);
+    topHBoxLayout->addWidget(loadingSpinner);
     topHBoxLayout->addWidget(statusLabel);
     topHBoxLayout->addItem(spacer);
 
@@ -166,6 +173,10 @@ void TerminalTab::createUI()
 void TerminalTab::setStatus(const QString &text)
 {
     this->statusLabel->setText(text);
+
+    bool isWaiting = (text == "Waiting..." || text == "Connecting...");
+    loadingSpinner->setVisible(isWaiting);
+    loadingSpinner->setSpinning(isWaiting);
 
     if (text == "Stopped") {
         programInput->setEnabled(programComboBox->currentText() == "Custom program");
@@ -212,7 +223,7 @@ void TerminalTab::SetSettings()
 
 void TerminalTab::handleTerminalMenu(const QPoint &pos)
 {
-    QMenu menu(this->termWidget);
+    oclero::qlementine::Menu menu(this->termWidget);
     menu.addAction("Copy  (Ctrl+Shift+C)", this->termWidget, &QTermWidget::copyClipboard);
     menu.addAction("Paste (Ctrl+Shift+V)", this->termWidget, &QTermWidget::pasteClipboard);
     menu.addAction("Clear (Ctrl+Shift+L)", this->termWidget, &QTermWidget::clear);
