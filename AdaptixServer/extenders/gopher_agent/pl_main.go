@@ -1644,10 +1644,9 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 			case COMMAND_REV2SELF:
 				task.Message = "Token reverted successfully"
-				emptyImpersonate := ""
 				_ = Ts.TsAgentUpdateDataPartial(agentData.Id, struct {
 					Impersonated *string `json:"impersonated"`
-				}{Impersonated: &emptyImpersonate})
+				}{Impersonated: new("")})
 
 			case COMMAND_RM:
 				task.Message = "Object deleted successfully"

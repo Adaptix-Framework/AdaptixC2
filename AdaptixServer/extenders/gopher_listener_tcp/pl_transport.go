@@ -281,11 +281,10 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 				goto ERR
 			}
 		} else {
-			emptyMark := ""
 			_ = Ts.TsAgentUpdateDataPartial(agentId, struct {
 				Mark     *string `json:"mark"`
 				Listener *string `json:"listener"`
-			}{Mark: &emptyMark, Listener: &t.Name})
+			}{Mark: new(""), Listener: &t.Name})
 		}
 
 		t.AgentConnects.Put(agentId, connection)
@@ -317,10 +316,9 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 			}
 		}
 
-		disconnectMark := "Disconnect"
 		_ = ts.TsAgentUpdateDataPartial(agentId, struct {
 			Mark *string `json:"mark"`
-		}{Mark: &disconnectMark})
+		}{Mark: new("Disconnect")})
 		t.AgentConnects.Delete(agentId)
 		_ = conn.Close()
 

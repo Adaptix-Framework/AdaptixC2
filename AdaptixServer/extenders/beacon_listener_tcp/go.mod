@@ -1,5 +1,5 @@
 module adaptix_listener_beacon_tcp
 
-go 1.25.4
+go 1.26.1
 
 require github.com/Adaptix-Framework/axc2 v1.2.0

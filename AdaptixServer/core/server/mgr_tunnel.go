@@ -88,8 +88,7 @@ func NewTunnelManager(ts *Teamserver) *TunnelManager {
 		ts: ts,
 		bufferPool: sync.Pool{
 			New: func() interface{} {
-				buf := make([]byte, TunnelBufferSize)
-				return &buf
+				return new(make([]byte, TunnelBufferSize))
 			},
 		},
 	}

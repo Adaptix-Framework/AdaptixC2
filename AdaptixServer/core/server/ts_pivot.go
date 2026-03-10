@@ -162,10 +162,9 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 		childAgent.PivotParent = nil
 	}
 
-	unlinkMark := "Unlink"
 	_ = ts.TsAgentUpdateDataPartial(pivotData.ChildAgentId, struct {
 		Mark *string `json:"mark"`
-	}{Mark: &unlinkMark})
+	}{Mark: new("Unlink")})
 
 	for i := uint(0); i < ts.pivots.Len(); i++ {
 		valuePivot, ok := ts.pivots.Get(i)
