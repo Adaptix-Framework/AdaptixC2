@@ -155,8 +155,17 @@ type TunnelChannel struct {
 	prTun *io.PipeReader
 
 	ingressChan chan []byte
+	ingressOnce sync.Once
 	paused      atomic.Bool
 	flowPaused  atomic.Bool
+}
+
+func (tc *TunnelChannel) CloseIngress() {
+	tc.ingressOnce.Do(func() {
+		if tc.ingressChan != nil {
+			close(tc.ingressChan)
+		}
+	})
 }
 
 type Tunnel struct {
