@@ -138,7 +138,6 @@ func (ext *ExtenderAgent) TunnelCallbacks() adaptix.TunnelCallbacks {
 		WriteTCP:   TunnelMessageWriteTCP,
 		WriteUDP:   TunnelMessageWriteUDP,
 		Close:      TunnelMessageClose,
-		Reverse:    TunnelMessageReverse,
 		Pause:      TunnelMessagePause,
 		Resume:     TunnelMessageResume,
 	}
@@ -184,13 +183,6 @@ func TunnelMessageClose(channelId int) adaptix.TaskData {
 	packerData, _ := msgpack.Marshal(ParamsTunnelStop{ChannelId: channelId})
 	cmd := Command{Code: COMMAND_TUNNEL_STOP, Data: packerData}
 	packData, _ = msgpack.Marshal(cmd)
-	/// END CODE HERE
-	return makeProxyTask(packData)
-}
-
-func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
-	var packData []byte
-	/// START CODE HERE
 	/// END CODE HERE
 	return makeProxyTask(packData)
 }
@@ -777,6 +769,62 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 		}
 		packerData, _ := msgpack.Marshal(ParamsLs{Path: dir})
 		cmd = Command{Code: COMMAND_LS, Data: packerData}
+
+	case "lportfwd":
+		taskData.Type = adaptix.TASK_TYPE_TUNNEL
+
+		lportNumber, _ := getFloatArg(args, "lport")
+		lport := int(lportNumber)
+		if lport < 1 || lport > 65535 {
+			err = errors.New("port must be from 1 to 65535")
+			goto RET
+		}
+
+		if subcommand == "start" {
+			var lhost string
+			var fhost string
+			var tunnelId string
+			lhost, err = getStringArg(args, "lhost")
+			if err != nil {
+				goto RET
+			}
+			fhost, err = getStringArg(args, "fwdhost")
+			if err != nil {
+				goto RET
+			}
+			fportNumber, _ := getFloatArg(args, "fwdport")
+			fport := int(fportNumber)
+			if fport < 1 || fport > 65535 {
+				err = errors.New("port must be from 1 to 65535")
+				goto RET
+			}
+
+			tunnelId, err = Ts.TsTunnelCreateLportfwd(agentData.Id, "", lhost, lport, fhost, fport)
+			if err != nil {
+				goto RET
+			}
+			taskData.TaskId, err = Ts.TsTunnelStart(tunnelId)
+			if err != nil {
+				goto RET
+			}
+
+			taskData.Message = fmt.Sprintf("Started local port forwarding on %s:%d to %s:%d", lhost, lport, fhost, fport)
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
+			taskData.ClearText = "\n"
+
+		} else if subcommand == "stop" {
+			taskData.Completed = true
+
+			Ts.TsTunnelStopLportfwd(agentData.Id, lport)
+
+			taskData.Message = fmt.Sprintf("Local port forwarding on %d stopped", lport)
+			taskData.MessageType = adaptix.MESSAGE_SUCCESS
+			taskData.ClearText = "\n"
+
+		} else {
+			err = errors.New("subcommand must be 'start' or 'stop'")
+			goto RET
+		}
 
 	case "mv":
 		src, err := getStringArg(args, "src")
@@ -1644,9 +1692,10 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 			case COMMAND_REV2SELF:
 				task.Message = "Token reverted successfully"
+				emptyImpersonate := ""
 				_ = Ts.TsAgentUpdateDataPartial(agentData.Id, struct {
 					Impersonated *string `json:"impersonated"`
-				}{Impersonated: new("")})
+				}{Impersonated: &emptyImpersonate})
 
 			case COMMAND_RM:
 				task.Message = "Object deleted successfully"

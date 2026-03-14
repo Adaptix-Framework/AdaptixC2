@@ -10,7 +10,7 @@ menu.add_session_browser(file_browser_action, ["gopher"])
 menu.add_session_browser(process_browser_action, ["gopher"])
 menu.add_session_browser(terminal_browser_action, ["gopher"])
 
-let tunnel_access_action = menu.create_action("Create Tunnel", function(agents_id) { ax.open_access_tunnel(agents_id[0], true, true, false, false) });
+let tunnel_access_action = menu.create_action("Create Tunnel", function(agents_id) { ax.open_access_tunnel(agents_id[0], true, true, true, false) });
 menu.add_session_access(tunnel_access_action, ["gopher"]);
 
 
@@ -123,6 +123,16 @@ function RegisterCommands(listenerType)
     let cmd_ls_unix = ax.create_command("ls", "List contents of a directory or details of a file", "ls /home/", "Task: list files");
     cmd_ls_unix.addArgString("path", "", ".");
 
+    let _cmd_lportfwd_start = ax.create_command("start", "Start local port forwarding from server via agent", "lportfwd start 8080 192.168.1.1 8080");
+    _cmd_lportfwd_start.addArgFlagString("-h", "lhost", "Listening interface address on server", "0.0.0.0");
+    _cmd_lportfwd_start.addArgInt("lport", true, "Listen port on server");
+    _cmd_lportfwd_start.addArgString("fwdhost", true, "Remote forwarding address");
+    _cmd_lportfwd_start.addArgInt("fwdport", true, "Remote forwarding port");
+    let _cmd_lportfwd_stop = ax.create_command("stop", "Stop local port forwarding", "lportfwd stop 8080");
+    _cmd_lportfwd_stop.addArgInt("lport", true);
+    let cmd_lportfwd = ax.create_command("lportfwd", "Managing local port forwarding");
+    cmd_lportfwd.addSubCommands([_cmd_lportfwd_start, _cmd_lportfwd_stop]);
+
     let cmd_mv = ax.create_command("mv", "Move file or directory", "mv src.txt dst.txt", "Task: move file or directory");
     cmd_mv.addArgString("src", true);
     cmd_mv.addArgString("dst", true);
@@ -182,8 +192,8 @@ function RegisterCommands(listenerType)
     cmd_zip_unix.addArgString("path", true);
     cmd_zip_unix.addArgString("zip_path", true);
 
-    let commands_win  = ax.create_commands_group("gopher", [cmd_cat_win,  cmd_cp, cmd_cd_win,  cmd_download_win,  cmd_execute, cmd_exit, cmd_job, cmd_kill, cmd_ls_win,  cmd_mv, cmd_mkdir_win,  cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm_win,  cmd_run_win,  cmd_screenshot, cmd_socks, cmd_shell_win,  cmd_upload_win,  cmd_zip_win] );
-    let commands_unix = ax.create_commands_group("gopher", [cmd_cat_unix, cmd_cp, cmd_cd_unix, cmd_download_unix,              cmd_exit, cmd_job, cmd_kill, cmd_ls_unix, cmd_mv, cmd_mkdir_unix, cmd_ps, cmd_pwd,               cmd_rm_unix, cmd_run_unix, cmd_screenshot, cmd_socks, cmd_shell_unix, cmd_upload_unix, cmd_zip_unix] );
+    let commands_win  = ax.create_commands_group("gopher", [cmd_cat_win,  cmd_cp, cmd_cd_win,  cmd_download_win,  cmd_execute, cmd_exit, cmd_job, cmd_kill, cmd_ls_win,  cmd_lportfwd, cmd_mv, cmd_mkdir_win,  cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm_win,  cmd_run_win,  cmd_screenshot, cmd_socks, cmd_shell_win,  cmd_upload_win,  cmd_zip_win] );
+    let commands_unix = ax.create_commands_group("gopher", [cmd_cat_unix, cmd_cp, cmd_cd_unix, cmd_download_unix,              cmd_exit, cmd_job, cmd_kill, cmd_ls_unix, cmd_lportfwd, cmd_mv, cmd_mkdir_unix, cmd_ps, cmd_pwd,               cmd_rm_unix, cmd_run_unix, cmd_screenshot, cmd_socks, cmd_shell_unix, cmd_upload_unix, cmd_zip_unix] );
 
     return {
         commands_windows: commands_win,
