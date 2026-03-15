@@ -31,33 +31,20 @@ DialogSettings::DialogSettings(Settings* s)
     connect(consoleShowBackgroundCheckbox, &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);} );
     connect(sessionsHealthCheck,           &oclero::qlementine::Switch::toggled, this, &DialogSettings::onHealthChange );
 
-    for ( int i = 0; i < sessionsCheckCount; i++) {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    for ( int i = 0; i < sessionsCheckCount; i++)
         connect(sessionsCheck[i],  &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-#else
-        connect(sessionsCheck[i],  &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-#endif
-    }
 
     connect(graphCombo1, &QComboBox::currentTextChanged, buttonApply, [this](const QString &text){buttonApply->setEnabled(true);} );
 
     connect(tabblinkEnabledCheckbox, &oclero::qlementine::Switch::toggled, this, &DialogSettings::onBlinkChange );
 
-    for (auto* check : m_tabblinkChecks) {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    for (auto* check : m_tabblinkChecks)
         connect(check, &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-#else
-        connect(check, &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-#endif
-    }
 
-    for ( int i = 0; i < 11; i++) {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+
+    for ( int i = 0; i < 11; i++)
         connect(tasksCheck[i],  &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-#else
-        connect(tasksCheck[i],  &QCheckBox::stateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
-#endif
-    }
+
 
     connect(listSettings, &QListWidget::currentRowChanged, this, &DialogSettings::onStackChange);
     connect(buttonApply,  &QPushButton::clicked,           this, &DialogSettings::onApply);

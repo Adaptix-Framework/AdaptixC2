@@ -34,15 +34,11 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions
             tableView->setFocus();
     });
 
-    connect(inputFilter,    &QLineEdit::textChanged,        this, &SessionsTableWidget::onFilterChanged);
-    connect(inputFilter,    &QLineEdit::returnPressed,      this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
-    connect(comboAgentType, &QComboBox::currentTextChanged, this, &SessionsTableWidget::onFilterChanged);
-#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-    connect(checkOnlyActive, &QCheckBox::checkStateChanged, this, &SessionsTableWidget::onFilterChanged);
-#else
-    connect(checkOnlyActive, &QCheckBox::stateChanged, this, &SessionsTableWidget::onFilterChanged);
-#endif
-    connect(hideButton, &ClickableLabel::clicked, this, &SessionsTableWidget::toggleSearchPanel);
+    connect(inputFilter,     &QLineEdit::textChanged,        this, &SessionsTableWidget::onFilterChanged);
+    connect(inputFilter,     &QLineEdit::returnPressed,      this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
+    connect(comboAgentType,  &QComboBox::currentTextChanged, this, &SessionsTableWidget::onFilterChanged);
+    connect(checkOnlyActive, &QCheckBox::checkStateChanged,  this, &SessionsTableWidget::onFilterChanged);
+    connect(hideButton,      &ClickableLabel::clicked,       this, &SessionsTableWidget::toggleSearchPanel);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
     shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);

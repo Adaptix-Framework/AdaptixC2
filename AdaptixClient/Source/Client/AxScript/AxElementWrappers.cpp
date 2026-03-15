@@ -290,11 +290,7 @@ void AxTextMultiWrapper::setReadOnly(const bool &readonly) const { textedit->set
 
 AxCheckBoxWrapper::AxCheckBoxWrapper(QCheckBox* box, QObject* parent) : QObject(parent), check(box)
 {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
     connect(check, &QCheckBox::checkStateChanged, this, &AxCheckBoxWrapper::stateChanged);
-#else
-    connect(check, &QCheckBox::stateChanged, this, &AxCheckBoxWrapper::stateChanged);
-#endif
 }
 
 QVariant AxCheckBoxWrapper::jsonMarshal() const { return isChecked(); }
