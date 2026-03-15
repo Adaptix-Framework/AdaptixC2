@@ -1,0 +1,216 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("auditor") // admin, auditor, viewer
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizations   OrganizationUser[]
+  complianceNotes ComplianceNote[]
+  auditLogs       AuditLog[]
+}
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  industry    String?
+  size        String?  // small, medium, large
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users              OrganizationUser[]
+  clauseStatuses     ClauseStatus[]
+  controlStatuses    ControlStatus[]
+  policies           Policy[]
+  riskAssessments    RiskAssessment[]
+  soaEntries         SoAEntry[]
+  auditLogs          AuditLog[]
+  evidences          Evidence[]
+}
+
+model OrganizationUser {
+  id             String       @id @default(uuid())
+  userId         String
+  organizationId String
+  role           String       @default("member") // owner, admin, member
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
+// ISO 27001:2022 Clauses (4-10)
+model Clause {
+  id          String  @id @default(uuid())
+  number      String  @unique // e.g. "4", "4.1", "4.1.1"
+  title       String
+  description String  @db.Text
+  guidance    String? @db.Text
+  parentId    String?
+  level       Int     @default(0) // 0=main clause, 1=sub, 2=sub-sub
+
+  parent   Clause?  @relation("ClauseHierarchy", fields: [parentId], references: [id])
+  children Clause[] @relation("ClauseHierarchy")
+
+  statuses ClauseStatus[]
+}
+
+model ClauseStatus {
+  id             String   @id @default(uuid())
+  clauseId       String
+  organizationId String
+  status         String   @default("not_started") // not_started, in_progress, implemented, verified
+  notes          String?  @db.Text
+  completionPct  Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  clause       Clause       @relation(fields: [clauseId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([clauseId, organizationId])
+}
+
+// Annex A Controls (A.5 - A.8)
+model Control {
+  id          String  @id @default(uuid())
+  number      String  @unique // e.g. "A.5.1"
+  title       String
+  description String  @db.Text
+  guidance    String? @db.Text
+  category    String  // Organizational, People, Physical, Technological
+  purpose     String? @db.Text
+  attributes  Json?   // control type, properties, concepts, capabilities
+
+  statuses   ControlStatus[]
+  soaEntries SoAEntry[]
+}
+
+model ControlStatus {
+  id             String   @id @default(uuid())
+  controlId      String
+  organizationId String
+  status         String   @default("not_started") // not_started, in_progress, implemented, verified, not_applicable
+  implementation String?  @db.Text
+  evidence       String?  @db.Text
+  notes          String?  @db.Text
+  completionPct  Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  control      Control      @relation(fields: [controlId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([controlId, organizationId])
+}
+
+// Statement of Applicability
+model SoAEntry {
+  id             String   @id @default(uuid())
+  controlId      String
+  organizationId String
+  applicable     Boolean  @default(true)
+  justification  String?  @db.Text
+  implemented    Boolean  @default(false)
+  implementNote  String?  @db.Text
+  updatedAt      DateTime @updatedAt
+
+  control      Control      @relation(fields: [controlId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([controlId, organizationId])
+}
+
+// Policies, Procedures, Guidelines
+model Policy {
+  id             String   @id @default(uuid())
+  organizationId String
+  title          String
+  type           String   // policy, procedure, guideline, standard
+  category       String?  // maps to control category
+  content        String   @db.Text
+  version        String   @default("1.0")
+  status         String   @default("draft") // draft, review, approved, retired
+  approvedBy     String?
+  approvedAt     DateTime?
+  relatedClauses String?  // comma-separated clause numbers
+  relatedControls String? // comma-separated control numbers
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+// Risk Assessment
+model RiskAssessment {
+  id             String   @id @default(uuid())
+  organizationId String
+  assetName      String
+  threatSource   String
+  vulnerability  String
+  likelihood     Int      // 1-5
+  impact         Int      // 1-5
+  riskLevel      String   // low, medium, high, critical (calculated)
+  treatment      String   // accept, mitigate, transfer, avoid
+  treatmentPlan  String?  @db.Text
+  residualRisk   Int?     // 1-25
+  owner          String?
+  status         String   @default("identified") // identified, assessed, treated, monitored
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+// Compliance Notes / Comments
+model ComplianceNote {
+  id        String   @id @default(uuid())
+  userId    String
+  entityType String  // clause, control, policy, risk
+  entityId  String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+// Evidence artifacts
+model Evidence {
+  id             String   @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?  @db.Text
+  fileType       String?
+  filePath       String?
+  entityType     String   // clause, control
+  entityId       String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+// Audit Log
+model AuditLog {
+  id             String   @id @default(uuid())
+  userId         String?
+  organizationId String?
+  action         String
+  entityType     String
+  entityId       String?
+  details        String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  user         User?         @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+}
