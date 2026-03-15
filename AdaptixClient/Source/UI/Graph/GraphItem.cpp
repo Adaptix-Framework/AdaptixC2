@@ -9,6 +9,9 @@ GraphItemNote::GraphItemNote(const QString &h, const QString &t)
 {
     this->header = h;
     this->text = t;
+    this->setAcceptedMouseButtons( Qt::NoButton );
+    this->setAcceptHoverEvents( false );
+    this->setFlag( QGraphicsItem::ItemIsPanel, false );
 }
 
 GraphItemNote::~GraphItemNote() = default;

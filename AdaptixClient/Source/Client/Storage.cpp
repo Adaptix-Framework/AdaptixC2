@@ -25,9 +25,12 @@ Storage::Storage()
         dbFilePath = QDir(appDirPath).filePath("storage-v1.db");
         db = QSqlDatabase::addDatabase( "QSQLITE", DB_CONNECTION_NAME );
         db.setDatabaseName(dbFilePath);
-        if (db.open())
+        if (db.open()) {
+            QSqlQuery pragmaQuery(db);
+            pragmaQuery.exec("PRAGMA journal_mode=WAL;");
+            pragmaQuery.exec("PRAGMA synchronous=FULL;");
             this->checkDatabase();
-        else
+        } else
             LogError("Adaptix Database did not opened: %s\n", db.lastError().text().toStdString().c_str());
     }
 }

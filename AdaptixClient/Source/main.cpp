@@ -45,4 +45,9 @@ int main(int argc, char *argv[])
 
     GlobalClient = new MainAdaptix();
     GlobalClient->Start();
+
+    delete GlobalClient;
+    GlobalClient = nullptr;
+
+    return 0;
 }

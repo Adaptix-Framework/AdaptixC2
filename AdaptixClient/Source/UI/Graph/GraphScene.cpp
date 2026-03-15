@@ -43,7 +43,13 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
     auto graphics_items = selectedItems();
     if(graphics_items.empty()) {
-        if( (graphics_items = items(event->scenePos())).empty() ) {
+        auto allItems = items(event->scenePos());
+        graphics_items.clear();
+        for (auto* gi : allItems) {
+            if (dynamic_cast<GraphItem*>(gi))
+                graphics_items.append(gi);
+        }
+        if( graphics_items.empty() ) {
             auto* sessionsGraph = qobject_cast<SessionsGraph*>(parent());
             if (!sessionsGraph)
                 return QGraphicsScene::contextMenuEvent( event );
@@ -57,15 +63,16 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
             actionLeftToRight->setChecked(sessionsGraph->GetLayoutDirection() == LayoutLeftToRight);
             actionTopToBottom->setChecked(sessionsGraph->GetLayoutDirection() == LayoutTopToBottom);
 
+            connect(actionLeftToRight, &QAction::triggered, sessionsGraph, [sessionsGraph]() {
+                sessionsGraph->SetLayoutDirection(LayoutLeftToRight);
+            });
+            connect(actionTopToBottom, &QAction::triggered, sessionsGraph, [sessionsGraph]() {
+                sessionsGraph->SetLayoutDirection(LayoutTopToBottom);
+            });
+
             oclero::qlementine::Menu ctxMenu;
             ctxMenu.addMenu(&layoutMenu);
-
-            const auto action = ctxMenu.exec(event->screenPos());
-            if (action == actionLeftToRight) {
-                sessionsGraph->SetLayoutDirection(LayoutLeftToRight);
-            } else if (action == actionTopToBottom) {
-                sessionsGraph->SetLayoutDirection(LayoutTopToBottom);
-            }
+            ctxMenu.exec(event->screenPos());
             return;
         }
     }

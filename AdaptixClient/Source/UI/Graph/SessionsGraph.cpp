@@ -21,7 +21,7 @@ SessionsGraph::SessionsGraph(QWidget* parent) : QGraphicsView(parent)
 
     setDragMode( QGraphicsView::RubberBandDrag );
     setCacheMode( QGraphicsView::CacheBackground );
-    setViewportUpdateMode( QGraphicsView::BoundingRectViewportUpdate );
+    setViewportUpdateMode( QGraphicsView::MinimalViewportUpdate );
     setTransformationAnchor( QGraphicsView::AnchorUnderMouse );
     setRenderHint( QPainter::Antialiasing );
     this->scaleView( 0.8 );
@@ -197,6 +197,15 @@ void SessionsGraph::TreeDraw() const
         LayoutTreeTop::draw(this->rootItem);
     else
         LayoutTreeLeft::draw(this->rootItem);
+
+    QRectF totalRect;
+    for (const auto* item : this->items) {
+        totalRect = totalRect.united(item->sceneBoundingRect());
+    }
+    if (this->rootItem)
+        totalRect = totalRect.united(this->rootItem->sceneBoundingRect());
+    if (!totalRect.isNull())
+        this->graphScene->setSceneRect(totalRect.adjusted(-200, -200, 200, 200));
 }
 
 void SessionsGraph::SetLayoutDirection(GraphLayoutDirection direction)
