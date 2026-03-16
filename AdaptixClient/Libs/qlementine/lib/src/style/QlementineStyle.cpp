@@ -2443,6 +2443,17 @@ void QlementineStyle::drawControl(ControlElement ce, const QStyleOption* opt, QP
         }
       }
       return;
+    case CE_RubberBand:
+      if (qstyleoption_cast<const QStyleOptionRubberBand*>(opt)) {
+        const auto highlight = opt->palette.color(QPalette::Active, QPalette::Highlight);
+        auto fill = QColor(highlight);
+        fill.setAlpha(60);
+        p->setPen(QPen(highlight, 1));
+        p->setBrush(fill);
+        p->setRenderHint(QPainter::Antialiasing, false);
+        p->drawRect(opt->rect.adjusted(0, 0, -1, -1));
+      }
+      return;
     default:
       break;
   }

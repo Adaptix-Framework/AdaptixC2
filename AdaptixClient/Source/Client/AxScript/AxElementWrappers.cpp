@@ -12,6 +12,7 @@
 #include <QDateEdit>
 #include <QDialog>
 #include <QMenu>
+#include <oclero/qlementine/widgets/Menu.hpp>
 #include <oclero/qlementine/widgets/Switch.hpp>
 #include <oclero/qlementine/widgets/SegmentedControl.hpp>
 
@@ -51,7 +52,7 @@ void AxSeparatorWrapper::setContext(QVariantList context) {}
 
 
 
-AxMenuWrapper::AxMenuWrapper(const QString& title, QObject* parent) : AbstractAxMenuItem(parent) { pMenu = new QMenu(title); }
+AxMenuWrapper::AxMenuWrapper(const QString& title, QObject* parent) : AbstractAxMenuItem(parent) { pMenu = new oclero::qlementine::Menu(title); }
 
 QMenu* AxMenuWrapper::menu() const { return this->pMenu; }
 
@@ -753,7 +754,7 @@ void AxListWidgetWrapper::setMenuEnabled(const bool enabled)
 
 void AxListWidgetWrapper::showContextMenu(const QPoint &pos)
 {
-    QMenu menu(list);
+    oclero::qlementine::Menu menu(list);
 
     QAction* addAction = menu.addAction("Add");
     QAction* removeAction = menu.addAction("Remove");

@@ -6,6 +6,7 @@
 #include <oclero/qlementine/style/QlementineStyle.hpp>
 #include <oclero/qlementine/utils/MenuUtils.hpp>
 
+#include <QApplication>
 #include <QEvent>
 #include <QObject>
 #include <QMenu>
@@ -95,6 +96,9 @@ public:
               } else {
                 break;
               }
+            }
+            while (auto* popup = QApplication::activePopupWidget()) {
+              popup->close();
             }
             return true;
           }
