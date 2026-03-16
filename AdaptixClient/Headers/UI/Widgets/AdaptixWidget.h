@@ -221,6 +221,8 @@ public:
     void LoadProcessBrowserUI(const QString &AgentId);
     void LoadTerminalUI(const QString &AgentId);
     void LoadShellUI(const QString &AgentId);
+    void LoadVncUI(const QString &AgentId);
+    void LoadHvncUI(const QString &AgentId);
     void ShowTunnelCreator(const QString &AgentId, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
 
 Q_SIGNALS:
