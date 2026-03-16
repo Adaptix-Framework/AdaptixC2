@@ -132,10 +132,13 @@ BOOL ApiLoad()
 		ApiWin->ResetEvent              = (decltype(ResetEvent)*)               GetSymbolAddress(hKernel32Module, HASH_FUNC_RESETEVENT);
 		ApiWin->SetCurrentDirectoryA    = (decltype(SetCurrentDirectoryA)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_SETCURRENTDIRECTORYA);
 		ApiWin->SetNamedPipeHandleState = (decltype(SetNamedPipeHandleState)*) GetSymbolAddress(hKernel32Module, HASH_FUNC_SETNAMEDPIPEHANDLESTATE);
+		ApiWin->GetOverlappedResult		= (decltype(GetOverlappedResult)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETOVERLAPPEDRESULT);
 		ApiWin->Sleep					= (decltype(Sleep)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_SLEEP);
+		ApiWin->CancelIo				= (decltype(CancelIo)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_CANCELIO);
 		ApiWin->VirtualAlloc			= (decltype(VirtualAlloc)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALALLOC);
 		ApiWin->VirtualFree				= (decltype(VirtualFree)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALFREE);
 		ApiWin->WaitForSingleObject     = (decltype(WaitForSingleObject)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITFORSINGLEOBJECT);
+		ApiWin->WaitForMultipleObjects  = (decltype(WaitForMultipleObjects)*)  GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITFORMULTIPLEOBJECTS);
 		ApiWin->WaitNamedPipeA          = (decltype(WaitNamedPipeA)*)	       GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITNAMEDPIPEA);
 		ApiWin->WideCharToMultiByte		= (decltype(WideCharToMultiByte)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_WIDECHARTOMULTIBYTE);
 		ApiWin->WriteFile				= (decltype(WriteFile)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_WRITEFILE);

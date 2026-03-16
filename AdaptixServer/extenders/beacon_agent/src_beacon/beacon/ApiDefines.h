@@ -35,11 +35,13 @@
 #define HASH_FUNC_CREATENAMEDPIPEA                   0x375c5b8c
 #define HASH_FUNC_CREATEPIPE                         0xd38cc306
 #define HASH_FUNC_CREATEPROCESSA                     0x352ef9d8
+#define HASH_FUNC_CREATEPROCESSWITHTOKENW             0x231cf52b
 #define HASH_FUNC_CREATETHREAD                       0xf30d4c30
 #define HASH_FUNC_DELETECRITICALSECTION              0x21d8fe57
 #define HASH_FUNC_DELETEFILEA                        0x75b1df38
 #define HASH_FUNC_DISCONNECTNAMEDPIPE                0x6d59f261
 #define HASH_FUNC_ENTERCRITICALSECTION               0x5b6e9a42
+#define HASH_FUNC_TRYENTERCRITICALSECTION            0x5181e9e1
 #define HASH_FUNC_FINDCLOSE                          0x257f195b
 #define HASH_FUNC_FINDFIRSTFILEA                     0x2ffa9aae
 #define HASH_FUNC_FINDNEXTFILEA                      0xdacd2845
@@ -86,16 +88,18 @@
 #define HASH_FUNC_RTLCAPTURECONTEXT                  0x626d2e2f
 #define HASH_FUNC_SETCURRENTDIRECTORYA               0x2e1c9789
 #define HASH_FUNC_SETEVENT                           0xe26f0832
-#define HASH_FUNC_TRYENTERCRITICALSECTION             0x5181e9e1
 #define HASH_FUNC_RESETEVENT                         0x455f5749
 #define HASH_FUNC_SETNAMEDPIPEHANDLESTATE            0x89e25d30
 #define HASH_FUNC_SLEEP                              0x5b4b729d
 #define HASH_FUNC_VIRTUALALLOC                       0x63ce6376
 #define HASH_FUNC_VIRTUALFREE                        0xbd37a32d
 #define HASH_FUNC_WAITFORSINGLEOBJECT                0x471fd0f9
+#define HASH_FUNC_WAITFORMULTIPLEOBJECTS             0xa8544ad6
 #define HASH_FUNC_WAITNAMEDPIPEA                     0x8a2ba58d
 #define HASH_FUNC_WIDECHARTOMULTIBYTE                0x12d4f52d
 #define HASH_FUNC_WRITEFILE                          0xd4a33cef
+#define HASH_FUNC_GETOVERLAPPEDRESULT                0xcb755695
+#define HASH_FUNC_CANCELIO                           0xdc3c6d02
 
 // iphlpapi
 #define HASH_FUNC_GETADAPTERSINFO                    0xa1376764
@@ -113,7 +117,6 @@
 #define HASH_FUNC_SETSECURITYDESCRIPTORDACL          0x37dc047b
 #define HASH_FUNC_DUPLICATETOKENEX                   0xa7ab369d
 #define HASH_FUNC_CREATEPROCESSASUSERA               0x4cb03b6b
-#define HASH_FUNC_CREATEPROCESSWITHTOKENW            0x231cf52b
 
 // msvcrt
 #if defined(DEBUG)

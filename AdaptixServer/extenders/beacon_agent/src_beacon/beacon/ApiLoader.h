@@ -94,9 +94,12 @@ struct WINAPIFUNC
 	DECL_API(VirtualAlloc);
 	DECL_API(VirtualFree);
 	DECL_API(WaitForSingleObject);
+	DECL_API(WaitForMultipleObjects);
 	DECL_API(WaitNamedPipeA);
 	DECL_API(WideCharToMultiByte);
 	DECL_API(WriteFile);
+	DECL_API(GetOverlappedResult);
+	DECL_API(CancelIo);
 	
 	// iphlpapi
 	DECL_API(GetAdaptersInfo);

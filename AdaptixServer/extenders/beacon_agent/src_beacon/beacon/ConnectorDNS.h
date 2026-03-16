@@ -214,7 +214,7 @@ public:
 
     BOOL SetProfile(void* profile, BYTE* beat, ULONG beatSize) override;
     void Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey) override;
-    void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput) override;
+    void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput, DWORD pollIntervalMs = 0) override;
     void CloseConnector() override;
 
     BYTE* RecvData() override;

