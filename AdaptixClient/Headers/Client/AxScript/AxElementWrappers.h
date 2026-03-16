@@ -988,7 +988,10 @@ public:
 
     void setFilterText(const QString& text) {
         m_filterText = text;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
 protected:
@@ -1142,7 +1145,10 @@ public:
 
     void setFilterText(const QString& text) {
         m_filterText = text;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
 protected:
@@ -1278,7 +1284,10 @@ public:
 
     void setFilterText(const QString& text) {
         m_filterText = text;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
 protected:
@@ -1421,7 +1430,10 @@ public:
 
     void setFilterText(const QString& text) {
         m_filterText = text;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
 protected:
@@ -1567,7 +1579,10 @@ public:
 
     void setFilterText(const QString& text) {
         m_filterText = text;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
 protected:

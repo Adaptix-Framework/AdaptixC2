@@ -99,25 +99,37 @@ public:
     void setSearchVisible(bool visible) {
         if (searchVisible == visible) return;
         searchVisible = visible;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
     void setTextFilter(const QString &text){
         if (filter == text) return;
         filter = text;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
     void setTypeFilter(const QString &type) {
         if (typeFilter == type) return;
         typeFilter = type;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
     void setStorageFilter(const QString &storage) {
         if (storageFilter == storage) return;
         storageFilter = storage;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
 protected:

@@ -113,25 +113,40 @@ public:
     void setSearchVisible(bool visible) {
         if (searchVisible == visible) return;
         searchVisible = visible;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
     void setOnlyActive(bool active) {
         if (onlyActive == active) return;
         onlyActive = active;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
     void setTextFilter(const QString& text) {
         if (textFilter == text) return;
         textFilter = text;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
     void setAgentTypes(const QSet<QString>& types) {
         if (agentTypes == types) return;
         agentTypes = types;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
     void updateVisible() {
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
 protected:

@@ -1,5 +1,5 @@
 @echo off
-set "PATH=C:\msys64\mingw64\bin;%%PATH%%"
+set "PATH=C:\msys64\mingw64\bin;%PATH%"
 echo [1/4] Build Release...
 cmake -S . -B cmake-build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build cmake-build-release --config Release
@@ -17,6 +17,7 @@ echo [4/4] Add DLL...
 copy "C:\msys64\mingw64\bin\libwinpthread-1.dll".
 copy "C:\msys64\mingw64\bin\libgcc_s_seh-1.dll".
 copy "C:\msys64\mingw64\bin\libstdc++-6.dll".
+copy "C:\msys64\mingw64\bin\libsqlite3-0.dll".
 copy "C:\msys64\mingw64\bin\libwinpthread-1.dll" .
 copy "C:\msys64\mingw64\bin\libgcc_s_seh-1.dll" .
 copy "C:\msys64\mingw64\bin\libstdc++-6.dll" .

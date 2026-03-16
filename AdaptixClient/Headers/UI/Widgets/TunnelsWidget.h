@@ -98,7 +98,10 @@ public:
     void setTextFilter(const QString &text) {
         if (textFilter == text) return;
         textFilter = text;
+QT_WARNING_PUSH
+QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
+QT_WARNING_POP
     }
 
 protected:
