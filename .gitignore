@@ -24,6 +24,63 @@ AdaptixClient/Libs/kddockwidgets/*_autogen/
 AdaptixClient/Libs/kddockwidgets/*.a
 AdaptixClient/Libs/kddockwidgets/*_export.h
 
+# CMake generated files in qlementine
+AdaptixClient/Libs/qlementine/CMakeFiles/
+AdaptixClient/Libs/qlementine/Makefile
+AdaptixClient/Libs/qlementine/cmake_install.cmake
+AdaptixClient/Libs/qlementine/*_autogen/
+AdaptixClient/Libs/qlementine/lib/*.a
+AdaptixClient/Libs/qlementine/lib/CMakeFiles/
+AdaptixClient/Libs/qlementine/lib/Makefile
+AdaptixClient/Libs/qlementine/lib/meta_types/
+
+# CMake generated config (qlementine install)
+AdaptixClient/cmake/
+
+# Extenders build output
+AdaptixServer/extenders/*/dist/
+
+# Go build artifacts
+AdaptixServer/adaptixserver
+
+# Build artifacts (object files, dependency files)
+*.o
+*.o.d
+*.obj
+*.a
+*.lib
+*.dll
+*.dylib
+*.exe
+*.out
+*.app
+*.ipa
+*.i
+*.ii
+*.s
+*.S
+compiler_depend.ts
+compiler_depend.make
+*.timestamp
+*.gen
+
+# CMake cache and generated
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+compile_commands.json
+CMakeFiles/
+*.make
+.ninja_deps
+.ninja_log
+build/
+
+# MOC/RCC/Qt generated
+*_autogen/
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
 # VSCode
 .vscode/
 #JB
