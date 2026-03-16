@@ -65,14 +65,15 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
             connect(actionLeftToRight, &QAction::triggered, sessionsGraph, [sessionsGraph]() {
                 sessionsGraph->SetLayoutDirection(LayoutLeftToRight);
-            });
+            }, Qt::QueuedConnection);
             connect(actionTopToBottom, &QAction::triggered, sessionsGraph, [sessionsGraph]() {
                 sessionsGraph->SetLayoutDirection(LayoutTopToBottom);
-            });
+            }, Qt::QueuedConnection);
 
             oclero::qlementine::Menu ctxMenu;
             ctxMenu.addMenu(&layoutMenu);
             ctxMenu.exec(event->screenPos());
+            event->accept();
             return;
         }
     }
@@ -212,4 +213,5 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     ctxMenu.addMenu(sessionMenu);
 
     ctxMenu.exec(event->screenPos());
+    event->accept();
 }

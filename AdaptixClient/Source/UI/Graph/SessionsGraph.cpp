@@ -24,6 +24,7 @@ SessionsGraph::SessionsGraph(QWidget* parent) : QGraphicsView(parent)
     setViewportUpdateMode( QGraphicsView::MinimalViewportUpdate );
     setTransformationAnchor( QGraphicsView::AnchorUnderMouse );
     setRenderHint( QPainter::Antialiasing );
+    setAlignment( Qt::AlignLeft | Qt::AlignTop );
     this->scaleView( 0.8 );
 
     this->graphScene = new GraphScene( 10, this->mainWidget, this );
@@ -205,7 +206,7 @@ void SessionsGraph::TreeDraw() const
     if (this->rootItem)
         totalRect = totalRect.united(this->rootItem->sceneBoundingRect());
     if (!totalRect.isNull())
-        this->graphScene->setSceneRect(totalRect.adjusted(-200, -200, 200, 200));
+        this->graphScene->setSceneRect(totalRect.adjusted(-50, -50, 200, 200));
 }
 
 void SessionsGraph::SetLayoutDirection(GraphLayoutDirection direction)
