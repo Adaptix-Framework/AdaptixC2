@@ -511,6 +511,7 @@ func (t *TransportHTTP) generateSelfSignedCert(certFile, keyFile string) error {
 
 func (t *TransportHTTP) pageError(ctx *gin.Context) {
 	ctx.Writer.WriteHeader(http.StatusNotFound)
+	ctx.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	html := []byte(t.Config.WebPageError)
 	_, _ = ctx.Writer.Write(html)
 }
