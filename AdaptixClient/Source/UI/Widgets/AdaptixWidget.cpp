@@ -1140,6 +1140,18 @@ void AdaptixWidget::LoadShellUI(const QString &AgentId)
         this->PlaceDock(dockBottom, agent->GetShell()->dock() );
 }
 
+void AdaptixWidget::LoadVncUI(const QString &AgentId)
+{
+    Q_UNUSED(AgentId);
+    // TODO: implement VNC viewer UI
+}
+
+void AdaptixWidget::LoadHvncUI(const QString &AgentId)
+{
+    Q_UNUSED(AgentId);
+    // TODO: implement HVNC UI
+}
+
 void AdaptixWidget::ShowTunnelCreator(const QString &AgentId, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd)
 {
     DialogTunnel* dialogTunnel = new DialogTunnel(AgentId, socks4, socks5, lportfwd, rportfwd);
