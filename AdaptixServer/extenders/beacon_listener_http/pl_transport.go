@@ -510,8 +510,17 @@ func (t *TransportHTTP) generateSelfSignedCert(certFile, keyFile string) error {
 }
 
 func (t *TransportHTTP) pageError(ctx *gin.Context) {
+	hasContentType := false
+	for header, value := range t.Config.ResponseHeaders {
+		ctx.Writer.Header().Set(header, value)
+		if strings.EqualFold(header, "Content-Type") {
+			hasContentType = true
+		}
+	}
+	if !hasContentType {
+		ctx.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	}
 	ctx.Writer.WriteHeader(http.StatusNotFound)
-	ctx.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	html := []byte(t.Config.WebPageError)
 	_, _ = ctx.Writer.Write(html)
 }
