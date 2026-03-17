@@ -110,6 +110,17 @@ func (em *EventManager) OnAgentNew(name string, phase HookPhase, handler func(*E
 	})
 }
 
+func (em *EventManager) OnAgentGenerate(name string, phase HookPhase, handler func(*EventDataAgentGenerate) error) string {
+	return em.Register(EventAgentGenerate, &Hook{
+		Name:     name,
+		Phase:    phase,
+		Priority: DefaultPriority,
+		Handler: func(event any) error {
+			return handler(event.(*EventDataAgentGenerate))
+		},
+	})
+}
+
 func (em *EventManager) OnAgentCheckin(name string, handler func(*EventDataAgentCheckin) error) string {
 	return em.Register(EventAgentCheckin, &Hook{
 		Name:     name,

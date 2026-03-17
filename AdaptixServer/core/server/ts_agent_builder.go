@@ -93,6 +93,7 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 	var postEvent *eventing.EventDataAgentGenerate
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataAgentGenerate{
+		BuilderId:     builder.Id,
 		AgentName:     builder.Name,
 		ListenersName: builder.ListenersName,
 		Config:        builder.Config,
@@ -137,13 +138,23 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 
 	// --- POST HOOK ---
 	postEvent = &eventing.EventDataAgentGenerate{
+		BuilderId:     builder.Id,
 		AgentName:     builder.Name,
 		ListenersName: builder.ListenersName,
 		Config:        builder.Config,
 		FileName:      fileName,
 		FileContent:   fileContent,
 	}
-	ts.EventManager.EmitAsync(eventing.EventAgentGenerate, postEvent)
+	if !ts.EventManager.Emit(eventing.EventAgentGenerate, eventing.HookPost, postEvent) {
+		if postEvent.Error != nil {
+			_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, "Error: "+postEvent.Error.Error())
+		} else {
+			_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, "Error: operation cancelled by hook")
+		}
+		goto RET
+	}
+	fileName = postEvent.FileName
+	fileContent = postEvent.FileContent
 	// -----------------
 
 	_ = ts.TsAgentBuildSendFile(builder.Id, fileName, fileContent)

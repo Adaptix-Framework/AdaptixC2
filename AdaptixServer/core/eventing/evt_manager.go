@@ -228,7 +228,7 @@ func (em *EventManager) Emit(eventType EventType, phase HookPhase, event any) bo
 			logs.Warn("", fmt.Sprintf("Hook %s error: %v", hook.Name, err))
 		}
 
-		if baseEvent != nil && phase == HookPre && baseEvent.Cancelled {
+		if baseEvent != nil && baseEvent.Cancelled {
 			return false
 		}
 	}
@@ -305,6 +305,8 @@ func getBaseEvent(event any) *BaseEvent {
 	case *EventCredentialsRemove:
 		return &e.BaseEvent
 	case *EventDataAgentNew:
+		return &e.BaseEvent
+	case *EventDataAgentGenerate:
 		return &e.BaseEvent
 	case *EventDataAgentCheckin:
 		return &e.BaseEvent

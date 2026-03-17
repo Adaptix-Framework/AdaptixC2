@@ -94,6 +94,7 @@ type EventDataAgentNew struct {
 
 type EventDataAgentGenerate struct {
 	BaseEvent
+	BuilderId     string
 	AgentName     string
 	ListenersName []string
 	Config        string
