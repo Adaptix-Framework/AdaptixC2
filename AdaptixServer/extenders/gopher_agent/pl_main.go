@@ -138,6 +138,7 @@ func (ext *ExtenderAgent) TunnelCallbacks() adaptix.TunnelCallbacks {
 		WriteTCP:   TunnelMessageWriteTCP,
 		WriteUDP:   TunnelMessageWriteUDP,
 		Close:      TunnelMessageClose,
+		Reverse:    TunnelMessageReverse,
 		Pause:      TunnelMessagePause,
 		Resume:     TunnelMessageResume,
 	}
@@ -183,6 +184,13 @@ func TunnelMessageClose(channelId int) adaptix.TaskData {
 	packerData, _ := msgpack.Marshal(ParamsTunnelStop{ChannelId: channelId})
 	cmd := Command{Code: COMMAND_TUNNEL_STOP, Data: packerData}
 	packData, _ = msgpack.Marshal(cmd)
+	/// END CODE HERE
+	return makeProxyTask(packData)
+}
+
+func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
+	var packData []byte
+	/// START CODE HERE
 	/// END CODE HERE
 	return makeProxyTask(packData)
 }
@@ -1692,10 +1700,9 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 			case COMMAND_REV2SELF:
 				task.Message = "Token reverted successfully"
-				emptyImpersonate := ""
 				_ = Ts.TsAgentUpdateDataPartial(agentData.Id, struct {
 					Impersonated *string `json:"impersonated"`
-				}{Impersonated: &emptyImpersonate})
+				}{Impersonated: new("")})
 
 			case COMMAND_RM:
 				task.Message = "Object deleted successfully"
