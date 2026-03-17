@@ -511,11 +511,11 @@ func taskTunnelKill(paramsData []byte) {
 	}
 }
 
-func taskTunnelPause(paramsData []byte) {
+func taskTunnelPause(paramsData []byte) ([]byte, error) {
 	var params utils.ParamsTunnelPause
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	value, ok := TUNNELS.Load(params.ChannelId)
@@ -525,13 +525,14 @@ func taskTunnelPause(paramsData []byte) {
 			ctrl.Paused.Store(true)
 		}
 	}
+	return nil, nil
 }
 
-func taskTunnelResume(paramsData []byte) {
+func taskTunnelResume(paramsData []byte) ([]byte, error) {
 	var params utils.ParamsTunnelResume
 	err := msgpack.Unmarshal(paramsData, &params)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	value, ok := TUNNELS.Load(params.ChannelId)
@@ -541,6 +542,7 @@ func taskTunnelResume(paramsData []byte) {
 			ctrl.Paused.Store(false)
 		}
 	}
+	return nil, nil
 }
 
 func taskUpload(paramsData []byte) ([]byte, error) {
