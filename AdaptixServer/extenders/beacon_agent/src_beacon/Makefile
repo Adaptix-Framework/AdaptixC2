@@ -29,9 +29,9 @@ SECURITY_FLAGS := -fno-stack-protector \
                  -fno-strict-aliasing \
                  -fno-builtin
 
-OPTIMIZATION_FLAGS := -fno-exceptions \
-                     -fno-unwind-tables \
-                     -fno-asynchronous-unwind-tables
+OPTIMIZATION_FLAGS := 	-fno-exceptions \
+                     	-fasynchronous-unwind-tables \
+                     	-mabi=ms
 
 COMMON_FLAGS := -I $(BEACON_DIR) \
                 -fpermissive \
