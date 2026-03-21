@@ -25,6 +25,10 @@
 #define HASH_FUNC_RTLRANDOMEX                        0x5b052214
 #define HASH_FUNC_RTLNTSTATUSTODOSERROR              0x7701adaf
 #define HASH_FUNC_NTFLUSHINSTRUCTIONCACHE            0x91a1659e
+#define HASH_FUNC_NTCREATESECTION                     0x217c086f
+#define HASH_FUNC_NTMAPVIEWOFSECTION                  0x25b394e9
+#define HASH_FUNC_NTUNMAPVIEWOFSECTION                0xc995d3ec
+#define HASH_FUNC_NTOPENFILE                          0x83d5c058
 
 //kernel32
 #define HASH_FUNC_CONNECTNAMEDPIPE                   0xda6c7d81
@@ -98,8 +102,13 @@
 #define HASH_FUNC_WAITNAMEDPIPEA                     0x8a2ba58d
 #define HASH_FUNC_WIDECHARTOMULTIBYTE                0x12d4f52d
 #define HASH_FUNC_WRITEFILE                          0xd4a33cef
+#define HASH_FUNC_WAITFORSINGLEOBJECTEX              0x8e5800b6
 #define HASH_FUNC_GETOVERLAPPEDRESULT                0xcb755695
 #define HASH_FUNC_CANCELIO                           0xdc3c6d02
+#define HASH_FUNC_RTLADDFUNCTIONTABLE                0xbad6a4ed
+#define HASH_FUNC_RTLDELETEFUNCTIONTABLE             0x6ff11737
+#define HASH_FUNC_VIRTUALPROTECT                     0x21d6b92c
+#define HASH_FUNC_LOADLIBRARYEXA                     0xcf121857
 
 // iphlpapi
 #define HASH_FUNC_GETADAPTERSINFO                    0xa1376764

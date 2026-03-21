@@ -3,6 +3,8 @@
 #include "std.cpp"
 #include "Packer.h"
 #include "ApiLoader.h"
+#include "bof_loader.h"
+#include "config.h"
 
 #define ASYNC_BOF_STATE_PENDING   0x0
 #define ASYNC_BOF_STATE_RUNNING   0x1
@@ -28,12 +30,10 @@ struct AsyncBofContext {
     Packer* outputBuffer;
     
     PCHAR   mapSections[25];
-    LPVOID* mapFunctions;
+    LPVOID  mapFunctions;
 };
 
 extern __declspec(thread) AsyncBofContext* tls_CurrentBofContext;
-
-
 
 class Boffer
 {
@@ -51,11 +51,9 @@ public:
     AsyncBofContext* CreateAsyncBof(ULONG taskId, CHAR* entryName, BYTE* coffFile, ULONG coffFileSize, BYTE* args, ULONG argsSize);
     
     BOOL StartAsyncBof(AsyncBofContext* ctx);
-    
     BOOL StopAsyncBof(ULONG taskId);
     
     void ProcessAsyncBofs(Packer* outPacker);
-    
     void CleanupFinishedBofs();
     
     AsyncBofContext* FindBofByThreadId(DWORD threadId);
@@ -72,4 +70,3 @@ private:
 };
 
 extern Boffer* g_AsyncBofManager;
-

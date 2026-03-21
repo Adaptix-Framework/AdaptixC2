@@ -345,6 +345,27 @@ function GenerateUI(listeners_type)
     //     checkIatHiding.setVisible(false);
     // }
 
+    let labelBofStompDll = form.create_label("Stomp DLL:");
+    let textBofStompDll = form.create_textline("wmp.dll");
+    textBofStompDll.setPlaceholder("e.g. wmp.dll, xpsservices.dll");
+
+    let labelBofStompMethod = form.create_label("Method:");
+    let comboBofStompMethod = form.create_combo();
+    comboBofStompMethod.addItems(["LoadLibraryEx", "NtCreateSection + NtMapViewOfSection"]);
+    comboBofStompMethod.setCurrentIndex(0);
+
+    let layout_group_bof_stomp = form.create_gridlayout();
+    layout_group_bof_stomp.addWidget(labelBofStompDll,     0, 0, 1, 1);
+    layout_group_bof_stomp.addWidget(textBofStompDll,      0, 1, 1, 1);
+    layout_group_bof_stomp.addWidget(labelBofStompMethod,  1, 0, 1, 1);
+    layout_group_bof_stomp.addWidget(comboBofStompMethod,  1, 1, 1, 1);
+
+    let panel_group_bof_stomp = form.create_panel();
+    panel_group_bof_stomp.setLayout(layout_group_bof_stomp);
+    let group_bof_stomp = form.create_groupbox("BOF Module Stomping (uncheck to use VirtualAlloc fallback)", true);
+    group_bof_stomp.setPanel(panel_group_bof_stomp);
+    group_bof_stomp.setChecked(true);
+
     //////////////////// DNS Settings
 
     let labelDnsMode = form.create_label("DNS Mode:");
@@ -484,9 +505,10 @@ function GenerateUI(listeners_type)
     layout.addWidget(labelRotation,       8, 0, 1, 1);
     layout.addWidget(comboRotation,       8, 1, 1, 2);
     layout.addWidget(checkIatHiding,      9, 0, 1, 3);
-    layout.addWidget(group_proxy,        10, 0, 1, 3);
-    layout.addWidget(group_dns,          12, 0, 1, 3);
-    layout.addWidget(spacer2,            12, 0, 1, 3);
+    layout.addWidget(group_bof_stomp,    10, 0, 1, 3);
+    layout.addWidget(group_proxy,        11, 0, 1, 3);
+    layout.addWidget(group_dns,          13, 0, 1, 3);
+    layout.addWidget(spacer2,            13, 0, 1, 3);
 
     form.connect(comboAgentFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
@@ -524,6 +546,9 @@ function GenerateUI(listeners_type)
     container.put("is_sideloading",      checkSideloading)
     container.put("sideloading_content", sideloadingSelector)
     container.put("iat_hiding",          checkIatHiding)
+    container.put("use_bof_stomp",       group_bof_stomp)
+    container.put("bof_stomp_dll",       textBofStompDll)
+    container.put("bof_stomp_method",    comboBofStompMethod)
     container.put("use_proxy",           group_proxy)
     container.put("proxy_type",          comboProxyType)
     container.put("proxy_host",          textProxyServer)

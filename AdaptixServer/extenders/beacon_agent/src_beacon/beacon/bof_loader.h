@@ -3,29 +3,43 @@
 #include "ApiLoader.h"
 #include "ApiDefines.h"
 #include "Packer.h"
+#include "bof_stomp.h"
 
-#define MAX_SECTIONS	   25
+#define MAX_SECTIONS       25
 #define MAP_FUNCTIONS_SIZE 4096
+#define UNWIND_SLOT_SIZE   16
+
+#define ALIGN_UP(x, a) (((x) + ((a) - 1)) & ~((a) - 1))
 
 #define IMAGE_REL_AMD64_ADDR64   0x0001
 #define IMAGE_REL_AMD64_ADDR32NB 0x0003
 #define IMAGE_REL_AMD64_REL32    0x0004
 #define HASH_KEY 13
 
-#define BOF_ERROR_PARSE	    0x101
+#define BOF_ERROR_PARSE     0x101
 #define BOF_ERROR_SYMBOL    0x102
 #define BOF_ERROR_MAX_FUNCS 0x103
 #define BOF_ERROR_ENTRY     0x104
 #define BOF_ERROR_ALLOC     0x105
 
 typedef struct {
-	ULONG  hash;
-	LPVOID proc;
+    ULONG  hash;
+    LPVOID proc;
 } BOF_API;
 
 extern Packer* bofOutputPacker;
 extern int     bofOutputCount;
 extern ULONG   bofTaskId;
+
+#ifndef _IMAGE_RUNTIME_FUNCTION_ENTRY
+typedef struct _BOF_RUNTIME_FUNCTION {
+    DWORD BeginAddress;
+    DWORD EndAddress;
+    DWORD UnwindData;
+} BOF_RUNTIME_FUNCTION;
+#else
+typedef _IMAGE_RUNTIME_FUNCTION_ENTRY BOF_RUNTIME_FUNCTION;
+#endif
 
 typedef struct COF_HEADER {
 	short Machine;
@@ -75,10 +89,9 @@ typedef struct COF_SYMBOL {
 void InitBofOutputData();
 
 Packer* ObjectExecute(ULONG taskId, char* targetFuncName, unsigned char* coffFile, unsigned int cofFileSize, unsigned char* args, int argsSize);
-
-bool AllocateSections(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* mapSections);
-void CleanupSections(PCHAR* mapSections, int maxSections);
+bool    AllocateSections(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* mapSections, LPVOID* outMapFunctions);
+void    CleanupSections(PCHAR* mapSections, int maxSections, LPVOID mapFunctions);
 bool ProcessRelocations(unsigned char* coffFile, COF_HEADER* pHeader, PCHAR* mapSections, COF_SYMBOL* pSymbolTable, LPVOID* mapFunctions);
-void ExecuteProc(char* entryFuncName, unsigned char* args, int argsSize, COF_SYMBOL* pSymbolTable, COF_HEADER* pHeader, PCHAR* mapSections);
+void ExecuteProc(char* entryFuncName, unsigned char* args, int argsSize,COF_SYMBOL* pSymbolTable, COF_HEADER* pHeader, PCHAR* mapSections);
 char* PrepareEntryName(char* targetFuncName);
-void FreeFunctionName(char* targetFuncName);
+void  FreeFunctionName(char* targetFuncName);

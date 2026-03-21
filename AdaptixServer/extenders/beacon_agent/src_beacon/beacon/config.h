@@ -9,3 +9,9 @@ char* getProfile();
 unsigned int getProfileSize();
 
 int isIatHidingEnabled();
+
+int isBofStompEnabled();
+
+char* getBofStompDll();
+
+int getBofStompMethod();

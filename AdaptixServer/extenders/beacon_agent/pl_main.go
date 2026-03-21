@@ -277,6 +277,9 @@ type GenerateConfig struct {
 	StartTime          string `json:"start_time"`
 	EndTime            string `json:"end_time"`
 	IatHiding          bool   `json:"iat_hiding"`
+	UseBofStomp        bool   `json:"use_bof_stomp"`
+	BofStompDll        string `json:"bof_stomp_dll"`
+	BofStompMethod     string `json:"bof_stomp_method"`
 	IsSideloading      bool   `json:"is_sideloading"`
 	SideloadingContent string `json:"sideloading_content"`
 	DnsResolvers       string `json:"dns_resolvers"`
@@ -297,7 +300,7 @@ var (
 	ObjectDir_smb  = "objects_smb"
 	ObjectDir_tcp  = "objects_tcp"
 	ObjectDir_dns  = "objects_dns"
-	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "bof_loader", "Boffer", "Commander", "crt", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
+	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "bof_loader", "bof_stomp", "Boffer", "Commander", "crt", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
 	CFlags         = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -static-libstdc++ -mwindows"
 )
@@ -571,6 +574,16 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 		lFlags += " -nostdlib -nostartfiles -nodefaultlibs"
 	}
 
+	// BOF Module Stomping: only enabled when the user checks the groupbox
+	bofStompDll := ""
+	if generateConfig.UseBofStomp {
+		cFlags += " -DUSE_BOF_STOMP"
+		bofStompDll = generateConfig.BofStompDll
+		if bofStompDll == "" {
+			bofStompDll = "wmp.dll"
+		}
+	}
+
 	currentDir := ModuleDir
 	tempDir, err := os.MkdirTemp("", "ax-*")
 	if err != nil {
@@ -613,10 +626,18 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	}
 
 	agentProfileSize := len(agentProfile) / 4
+	bofStompDefine := ""
+	if generateConfig.UseBofStomp {
+		bofStompMethod := 0
+		if generateConfig.BofStompMethod == "NtCreateSection + NtMapViewOfSection" {
+			bofStompMethod = 1
+		}
+		bofStompDefine = fmt.Sprintf(" -DBOF_STOMP_DLL_NAME='\"%s\"' -DBOF_STOMP_METHOD=%d", bofStompDll, bofStompMethod)
+	}
 	if generateConfig.Format == "Service Exe" {
-		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DBUILD_SVC -DSERVICE_NAME='\"%s\"' -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, cFlags, ObjectDir, svcName, string(agentProfile), agentProfileSize, tempDir)
+		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DBUILD_SVC -DSERVICE_NAME='\"%s\"' -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d%s -o %s/config.o", Compiler, cFlags, ObjectDir, svcName, string(agentProfile), agentProfileSize, bofStompDefine, tempDir)
 	} else {
-		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d -o %s/config.o", Compiler, cFlags, ObjectDir, string(agentProfile), agentProfileSize, tempDir)
+		cmdConfig = fmt.Sprintf("%s %s %s/config.cpp -DPROFILE='\"%s\"' -DPROFILE_SIZE=%d%s -o %s/config.o", Compiler, cFlags, ObjectDir, string(agentProfile), agentProfileSize, bofStompDefine, tempDir)
 	}
 	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Compiling configuration...")
 
