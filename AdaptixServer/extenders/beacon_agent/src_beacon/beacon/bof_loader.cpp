@@ -521,13 +521,6 @@ Packer* ObjectExecute(ULONG taskId, char* targetFuncName, unsigned char* coffFil
     if (!result)
         goto RET;
 
-#ifdef _WIN64
-    if (g_BofStomp.initialised && g_BofStomp.inUse) {
-        DWORD stompProt = 0;
-        ApiWin->VirtualProtect(g_BofStomp.cursorBase, g_BofStomp.cursorSize, PAGE_EXECUTE_READ, &stompProt);
-    }
-#endif
-
     ExecuteProc(entryFuncName, args, argsSize, pSymbolTable, pHeader, mapSections);
 
 RET:
