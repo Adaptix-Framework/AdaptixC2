@@ -215,3 +215,51 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     ctxMenu.exec(event->screenPos());
     event->accept();
 }
+
+void GraphScene::keyPressEvent(QKeyEvent *event)
+{
+    if (event->modifiers() == Qt::ControlModifier) {
+        auto adaptixWidget = qobject_cast<AdaptixWidget*>(mainWidget);
+        if (!adaptixWidget) {
+            QGraphicsScene::keyPressEvent(event);
+            return;
+        }
+
+        QStringList agentIds;
+        for (const auto& gi : selectedItems()) {
+            const auto item = dynamic_cast<GraphItem*>(gi);
+            if (item && item->agent)
+                agentIds.append(item->agent->data.Id);
+        }
+        if (agentIds.isEmpty()) {
+            QGraphicsScene::keyPressEvent(event);
+            return;
+        }
+
+        switch (event->key()) {
+            case Qt::Key_P:
+                for (const QString& id : agentIds)
+                    adaptixWidget->LoadProcessBrowserUI(id);
+                event->accept();
+                return;
+            case Qt::Key_L:
+                for (const QString& id : agentIds)
+                    adaptixWidget->LoadFileBrowserUI(id);
+                event->accept();
+                return;
+            case Qt::Key_T:
+                for (const QString& id : agentIds)
+                    adaptixWidget->LoadTerminalUI(id);
+                event->accept();
+                return;
+            case Qt::Key_I:
+                for (const QString& id : agentIds)
+                    adaptixWidget->LoadConsoleUI(id);
+                event->accept();
+                return;
+            default:
+                break;
+        }
+    }
+    QGraphicsScene::keyPressEvent(event);
+}

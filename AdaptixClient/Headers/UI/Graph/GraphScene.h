@@ -18,6 +18,7 @@ public:
 private:
     void mouseMoveEvent( QGraphicsSceneMouseEvent* event ) override;
     void contextMenuEvent( QGraphicsSceneContextMenuEvent *event ) override;
+    void keyPressEvent( QKeyEvent* event ) override;
 };
 
 #endif

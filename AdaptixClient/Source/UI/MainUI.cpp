@@ -19,6 +19,9 @@
 #include <QLabel>
 #include <QFont>
 #include <QApplication>
+#include <kddockwidgets/core/DockRegistry.h>
+#include <kddockwidgets/core/Group.h>
+#include <kddockwidgets/core/DockWidget.h>
 
 MainUI::MainUI()
 {
@@ -72,6 +75,173 @@ MainUI::MainUI()
     connect(mainuiTabWidget, &QTabWidget::currentChanged, this, &MainUI::onTabChanged);
 
     this->setCentralWidget(mainuiTabWidget);
+
+    qApp->installEventFilter(this);
+
+    auto shortcutDockLeft = new QShortcut(QKeySequence("Ctrl+Left"), this);
+    shortcutDockLeft->setContext(Qt::ApplicationShortcut);
+    connect(shortcutDockLeft, &QShortcut::activated, this, []() {
+        auto* registry = KDDockWidgets::DockRegistry::self();
+        if (!registry) return;
+        auto* dw = registry->focusedDockWidget();
+        if (!dw) return;
+        for (auto* group : registry->groups()) {
+            if (!group->containsDockWidget(dw)) continue;
+            int count = group->dockWidgetCount();
+            if (count <= 1) return;
+            int idx = group->currentIndex();
+            group->setCurrentTabIndex((idx - 1 + count) % count);
+            return;
+        }
+    });
+
+    auto shortcutDockRight = new QShortcut(QKeySequence("Ctrl+Right"), this);
+    shortcutDockRight->setContext(Qt::ApplicationShortcut);
+    connect(shortcutDockRight, &QShortcut::activated, this, []() {
+        auto* registry = KDDockWidgets::DockRegistry::self();
+        if (!registry) return;
+        auto* dw = registry->focusedDockWidget();
+        if (!dw) return;
+        for (auto* group : registry->groups()) {
+            if (!group->containsDockWidget(dw)) continue;
+            int count = group->dockWidgetCount();
+            if (count <= 1) return;
+            int idx = group->currentIndex();
+            group->setCurrentTabIndex((idx + 1) % count);
+            return;
+        }
+    });
+
+    auto shortcutDockClose = new QShortcut(QKeySequence("Ctrl+D"), this);
+    shortcutDockClose->setContext(Qt::ApplicationShortcut);
+    connect(shortcutDockClose, &QShortcut::activated, this, []() {
+        auto* registry = KDDockWidgets::DockRegistry::self();
+        if (!registry) return;
+        auto* dw = registry->focusedDockWidget();
+        if (!dw) return;
+        dw->forceClose();
+    });
+
+    auto shortcutDockFloat = new QShortcut(QKeySequence("Ctrl+W"), this);
+    shortcutDockFloat->setContext(Qt::ApplicationShortcut);
+    connect(shortcutDockFloat, &QShortcut::activated, this, []() {
+        auto* registry = KDDockWidgets::DockRegistry::self();
+        if (!registry) return;
+        auto* dw = registry->focusedDockWidget();
+        if (!dw) return;
+        if (dw->isInMainWindow())
+            dw->setFloating(true);
+        else
+            dw->setFloating(false);
+    });
+
+    auto isTerminalFocused = []() -> bool {
+        auto* registry = KDDockWidgets::DockRegistry::self();
+        if (!registry) return false;
+        auto* dw = registry->focusedDockWidget();
+        if (!dw) return false;
+        QString name = dw->uniqueName();
+        return name.startsWith("Terminal [") || name.startsWith("Shell [");
+    };
+
+    auto getCurrentAdaptixWidget = [this]() -> AdaptixWidget* {
+        return qobject_cast<AdaptixWidget*>(mainuiTabWidget->currentWidget());
+    };
+
+    auto shortcutSessions = new QShortcut(QKeySequence("Ctrl+Shift+S"), this);
+    shortcutSessions->setContext(Qt::ApplicationShortcut);
+    connect(shortcutSessions, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w) w->SetSessionsTableUI();
+    });
+
+    auto shortcutGraph = new QShortcut(QKeySequence("Ctrl+Shift+G"), this);
+    shortcutGraph->setContext(Qt::ApplicationShortcut);
+    connect(shortcutGraph, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w) w->SetGraphUI();
+    });
+
+    auto shortcutListeners = new QShortcut(QKeySequence("Ctrl+Shift+L"), this);
+    shortcutListeners->setContext(Qt::ApplicationShortcut);
+    connect(shortcutListeners, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w) w->LoadListenersUI();
+    });
+
+    auto shortcutLogs = new QShortcut(QKeySequence("Ctrl+Shift+N"), this);
+    shortcutLogs->setContext(Qt::ApplicationShortcut);
+    connect(shortcutLogs, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w) w->LoadLogsUI();
+    });
+
+    auto shortcutTasks = new QShortcut(QKeySequence("Ctrl+Shift+J"), this);
+    shortcutTasks->setContext(Qt::ApplicationShortcut);
+    connect(shortcutTasks, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w) w->SetTasksUI();
+    });
+
+    auto shortcutScriptManager = new QShortcut(QKeySequence("Ctrl+Shift+E"), this);
+    shortcutScriptManager->setContext(Qt::ApplicationShortcut);
+    connect(shortcutScriptManager, &QShortcut::activated, this, [this, isTerminalFocused]() {
+        if (isTerminalFocused()) return;
+        this->onScriptManager();
+    });
+
+    auto shortcutDownloads = new QShortcut(QKeySequence("Ctrl+Shift+F"), this);
+    shortcutDownloads->setContext(Qt::ApplicationShortcut);
+    connect(shortcutDownloads, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w) w->LoadDownloadsUI();
+    });
+
+    auto shortcutTargets = new QShortcut(QKeySequence("Ctrl+Shift+T"), this);
+    shortcutTargets->setContext(Qt::ApplicationShortcut);
+    connect(shortcutTargets, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w) w->LoadTargetsUI();
+    });
+
+    auto shortcutCreds = new QShortcut(QKeySequence("Ctrl+Shift+C"), this);
+    shortcutCreds->setContext(Qt::ApplicationShortcut);
+    connect(shortcutCreds, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w) w->LoadCredentialsUI();
+    });
+
+    auto shortcutTunnels = new QShortcut(QKeySequence("Ctrl+Shift+P"), this);
+    shortcutTunnels->setContext(Qt::ApplicationShortcut);
+    connect(shortcutTunnels, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w) w->LoadTunnelsUI();
+    });
+
+    auto shortcutScreenshots = new QShortcut(QKeySequence("Ctrl+Shift+I"), this);
+    shortcutScreenshots->setContext(Qt::ApplicationShortcut);
+    connect(shortcutScreenshots, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w)
+            w->LoadScreenshotsUI();
+    });
+
+    auto shortcutSettings = new QShortcut(QKeySequence("Ctrl+Shift+R"), this);
+    shortcutSettings->setContext(Qt::ApplicationShortcut);
+    connect(shortcutSettings, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        MainUI::onSettings();
+    });
 }
 
 MainUI::~MainUI()
@@ -84,6 +254,19 @@ MainUI::~MainUI()
     }
     qDeleteAll(AdaptixProjects);
     AdaptixProjects.clear();
+}
+
+bool MainUI::eventFilter(QObject *obj, QEvent *event)
+{
+    if (event->type() == QEvent::ShortcutOverride) {
+        auto *ke = static_cast<QKeyEvent*>(event);
+        if (ke->modifiers() == Qt::ControlModifier &&
+            (ke->key() == Qt::Key_Left || ke->key() == Qt::Key_Right)) {
+            event->ignore();
+            return true;
+        }
+    }
+    return QMainWindow::eventFilter(obj, event);
 }
 
 void MainUI::closeEvent(QCloseEvent* event)
