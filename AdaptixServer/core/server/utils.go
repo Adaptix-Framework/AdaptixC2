@@ -43,6 +43,7 @@ type Teamserver struct {
 	TaskManager   *TaskManager
 	Broker        *MessageBroker
 	TunnelManager *TunnelManager
+	FrameManager  *FrameManager
 	EventManager  *eventing.EventManager
 	ScriptManager *axscript.ScriptManager
 

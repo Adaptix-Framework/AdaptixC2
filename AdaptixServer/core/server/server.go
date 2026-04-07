@@ -55,6 +55,7 @@ func NewTeamserver() *Teamserver {
 	ts.ScriptManager = axscript.NewScriptManager(ts)
 	ts.TaskManager = NewTaskManager(ts)
 	ts.TunnelManager = NewTunnelManager(ts)
+	ts.FrameManager = NewFrameManager(ts, nil)
 	ts.Extender = extender.NewExtender(ts)
 	return ts
 }
