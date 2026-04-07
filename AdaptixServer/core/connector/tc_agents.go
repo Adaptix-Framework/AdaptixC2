@@ -97,7 +97,7 @@ func (tc *TsConnector) dispatchAgentCommand(ctx *gin.Context, username string, c
 
 	/// Resolve server-side hooks if client did not provide any
 	if commandData.HookId == "" && commandData.HandlerId == "" {
-		srvHookId, srvHandlerId, preHookHandled, hookErr := tc.teamserver.TsAxScriptResolveHooks(agentName, commandData.AgentId, listenerRegName, agentOs, commandData.CmdLine, args)
+		srvHookId, srvHandlerId, preHookHandled, hookErr := tc.teamserver.TsAxScriptResolveHooks(agentName, commandData.AgentId, listenerRegName, agentOs, commandData.CmdLine, args, username)
 		if hookErr != nil {
 			tc.teamserver.TsAgentConsoleErrorCommand(commandData.AgentId, username, commandData.CmdLine, std.ExtractJsErrorMessage(hookErr), "", "")
 			ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})

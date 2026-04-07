@@ -1,6 +1,7 @@
 package main
 
 import (
+	"AdaptixServer/core/connector"
 	"AdaptixServer/core/server"
 	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/token"
@@ -10,7 +11,7 @@ import (
 )
 
 func main() {
-	fmt.Printf("\n[===== Adaptix Framework %v =====]\n\n", server.SMALL_VERSION)
+	fmt.Printf("\n[===== Adaptix Framework %v =====]\n\n", connector.SMALL_VERSION)
 
 	var (
 		err         error
