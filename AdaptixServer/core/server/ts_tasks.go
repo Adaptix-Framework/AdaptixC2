@@ -49,71 +49,42 @@ func (ts *Teamserver) getAgent(agentId string) (*Agent, error) {
 	return agent, nil
 }
 
-func (ts *Teamserver) extractHostedTasks(agent *Agent, availableSize int, startSize int, maxCount int) (tasks []adaptix.TaskData, sendTasks []string, usedSize int) {
-	usedSize = startSize
+func (ts *Teamserver) extractTasks(agent *Agent, maxSize int, maxCount int, priority *uint) (tasks []adaptix.TaskData, sendTasks []string, usedSize int) {
 	count := 0
 	for {
 		if maxCount > 0 && count >= maxCount {
 			break
 		}
-		item, err := agent.HostedTasks.Pop()
+
+		var (
+			item interface{}
+			err  error
+		)
+		if priority != nil {
+			item, err = agent.HostedQueue.PopByPriority(*priority)
+		} else {
+			item, err = agent.HostedQueue.Pop()
+		}
+
 		if err != nil {
 			break
 		}
 		taskData := item.(adaptix.TaskData)
 
-		if usedSize+len(taskData.Data) < availableSize {
-			tasks = append(tasks, taskData)
-			if taskData.Sync || taskData.Type == adaptix.TASK_TYPE_BROWSER {
-				agent.RunningTasks.Put(taskData.TaskId, taskData)
-			}
+		if maxSize > 0 && usedSize+len(taskData.Data) >= maxSize {
+			agent.HostedQueue.Push(taskData.Priority, taskData)
+			break
+		}
+
+		tasks = append(tasks, taskData)
+		if taskData.Sync || taskData.Type == adaptix.TASK_TYPE_BROWSER {
+			agent.RunningTasks.Put(taskData.TaskId, taskData)
+		}
+		if taskData.Type != adaptix.TASK_TYPE_TUNNEL && taskData.Type != adaptix.TASK_TYPE_PROXY_DATA {
 			sendTasks = append(sendTasks, taskData.TaskId)
-			usedSize += len(taskData.Data)
-			count++
-		} else {
-			agent.HostedTasks.PushFront(taskData)
-			break
 		}
-	}
-	return
-}
-
-func (ts *Teamserver) extractTunnelTasks(agent *Agent, availableSize int, startSize int) (tasks []adaptix.TaskData, usedSize int) {
-	usedSize = startSize
-	for {
-		item, err := agent.HostedTunnelTasks.Pop()
-		if err != nil {
-			break
-		}
-		taskData := item.(adaptix.TaskData)
-
-		if usedSize+len(taskData.Data) < availableSize {
-			tasks = append(tasks, taskData)
-			usedSize += len(taskData.Data)
-		} else {
-			agent.HostedTunnelTasks.PushFront(taskData)
-			break
-		}
-	}
-	return
-}
-
-func (ts *Teamserver) extractTunnelData(agent *Agent, availableSize int, startSize int) (tasks []adaptix.TaskData, usedSize int) {
-	usedSize = startSize
-	for {
-		item, err := agent.HostedTunnelData.Pop()
-		if err != nil {
-			break
-		}
-		taskDataTunnel := item.(adaptix.TaskDataTunnel)
-
-		if usedSize+len(taskDataTunnel.Data.Data) < availableSize {
-			tasks = append(tasks, taskDataTunnel.Data)
-			usedSize += len(taskDataTunnel.Data.Data)
-		} else {
-			agent.HostedTunnelData.PushFront(taskDataTunnel)
-			break
-		}
+		usedSize += len(taskData.Data)
+		count++
 	}
 	return
 }
@@ -144,62 +115,35 @@ func (ts *Teamserver) extractPivotTasks(agent *Agent, availableSize int, startSi
 	return
 }
 
+func (ts *Teamserver) syncSendTasks(sendTasks []string) {
+	if len(sendTasks) > 0 {
+		packet := CreateSpAgentTaskSend(sendTasks)
+		ts.TsSyncAllClients(packet)
+	}
+}
+
 func (ts *Teamserver) TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error) {
 	agent, err := ts.getAgent(agentId)
 	if err != nil {
-		return nil, fmt.Errorf("TsTaskQueueGetAvailable: %w", err)
+		return nil, fmt.Errorf("TsTaskGetAvailableAll: %w", err)
 	}
 
-	var tasks []adaptix.TaskData
-
-	hostedTasks, sendTasks, size := ts.extractHostedTasks(agent, availableSize, 0, -1)
-	tasks = append(tasks, hostedTasks...)
-	if len(sendTasks) > 0 {
-		packet := CreateSpAgentTaskSend(sendTasks)
-		ts.TsSyncAllClients(packet)
-	}
-
-	tunnelTasks, size := ts.extractTunnelTasks(agent, availableSize, size)
-	tasks = append(tasks, tunnelTasks...)
+	hostedTasks, sendTasks, size := ts.extractTasks(agent, availableSize, -1, nil)
+	ts.syncSendTasks(sendTasks)
 
 	pivotTasks, _ := ts.extractPivotTasks(agent, availableSize, size)
-	tasks = append(tasks, pivotTasks...)
 
-	return tasks, nil
+	return append(hostedTasks, pivotTasks...), nil
 }
 
-func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, availableSize int) ([]adaptix.TaskData, int, error) {
+func (ts *Teamserver) TsTaskGetAvailableTasks(agentId string, maxCount int, availableSize int) ([]adaptix.TaskData, int, error) {
 	agent, err := ts.getAgent(agentId)
 	if err != nil {
-		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: %w", err)
+		return nil, 0, fmt.Errorf("TsTaskGetAvailableTasks: %w", err)
 	}
 
-	var tasks []adaptix.TaskData
-
-	hostedTasks, sendTasks, size := ts.extractHostedTasks(agent, availableSize, 0, -1)
-	tasks = append(tasks, hostedTasks...)
-	if len(sendTasks) > 0 {
-		packet := CreateSpAgentTaskSend(sendTasks)
-		ts.TsSyncAllClients(packet)
-	}
-
-	tunnelTasks, size := ts.extractTunnelTasks(agent, availableSize, size)
-	tasks = append(tasks, tunnelTasks...)
-
-	return tasks, size, nil
-}
-
-func (ts *Teamserver) TsTaskGetAvailableTasksCount(agentId string, maxCount int, availableSize int) ([]adaptix.TaskData, int, error) {
-	agent, err := ts.getAgent(agentId)
-	if err != nil {
-		return nil, 0, fmt.Errorf("TsTaskQueueGetAvailable: %w", err)
-	}
-
-	tasks, sendTasks, size := ts.extractHostedTasks(agent, availableSize, 0, maxCount)
-	if len(sendTasks) > 0 {
-		packet := CreateSpAgentTaskSend(sendTasks)
-		ts.TsSyncAllClients(packet)
-	}
+	tasks, sendTasks, size := ts.extractTasks(agent, availableSize, maxCount, nil)
+	ts.syncSendTasks(sendTasks)
 
 	return tasks, size, nil
 }
@@ -222,7 +166,7 @@ func (ts *Teamserver) tsTasksPivotExistsWithVisited(agentId string, first bool, 
 	}
 
 	if !first {
-		if agent.HostedTasks.Len() > 0 || agent.HostedTunnelTasks.Len() > 0 || agent.HostedTunnelData.Len() > 0 {
+		if agent.HostedQueue.Len() > 0 {
 			return true
 		}
 	}
@@ -237,16 +181,6 @@ func (ts *Teamserver) tsTasksPivotExistsWithVisited(agentId string, first bool, 
 		}
 	}
 	return false
-}
-
-func (ts *Teamserver) TsTaskGetAvailablePivotAll(agentId string, availableSize int) ([]adaptix.TaskData, error) {
-	agent, err := ts.getAgent(agentId)
-	if err != nil {
-		return nil, fmt.Errorf("TsTaskQueueGetAvailable: %w", err)
-	}
-
-	tasks, _ := ts.extractPivotTasks(agent, availableSize, 0)
-	return tasks, nil
 }
 
 func (ts *Teamserver) TsProcessHookJobsForDisconnectedClient(clientName string) {

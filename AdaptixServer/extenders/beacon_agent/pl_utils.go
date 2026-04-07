@@ -17,6 +17,13 @@ import (
 )
 
 const (
+	PRIORITY_TASK          = 0
+	PRIORITY_TUNNEL_CREATE = 10
+	PRIORITY_TUNNEL_DATA   = 11
+	PRIORITY_TUNNEL_CLOSE  = 12
+)
+
+const (
 	COMMAND_CAT          = 24
 	COMMAND_COPY         = 12
 	COMMAND_CD           = 8

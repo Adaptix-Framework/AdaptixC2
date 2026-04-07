@@ -827,7 +827,7 @@ func tunnelManageTask(agent *Agent, taskData adaptix.TaskData) {
 		taskData.TaskId, _ = krypt.GenerateUID(8)
 	}
 
-	agent.HostedTunnelTasks.Push(taskData)
+	agent.HostedQueue.Push(taskData.Priority, taskData)
 }
 
 func relayPipeToTaskData(agent *Agent, channelId int, taskData adaptix.TaskData) {
@@ -836,7 +836,7 @@ func relayPipeToTaskData(agent *Agent, channelId int, taskData adaptix.TaskData)
 	}
 	taskData.AgentId = agent.GetData().Id
 
-	agent.HostedTunnelTasks.Push(taskData)
+	agent.HostedQueue.Push(taskData.Priority, taskData)
 }
 
 func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunChannel *TunnelChannel, direct bool) {
@@ -888,7 +888,7 @@ func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunCha
 						}
 						continue
 					}
-					if agent.HostedTunnelTasks != nil && agent.HostedTunnelTasks.Len() > 128 {
+					if agent.HostedQueue != nil && agent.HostedQueue.Len() > 128 {
 						time.Sleep(backoff)
 						if backoff < maxBackoff {
 							backoff *= 2
@@ -969,7 +969,7 @@ func relayWebsocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tun
 						}
 						continue
 					}
-					if agent.HostedTunnelTasks != nil && agent.HostedTunnelTasks.Len() > 128 {
+					if agent.HostedQueue != nil && agent.HostedQueue.Len() > 128 {
 						time.Sleep(backoff)
 						if backoff < maxBackoff {
 							backoff *= 2

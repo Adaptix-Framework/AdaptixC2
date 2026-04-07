@@ -61,6 +61,10 @@ func (tm *TaskManager) prepareTaskData(agent *Agent, cmdline string, client stri
 	taskData.Computer = agentData.Computer
 	taskData.StartDate = time.Now().Unix()
 
+	if taskData.Priority < 0 {
+		taskData.Priority = 0
+	}
+
 	if taskData.Completed {
 		taskData.FinishDate = taskData.StartDate
 	}
@@ -241,7 +245,7 @@ func (tm *TaskManager) Cancel(agentId string, taskId string) error {
 		return err
 	}
 
-	found, retTask := agent.HostedTasks.RemoveIf(func(v interface{}) bool {
+	found, retTask := agent.HostedQueue.RemoveIf(func(v interface{}) bool {
 		task, ok := v.(adaptix.TaskData)
 		return ok && task.TaskId == taskId
 	})
@@ -268,7 +272,7 @@ func (tm *TaskManager) Delete(agentId string, taskId string) error {
 		return err
 	}
 
-	found, _ := agent.HostedTasks.FindIf(func(v interface{}) bool {
+	found, _ := agent.HostedQueue.FindIf(func(v interface{}) bool {
 		task, ok := v.(adaptix.TaskData)
 		return ok && task.TaskId == taskId
 	})
