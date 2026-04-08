@@ -89,7 +89,6 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 		RunningJobs:       safe.NewMap(),
 		PivotParent:       nil,
 		PivotChilds:       safe.NewSlice(),
-		Tick:              false,
 	}
 	agent.SetActive(true)
 	agent.SetData(agentData)
@@ -854,7 +853,7 @@ func (ts *Teamserver) TsAgentSetTick(agentId string, listenerName string) error 
 			})
 			_ = ts.DBMS.DbAgentTick(agent.GetData())
 		}
-		agent.Tick = true
+		agent.SetTicked(true)
 	} else if listenerChanged {
 		agent.UpdateData(func(d *adaptix.AgentData) {
 			d.Listener = listenerName
@@ -879,8 +878,8 @@ func (ts *Teamserver) TsAgentTickUpdate() {
 			}
 			agentData := agent.GetData()
 			if agentData.Async {
-				if agent.Tick {
-					agent.Tick = false
+				if agent.IsTicked() {
+					agent.SetTicked(false)
 					agentSlice = append(agentSlice, agentData.Id)
 				}
 			}

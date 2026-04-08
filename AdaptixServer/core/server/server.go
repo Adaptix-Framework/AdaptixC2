@@ -111,7 +111,6 @@ func (ts *Teamserver) RestoreData() {
 			RunningJobs:       safe.NewMap(),
 			PivotParent:       nil,
 			PivotChilds:       safe.NewSlice(),
-			Tick:              false,
 		}
 
 		if agentData.Mark == "Terminated" {

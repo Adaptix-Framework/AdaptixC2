@@ -68,7 +68,7 @@ type Agent struct {
 	mu       sync.RWMutex
 	data     adaptix.AgentData
 	Extender adaptix.ExtenderAgent
-	Tick     bool
+	tick     atomic.Bool
 	active   atomic.Bool
 
 	HostedTasks       *safe.Queue // taskData TaskData
@@ -80,6 +80,14 @@ type Agent struct {
 
 	PivotParent *adaptix.PivotData
 	PivotChilds *safe.Slice
+}
+
+func (a *Agent) IsTicked() bool {
+	return a.tick.Load()
+}
+
+func (a *Agent) SetTicked(v bool) {
+	a.tick.Store(v)
 }
 
 func (a *Agent) IsActive() bool {
