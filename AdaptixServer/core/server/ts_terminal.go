@@ -41,7 +41,7 @@ func (ts *Teamserver) TsAgentTerminalCreateChannel(terminalData string, wsconn *
 	if err != nil {
 		return err
 	}
-	if !agent.Active {
+	if !agent.IsActive() {
 		return fmt.Errorf("agent '%v' not active", td.AgentId)
 	}
 

@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -45,7 +45,7 @@ func (ts *Teamserver) TsTunnelClientStart(AgentId string, Listen bool, Type int,
 	if !ok {
 		return "", fmt.Errorf("invalid agent type for '%v'", AgentId)
 	}
-	if agent.Active == false {
+	if !agent.IsActive() {
 		return "", fmt.Errorf("agent '%v' not active", AgentId)
 	}
 

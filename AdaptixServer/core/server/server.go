@@ -14,7 +14,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/goccy/go-yaml"
 )
 
@@ -112,11 +112,12 @@ func (ts *Teamserver) RestoreData() {
 			PivotParent:       nil,
 			PivotChilds:       safe.NewSlice(),
 			Tick:              false,
-			Active:            true,
 		}
 
 		if agentData.Mark == "Terminated" {
-			agent.Active = false
+			agent.SetActive(false)
+		} else {
+			agent.SetActive(true)
 		}
 
 		if agentData.Mark == "" {

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsAgentList() (string, error) {
@@ -90,8 +90,8 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentId string, beat []byte
 		PivotParent:       nil,
 		PivotChilds:       safe.NewSlice(),
 		Tick:              false,
-		Active:            true,
 	}
+	agent.SetActive(true)
 	agent.SetData(agentData)
 
 	// --- PRE HOOK ---
@@ -137,7 +137,7 @@ func (ts *Teamserver) TsAgentCommand(agentName string, agentId string, clientNam
 	if err != nil {
 		return err
 	}
-	if !agent.Active {
+	if !agent.IsActive() {
 		return fmt.Errorf("agent '%v' not active", agentId)
 	}
 
@@ -615,7 +615,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId string, terminateTaskId string) e
 	if !ok {
 		return errors.New("invalid agent type")
 	}
-	agent.Active = false
+	agent.SetActive(false)
 	agent.UpdateData(func(d *adaptix.AgentData) {
 		d.Mark = "Terminated"
 	})

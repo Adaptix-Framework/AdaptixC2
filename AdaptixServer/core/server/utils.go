@@ -14,7 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 	"github.com/gorilla/websocket"
 )
 
@@ -69,7 +69,7 @@ type Agent struct {
 	data     adaptix.AgentData
 	Extender adaptix.ExtenderAgent
 	Tick     bool
-	Active   bool
+	active   atomic.Bool
 
 	HostedTasks       *safe.Queue // taskData TaskData
 	HostedTunnelTasks *safe.Queue // taskData TaskData
@@ -80,6 +80,14 @@ type Agent struct {
 
 	PivotParent *adaptix.PivotData
 	PivotChilds *safe.Slice
+}
+
+func (a *Agent) IsActive() bool {
+	return a.active.Load()
+}
+
+func (a *Agent) SetActive(v bool) {
+	a.active.Store(v)
 }
 
 func (a *Agent) GetData() adaptix.AgentData {

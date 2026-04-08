@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	adaptix "github.com/Adaptix-Framework/axc2"
 )
 
 type TaskHandler interface {
@@ -141,7 +141,7 @@ func (tm *TaskManager) Create(agentId string, cmdline string, client string, tas
 		return
 	}
 
-	if !agent.Active {
+	if !agent.IsActive() {
 		return
 	}
 
