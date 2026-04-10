@@ -4090,9 +4090,11 @@ QSize QlementineStyle::sizeFromContents(
       //return opt->rect.size();
       break;
     case CT_LineEdit:
-      if (const auto* optFrame = qstyleoption_cast<const QStyleOptionFrame*>(opt)) {
-        const auto r = optFrame->rect;
-        const auto w = r.width() - 2 * hardcodedLineEditHMargin;
+      if (qstyleoption_cast<const QStyleOptionFrame*>(opt)) {
+        // Use contentSize (font-metrics-based) rather than optFrame->rect (current widget
+        // geometry) so that sizeHint/minimumSizeHint report a content-driven width instead
+        // of echoing back the widget's existing size.
+        const auto w = contentSize.width() - 2 * hardcodedLineEditHMargin;
         const auto h = _impl->theme.controlHeightLarge;
         const auto* parent = widget ? widget->parentWidget() : nullptr;
         const auto* treeView = parent ? qobject_cast<const QAbstractItemView*>(parent->parentWidget()) : nullptr;

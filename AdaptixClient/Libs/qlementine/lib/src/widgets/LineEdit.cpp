@@ -22,6 +22,7 @@ const QIcon& LineEdit::icon() const {
 
 void LineEdit::setIcon(const QIcon& icon) {
   _icon = icon;
+  Q_EMIT iconChanged();
   update();
   if (_icon.isNull()) {
     setTextMargins(0, 0, 0, 0);

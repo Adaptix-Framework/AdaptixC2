@@ -301,6 +301,7 @@ QMargins Popover::screenPadding() const {
 void Popover::setScreenPadding(const QMargins& padding) {
   if (padding != _screenPadding) {
     _screenPadding = padding;
+    Q_EMIT screenPaddingChanged();
     if (isVisible()) {
       updatePopoverGeometry();
     }
