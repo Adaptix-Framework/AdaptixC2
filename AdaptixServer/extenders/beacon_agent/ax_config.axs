@@ -307,7 +307,7 @@ function GenerateUI(listeners_type)
 
     let labelAgentFormat = form.create_label("Format:");
     let comboAgentFormat = form.create_combo()
-    comboAgentFormat.addItems(["Exe", "Service Exe", "DLL", "Shellcode"]);
+    comboAgentFormat.addItems(["Exe", "Service Exe", "DLL", "Shellcode", "PowerShell", "BAT"]);
 
     let labelSleep = form.create_label("Sleep (Jitter %):");
     let textSleep = form.create_textline("4s");

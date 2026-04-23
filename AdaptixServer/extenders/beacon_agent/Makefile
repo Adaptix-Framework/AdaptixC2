@@ -2,7 +2,7 @@ all: clean
 	@ echo "    * Building agent_beacon plugin"
 	@ mkdir dist
 	@ cp config.yaml ax_config.axs ./dist/
-	@ GOEXPERIMENT=jsonv2,greenteagc go build -buildmode=plugin -ldflags="-s -w" -o ./dist/agent_beacon.so pl_main.go pl_packer.go pl_utils.go pl_sideloading.go
+	@ GOEXPERIMENT=jsonv2,greenteagc go build -buildmode=plugin -ldflags="-s -w" -o ./dist/agent_beacon.so pl_main.go pl_packer.go pl_utils.go pl_sideloading.go pl_powershell.go pl_bat.go
 	@ echo "      done..."
 
 	@ echo "    * Building agent"

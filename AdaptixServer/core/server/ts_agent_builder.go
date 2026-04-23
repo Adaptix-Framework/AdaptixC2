@@ -130,7 +130,7 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 
 	fileContent, fileName, err = ts.Extender.ExAgentGenerate(builder.Name, conf)
 	if err != nil {
-		_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, "Error: agent builder failed")
+		_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, fmt.Sprintf("Error: agent builder failed: %v", err))
 		goto RET
 	}
 	_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_SUCCESS, "Agent built successfully")

