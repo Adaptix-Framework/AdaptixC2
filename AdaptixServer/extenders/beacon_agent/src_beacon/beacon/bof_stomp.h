@@ -14,6 +14,9 @@ typedef struct _BOF_STOMP_CTX {
     PVOID            pdataBase;
     DWORD            pdataSize;
     PVOID            savedPdata;
+    DWORD            pdataCapacity;
+    PVOID            moduleBase;
+    BOOL             pdataStomped;
     PVOID            cursorBase;
     DWORD            cursorSize;
     BOOL             inUse;

