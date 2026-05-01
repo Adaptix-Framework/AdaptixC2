@@ -1,0 +1,7 @@
+extender_type: "listener"
+extender_file: "listener_beacon_discord.so"
+ax_file: "ax_config.axs"
+
+listener_name: "BeaconDiscord"
+listener_type: "external"
+protocol: "discord"
