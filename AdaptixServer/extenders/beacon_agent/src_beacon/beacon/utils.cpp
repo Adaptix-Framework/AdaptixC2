@@ -277,6 +277,12 @@ ULONG GenerateRandom32()
 	return seed;
 }
 
+void GenerateRandomBytes(BYTE* buf, ULONG len)
+{
+	for (ULONG i = 0; i < len; i++)
+		buf[i] = (BYTE)(GenerateRandom32() & 0xFF);
+}
+
 BYTE GetGmtOffset() 
 {
 	TIME_ZONE_INFORMATION temp;

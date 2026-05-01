@@ -45,6 +45,8 @@ BOOL WriteDataToSocket(SOCKET sock, BYTE* buffer, ULONG bufferSize);
 
 ULONG GenerateRandom32();
 
+void GenerateRandomBytes(BYTE* buf, ULONG len);
+
 BYTE GetGmtOffset();
 
 BOOL IsElevate();

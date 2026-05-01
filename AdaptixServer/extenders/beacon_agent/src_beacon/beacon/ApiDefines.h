@@ -5,6 +5,7 @@
 #define HASH_LIB_IPHLPAPI           0x2d288345
 #define HASH_LIB_ADVAPI32           0x721421e8
 #define HASH_LIB_MSVCRT             0xb707534d
+#define HASH_LIB_USER32             0x1206f7d2
 
 
 //ntdll
@@ -196,3 +197,12 @@
 #define HASH_FUNC_LISTEN                             0xb4374c73
 #define HASH_FUNC_RECVFROM                           0xcfb09288
 #define HASH_FUNC_SENDTO                             0xc44006d1
+
+//user32
+#define HASH_FUNC_GETASYNCKEYSTATE                   0x124c2dac
+#define HASH_FUNC_GETFOREGROUNDWINDOW                0x641cf097
+#define HASH_FUNC_GETKEYBOARDSTATE                   0x41305fb6
+#define HASH_FUNC_GETWINDOWTEXTW                     0x745a77f8
+#define HASH_FUNC_GETWINDOWTHREADPROCESSID           0x6ede2a0
+#define HASH_FUNC_MAPVIRTUALKEYW                     0x8142b7c9
+#define HASH_FUNC_TOUNICODE                          0x406b25ee

