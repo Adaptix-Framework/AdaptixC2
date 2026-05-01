@@ -3,8 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
-	"crypto/rc4"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -145,9 +146,9 @@ func validConfig(config string) error {
 		return errors.New("user_agent is required")
 	}
 
-	match, _ := regexp.MatchString("^[0-9a-f]{32}$", conf.EncryptKey)
-	if len(conf.EncryptKey) != 32 || !match {
-		return errors.New("encrypt_key must be 32 hex characters")
+	match, _ := regexp.MatchString("^[0-9a-f]{64}$", conf.EncryptKey)
+	if len(conf.EncryptKey) != 64 || !match {
+		return errors.New("encrypt_key must be 64 hex characters (32 bytes for AES-256)")
 	}
 
 	if !strings.Contains(conf.WebPageOutput, "<<<PAYLOAD_DATA>>>") {
@@ -417,12 +418,23 @@ func (t *TransportHTTP) parseBeatAndData(ctx *gin.Context) (string, string, []by
 	if err != nil {
 		return "", "", nil, nil, errors.New("failed decrypt beat")
 	}
-	rc4crypt, errcrypt := rc4.NewCipher(encKey)
-	if errcrypt != nil {
-		return "", "", nil, nil, errors.New("rc4 decrypt error")
+	block, err := aes.NewCipher(encKey)
+	if err != nil {
+		return "", "", nil, nil, errors.New("aes cipher error")
 	}
-	agentInfo = make([]byte, len(agentInfoCrypt))
-	rc4crypt.XORKeyStream(agentInfo, agentInfoCrypt)
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", "", nil, nil, errors.New("gcm error")
+	}
+	nonceSize := gcm.NonceSize()
+	if len(agentInfoCrypt) < nonceSize+gcm.Overhead() {
+		return "", "", nil, nil, errors.New("ciphertext too short")
+	}
+	nonce, ciphertext := agentInfoCrypt[:nonceSize], agentInfoCrypt[nonceSize:]
+	agentInfo, err = gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", "", nil, nil, errors.New("gcm decrypt error")
+	}
 
 	agentType = uint(binary.BigEndian.Uint32(agentInfo[:4]))
 	agentInfo = agentInfo[4:]

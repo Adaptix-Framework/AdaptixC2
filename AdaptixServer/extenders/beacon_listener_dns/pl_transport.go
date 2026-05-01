@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"compress/zlib"
 	"context"
-	"crypto/rc4"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/base32"
 	"encoding/base64"
 	"encoding/binary"
@@ -76,9 +77,8 @@ func validConfig(config string) error {
 		return errors.New("domain is required")
 	}
 
-	keyLen := len(conf.EncryptKey)
-	if keyLen < 6 || keyLen > 32 {
-		return errors.New("encrypt_key must be 6-32 characters")
+	if len(conf.EncryptKey) != 64 {
+		return errors.New("encrypt_key must be 64 hex characters (32 bytes for AES-256)")
 	}
 
 	return nil
@@ -263,17 +263,27 @@ func (t *TransportDNS) handleHI(req *dnsRequest, w dns.ResponseWriter) {
 	}
 
 	keyBytes, err := hex.DecodeString(t.Config.EncryptKey)
-	if err != nil || len(keyBytes) != 16 {
+	if err != nil || len(keyBytes) != 32 {
 		return
 	}
 
-	cipher, err := rc4.NewCipher(keyBytes)
+	block, err := aes.NewCipher(keyBytes)
 	if err != nil {
 		return
 	}
-
-	fullBeat := make([]byte, len(req.data))
-	cipher.XORKeyStream(fullBeat, req.data)
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return
+	}
+	nonceSize := gcm.NonceSize()
+	if len(req.data) < nonceSize+gcm.Overhead() {
+		return
+	}
+	nonce, ciphertext := req.data[:nonceSize], req.data[nonceSize:]
+	fullBeat, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return
+	}
 
 	if len(fullBeat) < 8 {
 		return
@@ -303,7 +313,7 @@ func (t *TransportDNS) handleHB(req *dnsRequest) (needsReset bool, hasPendingTas
 	}
 	t.mu.Unlock()
 
-	decrypted := rc4Crypt(req.data, t.Config.EncryptKey)
+	decrypted := aes256CTRStream(req.data, t.Config.EncryptKey)
 
 	var ackOffset, ackTaskNonce uint32
 	if len(decrypted) >= 4 {
@@ -346,7 +356,7 @@ func (t *TransportDNS) handleGET(req *dnsRequest, w dns.ResponseWriter) []byte {
 		_ = Ts.TsAgentSetTick(req.sid, t.Name)
 	}
 
-	decrypted := rc4Crypt(req.data, t.Config.EncryptKey)
+	decrypted := aes256CTRStream(req.data, t.Config.EncryptKey)
 
 	var reqOffset uint32
 	if len(decrypted) >= 4 {
@@ -398,7 +408,7 @@ func (t *TransportDNS) handlePUT(req *dnsRequest) putAckInfo {
 	}
 	t.mu.Unlock()
 
-	decrypted := rc4Crypt(req.data, t.Config.EncryptKey)
+	decrypted := aes256CTRStream(req.data, t.Config.EncryptKey)
 	ack = t.handlePutFragment(req.sid, req.seq, decrypted, ack)
 
 	if req.sid != "" {
@@ -710,7 +720,7 @@ func (t *TransportDNS) buildDataResponse(req *dnsRequest, frame []byte, ttl uint
 		}
 	}
 
-	encrypted := rc4Crypt(frame, t.Config.EncryptKey)
+	encrypted := aes256CTRStream(frame, t.Config.EncryptKey)
 	b64Str := base64.StdEncoding.EncodeToString(encrypted)
 
 	var chunks []string
@@ -957,21 +967,24 @@ func newUpDone(total uint32) *dnsUpDone {
 	return ud
 }
 
-// Utility Functions
-func rc4Crypt(data []byte, keyHex string) []byte {
+// AES-256-CTR stream cipher matching C++ CryptAES256Stream
+func aes256CTRStream(data []byte, keyHex string) []byte {
 	if len(data) == 0 {
 		return data
 	}
 	keyBytes, err := hex.DecodeString(keyHex)
-	if err != nil || len(keyBytes) != 16 {
+	if err != nil || len(keyBytes) != 32 {
 		return data
 	}
-	cipher, err := rc4.NewCipher(keyBytes)
+	block, err := aes.NewCipher(keyBytes)
 	if err != nil {
 		return data
 	}
+	ctr := make([]byte, aes.BlockSize)
+	ctr[15] = 1
+	stream := cipher.NewCTR(block, ctr)
 	result := make([]byte, len(data))
-	cipher.XORKeyStream(result, data)
+	stream.XORKeyStream(result, data)
 	return result
 }
 

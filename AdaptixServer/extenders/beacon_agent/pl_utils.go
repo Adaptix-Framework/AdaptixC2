@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"compress/zlib"
-	"crypto/rc4"
+	"crypto/aes"
+	"crypto/cipher"
+	crypto_rand "crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -204,14 +206,42 @@ func SizeBytesToFormat(bytes int64) string {
 	return fmt.Sprintf("%.2f Kb", size/KB)
 }
 
-func RC4Crypt(data []byte, key []byte) ([]byte, error) {
-	rc4crypt, errcrypt := rc4.NewCipher(key)
-	if errcrypt != nil {
-		return nil, errors.New("rc4 crypt error")
+func AES256GCMEncrypt(data []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("aes cipher error: %v", err)
 	}
-	decryptData := make([]byte, len(data))
-	rc4crypt.XORKeyStream(decryptData, data)
-	return decryptData, nil
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("gcm error: %v", err)
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(crypto_rand.Reader, nonce); err != nil {
+		return nil, fmt.Errorf("nonce generation error: %v", err)
+	}
+	ciphertext := gcm.Seal(nonce, nonce, data, nil)
+	return ciphertext, nil
+}
+
+func AES256GCMDecrypt(data []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("aes cipher error: %v", err)
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("gcm error: %v", err)
+	}
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize+gcm.Overhead() {
+		return nil, errors.New("ciphertext too short")
+	}
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("gcm decrypt error: %v", err)
+	}
+	return plaintext, nil
 }
 
 func parseDurationToSeconds(input string) (int, error) {

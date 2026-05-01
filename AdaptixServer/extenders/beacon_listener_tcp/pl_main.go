@@ -2,7 +2,8 @@ package main
 
 import (
 	"bytes"
-	"crypto/rc4"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -167,13 +168,23 @@ func (l *Listener) InternalHandler(data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	rc4crypt, err := rc4.NewCipher(encKey)
+	block, err := aes.NewCipher(encKey)
 	if err != nil {
 		return "", err
 	}
-
-	agentInfo := make([]byte, len(data))
-	rc4crypt.XORKeyStream(agentInfo, data)
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize+gcm.Overhead() {
+		return "", fmt.Errorf("ciphertext too short")
+	}
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	agentInfo, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", err
+	}
 
 	agentType := fmt.Sprintf("%08x", uint(binary.BigEndian.Uint32(agentInfo[:4])))
 	agentInfo = agentInfo[4:]

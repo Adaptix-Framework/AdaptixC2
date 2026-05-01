@@ -30,7 +30,7 @@ function ListenerUI(mode_create)
     spinTTL.setValue(5);
 
     let labelEncryptKey = form.create_label("Encryption Key:");
-    let textEncryptKey = form.create_textline(ax.random_string(32, "hex"));
+    let textEncryptKey = form.create_textline(ax.random_string(64, "hex"));
     textEncryptKey.setEnabled(mode_create);
     let buttonEncryptKey = form.create_button("Generate");
     buttonEncryptKey.setEnabled(mode_create);
@@ -50,7 +50,7 @@ function ListenerUI(mode_create)
     spinBurstJitter.setValue(0);
     spinBurstJitter.setEnabled(false);
 
-    form.connect(buttonEncryptKey, "clicked", function() { textEncryptKey.setText(ax.random_string(32, "hex")); });
+    form.connect(buttonEncryptKey, "clicked", function() { textEncryptKey.setText(ax.random_string(64, "hex")); });
     form.connect(checkBurstEnabled, "stateChanged", function() {
         if(spinBurstSleep.getEnabled()) {
             spinBurstSleep.setEnabled(false);

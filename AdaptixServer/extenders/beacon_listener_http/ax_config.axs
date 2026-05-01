@@ -38,7 +38,7 @@ function ListenerUI(mode_create)
     let textlineHB = form.create_textline("X-Beacon-Id");
 
     let labelEncryptKey = form.create_label("Encryption key:");
-    let textlineEncryptKey = form.create_textline(ax.random_string(32, "hex"));
+    let textlineEncryptKey = form.create_textline(ax.random_string(64, "hex"));
     textlineEncryptKey.setEnabled(mode_create)
     let buttonEncryptKey = form.create_button("Generate");
     buttonEncryptKey.setEnabled(mode_create)
@@ -56,7 +56,7 @@ function ListenerUI(mode_create)
     ssl_group.setPanel(panel_group);
     ssl_group.setChecked(false);
 
-    form.connect(buttonEncryptKey, "clicked", function() { textlineEncryptKey.setText( ax.random_string(32, "hex") ); });
+    form.connect(buttonEncryptKey, "clicked", function() { textlineEncryptKey.setText( ax.random_string(64, "hex") ); });
 
     let layoutMain = form.create_gridlayout();
     layoutMain.addWidget(labelHost,          0, 0, 1, 1);
