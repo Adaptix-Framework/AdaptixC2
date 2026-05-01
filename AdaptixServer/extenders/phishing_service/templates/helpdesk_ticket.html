@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;color:#333;background-color:#f4f4f4;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:30px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+
+<!-- Header -->
+<tr><td style="background-color:#2c3e50;padding:24px 40px;">
+<table width="100%"><tr>
+<td><span style="color:#fff;font-size:20px;font-weight:600;">IT Service Desk</span></td>
+<td align="right"><span style="background:#e74c3c;color:#fff;font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600;">HIGH PRIORITY</span></td>
+</tr></table>
+</td></tr>
+
+<!-- Body -->
+<tr><td style="padding:32px 40px;">
+<p style="margin:0 0 20px;">Hello {{.FirstName}},</p>
+
+<p style="margin:0 0 20px;">A support ticket has been opened on your behalf due to unusual activity detected on your account. Please review the details below and take action to secure your account.</p>
+
+<!-- Ticket Card -->
+<table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #dee2e6;border-radius:6px;overflow:hidden;margin:0 0 24px;">
+<tr><td style="background:#f8f9fa;padding:12px 20px;border-bottom:1px solid #dee2e6;">
+<span style="font-weight:600;color:#2c3e50;">Ticket #INC-2024-78432</span>
+</td></tr>
+<tr><td style="padding:20px;">
+<table width="100%" cellspacing="0" cellpadding="6">
+<tr><td style="color:#666;width:120px;font-size:13px;">Status:</td><td style="font-size:13px;"><span style="color:#e67e22;font-weight:600;">&#9679; Awaiting User Action</span></td></tr>
+<tr><td style="color:#666;font-size:13px;">Priority:</td><td style="font-size:13px;"><span style="color:#e74c3c;font-weight:600;">High</span></td></tr>
+<tr><td style="color:#666;font-size:13px;">Category:</td><td style="font-size:13px;">Account Security</td></tr>
+<tr><td style="color:#666;font-size:13px;">Affected User:</td><td style="font-size:13px;">{{.Email}}</td></tr>
+<tr><td style="color:#666;font-size:13px;">Description:</td><td style="font-size:13px;">Multiple failed login attempts detected from an unrecognized location. Password verification required.</td></tr>
+</table>
+</td></tr>
+</table>
+
+<table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+<tr><td style="background-color:#2c3e50;border-radius:4px;padding:12px 32px;">
+<a href="{{.ClickURL}}" style="color:#fff;text-decoration:none;font-size:15px;font-weight:600;">Verify Identity &amp; Secure Account</a>
+</td></tr>
+</table>
+
+<p style="margin:0 0 8px;color:#888;font-size:12px;">If you recognize this activity, you can safely close this ticket after verification.</p>
+<p style="margin:0;color:#888;font-size:12px;">If you do not recognize this activity, please verify your identity immediately and change your password.</p>
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="background-color:#f8f9fa;padding:20px 40px;border-top:1px solid #e9ecef;">
+<p style="margin:0 0 4px;color:#6c757d;font-size:11px;">{{.Company}} IT Service Desk &bull; Automated Notification</p>
+<p style="margin:0;color:#6c757d;font-size:11px;">Hours: Mon-Fri 8:00 AM - 6:00 PM &bull; ext. 4357 (HELP)</p>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>

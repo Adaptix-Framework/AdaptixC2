@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#333333;background-color:#f5f5f5;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f5;padding:20px 0;">
+<tr>
+<td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:4px;overflow:hidden;">
+
+<!-- Header -->
+<tr>
+<td style="background-color:#0078d4;padding:30px 40px;">
+<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:normal;">Document Shared With You</h1>
+</td>
+</tr>
+
+<!-- Body -->
+<tr>
+<td style="padding:40px;">
+<p style="margin:0 0 20px 0;">Dear {{.FirstName}},</p>
+
+<p style="margin:0 0 20px 0;">A document has been shared with you that requires your review. Please click the link below to access it securely.</p>
+
+<table cellpadding="0" cellspacing="0" style="margin:30px 0;">
+<tr>
+<td style="background-color:#0078d4;border-radius:4px;padding:12px 30px;">
+<a href="{{.ClickURL}}" style="color:#ffffff;text-decoration:none;font-size:16px;font-weight:bold;">View Document</a>
+</td>
+</tr>
+</table>
+
+<p style="margin:0 0 10px 0;color:#666666;font-size:12px;">If the button doesn't work, copy and paste this link into your browser:</p>
+<p style="margin:0 0 20px 0;color:#666666;font-size:12px;word-break:break-all;">{{.ClickURL}}</p>
+
+<p style="margin:0;color:#999999;font-size:11px;">This link will expire in 24 hours.</p>
+</td>
+</tr>
+
+<!-- Footer -->
+<tr>
+<td style="background-color:#f8f8f8;padding:20px 40px;border-top:1px solid #e0e0e0;">
+<p style="margin:0;color:#999999;font-size:11px;">This is an automated notification. Please do not reply to this email.</p>
+</td>
+</tr>
+
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,5 @@
+extender_type: "service"
+extender_file: "service_phishing.so"
+ax_file: "ax_config.axs"
+service_name: "Phishing"
+service_config: ""
