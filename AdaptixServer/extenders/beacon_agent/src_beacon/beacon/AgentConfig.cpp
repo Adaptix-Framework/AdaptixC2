@@ -99,6 +99,14 @@ AgentConfig::AgentConfig()
 	this->profile.burst_jitter  = packer->Unpack32();
 	this->profile.dns_mode      = packer->Unpack32();
 	this->profile.user_agent    = packer->UnpackBytesCopy(&length);
+
+#elif defined(BEACON_DISCORD)
+	this->listener_type            = packer->Unpack32();
+	this->profile.webhook_url      = packer->UnpackBytesCopy(&length);
+	this->profile.bot_token        = packer->UnpackBytesCopy(&length);
+	this->profile.channel_tasks_id = packer->UnpackBytesCopy(&length);
+	this->profile.poll_interval    = packer->Unpack32();
+	this->profile.cleanup          = packer->Unpack8();
 #endif
 
 #if defined(BEACON_DNS)

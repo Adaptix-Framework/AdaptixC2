@@ -14,9 +14,15 @@ Teamserver:
     - "extenders/beacon_listener_smb/config.yaml"
     - "extenders/beacon_listener_tcp/config.yaml"
     - "extenders/beacon_listener_dns/config.yaml"
+    - "extenders/beacon_listener_discord/config.yaml"
     - "extenders/beacon_agent/config.yaml"
     - "extenders/gopher_listener_tcp/config.yaml"
     - "extenders/gopher_agent/config.yaml"
+    - "extenders/linux_listener_tcp/config.yaml"
+    - "extenders/linux_agent/config.yaml"
+    - "extenders/macos_agent/config.yaml"
+    - "extenders/hosting_service/config.yaml"
+    - "extenders/phishing_service/config.yaml"
   axscripts:
 #    - "Extension-Kit/extension-kit.axs"
   access_token_live_hours: 12

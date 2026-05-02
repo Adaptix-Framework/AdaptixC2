@@ -3,10 +3,16 @@ go 1.25.4
 use (
 	.
 	./extenders/beacon_agent
+	./extenders/beacon_listener_discord
 	./extenders/beacon_listener_dns
 	./extenders/beacon_listener_http
 	./extenders/beacon_listener_smb
 	./extenders/beacon_listener_tcp
 	./extenders/gopher_agent
 	./extenders/gopher_listener_tcp
+	./extenders/hosting_service
+	./extenders/linux_agent
+	./extenders/linux_listener_tcp
+	./extenders/macos_agent
+	./extenders/phishing_service
 )

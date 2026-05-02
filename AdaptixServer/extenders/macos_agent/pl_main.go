@@ -45,7 +45,7 @@ type Teamserver interface {
 	TsTaskUpdate(agentId string, data adaptix.TaskData)
 	TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
 
-	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int) error
+	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int64) error
 	TsDownloadUpdate(fileId string, state int, data []byte) error
 	TsDownloadClose(fileId string, reason int) error
 	TsDownloadSave(agentId string, fileId string, filename string, content []byte) error
@@ -75,6 +75,14 @@ type Teamserver interface {
 	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
 	TsTunnelConnectionData(channelId int, data []byte)
 	TsTunnelConnectionAccept(tunnelId int, channelId int)
+	TsTunnelPause(channelId int)
+	TsTunnelResume(channelId int)
+
+	TsTerminalConnExists(terminalId string) bool
+	TsTerminalGetPipe(AgentId string, terminalId string) (*io.PipeReader, *io.PipeWriter, error)
+	TsTerminalConnResume(agentId string, terminalId string, ioDirect bool)
+	TsTerminalConnData(terminalId string, data []byte)
+	TsTerminalConnClose(terminalId string, status string) error
 
 	TsConvertCpToUTF8(input string, codePage int) string
 	TsConvertUTF8toCp(input string, codePage int) string
@@ -1707,7 +1715,7 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				fileId := fmt.Sprintf("%08x", params.FileId)
 
 				if params.Start {
-					_ = Ts.TsDownloadAdd(agentData.Id, fileId, params.Path, params.Size)
+					_ = Ts.TsDownloadAdd(agentData.Id, fileId, params.Path, int64(params.Size))
 				}
 
 				_ = Ts.TsDownloadUpdate(fileId, 1, params.Content)

