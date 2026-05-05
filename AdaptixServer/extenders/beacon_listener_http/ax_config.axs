@@ -83,6 +83,7 @@ function ListenerUI(mode_create)
 
     // HTTP HEADERS
     let checkTrust = form.create_check("Trust X-Forwarded-For");
+    let checkDomainFronting = form.create_check("Domain Fronting");
 
     let labelHostHeader = form.create_label("Host Headers:");
     let textHostHeader = form.create_list();
@@ -97,12 +98,13 @@ function ListenerUI(mode_create)
 
     let layoutHeaders = form.create_gridlayout();
     layoutHeaders.addWidget(checkTrust,          0, 0, 1, 2);
-    layoutHeaders.addWidget(labelHostHeader,     1, 0, 1, 1);
-    layoutHeaders.addWidget(textHostHeader,      1, 1, 1, 1);
-    layoutHeaders.addWidget(labelRequestHeaders, 2, 0, 1, 1);
-    layoutHeaders.addWidget(textRequestHeaders,  2, 1, 1, 1);
-    layoutHeaders.addWidget(labelServerHeaders,  3, 0, 1, 1);
-    layoutHeaders.addWidget(textServerHeaders,   3, 1, 1, 1);
+    layoutHeaders.addWidget(checkDomainFronting, 1, 0, 1, 2);
+    layoutHeaders.addWidget(labelHostHeader,     2, 0, 1, 1);
+    layoutHeaders.addWidget(textHostHeader,      2, 1, 1, 1);
+    layoutHeaders.addWidget(labelRequestHeaders, 3, 0, 1, 1);
+    layoutHeaders.addWidget(textRequestHeaders,  3, 1, 1, 1);
+    layoutHeaders.addWidget(labelServerHeaders,  4, 0, 1, 1);
+    layoutHeaders.addWidget(textServerHeaders,   4, 1, 1, 1);
 
     let panelHeaders = form.create_panel();
     panelHeaders.setLayout(layoutHeaders);
@@ -156,6 +158,7 @@ function ListenerUI(mode_create)
     container.put("ssl_cert",           certSelector);
     container.put("ssl_key",            keySelector);
     container.put("x-forwarded-for",    checkTrust);
+    container.put("domain_fronting",    checkDomainFronting);
     container.put("host_header",        textHostHeader);
     container.put("request_headers",    textRequestHeaders);
     container.put("server_headers",     textServerHeaders);

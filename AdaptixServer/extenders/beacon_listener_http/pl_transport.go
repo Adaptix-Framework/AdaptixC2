@@ -60,6 +60,7 @@ type TransportConfig struct {
 	UserAgent      []string `json:"user_agent"`
 	HostHeader     []string `json:"host_header"`
 	RequestHeaders string   `json:"request_headers"`
+	DomainFronting bool     `json:"domain_fronting"`
 
 	// Server
 	ResponseHeaders    map[string]string `json:"response_headers"`
@@ -318,7 +319,7 @@ func (t *TransportHTTP) processRequest(ctx *gin.Context) {
 		return
 	}
 
-	if len(t.Config.HostHeader) > 0 {
+	if len(t.Config.HostHeader) > 0 && !t.Config.DomainFronting {
 		requestHost := ctx.Request.Host
 		hhValid := false
 		for _, configHH := range t.Config.HostHeader {
