@@ -227,7 +227,7 @@ void DialogListener::SetEditMode(const QString &name)
 
     inputProfileName->setReadOnly(true);
     inputProfileName->setToolTip("配置名称（编辑模式只读）");
-    actionSaveProfile->setToolTip("Click to toggle: Update profile data in database");
+    actionSaveProfile->setToolTip("点击切换：将配置数据更新到数据库");
 
     cardWidget->setEnabled(false);
     buttonNewProfile->setEnabled(false);
@@ -313,7 +313,7 @@ void DialogListener::onButtonLoad()
     QString baseDir = authProfile.GetProjectDir();
     QPointer<DialogListener> safeThis = this;
 
-    NonBlockingDialogs::getOpenFileName(this, "Select file", baseDir, "JSON files (*.json)",
+    NonBlockingDialogs::getOpenFileName(this, "选择文件", baseDir, "JSON files (*.json)",
         [safeThis](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
@@ -380,7 +380,7 @@ void DialogListener::onButtonSave()
     QString tmpFilename = configName + "_listener_config.json";
     QString baseDir     = authProfile.GetProjectDir();
     QString initialPath = QDir(baseDir).filePath(tmpFilename);
-    NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "JSON files (*.json)",
+    NonBlockingDialogs::getSaveFileName(this, "保存文件", initialPath, "JSON files (*.json)",
         [this, fileContent](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
@@ -395,8 +395,8 @@ void DialogListener::onButtonSave()
             file.close();
 
             QInputDialog inputDialog;
-            inputDialog.setWindowTitle("Save config");
-            inputDialog.setLabelText("File saved to:");
+            inputDialog.setWindowTitle("保存配置");
+            inputDialog.setLabelText("文件保存至：");
             inputDialog.setTextEchoMode(QLineEdit::Normal);
             inputDialog.setTextValue(filePath);
             inputDialog.adjustSize();
@@ -534,7 +534,7 @@ void DialogListener::onProfileRename()
         return;
 
     bool ok;
-    QString newName = QInputDialog::getText(this, "Rename Profile", "New profile name:", 
+    QString newName = QInputDialog::getText(this, "重命名配置", "新配置名称：", 
                                              QLineEdit::Normal, oldName, &ok);
     if (!ok || newName.trimmed().isEmpty() || newName == oldName)
         return;

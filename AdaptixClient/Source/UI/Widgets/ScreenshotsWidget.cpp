@@ -393,7 +393,7 @@ void ScreenshotsWidget::actionDownload()
     if (adaptixWidget && adaptixWidget->GetProfile())
         baseDir = QDir(adaptixWidget->GetProfile()->GetProjectDir()).filePath(QStringLiteral("screenshot.png"));
 
-    NonBlockingDialogs::getSaveFileName(this, "Save File", baseDir, "All Files (*.*)",
+    NonBlockingDialogs::getSaveFileName(this, "保存文件", baseDir, "All Files (*.*)",
         [this, screenData](const QString& filePath) {
             if (filePath.isEmpty())
                 return;

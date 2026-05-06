@@ -208,7 +208,7 @@ void ListenersWidget::onCreateListener() const
     for (auto listener : listenersList) {
         auto engine = adaptixWidget->ScriptManager->ListenerScriptEngine(listener);
         if (engine == nullptr) {
-            adaptixWidget->ScriptManager->consolePrintError(QString("Listener %1 is not registered").arg(listener));
+            adaptixWidget->ScriptManager->consolePrintError(QString("监听器 %1 未注册").arg(listener));
             continue;
         }
 
@@ -305,7 +305,7 @@ void ListenersWidget::onEditListener() const
 
     auto engine = adaptixWidget->ScriptManager->ListenerScriptEngine(listenerRegName);
     if (engine == nullptr) {
-        adaptixWidget->ScriptManager->consolePrintError(QString("Listener %1 is not registered").arg(listenerName));
+        adaptixWidget->ScriptManager->consolePrintError(QString("监听器 %1 未注册").arg(listenerName));
         return;;
     }
 
@@ -461,7 +461,7 @@ void ListenersWidget::onGenerateAgent() const
     for (auto agent : agentNames) {
         auto engine = adaptixWidget->ScriptManager->AgentScriptEngine(agent);
         if (engine == nullptr) {
-            adaptixWidget->ScriptManager->consolePrintError(QString("Listener %1 is not registered").arg(agent));
+            adaptixWidget->ScriptManager->consolePrintError(QString("监听器 %1 未注册").arg(agent));
             return;;
         }
 

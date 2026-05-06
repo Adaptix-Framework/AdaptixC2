@@ -392,8 +392,8 @@ void DownloadsWidget::actionSyncCurl()
     QString command = QString("curl -k '%1?otp=%2' -o %3").arg(sUrl).arg(otp).arg(fileName);
 
     QInputDialog inputDialog;
-    inputDialog.setWindowTitle("Sync file as curl");
-    inputDialog.setLabelText("Curl command:");
+    inputDialog.setWindowTitle("通过 Curl 同步文件");
+    inputDialog.setLabelText("Curl 命令：");
     inputDialog.setTextEchoMode(QLineEdit::Normal);
     inputDialog.setTextValue(command);
     inputDialog.setFixedSize(700, 60);

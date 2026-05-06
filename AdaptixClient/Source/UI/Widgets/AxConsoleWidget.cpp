@@ -205,13 +205,13 @@ void AxConsoleWidget::processInput()
     OutputTextEdit->appendColorBold(code + "\n", QColor(COLOR_White));
 
     if (!scriptManager) {
-        OutputTextEdit->appendColor("Script engine is not available\n", QColor(COLOR_ChiliPepper));
+        OutputTextEdit->appendColor("脚本引擎不可用\n", QColor(COLOR_ChiliPepper));
         return;
     }
 
     QJSEngine* engine = scriptManager->MainScriptEngine();
     if (!engine) {
-        OutputTextEdit->appendColor("Script engine is not initialized\n", QColor(COLOR_ChiliPepper));
+        OutputTextEdit->appendColor("脚本引擎未初始化\n", QColor(COLOR_ChiliPepper));
         return;
     }
 

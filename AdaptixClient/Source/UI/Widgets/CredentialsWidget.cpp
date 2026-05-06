@@ -517,7 +517,7 @@ void CredentialsWidget::onEditCreds() const
 
     HttpReqCredentialsEditAsync(jsonData, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
         if (!success)
-            MessageError(message.isEmpty() ? "Server is not responding" : message);
+            MessageError(message.isEmpty() ? "服务器未响应" : message);
     });
 }
 

@@ -60,7 +60,7 @@ TasksWidget::TasksWidget( AdaptixWidget* w )
     taskOutputConsole = new TaskOutputWidget();
 
     dockWidgetTable = new KDDockWidgets::QtWidgets::DockWidget( + "Tasks:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
-    dockWidgetTable->setTitle("Tasks");
+    dockWidgetTable->setTitle("任务");
     dockWidgetTable->setWidget(this);
     dockWidgetTable->setIcon(QIcon( ":/icons/job" ), KDDockWidgets::IconPlace::TabBar);
 
