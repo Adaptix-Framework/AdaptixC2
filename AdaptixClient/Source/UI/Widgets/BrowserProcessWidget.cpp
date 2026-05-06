@@ -299,7 +299,7 @@ void BrowserProcessWidget::setTreeProcessDataWin(QMap<int, BrowserProcessDataWin
     treeBrowserWidget->clear();
 
     treeBrowserWidget->setColumnCount(3);
-    treeBrowserWidget->setHeaderLabels({"进程", "Process ID", "上下文"});
+    treeBrowserWidget->setHeaderLabels({"进程", "进程 ID", "上下文"});
 
     QMap<int, QTreeWidgetItem*> nodeMap;
 
@@ -351,7 +351,7 @@ void BrowserProcessWidget::setTreeProcessDataUnix(QMap<int, BrowserProcessDataUn
     treeBrowserWidget->clear();
 
     treeBrowserWidget->setColumnCount(3);
-    treeBrowserWidget->setHeaderLabels({"进程", "Process ID", "上下文"});
+    treeBrowserWidget->setHeaderLabels({"进程", "进程 ID", "上下文"});
 
     QMap<int, QTreeWidgetItem*> nodeMap;
 
