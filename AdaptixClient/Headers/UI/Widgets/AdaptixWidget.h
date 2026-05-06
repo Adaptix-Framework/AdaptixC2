@@ -8,6 +8,12 @@
 #include <kddockwidgets/qtwidgets/views/MainWindow.h>
 
 #include <QJSValue>
+#include <QQueue>
+#include <QReadWriteLock>
+#include <QElapsedTimer>
+#include <QListWidget>
+#include <QDialog>
+#include <functional>
 
 class Task;
 class Agent;
@@ -29,6 +35,7 @@ class TunnelEndpoint;
 class DialogSyncPacket;
 class AuthProfile;
 class AxScriptManager;
+struct ServerScriptGroup;
 
 typedef struct RegListenerConfig {
     QString name;
@@ -44,7 +51,16 @@ typedef struct RegAgentConfig {
     bool           valid;
 } RegAgentConfig;
 
+typedef struct AgentTypeInfo {
+    bool        multiListeners;
+    QStringList listenerTypes;
+} AgentTypeInfo;
 
+struct ServerScriptInfo {
+    QString name;
+    QString description;
+    bool    enabled;
+};
 
 class AdaptixWidget : public QWidget
 {
@@ -64,11 +80,16 @@ Q_OBJECT
     QPushButton*    screensButton     = nullptr;
     QPushButton*    keysButton        = nullptr;
     QPushButton*    reconnectButton   = nullptr;
+    QPushButton*    extDocksButton    = nullptr;
     QSpacerItem*    horizontalSpacer1 = nullptr;
     QFrame*         line_1            = nullptr;
     QFrame*         line_2            = nullptr;
     QFrame*         line_3            = nullptr;
     QFrame*         line_4            = nullptr;
+
+    QDialog*        extDocksPopup     = nullptr;
+    QListWidget*    extDocksListWidget = nullptr;
+    QLabel*         extDocksEmptyLabel = nullptr;
 
     KDDockWidgets::QtWidgets::MainWindow* mainDockWidget;
     KDDockWidgets::QtWidgets::DockWidget* dockTop;
@@ -76,13 +97,26 @@ Q_OBJECT
 
     bool              synchronized     = false;
     bool              sync             = false;
+    bool              syncFinishReceived = false;
+    int               syncTotalBatches = 0;
+    int               syncProcessingBatchIndex = 0;
+    int               syncProcessingBatchTotal = 0;
+    int               syncProcessingBatchProcessed = 0;
+    QElapsedTimer     syncProcessingUiTimer;
     AuthProfile*      profile          = nullptr;
     DialogSyncPacket* dialogSyncPacket = nullptr;
+
+    QQueue<QJsonObject> pendingPackets;
+    QTimer*             pendingPacketsTimer = nullptr;
 
     void createUI();
 
     static bool isValidSyncPacket(QJsonObject jsonObj);
+    void enqueueSyncPacket(const QJsonObject &jsonObj);
+    void processPendingSyncPackets();
     void processSyncPacket(QJsonObject jsonObj);
+
+    void finalizeSyncIfReady();
 
     void setSyncUpdateUI(bool enabled);
 
@@ -107,47 +141,77 @@ public:
     TasksWidget*         TasksDock         = nullptr;
     TargetsWidget*       TargetsDock       = nullptr;
 
-    QVector<RegListenerConfig>     RegisterListeners;
-    QVector<RegAgentConfig>        RegisterAgents;
-    QVector<ListenerData>          Listeners;
-    QVector<TunnelData>            Tunnels;
-    QMap<QString, DownloadData>    Downloads;
-    QMap<QString, ScreenData>      Screenshots;
-    QVector<CredentialData>        Credentials;
-    QVector<TargetData>            Targets;
-    QMap<QString, PivotData>       Pivots;
-    QMap<QString, TaskData>        TasksMap;
-    QMap<QString, Agent*>          AgentsMap;
-    QMap<QString, AxExecutor>      PostHooksJS;
-    QMap<QString, AxExecutor>      PostHandlersJS;
-    QMap<QString, TunnelEndpoint*> ClientTunnels;
+    QVector<RegListenerConfig>       RegisterListeners;
+    QVector<RegAgentConfig>          RegisterAgents;
+    QMap<QString, AgentTypeInfo>     AgentTypes;
+    QVector<ListenerData>            Listeners;
+    QVector<TunnelData>              Tunnels;
+    QMap<QString, DownloadData>      Downloads;
+    QMap<QString, ScreenData>        Screenshots;
+    QVector<CredentialData>          Credentials;
+    QVector<TargetData>              Targets;
+    QMap<QString, PivotData>         Pivots;
+    QMap<QString, TaskData>          TasksMap;
+    QMap<QString, Agent*>            AgentsMap;
+    mutable QReadWriteLock           AgentsMapLock;
+    mutable QReadWriteLock           TasksMapLock;
+    mutable QReadWriteLock           CredentialsLock;
+    mutable QReadWriteLock           DownloadsLock;
+    mutable QReadWriteLock           ScreenshotsLock;
+    mutable QReadWriteLock           TargetsLock;
+    mutable QReadWriteLock           TunnelsLock;
+    QMap<QString, AxExecutor>        PostHooksJS;
+    QMap<QString, AxExecutor>        PostHandlersJS;
+    QMap<QString, TunnelEndpoint*>   ClientTunnels;
     QStringList addresses;
+
+    struct ExtDockEntry {
+        QString id;
+        QString title;
+        std::function<void()> showCallback;
+    };
+    QMap<QString, ExtDockEntry> extDocksMap;
 
     explicit AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker);
     ~AdaptixWidget() override;
 
     AuthProfile* GetProfile() const;
 
-    void AddDockTop(const KDDockWidgets::QtWidgets::DockWidget* dock) const;
-    void AddDockBottom(const KDDockWidgets::QtWidgets::DockWidget* dock) const;
-    void PlaceDockBottom(KDDockWidgets::QtWidgets::DockWidget* dock) const;
+    void PlaceDock(KDDockWidgets::QtWidgets::DockWidget* parentDock, KDDockWidgets::QtWidgets::DockWidget* dock) const;
+    KDDockWidgets::QtWidgets::DockWidget* get_dockTop() {return dockTop;}
+    KDDockWidgets::QtWidgets::DockWidget* get_dockBottom() {return dockBottom;}
 
     bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);
     bool IsSynchronized();
     void Close();
     void ClearAdaptix();
+    void ClearChatStream();
+    void ClearConsoleStreams();
+    void ClearNotificationsStream();
 
     void RegisterListenerConfig(const QString &name, const QString &protocol, const QString &type, const QString &ax_script);
-    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listeners);
+    void RegisterAgentConfig(const QString &agentName, const QString &ax_script, const QStringList &listenersconst, const bool &multiListeners, const QJsonArray &groups);
+    void RegisterServiceConfig(const QString &serviceName, const QString &ax_script);
+    void ProcessAxScriptPacket(const QString &name, const QString &content, const QJsonArray &groups);
+    void registerServerCommandGroups(const QString &scriptName, const QList<ServerScriptGroup> &groups, QJSEngine* engine);
+    void EnableServerScript(const QString &name);
+    void DisableServerScript(const QString &name);
+    QList<ServerScriptInfo> GetServerScripts() const;
     RegListenerConfig GetRegListener(const QString &listenerName);
     QList<QString>    GetAgentNames(const QString &listenerType) const;
     RegAgentConfig    GetRegAgent(const QString &agentName, const QString &listenerName, int os);
+    AgentTypeInfo     GetAgentTypeInfo(const QString &agentName) const;
     QList<Commander*> GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const;
     QList<Commander*> GetCommandersAll() const;
+    void              AddCommandsToCommanders(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
 
     void PostHookProcess(QJsonObject jsonHookObj);
     void PostHandlerProcess(const QString &handlerId, const TaskData &taskData);
+
+    void AddExtDock(const QString &id, const QString &title, const std::function<void()> &showCallback);
+    void RemoveExtDock(const QString &id);
+    void ShowExtDocksPopup();
 
     void LoadConsoleUI(const QString &AgentId);
     void LoadTasksOutput() const;
@@ -172,6 +236,7 @@ Q_SIGNALS:
 public Q_SLOTS:
     void ChannelClose() const;
     void DataHandler(const QByteArray& data);
+    void DataHandlerJson(const QJsonObject& jsonObj);
 
     void OnWebSocketConnected();
     void OnSynced();

@@ -2,11 +2,12 @@ package server
 
 import (
 	"AdaptixServer/core/extender"
+	"AdaptixServer/core/utils/logs"
 	isvalid "AdaptixServer/core/utils/valid"
 	"errors"
 	"fmt"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
@@ -54,6 +55,37 @@ func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {
 
 	ts.wm_agent_types[agentInfo.Watermark] = agentInfo.Name
 	ts.agent_configs.Put(agentInfo.Name, agentInfo)
+
+	if ts.ScriptManager != nil && agentInfo.AX != "" {
+		err := ts.TsAxScriptLoadAgent(agentInfo.Name, agentInfo.AX, agentInfo.Listeners)
+		if err != nil {
+			logs.Warn("", "Agent %s: AxScript load failed (commands will come from client): %v", agentInfo.Name, err)
+		}
+	}
+	return nil
+}
+
+func (ts *Teamserver) TsServiceReg(serviceInfo extender.ServiceInfo) error {
+
+	if !isvalid.ValidSBNString(serviceInfo.Name) {
+		return errors.New("invalid service name (must only contain letters and numbers): " + serviceInfo.Name)
+	}
+
+	if ts.service_configs.Contains(serviceInfo.Name) {
+		return fmt.Errorf("service %v already exists", serviceInfo.Name)
+	}
+
+	ts.service_configs.Put(serviceInfo.Name, serviceInfo)
+
+	return nil
+}
+
+func (ts *Teamserver) TsServiceUnreg(serviceName string) error {
+	if !ts.service_configs.Contains(serviceName) {
+		return fmt.Errorf("service %v not found", serviceName)
+	}
+
+	ts.service_configs.Delete(serviceName)
 
 	return nil
 }

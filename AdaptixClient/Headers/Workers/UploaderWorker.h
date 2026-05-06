@@ -16,12 +16,15 @@ Q_OBJECT
     QUrl url;
     QString otp;
     QByteArray data;
+    QString filePath;
+    bool useFilePath = false;
     bool cancelled = false;
     bool error = false;
     qint64 lastBytes = 0;
 
 public:
     UploaderWorker(const QUrl &uploadUrl, const QString &otp, const QByteArray &data);
+    UploaderWorker(const QUrl &uploadUrl, const QString &otp, const QString &filePath);
     ~UploaderWorker() override;
 
     bool IsError() const;

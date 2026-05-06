@@ -372,3 +372,8 @@ HMODULE proxy_GetModuleHandleA(LPCSTR lpModuleName);
 FARPROC proxy_GetProcAddress(HMODULE hModule, LPCSTR  lpProcName);
 
 BOOL proxy_FreeLibrary(HMODULE hLibModule);
+
+BOOL   BeaconRegisterThreadCallback(PVOID callbackFunction, PVOID callbackData);
+BOOL   BeaconUnregisterThreadCallback();
+void   BeaconWakeup();
+HANDLE BeaconGetStopJobEvent();

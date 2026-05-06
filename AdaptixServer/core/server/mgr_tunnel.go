@@ -15,6 +15,10 @@ import (
 const (
 	TunnelBufferSize    = 0x8000
 	TunnelBufferPoolCap = 256
+
+	tunnelIngressQueueDepth = 1024
+	tunnelIngressHiWM       = 80
+	tunnelIngressLoWM       = 20
 )
 
 type TunnelManager struct {
@@ -26,6 +30,32 @@ type TunnelManager struct {
 	bufferPool sync.Pool
 
 	stats TunnelStats
+}
+
+func (tm *TunnelManager) SendTunnelFlowControl(channelId int, pause bool) {
+	entry, ok := tm.GetChannelByIdOnly(channelId)
+	if !ok || entry.Tunnel == nil {
+		return
+	}
+	if tm.ts == nil {
+		return
+	}
+	agent, err := tm.ts.getAgent(entry.Tunnel.Data.AgentId)
+	if err != nil {
+		return
+	}
+
+	var task adaptix.TaskData
+	if pause {
+		task = entry.Tunnel.Callbacks.Pause(channelId)
+	} else {
+		task = entry.Tunnel.Callbacks.Resume(channelId)
+	}
+
+	if task.Type == 0 {
+		return
+	}
+	tunnelManageTask(agent, task)
 }
 
 func channelKey(tunnelId string, channelId int) string {
@@ -172,12 +202,18 @@ func (tm *TunnelManager) CloseChannel(tunnelId string, channelId int) {
 	tm.closeChannelInternal(entry.Tunnel, entry.Channel)
 }
 
-func (tm *TunnelManager) CloseChannelByIdOnly(channelId int) {
+func (tm *TunnelManager) CloseChannelByIdOnly(channelId int, writeOnly bool) {
 	entry, ok := tm.GetChannelByIdOnly(channelId)
 	if !ok {
 		return
 	}
-	tm.closeChannelInternal(entry.Tunnel, entry.Channel)
+	if writeOnly {
+		if entry.Channel != nil && entry.Channel.pwTun != nil {
+			_ = entry.Channel.pwTun.Close()
+		}
+	} else {
+		tm.closeChannelInternal(entry.Tunnel, entry.Channel)
+	}
 }
 
 func (tm *TunnelManager) closeChannelInternal(tunnel *Tunnel, channel *TunnelChannel) {
@@ -237,7 +273,25 @@ func (tm *TunnelManager) WriteToChannel(tunnelId string, channelId int, data []b
 		return false
 	}
 
-	if entry.Channel.pwTun != nil {
+	if entry.Channel != nil && entry.Channel.ingressChan != nil {
+		curLen := len(entry.Channel.ingressChan)
+		capLen := cap(entry.Channel.ingressChan)
+		if capLen > 0 && curLen > (capLen*tunnelIngressHiWM)/100 {
+			if entry.Channel.flowPaused.CompareAndSwap(false, true) {
+				tm.SendTunnelFlowControl(channelId, true)
+			}
+		}
+
+		select {
+		case entry.Channel.ingressChan <- data:
+			tm.stats.TotalBytesRecv.Add(uint64(len(data)))
+			return true
+		default:
+			return false
+		}
+	}
+
+	if entry.Channel != nil && entry.Channel.pwTun != nil {
 		_, err := entry.Channel.pwTun.Write(data)
 		if err == nil {
 			tm.stats.TotalBytesRecv.Add(uint64(len(data)))
@@ -253,7 +307,25 @@ func (tm *TunnelManager) WriteToChannelByIdOnly(channelId int, data []byte) bool
 		return false
 	}
 
-	if entry.Channel.pwTun != nil {
+	if entry.Channel != nil && entry.Channel.ingressChan != nil {
+		curLen := len(entry.Channel.ingressChan)
+		capLen := cap(entry.Channel.ingressChan)
+		if capLen > 0 && curLen > (capLen*tunnelIngressHiWM)/100 {
+			if entry.Channel.flowPaused.CompareAndSwap(false, true) {
+				tm.SendTunnelFlowControl(channelId, true)
+			}
+		}
+
+		select {
+		case entry.Channel.ingressChan <- data:
+			tm.stats.TotalBytesRecv.Add(uint64(len(data)))
+			return true
+		default:
+			return false
+		}
+	}
+
+	if entry.Channel != nil && entry.Channel.pwTun != nil {
 		_, err := entry.Channel.pwTun.Write(data)
 		if err == nil {
 			tm.stats.TotalBytesRecv.Add(uint64(len(data)))
@@ -279,8 +351,22 @@ func (tm *TunnelManager) GetChannelPipesByIdOnly(channelId int) (*io.PipeReader,
 	return entry.Channel.prSrv, entry.Channel.pwTun, nil
 }
 
-func (tm *TunnelManager) GetStats() TunnelStats {
-	return tm.stats
+func (tm *TunnelManager) GetStats() *TunnelStats {
+	return &tm.stats
+}
+
+func (tm *TunnelManager) PauseChannel(channelId int) {
+	entry, ok := tm.GetChannelByIdOnly(channelId)
+	if ok && entry.Channel != nil {
+		entry.Channel.paused.Store(true)
+	}
+}
+
+func (tm *TunnelManager) ResumeChannel(channelId int) {
+	entry, ok := tm.GetChannelByIdOnly(channelId)
+	if ok && entry.Channel != nil {
+		entry.Channel.paused.Store(false)
+	}
 }
 
 func (tm *TunnelManager) ListTunnels() []adaptix.TunnelData {
@@ -293,15 +379,19 @@ func (tm *TunnelManager) ListTunnels() []adaptix.TunnelData {
 	return tunnels
 }
 
+/// SAFE TUNNEL CHANNEL
+
 type SafeTunnelChannel struct {
 	*TunnelChannel
-	mu     sync.Mutex
-	closed atomic.Bool
-	ctx    context.Context
-	cancel context.CancelFunc
+	tm      *TunnelManager
+	mu      sync.Mutex
+	closed  atomic.Bool
+	closing atomic.Bool
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
-func NewSafeTunnelChannel(channelId int, conn net.Conn, wsconn *websocket.Conn, protocol string) *SafeTunnelChannel {
+func NewSafeTunnelChannel(tm *TunnelManager, channelId int, conn net.Conn, wsconn *websocket.Conn, protocol string) *SafeTunnelChannel {
 	ctx, cancel := context.WithCancel(context.Background())
 	stc := &SafeTunnelChannel{
 		TunnelChannel: &TunnelChannel{
@@ -310,17 +400,62 @@ func NewSafeTunnelChannel(channelId int, conn net.Conn, wsconn *websocket.Conn, 
 			wsconn:    wsconn,
 			protocol:  protocol,
 		},
+		tm:     tm,
 		ctx:    ctx,
 		cancel: cancel,
 	}
 	stc.prSrv, stc.pwSrv = io.Pipe()
 	stc.prTun, stc.pwTun = io.Pipe()
+	stc.ingressChan = make(chan []byte, tunnelIngressQueueDepth)
+	go stc.ingressPump()
 	return stc
+}
+
+func (stc *SafeTunnelChannel) ingressPump() {
+	defer func() {
+		if stc.pwTun != nil {
+			_ = stc.pwTun.Close()
+		}
+	}()
+
+	for data := range stc.ingressChan {
+		// RESUME
+		if stc.flowPaused.Load() {
+			capLen := cap(stc.ingressChan)
+			if capLen > 0 && len(stc.ingressChan) < (capLen*tunnelIngressLoWM)/100 {
+				if stc.flowPaused.CompareAndSwap(true, false) {
+					if stc.tm != nil {
+						stc.tm.SendTunnelFlowControl(stc.channelId, false)
+					}
+				}
+			}
+		}
+
+		if stc.conn != nil {
+			if _, err := stc.conn.Write(data); err != nil {
+				return
+			}
+		} else if stc.wsconn != nil {
+			if err := stc.wsconn.WriteMessage(websocket.BinaryMessage, data); err != nil {
+				return
+			}
+		} else if stc.pwTun != nil {
+			if _, err := stc.pwTun.Write(data); err != nil {
+				return
+			}
+		}
+	}
 }
 
 func (stc *SafeTunnelChannel) Close() bool {
 	if stc.closed.Swap(true) {
 		return false
+	}
+
+	stc.closing.Store(true)
+	if stc.ingressChan != nil {
+		close(stc.ingressChan)
+		stc.ingressChan = nil
 	}
 
 	stc.cancel()
@@ -358,11 +493,12 @@ func (stc *SafeTunnelChannel) Context() context.Context {
 	return stc.ctx
 }
 
+/// UTILS
+
 var ErrChannelNotFound = errorString("tunnel channel not found")
 var ErrTunnelNotFound = errorString("tunnel not found")
 var ErrAgentNotFound = errorString("agent not found")
 var ErrTunnelAlreadyActive = errorString("tunnel already active")
-var ErrInvalidTunnelType = errorString("invalid tunnel type")
 
 type errorString string
 

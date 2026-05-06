@@ -36,9 +36,10 @@ class LogsWidget : public DockTab
     void createUI();
     void findAndHighlightAll(const QString& pattern);
     void highlightCurrent() const;
+    void applyTheme();
 
 public:
-    explicit LogsWidget(AdaptixWidget* w);
+    explicit LogsWidget(const AdaptixWidget* w);
     ~LogsWidget() override;
 
     void SetUpdatesEnabled(bool enabled);

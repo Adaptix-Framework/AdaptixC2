@@ -26,24 +26,14 @@ void FontManager::loadApplicationFonts()
     };
 
     QList<FontResource> fonts = {
-        {":/fonts/DroidSansMono", "Droid Sans Mono"},
-        {":/fonts/VT323", "VT323"},
-        {":/fonts/Anonymous", "Anonymous Pro"},
-        {":/fonts/Anonymous_B", "Anonymous Pro"},
-        {":/fonts/Anonymous_BI", "Anonymous Pro"},
-        {":/fonts/Anonymous_I", "Anonymous Pro"},
-        {":/fonts/DejavuSansMono", "DejaVu Sans Mono"},
-        {":/fonts/DejavuSansMono_B", "DejaVu Sans Mono"},
-        {":/fonts/DejavuSansMono_BO", "DejaVu Sans Mono"},
-        {":/fonts/DejavuSansMono_O", "DejaVu Sans Mono"},
         {":/fonts/Hack", "Hack"},
         {":/fonts/Hack_B", "Hack"},
         {":/fonts/Hack_BI", "Hack"},
         {":/fonts/Hack_I", "Hack"},
-        {":/fonts/SpaceMono", "Space Mono"},
-        {":/fonts/SpaceMono_B", "Space Mono"},
-        {":/fonts/SpaceMono_BI", "Space Mono"},
-        {":/fonts/SpaceMono_I", "Space Mono"}
+        {":/fonts/JetBrainsMono", "JetBrains Mono"},
+        {":/fonts/JetBrainsMono_B", "JetBrains Mono"},
+        {":/fonts/JetBrainsMono_BI", "JetBrains Mono"},
+        {":/fonts/JetBrainsMono_I", "JetBrains Mono"}
     };
 
     for (const auto& fontRes : fonts) {
@@ -53,6 +43,20 @@ void FontManager::loadApplicationFonts()
             if (!fontFamilies.isEmpty()) {
                 QString actualFamilyName = fontFamilies.first();
                 m_loadedFonts[fontRes.alias] = actualFamilyName;
+            }
+        }
+    }
+
+    for (auto it = m_loadedFonts.begin(); it != m_loadedFonts.end(); ++it) {
+        QFont testFont(it.value());
+        QFontInfo fontInfo(testFont);
+        if (fontInfo.family() != it.value() && !fontInfo.family().startsWith(it.value())) {
+            QStringList allFamilies = QFontDatabase::families();
+            for (const QString& family : allFamilies) {
+                if (family.contains(it.key(), Qt::CaseInsensitive) || family.contains(it.value(), Qt::CaseInsensitive)) {
+                    it.value() = family;
+                    break;
+                }
             }
         }
     }
@@ -68,18 +72,11 @@ QFont FontManager::getFont(const QString& fontName, int pointSize)
     if (m_loadedFonts.contains(fontName)) {
         font = QFont(m_loadedFonts[fontName]);
     } else {
-        font = QFont(fontName);
-
-        QFontInfo fontInfo(font);
-        if (fontInfo.family() != fontName)
-            font = getDefaultMonospaceFont();
+        font = getDefaultMonospaceFont();
     }
 
     if (pointSize > 0)
         font.setPointSize(pointSize);
-
-    if (!QFontInfo(font).fixedPitch())
-        font = getDefaultMonospaceFont(pointSize);
 
     return font;
 }
@@ -89,38 +86,42 @@ bool FontManager::isFontAvailable(const QString& fontName)
     if (!m_initialized)
         initialize();
 
-    if (m_loadedFonts.contains(fontName))
-        return true;
+    return m_loadedFonts.contains(fontName);
+}
 
-    QFont testFont(fontName);
-    QFontInfo fontInfo(testFont);
-    return fontInfo.family() == fontName;
+QString FontManager::resolveFamily(const QString& fontName)
+{
+    if (!m_initialized)
+        initialize();
+
+    if (m_loadedFonts.contains(fontName))
+        return m_loadedFonts[fontName];
+
+    return fontName;
 }
 
 QFont FontManager::getDefaultMonospaceFont(int pointSize)
 {
-    QStringList monospaceFonts = {
-        "Menlo",           // macOS Default
-        "Monaco",          // macOS Alternative
-        "Consolas",        // Windows
-        "Courier New",     // Cross-platform
-        "monospace"        // Universal
-    };
+    if (!m_initialized)
+        initialize();
 
-    for (const QString& fontName : monospaceFonts) {
-        QFont font(fontName);
-        QFontInfo fontInfo(font);
-        if (fontInfo.fixedPitch()) {
-            if (pointSize > 0) {
-                font.setPointSize(pointSize);
-            }
-            return font;
-        }
+    if (m_loadedFonts.contains("JetBrains Mono")) {
+        QFont font(m_loadedFonts["JetBrains Mono"]);
+        if (pointSize > 0)
+            font.setPointSize(pointSize);
+        return font;
+    }
+
+    if (m_loadedFonts.contains("Hack")) {
+        QFont font(m_loadedFonts["Hack"]);
+        if (pointSize > 0)
+            font.setPointSize(pointSize);
+        return font;
     }
 
     QFont font;
     font.setFamily("monospace");
-    font.setStyleHint(QFont::TypeWriter);
+    font.setStyleHint(QFont::Monospace);
     if (pointSize > 0)
         font.setPointSize(pointSize);
 
@@ -129,15 +130,14 @@ QFont FontManager::getDefaultMonospaceFont(int pointSize)
 
 QString FontManager::findBestMonospaceFont()
 {
-    QStringList candidates = {"Menlo", "Monaco", "Consolas", "Courier New"};
+    if (!m_initialized)
+        initialize();
 
-    for (const QString& candidate : candidates) {
-        QFont font(candidate);
-        QFontInfo fontInfo(font);
-        if (fontInfo.fixedPitch()) {
-            return candidate;
-        }
-    }
+    if (m_loadedFonts.contains("JetBrains Mono"))
+        return "JetBrains Mono";
+
+    if (m_loadedFonts.contains("Hack"))
+        return "Hack";
 
     return "monospace";
 }

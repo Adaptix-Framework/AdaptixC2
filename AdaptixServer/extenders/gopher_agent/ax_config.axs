@@ -101,6 +101,7 @@ function RegisterCommands(listenerType)
     cmd_download_unix.addArgString("path", true);
 
     let _cmd_execute_bof = ax.create_command("bof", "Execute Beacon Object File", "execute bof /home/user/whoami.o", "Task: execute BOF");
+    _cmd_execute_bof.addArgBool("-a", "Async mode");
     _cmd_execute_bof.addArgFile("bof", true, "Path to object file");
     _cmd_execute_bof.addArgString("param_data", false);
     let cmd_execute = ax.create_command("execute", "Execute [bof] in the current process's memory");
@@ -117,10 +118,10 @@ function RegisterCommands(listenerType)
     let cmd_kill = ax.create_command("kill", "Kill a process with a given PID", "kill 7865", "Task: kill process");
     cmd_kill.addArgInt("pid", true);
 
-    let cmd_ls_win = ax.create_command("ls", "Lists files in a folder", "ls C:\\Windows", "Task: list of files in a folder");
-    cmd_ls_win.addArgString("directory", "", ".");
-    let cmd_ls_unix = ax.create_command("ls", "Lists files in a folder", "ls /home/", "Task: list of files in a folder");
-    cmd_ls_unix.addArgString("directory", "", ".");
+    let cmd_ls_win = ax.create_command("ls", "List contents of a directory or details of a file", "ls C:\\Windows", "Task: list files");
+    cmd_ls_win.addArgString("path", "", ".");
+    let cmd_ls_unix = ax.create_command("ls", "List contents of a directory or details of a file", "ls /home/", "Task: list files");
+    cmd_ls_unix.addArgString("path", "", ".");
 
     let cmd_mv = ax.create_command("mv", "Move file or directory", "mv src.txt dst.txt", "Task: move file or directory");
     cmd_mv.addArgString("src", true);
@@ -191,7 +192,7 @@ function RegisterCommands(listenerType)
     }
 }
 
-function GenerateUI(listenerType)
+function GenerateUI(listeners_type)
 {
     let labelOS = form.create_label("OS:");
     let comboOS = form.create_combo()

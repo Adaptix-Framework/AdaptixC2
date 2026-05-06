@@ -15,20 +15,24 @@ function ListenerUI(mode_create)
     spinPortBind.setEnabled(mode_create)
 
     let labelCallback = form.create_label("Callback addresses:");
-    let textCallback = form.create_textmulti();
-    textCallback.setPlaceholder("192.168.1.1:443\nserver2.com:8080");
+    let textCallback = form.create_list();
+    textCallback.setButtonsEnabled(true);
+    textCallback.addItem("address:port");
 
     let labelMethod = form.create_label("Method:");
     let comboMethod = form.create_combo();
     comboMethod.addItems(["POST", "GET"]);
     comboMethod.setEnabled(mode_create)
 
-    let labelUri = form.create_label("URI:");
-    let textlineUri = form.create_textline();
-    textlineUri.setPlaceholder("/uri.php");
+    let labelUri = form.create_label("URIs:");
+    let textUri = form.create_list();
+    textUri.setButtonsEnabled(true);
+    textUri.addItems(["/api/v1/status", "/updates/check.php", "/content.html"]);
 
-    let labelUserAgent = form.create_label("User-Agent:");
-    let textlineUserAgent = form.create_textline("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
+    let labelUserAgent = form.create_label("User-Agents:");
+    let textUserAgent = form.create_list();
+    textUserAgent.setButtonsEnabled(true);
+    textUserAgent.addItem("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
 
     let labelHB = form.create_label("Heartbeat Header:");
     let textlineHB = form.create_textline("X-Beacon-Id");
@@ -40,9 +44,9 @@ function ListenerUI(mode_create)
     buttonEncryptKey.setEnabled(mode_create)
 
     let certSelector = form.create_selector_file();
-    certSelector.setPlaceholder("SSL certificate");
+    certSelector.setPlaceholder("SSL Certificate (optional, auto-generate if empty)");
     let keySelector = form.create_selector_file();
-    keySelector.setPlaceholder("SSL key");
+    keySelector.setPlaceholder("SSL Key (optional, auto-generate if empty)");
     let layout_group = form.create_vlayout();
     layout_group.addWidget(certSelector);
     layout_group.addWidget(keySelector);
@@ -55,32 +59,34 @@ function ListenerUI(mode_create)
     form.connect(buttonEncryptKey, "clicked", function() { textlineEncryptKey.setText( ax.random_string(32, "hex") ); });
 
     let layoutMain = form.create_gridlayout();
-    layoutMain.addWidget(labelHost, 0, 0, 1, 1);
-    layoutMain.addWidget(comboHostBind, 0, 1, 1, 1);
-    layoutMain.addWidget(spinPortBind, 0, 2, 1, 1);
-    layoutMain.addWidget(labelCallback, 1, 0, 1, 1);
-    layoutMain.addWidget(textCallback, 1, 1, 1, 2);
-    layoutMain.addWidget(labelMethod, 2, 0, 1, 1);
-    layoutMain.addWidget(comboMethod, 2, 1, 1, 2);
-    layoutMain.addWidget(labelUri, 3, 0, 1, 1);
-    layoutMain.addWidget(textlineUri, 3, 1, 1, 2);
-    layoutMain.addWidget(labelUserAgent, 4, 0, 1, 1 );
-    layoutMain.addWidget(textlineUserAgent, 4, 1, 1, 2);
-    layoutMain.addWidget(labelHB, 5, 0, 1, 1);
-    layoutMain.addWidget(textlineHB, 5, 1, 1, 2);
-    layoutMain.addWidget(labelEncryptKey, 6, 0, 1, 1);
+    layoutMain.addWidget(labelHost,          0, 0, 1, 1);
+    layoutMain.addWidget(comboHostBind,      0, 1, 1, 1);
+    layoutMain.addWidget(spinPortBind,       0, 2, 1, 1);
+    layoutMain.addWidget(labelCallback,      1, 0, 1, 1);
+    layoutMain.addWidget(textCallback,       1, 1, 1, 2);
+    layoutMain.addWidget(labelMethod,        2, 0, 1, 1);
+    layoutMain.addWidget(comboMethod,        2, 1, 1, 2);
+    layoutMain.addWidget(labelUri,           3, 0, 1, 1);
+    layoutMain.addWidget(textUri,            3, 1, 1, 2);
+    layoutMain.addWidget(labelUserAgent,     4, 0, 1, 1);
+    layoutMain.addWidget(textUserAgent,      4, 1, 1, 2);
+    layoutMain.addWidget(labelHB,            5, 0, 1, 1);
+    layoutMain.addWidget(textlineHB,         5, 1, 1, 2);
+    layoutMain.addWidget(labelEncryptKey,    6, 0, 1, 1);
     layoutMain.addWidget(textlineEncryptKey, 6, 1, 1, 1);
-    layoutMain.addWidget(buttonEncryptKey, 6, 2, 1, 1);
-    layoutMain.addWidget(ssl_group, 7, 0, 1, 3);
+    layoutMain.addWidget(buttonEncryptKey,   6, 2, 1, 1);
+    layoutMain.addWidget(ssl_group,          7, 0, 1, 3);
 
     let panelMain = form.create_panel();
     panelMain.setLayout(layoutMain);
 
+
     // HTTP HEADERS
     let checkTrust = form.create_check("Trust X-Forwarded-For");
 
-    let labelHostHeader = form.create_label("Host Header:");
-    let textlineHostHeader = form.create_textline();
+    let labelHostHeader = form.create_label("Host Headers:");
+    let textHostHeader = form.create_list();
+    textHostHeader.setButtonsEnabled(true);
 
     let labelRequestHeaders = form.create_label("Request Headers:");
     let textRequestHeaders = form.create_textmulti();
@@ -90,18 +96,18 @@ function ListenerUI(mode_create)
     textServerHeaders.setEnabled(mode_create)
 
     let layoutHeaders = form.create_gridlayout();
-    layoutHeaders.addWidget(checkTrust, 0, 0, 1, 2);
-    layoutHeaders.addWidget(labelHostHeader, 1, 0, 1, 1);
-    layoutHeaders.addWidget(textlineHostHeader, 1, 1, 1, 1);
+    layoutHeaders.addWidget(checkTrust,          0, 0, 1, 2);
+    layoutHeaders.addWidget(labelHostHeader,     1, 0, 1, 1);
+    layoutHeaders.addWidget(textHostHeader,      1, 1, 1, 1);
     layoutHeaders.addWidget(labelRequestHeaders, 2, 0, 1, 1);
-    layoutHeaders.addWidget(textRequestHeaders, 2, 1, 1, 1);
-    layoutHeaders.addWidget(labelServerHeaders, 3, 0, 1, 1);
-    layoutHeaders.addWidget(textServerHeaders, 3, 1, 1, 1);
+    layoutHeaders.addWidget(textRequestHeaders,  2, 1, 1, 1);
+    layoutHeaders.addWidget(labelServerHeaders,  3, 0, 1, 1);
+    layoutHeaders.addWidget(textServerHeaders,   3, 1, 1, 1);
 
     let panelHeaders = form.create_panel();
     panelHeaders.setLayout(layoutHeaders);
 
-    // HTTP HEADERS
+    // ERROR PAGE
     let textError = form.create_textmulti("<!DOCTYPE html>\n<html>\n<head>\n<title>ERROR 404 - Nothing Found</title>\n</head>\n<body>\n<h1 class=\"cover-heading\">ERROR 404 - PAGE NOT FOUND</h1>\n</div>\n</div>\n</div>\n</body>\n</html>");
 
     let layoutError = form.create_gridlayout();
@@ -130,23 +136,23 @@ function ListenerUI(mode_create)
     layout.addWidget(tabs);
 
     let container = form.create_container();
-    container.put("host_bind", comboHostBind);
-    container.put("port_bind", spinPortBind);
+    container.put("host_bind",          comboHostBind);
+    container.put("port_bind",          spinPortBind);
     container.put("callback_addresses", textCallback);
-    container.put("http_method", comboMethod);
-    container.put("uri", textlineUri);
-    container.put("user_agent", textlineUserAgent);
-    container.put("hb_header", textlineHB);
-    container.put("encrypt_key", textlineEncryptKey);
-    container.put("ssl", ssl_group);
-    container.put("ssl_cert", certSelector);
-    container.put("ssl_key", keySelector);
-    container.put("x-forwarded-for", checkTrust);
-    container.put("host_header", textlineHostHeader);
-    container.put("request_headers", textRequestHeaders);
-    container.put("server_headers", textServerHeaders);
-    container.put("page-error", textError);
-    container.put("page-payload", textPayload);
+    container.put("http_method",        comboMethod);
+    container.put("uri",                textUri);
+    container.put("user_agent",         textUserAgent);
+    container.put("hb_header",          textlineHB);
+    container.put("encrypt_key",        textlineEncryptKey);
+    container.put("ssl",                ssl_group);
+    container.put("ssl_cert",           certSelector);
+    container.put("ssl_key",            keySelector);
+    container.put("x-forwarded-for",    checkTrust);
+    container.put("host_header",        textHostHeader);
+    container.put("request_headers",    textRequestHeaders);
+    container.put("server_headers",     textServerHeaders);
+    container.put("page-error",         textError);
+    container.put("page-payload",       textPayload);
 
     let panel = form.create_panel();
     panel.setLayout(layout);
@@ -154,7 +160,7 @@ function ListenerUI(mode_create)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 650,
-        ui_width: 650
+        ui_height: 750,
+        ui_width: 750
     }
 }

@@ -47,9 +47,9 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
             if (!sessionsGraph)
                 return QGraphicsScene::contextMenuEvent( event );
 
-            auto layoutMenu = QMenu("Layout");
-            auto* actionLeftToRight = layoutMenu.addAction("Left to Right");
-            auto* actionTopToBottom = layoutMenu.addAction("Top to Bottom");
+            auto layoutMenu = QMenu("布局");
+            auto* actionLeftToRight = layoutMenu.addAction("从左到右");
+            auto* actionTopToBottom = layoutMenu.addAction("从上到下");
 
             actionLeftToRight->setCheckable(true);
             actionTopToBottom->setCheckable(true);
@@ -79,95 +79,53 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         return;
 
 
-    auto agentMenu = QMenu("Agent");
-    agentMenu.addAction("执行命令");
-    agentMenu.addAction("任务管理器");
-    agentMenu.addSeparator();
+    QMenu ctxMenu;
 
-    int agentCount = adaptixWidget->ScriptManager->AddMenuSession(&agentMenu, "SessionAgent", agentIds);
-    if (agentCount > 0)
-        agentMenu.addSeparator();
-
-    agentMenu.addAction("Remove console data");
-    agentMenu.addAction("Remove from server");
-
-
-    auto sessionMenu = QMenu("Session");
-    sessionMenu.addAction("Mark as Active");
-    sessionMenu.addAction("Mark as Inactive");
-    sessionMenu.addSeparator();
-    sessionMenu.addAction("设置标签");
-    if (agentIds.size() == 1 )
-        sessionMenu.addAction("设置数据");
-
-    auto ctxMenu = QMenu();
-    ctxMenu.addAction("Console");
-    ctxMenu.addSeparator();
-    ctxMenu.addMenu(&agentMenu);
-
-    auto browserMenu = QMenu("Browsers");
-    int browserCount = adaptixWidget->ScriptManager->AddMenuSession(&browserMenu, "SessionBrowser", agentIds);
-    if (browserCount > 0)
-        ctxMenu.addMenu(&browserMenu);
-
-    auto accessMenu = QMenu("Access");
-    int accessCount = adaptixWidget->ScriptManager->AddMenuSession(&accessMenu, "SessionAccess", agentIds);
-    if (accessCount > 0)
-        ctxMenu.addMenu(&accessMenu);
-
-    adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
-
-    ctxMenu.addSeparator();
-    ctxMenu.addMenu(&sessionMenu);
-
-    const auto action = ctxMenu.exec( event->screenPos() );
-    if ( !action )
-        return;
-
-    if ( action->text() == "Console" ) {
-        for (QString agentId : agentIds) {
-            adaptixWidget->LoadConsoleUI(agentId);
-        }
-    }
-    else if ( action->text() == "执行命令") {
+    auto agentMenu = ctxMenu.addMenu("代理");
+    agentMenu->addAction("执行命令", this, [graphics_items]() {
         bool ok = false;
-        QString cmd = QInputDialog::getText(nullptr,"执行命令", "命令", QLineEdit::Normal, "", &ok);
+        QString cmd = QInputDialog::getText(nullptr, "执行命令", "命令", QLineEdit::Normal, "", &ok);
         if (!ok)
             return;
-
-        const auto item = dynamic_cast<GraphItem*>( graphics_items[0] );
-        if ( item && item->agent) {
+        const auto item = dynamic_cast<GraphItem*>(graphics_items[0]);
+        if (item && item->agent) {
             item->agent->Console->SetInput(cmd);
             item->agent->Console->processInput();
         }
-    }
-    else if ( action->text() == "任务管理器") {
-        for (QString agentId : agentIds) {
+    });
+    agentMenu->addAction("任务管理器", this, [adaptixWidget, agentIds]() {
+        for (const QString& agentId : agentIds) {
             adaptixWidget->TasksDock->SetAgentFilter(agentId);
             adaptixWidget->SetTasksUI();
         }
-    }
-    else if ( action->text() == "Remove console data" ) {
+    });
+    agentMenu->addSeparator();
+
+    int agentCount = adaptixWidget->ScriptManager->AddMenuSession(agentMenu, "SessionAgent", agentIds);
+    if (agentCount > 0)
+        agentMenu->addSeparator();
+
+    agentMenu->addAction("清除控制台数据", this, [adaptixWidget, agentIds]() {
         QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "清除确认",
-                                          "Are you sure you want to delete all agent console data and history from server (tasks will not be deleted from TaskManager)?\n\n"
-                                          "If you want to temporarily hide the contents of the agent console, do so through the agent console menu.",
+                                          "确定要删除服务器上所有代理控制台数据和历史记录吗（任务管理器中的任务不会被删除）？\n\n"
+                                          "如需临时隐藏代理控制台内容，请通过代理控制台菜单操作。",
                                           QMessageBox::Yes | QMessageBox::No,
                                           QMessageBox::No);
         if (reply != QMessageBox::Yes)
             return;
 
-        for (auto id : agentIds)
+        for (const auto& id : agentIds)
             adaptixWidget->AgentsMap[id]->Console->Clear();
 
         HttpReqConsoleRemoveAsync(agentIds, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "响应超时" : message);
         });
-    }
-    else if ( action->text() == "Remove from server" ) {
+    });
+    agentMenu->addAction("从服务器删除", this, [adaptixWidget, agentIds]() {
         QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "删除确认",
-                                          "Are you sure you want to delete all information about the selected agents from the server?\n\n"
-                                          "If you want to hide the record, simply choose: 'Item -> Hide on Client'.",
+                                          "确定要从服务器删除所选代理的所有信息吗？\n\n"
+                                          "如需隐藏记录，请选择：'项目 -> 在客户端隐藏'。",
                                           QMessageBox::Yes | QMessageBox::No,
                                           QMessageBox::No);
         if (reply != QMessageBox::Yes)
@@ -177,43 +135,73 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
             if (!success)
                 MessageError(message.isEmpty() ? "响应超时" : message);
         });
-    }
-    else if ( action->text() == "Mark as Active" ) {
+    });
+
+    auto sessionMenu = ctxMenu.addMenu("会话");
+    sessionMenu->addAction("标记为活跃", this, [adaptixWidget, agentIds]() {
         HttpReqAgentSetMarkAsync(agentIds, "", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "响应超时" : message);
         });
-    }
-    else if ( action->text() == "Mark as Inactive" ) {
+    });
+    sessionMenu->addAction("标记为非活跃", this, [adaptixWidget, agentIds]() {
         HttpReqAgentSetMarkAsync(agentIds, "Inactive", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "响应超时" : message);
         });
-    }
-    else if ( action->text() == "设置标签" ) {
-        QString tag = "";
+    });
+    sessionMenu->addSeparator();
+    sessionMenu->addAction("设置标签", this, [adaptixWidget, agentIds]() {
         bool inputOk;
-        QString newTag = QInputDialog::getText(nullptr, "设置标签", "新标签", QLineEdit::Normal,tag, &inputOk);
-        if ( inputOk ) {
+        QString newTag = QInputDialog::getText(nullptr, "设置标签", "新标签", QLineEdit::Normal, "", &inputOk);
+        if (inputOk) {
             HttpReqAgentSetTagAsync(agentIds, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
                 if (!success)
                     MessageError(message.isEmpty() ? "响应超时" : message);
             });
         }
+    });
+    if (agentIds.size() == 1) {
+        sessionMenu->addAction("设置数据", this, [adaptixWidget, agentIds]() {
+            QString agentId = agentIds.first();
+            if (!adaptixWidget->AgentsMap.contains(agentId))
+                return;
+
+            Agent* agent = adaptixWidget->AgentsMap[agentId];
+
+            auto* dialog = new DialogAgentData();
+            dialog->SetProfile(*(adaptixWidget->GetProfile()));
+            dialog->SetAgentData(agent->data);
+            dialog->Start();
+        });
     }
-    else if ( action->text() == "设置数据" ) {
-        if (agentIds.isEmpty())
-            return;
 
-        QString agentId = agentIds.first();
-        if (!adaptixWidget->AgentsMap.contains(agentId))
-            return;
+    ctxMenu.addAction("控制台", this, [adaptixWidget, agentIds]() {
+        for (const QString& agentId : agentIds) {
+            adaptixWidget->LoadConsoleUI(agentId);
+        }
+    });
+    ctxMenu.addSeparator();
+    ctxMenu.addMenu(agentMenu);
 
-        Agent* agent = adaptixWidget->AgentsMap[agentId];
+    auto browserMenu = ctxMenu.addMenu("浏览器");
+    int browserCount = adaptixWidget->ScriptManager->AddMenuSession(browserMenu, "SessionBrowser", agentIds);
+    if (browserCount > 0)
+        ctxMenu.addMenu(browserMenu);
+    else
+        ctxMenu.removeAction(browserMenu->menuAction());
 
-        auto* dialog = new DialogAgentData();
-        dialog->SetProfile(*(adaptixWidget->GetProfile()));
-        dialog->SetAgentData(agent->data);
-        dialog->Start();
-    }
+    auto accessMenu = ctxMenu.addMenu("访问");
+    int accessCount = adaptixWidget->ScriptManager->AddMenuSession(accessMenu, "SessionAccess", agentIds);
+    if (accessCount > 0)
+        ctxMenu.addMenu(accessMenu);
+    else
+        ctxMenu.removeAction(accessMenu->menuAction());
+
+    adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
+
+    ctxMenu.addSeparator();
+    ctxMenu.addMenu(sessionMenu);
+
+    ctxMenu.exec(event->screenPos());
 }

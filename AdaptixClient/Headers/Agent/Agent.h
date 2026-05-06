@@ -36,10 +36,21 @@ public:
 
     Commander*               commander      = nullptr;
     ConsoleWidget*           Console        = nullptr;
-    BrowserFilesWidget*      FileBrowser    = nullptr;
-    BrowserProcessWidget*    ProcessBrowser = nullptr;
-    TerminalContainerWidget* Terminal       = nullptr;
-    TerminalContainerWidget* Shell          = nullptr;
+
+private:
+    BrowserFilesWidget*      fileBrowser    = nullptr;
+    BrowserProcessWidget*    processBrowser = nullptr;
+    TerminalContainerWidget* terminal       = nullptr;
+    TerminalContainerWidget* shell          = nullptr;
+
+public:
+    BrowserFilesWidget*      GetFileBrowser();
+    BrowserProcessWidget*    GetProcessBrowser();
+    TerminalContainerWidget* GetTerminal();
+    TerminalContainerWidget* GetShell();
+
+    bool HasFileBrowser() const    { return fileBrowser != nullptr; }
+    bool HasProcessBrowser() const { return processBrowser != nullptr; }
 
     bool active = true;
     bool show   = true;

@@ -29,7 +29,7 @@ Q_OBJECT
     };
     QMap<QString, ChannelHandle>  tunnelChannels;
 
-    void startWorker(QTcpSocket* clientSock, const QString& tunnelData);
+    void startWorker(QTcpSocket* clientSock, const QJsonObject& otpData, const QString& channelId);
     void startHandshakeWorker(QTcpSocket* clientSock, const QString& type);
 
 public:

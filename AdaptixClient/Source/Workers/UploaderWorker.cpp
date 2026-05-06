@@ -2,8 +2,11 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QFileInfo>
+#include <QUrlQuery>
 
-UploaderWorker::UploaderWorker(const QUrl &uploadUrl, const QString &otp, const QByteArray &data) : url(uploadUrl), otp(otp), data(data) {}
+UploaderWorker::UploaderWorker(const QUrl &uploadUrl, const QString &otp, const QByteArray &data) : url(uploadUrl), otp(otp), data(data), useFilePath(false) {}
+
+UploaderWorker::UploaderWorker(const QUrl &uploadUrl, const QString &otp, const QString &filePath) : url(uploadUrl), otp(otp), filePath(filePath), useFilePath(true) {}
 
 UploaderWorker::~UploaderWorker()
 {
@@ -22,12 +25,26 @@ void UploaderWorker::start() {
     QHttpMultiPart* multiPart = new QHttpMultiPart(QHttpMultiPart::FormDataType);
     QHttpPart filePart;
     filePart.setHeader(QNetworkRequest::ContentDispositionHeader, QVariant("form-data; name=\"file\"; filename=\"command\""));
-    filePart.setBody(data);
+
+    if (useFilePath) {
+        QFile* file = new QFile(filePath, multiPart);
+        if (!file->open(QIODevice::ReadOnly)) {
+            Q_EMIT failed("Failed to open file: " + filePath);
+            return;
+        }
+        filePart.setBodyDevice(file);
+    } else {
+        filePart.setBody(data);
+    }
 
     multiPart->append(filePart);
 
-    QNetworkRequest request(url);
-    request.setRawHeader("OTP", this->otp.toUtf8());
+    QUrl requestUrl(url);
+    QUrlQuery query;
+    query.addQueryItem("otp", this->otp);
+    requestUrl.setQuery(query);
+
+    QNetworkRequest request(requestUrl);
     networkReply = networkManager->post(request, multiPart);
     multiPart->setParent(networkReply);
 

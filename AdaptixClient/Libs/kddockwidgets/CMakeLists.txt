@@ -94,8 +94,6 @@ set(KDDW_FRONTEND_QTWIDGETS_SRCS
         qtwidgets/views/ClassicIndicatorsWindow.cpp
         qtwidgets/views/SegmentedDropIndicatorOverlay.cpp
         qtwidgets/ViewFactory.cpp
-        qtwidgets/DebugWindow.cpp
-        qtwidgets/ObjectViewer.cpp
 )
 
 set(KDDW_FRONTEND_QTCOMPAT_SRCS qtcompat/Object.cpp)

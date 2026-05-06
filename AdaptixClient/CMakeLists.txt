@@ -10,13 +10,20 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_subdirectory(Libs/kddockwidgets)
+if(WIN32)
+    set(Qt6_DIR "C:/msys64/mingw64/lib/cmake")
+endif()
+set(QT_NO_PRIVATE_MODULE_WARNING ON)
 
-if(UNIX)
-    find_package( OpenSSL REQUIRED )
-elseif(APPLE)
-    find_package( OpenSSL REQUIRED )
-elseif(WIN32)
+add_subdirectory(Libs/kddockwidgets)
+add_subdirectory(Libs/qlementine)
+
+if(WIN32 AND MINGW)
+    set(OPENSSL_USE_STATIC_LIBS TRUE)
+endif()
+find_package( OpenSSL REQUIRED )
+
+if(WIN32 AND MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-subsystem,windows")
 endif()
 
@@ -123,6 +130,7 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogExtender.h
         Headers/Utils/CustomElements.h
         Headers/Client/Settings.h
+        Headers/Client/ConsoleTheme.h
         Headers/UI/Widgets/TunnelsWidget.h
         Headers/Utils/KeyPressHandler.h
         Headers/UI/Graph/SessionsGraph.h
@@ -138,6 +146,7 @@ SET( HEADERS
         Headers/Workers/SocksHandshakeWorker.h
         Headers/UI/Widgets/TerminalContainerWidget.h
         Headers/Workers/TerminalWorker.h
+        Headers/Workers/BuildWorker.h
         Headers/UI/Dialogs/DialogDownloader.h
         Headers/Workers/DownloaderWorker.h
         Headers/Workers/UploaderWorker.h
@@ -160,6 +169,7 @@ SET( HEADERS
         Headers/UI/Widgets/ChatWidget.h
         Headers/UI/Widgets/AbstractDock.h
         Headers/Utils/NonBlockingDialogs.h
+        Headers/UI/Dialogs/DialogSubscriptions.h
         Headers/Utils/FontManager.h
         Headers/Utils/TitleBarStyle.h
         Headers/UI/Widgets/DockWidgetRegister.h
@@ -179,6 +189,7 @@ add_executable(AdaptixClient MACOSX_BUNDLE
 
         Source/Utils/Logs.cpp
         Source/UI/Dialogs/DialogConnect.cpp
+        Source/UI/Dialogs/DialogSubscriptions.cpp
         Source/Utils/Convert.cpp
         Source/MainAdaptix.cpp
         Source/Client/Storage.cpp
@@ -210,6 +221,7 @@ add_executable(AdaptixClient MACOSX_BUNDLE
         Source/UI/Dialogs/DialogExtender.cpp
         Source/Utils/CustomElements.cpp
         Source/Client/Settings.cpp
+        Source/Client/ConsoleTheme.cpp
         Source/UI/Widgets/TunnelsWidget.cpp
         Source/UI/Graph/SessionsGraph.cpp
         Source/UI/Graph/GraphItem.cpp
@@ -224,6 +236,7 @@ add_executable(AdaptixClient MACOSX_BUNDLE
         Source/Workers/SocksHandshakeWorker.cpp
         Source/UI/Widgets/TerminalContainerWidget.cpp
         Source/Workers/TerminalWorker.cpp
+        Source/Workers/BuildWorker.cpp
         Source/UI/Dialogs/DialogDownloader.cpp
         Source/Workers/DownloaderWorker.cpp
         Source/Workers/UploaderWorker.cpp
@@ -257,52 +270,41 @@ target_compile_definitions(
 #        QT_NO_SIGNALS_SLOTS_KEYWORDS
 )
 
-if(UNIX)
+target_link_libraries( AdaptixClient
+        PRIVATE
+        Qt6::Core
+        Qt6::Gui
+        Qt6::Widgets
+        Qt6::Network
+        Qt6::WebSockets
+        Qt6::Sql
+        Qt6::Qml
+        OpenSSL::Crypto
+
+        kddockwidgets
+        qlementine
+)
+
+if(WIN32)
     target_link_libraries( AdaptixClient
             PRIVATE
-            Qt6::Core
-            Qt6::Gui
-            Qt6::Widgets
-            Qt6::Network
-            Qt6::WebSockets
-            Qt6::Sql
-            Qt6::Qml
-            OpenSSL::Crypto
-
-            kddockwidgets
-
-            pthread dl
+            wsock32
+            ws2_32
+            crypt32
+            iphlpapi
+            netapi32
+            version
+            winmm
+            userenv
+            dwmapi
     )
-elseif(APPLE)
+    target_link_options( AdaptixClient PRIVATE -static-libgcc -static-libstdc++ )
+    target_link_libraries( AdaptixClient PRIVATE -Wl,-Bstatic -lwinpthread -Wl,-Bdynamic )
+elseif(UNIX)
     target_link_libraries( AdaptixClient
             PRIVATE
-            Qt6::Core
-            Qt6::Gui
-            Qt6::Widgets
-            Qt6::Network
-            Qt6::WebSockets
-            Qt6::Sql
-            Qt6::Qml
-            OpenSSL::Crypto
-
-            kddockwidgets
-
-            pthread dl
-    )
-else()
-    target_link_libraries( AdaptixClient
-            PRIVATE
-            Qt6::Core
-            Qt6::Gui
-            Qt6::Widgets
-            Qt6::Network
-            Qt6::WebSockets
-            Qt6::Sql
-            Qt6::Qml
-
-            kddockwidgets
-
-            wsock32 ws2_32 crypt32 iphlpapi netapi32 version winmm userenv dwmapi
+            pthread
+            dl
     )
 endif()
 if(UNIX AND NOT APPLE)

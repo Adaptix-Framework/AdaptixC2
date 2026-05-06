@@ -4,9 +4,10 @@
 
 class Packer
 {
-	DWORD  size;
-	BYTE*  buffer;
-	DWORD  index;
+	DWORD size;
+	DWORD capacity;
+	BYTE* buffer;
+	DWORD index;
 
 public:
 	Packer();
@@ -14,6 +15,7 @@ public:
 	~Packer();
 
 	VOID Set32(ULONG index, ULONG value);
+	VOID EnsureCapacity(ULONG needed);
 
 	VOID Pack64(ULONG64 value);
 	VOID Pack32(ULONG value);

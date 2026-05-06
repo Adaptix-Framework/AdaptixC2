@@ -7,17 +7,17 @@ import (
 )
 
 const (
-	SP_TYPE_EVENT = 0x13
+	SP_TYPE_NOTIFICATION = 0x13
 )
 
 const (
-	EVENT_CLIENT_CONNECT    = 1
-	EVENT_CLIENT_DISCONNECT = 2
-	EVENT_LISTENER_START    = 3
-	EVENT_LISTENER_STOP     = 4
-	EVENT_AGENT_NEW         = 5
-	EVENT_TUNNEL_START      = 6
-	EVENT_TUNNEL_STOP       = 7
+	NOTIFY_CLIENT_CONNECT    = 1
+	NOTIFY_CLIENT_DISCONNECT = 2
+	NOTIFY_LISTENER_START    = 3
+	NOTIFY_LISTENER_STOP     = 4
+	NOTIFY_AGENT_NEW         = 5
+	NOTIFY_TUNNEL_START      = 6
+	NOTIFY_TUNNEL_STOP       = 7
 )
 
 const (
@@ -27,18 +27,21 @@ const (
 	TYPE_SYNC_CATEGORY_BATCH = 0x15
 
 	TYPE_CHAT_MESSAGE = 0x18
+	TYPE_SERVICE_DATA = 0x19
 
-	TYPE_LISTENER_REG   = 0x31
-	TYPE_LISTENER_START = 0x32
+	TYPE_LISTENER_REG = 0x21
+	TYPE_AGENT_REG    = 0x22
+	TYPE_SERVICE_REG  = 0x23
+
+	TYPE_LISTENER_START = 0x31
+	TYPE_LISTENER_EDIT  = 0x32
 	TYPE_LISTENER_STOP  = 0x33
-	TYPE_LISTENER_EDIT  = 0x34
 
-	TYPE_AGENT_REG    = 0x41
-	TYPE_AGENT_NEW    = 0x42
-	TYPE_AGENT_TICK   = 0x43
-	TYPE_AGENT_UPDATE = 0x44
+	TYPE_AGENT_NEW    = 0x41
+	TYPE_AGENT_UPDATE = 0x42
+	TYPE_AGENT_REMOVE = 0x43
+	TYPE_AGENT_TICK   = 0x44
 	TYPE_AGENT_LINK   = 0x45
-	TYPE_AGENT_REMOVE = 0x46
 
 	TYPE_AGENT_TASK_SYNC   = 0x49
 	TYPE_AGENT_TASK_UPDATE = 0x4a
@@ -49,6 +52,7 @@ const (
 	TYPE_DOWNLOAD_CREATE = 0x51
 	TYPE_DOWNLOAD_UPDATE = 0x52
 	TYPE_DOWNLOAD_DELETE = 0x53
+	TYPE_DOWNLOAD_ACTUAL = 0x54
 
 	TYPE_TUNNEL_CREATE = 0x57
 	TYPE_TUNNEL_EDIT   = 0x58
@@ -63,6 +67,8 @@ const (
 	TYPE_BROWSER_FILES_STATUS = 0x63
 	TYPE_BROWSER_PROCESS      = 0x64
 
+	TYPE_AGENT_CONSOLE_LOCAL     = 0x67
+	TYPE_AGENT_CONSOLE_ERROR     = 0x68
 	TYPE_AGENT_CONSOLE_OUT       = 0x69
 	TYPE_AGENT_CONSOLE_TASK_SYNC = 0x6a
 	TYPE_AGENT_CONSOLE_TASK_UPD  = 0x6b
@@ -79,15 +85,17 @@ const (
 	TYPE_TARGETS_EDIT    = 0x88
 	TYPE_TARGETS_DELETE  = 0x89
 	TYPE_TARGETS_SET_TAG = 0x8a
+
+	TYPE_AXSCRIPT_COMMANDS = 0x91
 )
 
-func CreateSpEvent(event int, message string) SpEvent {
-	return SpEvent{
-		Type: SP_TYPE_EVENT,
+func CreateSpNotification(notifyType int, message string) SpNotification {
+	return SpNotification{
+		Type: SP_TYPE_NOTIFICATION,
 
-		EventType: event,
-		Message:   message,
-		Date:      time.Now().UTC().Unix(),
+		NotifyType: notifyType,
+		Message:    message,
+		Date:       time.Now().UTC().Unix(),
 	}
 }
 
@@ -171,13 +179,15 @@ func CreateSpListenerStop(name string) SyncPackerListenerStop {
 
 /// AGENT
 
-func CreateSpAgentReg(agent string, ax string, listeners []string) SyncPackerAgentReg {
+func CreateSpAgentReg(agent string, ax string, listeners []string, multiListeners bool, groups []AxCommandBatch) SyncPackerAgentReg {
 	return SyncPackerAgentReg{
 		SpType: TYPE_AGENT_REG,
 
-		Agent:     agent,
-		AX:        ax,
-		Listeners: listeners,
+		Agent:          agent,
+		AX:             ax,
+		Listeners:      listeners,
+		MultiListeners: multiListeners,
+		Groups:         groups,
 	}
 }
 
@@ -245,6 +255,7 @@ func CreateSpAgentUpdate(agentData adaptix.AgentData) SyncPackerAgentUpdate {
 		Domain:       &agentData.Domain,
 		Computer:     &agentData.Computer,
 		Username:     &agentData.Username,
+		Listener:     &agentData.Listener,
 	}
 }
 
@@ -339,6 +350,30 @@ func CreateSpAgentConsoleOutput(agentId string, messageType int, message string,
 		MessageType: messageType,
 		Message:     message,
 		ClearText:   text,
+	}
+}
+
+func CreateSpAgentErrorCommand(agentId string, cmdline string, message string, HookId string, HandlerId string) SyncPackerAgentErrorCommand {
+	return SyncPackerAgentErrorCommand{
+		SpType: TYPE_AGENT_CONSOLE_ERROR,
+
+		AgentId:   agentId,
+		Cmdline:   cmdline,
+		Message:   message,
+		HookId:    HookId,
+		HandlerId: HandlerId,
+	}
+}
+
+func CreateSpAgentLocalCommand(agentId string, cmdline string, message string, text string) SyncPackerAgentLocalCommand {
+	return SyncPackerAgentLocalCommand{
+		SpCreateTime: time.Now().UTC().Unix(),
+		SpType:       TYPE_AGENT_CONSOLE_LOCAL,
+
+		AgentId: agentId,
+		Cmdline: cmdline,
+		Message: message,
+		Text:    text,
 	}
 }
 
@@ -438,6 +473,23 @@ func CreateSpDownloadDelete(fileId []string) SyncPackerDownloadDelete {
 		SpType: TYPE_DOWNLOAD_DELETE,
 
 		FileId: fileId,
+	}
+}
+
+func CreateSpDownloadActual(downloadData adaptix.DownloadData) SyncPackerDownloadActual {
+	return SyncPackerDownloadActual{
+		SpType: TYPE_DOWNLOAD_ACTUAL,
+
+		AgentId:   downloadData.AgentId,
+		AgentName: downloadData.AgentName,
+		FileId:    downloadData.FileId,
+		User:      downloadData.User,
+		Computer:  downloadData.Computer,
+		File:      downloadData.RemotePath,
+		Size:      downloadData.TotalSize,
+		Date:      downloadData.Date,
+		RecvSize:  downloadData.RecvSize,
+		State:     downloadData.State,
 	}
 }
 
@@ -680,5 +732,36 @@ func CreateSpTunnelDelete(tunnelData adaptix.TunnelData) SyncPackerTunnelDelete 
 		SpType: TYPE_TUNNEL_DELETE,
 
 		TunnelId: tunnelData.TunnelId,
+	}
+}
+
+/// SERVICE
+
+func CreateSpServiceReg(name string, ax string) SyncPackerServiceReg {
+	return SyncPackerServiceReg{
+		SpType: TYPE_SERVICE_REG,
+
+		Name: name,
+		AX:   ax,
+	}
+}
+
+func CreateSpServiceData(service string, data string) SyncPackerServiceData {
+	return SyncPackerServiceData{
+		SpType: TYPE_SERVICE_DATA,
+
+		Service: service,
+		Data:    data,
+	}
+}
+
+/// AXSCRIPT
+
+func CreateSpAxScriptData(name string, content string, groups []AxCommandBatch) SyncPackerAxScriptData {
+	return SyncPackerAxScriptData{
+		SpType:  TYPE_AXSCRIPT_COMMANDS,
+		Name:    name,
+		Content: content,
+		Groups:  groups,
 	}
 }

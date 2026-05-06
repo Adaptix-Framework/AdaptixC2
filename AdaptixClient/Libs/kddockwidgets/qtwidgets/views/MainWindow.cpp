@@ -347,3 +347,13 @@ void MainWindow::manualInit()
         qFatal("MainWindow::manualInit requires MainWindowOption_ManualInit");
     }
 }
+
+const QWidget *MainWindow::centralGroup() const
+{
+    if (auto dropArea = m_mainWindow->dropArea()) {
+        if (auto group = dropArea->centralGroup()) {
+            return View_qt::asQWidget(group);
+        }
+    }
+    return nullptr;
+}

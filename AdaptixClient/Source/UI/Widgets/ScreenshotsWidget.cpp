@@ -100,7 +100,8 @@ ScreenshotsWidget::ScreenshotsWidget(AdaptixWidget* w) : DockTab("截图", w->Ge
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
         Q_UNUSED(selected)
         Q_UNUSED(deselected)
-        tableView->setFocus();
+        if (!inputFilter->hasFocus())
+            tableView->setFocus();
     });
     connect(tableView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &ScreenshotsWidget::onTableItemSelection);
     connect(hideButton,  &ClickableLabel::clicked,  this, &ScreenshotsWidget::toggleSearchPanel);
@@ -123,7 +124,43 @@ ScreenshotsWidget::~ScreenshotsWidget() = default;
 
 void ScreenshotsWidget::SetUpdatesEnabled(const bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingScreens();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
+}
+
+void ScreenshotsWidget::flushPendingScreens()
+{
+    if (pendingScreens.isEmpty())
+        return;
+
+    QList<ScreenData> filtered;
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        int count = 0;
+        for (const auto& screen : pendingScreens) {
+            if (adaptixWidget->Screenshots.contains(screen.ScreenId))
+                continue;
+
+            adaptixWidget->Screenshots[screen.ScreenId] = screen;
+            filtered.append(screen);
+        }
+    }
+
+    if (!filtered.isEmpty())
+        screensModel->addBatch(filtered);
+
+    pendingScreens.clear();
 }
 
 void ScreenshotsWidget::createUI()
@@ -140,11 +177,10 @@ void ScreenshotsWidget::createUI()
 
     autoSearchCheck = new QCheckBox("auto", searchWidget);
     autoSearchCheck->setChecked(true);
-    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
+    autoSearchCheck->setToolTip("文本变化时自动搜索。如未勾选，请按 Enter 搜索。");
 
     hideButton = new ClickableLabel("  x  ");
     hideButton->setCursor(Qt::PointingHandCursor);
-    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 5, 0, 0);
@@ -162,6 +198,7 @@ void ScreenshotsWidget::createUI()
 
     tableView = new QTableView(this);
     tableView->setModel(proxyModel);
+    tableView->setHorizontalHeader(new BoldHeaderView(Qt::Horizontal, tableView));
     tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     tableView->setAutoFillBackground(false);
     tableView->setShowGrid(false);
@@ -177,7 +214,7 @@ void ScreenshotsWidget::createUI()
     tableView->horizontalHeader()->setHighlightSections(false);
     tableView->verticalHeader()->setVisible(false);
 
-    proxyModel->sort(-1);
+    tableView->sortByColumn(SCR_Date, Qt::AscendingOrder);
 
     tableView->horizontalHeader()->setSectionResizeMode(SCR_Note, QHeaderView::Stretch);
     tableView->setItemDelegate(new PaddingDelegate(tableView));
@@ -199,7 +236,10 @@ void ScreenshotsWidget::createUI()
 
 void ScreenshotsWidget::Clear() const
 {
-    adaptixWidget->Screenshots.clear();
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        adaptixWidget->Screenshots.clear();
+    }
 
     QSignalBlocker blocker(tableView->selectionModel());
     screensModel->clear();
@@ -209,28 +249,41 @@ void ScreenshotsWidget::Clear() const
 
 void ScreenshotsWidget::AddScreenshotItem(const ScreenData &newScreen)
 {
+    if (bufferingEnabled) {
+        pendingScreens.append(newScreen);
+        return;
+    }
+
+    QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
     if (adaptixWidget->Screenshots.contains(newScreen.ScreenId))
         return;
 
-    screensModel->add(newScreen);
     adaptixWidget->Screenshots[newScreen.ScreenId] = newScreen;
+    locker.unlock();
+    screensModel->add(newScreen);
 }
 
 void ScreenshotsWidget::EditScreenshotItem(const QString &screenId, const QString &note)
 {
-    if (!adaptixWidget->Screenshots.contains(screenId))
-        return;
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        if (!adaptixWidget->Screenshots.contains(screenId))
+            return;
 
-    adaptixWidget->Screenshots[screenId].Note = note;
+        adaptixWidget->Screenshots[screenId].Note = note;
+    }
     screensModel->update(screenId, note);
 }
 
 void ScreenshotsWidget::RemoveScreenshotItem(const QString &screenId)
 {
-    if (!adaptixWidget->Screenshots.contains(screenId))
-        return;
+    {
+        QWriteLocker locker(&adaptixWidget->ScreenshotsLock);
+        if (!adaptixWidget->Screenshots.contains(screenId))
+            return;
 
-    adaptixWidget->Screenshots.remove(screenId);
+        adaptixWidget->Screenshots.remove(screenId);
+    }
     screensModel->remove(screenId);
 
     if (screensModel->rowCount(QModelIndex()) == 0)
@@ -298,9 +351,9 @@ void ScreenshotsWidget::handleScreenshotsMenu(const QPoint &pos)
         return;
 
     auto ctxMenu = QMenu();
-    ctxMenu.addAction("Set note", this, &ScreenshotsWidget::actionNote);
-    ctxMenu.addAction("Download", this, &ScreenshotsWidget::actionDownload);
-    ctxMenu.addAction("Delete",   this, &ScreenshotsWidget::actionDelete);
+    ctxMenu.addAction("设置备注", this, &ScreenshotsWidget::actionNote);
+    ctxMenu.addAction("下载", this, &ScreenshotsWidget::actionDownload);
+    ctxMenu.addAction("删除",   this, &ScreenshotsWidget::actionDelete);
 
     ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));
 }
@@ -319,7 +372,7 @@ void ScreenshotsWidget::actionNote()
     }
 
     bool inputOk;
-    QString newNote = QInputDialog::getText(nullptr, "Set note", "New note", QLineEdit::Normal, note, &inputOk);
+    QString newNote = QInputDialog::getText(nullptr, "设置备注", "新备注", QLineEdit::Normal, note, &inputOk);
     if (inputOk) {
         HttpReqScreenSetNoteAsync(listId, newNote, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)

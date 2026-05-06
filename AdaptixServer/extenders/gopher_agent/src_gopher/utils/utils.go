@@ -16,11 +16,12 @@ type Connection struct {
 /// Listener
 
 const (
-	INIT_PACK    = 1
-	EXFIL_PACK   = 2
-	JOB_PACK     = 3
-	JOB_TUNNEL   = 4
-	JOB_TERMINAL = 5
+	INIT_PACK     = 1
+	EXFIL_PACK    = 2
+	JOB_PACK      = 3
+	TUNNEL_PACK   = 4
+	TERMINAL_PACK = 5
+	BOF_PACK      = 6
 )
 
 type StartMsg struct {
@@ -301,6 +302,20 @@ type AnsExecBof struct {
 	Msgs []byte `msgpack:"msgs"`
 }
 
+type AnsExecBofAsync struct {
+	Msgs   []byte `msgpack:"msgs"`
+	Start  bool   `msgpack:"start"`
+	Finish bool   `msgpack:"finish"`
+}
+
+type ParamsTunnelPause struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
+type ParamsTunnelResume struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
 const (
 	COMMAND_ERROR      = 0
 	COMMAND_PWD        = 1
@@ -324,12 +339,25 @@ const (
 	COMMAND_JOB_KILL   = 19
 	COMMAND_REV2SELF   = 20
 
-	COMMAND_TUNNEL_START = 31
-	COMMAND_TUNNEL_STOP  = 32
+	COMMAND_TUNNEL_START  = 31
+	COMMAND_TUNNEL_STOP   = 32
+	COMMAND_TUNNEL_PAUSE  = 33
+	COMMAND_TUNNEL_RESUME = 34
 
 	COMMAND_TERMINAL_START = 35
 	COMMAND_TERMINAL_STOP  = 36
 
-	COMMAND_EXEC_BOF     = 50
-	COMMAND_EXEC_BOF_OUT = 51
+	COMMAND_EXEC_BOF       = 50
+	COMMAND_EXEC_BOF_OUT   = 51
+	COMMAND_EXEC_BOF_ASYNC = 52
+
+	CALLBACK_OUTPUT      = 0x0
+	CALLBACK_OUTPUT_OEM  = 0x1e
+	CALLBACK_OUTPUT_UTF8 = 0x20
+	CALLBACK_ERROR       = 0x0d
+	CALLBACK_CUSTOM      = 0x1000
+	CALLBACK_CUSTOM_LAST = 0x13ff
+
+	CALLBACK_AX_SCREENSHOT   = 0x81
+	CALLBACK_AX_DOWNLOAD_MEM = 0x82
 )

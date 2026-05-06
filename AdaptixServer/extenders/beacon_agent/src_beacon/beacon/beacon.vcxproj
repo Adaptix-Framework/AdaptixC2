@@ -9,6 +9,14 @@
       <Configuration>Debug EXE</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_DNS|Win32">
+      <Configuration>Debug_DNS</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_DNS|x64">
+      <Configuration>Debug_DNS</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug_SMB|Win32">
       <Configuration>Debug_SMB</Configuration>
       <Platform>Win32</Platform>
@@ -108,6 +116,10 @@
     <PlatformToolset>v143</PlatformToolset>
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_DNS|x64'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_TCP|x64'" Label="Configuration">
     <PlatformToolset>v143</PlatformToolset>
     <UseDebugLibraries>false</UseDebugLibraries>
@@ -120,12 +132,17 @@
     <PlatformToolset>v143</PlatformToolset>
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_DNS|Win32'" Label="Configuration">
+    <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_TCP|Win32'" Label="Configuration">
     <PlatformToolset>v143</PlatformToolset>
     <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -172,6 +189,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_SMB|Win32'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_DNS|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_TCP|Win32'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
@@ -179,6 +199,9 @@
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_SMB|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_DNS|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_TCP|x64'">
@@ -346,6 +369,20 @@
       <ConformanceMode>true</ConformanceMode>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_DNS|Win32'">
+    <Link>
+      <EntryPointSymbol>MainExe</EntryPointSymbol>
+      <SubSystem>Console</SubSystem>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+    </Link>
+    <ClCompile>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SDLCheck>false</SDLCheck>
+      <Optimization>Disabled</Optimization>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_TCP|Win32'">
     <Link>
       <EntryPointSymbol>MainExe</EntryPointSymbol>
@@ -394,6 +431,23 @@
       <PreprocessorDefinitions>BEACON_SMB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_DNS|x64'">
+    <Link>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <SubSystem>Console</SubSystem>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+    </Link>
+    <ClCompile>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <SDLCheck>false</SDLCheck>
+      <Optimization>Disabled</Optimization>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/D DEBUG %(AdditionalOptions)</AdditionalOptions>
+      <PreprocessorDefinitions>BEACON_DNS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_TCP|x64'">
     <Link>
       <EntryPointSymbol>
@@ -418,18 +472,22 @@
     <ClCompile Include="ApiLoader.cpp" />
     <ClCompile Include="beacon_functions.cpp" />
     <ClCompile Include="Boffer.cpp" />
+    <ClCompile Include="bof_loader.cpp" />
     <ClCompile Include="Commander.cpp" />
     <ClCompile Include="config.cpp" />
+    <ClCompile Include="ConnectorDNS.cpp" />
     <ClCompile Include="ConnectorHTTP.cpp" />
     <ClCompile Include="ConnectorSMB.cpp" />
     <ClCompile Include="ConnectorTCP.cpp" />
     <ClCompile Include="Crypt.cpp" />
+    <ClCompile Include="DnsCodec.cpp" />
     <ClCompile Include="Downloader.cpp" />
     <ClCompile Include="Encoders.cpp" />
     <ClCompile Include="JobsController.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MainAgent.cpp" />
     <ClCompile Include="MemorySaver.cpp" />
+    <ClCompile Include="miniz.cpp" />
     <ClCompile Include="Packer.cpp" />
     <ClCompile Include="Pivotter.cpp" />
     <ClCompile Include="ProcLoader.cpp" />
@@ -447,18 +505,23 @@
     <ClInclude Include="ApiLoader.h" />
     <ClInclude Include="beacon.h" />
     <ClInclude Include="Boffer.h" />
+    <ClInclude Include="bof_loader.h" />
     <ClInclude Include="Commander.h" />
     <ClInclude Include="config.h" />
+    <ClInclude Include="Connector.h" />
+    <ClInclude Include="ConnectorDNS.h" />
     <ClInclude Include="ConnectorHTTP.h" />
     <ClInclude Include="ConnectorSMB.h" />
     <ClInclude Include="ConnectorTCP.h" />
     <ClInclude Include="Crypt.h" />
     <ClInclude Include="defines.h" />
+    <ClInclude Include="DnsCodec.h" />
     <ClInclude Include="Downloader.h" />
     <ClInclude Include="Encoders.h" />
     <ClInclude Include="JobsController.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="MemorySaver.h" />
+    <ClInclude Include="miniz.h" />
     <ClInclude Include="ntdll.h" />
     <ClInclude Include="Packer.h" />
     <ClInclude Include="Pivotter.h" />
@@ -469,5 +532,11 @@
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
   </ImportGroup>
+  <ItemGroup>
+    <MASM Include="chkstk_x64.asm">
+      <ExcludedFromBuild Condition="'$(Platform)'=='Win32'">true</ExcludedFromBuild>
+    </MASM>
+  </ItemGroup>
 </Project>

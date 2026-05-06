@@ -128,6 +128,7 @@ function RegisterCommands(listenerType)
     cmd_download.addArgString("file", true);
 
     let _cmd_execute_bof = ax.create_command("bof", "Execute Beacon Object File", "execute bof /home/user/whoami.o", "Task: execute BOF");
+    _cmd_execute_bof.addArgBool("-a", "Async mode");
     _cmd_execute_bof.addArgFile("bof", true, "Path to object file");
     _cmd_execute_bof.addArgString("param_data", false);
     let cmd_execute = ax.create_command("execute", "Execute [bof] in the current process's memory");
@@ -159,8 +160,8 @@ function RegisterCommands(listenerType)
     let cmd_link = ax.create_command("link", "Connect to an pivot agents");
     cmd_link.addSubCommands([_cmd_link_smb, _cmd_link_tcp]);
 
-    let cmd_ls = ax.create_command("ls", "Lists files in a folder", "ls C:\\Windows", "Task: list of files in a folder");
-    cmd_ls.addArgString("directory", "", ".");
+    let cmd_ls = ax.create_command("ls", "List contents of a directory or details of a file", "ls C:\\Windows", "Task: list files");
+    cmd_ls.addArgString("path", "", ".");
 
     let _cmd_lportfwd_start = ax.create_command("start", "Start local port forwarding from server via agent", "lportfwd start 127.0.0.1 8080 192.168.1.1 8080");
     _cmd_lportfwd_start.addArgString("lhost", "Listening interface address on server", "0.0.0.0");
@@ -194,6 +195,7 @@ function RegisterCommands(listenerType)
     let _cmd_ps_run = ax.create_command("run", "Run a program", "run -s cmd.exe /c whoami /all", "Task: create new process");
     _cmd_ps_run.addArgBool("-s", "Suspend process");
     _cmd_ps_run.addArgBool("-o", "Output to console");
+    _cmd_ps_run.addArgBool("-i", "Use impersonation");
     _cmd_ps_run.addArgString("args", true);
     let cmd_ps = ax.create_command("ps", "Process manager");
     cmd_ps.addSubCommands([_cmd_ps_list, _cmd_ps_kill, _cmd_ps_run]);
@@ -217,6 +219,14 @@ function RegisterCommands(listenerType)
     let cmd_sleep = ax.create_command("sleep", "Sets sleep time", "sleep 30m5s 10");
     cmd_sleep.addArgString("sleep", true, "Time in '%h%m%s' format or number of seconds");
     cmd_sleep.addArgInt("jitter", false, "Max random amount of time in % added to sleep");
+
+    let _cmd_burst_show = ax.create_command("show", "Show burst config", "burst show");
+    let _cmd_burst_set = ax.create_command("set", "Set burst config", "burst set 1 50 10");
+    _cmd_burst_set.addArgInt("enabled", true, "1=on, 0=off");
+    _cmd_burst_set.addArgInt("sleep", false, "Sleep in ms (default 50)");
+    _cmd_burst_set.addArgInt("jitter", false, "Jitter % 0-90 (default 0)");
+    let cmd_burst = ax.create_command("burst", "DNS burst mode");
+    cmd_burst.addSubCommands([_cmd_burst_show, _cmd_burst_set]);
 
     let _cmd_socks_start = ax.create_command("start", "Start a SOCKS(4a/5) proxy server and listen on a specified port", "socks start 1080 -auth user pass");
     _cmd_socks_start.addArgFlagString("-h", "address", "Listening interface address", "0.0.0.0");
@@ -263,12 +273,18 @@ function RegisterCommands(listenerType)
         ax.execute_alias(id, cmdline, "sleep 0");
     });
 
-    if(listenerType == "BeaconHTTP") {
-        let commands_external = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
+    if(listenerType == "BeaconDNS") {
+        let commands_dns = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
+            cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
+            cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact, cmd_burst] );
+        return { commands_windows: commands_dns }
+    }
+    else if(listenerType == "BeaconHTTP") {
+        let commands_http = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
             cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
             cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact] );
 
-        return { commands_windows: commands_external }
+        return { commands_windows: commands_http }
     }
     else if (listenerType == "BeaconSMB" || listenerType == "BeaconTCP") {
         let commands_internal = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
@@ -281,15 +297,17 @@ function RegisterCommands(listenerType)
     return ax.create_commands_group("none",[]);
 }
 
-function GenerateUI(listenerType)
+function GenerateUI(listeners_type)
 {
+    let spacer1 = form.create_vspacer();
+
     let labelArch = form.create_label("Arch:");
     let comboArch = form.create_combo()
     comboArch.addItems(["x64", "x86"]);
 
-    let labelFormat = form.create_label("Format:");
-    let comboFormat = form.create_combo()
-    comboFormat.addItems(["Exe", "Service Exe", "DLL", "Shellcode"]);
+    let labelAgentFormat = form.create_label("Format:");
+    let comboAgentFormat = form.create_combo()
+    comboAgentFormat.addItems(["Exe", "Service Exe", "DLL", "Shellcode"]);
 
     let labelSleep = form.create_label("Sleep (Jitter %):");
     let textSleep = form.create_textline("4s");
@@ -298,7 +316,7 @@ function GenerateUI(listenerType)
     spinJitter.setRange(0, 100);
     spinJitter.setValue(0);
 
-    if(listenerType != "BeaconHTTP") {
+    if( !listeners_type.includes("BeaconHTTP") && !listeners_type.includes("BeaconDNS") ) {
         labelSleep.setVisible(false);
         textSleep.setVisible(false);
         spinJitter.setVisible(false);
@@ -322,26 +340,155 @@ function GenerateUI(listenerType)
     let sideloadingSelector = form.create_selector_file();
     sideloadingSelector.setVisible(false);
 
-    let layout = form.create_gridlayout();
-    layout.addWidget(labelArch, 0, 0, 1, 1);
-    layout.addWidget(comboArch, 0, 1, 1, 2);
-    layout.addWidget(labelFormat, 1, 0, 1, 1);
-    layout.addWidget(comboFormat, 1, 1, 1, 2);
-    layout.addWidget(labelSleep, 2, 0, 1, 1);
-    layout.addWidget(textSleep, 2, 1, 1, 1);
-    layout.addWidget(spinJitter, 2, 2, 1, 1);
-    layout.addWidget(checkKilldate, 3, 0, 1, 1);
-    layout.addWidget(dateKill, 3, 1, 1, 1);
-    layout.addWidget(timeKill, 3, 2, 1, 1);
-    layout.addWidget(checkWorkingTime, 4, 0, 1, 1);
-    layout.addWidget(timeStart, 4, 1, 1, 1);
-    layout.addWidget(timeFinish, 4, 2, 1, 1);
-    layout.addWidget(labelSvcName, 5, 0, 1, 1);
-    layout.addWidget(textSvcName, 5, 1, 1, 2);
-    layout.addWidget(checkSideloading, 6, 0, 1, 1);
-    layout.addWidget(sideloadingSelector, 6, 1, 1, 2);
+    let checkIatHiding = form.create_check("IAT Hiding (empty import table)");
+    // if( !listeners_type.includes("BeaconHTTP") && !listeners_type.includes("BeaconDNS") ) {
+    //     checkIatHiding.setVisible(false);
+    // }
 
-    form.connect(comboFormat, "currentTextChanged", function(text) {
+    //////////////////// DNS Settings
+
+    let labelDnsMode = form.create_label("DNS Mode:");
+    let comboDnsMode = form.create_combo();
+    comboDnsMode.addItems(["DNS (Direct UDP)", "DoH (DNS over HTTPS)", "DNS -> DoH fallback", "DoH -> DNS fallback"]);
+    comboDnsMode.setCurrentIndex(0);
+
+    let labelDnsResolvers = form.create_label("DNS Resolvers:");
+    let textDnsResolvers = form.create_textline("8.8.8.8,1.1.1.1,9.9.9.9");
+
+    let labelDohResolvers = form.create_label("DoH Resolvers:");
+    let textDohResolvers = form.create_textline("https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query");
+
+    let labelUserAgent = form.create_label("User-Agent:");
+    let textUserAgent = form.create_textline("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
+
+    let layout_group_dns = form.create_gridlayout();
+    layout_group_dns.addWidget(labelDnsMode,      0, 0, 1, 1);
+    layout_group_dns.addWidget(comboDnsMode,      0, 1, 1, 1);
+    layout_group_dns.addWidget(labelDnsResolvers, 1, 0, 1, 1);
+    layout_group_dns.addWidget(textDnsResolvers,  1, 1, 1, 1);
+    layout_group_dns.addWidget(labelDohResolvers, 2, 0, 1, 1);
+    layout_group_dns.addWidget(textDohResolvers,  2, 1, 1, 1);
+    layout_group_dns.addWidget(labelUserAgent,    3, 0, 1, 1);
+    layout_group_dns.addWidget(textUserAgent,     3, 1, 1, 1);
+
+    let panel_group_dns = form.create_panel();
+    panel_group_dns.setLayout(layout_group_dns);
+    let group_dns = form.create_groupbox("DNS settings")
+    group_dns.setPanel(panel_group_dns);
+
+    function updateDnsFieldsVisibility() {
+        let mode = comboDnsMode.currentText();
+        if(mode == "DNS (Direct UDP)") {
+            labelDnsResolvers.setVisible(true);
+            textDnsResolvers.setVisible(true);
+            labelDohResolvers.setVisible(false);
+            textDohResolvers.setVisible(false);
+            labelUserAgent.setVisible(false);
+            textUserAgent.setVisible(false);
+        } else if(mode == "DoH (DNS over HTTPS)") {
+            labelDnsResolvers.setVisible(false);
+            textDnsResolvers.setVisible(false);
+            labelDohResolvers.setVisible(true);
+            textDohResolvers.setVisible(true);
+            labelUserAgent.setVisible(true);
+            textUserAgent.setVisible(true);
+        } else {
+            labelDnsResolvers.setVisible(true);
+            textDnsResolvers.setVisible(true);
+            labelDohResolvers.setVisible(true);
+            textDohResolvers.setVisible(true);
+            labelUserAgent.setVisible(true);
+            textUserAgent.setVisible(true);
+        }
+    }
+
+    updateDnsFieldsVisibility();
+    form.connect(comboDnsMode, "currentTextChanged", function(text) {
+        updateDnsFieldsVisibility();
+    });
+
+    //////////////////// HTTP Settings
+
+    let labelProxyType = form.create_label("Type:");
+    let comboProxyType = form.create_combo();
+    comboProxyType.addItems(["http", "https"]);
+
+    let labelProxyServer = form.create_label("Server:");
+    let textProxyServer = form.create_textline("");
+    textProxyServer.setPlaceholder("192.168.1.1");
+    let spinProxyPort = form.create_spin();
+    spinProxyPort.setRange(1, 65535);
+    spinProxyPort.setValue(3128);
+
+    let labelProxyUsername = form.create_label("Username:");
+    let textProxyUsername = form.create_textline("");
+    textProxyUsername.setPlaceholder("(optional)");
+
+    let labelProxyPassword = form.create_label("Password:");
+    let textProxyPassword = form.create_textline("");
+    textProxyPassword.setPlaceholder("(optional)");
+
+    let layout_group_proxy = form.create_gridlayout();
+    layout_group_proxy.addWidget(labelProxyType,     0, 0, 1, 1);
+    layout_group_proxy.addWidget(comboProxyType,     0, 1, 1, 2);
+    layout_group_proxy.addWidget(labelProxyServer,   1, 0, 1, 1);
+    layout_group_proxy.addWidget(textProxyServer,    1, 1, 1, 1);
+    layout_group_proxy.addWidget(spinProxyPort,      1, 2, 1, 1);
+    layout_group_proxy.addWidget(labelProxyUsername, 2, 0, 1, 1);
+    layout_group_proxy.addWidget(textProxyUsername,  2, 1, 1, 2);
+    layout_group_proxy.addWidget(labelProxyPassword, 3, 0, 1, 1);
+    layout_group_proxy.addWidget(textProxyPassword,  3, 1, 1, 2);
+
+    let panel_group_proxy = form.create_panel();
+    panel_group_proxy.setLayout(layout_group_proxy);
+    let group_proxy = form.create_groupbox("Use HTTP/HTTPS proxy", true)
+    group_proxy.setPanel(panel_group_proxy);
+    group_proxy.setChecked(false);
+
+    /////////////////////////
+
+    let labelRotation = form.create_label("Rotation Mode:");
+    let comboRotation = form.create_combo();
+    comboRotation.addItems(["sequential", "random"]);
+
+    let spacer2 = form.create_vspacer();
+
+    if(!listeners_type.includes("BeaconDNS")) {
+        group_dns.setVisible(false);
+    }
+    if(!listeners_type.includes("BeaconHTTP")) {
+        group_proxy.setVisible(false);
+        labelRotation.setVisible(false);
+        comboRotation.setVisible(false);
+    }
+
+    let layout = form.create_gridlayout();
+    layout.addWidget(spacer1,             0, 0, 1, 3);
+    layout.addWidget(labelArch,           1, 0, 1, 1);
+    layout.addWidget(comboArch,           1, 1, 1, 2);
+    layout.addWidget(labelAgentFormat,    2, 0, 1, 1);
+    layout.addWidget(comboAgentFormat,    2, 1, 1, 2);
+    layout.addWidget(labelSleep,          3, 0, 1, 1);
+    layout.addWidget(textSleep,           3, 1, 1, 1);
+    layout.addWidget(spinJitter,          3, 2, 1, 1);
+    layout.addWidget(checkKilldate,       4, 0, 1, 1);
+    layout.addWidget(dateKill,            4, 1, 1, 1);
+    layout.addWidget(timeKill,            4, 2, 1, 1);
+    layout.addWidget(checkWorkingTime,    5, 0, 1, 1);
+    layout.addWidget(timeStart,           5, 1, 1, 1);
+    layout.addWidget(timeFinish,          5, 2, 1, 1);
+    layout.addWidget(labelSvcName,        6, 0, 1, 1);
+    layout.addWidget(textSvcName,         6, 1, 1, 2);
+    layout.addWidget(checkSideloading,    7, 0, 1, 1);
+    layout.addWidget(sideloadingSelector, 7, 1, 1, 2);
+    layout.addWidget(labelRotation,       8, 0, 1, 1);
+    layout.addWidget(comboRotation,       8, 1, 1, 2);
+    layout.addWidget(checkIatHiding,      9, 0, 1, 3);
+    layout.addWidget(group_proxy,        10, 0, 1, 3);
+    layout.addWidget(group_dns,          12, 0, 1, 3);
+    layout.addWidget(spacer2,            12, 0, 1, 3);
+
+    form.connect(comboAgentFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
             labelSvcName.setVisible(true)
             textSvcName.setVisible(true);
@@ -359,19 +506,31 @@ function GenerateUI(listenerType)
     });
 
     let container = form.create_container()
-    container.put("arch", comboArch)
-    container.put("format", comboFormat)
-    container.put("sleep", textSleep)
-    container.put("jitter", spinJitter)
-    container.put("is_killdate", checkKilldate)
-    container.put("kill_date", dateKill)
-    container.put("kill_time", timeKill)
-    container.put("is_workingtime", checkWorkingTime)
-    container.put("start_time", timeStart)
-    container.put("end_time", timeFinish)
-    container.put("svcname", textSvcName)
-    container.put("is_sideloading",checkSideloading)
-    container.put("sideloading_content",sideloadingSelector)
+    container.put("arch",                comboArch)
+    container.put("format",              comboAgentFormat)
+    container.put("sleep",               textSleep)
+    container.put("jitter",              spinJitter)
+    container.put("dns_resolvers",       textDnsResolvers)
+    container.put("dns_mode",            comboDnsMode)
+    container.put("doh_resolvers",       textDohResolvers)
+    container.put("user_agent",          textUserAgent)
+    container.put("is_killdate",         checkKilldate)
+    container.put("kill_date",           dateKill)
+    container.put("kill_time",           timeKill)
+    container.put("is_workingtime",      checkWorkingTime)
+    container.put("start_time",          timeStart)
+    container.put("end_time",            timeFinish)
+    container.put("svcname",             textSvcName)
+    container.put("is_sideloading",      checkSideloading)
+    container.put("sideloading_content", sideloadingSelector)
+    container.put("iat_hiding",          checkIatHiding)
+    container.put("use_proxy",           group_proxy)
+    container.put("proxy_type",          comboProxyType)
+    container.put("proxy_host",          textProxyServer)
+    container.put("proxy_port",          spinProxyPort)
+    container.put("proxy_username",      textProxyUsername)
+    container.put("proxy_password",      textProxyPassword)
+    container.put("rotation_mode",       comboRotation)
 
     let panel = form.create_panel()
     panel.setLayout(layout)
@@ -379,7 +538,7 @@ function GenerateUI(listenerType)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 450,
-        ui_width: 550
+        ui_height: 480,
+        ui_width: 500
     }
 }

@@ -2,9 +2,302 @@
 #include <QMutexLocker>
 #include <QTimer>
 #include <QTextBlock>
+#include <QHBoxLayout>
+#include <QMouseEvent>
+#include <QPainter>
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
 
+
+VerticalTabBar::VerticalTabBar(QWidget *parent) : QWidget(parent)
+{
+    setMouseTracking(true);
+    setFixedWidth(m_tabWidth);
+}
+
+int VerticalTabBar::addTab(const QString &text)
+{
+    m_tabs.append({text});
+    if (m_currentIndex < 0)
+        setCurrentIndex(0);
+    update();
+    return m_tabs.size() - 1;
+}
+
+void VerticalTabBar::removeTab(int index)
+{
+    if (index < 0 || index >= m_tabs.size()) return;
+    m_tabs.removeAt(index);
+    if (m_currentIndex >= m_tabs.size())
+        setCurrentIndex(m_tabs.size() - 1);
+    update();
+}
+
+void VerticalTabBar::setCurrentIndex(int index)
+{
+    if (index == m_currentIndex || index < 0 || index >= m_tabs.size()) return;
+    m_currentIndex = index;
+    Q_EMIT currentChanged(index);
+    update();
+}
+
+QString VerticalTabBar::tabText(int index) const
+{
+    if (index < 0 || index >= m_tabs.size()) return QString();
+    return m_tabs[index].text;
+}
+
+int VerticalTabBar::tabAt(const QPoint &pos) const
+{
+    int y = pos.y();
+    int offset = m_showAddButton ? m_tabHeight : 0;
+    if (y < offset) return -1;
+    int index = (y - offset) / m_tabHeight;
+    if (index >= 0 && index < m_tabs.size())
+        return index;
+    return -1;
+}
+
+QRect VerticalTabBar::closeButtonRect(int index) const
+{
+    int offset = m_showAddButton ? m_tabHeight : 0;
+    int y = offset + index * m_tabHeight;
+    return QRect(m_tabWidth - 14, y + 4, 12, 12);
+}
+
+QRect VerticalTabBar::addButtonRect() const
+{
+    return QRect(0, 0, m_tabWidth, m_tabHeight);
+}
+
+void VerticalTabBar::paintEvent(QPaintEvent *)
+{
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+    
+    const QPalette &pal = palette();
+    QColor bgNormal = pal.color(QPalette::Window);
+    QColor bgHover = pal.color(QPalette::Mid);
+    QColor bgSelected = pal.color(QPalette::Highlight);
+    QColor textNormal = pal.color(QPalette::WindowText);
+    QColor textSelected = pal.color(QPalette::HighlightedText);
+    QColor borderColor = pal.color(QPalette::Dark);
+
+    int yOffset = 0;
+
+    if (m_showAddButton) {
+        QRect addRect = addButtonRect();
+        if (m_addButtonHovered) {
+            p.fillRect(addRect, bgHover);
+        }
+        p.setPen(textNormal);
+        QFont f = font();
+        f.setBold(true);
+        f.setPointSize(f.pointSize() + 2);
+        p.setFont(f);
+        p.drawText(addRect, Qt::AlignCenter, "+");
+        p.setPen(borderColor);
+        p.drawLine(addRect.bottomLeft(), addRect.bottomRight());
+        yOffset = m_tabHeight;
+    }
+
+    for (int i = 0; i < m_tabs.size(); ++i) {
+        QRect tabRect(0, yOffset + i * m_tabHeight, m_tabWidth, m_tabHeight);
+        bool selected = (i == m_currentIndex);
+        bool hovered = (i == m_hoveredIndex);
+
+        if (selected) {
+            p.fillRect(tabRect, bgSelected);
+        } else if (hovered) {
+            p.fillRect(tabRect, bgHover);
+        }
+
+        if (selected) {
+            p.fillRect(0, tabRect.top(), 3, tabRect.height(), pal.color(QPalette::Highlight));
+        }
+
+        p.setPen(selected ? textSelected : textNormal);
+        QFont f = font();
+        f.setBold(selected);
+        p.setFont(f);
+        QString num = QString::number(i + 1);
+        p.drawText(tabRect, Qt::AlignCenter, num);
+
+        if (m_closable && (selected || hovered)) {
+            QRect closeRect = closeButtonRect(i);
+            if (m_hoveredCloseButton == i) {
+                p.setBrush(QColor(200, 60, 60));
+                p.setPen(Qt::NoPen);
+                p.drawEllipse(closeRect);
+                p.setPen(Qt::white);
+            } else {
+                p.setPen(selected ? textSelected : textNormal);
+            }
+            p.drawText(closeRect, Qt::AlignCenter, "×");
+        }
+
+        if (i < m_tabs.size() - 1) {
+            p.setPen(borderColor);
+            p.drawLine(tabRect.bottomLeft(), tabRect.bottomRight());
+        }
+    }
+}
+
+void VerticalTabBar::mousePressEvent(QMouseEvent *event)
+{
+    if (m_showAddButton && addButtonRect().contains(event->pos())) {
+        Q_EMIT addTabRequested();
+        return;
+    }
+    int index = tabAt(event->pos());
+    if (index >= 0) {
+        if (m_closable && closeButtonRect(index).contains(event->pos())) {
+            Q_EMIT tabCloseRequested(index);
+        } else {
+            setCurrentIndex(index);
+        }
+    }
+}
+
+void VerticalTabBar::mouseMoveEvent(QMouseEvent *event)
+{
+    int oldHover = m_hoveredIndex;
+    int oldCloseHover = m_hoveredCloseButton;
+    bool oldAddHover = m_addButtonHovered;
+    
+    m_addButtonHovered = m_showAddButton && addButtonRect().contains(event->pos());
+    m_hoveredIndex = tabAt(event->pos());
+    m_hoveredCloseButton = (m_closable && m_hoveredIndex >= 0 && closeButtonRect(m_hoveredIndex).contains(event->pos())) ? m_hoveredIndex : -1;
+    
+    if (oldHover != m_hoveredIndex || oldCloseHover != m_hoveredCloseButton || oldAddHover != m_addButtonHovered)
+        update();
+}
+
+void VerticalTabBar::leaveEvent(QEvent *)
+{
+    m_hoveredIndex = -1;
+    m_hoveredCloseButton = -1;
+    m_addButtonHovered = false;
+    update();
+}
+
+QSize VerticalTabBar::sizeHint() const
+{
+    int addButtonHeight = m_showAddButton ? m_tabHeight : 0;
+    return QSize(m_tabWidth, addButtonHeight + m_tabs.size() * m_tabHeight);
+}
+
+VerticalTabWidget::VerticalTabWidget(QWidget *parent) : QWidget(parent)
+{
+    m_tabBar = new VerticalTabBar(this);
+    m_stack = new QStackedWidget(this);
+    
+    QHBoxLayout *layout = new QHBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    layout->addWidget(m_tabBar);
+    layout->addWidget(m_stack, 1);
+    
+    connect(m_tabBar, &VerticalTabBar::currentChanged, this, [this](int index) {
+        m_stack->setCurrentIndex(index);
+        Q_EMIT currentChanged(index);
+    });
+    connect(m_tabBar, &VerticalTabBar::tabCloseRequested, this, &VerticalTabWidget::tabCloseRequested);
+}
+
+int VerticalTabWidget::addTab(QWidget *widget, const QString &label)
+{
+    int index = m_tabBar->addTab(label);
+    m_stack->insertWidget(index, widget);
+    return index;
+}
+
+void VerticalTabWidget::removeTab(int index)
+{
+    QWidget *w = m_stack->widget(index);
+    m_stack->removeWidget(w);
+    m_tabBar->removeTab(index);
+}
+
+void VerticalTabWidget::setCurrentIndex(int index)
+{
+    m_tabBar->setCurrentIndex(index);
+}
+
+QWidget *VerticalTabWidget::widget(int index) const
+{
+    return m_stack->widget(index);
+}
+
+void VerticalTabWidget::setCornerWidget(QWidget *widget)
+{
+    if (m_cornerWidget) {
+        layout()->removeWidget(m_cornerWidget);
+    }
+    m_cornerWidget = widget;
+    if (widget) {
+        static_cast<QHBoxLayout*>(layout())->insertWidget(0, widget);
+    }
+}
+
+
+BoldHeaderView::BoldHeaderView(Qt::Orientation orientation, QWidget *parent)
+    : QHeaderView(orientation, parent)
+{
+    setDefaultAlignment(Qt::AlignCenter);
+    setMinimumSectionSize(24);
+    setDefaultSectionSize(100);
+    setSectionsClickable(true);
+    setSortIndicatorShown(true);
+}
+
+void BoldHeaderView::paintSection(QPainter *painter, const QRect &rect, int logicalIndex) const
+{
+    if (!rect.isValid())
+        return;
+
+    painter->save();
+    painter->setRenderHint(QPainter::Antialiasing, true);
+
+    const QPalette &pal = palette();
+    QColor bgColor = pal.color(QPalette::Window).darker(115);
+    QColor textColor = pal.color(QPalette::ButtonText);
+
+    painter->fillRect(rect, bgColor);
+
+    QString text = model()->headerData(logicalIndex, orientation(), Qt::DisplayRole).toString();
+    QFont boldFont = painter->font();
+    boldFont.setBold(true);
+    painter->setFont(boldFont);
+    painter->setPen(textColor);
+
+    bool hasSortIndicator = isSortIndicatorShown() && sortIndicatorSection() == logicalIndex;
+    QRect textRect = hasSortIndicator ? rect.adjusted(4, 0, -16, 0) : rect;
+    painter->drawText(textRect, Qt::AlignCenter, text);
+
+    if (hasSortIndicator) {
+        int arrowSize = 6;
+        int centerY = rect.center().y();
+        int arrowX = rect.right() - 10;
+        
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(textColor);  // Same color as text
+        
+        QPolygon triangle;
+        if (sortIndicatorOrder() == Qt::AscendingOrder) {
+            triangle << QPoint(arrowX, centerY + arrowSize/2)
+                     << QPoint(arrowX + arrowSize, centerY + arrowSize/2)
+                     << QPoint(arrowX + arrowSize/2, centerY - arrowSize/2);
+        } else {
+            triangle << QPoint(arrowX, centerY - arrowSize/2)
+                     << QPoint(arrowX + arrowSize, centerY - arrowSize/2)
+                     << QPoint(arrowX + arrowSize/2, centerY + arrowSize/2);
+        }
+        painter->drawPolygon(triangle);
+    }
+
+    painter->restore();
+}
 
 
 CardListWidget::CardListWidget(QWidget *parent) : QListWidget(parent)
@@ -12,6 +305,22 @@ CardListWidget::CardListWidget(QWidget *parent) : QListWidget(parent)
     setMouseTracking(true);
     setSpacing(1);
     setItemDelegate(new CardListDelegate(this));
+
+    updateColorsFromPalette();
+}
+
+void CardListWidget::updateColorsFromPalette()
+{
+    const QPalette &pal = palette();
+    m_itemBackground = pal.color(QPalette::AlternateBase);
+    m_itemBackgroundHover = pal.color(QPalette::Mid);
+    m_itemBackgroundSelected = pal.color(QPalette::Highlight);
+    m_titleColor = pal.color(QPalette::Text);
+    m_titleColorSelected = pal.color(QPalette::HighlightedText);
+    m_subtitleColor = pal.color(QPalette::Text);
+    m_subtitleColor.setAlpha(160);
+    m_subtitleColorSelected = pal.color(QPalette::HighlightedText);
+    m_subtitleColorSelected.setAlpha(200);
 }
 
 void CardListWidget::addCard(const QString &title, const QString &text)
@@ -132,12 +441,13 @@ SpinTable::SpinTable(int rows, int columns, QWidget* parent)
     this->setParent(parent);
 
     buttonAdd = new QPushButton("Add");
-    buttonAdd->setProperty("ButtonStyle", "dialog");
 
     buttonClear = new QPushButton("Clear");
-    buttonClear->setProperty("ButtonStyle", "dialog");
 
-    table = new QTableWidget(rows, columns, this);
+    tableModel = new QStandardItemModel(rows, columns, this);
+
+    table = new QTableView(this);
+    table->setModel(tableModel);
     table->setAutoFillBackground( false );
     table->setShowGrid( false );
     table->setSortingEnabled( true );
@@ -161,30 +471,48 @@ SpinTable::SpinTable(int rows, int columns, QWidget* parent)
 
     QObject::connect(buttonAdd, &QPushButton::clicked, this, [&]()
     {
-        if (table->rowCount() < 1 )
-            table->setRowCount(1 );
+        if (tableModel->rowCount() < 1 )
+            tableModel->setRowCount(1 );
         else
-            table->setRowCount(table->rowCount() + 1 );
+            tableModel->setRowCount(tableModel->rowCount() + 1 );
 
-        table->setItem(table->rowCount() - 1, 0, new QTableWidgetItem() );
-        table->selectRow(table->rowCount() - 1 );
+        tableModel->setItem(tableModel->rowCount() - 1, 0, new QStandardItem() );
+        table->selectRow(tableModel->rowCount() - 1 );
     } );
 
-    QObject::connect(buttonClear, &QPushButton::clicked, this, [&](){ table->setRowCount(0); } );
+    QObject::connect(buttonClear, &QPushButton::clicked, this, [&](){ tableModel->setRowCount(0); } );
 }
 
 
 
 
 
-TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, bool autoScroll) : QTextEdit(parent), cachedCursor(this->textCursor()), maxLines(maxLines), noWrap(noWrap), autoScroll(autoScroll)
+ConsoleHighlighter::ConsoleHighlighter(QTextDocument* parent) : QSyntaxHighlighter(parent) {}
+
+void ConsoleHighlighter::highlightBlock(const QString& text)
+{
+    Q_UNUSED(text)
+    auto* data = dynamic_cast<ConsoleBlockData*>(currentBlockUserData());
+    if (!data)
+        return;
+
+    for (const auto& range : data->formats)
+        setFormat(range.start, range.length, range.format);
+}
+
+
+
+TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, bool autoScroll)
+    : QPlainTextEdit(parent), cachedCursor(this->textCursor()), maxLines(maxLines), autoScroll(autoScroll), noWrap(noWrap)
 {
     cachedCursor.movePosition(QTextCursor::End);
 
     if (noWrap)
-        setLineWrapMode( QTextEdit::LineWrapMode::NoWrap );
+        setLineWrapMode(QPlainTextEdit::NoWrap);
     else
-        setWordWrapMode( QTextOption::WrapAnywhere );
+        setLineWrapMode(QPlainTextEdit::WidgetWidth);
+
+    highlighter = new ConsoleHighlighter(this->document());
 
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, &TextEditConsole::customContextMenuRequested, this, &TextEditConsole::createContextMenu);
@@ -193,7 +521,7 @@ TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, boo
     batchTimer = new QTimer(this);
     batchTimer->setSingleShot(true);
     batchTimer->setInterval(BATCH_INTERVAL_MS);
-    connect(batchTimer, &QTimer::timeout, this, &TextEditConsole::flushPendingText);
+    connect(batchTimer, &QTimer::timeout, this, &TextEditConsole::flushPending);
 }
 
 void TextEditConsole::createContextMenu(const QPoint &pos) {
@@ -229,18 +557,24 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
     noWrapAction->setChecked(noWrap);
     connect(noWrapAction, &QAction::toggled, this, [this](bool checked) {
         noWrap = checked;
-        if (checked) {
-            setLineWrapMode(QTextEdit::NoWrap);
-        } else {
-            setLineWrapMode(QTextEdit::WidgetWidth);
-            setWordWrapMode(QTextOption::WrapAnywhere);
-        }
+        if (checked)
+            setLineWrapMode(QPlainTextEdit::NoWrap);
+        else
+            setLineWrapMode(QPlainTextEdit::WidgetWidth);
     });
     
     QAction *autoScrollAction = menu->addAction("自动滚动");
     autoScrollAction->setCheckable(true);
     autoScrollAction->setChecked(autoScroll);
     connect(autoScrollAction, &QAction::toggled, this, &TextEditConsole::setAutoScrollEnabled);
+
+    QAction *bgImageAction = menu->addAction("Show background image");
+    bgImageAction->setCheckable(true);
+    bgImageAction->setChecked(showBgImage);
+    connect(bgImageAction, &QAction::toggled, this, [this](bool checked) {
+        showBgImage = checked;
+        Q_EMIT ctx_bgToggled(checked);
+    });
     
     menu->exec(mapToGlobal(pos));
     delete menu;
@@ -269,67 +603,136 @@ bool TextEditConsole::isAutoScrollEnabled() const {
     return autoScroll;
 }
 
+bool TextEditConsole::isShowBackgroundImage() const {
+    return showBgImage;
+}
+
+void TextEditConsole::setShowBackgroundImage(const bool enabled) {
+    showBgImage = enabled;
+    Q_EMIT ctx_bgToggled(enabled);
+}
+
+void TextEditConsole::setConsoleBackground(const QColor& bgColor, const QString& imagePath, int dimming)
+{
+    m_bgColor = bgColor;
+    m_bgDimming = qBound(0, dimming, 100);
+
+    if (!imagePath.isEmpty()) {
+        m_bgPixmap = QPixmap(imagePath);
+        m_hasBgImage = !m_bgPixmap.isNull();
+    } else {
+        m_bgPixmap = QPixmap();
+        m_hasBgImage = false;
+    }
+
+    updatePaletteBackground();
+    viewport()->update();
+}
+
+void TextEditConsole::updatePaletteBackground()
+{
+    QPalette p = palette();
+    if (showBgImage && m_hasBgImage)
+        p.setColor(QPalette::Base, Qt::transparent);
+    else
+        p.setColor(QPalette::Base, m_bgColor);
+    setPalette(p);
+}
+
+void TextEditConsole::paintEvent(QPaintEvent* event)
+{
+    if (showBgImage && m_hasBgImage) {
+        QPainter painter(viewport());
+        QRect rect = viewport()->rect();
+
+        painter.fillRect(rect, m_bgColor);
+
+        QPixmap scaled = m_bgPixmap.scaled(rect.size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+        int x = (rect.width()  - scaled.width())  / 2;
+        int y = (rect.height() - scaled.height()) / 2;
+        painter.drawPixmap(x, y, scaled);
+
+        QColor overlay = m_bgColor;
+        overlay.setAlpha(qRound(m_bgDimming * 255.0 / 100.0));
+        painter.fillRect(rect, overlay);
+    }
+    QPlainTextEdit::paintEvent(event);
+}
+
 bool TextEditConsole::isNoWrapEnabled() const {
     return noWrap;
 }
 
-void TextEditConsole::appendPlain(const QString& text)
+void TextEditConsole::appendChunk(const QString& text, const QTextCharFormat& fmt)
 {
     QMutexLocker locker(batchMutex);
-    pendingText += text;
 
-    if (pendingText.size() >= MAX_BATCH_SIZE) {
+    if (!pendingChunks.isEmpty() && pendingChunks.last().format == fmt) {
+        pendingChunks.last().text += text;
+    } else {
+        pendingChunks.append({text, fmt});
+    }
+    pendingSize += text.size();
+
+    if (syncMode)
+        return;
+
+    if (pendingSize >= MAX_BATCH_SIZE) {
         locker.unlock();
-        flushPendingText();
+        flushPending();
     } else if (!batchTimer->isActive()) {
         batchTimer->start();
     }
 }
 
-void TextEditConsole::flushPendingText()
+void TextEditConsole::insertChunks(const QList<FormattedChunk>& chunks)
 {
-    QMutexLocker locker(batchMutex);
-    if (pendingText.isEmpty())
-        return;
+    bool atBottom = verticalScrollBar()->value() >= verticalScrollBar()->maximum() - 4;
 
-    QString textToAppend = pendingText;
-    pendingText.clear();
-    locker.unlock();
-
-    bool atBottom = verticalScrollBar()->value() == verticalScrollBar()->maximum();
+    highlighter->blockSignals(true);
 
     cachedCursor.movePosition(QTextCursor::End);
-    cachedCursor.insertText(textToAppend, QTextCharFormat());
+    QTextBlock lastBlock = document()->lastBlock();
 
-    auto doc = this->document();
-    int currentLines = doc->blockCount();
-    int trimThreshold = static_cast<int>(maxLines * 1.5);
+    for (const auto& chunk : chunks) {
+        if (chunk.text.isEmpty())
+            continue;
 
-    if (currentLines > trimThreshold) {
-        trimExcessLines();
-        appendCount = 0;
-    } else {
-        appendCount++;
-        if (appendCount >= 200 && currentLines > static_cast<int>(maxLines * 0.9)) {
-            trimExcessLines();
-            appendCount = 0;
+        bool hasFormat = chunk.format != QTextCharFormat();
+
+        QString normalizedText = chunk.text;
+        normalizedText.replace("\r\n", "\n");
+        normalizedText.remove('\r');
+
+        QStringList lines = normalizedText.split('\n');
+
+        for (int i = 0; i < lines.size(); ++i) {
+            const QString& line = lines[i];
+
+            if (!line.isEmpty()) {
+                QTextBlock block = cachedCursor.block();
+                int posInBlock = cachedCursor.positionInBlock();
+
+                cachedCursor.insertText(line);
+
+                if (hasFormat) {
+                    auto* data = dynamic_cast<ConsoleBlockData*>(block.userData());
+                    if (!data) {
+                        data = new ConsoleBlockData();
+                        block.setUserData(data);
+                    }
+                    data->formats.append({posInBlock, static_cast<int>(line.length()), chunk.format});
+                }
+            }
+
+            if (i < lines.size() - 1) {
+                cachedCursor.insertBlock();
+            }
         }
     }
 
-    if (autoScroll || atBottom)
-        verticalScrollBar()->setValue(verticalScrollBar()->maximum());
-}
-
-void TextEditConsole::appendFormatted(const QString& text, const std::function<void(QTextCharFormat&)> &styleFn)
-{
-    flushPendingText();
-
-    bool atBottom = verticalScrollBar()->value() == verticalScrollBar()->maximum();
-
-    cachedCursor.movePosition(QTextCursor::End);
-    QTextCharFormat fmt;
-    styleFn(fmt);
-    cachedCursor.insertText(text, fmt);
+    highlighter->blockSignals(false);
+    highlighter->rehighlight();
 
     appendCount++;
     auto doc = this->document();
@@ -346,6 +749,56 @@ void TextEditConsole::appendFormatted(const QString& text, const std::function<v
 
     if (autoScroll || atBottom)
         verticalScrollBar()->setValue(verticalScrollBar()->maximum());
+}
+
+void TextEditConsole::appendPlain(const QString& text)
+{
+    appendChunk(text, QTextCharFormat());
+}
+
+void TextEditConsole::flushPending()
+{
+    QMutexLocker locker(batchMutex);
+    if (pendingChunks.isEmpty())
+        return;
+
+    QList<FormattedChunk> chunks = std::move(pendingChunks);
+    pendingChunks.clear();
+    pendingSize = 0;
+    locker.unlock();
+
+    insertChunks(chunks);
+}
+
+void TextEditConsole::appendFormatted(const QString& text, const std::function<void(QTextCharFormat&)> &styleFn)
+{
+    QTextCharFormat fmt;
+    styleFn(fmt);
+    appendChunk(text, fmt);
+}
+
+void TextEditConsole::setSyncMode(bool enabled)
+{
+    syncMode = enabled;
+    if (!enabled)
+        flushAll();
+}
+
+void TextEditConsole::flushAll()
+{
+    QMutexLocker locker(batchMutex);
+
+    if (pendingChunks.isEmpty()) {
+        pendingSize = 0;
+        return;
+    }
+
+    QList<FormattedChunk> chunks = std::move(pendingChunks);
+    pendingChunks.clear();
+    pendingSize = 0;
+    locker.unlock();
+
+    insertChunks(chunks);
 }
 
 void TextEditConsole::appendColor(const QString& text, const QColor color) {
@@ -380,40 +833,13 @@ void TextEditConsole::trimExcessLines() {
     if (blockCount <= maxLines)
         return;
 
-    int linesToRemove = blockCount - maxLines;
-
     QTextCursor c(doc);
     c.movePosition(QTextCursor::Start);
 
-    QTextBlock keepFromBlock = doc->findBlockByNumber(maxLines);
+    QTextBlock keepFromBlock = doc->findBlockByNumber(blockCount - maxLines);
     if (keepFromBlock.isValid()) {
         c.movePosition(QTextCursor::Start);
         c.setPosition(keepFromBlock.position(), QTextCursor::KeepAnchor);
         c.removeSelectedText();
-
-        doc = this->document();
-        if (doc->blockCount() > maxLines) {
-            static int recursionDepth = 0;
-            if (recursionDepth < 3) {
-                recursionDepth++;
-                trimExcessLines();
-                recursionDepth--;
-            }
-        }
-    } else {
-        while (doc->blockCount() > maxLines && linesToRemove > 0) {
-            QTextBlock block = doc->firstBlock();
-            if (!block.isValid())
-                break;
-
-            QTextCursor c(block);
-            c.select(QTextCursor::BlockUnderCursor);
-            c.removeSelectedText();
-            c.deleteChar();
-            linesToRemove--;
-
-            if (linesToRemove > 5000)
-                break;
-        }
     }
 }

@@ -6,16 +6,21 @@
 #include <Client/Settings.h>
 #include <Client/Storage.h>
 #include <Client/AuthProfile.h>
+#include <Client/ConsoleTheme.h>
 #include <Utils/FontManager.h>
 #include <Utils/TitleBarStyle.h>
 #include <MainAdaptix.h>
 
+#include <QFontInfo>
 #include <kddockwidgets/Config.h>
+#include <oclero/qlementine.hpp>
 
 MainAdaptix::MainAdaptix()
 {
     storage  = new Storage();
     settings = new Settings(this);
+
+    ConsoleThemeManager::instance().loadTheme(settings->data.ConsoleTheme);
 
     this->SetApplicationTheme();
 
@@ -92,10 +97,16 @@ void MainAdaptix::Start() const
         break;
     }
 
+    ApplyApplicationFont();
+
     mainUI->setMinimumSize(500, 500);
     mainUI->resize(1024, 768);
     mainUI->showMaximized();
     mainUI->AddNewProject(authProfile, ChannelThread, ChannelWsWorker);
+
+    QTimer::singleShot(0, [this]() {
+        ApplyApplicationFont();
+    });
 
     QApplication::exec();
 }
@@ -186,35 +197,85 @@ AuthProfile* MainAdaptix::Login()
 
 void MainAdaptix::SetApplicationTheme() const
 {
+    static bool kddwInitialized = false;
+    if (!kddwInitialized) {
+        KDDockWidgets::initFrontend(KDDockWidgets::FrontendType::QtWidgets);
+        KDDockWidgets::Config::self().setSeparatorThickness(5);
+
+        auto flags = KDDockWidgets::Config::self().flags();
+        flags |= KDDockWidgets::Config::Flag_HideTitleBarWhenTabsVisible;
+        flags |= KDDockWidgets::Config::Flag_TabsHaveCloseButton;
+        flags |= KDDockWidgets::Config::Flag_ShowButtonsOnTabBarIfTitleBarHidden;
+        flags |= KDDockWidgets::Config::Flag_AllowSwitchingTabsViaMenu;
+        flags |= KDDockWidgets::Config::Flag_AllowReorderTabs;
+        flags |= KDDockWidgets::Config::Flag_DoubleClickMaximizes;
+        KDDockWidgets::Config::self().setFlags(flags);
+        kddwInitialized = true;
+    }
+
     QGuiApplication::setWindowIcon( QIcon( ":/LogoLin" ) );
-
-    KDDockWidgets::initFrontend(KDDockWidgets::FrontendType::QtWidgets);
-    KDDockWidgets::Config::self().setSeparatorThickness(5);
-
-    auto flags = KDDockWidgets::Config::self().flags();
-    flags |= KDDockWidgets::Config::Flag_HideTitleBarWhenTabsVisible;
-    flags |= KDDockWidgets::Config::Flag_TabsHaveCloseButton;
-    flags |= KDDockWidgets::Config::Flag_ShowButtonsOnTabBarIfTitleBarHidden;
-    flags |= KDDockWidgets::Config::Flag_AllowSwitchingTabsViaMenu;
-    flags |= KDDockWidgets::Config::Flag_AllowReorderTabs;
-    flags |= KDDockWidgets::Config::Flag_DoubleClickMaximizes;
-    KDDockWidgets::Config::self().setFlags(flags);
 
     FontManager::instance().initialize();
 
+    auto* style = new oclero::qlementine::QlementineStyle(qApp);
+    QString userPath = QDir(QDir::homePath()).filePath(".adaptix/themes/app/" + settings->data.MainTheme + ".json");
+    QString themePath = QFile::exists(userPath) ? userPath : QString(":/qlementine-themes/%1").arg(settings->data.MainTheme);
+    style->setThemeJsonPath(themePath);
+    const_cast<MainAdaptix*>(this)->qlementineStyle = style;
+
+    ApplyApplicationFont();
+
+    QApplication::setStyle(style);
+
+    QString additionalStyles = R"(
+        QMenu::separator {
+            height: 1px;
+            background-color: #3A3A3A;
+            margin: 4px 8px;
+        }
+    )";
+    QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
+    app->setStyleSheet(additionalStyles);
+}
+
+void MainAdaptix::ApplyApplicationFont() const
+{
+    if (!qlementineStyle)
+        return;
+
     QString appFontFamily = settings->data.FontFamily;
-    if (appFontFamily.startsWith("Adaptix"))
+    if (appFontFamily.contains(" - "))
         appFontFamily = appFontFamily.split("-")[1].trimmed();
 
-    auto appFont = QFont( appFontFamily );
-    appFont.setPointSize( settings->data.FontSize );
-    QApplication::setFont( appFont );
+    appFontFamily = FontManager::instance().resolveFamily(appFontFamily);
 
-    QString appTheme = ":/themes/" + settings->data.MainTheme;
-    bool result = false;
-    QString style = ReadFileString(appTheme, &result);
-    if (result) {
-        QApplication *app = qobject_cast<QApplication*>(QCoreApplication::instance());
-        app->setStyleSheet(style);
+    QFont testFont(appFontFamily);
+    QFontInfo testInfo(testFont);
+    if (testInfo.family() != appFontFamily && !testInfo.family().startsWith(appFontFamily)) {
+        appFontFamily = FontManager::instance().resolveFamily("JetBrains Mono");
     }
+
+    int appFontSize = settings->data.FontSize;
+
+    auto theme = qlementineStyle->theme();
+
+    theme.fontRegular.setFamily(appFontFamily);
+    theme.fontRegular.setPointSize(appFontSize);
+
+    theme.fontBold.setFamily(appFontFamily);
+    theme.fontBold.setPointSize(appFontSize);
+
+    theme.fontH1.setFamily(appFontFamily);
+    theme.fontH2.setFamily(appFontFamily);
+    theme.fontH3.setFamily(appFontFamily);
+    theme.fontH4.setFamily(appFontFamily);
+    theme.fontH5.setFamily(appFontFamily);
+
+    theme.fontCaption.setFamily(appFontFamily);
+
+    theme.fontMonospace.setFamily(appFontFamily);
+    theme.fontMonospace.setPointSize(appFontSize);
+
+    qlementineStyle->setTheme(theme);
+    QApplication::setFont(theme.fontRegular);
 }

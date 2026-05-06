@@ -8,9 +8,10 @@
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
+#include <Utils/FontManager.h>
 #include <MainAdaptix.h>
 
-REGISTER_DOCK_WIDGET(TerminalContainerWidget, "远程终端", false)
+REGISTER_DOCK_WIDGET(TerminalContainerWidget, "Remote Terminal", false)
 
 TerminalTab::TerminalTab(Agent* a, AdaptixWidget* w, TerminalMode mode, QWidget* parent) : QWidget(parent)
 {
@@ -67,7 +68,7 @@ void TerminalTab::createUI()
     programComboBox->addItem("自定义程序");
 
     keytabLabel = new QLabel(this);
-    keytabLabel->setText("Keytab：");
+    keytabLabel->setText("密钥表：");
 
     keytabComboBox = new QComboBox(this);
     keytabComboBox->addItem("linux_console");
@@ -121,10 +122,10 @@ void TerminalTab::createUI()
     line_4->setVisible(terminalMode == TerminalModeShell);
 
     statusDescLabel = new QLabel(this);
-    statusDescLabel->setText("状态：");
+    statusDescLabel->setText("status:");
 
     statusLabel = new QLabel(this);
-    statusLabel->setText("Stopped");
+    statusLabel->setText("已停止");
 
     spacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
@@ -166,7 +167,7 @@ void TerminalTab::setStatus(const QString &text)
 {
     this->statusLabel->setText(text);
 
-    if (text == "Stopped") {
+    if (text == "已停止") {
         programInput->setEnabled(programComboBox->currentText() == "自定义程序");
         programComboBox->setEnabled(true);
         startButton->setEnabled(true);
@@ -178,19 +179,7 @@ QTermWidget* TerminalTab::Konsole() { return this->termWidget; }
 
 void TerminalTab::SetFont()
 {
-    QFont font = QApplication::font();
-
-#ifdef Q_OS_MACOS
-    font.setFamily(QStringLiteral("Monaco"));
-#elif defined(Q_OS_WIN)
-    font.setFamily(QStringLiteral("Consolas"));
-#elif defined(Q_WS_QWS)
-    font.setFamily(QStringLiteral("fixed"));
-#else
-    font.setFamily(QStringLiteral("Monospace"));
-#endif
-
-    font.setPointSize(10);
+    QFont font = FontManager::instance().getFont("Hack", 10);
     termWidget->setTerminalFont(font);
 }
 
@@ -224,16 +213,16 @@ void TerminalTab::SetSettings()
 void TerminalTab::handleTerminalMenu(const QPoint &pos)
 {
     QMenu menu(this->termWidget);
-    menu.addAction("Copy  (Ctrl+Shift+C)", this->termWidget, &QTermWidget::copyClipboard);
-    menu.addAction("Paste (Ctrl+Shift+V)", this->termWidget, &QTermWidget::pasteClipboard);
-    menu.addAction("Clear (Ctrl+Shift+L)", this->termWidget, &QTermWidget::clear);
-    menu.addAction("Find  (Ctrl+Shift+F)", this->termWidget, &QTermWidget::toggleShowSearchBar);
+    menu.addAction("复制 (Ctrl+Shift+C)", this->termWidget, &QTermWidget::copyClipboard);
+    menu.addAction("粘贴 (Ctrl+Shift+V)", this->termWidget, &QTermWidget::pasteClipboard);
+    menu.addAction("清除 (Ctrl+Shift+L)", this->termWidget, &QTermWidget::clear);
+    menu.addAction("查找 (Ctrl+Shift+F)", this->termWidget, &QTermWidget::toggleShowSearchBar);
     menu.addSeparator();
 
-    QAction *setBufferSizeAction = menu.addAction("设置缓冲区大小…");
+    QAction *setBufferSizeAction = menu.addAction("设置缓冲区大小...");
     connect(setBufferSizeAction, &QAction::triggered, this, [this]() {
         bool ok;
-        int newSize = QInputDialog::getInt(this, "设置缓冲区大小", "输入最大行数：", termWidget->historySize(), 100, 100000, 100, &ok);
+        int newSize = QInputDialog::getInt(this, "设置缓冲区大小", "输入最大行数:", termWidget->historySize(), 100, 100000, 100, &ok);
         if (ok)
             termWidget->setHistorySize(newSize);
     });
@@ -293,7 +282,7 @@ void TerminalTab::onStart()
     programComboBox->setEnabled(false);
     startButton->setEnabled(false);
     stopButton->setEnabled(true);
-    this->setStatus("Waiting...");
+    this->setStatus("等待中...");
 
     auto profile = adaptixWidget->GetProfile();
 
@@ -302,7 +291,7 @@ void TerminalTab::onStart()
 
     QString agentId = this->agent->data.Id;
     QString terminalId = GenerateRandomString(8, "hex");
-    QString program    = programInput->text().toUtf8().toBase64();
+    QString program    = programInput->text();
     int sizeW  = this->termWidget->columns();
     int sizeH  = this->termWidget->lines();
     int OecmCP = this->agent->data.OemCP;
@@ -312,10 +301,27 @@ void TerminalTab::onStart()
         sizeH = 24;
     }
 
-    QString terminalData = QString("%1|%2|%3|%4|%5|%6").arg(agentId).arg(terminalId).arg(program).arg(sizeH).arg(sizeW).arg(OecmCP).toUtf8().toBase64();
+    QJsonObject otpData;
+    otpData["agent_id"]     = agentId;
+    otpData["terminal_id"]  = terminalId;
+    otpData["program"]      = program;
+    otpData["size_h"]       = sizeH;
+    otpData["size_w"]       = sizeW;
+    otpData["oem_cp"]       = OecmCP;
+
+    QString otp;
+    bool otpResult = HttpReqGetOTP("channel_terminal", otpData, profile->GetURL(), profile->GetAccessToken(), &otp);
+    if (!otpResult) {
+        programInput->setEnabled(true);
+        programComboBox->setEnabled(true);
+        startButton->setEnabled(true);
+        stopButton->setEnabled(false);
+        this->setStatus("OTP 错误");
+        return;
+    }
 
     terminalThread = new QThread;
-    terminalWorker = new TerminalWorker(this, profile->GetAccessToken(), sUrl, terminalData);
+    terminalWorker = new TerminalWorker(this, otp, sUrl);
     terminalWorker->moveToThread(terminalThread);
 
     connect(terminalThread, &QThread::started,         terminalWorker, &TerminalWorker::start);
@@ -323,10 +329,10 @@ void TerminalTab::onStart()
     connect(terminalWorker, &TerminalWorker::finished, terminalWorker, &TerminalWorker::deleteLater);
     connect(terminalThread, &QThread::finished,        terminalThread, &QThread::deleteLater);
 
-    connect(terminalWorker, &TerminalWorker::finished, this, [this]() { setStatus("Stopped"); }, Qt::QueuedConnection);
+    connect(terminalWorker, &TerminalWorker::finished, this, [this]() { setStatus("已停止"); }, Qt::QueuedConnection);
     connect(terminalWorker, &TerminalWorker::errorStop, this, [this]() { onStop(); }, Qt::QueuedConnection);
 
-    connect(terminalWorker, &TerminalWorker::connectedToTerminal,     this, [this]() { setStatus("Running"); }, Qt::QueuedConnection);
+    connect(terminalWorker, &TerminalWorker::connectedToTerminal,     this, [this]() { setStatus("运行中"); }, Qt::QueuedConnection);
     connect(terminalWorker, &TerminalWorker::binaryMessageToTerminal, this, &TerminalTab::recvDataFromSocket, Qt::QueuedConnection);
 
     connect(termWidget, SIGNAL(sendData(const char*,int)), this, SLOT(sendDataToSocket(const char*,int)), Qt::UniqueConnection);
@@ -353,7 +359,7 @@ void TerminalTab::onStop()
 
         thread->deleteLater();
 
-        setStatus("Stopped");
+        setStatus("已停止");
     });
 
     QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
@@ -588,7 +594,7 @@ bool TerminalTab::isRunning() const { return terminalWorker != nullptr; }
 
 
 
-TerminalContainerWidget::TerminalContainerWidget(Agent* a, AdaptixWidget* w, TerminalMode mode) : DockTab(QString("%1 [%2]").arg(mode == TerminalModeShell ? "Shell" : "终端").arg(a->data.Id), w->GetProfile()->GetProject())
+TerminalContainerWidget::TerminalContainerWidget(Agent* a, AdaptixWidget* w, TerminalMode mode) : DockTab(QString("%1 [%2]").arg(mode == TerminalModeShell ? "Shell" : "Terminal").arg(a->data.Id), w->GetProfile()->GetProject())
 {
     this->agent = a;
     this->adaptixWidget = w;
@@ -598,18 +604,12 @@ TerminalContainerWidget::TerminalContainerWidget(Agent* a, AdaptixWidget* w, Ter
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    tabWidget = new QTabWidget(this);
-    tabWidget->setTabPosition(QTabWidget::West);
+    tabWidget = new VerticalTabWidget(this);
     tabWidget->setTabsClosable(true);
-    tabWidget->setMovable(true);
+    tabWidget->tabBar()->setShowAddButton(true);
 
-    addTabButton = new QPushButton("+", this);
-    addTabButton->setFixedSize(30, 30);
-    addTabButton->setToolTip("添加新终端");
-    tabWidget->setCornerWidget(addTabButton, Qt::BottomLeftCorner);
-
-    connect(addTabButton, &QPushButton::clicked,          this, &TerminalContainerWidget::addNewTerminal);
-    connect(tabWidget,    &QTabWidget::tabCloseRequested, this, &TerminalContainerWidget::onTabCloseRequested);
+    connect(tabWidget->tabBar(), &VerticalTabBar::addTabRequested,      this, &TerminalContainerWidget::addNewTerminal);
+    connect(tabWidget,                 &VerticalTabWidget::tabCloseRequested, this, &TerminalContainerWidget::onTabCloseRequested);
 
     mainLayout->addWidget(tabWidget);
     this->setLayout(mainLayout);
@@ -649,7 +649,7 @@ void TerminalContainerWidget::onTabCloseRequested(int index)
     TerminalTab* tab = qobject_cast<TerminalTab*>(tabWidget->widget(index));
     if (tab && tab->isRunning()) {
         QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "关闭确认",
-                                          "Terminal is still running. Stop and close it?",
+                                          "终端正在运行，是否停止并关闭？",
                                           QMessageBox::Yes | QMessageBox::No,
                                           QMessageBox::No);
         if (reply != QMessageBox::Yes)

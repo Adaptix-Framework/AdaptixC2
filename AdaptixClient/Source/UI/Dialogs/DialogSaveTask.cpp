@@ -16,24 +16,23 @@ void DialogSaveTask::createUI()
     this->setWindowTitle( "保存任务" );
     this->setProperty("Main", "base");
 
-    commandLineLabel = new QLabel("命令行：", this);
+    commandLineLabel = new QLabel("命令行:", this);
     commandLineInput = new QLineEdit(this);
 
-    messageLabel = new QLabel("消息：", this);
+    messageLabel = new QLabel("消息:", this);
     messageCombo = new QComboBox(this);
     messageCombo->addItems(QStringList() << "成功" << "错误" );
     messageInput = new QLineEdit(this);
 
-    textLabel = new QLabel("输出：", this);
+    textLabel = new QLabel("输出:", this);
     textEdit  = new QTextEdit(this);
 
     spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
     spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
 
     createButton = new QPushButton("保存", this);
-    createButton->setProperty("ButtonStyle", "dialog");
+    createButton->setDefault(true);
     cancelButton = new QPushButton("取消", this);
-    cancelButton->setProperty("ButtonStyle", "dialog");
 
     hLayoutBottom = new QHBoxLayout();
     hLayoutBottom->addItem(spacer_1);

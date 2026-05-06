@@ -1,58 +1,34 @@
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# Editors / IDEs
-.vscode/
-.idea/
-.qt/
-*.swp
-*.swo
-
-# CMake / build artifacts
-build/
-cmake-build-*/
 cmake-build-debug/
-CMakeFiles/
-CMakeCache.txt
-cmake_install.cmake
-Makefile
-*.ninja
-*.ninja_deps
-*.ninja_log
-compile_commands.json
-
-# Project build outputs
-dist/
-AdaptixServer/server-dist/
+objects_dns/
 objects_http/
 objects_smb/
 objects_tcp/
+.idea/
+.qt/
+*.so
+dist/
+AdaptixServer/server-dist/
+AdaptixClient/CMakeFiles/
 AdaptixClient/AdaptixClient_autogen/
-AdaptixClient/*_autogen/
-AdaptixClient/Libs/kddockwidgets/*_autogen/
+AdaptixClient/CMakeCache.txt
+AdaptixClient/*.log
+AdaptixClient/cmake_*
+AdaptixClient/Makefile
 AdaptixServer/build_error.log
 
-# Qt (moc/uic/rcc)
-moc_*.cpp
-moc_*.h
-ui_*.h
-qrc_*.cpp
+# CMake generated files in kddockwidgets
+AdaptixClient/Libs/kddockwidgets/CMakeFiles/
+AdaptixClient/Libs/kddockwidgets/Makefile
+AdaptixClient/Libs/kddockwidgets/cmake_install.cmake
+AdaptixClient/Libs/kddockwidgets/*_autogen/
+AdaptixClient/Libs/kddockwidgets/*.a
+AdaptixClient/Libs/kddockwidgets/*_export.h
 
-# Binaries / objects
-*.o
-*.obj
-*.a
-*.lib
-*.so
-*.dylib
-*.dll
-*.exe
+# VSCode
+.vscode/
+#JB
+.cache/
 
-# Go
-*.test
-*.out
-
-# Logs
-*.log
+# macOS
+.DS_Store
+**/.DS_Store

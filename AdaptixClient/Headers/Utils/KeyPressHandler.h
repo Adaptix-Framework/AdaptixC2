@@ -38,7 +38,7 @@ class KPH_ConsoleInput : public QObject
 {
 Q_OBJECT
     QLineEdit* inputLineEdit;
-    QTextEdit* outputTextEdit;
+    QPlainTextEdit* outputTextEdit;
     QString    tmpCommandLine;
 
     QStringList history;
@@ -51,7 +51,7 @@ Q_OBJECT
     QString completionSuffix;
 
 public:
-    KPH_ConsoleInput(QLineEdit *input, QTextEdit *output, QObject *parent = nullptr) : QObject(parent), inputLineEdit(input), outputTextEdit(output), historyIndex(-1) {
+    KPH_ConsoleInput(QLineEdit *input, QPlainTextEdit *output, QObject *parent = nullptr) : QObject(parent), inputLineEdit(input), outputTextEdit(output), historyIndex(-1) {
         inputLineEdit->installEventFilter(this);
     }
 

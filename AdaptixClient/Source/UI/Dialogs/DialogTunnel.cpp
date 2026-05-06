@@ -11,7 +11,7 @@ DialogTunnel::DialogTunnel(const QString &agentId, const bool s4, const bool s5,
     if (s5)  tunnelTypeCombo->addItem("Socks5");
     if (s4)  tunnelTypeCombo->addItem("Socks4");
     if (lpf) tunnelTypeCombo->addItem("本地端口转发");
-    if (rpf) tunnelTypeCombo->addItem("远程端口转发");
+    if (rpf) tunnelTypeCombo->addItem("反向端口转发");
 
     connect(tunnelTypeCombo, &QComboBox::currentTextChanged, this, &DialogTunnel::changeType);
     connect(buttonCreate,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCreate);
@@ -32,15 +32,15 @@ void DialogTunnel::createUI()
     this->setWindowTitle( "创建隧道" );
     this->setProperty("Main", "base");
 
-    tunnelTypeLabel = new QLabel("通道类型：", this);
+    tunnelTypeLabel = new QLabel("隧道类型:", this);
     tunnelTypeCombo = new QComboBox(this);
 
-    tunnelEndpointLabel = new QLabel("通道端点：", this);
+    tunnelEndpointLabel = new QLabel("隧道端点:", this);
     tunnelEndpointCombo = new QComboBox(this);
     tunnelEndpointCombo->addItem("Teamserver");
     tunnelEndpointCombo->addItem("Client");
 
-    tunnelDescLabel = new QLabel("描述：",this);
+    tunnelDescLabel = new QLabel("描述: ",this);
     tunnelDescInput = new QLineEdit(this);
 
     tunnelStackWidget = new QStackedWidget(this );
@@ -56,11 +56,10 @@ void DialogTunnel::createUI()
 
     buttonCreate = new QPushButton(this);
     buttonCreate->setText("创建");
-    buttonCreate->setProperty("ButtonStyle", "dialog");
+    buttonCreate->setDefault(true);
 
     buttonCancel = new QPushButton(this);
     buttonCancel->setText("取消");
-    buttonCancel->setProperty("ButtonStyle", "dialog");
 
     horizontalSpacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
@@ -92,17 +91,17 @@ void DialogTunnel::createUI()
     buttonCancel->setFixedHeight(buttonHeight);
 
     socks5Widget = new QWidget(this);
-    socks5LocalAddrLabel = new QLabel("监听：", socks5Widget);
+    socks5LocalAddrLabel = new QLabel("监听:", socks5Widget);
     socks5LocalAddrInput = new QLineEdit("0.0.0.0", socks5Widget);
     socks5LocalPortSpin  = new QSpinBox(socks5Widget);
     socks5LocalPortSpin->setMinimum(1);
     socks5LocalPortSpin->setMaximum(65535);
     socks5LocalPortSpin->setValue(1080);
-    socks5UseAuth       = new QCheckBox("使用身份验证", socks5Widget);
-    socks5AuthUserLabel = new QLabel("用户名：", socks5Widget);
+    socks5UseAuth       = new QCheckBox("使用认证", socks5Widget);
+    socks5AuthUserLabel = new QLabel("用户名:", socks5Widget);
     socks5AuthUserInput = new QLineEdit(socks5Widget);
     socks5AuthUserInput->setEnabled(false);
-    socks5AuthPassLabel = new QLabel("密码：", socks5Widget);
+    socks5AuthPassLabel = new QLabel("密码:", socks5Widget);
     socks5AuthPassInput = new QLineEdit(socks5Widget);
     socks5AuthPassInput->setEnabled(false);
 
@@ -119,7 +118,7 @@ void DialogTunnel::createUI()
 
 
     socks4Widget = new QWidget(this);
-    socks4LocalAddrLabel = new QLabel("监听：", socks4Widget);
+    socks4LocalAddrLabel = new QLabel("监听:", socks4Widget);
     socks4LocalAddrInput = new QLineEdit("0.0.0.0", socks4Widget);
     socks4LocalPortSpin  = new QSpinBox(socks4Widget);
     socks4LocalPortSpin->setMinimum(1);
@@ -134,13 +133,13 @@ void DialogTunnel::createUI()
 
 
     lpfWidget = new QWidget(this);
-    lpfLocalAddrLabel = new QLabel("监听：", lpfWidget);
+    lpfLocalAddrLabel = new QLabel("监听:", lpfWidget);
     lpfLocalAddrInput = new QLineEdit("0.0.0.0", lpfWidget);
     lpfLocalPortSpin  = new QSpinBox(lpfWidget);
     lpfLocalPortSpin->setMinimum(1);
     lpfLocalPortSpin->setMaximum(65535);
     lpfLocalPortSpin->setValue(8000);
-    lpfTargetAddrLabel = new QLabel("目标：", lpfWidget);
+    lpfTargetAddrLabel = new QLabel("目标:", lpfWidget);
     lpfTargetAddrInput = new QLineEdit("127.0.0.1", lpfWidget);
     lpfTargetPortSpin  = new QSpinBox(lpfWidget);
     lpfTargetPortSpin->setMinimum(1);
@@ -157,12 +156,12 @@ void DialogTunnel::createUI()
     tunnelStackWidget->addWidget(lpfWidget);
 
     rpfWidget = new QWidget(this);
-    rpfPortLabel = new QLabel("端口：", rpfWidget);
+    rpfPortLabel = new QLabel("端口:", rpfWidget);
     rpfPortSpin  = new QSpinBox(rpfWidget);
     rpfPortSpin->setMinimum(1);
     rpfPortSpin->setMaximum(65535);
     rpfPortSpin->setValue(8000);
-    rpfTargetAddrLabel = new QLabel("目标：", rpfWidget);
+    rpfTargetAddrLabel = new QLabel("目标:", rpfWidget);
     rpfTargetAddrInput = new QLineEdit("127.0.0.1", rpfWidget);
     rpfTargetPortSpin  = new QSpinBox(rpfWidget);
     rpfTargetPortSpin->setMinimum(1);
@@ -207,11 +206,11 @@ void DialogTunnel::changeType(const QString &type) const
           tunnelStackWidget->setCurrentIndex(1);
           tunnelEndpointCombo->addItem("Client");
      }
-     else if (type == "Local port forwarding") {
+     else if (type == "本地端口转发") {
           tunnelStackWidget->setCurrentIndex(2);
           tunnelEndpointCombo->addItem("Client");
      }
-     else if (type == "Reverse port forwarding") {
+     else if (type == "反向端口转发") {
           tunnelStackWidget->setCurrentIndex(3);
      }
 }
@@ -241,20 +240,20 @@ void DialogTunnel::onButtonCreate()
 
           if (l_host.isEmpty()) {
                this->valid   = false;
-               this->message = "Listen host must be set";
+               this->message = "必须设置监听主机";
                this->close();
                return;
           }
           if (use_auth) {
                if (username.isEmpty()) {
                     this->valid   = false;
-                    this->message = "Username host must be set";
+                    this->message = "必须设置用户名";
                     this->close();
                     return;
                }
                if (password.isEmpty()) {
                     this->valid   = false;
-                    this->message = "Password host must be set";
+                    this->message = "必须设置密码";
                     this->close();
                     return;
                }
@@ -279,7 +278,7 @@ void DialogTunnel::onButtonCreate()
 
           if (l_host.isEmpty()) {
                this->valid   = false;
-               this->message = "Listen host must be set";
+               this->message = "必须设置监听主机";
                this->close();
                return;
           }
@@ -290,7 +289,7 @@ void DialogTunnel::onButtonCreate()
           dataJson["l_port"] = l_port;
 
      }
-     else if (type == "Local port forwarding") {
+     else if (type == "本地端口转发") {
           QString l_host = this->lpfLocalAddrInput->text();
           int     l_port = this->lpfLocalPortSpin->value();
           QString t_host = this->lpfTargetAddrInput->text();
@@ -298,13 +297,13 @@ void DialogTunnel::onButtonCreate()
 
           if (l_host.isEmpty()) {
                this->valid   = false;
-               this->message = "Listen host must be set";
+               this->message = "必须设置监听主机";
                this->close();
                return;
           }
           if (t_host.isEmpty()) {
                this->valid   = false;
-               this->message = "Target host must be set";
+               this->message = "必须设置目标主机";
                this->close();
                return;
           }
@@ -317,14 +316,14 @@ void DialogTunnel::onButtonCreate()
           dataJson["t_port"] = t_port;
 
      }
-     else if (type == "Reverse port forwarding") {
+     else if (type == "反向端口转发") {
           int     port   = this->rpfPortSpin->value();
           QString t_host = this->rpfTargetAddrInput->text();
           int     t_port = this->rpfTargetPortSpin->value();
 
           if (t_host.isEmpty()) {
                this->valid   = false;
-               this->message = "Target host must be set";
+               this->message = "必须设置目标主机";
                this->close();
                return;
           }
@@ -337,7 +336,7 @@ void DialogTunnel::onButtonCreate()
 
      }
      else {
-          this->message = "Unknown tunnel type";
+          this->message = "未知隧道类型";
           this->valid = false;
           this->close();
           return;

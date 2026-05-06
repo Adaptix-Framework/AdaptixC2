@@ -27,7 +27,8 @@ DownloadsWidget::DownloadsWidget(AdaptixWidget* w) : DockTab("下载", w->GetPro
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
         Q_UNUSED(selected)
         Q_UNUSED(deselected)
-        tableView->setFocus();
+        if (!inputFilter->hasFocus())
+            tableView->setFocus();
     });
     connect(hideButton,     &ClickableLabel::clicked,        this, &DownloadsWidget::toggleSearchPanel);
     connect(inputFilter,     &QLineEdit::textChanged,        this, &DownloadsWidget::onFilterUpdate);
@@ -66,7 +67,6 @@ void DownloadsWidget::createUI()
 
     hideButton = new ClickableLabel("  x  ");
     hideButton->setCursor(Qt::PointingHandCursor);
-    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 5, 0, 0);
@@ -86,6 +86,7 @@ void DownloadsWidget::createUI()
 
     tableView = new QTableView(this);
     tableView->setModel(proxyModel);
+    tableView->setHorizontalHeader(new BoldHeaderView(Qt::Horizontal, tableView));
     tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     tableView->setAutoFillBackground(false);
     tableView->setShowGrid(false);
@@ -100,7 +101,9 @@ void DownloadsWidget::createUI()
     tableView->horizontalHeader()->setHighlightSections(false);
     tableView->verticalHeader()->setVisible(false);
 
-    proxyModel->sort(-1);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+
+    tableView->sortByColumn(DC_Date, Qt::AscendingOrder);
 
     tableView->horizontalHeader()->setSectionResizeMode(DC_File, QHeaderView::Stretch);
     tableView->setItemDelegateForColumn(DC_Progress, new ProgressBarDelegate(this));
@@ -116,34 +119,88 @@ DownloadsWidget::~DownloadsWidget() = default;
 
 void DownloadsWidget::SetUpdatesEnabled(bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingDownloads();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
+}
+
+void DownloadsWidget::flushPendingDownloads()
+{
+    if (pendingDownloads.isEmpty())
+        return;
+
+    QList<DownloadData> filtered;
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        int count = 0;
+        for (const auto& download : pendingDownloads) {
+            if (adaptixWidget->Downloads.contains(download.FileId))
+                continue;
+
+            adaptixWidget->Downloads[download.FileId] = download;
+            filtered.append(download);
+        }
+    }
+
+    if (!filtered.isEmpty())
+        downloadsModel->addBatch(filtered);
+
+    pendingDownloads.clear();
 }
 
 void DownloadsWidget::Clear() const
 {
-    adaptixWidget->Downloads.clear();
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        adaptixWidget->Downloads.clear();
+    }
     downloadsModel->clear();
 }
 
 void DownloadsWidget::AddDownloadItem(const DownloadData &newDownload)
 {
+    if (bufferingEnabled) {
+        pendingDownloads.append(newDownload);
+        return;
+    }
+
+    QWriteLocker locker(&adaptixWidget->DownloadsLock);
     if (adaptixWidget->Downloads.contains(newDownload.FileId))
         return;
 
-    downloadsModel->add(newDownload);
     adaptixWidget->Downloads[newDownload.FileId] = newDownload;
+    locker.unlock();
+    downloadsModel->add(newDownload);
 }
 
-void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int state)
+void DownloadsWidget::EditDownloadItem(const QString &fileId, qint64 recvSize, int state)
 {
-    adaptixWidget->Downloads[fileId].RecvSize = recvSize;
-    adaptixWidget->Downloads[fileId].State = state;
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        if (!adaptixWidget->Downloads.contains(fileId))
+            return;
 
-    if (state == DOWNLOAD_STATE_FINISHED)
-        adaptixWidget->Downloads[fileId].RecvSize = adaptixWidget->Downloads[fileId].TotalSize;
+        adaptixWidget->Downloads[fileId].RecvSize = recvSize;
+        adaptixWidget->Downloads[fileId].State = state;
+
+        if (state == DOWNLOAD_STATE_FINISHED)
+            adaptixWidget->Downloads[fileId].RecvSize = adaptixWidget->Downloads[fileId].TotalSize;
+
+        if (state == DOWNLOAD_STATE_CANCELED)
+            adaptixWidget->Downloads.remove(fileId);
+    }
 
     if (state == DOWNLOAD_STATE_CANCELED) {
-        adaptixWidget->Downloads.remove(fileId);
         QStringList fileIds;
         fileIds.append(fileId);
         downloadsModel->remove(fileIds);
@@ -155,10 +212,13 @@ void DownloadsWidget::EditDownloadItem(const QString &fileId, int recvSize, int 
 void DownloadsWidget::RemoveDownloadItem(const QStringList &filesId)
 {
     QStringList filtered;
-    for (auto fileId : filesId) {
-        if (adaptixWidget->Downloads.contains(fileId)) {
-            adaptixWidget->Downloads.remove(fileId);
-            filtered.append(fileId);
+    {
+        QWriteLocker locker(&adaptixWidget->DownloadsLock);
+        for (auto fileId : filesId) {
+            if (adaptixWidget->Downloads.contains(fileId)) {
+                adaptixWidget->Downloads.remove(fileId);
+                filtered.append(fileId);
+            }
         }
     }
     downloadsModel->remove(filtered);
@@ -247,7 +307,7 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos)
 
         data.state = "finished";
         files.append(data);
-        int menuCount = adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadFinished", files);
+        int menuCount = adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadFinished", files, false);
         if (menuCount > 0)
             ctxMenu.addSeparator();
 
@@ -260,7 +320,7 @@ void DownloadsWidget::handleDownloadsMenu(const QPoint &pos)
             data.state = "stopped";
         }
         files.append(data);
-        adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadRunning", files);
+        adaptixWidget->ScriptManager->AddMenuDownload(&ctxMenu, "DownloadRunning", files, true);
     }
 
     ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));
@@ -329,7 +389,7 @@ void DownloadsWidget::actionSyncCurl()
     QString fileName = extractFileName(filePath);
     QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
 
-    QString command = QString("curl -k %1 -H 'OTP: %2' -o %3").arg(sUrl).arg(otp).arg(fileName);
+    QString command = QString("curl -k '%1?otp=%2' -o %3").arg(sUrl).arg(otp).arg(fileName);
 
     QInputDialog inputDialog;
     inputDialog.setWindowTitle("Sync file as curl");
@@ -365,11 +425,11 @@ void DownloadsWidget::actionSyncWget()
     QString fileName = extractFileName(filePath);
     QString sUrl = adaptixWidget->GetProfile()->GetURL() + "/otp/download/sync";
 
-    QString command = QString("wget --no-check-certificate %1 --header='OTP: %2' -O %3").arg(sUrl).arg(otp).arg(fileName);
+    QString command = QString("wget --no-check-certificate '%1?otp=%2' -O %3").arg(sUrl).arg(otp).arg(fileName);
 
     QInputDialog inputDialog;
-    inputDialog.setWindowTitle("Sync file as wget");
-    inputDialog.setLabelText("Wget command:");
+    inputDialog.setWindowTitle("通过 Wget 同步文件");
+    inputDialog.setLabelText("Wget 命令：");
     inputDialog.setTextEchoMode(QLineEdit::Normal);
     inputDialog.setTextValue(command);
     inputDialog.setFixedSize(700, 60);

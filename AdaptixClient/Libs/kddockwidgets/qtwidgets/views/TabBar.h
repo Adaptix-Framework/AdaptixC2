@@ -22,6 +22,7 @@
 #include <QTimer>
 #include <QColor>
 #include <QProxyStyle>
+#include <QPointer>
 
 QT_BEGIN_NAMESPACE
 class QMouseEvent;
@@ -42,11 +43,20 @@ class TabBar;
 
 class TabBarProxyStyle : public QProxyStyle
 {
-    TabBar* m_tabBar;
+    QPointer<TabBar> m_tabBar;
+    QStyle* appStyle() const;
 
 public:
     explicit TabBarProxyStyle(TabBar* tabBar);
+
     void drawControl(ControlElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const override;
+    void drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const override;
+    QRect subElementRect(SubElement element, const QStyleOption *option, const QWidget *widget) const override;
+    QSize sizeFromContents(ContentsType type, const QStyleOption *option, const QSize &size, const QWidget *widget) const override;
+    int pixelMetric(PixelMetric metric, const QStyleOption *option = nullptr, const QWidget *widget = nullptr) const override;
+    int styleHint(StyleHint hint, const QStyleOption *option = nullptr, const QWidget *widget = nullptr, QStyleHintReturn *returnData = nullptr) const override;
+    QIcon standardIcon(StandardPixmap standardIcon, const QStyleOption *option = nullptr, const QWidget *widget = nullptr) const override;
+    QPalette standardPalette() const override;
 };
 
 class DOCKS_EXPORT TabBar : public View<QTabBar>, public Core::TabBarViewInterface

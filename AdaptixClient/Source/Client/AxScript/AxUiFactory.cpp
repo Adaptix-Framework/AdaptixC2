@@ -78,9 +78,9 @@ QListWidget* AxUiFactory::createListWidget()
     return new QListWidget(parentWidget);
 }
 
-QTableWidget* AxUiFactory::createTableWidget()
+QTableView* AxUiFactory::createTableWidget()
 {
-    return new QTableWidget(parentWidget);
+    return new QTableView(parentWidget);
 }
 
 QTabWidget* AxUiFactory::createTabWidget()

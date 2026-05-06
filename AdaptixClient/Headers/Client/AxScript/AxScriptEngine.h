@@ -52,6 +52,9 @@ Q_OBJECT
     std::unique_ptr<BridgeEvent> bridgeEvent;
     std::unique_ptr<BridgeMenu>  bridgeMenu;
 
+    bool serverMode = false;
+    bool scriptEnabled = true;
+
 public:
     ScriptContext context;
 
@@ -65,6 +68,12 @@ public:
     BridgeMenu*  menu() const;
 
     AxScriptManager* manager() const;
+
+    void setServerMode(bool enabled);
+    bool isServerMode() const;
+
+    void setEnabled(bool enabled);
+    bool isEnabled() const;
 
     void registerObject(QObject* obj);
     void registerAction(QAction* action);

@@ -1,52 +1,54 @@
 package profile
 
 type AdaptixProfile struct {
-	Server         *TsProfile  `json:"Teamserver"`
-	ServerResponse *TsResponse `json:"ServerResponse"`
-	Callbacks      *TsCallback `json:"EventCallback"`
+	Server     *TsProfile    `yaml:"Teamserver"`
+	HttpServer *TsHttpServer `yaml:"HttpServer"`
 }
 
 type TsProfile struct {
-	Interface    string            `json:"interface"`
-	Port         int               `json:"port"`
-	Endpoint     string            `json:"endpoint"`
-	Password     string            `json:"password"`
-	OnlyPassword bool              `json:"only_password"`
-	Operators    map[string]string `json:"operators"`
-	Cert         string            `json:"cert"`
-	Key          string            `json:"key"`
-	Extenders    []string          `json:"extenders"`
-	ATokenLive   int               `json:"access_token_live_hours"`
-	RTokenLive   int               `json:"refresh_token_live_hours"`
+	Interface      string            `yaml:"interface"`
+	Port           int               `yaml:"port"`
+	Endpoint       string            `yaml:"endpoint"`
+	Password       string            `yaml:"password"`
+	ManagePassword string            `yaml:"manage_password"`
+	OnlyPassword   bool              `yaml:"only_password"`
+	Operators      map[string]string `yaml:"operators"`
+	Cert           string            `yaml:"cert"`
+	Key            string            `yaml:"key"`
+	Extenders      []string          `yaml:"extenders"`
+	AxScripts      []string          `yaml:"axscripts"`
+	ATokenLive     int               `yaml:"access_token_live_hours"`
+	RTokenLive     int               `yaml:"refresh_token_live_hours"`
 }
 
-type TsResponse struct {
-	Status      int               `json:"status"`
-	Headers     map[string]string `json:"headers"`
-	PagePath    string            `json:"page"`
+type TsHttpServer struct {
+	Error *TsHttpError  `yaml:"error"`
+	HTTP  *TsHTTPConfig `yaml:"http"`
+	TLS   *TsTLSConfig  `yaml:"tls"`
+}
+
+type TsHttpError struct {
+	Status      int               `yaml:"status"`
+	Headers     map[string]string `yaml:"headers"`
+	PagePath    string            `yaml:"page"`
 	PageContent string
 }
 
-type WebhookConfig struct {
-	URL     string            `json:"url"`
-	Method  string            `json:"method"`
-	Headers map[string]string `json:"headers"`
-	Data    string            `json:"data"`
+type TsHTTPConfig struct {
+	MaxHeaderBytes        int    `yaml:"max_header_bytes"`
+	ReadHeaderTimeoutSec  int    `yaml:"read_header_timeout_sec"`
+	ReadTimeoutSec        int    `yaml:"read_timeout_sec"`
+	WriteTimeoutSec       int    `yaml:"write_timeout_sec"`
+	IdleTimeoutSec        int    `yaml:"idle_timeout_sec"`
+	RequestTimeoutSec     int    `yaml:"request_timeout_sec"`
+	RequestTimeoutMessage string `yaml:"request_timeout_message"`
+	DisableKeepAlives     bool   `yaml:"disable_keep_alives"`
+	EnableHTTP2           *bool  `yaml:"enable_http2"`
 }
 
-type TsCallback struct {
-	Telegram struct {
-		Token   string   `json:"token"`
-		ChatsId []string `json:"chats_id"`
-	} `json:"Telegram"`
-
-	Slack struct {
-		WebhookURL string `json:"webhook_url"`
-	} `json:"Slack"`
-
-	Webhooks []WebhookConfig `json:"webhooks"`
-
-	NewAgentMessage    string `json:"new_agent_message"`
-	NewCredMessage     string `json:"new_cred_message"`
-	NewDownloadMessage string `json:"new_download_message"`
+type TsTLSConfig struct {
+	MinVersion               string   `yaml:"min_version"`
+	MaxVersion               string   `yaml:"max_version"`
+	PreferServerCipherSuites *bool    `yaml:"prefer_server_cipher_suites"`
+	CipherSuites             []string `yaml:"cipher_suites"`
 }

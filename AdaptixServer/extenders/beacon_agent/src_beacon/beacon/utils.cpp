@@ -17,8 +17,8 @@ LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize)
 
 void MemFreeLocal(LPVOID* buffer, DWORD bufferSize) 
 {
-    if (bufferSize < 0)
-        bufferSize = 0;
+    if (*buffer == NULL)
+        return;
 
     memset((PBYTE)*buffer, 0, bufferSize);
 	ApiWin->LocalFree(*buffer);
@@ -33,7 +33,7 @@ BYTE* ReadDataFromAnonPipe(HANDLE hPipe, ULONG* bufferSize)
 {
     BOOL  result = FALSE;
     ULONG read = 0;
-    static BYTE* buf[0x2000] = { 0 };
+    static BYTE buf[0x2000] = { 0 };
     LPVOID buffer = MemAllocLocal(0);
     do {
         DWORD available = 0;
@@ -153,7 +153,7 @@ ULONG _inet_addr(const char* ip)
         return 0xFFFFFFFF;
 
     ULONG result = 0;
-    BYTE  octet = 0;
+    ULONG octet = 0;
     ULONG dots = 0;
 
     while (*ip) {
@@ -274,7 +274,6 @@ ULONG GenerateRandom32()
 {
 	ULONG seed = ApiWin->GetTickCount();
 	seed = ApiNt->RtlRandomEx(&seed);
-	seed = seed % ULONG_MAX;
 	return seed;
 }
 
@@ -343,7 +342,8 @@ CHAR* _GetUserName()
     DWORD length = 0;
     ApiWin->GetUserNameA(NULL, &length);
     CHAR* userName = (CHAR*)MemAllocLocal(length);
-    ApiWin->GetUserNameA(userName, &length);
+    if (userName)
+        ApiWin->GetUserNameA(userName, &length);
     return userName;
 }
 
@@ -352,7 +352,8 @@ CHAR* _GetHostName()
     DWORD length = 0;
     ApiWin->GetComputerNameExA(ComputerNameNetBIOS, NULL, &length);
     CHAR* hostName = (CHAR*)MemAllocLocal(length);
-    ApiWin->GetComputerNameExA(ComputerNameNetBIOS, hostName, &length);
+    if (hostName)
+        ApiWin->GetComputerNameExA(ComputerNameNetBIOS, hostName, &length);
     return hostName;
 }
 
@@ -361,7 +362,8 @@ CHAR* _GetDomainName()
     DWORD length = 0;
     ApiWin->GetComputerNameExA(ComputerNameDnsDomain, NULL, &length);
     CHAR* hostName = (CHAR*)MemAllocLocal(length);
-    ApiWin->GetComputerNameExA(ComputerNameDnsDomain, hostName, &length);
+    if (hostName)
+        ApiWin->GetComputerNameExA(ComputerNameDnsDomain, hostName, &length);
     return hostName;
 }
 
@@ -498,7 +500,7 @@ DWORD StrCmpLowA(CHAR* str1, CHAR* str2)
             ch2 += 0x20;
 
         if (ch1 != ch2)
-            return (unsigned char)*str1 - (unsigned char)*str2;
+            return (unsigned char)ch1 - (unsigned char)ch2;
 
         ++str1;
         ++str2;
@@ -522,13 +524,13 @@ DWORD StrCmpLowW(WCHAR* str1, WCHAR* str2)
             ch2 += 0x20;
 
         if (ch1 != ch2)
-            return *str1 - *str2;
+            return ch1 - ch2;
 
         ++str1;
         ++str2;
     }
 
-    if (*str1 == L'0' && *str2 == L'0')
+    if (*str1 == L'\0' && *str2 == L'\0')
         return 0;
 
     return *str1 - *str2;
@@ -549,6 +551,22 @@ DWORD StrIndexA(CHAR* str, CHAR target)
             return i;
     }
     return -1;
+}
+
+LPSTR StrLCopyA(LPSTR dst, LPCSTR src, int iMaxLength) 
+{
+    if (!dst || !src || iMaxLength <= 0)
+        return NULL;
+
+    LPSTR d  = dst;
+    LPCSTR s = src;
+    int n    = iMaxLength;
+
+    while (--n > 0 && *s)
+        *d++ = *s++;
+    *d = '\0';
+
+    return dst;
 }
 
 ULONG FileTimeToUnixTimestamp(FILETIME ft) 

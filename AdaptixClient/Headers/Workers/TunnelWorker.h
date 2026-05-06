@@ -9,8 +9,7 @@ Q_OBJECT
     QTcpSocket* tcpSocket = nullptr;
     QWebSocket* websocket = nullptr;
     QUrl        wsUrl;
-    QString     token;
-    QString     tunnelData;
+    QString     otp;
     std::atomic<bool> stopped = false;
 
     QMutex wsBufferMutex;
@@ -18,7 +17,7 @@ Q_OBJECT
     std::atomic<bool> wsConnected{false};
 
 public:
-    TunnelWorker(QTcpSocket* socket, const QString &token, const QUrl& wsUrl, const QString& tunnelData, QObject* parent = nullptr);
+    TunnelWorker(QTcpSocket* socket, const QString &otp, const QUrl& wsUrl, QObject* parent = nullptr);
     ~TunnelWorker() override;
 
 Q_SIGNALS:
