@@ -53,10 +53,16 @@ class ConsoleWidget : public DockTab
     void createUI();
     void findAndHighlightAll(const QString& pattern);
     void highlightCurrent() const;
+    void applyTheme();
+
+    void cleanupHooksOnError(const QString& hookId, const QString& handlerId, bool hasHook, bool hasHandler);
+    void processFileUploads(const QList<QPair<QString, QString>>& fileTasks, int index, QJsonObject data, const QString& commandLine, bool UI, const QString& hookId, const QString& handlerId, bool hasHook, bool hasHandler);
 
 public:
     explicit ConsoleWidget(AdaptixWidget* w, Agent* a, Commander* c);
     ~ConsoleWidget() override;
+
+    void SetCommander(Commander* c);
 
     void SetUpdatesEnabled(const bool enabled);
 

@@ -82,7 +82,7 @@ void DialogAgentData::createUI()
     inputOs->addItem("未知", OS_UNKNOWN);
 
     inputOsDesc = new QLineEdit(this);
-    inputOsDesc->setPlaceholderText("描述");
+    inputOsDesc->setPlaceholderText("description");
 
     labelGmtOffset = new QLabel("GMT 偏移：", this);
     inputGmtOffset = new QSpinBox(this);
@@ -119,10 +119,9 @@ void DialogAgentData::createUI()
     layoutContext->addWidget(inputImpersonated, 1, 3);
 
     buttonUpdate = new QPushButton("更新", this);
-    buttonUpdate->setProperty("ButtonStyle", "dialog");
+    buttonUpdate->setDefault(true);
 
     buttonCancel = new QPushButton("取消", this);
-    buttonCancel->setProperty("ButtonStyle", "dialog");
 
     horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 

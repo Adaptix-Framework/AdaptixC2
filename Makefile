@@ -69,7 +69,7 @@ server: prepare
 	@ echo "[*] Building adaptixserver..."
 	@ cd AdaptixServer && GOEXPERIMENT=jsonv2,greenteagc go build -buildvcs=false -ldflags="-s -w" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
 	@ mv AdaptixServer/adaptixserver ./$(DIST_DIR)/
-	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.json AdaptixServer/404page.html ./$(DIST_DIR)/
+	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.yaml AdaptixServer/404page.html ./$(DIST_DIR)/
 	@ echo "[+] done"
 
 server-ext: clean server extenders
@@ -102,6 +102,13 @@ docker-build-server:
 	@ docker compose --profile build-server up --abort-on-container-exit
 	@ docker compose --profile build-server down
 	@ echo "[+] Server built via Docker"
+
+docker-build-client:
+	@ echo "[*] Building client via Docker..."
+	@ docker compose --profile build-client build
+	@ docker compose --profile build-client up --abort-on-container-exit
+	@ docker compose --profile build-client down
+	@ echo "[+] Client AppImage built via Docker"
 
 docker-build-extenders:
 	@ echo "[*] Building extenders via Docker..."
@@ -160,6 +167,7 @@ help:
 	@ echo ""
 	@ echo "Docker commands:"
 	@ echo "  docker-build-server     - Build server via Docker Compose"
+	@ echo "  docker-build-client     - Build client AppImage via Docker Compose"
 	@ echo "  docker-build-extenders  - Build extenders via Docker Compose"
 	@ echo "  docker-build-server-ext - Build server and extenders via Docker Compose"
 	@ echo "  docker-build-all        - Build server and extenders via Docker Compose (alias)"

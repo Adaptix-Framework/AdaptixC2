@@ -42,70 +42,254 @@ using namespace KDDockWidgets;
 using namespace KDDockWidgets::QtWidgets;
 
 namespace KDDockWidgets {
-namespace { // anonymous namespace to silence -Wweak-vtables
-class MyProxy : public QProxyStyle
-{
-    Q_OBJECT
-public:
-    MyProxy()
-    {
-        setParent(qApp);
-    }
 
-    int styleHint(QStyle::StyleHint hint, const QStyleOption *option = nullptr, const QWidget *widget = nullptr, QStyleHintReturn *returnData = nullptr) const override
+class TabCloseButtonFilter : public QObject
+{
+public:
+    explicit TabCloseButtonFilter(QObject* parent) : QObject(parent) {}
+
+    bool eventFilter(QObject* obj, QEvent* event) override
     {
-        if (hint == QStyle::SH_Widget_Animation_Duration) {
-            return 0;
+        if (event->type() != QEvent::Paint)
+            return false;
+
+        auto* btn = qobject_cast<QAbstractButton*>(obj);
+        if (!btn)
+            return false;
+
+        auto* tabBar = qobject_cast<QTabBar*>(btn->parentWidget());
+        if (!tabBar)
+            return false;
+
+        const QRect rect = btn->rect();
+        const int tabIndex = tabBar->tabAt(btn->mapToParent(rect.center()));
+        const bool tabSelected = (tabBar->currentIndex() == tabIndex);
+
+        bool tabHovered = false;
+        if (tabBar->underMouse()) {
+            const auto mousePos = tabBar->mapFromGlobal(QCursor::pos());
+            tabHovered = (tabBar->tabAt(mousePos) == tabIndex);
         }
-        return baseStyle()->styleHint(hint, option, widget, returnData);
+
+        if (!tabSelected && !tabHovered)
+            return true;
+
+        const bool buttonHovered = btn->underMouse();
+        const bool buttonPressed = btn->isDown();
+
+        QPainter p(btn);
+        p.setRenderHint(QPainter::Antialiasing, true);
+
+        if (buttonHovered || buttonPressed) {
+            const auto radius = rect.height() / 2.0;
+            QColor bgColor = tabBar->palette().color(QPalette::WindowText);
+            bgColor.setAlphaF(buttonPressed ? 0.2f : 0.1f);
+            p.setPen(Qt::NoPen);
+            p.setBrush(bgColor);
+            p.drawRoundedRect(rect, radius, radius);
+        }
+
+        QColor fgColor = tabBar->palette().color(QPalette::WindowText);
+        if (!tabSelected && !buttonHovered)
+            fgColor.setAlphaF(0.5f);
+
+        const int iconSz = qRound(qMin(rect.width(), rect.height()) * 0.38);
+        const QRectF closeRect(
+            rect.x() + (rect.width() - iconSz) / 2.0,
+            rect.y() + (rect.height() - iconSz) / 2.0,
+            iconSz, iconSz
+        );
+
+        p.setPen(QPen(fgColor, 1.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+        p.drawLine(closeRect.topLeft(), closeRect.bottomRight());
+        p.drawLine(closeRect.topRight(), closeRect.bottomLeft());
+
+        return true;
     }
 };
+
+class ScrollButtonFilter : public QObject
+{
+public:
+    explicit ScrollButtonFilter(bool isLeft, QObject* parent) : QObject(parent), m_isLeft(isLeft) {}
+
+    bool eventFilter(QObject* obj, QEvent* event) override
+    {
+        if (event->type() != QEvent::Paint)
+            return false;
+
+        auto* btn = qobject_cast<QToolButton*>(obj);
+        if (!btn)
+            return false;
+
+        QPainter p(btn);
+        p.setRenderHint(QPainter::Antialiasing, true);
+
+        const QRect r = btn->rect();
+
+        QColor bgColor = btn->palette().color(QPalette::Window);
+        p.fillRect(r, bgColor);
+
+        if (btn->underMouse()) {
+            QColor hover = btn->palette().color(QPalette::WindowText);
+            hover.setAlphaF(0.08f);
+            p.fillRect(r, hover);
+        }
+
+        QColor fgColor = btn->palette().color(QPalette::WindowText);
+        if (!btn->isEnabled())
+            fgColor.setAlphaF(0.3f);
+
+        const int arrowH = qRound(r.height() * 0.3);
+        const int arrowW = qRound(arrowH * 0.5);
+        const int cx = r.center().x();
+        const int cy = r.center().y();
+
+        p.setPen(QPen(fgColor, 1.4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+
+        if (m_isLeft) {
+            p.drawLine(QPoint(cx + arrowW/2, cy - arrowH/2), QPoint(cx - arrowW/2, cy));
+            p.drawLine(QPoint(cx - arrowW/2, cy), QPoint(cx + arrowW/2, cy + arrowH/2));
+        } else {
+            p.drawLine(QPoint(cx - arrowW/2, cy - arrowH/2), QPoint(cx + arrowW/2, cy));
+            p.drawLine(QPoint(cx + arrowW/2, cy), QPoint(cx - arrowW/2, cy + arrowH/2));
+        }
+
+        return true;
+    }
+
+private:
+    bool m_isLeft;
+};
+
+QStyle* TabBarProxyStyle::appStyle() const
+{
+    return QApplication::style();
 }
 
-static MyProxy *proxyStyle()
+TabBarProxyStyle::TabBarProxyStyle(TabBar* tabBar) : QProxyStyle(), m_tabBar(tabBar){}
+
+int TabBarProxyStyle::styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget, QStyleHintReturn *returnData) const
 {
-    static auto *proxy = new MyProxy;
-    return proxy;
+    if (hint == SH_Widget_Animation_Duration)
+        return 0;
+    return appStyle()->styleHint(hint, option, widget, returnData);
 }
 
-TabBarProxyStyle::TabBarProxyStyle(TabBar* tabBar) : QProxyStyle(), m_tabBar(tabBar)
+void TabBarProxyStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const
 {
-    setBaseStyle(proxyStyle());
+    appStyle()->drawPrimitive(element, option, painter, widget);
+}
+
+QRect TabBarProxyStyle::subElementRect(SubElement element, const QStyleOption *option, const QWidget *widget) const
+{
+    if (element == SE_TabBarScrollLeftButton || element == SE_TabBarScrollRightButton) {
+        const auto& rect = option->rect;
+        const int compactW = qMax(20, rect.height() / 2 + 4);
+        const int h = rect.height();
+        if (element == SE_TabBarScrollLeftButton) {
+            const int x = rect.x() + rect.width() - 2 * compactW;
+            return { x, rect.y(), compactW, h };
+        } else {
+            const int x = rect.x() + rect.width() - compactW;
+            return { x, rect.y(), compactW, h };
+        }
+    }
+    if (element == SE_TabBarTabRightButton || element == SE_TabBarTabLeftButton) {
+        if (const auto *tab = qstyleoption_cast<const QStyleOptionTab*>(option)) {
+            bool fixRight = (element == SE_TabBarTabRightButton && tab->rightButtonSize.isEmpty());
+            bool fixLeft = (element == SE_TabBarTabLeftButton && tab->leftButtonSize.isEmpty());
+            if (fixRight || fixLeft) {
+                int w = appStyle()->pixelMetric(PM_TabCloseIndicatorWidth, option, widget);
+                int h = appStyle()->pixelMetric(PM_TabCloseIndicatorHeight, option, widget);
+                QStyleOptionTab fixedOpt = *tab;
+                if (fixRight)
+                    fixedOpt.rightButtonSize = QSize(w, h);
+                if (fixLeft)
+                    fixedOpt.leftButtonSize = QSize(w, h);
+                return appStyle()->subElementRect(element, &fixedOpt, widget);
+            }
+        }
+    }
+    return appStyle()->subElementRect(element, option, widget);
+}
+
+QSize TabBarProxyStyle::sizeFromContents(ContentsType type, const QStyleOption *option, const QSize &size, const QWidget *widget) const
+{
+    if (type == CT_TabBarTab) {
+        if (const auto *tab = qstyleoption_cast<const QStyleOptionTab*>(option)) {
+            const auto *tabBar = qobject_cast<const QTabBar*>(widget);
+            if (tabBar && tabBar->tabsClosable() && tab->rightButtonSize.isEmpty()) {
+                QStyleOptionTab fixedOpt = *tab;
+                int w = appStyle()->pixelMetric(PM_TabCloseIndicatorWidth, option, widget);
+                int h = appStyle()->pixelMetric(PM_TabCloseIndicatorHeight, option, widget);
+                fixedOpt.rightButtonSize = QSize(w, h);
+                return appStyle()->sizeFromContents(type, &fixedOpt, size, widget);
+            }
+        }
+    }
+    return appStyle()->sizeFromContents(type, option, size, widget);
+}
+
+int TabBarProxyStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, const QWidget *widget) const
+{
+    if (metric == PM_TabBarScrollButtonWidth) {
+        const int tabH = appStyle()->pixelMetric(PM_TabBarTabVSpace, option, widget);
+        return qMax(20, tabH > 0 ? tabH : 24);
+    }
+    return appStyle()->pixelMetric(metric, option, widget);
+}
+
+QIcon TabBarProxyStyle::standardIcon(StandardPixmap standardIcon, const QStyleOption *option, const QWidget *widget) const
+{
+    return appStyle()->standardIcon(standardIcon, option, widget);
+}
+
+QPalette TabBarProxyStyle::standardPalette() const
+{
+    return appStyle()->standardPalette();
 }
 
 void TabBarProxyStyle::drawControl(ControlElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const
 {
-    if (element == CE_TabBarTabLabel && m_tabBar) {
+    if (element == CE_TabBarTabLabel && m_tabBar && m_tabBar->count() > 0) {
         const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab*>(option);
         if (tab) {
             int tabIndex = m_tabBar->tabIndexFromRect(tab->rect);
 
-            if (tabIndex >= 0 && m_tabBar->isTabHighlighted(tabIndex) && tabIndex != m_tabBar->currentIndex()) {
-                QRect textRect = subElementRect(SE_TabBarTabText, tab, widget);
+            if (tabIndex >= 0 && tabIndex < m_tabBar->count() && m_tabBar->isTabHighlighted(tabIndex) && tabIndex != m_tabBar->currentIndex()) {
+                const int iconSz = appStyle()->pixelMetric(PM_TabBarIconSize, tab, widget);
+                const int iconSpacing = 6;
+                const int iconPadding = 8;
 
+                QRect iconRect;
                 if (!tab->icon.isNull()) {
-                    QRect iconRect = subElementRect(SE_TabBarTabLeftButton, tab, widget);
-                    if (!iconRect.isValid()) {
-                        int iconSize = proxy()->pixelMetric(PM_TabBarIconSize, tab, widget);
-                        iconRect = QRect(tab->rect.left() + 6,
-                                        tab->rect.center().y() - iconSize/2,
-                                        iconSize, iconSize);
-                    }
+                    iconRect = QRect(tab->rect.left() + iconPadding,
+                                    tab->rect.center().y() - iconSz/2,
+                                    iconSz, iconSz);
                     tab->icon.paint(painter, iconRect);
                 }
+
+                QRect textRect = tab->rect;
+                if (!tab->icon.isNull()) {
+                    textRect.setLeft(iconRect.right() + iconSpacing);
+                }
+                textRect.adjust(iconPadding, 0, -iconPadding, 0);
 
                 painter->save();
                 QColor highlightColor = m_tabBar->currentHighlightColor();
                 painter->setPen(highlightColor);
                 painter->setFont(m_tabBar->font());
-                painter->drawText(textRect, Qt::AlignCenter, tab->text);
+                painter->drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, tab->text);
                 painter->restore();
                 return;
             }
         }
     }
 
-    QProxyStyle::drawControl(element, option, painter, widget);
+    appStyle()->drawControl(element, option, painter, widget);
 }
 
 class QtWidgets::TabBar::Private
@@ -364,6 +548,26 @@ void TabBar::moveTabTo(int from, int to)
 void TabBar::tabInserted(int index)
 {
     QTabBar::tabInserted(index);
+
+    if (tabsClosable()) {
+        auto closeSide = static_cast<ButtonPosition>(
+            style()->styleHint(QStyle::SH_TabBar_CloseButtonPosition, nullptr, this));
+        QWidget *btn = tabButton(index, closeSide);
+        if (btn) {
+            if (btn->size().isEmpty())
+                btn->resize(btn->sizeHint());
+            bool hasFilter = false;
+            for (auto* child : btn->children()) {
+                if (dynamic_cast<TabCloseButtonFilter*>(child)) {
+                    hasFilter = true;
+                    break;
+                }
+            }
+            if (!hasFilter)
+                btn->installEventFilter(new TabCloseButtonFilter(btn));
+        }
+    }
+
     Q_EMIT dockWidgetInserted(index);
     Q_EMIT countChanged();
 
@@ -406,61 +610,25 @@ void TabBar::setCurrentIndex(int index)
 
 void TabBar::updateScrollButtonsColors()
 {
-    const auto allButtons = findChildren<QAbstractButton *>();
-    QList<QAbstractButton *> scrollButtons;
-    for (QAbstractButton *btn : allButtons) {
-        if (auto toolBtn = qobject_cast<QToolButton *>(btn)) {
-            if (toolBtn->arrowType() != Qt::NoArrow) {
-                scrollButtons.append(btn);
+    const auto allButtons = findChildren<QToolButton *>();
+    for (QToolButton *btn : allButtons) {
+        if (btn->arrowType() == Qt::NoArrow)
+            continue;
+
+        bool isLeft = (btn->arrowType() == Qt::LeftArrow);
+
+        bool hasFilter = false;
+        for (auto* child : btn->children()) {
+            if (dynamic_cast<ScrollButtonFilter*>(child)) {
+                hasFilter = true;
+                break;
             }
         }
-    }
+        if (!hasFilter)
+            btn->installEventFilter(new ScrollButtonFilter(isLeft, btn));
 
-    QColor backgroundColor;
-
-    QTabWidget *tabWidget = this->tabWidget();
-    if (tabWidget) {
-        QPalette tabWidgetPal = tabWidget->palette();
-        backgroundColor = tabWidgetPal.color(QPalette::Base);
-    }
-
-    if (!backgroundColor.isValid()) {
-        QPalette tabBarPal = this->palette();
-        backgroundColor = tabBarPal.color(QPalette::Window);
-    }
-
-    if (!backgroundColor.isValid()) {
-        QWidget *parent = this->parentWidget();
-        if (parent) {
-            QWidget *titleBar = parent->findChild<QWidget *>(QStringLiteral("KDDWTitleBar"));
-            if (!titleBar) {
-                QWidget *topLevel = QWidget::window();
-                if (topLevel) {
-                    titleBar = topLevel->findChild<QWidget *>(QStringLiteral("KDDWTitleBar"), Qt::FindChildrenRecursively);
-                }
-            }
-            if (titleBar) {
-                QPalette titleBarPal = titleBar->palette();
-                backgroundColor = titleBarPal.color(QPalette::Window);
-            }
-        }
-    }
-
-    if (!backgroundColor.isValid()) {
-        QPalette appPal = QApplication::palette();
-        backgroundColor = appPal.color(QPalette::Window);
-    }
-
-    for (QAbstractButton *btn : scrollButtons) {
-        btn->setAutoFillBackground(true);
-        QPalette btnPal = btn->palette();
-        btnPal.setColor(QPalette::Button, backgroundColor);
-        btnPal.setColor(QPalette::Window, backgroundColor);
-        btn->setPalette(btnPal);
-        btn->setAttribute(Qt::WA_TranslucentBackground, false);
-        btn->setAttribute(Qt::WA_OpaquePaintEvent, true);
-        QString colorStr = QString("rgb(%1, %2, %3)").arg(backgroundColor.red()).arg(backgroundColor.green()).arg(backgroundColor.blue());
-        btn->setStyleSheet(QString("background: %1; background-color: %1; border: none; border-top: 1px solid #808080;").arg(colorStr));
+        const int compactW = qMax(18, height() * 2 / 3);
+        btn->setFixedWidth(compactW);
     }
 }
 
@@ -531,10 +699,24 @@ void TabBar::paintEvent(QPaintEvent *event)
                 QStyleOptionTab opt;
                 initStyleOption(&opt, index);
 
-                // Получаем точный rect текста
                 QRect textRect = style()->subElementRect(QStyle::SE_TabBarTabText, &opt, this);
 
-                // Рисуем текст с мигающим цветом поверх старого
+                if (!opt.icon.isNull()) {
+                    QRect iconRect = style()->subElementRect(QStyle::SE_TabBarTabLeftButton, &opt, this);
+                    if (iconRect.isValid()) {
+                        int iconRight = iconRect.right() + style()->pixelMetric(QStyle::PM_TabBarTabHSpace, &opt, this) / 2;
+                        if (textRect.left() < iconRight) {
+                            textRect.setLeft(iconRight);
+                        }
+                    } else {
+                        int iconWidth = opt.iconSize.width();
+                        if (iconWidth <= 0)
+                            iconWidth = style()->pixelMetric(QStyle::PM_TabBarIconSize, &opt, this);
+                        int spacing = style()->pixelMetric(QStyle::PM_TabBarTabHSpace, &opt, this) / 2;
+                        textRect.setLeft(textRect.left() + iconWidth + spacing);
+                    }
+                }
+
                 painter.drawText(textRect, Qt::AlignCenter, opt.text);
             }
         }
@@ -622,4 +804,3 @@ void TabBar::stopBlinkTimer()
     m_blinkState = false;
 }
 
-#include "TabBar.moc"

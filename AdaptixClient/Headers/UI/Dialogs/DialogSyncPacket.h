@@ -25,6 +25,8 @@ Q_OBJECT
     QLabel*       logNameLabel       = nullptr;
     QLabel*       logProgressLabel   = nullptr;
     QProgressBar* progressBar        = nullptr;
+    QLabel*       processProgressLabel = nullptr;
+    QProgressBar* processProgressBar   = nullptr;
     QPushButton*  cancelButton       = nullptr;
     QVBoxLayout*  layout             = nullptr;
 
@@ -42,6 +44,8 @@ public:
     void upgrade();
     void finish();
     void error(const QString& message);
+    void setPhase(const QString& message, bool indeterminate);
+    void setProcessingProgress(int batchIndex, int batchCount, int processed, int total);
 
 Q_SIGNALS:
     void syncCancelled();

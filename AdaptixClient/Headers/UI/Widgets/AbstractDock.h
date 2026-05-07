@@ -10,7 +10,6 @@
 #include <kddockwidgets/core/TabBar.h>
 #include <kddockwidgets/core/Controller.h>
 #include <kddockwidgets/qtcommon/View.h>
-#include <QTableWidget>
 #include <QTableView>
 #include <QTreeWidget>
 #include <QTreeView>
@@ -32,7 +31,7 @@
  * @brief Base class for all dock widgets with tab blinking support on updates.
  *
  * AUTOMATIC BLINK:
- * - Enabled by default for QTableWidget, QTableView, QTreeWidget, QTreeView, QTextEdit, QPlainTextEdit
+ * - Enabled by default for QTableView, QTreeWidget, QTreeView, QTextEdit, QPlainTextEdit
  * - Triggers automatically when rows are inserted into model or text changes
  * - 100ms debounce prevents too frequent triggers
  * - blink clears when user scrolls to see new content (not just on tab switch)
@@ -91,13 +90,18 @@ public:
         if (!icon.isEmpty())
             dockWidget->setIcon(QIcon(icon), KDDockWidgets::IconPlace::TabBar);
 
-        connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isCurrentTabChanged,
-                this, &DockTab::onCurrentTabChanged);
+        connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isCurrentTabChanged, this, &DockTab::onCurrentTabChanged);
 
         QTimer::singleShot(0, this, &DockTab::setupAutoBlink);
     };
 
-    ~DockTab() override { dockWidget->deleteLater(); };
+    ~DockTab() override {
+        if (dockWidget) {
+            dockWidget->setWidget(nullptr);
+            delete dockWidget;
+            dockWidget = nullptr;
+        }
+    };
 
     KDDockWidgets::QtWidgets::DockWidget* dock() { return this->dockWidget; };
 
@@ -308,12 +312,9 @@ private:
         }
     }
 
-    void connectChildWidgets(QWidget* parent) {
-        for (auto* w : parent->findChildren<QTableWidget*>())
-            connectItemView(w);
-
+    void connectChildWidgets(const QWidget* parent) {
         for (auto* w : parent->findChildren<QTableView*>())
-            if (!qobject_cast<QTableWidget*>(w)) connectItemView(w);
+            connectItemView(w);
 
         for (auto* w : parent->findChildren<QTreeWidget*>())
             connectItemView(w);

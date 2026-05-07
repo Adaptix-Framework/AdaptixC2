@@ -249,7 +249,20 @@ public:
 
     QPoint mapTo(Core::View *someAncestor, QPoint pos) const override
     {
-        return QWidget::mapTo(View_qt::asQWidget(someAncestor), pos);
+        auto *ancestorWidget = View_qt::asQWidget(someAncestor);
+        if (ancestorWidget && isAncestorOf(ancestorWidget, this))
+            return QWidget::mapTo(ancestorWidget, pos);
+        // Fallback via global coordinates when not in same hierarchy
+        return ancestorWidget ? ancestorWidget->mapFromGlobal(QWidget::mapToGlobal(pos)) : pos;
+    }
+
+    static bool isAncestorOf(const QWidget *ancestor, const QWidget *child)
+    {
+        for (auto *w = child->parentWidget(); w; w = w->parentWidget()) {
+            if (w == ancestor)
+                return true;
+        }
+        return false;
     }
 
     void setWindowOpacity(double v) override

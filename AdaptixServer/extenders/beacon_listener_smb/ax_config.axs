@@ -6,7 +6,9 @@ function ListenerUI(mode_create)
 
     let labelPipename = form.create_label("Pipename (C2):");
     let textlinePipename = form.create_textline();
-    textlinePipename.setEnabled(mode_create)
+    if(!mode_create) {
+        textlinePipename.setReadOnly(true);
+    }
 
     let labelEncryptKey = form.create_label("Encryption key:");
     let textlineEncryptKey = form.create_textline(ax.random_string(32, "hex"));

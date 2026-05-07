@@ -40,14 +40,37 @@ struct DataMenuDownload {
     QString state;
 };
 
+struct ServerScriptGroup {
+    QString agentName;
+    QString listenerType;
+    int     os;
+    QString commandsJson;
+};
+
+struct ServerScriptData {
+    QString name;
+    QString description;
+    QString code;
+    bool    enabled;
+    QList<ServerScriptGroup> groups;
+};
+
+enum class ConfigScriptType { Listener, Agent, Service };
+
+struct ConfigScriptEntry {
+    ConfigScriptType type;
+    AxScriptEngine*  engine;
+};
+
 class AxScriptManager : public QObject {
 Q_OBJECT
     AdaptixWidget*  adaptixWidget = nullptr;
     AxScriptEngine* mainScript    = nullptr;
     AxUiFactory*    uiFactory     = nullptr;
-    QMap<QString, AxScriptEngine*> scripts;
-    QMap<QString, AxScriptEngine*> listeners_scripts;
-    QMap<QString, AxScriptEngine*> agents_scripts;
+    QMap<QString, AxScriptEngine*>   scripts;
+    QMap<QString, ConfigScriptEntry> config_scripts;
+    QMap<QString, AxScriptEngine*>   server_scripts;
+    QMap<QString, ServerScriptData>  server_scripts_data;
 
 public:
     AxScriptManager(AdaptixWidget* main_widget, QObject *parent = nullptr);
@@ -62,6 +85,7 @@ public:
     AdaptixWidget*              GetAdaptix() const;
     QMap<QString, Agent*>       GetAgents() const;
     QVector<CredentialData>     GetCredentials() const;
+    QVector<ListenerData>       GetListeners() const;
     QMap<QString, DownloadData> GetDownloads() const;
     QMap<QString, ScreenData>   GetScreenshots() const;
     QVector<TargetData>         GetTargets() const;
@@ -77,9 +101,22 @@ public:
     QJSEngine*  AgentScriptEngine(const QString &name);
     QJSValue    AgentScriptExecute(const QString &name, const QString &code);
 
+    QStringList ServiceScriptList();
+    void        ServiceScriptAdd(const QString &name, const QString &ax_script);
+    QJSEngine*  ServiceScriptEngine(const QString &name);
+    void        ServiceScriptDataHandler(const QString &name, const QString &data);
+
     QStringList ScriptList();
     bool        ScriptAdd(ExtensionFile* ext);
     void        ScriptRemove(const ExtensionFile &ext);
+
+    void        ServerScriptAdd(const ServerScriptData &data);
+    void        ServerScriptRemove(const QString &name);
+    void        ServerScriptSetEnabled(const QString &name, bool enabled);
+    bool        ServerScriptIsEnabled(const QString &name) const;
+    QJSEngine*  ServerScriptEngine(const QString &name);
+    QList<ServerScriptData> ServerScriptList() const;
+    ServerScriptData ServerScriptGet(const QString &name) const;
 
     void GlobalScriptLoad(const QString &path);
     void GlobalScriptUnload(const QString &path);
@@ -93,7 +130,7 @@ public:
     void        RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
     void        EventRemove(const QString &event_id);
     QStringList EventList();
-    QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType);
+    QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType, const bool &agentsNeed);
     QList<AxEvent>    FilterEvents(const QString &agentId, const QString &eventType);
 
     QList<AxScriptEngine*> getAllEngines() const;
@@ -112,7 +149,7 @@ public:
     int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds);
     int AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files);
     int AddMenuProcessBrowser(QMenu* menu, QVector<DataMenuProcessBrowser> processes);
-    int AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files);
+    int AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files, const bool &agnetNeed);
     int AddMenuTask(QMenu* menu, const QString &menuType, const QStringList &tasks);
     int AddMenuTargets(QMenu* menu, const QString &menuType, const QStringList &targets);
     int AddMenuCreds(QMenu* menu, const QString &menuType, const QStringList &creds);

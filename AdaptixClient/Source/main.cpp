@@ -10,12 +10,15 @@ static QtMessageHandler defaultHandler = nullptr;
 
 void messageFilter(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
-    // Filter out known Qt warnings during cleanup
     if (msg.contains("invalid nullptr parameter"))
         return;
     if (msg.contains("Creating a fake screen"))
         return;
-    
+    if (msg.contains("mapTo(): parent must be in parent hierarchy"))
+        return;
+    if (msg.contains("wildcard call disconnects from destroyed signal"))
+        return;
+
     if (defaultHandler)
         defaultHandler(type, context, msg);
 }

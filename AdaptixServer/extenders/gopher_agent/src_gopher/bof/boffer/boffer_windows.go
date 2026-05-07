@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"syscall"
 	"unicode/utf16"
 	"unsafe"
@@ -126,6 +127,11 @@ func parsePrintfFormat(fmtStr string, args []uintptr) string {
 						modifier = "ll"
 						i++
 					}
+				case 'I':
+					if i+2 < len(fmtStr) && fmtStr[i+1] == '6' && fmtStr[i+2] == '4' {
+						modifier = "ll"
+						i += 3
+					}
 				case 'L', 'j', 'z', 't':
 					modifier = string(fmtStr[i])
 					i++
@@ -186,23 +192,34 @@ func parsePrintfFormat(fmtStr string, args []uintptr) string {
 						case "ll":
 							result += fmt.Sprintf("%d", int64(args[argOffset]))
 						case "hh":
-							result += fmt.Sprintf("%d", int16(args[argOffset]))
-						case "h":
 							result += fmt.Sprintf("%d", int8(args[argOffset]))
+						case "h":
+							result += fmt.Sprintf("%d", int16(args[argOffset]))
 						default:
 							result += fmt.Sprintf("%d", int32(args[argOffset]))
 						}
-					case 'u', 'o', 'x', 'X':
+					case 'u':
+						switch modifier {
+						case "ll":
+							result += fmt.Sprintf("%d", uint64(args[argOffset]))
+						case "hh":
+							result += fmt.Sprintf("%d", uint8(args[argOffset]))
+						case "h":
+							result += fmt.Sprintf("%d", uint16(args[argOffset]))
+						default:
+							result += fmt.Sprintf("%d", uint32(args[argOffset]))
+						}
+					case 'o', 'x', 'X':
 						format := "%" + string(spec)
 						switch modifier {
 						case "ll":
-							result += fmt.Sprintf(format, int64(args[argOffset]))
+							result += fmt.Sprintf(format, uint64(args[argOffset]))
 						case "hh":
-							result += fmt.Sprintf(format, int16(args[argOffset]))
+							result += fmt.Sprintf(format, uint8(args[argOffset]))
 						case "h":
-							result += fmt.Sprintf(format, int8(args[argOffset]))
+							result += fmt.Sprintf(format, uint16(args[argOffset]))
 						default:
-							result += fmt.Sprintf(format, int32(args[argOffset]))
+							result += fmt.Sprintf(format, uint32(args[argOffset]))
 						}
 					case 'f', 'F', 'e', 'E', 'g', 'G':
 						// Float/double
@@ -304,7 +321,12 @@ func DataExtract(datap *datap, size *uint32) uintptr {
 
 	datap.buffer += uintptr(binaryLength)
 	datap.length -= binaryLength
-	return uintptr(unsafe.Pointer(&out[0]))
+	// Keep the buffer alive by storing it in a global map to prevent GC
+	ptr := uintptr(unsafe.Pointer(&out[0]))
+	extractedBuffersMu.Lock()
+	extractedBuffers[ptr] = out
+	extractedBuffersMu.Unlock()
+	return ptr
 }
 
 // export BeaconDataParse
@@ -341,6 +363,21 @@ func DataShort(datap *datap) uintptr {
 	datap.buffer += uintptr(2)
 	datap.length -= 2
 	return uintptr(value)
+}
+
+// extractedBuffers keeps DataExtract allocations alive to prevent GC during BOF execution
+var (
+	extractedBuffers   = make(map[uintptr][]byte)
+	extractedBuffersMu sync.Mutex
+)
+
+// ClearExtractedBuffers removes all retained DataExtract buffers after BOF execution completes.
+func ClearExtractedBuffers() {
+	extractedBuffersMu.Lock()
+	for k := range extractedBuffers {
+		delete(extractedBuffers, k)
+	}
+	extractedBuffersMu.Unlock()
 }
 
 var keyStore = make(map[string]uintptr, 0)
@@ -402,7 +439,7 @@ func FormatReset(format *formatp) uintptr {
 
 	memory.MemSet(format.original, 0, format.size)
 	format.buffer = format.original
-	format.length = format.size
+	format.length = 0
 
 	return 0
 }
@@ -588,6 +625,21 @@ func ToWideChar(src uintptr, dst uintptr, max int32) uintptr {
 	// MultiByteToWideChar returns number of wchar_t
 	// 0 on error is FALSE
 	return ret
+}
+
+// export BeaconWakeup
+func GetBeaconWakeup(wakeupFunc func()) func() uintptr {
+	return func() uintptr {
+		wakeupFunc()
+		return 0
+	}
+}
+
+// export BeaconGetStopJobEvent
+func GetBeaconGetStopJobEvent(stopEvent windows.Handle) func() uintptr {
+	return func() uintptr {
+		return uintptr(stopEvent)
+	}
 }
 
 // export AxAddScreenshot

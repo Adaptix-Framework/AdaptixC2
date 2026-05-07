@@ -10,9 +10,7 @@ type TunnelTaskHandler struct{}
 
 func (h *TunnelTaskHandler) Create(tm *TaskManager, agent *Agent, taskData *adaptix.TaskData) {
 	if taskData.Sync {
-		if taskData.Completed {
-			agent.CompletedTasks.Put(taskData.TaskId, *taskData)
-		} else {
+		if !taskData.Completed {
 			agent.RunningTasks.Put(taskData.TaskId, *taskData)
 		}
 

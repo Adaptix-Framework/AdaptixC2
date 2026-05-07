@@ -19,7 +19,8 @@ TunnelsWidget::TunnelsWidget(AdaptixWidget* w) : DockTab("隧道", w->GetProfile
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
             Q_UNUSED(selected)
             Q_UNUSED(deselected)
-            tableView->setFocus();
+            if (!inputFilter->hasFocus())
+                tableView->setFocus();
     });
     connect(inputFilter, &QLineEdit::textChanged,   this, &TunnelsWidget::onFilterUpdate);
     connect(inputFilter, &QLineEdit::returnPressed, this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
@@ -60,7 +61,6 @@ void TunnelsWidget::createUI()
 
     hideButton = new ClickableLabel("  x  ");
     hideButton->setCursor(Qt::PointingHandCursor);
-    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 4, 0, 0);
@@ -78,6 +78,7 @@ void TunnelsWidget::createUI()
 
     tableView = new QTableView(this);
     tableView->setModel(proxyModel);
+    tableView->setHorizontalHeader(new BoldHeaderView(Qt::Horizontal, tableView));
     tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     tableView->setAutoFillBackground(false);
     tableView->setShowGrid(false);
@@ -94,6 +95,7 @@ void TunnelsWidget::createUI()
     tableView->verticalHeader()->setVisible(false);
 
     tableView->hideColumn(TUC_TunnelId);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(0, 0, 0, 0);
@@ -103,18 +105,24 @@ void TunnelsWidget::createUI()
 
 void TunnelsWidget::Clear() const
 {
-    adaptixWidget->Tunnels.clear();
+    {
+        QWriteLocker locker(&adaptixWidget->TunnelsLock);
+        adaptixWidget->Tunnels.clear();
+    }
     tunnelsModel->clear();
     inputFilter->clear();
 }
 
-void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
+void TunnelsWidget::AddTunnelItem(const TunnelData &newTunnel) const
 {
     if (tunnelsModel->contains(newTunnel.TunnelId))
         return;
 
+    {
+        QWriteLocker locker(&adaptixWidget->TunnelsLock);
+        adaptixWidget->Tunnels.push_back(newTunnel);
+    }
     tunnelsModel->add(newTunnel);
-    adaptixWidget->Tunnels.push_back(newTunnel);
 
     tableView->horizontalHeader()->setSectionResizeMode(TUC_TunnelId,  QHeaderView::ResizeToContents);
     tableView->horizontalHeader()->setSectionResizeMode(TUC_AgentId,   QHeaderView::ResizeToContents);
@@ -123,21 +131,27 @@ void TunnelsWidget::AddTunnelItem(TunnelData newTunnel) const
     tableView->horizontalHeader()->setSectionResizeMode(TUC_Fhost,     QHeaderView::ResizeToContents);
     tableView->horizontalHeader()->setSectionResizeMode(TUC_Fport,     QHeaderView::ResizeToContents);
 
-    if (adaptixWidget->AgentsMap.contains(newTunnel.AgentId)) {
-        Agent* agent = adaptixWidget->AgentsMap[newTunnel.AgentId];
-        if (agent && agent->graphItem) {
-            TunnelMarkType markType = newTunnel.Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
-            agent->graphItem->AddTunnel(markType);
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        if (adaptixWidget->AgentsMap.contains(newTunnel.AgentId)) {
+            Agent* agent = adaptixWidget->AgentsMap[newTunnel.AgentId];
+            if (agent && agent->graphItem) {
+                TunnelMarkType markType = newTunnel.Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
+                agent->graphItem->AddTunnel(markType);
+            }
         }
     }
 }
 
 void TunnelsWidget::EditTunnelItem(const QString &tunnelId, const QString &info) const
 {
-    for (int i = 0; i < adaptixWidget->Tunnels.size(); i++) {
-        if (adaptixWidget->Tunnels[i].TunnelId == tunnelId) {
-            adaptixWidget->Tunnels[i].Info = info;
-            break;
+    {
+        QWriteLocker locker(&adaptixWidget->TunnelsLock);
+        for (int i = 0; i < adaptixWidget->Tunnels.size(); i++) {
+            if (adaptixWidget->Tunnels[i].TunnelId == tunnelId) {
+                adaptixWidget->Tunnels[i].Info = info;
+                break;
+            }
         }
     }
 
@@ -148,19 +162,25 @@ void TunnelsWidget::RemoveTunnelItem(const QString &tunnelId) const
 {
     QString agentId;
     TunnelMarkType markType = TunnelMarkNone;
-    for (int i = 0; i < adaptixWidget->Tunnels.size(); i++) {
-        if (adaptixWidget->Tunnels[i].TunnelId == tunnelId) {
-            agentId = adaptixWidget->Tunnels[i].AgentId;
-            markType = adaptixWidget->Tunnels[i].Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
-            adaptixWidget->Tunnels.erase(adaptixWidget->Tunnels.begin() + i);
-            break;
+    {
+        QWriteLocker locker(&adaptixWidget->TunnelsLock);
+        for (int i = 0; i < adaptixWidget->Tunnels.size(); i++) {
+            if (adaptixWidget->Tunnels[i].TunnelId == tunnelId) {
+                agentId = adaptixWidget->Tunnels[i].AgentId;
+                markType = adaptixWidget->Tunnels[i].Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
+                adaptixWidget->Tunnels.erase(adaptixWidget->Tunnels.begin() + i);
+                break;
+            }
         }
     }
 
-    if (!agentId.isEmpty() && adaptixWidget->AgentsMap.contains(agentId)) {
-        Agent* agent = adaptixWidget->AgentsMap[agentId];
-        if (agent && agent->graphItem && markType != TunnelMarkNone)
-            agent->graphItem->RemoveTunnel(markType);
+    if (!agentId.isEmpty()) {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        if (adaptixWidget->AgentsMap.contains(agentId)) {
+            Agent* agent = adaptixWidget->AgentsMap[agentId];
+            if (agent && agent->graphItem && markType != TunnelMarkNone)
+                agent->graphItem->RemoveTunnel(markType);
+        }
     }
 
     tunnelsModel->remove(tunnelId);
@@ -198,7 +218,7 @@ void TunnelsWidget::handleTunnelsMenu(const QPoint &pos) const
     QMenu tunnelsMenu = QMenu();
 
     tunnelsMenu.addAction("设置信息", this, &TunnelsWidget::actionSetInfo);
-    tunnelsMenu.addAction("Stop",     this, &TunnelsWidget::actionStopTunnel);
+    tunnelsMenu.addAction("停止",     this, &TunnelsWidget::actionStopTunnel);
 
     QPoint globalPos = tableView->mapToGlobal(pos);
     tunnelsMenu.exec(globalPos);

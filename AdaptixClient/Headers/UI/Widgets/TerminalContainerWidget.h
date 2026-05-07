@@ -3,6 +3,7 @@
 
 #include <main.h>
 #include <UI/Widgets/AbstractDock.h>
+#include <Utils/CustomElements.h>
 
 enum TerminalMode {
     TerminalModePTY,
@@ -84,9 +85,8 @@ class TerminalContainerWidget : public DockTab
 {
 Q_OBJECT
 
-    QTabWidget*    tabWidget     = nullptr;
-    QVBoxLayout*   mainLayout    = nullptr;
-    QPushButton*   addTabButton  = nullptr;
+    VerticalTabWidget* tabWidget  = nullptr;
+    QVBoxLayout*       mainLayout = nullptr;
 
     AdaptixWidget* adaptixWidget = nullptr;
     Agent*         agent         = nullptr;

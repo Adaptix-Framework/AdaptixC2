@@ -1,5 +1,6 @@
 #include <Agent/Agent.h>
 #include <Utils/FileSystem.h>
+#include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
@@ -8,7 +9,7 @@
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-REGISTER_DOCK_WIDGET(BrowserFilesWidget, "文件浏览器", false)
+REGISTER_DOCK_WIDGET(BrowserFilesWidget, "Browser Files", false)
 
 void BrowserFileData::CreateBrowserFileData(const QString &path, const int os)
 {
@@ -49,7 +50,7 @@ void BrowserFileData::SetStored(const bool stored)
 
 
 
-BrowserFilesWidget::BrowserFilesWidget(AdaptixWidget* w, Agent* a) : DockTab(QString("文件 [%1]").arg( a->data.Id ), w->GetProfile()->GetProject())
+BrowserFilesWidget::BrowserFilesWidget(const AdaptixWidget* w, Agent* a) : DockTab(QString("Files [%1]").arg( a->data.Id ), w->GetProfile()->GetProject())
 {
     agent = a;
     this->createUI();
@@ -60,9 +61,14 @@ BrowserFilesWidget::BrowserFilesWidget(AdaptixWidget* w, Agent* a) : DockTab(QSt
     connect(buttonReload,      &QPushButton::clicked,                     this, &BrowserFilesWidget::onReload);
     connect(buttonUpload,      &QPushButton::clicked,                     this, &BrowserFilesWidget::onUpload);
     connect(inputPath,         &QLineEdit::returnPressed,                 this, &BrowserFilesWidget::onList);
-    connect(tableWidget,       &QTableWidget::doubleClicked,              this, &BrowserFilesWidget::handleTableDoubleClicked);
+    connect(tableView,       &QTableView::doubleClicked,              this, &BrowserFilesWidget::handleTableDoubleClicked);
     connect(treeBrowserWidget, &QTreeWidget::itemDoubleClicked,           this, &BrowserFilesWidget::handleTreeDoubleClicked);
-    connect(tableWidget,       &QTableWidget::customContextMenuRequested, this, &BrowserFilesWidget::handleTableMenu );
+    connect(tableView,       &QTableView::customContextMenuRequested, this, &BrowserFilesWidget::handleTableMenu );
+    connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
+        Q_UNUSED(selected)
+        Q_UNUSED(deselected)
+        tableView->setFocus();
+    });
 
     this->dockWidget->setWidget(this);
 }
@@ -74,7 +80,7 @@ void BrowserFilesWidget::createUI()
     buttonReload = new QPushButton(QIcon(":/icons/reload"), "", this);
     buttonReload->setIconSize( QSize( 24,24 ));
     buttonReload->setFixedSize(37, 28);
-    buttonReload->setToolTip("重载");
+    buttonReload->setToolTip("刷新");
 
     buttonParent = new QPushButton(QIcon(":/icons/folder"), "", this);
     buttonParent->setIconSize(QSize(24, 24 ));
@@ -106,39 +112,44 @@ void BrowserFilesWidget::createUI()
     line_2->setMinimumHeight(25);
 
     statusLabel = new QLabel(this);
-    statusLabel->setText("状态：");
+    statusLabel->setText("状态: ");
 
-    tableWidget = new QTableWidget(this );
-    tableWidget->setContextMenuPolicy( Qt::CustomContextMenu );
-    tableWidget->setAutoFillBackground( false );
-    tableWidget->setShowGrid( false );
-    tableWidget->setSortingEnabled( false );
-    tableWidget->setWordWrap( true );
-    tableWidget->setCornerButtonEnabled( true );
-    tableWidget->setSelectionBehavior( QAbstractItemView::SelectRows );
-    tableWidget->setFocusPolicy( Qt::NoFocus );
-    tableWidget->setAlternatingRowColors( true );
-    tableWidget->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
-    tableWidget->horizontalHeader()->setCascadingSectionResizes( true );
-    tableWidget->horizontalHeader()->setHighlightSections( false );
-    tableWidget->verticalHeader()->setVisible( false );
+    tableModel = new QStandardItemModel(this);
+
+    tableView = new QTableView(this );
+    tableView->setModel(tableModel);
+    tableView->setHorizontalHeader(new BoldHeaderView(Qt::Horizontal, tableView));
+    tableView->setContextMenuPolicy( Qt::CustomContextMenu );
+    tableView->setAutoFillBackground( false );
+    tableView->setShowGrid( false );
+    tableView->setSortingEnabled( false );
+    tableView->setWordWrap( true );
+    tableView->setCornerButtonEnabled( true );
+    tableView->setSelectionBehavior( QAbstractItemView::SelectRows );
+    tableView->setFocusPolicy( Qt::NoFocus );
+    tableView->setAlternatingRowColors( true );
+    tableView->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
+    tableView->horizontalHeader()->setCascadingSectionResizes( true );
+    tableView->horizontalHeader()->setHighlightSections( false );
+    tableView->verticalHeader()->setVisible( false );
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
 
     if (agent->data.Os == OS_WINDOWS) {
-        tableWidget->setColumnCount(3);
-        tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem( "Name" ) );
-        tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Size" ) );
-        tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "修改时间" ) );
-        tableWidget->setIconSize(QSize(25, 25));
+        tableModel->setColumnCount(3);
+        tableModel->setHorizontalHeaderItem( 0, new QStandardItem( "名称" ) );
+        tableModel->setHorizontalHeaderItem( 1, new QStandardItem( "大小" ) );
+        tableModel->setHorizontalHeaderItem( 2, new QStandardItem( "最后修改时间" ) );
+        tableView->setIconSize(QSize(25, 25));
     }
     else {
-        tableWidget->setColumnCount(6);
-        tableWidget->setHorizontalHeaderItem( 0, new QTableWidgetItem( "Name" ) );
-        tableWidget->setHorizontalHeaderItem( 1, new QTableWidgetItem( "Mode" ) );
-        tableWidget->setHorizontalHeaderItem( 2, new QTableWidgetItem( "User" ) );
-        tableWidget->setHorizontalHeaderItem( 3, new QTableWidgetItem( "Group" ) );
-        tableWidget->setHorizontalHeaderItem( 4, new QTableWidgetItem( "Size" ) );
-        tableWidget->setHorizontalHeaderItem( 5, new QTableWidgetItem( "修改时间" ) );
-        tableWidget->setIconSize(QSize(25, 25));
+        tableModel->setColumnCount(6);
+        tableModel->setHorizontalHeaderItem( 0, new QStandardItem( "名称" ) );
+        tableModel->setHorizontalHeaderItem( 1, new QStandardItem( "权限" ) );
+        tableModel->setHorizontalHeaderItem( 2, new QStandardItem( "用户" ) );
+        tableModel->setHorizontalHeaderItem( 3, new QStandardItem( "组" ) );
+        tableModel->setHorizontalHeaderItem( 4, new QStandardItem( "大小" ) );
+        tableModel->setHorizontalHeaderItem( 5, new QStandardItem( "最后修改时间" ) );
+        tableView->setIconSize(QSize(25, 25));
     }
 
     listGridLayout = new QGridLayout(this);
@@ -155,13 +166,14 @@ void BrowserFilesWidget::createUI()
     listGridLayout->addWidget( buttonDisks,  0, 10, 1, 1  );
     listGridLayout->addWidget( line_2,       0, 11, 1, 1  );
     listGridLayout->addWidget( statusLabel,  0, 12, 1, 1  );
-    listGridLayout->addWidget( tableWidget,  1, 0,  1, 13 );
+    listGridLayout->addWidget( tableView,  1, 0,  1, 13 );
 
     listBrowserWidget = new QWidget(this);
     listBrowserWidget->setLayout(listGridLayout);
 
     treeBrowserWidget = new QTreeWidget();
     treeBrowserWidget->setSortingEnabled(false);
+    treeBrowserWidget->setExpandsOnDoubleClick(false);
     treeBrowserWidget->headerItem()->setText( 0, "目录树" );
     treeBrowserWidget->setIconSize(QSize(25, 25));
 
@@ -222,11 +234,11 @@ void BrowserFilesWidget::AddFiles(const qint64 time, const int msgType, const QS
     status = TextColorHtml(message, COLOR_NeonGreen) + " >> " + sTime;
     statusLabel->setText(status);
 
-    QString fPath = "";
+    QString fPath;
     if (this->agent->data.Os == OS_WINDOWS)
         fPath = path;
     else
-        fPath = "/" + path;
+        fPath = path.startsWith("/") ? path : ("/" + path);
 
     BrowserFileData* currentFileData = this->getFileData(fPath);
     currentFileData->SetStored(true);
@@ -235,7 +247,7 @@ void BrowserFilesWidget::AddFiles(const qint64 time, const int msgType, const QS
     QJsonDocument jsonDoc = QJsonDocument::fromJson(data.toUtf8());
     if (jsonDoc.isArray()) {
         QJsonArray jsonArray = jsonDoc.array();
-        this->updateFileData(currentFileData, path, jsonArray);
+        this->updateFileData(currentFileData, fPath, jsonArray);
     }
 
     this->tableShowItems(currentFileData->Files);
@@ -243,7 +255,7 @@ void BrowserFilesWidget::AddFiles(const qint64 time, const int msgType, const QS
     treeBrowserWidget->setCurrentItem(currentFileData->TreeItem);
     currentFileData->TreeItem->setExpanded(true);
 
-    currentPath = path;
+    currentPath = fPath;
     inputPath->setText(currentPath);
 }
 
@@ -290,7 +302,7 @@ BrowserFileData* BrowserFilesWidget::getFileData(const QString &path)
     if(browserStore.contains(fPath))
         return this->getBrowserStore(fPath);
 
-    BrowserFileData fileData = this->createFileData(path);
+    BrowserFileData fileData = this->createFileData(fPath);
     this->setBrowserStore(fPath, fileData);
 
     QString parentPath;
@@ -299,14 +311,14 @@ BrowserFileData* BrowserFilesWidget::getFileData(const QString &path)
             treeBrowserWidget->addTopLevelItem(fileData.TreeItem);
             return this->getBrowserStore(fPath);
         }
-        parentPath = GetParentPathWindows(path);
+        parentPath = GetParentPathWindows(fPath);
     }
     else {
         if (fileData.Type == TYPE_ROOTDIR) {
             treeBrowserWidget->addTopLevelItem(fileData.TreeItem);
             return this->getBrowserStore(fPath);
         }
-        parentPath = GetParentPathUnix(path);
+        parentPath = GetParentPathUnix(fPath);
     }
 
     BrowserFileData* parentFileData = this->getFileData(parentPath);
@@ -389,9 +401,9 @@ void BrowserFilesWidget::updateFileData(BrowserFileData* currenFileData, const Q
 
             QString fullname;
             if (path == "/")
-                fullname = "//" + filename;
+                fullname = "/" + filename;
             else
-                fullname = "/" + path + "/" + filename;
+                fullname = path + "/" + filename;
 
             BrowserFileData* childData = this->getFileData(fullname);
             childData->Modified = b_date;
@@ -449,43 +461,42 @@ void BrowserFilesWidget::setStoredFileData(const QString &path, const BrowserFil
 
 void BrowserFilesWidget::tableShowItems(QVector<BrowserFileData*> files ) const
 {
-    for (int index = tableWidget->rowCount(); index > 0; index-- )
-        tableWidget->removeRow(index -1 );
+    tableModel->removeRows(0, tableModel->rowCount());
 
-    tableWidget->setRowCount(files.size());
+    tableModel->setRowCount(files.size());
     for (int row = 0; row < files.size(); ++row) {
 
-        QTableWidgetItem* item_Name = new QTableWidgetItem(files[row]->Name);
+        auto* item_Name = new QStandardItem(files[row]->Name);
         item_Name->setIcon(GetFileSystemIcon( files[row]->Type, files[row]->Stored) );
-        item_Name->setFlags( item_Name->flags() ^ Qt::ItemIsEditable );
+        item_Name->setFlags( item_Name->flags() & ~Qt::ItemIsEditable );
 
-        QTableWidgetItem* item_Size = new QTableWidgetItem(files[row]->Size);
-        item_Size->setFlags( item_Size->flags() ^ Qt::ItemIsEditable );
+        auto* item_Size = new QStandardItem(files[row]->Size);
+        item_Size->setFlags( item_Size->flags() & ~Qt::ItemIsEditable );
 
-        QTableWidgetItem* item_Date = new QTableWidgetItem(files[row]->Modified);
-        item_Date->setFlags( item_Date->flags() ^ Qt::ItemIsEditable );
+        auto* item_Date = new QStandardItem(files[row]->Modified);
+        item_Date->setFlags( item_Date->flags() & ~Qt::ItemIsEditable );
 
         if (this->agent->data.Os == OS_WINDOWS) {
-            tableWidget->setItem(row, 0, item_Name);
-            tableWidget->setItem(row, 1, item_Size);
-            tableWidget->setItem(row, 2, item_Date);
+            tableModel->setItem(row, 0, item_Name);
+            tableModel->setItem(row, 1, item_Size);
+            tableModel->setItem(row, 2, item_Date);
         }
         else {
-            QTableWidgetItem* item_Mode = new QTableWidgetItem(files[row]->Mode);
-            item_Mode->setFlags( item_Mode->flags() ^ Qt::ItemIsEditable );
+            auto* item_Mode = new QStandardItem(files[row]->Mode);
+            item_Mode->setFlags( item_Mode->flags() & ~Qt::ItemIsEditable );
 
-            QTableWidgetItem* item_User = new QTableWidgetItem(files[row]->User);
-            item_User->setFlags( item_User->flags() ^ Qt::ItemIsEditable );
+            auto* item_User = new QStandardItem(files[row]->User);
+            item_User->setFlags( item_User->flags() & ~Qt::ItemIsEditable );
 
-            QTableWidgetItem* item_Group = new QTableWidgetItem(files[row]->Group);
-            item_Group->setFlags( item_Group->flags() ^ Qt::ItemIsEditable );
+            auto* item_Group = new QStandardItem(files[row]->Group);
+            item_Group->setFlags( item_Group->flags() & ~Qt::ItemIsEditable );
 
-            tableWidget->setItem(row, 0, item_Name);
-            tableWidget->setItem(row, 1, item_Mode);
-            tableWidget->setItem(row, 2, item_User);
-            tableWidget->setItem(row, 3, item_Group);
-            tableWidget->setItem(row, 4, item_Size);
-            tableWidget->setItem(row, 5, item_Date);
+            tableModel->setItem(row, 0, item_Name);
+            tableModel->setItem(row, 1, item_Mode);
+            tableModel->setItem(row, 2, item_User);
+            tableModel->setItem(row, 3, item_Group);
+            tableModel->setItem(row, 4, item_Size);
+            tableModel->setItem(row, 5, item_Date);
 
         }
     }
@@ -496,24 +507,26 @@ void BrowserFilesWidget::cdBrowser(const QString &path)
     QString fPath;
     if ( this->agent->data.Os == OS_WINDOWS ) {
         fPath = path.toLower();
-        if ( !browserStore.contains(fPath) )
-            return;
     }
     else {
-        fPath = path;
-        if ( !browserStore.contains(fPath) )
-            return;
+        if (path.startsWith("//"))
+            fPath = path.mid(1);
+        else
+            fPath = path;
     }
+
+    if ( !browserStore.contains(fPath) )
+        return;
 
     BrowserFileData fileData = *this->getBrowserStore(fPath);
     if (fileData.Type == TYPE_FILE)
         return;
 
     if (fileData.Stored) {
-        this->setStoredFileData(path, fileData);
+        this->setStoredFileData(fPath, fileData);
     } else {
         statusLabel->setText("");
-        Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, path);
+        Q_EMIT agent->adaptixWidget->eventFileBrowserList(agent->data.Id, fPath);
     }
 }
 
@@ -582,16 +595,20 @@ void BrowserFilesWidget::onUpload() const
         return;
 
     QString remotePath = currentPath;
-    if (this->agent->data.Os == OS_WINDOWS)
-        remotePath += "\\";
-    else
-        remotePath += "/";
+    if (this->agent->data.Os == OS_WINDOWS) {
+        if (!remotePath.endsWith("\\"))
+            remotePath += "\\";
+    }
+    else {
+        if (!remotePath.endsWith("/"))
+            remotePath += "/";
+    }
 
     QString baseDir = QDir::homePath();
     if (agent && agent->adaptixWidget && agent->adaptixWidget->GetProfile())
         baseDir = agent->adaptixWidget->GetProfile()->GetProjectDir();
 
-    NonBlockingDialogs::getOpenFileName(const_cast<BrowserFilesWidget*>(this), "选择文件", baseDir, "所有文件 (*.*)",
+    NonBlockingDialogs::getOpenFileName(const_cast<BrowserFilesWidget*>(this), "选择文件", baseDir, "All Files (*.*)",
         [this, remotePath](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
@@ -603,7 +620,7 @@ void BrowserFilesWidget::onUpload() const
 
 void BrowserFilesWidget::handleTableDoubleClicked(const QModelIndex &index)
 {
-    QString filename = tableWidget->item(index.row(),0)->text();
+    QString filename = tableModel->item(index.row(),0)->text();
 
     QString path = filename;
     if ( !currentPath.isEmpty() ) {
@@ -629,7 +646,7 @@ void BrowserFilesWidget::handleTreeDoubleClicked(QTreeWidgetItem* item, int colu
 
 void BrowserFilesWidget::handleTableMenu(const QPoint &pos)
 {
-    if ( !tableWidget->itemAt(pos) || currentPath.isEmpty())
+    if ( !tableView->indexAt(pos).isValid() || currentPath.isEmpty())
         return;
 
     if ( !(agent && agent->adaptixWidget && agent->adaptixWidget->ScriptManager) )
@@ -646,10 +663,10 @@ void BrowserFilesWidget::handleTableMenu(const QPoint &pos)
     }
 
     QVector<DataMenuFileBrowser> items;
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 0)->isSelected() ) {
+    for( int rowIndex = 0 ; rowIndex < tableModel->rowCount() ; rowIndex++ ) {
+        if ( tableView->selectionModel()->isSelected(tableModel->index(rowIndex, 0)) ) {
 
-            auto filename = tableWidget->item( rowIndex, 0 )->text();
+            auto filename = tableModel->item( rowIndex, 0 )->text();
             auto fullname = path + filename;
             if (this->agent->data.Os == OS_WINDOWS)
                 fullname = fullname.toLower();
@@ -673,5 +690,5 @@ void BrowserFilesWidget::handleTableMenu(const QPoint &pos)
 
     agent->adaptixWidget->ScriptManager->AddMenuFileBrowser(&ctxMenu, items);
 
-    ctxMenu.exec(tableWidget->horizontalHeader()->viewport()->mapToGlobal(pos));
+    ctxMenu.exec(tableView->horizontalHeader()->viewport()->mapToGlobal(pos));
 }

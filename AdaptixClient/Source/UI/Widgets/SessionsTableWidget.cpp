@@ -24,12 +24,13 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("会话�
 
     this->createUI();
 
-    connect( tableView, &QTableWidget::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
-    connect( tableView, &QTableWidget::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
+    connect( tableView, &QTableView::doubleClicked,              this, &SessionsTableWidget::handleTableDoubleClicked );
+    connect( tableView, &QTableView::customContextMenuRequested, this, &SessionsTableWidget::handleSessionsTableMenu );
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
         Q_UNUSED(selected)
         Q_UNUSED(deselected)
-        tableView->setFocus();
+        if (!inputFilter->hasFocus())
+            tableView->setFocus();
     });
 
     connect(inputFilter,    &QLineEdit::textChanged,        this, &SessionsTableWidget::onFilterChanged);
@@ -51,20 +52,45 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("会话�
     connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 
     this->dockWidget->setWidget(this);
-
-    this->refreshTimer = new QTimer(this);
-    connect(refreshTimer, &QTimer::timeout, this, [this]() {
-        if (tableView && tableView->isVisible()) {
-            tableView->viewport()->update();
-        }
-    });
 }
 
 SessionsTableWidget::~SessionsTableWidget() = default;
 
 void SessionsTableWidget::SetUpdatesEnabled(const bool enabled)
 {
+    if (!enabled) {
+        bufferingEnabled = true;
+    } else {
+        bufferingEnabled = false;
+        flushPendingAgents();
+    }
+
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
+}
+
+void SessionsTableWidget::flushPendingAgents()
+{
+    if (pendingAgents.isEmpty())
+        return;
+
+    QStringList ids;
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (Agent* agent : pendingAgents) {
+            if (adaptixWidget->AgentsMap.contains(agent->data.Id))
+                ids.append(agent->data.Id);
+        }
+    }
+
+    if (!ids.isEmpty())
+        agentsModel->add(ids);
+
+    pendingAgents.clear();
 }
 
 void SessionsTableWidget::createUI()
@@ -75,12 +101,12 @@ void SessionsTableWidget::createUI()
     searchWidget->setVisible(false);
 
     inputFilter = new QLineEdit(searchWidget);
-    inputFilter->setPlaceholderText("filter: (admin | root) & ^(test)");
+    inputFilter->setPlaceholderText("过滤: (admin | root) & ^(test)");
     inputFilter->setMaximumWidth(300);
 
     autoSearchCheck = new QCheckBox("auto", searchWidget);
     autoSearchCheck->setChecked(true);
-    autoSearchCheck->setToolTip("Auto search on text change. If unchecked, press Enter to search.");
+    autoSearchCheck->setToolTip("文本变化时自动搜索。如未勾选，请按 Enter 搜索。");
 
     comboAgentType = new QComboBox(searchWidget);
     comboAgentType->setMinimumWidth(150);
@@ -90,7 +116,6 @@ void SessionsTableWidget::createUI()
 
     hideButton = new ClickableLabel("  x  ");
     hideButton->setCursor(Qt::PointingHandCursor);
-    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 4, 0, 0);
@@ -112,6 +137,7 @@ void SessionsTableWidget::createUI()
 
     tableView = new QTableView( this );
     tableView->setModel(proxyModel);
+    tableView->setHorizontalHeader(new BoldHeaderView(Qt::Horizontal, tableView));
     tableView->setContextMenuPolicy( Qt::CustomContextMenu );
     tableView->setAutoFillBackground( false );
     tableView->setShowGrid( false );
@@ -124,13 +150,41 @@ void SessionsTableWidget::createUI()
     tableView->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
     tableView->horizontalHeader()->setCascadingSectionResizes( true );
     tableView->horizontalHeader()->setHighlightSections( false );
+    tableView->horizontalHeader()->setSectionsMovable( true );
+    tableView->horizontalHeader()->setFirstSectionMovable( false );
     tableView->verticalHeader()->setVisible( false );
 
-    proxyModel->sort(-1);
+    columnStateReady = false;
+
+    connect(tableView->horizontalHeader(), &QHeaderView::sectionMoved, this, [this](int, int) {
+        if (!columnStateReady)
+            return;
+        this->SaveColumnOrder();
+    });
+
+    auto* header = tableView->horizontalHeader();
+    header->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(header, &QWidget::customContextMenuRequested, this, [this, header](const QPoint &pos) {
+        const int logical = header->logicalIndexAt(pos);
+        if (logical < 0 || logical >= SC_ColumnCount)
+            return;
+
+        QMenu menu(this);
+        QAction* actAutoFit = menu.addAction("自动适应此列");
+        QAction* chosen = menu.exec(header->mapToGlobal(pos));
+        if (chosen == actAutoFit)
+            this->AutoFitColumnToContents(logical);
+    });
+
+    tableView->sortByColumn(SC_Created, Qt::AscendingOrder);
 
     tableView->setItemDelegate(new PaddingDelegate(tableView));
 
     this->UpdateColumnsVisible();
+    this->RestoreColumnState();
+    QTimer::singleShot(0, this, [this]() {
+        columnStateReady = true;
+    });
 
     mainGridLayout = new QGridLayout( this );
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
@@ -138,17 +192,12 @@ void SessionsTableWidget::createUI()
     mainGridLayout->addWidget( tableView,    1, 0, 1, 1);
 }
 
-void SessionsTableWidget::start() const
+void SessionsTableWidget::AddAgentItem( Agent* newAgent )
 {
-    this->refreshTimer->start(1000);
-}
-
-void SessionsTableWidget::AddAgentItem( Agent* newAgent ) const
-{
-    if ( adaptixWidget->AgentsMap.contains(newAgent->data.Id) )
+    if (bufferingEnabled) {
+        pendingAgents.append(newAgent);
         return;
-
-    adaptixWidget->AgentsMap[ newAgent->data.Id ] = newAgent;
+    }
 
     agentsModel->add(newAgent->data.Id);
 
@@ -166,24 +215,17 @@ void SessionsTableWidget::UpdateAgentItem(const AgentData &oldDatam, const Agent
 
 void SessionsTableWidget::RemoveAgentItem(const QString &agentId) const
 {
-    if (!adaptixWidget->AgentsMap.contains(agentId))
-        return;
+    Agent* agent = nullptr;
+    {
+        QWriteLocker locker(&adaptixWidget->AgentsMapLock);
+        if (!adaptixWidget->AgentsMap.contains(agentId))
+            return;
 
-    Agent* agent = adaptixWidget->AgentsMap[agentId];
-    adaptixWidget->AgentsMap.remove(agentId);
+        agent = adaptixWidget->AgentsMap[agentId];
+        adaptixWidget->AgentsMap.remove(agentId);
+    }
 
-    if (agent->Console)
-        delete agent->Console;
-    if (agent->FileBrowser)
-        delete agent->FileBrowser;
-    if (agent->ProcessBrowser)
-        delete agent->ProcessBrowser;
-    if (agent->Terminal)
-        delete agent->Terminal;
-    if (agent->Shell)
-        delete agent->Shell;
     delete agent;
-
     agentsModel->remove(agentId);
 }
 
@@ -230,9 +272,12 @@ void SessionsTableWidget::UpdateData() const
 void SessionsTableWidget::UpdateAgentTypeComboBox() const
 {
     QSet<QString> types;
-    for (const auto& agent : adaptixWidget->AgentsMap) {
-        if (agent && !agent->data.Name.isEmpty())
-            types.insert(agent->data.Name);
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (const auto& agent : adaptixWidget->AgentsMap) {
+            if (agent && !agent->data.Name.isEmpty())
+                types.insert(agent->data.Name);
+        }
     }
 
     QString currentType = comboAgentType->currentText();
@@ -252,19 +297,14 @@ void SessionsTableWidget::UpdateAgentTypeComboBox() const
 
 void SessionsTableWidget::Clear() const
 {
-    refreshTimer->stop();
-    
-    for (auto agentId : adaptixWidget->AgentsMap.keys()) {
-        Agent* agent = adaptixWidget->AgentsMap[agentId];
-        adaptixWidget->AgentsMap.remove(agentId);
-        delete agent->Console;
-        delete agent->FileBrowser;
-        delete agent->ProcessBrowser;
-        delete agent->Terminal;
-        delete agent->Shell;
-        delete agent;
+    QList<Agent*> toDelete;
+    {
+        QWriteLocker locker(&adaptixWidget->AgentsMapLock);
+        toDelete = adaptixWidget->AgentsMap.values();
+        adaptixWidget->AgentsMap.clear();
     }
 
+    qDeleteAll(toDelete);
     agentsModel->clear();
 
     checkOnlyActive->setChecked(false);
@@ -286,6 +326,7 @@ void SessionsTableWidget::toggleSearchPanel() const
     else {
         this->searchWidget->setVisible(true);
         proxyModel->setSearchVisible(true);
+        inputFilter->setFocus();
     }
 }
 
@@ -384,7 +425,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
         ctxMenu.addSeparator();
         ctxMenu.addMenu(sessionMenu);
     }
-    ctxMenu.addAction("Show all items", this, &SessionsTableWidget::actionItemsShowAll);
+    ctxMenu.addAction("显示所有项目", this, &SessionsTableWidget::actionItemsShowAll);
 
     ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));
 }
@@ -421,9 +462,12 @@ void SessionsTableWidget::actionExecuteCommand()
     if (!ok)
         return;
 
+    QReadLocker locker(&adaptixWidget->AgentsMapLock);
     for(auto id : listId) {
-        adaptixWidget->AgentsMap[id]->Console->SetInput(cmd);
-        adaptixWidget->AgentsMap[id]->Console->processInput();
+        if (adaptixWidget->AgentsMap.contains(id)) {
+            adaptixWidget->AgentsMap[id]->Console->SetInput(cmd);
+            adaptixWidget->AgentsMap[id]->Console->processInput();
+        }
     }
 }
 
@@ -574,8 +618,12 @@ void SessionsTableWidget::actionConsoleDelete()
     if(listId.empty())
         return;
 
-    for (auto id : listId) {
-        adaptixWidget->AgentsMap[id]->Console->Clear();
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (auto id : listId) {
+            if (adaptixWidget->AgentsMap.contains(id))
+                adaptixWidget->AgentsMap[id]->Console->Clear();
+        }
     }
 
     HttpReqConsoleRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
@@ -648,6 +696,8 @@ void SessionsTableWidget::actionItemHide() const
 {
     bool refact = false;
     QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+
+    QReadLocker locker(&adaptixWidget->AgentsMapLock);
     for (const QModelIndex &proxyIndex : selectedRows) {
         QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
         if (!sourceIndex.isValid()) continue;
@@ -658,6 +708,7 @@ void SessionsTableWidget::actionItemHide() const
             refact = true;
         }
     }
+    locker.unlock();
 
     if (refact) this->UpdateData();
 }
@@ -665,10 +716,13 @@ void SessionsTableWidget::actionItemHide() const
 void SessionsTableWidget::actionItemsShowAll() const
 {
     bool refact = false;
-    for (auto agent : adaptixWidget->AgentsMap) {
-        if (agent->show == false) {
-            agent->show = true;
-            refact = true;
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (auto agent : adaptixWidget->AgentsMap) {
+            if (agent->show == false) {
+                agent->show = true;
+                refact = true;
+            }
         }
     }
 
@@ -686,13 +740,73 @@ void SessionsTableWidget::actionSetData() const
         return;
 
     QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
-    if (!adaptixWidget->AgentsMap.contains(agentId))
-        return;
 
-    Agent* agent = adaptixWidget->AgentsMap[agentId];
+    AgentData agentData;
+    {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        if (!adaptixWidget->AgentsMap.contains(agentId))
+            return;
+        agentData = adaptixWidget->AgentsMap[agentId]->data;
+    }
 
     auto* dialog = new DialogAgentData();
     dialog->SetProfile(*(adaptixWidget->GetProfile()));
-    dialog->SetAgentData(agent->data);
+    dialog->SetAgentData(agentData);
     dialog->Start();
+}
+
+void SessionsTableWidget::RestoreColumnState() const
+{
+    QHeaderView* header = tableView->horizontalHeader();
+
+    for (int logicalIndex = 0; logicalIndex < SC_ColumnCount; logicalIndex++) {
+        int savedVisualIndex = GlobalClient->settings->data.SessionsColumnOrder[logicalIndex];
+        if (savedVisualIndex >= 0 && savedVisualIndex < SC_ColumnCount) {
+            int currentVisualIndex = header->visualIndex(logicalIndex);
+            if (currentVisualIndex != savedVisualIndex) {
+                header->moveSection(currentVisualIndex, savedVisualIndex);
+            }
+        }
+    }
+}
+
+void SessionsTableWidget::SaveColumnOrder() const
+{
+    QHeaderView* header = tableView->horizontalHeader();
+
+    for (int logicalIndex = 0; logicalIndex < SC_ColumnCount; logicalIndex++) {
+        GlobalClient->settings->data.SessionsColumnOrder[logicalIndex] = header->visualIndex(logicalIndex);
+    }
+
+    GlobalClient->settings->SaveToDB();
+}
+
+void SessionsTableWidget::AutoFitColumnToContents(const int logicalIndex) const
+{
+    if (!tableView || !proxyModel)
+        return;
+
+    if (logicalIndex < 0 || logicalIndex >= SC_ColumnCount)
+        return;
+
+    if (tableView->isColumnHidden(logicalIndex))
+        return;
+
+    const int rowCount = proxyModel->rowCount();
+    int maxWidth = 0;
+
+    for (int row = 0; row < rowCount; row++) {
+        const QModelIndex idx = proxyModel->index(row, logicalIndex);
+        if (!idx.isValid())
+            continue;
+        const QSize hint = tableView->sizeHintForIndex(idx);
+        maxWidth = qMax(maxWidth, hint.width());
+    }
+
+    maxWidth += 24;
+    if (maxWidth < 50)
+        maxWidth = 50;
+
+    tableView->horizontalHeader()->setSectionResizeMode(logicalIndex, QHeaderView::Interactive);
+    tableView->setColumnWidth(logicalIndex, maxWidth);
 }

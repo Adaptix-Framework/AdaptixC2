@@ -263,6 +263,7 @@ public:
                     }
                     return d.Mark;
                 }
+                default: ;
             }
         }
 
@@ -292,6 +293,7 @@ public:
                 case SC_Last:
                 case SC_Sleep:
                     return Qt::AlignCenter;
+                default: ;
             }
         }
 
@@ -359,6 +361,21 @@ public:
         endInsertRows();
     }
 
+    void add(const QStringList &ids) {
+        if (ids.isEmpty())
+            return;
+
+        const int start = agentsId.size();
+        const int end   = start + ids.size() - 1;
+
+        beginInsertRows(QModelIndex(), start, end);
+        for (const QString& id : ids) {
+            idToRow[id] = agentsId.size();
+            agentsId.append(id);
+        }
+        endInsertRows();
+    }
+
     void update(const QString &agentId) {
         auto it = idToRow.find(agentId);
         if (it == idToRow.end())
@@ -366,6 +383,28 @@ public:
 
         int row = it.value();
         Q_EMIT dataChanged(index(row, 0), index(row, SC_ColumnCount - 1), { Qt::DisplayRole, Qt::ForegroundRole, Qt::BackgroundRole });
+    }
+
+    void updateLastColumn(const QStringList &agentIds) {
+        if (agentIds.isEmpty())
+            return;
+
+        int minRow = INT_MAX;
+        int maxRow = -1;
+
+        for (const QString &agentId : agentIds) {
+            auto it = idToRow.find(agentId);
+            if (it == idToRow.end())
+                continue;
+
+            int row = it.value();
+            if (row < minRow) minRow = row;
+            if (row > maxRow) maxRow = row;
+        }
+
+        if (maxRow >= 0) {
+            Q_EMIT dataChanged(index(minRow, 0), index(maxRow, SC_ColumnCount - 1), { Qt::DisplayRole, Qt::ForegroundRole, Qt::BackgroundRole });
+        }
     }
 
     void remove(const QString &agentId) {
@@ -402,7 +441,6 @@ Q_OBJECT
     QMenu*        menuSessions   = nullptr;
     QShortcut*    shortcutSearch = nullptr;
 
-    AgentsTableModel*       agentsModel = nullptr;
     AgentsFilterProxyModel* proxyModel  = nullptr;
 
     QWidget*        searchWidget    = nullptr;
@@ -413,17 +451,21 @@ Q_OBJECT
     QCheckBox*      checkOnlyActive = nullptr;
     ClickableLabel* hideButton      = nullptr;
 
+    mutable bool columnStateReady = false;
+    bool bufferingEnabled = false;
+    QList<Agent*> pendingAgents;
+
     void createUI();
+    void flushPendingAgents();
 
 public:
-    QTimer* refreshTimer = nullptr;
-
+    AgentsTableModel* agentsModel = nullptr;
     explicit SessionsTableWidget( AdaptixWidget* w );
     ~SessionsTableWidget() override;
 
     void SetUpdatesEnabled(const bool enabled);
 
-    void AddAgentItem(Agent* newAgent) const;
+    void AddAgentItem(Agent* newAgent);
     void UpdateAgentItem(const AgentData &oldDatam, const Agent* agent) const;
     void RemoveAgentItem(const QString &agentId) const;
 
@@ -433,7 +475,9 @@ public:
     void UpdateAgentTypeComboBox() const;
     void Clear() const;
 
-    void start() const;
+    void RestoreColumnState() const;
+    void SaveColumnOrder() const;
+    void AutoFitColumnToContents(int logicalIndex) const;
 
 public Q_SLOTS:
     void toggleSearchPanel() const;

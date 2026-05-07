@@ -13,7 +13,9 @@
 #include "kddockwidgets/KDDockWidgets.h"
 
 #include "Window_p.h"
+#ifdef DOCKS_DEVELOPER_MODE
 #include "DebugWindow.h"
+#endif
 #include "views/ViewWrapper_p.h"
 #include "views/View.h"
 #include "core/Platform_p.h"

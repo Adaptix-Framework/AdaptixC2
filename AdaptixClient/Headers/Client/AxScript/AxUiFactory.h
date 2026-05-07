@@ -13,7 +13,8 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QListWidget>
-#include <QTableWidget>
+#include <QTableView>
+#include <QStandardItemModel>
 #include <QTabWidget>
 #include <QGroupBox>
 #include <QSplitter>
@@ -49,7 +50,7 @@ public Q_SLOTS:
     QPushButton* createPushButton(const QString& text);
     QPlainTextEdit* createPlainTextEdit(const QString& text);
     QListWidget* createListWidget();
-    QTableWidget* createTableWidget();
+    QTableView* createTableWidget();
     QTabWidget* createTabWidget();
     QGroupBox* createGroupBox(const QString& title);
     QSplitter* createSplitter(int orientation);

@@ -4,9 +4,95 @@
 #include <main.h>
 #include <QTextLayout>
 #include <QToolTip>
+#include <QHeaderView>
+#include <QStackedWidget>
+#include <QSyntaxHighlighter>
+#include <QPlainTextEdit>
 
 class QTimer;
 class QMutex;
+
+
+class VerticalTabBar : public QWidget
+{
+Q_OBJECT
+
+    struct TabInfo { QString text; };
+    QVector<TabInfo> m_tabs;
+    int m_currentIndex = -1;
+    int m_hoveredIndex = -1;
+    int m_hoveredCloseButton = -1;
+    bool m_closable = false;
+    int m_tabHeight = 28;
+    int m_tabWidth = 32;
+    bool m_showAddButton = false;
+    bool m_addButtonHovered = false;
+
+    int tabAt(const QPoint &pos) const;
+    QRect closeButtonRect(int index) const;
+    QRect addButtonRect() const;
+
+public:
+    explicit VerticalTabBar(QWidget *parent = nullptr);
+
+    int addTab(const QString &text);
+    void removeTab(int index);
+    int count() const { return m_tabs.size(); }
+    int currentIndex() const { return m_currentIndex; }
+    void setCurrentIndex(int index);
+    void setTabsClosable(bool closable) { m_closable = closable; update(); }
+    void setShowAddButton(bool show) { m_showAddButton = show; update(); }
+    QString tabText(int index) const;
+
+Q_SIGNALS:
+    void currentChanged(int index);
+    void tabCloseRequested(int index);
+    void addTabRequested();
+
+protected:
+    void paintEvent(QPaintEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void leaveEvent(QEvent *event) override;
+    QSize sizeHint() const override;
+};
+
+class VerticalTabWidget : public QWidget
+{
+    Q_OBJECT
+public:
+    explicit VerticalTabWidget(QWidget *parent = nullptr);
+
+    int addTab(QWidget *widget, const QString &label);
+    void removeTab(int index);
+    int count() const { return m_tabBar->count(); }
+    int currentIndex() const { return m_tabBar->currentIndex(); }
+    void setCurrentIndex(int index);
+    QWidget *widget(int index) const;
+    void setTabsClosable(bool closable) { m_tabBar->setTabsClosable(closable); }
+    VerticalTabBar *tabBar() const { return m_tabBar; }
+    void setCornerWidget(QWidget *widget);
+
+Q_SIGNALS:
+    void currentChanged(int index);
+    void tabCloseRequested(int index);
+
+private:
+    VerticalTabBar *m_tabBar;
+    QStackedWidget *m_stack;
+    QWidget *m_cornerWidget = nullptr;
+};
+
+
+class BoldHeaderView : public QHeaderView
+{
+    Q_OBJECT
+public:
+    explicit BoldHeaderView(Qt::Orientation orientation, QWidget *parent = nullptr);
+
+protected:
+    void paintSection(QPainter *painter, const QRect &rect, int logicalIndex) const override;
+};
 
 
 
@@ -35,6 +121,7 @@ public:
     explicit CardListWidget(QWidget *parent = nullptr);
 
     void addCard(const QString &title, const QString &text);
+    void updateColorsFromPalette();
 
     QColor itemBackground() const { return m_itemBackground; }
     void setItemBackground(const QColor &color) { m_itemBackground = color; }
@@ -81,7 +168,7 @@ public:
 
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
         QSize size = QStyledItemDelegate::sizeHint(option, index);
-        return QSize(size.width(), size.height() + 10);
+        return QSize(size.width(), size.height() + 4);
     }
 };
 
@@ -89,29 +176,68 @@ public:
 
 class PaddingDelegate : public QStyledItemDelegate {
 public:
-    explicit PaddingDelegate(QObject* parent = nullptr) : QStyledItemDelegate(parent) {}
+    explicit PaddingDelegate(QObject* parent = nullptr) 
+        : QStyledItemDelegate(parent), m_padding(4) {}
+    explicit PaddingDelegate(int padding, QObject* parent = nullptr) 
+        : QStyledItemDelegate(parent), m_padding(padding) {}
+
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+        QSize size = QStyledItemDelegate::sizeHint(option, index);
+        return QSize(size.width() + m_padding * 2, size.height() + m_padding);
+    }
 
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
-        QStyleOptionViewItem optFull = option;
-        initStyleOption(&optFull, index);
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
 
         QVariant bgVar = index.data(Qt::BackgroundRole);
-        bool hasBg = bgVar.isValid();
-        QBrush bgBrush = hasBg ? bgVar.value<QBrush>() : QBrush();
+        if (bgVar.isValid())
+            painter->fillRect(opt.rect, bgVar.value<QBrush>());
 
-        if (hasBg)
-            painter->fillRect(optFull.rect, bgBrush);
+        opt.state &= ~QStyle::State_HasFocus;
 
-        optFull.state &= ~QStyle::State_HasFocus;
+        const QWidget* widget = option.widget;
+        QStyle* style = widget ? widget->style() : QApplication::style();
+        style->drawPrimitive(QStyle::PE_PanelItemViewItem, &opt, painter, widget);
 
-        QStyledItemDelegate::paint(painter, optFull, index);
+        if (!opt.icon.isNull()) {
+            QRect iconRect = style->subElementRect(QStyle::SE_ItemViewItemDecoration, &opt, widget);
+            opt.icon.paint(painter, iconRect, opt.decorationAlignment, 
+                          opt.state & QStyle::State_Enabled ? QIcon::Normal : QIcon::Disabled,
+                          opt.state & QStyle::State_Open ? QIcon::On : QIcon::Off);
+        }
+
+        if (!opt.text.isEmpty()) {
+            QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &opt, widget);
+            textRect.adjust(m_padding, 0, -m_padding, 0);
+            painter->save();
+            
+            if (opt.state & QStyle::State_Selected)
+                painter->setPen(opt.palette.highlightedText().color());
+            else {
+                QVariant fgVar = index.data(Qt::ForegroundRole);
+                if (fgVar.isValid())
+                    painter->setPen(fgVar.value<QColor>());
+                else
+                    painter->setPen(opt.palette.text().color());
+            }
+            
+            painter->setFont(opt.font);
+            QString elidedText = opt.fontMetrics.elidedText(opt.text, Qt::ElideRight, textRect.width());
+            painter->drawText(textRect, Qt::AlignVCenter | int(opt.displayAlignment & Qt::AlignHorizontal_Mask), elidedText);
+            painter->restore();
+        }
     }
+
+protected:
+    int m_padding;
 };
 
 class WrapAnywhereDelegate : public PaddingDelegate {
     static constexpr int maxLines = 5;
 public:
     explicit WrapAnywhereDelegate(QObject* parent = nullptr) : PaddingDelegate(parent) {}
+    explicit WrapAnywhereDelegate(int padding, QObject* parent = nullptr) : PaddingDelegate(padding, parent) {}
 
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
         QStyleOptionViewItem opt = option;
@@ -134,6 +260,7 @@ public:
         // Draw text with WrapAnywhere (max 5 lines)
         painter->save();
         QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &opt, widget);
+        textRect.adjust(m_padding, 0, -m_padding, 0);
 
         QString text = opt.text;
         QFontMetrics fm(opt.font);
@@ -235,7 +362,7 @@ public:
                     int lineEnd = text.indexOf('\n', pos);
                     if (lineEnd == -1) lineEnd = text.length();
                     QString line = text.mid(pos, lineEnd - pos);
-                    
+
                     while (!line.isEmpty()) {
                         QString chunk;
                         int i = 1;
@@ -265,10 +392,11 @@ public:
 class SpinTable : public QWidget {
 Q_OBJECT
 public:
-    QGridLayout*  layout      = nullptr;
-    QTableWidget* table       = nullptr;
-    QPushButton*  buttonAdd   = nullptr;
-    QPushButton*  buttonClear = nullptr;
+    QGridLayout*        layout      = nullptr;
+    QTableView*         table       = nullptr;
+    QStandardItemModel* tableModel  = nullptr;
+    QPushButton*        buttonAdd   = nullptr;
+    QPushButton*        buttonClear = nullptr;
 
     SpinTable(int rows, int clomuns, QWidget* parent);
 
@@ -301,26 +429,65 @@ protected:
 
 
 
-class TextEditConsole : public QTextEdit {
+struct FormatRange {
+    int start;
+    int length;
+    QTextCharFormat format;
+};
+
+class ConsoleBlockData : public QTextBlockUserData {
+public:
+    QVector<FormatRange> formats;
+};
+
+class ConsoleHighlighter : public QSyntaxHighlighter {
+public:
+    explicit ConsoleHighlighter(QTextDocument* parent);
+
+protected:
+    void highlightBlock(const QString& text) override;
+};
+
+class TextEditConsole : public QPlainTextEdit {
 Q_OBJECT
+    friend class ConsoleHighlighter;
+
+    struct FormattedChunk {
+        QString text;
+        QTextCharFormat format;
+    };
+
+    ConsoleHighlighter* highlighter = nullptr;
     QTextCursor cachedCursor;
     int  maxLines    = 50000;
     bool autoScroll  = false;
     bool noWrap      = true;
+    bool syncMode    = false;
+    bool showBgImage = true;
     int appendCount  = 0;
 
-    QString pendingText;
+    QPixmap m_bgPixmap;
+    QColor  m_bgColor      = QColor("#151515");
+    int     m_bgDimming    = 70;
+    bool    m_hasBgImage   = false;
+
+    void updatePaletteBackground();
+
+    QList<FormattedChunk> pendingChunks;
     QTimer* batchTimer = nullptr;
     QMutex* batchMutex = nullptr;
-    static const int BATCH_INTERVAL_MS = 100;
-    static const int MAX_BATCH_SIZE = 64 * 1024;
+    static constexpr int BATCH_INTERVAL_MS = 100;
+    static constexpr int MAX_BATCH_SIZE = 64 * 1024;
+    int pendingSize = 0;
 
     void trimExcessLines();
     void createContextMenu(const QPoint &pos);
     void setBufferSize(int size);
+    void appendChunk(const QString& text, const QTextCharFormat& fmt);
+    void insertChunks(const QList<FormattedChunk>& chunks);
 
 private Q_SLOTS:
-    void flushPendingText();
+    void flushPending();
 
 public:
     explicit TextEditConsole(QWidget* parent = nullptr, int maxLines = 50000, bool noWrap = true, bool autoScroll = false);
@@ -339,9 +506,21 @@ public:
     bool isAutoScrollEnabled() const;
     bool isNoWrapEnabled() const;
 
+    void setSyncMode(bool enabled);
+    void flushAll();
+
+    bool isShowBackgroundImage() const;
+    void setShowBackgroundImage(bool enabled);
+
+    void setConsoleBackground(const QColor& bgColor, const QString& imagePath = QString(), int dimming = 70);
+
+protected:
+    void paintEvent(QPaintEvent* event) override;
+
 Q_SIGNALS:
     void ctx_find();
     void ctx_history();
+    void ctx_bgToggled(bool showImage);
 };
 
 #endif

@@ -102,10 +102,13 @@ class Map {
         Pair* new_data = static_cast<Pair*>(ApiWin->HeapAlloc(m_heapHandle, 0, new_capacity * sizeof(Pair)));
         if (!new_data) return false;
 
-        for (size_t i = 0; i < m_size; ++i) {
-            new_data[i] = m_data[i];
+        if (m_data) {
+            for (size_t i = 0; i < m_size; ++i) {
+                new_data[i] = m_data[i];
+            }
+            ApiWin->HeapFree(m_heapHandle, 0, m_data);
         }
-        ApiWin->HeapFree(m_heapHandle, 0, m_data);
+
         m_data = new_data;
         m_capacity = new_capacity;
         return true;
@@ -155,8 +158,10 @@ public:
             return true;
         }
 
-        if (m_size >= m_capacity)
-            resize(m_capacity == 0 ? 1 : m_capacity * 2);
+        if (m_size >= m_capacity) {
+            if (!resize(m_capacity == 0 ? 1 : m_capacity * 2))
+                return false;
+        }
 
         m_data[m_size++] = { key, value };
         return true;

@@ -28,8 +28,8 @@ DialogSettings* Settings::getDialogSettings()
 
 void Settings::SetDefault()
 {
-    this->data.MainTheme    = "Dark";
-    this->data.FontFamily   = "Adaptix - DejaVu Sans Mono";
+    this->data.MainTheme    = "Adaptix_Dark";
+    this->data.FontFamily   = "Adaptix - JetBrains Mono";
     this->data.FontSize     = 10;
     this->data.GraphVersion = "Version 1";
     this->data.RemoteTerminalBufferSize = 10000;
@@ -38,9 +38,13 @@ void Settings::SetDefault()
     this->data.ConsoleBufferSize = 50000;
     this->data.ConsoleNoWrap = true;
     this->data.ConsoleAutoScroll = false;
+    this->data.ConsoleShowBackground = true;
+    this->data.ConsoleTheme = "console_adaptix_dark";
 
-    for ( int i = 0; i < 16; i++)
+    for ( int i = 0; i < 16; i++) {
         data.SessionsTableColumns[i] = true;
+        data.SessionsColumnOrder[i] = i;
+    }
 
     this->data.CheckHealth = true;
     this->data.HealthCoaf = 2.0;

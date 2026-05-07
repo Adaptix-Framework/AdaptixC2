@@ -159,7 +159,10 @@ public:
         }
 
         if (role == Qt::UserRole) {
-            return data(index, Qt::DisplayRole);
+            switch (index.column()) {
+                case LC_Date: return l.DateTimestamp;
+                default:      return data(index, Qt::DisplayRole);
+            }
         }
 
         if (role == Qt::TextAlignmentRole) {
@@ -295,6 +298,8 @@ public Q_SLOTS:
     void onCreateListener() const;
     void onEditListener() const;
     void onRemoveListener() const;
+    void onPauseListener() const;
+    void onResumeListener() const;
     void onGenerateAgent() const;
 };
 

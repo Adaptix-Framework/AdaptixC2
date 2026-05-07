@@ -3,6 +3,10 @@
 
 #include <main.h>
 
+namespace oclero::qlementine {
+    class QlementineStyle;
+}
+
 class Extender;
 class Settings;
 class Storage;
@@ -16,6 +20,7 @@ public:
     Storage*  storage  = nullptr;
     Extender* extender = nullptr;
     Settings* settings = nullptr;
+    oclero::qlementine::QlementineStyle* qlementineStyle = nullptr;
 
     explicit MainAdaptix();
     ~MainAdaptix() override;
@@ -25,6 +30,7 @@ public:
     void Start() const;
     void NewProject() const;
     void SetApplicationTheme() const;
+    void ApplyApplicationFont() const;
 
     static AuthProfile* Login();
 };

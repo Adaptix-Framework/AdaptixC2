@@ -4,7 +4,7 @@ import (
 	"AdaptixServer/core/utils/logs"
 	"time"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2"
 )
 
 func (ts *Teamserver) TsChatSendMessage(username string, message string) {
@@ -13,11 +13,10 @@ func (ts *Teamserver) TsChatSendMessage(username string, message string) {
 		Message:  message,
 		Date:     time.Now().UTC().Unix(),
 	}
-	ts.messages.Put(chatData)
 	err := ts.DBMS.DbChatInsert(chatData)
 	if err != nil {
 		logs.Error("", err.Error())
 	}
 	packet := CreateSpChatMessage(chatData)
-	ts.TsSyncAllClients(packet)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryChatRealtime)
 }

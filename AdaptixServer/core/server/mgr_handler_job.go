@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/safe"
 
 	"github.com/Adaptix-Framework/axc2"
@@ -20,9 +21,53 @@ func (h *JobTaskHandler) Create(tm *TaskManager, agent *Agent, taskData *adaptix
 func (h *JobTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
 	updateData.AgentId = task.AgentId
 
+	// --- EVENT ---
+	event := &eventing.EventDataTaskUpdateJob{
+		AgentId: task.AgentId,
+		Task:    *updateData,
+	}
+	tm.ts.EventManager.EmitAsync(eventing.EventTaskUpdateJob, event)
+	// -------------
+
+	/// Server-side hook: execute directly
+	if task.HookId != "" && tm.ts.TsAxScriptIsServerHook(task.HookId) {
+		h.updateWithServerHook(tm, agent, task, updateData)
+		return
+	}
+
+	/// Client-side hook: send to client
 	if task.HookId != "" && task.Client != "" && tm.ts.TsClientConnected(task.Client) {
 		h.updateWithHook(tm, agent, task, updateData)
 		return
+	}
+
+	h.updateWithoutHook(tm, agent, task, updateData)
+}
+
+func (h *JobTaskHandler) updateWithServerHook(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
+	hookData := map[string]interface{}{
+		"agent":     task.AgentId,
+		"task_id":   task.TaskId,
+		"message":   updateData.Message,
+		"text":      updateData.ClearText,
+		"type":      updateData.MessageType,
+		"completed": updateData.Completed,
+	}
+	result, _ := tm.ts.TsAxScriptExecPostHook(task.HookId, hookData)
+	if result != nil {
+		if msg, ok := result["message"].(string); ok {
+			updateData.Message = msg
+		}
+		if txt, ok := result["text"].(string); ok {
+			updateData.ClearText = txt
+		}
+		if mt, ok := result["type"].(int); ok {
+			updateData.MessageType = mt
+		}
+	}
+
+	if updateData.Completed {
+		tm.ts.TsAxScriptRemovePostHook(task.HookId)
 	}
 
 	h.updateWithoutHook(tm, agent, task, updateData)
@@ -176,10 +221,9 @@ func (h *JobTaskHandler) processReadyJobs(tm *TaskManager, agent *Agent, task *a
 				packet_task_update := CreateSpAgentTaskUpdate(hookJob.Job)
 				packet_console_update := CreateSpAgentConsoleTaskUpd(hookJob.Job)
 
-				tm.ts.TsSyncAllClients(packet_task_update)
-				tm.ts.TsSyncAllClients(packet_console_update)
+				tm.ts.TsSyncAllClientsWithCategory(packet_task_update, SyncCategoryTasksManager)
+				tm.ts.TsSyncConsole(packet_console_update, hookJob.Job.Client)
 
-				agent.OutConsole.Put(packet_console_update)
 				_ = tm.ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)
 			} else {
 				notProcessBreak = true
@@ -221,6 +265,7 @@ func (h *JobTaskHandler) finalizeJob(tm *TaskManager, agent *Agent, task *adapti
 
 	agent.RunningJobs.Delete(task.TaskId)
 	tm.completeTask(agent, task)
+	tm.executeServerHandler(task)
 }
 
 func (h *JobTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task *adaptix.TaskData, clientName string) {
@@ -251,10 +296,9 @@ func (h *JobTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task 
 			packet_task_update := CreateSpAgentTaskUpdate(hookJob.Job)
 			packet_console_update := CreateSpAgentConsoleTaskUpd(hookJob.Job)
 
-			tm.ts.TsSyncAllClients(packet_task_update)
-			tm.ts.TsSyncAllClients(packet_console_update)
+			tm.ts.TsSyncAllClientsWithCategory(packet_task_update, SyncCategoryTasksManager)
+			tm.ts.TsSyncConsole(packet_console_update, hookJob.Job.Client)
 
-			agent.OutConsole.Put(packet_console_update)
 			_ = tm.ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)
 		}
 

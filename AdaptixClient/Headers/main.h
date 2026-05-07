@@ -10,7 +10,8 @@
 #include <QDialog>
 #include <QLabel>
 #include <QLineEdit>
-#include <QTableWidget>
+#include <QTableView>
+#include <QStandardItemModel>
 #include <QPushButton>
 #include <QMenu>
 #include <QRegularExpression>
@@ -67,8 +68,8 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v1.0"
-#define SMALL_VERSION     "v1.0"
+#define FRAMEWORK_VERSION "Adaptix Framework v1.2"
+#define SMALL_VERSION     "v1.2"
 
 ///////////
 
@@ -97,18 +98,21 @@
 #define TYPE_SYNC_CATEGORY_BATCH 0x15
 
 #define TYPE_CHAT_MESSAGE 0x18
+#define TYPE_SERVICE_DATA 0x19
 
-#define TYPE_LISTENER_REG   0x31
-#define TYPE_LISTENER_START 0x32
+#define TYPE_REG_LISTENER 0x21
+#define TYPE_REG_AGENT    0x22
+#define TYPE_REG_SERVICE  0x23
+
+#define TYPE_LISTENER_START 0x31
+#define TYPE_LISTENER_EDIT  0x32
 #define TYPE_LISTENER_STOP  0x33
-#define TYPE_LISTENER_EDIT  0x34
 
-#define TYPE_AGENT_REG         0x41
-#define TYPE_AGENT_NEW         0x42
-#define TYPE_AGENT_TICK        0x43
-#define TYPE_AGENT_UPDATE      0x44
-#define TYPE_AGENT_LINK        0x45
-#define TYPE_AGENT_REMOVE      0x46
+#define TYPE_AGENT_NEW    0x41
+#define TYPE_AGENT_UPDATE 0x42
+#define TYPE_AGENT_REMOVE 0x43
+#define TYPE_AGENT_TICK   0x44
+#define TYPE_AGENT_LINK   0x45
 
 #define TYPE_AGENT_TASK_SYNC   0x49
 #define TYPE_AGENT_TASK_UPDATE 0x4a
@@ -119,6 +123,7 @@
 #define TYPE_DOWNLOAD_CREATE 0x51
 #define TYPE_DOWNLOAD_UPDATE 0x52
 #define TYPE_DOWNLOAD_DELETE 0x53
+#define TYPE_DOWNLOAD_ACTUAL 0x54
 
 #define TYPE_TUNNEL_CREATE 0x57
 #define TYPE_TUNNEL_EDIT   0x58
@@ -133,6 +138,8 @@
 #define TYPE_BROWSER_STATUS  0x63
 #define TYPE_BROWSER_PROCESS 0x64
 
+#define TYPE_AGENT_CONSOLE_LOCAL     0x67
+#define TYPE_AGENT_CONSOLE_ERROR     0x68
 #define TYPE_AGENT_CONSOLE_OUT       0x69
 #define TYPE_AGENT_CONSOLE_TASK_SYNC 0x6a
 #define TYPE_AGENT_CONSOLE_TASK_UPD  0x6b
@@ -149,6 +156,8 @@
 #define TYPE_TARGETS_EDIT    0x88
 #define TYPE_TARGETS_DELETE  0x89
 #define TYPE_TARGETS_SET_TAG 0x8a
+
+#define TYPE_AXSCRIPT_COMMANDS 0x91
 
 //////////
 
@@ -194,8 +203,11 @@ typedef struct SettingsData {
     int  ConsoleBufferSize;
     bool ConsoleNoWrap;
     bool ConsoleAutoScroll;
+    bool ConsoleShowBackground;
+    QString ConsoleTheme;
 
     bool   SessionsTableColumns[16];
+    int    SessionsColumnOrder[16];
     bool   CheckHealth;
     double HealthCoaf;
     int    HealthOffset;
@@ -273,8 +285,8 @@ typedef struct DownloadData
     QString User;
     QString Computer;
     QString Filename;
-    int     TotalSize;
-    int     RecvSize;
+    qint64  TotalSize;
+    qint64  RecvSize;
     int     State;
     QString Date;
     qint64  DateTimestamp = 0;

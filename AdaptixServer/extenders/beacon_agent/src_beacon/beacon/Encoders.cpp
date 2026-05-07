@@ -28,6 +28,8 @@ char* b64_encode(const unsigned char* in, int len)
 
     elen = b64_encoded_size(len);
     char* out = (char* ) ApiWin->LocalAlloc(LPTR, elen + 1);
+    if (!out)
+        return NULL;
     out[elen] = '\0';
 
     for (i = 0, j = 0; i < len; i += 3, j += 4) {
@@ -104,7 +106,17 @@ int b64_decode(const char* in, unsigned char* out, int outlen)
         return 0;
 
     len = StrLenA((CHAR*)in);
-    if (outlen < b64_decoded_size(in) || len % 4 != 0)
+    if (len % 4 != 0)
+        return 0;
+
+    int decodedSize = len / 4 * 3;
+    for (i = len; i-- > 0; ) {
+        if (in[i] == '=')
+            decodedSize--;
+        else
+            break;
+    }
+    if (outlen < decodedSize)
         return 0;
 
     for (i = 0; i < len; i++) {

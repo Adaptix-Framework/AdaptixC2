@@ -16,37 +16,36 @@ void DialogTarget::createUI()
     this->setWindowTitle( "添加目标" );
     this->setProperty("Main", "base");
 
-    computerLabel = new QLabel("计算机：", this);
+    computerLabel = new QLabel("计算机:", this);
     computerInput = new QLineEdit(this);
 
-    domainLabel = new QLabel("域：", this);
+    domainLabel = new QLabel("域:", this);
     domainInput = new QLineEdit(this);
 
-    addressLabel = new QLabel("地址：", this);
+    addressLabel = new QLabel("地址:", this);
     addressInput = new QLineEdit(this);
 
-    aliveCheck = new QCheckBox("活跃", this);
+    aliveCheck = new QCheckBox("alive", this);
 
-    osLabel = new QLabel("操作系统类型：", this);
+    osLabel = new QLabel("操作系统类型:", this);
     osCombo = new QComboBox(this);
-    osCombo->addItems(QStringList() << "未知" << "windows" << "linux" << "macos");
+    osCombo->addItems(QStringList() << "unknown" << "windows" << "linux" << "macos");
 
-    osDescLabel = new QLabel("操作系统描述：", this);
+    osDescLabel = new QLabel("操作系统描述:", this);
     osDescInput = new QLineEdit(this);
 
-    tagLabel  = new QLabel("标签：", this);
+    tagLabel  = new QLabel("标签:", this);
     tagInput  = new QLineEdit(this);
 
-    infoLabel  = new QLabel("信息：", this);
+    infoLabel  = new QLabel("信息:", this);
     infoInput = new QLineEdit(this);
 
     spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     createButton = new QPushButton("保存", this);
-    createButton->setProperty("ButtonStyle", "dialog");
+    createButton->setDefault(true);
     cancelButton = new QPushButton("取消", this);
-    cancelButton->setProperty("ButtonStyle", "dialog");
 
     hLayoutBottom = new QHBoxLayout();
     hLayoutBottom->addItem(spacer_1);

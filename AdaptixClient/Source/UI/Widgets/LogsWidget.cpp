@@ -2,11 +2,14 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/AuthProfile.h>
+#include <Client/ConsoleTheme.h>
+#include <Client/Settings.h>
 #include <Utils/Convert.h>
+#include <MainAdaptix.h>
 
-REGISTER_DOCK_WIDGET(LogsWidget, "日志", true)
+REGISTER_DOCK_WIDGET(LogsWidget, "Logs", true)
 
-LogsWidget::LogsWidget(AdaptixWidget* w) : DockTab("日志", w->GetProfile()->GetProject(), ":/icons/logs")
+LogsWidget::LogsWidget(const AdaptixWidget* w) : DockTab("Logs", w->GetProfile()->GetProject(), ":/icons/logs")
 {
     this->createUI();
 
@@ -22,11 +25,15 @@ LogsWidget::LogsWidget(AdaptixWidget* w) : DockTab("日志", w->GetProfile()->Ge
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+L"), logsConsoleTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
-    connect(shortcutSearch, &QShortcut::activated, logsConsoleTextEdit, &QTextEdit::clear);
+    connect(shortcutSearch, &QShortcut::activated, logsConsoleTextEdit, &QPlainTextEdit::clear);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+A"), logsConsoleTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
-    connect(shortcutSearch, &QShortcut::activated, logsConsoleTextEdit, &QTextEdit::selectAll);
+    connect(shortcutSearch, &QShortcut::activated, logsConsoleTextEdit, &QPlainTextEdit::selectAll);
+
+    connect(&ConsoleThemeManager::instance(), &ConsoleThemeManager::themeChanged, this, &LogsWidget::applyTheme);
+    connect(logsConsoleTextEdit, &TextEditConsole::ctx_bgToggled, this, [this](bool){ applyTheme(); });
+    applyTheme();
 
     this->dockWidget->setWidget(this);
 }
@@ -66,7 +73,7 @@ void LogsWidget::createUI()
 
     logsConsoleTextEdit = new TextEditConsole(this);
     logsConsoleTextEdit->setReadOnly(true);
-    logsConsoleTextEdit->setProperty("TextEditStyle", "console" );
+    logsConsoleTextEdit->setStyleSheet("background-color: #151515; color: #BEBEBE; border: 1px solid #2A2A2A; border-radius: 4px;");
     logsConsoleTextEdit->setAutoScrollEnabled(true);
 
     logsGridLayout = new QGridLayout(this);
@@ -163,20 +170,32 @@ void LogsWidget::highlightCurrent() const
 
 void LogsWidget::AddLogs(const int type, const qint64 time, const QString &message)
 {
+    const auto& theme = ConsoleThemeManager::instance().theme();
+
     QString sTime = UnixTimestampGlobalToStringLocal(time);
     QString logTime = QString("[%1] -> ").arg(sTime);
-    logsConsoleTextEdit->appendPlain(logTime);
+    logsConsoleTextEdit->appendFormatted(logTime, [&](QTextCharFormat& fmt){ fmt = theme.logDebug.toFormat(); });
 
     QString logMsg = message + "\n";
 
-    if( type == EVENT_CLIENT_CONNECT )         logsConsoleTextEdit->appendColor(logMsg, QColor(COLOR_ConsoleWhite));
-    else if( type == EVENT_CLIENT_DISCONNECT ) logsConsoleTextEdit->appendColor(logMsg, QColor(COLOR_Gray));
-    else if( type == EVENT_LISTENER_START )    logsConsoleTextEdit->appendColor(logMsg, QColor(COLOR_BrightOrange));
-    else if( type == EVENT_LISTENER_STOP )     logsConsoleTextEdit->appendColor(logMsg, QColor(COLOR_BrightOrange));
-    else if( type == EVENT_AGENT_NEW )         logsConsoleTextEdit->appendColor(logMsg, QColor(COLOR_NeonGreen));
-    else if( type == EVENT_TUNNEL_START )      logsConsoleTextEdit->appendColor(logMsg, QColor(COLOR_PastelYellow));
-    else if( type == EVENT_TUNNEL_STOP )       logsConsoleTextEdit->appendColor(logMsg, QColor(COLOR_PastelYellow));
+    if( type == EVENT_CLIENT_CONNECT )         logsConsoleTextEdit->appendFormatted(logMsg, [&](QTextCharFormat& fmt){ fmt = theme.operatorConnect.toFormat(); });
+    else if( type == EVENT_CLIENT_DISCONNECT ) logsConsoleTextEdit->appendFormatted(logMsg, [&](QTextCharFormat& fmt){ fmt = theme.operatorDisconnect.toFormat(); });
+    else if( type == EVENT_LISTENER_START )    logsConsoleTextEdit->appendFormatted(logMsg, [&](QTextCharFormat& fmt){ fmt = theme.listenerStart.toFormat(); });
+    else if( type == EVENT_LISTENER_STOP )     logsConsoleTextEdit->appendFormatted(logMsg, [&](QTextCharFormat& fmt){ fmt = theme.listenerStop.toFormat(); });
+    else if( type == EVENT_AGENT_NEW )         logsConsoleTextEdit->appendFormatted(logMsg, [&](QTextCharFormat& fmt){ fmt = theme.agentNew.toFormat(); });
+    else if( type == EVENT_TUNNEL_START )      logsConsoleTextEdit->appendFormatted(logMsg, [&](QTextCharFormat& fmt){ fmt = theme.tunnel.toFormat(); });
+    else if( type == EVENT_TUNNEL_STOP )       logsConsoleTextEdit->appendFormatted(logMsg, [&](QTextCharFormat& fmt){ fmt = theme.tunnel.toFormat(); });
     else                                       logsConsoleTextEdit->appendPlain(logMsg);
+}
+
+void LogsWidget::applyTheme()
+{
+    const auto& theme = ConsoleThemeManager::instance().theme();
+    const auto& bg = theme.background;
+    bool showBg = GlobalClient->settings->data.ConsoleShowBackground;
+    QString imagePath = (showBg && bg.type == ConsoleBackground::Image) ? bg.imagePath : QString();
+    logsConsoleTextEdit->setConsoleBackground(bg.color, imagePath, bg.dimming);
+    logsConsoleTextEdit->setStyleSheet(QString("QPlainTextEdit { color: %1; border: 1px solid #2A2A2A; border-radius: 4px; }").arg(theme.textColor.name()));
 }
 
 void LogsWidget::Clear() const

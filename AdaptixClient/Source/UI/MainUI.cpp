@@ -6,10 +6,19 @@
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogExtender.h>
 #include <UI/Dialogs/DialogSettings.h>
+#include <UI/Dialogs/DialogSubscriptions.h>
 #include <Client/Extender.h>
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
+
+#include <QDesktopServices>
+#include <QUrl>
+#include <QPushButton>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QFont>
+#include <QApplication>
 
 MainUI::MainUI()
 {
@@ -21,27 +30,34 @@ MainUI::MainUI()
     auto closeProjectAction = new QAction("关闭项目", this);
     connect(closeProjectAction, &QAction::triggered, this, &MainUI::onCloseProject);
 
-    auto menuProject = new QMenu("项目", this);
+    auto projectSettingsAction = new QAction("订阅", this);
+    connect(projectSettingsAction, &QAction::triggered, this, &MainUI::onProjectSubscriptions);
+
+    menuProject = new QMenu("项目", this);
     menuProject->addAction(newProjectAction);
     menuProject->addAction(closeProjectAction);
+    menuProject->addSeparator();
+    menuProject->addAction(projectSettingsAction);
 
-    auto axConsoleAction = new QAction("AxScript 控制台", this);
+    auto axConsoleAction = new QAction("AxScript 控制台 ", this);
     connect(axConsoleAction, &QAction::triggered, this, &MainUI::onAxScriptConsole);
     auto scriptManagerAction = new QAction("脚本管理器", this);
     connect(scriptManagerAction, &QAction::triggered, this, &MainUI::onScriptManager);
 
-    auto menuExtender = new QMenu("AxScript", this);
-    menuExtender->addAction(axConsoleAction);
-    menuExtender->addAction(scriptManagerAction);
+    menuExtensions = new QMenu("扩展", this);
+    menuExtensions->addAction(axConsoleAction);
+    menuExtensions->addAction(scriptManagerAction);
+    extDocksSeparator = menuExtensions->addSeparator();
+    extDocksSeparator->setVisible(false);
 
-    auto menuSettings = new QMenu("设置", this);
+    menuSettings = new QMenu("设置", this);
     auto settingsAction = new QAction("打开设置", this);
     connect(settingsAction, &QAction::triggered, this, &MainUI::onSettings);
     menuSettings->addAction(settingsAction);
 
     auto mainMenuBar = new QMenuBar(this);
     mainMenuBar->addMenu(menuProject);
-    mainMenuBar->addMenu(menuExtender);
+    mainMenuBar->addMenu(menuExtensions);
     mainMenuBar->addMenu(menuSettings);
 
     this->setMenuBar(mainMenuBar);
@@ -50,6 +66,10 @@ MainUI::MainUI()
     mainuiTabWidget->setTabPosition(QTabWidget::South);
     mainuiTabWidget->tabBar()->setMovable(true);
     mainuiTabWidget->setMovable(true);
+    mainuiTabWidget->tabBar()->setMovable(false);
+    mainuiTabWidget->setMovable(false);
+
+    connect(mainuiTabWidget, &QTabWidget::currentChanged, this, &MainUI::onTabChanged);
 
     this->setCentralWidget(mainuiTabWidget);
 }
@@ -79,11 +99,14 @@ void MainUI::AddNewProject(AuthProfile* profile, QThread* channelThread, WebSock
     connect(adaptixWidget, &AdaptixWidget::LoadGlobalScriptSignal, GlobalClient->extender, &Extender::loadGlobalScript);
     connect(adaptixWidget, &AdaptixWidget::UnloadGlobalScriptSignal, GlobalClient->extender, &Extender::unloadGlobalScript);
 
-    QString tabName = "   " + profile->GetProject() + "   " ;
-    int id = mainuiTabWidget->addTab( adaptixWidget, tabName);
+    QString tabName = profile->GetProject();
+    int id = mainuiTabWidget->addTab(adaptixWidget, tabName);
+    mainuiTabWidget->setTabToolTip(id, tabName);
     mainuiTabWidget->setCurrentIndex( id );
 
     AdaptixProjects.append(adaptixWidget);
+
+    updateTabButton(id, tabName, true);
 }
 
 bool MainUI::AddNewExtension(ExtensionFile *extFile)
@@ -151,6 +174,11 @@ AuthProfile* MainUI::GetCurrentProfile() const
     return adaptixWidget->GetProfile();
 }
 
+QVector<AdaptixWidget*> MainUI::GetAdaptixProjects() const
+{
+    return AdaptixProjects;
+}
+
 /// Actions
 
 void MainUI::onNewProject() { GlobalClient->NewProject(); }
@@ -184,6 +212,159 @@ void MainUI::onAxScriptConsole()
     adaptixWidget->LoadAxConsoleUI();
 }
 
-void MainUI::onScriptManager() { GlobalClient->extender->dialogExtender->show(); }
+void MainUI::onScriptManager()
+{
+    GlobalClient->extender->dialogExtender->SetMainUI(this);
+    GlobalClient->extender->dialogExtender->show();
+}
 
 void MainUI::onSettings() { GlobalClient->settings->getDialogSettings()->show(); }
+
+void MainUI::onProjectSubscriptions()
+{
+    auto adaptixWidget = qobject_cast<AdaptixWidget*>(mainuiTabWidget->currentWidget());
+    if (!adaptixWidget)
+        return;
+
+    auto dialog = new DialogSubscriptions(adaptixWidget, this);
+    dialog->SetRegisteredCategories(adaptixWidget->GetProfile()->GetRegisteredCategories());
+    dialog->SetCurrentSubscriptions(adaptixWidget->GetProfile()->GetSubscriptions());
+    dialog->SetConsoleMultiuser(adaptixWidget->GetProfile()->GetConsoleMultiuser());
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->show();
+}
+
+/// EXT MENU
+
+QMenu* MainUI::getMenuProject() const { return menuProject; }
+
+QMenu* MainUI::getMenuAxScript() const { return menuExtensions; }
+
+QMenu* MainUI::getMenuSettings() const { return menuSettings; }
+
+void MainUI::addExtDockAction(const QString &id, const QString &title, bool checked, const std::function<void(bool)> &callback)
+{
+    if (extDockActions.contains(id))
+        return;
+
+    auto *action = new QAction(title, this);
+    action->setCheckable(true);
+    action->setChecked(checked);
+    connect(action, &QAction::toggled, this, callback);
+    menuExtensions->addAction(action);
+    extDockActions[id] = action;
+
+    if (extDocksSeparator && !extDocksSeparator->isVisible())
+        extDocksSeparator->setVisible(true);
+}
+
+void MainUI::removeExtDockAction(const QString &id)
+{
+    if (!extDockActions.contains(id))
+        return;
+
+    auto *action = extDockActions.take(id);
+    menuExtensions->removeAction(action);
+    delete action;
+
+    if (extDockActions.isEmpty() && extDocksSeparator)
+        extDocksSeparator->setVisible(false);
+}
+
+void MainUI::setExtDockChecked(const QString &id, bool checked)
+{
+    if (extDockActions.contains(id))
+        extDockActions[id]->setChecked(checked);
+}
+
+void MainUI::onOpenProjectDirectory()
+{
+    AuthProfile* profile = GetCurrentProfile();
+    if (!profile)
+        return;
+
+    QString projectDir = profile->GetProjectDir();
+    if (projectDir.isEmpty())
+        return;
+
+    QDesktopServices::openUrl(QUrl::fromLocalFile(projectDir));
+}
+
+void MainUI::onTabChanged(int index)
+{
+    for (int i = 0; i < mainuiTabWidget->count(); ++i) {
+        auto adaptixWidget = qobject_cast<AdaptixWidget*>(mainuiTabWidget->widget(i));
+        if (adaptixWidget) {
+            QString tabName = adaptixWidget->GetProfile()->GetProject();
+            bool showButton = (i == index);
+            updateTabButton(i, tabName, showButton);
+        }
+    }
+}
+
+void MainUI::updateTabButton(const int index, const QString& tabName, const bool showButton)
+{
+    if (index < 0 || index >= mainuiTabWidget->count())
+        return;
+
+    QTabBar* tabBar = mainuiTabWidget->tabBar();
+
+    QString realName = mainuiTabWidget->tabText(index);
+    if (realName.isEmpty())
+        realName = tabName;
+
+    tabBar->setTabText(index, "");
+
+    QWidget* existingWidget = tabBar->tabButton(index, QTabBar::RightSide);
+    if (existingWidget) {
+        existingWidget->deleteLater();
+        tabBar->setTabButton(index, QTabBar::RightSide, nullptr);
+    }
+
+    auto* tabWidget = new QWidget();
+    auto* layout = new QHBoxLayout(tabWidget);
+    layout->setContentsMargins(showButton ? 12 : 16, 0, showButton ? 6 : 12, 0);
+    layout->setSpacing(1);
+    layout->setSizeConstraint(QLayout::SetFixedSize);
+    tabWidget->setFixedHeight(24);
+    tabWidget->setMinimumHeight(24);
+    tabWidget->setMaximumHeight(24);
+    tabWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+    auto* label = new QLabel(realName);
+    label->setAlignment(Qt::AlignCenter | Qt::AlignVCenter);
+    label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    label->setFixedHeight(24);
+    label->setMinimumHeight(24);
+    label->setMaximumHeight(24);
+    QFont labelFont = label->font();
+    QFont appFont = QApplication::font();
+    labelFont.setFamily(appFont.family());
+    labelFont.setPointSize(appFont.pointSize());
+    label->setFont(labelFont);
+    label->setProperty("transparent", true);
+
+    layout->addWidget(label, 1, Qt::AlignCenter);
+
+    if (showButton) {
+        auto* folderButton = new QPushButton(tabWidget);
+        folderButton->setIcon(QIcon(":/icons/folder"));
+
+        constexpr int iconSize = 14;
+        constexpr int buttonHeight = 16;
+        constexpr int buttonWidth = 24;
+
+        folderButton->setIconSize(QSize(iconSize, iconSize));
+        folderButton->setFixedSize(buttonWidth, buttonHeight);
+        folderButton->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+
+        folderButton->setToolTip("打开项目目录");
+        folderButton->setFlat(true);
+
+        connect(folderButton, &QPushButton::clicked, this, &MainUI::onOpenProjectDirectory);
+
+        layout->addWidget(folderButton, 0, Qt::AlignRight);
+    }
+
+    tabBar->setTabButton(index, QTabBar::RightSide, tabWidget);
+}

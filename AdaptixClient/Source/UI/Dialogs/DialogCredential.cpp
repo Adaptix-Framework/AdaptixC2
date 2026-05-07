@@ -16,40 +16,39 @@ void DialogCredential::createUI()
     this->setWindowTitle( "添加凭证" );
     this->setProperty("Main", "base");
 
-    usernameLabel = new QLabel("用户名：", this);
+    usernameLabel = new QLabel("用户名:", this);
     usernameInput = new QLineEdit(this);
 
-    passwordLabel = new QLabel("密码：", this);
+    passwordLabel = new QLabel("密码:", this);
     passwordInput = new QLineEdit(this);
 
-    realmLabel = new QLabel("域：", this);
+    realmLabel = new QLabel("领域:", this);
     realmInput = new QLineEdit(this);
 
-    typeLabel = new QLabel("类型：", this);
+    typeLabel = new QLabel("类型:", this);
     typeCombo = new QComboBox(this);
     typeCombo->setEditable(true);
     typeCombo->addItems(QStringList() << "password" << "hash" << "rc4" << "aes128" << "aes256" << "token");
     typeCombo->setCurrentText("");
 
-    tagLabel = new QLabel("标签：", this);
+    tagLabel = new QLabel("标签:", this);
     tagInput = new QLineEdit(this);
 
-    storageLabel = new QLabel("存储：", this);
+    storageLabel = new QLabel("存储:", this);
     storageCombo = new QComboBox(this);
     storageCombo->setEditable(true);
     storageCombo->addItems(QStringList() << "browser" << "dpapi" << "database" << "sam" << "lsass" << "ntds" << "manual");
     storageCombo->setCurrentText("");
 
-    hostLabel = new QLabel("主机：", this);
+    hostLabel = new QLabel("主机:", this);
     hostInput = new QLineEdit(this);
 
     spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     createButton = new QPushButton("保存", this);
-    createButton->setProperty("ButtonStyle", "dialog");
+    createButton->setDefault(true);
     cancelButton = new QPushButton("取消", this);
-    cancelButton->setProperty("ButtonStyle", "dialog");
 
     hLayoutBottom = new QHBoxLayout();
     hLayoutBottom->addItem(spacer_1);

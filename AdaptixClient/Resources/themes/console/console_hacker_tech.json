@@ -1,0 +1,94 @@
+{
+    "background": {
+        "color": "#030406"
+    },
+    "text": "#B0C4B0",
+    "console": {
+        "debug": {
+            "color": "#1E3050",
+            "bold": false,
+            "italic": false,
+            "underline": false
+        },
+        "status": {
+            "success": "#00FF6A",
+            "error": "#FF3333",
+            "info": "#00CC60"
+        },
+        "operator": {
+            "color": "#3A6A4A",
+            "bold": false,
+            "italic": false,
+            "underline": false
+        },
+        "task": {
+            "color": "#1E3050",
+            "bold": false,
+            "italic": false,
+            "underline": false
+        },
+        "agent": {
+            "color": "#00AA50",
+            "bold": false,
+            "italic": false,
+            "underline": true
+        },
+        "command": {
+            "color": "#C0E0C0",
+            "bold": true,
+            "italic": false,
+            "underline": false
+        },
+        "input": {
+            "symbol": "$",
+            "color": "#00AA50",
+            "bold": false,
+            "italic": false,
+            "underline": false
+        }
+    },
+    "log": {
+        "debug": {
+            "color": "#1E3050",
+            "bold": false,
+            "italic": false,
+            "underline": false
+        },
+        "operator_connect": {
+            "color": "#00CC60",
+            "bold": false,
+            "italic": false,
+            "underline": false
+        },
+        "operator_disconnect": {
+            "color": "#3A6A4A",
+            "bold": false,
+            "italic": false,
+            "underline": false
+        },
+        "agent_new": {
+            "color": "#00FF6A",
+            "bold": true,
+            "italic": false,
+            "underline": false
+        },
+        "tunnel": {
+            "color": "#AAFF00",
+            "bold": false,
+            "italic": false,
+            "underline": false
+        },
+        "listener_start": {
+            "color": "#00CC60",
+            "bold": false,
+            "italic": false,
+            "underline": false
+        },
+        "listener_stop": {
+            "color": "#FF3333",
+            "bold": false,
+            "italic": false,
+            "underline": false
+        }
+    }
+}

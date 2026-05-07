@@ -7,6 +7,7 @@ import (
 	"io"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 type Profile struct {
@@ -243,6 +244,20 @@ type AnsExecBof struct {
 	Msgs []byte `msgpack:"msgs"`
 }
 
+type AnsExecBofAsync struct {
+	Msgs   []byte `msgpack:"msgs"`
+	Start  bool   `msgpack:"start"`
+	Finish bool   `msgpack:"finish"`
+}
+
+type ParamsTunnelPause struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
+type ParamsTunnelResume struct {
+	ChannelId int `msgpack:"channel_id"`
+}
+
 const (
 	COMMAND_ERROR      = 0
 	COMMAND_PWD        = 1
@@ -266,14 +281,17 @@ const (
 	COMMAND_JOB_KILL   = 19
 	COMMAND_REV2SELF   = 20
 
-	COMMAND_TUNNEL_START = 31
-	COMMAND_TUNNEL_STOP  = 32
+	COMMAND_TUNNEL_START  = 31
+	COMMAND_TUNNEL_STOP   = 32
+	COMMAND_TUNNEL_PAUSE  = 33
+	COMMAND_TUNNEL_RESUME = 34
 
 	COMMAND_TERMINAL_START = 35
 	COMMAND_TERMINAL_STOP  = 36
 
-	COMMAND_EXEC_BOF     = 50
-	COMMAND_EXEC_BOF_OUT = 51
+	COMMAND_EXEC_BOF       = 50
+	COMMAND_EXEC_BOF_OUT   = 51
+	COMMAND_EXEC_BOF_ASYNC = 52
 
 	CALLBACK_OUTPUT      = 0x0
 	CALLBACK_OUTPUT_OEM  = 0x1e
@@ -285,11 +303,6 @@ const (
 	CALLBACK_AX_SCREENSHOT   = 0x81
 	CALLBACK_AX_DOWNLOAD_MEM = 0x82
 )
-
-// COMMAND_GETUID       = 22
-// COMMAND_LINK         = 38
-// COMMAND_PIVOT_EXEC   = 37
-// COMMAND_UNLINK       = 39
 
 func parseDurationToSeconds(input string) (int, error) {
 	re := regexp.MustCompile(`(\d+)(h|m|s)`)
@@ -370,6 +383,13 @@ func UnzipBytes(zipData []byte) (map[string][]byte, error) {
 	return result, nil
 }
 
+func ensureNewline(s string) string {
+	if s == "" || strings.HasSuffix(s, "\n") {
+		return s
+	}
+	return s + "\n"
+}
+
 func SizeBytesToFormat(bytes int64) string {
 	const (
 		KB = 1024.0
@@ -383,7 +403,6 @@ func SizeBytesToFormat(bytes int64) string {
 		return fmt.Sprintf("%.2f Gb", size/GB)
 	} else if size >= MB {
 		return fmt.Sprintf("%.2f Mb", size/MB)
-	} else {
-		return fmt.Sprintf("%.2f Kb", size/KB)
 	}
+	return fmt.Sprintf("%.2f Kb", size/KB)
 }

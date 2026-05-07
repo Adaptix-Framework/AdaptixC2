@@ -66,7 +66,9 @@ func (dbms *DBMS) DbPivotAll() []*adaptix.PivotData {
 			logs.Debug("", "Failed to query pivots: "+err.Error())
 			return pivots
 		}
-		defer query.Close()
+		defer func(query *sql.Rows) {
+			_ = query.Close()
+		}(query)
 
 		for query.Next() {
 			pivotData := &adaptix.PivotData{}

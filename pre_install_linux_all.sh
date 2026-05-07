@@ -33,6 +33,7 @@ CLIENT_DEPENDENCIES=(
     libxkbcommon-dev
     qt6-websockets-dev
     qt6-declarative-dev
+    qt6-svg-dev
 )
 
 report_step() {

@@ -46,21 +46,22 @@ public:
 
 class BrowserFilesWidget : public DockTab
 {
-    QGridLayout*  mainGridLayout    = nullptr;
-    QGridLayout*  listGridLayout    = nullptr;
-    QTreeWidget*  treeBrowserWidget = nullptr;
-    QWidget*      listBrowserWidget = nullptr;
-    QTableWidget* tableWidget       = nullptr;
-    QLabel*       statusLabel       = nullptr;
-    QSplitter*    splitter          = nullptr;
-    QLineEdit*    inputPath         = nullptr;
-    QPushButton*  buttonParent      = nullptr;
-    QPushButton*  buttonReload      = nullptr;
-    QPushButton*  buttonUpload      = nullptr;
-    QPushButton*  buttonDisks       = nullptr;
-    QPushButton*  buttonList        = nullptr;
-    QFrame*       line_1            = nullptr;
-    QFrame*       line_2            = nullptr;
+    QGridLayout*        mainGridLayout    = nullptr;
+    QGridLayout*        listGridLayout    = nullptr;
+    QTreeWidget*        treeBrowserWidget = nullptr;
+    QWidget*            listBrowserWidget = nullptr;
+    QTableView*         tableView       = nullptr;
+    QStandardItemModel* tableModel        = nullptr;
+    QLabel*             statusLabel       = nullptr;
+    QSplitter*          splitter          = nullptr;
+    QLineEdit*          inputPath         = nullptr;
+    QPushButton*        buttonParent      = nullptr;
+    QPushButton*        buttonReload      = nullptr;
+    QPushButton*        buttonUpload      = nullptr;
+    QPushButton*        buttonDisks       = nullptr;
+    QPushButton*        buttonList        = nullptr;
+    QFrame*             line_1            = nullptr;
+    QFrame*             line_2            = nullptr;
 
     Agent* agent;
     QString currentPath;
@@ -79,7 +80,7 @@ class BrowserFilesWidget : public DockTab
     BrowserFileData* getFileData(const QString &path);
 
 public:
-    BrowserFilesWidget(AdaptixWidget* w, Agent* a);
+    BrowserFilesWidget(const AdaptixWidget* w, Agent* a);
     ~BrowserFilesWidget() override;
 
     void SetDisksWin(qint64 time, int msgType, const QString &message, const QString &data);

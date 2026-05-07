@@ -53,7 +53,7 @@ DialogConnect::DialogConnect()
     connect(lineEdit_ProjectDir, &QLineEdit::textEdited,                   this, &DialogConnect::onProjectDirEdited);
     connect(buttonConnect,       &QPushButton::clicked,                    this, &DialogConnect::onButton_Connect);
 
-    auto connectReturnPressed = [this](QLineEdit* edit) {
+    auto connectReturnPressed = [this](const QLineEdit* edit) {
         connect(edit, &QLineEdit::returnPressed, this, &DialogConnect::onButton_Connect);
     };
     connectReturnPressed(lineEdit_Project);
@@ -63,6 +63,10 @@ DialogConnect::DialogConnect()
 
     auto action = lineEdit_ProjectDir->addAction(QIcon(":/icons/folder"), QLineEdit::TrailingPosition);
     connect(action, &QAction::triggered, this, &DialogConnect::onSelectProjectDir);
+
+    connect(subsSelectBtn,   &QPushButton::clicked,     this, &DialogConnect::showSubsPopup);
+    connect(dataListWidget,  &QListWidget::itemChanged, this, &DialogConnect::onSubsSelectionChanged);
+    connect(agentListWidget, &QListWidget::itemChanged, this, &DialogConnect::onSubsSelectionChanged);
 }
 
 DialogConnect::~DialogConnect() = default;
@@ -127,14 +131,121 @@ void DialogConnect::createUI()
     lineEdit_ProjectDir = new QLineEdit(this);
     lineEdit_ProjectDir->setToolTip("输入项目目录路径（留空则自动生成）");
 
-    projectLayout->addWidget(label_Project,      0, 0);
-    projectLayout->addWidget(lineEdit_Project,   0, 1);
-    projectLayout->addWidget(label_ProjectDir,   1, 0);
-    projectLayout->addWidget(lineEdit_ProjectDir,1, 1);
+    subsSelectBtn = new QPushButton(QIcon(":/icons/settings_account"), "", this);
+    subsSelectBtn->setFixedWidth(30);
+    subsSelectBtn->setToolTip("选择订阅");
+
+    auto historyLabel = new QLabel("历史记录:", this);
+    QFont boldFont = historyLabel->font();
+    boldFont.setBold(true);
+    historyLabel->setFont(boldFont);
+
+    dataListWidget = new QListWidget();
+    dataListWidget->setSelectionMode(QAbstractItemView::NoSelection);
+
+    auto makeSectionHeader = [](const QString &title) -> QListWidgetItem* {
+        auto *item = new QListWidgetItem(title);
+        QFont f = item->font();
+        f.setBold(true);
+        item->setFont(f);
+        item->setFlags(Qt::ItemIsEnabled);
+        item->setData(Qt::UserRole, true);
+        return item;
+    };
+
+    dataListWidget->addItem(makeSectionHeader("数据"));
+    for (const QString &cat : {"chat_history", "downloads_history", "screenshot_history", "credentials_history", "targets_history"}) {
+        auto *item = new QListWidgetItem(cat);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Checked);
+        dataListWidget->addItem(item);
+    }
+    dataListWidget->addItem(makeSectionHeader("代理"));
+    for (const QString &cat : {"console_history", "tasks_history"}) {
+        auto *item = new QListWidgetItem(cat);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Checked);
+        dataListWidget->addItem(item);
+    }
+
+    auto realtimeLabel = new QLabel("实时:", this);
+    QFont boldFont2 = realtimeLabel->font();
+    boldFont2.setBold(true);
+    realtimeLabel->setFont(boldFont2);
+
+    agentListWidget = new QListWidget();
+    agentListWidget->setSelectionMode(QAbstractItemView::NoSelection);
+
+    agentListWidget->addItem(makeSectionHeader("数据"));
+    for (const QString &cat : {"chat_realtime", "downloads_realtime", "screenshot_realtime", "credentials_realtime", "targets_realtime", "notifications", "tunnels"}) {
+        auto *item = new QListWidgetItem(cat);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Checked);
+        agentListWidget->addItem(item);
+    }
+    agentListWidget->addItem(makeSectionHeader("代理"));
+    for (const QString &cat : {"tasks_manager"}) {
+        auto *item = new QListWidgetItem(cat);
+        item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+        item->setCheckState(Qt::Checked);
+        agentListWidget->addItem(item);
+    }
+
+    multiuserCheck = new QCheckBox("控制台团队模式", this);
+    multiuserCheck->setChecked(true);
+    multiuserCheck->setToolTip("查看所有操作员的控制台输出");
+
+    auto agentsOnlyActiveCheck = new QCheckBox("仅活跃代理", this);
+    agentsOnlyActiveCheck->setChecked(false);
+    agentsOnlyActiveCheck->setToolTip("仅同步活跃代理");
+
+    auto tasksOnlyJobsCheck = new QCheckBox("仅作业任务", this);
+    tasksOnlyJobsCheck->setChecked(false);
+    tasksOnlyJobsCheck->setToolTip("仅同步作业");
+
+    auto leftCol = new QVBoxLayout();
+    leftCol->setSpacing(6);
+    leftCol->addWidget(historyLabel);
+    leftCol->addWidget(dataListWidget);
+
+    auto rightCol = new QVBoxLayout();
+    rightCol->setSpacing(6);
+    rightCol->addWidget(realtimeLabel);
+    rightCol->addWidget(agentListWidget);
+    rightCol->addWidget(multiuserCheck);
+    rightCol->addWidget(agentsOnlyActiveCheck);
+    rightCol->addWidget(tasksOnlyJobsCheck);
+
+    auto popupLayout = new QHBoxLayout();
+    popupLayout->setContentsMargins(8, 8, 8, 8);
+    popupLayout->setSpacing(12);
+    popupLayout->addLayout(leftCol, 1);
+    popupLayout->addLayout(rightCol, 1);
+
+    subsPopupDialog = new QDialog(this, Qt::Popup | Qt::FramelessWindowHint);
+    subsPopupDialog->setLayout(popupLayout);
+    subsPopupDialog->setProperty("Main", "base");
+    subsPopupDialog->setMinimumWidth(600);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
+    connect(agentsOnlyActiveCheck, &QCheckBox::checkStateChanged, this, &DialogConnect::onSubsSelectionChanged);
+    connect(tasksOnlyJobsCheck,    &QCheckBox::checkStateChanged, this, &DialogConnect::onSubsSelectionChanged);
+#else
+    connect(agentsOnlyActiveCheck, &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
+    connect(tasksOnlyJobsCheck,    &QCheckBox::stateChanged, this, &DialogConnect::onSubsSelectionChanged);
+#endif
+    agentsOnlyActiveCheck->setObjectName("agentsOnlyActiveCheck");
+    tasksOnlyJobsCheck->setObjectName("tasksOnlyJobsCheck");
+
+    projectLayout->addWidget(label_Project,      0, 0, 1, 1);
+    projectLayout->addWidget(lineEdit_Project,   0, 1, 1, 1);
+    projectLayout->addWidget(subsSelectBtn,      0, 2, 1, 1);
+    projectLayout->addWidget(label_ProjectDir,   1, 0, 1, 1);
+    projectLayout->addWidget(lineEdit_ProjectDir,1, 1, 1, 2);
     projectLayout->setColumnMinimumWidth(0, 100);
 
     buttonConnect = new QPushButton(this);
-    buttonConnect->setProperty("ButtonStyle", "dialog_apply");
+    buttonConnect->setDefault(true);
     buttonConnect->setText("连接");
     buttonConnect->setFixedWidth(160);
     buttonConnect->setFocus();
@@ -171,18 +282,15 @@ void DialogConnect::createUI()
     cardWidget->setFocusPolicy(Qt::NoFocus);
 
     buttonNewProfile = new QPushButton(this);
-    buttonNewProfile->setProperty("ButtonStyle", "dialog");
     buttonNewProfile->setText("新建配置");
     buttonNewProfile->setMinimumSize(QSize(10, 30));
 
     buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
-    buttonLoad->setProperty("ButtonStyle", "dialog");
     buttonLoad->setIconSize(QSize(20, 20));
     buttonLoad->setFixedSize(QSize(30, 30));
     buttonLoad->setToolTip("从文件加载配置");
 
     buttonSave = new QPushButton(QIcon(":/icons/save_as"), "", this);
-    buttonSave->setProperty("ButtonStyle", "dialog");
     buttonSave->setIconSize(QSize(20, 20));
     buttonSave->setFixedSize(QSize(30, 30));
     buttonSave->setToolTip("保存配置到文件");
@@ -200,7 +308,6 @@ void DialogConnect::createUI()
     auto separatorLine = new QFrame(this);
     separatorLine->setFrameShape(QFrame::VLine);
     separatorLine->setFrameShadow(QFrame::Sunken);
-    separatorLine->setStyleSheet("QFrame { color: rgba(100, 100, 100, 50); background-color: rgba(100, 100, 100, 50); }");
 
     gridLayout = new QGridLayout(this);
     gridLayout->setContentsMargins(5, 5, 5, 5);
@@ -245,12 +352,71 @@ AuthProfile* DialogConnect::StartDialog()
 
     auto* newProfile = new AuthProfile(lineEdit_Project->text(), lineEdit_User->text(), lineEdit_Password->text(), host, port, endpoint, projectDir);
 
+    QStringList selectedSubs;
+    for (int i = 0; i < dataListWidget->count(); ++i) {
+        auto *item = dataListWidget->item(i);
+        if (item && item->data(Qt::UserRole).toBool())
+            continue;
+        if (item->checkState() == Qt::Checked)
+            selectedSubs.append(item->text());
+    }
+    for (int i = 0; i < agentListWidget->count(); ++i) {
+        auto *item = agentListWidget->item(i);
+        if (item && item->data(Qt::UserRole).toBool())
+            continue;
+        if (item->checkState() == Qt::Checked)
+            selectedSubs.append(item->text());
+    }
+
+    auto agentsOnlyActiveCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("agentsOnlyActiveCheck") : nullptr;
+    if (agentsOnlyActiveCheck && agentsOnlyActiveCheck->isChecked())
+        selectedSubs.append("agents_only_active");
+
+    auto tasksOnlyJobsCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("tasksOnlyJobsCheck") : nullptr;
+    if (tasksOnlyJobsCheck && tasksOnlyJobsCheck->isChecked())
+        selectedSubs.append("tasks_only_jobs");
+
+    newProfile->SetSubscriptions(selectedSubs);
+    newProfile->SetRegisteredCategories(selectedSubs);
+
+    updateSubsDisplay();
+    newProfile->SetConsoleMultiuser(multiuserCheck->isChecked());
+
     if (GlobalClient->storage->ExistsProject(lineEdit_Project->text()))
         GlobalClient->storage->UpdateProject(*newProfile);
     else
         GlobalClient->storage->AddProject(*newProfile);
 
     return newProfile;
+}
+
+void DialogConnect::updateSubsDisplay()
+{
+    QStringList selectedSubs;
+    for (int i = 0; i < dataListWidget->count(); ++i) {
+        auto *item = dataListWidget->item(i);
+        if (item && item->data(Qt::UserRole).toBool())
+            continue;
+        if (item->checkState() == Qt::Checked)
+            selectedSubs.append(item->text());
+    }
+    for (int i = 0; i < agentListWidget->count(); ++i) {
+        auto *item = agentListWidget->item(i);
+        if (item && item->data(Qt::UserRole).toBool())
+            continue;
+        if (item->checkState() == Qt::Checked)
+            selectedSubs.append(item->text());
+    }
+
+    auto agentsOnlyActiveCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("agentsOnlyActiveCheck") : nullptr;
+    if (agentsOnlyActiveCheck && agentsOnlyActiveCheck->isChecked())
+        selectedSubs.append("agents_only_active");
+
+    auto tasksOnlyJobsCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("tasksOnlyJobsCheck") : nullptr;
+    if (tasksOnlyJobsCheck && tasksOnlyJobsCheck->isChecked())
+        selectedSubs.append("tasks_only_jobs");
+
+    subsSelectBtn->setToolTip(selectedSubs.isEmpty() ? "选择订阅" : selectedSubs.join(", "));
 }
 
 void DialogConnect::itemRemove()
@@ -284,6 +450,34 @@ void DialogConnect::onProfileSelected()
             lineEdit_Url->setText(buildUrl(p.GetHost(), p.GetPort(), p.GetEndpoint()));
             lineEdit_User->setText(p.GetUsername());
             lineEdit_Password->setText(p.GetPassword());
+
+            QStringList subs = p.GetSubscriptions();
+            dataListWidget->blockSignals(true);
+            for (int i = 0; i < dataListWidget->count(); ++i) {
+                auto *subItem = dataListWidget->item(i);
+                if (subItem && subItem->data(Qt::UserRole).toBool())
+                    continue;
+                subItem->setCheckState(subs.contains(subItem->text()) ? Qt::Checked : Qt::Unchecked);
+            }
+            dataListWidget->blockSignals(false);
+            agentListWidget->blockSignals(true);
+            for (int i = 0; i < agentListWidget->count(); ++i) {
+                auto *subItem = agentListWidget->item(i);
+                if (subItem && subItem->data(Qt::UserRole).toBool())
+                    continue;
+                subItem->setCheckState(subs.contains(subItem->text()) ? Qt::Checked : Qt::Unchecked);
+            }
+            agentListWidget->blockSignals(false);
+            multiuserCheck->setChecked(p.GetConsoleMultiuser());
+
+            auto agentsOnlyActiveCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("agentsOnlyActiveCheck") : nullptr;
+            if (agentsOnlyActiveCheck)
+                agentsOnlyActiveCheck->setChecked(subs.contains("agents_only_active"));
+
+            auto tasksOnlyJobsCheck = subsPopupDialog ? subsPopupDialog->findChild<QCheckBox*>("tasksOnlyJobsCheck") : nullptr;
+            if (tasksOnlyJobsCheck)
+                tasksOnlyJobsCheck->setChecked(subs.contains("tasks_only_jobs"));
+
             return;
         }
     }
@@ -297,7 +491,7 @@ void DialogConnect::handleContextMenu(const QPoint &pos)
 
 bool DialogConnect::checkValidInput() const
 {
-    const auto checkEmpty = [](QLineEdit* edit, const QString& msg) {
+    const auto checkEmpty = [](const QLineEdit* edit, const QString& msg) {
         if (edit->text().isEmpty()) {
             MessageError(msg);
             return false;
@@ -312,7 +506,7 @@ bool DialogConnect::checkValidInput() const
 
     QString host, port, endpoint;
     if (!parseUrl(host, port, endpoint)) {
-        MessageError("地址格式错误（示例: https://host:port/endpoint）");
+        MessageError("URL 格式无效（示例：https://host:port/endpoint）");
         return false;
     }
 
@@ -340,6 +534,17 @@ void DialogConnect::clearFields()
     lineEdit_ProjectDir->clear();
     lineEdit_Url->clear();
     cardWidget->clearSelection();
+
+    dataListWidget->blockSignals(true);
+    for (int i = 0; i < dataListWidget->count(); ++i)
+        dataListWidget->item(i)->setCheckState(Qt::Checked);
+    dataListWidget->blockSignals(false);
+    agentListWidget->blockSignals(true);
+    for (int i = 0; i < agentListWidget->count(); ++i)
+        agentListWidget->item(i)->setCheckState(Qt::Checked);
+    agentListWidget->blockSignals(false);
+    multiuserCheck->setChecked(true);
+
     lineEdit_Project->setFocus();
 }
 
@@ -383,7 +588,7 @@ void DialogConnect::onButton_Load()
     if (!projectDir.isEmpty() && QDir(projectDir).exists())
         baseDir = projectDir;
 
-    NonBlockingDialogs::getOpenFileName(this, "加载配置", baseDir, "Adaptix 配置文件 (*.adaptixProfile)",
+    NonBlockingDialogs::getOpenFileName(this, "Load Profile", baseDir, "Adaptix Profile files (*.adaptixProfile)",
         [this](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
@@ -478,7 +683,7 @@ void DialogConnect::onButton_Save()
 
     QString initialPath = QDir(baseDir).filePath(projectName + ".adaptixProfile");
 
-    NonBlockingDialogs::getSaveFileName(this, "保存配置", initialPath, "Adaptix 配置文件 (*.adaptixProfile)",
+    NonBlockingDialogs::getSaveFileName(this, "Save Profile", initialPath, "Adaptix Profile files (*.adaptixProfile)",
         [json](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
@@ -493,4 +698,18 @@ void DialogConnect::onButton_Save()
             file.close();
             MessageSuccess("配置保存成功");
         });
+}
+
+void DialogConnect::showSubsPopup()
+{
+    QPoint pos = subsSelectBtn->mapToGlobal(QPoint(0, subsSelectBtn->height()));
+    subsPopupDialog->move(pos);
+    subsPopupDialog->show();
+    subsPopupDialog->raise();
+    subsPopupDialog->activateWindow();
+}
+
+void DialogConnect::onSubsSelectionChanged()
+{
+    updateSubsDisplay();
 }

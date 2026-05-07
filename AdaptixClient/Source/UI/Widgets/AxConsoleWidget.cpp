@@ -7,7 +7,10 @@
 #include <Utils/CustomElements.h>
 #include <Utils/FontManager.h>
 #include <Client/AuthProfile.h>
+#include <Client/ConsoleTheme.h>
+#include <Client/Settings.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <MainAdaptix.h>
 
 REGISTER_DOCK_WIDGET(AxConsoleWidget, "扩展控制台", false)
 
@@ -30,11 +33,11 @@ AxConsoleWidget::AxConsoleWidget(AxScriptManager* m, AdaptixWidget* w) : DockTab
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+L"), OutputTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
-    connect(shortcutSearch, &QShortcut::activated, OutputTextEdit, &QTextEdit::clear);
+    connect(shortcutSearch, &QShortcut::activated, OutputTextEdit, &QPlainTextEdit::clear);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+A"), OutputTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
-    connect(shortcutSearch, &QShortcut::activated, OutputTextEdit, &QTextEdit::selectAll);
+    connect(shortcutSearch, &QShortcut::activated, OutputTextEdit, &QPlainTextEdit::selectAll);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+H"), OutputTextEdit);
     shortcutSearch->setContext(Qt::WidgetShortcut);
@@ -42,6 +45,10 @@ AxConsoleWidget::AxConsoleWidget(AxScriptManager* m, AdaptixWidget* w) : DockTab
 
     kphInputLineEdit = new KPH_ConsoleInput(InputLineEdit, OutputTextEdit, this);
     InputLineEdit->installEventFilter(kphInputLineEdit);
+
+    connect(&ConsoleThemeManager::instance(), &ConsoleThemeManager::themeChanged, this, &AxConsoleWidget::applyTheme);
+    connect(OutputTextEdit, &TextEditConsole::ctx_bgToggled, this, [this](bool){ applyTheme(); });
+    applyTheme();
 
     this->dockWidget->setWidget(this);
 }
@@ -65,7 +72,7 @@ void AxConsoleWidget::createUI()
 
     searchLabel    = new QLabel("0 of 0");
     searchLineEdit = new QLineEdit();
-    searchLineEdit->setPlaceholderText("Find");
+    searchLineEdit->setPlaceholderText("查找");
     searchLineEdit->setMaximumWidth(300);
 
     hideButton = new ClickableLabel("X");
@@ -85,14 +92,14 @@ void AxConsoleWidget::createUI()
 
     OutputTextEdit = new TextEditConsole(this, 50000, true, true);
     OutputTextEdit->setReadOnly(true);
-    OutputTextEdit->setProperty( "TextEditStyle", "console" );
+    OutputTextEdit->setStyleSheet("background-color: #151515; color: #BEBEBE; border: 1px solid #2A2A2A; border-radius: 4px;");
     OutputTextEdit->setFont( FontManager::instance().getFont("Hack") );
 
     CmdLabel = new QLabel( "ax >", this );
-    CmdLabel->setProperty( "LabelStyle", "console" );
+    CmdLabel->setStyleSheet("padding: 4px; color: #BEBEBE; background-color: transparent;");
 
     InputLineEdit = new QLineEdit(this);
-    InputLineEdit->setProperty( "LineEditStyle", "console" );
+    InputLineEdit->setStyleSheet("background-color: #151515; color: #BEBEBE; border: 1px solid #2A2A2A; padding: 4px; border-radius: 4px;");
     InputLineEdit->setFont( FontManager::instance().getFont("Hack") );
 
     ResetButton = new QPushButton("重置 AxScript");
@@ -164,9 +171,22 @@ void AxConsoleWidget::InputFocus() const { InputLineEdit->setFocus(); }
 
 void AxConsoleWidget::AddToHistory(const QString &command) { kphInputLineEdit->AddToHistory(command); }
 
-void AxConsoleWidget::PrintMessage(const QString &message) { OutputTextEdit->appendColor(message + "\n", QColor(COLOR_ConsoleWhite)); }
+void AxConsoleWidget::PrintMessage(const QString &message) { OutputTextEdit->appendPlain(message + "\n"); }
 
-void AxConsoleWidget::PrintError(const QString &message) { OutputTextEdit->appendColor(message + "\n", QColor(COLOR_ChiliPepper)); }
+void AxConsoleWidget::PrintError(const QString &message) {
+    const auto& theme = ConsoleThemeManager::instance().theme();
+    OutputTextEdit->appendColor(message + "\n", theme.statusError);
+}
+
+void AxConsoleWidget::applyTheme()
+{
+    const auto& theme = ConsoleThemeManager::instance().theme();
+    const auto& bg = theme.background;
+    bool showBg = GlobalClient->settings->data.ConsoleShowBackground;
+    QString imagePath = (showBg && bg.type == ConsoleBackground::Image) ? bg.imagePath : QString();
+    OutputTextEdit->setConsoleBackground(bg.color, imagePath, bg.dimming);
+    OutputTextEdit->setStyleSheet(QString("QPlainTextEdit { color: %1; border: 1px solid #2A2A2A; border-radius: 4px; }").arg(theme.textColor.name()));
+}
 
 void AxConsoleWidget::processInput()
 {
@@ -184,7 +204,18 @@ void AxConsoleWidget::processInput()
     OutputTextEdit->appendColor(" >>> ", QColor(COLOR_LightGray));
     OutputTextEdit->appendColorBold(code + "\n", QColor(COLOR_White));
 
-    QJSValue result = scriptManager->MainScriptEngine()->evaluate(code);
+    if (!scriptManager) {
+        OutputTextEdit->appendColor("脚本引擎不可用\n", QColor(COLOR_ChiliPepper));
+        return;
+    }
+
+    QJSEngine* engine = scriptManager->MainScriptEngine();
+    if (!engine) {
+        OutputTextEdit->appendColor("脚本引擎未初始化\n", QColor(COLOR_ChiliPepper));
+        return;
+    }
+
+    QJSValue result = engine->evaluate(code);
     if (result.isError()) {
         QString errorString = QString("%1\n").arg(result.toString());
         OutputTextEdit->appendColor(errorString, QColor(COLOR_ChiliPepper));
@@ -310,6 +341,7 @@ void AxConsoleWidget::handleShowHistory()
 
 void AxConsoleWidget::onResetScript()
 {
-    scriptManager->ResetMain();
+    if (scriptManager)
+        scriptManager->ResetMain();
     OutputTextEdit->clear();
 }

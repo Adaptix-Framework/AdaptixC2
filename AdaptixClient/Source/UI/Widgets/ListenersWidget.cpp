@@ -8,9 +8,9 @@
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptManager.h>
 
-REGISTER_DOCK_WIDGET(ListenersWidget, "监听器", true)
+REGISTER_DOCK_WIDGET(ListenersWidget, "Listeners", true)
 
-ListenersWidget::ListenersWidget(AdaptixWidget* w) : DockTab("监听器", w->GetProfile()->GetProject(), ":/icons/listeners"), adaptixWidget(w)
+ListenersWidget::ListenersWidget(AdaptixWidget* w) : DockTab("Listeners", w->GetProfile()->GetProject(), ":/icons/listeners"), adaptixWidget(w)
 {
     this->createUI();
 
@@ -19,7 +19,8 @@ ListenersWidget::ListenersWidget(AdaptixWidget* w) : DockTab("监听器", w->Get
     connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
             Q_UNUSED(selected)
             Q_UNUSED(deselected)
-            tableView->setFocus();
+            if (!inputFilter->hasFocus())
+                tableView->setFocus();
     });
     connect(inputFilter, &QLineEdit::textChanged,   this, &ListenersWidget::onFilterUpdate);
     connect(inputFilter, &QLineEdit::returnPressed, this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
@@ -40,6 +41,11 @@ ListenersWidget::~ListenersWidget() = default;
 
 void ListenersWidget::SetUpdatesEnabled(const bool enabled)
 {
+    if (proxyModel)
+        proxyModel->setDynamicSortFilter(enabled);
+    if (tableView)
+        tableView->setSortingEnabled(enabled);
+
     tableView->setUpdatesEnabled(enabled);
 }
 
@@ -56,11 +62,10 @@ void ListenersWidget::createUI()
 
     autoSearchCheck = new QCheckBox("auto", searchWidget);
     autoSearchCheck->setChecked(true);
-    autoSearchCheck->setToolTip("文本改变时自动搜索。如未勾选，按 Enter 键搜索。");
+    autoSearchCheck->setToolTip("文字改变时自动搜索，未勾选时按回车搜索");
 
     hideButton = new ClickableLabel("  x  ");
     hideButton->setCursor(Qt::PointingHandCursor);
-    hideButton->setStyleSheet("QLabel { color: #888; font-weight: bold; } QLabel:hover { color: #e34234; }");
 
     searchLayout = new QHBoxLayout(searchWidget);
     searchLayout->setContentsMargins(0, 4, 0, 0);
@@ -78,6 +83,7 @@ void ListenersWidget::createUI()
 
     tableView = new QTableView(this);
     tableView->setModel(proxyModel);
+    tableView->setHorizontalHeader(new BoldHeaderView(Qt::Horizontal, tableView));
     tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     tableView->setAutoFillBackground(false);
     tableView->setShowGrid(false);
@@ -92,6 +98,9 @@ void ListenersWidget::createUI()
     tableView->horizontalHeader()->setCascadingSectionResizes(true);
     tableView->horizontalHeader()->setHighlightSections(false);
     tableView->verticalHeader()->setVisible(false);
+
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+    tableView->sortByColumn(LC_Date, Qt::AscendingOrder);
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(0, 0, 0, 0);
@@ -176,9 +185,12 @@ void ListenersWidget::handleListenersMenu(const QPoint &pos) const
 {
     QMenu listenerMenu = QMenu();
 
-    listenerMenu.addAction("新建", this, &ListenersWidget::onCreateListener);
+    listenerMenu.addAction("创建", this, &ListenersWidget::onCreateListener);
     listenerMenu.addAction("编辑",   this, &ListenersWidget::onEditListener);
-    listenerMenu.addAction("移除", this, &ListenersWidget::onRemoveListener);
+    listenerMenu.addAction("删除", this, &ListenersWidget::onRemoveListener);
+    listenerMenu.addSeparator();
+    listenerMenu.addAction("暂停",  this, &ListenersWidget::onPauseListener);
+    listenerMenu.addAction("恢复", this, &ListenersWidget::onResumeListener);
     listenerMenu.addSeparator();
     listenerMenu.addAction("生成代理", this, &ListenersWidget::onGenerateAgent);
 
@@ -196,7 +208,7 @@ void ListenersWidget::onCreateListener() const
     for (auto listener : listenersList) {
         auto engine = adaptixWidget->ScriptManager->ListenerScriptEngine(listener);
         if (engine == nullptr) {
-            adaptixWidget->ScriptManager->consolePrintError(QString("Listener %1 is not registered").arg(listener));
+            adaptixWidget->ScriptManager->consolePrintError(QString("监听器 %1 未注册").arg(listener));
             continue;
         }
 
@@ -293,7 +305,7 @@ void ListenersWidget::onEditListener() const
 
     auto engine = adaptixWidget->ScriptManager->ListenerScriptEngine(listenerRegName);
     if (engine == nullptr) {
-        adaptixWidget->ScriptManager->consolePrintError(QString("Listener %1 is not registered").arg(listenerName));
+        adaptixWidget->ScriptManager->consolePrintError(QString("监听器 %1 未注册").arg(listenerName));
         return;;
     }
 
@@ -378,13 +390,51 @@ void ListenersWidget::onRemoveListener() const
     auto listenerRegName = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_RegName), Qt::DisplayRole).toString();
 
     QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "删除确认",
-                                      QString("您确定要移除监听器 '%1' 吗？").arg(listenerName),
+                                      QString("确定要删除监听器 '%1' 吗？").arg(listenerName),
                                       QMessageBox::Yes | QMessageBox::No,
                                       QMessageBox::No);
     if (reply != QMessageBox::Yes)
         return;
 
     HttpReqListenerStopAsync(listenerName, listenerRegName, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "响应超时" : message);
+    });
+}
+
+void ListenersWidget::onPauseListener() const
+{
+    if (tableView->selectionModel()->selectedRows().empty())
+        return;
+
+    QModelIndex currentIndex = tableView->currentIndex();
+    QModelIndex sourceIndex = proxyModel->mapToSource(currentIndex);
+    if (!sourceIndex.isValid())
+        return;
+
+    auto listenerName    = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_Name), Qt::DisplayRole).toString();
+    auto listenerRegName = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_RegName), Qt::DisplayRole).toString();
+
+    HttpReqListenerPauseAsync(listenerName, listenerRegName, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+        if (!success)
+            MessageError(message.isEmpty() ? "响应超时" : message);
+    });
+}
+
+void ListenersWidget::onResumeListener() const
+{
+    if (tableView->selectionModel()->selectedRows().empty())
+        return;
+
+    QModelIndex currentIndex = tableView->currentIndex();
+    QModelIndex sourceIndex = proxyModel->mapToSource(currentIndex);
+    if (!sourceIndex.isValid())
+        return;
+
+    auto listenerName    = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_Name), Qt::DisplayRole).toString();
+    auto listenerRegName = listenersModel->data(listenersModel->index(sourceIndex.row(), LC_RegName), Qt::DisplayRole).toString();
+
+    HttpReqListenerResumeAsync(listenerName, listenerRegName, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
         if (!success)
             MessageError(message.isEmpty() ? "响应超时" : message);
     });
@@ -411,7 +461,7 @@ void ListenersWidget::onGenerateAgent() const
     for (auto agent : agentNames) {
         auto engine = adaptixWidget->ScriptManager->AgentScriptEngine(agent);
         if (engine == nullptr) {
-            adaptixWidget->ScriptManager->consolePrintError(QString("Listener %1 is not registered").arg(agent));
+            adaptixWidget->ScriptManager->consolePrintError(QString("监听器 %1 未注册").arg(agent));
             return;;
         }
 
@@ -421,8 +471,11 @@ void ListenersWidget::onGenerateAgent() const
             return;
         }
 
+        QJSValue jsListeners = engine->newArray(1);
+        jsListeners.setProperty(0, listenerRegName);
+
         QJSValueList args;
-        args << QJSValue(listenerRegName);
+        args << jsListeners;
         QJSValue result = func.call(args);
         if (result.isError()) {
             QString error = QStringLiteral("%1\n  at line %2 in %3\n  stack: %4").arg(result.toString()).arg(result.property("lineNumber").toInt()).arg(listenerName).arg(result.property("stack").toString());
@@ -473,9 +526,16 @@ void ListenersWidget::onGenerateAgent() const
         ax_uis[agent] = { container, formElement->widget(), h, w };
     }
 
-    DialogAgent* dialogListener = new DialogAgent(listenerName, listenerRegName);
+    QMap<QString, AgentTypeInfo> agentTypesMap;
+    for (const auto &agentItem : agents) {
+        agentTypesMap[agentItem] = adaptixWidget->GetAgentTypeInfo(agentItem);
+    }
+
+    DialogAgent* dialogListener = new DialogAgent(adaptixWidget, listenerName, listenerRegName);
     dialogListener->setAttribute(Qt::WA_DeleteOnClose);
     dialogListener->SetProfile( *(adaptixWidget->GetProfile()) );
+    dialogListener->SetAvailableListeners(adaptixWidget->Listeners);
+    dialogListener->SetAgentTypes(agentTypesMap);
     dialogListener->AddExAgents(agents, ax_uis);
     dialogListener->Start();
 }

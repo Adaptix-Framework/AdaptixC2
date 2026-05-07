@@ -1,6 +1,7 @@
 #include <Utils/NonBlockingDialogs.h>
 
 #include <QDir>
+#include <QFileInfo>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QMessageBox>
@@ -38,11 +39,15 @@ void NonBlockingDialogs::stopKeepAlive()
 
 void NonBlockingDialogs::getSaveFileName(QWidget* parent, const QString& caption, const QString& dir, const QString& filter, std::function<void(const QString&)> callback)
 {
+    QFileInfo fileInfo(dir);
+
     QFileDialog* dialog = new QFileDialog(parent);
     dialog->setAcceptMode(QFileDialog::AcceptSave);
     dialog->setWindowTitle(caption);
-    dialog->setDirectory(dir);
+    dialog->setDirectory(fileInfo.absolutePath());
     dialog->setNameFilter(filter);
+    dialog->setOption(QFileDialog::DontUseNativeDialog, true);
+    dialog->selectFile(fileInfo.fileName());
     dialog->setAttribute(Qt::WA_DeleteOnClose);
 
     QObject::connect(dialog, &QFileDialog::finished, [dialog, callback](int result) {

@@ -26,18 +26,19 @@ typedef struct BrowserProcessDataUnix {
 
 class BrowserProcessWidget : public DockTab
 {
-    QGridLayout*  mainGridLayout    = nullptr;
-    QGridLayout*  listGridLayout    = nullptr;
-    QTreeWidget*  treeBrowserWidget = nullptr;
-    QWidget*      listBrowserWidget = nullptr;
-    QTableWidget* tableWidget       = nullptr;
-    QLabel*       statusLabel       = nullptr;
-    QSplitter*    splitter          = nullptr;
-    QLineEdit*    inputFilter       = nullptr;
-    QPushButton*  buttonReload      = nullptr;
-    QFrame*       line_1            = nullptr;
+    QGridLayout*        mainGridLayout    = nullptr;
+    QGridLayout*        listGridLayout    = nullptr;
+    QTreeWidget*        treeBrowserWidget = nullptr;
+    QWidget*            listBrowserWidget = nullptr;
+    QTableView*         tableView         = nullptr;
+    QStandardItemModel* tableModel        = nullptr;
+    QLabel*             statusLabel       = nullptr;
+    QSplitter*          splitter          = nullptr;
+    QLineEdit*          inputFilter       = nullptr;
+    QPushButton*        buttonReload      = nullptr;
+    QFrame*             line_1            = nullptr;
 
-    Agent*  agent;
+    Agent* agent = nullptr;
 
     void createUI();
     void setTableProcessDataWin(const QMap<int, BrowserProcessDataWin>& processMap) const;
@@ -51,7 +52,7 @@ class BrowserProcessWidget : public DockTab
     void filterTableWidget(const QString &filterText) const;
 
 public:
-    BrowserProcessWidget(AdaptixWidget* w, Agent* a);
+    BrowserProcessWidget(const AdaptixWidget* w, Agent* a);
     ~BrowserProcessWidget() override;
 
     void SetProcess(int msgType, const QString &data) const;

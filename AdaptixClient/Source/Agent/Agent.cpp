@@ -69,20 +69,25 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     else
         this->commander = new Commander();
 
-    this->FileBrowser    = new BrowserFilesWidget(adaptixWidget, this);
-    this->ProcessBrowser = new BrowserProcessWidget(adaptixWidget, this);
-    this->Terminal       = new TerminalContainerWidget(this, adaptixWidget);
-    this->Shell          = new TerminalContainerWidget(this, adaptixWidget, TerminalModeShell);
     this->Console        = new ConsoleWidget(adaptixWidget, this, this->commander);
     this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
 }
 
-Agent::~Agent() = default;
+Agent::~Agent()
+{
+    delete Console;
+    delete fileBrowser;
+    delete processBrowser;
+    delete terminal;
+    delete shell;
+}
 
 void Agent::Update(const QJsonObject &jsonObjAgentData)
 {
     QString old_Color = this->data.Color;
     bool needUpdateImage = false;
+
+    QString oldListener = this->data.Listener;
 
     QJsonValue val = jsonObjAgentData.value("a_sleep");
     if (val.isDouble())
@@ -175,6 +180,37 @@ void Agent::Update(const QJsonObject &jsonObjAgentData)
     val = jsonObjAgentData.value("a_username");
     if (val.isString())
         this->data.Username = val.toString();
+
+    val = jsonObjAgentData.value("a_listener");
+    if (val.isString()) {
+        this->data.Listener = val.toString();
+    }
+
+    if (oldListener != this->data.Listener) {
+        this->listenerType = "";
+        this->connType = "";
+
+        for (auto listenerData : this->adaptixWidget->Listeners) {
+            if (listenerData.Name == this->data.Listener) {
+                this->listenerType = listenerData.ListenerRegName;
+                if (listenerData.ListenerType == "internal")
+                    this->connType = "internal";
+                else
+                    this->connType = "external";
+                break;
+            }
+        }
+
+        auto regAgent = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
+        if (regAgent.commander && regAgent.commander != this->commander) {
+            this->commander = regAgent.commander;
+            if (this->Console)
+                this->Console->SetCommander(this->commander);
+        }
+
+        if (this->graphItem)
+            this->graphItem->invalidateCache();
+    }
 
     if (needUpdateImage)
         this->UpdateImage();
@@ -339,4 +375,32 @@ void Agent::RemoveChild(const PivotData &pivotData)
             break;
         }
     }
+}
+
+BrowserFilesWidget* Agent::GetFileBrowser()
+{
+    if (!fileBrowser)
+        fileBrowser = new BrowserFilesWidget(adaptixWidget, this);
+    return fileBrowser;
+}
+
+BrowserProcessWidget* Agent::GetProcessBrowser()
+{
+    if (!processBrowser)
+        processBrowser = new BrowserProcessWidget(adaptixWidget, this);
+    return processBrowser;
+}
+
+TerminalContainerWidget* Agent::GetTerminal()
+{
+    if (!terminal)
+        terminal = new TerminalContainerWidget(this, adaptixWidget);
+    return terminal;
+}
+
+TerminalContainerWidget* Agent::GetShell()
+{
+    if (!shell)
+        shell = new TerminalContainerWidget(this, adaptixWidget, TerminalModeShell);
+    return shell;
 }

@@ -22,10 +22,11 @@ class FontManager
 public:
     static FontManager& instance();
 
-    void  initialize();
-    QFont getFont(const QString& fontName, int pointSize = -1);
-    bool  isFontAvailable(const QString& fontName);
-    QFont getDefaultMonospaceFont(int pointSize = -1);
+    void    initialize();
+    QFont   getFont(const QString& fontName, int pointSize = -1);
+    bool    isFontAvailable(const QString& fontName);
+    QString resolveFamily(const QString& fontName);
+    QFont   getDefaultMonospaceFont(int pointSize = -1);
 };
 
 #endif

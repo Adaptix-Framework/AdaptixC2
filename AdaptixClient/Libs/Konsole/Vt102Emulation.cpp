@@ -115,6 +115,8 @@ void Vt102Emulation::reset() {
 #define TY_VT52(A) TY_CONSTRUCT(8, A, 0)
 #define TY_CSI_PG(A) TY_CONSTRUCT(9, A, 0)
 #define TY_CSI_PE(A) TY_CONSTRUCT(10, A, 0)
+#define TY_CSI_PQ(A) TY_CONSTRUCT(12, A, 0)
+#define TY_CSI_PL(A) TY_CONSTRUCT(13, A, 0)
 
 #define MAX_ARGUMENT 4096
 
@@ -203,9 +205,11 @@ void Vt102Emulation::initTokenizer() {
 #define les(P, L, C) (p == (P) && s[L] < 256 && (charClass[s[(L)]] & (C)) == (C))
 #define eec(C)       (p >= 3 && cc == (C))
 #define ees(C)       (p >= 3 && cc < 256 && (charClass[cc] & (C)) == (C))
-#define eps(C)       (p >= 3 && s[2] != '?' && s[2] != '!' && s[2] != '>' && cc < 256 && (charClass[cc] & (C)) == (C))
+#define eps(C)       (p >= 3 && s[2] != '?' && s[2] != '!' && s[2] != '<' && s[2] != '=' && s[2] != '>' && cc < 256 && (charClass[cc] & (C)) == (C))
 #define epp()        (p >= 3 && s[2] == '?')
 #define epe()        (p >= 3 && s[2] == '!')
+#define elt()        (p >= 3 && s[2] == '<')
+#define eeq()        (p >= 3 && s[2] == '=')
 #define egt()        (p >= 3 && s[2] == '>')
 #define esp()        (p == 4 && s[3] == ' ')
 #define Xpe          (tokenBufferPos >= 2 && tokenBuffer[1] == ']')
@@ -270,6 +274,12 @@ void Vt102Emulation::receiveChar(wchar_t cc) {
         if (lec(3, 2, '!')) {
             return;
         }
+        if (lec(3, 2, '<')) {
+            return;
+        }
+        if (lec(3, 2, '=')) {
+            return;
+        }
         if (lun()) {
             processToken(TY_CHR(), applyCharset(cc), 0);
             resetTokenizer();
@@ -298,6 +308,33 @@ void Vt102Emulation::receiveChar(wchar_t cc) {
         if (esp()) {
             return;
         }
+
+        // CSI with '<' private marker (e.g. SGR mouse reporting: CSI < ... M/m).
+        // Once ESC[< is seen, consume bytes until a CSI final byte (0x40-0x7E).
+        if (elt()) {
+            if (cc >= 0x40 && cc <= 0x7E) {
+                processToken(TY_CSI_PL(cc), 0, 0);
+                resetTokenizer();
+                return;
+            }
+            if (ees(DIG)) { addDigit(cc-'0'); return; }
+            if (eec(';') || eec(':')) { addArgument(); return; }
+            return;
+        }
+
+        // CSI with '=' private marker (e.g. Kitty keyboard protocol: CSI = ... u).
+        // Once ESC[= is seen, consume bytes until a CSI final byte (0x40-0x7E).
+        if (eeq()) {
+            if (cc >= 0x40 && cc <= 0x7E) {
+                processToken(TY_CSI_PQ(cc), 0, 0);
+                resetTokenizer();
+                return;
+            }
+            if (ees(DIG)) { addDigit(cc-'0'); return; }
+            if (eec(';') || eec(':')) { addArgument(); return; }
+            return;
+        }
+
         if (lec(5, 4, 'q') && s[3] == ' ') {
             processToken(TY_CSI_PS_SP(cc, argv[0]), argv[0], 0);
             resetTokenizer();
@@ -323,6 +360,13 @@ void Vt102Emulation::receiveChar(wchar_t cc) {
             addArgument();
             return;
         }
+
+        // Per ECMA-48, bytes 0x3C-0x3F (< = > ?) are valid CSI parameter bytes.
+        // When they appear after s[2] (the private-marker position), consume them
+        // so they don't fall through to the dispatch loop or get printed.
+        // This handles sequences like ESC[2:=z where '=' appears mid-parameter.
+        if (p >= 4 && cc >= 0x3C && cc <= 0x3F) { return; }
+
         for (int i = 0; i <= argc; i++) {
             if (epp())
                 processToken(TY_CSI_PR(cc, argv[i]), 0, 0);
@@ -1424,7 +1468,11 @@ void Vt102Emulation::processToken(int token, wchar_t p, int q) {
         break;
 
     default:
-        reportDecodingError();
+        // Silently ignore all CSI '<' and '=' (private marker) sequences.
+        // Token type 12 = TY_CSI_PQ ('='), 13 = TY_CSI_PL ('<');
+        // these are consumed but unimplemented.
+        if ((token & 0xff) != 12 && (token & 0xff) != 13)
+            reportDecodingError();
         break;
     };
 }

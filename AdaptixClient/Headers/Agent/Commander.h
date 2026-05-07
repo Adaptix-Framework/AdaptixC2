@@ -41,6 +41,14 @@ struct CommandsGroup
     QJSEngine*     engine;
 };
 
+struct ServerCommandsGroup
+{
+    QString       scriptName;
+    QString       description;
+    bool          enabled = true;
+    CommandsGroup group;
+};
+
 struct AxExecutor
 {
     bool     isSet;
@@ -69,11 +77,13 @@ Q_OBJECT
     QString listenerType;
     QString error;
 
-    CommandsGroup regCommandsGroup;
-    QVector<CommandsGroup> axCommandsGroup;
+    CommandsGroup                       mainCommandsGroup;
+    QMap<QString, ServerCommandsGroup>  serverGroups;
+    QVector<CommandsGroup>              clientGroups;
 
     QString         ProcessPreHook(QJSEngine *engine, const Command &command, const QString &agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args);
     CommanderResult ProcessCommand(const Command &command, const QString &commandName, QStringList args, QJsonObject jsonObj);
+    CommanderResult ProcessInputForGroup(const CommandsGroup &group, const QString &commandName, QStringList args, const QString &agentId, const QString &cmdline);
     CommanderResult ProcessHelp(QStringList commandParts);
     QString         GenerateCommandHelp(const Command &command, const QString &parentCommand = "");
 
@@ -81,9 +91,19 @@ public:
     explicit Commander();
     ~Commander() override;
 
-    void AddRegCommands(const CommandsGroup &group);
-    void AddAxCommands(const CommandsGroup &group);
-    void RemoveAxCommands(const QString &filepath);
+    void SetAgentType(const QString &type);
+    void SetMainCommands(const CommandsGroup &group);
+
+    void AddServerGroup(const QString &scriptName, const QString &description, const CommandsGroup &group);
+    void RemoveServerGroup(const QString &scriptName);
+    void SetServerGroupEnabled(const QString &scriptName, bool enabled);
+    void SetServerGroupEngine(const QString &scriptName, QJSEngine* engine);
+    bool IsServerGroupEnabled(const QString &scriptName) const;
+    QStringList GetServerGroupNames() const;
+    ServerCommandsGroup GetServerGroup(const QString &scriptName) const;
+
+    void AddClientGroup(const CommandsGroup &group);
+    void RemoveClientGroup(const QString &filepath);
 
     QString GetError();
     QStringList GetCommands();

@@ -57,8 +57,14 @@ HMODULE GetModuleAddress(ULONG modHash)
 
 LPVOID GetSymbolAddress(HANDLE hModule, ULONG symbHash)
 {
+    static int recursionDepth = 0;
+    if (recursionDepth > 6)
+        return NULL;
+
     if (hModule == NULL)
         return 0;
+
+    recursionDepth++;
 
     uintptr_t dllAddress = (uintptr_t) hModule;
 
@@ -95,19 +101,39 @@ LPVOID GetSymbolAddress(HANDLE hModule, ULONG symbHash)
 
                     memcpy(funcName, symbol + index, StrLenA(symbol) - index + 1);
 
-                    HMODULE hModule  = ApiWin->LoadLibraryA(moduleName);
-                    ULONG   hashFunc = Djb2A((PUCHAR)funcName);
+                    BOOL isApiSetDll = FALSE;
+                    if (StrLenA(moduleName) > 11 && StrNCmpA(moduleName, (char*)"api-ms-win-", 11) == 0) 
+                        isApiSetDll = TRUE;
+                    else if (StrLenA(moduleName) > 7 && StrNCmpA(moduleName, (char*)"ext-ms-", 7) == 0)
+                        isApiSetDll = TRUE;
+
+                    HMODULE hForwardModule = ApiWin->LoadLibraryA(moduleName);
+
+                    if (hForwardModule) {
+                        LPVOID result = NULL;
+
+                        if (isApiSetDll) {
+                            result = (LPVOID)ApiWin->GetProcAddress(hForwardModule, funcName);
+                        }
+                        else {
+                            ULONG hashFunc = Djb2A((PUCHAR)funcName);
+                            result = GetSymbolAddress(hForwardModule, hashFunc);
+                        }
+
+                        memset(moduleName, 0, StrLenA(moduleName));
+                        memset(funcName, 0, StrLenA(funcName));
+
+                        recursionDepth--;
+                        return result;
+                    }
 
                     memset(moduleName, 0, StrLenA(moduleName));
                     memset(funcName, 0, StrLenA(funcName));
-
-                    if (hModule) {
-                        return GetSymbolAddress(hModule, hashFunc);
-                    }
                 }
                 break;
             }
             else {
+                recursionDepth--;
                 return (LPVOID) symbolAddress;
             }
         }
@@ -115,5 +141,6 @@ LPVOID GetSymbolAddress(HANDLE hModule, ULONG symbHash)
         ordinalTable     += sizeof(WORD);
     }
 
+    recursionDepth--;
     return NULL;
 }

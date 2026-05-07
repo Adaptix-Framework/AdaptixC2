@@ -268,6 +268,9 @@ public:
 
 protected:
     void setUniqueName(const QString &uniqueName);
+
+    /// this is central area in terms of QMainWindow::centralWidget(), for internal usage only.
+    /// It's unrelated to KDDW's concept of central widget/group.
     Rect centralAreaGeometry() const;
 
 private:

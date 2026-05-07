@@ -1,4 +1,5 @@
 #include <UI/Dialogs/DialogExtender.h>
+#include <UI/Widgets/AdaptixWidget.h>
 #include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
 #include <Client/Extender.h>
@@ -12,12 +13,48 @@ DialogExtender::DialogExtender(Extender* e)
 
     this->createUI();
 
-    connect(tableWidget, &QTableWidget::customContextMenuRequested, this, &DialogExtender::handleMenu);
-    connect(tableWidget, &QTableWidget::cellClicked, this, &DialogExtender::onRowSelect);
-    connect(buttonClose, &QPushButton::clicked,      this, &DialogExtender::close);
+    connect(tableView,         &QTableView::customContextMenuRequested, this, &DialogExtender::handleMenu);
+    connect(tableView,         &QTableView::clicked, this, [this](const QModelIndex &index) { onRowSelect(index.row(), index.column()); });
+    connect(tableView->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
+        Q_UNUSED(selected)
+        Q_UNUSED(deselected)
+        tableView->setFocus();
+    });
+    connect(serverTableWidget,  &QTableView::customContextMenuRequested, this, &DialogExtender::handleServerMenu);
+    connect(serverTableWidget,  &QTableView::clicked, this, [this](const QModelIndex &index) { onServerRowSelect(index.row(), index.column()); });
+    connect(serverTableWidget->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this](const QItemSelection &selected, const QItemSelection &deselected){
+        Q_UNUSED(selected)
+        Q_UNUSED(deselected)
+        serverTableWidget->setFocus();
+    });
+    connect(serverProjectCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &DialogExtender::onProjectChanged);
+    connect(buttonClose,        &QPushButton::clicked,                     this, &DialogExtender::close);
 }
 
 DialogExtender::~DialogExtender()  = default;
+
+static QTableView* createScriptTable(QWidget* parent, QStandardItemModel* model, int columnCount)
+{
+    model->setColumnCount(columnCount);
+    auto* table = new QTableView(parent);
+    table->setModel(model);
+    table->setHorizontalHeader(new BoldHeaderView(Qt::Horizontal, table));
+    table->setContextMenuPolicy(Qt::CustomContextMenu);
+    table->setAutoFillBackground(false);
+    table->setShowGrid(false);
+    table->setSortingEnabled(true);
+    table->setWordWrap(true);
+    table->setCornerButtonEnabled(false);
+    table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    table->setFocusPolicy(Qt::NoFocus);
+    table->setAlternatingRowColors(true);
+    table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    table->horizontalHeader()->setCascadingSectionResizes(true);
+    table->horizontalHeader()->setHighlightSections(false);
+    table->verticalHeader()->setVisible(false);
+    table->setItemDelegate(new PaddingDelegate(table));
+    return table;
+}
 
 void DialogExtender::createUI()
 {
@@ -25,28 +62,14 @@ void DialogExtender::createUI()
     this->resize(1200, 700);
     this->setProperty("Main", "base");
 
-    tableWidget = new QTableWidget(this);
-    tableWidget->setColumnCount(4);
-    tableWidget->setContextMenuPolicy(Qt::CustomContextMenu );
-    tableWidget->setAutoFillBackground(false);
-    tableWidget->setShowGrid(false);
-    tableWidget->setSortingEnabled(true);
-    tableWidget->setWordWrap(true);
-    tableWidget->setCornerButtonEnabled(false);
-    tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows );
-    tableWidget->setFocusPolicy(Qt::NoFocus );
-    tableWidget->setAlternatingRowColors(true);
-    tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    tableWidget->horizontalHeader()->setCascadingSectionResizes(true);
-    tableWidget->horizontalHeader()->setHighlightSections(false);
-    tableWidget->verticalHeader()->setVisible(false);
-
-    tableWidget->setHorizontalHeaderItem(0, new QTableWidgetItem("Name" ) );
-    tableWidget->setHorizontalHeaderItem(1, new QTableWidgetItem("Path" ) );
-    tableWidget->setHorizontalHeaderItem(2, new QTableWidgetItem("Status" ) );
-    tableWidget->setHorizontalHeaderItem(3, new QTableWidgetItem("Description" ) );
-
-    tableWidget->hideColumn(3);
+    /// Local Scripts
+    tableModel = new QStandardItemModel(this);
+    tableView = createScriptTable(this, tableModel, 4);
+    tableModel->setHorizontalHeaderItem(0, new QStandardItem("名称"));
+    tableModel->setHorizontalHeaderItem(1, new QStandardItem("路径"));
+    tableModel->setHorizontalHeaderItem(2, new QStandardItem("状态"));
+    tableModel->setHorizontalHeaderItem(3, new QStandardItem("描述"));
+    tableView->hideColumn(3);
 
     textComment = new QTextEdit(this);
     textComment->setReadOnly(true);
@@ -54,21 +77,52 @@ void DialogExtender::createUI()
     splitter = new QSplitter(Qt::Vertical, this);
     splitter->setContentsMargins(0, 0, 0, 0);
     splitter->setHandleWidth(3);
-    splitter->setVisible(true);
-    splitter->addWidget(tableWidget);
+    splitter->addWidget(tableView);
     splitter->addWidget(textComment);
     splitter->setSizes(QList<int>({500, 140}));
+
+    /// Server Scripts
+    serverTab = new QWidget(this);
+
+    serverProjectCombo = new QComboBox(serverTab);
+    serverProjectCombo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+    serverTableModel = new QStandardItemModel(serverTab);
+    serverTableWidget = createScriptTable(serverTab, serverTableModel, 3);
+    serverTableModel->setHorizontalHeaderItem(0, new QStandardItem("名称"));
+    serverTableModel->setHorizontalHeaderItem(1, new QStandardItem("状态"));
+    serverTableModel->setHorizontalHeaderItem(2, new QStandardItem("描述"));
+    serverTableWidget->hideColumn(2);
+
+    serverTextComment = new QTextEdit(serverTab);
+    serverTextComment->setReadOnly(true);
+
+    serverSplitter = new QSplitter(Qt::Vertical, serverTab);
+    serverSplitter->setContentsMargins(0, 0, 0, 0);
+    serverSplitter->setHandleWidth(3);
+    serverSplitter->addWidget(serverTableWidget);
+    serverSplitter->addWidget(serverTextComment);
+    serverSplitter->setSizes(QList<int>({500, 140}));
+
+    auto* serverLayout = new QVBoxLayout(serverTab);
+    serverLayout->setContentsMargins(4, 4, 4, 4);
+    serverLayout->setSpacing(4);
+    serverLayout->addWidget(serverProjectCombo);
+    serverLayout->addWidget(serverSplitter, 1);
+
+    tabWidget = new QTabWidget(this);
+    tabWidget->addTab(splitter, "本地脚本");
+    tabWidget->addTab(serverTab, "服务器脚本");
 
     spacer1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
     spacer2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-    buttonClose = new QPushButton("Close", this);
-    buttonClose->setProperty("ButtonStyle", "dialog");
+    buttonClose = new QPushButton("关闭", this);
     buttonClose->setFixedWidth(180);
 
     layout = new QGridLayout(this);
-    layout->setContentsMargins( 4, 4,  4, 4);
-    layout->addWidget(splitter,    0, 0, 1, 3);
+    layout->setContentsMargins(4, 4, 4, 4);
+    layout->addWidget(tabWidget,   0, 0, 1, 3);
     layout->addItem(  spacer1,     1, 0, 1, 1);
     layout->addWidget(buttonClose, 1, 1, 1, 1);
     layout->addItem(  spacer2,     1, 2, 1, 1);
@@ -78,16 +132,16 @@ void DialogExtender::createUI()
 
 void DialogExtender::AddExtenderItem(const ExtensionFile &extenderItem) const
 {
-    auto item_Name   = new QTableWidgetItem(extenderItem.Name);
-    auto item_Path   = new QTableWidgetItem(extenderItem.FilePath);
-    auto item_Desc   = new QTableWidgetItem(extenderItem.Description);
-    auto item_Status = new QTableWidgetItem("");
+    auto item_Name   = new QStandardItem(extenderItem.Name);
+    auto item_Path   = new QStandardItem(extenderItem.FilePath);
+    auto item_Desc   = new QStandardItem(extenderItem.Description);
+    auto item_Status = new QStandardItem("");
 
-    item_Name->setFlags( item_Name->flags() ^ Qt::ItemIsEditable );
+    item_Name->setFlags( item_Name->flags() & ~Qt::ItemIsEditable );
 
-    item_Path->setFlags( item_Path->flags() ^ Qt::ItemIsEditable );
+    item_Path->setFlags( item_Path->flags() & ~Qt::ItemIsEditable );
 
-    item_Status->setFlags( item_Status->flags() ^ Qt::ItemIsEditable );
+    item_Status->setFlags( item_Status->flags() & ~Qt::ItemIsEditable );
     item_Status->setTextAlignment( Qt::AlignCenter );
     if ( extenderItem.Enabled ) {
         item_Status->setText("已启用");
@@ -104,43 +158,43 @@ void DialogExtender::AddExtenderItem(const ExtensionFile &extenderItem) const
         }
     }
 
-    if( tableWidget->rowCount() < 1 )
-        tableWidget->setRowCount( 1 );
+    if( tableModel->rowCount() < 1 )
+        tableModel->setRowCount( 1 );
     else
-        tableWidget->setRowCount( tableWidget->rowCount() + 1 );
+        tableModel->setRowCount( tableModel->rowCount() + 1 );
 
-    bool isSortingEnabled = tableWidget->isSortingEnabled();
-    tableWidget->setSortingEnabled( false );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 0, item_Name );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 1, item_Path );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 2, item_Status );
-    tableWidget->setItem( tableWidget->rowCount() - 1, 3, item_Desc );
-    tableWidget->setSortingEnabled( isSortingEnabled );
+    bool isSortingEnabled = tableView->isSortingEnabled();
+    tableView->setSortingEnabled( false );
+    tableModel->setItem( tableModel->rowCount() - 1, 0, item_Name );
+    tableModel->setItem( tableModel->rowCount() - 1, 1, item_Path );
+    tableModel->setItem( tableModel->rowCount() - 1, 2, item_Status );
+    tableModel->setItem( tableModel->rowCount() - 1, 3, item_Desc );
+    tableView->setSortingEnabled( isSortingEnabled );
 
-    tableWidget->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::ResizeToContents );
-    tableWidget->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
+    tableView->horizontalHeader()->setSectionResizeMode( 0, QHeaderView::ResizeToContents );
+    tableView->horizontalHeader()->setSectionResizeMode( 2, QHeaderView::ResizeToContents );
 }
 
 void DialogExtender::UpdateExtenderItem(const ExtensionFile &extenderItem) const
 {
-    for (int row = 0; row < tableWidget->rowCount(); ++row) {
-        QTableWidgetItem *item = tableWidget->item(row, 1);
+    for (int row = 0; row < tableModel->rowCount(); ++row) {
+        QStandardItem *item = tableModel->item(row, 1);
         if ( item && item->text() == extenderItem.FilePath ) {
-            tableWidget->item(row, 0)->setText(extenderItem.Name);
-            tableWidget->item(row, 3)->setText(extenderItem.Description);
+            tableModel->item(row, 0)->setText(extenderItem.Name);
+            tableModel->item(row, 3)->setText(extenderItem.Description);
 
             if ( extenderItem.Enabled ) {
-                tableWidget->item(row, 2)->setText("已启用");
-                tableWidget->item(row, 2)->setForeground(QColor(COLOR_NeonGreen));
+                tableModel->item(row, 2)->setText("已启用");
+                tableModel->item(row, 2)->setForeground(QColor(COLOR_NeonGreen));
             }
             else {
                 if (extenderItem.Message.isEmpty()) {
-                    tableWidget->item(row, 2)->setText("已禁用");
-                    tableWidget->item(row, 2)->setForeground(QColor(COLOR_BrightOrange));
+                    tableModel->item(row, 2)->setText("已禁用");
+                    tableModel->item(row, 2)->setForeground(QColor(COLOR_BrightOrange));
                 }
                 else {
-                    tableWidget->item(row, 2)->setText("失败");
-                    tableWidget->item(row, 2)->setForeground(QColor(COLOR_ChiliPepper));
+                    tableModel->item(row, 2)->setText("失败");
+                    tableModel->item(row, 2)->setForeground(QColor(COLOR_ChiliPepper));
                 }
             }
             break;
@@ -150,10 +204,10 @@ void DialogExtender::UpdateExtenderItem(const ExtensionFile &extenderItem) const
 
 void DialogExtender::RemoveExtenderItem(const ExtensionFile &extenderItem) const
 {
-    for (int row = 0; row < tableWidget->rowCount(); ++row) {
-        QTableWidgetItem *item = tableWidget->item(row, 1);
+    for (int row = 0; row < tableModel->rowCount(); ++row) {
+        QStandardItem *item = tableModel->item(row, 1);
         if ( item && item->text() == extenderItem.FilePath ) {
-            tableWidget->removeRow(row);
+            tableModel->removeRow(row);
             break;
         }
     }
@@ -166,14 +220,14 @@ void DialogExtender::handleMenu(const QPoint &pos ) const
     QMenu menu = QMenu();
 
     menu.addAction("加载新脚本", this, &DialogExtender::onActionLoad );
-    menu.addAction("Reload",   this, &DialogExtender::onActionReload );
+    menu.addAction("重新加载",   this, &DialogExtender::onActionReload );
     menu.addSeparator();
-    menu.addAction("Enable",  this, &DialogExtender::onActionEnable );
-    menu.addAction("Disable", this, &DialogExtender::onActionDisable );
+    menu.addAction("启用",  this, &DialogExtender::onActionEnable );
+    menu.addAction("禁用", this, &DialogExtender::onActionDisable );
     menu.addSeparator();
-    menu.addAction("Remove", this, &DialogExtender::onActionRemove );
+    menu.addAction("移除", this, &DialogExtender::onActionRemove );
 
-    QPoint globalPos = tableWidget->mapToGlobal(pos);
+    QPoint globalPos = tableView->mapToGlobal(pos);
     menu.exec(globalPos);
 }
 
@@ -185,7 +239,7 @@ void DialogExtender::onActionLoad() const
             baseDir = profile->GetProjectDir();
     }
 
-    NonBlockingDialogs::getOpenFileName(const_cast<DialogExtender*>(this), "加载脚本", baseDir, "AxScript 文件 (*.axs)",
+    NonBlockingDialogs::getOpenFileName(const_cast<DialogExtender*>(this), "Load Script", baseDir, "AxScript Files (*.axs)",
         [this](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
@@ -196,9 +250,9 @@ void DialogExtender::onActionLoad() const
 
 void DialogExtender::onActionReload() const
 {
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
-            auto filePath = tableWidget->item( rowIndex, 1 )->text();
+    for( int rowIndex = 0 ; rowIndex < tableModel->rowCount() ; rowIndex++ ) {
+        if ( tableView->selectionModel()->isSelected(tableModel->index(rowIndex, 0)) ) {
+            auto filePath = tableModel->item( rowIndex, 1 )->text();
             extender->RemoveExtension(filePath);
             extender->LoadFromFile(filePath, true);
         }
@@ -207,9 +261,9 @@ void DialogExtender::onActionReload() const
 
 void DialogExtender::onActionEnable() const
 {
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
-            auto filePath = tableWidget->item( rowIndex, 1 )->text();
+    for( int rowIndex = 0 ; rowIndex < tableModel->rowCount() ; rowIndex++ ) {
+        if ( tableView->selectionModel()->isSelected(tableModel->index(rowIndex, 0)) ) {
+            auto filePath = tableModel->item( rowIndex, 1 )->text();
             extender->EnableExtension(filePath);
         }
     }
@@ -217,9 +271,9 @@ void DialogExtender::onActionEnable() const
 
 void DialogExtender::onActionDisable() const
 {
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
-            auto filePath = tableWidget->item( rowIndex, 1 )->text();
+    for( int rowIndex = 0 ; rowIndex < tableModel->rowCount() ; rowIndex++ ) {
+        if ( tableView->selectionModel()->isSelected(tableModel->index(rowIndex, 0)) ) {
+            auto filePath = tableModel->item( rowIndex, 1 )->text();
             extender->DisableExtension(filePath);
         }
     }
@@ -228,9 +282,9 @@ void DialogExtender::onActionDisable() const
 void DialogExtender::onActionRemove() const
 {
     QStringList FilesList;
-    for( int rowIndex = 0 ; rowIndex < tableWidget->rowCount() ; rowIndex++ ) {
-        if ( tableWidget->item(rowIndex, 1)->isSelected() ) {
-            auto filePath = tableWidget->item( rowIndex, 1 )->text();
+    for( int rowIndex = 0 ; rowIndex < tableModel->rowCount() ; rowIndex++ ) {
+        if ( tableView->selectionModel()->isSelected(tableModel->index(rowIndex, 0)) ) {
+            auto filePath = tableModel->item( rowIndex, 1 )->text();
             FilesList.append(filePath);
         }
     }
@@ -241,4 +295,137 @@ void DialogExtender::onActionRemove() const
     textComment->clear();
 }
 
-void DialogExtender::onRowSelect(const int row, int column) const { textComment->setText(tableWidget->item(row,3)->text()); }
+void DialogExtender::onRowSelect(const int row, int column) const { textComment->setText(tableModel->item(row,3)->text()); }
+
+/// Server Scripts
+
+void DialogExtender::SetMainUI(MainUI* ui)
+{
+    mainUI = ui;
+    RefreshProjectsList();
+}
+
+void DialogExtender::RefreshProjectsList()
+{
+    serverProjectCombo->blockSignals(true);
+    serverProjectCombo->clear();
+
+    if (!mainUI) {
+        serverProjectCombo->blockSignals(false);
+        return;
+    }
+
+    auto projects = mainUI->GetAdaptixProjects();
+    for (auto* widget : projects) {
+        if (widget && widget->GetProfile()) {
+            QString projectName = widget->GetProfile()->GetProject();
+            serverProjectCombo->addItem(projectName, QVariant::fromValue(static_cast<void*>(widget)));
+        }
+    }
+
+    serverProjectCombo->blockSignals(false);
+
+    if (serverProjectCombo->count() > 0) {
+        serverProjectCombo->setCurrentIndex(0);
+        onProjectChanged(0);
+    } else {
+        currentAdaptixWidget = nullptr;
+        RefreshServerScripts();
+    }
+}
+
+void DialogExtender::onProjectChanged(int index)
+{
+    if (index < 0 || !serverProjectCombo) {
+        currentAdaptixWidget = nullptr;
+    } else {
+        currentAdaptixWidget = static_cast<AdaptixWidget*>(serverProjectCombo->itemData(index).value<void*>());
+    }
+    RefreshServerScripts();
+}
+
+void DialogExtender::RefreshServerScripts()
+{
+    serverTableModel->setRowCount(0);
+    serverTextComment->clear();
+
+    if (!currentAdaptixWidget)
+        return;
+
+    QList<ServerScriptInfo> scripts = currentAdaptixWidget->GetServerScripts();
+    for (const ServerScriptInfo &entry : scripts) {
+        auto item_Name   = new QStandardItem(entry.name);
+        auto item_Status = new QStandardItem("");
+        auto item_Desc   = new QStandardItem(entry.description);
+
+        item_Name->setFlags(item_Name->flags() & ~Qt::ItemIsEditable);
+
+        item_Status->setFlags(item_Status->flags() & ~Qt::ItemIsEditable);
+        item_Status->setTextAlignment(Qt::AlignCenter);
+        if (entry.enabled) {
+            item_Status->setText("已启用");
+            item_Status->setForeground(QColor(COLOR_NeonGreen));
+        } else {
+            item_Status->setText("已禁用");
+            item_Status->setForeground(QColor(COLOR_BrightOrange));
+        }
+
+        int row = serverTableModel->rowCount();
+        serverTableModel->setRowCount(row + 1);
+
+        bool isSortingEnabled = serverTableWidget->isSortingEnabled();
+        serverTableWidget->setSortingEnabled(false);
+        serverTableModel->setItem(row, 0, item_Name);
+        serverTableModel->setItem(row, 1, item_Status);
+        serverTableModel->setItem(row, 2, item_Desc);
+        serverTableWidget->setSortingEnabled(isSortingEnabled);
+    }
+
+    serverTableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    serverTableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+}
+
+void DialogExtender::handleServerMenu(const QPoint &pos)
+{
+    QMenu menu;
+    menu.addAction("启用",  this, &DialogExtender::onServerActionEnable);
+    menu.addAction("禁用", this, &DialogExtender::onServerActionDisable);
+
+    QPoint globalPos = serverTableWidget->mapToGlobal(pos);
+    menu.exec(globalPos);
+}
+
+void DialogExtender::onServerActionEnable()
+{
+    if (!currentAdaptixWidget)
+        return;
+
+    for (int row = 0; row < serverTableModel->rowCount(); ++row) {
+        if (serverTableWidget->selectionModel()->isSelected(serverTableModel->index(row, 0))) {
+            QString name = serverTableModel->item(row, 0)->text();
+            currentAdaptixWidget->EnableServerScript(name);
+        }
+    }
+    RefreshServerScripts();
+}
+
+void DialogExtender::onServerActionDisable()
+{
+    if (!currentAdaptixWidget)
+        return;
+
+    for (int row = 0; row < serverTableModel->rowCount(); ++row) {
+        if (serverTableWidget->selectionModel()->isSelected(serverTableModel->index(row, 0))) {
+            QString name = serverTableModel->item(row, 0)->text();
+            currentAdaptixWidget->DisableServerScript(name);
+        }
+    }
+    RefreshServerScripts();
+}
+
+void DialogExtender::onServerRowSelect(const int row, int column) const
+{
+    QStandardItem* item = serverTableModel->item(row, 2);
+    if (item)
+        serverTextComment->setText(item->text());
+}
