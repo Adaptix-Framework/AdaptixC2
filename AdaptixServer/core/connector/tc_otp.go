@@ -175,7 +175,7 @@ func (tc *TsConnector) tcOTP_DownloadSync(ctx *gin.Context) {
 
 	ctx.Header("Content-Disposition", "attachment; filename="+fileInfo.Name())
 	ctx.Header("Content-Type", "application/octet-stream")
-	ctx.Header("Content-Length", string(rune(fileInfo.Size())))
+	ctx.Header("Content-Length", strconv.FormatInt(fileInfo.Size(), 10))
 
 	ctx.File(path)
 }
