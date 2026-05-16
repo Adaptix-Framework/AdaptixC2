@@ -308,6 +308,10 @@ void Vt102Emulation::receiveChar(wchar_t cc) {
         if (esp()) {
             return;
         }
+        // DECRQM: CSI Pd $ p — absorb '$' intermediate byte and dispatch on 'p'.
+        if (eec('$')) {
+            return;
+        }
 
         // CSI with '<' private marker (e.g. SGR mouse reporting: CSI < ... M/m).
         // Once ESC[< is seen, consume bytes until a CSI final byte (0x40-0x7E).
@@ -1415,6 +1419,33 @@ void Vt102Emulation::processToken(int token, wchar_t p, int q) {
     case TY_CSI_PE('p'): /* IGNORED: reset         (        ) */
         break;
 
+    case TY_CSI_PS('p', 2): reportAnsiMode(2, 2); break;                                                   // KAM — not supported
+    case TY_CSI_PS('p', 4): reportAnsiMode(4, _currentScreen->getMode(MODE_Insert) ? 1 : 2); break;        // IRM
+    case TY_CSI_PS('p', 10): reportAnsiMode(10, 4); break;                                                 // HEM — permanently reset
+    case TY_CSI_PS('p', 20): reportAnsiMode(20, getMode(MODE_NewLine) ? 1 : 2); break;                  // LNM
+
+    case TY_CSI_PR('p', 1): reportDecMode(1, getMode(MODE_AppCuKeys) ? 1 : 2); break;                   // DECCKM
+    case TY_CSI_PR('p', 2): reportDecMode(2, getMode(MODE_Ansi) ? 1 : 2); break;                        // DECANM
+    case TY_CSI_PR('p', 3): reportDecMode(3, getMode(MODE_132Columns) ? 1 : 2); break;                  // DECCOLM
+    case TY_CSI_PR('p', 4): reportDecMode(4, 4); break;                                                    // DECSCLM — permanently reset
+    case TY_CSI_PR('p', 5): reportDecMode(5, _currentScreen->getMode(MODE_Screen) ? 1 : 2); break;         // DECSCNM
+    case TY_CSI_PR('p', 6): reportDecMode(6, _currentScreen->getMode(MODE_Origin) ? 1 : 2); break;         // DECOM
+    case TY_CSI_PR('p', 7): reportDecMode(7, _currentScreen->getMode(MODE_Wrap) ? 1 : 2); break;           // DECAWM
+    case TY_CSI_PR('p', 8): reportDecMode(8, 4); break;                                                    // DECARM — permanently reset
+    case TY_CSI_PR('p', 9): reportDecMode(9, 4); break;                                                    // DECINLM — permanently reset
+    case TY_CSI_PR('p', 25): reportDecMode(25, _currentScreen->getMode(MODE_Cursor) ? 1 : 2); break;       // DECTCEM
+    case TY_CSI_PR('p', 47): reportDecMode(47, getMode(MODE_AppScreen) ? 1 : 2); break;                 // alt screen
+    case TY_CSI_PR('p', 1000): reportDecMode(1000, getMode(MODE_Mouse1000) ? 1 : 2); break;             // VT200 mouse
+    case TY_CSI_PR('p', 1002): reportDecMode(1002, getMode(MODE_Mouse1002) ? 1 : 2); break;             // cell motion
+    case TY_CSI_PR('p', 1003): reportDecMode(1003, getMode(MODE_Mouse1003) ? 1 : 2); break;             // any motion
+    case TY_CSI_PR('p', 1004): reportDecMode(1004, _reportFocusEvents ? 1 : 2); break;                     // focus events
+    case TY_CSI_PR('p', 1005): reportDecMode(1005, getMode(MODE_Mouse1005) ? 1 : 2); break;             // UTF-8 mouse
+    case TY_CSI_PR('p', 1006): reportDecMode(1006, getMode(MODE_Mouse1006) ? 1 : 2); break;             // SGR mouse
+    case TY_CSI_PR('p', 1015): reportDecMode(1015, getMode(MODE_Mouse1015) ? 1 : 2); break;             // URXVT mouse
+    case TY_CSI_PR('p', 1047): reportDecMode(1047, getMode(MODE_AppScreen) ? 1 : 2); break;             // alt screen (xterm)
+    case TY_CSI_PR('p', 1049): reportDecMode(1049, getMode(MODE_AppScreen) ? 1 : 2); break;             // alt screen + cursor
+    case TY_CSI_PR('p', 2004): reportDecMode(2004, getMode(MODE_BracketedPaste) ? 1 : 2); break;        // bracketed paste
+
     case TY_VT52('A'):
         _currentScreen->cursorUp(1);
         break;
@@ -1524,6 +1555,24 @@ void Vt102Emulation::reportTerminalParms(int p)
 
 void Vt102Emulation::reportStatus() {
     sendString("\033[0n");
+}
+
+void Vt102Emulation::reportAnsiMode(int mode, int status) {
+    const size_t sz = 32;
+    char tmp[sz];
+    const size_t r = snprintf(tmp, sz, "\033[%d;%d$y", mode, status);
+    if (sz <= r)
+        qWarning("Vt102Emulation::reportAnsiMode: Buffer too small\n");
+    sendString(tmp);
+}
+
+void Vt102Emulation::reportDecMode(int mode, int status) {
+    const size_t sz = 32;
+    char tmp[sz];
+    const size_t r = snprintf(tmp, sz, "\033[?%d;%d$y", mode, status);
+    if (sz <= r)
+        qWarning("Vt102Emulation::reportDecMode: Buffer too small\n");
+    sendString(tmp);
 }
 
 void Vt102Emulation::reportAnswerBack() {

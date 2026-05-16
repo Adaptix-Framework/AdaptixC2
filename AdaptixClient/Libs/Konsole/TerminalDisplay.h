@@ -341,7 +341,8 @@ private Q_SLOTS:
 private:
 
     int textWidth(int startColumn, int length, int line) const;
-    QRect calculateTextArea(int topLeftX, int topLeftY, int startColumn, int line, int length);
+    QRect calculateTextArea(int topLeftX, int topLeftY, int startColumn, int line, int length,
+                            const QTransform &textScale);
 
     void drawContents(QPainter &paint, const QRect &rect);
     void drawTextFragment(QPainter& painter, const QRect& rect, const std::wstring& text, Character* style, bool tooWide, bool isSelection);

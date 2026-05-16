@@ -114,6 +114,8 @@ private:
   void reportAnswerBack();
   void reportCursorPosition();
   void reportTerminalParms(int p);
+  void reportAnsiMode(int mode, int status);
+  void reportDecMode(int mode, int status);
 
   void onScrollLock();
   void scrollLock(const bool lock);
