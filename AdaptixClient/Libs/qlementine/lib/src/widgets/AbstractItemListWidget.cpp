@@ -126,6 +126,7 @@ int AbstractItemListWidget::addItem(
 
   update();
   updateGeometry();
+  updateItemRects();
   updateItemsAnimations();
   updateCurrentIndexAnimation();
   Q_EMIT itemCountChanged();

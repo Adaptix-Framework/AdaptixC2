@@ -26,4 +26,12 @@ struct IconTheme {
 /// Makes an icon from the file located at the path in parameter and colorizes the QPixmaps. Fixes the standard Qt behavior.
 [[maybe_unused]] QIcon makeIconFromSvg(
   const QString& svgPath, const IconTheme& iconTheme, const QSize& size = QSize(16, 16));
+
+/// Makes an icon from SVG data in memory. Fixes the standard Qt behavior.
+[[maybe_unused]] QIcon makeIconFromSvgData(const QByteArray& svgData, const QSize& size);
+
+/// Makes an icon from SVG data in memory and colorizes the QPixmaps. Fixes the standard Qt behavior.
+[[maybe_unused]] QIcon makeIconFromSvgData(
+  const QByteArray& svgData, const IconTheme& iconTheme, const QSize& size = QSize(16, 16));
+
 } // namespace oclero::qlementine
