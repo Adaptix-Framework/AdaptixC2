@@ -15,14 +15,14 @@ function ListenerUI(mode_create)
     textlinePrepend.setEnabled(mode_create)
 
     let labelEncryptKey = form.create_label("Encryption key:");
-    let textlineEncryptKey = form.create_textline(ax.random_string(32, "hex"));
+    let textlineEncryptKey = form.create_textline(ax.random_string(64, "hex"));
     textlineEncryptKey.setEnabled(mode_create)
     let buttonEncryptKey = form.create_button("Generate");
     buttonEncryptKey.setEnabled(mode_create)
 
     let spacer2 = form.create_vspacer()
 
-    form.connect(buttonEncryptKey, "clicked", function() { textlineEncryptKey.setText( ax.random_string(32, "hex") ); });
+    form.connect(buttonEncryptKey, "clicked", function() { textlineEncryptKey.setText( ax.random_string(64, "hex") ); });
 
     let layout = form.create_gridlayout();
     layout.addWidget(spacer1,            0, 0, 1, 3);

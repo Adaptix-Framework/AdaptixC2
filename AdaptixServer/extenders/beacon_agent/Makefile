@@ -2,7 +2,7 @@ all: clean
 	@ echo "    * Building agent_beacon plugin"
 	@ mkdir dist
 	@ cp config.yaml ax_config.axs ./dist/
-	@ GOEXPERIMENT=jsonv2,greenteagc go build -buildmode=plugin -ldflags="-s -w" -o ./dist/agent_beacon.so pl_main.go pl_packer.go pl_utils.go pl_sideloading.go
+	@ GOEXPERIMENT=jsonv2,greenteagc go build -buildmode=plugin -ldflags="-s -w" -o ./dist/agent_beacon.so pl_main.go pl_packer.go pl_utils.go pl_sideloading.go pl_hashes.go pl_encoder.go
 	@ echo "      done..."
 
 	@ echo "    * Building agent"
@@ -11,6 +11,9 @@ all: clean
 	@ mv src_beacon/objects_smb ./dist/objects_smb
 	@ mv src_beacon/objects_tcp ./dist/objects_tcp
 	@ mv src_beacon/objects_dns ./dist/objects_dns
+	@ mv src_beacon/objects_discord ./dist/objects_discord
+	@ cp -r src_beacon/beacon ./dist/beacon
+	@ cp -r src_beacon/files ./dist/files
 	@ echo "      done..."
 
 clean:

