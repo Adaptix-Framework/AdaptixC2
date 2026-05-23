@@ -14,6 +14,7 @@ Teamserver:
     - "extenders/beacon_listener_smb/config.yaml"
     - "extenders/beacon_listener_tcp/config.yaml"
     - "extenders/beacon_listener_dns/config.yaml"
+    - "extenders/beacon_listener_discord/config.yaml"
     - "extenders/beacon_agent/config.yaml"
     - "extenders/gopher_listener_tcp/config.yaml"
     - "extenders/gopher_agent/config.yaml"
