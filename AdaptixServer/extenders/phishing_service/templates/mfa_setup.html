@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;color:#333;background-color:#f4f4f4;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f4;padding:30px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+
+<!-- Header -->
+<tr><td style="background-color:#107c10;padding:24px 40px;">
+<table width="100%"><tr>
+<td><span style="color:#fff;font-size:20px;font-weight:600;">Microsoft 365 Security</span></td>
+<td align="right"><span style="color:rgba(255,255,255,0.7);font-size:12px;">Security Update</span></td>
+</tr></table>
+</td></tr>
+
+<!-- Body -->
+<tr><td style="padding:32px 40px;">
+<p style="margin:0 0 20px;font-size:16px;font-weight:600;color:#107c10;">&#128274; Multi-Factor Authentication Enrollment Required</p>
+
+<p style="margin:0 0 16px;">Dear {{.FirstName}},</p>
+
+<p style="margin:0 0 16px;">As part of our ongoing commitment to security, {{.Company}} is requiring all employees to enroll in Multi-Factor Authentication (MFA) by the end of this week.</p>
+
+<p style="margin:0 0 8px;font-weight:600;">To complete enrollment:</p>
+<table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+<tr><td style="padding:8px 0;vertical-align:top;width:30px;color:#107c10;font-weight:bold;">1.</td>
+<td style="padding:8px 0;">Sign in to verify your identity</td></tr>
+<tr><td style="padding:8px 0;vertical-align:top;width:30px;color:#107c10;font-weight:bold;">2.</td>
+<td style="padding:8px 0;">Follow the guided setup wizard</td></tr>
+<tr><td style="padding:8px 0;vertical-align:top;width:30px;color:#107c10;font-weight:bold;">3.</td>
+<td style="padding:8px 0;">Choose your preferred authentication method</td></tr>
+</table>
+
+<table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+<tr><td style="background-color:#107c10;border-radius:4px;padding:12px 32px;">
+<a href="{{.ClickURL}}" style="color:#fff;text-decoration:none;font-size:15px;font-weight:600;">Start MFA Enrollment</a>
+</td></tr>
+</table>
+
+<!-- Info Box -->
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f6f0;border:1px solid #c3e6cb;border-radius:4px;margin:0 0 16px;">
+<tr><td style="padding:16px;">
+<p style="margin:0 0 4px;font-weight:600;font-size:13px;color:#155724;">Why is this important?</p>
+<p style="margin:0;font-size:13px;color:#155724;">MFA adds an extra layer of protection to your account. Even if your password is compromised, unauthorized access is prevented without your second factor.</p>
+</td></tr>
+</table>
+
+<p style="margin:0;color:#888;font-size:12px;">Employees who do not complete enrollment by the deadline may experience limited access to company resources.</p>
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="background-color:#f8f9fa;padding:20px 40px;border-top:1px solid #e9ecef;">
+<p style="margin:0 0 4px;color:#6c757d;font-size:11px;">{{.Company}} IT Department &bull; Microsoft 365 Administration</p>
+<p style="margin:0;color:#6c757d;font-size:11px;">This email was sent to {{.Email}}. Do not reply to this email.</p>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>

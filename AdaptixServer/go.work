@@ -9,4 +9,5 @@ use (
 	./extenders/beacon_listener_tcp
 	./extenders/gopher_agent
 	./extenders/gopher_listener_tcp
+	./extenders/phishing_service
 )

