@@ -17,6 +17,11 @@ type Teamserver interface {
 	TsAgentProcessData(agentId string, bodyData []byte) error
 	TsAgentSetTick(agentId string, listenerName string) error
 	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
+
+	TsFrameHasPending(sessionId string) bool
+	TsFramePut(sessionId string, index uint32, data []byte, totalSize uint32, chunkCount uint16) (complete bool, nextExpected uint32, received uint32, sackBitmap uint32, assembled []byte)
+	TsFrameGetChunk(sessionId string, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (total uint32, offset uint32, data []byte, taskNonce uint32, isEmpty bool)
+	TsFrameAckDelivery(sessionId string, ackOffset uint32, ackNonce uint32)
 }
 
 type PluginListener struct{}
@@ -83,15 +88,9 @@ func (p *PluginListener) Create(name string, config string, customData []byte) (
 	}
 
 	transport := &TransportDNS{
-		//ts:             Ts,
-		Name:           name,
-		Config:         conf,
-		rng:            mrand.New(mrand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano()))),
-		upFrags:        make(map[string]*dnsFragBuf),
-		downFrags:      make(map[string]*dnsDownBuf),
-		upDoneCache:    make(map[string]*dnsUpDone),
-		localInflights: make(map[string]*localInflight),
-		needsReset:     make(map[string]bool),
+		Name:   name,
+		Config: conf,
+		rng:    mrand.New(mrand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano()))),
 	}
 
 	listenerData = adaptix.ListenerData{

@@ -405,6 +405,11 @@ QIcon QlementineStyle::makeThemedIconFromName(const QString& name, const QSize& 
   }
 }
 
+QIcon QlementineStyle::makeThemedIconFromData(const QByteArray& svgData, const QSize& size, ColorRole role) const {
+  const auto iconTheme = _impl->iconThemeFromTheme(role);
+  return makeIconFromSvgData(svgData, iconTheme, size);
+}
+
 void QlementineStyle::setIconPathGetter(const std::function<QString(QString)>& func) {
   _impl->iconPathFunc = func;
 }
@@ -1156,8 +1161,7 @@ void QlementineStyle::drawControl(ControlElement ce, const QStyleOption* opt, QP
         const auto& colorizedPixmap = getColorizedPixmap(pixmap, autoIconColor(w), currentFgColor, currentFgColor);
         const auto pixmapPixelRatio = colorizedPixmap.devicePixelRatio();
         const auto iconW = colorizedPixmap.isNull() ? 0 : static_cast<int>(colorizedPixmap.width() / pixmapPixelRatio);
-        const auto fmFlags = hasMenu ? Qt::AlignLeft : Qt::AlignCenter;
-        const auto textW = optButton->fontMetrics.boundingRect(optButton->rect, fmFlags, optButton->text).width();
+        const auto textW = qlementine::textWidth(optButton->fontMetrics, optButton->text);
         const auto iconSpacing = iconW > 0 && !optButton->text.isEmpty() && textW > 0 ? spacing : 0;
         const auto& fgRect =
           hasMenu ? optButton->rect.marginsRemoved(QMargins{ 0, 0, indicatorSize + spacing, 0 }) : optButton->rect;
@@ -1185,7 +1189,7 @@ void QlementineStyle::drawControl(ControlElement ce, const QStyleOption* opt, QP
         if (availableW > 0 && textW > 0) {
           const auto elidedText =
             optButton->fontMetrics.elidedText(optButton->text, Qt::ElideRight, availableW, Qt::TextSingleLine);
-          const auto elidedTextW = optButton->fontMetrics.boundingRect(optButton->rect, fmFlags, elidedText).width();
+          const auto elidedTextW = qlementine::textWidth(optButton->fontMetrics, elidedText);
           const auto textRect = QRect{ availableX, contentRect.y(), elidedTextW, contentRect.height() };
           int textFlags = Qt::AlignVCenter | Qt::AlignBaseline | Qt::TextSingleLine | Qt::TextHideMnemonic;
           if (iconW == 0) {
@@ -2469,6 +2473,9 @@ QRect QlementineStyle::subElementRect(SubElement se, const QStyleOption* opt, co
         const auto hasMenu = optButton->features.testFlag(QStyleOptionButton::HasMenu);
         const auto padding = pixelMetric(PM_ButtonMargin);
         const auto [paddingLeft, paddingRight] = getHPaddings(hasIcon, hasText, hasMenu, padding);
+        if (paddingLeft + paddingRight >= opt->rect.width()) {
+          return opt->rect;
+        }
         return opt->rect.marginsRemoved({ paddingLeft, 0, paddingRight, 0 });
       }
       return opt->rect;
@@ -4090,9 +4097,11 @@ QSize QlementineStyle::sizeFromContents(
       //return opt->rect.size();
       break;
     case CT_LineEdit:
-      if (const auto* optFrame = qstyleoption_cast<const QStyleOptionFrame*>(opt)) {
-        const auto r = optFrame->rect;
-        const auto w = r.width() - 2 * hardcodedLineEditHMargin;
+      if (qstyleoption_cast<const QStyleOptionFrame*>(opt)) {
+        // Use contentSize (font-metrics-based) rather than optFrame->rect (current widget
+        // geometry) so that sizeHint/minimumSizeHint report a content-driven width instead
+        // of echoing back the widget's existing size.
+        const auto w = contentSize.width() - 2 * hardcodedLineEditHMargin;
         const auto h = _impl->theme.controlHeightLarge;
         const auto* parent = widget ? widget->parentWidget() : nullptr;
         const auto* treeView = parent ? qobject_cast<const QAbstractItemView*>(parent->parentWidget()) : nullptr;
@@ -4990,8 +4999,10 @@ void QlementineStyle::polish(QWidget* w) {
 
     if (!comboBox->property("_qlementine_polished").toBool()) {
       comboBox->setProperty("_qlementine_polished", true);
-      // Will define a delegate to stylize the QComboBox items,
-      comboBox->setItemDelegate(new ComboBoxDelegate(comboBox, *this));
+      // Only replace the delegate if the combobox doesn't already have a custom one.
+      if (isDefaultItemDelegate(comboBox->itemDelegate())) {
+        comboBox->setItemDelegate(new ComboBoxDelegate(comboBox, *this));
+      }
       if (auto* view = comboBox->view()) {
         new ComboboxItemViewFilter(comboBox, view, this);
       }

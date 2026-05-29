@@ -50,12 +50,16 @@ int AbstractItemListWidget::currentIndex() const {
 void AbstractItemListWidget::setCurrentIndex(int index) {
   index = index < 0 || index > itemCount() - 1 ? -1 : index;
   if (index != _currentIndex) {
+    const auto oldData = currentData();
     _currentIndex = index;
     _focusedIndex = index;
     update();
     updateCurrentIndexAnimation();
     updateItemsAnimations();
     Q_EMIT currentIndexChanged();
+    if (currentData() != oldData) {
+      Q_EMIT currentDataChanged();
+    }
   }
 }
 
@@ -122,6 +126,7 @@ int AbstractItemListWidget::addItem(
 
   update();
   updateGeometry();
+  updateItemRects();
   updateItemsAnimations();
   updateCurrentIndexAnimation();
   Q_EMIT itemCountChanged();

@@ -42,6 +42,7 @@ const QIcon& IconWidget::icon() const {
 
 void IconWidget::setIcon(const QIcon& icon) {
   _icon = icon;
+  Q_EMIT iconChanged();
   update();
 }
 

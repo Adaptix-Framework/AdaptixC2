@@ -8,7 +8,7 @@ func (h *TaskTaskHandler) Create(tm *TaskManager, agent *Agent, taskData *adapti
 	if taskData.Sync {
 		tm.syncTaskCreate(taskData.AgentId, agent, taskData)
 	}
-	agent.HostedTasks.Push(*taskData)
+	agent.HostedQueue.Push(taskData.Priority, *taskData)
 }
 
 func (h *TaskTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {

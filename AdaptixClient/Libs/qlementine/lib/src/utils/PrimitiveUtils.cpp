@@ -191,7 +191,7 @@ void drawRoundedRect(QPainter* p, QRectF const& rect, QBrush const& brush, qreal
   }
 }
 
-void drawRoundedRectF(QPainter* p, QRectF const& rect, QBrush const& brush, RadiusesF const& radiuses) {
+void drawRoundedRect(QPainter* p, QRectF const& rect, QBrush const& brush, RadiusesF const& radiuses) {
   if (radiuses.hasSameRadius()) {
     drawRoundedRect(p, rect, brush, radiuses.topLeft);
   } else {

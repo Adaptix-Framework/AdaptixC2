@@ -451,7 +451,6 @@ func (sm *ScriptManager) ResolveAndExecutePreHook(agentName string, agentId stri
 	return hookId, handlerId, false, nil
 }
 
-// /---
 func (sm *ScriptManager) ParseCommandPublic(cmdline string, resolved *ResolvedCommand) (*ParsedCommand, error) {
 	return ParseCommand(cmdline, resolved)
 }

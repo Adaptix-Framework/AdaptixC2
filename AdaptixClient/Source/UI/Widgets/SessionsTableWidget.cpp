@@ -48,6 +48,54 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions
     shortcutEsc->setContext(Qt::WidgetShortcut);
     connect(shortcutEsc, &QShortcut::activated, this, [this]() { searchWidget->setVisible(false); });
 
+    auto shortcutProcessBrowser = new QShortcut(QKeySequence("Ctrl+P"), this);
+    shortcutProcessBrowser->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(shortcutProcessBrowser, &QShortcut::activated, this, [this]() {
+        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+        for (const QModelIndex &proxyIndex : selectedRows) {
+            QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+            if (!sourceIndex.isValid()) continue;
+            QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
+            adaptixWidget->LoadProcessBrowserUI(agentId);
+        }
+    });
+
+    auto shortcutFileBrowser = new QShortcut(QKeySequence("Ctrl+L"), this);
+    shortcutFileBrowser->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(shortcutFileBrowser, &QShortcut::activated, this, [this]() {
+        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+        for (const QModelIndex &proxyIndex : selectedRows) {
+            QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+            if (!sourceIndex.isValid()) continue;
+            QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
+            adaptixWidget->LoadFileBrowserUI(agentId);
+        }
+    });
+
+    auto shortcutTerminal = new QShortcut(QKeySequence("Ctrl+T"), this);
+    shortcutTerminal->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(shortcutTerminal, &QShortcut::activated, this, [this]() {
+        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+        for (const QModelIndex &proxyIndex : selectedRows) {
+            QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+            if (!sourceIndex.isValid()) continue;
+            QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
+            adaptixWidget->LoadTerminalUI(agentId);
+        }
+    });
+
+    auto shortcutConsole = new QShortcut(QKeySequence("Ctrl+I"), this);
+    shortcutConsole->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(shortcutConsole, &QShortcut::activated, this, [this]() {
+        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
+        for (const QModelIndex &proxyIndex : selectedRows) {
+            QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
+            if (!sourceIndex.isValid()) continue;
+            QString agentId = agentsModel->data(agentsModel->index(sourceIndex.row(), SC_AgentID), Qt::DisplayRole).toString();
+            adaptixWidget->LoadConsoleUI(agentId);
+        }
+    });
+
     this->dockWidget->setWidget(this);
 }
 

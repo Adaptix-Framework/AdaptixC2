@@ -55,6 +55,7 @@ func NewTeamserver() *Teamserver {
 	ts.ScriptManager = axscript.NewScriptManager(ts)
 	ts.TaskManager = NewTaskManager(ts)
 	ts.TunnelManager = NewTunnelManager(ts)
+	ts.FrameManager = NewFrameManager(ts, nil)
 	ts.Extender = extender.NewExtender(ts)
 	return ts
 }
@@ -103,16 +104,14 @@ func (ts *Teamserver) RestoreData() {
 		}
 
 		agent := &Agent{
-			Extender:          extenderAgent,
-			HostedTunnelData:  safe.NewSafeQueue(0x1000),
-			HostedTasks:       safe.NewSafeQueue(0x100),
-			HostedTunnelTasks: safe.NewSafeQueue(0x100),
-			RunningTasks:      safe.NewMap(),
-			RunningJobs:       safe.NewMap(),
-			PivotParent:       nil,
-			PivotChilds:       safe.NewSlice(),
-			Tick:              false,
-			Active:            true,
+			Extender:     extenderAgent,
+			HostedQueue:  safe.NewPriorityQueue(0x1000),
+			RunningTasks: safe.NewMap(),
+			RunningJobs:  safe.NewMap(),
+			PivotParent:  nil,
+			PivotChilds:  safe.NewSlice(),
+			Tick:         false,
+			Active:       true,
 		}
 
 		if agentData.Mark == "Terminated" {

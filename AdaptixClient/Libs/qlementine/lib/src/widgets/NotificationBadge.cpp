@@ -114,7 +114,7 @@ const QColor& NotificationBadge::backgroundColor() const {
 void NotificationBadge::setBackgroundColor(const QColor& color) {
   if (color != _backgroundColor) {
     _backgroundColor = color;
-    Q_EMIT foregroundColorChanged();
+    Q_EMIT backgroundColorChanged();
     update();
   }
 }

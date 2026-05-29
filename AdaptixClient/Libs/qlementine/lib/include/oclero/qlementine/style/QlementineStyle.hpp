@@ -76,6 +76,9 @@ public:
   QIcon makeThemedIconFromName(
     const QString& name, const QSize& size = QSize(16, 16), ColorRole role = ColorRole::Secondary) const;
 
+  QIcon makeThemedIconFromData(
+    const QByteArray& svgData, const QSize& size = QSize(16, 16), ColorRole role = ColorRole::Secondary) const;
+
   // Allows to customize quickly the way QlementineStyle gets its icons. SVG paths preferred.
   void setIconPathGetter(const std::function<QString(QString)>& func);
 

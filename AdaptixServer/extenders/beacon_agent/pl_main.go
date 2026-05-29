@@ -107,8 +107,8 @@ func (p *PluginAgent) GetExtender() adaptix.ExtenderAgent {
 	return &ExtenderAgent{}
 }
 
-func makeProxyTask(packData []byte) adaptix.TaskData {
-	return adaptix.TaskData{Type: adaptix.TASK_TYPE_PROXY_DATA, Data: packData, Sync: false}
+func makeProxyTask(packData []byte, priority uint) adaptix.TaskData {
+	return adaptix.TaskData{Type: adaptix.TASK_TYPE_PROXY_DATA, Data: packData, Priority: priority, Sync: false}
 }
 
 func getStringArg(args map[string]any, key string) (string, error) {
@@ -153,7 +153,7 @@ func TunnelMessageConnectTCP(channelId int, tunnelType int, addressType int, add
 	array := []interface{}{COMMAND_TUNNEL_START_TCP, channelId, tunnelType, address, port}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
 }
 
 func TunnelMessageConnectUDP(channelId int, tunnelType int, addressType int, address string, port int) adaptix.TaskData {
@@ -162,7 +162,7 @@ func TunnelMessageConnectUDP(channelId int, tunnelType int, addressType int, add
 	array := []interface{}{COMMAND_TUNNEL_START_UDP, channelId, address, port}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
 }
 
 func TunnelMessageWriteTCP(channelId int, data []byte) adaptix.TaskData {
@@ -171,7 +171,7 @@ func TunnelMessageWriteTCP(channelId int, data []byte) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_WRITE_TCP, channelId, len(data), data}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_DATA)
 }
 
 func TunnelMessageWriteUDP(channelId int, data []byte) adaptix.TaskData {
@@ -180,7 +180,7 @@ func TunnelMessageWriteUDP(channelId int, data []byte) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_WRITE_UDP, channelId, len(data), data}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_DATA)
 }
 
 func TunnelMessagePause(channelId int) adaptix.TaskData {
@@ -189,7 +189,7 @@ func TunnelMessagePause(channelId int) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_PAUSE, channelId}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
 }
 
 func TunnelMessageResume(channelId int) adaptix.TaskData {
@@ -198,7 +198,7 @@ func TunnelMessageResume(channelId int) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_RESUME, channelId}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
 }
 
 func TunnelMessageClose(channelId int) adaptix.TaskData {
@@ -207,7 +207,7 @@ func TunnelMessageClose(channelId int) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_CLOSE, channelId}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_CLOSE)
 }
 
 func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
@@ -216,7 +216,7 @@ func TunnelMessageReverse(tunnelId int, port int) adaptix.TaskData {
 	array := []interface{}{COMMAND_TUNNEL_REVERSE, tunnelId, port}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
 }
 
 /// TERMINAL
@@ -236,7 +236,7 @@ func TerminalMessageStart(terminalId int, program string, sizeH int, sizeW int, 
 	array := []interface{}{COMMAND_SHELL_START, terminalId, programArgs}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
 }
 
 func TerminalMessageWrite(terminalId int, oemCP int, data []byte) adaptix.TaskData {
@@ -249,7 +249,7 @@ func TerminalMessageWrite(terminalId int, oemCP int, data []byte) adaptix.TaskDa
 	array := []interface{}{COMMAND_SHELL_WRITE, terminalId, len(dataEncode), []byte(dataEncode)}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_DATA)
 }
 
 func TerminalMessageClose(terminalId int) adaptix.TaskData {
@@ -258,7 +258,7 @@ func TerminalMessageClose(terminalId int) adaptix.TaskData {
 	array := []interface{}{COMMAND_JOBS_KILL, terminalId}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
-	return makeProxyTask(packData)
+	return makeProxyTask(packData, PRIORITY_TUNNEL_CLOSE)
 }
 
 ////// PLUGIN AGENT
@@ -1513,6 +1513,7 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 	}
 
 	taskData.Data, err = PackArray(array)
+	taskData.Priority = PRIORITY_TASK
 
 	/// END CODE
 

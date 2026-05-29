@@ -7,6 +7,7 @@
 #include <oclero/qlementine/style/QlementineStyle.hpp>
 #include <oclero/qlementine/style/Delegates.hpp>
 
+#include <QStyledItemDelegate>
 #include <QEvent>
 #include <QObject>
 #include <QComboBox>
@@ -16,6 +17,15 @@
 #include <QScreen>
 
 namespace oclero::qlementine {
+
+/// Returns true if the delegate is a default Qt delegate (not a custom subclass).
+inline bool isDefaultItemDelegate(const QAbstractItemDelegate* delegate) {
+  if (!delegate)
+    return true;
+  const auto* meta = delegate->metaObject();
+  return meta == &QStyledItemDelegate::staticMetaObject || meta == &QItemDelegate::staticMetaObject;
+}
+
 // Event filter for the item view in the QComboBox's popup.
 class ComboboxItemViewFilter : public QObject {
 public:
@@ -51,7 +61,7 @@ protected:
           const auto* childEvent = static_cast<QChildEvent*>(evt);
           const auto* child = childEvent->child();
           if (child == _comboBox->view()) {
-            if (_qlementineStyle) {
+            if (_qlementineStyle && isDefaultItemDelegate(_comboBox->itemDelegate())) {
               _comboBox->setItemDelegate(new ComboBoxDelegate(_comboBox, *_qlementineStyle));
             }
           }
@@ -176,7 +186,7 @@ public:
         const auto* childEvent = static_cast<QChildEvent*>(evt);
         const auto* child = childEvent->child();
         if (child == _comboBox->view()) {
-          if (_qlementineStyle) {
+          if (_qlementineStyle && isDefaultItemDelegate(_comboBox->itemDelegate())) {
             _comboBox->setItemDelegate(new ComboBoxDelegate(_comboBox, *_qlementineStyle));
             if (auto* newView = _comboBox->view()) {
               new ComboboxItemViewFilter(_comboBox, newView, _qlementineStyle);
