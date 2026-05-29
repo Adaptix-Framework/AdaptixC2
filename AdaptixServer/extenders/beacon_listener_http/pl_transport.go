@@ -34,11 +34,12 @@ type Listener struct {
 }
 
 type TransportHTTP struct {
-	GinEngine *gin.Engine
-	Server    *http.Server
-	Config    TransportConfig
-	Name      string
-	Active    bool
+	GinEngine       *gin.Engine
+	Server          *http.Server
+	Config          TransportConfig
+	Name            string
+	Active          bool
+	CallbackLogPath string
 }
 
 type TransportConfig struct {
@@ -160,6 +161,8 @@ func validConfig(config string) error {
 
 func (t *TransportHTTP) Start(ts Teamserver) error {
 	var err error = nil
+
+	t.CallbackLogPath = ListenerDataDir + "/" + t.Name + "_callbacks.log"
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -350,11 +353,14 @@ func (t *TransportHTTP) processRequest(ctx *gin.Context) {
 		return
 	}
 
-	if t.Config.TrustXForwardedFor && ctx.Request.Header.Get("X-Forwarded-For") != "" {
-		ExternalIP = ctx.Request.Header.Get("X-Forwarded-For")
-	} else {
-		ExternalIP = strings.Split(ctx.Request.RemoteAddr, ":")[0]
+	var remoteHost string
+	remoteHost, _, err = net.SplitHostPort(ctx.Request.RemoteAddr)
+	if err != nil {
+		remoteHost = ctx.Request.RemoteAddr
+		err = nil
 	}
+	ExternalIP = remoteHost
+	t.logCallback(ExternalIP)
 
 	agentType, agentId, beat, bodyData, err = t.parseBeatAndData(ctx)
 	if err != nil {
@@ -436,6 +442,16 @@ func (t *TransportHTTP) parseBeatAndData(ctx *gin.Context) (string, string, []by
 	}
 
 	return fmt.Sprintf("%08x", agentType), fmt.Sprintf("%08x", agentId), agentInfo, bodyData, nil
+}
+
+func (t *TransportHTTP) logCallback(ip string) {
+	f, err := os.OpenFile(t.CallbackLogPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	line := fmt.Sprintf("%s\t%s\n", time.Now().UTC().Format("2006-01-02 15:04:05 UTC"), ip)
+	_, _ = f.WriteString(line)
 }
 
 func (t *TransportHTTP) generateSelfSignedCert(certFile, keyFile string) error {
