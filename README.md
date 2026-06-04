@@ -13,7 +13,6 @@ Adaptix is an extensible post-exploitation and adversarial emulation framework m
 This tool is designed for AUTHORIZED security testing and red team operations ONLY. Unauthorized use is strictly prohibited and may violate local and international laws. Use at your own risk.
 
 
-
 ## Getting Started
 
 Please checkout the [wiki](https://adaptix-framework.gitbook.io/adaptix-framework/adaptix-c2/getting-starting/installation).
@@ -61,6 +60,136 @@ Official [Extension-Kit](https://github.com/Adaptix-Framework/Extension-Kit) on 
 
 ![](https://adaptix-framework.gitbook.io/adaptix-framework/~gitbook/image?url=https%3A%2F%2F2104178602-files.gitbook.io%2F%7E%2Ffiles%2Fv0%2Fb%2Fgitbook-x-prod.appspot.com%2Fo%2Fspaces%252FS8p8XLFtLmf0NkofQvoa%252Fuploads%252Fxxn9BnUfG0byuRamOy4y%252FScreenshot_20260129_233957.png%3Falt%3Dmedia%26token%3D053c7d47-39af-433b-a2d2-87a1b8dec7bb&width=768&dpr=3&quality=100&sign=f1581010&sv=2)
 
+## For macOS Users (Client Build) - Very Important
+
+After installation using the **setup-macos.sh** script, ensure the following requirements are met before building the client.
+
+### Supported Platforms
+
+* macOS Intel (`x86_64`)
+* macOS Apple Silicon (`arm64` / M1, M2, M3, M4)
+
+### Required Dependencies
+
+Install the required packages using Homebrew:
+
+```bash
+brew install \
+    cmake \
+    openssl \
+    qtbase \
+    qtdeclarative \
+    qtsvg \
+    qtwebsockets
+```
+
+### Verify Qt Components
+
+Ensure the following Qt6 configuration files exist:
+
+```bash
+find /opt/homebrew /usr/local -name Qt6Config.cmake 2>/dev/null
+find /opt/homebrew /usr/local -name Qt6SvgConfig.cmake 2>/dev/null
+find /opt/homebrew /usr/local -name Qt6WebSocketsConfig.cmake 2>/dev/null
+find /opt/homebrew /usr/local -name Qt6QmlConfig.cmake 2>/dev/null
+```
+
+Apple Silicon users should typically see paths under:
+
+```text
+/opt/homebrew/Cellar/
+```
+
+Intel users should typically see paths under:
+
+```text
+/usr/local/Cellar/
+```
+
+### Configure the Client
+
+From the repository root:
+
+```bash
+cd AdaptixClient
+```
+
+Configure CMake using the detected Qt paths:
+
+```bash
+cmake . \
+  -DQt6_DIR="$(dirname $(find $(brew --prefix) -name Qt6Config.cmake | head -1))" \
+  -DQt6Svg_DIR="$(dirname $(find $(brew --prefix) -name Qt6SvgConfig.cmake | head -1))" \
+  -DQt6WebSockets_DIR="$(dirname $(find $(brew --prefix) -name Qt6WebSocketsConfig.cmake | head -1))" \
+  -DQt6Qml_DIR="$(dirname $(find $(brew --prefix) -name Qt6QmlConfig.cmake | head -1))"
+```
+
+### Build
+
+```bash
+make -j$(sysctl -n hw.ncpu)
+```
+
+### Runtime Fix (Qt Cocoa Plugin)
+
+If the client launches with the error:
+
+```text
+qt.qpa.plugin: Could not find the Qt platform plugin "cocoa"
+```
+
+set the Qt plugin paths before running:
+
+```bash
+export QT_PLUGIN_PATH="$(find $(brew --prefix) -path '*share/qt/plugins' | grep qtbase | head -1)"
+export QT_QPA_PLATFORM_PLUGIN_PATH="$QT_PLUGIN_PATH/platforms"
+```
+
+Then launch the client:
+
+```bash
+./AdaptixClient
+```
+
+### Qt 5 Conflict
+
+If Homebrew reports linking conflicts with `qt@5`, unlink it temporarily:
+
+```bash
+brew unlink qt@5
+```
+
+This project requires **Qt 6**. Having Qt 5 linked may prevent Qt 6 modules such as `QtSvg`, `QtWebSockets`, or `QtQml` from being discovered correctly.
+
+### Troubleshooting
+
+Enable Qt plugin debugging:
+
+```bash
+export QT_DEBUG_PLUGINS=1
+./AdaptixClient
+```
+
+Inspect linked Qt libraries:
+
+```bash
+otool -L ./AdaptixClient | grep Qt
+```
+
+If configuration fails, verify that the required Qt modules are installed:
+
+```bash
+brew list | grep qt
+```
+
+Expected output should include:
+
+```text
+qtbase
+qtdeclarative
+qtsvg
+qtwebsockets
+```
 
 
 
