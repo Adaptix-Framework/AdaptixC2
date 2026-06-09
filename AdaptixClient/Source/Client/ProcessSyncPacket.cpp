@@ -543,12 +543,21 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         }
 
         if (count <= 0) {
-            this->sync = false;
+            // No data to sync, but the server still sends SYNC_FINISH.
+            // Keep sync=true so the upcoming SYNC_FINISH triggers
+            // finalizeSyncIfReady(), which closes the splash screen and
+            // emits SyncedSignal. Setting sync=false here would make the
+            // SYNC_FINISH handler (which early-returns when !sync) a no-op,
+            // leaving the client stuck on "data synchronization".
+            this->sync = true;
             this->syncFinishReceived = false;
             this->syncTotalBatches = 0;
             this->syncProcessingBatchIndex = 0;
             this->syncProcessingBatchTotal = 0;
             this->syncProcessingBatchProcessed = 0;
+            this->setSyncUpdateUI(false);
+            if (dialogSyncPacket)
+                dialogSyncPacket->init(count);
             break;
         }
 
