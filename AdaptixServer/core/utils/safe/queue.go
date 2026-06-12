@@ -16,9 +16,14 @@ type Queue struct {
 	capacity int
 }
 
+const maxQueueCapacity = 0x10000 // 65536 items max
+
 func NewSafeQueue(capacity int) *Queue {
 	if capacity <= 0 {
 		capacity = 0x100
+	}
+	if capacity > maxQueueCapacity {
+		capacity = maxQueueCapacity
 	}
 	return &Queue{
 		buffer:   make([]interface{}, capacity),
@@ -43,7 +48,13 @@ func (q *Queue) Push(value interface{}) {
 	defer q.lock.Unlock()
 
 	if q.size == q.capacity {
-		q.resize()
+		if q.capacity >= maxQueueCapacity {
+			q.buffer[q.head] = nil
+			q.head = (q.head + 1) % q.capacity
+			q.size--
+		} else {
+			q.resize()
+		}
 	}
 	q.buffer[q.tail] = value
 	q.tail = (q.tail + 1) % q.capacity
@@ -55,7 +66,13 @@ func (q *Queue) PushFront(value interface{}) {
 	defer q.lock.Unlock()
 
 	if q.size == q.capacity {
-		q.resize()
+		if q.capacity >= maxQueueCapacity {
+			q.buffer[(q.tail-1+q.capacity)%q.capacity] = nil
+			q.tail = (q.tail - 1 + q.capacity) % q.capacity
+			q.size--
+		} else {
+			q.resize()
+		}
 	}
 
 	q.head = (q.head - 1 + q.capacity) % q.capacity
@@ -99,6 +116,9 @@ func (q *Queue) Clear() {
 
 func (q *Queue) resize() {
 	newCap := q.capacity * 2
+	if newCap > maxQueueCapacity {
+		newCap = maxQueueCapacity
+	}
 	newBuf := make([]interface{}, newCap)
 
 	for i := 0; i < q.size; i++ {

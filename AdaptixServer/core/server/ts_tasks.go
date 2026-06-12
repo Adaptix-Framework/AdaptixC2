@@ -120,6 +120,8 @@ func (ts *Teamserver) extractTunnelData(agent *Agent, availableSize int, startSi
 
 func (ts *Teamserver) extractPivotTasks(agent *Agent, availableSize int, startSize int) (tasks []adaptix.TaskData, usedSize int) {
 	usedSize = startSize
+	const minPivotSize = 0x10000 // 64KB minimum for each pivot child
+
 	for i := uint(0); i < agent.PivotChilds.Len(); i++ {
 		value, ok := agent.PivotChilds.Get(i)
 		if !ok {
@@ -130,8 +132,14 @@ func (ts *Teamserver) extractPivotTasks(agent *Agent, availableSize int, startSi
 		if lostSize <= 0 {
 			break
 		}
+		if lostSize < minPivotSize && availableSize > minPivotSize {
+			lostSize = minPivotSize
+		}
 		data, err := ts.TsAgentGetHostedAll(pivotData.ChildAgentId, lostSize)
 		if err != nil {
+			continue
+		}
+		if len(data) == 0 {
 			continue
 		}
 		pivotTaskData, err := agent.PivotPackData(pivotData.PivotId, data)

@@ -194,6 +194,12 @@ func (ts *Teamserver) TsAgentProcessData(agentId string, bodyData []byte) error 
 		// -----------------
 	}
 
+	if !agentData.Async {
+		agent.UpdateData(func(d *adaptix.AgentData) {
+			d.LastTick = int(time.Now().Unix())
+		})
+	}
+
 	if len(bodyData) > 4 {
 		return agent.ProcessData(bodyData)
 	}
