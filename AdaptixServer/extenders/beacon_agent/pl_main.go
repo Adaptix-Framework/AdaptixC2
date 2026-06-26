@@ -108,7 +108,7 @@ func (p *PluginAgent) GetExtender() adaptix.ExtenderAgent {
 }
 
 func makeProxyTask(packData []byte, priority uint) adaptix.TaskData {
-	return adaptix.TaskData{Type: adaptix.TASK_TYPE_PROXY_DATA, Data: packData, Priority: priority, Sync: false}
+	return adaptix.TaskData{Type: adaptix.TASK_TYPE_PROXY_DATA, Data: packData, Sync: false}
 }
 
 func getStringArg(args map[string]any, key string) (string, error) {
@@ -1513,7 +1513,6 @@ func (ext *ExtenderAgent) CreateCommand(agentData adaptix.AgentData, args map[st
 	}
 
 	taskData.Data, err = PackArray(array)
-	taskData.Priority = PRIORITY_TASK
 
 	/// END CODE
 

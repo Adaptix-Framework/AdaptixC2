@@ -61,10 +61,6 @@ func (tm *TaskManager) prepareTaskData(agent *Agent, cmdline string, client stri
 	taskData.Computer = agentData.Computer
 	taskData.StartDate = time.Now().Unix()
 
-	if taskData.Priority < 0 {
-		taskData.Priority = 0
-	}
-
 	if taskData.Completed {
 		taskData.FinishDate = taskData.StartDate
 	}

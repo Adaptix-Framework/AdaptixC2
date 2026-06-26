@@ -1,4 +1,4 @@
-FROM golang:1.25-bookworm AS base
+FROM golang:1.26-bookworm AS base
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -166,12 +166,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN wget https://go.dev/dl/go1.25.4.linux-amd64.tar.gz -O /tmp/go1.25.4.linux-amd64.tar.gz && \
+RUN wget https://go.dev/dl/go1.26.4.linux-amd64.tar.gz -O /tmp/go1.26.4.linux-amd64.tar.gz && \
     rm -rf /usr/local/go /usr/local/bin/go && \
-    tar -C /usr/local -xzf /tmp/go1.25.4.linux-amd64.tar.gz && \
+    tar -C /usr/local -xzf /tmp/go1.26.4.linux-amd64.tar.gz && \
     ln -s /usr/local/go/bin/go /usr/local/bin/go && \
-    rm /tmp/go1.25.4.linux-amd64.tar.gz && \
-    echo "[+] Go 1.25.4 installed successfully"
+    rm /tmp/go1.26.4.linux-amd64.tar.gz && \
+    echo "[+] Go 1.26.4 installed successfully"
 
 RUN git clone https://github.com/Adaptix-Framework/go-win7 /tmp/go-win7 && \
     mv /tmp/go-win7 /usr/lib/ && \

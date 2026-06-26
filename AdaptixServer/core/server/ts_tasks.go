@@ -72,7 +72,7 @@ func (ts *Teamserver) extractTasks(agent *Agent, maxSize int, maxCount int, prio
 		taskData := item.(adaptix.TaskData)
 
 		if maxSize > 0 && usedSize+len(taskData.Data) >= maxSize {
-			agent.HostedQueue.Push(taskData.Priority, taskData)
+			agent.HostedQueue.Push(0, taskData)
 			break
 		}
 

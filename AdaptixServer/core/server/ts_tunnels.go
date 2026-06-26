@@ -827,7 +827,7 @@ func tunnelManageTask(agent *Agent, taskData adaptix.TaskData) {
 		taskData.TaskId, _ = krypt.GenerateUID(8)
 	}
 
-	agent.HostedQueue.Push(taskData.Priority, taskData)
+	agent.HostedQueue.Push(0, taskData)
 }
 
 func relayPipeToTaskData(agent *Agent, channelId int, taskData adaptix.TaskData) {
@@ -836,7 +836,7 @@ func relayPipeToTaskData(agent *Agent, channelId int, taskData adaptix.TaskData)
 	}
 	taskData.AgentId = agent.GetData().Id
 
-	agent.HostedQueue.Push(taskData.Priority, taskData)
+	agent.HostedQueue.Push(0, taskData)
 }
 
 func relaySocketToTunnel(tm *TunnelManager, agent *Agent, tunnel *Tunnel, tunChannel *TunnelChannel, direct bool) {

@@ -15,7 +15,7 @@ func (h *JobTaskHandler) Create(tm *TaskManager, agent *Agent, taskData *adaptix
 	if taskData.Sync {
 		tm.syncTaskCreate(taskData.AgentId, agent, taskData)
 	}
-	agent.HostedQueue.Push(taskData.Priority, *taskData)
+	agent.HostedQueue.Push(0, *taskData)
 }
 
 func (h *JobTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
