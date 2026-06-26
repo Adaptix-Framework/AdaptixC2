@@ -91,6 +91,8 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
     connect( TickWorker, &LastTickWorker::agentsUpdated, this, [this](const QStringList &agentIds) {
         SessionsTableDock->agentsModel->updateLastColumn(agentIds);
+        if (GlobalClient->settings->data.AutoHideOffline)
+            SessionsGraphDock->RebuildAll();
     }, Qt::QueuedConnection);
 
     connect( ChannelWsWorker, &WebSocketWorker::received_json,    this,   &AdaptixWidget::DataHandlerJson );
@@ -1252,6 +1254,7 @@ void AdaptixWidget::OnSynced()
 
     QTimer::singleShot(0, this, [this]() {
         this->SessionsGraphDock->TreeDraw();
+        this->SessionsGraphDock->RebuildAll();
         this->TasksDock->UpdateColumnsSize();
         this->TasksDock->UpdateFilterComboBoxes();
         this->SessionsTableDock->UpdateColumnsSize();

@@ -7,6 +7,7 @@
 #include <UI/Widgets/TerminalContainerWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/TasksWidget.h>
+#include <UI/Graph/SessionsGraph.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogTunnel.h>
 #include <UI/Dialogs/DialogAgentData.h>
@@ -34,11 +35,21 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions
             tableView->setFocus();
     });
 
-    connect(inputFilter,     &QLineEdit::textChanged,        this, &SessionsTableWidget::onFilterChanged);
-    connect(inputFilter,     &QLineEdit::returnPressed,      this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
-    connect(comboAgentType,  &QComboBox::currentTextChanged, this, &SessionsTableWidget::onFilterChanged);
-    connect(checkOnlyActive, &QCheckBox::checkStateChanged,  this, &SessionsTableWidget::onFilterChanged);
-    connect(hideButton,      &ClickableLabel::clicked,       this, &SessionsTableWidget::toggleSearchPanel);
+    connect(inputFilter,    &QLineEdit::textChanged,        this, &SessionsTableWidget::onFilterChanged);
+    connect(inputFilter,    &QLineEdit::returnPressed,      this, [this]() { proxyModel->setTextFilter(inputFilter->text()); });
+    connect(comboAgentType, &QComboBox::currentTextChanged, this, &SessionsTableWidget::onFilterChanged);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    connect(checkOnlyActive, &QCheckBox::checkStateChanged, this, &SessionsTableWidget::onFilterChanged);
+#else
+    connect(checkOnlyActive, &QCheckBox::stateChanged, this, &SessionsTableWidget::onFilterChanged);
+#endif
+    connect(checkAutoHideOffline, &QCheckBox::toggled, this, [this](bool checked) {
+        proxyModel->setAutoHideOffline(checked);
+        GlobalClient->settings->data.AutoHideOffline = checked;
+        GlobalClient->settings->SaveToDB();
+        adaptixWidget->SessionsGraphDock->RebuildAll();
+    });
+    connect(hideButton, &ClickableLabel::clicked, this, &SessionsTableWidget::toggleSearchPanel);
 
     shortcutSearch = new QShortcut(QKeySequence("Ctrl+F"), this);
     shortcutSearch->setContext(Qt::WidgetWithChildrenShortcut);
@@ -160,6 +171,9 @@ void SessionsTableWidget::createUI()
 
     checkOnlyActive = new QCheckBox("only active", searchWidget);
 
+    checkAutoHideOffline = new QCheckBox("auto hide offline", this);
+    checkAutoHideOffline->setChecked(GlobalClient->settings->data.AutoHideOffline);
+
     hideButton = new ClickableLabel("  x  ");
     hideButton->setCursor(Qt::PointingHandCursor);
 
@@ -180,6 +194,7 @@ void SessionsTableWidget::createUI()
     proxyModel  = new AgentsFilterProxyModel(adaptixWidget, this);
     proxyModel->setSourceModel(agentsModel);
     proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+    proxyModel->setAutoHideOffline(checkAutoHideOffline->isChecked());
 
     tableView = new QTableView( this );
     tableView->setModel(proxyModel);
@@ -236,6 +251,13 @@ void SessionsTableWidget::createUI()
     mainGridLayout->setContentsMargins( 0, 0,  0, 0);
     mainGridLayout->addWidget( searchWidget, 0, 0, 1, 1);
     mainGridLayout->addWidget( tableView,    1, 0, 1, 1);
+
+    bottomBar = new QWidget(this);
+    auto* bottomLayout = new QHBoxLayout(bottomBar);
+    bottomLayout->setContentsMargins(4, 2, 4, 2);
+    bottomLayout->addStretch();
+    bottomLayout->addWidget(checkAutoHideOffline);
+    mainGridLayout->addWidget(bottomBar, 2, 0, 1, 1);
 }
 
 void SessionsTableWidget::AddAgentItem( Agent* newAgent )
@@ -354,6 +376,7 @@ void SessionsTableWidget::Clear() const
     agentsModel->clear();
 
     checkOnlyActive->setChecked(false);
+    checkAutoHideOffline->setChecked(GlobalClient->settings->data.AutoHideOffline);
     inputFilter->clear();
     comboAgentType->clear();
     comboAgentType->addItem("All types");

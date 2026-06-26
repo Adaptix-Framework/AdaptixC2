@@ -211,6 +211,7 @@ typedef struct SettingsData {
     bool   CheckHealth;
     double HealthCoaf;
     int    HealthOffset;
+    bool   AutoHideOffline;
 
     bool TasksTableColumns[11];
 

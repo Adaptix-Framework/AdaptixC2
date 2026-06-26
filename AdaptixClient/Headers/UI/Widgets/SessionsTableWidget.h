@@ -41,8 +41,9 @@ class AgentsFilterProxyModel : public QSortFilterProxyModel
 {
 Q_OBJECT
     AdaptixWidget* adaptixWidget = nullptr;
-    bool    searchVisible  = false;
-    bool    onlyActive     = false;
+    bool    searchVisible   = false;
+    bool    onlyActive      = false;
+    bool    autoHideOffline = false;
     QString textFilter;
     QSet<QString> agentTypes;
 
@@ -126,6 +127,11 @@ QT_WARNING_DISABLE_DEPRECATED
         invalidateFilter();
 QT_WARNING_POP
     }
+    void setAutoHideOffline(bool hide) {
+        if (autoHideOffline == hide) return;
+        autoHideOffline = hide;
+        invalidateFilter();
+    }
     void setTextFilter(const QString& text) {
         if (textFilter == text) return;
         textFilter = text;
@@ -172,6 +178,9 @@ protected:
             if (a.Mark == "Terminated" || a.Mark == "Inactive" || a.Mark == "Disconnect")
                 return false;
         }
+
+        if (autoHideOffline && !a.Mark.isEmpty())
+            return false;
 
         if (!agentTypes.isEmpty() && !agentTypes.contains(a.Name))
             return false;
@@ -463,7 +472,9 @@ Q_OBJECT
     QHBoxLayout*    searchLayout    = nullptr;
     QCheckBox*      autoSearchCheck = nullptr;
     QComboBox*      comboAgentType  = nullptr;
-    QCheckBox*      checkOnlyActive = nullptr;
+    QCheckBox*      checkOnlyActive     = nullptr;
+    QCheckBox*      checkAutoHideOffline = nullptr;
+    QWidget*        bottomBar           = nullptr;
     ClickableLabel* hideButton      = nullptr;
     oclero::qlementine::LineEdit* inputFilter = nullptr;
 

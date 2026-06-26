@@ -392,6 +392,7 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
         settingsData->CheckHealth  = json["healthCheck"].toBool();
         settingsData->HealthCoaf   = json["healthCoaf"].toDouble();
         settingsData->HealthOffset = json["healthOffset"].toInt();
+        settingsData->AutoHideOffline = json["autoHideOffline"].toBool();
 
         QJsonArray columns = json["columns"].toArray();
         for (int i = 0; i < 16 && i < columns.size(); i++)
@@ -417,6 +418,7 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
     json["healthCheck"]   = settingsData.CheckHealth;
     json["healthCoaf"]    = settingsData.HealthCoaf;
     json["healthOffset"]  = settingsData.HealthOffset;
+    json["autoHideOffline"] = settingsData.AutoHideOffline;
     json["columns"]       = columns;
     json["columnOrder"]   = columnOrder;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);

@@ -7,6 +7,8 @@
 #include <UI/Graph/GraphScene.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
+#include <Client/Settings.h>
+#include <MainAdaptix.h>
 
 SessionsGraph::SessionsGraph(QWidget* parent) : QGraphicsView(parent)
 {
@@ -63,20 +65,49 @@ void SessionsGraph::LinkToRoot(GraphItem *item) const
     this->rootItem->AddChild( item );
 }
 
-void SessionsGraph::AddAgent(Agent *agent, bool drawTree)
+bool SessionsGraph::ShouldSkipAgent(Agent* agent) const
 {
     if (agent->data.Mark == "Terminated" || agent->data.Mark == "Inactive")
+        return true;
+
+    if (GlobalClient->settings->data.AutoHideOffline && !agent->data.Mark.isEmpty())
+        return true;
+
+    return false;
+}
+
+void SessionsGraph::LinkAgentPivot(Agent* agent) const
+{
+    if (agent->parentId.isEmpty())
+        return;
+
+    AdaptixWidget* aw = static_cast<AdaptixWidget*>(mainWidget);
+    Agent* parent = nullptr;
+    {
+        QReadLocker locker(&aw->AgentsMapLock);
+        parent = aw->AgentsMap.value(agent->parentId, nullptr);
+    }
+
+    if (parent && parent->graphItem) {
+        RelinkAgent(parent, agent, "", false);
+    }
+}
+
+void SessionsGraph::AddAgent(Agent *agent, bool drawTree)
+{
+    if (ShouldSkipAgent(agent))
         return;
 
     GraphItem* item = new GraphItem( this, agent );
     agent->graphItem = item;
 
-    if (agent->parentId.isEmpty())
-        this->LinkToRoot(item);
+    this->LinkToRoot(item);
 
     this->graphScene->addItem( item );
     this->graphScene->addItem( item->parentLink );
     this->items.push_back( item );
+
+    LinkAgentPivot(agent);
 
     if (drawTree)
         this->TreeDraw();
@@ -102,8 +133,6 @@ void SessionsGraph::RemoveAgent(Agent* agent, bool drawTree)
     auto childs = agent->graphItem->childItems;
     if ( !childs.empty() ) {
         for (int i = 0; i < childs.size(); i++) {
-            /// childs[i]->agent->graphItem->parentLink = nullptr;
-            /// childs[i]->agent->graphItem->parentItem = nullptr;
             this->LinkToRoot(childs[i]->agent->graphItem);
         }
     }
@@ -190,6 +219,35 @@ void SessionsGraph::UnlinkAgent(const Agent* parentAgent, const Agent* childAgen
 
     if (drawTree)
         this->TreeDraw();
+}
+
+void SessionsGraph::RebuildAll()
+{
+    AdaptixWidget* aw = static_cast<AdaptixWidget*>(mainWidget);
+
+    QList<Agent*> agents;
+    {
+        QReadLocker locker(&aw->AgentsMapLock);
+        agents = aw->AgentsMap.values();
+    }
+
+    /// Remove all agent items (keep root)
+    for (int i = items.size() - 1; i >= 0; i--) {
+        if (items[i]->agent) {
+            Agent* a = items[i]->agent;
+            RemoveAgent(a, false);
+        }
+    }
+
+    /// Re-add agents (ShouldSkipAgent handles filtering)
+    for (Agent* a : agents) {
+        if (a->graphItem)
+            continue;
+        AddAgent(a, false);
+        LinkAgentPivot(a);
+    }
+
+    TreeDraw();
 }
 
 void SessionsGraph::TreeDraw() const

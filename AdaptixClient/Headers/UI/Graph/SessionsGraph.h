@@ -25,6 +25,9 @@ Q_OBJECT
     int timerId = 0;
     GraphLayoutDirection layoutDirection = LayoutLeftToRight;
 
+    bool ShouldSkipAgent(Agent* agent) const;
+    void LinkAgentPivot(Agent* agent) const;
+
 public:
     explicit SessionsGraph( QWidget *parent = nullptr );
     ~SessionsGraph() override;
@@ -41,6 +44,7 @@ public:
     void RelinkAgent(const Agent* parentAgent, const Agent* childAgent, const QString &linkName, bool drawTree) const;
     void UnlinkAgent(const Agent* parentAgent, const Agent* childAgent, bool drawTree) const;
 
+    void RebuildAll();
     void Clear();
     void TreeDraw() const;
     void SetLayoutDirection(GraphLayoutDirection direction);

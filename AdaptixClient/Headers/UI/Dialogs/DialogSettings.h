@@ -60,6 +60,7 @@ Q_OBJECT
     QLabel*      sessionsLabel3       = nullptr;
     QDoubleSpinBox* sessionsCoafSpin  = nullptr;
     QSpinBox*    sessionsOffsetSpin   = nullptr;
+    QCheckBox*   sessionsAutoHideOffline = nullptr;
 
     QWidget*     tasksWidget      = nullptr;
     QGridLayout* tasksLayout      = nullptr;

@@ -222,6 +222,12 @@ void DialogSettings::createUI()
     sessionsLayout->addWidget(sessionsOffsetSpin, 1, 5, 1, 1);
     sessionsLayout->addWidget(sessionsLabel3, 1, 6, 1, 1);
 
+    sessionsAutoHideOffline = new QCheckBox("Auto hide offline agents", sessionsWidget);
+    connect(sessionsAutoHideOffline, &QCheckBox::toggled, buttonApply, [this](bool) {
+        buttonApply->setEnabled(true);
+    });
+    sessionsLayout->addWidget(sessionsAutoHideOffline, 2, 0, 1, 1);
+
     sessionsWidget->setLayout(sessionsLayout);
 
 
@@ -433,6 +439,7 @@ void DialogSettings::onApply() const
     settings->data.CheckHealth = sessionsHealthCheck->isChecked();
     settings->data.HealthCoaf = sessionsCoafSpin->value();
     settings->data.HealthOffset = sessionsOffsetSpin->value();
+    settings->data.AutoHideOffline = sessionsAutoHideOffline->isChecked();
 
     updateTable = false;
     for ( int i = 0; i < 11; i++) {
@@ -476,6 +483,7 @@ void DialogSettings::loadSettings()
     sessionsHealthCheck->setChecked(settings->data.CheckHealth);
     sessionsCoafSpin->setValue(settings->data.HealthCoaf);
     sessionsOffsetSpin->setValue(settings->data.HealthOffset);
+    sessionsAutoHideOffline->setChecked(settings->data.AutoHideOffline);
 
     for (int i = 0; i < 11; i++)
         tasksCheck[i]->setChecked(settings->data.TasksTableColumns[i]);

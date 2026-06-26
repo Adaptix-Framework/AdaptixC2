@@ -246,6 +246,14 @@ void Agent::Update(const QJsonObject &jsonObjAgentData)
         else if ((oldMark == "Terminated" || oldMark == "Inactive") && !this->graphItem) {
             adaptixWidget->SessionsGraphDock->AddAgent(this, true);
         }
+        else if (GlobalClient->settings->data.AutoHideOffline) {
+            if (!mark.isEmpty() && this->graphItem) {
+                adaptixWidget->SessionsGraphDock->RemoveAgent(this, true);
+            }
+            else if (mark.isEmpty() && !this->graphItem) {
+                adaptixWidget->SessionsGraphDock->AddAgent(this, true);
+            }
+        }
     }
 }
 
