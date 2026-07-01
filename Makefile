@@ -75,6 +75,20 @@ server: prepare
 server-ext: clean server extenders
 
 
+### CLI ###
+
+cli: prepare
+	@ echo "[*] Building AdaptixCLI..."
+	@ cd AdaptixCLI && GOEXPERIMENT=jsonv2,greenteagc go build -ldflags="-s -w" -o adaptix-cil . > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixCLI:"; cat build_error.log >&2; exit 1; }
+	@ mv ./AdaptixCLI/adaptix-cil ./$(DIST_DIR)/
+	@ echo "[+] done"
+
+install-cli: cli
+	@ echo "[*] Installing adaptix-cil to /usr/local/bin..."
+	@ sudo cp ./$(DIST_DIR)/adaptix-cil /usr/local/bin/
+	@ echo "[+] installed"
+
+
 
 ### CLIENT ###
 
@@ -162,6 +176,8 @@ help:
 	@ echo "  server           - Build only the server"
 	@ echo "  client-fast      - Build only the client in multithread mode (fast build)"
 	@ echo "  client           - Build only the client"
+	@ echo "  cli              - Build only the CLI tool"
+	@ echo "  install-cli      - Build CLI and install to /usr/local/bin"
 	@ echo "  clean            - Remove dist directory"
 	@ echo "  clean-all        - Remove all build artifacts"
 	@ echo ""
@@ -182,4 +198,4 @@ help:
 	@ echo ""
 	@ echo "Platform: $(UNAME_S) [$(NPROC) proc]"
 
-.PHONY: all extenders server-ext server client clean clean-all docker-build-server docker-build-extenders docker-build-server-ext docker-build-all docker-up docker-down docker-logs docker-restart docker-clean docker-clean-all help prepare
+.PHONY: all extenders server-ext server client cli install-cli clean clean-all docker-build-server docker-build-extenders docker-build-server-ext docker-build-all docker-up docker-down docker-logs docker-restart docker-clean docker-clean-all help prepare

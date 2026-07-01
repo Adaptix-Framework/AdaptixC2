@@ -5,6 +5,7 @@
 - **`AdaptixServer/`** — Go server (module `AdaptixServer`). Entrypoint: `main.go`.
 - **`AdaptixClient/`** — C++/Qt6 GUI client. Built via CMake (`CMakeLists.txt`).
 - **`AdaptixServer/extenders/`** — 7 Go plugin modules (agents + listeners). Each has its own `go.mod` + `Makefile`.
+- **`AdaptixCLI/`** — Go CLI tool for server interaction (independent module). Designed for AI/script automation.
 - **`AdaptixServer/core/`** — Server internals: `connector/`, `server/`, `database/`, `extender/`, `profile/`, `eventing/`, `axscript/`, `utils/`.
 - Go workspace file (`go.work`) ties the server module + all 7 extender modules together.
 
@@ -20,6 +21,8 @@ All builds use the top-level `Makefile`:
 | `make extenders` | All extender plugins only |
 | `make client` | C++/Qt6 client (single-threaded) |
 | `make client-fast` | C++/Qt6 client (parallel build) |
+| `make cli` | `AdaptixCLI/` CLI tool only |
+| `make install-cli` | Build CLI and copy to `/usr/local/bin` |
 
 **Important Go build flags**: The server and extenders require `GOEXPERIMENT=jsonv2,greenteagc`. The Makefile handles this — don't omit it if building manually.
 
@@ -62,4 +65,5 @@ All builds use the top-level `Makefile`:
 | `AdaptixServer/404page.html` | Default HTTP 404 error page |
 | `AdaptixServer/go.work` | Multi-module Go workspace |
 | `AdaptixClient/CMakeLists.txt` | Client build definition, lists all source files |
+| `AdaptixCLI/go.mod` | CLI tool module (standalone, not in go.work) |
 | `Makefile` | Top-level build orchestrator |

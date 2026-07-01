@@ -43,6 +43,9 @@ AdaptixServer/extenders/*/dist/
 # Go build artifacts
 AdaptixServer/adaptixserver
 
+# AdaptixCLI binary
+AdaptixCLI/adaptix-cil
+
 # Build artifacts (object files, dependency files)
 *.o
 *.o.d
