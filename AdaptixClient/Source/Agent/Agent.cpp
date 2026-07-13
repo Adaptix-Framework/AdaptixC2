@@ -78,7 +78,7 @@ Agent::~Agent()
     auto destroyDock = [](DockTab* tab) {
         if (!tab || !tab->dock())
             return;
-        auto* d = tab->dock();ы
+        auto* d = tab->dock();
         tab->setParent(nullptr);
         delete d;
     };
